@@ -4,6 +4,12 @@
 
 **Status:** Recherche; noch keine lückenlose, freigegebene Spielregel.
 
+**Ausführungsnachtrag 18.10.2026:** Der Owner hat inzwischen die Umsetzung
+freigegeben und konkrete 2-/3-/4-Profile, Standardoptionen und Nebenaktionen
+festgelegt. Aktuell verbindlich ist das [Entscheidungsprotokoll](WATTEN_OWNER_DECISIONS.md).
+Die folgenden Quellenvergleiche bleiben historischer Regelabgleich und
+entscheiden keine dort noch offenen Grenzfälle.
+
 **Produktvorgaben und Assets:** [WATTEN_RESEARCH.md](WATTEN_RESEARCH.md).
 
 **Arbeitszweig:** `codex/watten-recherche`; keine Entwicklung, kein Release.

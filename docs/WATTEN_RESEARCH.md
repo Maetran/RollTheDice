@@ -6,6 +6,10 @@ Hausregeln weiter gemäss Audit klären. [Ausführungsübergabe](WATTEN_EXECUTIO
 **Ursprünglicher Branch:** `codex/watten-recherche`.
 **Ausgangspunkt:** `62856e1` auf `master`.
 
+Konkrete Hausregelantworten aus dem Ausführungs-Chat stehen im
+[Owner-Entscheidungsprotokoll](WATTEN_OWNER_DECISIONS.md); sie ersetzen die
+entsprechenden älteren offenen Variantenfragen dieser Recherche.
+
 Die Fortsetzung vom 17.10.2026 zur
 [Gestaltungsreferenz](WATTEN_DESIGN_REFERENCES.md) liegt auf
 `codex/watten-design-references`, begonnen vom aktuellen `origin/develop`.

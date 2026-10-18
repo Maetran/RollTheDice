@@ -11,6 +11,13 @@ zusammen mit dem [Regelabgleich](WATTEN_RULES_AUDIT.md), der
 [belegten Hausdepp-Retrospektive](HAUSDEPP_RETROSPECTIVE_2026-10-18.md) zu lesen.
 Ein vorhandener Hausdepp-Test beweist keine Watten-Regel.
 
+**Konkretisierung aus dem Ausführungs-Chat:** Die aktuellen verbindlichen
+Hausregelfestlegungen stehen im [Owner-Protokoll](WATTEN_OWNER_DECISIONS.md).
+Der Zweier ist offen mit normaler Ansage, der Dreier ein rotierendes Solo
+gegen zwei mit beiden Ansagen durch den Solisten. Vierer bleibt standardmässig
+blind/ladinisch; Guter und Kritische standardmässig aus. Der Komfortumfang ist
+vollständig beauftragt. Noch offene Kreuzungen bleiben gezielt zu klären.
+
 ## 1. Verbindlicher Ausgangspunkt und offene Entscheidungen
 
 Gesetzt sind Watten für **zwei, drei und vier Personen**, üblicherweise bis
