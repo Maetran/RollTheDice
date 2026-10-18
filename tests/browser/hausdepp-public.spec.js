@@ -167,11 +167,18 @@ test('signing out in another tab removes the preceding account’s mounted data'
   const account = await regularAccount(page);
   await page.goto('/hausdepp');
   await expect(page.locator('#hausdeppCreateForm')).toBeVisible();
-  expect((await page.request.post('/api/auth/logout', { headers: account.headers })).ok()).toBeTruthy();
-  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
-  await expect(page.locator('#hausdeppSignIn')).toBeVisible();
-  await expect(page.locator('#hausdeppCreateForm, #hausdeppRounds, #hausdeppLobbyChat')).toHaveCount(0);
-  await expect(page.locator('#hausdeppHeader')).not.toContainText(account.username);
+  const other = await page.context().newPage();
+  try {
+    await other.goto('/hausdepp/regeln');
+    await other.bringToFront();
+    expect((await other.request.post('/api/auth/logout', { headers: account.headers })).ok()).toBeTruthy();
+    // The identity refresh deliberately reloads the preceding account's page.
+    // Native focus works during that navigation without evaluating in its old document.
+    await page.bringToFront();
+    await expect(page.locator('#hausdeppSignIn')).toBeVisible();
+    await expect(page.locator('#hausdeppCreateForm, #hausdeppRounds, #hausdeppLobbyChat')).toHaveCount(0);
+    await expect(page.locator('#hausdeppHeader')).not.toContainText(account.username);
+  } finally { await other.close(); }
 });
 
 test('the shared login completes an allowlisted Hausdepp host continuation without contacting production', async ({ page, baseURL }) => {
