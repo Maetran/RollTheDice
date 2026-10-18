@@ -23,6 +23,20 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 3.12.2 — Interne Watten-Grundlagen / internal Watten foundations — 2026-10-18
+
+**Deutsch:** Die internen Grundlagen für Watten bilden Karten, Stichwertung,
+Einsatzbieten, Punkte, einmaliges Einschauen und die erlaubte persönliche
+Sicht getrennt ab. Warteräume halten gewählte Sitze, Teams und vollständige
+Tischrezepte fest. Diese Bausteine sind noch nicht an den öffentlichen
+Spielbetrieb angeschlossen; Watten bleibt geschlossen und nicht spielbar.
+
+**English:** Internal Watten foundations separately model cards, tricks,
+bidding, scores, one-time inspection and each participant's permitted view.
+Waiting rooms retain chosen seats, teams and complete table recipes. These
+components are not connected to public gameplay yet; Watten remains closed
+and unavailable to play.
+
 ## 3.12.1 — Zuverlässiger Spielwechsel / reliable game switching — 2026-10-18
 
 **Deutsch:** Auf Kontoseiten bleibt der Spielwechsler sichtbar deaktiviert,

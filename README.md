@@ -46,8 +46,12 @@ Hausdepp-Kartendesigns werden wiederverwendet. Die
 [Recherche](docs/WATTEN_RESEARCH.md) dokumentiert Quellen, Regelvarianten und
 offene Hausregeln. Zusätzlich sind Varianten für zwei und drei Spieler,
 taktisch spielende CPUs mit typischen Tiroler Namen und freie Teamwahl vor
-Spielbeginn ohne Zufallszuweisung gewünscht. Ansagen gehören zum Spiel;
-gestrichen darf man nichts mehr sagen. Die genaue Auslegung ist vorgemerkt.
+Spielbeginn ohne Zufallszuweisung gewünscht. Ein gestrichener Spieler darf
+kein eigenes Einsatzgebot eröffnen; massgeblich ist sein eigener Punktestand,
+auch bei unterschiedlich gestrichenen Dreierpartnern. Der zuständige Entscheider
+darf auf ein gegnerisches Gebot weiterhin Halten, Gehen oder Aufbieten wählen.
+Die bestätigten Profile und Ansagerrollen stehen im
+[Owner-Protokoll](docs/WATTEN_OWNER_DECISIONS.md).
 Achievements, dauerhafte wirtshaustaugliche Titel, Ranglisten und das
 Fortschrittsumfeld gehören verbindlich dazu: anfangs schnellere Aufstiege,
 danach zunehmend längere Etappen für ausdauernde Watter. Der
@@ -100,14 +104,27 @@ lokal installieren; die vorhandene installierte Suite-Identität bleibt beim
 Spielwechsel erhalten. Automatisierte Tests prüfen echte Worker und simulierte
 Standalone-Kontexte, keine physische iPhone-Installation oder echten Konten.
 
+Die [reine Engine-Grundlage](docs/WATTEN_ENGINE.md) enthält inzwischen
+unveränderliche Karten-, Biet-, Zug- und Phasenübergänge, Warteraum und Rezept
+sowie getrennte private Speicherformate und erlaubte Spieler-/CPU-/Zuschauersichten.
+Sie ist noch ohne Spieladapter, Spiel-API, Datenbankanbindung oder Spieloberfläche.
+Rechter-Referenz und Stichhistorie sind standardmässig aus; ohne Referenz wird
+die einmalig erlaubte Ansage nicht dauerhaft angezeigt. Partnerblatt ist nur
+im offenen Spiel mit Partnern wählbar; Guter/Schlechter bleiben aus. Die lokalen
+Grundlagentests ersetzen weder die kommende Vollprüfung noch Runtime-,
+Mehrgeräte- und Browserabnahme. Der feste Produktionshost bleibt geschlossen.
+
 **English:** Watten is the next planned game: usually four-player Ladinisch
 to 11 points, with private bottom-card inspection by the dealer and the next
 clockwise player. It will reuse the same card designs as Hausdepp. The
 [research notes](docs/WATTEN_RESEARCH.md) record sources, variants and unresolved
 house rules. Two- and three-player variants, tactical CPUs with Tyrolean names
 and manual team selection before play without random assignment are also
-wanted. Calls are part of the game; once “gestrichen”, no further calls are
-allowed. The exact scope remains to be defined. Achievements, permanent
+wanted. A gestrichen player cannot initiate a stake bid; eligibility follows
+that player’s own score, including mixed three-player partners. The designated
+decider may still hold, fold or counter an opposing bid. Confirmed profiles
+and announcement roles are recorded in the
+[owner decisions](docs/WATTEN_OWNER_DECISIONS.md). Achievements, permanent
 pub-style titles, leaderboards and the surrounding progress features are
 required, with faster early promotions and growing later gaps rewarding
 persistence. The [progression plan](docs/WATTEN_PROGRESSION_PLAN.md) sets out
@@ -154,6 +171,16 @@ without offline private-data storage. Supporting browsers can install it locally
 existing installed suite identity survives game switching. Automated tests cover
 real workers and simulated standalone contexts, not physical iPhone installation
 or real accounts.
+
+The [pure engine foundation](docs/WATTEN_ENGINE.md) now provides immutable
+card, bidding, play and phase transitions, waiting rooms and recipes, with
+separate private storage schemas and allowed player/CPU/spectator views.
+It has no game adapter, gameplay API, database integration or game UI yet.
+The matching Rechter reference and trick history default off; without the
+reference, the once-permitted call is not kept visible. Partner hands are
+an explicit option only in open games with partners; Guter/Schlechter stay off.
+Focused foundation tests do not replace the next full check or runtime,
+multiple-device and browser acceptance. The production host remains closed.
 
 ## Hausdepp — öffentlicher V3-Start / public V3 launch
 

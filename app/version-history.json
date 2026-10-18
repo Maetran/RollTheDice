@@ -2301,5 +2301,12 @@
     "date": "2026-10-18",
     "bump": "minor",
     "summary": "Hausdepp belohnt seltene Funde mit zwei Sammelreihen und 20 neuen Erfolgen. / Hausdepp rewards rare finds with two collections and 20 new achievements."
+  },
+  {
+    "version": "3.12.1",
+    "revision": "da66185aa77a784cabc09a97d9e471eea6603aba",
+    "date": "2026-10-18",
+    "bump": "patch",
+    "summary": "Zuverlässiger Spielwechsel und geschlossene Watten-Kontogrundlage. / Reliable game switching and a closed Watten account foundation."
   }
 ]
