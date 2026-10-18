@@ -74,6 +74,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run check:quality
+      - run: npm run test:tools
       - run: pytest --cov --cov-report=term-missing
       - run: git diff --check
 
