@@ -7,6 +7,7 @@ import { mountAvatarUpload } from '../shared/avatar-upload.js';
 import { mountRegistrationForm, registrationFormMarkup } from '../shared/registration.js';
 import { wattenAccountReturnPath } from '../multigame/routes.js';
 import { initializeWattenPwa } from './pwa.js';
+import { friendSettingsText, mountFriendSettings } from './friend-settings.js';
 
 initializeWattenPwa();
 
@@ -18,10 +19,18 @@ const destination = wattenAccountReturnPath(new URLSearchParams(location.search)
 let viewerId = null;
 let navigating = false;
 let generation = 0;
+let friendSettings = null;
+
+function clearFriendSettings() {
+  const previous = friendSettings;
+  friendSettings = null;
+  previous?.destroy();
+}
 
 function navigate(path) {
   if (navigating) return;
   navigating = true;
+  clearFriendSettings();
   root.replaceChildren();
   location.assign(path);
 }
@@ -109,6 +118,7 @@ function renderSettings(auth) {
     <details><summary>${copy('E-Mail-Adresse')}</summary><div data-email-settings></div></details>
     <details><summary>${copy('Benutzername ändern')}</summary><div data-username-settings></div></details>
     <details><summary>${copy('Dein Profilbild')}</summary><div data-avatar-upload></div></details>
+    <details><summary>${esc(friendSettingsText('settingsTitle'))}</summary><div data-watten-friend-settings></div></details>
     <details><summary>${copy('Sprache')}</summary><form data-language><label>${copy('Sprache')}<select name="language"><option value="de">Deutsch</option><option value="en">English</option></select></label><button type="submit">${copy('Sprache speichern')}</button><p role="status"></p></form></details>
     <div class="actions"><a href="/watten">${copy('Zurück')}</a><a href="/watten/konto/fortschritt">${copy('Fortschritt')}</a><button data-logout type="button">${copy('Abmelden')}</button></div><p data-account-message role="status"></p>`;
   mountUsernameSettings(root.querySelector('[data-username-settings]'), { user, onChanged: changed => {
@@ -118,6 +128,16 @@ function renderSettings(auth) {
   void mountPasskeySettings(root.querySelector('[data-passkey-settings]'));
   void mountEmailSettings(root.querySelector('[data-email-settings]'));
   mountAvatarUpload(root.querySelector('[data-avatar-upload]'));
+  clearFriendSettings();
+  const mountedGeneration = generation;
+  friendSettings = mountFriendSettings({ container: root.querySelector('[data-watten-friend-settings]'), viewerId: user.id,
+    isCurrent: () => !navigating && generation === mountedGeneration && viewerId === user.id,
+    onAccountChanged: () => {
+      generation += 1;
+      root.replaceChildren();
+      navigate('/watten/anmelden?return_to=%2Fwatten%2Fkonto%2Feinstellungen');
+    },
+    loadAuth, escapeHtml: esc });
   const password = root.querySelector('[data-password]');
   const verification = mountAccountVerification(password.querySelector('[data-account-verification]'));
   password.addEventListener('submit', event => {
@@ -159,6 +179,7 @@ else if (page === 'settings') {
     if (viewerId !== null && (!event.detail?.authenticated || event.detail.user?.id !== viewerId)) {
       // Clearing precedes navigation; late requests may only update detached UI.
       generation += 1;
+      clearFriendSettings();
       root.replaceChildren();
       navigate(event.detail?.authenticated ? '/watten/anmelden?return_to=%2Fwatten%2Fkonto%2Feinstellungen' : '/watten');
     }
@@ -179,6 +200,7 @@ else if (page === 'settings') {
   const clearPrivatePage = () => {
     generation += 1;
     viewerId = null;
+    clearFriendSettings();
     root.replaceChildren();
   };
   window.addEventListener('pagehide', clearPrivatePage);
