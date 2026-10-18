@@ -1,10 +1,10 @@
 {
-  "version": "3.8.3",
-  "bump": "patch",
+  "version": "3.9.0",
+  "bump": "minor",
   "date": "2026-10-18",
   "previous_revision": "f27c488e170a17adaeece9a7ceca164f4270f0cc",
   "summary": {
-    "de": "Abmelden in Hausdepp führt zuverlässig zurück zu Hausdepp statt manchmal nach ZDWA.",
-    "en": "Signing out of Hausdepp reliably returns to Hausdepp instead of sometimes jumping to ZDWA."
+    "de": "Hausdepp-Runden flexibel öffnen, Favoriten speichern und weitere Reaktionen senden.",
+    "en": "Open flexible Hausdepp games, save favourites and send more reactions."
   }
 }

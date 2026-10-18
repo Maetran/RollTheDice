@@ -3,19 +3,27 @@
   "games": [
     "hausdepp"
   ],
-  "summary_de": "Abmelden in Hausdepp führt wieder zuverlässig zur Hausdepp-Startseite.",
-  "summary_en": "Signing out of Hausdepp reliably returns to the Hausdepp home page again.",
+  "summary_de": "Hausdepp: Favoriten, offene Warteräume, flexible CPU-Plätze und mehr Reaktionen.",
+  "summary_en": "Hausdepp: favourites, open waiting rooms, flexible CPU seats and more reactions.",
   "player_notes": {
     "de": {
-      "title": "3.8.3: Abmelden bleibt in Hausdepp",
+      "title": "3.9.0: Dein Tisch, deine Runde",
       "changes": [
-        "Hausdepp: Wenn du dich in den Einstellungen abmeldest, landest du wieder auf der Hausdepp-Startseite statt manchmal in ZDWA."
+        "Eröffne deinen Favoriten oder wähle feste/offene Plätze, Schnellspiel/Turnier und optional ein Passwort.",
+        "Füge im Warteraum CPUs hinzu, entferne sie und starte selbst. Menschen ersetzen bei vollem Tisch einen CPU.",
+        "Speichere deine Besetzung als Favorit im Konto. Geschützte Favoriten fragen jedes Mal nach einem neuen Passwort.",
+        "Spieler rufen und Teilen bleiben griffbereit. Vier schnelle Reaktionen und ein Pfeil bieten zwölf Symbole inklusive 💩.",
+        "Das offene Paket zeigt bestätigte Würfe und Nachwürfe sofort mit aktueller Kartenzahl und passendem Fächer."
       ]
     },
     "en": {
-      "title": "3.8.3: Signing out stays in Hausdepp",
+      "title": "3.9.0: Your table, your game",
       "changes": [
-        "Hausdepp: signing out in the settings takes you back to the Hausdepp home page instead of sometimes to ZDWA."
+        "Open your favourite or choose fixed/open seats, quick game/tournament and an optional password.",
+        "Add/remove CPUs in the waiting room and start explicitly. People replace a CPU when the table is full.",
+        "Save your setup as an account-wide favourite. Protected favourites ask for a fresh password each time.",
+        "Player calls and sharing stay handy. Four quick reactions and an arrow offer twelve symbols, including 💩.",
+        "The open pile shows accepted plays and follow-ups immediately with the current count and matching-rank fan."
       ]
     }
   }

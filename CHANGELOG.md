@@ -23,7 +23,7 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
-## 3.8.3 — Abmelden bleibt in Hausdepp / signing out stays in Hausdepp — 2026-10-18
+## 3.9.1 — Abmelden bleibt in Hausdepp / signing out stays in Hausdepp — 2026-10-18
 
 **Deutsch:** Wer sich in den Hausdepp-Einstellungen abmeldete, landete manchmal in
 ZDWA statt auf der Hausdepp-Startseite. Das passierte, wenn die Seite beim Abmelden
@@ -43,6 +43,30 @@ without an account was lost, and the shared game switch sent the browser to ZDWA
 Sign-out now keeps that access before it ends the session. Two ZDWA device-switch
 tests also use their own account in the full local test run, so earlier tests can
 no longer switch their account language to English.
+
+
+## 3.9.0 — Hausdepp: flexible Warteräume und Favoriten / flexible waiting rooms and favourites — 2026-10-18
+
+**Deutsch:** „Tisch eröffnen“ bietet deinen gespeicherten Favoriten oder eine
+kurze Konfiguration: fixe Spielerzahl oder offen bis sechs, Schnellspiel oder
+Turnier, optional mit Passwort. Platzkarten zeigen die Besetzung. Der Gastgeber
+fügt CPUs hinzu, entfernt sie und startet selbst; Menschen ersetzen bei einem
+vollen Wartetisch einen CPU. Ein Favorit gilt für das Konto, speichert jedoch
+kein Passwort. Spieler rufen, Teilen und Link-Kopieren bleiben verfügbar.
+Vier persönliche häufige Reaktionen plus Pfeil öffnen zwölf Symbole, darunter 💩;
+die Reihenfolge bleibt während einer Partie stabil. Nach bestätigtem Ablegen,
+Nachwerfen oder erfolgreichem Zocken wächst das offene Paket sofort sichtbar;
+Kartenflüge verzögern weder Kartenzahl noch Fächer gleicher Werte.
+
+**English:** “Open a table” offers your saved favourite or a short setup: fixed
+players or open up to six, quick game or tournament, with an optional password.
+Place cards show the roster. The host adds/removes CPUs and starts explicitly;
+people replace a CPU at a full waiting table. Favourites follow the account and
+never retain passwords. Player calls, sharing and copying remain available.
+Four personal frequent reactions plus an arrow open twelve symbols, including 💩;
+the order stays stable during each game. Accepted plays, follow-ups and successful
+gambles grow the visible open pile immediately; card flights never delay its
+count or matching-rank fan.
 
 
 ## 3.8.2 — Klügere Hausdepp-Computer, spielneutrale Kontotexte / smarter Hausdepp computers, game-neutral account texts — 2026-10-18

@@ -135,7 +135,7 @@ test('waiting table retains real seats and the lobby resumes the same account se
   const id = (await created.json()).game_id;
   await page.goto(`/hausdepp/spiel/${id}`);
   await expect(page.locator('#hausdeppWaiting')).toBeVisible();
-  await expect(page.locator('#hausdeppWaitingCount')).toContainText('1 Platz');
+  await expect(page.locator('#hausdeppWaitingCount')).toHaveText('Noch 1 frei.');
   await expect(page.locator('#hausdeppWaitingSeats > li')).toHaveCount(3);
   await expect(page.locator('#hausdeppCopyTable')).toBeEnabled();
   await expect.poll(async () => {
