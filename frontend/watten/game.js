@@ -1,5 +1,5 @@
 import "../i18n/index.js";
-import { loadAuth, escapeHtml as esc } from "../shared/auth.js";
+import { loadAuth, apiFetch, escapeHtml as esc } from "../shared/auth.js";
 import { initializeGameViewport } from "../shared/game-viewport.js";
 import { wattenAccountReturnPath } from "../multigame/routes.js";
 import { initializeWattenPwa } from "./pwa.js";
@@ -7,6 +7,7 @@ import { t, prepareWattenCards, strikeName, suitName, STRIKES, SUITS } from "./c
 import { dismissLandscapeHint, joinFormMarkup, recipeMarkup, spectateFormMarkup, waitingRoomMarkup } from "./waiting-room.js";
 import { createTableView } from "./table.js";
 import { createMotion } from "./motion.js";
+import { createMatchProgress } from "./match-progress.js";
 
 // Metadata only: these preview documents neither register a worker nor
 // advertise installation; the account pages own that local experiment.
@@ -38,6 +39,7 @@ let account = null;
 let latestUserId;
 let anonymousMount = false;
 let navigating = false;
+let matchProgress = null;
 const cleanups = new Set();
 
 function errorText(code) {
@@ -818,6 +820,8 @@ function render(previous = null, live = false) {
   const captured = sameDeal ? motion.capture(session.view.motionSources(), node => node.dataset.key) : null;
   let result;
   preserveFocus(() => { result = session.view.update(vm); });
+  matchProgress?.update({ container: root.querySelector("[data-watten-match-progress]"), snapshot,
+    playerId: session.playerId, spectator: session.spectator });
   if (captured) {
     for (const item of result.trick.created) {
       motion.arrive(item.node, captured.rects.get(item.card) || captured.rects.get(`seat-${item.seat}`), captured);
@@ -901,6 +905,12 @@ async function mountTable() {
   }
   account = { id: auth.user.id, username: auth.user.username };
   latestUserId = account.id;
+  matchProgress?.destroy();
+  matchProgress = createMatchProgress({ gameId, apiFetch, loadAuth, escapeHtml: esc,
+    getExpectedAccountId: () => account?.id,
+    isCurrent: () => gen === generation && !navigating && latestUserId === account?.id,
+    onAccountChanged: reloadFresh });
+  cleanups.add(() => { matchProgress?.destroy(); matchProgress = null; });
   setConnection("cards");
   try { await prepareWattenCards(); } catch {
     if (gen !== generation) return;

@@ -1,3 +1,20 @@
+export const WATTEN_MATCH_PROGRESS_MESSAGES = {
+  de: {
+    heading: "Dein Fortschritt aus dieser Partie", draft: "Lokaler Entwurf: XP messen Teilnahme, nicht Spielstärke.",
+    xp: "+{xp} XP", title: "Dein Titel: {name} · Stufe {level}", publicTitle: "Watten-Titel: {name} · Stufe {level}", achievements: "Gerade verdient",
+    loading: "Dein Fortschritt wird geladen …", unavailable: "Dein Fortschritt ist gerade nicht erreichbar. Du kannst trotzdem zur Lobby zurück.",
+    stale: "Dein Fortschritt hat sich geändert. Lade diese Partie erneut.", retry: "Erneut versuchen",
+    dismiss: "Gesehen", saving: "Wird bestätigt …",
+  },
+  en: {
+    heading: "Your progress from this match", draft: "Local draft: XP measures participation, not playing strength.",
+    xp: "+{xp} XP", title: "Your title: {name} · Level {level}", publicTitle: "Watten title: {name} · Level {level}", achievements: "Just earned",
+    loading: "Loading your progress …", unavailable: "Your progress is unavailable right now. You can still return to the lobby.",
+    stale: "Your progress has changed. Load this match again.", retry: "Try again",
+    dismiss: "Got it", saving: "Confirming …",
+  },
+};
+
 export const GAME_TOUR_MESSAGES = {
   "de": {
     "title": "Einsteigertouren",
