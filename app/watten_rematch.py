@@ -177,6 +177,11 @@ def _install(result):
     for restored in (result.source, result.target):
         current = games.get(restored["_id"])
         if current is None:
+            if restored is result.target and restored["_watten"].room.status == "started":
+                # A linked match already started elsewhere remains that same
+                # target. Running recovery belongs to normal process startup,
+                # which also restores its CPU coordinator, not this retry.
+                continue
             games[restored["_id"]] = restored
         elif current.get("_game_type") != "watten":
             raise WattenRematchError("watten_game_id_collision")
@@ -208,6 +213,13 @@ def _identity(request):
 async def watten_rematch(source_id: str, request: Request):
     identity = _identity(request)
     source = games.get(source_id)
+    if source is None:
+        from .watten_recovery import restore_owned_watten_game
+
+        try:
+            source = restore_owned_watten_game(source_id, identity.user_id)
+        except (ValueError, SQLAlchemyError) as exc:
+            raise HTTPException(status_code=503, detail="watten_storage_unavailable", headers=_HEADERS) from exc
     if source is None or source.get("_game_type") != "watten":
         raise HTTPException(status_code=404, detail="game_not_found", headers=_HEADERS)
     try:

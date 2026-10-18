@@ -129,4 +129,15 @@ async function playOne(players) {
   await expect.poll(() => actor.traffic.snapshot.engine.opportunity).not.toBe(before);
 }
 
-module.exports = { player, create, action, normalCall, playOne };
+async function finishOpenMatch(players) {
+  const path = await create(players);
+  await normalCall(players);
+  await playOne(players);
+  await action(players, 'bid');
+  await action(players, 'respond_hold', 'hold');
+  for (let index = 0; index < 12 && players[0].traffic.snapshot.engine.phase === 'play'; index += 1) await playOne(players);
+  for (const item of players) await expect(item.page.locator('[data-watten-match-result]')).toBeVisible();
+  return path;
+}
+
+module.exports = { player, create, action, normalCall, playOne, finishOpenMatch };

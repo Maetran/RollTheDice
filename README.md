@@ -66,6 +66,20 @@ seat wishes. Passwords are never saved. Creating from a protected favorite
 requires a fresh password or an explicit choice to remove protection; applying
 a favorite neither creates nor starts a match.
 
+**Folgetisch / next table:** Nach dem Ende kann der Gastgeber einen neuen Tisch
+mit denselben Regeln und Computerplätzen vorbereiten. Passwortschutz wird neu
+gewählt; für einen geschützten Tisch ist ein neues Passwort nötig. Alle Menschen
+treten freiwillig bei und wählen ihren Platz, im Vierer samt Team, erneut. Der
+Gastgeber startet ausdrücklich. Erneutes Öffnen führt auch nach verlorener
+Antwort oder Neustart zum selben Folgetisch; vergangene Ergebnisse und XP
+werden dabei nicht verändert.
+
+After the match, the host can prepare a next table with the same rules and CPU
+seats. Protection is a fresh choice and requires a new password when enabled.
+People join voluntarily and choose their seats, including teams with four
+players, again. The host starts explicitly. Reopening uses the same next table
+after a lost response or restart, without changing earlier results or XP.
+
 **Deutsch:** Watten ist als nächstes Spiel vorgemerkt: üblicherweise 4er
 ladinisch bis 11 Punkte («8+3 isch zmittag»), mit blindem Einschauen durch den
 Geber und den im Uhrzeigersinn nachfolgenden Spieler. Die identischen

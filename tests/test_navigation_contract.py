@@ -168,7 +168,7 @@ DOCUMENT_ROUTES = (
     RouteCoverage(
         ("/watten/spiel/{game_id}", "/watten/spiel/{game_id}/zuschauen"), "tests/test_watten_pages.py",
         "test_authenticated_player_and_spectator_documents_keep_canonical_context",
-        ("tests/browser/watten-game.spec.js",),
+        ("tests/browser/watten-game.spec.js", "tests/browser/watten-rematch.spec.js"),
     ),
     RouteCoverage(
         ("/anmelden",), "tests/test_zilch_product_routes.py",

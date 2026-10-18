@@ -17,6 +17,7 @@ from fastapi.responses import FileResponse, PlainTextResponse, RedirectResponse,
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
 from starlette.concurrency import run_in_threadpool
 
 from .abandoned_games import persist_abandoned_game
@@ -2230,6 +2231,20 @@ async def game_info_route(
     check: int = Query(default=0),
 ):
     game = games.get(game_id)
+    if game is None:
+        from .watten_access import watten_game_preview_enabled
+
+        identity = resolve_session(request) if watten_game_preview_enabled(request) else None
+        if identity is not None:
+            from .watten_http import _identity as watten_http_identity
+            from .watten_recovery import restore_owned_watten_game
+
+            identity = watten_http_identity(request)
+            try:
+                game = restore_owned_watten_game(game_id, identity.user_id)
+            except (ValueError, SQLAlchemyError) as exc:
+                raise HTTPException(status_code=503, detail="watten_storage_unavailable",
+                                    headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"}) from exc
     if game and game_type_from_state(game) == "watten":
         from .watten_http import detail_watten_http
 

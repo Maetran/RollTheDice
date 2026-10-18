@@ -216,7 +216,7 @@
       ],
       "status": "partial",
       "evidence": [
-        "app/watten_recipe.py and app/watten_room.py provide strict versioned JSON, complete rematch settings and a marked source link without altering results. Durable unique creation/restart/transaction failures and browser flows remain open."
+        "Native app/watten_rematch.py atomically links source and target checkpoints under row-lock/JSON CAS, retains the one target after lost ACK/new command ID/restart, preserves CPU memory and never revalues progress. Normal checkpoint writers cannot erase that link. Owned terminal/waiting checkpoint recovery also handles in-memory retirement; running matches are not resumed. Focused tests cover SQLite interleaving, write rollback, passwords, restart and retirement. Real DE/EN browsers confirm lost-response reuse and unchanged XP; PostgreSQL execution and physical-device acceptance remain open."
       ]
     },
     {
@@ -227,7 +227,7 @@
       ],
       "status": "partial",
       "evidence": [
-        "app/watten_room.py separates reserved capacity, seat acceptance, decline and expiry using explicit server time. Atomic retry/ACK-loss, host-change transport and browser cases remain open."
+        "Native rematch creates only an unseated host with five-minute account reservations; joining and taking a seat remain explicit, with private own reservation projection. DE/EN browser flows verify protected/unprotected join and manual seating/start. Pure room tests retain decline/expiry/host-transfer contracts; complete transport-level decline/host-change races remain open."
       ]
     },
     {
@@ -785,7 +785,7 @@
       ],
       "status": "partial",
       "evidence": [
-        "app/watten_room.py rematch retains settings but requires new human admission and deliberate manual seats/teams. Durable invitations, replay races and real rematch UI/browser acceptance remain open."
+        "Native rematch copies the complete canonical recipe including CPU seats, requires a fresh password or explicit disabled protection, and never moves/starts humans. DE/EN real browser flows verify manual seats/start, unchanged source XP, one target after lost HTTP ACK, and 320x568/568x320 layout. Four-player team confirmation is enforced by native room tests; the full four-human rematch browser journey remains open."
       ]
     },
     {
