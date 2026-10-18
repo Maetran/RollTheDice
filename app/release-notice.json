@@ -3,23 +3,33 @@
   "games": [
     "hausdepp"
   ],
-  "summary_de": "Hausdepp: Die Computer halten Ober, Könige und Asse zurück und zwingen dich so öfter zum Antworten.",
-  "summary_en": "Hausdepp: computers hold back Obers, Kings and Aces and make you answer more often.",
+  "summary_de": "Hausdepp: selbst Pfützen aufwischen, Dosen schütteln und acht seltene Tischspektakel entdecken.",
+  "summary_en": "Hausdepp: wipe up spills yourself, shake cans and discover eight rare table spectacles.",
   "player_notes": {
     "de": {
-      "title": "Hausdepp 3.10: Computer halten hohe Karten zurück",
+      "title": "Hausdepp 3.11: Noch ein Schluck, noch ein Häppchen",
       "changes": [
-        "Hat ein Computer mehrere Ober, Könige oder Asse, legt er zuerst nur eine Karte und behält den Rest für deine Antwort.",
-        "Vier Gleiche räumen weiterhin sofort ab, und am Ende wirft er nach, wenn er damit fertig wird.",
-        "Neue Spieler treffen in ihren ersten 50 Runden weiterhin auf gnädigere Computer, die das oft vergessen."
+        "Trinke Gläser sichtbar leer, verschütte den Rest und wische selbst mit dem Putzlumpen auf – per Ziehen oder Antippen.",
+        "Knabbere einzelne Snacks weg: Die leere Schale und das Marend-Brett bleiben stehen.",
+        "Dosen schäumen beim Öffnen und platzen beim Schütteln. Geschüttelte Windlichter gehen aus und zünden sich wieder an.",
+        "Acht seltene Funde bringen grosse Tischspektakel: fliegende Karten, eine magische Maus und ein schwarzes Loch. Der Drache sengt Kartenränder an.",
+        "Punkte und Erfolge bleiben nach der Runde sichtbar – der zusätzliche Bestätigungsbutton entfällt.",
+        "Der Endstand wartet, bis die letzte Karte liegt, und lässt dir danach noch einen kurzen Moment.",
+        "Turnierbuchstaben haben bei jedem Gegner eine eigene, freie Zeile – auch zu sechst.",
+        "Das erste vollständige HAUSDEPP beendet das Turnier; Endstand und Übersicht zeigen das jetzt ausdrücklich."
       ]
     },
     "en": {
-      "title": "Hausdepp 3.10: Computers keep high cards in reserve",
+      "title": "Hausdepp 3.11: One more sip, one more bite",
       "changes": [
-        "When a computer holds several Obers, Kings or Aces, it plays just one first and keeps the rest for your answer.",
-        "Four of a kind still clear at once, and at the end it follows up when that finishes its round.",
-        "New players still meet gentler computers in their first 50 rounds, who often forget to do this."
+        "Watch drinks empty, spill the rest and wipe up yourself with the cloth – by dragging or tapping.",
+        "Nibble individual snacks away: the empty bowl and snack board stay on the table.",
+        "Cans foam when opened and burst when shaken. Shaken lanterns go out and relight themselves.",
+        "Eight rare finds bring big table spectacles: flying cards, a magical mouse and a black hole. The dragon singes the card edges.",
+        "Points and achievements stay visible after a round – the extra acknowledgement button is gone.",
+        "The final result waits until the last card lands and gives you a brief moment afterwards.",
+        "Tournament letters have a clear line at each opponent seat, including six-player tables.",
+        "The first complete HAUSDEPP ends the tournament; the final result and overview now say so explicitly."
       ]
     }
   }

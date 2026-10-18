@@ -1,0 +1,48 @@
+/* An inert optical stage above the cards. Cut-outs keep names and real game
+   controls visible; every pixel remains clipped to this table's rounded edge. */
+.hd-surprise-layer { position: absolute; inset: 0; z-index: 8; overflow: hidden; border-radius: inherit; pointer-events: none; user-select: none; contain: layout paint style; }
+.hd-surprise-screen { position: absolute; inset: 0; z-index: 0; }
+.hd-surprise-layer, .hd-surprise-layer * { pointer-events: none !important; }
+.hd-surprise-node { position: absolute; left: 0; top: 0; will-change: transform, opacity; }
+.hd-surprise-node > svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.hd-surprise-snapshot { z-index: 2; transform-origin: 50% 50%; }
+.hd-surprise-wood-stage { z-index: 1; box-shadow: inset 0 0 100px #170c0733; }
+.hd-surprise-occlusion { z-index: 1; background: #35271f url('/static/zilch-wood-table-v1.jpg') center / 1024px; border-radius: 9px; }
+.hd-surprise-star,.hd-surprise-hammer,.hd-surprise-ufo,.hd-surprise-portal,.hd-surprise-dragon,.hd-surprise-kraken,.hd-surprise-clock,.hd-surprise-hole { z-index: 5; }
+.hd-surprise-glamour { z-index: 0; background: radial-gradient(ellipse at var(--origin-x) var(--origin-y), #ffe9a4a6 0, #b984c940 35%, #40334d00 75%); }
+.hd-surprise-rays { z-index: 1; border-radius: 50%; background: repeating-conic-gradient(from 0deg,#fff5c17d 0deg,#f2c96400 9deg,#fff5c100 19deg,#ffe6a195 22.5deg); mask-image: radial-gradient(circle,#000 0 15%,#000b 30%,#0000 70%); }
+.hd-surprise-star { filter: drop-shadow(0 0 9px #fff0b8) drop-shadow(0 0 24px #b293ff99); }
+.hd-surprise-constellation { z-index: 4; filter: drop-shadow(0 0 4px #fff0b0); }
+.hd-surprise-ring { z-index: 3; border: 2px solid #f0cf7a; border-radius: 50%; box-shadow: 0 0 10px #a98bffbb, inset 0 0 8px #f0cf7a99; }
+.hd-surprise-spark { z-index: 6; border-radius: 50%; background: var(--spark); box-shadow: 0 0 5px var(--spark); }
+.hd-surprise-body,.hd-surprise-quiet { filter: drop-shadow(0 3px 3px #140c0866); }
+.hd-surprise-hammer { filter: drop-shadow(7px 12px 7px #1a0f0880); }
+.hd-surprise-impact { z-index: 4; border: 5px solid #fff0b8bb; border-radius: 50%; box-shadow: 0 0 32px #f4c777bb,inset 0 0 20px #ffd58aaa; }
+.hd-surprise-shockwave { z-index: 3; border: 3px solid #f2d7a377; border-radius: 50%; box-shadow: 0 0 10px #f4cb7b66; }
+.hd-surprise-crack { z-index: 1; filter: drop-shadow(0 2px 1px #1a0e09aa); }
+.hd-surprise-dust { z-index: 6; border-radius: 40% 60% 42% 55%; background: #d8b27a; box-shadow: 0 0 5px #d7ad7740; }
+.hd-surprise-ufo { filter: drop-shadow(0 0 10px #c2ffe2aa) drop-shadow(0 10px 6px #0c100d77); }
+.hd-surprise-beam { z-index: 3; clip-path: polygon(42% 0,58% 0,100% 100%,0 100%); background: linear-gradient(#e2ffedcc,#7febac77 70%,#7febac00); filter: drop-shadow(0 0 7px #a8ffc4); }
+.hd-surprise-portal { filter: drop-shadow(0 0 12px #7ff3e1bb) drop-shadow(0 0 24px #9d77f288); }
+.hd-surprise-bridge { z-index: 3; filter: drop-shadow(0 0 7px #89ffe8); }
+.hd-surprise-dragon { filter: drop-shadow(0 0 7px #f5bd6399) drop-shadow(2px 5px 3px #1a0f0866); }
+.hd-surprise-dragon .hd-wing-a { transform-box: fill-box; transform-origin: 100% 100%; }
+.hd-surprise-dragon .hd-wing-b { transform-box: fill-box; transform-origin: 0 100%; }
+.hd-surprise-breath { z-index: 3; background: none; filter: drop-shadow(0 0 5px #fc9e3d); }
+.hd-surprise-flame { z-index: 6; transform-origin: 50% 100%; filter: drop-shadow(0 0 7px #ff982e99); mix-blend-mode: screen; }
+.hd-surprise-tentacle { z-index: 4; filter: drop-shadow(0 5px 5px #0c100d88); }
+.hd-surprise-kraken { filter: drop-shadow(0 0 10px #71b5b066) drop-shadow(0 6px 5px #0c100d77); }
+.hd-surprise-ink { z-index: 4; border-radius: 50%; box-shadow: inset 0 -4px 8px #0a0612cc,0 3px 6px #0a061266; background: radial-gradient(circle at 34% 30%,#ffffffb8 0 5%,#fff0 12%),radial-gradient(circle at 50% 56%,#0b0716f0 0 42%,#0b071600 72%),conic-gradient(from 30deg,#4b3a8f,#1f6d7e,#6b2f7e,#2a5a9a,#4b3a8f); }
+.hd-surprise-drop { z-index: 4; border-radius: 50%; background: #2b1f4f; }
+.hd-surprise-clock { filter: drop-shadow(0 0 10px #ffe9ab99) drop-shadow(1px 4px 3px #1a0f0866); }
+.hd-surprise-clock .hd-lid { transform-box: fill-box; transform-origin: 0 50%; }
+.hd-surprise-clock .hd-hand { transform-box: view-box; transform-origin: 50% 58%; }
+.hd-surprise-time-glass { z-index: 3; background: linear-gradient(135deg,#c6e6fa44,#b5a7ef33 50%,#ecdf9e22); box-shadow: inset 0 0 80px #bfd0ff77; }
+.hd-surprise-mouse { z-index: 6; filter: drop-shadow(0 0 5px #d4bbf377) drop-shadow(0 4px 3px #0c100d88); }
+.hd-surprise-void { z-index: 0; background: #030204; }
+.hd-surprise-blackout { z-index: 10; background: #030204; }
+.hd-surprise-hole { filter: drop-shadow(0 0 12px #c8682a99) drop-shadow(0 0 22px #a35bcc88); }
+.hd-surprise-crumb { z-index: 4; border-radius: 42% 58% 50% 46%; background: #e6bd7a; }
+@media (prefers-reduced-motion: reduce) { .hd-surprise-node { will-change: auto; } }
+
+.hd-surprise-mouse :is(.hd-mouse-leg-a,.hd-mouse-leg-b) { transform-box: fill-box; transform-origin: 50% 0; }

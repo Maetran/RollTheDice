@@ -122,6 +122,56 @@ for (const language of ['de', 'en']) {
     await expect(page.locator('#hausdeppHand [data-card-id]')).toHaveCount(1);
     expect(page.url()).toBe(traffic.room);
   });
+
+  test(`${language}: first full HAUSDEPP clearly completes the tournament while seven letters keep the round break`, async ({ page }, testInfo) => {
+    const traffic = await realTournament(page, language);
+    await page.setViewportSize({ width: 390, height: 844 });
+    const seven = labelledRoundEnd(traffic.scoreboard);
+    const other = seven._hausdepp.loser_id;
+    const tournament = seven._hausdepp_tournament;
+    tournament.round_number = 7;
+    tournament.losses[other] = 7;
+    tournament.letters[other] = 'HAUSDEP';
+    const mocked = await installLabelledTournament(page, traffic.room, seven);
+    let listed = seven;
+    const id = new URL(traffic.room).pathname.split('/').pop();
+    await page.route('**/api/games?game_type=hausdepp', route => route.fulfill({ json: [{
+      id, name: 'UI-Test · Turnierabschluss', mode: '2', expected: 2, started: true, finished: true,
+      my_player_id: listed._hausdepp.viewer_id, participants: listed._hausdepp.players,
+      tournament: { round_number: listed._hausdepp_tournament.round_number, completed: listed._hausdepp_tournament.completed },
+    }] }));
+    const complete = language === 'de' ? 'Turnier beendet' : 'Tournament complete';
+    const ready = language === 'de' ? 'Bereit für die nächste Runde' : 'Ready for the next round';
+    await page.goto(traffic.room);
+    await expect(page.locator('#hausdeppNextRound')).toBeVisible();
+    await expect(page.locator('#hausdeppResult h2')).not.toContainText(complete);
+    await expect(page.locator('#hausdeppTournamentBanner')).toContainText(language === 'de' ? 'Runde 7' : 'Round 7');
+    await page.goto('/hausdepp');
+    const row = page.locator(`article[data-table-id="${id}"]`);
+    await expect(row.locator('.hd-table-status')).toHaveText(ready);
+    await expect(row.locator('.hd-table-card-action a')).toHaveAttribute('href', `/hausdepp/spiel/${id}`);
+
+    await page.goto(traffic.room);
+    const eight = structuredClone(seven);
+    Object.assign(eight._hausdepp_tournament, { round_number: 8, completed: true, tages_hausdepp_id: other, can_start_next_round: false });
+    eight._hausdepp_tournament.losses[other] = 8;
+    eight._hausdepp_tournament.letters[other] = 'HAUSDEPP';
+    mocked.send(eight);
+    await expect(page.locator('#hausdeppResult h2')).toContainText(complete);
+    await expect(page.locator('#hausdeppResult h2')).toContainText(language === 'de' ? 'Tages-Hausdepp' : 'today’s Hausdepp');
+    await expect(page.locator('#hausdeppResult h2')).toBeVisible();
+    await expect(page.locator('#hausdeppTournamentBanner')).toContainText(complete);
+    await expect(page.locator('#hausdeppNextRound, #hausdeppEndTournament')).toHaveCount(0);
+    await expect(page.locator('.hd-tournament-score .is-hausdepp')).toContainText('HAUSDEPP');
+    await page.reload();
+    await expect(page.locator('#hausdeppResult h2')).toContainText(complete);
+    if (language === 'de') await page.screenshot({ path: testInfo.outputPath('tournament-complete-phone.png') });
+    listed = eight;
+    await page.goto('/hausdepp');
+    await expect(row.locator('.hd-table-status')).toHaveText(complete);
+    await expect(row.locator('.hd-table-card-action a')).toHaveAttribute('href', '/hausdepp/konto#runden');
+    expect(mocked.commands).toEqual([]);
+  });
 }
 
 test('labelled tournament limits the next-round control to the host and ends at HAUSDEPP', async ({ page }) => {
@@ -202,3 +252,73 @@ test('capture labelled tournament round end and final across mobile orientations
     }
   }
 });
+
+for (const language of ['de', 'en']) {
+  test(`${language}: six-seat tournament letters keep their own readable line beside every opponent`, async ({ page }, testInfo) => {
+    const traffic = await realTournament(page, language, { players: 6 });
+    const board = structuredClone(traffic.scoreboard), s = board._hausdepp;
+    const self = s.viewer_id;
+    Object.assign(board, { _finished: false, _aborted: false, _paused: false });
+    Object.assign(s, {
+      version: s.version + 1, phase: 'playing', hand: ['hearts-6', 'bells-U', 'acorns-A'],
+      discard: ['leaves-7'], deck_count: 9, burned_count: 0, current_player_id: self,
+      available_actions: ['play', 'pickup', 'gamble'], playable_cards: ['hearts-6', 'bells-U', 'acorns-A'],
+      finished_order: [], loser_id: null, pending_refill: null, pending_refills: [], afterthrow: null,
+      draw_required: false, draw_urgent: false, private_peek: [], private_peek_in_stock: [],
+      stock_blocked_by: null, peek: null, deal: null, last_event: { type: 'round_started' },
+    });
+    const ownSeat = s.players.findIndex(player => player.id === self);
+    const opponents = [...s.players.slice(ownSeat + 1), ...s.players.slice(0, ownSeat)];
+    const names = ['Zenzi', 'Fanni', 'Liesl', 'Hiasl', 'Vroni'];
+    const counts = [1, 2, 3, 7, 10];
+    opponents.forEach((player, index) => Object.assign(player, { name: names[index], hand_count: counts[index], finished: false }));
+    const prefixes = ['H', 'HAU', 'HAUSD', 'HAUSDEP', 'HAUSDEPP'];
+    Object.assign(board._hausdepp_tournament, { round_number: 27, completed: false, round_complete: false,
+      can_start_next_round: false, letters: Object.fromEntries(opponents.map((player, index) => [player.id, prefixes[index]])) });
+    const mocked = await installLabelledTournament(page, traffic.room, board);
+    await page.goto(traffic.room);
+    await expect(page.locator('#hausdeppTable')).toHaveAttribute('data-phase', 'playing');
+    await expect(page.locator('.hd-seat')).toHaveCount(5);
+    for (const [width, height, docked = false] of [[390, 844], [320, 568], [568, 320], [844, 390], [768, 1024], [1024, 768], [1440, 900], [320, 568, true]]) {
+      await page.setViewportSize({ width, height });
+      if (await page.locator('#chatToggle').getAttribute('aria-expanded') === 'true') {
+        if (await page.locator('#chatClose').isVisible()) await page.locator('#chatClose').click();
+        else await page.locator('#chatToggle').click();
+      }
+      for (const full of [false, true]) {
+        const expected = full ? prefixes.map(() => 'HAUSDEPP') : prefixes;
+        board._hausdepp_tournament.letters = Object.fromEntries(opponents.map((player, index) => [player.id, expected[index]]));
+        if (docked) board._hausdepp_table_surprises = { round_number: 27, effect: 'star' };
+        mocked.send(board);
+        await expect(page.locator('.hd-seat > .hd-tournament-prefix')).toHaveText(expected);
+        if (docked) await expect(page.locator('.hd-surprise-dock [data-prop="star"]')).toBeVisible();
+        const geometry = await page.evaluate(() => {
+          const rect = node => { const r = node.getBoundingClientRect(); return { left: r.left, right: r.right, top: r.top, bottom: r.bottom }; };
+          const intersects = (a, b) => a.left < b.right - .5 && a.right > b.left + .5 && a.top < b.bottom - .5 && a.bottom > b.top + .5;
+          const obstacles = [...document.querySelectorAll('.hd-seat .hd-opponent-card, .hd-seat .hd-seat-avatar, .hd-seat .hd-seat-plate, #hausdeppStock, #hausdeppPile, .hd-room-heading')]
+            .filter(node => node.getClientRects().length).map(node => ({ name: node.id || node.className, box: rect(node) }));
+          const prefixes = [...document.querySelectorAll('.hd-seat > .hd-tournament-prefix')];
+          return prefixes.map((node, index) => {
+            const box = rect(node), plate = rect(node.parentElement.querySelector('.hd-seat-plate'));
+            const range = document.createRange(); range.selectNodeContents(node);
+            const text = range.getBoundingClientRect();
+            return { text: node.textContent, font: parseFloat(getComputedStyle(node).fontSize),
+              visible: box.left >= 0 && box.right <= innerWidth && box.top >= 0 && box.bottom <= innerHeight,
+              ownLine: box.top >= plate.bottom + 1,
+              clipped: node.scrollWidth > node.clientWidth + 1 || text.left < box.left || text.right > box.right + .5,
+              overlap: [...obstacles.filter(other => intersects(box, other.box)).map(other => other.name),
+                ...prefixes.filter((other, otherIndex) => otherIndex !== index && intersects(box, rect(other))).map(other => other.textContent)] };
+          });
+        });
+        for (const prefix of geometry) {
+          expect(prefix, `${language} ${width}×${height} ${full ? 'all full' : 'mixed'}${docked ? ' with rare dock' : ''}`).toMatchObject({ visible: true, ownLine: true, clipped: false, overlap: [] });
+          expect(prefix.font).toBeGreaterThanOrEqual(10);
+        }
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+        if (language === 'de' && full) await page.screenshot({ path: testInfo.outputPath(`tournament-prefix-${width}x${height}${docked ? '-docked' : ''}.png`) });
+      }
+    }
+    await page.locator('#hausdeppHand [data-card-id="hearts-6"]').click();
+    await expect.poll(() => mocked.commands.some(message => message.action === 'hausdepp_play' && message.cards?.[0] === 'hearts-6')).toBe(true);
+  });
+}

@@ -509,6 +509,7 @@ function moveCards(group, { gameId, playerId, before, after, reducedMotion, inst
       { opacity: 0, offset: 0 }, { opacity: 0, offset: .88 }, { opacity: 1, offset: 1 },
     ], { duration: delay + index * stagger + cardDuration, fill: "none", easing: EASING });
     const flight = { animation, reveal, cue, element: ghost,
+      arrivalTime: group.stationary ? null : delay + index * stagger + arrival * cardDuration,
       sequenceStart: now + wait,
       startAt: now + delay + index * stagger, endAt: now + delay + index * stagger + cardDuration };
     if (!flights.has(gameId)) flights.set(gameId, new Set());
@@ -617,6 +618,32 @@ export function animateCardMotion(state, context, prepared) {
   // quiet versions) has nothing more to explain; it stays on the pile.
   const own = launches.get(context.gameId);
   if (own) cancelOwnPlay(context.gameId, [...own.keys()].filter(card => !state.hand?.includes(card)));
+}
+
+/** Resolve at the actual arrival keyframe, before the resting/fading picture. */
+export function cardMotionCompletion(gameId, { signal } = {}) {
+  const active = [...(flights.get(gameId) || [])]
+    .filter(flight => flight.arrivalTime != null && flight.animation.playState !== "idle");
+  if (!active.length) return null;
+  return new Promise(resolve => {
+    let frame;
+    const finish = () => {
+      cancelAnimationFrame(frame);
+      signal?.removeEventListener("abort", finish);
+      resolve();
+    };
+    const check = () => {
+      // Inspect WAAPI progress: paused/slowed flights cannot be overtaken by a
+      // wall-clock estimate, and the last burn/pickup arrival counts as well.
+      const arrived = active.every(({ animation, arrivalTime }) =>
+        ["finished", "idle"].includes(animation.playState)
+        || (typeof animation.currentTime === "number" && animation.currentTime >= arrivalTime));
+      if (signal?.aborted || arrived) finish();
+      else frame = requestAnimationFrame(check);
+    };
+    signal?.addEventListener("abort", finish, { once: true });
+    check();
+  });
 }
 
 function explainAcceptedState(state, { gameId, playerId, peekCaption }, prepared) {

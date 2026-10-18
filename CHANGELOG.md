@@ -23,6 +23,75 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 3.11.0 — Hausdepp: kleine Überraschungen am Tisch / little table surprises — 2026-10-18
+
+**Deutsch:** Bier, Tee und Limonade zeigen jeden Schluck am Füllstand. Schnelles
+Tippen verschüttet die restliche Flüssigkeit; ein karierter Putzlumpen erscheint.
+Du ziehst ihn selbst über die Pfütze oder tippst ihn
+mehrfach an. Weiteres Tippen wirft das leere Glas um, das sich nach kurzer Pause
+wieder aufstellen und nachfüllen lässt. Snacks werden Stück für Stück gegessen,
+Schalen und Marend-Brett bleiben stehen. Der Bierdeckel zählt in Fünfergruppen,
+der Bleistift schreibt mit und verschobene Gläser hinterlassen kurz einen Ring.
+Die Dose öffnet sich mit Schaum, kräftiges Hin-und-her-Schütteln lässt sie platzen
+und hinterlässt eine kleine Pfütze zum Aufwischen. Ein geschütteltes Windlicht
+geht kurz aus und zündet sich selbst wieder an. Diese Spielereien bleiben lokal,
+begrenzt, leise und unter den Karten; reduzierte Bewegung beendet sie.
+Ungefähr jede 50. Runde erhält einen von acht seltenen Funden: Stern,
+Runenhammer, UFO, Portal, Drache, Kraken, Taschenuhr oder schwarzes Loch. Erst
+entscheidet der Server über das seltene Angebot, dann über die Variante. Ein
+Tipp überrascht den ganzen Tisch mit einer opulenten Inszenierung: Der Stern
+strahlt über den Tisch, der Hammer wirbelt auch Karten durcheinander und sortiert
+sie zurück. UFO und Portale entführen optische Doppelgänger von Karten und
+Gegenständen, der Kraken greift nach abgeräumten Karten oder einem unnötigen
+Gegenstand. Eine magische Maus mit Zylinder holt während einer zweisekündigen
+visuellen Zeitpause die Uhr. Das schwarze Loch schluckt die ganze Szene samt
+Holztisch, hält sie eine Sekunde schwarz und spuckt alles zurück. Nach dem Drachen
+bleiben die Kartenränder für den Rest dieses Tisches angesengt, auch beim erneuten
+Verbinden. Die echten Kartenwerte, Züge, Stapel und Trefferflächen bleiben korrekt. Nur der selbst
+ausgelöste Hammer darf auf unterstützten Geräten kurz vibrieren. Der Server
+verhindert gefälschte Angebote, alte Rundenklicks und doppelte Aktivierungen.
+Nach 42 Bierdeckelstrichen gibt es ausserdem eine kleine nerdige Antwort.
+Der überflüssige Fortschrittsbutton nach einer Runde entfällt. Punkte und Erfolge
+bleiben sichtbar; erneutes Spielen und Lobby bleiben die eigentlichen Aktionen.
+Der Endstand wartet auf die letzte Kartenbewegung und erscheint erst nach
+weiteren 750 ms, damit der letzte Zug sichtbar zu Ende geht. Lange Turnierstände
+stehen in einer eigenen Zeile je Gegner und verschwinden bei sechs Spielern
+nicht mehr hinter Kartensymbolen oder Karten. Beim ersten vollständigen HAUSDEPP
+zeigen Endstand, Tischkopf und Lobby ausdrücklich «Turnier beendet»; der
+Tages-Hausdepp bleibt genannt. Die bestehende Endbedingung bleibt unverändert.
+
+**English:** Beer, tea and lemonade show each sip in their fill level. Rapid taps
+spill the remaining drink and a checked cloth lets you wipe up yourself by
+dragging or repeated taps. More taps
+topple the empty glass, which can be stood up and refilled after a brief pause.
+Snacks are eaten piece by piece, leaving bowls and the snack board behind. The
+beer mat counts in groups of five, the pencil adds marks, moved glasses briefly
+leave a ring. Repeated taps open the can with foam; vigorous back-and-forth
+shaking bursts it and leaves a small puddle to wipe up. Shaken lanterns go out
+briefly and relight themselves. Ordinary interactions remain local,
+bounded, quiet and below the cards; reduced motion clears them. About one round
+in 50 offers one of eight rare finds: star, rune hammer, UFO, portal, dragon,
+kraken, pocket watch or black hole. The server first decides whether a round
+gets a find, then selects its variant. One tap shows everyone a brief, distinct
+visual spectacle: the star shines across the table; the hammer scatters cards
+and sorts them back. UFOs and portals abduct visual doubles of cards and objects;
+the kraken grabs out-of-play cards or an unneeded object. A magical mouse in a top
+hat retrieves the watch during a two-second visual time stop. The black hole
+swallows the entire scene and wooden table, holds it black for one second and
+spits everything back. The dragon leaves singed card edges for the rest of this
+table session, including reconnects. Real card values, turns, stacks and hit boxes
+remain correct.
+Only the locally triggered hammer may briefly vibrate on supported devices.
+The server rejects forged offers, stale round taps and duplicate claims.
+Forty-two beer-mat strokes also reveal a little nerdy answer. The extra progress
+acknowledgement button after a round is removed. Points and achievements remain
+visible; playing again and returning to the lobby retain their own actions. The final result waits for
+the last card movement and another 750 ms so the last play can land visibly.
+Long tournament prefixes have their own line at each opponent seat, clear of
+card-count icons and card backs even with six players. Once the first player
+spells HAUSDEPP, the final result, table heading and lobby explicitly say
+“Tournament complete” and still name today’s Hausdepp. The existing end rule is unchanged.
+
 ## 3.10.0 — Hausdepp: Computer halten hohe Karten zurück / computers hold back high cards — 2026-10-18
 
 **Deutsch:** Hat ein Hausdepp-Computer mehrere Ober, Könige oder Asse, legt er

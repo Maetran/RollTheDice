@@ -31,7 +31,7 @@
   html[data-game="hausdepp"] body.hd-playing .hd-room-layout { flex: 1 1 0; min-width: 0; min-height: 0; width: 100%; position: relative; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) 44px; gap: 2px; }
   html[data-game="hausdepp"] body.hd-playing .hd-table:not([data-phase="waiting"]) {
     min-height: 0; height: 100%; width: 100%; grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: 24px minmax(0, 1fr) 24px 0 var(--hd-hand-height); gap: 0;
+    grid-template-rows: var(--hd-surprise-heading, 24px) minmax(0, 1fr) 24px 0 var(--hd-hand-height); gap: 0;
     --hd-arc-depth: clamp(64px, 10dvh, 110px); --hd-prefix-space: 0px;
   }
   html[data-game="hausdepp"] body.hd-playing .hd-table > .hd-room-heading { grid-column: 1; grid-row: 1; min-height: 0; gap: 8px; padding: 0 2px; }
@@ -41,7 +41,7 @@
   html[data-game="hausdepp"] body.hd-playing .hd-tournament-banner { flex: 0 0 auto; margin: 0; font-size: 11px; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   html[data-game="hausdepp"] body.hd-playing .hd-table > .hd-seats { grid-column: 1; grid-row: 2; height: 100%; min-height: 0; }
   html[data-game="hausdepp"] body.hd-playing .hd-table .hd-seats > .hd-seat { width: clamp(34px, 10.6vw, 48px); max-width: clamp(34px, 10.6vw, 48px); gap: 2px; }
-  html[data-game="hausdepp"] body.hd-playing .hd-seat .hd-tournament-prefix { position: absolute; top: 0; left: 50%; transform: translateX(-50%); padding: 0 2px; border: 1px solid var(--hd-border); border-radius: 3px; background: var(--hd-paper); color: var(--hd-red); font-size: 9px; line-height: 12px; white-space: nowrap; z-index: 1; }
+  html[data-game="hausdepp"] body.hd-playing .hd-seat .hd-tournament-prefix { padding-inline: 2px; font-size: 10px; line-height: 14px; }
   html[data-game="hausdepp"] body.hd-playing .hd-table .hd-opponent-hand { --opponent-card: 24px; --opponent-spread: 28px; --opponent-step: 7px; height: 43px; }
   html[data-game="hausdepp"] body.hd-playing .hd-table .hd-seat-plate > strong { font-size: 12px; line-height: 14px; }
   html[data-game="hausdepp"] body.hd-playing .hd-table .hd-seat-count { font-size: 11px; line-height: 13px; white-space: nowrap; }
@@ -107,11 +107,19 @@
   html[data-game="hausdepp"] body.hd-playing .hd-header-tools { margin-left: auto; }
   html[data-game="hausdepp"] body.hd-playing .hd-table > .hd-centre { gap: 12px; }
 }
+@media (max-width: 359px) and (orientation: portrait) and (max-height: 620px) {
+  /* Give the extra label line the remaining eight pixels above the piles. */
+  html[data-game="hausdepp"] body.hd-playing .hd-table:has(.hd-seat > .hd-tournament-prefix) > .hd-centre { padding-bottom: 0; }
+  /* The dock needs twenty more header pixels. Flatten the twelve-pixel seat
+     arc and recover eight from the caption gap; cards and hand keep their size. */
+  html[data-game="hausdepp"] body.hd-playing .hd-table:has(.hd-surprise-dock):has(.hd-seat > .hd-tournament-prefix) .hd-seats:is([data-count="4"], [data-count="5"]) { --hd-arc-depth: 0px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-table:has(.hd-surprise-dock):has(.hd-seat > .hd-tournament-prefix) .hd-centre :is(.hd-stock-group, .hd-pile-group) > :is(.hd-card-back, .hd-pile) { margin-bottom: 4px; }
+}
 @media (max-width: 1099px) and (orientation: landscape) {
   html[data-game="hausdepp"] body.hd-playing { --hd-hand-card: clamp(68px, calc((100dvh - 300px) * .25 + 68px), 102px); }
   html[data-game="hausdepp"] body.hd-playing .hd-brand > span { display: none; }
   html[data-game="hausdepp"] body.hd-playing .hd-room-layout { grid-template-rows: minmax(0, 1fr); }
-  html[data-game="hausdepp"] body.hd-playing .hd-table:not([data-phase="waiting"]) { grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); grid-template-rows: 24px minmax(0, 1fr) 44px 0; column-gap: 12px; --hd-arc-depth: clamp(30px, 15dvh, 80px); }
+  html[data-game="hausdepp"] body.hd-playing .hd-table:not([data-phase="waiting"]) { grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); grid-template-rows: var(--hd-surprise-heading, 24px) minmax(0, 1fr) 44px 0; column-gap: 12px; --hd-arc-depth: clamp(30px, 15dvh, 80px); }
   html[data-game="hausdepp"] body.hd-playing .hd-table > .hd-room-heading { grid-column: 1 / -1; }
   html[data-game="hausdepp"] body.hd-playing .hd-table > .hd-seats,
   html[data-game="hausdepp"] body.hd-playing .hd-table > .hd-centre { grid-column: 2; grid-row: 2; }
@@ -139,4 +147,9 @@
 }
 @media (max-width: 600px) and (orientation: landscape) {
   html[data-game="hausdepp"] body.hd-playing .hd-table .hd-opponent-hand { --opponent-card: 18px; --opponent-spread: 20px; --opponent-step: 5px; height: 32px; }
+}
+@media (max-width: 1099px) and (max-height: 600px) and (orientation: landscape) {
+  /* The lower right caption reserve has room for the prefix line; the hand
+     and its controls occupy the other column and keep their existing size. */
+  html[data-game="hausdepp"] body.hd-playing .hd-table:has(.hd-seat > .hd-tournament-prefix) > .hd-centre { translate: 0 18px; }
 }

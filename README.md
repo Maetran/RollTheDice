@@ -429,6 +429,58 @@ Larger face-up and face-down piles give the centre of the table more room on
 mobile. Their width adapts to portrait and landscape; even with six players,
 cards, seats and captions remain separate and both piles can be tapped directly.
 
+**Hausdepp – Tischspielereien (3.11):** Getränke werden mit jedem Schluck sichtbar
+leerer. Schnelles Tippen verschüttet den Rest, noch mehr Tippen kippt das Glas;
+ein karierter Putzlumpen wartet darauf, dass du die Pfütze selbst wegwischst
+(per Ziehen oder mehreren Tipps). Leere Gläser lassen sich wieder
+aufstellen und nachfüllen. Nüsse, Marend und andere Snacks verschwinden in
+einzelnen Portionen; leere Schalen und Bretter bleiben liegen. Der Bierdeckel
+zählt Striche in Fünfergruppen und wird nach zwanzig umgedreht; der Bleistift
+schreibt mit, wenn ein Deckel daliegt. Verschobene Gläser hinterlassen kurz
+Kondensringe. Die Bierdose öffnet sich mit Schaum und platzt bei heftigem
+Hin-und-her-Schütteln; auch diese kleine Stelle lässt sich wegwischen.
+Das Windlicht geht beim Schütteln aus und zündet sich selbst wieder an.
+Diese Spielereien bleiben lokal, leise und ausserhalb der Karten und Aktionen;
+reduzierte Bewegung deaktiviert sie. Ungefähr jede 50. Runde bietet zusätzlich
+einen von acht seltenen Funden: Stern, Runenhammer, UFO, Portal, Drache, Kraken,
+Taschenuhr oder schwarzes Loch. Ein Tipp löst einmalig eine
+opulente Überraschung für den ganzen Tisch aus: Karten und Gegenstände wirbeln,
+werden optisch entführt und kehren zurück. Die magische Maus holt die Taschenuhr
+ab, das schwarze Loch schluckt sogar den Holztisch. Der Drache hinterlässt für
+den Rest des Tisches angesengte Kartenränder. Kartenwerte und Züge bleiben korrekt. Nur der eigene Hammer kann auf
+unterstützten Geräten kurz vibrieren. Nach 42 geschriebenen Bierdeckelstrichen
+gibt es eine kleine Antwort auf alles. Nach der Runde bleibt die Punkteübersicht
+ohne zusätzlichen Quittierungsbutton sichtbar. Der Endstand erscheint erst,
+wenn die letzte Karte liegt und weitere 750 ms verstrichen sind. Turnierbuchstaben
+stehen am Gegnerplatz in einer eigenen Zeile, auch bei sechs Spielern. Das erste
+vollständige HAUSDEPP beendet das Turnier; Endstand, Tischkopf und Lobby zeigen
+das ausdrücklich an.
+
+**Hausdepp – table play (3.11):** Drinks visibly empty sip by sip. Rapid taps spill
+the rest, further taps topple the glass, and a checked cloth lets you wipe the
+puddle yourself by dragging or repeated taps.
+Empty glasses can be stood up and topped up. Nuts, the snack board and other
+food disappear in individual portions, leaving their bowls and boards behind.
+The beer mat counts tally marks in groups of five and flips after twenty; the
+pencil adds a mark if a mat is present. Moving a glass leaves a brief condensation
+ring. Repeated taps open the beer can with foam; vigorous back-and-forth shaking
+bursts it and leaves another small spot to wipe up. Shaking the lantern puts it
+out before it relights itself. Ordinary interactions are local and quiet and
+keep cards and controls clear; reduced motion disables them. About one round
+in 50 also offers one of eight rare finds: star, rune hammer, UFO, portal, dragon,
+kraken, pocket watch or black hole. One tap triggers a brief
+lavish scene for the whole table, once per round. Cards and objects scatter,
+are visually abducted and return. A magical mouse retrieves the watch; the
+black hole even swallows the wooden table. The dragon leaves singed card edges
+for the rest of the table session. Card values and turns remain correct. Only the local hammer may briefly
+vibrate on supported devices. Forty-two beer-mat strokes reveal a small answer
+to everything. After a round, the points
+notice stays visible without an extra acknowledgement button. The final result
+waits until the last card lands, then another 750 ms. Tournament letters have
+their own line at each opponent seat, including six-player tables. The first
+complete HAUSDEPP ends the tournament; the final result, table heading and lobby
+explicitly show that it is complete.
+
 Hausdepp lässt sich mit eigenem Icon direkt als PWA installieren. Spielwechsel
 behalten die Identität der installierten App. Private Karten, Ergebnisse und
 Kontoinhalte werden nicht offline gespeichert; offline ist eine Verbindung
