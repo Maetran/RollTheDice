@@ -23,6 +23,35 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 3.10.0 — Hausdepp: Computer halten hohe Karten zurück / computers hold back high cards — 2026-10-18
+
+**Deutsch:** Hat ein Hausdepp-Computer mehrere Ober, Könige oder Asse, legt er
+zuerst nur eine Karte und wirft den Rest nicht sofort nach. Der nächste Spieler
+muss diese eine Karte beantworten (gleich hoch oder höher, mit einer 10 oder durch
+Aufnehmen), während der Computer noch weitere hohe Karten in der Hinterhand hat.
+Vier Gleiche räumen weiterhin sofort ab, niedrige Paare wirft er weiter zusammen
+ab, und ohne Nachziehstapel wirft er nach, wenn er damit fertig wird; einen
+solchen abschliessenden Nachwurf verpasst er nie. In gepaarten Partien (gleiche
+Karten, jeder Platz, Produktionsparameter) gegen die eingefrorene 3.8.2-Policy
+verlor ein Computer so an jeder Tischgrösse 14–16 % seltener. Volle Computer
+vergessen das Zurückhalten in rund 12 % der Fälle, die sanfteren Computer der
+ersten 50 Runden in rund 60 %; für neue Spieler werden sie dadurch kaum stärker
+(2 Spieler rund 5 %, 4 Spieler ohne messbaren Unterschied). Die Messung ist mit
+`paired_production_benchmark` in den Tests reproduzierbar.
+
+**English:** When a Hausdepp computer holds several Obers, Kings or Aces, it now
+plays just one first and does not follow up with the rest at once. The next player
+has to answer that one card (equal or higher, a ten, or by taking the packet) while
+the computer keeps more high cards in reserve. Four of a kind still clear at once,
+low pairs are still shed together, and without stock it follows up when that
+finishes its round, and it never misses such a finishing follow-up. In paired
+games (same cards, every seat, production settings) against the frozen 3.8.2
+policy a computer lost 14–16 % less often at every table size. Full-strength
+computers forget to hold back in about 12 % of cases, the gentler computers of the
+first 50 rounds in about 60 %, so they barely get stronger for new players (about
+5 % with 2 players, no measurable difference with 4). The measurement is
+reproducible with `paired_production_benchmark` in the tests.
+
 ## 3.9.1 — Abmelden bleibt in Hausdepp / signing out stays in Hausdepp — 2026-10-18
 
 **Deutsch:** Wer sich in den Hausdepp-Einstellungen abmeldete, landete manchmal in

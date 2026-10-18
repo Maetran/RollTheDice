@@ -3,19 +3,23 @@
   "games": [
     "hausdepp"
   ],
-  "summary_de": "Abmelden in Hausdepp führt wieder zuverlässig zur Hausdepp-Startseite.",
-  "summary_en": "Signing out of Hausdepp reliably returns to the Hausdepp home page again.",
+  "summary_de": "Hausdepp: Die Computer halten Ober, Könige und Asse zurück und zwingen dich so öfter zum Antworten.",
+  "summary_en": "Hausdepp: computers hold back Obers, Kings and Aces and make you answer more often.",
   "player_notes": {
     "de": {
-      "title": "3.9.1: Abmelden bleibt in Hausdepp",
+      "title": "Hausdepp 3.10: Computer halten hohe Karten zurück",
       "changes": [
-        "Hausdepp: Wenn du dich in den Einstellungen abmeldest, landest du wieder auf der Hausdepp-Startseite statt manchmal in ZDWA."
+        "Hat ein Computer mehrere Ober, Könige oder Asse, legt er zuerst nur eine Karte und behält den Rest für deine Antwort.",
+        "Vier Gleiche räumen weiterhin sofort ab, und am Ende wirft er nach, wenn er damit fertig wird.",
+        "Neue Spieler treffen in ihren ersten 50 Runden weiterhin auf gnädigere Computer, die das oft vergessen."
       ]
     },
     "en": {
-      "title": "3.9.1: Signing out stays in Hausdepp",
+      "title": "Hausdepp 3.10: Computers keep high cards in reserve",
       "changes": [
-        "Hausdepp: signing out in the settings takes you back to the Hausdepp home page instead of sometimes to ZDWA."
+        "When a computer holds several Obers, Kings or Aces, it plays just one first and keeps the rest for your answer.",
+        "Four of a kind still clear at once, and at the end it follows up when that finishes its round.",
+        "New players still meet gentler computers in their first 50 rounds, who often forget to do this."
       ]
     }
   }
