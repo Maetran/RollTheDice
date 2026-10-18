@@ -7,7 +7,9 @@ test.use({ serviceWorkers: 'block' });
 async function player(browser, baseURL, language = 'de') {
   const context = await browser.newContext({ baseURL, reducedMotion: 'reduce' });
   const page = await context.newPage();
-  await page.addInitScript(value => localStorage.setItem('zdwa_language', value), language);
+  await page.addInitScript(value => {
+    if (!localStorage.getItem('zdwa_language')) localStorage.setItem('zdwa_language', value);
+  }, language);
   const username = `Watter${Date.now()}${Math.random().toString(36).slice(2, 6)}`;
   const ownerLogin = await context.request.post('/api/auth/login', { data: {
     username: 'Admin', password: 'temporary-password-123',
