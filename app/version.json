@@ -1,10 +1,10 @@
 {
-  "version": "3.15.0",
+  "version": "3.16.0",
   "bump": "minor",
   "date": "2026-10-18",
-  "previous_revision": "a92258b628445a1ee88a0fe1afd18b1bf6c0acc8",
+  "previous_revision": "0ea8f5800ecf6765fdebf8df1b873eecddc1b758",
   "summary": {
-    "de": "Watten-Folgetische, Tischchat, gemeinsame Lobby und lokale Tischdeko verbinden.",
-    "en": "Connect Watten next tables, table chat, the shared lobby and local decorations."
+    "de": "Private Watten-Webvorschau für das gebundene Ownerkonto und native Freundesmeldungen.",
+    "en": "Private Watten web preview for the bound founder account and native friend start notices."
   }
 }

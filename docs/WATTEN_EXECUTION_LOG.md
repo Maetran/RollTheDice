@@ -774,3 +774,61 @@ The composed suite backends passed139 focused tests and11 subtests after a
 reproduced SQLite concurrency fix; both fresh/existing transaction rollback
 cases remain tested. General Watten push is still unavailable. Native UI,
 full push verification and physical acceptance remain pending.
+
+### Erste private Owner-Webvorschau, 18.10.2026
+
+Der Owner hat den privaten Rollout der ersten zusammenhängenden Version nach
+vollständigen Prüfungen ausdrücklich freigegeben. `ROLLTHEDICE_WATTEN_FOUNDER_PREVIEW`
+bleibt standardmässig0 und erlaubt produktiv nur dem aktiven, dauerhaft
+gebundenen Founder die Apex-Webvorschau. Weitere Owner/Admins, Mitglieder,
+Gäste und angenommene Einladungen erhalten keinen Zugriff. Die vorhandenen
+drei Suite-Hosts dürfen nur diesem Konto den Apex-Link anzeigen; native Daten
+und Spiel-WS akzeptieren nur den kanonischen Apex. Fester Watten-Host, PWA,
+Mailkontext und Push-Zustellung bleiben gesperrt. Kontoansichten verwenden
+auf Prod die bestehenden Suite-Flows. Private Dokumente und Fehler sind
+`no-store/noindex`, Top-Level-/User-Capability stammen aus derselben Prüfung.
+
+CPU-Timer prüfen den tatsächlich gespeicherten, strikt restaurierten Quellstand
+gegen RAM und bestätigen vor dem Commit erneut die Founder-Autorität. Source-
+Lock/SQLite-Writerreservierung gehen der Kontosperre voraus; ein anderer
+DB-Writer, Flagentzug oder False-CAS verhindert Installation, Broadcast und
+Ergebnis-/Fortschrittsvergabe. Alle zwölf lokalen Profile bleiben separat
+verfügbar. Die unabhängige Quellenprüfung schloss einen doppelten Auth-Lookup
+und die Bereinigungsreihenfolge eines alten Lobby-Sockets vor Abschluss.
+
+Claudes erstes neues Frontendpaket lieferte native Freundesmeldungen und
+private Zustimmungs-/Auswahleinstellungen. Zwei reproduzierte Ressourcen-
+regressionen wurden anschliessend begrenzt: höchstens100 Suchtreffer im
+Seitenfenster und20 auf Auth wartende Meldungen. Beide neuen Fälle waren
+vorher rot. Das reparierte Paar besteht29 tatsächliche Node-Verhaltenstests.
+Die Startmeldung ist am laufenden Tisch Text; nur die Lobby bietet bewusstes
+Zuschauen. Auswahl und Meldungen erweitern keinen Spielzug oder Kartenblick.
+
+Unabhängige Root-Belege auf dem zusammengesetzten Stand:65 gezielte
+Founder-/CPU-/Aktivitätsfälle;53 Route-/Readiness-/Kontofälle plus346 Unterfälle;
+13 private Picker- und26 Lobby-Nodefälle. Drei echte Browser-Journeys belegen
+DE/EN-Kontoeinstellungen sowie live gestartete Partien bei unverändertem
+Pending-Bid/Hand-DOM. Drei weitere Browserfälle prüfen den privaten Picker
+in320x568 und568x320, Kontoentzug und späte Aktivitätsantworten. Screenshots
+wurden visuell gelesen. Die alten Chooser-Tests bestehen20 Fälle; drei schon
+vorhandene optionale Aufnahmetests bleiben übersprungen. Die erste private
+Picker-Probe hatte drei reine Fixturefehler: ihr isolierter Admin hatte keine
+Zilch-Freigabe. Die explizit markierte öffentliche Zilch-UI-Projektion wie in
+den bestehenden Tests korrigiert dies, ohne die echten APIs freizugeben.
+
+Diese Belege ersetzen keinen vollständigen Pushnachweis. Der finale3.16-
+Commit benötigt vor Push/Integration weiterhin alle sieben Pflichtgruppen,
+grüne CI und danach den freigegebenen privaten Weg `develop → master → prod`.
+Native Tour-/Einladungs-/Monitoring-Oberflächen und physische Geräteabnahme
+bleiben eigene offene Arbeiten; Claude arbeitet bereits im nächsten getrennten
+Tourpaket. Es gab bis zu diesem Quellenstand keinen neuen Prodrollout oder
+echten Watten-Pushversand.
+
+The owner approved a conditional first private production web preview for the
+immutable founder only, after complete verification. Composed targeted tests,
+six new real browser journeys and visual screenshots cover the account-bound
+picker, CPU commit authority and native friends UI. Two resource regressions
+were reproduced and fixed; one test fixture needed the explicitly labelled
+public Zilch projection. Complete exact-commit verification, CI and the private
+release still follow. The fixed Watten host, PWA, mail and push remain closed;
+remaining native services interfaces and physical acceptance are still open.

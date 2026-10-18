@@ -53,6 +53,20 @@ account. It uses the normal suite login; other accounts, administrators and
 delegated owners receive no access. The fixed Watten host, installation,
 Watten account emails and push delivery remain closed.
 
+**Freunde und Spielerauswahl / friends and player selection:** Die native Lobby
+zeigt bei eigener Zustimmung kurz den Spielstart ausgewählter Menschen.
+Zuschauen braucht einen Klick; am laufenden Tisch erscheint nur Text ohne
+Kartenhinweise. Die lokalen nativen Kontoeinstellungen speichern Zustimmung,
+die gemeinsame Spielerauswahl und den Einladungs-Empfängerkreis. Beim Suchen
+bleiben höchstens100 Treffer sichtbar; weitere Seiten ersetzen ältere Treffer.
+Die Auswahl bleibt dabei erhalten. Diese Einstellungen aktivieren kein Push.
+
+With consent, the native lobby briefly shows selected humans starting games.
+Watching requires a click; an active table shows text without card information.
+Local native account settings save consent, the shared player selection and the
+invitation audience. Search keeps at most100 results visible, replacing older
+pages while retaining the selection. These settings do not activate push.
+
 **Lokaler Kontofortschritt / local account progress:** Die lokale Watten-Vorschau
 verbucht neue abgeschlossene Partien zusammen mit Ergebnis und Fortschritt in
 einer Transaktion. `/watten/konto/fortschritt`, `/watten/konto/verlauf` und

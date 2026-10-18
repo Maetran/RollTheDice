@@ -2336,5 +2336,12 @@
     "date": "2026-10-18",
     "bump": "minor",
     "summary": "Lokalen Watten-Fortschritt, Erfolge, Wirtshaustitel und Ranglisten verbinden. / Connect local Watten progress, achievements, pub titles and standings."
+  },
+  {
+    "version": "3.15.0",
+    "revision": "0ea8f5800ecf6765fdebf8df1b873eecddc1b758",
+    "date": "2026-10-18",
+    "bump": "minor",
+    "summary": "Watten-Folgetische, Tischchat, gemeinsame Lobby und lokale Tischdeko verbinden. / Connect Watten next tables, table chat, the shared lobby and local decorations."
   }
 ]
