@@ -38,7 +38,16 @@ html[data-game="hausdepp"] .hd-table .hd-seats > .hd-seat {
   pointer-events: auto;
 }
 html[data-game="hausdepp"] .hd-table .hd-seat > small { display: none; }
-html[data-game="hausdepp"] .hd-table .hd-seat > .hd-seat-plate { grid-column: auto; grid-row: auto; align-self: center; }
+html[data-game="hausdepp"] .hd-table .hd-seat > .hd-seat-plate { grid-column: auto; grid-row: auto; align-self: center; order: 1; }
+/* Letters have their own line below the name/count plate. Keep the fan's
+   first DOM node intact for live card motion and never overlay its avatar. */
+html[data-game="hausdepp"] .hd-table .hd-seat > .hd-tournament-prefix {
+  position: static; order: 2; flex: 0 0 auto; width: max-content; max-width: none;
+  transform: none; margin: 0; padding: 0 3px; border: 1px solid var(--hd-border); border-radius: 3px;
+  color: var(--hd-red); background: var(--hd-paper); text-shadow: none;
+  font: 700 11px/16px ui-monospace, SFMono-Regular, Consolas, monospace;
+  letter-spacing: 0; white-space: nowrap; pointer-events: none;
+}
 html[data-game="hausdepp"] .hd-table .hd-opponent-hand {
   --opponent-card: 36px;
   --opponent-spread: 72px;

@@ -1,10 +1,10 @@
 {
-  "version": "3.10.1",
-  "bump": "patch",
+  "version": "3.11.0",
+  "bump": "minor",
   "date": "2026-10-18",
   "previous_revision": "80bc42df17eb5852a5153582b263f6d065138f35",
   "summary": {
-    "de": "Der Spielwechsler zeigt seine Bereitschaft zuverlässig; Watten erhält eine geschlossene Hostgrundlage.",
-    "en": "The game switch reliably shows when it is ready; Watten gains a closed host foundation."
+    "de": "Hausdepp: sichtbare Schlucke und Häppchen, Putzlumpen und neue kleine Tischüberraschungen.",
+    "en": "Hausdepp: visible sips and bites, a cleaning cloth and new little table surprises."
   }
 }
