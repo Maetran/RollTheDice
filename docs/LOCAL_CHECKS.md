@@ -20,7 +20,7 @@ sondern verweigert einen ungeprüften Push sofort. `push:checked` führt die
 fehlenden Vollprüfungen vor dem eigentlichen `git push` aus. Force-Pushes und
 das Umgehen des Hooks sind nicht vorgesehen.
 
-Voraussetzungen: Node wie in `.github/workflows/quality.yml`, Python aus `.venv`
+Voraussetzungen: Node 22, Python aus `.venv`
 mit `requirements-dev.txt`, `npm ci`, installierte Playwright-Browser
 (`npx playwright install chromium webkit`) und ein lokaler Docker-Daemon.
 `PLAYWRIGHT_PYTHON` kann den Pythonpfad vorgeben. Netzwerk-/SSH-Docker-Endpunkte
@@ -121,8 +121,8 @@ runs the full check before opening the push connection.
 The full check covers quality/security checks, Node tooling tests, backend
 coverage, a production Linux/amd64 Docker build with its offline smoke test
 (including emulation on ARM hosts), every browser
-suite and a final source/base/environment comparison. Use the Node version from
-the workflow, the development Python environment, Chromium, WebKit and a local
+suite and a final source/base/environment comparison. Use Node 22,
+the development Python environment, Chromium, WebKit and a local
 Docker socket. Coordinate with any agent already running a full test pool.
 
 Four main browser shards run simultaneously on separate servers with independent

@@ -9,7 +9,7 @@ import { REQUIRED_CHECKS, acquireVerificationLock, assertFullBrowserResult, asse
 
 export async function verifyLocal({ cwd = process.cwd() } = {}) {
   if (Number(process.versions.node.split('.')[0]) !== 22) {
-    throw new Error('Full verification requires Node 22, matching the GitHub quality workflow.');
+    throw new Error('Full verification requires Node 22. See docs/LOCAL_CHECKS.md.');
   }
   assertUnfilteredEnvironment(process.env);
   git(['fetch', 'origin'], cwd);
