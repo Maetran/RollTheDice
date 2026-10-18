@@ -107,6 +107,46 @@ Schalterkombinationen gültig sind.
   grosse Ziele, Deutsch/Englisch und reduzierte Bewegung gehören in eine
   spätere Ausarbeitung. Die Referenz wurde dafür nicht vollständig geprüft.
 
+## Responsive-Ausrichtung: beide Formate, Querformat empfehlen
+
+**Owner-Vorgabe vom 18.10.2026:** Hoch- und Querformat vollständig umsetzen;
+den Nutzern Querformat als angenehmere Spielansicht nahelegen. Für den
+Vierertisch ist die zusätzliche Breite eine plausible Gestaltungsannahme:
+gegenüberliegende Partner, seitliche Gegner, Hand und Stich lassen sich eher
+als Tisch anordnen. Das ist unsere Entwurfsentscheidung, kein durch die
+Referenzbilder oder Nutzertests bewiesener Usability-Vorteil.
+
+- **Querformat:** Als bevorzugte Tischkomposition ausarbeiten. Zusätzliche Breite für erkennbare Sitz-/Teambeziehungen und gut unterscheidbare Stichkarten nutzen; kurze Bildschirmhöhe und Safe Areas trotzdem ernst nehmen.
+- **Hochformat:** Eigenständig verdichten und vollständig spielbar halten. Dieselben Karten, Ansagen, Antworten, Team-/Punktanzeigen und privaten Informationen bleiben erreichbar. Keine Funktion setzt eine Drehung voraus.
+- **Empfehlung:** Auf schmalen Geräten im Hochformat ein kleiner, schliessbarer Inlinehinweis mit Drehsymbol, vorzugsweise im Warteraum vor dem Spiel. Keine Vollbildschranke, Zwangsrotation oder wiederholte Aufforderung bei jedem Snapshot/Reload. Geschlossene Empfehlung auf dem Gerät merken; später in Hilfe auffindbar lassen.
+- **Zeitpunkt:** Laufendes Einschauen, ein offenes Gebot, ausstehende Kommandos und Stichabschlüsse nicht mit einer neu eingeblendeten Empfehlung unterbrechen. Auch ein direkter Einstieg in eine laufende Partie bleibt sofort bedienbar.
+- **Passender Kontext:** Desktop-/Splitview-/Tastaturfenster nach verfügbarem Platz gestalten; keinen pauschalen Handy-Drehhinweis wegen eines schmalen Fensters anzeigen. Zwei-/Dreiertische erhalten ihre eigene Sitzanordnung.
+
+Textvorschlag DE: **«Im Querformat hast du Tisch und Karten besser im Blick.»**
+EN: **“Landscape gives you a clearer view of the table and your cards.”**
+Die Empfehlung beschreibt den erwarteten Vorteil; die genaue Platzierung
+und Formulierung werden am eigenen Tisch geprüft.
+
+Die Empfehlung beschränkt keine Nutzungsausrichtung. Das entspricht dem
+[W3C-Hinweis zu WCAG 1.3.4 Orientation](https://www.w3.org/WAI/WCAG22/Understanding/orientation.html),
+der die Bedienbarkeit unabhängig von der gewählten Ausrichtung beschreibt.
+Die Quelle empfiehlt nicht speziell für Watten das Querformat.
+
+**Abnahme für P4:** Alle freigegebenen 2-/3-/4-Spielermodi in beiden Formaten,
+DE/EN, mindestens 320×568, 568×320, 667×375 und Tablet-Splitview prüfen.
+Steuerungen mindestens 44×44 px, sichtbare Karten-Trefferflächen, Fokus,
+Screenreader, reduzierte Bewegung, Chat-Tastatur und interne Dialog-Scrolls
+bleiben bedienbar. Kein horizontal aufgeweiteter Seitentisch. Querformat
+mit wenig Höhe muss ebenso bestehen wie schmales Hochformat.
+
+Rotation beim Einschauen, Gebot/Antwort, ausstehendem ACK und Stichende
+ändert weder Sitz/Team/Wissensrolle, Hand, Punkte/Einsatz noch Antwortrecht
+oder fachliche Frist. Keine neue Ansage, kein Doppelkommando, kein erneutes
+Abspielen alter Karten. Veraltete Fluggeometrie wird beendet; danach gilt
+der aktuelle erlaubte Stand. Hinweis schliessen und im Hochformat
+weiterspielen ist ein eigener positiver Abnahmefall. Prüfungen zuerst lokal
+auf dem Mac; tatsächliche Gerätebedienung bleibt eine separate Abnahme.
+
 ## Weiterer Gebrauch
 
 Die Bilder dürfen später neben dem eigenen Entwurf als Referenz dienen:
@@ -130,4 +170,7 @@ Referenzbeobachtung und keine Abnahme unseres Spiels.
 interface are references for interaction and information hierarchy, not a
 design to copy. Preserve the existing Hausdepp card artwork. This note records
 observations, limitations and ideas for a later independent design; no game
-implementation or mockup has been started.
+implementation or mockup has been started. The owner requires full portrait
+and landscape support, with a discreet, dismissible landscape recommendation.
+Neither rotation nor the hint may block play or alter private knowledge, bid
+rights or pending commands.

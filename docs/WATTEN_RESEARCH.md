@@ -31,6 +31,7 @@ Owner beschriebene Spielrunde als Bezugspunkt:
   Spieler schauen die unterste Karte ein. Die anderen müssen durch
   raffiniertes Spielen herausfinden, welcher Schlag und Trumpf gelten.
 - **Identische Kartendesigns wie Hausdepp verwenden.**
+- **Responsive in Hoch- und Querformat vollständig umsetzen; Querformat dezent empfehlen.** Ein schliessbarer Hinweis darf weder Einstieg noch laufende Aktionen unterbrechen. Hochformat bleibt voll spielbar; niedrige Querformathöhe und Rotation im laufenden Spiel werden ausdrücklich geprüft. Details: [Gestaltungsleitplanken](WATTEN_DESIGN_REFERENCES.md#responsive-ausrichtung-beide-formate-querformat-empfehlen).
 - **Ansagen gehören zum Spiel.** Die ausdrückliche Vorgabe lautet:
   «Gestrichen darf man nichts mehr sagen.»
 - **CPU-Spieler** sind gewünscht: typische Tiroler Namen wie bei Hausdepp

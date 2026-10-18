@@ -54,7 +54,9 @@ danach zunehmend längere Etappen für ausdauernde Watter. Der
 [Fortschrittsplan](docs/WATTEN_PROGRESSION_PLAN.md) enthält erreichbare Ziele
 und einen vorläufigen Kurvenentwurf. Vollständige Tests laufen soweit möglich
 lokal auf dem Mac; GitHub prüft nur den schlanken Integrationsnachweis.
-Die Entwicklung hat noch nicht begonnen.
+Hoch- und Querformat bleiben vollständig spielbar; Querformat wird mit
+einem dezenten, schliessbaren Hinweis empfohlen. Die Entwicklung hat noch
+nicht begonnen.
 
 Der [vertiefte Regelabgleich](docs/WATTEN_RULES_AUDIT.md) trennt Ladinisch,
 Blind-/Offen-Ansage, Varianten mit Kritischen, Trumpfzwang und Einsatzbieten.
@@ -88,7 +90,8 @@ required, with faster early promotions and growing later gaps rewarding
 persistence. The [progression plan](docs/WATTEN_PROGRESSION_PLAN.md) sets out
 achievable goals and a provisional curve. Full tests run locally on the Mac
 wherever possible; GitHub only validates integration evidence. Development
-has not started.
+has not started. Both orientations remain fully playable, with a discreet,
+dismissible landscape recommendation.
 
 The [detailed rules audit](docs/WATTEN_RULES_AUDIT.md) separates Ladinisch,
 blind/open announcements, critical-card variants, trump obligations and bidding.
