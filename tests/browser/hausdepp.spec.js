@@ -117,6 +117,7 @@ async function createCpuTable(page, traffic, { players = 2, cpu = 1, resolvePeek
   const commandsBefore = traffic.commands.length;
   traffic.state = null;
   traffic.scoreboard = null;
+  traffic.tableStart = { commands: commandsBefore, messages: traffic.messages.length };
   await page.locator('#hausdeppCreate').click();
   await expect(page).toHaveURL(/\/hausdepp\/spiel\/[^/?]+/);
   await expect(page.locator('#hausdeppTable')).toBeVisible();
@@ -141,8 +142,17 @@ async function createCpuTable(page, traffic, { players = 2, cpu = 1, resolvePeek
   expect(traffic.state.players.filter(player => player.is_cpu)).toHaveLength(cpu);
   expect(traffic.state.players.every(player => !Object.hasOwn(player, 'hand'))).toBe(true);
   expect(traffic.state).not.toHaveProperty('deck');
-  await expectDescribedPile(page, traffic.state);
+  await expectDescribedPile(page);
   return page.url();
+}
+
+async function createViewerPeekTable(page, traffic) {
+  // The first dealer is random; open tables until the viewer is the one who peeks.
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    const room = await createCpuTable(page, traffic, { resolvePeek: false });
+    if (traffic.state.peek.player_id === traffic.state.viewer_id) return room;
+  }
+  throw new Error('No table with the viewer as peeker after 12 random deals');
 }
 
 async function completeActivePeek(page, traffic, { expectMotion } = {}) {
@@ -300,19 +310,27 @@ async function expectReachableFan(page, name) {
   return geometry;
 }
 
-async function expectDescribedPile(page, state) {
-  if (!state.discard.length) return;
-  const language = await page.locator('html').getAttribute('lang');
-  const [suit, rank] = state.discard.at(-1).split('-');
+async function expectDescribedPile(page) {
+  // Read the label with the projection it was rendered from in one task; the
+  // Node-side copy can already hold the next CPU play.
+  const { discard, label, language } = await page.evaluate(() => {
+    if (!window.hausdeppObservedState) throw new Error('No observed Hausdepp projection for the pile label');
+    return {
+      discard: window.hausdeppObservedState.discard,
+      label: document.getElementById('hausdeppPile').getAttribute('aria-label'),
+      language: document.documentElement.lang,
+    };
+  });
+  if (!discard.length) return;
+  const [suit, rank] = discard.at(-1).split('-');
   const suits = language === 'en'
     ? { hearts: 'Hearts', bells: 'Bells', leaves: 'Leaves', acorns: 'Acorns' }
     : { hearts: 'Herz', bells: 'Schellen', leaves: 'Laub', acorns: 'Eichel' };
   const ranks = language === 'en' ? { U: 'Unter', O: 'Ober', K: 'King', A: 'Ace' }
     : { U: 'Unter', O: 'Ober', K: 'König', A: 'Ass' };
-  const label = await page.locator('#hausdeppPile').getAttribute('aria-label');
   expect(label).toContain(suits[suit]);
   expect(label).toContain(ranks[rank] || rank);
-  expect(label).toContain(`, ${state.discard.length} `);
+  expect(label).toContain(`, ${discard.length} `);
 }
 
 async function openTableChat(page) {
@@ -331,19 +349,20 @@ async function completeRequiredDraw(page, traffic) {
   }
   if (!traffic.state?.available_actions.includes('draw')) return;
   const before = traffic.state;
-  const commandCount = traffic.commands.length;
   expect(before.pending_refill?.player_id).toBe(before.viewer_id);
   expect(before.available_actions).not.toContain('gamble');
   // The due refill is tapped automatically; a manual tap is never needed.
-  await expect.poll(() => traffic.state?.version || 0).toBeGreaterThan(before.version);
-  expect(traffic.commands.slice(commandCount).filter(command => command.action === 'hausdepp_draw')).toHaveLength(1);
-  await expect.poll(() => traffic.messages.some(message => {
-    const state = message.scoreboard?._hausdepp;
-    return state?.version > before.version && state.last_event?.type === 'draw' && state.last_event.player_id === before.viewer_id;
-  })).toBe(true);
-  const drawn = traffic.messages.map(message => message.scoreboard?._hausdepp).find(state =>
-    state?.version > before.version && state.last_event?.type === 'draw' && state.last_event.player_id === before.viewer_id);
-  expect(drawn).toBeTruthy();
+  const states = () => traffic.messages.slice(traffic.tableStart?.messages)
+    .map(message => message.scoreboard?._hausdepp).filter(Boolean);
+  const ownDraw = state => state.last_event?.type === 'draw' && state.last_event.player_id === before.viewer_id;
+  await expect.poll(() => states().some(state => state.version > before.version && ownDraw(state))).toBe(true);
+  const drawn = states().find(state => state.version > before.version && ownDraw(state));
+  // That tap can leave before this helper reads the due refill, so count the
+  // draws sent since our previous refill was applied, not since this call.
+  const previous = Math.max(0, ...states().filter(state => ownDraw(state) && state.version < drawn.version)
+    .map(state => state.version));
+  expect(traffic.commands.slice(traffic.tableStart?.commands).filter(command => command.action === 'hausdepp_draw'
+    && command.version >= previous && command.version < drawn.version)).toHaveLength(1);
   expect(drawn.pending_refill).toBeNull();
   expect(drawn.hand.length === 3 || drawn.deck_count === 0).toBe(true);
   expect(drawn.hand.length).toBeGreaterThan(before.hand.length);
@@ -522,7 +541,7 @@ for (const language of ['de', 'en']) {
 test('active bottom peek stays private, requires a designated player tap, and deals once with short motion', async ({ page, context }) => {
   await ownerSession(page);
   const traffic = watchGame(page);
-  const room = await createCpuTable(page, traffic, { resolvePeek: false });
+  const room = await createViewerPeekTable(page, traffic);
   const firstVersion = traffic.state.version;
   const spectator = await context.newPage();
   const watching = watchGame(spectator);
@@ -664,7 +683,7 @@ test('lobby and table keep mobile, tablet and desktop portrait/landscape control
     await expect(page.locator('#hausdeppTable')).toBeVisible();
     await expect(page.locator('#hausdeppHand .hausdepp-card').first()).toBeVisible();
     await page.evaluate(() => document.fonts.ready);
-    await expectDescribedPile(page, traffic.state);
+    await expectDescribedPile(page);
     await expectNaturalSortedHand(page);
     await expectOpponentHands(page, null, name);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `${name}: table width`).toBe(true);
