@@ -65,23 +65,36 @@ ACK eviction or changing public opportunity. CPU views use their own personal
 allowlist. Public views contain counts and played cards, never hidden hands,
 stock, cached commands or account IDs. History includes only already public cards.
 
-## Runtime acceptance still required
+## Runtime contract and acceptance
 
-Room revision and engine opportunity guards do not implement database locks.
-The adapter must rederive authority after locking, invalidate old sockets, commit
-state/result changes atomically, restore the explicit schemas and fan out each
-allowlisted view to the correct audience. Generic dataclass/`_json_safe` storage
-is unsuitable. A rematch marks one source and creates a new waiting room; humans
-must deliberately accept seats. Durable uniqueness and concurrent races remain open.
+The local adapter in `watten_runtime.py`, `watten_http.py` and
+`watten_websocket.py` now composes these pure transitions under the shared table
+lock. It rederives authority after lock acquisition, revokes replaced sockets,
+and commits candidate state and a final result in one database transaction before
+installing or acknowledging it. It uses explicit versioned storage and separate
+per-viewer projections. This is local development behind the independent
+`ROLLTHEDICE_WATTEN_GAME_PREVIEW` gate; production remains closed. Native UI,
+CPU scheduling and a complete rematch journey remain follow-up work.
 
-One-time public call delivery needs a durable, atomic delivery/outbox contract:
-a crash after state commit but before broadcast must not leave open C/D officially
-bound without ever receiving the call. Retain delivery only until each entitled
-recipient first receives it; this is not permission to re-peek or persist a
-reference when the option is off. Test disconnect/restart at that boundary.
+One-time public calls use a durable delivery outbox with recipient-bound ACKs,
+so a crash after commit but before broadcast does not lose open C/D's initial
+call. This does not reopen inspection or keep a client reference when disabled.
+Terminal checkpoints remain available for final ACKs. Local Watten result deletion
+is explicitly rejected until coherent atomic retirement exists; generic deletion
+must not leave a checkpoint pointing at a tombstoned result.
+
+Intentional running departure persists an absent set and a lifecycle revision.
+Card play, bids, answers, announcements, inspection closure and the next deal
+wait for every absent person to return. Ordinary reconnect only restores the
+allowed view; explicit resume binds the current account and absence revision.
+Allowed private partner feedback and delivery ACKs may continue. Restart retains
+the pause. Old leave replays cannot detach a fresh connection; a logout during
+an awaited broadcast cannot receive the former account's private leave snapshot.
 
 Focused unit/review evidence is recorded in the [execution log](WATTEN_EXECUTION_LOG.md).
 It is not the next integrated full-check receipt or complete P2/P3 acceptance.
-Browser flows, actual storage/transport races, CPU policy and physical-device
-acceptance remain open. The [historical room handoff](WATTEN_ROOM_HANDOFF.md)
+Browser flows, the final integrated full proof, CPU policy and physical-device
+acceptance remain open. Targeted native tests exercise real HTTP/WebSocket/SQLite
+matches, atomic failure/retry, restart, stale lifecycle commands and revoked
+private fanout. The [historical room handoff](WATTEN_ROOM_HANDOFF.md)
 preserves the bounded implementation assignment; this guide describes current sources.

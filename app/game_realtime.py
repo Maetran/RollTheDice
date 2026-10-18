@@ -63,6 +63,13 @@ def append_chat_history(game: GameDict, entry: dict) -> dict:
 
 async def broadcast(game: GameDict, message: dict[str, Any]) -> None:
     """Send to connected players and spectators, detaching dead sockets."""
+    if game.get("_game_type") == "watten":
+        from .watten_websocket import broadcast_watten
+
+        # A caller-supplied snapshot/event is never an authority to disclose
+        # Watten state. Its coordinator already persists accepted mutations.
+        await broadcast_watten(game)
+        return
     # Mutations converge here; persistence strips process-local sockets.
     save_active_game(game)
     # Encode once so every recipient receives the exact same JSON-safe

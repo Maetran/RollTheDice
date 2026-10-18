@@ -17,6 +17,7 @@ from fastapi.responses import FileResponse, PlainTextResponse, RedirectResponse,
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy import select
+from starlette.concurrency import run_in_threadpool
 
 from .abandoned_games import persist_abandoned_game
 from .achievement_feed import AchievementDifficulty, list_zilch_achievement_feed
@@ -344,7 +345,9 @@ async def _sweep_timeout_aborts() -> int:
     expired = sweep_timeouts()
     for game in expired:
         await _publish_timeout_abort(game)
-    return len(expired)
+    from .watten_websocket import sweep_watten_waiting_games
+
+    return len(expired) + await sweep_watten_waiting_games()
 
 
 async def _run_timeout_sweeper(
@@ -1604,7 +1607,7 @@ def continue_to_product(request: Request, app_name: str = Query(alias="app"), pa
 def completed_game_page(request: Request, game_id: str | None = None):
     # A stored Zilch game must never mount the fixed ZDWA replay renderer.
     # The public route gives no indication that a private result exists.
-    if game_id and completed_game_type_for_id(game_id) == HAUSDEPP_GAME_TYPE:
+    if game_id and completed_game_type_for_id(game_id) in {HAUSDEPP_GAME_TYPE, "watten"}:
         raise HTTPException(status_code=404, detail="result_not_found")
     if is_zilch_host(request):
         if not game_id:
@@ -1899,6 +1902,7 @@ class CreateReq(BaseModel):
     tournament: bool = Field(default=False, strict=True)
     waiting_mode: str = Field(default="fixed", pattern="^(fixed|open)$")
     manual_start: bool = Field(default=False, strict=True)
+    watten_recipe: dict | None = None
 
     @field_validator("name")
     @classmethod
@@ -1942,6 +1946,17 @@ class CreateReq(BaseModel):
 
     @model_validator(mode="after")
     def validate_game_specific_options(self):
+        if self.game_type == "watten":
+            from .watten_recipe import recipe_from_payload
+
+            recipe = recipe_from_payload(self.watten_recipe)
+            if (self.mode != str(recipe.player_count) or bool(self.passphrase) != recipe.password_required
+                    or self.hardcore or self.play_mode is not None or self.cpu_strategy is not None
+                    or self.cpu_count is not None or self.tournament or self.waiting_mode != "fixed" or self.manual_start):
+                raise ValueError("watten_invalid_create_options")
+            return self
+        if self.watten_recipe is not None:
+            raise ValueError("watten_recipe_not_supported")
         if self.game_type == HAUSDEPP_GAME_TYPE:
             from .hausdepp_state import validate_hausdepp_mode
 
@@ -2013,6 +2028,10 @@ async def api_games(request: Request, game_type: str = Query(default=DEFAULT_GAM
         requested_game_type = normalize_game_type(game_type)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail="invalid_game_type") from exc
+    if requested_game_type == "watten":
+        from .watten_http import list_watten_http
+
+        return await list_watten_http(request)
     # Returning an empty list is deliberate: an unauthorized request cannot
     # distinguish an inaccessible Zilch lobby from one with no games.
     if requested_game_type == HAUSDEPP_GAME_TYPE and not can_access_hausdepp(auth_identity):
@@ -2188,6 +2207,20 @@ async def api_game_notify_open_seat(game_id: str, request: Request):
 
 
 @app.get("/api/games/{game_id}")
+async def game_info_route(
+    game_id: str,
+    request: Request,
+    passphrase: str | None = Query(default=None, alias="pass"),
+    check: int = Query(default=0),
+):
+    game = games.get(game_id)
+    if game and game_type_from_state(game) == "watten":
+        from .watten_http import detail_watten_http
+
+        return await detail_watten_http(request, game, passphrase, check)
+    return await run_in_threadpool(game_info, game_id, request, passphrase, check)
+
+
 def game_info(
     game_id: str,
     request: Request,
@@ -2199,6 +2232,9 @@ def game_info(
     g = games.get(game_id)
     if not g:
         return {"exists": False}
+    if game_type_from_state(g) == "watten":
+        # Native Watten reads require its asynchronous table coordinator.
+        raise HTTPException(status_code=404, detail="game_not_found")
     auth_identity = resolve_session(request)
     if not can_access_game(auth_identity, g):
         raise HTTPException(status_code=404, detail="game_not_found")
@@ -2670,6 +2706,13 @@ async def api_games_create(req: CreateReq, request: Request):
 
     identity = resolve_session(request)
     ensure_play_allowed(identity)
+    if req.game_type == "watten":
+        from .watten_access import require_watten_access
+        from .watten_http import create_watten_http
+
+        require_watten_access(request, identity)
+        enforce_game_creation_rate_limit(request)
+        return create_watten_http(request, req)
     guest_host_token: str | None = None
     if req.game_type == ZILCH_GAME_TYPE:
         identity = _require_zilch_access(request)
@@ -2729,6 +2772,11 @@ def admin_delete_completed_game(game_id: str, payload: DeleteCompletedGameReq, r
     if payload.confirmation_game_id != game_id:
         raise HTTPException(status_code=400, detail="game_delete_confirmation_mismatch")
     stored_type = completed_game_type_for_id(game_id)
+    if stored_type == "watten":
+        from .watten_access import require_watten_access
+
+        require_watten_access(request, identity)
+        raise HTTPException(status_code=409, detail="watten_result_delete_unsupported")
     if stored_type == HAUSDEPP_GAME_TYPE and not can_access_hausdepp(identity):
         raise HTTPException(status_code=404, detail="game_not_found")
     if stored_type == ZILCH_GAME_TYPE and not can_access_zilch_preview(identity):

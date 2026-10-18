@@ -107,12 +107,20 @@ Standalone-Kontexte, keine physische iPhone-Installation oder echten Konten.
 Die [reine Engine-Grundlage](docs/WATTEN_ENGINE.md) enthält inzwischen
 unveränderliche Karten-, Biet-, Zug- und Phasenübergänge, Warteraum und Rezept
 sowie getrennte private Speicherformate und erlaubte Spieler-/CPU-/Zuschauersichten.
-Sie ist noch ohne Spieladapter, Spiel-API, Datenbankanbindung oder Spieloberfläche.
+Ein separater lokaler Spieladapter bindet diese Grundlagen inzwischen an die
+bestehenden Konten, HTTP/WebSocket und dauerhafte Datenbankzustände an.
+`ROLLTHEDICE_WATTEN_GAME_PREVIEW=1` benötigt ebenfalls einen konfigurierten
+und angefragten lokalen Ursprung; der feste Wattenhost bleibt gesperrt.
+Eine menschliche Spieloberfläche und CPU-Ausführung sind noch nicht enthalten.
 Rechter-Referenz und Stichhistorie sind standardmässig aus; ohne Referenz wird
 die einmalig erlaubte Ansage nicht dauerhaft angezeigt. Partnerblatt ist nur
 im offenen Spiel mit Partnern wählbar; Guter/Schlechter bleiben aus. Die lokalen
-Grundlagentests ersetzen weder die kommende Vollprüfung noch Runtime-,
-Mehrgeräte- und Browserabnahme. Der feste Produktionshost bleibt geschlossen.
+Grundlagen haben die vollständige lokale Prüfung in PR #53 bestanden;
+Runtime-, Mehrgeräte- und Produktabnahme bleiben offen. Neu festgelegt ist:
+Wer eine laufende Partie bewusst verlässt, pausiert sie bis zur Rückkehr.
+Die lokale Runtime speichert diese Pause samt Sitz, Hand, offenem Gebot und
+Punkten; nur die frisch angemeldete betroffene Person kann ausdrücklich
+fortsetzen. Der feste Produktionshost bleibt geschlossen.
 
 **English:** Watten is the next planned game: usually four-player Ladinisch
 to 11 points, with private bottom-card inspection by the dealer and the next
@@ -175,12 +183,20 @@ or real accounts.
 The [pure engine foundation](docs/WATTEN_ENGINE.md) now provides immutable
 card, bidding, play and phase transitions, waiting rooms and recipes, with
 separate private storage schemas and allowed player/CPU/spectator views.
-It has no game adapter, gameplay API, database integration or game UI yet.
+A separate local game adapter now connects these foundations to existing
+accounts, HTTP/WebSocket transport and durable database state.
+`ROLLTHEDICE_WATTEN_GAME_PREVIEW=1` also requires both configured and requested
+local origins; the fixed Watten host stays closed. Human gameplay UI and CPU
+execution are not included yet.
 The matching Rechter reference and trick history default off; without the
 reference, the once-permitted call is not kept visible. Partner hands are
 an explicit option only in open games with partners; Guter/Schlechter stay off.
-Focused foundation tests do not replace the next full check or runtime,
-multiple-device and browser acceptance. The production host remains closed.
+The foundations passed the full local checks in PR #53; runtime,
+multiple-device and product acceptance remain open. A newly confirmed rule
+pauses a running match after an intentional departure until that player
+returns. The local runtime preserves that pause, seat, hand, pending bid and
+scores; only the freshly authenticated affected person can explicitly resume.
+The production host remains closed.
 
 ## Hausdepp — öffentlicher V3-Start / public V3 launch
 

@@ -1,6 +1,6 @@
 # Versionen / Versions
 
-Aktuelle gemeinsame Produktversion / Current shared product version: **3.12.2**.
+Aktuelle gemeinsame Produktversion / Current shared product version: **3.12.3**.
 
 ZDWA und Zilch werden gemeinsam versioniert. Major steht für einen großen
 Produktmeilenstein, Minor für neue Funktionen und Patch für Fehlerkorrekturen
@@ -27,6 +27,7 @@ Detailed player-facing descriptions are in the [changelog](../CHANGELOG.md).
 
 | Version | Datum / Date | Art / Type | Änderung / Change | Commit |
 | --- | --- | --- | --- | --- |
+| 3.12.2 | 2026-10-18 | patch | Interne Watten-Regelengine und Tischgrundlagen vorbereiten. / Prepare internal Watten rules and table foundations. | [8d914e1](https://github.com/Maetran/RollTheDice/commit/8d914e1bd4f21e304400e1b73d4690527f654018) |
 | 3.12.1 | 2026-10-18 | patch | Zuverlässiger Spielwechsel und geschlossene Watten-Kontogrundlage. / Reliable game switching and a closed Watten account foundation. | [da66185](https://github.com/Maetran/RollTheDice/commit/da66185aa77a784cabc09a97d9e471eea6603aba) |
 | 3.12.0 | 2026-10-18 | minor | Hausdepp belohnt seltene Funde mit zwei Sammelreihen und 20 neuen Erfolgen. / Hausdepp rewards rare finds with two collections and 20 new achievements. | [766bcb3](https://github.com/Maetran/RollTheDice/commit/766bcb3f0aa21593673b0f47112caa15e17856b3) |
 | 3.11.0 | 2026-10-18 | minor | Hausdepp: sichtbare Schlucke und Häppchen, Putzlumpen und neue kleine Tischüberraschungen. / Hausdepp: visible sips and bites, a cleaning cloth and new little table surprises. | [42ba267](https://github.com/Maetran/RollTheDice/commit/42ba26749098a4ce12d99873c349c8343dec1efa) |

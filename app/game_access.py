@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from typing import TYPE_CHECKING
 
-from .game_types import HAUSDEPP_GAME_TYPE, ZILCH_GAME_TYPE, game_type_from_state
+from .game_types import HAUSDEPP_GAME_TYPE, WATTEN_GAME_TYPE, ZILCH_GAME_TYPE, game_type_from_state
 from .security import normalize_username
 
 if TYPE_CHECKING:
@@ -98,8 +98,12 @@ def can_access_hausdepp(identity: AuthIdentity | None) -> bool:
     return identity is not None
 
 
-def can_access_game(identity: AuthIdentity | None, game: dict) -> bool:
+def can_access_game(identity: AuthIdentity | None, game: dict, connection=None) -> bool:
     """Apply the game-specific access policy to a live state."""
+    if game_type_from_state(game) == WATTEN_GAME_TYPE:
+        from .watten_access import can_access_watten
+
+        return can_access_watten(identity, connection)
     if game_type_from_state(game) == HAUSDEPP_GAME_TYPE:
         return can_access_hausdepp(identity)
     if game_type_from_state(game) != ZILCH_GAME_TYPE or can_access_zilch_preview(identity):

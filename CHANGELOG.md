@@ -23,6 +23,20 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 3.12.3 — Interne Watten-Partien / internal Watten matches — 2026-10-18
+
+**Deutsch:** Die lokale Watten-Entwicklung nutzt bestehende Konten für
+Warteräume, persönliche Spielzustände und dauerhaft verbuchte Partieresultate.
+Bewusstes Verlassen pausiert die Partie bis zur ausdrücklichen Rückkehr;
+Karten, Punkte und ein offenes Gebot bleiben erhalten. Die feste öffentliche
+Domain bleibt geschlossen. Spieloberfläche und CPU-Ausführung folgen separat.
+
+**English:** Local Watten development uses existing accounts for waiting rooms,
+personal game state and durably recorded match results. Intentionally leaving
+pauses the match until an explicit return, retaining cards, scores and a pending
+bid. The fixed public domain stays closed. Gameplay UI and CPU execution follow
+separately.
+
 ## 3.12.2 — Interne Watten-Grundlagen / internal Watten foundations — 2026-10-18
 
 **Deutsch:** Die internen Grundlagen für Watten bilden Karten, Stichwertung,
