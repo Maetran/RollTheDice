@@ -22,6 +22,7 @@ import httpx
 from fastapi.routing import iter_route_contexts
 
 from app import main
+from app.product_hosts import WATTEN_ORIGIN
 from app.site_seo import HAUSDEPP_ORIGIN, PUBLIC_SEO_PAGES, SITE_ORIGIN, ZILCH_ORIGIN
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -166,6 +167,20 @@ DOCUMENT_ROUTES = (
     ),
 )
 
+# Existing path names must also keep the new, reserved product host closed.
+# There is no Watten document or installable app yet, so this host contract
+# deliberately has no browser journey or public SEO registration.
+RESERVED_HOST_DOCUMENT_ROUTES = {
+    WATTEN_ORIGIN: (
+        RouteCoverage(
+            ("/", "/watten", "/watten/regeln", "/konto", "/hausdepp", "/zilch/anmelden",
+             "/spiel/example", "/watten/spiel/example/zuschauen", "/auth/continue"),
+            "tests/test_watten_readiness.py",
+            "test_all_documents_private_apis_and_static_aliases_are_closed_before_routing",
+        ),
+    ),
+}
+
 # Finite exclusions, not a suffix filter: a new route must be reviewed even if
 # it happens to end in .json or resembles an infrastructure endpoint.
 TECHNICAL_ROUTES = {
@@ -209,7 +224,8 @@ class NavigationInventoryTests(TestCase):
         )
 
     def test_inventory_references_existing_regression_tests(self):
-        for group in DOCUMENT_ROUTES:
+        host_groups = tuple(group for groups in RESERVED_HOST_DOCUMENT_ROUTES.values() for group in groups)
+        for group in (*DOCUMENT_ROUTES, *host_groups):
             with self.subTest(paths=group.paths):
                 test_file = ROOT / group.test_file
                 self.assertTrue(test_file.is_file(), group.test_file)

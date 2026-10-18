@@ -243,8 +243,10 @@
         "P4",
         "P7"
       ],
-      "status": "open",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Existing picker race fixed in cac1aab; deterministic old-source failure and 14 passing focused browser tests. Watten-specific help/team UI remains open."
+      ]
     },
     {
       "id": "S26",
@@ -253,8 +255,10 @@
         "P1",
         "P8"
       ],
-      "status": "open",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Staged host boundary beaa32c and explicit reserved-host navigation mapping; public Watten routes/SEO remain open."
+      ]
     },
     {
       "id": "S27",
@@ -785,8 +789,10 @@
         "P7",
         "P8"
       ],
-      "status": "open",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "WATTEN_P1_CONTRACTS.md inventories independent suite registries. Their actual Watten integration remains open."
+      ]
     }
   ]
 }

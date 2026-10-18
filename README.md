@@ -77,7 +77,16 @@ untersucht die Erstimplementierung und 20 spätere PRs. Alle 81 Befunde und
 Prüfverträge sind mit konkreter Vorbeugung und Abnahme in den
 [Watten-Umsetzungsplan](docs/WATTEN_IMPLEMENTATION_PLAN.md) übertragen:
 Regeln, CPUs, Teamwahl, Konto, Einladungen, Wiederaufnahme, Darstellung und
-Auslieferung. Offene Regelentscheidungen bleiben vor Entwicklungsbeginn zu klären.
+Auslieferung. Offene Regelentscheidungen bleiben vor der davon abhängigen
+Implementierung zu klären.
+
+Die Umsetzung ist gestartet: Der [Ausführungsstand](docs/WATTEN_EXECUTION_LOG.md)
+führt die Arbeitspakete und alle 81 Erkenntnisse weiter. Der feste Host
+`watten.zockdiewandan.online` bleibt während der Vorbereitung geschlossen;
+er liefert weder ein anderes Spiel noch dessen PWA oder persönliche Daten.
+Die [P1-Verträge](docs/WATTEN_P1_CONTRACTS.md) halten Konto, Routen, Passkeys,
+PWA und Suite-Dienste gemeinsam fest. Eine spielbare Wattenpartie ist noch
+nicht veröffentlicht.
 
 **English:** Watten is the next planned game: usually four-player Ladinisch
 to 11 points, with private bottom-card inspection by the dealer and the next
@@ -114,7 +123,14 @@ examines the first implementation and 20 later PRs. All 81 findings and
 contracts have concrete preventive actions and acceptance scenarios in the
 [Watten implementation plan](docs/WATTEN_IMPLEMENTATION_PLAN.md), covering
 rules, CPUs, team selection, accounts, invitations, recovery, presentation and
-delivery. Outstanding rule decisions must be settled before development.
+delivery. Outstanding rule decisions must be settled before dependent work.
+
+Implementation has started. The [execution log](docs/WATTEN_EXECUTION_LOG.md)
+tracks the work packages and all 81 findings. The fixed host
+`watten.zockdiewandan.online` stays closed during preparation; it cannot serve
+another game, its PWA or personal data. The [P1 contracts](docs/WATTEN_P1_CONTRACTS.md)
+cover accounts, routes, passkeys, PWA and suite services together. Playable
+Watten has not been publicly released.
 
 ## Hausdepp — öffentlicher V3-Start / public V3 launch
 
