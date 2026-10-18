@@ -660,3 +660,26 @@ Spielkommandos, Socialdialog versteckt Deko und Pagehide leert den Tisch.
 Zwei Bildschirmbilder tatsächlich visuell geprüft.67 integrierte Nodefälle
 für Deko/Lobby/Social/Rematch/API bestanden in113.9ms. Diese gezielten Belege
 ersetzen den folgenden vollständigen Nachweis nicht.
+
+
+### Native Spieltag-Erfassung – vorbereitetes Suite-Paket
+
+Akzeptierte menschliche Schlag-/Farbansagen, Karten, Gebote und Antworten
+schreiben den monotonen kontoweiten Zürcher Spieltag in derselben Transaktion
+wie den nativen Checkpoint. Frische Session und gebundener Transport bleiben
+Voraussetzung. Joins, Sitz-/Startaktionen, Einschauen, Delivery-ACKs,
+Partnergefühl, CPU-Persistenz und Befehlsreplays zählen nicht. Fehlgeschlagene
+Commits verändern weder Checkpoint noch Spieltag. Eigene gespeicherte
+Wattenresultate ergänzen die bestehende historische Reminder-Eligibility,
+ohne Resultate über die geschlossenen gemeinsamen Produkt-APIs freizugeben.
+
+Neun neue gezielte Fälle plus die aktualisierte native Resultgrenze bestehen
+(**10 Tests, 7.17 s**); Runtime und bestehende Reminder anschliessend **48 Tests
+plus vier Unterfälle, 31.87 s**. Ruff und Bandit mit Repository-Konfiguration
+grün. Unabhängiger Quellreview ohne bestätigten Befund. Kein Versand,
+Worker-/Frontendfreigabe, Vollnachweis oder öffentlicher Release daraus.
+
+Accepted human calls, cards and bidding decisions now record the account play
+day atomically with the checkpoint. Replay, inspection, advice and CPU paths
+remain excluded. Independent review and focused regressions passed; native
+push delivery and complete product acceptance remain open.

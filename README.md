@@ -55,6 +55,18 @@ levels and award values remain labelled as a proposal. Reading older results
 never retrospectively grants XP. Both local preview flags are required; the
 public Watten domain remains closed.
 
+**Spieltag / play day:** Akzeptierte menschliche Ansagen, Karten und Gebots-
+entscheidungen zählen im lokalen Watten für die kontoweite Tagesaktivität.
+Der Spieltag wird atomar mit dem Spielstand gespeichert. Beitreten, Zuschauen,
+Einschauen, Partnergefühl, Computerzüge und wiederholte Befehle zählen nicht.
+Eigene abgeschlossene Wattenresultate zählen auch für die Reminderprüfung;
+das schaltet keine Wattenbenachrichtigungen frei.
+Accepted human calls, card plays and bidding decisions count towards the
+account's play day, atomically with the checkpoint. Joining, watching,
+inspection, partner feedback, CPU turns and command replays do not count.
+Owned completed Watten results also inform reminder eligibility; this does
+not enable Watten notifications.
+
 **Favorit / favorite:** Im lokalen Erstellformular lässt sich ein vollständiges
 Tischrezept je Konto speichern und bewusst wieder anwenden, einschliesslich
 Computerplätzen. Passwörter werden nicht mitgespeichert. Ein geschützter Favorit

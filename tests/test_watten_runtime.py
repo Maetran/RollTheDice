@@ -570,7 +570,7 @@ def test_strict_codec_rejects_unknown_duplicate_nonfinite_fields_and_private_rep
     assert "bells-" not in repr(game["_watten"]) and "account_id" not in repr(game["_watten"])
 
 
-def test_stored_watten_results_never_fall_through_main_result_history_stats_delete_or_reminders(server, monkeypatch):
+def test_stored_watten_results_stay_private_but_count_as_account_play_day(server, monkeypatch):
     owner = account("RuntimeResultOwner", role="admin")
     identity, cookie = owner
     result_id = "private-local-watten-result"
@@ -606,7 +606,7 @@ def test_stored_watten_results_never_fall_through_main_result_history_stats_dele
     from app.game_activity import not_played_on, play_day
 
     with session_scope() as db:
-        assert db.scalar(select(User.id).where(User.id == identity.user_id, not_played_on(play_day(utcnow())))) == identity.user_id
+        assert db.scalar(select(User.id).where(User.id == identity.user_id, not_played_on(play_day(utcnow())))) is None
         assert db.scalar(select(func.count(CompletedGame.id))) == 1
         assert db.scalar(select(func.count(DeletedGame.id))) == 0
     monkeypatch.setenv("ROLLTHEDICE_WATTEN_GAME_PREVIEW", "0")

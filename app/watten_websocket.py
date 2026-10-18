@@ -211,7 +211,13 @@ async def _handle_locked(session, action: str, data: dict) -> bool:
                  if item.delivery_id not in previous}
         public_call_events = tuple({"kind": kind, "seat": seat, "value": value}
                                    for kind, seat, value in sorted(fresh))
-        persist_watten_game(candidate)
+        # Explicit decisions and card play count only for this freshly bound
+        # human, atomically with persistence. Inspections, feedback, room
+        # controls, CPUs and safe command replays never create activity.
+        human_actor = (identity.user_id, session.player_id) if action == "watten_command" and data["kind"] in {
+            "announce_strike", "announce_colour", "play_card", "bid", "respond",
+        } else None
+        persist_watten_game(candidate, human_actor=human_actor)
         _install(game, candidate)
         if action == "watten_start" and not was_started and game["_started"]:
             from .friend_activity import publish_friend_game_start

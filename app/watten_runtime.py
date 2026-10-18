@@ -17,10 +17,10 @@ from dataclasses import dataclass, replace
 from datetime import datetime
 from weakref import WeakValueDictionary
 
-from sqlalchemy import select, update
+from sqlalchemy import or_, select, update
 
 from .database import database_schema_ready, session_scope
-from .models import ActiveGame
+from .models import ActiveGame, User
 from .security import hash_password, utcnow, verify_password
 from .watten_cpu_memory import CpuMemory, memory_from_storage, memory_to_storage, new_memory
 from .watten_engine import (
@@ -655,7 +655,27 @@ def _write_checkpoint(db, checkpoint: dict, *, creating=False, expected_json=Non
     return True
 
 
-def persist_watten_game(game: dict, *, creating: bool = False) -> None:
+def _record_human_play_day(db, checkpoint: dict, actor: tuple[int, str]) -> None:
+    """Account activity shares the accepted checkpoint's transaction."""
+    from .game_activity import play_day
+
+    if (type(actor) is not tuple or len(actor) != 2 or type(actor[0]) is not int
+            or actor[0] <= 0 or type(actor[1]) is not str):
+        raise ValueError("watten_actor_not_bound")
+    account, player = actor
+    runtime = checkpoint["_watten"]
+    if (runtime.engine is None or not any(member.account_id == account
+            and member.participant_id == player and member.seat is not None for member in runtime.room.members)
+            or not any(record["id"] == player and record.get("user_id") == account
+                       for record in checkpoint["_players"])):
+        raise ValueError("watten_actor_not_bound")
+    day = play_day(utcnow())
+    db.execute(update(User).where(User.id == account,
+        or_(User.last_played_on.is_(None), User.last_played_on < day)).values(last_played_on=day))
+
+
+def persist_watten_game(game: dict, *, creating: bool = False,
+                        human_actor: tuple[int, str] | None = None) -> None:
     """Raise on storage failure; the caller must keep the prior live state."""
     if not database_schema_ready():
         raise RuntimeError("watten_database_not_ready")
@@ -672,6 +692,8 @@ def persist_watten_game(game: dict, *, creating: bool = False) -> None:
             checkpoint["_completion_persisted"] = True
             store_completion_progress(db, checkpoint)
         _write_checkpoint(db, checkpoint, creating=creating)
+        if human_actor is not None:
+            _record_human_play_day(db, checkpoint, human_actor)
         from .watten_public_titles import refresh_public_titles
 
         db.flush()  # Actual checkpoint/result failures must still abort gameplay.
