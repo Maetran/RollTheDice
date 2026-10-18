@@ -389,3 +389,26 @@ are integrated on the next feature branch. The broad final audit and exact
 full-check receipt remain pending. Claude separately implements bounded CPU and
 human UI packages; production and full Watten acceptance remain closed. All81
 findings remain required, including progression, suite services and device QA.
+
+## 18.10.2026 – native Runtime nach develop integriert
+
+`598af7ac376bffa78b2cfb008a02ffa1fd5e978e` bestand auf Basis `8d914e1`
+alle sieben vollständigen lokalen Prüfgruppen: Qualität/Sicherheit, Tools,
+**1’840 Backendtests, 84.87 % Coverage**, Produktionsimage/Container,
+vier Haupt-Browserteile und drei Kontosuiten sowie Diff. Beleg:
+`test-results/local-checks/598af7ac376b-1792342778581-3160f590/`.
+Owner-Status und PR-CI grün; [PR #54](https://github.com/Maetran/RollTheDice/pull/54)
+wurde normal als `f6e0e89185d8aa862335b773adeff1c3bc021dd9` übernommen.
+Erster Elternteil ist exakt `8d914e1`, der Merge-Tree entspricht dem geprüften
+`598af7a`; anschliessende Integrations-CI ebenfalls grün. Kein App-Deploy.
+Nächste Integration auf `codex/watten-game-integration` ab `origin/develop=f6e0e89`.
+
+Claudes erstes CPU-Paket `42ccf4c` ist ausdrücklich **nicht abgenommen**:
+Lead-Ruff/Bandit/Vulture grün, erster tatsächlicher Testlauf **5 fehlgeschlagen,
+62 bestanden, 3.92 Sekunden**. Vier Fälle betreffen freiwilliges endloses
+Aufbieten bei bereits partieentscheidendem Einsatz, ein Fall unnötiges Opfern
+eines Schlags. Unabhängige Reviews bestätigten zusätzlich zwei strikte
+Gedächtnis-/DTO-Prüflücken. Eine eigene neue Claude-Aufgabe korrigiert nur diese
+vier Dateien; Tests führt Root aus. Drei fehlende Profilkombinationen werden
+vor der endgültigen CPU-Abnahme ebenfalls geprüft. Der getrennte Runner bleibt
+bis zur bestätigten Policy ausdrücklich ohne freigegebenes Autoplay.
