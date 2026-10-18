@@ -5,7 +5,7 @@ import test from "node:test";
 const source = await readFile(new URL("../frontend/multigame/routes.js", import.meta.url), "utf8");
 const { wattenAccountReturnPath } = await import(`data:text/javascript;base64,${Buffer.from(source).toString("base64")}`);
 const table = "/watten/spiel/0123456789abcdef";
-const allowed = ["/watten", "/watten/konto", "/watten/konto/einstellungen", "/watten/regeln", table, `${table}/zuschauen`];
+const allowed = ["/watten", "/watten/konto", "/watten/konto/einstellungen", "/watten/konto/fortschritt", "/watten/konto/verlauf", "/watten/rangliste", "/watten/regeln", table, `${table}/zuschauen`];
 
 test("Watten returns preserve exact native destinations including the canonical table and spectator", () => {
   for (const path of allowed) assert.equal(wattenAccountReturnPath(path), path);

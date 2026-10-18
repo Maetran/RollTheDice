@@ -2322,5 +2322,12 @@
     "date": "2026-10-18",
     "bump": "patch",
     "summary": "Dauerhafte interne Watten-Partien und persönliche Spielzustände anbinden. / Connect durable internal Watten matches and personal game state."
+  },
+  {
+    "version": "3.13.0",
+    "revision": "782972bcec9e53a741e43ddb561cf32a4d614dc6",
+    "date": "2026-10-18",
+    "bump": "minor",
+    "summary": "Interne Watten-Oberfläche und persönliche Computergegner verbinden. / Connect the internal Watten interface and personal computer opponents."
   }
 ]

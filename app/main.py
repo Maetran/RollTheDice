@@ -144,7 +144,9 @@ from .site_seo import (
 from .versioning import current_version
 from .watten_accounts import router as watten_accounts_router
 from .watten_accounts import watten_account_action_page
+from .watten_favorite_pages import router as watten_favorite_router
 from .watten_pages import router as watten_pages_router
+from .watten_progress_pages import router as watten_progress_router
 from .watten_pwa import router as watten_pwa_router
 from .watten_readiness import WattenReadinessMiddleware
 from .web_push import (
@@ -556,6 +558,8 @@ app.include_router(analytics_router)
 app.include_router(watten_accounts_router)
 app.include_router(watten_pwa_router)
 app.include_router(watten_pages_router)
+app.include_router(watten_progress_router)
+app.include_router(watten_favorite_router)
 
 LEGACY_PAGE_PATHS = {
     "/static/index.html": "/",
@@ -642,6 +646,7 @@ async def response_cache_policy(request: Request, call_next):
         "/static/watten-account.html",
         "/static/watten-game.html",
         "/static/watten-rules.html",
+        "/static/watten-progress.html",
         "/static/watten-email-action.html",
         "/static/watten-manifest.webmanifest",
         "/static/watten-manifest-en.webmanifest",

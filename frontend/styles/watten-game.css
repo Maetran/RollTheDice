@@ -310,3 +310,32 @@ html[lang="en"] .wt-rules-text[lang="de"], html:not([lang="en"]) .wt-rules-text[
   *, *::before, *::after { animation-duration: .01ms !important; animation-delay: 0s !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
   .wt-bubble { animation: none; }
 }
+
+/* Personal progress and standings share the table's paper and type. */
+.wt-progress-tabs { display: flex; flex-wrap: wrap; gap: .4rem; margin: .75rem 0; }
+.wt-progress-tabs a { display: inline-flex; align-items: center; min-height: 44px; padding: .4rem .75rem; border: 1px solid var(--wt-green); border-radius: 8px; }
+.wt-progress-tabs [aria-current] { background: var(--wt-green); color: var(--wt-paper); }
+.wt-draft-note { padding: .5rem .75rem; border-left: 3px solid var(--wt-gold-ink); }
+.wt-progress-title, .wt-progress-pending { margin-bottom: 1rem; overflow-wrap: anywhere; }
+.wt-progress-stats { display: flex; flex-wrap: wrap; gap: 1rem 2rem; }
+.wt-progress-stats dt { color: var(--wt-muted); font-size: .9rem; }
+.wt-progress-stats dd { margin: 0; font: 700 1.5rem Georgia, serif; }
+.wt-achievement-grid { list-style: none; padding: 0; display: grid; gap: .75rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr)); }
+.wt-achievement-grid li { min-width: 0; overflow-wrap: anywhere; }
+.wt-achievement-grid .is-earned { border-color: var(--wt-green); box-shadow: inset 4px 0 var(--wt-green); }
+#wattenProgress progress { width: 100%; height: 1rem; accent-color: var(--wt-green); }
+.wt-match-history { list-style: none; margin: 0; padding: 0; }
+.wt-match-history > li { border-block-start: 1px solid var(--wt-paper-edge); padding-block: 1rem; overflow-wrap: anywhere; }
+.wt-match-history h2 { font-size: 1.2rem; }
+.wt-rank-filters { display: flex; flex-wrap: wrap; gap: .75rem; align-items: end; margin-bottom: 1rem; }
+.wt-rank-filters label { flex: 1 1 12rem; min-width: 0; }
+.wt-ranking-scroll { overflow-x: auto; }
+.wt-ranking { width: 100%; text-align: left; border-collapse: collapse; }
+.wt-ranking caption { text-align: left; margin-block: .5rem; }
+.wt-ranking th, .wt-ranking td { padding: .6rem .4rem; border-block-end: 1px solid var(--wt-paper-edge); overflow-wrap: anywhere; }
+.wt-ranking th[scope="row"] { max-width: 16rem; }
+.wt-ranking .is-own { background: #24553d12; }
+.wt-feed { list-style: none; padding: 0; }
+.wt-feed > li { border-block-start: 1px solid var(--wt-paper-edge); padding-block: .75rem; overflow-wrap: anywhere; }
+.wt-feed h3 { margin-block: .25rem; }
+.wt-seat-slot .wt-seat-public-title { color: var(--wt-muted); }

@@ -6,7 +6,7 @@ const isolated = browserTestEnvironment({ name: 'watten', portVariable: 'ROLLTHE
 const baseURL = `http://127.0.0.1:${isolated.port}`;
 
 module.exports = defineConfig({
-  testDir: 'tests/browser', testMatch: 'watten-game.spec.js',
+  testDir: 'tests/browser', testMatch: 'watten-*.spec.js',
   fullyParallel: false, workers: 1, timeout: 45000,
   reporter: isolated.reporter, outputDir: isolated.outputDir,
   use: { baseURL, browserName: 'chromium', serviceWorkers: 'block',

@@ -156,6 +156,11 @@ DOCUMENT_ROUTES = (
         ("tests/browser-passkeys/watten-account.spec.js",),
     ),
     RouteCoverage(
+        ("/watten/konto/fortschritt", "/watten/konto/verlauf", "/watten/rangliste"),
+        "tests/test_watten_progress_pages.py", "test_native_progress_pages_protect_identity_and_keep_canonical_return_path",
+        ("tests/browser/watten-progress.spec.js",),
+    ),
+    RouteCoverage(
         ("/watten/regeln",), "tests/test_watten_pages.py",
         "test_local_public_lobby_and_rules_serve_actual_game_documents",
         ("tests/browser/watten-game.spec.js",),

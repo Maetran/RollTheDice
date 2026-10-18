@@ -1,5 +1,5 @@
 import "../i18n/index.js";
-import { loadAuth, escapeHtml as esc } from "../shared/auth.js";
+import { loadAuth, apiFetch, escapeHtml as esc } from "../shared/auth.js";
 import { initializeGameViewport } from "../shared/game-viewport.js";
 import { wattenAccountReturnPath } from "../multigame/routes.js";
 import { initializeWattenPwa } from "./pwa.js";
@@ -7,6 +7,8 @@ import { t, prepareWattenCards, strikeName, suitName, STRIKES, SUITS } from "./c
 import { dismissLandscapeHint, joinFormMarkup, recipeMarkup, spectateFormMarkup, waitingRoomMarkup } from "./waiting-room.js";
 import { createTableView } from "./table.js";
 import { createMotion } from "./motion.js";
+import { createMatchProgress } from "./match-progress.js";
+import { applyFavoriteToCreator, createFavorites, favoriteText, readCreatorRecipe, syncCreatorProtection } from "./favorites.js";
 
 // Metadata only: these preview documents neither register a worker nor
 // advertise installation; the account pages own that local experiment.
@@ -38,6 +40,7 @@ let account = null;
 let latestUserId;
 let anonymousMount = false;
 let navigating = false;
+let matchProgress = null;
 const cleanups = new Set();
 
 function errorText(code) {
@@ -54,6 +57,7 @@ function renderNav(auth) {
   const user = auth?.authenticated ? auth.user : null;
   nav.innerHTML = `<a href="/watten"${page === "lobby" ? " aria-current=\"page\"" : ""}>${esc(t("nav.lobby"))}</a>
     <a href="/watten/regeln"${page === "rules" ? " aria-current=\"page\"" : ""}>${esc(t("nav.rules"))}</a>
+    ${user ? `<a href="/watten/konto/fortschritt">${esc(t("nav.progress"))}</a><a href="/watten/rangliste">${esc(t("nav.ranking"))}</a>` : ""}
     ${user ? `<a href="/watten/konto/einstellungen" aria-label="${esc(t("nav.accountOf", { name: user.username }))}"><span translate="no">${esc(user.username)}</span></a>`
       : `<a href="${esc(signInUrl())}">${esc(t("nav.signIn"))}</a>`}`;
 }
@@ -135,14 +139,21 @@ function creatorMarkup(username) {
       </fieldset>
       <label class="wt-check"><input type="checkbox" name="blind" checked><span>${esc(t("create.blind"))}<small>${esc(t("create.blindHelp"))}</small></span></label>
       <label>${esc(t("create.target"))}<select name="target">${targets.map(points => `<option value="${points}"${points === 11 ? " selected" : ""}>${esc(t(points === 3 ? "create.targetShort" : "create.targetOption", { points }))}</option>`).join("")}</select></label>
-      <details class="wt-more"><summary>${esc(t("create.more"))}</summary>
+      <details class="wt-more" data-watten-advanced><summary>${esc(t("create.more"))}</summary>
         <label class="wt-check"><input type="checkbox" name="critical"><span>${esc(t("create.critical"))}<small>${esc(t("create.criticalHelp"))}</small></span></label>
         <label class="wt-check"><input type="checkbox" name="show_rechter"><span>${esc(t("create.showRechter"))}<small>${esc(t("create.showRechterHelp"))}</small></span></label>
         <label class="wt-check"><input type="checkbox" name="trick_history"><span>${esc(t("create.trickHistory"))}<small>${esc(t("create.trickHistoryHelp"))}</small></span></label>
         <label class="wt-check"><input type="checkbox" name="partner_hand"><span>${esc(t("create.partnerHand"))}<small data-watten-partner-help>${esc(t("create.partnerHandHelp"))}</small></span></label>
-        <label>${esc(t("create.password"))}<input name="password" type="password" autocomplete="new-password" maxlength="100"><small>${esc(t("create.passwordHelp"))}</small></label>
+        <fieldset class="wt-segmented"><legend>${esc(favoriteText("cpuWishes"))}</legend>
+          ${[0, 1, 2, 3].map(seat => `<label><input type="checkbox" name="cpu_seats" value="${seat}" data-watten-cpu-seat>
+            <span>${esc(favoriteText("cpuSeat", { seat: seat + 1 }))}</span></label>`).join("")}
+        </fieldset>
+        <label class="wt-check"><input type="checkbox" name="password_required" data-watten-password-protection><span>${esc(favoriteText("protection"))}
+          <small>${esc(favoriteText("protectionHelp"))}</small></span></label>
+        <label>${esc(t("create.password"))}<input name="password" type="password" autocomplete="new-password" maxlength="100" data-watten-password disabled><small>${esc(t("create.passwordHelp"))}</small></label>
       </details>
       <p class="wt-note">${esc(t("create.cpuSeats"))}</p>
+      <section data-watten-favorite></section>
       <button type="submit" class="wt-primary">${esc(t("create.submit"))}</button>
       <p class="wt-error" role="alert" data-watten-create-error></p>
     </form>
@@ -165,23 +176,17 @@ function syncCreator(form, countChanged) {
   const partnerAllowed = count !== 2 && !form.elements.blind.checked;
   form.elements.partner_hand.disabled = !partnerAllowed;
   if (!partnerAllowed) form.elements.partner_hand.checked = false;
+  for (const control of form.querySelectorAll("[data-watten-cpu-seat]")) {
+    control.disabled = Number(control.value) >= count;
+    control.closest("label").hidden = control.disabled;
+    if (control.disabled) control.checked = false;
+  }
+  syncCreatorProtection(form);
   form.querySelector("[data-watten-count-note]").textContent = t(`create.count${count}Note`);
 }
 
 function recipeFromForm(form) {
-  const count = Number(form.elements.count.value);
-  const password = form.elements.password.value.trim();
-  return {
-    password,
-    recipe: {
-      kind: "watten_recipe", schema_version: 1, ruleset_id: "watten-house", ruleset_version: 1,
-      player_count: count, determination: form.elements.determination.value,
-      blind: form.elements.blind.checked, critical: form.elements.critical.checked,
-      target_points: Number(form.elements.target.value), cpu_seats: [],
-      show_rechter: form.elements.show_rechter.checked, trick_history: form.elements.trick_history.checked,
-      partner_hand: form.elements.partner_hand.checked, password_required: Boolean(password),
-    },
-  };
+  return readCreatorRecipe(form, { requirePassword: true });
 }
 
 function detailCode(detail) {
@@ -195,13 +200,29 @@ function mountCreator(gen) {
   const submit = form.querySelector("button[type=submit]");
   let busy = false;
   syncCreator(form, true);
+  const favorites = createFavorites({ container: form.querySelector("[data-watten-favorite]"), apiFetch, loadAuth, escapeHtml: esc,
+    getRecipe: () => readCreatorRecipe(form).recipe,
+    applyRecipe: recipe => { applyFavoriteToCreator(form, recipe); syncCreator(form, false); error.textContent = ""; },
+    getExpectedAccountId: () => account?.id,
+    isCurrent: () => gen === generation && !navigating && latestUserId === account?.id,
+    onAccountChanged: reloadFresh });
+  cleanups.add(() => { favorites.destroy(); form.elements.password.value = ""; });
   form.addEventListener("change", event => syncCreator(form, event.target.name === "count"));
   form.addEventListener("submit", async event => {
     event.preventDefault();
     if (busy) return;
     const name = form.elements.name.value.trim();
     if (!name) { error.textContent = t("create.nameRequired"); form.elements.name.focus(); return; }
-    const { recipe, password } = recipeFromForm(form);
+    let recipe, password;
+    try { ({ recipe, password } = recipeFromForm(form)); }
+    catch (failure) {
+      error.textContent = failure.message;
+      if (form.elements.password_required.checked && !form.elements.password.value.trim()) {
+        form.querySelector("[data-watten-advanced]").open = true;
+        form.elements.password.focus();
+      }
+      return;
+    }
     busy = true;
     submit.disabled = true;
     error.textContent = "";
@@ -817,6 +838,8 @@ function render(previous = null, live = false) {
   const captured = sameDeal ? motion.capture(session.view.motionSources(), node => node.dataset.key) : null;
   let result;
   preserveFocus(() => { result = session.view.update(vm); });
+  matchProgress?.update({ container: root.querySelector("[data-watten-match-progress]"), snapshot,
+    playerId: session.playerId, spectator: session.spectator });
   if (captured) {
     for (const item of result.trick.created) {
       motion.arrive(item.node, captured.rects.get(item.card) || captured.rects.get(`seat-${item.seat}`), captured);
@@ -900,6 +923,12 @@ async function mountTable() {
   }
   account = { id: auth.user.id, username: auth.user.username };
   latestUserId = account.id;
+  matchProgress?.destroy();
+  matchProgress = createMatchProgress({ gameId, apiFetch, loadAuth, escapeHtml: esc,
+    getExpectedAccountId: () => account?.id,
+    isCurrent: () => gen === generation && !navigating && latestUserId === account?.id,
+    onAccountChanged: reloadFresh });
+  cleanups.add(() => { matchProgress?.destroy(); matchProgress = null; });
   setConnection("cards");
   try { await prepareWattenCards(); } catch {
     if (gen !== generation) return;

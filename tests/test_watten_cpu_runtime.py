@@ -192,30 +192,43 @@ def test_failed_cpu_checkpoint_never_installs_or_spins_and_restart_can_recover(s
     asyncio.run(scenario())
 
 
-def test_storage_v2_strict_bindings_and_v1_human_compatibility_without_denied_reconstruction(server, monkeypatch):
+@pytest.mark.parametrize("version", (1, 2))
+def test_storage_v3_strict_bindings_and_legacy_compatibility_without_denied_reconstruction(server, monkeypatch, version):
     game_id, _owners, _sessions = local_started(server, count_players=2)
     raw = serializable_game_state(games[game_id])
-    raw["_watten"].pop("cpu_memories")
-    raw["_watten"]["schema_version"] = 1
+    raw["_watten"].pop("bid_counters")
+    if version == 1:
+        raw["_watten"].pop("cpu_memories")
+    raw["_watten"]["schema_version"] = version
     restored = restore_watten_json(json.dumps(raw))
     assert restored["_watten"].engine == games[game_id]["_watten"].engine
-    assert serializable_game_state(restored)["_watten"]["schema_version"] == 2
+    assert restored["_watten"].bid_counters is None
+    assert serializable_game_state(restored)["_watten"]["schema_version"] == 3
     # A fresh separate account/game avoids fabricating any human CPU identity.
     owner = account("LegacyCpuOwner")
     waiting_id = create_game(server, owner, cpus=(1,))
     waiting = serializable_game_state(games[waiting_id])
-    waiting["_watten"].pop("cpu_memories")
-    waiting["_watten"]["schema_version"] = 1
+    waiting["_watten"].pop("bid_counters")
+    if version == 1:
+        waiting["_watten"].pop("cpu_memories")
+    waiting["_watten"]["schema_version"] = version
     waiting_restored = restore_watten_json(json.dumps(waiting))
     assert waiting_restored["_watten"].engine is None
     assert restore_watten_json(json.dumps(serializable_game_state(waiting_restored)))["_watten"] == waiting_restored["_watten"]
     cpu_id, _owners, _sessions = local_started_reusing_account(server, owner)
     cpu_raw = serializable_game_state(games[cpu_id])
+    legacy_v2 = deepcopy(cpu_raw)
+    legacy_v2["_watten"].pop("bid_counters")
+    legacy_v2["_watten"]["schema_version"] = 2
+    restored_v2 = restore_watten_json(json.dumps(legacy_v2))
+    assert restored_v2["_watten"].cpu_memories == games[cpu_id]["_watten"].cpu_memories
+    assert restored_v2["_watten"].bid_counters is None
     bad = deepcopy(cpu_raw)
     bad["_watten"]["cpu_memories"] = []
     with pytest.raises(ValueError, match="watten_invalid_cpu_memory"):
         restore_watten_json(json.dumps(bad))
     cpu_raw["_watten"].pop("cpu_memories")
+    cpu_raw["_watten"].pop("bid_counters")
     cpu_raw["_watten"]["schema_version"] = 1
     with pytest.raises(ValueError, match="watten_cpu_legacy_memory_unavailable"):
         restore_watten_json(json.dumps(cpu_raw))

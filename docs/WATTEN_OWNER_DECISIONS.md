@@ -38,6 +38,7 @@ Quellenregeln entscheiden keine hier noch offenen Fälle.
 | Partnerblatt | Ausschliesslich bei offenem Spiel als Option möglich. Kein Partnerblattblick im blinden Standardspiel. |
 | Stichhistorie | Als wählbare Option bei der Spielerstellung anbieten. Inhalt/Umfang der freigegebenen Historie noch genau festlegen. |
 | Kartenhinweise | Konkrete Kartenhinweise sind verboten, besonders beim blinden Spiel. Owner unterscheidet theoretisches Verbot von der praktisch begrenzten Durchsetzbarkeit freier Kommunikation. Kein automatischer Inhaltsfilter oder Erkennungserfolg ist damit behauptet. |
+| Freier Chat und öffentliche Emojis bei gestrichen | Konkreter Fall neun von elf Punkten während laufender Gabe: **Nachrichten und Emojis bleiben erlaubt.** Die Sperre für ein eigenes Eröffnungsgebot schaltet diese Kanäle nicht ab. Halten, Gehen, Aufbieten und privates Partnergefühl bleiben wie bestätigt erlaubt; konkrete Kartenhinweise bleiben verboten. |
 | Komfortumfang | «alle komfortfunktionen rein»: Favoriten, Reaktionen und Tischdeko sowie die im Plan erfassten Komfortfunktionen in den Umfang aufnehmen. Spiel-/Kommunikationsschutzverträge bleiben verbindlich. |
 | Bewusstes Verlassen einer laufenden Partie | Konkretes Viererbeispiel: C klickt bewusst «Partie verlassen». Owner entscheidet: «Partie wartet auf Cs Rückkehr.» Die Partie pausiert; weder CPU-Ersatz noch Abbruch oder Ergebniswertung werden daraus abgeleitet. |
 

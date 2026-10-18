@@ -4,6 +4,7 @@ import { cardArt } from "../hausdepp/cards.js";
 import { escapeHtml as esc } from "../shared/auth.js";
 import { t, cardFace, cardBack, cardName, sortHand, suitName, strikeName, SUITS, STRIKES, isCard } from "./cards.js";
 import { teamName } from "./waiting-room.js";
+import { publicTitleMarkup } from "./match-progress.js";
 
 const POSITIONS = { 2: ["bottom", "top"], 3: ["bottom", "left", "right"], 4: ["bottom", "left", "top", "right"] };
 const FEEDBACK = ["good", "bad", "unsure"];
@@ -77,6 +78,9 @@ function seatBadge(vm, seat) {
   return `<div class="wt-seat wt-seat--${position}${own ? " is-own" : ""}${turn ? " is-turn" : ""}${decider ? " is-decider" : ""}${awaited ? " is-away" : ""}"
       data-wt-seat="${seat}" data-key="seat-${seat}">
     <span class="wt-seat-name" translate="no">${esc(seatName(vm, seat))}</span>
+    ${publicTitleMarkup(vm.room.seats[seat]?.public_title, {
+      language: window.ZDWA_I18N?.getLanguage?.(), escapeHtml: esc,
+    })}
     <span class="wt-seat-tags">${tags.map(tag => `<span class="wt-tag">${esc(tag)}</span>`).join("")}</span>
     <span class="wt-seat-meta">${esc(t("seat.cards", { count: info.card_count }))} · ${esc(t("seat.tricks", { count: tricks }))}</span>
     ${backs}
@@ -128,6 +132,7 @@ function panelMarkup(vm) {
       ${resultMarkup(vm)}
       <p><strong translate="no">${esc(winners.join(", "))}</strong> · ${esc(t("match.winners", { count: winners.length }))}</p>
       <p class="wt-note">${esc(vm.snapshot.result_persisted ? t("match.saved") : t("match.saving"))}</p>
+      <div data-watten-match-progress hidden></div>
       <a class="wt-button" href="/watten">${esc(t("nav.lobby"))}</a>
     </div>`;
   }

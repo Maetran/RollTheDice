@@ -8,6 +8,7 @@ from sqlalchemy import (
     Date,
     DateTime,
     ForeignKey,
+    ForeignKeyConstraint,
     Index,
     Integer,
     LargeBinary,
@@ -634,6 +635,100 @@ class CompletedGame(Base):
             return normalize_game_type(value)
         except ValueError as exc:
             raise ValueError("invalid_game_type") from exc
+
+
+class WattenMatchEvidence(Base):
+    """Private frozen public facts and original relational authority; no hands."""
+
+    __tablename__ = "watten_match_evidence"
+    game_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    result_v1_json: Mapped[str] = mapped_column(Text, nullable=False)
+    evidence_json: Mapped[str] = mapped_column(Text, nullable=False)
+    bindings_json: Mapped[str] = mapped_column(Text, nullable=False)
+    frozen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class WattenProgressState(Base):
+    """DRAFT journal epoch and monotonic receipt, without a reset operation."""
+
+    __tablename__ = "watten_progress_states"
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    generation: Mapped[int] = mapped_column(Integer, nullable=False)
+    grant_sequence: Mapped[int] = mapped_column(Integer, nullable=False)
+    acknowledged_sequence: Mapped[int] = mapped_column(Integer, nullable=False)
+    __table_args__ = (
+        CheckConstraint("generation >= 1", name="ck_watten_progress_generation"),
+        CheckConstraint("grant_sequence >= 0 AND acknowledged_sequence >= 0 AND acknowledged_sequence <= grant_sequence",
+                        name="ck_watten_progress_cursor"),
+    )
+
+
+class WattenMatchCredit(Base):
+    """Immutable account/game credit; prices never come from a later catalog."""
+
+    __tablename__ = "watten_match_credits"
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    generation: Mapped[int] = mapped_column(Integer, primary_key=True)
+    game_id: Mapped[str] = mapped_column(ForeignKey("watten_match_evidence.game_id"), primary_key=True)
+    player_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    finished_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    won: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    cohort_json: Mapped[str] = mapped_column(Text, nullable=False)
+    xp: Mapped[int] = mapped_column(Integer, nullable=False)
+    policy_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    catalog_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    grant_sequence: Mapped[int] = mapped_column(Integer, nullable=False)
+    __table_args__ = (
+        CheckConstraint("generation >= 1 AND policy_version >= 1 AND catalog_version >= 1",
+                        name="ck_watten_credit_versions"),
+        CheckConstraint("xp >= 0 AND grant_sequence >= 1", name="ck_watten_credit_amount"),
+        UniqueConstraint("user_id", "generation", "grant_sequence", name="uq_watten_credit_sequence"),
+    )
+
+
+class WattenAchievementGrant(Base):
+    """One unlock per account/generation/ID; catalog version is provenance."""
+
+    __tablename__ = "watten_achievement_grants"
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    generation: Mapped[int] = mapped_column(Integer, primary_key=True)
+    catalog_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    achievement_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    source_game_id: Mapped[str] = mapped_column(ForeignKey("watten_match_evidence.game_id"), nullable=False)
+    reached_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    xp: Mapped[int] = mapped_column(Integer, nullable=False)
+    policy_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    grant_sequence: Mapped[int] = mapped_column(Integer, nullable=False)
+    __table_args__ = (
+        CheckConstraint("generation >= 1 AND policy_version >= 1 AND catalog_version >= 1",
+                        name="ck_watten_achievement_versions"),
+        CheckConstraint("xp >= 0 AND grant_sequence >= 1", name="ck_watten_achievement_amount"),
+        UniqueConstraint("user_id", "generation", "grant_sequence", name="uq_watten_achievement_sequence"),
+    )
+
+
+class WattenMatchPresentationAck(Base):
+    """DRAFT presentation boundary for one owned credit; never a global cursor."""
+
+    __tablename__ = "watten_match_presentation_acks"
+    user_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    generation: Mapped[int] = mapped_column(Integer, primary_key=True)
+    game_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    through_sequence: Mapped[int] = mapped_column(Integer, nullable=False)
+    __table_args__ = (
+        ForeignKeyConstraint(("user_id", "generation", "game_id"),
+                             ("watten_match_credits.user_id", "watten_match_credits.generation", "watten_match_credits.game_id"),
+                             name="fk_watten_match_presentation_credit", ondelete="CASCADE"),
+        CheckConstraint("generation >= 1 AND through_sequence >= 1", name="ck_watten_match_presentation_boundary"),
+    )
+
+
+class WattenFavorite(Base):
+    """One private canonical recipe; protection is a boolean, never a password."""
+
+    __tablename__ = "watten_favorites"
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    recipe_json: Mapped[str] = mapped_column(Text, nullable=False)
 
 
 class HausdeppRoundCredit(Base):

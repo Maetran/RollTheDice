@@ -133,7 +133,8 @@
       ],
       "status": "partial",
       "evidence": [
-        "app/watten_recipe.py has a strict versioned secret-free allowlist and no account/participant IDs. Actual account favorites, authorization and durable writes remain open."
+        "app/watten_recipe.py has a strict versioned secret-free allowlist and no account/participant IDs. Actual account favorites, authorization and durable writes remain open.",
+        "Local native one-per-account favorite (0069) plus strict GET/PUT/DELETE and DE/EN creator apply/save/delete are integrated. Actual browser checks preserve CPU wishes and protection, require fresh password or explicit uncheck, never auto-create/start or save a secret. Public product acceptance remains open."
       ]
     },
     {
@@ -408,7 +409,8 @@
       "status": "partial",
       "evidence": [
         "app/watten_engine.py keeps at most64 ACKs per bound actor, replays only safe ACK metadata and uses private feedback sequences after eviction; aca3bc3/272cfdb. Durable atomic ACK/state storage, lost-delivery transport and browser recovery remain open.",
-        "Native commands persist candidate/ACK before install, reject stale lifecycle opportunity and do not detach new sockets on cached Leave.37focused tests; integrated full proof pending."
+        "Native commands persist candidate/ACK before install, reject stale lifecycle opportunity and do not detach new sockets on cached Leave.37focused tests; integrated full proof pending.",
+        "Local P6 uses independent global and match-scoped acknowledgement boundaries; real two-match browser dismissal/reload preserves the older unseen match. No grants on reads/ACK."
       ]
     },
     {
@@ -499,7 +501,8 @@
       "status": "partial",
       "evidence": [
         "app/watten_engine.py _finish accounts the pure terminal result before producing the transition; bid/score state rejects repeated accounting. Atomic CompletedGame/ActiveGame commit, retryable failure and completion broadcast acceptance remain open.",
-        "Native final result and terminal checkpoint commit atomically, failed transaction preserves prior state, duplicate finalization yields one result. Terminal delivery outbox retained; unsupported result deletion rejects409. Progression/UI acceptance pending."
+        "Native final result and terminal checkpoint commit atomically, failed transaction preserves prior state, duplicate finalization yields one result. Terminal delivery outbox retained; unsupported result deletion rejects409. Progression/UI acceptance pending.",
+        "Native completion bridge commits result-v1, immutable evidence, credits/grants and ActiveGame checkpoint in one transaction. Fault-injection rollback/retry/restart and mixed CPU accounts passed targeted tests; public acceptance remains open."
       ]
     },
     {
@@ -522,7 +525,8 @@
       ],
       "status": "partial",
       "evidence": [
-        "Strict result-v1 evidence adapter independently reviewed; replayed scoring/all3erwinners/full relational membership validated; absent profile/start/bid evidence stays UNKNOWN. Durable grant/account integration still open."
+        "Strict result-v1 evidence adapter independently reviewed; replayed scoring/all3erwinners/full relational membership validated; absent profile/start/bid evidence stays UNKNOWN. Durable grant/account integration still open.",
+        "Runtime storage-v3 journals only accepted bid actions; legacy running games keep UNKNOWN bid evidence. Owned readers reject unsupported source claims and source/roster/journal corruption before reporting complete data."
       ]
     },
     {
@@ -532,8 +536,10 @@
         "P0",
         "P6"
       ],
-      "status": "open",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Local P6 journals separate generation, frozen XP, global ACK and match presentation receipt (0067/0068); known catalog IDs cannot grant twice after catalog version changes. Positive stored receipts must match actual own-source sequences. Public rollout/reset policy remains open."
+      ]
     },
     {
       "id": "B18",
@@ -541,8 +547,10 @@
       "packages": [
         "P6"
       ],
-      "status": "open",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Account pages separate match XP, achievement XP and total stored XP from live match points; current 22 titles/27 achievements are labelled draft. Real DE/EN native completed-match browser journeys passed."
+      ]
     },
     {
       "id": "B19",
@@ -550,8 +558,10 @@
       "packages": [
         "P6"
       ],
-      "status": "open",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Own relational membership precedes evidence decoding; stable finished_at/id keyset history and >250-source statistics are tested. Local authenticated history/API and delayed-account-switch binding browser cases passed; public journey remains open."
+      ]
     },
     {
       "id": "B20",
@@ -562,7 +572,8 @@
       ],
       "status": "partial",
       "evidence": [
-        "Pure draft22titles/27DEENgoals/10XP/2110one-timeXP; growing gaps and350match/7day bound plus1000match target tested. No live grant or final production calibration."
+        "Pure draft22titles/27DEENgoals/10XP/2110one-timeXP; growing gaps and350match/7day bound plus1000match target tested. No live grant or final production calibration.",
+        "Pure draft calibration tests long horizons/Swiss-calendar days and cannot exhaust upper titles or catalog in an intensive week. Native actual stored prices/titles appear in local DE/EN account, feed and standings. Final product calibration/public acceptance remains open."
       ]
     },
     {
@@ -761,7 +772,8 @@
       ],
       "status": "partial",
       "evidence": [
-        "app/watten_engine.py permits only private good/bad/unsure partner feedback, including pending bids, without public revision/ACK-eviction leakage. Actual chat/reaction/CPU communication permissions, durable private delivery and DE/EN browser acceptance remain open."
+        "app/watten_engine.py permits only private good/bad/unsure partner feedback, including pending bids, without public revision/ACK-eviction leakage. Actual chat/reaction/CPU communication permissions, durable private delivery and DE/EN browser acceptance remain open.",
+        "Owner explicitly confirmed free chat and public emojis remain allowed during a deal and when gestrichen; card hints remain forbidden. Own opening-bid restrictions and private partner advice stay separate. Native free-chat/emoji UI remains to implement."
       ]
     },
     {

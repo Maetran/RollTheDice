@@ -39,6 +39,33 @@ criteria.
 
 ## Als Nächstes: Watten / Next game: Watten
 
+**Lokaler Kontofortschritt / local account progress:** Die lokale Watten-Vorschau
+verbucht neue abgeschlossene Partien zusammen mit Ergebnis und Fortschritt in
+einer Transaktion. `/watten/konto/fortschritt`, `/watten/konto/verlauf` und
+`/watten/rangliste` zeigen ausschliesslich verbuchte XP, die eigenen Ergebnisse,
+belegte Erfolge und erklärbare Ranglisten. XP, Titelstufen und Erfolgswerte sind
+vorerst als Entwurf gekennzeichnet. Ältere Resultate bleiben sichtbar und
+erhalten beim Lesen keine nachträglichen XP. Beide lokalen Vorschauflags sind
+erforderlich; die öffentliche Watten-Domain bleibt geschlossen.
+
+New locally completed Watten matches atomically store results and progress.
+The native progress, history and leaderboard pages show stored XP, owned
+results, evidenced achievements and explicit ranking definitions. XP, title
+levels and award values remain labelled as a proposal. Reading older results
+never retrospectively grants XP. Both local preview flags are required; the
+public Watten domain remains closed.
+
+**Favorit / favorite:** Im lokalen Erstellformular lässt sich ein vollständiges
+Tischrezept je Konto speichern und bewusst wieder anwenden, einschliesslich
+Computerplätzen. Passwörter werden nicht mitgespeichert. Ein geschützter Favorit
+fordert beim Erstellen ein neues Passwort oder eine ausdrückliche Abwahl des
+Schutzes; Anwenden erstellt und startet keine Partie.
+
+The local creator saves one complete table recipe per account, including CPU
+seat wishes. Passwords are never saved. Creating from a protected favorite
+requires a fresh password or an explicit choice to remove protection; applying
+a favorite neither creates nor starts a match.
+
 **Deutsch:** Watten ist als nächstes Spiel vorgemerkt: üblicherweise 4er
 ladinisch bis 11 Punkte («8+3 isch zmittag»), mit blindem Einschauen durch den
 Geber und den im Uhrzeigersinn nachfolgenden Spieler. Die identischen
@@ -120,9 +147,9 @@ gegnerischen Hände oder einen verdeckten Schlag aus dem Serverzustand.
 Rechter-Referenz und Stichhistorie sind standardmässig aus; ohne Referenz wird
 die einmalig erlaubte Ansage nicht dauerhaft angezeigt. Partnerblatt ist nur
 im offenen Spiel mit Partnern wählbar; Guter/Schlechter bleiben aus. Die lokalen
-Grundlagen und native Runtime haben die vollständigen lokalen Prüfungen in
-PR #53 und #54 bestanden. Der neue integrierte Oberflächen-/CPU-Nachweis,
-Mehrgeräte- und Produktabnahme bleiben offen. Neu festgelegt ist:
+Grundlagen, native Runtime und integrierter Spieltisch mit CPUs haben die
+vollständigen lokalen Prüfungen in PR #53, #54 und #55 bestanden.
+Physische Mehrgeräte- und vollständige Produktabnahme bleiben offen. Neu festgelegt ist:
 Wer eine laufende Partie bewusst verlässt, pausiert sie bis zur Rückkehr.
 Die lokale Runtime speichert diese Pause samt Sitz, Hand, offenem Gebot und
 Punkten; nur die frisch angemeldete betroffene Person kann ausdrücklich
@@ -201,9 +228,9 @@ hands or a hidden call from server state.
 The matching Rechter reference and trick history default off; without the
 reference, the once-permitted call is not kept visible. Partner hands are
 an explicit option only in open games with partners; Guter/Schlechter stay off.
-The foundations and native runtime passed full local checks in PR #53 and #54.
-The new integrated UI/CPU proof, multiple-device and product acceptance remain
-open. A newly confirmed rule
+The foundations, native runtime and integrated UI/CPUs passed full local checks
+in PR #53, #54 and #55. Physical multiple-device and complete product acceptance
+remain open. A newly confirmed rule
 pauses a running match after an intentional departure until that player
 returns. The local runtime preserves that pause, seat, hand, pending bid and
 scores; only the freshly authenticated affected person can explicitly resume.

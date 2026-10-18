@@ -32,6 +32,7 @@ WATTEN_ACCOUNT_TEMPLATES = {
 WATTEN_GAME_TEMPLATES = {
     "watten-game.html": "watten-game.js",
     "watten-rules.html": "watten-game.js",
+    "watten-progress.html": "watten-progress.js",
 }
 
 # Account action pages may carry exactly this inline script (see

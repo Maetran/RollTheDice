@@ -12,7 +12,8 @@ HAUSDEPP_PREVIEW_HOST = "hausdepp.zockdiewandan.online"
 HAUSDEPP_ORIGIN = f"https://{HAUSDEPP_PREVIEW_HOST}"
 WATTEN_HOST = "watten.zockdiewandan.online"
 WATTEN_ORIGIN = f"https://{WATTEN_HOST}"
-WATTEN_ACCOUNT_PATHS = frozenset({"/watten", "/watten/konto", "/watten/konto/einstellungen"})
+WATTEN_ACCOUNT_PATHS = frozenset({"/watten", "/watten/konto", "/watten/konto/einstellungen",
+                                  "/watten/konto/fortschritt", "/watten/konto/verlauf", "/watten/rangliste"})
 
 _ZILCH_EXACT_PATHS = frozenset(
     {
