@@ -159,3 +159,68 @@ def test_strict_cursor_rejects_wrong_types_duplicates_and_noncanonical_encoding(
 def test_history_limit_is_strict_and_bounded(limit):
     with pytest.raises(WattenAccountError, match="limit"):
         build_watten_account(1, limit=limit)
+
+
+def test_known_grant_requires_proven_eligibility_not_unknown_legacy_bids(server):
+    owner = runtime_tests.account("ForgedQuietWinner")
+    with session_scope() as db:
+        row, evidence, bindings = written(db, game_for([owner], cpus=(1,)))
+        store_draft_match(db, row, evidence, bindings)
+        _extra_grant(db, owner[0].user_id, row.game_id, "watten_quiet_win")
+    with pytest.raises(WattenAccountError, match="invalid_journal"):
+        build_watten_account(owner[0].user_id)
+
+
+def _extra_grant(db, user_id, source, achievement_id, *, catalog=1, xp=40):
+    from app.models import WattenProgressState
+
+    state = db.get(WattenProgressState, user_id)
+    state.grant_sequence += 1
+    db.add(WattenAchievementGrant(user_id=user_id, generation=state.generation, catalog_version=catalog,
+                                 achievement_id=achievement_id, source_game_id=source, reached_at=FINISHED,
+                                 xp=xp, policy_version=1, grant_sequence=state.grant_sequence))
+
+
+def test_known_grant_timestamp_must_equal_its_proven_source_finish(server):
+    owner = runtime_tests.account("WrongGrantTime")
+    with session_scope() as db:
+        row, evidence, bindings = written(db, game_for([owner], cpus=(1,)))
+        store_draft_match(db, row, evidence, bindings)
+        grant = db.scalar(select(WattenAchievementGrant).where(WattenAchievementGrant.achievement_id == "watten_matches_1"))
+        grant.reached_at = FINISHED + timedelta(seconds=1)
+    with pytest.raises(WattenAccountError, match="invalid_journal"):
+        build_watten_account(owner[0].user_id)
+
+
+def test_late_older_credit_does_not_rewrite_or_revoke_valid_existing_grant(server):
+    owner = runtime_tests.account("LateOlderHistory")
+    with session_scope() as db:
+        row, evidence, bindings = written(db, game_for([owner], game_id="original-source", cpus=(1,)))
+        store_draft_match(db, row, evidence, bindings)
+        grant = db.scalar(select(WattenAchievementGrant).where(WattenAchievementGrant.achievement_id == "watten_matches_1"))
+        grant.xp = 73
+        game = game_for([owner], game_id="late-older", cpus=(1,))
+        game["_finished_at"] = (FINISHED - timedelta(days=1)).isoformat()
+        row, evidence, bindings = written(db, game)
+        store_draft_match(db, row, evidence, bindings)
+    progress = build_watten_account(owner[0].user_id)["progress"]
+    goal = next(item for item in progress["achievements"] if item["id"] == "watten_matches_1")
+    assert goal["unlocked"] and goal["granted_xp"] == 73 and goal["earned_at"] == FINISHED.isoformat()
+    with session_scope() as db:
+        grant = db.scalar(select(WattenAchievementGrant).where(WattenAchievementGrant.achievement_id == "watten_matches_1"))
+        assert grant.source_game_id == "original-source" and grant.grant_sequence == 2
+
+
+def test_future_catalog_known_id_is_archived_without_inventing_current_eligibility(server):
+    owner = runtime_tests.account("FutureCatalogOwner")
+    with session_scope() as db:
+        row, evidence, bindings = written(db, game_for([owner], cpus=(1,)))
+        store_draft_match(db, row, evidence, bindings)
+        _extra_grant(db, owner[0].user_id, row.game_id, "watten_quiet_win", catalog=2, xp=73)
+    progress = build_watten_account(owner[0].user_id)["progress"]
+    goal = next(item for item in progress["achievements"] if item["id"] == "watten_quiet_win")
+    assert not goal["unlocked"] and goal["granted_xp"] == 0 and goal["earned_at"] is None
+    assert progress["total_xp"] == 133
+    assert progress["archived_achievements"] == [{"id": "watten_quiet_win", "name": {
+        "de": "Gespeicherter Watten-Erfolg", "en": "Stored Watten achievement"}, "granted_xp": 73,
+        "earned_at": FINISHED.isoformat(), "catalog_version": 2}]

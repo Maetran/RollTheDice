@@ -171,15 +171,28 @@ def _progress(db, user_id, matches):
                      and type(item.grant_sequence) is int and 1 <= item.grant_sequence <= sequence
                      and item.grant_sequence not in seen)
             seen.add(item.grant_sequence)
+        goals = {goal.achievement_id: goal for goal in DRAFT_ACHIEVEMENTS}
+        prefixes = {}
         for grant in grants:
             _require(grant.source_game_id in sources)
+            if grant.catalog_version == DRAFT_CATALOG_VERSION and grant.achievement_id in goals:
+                source = by_game[grant.source_game_id].evidence
+                _require(as_utc(grant.reached_at) == source.finished_at)
+                key = source.finished_at, source.game_id
+                if key not in prefixes:
+                    prefix = tuple(item for item in inputs if (item.evidence.finished_at, item.evidence.game_id) <= key)
+                    prefixes[key] = evaluate_draft(prefix, viewer_user_id=user_id).counters
+                goal = goals[grant.achievement_id]
+                # Older matches may have arrived after this immutable grant.
+                # Its own qualified prefix matters, not today's earliest source.
+                _require(getattr(prefixes[key], goal.counter) >= goal.target)
         _require(len(seen) == sequence)
         proposal = evaluate_draft(tuple(inputs), viewer_user_id=user_id)
     except (ValueError, TypeError, KeyError) as exc:
         raise WattenAccountError("watten_account_invalid_journal") from exc
     match_xp, achievement_xp = sum(item.xp for item in credits), sum(item.xp for item in grants)
     title = title_for_xp(match_xp + achievement_xp)
-    grants_by_id = {item.achievement_id: item for item in grants}
+    grants_by_id = {item.achievement_id: item for item in grants if item.catalog_version == DRAFT_CATALOG_VERSION}
     catalog = []
     for goal in DRAFT_ACHIEVEMENTS:
         grant = grants_by_id.get(goal.achievement_id)
@@ -194,7 +207,7 @@ def _progress(db, user_id, matches):
     current_ids = {item.achievement_id for item in DRAFT_ACHIEVEMENTS}
     archived = [{"id": item.achievement_id, "name": {"de": "Gespeicherter Watten-Erfolg", "en": "Stored Watten achievement"},
                  "granted_xp": item.xp, "earned_at": as_utc(item.reached_at).isoformat(), "catalog_version": item.catalog_version}
-                for item in grants if item.achievement_id not in current_ids]
+                for item in grants if item.catalog_version != DRAFT_CATALOG_VERSION or item.achievement_id not in current_ids]
     return {"generation": generation, "grant_sequence": sequence, "acknowledged_sequence": ack,
             "catalog_version": DRAFT_CATALOG_VERSION, "match_xp": match_xp, "achievement_xp": achievement_xp,
             "total_xp": match_xp + achievement_xp, "title": _title(title.current),

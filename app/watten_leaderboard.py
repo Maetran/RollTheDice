@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections import defaultdict
 from fractions import Fraction
 
-from sqlalchemy import case, exists, func, select
+from sqlalchemy import exists, func, select
 from sqlalchemy.orm import selectinload
 
 from .database import database_schema_ready, session_scope
@@ -18,6 +18,7 @@ from .models import (
     WattenMatchEvidence,
     WattenProgressState,
 )
+from .security import as_utc
 from .watten_account import SOURCE_PAGE_SIZE, _validated_match, build_watten_account
 from .watten_evidence import validate_membership
 
@@ -34,19 +35,55 @@ def _require(condition, code="watten_leaderboard_invalid_input"):
 
 
 def _stored_xp(db):
-    credits = select(WattenMatchCredit.user_id.label("user_id"),
-                     WattenMatchCredit.generation.label("generation"), func.sum(WattenMatchCredit.xp).label("xp"),
-                     func.count().label("matches"), func.sum(case((WattenMatchCredit.won.is_(True), 1), else_=0)).label("wins"))
-    credits = credits.group_by(WattenMatchCredit.user_id, WattenMatchCredit.generation).subquery()
-    grants = select(WattenAchievementGrant.user_id.label("user_id"), WattenAchievementGrant.generation.label("generation"),
-                    func.sum(WattenAchievementGrant.xp).label("xp"))
-    grants = grants.group_by(WattenAchievementGrant.user_id, WattenAchievementGrant.generation).subquery()
-    query = select(User.id, func.coalesce(credits.c.xp, 0) + func.coalesce(grants.c.xp, 0),
-                    func.coalesce(credits.c.matches, 0), func.coalesce(credits.c.wins, 0)).join(
-        WattenProgressState, WattenProgressState.user_id == User.id).outerjoin(
-            credits, (credits.c.user_id == User.id) & (credits.c.generation == WattenProgressState.generation)).outerjoin(
-                grants, (grants.c.user_id == User.id) & (grants.c.generation == WattenProgressState.generation)).where(User.is_active.is_(True))
-    return {user_id: {"xp": xp, "matches": matches, "wins": wins} for user_id, xp, matches, wins in db.execute(query)}
+    """Validate every ranked journal using relational metadata, never foreign JSON."""
+    code = "watten_leaderboard_invalid_journal"
+    states = {}
+    query = select(WattenProgressState).join(User, User.id == WattenProgressState.user_id).where(User.is_active.is_(True))
+    for state in db.scalars(query.execution_options(yield_per=SOURCE_PAGE_SIZE)):
+        _require(type(state.generation) is int and state.generation >= 1 and type(state.grant_sequence) is int
+                 and type(state.acknowledged_sequence) is int and 0 <= state.acknowledged_sequence <= state.grant_sequence, code)
+        states[state.user_id] = state
+    totals = {identifier: {"xp": 0, "matches": 0, "wins": 0} for identifier in states}
+    seen, sources = defaultdict(set), defaultdict(set)
+
+    def record(user_id, xp, policy, catalog, sequence):
+        _require(type(xp) is int and xp >= 0 and type(policy) is int and policy >= 1
+                 and type(catalog) is int and catalog >= 1 and type(sequence) is int
+                 and 1 <= sequence <= states[user_id].grant_sequence and sequence not in seen[user_id], code)
+        seen[user_id].add(sequence)
+        totals[user_id]["xp"] += xp
+
+    credit = WattenMatchCredit
+    own_count = select(func.count(GameParticipant.id)).where(
+        GameParticipant.game_id == CompletedGame.id, GameParticipant.user_id == credit.user_id).correlate(CompletedGame, credit).scalar_subquery()
+    bound = exists(select(GameParticipant.id).where(GameParticipant.game_id == CompletedGame.id,
+                   GameParticipant.user_id == credit.user_id, GameParticipant.player_key == credit.player_id)).correlate(CompletedGame, credit)
+    query = select(credit.user_id, credit.game_id, credit.finished_at, credit.won, credit.xp,
+                   credit.policy_version, credit.catalog_version, credit.grant_sequence,
+                   CompletedGame.game_type, CompletedGame.finished_at, WattenMatchEvidence.game_id, own_count, bound).join(
+        WattenProgressState, (WattenProgressState.user_id == credit.user_id)
+        & (WattenProgressState.generation == credit.generation)).join(User, User.id == credit.user_id).outerjoin(
+            CompletedGame, CompletedGame.game_id == credit.game_id).outerjoin(
+                WattenMatchEvidence, WattenMatchEvidence.game_id == credit.game_id).where(User.is_active.is_(True))
+    for user_id, game_id, finished, won, xp, policy, catalog, sequence, game_type, source_at, proof, count, binding in db.execute(
+            query.execution_options(yield_per=SOURCE_PAGE_SIZE)):
+        _require(game_type == "watten" and proof == game_id and count == 1 and binding
+                 and as_utc(finished) == as_utc(source_at) and type(won) is bool, code)
+        record(user_id, xp, policy, catalog, sequence)
+        sources[user_id].add(game_id)
+        totals[user_id]["matches"] += 1
+        totals[user_id]["wins"] += won
+    grant = WattenAchievementGrant
+    query = select(grant.user_id, grant.source_game_id, grant.xp, grant.policy_version,
+                   grant.catalog_version, grant.grant_sequence).join(
+        WattenProgressState, (WattenProgressState.user_id == grant.user_id)
+        & (WattenProgressState.generation == grant.generation)).join(User, User.id == grant.user_id).where(User.is_active.is_(True))
+    for user_id, source, xp, policy, catalog, sequence in db.execute(query.execution_options(yield_per=SOURCE_PAGE_SIZE)):
+        _require(source in sources[user_id], code)
+        record(user_id, xp, policy, catalog, sequence)
+    for identifier, state in states.items():
+        _require(len(seen[identifier]) == state.grant_sequence, code)
+    return totals
 
 
 def _outcomes(db, names, existing_users, *, players, opponents):

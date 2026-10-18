@@ -121,3 +121,29 @@ def test_global_achievement_xp_cannot_be_mislabelled_as_a_filtered_cohort(option
 def test_unknown_rank_parameters_are_rejected(options):
     with pytest.raises(WattenLeaderboardError):
         build_watten_leaderboard(1, **options)
+
+
+@pytest.mark.parametrize("damage", ("duplicate_sequence", "foreign_source", "missing_sequence", "wrong_player"))
+def test_xp_ranking_rejects_foreign_inconsistent_journal_metadata(server, damage):
+    from sqlalchemy import select
+
+    from app.models import WattenAchievementGrant, WattenMatchCredit, WattenProgressState
+    from app.watten_account import build_watten_account
+
+    viewer, other = runtime_tests.account("ValidRankViewer"), runtime_tests.account("DamagedRankOther")
+    with session_scope() as db:
+        for owner, game_id in ((viewer, "viewer-source"), (other, "other-source")):
+            row, evidence, bindings = written(db, game_for([owner], game_id=game_id, cpus=(1,)))
+            store_draft_match(db, row, evidence, bindings)
+        grant = db.scalar(select(WattenAchievementGrant).where(WattenAchievementGrant.user_id == other[0].user_id))
+        if damage == "duplicate_sequence":
+            grant.grant_sequence = 1  # valid per-table uniqueness; collides with the foreign credit
+        elif damage == "foreign_source":
+            grant.source_game_id = "viewer-source"  # real FK, but not the grantee's match credit
+        elif damage == "missing_sequence":
+            db.get(WattenProgressState, other[0].user_id).grant_sequence += 1
+        else:
+            db.scalar(select(WattenMatchCredit).where(WattenMatchCredit.user_id == other[0].user_id)).player_id = "unbound-player"
+    assert build_watten_account(viewer[0].user_id)["coverage"]["complete"]
+    with pytest.raises(WattenLeaderboardError, match="invalid_journal"):
+        build_watten_leaderboard(viewer[0].user_id)
