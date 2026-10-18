@@ -1,3 +1,30 @@
+export const WATTEN_REMATCH_MESSAGES = {
+  de: {
+    heading: "Neue Partie am Folgetisch", body: "Übernimm dieses Rezept und die gewünschten Computerplätze an einen neuen Tisch.",
+    cpuWishes: "Gewünschte Computerplätze: {count}.", manual: "Alle wählen ihre Plätze und im Vierer ihr Team bewusst. Die neue Partie startet erst durch den Gastgeber.",
+    protection: "Schutz am neuen Tisch", choose: "Bitte bewusst wählen", fresh: "Frisches Passwort festlegen",
+    disableExplicit: "Passwortschutz für den neuen Tisch ausdrücklich abwählen", unprotected: "Ohne Passwortschutz",
+    password: "Frisches Passwort", create: "Folgetisch mit diesem Rezept öffnen", busy: "Folgetisch wird geöffnet …",
+    existing: "Für diese Partie besteht bereits ein Folgetisch. Kehre an denselben Tisch zurück.", open: "Zum bestehenden Folgetisch",
+    retry: "Dieselbe Anfrage erneut versuchen", unavailable: "Die Bestätigung fehlt. Deine Eingaben bleiben erhalten; erneutes Versuchen öffnet keinen zweiten Tisch.",
+    stale: "Die Anfrage passt nicht mehr zum aktuellen Tisch. Versuche dieselbe Anfrage erneut oder lade die Seite neu.",
+    invalidProtection: "Wähle ein frisches Passwort mit 1 bis 100 Zeichen oder verzichte ausdrücklich auf den Schutz.",
+    reservation: "Dein bisheriger Platz {seat} ist bis {expires} Schweizer Zeit für dich vorgemerkt. Wähle ihn und im Vierer dein Team selbst; du kannst auch einen anderen freien Platz wählen.",
+  },
+  en: {
+    heading: "New match at the next table", body: "Carry this recipe and the requested computer seats over to a new table.",
+    cpuWishes: "Requested computer seats: {count}.", manual: "Everyone chooses their seat and, with four players, their team. Only the host starts the new match.",
+    protection: "Protection at the new table", choose: "Please choose explicitly", fresh: "Set a fresh password",
+    disableExplicit: "Explicitly remove password protection for the new table", unprotected: "Without password protection",
+    password: "Fresh password", create: "Open the next table with this recipe", busy: "Opening the next table …",
+    existing: "This match already has a next table. Return to that same table.", open: "Go to the existing next table",
+    retry: "Retry the same request", unavailable: "Confirmation is missing. Your entries are retained; retrying does not open a second table.",
+    stale: "This request no longer matches the current table. Retry the same request or reload the page.",
+    invalidProtection: "Choose a fresh password of 1 to 100 characters or explicitly remove protection.",
+    reservation: "Your previous seat {seat} is reserved for you until {expires}, Swiss time. Choose it and, with four players, your team yourself; you may also choose another free seat.",
+  },
+};
+
 export const WATTEN_FAVORITE_MESSAGES = {
   de: {
     heading: "Dein Watten-Favorit", help: "Speichere deine Tisch-Einstellungen. Ein Passwort wird nie gespeichert.",

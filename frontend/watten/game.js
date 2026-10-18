@@ -9,6 +9,7 @@ import { createTableView } from "./table.js";
 import { createMotion } from "./motion.js";
 import { createMatchProgress } from "./match-progress.js";
 import { applyFavoriteToCreator, createFavorites, favoriteText, readCreatorRecipe, syncCreatorProtection } from "./favorites.js";
+import { createRematch } from "./rematch.js";
 
 // Metadata only: these preview documents neither register a worker nor
 // advertise installation; the account pages own that local experiment.
@@ -41,6 +42,7 @@ let latestUserId;
 let anonymousMount = false;
 let navigating = false;
 let matchProgress = null;
+let rematch = null;
 const cleanups = new Set();
 
 function errorText(code) {
@@ -796,12 +798,18 @@ function render(previous = null, live = false) {
   if (!snapshot || !root) return;
   setHeading(snapshot.name);
   if (!snapshot.engine) {
-    session.view = null;
-    session.viewKind = "waiting";
     if (snapshot.room.status === "closed") {
-      showMessage(t("waiting.closedTitle"), t("waiting.closed"), lobbyLink());
+      if (session.viewKind !== "closed" || !root.querySelector("[data-watten-rematch]")) {
+        showMessage(t("waiting.closedTitle"), t("waiting.closed"), `${lobbyLink()}<div data-watten-rematch hidden></div>`);
+        session.view = null;
+        session.viewKind = "closed";
+      }
+      rematch?.update({ container: root.querySelector("[data-watten-rematch]"), snapshot,
+        playerId: session.playerId, spectator: session.spectator, busy: Boolean(session.inFlight) });
       return;
     }
+    session.view = null;
+    session.viewKind = "waiting";
     preserveFocus(() => {
       root.innerHTML = waitingRoomMarkup(snapshot, {
         mode: session.spectator ? "spectator" : "member", viewerId: session.playerId,
@@ -840,6 +848,8 @@ function render(previous = null, live = false) {
   preserveFocus(() => { result = session.view.update(vm); });
   matchProgress?.update({ container: root.querySelector("[data-watten-match-progress]"), snapshot,
     playerId: session.playerId, spectator: session.spectator });
+  rematch?.update({ container: root.querySelector("[data-watten-rematch]"), snapshot,
+    playerId: session.playerId, spectator: session.spectator, busy: Boolean(session.inFlight) || !session.bound });
   if (captured) {
     for (const item of result.trick.created) {
       motion.arrive(item.node, captured.rects.get(item.card) || captured.rects.get(`seat-${item.seat}`), captured);
@@ -891,6 +901,20 @@ async function loadDetail(gen) {
   }
   session.preview = data;
   const member = Boolean(data.viewer?.participant_id || data.my_player_id);
+  if (data.room.status === "closed" && member && page !== "spectator") {
+    // Closed rooms need no socket admission. Bind the private HTTP projection
+    // again after its body before exposing the host's rematch controls.
+    try {
+      for (let index = 0; index < 2; index += 1) {
+        const fresh = await loadAuth({ refresh: true });
+        if (gen !== generation || navigating) return;
+        if (!fresh.authenticated || fresh.user.id !== account?.id) { reloadFresh(); return; }
+      }
+    } catch { if (gen === generation) showMessage(t("connection.failed"), t("error.network"), lobbyLink()); return; }
+    session.snapshot = data;
+    session.playerId = data.viewer?.participant_id || data.my_player_id;
+    setConnection(""); render(); return;
+  }
   if (page === "spectator") {
     const locked = data.locked ?? data.room.recipe.password_required;
     if (locked && !member) renderSpectatePrompt();
@@ -929,6 +953,13 @@ async function mountTable() {
     isCurrent: () => gen === generation && !navigating && latestUserId === account?.id,
     onAccountChanged: reloadFresh });
   cleanups.add(() => { matchProgress?.destroy(); matchProgress = null; });
+  rematch?.destroy();
+  rematch = createRematch({ gameId, fetcher: (url, options) => fetch(url, options), loadAuth, escapeHtml: esc,
+    renderRecipe: recipeMarkup, makeCommandId: commandId, navigate,
+    getExpectedAccountId: () => account?.id,
+    isCurrent: () => gen === generation && !navigating && latestUserId === account?.id,
+    onAccountChanged: reloadFresh });
+  cleanups.add(() => { rematch?.destroy(); rematch = null; });
   setConnection("cards");
   try { await prepareWattenCards(); } catch {
     if (gen !== generation) return;

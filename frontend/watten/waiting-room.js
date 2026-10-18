@@ -1,8 +1,9 @@
 // Waiting-room markup only. Every control carries a data-watten-command; the
 // page controller binds the click to its mounted account and socket.
 import { escapeHtml as esc } from "../shared/auth.js";
-import { t } from "./cards.js";
+import { lang, t } from "./cards.js";
 import { publicTitleMarkup } from "./match-progress.js";
+import { reservationMarkup } from "./rematch.js";
 
 const TEAM_NAMES = ["A", "B"];
 const HINT_KEY = "watten_landscape_hint_dismissed";
@@ -132,6 +133,7 @@ export function waitingRoomMarkup(snapshot, { mode, viewerId, busy = false, extr
     ${seatsMarkup(room, { member, viewerSeat, busy, canManageCpus: isHost && snapshot.capabilities?.cpu_autoplay === true })}
     ${unseated.length ? `<p class="wt-note">${esc(t("waiting.unseated", { names: unseated.map(item => item.name).join(", ") }))}</p>` : ""}
     ${member && viewerSeat === null && room.status === "waiting" ? `<p class="wt-note wt-note--strong">${esc(t("waiting.chooseSeat"))}</p>` : ""}
+    ${reservationMarkup(room.reservation, { language: lang(), escapeHtml: esc })}
     ${room.status === "waiting" ? `<p class="wt-note">${esc(isHost
       ? t(full ? "waiting.hostReady" : "waiting.hostWaiting")
       : t("waiting.guestWaiting", { name: host?.name || "" }))}</p>` : ""}
