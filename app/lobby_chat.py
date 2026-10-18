@@ -7,22 +7,22 @@ without revealing messages from a period in which they were signed out.
 
 from __future__ import annotations
 
-import asyncio
 import time
 from collections import deque
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
-from fastapi import WebSocket, WebSocketDisconnect
+from fastapi import HTTPException, WebSocket, WebSocketDisconnect
 from sqlalchemy import delete, select
 
 from .auth import AuthIdentity, resolve_session, websocket_origin_allowed
 from .database import session_scope
-from .game_types import DEFAULT_GAME_TYPE, HAUSDEPP_GAME_TYPE, ZILCH_GAME_TYPE
+from .game_types import DEFAULT_GAME_TYPE, HAUSDEPP_GAME_TYPE, WATTEN_GAME_TYPE, ZILCH_GAME_TYPE
 from .models import LobbyChatMessage, LobbyChatMessageRecipient
 from .public_roles import active_admin_user_ids
-from .security import utcnow
+from .security import as_utc, utcnow
+from .watten_access import require_watten_access, watten_game_preview_enabled
 
 LOBBY_CHAT_HISTORY_DAYS = 3
 LOBBY_CHAT_PURGE_INTERVAL_SECONDS = 60 * 60
@@ -40,6 +40,7 @@ ResolveIdentity = Callable[[WebSocket], AuthIdentity | None]
 class LobbyChatConnection:
     websocket: WebSocket
     user_id: int
+    context: str = DEFAULT_GAME_TYPE
 
 
 class LobbyChatHub:
@@ -49,11 +50,11 @@ class LobbyChatHub:
         self._connections: list[LobbyChatConnection] = []
         self._rate_limiters: dict[int, LobbyChatRateLimiter] = {}
 
-    def connect(self, websocket: WebSocket, user_id: int) -> bool:
+    def connect(self, websocket: WebSocket, user_id: int, *, context: str = DEFAULT_GAME_TYPE) -> bool:
         """Register one account socket and return whether it is that user's first."""
         first_connection = not any(connection.user_id == user_id for connection in self._connections)
         if not any(connection.websocket is websocket for connection in self._connections):
-            self._connections.append(LobbyChatConnection(websocket=websocket, user_id=user_id))
+            self._connections.append(LobbyChatConnection(websocket=websocket, user_id=user_id, context=context))
         return first_connection
 
     def disconnect(self, websocket: WebSocket) -> None:
@@ -67,11 +68,16 @@ class LobbyChatHub:
         resolve_identity: ResolveIdentity,
         *,
         recipient_user_ids: set[int] | None = None,
+        watten_event: bool = False,
     ) -> list[LobbyChatConnection]:
         eligible: list[LobbyChatConnection] = []
         stale: list[WebSocket] = []
         for connection in tuple(self._connections):
             if recipient_user_ids is not None and connection.user_id not in recipient_user_ids:
+                continue
+            if (connection.context == WATTEN_GAME_TYPE or watten_event) and not watten_game_preview_enabled(connection.websocket):
+                if connection.context == WATTEN_GAME_TYPE:
+                    stale.append(connection.websocket)
                 continue
             identity = resolve_identity(connection.websocket)
             if (
@@ -87,9 +93,9 @@ class LobbyChatHub:
             self.disconnect(websocket)
         return eligible
 
-    def eligible_user_ids(self, resolve_identity: ResolveIdentity) -> set[int]:
+    def eligible_user_ids(self, resolve_identity: ResolveIdentity, *, watten_event: bool = False) -> set[int]:
         """Return the account audience that is enabled and authenticated now."""
-        return {connection.user_id for connection in self._eligible_connections(resolve_identity)}
+        return {connection.user_id for connection in self._eligible_connections(resolve_identity, watten_event=watten_event)}
 
     async def broadcast(
         self,
@@ -99,18 +105,21 @@ class LobbyChatHub:
         resolve_identity: ResolveIdentity,
     ) -> None:
         """Deliver only to the event's authorized audience and retire stale sockets."""
-        connections = self._eligible_connections(
-            resolve_identity,
-            recipient_user_ids=recipient_user_ids,
-        )
-        if not connections:
-            return
-        results = await asyncio.gather(
-            *(connection.websocket.send_json(payload) for connection in connections),
-            return_exceptions=True,
-        )
-        for connection, result in zip(connections, results, strict=True):
-            if isinstance(result, BaseException):
+        watten_event = payload.get("lobby_chat", {}).get("game_type") == WATTEN_GAME_TYPE
+        # Revalidate immediately before each send, including after a previous
+        # socket awaited network I/O. A fixed audience is necessary but does
+        # not keep a revoked session or a closed preview authorized forever.
+        for connection in tuple(self._connections):
+            if connection.user_id not in recipient_user_ids:
+                continue
+            eligible = self._eligible_connections(resolve_identity, recipient_user_ids={connection.user_id},
+                                                   watten_event=watten_event)
+            if connection not in eligible:
+                continue
+            try:
+                outgoing = _public_payload(payload) if connection.context == WATTEN_GAME_TYPE or watten_event else payload
+                await connection.websocket.send_json(outgoing)
+            except (WebSocketDisconnect, RuntimeError, OSError):
                 self.disconnect(connection.websocket)
 
     def allow_message(self, user_id: int) -> bool:
@@ -147,7 +156,7 @@ class LobbyChatRateLimiter:
 
 def lobby_chat_context(value: object, *, fallback: str = DEFAULT_GAME_TYPE) -> str:
     """Normalize the product context shown beside the sender's name."""
-    contexts = {DEFAULT_GAME_TYPE, ZILCH_GAME_TYPE, HAUSDEPP_GAME_TYPE}
+    contexts = {DEFAULT_GAME_TYPE, ZILCH_GAME_TYPE, HAUSDEPP_GAME_TYPE, WATTEN_GAME_TYPE}
     if isinstance(value, str) and value in contexts:
         return value
     return fallback if fallback in contexts else DEFAULT_GAME_TYPE
@@ -178,10 +187,23 @@ def _event_payload(event: LobbyChatMessage, *, admin_ids: set[int]) -> dict[str,
     }
     if event.kind == "message":
         payload["text"] = event.text or ""
-    return {"lobby_chat": payload}
+    frame = {"lobby_chat": payload}
+    return _public_payload(frame) if event.game_type == WATTEN_GAME_TYPE else frame
 
 
-def load_lobby_chat_history(user_id: int, *, now: datetime | None = None) -> list[dict[str, object]]:
+def _public_payload(frame: dict) -> dict:
+    """Explicit Watten public DTO; relational audience IDs stay server-only."""
+    event = frame["lobby_chat"]
+    keys = ("id", "kind", "sender", "is_admin", "game_type", "sent_at", "text")
+    public = {key: event[key] for key in keys if key in event}
+    # SQLite reloads timezone-aware UTC columns as naive datetimes. Normalize
+    # both Watten-origin events and foreign events viewed through Watten.
+    public["sent_at"] = as_utc(datetime.fromisoformat(public["sent_at"])).isoformat()
+    return {"lobby_chat": public}
+
+
+def load_lobby_chat_history(user_id: int, *, now: datetime | None = None,
+                           include_watten: bool = False, public_only: bool = False) -> list[dict[str, object]]:
     """Load only recent events whose audience included this account."""
     cutoff = lobby_chat_history_cutoff(now=now)
     with session_scope() as db:
@@ -195,11 +217,13 @@ def load_lobby_chat_history(user_id: int, *, now: datetime | None = None) -> lis
                 LobbyChatMessageRecipient.user_id == user_id,
                 LobbyChatMessage.kind == "message",
                 LobbyChatMessage.created_at >= cutoff,
+                True if include_watten else LobbyChatMessage.game_type != WATTEN_GAME_TYPE,
             )
             .order_by(LobbyChatMessage.created_at.asc(), LobbyChatMessage.id.asc())
         ).all()
         admin_ids = active_admin_user_ids((event.sender_user_id for event in events), db=db)
-        return [_event_payload(event, admin_ids=admin_ids) for event in events]
+        frames = [_event_payload(event, admin_ids=admin_ids) for event in events]
+        return [_public_payload(frame) for frame in frames] if public_only else frames
 
 
 def record_lobby_chat_event(
@@ -254,7 +278,7 @@ async def _publish_lobby_chat_event(
     context: str,
     text: str | None = None,
 ) -> None:
-    audience = hub.eligible_user_ids(resolve_session)
+    audience = hub.eligible_user_ids(resolve_session, watten_event=context == WATTEN_GAME_TYPE)
     if kind == "presence":
         # A player does not need a persistent system event announcing their
         # own arrival. Existing eligible players are the useful audience.
@@ -278,10 +302,31 @@ async def _publish_lobby_chat_event(
         )
 
 
-async def _send_authorized_history(websocket: WebSocket, user_id: int) -> None:
+async def _send_authorized_history(websocket: WebSocket, user_id: int, *, context: str) -> None:
+    if context == WATTEN_GAME_TYPE and not watten_game_preview_enabled(websocket):
+        return
     purge_expired_lobby_chat_messages()
-    for payload in load_lobby_chat_history(user_id):
+    include_watten = watten_game_preview_enabled(websocket)
+    for payload in load_lobby_chat_history(user_id, include_watten=include_watten,
+                                         public_only=context == WATTEN_GAME_TYPE):
+        if context == WATTEN_GAME_TYPE and not watten_game_preview_enabled(websocket):
+            return
+        identity = resolve_session(websocket)
+        if identity is None or identity.user_id != user_id or not identity.lobby_chat_enabled or identity.lobby_chat_excluded:
+            return
+        if payload["lobby_chat"]["game_type"] == WATTEN_GAME_TYPE and not watten_game_preview_enabled(websocket):
+            continue
         await websocket.send_json({**payload, "lobby_chat_history": True})
+
+
+def _watten_identity(websocket: WebSocket) -> AuthIdentity:
+    if not watten_game_preview_enabled(websocket):
+        require_watten_access(websocket, None)
+    identity = require_watten_access(websocket, resolve_session(websocket))
+    expected = websocket.query_params.getlist("expected_account_id")
+    if expected and (len(expected) != 1 or expected[0] != str(identity.user_id)):
+        raise HTTPException(status_code=401, detail="watten_actor_not_bound")
+    return identity
 
 
 async def serve_lobby_chat_websocket(
@@ -293,6 +338,18 @@ async def serve_lobby_chat_websocket(
     release_connection: ReleaseConnection,
 ) -> None:
     """Serve the account-only, audience-scoped lobby chat channel."""
+    sender_context = lobby_chat_context(context)
+    if sender_context == WATTEN_GAME_TYPE:
+        # Check the local product boundary before any auth/session/history DB
+        # work. Fixed production hosts remain closed even with the flag set.
+        if not watten_game_preview_enabled(websocket):
+            await websocket.close(code=1008, reason="Watten unavailable")
+            return
+        try:
+            _watten_identity(websocket)
+        except HTTPException as exc:
+            await websocket.close(code=1008, reason=str(exc.detail))
+            return
     if not websocket_origin_allowed(websocket):
         await websocket.close(code=1008, reason="Origin rejected")
         return
@@ -303,14 +360,13 @@ async def serve_lobby_chat_websocket(
         return
 
     await websocket.accept()
-    sender_context = lobby_chat_context(context)
     try:
-        identity = resolve_session(websocket)
+        identity = _watten_identity(websocket) if sender_context == WATTEN_GAME_TYPE else resolve_session(websocket)
         if identity is not None and identity.lobby_chat_excluded:
             await websocket.send_json({"error": "lobby_chat_excluded"})
         elif identity is not None and identity.lobby_chat_enabled:
-            hub.connect(websocket, identity.user_id)
-            await _send_authorized_history(websocket, identity.user_id)
+            hub.connect(websocket, identity.user_id, context=sender_context)
+            await _send_authorized_history(websocket, identity.user_id, context=sender_context)
         elif identity is not None:
             await websocket.send_json({"error": "lobby_chat_disabled"})
 
@@ -320,11 +376,15 @@ async def serve_lobby_chat_websocket(
             except ValueError:
                 await websocket.send_json({"error": "lobby_chat_message_invalid"})
                 continue
+
+            if sender_context == WATTEN_GAME_TYPE and not watten_game_preview_enabled(websocket):
+                await websocket.close(code=1008, reason="Watten unavailable")
+                return
             if not isinstance(payload, dict) or payload.get("action") != "lobby_chat_message":
                 await websocket.send_json({"error": "lobby_chat_action_unknown"})
                 continue
 
-            identity = resolve_session(websocket)
+            identity = _watten_identity(websocket) if sender_context == WATTEN_GAME_TYPE else resolve_session(websocket)
             if identity is None:
                 hub.disconnect(websocket)
                 await websocket.send_json({"error": "authentication_required"})
@@ -348,8 +408,14 @@ async def serve_lobby_chat_websocket(
                 await websocket.send_json({"error": "lobby_chat_rate_limited"})
                 continue
             if not hub.is_connected(websocket):
-                hub.connect(websocket, identity.user_id)
-                await _send_authorized_history(websocket, identity.user_id)
+                hub.connect(websocket, identity.user_id, context=sender_context)
+                await _send_authorized_history(websocket, identity.user_id, context=sender_context)
+                # A first history send may have awaited an old connection's
+                # revocation; do not publish from that stale sender afterward.
+                identity = _watten_identity(websocket) if sender_context == WATTEN_GAME_TYPE else resolve_session(websocket)
+                if (identity is None or not identity.lobby_chat_enabled
+                        or identity.lobby_chat_muted or identity.lobby_chat_excluded):
+                    continue
             purge_expired_lobby_chat_messages()
             await _publish_lobby_chat_event(
                 hub=hub,
@@ -360,6 +426,8 @@ async def serve_lobby_chat_websocket(
             )
     except WebSocketDisconnect:
         pass
+    except HTTPException as exc:
+        await websocket.close(code=1008, reason=str(exc.detail))
     finally:
         hub.disconnect(websocket)
         release_connection(connection_address)
