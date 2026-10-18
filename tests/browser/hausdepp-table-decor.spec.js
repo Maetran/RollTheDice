@@ -3,51 +3,112 @@ const { mkdir, readFile } = require('node:fs/promises');
 
 test.use({ serviceWorkers: 'block' });
 
-async function table(page, viewport) {
+test.afterEach(async ({ page }) => {
+  try {
+    await page.unrouteAll({ behavior: 'wait' });
+  } finally {
+    await Promise.all((page.hausdeppDecorContexts || []).map(async context => {
+      try {
+        await Promise.all(context.pages().map(member => member.unrouteAll({ behavior: 'wait' })));
+      } finally {
+        await context.close();
+      }
+    }));
+  }
+});
+
+async function table(page, viewport, { browser, baseURL, reducedMotion = 'no-preference' }) {
   await page.setViewportSize(viewport);
+  await page.emulateMedia({ reducedMotion });
   const signedIn = await page.request.post('/api/auth/login', {
     data: { username: 'Admin', password: 'temporary-password-123' },
   });
   expect(signedIn.ok()).toBeTruthy();
   const user = (await signedIn.json()).user;
-  await page.route('**/api/releases**', route => route.fulfill({ json: { releases: [], can_prompt: false } }));
-  // Remember states per table: a previous table keeps streaming computer moves
-  // and must never be mistaken for the table that was just opened.
-  const latestByGame = new Map();
-  page.on('websocket', socket => {
-    const gameId = decodeURIComponent(socket.url().split('/ws/')[1] || '');
-    socket.on('framereceived', event => {
-      try {
-        const state = JSON.parse(String(event.payload)).scoreboard?._hausdepp;
-        if (state) latestByGame.set(gameId, state);
-      } catch { /* Protocol frames carry no JSON. */ }
+  const headers = { 'X-CSRF-Token': user.csrf_token };
+  const pages = [page];
+  page.hausdeppDecorContexts = [];
+  // Six real isolated human sessions let us select the actual first player
+  // after the random dealer. One table is sufficient for every dealer outcome.
+  const namespace = Date.now();
+  for (let seat = 1; seat < 6; seat += 1) {
+    const username = `Decor${namespace}${seat}`;
+    const temporary = 'decor-temporary-password-123', password = 'decor-final-password-123';
+    const created = await page.request.post('/api/admin/users', {
+      headers, data: { username, temporary_password: temporary, role: 'user' },
     });
-  });
-  // The first dealer is random. The decor is checked on the opening table the
-  // viewer sees when sitting right after the dealer (cards in hand, a computer
-  // peeking), so open tables until the deal lands there (one in six).
-  for (let attempt = 0; attempt < 30; attempt += 1) {
-    const created = await page.request.post('/api/games', {
-      headers: { 'X-CSRF-Token': user.csrf_token },
-      data: { name: 'Dekoration · sechs Plätze', mode: '6', game_type: 'hausdepp', play_mode: 'cpu', cpu_count: 5 },
+    expect(created.status()).toBe(201);
+    const context = await browser.newContext({ baseURL, viewport, reducedMotion, serviceWorkers: 'block' });
+    page.hausdeppDecorContexts.push(context);
+    const member = await context.newPage();
+    const login = await member.request.post('/api/auth/login', { data: { username, password: temporary } });
+    expect(login.ok()).toBeTruthy();
+    const initial = (await login.json()).user;
+    const changed = await member.request.post('/api/auth/change-password', {
+      headers: { 'X-CSRF-Token': initial.csrf_token }, data: { current_password: temporary, new_password: password },
     });
-    expect(created.ok()).toBeTruthy();
-    const gameId = (await created.json()).game_id;
-    await page.goto(`/hausdepp/spiel/${gameId}`);
-    await expect.poll(() => latestByGame.get(gameId)?.viewer_id).toBeTruthy();
-    const latest = latestByGame.get(gameId);
-    const ids = latest.players.map(player => player.id);
-    if (ids[(ids.indexOf(latest.dealer_id) + 1) % ids.length] !== latest.viewer_id) continue;
-    await expect(page.locator('#hausdeppTable')).toHaveAttribute('data-phase', 'peeking');
-    await expect(page.locator('.hd-seat')).toHaveCount(5);
-    return;
+    expect(changed.ok()).toBeTruthy();
+    expect((await member.request.post('/api/auth/login', { data: { username, password } })).ok()).toBeTruthy();
+    pages.push(member);
   }
-  throw new Error('No six-seat table with the viewer right after the dealer in 30 random deals');
+  const created = await page.request.post('/api/games', {
+    headers, data: { name: 'Dekoration · sechs Plätze', mode: '6', game_type: 'hausdepp', play_mode: 'multiplayer', cpu_count: 0 },
+  });
+  expect(created.ok()).toBeTruthy();
+  const gameId = (await created.json()).game_id;
+  const latestByPage = new Map();
+  for (const member of pages) {
+    await member.route('**/api/releases**', route => route.fulfill({ json: { releases: [], can_prompt: false } }));
+    // Optional beginner offers have separate coverage; the real room, private
+    // projection, cards and every game command below use the delivered backend.
+    await member.route('**/api/auth/tours/offer', route => route.fulfill({ json: { show: false, enabled: false, games: {} } }));
+    member.on('websocket', socket => {
+      if (new URL(socket.url()).pathname !== `/ws/${gameId}`) return;
+      socket.on('framereceived', event => {
+        try {
+          const state = JSON.parse(String(event.payload)).scoreboard?._hausdepp;
+          if (state) latestByPage.set(member, state);
+        } catch { /* Protocol frames carry no JSON. */ }
+      });
+    });
+    await member.goto(`/hausdepp/spiel/${gameId}`);
+  }
+  await expect.poll(() => pages.filter(member => latestByPage.get(member)?.viewer_id).length).toBe(6);
+  expect(new Set(pages.map(member => latestByPage.get(member).viewer_id)).size).toBe(6);
+  const opening = latestByPage.get(page), ids = opening.players.map(player => player.id);
+  expect(ids).toHaveLength(6);
+  expect(opening.players.every(player => !player.is_cpu)).toBe(true);
+  const dealer = ids.indexOf(opening.dealer_id);
+  expect(dealer).toBeGreaterThanOrEqual(0);
+  const viewerId = ids[(dealer + 1) % ids.length];
+  const viewer = pages.find(member => latestByPage.get(member).viewer_id === viewerId);
+  const peeker = pages.find(member => latestByPage.get(member).viewer_id === opening.peek.player_id);
+  expect(viewer).toBeTruthy();
+  expect(peeker).toBeTruthy();
+  expect(viewer).not.toBe(peeker);
+  await expect(viewer.locator('#hausdeppTable')).toHaveAttribute('data-phase', 'peeking');
+  await expect(viewer.locator('.hd-seat')).toHaveCount(5);
+  await expect(viewer.locator('#hausdeppHand [data-card-id]')).toHaveCount(0);
+  // Complete the real human peek: at most four aces can precede its final card.
+  // These are legal game actions, not retries or replacement random deals.
+  for (let inspected = 0; inspected < 5 && latestByPage.get(peeker).phase === 'peeking'; inspected += 1) {
+    const version = latestByPage.get(peeker).version;
+    await expect(peeker.locator('#hausdeppStock')).toBeEnabled();
+    await peeker.locator('#hausdeppStock').click();
+    await expect.poll(() => latestByPage.get(peeker).version).toBeGreaterThan(version);
+  }
+  await expect(viewer.locator('#hausdeppTable')).toHaveAttribute('data-phase', 'playing');
+  expect(latestByPage.get(viewer).current_player_id).toBe(viewerId);
+  await expect(viewer.locator('.hd-seat')).toHaveCount(5);
+  await expect(viewer.locator('#hausdeppHand [data-card-id]')).toHaveCount(3);
+  await expect(viewer.locator('#hausdeppHand [data-card-id]').first()).toBeVisible();
+  await expect(viewer.locator('#hausdeppStock')).toBeEnabled();
+  return viewer;
 }
 
 for (const viewport of [{ width: 390, height: 844 }, { width: 844, height: 390 }, { width: 1024, height: 768 }, { width: 1600, height: 1000 }]) {
-  test(`six-seat table decoration respects play areas at ${viewport.width}x${viewport.height}`, async ({ page }) => {
-    await table(page, viewport);
+  test(`six-seat table decoration respects play areas at ${viewport.width}x${viewport.height}`, async ({ page, browser, baseURL }) => {
+    page = await table(page, viewport, { browser, baseURL });
     const visibleProps = page.locator('.hd-table-prop:visible');
     // Phones carry one large object (two in landscape) plus a few small
     // scatter pieces; every one of them must still find free wood.
@@ -83,9 +144,8 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 844, height: 390 }
   });
 }
 
-test('table props retain their nodes across updates and respect reduced motion', async ({ page }) => {
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  await table(page, { width: 1600, height: 1000 });
+test('table props retain their nodes across updates and respect reduced motion', async ({ page, browser, baseURL }) => {
+  page = await table(page, { width: 1600, height: 1000 }, { browser, baseURL, reducedMotion: 'reduce' });
   const props = page.locator('.hd-table-prop:visible');
   await expect.poll(() => props.count()).toBeGreaterThan(0);
   const before = await props.evaluateAll(elements => {
