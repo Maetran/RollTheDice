@@ -14,6 +14,14 @@ Gesetzt sind Watten für **zwei, drei und vier Personen**, üblicherweise bis
 **11 Punkte**, Vierer ladinisch mit privatem Einschauen durch Geber und den
 im Uhrzeigersinn folgenden Spieler, zusätzliche kritische und offene Modi,
 taktische CPUs mit Tiroler Namen und **bewusste Teamwahl vor Spielbeginn**.
+**Achievements, dauerhafte Wirtshaustitel, Ranglisten und das gesamte
+Fortschrittsumfeld sind ebenfalls verbindlich.** Die ersten Titel kommen
+schneller; spätere Stufen brauchen zunehmend Ausdauer. Erfolge müssen
+erreichbar bleiben, ohne dass nach einer Woche alles erledigt ist. Der
+[Fortschrittsplan](WATTEN_PROGRESSION_PLAN.md) enthält die Leitplanken,
+Namensvorschläge und einen ausdrücklich vorläufigen, nachgerechneten
+Kurvenentwurf.
+
 Die identischen Hausdepp-Kartendesigns bleiben. Referenzen werden eigenständig
 interpretiert, weder fremde Karten noch die Referenzoberfläche kopiert.
 
@@ -35,7 +43,8 @@ Entscheidung still treffen.
 | Kommunikation und Wissen | Verbindliche Tabelle für Ansagen, freie Nachrichten, Emojis, CPU-Ausgaben, Tipps, Sortierung/Markierung, ARIA, Stichhistorie und Zuschauer; alle Gestrichen-Zustände berücksichtigen. |
 | Sitz und Team | Wählbare Plätze/Teams je Modus, Gleichzeitigkeit, CPU-Ersatz, Freigabe, Hostwechsel; getrennte Entscheidung über ersten Geber. Zufälliger Geber ist keine zufällige Teamzuweisung. |
 | Folgepartie | Was wird übernommen, was erneut gewählt/bestätigt? Profil, Zielpunkte, Team/Sitz, CPU-Besetzung, Schutz, Wartemodus und manueller Start in einem vollständigen Recipevertrag. |
-| Produkthülle | Zugangsmatrix und Host/PWA-Identität; Umfang von Konto, Einladungen, Freunden, Remindern, Tour, Ergebnis/XP/Erfolgen, Rangliste, Favoriten, Reaktionen und Dekoration ausdrücklich entscheiden. |
+| Fortschritt und Ranglisten | Achievements, Titel/Ränge, Ranglisten samt Konto-, Verlaufs-, Abschluss- und Erfolgsanzeigen verbindlich liefern. Wirtshaustaugliche DE/EN-Namen, frühe Erreichbarkeit, steigende Rangabstände und Langzeithorizont nach WATTEN_PROGRESSION_PLAN.md kalibrieren; konkrete XP, Schwellen und Rankingmetriken noch schliessen. |
+| Produkthülle | Zugangsmatrix und Host/PWA-Identität; Details von Konto, Einladungen, Freunden, Remindern, Tour sowie verbleibende optionale Favoriten/Reaktionen/Dekoration ausdrücklich entscheiden. Der Fortschrittsumfang oben steht bereits fest. |
 
 **P0-Abnahme:** Die Regeln erlauben für jeden Fall genau einen erwarteten
 Ausgang. Zu jeder Tabellenzeile stehen Quelle/Owner-Vorgabe, konkrete
@@ -61,7 +70,7 @@ bestehenden Spieladapter bieten bereits eine Integrationsgrenze.
 | P3 – Regelengine und Autorität | Reine Übergänge, Karten-/Stichbewertung, Einschauen, Ansagen/Bieten/Antworten, Gestrichen, Punkte/Partieende; Allowlist-Projektionen; Sperren, Gelegenheitsversion und eindeutiger Wiederholungsvertrag. | Freigegebenes P0-Profil; alle Beispielhände, Invarianten, vier Sichtweisen und Zuschauer sowie konkurrierende Befehle bestehen. |
 | P4 – Spieltisch und Bedienung | Eigenständiger Tisch mit Hausdepp-Assets, Sitz/Team/Wissen, Hand/Stich/Stand/Einsatz, verständlichen Ansageaktionen; sofortiger angenommener Zustand, stabile Kartenknoten, reine Präsentationsanimation; mobile/fokussierte/a11y Bedienung. | P2/P3; erste Frames, Latenz, Reconnect, Touchflächen, Tastatur und reduzierte Bewegung stimmen. Optionale Deko/Reaktionen erst nach Spielflächenschutz und Kommunikationsentscheidung. |
 | P5 – Taktische CPUs | Tiroler Namen, nur persönliche erlaubte Sicht, Wissensschluss aus öffentlichem Verlauf, Partner-/Stich-/Gebotstaktik, gegebenenfalls in P0 freigegebene Schwierigkeitsgrade und variable Denkzeiten. Pflichtregeln gelten bei jeder Stärke. | P3 stabil, P4 zur Echtzeitabnahme; feste Taktikhände plus gepaarte, reproduzierbare Serien aller Plätze/Modi. Keine omnisciente Policy. |
-| P6 – Dauerhaftes Ende und Konto | Einmaliges Teamresultat, korrekte Ebene Stich/Gabe/Partie/Tisch, Wiederherstellung bei DB-Fehler; eigene Historie; definierte XP-/Erfolgs-/Rangpolitik samt Evidenz und einmaligen Anzeigen, sofern im Scope. | P3-Resultate; Fehler vor/nach Commit und Mehrtab-/Neustartfälle grün. Keine unbestellten Hausdepp-Erfolgszahlen oder XP-Sätze übernehmen. |
+| P6 – Dauerhaftes Ende und Konto | Einmaliges Teamresultat, korrekte Ebene Stich/Gabe/Partie/Tisch, Wiederherstellung bei DB-Fehler; eigene Historie, Achievements, dauerhafte Wirtshaustitel und Ranglisten samt Evidenz, Fortschrittsanzeige, Erfolgsfeed und einmaligen Abschlussanzeigen verbindlich nach dem Fortschrittsplan. | P3-Resultate; Fehler vor/nach Commit und Mehrtab-/Neustartfälle grün. Erreichbarkeit und wachsende Rangabstände quantitativ prüfen; intensive Woche schliesst weder Titel noch Katalog ab. Konkrete XP/Schwellen kalibrieren, keine Hausdepp-Zahlen ungeprüft übernehmen. |
 | P7 – Suite-Dienste | Allgemeine Spielerrufe, persönliche Folgetische und Share separat; Freunde/Startmeldungen, Pushkategorien, Worker-Kontext, Reminderrotation, Spieleauswahl/Aktivitätszahlen, Owner-Monitoring und Touren laut Scope. | P1/P2/P6; Consent-/Privatsphäre-/Cooldown-/Navigationsmatrix, DE/EN und explizite Ausschlüsse vollständig. |
 | P8 – Lieferung und Freigabe | Spielanleitung/README, SEO/noindex, Navigationstestinventar, öffentliche Assets/Manifest im echten Produktionsimage, Host-/TLS-/Renewal-/Rollbackplan, exakter Versionsvorgänger, vollständiger lokaler Prüfnachweis und Integrationsnachweis; separate Geräteabnahme. | Alle vereinbarten Pakete; develop → master → prod mit gesonderter Releasefreigabe. Keine reale Testsendung an echte Konten ohne Auftrag. |
 
@@ -70,6 +79,15 @@ Vor jedem Push gilt der aktuelle vollständige Ablauf in
 [LOCAL_CHECKS.md](LOCAL_CHECKS.md), einschliesslich frischem Fetch,
 Integrationsvergleich und `npm run push:checked -- …` auf sauberem Commit.
 Ein alter Teiltest oder ein erfolgreich gebautes Frontend ersetzt ihn nicht.
+
+**Verbindlicher Prüfungsort:** Tests soweit möglich lokal auf dem Mac des
+Owners ausführen. Dort laufen Qualität/Sicherheit, Werkzeuge, Backend, das
+Produktionsimage samt Smoke-Test und sämtliche Browser-/Kontosuiten. Keine
+zusätzlichen schweren GitHub-CI-Läufe planen. GitHub behält nur den bereits
+vorgeschriebenen schlanken Integrationscheck des veröffentlichten lokalen
+Nachweises; er wiederholt die Tests nicht. Vor lokalen Vollprüfungen fremde
+Testpools prüfen und den Repository-Lock respektieren. Ausfälle werden lokal
+untersucht, statt neue GitHub-Runs als Ersatz anzustossen.
 
 ## 3. Prüfmatrix, die vor der ersten Partie bereitsteht
 
@@ -157,7 +175,7 @@ Schutzvertrag, falls die Funktion im P0-Scope freigegeben wird.
 | **B17** – XP, Grantgeneration und Anzeigequittung getrennt modellieren | P0/P6 | Belohnungspolitik für CPU-/Menschentische zuerst entscheiden; Score und Anzeigeversion nicht gleichsetzen. | Zwei Kontotabs gleichen dieselbe Partie ab, danach kommt eine ältere Partie verspätet hinzu. Keine Doppel-XP; eine alte Quittung kann neue Erfolge nicht verbergen. |
 | **B18** – Rundenwert ist nicht der kumulierte Kontowert | P6 | Abschlusskarte strikt auf diese Partie begrenzen. Persönliche Gesamt-XP, öffentlicher Rang und Teamspielpunkte sind unterschiedliche Werte. | Konto mit 4’000 bestehenden XP erhält einen 20-XP-Erfolg: Abschluss zeigt exakt die neue Belohnung, nicht 4’020. Fehlender Credit wird als unbekannt dargestellt, nicht durch einen erfundenen Standard ersetzt. |
 | **B19** – Private Historie braucht echte Mitgliedschaft und stabile Pagination | P6 | Zugehörigkeit zum damaligen Team und zur damaligen Partie dauerhaft ablegen; kein Zugriff über erratene Partie-ID oder fremden Cursor. | Mehr als 250 Partien und mehrere gleiche Endzeitpunkte: korrekte Gesamtsumme, keine fehlenden/duplizierten Seiten, kein fremder Ergebniseintrag. |
-| **B20** – Langzeitprogression und lokale Zeit explizit testen | P0/P6 | Ränge, Erfolge und Werte bleiben Produktentscheidungen. Von Anfang an Erreichbarkeit, Zeitzone und spätere Katalogänderungen berücksichtigen. | Partie über Schweizer Mitternacht beziehungsweise Zeitumstellung korrekt zählen; reguläres Spielen kann den höchsten gewünschten Rang erreichen; spätere neue Ziele entziehen bereits verdiente Erfolge nicht. |
+| **B20** – Langzeitprogression und lokale Zeit explizit testen | P0/P6 | Achievements, Wirtshaustitel und Ranglisten sind verbindlich. Frühe Titel schneller, danach wachsende Abstände; konkrete XP/Schwellen nach dem Fortschrittsplan kalibrieren. Erreichbarkeit, Zeitzone und spätere Katalogänderungen berücksichtigen. | Partie über Schweizer Mitternacht beziehungsweise Zeitumstellung korrekt zählen; reguläres langfristiges Spielen erreicht den höchsten Rang ohne Pflichtglück. Nachgerechnete intensive Woche schliesst weder Titel noch Katalog ab; spätere neue Ziele entziehen bereits verdiente Erfolge nicht. |
 | **U01** – Identische Kartendesigns wiederverwenden, fertige Asset-Pipeline übernehmen | P4 | Gemeinsames Bildmodul/Atlas verwenden, Spielrangfolge und Weli-Regel davon trennen. Nicht nochmals Fotografien beschneiden oder fremde Karten importieren. | Jede vom Watten-Profil benötigte Karte, einschliesslich Weli und kritischer Karten, ist korrekt zugeordnet und in Hand, Stich und Flug gleich erkennbar; Asset-Prüfung grün. |
 | **U02** – Lizenz und sichtbare Kartennamen gehören zur Wiederverwendung | P0/P4/P8 | Credits samt beiden Quellen erhalten; Rang-/Farbbezeichnungen DE/EN getrennt vom Bildschlüssel pflegen. | Profilwechsel verändert Regeln und erlaubte Kartenmenge, nicht versehentlich das Artwork; sichtbare und vorgelesene Kartenbezeichnungen entsprechen dem Watten-Profil. |
 | **U03** – Bilder müssen dekodiert sein, bevor ein privater Tisch spielbereit wird | P4 | Den Ladevertrag übernehmen; verständliche Lade-/Fehlermeldung anbieten. | Bei künstlich blockiertem Atlas kein leeres Kartenpapier und kein voreilig spielbereiter Tisch; nach Freigabe vollständige Motive; einmaliger Bildfehler bleibt wiederherstellbar. |
@@ -197,8 +215,9 @@ Schutzvertrag, falls die Funktion im P0-Scope freigegeben wird.
 - Einladungslink → Anmeldung → bewusste Teamwahl → Einschauen/Ansagen → vollständige Partie → dauerhaftes Ergebnis → freiwillige Folgepartie funktioniert mit mehreren echten Wegwerfkonten einschliesslich Rejoin und Gerätewechsel.
 - Blinde, CPUs und Zuschauer erhalten nur ihr erlaubtes Wissen. Server und Oberfläche setzen dieselben Gestrichen-/Biet-/Antwortrechte durch.
 - CPU-Taktik, erste Animationsframes, reale Kartenmotive, kleine Viewports und Kontounterbrechungen besitzen gezielte Nachweise; allgemeines Testgrün ersetzt diese Prüfziele nicht.
+- Achievements, dauerhafte Wirtshaustitel, Ranglisten und das Fortschrittsumfeld sind vollständig. Erreichbarkeit und langfristige Kurve wurden über alle freigegebenen Spielerzahlen/CPU-Besetzungen kalibriert; keine Chancepflicht für den höchsten Titel.
 - Vereinbarte Suite-Dienste, Konto, Spielanleitung, README, DE/EN, SEO, PWA, Navigation, Monitoring und Releaseinformationen sind vollständig. Zurückgestellte Komfortfunktionen stehen ausdrücklich im Scopeprotokoll.
-- Vollständige lokale Prüfung für den fertigen Commit und den aktuellen Develop-Stand sowie GitHub-Integrationsnachweis bestehen. Tatsächlicher Produktionsstand und physische Geräteabnahme werden separat belegt, falls Teil der Freigabe.
+- Vollständige lokale Prüfung für den fertigen Commit und den aktuellen Develop-Stand sowie GitHub-Integrationsnachweis bestehen; schwere Suiten laufen lokal auf dem Mac statt nochmals in GitHub CI. Tatsächlicher Produktionsstand und physische Geräteabnahme werden separat belegt, falls Teil der Freigabe.
 - Keine persönlichen QA-Runden, unbeauftragten echten Pushs, ungeprüften Releasezuordnungen oder fremden Worktreeänderungen.
 
 **English brief:** This is a planning document, not authorization to implement
@@ -207,4 +226,7 @@ package and acceptance scenario. Historical bugs, later requests, existing
 safeguards and current evidence gaps remain distinct. Rule profiles, bidding,
 three-player scoring, hidden knowledge and manual teams must be settled before
 implementation; full account, invitation, recovery, presentation and delivery
-flows are planned from the start.
+flows are planned from the start. Achievements, permanent pub-style titles,
+leaderboards and surrounding progress features are required; early promotion
+is faster and later gaps grow. Full tests run locally on the owner’s Mac;
+GitHub only validates the published integration evidence.

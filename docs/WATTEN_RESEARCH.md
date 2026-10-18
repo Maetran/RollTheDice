@@ -36,6 +36,8 @@ Owner beschriebene Spielrunde als Bezugspunkt:
 - **CPU-Spieler** sind gewünscht: typische Tiroler Namen wie bei Hausdepp
   und nachvollziehbar taktisches Spielverständnis.
 - **Team vor Spielbeginn selbst auswählen**, keine zufällige Teamzuweisung.
+- **Achievements, dauerhafte Titel/Ränge, Ranglisten und das Fortschrittsumfeld sind verbindlich.** Erfolge sollen erreichbar sein; Achievementnamen und Titel wirtshaustauglich. Die Titelkurve beginnt schneller und wird zunehmend langsamer, mit hohen Rängen für ausdauernde Watter. Weder Leiter noch Gesamtkatalog sollen nach einer Woche fertig sein. Der [Fortschrittsplan](WATTEN_PROGRESSION_PLAN.md) trennt Vorgaben von vorläufigen Namen/Schwellen und rechnet die Kurve nach.
+- **Tests soweit möglich lokal auf dem Mac des Owners.** Keine zusätzlichen schweren GitHub-CI-Läufe; der bestehende schlanke Integrationsnachweis bleibt erhalten. Details und vollständiger lokaler Ablauf: [LOCAL_CHECKS.md](LOCAL_CHECKS.md).
 - **Weitere Modi:** zusätzlich mit Kritischen sowie nicht ladinisch/offen
   mit regulärer Ansage und regulärem Bieten berücksichtigen.
 - **Trumpfzwang:** Im blinden Viererspiel müssen die beiden Einschauer Trumpf

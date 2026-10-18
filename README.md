@@ -48,6 +48,12 @@ offene Hausregeln. Zusätzlich sind Varianten für zwei und drei Spieler,
 taktisch spielende CPUs mit typischen Tiroler Namen und freie Teamwahl vor
 Spielbeginn ohne Zufallszuweisung gewünscht. Ansagen gehören zum Spiel;
 gestrichen darf man nichts mehr sagen. Die genaue Auslegung ist vorgemerkt.
+Achievements, dauerhafte wirtshaustaugliche Titel, Ranglisten und das
+Fortschrittsumfeld gehören verbindlich dazu: anfangs schnellere Aufstiege,
+danach zunehmend längere Etappen für ausdauernde Watter. Der
+[Fortschrittsplan](docs/WATTEN_PROGRESSION_PLAN.md) enthält erreichbare Ziele
+und einen vorläufigen Kurvenentwurf. Vollständige Tests laufen soweit möglich
+lokal auf dem Mac; GitHub prüft nur den schlanken Integrationsnachweis.
 Die Entwicklung hat noch nicht begonnen.
 
 Der [vertiefte Regelabgleich](docs/WATTEN_RULES_AUDIT.md) trennt Ladinisch,
@@ -76,7 +82,13 @@ clockwise player. It will reuse the same card designs as Hausdepp. The
 house rules. Two- and three-player variants, tactical CPUs with Tyrolean names
 and manual team selection before play without random assignment are also
 wanted. Calls are part of the game; once “gestrichen”, no further calls are
-allowed. The exact scope remains to be defined. Development has not started.
+allowed. The exact scope remains to be defined. Achievements, permanent
+pub-style titles, leaderboards and the surrounding progress features are
+required, with faster early promotions and growing later gaps rewarding
+persistence. The [progression plan](docs/WATTEN_PROGRESSION_PLAN.md) sets out
+achievable goals and a provisional curve. Full tests run locally on the Mac
+wherever possible; GitHub only validates integration evidence. Development
+has not started.
 
 The [detailed rules audit](docs/WATTEN_RULES_AUDIT.md) separates Ladinisch,
 blind/open announcements, critical-card variants, trump obligations and bidding.
