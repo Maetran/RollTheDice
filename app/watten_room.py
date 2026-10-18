@@ -183,6 +183,8 @@ class WattenRoom:
         _wait_seconds(self.wait_seconds)
         object.__setattr__(self, "wait_expires_at", _utc(self.wait_expires_at))
         count = self.recipe.player_count
+        if len(self.members) > count:
+            raise WattenRoomError("watten_room_full")
         participants = [member.participant_id for member in self.members] + [cpu.participant_id for cpu in self.cpus]
         if (len(set(participants)) != len(participants)
                 or any(int(participant[1:]) > self.participant_counter for participant in participants)):

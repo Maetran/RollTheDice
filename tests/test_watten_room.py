@@ -2,7 +2,7 @@
 
 import json
 import random
-from dataclasses import FrozenInstanceError
+from dataclasses import FrozenInstanceError, replace
 from datetime import datetime, timedelta, timezone
 from itertools import permutations
 
@@ -384,6 +384,24 @@ def test_rooms_are_frozen():
     room = new_room(4)
     with pytest.raises(FrozenInstanceError):
         room.status = "started"
+
+
+@pytest.mark.parametrize("count", (2, 3, 4))
+def test_constructor_rejects_more_human_members_than_player_count(count):
+    room = new_room(count)
+    members = tuple(Member(f"p{index + 1}", HOST + index) for index in range(count + 1))
+    assert code_of(replace, room, members=members, participant_counter=count + 1) == "watten_room_full"
+
+
+@pytest.mark.parametrize("count", (2, 3, 4))
+@pytest.mark.parametrize("format", ("payload", "json"))
+def test_restore_rejects_excess_distinct_unseated_human_members(count, format):
+    payload = room_to_payload(new_room(count))
+    payload["members"] = [{"participant_id": f"p{index + 1}", "account_id": HOST + index,
+                           "seat": None, "team": None} for index in range(count + 1)]
+    payload["participant_counter"] = count + 1
+    restore, value = (room_from_payload, payload) if format == "payload" else (room_from_json, json.dumps(payload))
+    assert code_of(restore, value) == "watten_room_full"
 
 
 def _rematch_room():
