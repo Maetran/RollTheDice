@@ -219,6 +219,27 @@ export function createGamePicker({ button, currentMode, games = [], onSelect } =
     }
   }
 
+  function appendOption(list, game) {
+    const link = document.createElement("a");
+    const descriptionId = `${MENU_ID}-${game.id}-description`;
+    const activityId = `${MENU_ID}-${game.id}-activity`;
+    link.className = "suite-game-option";
+    link.href = game.href;
+    link.dataset.gameEntry = game.id;
+    link.setAttribute("aria-label", game.name);
+    link.setAttribute("aria-describedby", `${descriptionId} ${activityId}`);
+    if (game.id === current) link.setAttribute("aria-current", "page");
+    const status = game.id === current
+      ? `<span class="suite-game-option__current">${escapeMarkup(message("current"))}</span>`
+      : '<svg class="suite-game-option__arrow" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 10h12m-5-5 5 5-5 5"/></svg>';
+    link.innerHTML = `<span class="suite-game-option__icon" data-game-icon="${escapeMarkup(game.id)}">${gameIcon(game.id)}</span><span class="suite-game-option__copy"><span class="suite-game-option__name" translate="no">${escapeMarkup(game.name)}</span><span class="suite-game-option__description" id="${escapeMarkup(descriptionId)}">${escapeMarkup(game.description || message(`${game.id}Description`))}</span><span class="suite-game-option__activity" id="${escapeMarkup(activityId)}" data-game-activity data-state="loading">${escapeMarkup(message("activityLoading"))}</span></span>${status}`;
+    link.addEventListener("click", event => {
+      onSelect?.(game.id, game, event);
+      close();
+    });
+    list.append(link);
+  }
+
   function open() {
     if (destroyed || panel || button.disabled || button.hidden || !available.length) return;
     closeActivePicker?.();
@@ -236,26 +257,7 @@ export function createGamePicker({ button, currentMode, games = [], onSelect } =
     panel.innerHTML = `<div class="suite-game-menu__header"><div><h2 class="suite-game-menu__title">${escapeMarkup(message("title"))}</h2><p class="suite-game-menu__intro">${escapeMarkup(message("intro"))}</p></div><button type="button" class="suite-game-menu__close" data-game-picker-close aria-label="${escapeMarkup(message("close"))}"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15"/></svg></button></div><div class="suite-game-menu__games"></div>`;
     panel.querySelector("[data-game-picker-close]").addEventListener("click", () => close({ restoreFocus: true }));
     const list = panel.querySelector(".suite-game-menu__games");
-    for (const game of available) {
-      const link = document.createElement("a");
-      const descriptionId = `${MENU_ID}-${game.id}-description`;
-      const activityId = `${MENU_ID}-${game.id}-activity`;
-      link.className = "suite-game-option";
-      link.href = game.href;
-      link.dataset.gameEntry = game.id;
-      link.setAttribute("aria-label", game.name);
-      link.setAttribute("aria-describedby", `${descriptionId} ${activityId}`);
-      if (game.id === current) link.setAttribute("aria-current", "page");
-      const status = game.id === current
-        ? `<span class="suite-game-option__current">${escapeMarkup(message("current"))}</span>`
-        : '<svg class="suite-game-option__arrow" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 10h12m-5-5 5 5-5 5"/></svg>';
-      link.innerHTML = `<span class="suite-game-option__icon" data-game-icon="${escapeMarkup(game.id)}">${gameIcon(game.id)}</span><span class="suite-game-option__copy"><span class="suite-game-option__name" translate="no">${escapeMarkup(game.name)}</span><span class="suite-game-option__description" id="${escapeMarkup(descriptionId)}">${escapeMarkup(game.description || message(`${game.id}Description`))}</span><span class="suite-game-option__activity" id="${escapeMarkup(activityId)}" data-game-activity data-state="loading">${escapeMarkup(message("activityLoading"))}</span></span>${status}`;
-      link.addEventListener("click", event => {
-        onSelect?.(game.id, game, event);
-        close();
-      });
-      list.append(link);
-    }
+    for (const game of available) appendOption(list, game);
     document.body.append(backdrop, panel);
     button.setAttribute("aria-expanded", "true");
     positionPanel();
@@ -270,12 +272,24 @@ export function createGamePicker({ button, currentMode, games = [], onSelect } =
   }
 
   function update({ currentMode: nextMode = current, games: nextGames = available } = {}) {
-    // Auth refreshes are frequent. Preserve the focused option unless the
-    // actual audience, destination or current game has changed.
+    // A newly confirmed option may arrive after the public menu was opened.
+    // Only an unchanged prefix can keep its existing DOM and focused link;
+    // withdrawals and changes to any old option still close immediately.
     const changed = nextMode !== current || JSON.stringify(nextGames) !== JSON.stringify(available);
-    if (changed) close({ restoreFocus: Boolean(panel?.contains(document.activeElement)) });
+    const appended = nextMode === current && nextGames.length > available.length
+      && available.every((game, index) => JSON.stringify(game) === JSON.stringify(nextGames[index]))
+      && new Set(nextGames.map(game => game.id)).size === nextGames.length;
+    const previousLength = available.length;
+    if (changed && !appended) close({ restoreFocus: Boolean(panel?.contains(document.activeElement)) });
     current = nextMode;
     available = nextGames;
+    if (panel && appended) {
+      const list = panel.querySelector(".suite-game-menu__games");
+      for (const game of available.slice(previousLength)) appendOption(list, game);
+      positionPanel();
+      // Cancel the earlier audience's count request before reading fresh counts.
+      void refreshActivity();
+    }
     updateTrigger();
   }
 

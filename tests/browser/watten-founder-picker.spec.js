@@ -39,6 +39,50 @@ async function confirmedChooser(page) {
   return page.locator('#suiteGameMenu [data-game-entry="watten"]');
 }
 
+test("a final private capability confirmation appends Watten without closing the public chooser or moving focus", async ({ page }) => {
+  await signedInPreview(page, "en");
+  let reads = 0, released = false;
+  const pending = [];
+  // The initial identity enables the public choices. Hold every following /me
+  // until the menu is open, including the decisive private-capability read.
+  await page.route("**/api/auth/me", route => {
+    reads += 1;
+    if (reads === 1 || released) return route.fallback();
+    pending.push(route);
+  });
+  try {
+    await page.goto("/regeln");
+    await expect.poll(() => pending.length).toBeGreaterThan(0);
+    const trigger = page.locator("[data-game-switch]");
+    await expect(trigger).toBeEnabled();
+    await trigger.click();
+    const menu = page.locator("#suiteGameMenu");
+    await expect(menu).toBeVisible();
+    await expect(menu.locator("[data-game-entry]")).toHaveCount(3);
+    await expect(menu.locator('[data-game-entry="watten"]')).toHaveCount(0);
+    const hausdepp = menu.locator('[data-game-entry="hausdepp"]');
+    await hausdepp.focus();
+    const panelNode = await menu.elementHandle(), linkNode = await hausdepp.elementHandle();
+    released = true;
+    await Promise.all(pending.splice(0).map(route => route.fallback()));
+    const watten = menu.locator('[data-game-entry="watten"]');
+    await expect(watten).toBeVisible();
+    await expect(watten).toHaveAttribute("href", "/watten");
+    await expect(menu.locator("[data-game-entry]")).toHaveCount(4);
+    await expect(trigger).toHaveAttribute("aria-expanded", "true");
+    expect(await menu.evaluate((node, previous) => node === previous, panelNode)).toBe(true);
+    expect(await hausdepp.evaluate((node, previous) => node === previous, linkNode)).toBe(true);
+    await expect(hausdepp).toBeFocused();
+    await hausdepp.click();
+    await expect(page).toHaveURL(/\/hausdepp$/);
+    await panelNode.dispose();
+    await linkNode.dispose();
+  } finally {
+    released = true;
+    await Promise.all(pending.splice(0).map(route => route.fallback()));
+  }
+});
+
 for (const language of ["de", "en"]) {
   test(`${language}: fresh private preview is discoverable and usable in both phone orientations`, async ({ page }, testInfo) => {
     await signedInPreview(page, language);
