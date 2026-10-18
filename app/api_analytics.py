@@ -81,6 +81,16 @@ async def analytics_events(request: Request):
 def analytics_dashboard(request: Request, response: Response, days: int = Query(default=7),
                         game: str = Query(default="all", max_length=16)):
     identity = require_analytics(request)
+    # Bind a mounted dashboard to the account actually serving this request.
+    # The optional assertion grants no capability and precedes any aggregation.
+    expected = request.headers.getlist("X-Analytics-Expected-Account-Id")
+    if expected:
+        if (len(expected) != 1 or not expected[0].isascii() or not expected[0].isdecimal()
+                or expected[0].startswith("0")):
+            raise HTTPException(status_code=400, detail="analytics_invalid_expected_account_id",
+                                headers={"Cache-Control": "no-store"})
+        if expected[0] != str(identity.user_id):
+            raise HTTPException(status_code=409, detail="analytics_account_changed", headers={"Cache-Control": "no-store"})
     # Public game access never grants the private Mission Control dataset.
     include_hausdepp = bool(identity.is_founder)
     # The closed native product is an independent, request-scoped capability.

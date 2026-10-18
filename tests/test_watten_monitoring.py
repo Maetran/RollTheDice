@@ -76,6 +76,71 @@ def public_result(game_id, *, previous=False):
                              created_at=end))
 
 
+def test_expected_account_rejects_another_real_cookie_before_private_aggregation(monitoring):
+    _client, accounts = monitoring
+    complete("expected-account-private-result", frozen=False)
+    founder_id, delegate_id = accounts[0][0].user_id, accounts[2][0].user_id
+    with patch("app.api_analytics.dashboard_stats", wraps=dashboard_stats) as aggregate:
+        # B's mounted dashboard must not receive A's all-games response when
+        # another tab temporarily changes the actual cookie to founder A.
+        mismatch = request(monitoring, headers={"X-Analytics-Expected-Account-Id": str(delegate_id)})
+        assert mismatch.status_code == 409
+        assert mismatch.json() == {"detail": "analytics_account_changed"}
+        assert mismatch.headers["cache-control"] == "no-store"
+        aggregate.assert_not_called()
+
+        bound = request(monitoring, headers={"X-Analytics-Expected-Account-Id": str(founder_id)})
+        assert bound.status_code == 200
+        assert "watten" in bound.json()["available_games"]
+        assert bound.json()["overview"]["completed_games"] == 1
+        assert "viewer_id" not in bound.json()
+        assert bound.headers["cache-control"] == "no-store"
+        assert aggregate.call_count == 1
+        compatible = request(monitoring)  # Existing clients may still omit the optional header.
+        assert compatible.status_code == 200
+        assert compatible.json()["overview"] == bound.json()["overview"]
+        assert compatible.json()["available_games"] == bound.json()["available_games"]
+        assert aggregate.call_count == 2
+
+
+def test_expected_account_rejects_invalid_duplicate_headers_and_never_authenticates_anonymous(monitoring):
+    client, accounts = monitoring
+    header = b"x-analytics-expected-account-id"
+    cookie = (b"cookie", accounts[0][1].encode())
+    valid = str(accounts[0][0].user_id).encode()
+    invalid = (b"", b"0", b"00", b"01", b"-1", b"+1", b"1.0", b" 1", b"1 ", b"1,1", "１".encode())
+    cases = [[(header, value)] for value in invalid]
+    cases.append([(header, valid), (header, valid)])
+    with patch("app.api_analytics.dashboard_stats") as aggregate:
+        for expected in cases:
+            response = client.get("/api/admin/analytics?days=7&game=all", headers=[cookie, *expected])
+            assert response.status_code == 400, expected
+            assert response.json() == {"detail": "analytics_invalid_expected_account_id"}
+            assert response.headers["cache-control"] == "no-store"
+        anonymous = client.get("/api/admin/analytics", headers={header.decode(): valid.decode()})
+        assert anonymous.status_code == 401
+        aggregate.assert_not_called()
+
+
+def test_expected_account_binding_never_grants_monitoring_or_private_product_access(monitoring):
+    _client, accounts = monitoring
+    with patch("app.api_analytics.dashboard_stats", wraps=dashboard_stats) as aggregate:
+        for actor in (2, 3):  # An explicit dashboard delegate and a non-founder owner.
+            expected = {"X-Analytics-Expected-Account-Id": str(accounts[actor][0].user_id)}
+            response = request(monitoring, actor, headers=expected)
+            assert response.status_code == 200
+            assert response.json()["available_games"] == ["zdwa", "zilch"]
+            calls = aggregate.call_count
+            denied = request(monitoring, actor, "watten", headers=expected)
+            assert denied.status_code == 403
+            assert denied.json() == {"detail": "analytics_game_unavailable"}
+            assert aggregate.call_count == calls
+        ordinary = request(monitoring, 1, headers={"X-Analytics-Expected-Account-Id": str(accounts[1][0].user_id)})
+        assert ordinary.status_code == 403
+        assert ordinary.json() == {"detail": "analytics_access_required"}
+        assert aggregate.call_count == 2
+
+
 def test_current_previous_and_all_filters_never_grant_delegates_or_nonfounder_owners_native_facts(monitoring):
     complete("native-current", frozen=True)
     complete("native-legacy", frozen=False)
