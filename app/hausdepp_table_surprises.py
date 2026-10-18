@@ -29,10 +29,10 @@ def _round_number(game: dict) -> int:
 
 def _eligible_effect(game_id: str, round_number: int) -> str | None:
     # Decide rarity first, independently of the variant pool. Only an eligible
-    # round draws one of eight equally likely effects (~1/1600 each). Viewers
+    # round draws one of eight equally likely effects (~1/400 each). Viewers
     # use this server offer, never a separate client-side lottery.
     chance = sha256(f"hausdepp-table-surprise:eligibility:v1:{game_id}:{round_number}".encode()).digest()
-    if int.from_bytes(chance, "big") % 200:
+    if int.from_bytes(chance, "big") % 50:
         return None
     variant = sha256(f"hausdepp-table-surprise:variant:v1:{game_id}:{round_number}".encode()).digest()
     return _EFFECTS[int.from_bytes(variant, "big") % len(_EFFECTS)]

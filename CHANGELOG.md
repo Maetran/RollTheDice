@@ -36,7 +36,7 @@ Die Dose öffnet sich mit Schaum, kräftiges Hin-und-her-Schütteln lässt sie p
 und hinterlässt eine kleine Pfütze zum Aufwischen. Ein geschütteltes Windlicht
 geht kurz aus und zündet sich selbst wieder an. Diese Spielereien bleiben lokal,
 begrenzt, leise und unter den Karten; reduzierte Bewegung beendet sie.
-Ungefähr jede 200. Runde erhält einen von acht seltenen Funden: Stern,
+Ungefähr jede 50. Runde erhält einen von acht seltenen Funden: Stern,
 Runenhammer, UFO, Portal, Drache, Kraken, Taschenuhr oder schwarzes Loch. Erst
 entscheidet der Server über das seltene Angebot, dann über die Variante. Ein
 Tipp überrascht den ganzen Tisch mit einer opulenten Inszenierung: Der Stern
@@ -70,7 +70,7 @@ leave a ring. Repeated taps open the can with foam; vigorous back-and-forth
 shaking bursts it and leaves a small puddle to wipe up. Shaken lanterns go out
 briefly and relight themselves. Ordinary interactions remain local,
 bounded, quiet and below the cards; reduced motion clears them. About one round
-in 200 offers one of eight rare finds: star, rune hammer, UFO, portal, dragon,
+in 50 offers one of eight rare finds: star, rune hammer, UFO, portal, dragon,
 kraken, pocket watch or black hole. The server first decides whether a round
 gets a find, then selects its variant. One tap shows everyone a brief, distinct
 visual spectacle: the star shines across the table; the hammer scatters cards

@@ -243,9 +243,9 @@ Codex reviewed the contribution and owns selection, integration and verification
 ### Seltene gemeinsame Funde / rare shared finds (3.11.0)
 
 Ein erster serverseitiger SHA-256-Bucket aus Tisch und Runde entscheidet mit
-ungefähr 1/200 über ein Angebot. Nur danach wählt eine unabhängige Hash-Domain
+ungefähr 1/50 über ein Angebot. Nur danach wählt eine unabhängige Hash-Domain
 einen von acht Funden: Stern, Runenhammer, UFO, Portal, Drache, Kraken, Taschenuhr
-oder schwarzes Loch (je ungefähr 1/1600). Erst der Tipp eines berechtigten Menschen
+oder schwarzes Loch (je ungefähr 1/400). Erst der Tipp eines berechtigten Menschen
 auf den sichtbaren Gegenstand beansprucht ihn atomar für diese Runde. Das Angebot
 allein startet keinen Effekt, auch nicht nach einer Wartezeit; Computer aktivieren
 keine Funde. Ein gesondertes Live-Ereignis zeigt den Effekt allen
@@ -269,9 +269,9 @@ Rundenwechsel und Navigation verhindern oder beenden die Effekte. Nach 42 neuen
 Graphitstrichen gibt es zudem einmal pro Runde eine kleine lokale Beschriftung.
 
 A first server-side SHA-256 bucket of table and round decides eligibility
-(about 1/200). Only then does an independent hash domain select one of eight
+(about 1/50). Only then does an independent hash domain select one of eight
 finds: star, rune hammer, UFO, portal, dragon, kraken, pocket watch or black hole
-(about 1/1600 each).
+(about 1/400 each).
 The offer alone never starts an effect, including after a delay; computer players
 never activate finds. A human must tap the visible object to claim it atomically
 for that round. A separate live

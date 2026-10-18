@@ -27,8 +27,8 @@ from app.hausdepp_table_surprises import (
 )
 
 ELIGIBLE_IDS = {
-    "star": "surprise-225", "hammer": "surprise-1044", "ufo": "surprise-1740", "portal": "surprise-271",
-    "dragon": "surprise-91", "kraken": "surprise-2851", "clock": "surprise-416", "blackhole": "surprise-1020",
+    "star": "surprise-180", "hammer": "surprise-587", "ufo": "surprise-22", "portal": "surprise-271",
+    "dragon": "surprise-91", "kraken": "surprise-631", "clock": "surprise-416", "blackhole": "surprise-11",
 }
 
 
@@ -99,12 +99,12 @@ class HausdeppTableSurpriseTests(unittest.TestCase):
         def digest(value):
             return SimpleNamespace(digest=lambda: value.to_bytes(32, "big"))
 
-        for chance in (1, 199, 201, 399, 2 ** 256 - 1):
+        for chance in (1, 49, 51, 99, 2 ** 256 - 1):
             with self.subTest(ineligible_chance=chance), \
                     patch("app.hausdepp_table_surprises.sha256", return_value=digest(chance)) as hashes:
                 self.assertIsNone(_eligible_effect("fixed-table", 7))
                 hashes.assert_called_once_with(b"hausdepp-table-surprise:eligibility:v1:fixed-table:7")
-        for chance in (0, 200, 400):
+        for chance in (0, 50, 100):
             for index, effect in enumerate(ELIGIBLE_IDS):
                 with self.subTest(eligible_chance=chance, variant=effect), \
                         patch("app.hausdepp_table_surprises.sha256",

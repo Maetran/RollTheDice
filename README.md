@@ -441,7 +441,7 @@ Kondensringe. Die Bierdose öffnet sich mit Schaum und platzt bei heftigem
 Hin-und-her-Schütteln; auch diese kleine Stelle lässt sich wegwischen.
 Das Windlicht geht beim Schütteln aus und zündet sich selbst wieder an.
 Diese Spielereien bleiben lokal, leise und ausserhalb der Karten und Aktionen;
-reduzierte Bewegung deaktiviert sie. Ungefähr jede 200. Runde bietet zusätzlich
+reduzierte Bewegung deaktiviert sie. Ungefähr jede 50. Runde bietet zusätzlich
 einen von acht seltenen Funden: Stern, Runenhammer, UFO, Portal, Drache, Kraken,
 Taschenuhr oder schwarzes Loch. Ein Tipp löst einmalig eine
 opulente Überraschung für den ganzen Tisch aus: Karten und Gegenstände wirbeln,
@@ -467,7 +467,7 @@ ring. Repeated taps open the beer can with foam; vigorous back-and-forth shaking
 bursts it and leaves another small spot to wipe up. Shaking the lantern puts it
 out before it relights itself. Ordinary interactions are local and quiet and
 keep cards and controls clear; reduced motion disables them. About one round
-in 200 also offers one of eight rare finds: star, rune hammer, UFO, portal, dragon,
+in 50 also offers one of eight rare finds: star, rune hammer, UFO, portal, dragon,
 kraken, pocket watch or black hole. One tap triggers a brief
 lavish scene for the whole table, once per round. Cards and objects scatter,
 are visually abducted and return. A magical mouse retrieves the watch; the

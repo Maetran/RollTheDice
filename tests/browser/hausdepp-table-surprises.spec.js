@@ -600,6 +600,52 @@ for (const device of [
   });
 }
 
+test('closed table tools never cut phantom action holes into a surprise while the visible summary stays protected', async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 768 });
+  const fixture = await roomFixture(page, 'ufo');
+  const tools = page.locator('#hausdeppTools'), hiddenAction = tools.locator('#hausdeppInspectPile');
+  await expect(tools).not.toHaveAttribute('open');
+  await expect(tools.locator(':scope > summary')).toBeVisible();
+  await expect(hiddenAction).toBeHidden();
+  // Closed native details can still expose layout boxes for fixed descendants.
+  // Place this real hidden action on otherwise free wood so that an erroneous
+  // cutout cannot be mistaken for protection of an unrelated visible control.
+  const hiddenBox = await hiddenAction.evaluate(button => {
+    const table = document.getElementById('hausdeppTable').getBoundingClientRect();
+    Object.assign(button.style, { position: 'fixed', inset: 'auto', left: `${table.left + table.width * .52}px`,
+      top: `${table.top + table.height * .22}px`, width: '64px', height: '44px', margin: '0', transform: 'none' });
+    const rect = button.getBoundingClientRect();
+    return { width: rect.width, height: rect.height };
+  });
+  expect(hiddenBox.width).toBeGreaterThan(0);
+  expect(hiddenBox.height).toBeGreaterThan(0);
+  const before = await playGeometry(page);
+  await pauseSurpriseForCapture(page);
+  fixture.emit('ufo', { actor: fixture.remote });
+  const layer = page.locator(OVERLAY);
+  await expect(layer).toBeVisible();
+  await seekSurpriseCapture(page, STORY_TIME.ufo);
+  const coverage = await layer.locator('.hd-surprise-screen').evaluate(screen => {
+    const frame = screen.getBoundingClientRect(), clipping = getComputedStyle(screen).clipPath;
+    const match = clipping.match(/^path\((?:(evenodd|nonzero),\s*)?["']([\s\S]*)["']\)$/);
+    if (!match) return { clipping, hiddenAction: false, visibleSummary: true };
+    const path = new Path2D(match[2]), context = document.createElement('canvas').getContext('2d');
+    const inside = selector => {
+      const rect = document.querySelector(selector).getBoundingClientRect();
+      return context.isPointInPath(path, rect.left + rect.width / 2 - frame.left,
+        rect.top + rect.height / 2 - frame.top, match[1] || 'nonzero');
+    };
+    return { clipping, hiddenAction: inside('#hausdeppInspectPile'), visibleSummary: inside('#hausdeppTools > summary') };
+  });
+  expect(coverage.clipping).toMatch(/^path\(/);
+  expect(coverage.hiddenAction, 'a closed-tool action must leave the visual stage intact').toBe(true);
+  expect(coverage.visibleSummary, 'the visible tools summary must retain its control cutout').toBe(false);
+  expectSameGeometry(await playGeometry(page), before);
+  expect(fixture.first.commands).toEqual([]);
+  await resumeSurpriseCapture(page);
+  await expect(layer).toHaveCount(0, { timeout: 6000 });
+});
+
 test('WebKit phone: the kraken body remains visible outside protected control cutouts', async ({ playwright, baseURL }) => {
   const { page, browser } = await isolatedBrowserClient(playwright, baseURL, 'webkit', { width: 390, height: 844 });
   try {

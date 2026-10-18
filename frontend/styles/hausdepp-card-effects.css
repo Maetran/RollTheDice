@@ -1,12 +1,20 @@
-/* Singed edges leave ranks, suits, selection marks and playable hit boxes clear. */
+/* Static ash and char stay around the artwork, with card values and selection clear. */
 .hd-cards-scorched :is(.hausdepp-card, .hd-card-back, .hd-opponent-card, .hd-burned-card)::before {
-  content: ""; position: absolute; inset: 0; z-index: 1; border-radius: inherit; pointer-events: none;
+  content: ""; position: absolute; inset: var(--hd-scorch-outset, 0); z-index: 1; border-radius: inherit; pointer-events: none;
   background:
-    radial-gradient(ellipse at 0 14%, #1b110ecc, #6b3b16aa 3%, transparent 9%),
-    radial-gradient(ellipse at 100% 72%, #1b110eee, #86502099 4%, transparent 11%),
-    radial-gradient(ellipse at 28% 100%, #27160fee, #6d391888 5%, transparent 10%),
-    linear-gradient(90deg, #20120dcc, #67371966 2%, transparent 5% 95%, #67371966 98%, #20120dcc),
-    linear-gradient(#25130d, #6c371b88 2%, transparent 5% 95%, #6c371b88 98%, #25130d);
-  box-shadow: inset 0 0 2px 1px #1d100f;
+    radial-gradient(ellipse 11% 5% at 2% 41%, #120e0df5 35%, #492a1be6 53%, #aa713e7a 73%, transparent),
+    radial-gradient(ellipse 14% 7% at 99% 66%, #100d0cf5 36%, #4a2c1de6 55%, #a16b3f85 75%, transparent),
+    radial-gradient(ellipse 18% 5% at 32% 100%, #17100ef5 38%, #52301de6 58%, #ac774c80 77%, transparent),
+    radial-gradient(ellipse 13% 4% at 71% 0, #18110ff2 35%, #5c3622d9 58%, #aa6b3a80 78%, transparent),
+    radial-gradient(ellipse 3.5% 1.8% at 79% 87%, #171310e0 32%, #5a3c29b3 58%, #a876494d 78%, transparent),
+    radial-gradient(ellipse 2% 1% at 19% 70%, #261b15cc 28%, #78543788 57%, transparent),
+    radial-gradient(ellipse 6% 2.2% at 90% 33%, #38281b99 14%, #7c56376b 48%, transparent),
+    linear-gradient(90deg, #16110ff2, #38251ed9 2%, #74492d9e 4%, #ab75454d 7%, transparent 12% 88%, #ab75454d 93%, #74492d9e 96%, #38251ed9 98%, #16110ff2),
+    linear-gradient(#1c130ff5, #4a2c1cdb 2%, #80502f91 4%, #bb87543d 7%, transparent 11% 89%, #aa704a52 93%, #6c402aab 96%, #342019ed 98%, #17100ff5),
+    radial-gradient(ellipse at 43% 47%, #75634d0d 28%, #98734224 69%, #3e302b4d);
+  box-shadow: inset 0 0 3px 1px #160f0ee6;
 }
+/* Back borders are paper too; char covers them without changing card geometry. */
+.hd-cards-scorched .hd-card-back { --hd-scorch-outset: -5px; }
+.hd-cards-scorched :is(.hd-opponent-card, .hd-burned-card) { --hd-scorch-outset: -2px; }
 .hd-cards-scorched .hausdepp-card.is-selected::after { z-index: 2; }

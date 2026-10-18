@@ -1,4 +1,4 @@
-import { snapshotTargets, drawSnapshot, woodenStage, protectControls, paintTableWood } from "./surprise-snapshots.js";
+import { snapshotTargets, drawSnapshot, woodenStage, protectControls, paintTableWood, handTransferCluster } from "./surprise-snapshots.js";
 import { magicalMouseArt } from "./surprise-mouse.js";
 // Rare table surprises use inert visual doubles; live cards, controls and
 // game state keep their real geometry and continue to accept normal input.
@@ -197,6 +197,20 @@ function occlude(fx, target, duration, from, until) {
   return patch;
 }
 
+function transferOcclusions(fx, targets, duration, from, until) {
+  const cluster = handTransferCluster(fx.table, targets);
+  if (cluster) {
+    const hold = Math.max(until, duration * .9);
+    occlude(fx, cluster.target, duration, from, hold);
+    const rest = drawSnapshot(fx, cluster.target, { omitNodes: cluster.movingNodes });
+    rest.host.dataset.restoredHand = 'true';
+    // The host crops the original hand viewport, including its scroll offset.
+    rest.host.style.overflow = 'hidden';
+    stageFade(fx, rest.host, duration, { from, until: hold });
+  }
+  for (const target of targets) if (!cluster?.movingNodes.includes(target.node)) occlude(fx, target, duration, from, until);
+}
+
 function chooseTargets(fx, count = 3) {
   const targets = snapshotTargets(fx.table), cards = targets.filter(target => target.kind === 'card');
   const props = targets.filter(target => target.kind === 'prop');
@@ -293,8 +307,8 @@ function ufo(fx) {
   play(saucer, smooth([{ transform: `${from} rotate(-15deg)`, opacity: 0 }, { transform: place, opacity: 1, offset: .18 },
     { transform: `${place} translateY(-5px)`, opacity: 1, offset: .38 }, { transform: place, opacity: 1, offset: .72 },
     { transform: `${leave} rotate(15deg)`, opacity: 0 }]), { duration });
+  transferOcclusions(fx, targets, duration, 940, 2870);
   targets.forEach((target, index) => {
-    occlude(fx, target, duration, 940, 2870);
     const copy = drawSnapshot(fx, target); copy.host.dataset.abducted = 'true';
     const beamWidth = Math.max(24, target.width * 1.2), dx = target.x - hover.x, dy = target.y - hover.y;
     const beam = add('beam', beamWidth, Math.max(40, Math.hypot(dx, dy)));
@@ -329,9 +343,9 @@ function portal(fx) {
   const curve = `M${from.x} ${from.y}Q${box.width / 2} ${Math.max(15, Math.min(from.y, to.y) - unit * 1.6)} ${to.x} ${to.y}`;
   bridge.innerHTML = svg(`<path d="${curve}" fill="none" stroke="#9cf5dd" stroke-width="18" opacity=".15"/><path d="${curve}" fill="none" stroke="#d8fff5" stroke-width="4" stroke-dasharray="10 7"/><path d="${curve}" fill="none" stroke="#b9a1ff" stroke-width="1.5"/>`, `0 0 ${box.width} ${box.height}`);
   stageFade(fx, bridge, duration, { from: 450, until: 2700, strength: .9 });
+  transferOcclusions(fx, targets, duration, 560, 2900);
   targets.forEach((target, index) => {
     const entry = index ? to : from, exit = index ? from : to;
-    occlude(fx, target, duration, 560, 2900);
     const copy = drawSnapshot(fx, target); copy.host.dataset.traveller = 'true';
     const center = point => `translate(${point.x - target.width / 2}px,${point.y - target.height / 2}px)`;
     play(copy.host, smooth([{ transform: copy.place, opacity: 0 }, { transform: copy.place, opacity: 1, offset: .17 },

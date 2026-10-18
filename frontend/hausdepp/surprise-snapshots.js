@@ -3,6 +3,14 @@ const painted = ['display', 'box-sizing', 'overflow', 'border-radius', 'border',
 const layout = ['position', 'left', 'right', 'top', 'bottom', 'inset', 'width', 'height', 'min-width', 'max-width', 'min-height', 'max-height', 'aspect-ratio', 'transform', 'transform-origin', 'translate', 'rotate', 'scale', 'z-index', 'flex', 'flex-direction', 'align-items', 'justify-content', 'gap', 'grid-template-columns', 'grid-template-rows'];
 let serial = 0;
 const visible = node => {
+  // Fixed descendants of a closed details can still expose layout bounds.
+  // Only its summary is painted; their controls must not punch phantom holes.
+  for (let parent = node.parentElement; parent; parent = parent.parentElement) {
+    if (parent.tagName === 'DETAILS' && !parent.open) {
+      const summary = [...parent.children].find(child => child.tagName === 'SUMMARY');
+      if (!summary?.contains(node)) return false;
+    }
+  }
   const box = node.getBoundingClientRect(), style = getComputedStyle(node);
   return box.width > 2 && box.height > 2 && style.display !== 'none' && style.visibility !== 'hidden';
 };
@@ -28,9 +36,33 @@ export function snapshotTargets(table, { limit = 24, only = null, groupHand = tr
   }).filter(target => !only || only(target)).slice(0, limit);
 }
 
-export function drawSnapshot(fx, target) {
+// A card's axis-aligned wood patch would also erase its overlapping neighbours.
+// Reconstruct the visible hand once, preserving layout while its chosen cards
+// travel. Only this optical copy omits them; the live hand is never touched.
+export function handTransferCluster(table, targets) {
+  const hand = table.querySelector('#hausdeppHand');
+  if (!hand) return null;
+  const movingNodes = targets.filter(target => target.node !== hand && hand.contains(target.node)).map(target => target.node);
+  if (!movingNodes.length) return null;
+  const box = (table.querySelector('.hd-surprise-layer') || table).getBoundingClientRect(), viewport = hand.getBoundingClientRect();
+  const cards = [...hand.querySelectorAll('.hausdepp-card')].map(node => node.getBoundingClientRect())
+    .map(rect => ({ left: Math.max(rect.left, viewport.left, box.left), right: Math.min(rect.right, viewport.right, box.right),
+      top: Math.max(rect.top, viewport.top, box.top), bottom: Math.min(rect.bottom, viewport.bottom, box.bottom) }))
+    .filter(rect => rect.right > rect.left && rect.bottom > rect.top);
+  if (!cards.length) return null;
+  const left = Math.max(box.left, Math.min(...cards.map(rect => rect.left)) - 6) - box.left;
+  const top = Math.max(box.top, Math.min(...cards.map(rect => rect.top)) - 6) - box.top;
+  const right = Math.min(box.right, Math.max(...cards.map(rect => rect.right)) + 6) - box.left;
+  const bottom = Math.min(box.bottom, Math.max(...cards.map(rect => rect.bottom)) + 6) - box.top;
+  return { movingNodes, target: { node: hand, kind: 'card', prop: '', left, top, width: right - left, height: bottom - top,
+    x: (left + right) / 2, y: (top + bottom) / 2,
+    sourceRect: { left: viewport.left - box.left, top: viewport.top - box.top, width: viewport.width, height: viewport.height } } };
+}
+
+export function drawSnapshot(fx, target, { omitNodes = [] } = {}) {
   const host = fx.add('snapshot', target.width, target.height);
   host.dataset.sourceKind = target.kind;
+  if (target.node.id === 'hausdeppHand' || target.node.closest('#hausdeppHand')) host.dataset.fromHand = 'true';
   host.inert = true;
   host.style.transform = `translate(${target.left}px,${target.top}px)`;
   // Closed shadow scopes keep SVG paint-server identifiers private and prevent
@@ -70,10 +102,18 @@ export function drawSnapshot(fx, target) {
     }
   });
   const style = getComputedStyle(target.node);
-  copy.style.position = 'absolute'; copy.style.inset = 'auto'; copy.style.left = '50%'; copy.style.top = '50%'; copy.style.margin = '0';
+  const sourceRect = target.sourceRect || target;
+  copy.style.position = 'absolute'; copy.style.inset = 'auto';
+  copy.style.left = `${sourceRect.left - target.left + sourceRect.width / 2}px`;
+  copy.style.top = `${sourceRect.top - target.top + sourceRect.height / 2}px`;
+  copy.style.margin = '0';
   copy.style.width = style.width; copy.style.height = style.height; copy.style.minWidth = '0'; copy.style.maxWidth = 'none'; copy.style.minHeight = '0'; copy.style.maxHeight = 'none';
   copy.style.translate = 'none'; copy.style.rotate = 'none'; copy.style.scale = 'none'; copy.style.transformOrigin = '50% 50%';
   copy.style.transform = `translate(-50%,-50%) ${style.transform === 'none' ? '' : style.transform}`;
+  for (const node of omitNodes) {
+    const index = originals.indexOf(node);
+    if (index >= 0) copies[index].style.setProperty('opacity', '0', 'important');
+  }
   shadow.append(copy);
   originals.forEach((node, index) => { copies[index].scrollLeft = node.scrollLeft; copies[index].scrollTop = node.scrollTop; });
   return { ...target, host, place: `translate(${target.left.toFixed(1)}px,${target.top.toFixed(1)}px)` };
