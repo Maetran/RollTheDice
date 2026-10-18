@@ -45,7 +45,7 @@ test('Watten actual worker replaces a private account only with neutral offline 
   await page.goto('/watten');
   await waitForWattenWorker(page);
   const registration = await page.request.post('/api/auth/register', {
-    headers: { Origin: baseURL, 'X-Forwarded-For': '192.0.2.221' },
+    headers: { Origin: baseURL, 'X-Forwarded-For': '192.0.2.231' },
     data: { username: 'WattenPwaOffline', password: 'watten-offline-account-123' },
   });
   expect(registration.status()).toBe(201);

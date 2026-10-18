@@ -1,6 +1,11 @@
 const { test, expect } = require('@playwright/test');
 const path = require('node:path');
 
+// These tests deliberately hold/replace auth responses. Browser routing does
+// not intercept requests forwarded by a worker; the separate PWA spec covers
+// the actual network-only worker, offline state and installed identity.
+test.use({ serviceWorkers: 'block' });
+
 async function openSection(page, selector) {
   const row = page.locator('details').filter({ has: page.locator(selector) });
   if (!await row.evaluate(node => node.open)) await row.locator('summary').click();
@@ -100,7 +105,7 @@ for (const language of ['de', 'en']) {
       expect((await (await page.request.get('/api/auth/me')).json()).user.id).toBe(initial.user.id);
       expect(sockets).toEqual([]);
       expect(foreign).toEqual([]);
-      expect(await page.evaluate(() => navigator.serviceWorker.getRegistrations().then(items => items.map(item => new URL(item.scope).pathname)))).toEqual(['/watten']);
+      expect(await page.evaluate(() => navigator.serviceWorker.getRegistrations().then(items => items.map(item => new URL(item.scope).pathname)))).toEqual([]);
       for (const viewport of [{ width: 320, height: 844 }, { width: 568, height: 320 }]) {
         await page.setViewportSize(viewport);
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
