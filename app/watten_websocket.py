@@ -100,10 +100,10 @@ async def _session_action(session, data: dict) -> None:
     if action == "spectate_game":
         if set(data) - {"action", "pass", "passphrase", "expected_account_id"}:
             raise ValueError("watten_invalid_command")
-        from .watten_runtime import passphrase_matches
+        from .watten_runtime import account_protection_verified
 
         own_member = any(member.account_id == identity.user_id for member in game["_watten"].room.members)
-        if not own_member and not passphrase_matches(game, data.get("pass", data.get("passphrase"))):
+        if not own_member and not account_protection_verified(game, identity.user_id, data.get("pass", data.get("passphrase"))):
             raise ValueError("watten_wrong_passphrase")
         if session.player_id is not None or session.spectator_id is not None:
             raise ValueError("watten_already_joined")
@@ -205,13 +205,24 @@ async def _handle_locked(session, action: str, data: dict) -> bool:
         eligible_accounts=_eligible_accounts(game) if action == "leave_waiting_game" else None)
     public_call_events = ()
     if not replayed:
+        was_started = bool(game["_started"])
         previous = {item.delivery_id for item in game["_watten"].deliveries}
         fresh = {(item.kind, item.seat, item.value) for item in candidate["_watten"].deliveries
                  if item.delivery_id not in previous}
         public_call_events = tuple({"kind": kind, "seat": seat, "value": value}
                                    for kind, seat, value in sorted(fresh))
-        persist_watten_game(candidate)
+        # Explicit decisions and card play count only for this freshly bound
+        # human, atomically with persistence. Inspections, feedback, room
+        # controls, CPUs and safe command replays never create activity.
+        human_actor = (identity.user_id, session.player_id) if action == "watten_command" and data["kind"] in {
+            "announce_strike", "announce_colour", "play_card", "bid", "respond",
+        } else None
+        persist_watten_game(candidate, human_actor=human_actor)
         _install(game, candidate)
+        if action == "watten_start" and not was_started and game["_started"]:
+            from .friend_activity import publish_friend_game_start
+
+            await publish_friend_game_start(game)
     from .watten_cpu_runtime import watch_game
 
     watch_game(game)

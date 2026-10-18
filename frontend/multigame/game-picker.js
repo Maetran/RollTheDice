@@ -18,6 +18,7 @@ export function gameIcon(id) {
     zdwa: '<rect x="4" y="3" width="16" height="19" rx="2"/><path d="M4 9h16M10 9v13M10 15h10"/><circle cx="8" cy="6" r=".8" fill="currentColor" stroke="none"/><circle cx="12" cy="6" r=".8" fill="currentColor" stroke="none"/><circle cx="16" cy="6" r=".8" fill="currentColor" stroke="none"/>',
     zilch: '<rect x="3" y="3" width="14" height="14" rx="3"/><path d="M17 8h1a3 3 0 0 1 3 3v7a3 3 0 0 1-3 3h-7a3 3 0 0 1-3-3v-1"/><circle cx="7" cy="7" r="1" fill="currentColor" stroke="none"/><circle cx="13" cy="7" r="1" fill="currentColor" stroke="none"/><circle cx="10" cy="10" r="1" fill="currentColor" stroke="none"/><circle cx="7" cy="13" r="1" fill="currentColor" stroke="none"/><circle cx="13" cy="13" r="1" fill="currentColor" stroke="none"/><circle cx="17.5" cy="17.5" r="1" fill="currentColor" stroke="none"/>',
     hausdepp: '<path d="m6 17-3-1.1a1.5 1.5 0 0 1-.9-1.9l3.4-10a1.5 1.5 0 0 1 1.9-.9L12 4.7"/><rect x="8" y="4" width="12" height="17" rx="2"/><path d="M14 16s-3.5-2.2-3.5-4.3a1.9 1.9 0 0 1 3.5-.8 1.9 1.9 0 0 1 3.5.8C17.5 13.8 14 16 14 16Z" fill="currentColor" stroke="none"/>',
+    watten: '<path d="m6 18-2.8-1a1.5 1.5 0 0 1-.9-1.9L5.5 5a1.5 1.5 0 0 1 1.9-.9L11 5.3"/><rect x="8" y="3" width="13" height="18" rx="2"/><path d="m14.5 8 3 4-3 4-3-4Z" fill="currentColor" stroke="none"/>',
   };
   return `<svg class="suite-game-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${shapes[id] || shapes.zdwa}</svg>`;
 }
@@ -218,6 +219,27 @@ export function createGamePicker({ button, currentMode, games = [], onSelect } =
     }
   }
 
+  function appendOption(list, game) {
+    const link = document.createElement("a");
+    const descriptionId = `${MENU_ID}-${game.id}-description`;
+    const activityId = `${MENU_ID}-${game.id}-activity`;
+    link.className = "suite-game-option";
+    link.href = game.href;
+    link.dataset.gameEntry = game.id;
+    link.setAttribute("aria-label", game.name);
+    link.setAttribute("aria-describedby", `${descriptionId} ${activityId}`);
+    if (game.id === current) link.setAttribute("aria-current", "page");
+    const status = game.id === current
+      ? `<span class="suite-game-option__current">${escapeMarkup(message("current"))}</span>`
+      : '<svg class="suite-game-option__arrow" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 10h12m-5-5 5 5-5 5"/></svg>';
+    link.innerHTML = `<span class="suite-game-option__icon" data-game-icon="${escapeMarkup(game.id)}">${gameIcon(game.id)}</span><span class="suite-game-option__copy"><span class="suite-game-option__name" translate="no">${escapeMarkup(game.name)}</span><span class="suite-game-option__description" id="${escapeMarkup(descriptionId)}">${escapeMarkup(game.description || message(`${game.id}Description`))}</span><span class="suite-game-option__activity" id="${escapeMarkup(activityId)}" data-game-activity data-state="loading">${escapeMarkup(message("activityLoading"))}</span></span>${status}`;
+    link.addEventListener("click", event => {
+      onSelect?.(game.id, game, event);
+      close();
+    });
+    list.append(link);
+  }
+
   function open() {
     if (destroyed || panel || button.disabled || button.hidden || !available.length) return;
     closeActivePicker?.();
@@ -235,26 +257,7 @@ export function createGamePicker({ button, currentMode, games = [], onSelect } =
     panel.innerHTML = `<div class="suite-game-menu__header"><div><h2 class="suite-game-menu__title">${escapeMarkup(message("title"))}</h2><p class="suite-game-menu__intro">${escapeMarkup(message("intro"))}</p></div><button type="button" class="suite-game-menu__close" data-game-picker-close aria-label="${escapeMarkup(message("close"))}"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15"/></svg></button></div><div class="suite-game-menu__games"></div>`;
     panel.querySelector("[data-game-picker-close]").addEventListener("click", () => close({ restoreFocus: true }));
     const list = panel.querySelector(".suite-game-menu__games");
-    for (const game of available) {
-      const link = document.createElement("a");
-      const descriptionId = `${MENU_ID}-${game.id}-description`;
-      const activityId = `${MENU_ID}-${game.id}-activity`;
-      link.className = "suite-game-option";
-      link.href = game.href;
-      link.dataset.gameEntry = game.id;
-      link.setAttribute("aria-label", game.name);
-      link.setAttribute("aria-describedby", `${descriptionId} ${activityId}`);
-      if (game.id === current) link.setAttribute("aria-current", "page");
-      const status = game.id === current
-        ? `<span class="suite-game-option__current">${escapeMarkup(message("current"))}</span>`
-        : '<svg class="suite-game-option__arrow" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 10h12m-5-5 5 5-5 5"/></svg>';
-      link.innerHTML = `<span class="suite-game-option__icon" data-game-icon="${escapeMarkup(game.id)}">${gameIcon(game.id)}</span><span class="suite-game-option__copy"><span class="suite-game-option__name" translate="no">${escapeMarkup(game.name)}</span><span class="suite-game-option__description" id="${escapeMarkup(descriptionId)}">${escapeMarkup(game.description || message(`${game.id}Description`))}</span><span class="suite-game-option__activity" id="${escapeMarkup(activityId)}" data-game-activity data-state="loading">${escapeMarkup(message("activityLoading"))}</span></span>${status}`;
-      link.addEventListener("click", event => {
-        onSelect?.(game.id, game, event);
-        close();
-      });
-      list.append(link);
-    }
+    for (const game of available) appendOption(list, game);
     document.body.append(backdrop, panel);
     button.setAttribute("aria-expanded", "true");
     positionPanel();
@@ -269,12 +272,24 @@ export function createGamePicker({ button, currentMode, games = [], onSelect } =
   }
 
   function update({ currentMode: nextMode = current, games: nextGames = available } = {}) {
-    // Auth refreshes are frequent. Preserve the focused option unless the
-    // actual audience, destination or current game has changed.
+    // A newly confirmed option may arrive after the public menu was opened.
+    // Only an unchanged prefix can keep its existing DOM and focused link;
+    // withdrawals and changes to any old option still close immediately.
     const changed = nextMode !== current || JSON.stringify(nextGames) !== JSON.stringify(available);
-    if (changed) close({ restoreFocus: Boolean(panel?.contains(document.activeElement)) });
+    const appended = nextMode === current && nextGames.length > available.length
+      && available.every((game, index) => JSON.stringify(game) === JSON.stringify(nextGames[index]))
+      && new Set(nextGames.map(game => game.id)).size === nextGames.length;
+    const previousLength = available.length;
+    if (changed && !appended) close({ restoreFocus: Boolean(panel?.contains(document.activeElement)) });
     current = nextMode;
     available = nextGames;
+    if (panel && appended) {
+      const list = panel.querySelector(".suite-game-menu__games");
+      for (const game of available.slice(previousLength)) appendOption(list, game);
+      positionPanel();
+      // Cancel the earlier audience's count request before reading fresh counts.
+      void refreshActivity();
+    }
     updateTrigger();
   }
 

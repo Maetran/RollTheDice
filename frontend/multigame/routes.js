@@ -211,6 +211,14 @@ export function hausdeppAppEntryUrl(locationLike = window.location, environmentL
     ? `https://${HAUSDEPP_PRODUCTION_HOST}/hausdepp` : "/hausdepp";
 }
 
+
+/** The private web preview stays on the fixed apex, also in another product's PWA. */
+export function wattenAppEntryUrl(locationLike = window.location) {
+  return isProductionZdwaLocation(locationLike) || isProductionZilchLocation(locationLike)
+    || String(locationLike.hostname || "").toLowerCase() === HAUSDEPP_PRODUCTION_HOST
+    ? `${ZDWA_PRODUCTION_ORIGIN}/watten` : "/watten";
+}
+
 /** The shared sign-in stays on the active origin, including an installed PWA. */
 export function normalizeHausdeppPageUrl(value) {
   if (typeof value !== "string" || value.length > 2048 || /[\\\u0000-\u001f\u007f]/.test(value)) return null;

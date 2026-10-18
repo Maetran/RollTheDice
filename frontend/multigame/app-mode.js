@@ -1,5 +1,5 @@
 import { loadAuth } from "../shared/auth.js";
-import { hausdeppAppEntryUrl, zdwaAppEntryUrl, zilchAppEntryUrl } from "./routes.js";
+import { hausdeppAppEntryUrl, wattenAppEntryUrl, zdwaAppEntryUrl, zilchAppEntryUrl } from "./routes.js";
 import { createGamePicker } from "./game-picker.js";
 
 export const APP_MODE_STORAGE_KEY = "zdwa_app_mode";
@@ -24,6 +24,12 @@ function canDiscoverHausdepp(auth) {
   return Boolean(access?.hausdepp_public === true || (auth?.authenticated && access?.hausdepp_preview === true));
 }
 
+function canDiscoverWatten(auth) {
+  const access = auth?.game_access || auth?.user?.game_access;
+  return auth?.authenticated === true && Number.isSafeInteger(auth.user?.id) && auth.user.id > 0
+    && access?.watten_preview === true;
+}
+
 function updateSwitch(allowed) {
   for (const switchButton of document.querySelectorAll("[data-game-switch]")) {
     switchButton.hidden = !allowed;
@@ -46,9 +52,16 @@ function clearRememberedZilchMode() {
   } catch (_) {}
 }
 
+function clearRememberedWattenMode() {
+  try {
+    if (localStorage.getItem(APP_MODE_STORAGE_KEY) === "watten") localStorage.removeItem(APP_MODE_STORAGE_KEY);
+  } catch (_) {}
+}
+
 function navigateToMode(mode) {
   rememberMode(mode);
-  const destination = mode === "hausdepp" ? hausdeppAppEntryUrl() : mode === "zilch" ? zilchAppEntryUrl("/") : zdwaAppEntryUrl();
+  const destination = mode === "watten" ? wattenAppEntryUrl()
+    : mode === "hausdepp" ? hausdeppAppEntryUrl() : mode === "zilch" ? zilchAppEntryUrl("/") : zdwaAppEntryUrl();
   const url = new URL(destination, window.location.href);
   url.searchParams.set(
     "game_switch_from",
@@ -67,7 +80,7 @@ export function initializeAppMode({
   refreshOnInitialize = true,
   scopedZilchSpectator = null,
 } = {}) {
-  const currentMode = ["zilch", "hausdepp"].includes(mode) ? mode : "zdwa";
+  const currentMode = ["zilch", "hausdepp", "watten"].includes(mode) ? mode : "zdwa";
   const existingController = window.ZDWA_APP_MODE;
   if (existingController?.initialized === true) return existingController;
 
@@ -84,11 +97,18 @@ export function initializeAppMode({
   let stopped = false;
   let hausdeppAllowed = publicHausdeppDocument;
   let zilchAllowed = publicZilchDocument;
+  let wattenAllowed = false;
+  let latestAuth = null;
+  let refreshPromise = null;
+  let refreshRevision = 0;
+  let suspended = false;
   const pickers = new Map();
   const availableGames = () => [
     { id: "zdwa", name: "ZDWA", href: zdwaAppEntryUrl() },
     ...(zilchAllowed ? [{ id: "zilch", name: "Zilch", href: zilchAppEntryUrl("/") }] : []),
     ...(hausdeppAllowed ? [{ id: "hausdepp", name: "Hausdepp", href: hausdeppAppEntryUrl() }] : []),
+    ...(wattenAllowed ? [{ id: "watten", name: "Watten", href: wattenAppEntryUrl(),
+      description: window.ZDWA_I18N?.getLanguage?.() === "en" ? "Private preview" : "Private Vorschau" }] : []),
   ];
   const syncPickers = () => {
     updateSwitch(allowed);
@@ -119,7 +139,10 @@ export function initializeAppMode({
     window.location.replace(zdwaAppEntryUrl());
   };
 
-  const applyAuth = (auth) => {
+  const applyAuth = (auth, { confirmedPrivate = false } = {}) => {
+    latestAuth = auth;
+    wattenAllowed = confirmedPrivate && canDiscoverWatten(auth);
+    if (!canDiscoverWatten(auth)) clearRememberedWattenMode();
     const nextAllowed = canUseZilch(auth);
     // A server-confirmed help assignment can open this one spectator page
     // without granting the wider Zilch audience capability or game switch.
@@ -130,6 +153,12 @@ export function initializeAppMode({
     const access = auth?.game_access || auth?.user?.game_access;
     hausdeppAllowed = canDiscoverHausdepp(auth);
     zilchAllowed = nextAllowed;
+    if (currentMode === "watten" && !canDiscoverWatten(auth)) {
+      for (const picker of pickers.values()) picker.close();
+      document.getElementById("wattenApp")?.replaceChildren();
+      window.location.replace(zdwaAppEntryUrl());
+      return false;
+    }
     if (currentMode === "hausdepp" && !hausdeppAllowed) {
       for (const picker of pickers.values()) picker.close();
       try { if (localStorage.getItem(APP_MODE_STORAGE_KEY) === "hausdepp") localStorage.removeItem(APP_MODE_STORAGE_KEY); } catch (_) {}
@@ -139,26 +168,71 @@ export function initializeAppMode({
     }
     publicLobby = (publicZilchDocument && access?.zilch_public === true)
       || (publicHausdeppDocument && access?.hausdepp_public === true);
-    if (!nextAllowed && !scopedAllowed && (currentMode === "zilch" || !hausdeppAllowed)) {
+    if (!nextAllowed && !scopedAllowed && (currentMode === "zilch" || !hausdeppAllowed && !wattenAllowed)) {
       revokeZilch();
       return false;
     }
-    allowed = nextAllowed || hausdeppAllowed;
+    allowed = currentMode === "watten" ? wattenAllowed : nextAllowed || hausdeppAllowed || wattenAllowed;
     syncPickers();
     return true;
   };
 
-  const refresh = async () => {
-    try {
-      return applyAuth(await loadAuth({ refresh: true }));
-    } catch (_) {
-      // A network failure cannot turn an already public document into a
-      // private one. Keep its read-only shell; a successful denial above
-      // still revokes access immediately, including after a rollout change.
-      if (publicLobby && !stopped) return true;
-      revokeZilch();
-      return false;
+  const dropPrivate = () => {
+    if (!wattenAllowed) return;
+    wattenAllowed = false;
+    allowed = currentMode === "watten" ? false : zilchAllowed || hausdeppAllowed;
+    syncPickers();
+  };
+
+  const refresh = ({ preserveKnownPrivate = false } = {}) => {
+    if (!preserveKnownPrivate) dropPrivate();
+    if (suspended || document.visibilityState === "hidden") return Promise.resolve(false);
+    if (refreshPromise) return refreshPromise;
+    const revision = ++refreshRevision;
+    const operation = Promise.resolve().then(async () => {
+      try {
+        let auth = await loadAuth({ refresh: true });
+        // Shared /me reads coalesce. Finish an older in-flight identity first,
+        // then obtain one request begun after it before showing a private game.
+        if (canDiscoverWatten(auth)) auth = await loadAuth({ refresh: true });
+        if (revision !== refreshRevision || suspended || document.visibilityState === "hidden") return false;
+        if (latestAuth && (latestAuth.authenticated !== auth.authenticated
+          || latestAuth.user?.id !== auth.user?.id
+          || canDiscoverWatten(latestAuth) !== canDiscoverWatten(auth))) return false;
+        return applyAuth(auth, { confirmedPrivate: true });
+      } catch (_) {
+        if (revision !== refreshRevision || suspended) return false;
+        dropPrivate();
+        clearRememberedWattenMode();
+        if (currentMode === "watten") {
+          document.getElementById("wattenApp")?.replaceChildren();
+          window.location.replace(zdwaAppEntryUrl());
+          return false;
+        }
+        // A public document keeps only its public games on network failure.
+        if (publicLobby && !stopped) return true;
+        revokeZilch();
+        return false;
+      } finally {
+        if (refreshPromise === operation) refreshPromise = null;
+      }
+    });
+    refreshPromise = operation;
+    return operation;
+  };
+
+  const receiveAuth = (auth) => {
+    if (latestAuth && (latestAuth.authenticated ? latestAuth.user?.id : null)
+      !== (auth?.authenticated ? auth.user?.id : null)) {
+      refreshRevision += 1;
+      refreshPromise = null;
     }
+    // Routine same-account refreshes preserve a focused menu. A new account
+    // can never inherit this proof, and focus/pageshow explicitly discard it.
+    const confirmedPrivate = wattenAllowed && canDiscoverWatten(auth) && latestAuth?.user?.id === auth.user.id;
+    const result = applyAuth(auth, { confirmedPrivate });
+    if (canDiscoverWatten(auth) && !refreshPromise && !suspended) void refresh({ preserveKnownPrivate: confirmedPrivate });
+    return result;
   };
 
   for (const switchButton of document.querySelectorAll("[data-game-switch]")) {
@@ -185,10 +259,17 @@ export function initializeAppMode({
     pickers.get(document.querySelector("[data-game-switch]"))?.toggle();
   });
 
-  window.addEventListener("zdwa:auth-state", (event) => applyAuth(event.detail));
+  window.addEventListener("zdwa:auth-state", (event) => receiveAuth(event.detail));
   window.addEventListener("focus", () => { void refresh(); });
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") void refresh();
+    if (document.visibilityState === "visible") { suspended = false; void refresh(); }
+    else {
+      suspended = true;
+      refreshRevision += 1;
+      refreshPromise = null;
+      dropPrivate();
+      for (const picker of pickers.values()) picker.close();
+    }
   });
 
   const controller = {
@@ -201,17 +282,28 @@ export function initializeAppMode({
       return true;
     },
     refresh,
-    applyAuth,
+    applyAuth: receiveAuth,
     canUseZilch: () => zilchAllowed,
   };
   window.ZDWA_APP_MODE = controller;
   // Keep the controller usable when a browser restores this document from bfcache.
-  window.addEventListener("pagehide", () => { for (const picker of pickers.values()) picker.close(); });
+  window.addEventListener("pagehide", () => {
+    suspended = true;
+    refreshRevision += 1;
+    refreshPromise = null;
+    dropPrivate();
+    for (const picker of pickers.values()) picker.close();
+  });
+  window.addEventListener("pageshow", event => {
+    if (!event.persisted) return;
+    suspended = false;
+    void refresh();
+  });
 
   // The Zilch page has no standard auth controller. Refreshing still updates
   // account controls after an expiry, while a public Zilch table remains
   // playable as a guest.
-  if (currentMode === "zilch") window.setInterval(() => { void refresh(); }, 12_000);
+  if (currentMode === "zilch") window.setInterval(() => { void refresh({ preserveKnownPrivate: true }); }, 12_000);
   // The ZDWA lobby already resolves the identity for its account controls.
   // It can feed that result through the shared auth-state event and avoid a
   // duplicate request from the shell bundle.

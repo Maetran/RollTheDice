@@ -69,8 +69,9 @@ Open Ladinisch emits its public call once when the final ACK opens play; blind
 Ladinisch does not. Public Danke depends only on actual shown Rechter cards.
 
 Only official knowers follow ordinary-trump/Rechter leads. A critical lead never
-triggers duty; a later critical does not remove an existing duty. A nonwinning
-strike is an allowed alternative. Without ordinary trump, protected cards are
+triggers duty; a later critical does not remove an existing duty. An ordinary
+strike substitutes only when it takes the current trick. Trump, the Rechter
+and critical cards need not win. Without ordinary trump, protected cards are
 not forced. A pending bid freezes card play, while private partner feedback
 remains possible. Gestrichen opening rights use the initiating player's own
 score; designated hold/go/counter responses remain possible. The chosen source
@@ -93,9 +94,13 @@ lock. It rederives authority after lock acquisition, revokes replaced sockets,
 and commits candidate state and a final result in one database transaction before
 installing or acknowledging it. It uses explicit versioned storage and separate
 per-viewer projections. This is local development behind the independent
-`ROLLTHEDICE_WATTEN_GAME_PREVIEW` gate; production remains closed. Native
-documents also require the account preview gate. The complete rematch journey
-remains follow-up work.
+`ROLLTHEDICE_WATTEN_GAME_PREVIEW` gate; local native documents also require the
+account preview gate. A separate default-off `ROLLTHEDICE_WATTEN_FOUNDER_PREVIEW`
+can authorize only the immutable founder's private web preview on the existing
+production apex. The local booleans remain strictly local; production account
+authorization is a fresh active-account/ownership lookup. The fixed Watten
+origin, production PWA, Watten mail context and notification delivery remain
+closed. See the [deployment contract](DEPLOYMENT.md#private-watten-webvorschau--private-watten-web-preview).
 
 One-time public calls use a durable delivery outbox with recipient-bound ACKs,
 so a crash after commit but before broadcast does not lose open C/D's initial

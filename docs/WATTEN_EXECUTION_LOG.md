@@ -660,3 +660,354 @@ Spielkommandos, Socialdialog versteckt Deko und Pagehide leert den Tisch.
 Zwei Bildschirmbilder tatsächlich visuell geprüft.67 integrierte Nodefälle
 für Deko/Lobby/Social/Rematch/API bestanden in113.9ms. Diese gezielten Belege
 ersetzen den folgenden vollständigen Nachweis nicht.
+
+
+### Native Spieltag-Erfassung – vorbereitetes Suite-Paket
+
+Akzeptierte menschliche Schlag-/Farbansagen, Karten, Gebote und Antworten
+schreiben den monotonen kontoweiten Zürcher Spieltag in derselben Transaktion
+wie den nativen Checkpoint. Frische Session und gebundener Transport bleiben
+Voraussetzung. Joins, Sitz-/Startaktionen, Einschauen, Delivery-ACKs,
+Partnergefühl, CPU-Persistenz und Befehlsreplays zählen nicht. Fehlgeschlagene
+Commits verändern weder Checkpoint noch Spieltag. Eigene gespeicherte
+Wattenresultate ergänzen die bestehende historische Reminder-Eligibility,
+ohne Resultate über die geschlossenen gemeinsamen Produkt-APIs freizugeben.
+
+Neun neue gezielte Fälle plus die aktualisierte native Resultgrenze bestehen
+(**10 Tests, 7.17 s**); Runtime und bestehende Reminder anschliessend **48 Tests
+plus vier Unterfälle, 31.87 s**. Ruff und Bandit mit Repository-Konfiguration
+grün. Unabhängiger Quellreview ohne bestätigten Befund. Kein Versand,
+Worker-/Frontendfreigabe, Vollnachweis oder öffentlicher Release daraus.
+
+Accepted human calls, cards and bidding decisions now record the account play
+day atomically with the checkpoint. Replay, inspection, advice and CPU paths
+remain excluded. Independent review and focused regressions passed; native
+push delivery and complete product acceptance remain open.
+
+
+### P7 Folgetische/Kommunikation/Deko nach Develop integriert
+
+PR #57 ist normal nach `develop` gemergt: Source
+`ca548e4c255fa43fa9e9bb1e370413691811f96e`, Basis
+`a92258b628445a1ee88a0fe1afd18b1bf6c0acc8`, Merge
+`a31e13ae2bc5ef2c8e0d791d6aff0b8adfaf8dac`. Merge-Eltern und gleicher Tree
+`2cb3de1ea81cd30391223bca4baa8c61f38153e1` wurden geprüft. Der unveränderte
+Integrationsstand übernimmt den echten vollständigen Source-Nachweis;
+PR- und Develop-CI sind grün. Version3.15.0 ist damit integriert.
+
+Der erste Vollbrowserlauf scheiterte an Chromium-Signal11 beim Anlegen des
+Testcontexts vor dem deutschen Hausdepp-PWA-Testkörper. Alle anderen sechs
+Browserteile bestanden; kein gültiger Nachweis oder Push daraus. Der zweite
+vollständige Lauf auf exakt denselben sauberen Quellen bestand sämtliche
+sieben Gruppen, **2’352 Backendtests bei85.91% Coverage**, Produktionsimage,
+Container sowie alle sieben isolierten Browser-/Kontoteile. Nachweis:
+`test-results/local-checks/ca548e4c255f-1792352629866-65e965ec/`.
+Kein Master-/Produktionsrelease oder physischer Gerätenachweis.
+
+### Nächste Suite-Dienste – gemeinsame Backendbasis, Oberflächen offen
+
+Auf dem separaten Integrationszweig sind geprüfte Grundlagen für persönliche
+Einladungen0073, Freunde/Startmeldungen, Tourzustand0071, gespeicherte
+Gerätekontexte0072, Monitoring und Spieltage zusammengeführt. Persönlich
+angenommene Einladungen erlauben wie vom Owner bestätigt Zugriff auf genau
+diesen geschützten Folgetisch ohne Passwort; sie nehmen keinen Sitz und
+starten keine Partie.22 neue Einladungsfälle plus75 verwandte Prüfungen
+bestanden unabhängig. Alle Pakete wurden separat quellengeprüft.
+
+Die erste gemeinsame Backendrunde bestand97 Fälle und fand einen veralteten
+Test-Stub: der simulierte Start-Speicherfehler akzeptierte den neuen optionalen
+Spieltagparameter nicht. Der Stub prüft nun ausdrücklich `human_actor=None`
+beim Start; der betroffene Fall plus neun Spieltagfälle bestehen erneut
+(10Tests,8.76s). Keine Produktumgehung und kein Vollnachweis daraus.
+
+Der Monitoringreview fand eine falsche Vorperioden-Trafficabdeckung aus einem
+alten ZDWA-Event. Regression zunächst rot, Korrektur1701dee6 mit48Tests plus
+284Unterfällen grün, erneuter unabhängiger Review sauber. Fehlende native
+Trafficdaten bleiben ausdrücklich nicht gemessen; echte Ergebnisvergleiche
+bleiben erhalten. Menschenzahlen zählen frisch authentifizierte Konten über
+Geräte/Tische einmal; historische Teilnahmen sind ausdrücklich Sitze inkl.CPU.
+
+Der vorbereitete native Worker04d1914 validiert Push-Payload und Klickziel
+getrennt, nutzt feste Wattenicons, keine CacheStorage und keine fremden oder
+anderen laufenden Spielfenster.10 echte Handler-VM-Tests unterNode22 bestanden
+unabhängig erneut;17 PWA-/Gerätekontextfälle plus acht Unterfälle grün.
+Watten bleibt in allen tatsächlichen Versand-/Claim-/Empfängerpfaden gesperrt.
+Eine gespeicherte Registrierung ist kein Zustellungsversprechen.
+
+Freunde-/Auswahl-, Einladungs-, Tour- und Monitoringoberflächen sowie die
+vollständige Push-/Empfängerkette sind weiterhin offen. Die separate Claude-
+Arbeitsbasis und ein präziser Frontendauftrag liegen bereit; vor22:20Uhr gibt
+es keinen neuen Claude-Aufruf. Keine Zusatznutzung, Schlüssel oder Umgehung.
+Alle81 Findings bleiben erforderlich; Teilgrundlagen schliessen keine Abnahme.
+
+PR57 passed the complete same-source rerun and is merged into develop with
+matching source/merge trees and green CI. The following suite backends and
+validated worker remain local groundwork: their native interfaces, actual
+notification delivery and physical-device acceptance are still open.
+
+
+### Gemeinsame Suite-Backendprüfung mit dauerhaft gesperrtem Spielerruf
+
+Der vorbereitete allgemeine Spielerruf besitzt jetzt eine eigene additive
+0074-Claimtabelle und atomare600s-Tisch-/60s-Kontosperren. Nur tatsächlich
+sitzende Menschen in einem gespeicherten öffentlichen Warteraum mit echter
+unreservierter Admission-/Sitzkapazität erfüllen die Eligibility. Die native
+HTTP-Route endet weiterhin ausdrücklich mit503 vor Claim/Versand.
+
+Die gemeinsame Runde fand eine reale SQLite-Read-zu-Write-Sperre im Zwei-
+Thread-Claim. Eine frische SQLite-Transaktion reserviert nun den Writer vor
+Snapshot/Savepoint; PG-Locks, JSON-CAS, Timeout und Retryzahl bleiben erhalten.
+Die deterministische Regression war vorher rot;18 koordinierte Writerduelle
+bestanden danach. Bereits laufende Caller-Transaktionen bleiben unter dessen
+Kontrolle. Frischer Caller und Caller mit vorhandener Useränderung behalten
+jeweils den äusseren Rollbackschutz; beide Varianten unabhängig erneut grün.
+
+Der kombinierte Stand aus Touren, Freunden, Einladungen, Gerätekontext,
+Monitoring, Spieltagen, Ruf-Claims, PWA und bestehendem WebPush besteht
+**139 Tests plus11 Unterfälle in41.67s**. Nach dem reinen Testzusatz bestanden
+beide Rollbackvarianten separat erneut. Ruff/Bandit grün; Logs unter
+`test-results/watten-suite-services/`. Das sind gezielte Backendbelege,
+kein neuer vollständiger Pushnachweis. Noch kein PR oder Versand für dieses
+Folgepaket. Claude-Frontendarbeit nutzt eine separate saubere Arbeitsbasis.
+
+The composed suite backends passed139 focused tests and11 subtests after a
+reproduced SQLite concurrency fix; both fresh/existing transaction rollback
+cases remain tested. General Watten push is still unavailable. Native UI,
+full push verification and physical acceptance remain pending.
+
+### Erste private Owner-Webvorschau, 18.10.2026
+
+Der Owner hat den privaten Rollout der ersten zusammenhängenden Version nach
+vollständigen Prüfungen ausdrücklich freigegeben. `ROLLTHEDICE_WATTEN_FOUNDER_PREVIEW`
+bleibt standardmässig0 und erlaubt produktiv nur dem aktiven, dauerhaft
+gebundenen Founder die Apex-Webvorschau. Weitere Owner/Admins, Mitglieder,
+Gäste und angenommene Einladungen erhalten keinen Zugriff. Die vorhandenen
+drei Suite-Hosts dürfen nur diesem Konto den Apex-Link anzeigen; native Daten
+und Spiel-WS akzeptieren nur den kanonischen Apex. Fester Watten-Host, PWA,
+Mailkontext und Push-Zustellung bleiben gesperrt. Kontoansichten verwenden
+auf Prod die bestehenden Suite-Flows. Private Dokumente und Fehler sind
+`no-store/noindex`, Top-Level-/User-Capability stammen aus derselben Prüfung.
+
+CPU-Timer prüfen den tatsächlich gespeicherten, strikt restaurierten Quellstand
+gegen RAM und bestätigen vor dem Commit erneut die Founder-Autorität. Source-
+Lock/SQLite-Writerreservierung gehen der Kontosperre voraus; ein anderer
+DB-Writer, Flagentzug oder False-CAS verhindert Installation, Broadcast und
+Ergebnis-/Fortschrittsvergabe. Alle zwölf lokalen Profile bleiben separat
+verfügbar. Die unabhängige Quellenprüfung schloss einen doppelten Auth-Lookup
+und die Bereinigungsreihenfolge eines alten Lobby-Sockets vor Abschluss.
+
+Claudes erstes neues Frontendpaket lieferte native Freundesmeldungen und
+private Zustimmungs-/Auswahleinstellungen. Zwei reproduzierte Ressourcen-
+regressionen wurden anschliessend begrenzt: höchstens100 Suchtreffer im
+Seitenfenster und20 auf Auth wartende Meldungen. Beide neuen Fälle waren
+vorher rot. Das reparierte Paar besteht29 tatsächliche Node-Verhaltenstests.
+Die Startmeldung ist am laufenden Tisch Text; nur die Lobby bietet bewusstes
+Zuschauen. Auswahl und Meldungen erweitern keinen Spielzug oder Kartenblick.
+
+Unabhängige Root-Belege auf dem zusammengesetzten Stand:65 gezielte
+Founder-/CPU-/Aktivitätsfälle;53 Route-/Readiness-/Kontofälle plus346 Unterfälle;
+13 private Picker- und26 Lobby-Nodefälle. Drei echte Browser-Journeys belegen
+DE/EN-Kontoeinstellungen sowie live gestartete Partien bei unverändertem
+Pending-Bid/Hand-DOM. Drei weitere Browserfälle prüfen den privaten Picker
+in320x568 und568x320, Kontoentzug und späte Aktivitätsantworten. Screenshots
+wurden visuell gelesen. Die alten Chooser-Tests bestehen20 Fälle; drei schon
+vorhandene optionale Aufnahmetests bleiben übersprungen. Die erste private
+Picker-Probe hatte drei reine Fixturefehler: ihr isolierter Admin hatte keine
+Zilch-Freigabe. Die explizit markierte öffentliche Zilch-UI-Projektion wie in
+den bestehenden Tests korrigiert dies, ohne die echten APIs freizugeben.
+
+Diese Belege ersetzen keinen vollständigen Pushnachweis. Der finale3.16-
+Commit benötigt vor Push/Integration weiterhin alle sieben Pflichtgruppen,
+grüne CI und danach den freigegebenen privaten Weg `develop → master → prod`.
+Native Tour-/Einladungs-/Monitoring-Oberflächen und physische Geräteabnahme
+bleiben eigene offene Arbeiten; Claude arbeitet bereits im nächsten getrennten
+Tourpaket. Es gab bis zu diesem Quellenstand keinen neuen Prodrollout oder
+echten Watten-Pushversand.
+
+The owner approved a conditional first private production web preview for the
+immutable founder only, after complete verification. Composed targeted tests,
+six new real browser journeys and visual screenshots cover the account-bound
+picker, CPU commit authority and native friends UI. Two resource regressions
+were reproduced and fixed; one test fixture needed the explicitly labelled
+public Zilch projection. Complete exact-commit verification, CI and the private
+release still follow. The fixed Watten host, PWA, mail and push remain closed;
+remaining native services interfaces and physical acceptance are still open.
+
+
+### Exakte Vollversuche vor der privaten3.16-Freigabe
+
+Der vollständige Lauf auf `4b93c5f` bestand Qualität, Tools,2535 Backendfälle
+(86,28% Coverage), Linux/amd64-Produktionsimage und Container-Smoke. Alle sieben
+Browserteile liefen fertig; zwei ausdrücklich öffentliche Dreispiele-Fixtures
+übernahmen versehentlich die lokale Watten-Capability, ein Design-Routehandler
+lief über das Context-Teardown hinaus. Die eng korrigierten Fixtures umgehen
+keine Rechteprüfung und entfernen keine Assertions. Der rote Bericht bleibt
+unter `test-results/local-checks/4b93c5fdfc5b-1792356579633-af6ac7e6/` erhalten.
+
+Der erneute Vollversuch `10ecaa7` bestand dieselben Gruppen mit2535 Backendfällen
+(86,27% Coverage). Alle sieben Browserteile liefen erneut fertig. Zwei Fälle
+reproduzierten einen echten Menürace: Eine spät bestätigte private Option
+schloss ein schon geöffnetes Menü. Ein weiterer Logout-Test evaluierte Fokus
+im gerade absichtlich verworfenen Dokument. Der unveränderte rote Bericht
+liegt unter `test-results/local-checks/10ecaa7fb7d5-1792357460623-f7616f37/`.
+Keiner dieser Versuche ist ein gültiger Pushnachweis.
+
+Die Produktkorrektur ergänzt ausschliesslich eindeutige neue Optionen hinter
+einem exakt unveränderten Menüpräfix. Panel, alte Links und Fokus bleiben
+erhalten; Entzug, andere Ziele oder Spielwechsel schliessen weiterhin sofort.
+Alte Aktivitätsantworten werden verworfen. Zwei neue Nodefälle waren vor dem
+Fix rot; Root besteht danach17 Node-Verhaltenstests. Unabhängiges Quellreview
+blieb ohne Restbefund. Der Logout-Test verwendet jetzt einen echten zweiten
+Tab und nativen Fokuswechsel; alle Privacyassertions bleiben bestehen.
+Ein neuer Browserfall hält die abschliessende private Authantwort bis nach
+dem Öffnen des Menüs gezielt zurück. Dieser Fall, beide Hausdepp-Sprachen und
+der betroffene Zilch-Pfad bestehen im gezielten Browserlauf. Die erste native
+Tabaktivierung des Logout-Tests löste im Headless-Chromium keinen Fokus aus;
+der Trace belegte die ausbleibende Authabfrage. Die Fixture dispatcht Fokus
+jetzt im nächsten Browser-Task, damit der Rückgabewert das absichtliche
+Privacyreload überlebt. Der echte Logout und alle Assertions bleiben bestehen;
+der gezielte Gegenlauf ist grün. Belege liegen unter
+`test-results/browser/watten-owner-preview-picker-fix/` sowie
+`test-results/browser/watten-owner-preview-logout-fix/`.
+Ein weiterer vollständiger Lauf auf dem finalen sauberen Commit folgt vor
+Push und Release.
+
+
+Der dritte vollständige Lauf `5adf3b8` bestand Qualität, Tools,2535 Backendfälle,
+Produktionsimage und Container-Smoke. Alle sieben Browserteile liefen fertig;
+ein Fortschrittstest scheiterte beim zweiten Tisch. Der Trace belegt, dass
+seine Mitgliedschafts-Polls noch vor Beginn der neuen WebSockets erfolgreich
+waren: Die gespeicherte Projektion des ersten Tisches genügte dem alten
+Helfer. Ein Sitzklick während des neuen Beitritts wurde vom Server korrekt
+als veraltete Revision abgelehnt. Kein Produkt-Retry oder gelockerter Guard.
+Der rote Originalbericht unter
+`test-results/local-checks/5adf3b811a3a-1792358452264-54a10e6d/` bleibt erhalten.
+
+Der Helfer wartet jetzt ausdrücklich auf die neue Spiel-ID, echte Mitgliedschaft,
+die vollständige gleiche Teilnehmermenge und dieselbe aktuelle Raumrevision
+aller Empfänger. Der sichtbare Mitgliederstand bestätigt die Darstellung vor
+dem nächsten Sitzschritt; nach Bestätigung wird vor dem nächsten Akteur erneut
+abgeglichen. Der betroffene echte Browserfall besteht gezielt unter
+`test-results/browser/watten-current-room-bindings/`. Der finale vollständige
+Nachweis bleibt weiterhin vor jedem Push und Release erforderlich.
+
+
+Der vierte vollständige Lauf `91b8a56` bestand wiederum alle Gruppen vor dem
+Browserteil. Alle sieben Browserteile liefen fertig; genau ein neu ergänzter
+Founder-Menüfall scheiterte erst beim Teardown: Sein noch laufender eigener
+Auth-Routehandler las einen bereits geschlossenen Responsebody. Die sichtbaren
+Menü-, Fokus- und Navigationsassertions waren bestanden; der rote Originalbericht
+unter `test-results/local-checks/91b8a56994cf-1792359663205-c54515ca/` bleibt erhalten.
+
+Der Test wartet jetzt in seiner Bereinigung auf seine eigenen laufenden
+Page-Routehandler mit `unrouteAll({ behavior: "wait" })`. Kein Fehler wird
+ignoriert, keine Assertion entfernt und keine Retry- oder Timeoutgrenze erhöht.
+Alle vier Founder-Menüfälle bestehen gezielt unter
+`test-results/browser/watten-owner-preview-route-teardown/`; dies ist weiterhin
+kein vollständiger Pushnachweis. Vor jedem Push und Release folgt der volle
+Prüfablauf auf dem neuen sauberen Commit.
+
+
+### Korrigierte Hausregel und deterministische Dekoprüfung
+
+Der fünfte vollständige Lauf `426fb65` bestand alle Gruppen vor dem Browserteil;
+alle sieben Browserteile liefen fertig. Ein bestehender Hausdepp-Dekotest fand
+in30 zufälligen neuen Partien die gewünschte Betrachterposition nicht. Sein
+Originalbericht bleibt unter
+`test-results/local-checks/426fb65bdd09-1792360594587-f297e17e/` erhalten.
+Die Fixture benutzt jetzt einen einzigen echten Tisch mit sechs isolierten
+Konten und wählt das tatsächliche Konto nach dem unveränderten Zufallsgeber.
+Echte Schau, fünf Gegner, drei Handkarten, spielbarer Stock und alle alten
+Geometrie-/Bewegungsprüfungen bleiben bestehen. Der gezielte Browserlauf
+`test-results/browser/hausdepp-six-human-decor-fixture/` besteht44 Fälle.
+
+Beim direkten Abgleich wurde ein älterer Übertragungsfehler erkannt: Die
+Ownerantwort «Variante2 grundsätzlich» verlangt Trumpf statt eines gewöhnlichen
+Schlags, der den aktuellen Stich nicht übernimmt. Das Entscheidungsprotokoll
+hatte irrtümlich das Gegenteil behauptet. Fünf neue Gegenbeispiele scheitern
+am alten Code, vier zulässige Fälle bestehen weiterhin. Engine und CPU-Modell
+setzen nun dieselbe Regel um; gewöhnlicher Trumpf, Rechter und Kritische
+bleiben ohne Überstechzwang. Die unabhängige Referenzprüfung prüft die exakte
+legale Handmenge zusätzlich zu allen bisherigen Invarianten. Root besteht
+250 gezielte Play-/CPU-/Memory-/Engine-/View-Fälle in1,47s. Regeln, Entwickler-
+übergaben und DE/EN-Fehlerhinweise wurden entsprechend berichtigt.
+
+Das native Monitoring wird für die erste private Vorschau fertiggestellt,
+damit die bereits autorisierten nativen Aggregate korrekt dargestellt werden.
+Der Sourcecheckpoint wurde mit11 Nodefällen geprüft; zwei unabhängige Reviews
+fanden fehlende Kontobestätigung nach dem Analyticsbody und falsche Nullwerte
+im Weltkartenpanel. Die Korrektur und echte Browserabnahme bleiben vor dem
+abschliessenden vollständigen Nachweis erforderlich. Claude erreichte beim
+kleinen Korrekturpaket das tatsächliche Wochenlimit(100%, rejected); seine
+Teiländerungen sind gesichert und Codex übernimmt. Kein weiterer CLI-Auftrag,
+keine Zusatznutzung und kein App-Deployment sind dadurch erfolgt.
+
+### Native Monitoring-Abnahme und Kontobindung
+
+Die korrigierte Anzeige prüft die Identität nach dem Analyticsbody und auch
+vor dem Behalten alter Werte nach Fehlern frisch. Eine bereits laufende
+Authabfrage wird vorher abgewartet. Unbekannte Herkunftswerte entfernen die
+Weltkartenwerte einschliesslich ihrer zugänglichen Beschriftung; gemessene
+Nullen der bisherigen Produkte bleiben echte Nullen. Ein Hausdepp-Filter
+erhält keine irreführenden Watten-Hinweise.
+
+Die echte Kontowechselprüfung deckte zusätzlich B→Founder A→B während einer
+Analyticsantwort auf. Jede native Dashboardanfrage bindet sich nun an die
+erfasste Konto-ID; der Server verwirft eine abweichende Cookieidentität vor
+der Aggregation mit409 und `no-store`. Das erteilt keine Berechtigung und
+erhält ältere Clients ohne den optionalen Header. Der Client verwirft bei
+dieser Antwort Cache und Bindung und liest die Berechtigung erneut frisch.
+Zwei neue API-Regressionen scheitern am alten Code. Auf dem integrierten Stand
+bestehen46 betroffene Backendfälle mit284 Subtests und22 Nodefälle. Das
+unabhängige Quellenreview schliesst beide Seiten der Kontobindung ohne
+verbleibenden bestätigten Befund im geprüften Umfang.
+
+Alle neun neuen echten Dashboard-Browserfälle bestehen: DE/EN in drei
+Darstellungen und beiden Telefonorientierungen, verzögerte Antworten,
+persistierte Seitenevents und die Cookie-B→A→B-Folge mit echter409 sowie
+frisch geladener B-Antwort. Der Bericht liegt unter
+`test-results/browser/watten-dashboard-account-binding/`; die bestehenden
+Analyticsabläufe laufen im selben isolierten Pool. Die früheren drei
+Fixturefehler bleiben im roten Bericht erhalten: Eine Sprachinitialisierung
+überschrieb bei jedem Neuladen die echte Kontosprache; zwei alte Authzählungen
+berücksichtigten die neue Nachprüfung noch nicht. Die Initialisierung setzt
+nun nur eine fehlende Sprache, die Authzählungen prüfen ausdrücklich beide
+Phasen und warten auf deren Abschluss. Keine Assertion oder Timeoutgrenze
+wurde gelockert. DE-NEXUS-Hochformat und EN-LCARS-Querformat wurden zusätzlich
+an den tatsächlichen Screenshots visuell geprüft.
+
+Der vollständige Nachweis auf dem fertig committeten sauberen Stand sowie
+PR-, Develop- und Master-CI bleiben vor der freigegebenen privaten Auslieferung
+verpflichtend. Die81 Findings bleiben als Gesamtumfang offen beziehungsweise
+teilweise umgesetzt; diese Abnahme behauptet keine physische Geräteprüfung
+und keine öffentliche Wattenfreigabe.
+
+### Sechster vollständiger Lauf und bestätigte Browser-Fixtures
+
+Der saubere Commit `ccbdde9` besteht Qualität, Tools,2543 Backendfälle mit
+86,28% Coverage, Produktionsimage und Container-Smoke. Alle sieben Browserteile
+laufen fertig. Fünf Teile sind vollständig grün; drei Hausdepp-Dekofälle und
+zwei Watten-Passkeyfälle scheitern an konkret belegten Fixture-Races. Es entsteht
+kein Nachweis und kein Push. Der vollständige rote Bericht bleibt unter
+`test-results/local-checks/ccbdde977e6f-1792363249506-3a1f3549/` erhalten.
+
+Die Dekofälle scheitern vor jeder Geometrieprüfung: Ein Kontosprach-Reload
+lässt den ersten Gast vor der tatsächlichen Hostaufnahme eintreffen. Der
+bestehende Host-Guard weist ihn ab, sodass nur fünf Menschen im Raum sind.
+Die Fixture wartet nach jeder Navigation nun auf den aktuellen offenen Socket,
+die bestätigte Spieler-ID und deren tatsächlich verbundene Raummitgliedschaft.
+Erst dann öffnet sie den nächsten Gast. Alle finalen Privatansichten und
+Geometrieprüfungen bleiben unverändert; kein Timeout oder Retry wird ergänzt.
+Alle44 Dekofälle bestehen gezielt unter
+`test-results/browser/hausdepp-decor-real-join-barriers/`.
+
+Bei beiden Passkeyfällen belegen die Traces, dass noch laufender Verkehr des
+alten Dokuments die einmalige503-Antwort vor dem neuen Accountbundle verbraucht.
+Die neue Seite erhält korrekt200, weshalb der erwartete Fehlerhinweis fehlt.
+Die Fixture hält die503-Störung nun über das Neuladen bis zum tatsächlichen
+sichtbaren Fehler aktiv. Danach entfernt sie ausschliesslich diesen Handler
+und führt den bisherigen bewussten Retry aus. Alle Konto-, Backup-, Passkey-,
+Logout- und Privacyassertions bleiben erhalten. Alle sechs nativen
+Account-Passkeyfälle bestehen gezielt unter
+`test-results/browser/watten-passkey-controlled-auth-outage/`. Danach ist ein
+neuer vollständiger sauberer Nachweis erforderlich.

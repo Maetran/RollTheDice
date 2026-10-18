@@ -508,6 +508,8 @@ export async function logout() {
   // session (401) clears the cache while the logout response is on its way.
   const current = await loadAuth();
   const gameAccess = current?.game_access || current?.user?.game_access;
+  const guestGameAccess = gameAccess
+    ? Object.fromEntries(Object.entries(gameAccess).filter(([key]) => key !== "watten_preview")) : null;
   const response = await apiFetch('/api/auth/logout', { method: 'POST' });
   if (!response.ok) throw new Error('Abmelden fehlgeschlagen');
   authState.epoch += 1;
@@ -516,7 +518,7 @@ export async function logout() {
   notifyAuthState({
     authenticated: false,
     user: null,
-    ...(gameAccess ? { game_access: gameAccess } : {}),
+    ...(guestGameAccess ? { game_access: guestGameAccess } : {}),
   });
 }
 

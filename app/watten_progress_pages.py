@@ -1,4 +1,4 @@
-"""Authenticated local draft progress pages and their native account API."""
+"""Authenticated draft progress pages and their native account API."""
 
 from pathlib import Path
 from urllib.parse import urlencode
@@ -13,7 +13,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from .auth import require_csrf, resolve_session
 from .database import session_scope
 from .models import WattenMatchCredit
-from .watten_access import require_watten_access, watten_game_preview_enabled
+from .watten_access import require_watten_access, watten_game_preview_enabled, watten_request_enabled
 from .watten_progress_presentations import apply_match_receipts, match_presentation
 from .watten_progression_receipts import acknowledge_match_presentation
 from .watten_progression_store import acknowledge_draft_progress
@@ -26,7 +26,8 @@ _HEADERS = {"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"}
 
 
 def _gate(request: Request):
-    if not (watten_game_preview_enabled(request) and watten_account_preview_enabled(request)):
+    if (not watten_request_enabled(request)
+            or watten_game_preview_enabled(request) and not watten_account_preview_enabled(request)):
         raise HTTPException(status_code=404, detail="game_not_found", headers=_HEADERS)
 
 
@@ -34,9 +35,9 @@ def _identity(request: Request):
     _gate(request)
     try:
         identity = require_watten_access(request, resolve_session(request))
-        expected = request.headers.get("X-Watten-Expected-Account-Id")
-        if expected is not None and (not expected.isascii() or not expected.isdecimal()
-                                     or expected != str(identity.user_id)):
+        expected = request.headers.getlist("X-Watten-Expected-Account-Id")
+        if expected and (len(expected) != 1 or not expected[0].isascii() or not expected[0].isdecimal()
+                        or expected[0] != str(identity.user_id)):
             raise HTTPException(status_code=409, detail="watten_account_changed", headers=_HEADERS)
         return identity
     except HTTPException as exc:
@@ -163,11 +164,13 @@ def _page(request: Request, page: str):
     if resolve_session(request) is None:
         return RedirectResponse("/watten/anmelden?" + urlencode({"return_to": request.url.path}),
                                 status_code=303, headers=_HEADERS)
+    _identity(request)
     template = _STATIC / "watten-progress.html"
     if not template.is_file():
         raise HTTPException(status_code=503, detail="watten_preview_not_ready", headers=_HEADERS)
     content = template.read_text(encoding="utf-8").replace("{watten_progress_page}", page)
-    return Response(account_pwa_head(content), media_type="text/html", headers=_HEADERS)
+    return Response(account_pwa_head(content) if watten_account_preview_enabled(request) else content,
+                    media_type="text/html", headers=_HEADERS)
 
 
 @router.get("/watten/konto/fortschritt", include_in_schema=False)

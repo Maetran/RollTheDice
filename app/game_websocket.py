@@ -177,7 +177,7 @@ async def serve_game_websocket(
             {
                 "auth": {
                     "authenticated": bool(identity),
-                    "user": auth_identity_payload(identity) if identity else None,
+                    "user": auth_identity_payload(identity, connection=websocket) if identity else None,
                 },
                 # Do not expose a protected game's board or chat until the
                 # client has authenticated through join/spectate/rejoin.

@@ -9,6 +9,13 @@ const { test, expect } = require("@playwright/test");
 
 test.use({ serviceWorkers: "block" });
 
+test.afterEach(async ({ context }) => {
+  // The final visible design assertion can precede a fresh chooser /me read.
+  // Finish its real response projection before teardown disposes that response;
+  // waiting retains handler failures instead of ignoring them.
+  await context.unrouteAll({ behavior: "wait" });
+});
+
 const PASSWORD = "design-choice-password-123";
 const DIALOG_TITLE = "Neues Design für ZDWA";
 // Longer than the prompt's start delay (1.2 s) plus one retry.
@@ -286,6 +293,8 @@ test("accounts from before the release are asked once and can preview and keep t
     await expect(other.getByRole("dialog", { name: DIALOG_TITLE })).toHaveCount(0);
     expect(server.claims).toBe(1);
   } finally {
+    // This manually owned context has the same pendingPrompt response handler.
+    await device.unrouteAll({ behavior: "wait" });
     await device.close();
   }
 });

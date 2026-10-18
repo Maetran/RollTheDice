@@ -23,6 +23,65 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 3.16.0 — Private Watten-Owner-Vorschau / Private Watten founder preview — 2026-10-18
+
+**Deutsch:** Ein standardmässig ausgeschaltetes Serverflag erlaubt die erste
+Watten-Webvorschau ausschliesslich dem dauerhaft gebundenen Ownerkonto auf
+dem bestehenden Produktionshost. Die Spieleauswahl folgt der frisch geprüften
+Kontoberechtigung. Spät bestätigte Spiele ergänzen das offene Menü, ohne alte
+Links oder den Fokus zu ersetzen; Rechteentzug schliesst es weiterhin sofort.
+Direkte HTTP- und WebSocket-Zugriffe bleiben für andere
+Konten gesperrt, auch für weitere Administratoren und angenommene Einladungen.
+Computerzüge prüfen zusätzlich den tatsächlich gespeicherten Spielstand und
+die Berechtigung vor dem atomaren Commit. Ein abgeschaltetes Flag stoppt weitere
+Züge ohne neue Punkte oder Fortschritt. Der eigene Watten-Host, Produktions-PWA,
+Watten-Mailkontext und Push-Zustellung bleiben geschlossen.
+
+Native Freundesmeldungen zeigen gestartete Partien ausgewählter Spieler kurz
+und ohne Karteninformationen an. Zuschauen braucht einen bewussten Klick;
+am laufenden Tisch erscheint nur Text. Kontoeinstellungen speichern die eigene
+Zustimmung und Spielerauswahl; Suchergebnisse und wartende Meldungen bleiben
+begrenzt. Persönliche Folgetisch-Einladungen, Tourpräferenzen, Gerätebindung
+sind serverseitig vorbereitet; ihre übrigen nativen Oberflächen und die
+öffentliche Freigabe stehen noch aus. Das bestehende Dashboard ergänzt Watten
+ausschliesslich aus der aktuellen Analytics-Freigabe. Partien, Menschen,
+Computerplätze und belegte Dauer werden getrennt angezeigt; fehlende Besuchs-,
+Installations- und Herkunftsmessung bleibt unbekannt. Kontowechsel entfernen
+private Altwerte auch bei verzögerten Antworten.
+
+Die Trumpfzugabe entspricht der bestätigten Variante 2: Ein gewöhnlicher
+Schlag ersetzt vorhandenen Trumpf nur, wenn er den aktuellen Stich übernimmt.
+Trumpf, Rechter und Kritische haben weiterhin keinen Überstechzwang. Engine,
+CPU-Simulation und die zweisprachigen Hinweise verwenden dieselbe Regel.
+
+**English:** A server flag, off by default, makes the first Watten web preview
+available only to the permanently bound founder account on the existing
+production host. The chooser follows freshly checked account permissions.
+Late confirmations add games to the open menu while preserving existing links
+and focus; permission withdrawal still closes it immediately.
+Direct HTTP and WebSocket entry stays closed to other accounts, including
+additional administrators and accepted invitees. Computer turns also verify
+the actual stored source and account authority before an atomic commit.
+Disabling the flag stops further turns without new points or progress. The
+dedicated Watten host, production PWA, Watten email context and push delivery
+remain closed.
+
+Native friend notices briefly show selected players starting games without
+card information. Watching needs an explicit click; an active table shows text
+only. Account settings save consent and player selection; search results and
+pending notices stay bounded. Personal follow-up invitations, tour preferences,
+and device context have backend foundations; their remaining native interfaces
+and public release are still pending. The existing dashboard adds Watten only
+from its current analytics authorization. Matches, people, computer seats and
+evidenced duration are distinct; unavailable traffic, installation and geography
+measurements stay unknown. Account changes clear old private values even when
+responses are delayed.
+
+Following trump uses the confirmed second option: an ordinary rank card can
+replace held trump only when it takes the current trick. Trump, the Right and
+critical cards still have no duty to overtrump. The engine, CPU simulation and
+bilingual guidance use the same rule.
+
 ## 3.15.0 — Watten-Folgetische und Gespräche / Watten next tables and conversation — 2026-10-18
 
 **Deutsch:** Ein Folgetisch übernimmt Regeln und gewünschte Computerplätze.

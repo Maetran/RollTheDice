@@ -27,10 +27,11 @@ from sqlalchemy import and_, delete, or_, select, update
 from .database import session_scope
 from .game_access import can_account_access_zilch
 from .game_activity import PLAY_DAY_TIMEZONE
-from .game_types import DEFAULT_GAME_TYPE, HAUSDEPP_GAME_TYPE, ZILCH_GAME_TYPE, game_type_from_state
+from .game_types import DEFAULT_GAME_TYPE, HAUSDEPP_GAME_TYPE, WATTEN_GAME_TYPE, ZILCH_GAME_TYPE, game_type_from_state
 from .models import PushInviteAllowedSender, User, WebPushSubscription
 from .product_hosts import site_origin, zilch_url
 from .security import as_utc, normalize_username, utcnow
+from .watten_access import watten_founder_account_id, watten_game_preview_enabled, watten_request_enabled
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +42,10 @@ GAME_INVITE_PUSH_COOLDOWN_SECONDS = 10 * 60
 GAME_INVITE_PUSH_ACCOUNT_COOLDOWN_SECONDS = 60
 GAME_INVITE_PUSH_SENT_AT_KEY = "_game_invite_push_sent_at"
 PUSH_OPT_IN_PROMPT_INTERVAL = timedelta(days=14)
+# Device presentation metadata is ready before delivery. Watten stays closed
+# until its worker, UI and each notification authority are reviewed together.
+PUSH_DEVICE_CONTEXTS = frozenset({DEFAULT_GAME_TYPE, ZILCH_GAME_TYPE, HAUSDEPP_GAME_TYPE, WATTEN_GAME_TYPE})
+PUSH_DELIVERY_CONTEXTS = frozenset({DEFAULT_GAME_TYPE, ZILCH_GAME_TYPE, HAUSDEPP_GAME_TYPE})
 DAILY_REMINDER_START_HOUR = 17
 DAILY_REMINDER_END_HOUR = 21
 DAILY_REMINDER_TIMEZONE = PLAY_DAY_TIMEZONE
@@ -94,7 +99,7 @@ class WebPushSubscriptionRequest(BaseModel):
     keys: WebPushSubscriptionKeys
     # Installed apps can register from shared settings on another product's
     # path. This is device presentation metadata, never an access capability.
-    product_context: Literal["zdwa", "zilch", "hausdepp"] | None = None
+    product_context: Literal["zdwa", "zilch", "hausdepp", "watten"] | None = None
 
 
 class WebPushPreferencesRequest(BaseModel):
@@ -242,16 +247,26 @@ def save_web_push_subscription(
     user_id: int,
     payload: WebPushSubscriptionRequest,
     product_context: str,
+    connection=None,
 ) -> dict[str, object]:
+    if product_context not in PUSH_DEVICE_CONTEXTS or payload.product_context not in {None, product_context}:
+        raise ValueError("web_push_context_invalid")
+    if product_context == WATTEN_GAME_TYPE and not watten_request_enabled(connection):
+        raise ValueError("web_push_context_unavailable")
     if not web_push_available():
         raise RuntimeError("web_push_unavailable")
     endpoint, p256dh, auth = _validated_subscription(payload)
-    context = product_context if product_context in {ZILCH_GAME_TYPE, HAUSDEPP_GAME_TYPE} else DEFAULT_GAME_TYPE
+    context = product_context
     now = utcnow()
     with session_scope() as db:
         user = db.get(User, user_id)
         if user is None:
             raise LookupError("user_not_found")
+        if context == WATTEN_GAME_TYPE and not user.is_active:
+            raise LookupError("user_not_found")
+        if (context == WATTEN_GAME_TYPE and not watten_game_preview_enabled(connection)
+                and watten_founder_account_id(db) != user_id):
+            raise ValueError("web_push_context_unavailable")
         subscription = db.scalar(select(WebPushSubscription).where(WebPushSubscription.endpoint == endpoint))
         if subscription is None:
             db.add(
@@ -405,24 +420,23 @@ def claim_game_invite_push(user_id: int) -> int:
     request with no currently reachable recipients consumes the account slot.
     Return zero on success, otherwise the remaining cooldown in seconds.
     """
-    now = utcnow()
-    cutoff = now - timedelta(seconds=GAME_INVITE_PUSH_ACCOUNT_COOLDOWN_SECONDS)
     with session_scope() as db:
-        claimed = db.execute(
-            update(User)
-            .where(
-                User.id == user_id,
-                or_(User.game_invite_push_last_sent_at.is_(None), User.game_invite_push_last_sent_at <= cutoff),
-            )
-            .values(game_invite_push_last_sent_at=now)
-            .returning(User.id)
-        ).scalar_one_or_none()
-        if claimed is not None:
-            return 0
-        sent_at = db.scalar(select(User.game_invite_push_last_sent_at).where(User.id == user_id))
-        if sent_at is None:
-            raise LookupError("user_not_found")
-        return max(1, math.ceil(GAME_INVITE_PUSH_ACCOUNT_COOLDOWN_SECONDS - (now - as_utc(sent_at)).total_seconds()))
+        return claim_game_invite_push_in_session(db, user_id, now=utcnow())
+
+
+def claim_game_invite_push_in_session(db, user_id: int, *, now: datetime) -> int:
+    """The same cross-game claim, with transaction ownership kept by the caller."""
+    cutoff = now - timedelta(seconds=GAME_INVITE_PUSH_ACCOUNT_COOLDOWN_SECONDS)
+    claimed = db.execute(update(User).where(
+        User.id == user_id,
+        or_(User.game_invite_push_last_sent_at.is_(None), User.game_invite_push_last_sent_at <= cutoff),
+    ).values(game_invite_push_last_sent_at=now).returning(User.id)).scalar_one_or_none()
+    if claimed is not None:
+        return 0
+    sent_at = db.scalar(select(User.game_invite_push_last_sent_at).where(User.id == user_id))
+    if sent_at is None:
+        raise LookupError("user_not_found")
+    return max(1, math.ceil(GAME_INVITE_PUSH_ACCOUNT_COOLDOWN_SECONDS - (now - as_utc(sent_at)).total_seconds()))
 
 
 def game_invite_account_cooldown_remaining(user_id: int) -> int:
@@ -494,18 +508,18 @@ def game_invite_notification_payload(
     waiting_names = _waiting_player_names(game)
     next_player = len(waiting_names) + 1
     names = _joined_names(waiting_names, language=language)
-    product_name = {HAUSDEPP_GAME_TYPE: "Hausdepp", ZILCH_GAME_TYPE: "Zilch"}.get(game_type, "ZDWA")
-    if game_type == HAUSDEPP_GAME_TYPE:
+    product_name = {HAUSDEPP_GAME_TYPE: "Hausdepp", ZILCH_GAME_TYPE: "Zilch", WATTEN_GAME_TYPE: "Watten"}.get(game_type, "ZDWA")
+    if game_type in {HAUSDEPP_GAME_TYPE, WATTEN_GAME_TYPE}:
         # Computers occupy real table seats but cannot receive an invitation.
         # Avoid suggesting a wrong ordinal based on human connections alone.
         if language == "en":
             waits = "is" if len(waiting_names) == 1 else "are"
-            body = f"{names} {waits} waiting for players in Hausdepp. Join in!"
-            title = "Hausdepp is looking for players"
+            body = f"{names} {waits} waiting for players in {product_name}. Join in!"
+            title = f"{product_name} is looking for players"
         else:
             waits = "wartet" if len(waiting_names) == 1 else "warten"
-            body = f"{names} {waits} in Hausdepp auf Mitspieler. Sei dabei!"
-            title = "Hausdepp sucht Mitspieler"
+            body = f"{names} {waits} in {product_name} auf Mitspieler. Sei dabei!"
+            title = f"{product_name} sucht Mitspieler"
     elif language == "en":
         ordinal = {2: "second", 3: "third", 4: "fourth"}.get(next_player, "next")
         if len(waiting_names) == 1:
@@ -518,7 +532,8 @@ def game_invite_notification_payload(
         waits = "wartet" if len(waiting_names) == 1 else "warten"
         body = f"{names} {waits} in {product_name} auf einen {ordinal} Mitspieler. Sei dabei!"
         title = f"{product_name} sucht Mitspieler"
-    icon = ("/static/icons/hausdepp-icon-192-v2.png" if game_type == HAUSDEPP_GAME_TYPE else
+    icon = ("/static/watten/icons/watten-icon-192.png" if game_type == WATTEN_GAME_TYPE else
+            "/static/icons/hausdepp-icon-192-v2.png" if game_type == HAUSDEPP_GAME_TYPE else
             "/static/icons/zilch-icon-192.png" if product_context == ZILCH_GAME_TYPE else "/static/icons/icon-192.png")
     return {
         "title": title,
@@ -535,10 +550,10 @@ def game_invite_destinations(game: dict, subscriptions: list[StoredSubscription]
     game_id = quote(str(game.get("_id") or ""), safe="")
     if not game_id:
         return []
-    if game_type == HAUSDEPP_GAME_TYPE:
+    if game_type in {HAUSDEPP_GAME_TYPE, WATTEN_GAME_TYPE}:
         # Each suite worker resolves this against the subscription's own host.
         # The private Hausdepp worker intentionally rejects cross-origin URLs.
-        destination = f"/hausdepp/spiel/{game_id}"
+        destination = f"/{game_type}/spiel/{game_id}"
     else:
         destination = zilch_url(f"/spiel/{game_id}") if game_type == ZILCH_GAME_TYPE else f"{site_origin()}/spiel/{game_id}"
     return [(subscription, destination) for subscription in subscriptions]
@@ -561,6 +576,8 @@ def _hausdepp_push_account_ids(db) -> set[int]:
 def game_invite_push_recipients(game: dict, *, sender_user_id: int | None = None) -> list[StoredSubscription]:
     """Load only opted-in accounts allowed to see this product and not seated."""
     game_type = game_type_from_state(game)
+    if game_type not in PUSH_DELIVERY_CONTEXTS:
+        return []
     if game_type == HAUSDEPP_GAME_TYPE and (type(sender_user_id) is not int or
             open_seat_invitation_error(game, user_id=sender_user_id)):
         return []
@@ -579,7 +596,8 @@ def game_invite_push_recipients(game: dict, *, sender_user_id: int | None = None
                 return []
         query = (select(WebPushSubscription, User)
             .join(User, WebPushSubscription.user_id == User.id)
-            .where(User.is_active.is_(True), User.game_invite_push_enabled.is_(True), invitation_sender_allowed(sender_user_id)))
+            .where(User.is_active.is_(True), User.game_invite_push_enabled.is_(True), invitation_sender_allowed(sender_user_id),
+                   WebPushSubscription.product_context.in_(PUSH_DELIVERY_CONTEXTS)))
         if allowed_ids is not None:
             query = query.where(User.id.in_(allowed_ids))
         rows = db.execute(query).all()
@@ -613,6 +631,8 @@ def _push_failure_status(error: BaseException) -> int | None:
 
 def _send_web_push(subscription: StoredSubscription, payload: dict[str, object], *, ttl: int = 300) -> tuple[bool, bool]:
     """Return (accepted_by_push_service, subscription_expired)."""
+    if subscription.product_context not in PUSH_DELIVERY_CONTEXTS:
+        return False, False
     config = web_push_config()
     try:
         from pywebpush import webpush

@@ -213,13 +213,14 @@ class GameTourPreferences(Base):
     zdwa_state: Mapped[str] = mapped_column(String(16), nullable=False, default="unseen", server_default="unseen")
     zilch_state: Mapped[str] = mapped_column(String(16), nullable=False, default="unseen", server_default="unseen")
     hausdepp_state: Mapped[str] = mapped_column(String(16), nullable=False, default="unseen", server_default="unseen")
+    watten_state: Mapped[str] = mapped_column(String(16), nullable=False, default="unseen", server_default="unseen")
 
     __table_args__ = tuple(
         CheckConstraint(
             f"{game}_state IN ('unseen', 'dismissed', 'started', 'completed')",
             name=f"ck_game_tour_{game}_state",
         )
-        for game in ("zdwa", "zilch", "hausdepp")
+        for game in ("zdwa", "zilch", "hausdepp", "watten")
     )
 
 
@@ -540,7 +541,7 @@ class WebPushSubscription(Base):
 
     __table_args__ = (
         CheckConstraint(
-            "product_context IN ('zdwa', 'zilch', 'hausdepp')",
+            "product_context IN ('zdwa', 'zilch', 'hausdepp', 'watten')",
             name="ck_web_push_subscriptions_product_context",
         ),
         Index("ix_web_push_subscriptions_user", "user_id"),
@@ -594,7 +595,7 @@ class PushReleaseRecipient(Base):
     claimed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     __table_args__ = (
-        CheckConstraint("product_context IN ('zdwa', 'zilch', 'hausdepp')", name="ck_push_release_recipient_context"),
+        CheckConstraint("product_context IN ('zdwa', 'zilch', 'hausdepp', 'watten')", name="ck_push_release_recipient_context"),
         Index("ix_push_release_pending", "claimed_at", "revision"),
     )
 
@@ -729,6 +730,41 @@ class WattenFavorite(Base):
     __tablename__ = "watten_favorites"
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
     recipe_json: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+class WattenOpenSeatClaim(Base):
+    """Durable room flood barrier; no audience, message or room secrets."""
+
+    __tablename__ = "watten_open_seat_claims"
+    game_id: Mapped[str] = mapped_column(ForeignKey("active_games.game_id", ondelete="CASCADE"), primary_key=True)
+    claimed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class WattenPersonalInvitation(Base):
+    """Private explicit follow-up consent; acceptance grants only table access."""
+
+    __tablename__ = "watten_personal_invitations"
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    source_game_id: Mapped[str] = mapped_column(ForeignKey("active_games.game_id", ondelete="CASCADE"), nullable=False)
+    target_game_id: Mapped[str] = mapped_column(ForeignKey("active_games.game_id", ondelete="CASCADE"), nullable=False)
+    recipient_user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    sender_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    source_participant_id: Mapped[str] = mapped_column(String(12), nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    responded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint("target_game_id", "recipient_user_id", name="uq_watten_personal_invitation_target_recipient"),
+        CheckConstraint("source_game_id <> target_game_id", name="ck_watten_personal_invitation_pair"),
+        CheckConstraint("expires_at > created_at", name="ck_watten_personal_invitation_expiry"),
+        CheckConstraint("status IN ('pending', 'accepted', 'declined')", name="ck_watten_personal_invitation_status"),
+        CheckConstraint("(status = 'pending' AND responded_at IS NULL) OR "
+                        "(status IN ('accepted', 'declined') AND responded_at IS NOT NULL)",
+                        name="ck_watten_personal_invitation_response"),
+        Index("ix_watten_personal_invitation_recipient", "recipient_user_id", "created_at"),
+    )
 
 
 class HausdeppRoundCredit(Base):

@@ -39,21 +39,76 @@ criteria.
 
 ## Als Nächstes: Watten / Next game: Watten
 
+**Private Webvorschau / private web preview:** Ein eigener, standardmässig
+ausgeschalteter Schalter `ROLLTHEDICE_WATTEN_FOUNDER_PREVIEW` kann die Vorschau
+unter `https://zockdiewandan.online/watten` ausschliesslich für das bereits
+dauerhaft gebundene Founder-Konto öffnen. Die bestehende Suite-Anmeldung wird
+verwendet; andere Konten, Admins und delegierte Owner erhalten keinen Zugriff.
+Der feste Watten-Host, Installation, Watten-Kontomails und Push-Zustellung
+bleiben geschlossen. [Betriebsvertrag](docs/DEPLOYMENT.md#private-watten-webvorschau--private-watten-web-preview).
+
+The separate `ROLLTHEDICE_WATTEN_FOUNDER_PREVIEW` switch defaults to off and
+can open the apex web preview exclusively to the existing immutable founder
+account. It uses the normal suite login; other accounts, administrators and
+delegated owners receive no access. The fixed Watten host, installation,
+Watten account emails and push delivery remain closed.
+
+**Privates Monitoring / private monitoring:** Das bestehende Dashboard bietet
+Watten nur an, wenn die aktuelle Analytics-Antwort es für das Konto freigibt.
+Es unterscheidet abgeschlossene Partien, gespeicherte Plätze einschliesslich
+Computern und verbundene Menschen. Unbekannte Besuchs-, Installations- und
+Herkunftswerte bleiben unbekannt; sie werden nicht als Nullmessung ausgegeben.
+Partiedauern nennen ihre belegte Stichprobe. HTTP-Anfragen und Serverlast
+bleiben als Messungen der gesamten Website gekennzeichnet.
+
+The existing dashboard offers Watten only when the current analytics response
+authorizes it for the account. It distinguishes completed matches, recorded
+seats including computers, and connected people. Unknown traffic, installation
+and geography values stay unknown rather than becoming measured zeros. Match
+duration states its evidenced sample. HTTP requests and server load remain
+labelled as measurements for the entire website.
+
+**Freunde und Spielerauswahl / friends and player selection:** Die native Lobby
+zeigt bei eigener Zustimmung kurz den Spielstart ausgewählter Menschen.
+Zuschauen braucht einen Klick; am laufenden Tisch erscheint nur Text ohne
+Kartenhinweise. Die lokalen nativen Kontoeinstellungen speichern Zustimmung,
+die gemeinsame Spielerauswahl und den Einladungs-Empfängerkreis. Beim Suchen
+bleiben höchstens100 Treffer sichtbar; weitere Seiten ersetzen ältere Treffer.
+Die Auswahl bleibt dabei erhalten. Diese Einstellungen aktivieren kein Push.
+
+With consent, the native lobby briefly shows selected humans starting games.
+Watching requires a click; an active table shows text without card information.
+Local native account settings save consent, the shared player selection and the
+invitation audience. Search keeps at most100 results visible, replacing older
+pages while retaining the selection. These settings do not activate push.
+
 **Lokaler Kontofortschritt / local account progress:** Die lokale Watten-Vorschau
 verbucht neue abgeschlossene Partien zusammen mit Ergebnis und Fortschritt in
 einer Transaktion. `/watten/konto/fortschritt`, `/watten/konto/verlauf` und
 `/watten/rangliste` zeigen ausschliesslich verbuchte XP, die eigenen Ergebnisse,
 belegte Erfolge und erklärbare Ranglisten. XP, Titelstufen und Erfolgswerte sind
 vorerst als Entwurf gekennzeichnet. Ältere Resultate bleiben sichtbar und
-erhalten beim Lesen keine nachträglichen XP. Beide lokalen Vorschauflags sind
-erforderlich; die öffentliche Watten-Domain bleibt geschlossen.
+erhalten beim Lesen keine nachträglichen XP. Für lokale Tests sind beide lokalen
+Vorschauflags erforderlich; die öffentliche Watten-Domain bleibt geschlossen.
 
 New locally completed Watten matches atomically store results and progress.
 The native progress, history and leaderboard pages show stored XP, owned
 results, evidenced achievements and explicit ranking definitions. XP, title
 levels and award values remain labelled as a proposal. Reading older results
-never retrospectively grants XP. Both local preview flags are required; the
+never retrospectively grants XP. Local tests require both local preview flags; the
 public Watten domain remains closed.
+
+**Spieltag / play day:** Akzeptierte menschliche Ansagen, Karten und Gebots-
+entscheidungen zählen im lokalen Watten für die kontoweite Tagesaktivität.
+Der Spieltag wird atomar mit dem Spielstand gespeichert. Beitreten, Zuschauen,
+Einschauen, Partnergefühl, Computerzüge und wiederholte Befehle zählen nicht.
+Eigene abgeschlossene Wattenresultate zählen auch für die Reminderprüfung;
+das schaltet keine Wattenbenachrichtigungen frei.
+Accepted human calls, card plays and bidding decisions count towards the
+account's play day, atomically with the checkpoint. Joining, watching,
+inspection, partner feedback, CPU turns and command replays do not count.
+Owned completed Watten results also inform reminder eligibility; this does
+not enable Watten notifications.
 
 **Favorit / favorite:** Im lokalen Erstellformular lässt sich ein vollständiges
 Tischrezept je Konto speichern und bewusst wieder anwenden, einschliesslich

@@ -20,6 +20,51 @@ visitor-IP trust chain and rollback. Production starts through
 checks the physical Nginx peer before resolving the visitor IP.
 `FORWARDED_ALLOW_IPS` remains restricted to the current Docker gateway.
 
+## Private Watten-Webvorschau / Private Watten web preview
+
+`ROLLTHEDICE_WATTEN_FOUNDER_PREVIEW=0` bleibt der Standard in `.env.example`
+und Docker Compose. Nach vollständiger Prüfung und bewusster Releasefreigabe
+kann der normale Deploymentweg diesen Schalter auf `1` übernehmen. Er öffnet
+ausschliesslich `https://zockdiewandan.online/watten` für das bereits gebundene,
+aktive Founder-Konto aus `account_ownerships`. Anzeigename, Adminrolle und
+delegierte Ownership ersetzen diese unveränderliche Kontobindung nicht. Eine
+fehlende Founder-Bindung oder ein DB-Fehler gewährt keinen Zugriff.
+
+Die gemeinsame Anmeldung und Kontoverwaltung bleiben auf den vorhandenen
+Suite-Seiten. Die drei bestehenden Produkt-Hosts dürfen nur dem Founder den
+Link auf die Apex-Vorschau zeigen; native Spiel- und Datenrouten akzeptieren
+produktiv nur den einzelnen kanonischen Apex-Host. Doppelte oder gemischte
+Host-Felder, Lookalikes und Forwarding-Header gewähren keine Berechtigung.
+Jede private Seite bleibt `no-store` und `noindex`; Einladungen, Reservierungen
+oder frühere Mitgliedschaft erweitern den Vorschau-Empfängerkreis nicht.
+
+Der feste Host `watten.zockdiewandan.online` bleibt auf seiner Holding-Seite
+mit gesperrtem Robots-Dokument und fehlender Sitemap. Produktions-Manifeste,
+Worker, Installationsicons, Watten-Signup/-Kontomails und Push-Zustellung werden
+hiermit nicht geöffnet. Geräte-Metadaten dürfen nur für den Founder gespeichert
+werden; die bestehenden drei Push-Zustellprodukte bleiben unverändert. Die
+lokalen Vorschauflags sind weiterhin ausschliesslich für lokale Deployments
+und lokale Requests wirksam. Zur Rücknahme den Founder-Schalter auf `0` setzen
+und den üblichen Container-Neustart ausführen; gespeicherte Partien und XP
+werden dadurch nicht gelöscht oder zurückgesetzt.
+
+`ROLLTHEDICE_WATTEN_FOUNDER_PREVIEW` defaults to `0`. After the complete checks
+and an explicit release approval, the normal deployment flow may enable only
+the existing immutable founder account's private web preview on the production
+apex. Shared login and account management stay on the existing suite pages.
+Other accounts, administrators and delegated owners gain no access; missing
+ownership or database failures fail closed. The three existing product hosts
+may expose the founder's link, while native gameplay/data accept only the
+canonical apex Host. Forwarded or ambiguous Host values grant nothing.
+
+Private pages remain non-cacheable and non-indexable. The fixed Watten host,
+production installation resources, Watten account email/signup context and
+push delivery stay closed. Stored-only device metadata does not activate a
+delivery product. Local preview flags retain their strict local behavior.
+Disabling the founder switch through the ordinary restart flow revokes this
+preview without deleting checkpoints or progress; an invitation, reservation
+or old membership never grants preview access.
+
 ## Entwicklung und Releasebranches
 
 Verbindlicher Lieferweg / Required delivery path: `develop → master → prod`.

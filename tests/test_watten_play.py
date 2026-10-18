@@ -19,7 +19,7 @@ from app.watten_play import (
     play_card,
     start_play,
 )
-from app.watten_rules import WELI_STRIKE, CardKind, WattenCall, card_kind, trick_winner
+from app.watten_rules import WELI_STRIKE, CardKind, WattenCall, card_kind, card_strength, trick_winner
 
 # Participant IDs are deliberately unlike the numeric card seat indices.
 IDS = ("north", "east", "south", "west")
@@ -123,7 +123,7 @@ OWNER_HANDS = (
 @pytest.mark.parametrize("critical", (True, False))
 @pytest.mark.parametrize("count, determination, blind", (
     (4, "ladinisch", True), (4, "ladinisch", False), (4, "normal", False), (3, "normal", False)))
-def test_owner_example_allows_a_non_winning_strike_after_a_critical_overtrick(count, determination, blind, critical):
+def test_owner_variant_two_requires_trump_when_an_ordinary_strike_cannot_overtrick(count, determination, blind, critical):
     call = None if determination == "ladinisch" else NINE_OF_BELLS
     state, bids = begin(OWNER_HANDS[:count], profile(count, determination, blind=blind, critical=critical), call=call)
     assert state.call == NINE_OF_BELLS
@@ -137,9 +137,12 @@ def test_owner_example_allows_a_non_winning_strike_after_a_critical_overtrick(co
         assert legal_cards(state, bids, "west") == ("bells-O",)
         assert_rejected("watten_trump_required", state, bids, "west", "acorns-K")
         state = play(state, bids, "bells-O")
-    assert legal_cards(state, bids, "north") == ("hearts-9", "bells-A", "bells-8")
+    assert legal_cards(state, bids, "north") == (("bells-A", "bells-8") if critical
+                                                else ("hearts-9", "bells-A", "bells-8"))
     assert_rejected("watten_trump_required", state, bids, "north", "acorns-8")
-    state = play(state, bids, "hearts-9")
+    if critical:
+        assert_rejected("watten_trump_required", state, bids, "north", "hearts-9")
+    state = play(state, bids, "bells-8" if critical else "hearts-9")
     assert state.tricks[0].winner == (2 if critical else 0)
     assert state.current_player_id == ("south" if critical else "north")
 
@@ -154,8 +157,8 @@ def duel(call, critical, lead, north_hand):
 FREE = None
 DUTY_CASES = (
     pytest.param(WattenCall("U", "hearts"), False, "hearts-U",
-                 ("hearts-8", "acorns-9", "acorns-10", "leaves-U", "acorns-O"), ("hearts-8", "leaves-U"),
-                 id="led-rechter-binds-and-strike-is-an-alternative"),
+                 ("hearts-8", "acorns-9", "acorns-10", "leaves-U", "acorns-O"), ("hearts-8",),
+                 id="led-rechter-binds-and-a-losing-strike-is-not-an-alternative"),
     pytest.param(WattenCall("A", "leaves"), False, "leaves-8",
                  (WELI, "acorns-8", "acorns-9", "acorns-10", "acorns-O"), (WELI,),
                  id="weli-is-the-smallest-called-trump-without-criticals"),
@@ -227,6 +230,31 @@ def test_only_the_first_trick_card_can_trigger_the_duty():
     state, bids = begin(hands, profile(3), call=ACE_OF_HEARTS)
     state = play(state, bids, "acorns-8", "hearts-7")
     assert legal_cards(state, bids, "north") == hands[0]
+
+
+def test_an_equal_later_strike_does_not_substitute_for_trump():
+    hands = (("leaves-9", "bells-A", "bells-8", "leaves-7", "hearts-O"),
+             ("bells-7", "acorns-8", "acorns-10", "acorns-U", "acorns-O"),
+             ("hearts-9", "hearts-8", "hearts-10", "hearts-U", "leaves-A"))
+    state, bids = begin(hands, profile(3), call=NINE_OF_BELLS)
+    state = play(state, bids, "bells-7", "hearts-9")
+    assert legal_cards(state, bids, "north") == ("bells-A", "bells-8")
+    assert_rejected("watten_trump_required", state, bids, "north", "leaves-9")
+    with pytest.raises(WattenPlayError, match="watten_invalid_play_history"):
+        PlayState(state.deal_id, state.deal, state.parties, state.profile, state.call, (*state.plays, "leaves-9"))
+    assert play(state, bids, "bells-8").tricks[0].winner == 2
+
+
+def test_losing_rechter_and_critical_remain_voluntary_under_a_higher_critical():
+    hands = (("bells-9", "bells-A", "acorns-7", "leaves-9", "leaves-7"),
+             ("bells-7", "acorns-8", "acorns-10", "acorns-U", "acorns-O"),
+             ("hearts-K", "hearts-8", "hearts-10", "hearts-U", "leaves-A"))
+    state, bids = begin(hands, profile(3, critical=True), call=NINE_OF_BELLS)
+    state = play(state, bids, "bells-7", "hearts-K")
+    assert legal_cards(state, bids, "north") == ("bells-9", "bells-A", "acorns-7")
+    assert_rejected("watten_trump_required", state, bids, "north", "leaves-9")
+    for card in ("bells-9", "bells-A", "acorns-7"):
+        assert play(state, bids, card).tricks[0].winner == 2
 
 
 WELI_LADINISCH_HANDS = (
@@ -388,10 +416,11 @@ def test_reconstruction_rejects_histories_the_engine_would_not_accept():
     state, bids = begin(OWNER_HANDS, profile(4, "ladinisch", blind=True, critical=True))
     base = (state.deal_id, state.deal, state.parties, state.profile, state.call)
     for plays in (("hearts-K",), ("bells-7", "bells-7"), ("bells-7", "hearts-K", "acorns-K", "acorns-8"),
+                  ("bells-7", "hearts-K", "acorns-K", "hearts-9"),
                   ["bells-7"], (None,)):
         with pytest.raises(WattenPlayError, match="watten_invalid_play_history"):
             PlayState(*base, plays)
-    accepted = play(state, bids, "bells-7", "hearts-K", "acorns-K", "hearts-9")
+    accepted = play(state, bids, "bells-7", "hearts-K", "acorns-K", "bells-8")
     assert PlayState(*base, accepted.plays) == accepted
     with pytest.raises(WattenPlayError, match="watten_call_mismatch"):
         PlayState(*base[:4], ACE_OF_HEARTS)
@@ -433,12 +462,32 @@ def test_random_full_deals_keep_cards_turns_duty_roles_and_the_end_consistent(co
             assert legal and set(legal) <= set(hand)
             if seat not in knowers:
                 assert legal == hand
+            # Independent rule subset: reuse the separately tested ranking,
+            # never the engine's own allowed-card helper as an oracle.
+            duty = bool(state.trick_cards and seat in knowers
+                        and card_kind(state.trick_cards[0], rules) in {CardKind.TRUMP, CardKind.RECHTER}
+                        and any(card_kind(card, rules) == CardKind.TRUMP for card in hand))
+            expected = []
+            if duty:
+                lead = state.trick_cards[0]
+                incumbent = max(card_strength(card, led_card=lead, rules=rules) for card in state.trick_cards)
+                for card in hand:
+                    kind = card_kind(card, rules)
+                    if kind in {CardKind.TRUMP, CardKind.RECHTER, CardKind.CRITICAL}:
+                        expected.append(card)
+                    elif kind == CardKind.STRIKE and card_strength(card, led_card=lead, rules=rules) > incumbent:
+                        expected.append(card)
+            else:
+                expected = list(hand)
+            assert legal == tuple(expected)
             excluded = [card for card in hand if card not in legal]
             if excluded:
                 assert card_kind(state.trick_cards[0], rules) in {CardKind.TRUMP, CardKind.RECHTER}
                 assert any(card_kind(card, rules) == CardKind.TRUMP for card in legal)
-                assert {card_kind(card, rules) for card in excluded} == {CardKind.NORMAL}
+                assert {card_kind(card, rules) for card in excluded} <= {CardKind.NORMAL, CardKind.STRIKE}
                 for card in excluded:
+                    if card_kind(card, rules) == CardKind.STRIKE:
+                        assert card_strength(card, led_card=lead, rules=rules) <= incumbent
                     assert_rejected("watten_trump_required", state, bids, player, card)
             previous = state
             state = play_card(state, bids, player, rng.choice(legal))

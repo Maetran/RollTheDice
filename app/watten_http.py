@@ -3,6 +3,7 @@
 import secrets
 
 from fastapi import HTTPException
+from sqlalchemy.exc import SQLAlchemyError
 from starlette.responses import JSONResponse
 
 from .auth import require_csrf, resolve_session
@@ -10,12 +11,12 @@ from .game_state import games
 from .watten_access import require_watten_access
 from .watten_recipe import recipe_from_payload
 from .watten_runtime import (
+    account_protection_verified,
     configure_watten_game,
     expire_waiting_game,
     game_lock,
     lobby_entry,
     new_watten_game,
-    passphrase_matches,
     persist_watten_game,
     snapshot_watten,
 )
@@ -69,12 +70,15 @@ async def detail_watten_http(request, game: dict, passphrase, check: int) -> JSO
     async with game_lock(game):
         identity = _identity(request)
         expire_waiting_game(game)
-        return _detail_response(identity, game, passphrase, check)
+        try:
+            return _detail_response(identity, game, passphrase, check)
+        except (ValueError, SQLAlchemyError) as exc:
+            raise HTTPException(status_code=503, detail="watten_storage_unavailable", headers=_HEADERS) from exc
 
 
 def _detail_response(identity, game: dict, passphrase, check: int) -> JSONResponse:
     own = next((item for item in game["_watten"].room.members if item.account_id == identity.user_id), None)
-    verified = own is not None or passphrase_matches(game, passphrase)
+    verified = own is not None or account_protection_verified(game, identity.user_id, passphrase)
     if check == 1:
         if not verified:
             raise HTTPException(status_code=403, detail="watten_wrong_passphrase")

@@ -99,7 +99,7 @@ class AuthIdentity:
         return self.role == "admin"
 
 
-def auth_identity_payload(identity: AuthIdentity, *, include_csrf: bool = False) -> dict:
+def auth_identity_payload(identity: AuthIdentity, *, include_csrf: bool = False, connection=None) -> dict:
     """Serialize the account fields shared by HTTP and WebSocket auth responses."""
     from .moderation import account_bans
     from .zdwa_design import design_payload
@@ -116,7 +116,7 @@ def auth_identity_payload(identity: AuthIdentity, *, include_csrf: bool = False)
         "bans": account_bans(identity.user_id),
         # The browser receives a capability calculated by the same policy the
         # HTTP and WebSocket layers use; it never decides access from a name.
-        "game_access": public_game_access_payload(identity),
+        "game_access": public_game_access_payload(identity, connection),
         # Presentation only; see app/zdwa_design.py for the server switch.
         "design": design_payload(identity),
         "must_change_password": identity.must_change_password,
@@ -152,6 +152,12 @@ def _achievement_rank_for_user(db, user_id: int) -> dict:
         select(UserAchievement.achievement_key).where(UserAchievement.user_id == user_id)
     )
     return achievement_rank_for_keys(keys)
+
+
+def auth_response_payload(identity: AuthIdentity, *, connection=None) -> dict:
+    """One request-scoped capability decision shared by both response positions."""
+    user = auth_identity_payload(identity, include_csrf=True, connection=connection)
+    return {"authenticated": True, "user": user, "game_access": user["game_access"]}
 
 
 def hausdepp_auto_refill(db, user_id: int) -> bool:

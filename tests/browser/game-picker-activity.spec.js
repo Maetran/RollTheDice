@@ -16,8 +16,9 @@ async function fixture(page, game = "zdwa", language = "de") {
     // gives all three shells the same three-choice UI. Backend tests exercise
     // the real per-request audience independently of this browser fixture.
     await route.fulfill({ response, json: {
-      ...auth, game_access: { ...auth.game_access, zilch_public: true },
+      ...auth, game_access: { ...auth.game_access, zilch_public: true, watten_preview: false },
       user: { ...auth.user, must_change_password: false,
+        game_access: { ...auth.user.game_access, watten_preview: false },
         preferences: { ...auth.user.preferences, preferred_language: language } },
     } });
   });

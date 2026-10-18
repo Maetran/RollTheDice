@@ -5,11 +5,11 @@ officially informed seats must follow trump: every seat in open play, exactly
 the dealer and the clockwise successor in blind Ladinisch. Inferred knowledge
 never adds a duty. An ordinary trump or the Rechter as first trick card
 triggers it; a critical card never does, even on a printed trump suit or a
-would-be Rechter. A bound player holding ordinary trump may play trump, a
-strike, the Rechter or a critical card. There is no duty to win the trick,
-and the Rechter or a critical card is never forced. A later critical
-overtrick keeps a triggered duty. The third trick won by a party ends the
-deal at once; points stay in watten_bidding.
+would-be Rechter. A bound player holding ordinary trump may play trump, the
+Rechter, a critical card or an ordinary strike that takes the current trick.
+Trump, Rechter and critical cards need not win; protected cards are never
+forced. A later critical overtrick keeps a triggered duty. The third trick won
+by a party ends the deal at once; points stay in watten_bidding.
 
 No inspection phases, commands, projections or persistence live here. A
 PlayState holds every hidden hand and the secret call: never serialize it to
@@ -95,8 +95,10 @@ def _allowed_cards(hand: tuple[str, ...], trick: tuple[str, ...], *, bound: bool
         return hand
     if not any(card_kind(card, rules) == CardKind.TRUMP for card in hand):
         return hand
-    # Strike, Rechter and critical cards remain alternatives; none is forced.
-    return tuple(card for card in hand if card_kind(card, rules) != CardKind.NORMAL)
+    # A plain strike substitutes for following trump only by actually taking
+    # this trick. Trump, Rechter and critical cards have no overtrumping duty.
+    return tuple(card for card in hand if (kind := card_kind(card, rules)) != CardKind.NORMAL
+                 and (kind != CardKind.STRIKE or trick_winner((*trick, card), rules=rules) == len(trick)))
 
 
 @dataclass(frozen=True, slots=True)
@@ -243,8 +245,8 @@ def _require_bid_context(state: PlayState, bid_state: BidState) -> None:
 def legal_cards(state: PlayState, bid_state: BidState, player_id: str) -> tuple[str, ...]:
     """Cards this participant may play now; empty outside their card opportunity.
 
-    The result depends only on the seat's own hand, the public led card and
-    knowledge the seat officially holds, so a blind seat always receives its
+    The result depends only on the seat's own hand, the public trick and
+    knowledge the seat officially holds, so a blind non-inspector receives its
     whole hand. It is still internal data, not a display projection.
     """
     _require_bid_context(state, bid_state)

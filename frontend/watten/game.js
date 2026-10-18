@@ -14,6 +14,8 @@ import { loadWattenDetail } from "./api.js";
 import { createSocial } from "./social.js";
 import { mountWattenLobbyChat } from "./lobby-chat.js";
 import { createDecor } from "./decor.js";
+import { createFriendActivity } from "./friend-activity.js";
+import { initializeAppMode } from "../multigame/app-mode.js";
 
 // Metadata only: these preview documents neither register a worker nor
 // advertise installation; the account pages own that local experiment.
@@ -327,8 +329,11 @@ async function mountLobby() {
   }
   account = { id: auth.user.id, username: auth.user.username };
   latestUserId = account.id;
-  app.innerHTML = `${lobbyIntro({ signedIn: true })}<div class="wt-lobby-grid">${creatorMarkup(account.username)}${tablesMarkup()}</div><div data-watten-lobby-chat></div>`;
+  initializeAppMode({ mode: "watten" });
+  app.innerHTML = `${lobbyIntro({ signedIn: true })}<div class="wt-friend-activity-host" data-watten-friend-activity aria-live="polite" hidden></div>
+    <div class="wt-lobby-grid">${creatorMarkup(account.username)}${tablesMarkup()}</div><div data-watten-lobby-chat></div>`;
   mountCreator(gen);
+  mountFriendActivity(gen, "lobby");
   const lobbyChat = mountWattenLobbyChat({ container: app.querySelector("[data-watten-lobby-chat]"), initialAuth: auth,
     getExpectedAccountId: () => account?.id,
     isCurrent: () => gen === generation && !navigating && latestUserId === account?.id,
@@ -337,6 +342,18 @@ async function mountLobby() {
   void refreshTables(gen);
   const timer = setInterval(() => { if (document.visibilityState === "visible") void refreshTables(gen); }, 8000);
   cleanups.add(() => clearInterval(timer));
+}
+
+/** Lobby notices may offer an explicit Watch; table notices are text only. */
+function mountFriendActivity(gen, placement) {
+  const container = app.querySelector("[data-watten-friend-activity]");
+  if (!container) return;
+  const friends = createFriendActivity({ container, placement, loadAuth, escapeHtml: esc,
+    getExpectedAccountId: () => account?.id,
+    isCurrent: () => gen === generation && !navigating && latestUserId === account?.id,
+    onAccountChanged: reloadFresh,
+    onWatch: placement === "lobby" ? path => navigate(path) : undefined });
+  cleanups.add(() => friends.destroy());
 }
 
 // ---------------------------------------------------------------------------
@@ -356,7 +373,8 @@ const motion = createMotion();
 function shellMarkup() {
   return `<h1 class="wt-visually-hidden" data-watten-heading translate="no">Watten</h1>
     <div class="wt-status-bar"><p class="wt-connection" data-watten-connection role="status"></p>
-      <p class="wt-flash" data-watten-flash role="alert"></p></div>
+      <p class="wt-flash" data-watten-flash role="alert"></p>
+      <div class="wt-friend-activity-host wt-friend-activity-host--table" data-watten-friend-activity aria-live="polite" hidden></div></div>
     <div class="wt-view" data-watten-view></div>
     <div data-watten-social hidden></div>
     <div data-watten-decor hidden></div>
@@ -973,6 +991,7 @@ async function mountTable() {
   }
   account = { id: auth.user.id, username: auth.user.username };
   latestUserId = account.id;
+  initializeAppMode({ mode: "watten" });
   matchProgress?.destroy();
   matchProgress = createMatchProgress({ gameId, apiFetch, loadAuth, escapeHtml: esc,
     getExpectedAccountId: () => account?.id,
@@ -997,6 +1016,7 @@ async function mountTable() {
     getExpectedAccountId: () => account?.id,
     isCurrent: () => gen === generation && !navigating && latestUserId === account?.id });
   cleanups.add(() => { decor?.destroy(); decor = null; });
+  mountFriendActivity(gen, "table");
   setConnection("cards");
   try { await prepareWattenCards(); } catch {
     if (gen !== generation) return;

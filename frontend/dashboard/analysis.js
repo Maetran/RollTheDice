@@ -1,6 +1,6 @@
 // Interactive views of the aggregate API. Selections stay in this document;
 // no visitor IDs or individual browsing histories are exposed to the client.
-export function createAnalysisVisuals({ t, e, number, percent, duration, gameName, pageLabel, locale }) {
+export function createAnalysisVisuals({ t, e, number, percent, duration, gameName, pageLabel, locale, measured = () => true, unmeasuredCopy = () => null }) {
   const $ = id => document.getElementById(id);
   const count = value => Math.max(0, Number(value) || 0);
   const fields = { sessions: "Besuche", page_views: "Seitenaufrufe", active_seconds: "Aktive Zeit" };
@@ -31,6 +31,10 @@ export function createAnalysisVisuals({ t, e, number, percent, duration, gameNam
   }
 
   const blank = (title = "Noch keine Messwerte", description = "Die Besuchsmessung beginnt mit diesem Release.") => `<div class="empty-state"><span class="empty-icon" aria-hidden="true">⌁</span><strong>${e(t(title))}</strong><p>${e(t(description))}</p></div>`;
+  // Without a browser collector these views show an explicit unknown state
+  // instead of zero cells, cursors or samples that read like measurements.
+  const unmeasured = () => Boolean(data) && !measured(data);
+  const unknownBlank = () => { const copy = unmeasuredCopy(data); return blank(copy?.title || "Nicht erfasst", copy?.description || "Für diesen Filter werden keine Browserbesuche gemessen."); };
   const key = row => `${row.game || "zdwa"}:${row.page}`;
   const route = (page, game) => `${pageLabel(page)} · ${gameName(game)}`;
   const dayDate = value => new Intl.DateTimeFormat(locale(), { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "UTC" }).format(new Date(`${value}T00:00:00Z`));
@@ -58,7 +62,10 @@ export function createAnalysisVisuals({ t, e, number, percent, duration, gameNam
 
   function traffic() {
     const rows = data.daily || [];
-    $("trafficControls").hidden = !rows.length || !rows.some(row => count(row.sessions) || count(row.page_views));
+    const off = unmeasured();
+    for (const toggle of $("trafficSeries").querySelectorAll("[data-series]")) toggle.disabled = off;
+    $("trafficControls").hidden = off || !rows.length || !rows.some(row => count(row.sessions) || count(row.page_views));
+    if (off) { $("dailyChart").innerHTML = unknownBlank(); $("dailySelection").innerHTML = ""; return; }
     if ($("trafficControls").hidden) { $("dailyChart").innerHTML = blank(); return; }
     const maxValue = Math.max(1, ...rows.flatMap(row => [...visibleSeries].map(metric => count(row[metric]))));
     const scale = 10 ** Math.floor(Math.log10(maxValue));
@@ -80,6 +87,7 @@ export function createAnalysisVisuals({ t, e, number, percent, duration, gameNam
   }
 
   function heatmapSelection(weekday, hour) {
+    if (unmeasured()) return;
     selectedCell = { weekday, hour };
     $("heatmapDay").value = weekday;
     $("heatmapHour").value = hour;
@@ -89,6 +97,14 @@ export function createAnalysisVisuals({ t, e, number, percent, duration, gameNam
   }
 
   function heatmap() {
+    const off = unmeasured();
+    for (const id of ["heatmapMetric", "heatmapDay", "heatmapHour"]) $(id).disabled = off;
+    if (off) {
+      $("activityHeatmap").innerHTML = unknownBlank();
+      $("heatmapEmpty").hidden = true;
+      $("heatmapSelection").innerHTML = "";
+      return;
+    }
     const rows = data.heatmap || [];
     const maximum = Math.max(1, ...rows.map(row => count(row[heatmapMetric])));
     const byCell = new Map(rows.map(row => [`${row.weekday}:${row.hour}`, row]));
@@ -124,7 +140,7 @@ export function createAnalysisVisuals({ t, e, number, percent, duration, gameNam
   function bubbles() {
     const rows = (data.pages || []).slice(0, 12);
     $("pageBubbleControls").hidden = !rows.length;
-    if (!rows.length) { $("pageBubbles").innerHTML = blank(); $("pageDetail").innerHTML = ""; return; }
+    if (!rows.length) { $("pageBubbles").innerHTML = unmeasured() ? unknownBlank() : blank(); $("pageDetail").innerHTML = ""; return; }
     const maxViews = Math.max(1, ...rows.map(row => count(row.views))) * 1.15;
     const maxDuration = Math.max(1, ...rows.map(row => count(row.avg_active_seconds))) * 1.18;
     const maxVisits = Math.max(1, ...rows.map(row => count(row.sessions)));
@@ -154,7 +170,7 @@ export function createAnalysisVisuals({ t, e, number, percent, duration, gameNam
   function journeys() {
     const rows = data.journeys?.links || [];
     $("journeyControls").hidden = !rows.length;
-    if (!rows.length) { $("journeyFlow").innerHTML = blank("Noch keine gemessenen Seitenwechsel", "Direkte Besuche oder einzelne Seitenaufrufe ergeben noch keinen Weg."); $("journeyDetail").innerHTML = ""; }
+    if (!rows.length) { $("journeyFlow").innerHTML = unmeasured() ? unknownBlank() : blank("Noch keine gemessenen Seitenwechsel", "Direkte Besuche oder einzelne Seitenaufrufe ergeben noch keinen Weg."); $("journeyDetail").innerHTML = ""; }
     else {
       const shown = rows.slice(0, 10);
       const fromNodes = [...new Map(shown.map(row => [`${row.from_game}:${row.from}`, { page: row.from, game: row.from_game }])).values()];
@@ -175,7 +191,7 @@ export function createAnalysisVisuals({ t, e, number, percent, duration, gameNam
       chooseJourney(retained < 0 ? 0 : retained);
     }
     const sample = data.journeys?.sample;
-    $("journeySample").textContent = sample ? `${t(sample.truncated ? "Stichprobe der neuesten Seitenaufrufe" : "Ausgewertete Seitenaufrufe")}: ${number(sample.page_views)} / ${number(sample.total_page_views)}. ${t("Nur direkt aufeinanderfolgende Aufrufe im selben Tab, mit höchstens 30 Minuten Abstand.")}` : t("Nur direkt aufeinanderfolgende Aufrufe im selben Tab, mit höchstens 30 Minuten Abstand.");
+    $("journeySample").textContent = unmeasured() ? t("Seitenwege werden für Watten nicht erfasst.") : sample ?`${t(sample.truncated ? "Stichprobe der neuesten Seitenaufrufe" : "Ausgewertete Seitenaufrufe")}: ${number(sample.page_views)} / ${number(sample.total_page_views)}. ${t("Nur direkt aufeinanderfolgende Aufrufe im selben Tab, mit höchstens 30 Minuten Abstand.")}` : t("Nur direkt aufeinanderfolgende Aufrufe im selben Tab, mit höchstens 30 Minuten Abstand.");
     $("journeyTable").innerHTML = `<div class="data-scroll"><table><caption class="sr-only">${e(t("Direkt gemessene Seitenwechsel"))}</caption><thead><tr>${["Von", "Nach", "Gemessene Wechsel"].map(label => `<th scope="col">${e(t(label))}</th>`).join("")}</tr></thead><tbody>${rows.map(row => `<tr><td>${e(route(row.from, row.from_game))}</td><td>${e(route(row.to, row.to_game))}</td><td>${number(row.count)}</td></tr>`).join("")}</tbody></table></div>`;
   }
 

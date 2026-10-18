@@ -14,6 +14,7 @@ from .models import User
 from .ownership import ownership_flags, require_owner
 from .proxy_headers import trusted_cloudflare_peer
 from .security import utcnow
+from .watten_access import can_access_watten
 
 router = APIRouter(prefix="/api")
 
@@ -80,16 +81,31 @@ async def analytics_events(request: Request):
 def analytics_dashboard(request: Request, response: Response, days: int = Query(default=7),
                         game: str = Query(default="all", max_length=16)):
     identity = require_analytics(request)
+    # Bind a mounted dashboard to the account actually serving this request.
+    # The optional assertion grants no capability and precedes any aggregation.
+    expected = request.headers.getlist("X-Analytics-Expected-Account-Id")
+    if expected:
+        if (len(expected) != 1 or not expected[0].isascii() or not expected[0].isdecimal()
+                or expected[0].startswith("0")):
+            raise HTTPException(status_code=400, detail="analytics_invalid_expected_account_id",
+                                headers={"Cache-Control": "no-store"})
+        if expected[0] != str(identity.user_id):
+            raise HTTPException(status_code=409, detail="analytics_account_changed", headers={"Cache-Control": "no-store"})
     # Public game access never grants the private Mission Control dataset.
     include_hausdepp = bool(identity.is_founder)
-    if game not in {"all", "zdwa", "zilch", "hausdepp"}:
+    # The closed native product is an independent, request-scoped capability.
+    # A delegated dashboard grant (or an old identity flag) cannot enable it.
+    with session_scope() as db:
+        include_watten = bool(can_access_watten(identity, request)
+                              and ownership_flags(db, identity.user_id)["is_founder"])
+    if game not in {"all", "zdwa", "zilch", "hausdepp", "watten"}:
         raise HTTPException(status_code=422, detail="analytics_invalid_filter")
-    if game == "hausdepp" and not include_hausdepp:
+    if game == "hausdepp" and not include_hausdepp or game == "watten" and not include_watten:
         raise HTTPException(status_code=403, detail="analytics_game_unavailable")
     if days not in {1, 7, 30, 90}:
         raise HTTPException(status_code=422, detail="analytics_invalid_filter")
     response.headers["Cache-Control"] = "no-store"
-    return dashboard_stats(days, game, include_hausdepp=include_hausdepp)
+    return dashboard_stats(days, game, include_hausdepp=include_hausdepp, include_watten=include_watten)
 
 
 class AnalyticsAccessRequest(BaseModel):

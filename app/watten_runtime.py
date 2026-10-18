@@ -17,10 +17,10 @@ from dataclasses import dataclass, replace
 from datetime import datetime
 from weakref import WeakValueDictionary
 
-from sqlalchemy import select, update
+from sqlalchemy import or_, select, update
 
 from .database import database_schema_ready, session_scope
-from .models import ActiveGame
+from .models import ActiveGame, User
 from .security import hash_password, utcnow, verify_password
 from .watten_cpu_memory import CpuMemory, memory_from_storage, memory_to_storage, new_memory
 from .watten_engine import (
@@ -232,6 +232,14 @@ def passphrase_matches(game: dict, value: object) -> bool:
     return expected is None or (type(value) is str and verify_password(value, expected))
 
 
+def account_protection_verified(game: dict, account: int, value: object) -> bool:
+    if passphrase_matches(game, value):
+        return True
+    from .watten_invitations import accepted_invitation_access
+
+    return accepted_invitation_access(game, account)
+
+
 def copy_game(game: dict) -> dict:
     return {**game, "_players": [dict(item) for item in game["_players"]],
             "_spectators": [dict(item) for item in game["_spectators"]]}
@@ -255,7 +263,7 @@ def _sync(game: dict, runtime: WattenRuntime, *, public: bool) -> None:
 def admit_account(game: dict, identity, revision: int, protection: object) -> tuple[dict, str]:
     candidate, runtime = copy_game(game), game["_watten"]
     existing = next((member for member in runtime.room.members if member.account_id == identity.user_id), None)
-    if existing is None and not passphrase_matches(game, protection):
+    if existing is None and not account_protection_verified(game, identity.user_id, protection):
         raise ValueError("watten_wrong_passphrase")
     admission = admit(runtime.room, revision=revision, account_id=identity.user_id, now=utcnow(), protection_verified=True)
     # Update names and room together so the constructor never observes an
@@ -647,15 +655,56 @@ def _write_checkpoint(db, checkpoint: dict, *, creating=False, expected_json=Non
     return True
 
 
-def persist_watten_game(game: dict, *, creating: bool = False) -> None:
-    """Raise on storage failure; the caller must keep the prior live state."""
+def _record_human_play_day(db, checkpoint: dict, actor: tuple[int, str]) -> None:
+    """Account activity shares the accepted checkpoint's transaction."""
+    from .game_activity import play_day
+
+    if (type(actor) is not tuple or len(actor) != 2 or type(actor[0]) is not int
+            or actor[0] <= 0 or type(actor[1]) is not str):
+        raise ValueError("watten_actor_not_bound")
+    account, player = actor
+    runtime = checkpoint["_watten"]
+    if (runtime.engine is None or not any(member.account_id == account
+            and member.participant_id == player and member.seat is not None for member in runtime.room.members)
+            or not any(record["id"] == player and record.get("user_id") == account
+                       for record in checkpoint["_players"])):
+        raise ValueError("watten_actor_not_bound")
+    day = play_day(utcnow())
+    db.execute(update(User).where(User.id == account,
+        or_(User.last_played_on.is_(None), User.last_played_on < day)).values(last_played_on=day))
+
+
+def persist_watten_game(game: dict, *, creating: bool = False,
+                        human_actor: tuple[int, str] | None = None,
+                        expected_source: str | None = None, commit_guard=None) -> None:
+    """Commit before installation; optional internal authority precedes writers.
+
+    Background callers can bind their decision to an already inspected source.
+    A guard runs in the same source-locked transaction before result/progress
+    writers. Existing callers retain their transaction and checkpoint behavior.
+    """
     if not database_schema_ready():
         raise RuntimeError("watten_database_not_ready")
+    if commit_guard is not None and expected_source is None:
+        raise ValueError("watten_invalid_expected_source")
     checkpoint = copy_game(game)
     from .watten_cpu_runtime import observe_cpu_memories
 
     checkpoint["_watten"] = observe_cpu_memories(checkpoint["_watten"])
     with session_scope() as db:
+        if expected_source is not None:
+            if type(expected_source) is not str:
+                raise ValueError("watten_invalid_expected_source")
+            if db.get_bind().dialect.name == "sqlite":
+                connection = db.connection()
+                if not connection.connection.driver_connection.in_transaction:
+                    connection.exec_driver_sql("BEGIN IMMEDIATE")
+            current = db.scalar(select(ActiveGame.state_json).where(
+                ActiveGame.game_id == checkpoint["_id"]).with_for_update())
+            if current != expected_source:
+                raise ValueError("watten_stale_checkpoint")
+        if commit_guard is not None:
+            commit_guard(db, checkpoint)
         if checkpoint["_finished"]:
             from .watten_completion import store_completion_progress
             from .watten_results import store_result_in_session
@@ -663,7 +712,13 @@ def persist_watten_game(game: dict, *, creating: bool = False) -> None:
             checkpoint["_watten_result"] = store_result_in_session(db, checkpoint)
             checkpoint["_completion_persisted"] = True
             store_completion_progress(db, checkpoint)
-        _write_checkpoint(db, checkpoint, creating=creating)
+        options = {"creating": creating}
+        if expected_source is not None:
+            options["expected_json"] = expected_source
+        if not _write_checkpoint(db, checkpoint, **options):
+            raise ValueError("watten_stale_checkpoint")
+        if human_actor is not None:
+            _record_human_play_day(db, checkpoint, human_actor)
         from .watten_public_titles import refresh_public_titles
 
         db.flush()  # Actual checkpoint/result failures must still abort gameplay.

@@ -1,5 +1,6 @@
 @import "./hausdepp-decor-consumables.css";
 @import "./hausdepp-decor-play.css";
+@import "./game-switch-menu.css";
 
 /* Watten: calm green table, warm paper, clear type, restrained gold and ink. */
 :root {
@@ -107,6 +108,17 @@ small { font-weight: 400; color: var(--wt-muted); display: block; }
 .wt-lobby-chat :is(button, select, textarea) { min-height: 44px; }
 @media (max-width: 420px) { .wt-lobby-chat .wt-actions button, .wt-lobby-chat form button { width: 100%; } }
 @media (prefers-reduced-motion: reduce) { .wt-lobby-chat *, .wt-lobby-chat { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
+/* Friend start notices: in normal flow, never an overlay above table controls. */
+.wt-friend-activity-host { min-width: 0; margin-block: 0 1rem; }
+.wt-friend-activity ul { list-style: none; margin: 0; padding: 0; display: grid; gap: .5rem; }
+.wt-friend-activity li { padding: .6rem .75rem; border: 1px solid var(--wt-paper-edge); border-left: 4px solid var(--wt-gold); border-radius: 8px; background: #fffdf7; overflow-wrap: anywhere; }
+.wt-friend-activity li p { margin: 0 0 .2rem; }
+.wt-friend-activity .wt-actions { margin-block: .4rem 0; }
+.wt-friend-activity button { min-height: 44px; min-width: 44px; }
+.wt-friend-activity-host--table { margin: 0 0 .4rem; pointer-events: none; }
+.wt-friend-activity__info { margin: 0; padding: .3rem .75rem; border-radius: 8px; background: var(--wt-paper); color: var(--wt-ink); font-size: .88rem; line-height: 1.35; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+@media (max-width: 420px) { .wt-friend-activity .wt-actions button { flex: 1 1 8rem; } }
+@media (orientation: landscape) and (max-height: 500px) { .wt-friend-activity__info { -webkit-line-clamp: 1; font-size: .8rem; padding-block: .15rem; } }
 @media (min-width: 860px) { .wt-lobby-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; } }
 .wt-create form { display: grid; gap: 1rem; }
 fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }

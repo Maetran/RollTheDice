@@ -12,7 +12,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
 
 from .auth import (
-    auth_identity_payload,
+    auth_response_payload,
     issue_session_for_user,
     lock_current_account_session,
     lock_verified_password,
@@ -201,7 +201,7 @@ def authentication_verify(payload: CredentialRequest, request: Request, response
         raise _error(exc) from exc
     _clear_ceremony_cookie(response)
     set_session_cookie(response, token)
-    return {"authenticated": True, "user": auth_identity_payload(identity, include_csrf=True)}
+    return auth_response_payload(identity, connection=request)
 
 
 @router.post("/signup/options")
@@ -244,7 +244,7 @@ def signup_verify(payload: RegistrationCredentialRequest, request: Request, resp
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     _clear_ceremony_cookie(response)
     set_session_cookie(response, token)
-    return {"authenticated": True, "user": auth_identity_payload(identity, include_csrf=True)}
+    return auth_response_payload(identity, connection=request)
 
 
 @router.get("")

@@ -5,21 +5,23 @@
     "zilch",
     "hausdepp"
   ],
-  "summary_de": "Der Spielwechsler wird aktiv, sobald deine Anmeldung geprüft ist. So geht der erste Klick zuverlässig durch.",
-  "summary_en": "The game switch becomes active once your sign-in has been checked, so your first click works reliably.",
+  "summary_de": "Die Spieleauswahl wird nach der Anmeldung und beim Zurückkehren zur App frisch geprüft.",
+  "summary_en": "The game selection is checked again after sign-in and when returning to the app.",
   "player_notes": {
     "de": {
-      "title": "Zuverlässig zwischen Spielen wechseln",
+      "title": "Spieleauswahl bleibt aktuell",
       "changes": [
-        "Beim Öffnen einer Kontoseite zeigt der Spielwechsler jetzt klar, wann er bereit ist.",
-        "Sobald er aktiv ist, öffnet dein erster Klick die Spielauswahl."
+        "Nach dem An- oder Abmelden passt sich die Spieleauswahl deinem Konto an.",
+        "Auch beim Zurückkehren zur App wird die Verfügbarkeit erneut geprüft.",
+        "Neu verfügbare Spiele erscheinen im offenen Menü, ohne deinen Fokus zu verschieben."
       ]
     },
     "en": {
-      "title": "Switch games reliably",
+      "title": "An up-to-date game selection",
       "changes": [
-        "When you open an account page, the game switch now clearly shows when it is ready.",
-        "Once it becomes active, your first click opens the game selection."
+        "The game selection follows your account after signing in or out.",
+        "Availability is checked again when you return to the app.",
+        "Newly available games appear in the open menu without moving your focus."
       ]
     }
   }

@@ -356,20 +356,23 @@ test('mocked telemetry refreshes every 30 seconds and pauses while the document 
 test('restored dashboard rechecks access before revealing cached values and restarts only one refresh timer', async ({ page }) => {
   await page.clock.install();
   const state = await mockedDashboard(page, 'en');
+  await expect.poll(() => state.authCalls).toBe(2);
   await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: true })));
   await expect(page.locator('#dashboardData')).toBeHidden();
   await page.clock.fastForward(90001);
   expect(state.calls).toHaveLength(1);
   await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true })));
-  await expect.poll(() => state.authCalls).toBe(2);
+  await expect.poll(() => state.authCalls).toBe(4);
   await expect.poll(() => state.calls.length).toBe(2);
   await expect(page.locator('#dashboardData')).toBeVisible();
   await page.clock.fastForward(30001);
   await expect.poll(() => state.calls.length).toBe(3);
+  await expect(page.locator('#dashboardData')).toHaveAttribute('aria-busy', 'false');
+  await expect.poll(() => state.authCalls).toBe(5);
   await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: true })));
   state.permitted = false;
   await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true })));
-  await expect.poll(() => state.authCalls).toBe(3);
+  await expect.poll(() => state.authCalls).toBe(6);
   await expect(page.locator('#dashboardData')).toBeHidden();
   await expect(page.locator('#dashboardMessage')).toContainText('Ask the founder for access');
   await page.clock.fastForward(90001);
@@ -832,6 +835,7 @@ test('NEXUS keyboard stars reveal the moved control on pin and unpin while refre
 
 test('NEXUS favorites are scoped to the viewer and private values clear on pagehide and access revocation', async ({ page }) => {
   const state = await mockedDashboard(page, 'en');
+  await expect.poll(() => state.authCalls).toBe(2);
   await page.locator('#dashboardDesign').selectOption('nexus');
   await page.locator('[data-favorite-toggle="metric-live-sessions"]').click();
   await page.locator('[data-favorite-toggle="panel-traffic"]').click();
@@ -841,7 +845,7 @@ test('NEXUS favorites are scoped to the viewer and private values clear on pageh
   await expect(page.locator('#dashboardFavoritesGrid .metric-value, #dashboardFavoritesGrid svg')).toHaveCount(0);
   state.userId = 8;
   await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true })));
-  await expect.poll(() => state.authCalls).toBe(2);
+  await expect.poll(() => state.authCalls).toBe(4);
   await expect(page.locator('#dashboardData')).toBeVisible();
   await expect(page.locator('#dashboardFavoritesGrid > [data-favorite-id]')).toHaveCount(0);
   await page.locator('[data-favorite-toggle="panel-traffic"]').click();

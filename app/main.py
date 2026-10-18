@@ -146,6 +146,7 @@ from .versioning import current_version
 from .watten_accounts import router as watten_accounts_router
 from .watten_accounts import watten_account_action_page
 from .watten_favorite_pages import router as watten_favorite_router
+from .watten_invitations import router as watten_invitations_router
 from .watten_pages import router as watten_pages_router
 from .watten_progress_pages import router as watten_progress_router
 from .watten_pwa import router as watten_pwa_router
@@ -563,6 +564,7 @@ app.include_router(watten_pages_router)
 app.include_router(watten_progress_router)
 app.include_router(watten_favorite_router)
 app.include_router(watten_rematch_router)
+app.include_router(watten_invitations_router)
 
 LEGACY_PAGE_PATHS = {
     "/static/index.html": "/",
@@ -2175,6 +2177,11 @@ async def api_games(request: Request, game_type: str = Query(default=DEFAULT_GAM
 async def api_game_notify_open_seat(game_id: str, request: Request):
     """Let a seated player invite opted-in accounts within the product audience."""
     from .moderation import ensure_play_allowed
+    from .watten_open_seat import maybe_notify_open_seat
+
+    native_response = await maybe_notify_open_seat(game_id, request, games.get(game_id))
+    if native_response is not None:
+        return native_response
 
     identity = require_user(request)
     require_csrf(request, identity)
@@ -2232,9 +2239,9 @@ async def game_info_route(
 ):
     game = games.get(game_id)
     if game is None:
-        from .watten_access import watten_game_preview_enabled
+        from .watten_access import watten_request_enabled
 
-        identity = resolve_session(request) if watten_game_preview_enabled(request) else None
+        identity = resolve_session(request) if watten_request_enabled(request) else None
         if identity is not None:
             from .watten_http import _identity as watten_http_identity
             from .watten_recovery import restore_owned_watten_game

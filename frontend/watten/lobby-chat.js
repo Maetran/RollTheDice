@@ -19,12 +19,14 @@ export function lobbyMessage(value) {
     game_type: value.game_type, sent_at: value.sent_at, text: value.text });
 }
 
-export function lobbySocketUrl(location, accountId) {
+export function lobbySocketUrl(location, accountId, founderPreview = false) {
   if (!Number.isSafeInteger(accountId) || accountId <= 0) return null;
   const url = new URL(location.href);
   const host = url.hostname.toLowerCase();
-  if (!["http:", "https:"].includes(url.protocol) || !(host === "localhost" || host.endsWith(".localhost")
-      || host === "[::1]" || /^127(?:\.\d{1,3}){3}$/.test(host))) return null;
+  const local = ["http:", "https:"].includes(url.protocol) && (host === "localhost" || host.endsWith(".localhost")
+    || host === "[::1]" || /^127(?:\.\d{1,3}){3}$/.test(host));
+  const founder = founderPreview === true && url.origin === "https://zockdiewandan.online" && !url.username && !url.password;
+  if (!local && !founder) return null;
   url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
   url.pathname = "/ws/lobby-chat"; url.search = ""; url.hash = "";
   url.searchParams.set("context", "watten");
@@ -37,7 +39,11 @@ export function mountWattenLobbyChat({ container, initialAuth, getExpectedAccoun
   loadAuth, fetcher = globalThis.fetch, createSocket = url => new WebSocket(url), escapeHtml: esc,
   language = languageNow, dom = document, win = window }) {
   const accountId = getExpectedAccountId();
-  const socketUrl = lobbySocketUrl(win.location, accountId);
+  const localSocketUrl = lobbySocketUrl(win.location, accountId);
+  const requiresFounderCapability = localSocketUrl === null;
+  const boundAuth = auth => auth?.authenticated === true && auth.user?.id === accountId
+    && (!requiresFounderCapability || auth.game_access?.watten_preview === true);
+  const socketUrl = localSocketUrl || lobbySocketUrl(win.location, accountId, boundAuth(initialAuth));
   const t = (key, values = {}) => WATTEN_LOBBY_CHAT_MESSAGES[language() === "en" ? "en" : "de"][key]
     .replace(/\{(\w+)\}/g, (_, name) => String(values[name] ?? ""));
   let destroyed = false, serial = 0, socket = null, socketSerial = 0, busy = false, connected = false;
@@ -77,7 +83,7 @@ export function mountWattenLobbyChat({ container, initialAuth, getExpectedAccoun
     for (let index = 0; index < count; index += 1) {
       auth = await loadAuth({ refresh: true });
       if (!current() || token !== serial) return null;
-      if (!auth?.authenticated || auth.user?.id !== accountId) { changed(); return null; }
+      if (!boundAuth(auth)) { changed(); return null; }
       preferences(auth);
     }
     return auth;
@@ -261,7 +267,7 @@ export function mountWattenLobbyChat({ container, initialAuth, getExpectedAccoun
     destroyed = true; serial += 1; request?.abort(); closeSocket(); clearPrivate(); listeners.abort(); container.replaceChildren();
   }
 
-  if (!socketUrl || !initialAuth?.authenticated || initialAuth.user?.id !== accountId || !current()) {
+  if (!socketUrl || !boundAuth(initialAuth) || !current()) {
     container.replaceChildren(); return { destroy };
   }
   preferences(initialAuth);
@@ -300,7 +306,7 @@ export function mountWattenLobbyChat({ container, initialAuth, getExpectedAccoun
   win.addEventListener("zdwa:auth-state", event => {
     if (!current()) return;
     const auth = event.detail;
-    if (!auth?.authenticated || auth.user?.id !== accountId) { changed(); return; }
+    if (!boundAuth(auth)) { changed(); return; }
     preferences(auth); update();
   }, { signal: listeners.signal });
   win.addEventListener("pagehide", destroy, { signal: listeners.signal });

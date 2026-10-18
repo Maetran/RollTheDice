@@ -53,15 +53,21 @@ class WattenPwaTests(unittest.TestCase):
                 with Image.open(io.BytesIO(fetched.content)) as image:
                     self.assertEqual(f"{image.width}x{image.height}", icon["sizes"])
 
-    def test_real_worker_is_narrow_network_only_and_contains_no_push_or_cache_storage(self):
+    def test_real_worker_is_network_only_with_staged_validated_push_and_no_cache_storage(self):
         response = self.client.get("/watten-sw.js")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.headers["service-worker-allowed"], "/watten")
         self.assertEqual(response.headers["cache-control"], "no-store")
         self.assertIn("noindex", response.headers["x-robots-tag"])
         self.assertNotIn("caches.", response.text)
-        self.assertNotIn("showNotification", response.text)
-        self.assertNotIn("addEventListener('push'", response.text)
+        self.assertIn("addEventListener('push'", response.text)
+        self.assertIn("addEventListener('notificationclick'", response.text)
+        self.assertIn("notificationPayload", response.text)
+        self.assertIn("notificationTarget", response.text)
+        # Serving a prepared worker does not enable account/device delivery.
+        from app.web_push import PUSH_DELIVERY_CONTEXTS
+
+        self.assertNotIn("watten", PUSH_DELIVERY_CONTEXTS)
         self.assertIn("This local account preview needs an internet connection", response.text)
         self.assertEqual(self.client.head("/watten-sw.js").content, b"")
 

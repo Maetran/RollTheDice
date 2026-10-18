@@ -62,7 +62,8 @@ DOCUMENT_ROUTES = (
     # Ownership adds a real signed-in browser flow; existing restriction tests
     # continue covering ordinary moderation on the same page.
     RouteCoverage(("/admin",), "tests/browser/admin-ownership.spec.js"),
-    RouteCoverage(("/admin/dashboard",), "tests/browser/analytics-dashboard.spec.js"),
+    RouteCoverage(("/admin/dashboard",), "tests/browser/analytics-dashboard.spec.js",
+                  browser_tests=("tests/browser/watten-dashboard.spec.js",)),
     RouteCoverage(("/ergebnis",), "tests/browser/navigation-destinations.spec.js"),
     RouteCoverage(
         ("/spieler", "/zilch/bestenlisten"), "tests/browser/achievement-feed.spec.js",
@@ -153,7 +154,8 @@ DOCUMENT_ROUTES = (
     RouteCoverage(
         ("/watten", "/watten/anmelden", "/watten/konto", "/watten/konto/einstellungen"),
         "tests/test_watten_accounts.py", "test_native_routes_protect_settings_and_keep_static_templates_private",
-        ("tests/browser-passkeys/watten-account.spec.js", "tests/browser/watten-lobby-chat.spec.js"),
+        ("tests/browser-passkeys/watten-account.spec.js", "tests/browser/watten-lobby-chat.spec.js",
+         "tests/browser/watten-founder-picker.spec.js"),
     ),
     RouteCoverage(
         ("/watten/konto/fortschritt", "/watten/konto/verlauf", "/watten/rangliste"),
