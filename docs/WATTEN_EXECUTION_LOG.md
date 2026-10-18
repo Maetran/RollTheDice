@@ -24,8 +24,8 @@ Arbeitszweig: `codex/watten-implementation`, eigener verwalteter Worktree
 | --- | --- | --- |
 | Bestehender S25-Spielwechsler-Race | Codex-Mitarbeiter `game_picker_race`, eigener Worktree `watten-picker-race`; `frontend/multigame/app-mode.js`, gezielter Browserfall und daraus gebaute Bundles | Früher zweiter Auth-Refresh gezielt blockiert; Regression schlägt am alten Code fehl. Initiale Bereitschaft sichtbar machen; Quelle und Nachweis vor Übernahme prüfen. Kein Retry als Korrektur. |
 | P1 feste Hostgrenze | Codex-Mitarbeiter `p1_contracts`, eigener Worktree `watten-readiness`; `app/product_hosts.py`, `app/watten_readiness.py`, schmale ASGI-Einbindung, `tests/test_watten_readiness.py` | Commit `c323e53` als `beaa32c` übernommen. Quellprüfung durch Lead und unabhängigen Codex-Reviewer ohne handlungsrelevanten Befund. HTTP und WebSocket vor bestehenden Produkten geschlossen; kein ZDWA-Fallback und keine fremde Manifest-/Workeridentität. |
-| P1/P8 DNS, Origin, TLS | Codex-Mitarbeiter `infrastructure_audit`, eigener Worktree; separater geschlossener Nginx-Vhost, Watten-Aktivierungshelfer, gezielte Tests | Liveprüfung erfolgt; prüfbare Aktivierung wird vorbereitet. Bestehende Vhosts, Proxy, Firewall, Zertifikate und App bleiben erhalten. |
-| P0 Owner-Entscheidungen | Owner; [Entscheidungsprotokoll](WATTEN_OWNER_DECISIONS.md) | Erste konkrete Antworten übernommen: 2er offen, 3er rotierendes Solo mit beiden Ansagen, 4er blind/ladinisch; Guter/Kritische standardmässig aus; Ansagen-/Einschau-/Komfortumfang konkretisiert. Weli-Kritisch-Widerspruch, Zugabefälle und Gebotsantworten präzise nachgefragt. Abhängige Regeln werden nicht geraten. |
+| P1/P8 DNS, Origin, TLS | Codex-Mitarbeiter `infrastructure_audit`, eigener Worktree `watten-infrastructure`; separater geschlossener Nginx-Vhost, Watten-Aktivierungshelfer, gezielte Tests | Quellcommits `cd571dd`/`2577864` als `e4ad21f`/`04f4067` übernommen. Geschlossene Liveaktivierung am 18.10.2026 um 16:30:55 Zurich erfolgreich geprüft; keine App-Veröffentlichung. Details unten. |
+| P0 Owner-Entscheidungen | Owner; [Entscheidungsprotokoll](WATTEN_OWNER_DECISIONS.md) | Bestätigt: 2er offen mit normaler oder ladinischer Bestimmung, 3er rotierendes Solo mit beiden Ansagen, 4er blind/ladinisch; Guter/Kritische standardmässig aus. Weli-Kritisch-Ausnahme, Gebotsstillstand und gestrichene Antwortrechte geklärt. Konkrete Deck-/Rollen-/Dreierwertungs-/Weli-Ansagefälle nachgefragt. Abhängige Regeln werden nicht geraten. |
 | P1/P7 Integrationsinventar | Codex Lead; [P1-Verträge](WATTEN_P1_CONTRACTS.md) | Quellen geprüft. Host, Konto, Passkeys, PWA, Push und Runtime besitzen unterschiedliche Register; kein einzelnes Register schaltet Watten vollständig frei. |
 | P1 native Kontoreise, separates Folgepaket | Codex-Mitarbeiter `p1_contracts`, eigener Worktree `watten-readiness`; dedizierter Router und schmale gemeinsame Kontoerweiterungen | Begonnen. Lokale Entwicklungsvorschau benötigt ausdrückliches Flag und Loopback-/localhost-Ursprung sowie Requesthost; echte Produktionsorigins bleiben geschlossen. Keine PWA-/Push-/Spielruntime durch diesen Kontoteil. |
 | Private Sicht und CPU-Wissen | Claude Desktop, neue Sitzung `local_a873664f-eae5-45e3-9a6b-e0a10761ab9e`; nur Leseprüfung | Abgeschlossen, keine Änderungen/Tests/Pushs. Codex hat negative Prüfideen in die P1-Verträge übernommen und Aussagen zu blinder Trumpfpflicht, späteren öffentlichen Zuständen und laufendem CPU-Ersatz ausdrücklich eingegrenzt. |
@@ -50,6 +50,45 @@ Arbeitszweig: `codex/watten-implementation`, eigener verwalteter Worktree
   `sc-domain:zockdiewandan.online` ist vorhanden; verifizierte Inhaberschaft
   wurde anschliessend direkt bestätigt.
 
+### Abgeschlossene geschlossene Domain-Aktivierung
+
+**Prüfzeit:** 18.10.2026, 14:30:55 UTC / **16:30:55 Europe/Zurich**.
+Exakt ein neuer Cloudflare-Eintrag: A `watten` → `217.154.16.72`, Proxied,
+TTL Auto; im Dashboard gespeichert und zurückgelesen, über Google- und
+Cloudflare-DoH sowie öffentlichen Originaufruf verifiziert. Ein zuvor negativ
+abgefragter Macresolver hielt zwischenzeitlich NXDOMAIN im Cache; kein Flush
+und keine TLS-Ausnahme. Lead-Gegenprüfung via verifiziertem HTTPS/DoH liefert
+`robots.txt` mit HTTP 200, no-store/noindex und exakt `Disallow: /`.
+
+- Operatorverzeichnis: `/home/manuel/watten-reservation-20261018T142543Z`,
+  ausserhalb des sauberen Produktionscheckouts. Übertragene SHA-256 lokal und
+  remote identisch. Quellstand `2577864be96abf3c095e150a3d685b8ca4e74283`.
+- Script-SHA-256: `04825f7d10c1df01a53e4b64fb8d193e1d6bd881164d39b2321fda5441c8adc4`.
+- Konfigurations-SHA-256: `6a6fa234252a7b272aaa921c102aae86ba2e65e3c10cd1f55120614d2df9932f`.
+- Ziel `/etc/nginx/conf.d/watten-reserved.conf` war vorher nicht vorhanden;
+  daher keine vorige Watten-Datei/Backup. Bestehende Sites unverändert.
+- Separate Zertifikatslinie `watten.zockdiewandan.online`, gültig bis
+  **16.01.2027, 13:29:15 UTC**; Hostname und Vertrauenskette geprüft.
+  Zertifikatsspezifischer `certbot renew --dry-run` erfolgreich.
+- Eigener Hook:
+  `/etc/letsencrypt/renewal-hooks/deploy/rollthedice-watten-nginx-reload.sh`.
+  Temporärer ACME-Vhost nach Abschluss entfernt. Certbot-Timer weiterhin aktiv.
+- Öffentlich und am Origin: `/`, Konto-API, Worker-, Sitemap- und Socketpfad
+  liefern 503 mit DE/EN-Hinweis, no-store/noindex, ohne Cookie oder Upstream.
+  `robots.txt` liefert 200 und sperrt vollständig. Keine Sitemap eingereicht.
+- Alle fünf bisherigen Hosts bleiben gesund (200, ZDWA-Alias 308). Firewall
+  und Cloudflare Full/automatic unverändert; direkter Originzugriff bleibt
+  gesperrt. Produktions-Git sauber auf `master=80bc42d`, Containerstartzeit
+  weiterhin 12:42:16 UTC: **kein App-Deploy oder Containerneustart**.
+- Rückweg umfasst ausschliesslich den einen neuen DNS-Eintrag und die eigenen
+  Watten-Dateien. Vor Rücknahme Belege erhalten, Nginx prüfen und graceful
+  reloaden; bestehende Zertifikate, Hosts, Firewall und Daten erhalten.
+
+Vollständige Livebelege liegen lokal im Infrastruktur-Worktree unter
+`test-results/watten-infrastructure-20261018T142543Z/postflight.json` mit Logs
+und als Kopie im Operatorverzeichnis. Die ignorierten Belege vor späterer
+Worktree-Archivierung separat sichern.
+
 ## Prüfungen und Liefergrenzen
 
 Der alte Planungs-Volllauf ist **rot** und kein verwendbarer Nachweis.
@@ -71,6 +110,11 @@ Develop-Abgleich, `push:checked`; keine zweite Vollsuite neben fremdem Vollpool.
   Vorgänger `80bc42d` bestehen. Vorbereitete Patchversion `3.10.1`; neue
   historische Zuordnung für 3.10.0 verwendet ausdrücklich den Deploy-Commit,
   nicht einen Zwischencommit. Bestehende Zuordnungen unverändert.
+- Infrastruktur: neun gezielte Shell-/Konfigurationstests inklusive 21
+  Subtests bestanden. Echte isolierte lokale Nginx-/TLS-/HTTP-01-Prüfung und
+  unabhängiges Quellreview ohne bestätigten handlungsrelevanten Befund.
+  Eine zunächst vermutete HTTP-Default-Änderung wurde am tatsächlichen
+  expliziten IPv4-/IPv6-Default ausgeschlossen und als Preflight abgesichert.
 - Noch kein neuer vollständiger Pushnachweis, Push, PR, Develop-Merge,
   App-Deploy oder physischer Gerätenachweis.
 

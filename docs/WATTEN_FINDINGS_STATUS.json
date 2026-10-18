@@ -702,8 +702,10 @@
         "P0",
         "P8"
       ],
-      "status": "open",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Closed infrastructure activated 2026-10-18 16:30:55 Europe/Zurich; separate verified TLS and renewal, rollback ownership, all old hosts healthy. Public game route/release remains open."
+      ]
     },
     {
       "id": "O03",

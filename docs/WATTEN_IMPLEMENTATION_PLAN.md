@@ -13,7 +13,7 @@ Ein vorhandener Hausdepp-Test beweist keine Watten-Regel.
 
 **Konkretisierung aus dem Ausführungs-Chat:** Die aktuellen verbindlichen
 Hausregelfestlegungen stehen im [Owner-Protokoll](WATTEN_OWNER_DECISIONS.md).
-Der Zweier ist offen mit normaler Ansage, der Dreier ein rotierendes Solo
+Der Zweier ist offen mit normaler Ansage oder ladinischer Bestimmung, der Dreier ein rotierendes Solo
 gegen zwei mit beiden Ansagen durch den Solisten. Vierer bleibt standardmässig
 blind/ladinisch; Guter und Kritische standardmässig aus. Der Komfortumfang ist
 vollständig beauftragt. Noch offene Kreuzungen bleiben gezielt zu klären.
