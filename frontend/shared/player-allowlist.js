@@ -149,7 +149,7 @@ export function mountAllowlistSettings(mount, { context = "zdwa" } = {}) {
     save.type = "submit";
     form.append(label, save);
     form.addEventListener("submit", event => { event.preventDefault(); void mutate("", "PUT", { audience: select.value }); });
-    const hint = element("p", t("Deine private Auswahl gilt für alle drei Spiele, ohne Freundschaftsanfrage. Hinzufügen geht am Spielerprofil. Push wird dadurch nicht aktiviert."), "player-allowlist-hint");
+    const hint = element("p", t("Deine private Auswahl gilt für alle unsere Spiele, ohne Freundschaftsanfrage. Hinzufügen geht am Spielerprofil. Push wird dadurch nicht aktiviert."), "player-allowlist-hint");
     hint.append(" ", t("Mit dem Filter „Nur ausgewählte Spieler“ blockiert eine leere Liste alle Mitspieler-Einladungen."));
     const count = element("p", t("Ausgewählte Spieler: {count} / {limit}").replace("{count}", data.players.length).replace("{limit}", data.limit), "player-allowlist-count");
     const list = element("ul", "", "player-allowlist-list");

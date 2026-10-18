@@ -23,6 +23,29 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 3.8.2 — Spielneutrale Kontotexte / game-neutral account texts — 2026-10-18
+
+**Deutsch:** Anmeldung, Konto, Einstellungen und Spielanleitung zählen die Spiele
+nicht mehr einzeln auf: Ein Konto, Passwort, Benutzername, Sprache, Lobby-Chat,
+Profilbild und Spielerauswahl gelten für „alle unsere Spiele“, und Mitspieler-Rufe
+führen in öffentliche Runden unserer Spiele. So bleiben die Texte richtig, wenn ein
+weiteres Spiel dazukommt. Hinweise, die noch von „beiden Spielen“ oder nur von ZDWA
+und Zilch sprachen (Spielerauswahl, Spieler finden, Profilbild, Benutzername,
+gemeinsame Version, Versionshinweise, Spielerinnerungen), sind ebenfalls angepasst.
+Der Lobby-Chat-Absatz der Zilch-Spielanleitung nennt jetzt die Schnellfilter und
+erscheint auch auf Englisch. Nicht mehr verwendete alte Texte wurden aus dem
+Sprachkatalog entfernt.
+
+**English:** Sign-in, account, settings and the rules no longer list the games one
+by one: one account, password, username, language, lobby chat, profile picture and
+player selection apply to “all our games”, and player calls lead to public tables
+in our games. The texts therefore stay correct when another game joins. Notes that
+still spoke of “both games” or only of ZDWA and Zilch (player selection, find
+players, profile picture, username, shared version, release notes, play reminders)
+are updated too. The lobby chat paragraph in the Zilch rules now mentions the quick
+filters and appears in English too. Old, unused texts were removed from the language
+catalog.
+
 ## 3.8.1 — Hausdepp: besser lesbarer Spieltisch / a more readable table — 2026-10-18
 
 **Deutsch:** Verdeckter Stapel und offenes Paket werden nicht mehr abgedunkelt,

@@ -1,6 +1,6 @@
 # Versionen / Versions
 
-Aktuelle gemeinsame Produktversion / Current shared product version: **3.8.1**.
+Aktuelle gemeinsame Produktversion / Current shared product version: **3.8.2**.
 
 ZDWA und Zilch werden gemeinsam versioniert. Major steht für einen großen
 Produktmeilenstein, Minor für neue Funktionen und Patch für Fehlerkorrekturen
@@ -27,6 +27,7 @@ Detailed player-facing descriptions are in the [changelog](../CHANGELOG.md).
 
 | Version | Datum / Date | Art / Type | Änderung / Change | Commit |
 | --- | --- | --- | --- | --- |
+| 3.8.1 | 2026-10-18 | patch | Hausdepp: besser lesbarer Spieltisch – helle Karten auch zwischen den Zügen, Namensschilder, goldene Markierung für den Spieler am Zug. / Hausdepp: a more readable table – cards stay bright between turns, name plates and a gold marker for the player on turn. | [4ca1592](https://github.com/Maetran/RollTheDice/commit/4ca15922487f46b67ded29810aaf4ee168190142) |
 | 3.8.0 | 2026-10-18 | minor | Hausdepp: Ausführlicher Rundenabschluss, lebendige Tisch-Extras, Profilbild führt ins Profil, ruhiger Start nach App-Neustart. / Hausdepp: a richer round summary, playful table extras, the avatar opens your profile and a calmer start after an app restart. | [f5a66ce](https://github.com/Maetran/RollTheDice/commit/f5a66ce6777612f0b42b0916af182fc27888fa57) |
 | 3.7.1 | 2026-10-17 | patch | Hausdepp: Erfolgreich abgehobene Karten fliegen für alle sichtbar mit Namen zum neuen Besitzer. / Hausdepp: successfully cut cards fly visibly to their new owner, with a caption, for everyone. | [c4f7abc](https://github.com/Maetran/RollTheDice/commit/c4f7abc835f8613a150fbf6df94725a19c46fd43) |
 | 3.7.0 | 2026-10-17 | minor | Hausdepp: Klügere Computer kaufen wertvolle Pakete, spielen mal besser, mal schlechter, sind in den ersten 50 Runden gnädiger und geben neueren Spielern Tipps. / Hausdepp: smarter computers buy valuable piles, play sometimes better, sometimes worse, go easier during the first 50 rounds and give newer players tips. | [fe82c03](https://github.com/Maetran/RollTheDice/commit/fe82c03f9221638386185de9a091df2f634c1e04) |

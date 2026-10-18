@@ -1,27 +1,27 @@
 {
   "kind": "usability",
   "games": [
-    "hausdepp"
+    "hausdepp",
+    "zdwa",
+    "zilch"
   ],
-  "summary_de": "Hausdepp: Der Spieltisch ist besser lesbar – helle Karten, Namensschilder und eine goldene Markierung für den Zug.",
-  "summary_en": "Hausdepp: the table is easier to read – bright cards, name plates and a gold marker for whose turn it is.",
+  "summary_de": "Konto- und Einstellungstexte sprechen jetzt von allen unseren Spielen, statt jedes einzeln aufzuzählen.",
+  "summary_en": "Account and settings texts now speak of all our games instead of listing each one.",
   "player_notes": {
     "de": {
-      "title": "Hausdepp 3.8.1: Klarer Blick auf den Tisch",
+      "title": "3.8.2: Ein Konto für alle unsere Spiele",
       "changes": [
-        "Stapel und Paket bleiben hell, auch wenn die anderen dran sind.",
-        "Was du gerade antippen kannst, leuchtet golden.",
-        "Wer dran ist, steht auf einem goldenen Namensschild; die Statuszeile wird bei deinem Zug gold.",
-        "Grössere Schrift am Tisch, und „Aus dem Spiel“ ist jetzt ein Symbol mit Zahl."
+        "Anmeldung, Konto und Einstellungen sagen jetzt „alle unsere Spiele“, statt ZDWA, Zilch und Hausdepp einzeln aufzuzählen.",
+        "Die Spielanleitung erklärt Profilbild, Spielerauswahl, Benutzername, Lobby-Chat und Versionshinweise für alle Spiele statt nur für zwei.",
+        "Der Hinweis zu Spielerinnerungen in den Einstellungen passt jetzt, egal wie viele Spiele du für Push angemeldet hast."
       ]
     },
     "en": {
-      "title": "Hausdepp 3.8.1: A clearer view of the table",
+      "title": "3.8.2: One account for all our games",
       "changes": [
-        "The stock and the pile stay bright while the others play.",
-        "Whatever you can tap right now lights up in gold.",
-        "The player on turn has a gold name plate; the turn line turns gold on your turn.",
-        "Larger text on the table, and “Out of play” is now an icon with its count."
+        "Sign-in, account and settings now say “all our games” instead of listing ZDWA, Zilch and Hausdepp one by one.",
+        "The rules explain profile pictures, player selection, usernames, lobby chat and release notes for every game, not just two.",
+        "The play reminder note in settings now fits however many games you have registered for push."
       ]
     }
   }
