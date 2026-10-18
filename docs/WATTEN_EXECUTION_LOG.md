@@ -941,3 +941,43 @@ abschliessenden vollständigen Nachweis erforderlich. Claude erreichte beim
 kleinen Korrekturpaket das tatsächliche Wochenlimit(100%, rejected); seine
 Teiländerungen sind gesichert und Codex übernimmt. Kein weiterer CLI-Auftrag,
 keine Zusatznutzung und kein App-Deployment sind dadurch erfolgt.
+
+### Native Monitoring-Abnahme und Kontobindung
+
+Die korrigierte Anzeige prüft die Identität nach dem Analyticsbody und auch
+vor dem Behalten alter Werte nach Fehlern frisch. Eine bereits laufende
+Authabfrage wird vorher abgewartet. Unbekannte Herkunftswerte entfernen die
+Weltkartenwerte einschliesslich ihrer zugänglichen Beschriftung; gemessene
+Nullen der bisherigen Produkte bleiben echte Nullen. Ein Hausdepp-Filter
+erhält keine irreführenden Watten-Hinweise.
+
+Die echte Kontowechselprüfung deckte zusätzlich B→Founder A→B während einer
+Analyticsantwort auf. Jede native Dashboardanfrage bindet sich nun an die
+erfasste Konto-ID; der Server verwirft eine abweichende Cookieidentität vor
+der Aggregation mit409 und `no-store`. Das erteilt keine Berechtigung und
+erhält ältere Clients ohne den optionalen Header. Der Client verwirft bei
+dieser Antwort Cache und Bindung und liest die Berechtigung erneut frisch.
+Zwei neue API-Regressionen scheitern am alten Code. Auf dem integrierten Stand
+bestehen46 betroffene Backendfälle mit284 Subtests und22 Nodefälle. Das
+unabhängige Quellenreview schliesst beide Seiten der Kontobindung ohne
+verbleibenden bestätigten Befund im geprüften Umfang.
+
+Alle neun neuen echten Dashboard-Browserfälle bestehen: DE/EN in drei
+Darstellungen und beiden Telefonorientierungen, verzögerte Antworten,
+persistierte Seitenevents und die Cookie-B→A→B-Folge mit echter409 sowie
+frisch geladener B-Antwort. Der Bericht liegt unter
+`test-results/browser/watten-dashboard-account-binding/`; die bestehenden
+Analyticsabläufe laufen im selben isolierten Pool. Die früheren drei
+Fixturefehler bleiben im roten Bericht erhalten: Eine Sprachinitialisierung
+überschrieb bei jedem Neuladen die echte Kontosprache; zwei alte Authzählungen
+berücksichtigten die neue Nachprüfung noch nicht. Die Initialisierung setzt
+nun nur eine fehlende Sprache, die Authzählungen prüfen ausdrücklich beide
+Phasen und warten auf deren Abschluss. Keine Assertion oder Timeoutgrenze
+wurde gelockert. DE-NEXUS-Hochformat und EN-LCARS-Querformat wurden zusätzlich
+an den tatsächlichen Screenshots visuell geprüft.
+
+Der vollständige Nachweis auf dem fertig committeten sauberen Stand sowie
+PR-, Develop- und Master-CI bleiben vor der freigegebenen privaten Auslieferung
+verpflichtend. Die81 Findings bleiben als Gesamtumfang offen beziehungsweise
+teilweise umgesetzt; diese Abnahme behauptet keine physische Geräteprüfung
+und keine öffentliche Wattenfreigabe.

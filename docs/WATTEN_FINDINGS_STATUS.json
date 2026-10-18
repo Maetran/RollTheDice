@@ -73,7 +73,8 @@
       "evidence": [
         "Local account-switch mutation and BFCache regressions reproduced/guarded in 9bda650. Future table hand/team/knowledge invalidation remains open.",
         "Native socket lifecycle314fcfa: fresh identity after awaited fanout; no old-account private leave frame. Human table DOM/BFCache acceptance remains open.",
-        "Native UI1a98ec8: mounted-account preconnect refresh plus under-lock expected_account_id; real delayed-decode account switch and persisted-page event cleanup passed. Physical BFCache/device acceptance remains open."
+        "Native UI1a98ec8: mounted-account preconnect refresh plus under-lock expected_account_id; real delayed-decode account switch and persisted-page event cleanup passed. Physical BFCache/device acceptance remains open.",
+        "Native dashboard captures expected account per analytics request, rejects cookie ABA before server aggregation, clears and freshly rebinds on409, then confirms post-body identity. API46+284subtests/Node22 green; all9 real DE/EN/dashboard account-switch browser cases passed. Physical acceptance remains open."
       ]
     },
     {
@@ -874,7 +875,8 @@
       ],
       "status": "open",
       "evidence": [
-        "Five complete exact-source attempts retained all required group and seven browser-part reports; none produced a valid green push receipt. Narrow fixture corrections, the owner-rule correction and native monitoring still require one complete final clean-commit run and remote CI before release."
+        "Five complete exact-source attempts retained all required group and seven browser-part reports; none produced a valid green push receipt. Narrow fixture corrections, the owner-rule correction and native monitoring still require one complete final clean-commit run and remote CI before release.",
+        "Native monitoring account-binding and truthful unknown values passed focused API46+284subtests/Node22 and9 real new browser cases after explicit old-source failures. A complete final clean-source run is still required; targeted evidence is not a push receipt."
       ]
     },
     {
