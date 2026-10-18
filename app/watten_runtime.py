@@ -2,8 +2,9 @@
 
 Sockets/HTTP must take game_lock before changing this state. Immutable room
 and engine replacements are committed before becoming live or acknowledged.
-The personal CPU runner composes these transitions; no achievement grant or
-automatic forfeit is implied by this runtime.
+The personal CPU runner composes these transitions. Terminal checkpoints share
+one transaction with the explicit local draft progression journal; there is no
+automatic forfeit.
 """
 
 from __future__ import annotations
@@ -603,10 +604,12 @@ def persist_watten_game(game: dict, *, creating: bool = False) -> None:
     checkpoint["_watten"] = observe_cpu_memories(checkpoint["_watten"])
     with session_scope() as db:
         if checkpoint["_finished"]:
+            from .watten_completion import store_completion_progress
             from .watten_results import store_result_in_session
 
             checkpoint["_watten_result"] = store_result_in_session(db, checkpoint)
             checkpoint["_completion_persisted"] = True
+            store_completion_progress(db, checkpoint)
         payload = dumps_canonical_json(serialize_watten_game(checkpoint))
         row = db.scalar(select(ActiveGame).where(ActiveGame.game_id == checkpoint["_id"]))
         now = utcnow()
