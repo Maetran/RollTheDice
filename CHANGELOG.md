@@ -23,6 +23,28 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 3.8.3 — Abmelden bleibt in Hausdepp / signing out stays in Hausdepp — 2026-10-18
+
+**Deutsch:** Wer sich in den Hausdepp-Einstellungen abmeldete, landete manchmal in
+ZDWA statt auf der Hausdepp-Startseite. Das passierte, wenn die Seite beim Abmelden
+noch Daten lud: Diese Anfrage sah die schon beendete Sitzung und löschte die
+zwischengespeicherte Anmeldung, bevor die Abmeldung fertig war. Dadurch ging die
+Information verloren, dass Hausdepp auch ohne Anmeldung offen ist, und die
+gemeinsame Spielauswahl schickte nach ZDWA. Die Abmeldung merkt sich diese
+Freigabe jetzt, bevor sie die Sitzung beendet. Ausserdem laufen zwei
+ZDWA-Gerätewechsel-Tests im vollständigen lokalen Testlauf mit eigenem Konto,
+damit ihnen frühere Tests die Kontosprache nicht mehr auf Englisch umstellen.
+
+**English:** Signing out from the Hausdepp settings sometimes ended in ZDWA instead
+of the Hausdepp home page. This happened when the page was still loading data
+during sign-out: that request saw the session that had already ended and cleared
+the cached sign-in before the sign-out finished. The fact that Hausdepp is open
+without an account was lost, and the shared game switch sent the browser to ZDWA.
+Sign-out now keeps that access before it ends the session. Two ZDWA device-switch
+tests also use their own account in the full local test run, so earlier tests can
+no longer switch their account language to English.
+
+
 ## 3.8.2 — Klügere Hausdepp-Computer, spielneutrale Kontotexte / smarter Hausdepp computers, game-neutral account texts — 2026-10-18
 
 **Deutsch:** Im Hausdepp-Zweikampf räumten Computer ein Ass oben fast immer mit

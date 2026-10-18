@@ -147,6 +147,20 @@ for (const language of ['de', 'en']) {
       await page.locator('[data-tour-cancel-entry]').click();
       await expect(page.locator('.game-tour-entry')).toHaveCount(0);
       await page.goto(`${HOUSE}/hausdepp/konto/einstellungen`);
+      // A request still running when the session ends gets 401 and drops the
+      // cached identity before the logout response arrives. Hold that response
+      // until such a request (here the start-notice setting) has seen the ended
+      // session; signing out must still stay in Hausdepp instead of ZDWA.
+      const friendActivity = page.locator('[data-friend-activity-settings] form');
+      await expect(friendActivity.locator('button[type=submit]')).toBeEnabled();
+      relay.beforeFulfill = async target => {
+        if (target.pathname !== '/api/auth/logout') return;
+        relay.beforeFulfill = null;
+        const ended = page.waitForResponse(r => r.url() === `${HOUSE}/api/friend-activity/preferences` && r.status() === 401);
+        await friendActivity.evaluate(form => form.requestSubmit());
+        await ended;
+        await expect(friendActivity.locator('button[type=submit]')).toBeEnabled();
+      };
       const logoutNavigations = [];
       page.on('framenavigated', frame => { if (frame === page.mainFrame()) logoutNavigations.push(frame.url()); });
       await page.locator('#hausdeppLogout').click();

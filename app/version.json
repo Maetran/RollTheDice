@@ -1,10 +1,10 @@
 {
-  "version": "3.8.2",
+  "version": "3.8.3",
   "bump": "patch",
   "date": "2026-10-18",
-  "previous_revision": "4ca15922487f46b67ded29810aaf4ee168190142",
+  "previous_revision": "f27c488e170a17adaeece9a7ceca164f4270f0cc",
   "summary": {
-    "de": "Hausdepp-Computer wägen im Zweikampf ein Ass oben ab, statt es fast immer mit der 10 abzuräumen; Konto- und Einstellungstexte sprechen von allen unseren Spielen.",
-    "en": "Hausdepp computers weigh an ace on top in a duel instead of nearly always clearing it with a ten; account and settings texts speak of all our games."
+    "de": "Abmelden in Hausdepp führt zuverlässig zurück zu Hausdepp statt manchmal nach ZDWA.",
+    "en": "Signing out of Hausdepp reliably returns to Hausdepp instead of sometimes jumping to ZDWA."
   }
 }
