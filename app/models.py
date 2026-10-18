@@ -723,6 +723,14 @@ class WattenMatchPresentationAck(Base):
     )
 
 
+class WattenFavorite(Base):
+    """One private canonical recipe; protection is a boolean, never a password."""
+
+    __tablename__ = "watten_favorites"
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    recipe_json: Mapped[str] = mapped_column(Text, nullable=False)
+
+
 class HausdeppRoundCredit(Base):
     """One private, validated credit per account and completed Hausdepp round."""
 
