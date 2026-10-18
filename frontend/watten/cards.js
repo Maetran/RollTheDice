@@ -57,5 +57,5 @@ export function cardBack({ className = "", label = t("card.back") } = {}) {
 }
 
 export function prepareWattenCards() {
-  return prepareCardAssets().catch(() => undefined);
+  return prepareCardAssets();
 }

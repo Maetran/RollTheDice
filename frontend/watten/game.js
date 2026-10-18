@@ -337,7 +337,7 @@ function setConnection(state) {
   session.connection = state;
   const node = app.querySelector("[data-watten-connection]");
   if (!node) return;
-  node.textContent = state === "reconnecting" ? t("connection.reconnecting") : state === "connecting" ? t("connection.connecting") : "";
+  node.textContent = state === "cards" ? t("card.loading") : state === "reconnecting" ? t("connection.reconnecting") : state === "connecting" ? t("connection.connecting") : "";
   node.hidden = !node.textContent;
 }
 
@@ -861,7 +861,15 @@ async function mountTable() {
   }
   account = { id: auth.user.id, username: auth.user.username };
   latestUserId = account.id;
-  void prepareWattenCards();
+  setConnection("cards");
+  try { await prepareWattenCards(); } catch {
+    if (gen !== generation) return;
+    setConnection("");
+    showMessage(t("card.failedTitle"), t("card.failed"),
+      `<button type="button" data-watten-command="retry-assets">${esc(t("connection.retry"))}</button>${lobbyLink()}`);
+    return;
+  }
+  if (gen !== generation) return;
   await loadDetail(gen);
 }
 
@@ -915,6 +923,7 @@ app.addEventListener("click", event => {
     case "leave-confirm": closeLeaveDialog(); roomCommand("watten_leave"); break;
     case "leave-cancel": closeLeaveDialog(); break;
     case "reconnect": void manualReconnect(); break;
+    case "retry-assets": reloadFresh(); break;
     default: break;
   }
 });
