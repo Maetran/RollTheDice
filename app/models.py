@@ -8,6 +8,7 @@ from sqlalchemy import (
     Date,
     DateTime,
     ForeignKey,
+    ForeignKeyConstraint,
     Index,
     Integer,
     LargeBinary,
@@ -703,6 +704,22 @@ class WattenAchievementGrant(Base):
                         name="ck_watten_achievement_versions"),
         CheckConstraint("xp >= 0 AND grant_sequence >= 1", name="ck_watten_achievement_amount"),
         UniqueConstraint("user_id", "generation", "grant_sequence", name="uq_watten_achievement_sequence"),
+    )
+
+
+class WattenMatchPresentationAck(Base):
+    """DRAFT presentation boundary for one owned credit; never a global cursor."""
+
+    __tablename__ = "watten_match_presentation_acks"
+    user_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    generation: Mapped[int] = mapped_column(Integer, primary_key=True)
+    game_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    through_sequence: Mapped[int] = mapped_column(Integer, nullable=False)
+    __table_args__ = (
+        ForeignKeyConstraint(("user_id", "generation", "game_id"),
+                             ("watten_match_credits.user_id", "watten_match_credits.generation", "watten_match_credits.game_id"),
+                             name="fk_watten_match_presentation_credit", ondelete="CASCADE"),
+        CheckConstraint("generation >= 1 AND through_sequence >= 1", name="ck_watten_match_presentation_boundary"),
     )
 
 
