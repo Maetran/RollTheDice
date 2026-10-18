@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync, unlink
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { randomUUID } from 'node:crypto';
+import { adoptIntegrationReceipt } from './integration-receipt.mjs';
 import { REQUIRED_CHECKS, acquireVerificationLock, assertFullBrowserResult, assertUnfilteredEnvironment, commandEnvironment,
   environmentFingerprint, git, gitContext, localDockerEndpoint, pushedCommits, pythonExecutable, readReceipt,
   receiptError, receiptPath, runCommand, saveReceipt } from './local-checks.mjs';
@@ -97,8 +98,13 @@ export async function verifyLocal({ cwd = process.cwd() } = {}) {
 
 export function checkReceipt(cwd = process.cwd()) {
   const context = gitContext(cwd);
-  const receipt = readReceipt(context);
-  const error = receiptError(receipt, context, environmentFingerprint(context.root));
+  const environment = environmentFingerprint(context.root);
+  let receipt = readReceipt(context);
+  if (!receipt) {
+    receipt = adoptIntegrationReceipt(context, environment);
+    if (receipt) saveReceipt(context, receipt);
+  }
+  const error = receiptError(receipt, context, environment);
   if (error) throw new Error(`${error}\nRun npm run verify:local or npm run push:checked before pushing.`);
   return receipt;
 }

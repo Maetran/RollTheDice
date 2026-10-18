@@ -94,7 +94,7 @@ test('the installed hook rejects a real unverified push before it reaches the re
   git(['remote', 'add', 'origin', remote], directory);
   cpSync(join(root, '.githooks'), join(directory, '.githooks'), { recursive: true });
   mkdirSync(join(directory, 'scripts'));
-  for (const name of ['local-checks.mjs', 'verify-local.mjs', 'install-local-hooks.mjs']) {
+  for (const name of ['local-checks.mjs', 'verify-local.mjs', 'integration-receipt.mjs', 'install-local-hooks.mjs']) {
     cpSync(join(root, 'scripts', name), join(directory, 'scripts', name));
   }
   git(['add', '.'], directory);

@@ -1831,7 +1831,10 @@ npm run verify:local
 Commit changes before verification. The pre-push hook requires a complete local
 check for the exact clean commit, current `origin/develop` base and installed
 environment. A successful receipt remains valid for 24 hours; changing any of
-those inputs requires a new run. It lives in Git metadata; the raw file is never
+those inputs requires a new run. An unchanged normal develop PR merge can inherit
+its feature parent's complete proof after strict tree/base/ancestry checks; this
+avoids repeating the same local suites for master and its release tag. The receipt
+lives in Git metadata; the raw file is never
 accepted as GitHub CI evidence. The full check runs quality/security checks, Node tooling
 tests, backend coverage, the production Docker build and offline container smoke
 test, every browser suite and `git diff --check`. Docker must use a local socket.

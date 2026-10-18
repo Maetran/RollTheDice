@@ -66,12 +66,23 @@ normaler Push benötigt anschliessend `npm run checks:publish`. `gh` muss als
 Repository-Eigentümer angemeldet sein; der Publisher erweitert keine Rechte
 und gibt keine Zugangsdaten aus.
 
+Eine enge Ausnahme vermeidet eine doppelte Vollprüfung beim Release: Ein
+unveränderter normaler PR-Merge auf dem aktuellen `origin/develop` darf den
+vollständigen lokalen Nachweis seines Feature-Elternteils übernehmen. Dazu müssen
+der tatsächliche Merge-Tree exakt dem geprüften Source-Tree und der erste
+Merge-Elternteil exakt der getesteten Basis entsprechen; der Feature-Stand muss
+diese Basis enthalten. Frische, Umgebung und sämtliche Pflichtgruppen werden
+erneut geprüft. Zeiten und Berichte bleiben unverändert, die Herkunft wird als
+`inheritedFrom` aufgezeichnet. Andere Commits oder neue Quellen brauchen einen
+neuen Volltest. So können `master` und der zugehörige Tag denselben geprüften
+Stand übernehmen, ohne die lokalen Suiten nochmals zu wiederholen.
+
 Für die Entwicklung bleiben gezielte Prüfungen verfügbar:
 
 ```bash
 npm run check:quality
 npm run test:tools
-npm run test:backend -- -n 0 tests/test_ci_workflow.py
+.venv/bin/python -m pytest -n 0 tests/test_ci_workflow.py
 npm run test:browser -- --suite main -- hausdepp-flex-lobby.spec.js
 npm run test:browser -- --suite passkeys
 npx playwright test tests/browser/hausdepp-flex-lobby.spec.js
@@ -125,3 +136,11 @@ never authorize a push. Raw receipt files are not trusted by GitHub. The owner-i
 binds the verified tree, base and completion time. GitHub runs only a lightweight
 remote integration/evidence check, rejecting stale, untrusted or changed sources.
 It does not repeat the full local backend, browser, Docker, lint or tooling suites.
+
+An unchanged two-parent PR merge at the current `origin/develop` tip may inherit
+its feature parent's complete receipt only when the merge tree exactly matches
+the tested source tree and its first parent is the tested base. Freshness,
+environment and all groups are checked again; original reports and timestamps
+remain unchanged and `inheritedFrom` records the source. New sources require a
+new full run. This lets the master fast-forward and release tag reuse the same
+local source verification.

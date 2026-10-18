@@ -28,7 +28,10 @@
   `npm run checks:publish` ausführen. Der Wrapper veröffentlicht den lokalen
   Vollnachweis nach erfolgreichem Push automatisch als Owner-Commitstatus. Der Hook
   verlangt einen gültigen Nachweis für exakt diesen Commit, die aktuelle
-  `origin/develop`-Basis und die unveränderte lokale Umgebung. Keine Hooks
+  `origin/develop`-Basis und die unveränderte lokale Umgebung. Ein unveränderter
+  normaler Develop-PR-Merge darf den vollständigen Source-Nachweis nach strikter
+  Tree-/Basis-/Abstammungsprüfung übernehmen; neue Quellen brauchen einen neuen
+  Volltest. Keine Hooks
   umgehen und keine Teilprüfung als Vollprüfung ausgeben. Alle Qualitäts-,
   Sicherheits-, Tool-, Backend-, Container- und Browserprüfungen sind enthalten.
   Die Haupt-Browser-Suite läuft auf vier eigenen Servern mit getrennten
