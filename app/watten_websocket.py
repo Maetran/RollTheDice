@@ -205,6 +205,7 @@ async def _handle_locked(session, action: str, data: dict) -> bool:
         eligible_accounts=_eligible_accounts(game) if action == "leave_waiting_game" else None)
     public_call_events = ()
     if not replayed:
+        was_started = bool(game["_started"])
         previous = {item.delivery_id for item in game["_watten"].deliveries}
         fresh = {(item.kind, item.seat, item.value) for item in candidate["_watten"].deliveries
                  if item.delivery_id not in previous}
@@ -212,6 +213,10 @@ async def _handle_locked(session, action: str, data: dict) -> bool:
                                    for kind, seat, value in sorted(fresh))
         persist_watten_game(candidate)
         _install(game, candidate)
+        if action == "watten_start" and not was_started and game["_started"]:
+            from .friend_activity import publish_friend_game_start
+
+            await publish_friend_game_start(game)
     from .watten_cpu_runtime import watch_game
 
     watch_game(game)
