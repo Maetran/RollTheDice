@@ -470,3 +470,13 @@ keine Watten-Gesamtabnahme; alle 81 Findings bleiben im Umfang.
 Thirteen isolated browser cases and focused backend checks passed. Physical
 devices, broader strength calibration, progression persistence/account views,
 suite services and the new complete verification receipt remain outstanding.
+
+Der erste Vollversuch auf `2d50dfc` bestand Qualität und 94 Tooltests, hielt
+aber im Backend bei zwei veralteten Shell-Inventaren an: neue Watten-Spiel-
+und Regelvorlagen wurden noch als ZDWA-Standardvorlagen geprüft. 2’056 weitere
+Backendtests bestanden bei 85.33 % Coverage. Die Register führen jetzt die
+zwei eigenen deferred Controller-/Stylesheet-Vorlagen ausdrücklich auf;
+echte gerenderte Seiten prüfen zusätzlich beide Watten-Icons und schliessen
+fremde Spiel-Icons aus. Gegenlauf: **27 Tests, 103 Subtests, 2.95 Sekunden**.
+Der fehlgeschlagene Lauf ist kein Vollnachweis; nach dem neuen Commit wird
+der vollständige Ablauf erneut ausgeführt.

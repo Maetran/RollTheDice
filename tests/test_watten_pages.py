@@ -103,6 +103,10 @@ class WattenPagesTests(TestCase):
         self.assertNotIn("{watten_page}", response.text)
         self.assertNotIn("{game_id}", response.text)
         self.assertIn('data-pwa-product="watten"', response.text)
+        self.assertIn('/static/watten/icons/watten-icon-32.png?v=', response.text)
+        self.assertIn('/static/watten/icons/watten-icon-180.png?v=', response.text)
+        for foreign_icon in ('/static/favicon.png', '/static/icons/zilch-', '/static/icons/hausdepp-'):
+            self.assertNotIn(foreign_icon, response.text)
 
     def test_local_public_lobby_and_rules_serve_actual_game_documents(self):
         self.assert_real_templates()

@@ -29,6 +29,10 @@ WATTEN_ACCOUNT_TEMPLATES = {
     "watten-account.html": "watten-account.js",
     "watten-email-action.html": "email-action.js",
 }
+WATTEN_GAME_TEMPLATES = {
+    "watten-game.html": "watten-game.js",
+    "watten-rules.html": "watten-game.js",
+}
 
 # Account action pages may carry exactly this inline script (see
 # main._private_account_action_page, which renders data-design-available). It
@@ -122,7 +126,7 @@ class HttpShellTestCase(unittest.IsolatedAsyncioTestCase):
         zilch_shells = {"zilch.html", "zilch-lobby.html", "zilch-rules.html", "zilch-login.html", "zilch-unavailable.html"}
         for html_path in main.STATIC_DIR.glob("*.html"):
             html = html_path.read_text()
-            if html_path.name in WATTEN_ACCOUNT_TEMPLATES:
+            if html_path.name in WATTEN_ACCOUNT_TEMPLATES or html_path.name in WATTEN_GAME_TEMPLATES:
                 self.assertIn('data-game="watten"', html, html_path.name)
                 for foreign_icon in (
                     "/static/favicon.png", "/static/icons/apple-touch-icon-180.png",
@@ -156,13 +160,14 @@ class HttpShellTestCase(unittest.IsolatedAsyncioTestCase):
         }
         for html_path in main.STATIC_DIR.glob("*.html"):
             html = html_path.read_text(encoding="utf-8")
-            if html_path.name in WATTEN_ACCOUNT_TEMPLATES:
+            if html_path.name in WATTEN_ACCOUNT_TEMPLATES or html_path.name in WATTEN_GAME_TEMPLATES:
                 self.assertEqual(html.count("<script"), 1, html_path.name)
                 self.assertNotIn("<script>", html, html_path.name)
-                bundle = WATTEN_ACCOUNT_TEMPLATES[html_path.name]
+                bundle = (WATTEN_ACCOUNT_TEMPLATES | WATTEN_GAME_TEMPLATES)[html_path.name]
                 self.assertIn(f'<script type="module" src="/static/{bundle}?v=', html, html_path.name)
                 self.assertIn('data-game="watten"', html, html_path.name)
-                self.assertIn('href="/static/watten-account.css?v=', html, html_path.name)
+                stylesheet = "watten-game.css" if html_path.name in WATTEN_GAME_TEMPLATES else "watten-account.css"
+                self.assertIn(f'href="/static/{stylesheet}?v=', html, html_path.name)
                 for unrelated_bootstrap in ("shell.js", "pwa.js", "presence.js"):
                     self.assertNotIn(f"/static/{unrelated_bootstrap}", html, html_path.name)
                 self.assertNotIn('rel="manifest"', html, html_path.name)
