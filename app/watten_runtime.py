@@ -232,6 +232,14 @@ def passphrase_matches(game: dict, value: object) -> bool:
     return expected is None or (type(value) is str and verify_password(value, expected))
 
 
+def account_protection_verified(game: dict, account: int, value: object) -> bool:
+    if passphrase_matches(game, value):
+        return True
+    from .watten_invitations import accepted_invitation_access
+
+    return accepted_invitation_access(game, account)
+
+
 def copy_game(game: dict) -> dict:
     return {**game, "_players": [dict(item) for item in game["_players"]],
             "_spectators": [dict(item) for item in game["_spectators"]]}
@@ -255,7 +263,7 @@ def _sync(game: dict, runtime: WattenRuntime, *, public: bool) -> None:
 def admit_account(game: dict, identity, revision: int, protection: object) -> tuple[dict, str]:
     candidate, runtime = copy_game(game), game["_watten"]
     existing = next((member for member in runtime.room.members if member.account_id == identity.user_id), None)
-    if existing is None and not passphrase_matches(game, protection):
+    if existing is None and not account_protection_verified(game, identity.user_id, protection):
         raise ValueError("watten_wrong_passphrase")
     admission = admit(runtime.room, revision=revision, account_id=identity.user_id, now=utcnow(), protection_verified=True)
     # Update names and room together so the constructor never observes an

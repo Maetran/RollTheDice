@@ -100,10 +100,10 @@ async def _session_action(session, data: dict) -> None:
     if action == "spectate_game":
         if set(data) - {"action", "pass", "passphrase", "expected_account_id"}:
             raise ValueError("watten_invalid_command")
-        from .watten_runtime import passphrase_matches
+        from .watten_runtime import account_protection_verified
 
         own_member = any(member.account_id == identity.user_id for member in game["_watten"].room.members)
-        if not own_member and not passphrase_matches(game, data.get("pass", data.get("passphrase"))):
+        if not own_member and not account_protection_verified(game, identity.user_id, data.get("pass", data.get("passphrase"))):
             raise ValueError("watten_wrong_passphrase")
         if session.player_id is not None or session.spectator_id is not None:
             raise ValueError("watten_already_joined")
