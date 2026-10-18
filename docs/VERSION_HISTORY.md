@@ -1,6 +1,6 @@
 # Versionen / Versions
 
-Aktuelle gemeinsame Produktversion / Current shared product version: **3.9.1**.
+Aktuelle gemeinsame Produktversion / Current shared product version: **3.10.0**.
 
 ZDWA und Zilch werden gemeinsam versioniert. Major steht für einen großen
 Produktmeilenstein, Minor für neue Funktionen und Patch für Fehlerkorrekturen
@@ -27,6 +27,7 @@ Detailed player-facing descriptions are in the [changelog](../CHANGELOG.md).
 
 | Version | Datum / Date | Art / Type | Änderung / Change | Commit |
 | --- | --- | --- | --- | --- |
+| 3.9.1 | 2026-10-18 | patch | Abmelden in Hausdepp führt zuverlässig zurück zu Hausdepp statt manchmal nach ZDWA. / Signing out of Hausdepp reliably returns to Hausdepp instead of sometimes jumping to ZDWA. | [2baa990](https://github.com/Maetran/RollTheDice/commit/2baa990726ef537049957069c57d68f3bfeb88f1) |
 | 3.9.0 | 2026-10-18 | minor | Hausdepp-Runden flexibel öffnen, Favoriten speichern und weitere Reaktionen senden. / Open flexible Hausdepp games, save favourites and send more reactions. | [87a298f](https://github.com/Maetran/RollTheDice/commit/87a298fc57b32fdb397dd972fec29b1ff083a551) |
 | 3.8.2 | 2026-10-18 | patch | Hausdepp-Computer wägen im Zweikampf ein Ass oben ab, statt es fast immer mit der 10 abzuräumen; Konto- und Einstellungstexte sprechen von allen unseren Spielen. / Hausdepp computers weigh an ace on top in a duel instead of nearly always clearing it with a ten; account and settings texts speak of all our games. | [f27c488](https://github.com/Maetran/RollTheDice/commit/f27c488e170a17adaeece9a7ceca164f4270f0cc) |
 | 3.8.1 | 2026-10-18 | patch | Hausdepp: besser lesbarer Spieltisch – helle Karten auch zwischen den Zügen, Namensschilder, goldene Markierung für den Spieler am Zug. / Hausdepp: a more readable table – cards stay bright between turns, name plates and a gold marker for the player on turn. | [4ca1592](https://github.com/Maetran/RollTheDice/commit/4ca15922487f46b67ded29810aaf4ee168190142) |
