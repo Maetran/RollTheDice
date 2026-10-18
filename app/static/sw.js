@@ -1,5 +1,5 @@
 /* ZDWA PWA: cache only the explicit local-play package. */
-const CACHE_VERSION = 'assets-3bc48419a8cd';
+const CACHE_VERSION = 'assets-2d8dd773ebc8';
 const PRECACHE = `offline-zdwa-${CACHE_VERSION}`;
 const OFFLINE_PAGES = new Set([
   "/offline-spielen",

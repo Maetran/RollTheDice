@@ -2287,5 +2287,12 @@
     "date": "2026-10-18",
     "bump": "minor",
     "summary": "Hausdepp-Computer halten hohe Karten als Reserve zurück und nutzen sichere Schlusszüge. / Hausdepp computers keep high cards in reserve and take guaranteed finishing follow-ups."
+  },
+  {
+    "version": "3.11.0",
+    "revision": "42ba26749098a4ce12d99873c349c8343dec1efa",
+    "date": "2026-10-18",
+    "bump": "minor",
+    "summary": "Hausdepp: sichtbare Schlucke und Häppchen, Putzlumpen und neue kleine Tischüberraschungen. / Hausdepp: visible sips and bites, a cleaning cloth and new little table surprises."
   }
 ]

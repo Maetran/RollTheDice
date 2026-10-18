@@ -19,6 +19,7 @@ from app.game_ws_session import GameSocketSession
 from app.hausdepp_engine import apply_action, make_deck, new_round
 from app.hausdepp_gameplay import game_lock
 from app.hausdepp_state import new_hausdepp_game
+from app.hausdepp_surprise_collection import surprise_collection_evidence
 from app.hausdepp_table_surprises import (
     _eligible_effect,
     handle_table_surprise,
@@ -115,6 +116,47 @@ class HausdeppTableSurpriseTests(unittest.TestCase):
                                      (b"hausdepp-table-surprise:eligibility:v1:fixed-table:7",))
                     self.assertEqual(hashes.call_args_list[1].args,
                                      (b"hausdepp-table-surprise:variant:v1:fixed-table:7",))
+
+    def test_real_claim_persists_private_collection_without_replaying_it_to_viewers(self):
+        game = self.game(effect="clock")
+        engine = deepcopy(game["_hausdepp"])
+        game["_spectators"] = [{"id": "spectator", "ws": RecordingSocket()}]
+        asyncio.run(handle_table_surprise(self.session(game), {"effect": "clock", "round_number": 1}))
+        expected = {"p1": {"activated": ["clock"], "witnessed": ["clock"]},
+                    "p2": {"activated": [], "witnessed": ["clock"]}}
+        self.assertEqual(surprise_collection_evidence(game, 1), expected)
+        self.assertEqual(game["_hausdepp"], engine)
+        restored = serializable_game_state(game)
+        self.assertEqual(surprise_collection_evidence(restored, 1), expected)
+        for viewer in ("p1", "p2", None):
+            public = json.dumps(snapshot(game, viewer))
+            self.assertNotIn("_hausdepp_surprise_collection", public)
+            self.assertNotIn("witnessed", public)
+        for person in [*game["_players"], *game["_spectators"]]:
+            self.assertNotIn("witnessed", json.dumps(person["ws"].messages))
+        asyncio.run(handle_table_surprise(self.session(game), {"effect": "clock", "round_number": 1}))
+        self.assertEqual(surprise_collection_evidence(game, 1), expected)
+
+    def test_browser_cannot_supply_collection_credit_or_spoof_the_activator(self):
+        game = self.game()
+        session = self.session(game)
+        forged = {"actor_id": "p2", "table_surprises": {"activated": ["blackhole"], "witnessed": ["blackhole"]}}
+        asyncio.run(handle_table_surprise(session, {**forged, "effect": "forged", "round_number": 1}))
+        self.assertEqual(surprise_collection_evidence(game, 1), {})
+        asyncio.run(handle_table_surprise(session, {**forged, "effect": "star", "round_number": 1}))
+        self.assertEqual(surprise_collection_evidence(game, 1), {
+            "p1": {"activated": ["star"], "witnessed": ["star"]},
+            "p2": {"activated": [], "witnessed": ["star"]},
+        })
+
+    def test_solo_cpu_table_can_play_the_surprise_without_collection_credit(self):
+        game = self.game(effect="hammer")
+        game["_participants"][1].update(is_cpu=True, type="cpu", user_id=None)
+        engine = deepcopy(game["_hausdepp"])
+        asyncio.run(handle_table_surprise(self.session(game), {"effect": "hammer", "round_number": 1}))
+        self.assertIn("hausdepp_table_surprise", game["_players"][0]["ws"].messages[-1])
+        self.assertEqual(surprise_collection_evidence(game, 1), {})
+        self.assertEqual(game["_hausdepp"], engine)
 
     def test_snapshot_offer_belongs_to_participants_and_never_replays_an_event(self):
         game = self.game()

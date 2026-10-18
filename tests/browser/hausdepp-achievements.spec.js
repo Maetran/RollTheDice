@@ -26,6 +26,44 @@ test.afterEach(async ({ page }) => {
 });
 
 const local = (value, language) => typeof value === 'object' ? value[language] : value;
+const surpriseEffects = ['star', 'hammer', 'ufo', 'portal', 'dragon', 'kraken', 'clock', 'blackhole', 'four', 'all'];
+
+function labelledSurpriseScenario(account, complete = false) {
+  const data = structuredClone(account);
+  const unlocked = new Set(complete ? Array.from({ length: 20 }, (_, index) => `hausdepp_${index + 116}`)
+    : [116, 117, 118, 119, 124, 126, 127, 128, 129, 134].map(number => `hausdepp_${number}`));
+  for (const item of data.achievements.items) {
+    item.unlocked = unlocked.has(item.id);
+    item.unlocked_at = item.unlocked ? '2026-10-18T12:00:00+00:00' : null;
+    item.progress.current = item.unlocked ? item.progress.target : ['hausdepp_125', 'hausdepp_135'].includes(item.id) ? 4 : 0;
+  }
+  const achievementPoints = data.achievements.items.filter(item => item.unlocked).reduce((sum, item) => sum + item.points, 0);
+  const points = 10 + achievementPoints, index = data.ranks.findLastIndex(rank => rank.threshold <= points);
+  data.rank = { ...data.ranks[index], next: data.ranks[index + 1], progress: {
+    current: points - data.ranks[index].threshold, target: data.ranks[index + 1].threshold - data.ranks[index].threshold,
+    percent: (points - data.ranks[index].threshold) / (data.ranks[index + 1].threshold - data.ranks[index].threshold) * 100,
+  } };
+  data.scoring = { ...data.scoring, available: true, points, round_points: 10, achievement_points: achievementPoints };
+  data.achievements.unlocked_count = unlocked.size;
+  data.presentation = { revision: 9501, pending: null };
+  return data;
+}
+
+function surpriseCompletionReceipt(data) {
+  return { revision: 9501, through_points: data.scoring.points, points_earned: 750,
+    achievement_ids: ['hausdepp_125', 'hausdepp_135'], rank_up: false, from_rank: data.rank, to_rank: data.rank };
+}
+
+async function expectNarrowContent(page, selector) {
+  await page.evaluate(() => document.fonts.ready);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
+  const overflows = await page.locator(selector).evaluateAll(elements => elements.filter(element => element.checkVisibility())
+    .map(element => ({ id: element.dataset.achievementId || element.className, box: element.getBoundingClientRect(),
+      overflow: element.scrollWidth - element.clientWidth }))
+    .filter(({ box, overflow }) => box.left < -1 || box.right > innerWidth + 1 || overflow > 1)
+    .map(({ id, overflow }) => ({ id, overflow })));
+  expect(overflows).toEqual([]);
+}
 
 // Explicit renderer scenario, derived from the shipped catalogue. It never
 // awards points or achievements to the private test server's real account.
@@ -56,14 +94,17 @@ function labelledNewtonScenario(account) {
 }
 
 for (const language of ['de', 'en']) {
-  test(`${language}: real account exposes all 115 private achievements and the 24-rank ladder`, async ({ page }) => {
+  test(`${language}: real account exposes all 135 private achievements and the 24-rank ladder`, async ({ page }) => {
     const data = await owner(page, language);
+    expect(data.achievements.total).toBe(135);
+    expect(data.achievements.items.reduce((sum, item) => sum + item.points, 0)).toBe(5605);
+    expect(data.ranks.at(-1).threshold).toBe(9000);
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
     await page.goto('/hausdepp/konto');
-    await expect(page.locator('#hausdeppAchievementCount')).toContainText('/ 115');
-    await expect(page.locator('.hd-achievement-card')).toHaveCount(115);
-    await expect(page.locator('.hd-achievement-group')).toHaveCount(12);
+    await expect(page.locator('#hausdeppAchievementCount')).toContainText('/ 135');
+    await expect(page.locator('.hd-achievement-card')).toHaveCount(135);
+    await expect(page.locator('.hd-achievement-group')).toHaveCount(14);
     await expect(page.locator('#hausdeppRankTitle')).toHaveText(local(data.rank.name, language));
     await expect(page.locator('.hd-xp-breakdown')).toContainText(language === 'de' ? 'Aus abgeschlossenen Runden' : 'From completed rounds');
     await page.locator('.hd-rank-ladder > summary').click();
@@ -79,7 +120,7 @@ for (const language of ['de', 'en']) {
     await page.locator('#hausdeppAchievementSearch').fill('no-matching-achievement-xyz');
     await expect(page.locator('#hausdeppAchievementReset')).toBeVisible();
     await page.locator('#hausdeppAchievementReset').click();
-    await expect(page.locator('.hd-achievement-card')).toHaveCount(115);
+    await expect(page.locator('.hd-achievement-card')).toHaveCount(135);
     await expect(page.locator('#hausdeppAchievementSearch')).toBeFocused();
     await page.locator('#hausdeppAchievementCategory').selectOption('mishaps');
     await expect(page.locator('.hd-achievement-card')).toHaveCount(8);
@@ -113,7 +154,7 @@ for (const language of ['de', 'en']) {
     await page.locator('#hausdeppAchievementStatus').selectOption('unlocked');
     await expect(page.locator('.hd-achievement-card')).toHaveCount(2);
     await page.locator('#hausdeppAchievementStatus').selectOption('locked');
-    await expect(page.locator('.hd-achievement-card')).toHaveCount(113);
+    await expect(page.locator('.hd-achievement-card')).toHaveCount(133);
     await notice.locator('[data-progress-ack]').click();
     await expect(notice).toBeHidden();
     expect(acknowledged).toEqual({ revision: data.presentation.pending.revision });
@@ -143,7 +184,7 @@ for (const language of ['de', 'en']) {
     const group = category => page.locator(`.hd-achievement-group[data-category="${category}"]`);
     const order = category => group(category).locator('.hd-achievement-card').evaluateAll(cards => cards.map(card => card.dataset.achievementId));
     const ids = numbers => numbers.map(number => `hausdepp_${String(number).padStart(2, '0')}`);
-    await expect(page.locator('.hd-achievement-group')).toHaveCount(12);
+    await expect(page.locator('.hd-achievement-group')).toHaveCount(14);
     await expect(page.locator('.hd-achievement-controls select')).toHaveCount(2);
     await expect.poll(() => order('participation')).toEqual(ids([2, 5, 1, 3, 4, 6, 7, 8]));
     await expect.poll(() => order('community')).toEqual(ids([10, 16, 9, 11, 12, 13, 14, 15]));
@@ -164,8 +205,8 @@ for (const language of ['de', 'en']) {
     await expect(page.locator('#hausdeppAchievementCategory')).toHaveValue('all');
     await expect(page.locator('#hausdeppAchievementStatus')).toHaveValue('all');
     await expect(page.locator('#hausdeppAchievementSearch')).toHaveValue('');
-    await expect(page.locator('.hd-achievement-card')).toHaveCount(115);
-    await expect(page.locator('.hd-achievement-group')).toHaveCount(12);
+    await expect(page.locator('.hd-achievement-card')).toHaveCount(135);
+    await expect(page.locator('.hd-achievement-group')).toHaveCount(14);
     await expect.poll(() => order('participation')).toEqual(ids([2, 5, 1, 3, 4, 6, 7, 8]));
     await expect.poll(() => order('community')).toEqual(ids([10, 16, 9, 11, 12, 13, 14, 15]));
   });
@@ -259,7 +300,7 @@ test('narrow account displays complete status and long category names', async ({
   await owner(page);
   await page.setViewportSize({ width: 320, height: 568 });
   await page.goto('/hausdepp/konto');
-  await expect(page.locator('.hd-achievement-card')).toHaveCount(115);
+  await expect(page.locator('.hd-achievement-card')).toHaveCount(135);
   await page.locator('#hausdeppAchievementCategory').selectOption('tournament');
   await expect(page.locator('.hd-achievement-card')).toHaveCount(16);
   const bounds = await page.locator('#hausdeppAchievementStatus, #hausdeppAchievementCategory').evaluateAll(selects => selects.map(select => {
@@ -271,6 +312,161 @@ test('narrow account displays complete status and long category names', async ({
   }));
   for (const bound of bounds) expect(bound.width).toBeGreaterThanOrEqual(bound.required);
 });
+
+for (const language of ['de', 'en']) {
+  test(`${language}: both surprise collections show ten distinct badges and four-of-eight progress on a 320px phone`, async ({ page }, testInfo) => {
+    const data = labelledSurpriseScenario(await owner(page, language));
+    await page.setViewportSize({ width: 320, height: 568 });
+    await page.route('**/api/hausdepp/account?**', route => route.fulfill({ json: data }));
+    await page.route('**/api/hausdepp/progress-notices', route => route.fulfill({ json: { notices: [], revision: 9501, points: data.scoring.points } }));
+    await page.goto('/hausdepp/konto');
+    await expect(page.locator('.hd-achievement-card')).toHaveCount(135);
+    for (const [track, start, label] of [
+      ['activated', 116, language === 'de' ? 'Funde ausgelöst' : 'Finds you triggered'],
+      ['witnessed', 126, language === 'de' ? 'Funde miterlebt' : 'Finds you witnessed'],
+    ]) {
+      const group = page.locator(`.hd-achievement-group[data-category="surprises_${track}"]`);
+      await expect(group.locator('summary')).toContainText(label);
+      await expect(group.locator('.hd-achievement-card')).toHaveCount(10);
+      await expect(group.locator('.hd-achievement-group-count')).toHaveText('5 / 10');
+      await group.locator('summary').click();
+      for (const [index, effect] of surpriseEffects.entries()) {
+        const card = group.locator(`[data-achievement-id="hausdepp_${start + index}"]`);
+        const badge = card.locator('.hd-surprise-badge');
+        await expect(badge).toHaveAttribute('data-surprise-badge', effect);
+        await expect(badge).toHaveAttribute('data-surprise-track', track);
+        await expect(badge).toHaveAttribute('aria-hidden', 'true');
+        await expect(badge).toHaveAttribute('focusable', 'false');
+        await expect(badge.locator('[id], script, foreignObject')).toHaveCount(0);
+      }
+      const all = group.locator(`[data-achievement-id="hausdepp_${start + 9}"]`);
+      await expect(all.locator('.hd-achievement-fraction')).toHaveText('4 / 8');
+      await expect(all.locator('progress')).toHaveAttribute('value', '4');
+      await expect(all.locator('progress')).toHaveAttribute('max', '8');
+      await expect(all.locator('progress')).toHaveAttribute('aria-label', new RegExp(local(data.achievements.items.find(item => item.id === `hausdepp_${start + 9}`).name, language)));
+    }
+    await expect(page.locator('.hd-surprise-badge')).toHaveCount(20);
+    await expect(page.locator('.hd-surprise-layer, .hd-table-prop')).toHaveCount(0);
+    await expectNarrowContent(page, '.hd-achievement-card, .hd-surprise-badge, .hd-achievement-group > summary');
+    await page.locator('[data-category="surprises_activated"]').scrollIntoViewIfNeeded();
+    await page.screenshot({ path: testInfo.outputPath(`surprise-collections-${language}-320.png`) });
+    await page.locator('[data-category="surprises_witnessed"]').scrollIntoViewIfNeeded();
+    await page.screenshot({ path: testInfo.outputPath(`surprise-witnessed-${language}-320.png`) });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await expectNarrowContent(page, '.hd-achievement-card, .hd-surprise-badge, .hd-achievement-group > summary');
+    await page.screenshot({ path: testInfo.outputPath(`surprise-collections-${language}-desktop.png`), fullPage: true });
+    await page.setViewportSize({ width: 320, height: 568 });
+    await page.locator('#hausdeppAchievementCategory').selectOption('surprises_witnessed');
+    await expect(page.locator('.hd-achievement-card')).toHaveCount(10);
+    await expect(page.locator('.hd-surprise-badge[data-surprise-track="witnessed"]')).toHaveCount(10);
+  });
+
+  test(`${language}: full-collection bonuses keep their 500 and 250 XP badges in the account summary and feed without phone overflow`, async ({ page }, testInfo) => {
+    const data = labelledSurpriseScenario(await owner(page, language), true);
+    const receipt = surpriseCompletionReceipt(data), suffix = language === 'de' ? 'EP' : 'XP';
+    const awards = receipt.achievement_ids.map(id => data.achievements.items.find(item => item.id === id));
+    let pending = true;
+    const acknowledgements = [];
+    await page.setViewportSize({ width: 320, height: 568 });
+    await page.route('**/api/hausdepp/account?**', route => route.fulfill({ json: {
+      ...data, presentation: { revision: 9501, pending: pending ? receipt : null },
+    } }));
+    await page.route('**/api/hausdepp/account/acknowledge', route => {
+      acknowledgements.push(route.request().postDataJSON()); pending = false;
+      return route.fulfill({ json: { acknowledged: true } });
+    });
+    await page.route('**/api/hausdepp/progress-notices', route => route.fulfill({ json: { notices: [], revision: 9501, points: data.scoring.points } }));
+    await page.goto('/hausdepp/konto');
+    const notice = page.locator('#hausdeppProgressNotice');
+    await expect(notice).toBeVisible();
+    await notice.locator('summary').click();
+    await expect(notice.locator('li')).toHaveCount(2);
+    await expect(notice.locator('li strong')).toHaveText([`+500 ${suffix}`, `+250 ${suffix}`]);
+    await expect(notice.locator('[data-surprise-badge="all"]')).toHaveCount(2);
+    await expect(notice.locator('[data-surprise-track="activated"]')).toHaveCount(1);
+    await expect(notice.locator('[data-surprise-track="witnessed"]')).toHaveCount(1);
+    await expect(page.locator('#appDialogBackdrop')).toBeHidden();
+    await expectNarrowContent(page, '.hd-progress-notice, .hd-notice-achievement');
+    await notice.scrollIntoViewIfNeeded();
+    await page.screenshot({ path: testInfo.outputPath(`surprise-summary-${language}-320.png`) });
+    await notice.locator('[data-progress-ack]').click();
+    await expect(notice).toBeHidden();
+    expect(acknowledgements).toEqual([{ revision: 9501 }]);
+    await page.route('**/api/hausdepp/leaderboard?**', route => route.fulfill({ json: {
+      ranking: 'finished_rounds', entries: [], total_players: 0,
+    } }));
+    await page.route('**/api/hausdepp/achievements/recent?**', route => route.fulfill({ json: {
+      items: awards.map(achievement => ({ unlocked_at: '2026-10-18T12:00:00+00:00', achievement: { ...achievement, difficulty: 'hard' },
+        player: { display_name: 'Stammtischfreundin mit dem vollen Kuriositätenkabinett', is_self: false } })),
+      page: 1, page_size: 20, total: 2, pages: 1, has_previous: false, has_next: false, difficulty: null,
+    } }));
+    await page.goto('/hausdepp/rangliste');
+    const feed = page.locator('#hausdeppAchievementFeed');
+    await expect(feed.locator('[data-feed-item]')).toHaveCount(2);
+    await expect(feed.locator('.hd-achievement-points')).toHaveText([`500 ${suffix}`, `250 ${suffix}`]);
+    await expect(feed.locator('h3')).toHaveText(awards.map(item => local(item.name, language)));
+    await expect(feed.locator('[data-surprise-badge="all"]')).toHaveCount(2);
+    await expect(feed.locator('[data-surprise-track="activated"]')).toHaveCount(1);
+    await expect(feed.locator('[data-surprise-track="witnessed"]')).toHaveCount(1);
+    await expectNarrowContent(page, '.hd-feed-item, .hd-feed-copy, .hd-surprise-badge');
+    await feed.scrollIntoViewIfNeeded();
+    await page.screenshot({ path: testInfo.outputPath(`surprise-feed-${language}-320.png`) });
+    await page.goto('/hausdepp/konto');
+    await expect(page.locator('#hausdeppProgressNotice')).toBeHidden();
+    await expect(page.locator('#appDialogBackdrop')).toBeHidden();
+    expect(acknowledgements).toEqual([{ revision: 9501 }]);
+  });
+
+  test(`${language}: triggered and witnessed completion popups acknowledge each award once without duplicating the inline summary`, async ({ page }) => {
+    const data = labelledSurpriseScenario(await owner(page, language), true), receipt = surpriseCompletionReceipt(data);
+    const awards = receipt.achievement_ids.map(id => data.achievements.items.find(item => item.id === id));
+    const seen = new Set(), acknowledgements = [], summaries = [];
+    let reads = 0, pending = true;
+    await page.setViewportSize({ width: 320, height: 568 });
+    await page.route('**/api/hausdepp/account?**', route => route.fulfill({ json: {
+      ...data, presentation: { revision: 9501, pending: pending ? receipt : null },
+    } }));
+    await page.route('**/api/hausdepp/progress-notices', route => {
+      reads += 1;
+      return route.fulfill({ json: { revision: 9501, points: data.scoring.points,
+        notices: awards.filter(item => !seen.has(item.id)).map(item => ({ key: `achievement:${item.id}`,
+          kind: 'achievement', name: item.name, points: item.points, condition: item.description,
+          reason: { de: 'Acht verschiedene Funde in abgeschlossenen Runden gesammelt.', en: 'Collected eight different finds in completed rounds.' },
+        })),
+      } });
+    });
+    await page.route('**/api/hausdepp/progress-notices/*/acknowledge', route => {
+      const key = decodeURIComponent(new URL(route.request().url()).pathname.split('/').at(-2));
+      acknowledgements.push(key); seen.add(key.split(':')[1]);
+      return route.fulfill({ json: { acknowledged: true, key } });
+    });
+    await page.route('**/api/hausdepp/account/acknowledge', route => {
+      summaries.push(route.request().postDataJSON()); pending = false;
+      return route.fulfill({ json: { acknowledged: true } });
+    });
+    await page.goto('/hausdepp/konto');
+    const dialog = page.locator('#appDialog');
+    for (const item of awards) {
+      await expect(dialog).toHaveAttribute('data-kind', 'hausdepp-achievement');
+      await expect(dialog.locator('h3')).toHaveText(local(item.name, language));
+      await expect(dialog.locator('.hd-notice-reward')).toHaveText(`+${item.points} ${language === 'de' ? 'EP' : 'XP'}`);
+      await expect(page.locator('#appDialogBackdrop:not([hidden])')).toHaveCount(1);
+      await expect(page.locator('#hausdeppProgressNotice')).toBeHidden();
+      await expectNarrowContent(page, '#appDialog, #appDialog h3');
+      await page.locator('[data-dialog-action="acknowledge"]').click();
+    }
+    await expect(page.locator('#appDialogBackdrop')).toBeHidden();
+    await expect.poll(() => summaries).toEqual([{ revision: 9501 }]);
+    expect(acknowledgements).toEqual(['achievement:hausdepp_125', 'achievement:hausdepp_135']);
+    await page.reload();
+    await expect(page.locator('.hd-achievement-card')).toHaveCount(135);
+    await expect.poll(() => reads).toBeGreaterThanOrEqual(2);
+    await expect(page.locator('#appDialogBackdrop')).toBeHidden();
+    await expect(page.locator('#hausdeppProgressNotice')).toBeHidden();
+    expect(acknowledgements).toEqual(['achievement:hausdepp_125', 'achievement:hausdepp_135']);
+    expect(summaries).toEqual([{ revision: 9501 }]);
+  });
+}
 
 test('capture labelled rank-up and real account across portrait and landscape', async ({ page }) => {
   test.skip(process.env.HAUSDEPP_ACHIEVEMENTS_CAPTURE !== '1', 'One explicit responsive evidence batch.');
@@ -286,7 +482,7 @@ test('capture labelled rank-up and real account across portrait and landscape', 
     for (const [scenario, data] of [['real-account', real], ['labelled-rank-up', labelled]]) {
       await page.route('**/api/hausdepp/account?**', route => route.fulfill({ json: data }));
       await page.goto('/hausdepp/konto');
-      await expect(page.locator('.hd-achievement-card')).toHaveCount(115);
+      await expect(page.locator('.hd-achievement-card')).toHaveCount(135);
       await page.evaluate(() => document.fonts.ready);
       expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), `${name} ${scenario} overflow`).toBe(false);
       const undersized = await page.locator('.hd-achievement-controls input, .hd-achievement-controls select, .hd-rank-ladder > summary, [data-progress-ack]').evaluateAll(elements => elements.filter(element => !element.closest('[hidden]')).map(element => ({ label: element.id || element.textContent, height: element.getBoundingClientRect().height })).filter(element => element.height < 44));

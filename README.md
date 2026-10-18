@@ -132,7 +132,7 @@ Der private Kontobereich zeigt eigene abgeschlossene Runden, Runden als Hausdepp
 und Runden mit leerer Hand sowie einen nachladbaren Verlauf tatsächlicher
 Ergebnisse; allgemeine Einstellungen sind direkt unter
 `/hausdepp/konto/einstellungen` erreichbar und gelten für das gemeinsame Konto.
-Das Konto enthält **115 Erfolge und 24 Ränge**, mit Suche, Filtern und der ganzen
+Das Konto enthält **135 Erfolge und 24 Ränge**, mit Suche, Filtern und der ganzen
 Rangleiter. Innerhalb jeder Gruppe stehen erreichte Erfolge vor den noch offenen.
 Häufige Kartenaktionen benötigen mehrere passende abgeschlossene Runden;
 jede Runde zählt je Ziel höchstens einmal. Seltene Kunststücke bleiben direkt
@@ -140,8 +140,14 @@ erreichbar. Eine abgeschlossene Runde nur mit Menschen gibt 10 Erfahrungspunkte.
 Sobald mindestens ein Computer mitspielt, wird die Basis um 75 % reduziert
 und je Runde auf ganze EP abgerundet: **2 EP**,
 auch an gemischten Tischen und für jede einzelne Turnierrunde. Jeder Erfolg
-gibt weiterhin einmalig seine vollen 10, 25, 50 oder 100 EP. Runden, Siege und
+gibt weiterhin einmalig seine vollen 10, 25, 50, 100, 250 oder 500 EP. Runden, Siege und
 die Anzahl bereits freigeschalteter Erfolge bleiben dabei erhalten.
+Die acht seltenen Tischfunde haben zwei Sammelreihen: selbst ausgelöst und
+miterlebt, mit je acht Einzelerfolgen sowie Boni für vier und alle acht
+verschiedenen Funde. Beim Auslösen müssen mindestens zwei Menschen verbunden
+mitspielen; wer auslöst, sammelt beide Reihen. Die Runde muss regulär enden.
+Die Komplettsammlungen geben zusätzlich 500 beziehungsweise 250 EP. Solo mit
+Computern, Zuschauer, Offline-Spiel und lokale Vorschauen zählen nicht.
 Von **Einstein** bei 0 EP geht es mit
 einem Augenzwinkern bis **Hausdepp** bei 9’000 EP. Jeder Rang hat einen eigenen
 Aufstiegsspruch, etwa Newtons „Ab jetzt geht’s bergab. Ganz nach den
@@ -220,15 +226,21 @@ Tell pattern and lightning back. The rules page adds a quick start, anchors,
 examples and terminology. Round outcomes are stored separately. The private
 account area shows your completed rounds, rounds as the Hausdepp and rounds
 finished with an empty hand, plus a loadable history of actual results. General
-settings at `/hausdepp/konto/einstellungen` manage the shared account. The account includes **115 achievements
+settings at `/hausdepp/konto/einstellungen` manage the shared account. The account includes **135 achievements
 and 24 ranks**, with search, filters and the complete rank ladder. Each group
 shows earned achievements before locked ones. Common card actions require
 several qualifying completed rounds, with each round counting at most once per
 goal; rare feats can still unlock immediately. A completed all-human round earns
 10 experience points. Any computer seat reduces the base round reward by 75%,
 rounded down per round to **2 XP**, including mixed tables and each individual
-tournament round. Achievements still grant their full 10, 25, 50 or 100 XP once each.
+tournament round. Achievements still grant their full 10, 25, 50, 100, 250 or 500 XP once each.
 Round and win counts and the number of existing unlocks are retained.
+The eight rare table finds have two collection tracks: trigger them yourself
+and witness them, each with eight single achievements and bonuses for four
+and all eight different finds. At least two humans must be connected when a
+find is triggered; its activator collects both tracks. The round must finish
+normally. Full collections add another 500 and 250 XP respectively. Solo
+computer tables, spectators, offline play and local previews do not count.
 The ironic ladder runs from **Einstein** at 0 XP to **Hausdepp**
 at 9,000 XP. Each rank has its own saying, including Newton's gravity-inspired
 downhill greeting. The lasting title stays separate from a round's Hausdepp.

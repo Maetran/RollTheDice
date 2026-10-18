@@ -227,6 +227,11 @@ a { color: inherit; text-underline-offset: 4px; }
 .hd-achievement-symbol { width: 31px; height: 31px; display: grid; place-items: center; border: 1px solid #d9cbb0; border-radius: 50%; color: #796550; }
 .is-unlocked .hd-achievement-symbol { background: #e0e9d9; border-color: #5a795f; color: var(--hd-green); }
 .hd-achievement-symbol .hd-icon { width: 17px; height: 17px; }
+.hd-achievement-symbol .hd-surprise-badge { display: block; width: 29px; height: 29px; }
+.hd-surprise-badge .hd-badge-track-disc { fill: var(--hd-paper); }
+.hd-notice-achievement { display: inline-flex; align-items: center; gap: 9px; min-width: 0; }
+.hd-notice-achievement > .hd-surprise-badge { width: 31px; height: 31px; flex: 0 0 31px; color: var(--hd-green); }
+.hd-notice-achievement > span { min-width: 0; overflow-wrap: anywhere; }
 .hd-achievement-points { color: var(--hd-red); font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .hd-achievement-card h3 { margin: 14px 0 7px; font-size: 16px; line-height: 1.4; overflow-wrap: anywhere; }
 .hd-achievement-card > p { margin: 0 0 19px; font-size: 13px; line-height: 1.65; color: var(--hd-muted); }

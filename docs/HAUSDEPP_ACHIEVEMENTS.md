@@ -329,3 +329,55 @@ using the Swiss local time at which a round finishes. One-time achievement XP no
 totals 4,105. The ladder is unchanged up to 2,300 XP so nobody drops a rank; above
 that it stretches and ends at **Hausdepp with 9,000 XP** (previously 5,000).
 Existing rounds also count towards the new achievements at the next account sync.
+
+
+## Seltene Funde / Rare finds (3.12.0)
+
+Seit 3.12.0 umfasst der Katalog **135 Erfolge mit 5’605 Erfolgs-EP**. Die
+zwanzig neuen Erfolge sind zwei getrennte Sammlungen: eigenes Auslösen und
+Miterleben. Der Auslöser sammelt beide Reihen. Beim Auslösen müssen mindestens
+zwei menschliche Mitspieler verbunden sein; nur die damals verbundenen
+Teilnehmer erhalten nach regulärem Rundenabschluss den entsprechenden Beleg.
+Ein späterer Disconnect entfernt ihn nicht. Zuschauer, Solo mit CPUs,
+Offline-Spiel und Vorschauen zählen nicht. Gleiche Varianten zählen nur einmal;
+vier und acht verlangen unterschiedliche Funde über abgeschlossene Runden.
+Vor dieser Version nicht gespeicherte Entdeckungen werden nicht rückwirkend
+gutgeschrieben. Die Rangtreppe bleibt bei 24 Rängen bis 9’000 EP.
+
+As of 3.12.0, the catalogue has **135 achievements worth 5,605 achievement XP**.
+The twenty new achievements form two collections: triggering and witnessing.
+The activator collects both tracks. At least two humans must be connected when
+a find is triggered; only those connected participants receive credit after a
+normally completed round. A later disconnect does not remove it. Spectators,
+solo CPU tables, offline games and previews do not count. Repeated variants
+count once, while four and eight require different finds across completed
+rounds. Discoveries not recorded before this version are not retroactive.
+The ladder retains its 24 ranks ending at 9,000 XP.
+
+| Nr. / No. | Erfolg / Achievement | Sammlung / Collection | EP / XP |
+| --- | --- | --- | --- |
+| 116 | Sternstunde gezündet / Sparked a star shower | Selbst ausgelöst / Triggered | 50 |
+| 117 | Hammermässiger Auftritt / Hammer time | Selbst ausgelöst / Triggered | 50 |
+| 118 | Besuch bestellt / Called the visitors | Selbst ausgelöst / Triggered | 50 |
+| 119 | Tür ins Nirgendwo / Door to nowhere | Selbst ausgelöst / Triggered | 50 |
+| 120 | Feuer frei, Drache! / Fire away, dragon! | Selbst ausgelöst / Triggered | 50 |
+| 121 | Acht Arme bestellt / Ordered eight arms | Selbst ausgelöst / Triggered | 50 |
+| 122 | Die Zeit angehalten / Stopped the clock | Selbst ausgelöst / Triggered | 50 |
+| 123 | Loch im Stammtisch / Hole in the table | Selbst ausgelöst / Triggered | 50 |
+| 124 | Vierfach verrückt / Four kinds of strange | Selbst ausgelöst / Triggered · 4 verschiedene / different | 100 |
+| 125 | Das volle Kuriositätenkabinett / The complete cabinet of curiosities | Selbst ausgelöst / Triggered · alle 8 / all 8 | 500 |
+| 126 | Sternengast / Guest of the stars | Miterlebt / Witnessed | 25 |
+| 127 | Das sass! / What a hit! | Miterlebt / Witnessed | 25 |
+| 128 | Nicht von dieser Welt / Out of this world | Miterlebt / Witnessed | 25 |
+| 129 | Auf der anderen Seite / On the other side | Miterlebt / Witnessed | 25 |
+| 130 | Gut durchgebraten / Well done | Miterlebt / Witnessed | 25 |
+| 131 | Tentakel am Tisch / Tentacles at the table | Miterlebt / Witnessed | 25 |
+| 132 | Zeitzeuge / Time witness | Miterlebt / Witnessed | 25 |
+| 133 | Dem Nichts entkommen / Escaped the void | Miterlebt / Witnessed | 25 |
+| 134 | Kurioser Stammgast / Regular at the unusual | Miterlebt / Witnessed · 4 verschiedene / different | 50 |
+| 135 | Jetzt hab ich alles gesehen / Now I’ve seen everything | Miterlebt / Witnessed · alle 8 / all 8 | 250 |
+
+Die neue Aktiviert-Reihe gibt insgesamt 1’000 EP, die Miterlebt-Reihe 500 EP.
+Die 1’500 zusätzlichen EP verändern bereits verdiente Erfolge oder Ränge nicht.
+/ The triggered collection totals 1,000 XP and the witnessed collection 500 XP.
+The additional 1,500 XP do not reset existing achievements or ranks.
