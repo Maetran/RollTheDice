@@ -106,9 +106,12 @@ def baseline(table, player):
     (2, "normal", False, False, {}),
     (2, "normal", False, True, {"show_rechter": True}),
     (2, "ladinisch", False, False, {"trick_history": True}),
+    (2, "ladinisch", False, True, {"show_rechter": True}),
     (3, "normal", False, False, {"open_partner_hand": True}),
     (3, "normal", False, True, {}),
     (4, "normal", False, False, {"open_partner_hand": True, "trick_history": True}),
+    (4, "normal", False, True, {}),
+    (4, "ladinisch", False, False, {"open_partner_hand": True}),
     (4, "ladinisch", False, True, {"show_rechter": True}),
     (4, "ladinisch", True, False, {}),
     (4, "ladinisch", True, True, {"show_rechter": True}),
@@ -127,6 +130,22 @@ def test_cpus_finish_every_confirmed_profile_with_engine_accepted_commands(count
             assert proposal.player_id == player
             # Command kinds, not view action names, reach the engine.
             assert not proposal.kind.startswith("respond_") and proposal.value != "respond_hold"
+
+
+@pytest.mark.parametrize("count", (2, 3, 4))
+def test_match_deciding_counterbids_stop_without_changing_engine_bidding_rules(count):
+    table = Table(start_match(cpu_recipe(count), "decisive-bid", shuffled_deal(count, 1), first_dealer="A"))
+    table.ready()
+    table.play(table.state.play.current_player_id)
+    table.act(table.state.play.current_player_id, "bid")
+    while table.state.bid_state.pending.points <= table.state.ledger.target:
+        decider = table.state.parties.decider(1 - table.state.bid_state.pending.party)
+        table.act(decider, "respond", "counter")
+    decider = table.state.parties.decider(1 - table.state.bid_state.pending.party)
+    response = turn(table, decider)
+    assert response.kind == "respond" and response.value in {"hold", "go"}
+    table.propose(decider, response)
+    assert table.state.bid_state.pending is None
 
 
 def test_partner_already_winning_with_rechter_gets_a_cheap_card_not_a_trump():

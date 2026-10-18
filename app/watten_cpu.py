@@ -13,13 +13,15 @@ Danke, permitted partner cards and remembered own inspection cards. No engine,
 room or view selector is imported, so real hidden hands, stock and secret calls
 are unavailable by construction. Official trump duty follows the seat's role
 only; an inferred call never binds a blind non-inspector. There is no duty to
-win, and the Rechter or critical cards are never forced. Guter/Schlechter,
+win, and the Rechter or critical cards are never forced. A card that surely
+cannot take the current trick is only ever spent as the cheapest such card, and
+a stake that already decides the match is never raised. Guter/Schlechter,
 difficulty modes, think delays and scheduling are deliberately absent.
 
 Budget per decision: at most ``CpuBudget.samples`` (<= MAX_SAMPLES) accepted
-worlds from at most ``samples * ATTEMPTS_PER_SAMPLE`` draws; each legal
-candidate card (<= 5) is rolled out once per world to the end of the deal
-(<= 20 card plays). Nothing runs in the background or touches the network.
+worlds from at most ``samples * ATTEMPTS_PER_SAMPLE`` draws; each candidate
+card (<= 5) is rolled out once per world to the end of the deal (<= 20 card
+plays). Nothing runs in the background or touches the network.
 """
 
 from __future__ import annotations
@@ -489,12 +491,16 @@ def _response(ctx: _Context, win: float) -> str:
     hold = _stake_value(ours, theirs, win, offered)
     counter = _raise_value(ours, theirs, win, offered)
     choice, value = ("go", go) if go > hold else ("hold", hold)
+    if offered >= max(ours, theirs):
+        return choice
     return "counter" if counter > value + COUNTER_MARGIN else choice
 
 
 def _raise_value(ours: int, theirs: int, win: float, accepted: int) -> float:
     # Opponents fold more often the stronger we are; a weak raise is simply held.
-    fold = OPPONENT_FOLD * win
+    # An opponent's fold would award us the locked stake. Once it wins our
+    # match, a fictitious fold bonus must not reward unlimited counterbids.
+    fold = OPPONENT_FOLD * win if accepted < ours else 0.0
     return fold * _equity(ours - accepted, theirs) + (1 - fold) * _stake_value(ours, theirs, win, accepted + 1)
 
 
@@ -544,6 +550,24 @@ def _choose_colour(ctx: _Context) -> str:
     return max(WATTEN_SUITS, key=lambda suit: _hand_score(hand, ctx.model(strike, suit)))
 
 
+def _conserve_hopeless(ctx: _Context, legal: tuple[str, ...], options: list) -> tuple[str, ...]:
+    """Keep strength when no legal card can beat the already public winner.
+
+    Certainty uses every call consistent with permitted observations, including
+    hypotheses not drawn in a small rollout sample. Hidden real cards play no role.
+    """
+    if not ctx.trick or len(legal) < 2:
+        return legal
+    models = tuple(dict.fromkeys(model for model, *_ in options))
+    cards = [card for _, card in ctx.trick]
+    for model in models:
+        strongest = model.strength(cards[model.winner(cards)], cards[0])
+        if any(model.strength(card, cards[0]) > strongest for card in legal):
+            return legal
+    cheapest = min(legal, key=lambda card: (sum(model.order[card] for model in models), card))
+    return (cheapest,)
+
+
 def _choose(ctx: _Context, seed: int, budget: CpuBudget) -> CpuProposal | CpuWait:
     snap, actions = ctx.snap, ctx.snap.actions
 
@@ -574,7 +598,7 @@ def _choose(ctx: _Context, seed: int, budget: CpuBudget) -> CpuProposal | CpuWai
                 return propose("partner_feedback", value, snap.feedback_opportunity)
     elif "play_card" in actions:
         options = _options(ctx)
-        legal = _own_legal(ctx, options)
+        legal = _conserve_hopeless(ctx, _own_legal(ctx, options), options)
         may_bid = "bid" in actions
         if len(legal) == 1 and not may_bid:
             return propose("play_card", legal[0])
