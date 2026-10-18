@@ -103,6 +103,18 @@ the account-wide chat preference. Its personal three-day history contains only
 messages addressed to that account at send time. Disabling stops delivery;
 enabling again never adds missed messages. The public table chat is independent.
 
+**Tischdeko / table decorations:** «Tisch dekorieren» bietet acht lokale
+Gegenstände zum Aufstellen, Verschieben, Essen, Trinken oder Würfeln. Sie sind
+nur auf deinem Gerät sichtbar. Spielbereiche bleiben frei; auf kleinen Tischen
+steht eine eigene Deko-Ecke zur Verfügung. Verschüttetes lässt sich aufwischen,
+alles gemeinsam aufräumen. Auch mit reduzierter Bewegung bleibt die Bedienung
+verfügbar.
+
+“Decorate the table” offers eight local items to place, move, eat, drink or roll.
+They are visible only on your device. Play areas stay clear; small tables have a
+separate decoration corner. Wipe spills or clear everything together. Controls
+remain available with reduced motion.
+
 **Deutsch:** Watten ist als nächstes Spiel vorgemerkt: üblicherweise 4er
 ladinisch bis 11 Punkte («8+3 isch zmittag»), mit blindem Einschauen durch den
 Geber und den im Uhrzeigersinn nachfolgenden Spieler. Die identischen

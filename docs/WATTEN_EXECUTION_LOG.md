@@ -640,3 +640,23 @@ Monitoring und physische Geräteabnahme bleiben ausdrücklich offen. Alle81 IDs
 bleiben verbindlich. Claude erreicht laut Owner-Screenshot100% Sitzung/92%
 Woche; vor Reset22:20 Europe/Zurich keine neue Anfrage. Codex zuletzt70%
 Wochenverbrauch,30% verfügbar. Restbudget wird für konkrete Pakete vorbereitet.
+
+
+### P7 Deko – gezielter Abschluss vor Vollprüfung
+
+Autorenquelle de40ce777d208be2180ae5b48807a2939cc596a4 als2cef118
+integriert; bestehende Lobby-/API-Imports und alle DE/EN-Kataloge bei den
+Quellkonflikten erhalten. Unabhängiges Review schloss den frisch eintreffenden
+Pointer-Tap nach Drag ohne Compatibilityclick; eigener Regressionstest. Acht
+vorhandene Atlas-Gegenstände, ganze geschützte64px-Fläche, reservierte Hand,
+Deko-Ecke, Konsum/Refill/Spill/Wischen, Tastatur/Drag und vollständiger Cleanup.
+Keine Backend-, CPU-, Storage- oder Spielkommandowirkung.
+
+Zwei reale Browserfälle DE/EN bestehen in8.7s, einmal Reduced Motion, einmal
+normale Spilldarstellung: wartender Tisch zu laufender Partie, Getränke leer
+und nachgefüllt, Chips gegessen, Pfütze aufgewischt, Rotation320×568/568×320,
+Drag in Handbereich abgewiesen, gleiche Handknoten/Enginegelegenheit/null
+Spielkommandos, Socialdialog versteckt Deko und Pagehide leert den Tisch.
+Zwei Bildschirmbilder tatsächlich visuell geprüft.67 integrierte Nodefälle
+für Deko/Lobby/Social/Rematch/API bestanden in113.9ms. Diese gezielten Belege
+ersetzen den folgenden vollständigen Nachweis nicht.

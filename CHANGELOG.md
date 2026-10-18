@@ -33,6 +33,8 @@ zu vergeben. Tischchat und zwölf Reaktionen funktionieren unabhängig von
 Spielzügen und privatem Partnergefühl. Der bewusst geöffnete gemeinsame
 Lobbychat respektiert Opt-in und den persönlichen Dreitages-Empfängerkreis.
 Kontoübergänge, mobile Ansichten und verlorene Bestätigungen sind gezielt geprüft.
+Lokale Tischdeko bietet acht Gegenstände, Essen und Trinken, Verschütten und
+Aufräumen bei freigehaltenen Spielbereichen, auch mit reduzierter Bewegung.
 Watten bleibt eine lokale Vorschau; der öffentliche Host bleibt geschlossen.
 
 **English:** A next table carries over the rules and requested computer seats.
@@ -44,6 +46,8 @@ The explicitly opened shared lobby chat respects opt-in and its personal
 three-day audience history. Account transitions, mobile layouts and lost
 confirmations have targeted checks. Watten remains a local preview with its
 public host closed.
+Local table decorations offer eight items, eating and drinking, spills and
+cleanup while keeping play areas clear, including with reduced motion.
 
 ## 3.14.0 — Lokaler Watten-Fortschritt / local Watten progress — 2026-10-18
 

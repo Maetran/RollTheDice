@@ -759,8 +759,10 @@
         "P0",
         "P4"
       ],
-      "status": "open",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Local native decoration controller reuses owned Hausdepp atlas/consumable/spill assets without changing its helpers: eight items, drag/keyboard/move/rotate/consume/refill/spill/wipe/remove/clear. Whole64px footprints and five-card reserve protect seats, cards, calls, inspection, bids, responses, pause, results and all controls. Stable separate shell, corner fallback, modal suppression, layout/pointer/account/page cleanup and reduced motion. Independent source review closed one fresh-tap suppression issue with regression;12authored Node cases. Real DE/EN browsers PASS8.7s verify waiting/play, consume/spill/motion,320x568/568x320, forbidden drag, unchanged engine/commands/handDOM, chat suppression and teardown. Physical touch-device acceptance remains open."
+      ]
     },
     {
       "id": "U19",
