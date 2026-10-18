@@ -10,8 +10,19 @@ import pytest
 from app.hausdepp_achievements import ACHIEVEMENTS, _accumulate, _new_aggregate, _progress
 from app.hausdepp_cpu_strategy import CpuMemory, choose_cpu_action, slip_chance, table_tip
 from app.hausdepp_engine import apply_action, card_rank, make_deck, new_round, project_state
+from tests import hausdepp_cpu_policy_382 as policy_382
 from tests.hausdepp_cpu_reference import choose_reference_action
 from tests.test_hausdepp_engine import scenario
+
+
+class ScriptedRandom:
+    """Returns the given draws in order, then 0.99 (no further misjudgement)."""
+
+    def __init__(self, *draws):
+        self.draws = list(draws)
+
+    def random(self):
+        return self.draws.pop(0) if self.draws else 0.99
 
 
 def decide(hand, *, discard=(), deck=(), other=("acorns-9", "acorns-O", "acorns-K"), memory=None):
@@ -172,7 +183,7 @@ def test_tactical_first_games_and_long_term_achievement_progress_are_measured_se
     assert maximum_new <= 5
 
 
-def paired_policy_benchmark(*, seeds=20, seed_base=26000):
+def paired_policy_benchmark(*, seeds=40, seed_base=26000):
     """Same shuffled deal and dealer, once for every possible tactical seat."""
     measurements = []
     for count in range(2, 7):
@@ -191,13 +202,67 @@ def paired_policy_benchmark(*, seeds=20, seed_base=26000):
     return measurements
 
 
-def test_tactical_policy_against_frozen_reference_on_400_paired_seat_deals():
+def test_tactical_policy_against_frozen_reference_on_800_paired_seat_deals():
     measurements = paired_policy_benchmark()
     print(json.dumps(measurements, sort_keys=True))
-    assert sum(item["paired_seat_deals"] for item in measurements) == 400
-    assert all(item["reference_losses"] == 20 for item in measurements)
+    assert sum(item["paired_seat_deals"] for item in measurements) == 800
+    assert all(item["reference_losses"] == 40 for item in measurements)
     assert all(item["tactical_losses"] <= item["reference_losses"] for item in measurements)
-    assert sum(item["tactical_losses"] for item in measurements) < 100
+    assert sum(item["tactical_losses"] for item in measurements) < 200
+
+
+def _production_game(count, number, seat, skill):
+    """One real-engine round: ``seat`` plays the current computer, every other seat the frozen 3.8.2 policy,
+    all at the same skill with the same per-decision seeded misjudgements as the live runner."""
+    random = Random(number)
+    state = new_round([f"p{index}" for index in range(count)], dealer_index=count - 1, rng=random)
+    policies = {player["id"]: (choose_cpu_action, CpuMemory()) if player["id"] == seat
+                else (policy_382.choose_cpu_action, policy_382.CpuMemory()) for player in state["players"]}
+    for _ in range(3000):
+        if state["phase"] == "finished":
+            return state["loser_id"]
+        actor = (next(iter(state["pending_refills"]), None) or (state.get("afterthrow") or {}).get("player_id")
+                 or state["current_player_id"])
+        view = project_state(state, actor)
+        choose, memory = policies[actor]
+        move = choose(view, memory=memory, skill=skill, rng=Random(f"{number}:{actor}:{state['version']}"))
+        if move is None:
+            actor = state["current_player_id"]
+            view = project_state(state, actor)
+            choose, memory = policies[actor]
+            move = choose(view, memory=memory, skill=skill, rng=Random(f"{number}:{actor}:{state['version']}"))
+        state = apply_action(state, actor, **move, rng=random)
+        memory.remember(view, move)
+    return "stall"
+
+
+def paired_production_benchmark(*, sizes=(2, 3, 4, 5, 6), deals=(3000, 700, 700, 700, 700), skill=1.0, seed_base=900000):
+    """The current computer on every seat of the same deals against the frozen 3.8.2 policy.
+
+    With every seat rotated once over a deal, a 3.8.2 seat would lose exactly once per deal, so ``losses / deals``
+    is the current computer's loss rate relative to 3.8.2 (1.0 = equally strong, below 1.0 = loses less often).
+    """
+    measurements = []
+    for count, deal_count in zip(sizes, deals):
+        losses = stalls = 0
+        for offset in range(deal_count):
+            number = seed_base + count * 10000 + offset
+            for index in range(count):
+                loser = _production_game(count, number, f"p{index}", skill)
+                losses += loser == f"p{index}"
+                stalls += loser == "stall"
+        measurements.append({"players": count, "deals": deal_count, "losses": losses, "stalls": stalls,
+                             "relative": round(losses / deal_count, 3)})
+    return measurements
+
+
+def test_holding_back_beats_the_frozen_3_8_2_policy_at_production_settings():
+    # Heads-up shows the effect most clearly; docs/HAUSDEPP_CPUS.md lists the full
+    # reproduction for every table size and for gentle computers.
+    measurements = paired_production_benchmark(sizes=(2,), deals=(300,))
+    print(json.dumps(measurements, sort_keys=True))
+    assert measurements[0]["stalls"] == 0
+    assert measurements[0]["relative"] < 0.95
 
 
 def decide_at(hands, discard, *, stock=20):
@@ -228,6 +293,66 @@ def test_heads_up_weighs_an_ace_topped_packet_instead_of_always_clearing_it():
     # A large junk packet under the ace is still cleared.
     move = decide_at([hand, opponent], ["leaves-6", "bells-6", "acorns-7", "leaves-7", "acorns-8", "leaves-A"], stock=8)
     assert move["action"] == "play" and move["cards"] == ["hearts-10"]
+
+
+def test_plays_one_high_card_and_keeps_the_rest_in_reserve():
+    opponent = ["acorns-9", "acorns-O", "bells-7"]
+    # Two kings on an Ober: one forces an answer, the other waits.
+    move = decide_at([["hearts-K", "bells-K", "leaves-7"], opponent], ["leaves-O"])
+    assert move["action"] == "play" and [card_rank(card) for card in move["cards"]] == ["K"]
+    # Low pairs are still shed together.
+    move = decide_at([["hearts-7", "leaves-7", "bells-A"], opponent], ["leaves-6"])
+    assert move["cards"] == ["hearts-7", "leaves-7"]
+    # Completing four on the pile still clears at once.
+    move = decide_at([["hearts-K", "bells-K", "leaves-A"], opponent], ["acorns-K", "leaves-K"])
+    assert move["cards"] == ["bells-K", "hearts-K"]
+
+
+def test_keeps_its_high_reserve_through_its_own_afterthrow_but_finishes_with_it():
+    opponent = ["acorns-9", "acorns-O", "bells-7"]
+    used = {"hearts-K", "bells-K", "leaves-A", "leaves-8", *opponent}
+    deck = [card for card in make_deck() if card not in used][:20]
+    state = scenario([["hearts-K", "bells-K", "leaves-A"], opponent], discard=["leaves-8"], deck=deck)
+    state = apply_action(state, "p0", action="play", cards=["hearts-K"], version=state["version"], rng=Random(1))
+    state = apply_action(state, "p0", action="draw", version=state["version"], rng=Random(1))
+    view = project_state(state, "p0")
+    assert view["available_actions"] == ["afterthrow"]
+    assert choose_cpu_action(view) is None
+    # Without stock, throwing the last card ends the round for the computer.
+    state = scenario([["hearts-K", "bells-K"], opponent], discard=["leaves-8"])
+    state = apply_action(state, "p0", action="play", cards=["hearts-K"], version=state["version"], rng=Random(1))
+    view = project_state(state, "p0")
+    finish = {"version": view["version"], "action": "afterthrow", "cards": ["bells-K"]}
+    assert choose_cpu_action(view) == finish
+    # Draws: 0.5 keeps the hold-back, 0.0 would be a missed-afterthrow slip. A
+    # guaranteed finish is never missed, not even by a gentle computer.
+    assert choose_cpu_action(view, skill=1.0, rng=ScriptedRandom(0.5, 0.0)) == finish
+    assert choose_cpu_action(view, skill=0.55, rng=ScriptedRandom(0.99, 0.0)) == finish
+
+
+def test_an_ordinary_afterthrow_can_still_be_missed():
+    opponent = ["acorns-9", "acorns-O", "bells-K"]
+    used = {"hearts-7", "leaves-7", "bells-A", "leaves-6", *opponent}
+    deck = [card for card in make_deck() if card not in used][:20]
+    state = scenario([["hearts-7", "leaves-7", "bells-A"], opponent], discard=["leaves-6"], deck=deck)
+    state = apply_action(state, "p0", action="play", cards=["hearts-7"], version=state["version"], rng=Random(1))
+    state = apply_action(state, "p0", action="draw", version=state["version"], rng=Random(1))
+    view = project_state(state, "p0")
+    assert view["available_actions"] == ["afterthrow"]
+    assert choose_cpu_action(view, skill=1.0, rng=ScriptedRandom(0.5, 0.99))["cards"] == ["leaves-7"]
+    assert choose_cpu_action(view, skill=1.0, rng=ScriptedRandom(0.5, 0.0)) is None
+
+
+def test_gentle_computers_throw_whole_high_groups_more_often():
+    opponent = ["acorns-9", "acorns-O", "bells-7"]
+    used = {"hearts-K", "bells-K", "leaves-7", "leaves-O", *opponent}
+    deck = [card for card in make_deck() if card not in used][:20]
+    view = project_state(scenario([["hearts-K", "bells-K", "leaves-7"], opponent], discard=["leaves-O"], deck=deck), "p0")
+
+    def whole(skill):
+        return sum(len(choose_cpu_action(view, skill=skill, rng=Random(seed))["cards"]) == 2 for seed in range(400))
+
+    assert whole(1.0) < 60 < whole(0.55)
 
 
 def test_buys_a_packet_that_completes_its_own_quartet():
