@@ -243,6 +243,38 @@ def test_strict_local_gate_covers_generic_create_list_detail_websocket_and_host_
     assert adapter_for_game_type("watten").game_type == "watten"
 
 
+def test_real_socket_join_rejoin_and_spectate_bind_optional_mounted_account_before_mutation(server):
+    mounted, cookie_owner = account("MountedAccountA"), account("SocketAccountB")
+    game_id = create_game(server, mounted)
+    game = games[game_id]
+    for action in ("join_game", "rejoin_game", "spectate_game"):
+        before = serializable_game_state(game)
+        with session_scope() as db:
+            checkpoint = db.scalar(select(ActiveGame.state_json).where(ActiveGame.game_id == game_id))
+        with server.websocket_connect(f"{LOCAL.replace('http:', 'ws:')}/ws/{game_id}",
+                                      headers={"Cookie": cookie_owner[1], "Origin": LOCAL}) as ws:
+            hello = ws.receive_json()
+            envelope = {"action": action}
+            if action != "spectate_game":
+                envelope["revision"] = hello["room_revision"]
+            for expected in (mounted[0].user_id, float(cookie_owner[0].user_id), True, None, str(cookie_owner[0].user_id)):
+                ws.send_json({**envelope, "expected_account_id": expected})
+                error = ws.receive_json()
+                assert error["error_code"] == "watten_actor_not_bound"
+                assert "player_id" not in error and "spectator_id" not in error and "scoreboard" not in error
+                assert serializable_game_state(game) == before
+                assert not game["_spectators"] and all(item["ws"] is None for item in game["_players"])
+                with session_scope() as db:
+                    assert db.scalar(select(ActiveGame.state_json).where(ActiveGame.game_id == game_id)) == checkpoint
+            # The same connection can proceed only when its mounted identity
+            # agrees with the actual freshly authenticated account B.
+            ws.send_json({**envelope, "expected_account_id": cookie_owner[0].user_id})
+            key = "spectator_id" if action == "spectate_game" else "player_id"
+            admitted = receive(ws, key)[key]
+            collection = game["_spectators" if action == "spectate_game" else "_players"]
+            assert next(item for item in collection if item["id"] == admitted)["user_id"] == cookie_owner[0].user_id
+
+
 @pytest.mark.parametrize("count_players,blind", ((2, False), (3, False), (4, True)))
 def test_real_humans_finish_match_restart_and_replay_without_duplicate_results(server, count_players, blind):
     owners = [account(f"RuntimeFull{index}") for index in range(count_players)]

@@ -97,7 +97,7 @@ async def _session_action(session, data: dict) -> None:
     game, websocket, identity = session.game, session.websocket, session.auth_identity
     action = data["action"]
     if action == "spectate_game":
-        if set(data) - {"action", "pass", "passphrase"}:
+        if set(data) - {"action", "pass", "passphrase", "expected_account_id"}:
             raise ValueError("watten_invalid_command")
         from .watten_runtime import passphrase_matches
 
@@ -111,7 +111,7 @@ async def _session_action(session, data: dict) -> None:
         session.spectator_id, session.is_spectator = spectator_id, True
         await websocket.send_json({"spectator_id": spectator_id, "spectator": True, "scoreboard": snapshot_watten(game)})
         return
-    if set(data) - {"action", "revision", "pass", "passphrase", "player_id", "resume", "lifecycle_revision"}:
+    if set(data) - {"action", "revision", "pass", "passphrase", "player_id", "resume", "lifecycle_revision", "expected_account_id"}:
         raise ValueError("watten_invalid_command")
     if "resume" in data and (action != "rejoin_game" or type(data["resume"]) is not bool):
         raise ValueError("watten_invalid_command")
@@ -160,6 +160,13 @@ async def _handle_locked(session, action: str, data: dict) -> bool:
     if identity is None or (session.auth_identity is not None and identity.user_id != session.auth_identity.user_id):
         await _error(websocket, "watten_access_required", fatal=True)
         return True
+    # The UI may have resolved /me before the browser cookie changed. Pin its
+    # mounted account to this freshly authenticated socket before any mutation,
+    # including admission, spectator registration or waiting-room expiry.
+    if action in {"join_game", "rejoin_game", "spectate_game"} and "expected_account_id" in data:
+        expected = data["expected_account_id"]
+        if type(expected) is not int or expected != identity.user_id:
+            raise ValueError("watten_actor_not_bound")
     session.auth_identity = identity
     expire_waiting_game(game)
     # A replaced socket cannot reclaim its seat with a queued join/rejoin.
