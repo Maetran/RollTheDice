@@ -269,7 +269,8 @@ def begin_email_verification(
             recipient=clean_email,
             kind="email_verify",
             language=language,
-            action_url=account_action_url("/email-bestaetigen", raw_token, language, app=account_app, return_to="/hausdepp/konto/einstellungen"),
+            action_url=account_action_url("/email-bestaetigen", raw_token, language, app=account_app,
+                                          return_to=f"/{account_app}/konto/einstellungen"),
             idempotency_key=f"email-verify-{token_hash}",
         )
     except (EmailDeliveryFailed, EmailDeliveryUnavailable):

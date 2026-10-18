@@ -11,6 +11,7 @@ HAUSDEPP_PREVIEW_HOST = "hausdepp.zockdiewandan.online"
 HAUSDEPP_ORIGIN = f"https://{HAUSDEPP_PREVIEW_HOST}"
 WATTEN_HOST = "watten.zockdiewandan.online"
 WATTEN_ORIGIN = f"https://{WATTEN_HOST}"
+WATTEN_ACCOUNT_PATHS = frozenset({"/watten", "/watten/konto", "/watten/konto/einstellungen"})
 
 _ZILCH_EXACT_PATHS = frozenset(
     {
@@ -198,3 +199,8 @@ def safe_hausdepp_path(value: str | None) -> str:
 
 def hausdepp_url(path: str | None = "/hausdepp") -> str:
     return f"{HAUSDEPP_ORIGIN}{safe_hausdepp_path(path)}"
+
+
+def safe_watten_account_path(value: str | None) -> str:
+    """Only concrete account-preview destinations, without nested redirects."""
+    return value if isinstance(value, str) and value in WATTEN_ACCOUNT_PATHS else "/watten"

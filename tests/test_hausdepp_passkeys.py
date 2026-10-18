@@ -21,7 +21,7 @@ from app.api_passkeys import router as passkey_router
 from app.database import configure_database, get_engine, session_scope
 from app.models import Base, User
 from app.passkeys import passkey_config
-from app.product_hosts import HAUSDEPP_ORIGIN
+from app.product_hosts import HAUSDEPP_ORIGIN, WATTEN_ORIGIN
 from app.security import PASSWORDLESS_HASH
 from tests.test_passkeys import SoftwareAuthenticator
 
@@ -75,7 +75,7 @@ class HausdeppPasskeyTests(unittest.TestCase):
             response.json()["options"], origin=origin, rp_id=RP_ID, count=count)}
 
     def test_fixed_house_origin_is_added_only_to_its_parent_rp_and_aliases_are_not_advertised(self):
-        self.assertEqual(passkey_config().expected_origins, (APEX, ZILCH, HAUSDEPP_ORIGIN))
+        self.assertEqual(passkey_config().expected_origins, (APEX, ZILCH, HAUSDEPP_ORIGIN, WATTEN_ORIGIN))
         for origin, expected in ((HAUSDEPP_ORIGIN, True), ("https://www.zockdiewandan.online", False),
                                  ("https://evil.zockdiewandan.online", False), ("https://hausdepp.zockdiewandan.online.evil.test", False)):
             self.assertEqual(self.client.get(origin + "/api/auth/me").json()["passkeys"]["enabled"], expected)

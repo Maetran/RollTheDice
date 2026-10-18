@@ -141,6 +141,8 @@ from .site_seo import (
     zilch_page_is_indexable,
 )
 from .versioning import current_version
+from .watten_accounts import router as watten_accounts_router
+from .watten_accounts import watten_account_action_page
 from .watten_readiness import WattenReadinessMiddleware
 from .web_push import (
     GAME_INVITE_PUSH_ACCOUNT_COOLDOWN_SECONDS,
@@ -541,6 +543,7 @@ app.include_router(users_router)
 app.include_router(admin_help_router)
 app.include_router(moderation_router)
 app.include_router(analytics_router)
+app.include_router(watten_accounts_router)
 
 LEGACY_PAGE_PATHS = {
     "/static/index.html": "/",
@@ -624,6 +627,8 @@ async def response_cache_policy(request: Request, call_next):
         "/static/zilch-rules.html",
         "/static/offline-play.html",
         "/static/dashboard-denied.html",
+        "/static/watten-account.html",
+        "/static/watten-email-action.html",
     }:
         headers = {"Cache-Control": "no-store"}
         if zilch_host or static_guard_path.startswith("/static/hausdepp"):
@@ -861,6 +866,10 @@ def _private_account_action_page(request: Request, filename: str) -> Response:
     script combines that with the choice remembered in this browser before the
     first paint. Only ``owner`` mode needs the session to decide.
     """
+    if "watten" in request.query_params.getlist("app"):
+        action = {"registration-confirm.html": "registration", "password-forgot.html": "forgot",
+                  "password-reset.html": "reset", "email-confirm.html": "confirm-email"}[filename]
+        return watten_account_action_page(request, action)
     if is_hausdepp_host(request) or ((is_site_host(request) or is_zilch_host(request)) and request.query_params.get("app") == "hausdepp"):
         action = {"registration-confirm.html": "registration", "password-forgot.html": "forgot",
                   "password-reset.html": "reset", "email-confirm.html": "confirm-email"}[filename]

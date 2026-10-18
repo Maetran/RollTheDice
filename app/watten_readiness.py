@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+import ipaddress
+import os
+from urllib.parse import urlsplit
+
 from starlette.requests import HTTPConnection
 from starlette.responses import PlainTextResponse
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-from .product_hosts import is_watten_host
+from .product_hosts import is_watten_host, request_hostname, site_origin
 
 _HEADERS = {"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"}
 _UNAVAILABLE = (
@@ -21,6 +25,29 @@ _UNPUBLISHED_PATHS = frozenset({
     "/watten-manifest.webmanifest", "/watten-manifest-en.webmanifest",
     "/sw.js", "/zilch-sw.js", "/hausdepp-sw.js", "/watten-sw.js",
 })
+_LOCAL_ACCOUNT_PATHS = frozenset({"/watten", "/watten/anmelden", "/watten/konto", "/watten/konto/einstellungen"})
+
+
+def _local_hostname(hostname: str) -> bool:
+    if hostname == "localhost" or hostname.endswith(".localhost"):
+        return True
+    try:
+        return ipaddress.ip_address(hostname).is_loopback
+    except ValueError:
+        return False
+
+
+def watten_account_preview_enabled(connection: HTTPConnection | None = None) -> bool:
+    """Opt in only within a local development deployment and local request.
+
+    A real production origin stays closed even if this variable is copied into
+    its environment. No request or forwarding header can choose the deployment.
+    """
+    if os.getenv("ROLLTHEDICE_WATTEN_ACCOUNT_PREVIEW", "0") != "1":
+        return False
+    if not _local_hostname((urlsplit(site_origin()).hostname or "").casefold()):
+        return False
+    return connection is None or _local_hostname(request_hostname(connection))
 
 
 class WattenReadinessMiddleware:
@@ -34,7 +61,15 @@ class WattenReadinessMiddleware:
         self.app = app
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        if scope["type"] not in {"http", "websocket"} or not is_watten_host(HTTPConnection(scope)):
+        if scope["type"] not in {"http", "websocket"}:
+            await self.app(scope, receive, send)
+            return
+        connection = HTTPConnection(scope)
+        fixed_host = is_watten_host(connection)
+        local_account_path = scope["path"] == "/watten" or scope["path"].startswith("/watten/")
+        local_document = (scope["type"] == "http" and scope["method"] in {"GET", "HEAD"}
+                          and scope["path"] in _LOCAL_ACCOUNT_PATHS and watten_account_preview_enabled(connection))
+        if not fixed_host and (not local_account_path or local_document):
             await self.app(scope, receive, send)
             return
         if scope["type"] == "websocket":

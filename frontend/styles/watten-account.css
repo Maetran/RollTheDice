@@ -1,0 +1,37 @@
+@import "./account-settings.css";
+@import "./passkey-login.css";
+
+:root { color-scheme: light; --card: #fffdf5; --text: #24382e; --muted: #56655c; --border: #a5b2a5; --accent: #26583e; font: 17px/1.6 system-ui, sans-serif; background: #e8ede4; color: var(--text); }
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; }
+body > header { max-width: 850px; margin: auto; display: flex; justify-content: space-between; gap: 1rem; align-items: center; padding: 1rem; }
+body > header > a { font: 700 1.6rem Georgia, serif; text-decoration: none; }
+body > header label { display: flex; align-items: center; gap: .5rem; }
+main { width: min(100% - 2rem, 750px); margin: 1rem auto 3rem; padding: clamp(1rem, 4vw, 2rem); background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow-wrap: anywhere; }
+h1, h2 { font-family: Georgia, serif; line-height: 1.25; }
+h1 { font-size: clamp(1.6rem, 6vw, 2rem); }
+a { color: var(--accent); }
+label, .form-stack, .zilch-login-form { display: grid; gap: .5rem; }
+form { display: grid; gap: 1rem; }
+input, select, button { min-width: 0; font: inherit; }
+input:not([type=checkbox]):not([type=radio]), select { width: 100%; min-height: 44px; padding: .5rem; border: 1px solid var(--border); border-radius: 5px; color: var(--text); background: #fff; }
+button, .button-link { display: inline-flex; justify-content: center; align-items: center; min-height: 44px; padding: .5rem 1rem; border: 1px solid var(--accent); border-radius: 5px; background: var(--accent); color: #fff; text-decoration: none; cursor: pointer; }
+button:disabled { opacity: .55; cursor: wait; }
+button.ghost, .button-link.ghost { color: var(--accent); background: transparent; }
+:focus-visible { outline: 3px solid #996c1f; outline-offset: 3px; }
+.actions { display: flex; flex-wrap: wrap; gap: .75rem; margin-block: 1rem; }
+details { margin-block: 1.25rem; border-block: 1px solid var(--border); padding-block: .75rem; }
+summary { cursor: pointer; min-height: 44px; padding-block: .5rem; font-weight: 700; }
+.player-avatar { object-fit: cover; border-radius: 50%; }
+.player-avatar--large, .avatar-upload-preview img { width: 80px; height: 80px; }
+.avatar-upload { display: grid; gap: .75rem; }
+[role=alert], [data-kind=error] { color: #973f29; }
+aside { padding: .75rem; border-left: 3px solid var(--accent); }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+@media (max-width: 360px) {
+  body > header { gap: .5rem; }
+  body > header > a { font-size: 1.35rem; }
+  body > header label { font-size: .85rem; }
+  h1 { font-size: 1.35rem; }
+}

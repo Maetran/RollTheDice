@@ -33,6 +33,7 @@ module.exports = defineConfig({
       ROLLTHEDICE_SITE_ORIGIN: baseURL,
       ROLLTHEDICE_ZILCH_ORIGIN: `http://zilch.rollthedice.localhost:${port}`,
       ROLLTHEDICE_PASSKEYS_ENABLED: "1",
+      ROLLTHEDICE_WATTEN_ACCOUNT_PREVIEW: "1",
       ROLLTHEDICE_WEBAUTHN_RP_ID: "rollthedice.localhost",
       ROLLTHEDICE_WEBAUTHN_RP_NAME: "RollTheDice browser test",
       ROLLTHEDICE_COOKIE_SECURE: "0",

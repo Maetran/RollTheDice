@@ -8,12 +8,13 @@ import {
   requestPasswordReset,
 } from "./shared/auth.js";
 
-import { hausdeppAccountReturnPath } from "./multigame/routes.js";
+import { hausdeppAccountReturnPath, wattenAccountReturnPath } from "./multigame/routes.js";
 
 import { EN } from "./i18n/catalog.js";
 
 const actionParameters = new URLSearchParams(window.location.search);
 const hausdeppContext = document.documentElement.dataset.game === "hausdepp";
+const wattenContext = document.documentElement.dataset.game === "watten";
 const zilchContext = actionParameters.get("app") === "zilch";
 const language = (() => {
   const requested = actionParameters.get('lang');
@@ -54,7 +55,10 @@ function tokenFromFragment() {
 
 function actionHref(path, hash = "") {
   const parameters = new URLSearchParams({ lang: language });
-  if (hausdeppContext) {
+  if (wattenContext) {
+    parameters.set("app", "watten");
+    parameters.set("return_to", wattenAccountReturnPath(actionParameters.get("return_to")) || "/watten/konto/einstellungen");
+  } else if (hausdeppContext) {
     parameters.set("app", "hausdepp");
     const destination = hausdeppAccountReturnPath(actionParameters.get("return_to"));
     if (destination) parameters.set("return_to", destination);
@@ -69,11 +73,13 @@ function actionHref(path, hash = "") {
 }
 
 function loginHref() {
+  if (wattenContext) return actionHref("/watten/anmelden");
   if (hausdeppContext) return actionHref("/hausdepp/anmelden");
   return zilchContext ? actionHref("/zilch/anmelden") : actionHref("/", "#accountLogin");
 }
 
 function accountHref() {
+  if (wattenContext) return wattenAccountReturnPath(actionParameters.get("return_to")) || "/watten/konto/einstellungen";
   if (hausdeppContext) return hausdeppAccountReturnPath(actionParameters.get("return_to")) || "/hausdepp/konto/einstellungen";
   return actionHref(zilchContext ? "/zilch/konto" : "/konto");
 }
