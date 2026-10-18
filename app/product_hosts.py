@@ -9,6 +9,8 @@ DEFAULT_SITE_ORIGIN = "https://zockdiewandan.online"
 DEFAULT_ZILCH_ORIGIN = "https://zilch.zockdiewandan.online"
 HAUSDEPP_PREVIEW_HOST = "hausdepp.zockdiewandan.online"
 HAUSDEPP_ORIGIN = f"https://{HAUSDEPP_PREVIEW_HOST}"
+WATTEN_HOST = "watten.zockdiewandan.online"
+WATTEN_ORIGIN = f"https://{WATTEN_HOST}"
 
 _ZILCH_EXACT_PATHS = frozenset(
     {
@@ -126,6 +128,24 @@ def is_zilch_host(connection) -> bool:
 def is_hausdepp_host(connection) -> bool:
     """Recognize the fixed Hausdepp product host without trusting URL input."""
     return request_hostname(connection) == HAUSDEPP_PREVIEW_HOST
+
+
+def is_watten_host(connection) -> bool:
+    """Keep the staged host closed, including ambiguous Host header forms.
+
+    Nginx supplies the validated Host and rejects ambiguous requests. Checking
+    every raw value also closes the boundary in direct ASGI tests; forwarded
+    host headers never establish product identity.
+    """
+    for value in connection.headers.getlist("host"):
+        for candidate in value.split(","):
+            try:
+                hostname = urlsplit(f"//{candidate.strip()}").hostname or ""
+            except ValueError:
+                continue
+            if hostname.casefold().rstrip(".") == WATTEN_HOST:
+                return True
+    return False
 
 
 def is_site_host(connection) -> bool:

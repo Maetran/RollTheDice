@@ -141,6 +141,7 @@ from .site_seo import (
     zilch_page_is_indexable,
 )
 from .versioning import current_version
+from .watten_readiness import WattenReadinessMiddleware
 from .web_push import (
     GAME_INVITE_PUSH_ACCOUNT_COOLDOWN_SECONDS,
     claim_game_invite_push,
@@ -716,6 +717,10 @@ async def response_request_traffic(request: Request, call_next):
         raise
     _record_request_traffic(request, response.status_code)
     return response
+
+
+# Close the staged host before HTTP-only redirects, static aliases and sockets.
+app.add_middleware(WattenReadinessMiddleware)
 
 
 # Static korrekt mounten – jetzt existiert app
