@@ -876,7 +876,8 @@
       "status": "open",
       "evidence": [
         "Five complete exact-source attempts retained all required group and seven browser-part reports; none produced a valid green push receipt. Narrow fixture corrections, the owner-rule correction and native monitoring still require one complete final clean-commit run and remote CI before release.",
-        "Native monitoring account-binding and truthful unknown values passed focused API46+284subtests/Node22 and9 real new browser cases after explicit old-source failures. A complete final clean-source run is still required; targeted evidence is not a push receipt."
+        "Native monitoring account-binding and truthful unknown values passed focused API46+284subtests/Node22 and9 real new browser cases after explicit old-source failures. A complete final clean-source run is still required; targeted evidence is not a push receipt.",
+        "Sixth clean-source ccbdde9 passed quality/tools/backend2543 with86.28% coverage/production image/container; all7 browser parts completed, exactly3 admission-fixture and2 one-shot-auth-fixture failures. Trace-backed fixture corrections preserve assertions and limits; all44 decor cases passed targeted. No valid receipt or push; complete final verification still required."
       ]
     },
     {

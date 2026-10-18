@@ -981,3 +981,33 @@ PR-, Develop- und Master-CI bleiben vor der freigegebenen privaten Auslieferung
 verpflichtend. Die81 Findings bleiben als Gesamtumfang offen beziehungsweise
 teilweise umgesetzt; diese Abnahme behauptet keine physische Geräteprüfung
 und keine öffentliche Wattenfreigabe.
+
+### Sechster vollständiger Lauf und bestätigte Browser-Fixtures
+
+Der saubere Commit `ccbdde9` besteht Qualität, Tools,2543 Backendfälle mit
+86,28% Coverage, Produktionsimage und Container-Smoke. Alle sieben Browserteile
+laufen fertig. Fünf Teile sind vollständig grün; drei Hausdepp-Dekofälle und
+zwei Watten-Passkeyfälle scheitern an konkret belegten Fixture-Races. Es entsteht
+kein Nachweis und kein Push. Der vollständige rote Bericht bleibt unter
+`test-results/local-checks/ccbdde977e6f-1792363249506-3a1f3549/` erhalten.
+
+Die Dekofälle scheitern vor jeder Geometrieprüfung: Ein Kontosprach-Reload
+lässt den ersten Gast vor der tatsächlichen Hostaufnahme eintreffen. Der
+bestehende Host-Guard weist ihn ab, sodass nur fünf Menschen im Raum sind.
+Die Fixture wartet nach jeder Navigation nun auf den aktuellen offenen Socket,
+die bestätigte Spieler-ID und deren tatsächlich verbundene Raummitgliedschaft.
+Erst dann öffnet sie den nächsten Gast. Alle finalen Privatansichten und
+Geometrieprüfungen bleiben unverändert; kein Timeout oder Retry wird ergänzt.
+Alle44 Dekofälle bestehen gezielt unter
+`test-results/browser/hausdepp-decor-real-join-barriers/`.
+
+Bei beiden Passkeyfällen belegen die Traces, dass noch laufender Verkehr des
+alten Dokuments die einmalige503-Antwort vor dem neuen Accountbundle verbraucht.
+Die neue Seite erhält korrekt200, weshalb der erwartete Fehlerhinweis fehlt.
+Die Fixture hält die503-Störung nun über das Neuladen bis zum tatsächlichen
+sichtbaren Fehler aktiv. Danach entfernt sie ausschliesslich diesen Handler
+und führt den bisherigen bewussten Retry aus. Alle Konto-, Backup-, Passkey-,
+Logout- und Privacyassertions bleiben erhalten. Alle sechs nativen
+Account-Passkeyfälle bestehen gezielt unter
+`test-results/browser/watten-passkey-controlled-auth-outage/`. Danach ist ein
+neuer vollständiger sauberer Nachweis erforderlich.
