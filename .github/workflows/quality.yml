@@ -27,7 +27,7 @@ jobs:
     name: Quality result
     runs-on: ubuntu-latest
     # Covers the bounded wait for a status published right after the push.
-    timeout-minutes: 15
+    timeout-minutes: 5
     permissions:
       actions: read
       contents: read

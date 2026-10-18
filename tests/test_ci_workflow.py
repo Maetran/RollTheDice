@@ -356,26 +356,51 @@ class PullRequestGateTestCase(GateTestCase):
         self.repo.publish(scenario.head, scenario.base, finished=NOW - timedelta(hours=24, seconds=1), created=NOW)
         self.assert_rejected(scenario, "older than 24 hours", waits=False)
 
-    def test_republishing_refreshes_but_ambiguous_receipts_fail(self):
+    def test_only_the_newest_status_is_in_effect(self):
+        # A later genuine receipt replaces older foreign, red or differently based statuses.
+        scenario = self.pull_request_scenario()
+        head_tree = self.repo.tree(scenario.head)
+        older = NOW - timedelta(hours=2)
+        self.repo.statuses[scenario.head] += [
+            receipt_status(scenario.head, head_tree, scenario.base, creator="someone", finished=older),
+            receipt_status(scenario.head, head_tree, scenario.base, state="failure", finished=older),
+            receipt_status(scenario.head, head_tree, self.root, finished=older),
+            receipt_status(scenario.head, head_tree, scenario.base, description="garbage", finished=older),
+        ]
+        self.assert_passes(scenario, f"finished {iso(NOW - timedelta(minutes=10))}")
+        # Republishing after a new full check refreshes the receipt.
         scenario = self.pull_request_scenario()
         self.repo.publish(scenario.head, scenario.base, finished=NOW - timedelta(minutes=1), created=NOW)
-        self.repo.statuses[scenario.head].reverse()
         self.assert_passes(scenario, f"finished {iso(NOW - timedelta(minutes=1))}")
-        # The same receipt published in the second it finished is valid.
+        # A receipt published in the second it finished, even twice, is valid.
         scenario = self.pull_request_scenario()
         self.repo.statuses[scenario.head] = []
-        self.repo.publish(scenario.head, scenario.base, finished=NOW - timedelta(minutes=1),
-                          created=NOW - timedelta(minutes=1))
+        for _ in range(2):
+            self.repo.publish(scenario.head, scenario.base, finished=NOW - timedelta(minutes=1),
+                              created=NOW - timedelta(minutes=1))
         self.assert_passes(scenario, "Pull request #47")
+
+    def test_newer_foreign_red_or_simultaneous_different_statuses_stay_red(self):
+        cases = {
+            "newer foreign status": ({"creator": "someone"}, "not the repository owner"),
+            "newer failure": ({"state": "failure"}, "'failure'"),
+            "newer pending status": ({"state": "pending"}, "'pending'"),
+        }
+        for name, (overrides, fragment) in cases.items():
+            with self.subTest(name):
+                scenario = self.pull_request_scenario()
+                self.repo.publish(scenario.head, scenario.base, finished=NOW - timedelta(minutes=1), created=NOW,
+                                  **overrides)
+                self.assert_rejected(scenario, fragment, waits=False)
         scenario = self.pull_request_scenario()
-        self.repo.publish(scenario.head, self.root)
-        self.assert_rejected(scenario, "different trees or bases", waits=False)
-        scenario = self.pull_request_scenario()
-        self.repo.publish(scenario.head, scenario.base, state="failure")
-        self.assert_rejected(scenario, "'failure'", waits=False)
-        scenario = self.pull_request_scenario()
-        self.repo.publish(scenario.head, scenario.base, creator="someone")
-        self.assert_rejected(scenario, "not the repository owner", waits=False)
+        self.repo.publish(scenario.head, self.root, finished=NOW - timedelta(minutes=1), created=NOW)
+        self.assert_rejected(scenario, "checked against base", waits=False)
+        # Different statuses published in the newest second are ambiguous.
+        for overrides in ({"creator": "someone"}, {"finished": NOW - timedelta(minutes=9)}):
+            with self.subTest(overrides=overrides):
+                scenario = self.pull_request_scenario()
+                self.repo.publish(scenario.head, scenario.base, created=NOW - timedelta(minutes=8), **overrides)
+                self.assert_rejected(scenario, "in effect at the same time", waits=False)
 
     def test_moved_or_missing_base_and_changed_merge_trees_fail(self):
         scenario = self.pull_request_scenario()
@@ -427,6 +452,24 @@ class PullRequestGateTestCase(GateTestCase):
         self.repo.statuses[scenario.head] = noise[:100] * gate.MAX_STATUS_PAGES + self.repo.statuses[scenario.head]
         self.assert_rejected(scenario, "too many statuses", waits=False)
 
+    def test_status_pages_are_read_only_while_the_newest_second_continues(self):
+        scenario = self.pull_request_scenario()
+        tree = self.repo.tree(scenario.head)
+        effective = self.repo.statuses[scenario.head][0]
+        older = NOW - timedelta(hours=1)
+        self.repo.statuses[scenario.head] = [
+            effective, *(receipt_status(scenario.head, tree, scenario.base, context=f"older {index}", finished=older)
+                         for index in range(99)),
+            receipt_status(scenario.head, tree, self.root, finished=older)]
+        self.assert_passes(scenario, "Pull request #47")
+        self.assertFalse(any(call.endswith("page=2") for call in self.repo.calls))
+        # A different status from the same second on the next page is still found.
+        self.repo.statuses[scenario.head] = [
+            effective, *(receipt_status(scenario.head, tree, scenario.base, context=f"other {index}")
+                         for index in range(99)),
+            receipt_status(scenario.head, tree, self.root)]
+        self.assert_rejected(scenario, "in effect at the same time", waits=False)
+
 
 class DevelopPushGateTestCase(GateTestCase):
     def setUp(self):
@@ -465,17 +508,15 @@ class DevelopPushGateTestCase(GateTestCase):
         self.assert_passes(scenario, "pull request #47", scenario.head, f"base `{self.before}`")
         self.assertEqual(self.sleeps, [])
 
-    def test_unverifiable_merges_fail_after_waiting_for_a_direct_status(self):
+    def test_unverifiable_pull_request_merges_fail_immediately(self):
         def stale_receipt(scenario):
-            self.repo.statuses[scenario.head] = [receipt_status(scenario.head, self.repo.tree(scenario.head),
-                                                                self.root)]
+            self.repo.publish(scenario.head, self.root, created=NOW)
+
+        def foreign_receipt(scenario):
+            self.repo.publish(scenario.head, self.before, created=NOW, creator="someone")
 
         def changed_tree(scenario):
-            tree, parents = self.repo.commits[scenario.after]
-            self.repo.commits[scenario.after] = (sha("other tree"), parents)
-
-        def swapped_parents(scenario):
-            self.repo.commits[scenario.after] = (self.repo.tree(scenario.head), [scenario.head, self.before])
+            self.repo.commits[scenario.after] = (sha("other tree"), self.repo.commits[scenario.after][1])
 
         def second_pull(scenario):
             self.repo.pulls[48] = {**self.repo.pulls[47], "number": 48}
@@ -486,14 +527,10 @@ class DevelopPushGateTestCase(GateTestCase):
             self.repo.pulls[47] = pull_request(47, head, merge_commit_sha=scenario.after)
             self.repo.publish(head, self.before)
 
-        def unverified_head(scenario):
-            self.repo.statuses.pop(scenario.head)
-
         cases = {
             "stale head receipt": (stale_receipt, "checked against base"),
+            "foreign head receipt": (foreign_receipt, "not the repository owner"),
             "changed merge tree": (changed_tree, "differs from the checked head tree"),
-            "swapped parents": (swapped_parents, "not a merge commit on top of"),
-            "no pull request": (lambda scenario: self.repo.pulls.clear(), "0 pull requests"),
             "two pull requests": (second_pull, "2 pull requests"),
             "merged into master": (lambda scenario: self.repo.pulls[47]["base"].update(ref="master"),
                                    "no merge of"),
@@ -502,7 +539,8 @@ class DevelopPushGateTestCase(GateTestCase):
             "fork head": (lambda scenario: self.repo.pulls[47]["head"].update(repo={"full_name": "a/b"}),
                           "no merge of"),
             "head without base": (head_without_base, "does not contain"),
-            "unverified head": (unverified_head, f"has no '{gate.CONTEXT}' status"),
+            "unverified head": (lambda scenario: self.repo.statuses.pop(scenario.head),
+                                f"the merged head {sha('feature')} has no"),
         }
         for name, (change, fragment) in cases.items():
             with self.subTest(name):
@@ -510,14 +548,32 @@ class DevelopPushGateTestCase(GateTestCase):
                 self.before = self.repo.commit("develop", self.root)
                 scenario = self.merge_scenario()
                 change(scenario)
-                self.assert_rejected(scenario, fragment, waits=True)
+                self.assert_rejected(scenario, fragment, waits=False)
+
+    def test_only_a_missing_status_or_pull_request_association_is_awaited(self):
+        scenario = self.merge_scenario()
+        pull = self.repo.pulls.pop(47)
+        self.on_sleep = lambda count: count == 2 and self.repo.pulls.setdefault(47, pull)
+        self.assert_passes(scenario, "pull request #47")
+        self.assertEqual(len(self.sleeps), 2)
+        self.reset()
+        self.before = self.repo.commit("develop", self.root)
+        scenario = self.merge_scenario()
+        self.repo.pulls.clear()
+        self.assert_rejected(scenario, "no pull request names it as merge commit", waits=True)
+        self.reset()
+        self.before = self.repo.commit("develop", self.root)
+        scenario = self.merge_scenario()
+        self.repo.commits[scenario.after] = (self.repo.tree(scenario.head), [scenario.head, self.before])
+        self.assert_rejected(scenario, f"has no '{gate.CONTEXT}' status", waits=True)
 
     def test_squash_merges_are_not_accepted(self):
         head = self.repo.commit("feature", self.before)
         squash = self.repo.commit("squash", self.before, tree=self.repo.tree(head))
         self.repo.pulls[47] = pull_request(47, head, merge_commit_sha=squash)
         self.repo.publish(head, self.before)
-        self.assert_rejected(self.push_scenario("develop", self.before, squash), "not a merge commit", waits=True)
+        self.assert_rejected(self.push_scenario("develop", self.before, squash), f"has no '{gate.CONTEXT}' status",
+                             waits=True)
 
     def test_only_plain_pushes_of_integration_branches_are_verified(self):
         commit = self.repo.commit("direct", self.before)
@@ -554,6 +610,8 @@ class MasterPushGateTestCase(GateTestCase):
         self.before = self.repo.commit("master", self.root)
         self.develop = self.repo.commit("develop", self.before)
         self.repo.refs["develop"] = self.develop
+        # The develop commit was pushed directly after its local verification.
+        self.repo.publish(self.develop, self.before)
 
     def verified_on_develop(self, commit: str, run_id: int = 800, **overrides) -> None:
         self.repo.runs.append(workflow_run(commit, run_id, **overrides))
@@ -562,7 +620,7 @@ class MasterPushGateTestCase(GateTestCase):
     def test_fast_forward_reuses_the_passed_develop_run_of_the_same_commit(self):
         self.verified_on_develop(self.develop)
         self.assert_passes(self.push_scenario("master", self.before, self.develop), "Fast-forward",
-                           f"{SERVER}/{REPOSITORY}/actions/runs/800")
+                           f"{SERVER}/{REPOSITORY}/actions/runs/800", f"base `{self.before}`")
         self.assertEqual(self.sleeps, [])
 
     def test_fast_forward_waits_for_a_running_develop_run(self):
@@ -573,15 +631,53 @@ class MasterPushGateTestCase(GateTestCase):
         self.assertEqual(len(self.sleeps), 2)
 
     def test_fast_forward_without_passed_develop_evidence_fails(self):
+        self.repo.statuses.clear()
         self.assert_rejected(self.push_scenario("master", self.before, self.develop), "no develop push run",
                              waits=True)
         self.sleeps.clear()
+        # A red develop verdict wins even over a receipt that would pass as a direct push.
+        self.repo.publish(self.develop, self.before)
         self.verified_on_develop(self.develop, conclusion="failure")
-        self.assert_rejected(self.push_scenario("master", self.before, self.develop), "did not succeed", waits=True)
-        self.sleeps.clear()
+        self.assert_rejected(self.push_scenario("master", self.before, self.develop), "fix develop", waits=False)
         self.repo.runs.append(workflow_run(self.develop, 801))
         self.repo.jobs[801] = [result_job(801, self.develop)]
-        self.assert_rejected(self.push_scenario("master", self.before, self.develop), "did not succeed", waits=True)
+        self.assert_rejected(self.push_scenario("master", self.before, self.develop), "fix develop", waits=False)
+
+    def test_fast_forward_needs_current_local_evidence_besides_the_green_develop_run(self):
+        self.verified_on_develop(self.develop)
+        cases = {
+            "stale receipt": ({"finished": NOW - timedelta(hours=25)}, self.before, "older than 24 hours"),
+            "base outside history": ({}, self.repo.commit("elsewhere", self.root), "outside its history"),
+            "foreign receipt": ({"creator": "someone"}, self.before, "not the repository owner"),
+        }
+        for name, (overrides, base, fragment) in cases.items():
+            with self.subTest(name):
+                self.repo.statuses.clear()
+                self.repo.publish(self.develop, base, **overrides)
+                self.assert_rejected(self.push_scenario("master", self.before, self.develop), fragment, waits=False)
+        self.repo.statuses.clear()
+        self.assert_rejected(self.push_scenario("master", self.before, self.develop), "no current", waits=True)
+
+    def test_fast_forward_to_a_pull_request_merge_rechecks_its_head_receipt(self):
+        head = self.repo.commit("feature", self.develop)
+        merge = self.repo.commit("develop merge", self.develop, head, tree=self.repo.tree(head))
+        self.repo.refs["develop"] = merge
+        self.verified_on_develop(merge)
+        self.repo.publish(head, self.develop)
+        self.assert_passes(self.push_scenario("master", self.before, merge), "Fast-forward", head,
+                           f"base `{self.develop}`")
+        # A receipt adopted for the unchanged merge itself serves as well.
+        self.repo.statuses.clear()
+        self.repo.publish(merge, self.develop)
+        self.assert_passes(self.push_scenario("master", self.before, merge), "Fast-forward", f"of `{merge}`")
+        self.repo.statuses.clear()
+        self.repo.publish(head, self.develop, finished=NOW - timedelta(hours=25))
+        self.assert_rejected(self.push_scenario("master", self.before, merge), "older than 24 hours", waits=False)
+        self.repo.statuses.clear()
+        self.repo.publish(head, self.root)
+        self.assert_rejected(self.push_scenario("master", self.before, merge), "checked against base", waits=False)
+        self.repo.statuses.clear()
+        self.assert_rejected(self.push_scenario("master", self.before, merge), "no current", waits=True)
 
     def test_untrusted_or_inconsistent_develop_evidence_fails_immediately(self):
         cases = {
@@ -623,6 +719,12 @@ class MasterPushGateTestCase(GateTestCase):
         self.verified_on_develop(self.develop)
         release = self.repo.commit("release", self.before, self.develop, tree=self.repo.tree(self.develop))
         self.assert_passes(self.push_scenario("master", self.before, release), "Release merge", self.develop)
+        self.repo.statuses.clear()
+        self.repo.publish(self.develop, self.before, finished=NOW - timedelta(hours=25))
+        self.assert_rejected(self.push_scenario("master", self.before, release), "older than 24 hours", waits=False)
+        # A local verification of the merge itself is checked as a direct push.
+        self.repo.publish(release, self.before)
+        self.assert_passes(self.push_scenario("master", self.before, release), "Direct push", release)
 
     def test_release_merge_with_another_tree_needs_local_verification_of_the_actual_merge(self):
         hotfix = self.repo.commit("hotfix", self.before)
@@ -666,7 +768,7 @@ class VerifyCommandTestCase(GateTestCase):
 
     def test_rejections_and_api_errors_never_pass(self):
         scenario = self.pull_request_scenario()
-        self.repo.publish(scenario.head, scenario.base, creator="someone")
+        self.repo.publish(scenario.head, scenario.base, creator="someone", created=NOW)
         code, summary = self.run_verify(scenario)
         self.assertEqual(code, 1)
         self.assertIn("not the repository owner", summary)

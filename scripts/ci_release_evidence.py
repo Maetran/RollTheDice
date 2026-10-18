@@ -10,10 +10,11 @@ machine before every push. Afterwards the local publisher posts a commit status:
 * description, as compact JSON,
   ``[1,"<tree sha>","<tested base sha>","<finished at, YYYY-MM-DDTHH:MM:SSZ>"]``.
 
-Every status with that context on a commit must meet these rules and name the
-same tree and base, otherwise the evidence is foreign, red or ambiguous. No
-status may predate its claimed finish time, and the newest finish time must be
-at most 24 hours old.
+As on GitHub, only the newest status of that context on a commit is in effect:
+a later genuine receipt replaces older ones, while a newer foreign or red status
+stays red. Different statuses published in that same newest second are
+ambiguous. The effective status must meet every rule above, must not predate its
+claimed finish time, and that finish time must be at most 24 hours old.
 
 The single ``Quality result`` job then accepts only:
 
@@ -31,14 +32,17 @@ push to master, before A and B
     C. a fast-forward to a commit that develop contains and whose develop push
        runs of this workflow all passed; or
     D. a release merge with parents ``before`` and such a develop commit, whose
-       tree it reproduces exactly.
+       tree it reproduces exactly and which has no receipt of its own.
+    Both also need current local evidence for the reused develop commit: its own
+    receipt for its tree with a base in its history, or, for a pull request
+    merge, the head receipt for the merge tree with the first parent as base.
 
-Evidence that may still appear after the push (the status, a running develop
-run, the pull request association) is awaited for a bounded time. Anything else,
-including API errors, foreign, red, stale or ambiguous receipts, moved bases and
-changed trees, fails with a request to verify locally. GitHub never falls back
-to running the suites itself. Only the standard library is used, so the system
-``python3`` of a runner works.
+Only a missing own status, a missing pull request association and a develop run
+that has not finished are awaited, for a bounded time, because they appear just
+after the push. Everything else, including API errors, foreign, red, stale or
+ambiguous receipts, moved bases and changed trees, fails at once with a request
+to verify locally. GitHub never falls back to running the suites itself. Only the
+standard library is used, so the system ``python3`` of a runner works.
 """
 
 from __future__ import annotations
@@ -59,8 +63,8 @@ from typing import Any
 CONTEXT = "Local verification"
 RECEIPT_VERSION = 1
 MAX_AGE = timedelta(hours=24)
-WAIT_SECONDS = 600
-POLL_SECONDS = 20
+WAIT_SECONDS = 120
+POLL_SECONDS = 5
 MAX_STATUS_PAGES = 10
 WORKFLOW_PATH = ".github/workflows/quality.yml"
 RESULT_JOB = "Quality result"
@@ -68,6 +72,7 @@ EVIDENCE_BRANCH = "develop"
 RELEASE_BRANCH = "master"
 SHA_PATTERN = re.compile(r"[0-9a-f]{40}")
 TIMESTAMP_PATTERN = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z")
+STATUS_FIELDS = ("state", "target_url", "description", "created_at")
 LOCAL_HINT = (f"Run the complete local verification for this exact state, publish its '{CONTEXT}' "
               "status, then re-run this job. GitHub does not run the suites itself.")
 
@@ -106,6 +111,10 @@ def _iso(moment: datetime) -> str:
 
 def _repository_of(side: Any) -> Any:
     return ((side or {}).get("repo") or {}).get("full_name")
+
+
+def _status_content(status: Mapping[str, Any]) -> tuple:
+    return ((status.get("creator") or {}).get("login"), *(status.get(name) for name in STATUS_FIELDS))
 
 
 @dataclass(frozen=True)
@@ -182,15 +191,18 @@ class GitHub:
                  and _is_sha(target.get("sha")), f"branch {branch} could not be read")
         return target["sha"]
 
-    def statuses(self, sha: str) -> list[dict]:
-        statuses: list[dict] = []
+    def context_statuses(self, sha: str) -> list[dict]:
+        """Return the statuses of ``CONTEXT`` on ``sha``, newest first, as far as the newest second reaches."""
+        found: list[dict] = []
         for page in range(1, MAX_STATUS_PAGES + 1):
             batch = self.repo(f"/commits/{sha}/statuses?per_page=100&page={page}")
             _require(isinstance(batch, list), f"statuses of {sha} could not be read")
-            statuses.extend(batch)
-            if len(batch) < 100:
-                return statuses
-        raise Rejected(f"{sha} has too many statuses to evaluate")
+            found.extend(status for status in batch if status.get("context") == CONTEXT)
+            # GitHub lists statuses in reverse chronological order, so later pages are older.
+            if len(batch) < 100 or (found and batch[-1].get("created_at") != found[0].get("created_at")):
+                return found
+        _require(found, f"{sha} has too many statuses to find its '{CONTEXT}' status")
+        return found
 
     def pull(self, number: int) -> dict:
         return self.repo(f"/pulls/{number}")
@@ -215,18 +227,19 @@ class Gate:
         self.now = now
         self.notes: list[str] = []
 
-    def receipt(self, sha: str) -> Receipt:
-        """Return the newest valid receipt on ``sha``; pending while none exists."""
-        statuses = [status for status in self.github.statuses(sha) if status.get("context") == CONTEXT]
+    def receipt(self, sha: str) -> Receipt | None:
+        """Return the receipt of the effective status on ``sha``, or None while there is none."""
+        statuses = self.github.context_statuses(sha)
         if not statuses:
-            raise Pending(f"{sha} has no '{CONTEXT}' status")
-        receipts = [self._receipt(status, sha) for status in statuses]
-        _require(len({(receipt.tree, receipt.base) for receipt in receipts}) == 1,
-                 f"the '{CONTEXT}' statuses on {sha} name different trees or bases")
-        return max(receipts, key=lambda receipt: (receipt.finished_at, receipt.created_at))
+            return None
+        effective = statuses[0]
+        rivals = [status for status in statuses[1:] if status.get("created_at") == effective.get("created_at")
+                  and _status_content(status) != _status_content(effective)]
+        _require(not rivals, f"different '{CONTEXT}' statuses on {sha} are in effect at the same time")
+        return self._receipt(effective, sha)
 
     def _receipt(self, status: Mapping[str, Any], sha: str) -> Receipt:
-        label = f"'{CONTEXT}' status on {sha}"
+        label = f"the effective '{CONTEXT}' status on {sha}"
         creator = (status.get("creator") or {}).get("login")
         _require(creator == self.run.owner, f"{label} was created by {creator!r}, not the repository owner")
         _require(status.get("state") == "success", f"{label} is {status.get('state')!r}")
@@ -279,7 +292,10 @@ class Gate:
                  f"head {head} does not contain {branch} {base}; integrate it locally and verify again")
         head_tree = self.github.commit(head)[0]
         _require(merge_tree == head_tree, f"GitHub's merge tree {merge_tree} differs from the checked head tree")
-        evidence = self.check(self.receipt(head), head, tree=head_tree, base=base)
+        receipt = self.receipt(head)
+        if receipt is None:
+            raise Pending(f"{head} has no '{CONTEXT}' status")
+        evidence = self.check(receipt, head, tree=head_tree, base=base)
         return [f"[Pull request #{number}]({self.run.url(f'pull/{number}')}) into `{branch}`: head `{head}` "
                 f"contains base `{base}`, and GitHub's merge `{self.run.sha}` has exactly its tree.", *evidence]
 
@@ -303,15 +319,18 @@ class Gate:
     def release(self, before: str, sha: str, tree: str, parents: tuple[str, ...]) -> list[str] | None:
         evidence = self.develop_evidence(sha)
         if evidence:
-            return [f"Fast-forward to a commit that develop contains: {evidence}"]
+            return [f"Fast-forward to a commit that develop contains: {evidence}", *self.local_evidence(sha)]
         if len(parents) == 2 and parents[0] == before:
             source = parents[1]
-            evidence = self.develop_evidence(source)
-            if evidence:
-                if self.github.commit(source)[0] == tree:
-                    return [f"Release merge with exactly the tree of develop commit `{source}`: {evidence}"]
+            if self.github.commit(source)[0] != tree:
                 self.notes.append(f"the release merge tree differs from develop commit {source}, "
                                   "so the actual merge needs its own local verification")
+                return None
+            evidence = self.develop_evidence(source)
+            # A receipt on the merge itself is checked as a direct push instead.
+            if evidence and self.receipt(sha) is None:
+                return [f"Release merge with exactly the tree of develop commit `{source}`: {evidence}",
+                        *self.local_evidence(source)]
         return None
 
     def develop_evidence(self, sha: str) -> str | None:
@@ -333,9 +352,9 @@ class Gate:
                      f"run {run.get('id')} is not a develop push run of this workflow for {sha}")
         if any(run.get("status") != "completed" for run in runs):
             raise Pending(f"the develop run of {sha} has not finished")
-        if any(run.get("conclusion") != "success" for run in runs):
-            self.notes.append(f"a develop run of {sha} did not succeed")
-            return None
+        # A commit that develop rejected never reaches master through another route.
+        _require(all(run.get("conclusion") == "success" for run in runs),
+                 f"a develop run of {sha} did not succeed; fix develop before promoting it")
         evidence = max(runs, key=lambda run: (run.get("run_number") or 0, run.get("id") or 0))
         run_id = evidence.get("id")
         jobs_listing = self.github.repo(f"/actions/runs/{run_id}/jobs?filter=latest&per_page=100")
@@ -349,6 +368,23 @@ class Gate:
         _require(self.github.contains(sha, tip), f"develop no longer contains {sha}")
         return f"[develop run {run_id}]({self.run.url(f'actions/runs/{run_id}')}) verified `{sha}`."
 
+    def local_evidence(self, sha: str) -> list[str]:
+        """Prove again that the tree of a reused develop commit passed a current local verification."""
+        tree, parents = self.github.commit(sha)
+        own = self.receipt(sha)
+        if own is not None:
+            _require(self.github.contains(own.base, sha), f"the receipt on {sha} names base {own.base} "
+                                                          "outside its history")
+            return self.check(own, sha, tree=tree, base=own.base)
+        if len(parents) == 2:
+            first, head = parents
+            source = self.receipt(head)
+            if source is not None:
+                _require(self.github.commit(head)[0] == tree, f"{sha} does not have the tree of its head {head}")
+                _require(self.github.contains(first, head), f"head {head} does not contain {first}")
+                return self.check(source, head, tree=tree, base=first)
+        raise Pending(f"{sha} has no current '{CONTEXT}' evidence")
+
     def _trusted(self, run: Mapping[str, Any], sha: str, branch: str, workflow_id: int) -> bool:
         return (run.get("workflow_id") == workflow_id and str(run.get("path") or "").partition("@")[0] == WORKFLOW_PATH
                 and run.get("event") == "push" and run.get("head_branch") == branch and run.get("head_sha") == sha
@@ -356,25 +392,18 @@ class Gate:
                 and (run.get("head_repository") or {}).get("full_name") == self.run.repository)
 
     def integration(self, branch: str, before: str, sha: str, tree: str, parents: tuple[str, ...]) -> list[str]:
-        try:
-            receipt = self.receipt(sha)
-        except Pending:
-            receipt = None
+        receipt = self.receipt(sha)
         if receipt is not None:
             return ["Direct push of a locally verified commit.", *self.check(receipt, sha, tree=tree, base=before)]
-        try:
-            return self.merge(branch, before, sha, tree, parents)
-        except Rejected as rejection:
-            # A locally merged commit may still publish its own status.
-            raise Pending(f"{sha} has no '{CONTEXT}' status, and it is no verified pull request merge: "
-                          f"{rejection}") from None
-
-    def merge(self, branch: str, before: str, sha: str, tree: str, parents: tuple[str, ...]) -> list[str]:
-        _require(len(parents) == 2 and parents[0] == before, f"it is not a merge commit on top of {before}")
-        head = parents[1]
+        if len(parents) != 2 or parents[0] != before:
+            raise Pending(f"{sha} has no '{CONTEXT}' status")
         pulls = self.github.merged_pulls(sha)
-        _require(len(pulls) == 1, f"{len(pulls)} pull requests name it as their merge commit")
-        pull = pulls[0]
+        if not pulls:
+            raise Pending(f"{sha} has no '{CONTEXT}' status, and no pull request names it as merge commit")
+        _require(len(pulls) == 1, f"{len(pulls)} pull requests name {sha} as their merge commit")
+        return self.merge(branch, before, sha, tree, parents[1], pulls[0])
+
+    def merge(self, branch: str, before: str, sha: str, tree: str, head: str, pull: Mapping[str, Any]) -> list[str]:
         number = pull.get("number")
         _require(pull.get("merged_at") and (pull.get("base") or {}).get("ref") == branch
                  and (pull.get("head") or {}).get("sha") == head
@@ -384,7 +413,9 @@ class Gate:
         _require(self.github.contains(before, head), f"head {head} does not contain {before}")
         head_tree = self.github.commit(head)[0]
         _require(tree == head_tree, f"the merge tree {tree} differs from the checked head tree {head_tree}")
-        evidence = self.check(self.receipt(head), head, tree=head_tree, base=before)
+        receipt = self.receipt(head)
+        _require(receipt, f"the merged head {head} has no '{CONTEXT}' status")
+        evidence = self.check(receipt, head, tree=head_tree, base=before)
         return [f"Merge of [pull request #{number}]({self.run.url(f'pull/{number}')}) with exactly the tree "
                 f"of its head `{head}`.", *evidence]
 
