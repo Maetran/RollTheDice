@@ -248,15 +248,17 @@ def test_claims_commit_together_survive_restart_and_do_not_change_native_checkpo
     assert checkpoints() == before and len(claims()[0]) == 1
 
 
-def test_caller_rollback_and_caught_account_cooldown_leave_no_half_claim_or_implicit_commit(server):
+@pytest.mark.parametrize("prior_write", (False, True), ids=("fresh-caller", "prior-user-write"))
+def test_caller_rollback_and_caught_account_cooldown_leave_no_half_claim_or_implicit_commit(server, prior_write):
     game, owner = setup(server)
     other, _ = setup(server, owner=owner)
-    before, now = claims(), utcnow()
+    before, stored, now = claims(), checkpoints(), utcnow()
     with pytest.raises(RuntimeError, match="outer abort"), session_scope() as db:
-        db.execute(update(User).where(User.id == owner[0].user_id).values(preferred_language="en"))
+        if prior_write:
+            db.execute(update(User).where(User.id == owner[0].user_id).values(preferred_language="en"))
         claim(db, game, owner, now=now)
         raise RuntimeError("outer abort")
-    assert claims() == before
+    assert claims() == before and checkpoints() == stored
     with session_scope() as db:
         assert db.get(User, owner[0].user_id).preferred_language == "de"
     # A legacy-product claim shares the same actual account barrier.
@@ -265,7 +267,7 @@ def test_caller_rollback_and_caught_account_cooldown_leave_no_half_claim_or_impl
     with session_scope() as db:
         with pytest.raises(calls.WattenOpenSeatError, match="account_cooldown"):
             claim(db, other, owner)
-    assert claims() == claimed  # Even a caller that catches+commits has no room half-claim.
+    assert claims() == claimed and checkpoints() == stored  # Catch+commit cannot leave a room half-claim.
 
 
 def test_real_unseated_host_and_inactive_account_cannot_claim_and_private_room_cannot_call(server):
