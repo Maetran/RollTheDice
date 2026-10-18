@@ -480,3 +480,17 @@ echte gerenderte Seiten prüfen zusätzlich beide Watten-Icons und schliessen
 fremde Spiel-Icons aus. Gegenlauf: **27 Tests, 103 Subtests, 2.95 Sekunden**.
 Der fehlgeschlagene Lauf ist kein Vollnachweis; nach dem neuen Commit wird
 der vollständige Ablauf erneut ausgeführt.
+
+Der zweite Vollversuch auf `17d769c` bestand Qualität, Tools, **2’058
+Backendtests bei 85.33 % Coverage**, Produktionsimage und Containerprüfung.
+Sechs von sieben Browserteilen bestanden. Der übrige Teil traf eine geteilte
+Hausdepp-Testkonto-Voreinstellung: Das echte isolierte Admin-Konto stand auf
+Englisch, die Überraschungs-Fixture setzte bei jedem Laden wieder Deutsch in
+Local Storage. Die absichtliche Kontosprachsynchronisierung lud dadurch immer
+neu, bevor der reale erste WebSocket-Spielstand ankam. Ein lesender Blick in
+genau die Wegwerf-Datenbank bestätigte `Admin/en`; keine Produktionsdaten.
+Die Fixture setzt nun vor dem Seitenstart auch die eigene Kontosprache. Eine
+gezielt auf Englisch vorbereitete Regression und alle acht Zwei-Client-Effekte
+bestanden: **9 Fälle, 17.9 Sekunden**, ohne Retries. Beleg:
+`test-results/browser/watten/hdd-language-isolation/`. Dies bleibt ein
+gezielter Gegenlauf; der neue Commit braucht weiterhin einen Vollnachweis.

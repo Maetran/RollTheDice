@@ -37,6 +37,11 @@ async function roomFixture(page, effect, { spectator = false, reduced = false, c
   });
   expect(login.ok()).toBeTruthy();
   const user = (await login.json()).user;
+  // The shard shares its disposable Admin account with language tests. Keep
+  // that account aligned with the DE init script before the real page boots.
+  expect((await page.request.put('/api/auth/preferences/language', {
+    headers: { 'X-CSRF-Token': user.csrf_token }, data: { preferred_language: 'de' },
+  })).ok()).toBeTruthy();
   const created = await page.request.post('/api/games', {
     headers: { 'X-CSRF-Token': user.csrf_token },
     data: { name: 'Renderer-Test · Gemeinsame Tischüberraschung', mode: crowded ? '6' : '2', game_type: 'hausdepp',
@@ -133,6 +138,19 @@ async function expectStory(layer, effect) {
     expect(await layer.locator('[data-stage="flame"]').count()).toBeGreaterThanOrEqual(HAND.length);
   }
 }
+
+test('the fixture aligns an English account before booting a German room', async ({ page }) => {
+  const login = await page.request.post('/api/auth/login', { data: { username: 'Admin', password: 'temporary-password-123' } });
+  expect(login.ok()).toBeTruthy();
+  const user = (await login.json()).user;
+  expect((await page.request.put('/api/auth/preferences/language', {
+    headers: { 'X-CSRF-Token': user.csrf_token }, data: { preferred_language: 'en' },
+  })).ok()).toBeTruthy();
+  const fixture = await roomFixture(page, 'star');
+  await expect(page.locator('html')).toHaveAttribute('lang', 'de');
+  expect(fixture.self).toBeTruthy();
+  expect(fixture.first.commands).toEqual([]);
+});
 
 for (const effect of EFFECTS) {
   test(`${effect}: two room clients show one server event and only the local hammer vibrates`, async ({ page }) => {
