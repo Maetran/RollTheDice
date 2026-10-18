@@ -27,7 +27,7 @@ Arbeitszweig: `codex/watten-implementation`, eigener verwalteter Worktree
 | P1/P8 DNS, Origin, TLS | Codex-Mitarbeiter `infrastructure_audit`, eigener Worktree `watten-infrastructure`; separater geschlossener Nginx-Vhost, Watten-Aktivierungshelfer, gezielte Tests | Quellcommits `cd571dd`/`2577864` als `e4ad21f`/`04f4067` übernommen. Geschlossene Liveaktivierung am 18.10.2026 um 16:30:55 Zurich erfolgreich geprüft; keine App-Veröffentlichung. Details unten. |
 | P0 Owner-Entscheidungen | Owner; [Entscheidungsprotokoll](WATTEN_OWNER_DECISIONS.md) | Bestätigt: 2er offen mit normaler oder ladinischer Bestimmung, 3er rotierendes Solo mit beiden Ansagen, 4er blind/ladinisch; Guter/Kritische standardmässig aus. Weli-Kritisch-Ausnahme, Gebotsstillstand und gestrichene Antwortrechte geklärt. Konkrete Deck-/Rollen-/Dreierwertungs-/Weli-Ansagefälle nachgefragt. Abhängige Regeln werden nicht geraten. |
 | P1/P7 Integrationsinventar | Codex Lead; [P1-Verträge](WATTEN_P1_CONTRACTS.md) | Quellen geprüft. Host, Konto, Passkeys, PWA, Push und Runtime besitzen unterschiedliche Register; kein einzelnes Register schaltet Watten vollständig frei. |
-| P1 native Kontoreise, separates Folgepaket | Codex-Mitarbeiter `p1_contracts`, eigener Worktree `watten-readiness`; dedizierter Router und schmale gemeinsame Kontoerweiterungen | Begonnen. Lokale Entwicklungsvorschau benötigt ausdrückliches Flag und Loopback-/localhost-Ursprung sowie Requesthost; echte Produktionsorigins bleiben geschlossen. Keine PWA-/Push-/Spielruntime durch diesen Kontoteil. |
+| P1 native Kontoreise | Codex-Mitarbeiter `p1_contracts`, eigener Worktree `watten-readiness`; dedizierter Router und schmale gemeinsame Kontoerweiterungen | Commit `806eb0b` als `9bda650` übernommen; Lead-Quell-/Bildprüfung und unabhängiger Review. Lokale Vorschau benötigt ausdrückliches Flag plus Loopback-/localhost-Ursprung und Requesthost. Produktionsorigins bleiben geschlossen. Registrierung, Anmeldung, Passkeys, Profil/Sprache/E-Mail/Passwort und Recovery nutzen dasselbe Konto; keine PWA-/Push-/Spielruntime. |
 | Private Sicht und CPU-Wissen | Claude Desktop, neue Sitzung `local_a873664f-eae5-45e3-9a6b-e0a10761ab9e`; nur Leseprüfung | Abgeschlossen, keine Änderungen/Tests/Pushs. Codex hat negative Prüfideen in die P1-Verträge übernommen und Aussagen zu blinder Trumpfpflicht, späteren öffentlichen Zuständen und laufendem CPU-Ersatz ausdrücklich eingegrenzt. |
 
 ## Verifizierter Infrastrukturstand zum Start
@@ -115,6 +115,24 @@ Develop-Abgleich, `push:checked`; keine zweite Vollsuite neben fremdem Vollpool.
   unabhängiges Quellreview ohne bestätigten handlungsrelevanten Befund.
   Eine zunächst vermutete HTTP-Default-Änderung wurde am tatsächlichen
   expliziten IPv4-/IPv6-Default ausgeschlossen und als Preflight abgesichert.
+- Native Kontoreise: **106 gezielte Backendtests und sechs Chromium-
+  Browserfälle** DE/EN bestanden. Echte virtuelle Passkeysignaturen und
+  Browserzeremonien, E-Mail/Recovery mit gemocktem Versand, Logout-401,
+  Kontowechsel und BFCache geprüft. Alter Kontowechselfehler wurde am
+  gespeicherten Sprachwert von B reproduziert und gezielt korrigiert;
+  kein Retry als Ersatz. Pending Mutationen bleiben an Ausgangskonto/CSRF
+  und Seitengeneration gebunden. Private DOM-Inhalte werden vor BFCache
+  entfernt; Wiederherstellung lädt eine neue Identitätsprüfung.
+- Integrierter Lead-Gegenlauf mit Watten-Konto/Host/Passkeys/Infrastruktur,
+  Navigation und Version: **45 Tests, 386 Subtests bestanden**. Lint grün;
+  unabhängige Nachprüfung der BFCache-/Mutationskorrekturen ohne Restbefund.
+- Lead hat die 320×844-DE- und 568×320-EN-Screenshots visuell geprüft;
+  schmale Überschrift/Sprachwahl passen, normales vertikales Scrollen bleibt
+  möglich. Keine physische Geräte-/PWA-Abnahme daraus ableiten.
+- Generated-Konflikte beim Kontomerge: 49 Asset-/Fingerprintkonflikte,
+  HTML/Manifeste nach Normalisierung der Hashwerte identisch. Quellen
+  konfliktfrei zusammengeführt, alle Bundles/Fingerprints gemeinsam neu gebaut;
+  Spielwechslerkorrektur bleibt in der Quelle enthalten.
 - Noch kein neuer vollständiger Pushnachweis, Push, PR, Develop-Merge,
   App-Deploy oder physischer Gerätenachweis.
 
@@ -126,12 +144,21 @@ Die angefragten Heartbeats werden vom Planungs-Chat eingerichtet, hier keine
 Duplikate anlegen. Vor neuen Paketen Quoten und aktive Aufgabe erneut prüfen;
 bei Limit sofort selbst weiterarbeiten. Kein Kauf zusätzlicher Nutzung.
 
+Owner-Nachtrag während der Umsetzung: Claude nun **98 % Sitzung**, höchstens
+eine Mini-Aufgabe bis zum Reset. Codex gibt bis 17:20 keine weitere Aufgabe;
+der kleine Leseauftrag ist abgeschlossen. Beim Wakeup Sitzung **und**
+Wochenlimit live prüfen, bevor ein neues abgegrenztes Paket startet.
+
 ## Nächster unabhängiger Schritt
 
-Fertige Pakete quellenprüfen, in diesem Branch normal übernehmen, Assets
-gemeinsam neu synchronisieren und lokale Prüfungen ausführen. Danach native
-Watten-Konto-/Recovery-/Passkey-/PWA-Routen als zusammenhängende P1-Lieferung
-implementieren. Regelabhängige Teile warten auf tatsächliche P0-Antworten.
+Das integrierte P1-/Race-/Infrastrukturpaket wird auf sauberem Commit mit dem
+vollständigen lokalen Ablauf geprüft und per überprüfbarem PR gegen Develop
+übergeben. Der exakte Vollnachweis entsteht in den ignorierten lokalen
+Prüfberichten und dem veröffentlichten Owner-Status; dieser vorbereitende
+Logeintrag behauptet ihn nicht vorab. Parallel können reine Karten-/Regel-
+Grundlagen in einem weiteren eigenen Worktree beginnen. Offene Profilteile
+bleiben ausdrücklich gesperrt; PWA/Push/Suite-Runtime und P2–P8 sind weiterhin
+umzusetzen, keine Watten-Gesamtabnahme.
 
 **English:** Implementation has started in an isolated develop-based worktree
 with the complete local handoff merged. All 81 findings remain in scope.

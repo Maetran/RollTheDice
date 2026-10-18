@@ -15,13 +15,14 @@ Quellenregeln entscheiden keine hier noch offenen Fälle.
 | Guter | Standard aus. Die genaue angebotene Guter-Zusatzregel bleibt vor Aktivierung vollständig zu schliessen. |
 | Kritische | Standard aus. Bei Aktivierung nennt der Owner absteigend Herz-König, Weli, Eichel-Sieben. Kritische stehen immer über Rechtem. |
 | Weli | Kritisch EIN: Herz-König > Weli > Eichel-Sieben > Rechter. Kritisch AUS: Weli ist kleinster Trumpf. Die zunächst allgemein formulierte Aussage wurde damit ausdrücklich präzisiert. |
-| Weli und Ansage | Weli als ladinische Schlagkarte bestimmt **Weli als einzigen Schlag** dieser Gabe. Weli als Farbkarte bestimmt **Schellen**. Ansonsten gehört Weli immer zur tatsächlich angesagten Trumpffarbe; seine aufgedruckte Farbe begrenzt ihn nicht auf Schellen. Rechter-Schutz und freie Weli-Schlagansage werden noch konkret geschlossen. |
+| Weli und Ansage | Weli als Schlag bestimmt **Weli als einzigen Schlag** dieser Gabe, frei angesagt ebenso wie ladinisch. Ohne Kritische ist er dann Rechter, höher als alle gewöhnlichen Trümpfe und von der Zugabepflicht ausgenommen. Weli als Farbkarte bestimmt **Schellen**. Ansonsten gehört Weli immer zur tatsächlich angesagten Trumpffarbe; seine aufgedruckte Farbe begrenzt ihn nicht auf Schellen. |
 | Bieten | Ab erster Karte immer möglich. Erstes Gebot Drei, jedes Gegengebot genau um eins höher. Ein Gebot hält das Spiel an; bis Halten, Gehen oder Aufbieten keine weitere Spielaktion. |
 | Halten / Gehen | A bietet Drei, B geht: A erhält zwei Punkte. B hält: Sieger erhält drei Punkte. B darf direkt Vier gegenbieten. Weitere Stufen folgen dem bestätigten Einer-Schritt; deren vorheriger Einsatz bleibt ausdrücklich im Zustand erhalten. |
 | Gestrichen | Kein eigenes Eröffnungsgebot. Auf ein gegnerisches Gebot sind Halten, Gehen **und Aufbieten** ausdrücklich auch gestrichen erlaubt. Dieser Nachtrag präzisiert das frühere pauschale Bietverbot. |
-| Eigene Gebotsberechtigung | Owner-Nachtrag: «ansagen darf aber jeder spieler immer wenn er dran ist (2er, 3er, 4er)». Die Abgrenzung des eigenen Eröffnungsgebots vom sofortigen zuständigen Antwortrecht ist konkret nachgefragt; Schlag/Farb-Ansagerrollen werden dadurch nicht still neu verteilt. |
+| Eigene Gebotsberechtigung | Einsatzbieten: Jeder Spieler darf ein eigenes Drei nur eröffnen, wenn er gerade eine Karte spielen dürfte, und erst nachdem die erste Karte der Gabe liegt. Zuständiger Entscheider darf Halten/Gehen/Aufbieten als Antwort sofort ausserhalb seines Kartenzugs. Schlag-/Farbansagerrollen werden nicht neu verteilt. |
 | Dreierpunkte | Verliert das Solo eine Gabe ohne Gebot, bekommen beide Gegenpartner je zwei Punkte. Erreichen dadurch beide elf, gewinnen beide. Gebotserhöhungen müssen dieselbe individuelle Zurechnung bewahren. |
-| Dreier-Entscheider | Geber A, Solist B, Gegenpartner C: B bietet, A entscheidet für A+C über Halten/Gehen/Aufbieten. Kein Rennen, bei dem C eine andere Antwort durchsetzt. Das genaue Vierer-Pendant wird konkret gefragt. |
+| Dreier-Entscheider | Geber A, Solist B, Gegenpartner C: B bietet, A entscheidet für A+C über Halten/Gehen/Aufbieten. Kein Rennen, bei dem C eine andere Antwort durchsetzt. |
+| Vierer-Entscheider | Teams A+C/B+D, Geber A und Einschauer B: B oder D bietet → A entscheidet für A+C; A oder C bietet → B entscheidet für B+D. C/D beraten ihren jeweiligen Entscheider über den privaten Rückmeldungskanal. |
 | Private Partner-Rückmeldung | Mitspieler kann «fühl mich gut / schlecht / keine Ahnung» privat an seinen jeweiligen Partner melden, ausdrücklich auch im Vierer. Keine konkrete Karte oder geheime Ansage in dieser Nachricht. Nachrichten werden als erlaubter privater Informationsverlauf behandelt; Gegner/Zuschauer bekommen sie nicht. |
 | Trumpfzugabe | Gewöhnlicher Trumpf eröffnet, Einschauer hält Trumpf und Schlag: Schlag darf statt Trumpf gelegt werden. «Stechen ist immer möglich», aber kein Stichzwang. Rechter und Kritische müssen nicht geopfert werden. «Geschützt» war nur unser Sammelbegriff für diese Ausnahmen, keine weitere Kartenklasse. |
 | Erneutes Einschauen | Nicht erlaubt. |
@@ -38,12 +39,13 @@ Fortschrittsumfeld mit langfristigen Wirtshaustiteln.
 
 ## Noch konkret zu schliessen
 
-Deck, Handzahl, Rollen und Dreierpunkte haben nun eine bestätigte
-Umsetzungsbasis. Konkret gefragt bleiben Vierer-Antwortrechte, eigenes Gebot
-im Kartenzug gegenüber sofortiger Gebotsantwort, Weli als Rechter und freie
-Weli-Schlagansage. Weitere offene P0-Zeilen sind vollständige Trumpfauslöser
-und Pflichtrollen im offenen Spiel, Kritischen-/Guter-Kollisionen sowie
-Ende-/Letzte-Karte-Reihenfolge. Weitere Fragen verwenden konkrete
+Deck, Handzahl, Rollen und Dreierpunkte haben eine bestätigte Umsetzungsbasis.
+Vierer-Antwortrechte, eigene Gebote im Kartenzug gegenüber sofortiger
+Gebotsantwort und Weli-Schlag/Rechter sind ebenfalls ausdrücklich bestätigt.
+Konkret gefragt sind jetzt Trumpfpflichtrollen im offenen Dreier/Vierer,
+Rechter-/Kritisch-Auslöser und kritischer Überstich, Ablehnung eines direkten
+Gegengebots und sofortiges Ende am dritten Stich. Weitere offene P0-Zeilen
+betreffen insbesondere Kritischen-/Guter-Kollisionen. Weitere Fragen verwenden konkrete
 Beispielsituationen und stellen bestätigte Entscheidungen nicht neu.
 
 **English:** Confirmed: two-player is open with normal announcements and an

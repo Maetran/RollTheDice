@@ -14,7 +14,7 @@ robots disallows all crawling. No request is forwarded to the application.
 Public release, application deployment and Search Console submission remain
 separate gates.
 
-## Tatsächlich geprüft am 18.10.2026 / Verified audit
+## Vorprüfung am 18.10.2026 / Audit before activation
 
 - Öffentlicher lokaler DNS-Resolver: Watten A/AAAA leer, A-Abfrage NXDOMAIN;
   reguläres HTTPS kann den Namen nicht auflösen. Direkte UDP-Abfragen beider
@@ -51,6 +51,29 @@ separate gates.
 These are read-only observations, not a completed Watten activation. The
 existing Cloudflare app session and `ssh zdwa` provide the necessary access;
 no new credential was requested or created. Secret values were not printed.
+
+## Erfolgreiche Aktivierung / Completed closed activation
+
+Am **18.10.2026 um 16:30:55 Europe/Zurich** wurde ausschliesslich die
+geschlossene Reservierung erfolgreich aktiviert. Der exakt neue proxied
+A-Eintrag ist gespeichert und zurückgelesen; Watten hat eine eigene
+Let's-Encrypt-Linie bis **16.01.2027** mit erfolgreicher Erneuerungsprobe.
+Origin und öffentliche HTTPS-Strecke liefern die vorgesehenen geschlossenen
+Antworten; alle fünf bestehenden Hosts sind weiterhin gesund. Produktion
+bleibt sauber auf `master=80bc42d`, der App-Container wurde nicht neu gestartet.
+
+Operatorverzeichnis ausserhalb des produktiven Checkouts:
+`/home/manuel/watten-reservation-20261018T142543Z`. Script/Config wurden mit
+identischer SHA-256 übertragen. Vorher war kein Watten-Target vorhanden;
+der Rückweg betrifft nur den neuen DNS-Eintrag und die eigenen Watten-Dateien.
+Ausführliche Zeiten, Hashes, Pfade und Belege stehen im
+[Ausführungslog](WATTEN_EXECUTION_LOG.md#abgeschlossene-geschlossene-domain-aktivierung).
+Keine App-Veröffentlichung und keine Search-Console-Einreichung.
+
+Closed activation completed successfully at 16:30:55 Zurich time on 2026-10-18.
+The separate certificate and renewal check passed. Existing hosts and the
+running application remain unchanged. This is a domain reservation, not a
+public Watten game release or sitemap submission.
 
 ## Geprüftes Aktivierungspaket / Activation package
 

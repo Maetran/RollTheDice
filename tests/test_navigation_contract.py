@@ -75,6 +75,7 @@ DOCUMENT_ROUTES = (
     RouteCoverage(
         ("/registrierung/bestaetigen", "/passwort-vergessen", "/passwort-zuruecksetzen", "/email-bestaetigen"),
         "tests/browser/email-navigation.spec.js",
+        browser_tests=("tests/browser-passkeys/watten-account.spec.js",),
     ),
     RouteCoverage(
         ("/zdwa", "/zdwa/{path:path}"), "tests/test_zilch_product_routes.py",
@@ -148,6 +149,11 @@ DOCUMENT_ROUTES = (
         ("/hausdepp/rangliste",), "tests/test_hausdepp_progress_api.py",
         "test_private_leaderboard_page_and_api_keep_founder_and_search_boundaries",
         ("tests/browser/hausdepp-leaderboard.spec.js",),
+    ),
+    RouteCoverage(
+        ("/watten", "/watten/anmelden", "/watten/konto", "/watten/konto/einstellungen"),
+        "tests/test_watten_accounts.py", "test_native_routes_protect_settings_and_keep_static_templates_private",
+        ("tests/browser-passkeys/watten-account.spec.js",),
     ),
     RouteCoverage(
         ("/anmelden",), "tests/test_zilch_product_routes.py",
@@ -240,7 +246,8 @@ class NavigationInventoryTests(TestCase):
                     self.assertTrue(group.test_file.startswith("tests/browser/"))
                     self.assertIn("test(", source, "Browser coverage must contain executable tests")
                 for browser_test in group.browser_tests:
-                    self.assertTrue(browser_test.startswith(("tests/browser/", "tests/browser-hausdepp-passkeys/")))
+                    self.assertTrue(browser_test.startswith(("tests/browser/", "tests/browser-passkeys/",
+                                                            "tests/browser-hausdepp-passkeys/")))
                     self.assertIn("test(", (ROOT / browser_test).read_text(encoding="utf-8"))
 
 

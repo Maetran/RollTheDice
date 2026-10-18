@@ -21,8 +21,10 @@
       "packages": [
         "P1"
       ],
-      "status": "open",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Native local account journeys in 9bda650: shared identity/settings, signup/sign-in, six DE/EN browser cases. Public product journey remains open."
+      ]
     },
     {
       "id": "S03",
@@ -31,8 +33,10 @@
         "P0",
         "P1"
       ],
-      "status": "open",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Fixed Watten origin allowed only beneath matching configured RP; real software signatures and local browser ceremonies verified. Public deployment/PWA remains open."
+      ]
     },
     {
       "id": "S04",
@@ -40,8 +44,10 @@
       "packages": [
         "P1"
       ],
-      "status": "open",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Finite local Watten recovery context and fragment tokens, no production mail links before activation; source 9bda650 and isolated mailed-token tests. Public product origin flow remains open."
+      ]
     },
     {
       "id": "S05",
@@ -49,8 +55,10 @@
       "packages": [
         "P1"
       ],
-      "status": "open",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Native logout uses one auth-state navigation; deterministic late-401 browser flow passed. Public Watten journey remains open."
+      ]
     },
     {
       "id": "S06",
@@ -59,8 +67,10 @@
         "P1",
         "P4"
       ],
-      "status": "open",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Local account-switch mutation and BFCache regressions reproduced/guarded in 9bda650. Future table hand/team/knowledge invalidation remains open."
+      ]
     },
     {
       "id": "S07",

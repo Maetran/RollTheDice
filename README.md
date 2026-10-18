@@ -88,6 +88,14 @@ Die [P1-Verträge](docs/WATTEN_P1_CONTRACTS.md) halten Konto, Routen, Passkeys,
 PWA und Suite-Dienste gemeinsam fest. Eine spielbare Wattenpartie ist noch
 nicht veröffentlicht.
 
+Für isolierte lokale Entwicklung gibt es bereits die native Kontoreise unter
+`/watten`: gemeinsame Registrierung/Anmeldung, Passkeys, Einstellungen und
+Recovery. Sie benötigt `ROLLTHEDICE_WATTEN_ACCOUNT_PREVIEW=1` sowie einen
+konfigurierten **und** angefragten Loopback-/localhost-Ursprung. Auf echten
+Produktionshosts bleibt sie auch mit diesem Flag geschlossen. Die vorhandene
+isolierte Passkey-Browsersuite prüft den Ablauf mit Wegwerfkonten; sie nutzt
+keine echten Konten und installiert keine Watten-PWA.
+
 **English:** Watten is the next planned game: usually four-player Ladinisch
 to 11 points, with private bottom-card inspection by the dealer and the next
 clockwise player. It will reuse the same card designs as Hausdepp. The
@@ -131,6 +139,13 @@ tracks the work packages and all 81 findings. The fixed host
 another game, its PWA or personal data. The [P1 contracts](docs/WATTEN_P1_CONTRACTS.md)
 cover accounts, routes, passkeys, PWA and suite services together. Playable
 Watten has not been publicly released.
+
+Isolated local development already has native shared-account journeys at
+`/watten`: signup/sign-in, passkeys, settings and recovery. They require
+`ROLLTHEDICE_WATTEN_ACCOUNT_PREVIEW=1` and both a configured and requested
+loopback/localhost origin. Real production hosts stay closed even with the
+flag. The existing isolated passkey browser suite tests disposable accounts;
+it does not use real accounts or install a Watten PWA.
 
 ## Hausdepp — öffentlicher V3-Start / public V3 launch
 
