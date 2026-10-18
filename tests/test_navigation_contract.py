@@ -153,7 +153,8 @@ DOCUMENT_ROUTES = (
     RouteCoverage(
         ("/watten", "/watten/anmelden", "/watten/konto", "/watten/konto/einstellungen"),
         "tests/test_watten_accounts.py", "test_native_routes_protect_settings_and_keep_static_templates_private",
-        ("tests/browser-passkeys/watten-account.spec.js", "tests/browser/watten-lobby-chat.spec.js"),
+        ("tests/browser-passkeys/watten-account.spec.js", "tests/browser/watten-lobby-chat.spec.js",
+         "tests/browser/watten-founder-picker.spec.js"),
     ),
     RouteCoverage(
         ("/watten/konto/fortschritt", "/watten/konto/verlauf", "/watten/rangliste"),

@@ -15,6 +15,7 @@ import { createSocial } from "./social.js";
 import { mountWattenLobbyChat } from "./lobby-chat.js";
 import { createDecor } from "./decor.js";
 import { createFriendActivity } from "./friend-activity.js";
+import { initializeAppMode } from "../multigame/app-mode.js";
 
 // Metadata only: these preview documents neither register a worker nor
 // advertise installation; the account pages own that local experiment.
@@ -328,6 +329,7 @@ async function mountLobby() {
   }
   account = { id: auth.user.id, username: auth.user.username };
   latestUserId = account.id;
+  initializeAppMode({ mode: "watten" });
   app.innerHTML = `${lobbyIntro({ signedIn: true })}<div class="wt-friend-activity-host" data-watten-friend-activity aria-live="polite" hidden></div>
     <div class="wt-lobby-grid">${creatorMarkup(account.username)}${tablesMarkup()}</div><div data-watten-lobby-chat></div>`;
   mountCreator(gen);
@@ -989,6 +991,7 @@ async function mountTable() {
   }
   account = { id: auth.user.id, username: auth.user.username };
   latestUserId = account.id;
+  initializeAppMode({ mode: "watten" });
   matchProgress?.destroy();
   matchProgress = createMatchProgress({ gameId, apiFetch, loadAuth, escapeHtml: esc,
     getExpectedAccountId: () => account?.id,

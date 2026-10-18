@@ -275,7 +275,10 @@ test("the public Hausdepp switch respects Zilch permissions across ZDWA pages an
   await page.locator("[data-game-switch]").click();
   await expect(page.locator('#suiteGameMenu [data-game-entry="zilch"]')).toBeVisible();
   await expect(page.locator('#suiteGameMenu [data-game-entry="hausdepp"]')).toBeVisible();
-  await expect(page.locator("#suiteGameMenu [data-game-entry]")).toHaveCount(3);
+  // This isolated deployment explicitly enables local Watten development for
+  // signed-in accounts; production founder authorization is tested separately.
+  await expect(page.locator('#suiteGameMenu [data-game-entry="watten"]')).toHaveAttribute("href", "/watten");
+  await expect(page.locator("#suiteGameMenu [data-game-entry]")).toHaveCount(4);
   await page.keyboard.press("Escape");
 
   await page.setViewportSize({ width: 1024, height: 800 });

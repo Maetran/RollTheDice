@@ -45,8 +45,9 @@ async function ownerFixture(page, language = "de", publicZilch = true) {
       ...auth,
       // This labelled projection combines the real founder identity with
       // the independently supported public Zilch rollout for a three-game UI.
-      game_access: { ...auth.game_access, zilch_public: state.publicZilch },
+      game_access: { ...auth.game_access, zilch_public: state.publicZilch, watten_preview: false },
       user: { ...auth.user, must_change_password: false,
+        game_access: { ...auth.user.game_access, watten_preview: false },
         preferences: { ...auth.user.preferences, preferred_language: language } },
     } });
   });
