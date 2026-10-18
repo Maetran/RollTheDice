@@ -90,8 +90,10 @@
       "packages": [
         "P2"
       ],
-      "status": "open",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "app/watten_room.py create_room/take_seat/start separates admission, concrete CPU seats and explicit host start; 1299d9d/f0c17a5. Runtime concurrent admission/start, persistence and browser flow remain open."
+      ]
     },
     {
       "id": "S09",
@@ -100,8 +102,10 @@
         "P0",
         "P2"
       ],
-      "status": "open",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "app/watten_room.py seat_team/StartRoster enforces manual opposite four-player seats and rotating three-player solo, independent of join order. Real lobby team choice and runtime races remain open."
+      ]
     },
     {
       "id": "S10",
@@ -109,8 +113,10 @@
       "packages": [
         "P2"
       ],
-      "status": "open",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "app/watten_room.py take_seat/place_cpu checks named seats, host rights and valid reservations before CPU replacement. Atomic multi-account transport/storage races remain open."
+      ]
     },
     {
       "id": "S11",
@@ -119,8 +125,10 @@
         "P0",
         "P2"
       ],
-      "status": "open",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "app/watten_recipe.py has a strict versioned secret-free allowlist and no account/participant IDs. Actual account favorites, authorization and durable writes remain open."
+      ]
     },
     {
       "id": "S12",
@@ -137,8 +145,10 @@
       "packages": [
         "P2"
       ],
-      "status": "open",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "app/watten_room.py leave distinguishes deliberate waiting-room leave, eligible host succession and closed rooms; started seats cannot change. Real disconnect/rejoin/abort routing and races remain open."
+      ]
     },
     {
       "id": "S14",
@@ -146,8 +156,10 @@
       "packages": [
         "P2"
       ],
-      "status": "open",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "app/watten_room.py persists an explicit wait deadline; only first actual human seating renews it. Durable server scheduling, restart expiry and browser countdown acceptance remain open."
+      ]
     },
     {
       "id": "S15",
@@ -156,8 +168,10 @@
         "P2",
         "P3"
       ],
-      "status": "open",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "app/watten_room.py admit returns the account-bound participant before capacity checks; engine actors bind positive-int accounts to seats. Durable locked rejoin, old-socket revocation and multiple-device/browser acceptance remain open."
+      ]
     },
     {
       "id": "S16",
@@ -166,8 +180,10 @@
         "P3",
         "P4"
       ],
-      "status": "open",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "app/watten_views.py spectator_view is an explicit public allowlist with no hidden hands, call, stock, account IDs or ACK cache. Real spectator authorization/fanout and browser noninterference remain open."
+      ]
     },
     {
       "id": "S17",
@@ -175,8 +191,10 @@
       "packages": [
         "P2"
       ],
-      "status": "open",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "app/watten_room.py create_rematch creates a fresh waiting room and no automatic human seats; reservations need deliberate acceptance. Actual invitations, atomic duplicate handling and browser acceptance remain open."
+      ]
     },
     {
       "id": "S18",
@@ -185,8 +203,10 @@
         "P2",
         "P6"
       ],
-      "status": "open",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "app/watten_recipe.py and app/watten_room.py provide strict versioned JSON, complete rematch settings and a marked source link without altering results. Durable unique creation/restart/transaction failures and browser flows remain open."
+      ]
     },
     {
       "id": "S19",
@@ -194,8 +214,10 @@
       "packages": [
         "P2"
       ],
-      "status": "open",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "app/watten_room.py separates reserved capacity, seat acceptance, decline and expiry using explicit server time. Atomic retry/ACK-loss, host-change transport and browser cases remain open."
+      ]
     },
     {
       "id": "S20",
@@ -279,8 +301,10 @@
         "P0",
         "P2"
       ],
-      "status": "open",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "app/watten_recipe.py and app/watten_room.py define a full secret-free recipe, explicit CPU seats and fresh-room rematch. Integration with favorites, invitation/storage lifecycle and browser acceptance remains open."
+      ]
     },
     {
       "id": "S28",
@@ -309,8 +333,10 @@
         "P0",
         "P3"
       ],
-      "status": "open",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Pure app/watten_cards.py, watten_rules.py, watten_bidding.py, watten_play.py and watten_engine.py encode the selected owner profiles; watten_recipe.py versions settings. Runtime adapter, persisted ruleset mapping and end-to-end acceptance remain open."
+      ]
     },
     {
       "id": "B02",
@@ -320,8 +346,10 @@
         "P3",
         "P4"
       ],
-      "status": "open",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "app/watten_engine.py separates actual announcement/show/inspection/play/bid commands and rejects wrong actors/phases; focused fixtures cover owner boundary hands. Actual runtime commands and browser input acceptance remain open."
+      ]
     },
     {
       "id": "B03",
@@ -330,8 +358,10 @@
         "P0",
         "P3"
       ],
-      "status": "open",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Room revision and engine phase/opportunity guards reject stale conflicting pure transitions. Durable lock/CAS, concurrent fanout and browser race acceptance remain open."
+      ]
     },
     {
       "id": "B04",
@@ -350,8 +380,10 @@
       "packages": [
         "P3"
       ],
-      "status": "open",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "app/watten_engine.py require_actor checks account/seat binding on each command, rejecting Boolean account aliases. Re-deriving authority after acquiring the real transaction lock and old-socket tests remain open."
+      ]
     },
     {
       "id": "B06",
@@ -361,8 +393,10 @@
         "P3",
         "P6"
       ],
-      "status": "open",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "app/watten_engine.py keeps at most64 ACKs per bound actor, replays only safe ACK metadata and uses private feedback sequences after eviction; aca3bc3/272cfdb. Durable atomic ACK/state storage, lost-delivery transport and browser recovery remain open."
+      ]
     },
     {
       "id": "B07",
@@ -371,8 +405,10 @@
         "P3",
         "P4"
       ],
-      "status": "open",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "app/watten_views.py has independent member/CPU/spectator allowlists and focused hidden-call noninterference tests; private feedback does not change public opportunity or another actor ACK retention. Actual authorized fanout, storage and browser proofs remain open."
+      ]
     },
     {
       "id": "B08",
@@ -381,8 +417,10 @@
         "P3",
         "P5"
       ],
-      "status": "open",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "app/watten_views.py cpu_view uses exactly its bound seat personal allowlist, with no hidden legal-card hints or inferred official knowledge. Actual CPU scheduler/policy memory, tips and production-path acceptance remain open."
+      ]
     },
     {
       "id": "B09",
@@ -427,8 +465,10 @@
       "packages": [
         "P3"
       ],
-      "status": "open",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Immutable pure deals/replayed plays conserve cards, rotate roles, score once and restore strict private schemas; focused cards/play/phase fixtures pass. Whole-match durable runtime restart, corrupted storage and browser acceptance remain open."
+      ]
     },
     {
       "id": "B14",
@@ -436,8 +476,10 @@
       "packages": [
         "P6"
       ],
-      "status": "open",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "app/watten_engine.py _finish accounts the pure terminal result before producing the transition; bid/score state rejects repeated accounting. Atomic CompletedGame/ActiveGame commit, retryable failure and completion broadcast acceptance remain open."
+      ]
     },
     {
       "id": "B15",
@@ -446,8 +488,10 @@
         "P0",
         "P6"
       ],
-      "status": "open",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Pure engine separates deal IDs, accumulated match ledger and match completion; room/rematch uses distinct source/target room IDs. Durable game/round/result identity mapping, progression and browser acceptance remain open."
+      ]
     },
     {
       "id": "B16",
@@ -569,8 +613,10 @@
         "P3",
         "P4"
       ],
-      "status": "open",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "app/watten_engine.py requires exact deal/phase/opportunity and safe duplicate ACKs; stale actions do not consume a new turn. Actual rapid-tap browser and locked runtime acceptance remain open."
+      ]
     },
     {
       "id": "U09",
@@ -605,8 +651,10 @@
       "packages": [
         "P4"
       ],
-      "status": "open",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "app/watten_views.py public seats expose counts while personal views alone expose the own allowed hand; spectator DTO has no opponent card identities. Renderer anonymous backs and real runtime/browser acceptance remain open."
+      ]
     },
     {
       "id": "U13",
@@ -616,8 +664,10 @@
         "P3",
         "P4"
       ],
-      "status": "open",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "app/watten_views.py suppresses persistent call/reference by default and applies official-knower reference/inspection rules; negative hidden-call/CPU/spectator fixtures cover permitted Danke only. Runtime fanout, sorting/ARIA/rendering and browser privacy acceptance remain open."
+      ]
     },
     {
       "id": "U14",
@@ -674,8 +724,10 @@
         "P3",
         "P4"
       ],
-      "status": "open",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "app/watten_engine.py permits only private good/bad/unsure partner feedback, including pending bids, without public revision/ACK-eviction leakage. Actual chat/reaction/CPU communication permissions, durable private delivery and DE/EN browser acceptance remain open."
+      ]
     },
     {
       "id": "U20",
@@ -684,8 +736,10 @@
         "P2",
         "P4"
       ],
-      "status": "open",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "app/watten_room.py rematch retains settings but requires new human admission and deliberate manual seats/teams. Durable invitations, replay races and real rematch UI/browser acceptance remain open."
+      ]
     },
     {
       "id": "U21",
@@ -792,8 +846,10 @@
       "packages": [
         "P8"
       ],
-      "status": "open",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "README, WATTEN_ENGINE.md and the dated execution log distinguish integrated pure foundations, P1 full proof and still-open runtime/storage/browser acceptance. Ongoing delivery documentation and exact next-commit full proof remain required."
+      ]
     },
     {
       "id": "O11",

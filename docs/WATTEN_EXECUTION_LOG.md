@@ -235,3 +235,63 @@ technischen Inventarzuordnung der drei neuen PWA-Ressourcen. Die drei Einträge
 verweisen jetzt auf bestehende HTTP- und echte Worker-Browserprüfungen;
 Dokument-/Zugangsprüfung wird nicht umgangen. Originalbeleg bleibt unter
 `test-results/local-checks/b6046e24f168-1792337859380-126315df/` erhalten.
+
+
+## 18.10.2026 – P1 vollständig geprüft und nach develop integriert
+
+Der fertige P1-Stand `6c0924b859133ec1894b67cc52ef0f0c76425e48` bestand den
+vollständigen lokalen Pushprüfer auf Basis
+`766bcb3f0aa21593673b0f47112caa15e17856b3`: Qualität/Sicherheit, Tools,
+**1431 Backendtests**, Produktionsimage/Container-Smoke und alle sieben
+Browsergruppen (vier Hauptshards, Username, Passkeys, Hausdepp-Passkeys) grün.
+Beleg: `test-results/local-checks/6c0924b85913-1792338340226-df354d3b/`;
+Browserlauf 15:48:18–15:58:14 UTC / 17:48:18–17:58:14 Europe/Zurich.
+Der geprüfte Stand wurde gepusht, [PR #52](https://github.com/Maetran/RollTheDice/pull/52)
+normal als `da66185aa77a784cabc09a97d9e471eea6603aba` nach `develop` gemergt.
+Erster Merge-Elternteil ist exakt die geprüfte Basis `766bcb3`, der Merge-Tree
+ist identisch zum geprüften `6c0924b`; der schlanke Integrations-CI-Nachweis ist
+grün. Das ist eine Develop-Integration, **kein App-Deploy**. Der geschlossene
+Watten-Vhost und die gesonderte öffentliche Releasefreigabe bleiben erhalten.
+
+## 18.10.2026 – integrierte reine P2/P3-Grundlage
+
+Aktueller Quellstand ist `272cfdb48d1256374acf054b1862d6075f22937c` auf
+`codex/watten-engine-core`. Die [Quellenübersicht](WATTEN_ENGINE.md) beschreibt
+Karten/Vergleich, Bieten/Punkte, Karten-/Stichübergänge, Phasen, Raum/Rezept und
+getrennte private Speicher-/Spielersichten. Noch keine Spieladapter-, Spiel-API-,
+Datenbank-, Socket- oder Spieloberflächenanbindung; keine vollständige P2/P3-Abnahme.
+
+- Karten/Regeln: Autorstand `b432b8b`, initial 28 gezielte serielle Tests;
+  nach tatsächlicher Show-Bindung `dfe2071` zusammen mit Bieten 77 Tests
+  (29 Karten/Regeln + 48 Bieten). Integriert als `99bea55` und `5b59d02`.
+- Bieten/Punkte: Autorstand `9545edf`, 48 gezielte serielle Tests;
+  unabhängige Quellenprüfung, integriert als `c3275fa`.
+- Karten-/Stichübergänge: Claude `06aab43`, unabhängig vom Lead mit
+  **85** Tests in `tests/test_watten_play.py` seriell geprüft; gezieltes Ruff
+  und unabhängige Quellenprüfung. Integriert als `664cf71`.
+- Raum/Rezept: Claude `bce2853`, Review fand fehlende Mitglieder-Kapazitätsgrenze
+  beim Wiederherstellen; Korrektur `9bb783c`, integriert als `1299d9d`/`f0c17a5`.
+  Leadnachweis: **157 gezielte serielle P2/P3-Integrationstests**; dies ist kein
+  ausschliesslicher Raumtest-Zähler und kein neuer Vollnachweis.
+- Phasen/private Sichten: `aca3bc3`, 53 gezielte serielle Tests laut Autor,
+  dazu gezieltes Ruff/Bandit/Vulture und unabhängige Quellenprüfung;
+  integriert als `272cfdb`. Reviewkorrekturen: offene ladinische Ansage einmalig
+  zustellen; ACK-Aufbewahrung pro Akteur isolieren, damit private Rückmeldungen
+  keine fremden ACKs verdrängen. Konten sind positive Integer, keine Bool-Aliase.
+
+Diese kleinen Nachweise ersetzen **nicht** den nächsten vollständigen lokalen
+Prüflauf für den fertigen, committeten Engine-PR inklusive Metadaten. Dieser
+Vollnachweis steht noch aus. Alle 81 Befunde bleiben verpflichtend; nur konkrete
+reine Grundlagen werden als Teilfortschritt erfasst. S25 bleibt unverändert:
+der bestehende Picker-Race ist behoben, Watten-spezifische Oberflächenabnahme offen.
+
+Offene Runtime-Abnahme: Transaktion/Sperre, Berechtigung nach Sperrwartezeit,
+Socketentmachtung, dauerhafte atomare Punkte-/Zustandsbuchung und richtiger
+privater Fanout. Einmalige offene Ansagen brauchen eine atomare dauerhafte
+Zustellung bis zum ersten Empfang jedes berechtigten Empfängers. Ein Absturz
+zwischen Commit und Broadcast darf C/D nicht ohne jemals erhaltene Ansage lassen;
+das erlaubt weder erneutes Einschauen noch eine dauerhafte Referenz bei Option AUS.
+
+Die nächste Claude-Aufgabe ist durch den gesperrten Mac blockiert; der Owner
+wurde um Entsperren gebeten. Keine Umgehung der Sperre. Die Backend-Runtime-Arbeit
+erfolgt separat; Produktionsspiel und öffentliche Einreichung bleiben geschlossen.
