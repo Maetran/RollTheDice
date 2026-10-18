@@ -80,6 +80,29 @@ People join voluntarily and choose their seats, including teams with four
 players, again. The host starts explicitly. Reopening uses the same next table
 after a lost response or restart, without changing earlier results or XP.
 
+**Chat und Emojis / chat and emoji:** Am Tisch lesen alle Mitspieler und
+zugelassenen Zuschauer den öffentlichen Tischchat. Nachrichten und zwölf Emojis
+bleiben auch bei einem offenen Gebot, während einer Pause und gestrichen
+erlaubt; Kartenhinweise sind verboten. «Gut/Schlecht/Unsicher» bleibt die
+separate private Partnerfunktion. Chat und Reaktionen verändern keine Karten
+oder Spielpunkte.
+
+The public table chat is visible to players and admitted spectators. Messages
+and twelve emoji remain available during a pending bid, a pause and when
+gestrichen; card hints are forbidden. “Good/Bad/Unsure” remains separate private
+partner advice. Chat and reactions never change cards or match points.
+
+Der gemeinsame Lobbychat wird in der lokalen Watten-Lobby bewusst geöffnet und
+respektiert die kontoweite Chat-Einstellung. Sein persönlicher Dreitagesverlauf
+enthält nur Nachrichten, bei deren Versand das Konto zum Empfängerkreis gehörte.
+Eine Deaktivierung beendet den Empfang; erneutes Aktivieren ergänzt keine
+verpassten Nachrichten. Der öffentliche Tischchat bleibt davon unabhängig.
+
+Opening the shared lobby chat in the local Watten lobby is explicit and respects
+the account-wide chat preference. Its personal three-day history contains only
+messages addressed to that account at send time. Disabling stops delivery;
+enabling again never adds missed messages. The public table chat is independent.
+
 **Deutsch:** Watten ist als nächstes Spiel vorgemerkt: üblicherweise 4er
 ladinisch bis 11 Punkte («8+3 isch zmittag»), mit blindem Einschauen durch den
 Geber und den im Uhrzeigersinn nachfolgenden Spieler. Die identischen

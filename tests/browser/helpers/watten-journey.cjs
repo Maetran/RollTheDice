@@ -30,7 +30,7 @@ async function player(browser, baseURL, language = 'de') {
   expect((await context.request.put('/api/auth/preferences/language', {
     headers: { 'X-CSRF-Token': user.csrf_token }, data: { preferred_language: language },
   })).ok()).toBeTruthy();
-  const traffic = { snapshot: null, commands: [], errors: [], call: {}, social: [] };
+  const traffic = { snapshot: null, commands: [], errors: [], call: {}, social: [], lobby: [] };
   page.on('pageerror', error => traffic.errors.push(error.message));
   page.on('websocket', socket => {
     socket.on('framesent', frame => {
@@ -40,6 +40,7 @@ async function player(browser, baseURL, language = 'de') {
       try {
         const message = JSON.parse(String(frame.payload));
         if (Object.keys(message).some(key => key.startsWith('watten_social_'))) traffic.social.push(message);
+        if (message.lobby_chat) traffic.lobby.push(message);
         if (message.scoreboard) {
           const snapshot = message.scoreboard;
           const engine = snapshot.engine;

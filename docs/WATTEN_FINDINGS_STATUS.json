@@ -227,7 +227,7 @@
       ],
       "status": "partial",
       "evidence": [
-        "Native rematch creates only an unseated host with five-minute account reservations; joining and taking a seat remain explicit, with private own reservation projection. DE/EN browser flows verify protected/unprotected join and manual seating/start. Pure room tests retain decline/expiry/host-transfer contracts; complete transport-level decline/host-change races remain open."
+        "Own reservation remains separate from admission/seat/team, is projected only to its account, and can be explicitly released through strict durable native room commands. Lost ACK/restart replay, later rejoin, counterfeit account and stale room cases pass. A real four-human browser journey releases all reservations then chooses different teams manually. Broader host-transfer transport races remain open."
       ]
     },
     {
@@ -685,7 +685,7 @@
       ],
       "status": "partial",
       "evidence": [
-        "Keyed hand/trick nodes retained in source review; pending ACK cannot replace accepted state with an animation. Broader chat/rotation/device checks remain open."
+        "Stable hand/trick nodes are retained; table social lives outside the view and its custom frames return before card adoption. Real DE/EN pending-bid browsers prove lost social ACK retry, unchanged engine/room state and identical hand DOM through chat/emoji/320x568 and568x320 rotation. Account/page lifecycle cleanup stays synchronous. Physical-device acceptance remains open."
       ]
     },
     {
@@ -772,8 +772,7 @@
       ],
       "status": "partial",
       "evidence": [
-        "app/watten_engine.py permits only private good/bad/unsure partner feedback, including pending bids, without public revision/ACK-eviction leakage. Actual chat/reaction/CPU communication permissions, durable private delivery and DE/EN browser acceptance remain open.",
-        "Owner explicitly confirmed free chat and public emojis remain allowed during a deal and when gestrichen; card hints remain forbidden. Own opening-bid restrictions and private partner advice stay separate. Native free-chat/emoji UI remains to implement."
+        "Owner explicitly allows free chat/public emojis during deals and when gestrichen. Native public table social independently authorizes admitted humans/spectators, fresh recipient sessions, strict public DTOs, shared per-account rate and replay-safe nonces; no engine/TTL/persistence effects. Tests cover all phases/gestrichen/mute/exclude/revocation;3real browser cases verify pending bids/lost ACK/DEEN/mobile/blind spectator privacy. Private good/bad/unsure advice stays separate and concrete card hints remain forbidden without claiming reliable content filtering."
       ]
     },
     {
@@ -785,7 +784,7 @@
       ],
       "status": "partial",
       "evidence": [
-        "Native rematch copies the complete canonical recipe including CPU seats, requires a fresh password or explicit disabled protection, and never moves/starts humans. DE/EN real browser flows verify manual seats/start, unchanged source XP, one target after lost HTTP ACK, and 320x568/568x320 layout. Four-player team confirmation is enforced by native room tests; the full four-human rematch browser journey remains open."
+        "Native rematch copies complete canonical recipe and CPU seats, requires fresh password or explicit disabled protection, and never seats/starts humans. DE/EN lost-ACK browsers prove one target/manual start/unchanged XP/mobile layout; a real four-human open match releases each own reservation, chooses different teams and starts manually. Physical-device acceptance remains open."
       ]
     },
     {
