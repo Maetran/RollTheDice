@@ -165,6 +165,29 @@ def test_native_traffic_and_abandonments_are_unknown_not_fabricated_zero_even_wi
         assert "PRIVATE" not in request(monitoring, actor).text
 
 
+def test_native_comparison_never_inherits_legacy_traffic_coverage_or_retention_date(monitoring):
+    complete("native-comparison-current", frozen=False)
+    complete("native-comparison-previous", previous=True, frozen=False)
+    old = utcnow() - timedelta(days=30)
+    with session_scope() as db:
+        db.add(AnalyticsSession(id="c" * 64, first_seen_at=old, last_seen_at=old,
+                                device="desktop", referrer="direct", country="CH"))
+        db.flush()
+        db.add(AnalyticsEvent(dedupe_key="d" * 64, session_id="c" * 64, received_at=old,
+                              event_type="page_view", page="/", game="zdwa", action="", source="client"))
+    comparison = request(monitoring, game="watten").json()["comparison"]
+    assert comparison["previous_data_coverage"] == "not_instrumented"
+    assert comparison["coverage_basis"] == "not_instrumented"
+    assert comparison["traffic_retained_from"] is None
+    assert comparison["overview"]["completed_games"] == {
+        "current": 1, "previous": 1, "delta": 0, "change_percent": 0.0}
+    # The existing products still describe their genuinely retained traffic.
+    legacy = request(monitoring, game="zdwa").json()["comparison"]
+    assert legacy["previous_data_coverage"] == "complete"
+    assert legacy["coverage_basis"] == "earliest_retained_event"
+    assert legacy["traffic_retained_from"] == old.isoformat()
+
+
 def test_duration_uses_actual_frozen_writer_evidence_keeps_result_v1_unchanged_and_read_has_no_writes(monitoring):
     actual = complete("real-duration")
     complete("legacy-duration", frozen=False)

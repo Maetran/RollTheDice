@@ -1289,6 +1289,10 @@ def dashboard_stats(days: int = 7, game: str = "all", *, now: datetime | None = 
         pwa.update({key: None for key in pwa})
         journeys["sample"].update(page_views=None, matching_page_views=None, total_page_views=None,
                                   truncated=None, method="not_instrumented", **{"from": None, "to": None})
+    comparison = _comparison_stats(overview, previous_overview, start, now, days,
+                                   None if game == "watten" else first_client)
+    if game == "watten":
+        comparison.update(previous_data_coverage="not_instrumented", coverage_basis="not_instrumented")
     return {"generated_at": now.isoformat(), "available_games": list(products),
             "metric_coverage": {"traffic": "not_instrumented" if game == "watten" else "observed_events_only",
                                 "traffic_games": [product for product in traffic_products if game in {"all", product}],
@@ -1307,6 +1311,6 @@ def dashboard_stats(days: int = 7, game: str = "all", *, now: datetime | None = 
                            "results_source": "server_results"},
             "overview": overview, "request_traffic": request_traffic, "geography": geography, "geography_summary": geography_summary,
             "heatmap": heatmap, "journeys": journeys,
-            "comparison": _comparison_stats(overview, previous_overview, start, now, days, first_client),
+            "comparison": comparison,
             "daily": daily, "pages": pages, **dimensions, "actions": actions, "pwa": pwa, "games": games,
             "modes": modes, "hourly": hourly, "design_usage": design_usage, "server": server}
