@@ -158,7 +158,9 @@ function legalOrdinaryCallCard(view) {
   const strike = card => card.endsWith('-7');
   // This driver announces seven/bells openly, with critical cards OFF.
   const duty = lead && trump(lead) && cards.some(card => trump(card) && !strike(card));
-  return (duty ? cards.filter(card => trump(card) || strike(card)) : cards)[0];
+  // Prefer an ordinary trump when duty applies. This driver need not duplicate
+  // the trick ranking just to decide whether a strike can actually overtake.
+  return duty ? cards.find(card => trump(card) && !strike(card)) : cards[0];
 }
 
 async function playOne(players) {
