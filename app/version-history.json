@@ -2266,5 +2266,12 @@
     "date": "2026-10-18",
     "bump": "patch",
     "summary": "Hausdepp-Computer wägen im Zweikampf ein Ass oben ab, statt es fast immer mit der 10 abzuräumen; Konto- und Einstellungstexte sprechen von allen unseren Spielen. / Hausdepp computers weigh an ace on top in a duel instead of nearly always clearing it with a ten; account and settings texts speak of all our games."
+  },
+  {
+    "version": "3.9.0",
+    "revision": "87a298fc57b32fdb397dd972fec29b1ff083a551",
+    "date": "2026-10-18",
+    "bump": "minor",
+    "summary": "Hausdepp-Runden flexibel öffnen, Favoriten speichern und weitere Reaktionen senden. / Open flexible Hausdepp games, save favourites and send more reactions."
   }
 ]
