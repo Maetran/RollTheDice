@@ -190,6 +190,8 @@ def _install(result):
             for item in restored["_players"]:
                 item["ws"] = sockets.get((item["id"], item.get("user_id")))
             restored["_spectators"] = list(current["_spectators"])
+            if "_watten_social" in current:
+                restored["_watten_social"] = current["_watten_social"]
             current.clear()
             current.update(restored)
 

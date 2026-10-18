@@ -133,7 +133,8 @@ export function waitingRoomMarkup(snapshot, { mode, viewerId, busy = false, extr
     ${seatsMarkup(room, { member, viewerSeat, busy, canManageCpus: isHost && snapshot.capabilities?.cpu_autoplay === true })}
     ${unseated.length ? `<p class="wt-note">${esc(t("waiting.unseated", { names: unseated.map(item => item.name).join(", ") }))}</p>` : ""}
     ${member && viewerSeat === null && room.status === "waiting" ? `<p class="wt-note wt-note--strong">${esc(t("waiting.chooseSeat"))}</p>` : ""}
-    ${reservationMarkup(room.reservation, { language: lang(), escapeHtml: esc })}
+    ${reservationMarkup(room.reservation, { language: lang(), escapeHtml: esc,
+      canDecline: member && room.status === "waiting", busy })}
     ${room.status === "waiting" ? `<p class="wt-note">${esc(isHost
       ? t(full ? "waiting.hostReady" : "waiting.hostWaiting")
       : t("waiting.guestWaiting", { name: host?.name || "" }))}</p>` : ""}

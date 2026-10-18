@@ -1020,6 +1020,7 @@ app.addEventListener("click", event => {
   const snapshot = session.snapshot;
   switch (control.dataset.wattenCommand) {
     case "refresh-tables": void refreshTables(generation); break;
+    case "decline-reservation": roomCommand("watten_decline_reservation"); break;
     case "take-seat": {
       const seat = Number(control.dataset.seat);
       if (!snapshot || !Number.isInteger(seat)) break;

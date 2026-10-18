@@ -8,7 +8,7 @@ const message = (language, key, values = {}) => WATTEN_REMATCH_MESSAGES[lang(lan
   .replace(/\{(\w+)\}/g, (_, name) => String(values[name] ?? ""));
 
 /** The server projects only this account's reservation; it never claims a seat. */
-export function reservationMarkup(reservation, { language, escapeHtml: esc }) {
+export function reservationMarkup(reservation, { language, escapeHtml: esc, canDecline = false, busy = false }) {
   if (!object(reservation) || !integer(reservation.seat) || reservation.seat > 3
       || typeof reservation.expires_at !== "string" || !Number.isFinite(Date.parse(reservation.expires_at))) return "";
   const expires = new Intl.DateTimeFormat(lang(language) === "de" ? "de-CH" : "en-GB", {
@@ -16,7 +16,7 @@ export function reservationMarkup(reservation, { language, escapeHtml: esc }) {
   }).format(new Date(reservation.expires_at));
   return `<p class="wt-note wt-note--strong" data-watten-rematch-reservation>${esc(message(language, "reservation", {
     seat: reservation.seat + 1, expires,
-  }))}</p>`;
+  }))}${canDecline ? ` <button type="button" data-watten-command="decline-reservation" ${busy ? "disabled" : ""}>${esc(message(language, "declineReservation"))}</button>` : ""}</p>`;
 }
 
 /** Explicit new-room intent; no automatic join, seat, team confirmation or start. */

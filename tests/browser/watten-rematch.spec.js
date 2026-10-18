@@ -67,3 +67,39 @@ for (const language of ['de', 'en']) {
     } finally { await Promise.allSettled(players.map(item => item.context.close())); }
   });
 }
+
+test('four humans release their reservations and explicitly choose different teams for the next match', async ({ browser, baseURL }) => {
+  const players = await Promise.all([0, 1, 2, 3].map(() => player(browser, baseURL)));
+  const host = players[0];
+  try {
+    await finishOpenMatch(players, { determination: 'normal' });
+    const original = await Promise.all(players.map(async item => (await item.context.request.get('/api/watten/account')).json()));
+    await host.page.locator('[data-watten-rematch-form] [name=protection_mode]').selectOption('disabled');
+    await host.page.locator('[data-watten-rematch-action=create]').click();
+    await expect(host.page.locator('[data-watten-rematch-action=open]')).toBeVisible();
+    for (const item of players) {
+      await item.page.locator('[data-watten-rematch-action=open]').click();
+      if (item !== host) await item.page.locator('[data-watten-join] button[type=submit]').click();
+      await expect(item.page.locator('[data-watten-rematch-reservation]')).toBeVisible();
+      await item.page.locator('[data-watten-command=decline-reservation]').click();
+      await expect(item.page.locator('[data-watten-rematch-reservation]')).toHaveCount(0);
+      expect(item.traffic.snapshot.viewer.seat).toBeNull();
+    }
+    for (const [index, seat] of [1, 0, 3, 2].entries()) {
+      const item = players[index];
+      await item.page.locator(`[data-watten-command=take-seat][data-seat="${seat}"]`).click();
+      await expect.poll(() => item.traffic.snapshot.viewer.seat).toBe(seat);
+      await expect(item.page.locator('.wt-seat-slot.is-own')).toContainText(item.user.username);
+    }
+    expect(host.traffic.snapshot.started).toBe(false);
+    await host.page.locator('[data-watten-command=start]').click();
+    await expect.poll(() => players.every(item => item.traffic.snapshot.started)).toBe(true);
+    for (let index = 0; index < players.length; index += 1) {
+      expect(players[index].traffic.snapshot.engine.scores.every(score => score.points === 0)).toBe(true);
+      const current = (await (await players[index].context.request.get('/api/watten/account')).json());
+      expect(current.progress.total_xp).toBe(original[index].progress.total_xp);
+      expect(current.statistics.all_matches).toBe(1);
+      expect(players[index].traffic.errors).toEqual([]);
+    }
+  } finally { await Promise.allSettled(players.map(item => item.context.close())); }
+});

@@ -18,6 +18,8 @@ from tests import test_watten_runtime as native
 from tests.test_watten_match_evidence import NativeMatch
 from tests.test_watten_progression_store import counts
 from tests.test_watten_rematch import checkpoints, command, post
+from tests.test_watten_social import attach, history, message
+from tests.test_watten_social import call as social_call
 
 server = native.server
 SOURCE = "0123456789abcdef"
@@ -117,6 +119,21 @@ def test_wrong_expected_account_rejects_before_private_recovery_or_decode(server
                           "X-Watten-Expected-Account-Id": str(owners[1][0].user_id)})
     assert response.status_code == 409 and response.json()["detail"] == "watten_account_changed"
     assert response.headers["cache-control"] == "no-store" and SOURCE not in games
+
+
+def test_creating_a_follow_up_preserves_live_source_chat_and_retry_channel(server):
+    source, owners = source_for()
+    sessions = attach(source, owners[:2])
+    stream = history(sessions[0])
+    social_call(sessions[0], message(stream, text="See you at the next table"))
+    cache = source["_watten_social"]
+    response = post(server, source, owners[0], command(source))
+    assert response.status_code == 200, response.text
+    assert source["_watten_social"] is cache
+    restored = history(sessions[0])
+    assert restored["channel_id"] == stream["channel_id"] and restored["next_nonce"] == 2
+    assert restored["events"][0]["text"] == "See you at the next table"
+    assert "_watten_social" not in json.loads(checkpoints()[SOURCE])
 
 
 def test_retry_does_not_reactivate_an_evicted_running_target_without_its_coordinator(server):

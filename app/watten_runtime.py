@@ -49,6 +49,7 @@ from .watten_room import (
     admit,
     close_expired,
     create_room,
+    decline_reservation,
     finish,
     leave,
     place_cpu,
@@ -65,7 +66,7 @@ from .watten_views import member_view, spectator_view
 _LOCKS: WeakValueDictionary[str, asyncio.Lock] = WeakValueDictionary()
 _RANDOM = secrets.SystemRandom()
 _CALL_KINDS = frozenset({"strike_announced", "colour_announced"})
-ROOM_ACTIONS = frozenset({"watten_take_seat", "watten_place_cpu", "watten_remove_cpu", "watten_start", "watten_next_deal", "watten_delivery_ack", "watten_leave", "leave_waiting_game"})
+ROOM_ACTIONS = frozenset({"watten_take_seat", "watten_decline_reservation", "watten_place_cpu", "watten_remove_cpu", "watten_start", "watten_next_deal", "watten_delivery_ack", "watten_leave", "leave_waiting_game"})
 WATTEN_ACTIONS = ROOM_ACTIONS | {"watten_command"}
 
 
@@ -344,6 +345,8 @@ def apply_runtime_action(game: dict, account: int, player: str, data: dict, *, e
     bid_counters = runtime.bid_counters
     if action == "watten_take_seat":
         room = take_seat(room, revision=revision, account_id=account, seat=data["seat"], team=data["team"], now=now)
+    elif action == "watten_decline_reservation":
+        room = decline_reservation(room, revision=revision, account_id=account, now=now)
     elif action == "watten_place_cpu":
         room = place_cpu(room, revision=revision, account_id=account, seat=data["seat"], now=now)
     elif action == "watten_remove_cpu":

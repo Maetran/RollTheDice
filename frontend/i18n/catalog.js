@@ -37,6 +37,7 @@ export const WATTEN_REMATCH_MESSAGES = {
     stale: "Die Anfrage passt nicht mehr zum aktuellen Tisch. Lade den Tisch neu, um seinen aktuellen Stand zu sehen.", reload: "Aktuellen Tisch neu laden",
     invalidProtection: "Wähle ein frisches Passwort mit 1 bis 100 Zeichen oder verzichte ausdrücklich auf den Schutz.",
     reservation: "Dein bisheriger Platz {seat} ist bis {expires} Schweizer Zeit für dich vorgemerkt. Wähle ihn und im Vierer dein Team selbst; du kannst auch einen anderen freien Platz wählen.",
+    declineReservation: "Eigene Platzreservierung freigeben",
   },
   en: {
     heading: "New match at the next table", body: "Carry this recipe and the requested computer seats over to a new table.",
@@ -49,6 +50,7 @@ export const WATTEN_REMATCH_MESSAGES = {
     stale: "This request no longer matches the current table. Reload the table to see its current state.", reload: "Reload the current table",
     invalidProtection: "Choose a fresh password of 1 to 100 characters or explicitly remove protection.",
     reservation: "Your previous seat {seat} is reserved for you until {expires}, Swiss time. Choose it and, with four players, your team yourself; you may also choose another free seat.",
+    declineReservation: "Release my seat reservation",
   },
 };
 
