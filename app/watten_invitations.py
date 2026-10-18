@@ -19,7 +19,7 @@ from .database import database_schema_ready, session_scope
 from .models import ActiveGame, User, WattenPersonalInvitation
 from .moderation import ensure_play_allowed
 from .security import as_utc, utcnow
-from .watten_access import watten_game_preview_enabled
+from .watten_access import watten_request_enabled
 from .watten_http import _HEADERS, _response
 from .watten_http import _identity as _http_identity
 from .watten_recipe import loads_strict_json, require_fields
@@ -285,7 +285,7 @@ def accepted_invitation_access(game, account):
 
 
 def _identity(request, *, mutate=False, expected=None):
-    if not watten_game_preview_enabled(request):
+    if not watten_request_enabled(request):
         raise HTTPException(status_code=404, detail="game_not_found", headers=_HEADERS)
     identity = _http_identity(request)
     if expected is not None and identity.user_id != expected:

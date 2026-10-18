@@ -14,7 +14,7 @@ from .models import User
 from .ownership import ownership_flags, require_owner
 from .proxy_headers import trusted_cloudflare_peer
 from .security import utcnow
-from .watten_access import watten_game_preview_enabled
+from .watten_access import can_access_watten
 
 router = APIRouter(prefix="/api")
 
@@ -86,7 +86,7 @@ def analytics_dashboard(request: Request, response: Response, days: int = Query(
     # The closed native product is an independent, request-scoped capability.
     # A delegated dashboard grant (or an old identity flag) cannot enable it.
     with session_scope() as db:
-        include_watten = bool(watten_game_preview_enabled(request)
+        include_watten = bool(can_access_watten(identity, request)
                               and ownership_flags(db, identity.user_id)["is_founder"])
     if game not in {"all", "zdwa", "zilch", "hausdepp", "watten"}:
         raise HTTPException(status_code=422, detail="analytics_invalid_filter")

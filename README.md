@@ -39,20 +39,34 @@ criteria.
 
 ## Als Nächstes: Watten / Next game: Watten
 
+**Private Webvorschau / private web preview:** Ein eigener, standardmässig
+ausgeschalteter Schalter `ROLLTHEDICE_WATTEN_FOUNDER_PREVIEW` kann die Vorschau
+unter `https://zockdiewandan.online/watten` ausschliesslich für das bereits
+dauerhaft gebundene Founder-Konto öffnen. Die bestehende Suite-Anmeldung wird
+verwendet; andere Konten, Admins und delegierte Owner erhalten keinen Zugriff.
+Der feste Watten-Host, Installation, Watten-Kontomails und Push-Zustellung
+bleiben geschlossen. [Betriebsvertrag](docs/DEPLOYMENT.md#private-watten-webvorschau--private-watten-web-preview).
+
+The separate `ROLLTHEDICE_WATTEN_FOUNDER_PREVIEW` switch defaults to off and
+can open the apex web preview exclusively to the existing immutable founder
+account. It uses the normal suite login; other accounts, administrators and
+delegated owners receive no access. The fixed Watten host, installation,
+Watten account emails and push delivery remain closed.
+
 **Lokaler Kontofortschritt / local account progress:** Die lokale Watten-Vorschau
 verbucht neue abgeschlossene Partien zusammen mit Ergebnis und Fortschritt in
 einer Transaktion. `/watten/konto/fortschritt`, `/watten/konto/verlauf` und
 `/watten/rangliste` zeigen ausschliesslich verbuchte XP, die eigenen Ergebnisse,
 belegte Erfolge und erklärbare Ranglisten. XP, Titelstufen und Erfolgswerte sind
 vorerst als Entwurf gekennzeichnet. Ältere Resultate bleiben sichtbar und
-erhalten beim Lesen keine nachträglichen XP. Beide lokalen Vorschauflags sind
-erforderlich; die öffentliche Watten-Domain bleibt geschlossen.
+erhalten beim Lesen keine nachträglichen XP. Für lokale Tests sind beide lokalen
+Vorschauflags erforderlich; die öffentliche Watten-Domain bleibt geschlossen.
 
 New locally completed Watten matches atomically store results and progress.
 The native progress, history and leaderboard pages show stored XP, owned
 results, evidenced achievements and explicit ranking definitions. XP, title
 levels and award values remain labelled as a proposal. Reading older results
-never retrospectively grants XP. Both local preview flags are required; the
+never retrospectively grants XP. Local tests require both local preview flags; the
 public Watten domain remains closed.
 
 **Spieltag / play day:** Akzeptierte menschliche Ansagen, Karten und Gebots-

@@ -40,9 +40,9 @@ def _page(request: Request, page: str) -> Response:
 
 @router.get("/watten", include_in_schema=False)
 def watten_account_home(request: Request):
-    from .watten_access import watten_game_preview_enabled
+    from .watten_access import watten_request_enabled
 
-    if watten_game_preview_enabled(request):
+    if watten_request_enabled(request):
         from .watten_pages import home_page
 
         return home_page(request)
@@ -61,6 +61,13 @@ def watten_account_login(request: Request):
 @router.get("/watten/konto", include_in_schema=False)
 @router.get("/watten/konto/einstellungen", include_in_schema=False)
 def watten_account_settings(request: Request):
+    if not watten_account_preview_enabled(request):
+        from .watten_access import require_watten_access
+
+        require_watten_access(request, resolve_session(request))
+        # This first private web preview uses the existing suite account flow.
+        # Its production account emails never receive a local Watten context.
+        return RedirectResponse("/konto", status_code=303, headers=_HEADERS)
     _require_local_preview(request)
     if not resolve_session(request):
         return RedirectResponse("/watten/anmelden?" + urlencode({"return_to": "/watten/konto/einstellungen"}),

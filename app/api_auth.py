@@ -9,7 +9,7 @@ from sqlalchemy import delete, func, select
 from .account_context import account_app_context
 from .achievements import achievement_rank_payloads_for_user_ids, public_achievement_ranks
 from .auth import (
-    auth_identity_payload,
+    auth_response_payload,
     change_password,
     change_username,
     clear_session_cookie,
@@ -234,12 +234,11 @@ def auth_me(request: Request, response: Response):
                 select(PasskeyCredential.id).where(PasskeyCredential.user_id == identity.user_id).limit(1)
             ) is not None
     response.headers["Cache-Control"] = "no-store"
+    response.headers["X-Robots-Tag"] = "noindex, nofollow"
+    authenticated = auth_response_payload(identity, connection=request) if identity else {
+        "authenticated": False, "user": None, "game_access": public_game_access_payload(None, request)}
     return {
-        "authenticated": bool(identity),
-        "user": auth_identity_payload(identity, include_csrf=True) if identity else None,
-        # Guests need the same server-derived product availability as signed-in
-        # visitors so the app switcher can open a public Zilch table directly.
-        "game_access": public_game_access_payload(identity),
+        **authenticated,
         # Guests choose the ZDWA design in their browser; this only says
         # whether the 2026 design may be offered on this server.
         "design": design_payload(identity),
@@ -258,7 +257,7 @@ def auth_login(payload: LoginRequest, request: Request, response: Response):
     identity, raw_token = login(request, payload.username, payload.password)
     set_session_cookie(response, raw_token)
     response.headers["Cache-Control"] = "no-store"
-    return {"authenticated": True, "user": auth_identity_payload(identity, include_csrf=True)}
+    return auth_response_payload(identity, connection=request)
 
 
 @router.post("/auth/register", status_code=status.HTTP_202_ACCEPTED)
@@ -279,7 +278,7 @@ def auth_register(payload: RegisterRequest, request: Request, response: Response
             set_session_cookie(response, raw_token)
             response.status_code = status.HTTP_201_CREATED
             response.headers["Cache-Control"] = "no-store"
-            return {"authenticated": True, "user": auth_identity_payload(identity, include_csrf=True)}
+            return auth_response_payload(identity, connection=request)
         _require_account_email()
         if payload.email is None:
             raise HTTPException(status_code=422, detail="email_required")
@@ -318,7 +317,7 @@ def auth_registration_complete(payload: RegistrationCompletionRequest, request: 
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     set_session_cookie(response, raw_token)
     response.headers["Cache-Control"] = "no-store"
-    return {"authenticated": True, "user": auth_identity_payload(identity, include_csrf=True)}
+    return auth_response_payload(identity, connection=request)
 
 
 @router.post("/auth/password-reset", status_code=status.HTTP_202_ACCEPTED)
@@ -458,9 +457,9 @@ def _require_account_email() -> None:
 
 
 def _tour_identity(request: Request, game_type=None):
-    from .watten_access import require_watten_access, watten_game_preview_enabled
+    from .watten_access import require_watten_access, watten_request_enabled
 
-    if game_type == "watten" and not watten_game_preview_enabled(request):
+    if game_type == "watten" and not watten_request_enabled(request):
         raise HTTPException(status_code=404, detail="game_not_found", headers={"Cache-Control": "no-store"})
     identity = require_user(request)
     if game_type == "watten":
@@ -474,34 +473,34 @@ def _tour_identity(request: Request, game_type=None):
 
 @router.get("/auth/tours")
 def auth_tours(request: Request, response: Response):
-    from .watten_access import watten_game_preview_enabled
+    from .watten_access import can_access_watten
 
     identity = _tour_identity(request)
     response.headers["Cache-Control"] = "no-store"
     with session_scope() as db:
-        return tour_preferences(db, identity.user_id, include_watten=watten_game_preview_enabled(request))
+        return tour_preferences(db, identity.user_id, include_watten=can_access_watten(identity, request))
 
 
 @router.put("/auth/tours")
 def auth_update_tours(payload: TourPreferencesRequest, request: Request, response: Response):
-    from .watten_access import watten_game_preview_enabled
+    from .watten_access import can_access_watten
 
     identity = _tour_identity(request, payload.game_type)
     require_csrf(request, identity)
     response.headers["Cache-Control"] = "no-store"
     with session_scope() as db:
-        return update_tour_preferences(db, identity.user_id, payload, include_watten=watten_game_preview_enabled(request))
+        return update_tour_preferences(db, identity.user_id, payload, include_watten=can_access_watten(identity, request))
 
 
 @router.post("/auth/tours/offer")
 def auth_claim_tour_offer(payload: TourOfferRequest, request: Request, response: Response):
-    from .watten_access import watten_game_preview_enabled
+    from .watten_access import can_access_watten
 
     identity = _tour_identity(request, payload.game_type)
     require_csrf(request, identity)
     response.headers["Cache-Control"] = "no-store"
     with session_scope() as db:
-        return claim_tour_offer(db, identity.user_id, payload.game_type, include_watten=watten_game_preview_enabled(request))
+        return claim_tour_offer(db, identity.user_id, payload.game_type, include_watten=can_access_watten(identity, request))
 
 
 @router.put("/auth/preferences")
@@ -575,8 +574,7 @@ def auth_change_username(payload: UsernameChangeRequest, request: Request, respo
             select(PasskeyCredential.id).where(PasskeyCredential.user_id == identity.user_id).limit(1)
         ) is not None
     return {
-        "authenticated": True,
-        "user": auth_identity_payload(require_user(request), include_csrf=True),
+        **auth_response_payload(require_user(request), connection=request),
         "passkeys": passkeys,
     }
 
@@ -683,9 +681,9 @@ def web_push_subscription_get(request: Request, response: Response):
 
 @router.put("/web-push/subscription")
 def web_push_subscription_put(payload: WebPushSubscriptionRequest, request: Request):
-    from .watten_access import require_watten_access, watten_game_preview_enabled
+    from .watten_access import require_watten_access, watten_request_enabled
 
-    if payload.product_context == "watten" and not watten_game_preview_enabled(request):
+    if payload.product_context == "watten" and not watten_request_enabled(request):
         raise HTTPException(status_code=404, detail="game_not_found", headers={"Cache-Control": "no-store"})
     identity = require_user(request)
     if payload.product_context == "watten":

@@ -2239,9 +2239,9 @@ async def game_info_route(
 ):
     game = games.get(game_id)
     if game is None:
-        from .watten_access import watten_game_preview_enabled
+        from .watten_access import watten_request_enabled
 
-        identity = resolve_session(request) if watten_game_preview_enabled(request) else None
+        identity = resolve_session(request) if watten_request_enabled(request) else None
         if identity is not None:
             from .watten_http import _identity as watten_http_identity
             from .watten_recovery import restore_owned_watten_game

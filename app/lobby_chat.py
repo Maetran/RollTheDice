@@ -22,7 +22,7 @@ from .game_types import DEFAULT_GAME_TYPE, HAUSDEPP_GAME_TYPE, WATTEN_GAME_TYPE,
 from .models import LobbyChatMessage, LobbyChatMessageRecipient
 from .public_roles import active_admin_user_ids
 from .security import as_utc, utcnow
-from .watten_access import require_watten_access, watten_game_preview_enabled
+from .watten_access import can_access_watten, require_watten_access, watten_request_enabled
 
 LOBBY_CHAT_HISTORY_DAYS = 3
 LOBBY_CHAT_PURGE_INTERVAL_SECONDS = 60 * 60
@@ -75,7 +75,8 @@ class LobbyChatHub:
         for connection in tuple(self._connections):
             if recipient_user_ids is not None and connection.user_id not in recipient_user_ids:
                 continue
-            if (connection.context == WATTEN_GAME_TYPE or watten_event) and not watten_game_preview_enabled(connection.websocket):
+            native = connection.context == WATTEN_GAME_TYPE or watten_event
+            if native and not watten_request_enabled(connection.websocket):
                 if connection.context == WATTEN_GAME_TYPE:
                     stale.append(connection.websocket)
                 continue
@@ -87,6 +88,10 @@ class LobbyChatHub:
                 or identity.user_id != connection.user_id
             ):
                 stale.append(connection.websocket)
+                continue
+            if native and not can_access_watten(identity, connection.websocket):
+                if connection.context == WATTEN_GAME_TYPE:
+                    stale.append(connection.websocket)
                 continue
             eligible.append(connection)
         for websocket in stale:
@@ -303,24 +308,28 @@ async def _publish_lobby_chat_event(
 
 
 async def _send_authorized_history(websocket: WebSocket, user_id: int, *, context: str) -> None:
-    if context == WATTEN_GAME_TYPE and not watten_game_preview_enabled(websocket):
+    identity = resolve_session(websocket)
+    if identity is None or identity.user_id != user_id or not identity.lobby_chat_enabled or identity.lobby_chat_excluded:
+        return
+    include_watten = can_access_watten(identity, websocket)
+    if context == WATTEN_GAME_TYPE and not include_watten:
         return
     purge_expired_lobby_chat_messages()
-    include_watten = watten_game_preview_enabled(websocket)
     for payload in load_lobby_chat_history(user_id, include_watten=include_watten,
                                          public_only=context == WATTEN_GAME_TYPE):
-        if context == WATTEN_GAME_TYPE and not watten_game_preview_enabled(websocket):
-            return
         identity = resolve_session(websocket)
         if identity is None or identity.user_id != user_id or not identity.lobby_chat_enabled or identity.lobby_chat_excluded:
             return
-        if payload["lobby_chat"]["game_type"] == WATTEN_GAME_TYPE and not watten_game_preview_enabled(websocket):
+        allowed_watten = can_access_watten(identity, websocket)
+        if context == WATTEN_GAME_TYPE and not allowed_watten:
+            return
+        if payload["lobby_chat"]["game_type"] == WATTEN_GAME_TYPE and not allowed_watten:
             continue
         await websocket.send_json({**payload, "lobby_chat_history": True})
 
 
 def _watten_identity(websocket: WebSocket) -> AuthIdentity:
-    if not watten_game_preview_enabled(websocket):
+    if not watten_request_enabled(websocket):
         require_watten_access(websocket, None)
     identity = require_watten_access(websocket, resolve_session(websocket))
     expected = websocket.query_params.getlist("expected_account_id")
@@ -340,9 +349,9 @@ async def serve_lobby_chat_websocket(
     """Serve the account-only, audience-scoped lobby chat channel."""
     sender_context = lobby_chat_context(context)
     if sender_context == WATTEN_GAME_TYPE:
-        # Check the local product boundary before any auth/session/history DB
-        # work. Fixed production hosts remain closed even with the flag set.
-        if not watten_game_preview_enabled(websocket):
+        # Filter the deployment and raw Host before auth/session/history DB
+        # work, then authorize the actual account before accepting the socket.
+        if not watten_request_enabled(websocket):
             await websocket.close(code=1008, reason="Watten unavailable")
             return
         try:
@@ -377,7 +386,7 @@ async def serve_lobby_chat_websocket(
                 await websocket.send_json({"error": "lobby_chat_message_invalid"})
                 continue
 
-            if sender_context == WATTEN_GAME_TYPE and not watten_game_preview_enabled(websocket):
+            if sender_context == WATTEN_GAME_TYPE and not watten_request_enabled(websocket):
                 await websocket.close(code=1008, reason="Watten unavailable")
                 return
             if not isinstance(payload, dict) or payload.get("action") != "lobby_chat_message":

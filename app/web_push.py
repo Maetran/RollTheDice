@@ -31,7 +31,7 @@ from .game_types import DEFAULT_GAME_TYPE, HAUSDEPP_GAME_TYPE, WATTEN_GAME_TYPE,
 from .models import PushInviteAllowedSender, User, WebPushSubscription
 from .product_hosts import site_origin, zilch_url
 from .security import as_utc, normalize_username, utcnow
-from .watten_access import watten_game_preview_enabled
+from .watten_access import watten_founder_account_id, watten_game_preview_enabled, watten_request_enabled
 
 logger = logging.getLogger(__name__)
 
@@ -251,7 +251,7 @@ def save_web_push_subscription(
 ) -> dict[str, object]:
     if product_context not in PUSH_DEVICE_CONTEXTS or payload.product_context not in {None, product_context}:
         raise ValueError("web_push_context_invalid")
-    if product_context == WATTEN_GAME_TYPE and not watten_game_preview_enabled(connection):
+    if product_context == WATTEN_GAME_TYPE and not watten_request_enabled(connection):
         raise ValueError("web_push_context_unavailable")
     if not web_push_available():
         raise RuntimeError("web_push_unavailable")
@@ -264,6 +264,9 @@ def save_web_push_subscription(
             raise LookupError("user_not_found")
         if context == WATTEN_GAME_TYPE and not user.is_active:
             raise LookupError("user_not_found")
+        if (context == WATTEN_GAME_TYPE and not watten_game_preview_enabled(connection)
+                and watten_founder_account_id(db) != user_id):
+            raise ValueError("web_push_context_unavailable")
         subscription = db.scalar(select(WebPushSubscription).where(WebPushSubscription.endpoint == endpoint))
         if subscription is None:
             db.add(

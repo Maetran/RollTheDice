@@ -115,16 +115,21 @@ def can_access_game(identity: AuthIdentity | None, game: dict, connection=None) 
     return False
 
 
-def public_game_access_payload(identity: AuthIdentity | None) -> dict[str, bool]:
+def public_game_access_payload(identity: AuthIdentity | None, connection=None) -> dict[str, bool]:
     """Expose only the client capability derived from the server-side policy.
 
     The legacy ``zilch_preview`` key is kept for compatibility. ``zilch_public``
     lets an unauthenticated shell expose the game switcher without pretending a
     guest has an account capability.
     """
-    return {
+    payload = {
         "hausdepp_preview": can_access_hausdepp(identity),
         "hausdepp_public": True,
         "zilch_preview": can_access_zilch_preview(identity),
         "zilch_public": configured_zilch_access_mode() == ZILCH_ACCESS_MODE_PUBLIC,
     }
+    from .watten_access import can_discover_watten
+
+    if can_discover_watten(identity, connection):
+        payload["watten_preview"] = True
+    return payload

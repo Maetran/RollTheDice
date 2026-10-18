@@ -20,6 +20,8 @@ services:
       ROLLTHEDICE_COOKIE_DOMAIN: ${ROLLTHEDICE_COOKIE_DOMAIN:-}
       ROLLTHEDICE_SITE_ORIGIN: ${ROLLTHEDICE_SITE_ORIGIN:-https://zockdiewandan.online}
       ROLLTHEDICE_ZILCH_ORIGIN: ${ROLLTHEDICE_ZILCH_ORIGIN:-https://zilch.zockdiewandan.online}
+      # Private web preview on the apex, restricted to the immutable founder.
+      ROLLTHEDICE_WATTEN_FOUNDER_PREVIEW: ${ROLLTHEDICE_WATTEN_FOUNDER_PREVIEW:-0}
       # Uvicorn only trusts forwarded client data from these direct peers.
       # Production uses the Docker bridge gateway; local runs stay loopback-only.
       FORWARDED_ALLOW_IPS: ${FORWARDED_ALLOW_IPS:-127.0.0.1}

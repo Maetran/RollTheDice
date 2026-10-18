@@ -26,7 +26,7 @@ from .game_state import GameDict
 from .game_types import HAUSDEPP_GAME_TYPE, WATTEN_GAME_TYPE, ZILCH_GAME_TYPE, game_type_from_state
 from .models import PushInviteAllowedSender, User
 from .security import as_utc, utcnow
-from .watten_access import require_watten_access, watten_game_preview_enabled
+from .watten_access import can_access_watten, require_watten_access, watten_request_enabled
 from .zilch_state import zilch_spectating_available
 
 logger = logging.getLogger(__name__)
@@ -147,15 +147,18 @@ class FriendActivityHub:
         async def send_current(connection: FriendActivityConnection) -> None:
             native = connection.context == WATTEN_GAME_TYPE
             # Legacy clients route unknown products to ZDWA. Only the explicit
-            # native subscriber understands Watten, and its local grant must
+            # native subscriber understands Watten, and its account grant must
             # still be true immediately before each send.
             if game_type_from_state(game) == WATTEN_GAME_TYPE and not native:
                 return
-            if native and not watten_game_preview_enabled(connection.websocket):
+            if native and not watten_request_enabled(connection.websocket):
                 self.disconnect(connection.websocket)
                 return
             identity = resolve_identity(connection.websocket)
             if identity is None or identity.user_id != connection.user_id:
+                self.disconnect(connection.websocket)
+                return
+            if native and not can_access_watten(identity, connection.websocket):
                 self.disconnect(connection.websocket)
                 return
             payload = _recipient_payload(game, identity, now=utcnow(), connection=connection.websocket)
@@ -205,7 +208,7 @@ async def serve_friend_activity_websocket(
     websocket: WebSocket, *, reserve_connection: Callable, release_connection: Callable,
 ) -> None:
     native = websocket.query_params.get("context") == WATTEN_GAME_TYPE
-    if native and not watten_game_preview_enabled(websocket):
+    if native and not watten_request_enabled(websocket):
         await websocket.close(code=1008, reason="Watten unavailable")
         return
     if not websocket_origin_allowed(websocket):
@@ -214,6 +217,9 @@ async def serve_friend_activity_websocket(
     identity = resolve_session(websocket)
     if identity is None:
         await websocket.close(code=1008, reason="Authentication required")
+        return
+    if native and not can_access_watten(identity, websocket):
+        await websocket.close(code=1008, reason="Watten unavailable")
         return
     if native and not _native_account_matches(websocket, identity.user_id):
         await websocket.close(code=1008, reason="watten_actor_not_bound")
@@ -267,7 +273,7 @@ def _native_account_matches(websocket, account: int) -> bool:
 
 def _require_native_identity(websocket, account: int):
     # Check the product boundary before reading session state after any await.
-    if not watten_game_preview_enabled(websocket):
+    if not watten_request_enabled(websocket):
         return None
     try:
         identity = require_watten_access(websocket, resolve_session(websocket))

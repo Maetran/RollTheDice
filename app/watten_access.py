@@ -1,4 +1,4 @@
-"""A separate, strictly local game-development gate; never a production grant."""
+"""Strict local development and independently authorized founder web preview."""
 
 import ipaddress
 import os
@@ -17,6 +17,8 @@ from .product_hosts import (
     is_watten_host,
     site_origin,
 )
+
+_PRIVATE_HEADERS = {"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"}
 
 
 def _local(hostname: str) -> bool:
@@ -113,9 +115,9 @@ def can_discover_watten(identity, connection) -> bool:
 
 def require_watten_access(connection, identity):
     if not watten_request_enabled(connection):
-        raise HTTPException(status_code=404, detail="game_not_found")
+        raise HTTPException(status_code=404, detail="game_not_found", headers=_PRIVATE_HEADERS)
     if identity is None:
-        raise HTTPException(status_code=401, detail="authentication_required")
+        raise HTTPException(status_code=401, detail="authentication_required", headers=_PRIVATE_HEADERS)
     if not can_access_watten(identity, connection):
-        raise HTTPException(status_code=404, detail="game_not_found")
+        raise HTTPException(status_code=404, detail="game_not_found", headers=_PRIVATE_HEADERS)
     return identity

@@ -81,10 +81,34 @@ class WattenReadinessMiddleware:
 
             local_document = (watten_game_preview_enabled(connection)
                               and watten_account_preview_enabled(connection))
-        if not fixed_host and (not local_account_path or local_document) and (
+        founder_document = False
+        if (scope["type"] == "http" and scope["method"] in {"GET", "HEAD"}
+                and (scope["path"] in _LOCAL_ACCOUNT_PATHS - {"/watten/anmelden"}
+                     or _LOCAL_GAME_DOCUMENT.fullmatch(scope["path"]))):
+            from .watten_access import can_access_watten, watten_game_preview_enabled, watten_request_enabled
+
+            if watten_request_enabled(connection) and not watten_game_preview_enabled(connection):
+                from .auth import resolve_session
+
+                founder_document = can_access_watten(resolve_session(connection), connection)
+        if not fixed_host and (not local_account_path or local_document or founder_document) and (
                 not icon_path or (scope["type"] == "http" and scope["method"] in {"GET", "HEAD"}
                                   and watten_account_preview_enabled(connection))):
-            await self.app(scope, receive, send)
+            if founder_document:
+                async def send_private(message: Message) -> None:
+                    if message["type"] == "http.response.start":
+                        headers = [(key, value) for key, value in message["headers"]
+                                   if key.lower() not in {b"cache-control", b"x-robots-tag"}]
+                        headers.extend((key.lower().encode("ascii"), value.encode("ascii"))
+                                       for key, value in _HEADERS.items())
+                        message = {**message, "headers": headers}
+                    elif scope["method"] == "HEAD" and message["type"] == "http.response.body":
+                        message = {**message, "body": b""}
+                    await send(message)
+
+                await self.app(scope, receive, send_private)
+            else:
+                await self.app(scope, receive, send)
             return
         if scope["type"] == "websocket":
             await send({"type": "websocket.close", "code": 1008, "reason": "Watten is not available yet."})

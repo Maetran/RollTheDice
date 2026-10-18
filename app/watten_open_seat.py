@@ -25,7 +25,7 @@ from .database import session_scope
 from .models import ActiveGame, User, WattenOpenSeatClaim
 from .moderation import ensure_play_allowed
 from .security import as_utc, utcnow
-from .watten_access import watten_game_preview_enabled
+from .watten_access import watten_request_enabled
 from .watten_http import _HEADERS
 from .watten_http import _identity as _http_identity
 from .watten_recipe import loads_strict_json, require_fields
@@ -184,7 +184,7 @@ async def coordinate_open_seat(game_id, revision, *, resolve_actor, transport):
 
 
 def _identity(request, expected=None):
-    if not watten_game_preview_enabled(request):
+    if not watten_request_enabled(request):
         raise HTTPException(status_code=404, detail="game_not_found", headers=_HEADERS)
     identity = _http_identity(request)
     values = request.headers.getlist("X-Watten-Expected-Account-Id")
@@ -213,7 +213,7 @@ async def maybe_notify_open_seat(game_id, request, game):
     """Thin existing-route dispatch; native delivery always stops before claims."""
     if game is not None and game.get("_game_type") != "watten" and "_watten" not in game:
         return None
-    if game is None and not watten_game_preview_enabled(request):
+    if game is None and not watten_request_enabled(request):
         return None
     try:
         if game is None:
