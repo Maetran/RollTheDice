@@ -8,9 +8,9 @@
   <meta name="robots" content="noindex, nofollow">
   <meta name="theme-color" content="#f4f6f8">
   <meta name="color-scheme" content="light dark">
-  <link rel="manifest" href="/manifest.webmanifest?v=a746e869ce73">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=a746e869ce73" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=a746e869ce73" sizes="180x180">
+  <link rel="manifest" href="/manifest.webmanifest?v=50fc0f01030d">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=50fc0f01030d" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=50fc0f01030d" sizes="180x180">
   <!--
     room.html – Spielraum
     ---------------------
@@ -21,9 +21,9 @@
     - Ein schlanker Header bietet Reactions, Regeln-Link und Zurück-zur-Lobby
   -->
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"||t==="classic"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d==="dark"?"dark":"light";const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=d==="dark"?"#0b1120":d==="classic"?"#31583a":"#f4f6f8"}catch(_){}</script>
-  <script src="/static/shell.js?v=a746e869ce73" defer></script>
-  <link rel="stylesheet" href="/static/style.css?v=a746e869ce73">
-  <link rel="stylesheet" href="/static/zdwa-design-2026.css?v=a746e869ce73">
+  <script src="/static/shell.js?v=50fc0f01030d" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=50fc0f01030d">
+  <link rel="stylesheet" href="/static/zdwa-design-2026.css?v=50fc0f01030d">
   <script>{const r=document.documentElement,g=k=>{try{return localStorage.getItem(k)}catch(_){return null}},q=new URLSearchParams(location.search).get("design");if(q!=="classic"&&g("zdwa_design")!=="old"&&g("zdwa_design_off")!=="1"&&(q==="2026"||g("zdwa_design_override")!=="old"))r.dataset.design="2026"}</script>
 </head>
 <body class="room-page">
@@ -97,8 +97,8 @@
   </div>
 
   <!-- Scripts: zuerst scoreboard (Renderer), dann room (WS/Steuerung als ES-Modul) -->
-  <script src="/static/scoreboard.js?v=a746e869ce73" defer></script>
-  <script src="/static/emoji.js?v=a746e869ce73"></script>
-  <script type="module" src="/static/room.js?v=a746e869ce73"></script>
+  <script src="/static/scoreboard.js?v=50fc0f01030d" defer></script>
+  <script src="/static/emoji.js?v=50fc0f01030d"></script>
+  <script type="module" src="/static/room.js?v=50fc0f01030d"></script>
 </body>
 </html>

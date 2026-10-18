@@ -28,7 +28,9 @@ not asserted deployment dates. See the [complete version history](docs/VERSION_H
 **Deutsch:** Ein standardmässig ausgeschaltetes Serverflag erlaubt die erste
 Watten-Webvorschau ausschliesslich dem dauerhaft gebundenen Ownerkonto auf
 dem bestehenden Produktionshost. Die Spieleauswahl folgt der frisch geprüften
-Kontoberechtigung; direkte HTTP- und WebSocket-Zugriffe bleiben für andere
+Kontoberechtigung. Spät bestätigte Spiele ergänzen das offene Menü, ohne alte
+Links oder den Fokus zu ersetzen; Rechteentzug schliesst es weiterhin sofort.
+Direkte HTTP- und WebSocket-Zugriffe bleiben für andere
 Konten gesperrt, auch für weitere Administratoren und angenommene Einladungen.
 Computerzüge prüfen zusätzlich den tatsächlich gespeicherten Spielstand und
 die Berechtigung vor dem atomaren Commit. Ein abgeschaltetes Flag stoppt weitere
@@ -45,8 +47,10 @@ und die öffentliche Freigabe stehen noch aus.
 
 **English:** A server flag, off by default, makes the first Watten web preview
 available only to the permanently bound founder account on the existing
-production host. The chooser follows freshly checked account permissions;
-direct HTTP and WebSocket entry stays closed to other accounts, including
+production host. The chooser follows freshly checked account permissions.
+Late confirmations add games to the open menu while preserving existing links
+and focus; permission withdrawal still closes it immediately.
+Direct HTTP and WebSocket entry stays closed to other accounts, including
 additional administrators and accepted invitees. Computer turns also verify
 the actual stored source and account authority before an atomic commit.
 Disabling the flag stops further turns without new points or progress. The

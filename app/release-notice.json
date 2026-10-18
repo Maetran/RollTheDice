@@ -12,14 +12,16 @@
       "title": "Spieleauswahl bleibt aktuell",
       "changes": [
         "Nach dem An- oder Abmelden passt sich die Spieleauswahl deinem Konto an.",
-        "Auch beim Zurückkehren zur App wird die Verfügbarkeit erneut geprüft."
+        "Auch beim Zurückkehren zur App wird die Verfügbarkeit erneut geprüft.",
+        "Neu verfügbare Spiele erscheinen im offenen Menü, ohne deinen Fokus zu verschieben."
       ]
     },
     "en": {
       "title": "An up-to-date game selection",
       "changes": [
         "The game selection follows your account after signing in or out.",
-        "Availability is checked again when you return to the app."
+        "Availability is checked again when you return to the app.",
+        "Newly available games appear in the open menu without moving your focus."
       ]
     }
   }

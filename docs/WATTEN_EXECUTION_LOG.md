@@ -832,3 +832,42 @@ were reproduced and fixed; one test fixture needed the explicitly labelled
 public Zilch projection. Complete exact-commit verification, CI and the private
 release still follow. The fixed Watten host, PWA, mail and push remain closed;
 remaining native services interfaces and physical acceptance are still open.
+
+
+### Exakte Vollversuche vor der privaten3.16-Freigabe
+
+Der vollständige Lauf auf `4b93c5f` bestand Qualität, Tools,2535 Backendfälle
+(86,28% Coverage), Linux/amd64-Produktionsimage und Container-Smoke. Alle sieben
+Browserteile liefen fertig; zwei ausdrücklich öffentliche Dreispiele-Fixtures
+übernahmen versehentlich die lokale Watten-Capability, ein Design-Routehandler
+lief über das Context-Teardown hinaus. Die eng korrigierten Fixtures umgehen
+keine Rechteprüfung und entfernen keine Assertions. Der rote Bericht bleibt
+unter `test-results/local-checks/4b93c5fdfc5b-1792356579633-af6ac7e6/` erhalten.
+
+Der erneute Vollversuch `10ecaa7` bestand dieselben Gruppen mit2535 Backendfällen
+(86,27% Coverage). Alle sieben Browserteile liefen erneut fertig. Zwei Fälle
+reproduzierten einen echten Menürace: Eine spät bestätigte private Option
+schloss ein schon geöffnetes Menü. Ein weiterer Logout-Test evaluierte Fokus
+im gerade absichtlich verworfenen Dokument. Der unveränderte rote Bericht
+liegt unter `test-results/local-checks/10ecaa7fb7d5-1792357460623-f7616f37/`.
+Keiner dieser Versuche ist ein gültiger Pushnachweis.
+
+Die Produktkorrektur ergänzt ausschliesslich eindeutige neue Optionen hinter
+einem exakt unveränderten Menüpräfix. Panel, alte Links und Fokus bleiben
+erhalten; Entzug, andere Ziele oder Spielwechsel schliessen weiterhin sofort.
+Alte Aktivitätsantworten werden verworfen. Zwei neue Nodefälle waren vor dem
+Fix rot; Root besteht danach17 Node-Verhaltenstests. Unabhängiges Quellreview
+blieb ohne Restbefund. Der Logout-Test verwendet jetzt einen echten zweiten
+Tab und nativen Fokuswechsel; alle Privacyassertions bleiben bestehen.
+Ein neuer Browserfall hält die abschliessende private Authantwort bis nach
+dem Öffnen des Menüs gezielt zurück. Dieser Fall, beide Hausdepp-Sprachen und
+der betroffene Zilch-Pfad bestehen im gezielten Browserlauf. Die erste native
+Tabaktivierung des Logout-Tests löste im Headless-Chromium keinen Fokus aus;
+der Trace belegte die ausbleibende Authabfrage. Die Fixture dispatcht Fokus
+jetzt im nächsten Browser-Task, damit der Rückgabewert das absichtliche
+Privacyreload überlebt. Der echte Logout und alle Assertions bleiben bestehen;
+der gezielte Gegenlauf ist grün. Belege liegen unter
+`test-results/browser/watten-owner-preview-picker-fix/` sowie
+`test-results/browser/watten-owner-preview-logout-fix/`.
+Ein weiterer vollständiger Lauf auf dem finalen sauberen Commit folgt vor
+Push und Release.
