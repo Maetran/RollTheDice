@@ -149,6 +149,7 @@ from .watten_pages import router as watten_pages_router
 from .watten_progress_pages import router as watten_progress_router
 from .watten_pwa import router as watten_pwa_router
 from .watten_readiness import WattenReadinessMiddleware
+from .watten_rematch import router as watten_rematch_router
 from .web_push import (
     GAME_INVITE_PUSH_ACCOUNT_COOLDOWN_SECONDS,
     claim_game_invite_push,
@@ -560,6 +561,7 @@ app.include_router(watten_pwa_router)
 app.include_router(watten_pages_router)
 app.include_router(watten_progress_router)
 app.include_router(watten_favorite_router)
+app.include_router(watten_rematch_router)
 
 LEGACY_PAGE_PATHS = {
     "/static/index.html": "/",

@@ -17,7 +17,7 @@ from dataclasses import dataclass, replace
 from datetime import datetime
 from weakref import WeakValueDictionary
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 
 from .database import database_schema_ready, session_scope
 from .models import ActiveGame
@@ -451,7 +451,7 @@ def _ack_payload(ack: RuntimeAck, lifecycle_revision: int) -> dict:
             "deal_id": ack.deal_id, "opportunity": ack.opportunity, "lifecycle_revision": lifecycle_revision}
 
 
-def snapshot_watten(game: dict, viewer_id: str | None = None) -> dict:
+def snapshot_watten(game: dict, viewer_id: str | None = None, *, viewer_account_id: int | None = None) -> dict:
     from .watten_public_titles import public_title
 
     runtime = game["_watten"]
@@ -463,6 +463,10 @@ def snapshot_watten(game: dict, viewer_id: str | None = None) -> dict:
         engine_view = member_view(engine, account_id=member.account_id, player_id=member.participant_id) if member and member.seat is not None else spectator_view(engine)
         if runtime.absent and "actions" in engine_view:
             engine_view["actions"] = [action for action in engine_view["actions"] if action == "partner_feedback"]
+    account = member.account_id if member else viewer_account_id
+    reservation = next((item for item in room.reservations if type(account) is int
+                        and item.account_id == account and item.valid_at(utcnow())), None)
+    host = next((item for item in room.members if item.participant_id == room.host_participant_id), None)
     seats = []
     for seat in range(room.recipe.player_count):
         occupant = next((item for item in (*room.members, *room.cpus) if item.seat == seat), None)
@@ -475,6 +479,10 @@ def snapshot_watten(game: dict, viewer_id: str | None = None) -> dict:
             "finished": game["_finished"], "aborted": game["_aborted"],
             "room": {"revision": room.revision, "status": room.status, "recipe": recipe_to_payload(room.recipe),
                      "host_participant_id": room.host_participant_id, "seats": seats,
+                     "rematch": {"source_game_id": room.rematch_of, "game_id": room.rematch_room_id,
+                                 "can_create": bool(host and type(account) is int and host.account_id == account
+                                     and room.status in {"finished", "closed"} and room.rematch_room_id is None)},
+                     "reservation": {"seat": reservation.seat, "expires_at": reservation.expires_at.isoformat()} if reservation else None,
                      "members": [{"participant_id": item.participant_id, "name": names[item.participant_id],
                                   "seat": item.seat, "team": item.team} for item in room.members],
                      "wait_expires_at": room.wait_expires_at.isoformat() if room.status == "waiting" else None},
@@ -494,7 +502,7 @@ def lobby_entry(game: dict, account: int) -> dict:
     return {"id": game["_id"], "name": game["_name"], "game_type": "watten", "mode": game["_mode"],
             "expected": runtime.room.recipe.player_count, "started": game["_started"], "finished": game["_finished"],
             "locked": bool(game["_passphrase"]), "my_player_id": member.participant_id if member else None,
-            "room": snapshot_watten(game)["room"], "paused": bool(runtime.absent),
+            "room": snapshot_watten(game, viewer_account_id=account)["room"], "paused": bool(runtime.absent),
             "awaited_participant_ids": list(runtime.absent), "lifecycle_revision": runtime.lifecycle_revision,
             "can_resume": bool(member and member.participant_id in runtime.absent),
             "capabilities": {"cpu_autoplay": _cpu_capability()}}
@@ -598,6 +606,27 @@ def restore_watten_game(raw: dict) -> dict:
     return game
 
 
+def _write_checkpoint(db, checkpoint: dict, *, creating=False, expected_json=None) -> bool:
+    """Caller-owned transaction; optional exact persisted-source CAS before inserts."""
+    payload = dumps_canonical_json(serialize_watten_game(checkpoint))
+    now = utcnow()
+    if expected_json is not None:
+        changed = db.execute(update(ActiveGame).where(ActiveGame.game_id == checkpoint["_id"],
+            ActiveGame.state_json == expected_json).values(state_json=payload, updated_at=now))
+        return changed.rowcount == 1
+    row = db.scalar(select(ActiveGame).where(ActiveGame.game_id == checkpoint["_id"]))
+    if row is None:
+        db.add(ActiveGame(game_id=checkpoint["_id"], state_json=payload, created_at=now, updated_at=now))
+    elif creating:
+        raise ValueError("watten_game_id_collision")
+    else:
+        prior = json.loads(row.state_json)
+        if type(prior) is not dict or prior.get("_game_type") != "watten":
+            raise ValueError("watten_game_id_collision")
+        row.state_json, row.updated_at = payload, now
+    return True
+
+
 def persist_watten_game(game: dict, *, creating: bool = False) -> None:
     """Raise on storage failure; the caller must keep the prior live state."""
     if not database_schema_ready():
@@ -614,19 +643,7 @@ def persist_watten_game(game: dict, *, creating: bool = False) -> None:
             checkpoint["_watten_result"] = store_result_in_session(db, checkpoint)
             checkpoint["_completion_persisted"] = True
             store_completion_progress(db, checkpoint)
-        payload = dumps_canonical_json(serialize_watten_game(checkpoint))
-        row = db.scalar(select(ActiveGame).where(ActiveGame.game_id == checkpoint["_id"]))
-        now = utcnow()
-        if row is None:
-            db.add(ActiveGame(game_id=checkpoint["_id"], state_json=payload, created_at=now, updated_at=now))
-        elif creating:
-            raise ValueError("watten_game_id_collision")
-        else:
-            prior = json.loads(row.state_json)
-            if type(prior) is not dict or prior.get("_game_type") != "watten":
-                raise ValueError("watten_game_id_collision")
-            row.state_json = payload
-            row.updated_at = now
+        _write_checkpoint(db, checkpoint, creating=creating)
         from .watten_public_titles import refresh_public_titles
 
         db.flush()  # Actual checkpoint/result failures must still abort gameplay.
@@ -639,7 +656,7 @@ def persist_watten_game(game: dict, *, creating: bool = False) -> None:
     game["_watten_public_titles"] = titles
 
 
-def restore_watten_json(text: str) -> dict:
+def restore_watten_json(text: str, *, refresh_titles: bool = True) -> dict:
     if type(text) is not str:
         raise ValueError("watten_invalid_storage")
 
@@ -658,7 +675,8 @@ def restore_watten_json(text: str) -> dict:
         game = restore_watten_game(json.loads(text, object_pairs_hook=unique, parse_constant=constant))
         from .watten_public_titles import restored_public_titles
 
-        game["_watten_public_titles"] = restored_public_titles(game)
+        if refresh_titles:
+            game["_watten_public_titles"] = restored_public_titles(game)
         return game
     except RecursionError as exc:
         raise ValueError("watten_invalid_storage") from exc

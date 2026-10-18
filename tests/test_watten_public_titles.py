@@ -91,7 +91,7 @@ def test_changed_journal_refreshes_other_room_on_next_persist_and_restart_reads_
     monkeypatch.setattr(titles, "session_scope", lambda: pytest.fail("pure snapshot opened a database session"))
     projection = snapshot_watten(match.game)
     assert all(set(seat["public_title"]) == {"level", "name", "threshold"} for seat in projection["room"]["seats"])
-    assert all(text not in json.dumps(projection) for text in ('"user_id"', '"account_id"', '"xp"', '"source_game_id"', '"grant_sequence"'))
+    assert all(text not in json.dumps(projection) for text in ('"user_id"', '"account_id"', '"xp"', '"grant_sequence"', "title-first-match", "title-second-match"))
     projection["room"]["seats"][0]["public_title"]["name"]["de"] = "client mutation"
     assert seat_titles(match.game)[0]["name"]["de"] != "client mutation"
 

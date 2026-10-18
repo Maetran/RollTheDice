@@ -66,4 +66,4 @@ def _detail_response(identity, game: dict, passphrase, check: int) -> JSONRespon
         return _response({"ok": True, "exists": True})
     if not verified:
         return _response({"exists": True, **lobby_entry(game, identity.user_id)})
-    return _response({"exists": True, **snapshot_watten(game, own.participant_id if own else None)})
+    return _response({"exists": True, **snapshot_watten(game, own.participant_id if own else None, viewer_account_id=identity.user_id)})

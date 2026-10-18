@@ -477,3 +477,26 @@ def test_strict_room_json_rejects_duplicate_keys_and_constants():
     for bad in (text.replace('{"cpus":[],', '{"cpus":[],"cpus":[],', 1),
                 text.replace('"revision":0', '"revision":NaN'), text[:-1], None):
         assert code_of(room_from_json, bad) == "watten_invalid_json"
+
+
+def test_closed_waiting_rematch_keeps_its_host_and_roundtrips_without_an_invented_match():
+    source = join(new_room(4, cpu_seats=(3,)), 201)
+    source = close_expired(source, revision=source.revision, now=later(WAIT))
+    created = create_rematch(source, revision=source.revision, account_id=HOST, target_room_id="closed-follow-up",
+                             now=later(WAIT), wait_seconds=WAIT)
+    assert created.source.status == "closed" and created.source.first_dealer is None
+    assert created.room.status == "waiting" and created.room.members == (Member("p1", HOST),)
+    assert room_from_json(room_to_json(created.source)) == created.source
+    assert code_of(create_rematch, source, revision=source.revision, account_id=201, target_room_id="other",
+                   now=later(WAIT), wait_seconds=WAIT) == "watten_host_required"
+
+
+def test_rematch_protection_override_changes_only_target_recipe_and_verifier():
+    source = finished(2, password=True)
+    disabled = create_rematch(source, revision=source.revision, account_id=HOST, target_room_id="open-follow-up",
+                              now=NOW, wait_seconds=WAIT, password_required=False)
+    assert not disabled.room.recipe.password_required and disabled.protection_verifier is None
+    assert disabled.source.recipe == source.recipe and disabled.source.recipe.password_required
+    with pytest.raises(WattenRoomError, match="protection_mismatch"):
+        create_rematch(source, revision=source.revision, account_id=HOST, target_room_id="invalid",
+                       now=NOW, wait_seconds=WAIT, password_required="false")
