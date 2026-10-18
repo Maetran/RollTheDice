@@ -229,6 +229,63 @@ def test_global_ack_does_not_fabricate_a_match_receipt(two_matches):
                                                            game_ids=("receipt-old", "receipt-new")) == {"receipt-old": 0, "receipt-new": 0}
 
 
+@pytest.mark.parametrize("damage", ("above_max", "other_match_credit", "other_match_grant", "future_generation_event"))
+def test_read_rejects_receipt_boundaries_without_a_current_own_same_source_event(two_matches, damage):
+    own, _foreign, _old, new = two_matches
+    with session_scope() as db:
+        boundary = {"above_max": 999, "other_match_credit": min(new),
+                    "other_match_grant": max(new), "future_generation_event": max(new)}[damage]
+        if damage == "other_match_grant":
+            state = db.get(WattenProgressState, own)
+            state.grant_sequence += 1
+            boundary = state.grant_sequence
+            db.add(WattenAchievementGrant(user_id=own, generation=1, achievement_id="other-source-later-grant",
+                                         catalog_version=2, source_game_id="receipt-new", reached_at=FINISHED,
+                                         xp=0, policy_version=2, grant_sequence=boundary))
+        if damage == "future_generation_event":
+            db.add(WattenAchievementGrant(user_id=own, generation=2, achievement_id="future-epoch-source",
+                                         catalog_version=2, source_game_id="receipt-old", reached_at=FINISHED,
+                                         xp=0, policy_version=2, grant_sequence=boundary))
+        db.add(WattenMatchPresentationAck(user_id=own, generation=1, game_id="receipt-old", through_sequence=boundary))
+    with session_scope() as db:
+        before = journal_snapshot(db)
+        with pytest.raises(receipts.WattenPresentationError, match="invalid_source"):
+            receipts.read_match_presentation_boundaries(db, user_id=own, generation=1, game_ids=("receipt-old",))
+        assert journal_snapshot(db) == before
+        assert db.scalar(select(WattenMatchPresentationAck.through_sequence)) == boundary
+
+
+def test_read_future_epoch_rejects_without_changing_receipts(two_matches):
+    own, _foreign, old, _new = two_matches
+    with session_scope() as db:
+        receipts.acknowledge_match_presentation(db, user_id=own, generation=1, game_id="receipt-old", through_sequence=max(old))
+        before = journal_snapshot(db)
+        with pytest.raises(receipts.WattenPresentationError, match="stale_generation"):
+            receipts.read_match_presentation_boundaries(db, user_id=own, generation=2, game_ids=("receipt-old",))
+        assert journal_snapshot(db) == before
+        assert db.scalar(select(WattenMatchPresentationAck.through_sequence)) == max(old)
+
+
+def test_read_bulk_ids_are_bounded_selects_with_no_foreign_or_json_projection(two_matches):
+    own, _foreign, _old, _new = two_matches
+    statements = []
+
+    def observed(_connection, _cursor, statement, parameters, _context, _many):
+        statements.append((statement, parameters))
+
+    with session_scope() as db:
+        event.listen(get_engine(), "before_cursor_execute", observed)
+        try:
+            result = receipts.read_match_presentation_boundaries(db, user_id=own, generation=1,
+                game_ids=("receipt-old", "receipt-new", "receipt-foreign", *(f"missing-{index}" for index in range(501))))
+        finally:
+            event.remove(get_engine(), "before_cursor_execute", observed)
+        assert result == {"receipt-old": 0, "receipt-new": 0}
+    assert 2 < len(statements) < 10
+    assert all(statement.lstrip().upper().startswith("SELECT") and "_json" not in statement
+               and len(parameters) <= 252 for statement, parameters in statements)
+
+
 @pytest.mark.parametrize("pending_change", ("generation", "credit_deleted"))
 def test_ack_sees_pending_generation_or_credit_changes_in_its_caller_transaction(two_matches, pending_change):
     own, _foreign, old, _new = two_matches

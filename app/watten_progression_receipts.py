@@ -13,11 +13,13 @@ from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Mapping
 
-from sqlalchemy import literal, select
+from sqlalchemy import exists, literal, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 
 from .models import WattenAchievementGrant, WattenMatchCredit, WattenMatchPresentationAck, WattenProgressState
+
+_READ_BATCH_SIZE = 250
 
 
 class WattenPresentationError(ValueError):
@@ -113,8 +115,10 @@ def read_match_presentation_boundaries(db, *, user_id: int, generation: int,
     """Read-only immutable own-match boundaries; foreign/unknown IDs are absent.
 
     No autoflush occurs: the caller must flush its own source transaction first.
-    Missing receipts have boundary zero. This returns no XP, grant IDs, other
-    account data or private JSON, and does not advance any receipt/cursor.
+    Missing receipts have boundary zero. Positive stored boundaries must still
+    identify an actual current own event of that same source match. Bounded
+    relational batches return no XP, grant IDs, other account data or private
+    JSON, and never advance or repair any receipt/cursor.
     """
     _scope(user_id, generation)
     _require(type(game_ids) in {tuple, list, set, frozenset}, "watten_presentation_invalid_matches")
@@ -122,14 +126,23 @@ def read_match_presentation_boundaries(db, *, user_id: int, generation: int,
         _game_id(game_id)
     ids = tuple(sorted(set(game_ids)))
     with db.no_autoflush:
-        _current_generation(db, user_id, generation)
+        latest = _current_generation(db, user_id, generation)
         if not ids:
             return MappingProxyType({})
-        rows = db.execute(select(WattenMatchCredit.game_id, WattenMatchPresentationAck.through_sequence).outerjoin(
-            WattenMatchPresentationAck,
-            (WattenMatchPresentationAck.user_id == WattenMatchCredit.user_id)
-            & (WattenMatchPresentationAck.generation == WattenMatchCredit.generation)
-            & (WattenMatchPresentationAck.game_id == WattenMatchCredit.game_id)).where(
-                WattenMatchCredit.user_id == user_id, WattenMatchCredit.generation == generation,
-                WattenMatchCredit.game_id.in_(ids)).order_by(WattenMatchCredit.game_id))
-        return MappingProxyType({row.game_id: row.through_sequence or 0 for row in rows})
+        credit, ack, grant = WattenMatchCredit, WattenMatchPresentationAck, WattenAchievementGrant
+        grant_event = exists(select(grant.grant_sequence).where(
+            grant.user_id == credit.user_id, grant.generation == credit.generation,
+            grant.source_game_id == credit.game_id, grant.grant_sequence == ack.through_sequence)).correlate(credit, ack)
+        boundaries = {}
+        for offset in range(0, len(ids), _READ_BATCH_SIZE):
+            rows = db.execute(select(credit.game_id, credit.grant_sequence, ack.through_sequence, grant_event).outerjoin(
+                ack, (ack.user_id == credit.user_id) & (ack.generation == credit.generation)
+                & (ack.game_id == credit.game_id)).where(credit.user_id == user_id, credit.generation == generation,
+                    credit.game_id.in_(ids[offset:offset + _READ_BATCH_SIZE])).order_by(credit.game_id))
+            for game_id, credit_sequence, boundary, is_grant_event in rows:
+                if boundary is None:
+                    boundary = 0
+                _require(type(boundary) is int and (boundary == 0 or 1 <= boundary <= latest
+                         and (boundary == credit_sequence or is_grant_event)), "watten_presentation_invalid_source")
+                boundaries[game_id] = boundary
+        return MappingProxyType(boundaries)
