@@ -72,14 +72,16 @@ test('four humans release their reservations and explicitly choose different tea
   const players = await Promise.all([0, 1, 2, 3].map(() => player(browser, baseURL)));
   const host = players[0];
   try {
-    await finishOpenMatch(players, { determination: 'normal' });
+    const source = await finishOpenMatch(players, { determination: 'normal' });
     const original = await Promise.all(players.map(async item => (await item.context.request.get('/api/watten/account')).json()));
     await host.page.locator('[data-watten-rematch-form] [name=protection_mode]').selectOption('disabled');
     await host.page.locator('[data-watten-rematch-action=create]').click();
-    await expect(host.page.locator('[data-watten-rematch-action=open]')).toBeVisible();
+    await expect.poll(() => new URL(host.page.url()).pathname).not.toBe(source);
     for (const item of players) {
-      await item.page.locator('[data-watten-rematch-action=open]').click();
-      if (item !== host) await item.page.locator('[data-watten-join] button[type=submit]').click();
+      if (item !== host) {
+        await item.page.locator('[data-watten-rematch-action=open]').click();
+        await item.page.locator('[data-watten-join] button[type=submit]').click();
+      }
       await expect(item.page.locator('[data-watten-rematch-reservation]')).toBeVisible();
       await item.page.locator('[data-watten-command=decline-reservation]').click();
       await expect(item.page.locator('[data-watten-rematch-reservation]')).toHaveCount(0);
