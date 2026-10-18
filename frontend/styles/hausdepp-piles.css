@@ -27,7 +27,7 @@ html[data-game="hausdepp"] .hd-table .hd-centre .hd-burned > span:last-child { t
 .hd-burned-card { position: absolute; inset: 0; border: 2px solid #f3eadd; border-radius: 4px; background: url("/static/hausdepp/card-back.webp?v=ASSET_VERSION") center/90px; box-shadow: 0 2px 4px #180d0870; transform: translate(var(--burn-x), var(--burn-y)) rotate(var(--burn-angle)); }
 @media (max-width: 1099px) {
   html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre .hd-burned { position: absolute; left: 4px; right: auto; top: auto; bottom: 4px; transform: none; width: 52px; max-width: 52px; gap: 1px 3px; }
-  html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre .hd-burned > span { font-size: 9px; line-height: 10px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre .hd-burned > span { font-size: 11px; line-height: 13px; }
   html[data-game="hausdepp"] body.hd-playing .hd-burned-stack { width: 28px; margin: 5px 4px; }
   .hd-pile-inspector { padding: 12px; }
   .hd-pile-inspector > header { top: -12px; }

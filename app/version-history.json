@@ -2245,5 +2245,12 @@
     "date": "2026-10-17",
     "bump": "patch",
     "summary": "Hausdepp: Erfolgreich abgehobene Karten fliegen für alle sichtbar mit Namen zum neuen Besitzer. / Hausdepp: successfully cut cards fly visibly to their new owner, with a caption, for everyone."
+  },
+  {
+    "version": "3.8.0",
+    "revision": "f5a66ce6777612f0b42b0916af182fc27888fa57",
+    "date": "2026-10-18",
+    "bump": "minor",
+    "summary": "Hausdepp: Ausführlicher Rundenabschluss, lebendige Tisch-Extras, Profilbild führt ins Profil, ruhiger Start nach App-Neustart. / Hausdepp: a richer round summary, playful table extras, the avatar opens your profile and a calmer start after an app restart."
   }
 ]

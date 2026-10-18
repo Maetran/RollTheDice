@@ -38,8 +38,7 @@ html[data-game="hausdepp"] .hd-table .hd-seats > .hd-seat {
   pointer-events: auto;
 }
 html[data-game="hausdepp"] .hd-table .hd-seat > small { display: none; }
-html[data-game="hausdepp"] .hd-table .hd-seat > strong { grid-column: auto; grid-row: auto; align-self: auto; width: 100%; }
-html[data-game="hausdepp"] .hd-table .hd-seat > span { grid-column: auto; grid-row: auto; align-self: auto; }
+html[data-game="hausdepp"] .hd-table .hd-seat > .hd-seat-plate { grid-column: auto; grid-row: auto; align-self: center; }
 html[data-game="hausdepp"] .hd-table .hd-opponent-hand {
   --opponent-card: 36px;
   --opponent-spread: 72px;
@@ -78,8 +77,8 @@ html[data-game="hausdepp"] .hd-table:has(.hd-seat .hd-tournament-prefix) { --hd-
   html[data-game="hausdepp"] .hd-table:not([data-phase="waiting"]) { --hd-arc-height: 384px; --hd-arc-depth: 130px; --hd-stack-height: 252px; --hd-pile-size: 104px; }
   html[data-game="hausdepp"] .hd-table .hd-seats > .hd-seat { width: 48px; max-width: 48px; gap: 3px; }
   html[data-game="hausdepp"] .hd-table .hd-opponent-hand { --opponent-card: 26px; --opponent-spread: 28px; --opponent-step: 7px; height: calc(var(--opponent-card) * 57 / 36 + 8px); }
-  html[data-game="hausdepp"] .hd-table .hd-seat > strong { font-size: 11px; }
-  html[data-game="hausdepp"] .hd-table .hd-seat > span:not(.hd-seat-avatar) { font-size: 11px; white-space: nowrap; }
+  html[data-game="hausdepp"] .hd-table .hd-seat-plate > strong { font-size: 12px; }
+  html[data-game="hausdepp"] .hd-table .hd-seat-count { font-size: 11px; white-space: nowrap; }
   html[data-game="hausdepp"] .hd-table > .hd-centre { padding: 0 0 28px; gap: 20px; }
   html[data-game="hausdepp"] .hd-table .hd-stock-group,
   html[data-game="hausdepp"] .hd-table .hd-pile-group { gap: 8px; }
@@ -114,8 +113,8 @@ html[data-game="hausdepp"] .hd-table:has(.hd-seat .hd-tournament-prefix) { --hd-
   html[data-game="hausdepp"] .hd-table > .hd-centre { grid-column: 2; grid-row: 2; padding: 0 0 28px; gap: 34px; }
   html[data-game="hausdepp"] .hd-table .hd-seats > .hd-seat { width: 66px; max-width: 66px; gap: 3px; }
   html[data-game="hausdepp"] .hd-table .hd-opponent-hand { --opponent-card: 28px; --opponent-spread: 38px; --opponent-step: 8px; height: calc(var(--opponent-card) * 57 / 36 + 8px); }
-  html[data-game="hausdepp"] .hd-table .hd-seat > strong { font-size: 12px; }
-  html[data-game="hausdepp"] .hd-table .hd-seat > span:not(.hd-seat-avatar) { font-size: 11px; }
+  html[data-game="hausdepp"] .hd-table .hd-seat-plate > strong { font-size: 12px; }
+  html[data-game="hausdepp"] .hd-table .hd-seat-count { font-size: 11px; }
   html[data-game="hausdepp"] .hd-table .hd-burned { position: absolute; display: flex; flex-direction: row; align-items: baseline; gap: 7px; left: 50%; top: calc(100% + 12px); bottom: auto; width: max-content; transform: translateX(-50%); }
   html[data-game="hausdepp"] .hd-table .hd-burned > span:first-child { font-size: 20px; }
   html[data-game="hausdepp"] .hd-table .hd-burned > span:last-child { font-size: 11px; }
@@ -137,7 +136,7 @@ html[data-game="hausdepp"] .hd-table:has(.hd-seat .hd-tournament-prefix) { --hd-
   html[data-game="hausdepp"] .hd-table .hd-stock-group,
   html[data-game="hausdepp"] .hd-table .hd-pile-group { gap: 6px; }
   html[data-game="hausdepp"] .hd-table .hd-stock-group > span,
-  html[data-game="hausdepp"] .hd-table .hd-pile-group > span { font-size: 10px; line-height: 1.2; }
+  html[data-game="hausdepp"] .hd-table .hd-pile-group > span { font-size: 11px; line-height: 1.2; }
   html[data-game="hausdepp"] .hd-table .hd-hand-heading { padding-inline: 5px; }
   html[data-game="hausdepp"] .hd-own-identity > .player-avatar { width: 24px; height: 24px; }
 }
@@ -146,6 +145,6 @@ html[data-game="hausdepp"] .hd-table:has(.hd-seat .hd-tournament-prefix) { --hd-
   html[data-game="hausdepp"] .hd-table > .hd-centre { gap: 20px; }
   html[data-game="hausdepp"] .hd-table .hd-seats > .hd-seat { width: 44px; max-width: 44px; }
   html[data-game="hausdepp"] .hd-table .hd-opponent-hand { --opponent-card: 18px; --opponent-spread: 20px; --opponent-step: 5px; }
-  html[data-game="hausdepp"] .hd-table .hd-seat > strong,
-  html[data-game="hausdepp"] .hd-table .hd-seat > span:not(.hd-seat-avatar) { font-size: 10px; }
+  html[data-game="hausdepp"] .hd-table .hd-seat-plate > strong,
+  html[data-game="hausdepp"] .hd-table .hd-seat-count { font-size: 11px; }
 }

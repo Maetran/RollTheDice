@@ -68,7 +68,10 @@ for (const language of ['de', 'en']) {
             range.selectNodeContents(node);
             return [...range.getClientRects()];
           });
-          const burned = textRects('.hd-burned > span');
+          // Only painted text counts: the screen-reader words are clipped away.
+          const burned = [...document.querySelectorAll('.hd-burned [id="hausdeppBurnedCount"], .hd-burned > span:not(.hd-sr)')]
+            .flatMap(node => [...node.childNodes].filter(child => child.nodeType === Node.TEXT_NODE && child.textContent.trim()))
+            .flatMap(text => { const range = document.createRange(); range.selectNodeContents(text); return [...range.getClientRects()]; });
           const captions = textRects('#hausdeppStockAction, #hausdeppStockCount, #hausdeppPileCount, #hausdeppDrawAlert, #hausdeppStatus, #hausdeppEvent');
           return { cards: seatRects.some(seat => pileRects.some(pile => intersects(seat, pile))),
             captions: burned.some(counter => captions.some(caption => intersects(counter, caption))) };
