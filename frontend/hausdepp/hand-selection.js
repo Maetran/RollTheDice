@@ -23,6 +23,8 @@ export function createHandSelection() {
           notice = context?.action === "afterthrow" && next.action !== "afterthrow"
             ? "multiAfterthrowExpired" : "multiSelectionUpdated";
           clear();
+          // A selection serves one throw only; a closed opportunity ends it.
+          enabled = false;
         }
       }
       context = next;
@@ -35,6 +37,14 @@ export function createHandSelection() {
       notice = "";
     },
     cancel() { enabled = false; clear(); notice = ""; },
+    // Long press: select every playable card of that rank for this one throw.
+    startWith(card) {
+      if (!this.canEnable || !context.playable.includes(card)) return false;
+      enabled = true;
+      clear();
+      notice = "";
+      return this.select(card);
+    },
     canSelect(card) {
       return enabled && !!context?.action && !context.pending && context.hand.includes(card) &&
         context.playable.includes(card) && (!cards.size || rankOf([...cards][0]) === rankOf(card));
@@ -53,6 +63,8 @@ export function createHandSelection() {
       const selection = { action: context.action, cards: [...cards] };
       clear();
       notice = "";
+      // One throw, one selection: the next tap plays a single card again.
+      enabled = false;
       return selection;
     },
     clear() { clear(); notice = ""; },

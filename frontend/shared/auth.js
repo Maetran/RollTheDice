@@ -497,12 +497,15 @@ export async function requestAccountEmail(email, verification) {
 }
 
 export async function logout() {
-  const response = await apiFetch('/api/auth/logout', { method: 'POST' });
-  if (!response.ok) throw new Error('Abmelden fehlgeschlagen');
   // An anonymous visitor may still use a public game. Preserve that
   // server-confirmed capability for the logout notification so a mounted
   // product shell does not briefly revoke a public route before navigation.
-  const gameAccess = authState.cache?.game_access || authState.cache?.user?.game_access;
+  // Read it before the request: another request that already sees the ended
+  // session (401) clears the cache while the logout response is on its way.
+  const current = await loadAuth();
+  const gameAccess = current?.game_access || current?.user?.game_access;
+  const response = await apiFetch('/api/auth/logout', { method: 'POST' });
+  if (!response.ok) throw new Error('Abmelden fehlgeschlagen');
   authState.epoch += 1;
   authState.cache = null;
   authState.request = null;
@@ -532,7 +535,7 @@ export function mountUsernameSettings(container, { user, onChanged, zilch = fals
   if (!container || container.dataset.bound) return;
   container.dataset.bound = 'true';
   container.innerHTML = `
-    <p>${escapeHtml(translate('Dein Benutzername gilt für ZDWA, Zilch und Hausdepp sowie für die Anmeldung. Statistiken, Erfolge und deine Spielerauswahl bleiben erhalten.'))}</p>
+    <p>${escapeHtml(translate('Dein Benutzername gilt für alle unsere Spiele sowie für die Anmeldung. Statistiken, Erfolge und deine Spielerauswahl bleiben erhalten.'))}</p>
     <p class="muted small">${escapeHtml(translate('Auch abgeschlossene Partien zeigen deinen aktuellen Kontonamen. Gastnamen und Nachrichtentexte bleiben unverändert. Dein Profillink ändert sich; der alte Name wird wieder frei.'))}</p>
     <form class="${zilch ? 'zilch-settings-form' : 'form-stack'}" data-username-form>
       <label>${escapeHtml(translate('Neuer Benutzername'))}<input name="username" autocomplete="username" minlength="3" maxlength="32" required aria-describedby="usernameRules"></label>

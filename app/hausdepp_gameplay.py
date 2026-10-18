@@ -11,7 +11,7 @@ from .active_games import save_active_game
 from .game_realtime import broadcast
 from .game_state import multiplayer_pause_reason, touch
 
-HAUSDEPP_GAMEPLAY_ACTIONS = frozenset({"hausdepp_play", "hausdepp_pickup", "hausdepp_gamble", "hausdepp_afterthrow", "hausdepp_draw", "hausdepp_peek", "hausdepp_next_round"})
+HAUSDEPP_GAMEPLAY_ACTIONS = frozenset({"hausdepp_play", "hausdepp_pickup", "hausdepp_gamble", "hausdepp_afterthrow", "hausdepp_draw", "hausdepp_peek", "hausdepp_next_round", "hausdepp_add_cpu", "hausdepp_remove_cpu", "hausdepp_start_game"})
 _LOCKS: WeakValueDictionary[str, asyncio.Lock] = WeakValueDictionary()
 
 
@@ -54,6 +54,10 @@ def apply_hausdepp_command(game: dict, player_id: str, command: dict, *, trusted
     game["_hausdepp"] = apply_action(game["_hausdepp"], player_id, command["action"],
                                       cards=command.get("cards"), version=version)
     state = game["_hausdepp"]
+    if not trusted_cpu:
+        from .hausdepp_cpu_runner import note_human_presentation
+
+        note_human_presentation(game)
     game["_turn"] = {"player_id": state["current_player_id"]} if state.get("current_player_id") else None
     if state["phase"] == "finished":
         game["_finished"] = True
@@ -85,6 +89,12 @@ async def publish_hausdepp_transition(game: dict, *, finalize_game=None) -> None
 async def handle_hausdepp_gameplay_action(session, action: str, data: dict, *, finalize_game=None, **_kwargs) -> None:
     from .game_snapshot import snapshot
     from .hausdepp_engine import HausdeppRuleError
+
+    if action in {"hausdepp_add_cpu", "hausdepp_remove_cpu", "hausdepp_start_game"}:
+        from .hausdepp_waiting import handle_waiting_action
+
+        await handle_waiting_action(session, action, data, finalize_game=finalize_game)
+        return
 
     game = session.game
     command_id = data.get("command_id")

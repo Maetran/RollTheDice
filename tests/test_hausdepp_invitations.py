@@ -118,10 +118,25 @@ class HausdeppInvitationTests(unittest.TestCase):
                 self.game, recipients, sender_user_id=self.founder.id)).attempted, 0)
         self.send.assert_not_called()
 
-    def test_cpu_seats_do_not_create_invitable_human_capacity(self):
+    def test_cpu_seats_remain_invitable_until_replaced_by_humans(self):
         self.assertIsNone(open_seat_invitation_error(self.game, user_id=self.founder.id))
-        filled = {**self.game, "_players": [*self.game["_players"], {"user_id": self.friend.id}]}
-        self.assertEqual(open_seat_invitation_error(filled, user_id=self.founder.id), "game_invite_no_open_seat")
+        join_hausdepp_player(self.game, {"id": "friend", "name": self.friend.username,
+                                       "user_id": self.friend.id, "ws": None})
+        self.assertEqual(len(self.game["_participants"]), 6)
+        self.assertEqual(self.game["_hausdepp_cpu_count"], 4)
+        self.assertIsNone(open_seat_invitation_error(self.game, user_id=self.founder.id))
+        # A real admission replaces a CPU at this full waiting table. Calls
+        # remain useful until every participant is human, then must stop.
+        people = [self.stranger, *[create_user(f"InviteExtra{index}", "test-password-123", must_change_password=False)
+                                  for index in range(3)]]
+        for index, person in enumerate(people):
+            join_hausdepp_player(self.game, {"id": f"replacement-{index}", "name": person.username,
+                                           "user_id": person.id, "ws": None})
+            self.assertEqual(len(self.game["_participants"]), 6)
+            expected = "game_invite_no_open_seat" if index == len(people) - 1 else None
+            self.assertEqual(open_seat_invitation_error(self.game, user_id=self.founder.id), expected)
+        self.assertEqual(self.game["_hausdepp_cpu_count"], 0)
+        self.assertEqual(self.game["_expected_connections"], 6)
         for flag in ("_started", "_finished", "_aborted", "_completion_persisted"):
             with self.subTest(flag=flag):
                 self.assertEqual(open_seat_invitation_error({**self.game, flag: True}, user_id=self.founder.id),

@@ -1,4 +1,4 @@
-"""Private Hausdepp XP, 100 one-time achievements and the 24-step ironic ladder.
+"""Private Hausdepp XP, 115 one-time achievements and the 24-step ironic ladder.
 
 Only validated, completed round membership can mint a credit. Database uniqueness
 makes retries and simultaneous account tabs harmless. This service never writes
@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import json
 from collections import Counter
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -83,13 +85,13 @@ _RANK_DATA = (
     (1700, "Schlaumeier", "Smart Aleck", "Ein guter Tipp ist gut. Eine passende Karte wäre besser.", "Good advice is good. A playable card would be better."),
     (2000, "Besserwisser", "Know-it-all", "Du hättest es vorher gewusst. Natürlich.", "You knew that would happen. Of course you did."),
     (2300, "Stammtischgelehrter", "Table Scholar", "Die Theorie sitzt. Jetzt zählt der Stammtisch.", "You’ve mastered the theory. Now it’s the table that counts."),
-    (2650, "Halbwisser", "Half an Expert", "Die Hälfte wissen. Den Rest überzeugend vertreten.", "Know half of it. Defend the rest convincingly."),
-    (3000, "Bauchspieler", "Gut Player", "Der Kopf hat Feierabend. Der Bauch übernimmt.", "Your brain has clocked off. Your gut is taking over."),
-    (3400, "Denkpause", "Brain Break", "Kurz nicht nachgedacht. Schon wieder weitergekommen.", "Stopped thinking for a moment. Somehow still made progress."),
-    (3800, "Holzkopf", "Blockhead", "Solides Holz. Beste Voraussetzungen für den Stammtisch.", "Solid wood. An excellent fit for the card table."),
-    (4200, "Ochse", "Ox", "Mit ruhiger Kraft Richtung Hausdepp.", "Steady and strong, heading straight for Hausdepp."),
-    (4600, "Hirni", "Goofball", "Der Hausdepp ist zum Greifen nah.", "Hausdepp is almost within reach."),
-    (5000, "Hausdepp", "Hausdepp", "Geschafft. Mehr Hausdepp geht nicht.", "You made it. Peak Hausdepp achieved."),
+    (2900, "Halbwisser", "Half an Expert", "Die Hälfte wissen. Den Rest überzeugend vertreten.", "Know half of it. Defend the rest convincingly."),
+    (3600, "Bauchspieler", "Gut Player", "Der Kopf hat Feierabend. Der Bauch übernimmt.", "Your brain has clocked off. Your gut is taking over."),
+    (4400, "Denkpause", "Brain Break", "Kurz nicht nachgedacht. Schon wieder weitergekommen.", "Stopped thinking for a moment. Somehow still made progress."),
+    (5300, "Holzkopf", "Blockhead", "Solides Holz. Beste Voraussetzungen für den Stammtisch.", "Solid wood. An excellent fit for the card table."),
+    (6300, "Ochse", "Ox", "Mit ruhiger Kraft Richtung Hausdepp.", "Steady and strong, heading straight for Hausdepp."),
+    (7500, "Hirni", "Goofball", "Der Hausdepp ist zum Greifen nah.", "Hausdepp is almost within reach."),
+    (9000, "Hausdepp", "Hausdepp", "Geschafft. Mehr Hausdepp geht nicht.", "You made it. Peak Hausdepp achieved."),
 )
 RANKS = tuple({"id": f"rank_{index:02}", "name": {"de": de, "en": en}, "level": index,
                "threshold": threshold, "quote": {"de": quote_de, "en": quote_en}}
@@ -197,8 +199,27 @@ _ACHIEVEMENT_DATA = (
     (98, "Die direkte Antwort", "The immediate reply", "In einem vollständigen Turnier direkt nach einer eigenen Hausdepp-Runde die nächste Runde mit leeren Händen beenden.", "In a completed tournament, finish your cards in the round immediately after being Hausdepp.", 10),
     (99, "Geteiltes Leid", "Shared suffering", "Ein vollständiges Turnier abschliessen, in dem jeder Mitspieler mindestens einmal Hausdepp war.", "Complete a full tournament in which every player has been the round’s Hausdepp at least once.", 25),
     (100, "Der Letzte macht das Licht aus", "Last one out turns off the lights", "Die letzten beiden Runden eines vollständigen Turniers als Hausdepp und das Turnier als Tages-Hausdepp beenden.", "Be Hausdepp in the final two rounds of a completed tournament and finish as Tages-Hausdepp.", 25),
+    (101, "Bürozeit", "Office hours", "Eine Runde werktags zwischen 07:00 und 17:00 Uhr abschliessen.", "Complete a round on a weekday between 07:00 and 17:00.", 10),
+    (102, "Arbeitszeitbetrug I", "Time theft I", "10 Runden werktags zwischen 07:00 und 17:00 Uhr abschliessen.", "Complete 10 rounds on weekdays between 07:00 and 17:00.", 25),
+    (103, "Arbeitszeitbetrug II", "Time theft II", "25 Runden werktags zwischen 07:00 und 17:00 Uhr abschliessen.", "Complete 25 rounds on weekdays between 07:00 and 17:00.", 50),
+    (104, "Arbeitszeitbetrug Ultra Pro Max III", "Time theft Ultra Pro Max III", "50 Runden werktags zwischen 07:00 und 17:00 Uhr abschliessen.", "Complete 50 rounds on weekdays between 07:00 and 17:00.", 100),
+    (105, "Mittagspause", "Lunch break", "5 Runden werktags zwischen 12:00 und 13:30 Uhr abschliessen.", "Complete 5 rounds on weekdays between 12:00 and 13:30.", 10),
+    (106, "Feierabendrunde", "After-work round", "10 Runden werktags zwischen 17:00 und 20:00 Uhr abschliessen.", "Complete 10 rounds on weekdays between 17:00 and 20:00.", 25),
+    (107, "Nachteule", "Night owl", "Eine Runde zwischen 02:00 und 05:00 Uhr abschliessen.", "Complete a round between 02:00 and 05:00.", 25),
+    (108, "Early Bird", "Early bird", "5 Runden zwischen 06:00 und 07:00 Uhr abschliessen.", "Complete 5 rounds between 06:00 and 07:00.", 25),
+    (109, "Wochenendspieler", "Weekend player", "10 Runden am Samstag oder Sonntag abschliessen.", "Complete 10 rounds on a Saturday or Sunday.", 25),
+    (110, "Spielabend", "Card night", "An einem Tag 5 Runden abschliessen.", "Complete 5 rounds on a single day.", 10),
+    (111, "Kartenmarathon", "Card marathon", "An einem Tag 10 Runden abschliessen.", "Complete 10 rounds on a single day.", 25),
+    (112, "Wochenläufer", "Week streak", "An 7 aufeinanderfolgenden Tagen je eine Runde abschliessen.", "Complete a round on 7 days in a row.", 50),
+    (113, "Zwei-Wochen-Lauf", "Fortnight streak", "An 14 aufeinanderfolgenden Tagen je eine Runde abschliessen.", "Complete a round on 14 days in a row.", 100),
+    (114, "Stammgast", "Regular", "500 Runden abschliessen.", "Complete 500 rounds.", 100),
+    (115, "Inventar mit Schlüssel", "Furniture with a key", "1000 Runden abschliessen.", "Complete 1000 rounds.", 100),
 )
 _CATEGORIES = ("participation", "community", "cut_gamble", "tens", "four", "tempo", "mishaps", "endgame")
+# Swiss local time decides when a round counts as office hours, night or weekend.
+_PLAY_ZONE = ZoneInfo("Europe/Zurich")
+_HABIT_TARGETS = {102: 10, 103: 25, 104: 50, 105: 5, 106: 10, 108: 5, 109: 10, 110: 5, 111: 10,
+                  112: 7, 113: 14, 114: 500, 115: 1000}
 
 # A qualifying event advances once per completed round, however often it
 # occurred. Ordinary play therefore builds distinct goals over many evenings;
@@ -215,7 +236,7 @@ _ROUND_TARGETS = {
 }
 _TOURNAMENT_TARGETS = {91: 3, 93: 3, 94: 3, 96: 3, 97: 3, 98: 5, 99: 3, 100: 3}
 _TARGETS = {f"hausdepp_{number:02}": target for number, target in {
-    **_ROUND_TARGETS, **_TOURNAMENT_TARGETS,
+    **_ROUND_TARGETS, **_TOURNAMENT_TARGETS, **_HABIT_TARGETS,
     2: 25, 8: 5, 12: 5, 13: 10, 14: 10, 15: 100, 16: 250, 29: 25, 86: 3, 87: 10,
 }.items()}
 
@@ -267,6 +288,8 @@ def _description(number: int, de: str, en: str) -> dict[str, str]:
 
 
 def _category(number: int) -> str:
+    if number > 100:
+        return "habits"
     if number <= 64:
         return _CATEGORIES[(number - 1) // 8]
     return "comebacks" if number <= 76 else "style" if number <= 84 else "tournament"
@@ -291,11 +314,15 @@ def _rank(points: int) -> dict:
 def _new_aggregate() -> dict:
     return {"rounds": 0, "sizes": Counter(), "opponents": Counter(), "flags": Counter(), "ten_clears": 0,
             "with_cpu": 0, "humans_three": 0, "humans_six": 0,
-            "hausdepp": 0, "finished": 0, "tournaments": set()}
+            "hausdepp": 0, "finished": 0, "tournaments": set(),
+            "office": 0, "lunch": 0, "evening": 0, "night": 0, "early": 0, "weekend": 0,
+            "days": Counter(), "best_day": 0, "streak": 0, "best_streak": 0, "last_day": None}
 
 
-def _accumulate(aggregate: dict, facts: dict) -> None:
+def _accumulate(aggregate: dict, facts: dict, finished_at: datetime | None = None) -> None:
     aggregate["rounds"] += 1
+    if finished_at is not None:
+        _accumulate_time(aggregate, as_utc(finished_at).astimezone(_PLAY_ZONE))
     aggregate["sizes"][facts["participant_count"]] += 1
     aggregate["opponents"].update(facts["opponents"])
     tournament_id = facts.get("completed_tournament_id")
@@ -309,6 +336,25 @@ def _accumulate(aggregate: dict, facts: dict) -> None:
     aggregate[facts["outcome"]] += 1
     if tournament_id:
         aggregate["tournaments"].add(tournament_id)
+
+
+def _accumulate_time(aggregate: dict, local: datetime) -> None:
+    """Play habits from the round's Swiss local finishing time (credits come in time order)."""
+    weekday, minutes = local.weekday() < 5, local.hour * 60 + local.minute
+    aggregate["office"] += weekday and 7 * 60 <= minutes < 17 * 60
+    aggregate["lunch"] += weekday and 12 * 60 <= minutes < 13 * 60 + 30
+    aggregate["evening"] += weekday and 17 * 60 <= minutes < 20 * 60
+    aggregate["night"] += 2 * 60 <= minutes < 5 * 60
+    aggregate["early"] += 6 * 60 <= minutes < 7 * 60
+    aggregate["weekend"] += not weekday
+    day = local.date()
+    aggregate["days"][day] += 1
+    aggregate["best_day"] = max(aggregate["best_day"], aggregate["days"][day])
+    last = aggregate["last_day"]
+    if last != day:
+        aggregate["streak"] = aggregate["streak"] + 1 if last is not None and (day - last).days == 1 else 1
+        aggregate["last_day"] = day
+    aggregate["best_streak"] = max(aggregate["best_streak"], aggregate["streak"])
 
 
 def _progress(aggregate: dict, achievement_id: str) -> tuple[int, int]:
@@ -338,6 +384,12 @@ def _progress(aggregate: dict, achievement_id: str) -> tuple[int, int]:
         current = int(aggregate["finished"])
     elif number in (86, 87):
         current = len(aggregate["tournaments"])
+    elif number > 100:
+        current = {101: aggregate["office"], 102: aggregate["office"], 103: aggregate["office"],
+                   104: aggregate["office"], 105: aggregate["lunch"], 106: aggregate["evening"],
+                   107: aggregate["night"], 108: aggregate["early"], 109: aggregate["weekend"],
+                   110: aggregate["best_day"], 111: aggregate["best_day"], 112: aggregate["best_streak"],
+                   113: aggregate["best_streak"], 114: aggregate["rounds"], 115: aggregate["rounds"]}[number]
     return min(current, target), target
 
 
@@ -425,7 +477,7 @@ def synchronize_hausdepp_progress(user_id: int) -> dict:
         unlocked_ids = {unlock.achievement_id for unlock in unlocks}
         aggregate = _new_aggregate()
         for credit in credits:
-            _accumulate(aggregate, json.loads(credit.facts_json))
+            _accumulate(aggregate, json.loads(credit.facts_json), credit.finished_at)
             for item in ACHIEVEMENTS:
                 current, target = _progress(aggregate, item["id"])
                 if item["id"] not in unlocked_ids and current >= target:

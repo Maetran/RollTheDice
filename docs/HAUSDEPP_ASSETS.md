@@ -62,22 +62,35 @@ face-card photograph.
 
 ## Aktuelle Darstellung / Current rendering
 
-**DE:** `frontend/hausdepp/cards.js` verwendet einzeln vermessene Papierkanten
-(`CARD_CORNERS`) und eine affine SVG-Abbildung. Dadurch werden leichte Drehung
-und Scherung jeder fotografierten Karte begradigt. Ein Sicherheitsbeschnitt
-bleibt innerhalb des echten Papiers; ein gemeinsamer abgerundeter Papierumriss
-ersetzt die fotografierten Schnittkanten. Keine Kartensymbole, Figuren oder
-Rangbeschriftungen werden neu gezeichnet. Ein gemessener Weissabgleich pro Karte
-vereinheitlicht beim Rendern die Papierfarbe auf Elfenbein. Die SVG-Farbkorrektur
-verändert ausschliesslich die Darstellung; die JPEG-Pixel bleiben unverändert.
+**DE:** Seit der Kartentafel rendert `scripts/build_hausdepp_cards.py` alle 36
+Vorderseiten einmalig in `app/static/hausdepp/cards-atlas.webp` (9 × 4 Zellen zu
+432 × 684 Pixel, Farben als Zeilen in `CARD_CORNERS`-Reihenfolge). Grundlage sind
+die einzeln vermessenen Papierkanten (`CARD_CORNERS`): Jede Karte wird exakt
+perspektivisch entzerrt, mit demselben Sicherheitsbeschnitt von acht
+Quellpixeln. Der gemessene Weissabgleich pro Karte (`CARD_PAPER_WHITES`) wird
+eingerechnet, und eine Unschärfemaske gleicht die im Foto zum Rand hin weicheren
+Karten (Asse, Sechser) an die scharfe Bildmitte an. Die App zeigt danach nur noch
+unveränderte Zellen dieser Tafel unter einem gemeinsamen abgerundeten
+Papierumriss, ohne Laufzeitfilter. Keine Kartensymbole, Figuren oder
+Rangbeschriftungen werden neu gezeichnet. Die Quellfotos bleiben unverändert im
+Repository. **Änderungen gegenüber den Quellen:** Ausschnitt, perspektivische
+Entzerrung, Weissabgleich und Schärfung. Die Tafel steht unter **CC BY 3.0**
+(Quellfoto der Vorderseiten); die Zelle der Laub-Zehn bleibt als Bearbeitung
+ihrer Vorlage unter **CC BY-SA 4.0**.
 
-**EN:** `frontend/hausdepp/cards.js` uses individually measured paper corners
-(`CARD_CORNERS`) and an affine SVG mapping to straighten photographed tilt and
-shear. A safe inset stays inside the real paper; a common rounded paper outline
-replaces the photographed cut edge. Symbols, figures and rank labels are not
-redrawn. Measured per-card white balance makes paper consistently ivory during
-rendering. SVG colour grading affects presentation only; JPEG pixels remain
-unchanged.
+**EN:** Since the card atlas, `scripts/build_hausdepp_cards.py` pre-renders all
+36 faces once into `app/static/hausdepp/cards-atlas.webp` (9 × 4 cells of
+432 × 684 pixels, suits as rows in `CARD_CORNERS` order). From the individually
+measured paper corners, each card is rectified with an exact perspective
+transform and the same eight-source-pixel inset. The measured per-card white
+balance (`CARD_PAPER_WHITES`) is baked in, and an unsharp mask lifts the softer
+cards near the photograph's edges (aces, sixes) to the crisp centre. The app then
+shows unmodified atlas cells under one rounded paper outline, without runtime
+filters. Symbols, figures and rank labels are not redrawn. The source photographs
+remain unchanged in the repository. **Changes from the sources:** cropping,
+perspective rectification, white balance and sharpening. The atlas is offered
+under **CC BY 3.0** (faces photograph); the ten-of-leaves cell, as an adaptation
+of its source, remains under **CC BY-SA 4.0**.
 
 ### Blendfreie Laub-Zehn / Glare-free ten of leaves
 
@@ -192,6 +205,11 @@ from the JPEG.
 ## Rückseite: generiertes Asset / Back: generated asset
 
 - Datei / File: `app/static/hausdepp/card-back.png`
+- Ausgeliefert / Served: `app/static/hausdepp/card-back.webp` (600 × 600, WebP 85, rund 170 KB statt 2,5 MB),
+  aus der PNG-Quelle verkleinert, damit ein kalter App-Start nicht minutenlang auf die Rückseite wartet. /
+  downscaled from the PNG source so a cold app start no longer waits minutes for the back. Die Kartentafel
+  wird mit WebP-Qualität 80 erzeugt (rund 2,2 MB). Beide Bilder werden auf Spiel- und Lobbyseite vorab geladen. /
+  The face atlas is encoded at WebP quality 80 (about 2.2 MB); both images are preloaded on the table and lobby pages.
 - Abmessungen / Dimensions: **1254 × 1254 Pixel**, deckende Textur / opaque texture.
 - Werkzeug / Tool: natives `image_gen.imagegen`, eingebauter Modus / native built-in mode.
 - Referenz / Reference: zweites vom Owner angehängtes Foto / the owner's second attached photograph.

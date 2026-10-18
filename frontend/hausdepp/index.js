@@ -6,7 +6,6 @@ import { createRematch, mountRematchInvitations, rematchError } from "./rematch.
 import { renderTableDecor } from "./decor.js";
 import { mountLobbyDemo } from "./lobby-demo.js";
 import { invitationMarkup, mountInvitations } from "./invitations.js";
-import { generateTableName } from "./table-names.js";
 import { initializeGameViewport } from "../shared/game-viewport.js";
 import { zdwaAppEntryUrl, hausdeppSignInUrl } from "../multigame/routes.js";
 import { initializeAppMode } from "../multigame/app-mode.js";
@@ -14,10 +13,14 @@ import { mountLobbyChat } from "../shared/lobby-chat.js";
 import { initChat, addChatMessage } from "../room/chat.js";
 import { HAUSDEPP_MESSAGES } from "../i18n/catalog.js";
 import { cardArt, prepareCardAssets } from "./cards.js";
-import { prepareCardMotion, animateCardMotion, resetCardMotion, presentShuffle, cancelShuffle } from "./motion.js";
+import { prepareCardMotion, animateCardMotion, resetCardMotion, presentShuffle, cancelShuffle, launchOwnPlay, launchedCards, cancelOwnPlay } from "./motion.js";
 import { createGameTour } from "../shared/game-tours.js";
 import { mountPileInspector } from "./pile-inspector.js";
 import { mountHandSelection } from "./hand-selection.js";
+import { mountGameCreator } from "./game-creator.js";
+import { mountReactions } from "./reactions.js";
+import { storedTablePassword, rememberTablePassword, requestTablePassword } from "./table-access.js";
+import { waitingControlsMarkup, waitingSeatMarkup, mountWaitingControls } from "./waiting-room.js";
 
 const root = document.getElementById("hausdeppApp");
 const page = root?.dataset.page || "lobby";
@@ -27,7 +30,8 @@ const hausdeppBeginnerTour = createGameTour("hausdepp");
 const ranks = ["6", "7", "8", "9", "U", "O", "K", "A", "10"];
 let auth, socket, snapshot, reconnectTimer, lobbyTimer, pendingTimer, authUnavailable = false;
 let playerId = null, pending = false, stopped = false, tournamentEnding = false;
-let waitingLeaving = false;
+let waitingLeaving = false, gameCreator, waitingControls;
+let tablePassword, passwordRequest = false;
 let progressNotices, popupProgressPending = false;
 let pileInspector;
 let rematchInvitations, rematchCreating = false;
@@ -40,7 +44,7 @@ let accountProgress = null, acknowledgedProgressRevision = -1, achievementSearch
 const queuedCards = [];
 const seenChat = new Set();
 const seenReactions = new Set(), visibleReactions = new Map();
-let reactionObserver;
+let reactionObserver, reactionControls;
 const $ = id => document.getElementById(id);
 const lang = () => window.ZDWA_I18N?.getLanguage?.() === "en" ? "en" : "de";
 const t = (key, params = {}) => String(HAUSDEPP_MESSAGES[lang()][key] || key)
@@ -54,6 +58,7 @@ const icon = (name, cls = "") => `<svg class="hd-icon ${cls}" viewBox="0 0 24 24
   arrow: "M5 12h14m-6-6 6 6-6 6",
   check: "m5 12 4 4L19 6",
   account: "M20 21v-2a6 6 0 0 0-12 0v2M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0",
+  out: "M8 3.5h9v15H8zM4.5 19.5l15-15",
 }[name] || "M12 5v14M5 12h14"}"/></svg>`;
 
 function cardName(card) {
@@ -61,12 +66,12 @@ function cardName(card) {
   return `${t(suit)} ${t(`rank${rank}`)}`;
 }
 
-function cardMarkup(card, { interactive = false, playable = false, committed = false, selecting = false, selected = false, sameRank = false, index = 0, count = 1 } = {}) {
+function cardMarkup(card, { interactive = false, playable = false, committed = false, launched = false, selecting = false, selected = false, sameRank = false, index = 0, count = 1 } = {}) {
   const art = cardArt(card);
   const offset = index - (count - 1) / 2;
   const angle = count > 1 ? offset / Math.max((count - 1) / 2, 1) * Math.min(14, count * 3.5) : 0;
   const drop = Math.pow(Math.abs(angle) / 14, 2) * 17;
-  const attrs = `class="hausdepp-card ${playable ? "is-playable" : ""} ${committed ? "is-committed" : ""} ${selected ? "is-selected" : ""}" data-card-id="${esc(card)}" aria-label="${esc(cardName(card))}"${selecting ? ` aria-pressed="${selected}" aria-describedby="hausdeppMultiHint"` : ""}`;
+  const attrs = `class="hausdepp-card ${playable ? "is-playable" : ""} ${committed ? "is-committed" : ""} ${launched ? "is-launched" : ""} ${selected ? "is-selected" : ""}" data-card-id="${esc(card)}" aria-label="${esc(cardName(card))}"${selecting ? ` aria-pressed="${selected}" aria-describedby="hausdeppMultiHint"` : ""}`;
   return interactive
     ? `<button type="button" ${attrs} data-same-rank="${sameRank}" style="--card-index:${index};--fan-offset:${offset};--fan-angle:${angle}deg;--fan-drop:${drop}px" ${!playable || committed ? "disabled" : ""}>${art}</button>`
     : `<span ${attrs} role="img">${art}</span>`;
@@ -74,6 +79,13 @@ function cardMarkup(card, { interactive = false, playable = false, committed = f
 
 // A real paper edge per remaining card makes the height change with the count.
 // Stock layers carry backs only; the packet adds only its already-public faces.
+function topRun(discard) {
+  const rank = discard.at(-1)?.split("-")[1];
+  let run = 0;
+  for (let index = discard.length - 1; index >= 0 && discard[index].split("-")[1] === rank; index -= 1) run += 1;
+  return run;
+}
+
 function renderStacks(state) {
   const stock = $("hausdeppStock"), pile = $("hausdeppPile");
   const count = Math.max(0, Math.min(36, Number(state.deck_count) || 0));
@@ -84,9 +96,15 @@ function renderStacks(state) {
   }
   pile.dataset.cardCount = String(state.discard.length);
   const edges = Math.max(0, state.discard.length - 3);
+  // Equal ranks on top fan out slightly, so their count reads at a glance.
+  const run = topRun(state.discard);
+  pile.dataset.run = String(run);
   pile.innerHTML = state.discard.length
     ? Array.from({ length: edges }, (_, index) => `<span class="hd-pile-edge" aria-hidden="true" style="--stack-layer:${state.discard.length - index - 1}"></span>`).join("") +
-      state.discard.slice(-3).map((card, index, cards) => `<span class="hd-pile-face" style="--stack-layer:${cards.length - index - 1}">${cardMarkup(card)}</span>`).join("")
+      state.discard.slice(-3).map((card, index, cards) => {
+        const depth = cards.length - index - 1;
+        return `<span class="hd-pile-face"${run > 1 && depth < run ? ` data-run-step="${depth}"` : ""} style="--stack-layer:${depth};--run-step:${depth}">${cardMarkup(card)}</span>`;
+      }).join("")
     : `<span class="hd-empty-pile">${t(state.phase === "peeking" ? "notDealt" : "tableClear")}</span>`;
 }
 
@@ -127,8 +145,10 @@ function renderHand(markup) {
   const container = $("hausdeppHand");
   let fan = container.firstElementChild;
   if (!fan) { container.append(next); return; }
-  syncAttributes(fan, next);
   const existing = new Map([...fan.children].map(card => [card.dataset.cardId, card]));
+  // Layout positions only (offsetLeft ignores the fan's own transforms).
+  const before = new Map([...existing].map(([id, card]) => [id, card.offsetLeft]));
+  syncAttributes(fan, next);
   const nextCards = [...next.children];
   const retained = new Set(nextCards.map(card => card.dataset.cardId));
   for (const card of [...fan.children]) if (!retained.has(card.dataset.cardId)) card.remove();
@@ -137,6 +157,16 @@ function renderHand(markup) {
     syncAttributes(card, nextCard);
     if (fan.children[index] !== card) fan.insertBefore(card, fan.children[index] || null);
   });
+  if (existing.size === nextCards.length && nextCards.every(card => existing.has(card.dataset.cardId))) return;
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  // Remaining cards close or open the gap smoothly instead of jumping.
+  for (const [id, left] of before) {
+    const card = existing.get(id);
+    const shift = card.isConnected ? left - card.offsetLeft : 0;
+    if (Math.abs(shift) < 1) continue;
+    card.animate?.([{ translate: `${shift}px 0` }, { translate: "0 0" }],
+      { duration: 240, easing: "cubic-bezier(.16,1,.3,1)", composite: "add" });
+  }
 }
 
 function renderOpponents(markup) {
@@ -175,7 +205,7 @@ function header() {
   const identity = auth?.authenticated && auth.user;
   $("hausdeppHeader").innerHTML = `<a class="hd-brand" href="/hausdepp" aria-label="Hausdepp"><img src="/static/icons/hausdepp-icon-192-v2.png" width="36" height="36" alt=""><span>Hausdepp</span></a>
     <nav class="hd-nav" aria-label="${esc(t("navigation"))}"><a href="/hausdepp" ${page === "lobby" ? 'aria-current="page"' : ""}>${t("lobby")}</a><a href="/hausdepp/rangliste" ${page === "leaderboard" ? 'aria-current="page"' : ""}>${t("leaderboard")}</a><a href="/hausdepp/regeln" ${page === "rules" ? 'aria-current="page"' : ""}>${t("rules")}</a><a href="/hausdepp/konto" ${["account", "settings"].includes(page) ? 'aria-current="page"' : ""}>${t("account")}</a></nav>
-    <div class="hd-header-tools"><a class="hd-profile-button" href="${identity ? "/hausdepp/konto" : signInUrl()}" aria-label="${esc(identity ? t("signedInAs", { name: identity.username }) : t("signIn"))}" title="${esc(identity ? identity.username : t("signIn"))}">${identity ? avatarMarkup(identity, { size: "small", avatarKey: "header-self" }) : icon("account")}</a><label class="hd-language"><span class="hd-sr">${t("language")}</span><select data-language-switcher aria-label="${t("language")}"><option value="de">DE</option><option value="en">EN</option></select></label><button type="button" data-game-switch class="hd-switch" aria-label="${t("switch")}">${icon("switch")}<span>${t("games")}</span></button></div>`;
+    <div class="hd-header-tools"><a class="hd-profile-button" href="${identity ? "/hausdepp/konto/einstellungen#profilbild" : signInUrl()}" aria-label="${esc(identity ? t("editProfile", { name: identity.username }) : t("signIn"))}" title="${esc(identity ? t("editProfile", { name: identity.username }) : t("signIn"))}">${identity ? avatarMarkup(identity, { size: "small", avatarKey: "header-self" }) : icon("account")}</a><label class="hd-language"><span class="hd-sr">${t("language")}</span><select data-language-switcher aria-label="${t("language")}"><option value="de">DE</option><option value="en">EN</option></select></label><button type="button" data-game-switch class="hd-switch" aria-label="${t("switch")}">${icon("switch")}<span>${t("games")}</span></button></div>`;
   const language = $("hausdeppHeader").querySelector("select");
   language.value = lang();
   language.addEventListener("change", () => window.ZDWA_I18N.setLanguage(language.value));
@@ -203,9 +233,10 @@ async function json(url, options) {
 }
 
 function renderLobby() {
+  gameCreator?.destroy();
   document.title = t("lobbyTitle");
   root.innerHTML = `<div class="hd-lobby-layout"><section class="hd-welcome"><h1>Hausdepp</h1><p class="hd-motto">${t("motto")}</p><p class="hd-intro">${t("intro")}</p><div class="hd-lobby-cards" aria-hidden="true">${["hearts-U", "acorns-A", "hearts-10"].map(card => cardMarkup(card)).join("")}</div><a class="hd-rules-link" href="/hausdepp/regeln">${t("learnRules")} ${icon("arrow")}</a></section>
-    <section class="hd-create" aria-labelledby="hausdeppStartTitle"><h2 id="hausdeppStartTitle">${t("startTable")}</h2><p>${t("startHint")}</p><form id="hausdeppCreateForm"><div class="hd-form-row"><label>${t("totalPlayers")}<select name="players" aria-describedby="hausdeppSeatHint">${[2,3,4,5,6].map(n => `<option value="${n}">${n}</option>`).join("")}</select></label><label>${t("computers")}<select name="cpu_count" aria-describedby="hausdeppSeatHint">${[0,1,2,3,4,5].map(n => `<option value="${n}" ${n === 1 ? "selected" : ""}>${n}</option>`).join("")}</select></label></div><fieldset class="hd-game-format"><legend>${t("gameFormat")}</legend><label><input name="tournament" type="radio" value="false" checked><span><strong>${t("singleRound")}</strong><small>${t("singleRoundHint")}</small></span></label><label><input name="tournament" type="radio" value="true"><span><strong>${t("tournament")}</strong><small>${t("tournamentHint")}</small></span></label></fieldset><div id="hausdeppSeatPreview" class="hd-seat-preview" aria-label="${t("seatPreview")}"></div><p id="hausdeppSeatHint" class="hd-fine" aria-live="polite">${t("cpuHint")}</p><button id="hausdeppCreate" class="hd-primary" type="submit">${t("takeSeat")} ${icon("arrow")}</button><p id="hausdeppCreateError" class="hd-error" role="alert"></p></form></section></div>
+    <section class="hd-create" aria-labelledby="hausdeppStartTitle"></section></div>
     <section class="hd-rounds" aria-labelledby="hausdeppTablesTitle"><div class="hd-section-heading"><h2 id="hausdeppTablesTitle">${t("yourTables")}</h2><button id="hausdeppRefresh" class="hd-text-button" type="button">${t("refresh")}</button></div><p id="hausdeppTablesError" class="hd-table-error" role="alert" hidden></p><div id="hausdeppRounds" aria-live="polite"><p>${t("loadingTables")}</p></div><a class="hd-history-link" href="/hausdepp/konto#runden">${t("openHistory")} ${icon("arrow")}</a></section><div id="hausdeppLobbyChat" class="hd-lobby-chat"></div>${footer()}`;
   stopLobbyDemo = mountLobbyDemo(root.querySelector(".hd-lobby-cards"), card => cardMarkup(card));
   if (!auth.authenticated) {
@@ -214,38 +245,7 @@ function renderLobby() {
     $("hausdeppLobbyChat").remove();
     return;
   }
-  const form = $("hausdeppCreateForm");
-  const updateSeats = () => {
-    const total = Number(form.elements.players.value);
-    const cpu = Number(form.elements.cpu_count.value);
-    for (const option of form.elements.cpu_count.options) option.disabled = Number(option.value) >= total;
-    if (cpu >= total) form.elements.cpu_count.value = String(total - 1);
-    const humans = total - Number(form.elements.cpu_count.value);
-    $("hausdeppSeatHint").textContent = humans === 1 ? t("cpuHint") : t("humanHint", { count: humans });
-    replaceChildrenPreservingAvatars($("hausdeppSeatPreview"), Array.from({ length: total }, (_, index) => `<span class="hd-seat-chip ${index === 0 ? "is-yours" : index >= humans ? "is-cpu" : "is-open"}"><span aria-hidden="true">${index === 0 ? avatarMarkup(auth.user, { size: "small", avatarKey: "create-self" }) : index >= humans ? icon("cards") : "+"}</span>${esc(t(index === 0 ? "yourSeat" : index >= humans ? "computer" : "humanSeat"))}</span>`).join(""));
-  };
-  form.elements.players.addEventListener("change", updateSeats);
-  form.elements.cpu_count.addEventListener("change", updateSeats);
-  updateSeats();
-  form.addEventListener("submit", async event => {
-    event.preventDefault();
-    $("hausdeppCreate").disabled = true;
-    $("hausdeppCreate").setAttribute("aria-busy", "true");
-    $("hausdeppCreate").textContent = t("creatingTable");
-    $("hausdeppCreateError").textContent = "";
-    try {
-      const cpu = Number(form.elements.cpu_count.value);
-      const result = await json("/api/games", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: generateTableName(auth.user.username, lang()), mode: form.elements.players.value, game_type: "hausdepp", play_mode: cpu ? "cpu" : "multiplayer", cpu_count: cpu, tournament: form.elements.tournament.value === "true" }) });
-      const id = result.id || result.game_id;
-      if (!id) throw new Error(t("requestFailed"));
-      location.assign(`/hausdepp/spiel/${encodeURIComponent(id)}`);
-    } catch (error) {
-      $("hausdeppCreateError").textContent = error.message;
-      $("hausdeppCreate").disabled = false;
-      $("hausdeppCreate").removeAttribute("aria-busy");
-      $("hausdeppCreate").innerHTML = `${t("takeSeat")} ${icon("arrow")}`;
-    }
-  });
+  gameCreator = mountGameCreator(root.querySelector(".hd-create"), { user: auth.user, t, language: lang });
   $("hausdeppRefresh").addEventListener("click", refreshTables);
   mountLobbyChat($("hausdeppLobbyChat"), { context: "hausdepp", initialAuth: auth });
   refreshTables();
@@ -295,7 +295,7 @@ function tableRow(game) {
   const occupied = participants.length;
   const cpu = participants.filter(player => player.is_cpu).length;
   const completed = completedTable(game);
-  const full = occupied >= total;
+  const full = occupied >= total && game.can_join !== true;
   const status = t(game.aborted ? "abortedTable" : game.finished ? game.tournament && !game.tournament.completed ? "roundBreak" : "finishedTable" : game.paused ? "pausedTable" : game.started ? "liveTable" : "waitingTable");
   const action = completed ? "openHistory" : game.my_player_id ? "continue" : game.started ? "watch" : full ? "fullTable" : "join";
   const url = completed ? "/hausdepp/konto#runden" : `/hausdepp/spiel/${encodeURIComponent(game.id || game.game_id)}${game.started && !game.my_player_id ? "/zuschauen" : ""}`;
@@ -316,7 +316,7 @@ function renderAccount() {
   void loadAccount();
 }
 
-const achievementCategories = ["participation", "community", "cut_gamble", "tens", "four", "tempo", "mishaps", "endgame", "comebacks", "style", "tournament"];
+const achievementCategories = ["participation", "community", "cut_gamble", "tens", "four", "tempo", "mishaps", "endgame", "comebacks", "style", "tournament", "habits"];
 const localized = value => typeof value === "object" && value ? value[lang()] || value.de || value.en || "" : String(value ?? "");
 const nonnegative = value => Math.max(0, Number(value) || 0);
 const pointNumber = value => new Intl.NumberFormat(lang() === "en" ? "en-GB" : "de-CH").format(Math.floor(nonnegative(value)));
@@ -568,9 +568,14 @@ function renderTableShell() {
   document.body.classList.add("hd-playing");
   initializeGameViewport();
   if (spectating) document.body.classList.add("hd-spectating");
-  root.innerHTML = `<div class="hd-room-layout"><section id="hausdeppTable" class="hd-table" aria-label="${t("table")}"><div class="hd-room-heading"><div><h1 id="hausdeppRoomName">${t("defaultTable")}</h1><p id="hausdeppTournamentBanner" class="hd-tournament-banner" hidden></p></div><span id="hausdeppConnection" role="status">${t("connecting")}</span></div><div id="hausdeppPlayers" class="hd-seats"></div><div class="hd-centre"><div class="hd-stock-group"><div id="hausdeppKnownBottomCards" class="hd-known-bottom-cards" aria-hidden="true" hidden><span class="hd-known-bottom-fan"></span><span id="hausdeppKnownBottom" class="hd-known-bottom" hidden></span></div><button id="hausdeppStock" class="hd-card-back" type="button" disabled aria-label="${t("stock")}"></button><span id="hausdeppStockAction" class="hd-stack-action"></span><p id="hausdeppDrawAlert" class="hd-draw-alert" role="status" hidden>${t("mustDraw")}</p><span id="hausdeppStockCount"></span></div><div class="hd-pile-group"><button id="hausdeppPile" class="hd-pile" type="button" disabled aria-label="${t("pickup")}" aria-describedby="hausdeppPileTip"></button><span id="hausdeppPileTip" class="hd-pile-tip" role="tooltip">${t("inspectPileTip")}</span><span id="hausdeppPileAction" class="hd-stack-action"></span><span id="hausdeppPileCount"></span></div><div class="hd-burned"><div id="hausdeppBurnedStack" class="hd-burned-stack is-empty" aria-hidden="true"></div><span class="hd-stack-action">${t("outOfPlay")}</span><span class="hd-burned-meta"><span id="hausdeppBurnedCount">0</span> <span id="hausdeppBurnedUnit">${t("cardWord")}</span></span></div></div><p id="hausdeppStatus" class="hd-turn-status" role="status" aria-live="polite">${t("connecting")}</p><section class="hd-hand-region" aria-labelledby="hausdeppHandTitle"><div class="hd-hand-heading"><div class="hd-own-identity">${avatarMarkup(auth.user, { size: "small", avatarKey: "hand-self" })}<div><h2 id="hausdeppHandTitle">${t("yourHand")} <span id="hausdeppOwnPrefix" class="hd-tournament-prefix" hidden></span></h2><span class="hd-own-name" translate="no">${esc(auth.user.username)}</span></div></div><span id="hausdeppSelection"></span></div><div id="hausdeppHand" class="hd-hand"></div></section><details id="hausdeppTools" class="hd-actions"><summary aria-label="${esc(t("tableTools"))}" title="${esc(t("tableTools"))}">${icon("cards")}<span class="hd-tools-label">${t("tableTools")}</span></summary><div class="hd-game-help"><h2>${t("tableTools")}</h2><p id="hausdeppEvent" class="hd-event" aria-live="polite"></p><p class="hd-action-guide">${t("stackActions")}</p><label class="hd-auto-refill"><input id="hausdeppAutoRefill" type="checkbox"> <span>${t("autoRefill")}</span></label><p class="hd-fine">${t("autoRefillHint")}</p><p id="hausdeppAutoRefillMessage" class="hd-fine" role="status"></p><button id="hausdeppInspectPile" class="hd-secondary hd-inspect-pile" type="button" disabled>${t("inspectPile")}</button><p class="hd-inspect-hint">${t("inspectPileGesture")}</p><a class="hd-secondary" href="/hausdepp/regeln">${t("rules")} ${icon("arrow")}</a><div id="hausdeppRoomInvitation" hidden>${invitationMarkup({ id: gameId, name: t("defaultTable") }, t)}</div><button class="hd-tools-close" type="button">${t("close")}</button></div></details><p id="hausdeppActionError" class="hd-action-error" role="alert"></p><details id="hausdeppPeek" class="hd-peek" hidden><summary>${t("peekTitle")}</summary><p id="hausdeppPeekText"></p><div id="hausdeppPeekCards" class="hd-peek-cards"></div><button id="hausdeppPeekContinue" type="button" hidden>${t("peekNext")}</button></details><section id="hausdeppResult" class="hd-result" aria-live="polite" hidden></section><div id="hausdeppReactionLayer" class="hd-reaction-layer" aria-hidden="true"></div><p id="hausdeppReactionAnnouncement" class="hd-sr" role="status" aria-live="polite" aria-atomic="true"></p></section>
-    <aside class="hd-social"><div class="hd-social-tools"><button id="chatToggle" type="button" aria-controls="chatPanel" aria-expanded="false">${icon("chat")} <span class="hd-chat-label">${t("tableChat")}</span> <span id="chatToggleCount" hidden></span></button><div class="hd-reactions" aria-label="${t("reactions")}">${["👍", "😂", "😮", "🎉"].map(emoji => `<button type="button" data-hausdepp-reaction="${emoji}" aria-label="${esc(t("reaction", { emoji }))}">${emoji}</button>`).join("")}</div></div><section id="chatPanel" class="hd-chat-panel" aria-label="${t("tableChat")}"><div class="chat-content" hidden><div class="hd-chat-heading"><h2>${t("tableChat")}</h2><button id="chatClose" type="button">${t("close")}</button></div><div id="chatBox" class="hd-chat-messages" role="log" aria-live="polite"></div><div class="hd-chat-compose"><label class="hd-sr" for="chatInput">${t("message")}</label><input id="chatInput" type="text" maxlength="400" placeholder="${t("message")}" autocomplete="off"><button id="chatSend" type="button">${t("send")}</button></div></div></section><a class="hd-social-rules" href="/hausdepp/regeln">${t("rules")} ${icon("arrow")}</a></aside></div><button id="chatBackdrop" class="hd-chat-backdrop" type="button" aria-label="${t("close")}" hidden></button>`;
-  $("hausdeppTable").insertAdjacentHTML("afterbegin", `<section id="hausdeppWaiting" class="hd-waiting" aria-labelledby="hausdeppWaitingTitle" hidden><div class="hd-waiting-heading"><h2 id="hausdeppWaitingTitle">${t("waitingHeading")}</h2><button id="hausdeppLeaveWaiting" class="hd-secondary" type="button" hidden>${t("leaveWaiting")}</button></div><p id="hausdeppLeaveWaitingError" class="hd-error" role="alert" hidden></p><p>${t("waitingBody")}</p><ul id="hausdeppWaitingSeats" class="hd-waiting-seats"></ul><p id="hausdeppWaitingCount" class="hd-waiting-count" role="status"></p>${invitationMarkup({ id: gameId, name: t("defaultTable"), waiting: true }, t)}<p class="hd-fine">${t("privateTableHint")}</p></section>`);
+  root.innerHTML = `<div class="hd-room-layout"><section id="hausdeppTable" class="hd-table" aria-label="${t("table")}"><div class="hd-room-heading"><div><h1 id="hausdeppRoomName">${t("defaultTable")}</h1><p id="hausdeppTournamentBanner" class="hd-tournament-banner" hidden></p></div><span id="hausdeppConnection" role="status">${t("connecting")}</span></div><div id="hausdeppPlayers" class="hd-seats"></div><div class="hd-centre"><div class="hd-stock-group"><div id="hausdeppKnownBottomCards" class="hd-known-bottom-cards" aria-hidden="true" hidden><span class="hd-known-bottom-fan"></span><span id="hausdeppKnownBottom" class="hd-known-bottom" hidden></span></div><button id="hausdeppStock" class="hd-card-back" type="button" disabled aria-label="${t("stock")}"></button><span id="hausdeppStockAction" class="hd-stack-action"></span><p id="hausdeppDrawAlert" class="hd-draw-alert" role="status" hidden>${t("mustDraw")}</p><span id="hausdeppStockCount"></span></div><div class="hd-pile-group"><button id="hausdeppPile" class="hd-pile" type="button" disabled aria-label="${t("pickup")}" aria-describedby="hausdeppPileTip"></button><span id="hausdeppPileTip" class="hd-pile-tip" role="tooltip">${t("inspectPileTip")}</span><span id="hausdeppPileAction" class="hd-stack-action"></span><span id="hausdeppPileCount"></span></div><div class="hd-burned" title="${t("outOfPlay")}"><div id="hausdeppBurnedStack" class="hd-burned-stack is-empty" aria-hidden="true"></div><span class="hd-stack-action hd-sr">${t("outOfPlay")}</span><span class="hd-burned-meta">${icon("out", "hd-burned-icon")}<span id="hausdeppBurnedCount">0</span><span class="hd-sr"> <span id="hausdeppBurnedUnit">${t("cardWord")}</span></span></span></div></div><p id="hausdeppStatus" class="hd-turn-status" role="status" aria-live="polite">${t("connecting")}</p><section class="hd-hand-region" aria-labelledby="hausdeppHandTitle"><div class="hd-hand-heading"><div class="hd-own-identity">${avatarMarkup(auth.user, { size: "small", avatarKey: "hand-self" })}<div><h2 id="hausdeppHandTitle">${t("yourHand")} <span id="hausdeppOwnPrefix" class="hd-tournament-prefix" hidden></span></h2><span class="hd-own-name" translate="no">${esc(auth.user.username)}</span></div></div><span id="hausdeppSelection"></span></div><div id="hausdeppHand" class="hd-hand"></div></section><details id="hausdeppTools" class="hd-actions"><summary aria-label="${esc(t("tableTools"))}" title="${esc(t("tableTools"))}">${icon("cards")}<span class="hd-tools-label">${t("tableTools")}</span></summary><div class="hd-game-help"><h2>${t("tableTools")}</h2><p id="hausdeppEvent" class="hd-event" aria-live="polite"></p><p class="hd-action-guide">${t("stackActions")}</p><button id="hausdeppInspectPile" class="hd-secondary hd-inspect-pile" type="button" disabled>${t("inspectPile")}</button><p class="hd-inspect-hint">${t("inspectPileGesture")}</p><a class="hd-secondary" href="/hausdepp/regeln">${t("rules")} ${icon("arrow")}</a><div id="hausdeppRoomInvitation" hidden>${invitationMarkup({ id: gameId, name: t("defaultTable") }, t)}</div><button class="hd-tools-close" type="button">${t("close")}</button></div></details><p id="hausdeppActionError" class="hd-action-error" role="alert"></p><details id="hausdeppPeek" class="hd-peek" hidden><summary>${t("peekTitle")}</summary><p id="hausdeppPeekText"></p><div id="hausdeppPeekCards" class="hd-peek-cards"></div><button id="hausdeppPeekContinue" type="button" hidden>${t("peekNext")}</button></details><section id="hausdeppResult" class="hd-result" aria-live="polite" hidden></section><div id="hausdeppReactionLayer" class="hd-reaction-layer" aria-hidden="true"></div><p id="hausdeppReactionAnnouncement" class="hd-sr" role="status" aria-live="polite" aria-atomic="true"></p></section>
+    <aside class="hd-social"><div class="hd-social-tools"><button id="chatToggle" type="button" aria-controls="chatPanel" aria-expanded="false">${icon("chat")} <span class="hd-chat-label">${t("tableChat")}</span> <span id="chatToggleCount" hidden></span></button><div class="hd-reactions" aria-label="${t("reactions")}"></div></div><section id="chatPanel" class="hd-chat-panel" aria-label="${t("tableChat")}"><div class="chat-content" hidden><div class="hd-chat-heading"><h2>${t("tableChat")}</h2><button id="chatClose" type="button">${t("close")}</button></div><div id="chatBox" class="hd-chat-messages" role="log" aria-live="polite"></div><div class="hd-chat-compose"><label class="hd-sr" for="chatInput">${t("message")}</label><input id="chatInput" type="text" maxlength="400" placeholder="${t("message")}" autocomplete="off"><button id="chatSend" type="button">${t("send")}</button></div></div></section><a class="hd-social-rules" href="/hausdepp/regeln">${t("rules")} ${icon("arrow")}</a></aside></div><button id="chatBackdrop" class="hd-chat-backdrop" type="button" aria-label="${t("close")}" hidden></button>`;
+  $("hausdeppTable").insertAdjacentHTML("afterbegin", `<section id="hausdeppWaiting" class="hd-waiting" aria-labelledby="hausdeppWaitingTitle" hidden><div class="hd-waiting-heading"><h2 id="hausdeppWaitingTitle">${t("waitingHeading")}</h2><button id="hausdeppLeaveWaiting" class="hd-secondary" type="button" hidden>${t("leaveWaiting")}</button></div><p id="hausdeppLeaveWaitingError" class="hd-error" role="alert" hidden></p>${waitingControlsMarkup(t)}${invitationMarkup({ id: gameId, name: t("defaultTable"), waiting: true }, t)}</section>`);
+  waitingControls?.destroy();
+  waitingControls = mountWaitingControls($("hausdeppWaiting"), { t, send, connected: () => socket?.readyState === WebSocket.OPEN });
+  const copyWaiting = $("hausdeppWaiting").querySelector('[data-invite-action="copy"]');
+  copyWaiting.setAttribute("aria-label", t("copyTable"));
+  copyWaiting.textContent = "⧉";
   if (spectating) {
     $("hausdeppHandTitle").firstChild.textContent = `${t("watchingHand")} `;
     document.querySelector(".hd-action-guide").textContent = t("watching");
@@ -593,21 +598,6 @@ function renderTableShell() {
     command(actions.includes("peek") ? "peek" : actions.includes("draw") ? "draw" : "gamble");
   });
   $("hausdeppPeekContinue").addEventListener("click", () => command("peek"));
-  const autoRefill = $("hausdeppAutoRefill");
-  autoRefill.checked = autoRefillEnabled();
-  autoRefill.disabled = spectating;
-  autoRefill.addEventListener("change", async () => {
-    const enabled = autoRefill.checked;
-    autoRefill.disabled = true;
-    $("hausdeppAutoRefillMessage").textContent = "";
-    try {
-      await saveAutoRefill(enabled);
-      renderState();
-    } catch {
-      autoRefill.checked = !enabled;
-      $("hausdeppAutoRefillMessage").textContent = t("autoRefillFailed");
-    } finally { autoRefill.disabled = false; }
-  });
   // Wide tables keep help and invitations in the side column beside chat and
   // rules; the hand area below the cards stays for playing them.
   const toolsWide = matchMedia("(min-width: 1100px)");
@@ -631,19 +621,58 @@ function renderTableShell() {
     },
   });
   $("hausdeppPile").addEventListener("click", () => command("pickup"));
+  // Holding a playable card selects all cards of its rank for one throw.
+  let hold = null, suppressClick = false;
+  const endHold = () => { if (hold) clearTimeout(hold.timer); hold = null; };
+  const startSelection = card => {
+    if (!card || handSelection.selection.enabled || !handSelection.selection.startWith(card)) return false;
+    navigator.vibrate?.(12);
+    renderState();
+    return true;
+  };
+  $("hausdeppHand").addEventListener("pointerdown", event => {
+    const button = event.target.closest("button[data-card-id]:not(:disabled)");
+    endHold();
+    suppressClick = false;
+    if (!button || event.button > 0) return;
+    hold = { x: event.clientX, y: event.clientY, timer: setTimeout(() => {
+      hold = null;
+      if (startSelection(button.dataset.cardId)) suppressClick = true;
+    }, 420) };
+  });
+  $("hausdeppHand").addEventListener("pointermove", event => {
+    if (hold && Math.hypot(event.clientX - hold.x, event.clientY - hold.y) > 10) endHold();
+  });
+  for (const type of ["pointerup", "pointercancel", "pointerleave"]) $("hausdeppHand").addEventListener(type, endHold);
+  // No browser callout or menu over a held card; right-click selects too.
+  $("hausdeppHand").addEventListener("contextmenu", event => {
+    const button = event.target.closest("button[data-card-id]");
+    if (!button) return;
+    event.preventDefault();
+    if (!button.disabled && startSelection(button.dataset.cardId)) suppressClick = false;
+  });
+  $("hausdeppHand").addEventListener("keydown", event => {
+    const button = event.target.closest("button[data-card-id]:not(:disabled)");
+    if (!button || !(event.key === "ContextMenu" || (event.key === "Enter" && event.shiftKey))) return;
+    event.preventDefault();
+    startSelection(button.dataset.cardId);
+  });
   $("hausdeppHand").addEventListener("click", event => {
     const card = event.target.closest("button[data-card-id]")?.dataset.cardId;
     const s = snapshot?._hausdepp;
+    if (suppressClick) { suppressClick = false; return; }
     if (handSelection.selection.enabled) {
       if (card && handSelection.selection.select(card)) renderState();
       return;
     }
-    if (!card || !s?.playable_cards?.includes(card) || queuedCards.includes(card) || commandInFlight?.cards?.includes(card)) return;
+    if (!card || !s?.playable_cards?.includes(card) || queuedCards.some(item => item.card === card) || commandInFlight?.cards?.includes(card)) return;
     if (pending) {
       // A follow-up card may wait behind an automatic or manual refill tap.
       const behindDraw = commandInFlight?.action === "draw" && s.available_actions.includes("afterthrow");
       if (!behindDraw && (!commandInFlight?.cards?.length || commandInFlight.cards[0].split("-")[1] !== card.split("-")[1])) return;
-      queuedCards.push(card);
+      // Remember what was possible at the tap. A queued card is never replayed
+      // later as a different action (for example as a fresh play on a new turn).
+      queuedCards.push({ card, behindDraw });
       renderState();
       return;
     }
@@ -663,7 +692,8 @@ function renderTableShell() {
       else if (edge.right > right) hand.scrollLeft += edge.right - right;
     });
   });
-  for (const button of document.querySelectorAll("[data-hausdepp-reaction]")) button.addEventListener("click", () => send({ action: "send_emoji", emoji: button.dataset.hausdeppReaction }));
+  reactionControls?.destroy();
+  reactionControls = mountReactions(root.querySelector(".hd-reactions"), { userId: auth.user.id, t, send, isOwnReaction: reaction => reaction.from_id === playerId, connected: () => socket?.readyState === WebSocket.OPEN });
   reactionObserver = new ResizeObserver(positionReactions);
   reactionObserver.observe($("hausdeppTable"));
   connect();
@@ -700,6 +730,7 @@ function receiveReaction(reaction) {
   const key = `${senderId}:${reaction.ts || ""}:${reaction.emoji || ""}`;
   if (!senderId || !reaction.emoji || seenReactions.has(key) || !$("hausdeppReactionLayer")) return;
   seenReactions.add(key);
+  reactionControls?.confirm(reaction);
   if (seenReactions.size > 100) seenReactions.delete(seenReactions.values().next().value);
   addChatMessage(reaction.from, reaction.emoji, { ...reaction, kind: "reaction" });
   const previous = visibleReactions.get(senderId);
@@ -720,17 +751,6 @@ function receiveReaction(reaction) {
   requestAnimationFrame(() => { if (!stopped) announcement.textContent = t("reactionAnnouncement", { name: reaction.from || "", emoji: reaction.emoji }); });
 }
 
-function autoRefillEnabled() {
-  return auth?.user?.preferences?.hausdepp_auto_refill === true;
-}
-
-async function saveAutoRefill(enabled) {
-  const response = await apiFetch("/api/auth/preferences/hausdepp", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ hausdepp_auto_refill: enabled }) });
-  if (!response.ok) throw new Error("hausdepp_preference_failed");
-  const payload = await response.json();
-  auth.user.preferences = { ...(auth.user.preferences || {}), hausdepp_auto_refill: payload.hausdepp_auto_refill === true };
-}
-
 function command(action, cards) {
   const allowed = action === "next_round" ? snapshot?._hausdepp_tournament?.can_start_next_round : snapshot?._hausdepp?.available_actions?.includes(action);
   if (pending || tournamentEnding || !allowed) return;
@@ -743,13 +763,14 @@ function command(action, cards) {
   if (!send({ action: `hausdepp_${action}`, command_id: commandId, version: snapshot._hausdepp.version, ...(cards ? { cards } : {}) })) {
     resetCommand();
     $("hausdeppActionError").textContent = t("connectionLost");
-  }
+  } else if (["play", "afterthrow"].includes(action)) launchOwnPlay(gameId, playerId, cards);
   renderState();
   clearTimeout(pendingTimer);
   pendingTimer = setTimeout(() => { if (pending && $("hausdeppActionError")) $("hausdeppActionError").textContent = t("waitingConnection"); }, 8000);
 }
 
-function resetCommand() {
+function resetCommand({ returnToHand = false } = {}) {
+  cancelOwnPlay(gameId, null, { returnToHand, onReturned: () => { if (!stopped) renderState(); } });
   pending = false;
   commandInFlight = null;
   queuedCards.length = 0;
@@ -758,15 +779,22 @@ function resetCommand() {
 
 function completeCommand() {
   if (!commandInFlight || commandInFlight.acceptedVersion === null || snapshot?._hausdepp?.version < commandInFlight.acceptedVersion) return;
+  // Same-rank follow-ups continue only the player's own uninterrupted throw.
+  const uninterrupted = snapshot._hausdepp.version === commandInFlight.acceptedVersion;
   pending = false;
   commandInFlight = null;
   clearTimeout(pendingTimer);
   const s = snapshot._hausdepp;
   while (queuedCards.length) {
-    const card = queuedCards.shift();
+    const { card, behindDraw } = queuedCards.shift();
     if (!s.hand.includes(card) || !s.playable_cards?.includes(card)) continue;
-    const action = s.available_actions.includes("afterthrow") ? "afterthrow" : s.available_actions.includes("play") ? "play" : null;
+    // An afterthrow that is still open stays valid. A fresh play counts only
+    // right after the player's own clearance, with nobody acting in between.
+    const action = s.available_actions.includes("afterthrow") ? "afterthrow"
+      : !behindDraw && uninterrupted && s.available_actions.includes("play") ? "play" : null;
     if (action) { command(action, [card]); return; }
+    queuedCards.length = 0;
+    break;
   }
   renderState();
 }
@@ -777,7 +805,9 @@ function connect() {
   socket = new WebSocket(`${protocol}//${location.host}/ws/${encodeURIComponent(gameId)}`);
   socket.addEventListener("open", () => {
     $("hausdeppConnection").textContent = t("connected");
-    send({ action: spectating ? "spectate_game" : "join_game", name: auth.user.username });
+    reactionControls?.updateConnection();
+    tablePassword ??= storedTablePassword(auth.user.id, gameId);
+    send({ action: spectating ? "spectate_game" : "join_game", name: auth.user.username, ...(tablePassword ? { pass: tablePassword } : {}) });
     initChat(socket, { meName: auth.user.username });
     if (matchMedia("(min-width: 1100px)").matches && $("chatToggle").getAttribute("aria-expanded") !== "true") $("chatToggle").click();
   });
@@ -794,6 +824,7 @@ function connect() {
     if (payload.player_id) playerId = payload.player_id;
     if (payload.hausdepp_invitation) rematchInvitations?.refresh(payload.hausdepp_invitation);
     if (payload.scoreboard) {
+      waitingControls?.acknowledge();
       snapshot = payload.scoreboard;
       if (!playerId && snapshot._hausdepp?.viewer_id) playerId = snapshot._hausdepp.viewer_id;
       for (const item of snapshot._chat_history || []) receiveChat(item);
@@ -807,11 +838,31 @@ function connect() {
     if (payload.chat) receiveChat(payload.chat);
     if (Array.isArray(payload.chat_history)) for (const item of payload.chat_history) receiveChat(item);
     if (payload.emoji) receiveReaction(payload.emoji);
+    if (payload.error === "Falsche Passphrase") {
+      if (!passwordRequest) {
+        passwordRequest = true;
+        const incorrect = Boolean(tablePassword);
+        tablePassword = "";
+        rememberTablePassword(auth.user.id, gameId, "");
+        void requestTablePassword(t, { incorrect, signal: rematchLifetime.signal }).then(value => {
+          passwordRequest = false;
+          if (stopped) return;
+          if (value === null) { location.assign("/hausdepp"); return; }
+          tablePassword = value;
+          rememberTablePassword(auth.user.id, gameId, value);
+          connect();
+        });
+      }
+      return;
+    }
     if (payload.error) {
+      if (!snapshot?._started && String(payload.error).startsWith("hausdepp_")) waitingControls?.reject(payload.error);
       waitingLeaving = false;
       tournamentEnding = false;
-      resetCommand();
       const code = payload.hausdepp_error?.code || payload.error;
+      // The next player's card was accepted first: this throw arrived too late.
+      const lateThrow = commandInFlight?.action === "afterthrow" && /stale|afterthrow_expired/.test(code);
+      resetCommand({ returnToHand: true });
       if (["hausdepp_waiting_leave_not_seated", "hausdepp_waiting_already_started"].includes(code)) {
         waitingLeaving = false;
         $("hausdeppLeaveWaiting").disabled = false;
@@ -820,13 +871,15 @@ function connect() {
         output.hidden = false;
         return;
       }
-      $("hausdeppActionError").textContent = t(code.includes("stale") ? "staleAction" : "actionRejected");
+      $("hausdeppActionError").textContent = t(lateThrow ? "afterthrowLate" : code.includes("stale") ? "staleAction" : "actionRejected");
       renderState();
       if (payload.fatal) { stopped = true; socket.close(); }
     }
   });
   socket.addEventListener("close", event => {
     pileInspector?.close();
+    waitingControls?.disconnect();
+    reactionControls?.updateConnection();
     waitingLeaving = false;
     tournamentEnding = false;
     resetCommand();
@@ -878,9 +931,10 @@ function renderState() {
   const selecting = handSelection.selection.enabled;
   const selected = new Set(handSelection.selection.cards);
   const oldFocus = document.activeElement?.dataset.cardId;
-  const committed = new Set([...(commandInFlight?.cards || []), ...queuedCards]);
+  const committed = new Set([...(commandInFlight?.cards || []), ...queuedCards.map(item => item.card)]);
+  const launched = launchedCards(gameId);
   const pendingRank = commandInFlight?.cards?.[0]?.split("-")[1];
-  renderHand(`<div class="hd-hand-fan" data-count="${hand.length}" data-compact="${hand.length >= 8}" style="--hand-count:${Math.max(1, hand.length)}">${hand.map((card, index) => cardMarkup(card, { interactive: true, playable: selecting ? handSelection.selection.canSelect(card) : (actions.includes("play") || actions.includes("afterthrow")) && playable.has(card) && (!pending || card.split("-")[1] === pendingRank || (commandInFlight?.action === "draw" && actions.includes("afterthrow"))), committed: committed.has(card), selecting, selected: selected.has(card), sameRank: index > 0 && hand[index - 1].split("-")[1] === card.split("-")[1], index, count: hand.length })).join("")}</div>`);
+  renderHand(`<div class="hd-hand-fan" data-count="${hand.length}" data-compact="${hand.length >= 8}" style="--hand-count:${Math.max(1, hand.length)}">${hand.map((card, index) => cardMarkup(card, { interactive: true, playable: selecting ? handSelection.selection.canSelect(card) : (actions.includes("play") || actions.includes("afterthrow")) && playable.has(card) && (!pending || card.split("-")[1] === pendingRank || (commandInFlight?.action === "draw" && actions.includes("afterthrow"))), committed: committed.has(card), launched: launched.has(card), selecting, selected: selected.has(card), sameRank: index > 0 && hand[index - 1].split("-")[1] === card.split("-")[1], index, count: hand.length })).join("")}</div>`);
   if (oldFocus) $("hausdeppHand").querySelector(`[data-card-id="${CSS.escape(oldFocus)}"]`)?.focus({ preventScroll: true });
   $("hausdeppSelection").textContent = s.phase === "peeking" ? "" : counted("cardsInHand", hand.length);
   const mine = s.players.find(p => p.id === playerId);
@@ -890,7 +944,7 @@ function renderState() {
   const stockBlocker = s.players.find(p => p.id === s.stock_blocked_by);
   const urgentDraw = Boolean(s.draw_urgent);
   $("hausdeppPlayers").dataset.count = String(opponents.length);
-  renderOpponents(opponents.map((p, i) => `<div class="hd-seat ${p.id === s.current_player_id ? "is-active" : ""} ${p.finished ? "is-finished" : ""} ${refillPlayers.has(p.id) ? "needs-draw" : ""} ${p.id === s.stock_blocked_by ? "is-draw-blocker" : ""}" data-player-id="${esc(p.id)}" style="--seat:${i};--seat-x:${(50 + 40 * Math.cos(opponents.length === 1 ? Math.PI / 2 : Math.PI - i * Math.PI / (opponents.length - 1))).toFixed(4)}%;--seat-depth:${(1 - Math.sin(opponents.length === 1 ? Math.PI / 2 : Math.PI - i * Math.PI / (opponents.length - 1))).toFixed(4)}" aria-label="${esc(`${p.name}${p.is_cpu ? `, ${t("computer")}` : ""}: ${p.finished ? t("finished") : counted("cardsInHand", p.hand_count)}`)}">${opponentHand(p)}${tournament?.letters?.[p.id] ? `<b class="hd-tournament-prefix">${esc(tournament.letters[p.id])}</b>` : ""}<strong>${esc(p.name)}</strong><span>${p.finished ? `${icon("check")} ${t("finished")}` : counted("cardsInHand", p.hand_count)}</span>${p.is_cpu ? `<small>${t("computer")}</small>` : ""}</div>`).join(""));
+  renderOpponents(opponents.map((p, i) => `<div class="hd-seat ${p.id === s.current_player_id ? "is-active" : ""} ${p.finished ? "is-finished" : ""} ${refillPlayers.has(p.id) ? "needs-draw" : ""} ${p.id === s.stock_blocked_by ? "is-draw-blocker" : ""}" data-player-id="${esc(p.id)}" style="--seat:${i};--seat-x:${(50 + 40 * Math.cos(opponents.length === 1 ? Math.PI / 2 : Math.PI - i * Math.PI / (opponents.length - 1))).toFixed(4)}%;--seat-depth:${(1 - Math.sin(opponents.length === 1 ? Math.PI / 2 : Math.PI - i * Math.PI / (opponents.length - 1))).toFixed(4)}" aria-label="${esc(`${p.name}${p.is_cpu ? `, ${t("computer")}` : ""}: ${p.finished ? t("finished") : counted("cardsInHand", p.hand_count)}`)}">${opponentHand(p)}${tournament?.letters?.[p.id] ? `<b class="hd-tournament-prefix">${esc(tournament.letters[p.id])}</b>` : ""}<div class="hd-seat-plate"><strong>${esc(p.name)}</strong><span class="hd-seat-count">${p.finished ? `${icon("check")} ${t("finished")}` : `<span class="hd-seat-count-n">${p.hand_count}</span><span class="hd-seat-count-unit"> ${t(p.hand_count === 1 ? "cardWordOne" : "cardWord")}</span>`}</span></div>${p.is_cpu ? `<small>${t("computer")}</small>` : ""}</div>`).join(""));
   $("hausdeppStockCount").textContent = t(s.phase === "peeking" ? "undealtCount" : "stockCount", { count: s.deck_count });
   $("hausdeppStock").classList.toggle("is-empty", !s.deck_count);
   $("hausdeppStock").classList.toggle("is-peeking", s.phase === "peeking");
@@ -900,7 +954,8 @@ function renderState() {
   renderStacks(s);
   $("hausdeppPileCount").textContent = s.phase === "peeking" ? "" : counted("cardsInHand", s.discard.length);
   $("hausdeppPileAction").textContent = s.phase === "peeking" ? "" : t(!pending && actions.includes("pickup") && s.discard.length ? "pickup" : "pileTitle");
-  $("hausdeppPile").setAttribute("aria-label", s.discard.length ? t(!pending && actions.includes("pickup") ? "pileLabel" : "pileInspectLabel", { card: cardName(s.discard.at(-1)), count: s.discard.length }) : t("tableClear"));
+  const sameOnTop = topRun(s.discard);
+  $("hausdeppPile").setAttribute("aria-label", s.discard.length ? `${t(!pending && actions.includes("pickup") ? "pileLabel" : "pileInspectLabel", { card: cardName(s.discard.at(-1)), count: s.discard.length })}${sameOnTop > 1 ? `. ${t("pileRun", { count: sameOnTop })}` : ""}` : t("tableClear"));
   $("hausdeppBurnedCount").textContent = String(s.burned_count);
   $("hausdeppBurnedUnit").textContent = t(Number(s.burned_count) === 1 ? "cardWordOne" : "cardWord");
   const burnedStack = $("hausdeppBurnedStack");
@@ -913,8 +968,14 @@ function renderState() {
   const afterthrow = actions.includes("afterthrow");
   $("hausdeppStatus").textContent = snapshot._paused ? t("paused") : s.phase === "peeking" ? t(actions.includes("peek") ? "yourPeek" : "playerPeek", { name: peeker?.name || "…" }) : s.phase === "finished" ? t("roundFinished") : mine?.finished ? t("youFinished") : actions.includes("draw") ? t("drawHint") : afterthrow ? t("afterthrowHint") : current?.id === playerId ? t("yourTurn") : t("playerTurn", { name: current?.name || "…" });
   $("hausdeppStatus").classList.toggle("is-yours", actions.length > 0);
+  // Newer players see a short tactical tip in their own turn line; the line
+  // keeps its place and highlight, so nothing on the table moves or is covered.
+  const tip = !pending && !selecting && actions.includes("pickup") && !snapshot._paused ? s.table_tip : null;
+  $("hausdeppStatus").classList.toggle("has-tip", Boolean(tip));
+  if (tip) $("hausdeppStatus").textContent = t(tip.key, { rank: t(`rank${tip.rank}`) });
   const stockAction = actions.includes("peek") ? "peek" : actions.includes("draw") ? "draw" : "gamble";
   $("hausdeppStock").disabled = pending || !actions.includes(stockAction);
+  $("hausdeppStock").dataset.action = actions.includes(stockAction) ? stockAction : "";
   $("hausdeppStock").setAttribute("aria-label", `${t(stockAction)}, ${t("stockCount", { count: s.deck_count })}`);
   $("hausdeppStockAction").textContent = stockBlocker ? t("stockWaiting", { name: stockBlocker.name }) : actions.includes(stockAction) ? t(stockAction) : "";
   if (stockBlocker) $("hausdeppStock").setAttribute("aria-label", t("stockWaiting", { name: stockBlocker.name }));
@@ -934,8 +995,9 @@ function renderState() {
   }
   $("hausdeppKnownBottom").textContent = knownBottom.length ? t("knownBottom", { cards: knownBottom.map(card => t(`rank${card.split("-")[1]}`)).join(" · ") }) : "";
   if (knownBottom.length && !stockBlocker) $("hausdeppStock").setAttribute("aria-label", `${$("hausdeppStock").getAttribute("aria-label")}. ${t("knownBottomLabel", { cards: knownBottom.map(cardName).join(", ") })}`);
-  // Opt-in convenience: tap the stock once when the own refill is due.
-  if (autoRefillEnabled() && !pending && !spectating && actions.includes("draw") && autoRefillVersion !== s.version) {
+  // Refilling is mandatory, so the stock is tapped once for everyone as soon
+  // as the own refill is due. A manual tap remains a harmless fallback.
+  if (!pending && !spectating && actions.includes("draw") && autoRefillVersion !== s.version) {
     autoRefillVersion = s.version;
     queueMicrotask(() => { if (!pending && snapshot?._hausdepp?.available_actions?.includes("draw")) command("draw"); });
   }
@@ -954,7 +1016,11 @@ function renderState() {
     $("hausdeppPeek").open = true;
     if (s.phase !== "peeking") peekTimer = setTimeout(() => { if ($("hausdeppPeek")) $("hausdeppPeek").open = false; }, 4500);
   }
-  animateCardMotion(s, { gameId, playerId }, motion);
+  animateCardMotion(s, { gameId, playerId, peekCaption: (receiver, cards) => {
+    const names = cards.map(card => t(`rank${card.split("-")[1]}`)).join(" · ");
+    return receiver === playerId ? t("peekRevealSelf", { cards: names })
+      : t("peekRevealOther", { name: s.players.find(player => player.id === receiver)?.name || "…", cards: names });
+  } }, motion);
   presentShuffle(connected && !pending ? s : null, { gameId, roundNumber: tournament?.round_number || 1 });
   hausdeppBeginnerTour.update({
     eligible: !spectating && !!playerId && !snapshot._aborted && s.phase === "playing" && !mine?.finished,
@@ -981,7 +1047,7 @@ function renderState() {
     }
     $("hausdeppResult").dataset.roundId = roundKey;
     const title = snapshot._aborted ? t("tournamentStopped") : tournament?.completed ? t("tournamentLoser", { name: finalLoser?.name || "…" }) : t("loser", { name: loser?.name || "…" });
-    $("hausdeppResult").innerHTML = `<h2>${esc(title)}</h2><p>${t(snapshot._aborted ? "tournamentStoppedHint" : tournament ? tournament.completed ? "tournamentCompleteHint" : "tournamentRoundHint" : "resultHint")}</p>${tournamentScoreboard(tournament, s.players)}<div class="hd-result-links">${tournament && !tournament.completed && !snapshot._aborted ? tournament.can_start_next_round ? `<button id="hausdeppNextRound" class="hd-primary" type="button" ${pending || tournamentEnding || !connected || snapshot._paused ? "disabled" : ""}>${t("startNextRound", { round: nonnegative(tournament.round_number) + 1 })} ${icon("arrow")}</button><button id="hausdeppEndTournament" class="hd-secondary" type="button" ${pending || tournamentEnding || !connected ? "disabled" : ""}>${t("endTournament")}</button>` : `<p class="hd-tournament-wait">${t("tournamentHostWait")}</p>` : `<a class="hd-primary" href="/hausdepp">${t(tournament ? "newTournament" : "nextRound")} ${icon("arrow")}</a>`}<a href="/hausdepp/konto#erfolge">${t("accountProgressLink")}</a></div><div id="hausdeppRoundProgress" hidden></div>`;
+    $("hausdeppResult").innerHTML = `<h2>${esc(title)}</h2><p>${t(snapshot._aborted ? "tournamentStoppedHint" : tournament ? tournament.completed ? "tournamentCompleteHint" : "tournamentRoundHint" : "resultHint")}</p>${snapshot._aborted ? "" : roundPlacements(s, snapshot._hausdepp_round_summary)}${tournamentScoreboard(tournament, s.players)}<div class="hd-result-links">${tournament && !tournament.completed && !snapshot._aborted ? tournament.can_start_next_round ? `<button id="hausdeppNextRound" class="hd-primary" type="button" ${pending || tournamentEnding || !connected || snapshot._paused ? "disabled" : ""}>${t("startNextRound", { round: nonnegative(tournament.round_number) + 1 })} ${icon("arrow")}</button><button id="hausdeppEndTournament" class="hd-secondary" type="button" ${pending || tournamentEnding || !connected ? "disabled" : ""}>${t("endTournament")}</button>` : `<p class="hd-tournament-wait">${t("tournamentHostWait")}</p>` : `<a class="hd-primary" href="/hausdepp">${t(tournament ? "newTournament" : "nextRound")} ${icon("arrow")}</a>`}<a href="/hausdepp/konto#erfolge">${t("accountProgressLink")}</a></div><div id="hausdeppRoundProgress" hidden></div>`;
     if (snapshot._finished && (!tournament || tournament.completed) && hasPreviousSeat()) appendRematchAction();
     $("hausdeppNextRound")?.addEventListener("click", () => command("next_round"));
     $("hausdeppEndTournament")?.addEventListener("click", () => {
@@ -1000,6 +1066,23 @@ function renderState() {
 
 function hasPreviousSeat() {
   return !spectating && snapshot?._participants?.some(player => !player.is_cpu && (player.id === playerId || player.user_id === auth?.user?.id));
+}
+
+// Everyone's place in the round just played, with what each person earned.
+function roundPlacements(s, summary) {
+  const order = [...(s.finished_order || []), ...(s.loser_id ? [s.loser_id] : [])];
+  const missing = s.players.filter(player => !order.includes(player.id)).map(player => player.id);
+  const rows = [...order, ...missing].map((id, index) => {
+    const player = s.players.find(item => item.id === id);
+    if (!player) return "";
+    const loser = id === s.loser_id;
+    const earned = summary?.players?.[id];
+    const awards = (earned?.achievements || []).map(award => `<li><span class="hd-result-award-name">${esc(award.name?.[lang()] || award.name?.de || "")}</span><small>${esc(t("experiencePoints", { points: `+${award.points}` }))}</small></li>`).join("");
+    const reward = player.is_cpu ? `<span class="hd-result-reward is-cpu">${t("computer")}</span>`
+      : earned?.xp != null ? `<span class="hd-result-reward">${esc(t("experiencePoints", { points: `+${earned.xp}` }))}</span>` : "";
+    return `<li class="hd-result-place${loser ? " is-hausdepp" : ""}${id === playerId ? " is-self" : ""}"><span class="hd-result-rank">${loser ? t("resultHausdepp") : t("resultPlace", { place: index + 1 })}</span><span class="hd-result-avatar">${seatAvatar(player, { key: `result-${player.id}` })}</span><span class="hd-result-name" translate="no">${esc(player.name)}</span>${reward}${awards ? `<ul class="hd-result-awards" aria-label="${esc(t("resultAwards"))}">${awards}</ul>` : ""}</li>`;
+  }).join("");
+  return `<ol class="hd-result-places" aria-label="${esc(t("resultPlacements"))}">${rows}</ol>`;
 }
 
 function tournamentScoreboard(tournament, players) {
@@ -1090,25 +1173,33 @@ function renderWaiting() {
   document.title = `${snapshot._name || "Hausdepp"} · Hausdepp`;
   const participants = snapshot._participants || [];
   const expected = Math.max(2, Math.min(6, Number(snapshot._expected) || 2));
-  const humans = participants.filter(player => !player.is_cpu).length;
-  const open = Math.max(0, Number(snapshot._expected_connections || expected) - humans);
-  const invite = $("hausdeppWaiting").querySelector("[data-invite-game]");
-  invite.dataset.inviteName = snapshot._name || t("defaultTable");
-  invite.dataset.inviteCanCall = !spectating && !snapshot._started && !snapshot._finished && !snapshot._aborted && open > 0 && participants.some(player => player.id === playerId && !player.is_cpu) ? "1" : "0";
+  const free = Math.max(0, expected - participants.length);
+  const isHost = !spectating && snapshot._waiting_permissions?.is_host === true;
+  const invitation = $("hausdeppWaiting").querySelector("[data-invite-game]");
+  invitation.dataset.inviteName = snapshot._name || t("defaultTable");
+  invitation.dataset.inviteCanCall = !spectating && !snapshot.locked && !snapshot._started && !snapshot._finished && !snapshot._aborted && (free > 0 || snapshot._replaceable_cpus > 0) && participants.some(player => player.id === playerId && !player.is_cpu) ? "1" : "0";
   invitations?.sync();
   $("hausdeppRoomInvitation").hidden = true;
-  $("hausdeppWaitingCount").textContent = open ? counted("waitingCount", open) : t("waitingReady");
-  replaceChildrenPreservingAvatars($("hausdeppWaitingSeats"), Array.from({ length: expected }, (_, index) => {
-    const player = participants[index];
-    return `<li class="${player ? "is-taken" : "is-open"}"><span class="hd-waiting-avatar" aria-hidden="true">${player ? seatAvatar(player, { key: `waiting-${player.id}` }) : "+"}</span><strong>${player ? esc(player.name) : t("humanSeat")}</strong><small>${player ? player.is_cpu ? t("computer") : player.id === playerId ? t("yourSeat") : t("humanCountOne") : t("seatNumber", { number: index + 1 })}</small></li>`;
-  }).join(""));
+  $("hausdeppWaitingMode").textContent = `${t(snapshot._waiting_mode === "open" ? "creatorOpenMode" : "creatorFixed")} · ${t(snapshot._hausdepp_tournament_enabled ? "tournament" : "quickGame")}${snapshot.locked ? ` · ${t("creatorProtected")}` : ""}`;
+  const reason = snapshot._waiting_permissions?.start_reason;
+  $("hausdeppWaitingCount").textContent = isHost && reason === "hausdepp_waiting_minimum_players" ? t("waitingNeedOne")
+    : isHost && reason === "hausdepp_waiting_not_full" ? t("waitingNeedSeats", { count: free })
+    : isHost && reason === "hausdepp_waiting_players_offline" ? t("waitingOffline")
+    : t("seatSummary", { occupied: participants.length, total: expected });
+  const focus = $("hausdeppWaitingSeats").contains(document.activeElement) ? document.activeElement?.dataset.participantId : null;
+  replaceChildrenPreservingAvatars($("hausdeppWaitingSeats"), Array.from({ length: expected }, (_, index) => waitingSeatMarkup(participants[index], { t, avatar: player => seatAvatar(player, { key: `waiting-${player.id}` }), isHost, selfId: playerId })).join(""));
+  waitingControls?.update(snapshot);
+  if (focus) {
+    const same = [...$("hausdeppWaitingSeats").querySelectorAll("[data-participant-id]")].find(button => button.dataset.participantId === focus);
+    (same || $("hausdeppAddCpu"))?.focus({ preventScroll: true });
+  }
 }
 
 function renderRules() {
   document.title = t("rulesTitle");
   const sections = [{ id: "ziel", key: "goal" }, { id: "kartenwerte", key: "deck" }, { id: "abheben", key: "peek", example: true }, { id: "austeilen", key: "deal" }, { id: "dein-zug", key: "moves", example: true }, { id: "abraeumen", key: "burn", example: true }, { id: "auffuellen", key: "refill", example: true }, { id: "nachwerfen", key: "after", example: true }, { id: "endspiel", key: "end", example: true }, { id: "taktik", key: "tips" }, { id: "bedienung", key: "interface" }, { id: "punkte-erfolge", key: "scoring" }, { id: "turnier", key: "tournament" }, { id: "neu-erstellen", key: "rematch" }];
   const rankLine = `<div class="hd-rank-line" aria-label="${t("rankOrder")}">${ranks.map(rank => `<span>${esc(t(`rank${rank}`))}</span>`).join("<b aria-hidden='true'>‹</b>")}</div>`;
-  root.innerHTML = `<article class="hd-rulebook"><div class="hd-rulebook-heading"><h1>${t("rulesTitle")}</h1><p>${t("rulesIntro")}</p></div><section id="einsteigertouren" class="hd-rule-section"><h2>${t("tourHeading")}</h2><p>${t("tourBody")}</p></section><section id="schnellstart" class="hd-rules-quickstart" aria-labelledby="hausdeppQuickstartTitle"><h2 id="hausdeppQuickstartTitle">${t("quickstartHeading")}</h2><ol>${["quickstartOne", "quickstartTwo", "quickstartThree"].map(key => `<li>${t(key)}</li>`).join("")}</ol></section><nav class="hd-rules-toc" aria-label="${t("rulesContents")}"><p>${t("rulesContents")}</p><ol>${sections.map(({ id, key }) => `<li><a href="#${id}">${t(`${key}Nav`)}</a></li>`).join("")}</ol></nav>${sections.map(({ id, key, example }) => `<section id="${id}" class="hd-rule-section" aria-labelledby="rule-${id}"><h2 id="rule-${id}">${t(`${key}Heading`)}</h2><p>${t(`${key}Body`)}</p>${key === "deck" ? rankLine : ""}${key === "scoring" ? `<a href="/hausdepp/konto#erfolge">${t("accountProgressLink")} ${icon("arrow")}</a>` : ""}${example ? `<aside class="hd-rule-example"><strong>${t("exampleLabel")}</strong><p>${t(`${key}Example`)}</p></aside>` : ""}</section>`).join("")}<section id="begriffe"><h2>${t("glossaryHeading")}</h2><ul class="hd-rules-glossary">${["glossaryStock", "glossaryPile", "glossaryClear", "glossaryFinish"].map(key => `<li>${t(key)}</li>`).join("")}</ul></section><section id="karten" class="hd-rule-credits"><h2>${t("cardCredits")}</h2><p>${t("creditsBody")} <a href="https://commons.wikimedia.org/wiki/File:Doppeldeutsche_Preference.JPG" target="_blank" rel="noopener noreferrer">FUZxxl / Karl432</a> · <a href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noopener noreferrer">CC BY 3.0</a> · <a href="https://commons.wikimedia.org/wiki/File:Original-Hungarian-Tell-set.jpg" target="_blank" rel="noopener noreferrer">SZERVÁC Attila</a> · <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a></p></section><a class="hd-primary" href="/hausdepp">${t("takeSeat")} ${icon("arrow")}</a></article>${footer()}`;
+  root.innerHTML = `<article class="hd-rulebook"><div class="hd-rulebook-heading"><h1>${t("rulesTitle")}</h1><p>${t("rulesIntro")}</p></div><section id="einsteigertouren" class="hd-rule-section"><h2>${t("tourHeading")}</h2><p>${t("tourBody")}</p></section><section id="tisch-eroeffnen" class="hd-rule-section"><h2>${t("setupHeading")}</h2><p>${t("setupBody")}</p></section><section id="schnellstart" class="hd-rules-quickstart" aria-labelledby="hausdeppQuickstartTitle"><h2 id="hausdeppQuickstartTitle">${t("quickstartHeading")}</h2><ol>${["quickstartOne", "quickstartTwo", "quickstartThree"].map(key => `<li>${t(key)}</li>`).join("")}</ol></section><nav class="hd-rules-toc" aria-label="${t("rulesContents")}"><p>${t("rulesContents")}</p><ol>${sections.map(({ id, key }) => `<li><a href="#${id}">${t(`${key}Nav`)}</a></li>`).join("")}</ol></nav>${sections.map(({ id, key, example }) => `<section id="${id}" class="hd-rule-section" aria-labelledby="rule-${id}"><h2 id="rule-${id}">${t(`${key}Heading`)}</h2><p>${t(`${key}Body`)}</p>${key === "deck" ? rankLine : ""}${key === "scoring" ? `<a href="/hausdepp/konto#erfolge">${t("accountProgressLink")} ${icon("arrow")}</a>` : ""}${example ? `<aside class="hd-rule-example"><strong>${t("exampleLabel")}</strong><p>${t(`${key}Example`)}</p></aside>` : ""}</section>`).join("")}<section id="begriffe"><h2>${t("glossaryHeading")}</h2><ul class="hd-rules-glossary">${["glossaryStock", "glossaryPile", "glossaryClear", "glossaryFinish"].map(key => `<li>${t(key)}</li>`).join("")}</ul></section><section id="karten" class="hd-rule-credits"><h2>${t("cardCredits")}</h2><p>${t("creditsBody")} <a href="https://commons.wikimedia.org/wiki/File:Doppeldeutsche_Preference.JPG" target="_blank" rel="noopener noreferrer">FUZxxl / Karl432</a> · <a href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noopener noreferrer">CC BY 3.0</a> · <a href="https://commons.wikimedia.org/wiki/File:Original-Hungarian-Tell-set.jpg" target="_blank" rel="noopener noreferrer">SZERVÁC Attila</a> · <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a></p></section><a class="hd-primary" href="/hausdepp">${t("takeSeat")} ${icon("arrow")}</a></article>${footer()}`;
 }
 
 async function start() {
@@ -1158,6 +1249,9 @@ window.addEventListener("zdwa:auth-state", event => {
   // progress mounted after sign-out or an account change in another tab.
   stopped = true;
   clearInterval(lobbyTimer);
+  gameCreator?.destroy();
+  waitingControls?.destroy();
+  reactionControls?.destroy();
   root.replaceChildren();
   progressNotices?.destroy();
   rematchInvitations?.destroy();
@@ -1166,6 +1260,6 @@ window.addEventListener("zdwa:auth-state", event => {
   if (page === "settings" && !event.detail?.user) location.replace("/hausdepp");
   else location.reload();
 });
-window.addEventListener("pagehide", () => { progressNotices?.destroy(); rematchInvitations?.destroy(); rematchLifetime.abort(); pileInspector?.destroy(); stopLobbyDemo?.(); invitations?.destroy(); resetCardMotion(gameId); reactionObserver?.disconnect(); for (const entry of visibleReactions.values()) clearTimeout(entry.timer); visibleReactions.clear(); stopped = true; clearInterval(lobbyTimer); clearTimeout(reconnectTimer); clearTimeout(pendingTimer); clearTimeout(peekTimer); socket?.close(); });
+window.addEventListener("pagehide", () => { gameCreator?.destroy(); waitingControls?.destroy(); reactionControls?.destroy(); progressNotices?.destroy(); rematchInvitations?.destroy(); rematchLifetime.abort(); pileInspector?.destroy(); stopLobbyDemo?.(); invitations?.destroy(); resetCardMotion(gameId); reactionObserver?.disconnect(); for (const entry of visibleReactions.values()) clearTimeout(entry.timer); visibleReactions.clear(); stopped = true; clearInterval(lobbyTimer); clearTimeout(reconnectTimer); clearTimeout(pendingTimer); clearTimeout(peekTimer); socket?.close(); });
 window.addEventListener("pageshow", event => { if (event.persisted) location.reload(); });
 void start();

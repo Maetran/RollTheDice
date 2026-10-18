@@ -409,6 +409,10 @@ def _join_block_reason(g: GameDict) -> str | None:
         return "Spiel ist bereits beendet"
     if g.get("_started"):
         return "Spiel ist bereits gestartet"
+    if g.get("_game_type") == HAUSDEPP_GAME_TYPE:
+        from .hausdepp_state import hausdepp_waiting_summary
+
+        return None if hausdepp_waiting_summary(g)["can_join"] else "Spiel ist bereits voll"
     if len(g.get("_players", [])) >= int(g.get("_expected", 0) or 0):
         return "Spiel ist bereits voll"
     return None

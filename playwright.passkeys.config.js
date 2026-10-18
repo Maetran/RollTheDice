@@ -1,17 +1,12 @@
 const { defineConfig } = require("@playwright/test");
-const fs = require("node:fs");
-const os = require("node:os");
-const path = require("node:path");
+const { browserTestEnvironment } = require("./scripts/playwright-test-environment.cjs");
 
-const port = Number(process.env.ROLLTHEDICE_PASSKEY_TEST_PORT || 8012);
-if (!Number.isInteger(port) || port < 1024 || port > 65535) throw new Error("Invalid passkey test port");
+const isolated = browserTestEnvironment({ name: "passkeys", portVariable: "ROLLTHEDICE_PASSKEY_TEST_PORT", defaultPort: 8012,
+  defaultOutputDir: "test-results/passkeys" });
+const { port } = isolated;
 // A registrable reserved localhost subdomain models the production RP hierarchy.
 // Bare localhost itself cannot be used as an RP suffix from zilch.localhost.
 const baseURL = `http://rollthedice.localhost:${port}`;
-const testDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "rollthedice-passkey-browser-"));
-const pythonExecutable = process.env.PLAYWRIGHT_PYTHON
-  || (fs.existsSync(".venv/bin/python") ? ".venv/bin/python" : "python3");
-const shellQuote = value => `'${String(value).replaceAll("'", "'\\''")}'`;
 
 module.exports = defineConfig({
   testDir: "tests/browser-passkeys",
@@ -19,8 +14,8 @@ module.exports = defineConfig({
   fullyParallel: false,
   workers: 1,
   retries: 0,
-  reporter: "list",
-  outputDir: "test-results/passkeys",
+  reporter: isolated.reporter,
+  outputDir: isolated.outputDir,
   use: {
     baseURL,
     browserName: "chromium",
@@ -30,9 +25,11 @@ module.exports = defineConfig({
     // exceptions are added, so native secure-context checks stay meaningful.
   },
   webServer: {
-    command: `${shellQuote(pythonExecutable)} -m uvicorn app.asgi:create_application --factory --no-proxy-headers --host 127.0.0.1 --port ${port} --ws-max-size 65536`,
+    command: `${isolated.python} -m uvicorn scripts.browser_test_app:create_application --factory --no-proxy-headers --host 127.0.0.1 --port ${port} --ws-max-size 65536`,
     env: {
-      ROLLTHEDICE_DATABASE_URL: `sqlite:///${path.join(testDirectory, "accounts.sqlite3")}`,
+      PLAYWRIGHT_TEST_DIR: isolated.directory, DATA_DIR: isolated.directory,
+      ROLLTHEDICE_DATA_DIR: isolated.directory,
+      ROLLTHEDICE_DATABASE_URL: isolated.databaseURL,
       ROLLTHEDICE_SITE_ORIGIN: baseURL,
       ROLLTHEDICE_ZILCH_ORIGIN: `http://zilch.rollthedice.localhost:${port}`,
       ROLLTHEDICE_PASSKEYS_ENABLED: "1",
@@ -55,6 +52,7 @@ module.exports = defineConfig({
     },
     url: baseURL,
     reuseExistingServer: false,
+    gracefulShutdown: isolated.gracefulShutdown,
     timeout: 20000,
   },
 });

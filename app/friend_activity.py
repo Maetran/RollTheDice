@@ -33,8 +33,6 @@ SEND_TIMEOUT_SECONDS = 3
 
 
 def _watchable(game: GameDict) -> bool:
-    if game_type_from_state(game) == HAUSDEPP_GAME_TYPE:
-        return False
     if not game.get("_started") or game.get("_finished") or game.get("_aborted") or game.get("_passphrase"):
         return False
     return game_type_from_state(game) != ZILCH_GAME_TYPE or zilch_spectating_available(game)
@@ -82,7 +80,8 @@ def _recipient_payload(game: GameDict, identity: AuthIdentity, *, now: datetime)
         names = [{"id": player.id, "username": player.username} for player in players]
     game_type = game_type_from_state(game)
     mode = str(game.get("_mode") or game.get("_expected") or "")
-    if mode not in {"1", "2", "3", "2v2"}:
+    # Hausdepp tables seat two to six; ZDWA and Zilch keep their own modes.
+    if mode not in ({"2", "3", "4", "5", "6"} if game_type == HAUSDEPP_GAME_TYPE else {"1", "2", "3", "2v2"}):
         return None
     return {"friend_activity": {
         "id": f"start:{game_type}:{game['_id']}",

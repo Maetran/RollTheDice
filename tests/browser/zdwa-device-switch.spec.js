@@ -1,6 +1,30 @@
 const { test, expect } = require("@playwright/test");
 
-const credentials = { username: "Admin", password: "temporary-password-123" };
+const PASSWORD = "device-switch-password-123";
+let credentials;
+
+// Admin is shared by most browser specs, and several of them leave it in
+// English (or with other saved choices) that /api/auth/me then applies to every
+// new device. Each test signs in with its own fresh account instead, so the
+// German copy and the lobby rows checked here do not depend on test order.
+test.beforeEach(async ({ request }) => {
+  const admin = await request.post("/api/auth/login", { data: { username: "Admin", password: "temporary-password-123" } });
+  expect(admin.ok()).toBeTruthy();
+  const username = `DeviceSwitch${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+  const created = await request.post("/api/admin/users", {
+    headers: { "X-CSRF-Token": (await admin.json()).user.csrf_token },
+    data: { username, temporary_password: "device-switch-temporary-123", role: "user" },
+  });
+  expect(created.status()).toBe(201);
+  const initial = await request.post("/api/auth/login", { data: { username, password: "device-switch-temporary-123" } });
+  expect(initial.ok()).toBeTruthy();
+  const changed = await request.post("/api/auth/change-password", {
+    headers: { "X-CSRF-Token": (await initial.json()).user.csrf_token },
+    data: { current_password: "device-switch-temporary-123", new_password: PASSWORD },
+  });
+  expect(changed.ok()).toBeTruthy();
+  credentials = { username, password: PASSWORD };
+});
 
 async function deviceContext(browser, baseURL, viewport) {
   const context = await browser.newContext({ baseURL, viewport, hasTouch: true, isMobile: true, serviceWorkers: "block" });

@@ -11,6 +11,9 @@
 @import "./hausdepp-rematch.css";
 @import "./hausdepp-table-polish.css";
 @import "./hausdepp-readable-table.css";
+@import "./hausdepp-contrast.css";
+@import "./hausdepp-lobby-setup.css";
+@import "./hausdepp-reactions.css";
 :root {
   --hd-paper: #f6f2e6; --hd-ink: #20372e; --hd-muted: #526157;
   --hd-red: #a63335; --hd-red-hover: #842628; --hd-gold: #dfc895;
@@ -303,12 +306,12 @@ a { color: inherit; text-underline-offset: 4px; }
 .hd-seat-avatar { width: 44px; height: 44px; border-radius: 50%; background: #f1e4cc; color: #59412e; display: grid; place-items: center; font-weight: 750; box-shadow: 0 4px 10px #160d0966; margin-bottom: 4px; }
 .hd-seat.is-active .hd-seat-avatar { background: var(--hd-gold); outline: 2px solid var(--hd-gold); outline-offset: 4px; }
 .hd-seat strong { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
-.hd-seat > span:not(.hd-seat-avatar) { font-size: 13px; color: #e4d1b6; display: flex; align-items: center; gap: 4px; }
+.hd-seat-count { font-size: 13px; color: #e4d1b6; display: flex; align-items: center; justify-content: center; gap: 4px; }
 .hd-seat small { color: #d8c4aa; font-size: 11px; }
 .hd-seat.is-finished { opacity: .65; }
 .hd-seat.is-finished .hd-icon { width: 14px; height: 14px; }
 .hd-opponent-hand { --opponent-card: 34px; --opponent-spread: 60px; --opponent-step: 12px; position: relative; flex: 0 0 auto; width: calc(var(--opponent-card) + min(calc(var(--opponent-gaps) * var(--opponent-step)),var(--opponent-spread))); height: calc(var(--opponent-card)*57/36 + 12px); margin: 2px 8px 0; }
-.hd-opponent-card { position: absolute; top: 4px; left: calc((100% - var(--opponent-card))*var(--back-position)); width: var(--opponent-card); aspect-ratio: 36 / 57; border: 2px solid #f3eadd; border-radius: 6.7% / 4.2%; background: url("/static/hausdepp/card-back.png?v=ASSET_VERSION") center/100px; box-shadow: 0 3px 5px #180d0870; transform: rotate(var(--back-angle)); transform-origin: center bottom; z-index: var(--back-index); }
+.hd-opponent-card { position: absolute; top: 4px; left: calc((100% - var(--opponent-card))*var(--back-position)); width: var(--opponent-card); aspect-ratio: 36 / 57; border: 2px solid #f3eadd; border-radius: 6.7% / 4.2%; background: url("/static/hausdepp/card-back.webp?v=ASSET_VERSION") center/100px; box-shadow: 0 3px 5px #180d0870; transform: rotate(var(--back-angle)); transform-origin: center bottom; z-index: var(--back-index); }
 .hd-opponent-hand .hd-seat-avatar { position: absolute; top: -5px; left: -10px; width: 22px; height: 22px; margin: 0; font-size: 11px; z-index: 40; }
 .hd-opponent-hand[data-card-count="0"] .hd-seat-avatar { left: calc(50% - 11px); top: 18px; }
 .hd-centre { display: flex; justify-content: center; align-items: center; gap: clamp(26px,5vw,60px); padding: 0 20px; }
@@ -318,8 +321,8 @@ a { color: inherit; text-underline-offset: 4px; }
 .hd-stack-action:empty { display: none; }
 .hausdepp-card { position: relative; display: block; padding: 0; border: 0; flex: 0 0 auto; width: 106px; aspect-ratio: 36 / 57; background: #f7f4eb; border-radius: 6.7% / 4.2%; overflow: hidden; box-shadow: 0 5px 12px #180d0870; color: #1c1916; }
 .hd-card-art { width: 100%; height: 100%; display: block; }
-.hd-card-back { display: block; width: 106px; aspect-ratio: 36 / 57; border: 5px solid #f3eadd; border-radius: 7px; background: url("/static/hausdepp/card-back.png?v=ASSET_VERSION") center/190px; box-shadow: 2px 2px #f3eadd, 4px 4px #745443, 6px 6px #e9dcc6, 0 7px 13px #180d0870; padding: 0; }
-button.hd-card-back:hover { background: url("/static/hausdepp/card-back.png?v=ASSET_VERSION") center/190px; transform: translateY(-3px); }
+.hd-card-back { display: block; width: 106px; aspect-ratio: 36 / 57; border: 5px solid #f3eadd; border-radius: 7px; background: url("/static/hausdepp/card-back.webp?v=ASSET_VERSION") center/190px; box-shadow: 2px 2px #f3eadd, 4px 4px #745443, 6px 6px #e9dcc6, 0 7px 13px #180d0870; padding: 0; }
+button.hd-card-back:hover { background: url("/static/hausdepp/card-back.webp?v=ASSET_VERSION") center/190px; transform: translateY(-3px); }
 .hd-card-back.is-empty { background: none; box-shadow: none; border: 1px dashed #d5b78280; }
 .hd-pile { position: relative; width: 106px; aspect-ratio: 36 / 57; padding: 0; background: none; border: 0; border-radius: 7px; }
 button.hd-pile:hover { background: #f3eadd18; }
@@ -346,11 +349,19 @@ button.hd-pile:hover { background: #f3eadd18; }
 /* Touch screens keep :hover on the last tapped card; raising it would cover its neighbours. */
 @media (hover: hover) { .hd-hand-fan .hausdepp-card:hover:not(:disabled) { z-index: 50; transform: translateY(calc(var(--fan-drop,0px) - 12px)) rotate(var(--fan-angle,0deg)); } }
 .hd-hand-fan .hausdepp-card.is-committed { opacity: .55; transform: translateY(calc(var(--fan-drop,0px) - 18px)) rotate(var(--fan-angle,0deg)); }
+/* Its picture is already flying to the pile; one card, never two. */
+.hd-hand-fan .hausdepp-card.is-launched { visibility: hidden; }
+/* Holding a card selects its rank; no text selection or system callout. */
+.hd-hand-fan .hausdepp-card { -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
 .hd-hand-fan .hausdepp-card:focus-visible { outline: 3px solid var(--hd-gold); outline-offset: 4px; }
 .hd-actions { display: flex; justify-content: center; align-items: center; padding: 0 20px; }
 .hd-action-guide { color: #e4cfb1; font-size: 12px; line-height: 1.5; margin: 0 auto; padding: 0 12px; max-width: 55ch; text-align: center; }
-.hd-deal-card { position: fixed; z-index: 65; pointer-events: none; border: 3px solid var(--hd-paper); border-radius: 7px; background: url("/static/hausdepp/card-back.png?v=ASSET_VERSION") center/150px; box-shadow: 0 6px 15px #180d0870; transform-origin: center; }
-.hd-deal-card.has-face { border: 0; background: var(--hd-paper); overflow: hidden; }
+.hd-deal-card { position: fixed; z-index: 65; pointer-events: none; border: 3px solid var(--hd-paper); border-radius: 7px; background: url("/static/hausdepp/card-back.webp?v=ASSET_VERSION") center/150px; box-shadow: 0 6px 15px #180d0870; transform-origin: center; }
+/* A flying face is the same paper as a table card: proportional corners, so
+   it looks identical at every size and scale along its path. */
+.hd-deal-card.has-face { border: 0; border-radius: 6.7% / 4.2%; background: #f7f4eb; overflow: hidden; }
+/* Who received the publicly shown cut: readable, never taking input. */
+.hd-peek-caption { position: fixed; z-index: 66; margin: 0; padding: 6px 12px; transform: translateX(-50%); max-width: calc(100vw - 16px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--hd-ink, #1c1916); background: #f7f4eb; border: 1px solid var(--hd-gold, #b8913a); border-radius: 999px; box-shadow: 0 6px 16px #0c100d66; font-size: 14px; font-weight: 700; line-height: 18px; pointer-events: none; }
 .hd-shuffle-layer { position: fixed; z-index: 64; pointer-events: none; }
 .hd-shuffle-half { position: absolute; inset: 0; pointer-events: none; transform-origin: center; }
 .hd-shuffle-half .hd-card-back { position: absolute; inset: 0; width: 100%; height: 100%; border-width: 3px; pointer-events: none; }
@@ -398,6 +409,27 @@ button.hd-pile:hover { background: #f3eadd18; }
 .hd-result { margin: 24px 20px; padding: 24px; background: var(--hd-paper); color: var(--hd-ink); border: 1px solid var(--hd-border); border-radius: 5px; box-shadow: 4px 4px 0 #0b281f99; text-align: center; }
 .hd-result h2 { font-family: Georgia, "Times New Roman", serif; font-size: 32px; margin: 0 0 8px; }
 .hd-result p { line-height: 1.5; margin: 0 0 18px; }
+/* Round placements: finishers in order, the Hausdepp last, each with the XP
+   and achievements this round brought. */
+.hd-result-places { list-style: none; margin: 4px auto 20px; padding: 0; max-width: 560px; display: grid; gap: 8px; text-align: left; }
+.hd-result-place { display: grid; grid-template-columns: auto 36px minmax(0, 1fr) auto; align-items: center; gap: 4px 10px; padding: 8px 12px; background: #fffdf7; border: 1px solid var(--hd-border); border-radius: 8px; }
+.hd-result-place.is-self { border-color: var(--hd-gold, #b8913a); box-shadow: inset 0 0 0 1px var(--hd-gold, #b8913a); }
+.hd-result-place.is-hausdepp { background: #f6e6e2; border-color: var(--hd-red, #8f2d24); }
+.hd-result-rank { min-width: 70px; font-weight: 750; font-variant-numeric: tabular-nums; }
+.hd-result-place.is-hausdepp .hd-result-rank { color: var(--hd-red, #8f2d24); text-transform: uppercase; letter-spacing: .04em; font-size: 13px; }
+.hd-result-avatar { display: grid; place-items: center; width: 36px; height: 36px; }
+.hd-result-avatar > * { max-width: 36px; max-height: 36px; }
+.hd-result-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 650; }
+.hd-result-reward { font-weight: 750; color: var(--hd-green, #2f5d3a); white-space: nowrap; }
+.hd-result-reward.is-cpu { font-weight: 500; color: #6b6259; font-size: 13px; }
+.hd-result-awards { grid-column: 3 / -1; list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.hd-result-awards li { display: inline-flex; align-items: baseline; gap: 6px; padding: 3px 9px; background: #f3e7c4; border: 1px solid #d8bf7a; border-radius: 999px; font-size: 13px; }
+.hd-result-awards small { color: #6b5320; font-weight: 700; }
+@media (max-width: 420px) {
+  .hd-result-place { grid-template-columns: auto 32px minmax(0, 1fr); }
+  .hd-result-reward { grid-column: 3; justify-self: start; }
+  .hd-result-rank { min-width: 0; }
+}
 .hd-result-links { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 16px 24px; }
 .hd-result-links > a:not(.hd-primary) { font-size: 14px; min-height: 44px; display: inline-flex; align-items: center; }
 .hd-table[data-phase="waiting"] { display: flex; flex-direction: column; gap: 20px; }
@@ -546,7 +578,7 @@ button.hd-pile:hover { background: #f3eadd18; }
   .hd-seat { min-width: 50px; max-width: 75px; }
   .hd-seat-avatar { width: 36px; height: 36px; font-size: 14px; }
   .hd-seat strong { font-size: 12px; }
-  .hd-seat > span:not(.hd-seat-avatar) { font-size: 11px; }
+  .hd-seat-count { font-size: 11px; }
   .hd-seat small { display: none; }
   .hd-opponent-hand { --opponent-card: 24px; --opponent-spread: 30px; --opponent-step: 8px; height: calc(var(--opponent-card)*57/36 + 10px); }
   .hd-seats[data-count="1"] .hd-seat { max-width: 160px; }
@@ -613,8 +645,7 @@ button.hd-pile:hover { background: #f3eadd18; }
   .hd-opponent-hand { --opponent-card: 22px; --opponent-spread: 28px; --opponent-step: 7px; height: calc(var(--opponent-card)*57/36 + 8px); margin-top: 0; }
   .hd-seats[data-count="1"] .hd-seat { display: grid; grid-template-columns: auto auto; column-gap: 12px; max-width: 170px; }
   .hd-seats[data-count="1"] .hd-opponent-hand { --opponent-card: 36px; --opponent-spread: 70px; --opponent-step: 12px; grid-column: 1; grid-row: 1 / 4; }
-  .hd-seats[data-count="1"] .hd-seat > strong { grid-column: 2; grid-row: 1; align-self: end; }
-  .hd-seats[data-count="1"] .hd-seat > span { grid-column: 2; grid-row: 2; align-self: start; }
+  .hd-seats[data-count="1"] .hd-seat-plate { grid-column: 2; grid-row: 1 / 3; align-self: center; }
   .hd-centre { grid-column: 2; grid-row: 2 / 4; align-self: start; height: 136px; gap: 27px; padding: 3px 10px 0; }
   .hd-centre .hausdepp-card, .hd-pile, .hd-card-back { width: 58px; }
   .hd-stock-group, .hd-pile-group { gap: 7px; }

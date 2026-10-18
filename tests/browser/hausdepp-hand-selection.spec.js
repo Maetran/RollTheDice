@@ -117,7 +117,8 @@ async function fixture(page, language) {
   await expect(page.locator('#hausdeppTable')).toHaveAttribute('data-phase', 'playing');
   await expect(page.locator('#hausdeppHand [data-card-id]')).toHaveCount(3);
   if (await page.locator('#chatToggle').getAttribute('aria-expanded') === 'true') await page.locator('#chatToggle').click();
-  return { board, self, remote, commands, send: next => socket.send(JSON.stringify({ scoreboard: next })) };
+  return { board, self, remote, commands, send: next => socket.send(JSON.stringify({ scoreboard: next })),
+    raw: payload => socket.send(JSON.stringify(payload)) };
 }
 
 test.afterEach(async ({ page }) => {
@@ -157,10 +158,9 @@ for (const language of ['de', 'en']) {
     expect(state.commands.map(({ action, cards, version }) => ({ action, cards, version }))).toEqual([
       { action: 'hausdepp_play', cards: HAND.slice(0, 2), version: state.board._hausdepp.version },
     ]);
-    await expect(play).toBeDisabled();
-    await expect(card(page, HAND[2])).toBeDisabled();
-    await page.locator('#hausdeppMultiToggle').click();
+    // One selection serves one throw: the mode ends by itself.
     await expect(page.locator('#hausdeppMultiToggle')).toHaveAttribute('aria-pressed', 'false');
+    await expect(card(page, HAND[2])).toBeDisabled();
     expect(state.commands).toHaveLength(1);
     await page.reload();
     await expect(page.locator('#hausdeppTable')).toHaveAttribute('data-phase', 'playing');
@@ -178,6 +178,32 @@ for (const language of ['de', 'en']) {
     expect(state.commands.map(({ action, cards }) => ({ action, cards: [...cards].sort() }))).toEqual([
       { action: 'hausdepp_play', cards: four._hausdepp.hand.slice(0, 4).sort() },
     ]);
+  });
+
+  test(`${language}: holding a card selects its whole rank for one throw, then taps play singly again`, async ({ page }) => {
+    const state = await fixture(page, language);
+    const held = card(page, HAND[0]);
+    const box = await held.boundingBox();
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 3);
+    await page.mouse.down();
+    await page.waitForTimeout(520);
+    await page.mouse.up();
+    // The long press itself sends nothing and does not play the held card.
+    expect(state.commands).toEqual([]);
+    await expect(page.locator('#hausdeppMultiToggle')).toHaveAttribute('aria-pressed', 'true');
+    await expect(card(page, HAND[0])).toHaveAttribute('aria-pressed', 'true');
+    await expect(card(page, HAND[1])).toHaveAttribute('aria-pressed', 'true');
+    await card(page, HAND[1]).click();
+    await expect(card(page, HAND[1])).toHaveAttribute('aria-pressed', 'false');
+    await page.locator('#hausdeppMultiPlay').click();
+    expect(state.commands.map(({ action, cards }) => ({ action, cards }))).toEqual([{ action: 'hausdepp_play', cards: [HAND[0]] }]);
+    await expect(page.locator('#hausdeppMultiToggle')).toHaveAttribute('aria-pressed', 'false');
+    // A short tap after a fresh renderer entry plays immediately again.
+    await page.reload();
+    await expect(page.locator('#hausdeppTable')).toHaveAttribute('data-phase', 'playing');
+    state.commands.length = 0;
+    await card(page, HAND[1]).click();
+    expect(state.commands.map(({ action, cards }) => ({ action, cards }))).toEqual([{ action: 'hausdepp_play', cards: [HAND[1]] }]);
   });
 
   test(`${language}: a foreign refill preserves selection but a CPU play expires follow-up and later turns stay empty`, async ({ page }) => {
@@ -260,40 +286,279 @@ for (const language of ['de', 'en']) {
 
 for (const language of ['de', 'en']) {
   test(`${language}: the peeker keeps seeing known bottom cards and auto-refill taps the stock once`, async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
     const state = await fixture(page, language);
     const next = structuredClone(state.board), s = next._hausdepp;
     Object.assign(s, { private_peek: ['hearts-A', 'bells-K'], private_peek_in_stock: ['hearts-A', 'bells-K'] });
     s.version += 1; state.send(next);
     await expect(page.locator('#hausdeppKnownBottom')).toHaveText(language === 'de' ? 'Unten: Ass · König' : 'Bottom: Ace · King');
     await expect(page.locator('#hausdeppStock')).toHaveAttribute('aria-label', language === 'de' ? /unten im Stapel/ : /bottom of the stock/);
+    // The seen cards peek out from under the stock as a fan: on screen,
+    // behind the stock, clear of the cleared-cards stack, and without a label.
+    const layout = await page.evaluate(() => {
+      const box = node => node.getBoundingClientRect();
+      const fan = [...document.querySelectorAll('#hausdeppKnownBottomCards .hausdepp-card')].map(box);
+      const stock = box(document.getElementById('hausdeppStock'));
+      const burned = box(document.querySelector('.hd-burned'));
+      const label = box(document.getElementById('hausdeppKnownBottom'));
+      return { count: fan.length, left: Math.min(...fan.map(rect => rect.left)), bottom: Math.max(...fan.map(rect => rect.bottom)),
+        under: getComputedStyle(document.getElementById('hausdeppKnownBottomCards')).zIndex < getComputedStyle(document.getElementById('hausdeppStock')).zIndex,
+        peeks: fan.every(rect => rect.left < stock.left && rect.right > stock.left), burnedTop: burned.top, labelArea: label.width * label.height };
+    });
+    expect(layout.count).toBe(2);
+    expect(layout.left).toBeGreaterThanOrEqual(0);
+    expect(layout.under).toBe(true);
+    expect(layout.peeks).toBe(true);
+    expect(layout.bottom).toBeLessThanOrEqual(layout.burnedTop);
+    expect(layout.labelArea).toBeLessThanOrEqual(1);
     s.private_peek_in_stock = ['hearts-A']; s.version += 1; state.send(next);
     await expect(page.locator('#hausdeppKnownBottom')).toHaveText(language === 'de' ? 'Unten: Ass' : 'Bottom: Ace');
     s.private_peek_in_stock = []; s.version += 1; state.send(next);
     await expect(page.locator('#hausdeppKnownBottom')).toBeHidden();
 
-    // Off by default: a due refill waits for the player's tap.
+    // Refilling is mandatory and automatic for everyone: no setting, one tap.
+    await page.locator('#hausdeppTools > summary').click();
+    await expect(page.locator('#hausdeppAutoRefill')).toHaveCount(0);
+    await page.locator('#hausdeppTools > summary').click();
     Object.assign(s, { current_player_id: state.remote, available_actions: ['draw'], playable_cards: [],
       draw_required: true, draw_urgent: true, last_event: { type: 'play', player_id: state.self, cards: ['hearts-U'] } });
     s.version += 1; state.send(next);
-    await expect(page.locator('#hausdeppDrawAlert')).toBeVisible();
-    await page.waitForTimeout(150);
-    expect(state.commands.filter(command => command.action === 'hausdepp_draw')).toEqual([]);
-
-    await page.locator('#hausdeppTools > summary').click();
-    const toggle = page.locator('#hausdeppAutoRefill');
-    await expect(toggle).not.toBeChecked();
-    const saved = page.waitForResponse(response => response.url().endsWith('/api/auth/preferences/hausdepp') && response.ok());
-    await toggle.check();
-    await saved;
     await expect.poll(() => state.commands.filter(command => command.action === 'hausdepp_draw').length).toBe(1);
     expect(state.commands.at(-1).version).toBe(s.version);
-    const me = await (await page.request.get('/api/auth/me')).json();
-    expect(me.user.preferences.hausdepp_auto_refill).toBe(true);
-    await page.reload();
-    await expect(page.locator('#hausdeppTable')).toHaveAttribute('data-phase', 'playing');
-    await page.locator('#hausdeppTools > summary').click();
-    await expect(page.locator('#hausdeppAutoRefill')).toBeChecked();
-    await page.locator('#hausdeppAutoRefill').uncheck();
-    await expect.poll(async () => (await (await page.request.get('/api/auth/me')).json()).user.preferences.hausdepp_auto_refill).toBe(false);
+    await page.waitForTimeout(150);
+    expect(state.commands.filter(command => command.action === 'hausdepp_draw')).toHaveLength(1);
   });
 }
+
+test.describe('own card flights and follow-up timing', () => {
+  test.use({ reducedMotion: 'no-preference' });
+
+  test('a tap launches exactly one card at once and the accepted state continues that same card', async ({ page }) => {
+    const state = await fixture(page, 'de');
+    await card(page, HAND[0]).click();
+    // Before any server reply: one face is already flying and the slot is empty.
+    await expect(page.locator('.hd-deal-card[data-motion-type="launch"]')).toHaveCount(1);
+    await expect(card(page, HAND[0])).toHaveCSS('visibility', 'hidden');
+    const launched = await page.locator('.hd-deal-card[data-motion-type="launch"]').elementHandle();
+    const command = state.commands.at(-1);
+    const next = structuredClone(state.board), s = next._hausdepp;
+    Object.assign(s, { version: s.version + 1, hand: HAND.slice(1), discard: [...s.discard, HAND[0]],
+      current_player_id: state.remote, available_actions: [], playable_cards: [],
+      last_event: { type: 'play', player_id: state.self, cards: [HAND[0]] } });
+    state.send(next);
+    state.raw({ hausdepp_command: { command_id: command.command_id, accepted: true, version: s.version } });
+    await expect(page.locator('.hd-deal-card[data-motion-type="play"]')).toHaveCount(1);
+    // The flight is the very element launched at the tap, never a second copy.
+    expect(await launched.evaluate(node => node.isConnected && node.dataset.motionType)).toBe('play');
+    await expect(page.locator('.hd-deal-card[data-motion-type="play"], .hd-deal-card[data-motion-type="launch"]')).toHaveCount(1);
+    // The accepted packet is already visible while this same card keeps flying;
+    // an old-pile picture must never hide its new count or destination card.
+    const packet = await page.locator('#hausdeppPile').evaluate(node => ({
+      count: Number(node.dataset.cardCount), opacity: Number(getComputedStyle(node).opacity),
+      cards: [...node.querySelectorAll('[data-card-id]')].map(card => ({
+        id: card.dataset.cardId, opacity: Number(getComputedStyle(card).opacity),
+        wrapperOpacity: Number(getComputedStyle(card.parentElement).opacity),
+      })),
+      oldPictures: document.querySelectorAll('.hd-deal-card[data-motion-type="pile-rest"]').length,
+    }));
+    expect(packet).toMatchObject({ count: 2, opacity: 1, oldPictures: 0 });
+    expect(packet.cards.map(card => card.id)).toEqual(s.discard);
+    expect(packet.cards.every(card => card.opacity === 1 && card.wrapperOpacity === 1)).toBe(true);
+    await expect(page.locator('.hd-deal-card')).toHaveCount(0, { timeout: 3000 });
+    await expect(page.locator('#hausdeppPile [data-card-id]').last()).toHaveAttribute('data-card-id', HAND[0]);
+  });
+
+  test('a follow-up beaten by the next player\'s card flies back to the hand with a clear message', async ({ page }) => {
+    const state = await fixture(page, 'de');
+    const open = structuredClone(state.board), s = open._hausdepp;
+    Object.assign(s, { version: s.version + 1, current_player_id: state.remote, available_actions: ['afterthrow'],
+      playable_cards: HAND.slice(0, 2), afterthrow: { player_id: state.self, rank: 'U' } });
+    state.send(open);
+    await expect(card(page, HAND[0])).toBeEnabled();
+    await card(page, HAND[0]).click();
+    expect(state.commands.at(-1)).toMatchObject({ action: 'hausdepp_afterthrow', cards: [HAND[0]] });
+    await expect(page.locator('.hd-deal-card[data-motion-type="launch"]')).toHaveCount(1);
+    state.raw({ error: 'hausdepp_afterthrow_expired', hausdepp_error: { code: 'hausdepp_afterthrow_expired' } });
+    await expect(page.locator('#hausdeppActionError')).toHaveText(/Zu spät/);
+    // The card returns to its slot; it is never shown twice meanwhile.
+    await expect(page.locator('.hd-deal-card')).toHaveCount(0);
+    await expect(card(page, HAND[0])).toHaveCSS('visibility', 'visible');
+  });
+
+  test('a same-rank tap queued behind an own card is dropped when another player acted in between', async ({ page }) => {
+    const state = await fixture(page, 'de');
+    await card(page, HAND[0]).click();
+    await card(page, HAND[1]).click();
+    expect(state.commands.map(command => command.action)).toEqual(['hausdepp_play']);
+    const first = state.commands[0];
+    const accepted = structuredClone(state.board), s = accepted._hausdepp;
+    // Version +1 is the own card, +2 another player's move that hands the turn
+    // back. The queued tap belonged to the closed follow-up, not this new turn.
+    Object.assign(s, { version: s.version + 2, hand: HAND.slice(1), discard: [...s.discard, HAND[0], 'acorns-O'],
+      current_player_id: state.self, available_actions: ['play', 'pickup', 'gamble'], playable_cards: [HAND[2]],
+      afterthrow: null, last_event: { type: 'play', player_id: state.remote, cards: ['acorns-O'] } });
+    s.playable_cards = HAND.slice(1);
+    state.send(accepted);
+    state.raw({ hausdepp_command: { command_id: first.command_id, accepted: true, version: state.board._hausdepp.version + 1 } });
+    await page.waitForTimeout(200);
+    expect(state.commands.map(command => command.action)).toEqual(['hausdepp_play']);
+    await expect(card(page, HAND[1])).toBeEnabled();
+  });
+});
+
+for (const [width, height] of [[390, 844], [320, 568], [844, 390], [768, 1024], [1440, 900]]) {
+  test(`table tip for newer players replaces only the turn line text at ${width}x${height}`, async ({ page }) => {
+    const state = await fixture(page, 'de');
+    await page.setViewportSize({ width, height });
+    const next = structuredClone(state.board), s = next._hausdepp;
+    Object.assign(s, { version: s.version + 1, discard: ['leaves-A'], hand: ['hearts-7', 'bells-8', 'hearts-10'],
+      playable_cards: ['hearts-10'], available_actions: ['play', 'pickup', 'gamble'], table_tip: null });
+    state.send(next);
+    const status = page.locator('#hausdeppStatus');
+    await expect(status).toHaveText('Du bist dran.');
+    const layout = () => page.evaluate(() => {
+      const box = node => { const rect = node.getBoundingClientRect(); return [rect.x, rect.y, rect.width, rect.height].map(Math.round); };
+      const line = document.getElementById('hausdeppStatus');
+      return { status: box(line), hand: box(document.getElementById('hausdeppHand')), pile: box(document.getElementById('hausdeppPile')),
+        clipped: line.scrollWidth > line.clientWidth + 1 };
+    });
+    const before = await layout();
+    s.version += 1; s.table_tip = { key: 'tipBuyAce' }; state.send(next);
+    await expect(status).toHaveText('Tipp: Ass aufnehmen, 10 behalten');
+    await expect(status).toHaveClass(/is-yours/);
+    if (process.env.HAUSDEPP_TIP_SCREENSHOTS === '1') {
+      await page.screenshot({ path: test.info().outputPath(`table-tip-${width}x${height}.png`) });
+    }
+    const after = await layout();
+    // Nothing moves, nothing is covered, and the short tip fits the line.
+    expect(after.hand).toEqual(before.hand);
+    expect(after.pile).toEqual(before.pile);
+    expect(after.status[3]).toBe(before.status[3]);
+    expect(after.clipped).toBe(false);
+    s.version += 1; s.table_tip = null; state.send(next);
+    await expect(status).toHaveText('Du bist dran.');
+  });
+}
+
+test.describe('public reveal of a successful cut', () => {
+  test.use({ reducedMotion: 'no-preference' });
+  for (const [width, height] of [[390, 844], [1440, 900]]) {
+    test(`everyone sees who receives the cut cards at ${width}x${height}`, async ({ page }) => {
+      const state = await fixture(page, 'de');
+      await page.setViewportSize({ width, height });
+      const remote = state.board._hausdepp.players.find(player => player.id === state.remote);
+      const peeking = structuredClone(state.board), p = peeking._hausdepp;
+      Object.assign(p, { version: p.version + 1, phase: 'peeking', hand: [], discard: [], playable_cards: [],
+        available_actions: [], peek: { player_id: state.remote, success: false, complete: false } });
+      p.players = p.players.map(player => ({ ...player, hand_count: 0 }));
+      state.send(peeking);
+      await expect(page.locator('#hausdeppTable')).toHaveAttribute('data-phase', 'peeking');
+      const dealt = structuredClone(peeking), d = dealt._hausdepp;
+      const others = d.players.filter(player => player.id !== state.remote);
+      Object.assign(d, { version: p.version + 1, phase: 'playing', hand: [...HAND], discard: ['acorns-7'],
+        current_player_id: state.self, available_actions: ['play', 'pickup', 'gamble'], playable_cards: [...HAND],
+        peek: { player_id: state.remote, success: true, complete: true, cards: ['hearts-A', 'bells-A', 'leaves-10'] },
+        last_event: { type: 'round_started' },
+        deal: { version: p.version + 1, starter: 'acorns-7',
+          sequence: [...others.map((player, index) => ({ player_id: player.id, hand_index: 0 })),
+            { player_id: state.remote, hand_index: 2 }] } });
+      d.players = d.players.map(player => ({ ...player, hand_count: 3 }));
+      state.send(dealt);
+      const reveal = page.locator('.hd-deal-card[data-motion-type="peek-reveal"]');
+      await expect(reveal).toHaveCount(3);
+      await expect(page.locator('.hd-peek-caption')).toHaveText(`${remote.name} bekommt Ass · Ass · 10`);
+      // Mid-reveal both faces are open in the table centre for everyone.
+      await page.evaluate(() => document.getAnimations().forEach(animation => { animation.currentTime = 1000; animation.pause(); }));
+      const shown = await reveal.evaluateAll(nodes => nodes.map(node => {
+        const rect = node.getBoundingClientRect();
+        return { face: Boolean(node.querySelector('svg')), opacity: Number(getComputedStyle(node).opacity),
+          x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+      }));
+      const pile = await page.locator('#hausdeppPile').boundingBox();
+      expect(shown.every(card => card.face && card.opacity > .99)).toBe(true);
+      expect(shown.every(card => Math.abs(card.y - (pile.y + pile.height / 2)) < 4)).toBe(true);
+      // Fully on screen and spread far enough that each face is distinguishable.
+      const viewport = page.viewportSize();
+      expect(shown.every(card => card.x > 0 && card.x < viewport.width)).toBe(true);
+      const xs = shown.map(card => card.x).sort((a, b) => a - b);
+      expect(Math.min(...xs.slice(1).map((x, index) => x - xs[index]))).toBeGreaterThan(30);
+      if (process.env.HAUSDEPP_REVEAL_SCREENSHOTS === '1') {
+        await page.screenshot({ path: test.info().outputPath(`peek-reveal-${width}x${height}.png`) });
+      }
+      // They end in the receiver's hand, and the deal waits for them.
+      const flights = await page.evaluate(() => [...document.querySelectorAll('.hd-deal-card')].map(node => ({
+        type: node.dataset.motionType, delay: Number(node.dataset.delay || 0) })));
+      expect(flights.filter(item => item.type === 'deal').every(item => item.delay >= 2200)).toBe(true);
+      const seat = await page.locator(`.hd-seat[data-player-id="${state.remote}"] [data-player-hand]`).boundingBox();
+      await page.evaluate(() => document.getAnimations().forEach(animation => { animation.currentTime = 2199; }));
+      const landed = await reveal.first().boundingBox();
+      expect(landed.x + landed.width / 2).toBeGreaterThanOrEqual(seat.x - 4);
+      expect(landed.x + landed.width / 2).toBeLessThanOrEqual(seat.x + seat.width + 4);
+    });
+  }
+});
+
+for (const [width, height] of [[390, 844], [1440, 900]]) {
+  test(`round result lists places, XP and achievements at ${width}x${height}`, async ({ page }) => {
+    const state = await fixture(page, 'de');
+    await page.setViewportSize({ width, height });
+    const done = structuredClone(state.board), s = done._hausdepp;
+    const ids = s.players.map(player => player.id);
+    const cpus = s.players.filter(player => player.is_cpu).map(player => player.id);
+    const loser = cpus[0];
+    Object.assign(done, { _finished: true, _hausdepp_round_summary: { round_id: 'r1', players: { [state.self]: {
+      xp: 37, round_xp: 2, achievements: [
+        { id: 'hausdepp_07', points: 25, name: { de: 'Saubere Hand', en: 'Clean hand' } },
+        { id: 'hausdepp_01', points: 10, name: { de: 'Erste Runde', en: 'First round' } }] } } } });
+    Object.assign(s, { version: s.version + 1, phase: 'finished', loser_id: loser, current_player_id: null,
+      finished_order: [state.self, ...ids.filter(id => id !== state.self && id !== loser)],
+      available_actions: [], playable_cards: [], hand: [] });
+    state.send(done);
+    const result = page.locator('#hausdeppResult');
+    await expect(result).toBeVisible();
+    const places = result.locator('.hd-result-place');
+    await expect(places).toHaveCount(ids.length);
+    await expect(places.first()).toContainText('1. Platz');
+    await expect(places.first()).toContainText('+37 EP');
+    await expect(places.first().locator('.hd-result-awards li')).toHaveCount(2);
+    await expect(places.last()).toHaveClass(/is-hausdepp/);
+    await expect(places.last()).toContainText('Hausdepp');
+    await expect(places.nth(1)).toContainText('Computer');
+    if (process.env.HAUSDEPP_RESULT_SCREENSHOTS === '1') {
+      await page.screenshot({ path: test.info().outputPath(`round-result-${width}x${height}.png`), fullPage: false });
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  });
+}
+
+test('the header avatar opens the own profile picture setting, not the account overview', async ({ page }) => {
+  await fixture(page, 'de');
+  const avatar = page.locator('.hd-profile-button');
+  await expect(avatar).toHaveAttribute('href', '/hausdepp/konto/einstellungen#profilbild');
+  await expect(avatar).toHaveAccessibleName(/Profil bearbeiten/);
+  await avatar.click();
+  await expect(page).toHaveURL(/\/hausdepp\/konto\/einstellungen#profilbild$/);
+  const row = page.locator('details#profilbild');
+  await expect(row).toHaveJSProperty('open', true);
+  await expect(row.locator('[data-avatar-upload]')).toBeInViewport();
+});
+
+test('equal ranks on top of the open pile fan out so their count reads at a glance', async ({ page }) => {
+  const state = await fixture(page, 'de');
+  const next = structuredClone(state.board), s = next._hausdepp;
+  Object.assign(s, { version: s.version + 1, discard: ['leaves-6', 'hearts-U', 'bells-U', 'acorns-U'] });
+  state.send(next);
+  const faces = page.locator('#hausdeppPile .hd-pile-face[data-run-step]');
+  await expect(faces).toHaveCount(3);
+  await expect(page.locator('#hausdeppPile')).toHaveAttribute('aria-label', /3 gleiche oben/);
+  const lefts = await faces.evaluateAll(nodes => nodes.map(node => node.getBoundingClientRect().left));
+  // Older equal cards step out to the left far enough to show their corner.
+  expect(lefts[0]).toBeLessThan(lefts[1] - 10);
+  expect(lefts[1]).toBeLessThan(lefts[2] - 10);
+  if (process.env.HAUSDEPP_PILE_SCREENSHOTS === '1') {
+    const box = await page.locator('.hd-centre').boundingBox();
+    await page.screenshot({ path: test.info().outputPath('pile-run.png'), clip: box });
+  }
+  s.version += 1; s.discard = ['leaves-6', 'hearts-U']; state.send(next);
+  await expect(page.locator('#hausdeppPile .hd-pile-face[data-run-step]')).toHaveCount(0);
+});

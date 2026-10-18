@@ -163,7 +163,7 @@ for (const product of [
     const daily = page.locator('input[name="dailyReminder"]');
     await expect(invites).toBeChecked();
     await expect(daily).not.toBeChecked();
-    await expect(page.locator('[data-push-reminder-schedule]')).toHaveText("Nur wenn du heute weder ZDWA noch Zilch gespielt hast: höchstens einmal, zufällig zwischen 17:00 und 21:00 Uhr (Schweizer Zeit).");
+    await expect(page.locator('[data-push-reminder-schedule]')).toHaveText("Nur wenn du heute noch keines unserer Spiele gespielt hast: höchstens einmal, zufällig zwischen 17:00 und 21:00 Uhr (Schweizer Zeit).");
     await invites.uncheck();
     await daily.check();
     await page.getByRole("button", { name: "Push-Auswahl speichern" }).click();
@@ -189,7 +189,7 @@ for (const product of [
     await expect(page.getByLabel("Receive a daily play reminder", { exact: true })).toBeChecked();
     await expect(page.getByLabel("Receive app update alerts", { exact: true })).not.toBeChecked();
     await expect(page.getByLabel("Accept invitations from")).toHaveValue("all");
-    await expect(page.locator('[data-push-reminder-schedule]')).toHaveText("Only if you haven't played ZDWA or Zilch today: at most once, at a random time between 17:00 and 21:00 (Swiss time).");
+    await expect(page.locator('[data-push-reminder-schedule]')).toHaveText("Only if you haven't played any of our games today: at most once, at a random time between 17:00 and 21:00 (Swiss time).");
     await changeLanguage("de");
     await expect(page.locator("html")).toHaveAttribute("lang", "de");
     await page.locator(product.disable).click();

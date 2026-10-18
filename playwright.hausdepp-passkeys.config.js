@@ -1,19 +1,17 @@
 const { defineConfig } = require('@playwright/test');
-const fs = require('node:fs');
-const os = require('node:os');
-const path = require('node:path');
+const { browserTestEnvironment } = require('./scripts/playwright-test-environment.cjs');
 
-const port = Number(process.env.ROLLTHEDICE_HAUSDEPP_PASSKEY_TEST_PORT || 8054);
-if (!Number.isInteger(port) || port < 1024 || port > 65535) throw new Error('Invalid isolated passkey port');
-const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'hausdepp-native-passkeys-'));
-const python = fs.existsSync('.venv/bin/python') ? '.venv/bin/python' : 'python3';
+const isolated = browserTestEnvironment({ name: 'hausdepp-passkeys',
+  portVariable: 'ROLLTHEDICE_HAUSDEPP_PASSKEY_TEST_PORT', defaultPort: 8054 });
+const { port } = isolated;
 
 module.exports = defineConfig({
   testDir: 'tests/browser-hausdepp-passkeys',
   timeout: 30000,
   workers: 1,
   retries: 0,
-  reporter: 'list',
+  reporter: isolated.reporter,
+  outputDir: isolated.outputDir,
   use: {
     baseURL: 'https://hausdepp.zockdiewandan.online',
     browserName: 'chromium',
@@ -28,9 +26,11 @@ module.exports = defineConfig({
   webServer: {
     // Models the trusted local TLS-terminating reverse proxy; only loopback
     // may supply the HTTPS forwarded scheme used by the fixed-origin policy.
-    command: `${python} -m uvicorn app.asgi:create_application --factory --proxy-headers --forwarded-allow-ips=127.0.0.1 --host 127.0.0.1 --port ${port}`,
+    command: `${isolated.python} -m uvicorn scripts.browser_test_app:create_application --factory --proxy-headers --forwarded-allow-ips=127.0.0.1 --host 127.0.0.1 --port ${port}`,
     env: {
-      ROLLTHEDICE_DATABASE_URL: `sqlite:///${path.join(directory, 'accounts.sqlite3')}`,
+      PLAYWRIGHT_TEST_DIR: isolated.directory, DATA_DIR: isolated.directory,
+      ROLLTHEDICE_DATA_DIR: isolated.directory,
+      ROLLTHEDICE_DATABASE_URL: isolated.databaseURL,
       ROLLTHEDICE_SITE_ORIGIN: 'https://zockdiewandan.online',
       ROLLTHEDICE_ZILCH_ORIGIN: 'https://zilch.zockdiewandan.online',
       ROLLTHEDICE_PASSKEYS_ENABLED: '1',
@@ -44,6 +44,7 @@ module.exports = defineConfig({
     },
     url: `http://127.0.0.1:${port}/api/auth/me`,
     reuseExistingServer: false,
+    gracefulShutdown: isolated.gracefulShutdown,
     timeout: 20000,
   },
 });

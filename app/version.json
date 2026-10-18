@@ -1,10 +1,10 @@
 {
-  "version": "3.5.0",
+  "version": "3.10.0",
   "bump": "minor",
-  "date": "2026-10-17",
-  "previous_revision": "96529b47949fb9f78eaf0957c888d2e4e23c6d03",
+  "date": "2026-10-18",
+  "previous_revision": "2baa990726ef537049957069c57d68f3bfeb88f1",
   "summary": {
-    "de": "Hausdepp: Die Rangliste zeigt die neuesten erreichten Erfolge aller Konten.",
-    "en": "Hausdepp: the leaderboard shows the latest achievements earned by every account."
+    "de": "Hausdepp-Computer halten hohe Karten als Reserve zurück und nutzen sichere Schlusszüge.",
+    "en": "Hausdepp computers keep high cards in reserve and take guaranteed finishing follow-ups."
   }
 }

@@ -3,26 +3,27 @@
 // Large props come from the three 2×2 atlases, small scatter pieces from the
 // 4×3 scatter atlas. `size` is the drawn size relative to a large prop.
 const catalog = {
-  beer: { sheet: "base", cell: 0, label: "Bierglas anstupsen", liquid: true },
+  beer: { sheet: "base", cell: 0, label: "Vom Bier trinken", liquid: true, drink: "#d99a2b", foam: true },
   can: { sheet: "base", cell: 1, label: "Dose anstupsen" },
-  nuts: { sheet: "base", cell: 2, label: "Nussschale verschieben", crumbs: ["#c99a5b", "#8f4d2c", "#e0bb7b"] },
-  marend: { sheet: "base", cell: 3, label: "Jausenbrett anschieben" },
-  dice: { sheet: "snacks", cell: 0, label: "Würfel anrollen" },
-  tea: { sheet: "snacks", cell: 1, label: "Teetasse anstupsen", liquid: true },
-  chips: { sheet: "snacks", cell: 2, label: "Chipsschale verschieben", crumbs: ["#e9c66f", "#d7a94b", "#f3dc98"] },
-  flips: { sheet: "snacks", cell: 3, label: "Flipsschale verschieben", crumbs: ["#e98d2c", "#f0a640", "#c96f1d"] },
-  pretzel: { sheet: "evening", cell: 0, label: "Brezel drehen", crumbs: ["#fffaf0", "#f3eee2", "#ffffff"] },
-  sweets: { sheet: "evening", cell: 1, label: "Süssigkeitenschale verschieben", crumbs: ["#d8262e", "#f0b52d", "#4c9a2a", "#f4e1c0"] },
+  nuts: { sheet: "base", cell: 2, label: "Nüsse knabbern", crumbs: ["#c99a5b", "#8f4d2c", "#e0bb7b"], bites: 4 },
+  marend: { sheet: "base", cell: 3, label: "Von der Jause essen", crumbs: ["#c9474b", "#f1d58a", "#8a5a33"], bites: 4 },
+  dice: { sheet: "snacks", cell: 0, label: "Würfeln", roll: true },
+  tea: { sheet: "snacks", cell: 1, label: "Vom Tee trinken", liquid: true, drink: "#9a5a2a" },
+  chips: { sheet: "snacks", cell: 2, label: "Chips essen", crumbs: ["#e9c66f", "#d7a94b", "#f3dc98"], bites: 4 },
+  flips: { sheet: "snacks", cell: 3, label: "Flips essen", crumbs: ["#e98d2c", "#f0a640", "#c96f1d"], bites: 4 },
+  pretzel: { sheet: "evening", cell: 0, label: "Von der Brezel abbeissen", crumbs: ["#fffaf0", "#f3eee2", "#c58a4b"], bites: 3 },
+  sweets: { sheet: "evening", cell: 1, label: "Süssigkeiten naschen", crumbs: ["#d8262e", "#f0b52d", "#4c9a2a", "#f4e1c0"], bites: 4 },
   lantern: { sheet: "evening", cell: 2, label: "Windlicht anstupsen" },
-  lemonade: { sheet: "evening", cell: 3, label: "Limonade anstupsen", liquid: true },
+  lemonade: { sheet: "evening", cell: 3, label: "Von der Limonade trinken", liquid: true, drink: "#f2d04a" },
   cap: { sheet: "scatter", cell: 0, size: .38, label: "Kronkorken schnippen", motion: "cap-spin" },
   opener: { sheet: "scatter", cell: 1, size: .7, label: "Flaschenöffner drehen", motion: "spin" },
-  "praline-gold": { sheet: "scatter", cell: 2, size: .36, label: "Goldene Praline anstupsen", motion: "roll" },
-  "praline-red": { sheet: "scatter", cell: 3, size: .36, label: "Rote Praline anstupsen", motion: "roll" },
-  die: { sheet: "scatter", cell: 4, size: .4, label: "Würfel werfen", motion: "die-roll" },
-  "loose-nuts": { sheet: "scatter", cell: 5, size: .5, label: "Nüsse anstupsen", motion: "hop", crumbs: ["#c99a5b", "#8f4d2c"] },
-  "loose-chips": { sheet: "scatter", cell: 6, size: .62, label: "Chips anstupsen", motion: "hop", crumbs: ["#e9c66f", "#f3dc98"] },
-  "loose-flips": { sheet: "scatter", cell: 7, size: .62, label: "Flips anstupsen", motion: "hop", crumbs: ["#e98d2c", "#f0a640"] },
+  "praline-gold": { sheet: "scatter", cell: 2, size: .36, label: "Goldene Praline essen", motion: "roll", crumbs: ["#e3b341", "#5a3018"], bites: 1 },
+  "praline-red": { sheet: "scatter", cell: 3, size: .36, label: "Rote Praline essen", motion: "roll", crumbs: ["#c8202a", "#5a3018"], bites: 1 },
+  die: { sheet: "scatter", cell: 4, size: .4, label: "Würfeln", motion: "die-roll", roll: true },
+  "loose-nuts": { sheet: "scatter", cell: 5, size: .5, label: "Nüsse essen", motion: "hop", crumbs: ["#c99a5b", "#8f4d2c"], bites: 1 },
+  "loose-chips": { sheet: "scatter", cell: 6, size: .62, label: "Chips essen", motion: "hop", crumbs: ["#e9c66f", "#f3dc98"], bites: 1 },
+  "loose-flips": { sheet: "scatter", cell: 7, size: .62, label: "Flips essen", motion: "hop", crumbs: ["#e98d2c", "#f0a640"], bites: 1 },
+  coin: { sheet: "svg", size: .34, label: "Münze werfen", motion: "coin", toss: true },
   coaster: { sheet: "scatter", cell: 8, size: .66, label: "Bierdeckel drehen", motion: "coaster-turn", flat: true },
   pencil: { sheet: "scatter", cell: 9, size: .72, label: "Bleistift drehen", motion: "spin", flat: true },
 };
@@ -221,6 +222,177 @@ function moveProp(table, state, sprite, automatic = false) {
   animation.finished.catch(() => {}).finally(() => { sprite.dataset.moving = "false"; });
 }
 
+// A coin drawn in place: heads shows a crown, tails a one. Both faces stay in
+// the picture; the landing side decides which one is visible.
+const coinArt = '<svg viewBox="0 0 64 64" aria-hidden="true"><defs><radialGradient id="hdCoinGold" cx="38%" cy="32%" r="70%"><stop offset="0" stop-color="#fff2b3"/><stop offset=".45" stop-color="#e8b84a"/><stop offset="1" stop-color="#9a6a17"/></radialGradient></defs><circle cx="32" cy="32" r="30" fill="url(#hdCoinGold)" stroke="#7d5410" stroke-width="2"/><circle cx="32" cy="32" r="23" fill="none" stroke="#a87719" stroke-width="1.5" stroke-dasharray="2 2"/><g class="hd-coin-heads" fill="#8a5d12"><path d="M19 39h26l3-15-8 7-8-11-8 11-8-7z"/><rect x="19" y="41" width="26" height="4" rx="1"/></g><g class="hd-coin-tails"><text x="32" y="44" text-anchor="middle" font-family="Georgia, serif" font-size="30" font-weight="700" fill="#8a5d12">1</text></g></svg>';
+
+function caption(sprite, text) {
+  sprite.querySelector(".hd-prop-caption")?.remove();
+  const label = document.createElement("span");
+  label.className = "hd-prop-caption";
+  label.setAttribute("aria-hidden", "true");
+  label.textContent = text;
+  sprite.append(label);
+  label.animate([{ opacity: 0, transform: "translate(-50%, 4px)" }, { opacity: 1, transform: "translate(-50%, -6px)", offset: .15 },
+    { opacity: 1, transform: "translate(-50%, -8px)", offset: .8 }, { opacity: 0, transform: "translate(-50%, -12px)" }],
+  { duration: 1600, easing: "ease-out" }).finished.catch(() => {}).finally(() => label.remove());
+}
+
+function announce(sprite, label) {
+  sprite.setAttribute("aria-label", label);
+  sprite.title = label;
+}
+
+function puddle(sprite, color, size) {
+  const layer = sprite.parentElement;
+  const spill = document.createElement("span");
+  spill.className = "hd-prop-puddle";
+  spill.setAttribute("aria-hidden", "true");
+  const width = sprite.offsetWidth * size;
+  spill.style.cssText = `left:${sprite.offsetLeft + sprite.offsetWidth / 2 - width / 2 + (Math.random() - .5) * 14}px;`
+    + `top:${sprite.offsetTop + sprite.offsetHeight * .72}px;width:${width}px;height:${width * .42}px;background:${color}`;
+  layer.prepend(spill);
+  spill.animate([{ opacity: 0, transform: "scale(.3)" }, { opacity: .55, transform: "scale(1)", offset: .08 }, { opacity: .5, offset: .7 },
+    { opacity: 0 }], { duration: 24000, easing: "ease-out" }).finished.catch(() => {}).finally(() => spill.remove());
+}
+
+// Playful use of an object. Returns false when the object only gets nudged.
+function playWithProp(table, state, sprite) {
+  const prop = sprite.dataset.prop;
+  const item = catalog[prop];
+  const art = sprite.firstElementChild;
+  // Wild tapping counts even while the glass still moves: that is how it spills.
+  const now = Date.now();
+  if (item.drink) {
+    state.idleSince = now;
+    sprite._taps = [...(sprite._taps || []).filter(time => now - time < 2600), now];
+  }
+  const wild = item.drink && sprite.dataset.fallen !== "true" && sprite._taps.length >= 3;
+  if (sprite.dataset.moving === "true" && !wild) return true;
+  const run = (frames, duration, motion, origin = "50% 50%") => {
+    for (const animation of art.getAnimations()) animation.cancel();
+    sprite.dataset.moving = "true";
+    sprite.dataset.lastMotion = motion;
+    art.style.transformOrigin = origin;
+    const animation = art.animate(frames, { duration, easing: "cubic-bezier(.2,.7,.3,1)" });
+    animation.finished.catch(() => {}).finally(() => { sprite.dataset.moving = "false"; });
+    return animation;
+  };
+  const rest = `translateX(${Number(art.dataset.restX || 0)}px) rotate(${Number(art.dataset.turn || 0)}deg)`;
+  if (item.toss) {
+    const heads = Math.random() < .5;
+    sprite.dataset.face = heads ? "heads" : "tails";
+    run([{ transform: `${rest} translateY(0) scaleY(1)` }, { transform: `${rest} translateY(-34px) scaleY(-1)`, offset: .25 },
+      { transform: `${rest} translateY(-46px) scaleY(1)`, offset: .45 }, { transform: `${rest} translateY(-30px) scaleY(-1)`, offset: .65 },
+      { transform: `${rest} translateY(0) scaleY(1)`, offset: .88 }, { transform: `${rest} translateY(-3px) scaleY(1)`, offset: .94 },
+      { transform: `${rest} translateY(0) scaleY(1)` }], 1100, "coin-toss");
+    setTimeout(() => caption(sprite, copy(heads ? "Kopf" : "Zahl")), 1000);
+    announce(sprite, `${copy(item.label)} – ${copy(heads ? "Kopf" : "Zahl")}`);
+    return true;
+  }
+  if (item.roll) {
+    const value = 1 + Math.floor(Math.random() * 6);
+    const direction = Math.random() < .5 ? -1 : 1;
+    const next = Number(art.dataset.turn || 0) + direction * 180;
+    art.dataset.turn = next;
+    art.style.setProperty("--prop-rest-angle", `${next}deg`);
+    run([{ transform: rest }, { transform: `translate(${direction * 6}px,-14px) rotate(${next - direction * 110}deg)`, offset: .35 },
+      { transform: `translate(${direction * 10}px,0) rotate(${next - direction * 30}deg)`, offset: .7 },
+      { transform: `translateX(${Number(art.dataset.restX || 0)}px) rotate(${next}deg)` }], 900, "dice-throw");
+    setTimeout(() => caption(sprite, String(value)), 820);
+    announce(sprite, `${copy(item.label)} – ${value}`);
+    return true;
+  }
+  if (item.drink) {
+    const taps = sprite._taps;
+    if (sprite.dataset.fallen === "true") {
+      // Ignore the rest of a wild burst; standing it up is a deliberate tap.
+      if (now - Number(sprite.dataset.fallenAt || 0) < 1200 || sprite.dataset.moving === "true") return true;
+      // Stand it up again, empty: what was in it is on the table now.
+      sprite.dataset.fallen = "false";
+      sprite._taps = [];
+      art.style.setProperty("--prop-rest-angle", "0deg");
+      run([{ transform: "rotate(80deg)" }, { transform: "rotate(-6deg)", offset: .75 }, { transform: "rotate(0deg)" }], 800, "glass-stand", "50% 82%");
+      announce(sprite, copy(item.label));
+      return true;
+    }
+    if (taps.length >= 6) {
+      sprite.dataset.fallen = "true";
+      sprite.dataset.fallenAt = String(now);
+      sprite.dataset.level = "0";
+      art.style.setProperty("--prop-rest-angle", "80deg");
+      burst(sprite, [item.drink, item.drink, "#fff8e8"], 14);
+      puddle(sprite, item.drink, 1.5);
+      run([{ transform: "rotate(0deg)" }, { transform: "rotate(30deg)", offset: .3 }, { transform: "rotate(88deg)", offset: .7 },
+        { transform: "rotate(80deg)" }], 900, "glass-fall", "50% 82%");
+      caption(sprite, copy("Umgekippt!"));
+      announce(sprite, copy("Glas wieder aufstellen"));
+      return true;
+    }
+    if (taps.length >= 3) {
+      burst(sprite, [item.drink, item.drink, "#fff8e8"], 8);
+      puddle(sprite, item.drink, .8);
+      ripple(sprite);
+      run([{ transform: rest }, { transform: "rotate(9deg)", offset: .3 }, { transform: "rotate(-7deg)", offset: .6 }, { transform: rest }],
+        650, "glass-spill", "50% 82%");
+      caption(sprite, copy("Verschüttet!"));
+      return true;
+    }
+    const level = Number(sprite.dataset.level ?? 4);
+    if (level <= 0) {
+      sprite.dataset.level = "4";
+      sprite.dataset.foam = item.foam ? "fresh" : "";
+      run([{ transform: rest, opacity: 1 }, { transform: `${rest} translateY(-6px)`, opacity: .6, offset: .4 }, { transform: rest, opacity: 1 }],
+        700, "glass-refill", "50% 82%");
+      caption(sprite, copy("Nachgeschenkt"));
+      announce(sprite, copy(item.label));
+      return true;
+    }
+    sprite.dataset.level = String(level - 1);
+    if (item.foam) sprite.dataset.foam = "flat";
+    run([{ transform: rest }, { transform: `${rest} translateY(-8px) rotate(-10deg)`, offset: .35 },
+      { transform: `${rest} translateY(-8px) rotate(-14deg)`, offset: .6 }, { transform: rest }], 900, "glass-sip", "50% 82%");
+    ripple(sprite);
+    if (level - 1 === 0) { caption(sprite, copy("Leer")); announce(sprite, copy("Nachschenken")); }
+    return true;
+  }
+  if (item.bites) {
+    const left = Number(sprite.dataset.bites ?? item.bites) - 1;
+    sprite.dataset.bites = String(left);
+    burst(sprite, item.crumbs, 10);
+    if (left > 0) {
+      run([{ transform: rest }, { transform: `${rest} scale(.94)`, offset: .3 }, { transform: `${rest} scale(1.02)`, offset: .65 },
+        { transform: rest }], 420, "bite");
+      art.style.setProperty("--prop-eaten", String(1 - left / item.bites));
+      return true;
+    }
+    // Finished: the food disappears, a few crumbs stay on the wood.
+    state.gone.add(prop);
+    caption(sprite, copy("Aufgegessen"));
+    run([{ transform: rest, opacity: 1 }, { transform: `${rest} scale(.6)`, opacity: 0 }], 520, "eaten").finished
+      .catch(() => {}).finally(() => { sprite.hidden = true; });
+    for (let index = 0; index < 5; index += 1) {
+      const crumb = document.createElement("span");
+      crumb.className = "hd-prop-crumb hd-prop-leftover";
+      crumb.setAttribute("aria-hidden", "true");
+      const size = 2 + Math.random() * 3;
+      crumb.style.cssText = `width:${size}px;height:${size}px;background:${item.crumbs[index % item.crumbs.length]};`
+        + `left:${sprite.offsetLeft + sprite.offsetWidth * (.3 + Math.random() * .4)}px;top:${sprite.offsetTop + sprite.offsetHeight * (.4 + Math.random() * .4)}px`;
+      sprite.parentElement.prepend(crumb);
+    }
+    return true;
+  }
+  return false;
+}
+
+// An untouched beer slowly loses its head of foam.
+function settleFoam(state) {
+  if (Date.now() - (state.idleSince || 0) < 150000) return;
+  for (const sprite of state.nodes.values()) {
+    if (catalog[sprite.dataset.prop].foam && sprite.dataset.foam !== "flat") sprite.dataset.foam = "flat";
+  }
+}
+
 // Pointer drag: push an object a little across the wood. It only stays where
 // it fits beside cards, controls and the other objects; otherwise it glides back.
 function enableDrag(table, state, sprite) {
@@ -278,6 +450,7 @@ function scheduleMotion(table, state) {
         && !catalog[node.dataset.prop].size && node.dataset.dragging !== "true");
       const sprite = visible[Math.floor(state.random() * visible.length)];
       if (sprite) moveProp(table, state, sprite, true);
+      settleFoam(state);
     }
     scheduleMotion(table, state);
   }, 20000 + state.random() * 25000);
@@ -315,14 +488,25 @@ function spriteFor(table, state, prop) {
   const art = document.createElement("span");
   art.className = "hd-prop-art";
   art.dataset.sheet = item.sheet;
-  const [columns, rows] = sheets[item.sheet];
-  art.style.backgroundSize = `${columns * 100}% ${rows * 100}%`;
-  art.style.backgroundPosition = `${(item.cell % columns) / (columns - 1) * 100}% ${Math.floor(item.cell / columns) / (rows - 1) * 100}%`;
+  if (item.sheet === "svg") {
+    art.innerHTML = coinArt;
+    sprite.dataset.face = "heads";
+  } else {
+    const [columns, rows] = sheets[item.sheet];
+    art.style.backgroundSize = `${columns * 100}% ${rows * 100}%`;
+    art.style.backgroundPosition = `${(item.cell % columns) / (columns - 1) * 100}% ${Math.floor(item.cell / columns) / (rows - 1) * 100}%`;
+  }
+  if (item.foam) {
+    sprite.dataset.foam = "fresh";
+    const foam = document.createElement("span");
+    foam.className = "hd-prop-foam";
+    art.append(foam);
+  }
   art.setAttribute("aria-hidden", "true");
   sprite.append(art);
   sprite.addEventListener("click", event => {
     if (state.swallowClick === sprite) { event.preventDefault(); state.swallowClick = null; return; }
-    moveProp(table, state, sprite);
+    if (state.reduced.matches || !playWithProp(table, state, sprite)) moveProp(table, state, sprite);
   });
   enableDrag(table, state, sprite);
   state.layer.append(sprite);
@@ -355,6 +539,7 @@ function positionDecor(table, state) {
   let index = 0;
   for (const prop of wanted) {
     const item = catalog[prop];
+    if (state.gone.has(prop)) continue; // Eaten this round; only crumbs remain.
     let placed = false;
     for (const scale of [1, .8]) {
       const art = item.size ? Math.max(24, side * item.size * scale) : Math.max(44, side * scale);
@@ -430,7 +615,8 @@ export function renderTableDecor(table, { gameId, roundNumber, phase }) {
     }), random);
     state = { key, layer, phase, count, scatterCount, random, reduced: matchMedia("(prefers-reduced-motion: reduce)"),
       props: shuffled(large, random), scatter: shuffled(scatter, random), positions,
-      angles: Array.from({ length: 10 }, () => Math.round(random() * 16 - 8)), frame: null, nodes: new Map() };
+      angles: Array.from({ length: 10 }, () => Math.round(random() * 16 - 8)), frame: null, nodes: new Map(),
+      gone: new Set(), idleSince: Date.now() };
     state.onMotionPreference = () => resetMotion(state);
     state.reduced.addEventListener("change", state.onMotionPreference);
     state.observer = new ResizeObserver(() => {

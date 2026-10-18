@@ -23,6 +23,260 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 3.10.0 — Hausdepp: Computer halten hohe Karten zurück / computers hold back high cards — 2026-10-18
+
+**Deutsch:** Hat ein Hausdepp-Computer mehrere Ober, Könige oder Asse, legt er
+zuerst nur eine Karte und wirft den Rest nicht sofort nach. Der nächste Spieler
+muss diese eine Karte beantworten (gleich hoch oder höher, mit einer 10 oder durch
+Aufnehmen), während der Computer noch weitere hohe Karten in der Hinterhand hat.
+Vier Gleiche räumen weiterhin sofort ab, niedrige Paare wirft er weiter zusammen
+ab, und ohne Nachziehstapel wirft er nach, wenn er damit fertig wird; einen
+solchen abschliessenden Nachwurf verpasst er nie. In gepaarten Partien (gleiche
+Karten, jeder Platz, Produktionsparameter) gegen die eingefrorene 3.8.2-Policy
+verlor ein Computer so an jeder Tischgrösse 14–16 % seltener. Volle Computer
+vergessen das Zurückhalten in rund 12 % der Fälle, die sanfteren Computer der
+ersten 50 Runden in rund 60 %; für neue Spieler werden sie dadurch kaum stärker
+(2 Spieler rund 5 %, 4 Spieler ohne messbaren Unterschied). Die Messung ist mit
+`paired_production_benchmark` in den Tests reproduzierbar.
+
+**English:** When a Hausdepp computer holds several Obers, Kings or Aces, it now
+plays just one first and does not follow up with the rest at once. The next player
+has to answer that one card (equal or higher, a ten, or by taking the packet) while
+the computer keeps more high cards in reserve. Four of a kind still clear at once,
+low pairs are still shed together, and without stock it follows up when that
+finishes its round, and it never misses such a finishing follow-up. In paired
+games (same cards, every seat, production settings) against the frozen 3.8.2
+policy a computer lost 14–16 % less often at every table size. Full-strength
+computers forget to hold back in about 12 % of cases, the gentler computers of the
+first 50 rounds in about 60 %, so they barely get stronger for new players (about
+5 % with 2 players, no measurable difference with 4). The measurement is
+reproducible with `paired_production_benchmark` in the tests.
+
+## 3.9.1 — Abmelden bleibt in Hausdepp / signing out stays in Hausdepp — 2026-10-18
+
+**Deutsch:** Wer sich in den Hausdepp-Einstellungen abmeldete, landete manchmal in
+ZDWA statt auf der Hausdepp-Startseite. Das passierte, wenn die Seite beim Abmelden
+noch Daten lud: Diese Anfrage sah die schon beendete Sitzung und löschte die
+zwischengespeicherte Anmeldung, bevor die Abmeldung fertig war. Dadurch ging die
+Information verloren, dass Hausdepp auch ohne Anmeldung offen ist, und die
+gemeinsame Spielauswahl schickte nach ZDWA. Die Abmeldung merkt sich diese
+Freigabe jetzt, bevor sie die Sitzung beendet. Ausserdem laufen zwei
+ZDWA-Gerätewechsel-Tests im vollständigen lokalen Testlauf mit eigenem Konto,
+damit ihnen frühere Tests die Kontosprache nicht mehr auf Englisch umstellen.
+
+**English:** Signing out from the Hausdepp settings sometimes ended in ZDWA instead
+of the Hausdepp home page. This happened when the page was still loading data
+during sign-out: that request saw the session that had already ended and cleared
+the cached sign-in before the sign-out finished. The fact that Hausdepp is open
+without an account was lost, and the shared game switch sent the browser to ZDWA.
+Sign-out now keeps that access before it ends the session. Two ZDWA device-switch
+tests also use their own account in the full local test run, so earlier tests can
+no longer switch their account language to English.
+
+
+## 3.9.0 — Hausdepp: flexible Warteräume und Favoriten / flexible waiting rooms and favourites — 2026-10-18
+
+**Deutsch:** „Tisch eröffnen“ bietet deinen gespeicherten Favoriten oder eine
+kurze Konfiguration: fixe Spielerzahl oder offen bis sechs, Schnellspiel oder
+Turnier, optional mit Passwort. Platzkarten zeigen die Besetzung. Der Gastgeber
+fügt CPUs hinzu, entfernt sie und startet selbst; Menschen ersetzen bei einem
+vollen Wartetisch einen CPU. Ein Favorit gilt für das Konto, speichert jedoch
+kein Passwort. Spieler rufen, Teilen und Link-Kopieren bleiben verfügbar.
+Vier persönliche häufige Reaktionen plus Pfeil öffnen zwölf Symbole, darunter 💩;
+die Reihenfolge bleibt während einer Partie stabil. Nach bestätigtem Ablegen,
+Nachwerfen oder erfolgreichem Zocken wächst das offene Paket sofort sichtbar;
+Kartenflüge verzögern weder Kartenzahl noch Fächer gleicher Werte.
+
+**English:** “Open a table” offers your saved favourite or a short setup: fixed
+players or open up to six, quick game or tournament, with an optional password.
+Place cards show the roster. The host adds/removes CPUs and starts explicitly;
+people replace a CPU at a full waiting table. Favourites follow the account and
+never retain passwords. Player calls, sharing and copying remain available.
+Four personal frequent reactions plus an arrow open twelve symbols, including 💩;
+the order stays stable during each game. Accepted plays, follow-ups and successful
+gambles grow the visible open pile immediately; card flights never delay its
+count or matching-rank fan.
+
+
+## 3.8.2 — Klügere Hausdepp-Computer, spielneutrale Kontotexte / smarter Hausdepp computers, game-neutral account texts — 2026-10-18
+
+**Deutsch:** Im Hausdepp-Zweikampf räumten Computer ein Ass oben fast immer mit
+ihrer 10 ab, ausser bei höchstens zwei Paketkarten und mehr als zwölf Karten im
+Stapel. Jetzt wägen sie Kaufen und Abräumen wie am grösseren Tisch ab: Mit
+Nachziehstapel kaufen sie ein Ass in 79–100 % der Fälle, ohne Stapel räumt die 10
+weiterhin ab. In 6000 gepaarten Duellen verloren sie so 4,7 % seltener; mit drei bis
+sechs Spielern bleibt die Stärke gleich. Ab 50 eigenen Runden übersehen Computer
+eine gute Kaufgelegenheit nur noch selten (etwa 1,5–3 % statt 5–9 %); die übrigen
+menschlichen Ausrutscher bleiben. Anmeldung, Konto, Einstellungen und Spielanleitung
+zählen die Spiele nicht mehr einzeln auf: Ein Konto, Passwort, Benutzername,
+Sprache, Lobby-Chat, Profilbild und Spielerauswahl gelten für „alle unsere Spiele“,
+und Mitspieler-Rufe führen in öffentliche Runden unserer Spiele. So bleiben die
+Texte richtig, wenn ein weiteres Spiel dazukommt. Hinweise, die noch von „beiden
+Spielen“ oder nur von ZDWA und Zilch sprachen (Spielerauswahl, Spieler finden,
+Profilbild, Benutzername, gemeinsame Version, Versionshinweise, Spielerinnerungen),
+sind ebenfalls angepasst. Der Lobby-Chat-Absatz der Zilch-Spielanleitung nennt jetzt
+die Schnellfilter und erscheint auch auf Englisch. Nicht mehr verwendete alte Texte
+wurden aus dem Sprachkatalog entfernt.
+
+**English:** Hausdepp duels: computers used to clear an ace on top with their ten
+almost every time, unless the packet had at most two cards and more than twelve
+stock cards remained. They now weigh buying against clearing as at larger tables:
+with stock left they buy an ace in 79–100 % of cases, without stock the ten still
+clears. In 6,000 paired duels they lost 4.7 % less often; with three to six players
+strength is unchanged. From 50 own rounds, computers rarely miss a good purchase
+(about 1.5–3 % instead of 5–9 %); the other human-sized slips remain. Sign-in,
+account, settings and the rules no longer list the games one by one: one account,
+password, username, language, lobby chat, profile picture and player selection apply
+to “all our games”, and player calls lead to public tables in our games. The texts
+therefore stay correct when another game joins. Notes that still spoke of “both
+games” or only of ZDWA and Zilch (player selection, find players, profile picture,
+username, shared version, release notes, play reminders) are updated too. The lobby
+chat paragraph in the Zilch rules now mentions the quick filters and appears in
+English too. Old, unused texts were removed from the language catalog.
+
+## 3.8.1 — Hausdepp: besser lesbarer Spieltisch / a more readable table — 2026-10-18
+
+**Deutsch:** Verdeckter Stapel und offenes Paket werden nicht mehr abgedunkelt,
+wenn andere Spieler dran sind; vorher lagen sie dann bei 45 % Deckkraft, was
+Kartenweiss von 12,8:1 auf 3,8:1 Kontrast drückte. Was du gerade antippen kannst
+(zocken, abheben, Paket nehmen), bekommt einen goldenen Leuchtrand; das
+automatische Nachziehen leuchtet nicht. Name und Kartenzahl jedes Mitspielers
+stehen auf einem dunklen Schild, der Spieler am Zug auf einem goldenen; auf dem
+Handy in einer Zeile, und volle Tische sitzen dort in einer gleichmässigen Reihe. Die
+Statuszeile ist eine Pille, gold bei deinem Zug, und zeigt keinen kleinen
+Scrollbalken mehr. „Aus dem Spiel“ ist jetzt eine durchgestrichene Karte mit
+Zahl; der Text bleibt für Screenreader und als Tooltip. Kein Tischtext ist
+kleiner als 11 px, „Tisch frei“ und die gestrichelten Plätze sind kräftiger, und
+ein sanfter Lichtkegel über der Tischmitte hebt die Karten vom Holz ab.
+
+**English:** The stock and the open pile no longer fade while other players are
+on turn; they used to sit at 45% opacity, which dropped card white from 12.8:1 to
+3.8:1 contrast. Whatever you can tap now (gamble, cut, take the pile) gets a gold
+ring; the automatic refill does not light up. Each opponent's name and hand size
+sit on a dark plate, the player on turn on a gold one; on phones in one line, and
+full tables sit there in one even row. The turn line is a pill,
+gold on your turn, and no longer shows a tiny scrollbar. "Out of play" is now a
+crossed-out card with its count; the words stay for screen readers and as the
+tooltip. No table caption is smaller than 11px, "Table clear" and the dashed
+places are stronger, and a soft lamp over the centre lifts the cards off the wood.
+
+## 3.8.0 — Hausdepp: Rundenabschluss, Tisch-Extras, neue Erfolge / round summary, table extras, new achievements — 2026-10-17
+
+**Deutsch:** Das Rundenende zeigt alle Platzierungen in der Reihenfolge, in der
+die Spieler fertig wurden, den Hausdepp zuletzt, und für jedes Konto die in dieser
+Runde verdienten EP sowie neu erreichte Erfolge; auf grossen Bildschirmen als
+mittiges Fenster. Zwei oder drei gleiche Ränge oben auf dem offenen Paket fächern
+sich leicht auf. Die Gegenstände am Tisch lassen sich benutzen: Münze werfen (Kopf
+oder Zahl), würfeln, vom Bier, Tee oder der Limonade trinken – zu wild getippt wird
+verschüttet, noch wilder kippt das Glas um –, unberührtes Bier verliert seinen
+Schaum, und Snacks werden Biss für Biss verputzt. Das Profilbild im Header führt
+direkt zur Profilbild-Einstellung. Ein kalter App-Start lädt 2,4 MB statt 5,6 MB
+Kartenbilder und zeigt keine fehlenden Rückseiten mehr. 15 neue Erfolge nach
+ZDWA-Vorbild zählen Spielzeit und Häufigkeit (Bürozeit, Arbeitszeitbetrug,
+Nachteule, Wochenende, Spielabend, Serien, 500 und 1000 Runden); die Ränge bleiben
+bis 2’300 EP gleich und reichen nun bis Hausdepp bei 9’000 EP. Hausdepp erhält
+tägliche Spielerinnerungen und Startmeldungen der Spielerauswahl; Einstellungs-
+und Hilfetexte nennen alle Spiele statt nur ZDWA und Zilch.
+
+**English:** The round end lists every place in finishing order, the Hausdepp last,
+with each account's XP for this round and newly reached achievements; on large
+screens as a centred card. Two or three equal ranks on top of the open pile fan out
+slightly. Table objects can be used: toss the coin (heads or tails), roll the dice,
+drink beer, tea or lemonade – tap too wildly and it spills, wilder still and the
+glass tips over –, an untouched beer goes flat, and snacks are eaten bite by bite.
+The header avatar opens the profile picture setting. A cold app start loads 2.4 MB
+instead of 5.6 MB of card art and no longer shows missing card backs. 15 new
+achievements following ZDWA count play time and frequency (office hours, time
+theft, night owl, weekends, card nights, streaks, 500 and 1,000 rounds); ranks
+stay the same up to 2,300 XP and now reach Hausdepp at 9,000 XP. Hausdepp gains
+daily play reminders and player-selection start notices; settings and help texts
+name all games instead of only ZDWA and Zilch.
+
+## 3.7.1 — Hausdepp: Abheben sichtbar machen / show who wins the cut — 2026-10-17
+
+**Deutsch:** Hebt jemand nach dem Mischen erfolgreich ab (eine 10 oder Asse mit
+einer 10), fliegen die gewonnenen Karten für alle offen vom verdeckten Stapel in
+die Tischmitte. Dort steht gut eine Sekunde lang, wer sie bekommt, zum Beispiel
+„Liesl bekommt Ass · 10“, danach fliegen sie sichtbar zu dieser Hand. Erst dann
+wird ausgeteilt, und ein Computer wartet mit seinem ersten Zug. Bei reduzierter
+Bewegung bleibt die Beschriftung ohne Flug. Browser-Tests mit echten Computern
+sind robuster gegen deren neue Kaufentscheidungen. Stilles Release.
+
+**English:** When someone cuts successfully after the shuffle (a ten, or aces with
+a ten), the won cards rise face up from the stock to the table centre for
+everyone. A caption names the receiver for about a second, for example "Liesl
+receives Ace · 10", then the cards fly visibly into that hand. Only then is the
+deal shown, and computers wait before their first move. With reduced motion the
+caption appears without a flight. Browser tests with real computers are more
+robust to their new buying decisions. Silent release.
+
+## 3.7.0 — Hausdepp: klügere, gnädigere Computer und Tipps / smarter, kinder computers and tips — 2026-10-17
+
+**Deutsch:** Computer bewerten Karten jetzt nach ihrem Spielwert: 10 und Ass sind
+wertvoll, niedrige Karten Ballast, und jede zusätzliche Handkarte wiegt schwerer,
+je leerer der Nachziehstapel wird. Ein einzelnes Ass oder ein kleines Paket mit
+hohen Karten wird deshalb lieber gekauft, statt eine 10 darauf zu verbrennen. Ein
+Paket, das eigene Karten zu Drillingen oder vier Gleichen ergänzt, ist besonders
+attraktiv, und ohne legale Karte wird ein gutes Paket dem Zocken vorgezogen. Im
+Duell verhalten sie sich vorsichtiger. Die Computer spielen mal besser, mal
+schlechter: Jeder hat eine kleine Eigenheit, und gelegentlich unterläuft ihnen ein
+menschlicher Fehler. In den ersten 50 Runden des neuesten Menschen am Tisch spielen
+sie spürbar gnädiger und werden schrittweise stärker. Wer weniger als 50 Runden
+gespielt hat, sieht in der eigenen Zugzeile kurze Tipps wie „Ass aufnehmen, 10
+behalten“. Die Spielanleitung erklärt das Kaufen kleiner Pakete. Stilles Release.
+
+**English:** Computers now value cards by their worth: tens and aces are valuable,
+low cards are ballast, and every extra hand card weighs more as the stock empties.
+They therefore prefer to buy a single ace or a small pile of high cards rather than
+burn a ten on it. A pile that turns their cards into triples or four of a kind is
+especially attractive, and without a legal card a good pile beats a gamble.
+Heads-up, they play more cautiously. Computers play sometimes better, sometimes
+worse: each has a small personality, and now and then they make a human mistake.
+During the first 50 rounds of the newest person at the table they play noticeably
+gentler and grow stronger step by step. Players with fewer than 50 rounds see short
+tips in their own turn line, such as "take the ace, keep your ten". The rules
+explain buying small piles. Silent release.
+
+## 3.6.0 — Hausdepp: flüssige Würfe, sicheres Nachwerfen / smooth throws, reliable follow-ups — 2026-10-17
+
+**Deutsch:** Eine getippte Handkarte fliegt sofort auf das offene Paket. Es gibt
+dabei nur noch eine einzige Karte: Die Serverbestätigung übernimmt genau dieses
+fliegende Bild, statt eine halbtransparente Handkarte stehen zu lassen und eine
+zweite Kopie loszuschicken. Das alte Paketbild liegt immer unter der fliegenden
+Karte, die Übergabe an die echte Karte geschieht ohne Aufblitzen im selben Frame,
+und die übrigen Handkarten gleiten zusammen. Flugkarten anderer Spieler werden in
+voller Grösse mit denselben proportionalen Ecken wie liegende Karten gezeichnet.
+Computer warten nun auch nach einer menschlichen Karte deren Landung ab, selbst
+wenn sie gerade auf ein Auffüllen warteten; jedes Nachwerfen verlängert diese
+Zeit. Kommt die Karte des Nachfolgers zuerst an, fliegt ein zu später Nachwurf
+sichtbar auf die Hand zurück, mit der Meldung „Zu spät“. Rasch vorgemerkte
+Karten werden nie später als andere Aktion ausgeführt. Langes Halten einer
+Handkarte wählt alle Karten dieses Rangs für genau einen Wurf. Das Auffüllen auf
+drei geschieht für alle automatisch; die bisherige Einstellung entfällt. Nach dem
+Abheben schauen die gesehenen untersten Karten als kleiner Fächer unter dem
+verdeckten Stapel hervor, nur für den Abhebenden. Die Kartenbilder stammen aus
+einer vorberechneten Tafel mit exakter Perspektive, Farbabgleich und
+randabhängiger Schärfung, sodass alle Karten gleich scharf wirken. Ein seit dem
+zufälligen ersten Geber wackliger Backend-Test ist stabilisiert. Stilles Release.
+
+**English:** A tapped hand card flies to the open pile immediately, as one single
+card: the server confirmation adopts that very picture instead of leaving a
+faded hand card behind and launching a second copy. The old pile picture always
+lies beneath the moving card, the handover to the real card happens in the same
+frame without a flash, and the remaining hand cards glide together. Other
+players' flying cards are drawn at full size with the same proportional corners
+as cards on the table. Computers now wait for a human card to land even while
+they were waiting on a refill; each follow-up extends that time. If the next
+player's card arrives first, a late follow-up visibly flies back to the hand with
+a "Too late" message. Quickly queued taps never run later as a different action.
+Holding a hand card selects every card of that rank for exactly one throw.
+Refilling to three is automatic for everyone; the former setting is gone. After
+cutting, the seen bottom cards peek out from under the stock as a small fan, for
+the cutting player only. Card faces come from a pre-rendered atlas with exact
+perspective, paper balance and edge-aware sharpening, so every card looks equally
+crisp. A backend test made flaky by the random first dealer is stabilised.
+Silent release.
+
 ## 3.5.0 — Hausdepp: neueste Erfolge / latest achievements — 2026-10-17
 
 **Deutsch:** Die Hausdepp-Rangliste hat einen neuen Bereich „Neueste erreichte

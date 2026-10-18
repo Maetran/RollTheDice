@@ -2217,5 +2217,68 @@
     "date": "2026-10-17",
     "bump": "patch",
     "summary": "Hausdepp: konstante Kartengrösse auf dem offenen Paket während der Spielanimationen. / Hausdepp: consistent card size on the open pile throughout play animations."
+  },
+  {
+    "version": "3.5.0",
+    "revision": "149ab51dfa11c8cb036b7f556381986b3789c583",
+    "date": "2026-10-17",
+    "bump": "minor",
+    "summary": "Hausdepp: Die Rangliste zeigt die neuesten erreichten Erfolge aller Konten. / Hausdepp: the leaderboard shows the latest achievements earned by every account."
+  },
+  {
+    "version": "3.6.0",
+    "revision": "4d1fe4c038eafe94535326cd833ba53bdc3f9eac",
+    "date": "2026-10-17",
+    "bump": "minor",
+    "summary": "Hausdepp: Karten fliegen beim Tippen sofort und flüssig auf den Stapel, Nachwerfen klappt zuverlässig, Auffüllen ist automatisch. / Hausdepp: cards fly to the pile smoothly the moment you tap, follow-ups work reliably, and refilling is automatic."
+  },
+  {
+    "version": "3.7.0",
+    "revision": "fe82c03f9221638386185de9a091df2f634c1e04",
+    "date": "2026-10-17",
+    "bump": "minor",
+    "summary": "Hausdepp: Klügere Computer kaufen wertvolle Pakete, spielen mal besser, mal schlechter, sind in den ersten 50 Runden gnädiger und geben neueren Spielern Tipps. / Hausdepp: smarter computers buy valuable piles, play sometimes better, sometimes worse, go easier during the first 50 rounds and give newer players tips."
+  },
+  {
+    "version": "3.7.1",
+    "revision": "c4f7abc835f8613a150fbf6df94725a19c46fd43",
+    "date": "2026-10-17",
+    "bump": "patch",
+    "summary": "Hausdepp: Erfolgreich abgehobene Karten fliegen für alle sichtbar mit Namen zum neuen Besitzer. / Hausdepp: successfully cut cards fly visibly to their new owner, with a caption, for everyone."
+  },
+  {
+    "version": "3.8.0",
+    "revision": "f5a66ce6777612f0b42b0916af182fc27888fa57",
+    "date": "2026-10-18",
+    "bump": "minor",
+    "summary": "Hausdepp: Ausführlicher Rundenabschluss, lebendige Tisch-Extras, Profilbild führt ins Profil, ruhiger Start nach App-Neustart. / Hausdepp: a richer round summary, playful table extras, the avatar opens your profile and a calmer start after an app restart."
+  },
+  {
+    "version": "3.8.1",
+    "revision": "4ca15922487f46b67ded29810aaf4ee168190142",
+    "date": "2026-10-18",
+    "bump": "patch",
+    "summary": "Hausdepp: besser lesbarer Spieltisch – helle Karten auch zwischen den Zügen, Namensschilder, goldene Markierung für den Spieler am Zug. / Hausdepp: a more readable table – cards stay bright between turns, name plates and a gold marker for the player on turn."
+  },
+  {
+    "version": "3.8.2",
+    "revision": "f27c488e170a17adaeece9a7ceca164f4270f0cc",
+    "date": "2026-10-18",
+    "bump": "patch",
+    "summary": "Hausdepp-Computer wägen im Zweikampf ein Ass oben ab, statt es fast immer mit der 10 abzuräumen; Konto- und Einstellungstexte sprechen von allen unseren Spielen. / Hausdepp computers weigh an ace on top in a duel instead of nearly always clearing it with a ten; account and settings texts speak of all our games."
+  },
+  {
+    "version": "3.9.0",
+    "revision": "87a298fc57b32fdb397dd972fec29b1ff083a551",
+    "date": "2026-10-18",
+    "bump": "minor",
+    "summary": "Hausdepp-Runden flexibel öffnen, Favoriten speichern und weitere Reaktionen senden. / Open flexible Hausdepp games, save favourites and send more reactions."
+  },
+  {
+    "version": "3.9.1",
+    "revision": "2baa990726ef537049957069c57d68f3bfeb88f1",
+    "date": "2026-10-18",
+    "bump": "patch",
+    "summary": "Abmelden in Hausdepp führt zuverlässig zurück zu Hausdepp statt manchmal nach ZDWA. / Signing out of Hausdepp reliably returns to Hausdepp instead of sometimes jumping to ZDWA."
   }
 ]

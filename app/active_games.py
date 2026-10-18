@@ -41,6 +41,7 @@ def serializable_game_state(game: dict) -> dict:
     # reappear after a process restart.
     state.pop("_zilch_draft_preview", None)
     state.pop("_hausdepp_cpu_thinking", None)
+    state.pop("_hausdepp_presentation_until", None)
     # Persist an explicit marker even when the source was restored from an old
     # snapshot.  ``game_type_from_state`` supplies the documented ZDWA default.
     state["_game_type"] = game_type_from_state(game)

@@ -99,17 +99,24 @@ Ein neuer Tisch erhält automatisch einen von 50 Wirtshausnamen mit deinem
 aktuellen Kontonamen, etwa „Manis Gsuff“. Ein Namensfeld ist dafür nicht nötig.
 
 Zwei bis fünf, höchstens sechs Teilnehmer spielen mit 36 doppeldeutschen Karten;
-Computer sind echte Mitspieler mit eigenen verdeckten Händen. Die Serverregeln
+Computer sind echte Mitspieler mit eigenen verdeckten Händen. Gleiche Ränge oben auf dem offenen Paket
+sind leicht aufgefächert, das Rundenende zeigt Platzierungen, Runden-EP und neue
+Erfolge, und die Gegenstände am Tisch lassen sich benutzen: Münze werfen, würfeln,
+vom Bier trinken (zu wild, und es kippt um) oder die Nüsse verputzen. Sie kaufen kleine
+wertvolle Pakete statt ihre 10 zu verbrennen, auch ein Ass im Zweikampf, legen von Ober, König und Ass
+zunächst nur eine Karte und halten den Rest zurück, spielen mal besser, mal schlechter
+und in den ersten 50 Runden neuer Konten spürbar sanfter; neuere Spieler sehen
+dazu kurze Tipps in ihrer Zugzeile. Die Serverregeln
 schützen fremde Karten und den Nachziehstapel. Ein Tipp auf den verdeckten Stapel
-zockt vor dem Ablegen oder füllt danach verpflichtend alle fehlenden Karten bis
-auf drei auf. Der nächste Spieler darf schon Handkarten legen; ziehen oder
-zocken kann er erst, wenn ältere Auffüllpflichten erledigt sind. „Du musst
-ziehen“ mit sanft rotem Rahmen erinnert den zuständigen Spieler. Wer möchte,
-schaltet pro Konto „Automatisch auf drei auffüllen“ ein, am Tisch in der
-Tischhilfe oder in den Kontoeinstellungen. Ein Tipp auf
+zockt vor dem Ablegen. Danach füllt das Spiel für alle automatisch alle
+fehlenden Karten bis auf drei auf, sobald die eigene Auffüllung an der Reihe
+ist; eine Einstellung dafür gibt es nicht mehr. Der nächste Spieler darf schon
+Handkarten legen; ziehen oder zocken kann er erst, wenn ältere
+Auffüllpflichten erledigt sind. „Du musst ziehen“ mit sanft rotem Rahmen zeigt,
+wessen Auffüllung an der Reihe ist. Ein Tipp auf
 eine Handkarte legt sie sofort, ein Tipp auf das offene Paket nimmt es auf.
-Mit der Mehrfachauswahl wählt ein Tipp alle gleichrangigen Karten, ein weiterer
-Tipp nimmt einzelne wieder heraus. Der erste Geber jedes Tisches wird ausgelost,
+Langes Halten einer Handkarte (oder der Schalter Mehrfachauswahl) wählt alle
+gleichrangigen Karten für genau einen Wurf, ein Tipp nimmt einzelne wieder heraus. Der erste Geber jedes Tisches wird ausgelost,
 gegen Computer wie gegen Menschen; im Turnier gibt danach reihum der nächste
 Spieler im Uhrzeigersinn. Erfolglos angeschaute Karten bleiben für den
 Abhebenden direkt am Stapel sichtbar, solange sie noch darin liegen.
@@ -134,7 +141,9 @@ Desktop nutzen grössere Karten, auf dem Handy rücken grosse Hände und besonde
 gleiche Werte enger zusammen. Der Fächer bleibt horizontal verschiebbar; mit der
 Tastatur fokussierte Karten liegen zum Lesen und Auswählen vorne. Karten auf
 dem offenen Paket behalten während eines Zugs dieselbe zur Ansicht passende
-Grösse; die Animation geht ohne Grössensprung in den Stapel über.
+Grösse; die Animation geht ohne Grössensprung in den Stapel über. Sobald der
+Server einen Wurf oder Nachwurf bestätigt, zeigt das offene Paket sofort die
+neue Kartenzahl und den passenden Fächer, auch während laufender Kartenflüge.
 
 **English – follow the cards:** Played cards visibly arrive and rest briefly
 before a ten or four matching ranks clear the pile. Computers leave time to
@@ -144,6 +153,21 @@ use larger cards, while large phone hands pack more tightly, especially matching
 ranks. The fan still scrolls horizontally; keyboard-focused cards move to the
 front for reading and selection. Open-pile cards keep the same size throughout
 a play, matching the viewport; the animation joins the pile without a size jump.
+As soon as the server accepts a play or follow-up, the open pile shows its new
+count and matching-rank fan immediately, including during active card flights.
+
+**Deutsch – Tisch lesen:** Verdeckter Stapel und offenes Paket bleiben auch
+zwischen den Zügen hell; was gerade angetippt werden kann (zocken, abheben, Paket
+nehmen), leuchtet golden. Name und Kartenzahl der Mitspieler stehen auf dunklen
+Schildern, der Spieler am Zug auf einem goldenen, und die Statuszeile wird bei
+deinem Zug gold. Tischtexte sind mindestens 11 px gross; „Aus dem Spiel“ zeigt eine
+durchgestrichene Karte mit Zahl.
+
+**English – reading the table:** The stock and the open pile stay bright between
+turns; whatever can be tapped right now (gamble, cut, take the pile) lights up in
+gold. Opponents' names and hand sizes sit on dark plates, the player on turn on a
+gold one, and the turn line turns gold on your turn. Table captions are at least
+11px; "Out of play" shows a crossed-out card with its count.
 
 Die [Regel- und Produktspezifikation](docs/HAUSDEPP.md) hält die bestätigten
 Details fest; [Karten und Quellen](docs/HAUSDEPP_ASSETS.md) dokumentiert das
@@ -153,7 +177,7 @@ Der private Kontobereich zeigt eigene abgeschlossene Runden, Runden als Hausdepp
 und Runden mit leerer Hand sowie einen nachladbaren Verlauf tatsächlicher
 Ergebnisse; allgemeine Einstellungen sind direkt unter
 `/hausdepp/konto/einstellungen` erreichbar und gelten für das gemeinsame Konto.
-Das Konto enthält **100 Erfolge und 24 Ränge**, mit Suche, Filtern und der ganzen
+Das Konto enthält **115 Erfolge und 24 Ränge**, mit Suche, Filtern und der ganzen
 Rangleiter. Innerhalb jeder Gruppe stehen erreichte Erfolge vor den noch offenen.
 Häufige Kartenaktionen benötigen mehrere passende abgeschlossene Runden;
 jede Runde zählt je Ziel höchstens einmal. Seltene Kunststücke bleiben direkt
@@ -164,7 +188,7 @@ auch an gemischten Tischen und für jede einzelne Turnierrunde. Jeder Erfolg
 gibt weiterhin einmalig seine vollen 10, 25, 50 oder 100 EP. Runden, Siege und
 die Anzahl bereits freigeschalteter Erfolge bleiben dabei erhalten.
 Von **Einstein** bei 0 EP geht es mit
-einem Augenzwinkern bis **Hausdepp** bei 5’000 EP. Jeder Rang hat einen eigenen
+einem Augenzwinkern bis **Hausdepp** bei 9’000 EP. Jeder Rang hat einen eigenen
 Aufstiegsspruch, etwa Newtons „Ab jetzt geht’s bergab. Ganz nach den
 Naturgesetzen.“ Der dauerhafte Rang ist vom Hausdepp einer Runde getrennt.
 Rundenpunkte und freigeschaltete Erfolge werden genau einmal gespeichert;
@@ -241,7 +265,7 @@ Tell pattern and lightning back. The rules page adds a quick start, anchors,
 examples and terminology. Round outcomes are stored separately. The private
 account area shows your completed rounds, rounds as the Hausdepp and rounds
 finished with an empty hand, plus a loadable history of actual results. General
-settings at `/hausdepp/konto/einstellungen` manage the shared account. The account includes **100 achievements
+settings at `/hausdepp/konto/einstellungen` manage the shared account. The account includes **115 achievements
 and 24 ranks**, with search, filters and the complete rank ladder. Each group
 shows earned achievements before locked ones. Common card actions require
 several qualifying completed rounds, with each round counting at most once per
@@ -251,7 +275,7 @@ rounded down per round to **2 XP**, including mixed tables and each individual
 tournament round. Achievements still grant their full 10, 25, 50 or 100 XP once each.
 Round and win counts and the number of existing unlocks are retained.
 The ironic ladder runs from **Einstein** at 0 XP to **Hausdepp**
-at 5,000 XP. Each rank has its own saying, including Newton's gravity-inspired
+at 9,000 XP. Each rank has its own saying, including Newton's gravity-inspired
 downhill greeting. The lasting title stays separate from a round's Hausdepp.
 Round points and unlocks are stored once. After a round, individual achievement
 and rank popups show the name, XP, condition and your own saved round evidence.
@@ -284,8 +308,9 @@ accounts is independent of that test.
 
 ## Hausdepp — Spielfenster, Computer und Konto / game window, computers and account
 
-**Deutsch:** Mit **Mehrere Karten auswählen** kannst du gleiche Handkarten markieren
-und gemeinsam in einem Zug spielen; ein normaler Tipp legt weiterhin sofort.
+**Deutsch:** Langes Halten einer Handkarte oder **Mehrere Karten auswählen**
+markiert gleiche Handkarten, die du gemeinsam in einem Zug spielst; die Auswahl
+gilt für einen Wurf, ein normaler Tipp legt weiterhin sofort.
 Computer lassen sich im variablen Normaltempo rund 12,5 % mehr Zeit. Nach einer
 beendeten oder abgebrochenen Partie erstellt **Neu erstellen** einen gemeinsamen
 Folgetisch mit derselben Platzanzahl, Computerzahl, Spielart und Schutzoption.
@@ -396,6 +421,31 @@ perform a game action.
 
 ## The games
 
+**Hausdepp – Runde eröffnen:** Der kompakte Einstieg bietet deinen gespeicherten
+Favoriten oder „Modus definieren“. Wähle eine feste Spielerzahl (2–6) oder einen
+offenen Warteraum bis sechs, Schnellspiel oder Turnier und optional ein Passwort.
+Im Warteraum zeigen Platzkarten die Besetzung. Der Gastgeber fügt CPUs einzeln
+hinzu, entfernt sie und startet selbst; offene Runden sind ab zwei Teilnehmern
+startbereit. Menschen nehmen freie Plätze und ersetzen bei einem vollen
+Wartetisch einen CPU. Die aktuelle Besetzung lässt sich kontoweit als Favorit
+speichern; für geschützte Favoriten wird das Passwort jedes Mal neu festgelegt.
+Mitspieler-Ruf, Teilen und Link-Kopieren bleiben verfügbar. Vier persönliche
+häufige Reaktionen stehen direkt bereit; der Pfeil öffnet zwölf Symbole,
+einschliesslich 💩. Ihre Positionen bleiben während der Partie gleich.
+
+**Hausdepp – creating a game:** The compact entry offers your saved favourite or
+“Define a mode”. Choose a fixed count (2–6) or an open waiting room for up to six,
+a quick game or tournament, and an optional password. Place cards show the
+roster. The host adds and removes CPUs one at a time and starts explicitly;
+open rooms are ready with two participants. People take free seats first and
+replace a CPU when the waiting table is full. Save the current setup as an
+account-wide favourite; password-protected favourites ask for a fresh password.
+Player calls, sharing and copying remain available. Four personal frequent
+reactions stay visible; the arrow opens twelve choices, including 💩. Positions
+stay stable throughout the game. Personal reaction frequency stays in this
+browser and is separate for each account.
+
+
 **Hausdepp – Gestaltung:** Holz und die originalen Tellkarten bleiben der
 Mittelpunkt. Tannengrün, Kartenrot und kräftige Serifentitel geben dem Spiel eine
 eigene Gestaltung; Navigation und wichtige Wege erscheinen als Buttons. Gegner
@@ -432,7 +482,7 @@ switching preserves the installed app identity. Private cards, outcomes and
 account data are never cached offline; play requires a connection.
 
 **Hausdepp – Mitspieler-Ruf:** Wartende, ungeschützte Tische mit einem freien
-menschlichen Platz verwenden dieselben Push-Einstellungen wie ZDWA und Zilch.
+menschlichen Platz oder ersetzbaren CPU verwenden dieselben Push-Einstellungen wie ZDWA und Zilch.
 Gerätefreigabe und die Kategorie „Mitspieler-Rufe“ müssen aktiv sein; die
 private Absenderauswahl gilt weiterhin. Nur aktuell für Hausdepp freigegebene
 Konten können senden oder empfangen. Eine Systembenachrichtigung trägt das
@@ -917,15 +967,20 @@ in the result history.
 
 ## Accounts and progress
 
-One account works across both games. Both settings pages follow the same four
-sections: **Profile & sign-in**, **Language & play**, **Players & notifications**,
-and **Help & updates**. Profile and sign-in open first, with passkeys as the
+One account works across all our games. Account and settings texts say so
+without listing each game, so they stay accurate when another game joins the
+suite. The ZDWA and Zilch settings pages follow the same four sections:
+**Profile & sign-in**, **Language & play**, **Players & notifications**, and
+**Help & updates**. Profile and sign-in open first, with passkeys as the
 preferred sign-in method. Open profile editing or password changes when needed;
 email settings appear only when email is enabled. Shared language and lobby-chat
 preferences save separately from ZDWA gameplay options. Statistics and
 achievements keep their own tabs.
 
-**Deutsch:** Die Einstellungen beider Spiele folgen derselben Reihenfolge:
+**Deutsch:** Ein Konto gilt für alle unsere Spiele. Konto- und
+Einstellungstexte sagen das, ohne jedes Spiel einzeln aufzuzählen, und bleiben
+so auch mit einem weiteren Spiel richtig. Die Einstellungen von ZDWA und Zilch
+folgen derselben Reihenfolge:
 **Profil & Zugang**, **Sprache & Spiel**, **Mitspieler & Hinweise** und
 **Hilfe & Neuigkeiten**. Profil und Zugang sind zuerst geöffnet, mit Passkeys
 als bevorzugter Anmeldung. Profilbearbeitung und Passwortwechsel öffnest du
@@ -978,7 +1033,7 @@ Under **Account → Settings → Profile & sign-in → Change username**, enter 
 confirm it with an existing passkey, or choose your current password as a fallback.
 Names follow the registration rules (3–32 characters) and
 are unique regardless of case. The new name applies to signing in, profiles
-and new games in both products. Sessions, statistics, achievements, avatars
+and new games across the whole suite. Sessions, statistics, achievements, avatars
 and saved player selections remain attached to the same account. Completed
 game views, history and leaderboards show the current account name, resolved
 through the stored participant/account IDs. Reusing a released name never
@@ -990,7 +1045,7 @@ preview access require an administrator to adjust the access configuration first
 **Deutsch:** Unter **Konto → Einstellungen → Profil & Zugang → Benutzername ändern** kannst du
 einen neuen Namen wählen und bevorzugt mit einem vorhandenen Passkey bestätigen.
 Dein aktuelles Passwort bleibt als Alternative verfügbar. Der Name gilt für Anmeldung,
-Profil und neue Partien in beiden Spielen. Konto, Statistiken, Erfolge und
+Profil und neue Partien in allen unseren Spielen. Konto, Statistiken, Erfolge und
 Spielerauswahl bleiben erhalten. Auch abgeschlossene Partien und Bestenlisten
 zeigen deinen aktuellen Kontonamen. Die Zuordnung erfolgt über feste IDs,
 auch wenn jemand deinen alten Namen übernimmt. Gastnamen, nicht eindeutig
@@ -1447,8 +1502,8 @@ profiles, lobby chat, game rooms and statistics lightweight while preventing
 uploaded image markup, script payloads and metadata from being served back.
 
 **Game-start notices** use the existing private, account-bound player selection:
-when a selected account starts a public, watchable ZDWA or Zilch game, connected
-users who enabled the account setting see a short live banner in either lobby.
+when a selected account starts a public, watchable ZDWA, Zilch or Hausdepp game,
+connected users who enabled the account setting see a short live banner in the lobbies.
 It links to spectator mode unless the recipient is already in a game. These
 notices are neither push notifications nor persisted history; recipient consent,
 selection membership, room access and account status are rechecked at delivery.
@@ -1473,12 +1528,12 @@ and release notes remain separate choices.
 | | Player invitations | Daily play reminders |
 | --- | --- | --- |
 | Trigger | A seated player clicks **Notify players** in a public waiting room | The server, only after a separate opt-in |
-| Eligibility | Room still has an open seat; recipient opted in and is not already seated | Account has played neither ZDWA nor Zilch today |
+| Eligibility | Room still has an open seat; recipient opted in and is not already seated | Account has played none of the games today |
 | Timing | Any time, including after the recipient has already played | A new random time between 17:00 and 21:00, Europe/Zurich |
 | Limits | One attempt per sender per minute across both games; one dispatch per room per ten minutes | At most one reminder attempt per account per Swiss calendar day |
 | Click destination | The specific room, with normal join/rejoin checks | The selected game's lobby |
 
-A valid human roll or scoring action counts as playing; finishing a game is not
+A valid human move (a roll, a scoring action or a played card) counts as playing; finishing a game is not
 required. Login, chat, spectating and CPU actions do not count. Existing
 completed results are also checked. Activity and opt-out are checked again
 immediately before dispatch.
@@ -1486,9 +1541,9 @@ immediately before dispatch.
 Reminder schedules are stable across restarts. There is no overnight catch-up,
 and durable daily claims prevent repeat attempts after failures or preference
 changes. Each game has **32 German/English variants**: pub-table banter for
-Zilch, cheerful challenges for ZDWA. The rotation advances with reminder
-attempts, so skipped days do not skip texts. If both products are registered,
-they alternate; the chosen game's subscribed devices receive the same message.
+Zilch, cheerful challenges for ZDWA, card-table humour for Hausdepp. The rotation
+advances with reminder attempts, so skipped days do not skip texts. If several
+products are registered, they alternate; the chosen game's subscribed devices receive the same message.
 
 Invitation senders get brief in-app feedback, not a push themselves, and never
 see recipient identities. Private, full, started and Solo rooms do not send
@@ -1813,29 +1868,87 @@ Generated files under `app/static/` must be committed alongside their sources.
 ### Quality checks
 
 ```bash
-npm run check:quality
-npm run test:backend
-npm run test:browser
-git diff --check
+npm run hooks:install                   # once per repository
+npm run push:checked -- -u origin codex/my-feature
+# Or verify first, then use a normal git push:
+npm run verify:local
 ```
 
-Browser tests start a separate server on port 8010 with a disposable SQLite
-database. `npm run test:browser` also runs the username-change suite against a
-fresh server in public Zilch mode (`playwright.username.config.js`), separately
-from the private-preview scenarios. `npm run check:quality` includes lint,
+Commit changes before verification. The pre-push hook requires a complete local
+check for the exact clean commit, current `origin/develop` base and installed
+environment. A successful receipt remains valid for 24 hours; changing any of
+those inputs requires a new run. An unchanged normal develop PR merge can inherit
+its feature parent's complete proof after strict tree/base/ancestry checks; this
+avoids repeating the same local suites for master and its release tag. The receipt
+lives in Git metadata; the raw file is never
+accepted as GitHub CI evidence. The full check runs quality/security checks, Node tooling
+tests, backend coverage, the production Docker build and offline container smoke
+test, every browser suite and `git diff --check`. Docker must use a local socket.
+See [local checks](docs/LOCAL_CHECKS.md) for prerequisites, focused commands and
+logs. Check for another agent's full test pool before starting one.
+
+`npm run test:browser` runs the main suite on four parallel, isolated servers,
+each with its own free port, SQLite database, legacy JSON data and report files.
+Each server keeps one worker. Username changes in public Zilch mode
+(`playwright.username.config.js`), passkeys and Hausdepp passkeys then run
+separately, even if an earlier suite failed. Servers are never reused; interruption
+cleans up only this run's processes and temporary data. Filtered runs are marked
+incomplete and cannot authorize a push. `npm run check:quality` includes lint,
 dependency consistency, Bandit and the dependency vulnerability audit, matching
 the backend checks in [the quality workflow](.github/workflows/quality.yml).
-CI runs the main browser suite in four isolated shards and the username and
-passkey configurations in separate jobs. Runners install Chromium and WebKit
-for all browser engines used by the suite. Every test still runs with one worker;
-branch pushes and pull requests are checked, without a duplicate run for release tags.
+All expensive checks run locally. GitHub performs only the remote integration
+check: an owner-issued **Local verification** commit status must prove the full
+local check for the exact tree and base, and the PR or release merge must contain
+exactly those verified sources. Missing, failed, stale or untrusted evidence
+blocks the gate and requires local verification; it never launches duplicate
+backend, browser, container, lint or tooling suites on GitHub.
 
-**Deutsch – Qualitätsprüfung:** `npm run check:quality` führt dieselben Lint-,
-Sicherheits- und Abhängigkeitsprüfungen wie GitHub aus. Die Browser-Suite läuft
-in vier getrennten Teilen; Benutzername und Passkeys haben eigene Prüfjobs.
-Chromium und WebKit werden für alle verwendeten Browser-Engines installiert.
-Alle Tests bleiben erhalten. Release-Tags lösen keinen zweiten identischen
-Prüflauf aus.
+Feature branches run only through their pull request. Pushes start the lightweight
+**Quality result** check only on `develop` and `master`; release tags do not start
+another run. Newer commits cancel only the older run of the same PR or branch.
+A changed integration tree must be tested locally again. The same verified tree
+can pass through a normal PR merge and a master fast-forward without repeating
+the expensive suites. GitHub verifies the actual remote event, status issuer,
+commit/tree/base and ancestry; this part belongs on GitHub.
+
+`push:checked` publishes the local status automatically after a successful push.
+With a normal `git push`, follow it with `npm run checks:publish`. Publication
+requires the repository owner's authenticated `gh` account and a still-valid
+receipt; raw receipt files in a PR are never trusted. Local reports remain on
+this machine, while the status links the verified commit.
+
+**Deutsch – Qualitätsprüfung:** Einmal `npm run hooks:install` ausführen, dann
+mit `npm run push:checked -- <git-push-Argumente>` pushen. Der vollständige lokale
+Prüfer läuft vor dem Push; der Hook akzeptiert nur einen erfolgreichen Nachweis
+für den exakten, sauberen Commit mit aktueller `origin/develop`-Basis und
+unveränderter Umgebung. Der Nachweis gilt höchstens 24 Stunden und liegt nur in
+den Git-Metadaten. Enthalten sind Lint, Sicherheit, Node-Tooltests,
+Backend-Abdeckung, lokaler Produktionscontainer samt Offline-Prüfung und alle
+Browser-Suiten. Die Hauptsuite läuft gleichzeitig auf vier eigenen Servern mit
+je einem Worker, freiem Port, SQLite-Datenbank, JSON-Daten und eigenen Berichten.
+Die drei Konto-Suiten folgen einzeln. Teilprüfungen berechtigen nie zum Push;
+Abbruch beendet nur eigene Prozesse. Chromium, WebKit und ein lokaler Docker-Daemon
+müssen bereitstehen. Bei einem fremden vollen Testpool zuerst abstimmen.
+Details und Teilbefehle stehen in [Lokale Prüfungen](docs/LOCAL_CHECKS.md).
+
+Alle aufwendigen Suiten laufen lokal. GitHub prüft nur den tatsächlichen
+Remote-Stand: Der vom Repository-Eigentümer veröffentlichte Commitstatus
+**Local verification** muss die vollständige lokale Prüfung für exakt denselben
+Tree und dieselbe Basis belegen. PR-, Integrations- und Release-Merges dürfen
+keine ungeprüften Quellen hinzufügen. Fehlende, rote, veraltete oder fremde
+Nachweise blockieren **Quality result** und verlangen eine lokale Prüfung.
+Auf GitHub werden keine vollständigen Backend-, Browser-, Container-, Lint-
+oder Tool-Suiten wiederholt.
+
+Feature-Branches laufen ausschliesslich über ihren Pull Request; Pushes lösen
+nur auf `develop` und `master` den schlanken Integrationscheck aus. Tags erzeugen
+keinen zusätzlichen Lauf. Überholte Läufe werden nur innerhalb desselben PRs
+oder Branches abgebrochen. `push:checked` veröffentlicht den lokalen Status nach
+dem Push automatisch; nach einem normalen Push ist `npm run checks:publish`
+nötig. Dazu muss `gh` als Repository-Eigentümer angemeldet sein. Lokale
+JSON-Dateien im PR gelten nicht als Nachweis; GitHub kontrolliert Aussteller,
+Frische, Commit, Tree, Basis und Abstammung selbst. Neue Integrationsquellen
+müssen zuerst wieder lokal geprüft werden.
 
 Backend tests use `pytest-xdist`: pytest automatically selects up to six workers,
 keeping tests from the same file together. This applies to Codex, the terminal,

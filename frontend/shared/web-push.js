@@ -151,7 +151,7 @@ export function syncPushPreferences(form, status) {
     form.elements.adminHelp.disabled = adminHelpSetting.hidden;
   }
   const schedule = form.querySelector("[data-push-reminder-schedule]");
-  if (schedule) schedule.textContent = translated("Nur wenn du heute weder ZDWA noch Zilch gespielt hast: höchstens einmal, zufällig zwischen {start} und {end} Uhr (Schweizer Zeit).")
+  if (schedule) schedule.textContent = translated("Nur wenn du heute noch keines unserer Spiele gespielt hast: höchstens einmal, zufällig zwischen {start} und {end} Uhr (Schweizer Zeit).")
     .replace("{start}", status.daily_reminder_window_start || "17:00")
     .replace("{end}", status.daily_reminder_window_end || "21:00");
 }

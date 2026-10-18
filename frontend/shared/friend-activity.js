@@ -1,5 +1,5 @@
 import { apiFetch, loadAuth } from "./auth.js";
-import { isProductionZilchLocation, isZilchHostedZdwaLocation, zdwaAppEntryUrl, zdwaPath, zilchPath } from "../multigame/routes.js";
+import { hausdeppAppEntryUrl, isProductionZilchLocation, isZilchHostedZdwaLocation, zdwaAppEntryUrl, zdwaPath, zilchPath } from "../multigame/routes.js";
 
 const t = value => window.ZDWA_I18N?.t?.(value) || value;
 const endpoint = "/api/friend-activity/preferences";
@@ -19,6 +19,7 @@ function spectatorUrl(game) {
   const id = String(game.game_id || "");
   if (!/^[a-zA-Z0-9-]{1,64}$/.test(id)) return null;
   const room = `/spiel/${encodeURIComponent(id)}/zuschauen`;
+  if (game.game_type === "hausdepp") return `${hausdeppAppEntryUrl()}${room}`;
   if (game.game_type === "zilch") return zilchPath(room);
   // A regular Zilch page owns /spiel itself. Enter ZDWA through the same
   // product handoff as the game switch; installed PWAs use the /zdwa bridge.
@@ -30,8 +31,9 @@ function spectatorUrl(game) {
 
 function gameText(game) {
   const players = Math.max(1, Number(game.player_count) || 1);
-  const type = game.game_type === "zilch" ? "Zilch" : "ZDWA";
-  const typeText = game.game_type === "zilch" ? "Zilch" : "ZDWA";
+  const names = { zilch: "Zilch", hausdepp: "Hausdepp" };
+  const type = names[game.game_type] || "ZDWA";
+  const typeText = type;
   const playerText = `${players} ${t(players === 1 ? "Spieler" : "Spielerinnen und Spieler")}`;
   const mode = game.hardcore ? `, ${t("Hardcore")}` : "";
   return { type, typeText, playerText, mode };
@@ -145,7 +147,7 @@ export function mountFriendActivitySettings(mount) {
   label.append(checkbox, ` ${t("Startmeldungen ausgewählter Spieler anzeigen")}`);
   const hint = document.createElement("p");
   hint.className = "friend-activity-settings__hint";
-  hint.textContent = t("Wenn jemand aus deiner privaten Spielerauswahl eine öffentliche, zuschauerfähige Partie startet, erscheint eine kurze Meldung in beiden Lobbys. Außerhalb eines Spiels kannst du direkt zuschauen. Keine Push-Nachricht und kein Verlauf.");
+  hint.textContent = t("Wenn jemand aus deiner privaten Spielerauswahl eine öffentliche, zuschauerfähige Partie startet, erscheint eine kurze Meldung in den Lobbys unserer Spiele. Außerhalb eines Spiels kannst du direkt zuschauen. Keine Push-Nachricht und kein Verlauf.");
   const button = document.createElement("button");
   button.type = "submit";
   button.className = "small primary";

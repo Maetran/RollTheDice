@@ -40,7 +40,8 @@ def store_round(account, number, *, cpus=1, humans=1, flag=None):
         players.append({"id": "friend", "name": account.other.username, "is_cpu": False})
     players.extend({"id": f"cpu-{index}", "name": f"Kartensepp{index}", "is_cpu": True} for index in range(cpus))
     loser = players[-1]["id"]
-    at = datetime(2026, 10, 16, 10, tzinfo=timezone.utc) + timedelta(minutes=number)
+    # Weekday evening in Zurich: no play-time achievement changes these XP sums.
+    at = datetime(2026, 10, 16, 18, 30, tzinfo=timezone.utc) + timedelta(minutes=number)
     payload = {
         "schema_version": 2 if flag else 1, "payload_kind": "hausdepp_result", "game_type": "hausdepp",
         "game_id": f"cpu-rule-{number}", "name": "Getrennter EP-Test", "finished_at": at.isoformat(),

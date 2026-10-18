@@ -176,7 +176,8 @@ test('waiting → peeking shows one brief shuffle and never blocks the actual st
   expect(await page.evaluate(() => window.__shuffleLayers.length)).toBe(1);
   await page.clock.runFor(900);
   await expect(layer).toHaveCount(0);
-  expect(fixture.commands).toEqual([]);
+  // Mandatory refills are tapped automatically; nothing else may be sent.
+  expect(fixture.commands.filter(command => command.action !== 'hausdepp_draw')).toEqual([]);
   fixture.send(peeking);
   await expect(layer).toHaveCount(0);
   expect(await page.evaluate(() => window.__shuffleLayers.length)).toBe(1);
@@ -200,7 +201,6 @@ for (const language of ['de', 'en']) {
   test(`${language}: a fresh real CPU table shuffles on its first peeking snapshot, then reload stays quiet`, async ({ page }) => {
     await realCpuTable(page, language);
     await expect.poll(() => page.evaluate(() => window.__shuffleLayers.length)).toBe(1);
-    await expect(page.locator('#hausdeppStock')).toBeEnabled();
     await page.reload();
     await expect(page.locator('#hausdeppTable')).toHaveAttribute('data-phase', 'peeking');
     await expect(page.locator('.hd-shuffle-layer')).toHaveCount(0);
@@ -282,7 +282,8 @@ test('compact discard counters remain separate from stock captions and turn mess
         const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
         const result = [];
         while (walker.nextNode()) {
-          if (!walker.currentNode.textContent.trim()) continue;
+          // Only painted text counts: the screen-reader words are clipped away.
+          if (!walker.currentNode.textContent.trim() || walker.currentNode.parentElement.closest('.hd-sr')) continue;
           const range = document.createRange();
           range.selectNodeContents(walker.currentNode);
           result.push(...[...range.getClientRects()].map(rect => ({
@@ -299,7 +300,8 @@ test('compact discard counters remain separate from stock captions and turn mess
     });
     expect(overlap, `${width}×${height} ${urgent ? 'urgent draw' : 'normal play'}: discard count must not overlap any nearby text`).toEqual([]);
   }
-  expect(fixture.commands).toEqual([]);
+  // Mandatory refills are tapped automatically; nothing else may be sent.
+  expect(fixture.commands.filter(command => command.action !== 'hausdepp_draw')).toEqual([]);
 });
 
 async function watchPublicMotion(page) {
@@ -341,10 +343,10 @@ for (const reason of ['ten', 'four_of_a_kind']) {
     const play = motions.find(event => event.type === next._hausdepp.last_event.type);
     const burn = motions.find(event => event.type === 'burn');
     expect(play.rest).toBeGreaterThanOrEqual(300);
-    expect(burn.delay).toBeGreaterThanOrEqual(play.delay + play.duration + 80);
+    // The packet departs exactly when the played card has been read: no gap.
+    expect(burn.delay).toBeGreaterThanOrEqual(play.delay + play.duration);
     expect(burn.duration).toBeGreaterThanOrEqual(400);
     await expect(page.locator('#hausdeppBurnedCount')).toHaveText(String(next._hausdepp.burned_count));
-    await expect(page.locator('#hausdeppStock')).toBeEnabled();
     const visibleCause = await page.evaluate(type => {
       const opacity = element => Number(getComputedStyle(element).opacity);
       for (const ghost of document.querySelectorAll('.hd-deal-card')) {
@@ -360,13 +362,13 @@ for (const reason of ['ten', 'four_of_a_kind']) {
     expect(visibleCause.livePile).toBe(0);
     expect(visibleCause.burn.every(opacity => opacity === 0)).toBe(true);
     expect(visibleCause.faceUp).toBe(reason === 'ten' ? 2 : 4);
-    // A presentation never gates the next authorised action or captures taps.
-    await page.locator('#hausdeppStock').click();
+    // A presentation never gates the next authorised action: the mandatory
+    // refill is tapped automatically, exactly once, while the packet moves.
     await expect.poll(() => fixture.commands.filter(command => command.action === 'hausdepp_draw').length).toBe(1);
   });
 }
 
-test('rapid accepted public plays wait their turn, same-version renders retain them, and disconnect clears the queue', async ({ page }) => {
+test('rapid accepted public plays expose the current packet immediately, same-version renders retain it, and disconnect clears the flight', async ({ page }) => {
   const fixture = await rendererFixture(page, { initial: 'playing' });
   await watchPublicMotion(page);
   const first = phaseBoard(fixture.real, 'playing', { version: 21 });
@@ -378,6 +380,7 @@ test('rapid accepted public plays wait their turn, same-version renders retain t
   fixture.send(first);
   await expect(page.locator('.hd-deal-card[data-motion-type="play"]')).toHaveCount(1);
   await pausePublicPictures(page);
+  await page.evaluate(() => { window.__previousPublicCard = document.querySelector('[data-motion-type="play"]'); });
   const second = structuredClone(first);
   second._hausdepp.version += 1;
   second._hausdepp.discard.push('bells-6');
@@ -387,18 +390,28 @@ test('rapid accepted public plays wait their turn, same-version renders retain t
   await expect(page.locator('.hd-deal-card[data-motion-type="afterthrow"]')).toHaveCount(1);
   await pausePublicPictures(page);
   const evidence = await page.evaluate(() => {
-    window.__queuedPublicCard = document.querySelector('[data-motion-type="afterthrow"]');
-    return { motions: window.__publicMotions, queuedOpacity: Number(getComputedStyle(window.__queuedPublicCard).opacity),
-      livePile: Number(getComputedStyle(document.getElementById('hausdeppPile')).opacity) };
+    window.__currentPublicCard = document.querySelector('[data-motion-type="afterthrow"]');
+    const pile = document.getElementById('hausdeppPile');
+    return { motions: window.__publicMotions, flightOpacity: Number(getComputedStyle(window.__currentPublicCard).opacity),
+      oldFlightConnected: window.__previousPublicCard.isConnected,
+      oldPileCopies: document.querySelectorAll('[data-motion-type="pile-rest"]').length,
+      livePile: Number(getComputedStyle(pile).opacity),
+      cards: [...pile.querySelectorAll('[data-card-id]')].map(card => ({
+        id: card.dataset.cardId, opacity: Number(getComputedStyle(card).opacity),
+      })) };
   });
   const [play, afterthrow] = evidence.motions;
-  expect(afterthrow.delay).toBeGreaterThan(0);
-  expect(afterthrow.delay).toBeGreaterThan(play.duration - 300);
-  expect(evidence.queuedOpacity).toBe(0);
-  expect(evidence.livePile).toBe(0);
+  expect(play.type).toBe('play');
+  expect(afterthrow.type).toBe('afterthrow');
+  expect(afterthrow.delay).toBe(0);
+  expect(evidence.flightOpacity).toBe(1);
+  expect(evidence.oldFlightConnected).toBe(false);
+  expect(evidence.oldPileCopies).toBe(0);
+  expect(evidence.livePile).toBe(1);
+  expect(evidence.cards).toEqual(second._hausdepp.discard.map(id => ({ id, opacity: 1 })));
   fixture.send({ ...second, _name: 'Renderer-Test · Gleicher angenommener Stand' });
   await expect(page.locator('#hausdeppRoomName')).toHaveText('Renderer-Test · Gleicher angenommener Stand');
-  expect(await page.evaluate(() => document.querySelector('[data-motion-type="afterthrow"]') === window.__queuedPublicCard)).toBe(true);
+  expect(await page.evaluate(() => document.querySelector('[data-motion-type="afterthrow"]') === window.__currentPublicCard)).toBe(true);
   expect(await page.evaluate(() => window.__publicMotions.length)).toBe(2);
   fixture.close({ code: 1008, reason: 'Labelled motion queue disconnect' });
   await expect(page.locator('.hd-deal-card')).toHaveCount(0);
@@ -441,13 +454,14 @@ test('enabling reduced motion cancels an active public sequence and reveals the 
   await pausePublicPictures(page);
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await expect(page.locator('.hd-deal-card')).toHaveCount(0);
-  // This accepted burn leaves an empty, disabled pile. Restore its ordinary
-  // disabled paint (.45), rather than mistaking it for an enabled pile (1).
+  // This accepted burn leaves an empty, disabled pile. Its mask is released:
+  // the table never fades its stacks, so the empty place is fully painted.
   await expect(page.locator('#hausdeppPile')).toBeDisabled();
-  await expect(page.locator('#hausdeppPile')).toHaveCSS('opacity', '0.45');
+  await expect(page.locator('#hausdeppPile')).toHaveCSS('opacity', '1');
   expect(await page.locator('#hausdeppPile').evaluate(element => element.getAnimations().length)).toBe(0);
   await expect(page.locator('#hausdeppBurnedCount')).toHaveText('2');
-  expect(fixture.commands).toEqual([]);
+  // Mandatory refills are tapped automatically; nothing else may be sent.
+  expect(fixture.commands.filter(command => command.action !== 'hausdepp_draw')).toEqual([]);
 });
 
 // Freeze the real WAAPI pictures as soon as the renderer creates them. This
@@ -455,6 +469,25 @@ test('enabling reduced motion cancels an active public sequence and reveals the 
 async function freezePileGeometry(page) {
   await page.evaluate(() => {
     window.__pileGeometryGroups = {};
+    window.__pileGeometryRect = element => {
+      const box = element.getBoundingClientRect();
+      let angle = 0;
+      for (let node = element; node; node = node.parentElement) {
+        const style = getComputedStyle(node);
+        const rotation = (style.rotate || 'none').split(' ').at(-1);
+        angle += (parseFloat(rotation) || 0) * (rotation.endsWith('rad') ? 180 / Math.PI : rotation.endsWith('turn') ? 360 : 1);
+        if (style.transform !== 'none') {
+          const matrix = new DOMMatrixReadOnly(style.transform);
+          angle += Math.atan2(matrix.b, matrix.a) * 180 / Math.PI;
+        }
+      }
+      return { left: box.left, top: box.top, width: box.width, height: box.height, angle };
+    };
+    window.__pileGeometryOpacity = element => {
+      let opacity = 1;
+      for (let node = element; node; node = node.parentElement) opacity *= Number(getComputedStyle(node).opacity);
+      return opacity;
+    };
     window.__pileGeometryObserver?.disconnect();
     window.__pileGeometryObserver = new MutationObserver(() => {
       for (const element of document.querySelectorAll('.hd-deal-card, #hausdeppPile')) {
@@ -467,13 +500,12 @@ async function freezePileGeometry(page) {
 
 async function renderedPileGeometry(page) {
   return page.locator('#hausdeppPile').evaluate(pile => {
-    const rect = element => {
-      const box = element.getBoundingClientRect();
-      return { left: box.left, top: box.top, width: box.width, height: box.height };
-    };
-    return { control: rect(pile), faces: [...pile.querySelectorAll('[data-card-id]')].map(card => ({
-      id: card.dataset.cardId, paper: rect(card), art: rect(card.querySelector('svg.hd-card-art')),
-    })) };
+    const rect = window.__pileGeometryRect;
+    return { control: rect(pile), opacity: window.__pileGeometryOpacity(pile),
+      faces: [...pile.querySelectorAll('[data-card-id]')].map(card => ({
+        id: card.dataset.cardId, opacity: window.__pileGeometryOpacity(card),
+        paper: rect(card), art: rect(card.querySelector('svg.hd-card-art')),
+      })) };
   });
 }
 
@@ -504,10 +536,7 @@ async function measurePilePictures(page, key, phase) {
       animation.currentTime = timing.delay + timing.duration * progress;
     }
     await new Promise(resolve => requestAnimationFrame(resolve));
-    const rect = element => {
-      const box = element.getBoundingClientRect();
-      return { left: box.left, top: box.top, width: box.width, height: box.height };
-    };
+    const rect = window.__pileGeometryRect;
     return pictures.map(element => ({
       index: Number(element.dataset.index), delay: Number(element.dataset.delay),
       opacity: Number(getComputedStyle(element).opacity),
@@ -522,6 +551,41 @@ function expectSamePaperGeometry(actual, expected, label) {
   for (const property of ['left', 'top', 'width', 'height']) {
     expect(Math.abs(actual[property] - expected[property]), `${label}: ${property}`).toBeLessThanOrEqual(1);
   }
+  expect(Math.abs(actual.angle - expected.angle), `${label}: rotation`).toBeLessThanOrEqual(.1);
+}
+
+async function expectInstantPilePictures(page, testInfo, { name, before, incoming, discard }) {
+  const durable = await renderedPileGeometry(page);
+  expect(durable.faces.map(card => card.id)).toEqual(discard.slice(-3));
+  const top = durable.faces.at(-1);
+  for (const part of ['paper', 'art']) expectSamePaperGeometry(top[part], durable.control, `${name} current top ${part}`);
+  const frames = {};
+  for (const phase of ['start', 'rest', 'arrival']) {
+    const pictures = await measurePilePictures(page, incoming, phase);
+    const current = await renderedPileGeometry(page);
+    frames[phase] = { pictures, current };
+    expect(pictures).toHaveLength(1);
+    expect(pictures[0].delay, `${name}: an accepted append never waits behind an older flight`).toBe(0);
+    expect(pictures[0].opacity, `${name}: the decorative incoming card stays readable at ${phase}`).toBeGreaterThan(.99);
+    expect(current.opacity, `${name}: the real packet is visible at ${phase}`).toBe(1);
+    expect(current.faces.map(card => card.id)).toEqual(discard.slice(-3));
+    for (const [index, card] of current.faces.entries()) {
+      expect(card.opacity, `${name}: real ${card.id} stays visible at ${phase}`).toBe(1);
+      for (const part of ['paper', 'art']) expectSamePaperGeometry(card[part], durable.faces[index][part],
+        `${name} real ${card.id} ${phase} ${part}`);
+    }
+    if (phase === 'arrival') for (const part of ['paper', 'art']) {
+      expectSamePaperGeometry(pictures[0][part], top[part], `${name} arrival ${part}`);
+    }
+    await expect(page.locator('.hd-deal-card[data-motion-type="pile-rest"]')).toHaveCount(0);
+  }
+  await testInfo.attach(`${name}-actual-card-geometry`, {
+    body: JSON.stringify({ before, frames, durable }, null, 2), contentType: 'application/json',
+  });
+  if (process.env.HAUSDEPP_GEOMETRY_SCREENSHOTS === '1') {
+    await page.screenshot({ path: testInfo.outputPath(`${name}-stable-pile.png`) });
+  }
+  return durable;
 }
 
 async function expectStablePilePictures(page, testInfo, { name, before, incoming, durable }) {
@@ -584,12 +648,9 @@ test.describe('stable pile geometry', () => {
             discard: [...normal._hausdepp.discard, 'hearts-9'],
             last_event: { type: 'play', player_id: self, cards: ['hearts-9'] } });
           fixture.send(played);
-          await pinPilePictures(page, 'normal-old', 'pile-rest', 3);
           await pinPilePictures(page, 'normal-play', 'play', 1);
-          const normalDestination = (await renderedPileGeometry(page)).faces.at(-1);
-          expect(normalDestination.id).toBe('hearts-9');
-          await expectStablePilePictures(page, testInfo, { name: 'normal', before: beforeNormal,
-            incoming: 'normal-play', durable: normalDestination });
+          await expectInstantPilePictures(page, testInfo, { name: 'normal', before: beforeNormal,
+            incoming: 'normal-play', discard: played._hausdepp.discard });
 
           // The fourth equal rank clears the packet. The incoming face still
           // lands at full pile size before the existing burn sequence departs.
@@ -613,7 +674,8 @@ test.describe('stable pile geometry', () => {
             incoming: 'four-equal-play', durable: { paper: emptyDestination, art: emptyDestination } });
 
           // Deliver a second accepted action before the first picture finishes.
-          // Its queued packet must preserve the actual preceding DOM poses too.
+          // Its real packet must be painted immediately, replacing any older
+          // flight while retaining the current cards' actual poses in every frame.
           const rapid = structuredClone(normal);
           rapid._hausdepp.version = 50;
           fixture.send(rapid);
@@ -622,24 +684,22 @@ test.describe('stable pile geometry', () => {
           const first = structuredClone(played);
           first._hausdepp.version = 51;
           fixture.send(first);
-          await pinPilePictures(page, 'rapid-first-old', 'pile-rest', 3);
           await pinPilePictures(page, 'rapid-first-play', 'play', 1);
-          const firstDestination = await renderedPileGeometry(page);
+          const firstDestination = await expectInstantPilePictures(page, testInfo, { name: 'rapid-first', before: beforeRapid,
+            incoming: 'rapid-first-play', discard: first._hausdepp.discard });
           const second = structuredClone(first);
           Object.assign(second._hausdepp, { version: 52, discard: [...first._hausdepp.discard, 'bells-9'],
             last_event: { type: 'afterthrow', player_id: other, cards: ['bells-9'] } });
           fixture.send(second);
           await expect(page.locator('#hausdeppPile [data-card-id]').last()).toHaveAttribute('data-card-id', 'bells-9');
-          await pinPilePictures(page, 'rapid-second-old', 'pile-rest', 3);
           await pinPilePictures(page, 'rapid-second-play', 'afterthrow', 1);
-          const secondDestination = (await renderedPileGeometry(page)).faces.at(-1);
-          const queued = await measurePilePictures(page, 'rapid-second-play', 'start');
-          expect(queued[0].delay, 'The second public picture is genuinely queued').toBeGreaterThan(0);
-          await expectStablePilePictures(page, testInfo, { name: 'rapid-first', before: beforeRapid,
-            incoming: 'rapid-first-play', durable: firstDestination.faces.at(-1) });
-          await expectStablePilePictures(page, testInfo, { name: 'rapid-second', before: firstDestination,
-            incoming: 'rapid-second-play', durable: secondDestination });
-          expect(fixture.commands).toEqual([]);
+          expect(await page.evaluate(() => window.__pileGeometryGroups['rapid-first-play'].every(card => !card.isConnected)),
+            'The newer accepted append removes the obsolete first flight').toBe(true);
+          await expect(page.locator('.hd-deal-card[data-motion-type="play"]')).toHaveCount(0);
+          await expectInstantPilePictures(page, testInfo, { name: 'rapid-second', before: firstDestination,
+            incoming: 'rapid-second-play', discard: second._hausdepp.discard });
+          // Mandatory refills are tapped automatically; nothing else may be sent.
+  expect(fixture.commands.filter(command => command.action !== 'hausdepp_draw')).toEqual([]);
         });
       });
     }
@@ -660,5 +720,6 @@ test('stable pile geometry: resizing cancels the old pictures and exposes the ne
   const current = await renderedPileGeometry(page);
   expectSamePaperGeometry(current.faces.at(-1).paper, current.control, 'resized current top card');
   expectSamePaperGeometry(current.faces.at(-1).art, current.control, 'resized current artwork');
-  expect(fixture.commands).toEqual([]);
+  // Mandatory refills are tapped automatically; nothing else may be sent.
+  expect(fixture.commands.filter(command => command.action !== 'hausdepp_draw')).toEqual([]);
 });

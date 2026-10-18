@@ -14,7 +14,7 @@ from .game_state import (
     pause_remaining_seconds,
     timeout_seconds,
 )
-from .hausdepp_state import hausdepp_progress
+from .hausdepp_state import hausdepp_progress, hausdepp_waiting_summary
 
 
 def snapshot_hausdepp(game: GameDict, viewer_id: str | None = None) -> dict:
@@ -31,6 +31,13 @@ def snapshot_hausdepp(game: GameDict, viewer_id: str | None = None) -> dict:
     if projection and (paused_reason or game.get("_finished")):
         projection["available_actions"] = []
         projection["playable_cards"] = []
+    if projection:
+        from .hausdepp_cpu_strategy import table_tip
+        from .hausdepp_experience import wants_tips
+
+        # Only the viewer's own options, and only during their first rounds.
+        projection["table_tip"] = table_tip(projection) if wants_tips(game, valid_viewer) else None
+    waiting = hausdepp_waiting_summary(game)
     return {
         "_game_type": "hausdepp", "_name": game["_name"], "_mode": game["_mode"],
         "_players": [public_player_payload(player, connected=_player_connected(player))
@@ -54,6 +61,11 @@ def snapshot_hausdepp(game: GameDict, viewer_id: str | None = None) -> dict:
         "_spectators": [public_player_payload(player) for player in game.get("_spectators", [])],
         "locked": bool(game.get("_passphrase")), "_hausdepp": projection,
         "_results": game.get("_results"), "_cpu_thinking": bool(game.get("_hausdepp_cpu_thinking")),
+        "_hausdepp_round_summary": game.get("_hausdepp_round_summary") if game.get("_finished") else None,
         "_hausdepp_tournament": project_hausdepp_tournament(game, valid_viewer),
+        "_hausdepp_tournament_enabled": bool(game.get("_hausdepp_tournament_enabled")),
         "_waiting_permissions": waiting_permissions(game, valid_viewer),
+        "_waiting_mode": waiting["waiting_mode"], "_manual_start": waiting["manual_start"],
+        "_waiting_capacity": game["_expected"], "_free_seats": waiting["free_seats"],
+        "_replaceable_cpus": waiting["replaceable_cpus"],
     }

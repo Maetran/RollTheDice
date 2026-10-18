@@ -3,23 +3,23 @@
   "games": [
     "hausdepp"
   ],
-  "summary_de": "Hausdepp: Auf der Rangliste siehst du jetzt, wer zuletzt welchen Erfolg verdient hat.",
-  "summary_en": "Hausdepp: the leaderboard now shows who most recently earned which achievement.",
+  "summary_de": "Hausdepp: Die Computer halten Ober, Könige und Asse zurück und zwingen dich so öfter zum Antworten.",
+  "summary_en": "Hausdepp: computers hold back Obers, Kings and Aces and make you answer more often.",
   "player_notes": {
     "de": {
-      "title": "Hausdepp: neueste Erfolge",
+      "title": "Hausdepp 3.10: Computer halten hohe Karten zurück",
       "changes": [
-        "Neuer Bereich „Neueste erreichte Erfolge“ auf der Rangliste.",
-        "Nach Leicht, Mittel und Schwer filtern und durch ältere Erfolge blättern.",
-        "Sichtbar sind nur Kontoname und Erfolg – Runden und Karten bleiben privat."
+        "Hat ein Computer mehrere Ober, Könige oder Asse, legt er zuerst nur eine Karte und behält den Rest für deine Antwort.",
+        "Vier Gleiche räumen weiterhin sofort ab, und am Ende wirft er nach, wenn er damit fertig wird.",
+        "Neue Spieler treffen in ihren ersten 50 Runden weiterhin auf gnädigere Computer, die das oft vergessen."
       ]
     },
     "en": {
-      "title": "Hausdepp: latest achievements",
+      "title": "Hausdepp 3.10: Computers keep high cards in reserve",
       "changes": [
-        "New “Latest achievements earned” section on the leaderboard.",
-        "Filter by easy, medium and hard, and page through older unlocks.",
-        "Only the account name and achievement are shown – rounds and cards stay private."
+        "When a computer holds several Obers, Kings or Aces, it plays just one first and keeps the rest for your answer.",
+        "Four of a kind still clear at once, and at the end it follows up when that finishes its round.",
+        "New players still meet gentler computers in their first 50 rounds, who often forget to do this."
       ]
     }
   }

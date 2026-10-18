@@ -1,4 +1,5 @@
 const { test, expect } = require('@playwright/test');
+const { startHausdeppCpuGame } = require('./hausdepp-create');
 const { readFile } = require('node:fs/promises');
 const { openPasswordLogin } = require('./password-login');
 
@@ -78,7 +79,7 @@ for (const preferred of ['de', 'en']) {
     await page.locator('.hd-welcome .hd-rules-link').click();
     await expect(page).toHaveURL(/\/hausdepp\/regeln$/);
     await expect(page.locator('.hd-rulebook')).toBeVisible();
-    await expect(page.locator('#punkte-erfolge')).toContainText('100');
+    await expect(page.locator('#punkte-erfolge')).toContainText('115');
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', 'https://hausdepp.zockdiewandan.online/hausdepp/regeln');
     await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'index, follow');
     expect(privateReads).toEqual([]);
@@ -93,7 +94,7 @@ for (const preferred of ['de', 'en']) {
     await page.locator('#hausdeppRegister').click();
     await expect(page.locator('#zilchRegistrationForm')).toBeVisible();
     await expect(page.locator('#zilchLoginTitle')).toHaveText(preferred === 'de' ? 'Bei Hausdepp anmelden' : 'Sign in to Hausdepp');
-    await expect(page.locator('.zilch-login-intro')).toContainText('Hausdepp');
+    await expect(page.locator('.zilch-login-intro')).toContainText(preferred === 'de' ? 'Ein Konto für alle unsere Spiele' : 'One account for all our games');
     expect(new URL(page.url()).searchParams.get('return_to')).toBe('/hausdepp');
     await openPasswordLogin(page, true);
     await page.locator('#zilchLoginUsername').fill(account.username);
@@ -105,13 +106,15 @@ for (const preferred of ['de', 'en']) {
     expect(me.authenticated).toBe(true);
     expect(me.user.is_owner).toBeFalsy();
     expect(me.game_access.hausdepp_public).toBe(true);
-    await page.locator('#hausdeppCreate').click();
+    await startHausdeppCpuGame(page);
     await expect(page).toHaveURL(/\/hausdepp\/spiel\/[^/]+$/);
     await expect(page.locator('#hausdeppTable')).toHaveAttribute('data-phase', 'peeking');
     for (let inspected = 0; inspected < 5; inspected += 1) {
+      // The first dealer is random: a computer may cut instead of this account.
+      await expect.poll(async () => await page.locator('#hausdeppTable').getAttribute('data-phase') !== 'peeking'
+        || await page.locator('#hausdeppStock').isEnabled(), { timeout: 15000 }).toBe(true);
       const phase = await page.locator('#hausdeppTable').getAttribute('data-phase');
       if (phase !== 'peeking') break;
-      await expect(page.locator('#hausdeppStock')).toBeEnabled();
       await page.locator('#hausdeppStock').click();
       await expect.poll(() => page.locator('#hausdeppStock').isEnabled()
         .then(enabled => enabled || page.locator('#hausdeppTable').getAttribute('data-phase').then(value => value !== 'peeking'))).toBeTruthy();
@@ -136,7 +139,7 @@ for (const preferred of ['de', 'en']) {
     }
     await page.goto('/hausdepp/konto');
     await expect(page.locator('.hd-account-identity')).toContainText(account.username);
-    await expect(page.locator('#hausdeppAchievementCount')).toContainText('100');
+    await expect(page.locator('#hausdeppAchievementCount')).toContainText('115');
     await page.locator('.hd-account-settings a').click();
     await expect(page.locator('.hd-settings')).toBeVisible();
     await expect(page).toHaveURL(/\/hausdepp\/konto\/einstellungen$/);
@@ -209,7 +212,7 @@ test('anonymous no-JavaScript pages retain bilingual gameplay descriptions and r
       expect(response.status()).toBe(200);
       await expect(page.locator('main [lang="de"]')).toContainText('Hausdepp');
       await expect(page.locator('main [lang="en"]')).toContainText('Hausdepp');
-      await expect(page.locator('main')).toContainText('100');
+      await expect(page.locator('main')).toContainText('115');
       await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'index, follow');
     }
   } finally { await context.close(); }

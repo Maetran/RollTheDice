@@ -23,10 +23,8 @@ html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre #hausdeppBurnedC
 html[data-game="hausdepp"] .hd-table .hd-centre :is([id="hausdeppStockCount"], [id="hausdeppPileCount"], .hd-burned-meta) { white-space: nowrap; }
 @media (max-width: 1099px) {
   html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre .hd-burned { width: 58px; max-width: 58px; }
-  html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre .hd-burned > :is(.hd-stack-action, .hd-burned-meta) { min-height: 0; font-size: 9px; line-height: 11px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre .hd-burned > :is(.hd-stack-action, .hd-burned-meta) { min-height: 0; font-size: 11px; line-height: 13px; }
   html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre .hd-burned-stack { width: 28px; margin: 4px auto 3px; }
-  html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre .hd-known-bottom-cards { top: 0; gap: 4px; }
-  html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre .hd-known-bottom { font-size: 10px; line-height: 13px; padding: 1px 4px; }
 }
 
 /* The open pile explains its long press: on hover or focus with a mouse,
@@ -82,6 +80,6 @@ html[data-game="hausdepp"] .hd-table .hd-centre .hd-known-bottom-fan .hausdepp-c
    title and its count on two clean lines instead of on top of each other. */
 @media (max-width: 1099px) and (orientation: landscape) {
   html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre :is(.hd-stock-group, .hd-pile-group) > .hd-stack-action { min-height: 0; line-height: 11px; }
-  html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre :is(#hausdeppStockCount, #hausdeppPileCount) { top: calc(100% + 15px); min-height: 0; font-size: 10px; line-height: 11px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre :is(#hausdeppStockCount, #hausdeppPileCount) { top: calc(100% + 15px); min-height: 0; font-size: 11px; line-height: 12px; }
   html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre .hd-burned { top: auto; bottom: 0; }
 }

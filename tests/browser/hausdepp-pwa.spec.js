@@ -67,7 +67,7 @@ test('real Hausdepp worker stays narrow and never caches private content or card
     await expect(page.locator('link[rel="manifest"]')).toHaveAttribute('data-pwa-product', 'hausdepp');
   }
   const fetched = await page.evaluate(async () => Promise.all([
-    '/api/hausdepp/account', '/api/hausdepp/results', '/api/hausdepp/leaderboard', '/static/hausdepp/cards-source.jpg',
+    '/api/hausdepp/account', '/api/hausdepp/results', '/api/hausdepp/leaderboard', '/static/hausdepp/cards-atlas.webp',
   ].map(async path => ({ path, ok: (await fetch(path)).ok }))));
   expect(fetched.every(response => response.ok)).toBe(true);
   expect(await page.evaluate(() => caches.keys())).toEqual([]);

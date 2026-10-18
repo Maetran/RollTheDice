@@ -12,7 +12,7 @@ async function signIn(page) {
 }
 
 function artwork(url) {
-  return /\/static\/hausdepp\/(?:cards-source\.jpg|tell-leaves-reference-v1\.jpg|card-back\.png)/.test(url);
+  return /\/static\/hausdepp\/(?:cards-atlas\.webp|card-back\.webp)/.test(url);
 }
 
 test.beforeAll(({ baseURL }) => expect(new URL(baseURL).port).not.toBe('8000'));
@@ -42,7 +42,8 @@ test.describe('cold card loading uses controllable page requests', () => {
     });
     try {
       await page.goto(room, { waitUntil: 'domcontentloaded' });
-      await expect.poll(() => blocked).toBeGreaterThanOrEqual(3);
+      // Card atlas and back.
+      await expect.poll(() => blocked).toBeGreaterThanOrEqual(2);
       expect(gameSockets).toHaveLength(0);
       await expect(page.locator('#hausdeppHand')).toHaveCount(0);
       releaseImages();

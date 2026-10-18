@@ -47,7 +47,8 @@ class HausdeppAchievementTests(unittest.TestCase):
         upgrade_database(main.BASE)
         self.user = create_user("HausXP", "test-password-123", must_change_password=False)
         self.other = create_user("AndereXP", "test-password-123", must_change_password=False)
-        self.at = datetime(2026, 10, 16, 10, 30, tzinfo=timezone.utc)
+        # 20:30 Swiss time on a weekday: no single-round play-time achievement applies.
+        self.at = datetime(2026, 10, 16, 18, 30, tzinfo=timezone.utc)
 
     def tearDown(self):
         self.env.stop()
@@ -89,7 +90,7 @@ class HausdeppAchievementTests(unittest.TestCase):
         return result
 
     def test_catalog_has_exact_approved_ids_points_thresholds_and_original_bilingual_flavours(self):
-        self.assertEqual([item["id"] for item in ACHIEVEMENTS], [f"hausdepp_{n:02}" for n in range(1, 101)])
+        self.assertEqual([item["id"] for item in ACHIEVEMENTS], [f"hausdepp_{n:02}" for n in range(1, 116)])
         self.assertEqual([item["points"] for item in ACHIEVEMENTS[:64]], [
             10, 25, 10, 10, 10, 10, 25, 50, 10, 25, 50, 25, 50, 25, 50, 100,
             25, 50, 100, 25, 25, 50, 10, 50, 10, 25, 25, 50, 25, 25, 50, 100,
@@ -100,11 +101,14 @@ class HausdeppAchievementTests(unittest.TestCase):
             25, 50, 25, 25, 25, 25, 25, 50, 25, 50, 50, 25,
             10, 10, 50, 25, 25, 25, 10, 25,
             10, 25, 50, 50, 10, 50, 25, 50, 25, 25, 50, 25, 10, 10, 25, 25,
+            # When and how often: office hours, breaks, night, weekends, streaks, totals.
+            10, 25, 50, 100, 10, 25, 25, 25, 25, 10, 25, 50, 100, 100, 100,
         ])
-        self.assertEqual(sum(item["points"] for item in ACHIEVEMENTS), 3425)
+        self.assertEqual(sum(item["points"] for item in ACHIEVEMENTS), 4105)
         self.assertEqual([rank["threshold"] for rank in RANKS], [
             0, 25, 50, 100, 150, 225, 300, 400, 500, 650, 800, 1000,
-            1200, 1450, 1700, 2000, 2300, 2650, 3000, 3400, 3800, 4200, 4600, 5000,
+            # Above 2300 the ladder stretches so the last ranks take real time.
+            1200, 1450, 1700, 2000, 2300, 2900, 3600, 4400, 5300, 6300, 7500, 9000,
         ])
         self.assertEqual(RANKS[2]["quote"]["de"], "Ab jetzt geht’s bergab. Ganz nach den Naturgesetzen.")
         self.assertEqual(len({rank["quote"]["de"] for rank in RANKS}), 24)
@@ -121,7 +125,7 @@ class HausdeppAchievementTests(unittest.TestCase):
                                              "cpu_round_reward": 2, "cpu_reduction_percent": 75})
         self.assertEqual(account["rank"]["name"]["de"], "Einstein")
         self.assertEqual(account["rank"]["progress"], {"current": 0, "target": 25, "percent": 0})
-        self.assertEqual((len(account["ranks"]), len(account["achievements"]["items"])), (24, 100))
+        self.assertEqual((len(account["ranks"]), len(account["achievements"]["items"])), (24, 115))
         self.assertEqual(account["achievements"]["unlocked_count"], 0)
         self.assertIsNone(account["presentation"]["pending"])
 
@@ -313,7 +317,7 @@ class HausdeppAchievementTests(unittest.TestCase):
     def test_all_aggregate_milestones_and_final_rank_remain_reachable_without_rare_events(self):
         # One bulk durable history fixture; no tactical evidence or invented XP.
         with session_scope() as db:
-            for index in range(500):
+            for index in range(900):
                 payload = self.payload(f"steady-{index:03}", schema=1, cpu=False, at=self.at + timedelta(minutes=index))
                 row = CompletedGame(game_id=payload["game_id"], game_type="hausdepp", game_name=payload["name"],
                                     mode="2", hardcore=False, finished_at=datetime.fromisoformat(payload["finished_at"]),
@@ -323,7 +327,7 @@ class HausdeppAchievementTests(unittest.TestCase):
                                     for n, player in enumerate(payload["participants"])]
                 db.add(row)
         result = synchronize_hausdepp_progress(self.user.id)
-        self.assertEqual(result["scoring"]["round_points"], 5000)
+        self.assertEqual(result["scoring"]["round_points"], 9000)
         self.assertEqual(result["rank"]["name"]["de"], "Hausdepp")
         self.assertIsNone(result["rank"]["next"])
         self.assertEqual(result["rank"]["progress"]["percent"], 100)
@@ -485,8 +489,9 @@ class HausdeppAchievementTests(unittest.TestCase):
 
     def test_common_achievements_progress_once_per_distinct_round_and_unlock_in_stages(self):
         previous = set()
+        # All rounds finish on one evening: five earn "Spielabend", ten "Kartenmarathon".
         milestones = {1: {"hausdepp_01"}, 3: {"hausdepp_03", "hausdepp_49", "hausdepp_57"},
-                      5: {"hausdepp_09", "hausdepp_25"}, 10: {"hausdepp_45"}}
+                      5: {"hausdepp_09", "hausdepp_25", "hausdepp_110"}, 10: {"hausdepp_45", "hausdepp_111"}}
         for number in range(1, 11):
             self.store(self.payload(f"balanced-{number}", flags=("hausdepp_25", "hausdepp_45", "hausdepp_49"),
                                     at=self.at + timedelta(minutes=number)))
@@ -541,3 +546,26 @@ class HausdeppAchievementTests(unittest.TestCase):
                 projected = validate_hausdepp_result({**valid, **changes})
                 self.assertNotIn("started_at", projected)
                 self.assertNotIn("duration_seconds", projected)
+
+    def test_play_time_and_streak_achievements_follow_swiss_local_time(self):
+        def unlocked():
+            return {item["id"] for item in synchronize_hausdepp_progress(self.user.id)["achievements"]["items"]
+                    if item["unlocked"]}
+
+        # Tuesday 10:00 in Zurich (summer time, UTC+2) counts as office hours.
+        self.store(self.payload("office", at=datetime(2026, 10, 13, 8, tzinfo=timezone.utc)))
+        self.assertIn("hausdepp_101", unlocked())
+        # 03:30 in Zurich is a night-owl round, even though it is 01:30 UTC.
+        self.store(self.payload("night", at=datetime(2026, 10, 14, 1, 30, tzinfo=timezone.utc)))
+        self.assertIn("hausdepp_107", unlocked())
+        self.assertNotIn("hausdepp_112", unlocked())
+        # Seven consecutive Zurich days, each with an evening round, build the week streak.
+        for day in range(15, 22):
+            self.store(self.payload(f"streak-{day}", at=datetime(2026, 10, day, 18, 30, tzinfo=timezone.utc)))
+        progress = synchronize_hausdepp_progress(self.user.id)
+        items = {item["id"]: item for item in progress["achievements"]["items"]}
+        self.assertTrue(items["hausdepp_112"]["unlocked"])
+        # 13 and 14 October continue straight into the week: nine days in a row.
+        self.assertEqual(items["hausdepp_113"]["progress"], {"current": 9, "target": 14})
+        self.assertEqual(items["hausdepp_109"]["progress"]["current"], 2)  # 17 and 18 October are a weekend
+        self.assertEqual(items["hausdepp_101"]["category"], "habits")

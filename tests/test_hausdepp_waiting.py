@@ -70,12 +70,18 @@ class HausdeppWaitingTests(unittest.TestCase):
                 self.assertTrue(host_ws.receive_json()["auth"]["authenticated"])
                 host_ws.send_json({"action": "join_game"})
                 host_id = host_ws.receive_json()["player_id"]
-                self.assertEqual(scoreboard(host_ws)["_waiting_permissions"], {"can_leave": True, "is_host": True})
+                self.assertEqual(scoreboard(host_ws)["_waiting_permissions"], {
+                    "can_leave": True, "is_host": True, "can_add_cpu": True, "can_remove_cpu": True,
+                    "can_start": False, "start_reason": "hausdepp_waiting_not_full",
+                })
                 with friend.websocket_connect(f"/ws/{game_id}") as friend_ws:
                     self.assertTrue(friend_ws.receive_json()["auth"]["authenticated"])
                     friend_ws.send_json({"action": "join_game"})
                     previous_id = friend_ws.receive_json()["player_id"]
-                    self.assertEqual(scoreboard(friend_ws)["_waiting_permissions"], {"can_leave": True, "is_host": False})
+                    self.assertEqual(scoreboard(friend_ws)["_waiting_permissions"], {
+                        "can_leave": True, "is_host": False, "can_add_cpu": False, "can_remove_cpu": False,
+                        "can_start": False, "start_reason": "hausdepp_host_required",
+                    })
                     scoreboard(host_ws)
                     friend_ws.send_json({"action": "leave_waiting_game", "player_id": host_id})
                     self.assertEqual(friend_ws.receive_json(), {"left_waiting_game": True, "table_closed": False,

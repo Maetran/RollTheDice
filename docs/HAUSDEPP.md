@@ -197,19 +197,19 @@ spielen, auch wenn eine Auffüllpflicht offen ist. Die Auffüllpflicht bleibt
 bestehen. Ist er bei leerem Nachziehstapel fertig, wird er übersprungen und der
 nächste noch beteiligte Spieler beginnt dort.
 
-### Pflichtauffüllen per Stapeltipp und Nachwerfen
+### Pflichtauffüllen und Nachwerfen
 
 Nach einem vollständigen Ablegen muss eine Hand unter drei Karten von oben
 aufgefüllt werden, solange Nachziehkarten vorhanden sind. **Das Auffüllen
-geschieht nicht automatisch:** Ein Tipp auf den verdeckten Stapel nimmt
-sämtliche fehlenden Karten bis zur Handgrösse drei auf einmal, oder alle noch
-verfügbaren Karten, falls weniger übrig sind. Bei drei oder mehr Handkarten ist
-kein Auffüllen erforderlich. Als freiwillige Komfortfunktion kann jedes Konto
-**Automatisch auf drei auffüllen** einschalten (Tischhilfe oder
-Kontoeinstellungen, standardmässig aus). Dann tippt das Spiel den Stapel
-einmal an, sobald die eigene Auffüllpflicht an der Reihe ist. Regeln,
-Reihenfolge und Nachwurfrecht ändern sich dadurch nicht; ein Nachwurf darf
-hinter diesem Tipp angetippt werden.
+geschieht für alle automatisch:** Sobald die eigene Auffüllpflicht an der Reihe
+ist, tippt das Spiel den verdeckten Stapel einmal an und nimmt sämtliche
+fehlenden Karten bis zur Handgrösse drei auf einmal, oder alle noch verfügbaren
+Karten, falls weniger übrig sind. Eine Einstellung dafür gibt es nicht mehr; ein
+eigener Tipp auf den Stapel bleibt als Rückfallweg möglich. Bei drei oder mehr
+Handkarten ist kein Auffüllen erforderlich. Regeln, Reihenfolge und
+Nachwurfrecht ändern sich dadurch nicht; ein Nachwurf darf hinter dem
+automatischen Auffüllen angetippt werden. Der gespeicherte Kontowert
+`hausdepp_auto_refill` aus früheren Versionen wird nicht mehr ausgewertet.
 
 **Langsames Ziehen hält Handzüge nicht auf.** Der nächste Spieler darf sofort
 legen. Der verdeckte Stapel ist aber für die älteste noch offene Auffüllpflicht
@@ -238,10 +238,11 @@ ganz rechts. **Ein Tipp auf eine Handkarte legt sie unmittelbar.** Es gibt keine
 zusätzliche Bestätigung. Weitere gleiche Karten können schnell nacheinander
 angetippt werden, solange das Nachwurfrecht noch besteht.
 
-Mit **Mehrere Karten auswählen** lassen sich stattdessen mehrere Karten desselben
-Rangs markieren und gemeinsam ausspielen. Der erste Tipp wählt alle spielbaren
-Karten dieses Rangs, jeder weitere Tipp nimmt eine einzelne Karte heraus oder
-wieder hinzu. Ausgewählte Karten heben sich an und tragen einen Haken. Die Auswahl führt keinen Zug aus;
+**Langes Halten einer spielbaren Handkarte** (rund 0,4 s; Rechtsklick oder
+Umschalt + Enter mit Tastatur) oder der Schalter **Mehrere Karten auswählen**
+markiert stattdessen alle spielbaren Karten dieses Rangs. Jeder weitere Tipp
+nimmt eine einzelne Karte heraus oder wieder hinzu. Die Auswahl gilt nur für
+diesen einen Wurf: Nach **Karten legen** legt ein Tipp wieder einzeln. Ausgewählte Karten heben sich an und tragen einen Haken. Die Auswahl führt keinen Zug aus;
 erst **Karten legen** sendet alle ausgewählten Karten als einen atomaren Zug.
 Das funktioniert auch bei gültigem Nachwerfen. Schliesst eine andere Aktion
 das Nachwurffenster, verfällt eine noch nicht gespielte Auswahl sichtbar.
@@ -258,12 +259,22 @@ In der Tischhilfe gibt es zusätzlich **Paket ansehen**. Der Dialog zeigt nur di
 bereits offen gespielten Karten; Anschauen führt keinen Spielzug aus. Ein kurzer
 Tipp bleibt die unmittelbare Aufnahme. Abgeräumte Karten landen auf einem
 separaten, chaotisch gestapelten Rückseitenstapel **Aus dem Spiel** mit genauer
-Kartenanzahl. Er ist kein Nachziehstapel und lässt sich nicht aufnehmen.
+Kartenanzahl. Er ist kein Nachziehstapel und lässt sich nicht aufnehmen. Am Tisch
+steht dafür eine durchgestrichene Karte mit der Zahl; „Aus dem Spiel“ bleibt als
+Tooltip und für Screenreader erhalten.
+
+Seit 3.8.1 werden verdeckter Stapel und offenes Paket nie abgedunkelt, auch wenn
+andere am Zug sind. Ein goldener Leuchtrand markiert nur, was der Spieler selbst
+antippen kann (zocken, abheben, Paket nehmen); das automatische Nachziehen
+leuchtet nicht. Name und Kartenzahl stehen auf dunklen Schildern, der Spieler am
+Zug auf einem goldenen; die Statuszeile ist eine Pille, gold beim eigenen Zug.
+Auf dem Handy zeigt das Schild Name und Zahl in einer Zeile; ab vier Mitspielern
+sitzen alle dort in einer gleichmässigen Reihe über den Stapeln.
 
 Zum gerade gespielten Rang darf der Spieler weitere gleichrangige Karten
 **nachwerfen**. Das dürfen gerade nachgezogene Karten oder zunächst
 zurückbehaltene Handkarten sein. Nachwerfen ist freiwillig. Nach einem Nachwurf
-wird erforderliches Pflichtauffüllen wieder per Stapeltipp abgeschlossen;
+wird erforderliches Pflichtauffüllen wieder automatisch abgeschlossen;
 dieser Ablauf kann sich mehrfach wiederholen. Ein Nachwurf kann die vier
 Gleichen vervollständigen und damit das erneute
 Ausspielrecht auslösen.
@@ -305,15 +316,30 @@ ein taktischer Hinweis, keine zusätzliche Sonderregel.
 
 ### Sichtbare Hände und Kartenbewegungen
 
+Liegen oben auf dem offenen Paket zwei oder drei Karten desselben Rangs, fächern
+sie sich leicht nach links oben auf. So sieht man auf einen Blick, wie viele
+Gleiche schon liegen (bei vier räumt das Paket ab). Am Rundenende zeigt das
+Ergebnisfenster alle Platzierungen in der Reihenfolge, in der die Spieler fertig
+wurden, den Hausdepp zuletzt, und für jedes Konto die in dieser Runde verdienten
+EP und neu erreichten Erfolge.
+
 Die eigene Hand bleibt offen und sortiert. Bei anderen Spielern ist für jede
 Handkarte eine Rückseite sichtbar; die genaue Anzahl steht zusätzlich beim
 Namen. Kartenwerte und Farben gegnerischer Hände bleiben privat. Sehr grosse
 Hände werden dichter gefächert, ohne Karten wegzulassen.
 
-Geben und Pflichtziehen zeigen den Weg vom verdeckten Stapel zur Hand. Beim
+Erfolgreich abgehobene Karten fliegen für alle offen vom verdeckten Stapel in
+die Tischmitte. Dort steht gut eine Sekunde lang, wer sie bekommt („Liesl bekommt
+Ass · 10“), danach fliegen sie zu dieser Hand; erst dann wird ausgeteilt. Ein
+Computer wartet mit seinem ersten Zug, bis diese Vorführung vorbei ist. Bei
+reduzierter Bewegung bleibt nur die Beschriftung. Geben und Pflichtziehen zeigen
+den Weg vom verdeckten Stapel zur Hand. Beim
 Aufnehmen wandert das offene Paket zur Hand. Misslingt Zocken, geht zuerst die
 gezockte Karte vom verdeckten zum offenen Stapel und danach das ganze Paket zur
-Hand. Handkarten bewegen sich beim Legen zur Mitte. Diese Darstellung sperrt
+Hand. Handkarten bewegen sich beim Legen zur Mitte. Sobald ein Wurf, Nachwurf
+oder erfolgreiches Zocken bestätigt ist, zeigt das wachsende offene Paket sofort
+die aktuelle Kartenzahl und den Fächer gleicher Werte. Laufende Kartenflüge
+verzögern diese Anzeige nicht. Diese Darstellung sperrt
 keinen Zug, ändert kein Nachwurfrecht und wiederholt sich beim Wiederverbinden
 nicht. Reduzierte Bewegung bestätigt die Ankunft ohne räumlichen Flug.
 
@@ -352,15 +378,33 @@ Die Lobby zeigt eigene offene Tische mit Spielstatus und belegten Plätzen.
 Neue Tische erhalten beim Erstellen automatisch einen zufälligen Wirtshausnamen
 aus 50 Varianten mit dem aktuellen Kontonamen, etwa „Manis Gsuff“. Es gibt kein
 zusätzliches Namensfeld; im Turnier bleibt der einmal gewählte Tischname bestehen.
-Beim Erstellen zählen Menschen und Computer gemeinsam zur gewählten Tischgrösse;
-das eigene Konto belegt genau einen menschlichen Platz. Ein Wartetisch zeigt,
-wie viele Menschen noch fehlen. Der Tischlink kann kopiert werden; die
-gültige Anmeldung wird beim Öffnen weiterhin serverseitig geprüft. Wiederaufnahme
+Der Einstieg bietet den kontoweit gespeicherten Favoriten oder „Modus definieren“.
+Wählbar sind eine feste Spielerzahl (2–6) oder offen bis sechs, Schnellspiel oder
+Turnier und optional ein Passwort. Menschen und CPUs zählen gemeinsam; das eigene
+Konto belegt einen Platz. Im Warteraum stehen kompakte Platzkarten. Der Gastgeber
+kann CPUs einzeln hinzufügen/entfernen und startet ausdrücklich: offen ab zwei
+Teilnehmern, fix erst bei vollständiger Besetzung. Alle Menschen müssen verbunden
+sein. Ein Mensch nimmt zuerst einen freien Platz und ersetzt bei vollem Wartetisch
+einen CPU. Nach Spielstart ist die Besetzung fest.
+
+„Als Favorit speichern“ übernimmt Spielerzahl, Offen/Fix, Spielart, aktuelle CPU-
+Anzahl und die Wahl eines Passwortschutzes in das eigene Konto. Das tatsächliche
+Passwort wird nie im Favoriten gespeichert und muss beim Erstellen neu festgelegt
+werden. Der konkrete Tischzugang bleibt nur für diese Browsersitzung beim eigenen
+Konto verfügbar; das Passwort erscheint weder im Tischlink noch in einer URL.
+Teilen, Kopieren und Mitspieler-Ruf bleiben direkt erreichbar. Wiederaufnahme
 führt an denselben Sitz zurück.
 
+Vier schnelle Reaktionen starten mit 👍 😂 😮 💩. Der Pfeil nach oben öffnet zwölf
+Symbole. Eigene bestätigte Sendungen bestimmen die persönliche Häufigkeit in
+diesem Browser, getrennt nach Konto. Die vier Positionen bleiben während einer
+Partie stabil; erst der nächste Einstieg übernimmt eine neue Rangfolge. Auswahl,
+Escape und ein Tipp ausserhalb schliessen die Auswahl; der Schliess-Tipp spielt
+keine darunterliegende Karte.
+
 An einem ungeschützten Wartetisch kann ein sitzender Spieler ausdrücklich per
-**Mitspieler-Ruf** nach weiteren Menschen suchen. Freie Computerplätze zählen
-dabei nicht als einladbare Plätze. Es gelten dieselben Kontoeinstellungen wie
+**Mitspieler-Ruf** nach weiteren Menschen suchen. Ein voller Wartetisch mit
+ersetzbaren CPUs bleibt dabei für menschliche Mitspieler offen. Es gelten dieselben Kontoeinstellungen wie
 in ZDWA und Zilch: Browser-/Gerätefreigabe, aktivierte Mitspieler-Rufe und die
 private Absenderauswahl. Sender und Empfänger müssen bei der Anfrage und vor
 dem Versand weiterhin für Hausdepp freigegeben sein; Selbstbenachrichtigungen
@@ -466,7 +510,7 @@ und Verständlichkeit verfeinern; das führt keine erneute Zugangssperre ein.
 | Lobby und Tisch | Echte Mehrspielerpartien, Computer-Mitspieler, Zugang für aktive Konten, Tischstatus, direkte Aktionen | Weitere Verfeinerungen nach Spieltests |
 | Regeln | Vollständige DE-/EN-Hausregeln mit Schnellstart, Beispielen und Sprungmarken | Verständlichkeitsprüfung durch den Owner |
 | Punkte | Je abgeschlossener Runde 10 EP nur mit Menschen oder 2 EP mit mindestens einem Computer (75 % Reduktion, abgerundet); Erfolge einmalig volle 10/25/50/100 EP | Weiteres Balancing nach Spieltests |
-| Achievements | Bestätigter Katalog mit 100 Erfolgen, 24 Rängen und eigenen Aufstiegssprüchen | Weitere Gestaltungs- und Spieltests |
+| Achievements | Bestätigter Katalog mit 115 Erfolgen, 24 Rängen und eigenen Aufstiegssprüchen | Weitere Gestaltungs- und Spieltests |
 | Konto | Private Statistik und Historie, EP, Rangfortschritt, Rangleiter und filterbare Erfolgssammlung | Weitere Gestaltungsverfeinerungen |
 | Chat und Reaktionen | Gemeinsame Suite-Funktionen am Tisch und Lobbychat | Weitere Verfeinerungen nach Spieltests |
 | Weitere Runden | Einzelrunden über die Lobby; Turnierserie am selben Tisch mit Geberrotation und Buchstabenstand | Weitere Gestaltungs- und Spieltests |
@@ -474,7 +518,7 @@ und Verständlichkeit verfeinern; das führt keine erneute Zugangssperre ein.
 
 ### Bestätigte Punkte, Erfolge und Ränge
 
-Der Owner hat den [Katalog mit 100 Erfolgen und 24 Rängen](HAUSDEPP_ACHIEVEMENTS.md)
+Der Owner hat den [Katalog mit 115 Erfolgen und 24 Rängen](HAUSDEPP_ACHIEVEMENTS.md)
 freigegeben. Jede regulär abgeschlossene Runde nur mit Menschen gibt dem
 beteiligten Konto **10 Erfahrungspunkte (EP)**. Sobald mindestens ein Computer
 am Tisch mitspielt, wird die Basis um 75 % reduziert und **je Runde auf ganze
@@ -497,7 +541,7 @@ Computer. Deren Runden-EP werden neu berechnet; Rundenhistorie, Siege,
 Erfolgsbelohnungen und erreichte Erfolgsanzahl bleiben erhalten.
 
 Die dauerhafte Leiter beginnt bei **Einstein mit 0 EP** und endet bei
-**Hausdepp mit 5’000 EP**. Der dauerhafte Titel bleibt getrennt vom **Hausdepp
+**Hausdepp mit 9’000 EP**. Der dauerhafte Titel bleibt getrennt vom **Hausdepp
 einer einzelnen Runde**. „Fertig werden“ zählt erst bei leerem Nachziehstapel;
 eine zwischenzeitlich leere Hand mit offenem Pflichtziehen reicht nicht.
 Aufgenommene oder abgeräumte Paketgrössen zählen die dabei gespielte Karte mit.
@@ -826,7 +870,9 @@ suits remain private. Large hands use a denser fan without omitting any cards.
 Dealing and mandatory refills travel from the face-down stock to the hand.
 Picking up moves the open pile into the hand. A failed gamble first moves the
 new card from stock to pile, then the complete pile into the hand. Hand plays
-travel to the middle. Presentation never blocks turns, changes additional-card
+travel to the middle. Once a play, follow-up or successful gamble is accepted,
+the growing open pile immediately shows its current count and matching-rank fan.
+Active card flights never delay that display. Presentation never blocks turns, changes additional-card
 rights or repeats missed actions after reconnecting. Reduced motion acknowledges
 arrival without spatial travel.
 
@@ -861,13 +907,29 @@ The lobby shows your open tables with game status and occupied seats. New
 tables automatically receive a random tavern-style name from 50 variants built
 around the current account name, such as “Mani’s nightcap”. No separate name
 field is needed; the chosen table name remains throughout a tournament. Humans
-and computers together fill the selected table size; your account occupies one
-human seat. A waiting table shows how many humans are still needed. Its link
-can be copied; opening it still requires valid sign-in. Resuming
-returns to the same seat.
+and CPUs count together; your account occupies one seat. The entry offers your
+account-wide favourite or Define a mode: fixed 2–6 or open up to six, quick game
+or tournament, with an optional password. Place cards show the roster. The host
+adds/removes CPUs and starts explicitly, with at least two participants in an
+open room or every chosen seat filled in a fixed room. All humans must be
+connected. People take free seats first, then replace one CPU at a full waiting
+table. The roster becomes final on start.
+
+Saving a favourite stores only the setup and the choice of password protection,
+never the password. Protected favourites ask for a fresh password. The concrete
+table password stays only in this browser session, separated by account; it
+never enters a shared link or URL. Sharing, copying and player calls remain
+available. Resuming returns to the same seat.
+
+Four quick reactions begin with 👍 😂 😮 💩; the up arrow opens twelve symbols.
+Only your own confirmed sends determine personal frequency in this browser,
+separately for each account. Positions remain fixed during a game; the next room
+uses the new ranking. Selecting, Escape or an outside tap closes the picker;
+the dismissal tap never plays an underlying card.
 
 At an unprotected waiting table, a seated player can explicitly **call for
-players** when human seats remain open. Computer seats are not invitable.
+players** while a human seat is available, including a full waiting table
+with a replaceable CPU.
 The same settings apply as in ZDWA and Zilch: browser/device permission,
 enabled player calls and the private sender allowlist. Both sender and
 recipient must retain Hausdepp access when requested and before dispatch;
@@ -963,7 +1025,7 @@ and clarity without reinstating the former access restriction.
 | Lobby and table | Real multiplayer rounds, computer opponents, active-account access, table status, direct actions | Further playtest refinements |
 | Rules | Complete German/English house rules with quick start, examples and anchors | Owner review for clarity |
 | Points | Per completed round: 10 XP for all-human tables or 2 XP with any computer (75% reduction, rounded down); full one-time achievement rewards of 10/25/50/100 XP | Further balancing after playtests |
-| Achievements | Approved catalogue of 100 achievements, 24 ranks and individual sayings | Further design and playtests |
+| Achievements | Approved catalogue of 115 achievements, 24 ranks and individual sayings | Further design and playtests |
 | Account | Private facts/history, XP, rank progress, complete ladder and filterable achievement collection | Further design refinements |
 | Chat and reactions | Shared suite features at the table and lobby chat | Further playtest refinements |
 | Further rounds | Single rounds through the lobby; same-table tournaments with dealer rotation and letter scores | Further design and playtests |
@@ -989,7 +1051,7 @@ The new weighting also applies to proven previously completed rounds with
 computers. Their round XP is recalculated; round history, wins, achievement
 rewards and the number of unlocked achievements are retained.
 
-The lasting ladder runs from **Einstein at 0 XP** to **Hausdepp at 5,000 XP**.
+The lasting ladder runs from **Einstein at 0 XP** to **Hausdepp at 9,000 XP**.
 The lasting title remains separate from the **Hausdepp of an individual round**.
 Finishing requires an empty stock; an empty hand with a pending refill is not
 enough. Pile sizes include the card being played or unsuccessfully gambled.
@@ -1061,4 +1123,13 @@ Hold the open pile, right-click it or use Shift + Enter to inspect its public
 cards before pickup. **Inspect pile** in table help opens the same dialog.
 Inspection does not play a turn; a short tap still picks up the pile immediately.
 Cleared cards fly to a separate, untidy face-down **Out of play** stack with an
-exact count. That stack is neither stock nor available for pickup.
+exact count. That stack is neither stock nor available for pickup. On the table it
+shows a crossed-out card with the count; "Out of play" remains as the tooltip and
+for screen readers.
+
+Since 3.8.1 the stock and the open pile never fade, even while others are on turn.
+A gold ring marks only what the player can tap (gamble, cut, take the pile); the
+automatic refill does not light up. Names and hand sizes sit on dark plates, the
+player on turn on a gold one; the turn line is a pill, gold on the own turn.
+On phones the plate shows name and number in one line; with four or more
+opponents all seats share one even row above the stacks.
