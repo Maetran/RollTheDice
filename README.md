@@ -371,6 +371,31 @@ perform a game action.
 
 ## The games
 
+**Hausdepp – Runde eröffnen:** Der kompakte Einstieg bietet deinen gespeicherten
+Favoriten oder „Modus definieren“. Wähle eine feste Spielerzahl (2–6) oder einen
+offenen Warteraum bis sechs, Schnellspiel oder Turnier und optional ein Passwort.
+Im Warteraum zeigen Platzkarten die Besetzung. Der Gastgeber fügt CPUs einzeln
+hinzu, entfernt sie und startet selbst; offene Runden sind ab zwei Teilnehmern
+startbereit. Menschen nehmen freie Plätze und ersetzen bei einem vollen
+Wartetisch einen CPU. Die aktuelle Besetzung lässt sich kontoweit als Favorit
+speichern; für geschützte Favoriten wird das Passwort jedes Mal neu festgelegt.
+Mitspieler-Ruf, Teilen und Link-Kopieren bleiben verfügbar. Vier persönliche
+häufige Reaktionen stehen direkt bereit; der Pfeil öffnet zwölf Symbole,
+einschliesslich 💩. Ihre Positionen bleiben während der Partie gleich.
+
+**Hausdepp – creating a game:** The compact entry offers your saved favourite or
+“Define a mode”. Choose a fixed count (2–6) or an open waiting room for up to six,
+a quick game or tournament, and an optional password. Place cards show the
+roster. The host adds and removes CPUs one at a time and starts explicitly;
+open rooms are ready with two participants. People take free seats first and
+replace a CPU when the waiting table is full. Save the current setup as an
+account-wide favourite; password-protected favourites ask for a fresh password.
+Player calls, sharing and copying remain available. Four personal frequent
+reactions stay visible; the arrow opens twelve choices, including 💩. Positions
+stay stable throughout the game. Personal reaction frequency stays in this
+browser and is separate for each account.
+
+
 **Hausdepp – Gestaltung:** Holz und die originalen Tellkarten bleiben der
 Mittelpunkt. Tannengrün, Kartenrot und kräftige Serifentitel geben dem Spiel eine
 eigene Gestaltung; Navigation und wichtige Wege erscheinen als Buttons. Gegner
@@ -407,7 +432,7 @@ switching preserves the installed app identity. Private cards, outcomes and
 account data are never cached offline; play requires a connection.
 
 **Hausdepp – Mitspieler-Ruf:** Wartende, ungeschützte Tische mit einem freien
-menschlichen Platz verwenden dieselben Push-Einstellungen wie ZDWA und Zilch.
+menschlichen Platz oder ersetzbaren CPU verwenden dieselben Push-Einstellungen wie ZDWA und Zilch.
 Gerätefreigabe und die Kategorie „Mitspieler-Rufe“ müssen aktiv sein; die
 private Absenderauswahl gilt weiterhin. Nur aktuell für Hausdepp freigegebene
 Konten können senden oder empfangen. Eine Systembenachrichtigung trägt das

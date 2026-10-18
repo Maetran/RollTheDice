@@ -12,6 +12,8 @@
 @import "./hausdepp-table-polish.css";
 @import "./hausdepp-readable-table.css";
 @import "./hausdepp-contrast.css";
+@import "./hausdepp-lobby-setup.css";
+@import "./hausdepp-reactions.css";
 :root {
   --hd-paper: #f6f2e6; --hd-ink: #20372e; --hd-muted: #526157;
   --hd-red: #a63335; --hd-red-hover: #842628; --hd-gold: #dfc895;

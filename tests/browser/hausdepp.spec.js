@@ -1,6 +1,7 @@
 const { test, expect } = require('@playwright/test');
 const { mkdir, readFile, writeFile } = require('node:fs/promises');
 const { openPasswordLogin } = require('./password-login');
+const { openHausdeppWaiting, startHausdeppCpuGame } = require('./hausdepp-create');
 
 test.use({ serviceWorkers: 'block' });
 
@@ -112,13 +113,11 @@ async function createCpuTable(page, traffic, { players = 2, cpu = 1, resolvePeek
   await page.goto('/hausdepp');
   await expect(page.locator('#hausdeppCreateForm')).toBeVisible();
   await expect(page.locator('#hausdeppCreateForm [name="name"]')).toHaveCount(0);
-  await page.locator('#hausdeppCreateForm [name="players"]').selectOption(String(players));
-  await page.locator('#hausdeppCreateForm [name="cpu_count"]').selectOption(String(cpu));
   const commandsBefore = traffic.commands.length;
   traffic.state = null;
   traffic.scoreboard = null;
   traffic.tableStart = { commands: commandsBefore, messages: traffic.messages.length };
-  await page.locator('#hausdeppCreate').click();
+  await startHausdeppCpuGame(page, { players, cpu });
   await expect(page).toHaveURL(/\/hausdepp\/spiel\/[^/?]+/);
   await expect(page.locator('#hausdeppTable')).toBeVisible();
   await expect.poll(() => Boolean(traffic.state?.viewer_id && traffic.scoreboard?._started)).toBe(true);
@@ -642,7 +641,7 @@ test('public discovery admits guests while signed-in accounts keep private play 
     }
     await other.goto('/hausdepp');
     await expect(other.locator('#hausdeppCreateForm')).toBeVisible();
-    await other.locator('#hausdeppCreate').click();
+    await startHausdeppCpuGame(other);
     await expect(other).toHaveURL(/\/hausdepp\/spiel\/[^/]+$/);
     await expect.poll(() => regularTraffic.state?.viewer_id).toBeTruthy();
     await expect(other.locator('#hausdeppTable')).toHaveAttribute('data-phase', /^(peeking|playing)$/);
@@ -1548,9 +1547,8 @@ for (const language of ['de', 'en']) {
     const user = await ownerSession(page, language);
     await page.goto('/hausdepp');
     await expect(page.locator('#hausdeppCreateForm [name="name"]')).toHaveCount(0);
-    await page.locator('#hausdeppCreateForm [name="cpu_count"]').selectOption('0');
     const creation = page.waitForRequest(request => request.method() === 'POST' && new URL(request.url()).pathname === '/api/games');
-    await page.locator('#hausdeppCreate').click();
+    await openHausdeppWaiting(page);
     const payload = (await creation).postDataJSON();
     expect(payload.name).toContain(user.username);
     expect(payload.name).not.toBe(user.username);
@@ -1576,6 +1574,7 @@ for (const language of ['de', 'en']) {
         return { panel: rect(panel), title: rect(document.querySelector('.hd-welcome h1')), hand: rect(hand),
           cardWidth: card.offsetWidth, padding: parseFloat(getComputedStyle(panel).paddingTop),
           targets: [...panel.querySelectorAll('select, input:not([type="radio"]), button, .hd-game-format label')]
+            .filter(node => node.getClientRects().length)
             .map(node => node.getBoundingClientRect().height),
           overflow: document.documentElement.scrollWidth - innerWidth };
       });

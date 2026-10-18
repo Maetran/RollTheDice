@@ -23,6 +23,26 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 3.9.0 — Hausdepp: flexible Warteräume und Favoriten / flexible waiting rooms and favourites — 2026-10-18
+
+**Deutsch:** „Tisch eröffnen“ bietet deinen gespeicherten Favoriten oder eine
+kurze Konfiguration: fixe Spielerzahl oder offen bis sechs, Schnellspiel oder
+Turnier, optional mit Passwort. Platzkarten zeigen die Besetzung. Der Gastgeber
+fügt CPUs hinzu, entfernt sie und startet selbst; Menschen ersetzen bei einem
+vollen Wartetisch einen CPU. Ein Favorit gilt für das Konto, speichert jedoch
+kein Passwort. Spieler rufen, Teilen und Link-Kopieren bleiben verfügbar.
+Vier persönliche häufige Reaktionen plus Pfeil öffnen zwölf Symbole, darunter 💩;
+die Reihenfolge bleibt während einer Partie stabil.
+
+**English:** “Open a table” offers your saved favourite or a short setup: fixed
+players or open up to six, quick game or tournament, with an optional password.
+Place cards show the roster. The host adds/removes CPUs and starts explicitly;
+people replace a CPU at a full waiting table. Favourites follow the account and
+never retain passwords. Player calls, sharing and copying remain available.
+Four personal frequent reactions plus an arrow open twelve symbols, including 💩;
+the order stays stable during each game.
+
+
 ## 3.8.2 — Klügere Hausdepp-Computer, spielneutrale Kontotexte / smarter Hausdepp computers, game-neutral account texts — 2026-10-18
 
 **Deutsch:** Im Hausdepp-Zweikampf räumten Computer ein Ass oben fast immer mit

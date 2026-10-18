@@ -48,17 +48,26 @@ def new_hausdepp_game(game_id: str, name: str, mode: object, *, register: bool =
     return game
 
 
-def configure_hausdepp_game(game: GameDict, *, host_user_id: int, cpu_count: int = 1, tournament: bool = False) -> None:
+def configure_hausdepp_game(game: GameDict, *, host_user_id: int, cpu_count: int = 1, tournament: bool = False,
+                           waiting_mode: str = "fixed", manual_start: bool = False) -> None:
     if game.get("_players") or game.get("_started"):
         raise ValueError("hausdepp_game_already_configured")
     if type(host_user_id) is not int or host_user_id < 1:
         raise ValueError("hausdepp_account_required")
-    if type(cpu_count) is not int or not 0 <= cpu_count < game["_expected"]:
+    if waiting_mode not in {"fixed", "open"} or type(manual_start) is not bool:
+        raise ValueError("hausdepp_invalid_waiting_options")
+    capacity = 6 if waiting_mode == "open" else game["_expected"]
+    if type(cpu_count) is not int or not 0 <= cpu_count < capacity:
         raise ValueError("hausdepp_invalid_cpu_count")
     if type(tournament) is not bool:
         raise ValueError("hausdepp_invalid_tournament")
     game["_hausdepp_host_user_id"] = host_user_id
+    game["_expected"] = capacity
+    game["_mode"] = str(capacity)
+    game["_hausdepp_waiting_mode"] = waiting_mode
+    game["_hausdepp_manual_start"] = manual_start or waiting_mode == "open"
     game["_hausdepp_cpu_count"] = cpu_count
+    game["_hausdepp_next_cpu_id"] = cpu_count + 1
     game["_hausdepp_tournament_enabled"] = tournament
     game["_expected_connections"] = game["_expected"] - cpu_count
     game["_play_mode"] = "cpu" if cpu_count else "multiplayer"
@@ -66,6 +75,74 @@ def configure_hausdepp_game(game: GameDict, *, host_user_id: int, cpu_count: int
     game["_participants"] = [{"id": f"cpu-{index + 1}", "name": names[index], "type": "cpu",
                               "is_cpu": True, "user_id": None, "connection_player_id": None}
                              for index in range(cpu_count)]
+
+
+def hausdepp_waiting_summary(game: GameDict) -> dict:
+    """Public capacity facts; a full CPU table still admits a human before start."""
+    waiting = not (game.get("_started") or game.get("_finished") or game.get("_aborted")
+                   or game.get("_hausdepp") is not None)
+    capacity = int(game["_expected"])
+    cpu_count = sum(bool(person.get("is_cpu")) for person in game.get("_participants", []))
+    free = max(0, capacity - len(game.get("_participants", []))) if waiting else 0
+    replaceable = cpu_count if waiting else 0
+    return {"waiting_mode": game.get("_hausdepp_waiting_mode", "fixed"),
+            "manual_start": bool(game.get("_hausdepp_manual_start")),
+            "tournament_enabled": bool(game.get("_hausdepp_tournament_enabled")),
+            "can_join": bool(waiting and (free or replaceable)),
+            "free_seats": free, "replaceable_cpus": replaceable}
+
+
+def sync_hausdepp_waiting_seats(game: GameDict) -> None:
+    """Keep transport capacity and durable domain seats in agreement."""
+    cpus = sum(bool(person.get("is_cpu")) for person in game.get("_participants", []))
+    game["_hausdepp_cpu_count"] = cpus
+    game["_expected_connections"] = game["_expected"] - cpus
+    game["_play_mode"] = "cpu" if cpus else "multiplayer"
+
+
+def hausdepp_start_error(game: GameDict) -> str | None:
+    """Explain a host's manual start without creating a partial card round."""
+    if game.get("_started") or game.get("_finished") or game.get("_aborted") or game.get("_hausdepp") is not None:
+        return "hausdepp_waiting_already_started"
+    count = len(game.get("_participants", []))
+    if count > 6:
+        return "hausdepp_invalid_player_count"
+    if count < 2:
+        return "hausdepp_waiting_minimum_players"
+    if game.get("_hausdepp_waiting_mode", "fixed") == "fixed" and count != game["_expected"]:
+        return "hausdepp_waiting_not_full"
+    if not game.get("_players") or any(person.get("ws") is None for person in game["_players"]):
+        return "hausdepp_waiting_players_offline"
+    return None
+
+
+def add_hausdepp_cpu(game: GameDict) -> None:
+    summary = hausdepp_waiting_summary(game)
+    if not summary["free_seats"]:
+        raise ValueError("hausdepp_game_full")
+    reserved = {str(person["name"]).casefold() for person in game.get("_participants", [])}
+    names = [name for name in HAUSDEPP_CPU_NAMES if name.casefold() not in reserved]
+    next_id = int(game.get("_hausdepp_next_cpu_id", 1))
+    existing_ids = {person["id"] for person in game.get("_participants", [])}
+    while f"cpu-{next_id}" in existing_ids:
+        next_id += 1
+    game["_hausdepp_next_cpu_id"] = next_id + 1
+    game.setdefault("_participants", []).append({
+        "id": f"cpu-{next_id}", "name": _CPU_RANDOM.choice(names), "type": "cpu",
+        "is_cpu": True, "user_id": None, "connection_player_id": None,
+    })
+    sync_hausdepp_waiting_seats(game)
+
+
+def remove_hausdepp_cpu(game: GameDict, participant_id: object) -> None:
+    if game.get("_started") or game.get("_finished") or game.get("_aborted") or game.get("_hausdepp") is not None:
+        raise ValueError("hausdepp_waiting_already_started")
+    participant = next((person for person in game.get("_participants", [])
+                        if person.get("id") == participant_id and person.get("is_cpu")), None)
+    if not participant:
+        raise ValueError("hausdepp_waiting_cpu_not_found")
+    game["_participants"].remove(participant)
+    sync_hausdepp_waiting_seats(game)
 
 
 def join_hausdepp_player(game: GameDict, player: dict) -> None:
@@ -76,16 +153,24 @@ def join_hausdepp_player(game: GameDict, player: dict) -> None:
 
 
 def _join_hausdepp_player(game: GameDict, player: dict) -> None:
-    if game.get("_started") or game.get("_finished"):
+    if game.get("_started") or game.get("_finished") or game.get("_aborted"):
         raise ValueError("hausdepp_game_already_started")
-    if len(game.get("_players", [])) >= game.get("_expected_connections", game["_expected"]):
-        raise ValueError("hausdepp_game_full")
     # The first human must be the creating account. No guest token can claim it.
     if (not game.get("_players") and player.get("user_id") != game.get("_hausdepp_host_user_id")
             and not game.get("_hausdepp_rematch_id")):
         raise ValueError("hausdepp_host_required")
     if player.get("user_id") is None:
         raise ValueError("hausdepp_account_required")
+    if any(person.get("user_id") == player["user_id"] for person in game.get("_players", [])):
+        raise ValueError("hausdepp_account_already_joined")
+    summary = hausdepp_waiting_summary(game)
+    if not summary["can_join"]:
+        raise ValueError("hausdepp_game_full")
+    if not summary["free_seats"]:
+        # Admission validates account/rematch guards before a CPU is removed.
+        # Always use a free seat first; only a full waiting table replaces one.
+        cpu = next(person for person in reversed(game["_participants"]) if person.get("is_cpu"))
+        remove_hausdepp_cpu(game, cpu["id"])
     # A human may have a name from the pool too. Resolve that collision before
     # play starts; established tournament seats never change their names.
     reserved = {str(person["name"]).casefold() for person in [*game.get("_participants", []), player]}
@@ -105,12 +190,22 @@ def _join_hausdepp_player(game: GameDict, player: dict) -> None:
     game["_hausdepp_waiting_last_join_at"] = datetime.now(timezone.utc).isoformat()
 
 
-def start_hausdepp_game(game: GameDict) -> None:
-    if game.get("_started") or len(game.get("_players", [])) != game.get("_expected_connections", game["_expected"]):
+def start_hausdepp_game(game: GameDict, *, manual: bool = False) -> None:
+    if game.get("_started") or game.get("_finished") or game.get("_aborted"):
+        return
+    if (game.get("_hausdepp_manual_start") or game.get("_hausdepp_waiting_mode") == "open") and not manual:
+        return
+    if manual and (error := hausdepp_start_error(game)):
+        raise ValueError(error)
+    if not manual and len(game.get("_players", [])) != game.get("_expected_connections", game["_expected"]):
         return
     from .hausdepp_engine import new_round
 
     participants = game["_participants"]
+    if game.get("_hausdepp_waiting_mode") == "open":
+        game["_expected"] = len(participants)
+        game["_mode"] = str(len(participants))
+        game["_expected_connections"] = len(game["_players"])
     # The first dealer is drawn for every new table, humans and CPUs alike;
     # tournaments then pass the deal clockwise after each round.
     game["_hausdepp"] = new_round(participants, dealer_index=_DEALER_RANDOM.randrange(len(participants)))

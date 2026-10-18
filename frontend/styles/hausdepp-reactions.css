@@ -1,0 +1,53 @@
+/* Four familiar reactions and one full-size, labelled picker affordance. */
+html[data-game="hausdepp"] .hd-reactions.hd-reactions-ready {
+  display: grid; grid-template-columns: repeat(5, 44px); gap: 4px;
+  flex: 0 0 auto; width: max-content; max-width: 100%; min-width: 0;
+}
+html[data-game="hausdepp"] .hd-reactions.hd-reactions-ready > button {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 44px; height: 44px; min-width: 44px; min-height: 44px; padding: 4px;
+  border: 1px solid var(--hd-border); border-radius: 4px; font-size: 22px; line-height: 1;
+  color: var(--hd-green); background: var(--hd-paper); box-shadow: 0 2px 0 #244737;
+}
+html[data-game="hausdepp"] .hd-reactions.hd-reactions-ready > button:hover:not(:disabled) { background: var(--hd-white); }
+html[data-game="hausdepp"] .hd-reactions.hd-reactions-ready > button:disabled { opacity: .55; cursor: default; }
+.hd-reaction-picker {
+  position: fixed; inset: auto; margin: 0; width: min(304px, calc(100vw - 16px));
+  padding: 12px; border: 1px solid var(--hd-border); border-radius: 6px;
+  color: var(--hd-ink); background: var(--hd-paper); box-shadow: 0 4px 0 #0b281f80;
+  overflow: auto; overscroll-behavior: contain;
+}
+.hd-reaction-picker::backdrop { background: #0b211c66; }
+.hd-reaction-picker > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.hd-reaction-picker h2 { margin: 0; font: 700 22px/1.2 Georgia, "Times New Roman", serif; }
+.hd-reaction-picker [data-reaction-close] { flex: 0 0 auto; min-width: 44px; min-height: 44px; padding: 8px; font-size: 13px; }
+.hd-reaction-picker .hd-reaction-grid { display: grid; grid-template-columns: repeat(4, minmax(44px, 1fr)); gap: 6px; }
+.hd-reaction-picker .hd-reaction-grid button {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 44px; min-height: 44px; padding: 6px; border: 1px solid var(--hd-edge); border-radius: 4px;
+  color: var(--hd-ink); background: var(--hd-white); font-size: 25px; line-height: 1;
+}
+.hd-reaction-picker .hd-reaction-grid button:hover:not(:disabled) { border-color: var(--hd-green); }
+.hd-reaction-picker :focus-visible { outline: 3px solid var(--hd-red); outline-offset: 2px; }
+@media (max-width: 359px) and (orientation: portrait) {
+  /* At 320px, chat + five reaction targets + tools cannot share 44px of height.
+     Give reactions one complete row, retaining every target at 44px. */
+  html[data-game="hausdepp"] body.hd-playing .hd-room-layout:has(.hd-reactions-ready) { grid-template-rows: minmax(0, 1fr) 90px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-room-layout > .hd-social:has(.hd-reactions-ready) { padding: 0; }
+  html[data-game="hausdepp"] body.hd-playing .hd-social-tools:has(.hd-reactions-ready) {
+    display: grid; grid-template-columns: minmax(44px, 1fr) 44px;
+    grid-template-rows: 44px 44px; gap: 2px; height: 90px;
+  }
+  html[data-game="hausdepp"] body.hd-playing .hd-social-tools:has(.hd-reactions-ready) > #chatToggle { grid-column: 1; grid-row: 1; justify-self: start; }
+  html[data-game="hausdepp"] body.hd-playing .hd-social-tools > .hd-reactions.hd-reactions-ready { grid-column: 1 / -1; grid-row: 2; justify-self: center; }
+  html[data-game="hausdepp"] body.hd-playing .hd-social-tools:has(.hd-reactions-ready) > .hd-multi-actions { grid-column: 1 / -1; grid-row: 2; }
+}
+@media (max-width: 1099px) and (orientation: landscape) {
+  html[data-game="hausdepp"] body.hd-playing .hd-social-tools > .hd-reactions.hd-reactions-ready { margin-inline: auto; }
+  .hd-reaction-picker { width: min(304px, calc(100vw - 16px)); }
+}
+@media (max-height: 440px) and (orientation: landscape) {
+  .hd-reaction-picker { width: min(296px, calc(100vw - 16px)); padding: 8px; }
+  .hd-reaction-picker .hd-reaction-grid { grid-template-columns: repeat(6, minmax(44px, 1fr)); gap: 2px; }
+  .hd-reaction-picker > header { margin-bottom: 6px; }
+}

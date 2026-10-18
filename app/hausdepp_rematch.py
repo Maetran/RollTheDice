@@ -135,7 +135,11 @@ def validate_rematch_join(game: dict, user_id: int | None) -> None:
         if invitation and invitation.status == "pending" and utcnow() < as_utc(row.expires_at):
             raise ValueError("hausdepp_invitation_accept_required")
         reserved = _reservations(db, row, game) - {user_id}
-        free = game["_expected_connections"] - len(game.get("_players", []))
+        # Once no other invitee is reserved, a waiting CPU may yield its seat.
+        # Until then keep the human-seat limit: filling it auto-starts a legacy
+        # rematch and must never strand an invited person behind a computer.
+        capacity = game["_expected_connections"] if reserved else game["_expected"]
+        free = capacity - len(game.get("_players", []))
         if free <= len(reserved):
             raise ValueError("hausdepp_rematch_reserved_seats")
 
@@ -149,6 +153,35 @@ def rematch_join_guard(game: dict, user_id: int | None):
     with _LOCK:
         validate_rematch_join(game, user_id)
         yield
+
+
+@contextmanager
+def rematch_waiting_guard(game: dict, action: str):
+    """Host controls must not consume or skip an invited person's reservation."""
+    if not game.get("_hausdepp_rematch_id"):
+        yield
+        return
+    with _LOCK:
+        if error := rematch_waiting_error(game, action):
+            raise ValueError(error)
+        yield
+
+
+def rematch_waiting_error(game: dict, action: str) -> str | None:
+    """The same reservation decision drives host affordances and admission."""
+    rematch_id = game.get("_hausdepp_rematch_id")
+    if not rematch_id:
+        return None
+    with _LOCK, session_scope() as db:
+        row = db.get(HausdeppRematch, rematch_id)
+        if row is None or row.game_id != game.get("_id") or not _waiting(game):
+            return "hausdepp_rematch_closed"
+        reserved = _reservations(db, row, game)
+        free = game["_expected"] - len(game.get("_participants", []))
+        if (action == "hausdepp_add_cpu" and free <= len(reserved)
+                or action == "hausdepp_start_game" and reserved):
+            return "hausdepp_rematch_reserved_seats"
+    return None
 
 
 def rematch_private_consent(game: dict, user_id: int | None) -> bool:
@@ -331,7 +364,8 @@ def respond_to_invitation(invitation_id: str, user_id: int, *, accept: bool) -> 
         if not _waiting(game) or (invitation.status != "accepted" and utcnow() >= as_utc(rematch.expires_at)):
             raise RematchError("hausdepp_invitation_expired")
         reserved = _reservations(db, rematch, game) - {user_id}
-        free = game["_expected_connections"] - len(game.get("_players", []))
+        capacity = game["_expected_connections"] if reserved else game["_expected"]
+        free = capacity - len(game.get("_players", []))
         if free <= len(reserved):
             raise RematchError("hausdepp_rematch_full")
         invitation.status = "accepted"

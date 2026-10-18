@@ -1,29 +1,27 @@
 {
   "kind": "usability",
   "games": [
-    "hausdepp",
-    "zdwa",
-    "zilch"
+    "hausdepp"
   ],
-  "summary_de": "Klügere Hausdepp-Computer im Zweikampf und Kontotexte, die von allen unseren Spielen sprechen.",
-  "summary_en": "Smarter Hausdepp computers in a duel and account texts that speak of all our games.",
+  "summary_de": "Hausdepp: Favoriten, offene Warteräume, flexible CPU-Plätze und mehr Reaktionen.",
+  "summary_en": "Hausdepp: favourites, open waiting rooms, flexible CPU seats and more reactions.",
   "player_notes": {
     "de": {
-      "title": "3.8.2: Klügere Computer, ein Konto für alle Spiele",
+      "title": "3.9.0: Dein Tisch, deine Runde",
       "changes": [
-        "Hausdepp: Im Zweikampf kaufen die Computer ein Ass jetzt meist, statt es mit ihrer 10 abzuräumen, und übersehen gute Pakete seltener, sobald du über 50 Runden gespielt hast.",
-        "Anmeldung, Konto und Einstellungen sagen jetzt „alle unsere Spiele“, statt ZDWA, Zilch und Hausdepp einzeln aufzuzählen.",
-        "Die Spielanleitung erklärt Profilbild, Spielerauswahl, Benutzername, Lobby-Chat und Versionshinweise für alle Spiele statt nur für zwei.",
-        "Der Hinweis zu Spielerinnerungen in den Einstellungen passt jetzt, egal wie viele Spiele du für Push angemeldet hast."
+        "Eröffne deinen Favoriten oder wähle feste/offene Plätze, Schnellspiel/Turnier und optional ein Passwort.",
+        "Füge im Warteraum CPUs hinzu, entferne sie und starte selbst. Menschen ersetzen bei vollem Tisch einen CPU.",
+        "Speichere deine Besetzung als Favorit im Konto. Geschützte Favoriten fragen jedes Mal nach einem neuen Passwort.",
+        "Spieler rufen und Teilen bleiben griffbereit. Vier schnelle Reaktionen und ein Pfeil bieten zwölf Symbole inklusive 💩."
       ]
     },
     "en": {
-      "title": "3.8.2: Smarter computers, one account for all games",
+      "title": "3.9.0: Your table, your game",
       "changes": [
-        "Hausdepp: in a duel, computers now usually buy an ace instead of clearing it with their ten, and miss good packets less often once you have played over 50 rounds.",
-        "Sign-in, account and settings now say “all our games” instead of listing ZDWA, Zilch and Hausdepp one by one.",
-        "The rules explain profile pictures, player selection, usernames, lobby chat and release notes for every game, not just two.",
-        "The play reminder note in settings now fits however many games you have registered for push."
+        "Open your favourite or choose fixed/open seats, quick game/tournament and an optional password.",
+        "Add/remove CPUs in the waiting room and start explicitly. People replace a CPU when the table is full.",
+        "Save your setup as an account-wide favourite. Protected favourites ask for a fresh password each time.",
+        "Player calls and sharing stay handy. Four quick reactions and an arrow offer twelve symbols, including 💩."
       ]
     }
   }
