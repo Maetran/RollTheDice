@@ -17,6 +17,7 @@ from fastapi.responses import FileResponse, PlainTextResponse, RedirectResponse,
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
 from starlette.concurrency import run_in_threadpool
 
 from .abandoned_games import persist_abandoned_game
@@ -149,6 +150,7 @@ from .watten_pages import router as watten_pages_router
 from .watten_progress_pages import router as watten_progress_router
 from .watten_pwa import router as watten_pwa_router
 from .watten_readiness import WattenReadinessMiddleware
+from .watten_rematch import router as watten_rematch_router
 from .web_push import (
     GAME_INVITE_PUSH_ACCOUNT_COOLDOWN_SECONDS,
     claim_game_invite_push,
@@ -560,6 +562,7 @@ app.include_router(watten_pwa_router)
 app.include_router(watten_pages_router)
 app.include_router(watten_progress_router)
 app.include_router(watten_favorite_router)
+app.include_router(watten_rematch_router)
 
 LEGACY_PAGE_PATHS = {
     "/static/index.html": "/",
@@ -2228,6 +2231,20 @@ async def game_info_route(
     check: int = Query(default=0),
 ):
     game = games.get(game_id)
+    if game is None:
+        from .watten_access import watten_game_preview_enabled
+
+        identity = resolve_session(request) if watten_game_preview_enabled(request) else None
+        if identity is not None:
+            from .watten_http import _identity as watten_http_identity
+            from .watten_recovery import restore_owned_watten_game
+
+            identity = watten_http_identity(request)
+            try:
+                game = restore_owned_watten_game(game_id, identity.user_id)
+            except (ValueError, SQLAlchemyError) as exc:
+                raise HTTPException(status_code=503, detail="watten_storage_unavailable",
+                                    headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"}) from exc
     if game and game_type_from_state(game) == "watten":
         from .watten_http import detail_watten_http
 

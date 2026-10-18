@@ -30,7 +30,7 @@ async function player(browser, baseURL, language = 'de') {
   expect((await context.request.put('/api/auth/preferences/language', {
     headers: { 'X-CSRF-Token': user.csrf_token }, data: { preferred_language: language },
   })).ok()).toBeTruthy();
-  const traffic = { snapshot: null, commands: [], errors: [], call: {} };
+  const traffic = { snapshot: null, commands: [], errors: [], call: {}, social: [], lobby: [] };
   page.on('pageerror', error => traffic.errors.push(error.message));
   page.on('websocket', socket => {
     socket.on('framesent', frame => {
@@ -39,6 +39,8 @@ async function player(browser, baseURL, language = 'de') {
     socket.on('framereceived', frame => {
       try {
         const message = JSON.parse(String(frame.payload));
+        if (Object.keys(message).some(key => key.startsWith('watten_social_'))) traffic.social.push(message);
+        if (message.lobby_chat) traffic.lobby.push(message);
         if (message.scoreboard) {
           const snapshot = message.scoreboard;
           const engine = snapshot.engine;
@@ -60,16 +62,21 @@ async function player(browser, baseURL, language = 'de') {
   return { context, page, user, traffic };
 }
 
-async function create(players, { count = players.length, target = 3, reference = false, start = true } = {}) {
+async function create(players, { count = players.length, target = 3, reference = false, start = true, password, determination } = {}) {
   const host = players[0];
   await host.page.goto('/watten');
   const form = host.page.locator('[data-watten-create]');
   await expect(form).toBeVisible();
   await form.locator(`[name=count][value="${count}"] + span`).click();
+  if (determination) await form.locator(`[name=determination][value="${determination}"] + span`).click();
   await form.locator('[name=target]').selectOption(String(target));
-  if (reference) {
+  if (reference || password) {
     await form.locator('summary').click();
-    await form.locator('[name=show_rechter]').check();
+    if (reference) await form.locator('[name=show_rechter]').check();
+    if (password) {
+      await form.locator('[name=password_required] + span').click();
+      await form.locator('[name=password]').fill(password);
+    }
   }
   await form.locator('button[type=submit]').click();
   await expect(host.page).toHaveURL(/\/watten\/spiel\/[0-9a-f]{16}$/);
@@ -77,6 +84,7 @@ async function create(players, { count = players.length, target = 3, reference =
   const path = new URL(host.page.url()).pathname;
   for (let index = 1; index < players.length; index += 1) {
     await players[index].page.goto(path);
+    if (password) await players[index].page.locator('[data-watten-join] [name=password]').fill(password);
     await players[index].page.locator('[data-watten-join] button[type=submit]').click();
     await expect.poll(() => players[index].traffic.snapshot?.viewer?.participant_id).toBeTruthy();
   }
@@ -129,4 +137,15 @@ async function playOne(players) {
   await expect.poll(() => actor.traffic.snapshot.engine.opportunity).not.toBe(before);
 }
 
-module.exports = { player, create, action, normalCall, playOne };
+async function finishOpenMatch(players, options = {}) {
+  const path = await create(players, options);
+  await normalCall(players);
+  await playOne(players);
+  await action(players, 'bid');
+  await action(players, 'respond_hold', 'hold');
+  for (let index = 0; index < players.length * 5 && players[0].traffic.snapshot.engine.phase === 'play'; index += 1) await playOne(players);
+  for (const item of players) await expect(item.page.locator('[data-watten-match-result]')).toBeVisible();
+  return path;
+}
+
+module.exports = { player, create, action, normalCall, playOne, finishOpenMatch };

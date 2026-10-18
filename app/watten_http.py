@@ -20,13 +20,28 @@ from .watten_runtime import (
     snapshot_watten,
 )
 
+_HEADERS = {"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"}
+
 
 def _response(payload: dict) -> JSONResponse:
-    return JSONResponse(payload, headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"})
+    return JSONResponse(payload, headers=_HEADERS)
+
+
+def _identity(request):
+    try:
+        identity = require_watten_access(request, resolve_session(request))
+        expected = request.headers.getlist("X-Watten-Expected-Account-Id")
+        if expected and (len(expected) != 1 or not expected[0].isascii() or not expected[0].isdecimal()
+                         or expected[0] != str(identity.user_id)):
+            raise HTTPException(status_code=409, detail="watten_account_changed")
+        return identity
+    except HTTPException as exc:
+        exc.headers = {**(exc.headers or {}), **_HEADERS}
+        raise
 
 
 def create_watten_http(request, req) -> JSONResponse:
-    identity = require_watten_access(request, resolve_session(request))
+    identity = _identity(request)
     require_csrf(request, identity)
     recipe = recipe_from_payload(req.watten_recipe)
     game = new_watten_game(secrets.token_hex(8), req.name, req.mode)
@@ -37,12 +52,12 @@ def create_watten_http(request, req) -> JSONResponse:
 
 
 async def list_watten_http(request) -> JSONResponse:
-    identity = require_watten_access(request, resolve_session(request))
+    identity = _identity(request)
     entries = []
     for game in list(games.values()):
         if game.get("_game_type") == "watten":
             async with game_lock(game):
-                identity = require_watten_access(request, resolve_session(request))
+                identity = _identity(request)
                 expire_waiting_game(game)
                 if not game.get("_aborted") and not game.get("_completion_persisted"):
                     entries.append(lobby_entry(game, identity.user_id))
@@ -50,9 +65,9 @@ async def list_watten_http(request) -> JSONResponse:
 
 
 async def detail_watten_http(request, game: dict, passphrase, check: int) -> JSONResponse:
-    identity = require_watten_access(request, resolve_session(request))
+    identity = _identity(request)
     async with game_lock(game):
-        identity = require_watten_access(request, resolve_session(request))
+        identity = _identity(request)
         expire_waiting_game(game)
         return _detail_response(identity, game, passphrase, check)
 
@@ -66,4 +81,4 @@ def _detail_response(identity, game: dict, passphrase, check: int) -> JSONRespon
         return _response({"ok": True, "exists": True})
     if not verified:
         return _response({"exists": True, **lobby_entry(game, identity.user_id)})
-    return _response({"exists": True, **snapshot_watten(game, own.participant_id if own else None)})
+    return _response({"exists": True, **snapshot_watten(game, own.participant_id if own else None, viewer_account_id=identity.user_id)})

@@ -572,3 +572,91 @@ auch gestrichen während der Gabe erlaubt; Kartenhinweise bleiben verboten.
 Die frühere offene Planformulierung wurde durch diese Entscheidung ersetzt.
 Folgetisch-Backend/UI bleiben separat, bis ihre atomare Zwei-Checkpoint- und
 Neustart-/CPU-/Stale-Writer-Prüfung und die Browserreise integriert sind.
+
+
+### P6 integriert, P7 Folgetische und Kommunikation gezielt geprüft
+
+PR #56 ist normal nach `develop` integriert: Source
+`f3d50e235a0632806171225ee500892cb09535d2`, geprüfte Basis
+`782972bcec9e53a741e43ddb561cf32a4d614dc6`, Merge
+`a92258b628445a1ee88a0fe1afd18b1bf6c0acc8`. Alle sieben lokalen Prüfgruppen
+bestanden, 2268 Backendtests und 85.75% Coverage, sämtliche Browser-/Kontoteile.
+Source-Ownerstatus, PR-CI und Develop-CI grün. Merge-Tree exakt gleich Source;
+zulässige Nachweisübernahme geprüft. Kein Master-/Produktionsdeploy.
+
+P7 liegt separat auf `codex/watten-follow-up`. Die native Folgetischautorität
+verknüpft zwei Checkpoints atomar und verwendet den Source-Link als dauerhafte
+Identität. Stale Writer dürfen ihn nicht löschen; CPU-Memories sind vollständig.
+Neue Kommandonamen, Antwortverlust und Neustart erzeugen keinen zweiten Tisch
+und keine erneute Wertung. Eigene terminale/wartende Checkpoints können nach
+Registry-Retirement gelesen werden. Laufende Recovery gehört zum vollständigen
+Prozessstart samt CPU-Koordinator. Unabhängiges Review fand die zunächst fehlende
+Expected-Account-Prüfung vor Recovery und die laufende Target-Installation beim
+Retry; beide sind mit eigenen Regressionen korrigiert. Weitere Quellbefunde
+blieben aus. Der Source-Chatcache bleibt bei Folgetischinstallation erhalten,
+steht aber weiterhin nicht im Checkpoint.
+
+Die eigene Sitzreservierung lässt sich nach bewusstem Beitritt freigeben,
+ohne Sitz, Team, Start oder Wartefrist zu ändern. Zwei native Fälle prüfen
+Replay nach Antwortverlust/Neustart, Rejoin, fremdes Accountfeld und veraltete
+Room-Revision. Vier echte Menschen beenden eine offene Partie, geben alle
+Reservierungen frei und wählen andere Teams vor manuellem Start: ein isolierter
+Browserfall besteht in 8.7 Sekunden. DE/EN-Folgetischfälle mit absichtlich
+verlorener HTTP-Antwort bestehen, ohne zweite Erstellung oder veränderte XP.
+
+Tischchat und zwölf Emojis sind separate öffentliche Frames für aktuell
+zugelassene Menschen/Zuschauer. 100 aktuelle Nachrichten und begrenzte
+Accountkanäle sind nur flüchtig, kein Neustartverlauf. Frische Authentifizierung,
+Moderation, 5/30-Rate und Wiederholungen ohne zweites Ereignis verändern keine
+Engine, Ablaufzeit, Checkpoints oder XP. 52 integrierte Backendfälle bestanden
+in 17.06 Sekunden. Drei reale Browserfälle bestehen in 29.8 Sekunden:
+DE/EN-Gebotsstillstand, identische Handknoten, verlorene Chatbestätigung mit
+identischer Wiederholung, Emoji, 320×568/568×320-Entwurf, explizite geschützte
+Zuschauerzulassung und strikt öffentliche Eventfelder.
+
+Gemeinsamer Lobbychat ergänzt Migration0070 nach0069, erhält eingefrorene
+Empfängerkreise/Fremdschlüssel und lehnt ein verlustbehaftetes Downgrade ab.
+Lokale Gates liegen vor Auth-/Historyzugriff; fremde Produktionssockets sehen
+keine Wattenereignisse. Watten erhält ausschliesslich öffentliche Felder.
+23 neue/bestehende native Fälle bestehen in 10.06 Sekunden. Zwei reale
+DE/EN-Browserfälle bestehen in 5.7 Sekunden: ausdrückliches Öffnen und Opt-in,
+späterer Beitritt ohne fremden Altverlauf, Reload des eigenen Verlaufs,
+Hausdepp-Dialog samt Produktlabel, deaktivierter Empfänger ohne nachträgliches
+Nachliefern, kleine Ansichten und synchrones Pagehide. Vier Bildschirmbilder
+wurden tatsächlich visuell geprüft. PostgreSQL-DDL wurde kompiliert, keine
+laufende PostgreSQL-Konkurrenzabnahme behauptet.
+
+Die neuen Tests hatten anfänglich eigene Annahmefehler: Ansage-ACKs müssen vor
+einem Chat-only-Messintervall abgeschlossen sein; ungeschützte Zuschauerlinks
+melden direkt an; eine erfolgreiche Folgetischerstellung navigiert selbst.
+Diese Fahrer wurden an das tatsächliche Verhalten angepasst. Ein isolierter
+Vierer-API-Baselineversuch endete mit Socket-Hangup ohne Serverfehlerprotokoll;
+der unveränderte Fall bestand auf eigenem neuen Port. Keine pauschalen Retries
+oder Produktlimitänderungen. Ein neuer vollständiger P7-Nachweis steht noch aus.
+
+Tischdeko ist noch im eigenen Autorenpaket. Freunde/Startmeldungen laufen im
+separaten Backendpaket; Push/Worker, Reminder, Tour, Einladungsautorität,
+Monitoring und physische Geräteabnahme bleiben ausdrücklich offen. Alle81 IDs
+bleiben verbindlich. Claude erreicht laut Owner-Screenshot100% Sitzung/92%
+Woche; vor Reset22:20 Europe/Zurich keine neue Anfrage. Codex zuletzt70%
+Wochenverbrauch,30% verfügbar. Restbudget wird für konkrete Pakete vorbereitet.
+
+
+### P7 Deko – gezielter Abschluss vor Vollprüfung
+
+Autorenquelle de40ce777d208be2180ae5b48807a2939cc596a4 als2cef118
+integriert; bestehende Lobby-/API-Imports und alle DE/EN-Kataloge bei den
+Quellkonflikten erhalten. Unabhängiges Review schloss den frisch eintreffenden
+Pointer-Tap nach Drag ohne Compatibilityclick; eigener Regressionstest. Acht
+vorhandene Atlas-Gegenstände, ganze geschützte64px-Fläche, reservierte Hand,
+Deko-Ecke, Konsum/Refill/Spill/Wischen, Tastatur/Drag und vollständiger Cleanup.
+Keine Backend-, CPU-, Storage- oder Spielkommandowirkung.
+
+Zwei reale Browserfälle DE/EN bestehen in8.7s, einmal Reduced Motion, einmal
+normale Spilldarstellung: wartender Tisch zu laufender Partie, Getränke leer
+und nachgefüllt, Chips gegessen, Pfütze aufgewischt, Rotation320×568/568×320,
+Drag in Handbereich abgewiesen, gleiche Handknoten/Enginegelegenheit/null
+Spielkommandos, Socialdialog versteckt Deko und Pagehide leert den Tisch.
+Zwei Bildschirmbilder tatsächlich visuell geprüft.67 integrierte Nodefälle
+für Deko/Lobby/Social/Rematch/API bestanden in113.9ms. Diese gezielten Belege
+ersetzen den folgenden vollständigen Nachweis nicht.

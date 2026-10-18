@@ -1,10 +1,10 @@
 {
-  "version": "3.14.0",
+  "version": "3.15.0",
   "bump": "minor",
   "date": "2026-10-18",
-  "previous_revision": "782972bcec9e53a741e43ddb561cf32a4d614dc6",
+  "previous_revision": "a92258b628445a1ee88a0fe1afd18b1bf6c0acc8",
   "summary": {
-    "de": "Lokalen Watten-Fortschritt, Erfolge, Wirtshaustitel und Ranglisten verbinden.",
-    "en": "Connect local Watten progress, achievements, pub titles and standings."
+    "de": "Watten-Folgetische, Tischchat, gemeinsame Lobby und lokale Tischdeko verbinden.",
+    "en": "Connect Watten next tables, table chat, the shared lobby and local decorations."
   }
 }
