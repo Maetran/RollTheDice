@@ -250,9 +250,10 @@ def admit_account(game: dict, identity, revision: int, protection: object) -> tu
     return candidate, admission.participant_id
 
 
-def resume_account(game: dict, account: int, player: str) -> None:
+def resume_account(game: dict, account: int, player: str, *, lifecycle_revision: object) -> None:
     """A fresh authenticated deliberate return restores only its own presence."""
     runtime = game["_watten"]
+    _require_lifecycle(runtime, {"lifecycle_revision": lifecycle_revision})
     if type(account) is not int or not any(item.account_id == account and item.participant_id == player and item.seat is not None for item in runtime.room.members):
         raise ValueError("watten_actor_not_bound")
     if player in runtime.absent:

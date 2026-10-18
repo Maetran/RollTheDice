@@ -111,7 +111,7 @@ async def _session_action(session, data: dict) -> None:
         session.spectator_id, session.is_spectator = spectator_id, True
         await websocket.send_json({"spectator_id": spectator_id, "spectator": True, "scoreboard": snapshot_watten(game)})
         return
-    if set(data) - {"action", "revision", "pass", "passphrase", "player_id", "resume"}:
+    if set(data) - {"action", "revision", "pass", "passphrase", "player_id", "resume", "lifecycle_revision"}:
         raise ValueError("watten_invalid_command")
     if "resume" in data and (action != "rejoin_game" or type(data["resume"]) is not bool):
         raise ValueError("watten_invalid_command")
@@ -125,7 +125,7 @@ async def _session_action(session, data: dict) -> None:
         raise ValueError("watten_stale_room_revision")
     candidate, player = admit_account(game, identity, revision, data.get("pass", data.get("passphrase")))
     if data.get("resume") is True:
-        resume_account(candidate, identity.user_id, player)
+        resume_account(candidate, identity.user_id, player, lifecycle_revision=data.get("lifecycle_revision"))
     record = next(item for item in candidate["_players"] if item["id"] == player)
     previous = record.get("ws")
     record["ws"] = websocket
@@ -197,7 +197,7 @@ async def _handle_locked(session, action: str, data: dict) -> bool:
                                    for kind, seat, value in sorted(fresh))
         persist_watten_game(candidate)
         _install(game, candidate)
-    leaving = action == "watten_leave" and session.player_id in game["_watten"].absent
+    leaving = not replayed and action == "watten_leave" and session.player_id in game["_watten"].absent
     if leaving:
         # Revoke this transport synchronously before notifying any peer. Its
         # queued messages cannot deliberate-return or play after the leave.
@@ -205,8 +205,10 @@ async def _handle_locked(session, action: str, data: dict) -> bool:
     # Private feedback and delivery acknowledgements deliberately do not pass
     # through global broadcast/touch or publish a room revision/timestamp.
     await broadcast_watten(game, participant_ids=private, public_call_events=public_call_events)
-    if leaving:
-        await websocket.send_json({"scoreboard": snapshot_watten(game, session.player_id)})
+    current = _identity(websocket)
+    if current is None or current.user_id != identity.user_id:
+        await websocket.close(code=1008)
+        return True
     await websocket.send_json({"watten_command": ack})
     if action == "leave_waiting_game" or leaving:
         await websocket.close(code=1000)

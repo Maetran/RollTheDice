@@ -655,7 +655,8 @@ def test_multiple_deliberate_absences_restore_frozen_bid_until_explicit_account_
     assert snapshot_watten(game) == before_public
     assert new_sessions[1].websocket.messages == new_sessions[3].websocket.messages == []
     for session in new_sessions[:2]:
-        asyncio.run(_handle_locked(session, "rejoin_game", {"action": "rejoin_game", "revision": game["_watten"].room.revision, "resume": True}))
+        asyncio.run(_handle_locked(session, "rejoin_game", {"action": "rejoin_game", "revision": game["_watten"].room.revision,
+                                                           "resume": True, "lifecycle_revision": game["_watten"].lifecycle_revision}))
     assert game["_watten"].absent == () and game["_watten"].lifecycle_revision == 4
     assert not snapshot_watten(game, new_sessions[0].player_id)["can_resume"]
     assert game["_watten"].engine.bid_state == frozen.bid_state
@@ -729,3 +730,62 @@ def test_only_native_locked_waiting_deadline_expires_and_running_pause_has_no_ti
     with session_scope() as db:
         assert db.scalar(select(func.count(AbandonedGame.id))) == 0
         assert db.scalar(select(func.count(CompletedGame.id))) == 0
+
+
+def test_delayed_resume_cannot_clear_later_absence_and_cached_leave_never_detaches_plain_return(server):
+    game_id, owners, sessions = local_started(server, count_players=2)
+    game = games[game_id]
+    owner = owners[0]
+    leave = room_command(game_id, "watten_leave", "first-absence")
+    assert asyncio.run(_handle_locked(sessions[0], "watten_leave", leave))
+    delayed = GameSocketSession(CapturingSocket(owner), game, owner[0])
+    first_return = {"action": "rejoin_game", "revision": game["_watten"].room.revision,
+                    "resume": True, "lifecycle_revision": game["_watten"].lifecycle_revision}
+    plain = GameSocketSession(CapturingSocket(owner), game, owner[0])
+    asyncio.run(_handle_locked(plain, "rejoin_game", {"action": "rejoin_game", "revision": game["_watten"].room.revision}))
+    assert game["_watten"].absent == (plain.player_id,)
+    assert not asyncio.run(_handle_locked(plain, "watten_leave", leave))
+    assert plain.websocket.closes == []
+    assert next(item for item in game["_players"] if item["id"] == plain.player_id)["ws"] is plain.websocket
+    with pytest.raises(ValueError, match="watten_stale_lifecycle"):
+        asyncio.run(_handle_locked(plain, "rejoin_game", {"action": "rejoin_game", "revision": game["_watten"].room.revision, "resume": True}))
+    asyncio.run(_handle_locked(plain, "rejoin_game", first_return))
+    second_leave = room_command(game_id, "watten_leave", "second-absence")
+    assert asyncio.run(_handle_locked(plain, "watten_leave", second_leave))
+    frozen = game["_watten"]
+    assert frozen.lifecycle_revision == 3 and frozen.absent == (plain.player_id,)
+    with pytest.raises(ValueError, match="watten_stale_lifecycle"):
+        asyncio.run(_handle_locked(delayed, "rejoin_game", first_return))
+    assert game["_watten"] == frozen
+    assert next(item for item in game["_players"] if item["id"] == plain.player_id)["ws"] is None
+
+
+def test_logout_during_awaited_peer_leave_fanout_cannot_emit_late_private_snapshot_or_ack(server, monkeypatch):
+    game_id, owners, sessions = local_started(server)
+    advance_to_play(game_id, sessions, count())
+    for session in sessions:
+        session.websocket.messages.clear()
+    sender = sessions[0]
+    original_send = sessions[1].websocket.send_json
+
+    async def scenario():
+        entered, release = asyncio.Event(), asyncio.Event()
+
+        async def delayed_peer(message):
+            entered.set()
+            await release.wait()
+            await original_send(message)
+
+        monkeypatch.setattr(sessions[1].websocket, "send_json", delayed_peer)
+        leave = room_command(game_id, "watten_leave", "logout-during-leave")
+        task = asyncio.create_task(_handle_locked(sender, "watten_leave", leave))
+        await asyncio.wait_for(entered.wait(), timeout=2)
+        logout(owners[0][1].split("=", 1)[1])
+        login(request_for(host="localhost:8127", origin=LOCAL), owners[1][0].username, "runtime-account-password-123")
+        release.set()
+        assert await asyncio.wait_for(task, timeout=2)
+
+    asyncio.run(scenario())
+    assert sender.websocket.messages == []
+    assert sender.websocket.closes[-1][0] == 1008
+    assert games[game_id]["_watten"].absent == (sender.player_id,)
