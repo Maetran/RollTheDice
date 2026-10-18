@@ -177,23 +177,33 @@ class LadinischRevealEvent:
 
 def ladinisch_reveal_events(
     deal: DealtCards, *, dealer: int, rules: ComparisonRules, blind: bool,
+    shown_seats: frozenset[int],
 ) -> tuple[LadinischRevealEvent, ...]:
     """In blind Ladinisch emit thanks only for an actual shown Rechter.
 
     A Rechter elsewhere in a private hand cannot cause this public event. This
     is derived from the owner's explicit reveal exception, not general permission
-    to disclose bottom cards, hidden hands, strike or trump.
+    to disclose bottom cards, hidden hands, strike or trump. The trusted engine
+    supplies accepted actual shows; merely having dealt the cards is not a
+    reveal. Both original cards must have been shown before the call is known.
     """
     call = ladinisch_call(deal, dealer=dealer)
     if not isinstance(rules, ComparisonRules) or rules.call != call:
         raise WattenRuleError("watten_reveal_call_mismatch")
     if type(blind) is not bool:
         raise WattenRuleError("watten_invalid_blind_option")
+    roles = round_roles(len(deal.hands), dealer, determination="ladinisch")
+    inspecting_seats = frozenset((roles.dealer, roles.clockwise_next))
+    if (type(shown_seats) is not frozenset
+            or any(type(seat) is not int for seat in shown_seats)
+            or not shown_seats <= inspecting_seats):
+        raise WattenRuleError("watten_invalid_shown_seats")
     if not blind:
         return ()
     if len(deal.hands) != 4:
         raise WattenRuleUnready("watten_blind_requires_four_players")
-    roles = round_roles(len(deal.hands), dealer, determination="ladinisch")
+    if shown_seats != inspecting_seats:
+        return ()
     return tuple(
         LadinischRevealEvent(seat=seat)
         for seat in (roles.dealer, roles.clockwise_next)

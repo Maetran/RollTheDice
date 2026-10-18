@@ -95,9 +95,9 @@ class WattenRolesAndCallsTestCase(unittest.TestCase):
     def test_reveal_thanks_only_for_actual_shown_rechter(self):
         deal = deal_with_bottoms(["bells-K", "hearts-K", "leaves-8", "acorns-A"])
         rules = ComparisonRules(ladinisch_call(deal, dealer=0))
-        events = ladinisch_reveal_events(deal, dealer=0, rules=rules, blind=True)
+        events = ladinisch_reveal_events(deal, dealer=0, rules=rules, blind=True, shown_seats=frozenset((0, 1)))
         self.assertEqual([(event.seat, event.message_key) for event in events], [(0, "watten_thanks")])
-        self.assertEqual(ladinisch_reveal_events(deal, dealer=0, rules=rules, blind=True), events)
+        self.assertEqual(ladinisch_reveal_events(deal, dealer=0, rules=rules, blind=True, shown_seats=frozenset((0, 1))), events)
         with self.assertRaises(FrozenInstanceError):
             events[0].seat = 1
         # Merely carrying the Rechter somewhere else does not disclose it.
@@ -105,26 +105,38 @@ class WattenRolesAndCallsTestCase(unittest.TestCase):
         self.assertIn("bells-K", hidden_right.hands[3])
         self.assertNotIn("bells-K", hidden_right.bottom_cards)
         hidden_rules = ComparisonRules(ladinisch_call(hidden_right, dealer=0))
-        self.assertEqual(ladinisch_reveal_events(hidden_right, dealer=0, rules=hidden_rules, blind=True), ())
+        self.assertEqual(ladinisch_reveal_events(hidden_right, dealer=0, rules=hidden_rules, blind=True, shown_seats=frozenset((0, 1))), ())
+
+    def test_thanks_requires_both_accepted_shows_and_rejects_unrelated_reveal_facts(self):
+        deal = deal_with_bottoms(["bells-K", "hearts-K", "leaves-8", "acorns-A"])
+        rules = ComparisonRules(ladinisch_call(deal, dealer=0))
+        for shown in (frozenset(), frozenset((0,)), frozenset((1,))):
+            with self.subTest(shown=shown):
+                self.assertEqual(ladinisch_reveal_events(
+                    deal, dealer=0, rules=rules, blind=True, shown_seats=shown,
+                ), ())
+        for shown in ({0, 1}, frozenset((True,)), frozenset((2,)), frozenset((0, 1, 3))):
+            with self.subTest(shown=shown), self.assertRaisesRegex(WattenRuleError, "invalid_shown_seats"):
+                ladinisch_reveal_events(deal, dealer=0, rules=rules, blind=True, shown_seats=shown)
 
     def test_weli_strike_shown_by_successor_is_rechter_and_thanks_does_not_reveal_call(self):
         deal = deal_with_bottoms(["hearts-8", WELI, "leaves-A", "acorns-9"])
         rules = ComparisonRules(ladinisch_call(deal, dealer=0))
-        events = ladinisch_reveal_events(deal, dealer=0, rules=rules, blind=True)
+        events = ladinisch_reveal_events(deal, dealer=0, rules=rules, blind=True, shown_seats=frozenset((0, 1)))
         self.assertEqual(events[0].seat, 1)
         self.assertFalse(hasattr(events[0], "card"))
         self.assertFalse(hasattr(events[0], "call"))
         with self.assertRaisesRegex(WattenRuleError, "reveal_call_mismatch"):
-            ladinisch_reveal_events(deal, dealer=0, rules=ComparisonRules(WattenCall("8", "bells")), blind=True)
+            ladinisch_reveal_events(deal, dealer=0, rules=ComparisonRules(WattenCall("8", "bells")), blind=True, shown_seats=frozenset((0, 1)))
 
     def test_thanks_is_not_invented_for_open_play_or_unconfirmed_blind_two(self):
         deal = deal_with_bottoms(["bells-K", "hearts-K"])
         rules = ComparisonRules(ladinisch_call(deal, dealer=0))
-        self.assertEqual(ladinisch_reveal_events(deal, dealer=0, rules=rules, blind=False), ())
+        self.assertEqual(ladinisch_reveal_events(deal, dealer=0, rules=rules, blind=False, shown_seats=frozenset((0, 1))), ())
         with self.assertRaisesRegex(WattenRuleUnready, "blind_requires_four"):
-            ladinisch_reveal_events(deal, dealer=0, rules=rules, blind=True)
+            ladinisch_reveal_events(deal, dealer=0, rules=rules, blind=True, shown_seats=frozenset((0, 1)))
         with self.assertRaisesRegex(WattenRuleError, "invalid_blind_option"):
-            ladinisch_reveal_events(deal, dealer=0, rules=rules, blind=1)
+            ladinisch_reveal_events(deal, dealer=0, rules=rules, blind=1, shown_seats=frozenset((0, 1)))
 
 
 class WattenCardComparisonTestCase(unittest.TestCase):
