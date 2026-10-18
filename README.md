@@ -62,6 +62,13 @@ Owner gelieferten UltraWatten-Bilder und Beobachtungen der Live-Oberfläche.
 Sie dienen als Ideen für die Bedienung, ohne 1:1-Kopie; die eigenen
 Hausdepp-Kartendesigns bleiben gesetzt.
 
+Die [Hausdepp-Retrospektive](docs/HAUSDEPP_RETROSPECTIVE_2026-10-18.md)
+untersucht die Erstimplementierung und 20 spätere PRs. Alle 81 Befunde und
+Prüfverträge sind mit konkreter Vorbeugung und Abnahme in den
+[Watten-Umsetzungsplan](docs/WATTEN_IMPLEMENTATION_PLAN.md) übertragen:
+Regeln, CPUs, Teamwahl, Konto, Einladungen, Wiederaufnahme, Darstellung und
+Auslieferung. Offene Regelentscheidungen bleiben vor Entwicklungsbeginn zu klären.
+
 **English:** Watten is the next planned game: usually four-player Ladinisch
 to 11 points, with private bottom-card inspection by the dealer and the next
 clockwise player. It will reuse the same card designs as Hausdepp. The
@@ -81,6 +88,13 @@ The [design references](docs/WATTEN_DESIGN_REFERENCES.md) preserve the owner's
 UltraWatten screenshots and observations of the live interface. They provide
 interaction ideas for an independent design; the existing Hausdepp card artwork
 remains required.
+
+The [Hausdepp retrospective](docs/HAUSDEPP_RETROSPECTIVE_2026-10-18.md)
+examines the first implementation and 20 later PRs. All 81 findings and
+contracts have concrete preventive actions and acceptance scenarios in the
+[Watten implementation plan](docs/WATTEN_IMPLEMENTATION_PLAN.md), covering
+rules, CPUs, team selection, accounts, invitations, recovery, presentation and
+delivery. Outstanding rule decisions must be settled before development.
 
 ## Hausdepp — öffentlicher V3-Start / public V3 launch
 

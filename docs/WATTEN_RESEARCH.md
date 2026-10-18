@@ -10,6 +10,15 @@ Die Fortsetzung vom 17.10.2026 zur
 `codex/watten-design-references`, begonnen vom aktuellen `origin/develop`.
 Die ursprüngliche Recherchehistorie bleibt auf ihrem Branch erhalten.
 
+**Fortsetzung 18.10.2026:** Der
+[Hausdepp-Deep-Dive](HAUSDEPP_RETROSPECTIVE_2026-10-18.md) prüft die erste
+Implementierung und 20 Folge-PRs gegen `origin/develop` (`80bc42d`). Alle
+81 Befunde und Prüfverträge sind vollständig in den
+[Umsetzungsplan](WATTEN_IMPLEMENTATION_PLAN.md) übertragen: mit Beleg,
+Vorbeugung, Arbeitspaket und Abnahme. Historische Fehler, spätere Wünsche und
+heutige Deckungslücken bleiben getrennt. Die offenen Regelentscheidungen
+aus dem Regelabgleich bleiben Voraussetzung; es wurde keine Entwicklung begonnen.
+
 ## 1. Vorgaben aus dem Auftrag
 
 Watten wird das nächste Spiel der Suite. Für die erste Planung gilt die vom
