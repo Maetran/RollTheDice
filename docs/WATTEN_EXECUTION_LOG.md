@@ -359,7 +359,9 @@ eine asymmetrische Speichergrössengrenze, unvollständige generische Löschung
 eines terminalen Wattenresultats und einen fehlerhaften Fallback beschädigter
 nativer Checkpoints in den Legacy-Lader. Die Korrekturen behalten strikte
 Schemata, erhalten beschädigte Zeilen und sperren die noch nicht atomar
-ausgearbeitete Resultatlöschung ausdrücklich. Der finale breite Review läuft.
+ausgearbeitete Resultatlöschung ausdrücklich. Der finale breite Quellreview
+hat `c55ad80` ohne weitere handlungsrelevante Befunde freigegeben. Er umfasst
+keinen echten PostgreSQL-Serverlauf oder eine öffentliche Produktfreigabe.
 
 Lead-Gegenlauf: **37 Tests** in `tests/test_watten_runtime.py` und
 `tests/test_watten_results_migration.py`, seriell `-n 0`, **11.95 Sekunden**.
