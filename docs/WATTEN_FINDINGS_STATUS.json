@@ -252,7 +252,8 @@
       ],
       "status": "partial",
       "evidence": [
-        "Share/rematch, personal invitations and general calls have separate backend boundaries. Personal accepted consent bypasses only the exact target password. General Watten delivery remains unavailable; its audience, frontend and end-to-end dispatch remain open."
+        "Share/rematch, personal invitations and general calls have separate backend boundaries. Personal accepted consent bypasses only the exact target password. General Watten delivery remains unavailable; its audience, frontend and end-to-end dispatch remain open.",
+        "Migration0074 and a separate durable general-call foundation validate actual seated humans, reservations/capacity, strict native identity and atomic600s room/60s account barriers. A real SQLite snapshot-upgrade race was reproduced and fixed;139 composed backend tests plus11 subtests pass. Public calls still return503 before claims/transport; no audience or delivery activation."
       ]
     },
     {

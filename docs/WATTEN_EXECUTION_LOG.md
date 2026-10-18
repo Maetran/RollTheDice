@@ -744,3 +744,33 @@ PR57 passed the complete same-source rerun and is merged into develop with
 matching source/merge trees and green CI. The following suite backends and
 validated worker remain local groundwork: their native interfaces, actual
 notification delivery and physical-device acceptance are still open.
+
+
+### Gemeinsame Suite-Backendprüfung mit dauerhaft gesperrtem Spielerruf
+
+Der vorbereitete allgemeine Spielerruf besitzt jetzt eine eigene additive
+0074-Claimtabelle und atomare600s-Tisch-/60s-Kontosperren. Nur tatsächlich
+sitzende Menschen in einem gespeicherten öffentlichen Warteraum mit echter
+unreservierter Admission-/Sitzkapazität erfüllen die Eligibility. Die native
+HTTP-Route endet weiterhin ausdrücklich mit503 vor Claim/Versand.
+
+Die gemeinsame Runde fand eine reale SQLite-Read-zu-Write-Sperre im Zwei-
+Thread-Claim. Eine frische SQLite-Transaktion reserviert nun den Writer vor
+Snapshot/Savepoint; PG-Locks, JSON-CAS, Timeout und Retryzahl bleiben erhalten.
+Die deterministische Regression war vorher rot;18 koordinierte Writerduelle
+bestanden danach. Bereits laufende Caller-Transaktionen bleiben unter dessen
+Kontrolle. Frischer Caller und Caller mit vorhandener Useränderung behalten
+jeweils den äusseren Rollbackschutz; beide Varianten unabhängig erneut grün.
+
+Der kombinierte Stand aus Touren, Freunden, Einladungen, Gerätekontext,
+Monitoring, Spieltagen, Ruf-Claims, PWA und bestehendem WebPush besteht
+**139 Tests plus11 Unterfälle in41.67s**. Nach dem reinen Testzusatz bestanden
+beide Rollbackvarianten separat erneut. Ruff/Bandit grün; Logs unter
+`test-results/watten-suite-services/`. Das sind gezielte Backendbelege,
+kein neuer vollständiger Pushnachweis. Noch kein PR oder Versand für dieses
+Folgepaket. Claude-Frontendarbeit nutzt eine separate saubere Arbeitsbasis.
+
+The composed suite backends passed139 focused tests and11 subtests after a
+reproduced SQLite concurrency fix; both fresh/existing transaction rollback
+cases remain tested. General Watten push is still unavailable. Native UI,
+full push verification and physical acceptance remain pending.
