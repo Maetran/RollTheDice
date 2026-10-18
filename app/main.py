@@ -640,13 +640,15 @@ async def response_cache_policy(request: Request, call_next):
         "/static/offline-play.html",
         "/static/dashboard-denied.html",
         "/static/watten-account.html",
+        "/static/watten-game.html",
+        "/static/watten-rules.html",
         "/static/watten-email-action.html",
         "/static/watten-manifest.webmanifest",
         "/static/watten-manifest-en.webmanifest",
         "/static/watten-sw.js",
     }:
         headers = {"Cache-Control": "no-store"}
-        if zilch_host or static_guard_path.startswith("/static/hausdepp"):
+        if zilch_host or static_guard_path.startswith(("/static/hausdepp", "/static/watten")):
             headers["X-Robots-Tag"] = "noindex, nofollow"
         return Response(status_code=404, headers=headers)
     legacy_target = _legacy_page_target(request)
