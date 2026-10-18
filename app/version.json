@@ -1,10 +1,10 @@
 {
-  "version": "3.12.1",
+  "version": "3.12.2",
   "bump": "patch",
   "date": "2026-10-18",
-  "previous_revision": "766bcb3f0aa21593673b0f47112caa15e17856b3",
+  "previous_revision": "da66185aa77a784cabc09a97d9e471eea6603aba",
   "summary": {
-    "de": "Zuverlässiger Spielwechsel und geschlossene Watten-Kontogrundlage.",
-    "en": "Reliable game switching and a closed Watten account foundation."
+    "de": "Interne Watten-Regelengine und Tischgrundlagen vorbereiten.",
+    "en": "Prepare internal Watten rules and table foundations."
   }
 }
