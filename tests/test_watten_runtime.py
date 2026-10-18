@@ -467,17 +467,62 @@ def test_replaced_socket_cannot_reclaim_seat_and_revoked_account_cannot_read_or_
     assert game["_watten"] == previous
 
 
-def test_cpu_seat_manual_start_has_no_autodriver_and_old_waiting_leave_has_no_forfeit(server):
-    game_id, _owners, sessions = local_started(server, count_players=2, cpus=(1,))
+def test_cpu_seat_requires_manual_start_then_own_actions_and_running_leave_has_no_forfeit(server, monkeypatch):
+    from types import SimpleNamespace
+
+    from app import watten_cpu_runtime as runner
+    from app import watten_runtime as runtime_module
+
+    monkeypatch.setattr(runtime_module, "_RANDOM", SimpleNamespace(randrange=lambda _count: 1, shuffle=lambda _deck: None))
+    monkeypatch.setattr(runner, "THINK_MIN_SECONDS", 0.01)
+    monkeypatch.setattr(runner, "THINK_MAX_SECONDS", 0.01)
+    owner = account("ManualCpuHost")
+    game_id = create_game(server, owner, cpus=(1,))
     game = games[game_id]
-    assert game["_started"] and game["_watten"].room.cpus[0].seat == 1
-    assert snapshot_watten(game)["capabilities"] == {"cpu_autoplay": False}
-    previous = game["_watten"]
-    with pytest.raises(ValueError, match="watten_running_leave_unsupported"):
-        apply_runtime_action(game, sessions[0].auth_identity.user_id, sessions[0].player_id,
-                             room_command(game_id, "leave_waiting_game", "leave"))
-    assert game["_watten"] == previous
-    assert restore_watten_json(json.dumps(serializable_game_state(game)))["_watten"] == previous
+    candidate, player = admit_account(game, owner[0], game["_watten"].room.revision, None)
+    socket = CapturingSocket(owner)
+    next(item for item in candidate["_players"] if item["id"] == player)["ws"] = socket
+    persist_watten_game(candidate)
+    game.update(candidate)
+    human = GameSocketSession(socket, game, owner[0], player_id=player)
+
+    async def scenario():
+        try:
+            await _handle_locked(human, "watten_take_seat", room_command(game_id, "watten_take_seat", "seat", seat=0, team=None))
+            await asyncio.sleep(0.03)
+            assert game["_watten"].engine is None and not game["_started"]
+            await _handle_locked(human, "watten_start", room_command(game_id, "watten_start", "start"))
+            assert snapshot_watten(game)["capabilities"] == {"cpu_autoplay": True}
+            assert game["_watten"].engine.phase == "strike"
+            await asyncio.sleep(0.03)
+            assert game["_watten"].engine.phase == "strike"  # the CPU cannot announce for its human host
+            await _handle_locked(human, "watten_command", engine_command(game_id, "announce_strike", "strike", "7"))
+            for _ in range(100):
+                if game["_watten"].engine.phase == "play":
+                    break
+                await asyncio.sleep(0.002)
+            assert game["_watten"].engine.phase == "play"  # CPU announces only its own colour
+            state = game["_watten"].engine
+            assert state.play.current_player_id == player
+            await _handle_locked(human, "watten_command", engine_command(game_id, "play_card", "lead", legal_cards(state.play, state.bid_state, player)[0]))
+            opportunity = game["_watten"].engine.opportunity
+            for _ in range(100):
+                if game["_watten"].engine.opportunity > opportunity:
+                    break
+                await asyncio.sleep(0.002)
+            assert game["_watten"].engine.opportunity > opportunity  # genuine scheduled CPU proposal
+            previous = game["_watten"]
+            with pytest.raises(ValueError, match="watten_running_leave_unsupported"):
+                apply_runtime_action(game, owner[0].user_id, player, room_command(game_id, "leave_waiting_game", "old-leave"))
+            assert game["_watten"] == previous
+            await _handle_locked(human, "watten_leave", room_command(game_id, "watten_leave", "pause"))
+            assert game["_watten"].absent == (player,) and game["_watten"].engine == previous.engine
+            assert not game["_completion_persisted"]
+            assert restore_watten_json(json.dumps(serializable_game_state(game)))["_watten"] == game["_watten"]
+        finally:
+            await runner.stop_cpu_runners()
+
+    asyncio.run(scenario())
 
 
 def test_strict_codec_rejects_unknown_duplicate_nonfinite_fields_and_private_repr(server):

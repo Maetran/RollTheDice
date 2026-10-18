@@ -269,6 +269,55 @@ def test_normal_three_cpu_solo_announces_both_and_only_its_authorized_calls_reac
     asyncio.run(scenario())
 
 
+def test_cpu_partner_advises_privately_before_its_real_designated_bid_response(server, ready, monkeypatch):
+    deterministic_dealer(monkeypatch)
+    game_id, _owners, sessions = local_started(server, count_players=4, cpus=(1, 2, 3))
+    game, human = games[game_id], sessions[0]
+    complete_call(game_id)
+    numbers = count(100)  # call setup already used engine-0/engine-1 command IDs
+    # Establish a legal first-card bidding opportunity for the human. The
+    # response and private advice below must come from actual runner decisions.
+    for _ in range(3):
+        player, command = next_move(game_id, numbers)
+        assert player != human.player_id
+        accepted_engine(game, player, command)
+    assert game["_watten"].engine.play.current_player_id == human.player_id
+    waits = iter((0.05, 0.01, 0.01, 0.01))
+    monkeypatch.setattr(runner, "_RANDOM", SimpleNamespace(uniform=lambda _low, _high: next(waits, 0.01)))
+    captured = []
+    real_apply, real_decide = runtime_module._apply_engine_command, runner.decide
+
+    def checked(view, memory, **kwargs):
+        assert view == cpu_view(game["_watten"].engine, player_id=memory.player_id)
+        return real_decide(view, memory, **kwargs)
+
+    def applied(current, actor, command):
+        result = real_apply(current, actor, command)
+        captured.append((command.kind, current["_watten"].engine.opportunity,
+                         result[0]["_watten"].engine.opportunity, result[3]))
+        return result
+
+    monkeypatch.setattr(runner, "decide", checked)
+    monkeypatch.setattr(runtime_module, "_apply_engine_command", applied)
+
+    async def scenario():
+        try:
+            await _handle_locked(human, "watten_command", engine_command(game_id, "bid", "human-bid"))
+            await until(lambda: any(kind == "respond" for kind, *_rest in captured))
+            advice = next(item for item in captured if item[0] == "partner_feedback")
+            assert advice[1] == advice[2]
+            assert advice[3] == {game["_watten"].engine.recipe.seats[index] for index in (1, 3)}
+            assert [kind for kind, *_rest in captured].index("partner_feedback") < [kind for kind, *_rest in captured].index("respond")
+            # The human opposite party receives only freshly projected public
+            # state; the CPU pair's private advice never enters that DTO.
+            assert all(not message["scoreboard"]["engine"]["feedback"]
+                       for message in human.websocket.messages if "scoreboard" in message)
+        finally:
+            await runner.stop_cpu_runners()
+
+    asyncio.run(scenario())
+
+
 def test_shutdown_and_replaced_registry_cancel_or_reject_late_old_timer(server, ready, monkeypatch):
     deterministic_dealer(monkeypatch)
     monkeypatch.setattr(runner, "THINK_MIN_SECONDS", 0.1)
@@ -299,7 +348,41 @@ def test_shutdown_and_replaced_registry_cancel_or_reject_late_old_timer(server, 
     asyncio.run(scenario())
 
 
-@pytest.mark.skipif(not runner.CPU_POLICY_READY, reason="Separate policy review/fixes still pending")
+def test_host_next_deal_rotates_roles_and_cpu_memory_without_reusing_old_call_or_plays(server, ready, monkeypatch):
+    deterministic_dealer(monkeypatch)
+    game_id, _owners, sessions = local_started(server, count_players=2, cpus=(1,), target=11)
+    game, human = games[game_id], sessions[0]
+    complete_call(game_id)
+    numbers = count(100)
+    for _ in range(10):
+        if game["_watten"].engine.phase == "deal_complete":
+            break
+        player, command = next_move(game_id, numbers)
+        accepted_engine(game, player, command)
+    previous = game["_watten"].engine
+    assert previous.phase == "deal_complete"
+    memory = game["_watten"].cpu_memories[0]
+    assert memory.plays and memory.strike is not None and memory.suit is not None
+
+    async def scenario():
+        try:
+            data = room_command(game_id, "watten_next_deal", "next", deal_id=previous.deal_id, opportunity=previous.opportunity)
+            await _handle_locked(human, "watten_next_deal", data)
+            current = game["_watten"].engine
+            assert current.dealer_seat == 1 and current.deal_id != previous.deal_id
+            fresh = game["_watten"].cpu_memories[0]
+            assert fresh.deal_id == current.deal_id and not fresh.plays
+            assert fresh.strike is None and fresh.suit is None and fresh.inspected is None
+            assert current.phase == "strike"
+            await _handle_locked(human, "watten_command", engine_command(game_id, "announce_strike", "new-strike", "8"))
+            await until(lambda: game["_watten"].engine.phase == "play")
+            assert game["_watten"].cpu_memories[0].strike == "8"
+        finally:
+            await runner.stop_cpu_runners()
+
+    asyncio.run(scenario())
+
+
 @pytest.mark.parametrize("count_players,blind", ((2, False), (3, False), (4, True)))
 def test_actual_short_mixed_match_uses_only_personal_policy_inputs_and_one_result(server, ready, monkeypatch, count_players, blind):
     game_id, _owners, sessions = local_started(server, count_players=count_players, cpus=tuple(range(1, count_players)), blind=blind)
@@ -339,6 +422,13 @@ def test_actual_short_mixed_match_uses_only_personal_policy_inputs_and_one_resul
                         await asyncio.sleep(0.004)
             assert game["_watten"].engine.phase == "match_complete", runner._BLOCKED
             assert game["_completion_persisted"]
+            restored = restore_watten_json(json.dumps(serializable_game_state(game)))
+            games[game_id] = restored
+            await runner.resume_cpu_games(games)
+            await asyncio.sleep(0.02)
+            assert not any(key[0] == game_id for key in runner._JOBS)
+            persist_watten_game(restored)
+            persist_watten_game(restored)
             with session_scope() as db:
                 assert db.scalar(select(func.count(CompletedGame.id))) == 1
                 assert db.scalar(select(func.count(GameParticipant.id))) == count_players

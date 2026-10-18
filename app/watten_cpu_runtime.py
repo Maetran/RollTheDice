@@ -23,8 +23,9 @@ from .watten_engine import EngineActor, EngineCommand
 from .watten_views import cpu_view
 
 logger = logging.getLogger(__name__)
-# Root activates this only after the separately owned policy passes review.
-CPU_POLICY_READY = False
+# The separately reviewed policy and memory validator are wired here. Host,
+# configured origin and the explicit local preview flag still gate execution.
+CPU_POLICY_READY = True
 THINK_MIN_SECONDS = 0.35
 THINK_MAX_SECONDS = 1.25
 _RANDOM = secrets.SystemRandom()
