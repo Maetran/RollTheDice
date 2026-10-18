@@ -40,6 +40,12 @@ def _page(request: Request, page: str) -> Response:
 
 @router.get("/watten", include_in_schema=False)
 def watten_account_home(request: Request):
+    from .watten_access import watten_game_preview_enabled
+
+    if watten_game_preview_enabled(request):
+        from .watten_pages import home_page
+
+        return home_page(request)
     return _page(request, "home")
 
 

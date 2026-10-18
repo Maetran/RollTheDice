@@ -144,6 +144,7 @@ from .site_seo import (
 from .versioning import current_version
 from .watten_accounts import router as watten_accounts_router
 from .watten_accounts import watten_account_action_page
+from .watten_pages import router as watten_pages_router
 from .watten_pwa import router as watten_pwa_router
 from .watten_readiness import WattenReadinessMiddleware
 from .web_push import (
@@ -493,6 +494,10 @@ async def lifespan(_app: FastAPI):
     from .hausdepp_cpu_runner import stop_cpu_runners as stop_hausdepp
 
     await resume_hausdepp(games, finalize_game=_finalize_and_log_results)
+    from .watten_cpu_runtime import resume_cpu_games as resume_watten
+    from .watten_cpu_runtime import stop_cpu_runners as stop_watten
+
+    await resume_watten(games)
     timeout_sweeper_stop = asyncio.Event()
     timeout_sweeper = asyncio.create_task(
         _run_timeout_sweeper(timeout_sweeper_stop),
@@ -521,6 +526,7 @@ async def lifespan(_app: FastAPI):
         reminder_scheduler.cancel()
         release_scheduler.cancel()
         admin_help_scheduler.cancel()
+        await stop_watten()
         await asyncio.gather(timeout_sweeper, lobby_chat_purger, reminder_scheduler, release_scheduler,
                              admin_help_scheduler, return_exceptions=True)
         await stop_cpu_runners()
@@ -549,6 +555,7 @@ app.include_router(moderation_router)
 app.include_router(analytics_router)
 app.include_router(watten_accounts_router)
 app.include_router(watten_pwa_router)
+app.include_router(watten_pages_router)
 
 LEGACY_PAGE_PATHS = {
     "/static/index.html": "/",
@@ -633,13 +640,15 @@ async def response_cache_policy(request: Request, call_next):
         "/static/offline-play.html",
         "/static/dashboard-denied.html",
         "/static/watten-account.html",
+        "/static/watten-game.html",
+        "/static/watten-rules.html",
         "/static/watten-email-action.html",
         "/static/watten-manifest.webmanifest",
         "/static/watten-manifest-en.webmanifest",
         "/static/watten-sw.js",
     }:
         headers = {"Cache-Control": "no-store"}
-        if zilch_host or static_guard_path.startswith("/static/hausdepp"):
+        if zilch_host or static_guard_path.startswith(("/static/hausdepp", "/static/watten")):
             headers["X-Robots-Tag"] = "noindex, nofollow"
         return Response(status_code=404, headers=headers)
     legacy_target = _legacy_page_target(request)

@@ -2315,5 +2315,12 @@
     "date": "2026-10-18",
     "bump": "patch",
     "summary": "Interne Watten-Regelengine und Tischgrundlagen vorbereiten. / Prepare internal Watten rules and table foundations."
+  },
+  {
+    "version": "3.12.3",
+    "revision": "f6e0e89185d8aa862335b773adeff1c3bc021dd9",
+    "date": "2026-10-18",
+    "bump": "patch",
+    "summary": "Dauerhafte interne Watten-Partien und persönliche Spielzustände anbinden. / Connect durable internal Watten matches and personal game state."
   }
 ]

@@ -389,3 +389,108 @@ are integrated on the next feature branch. The broad final audit and exact
 full-check receipt remain pending. Claude separately implements bounded CPU and
 human UI packages; production and full Watten acceptance remain closed. All81
 findings remain required, including progression, suite services and device QA.
+
+## 18.10.2026 – native Runtime nach develop integriert
+
+`598af7ac376bffa78b2cfb008a02ffa1fd5e978e` bestand auf Basis `8d914e1`
+alle sieben vollständigen lokalen Prüfgruppen: Qualität/Sicherheit, Tools,
+**1’840 Backendtests, 84.87 % Coverage**, Produktionsimage/Container,
+vier Haupt-Browserteile und drei Kontosuiten sowie Diff. Beleg:
+`test-results/local-checks/598af7ac376b-1792342778581-3160f590/`.
+Owner-Status und PR-CI grün; [PR #54](https://github.com/Maetran/RollTheDice/pull/54)
+wurde normal als `f6e0e89185d8aa862335b773adeff1c3bc021dd9` übernommen.
+Erster Elternteil ist exakt `8d914e1`, der Merge-Tree entspricht dem geprüften
+`598af7a`; anschliessende Integrations-CI ebenfalls grün. Kein App-Deploy.
+Nächste Integration auf `codex/watten-game-integration` ab `origin/develop=f6e0e89`.
+
+Claudes erstes CPU-Paket `42ccf4c` ist ausdrücklich **nicht abgenommen**:
+Lead-Ruff/Bandit/Vulture grün, erster tatsächlicher Testlauf **5 fehlgeschlagen,
+62 bestanden, 3.92 Sekunden**. Vier Fälle betreffen freiwilliges endloses
+Aufbieten bei bereits partieentscheidendem Einsatz, ein Fall unnötiges Opfern
+eines Schlags. Unabhängige Reviews bestätigten zusätzlich zwei strikte
+Gedächtnis-/DTO-Prüflücken. Eine eigene neue Claude-Aufgabe korrigiert nur diese
+vier Dateien; Tests führt Root aus. Drei fehlende Profilkombinationen werden
+vor der endgültigen CPU-Abnahme ebenfalls geprüft. Der getrennte Runner bleibt
+bis zur bestätigten Policy ausdrücklich ohne freigegebenes Autoplay.
+
+## 18.10.2026 – lokale Spieloberfläche und CPU zusammengeführt
+
+Claudes offizielle CLI-Aufträge endeten am Sitzungslimit. Es wurde kein
+Overage verwendet. Root übernahm die tatsächliche Prüfung und Korrektur der
+CPU-Policy sowie des ungetesteten Oberflächen-Checkpoints. Die zuvor genannten
+CPU-Befunde sind geschlossen: freiwillige Aufbietschleifen bei bereits
+partieentscheidendem Einsatz, unnötiges Opfern in sicher verlorenen Stichen,
+unzulässig rekonstruiertes Blindwissen und zu früh sichtbare Karten. Alle zwölf
+Profile sind in den gezielten Tests enthalten. Die kleine Paarmessung liefert
+keinen allgemeinen Spielstärkenachweis; breitere Kalibrierung bleibt offen.
+
+Der native CPU-Runner speichert erlaubtes Gedächtnis vor dem Schliessen des
+Einschaufensters und verwirft alte Fristen bei Pause, Zustandsersatz oder neuer
+Gelegenheit. Fehlerhafte Speicherung installiert keinen Spielzug und startet
+keine Wiederholungsschleife. Root-Gegenlauf über Policy, Gedächtnis, Runner,
+native Runtime und Resultmigration: **157 Tests bestanden, 17.96 Sekunden**.
+
+Die DE/EN-Oberfläche ist in `1a98ec8` integriert: öffentliche lokale Lobby und
+Regeln, manuelle Sitze/Viererteams, CPU-Platzwahl und -Entfernung, absichtlicher
+Start, Bieten, Einschauen, persönliche Referenz und Partnerberatung. Routen
+verlangen beide lokalen Preview-Flags, sichere Rückwege und Noindex/No-store.
+Die Hand wird erst nach erfolgreichem Bilddekodieren verbunden. Frische
+Anmeldung vor jeder neuen Verbindung und ein serverseitig unter derselben
+Sperre geprüftes `expected_account_id` verhindern fremde Kontobindung. Ein
+verlorenes Leave-ACK führt zu einer lesenden Klärung, keiner neuen Aufnahme.
+
+**13 isolierte Browserfälle bestanden in 45.8 Sekunden**:
+`test-results/browser/watten/integrated-game-1/`. Echte Zwei-/Drei-/Vierertische,
+Zweierabschluss mit offenem Gebot/Pause/ausdrücklicher Rückkehr, private
+Dreierberatung, blinde Einschauerrollen, alle CPU-Sitzanzahlen und ein
+dauerhafter Zweierabschluss gegen CPU sind enthalten. Weitere Fälle prüfen
+Kontowechsel während verzögerter Bilddekodierung, explizite Persisted-Page-
+Ereignisbehandlung, verlorenes Leave-ACK und frische gegenüber alten Taps.
+Mobile Geometrie ist bei 320×568, 568×320, 667×375 und 768×700 geprüft; der
+gefundene schmale Querformatüberlauf wurde in der Quellgeometrie behoben.
+Persisted-Page-Ereignisse sind kein Nachweis physischer BFCache-Eignung oder
+einer echten Telefoninstallation. Unabhängiger Quellenreview von `1a98ec8`
+bestätigt die fünf früheren UI-Befundgruppen als geschlossen, ohne Geräteabnahme.
+
+Seiten-, Konto-, Navigations- und Evidenzgegenlauf: **85 Tests, 196 Subtests,
+4.61 Sekunden**. Der strikte öffentliche Evidenzadapter ist unabhängig geprüft;
+v1-Resultate bleiben unverändert, unbekannte Profil-/Start-/Bietdaten UNKNOWN.
+Ein zusätzlicher reiner Draft-Katalog bietet 22 Titel und 27 DE/EN-Ziele mit
+10 XP je gültiger Partie und höchstens 2’110 einmaligen XP. Das ist eine
+überprüfbare Kalibrierung, keine dauerhafte Vergabe oder Produktionsfreigabe.
+Journal, Kontoseiten, Verlauf/Ranglisten und weitere Suite-Dienste folgen weiter.
+
+Vorbereitete interne Funktionsversion ist 3.13.0. Die neu archivierte 3.12.3
+verweist auf ihren tatsächlich geprüften Develop-Merge `f6e0e89`; bestehende
+Zuordnungen wurden nicht verändert. Der exakte vollständige Nachweis für diese
+neue Integration steht noch aus. Keine App-Veröffentlichung, kein Master-Merge,
+keine Watten-Gesamtabnahme; alle 81 Findings bleiben im Umfang.
+
+**English:** Native UI and personal CPU automation are now integrated locally.
+Thirteen isolated browser cases and focused backend checks passed. Physical
+devices, broader strength calibration, progression persistence/account views,
+suite services and the new complete verification receipt remain outstanding.
+
+Der erste Vollversuch auf `2d50dfc` bestand Qualität und 94 Tooltests, hielt
+aber im Backend bei zwei veralteten Shell-Inventaren an: neue Watten-Spiel-
+und Regelvorlagen wurden noch als ZDWA-Standardvorlagen geprüft. 2’056 weitere
+Backendtests bestanden bei 85.33 % Coverage. Die Register führen jetzt die
+zwei eigenen deferred Controller-/Stylesheet-Vorlagen ausdrücklich auf;
+echte gerenderte Seiten prüfen zusätzlich beide Watten-Icons und schliessen
+fremde Spiel-Icons aus. Gegenlauf: **27 Tests, 103 Subtests, 2.95 Sekunden**.
+Der fehlgeschlagene Lauf ist kein Vollnachweis; nach dem neuen Commit wird
+der vollständige Ablauf erneut ausgeführt.
+
+Der zweite Vollversuch auf `17d769c` bestand Qualität, Tools, **2’058
+Backendtests bei 85.33 % Coverage**, Produktionsimage und Containerprüfung.
+Sechs von sieben Browserteilen bestanden. Der übrige Teil traf eine geteilte
+Hausdepp-Testkonto-Voreinstellung: Das echte isolierte Admin-Konto stand auf
+Englisch, die Überraschungs-Fixture setzte bei jedem Laden wieder Deutsch in
+Local Storage. Die absichtliche Kontosprachsynchronisierung lud dadurch immer
+neu, bevor der reale erste WebSocket-Spielstand ankam. Ein lesender Blick in
+genau die Wegwerf-Datenbank bestätigte `Admin/en`; keine Produktionsdaten.
+Die Fixture setzt nun vor dem Seitenstart auch die eigene Kontosprache. Eine
+gezielt auf Englisch vorbereitete Regression und alle acht Zwei-Client-Effekte
+bestanden: **9 Fälle, 17.9 Sekunden**, ohne Retries. Beleg:
+`test-results/browser/watten/hdd-language-isolation/`. Dies bleibt ein
+gezielter Gegenlauf; der neue Commit braucht weiterhin einen Vollnachweis.

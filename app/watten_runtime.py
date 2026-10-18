@@ -2,7 +2,8 @@
 
 Sockets/HTTP must take game_lock before changing this state. Immutable room
 and engine replacements are committed before becoming live or acknowledged.
-There is deliberately no CPU policy, achievement grant or automatic forfeit.
+The personal CPU runner composes these transitions; no achievement grant or
+automatic forfeit is implied by this runtime.
 """
 
 from __future__ import annotations
@@ -20,6 +21,7 @@ from sqlalchemy import select
 from .database import database_schema_ready, session_scope
 from .models import ActiveGame
 from .security import hash_password, utcnow, verify_password
+from .watten_cpu_memory import CpuMemory, memory_from_storage, memory_to_storage, new_memory
 from .watten_engine import (
     EngineActor,
     EngineCommand,
@@ -91,6 +93,7 @@ class WattenRuntime:
     acks: tuple[RuntimeAck, ...] = ()
     absent: tuple[str, ...] = ()
     lifecycle_revision: int = 0
+    cpu_memories: tuple[CpuMemory, ...] = ()
 
     def __post_init__(self):
         if not isinstance(self.room, WattenRoom) or type(self.names) is not tuple:
@@ -115,6 +118,11 @@ class WattenRuntime:
                 or not set(self.absent) <= seated_humans
                 or (self.absent and (self.engine is None or self.engine.phase == "match_complete"))):
             raise ValueError("watten_invalid_absence")
+        cpu_ids = {item.participant_id for item in self.room.cpus}
+        if (type(self.cpu_memories) is not tuple or any(not isinstance(item, CpuMemory) for item in self.cpu_memories)
+                or len({item.player_id for item in self.cpu_memories}) != len(self.cpu_memories)
+                or not {item.player_id for item in self.cpu_memories} <= cpu_ids):
+            raise ValueError("watten_invalid_cpu_memory")
         if type(self.deliveries) is not tuple or len(self.deliveries) > 2 * self.room.recipe.player_count:
             raise ValueError("watten_invalid_delivery")
         delivery_keys = []
@@ -198,7 +206,10 @@ def configure_watten_game(game: dict, recipe: WattenRecipe, identity, passphrase
     if recipe.password_required != bool(passphrase):
         raise ValueError("watten_password_option_mismatch")
     room = create_room(game["_id"], recipe, host_account=identity.user_id, now=utcnow(), wait_seconds=3600)
-    names = (("p1", identity.username), *tuple((cpu.participant_id, f"{('Seppl', 'Hias', 'Resi', 'Lisi')[cpu.seat]}") for cpu in room.cpus))
+    from .watten_cpu import available_cpu_names
+
+    pool = iter(available_cpu_names((identity.username,)))
+    names = (("p1", identity.username), *tuple((cpu.participant_id, next(pool)) for cpu in room.cpus))
     game["_watten"] = WattenRuntime(room, None, names)
     game["_passphrase"] = hash_password(passphrase) if passphrase else None
     game["_players"] = [{"id": "p1", "name": identity.username, "user_id": identity.user_id, "ws": None}]
@@ -240,6 +251,7 @@ def admit_account(game: dict, identity, revision: int, protection: object) -> tu
     names = dict(runtime.names)
     if runtime.engine is None:
         names[admission.participant_id] = identity.username
+        names = _cpu_names(admission.room, names)
     runtime = replace(runtime, room=admission.room, names=tuple(names.items()))
     _sync(candidate, runtime, public=not admission.rejoined)
     player = next((item for item in candidate["_players"] if item["id"] == admission.participant_id), None)
@@ -302,26 +314,7 @@ def apply_runtime_action(game: dict, account: int, player: str, data: dict, *, e
         if runtime.engine is None:
             raise ValueError("watten_not_started")
         command = EngineCommand(data["command_id"], data["deal_id"], data["opportunity"], data["phase"], data["kind"], data["value"], data["private_opportunity"])
-        transition = apply_command(runtime.engine, EngineActor(player, account), command)
-        if transition.replayed:
-            return candidate, {"command_id": transition.ack.command_id, "accepted": True,
-                               "deal_id": transition.ack.deal_id, "opportunity": transition.ack.opportunity,
-                               "lifecycle_revision": runtime.lifecycle_revision}, True, {player}
-        deliveries = list(runtime.deliveries)
-        for kind, seat, value in transition.public_events:
-            if kind in _CALL_KINDS:
-                for recipient in transition.state.recipe.seats:
-                    deliveries.append(CallDelivery(f"{transition.state.deal_id}:{transition.state.opportunity}:{kind}:{recipient}",
-                                                   recipient, transition.state.deal_id, kind, seat, value))
-        room = finish(runtime.room, revision=runtime.room.revision) if transition.state.phase == "match_complete" else runtime.room
-        runtime = replace(runtime, room=room, engine=transition.state, deliveries=tuple(deliveries))
-        if command.kind == "partner_feedback":
-            private = {item.sender for item in runtime.engine.feedback if item.sender == player} | {
-                item.recipient for item in runtime.engine.feedback if item.sender == player}
-        _sync(candidate, runtime, public=private is None)
-        return candidate, {"command_id": transition.ack.command_id, "accepted": True,
-                           "deal_id": transition.ack.deal_id, "opportunity": transition.ack.opportunity,
-                           "lifecycle_revision": runtime.lifecycle_revision}, False, private
+        return _apply_engine_command(game, EngineActor(player, account), command)
     if action not in ROOM_ACTIONS:
         raise ValueError("watten_action_unavailable")
     digest, cached = _cached_runtime_ack(runtime, account, data)
@@ -382,11 +375,11 @@ def apply_runtime_action(game: dict, account: int, player: str, data: dict, *, e
         private = {player}
     names = dict(runtime.names)
     ids = {item.participant_id for item in (*room.members, *room.cpus)}
-    for cpu in room.cpus:
-        names.setdefault(cpu.participant_id, ('Seppl', 'Hias', 'Resi', 'Lisi')[cpu.seat])
     names = {key: name for key, name in names.items() if key in ids}
+    names = _cpu_names(room, names)
     acks = tuple(item for item in runtime.acks if item.account_id in {member.account_id for member in room.members})
-    runtime = WattenRuntime(room, engine, tuple(names.items()), deliveries, acks, runtime.absent, runtime.lifecycle_revision)
+    memories = tuple(item for item in runtime.cpu_memories if item.player_id in ids)
+    runtime = WattenRuntime(room, engine, tuple(names.items()), deliveries, acks, runtime.absent, runtime.lifecycle_revision, memories)
     # A waiting leave removes its own actor; it has no seat or durable retry
     # authority afterwards, so do not retain an ACK tied to a departed member.
     ack = RuntimeAck(account, data["command_id"], digest, room.revision,
@@ -398,6 +391,45 @@ def apply_runtime_action(game: dict, account: int, player: str, data: dict, *, e
     candidate["_players"] = [item for item in candidate["_players"] if item["id"] in ids]
     _sync(candidate, runtime, public=private is None)
     return candidate, _ack_payload(ack, runtime.lifecycle_revision), False, private
+
+
+def _cpu_names(room: WattenRoom, names: dict[str, str]) -> dict[str, str]:
+    from .watten_cpu import available_cpu_names
+
+    used = {names[item.participant_id].casefold() for item in room.members}
+    result = dict(names)
+    for cpu in room.cpus:
+        current = result.get(cpu.participant_id)
+        if current is None or current.casefold() in used:
+            current = next(iter(available_cpu_names(used)))
+            result[cpu.participant_id] = current
+        used.add(current.casefold())
+    return result
+
+
+def _apply_engine_command(game: dict, actor: EngineActor, command: EngineCommand) -> tuple[dict, dict, bool, set[str] | None]:
+    runtime = game["_watten"]
+    candidate = copy_game(game)
+    transition = apply_command(runtime.engine, actor, command)
+    ack = {"command_id": transition.ack.command_id, "accepted": True,
+           "deal_id": transition.ack.deal_id, "opportunity": transition.ack.opportunity,
+           "lifecycle_revision": runtime.lifecycle_revision}
+    if transition.replayed:
+        return candidate, ack, True, {actor.player_id}
+    deliveries = list(runtime.deliveries)
+    for kind, seat, value in transition.public_events:
+        if kind in _CALL_KINDS:
+            for recipient in transition.state.recipe.seats:
+                deliveries.append(CallDelivery(f"{transition.state.deal_id}:{transition.state.opportunity}:{kind}:{recipient}",
+                                               recipient, transition.state.deal_id, kind, seat, value))
+    room = finish(runtime.room, revision=runtime.room.revision) if transition.state.phase == "match_complete" else runtime.room
+    runtime = replace(runtime, room=room, engine=transition.state, deliveries=tuple(deliveries))
+    private = None
+    if command.kind == "partner_feedback":
+        private = {item.sender for item in runtime.engine.feedback if item.sender == actor.player_id} | {
+            item.recipient for item in runtime.engine.feedback if item.sender == actor.player_id}
+    _sync(candidate, runtime, public=private is None)
+    return candidate, ack, False, private
 
 
 def _ack_payload(ack: RuntimeAck, lifecycle_revision: int) -> dict:
@@ -435,7 +467,7 @@ def snapshot_watten(game: dict, viewer_id: str | None = None) -> dict:
             "pending_call_events": [{"delivery_id": item.delivery_id, "deal_id": item.deal_id,
                                      "kind": item.kind, "seat": item.seat, "value": item.value}
                                     for item in runtime.deliveries if member and item.participant_id == member.participant_id],
-            "capabilities": {"cpu_autoplay": False}, "result_persisted": game["_completion_persisted"]}
+            "capabilities": {"cpu_autoplay": _cpu_capability()}, "result_persisted": game["_completion_persisted"]}
 
 
 def lobby_entry(game: dict, account: int) -> dict:
@@ -447,7 +479,13 @@ def lobby_entry(game: dict, account: int) -> dict:
             "room": snapshot_watten(game)["room"], "paused": bool(runtime.absent),
             "awaited_participant_ids": list(runtime.absent), "lifecycle_revision": runtime.lifecycle_revision,
             "can_resume": bool(member and member.participant_id in runtime.absent),
-            "capabilities": {"cpu_autoplay": False}}
+            "capabilities": {"cpu_autoplay": _cpu_capability()}}
+
+
+def _cpu_capability() -> bool:
+    from .watten_cpu_runtime import cpu_autoplay_enabled
+
+    return cpu_autoplay_enabled()
 
 
 def serialize_watten_game(game: dict) -> dict:
@@ -459,10 +497,11 @@ def serialize_watten_game(game: dict) -> dict:
             "_updated_at": game["_updated_at"], "_last_activity": game["_last_activity"].isoformat(),
             "_passphrase": game["_passphrase"], "_completion_persisted": game["_completion_persisted"],
             "_watten_result": game["_watten_result"],
-            "_watten": {"schema_version": 1, "room": room_to_payload(runtime.room),
+            "_watten": {"schema_version": 2, "room": room_to_payload(runtime.room),
                         "engine": storage_payload(runtime.engine) if runtime.engine else None,
                         "names": [list(item) for item in runtime.names],
                         "absent": list(runtime.absent), "lifecycle_revision": runtime.lifecycle_revision,
+                        "cpu_memories": [memory_to_storage(item) for item in runtime.cpu_memories],
                         "deliveries": [{"delivery_id": item.delivery_id, "participant_id": item.participant_id,
                                         "deal_id": item.deal_id, "kind": item.kind, "seat": item.seat, "value": item.value}
                                        for item in runtime.deliveries],
@@ -476,17 +515,31 @@ def restore_watten_game(raw: dict) -> dict:
     require_fields(raw, keys, ValueError, "watten_storage")
     if raw["_game_type"] != "watten" or type(raw["_completion_persisted"]) is not bool:
         raise ValueError("watten_invalid_storage")
-    data = require_fields(raw["_watten"], frozenset({"schema_version", "room", "engine", "names", "deliveries", "acks", "absent", "lifecycle_revision"}), ValueError, "watten_storage")
-    if type(data["schema_version"]) is not int or data["schema_version"] != 1:
+    data = raw["_watten"]
+    version = data.get("schema_version") if type(data) is dict else None
+    if type(version) is not int or version not in {1, 2}:
         raise ValueError("watten_invalid_storage")
+    fields = {"schema_version", "room", "engine", "names", "deliveries", "acks", "absent", "lifecycle_revision"}
+    if version == 2:
+        fields.add("cpu_memories")
+    data = require_fields(data, frozenset(fields), ValueError, "watten_storage")
     if any(type(data[key]) is not list for key in ("names", "deliveries", "acks", "absent")):
         raise ValueError("watten_invalid_storage")
     room = room_from_payload(data["room"])
     engine = restore_storage(data["engine"]) if data["engine"] is not None else None
+    if version == 1 and engine is not None and room.cpus:
+        raise ValueError("watten_cpu_legacy_memory_unavailable")
+    if version == 2 and type(data["cpu_memories"]) is not list:
+        raise ValueError("watten_invalid_cpu_memory")
+    memories = (tuple(memory_from_storage(item) for item in data["cpu_memories"]) if version == 2
+                else tuple(new_memory(cpu.participant_id) for cpu in room.cpus))
     deliveries = tuple(CallDelivery(**require_fields(item, frozenset({"delivery_id", "participant_id", "deal_id", "kind", "seat", "value"}), ValueError, "watten_delivery")) for item in data["deliveries"])
     acks = tuple(RuntimeAck(**require_fields(item, frozenset({"account_id", "command_id", "digest", "room_revision", "deal_id", "opportunity"}), ValueError, "watten_ack")) for item in data["acks"])
     runtime = WattenRuntime(room, engine, tuple(tuple(item) if type(item) is list else item for item in data["names"]), deliveries, acks,
-                            tuple(data["absent"]), data["lifecycle_revision"])
+                            tuple(data["absent"]), data["lifecycle_revision"], memories)
+    from .watten_cpu_runtime import validate_stored_memories
+
+    validate_stored_memories(runtime, allow_empty_waiting=version == 1)
     if room.room_id != raw["_id"] or str(room.recipe.player_count) != raw["_mode"]:
         raise ValueError("watten_storage_context_mismatch")
     if type(raw["_name"]) is not str or not 1 <= len(raw["_name"].strip()) <= 80:
@@ -528,6 +581,9 @@ def persist_watten_game(game: dict, *, creating: bool = False) -> None:
     if not database_schema_ready():
         raise RuntimeError("watten_database_not_ready")
     checkpoint = copy_game(game)
+    from .watten_cpu_runtime import observe_cpu_memories
+
+    checkpoint["_watten"] = observe_cpu_memories(checkpoint["_watten"])
     with session_scope() as db:
         if checkpoint["_finished"]:
             from .watten_results import store_result_in_session
@@ -551,6 +607,7 @@ def persist_watten_game(game: dict, *, creating: bool = False) -> None:
     game["_watten_result"] = checkpoint["_watten_result"]
     game["_completion_persisted"] = checkpoint["_completion_persisted"]
     game["_finished_at"] = checkpoint["_finished_at"]
+    game["_watten"] = checkpoint["_watten"]
 
 
 def restore_watten_json(text: str) -> dict:

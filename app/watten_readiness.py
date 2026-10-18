@@ -5,6 +5,7 @@ from __future__ import annotations
 import ipaddress
 import os
 import posixpath
+import re
 from urllib.parse import urlsplit
 
 from starlette.requests import HTTPConnection
@@ -27,6 +28,7 @@ _UNPUBLISHED_PATHS = frozenset({
     "/sw.js", "/zilch-sw.js", "/hausdepp-sw.js", "/watten-sw.js",
 })
 _LOCAL_ACCOUNT_PATHS = frozenset({"/watten", "/watten/anmelden", "/watten/konto", "/watten/konto/einstellungen"})
+_LOCAL_GAME_DOCUMENT = re.compile(r"/watten/(?:regeln|spiel/[0-9a-f]{16}(?:/zuschauen)?)")
 
 
 def _local_hostname(hostname: str) -> bool:
@@ -73,6 +75,12 @@ class WattenReadinessMiddleware:
         icon_path = posixpath.normpath(scope["path"]).casefold().startswith("/static/watten/icons/")
         local_document = (scope["type"] == "http" and scope["method"] in {"GET", "HEAD"}
                           and scope["path"] in _LOCAL_ACCOUNT_PATHS and watten_account_preview_enabled(connection))
+        if (scope["type"] == "http" and scope["method"] in {"GET", "HEAD"}
+                and _LOCAL_GAME_DOCUMENT.fullmatch(scope["path"])):
+            from .watten_access import watten_game_preview_enabled
+
+            local_document = (watten_game_preview_enabled(connection)
+                              and watten_account_preview_enabled(connection))
         if not fixed_host and (not local_account_path or local_document) and (
                 not icon_path or (scope["type"] == "http" and scope["method"] in {"GET", "HEAD"}
                                   and watten_account_preview_enabled(connection))):

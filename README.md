@@ -111,12 +111,18 @@ Ein separater lokaler Spieladapter bindet diese Grundlagen inzwischen an die
 bestehenden Konten, HTTP/WebSocket und dauerhafte Datenbankzustände an.
 `ROLLTHEDICE_WATTEN_GAME_PREVIEW=1` benötigt ebenfalls einen konfigurierten
 und angefragten lokalen Ursprung; der feste Wattenhost bleibt gesperrt.
-Eine menschliche Spieloberfläche und CPU-Ausführung sind noch nicht enthalten.
+Die lokale Spieloberfläche bietet Zwei-, Drei- und Vierertische, manuelle
+Sitz-/Teamwahl, Einsatzbieten, einmaliges Einschauen und ausdrückliches
+Fortsetzen pausierter Partien. Der Gastgeber kann freie Plätze gezielt mit
+benannten Computergegnern besetzen und wieder freigeben. Diese spielen mit
+ihrer eigenen erlaubten Sicht und gespeichertem Gedächtnis; sie erhalten keine
+gegnerischen Hände oder einen verdeckten Schlag aus dem Serverzustand.
 Rechter-Referenz und Stichhistorie sind standardmässig aus; ohne Referenz wird
 die einmalig erlaubte Ansage nicht dauerhaft angezeigt. Partnerblatt ist nur
 im offenen Spiel mit Partnern wählbar; Guter/Schlechter bleiben aus. Die lokalen
-Grundlagen haben die vollständige lokale Prüfung in PR #53 bestanden;
-Runtime-, Mehrgeräte- und Produktabnahme bleiben offen. Neu festgelegt ist:
+Grundlagen und native Runtime haben die vollständigen lokalen Prüfungen in
+PR #53 und #54 bestanden. Der neue integrierte Oberflächen-/CPU-Nachweis,
+Mehrgeräte- und Produktabnahme bleiben offen. Neu festgelegt ist:
 Wer eine laufende Partie bewusst verlässt, pausiert sie bis zur Rückkehr.
 Die lokale Runtime speichert diese Pause samt Sitz, Hand, offenem Gebot und
 Punkten; nur die frisch angemeldete betroffene Person kann ausdrücklich
@@ -186,13 +192,18 @@ separate private storage schemas and allowed player/CPU/spectator views.
 A separate local game adapter now connects these foundations to existing
 accounts, HTTP/WebSocket transport and durable database state.
 `ROLLTHEDICE_WATTEN_GAME_PREVIEW=1` also requires both configured and requested
-local origins; the fixed Watten host stays closed. Human gameplay UI and CPU
-execution are not included yet.
+local origins; the fixed Watten host stays closed. The local gameplay UI
+supports two-, three- and four-player tables, manual seat/team choice, bidding,
+one-time inspection and explicit return to paused matches. Hosts can place
+named computer opponents on specific free seats and remove them again. CPUs
+use their own permitted views and durable memory; they do not receive opposing
+hands or a hidden call from server state.
 The matching Rechter reference and trick history default off; without the
 reference, the once-permitted call is not kept visible. Partner hands are
 an explicit option only in open games with partners; Guter/Schlechter stay off.
-The foundations passed the full local checks in PR #53; runtime,
-multiple-device and product acceptance remain open. A newly confirmed rule
+The foundations and native runtime passed full local checks in PR #53 and #54.
+The new integrated UI/CPU proof, multiple-device and product acceptance remain
+open. A newly confirmed rule
 pauses a running match after an intentional departure until that player
 returns. The local runtime preserves that pause, seat, hand, pending bid and
 scores; only the freshly authenticated affected person can explicitly resume.

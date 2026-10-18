@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 from urllib.parse import unquote, urlsplit
 
 DEFAULT_SITE_ORIGIN = "https://zockdiewandan.online"
@@ -202,5 +203,8 @@ def hausdepp_url(path: str | None = "/hausdepp") -> str:
 
 
 def safe_watten_account_path(value: str | None) -> str:
-    """Only concrete account-preview destinations, without nested redirects."""
-    return value if isinstance(value, str) and value in WATTEN_ACCOUNT_PATHS else "/watten"
+    """Concrete local product destinations, without query strings or handoffs."""
+    if isinstance(value, str) and (value in WATTEN_ACCOUNT_PATHS or value == "/watten/regeln"
+                                   or re.fullmatch(r"/watten/spiel/[0-9a-f]{16}(?:/zuschauen)?", value)):
+        return value
+    return "/watten"
