@@ -120,17 +120,23 @@ def claim_open_seat_in_session(db, game_id: str, account_id: int, revision: int,
     The real source row is locked on PostgreSQL. Exact JSON CAS serializes
     SQLite against ordinary checkpoint writers without changing the source,
     room revision, timestamps, reservations, seats or any activity counters.
+    A fresh SQLite transaction reserves its writer before reading. If the
+    caller already owns a deferred read snapshot, BUSY(_SNAPSHOT) still belongs
+    to that caller: roll back/restart the entire transaction, never just retry
+    inside its old snapshot. This function does not replace an existing TX.
     """
     now = utcnow() if now is None else now
     if not isinstance(now, datetime) or now.utcoffset() is None:
         raise WattenOpenSeatError("watten_invalid_time")
     now = as_utc(now)
-    # SQLite's legacy driver must have an outer BEGIN before SAVEPOINT:
-    # releasing this savepoint must never commit a caller's uncommitted claim.
+    # Reserve before any read: a deferred read-to-write upgrade can fail
+    # immediately despite busy_timeout. IMMEDIATE waits before the snapshot.
+    # An explicit outer BEGIN also prevents SAVEPOINT release from committing
+    # a caller's uncommitted claim under SQLite's legacy transaction driver.
     if db.get_bind().dialect.name == "sqlite":
         connection = db.connection()
         if not connection.connection.driver_connection.in_transaction:
-            connection.exec_driver_sql("BEGIN")
+            connection.exec_driver_sql("BEGIN IMMEDIATE")
     with db.begin_nested():
         raw, room = _stored(db, game_id, account_id, revision, now)
         _claim_source(db, game_id, raw)

@@ -10,13 +10,13 @@ from contextlib import asynccontextmanager
 from dataclasses import asdict, replace
 from datetime import timedelta
 from pathlib import Path
-from threading import Barrier
+from threading import Event, local
 
 import pytest
 from alembic.config import Config
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, event, select, update
 from sqlalchemy.dialects import postgresql, sqlite
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.schema import CreateTable
@@ -25,13 +25,20 @@ from alembic import command
 from app import main
 from app import watten_open_seat as calls
 from app.auth import logout
-from app.database import session_scope
+from app.database import get_engine, session_scope
 from app.game_state import games
 from app.models import ActiveGame, User, WattenOpenSeatClaim
 from app.security import utcnow
 from app.watten_recipe import WattenRecipe
 from app.watten_room import SeatReservation, admit, close_expired, create_room, take_seat
-from app.watten_runtime import _sync, admit_account, apply_runtime_action, copy_game, persist_watten_game
+from app.watten_runtime import (
+    _sync,
+    _write_checkpoint,
+    admit_account,
+    apply_runtime_action,
+    copy_game,
+    persist_watten_game,
+)
 from app.web_push import PUSH_DELIVERY_CONTEXTS, claim_game_invite_push
 from tests import test_watten_runtime as native
 from tests.test_watten_rematch import checkpoints
@@ -246,9 +253,12 @@ def test_caller_rollback_and_caught_account_cooldown_leave_no_half_claim_or_impl
     other, _ = setup(server, owner=owner)
     before, now = claims(), utcnow()
     with pytest.raises(RuntimeError, match="outer abort"), session_scope() as db:
+        db.execute(update(User).where(User.id == owner[0].user_id).values(preferred_language="en"))
         claim(db, game, owner, now=now)
         raise RuntimeError("outer abort")
     assert claims() == before
+    with session_scope() as db:
+        assert db.get(User, owner[0].user_id).preferred_language == "de"
     # A legacy-product claim shares the same actual account barrier.
     assert claim_game_invite_push(owner[0].user_id) == 0
     claimed = claims()
@@ -296,26 +306,56 @@ def test_actual_concurrent_room_claim_has_one_winner_and_does_not_consume_losing
     game, owner = setup(server, players=3)
     other = native.account("OtherSeatedCaller")
     seat(server, game, other, 1)
-    barrier, now = Barrier(2), utcnow()
+    now, thread = utcnow(), local()
+    before = checkpoints()
+    # Six cooldown windows remain inside the actual one-hour waiting deadline.
+    for number in range(6):
+        winner, loser = (owner, other) if number % 2 == 0 else (other, owner)
+        ready, commit = Event(), Event()
+        previous = dict(claims()[1])[loser[0].user_id]
 
-    def attempt(actor):
-        barrier.wait(timeout=5)
-        for retry in range(2):
+        def handoff(_connection, _cursor, statement, _parameters, _context, _many):
+            # Hold a real uncommitted winning write. A writer-first loser
+            # hands off at its reservation attempt, before reading anything.
+            # A deferred loser instead reads the old snapshot and fails its
+            # UPDATE; no retry or tolerated busy error can hide that failure.
+            if getattr(thread, "loser", False) and statement == "BEGIN IMMEDIATE":
+                commit.set()
+
+        def winning_claim():
+            with session_scope() as db:
+                claim(db, game, winner, now=now + timedelta(seconds=600 * number))
+                ready.set()
+                assert commit.wait(timeout=5), "loser never attempted its write reservation"
+            return "claimed"
+
+        def losing_claim():
+            thread.loser = True
             try:
                 with session_scope() as db:
-                    claim(db, game, actor, now=now)
-                return "claimed"
-            except OperationalError:
-                if retry:
-                    raise
+                    claim(db, game, loser, now=now + timedelta(seconds=600 * number))
+                return "unexpected second claim"
             except calls.WattenOpenSeatError as exc:
                 return str(exc)
-        raise AssertionError("no claim result")
+            finally:
+                commit.set()
 
-    with ThreadPoolExecutor(max_workers=2) as pool:
-        assert sorted(pool.map(attempt, (owner, other))) == ["claimed", "game_invite_cooldown"]
-    rows, accounts = claims()
-    assert len(rows) == 1 and sum(timestamp is not None for _account, timestamp in accounts) == 1
+        event.listen(get_engine(), "before_cursor_execute", handoff)
+        try:
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                first = pool.submit(winning_claim)
+                if not ready.wait(timeout=5):
+                    first.result(timeout=0)  # Surface an actual writer error instead of hiding it behind the event.
+                    pytest.fail("winner never acquired the actual database write")
+                second = pool.submit(losing_claim)
+                assert second.result(timeout=5) == "game_invite_cooldown"
+                assert first.result(timeout=5) == "claimed"
+        finally:
+            commit.set()
+            event.remove(get_engine(), "before_cursor_execute", handoff)
+        rows, accounts = claims()
+        assert len(rows) == 1 and dict(accounts)[loser[0].user_id] == previous
+        assert checkpoints() == before
 
 
 def test_coordinator_uses_explicit_fake_transport_only_after_commit_and_retains_barrier_on_uncertain_failure(server):
@@ -369,29 +409,76 @@ def test_coordinator_account_change_after_lock_never_claims_or_calls_fake_transp
     assert claims() == before
 
 
-def test_actual_interleaved_checkpoint_closure_beats_source_cas_and_prevents_fake_delivery(server, monkeypatch):
+def test_actual_interleaved_checkpoint_closure_beats_source_cas_and_prevents_fake_delivery(server):
     game, owner = setup(server)
-    original, interleaved = calls._claim_source, []
+    candidate = copy_game(game)
+    runtime = candidate["_watten"]
+    room = replace(runtime.room, wait_expires_at=utcnow() - timedelta(seconds=1))
+    _sync(candidate, replace(runtime, room=close_expired(room, revision=room.revision, now=utcnow())), public=True)
+    ready, commit, thread = Event(), Event(), local()
+    original, before = checkpoints()[game["_id"]], claims()
 
-    def close_before_claim(db, game_id, raw):
-        if not interleaved:
-            interleaved.append(True)
-            candidate = copy_game(game)
-            runtime = candidate["_watten"]
-            room = replace(runtime.room, wait_expires_at=utcnow() - timedelta(seconds=1))
-            _sync(candidate, replace(runtime, room=close_expired(room, revision=room.revision, now=utcnow())), public=True)
-            persist_watten_game(candidate)
-        original(db, game_id, raw)
+    def handoff(_connection, _cursor, statement, _parameters, _context, _many):
+        if getattr(thread, "claiming", False) and statement == "BEGIN IMMEDIATE":
+            commit.set()
+
+    def close_checkpoint():
+        with session_scope() as db:
+            assert _write_checkpoint(db, candidate, expected_json=original)
+            ready.set()
+            assert commit.wait(timeout=5), "claim never attempted its writer reservation"
 
     async def transport(_claim):
         pytest.fail("closed source reached fake delivery")
 
-    monkeypatch.setattr(calls, "_claim_source", close_before_claim)
-    before = claims()
-    with pytest.raises(calls.WattenOpenSeatError, match="stale_room_revision"):
-        asyncio.run(calls.coordinate_open_seat(game["_id"], game["_watten"].room.revision,
-                    resolve_actor=lambda: owner[0].user_id, transport=transport))
-    assert interleaved and claims() == before
+    def attempt():
+        thread.claiming = True
+        return asyncio.run(calls.coordinate_open_seat(game["_id"], game["_watten"].room.revision,
+                           resolve_actor=lambda: owner[0].user_id, transport=transport))
+
+    event.listen(get_engine(), "before_cursor_execute", handoff)
+    try:
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            closing = pool.submit(close_checkpoint)
+            assert ready.wait(timeout=5), "closure never acquired the actual write"
+            claiming = pool.submit(attempt)
+            with pytest.raises(calls.WattenOpenSeatError, match="stale_room_revision"):
+                claiming.result(timeout=5)
+            closing.result(timeout=5)
+    finally:
+        commit.set()
+        event.remove(get_engine(), "before_cursor_execute", handoff)
+    closed = checkpoints()[game["_id"]]
+    assert json.loads(closed)["_watten"]["room"]["status"] == "closed" and claims() == before
+    # Exact source CAS still rejects a genuinely obsolete checkpoint, even
+    # though ordinary competing writers now serialize before taking snapshots.
+    with session_scope() as db, pytest.raises(calls.WattenOpenSeatError, match="open_seat_retry"):
+        calls._claim_source(db, game["_id"], original)
+    assert checkpoints()[game["_id"]] == closed and claims() == before
+
+
+def test_existing_caller_read_snapshot_is_not_silently_restarted_or_committed(server):
+    game, owner = setup(server)
+    original, before = checkpoints()[game["_id"]], claims()
+    candidate = copy_game(game)
+    runtime = candidate["_watten"]
+    room = replace(runtime.room, wait_expires_at=utcnow() - timedelta(seconds=1))
+    _sync(candidate, replace(runtime, room=close_expired(room, revision=room.revision, now=utcnow())), public=True)
+    with session_scope() as db:
+        connection = db.connection()
+        connection.exec_driver_sql("BEGIN")  # Deliberate existing caller-owned read transaction.
+        assert db.scalar(select(ActiveGame.state_json).where(ActiveGame.game_id == game["_id"])) == original
+        persist_watten_game(candidate)  # Different real DB connection commits a newer source.
+        with pytest.raises(OperationalError) as error:
+            claim(db, game, owner)
+        assert getattr(error.value.orig, "sqlite_errorcode", None) == sqlite3.SQLITE_BUSY_SNAPSHOT
+        assert connection.connection.driver_connection.in_transaction
+        # The helper preserved the caller's original snapshot; only the caller
+        # may abandon it. Neither cooldown barrier was partly committed.
+        assert db.scalar(select(ActiveGame.state_json).where(ActiveGame.game_id == game["_id"])) == original
+        assert claims() == before
+        db.rollback()
+    assert json.loads(checkpoints()[game["_id"]])["_watten"]["room"]["status"] == "closed"
 
 
 def test_model_fk_cascade_and_postgresql_sql_compile_without_claiming_server_verification(server):
