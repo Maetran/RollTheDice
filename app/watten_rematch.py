@@ -138,7 +138,9 @@ def _attempt(source_id, identity, revision, password, before_create):
             source = candidate
             target = new_watten_game(result.room.room_id, source["_name"], source["_mode"])
             names = _cpu_names(result.room, {result.room.host_participant_id: identity.username})
-            target["_watten"] = WattenRuntime(result.room, None, tuple(names.items()))
+            from .watten_cpu_runtime import observe_cpu_memories
+
+            target["_watten"] = observe_cpu_memories(WattenRuntime(result.room, None, tuple(names.items())))
             target["_passphrase"] = result.protection_verifier
             target["_players"] = [{"id": result.room.host_participant_id, "name": identity.username,
                                    "user_id": identity.user_id, "ws": None}]

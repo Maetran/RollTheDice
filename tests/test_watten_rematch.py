@@ -87,7 +87,12 @@ def test_real_host_follow_up_copies_canonical_recipe_without_moving_starting_or_
     assert tuple(cpu.seat for cpu in room.cpus) == cpus and target["_watten"].engine is None
     assert not target["_started"] and not target["_completion_persisted"] and target["_watten_result"] is None
     assert source["_watten"].room.rematch_room_id == target["_id"]
-    assert len(checkpoints()) == 2
+    stored = checkpoints()
+    assert len(stored) == 2
+    restored_target = restore_watten_json(stored[target["_id"]])
+    assert tuple(item.player_id for item in restored_target["_watten"].cpu_memories) == tuple(item.participant_id for item in room.cpus)
+    retry = post(server, source, owners[0], data)
+    assert retry.status_code == 200 and retry.json()["game_id"] == target["_id"] and not retry.json()["created"]
     with session_scope() as db:
         assert counts(db) == journal
     if len(owners) > 1:
@@ -313,3 +318,57 @@ def test_revoked_original_cookie_during_await_cannot_create_under_another_logged
 
     asyncio.run(scenario())
     assert checkpoints() == before and len(games) == 1 and source["_watten"].room.rematch_room_id is None
+
+
+def test_stale_native_terminal_rejoin_cannot_erase_durable_follow_up_link(server):
+    import asyncio
+
+    from app.game_ws_session import GameSocketSession
+    from app.watten_runtime import copy_game
+    from app.watten_websocket import _handle_locked
+
+    match, owners = source_for()
+    stale = copy_game(match.game)
+    data = command(stale)
+    first = post(server, match.game, owners[0], data)
+    target_id = first.json()["game_id"]
+    before = checkpoints()
+    # A second process still has the old terminal source and legitimately
+    # reauthenticates/rejoins it. Its normal writer must not remove S -> T.
+    socket = native.CapturingSocket(owners[0])
+    session = GameSocketSession(socket, stale, owners[0][0])
+    with pytest.raises(ValueError, match="watten_stale_checkpoint"):
+        asyncio.run(_handle_locked(session, "rejoin_game", {"action": "rejoin_game", "revision": data["revision"],
+            "expected_account_id": owners[0][0].user_id}))
+    assert checkpoints() == before and stale["_watten"].room.rematch_room_id is None
+    games[stale["_id"]] = stale
+    retry = post(server, stale, owners[0], data)
+    assert retry.status_code == 200 and retry.json()["game_id"] == target_id and not retry.json()["created"]
+    assert set(checkpoints()) == {stale["_id"], target_id}
+    assert games[stale["_id"]]["_watten"].room.rematch_room_id == target_id
+
+
+def test_normal_checkpoint_cas_cannot_overwrite_a_follow_up_committed_after_its_read(server, monkeypatch):
+    from sqlalchemy.orm import Session
+    from sqlalchemy.sql.dml import Update
+
+    from app.watten_runtime import _write_checkpoint, copy_game
+
+    match, owners = source_for()
+    stale, data, winner = copy_game(match.game), command(match.game), []
+    real = Session.execute
+
+    def interleave(db, statement, *args, **kwargs):
+        if isinstance(statement, Update) and statement.table.name == "active_games" and not winner:
+            winner.append("pending")
+            committed = rematch.create_follow_up(stale["_id"], owners[0][0], data)
+            winner[0] = committed.target["_id"]
+        return real(db, statement, *args, **kwargs)
+
+    with monkeypatch.context() as fault:
+        fault.setattr(Session, "execute", interleave)
+        with pytest.raises(ValueError, match="watten_stale_checkpoint"), session_scope() as db:
+            _write_checkpoint(db, stale)
+    stored = checkpoints()
+    assert set(stored) == {stale["_id"], winner[0]}
+    assert restore_watten_json(stored[stale["_id"]])["_watten"].room.rematch_room_id == winner[0]

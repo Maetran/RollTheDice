@@ -606,24 +606,41 @@ def restore_watten_game(raw: dict) -> dict:
     return game
 
 
+def _checkpoint_authority(raw: str, checkpoint: dict) -> None:
+    """A durable follow-up link is monotonic across every native writer."""
+    prior = json.loads(raw)
+    if type(prior) is not dict or prior.get("_game_type") != "watten":
+        raise ValueError("watten_game_id_collision")
+    native = prior.get("_watten")
+    room = native.get("room") if type(native) is dict else None
+    if type(room) is not dict or "rematch_room_id" not in room:
+        raise ValueError("watten_invalid_stored_checkpoint")
+    link = room["rematch_room_id"]
+    if link is not None and (type(link) is not str or not link or checkpoint["_watten"].room.rematch_room_id != link):
+        raise ValueError("watten_stale_checkpoint")
+
+
 def _write_checkpoint(db, checkpoint: dict, *, creating=False, expected_json=None) -> bool:
-    """Caller-owned transaction; optional exact persisted-source CAS before inserts."""
+    """Caller-owned transaction; every existing source write uses exact JSON CAS."""
     payload = dumps_canonical_json(serialize_watten_game(checkpoint))
     now = utcnow()
     if expected_json is not None:
+        _checkpoint_authority(expected_json, checkpoint)
         changed = db.execute(update(ActiveGame).where(ActiveGame.game_id == checkpoint["_id"],
             ActiveGame.state_json == expected_json).values(state_json=payload, updated_at=now))
         return changed.rowcount == 1
-    row = db.scalar(select(ActiveGame).where(ActiveGame.game_id == checkpoint["_id"]))
+    row = db.scalar(select(ActiveGame).where(ActiveGame.game_id == checkpoint["_id"]).with_for_update())
     if row is None:
         db.add(ActiveGame(game_id=checkpoint["_id"], state_json=payload, created_at=now, updated_at=now))
     elif creating:
         raise ValueError("watten_game_id_collision")
     else:
-        prior = json.loads(row.state_json)
-        if type(prior) is not dict or prior.get("_game_type") != "watten":
-            raise ValueError("watten_game_id_collision")
-        row.state_json, row.updated_at = payload, now
+        expected = row.state_json
+        _checkpoint_authority(expected, checkpoint)
+        changed = db.execute(update(ActiveGame).where(ActiveGame.game_id == checkpoint["_id"],
+            ActiveGame.state_json == expected).values(state_json=payload, updated_at=now))
+        if changed.rowcount != 1:
+            raise ValueError("watten_stale_checkpoint")
     return True
 
 
