@@ -70,7 +70,8 @@ allein abgeleitet.
 Claude hat S16/B07/B08/U13 lesend gegengeprüft. Codex übernimmt folgende
 Prüfaufträge; sie entscheiden keine offenen Hausregeln:
 
-- Bei gleicher eigener Hand und gleichem erlaubtem öffentlichen Verlauf
+- Bei gleicher eigener Hand, gleichem erlaubtem öffentlichen Verlauf und
+  denselben ausdrücklich erlaubten privaten Partner-Rückmeldungen
   verborgene Ansage und fremde Hände variieren. Vor jeder regelgemässen
   öffentlichen Offenlegung müssen erlaubte Snapshots, Fehler, ARIA,
   Sortierung, Hinweise und CPU-Eingaben invariant bleiben. Ein später
@@ -90,6 +91,12 @@ Einschauer**. Ein allgemeiner Trumpfzwang für Blinde wurde nicht beschlossen.
 CPU-Ersatz in einem laufenden Spiel wird aus einem Warteraumvertrag ebenfalls
 nicht abgeleitet. Diese Grenzen korrigieren mögliche zu weite Schlussfolgerungen
 der Gegenprüfung.
+
+Owner-Nachtrag: «gut / schlecht / keine Ahnung» ist ein ausdrücklich erlaubter
+privater Kanal an den jeweiligen Mitspieler im Dreier/Vierer. Die konkrete
+Karteninformation bleibt verboten. Der Invarianzvergleich hält diesen erlaubten
+Informationsverlauf ebenfalls gleich; er darf erlaubte Kommunikation nicht
+irrtümlich als Geheimnisleck behandeln.
 
 **English:** P1 separates fixed host identity, actual routes, shared accounts,
 passkeys, installed context, push consent, runtime adapters and public discovery.

@@ -10,12 +10,19 @@ Quellenregeln entscheiden keine hier noch offenen Fälle.
 | Zweier | Immer ohne blind. Normale Ansage als Ausgangspunkt; nach ausdrücklichem Nachtrag ist zusätzlich ladinische Bestimmung möglich. Zwei Personen gegeneinander. |
 | Dreier | Rotierendes Solo gegen zwei. Der Alleinspieler sagt Schlag und Farbe an. |
 | Vierer | Standard blind, ladinisch; bestehende Vorgabe Geber und Uhrzeigernachfolger schauen einmalig ein. Manuelle Teamwahl bleibt gesetzt. |
+| Kartenbasis | Als Umsetzungsbasis «klingt mal ganz OK» bestätigt: 33 Karten, 7/8/9/10/Unter/Ober/König/Ass je Farbe plus Weli; fünf Karten je Person. Gewöhnliche Rangfolge Ass > König > Ober > Unter > 10 > 9 > 8 > 7. Kein Übernehmen der Hausdepp-Zehner-Rangfolge. |
+| Rollenbasis | Als Umsetzungsbasis bestätigt: Geber A, Uhrzeigernachfolger B. Normale Ansage B=Schlag/A=Farbe; im Dreier B=Solo und sagt beides. Ladinisch B-Unterkarte=Schlag/A-Unterkarte=Farbe. B spielt zuerst; nächste Gabe gibt B, erster Geber gelost. |
 | Guter | Standard aus. Die genaue angebotene Guter-Zusatzregel bleibt vor Aktivierung vollständig zu schliessen. |
 | Kritische | Standard aus. Bei Aktivierung nennt der Owner absteigend Herz-König, Weli, Eichel-Sieben. Kritische stehen immer über Rechtem. |
 | Weli | Kritisch EIN: Herz-König > Weli > Eichel-Sieben > Rechter. Kritisch AUS: Weli ist kleinster Trumpf. Die zunächst allgemein formulierte Aussage wurde damit ausdrücklich präzisiert. |
+| Weli und Ansage | Weli als ladinische Schlagkarte bestimmt **Weli als einzigen Schlag** dieser Gabe. Weli als Farbkarte bestimmt **Schellen**. Ansonsten gehört Weli immer zur tatsächlich angesagten Trumpffarbe; seine aufgedruckte Farbe begrenzt ihn nicht auf Schellen. Rechter-Schutz und freie Weli-Schlagansage werden noch konkret geschlossen. |
 | Bieten | Ab erster Karte immer möglich. Erstes Gebot Drei, jedes Gegengebot genau um eins höher. Ein Gebot hält das Spiel an; bis Halten, Gehen oder Aufbieten keine weitere Spielaktion. |
 | Halten / Gehen | A bietet Drei, B geht: A erhält zwei Punkte. B hält: Sieger erhält drei Punkte. B darf direkt Vier gegenbieten. Weitere Stufen folgen dem bestätigten Einer-Schritt; deren vorheriger Einsatz bleibt ausdrücklich im Zustand erhalten. |
 | Gestrichen | Kein eigenes Eröffnungsgebot. Auf ein gegnerisches Gebot sind Halten, Gehen **und Aufbieten** ausdrücklich auch gestrichen erlaubt. Dieser Nachtrag präzisiert das frühere pauschale Bietverbot. |
+| Eigene Gebotsberechtigung | Owner-Nachtrag: «ansagen darf aber jeder spieler immer wenn er dran ist (2er, 3er, 4er)». Die Abgrenzung des eigenen Eröffnungsgebots vom sofortigen zuständigen Antwortrecht ist konkret nachgefragt; Schlag/Farb-Ansagerrollen werden dadurch nicht still neu verteilt. |
+| Dreierpunkte | Verliert das Solo eine Gabe ohne Gebot, bekommen beide Gegenpartner je zwei Punkte. Erreichen dadurch beide elf, gewinnen beide. Gebotserhöhungen müssen dieselbe individuelle Zurechnung bewahren. |
+| Dreier-Entscheider | Geber A, Solist B, Gegenpartner C: B bietet, A entscheidet für A+C über Halten/Gehen/Aufbieten. Kein Rennen, bei dem C eine andere Antwort durchsetzt. Das genaue Vierer-Pendant wird konkret gefragt. |
+| Private Partner-Rückmeldung | Mitspieler kann «fühl mich gut / schlecht / keine Ahnung» privat an seinen jeweiligen Partner melden, ausdrücklich auch im Vierer. Keine konkrete Karte oder geheime Ansage in dieser Nachricht. Nachrichten werden als erlaubter privater Informationsverlauf behandelt; Gegner/Zuschauer bekommen sie nicht. |
 | Trumpfzugabe | Gewöhnlicher Trumpf eröffnet, Einschauer hält Trumpf und Schlag: Schlag darf statt Trumpf gelegt werden. «Stechen ist immer möglich», aber kein Stichzwang. Rechter und Kritische müssen nicht geopfert werden. «Geschützt» war nur unser Sammelbegriff für diese Ausnahmen, keine weitere Kartenklasse. |
 | Erneutes Einschauen | Nicht erlaubt. |
 | Reststapelblick | Nicht erlaubt. |
@@ -31,13 +38,13 @@ Fortschrittsumfeld mit langfristigen Wirtshaustiteln.
 
 ## Noch konkret zu schliessen
 
-Die erste präzise Rückfragerunde ist beantwortet. Noch nicht entschiedene
-P0-Zeilen bleiben im Umsetzungsplan offen, insbesondere exaktes Deck und
-Handzahl, normale Ansager-/erste Ausspielrollen, Geberrotation,
-Dreierpunktzuordnung und gemeinsame Antwortberechtigung, Weli als
-ladinische Bestimmungskarte, vollständige Trumpfauslöser/Kollisionen sowie
+Deck, Handzahl, Rollen und Dreierpunkte haben nun eine bestätigte
+Umsetzungsbasis. Konkret gefragt bleiben Vierer-Antwortrechte, eigenes Gebot
+im Kartenzug gegenüber sofortiger Gebotsantwort, Weli als Rechter und freie
+Weli-Schlagansage. Weitere offene P0-Zeilen sind vollständige Trumpfauslöser
+und Pflichtrollen im offenen Spiel, Kritischen-/Guter-Kollisionen sowie
 Ende-/Letzte-Karte-Reihenfolge. Weitere Fragen verwenden konkrete
-Beispielsituationen und stellen bereits bestätigte Entscheidungen nicht neu.
+Beispielsituationen und stellen bestätigte Entscheidungen nicht neu.
 
 **English:** Confirmed: two-player is open with normal announcements and an
 explicitly requested Ladinisch option;
@@ -48,6 +55,12 @@ with critical cards off, Weli is the smallest trump. Bidding starts with the
 first card at three, counterbids rise by one, and play pauses for the response.
 Gestrichen parties cannot initiate a bid but may hold, fold or counterbid in
 response. There is no obligation to win a trick or sacrifice the main strike
-or critical cards. No repeated inspection or stock look;
+or critical cards. The owner accepted a 33-card/five-card-hand implementation
+basis and clockwise dealer/announcement/lead roles. Both opponents in rotating
+three-player solo receive their own points and can win together. The dealer
+decides the opposing pair’s bid response; private good/bad/unsure partner
+feedback is explicitly required in three- and four-player games. Weli used
+as the Ladinisch strike is the sole strike, and as the suit card means bells;
+otherwise it belongs to the called trump suit. No repeated inspection or stock look;
 partner-hand viewing only as an open-game option; trick history is a creation
 option. Concrete card hints are prohibited. All comfort features are in scope.
