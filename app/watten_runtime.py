@@ -34,6 +34,14 @@ from .watten_engine import (
     start_match,
     storage_payload,
 )
+from .watten_evidence import PlayerBids
+from .watten_match_evidence import (
+    advance_bid_counters,
+    counters_from_storage,
+    counters_to_storage,
+    new_bid_counters,
+    validate_bid_counters,
+)
 from .watten_recipe import WattenRecipe, dumps_canonical_json, recipe_to_payload, require_fields
 from .watten_room import (
     WattenRoom,
@@ -94,6 +102,7 @@ class WattenRuntime:
     absent: tuple[str, ...] = ()
     lifecycle_revision: int = 0
     cpu_memories: tuple[CpuMemory, ...] = ()
+    bid_counters: tuple[PlayerBids, ...] | None = None
 
     def __post_init__(self):
         if not isinstance(self.room, WattenRoom) or type(self.names) is not tuple:
@@ -111,6 +120,7 @@ class WattenRuntime:
             if (self.engine.recipe != _engine_recipe(roster) or self.room.status != (
                     "finished" if self.engine.phase == "match_complete" else "started")):
                 raise ValueError("watten_runtime_engine_mismatch")
+        validate_bid_counters(self.bid_counters, self.engine)
         seated_humans = {item.participant_id for item in self.room.members if item.seat is not None}
         if (type(self.lifecycle_revision) is not int or self.lifecycle_revision < 0
                 or type(self.absent) is not tuple or any(type(item) is not str for item in self.absent)
@@ -330,6 +340,7 @@ def apply_runtime_action(game: dict, account: int, player: str, data: dict, *, e
                         else {"delivery_ids"} if action == "watten_delivery_ack" else {"deal_id", "opportunity"} if action == "watten_next_deal" else set())
     require_fields(data, frozenset(allowed), ValueError, "watten_command")
     room, engine, deliveries = runtime.room, runtime.engine, runtime.deliveries
+    bid_counters = runtime.bid_counters
     if action == "watten_take_seat":
         room = take_seat(room, revision=revision, account_id=account, seat=data["seat"], team=data["team"], now=now)
     elif action == "watten_place_cpu":
@@ -347,6 +358,7 @@ def apply_runtime_action(game: dict, account: int, player: str, data: dict, *, e
         roster = started.roster
         engine = start_match(_engine_recipe(roster), f"{room.room_id}-{secrets.token_hex(8)}",
                              cryptographic_deal(room.recipe.player_count, roster.first_dealer), first_dealer=roster.seats[roster.first_dealer])
+        bid_counters = new_bid_counters(engine)
     elif action == "watten_next_deal":
         if runtime.absent:
             raise ValueError("watten_match_paused")
@@ -379,7 +391,7 @@ def apply_runtime_action(game: dict, account: int, player: str, data: dict, *, e
     names = _cpu_names(room, names)
     acks = tuple(item for item in runtime.acks if item.account_id in {member.account_id for member in room.members})
     memories = tuple(item for item in runtime.cpu_memories if item.player_id in ids)
-    runtime = WattenRuntime(room, engine, tuple(names.items()), deliveries, acks, runtime.absent, runtime.lifecycle_revision, memories)
+    runtime = WattenRuntime(room, engine, tuple(names.items()), deliveries, acks, runtime.absent, runtime.lifecycle_revision, memories, bid_counters)
     # A waiting leave removes its own actor; it has no seat or durable retry
     # authority afterwards, so do not retain an ACK tied to a departed member.
     ack = RuntimeAck(account, data["command_id"], digest, room.revision,
@@ -423,7 +435,8 @@ def _apply_engine_command(game: dict, actor: EngineActor, command: EngineCommand
                 deliveries.append(CallDelivery(f"{transition.state.deal_id}:{transition.state.opportunity}:{kind}:{recipient}",
                                                recipient, transition.state.deal_id, kind, seat, value))
     room = finish(runtime.room, revision=runtime.room.revision) if transition.state.phase == "match_complete" else runtime.room
-    runtime = replace(runtime, room=room, engine=transition.state, deliveries=tuple(deliveries))
+    runtime = replace(runtime, room=room, engine=transition.state, deliveries=tuple(deliveries),
+                      bid_counters=advance_bid_counters(runtime.bid_counters, actor.player_id, command.kind, command.value))
     private = None
     if command.kind == "partner_feedback":
         private = {item.sender for item in runtime.engine.feedback if item.sender == actor.player_id} | {
@@ -497,11 +510,12 @@ def serialize_watten_game(game: dict) -> dict:
             "_updated_at": game["_updated_at"], "_last_activity": game["_last_activity"].isoformat(),
             "_passphrase": game["_passphrase"], "_completion_persisted": game["_completion_persisted"],
             "_watten_result": game["_watten_result"],
-            "_watten": {"schema_version": 2, "room": room_to_payload(runtime.room),
+            "_watten": {"schema_version": 3, "room": room_to_payload(runtime.room),
                         "engine": storage_payload(runtime.engine) if runtime.engine else None,
                         "names": [list(item) for item in runtime.names],
                         "absent": list(runtime.absent), "lifecycle_revision": runtime.lifecycle_revision,
                         "cpu_memories": [memory_to_storage(item) for item in runtime.cpu_memories],
+                        "bid_counters": counters_to_storage(runtime.bid_counters),
                         "deliveries": [{"delivery_id": item.delivery_id, "participant_id": item.participant_id,
                                         "deal_id": item.deal_id, "kind": item.kind, "seat": item.seat, "value": item.value}
                                        for item in runtime.deliveries],
@@ -517,11 +531,13 @@ def restore_watten_game(raw: dict) -> dict:
         raise ValueError("watten_invalid_storage")
     data = raw["_watten"]
     version = data.get("schema_version") if type(data) is dict else None
-    if type(version) is not int or version not in {1, 2}:
+    if type(version) is not int or version not in {1, 2, 3}:
         raise ValueError("watten_invalid_storage")
     fields = {"schema_version", "room", "engine", "names", "deliveries", "acks", "absent", "lifecycle_revision"}
-    if version == 2:
+    if version >= 2:
         fields.add("cpu_memories")
+    if version == 3:
+        fields.add("bid_counters")
     data = require_fields(data, frozenset(fields), ValueError, "watten_storage")
     if any(type(data[key]) is not list for key in ("names", "deliveries", "acks", "absent")):
         raise ValueError("watten_invalid_storage")
@@ -529,14 +545,15 @@ def restore_watten_game(raw: dict) -> dict:
     engine = restore_storage(data["engine"]) if data["engine"] is not None else None
     if version == 1 and engine is not None and room.cpus:
         raise ValueError("watten_cpu_legacy_memory_unavailable")
-    if version == 2 and type(data["cpu_memories"]) is not list:
+    if version >= 2 and type(data["cpu_memories"]) is not list:
         raise ValueError("watten_invalid_cpu_memory")
-    memories = (tuple(memory_from_storage(item) for item in data["cpu_memories"]) if version == 2
+    memories = (tuple(memory_from_storage(item) for item in data["cpu_memories"]) if version >= 2
                 else tuple(new_memory(cpu.participant_id) for cpu in room.cpus))
+    bid_counters = counters_from_storage(data["bid_counters"]) if version == 3 else None
     deliveries = tuple(CallDelivery(**require_fields(item, frozenset({"delivery_id", "participant_id", "deal_id", "kind", "seat", "value"}), ValueError, "watten_delivery")) for item in data["deliveries"])
     acks = tuple(RuntimeAck(**require_fields(item, frozenset({"account_id", "command_id", "digest", "room_revision", "deal_id", "opportunity"}), ValueError, "watten_ack")) for item in data["acks"])
     runtime = WattenRuntime(room, engine, tuple(tuple(item) if type(item) is list else item for item in data["names"]), deliveries, acks,
-                            tuple(data["absent"]), data["lifecycle_revision"], memories)
+                            tuple(data["absent"]), data["lifecycle_revision"], memories, bid_counters)
     from .watten_cpu_runtime import validate_stored_memories
 
     validate_stored_memories(runtime, allow_empty_waiting=version == 1)
