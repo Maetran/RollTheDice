@@ -46,9 +46,17 @@ for (const language of ['de', 'en']) {
       await expect(page).toHaveURL(`${baseURL}/watten/konto/einstellungen`);
       await expect(page.locator('h1')).toHaveText(language === 'de' ? 'Kontoeinstellungen' : 'Account settings');
       await expect(page.locator('[data-passkey-list] li')).toHaveCount(1);
-      await page.route('**/api/auth/me', route => route.fulfill({ status: 503, body: '{}' }), { times: 1 });
-      await page.reload();
-      await expect(page.locator('[role=alert]')).toBeVisible();
+      // Friend settings can still refresh the old document's identity while
+      // reload starts. Keep auth unavailable until the new page shows its
+      // error, rather than consuming a one-shot failure on that old request.
+      const authUnavailable = route => route.fulfill({ status: 503, body: '{}' });
+      await page.route('**/api/auth/me', authUnavailable);
+      try {
+        await page.reload();
+        await expect(page.locator('[role=alert]')).toBeVisible();
+      } finally {
+        await page.unroute('**/api/auth/me', authUnavailable);
+      }
       await page.locator('main > button').click();
       await expect(page.locator('[data-passkey-list] li')).toHaveCount(1);
       const initial = await (await page.request.get('/api/auth/me')).json();
