@@ -217,6 +217,19 @@ def test_buys_a_lone_ace_instead_of_burning_a_ten_while_stock_remains():
     assert move["action"] == "play" and move["cards"] == ["hearts-10"]
 
 
+def test_heads_up_weighs_an_ace_topped_packet_instead_of_always_clearing_it():
+    opponent = ["acorns-9", "acorns-O", "bells-K"]
+    hand = ["hearts-7", "bells-8", "hearts-10"]
+    # Three cards under an ace, little stock left: buying still beats the ten.
+    assert decide_at([hand, opponent], ["leaves-K", "bells-9", "leaves-A"], stock=8)["action"] == "pickup"
+    # Without an ace on top the heads-up race keeps clearing the packet.
+    move = decide_at([hand, opponent], ["leaves-6", "bells-7", "leaves-K"], stock=8)
+    assert move["action"] == "play" and move["cards"] == ["hearts-10"]
+    # A large junk packet under the ace is still cleared.
+    move = decide_at([hand, opponent], ["leaves-6", "bells-6", "acorns-7", "leaves-7", "acorns-8", "leaves-A"], stock=8)
+    assert move["action"] == "play" and move["cards"] == ["hearts-10"]
+
+
 def test_buys_a_packet_that_completes_its_own_quartet():
     others = [["acorns-9", "acorns-O", "acorns-K"], ["bells-9", "bells-O", "bells-K"]]
     move = decide_at([["hearts-U", "acorns-U", "hearts-10"], *others], ["leaves-U", "bells-U", "leaves-A"])
@@ -259,6 +272,8 @@ def test_gentle_computers_misjudge_more_often_but_never_illegally():
     sharp = Counter(choose_cpu_action(view, skill=1.0, rng=Random(seed))["action"] for seed in range(400))
     gentle = Counter(choose_cpu_action(view, skill=0.55, rng=Random(seed))["action"] for seed in range(400))
     assert sharp["pickup"] > gentle["pickup"] > 200
+    # Experienced tables rarely see the obvious purchase missed.
+    assert sharp["pickup"] >= 390
     assert set(sharp) | set(gentle) <= {"pickup", "play"}
     # Without randomness the decision stays exactly reproducible.
     assert choose_cpu_action(view) == choose_cpu_action(view, skill=0.55)

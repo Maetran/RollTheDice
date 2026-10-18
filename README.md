@@ -58,7 +58,7 @@ Computer sind echte Mitspieler mit eigenen verdeckten Händen. Gleiche Ränge ob
 sind leicht aufgefächert, das Rundenende zeigt Platzierungen, Runden-EP und neue
 Erfolge, und die Gegenstände am Tisch lassen sich benutzen: Münze werfen, würfeln,
 vom Bier trinken (zu wild, und es kippt um) oder die Nüsse verputzen. Sie kaufen kleine
-wertvolle Pakete statt ihre 10 zu verbrennen, spielen mal besser, mal schlechter
+wertvolle Pakete statt ihre 10 zu verbrennen, auch ein Ass im Zweikampf, spielen mal besser, mal schlechter
 und in den ersten 50 Runden neuer Konten spürbar sanfter; neuere Spieler sehen
 dazu kurze Tipps in ihrer Zugzeile. Die Serverregeln
 schützen fremde Karten und den Nachziehstapel. Ein Tipp auf den verdeckten Stapel

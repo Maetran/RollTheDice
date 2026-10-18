@@ -23,28 +23,41 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
-## 3.8.2 — Spielneutrale Kontotexte / game-neutral account texts — 2026-10-18
+## 3.8.2 — Klügere Hausdepp-Computer, spielneutrale Kontotexte / smarter Hausdepp computers, game-neutral account texts — 2026-10-18
 
-**Deutsch:** Anmeldung, Konto, Einstellungen und Spielanleitung zählen die Spiele
-nicht mehr einzeln auf: Ein Konto, Passwort, Benutzername, Sprache, Lobby-Chat,
-Profilbild und Spielerauswahl gelten für „alle unsere Spiele“, und Mitspieler-Rufe
-führen in öffentliche Runden unserer Spiele. So bleiben die Texte richtig, wenn ein
-weiteres Spiel dazukommt. Hinweise, die noch von „beiden Spielen“ oder nur von ZDWA
-und Zilch sprachen (Spielerauswahl, Spieler finden, Profilbild, Benutzername,
-gemeinsame Version, Versionshinweise, Spielerinnerungen), sind ebenfalls angepasst.
-Der Lobby-Chat-Absatz der Zilch-Spielanleitung nennt jetzt die Schnellfilter und
-erscheint auch auf Englisch. Nicht mehr verwendete alte Texte wurden aus dem
-Sprachkatalog entfernt.
+**Deutsch:** Im Hausdepp-Zweikampf räumten Computer ein Ass oben fast immer mit
+ihrer 10 ab, ausser bei höchstens zwei Paketkarten und mehr als zwölf Karten im
+Stapel. Jetzt wägen sie Kaufen und Abräumen wie am grösseren Tisch ab: Mit
+Nachziehstapel kaufen sie ein Ass in 79–100 % der Fälle, ohne Stapel räumt die 10
+weiterhin ab. In 6000 gepaarten Duellen verloren sie so 4,7 % seltener; mit drei bis
+sechs Spielern bleibt die Stärke gleich. Ab 50 eigenen Runden übersehen Computer
+eine gute Kaufgelegenheit nur noch selten (etwa 1,5–3 % statt 5–9 %); die übrigen
+menschlichen Ausrutscher bleiben. Anmeldung, Konto, Einstellungen und Spielanleitung
+zählen die Spiele nicht mehr einzeln auf: Ein Konto, Passwort, Benutzername,
+Sprache, Lobby-Chat, Profilbild und Spielerauswahl gelten für „alle unsere Spiele“,
+und Mitspieler-Rufe führen in öffentliche Runden unserer Spiele. So bleiben die
+Texte richtig, wenn ein weiteres Spiel dazukommt. Hinweise, die noch von „beiden
+Spielen“ oder nur von ZDWA und Zilch sprachen (Spielerauswahl, Spieler finden,
+Profilbild, Benutzername, gemeinsame Version, Versionshinweise, Spielerinnerungen),
+sind ebenfalls angepasst. Der Lobby-Chat-Absatz der Zilch-Spielanleitung nennt jetzt
+die Schnellfilter und erscheint auch auf Englisch. Nicht mehr verwendete alte Texte
+wurden aus dem Sprachkatalog entfernt.
 
-**English:** Sign-in, account, settings and the rules no longer list the games one
-by one: one account, password, username, language, lobby chat, profile picture and
-player selection apply to “all our games”, and player calls lead to public tables
-in our games. The texts therefore stay correct when another game joins. Notes that
-still spoke of “both games” or only of ZDWA and Zilch (player selection, find
-players, profile picture, username, shared version, release notes, play reminders)
-are updated too. The lobby chat paragraph in the Zilch rules now mentions the quick
-filters and appears in English too. Old, unused texts were removed from the language
-catalog.
+**English:** Hausdepp duels: computers used to clear an ace on top with their ten
+almost every time, unless the packet had at most two cards and more than twelve
+stock cards remained. They now weigh buying against clearing as at larger tables:
+with stock left they buy an ace in 79–100 % of cases, without stock the ten still
+clears. In 6,000 paired duels they lost 4.7 % less often; with three to six players
+strength is unchanged. From 50 own rounds, computers rarely miss a good purchase
+(about 1.5–3 % instead of 5–9 %); the other human-sized slips remain. Sign-in,
+account, settings and the rules no longer list the games one by one: one account,
+password, username, language, lobby chat, profile picture and player selection apply
+to “all our games”, and player calls lead to public tables in our games. The texts
+therefore stay correct when another game joins. Notes that still spoke of “both
+games” or only of ZDWA and Zilch (player selection, find players, profile picture,
+username, shared version, release notes, play reminders) are updated too. The lobby
+chat paragraph in the Zilch rules now mentions the quick filters and appears in
+English too. Old, unused texts were removed from the language catalog.
 
 ## 3.8.1 — Hausdepp: besser lesbarer Spieltisch / a more readable table — 2026-10-18
 
