@@ -98,6 +98,15 @@ for command_name in sudo nginx certbot openssl curl dig systemctl cmp mktemp gre
 done
 sudo_run true
 sudo_run nginx -t
+# conf.d is loaded before sites-enabled. A known-host reservation must never
+# become an implicit HTTP default if an operator removes the existing default.
+# Inspect in memory; never print the complete loaded configuration.
+nginx_config="$(sudo_run nginx -T)" || fail "Cannot inspect active Nginx defaults"
+grep -Eq '^[[:space:]]*listen[[:space:]]+(0\.0\.0\.0:)?80[[:space:]][^;]*default_server([[:space:]]|;)' \
+    <<<"$nginx_config" || fail "An existing explicit IPv4 HTTP default_server is required"
+grep -Eq '^[[:space:]]*listen[[:space:]]+\[::\]:80[[:space:]][^;]*default_server([[:space:]]|;)' \
+    <<<"$nginx_config" || fail "An existing explicit IPv6 HTTP default_server is required"
+unset nginx_config
 sudo_run systemctl is-enabled --quiet certbot.timer || fail "certbot.timer must be enabled"
 sudo_run systemctl is-active --quiet certbot.timer || fail "certbot.timer must be active"
 [[ -n "$(dig +time=2 +tries=1 +short A "$DOMAIN")" ]] || fail "Watten has no public IPv4 DNS answer"

@@ -32,6 +32,11 @@ separate gates.
   `127.0.0.1:8000` veröffentlicht. Es gibt keinen Watten-Vhost und keine
   Watten-Zertifikatslinie.
 - `nginx -t` besteht; bestehende Warnungen betreffen doppelte `_`-HTTP-Namen.
+  `conf.d` wird vor `sites-enabled` geladen. Die vorhandene Systemsite
+  `sites-enabled/default` erklärt jedoch `80 default_server` und
+  `[::]:80 default_server` ausdrücklich; neue benannte Watten-Vhosts ändern
+  deshalb den HTTP-Default nicht. Der Helfer verlangt beide Deklarationen
+  vor jeder Änderung aus der tatsächlich geladenen Konfiguration.
   Real-IP ist aktiv. UFW ist aktiv: SSH bleibt weltweit erlaubt, 80/443 nur
   für die 22 bestehenden Cloudflare-IPv4-/IPv6-Netze. Keine Firewalländerung.
 - Apex/`www`/Zilch/Hausdepp: echte HTTPS-GETs `/api/health` liefern 200;

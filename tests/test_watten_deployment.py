@@ -35,6 +35,10 @@ sudo() {
             nginx_tests=$((nginx_tests + 1))
             if [[ "$nginx_tests" == "$NGINX_FAIL_AT" ]]; then return 1; fi
             ;;
+        "nginx -T")
+            if [[ "$DEFAULT_IPV4_MISSING" == 0 ]]; then echo '    listen 80 default_server;'; fi
+            if [[ "$DEFAULT_IPV6_MISSING" == 0 ]]; then echo '    listen [::]:80 default_server;'; fi
+            ;;
         "systemctl reload "*)
             echo RELOAD >&2
             reloads=$((reloads + 1))
@@ -103,6 +107,7 @@ curl() {
             "INSTALL_FAIL": "0", "CERT_FAIL": "0", "RENEW_FAIL": "0", "CERT_INVALID": "0",
             "DNS_MISSING": "0", "HTTP_WRONG_BODIES": "0", "HTTP_STATUS": "200", "PROOF_SUFFIX": "",
             "HTTP_FAIL_FROM": "0", "NGINX_FAIL_AT": "0", "RELOAD_FAIL_AT": "0",
+            "DEFAULT_IPV4_MISSING": "0", "DEFAULT_IPV6_MISSING": "0",
             "TLS_FAILURES": "0", "PUBLIC_FAIL": "0", "CLOSED_STATUS": "503",
             "CACHE_POLICY": "no-store", "COOKIE_PRESENT": "0", "EXISTING_FAIL": "0",
         }
@@ -121,7 +126,8 @@ curl() {
 
     def test_unknown_files_missing_dns_and_unhealthy_existing_host_abort_without_writes(self):
         for flags in ({"STAGING_MISSING": "0"}, {"TARGET_MISSING": "0", "TARGET_DIFFERS": "1"},
-                      {"DNS_MISSING": "1"}, {"EXISTING_FAIL": "1"}):
+                      {"DNS_MISSING": "1"}, {"EXISTING_FAIL": "1"},
+                      {"DEFAULT_IPV4_MISSING": "1"}, {"DEFAULT_IPV6_MISSING": "1"}):
             with self.subTest(flags=flags):
                 result = self.execute(**flags)
                 self.assertNotEqual(result.returncode, 0)
