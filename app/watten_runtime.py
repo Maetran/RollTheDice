@@ -452,6 +452,8 @@ def _ack_payload(ack: RuntimeAck, lifecycle_revision: int) -> dict:
 
 
 def snapshot_watten(game: dict, viewer_id: str | None = None) -> dict:
+    from .watten_public_titles import public_title
+
     runtime = game["_watten"]
     room, engine = runtime.room, runtime.engine
     names = dict(runtime.names)
@@ -466,6 +468,8 @@ def snapshot_watten(game: dict, viewer_id: str | None = None) -> dict:
         occupant = next((item for item in (*room.members, *room.cpus) if item.seat == seat), None)
         seats.append({"seat": seat, "participant_id": occupant.participant_id if occupant else None,
                       "name": names[occupant.participant_id] if occupant else None,
+                      "public_title": public_title(game, occupant.participant_id if occupant else None,
+                                                   getattr(occupant, "account_id", None)),
                       "is_cpu": any(cpu.seat == seat for cpu in room.cpus), "team": seat % 2 if room.recipe.player_count == 4 else None})
     return {"game_type": "watten", "id": game["_id"], "name": game["_name"], "started": game["_started"],
             "finished": game["_finished"], "aborted": game["_aborted"],
@@ -623,11 +627,16 @@ def persist_watten_game(game: dict, *, creating: bool = False) -> None:
                 raise ValueError("watten_game_id_collision")
             row.state_json = payload
             row.updated_at = now
+        from .watten_public_titles import refresh_public_titles
+
+        db.flush()  # Actual checkpoint/result failures must still abort gameplay.
+        titles = refresh_public_titles(db, checkpoint)
     # Publish markers only after session_scope's successful commit.
     game["_watten_result"] = checkpoint["_watten_result"]
     game["_completion_persisted"] = checkpoint["_completion_persisted"]
     game["_finished_at"] = checkpoint["_finished_at"]
     game["_watten"] = checkpoint["_watten"]
+    game["_watten_public_titles"] = titles
 
 
 def restore_watten_json(text: str) -> dict:
@@ -646,7 +655,11 @@ def restore_watten_json(text: str) -> dict:
         raise ValueError("watten_invalid_storage")
 
     try:
-        return restore_watten_game(json.loads(text, object_pairs_hook=unique, parse_constant=constant))
+        game = restore_watten_game(json.loads(text, object_pairs_hook=unique, parse_constant=constant))
+        from .watten_public_titles import restored_public_titles
+
+        game["_watten_public_titles"] = restored_public_titles(game)
+        return game
     except RecursionError as exc:
         raise ValueError("watten_invalid_storage") from exc
 
