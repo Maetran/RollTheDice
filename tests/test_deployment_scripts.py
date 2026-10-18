@@ -71,7 +71,9 @@ git() {
 sudo() {
   case "$*" in
     *"docker compose up"*) echo BUILD; echo "COMPOSE_ARGS:$*"; return "$BUILD_FAIL" ;;
-    *"docker compose exec"*) echo PUBLISH; return "$QUEUE_FAIL" ;;
+    # Read the notice like app.release_push does; an unread pipe can SIGPIPE
+    # the release printf under pipefail and fail the run at random.
+    *"docker compose exec"*) echo "PUBLISH:$(cat)"; return "$QUEUE_FAIL" ;;
     *"prune_data_backups.sh"*) echo RETENTION ;;
   esac
   return 0
@@ -108,6 +110,7 @@ curl() { echo HEALTH >&2; return "$HEALTH_FAIL"; }
                     self.assertNotIn("RETENTION", result.stdout)
                 else:
                     self.assertLess(result.stdout.index("BUILD"), result.stdout.index("PUBLISH"))
+                    self.assertIn('PUBLISH:{"skip":true}', result.stdout)
                     self.assertIn("HEALTH", result.stderr)
                     self.assertLess(result.stdout.index("BUILD"), result.stdout.index("PUBLIC_SMOKE"))
                     self.assertLess(result.stdout.index("PUBLIC_SMOKE"), result.stdout.index("PUBLISH"))

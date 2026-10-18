@@ -892,15 +892,20 @@ in the result history.
 
 ## Accounts and progress
 
-One account works across both games. Both settings pages follow the same four
-sections: **Profile & sign-in**, **Language & play**, **Players & notifications**,
-and **Help & updates**. Profile and sign-in open first, with passkeys as the
+One account works across all our games. Account and settings texts say so
+without listing each game, so they stay accurate when another game joins the
+suite. The ZDWA and Zilch settings pages follow the same four sections:
+**Profile & sign-in**, **Language & play**, **Players & notifications**, and
+**Help & updates**. Profile and sign-in open first, with passkeys as the
 preferred sign-in method. Open profile editing or password changes when needed;
 email settings appear only when email is enabled. Shared language and lobby-chat
 preferences save separately from ZDWA gameplay options. Statistics and
 achievements keep their own tabs.
 
-**Deutsch:** Die Einstellungen beider Spiele folgen derselben Reihenfolge:
+**Deutsch:** Ein Konto gilt für alle unsere Spiele. Konto- und
+Einstellungstexte sagen das, ohne jedes Spiel einzeln aufzuzählen, und bleiben
+so auch mit einem weiteren Spiel richtig. Die Einstellungen von ZDWA und Zilch
+folgen derselben Reihenfolge:
 **Profil & Zugang**, **Sprache & Spiel**, **Mitspieler & Hinweise** und
 **Hilfe & Neuigkeiten**. Profil und Zugang sind zuerst geöffnet, mit Passkeys
 als bevorzugter Anmeldung. Profilbearbeitung und Passwortwechsel öffnest du
@@ -953,7 +958,7 @@ Under **Account → Settings → Profile & sign-in → Change username**, enter 
 confirm it with an existing passkey, or choose your current password as a fallback.
 Names follow the registration rules (3–32 characters) and
 are unique regardless of case. The new name applies to signing in, profiles
-and new games in both products. Sessions, statistics, achievements, avatars
+and new games across the whole suite. Sessions, statistics, achievements, avatars
 and saved player selections remain attached to the same account. Completed
 game views, history and leaderboards show the current account name, resolved
 through the stored participant/account IDs. Reusing a released name never
@@ -965,7 +970,7 @@ preview access require an administrator to adjust the access configuration first
 **Deutsch:** Unter **Konto → Einstellungen → Profil & Zugang → Benutzername ändern** kannst du
 einen neuen Namen wählen und bevorzugt mit einem vorhandenen Passkey bestätigen.
 Dein aktuelles Passwort bleibt als Alternative verfügbar. Der Name gilt für Anmeldung,
-Profil und neue Partien in beiden Spielen. Konto, Statistiken, Erfolge und
+Profil und neue Partien in allen unseren Spielen. Konto, Statistiken, Erfolge und
 Spielerauswahl bleiben erhalten. Auch abgeschlossene Partien und Bestenlisten
 zeigen deinen aktuellen Kontonamen. Die Zuordnung erfolgt über feste IDs,
 auch wenn jemand deinen alten Namen übernimmt. Gastnamen, nicht eindeutig

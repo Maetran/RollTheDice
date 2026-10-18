@@ -425,11 +425,11 @@ function syncGameOptions(games) {
   const allowed = ["zdwa", "zilch", "hausdepp"].filter(game => games.includes(game));
   const selector = byId("dashboardGame");
   const selected = selector.value;
-  selector.innerHTML = `<option value="all">${e(t(allowed.includes("hausdepp") ? "Alle drei Spiele" : "Beide Spiele"))}</option>${allowed.map(game => `<option value="${game}">${gameName(game)}</option>`).join("")}`;
+  selector.innerHTML = `<option value="all">${e(t(allowed.length > 2 ? "Alle Spiele" : "Beide Spiele"))}</option>${allowed.map(game => `<option value="${game}">${gameName(game)}</option>`).join("")}`;
   selector.value = allowed.includes(selected) ? selected : "all";
   for (const scope of document.querySelectorAll("[data-dashboard-game-scope]")) scope.textContent = allowed.map(gameName).join(" + ");
-  byId("dashboardSuiteDescription").textContent = t(allowed.includes("hausdepp")
-    ? "Dein Kontrollzentrum für ZDWA, Zilch & Hausdepp." : "Dein Kontrollzentrum für ZDWA & Zilch.");
+  byId("dashboardSuiteDescription").textContent = t(allowed.length > 2
+    ? "Dein Kontrollzentrum für alle Spiele." : "Dein Kontrollzentrum für ZDWA & Zilch.");
 }
 
 function connection(label, tone = "") {
