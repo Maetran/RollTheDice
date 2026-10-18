@@ -6,14 +6,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Verwalte dein ZDWA Konto, deine persönlichen Spieleinstellungen und Statistiken.">
   <meta name="robots" content="noindex, follow">
-  <link rel="manifest" href="/manifest.webmanifest?v=3eae554f8de3">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=3eae554f8de3" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=3eae554f8de3" sizes="180x180">
+  <link rel="manifest" href="/manifest.webmanifest?v=15bad2e522bd">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=15bad2e522bd" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=15bad2e522bd" sizes="180x180">
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"||t==="classic"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d==="dark"?"dark":"light";const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=d==="dark"?"#0b1120":d==="classic"?"#31583a":"#f4f6f8"}catch(_){}</script>
-  <link rel="stylesheet" href="/static/style.css?v=3eae554f8de3">
-  <link rel="stylesheet" href="/static/zdwa-design-2026.css?v=3eae554f8de3">
+  <link rel="stylesheet" href="/static/style.css?v=15bad2e522bd">
+  <link rel="stylesheet" href="/static/zdwa-design-2026.css?v=15bad2e522bd">
   <script>{const r=document.documentElement,g=k=>{try{return localStorage.getItem(k)}catch(_){return null}},q=new URLSearchParams(location.search).get("design");if(q!=="classic"&&g("zdwa_design")!=="old"&&g("zdwa_design_off")!=="1"&&(q==="2026"||g("zdwa_design_override")!=="old"))r.dataset.design="2026"}</script>
-  <script src="/static/shell.js?v=3eae554f8de3" defer></script>
+  <script src="/static/shell.js?v=15bad2e522bd" defer></script>
 </head>
 <body class="lobby-page">
   <main class="wrap profile-shell">
@@ -82,7 +82,7 @@
       </section>
     </section>
     <section id="settingsPanel" class="account-panel account-settings-panel" role="tabpanel" aria-labelledby="settingsTab" hidden>
-      <p class="account-settings-intro">Ein Konto für ZDWA, Zilch und Hausdepp. Profil, Anmeldung und Hinweise gelten für alle drei Spiele.</p>
+      <p class="account-settings-intro">Ein Konto für alle unsere Spiele: Profil, Anmeldung und Hinweise gelten überall.</p>
       <details class="account-settings-group" data-account-section="access" open>
         <summary><h2 class="account-settings-group__heading"><span class="account-settings-group__title">Profil &amp; Zugang</span><span class="account-settings-group__description">Passkeys, Profil und Passwort</span></h2></summary>
         <div class="account-settings-group__body">
@@ -117,7 +117,7 @@
       <details class="account-settings-group" data-account-section="play">
         <summary><h2 class="account-settings-group__heading"><span class="account-settings-group__title">Sprache &amp; Spiel</span><span class="account-settings-group__description">Sprache, Design und persönliche Spielbedienung</span></h2></summary>
         <div class="account-settings-group__body">
-          <section class="account-settings-block" aria-labelledby="languageSettingsTitle"><h3 id="languageSettingsTitle">Sprache</h3><p class="muted small">Die Sprache gilt für ZDWA, Zilch und Hausdepp auf allen Geräten.</p><form id="languagePreferencesForm" class="form-stack account-preferences-form">          <fieldset>
+          <section class="account-settings-block" aria-labelledby="languageSettingsTitle"><h3 id="languageSettingsTitle">Sprache</h3><p class="muted small">Die Sprache gilt für alle unsere Spiele auf allen Geräten.</p><form id="languagePreferencesForm" class="form-stack account-preferences-form">          <fieldset>
             <legend>Bevorzugte Sprache</legend>
             <label><input type="radio" name="preferredLanguage" value="de"> Deutsch</label>
             <label><input type="radio" name="preferredLanguage" value="en"> Englisch</label>
@@ -176,10 +176,10 @@
       <details class="account-settings-group" data-account-section="social">
         <summary><h2 class="account-settings-group__heading"><span class="account-settings-group__title">Mitspieler &amp; Hinweise</span><span class="account-settings-group__description">Chat, Spielerauswahl und Benachrichtigungen</span></h2></summary>
         <div class="account-settings-group__body">
-          <section class="account-settings-block" aria-labelledby="chatSettingsTitle"><h3 id="chatSettingsTitle">Lobby-Chat</h3><p class="muted small">Diese Einstellung gilt für ZDWA, Zilch und Hausdepp auf allen Geräten.</p><form id="lobbyChatPreferencesForm" class="form-stack account-preferences-form">          <fieldset>
+          <section class="account-settings-block" aria-labelledby="chatSettingsTitle"><h3 id="chatSettingsTitle">Lobby-Chat</h3><p class="muted small">Diese Einstellung gilt für alle unsere Spiele auf allen Geräten.</p><form id="lobbyChatPreferencesForm" class="form-stack account-preferences-form">          <fieldset>
             <legend>Lobby-Chat</legend>
-            <label><input type="checkbox" name="lobbyChatEnabled"> Lobby-Chat aktivieren (gilt für ZDWA, Zilch und Hausdepp)</label>
-            <label><input type="checkbox" name="lobbyChatPopups"> Neue Nachrichten im Lobby-Chat oben einblenden (gilt für ZDWA, Zilch und Hausdepp)</label>
+            <label><input type="checkbox" name="lobbyChatEnabled"> Lobby-Chat aktivieren (gilt für alle unsere Spiele)</label>
+            <label><input type="checkbox" name="lobbyChatPopups"> Neue Nachrichten im Lobby-Chat oben einblenden (gilt für alle unsere Spiele)</label>
           </fieldset><button class="primary" type="submit">Chat-Einstellung speichern</button></form><p id="lobbyChatPreferencesMessage" class="muted small" role="status"></p></section>
 <section class="account-settings-block" aria-labelledby="allowlistSettingsTitle">
         <h3 id="allowlistSettingsTitle">Deine Spielerauswahl</h3>
@@ -191,7 +191,7 @@
       </section>
 <section id="pushSettingsCard" class="account-settings-block" aria-labelledby="pushSettingsTitle" tabindex="-1">
         <h3 id="pushSettingsTitle">Push-Benachrichtigungen</h3>
-        <p class="muted small">Verpass keinen freien Platz: Mitspieler-Rufe bringen dich direkt in öffentliche ZDWA-, Zilch- oder Hausdepp-Runden. Erlaube zuerst Push auf diesem Gerät und wähle danach selbst, welche Hinweise zu dir passen.</p>
+        <p class="muted small">Verpass keinen freien Platz: Mitspieler-Rufe bringen dich direkt in öffentliche Runden unserer Spiele. Erlaube zuerst Push auf diesem Gerät und wähle danach selbst, welche Hinweise zu dir passen.</p>
         <p class="muted small">Mit „Push auf diesem Gerät zulassen“ fragt dein Gerät als Nächstes nach der Erlaubnis. Danach entscheidest du unten getrennt über Mitspieler-Rufe, tägliche Spielideen und Versionshinweise.</p>
         <div class="account-push-actions">
           <button id="enableGameInvitePush" class="primary" type="button">Push auf diesem Gerät zulassen</button>
@@ -202,7 +202,7 @@
           <label><input type="checkbox" name="gameInvites"> Mitspieler-Rufe erhalten (wenn ein Platz frei ist)</label>
           <label><input type="checkbox" name="dailyReminder"> Tägliche Spielerinnerung erhalten</label>
           <p class="muted small" data-push-reminder-schedule></p>
-          <p class="muted small">Bei beiden angemeldeten Spielen wechseln sich ZDWA und Zilch ab. Der Klick auf eine Erinnerung öffnet die passende Lobby.</p>
+          <p class="muted small">Sind mehrere Spiele für Push angemeldet, wechseln sich die Erinnerungen ab. Der Klick auf eine Erinnerung öffnet die passende Lobby.</p>
           <label><input type="checkbox" name="releaseNotifications"> Versionshinweise erhalten</label>
           <label data-admin-help-push-setting hidden><input type="checkbox" name="adminHelp"> Hilferufe von Spielern erhalten (Admins)</label>
           <p class="muted small">Nach einem erfolgreichen Update: kurze Hinweise zu neuen Funktionen oder Verbesserungen an der Stabilität. Ein Klick öffnet die passende Lobby. Deine Spielaktivität und die Spielerauswahl gelten nur für die anderen Push-Arten.</p>
@@ -232,13 +232,13 @@
     </section>
   </main>
   <script type="module">
-    import { apiFetch, authError, escapeHtml, formatNumber, loadAuth, mountAccountVerification, revealAccountSetting, mountEmailSettings, mountPasskeySettings, mountPasskeyPrompt, mountUsernameSettings, playerNameMarkup, playerRankBadge } from '/static/auth.js?v=3eae554f8de3';
-    import { bindPushPreferences, disableGameInvitePush, enableGameInvitePush, getGameInvitePushStatus, syncPushPreferences, webPushErrorMessage } from '/static/web-push.js?v=3eae554f8de3';
-    import { initializeReleaseNotes } from '/static/release-notes.js?v=3eae554f8de3';
-    import { mountAllowlistSettings } from '/static/player-allowlist.js?v=3eae554f8de3';
-    import { mountAvatarUpload } from '/static/avatar-upload.js?v=3eae554f8de3';
-    import { mountFriendActivitySettings } from '/static/friend-activity.js?v=3eae554f8de3';
-    import { mountTourSettings } from '/static/game-tours.js?v=3eae554f8de3';
+    import { apiFetch, authError, escapeHtml, formatNumber, loadAuth, mountAccountVerification, revealAccountSetting, mountEmailSettings, mountPasskeySettings, mountPasskeyPrompt, mountUsernameSettings, playerNameMarkup, playerRankBadge } from '/static/auth.js?v=15bad2e522bd';
+    import { bindPushPreferences, disableGameInvitePush, enableGameInvitePush, getGameInvitePushStatus, syncPushPreferences, webPushErrorMessage } from '/static/web-push.js?v=15bad2e522bd';
+    import { initializeReleaseNotes } from '/static/release-notes.js?v=15bad2e522bd';
+    import { mountAllowlistSettings } from '/static/player-allowlist.js?v=15bad2e522bd';
+    import { mountAvatarUpload } from '/static/avatar-upload.js?v=15bad2e522bd';
+    import { mountFriendActivitySettings } from '/static/friend-activity.js?v=15bad2e522bd';
+    import { mountTourSettings } from '/static/game-tours.js?v=15bad2e522bd';
     const auth = await loadAuth();
     if (!auth.authenticated) location.replace(window.ZDWA_ROUTE?.path('/') || '/');
     const user = auth.user;
