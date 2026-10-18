@@ -111,8 +111,11 @@ Sie ist noch ohne Spieladapter, Spiel-API, Datenbankanbindung oder Spieloberflä
 Rechter-Referenz und Stichhistorie sind standardmässig aus; ohne Referenz wird
 die einmalig erlaubte Ansage nicht dauerhaft angezeigt. Partnerblatt ist nur
 im offenen Spiel mit Partnern wählbar; Guter/Schlechter bleiben aus. Die lokalen
-Grundlagentests ersetzen weder die kommende Vollprüfung noch Runtime-,
-Mehrgeräte- und Browserabnahme. Der feste Produktionshost bleibt geschlossen.
+Grundlagen haben die vollständige lokale Prüfung in PR #53 bestanden;
+Runtime-, Mehrgeräte- und Produktabnahme bleiben offen. Neu festgelegt ist:
+Wer eine laufende Partie bewusst verlässt, pausiert sie bis zur Rückkehr.
+Diese Regel wird aktuell in der lokalen Runtime umgesetzt. Der feste
+Produktionshost bleibt geschlossen.
 
 **English:** Watten is the next planned game: usually four-player Ladinisch
 to 11 points, with private bottom-card inspection by the dealer and the next
@@ -179,8 +182,11 @@ It has no game adapter, gameplay API, database integration or game UI yet.
 The matching Rechter reference and trick history default off; without the
 reference, the once-permitted call is not kept visible. Partner hands are
 an explicit option only in open games with partners; Guter/Schlechter stay off.
-Focused foundation tests do not replace the next full check or runtime,
-multiple-device and browser acceptance. The production host remains closed.
+The foundations passed the full local checks in PR #53; runtime,
+multiple-device and product acceptance remain open. A newly confirmed rule
+pauses a running match after an intentional departure until that player
+returns. This is being implemented in the local runtime. The production
+host remains closed.
 
 ## Hausdepp — öffentlicher V3-Start / public V3 launch
 

@@ -295,3 +295,47 @@ das erlaubt weder erneutes Einschauen noch eine dauerhafte Referenz bei Option A
 Die nächste Claude-Aufgabe ist durch den gesperrten Mac blockiert; der Owner
 wurde um Entsperren gebeten. Keine Umgehung der Sperre. Die Backend-Runtime-Arbeit
 erfolgt separat; Produktionsspiel und öffentliche Einreichung bleiben geschlossen.
+
+## 18.10.2026 – reine Engine integriert, nächste Runtime und CPU-Aufgabe
+
+Der fertige Commit `fe6bc46dafa4d4acb1a9d4e7b25dbdf2805f3432` bestand alle
+sieben vorgeschriebenen lokalen Prüfgruppen auf Basis
+`da66185aa77a784cabc09a97d9e471eea6603aba`: Qualität/Sicherheit, Tools,
+**1803 Backendtests, 85.00 % Coverage**, Image/Produktionscontainer, vier
+Haupt-Browserteile plus drei Kontosuiten und Diff. Beleg:
+`test-results/local-checks/fe6bc46dafa4-1792339856260-3e4d3b35/`.
+Der geprüfte Stand wurde mit veröffentlichtem Owner-Status über
+[PR #53](https://github.com/Maetran/RollTheDice/pull/53) normal als
+`8d914e1bd4f21e304400e1b73d4690527f654018` nach `develop` übernommen.
+Erster Elternteil ist exakt die geprüfte Basis, der Merge-Tree entspricht
+exakt `fe6bc46`; PR- und anschliessende Integrations-CI sind grün.
+Kein App-Deploy und keine öffentliche Spielabnahme sind damit verbunden.
+Präzisierung des früheren kleinen Raum-Nachweises: **157** Tests ausschliesslich
+in `tests/test_watten_room.py` und `tests/test_watten_recipe.py`, ohne Biettests.
+
+Der Desktop-Blocker wurde für die Folgearbeit aufgelöst, indem die bereits
+installierte offizielle Claude-Code-Kommandozeile mit ihrer bestehenden
+`claude.ai`-Pro-Anmeldung verwendet wird. Keine Bildschirmsperre, Zugangsdaten
+oder Kontoeinstellungen wurden verändert. Die tatsächliche CLI-Quotenmeldung
+beim CPU-Start zeigte 17 % Sitzung / 85 % Woche; Zusatznutzung ist ausdrücklich
+deaktiviert (`overageEnabled=false`, `isUsingOverage=false`). Die Werte sind
+Startmomentaufnahmen. Der Owner hat den Mac inzwischen als entsperrt gemeldet;
+der laufende CLI-Auftrag wird dadurch nicht doppelt im Desktop gestartet.
+
+Claude bearbeitet im eigenen Worktree `watten-cpu-policy`, Branch
+`codex/watten-cpu-policy`, den begrenzten Auftrag aus
+`docs/WATTEN_CPU_HANDOFF.md`: vier eigene neue CPU-/Gedächtnisdateien, nur
+persönlich erlaubte Beobachtungen, keine realen fremden Hände oder Stockdaten,
+keine Runtime-/UI-Überschreibung oder schweren Prüfpools. CLI-Sitzung
+`7e795ad8-574c-4b3e-b935-fcb625153e48`, Start-Commit `4402c36`;
+feiner Livezustand und Protokollpfad stehen ignoriert in der Koordinationsdatei.
+Die vorhandene 15-Minuten-Beobachtung wurde um diesen überprüfbaren CLI-Weg
+ergänzt; der erfüllte einmalige Wakeup bleibt pausiert.
+
+Neu bestätigt: Beim bewussten Verlassen einer laufenden Viererpartie wartet
+die Partie auf die Rückkehr des Spielers. Der separate Runtime-Autor setzt
+die dauerhafte Abwesenheit, Pause und frisch kontogebundene Wiederaufnahme
+mit eigener Lebenszyklusversion konsistent für 2/3/4 um. Sitz, Hand, Ansage,
+offenes Gebot und Punkte bleiben erhalten; kein CPU-Ersatz, Forfeit oder
+Abbruch wird erfunden. Wiederkehr gibt kein erneutes Einschauen frei.
+Diese neue Runtime-Änderung hat noch keinen Integrations-Vollnachweis.

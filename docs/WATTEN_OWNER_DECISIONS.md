@@ -39,11 +39,30 @@ Quellenregeln entscheiden keine hier noch offenen Fälle.
 | Stichhistorie | Als wählbare Option bei der Spielerstellung anbieten. Inhalt/Umfang der freigegebenen Historie noch genau festlegen. |
 | Kartenhinweise | Konkrete Kartenhinweise sind verboten, besonders beim blinden Spiel. Owner unterscheidet theoretisches Verbot von der praktisch begrenzten Durchsetzbarkeit freier Kommunikation. Kein automatischer Inhaltsfilter oder Erkennungserfolg ist damit behauptet. |
 | Komfortumfang | «alle komfortfunktionen rein»: Favoriten, Reaktionen und Tischdeko sowie die im Plan erfassten Komfortfunktionen in den Umfang aufnehmen. Spiel-/Kommunikationsschutzverträge bleiben verbindlich. |
+| Bewusstes Verlassen einer laufenden Partie | Konkretes Viererbeispiel: C klickt bewusst «Partie verlassen». Owner entscheidet: «Partie wartet auf Cs Rückkehr.» Die Partie pausiert; weder CPU-Ersatz noch Abbruch oder Ergebniswertung werden daraus abgeleitet. |
 
 Die schon vorher festen Vorgaben bleiben: meist bis elf, eigene 2/3/4-Modi,
 Hausdepp-Karten, eigene erlaubte CPU-Sicht/Tiroler Namen, stabile gewählte
 Teams/Sitze bei Rejoin, beide Ausrichtungen, vollständiges Konto und
 Fortschrittsumfeld mit langfristigen Wirtshaustiteln.
+
+### Technische Umsetzung der bestätigten Pause
+
+Die folgenden Schutzverträge sind technische Folgerungen, keine weiteren
+behaupteten Hausregeln: Dieselbe Pause gilt konsistent für die angebotenen
+Zweier-, Dreier- und Viererprofile. Konto, Sitz, Team, Hand, Ansagewissen,
+Punktestand und ein bereits offenes Gebot bleiben erhalten. Mehrere bewusst
+Abwesende werden getrennt gespeichert; erst die Rückkehr aller löst die Pause.
+Ein Mitglied ohne Spielplatz oder ein Zuschauer kann die Partie nicht pausieren. Wiederaufnahme
+braucht eine frisch authentifizierte Rückkehr des betreffenden Kontos;
+blosse Zuschauerverbindungen, alte Sockets und wiederholte alte Leave-ACKs
+dürfen sie nicht auslösen oder einen zurückgekehrten Spieler erneut entfernen.
+Eine eigene Lebenszyklusversion schützt alle Spielkommandos vor Eingaben aus
+der Zeit vor der Pause. Die Pause ist keine Wartefrist und vergibt keine Punkte.
+Einschauen wird durch Leave oder Rückkehr nicht erneut freigegeben. Ein
+gewöhnlicher Verbindungsabbruch bleibt vom bewussten Leave getrennt und
+erhält den Platz für die Wiederverbindung. Die Runtime setzt diese Verträge
+derzeit um; unabhängige Quellenprüfung und Integrationsnachweis stehen aus.
 
 ## Noch konkret zu schliessen
 
@@ -111,3 +130,11 @@ awards B three points. The third winning trick ends and scores the deal
 immediately. Blind Ladinisch produces automatic public thanks only for a
 main strike among the actual originally shown cards, never by scanning a
 hidden hand.
+
+In the confirmed four-player leave example, an intentional departure pauses
+the match until that account returns. It does not replace the player with a
+CPU, abort the match or award a result. The implementation applies this
+consistently across the supported player counts, preserves the existing
+seat/hand/call/bid state and distinguishes an intentional departure from a
+network disconnect. Fresh account-bound return and a lifecycle revision
+protect against stale commands; returning never grants another inspection.
