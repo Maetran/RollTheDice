@@ -9,6 +9,6 @@ module.exports = defineConfig({
   testMatch: "**/username-change.spec.js",
   webServer: base.webServer ? {
     ...base.webServer,
-    command: `ROLLTHEDICE_ZILCH_ACCESS_MODE=public ${base.webServer.command}`,
+    env: { ...base.webServer.env, ROLLTHEDICE_ZILCH_ACCESS_MODE: "public" },
   } : undefined,
 });
