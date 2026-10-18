@@ -530,6 +530,71 @@ test("a cookie-only B change during 503 never retains cached A values", async ()
   assert.equal(h.state.view, null);
 });
 
+test("analytics always sends the captured viewer ID, even when the request cookie changes", async () => {
+  const h = harness();
+  h.state.cookie = account(8);
+  await connected(h, legacy("all"));
+  assert.deepEqual(h.requests[0].init.headers, { "X-Analytics-Expected-Account-Id": "8" });
+  h.state.cookie = account(7);
+  void h.lifecycle.refresh();
+  assert.deepEqual(h.requests[1].init.headers, { "X-Analytics-Expected-Account-Id": "8" }, "a cookie is not authority to replace the bound viewer");
+  h.requests[1].resolve(reply(409, { detail: "analytics_account_changed" }));
+  await until(() => h.requests.length === 3);
+  assert.deepEqual(h.requests[2].init.headers, { "X-Analytics-Expected-Account-Id": "7" }, "only a fresh rebind selects the next request's ID");
+  assert.deepEqual(h.state.bound, [8, 7]);
+  assert.equal(h.state.view, null);
+});
+
+test("a real account-mismatch 409 blocks the delegated B to owner A to B cookie race without retaining data", async () => {
+  const h = harness(), body = deferred();
+  const forB = legacy("all"), forOwner = native({ period: { game: "all" }, generated_at: "owner-only-four-game-data" });
+  h.state.cookie = account(8); // The delegated viewer is B and is not a Watten audience grant.
+  await connected(h, forB);
+  h.state.cookie = account(7); // Only the server's cookie changes; this document receives no event.
+  void h.lifecycle.refresh();
+  const request = h.requests[1], serverIdentity = h.state.cookie.user.id;
+  const expected = request.init.headers?.["X-Analytics-Expected-Account-Id"];
+  // The real endpoint accepts a missing optional header, but rejects a
+  // supplied different ID before invoking stats. Its identity is fixed now,
+  // not when the response body is eventually delivered.
+  const mismatch = expected !== undefined && expected !== String(serverIdentity);
+  let statsCalls = 0, reading = false;
+  const payload = mismatch ? { detail: "analytics_account_changed" } : (statsCalls += 1, forOwner);
+  request.resolve({ status: mismatch ? 409 : 200, ok: !mismatch, json: async () => { reading = true; await body.promise; return payload; } });
+  await until(() => reading);
+  h.state.cookie = account(8); // B again before body delivery: a post-read alone would accept A's DTO.
+  body.resolve();
+  await until(() => h.requests.length === 3 || h.state.rendered.length > 1);
+  assert.deepEqual(h.state.rendered, [forB], "owner data is never installed, even though post-body auth reports B");
+  assert.equal(statsCalls, 0, "the expected-account check rejects before owner stats are produced");
+  assert.equal(h.state.view, null, "the mismatch clears cached data as well");
+  assert.deepEqual(h.state.failed, [], "account mismatch is not a retained-cache failure");
+  assert.deepEqual(h.state.bound, [8, 8], "409 requires a fresh initialization, even for the same returning account");
+  assert.deepEqual(h.requests.map(entry => entry.init.headers), Array.from({ length: 3 }, () => ({ "X-Analytics-Expected-Account-Id": "8" })));
+  const rebound = legacy("all", { generated_at: "fresh-B-only-data" });
+  h.requests[2].resolve(reply(200, rebound));
+  await until(() => h.state.rendered.length === 2);
+  assert.equal(h.state.view, rebound);
+  assert.deepEqual(watten.visibleGames(h.state.view), ["zdwa", "zilch", "hausdepp"]);
+});
+
+test("only an actual 409 account-changed body triggers rebinding; other conflicts stay checked failures", async () => {
+  for (const conflict of [{ detail: "another_conflict" }, {}, null, "malformed"]) {
+    const h = harness(), first = legacy("all");
+    await connected(h, first);
+    void h.lifecycle.refresh();
+    h.requests[1].resolve(conflict === "malformed"
+      ? { status: 409, ok: false, json: async () => { throw new SyntaxError("cut"); } }
+      : reply(409, conflict));
+    await until(() => h.state.failed.length === 1);
+    assert.deepEqual(h.state.failed, [{ retained: true }]);
+    assert.equal(h.state.view, first);
+    assert.deepEqual(h.state.bound, [7]);
+    assert.equal(h.requests.length, 2);
+    assert.equal(h.loads.length, 3, "a failed conflict still needs fresh same-account confirmation");
+  }
+});
+
 test("pagehide during post-body auth leaves no timers or late writes", async () => {
   const h = harness();
   h.lifecycle.start();

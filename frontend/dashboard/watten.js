@@ -242,13 +242,21 @@ export function createDashboardLifecycle({ win, doc, loadAuth, authInFlight = ()
       let data = null;
       let failure = false;
       try {
-        const response = await request(`/api/admin/analytics?${new URLSearchParams(filters)}`, { cache: "no-store", signal: controller.signal });
+        const response = await request(`/api/admin/analytics?${new URLSearchParams(filters)}`, {
+          cache: "no-store", signal: controller.signal,
+          headers: { "X-Analytics-Expected-Account-Id": String(ownViewer) },
+        });
         if (!current()) return;
         if (response.status === 401) { deny(401); return; }
         if (response.status === 403) {
           // A removed product falls back to all games; a general 403 ends access.
           if (filters.game !== "all") unavailable = true; else deny(403);
           return;
+        }
+        if (response.status === 409) {
+          const problem = await response.json();
+          if (!current()) return;
+          if (problem?.detail === "analytics_account_changed") { invalidate(); void initialize(); return; }
         }
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         data = await response.json();
