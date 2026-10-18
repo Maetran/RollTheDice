@@ -1,6 +1,6 @@
 # Watten – P1-Verträge und Routeninventar
 
-**Stand:** 18.10.2026. Basis `origin/develop=80bc42d` plus lokaler Übergabe.
+**Stand:** 18.10.2026. Basis `origin/develop=42ba267` plus lokaler Übergabe.
 Dieses Inventar beschreibt Implementierungsgrenzen, keine fertige Partie.
 
 ## Erste geschlossene Hostgrenze
@@ -12,6 +12,16 @@ WebSocket-Einstieg haben. `503`, `no-store` und `noindex` kennzeichnen die
 Vorbereitung; es gibt noch keine veröffentlichte Sitemap oder Installation.
 Ein minimaler Healthcheck beweist nur die Infrastruktur, keine Spielbereitschaft.
 
+Die implementierte lokale Kontovorschau benötigt ausdrücklich Preview-Flag
+und konfigurierten/angefragten lokalen Ursprung. Sie besitzt eigene DE/EN-
+Manifeste und Icons. Manifest-Scope `/` hält Recovery und Suitewechsel im
+selben installierten Fenster; der Worker bleibt auf `/watten` beschränkt und
+arbeitet ausschliesslich über Netzwerk. Kein Cache Storage, keine Pushfunktion,
+kein API-/Recovery-Fallback. Produktions-Watten bleibt selbst mit Flag gesperrt.
+Direkte Static-Aliasse der Manifeste/Worker sind gesperrt; Iconzugriff hat
+denselben lokalen Guard. Bei blockiertem Session Storage bewahrt ein validierter
+reiner Produktmarker im Fensternamen die bestehende installierte Identität.
+
 Watten wird erst mit eigenem Adapter und vollständiger Zugangspolitik in
 `GAME_TYPES` aufgenommen. `adapter_for_game_type` fällt heute auf ZDWA zurück;
 ein neuer Typname allein wäre keine sichere Integration.
@@ -21,6 +31,9 @@ ein neuer Typname allein wäre keine sichere Integration.
 Die folgende Form nutzt wie Hausdepp einen eigenen `/watten`-Namensraum,
 damit installierte Suite-Apps den Ursprung beim Spielwechsel behalten können.
 Das ist ein technischer Routenvorschlag; noch keine angebotenen Ziele.
+Bereits lokal eingeführt sind die Konto-/Recoverypfade sowie
+`/watten-manifest.webmanifest`, `/watten-manifest-en.webmanifest` und
+`/watten-sw.js`; öffentliche Lobby, Spiel und Fortschrittsseiten folgen separat.
 Jede tatsächlich eingeführte Dokumentroute kommt gleichzeitig in
 `tests/test_navigation_contract.py` und erhält reale Backend-/Browserprüfungen.
 

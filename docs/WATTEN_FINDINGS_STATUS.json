@@ -79,8 +79,10 @@
         "P1",
         "P8"
       ],
-      "status": "open",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Local PWA source 36e258b and test-isolation fix a1bbfe5: 17 account/real-worker cases plus 19 installed-identity isolation cases pass without retries in the isolated author worktree. Public game switching and physical installed-device acceptance remain open."
+      ]
     },
     {
       "id": "S08",

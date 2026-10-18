@@ -93,8 +93,12 @@ Für isolierte lokale Entwicklung gibt es bereits die native Kontoreise unter
 Recovery. Sie benötigt `ROLLTHEDICE_WATTEN_ACCOUNT_PREVIEW=1` sowie einen
 konfigurierten **und** angefragten Loopback-/localhost-Ursprung. Auf echten
 Produktionshosts bleibt sie auch mit diesem Flag geschlossen. Die vorhandene
-isolierte Passkey-Browsersuite prüft den Ablauf mit Wegwerfkonten; sie nutzt
-keine echten Konten und installiert keine Watten-PWA.
+isolierte Passkey-Browsersuite prüft den Ablauf mit Wegwerfkonten. Die lokale
+Kontovorschau hat eigene DE/EN-Manifeste, Icons und einen schmalen Worker ohne
+Offline-Speicherung privater Daten. Sie lässt sich bei Browserunterstützung
+lokal installieren; die vorhandene installierte Suite-Identität bleibt beim
+Spielwechsel erhalten. Automatisierte Tests prüfen echte Worker und simulierte
+Standalone-Kontexte, keine physische iPhone-Installation oder echten Konten.
 
 **English:** Watten is the next planned game: usually four-player Ladinisch
 to 11 points, with private bottom-card inspection by the dealer and the next
@@ -144,8 +148,12 @@ Isolated local development already has native shared-account journeys at
 `/watten`: signup/sign-in, passkeys, settings and recovery. They require
 `ROLLTHEDICE_WATTEN_ACCOUNT_PREVIEW=1` and both a configured and requested
 loopback/localhost origin. Real production hosts stay closed even with the
-flag. The existing isolated passkey browser suite tests disposable accounts;
-it does not use real accounts or install a Watten PWA.
+flag. The existing isolated passkey browser suite uses disposable accounts.
+The local account preview has its own DE/EN manifests, icons and a narrow worker
+without offline private-data storage. Supporting browsers can install it locally;
+existing installed suite identity survives game switching. Automated tests cover
+real workers and simulated standalone contexts, not physical iPhone installation
+or real accounts.
 
 ## Hausdepp — öffentlicher V3-Start / public V3 launch
 

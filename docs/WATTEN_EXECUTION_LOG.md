@@ -155,6 +155,17 @@ Develop-Abgleich, `push:checked`; keine zweite Vollsuite neben fremdem Vollpool.
   3.11.0 führt, ist diese Korrektur nun **3.11.1**, keine erfundene veröffentlichte
   3.10.1. Bestehende historische Zuordnungen unverändert; neuer Vorgängerbeleg
   3.11.0 zeigt auf `42ba267`. Erneuter vollständiger Integrationsnachweis folgt.
+- Fertige lokale PWA-Grundlage `b5d6e40`/`5e8cc3f` inzwischen als
+  `36e258b`/`a1bbfe5` integriert: DE/EN-Manifeste, eigene Icons, enger
+  netzwerkbasierter Worker und explizite Aktualisierung. 22 gezielte HTTP-
+  Tests/Lint, **17 Konto-/echte-Worker-Browserfälle plus 19 Suite-Isolationen**
+  im isolierten Autoren-Worktree bestanden, ohne automatische Wiederholungen.
+  Unabhängiges Review fand und schloss die Identitätsdrift bei blockiertem
+  Session Storage und späterer Navigation. Erste rote Browserartefakte bleiben
+  erhalten: alte Request-Mocks wurden vom echten Worker umgangen, ein Test
+  teilte versehentlich dieselbe Besucher-IP mit einem früheren Ratellimitfall.
+  Nur Mock-/Besucherisolation korrigiert, keine echten Schutzgrenzen gelockert.
+  Nach Zusammenführen Quellen/Assets neu gebaut; Root-Vollnachweis steht aus.
 
 ## Claude und Übernahmefähigkeit
 
