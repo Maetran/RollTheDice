@@ -1,3 +1,34 @@
+export const WATTEN_FAVORITE_MESSAGES = {
+  de: {
+    heading: "Dein Watten-Favorit", help: "Speichere deine Tisch-Einstellungen. Ein Passwort wird nie gespeichert.",
+    save: "Einstellungen als Favorit speichern", apply: "Favorit übernehmen", delete: "Favorit löschen", retry: "Erneut versuchen",
+    loading: "Favorit wird geladen …", saving: "Favorit wird gespeichert …", ready: "Dein Favorit ist bereit zum Übernehmen.",
+    empty: "Noch kein Favorit gespeichert.", saved: "Deine Einstellungen sind gespeichert.", deleted: "Dein Favorit wurde gelöscht.",
+    unavailable: "Dein Favorit ist gerade nicht erreichbar. Du kannst den Tisch trotzdem von Hand einstellen.",
+    invalid: "Diese Einstellungen können nicht als Favorit übernommen werden. Prüfe Tischgrösse und CPU-Sitze.",
+    summary: "{players} Plätze · Ziel {target} · {cpus} CPU-Sitze.", protected: "Mit Passwortschutz.",
+    applied: "Favorit übernommen. Erstelle den Tisch, wenn du bereit bist.",
+    appliedProtected: "Favorit übernommen. Gib ein neues Passwort ein oder wähle den Passwortschutz ausdrücklich ab.",
+    protection: "Tisch mit Passwort schützen", protectionHelp: "Für einen geschützten Tisch brauchst du ein neues Passwort. Ausschalten entfernt den Schutz ausdrücklich.",
+    passwordRequired: "Gib ein neues Tischpasswort ein oder schalte den Passwortschutz aus.",
+    cpuWishes: "CPU-Sitze beim Erstellen", cpuSeat: "CPU auf Platz {seat}", allCpu: "Lass mindestens einen Platz für dich oder andere Menschen frei.",
+  },
+  en: {
+    heading: "Your Watten favorite", help: "Save your table settings. A password is never saved.",
+    save: "Save settings as favorite", apply: "Apply favorite", delete: "Delete favorite", retry: "Try again",
+    loading: "Loading favorite …", saving: "Saving favorite …", ready: "Your favorite is ready to apply.",
+    empty: "No favorite saved yet.", saved: "Your settings have been saved.", deleted: "Your favorite has been deleted.",
+    unavailable: "Your favorite is unavailable right now. You can still set up the table yourself.",
+    invalid: "These settings cannot be applied as a favorite. Check the table size and CPU seats.",
+    summary: "{players} seats · Target {target} · {cpus} CPU seats.", protected: "Password protected.",
+    applied: "Favorite applied. Create the table when you are ready.",
+    appliedProtected: "Favorite applied. Enter a new password or explicitly switch password protection off.",
+    protection: "Protect table with a password", protectionHelp: "A protected table needs a new password. Switching this off explicitly removes protection.",
+    passwordRequired: "Enter a new table password or switch password protection off.",
+    cpuWishes: "CPU seats at creation", cpuSeat: "CPU in seat {seat}", allCpu: "Keep at least one seat free for yourself or another human.",
+  },
+};
+
 export const WATTEN_MATCH_PROGRESS_MESSAGES = {
   de: {
     heading: "Dein Fortschritt aus dieser Partie", draft: "Lokaler Entwurf: XP messen Teilnahme, nicht Spielstärke.",

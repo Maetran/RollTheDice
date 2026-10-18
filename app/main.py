@@ -144,6 +144,7 @@ from .site_seo import (
 from .versioning import current_version
 from .watten_accounts import router as watten_accounts_router
 from .watten_accounts import watten_account_action_page
+from .watten_favorite_pages import router as watten_favorite_router
 from .watten_pages import router as watten_pages_router
 from .watten_progress_pages import router as watten_progress_router
 from .watten_pwa import router as watten_pwa_router
@@ -558,6 +559,7 @@ app.include_router(watten_accounts_router)
 app.include_router(watten_pwa_router)
 app.include_router(watten_pages_router)
 app.include_router(watten_progress_router)
+app.include_router(watten_favorite_router)
 
 LEGACY_PAGE_PATHS = {
     "/static/index.html": "/",
