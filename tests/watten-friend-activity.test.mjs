@@ -197,6 +197,23 @@ test("an access boundary close (1008) is not retried", async () => {
   assert.equal(f.sockets.length, 1);
 });
 
+test("a notice burst cannot accumulate unbounded pending presentations behind an unavailable auth read", async () => {
+  const releases = [];
+  const f = fixture({ auth: reads => reads <= 3 ? user(7) : new Promise(resolve => releases.push(resolve)) });
+  await ready(f);
+  for (let index = 0; index < 100; index += 1) {
+    f.sockets[0].frame({ friend_activity: start("watten", { game_id: index.toString(16).padStart(16, "0") }) });
+  }
+  await tick();
+  assert.equal(releases.length, 20);
+  assert.equal(f.container.items, 0);
+  f.client.destroy();
+  for (const resolve of releases) resolve(user(7));
+  await tick(); await tick();
+  assert.equal(f.container.innerHTML, "");
+  assert.equal(f.win.timers.size, 0);
+});
+
 test("account A->B before connecting, after open or before a frame is shown clears without display", async () => {
   const before = fixture({ auth: () => user(8) });
   await until(() => before.changed() === 1);

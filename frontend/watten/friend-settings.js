@@ -1,6 +1,7 @@
 import { WATTEN_FRIEND_MESSAGES } from "../i18n/catalog.js";
 
 const PAGE = 20;
+const SEARCH_WINDOW = 100;
 const AUDIENCES = Object.freeze(["all", "allowlist"]);
 const ACCOUNT_CHANGED = new Set(["watten_account_changed", "friend_activity_viewer_changed", "allowlist_viewer_changed"]);
 const object = value => value !== null && typeof value === "object" && !Array.isArray(value);
@@ -207,7 +208,7 @@ export function mountFriendSettings({ container, viewerId, isCurrent, onAccountC
         page.push(Object.freeze({ id: player.id, username: player.username }));
       }
       const known = new Set(search.results.map(player => player.id));
-      search.results = [...search.results, ...page.filter(player => !known.has(player.id))];
+      search.results = [...search.results, ...page.filter(player => !known.has(player.id))].slice(-SEARCH_WINDOW);
       search.offset = offset + PAGE; search.more = players.length > PAGE;
       search.status = search.results.length ? "" : "noResults";
     } catch {
@@ -242,6 +243,7 @@ export function mountFriendSettings({ container, viewerId, isCurrent, onAccountC
         <div class="actions"><button type="submit">${esc(t("search"))}</button>
           <button type="button" class="ghost" data-friend-action="show-all">${esc(t("showAll"))}</button></div></form>
       <p role="status" data-friend-search-status>${esc(t("searchHint"))}</p>
+      <p>${esc(t("searchWindow", { count: SEARCH_WINDOW }))}</p>
       <ul class="watten-friends-list" data-friend-results aria-label="${esc(t("results"))}"></ul>
       <div class="actions"><button type="button" class="ghost" data-friend-action="load-more" hidden>${esc(t("loadMore"))}</button></div>
     </section>`;

@@ -85,7 +85,7 @@ export function createFriendActivity({ container, placement = "lobby", getExpect
   const t = (key, values = {}) => friendText(key, values, language());
   const notices = new Map(), seen = new Map(), listeners = new AbortController();
   let destroyed = false, stopped = false, socket = null, socketSerial = 0, pingTimer = 0, reconnectTimer = 0;
-  let attempts = 0, invalid = 0;
+  let attempts = 0, invalid = 0, pendingPresentations = 0;
   const current = () => !destroyed && isCurrent() && getExpectedAccountId() === accountId;
 
   function closeSocket() {
@@ -163,18 +163,22 @@ export function createFriendActivity({ container, placement = "lobby", getExpect
     return true;
   }
   async function present(notice, live) {
-    if (!remember(notice)) return;
-    try { if (!await verify(2) || !live()) return; } catch { return; }
-    const remaining = notice.expiresAt - now();
-    if (remaining <= 0) return;
-    const timer = win.setTimeout(() => remove(notice.id), Math.min(remaining, TTL));
-    notices.set(notice.id, { notice, timer });
-    const visible = watchable ? 3 : 1;
-    while (notices.size > visible) {
-      const [oldest, entry] = notices.entries().next().value;
-      win.clearTimeout(entry.timer); notices.delete(oldest);
-    }
-    render();
+    if (pendingPresentations >= QUEUE_LIMIT || !remember(notice)) return;
+    pendingPresentations += 1;
+    try {
+      if (!await verify(2) || !live()) return;
+      const remaining = notice.expiresAt - now();
+      if (remaining <= 0) return;
+      const timer = win.setTimeout(() => remove(notice.id), Math.min(remaining, TTL));
+      notices.set(notice.id, { notice, timer });
+      const visible = watchable ? 3 : 1;
+      while (notices.size > visible) {
+        const [oldest, entry] = notices.entries().next().value;
+        win.clearTimeout(entry.timer); notices.delete(oldest);
+      }
+      render();
+    } catch { /* Optional notices cannot block gameplay when authentication is unavailable. */ }
+    finally { pendingPresentations -= 1; }
   }
   function protocol() {
     invalid += 1;

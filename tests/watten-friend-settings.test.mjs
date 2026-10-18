@@ -229,6 +229,31 @@ test("search pages are bounded to 20, explicit and stale pages never merge into 
   assert.equal(f.container.action("load-more").hidden, true);
 });
 
+test("long directory browsing retains a bounded result window while advancing the canonical page offset", async () => {
+  const offsets = [];
+  const f = fixture({ fetcher: (url, options, _count, backend) => {
+    if (!url.startsWith("/api/players/search")) return backend.handle(url, options);
+    const offset = Number(new URL(url, "https://watten.example").searchParams.get("offset"));
+    offsets.push(offset);
+    return response({ players: Array.from({ length: 21 }, (_, index) => ({
+      id: 1000 + offset + index, username: `Directory ${offset + index}`,
+    })) });
+  } });
+  await until(() => !f.container.action("audience-save").disabled || f.container.text("[data-friend-count]") !== "");
+  f.container.click("show-all");
+  for (let page = 0; page < 12; page += 1) {
+    await until(() => offsets.length === page + 1 && !f.container.action("load-more").disabled);
+    const html = f.container.html("[data-friend-results]");
+    assert.equal((html.match(/<li>/g) || []).length, Math.min((page + 1) * 20, 100));
+    assert.ok(html.includes(`data-account-id="${1000 + page * 20}"`));
+    if (page >= 5) assert.ok(!html.includes('data-account-id="1000"'));
+    if (page < 11) f.container.click("load-more");
+  }
+  assert.deepEqual(offsets, Array.from({ length: 12 }, (_, page) => page * 20));
+  assert.equal(f.mutations().length, 0);
+  f.client.destroy();
+});
+
 test("Add uses the canonical returned account ID only, without Push or friendship side effects", async () => {
   const f = fixture();
   await until(() => f.container.text("[data-friend-count]") !== "");
