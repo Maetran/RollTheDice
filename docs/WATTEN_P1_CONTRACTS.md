@@ -1,6 +1,6 @@
 # Watten – P1-Verträge und Routeninventar
 
-**Stand:** 18.10.2026. Basis `origin/develop=42ba267` plus lokaler Übergabe.
+**Stand:** 18.10.2026. Basis `origin/develop=766bcb3` plus lokaler Übergabe.
 Dieses Inventar beschreibt Implementierungsgrenzen, keine fertige Partie.
 
 ## Erste geschlossene Hostgrenze

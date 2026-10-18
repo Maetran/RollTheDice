@@ -218,3 +218,13 @@ The initial packages fix the existing picker race and establish closed host,
 route and infrastructure boundaries while rule decisions remain open. Local
 checks, integration, infrastructure activation, public app deployment and
 physical-device acceptance are separate evidence stages.
+
+## Weiterer Develop-Abgleich
+
+Vor dem erneuten Vollauf wurde nach Ende des fremden Vollpools auch
+`origin/develop=766bcb3` (Hausdepp-Sammelreihen/Erfolge) regulär integriert.
+Aktueller vorbereiteter Patch ist daher **3.12.1** nach 3.12.0; 3.11.1 wurde
+nicht ausgeliefert und nicht als historische Version erfunden. Alle alten
+Zuordnungen bleiben unverändert, der neue 3.12.0-Eintrag zeigt auf `766bcb3`.
+PWA-Quellen sind inzwischen im gleichen Einstiegspaket enthalten; neuer
+vollständiger Nachweis wird erst für diesen zusammengeführten Stand erzeugt.
