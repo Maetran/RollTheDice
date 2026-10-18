@@ -367,6 +367,42 @@ async function completeRequiredDraw(page, traffic) {
   expect(drawn.hand.length).toBeGreaterThan(before.hand.length);
 }
 
+async function clickExposedHandCard(card) {
+  await card.scrollIntoViewIfNeeded();
+  let position;
+  await expect.poll(async () => {
+    position = await card.evaluate(button => {
+      const box = button.getBoundingClientRect();
+      const clip = button.closest('#hausdeppHand').getBoundingClientRect();
+      const left = Math.max(0, clip.left, box.left);
+      const right = Math.min(innerWidth, clip.right, box.right);
+      const top = Math.max(0, clip.top, box.top);
+      const bottom = Math.min(innerHeight, clip.bottom, box.bottom);
+      let best = null;
+      for (let y = top + 4; y < bottom - 4; y += 8) {
+        let start = null;
+        for (let x = left + 4; x < right - 4; x += 2) {
+          if (document.elementFromPoint(x, y)?.closest('button[data-card-id]') === button) {
+            start ??= x;
+            const width = x - start + 2;
+            if (!best || width > best.width) best = { x: (start + x) / 2, y, width };
+          } else start = null;
+        }
+      }
+      if (!best) return null;
+      // Playwright adds the border to padding-box-relative click positions,
+      // including for rotated cards, so subtract it from this viewport point.
+      const style = getComputedStyle(button);
+      return {
+        x: best.x - box.left - (parseFloat(style.borderLeftWidth) || 0),
+        y: best.y - box.top - (parseFloat(style.borderTopWidth) || 0),
+      };
+    });
+    return position !== null;
+  }, { message: 'The playable hand card has an exposed DOM hit target' }).toBe(true);
+  await card.click({ position });
+}
+
 async function playLegalHandCard(page, traffic) {
   // The deck is genuinely shuffled. If our opening hand is below the starter,
   // use real legal actions until the server offers a hand play.
@@ -377,7 +413,7 @@ async function playLegalHandCard(page, traffic) {
     const state = traffic.state;
     if (state.available_actions.includes('play')) {
       const card = state.playable_cards[0];
-      await page.locator(`#hausdeppHand [data-card-id="${card}"]`).click();
+      await clickExposedHandCard(page.locator(`#hausdeppHand [data-card-id="${card}"]`));
       await expect.poll(() => traffic.state?.version || 0).toBeGreaterThan(state.version);
       expect(traffic.commands.some(command => command.action === 'hausdepp_play'
         && command.version === state.version && command.cards?.includes(card))).toBe(true);

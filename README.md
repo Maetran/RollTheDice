@@ -1822,29 +1822,87 @@ Generated files under `app/static/` must be committed alongside their sources.
 ### Quality checks
 
 ```bash
-npm run check:quality
-npm run test:backend
-npm run test:browser
-git diff --check
+npm run hooks:install                   # once per repository
+npm run push:checked -- -u origin codex/my-feature
+# Or verify first, then use a normal git push:
+npm run verify:local
 ```
 
-Browser tests start a separate server on port 8010 with a disposable SQLite
-database. `npm run test:browser` also runs the username-change suite against a
-fresh server in public Zilch mode (`playwright.username.config.js`), separately
-from the private-preview scenarios. `npm run check:quality` includes lint,
+Commit changes before verification. The pre-push hook requires a complete local
+check for the exact clean commit, current `origin/develop` base and installed
+environment. A successful receipt remains valid for 24 hours; changing any of
+those inputs requires a new run. An unchanged normal develop PR merge can inherit
+its feature parent's complete proof after strict tree/base/ancestry checks; this
+avoids repeating the same local suites for master and its release tag. The receipt
+lives in Git metadata; the raw file is never
+accepted as GitHub CI evidence. The full check runs quality/security checks, Node tooling
+tests, backend coverage, the production Docker build and offline container smoke
+test, every browser suite and `git diff --check`. Docker must use a local socket.
+See [local checks](docs/LOCAL_CHECKS.md) for prerequisites, focused commands and
+logs. Check for another agent's full test pool before starting one.
+
+`npm run test:browser` runs the main suite on four parallel, isolated servers,
+each with its own free port, SQLite database, legacy JSON data and report files.
+Each server keeps one worker. Username changes in public Zilch mode
+(`playwright.username.config.js`), passkeys and Hausdepp passkeys then run
+separately, even if an earlier suite failed. Servers are never reused; interruption
+cleans up only this run's processes and temporary data. Filtered runs are marked
+incomplete and cannot authorize a push. `npm run check:quality` includes lint,
 dependency consistency, Bandit and the dependency vulnerability audit, matching
 the backend checks in [the quality workflow](.github/workflows/quality.yml).
-CI runs the main browser suite in four isolated shards and the username and
-passkey configurations in separate jobs. Runners install Chromium and WebKit
-for all browser engines used by the suite. Every test still runs with one worker;
-branch pushes and pull requests are checked, without a duplicate run for release tags.
+All expensive checks run locally. GitHub performs only the remote integration
+check: an owner-issued **Local verification** commit status must prove the full
+local check for the exact tree and base, and the PR or release merge must contain
+exactly those verified sources. Missing, failed, stale or untrusted evidence
+blocks the gate and requires local verification; it never launches duplicate
+backend, browser, container, lint or tooling suites on GitHub.
 
-**Deutsch – Qualitätsprüfung:** `npm run check:quality` führt dieselben Lint-,
-Sicherheits- und Abhängigkeitsprüfungen wie GitHub aus. Die Browser-Suite läuft
-in vier getrennten Teilen; Benutzername und Passkeys haben eigene Prüfjobs.
-Chromium und WebKit werden für alle verwendeten Browser-Engines installiert.
-Alle Tests bleiben erhalten. Release-Tags lösen keinen zweiten identischen
-Prüflauf aus.
+Feature branches run only through their pull request. Pushes start the lightweight
+**Quality result** check only on `develop` and `master`; release tags do not start
+another run. Newer commits cancel only the older run of the same PR or branch.
+A changed integration tree must be tested locally again. The same verified tree
+can pass through a normal PR merge and a master fast-forward without repeating
+the expensive suites. GitHub verifies the actual remote event, status issuer,
+commit/tree/base and ancestry; this part belongs on GitHub.
+
+`push:checked` publishes the local status automatically after a successful push.
+With a normal `git push`, follow it with `npm run checks:publish`. Publication
+requires the repository owner's authenticated `gh` account and a still-valid
+receipt; raw receipt files in a PR are never trusted. Local reports remain on
+this machine, while the status links the verified commit.
+
+**Deutsch – Qualitätsprüfung:** Einmal `npm run hooks:install` ausführen, dann
+mit `npm run push:checked -- <git-push-Argumente>` pushen. Der vollständige lokale
+Prüfer läuft vor dem Push; der Hook akzeptiert nur einen erfolgreichen Nachweis
+für den exakten, sauberen Commit mit aktueller `origin/develop`-Basis und
+unveränderter Umgebung. Der Nachweis gilt höchstens 24 Stunden und liegt nur in
+den Git-Metadaten. Enthalten sind Lint, Sicherheit, Node-Tooltests,
+Backend-Abdeckung, lokaler Produktionscontainer samt Offline-Prüfung und alle
+Browser-Suiten. Die Hauptsuite läuft gleichzeitig auf vier eigenen Servern mit
+je einem Worker, freiem Port, SQLite-Datenbank, JSON-Daten und eigenen Berichten.
+Die drei Konto-Suiten folgen einzeln. Teilprüfungen berechtigen nie zum Push;
+Abbruch beendet nur eigene Prozesse. Chromium, WebKit und ein lokaler Docker-Daemon
+müssen bereitstehen. Bei einem fremden vollen Testpool zuerst abstimmen.
+Details und Teilbefehle stehen in [Lokale Prüfungen](docs/LOCAL_CHECKS.md).
+
+Alle aufwendigen Suiten laufen lokal. GitHub prüft nur den tatsächlichen
+Remote-Stand: Der vom Repository-Eigentümer veröffentlichte Commitstatus
+**Local verification** muss die vollständige lokale Prüfung für exakt denselben
+Tree und dieselbe Basis belegen. PR-, Integrations- und Release-Merges dürfen
+keine ungeprüften Quellen hinzufügen. Fehlende, rote, veraltete oder fremde
+Nachweise blockieren **Quality result** und verlangen eine lokale Prüfung.
+Auf GitHub werden keine vollständigen Backend-, Browser-, Container-, Lint-
+oder Tool-Suiten wiederholt.
+
+Feature-Branches laufen ausschliesslich über ihren Pull Request; Pushes lösen
+nur auf `develop` und `master` den schlanken Integrationscheck aus. Tags erzeugen
+keinen zusätzlichen Lauf. Überholte Läufe werden nur innerhalb desselben PRs
+oder Branches abgebrochen. `push:checked` veröffentlicht den lokalen Status nach
+dem Push automatisch; nach einem normalen Push ist `npm run checks:publish`
+nötig. Dazu muss `gh` als Repository-Eigentümer angemeldet sein. Lokale
+JSON-Dateien im PR gelten nicht als Nachweis; GitHub kontrolliert Aussteller,
+Frische, Commit, Tree, Basis und Abstammung selbst. Neue Integrationsquellen
+müssen zuerst wieder lokal geprüft werden.
 
 Backend tests use `pytest-xdist`: pytest automatically selects up to six workers,
 keeping tests from the same file together. This applies to Codex, the terminal,

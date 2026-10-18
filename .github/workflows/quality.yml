@@ -2,104 +2,43 @@ name: Quality
 
 on:
   push:
-    # Release tags point to revisions already checked on their branch.
-    branches: ["**"]
+    # Feature branches are checked once, through their pull request. Integrated
+    # develop states and master promotions run on push; release tags point to
+    # revisions already checked on their branch.
+    branches: ["develop", "master"]
   pull_request:
-  workflow_dispatch:
+
+# A newer push to the same pull request or branch supersedes its older run.
+# Other pull requests, branches and event types keep separate groups.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
-  production-image:
+  # The complete lint, backend, browser, tool and image suites run locally
+  # before every push. GitHub only verifies the owner's "Local verification"
+  # status for the exact tree and base, and that the remote integration kept
+  # what was checked. It never falls back to running the suites itself;
+  # scripts/ci_release_evidence.py documents every accepted case.
+  result:
+    name: Quality result
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # Covers the bounded wait for a status published right after the push.
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      contents: read
+      pull-requests: read
+      statuses: read
     steps:
       - uses: actions/checkout@v7
-      - run: docker build --tag rollthedice-ci .
-      # Check the shipped filesystem and actual HTTP routes, rather than the
-      # source checkout. No network, credentials or persistent data are mounted.
-      - run: docker run --rm --interactive --network none --tmpfs /app/data --entrypoint python rollthedice-ci - < tests/container_smoke.py
-
-  backend:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
         with:
-          python-version: "3.13"
-          cache: pip
-      - run: pip install -r requirements-dev.txt
-      - uses: actions/setup-node@v7
-        with:
-          node-version: "22"
-          cache: npm
-      - run: npm ci
-      - run: npm run check:quality
-      - run: pytest --cov --cov-report=term-missing
-      - run: git diff --check
-
-  browser:
-    name: Browser (${{ matrix.suite }}, ${{ matrix.shard }}/${{ matrix.shards }})
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    strategy:
-      # Finish every suite even when a sibling finds a regression.
-      fail-fast: false
-      matrix:
-        include:
-          - suite: main
-            config: playwright.config.js
-            shard: 1
-            shards: 4
-          - suite: main
-            config: playwright.config.js
-            shard: 2
-            shards: 4
-          - suite: main
-            config: playwright.config.js
-            shard: 3
-            shards: 4
-          - suite: main
-            config: playwright.config.js
-            shard: 4
-            shards: 4
-          - suite: username
-            config: playwright.username.config.js
-            shard: 1
-            shards: 1
-          - suite: passkeys
-            config: playwright.passkeys.config.js
-            shard: 1
-            shards: 1
-          - suite: hausdepp-passkeys
-            config: playwright.hausdepp-passkeys.config.js
-            shard: 1
-            shards: 1
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
-        with:
-          python-version: "3.13"
-          cache: pip
-      - uses: actions/setup-node@v7
-        with:
-          node-version: "22"
-          cache: npm
-      - run: pip install -r requirements-dev.txt
-      - run: npm ci
-      # The main suite also launches WebKit explicitly for Safari regressions.
-      - run: npx playwright install --with-deps chromium webkit
-      # Each runner has its own disposable database/server. Keep the existing
-      # one-worker setting within a shard so account fixtures remain serial.
-      - run: npx playwright test --config=${{ matrix.config }} --shard=${{ matrix.shard }}/${{ matrix.shards }}
-      - name: Upload Playwright report
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: playwright-${{ matrix.suite }}-${{ matrix.shard }}-of-${{ matrix.shards }}
-          path: |
-            playwright-report/
-            test-results/
-          if-no-files-found: ignore
-          retention-days: 7
+          persist-credentials: false
+          sparse-checkout: scripts/ci_release_evidence.py
+          sparse-checkout-cone-mode: false
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/ci_release_evidence.py verify
