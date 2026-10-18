@@ -4,11 +4,12 @@ import json
 from copy import deepcopy
 
 import pytest
-from sqlalchemy import event, func, select
+from sqlalchemy import delete, event, func, select
 
+from app import watten_favorite_pages
 from app.database import get_engine, session_scope
 from app.game_state import games
-from app.models import ActiveGame, WattenAchievementGrant, WattenFavorite, WattenMatchCredit
+from app.models import ActiveGame, Session, WattenAchievementGrant, WattenFavorite, WattenMatchCredit
 from app.watten_recipe import WattenRecipe, recipe_to_json, recipe_to_payload
 from tests import test_watten_runtime as native
 
@@ -114,6 +115,37 @@ def test_delete_rejects_an_unexpected_body_without_deleting_the_own_favorite(ser
     assert rejected.json()["detail"] == "watten_favorite_invalid_request"
     assert_private(rejected)
     assert server.get("/api/watten/favorite", headers=headers(own)).json()["recipe"] == recipe_to_payload(RECIPE)
+
+
+@pytest.mark.parametrize("method", ("PUT", "DELETE"))
+def test_session_revoked_during_body_read_cannot_mutate_any_favorite(server, monkeypatch, method):
+    own, other = native.account("FavoriteRevokedOwner"), native.account("FavoriteRevokedOther")
+    other_recipe = WattenRecipe(2, "normal", False, False, target_points=7)
+    for owner, recipe in ((own, RECIPE), (other, other_recipe)):
+        assert server.put("/api/watten/favorite", headers=headers(owner),
+                          json={"recipe": recipe_to_payload(recipe)}).status_code == 200
+    actual_body = watten_favorite_pages._body
+
+    async def revoke_after_body(request):
+        body = await actual_body(request)
+        with session_scope() as db:
+            removed = db.execute(delete(Session).where(Session.user_id == own[0].user_id))
+            assert removed.rowcount == 1
+        return body
+
+    monkeypatch.setattr(watten_favorite_pages, "_body", revoke_after_body)
+    body = {"recipe": {**recipe_to_payload(RECIPE), "target_points": 21}}
+    rejected = server.request(method, "/api/watten/favorite", headers=headers(own),
+                              **({"json": body} if method == "PUT" else {}))
+    assert rejected.status_code == 401
+    assert rejected.json()["detail"] == "authentication_required"
+    assert_private(rejected)
+    with session_scope() as db:
+        assert db.get(WattenFavorite, own[0].user_id).recipe_json == recipe_to_json(RECIPE)
+        assert db.get(WattenFavorite, other[0].user_id).recipe_json == recipe_to_json(other_recipe)
+        assert db.scalar(select(func.count()).select_from(Session).where(Session.user_id == own[0].user_id)) == 0
+        assert db.scalar(select(func.count()).select_from(Session).where(Session.user_id == other[0].user_id)) == 1
+    assert server.get("/api/watten/favorite", headers=headers(other)).json()["recipe"] == recipe_to_payload(other_recipe)
 
 
 @pytest.mark.parametrize("flag", ("ROLLTHEDICE_WATTEN_ACCOUNT_PREVIEW", "ROLLTHEDICE_WATTEN_GAME_PREVIEW"))

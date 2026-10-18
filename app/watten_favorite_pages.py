@@ -52,7 +52,7 @@ async def save_favorite(request: Request, identity=Depends(_identity)):
     except (ValueError, UnicodeError) as exc:
         raise HTTPException(status_code=422, detail="watten_favorite_invalid_recipe", headers=_HEADERS) from exc
     try:
-        return await run_in_threadpool(_save, identity.user_id, recipe)
+        return await run_in_threadpool(_save, request, identity.user_id, recipe)
     except (ValueError, SQLAlchemyError) as exc:
         raise _storage_error(exc) from exc
 
@@ -63,18 +63,29 @@ async def delete_favorite(request: Request, identity=Depends(_identity)):
     if (await _body(request)).strip():
         raise HTTPException(status_code=422, detail="watten_favorite_invalid_request", headers=_HEADERS)
     try:
-        return await run_in_threadpool(_delete, identity.user_id)
+        return await run_in_threadpool(_delete, request, identity.user_id)
     except (ValueError, SQLAlchemyError) as exc:
         raise _storage_error(exc) from exc
 
 
-def _save(user_id, recipe):
+def _mutation_identity(request, user_id):
+    # Body streaming and worker dispatch can outlive the authenticated session.
+    # Re-resolve its original cookie immediately before this worker mutates.
+    identity = _identity(request)
+    if identity.user_id != user_id:
+        raise HTTPException(status_code=409, detail="watten_account_changed", headers=_HEADERS)
+    _csrf(request, identity)
+
+
+def _save(request, user_id, recipe):
+    _mutation_identity(request, user_id)
     with session_scope() as db:
         saved = save_watten_favorite(db, user_id=user_id, recipe=recipe)
     return _response(_payload(saved))
 
 
-def _delete(user_id):
+def _delete(request, user_id):
+    _mutation_identity(request, user_id)
     with session_scope() as db:
         delete_watten_favorite(db, user_id=user_id)
     return _response(_payload(None))
