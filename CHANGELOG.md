@@ -23,6 +23,39 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 3.12.0 — Hausdepp: seltene Funde sammeln / collecting rare finds — 2026-10-18
+
+### Deutsch
+
+20 neue Erfolge belohnen die acht seltenen Tischüberraschungen in zwei getrennten
+Sammelreihen: selbst auslösen und miterleben. Der Auslöser sammelt beide.
+Einzelfunde geben 50 beziehungsweise 25 EP, vier verschiedene zusätzlich
+100/50 EP und alle acht zusätzlich 500/250 EP. Der Katalog hat nun 135 Erfolge
+mit 5’605 Erfolgs-EP; die 24 Ränge bleiben erhalten. Eigene kleine Fundabzeichen
+machen beide Reihen in Konto, Fortschritt und Erfolgsfeed erkennbar.
+
+Beim Auslösen müssen mindestens zwei menschliche Mitspieler verbunden sein.
+Die serverseitig belegte Teilnahme zählt erst nach regulärem Rundenabschluss;
+Wiederholungen, spätere Reconnects und Wiederholungsversuche vergeben keine
+Punkte doppelt. Zuschauer, Solo mit Computern, Offline-Spiel und Vorschauen
+geben keine Fund-Erfolge. Alte Runden werden nicht rückwirkend ergänzt.
+
+### English
+
+Twenty new achievements reward the eight rare table surprises in two separate
+collections: trigger them yourself and witness them. The activator collects
+both. Single finds grant 50 and 25 XP, four different finds add 100/50 XP, and
+all eight add 500/250 XP. The catalogue now has 135 achievements worth 5,605 XP;
+the 24 ranks are retained. Small find badges distinguish both tracks in the
+account, progress notices and achievement feed.
+
+At least two human players must be connected when a find is triggered. The
+server records that attendance privately and grants credit only after a normally
+completed round. Repeated variants, reconnects and retries never duplicate
+points. Spectators, solo computer games, offline play and previews do not earn
+find achievements. Old rounds are not credited retroactively.
+
+
 ## 3.11.0 — Hausdepp: kleine Überraschungen am Tisch / little table surprises — 2026-10-18
 
 **Deutsch:** Bier, Tee und Limonade zeigen jeden Schluck am Füllstand. Schnelles

@@ -3,33 +3,25 @@
   "games": [
     "hausdepp"
   ],
-  "summary_de": "Hausdepp: selbst Pfützen aufwischen, Dosen schütteln und acht seltene Tischspektakel entdecken.",
-  "summary_en": "Hausdepp: wipe up spills yourself, shake cans and discover eight rare table spectacles.",
+  "summary_de": "Hausdepp: 20 neue Erfolge fürs Auslösen und Miterleben seltener Tischfunde.",
+  "summary_en": "Hausdepp: 20 new achievements for triggering and witnessing rare table finds.",
   "player_notes": {
     "de": {
-      "title": "Hausdepp 3.11: Noch ein Schluck, noch ein Häppchen",
+      "title": "Hausdepp 3.12: Das Kuriositätenkabinett wartet",
       "changes": [
-        "Trinke Gläser sichtbar leer, verschütte den Rest und wische selbst mit dem Putzlumpen auf – per Ziehen oder Antippen.",
-        "Knabbere einzelne Snacks weg: Die leere Schale und das Marend-Brett bleiben stehen.",
-        "Dosen schäumen beim Öffnen und platzen beim Schütteln. Geschüttelte Windlichter gehen aus und zünden sich wieder an.",
-        "Acht seltene Funde bringen grosse Tischspektakel: fliegende Karten, eine magische Maus und ein schwarzes Loch. Der Drache sengt Kartenränder an.",
-        "Punkte und Erfolge bleiben nach der Runde sichtbar – der zusätzliche Bestätigungsbutton entfällt.",
-        "Der Endstand wartet, bis die letzte Karte liegt, und lässt dir danach noch einen kurzen Moment.",
-        "Turnierbuchstaben haben bei jedem Gegner eine eigene, freie Zeile – auch zu sechst.",
-        "Das erste vollständige HAUSDEPP beendet das Turnier; Endstand und Übersicht zeigen das jetzt ausdrücklich."
+        "Sammle die acht seltenen Funde in zwei Reihen: selbst ausgelöst und gemeinsam miterlebt. Wer auslöst, sammelt beides.",
+        "Einzelfunde geben 50 beziehungsweise 25 EP. Vier verschiedene bringen zusätzlich 100/50 EP, alle acht zusätzlich 500/250 EP.",
+        "Beim Auslösen müssen mindestens zwei Menschen verbunden mitspielen. Die Runde muss regulär abgeschlossen werden.",
+        "Neue Abzeichen zeigen beide Sammlungen im Konto und Erfolgsfeed. Gleiche Funde und Wiederholungen geben keine doppelten Punkte."
       ]
     },
     "en": {
-      "title": "Hausdepp 3.11: One more sip, one more bite",
+      "title": "Hausdepp 3.12: Your cabinet of curiosities awaits",
       "changes": [
-        "Watch drinks empty, spill the rest and wipe up yourself with the cloth – by dragging or tapping.",
-        "Nibble individual snacks away: the empty bowl and snack board stay on the table.",
-        "Cans foam when opened and burst when shaken. Shaken lanterns go out and relight themselves.",
-        "Eight rare finds bring big table spectacles: flying cards, a magical mouse and a black hole. The dragon singes the card edges.",
-        "Points and achievements stay visible after a round – the extra acknowledgement button is gone.",
-        "The final result waits until the last card lands and gives you a brief moment afterwards.",
-        "Tournament letters have a clear line at each opponent seat, including six-player tables.",
-        "The first complete HAUSDEPP ends the tournament; the final result and overview now say so explicitly."
+        "Collect the eight rare finds in two tracks: trigger them yourself and witness them together. The activator collects both.",
+        "Single finds grant 50 and 25 XP. Four different finds add 100/50 XP; all eight add another 500/250 XP.",
+        "At least two humans must be connected when a find is triggered, and the round must finish normally.",
+        "New badges show both collections in your account and achievement feed. Repeated finds and retries never duplicate points."
       ]
     }
   }

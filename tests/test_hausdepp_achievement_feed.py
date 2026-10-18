@@ -56,6 +56,8 @@ class HausdeppAchievementFeedTests(unittest.TestCase):
         self.assertEqual(HAUSDEPP_ACHIEVEMENT_DIFFICULTIES["hausdepp_01"], "easy")
         self.assertEqual(HAUSDEPP_ACHIEVEMENT_DIFFICULTIES["hausdepp_02"], "medium")
         self.assertEqual(HAUSDEPP_ACHIEVEMENT_DIFFICULTIES["hausdepp_32"], "hard")
+        self.assertEqual(HAUSDEPP_ACHIEVEMENT_DIFFICULTIES["hausdepp_125"], "hard")
+        self.assertEqual(HAUSDEPP_ACHIEVEMENT_DIFFICULTIES["hausdepp_135"], "hard")
 
     def test_newest_first_with_bilingual_copy_and_no_private_evidence(self):
         self.unlock(self.alpha, "hausdepp_01", minutes=0)

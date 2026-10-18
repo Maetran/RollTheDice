@@ -90,21 +90,23 @@ class HausdeppAchievementTests(unittest.TestCase):
         return result
 
     def test_catalog_has_exact_approved_ids_points_thresholds_and_original_bilingual_flavours(self):
-        self.assertEqual([item["id"] for item in ACHIEVEMENTS], [f"hausdepp_{n:02}" for n in range(1, 116)])
+        self.assertEqual([item["id"] for item in ACHIEVEMENTS], [f"hausdepp_{n:02}" for n in range(1, 136)])
         self.assertEqual([item["points"] for item in ACHIEVEMENTS[:64]], [
             10, 25, 10, 10, 10, 10, 25, 50, 10, 25, 50, 25, 50, 25, 50, 100,
             25, 50, 100, 25, 25, 50, 10, 50, 10, 25, 25, 50, 25, 25, 50, 100,
             25, 50, 25, 50, 50, 50, 50, 100, 10, 25, 25, 50, 10, 25, 50, 100,
             10, 25, 50, 25, 50, 25, 50, 10, 10, 25, 25, 50, 50, 50, 50, 50,
         ])
-        self.assertEqual([item["points"] for item in ACHIEVEMENTS[64:]], [
+        self.assertEqual([item["points"] for item in ACHIEVEMENTS[64:115]], [
             25, 50, 25, 25, 25, 25, 25, 50, 25, 50, 50, 25,
             10, 10, 50, 25, 25, 25, 10, 25,
             10, 25, 50, 50, 10, 50, 25, 50, 25, 25, 50, 25, 10, 10, 25, 25,
             # When and how often: office hours, breaks, night, weekends, streaks, totals.
             10, 25, 50, 100, 10, 25, 25, 25, 25, 10, 25, 50, 100, 100, 100,
         ])
-        self.assertEqual(sum(item["points"] for item in ACHIEVEMENTS), 4105)
+        self.assertEqual([item["points"] for item in ACHIEVEMENTS[115:]],
+                         [*([50] * 8), 100, 500, *([25] * 8), 50, 250])
+        self.assertEqual(sum(item["points"] for item in ACHIEVEMENTS), 5605)
         self.assertEqual([rank["threshold"] for rank in RANKS], [
             0, 25, 50, 100, 150, 225, 300, 400, 500, 650, 800, 1000,
             # Above 2300 the ladder stretches so the last ranks take real time.
@@ -125,7 +127,7 @@ class HausdeppAchievementTests(unittest.TestCase):
                                              "cpu_round_reward": 2, "cpu_reduction_percent": 75})
         self.assertEqual(account["rank"]["name"]["de"], "Einstein")
         self.assertEqual(account["rank"]["progress"], {"current": 0, "target": 25, "percent": 0})
-        self.assertEqual((len(account["ranks"]), len(account["achievements"]["items"])), (24, 115))
+        self.assertEqual((len(account["ranks"]), len(account["achievements"]["items"])), (24, 135))
         self.assertEqual(account["achievements"]["unlocked_count"], 0)
         self.assertIsNone(account["presentation"]["pending"])
 

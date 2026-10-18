@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+from copy import deepcopy
 from datetime import datetime, timezone
 
 from sqlalchemy import select
@@ -12,6 +13,7 @@ from .active_games import delete_active_game, save_active_game
 from .database import database_schema_ready, session_scope
 from .game_history import persist_completed_game_result
 from .game_types import HAUSDEPP_GAME_TYPE
+from .hausdepp_surprise_collection import SURPRISE_EFFECTS, surprise_collection_evidence
 from .models import CompletedGame, GameParticipant
 from .security import as_utc
 
@@ -55,7 +57,38 @@ def validate_hausdepp_evidence(raw: object, participant_ids: set[str]) -> dict:
                     .intersection(evidence["flags"]))):
             raise ValueError("hausdepp_result_invalid_evidence")
         players[key] = {"flags": sorted(evidence["flags"]), "ten_clears": evidence["ten_clears"]}
+        if "table_surprises" in evidence:
+            players[key]["table_surprises"] = _validate_surprise_collection(evidence["table_surprises"])
     return {"schema_version": 1, "complete": raw["complete"], "players": players}
+
+
+def _validate_surprise_collection(raw: object) -> dict:
+    """One room effect can contribute once to either private collection."""
+    if not isinstance(raw, dict) or set(raw) != {"activated", "witnessed"}:
+        raise ValueError("hausdepp_result_invalid_evidence")
+    for track in ("activated", "witnessed"):
+        values = raw[track]
+        if (not isinstance(values, list) or len(values) > 1
+                or any(not isinstance(effect, str) or effect not in SURPRISE_EFFECTS for effect in values)):
+            raise ValueError("hausdepp_result_invalid_evidence")
+    if not set(raw["activated"]).issubset(raw["witnessed"]):
+        raise ValueError("hausdepp_result_invalid_evidence")
+    return {track: list(raw[track]) for track in ("activated", "witnessed")}
+
+
+def _validate_surprise_membership(evidence: dict, participants: list[dict]) -> None:
+    """An accepted surprise belongs to one actor and at least two human seats."""
+    humans = {player["id"] for player in participants if not player["is_cpu"]}
+    actors, witnesses, effects = set(), set(), set()
+    for player_id, facts in evidence["players"].items():
+        collection = facts.get("table_surprises", {})
+        if collection.get("activated"):
+            actors.add(player_id)
+        if collection.get("witnessed"):
+            witnesses.add(player_id)
+            effects.update(collection["witnessed"])
+    if witnesses and (not witnesses.issubset(humans) or len(witnesses) < 2 or len(actors) != 1 or len(effects) != 1):
+        raise ValueError("hausdepp_result_invalid_evidence")
 
 
 def validate_hausdepp_result(payload: object) -> dict:
@@ -103,6 +136,7 @@ def validate_hausdepp_result(payload: object) -> dict:
         result.update(timing)
     if payload["schema_version"] >= 2:
         result["achievement_evidence"] = validate_hausdepp_evidence(payload.get("achievement_evidence"), participant_ids)
+        _validate_surprise_membership(result["achievement_evidence"], participants)
     if payload["schema_version"] == 3:
         from .hausdepp_tournament import round_result_id, validate_tournament
 
@@ -158,6 +192,8 @@ def validated_hausdepp_membership(row: CompletedGame, user_id: int) -> tuple[dic
              "human_count": len(participants) - record["cpu_count"], "outcome": own["outcome"],
              "opponents": sorted(account for account in human_accounts if account != user_id),
              "flags": evidence.get("flags", []), "ten_clears": evidence.get("ten_clears", 0)}
+    if "table_surprises" in evidence:
+        facts["table_surprises"] = evidence["table_surprises"]
     tournament = payload.get("tournament")
     facts["completed_tournament_id"] = tournament["id"] if tournament and tournament["completed"] else None
     return record, facts
@@ -198,7 +234,11 @@ def finalize_hausdepp_result(game: dict) -> dict:
             "loser_id": state.get("loser_id"), "finished_order": state.get("finished_order"),
         }
         if raw["schema_version"] >= 2:
-            raw["achievement_evidence"] = state["achievement_evidence"]
+            evidence = deepcopy(state["achievement_evidence"])
+            round_number = tournament["round_number"] if tournament else 1
+            for player_id, collection in surprise_collection_evidence(game, round_number).items():
+                evidence["players"][player_id]["table_surprises"] = collection
+            raw["achievement_evidence"] = evidence
         if tournament:
             raw["tournament"] = tournament
         start = (game.get("_hausdepp_round_started_at") if tournament and tournament["round_number"] > 1

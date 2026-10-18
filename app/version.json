@@ -1,10 +1,10 @@
 {
-  "version": "3.11.0",
+  "version": "3.12.0",
   "bump": "minor",
   "date": "2026-10-18",
-  "previous_revision": "80bc42df17eb5852a5153582b263f6d065138f35",
+  "previous_revision": "42ba26749098a4ce12d99873c349c8343dec1efa",
   "summary": {
-    "de": "Hausdepp: sichtbare Schlucke und Häppchen, Putzlumpen und neue kleine Tischüberraschungen.",
-    "en": "Hausdepp: visible sips and bites, a cleaning cloth and new little table surprises."
+    "de": "Hausdepp belohnt seltene Funde mit zwei Sammelreihen und 20 neuen Erfolgen.",
+    "en": "Hausdepp rewards rare finds with two collections and 20 new achievements."
   }
 }
