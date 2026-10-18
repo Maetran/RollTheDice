@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <title>Watten</title>
+  <rect x="0" y="0" width="512" height="512" fill="#26583e"/>
+  <polygon points="134,96 350,134 306,412 90,374" fill="#c7d2bd" stroke="#d5b16d" stroke-width="8"/>
+  <rect x="170" y="94" width="228" height="326" rx="20" fill="#fffdf5" stroke="#d5b16d" stroke-width="8"/>
+  <rect x="188" y="112" width="192" height="290" rx="10" fill="#fffdf5" stroke="#26583e" stroke-width="4"/>
+  <polygon points="210,180 231,180 248,281 272,216 296,281 313,180 334,180 308,334 287,334 272,290 257,334 236,334" fill="#26583e"/>
+</svg>

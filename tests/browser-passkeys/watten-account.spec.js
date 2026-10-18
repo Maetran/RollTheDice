@@ -30,7 +30,7 @@ for (const language of ['de', 'en']) {
     try {
       await page.goto('/watten');
       await expect(page.locator('h1')).toHaveText('Watten');
-      await expect(page.locator('link[rel=manifest]')).toHaveCount(0);
+      await expect(page.locator('link[rel=manifest]')).toHaveAttribute('data-pwa-product', 'watten');
       await page.goto('/watten/anmelden?return_to=%2Fwatten%2Fkonto%2Feinstellungen');
       await expect(page.locator('h1')).toHaveText(language === 'de' ? 'Bei Watten anmelden' : 'Sign in to Watten');
       await page.locator('#wattenRegistrationUsername').fill(`WattenNative_${language}`);
@@ -100,7 +100,7 @@ for (const language of ['de', 'en']) {
       expect((await (await page.request.get('/api/auth/me')).json()).user.id).toBe(initial.user.id);
       expect(sockets).toEqual([]);
       expect(foreign).toEqual([]);
-      expect(await page.evaluate(() => navigator.serviceWorker.getRegistrations().then(items => items.length))).toBe(0);
+      expect(await page.evaluate(() => navigator.serviceWorker.getRegistrations().then(items => items.map(item => new URL(item.scope).pathname)))).toEqual(['/watten']);
       for (const viewport of [{ width: 320, height: 844 }, { width: 568, height: 320 }]) {
         await page.setViewportSize(viewport);
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);

@@ -1150,6 +1150,9 @@ export const HAUSDEPP_MESSAGES = {
 };
 
 export const EN = {
+    "Lokale Kontovorschau: Das Watten-Spiel ist noch nicht verfügbar.": "Local account preview: the Watten game is not available yet.",
+    "Kontovorschau installieren": "Install account preview",
+    "Kontovorschau aktualisieren": "Update account preview",
     "Bei Watten anmelden": "Sign in to Watten",
     "Watten – Dein Spielerkonto": "Watten – Your player account",
     "Watten ist noch nicht verfügbar. Dein Konto kannst du hier verwalten.": "Watten is not available yet. You can manage your account here.",

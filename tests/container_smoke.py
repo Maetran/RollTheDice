@@ -77,28 +77,65 @@ def verify_http() -> None:
     print("PASS production image: public Hausdepp pages and isolated service worker", flush=True)
 
 
+def verify_watten(local_preview: bool) -> None:
+    # These are real HTTP paths from the built image, not files read from the
+    # source checkout. Production remains closed even during the local mode.
+    paths = ("/watten-manifest.webmanifest", "/watten-manifest-en.webmanifest", "/watten-sw.js",
+             "/static/watten/icons/watten-icon-180.png")
+    for path in paths:
+        try:
+            fetch(path, "watten.zockdiewandan.online")
+        except urllib.error.HTTPError as error:
+            assert error.code in {404, 503}, path
+        else:
+            raise AssertionError(f"Production Watten resource opened: {path}")
+    if not local_preview:
+        return
+    for language, suffix in (("de", ""), ("en", "-en")):
+        data, headers = fetch(f"/watten-manifest{suffix}.webmanifest", "localhost")
+        assert headers.get_content_type() == "application/manifest+json"
+        manifest = json.loads(data)
+        assert manifest["id"] == "/watten" and manifest["lang"] == language
+        assert manifest["scope"] == "/" and manifest["start_url"] == "/watten?pwa=watten"
+        for icon in manifest["icons"]:
+            body, image_headers = fetch(icon["src"], "localhost")
+            assert body.startswith(b"\x89PNG\r\n\x1a\n") and image_headers.get_content_type() == "image/png"
+    body, headers = fetch("/watten-sw.js", "localhost")
+    assert headers["Service-Worker-Allowed"] == "/watten" and b"caches." not in body
+    body, headers = fetch("/watten", "localhost")
+    assert b'data-pwa-product="watten"' in body and b'noindex' in body
+    body, _ = fetch("/static/watten/icons/watten-icon-180.png", "localhost")
+    assert body.startswith(b"\x89PNG\r\n\x1a\n")
+    print("PASS production image: guarded local Watten manifests, artwork, account route and narrow worker", flush=True)
+
+
 def main() -> None:
     if not os.path.isfile("/app/alembic.ini") or not os.path.isdir("/app/app"):
         raise SystemExit("Run this smoke inside the production image only")
-    with tempfile.TemporaryFile(mode="w+t") as logs:
-        server = subprocess.Popen(
-            [sys.executable, "-m", "uvicorn", "app.asgi:create_application", "--factory",
-             "--host", "127.0.0.1", "--port", "8000"],
-            stdout=logs, stderr=subprocess.STDOUT,
-        )
-        try:
-            verify_http()
-        except BaseException:
-            logs.seek(0)
-            print(logs.read(), file=sys.stderr)
-            raise
-        finally:
-            server.terminate()
+    for local_preview in (False, True):
+        environment = {**os.environ, "ROLLTHEDICE_WATTEN_ACCOUNT_PREVIEW": "1" if local_preview else "0"}
+        if local_preview:
+            environment["ROLLTHEDICE_SITE_ORIGIN"] = "http://localhost:8000"
+        with tempfile.TemporaryFile(mode="w+t") as logs:
+            server = subprocess.Popen(
+                [sys.executable, "-m", "uvicorn", "app.asgi:create_application", "--factory",
+                 "--host", "127.0.0.1", "--port", "8000"],
+                stdout=logs, stderr=subprocess.STDOUT, env=environment,
+            )
             try:
-                server.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                server.kill()
-                server.wait(timeout=5)
+                verify_http()
+                verify_watten(local_preview)
+            except BaseException:
+                logs.seek(0)
+                print(logs.read(), file=sys.stderr)
+                raise
+            finally:
+                server.terminate()
+                try:
+                    server.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    server.kill()
+                    server.wait(timeout=5)
 
 
 if __name__ == "__main__":

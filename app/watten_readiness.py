@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ipaddress
 import os
+import posixpath
 from urllib.parse import urlsplit
 
 from starlette.requests import HTTPConnection
@@ -67,9 +68,14 @@ class WattenReadinessMiddleware:
         connection = HTTPConnection(scope)
         fixed_host = is_watten_host(connection)
         local_account_path = scope["path"] == "/watten" or scope["path"].startswith("/watten/")
+        # StaticFiles normalizes dot segments and separators, including on a
+        # case-insensitive local filesystem. Guard the same canonical icon path.
+        icon_path = posixpath.normpath(scope["path"]).casefold().startswith("/static/watten/icons/")
         local_document = (scope["type"] == "http" and scope["method"] in {"GET", "HEAD"}
                           and scope["path"] in _LOCAL_ACCOUNT_PATHS and watten_account_preview_enabled(connection))
-        if not fixed_host and (not local_account_path or local_document):
+        if not fixed_host and (not local_account_path or local_document) and (
+                not icon_path or (scope["type"] == "http" and scope["method"] in {"GET", "HEAD"}
+                                  and watten_account_preview_enabled(connection))):
             await self.app(scope, receive, send)
             return
         if scope["type"] == "websocket":

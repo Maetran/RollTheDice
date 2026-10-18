@@ -8,6 +8,7 @@ from fastapi.responses import RedirectResponse, Response
 
 from .auth import resolve_session
 from .product_hosts import safe_watten_account_path
+from .watten_pwa import account_pwa_head
 from .watten_readiness import watten_account_preview_enabled
 
 router = APIRouter()
@@ -34,7 +35,7 @@ def _page(request: Request, page: str) -> Response:
                    '<p><a href="/watten/anmelden">Anmelden / Sign in</a></p>'
                    '<p><a href="/watten/konto/einstellungen">Kontoeinstellungen / Account settings</a></p>'
                    '</main>' + after)
-    return Response(content, media_type="text/html", headers=_HEADERS)
+    return Response(account_pwa_head(content), media_type="text/html", headers=_HEADERS)
 
 
 @router.get("/watten", include_in_schema=False)
@@ -68,5 +69,5 @@ def watten_account_action_page(request: Request, action: str) -> Response:
     if request.query_params.getlist("app") != ["watten"] or len(request.query_params.getlist("return_to")) > 1:
         raise HTTPException(status_code=400, detail="invalid_account_context", headers=_HEADERS)
     content = (_STATIC / "watten-email-action.html").read_text(encoding="utf-8").replace("{action}", action)
-    return Response(content, media_type="text/html",
+    return Response(account_pwa_head(content), media_type="text/html",
                     headers={**_HEADERS, "Referrer-Policy": "no-referrer"})

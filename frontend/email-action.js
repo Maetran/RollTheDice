@@ -11,6 +11,7 @@ import {
 import { hausdeppAccountReturnPath, wattenAccountReturnPath } from "./multigame/routes.js";
 
 import { EN } from "./i18n/catalog.js";
+import { initializeWattenPwa } from "./watten/pwa.js";
 
 const actionParameters = new URLSearchParams(window.location.search);
 const hausdeppContext = document.documentElement.dataset.game === "hausdepp";
@@ -230,6 +231,7 @@ async function renderEmailConfirmation(container) {
 }
 
 async function start() {
+  if (wattenContext) initializeWattenPwa({ registerWorker: false, installControls: false });
   const container = document.querySelector("[data-email-action]");
   if (!container) return;
   document.title = t(document.title);

@@ -80,7 +80,8 @@ class WattenAccountsTests(unittest.TestCase):
             self.assertIn('noindex', response.headers["x-robots-tag"])
             self.assertEqual(response.headers["cache-control"], "no-store")
             self.assertNotIn("/static/shell.js", response.text)
-            self.assertNotIn('rel="manifest"', response.text)
+            self.assertIn('data-pwa-product="watten"', response.text)
+            self.assertIn('/watten-manifest.webmanifest', response.text)
         for path in ("/watten/konto", "/watten/konto/einstellungen"):
             response = self.client.get(path)
             self.assertEqual(response.status_code, 303)

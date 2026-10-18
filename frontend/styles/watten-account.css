@@ -28,6 +28,8 @@ summary { cursor: pointer; min-height: 44px; padding-block: .5rem; font-weight: 
 .avatar-upload { display: grid; gap: .75rem; }
 [role=alert], [data-kind=error] { color: #973f29; }
 aside { padding: .75rem; border-left: 3px solid var(--accent); }
+.watten-install { width: min(100% - 2rem, 750px); margin: -1.5rem auto 2rem; font-size: .9rem; }
+.watten-install button { margin: .25rem .5rem .25rem 0; }
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
 @media (max-width: 360px) {
   body > header { gap: .5rem; }

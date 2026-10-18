@@ -6,6 +6,9 @@ import { initializeAvatarFallbacks } from '../shared/avatar.js';
 import { mountAvatarUpload } from '../shared/avatar-upload.js';
 import { mountRegistrationForm, registrationFormMarkup } from '../shared/registration.js';
 import { wattenAccountReturnPath } from '../multigame/routes.js';
+import { initializeWattenPwa } from './pwa.js';
+
+initializeWattenPwa();
 
 const root = document.getElementById('wattenAccount');
 const page = document.documentElement.dataset.accountPage;
