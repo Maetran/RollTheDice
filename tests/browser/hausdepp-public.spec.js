@@ -93,7 +93,7 @@ for (const preferred of ['de', 'en']) {
     await page.locator('#hausdeppRegister').click();
     await expect(page.locator('#zilchRegistrationForm')).toBeVisible();
     await expect(page.locator('#zilchLoginTitle')).toHaveText(preferred === 'de' ? 'Bei Hausdepp anmelden' : 'Sign in to Hausdepp');
-    await expect(page.locator('.zilch-login-intro')).toContainText('Hausdepp');
+    await expect(page.locator('.zilch-login-intro')).toContainText(preferred === 'de' ? 'Ein Konto für alle unsere Spiele' : 'One account for all our games');
     expect(new URL(page.url()).searchParams.get('return_to')).toBe('/hausdepp');
     await openPasswordLogin(page, true);
     await page.locator('#zilchLoginUsername').fill(account.username);
