@@ -33,6 +33,7 @@ Quellenregeln entscheiden keine hier noch offenen Fälle.
 | Sofortiges Gabenende | Der dritte gewonnene Stich einer Partei beendet die Gabe sofort und vergibt die Punkte. Danach ist kein Gebot mehr möglich. |
 | Automatisches Danke | Beim blinden ladinischen Bestimmen erhält der Spieler, dessen **tatsächlich gezeigte Unterkarte** Rechter ist, automatisch eine öffentliche Sprechblase «Danke». Beispiel: Geber A zeigt Schellen-König, B zeigt Herz-König: Schellen ist Trumpf, König Schlag, A sagt automatisch Danke. Ausschliesslich aus den gezeigten Karten ableiten; keine Suche nach einem verborgenen Rechten in anderen Händen. |
 | Erneutes Einschauen | Nicht erlaubt. |
+| Option Rechter-Anzeige | Neue Option bei Tisch-/Spielerstellung: offiziell Wissende sehen dauerhaft eine Referenzkarte der angesagten Kombination, etwa links oben; nicht Wissende sehen dort eine verdeckte Karte. Bei deaktivierter Option müssen sich auch die Wissenden den Rechten merken. Wer offiziell weiss, wird aus den aktuellen Gabenrollen bestimmt, nicht aus festen Spielernamen oder abgeleiteter Vermutung. Die ursprüngliche Karte des anderen wird nicht erneut gezeigt. Als zurückhaltender Produktdefault bleibt diese zusätzliche Anzeige aus. |
 | Reststapelblick | Nicht erlaubt. |
 | Partnerblatt | Ausschliesslich bei offenem Spiel als Option möglich. Kein Partnerblattblick im blinden Standardspiel. |
 | Stichhistorie | Als wählbare Option bei der Spielerstellung anbieten. Inhalt/Umfang der freigegebenen Historie noch genau festlegen. |

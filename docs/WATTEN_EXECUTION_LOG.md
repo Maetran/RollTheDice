@@ -143,6 +143,18 @@ Develop-Abgleich, `push:checked`; keine zweite Vollsuite neben fremdem Vollpool.
   Spiel-/PWA-Identität ausdrücklich aus. Originalbericht unverändert unter
   `test-results/local-checks/efa2200df65a-1792334979297-9f652902/` erhalten.
   Dieser rote Lauf ist kein Pushnachweis; vollständige Wiederprüfung nötig.
+- Zweiter Vollauf auf `d7977a3`: Qualität, Tools, **1389 Backendtests**,
+  Produktionsimage, Containerprüfung, alle vier Haupt-Browserteile und drei
+  Konto-/Passkeyteile sowie Diffprüfung bestanden. Der abschliessende frische
+  Vergleich verweigerte den Push, weil Develop inzwischen auf `42ba267`
+  weitergeführt wurde. Kein gültiger Vollnachweis/Push daraus abgeleitet.
+- `origin/develop=42ba267` regulär integriert; Quelländerungen der dortigen
+  Hausdepp-Tischfunktionen erhalten. 58 generierte/Metadatenkonflikte aufgelöst,
+  echte HTML-Inhalte vor Fingerprintnormalisierung verglichen und Bundles aus
+  den zusammengeführten Quellen vollständig neu gebaut. Weil Develop bereits
+  3.11.0 führt, ist diese Korrektur nun **3.11.1**, keine erfundene veröffentlichte
+  3.10.1. Bestehende historische Zuordnungen unverändert; neuer Vorgängerbeleg
+  3.11.0 zeigt auf `42ba267`. Erneuter vollständiger Integrationsnachweis folgt.
 
 ## Claude und Übernahmefähigkeit
 
@@ -164,6 +176,19 @@ Beide bestehenden Heartbeats im Ausführungs-Chat wurden entsprechend
 aktualisiert; Zeitplan und Zuordnung bleiben erhalten, kein Duplikat.
 Keine künstlichen Verbrauchsaufträge, Zusatzkäufe oder Tarifänderungen.
 Codex bleibt für Review, Integration und nahtlose Übernahme zuständig.
+
+Owner hat den Arbeitsstart anschliessend ausdrücklich auf **17:15** vorgezogen.
+Live vor Vergabe: 98 % Sitzung / 83 % Woche. Auftrag um 17:15:30 über die
+vorhandene Claude-Code-Sitzung tatsächlich gestartet, eigener vorbereiteter
+Worktree `watten-deal-engine`, Branch `codex/watten-deal-engine`, Basis
+`dfe2071`, nur neue `app/watten_play.py` und `tests/test_watten_play.py`.
+Aufgabe: reine Karten-/Stichübergänge nach bestätigter Ansage; keine Runtime,
+API, UI, schweren Tests oder Pushes. Begrenzter Auftrag und Übernahmevertrag
+stehen dort in `docs/WATTEN_ENGINE_HANDOFF.md`. Nach dem echten Sitzungslimit
+zeigt die Oberfläche nach Reset bereits eine laufende Wiederaufnahme; keinen
+doppelten Auftrag senden. Einmaliger Wakeup als erfüllt pausiert, laufende
+Quotenbeobachtung bleibt aktiv. Aktueller feiner Übergabestand zusätzlich
+ignoriert unter `test-results/watten-coordination/claude-status.json`.
 
 ## Nächster unabhängiger Schritt
 

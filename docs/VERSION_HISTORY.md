@@ -1,6 +1,6 @@
 # Versionen / Versions
 
-Aktuelle gemeinsame Produktversion / Current shared product version: **3.11.0**.
+Aktuelle gemeinsame Produktversion / Current shared product version: **3.11.1**.
 
 ZDWA und Zilch werden gemeinsam versioniert. Major steht für einen großen
 Produktmeilenstein, Minor für neue Funktionen und Patch für Fehlerkorrekturen
@@ -27,6 +27,7 @@ Detailed player-facing descriptions are in the [changelog](../CHANGELOG.md).
 
 | Version | Datum / Date | Art / Type | Änderung / Change | Commit |
 | --- | --- | --- | --- | --- |
+| 3.11.0 | 2026-10-18 | minor | Hausdepp: sichtbare Schlucke und Häppchen, Putzlumpen und neue kleine Tischüberraschungen. / Hausdepp: visible sips and bites, a cleaning cloth and new little table surprises. | [42ba267](https://github.com/Maetran/RollTheDice/commit/42ba26749098a4ce12d99873c349c8343dec1efa) |
 | 3.10.0 | 2026-10-18 | minor | Hausdepp-Computer halten hohe Karten als Reserve zurück und nutzen sichere Schlusszüge. / Hausdepp computers keep high cards in reserve and take guaranteed finishing follow-ups. | [80bc42d](https://github.com/Maetran/RollTheDice/commit/80bc42df17eb5852a5153582b263f6d065138f35) |
 | 3.9.1 | 2026-10-18 | patch | Abmelden in Hausdepp führt zuverlässig zurück zu Hausdepp statt manchmal nach ZDWA. / Signing out of Hausdepp reliably returns to Hausdepp instead of sometimes jumping to ZDWA. | [2baa990](https://github.com/Maetran/RollTheDice/commit/2baa990726ef537049957069c57d68f3bfeb88f1) |
 | 3.9.0 | 2026-10-18 | minor | Hausdepp-Runden flexibel öffnen, Favoriten speichern und weitere Reaktionen senden. / Open flexible Hausdepp games, save favourites and send more reactions. | [87a298f](https://github.com/Maetran/RollTheDice/commit/87a298fc57b32fdb397dd972fec29b1ff083a551) |

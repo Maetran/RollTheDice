@@ -1,10 +1,10 @@
 {
-  "version": "3.11.0",
-  "bump": "minor",
+  "version": "3.11.1",
+  "bump": "patch",
   "date": "2026-10-18",
-  "previous_revision": "80bc42df17eb5852a5153582b263f6d065138f35",
+  "previous_revision": "42ba26749098a4ce12d99873c349c8343dec1efa",
   "summary": {
-    "de": "Hausdepp: sichtbare Schlucke und Häppchen, Putzlumpen und neue kleine Tischüberraschungen.",
-    "en": "Hausdepp: visible sips and bites, a cleaning cloth and new little table surprises."
+    "de": "Zuverlässiger Spielwechsel und geschlossene Watten-Kontogrundlage.",
+    "en": "Reliable game switching and a closed Watten account foundation."
   }
 }
