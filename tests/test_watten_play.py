@@ -19,7 +19,7 @@ from app.watten_play import (
     play_card,
     start_play,
 )
-from app.watten_rules import WELI_STRIKE, CardKind, WattenCall, card_kind, trick_winner
+from app.watten_rules import WELI_STRIKE, CardKind, WattenCall, card_kind, card_strength, trick_winner
 
 # Participant IDs are deliberately unlike the numeric card seat indices.
 IDS = ("north", "east", "south", "west")
@@ -416,10 +416,11 @@ def test_reconstruction_rejects_histories_the_engine_would_not_accept():
     state, bids = begin(OWNER_HANDS, profile(4, "ladinisch", blind=True, critical=True))
     base = (state.deal_id, state.deal, state.parties, state.profile, state.call)
     for plays in (("hearts-K",), ("bells-7", "bells-7"), ("bells-7", "hearts-K", "acorns-K", "acorns-8"),
+                  ("bells-7", "hearts-K", "acorns-K", "hearts-9"),
                   ["bells-7"], (None,)):
         with pytest.raises(WattenPlayError, match="watten_invalid_play_history"):
             PlayState(*base, plays)
-    accepted = play(state, bids, "bells-7", "hearts-K", "acorns-K", "hearts-9")
+    accepted = play(state, bids, "bells-7", "hearts-K", "acorns-K", "bells-8")
     assert PlayState(*base, accepted.plays) == accepted
     with pytest.raises(WattenPlayError, match="watten_call_mismatch"):
         PlayState(*base[:4], ACE_OF_HEARTS)
@@ -461,12 +462,32 @@ def test_random_full_deals_keep_cards_turns_duty_roles_and_the_end_consistent(co
             assert legal and set(legal) <= set(hand)
             if seat not in knowers:
                 assert legal == hand
+            # Independent rule subset: reuse the separately tested ranking,
+            # never the engine's own allowed-card helper as an oracle.
+            duty = bool(state.trick_cards and seat in knowers
+                        and card_kind(state.trick_cards[0], rules) in {CardKind.TRUMP, CardKind.RECHTER}
+                        and any(card_kind(card, rules) == CardKind.TRUMP for card in hand))
+            expected = []
+            if duty:
+                lead = state.trick_cards[0]
+                incumbent = max(card_strength(card, led_card=lead, rules=rules) for card in state.trick_cards)
+                for card in hand:
+                    kind = card_kind(card, rules)
+                    if kind in {CardKind.TRUMP, CardKind.RECHTER, CardKind.CRITICAL}:
+                        expected.append(card)
+                    elif kind == CardKind.STRIKE and card_strength(card, led_card=lead, rules=rules) > incumbent:
+                        expected.append(card)
+            else:
+                expected = list(hand)
+            assert legal == tuple(expected)
             excluded = [card for card in hand if card not in legal]
             if excluded:
                 assert card_kind(state.trick_cards[0], rules) in {CardKind.TRUMP, CardKind.RECHTER}
                 assert any(card_kind(card, rules) == CardKind.TRUMP for card in legal)
-                assert {card_kind(card, rules) for card in excluded} == {CardKind.NORMAL}
+                assert {card_kind(card, rules) for card in excluded} <= {CardKind.NORMAL, CardKind.STRIKE}
                 for card in excluded:
+                    if card_kind(card, rules) == CardKind.STRIKE:
+                        assert card_strength(card, led_card=lead, rules=rules) <= incumbent
                     assert_rejected("watten_trump_required", state, bids, player, card)
             previous = state
             state = play_card(state, bids, player, rng.choice(legal))
