@@ -493,6 +493,10 @@ async def lifespan(_app: FastAPI):
     from .hausdepp_cpu_runner import stop_cpu_runners as stop_hausdepp
 
     await resume_hausdepp(games, finalize_game=_finalize_and_log_results)
+    from .watten_cpu_runtime import resume_cpu_games as resume_watten
+    from .watten_cpu_runtime import stop_cpu_runners as stop_watten
+
+    await resume_watten(games)
     timeout_sweeper_stop = asyncio.Event()
     timeout_sweeper = asyncio.create_task(
         _run_timeout_sweeper(timeout_sweeper_stop),
@@ -521,6 +525,7 @@ async def lifespan(_app: FastAPI):
         reminder_scheduler.cancel()
         release_scheduler.cancel()
         admin_help_scheduler.cancel()
+        await stop_watten()
         await asyncio.gather(timeout_sweeper, lobby_chat_purger, reminder_scheduler, release_scheduler,
                              admin_help_scheduler, return_exceptions=True)
         await stop_cpu_runners()

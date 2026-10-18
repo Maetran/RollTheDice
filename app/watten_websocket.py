@@ -133,6 +133,9 @@ async def _session_action(session, data: dict) -> None:
     # Replacement is synchronous before any await: queued commands from the
     # previous device fail the ownership check after taking this same lock.
     _install(game, candidate)
+    from .watten_cpu_runtime import watch_game
+
+    watch_game(game)
     session.player_id, session.is_spectator = player, False
     if previous is not None and previous is not websocket:
         try:
@@ -197,6 +200,9 @@ async def _handle_locked(session, action: str, data: dict) -> bool:
                                    for kind, seat, value in sorted(fresh))
         persist_watten_game(candidate)
         _install(game, candidate)
+    from .watten_cpu_runtime import watch_game
+
+    watch_game(game)
     leaving = not replayed and action == "watten_leave" and session.player_id in game["_watten"].absent
     if leaving:
         # Revoke this transport synchronously before notifying any peer. Its
@@ -234,7 +240,7 @@ async def serve_watten_websocket(websocket, game: dict, *, reserve_connection, r
     try:
         await websocket.send_json({"game_type": "watten", "id": game["_id"], "room_revision": game["_watten"].room.revision,
                                    "locked": bool(game["_passphrase"]), "lifecycle_revision": game["_watten"].lifecycle_revision,
-                                   "capabilities": {"cpu_autoplay": False}})
+                                   "capabilities": snapshot_watten(game)["capabilities"]})
         while True:
             try:
                 data = await websocket.receive_json()
