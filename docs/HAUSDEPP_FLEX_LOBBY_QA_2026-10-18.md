@@ -96,3 +96,21 @@ previously failing narrow-table checks. The ten flexible-lobby cases also
 passed in the expanded run before the narrow-dock correction.
 A final optional 320px capture case passed; the native screenshot was visually
 inspected and shows all seven controls without clipping or covered cards.
+
+## Existing animation contracts aligned with immediate packet updates
+
+The next complete CI run exposed 16 old animation expectations in browser
+shard 2: they still required stationary copies of the previous packet and a
+queued second throw. Those expectations contradicted the accepted immediate
+packet behaviour. The own-launch test now retains its single-element adoption
+check and also requires the real accepted cards and count to be visible.
+Rapid-play checks require zero presentation delay, cancellation of the
+superseded flight, same-version identity and disconnect cleanup.
+
+The 14 device geometry cases now inspect the real packet and its artwork in
+start, rest and arrival frames, including size, position, rotation, card order
+and effective opacity. Incoming flights still have to arrive at the current
+card's exact pose; clearing keeps its previous-packet and burn-frame checks.
+The targeted run passed **17 tests** in 30.1 seconds, including the own launch,
+rapid play, every geometry/burn viewport and resize cleanup. Only browser tests
+changed; the product bundle and release version remain unchanged.
