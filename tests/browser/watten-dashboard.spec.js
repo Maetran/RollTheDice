@@ -32,7 +32,7 @@ async function founder(page, language = 'de', design = 'mission') {
   expect(proof.status()).toBe(200);
   expect((await proof.json()).available_games).toContain('watten');
   await page.addInitScript(({ language, design }) => {
-    localStorage.setItem('zdwa_language', language);
+    if (!localStorage.getItem('zdwa_language')) localStorage.setItem('zdwa_language', language);
     localStorage.setItem('rollthedice:dashboard:design', design);
   }, { language, design });
   return me.user;
