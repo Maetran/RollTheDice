@@ -48,7 +48,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from .database import get_engine, session_scope
-from .models import AbandonedGame, Base, CompletedGame, GameParticipant, User
+from .models import AbandonedGame, Base, CompletedGame, GameParticipant, User, WattenMatchEvidence
 from .security import as_utc, utcnow
 from .zdwa_design import configured_zdwa_design_mode
 
@@ -819,6 +819,30 @@ def _result_duration(raw: str) -> int | None:
     return None
 
 
+def _watten_result_duration(game_id, finished_at, result_json, frozen_result, evidence_json) -> int | None:
+    """Use only the native writer's frozen public evidence; legacy stays unknown.
+
+    No engine checkpoint, card, announcement or private feedback is read here.
+    Both the exact result-v1 and its real completion timestamp must still agree.
+    """
+    from dataclasses import replace
+
+    from .watten_evidence import UNKNOWN, BidEvidence, adapt_result_v1, evidence_from_json
+    from .watten_recipe import loads_strict_json
+
+    try:
+        evidence = evidence_from_json(evidence_json)
+        actual = loads_strict_json(result_json)
+        if (evidence.game_id != game_id or evidence.source != "public_match_v1" or evidence.started_at is UNKNOWN
+                or loads_strict_json(frozen_result) != actual
+                or replace(evidence, source="result_v1", profile=UNKNOWN, started_at=UNKNOWN, bids=BidEvidence())
+                != adapt_result_v1(actual, finished_at=as_utc(finished_at))):
+            return None
+        return int((evidence.finished_at - evidence.started_at).total_seconds())
+    except (ValueError, TypeError, OverflowError, RecursionError):
+        return None
+
+
 def _geography_stats(db: Session, filters: list, views, active, products=("zdwa", "zilch")) -> tuple[list[dict], dict]:
     country = AnalyticsSession.country
     rows = db.execute(select(country, func.count(func.distinct(AnalyticsEvent.session_id)), views, active)
@@ -903,8 +927,9 @@ def _journey_stats(db: Session, start: datetime, now: datetime, game: str, produ
 
 def _previous_overview(db: Session, start: datetime, days: int, game: str, products=("zdwa", "zilch")) -> dict:
     previous_start = start - timedelta(days=days)
+    traffic_products = tuple(product for product in products if product != "watten")
     filters = [AnalyticsEvent.received_at >= previous_start, AnalyticsEvent.received_at < start,
-               AnalyticsEvent.game.in_((*products, "site"))]
+               AnalyticsEvent.game.in_((*traffic_products, "site"))]
     results = [CompletedGame.finished_at >= previous_start, CompletedGame.finished_at < start,
                CompletedGame.game_type.in_(products)]
     if game != "all":
@@ -918,9 +943,12 @@ def _previous_overview(db: Session, start: datetime, days: int, game: str, produ
                       & AnalyticsEvent.action.not_in(PWA_ACTIONS), Integer))
     ).where(*filters)).one()
     completed = db.scalar(select(func.count()).select_from(CompletedGame).where(*results)) or 0
-    return {"sessions": sessions, "page_views": int(page_views or 0), "active_seconds": round((active_ms or 0) / 1000, 1),
-            "avg_active_seconds": round((active_ms or 0) / 1000 / max(sessions, 1), 1),
-            "completed_games": completed, "game_clicks": int(clicks or 0)}
+    overview = {"sessions": sessions, "page_views": int(page_views or 0), "active_seconds": round((active_ms or 0) / 1000, 1),
+                "avg_active_seconds": round((active_ms or 0) / 1000 / max(sessions, 1), 1),
+                "completed_games": completed, "game_clicks": int(clicks or 0)}
+    if game == "watten":
+        overview.update({key: None for key in overview if key != "completed_games"})
+    return overview
 
 
 def _comparison_stats(current: dict, previous: dict, start: datetime, now: datetime, days: int, first: datetime | None) -> dict:
@@ -930,10 +958,10 @@ def _comparison_stats(current: dict, previous: dict, start: datetime, now: datet
     metrics = {}
     for name, value in previous.items():
         current_value = current[name]
-        difference = current_value - value
+        difference = current_value - value if current_value is not None and value is not None else None
         metrics[name] = {"current": current_value, "previous": value,
                          "delta": round(difference, 1) if isinstance(difference, float) else difference,
-                         "change_percent": round(100 * difference / value, 1) if value else None}
+                         "change_percent": round(100 * difference / value, 1) if value and difference is not None else None}
     return {"previous_period": {"from": previous_start.isoformat(), "to": start.isoformat(), "days": days,
                                 "timezone": "UTC", "end_exclusive": True},
             "current_partial_day": True, "previous_partial_day": False,
@@ -1022,9 +1050,34 @@ def _live_game_stats(products: tuple[str, ...]) -> dict[str, dict]:
     metrics = {product: {"active_tables": 0, "playing_tables": 0, "waiting_tables": 0,
                          "connected_humans": 0, "cpu_seats": 0, "active_tournaments": 0,
                          "interround_tables": 0} for product in products}
+    native_accounts, invalid_native = set(), False
     for room in list(runtime_games.values()):
         product = room.get("_game_type", "zdwa")
         if product not in metrics or room.get("_aborted"):
+            continue
+        if product == "watten":
+            from .watten_runtime import WattenRuntime
+            from .watten_websocket import _identity
+
+            runtime = room.get("_watten")
+            if type(runtime) is not WattenRuntime:
+                invalid_native = True
+                continue
+            if runtime.room.status not in {"waiting", "started"}:
+                continue
+            row = metrics[product]
+            row["active_tables"] += 1
+            row["playing_tables"] += runtime.room.status == "started"
+            row["waiting_tables"] += runtime.room.status == "waiting"
+            row["paused_tables"] = row.get("paused_tables", 0) + bool(runtime.absent)
+            row["cpu_seats"] += len(runtime.room.cpus)
+            bindings = {(member.participant_id, member.account_id) for member in runtime.room.members}
+            for player in room.get("_players", []):
+                socket = player.get("ws")
+                if socket is not None and (player.get("id"), player.get("user_id")) in bindings:
+                    identity = _identity(socket)
+                    if identity is not None and identity.user_id == player["user_id"]:
+                        native_accounts.add(identity.user_id)
             continue
         tournament = room.get("_hausdepp_tournament") if product == "hausdepp" else None
         pending = isinstance(tournament, dict) and not tournament.get("completed")
@@ -1043,6 +1096,12 @@ def _live_game_stats(products: tuple[str, ...]) -> dict[str, dict]:
             row["playing_tables"] += 1
         else:
             row["waiting_tables"] += 1
+    if "watten" in metrics:
+        native = metrics["watten"]
+        native.update(connected_humans=len(native_accounts), active_tournaments=None, interround_tables=None)
+        native.setdefault("paused_tables", 0)
+        if invalid_native:
+            native.update({key: None for key in native})
     return metrics
 
 
@@ -1057,15 +1116,18 @@ def _result_json_field(path: str):
 
 
 def dashboard_stats(days: int = 7, game: str = "all", *, now: datetime | None = None,
-                    include_hausdepp: bool = False) -> dict:
-    products = ("zdwa", "zilch", "hausdepp") if include_hausdepp else ("zdwa", "zilch")
+                    include_hausdepp: bool = False, include_watten: bool = False) -> dict:
+    products = ("zdwa", "zilch", *(("hausdepp",) if include_hausdepp else ()), *(("watten",) if include_watten else ()))
+    # Native Watten has no browser telemetry collector. Never read arbitrary
+    # Watten event JSON as an approximation for its authoritative room/results.
+    traffic_products = tuple(product for product in products if product != "watten")
     if days not in {1, 7, 30, 90} or game not in {"all", *products}:
         raise ValueError("analytics_invalid_filter")
     now = as_utc(now or utcnow())
     # UTC calendar days make daily bars and overview describe the same window.
     start = now.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=days - 1)
     filters = [AnalyticsEvent.received_at >= start, AnalyticsEvent.received_at <= now,
-               AnalyticsEvent.game.in_((*products, "site"))]
+               AnalyticsEvent.game.in_((*traffic_products, "site"))]
     result_filters = [CompletedGame.finished_at >= start, CompletedGame.finished_at <= now,
                       CompletedGame.game_type.in_(products)]
     if game != "all":
@@ -1104,9 +1166,9 @@ def dashboard_stats(days: int = 7, game: str = "all", *, now: datetime | None = 
                      "device_software": "os", "device_hardware": "device_family", "app_modes": "app_mode",
                      "browsers": "browser", "browser_languages": "browser_language"}[key]
             dimensions[key] = [{label: value, "sessions": total} for value, total in rows]
-        geography, geography_summary = _geography_stats(db, filters, views, active, products)
+        geography, geography_summary = _geography_stats(db, filters, views, active, traffic_products)
         heatmap = _heatmap_stats(db, filters, views, active)
-        journeys = _journey_stats(db, start, now, game, products)
+        journeys = _journey_stats(db, start, now, game, traffic_products)
         previous_overview = _previous_overview(db, start, days, game, products)
         action_rows = db.execute(select(AnalyticsEvent.action, AnalyticsEvent.game, AnalyticsEvent.source, func.count())
                                  .where(*filters, AnalyticsEvent.event_type == "action")
@@ -1120,7 +1182,7 @@ def dashboard_stats(days: int = 7, game: str = "all", *, now: datetime | None = 
         pwa_rows = db.execute(select(AnalyticsEvent.action, func.count()).where(
             AnalyticsEvent.received_at >= start, AnalyticsEvent.received_at <= now,
             AnalyticsEvent.source == "client", AnalyticsEvent.event_type == "action",
-            AnalyticsEvent.game.in_((*products, "site")),
+            AnalyticsEvent.game.in_((*traffic_products, "site")),
             AnalyticsEvent.action.in_(PWA_ACTIONS),
         ).group_by(AnalyticsEvent.action)).all()
         for action, total in pwa_rows:
@@ -1168,12 +1230,21 @@ def dashboard_stats(days: int = 7, game: str = "all", *, now: datetime | None = 
                                       .where(*product_filters)) or 0
             # JSON result payloads are read only for this narrow optional metric,
             # never included in the response or retained by analytics.
-            durations = [_result_duration(raw) for raw in db.scalars(select(CompletedGame.snapshot_json)
-                         .where(*product_filters).order_by(CompletedGame.finished_at.desc()).limit(2000))]
+            if product == "watten":
+                durations = [_watten_result_duration(*row) for row in db.execute(select(
+                    CompletedGame.game_id, CompletedGame.finished_at, CompletedGame.snapshot_json,
+                    WattenMatchEvidence.result_v1_json, WattenMatchEvidence.evidence_json)
+                    .outerjoin(WattenMatchEvidence, WattenMatchEvidence.game_id == CompletedGame.game_id)
+                    .where(*product_filters).order_by(CompletedGame.finished_at.desc(), CompletedGame.id.desc()).limit(2000))]
+            else:
+                durations = [_result_duration(raw) for raw in db.scalars(select(CompletedGame.snapshot_json)
+                             .where(*product_filters).order_by(CompletedGame.finished_at.desc()).limit(2000))]
             valid_durations = [duration for duration in durations if duration is not None]
             abort_filters = [AbandonedGame.game_type == product, AbandonedGame.abandoned_at >= start,
                              AbandonedGame.abandoned_at <= now]
             abandoned = db.scalar(select(func.count()).select_from(AbandonedGame).where(*abort_filters)) or 0
+            if product == "watten":
+                abandoned = None  # No native abandonment writer; absence is not a measured zero.
             completed_tournaments = None
             if product == "hausdepp":
                 abandoned = db.scalar(select(func.count()).select_from(AnalyticsEvent).where(
@@ -1188,24 +1259,42 @@ def dashboard_stats(days: int = 7, game: str = "all", *, now: datetime | None = 
                           "avg_duration_seconds": round(sum(valid_durations) / len(valid_durations), 1)
                           if valid_durations else None, "duration_sample_count": len(valid_durations),
                           "duration_sample_limit": 2000, "abandoned_games": abandoned,
-                          "abandonments_source": "server_events" if product == "hausdepp" else "server_abandonments",
+                          "abandonments_source": "unavailable" if product == "watten" else "server_events" if product == "hausdepp" else "server_abandonments",
                           "completed_tournaments": completed_tournaments, "live": runtime_metrics[product]})
+            if product == "watten":
+                games[-1].update(participants_scope="recorded_seats_including_cpus",
+                                 duration_unknown_count=len(durations) - len(valid_durations),
+                                 duration_sample_truncated=total > len(durations))
         design_usage = _design_usage_stats(db, start, now, game)
-        allowed_events = AnalyticsEvent.game.in_((*products, "site"))
+        allowed_events = AnalyticsEvent.game.in_((*traffic_products, "site"))
         first = db.scalar(select(func.min(AnalyticsEvent.received_at)).where(allowed_events))
         first_client = db.scalar(select(func.min(AnalyticsEvent.received_at)).where(
             allowed_events, AnalyticsEvent.source == "client"))
         stored_events = db.scalar(select(func.count()).select_from(AnalyticsEvent).where(allowed_events)) or 0
     server = dict(server_snapshot())
     visible_runtime = [row for product, row in runtime_metrics.items() if game in {"all", product}]
-    server["active_rooms"] = sum(row["active_tables"] for row in visible_runtime)
-    server["players_online"] = sum(row["connected_humans"] for row in visible_runtime)
+    for output, source in (("active_rooms", "active_tables"), ("players_online", "connected_humans")):
+        values = [row[source] for row in visible_runtime]
+        server[output] = sum(values) if all(value is not None for value in values) else None
     overview = {"sessions": count, "page_views": int(page_views or 0),
                 "active_seconds": round((active_ms or 0) / 1000, 1),
                 "avg_active_seconds": round((active_ms or 0) / 1000 / max(count, 1), 1),
                 "live_sessions": live, "completed_games": completed,
                 "game_clicks": sum(row["count"] for row in actions if row["game"] in products)}
+    if game == "watten":
+        overview.update({key: None for key in overview if key != "completed_games"})
+        for row in (*daily, *hourly, *heatmap):
+            row.update({key: None for key in ("sessions", "page_views", "active_seconds") if key in row})
+        geography_summary.update({key: None for key in ("sessions", "known_sessions", "unknown_sessions", "known_countries")})
+        pwa.update({key: None for key in pwa})
+        journeys["sample"].update(page_views=None, matching_page_views=None, total_page_views=None,
+                                  truncated=None, method="not_instrumented", **{"from": None, "to": None})
     return {"generated_at": now.isoformat(), "available_games": list(products),
+            "metric_coverage": {"traffic": "not_instrumented" if game == "watten" else "observed_events_only",
+                                "traffic_games": [product for product in traffic_products if game in {"all", product}],
+                                "native_live_humans": "distinct_authenticated_accounts",
+                                "request_traffic": "sitewide",
+                                "duration": "validated_frozen_public_evidence" if game == "watten" else "available_server_samples"},
             "period": {"days": days, "game": game, "from": start.isoformat(),
              "to": now.isoformat(), "timezone": "UTC"},
             "collection": {"first_seen_at": as_utc(first).isoformat() if first else None,

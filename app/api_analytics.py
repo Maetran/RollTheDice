@@ -14,6 +14,7 @@ from .models import User
 from .ownership import ownership_flags, require_owner
 from .proxy_headers import trusted_cloudflare_peer
 from .security import utcnow
+from .watten_access import watten_game_preview_enabled
 
 router = APIRouter(prefix="/api")
 
@@ -82,14 +83,19 @@ def analytics_dashboard(request: Request, response: Response, days: int = Query(
     identity = require_analytics(request)
     # Public game access never grants the private Mission Control dataset.
     include_hausdepp = bool(identity.is_founder)
-    if game not in {"all", "zdwa", "zilch", "hausdepp"}:
+    # The closed native product is an independent, request-scoped capability.
+    # A delegated dashboard grant (or an old identity flag) cannot enable it.
+    with session_scope() as db:
+        include_watten = bool(watten_game_preview_enabled(request)
+                              and ownership_flags(db, identity.user_id)["is_founder"])
+    if game not in {"all", "zdwa", "zilch", "hausdepp", "watten"}:
         raise HTTPException(status_code=422, detail="analytics_invalid_filter")
-    if game == "hausdepp" and not include_hausdepp:
+    if game == "hausdepp" and not include_hausdepp or game == "watten" and not include_watten:
         raise HTTPException(status_code=403, detail="analytics_game_unavailable")
     if days not in {1, 7, 30, 90}:
         raise HTTPException(status_code=422, detail="analytics_invalid_filter")
     response.headers["Cache-Control"] = "no-store"
-    return dashboard_stats(days, game, include_hausdepp=include_hausdepp)
+    return dashboard_stats(days, game, include_hausdepp=include_hausdepp, include_watten=include_watten)
 
 
 class AnalyticsAccessRequest(BaseModel):
