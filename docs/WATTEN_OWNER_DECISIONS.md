@@ -17,7 +17,7 @@ Quellenregeln entscheiden keine hier noch offenen Fälle.
 | Weli | Kritisch EIN: Herz-König > Weli > Eichel-Sieben > Rechter. Kritisch AUS: Weli ist kleinster Trumpf. Die zunächst allgemein formulierte Aussage wurde damit ausdrücklich präzisiert. |
 | Weli und Ansage | Weli als Schlag bestimmt **Weli als einzigen Schlag** dieser Gabe, frei angesagt ebenso wie ladinisch. Ohne Kritische ist er dann Rechter, höher als alle gewöhnlichen Trümpfe und von der Zugabepflicht ausgenommen. Weli als Farbkarte bestimmt **Schellen**. Ansonsten gehört Weli immer zur tatsächlich angesagten Trumpffarbe; seine aufgedruckte Farbe begrenzt ihn nicht auf Schellen. |
 | Bieten | Ab erster Karte immer möglich. Erstes Gebot Drei, jedes Gegengebot genau um eins höher. Ein Gebot hält das Spiel an; bis Halten, Gehen oder Aufbieten keine weitere Spielaktion. |
-| Halten / Gehen | A bietet Drei, B geht: A erhält zwei Punkte. B hält: Sieger erhält drei Punkte. B darf direkt Vier gegenbieten. Weitere Stufen folgen dem bestätigten Einer-Schritt; deren vorheriger Einsatz bleibt ausdrücklich im Zustand erhalten. |
+| Halten / Gehen | A bietet Drei, B geht: A erhält zwei Punkte. B hält: Sieger erhält drei Punkte. B darf direkt Vier gegenbieten. A bietet Drei, B direkt Vier, A geht: B erhält **drei** Punkte. Weitere Stufen folgen dem bestätigten Einer-Schritt; deren vorheriger Einsatz bleibt ausdrücklich im Zustand erhalten. |
 | Gestrichen | Kein eigenes Eröffnungsgebot. Auf ein gegnerisches Gebot sind Halten, Gehen **und Aufbieten** ausdrücklich auch gestrichen erlaubt. Dieser Nachtrag präzisiert das frühere pauschale Bietverbot. |
 | Eigene Gebotsberechtigung | Einsatzbieten: Jeder Spieler darf ein eigenes Drei nur eröffnen, wenn er gerade eine Karte spielen dürfte, und erst nachdem die erste Karte der Gabe liegt. Zuständiger Entscheider darf Halten/Gehen/Aufbieten als Antwort sofort ausserhalb seines Kartenzugs. Schlag-/Farbansagerrollen werden nicht neu verteilt. |
 | Dreierpunkte | Verliert das Solo eine Gabe ohne Gebot, bekommen beide Gegenpartner je zwei Punkte. Erreichen dadurch beide elf, gewinnen beide. Gebotserhöhungen müssen dieselbe individuelle Zurechnung bewahren. |
@@ -25,6 +25,10 @@ Quellenregeln entscheiden keine hier noch offenen Fälle.
 | Vierer-Entscheider | Teams A+C/B+D, Geber A und Einschauer B: B oder D bietet → A entscheidet für A+C; A oder C bietet → B entscheidet für B+D. C/D beraten ihren jeweiligen Entscheider über den privaten Rückmeldungskanal. |
 | Private Partner-Rückmeldung | Mitspieler kann «fühl mich gut / schlecht / keine Ahnung» privat an seinen jeweiligen Partner melden, ausdrücklich auch im Vierer. Keine konkrete Karte oder geheime Ansage in dieser Nachricht. Nachrichten werden als erlaubter privater Informationsverlauf behandelt; Gegner/Zuschauer bekommen sie nicht. |
 | Trumpfzugabe | Gewöhnlicher Trumpf eröffnet, Einschauer hält Trumpf und Schlag: Schlag darf statt Trumpf gelegt werden. «Stechen ist immer möglich», aber kein Stichzwang. Rechter und Kritische müssen nicht geopfert werden. «Geschützt» war nur unser Sammelbegriff für diese Ausnahmen, keine weitere Kartenklasse. |
+| Trumpfpflichtrollen | Im offenen Dreier müssen alle Trumpf zugeben, aber keinen Schlag opfern; keine Stechpflicht. Im offenen Vierer gilt die Pflicht für alle, die Schlag und Farbe offiziell wissen. Im blinden Vierer bleiben dies die beiden Einschauer; blosses Erschliessen erweitert die Pflicht nicht. |
+| Ausspiel und Überstich | Rechter als erste Stichkarte löst Trumpfpflicht für die offiziell Wissenden aus. Ein Kritischer als erste Stichkarte ist davon ausgenommen. Beginnt der Stich mit gewöhnlichem Trumpf, bleibt die Pflicht für spätere offiziell Wissende auch nach kritischem Überstich bestehen. |
+| Sofortiges Gabenende | Der dritte gewonnene Stich einer Partei beendet die Gabe sofort und vergibt die Punkte. Danach ist kein Gebot mehr möglich. |
+| Automatisches Danke | Beim blinden ladinischen Bestimmen erhält der Spieler, dessen **tatsächlich gezeigte Unterkarte** Rechter ist, automatisch eine öffentliche Sprechblase «Danke». Beispiel: Geber A zeigt Schellen-König, B zeigt Herz-König: Schellen ist Trumpf, König Schlag, A sagt automatisch Danke. Ausschliesslich aus den gezeigten Karten ableiten; keine Suche nach einem verborgenen Rechten in anderen Händen. |
 | Erneutes Einschauen | Nicht erlaubt. |
 | Reststapelblick | Nicht erlaubt. |
 | Partnerblatt | Ausschliesslich bei offenem Spiel als Option möglich. Kein Partnerblattblick im blinden Standardspiel. |
@@ -42,11 +46,22 @@ Fortschrittsumfeld mit langfristigen Wirtshaustiteln.
 Deck, Handzahl, Rollen und Dreierpunkte haben eine bestätigte Umsetzungsbasis.
 Vierer-Antwortrechte, eigene Gebote im Kartenzug gegenüber sofortiger
 Gebotsantwort und Weli-Schlag/Rechter sind ebenfalls ausdrücklich bestätigt.
-Konkret gefragt sind jetzt Trumpfpflichtrollen im offenen Dreier/Vierer,
-Rechter-/Kritisch-Auslöser und kritischer Überstich, Ablehnung eines direkten
-Gegengebots und sofortiges Ende am dritten Stich. Weitere offene P0-Zeilen
-betreffen insbesondere Kritischen-/Guter-Kollisionen. Weitere Fragen verwenden konkrete
-Beispielsituationen und stellen bestätigte Entscheidungen nicht neu.
+Trumpfpflichtrollen, Auslöser, kritischer Überstich, direkter Gegenbiet-Ausstieg
+und sofortiges Ende am dritten Stich sind nun ebenfalls ausdrücklich bestätigt.
+Offen sind insbesondere die vollständige Guter-Zusatzregel, Überschneidungen
+mit Kritischen und die Eröffnungsberechtigung im Dreier bei unterschiedlich
+gestrichenen Partnern. Weitere Fragen verwenden konkrete Beispielsituationen
+und stellen bestätigte Entscheidungen nicht neu.
+
+## Gezielte Quellenprüfung
+
+Der Owner bat ausdrücklich um Onlineprüfung des kritischen Ausspiels.
+[Pagat, Tiroler Watten / Watten mit Kritischen](https://www.pagat.com/de/trumps/watten.html)
+beschreibt ausdrücklich freie Zugabe, wenn ein Kritischer den Stich eröffnet.
+Das bestätigt diese Hausregel. Die dort ebenfalls beschriebenen anderen
+regionalen Biet-, Weli- und Guter-Regeln werden nicht mitübernommen.
+Insbesondere gilt weiterhin der bestätigte fortbestehende Trumpfzwang nach
+gewöhnlichem Trumpfausspiel und späterem kritischem Überstich.
 
 **English:** Confirmed: two-player is open with normal announcements and an
 explicitly requested Ladinisch option;
@@ -66,3 +81,11 @@ as the Ladinisch strike is the sole strike, and as the suit card means bells;
 otherwise it belongs to the called trump suit. No repeated inspection or stock look;
 partner-hand viewing only as an open-game option; trick history is a creation
 option. Concrete card hints are prohibited. All comfort features are in scope.
+All open three-player participants follow trump without being forced to play
+a strike; open four-player trump duty applies to all officially informed
+players. A led main strike triggers duty, a led critical does not; a later
+critical does not remove duty after an ordinary trump lead. A3/B4/A-fold
+awards B three points. The third winning trick ends and scores the deal
+immediately. Blind Ladinisch produces automatic public thanks only for a
+main strike among the actual originally shown cards, never by scanning a
+hidden hand.

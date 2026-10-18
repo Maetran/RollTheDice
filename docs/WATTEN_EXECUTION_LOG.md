@@ -135,6 +135,14 @@ Develop-Abgleich, `push:checked`; keine zweite Vollsuite neben fremdem Vollpool.
   Spielwechslerkorrektur bleibt in der Quelle enthalten.
 - Noch kein neuer vollständiger Pushnachweis, Push, PR, Develop-Merge,
   App-Deploy oder physischer Gerätenachweis.
+- Erster vollständiger Lauf auf `efa2200` am 18.10.: Qualität und Tools
+  bestanden; Backend **1387 bestanden, zwei fehlgeschlagen**, Coverage 84,37 %.
+  Beide Fehler betreffen die alte pauschale HTML-Erwartung an ZDWA-Icons und
+  `shell.js` für die zwei neuen eigenständigen Watten-Kontovorlagen. Der
+  korrigierte Vertrag prüft deren eigene Module/CSS und schliesst fremde
+  Spiel-/PWA-Identität ausdrücklich aus. Originalbericht unverändert unter
+  `test-results/local-checks/efa2200df65a-1792334979297-9f652902/` erhalten.
+  Dieser rote Lauf ist kein Pushnachweis; vollständige Wiederprüfung nötig.
 
 ## Claude und Übernahmefähigkeit
 
@@ -148,6 +156,14 @@ Owner-Nachtrag während der Umsetzung: Claude nun **98 % Sitzung**, höchstens
 eine Mini-Aufgabe bis zum Reset. Codex gibt bis 17:20 keine weitere Aufgabe;
 der kleine Leseauftrag ist abgeschlossen. Beim Wakeup Sitzung **und**
 Wochenlimit live prüfen, bevor ein neues abgegrenztes Paket startet.
+
+Weiterer Owner-Auftrag: Nach dem Reset Claude stärker für sinnvolle,
+überprüfbare Umsetzungspakete einsetzen und sein nutzbares Kontingent soweit
+möglich ausschöpfen, um das ebenfalls knappe Codex-Kontingent zu schonen.
+Beide bestehenden Heartbeats im Ausführungs-Chat wurden entsprechend
+aktualisiert; Zeitplan und Zuordnung bleiben erhalten, kein Duplikat.
+Keine künstlichen Verbrauchsaufträge, Zusatzkäufe oder Tarifänderungen.
+Codex bleibt für Review, Integration und nahtlose Übernahme zuständig.
 
 ## Nächster unabhängiger Schritt
 
