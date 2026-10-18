@@ -57,6 +57,7 @@ async function table(page, viewport, { browser, baseURL, reducedMotion = 'no-pre
   expect(created.ok()).toBeTruthy();
   const gameId = (await created.json()).game_id;
   const latestByPage = new Map();
+  const admissionByPage = new Map();
   for (const member of pages) {
     await member.route('**/api/releases**', route => route.fulfill({ json: { releases: [], can_prompt: false } }));
     // Optional beginner offers have separate coverage; the real room, private
@@ -64,14 +65,29 @@ async function table(page, viewport, { browser, baseURL, reducedMotion = 'no-pre
     await member.route('**/api/auth/tours/offer', route => route.fulfill({ json: { show: false, enabled: false, games: {} } }));
     member.on('websocket', socket => {
       if (new URL(socket.url()).pathname !== `/ws/${gameId}`) return;
+      const admission = { playerId: null, room: null, closed: false };
+      admissionByPage.set(member, admission);
+      socket.on('close', () => { admission.closed = true; });
       socket.on('framereceived', event => {
+        if (admissionByPage.get(member) !== admission) return;
         try {
-          const state = JSON.parse(String(event.payload)).scoreboard?._hausdepp;
+          const payload = JSON.parse(String(event.payload));
+          if (payload.player_id) admission.playerId = payload.player_id;
+          if (payload.scoreboard) admission.room = payload.scoreboard;
+          const state = payload.scoreboard?._hausdepp;
           if (state) latestByPage.set(member, state);
         } catch { /* Protocol frames carry no JSON. */ }
       });
     });
     await member.goto(`/hausdepp/spiel/${gameId}`);
+    // Document load can precede account-language reload and socket admission.
+    // The creator must really join first; every next human waits for their own
+    // accepted ID and connected room membership, before _hausdepp exists.
+    await expect.poll(() => {
+      const admission = admissionByPage.get(member), id = admission?.playerId;
+      return Boolean(id && !admission.closed && admission.room?._connected?.[id] === true
+        && admission.room?._participants?.some(player => player.id === id && !player.is_cpu));
+    }, { message: 'The real account must be admitted before opening the next player page' }).toBe(true);
   }
   await expect.poll(() => pages.filter(member => latestByPage.get(member)?.viewer_id).length).toBe(6);
   expect(new Set(pages.map(member => latestByPage.get(member).viewer_id)).size).toBe(6);
