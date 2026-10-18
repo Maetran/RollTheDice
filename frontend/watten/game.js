@@ -13,6 +13,7 @@ import { createRematch } from "./rematch.js";
 import { loadWattenDetail } from "./api.js";
 import { createSocial } from "./social.js";
 import { mountWattenLobbyChat } from "./lobby-chat.js";
+import { createDecor } from "./decor.js";
 
 // Metadata only: these preview documents neither register a worker nor
 // advertise installation; the account pages own that local experiment.
@@ -47,6 +48,7 @@ let navigating = false;
 let matchProgress = null;
 let rematch = null;
 let social = null;
+let decor = null;
 const cleanups = new Set();
 
 function errorText(code) {
@@ -357,6 +359,7 @@ function shellMarkup() {
       <p class="wt-flash" data-watten-flash role="alert"></p></div>
     <div class="wt-view" data-watten-view></div>
     <div data-watten-social hidden></div>
+    <div data-watten-decor hidden></div>
     <dialog class="wt-dialog" data-watten-leave-dialog aria-labelledby="wattenLeaveTitle">
       <h2 id="wattenLeaveTitle">${esc(t("leave.title"))}</h2>
       <p>${esc(t("leave.body"))}</p>
@@ -391,11 +394,13 @@ function setHeading(name) {
 }
 
 function showMessage(title, body, actions = "") {
+  decor?.suspend();
   session.view = null;
   session.viewKind = "message";
   const root = viewRoot();
   if (!root) return;
   root.innerHTML = `<section class="wt-card-panel wt-message"><h2>${esc(title)}</h2><p>${esc(body)}</p><div class="wt-actions">${actions}</div></section>`;
+  decor?.update({ publicPhase: "offline" });
 }
 
 const lobbyLink = () => `<a class="wt-button" href="/watten">${esc(t("nav.lobby"))}</a>`;
@@ -813,6 +818,7 @@ function render(previous = null, live = false) {
   const snapshot = session.snapshot;
   const root = viewRoot();
   if (!snapshot || !root) return;
+  decor?.suspend();
   setHeading(snapshot.name);
   if (!snapshot.engine) {
     if (snapshot.room.status === "closed") {
@@ -823,6 +829,7 @@ function render(previous = null, live = false) {
       }
       rematch?.update({ container: root.querySelector("[data-watten-rematch]"), snapshot,
         playerId: session.playerId, spectator: session.spectator, busy: Boolean(session.inFlight) });
+      syncDecor();
       return;
     }
     session.view = null;
@@ -833,6 +840,7 @@ function render(previous = null, live = false) {
         busy: Boolean(session.inFlight) || !session.bound,
       });
     });
+    syncDecor();
     return;
   }
   if (session.viewKind !== "table" || !session.view) {
@@ -867,6 +875,7 @@ function render(previous = null, live = false) {
     playerId: session.playerId, spectator: session.spectator });
   rematch?.update({ container: root.querySelector("[data-watten-rematch]"), snapshot,
     playerId: session.playerId, spectator: session.spectator, busy: Boolean(session.inFlight) || !session.bound });
+  syncDecor();
   if (captured) {
     for (const item of result.trick.created) {
       motion.arrive(item.node, captured.rects.get(item.card) || captured.rects.get(`seat-${item.seat}`), captured);
@@ -881,6 +890,7 @@ function renderJoinPrompt() {
   const data = session.preview;
   const root = viewRoot();
   if (!data || !root) return;
+  decor?.suspend();
   session.view = null;
   session.viewKind = "join";
   setHeading(data.name);
@@ -889,17 +899,20 @@ function renderJoinPrompt() {
     mode: "preview", viewerId: null,
     extra: joinFormMarkup({ locked, error: session.joinError, busy: session.joining, started: data.room.status !== "waiting" }),
   });
+  decor?.update({ publicPhase: "preview" });
 }
 
 function renderSpectatePrompt() {
   const data = session.preview;
   const root = viewRoot();
   if (!data || !root) return;
+  decor?.suspend();
   session.view = null;
   session.viewKind = "spectate";
   setHeading(data.name);
   root.innerHTML = waitingRoomMarkup(data, { mode: "spectator", viewerId: null,
     extra: spectateFormMarkup({ error: session.spectateError, busy: false }) });
+  decor?.update({ publicPhase: "preview" });
 }
 
 async function loadDetail(gen) {
@@ -979,6 +992,11 @@ async function mountTable() {
     isCurrent: () => gen === generation && !navigating && latestUserId === account?.id,
     send: payload => session.bound && latestUserId === account?.id && sendRaw(payload) });
   cleanups.add(() => { social?.destroy(); social = null; });
+  decor?.destroy();
+  decor = createDecor({ container: app.querySelector("[data-watten-decor]"), root: app, escapeHtml: esc,
+    getExpectedAccountId: () => account?.id,
+    isCurrent: () => gen === generation && !navigating && latestUserId === account?.id });
+  cleanups.add(() => { decor?.destroy(); decor = null; });
   setConnection("cards");
   try { await prepareWattenCards(); } catch {
     if (gen !== generation) return;
@@ -994,6 +1012,11 @@ async function mountTable() {
 function syncSocial() {
   social?.update({ container: app.querySelector("[data-watten-social]"),
     bound: session.bound && socketOpen(), authorized: session.bound && (session.spectator || Boolean(session.playerId)) });
+}
+
+function syncDecor() {
+  decor?.update({ publicPhase: session.snapshot?.paused ? "paused"
+    : session.snapshot?.engine?.phase || session.snapshot?.room?.status || "preview" });
 }
 
 function openLeaveDialog() {

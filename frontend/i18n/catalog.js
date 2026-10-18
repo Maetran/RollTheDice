@@ -1,3 +1,34 @@
+export const WATTEN_DECOR_MESSAGES = {
+  de: {
+    title: "Deine lokale Tischdeko", open: "Tisch dekorieren", close: "Deko schliessen",
+    help: "Nur auf diesem Gerät: Wähle etwas aus, ziehe es an einen freien Platz oder bewege es mit den Pfeiltasten. Spielbereiche bleiben frei. Bei wenig Platz wartet die Deko in der Deko-Ecke.",
+    corner: "Deine Deko-Ecke", choose: "Wähle einen Gegenstand und stelle ihn auf. Antippen wählt ihn aus.",
+    selected: "Ausgewählt: {name}", itemHelp: "{name}: auswählen, ziehen oder mit Pfeiltasten bewegen; Entf entfernt den Gegenstand.",
+    use: "Essen / trinken / würfeln", refill: "Nachfüllen", rotate: "Drehen", remove: "Entfernen",
+    spill: "Verschütten", wipe: "Pfützen aufwischen", clear: "Tisch aufräumen", empty: "Leer",
+    noSpace: "Hier ist gerade kein sicherer Platz frei. Räume etwas weg oder öffne die Deko-Ecke.",
+    limit: "Bis zu {count} Gegenstände gleichzeitig. Entferne zuerst einen Gegenstand.",
+    drink: "Ein Schluck – nur zum Spass.", eat: "Ein Bissen – nur zum Spass.", filled: "Wieder aufgefüllt.",
+    rolled: "Der Dekowürfel zeigt {value}. Das verändert die Partie nicht.",
+    spilled: "Ups! Wische die Pfütze mit dem Tuch oder mit «Pfützen aufwischen» weg.", wiped: "Die Pfützen sind weg.", cleared: "Dein Tisch ist wieder aufgeräumt.",
+    beer: "Bier", tea: "Tee", lemonade: "Limonade", nuts: "Nüsse", chips: "Chips", pretzel: "Brezel", sweets: "Süssigkeiten", dice: "Dekowürfel",
+  },
+  en: {
+    title: "Your local table decorations", open: "Decorate the table", close: "Close decorations",
+    help: "Only on this device: Choose an item, drag it to a free spot or move it with the arrow keys. Play areas stay clear. When space is tight, decorations wait in the decoration corner.",
+    corner: "Your decoration corner", choose: "Choose an item to place. Tap an item to select it.",
+    selected: "Selected: {name}", itemHelp: "{name}: select, drag or move with arrow keys; Delete removes the item.",
+    use: "Eat / drink / roll", refill: "Refill", rotate: "Rotate", remove: "Remove",
+    spill: "Spill", wipe: "Wipe up spills", clear: "Clear the table", empty: "Empty",
+    noSpace: "There is no safe space here right now. Remove an item or open the decoration corner.",
+    limit: "Up to {count} items at once. Remove an item first.",
+    drink: "A sip, just for fun.", eat: "A bite, just for fun.", filled: "Refilled.",
+    rolled: "The decoration die shows {value}. This does not change the match.",
+    spilled: "Oops! Use the cloth or “Wipe up spills” to clean the puddle.", wiped: "The spills are gone.", cleared: "Your table is tidy again.",
+    beer: "Beer", tea: "Tea", lemonade: "Lemonade", nuts: "Nuts", chips: "Chips", pretzel: "Pretzel", sweets: "Sweets", dice: "Decoration die",
+  },
+};
+
 export const WATTEN_LOBBY_CHAT_MESSAGES = {
   de: {
     title: "Gemeinsamer Lobbychat", privacy: "Hier schreiben angemeldete Konten aus ZDWA, Zilch, Hausdepp und Watten. Du siehst nur Nachrichten, für die du beim Senden verbunden und berechtigt warst. Sie werden nach drei Tagen gelöscht. Keine Kartenhinweise im Chat.",
