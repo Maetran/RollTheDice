@@ -166,7 +166,7 @@ def test_partner_already_winning_with_rechter_gets_a_cheap_card_not_a_trump():
     table.propose("A", decision)
 
 
-def test_hopeless_trump_duty_conserves_the_strike_instead_of_a_pointless_nonwinning_strike():
+def test_rechter_lead_excludes_a_nonwinning_strike_in_cpu_and_engine_legality():
     deal = explicit_deal(
         ("hearts-7", "bells-A", "hearts-8", "leaves-9", "acorns-10"),
         ("bells-7", "bells-K", "leaves-A", "acorns-A", "hearts-A"),
@@ -175,7 +175,7 @@ def test_hopeless_trump_duty_conserves_the_strike_instead_of_a_pointless_nonwinn
     table.ready("7", "bells")
     table.play("B", "bells-7")
     view = table.view("A")
-    assert own_legal_cards(view, table.memories["A"]) == ("hearts-7", "bells-A") == legal_cards(
+    assert own_legal_cards(view, table.memories["A"]) == ("bells-A",) == legal_cards(
         table.state.play, table.state.bid_state, "A")
     assert card_choice(table, "A", budget=CpuBudget(24)).value == "bells-A"
 
@@ -208,10 +208,45 @@ def test_three_player_partner_after_critical_overtrick_still_follows_trump_but_k
     table.ready("7", "bells")
     table.play("B", "bells-10")
     table.play("C", "hearts-K")
-    assert legal_cards(table.state.play, table.state.bid_state, "A") == ("bells-9", "hearts-7")
+    assert own_legal_cards(table.view("A"), table.memories["A"]) == ("bells-9",) == legal_cards(
+        table.state.play, table.state.bid_state, "A")
     decision = card_choice(table, "A", budget=CpuBudget(24))
     assert decision.value == "bells-9"
     table.propose("A", decision)
+
+
+@pytest.mark.parametrize("critical", (False, True))
+def test_a_winning_ordinary_strike_remains_legal_in_cpu_rollouts_and_real_engine(critical):
+    deal = explicit_deal(
+        ("hearts-9", "bells-A", "hearts-8", "leaves-9", "acorns-10"),
+        ("bells-7", "bells-K", "leaves-A", "acorns-A", "hearts-A"),
+    )
+    table = Table(start_match(cpu_recipe(2, critical=critical), "winning-strike", deal, first_dealer="A"))
+    table.ready("9", "bells")
+    table.play("B", "bells-7")
+    assert own_legal_cards(table.view("A"), table.memories["A"]) == ("hearts-9", "bells-A", "leaves-9") == legal_cards(
+        table.state.play, table.state.bid_state, "A")
+    decision = card_choice(table, "A", budget=CpuBudget(24))
+    assert decision.value in {"hearts-9", "bells-A", "leaves-9"}
+    table.propose("A", decision)
+
+
+def test_cpu_keeps_voluntary_losing_rechter_and_critical_but_not_a_losing_plain_strike():
+    deal = explicit_deal(
+        ("bells-9", "bells-A", "acorns-7", "leaves-9", "leaves-7"),
+        ("bells-7", "acorns-8", "acorns-10", "acorns-U", "acorns-O"),
+        ("hearts-K", "hearts-8", "hearts-10", "hearts-U", "leaves-A"),
+    )
+    table = Table(start_match(cpu_recipe(3, critical=True), "protected-overtrick", deal, first_dealer="A"))
+    table.ready("9", "bells")
+    table.play("B", "bells-7")
+    table.play("C", "hearts-K")
+    assert own_legal_cards(table.view("A"), table.memories["A"]) == ("bells-9", "bells-A", "acorns-7") == legal_cards(
+        table.state.play, table.state.bid_state, "A")
+    decision = card_choice(table, "A", budget=CpuBudget(24))
+    assert decision.value in {"bells-9", "bells-A", "acorns-7"}
+    table.propose("A", decision)
+    assert table.state.play.tricks[0].winner == 2
 
 
 def test_blind_non_inspector_keeps_call_uncertain_is_never_bound_and_infers_from_public_winners():

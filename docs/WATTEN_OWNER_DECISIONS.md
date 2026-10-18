@@ -26,10 +26,10 @@ Quellenregeln entscheiden keine hier noch offenen Fälle.
 | Dreier und gestrichener Partner | Geber A mit neun Punkten, Partner C mit vier, Solo B mit sechs: C darf auf eigenem Kartenzug nach der ersten Karte Drei eröffnen. As gestrichener Stand sperrt C nicht. Die eigene Eröffnungsberechtigung richtet sich nach dem bietenden Spieler. |
 | Vierer-Entscheider | Teams A+C/B+D, Geber A und Einschauer B: B oder D bietet → A entscheidet für A+C; A oder C bietet → B entscheidet für B+D. C/D beraten ihren jeweiligen Entscheider über den privaten Rückmeldungskanal. |
 | Private Partner-Rückmeldung | Mitspieler kann «fühl mich gut / schlecht / keine Ahnung» privat an seinen jeweiligen Partner melden, ausdrücklich auch im Vierer. Keine konkrete Karte oder geheime Ansage in dieser Nachricht. Nachrichten werden als erlaubter privater Informationsverlauf behandelt; Gegner/Zuschauer bekommen sie nicht. |
-| Trumpfzugabe | Gewöhnlicher Trumpf eröffnet, Einschauer hält Trumpf und Schlag: Schlag darf statt Trumpf gelegt werden. «Stechen ist immer möglich», aber kein Stichzwang. Rechter und Kritische müssen nicht geopfert werden. «Geschützt» war nur unser Sammelbegriff für diese Ausnahmen, keine weitere Kartenklasse. |
+| Trumpfzugabe | Gewöhnlicher Trumpf eröffnet, Einschauer hält Trumpf und Schlag: Ein gewöhnlicher Schlag darf statt Trumpf gelegt werden, wenn er den aktuellen Stich übernimmt, siehe die konkrete Variante-2-Präzisierung unten. «Stechen ist immer möglich», aber kein allgemeiner Stichzwang. Rechter und Kritische müssen nicht geopfert werden. «Geschützt» war nur unser Sammelbegriff für diese Ausnahmen, keine weitere Kartenklasse. |
 | Trumpfpflichtrollen | Im offenen Dreier müssen alle Trumpf zugeben, aber keinen Schlag opfern; keine Stechpflicht. Im offenen Vierer gilt die Pflicht für alle, die Schlag und Farbe offiziell wissen. Im blinden Vierer bleiben dies die beiden Einschauer; blosses Erschliessen erweitert die Pflicht nicht. |
 | Ausspiel und Überstich | Rechter als erste Stichkarte löst Trumpfpflicht für die offiziell Wissenden aus. Ein Kritischer als erste Stichkarte ist davon ausgenommen. Beginnt der Stich mit gewöhnlichem Trumpf, bleibt die Pflicht für spätere offiziell Wissende auch nach kritischem Überstich bestehen. |
-| Schlag nach kritischem Überstich | Ausdrücklich bestätigt: Schellen Trumpf, 9 Schlag, Schellen-7 und Herz-König liegen. Ein offiziell Wissender mit Schellen-Ass und Herz-9 darf Herz-9 legen, obwohl der Schlag den Kritischen nicht sticht. Ein Schlag ist eine erlaubte Alternative zur Trumpfzugabe, keine Verpflichtung zum tatsächlichen Überstich. Taktische Zweckmässigkeit verändert die Legalität nicht. |
+| Schlag nach kritischem Überstich | Auf die Wahl «Herz-9 abwerfen, obwohl er Herz-König nicht sticht, ODER gewöhnlichen Schellen-Trumpf legen?» antwortete der Owner «variante 2 grundsätzlich, aber das macht ja 0 sinn oder?». Damit gilt: Ein offiziell Wissender mit gewöhnlichem Trumpf darf einen gewöhnlichen Schlag nur statt Trumpf legen, wenn dieser den aktuellen Stich tatsächlich übernimmt. Im Beispiel Schellen Trumpf, 9 Schlag, Schellen-7 und kritischer Herz-König darf Herz-9 daher nicht abgelegt werden. Die frühere gegenteilige Protokollierung war ein Übertragungsfehler. Gewöhnlicher Trumpf, Rechter und Kritische haben weiterhin keinen Überstechzwang; Rechter und Kritische müssen nicht geopfert werden. Ohne gewöhnlichen Trumpf beziehungsweise ohne verpflichtete Wissensrolle bleibt freie Wahl. |
 | Sofortiges Gabenende | Der dritte gewonnene Stich einer Partei beendet die Gabe sofort und vergibt die Punkte. Danach ist kein Gebot mehr möglich. |
 | Automatisches Danke | Beim blinden ladinischen Bestimmen erhält der Spieler, dessen **tatsächlich gezeigte Unterkarte** Rechter ist, automatisch eine öffentliche Sprechblase «Danke». Beispiel: Geber A zeigt Schellen-König, B zeigt Herz-König: Schellen ist Trumpf, König Schlag, A sagt automatisch Danke. Ausschliesslich aus den gezeigten Karten ableiten; keine Suche nach einem verborgenen Rechten in anderen Händen. |
 | Erneutes Einschauen | Nicht erlaubt. |
@@ -115,8 +115,10 @@ first card at three, counterbids rise by one, and play pauses for the response.
 An initiating player's own score determines whether they are gestrichen;
 their partner's different three-player score does not block their bid.
 Gestrichen players may still hold, fold or counterbid in response.
-There is no obligation to win a trick or sacrifice the main strike
-or critical cards. The owner accepted a 33-card/five-card-hand implementation
+There is no general obligation to win a trick or sacrifice the main strike
+or critical cards. When trump duty applies and an ordinary trump is held,
+an ordinary strike may substitute only if it takes the current trick.
+The owner accepted a 33-card/five-card-hand implementation
 basis and clockwise dealer/announcement/lead roles. Both opponents in rotating
 three-player solo receive their own points and can win together. The dealer
 decides the opposing pair’s bid response; private good/bad/unsure partner

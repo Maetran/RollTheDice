@@ -248,12 +248,20 @@ class _Model:
         return best
 
     def allowed(self, hand, trick_cards: list[str], bound: bool):
-        # Same confirmed duty as watten_play: strike, Rechter and critical stay alternatives.
+        # Same duty as watten_play: only an actually winning ordinary strike
+        # substitutes for trump; trump/Rechter/critical have no duty to win.
         if not trick_cards or not bound or self.kind[trick_cards[0]] not in _DUTY_LEADS:
             return hand
         if not any(self.kind[card] is CardKind.TRUMP for card in hand):
             return hand
-        return [card for card in hand if self.kind[card] is not CardKind.NORMAL]
+        return [card for card in hand if not self.requires_no_trump(card, trick_cards)]
+
+    def requires_no_trump(self, card: str, earlier: list[str]) -> bool:
+        # For a partial remembered prefix, a known higher/equal earlier card
+        # suffices to prove this strike cannot take the trick. Missing cards
+        # never establish a new inference or an official knowledge role.
+        return (self.kind[card] is CardKind.NORMAL or self.kind[card] is CardKind.STRIKE
+                and self.winner([*earlier, card]) != len(earlier))
 
 
 class _Context:
@@ -314,7 +322,10 @@ def _consistent(ctx: _Context, model: _Model) -> bool:
         if lead is None or model.kind[lead[1]] not in _DUTY_LEADS:
             continue
         for position, (seat, card) in positions.items():
-            if position == 0 or seat not in ctx.knowers or model.kind[card] is not CardKind.NORMAL:
+            if position == 0 or seat not in ctx.knowers:
+                continue
+            earlier = [positions[index][1] for index in sorted(positions) if index < position]
+            if not model.requires_no_trump(card, earlier):
                 continue
             later = [held for played_trick, held in ctx.played_by[seat] if played_trick > trick]
             later.extend(ctx.known.get(seat, ()))
@@ -404,7 +415,10 @@ def _sample(ctx: _Context, option: tuple, stream: _Stream) -> tuple[_Model, tupl
         if lead is None or model.kind[lead[1]] not in _DUTY_LEADS:
             continue
         for position, (seat, card) in positions.items():
-            if position and seat in fixed and seat in ctx.knowers and model.kind[card] is CardKind.NORMAL:
+            if position and seat in fixed and seat in ctx.knowers:
+                earlier = [positions[index][1] for index in sorted(positions) if index < position]
+                if not model.requires_no_trump(card, earlier):
+                    continue
                 held = [*hands[seat], *(later for played, later in ctx.played_by[seat] if played > trick)]
                 if any(model.kind[item] is CardKind.TRUMP for item in held):
                     return None
