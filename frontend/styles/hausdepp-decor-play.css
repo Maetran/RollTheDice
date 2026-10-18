@@ -1,0 +1,16 @@
+.hd-prop-spill { position: absolute; z-index: 0; overflow: hidden; pointer-events: none; }
+.hd-prop-spill .hd-prop-puddle { inset: 20% 8% 6%; background: radial-gradient(ellipse at 42% 36%, #ffedb044, var(--spill-color) 55%, #73492199); border-radius: 47% 60% 42% 55%; box-shadow: inset 0 1px 2px #fff4; }
+.hd-prop-cloth { position: absolute; z-index: 1; left: 0; top: 0; width: 54%; height: 88%; opacity: 0; filter: drop-shadow(1px 3px 2px #201b1655); pointer-events: none; }
+.hd-prop-cloth svg { display: block; width: 100%; height: 100%; }
+.hd-prop-glass-ring { position: absolute; z-index: 0; border: 2px solid #a46d37; border-radius: 50%; box-shadow: inset 0 0 1px 1px #d1b18166, 1px 1px 1px #22180f55; mix-blend-mode: multiply; pointer-events: none; }
+.hd-table-prop--coaster .hd-prop-art:has(.hd-prop-tally) { background: none; }
+.hd-prop-tally { width: 100%; height: 100%; display: block; }
+.hd-surprise-dock { display: flex; flex: 0 0 44px; width: 44px; height: 44px; align-items: center; }
+.hd-surprise-dock .hd-table-prop { position: relative; inset: auto !important; width: 44px !important; height: 44px !important; --prop-art: 42px !important; transform: none; animation: none; }
+/* Near cards, a glass tips inside its own footprint. */
+.hd-table-prop[data-compact-fall="true"] .hd-prop-art { scale: .62 !important; transform-origin: 50% 50% !important; }
+.hd-table-prop--lantern[data-lit="false"] .hd-prop-art { filter: brightness(.58) saturate(.5) drop-shadow(2px 6px 4px #0c100d44); }
+.hd-table-prop--lantern[data-lit="false"] .hd-prop-art::after { animation: none; opacity: 0; }
+.hd-table-prop--lantern[data-lit="false"] .hd-prop-art::before { width: 8%; height: 36%; left: 46%; top: 8%; background: none; border-left: 2px solid #ddd5; border-radius: 50%; filter: blur(1px); animation: hd-candle-smoke 1.2s ease-out both; }
+@keyframes hd-candle-smoke { from { opacity: .6; transform: translateY(10px) scale(.7); } to { opacity: 0; transform: translateY(-8px) scale(1.2); } }
+@media (prefers-reduced-motion: reduce) { .hd-prop-spill, .hd-prop-glass-ring { display: none; } }

@@ -23,6 +23,54 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 3.11.0 — Hausdepp: kleine Überraschungen am Tisch / little table surprises — 2026-10-18
+
+**Deutsch:** Bier, Tee und Limonade zeigen jeden Schluck am Füllstand. Schnelles
+Tippen verschüttet die restliche Flüssigkeit; ein karierter Putzlumpen wischt
+hinterher. Weiteres Tippen wirft das leere Glas um, das sich nach kurzer Pause
+wieder aufstellen und nachfüllen lässt. Snacks werden Stück für Stück gegessen,
+Schalen und Marend-Brett bleiben stehen. Der Bierdeckel zählt in Fünfergruppen,
+der Bleistift schreibt mit, verschobene Gläser hinterlassen kurz einen Ring und
+das Windlicht lässt sich auspusten und anzünden. Die Effekte bleiben lokal,
+begrenzt, leise und unter den Karten; reduzierte Bewegung beendet sie.
+Ungefähr jede 200. Runde erhält einen von acht seltenen Funden: Stern,
+Runenhammer, UFO, Portal, Drache, Kraken, Taschenuhr oder schwarzes Loch. Erst
+entscheidet der Server über das seltene Angebot, dann über die Variante. Ein
+Tipp überrascht den ganzen Tisch mit einer kurzen, eigenen Inszenierung. Nur der selbst
+ausgelöste Hammer darf auf unterstützten Geräten kurz vibrieren. Der Server
+verhindert gefälschte Angebote, alte Rundenklicks und doppelte Aktivierungen.
+Nach 42 Bierdeckelstrichen gibt es ausserdem eine kleine nerdige Antwort.
+Der überflüssige Fortschrittsbutton nach einer Runde entfällt. Punkte und Erfolge
+bleiben sichtbar; erneutes Spielen und Lobby bleiben die eigentlichen Aktionen.
+Der Endstand wartet auf die letzte Kartenbewegung und erscheint erst nach
+weiteren 750 ms, damit der letzte Zug sichtbar zu Ende geht. Lange Turnierstände
+stehen in einer eigenen Zeile je Gegner und verschwinden bei sechs Spielern
+nicht mehr hinter Kartensymbolen oder Karten. Beim ersten vollständigen HAUSDEPP
+zeigen Endstand, Tischkopf und Lobby ausdrücklich «Turnier beendet»; der
+Tages-Hausdepp bleibt genannt. Die bestehende Endbedingung bleibt unverändert.
+
+**English:** Beer, tea and lemonade show each sip in their fill level. Rapid taps
+spill the remaining drink and a checked cloth wipes up afterwards. More taps
+topple the empty glass, which can be stood up and refilled after a brief pause.
+Snacks are eaten piece by piece, leaving bowls and the snack board behind. The
+beer mat counts in groups of five, the pencil adds marks, moved glasses briefly
+leave a ring, and the lantern can be blown out and relit. Effects remain local,
+bounded, quiet and below the cards; reduced motion clears them. About one round
+in 200 offers one of eight rare finds: star, rune hammer, UFO, portal, dragon,
+kraken, pocket watch or black hole. The server first decides whether a round
+gets a find, then selects its variant. One tap shows everyone a brief, distinct
+visual surprise.
+Only the locally triggered hammer may briefly vibrate on supported devices.
+The server rejects forged offers, stale round taps and duplicate claims.
+Forty-two beer-mat strokes also reveal a little nerdy answer. The extra progress
+acknowledgement button after a round is removed. Points and achievements remain
+visible; playing again and returning to the lobby retain their own actions. The final result waits for
+the last card movement and another 750 ms so the last play can land visibly.
+Long tournament prefixes have their own line at each opponent seat, clear of
+card-count icons and card backs even with six players. Once the first player
+spells HAUSDEPP, the final result, table heading and lobby explicitly say
+“Tournament complete” and still name today’s Hausdepp. The existing end rule is unchanged.
+
 ## 3.10.0 — Hausdepp: Computer halten hohe Karten zurück / computers hold back high cards — 2026-10-18
 
 **Deutsch:** Hat ein Hausdepp-Computer mehrere Ober, Könige oder Asse, legt er

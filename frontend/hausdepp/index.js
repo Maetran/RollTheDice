@@ -3,7 +3,7 @@ import { avatarMarkup, initializeAvatarFallbacks, replaceChildrenPreservingAvata
 import { renderAccountSettings } from "./settings.js";
 import { mountProgressNotices } from "./progress-notices.js";
 import { createRematch, mountRematchInvitations, rematchError } from "./rematch.js";
-import { renderTableDecor } from "./decor.js";
+import { renderTableDecor, presentTableSurprise, cancelTableSurprises } from "./decor.js";
 import { mountLobbyDemo } from "./lobby-demo.js";
 import { invitationMarkup, mountInvitations } from "./invitations.js";
 import { initializeGameViewport } from "../shared/game-viewport.js";
@@ -13,7 +13,7 @@ import { mountLobbyChat } from "../shared/lobby-chat.js";
 import { initChat, addChatMessage } from "../room/chat.js";
 import { HAUSDEPP_MESSAGES } from "../i18n/catalog.js";
 import { cardArt, prepareCardAssets } from "./cards.js";
-import { prepareCardMotion, animateCardMotion, resetCardMotion, presentShuffle, cancelShuffle, launchOwnPlay, launchedCards, cancelOwnPlay } from "./motion.js";
+import { prepareCardMotion, animateCardMotion, cardMotionCompletion, resetCardMotion, presentShuffle, cancelShuffle, launchOwnPlay, launchedCards, cancelOwnPlay } from "./motion.js";
 import { createGameTour } from "../shared/game-tours.js";
 import { mountPileInspector } from "./pile-inspector.js";
 import { mountHandSelection } from "./hand-selection.js";
@@ -32,7 +32,9 @@ let auth, socket, snapshot, reconnectTimer, lobbyTimer, pendingTimer, authUnavai
 let playerId = null, pending = false, stopped = false, tournamentEnding = false;
 let waitingLeaving = false, gameCreator, waitingControls;
 let tablePassword, passwordRequest = false;
-let progressNotices, popupProgressPending = false;
+let requestedSurprise = null, requestedSurpriseRound = null;
+let progressNotices, roundProgressReceipt, popupProgressPending = false;
+let roundResultPresentation;
 let pileInspector;
 let rematchInvitations, rematchCreating = false;
 const rematchLifetime = new AbortController();
@@ -296,7 +298,7 @@ function tableRow(game) {
   const cpu = participants.filter(player => player.is_cpu).length;
   const completed = completedTable(game);
   const full = occupied >= total && game.can_join !== true;
-  const status = t(game.aborted ? "abortedTable" : game.finished ? game.tournament && !game.tournament.completed ? "roundBreak" : "finishedTable" : game.paused ? "pausedTable" : game.started ? "liveTable" : "waitingTable");
+  const status = t(game.aborted ? "abortedTable" : game.finished ? game.tournament ? game.tournament.completed ? "tournamentComplete" : "roundBreak" : "finishedTable" : game.paused ? "pausedTable" : game.started ? "liveTable" : "waitingTable");
   const action = completed ? "openHistory" : game.my_player_id ? "continue" : game.started ? "watch" : full ? "fullTable" : "join";
   const url = completed ? "/hausdepp/konto#runden" : `/hausdepp/spiel/${encodeURIComponent(game.id || game.game_id)}${game.started && !game.my_player_id ? "/zuschauen" : ""}`;
   const seats = Array.from({ length: total }, (_, index) => {
@@ -377,7 +379,7 @@ function achievementMarkup(item) {
   return `<article class="hd-achievement-card ${item.unlocked ? "is-unlocked" : "is-locked"}" data-achievement-id="${esc(item.id)}"><div class="hd-achievement-card-top"><span class="hd-achievement-symbol" aria-hidden="true">${item.unlocked ? icon("check") : icon("cards")}</span><span class="hd-achievement-points">${esc(xp(item.points))}</span></div><h3>${esc(localized(item.name))}</h3><p>${esc(localized(item.description))}</p><div class="hd-achievement-card-bottom"><span class="hd-achievement-state">${t(item.unlocked ? "achievementEarned" : "achievementNotEarned")}</span>${item.unlocked && item.unlocked_at ? `<time datetime="${esc(item.unlocked_at)}">${esc(formatRoundDate(item.unlocked_at))}</time>` : `<span class="hd-achievement-fraction">${pointNumber(current)} / ${pointNumber(target)}</span>`}</div>${item.unlocked ? "" : `<progress max="${target}" value="${current}" aria-label="${esc(t("achievementProgressLabel", { name: localized(item.name), current: pointNumber(current), target: pointNumber(target) }))}"></progress>`}</article>`;
 }
 
-function renderProgressNotice(container, data) {
+function renderProgressNotice(container, data, { acknowledge = true } = {}) {
   const notice = data.presentation?.pending;
   if (!container) return;
   if (popupProgressPending || !notice || notice.revision <= acknowledgedProgressRevision) { container.hidden = true; return; }
@@ -388,7 +390,8 @@ function renderProgressNotice(container, data) {
   container.hidden = false;
   container.className = "hd-progress-notice";
   container.setAttribute("role", "status");
-  container.innerHTML = `<p class="hd-account-kicker">${t(rankUp ? "rankUpLabel" : awards.length ? "newAchievements" : "newProgress")}</p><h3>${esc(rankUp ? localized(notice.message) || t("rankCongratulations") : t(!knownReward ? "progressRecorded" : awards.length ? "achievementCongratulations" : "roundCongratulations"))}</h3>${rankUp ? `<p class="hd-notice-new-rank">${esc(t("newRank", { name: localized(notice.to_rank?.name) }))}</p><p class="hd-notice-quote">${esc(localized(notice.quote || notice.to_rank?.quote))}</p>${nonnegative(notice.to_rank?.level) - nonnegative(notice.from_rank?.level) > 1 ? `<p class="hd-fine">${esc(t("ranksSkipped", { count: notice.to_rank.level - notice.from_rank.level }))}</p>` : ""}` : ""}${reward ? `<p class="hd-notice-reward">${esc(reward)}</p>` : ""}${awards.length ? `<details><summary>${t("showNewAchievements")}</summary><ul>${awards.map(item => `<li><span>${esc(localized(item.name))}</span><strong>+${esc(xp(item.points))}</strong></li>`).join("")}</ul></details>` : ""}<button class="hd-primary" type="button" data-progress-ack>${t("continueProgress")}</button><p class="hd-notice-error" role="alert" hidden></p>`;
+  container.innerHTML = `<p class="hd-account-kicker">${t(rankUp ? "rankUpLabel" : awards.length ? "newAchievements" : "newProgress")}</p><h3>${esc(rankUp ? localized(notice.message) || t("rankCongratulations") : t(!knownReward ? "progressRecorded" : awards.length ? "achievementCongratulations" : "roundCongratulations"))}</h3>${rankUp ? `<p class="hd-notice-new-rank">${esc(t("newRank", { name: localized(notice.to_rank?.name) }))}</p><p class="hd-notice-quote">${esc(localized(notice.quote || notice.to_rank?.quote))}</p>${nonnegative(notice.to_rank?.level) - nonnegative(notice.from_rank?.level) > 1 ? `<p class="hd-fine">${esc(t("ranksSkipped", { count: notice.to_rank.level - notice.from_rank.level }))}</p>` : ""}` : ""}${reward ? `<p class="hd-notice-reward">${esc(reward)}</p>` : ""}${awards.length ? `<details><summary>${t("showNewAchievements")}</summary><ul>${awards.map(item => `<li><span>${esc(localized(item.name))}</span><strong>+${esc(xp(item.points))}</strong></li>`).join("")}</ul></details>` : ""}${acknowledge ? `<button class="hd-primary" type="button" data-progress-ack>${t("continueProgress")}</button><p class="hd-notice-error" role="alert" hidden></p>` : ""}`;
+  if (!acknowledge) return;
   container.querySelector("[data-progress-ack]").addEventListener("click", async event => {
     const button = event.currentTarget;
     const error = container.querySelector(".hd-notice-error");
@@ -831,6 +834,25 @@ function connect() {
       renderState();
       completeCommand();
     }
+    if (payload.hausdepp_table_surprises && snapshot?._hausdepp
+      && payload.hausdepp_table_surprises.round_number === (snapshot._hausdepp_tournament?.round_number || 1)) {
+      snapshot._hausdepp_table_surprises = payload.hausdepp_table_surprises;
+      renderState();
+    }
+    if (payload.hausdepp_table_surprise) {
+      const surprise = payload.hausdepp_table_surprise;
+      const local = surprise.actor_id === playerId && requestedSurprise === surprise.effect;
+      requestedSurprise = null;
+      presentTableSurprise($("hausdeppTable"), surprise, { local });
+    }
+    if (String(payload.error_code || payload.error || "").startsWith("hausdepp_table_surprise_")) {
+      requestedSurprise = null;
+      cancelTableSurprises($("hausdeppTable"));
+      if (snapshot?._hausdepp_table_surprises && !payload.hausdepp_table_surprises
+        && payload.error_code !== "hausdepp_table_surprise_rate_limited") snapshot._hausdepp_table_surprises.effect = null;
+      renderState();
+      return;
+    }
     if (commandInFlight && payload.hausdepp_command?.command_id === commandInFlight.id && payload.hausdepp_command.accepted) {
       commandInFlight.acceptedVersion = payload.hausdepp_command.version;
       completeCommand();
@@ -877,6 +899,8 @@ function connect() {
     }
   });
   socket.addEventListener("close", event => {
+    requestedSurprise = null;
+    cancelTableSurprises($("hausdeppTable"));
     pileInspector?.close();
     waitingControls?.disconnect();
     reactionControls?.updateConnection();
@@ -892,7 +916,11 @@ function connect() {
 }
 
 function renderState() {
-  if (snapshot?._hausdepp?.phase !== "finished" || snapshot?._aborted) progressNotices?.pause();
+  if (snapshot?._hausdepp?.phase !== "finished" || snapshot?._aborted) {
+    progressNotices?.pause();
+    roundProgressReceipt?.();
+    cancelRoundResultPresentation();
+  }
   if (snapshot?._aborted) { renderAbortedTable(); return; }
   const s = snapshot?._hausdepp;
   if (!s) { handSelection?.selection.cancel(); hausdeppBeginnerTour.update({ eligible: false }); if (snapshot) renderWaiting(); return; }
@@ -904,7 +932,7 @@ function renderState() {
   if (snapshot._aborted) tournamentEnding = false;
   const dealer = s.players.find(player => player.id === tournament?.dealer_id);
   $("hausdeppTournamentBanner").hidden = !tournament;
-  if (tournament) $("hausdeppTournamentBanner").textContent = t("tournamentRound", { round: tournament.round_number, name: dealer?.name || "…" });
+  if (tournament) $("hausdeppTournamentBanner").textContent = t(tournament.completed ? "tournamentCompleteRound" : "tournamentRound", { round: tournament.round_number, name: dealer?.name || "…" });
   const ownLetters = tournament?.letters?.[playerId] || "";
   $("hausdeppOwnPrefix").hidden = !ownLetters;
   $("hausdeppOwnPrefix").textContent = ownLetters;
@@ -914,7 +942,20 @@ function renderState() {
   if ($("hausdeppPeek").parentElement !== peekHost) peekHost.append($("hausdeppPeek"));
   const motion = prepareCardMotion(s, { gameId, playerId });
   $("hausdeppTable").dataset.phase = s.phase;
-  renderTableDecor($("hausdeppTable"), { gameId, roundNumber: tournament?.round_number || 1, phase: s.phase });
+  const roundNumber = tournament?.round_number || 1;
+  if (s.phase !== "playing" || requestedSurpriseRound !== `${gameId}:${roundNumber}`) requestedSurprise = null;
+  const surprise = snapshot._hausdepp_table_surprises;
+  renderTableDecor($("hausdeppTable"), {
+    gameId, roundNumber, phase: s.phase,
+    surprise: surprise?.round_number === roundNumber ? surprise.effect : null,
+    onSurprise: effect => {
+      if (spectating || requestedSurprise || snapshot?._paused || s.phase !== "playing") return false;
+      if (!send({ action: "hausdepp_table_surprise", effect, round_number: roundNumber })) return false;
+      requestedSurprise = effect;
+      requestedSurpriseRound = `${gameId}:${roundNumber}`;
+      return true;
+    },
+  });
   $("hausdeppRoomName").textContent = snapshot._name || t("defaultTable");
   document.title = `${snapshot._name || "Hausdepp"} · Hausdepp`;
   const connected = socket?.readyState === WebSocket.OPEN;
@@ -1032,6 +1073,7 @@ function renderState() {
   });
   requestAnimationFrame(positionReactions);
   if (s.phase === "finished") {
+    if (!roundResultReady(`${gameId}:${tournament?.round_number || 1}`, Boolean(motion.previous && motion.previous.phase !== "finished"))) return;
     const loser = s.players.find(p => p.id === s.loser_id);
     const finalLoser = s.players.find(p => p.id === tournament?.tages_hausdepp_id);
     const roundKey = `${gameId}:${tournament?.round_number || 1}:${Boolean(tournament?.completed)}:${Boolean(tournament?.can_start_next_round)}:${Boolean(snapshot._aborted)}`;
@@ -1046,7 +1088,7 @@ function renderState() {
       return;
     }
     $("hausdeppResult").dataset.roundId = roundKey;
-    const title = snapshot._aborted ? t("tournamentStopped") : tournament?.completed ? t("tournamentLoser", { name: finalLoser?.name || "…" }) : t("loser", { name: loser?.name || "…" });
+    const title = snapshot._aborted ? t("tournamentStopped") : tournament?.completed ? `${t("tournamentComplete")}. ${t("tournamentLoser", { name: finalLoser?.name || "…" })}` : t("loser", { name: loser?.name || "…" });
     $("hausdeppResult").innerHTML = `<h2>${esc(title)}</h2><p>${t(snapshot._aborted ? "tournamentStoppedHint" : tournament ? tournament.completed ? "tournamentCompleteHint" : "tournamentRoundHint" : "resultHint")}</p>${snapshot._aborted ? "" : roundPlacements(s, snapshot._hausdepp_round_summary)}${tournamentScoreboard(tournament, s.players)}<div class="hd-result-links">${tournament && !tournament.completed && !snapshot._aborted ? tournament.can_start_next_round ? `<button id="hausdeppNextRound" class="hd-primary" type="button" ${pending || tournamentEnding || !connected || snapshot._paused ? "disabled" : ""}>${t("startNextRound", { round: nonnegative(tournament.round_number) + 1 })} ${icon("arrow")}</button><button id="hausdeppEndTournament" class="hd-secondary" type="button" ${pending || tournamentEnding || !connected ? "disabled" : ""}>${t("endTournament")}</button>` : `<p class="hd-tournament-wait">${t("tournamentHostWait")}</p>` : `<a class="hd-primary" href="/hausdepp">${t(tournament ? "newTournament" : "nextRound")} ${icon("arrow")}</a>`}<a href="/hausdepp/konto#erfolge">${t("accountProgressLink")}</a></div><div id="hausdeppRoundProgress" hidden></div>`;
     if (snapshot._finished && (!tournament || tournament.completed) && hasPreviousSeat()) appendRematchAction();
     $("hausdeppNextRound")?.addEventListener("click", () => command("next_round"));
@@ -1061,6 +1103,61 @@ function renderState() {
     });
     if (!spectating) void loadRoundProgress(roundKey);
   }
+}
+
+function cancelRoundResultPresentation() {
+  const presentation = roundResultPresentation;
+  if (!presentation) return;
+  roundResultPresentation = null;
+  clearTimeout(presentation.timer);
+  presentation.controller.abort();
+  presentation.motion.removeEventListener("change", presentation.onMotion);
+  document.removeEventListener("visibilitychange", presentation.onVisibility);
+}
+
+function roundResultVisible() {
+  return Boolean($("hausdeppResult")?.getClientRects().length);
+}
+
+function roundResultReady(key, liveEnd) {
+  const motion = matchMedia("(prefers-reduced-motion: reduce)");
+  if (roundResultPresentation?.key === key) {
+    if (motion.matches || socket?.readyState !== WebSocket.OPEN) {
+      roundResultPresentation.ready = true;
+      clearTimeout(roundResultPresentation.timer);
+      roundResultPresentation.controller.abort();
+      roundResultPresentation.motion.removeEventListener("change", roundResultPresentation.onMotion);
+      document.removeEventListener("visibilitychange", roundResultPresentation.onVisibility);
+    }
+    return roundResultPresentation.ready;
+  }
+  cancelRoundResultPresentation();
+  // Reloads/reconnects hydrate the final state without replaying a last turn.
+  if (motion.matches || document.hidden || socket?.readyState !== WebSocket.OPEN) return true;
+  const controller = new AbortController();
+  const completion = cardMotionCompletion(gameId, { signal: controller.signal });
+  if (!completion && !liveEnd) return true;
+  const presentation = { key, ready: false, timer: null, motion, controller };
+  const show = () => {
+    if (stopped || roundResultPresentation !== presentation) return;
+    presentation.ready = true;
+    clearTimeout(presentation.timer);
+    controller.abort();
+    motion.removeEventListener("change", presentation.onMotion);
+    document.removeEventListener("visibilitychange", presentation.onVisibility);
+    renderState();
+  };
+  presentation.onMotion = () => { if (motion.matches) show(); };
+  presentation.onVisibility = () => { if (document.hidden) show(); };
+  motion.addEventListener("change", presentation.onMotion);
+  document.addEventListener("visibilitychange", presentation.onVisibility);
+  roundResultPresentation = presentation;
+  void (completion || Promise.resolve()).then(() => {
+    if (roundResultPresentation !== presentation || presentation.ready || stopped) return;
+    if (motion.matches || document.hidden) show();
+    else presentation.timer = setTimeout(show, 750);
+  });
+  return false;
 }
 
 
@@ -1151,11 +1248,49 @@ function appendRematchAction() {
   });
 }
 
+// The round summary stays visible. Its receipt is presentation bookkeeping,
+// so only a foreground, on-screen summary is confirmed, without another tap.
+function acknowledgeRoundProgressWhenVisible(container, notice, roundKey) {
+  roundProgressReceipt?.();
+  if (container.hidden || !notice || notice.revision <= acknowledgedProgressRevision) return;
+  let onScreen = false;
+  const current = () => !stopped && container.isConnected && !container.hidden
+    && $("hausdeppResult")?.dataset.roundId === roundKey;
+  const cleanup = () => {
+    observer.disconnect();
+    document.removeEventListener("visibilitychange", acknowledge);
+    if (roundProgressReceipt === cleanup) roundProgressReceipt = null;
+  };
+  const acknowledge = () => {
+    if (!current()) { cleanup(); return; }
+    if (document.hidden || !onScreen) return;
+    cleanup();
+    void json("/api/hausdepp/account/acknowledge", {
+      method: "POST", keepalive: true, headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ revision: notice.revision }),
+    }).then(() => {
+      if (!stopped) acknowledgedProgressRevision = Math.max(acknowledgedProgressRevision, notice.revision);
+    }).catch(() => {
+      // Keep the saved points and actions visible. A failed receipt can be
+      // retried on the next visit; it never blocks leaving or playing again.
+    });
+  };
+  const observer = new IntersectionObserver(entries => {
+    onScreen = entries.some(entry => entry.isIntersecting);
+    acknowledge();
+  });
+  roundProgressReceipt = cleanup;
+  document.addEventListener("visibilitychange", acknowledge);
+  observer.observe(container);
+}
+
 async function loadRoundProgress(roundKey) {
   try {
     const data = await json("/api/hausdepp/account?limit=1");
     if (stopped || !$("hausdeppRoundProgress") || $("hausdeppResult").dataset.roundId !== roundKey) return;
-    renderProgressNotice($("hausdeppRoundProgress"), data);
+    const container = $("hausdeppRoundProgress");
+    renderProgressNotice(container, data, { acknowledge: false });
+    acknowledgeRoundProgressWhenVisible(container, data.presentation?.pending, roundKey);
     if (!snapshot?._aborted) void progressNotices?.refresh();
   } catch {
     // The final account link remains available when the summary cannot load.
@@ -1226,7 +1361,7 @@ async function start() {
     if (auth.authenticated && !spectating) {
       progressNotices = mountProgressNotices({
         userId: auth.user.id,
-        canPresent: () => !stopped && (page !== "table" || Boolean(snapshot?._hausdepp?.phase === "finished" && !snapshot?._aborted)),
+        canPresent: () => !stopped && (page !== "table" || Boolean(snapshot?._hausdepp?.phase === "finished" && !snapshot?._aborted && roundResultVisible())),
         onPending: () => {
           popupProgressPending = true;
           for (const id of ["hausdeppProgressNotice", "hausdeppRoundProgress"]) if ($(id)) $(id).hidden = true;
@@ -1237,7 +1372,10 @@ async function start() {
     }
     if (auth.authenticated) rematchInvitations = mountRematchInvitations({
       userId: auth.user.id, t,
-      canPresent: () => !stopped && (page !== "table" || spectating || Boolean(snapshot && (!snapshot._started || snapshot._finished))),
+      canPresent: () => !stopped && (page !== "table" || (
+        (spectating || Boolean(snapshot && (!snapshot._started || snapshot._finished)))
+        && (!(snapshot?._finished || snapshot?._hausdepp?.phase === "finished") || roundResultVisible())
+      )),
     });
   } catch (error) { root.innerHTML = `<section class="hd-unavailable"><h1>Hausdepp</h1><p role="alert">${esc(error.message || t("requestFailed"))}</p><a href="${zdwaAppEntryUrl()}">${t("backSuite")}</a></section>`; document.body.classList.remove("hd-loading"); }
 }
@@ -1248,6 +1386,9 @@ window.addEventListener("zdwa:auth-state", event => {
   // Public discovery must not leave the preceding account's private table or
   // progress mounted after sign-out or an account change in another tab.
   stopped = true;
+  cancelTableSurprises($("hausdeppTable"));
+  roundProgressReceipt?.();
+  cancelRoundResultPresentation();
   clearInterval(lobbyTimer);
   gameCreator?.destroy();
   waitingControls?.destroy();
@@ -1260,6 +1401,6 @@ window.addEventListener("zdwa:auth-state", event => {
   if (page === "settings" && !event.detail?.user) location.replace("/hausdepp");
   else location.reload();
 });
-window.addEventListener("pagehide", () => { gameCreator?.destroy(); waitingControls?.destroy(); reactionControls?.destroy(); progressNotices?.destroy(); rematchInvitations?.destroy(); rematchLifetime.abort(); pileInspector?.destroy(); stopLobbyDemo?.(); invitations?.destroy(); resetCardMotion(gameId); reactionObserver?.disconnect(); for (const entry of visibleReactions.values()) clearTimeout(entry.timer); visibleReactions.clear(); stopped = true; clearInterval(lobbyTimer); clearTimeout(reconnectTimer); clearTimeout(pendingTimer); clearTimeout(peekTimer); socket?.close(); });
+window.addEventListener("pagehide", () => { cancelTableSurprises($("hausdeppTable")); roundProgressReceipt?.(); cancelRoundResultPresentation(); gameCreator?.destroy(); waitingControls?.destroy(); reactionControls?.destroy(); progressNotices?.destroy(); rematchInvitations?.destroy(); rematchLifetime.abort(); pileInspector?.destroy(); stopLobbyDemo?.(); invitations?.destroy(); resetCardMotion(gameId); reactionObserver?.disconnect(); for (const entry of visibleReactions.values()) clearTimeout(entry.timer); visibleReactions.clear(); stopped = true; clearInterval(lobbyTimer); clearTimeout(reconnectTimer); clearTimeout(pendingTimer); clearTimeout(peekTimer); socket?.close(); });
 window.addEventListener("pageshow", event => { if (event.persisted) location.reload(); });
 void start();

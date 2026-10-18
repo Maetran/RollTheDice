@@ -186,3 +186,86 @@ Selected original Imagegen output files, all from this task's
 These filenames record provenance, not a runtime dependency on a developer's
 home directory. The shipped atlases are local static assets. No image API,
 tracking request or third-party image host is needed at play time.
+
+
+### Sichtbare Portionen und kleine Überraschungen (3.11.0)
+
+Die ursprünglichen Atlanten bleiben unverändert. `decor-consumables.js` trennt
+Gefäss/Brett, Flüssigkeit und einzelne fotobasierte Essensportionen mit SVG-/CSS-
+Masken. Jeder Schluck senkt den Meniskus, bei null verschwinden Flüssigkeit und
+Schaum. Aufgegessene Schalen/Bretter bleiben bis zum Rundenwechsel leer.
+`decor-play.js` ergänzt einen karierten SVG-Putzlumpen: Schnelles Tippen leert die
+Restfüllung in eine begrenzte Pfütze, nach 3,8 Sekunden sind Pfütze und Lumpen
+entfernt. Ein leeres Glas erzeugt keine neue Flüssigkeit. Höchstens eine Pfütze
+je Glas und drei insgesamt, auf freiem Holz kollisionsgeprüft und pointer-inert.
+Rundenwechsel, Rundenende, Hintergrundtab und reduzierte Bewegung räumen Effekte
+auf. Neben Spielbereichen kippen Gläser innerhalb ihrer eigenen Grundfläche.
+
+Ein eigener SVG-Bierdeckel bekommt bis zwanzig Graphitstriche in Fünfergruppen;
+der nächste Tipp dreht ihn auf die leere Rückseite. Ein vorhandener Bleistift
+schreibt auf einen sichtbaren Deckel mit. Verschobene Gläser hinterlassen maximal
+drei rasch verblassende Kondensringe. Das Windlicht lässt sich aus- und wieder
+anschalten. Die SVGs sind im Projekt gezeichnet; neue Bildquellen kamen nicht dazu.
+Claude steuerte eine begrenzte Ideen-/Reviewrunde und die animierten
+Bierdeckelstriche bei. Codex prüfte den Beitrag und verantwortet Auswahl,
+Integration und Verifikation.
+
+### Visible portions and small surprises (3.11.0)
+
+The original atlases remain unchanged. `decor-consumables.js` separates the
+vessel/board, liquid and individual photographic servings using SVG/CSS masks.
+Each sip lowers the meniscus; zero hides liquid and foam. Empty bowls and boards
+stay empty until the next round. `decor-play.js` adds a drawn checked cloth:
+rapid taps spill the remaining fill, then the puddle and cloth are removed after
+3.8 seconds. Empty glasses produce no liquid. At most one puddle per glass and
+three overall occupy collision-checked free wood, without accepting input.
+Round changes, finished rounds, hidden tabs and reduced motion clear effects.
+Glasses next to playable areas tip inside their own footprint.
+
+A drawn SVG beer mat takes twenty graphite tally marks in groups of five and
+then flips to its clean reverse. A visible pencil adds marks to a visible mat.
+Moved glasses leave up to three fading condensation rings. The lantern can be
+blown out and relit. SVGs are project-authored, with no new image sources.
+Claude contributed a bounded idea/review pass and the animated beer-mat strokes.
+Codex reviewed the contribution and owns selection, integration and verification.
+
+
+### Seltene gemeinsame Funde / rare shared finds (3.11.0)
+
+Ein erster serverseitiger SHA-256-Bucket aus Tisch und Runde entscheidet mit
+ungefähr 1/200 über ein Angebot. Nur danach wählt eine unabhängige Hash-Domain
+einen von acht Funden: Stern, Runenhammer, UFO, Portal, Drache, Kraken, Taschenuhr
+oder schwarzes Loch (je ungefähr 1/1600). Der erste berechtigte Mensch beansprucht ihn
+atomar für diese Runde. Ein gesondertes Live-Ereignis zeigt den Effekt allen
+verbundenen Raumteilnehmern, ohne Karten, Zugrecht, Wertung, Spielversion oder
+Computerplanung anzufassen. Alte Runden, fremde/ersetzte Sockets und erneute
+Aktivierungen werden abgewiesen. Snapshots enthalten nur das unbenutzte Angebot,
+keine nachträglich abgespielte Explosion. Ein kleiner Claim im bestehenden
+Spielzustand erhält die Einmaligkeit bei Wiederaufnahme; es gibt keine neue Tabelle.
+
+`surprise-effects.js` und `hausdepp-surprise-effects.css` stammen aus Claudes
+begrenzter Implementierungsaufgabe und werden von Codex geprüft und integriert.
+Ihre SVGs sind eigene Zeichnungen. Ring, Hammer und Traktorstrahl bleiben
+pointer-inert unter den Karten, Namen und Aktionen; nur Dekoration darf kurz
+wackeln. Der Hammer kann ausschliesslich im auslösenden Tab und bei vorhandener
+Browserunterstützung kurz vibrieren. Reduzierte Bewegung, Hintergrundtabs,
+Rundenwechsel und Navigation verhindern oder beenden die Effekte. Nach 42 neuen
+Graphitstrichen gibt es zudem einmal pro Runde eine kleine lokale Beschriftung.
+
+A first server-side SHA-256 bucket of table and round decides eligibility
+(about 1/200). Only then does an independent hash domain select one of eight
+finds: star, rune hammer, UFO, portal, dragon, kraken, pocket watch or black hole
+(about 1/1600 each).
+The first eligible human atomically claims it for that round. A separate live
+event shows the effect to everyone connected to the room without changing cards,
+turns, scoring, game versions or CPU scheduling. Old rounds, foreign/replaced
+sockets and repeated claims are rejected. Snapshots carry only an unused offer,
+never an old explosion. A small claim in the existing game state preserves
+once-per-round behaviour during recovery, with no new database table.
+
+Claude authored the bounded SVG/effect implementation, reviewed and integrated
+by Codex. Effects are pointer-inert below cards, names and actions; only decor
+may wobble. Only the triggering tab's hammer can briefly vibrate, when supported.
+Reduced motion, hidden tabs, round changes and navigation suppress or clear the
+effects. Forty-two new graphite marks also reveal a small local caption once
+per round.

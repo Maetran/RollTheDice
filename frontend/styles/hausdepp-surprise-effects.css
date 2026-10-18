@@ -1,0 +1,32 @@
+/* Rare table surprises: below table objects (5) and controls (6), clipped to the table. */
+.hd-surprise-layer { position: absolute; inset: 0; z-index: 4; overflow: hidden; border-radius: inherit; pointer-events: none; user-select: none; contain: layout paint style; }
+.hd-surprise-layer, .hd-surprise-layer * { pointer-events: none; }
+.hd-surprise-node { position: absolute; left: 0; top: 0; will-change: transform, opacity; }
+.hd-surprise-node > svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.hd-surprise-glow { border-radius: 50%; background: radial-gradient(circle, #fff6d6b3 0, #e9bf5a73 22%, #7b5ad440 48%, transparent 70%); }
+.hd-surprise-ring { border: 2px solid #f0cf7a; border-radius: 50%; box-shadow: 0 0 6px #a98bff99, inset 0 0 5px #f0cf7a66; }
+.hd-surprise-spark { border-radius: 50%; background: var(--spark); box-shadow: 0 0 4px var(--spark); }
+.hd-surprise-body, .hd-surprise-quiet { filter: drop-shadow(0 3px 3px #140c0866); }
+.hd-surprise-hammer { filter: drop-shadow(4px 7px 4px #1a0f0870); }
+.hd-surprise-impact { border: 2px solid #ead0988f; border-radius: 50%; box-shadow: 0 0 0 1px #2a190d59, inset 0 0 8px #f3dcae40; }
+.hd-surprise-dust { border-radius: 40%; background: #d8b27a; box-shadow: 0 0 2px #4a2e1488; }
+.hd-surprise-ufo { filter: drop-shadow(0 9px 5px #0c100d59); }
+.hd-surprise-beam { clip-path: polygon(36% 0, 64% 0, 100% 100%, 0 100%); background: linear-gradient(#d6ffe2b3, #7fe3a85c 70%, #7fe3a800); }
+.hd-surprise-nut { filter: drop-shadow(1px 2px 1px #1a0f0866); }
+.hd-surprise-portal { filter: drop-shadow(0 0 6px #7ff3e199); }
+.hd-surprise-arc { filter: drop-shadow(0 0 3px #7ff3e1); }
+.hd-surprise-dragon { filter: drop-shadow(2px 5px 3px #1a0f0866); }
+.hd-surprise-dragon .hd-wing-a { transform-box: fill-box; transform-origin: 100% 100%; }
+.hd-surprise-dragon .hd-wing-b { transform-box: fill-box; transform-origin: 0 100%; }
+.hd-surprise-breath { clip-path: polygon(0 42%, 100% 0, 100% 100%, 0 58%); background: linear-gradient(90deg, #fff4cce6, #ffc45ab3 35%, #e0782e40 75%, #e0782e00); }
+.hd-surprise-tentacle { filter: drop-shadow(1px 3px 2px #0c100d66); }
+.hd-surprise-ink { border-radius: 50%; box-shadow: inset 0 -4px 8px #0a0612cc, 0 3px 6px #0a061266;
+  background: radial-gradient(circle at 34% 30%, #ffffffb8 0 5%, #fff0 12%), radial-gradient(circle at 50% 56%, #0b0716f0 0 42%, #0b071600 72%),
+    conic-gradient(from 30deg, #4b3a8f, #1f6d7e, #6b2f7e, #2a5a9a, #4b3a8f); }
+.hd-surprise-drop { border-radius: 50%; background: #2b1f4f; box-shadow: inset 1px 1px 1px #b9a6ff80; }
+.hd-surprise-clock { filter: drop-shadow(1px 4px 3px #1a0f0866); }
+.hd-surprise-clock .hd-lid { transform-box: fill-box; transform-origin: 0 50%; }
+.hd-surprise-clock .hd-hand { transform-box: view-box; transform-origin: 50% 58%; }
+.hd-surprise-hole { filter: drop-shadow(0 0 8px #c8682a66); }
+.hd-surprise-crumb { border-radius: 42% 58% 50% 46%; background: linear-gradient(135deg, #e6bd7a, #9a6a34); box-shadow: 0 1px 1px #1a0f0855; }
+@media (prefers-reduced-motion: reduce) { .hd-surprise-node { will-change: auto; } }

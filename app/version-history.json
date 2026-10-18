@@ -2280,5 +2280,12 @@
     "date": "2026-10-18",
     "bump": "patch",
     "summary": "Abmelden in Hausdepp führt zuverlässig zurück zu Hausdepp statt manchmal nach ZDWA. / Signing out of Hausdepp reliably returns to Hausdepp instead of sometimes jumping to ZDWA."
+  },
+  {
+    "version": "3.10.0",
+    "revision": "80bc42df17eb5852a5153582b263f6d065138f35",
+    "date": "2026-10-18",
+    "bump": "minor",
+    "summary": "Hausdepp-Computer halten hohe Karten als Reserve zurück und nutzen sichere Schlusszüge. / Hausdepp computers keep high cards in reserve and take guaranteed finishing follow-ups."
   }
 ]
