@@ -102,6 +102,10 @@ export function initializeAppMode({
       }
     }
   };
+  // A private page can paint its header before this controller's auth refresh
+  // completes. Do not present an active button whose first click is ignored.
+  // Public lobby documents already confirm their discovery capability above.
+  for (const button of document.querySelectorAll("[data-game-switch]")) button.disabled = !allowed;
   if (publicLobby) syncPickers();
 
   const revokeZilch = () => {

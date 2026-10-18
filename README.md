@@ -37,6 +37,124 @@ guest choices stay in that browser. The
 criteria.
 
 
+## Als Nächstes: Watten / Next game: Watten
+
+**Deutsch:** Watten ist als nächstes Spiel vorgemerkt: üblicherweise 4er
+ladinisch bis 11 Punkte («8+3 isch zmittag»), mit blindem Einschauen durch den
+Geber und den im Uhrzeigersinn nachfolgenden Spieler. Die identischen
+Hausdepp-Kartendesigns werden wiederverwendet. Die
+[Recherche](docs/WATTEN_RESEARCH.md) dokumentiert Quellen, Regelvarianten und
+offene Hausregeln. Zusätzlich sind Varianten für zwei und drei Spieler,
+taktisch spielende CPUs mit typischen Tiroler Namen und freie Teamwahl vor
+Spielbeginn ohne Zufallszuweisung gewünscht. Ansagen gehören zum Spiel;
+gestrichen darf man nichts mehr sagen. Die genaue Auslegung ist vorgemerkt.
+Achievements, dauerhafte wirtshaustaugliche Titel, Ranglisten und das
+Fortschrittsumfeld gehören verbindlich dazu: anfangs schnellere Aufstiege,
+danach zunehmend längere Etappen für ausdauernde Watter. Der
+[Fortschrittsplan](docs/WATTEN_PROGRESSION_PLAN.md) enthält erreichbare Ziele
+und einen vorläufigen Kurvenentwurf. Vollständige Tests laufen soweit möglich
+lokal auf dem Mac; GitHub prüft nur den schlanken Integrationsnachweis.
+Hoch- und Querformat bleiben vollständig spielbar; Querformat wird mit
+einem dezenten, schliessbaren Hinweis empfohlen. Die Umsetzung ist jetzt
+freigegeben und startet gemäss [Übergabe](docs/WATTEN_EXECUTION_HANDOFF.md)
+in einem separaten Chat. Zielhost: `watten.zockdiewandan.online`, inklusive
+SEO, robots.txt, Sitemap und Search-Console-Einreichung nach öffentlicher Freigabe.
+
+Der [vertiefte Regelabgleich](docs/WATTEN_RULES_AUDIT.md) trennt Ladinisch,
+Blind-/Offen-Ansage, Varianten mit Kritischen, Trumpfzwang und Einsatzbieten.
+Die endgültigen Modi müssen jeden Regelfall eindeutig festlegen; die
+veröffentlichten Quellen enthalten unterschiedliche Profile und noch nicht
+alle Kombinationen lückenlos. watten.org dient als Regelquelle; seine
+Kartendesigns werden nicht übernommen.
+
+Die [Gestaltungsreferenzen](docs/WATTEN_DESIGN_REFERENCES.md) sichern die vom
+Owner gelieferten UltraWatten-Bilder und Beobachtungen der Live-Oberfläche.
+Sie dienen als Ideen für die Bedienung, ohne 1:1-Kopie; die eigenen
+Hausdepp-Kartendesigns bleiben gesetzt.
+
+Die [Hausdepp-Retrospektive](docs/HAUSDEPP_RETROSPECTIVE_2026-10-18.md)
+untersucht die Erstimplementierung und 20 spätere PRs. Alle 81 Befunde und
+Prüfverträge sind mit konkreter Vorbeugung und Abnahme in den
+[Watten-Umsetzungsplan](docs/WATTEN_IMPLEMENTATION_PLAN.md) übertragen:
+Regeln, CPUs, Teamwahl, Konto, Einladungen, Wiederaufnahme, Darstellung und
+Auslieferung. Offene Regelentscheidungen bleiben vor der davon abhängigen
+Implementierung zu klären.
+
+Die Umsetzung ist gestartet: Der [Ausführungsstand](docs/WATTEN_EXECUTION_LOG.md)
+führt die Arbeitspakete und alle 81 Erkenntnisse weiter. Der feste Host
+`watten.zockdiewandan.online` bleibt während der Vorbereitung geschlossen;
+er liefert weder ein anderes Spiel noch dessen PWA oder persönliche Daten.
+Die [P1-Verträge](docs/WATTEN_P1_CONTRACTS.md) halten Konto, Routen, Passkeys,
+PWA und Suite-Dienste gemeinsam fest. Eine spielbare Wattenpartie ist noch
+nicht veröffentlicht.
+
+Für isolierte lokale Entwicklung gibt es bereits die native Kontoreise unter
+`/watten`: gemeinsame Registrierung/Anmeldung, Passkeys, Einstellungen und
+Recovery. Sie benötigt `ROLLTHEDICE_WATTEN_ACCOUNT_PREVIEW=1` sowie einen
+konfigurierten **und** angefragten Loopback-/localhost-Ursprung. Auf echten
+Produktionshosts bleibt sie auch mit diesem Flag geschlossen. Die vorhandene
+isolierte Passkey-Browsersuite prüft den Ablauf mit Wegwerfkonten. Die lokale
+Kontovorschau hat eigene DE/EN-Manifeste, Icons und einen schmalen Worker ohne
+Offline-Speicherung privater Daten. Sie lässt sich bei Browserunterstützung
+lokal installieren; die vorhandene installierte Suite-Identität bleibt beim
+Spielwechsel erhalten. Automatisierte Tests prüfen echte Worker und simulierte
+Standalone-Kontexte, keine physische iPhone-Installation oder echten Konten.
+
+**English:** Watten is the next planned game: usually four-player Ladinisch
+to 11 points, with private bottom-card inspection by the dealer and the next
+clockwise player. It will reuse the same card designs as Hausdepp. The
+[research notes](docs/WATTEN_RESEARCH.md) record sources, variants and unresolved
+house rules. Two- and three-player variants, tactical CPUs with Tyrolean names
+and manual team selection before play without random assignment are also
+wanted. Calls are part of the game; once “gestrichen”, no further calls are
+allowed. The exact scope remains to be defined. Achievements, permanent
+pub-style titles, leaderboards and the surrounding progress features are
+required, with faster early promotions and growing later gaps rewarding
+persistence. The [progression plan](docs/WATTEN_PROGRESSION_PLAN.md) sets out
+achievable goals and a provisional curve. Full tests run locally on the Mac
+wherever possible; GitHub only validates integration evidence. Implementation
+is now authorized in a separate chat; see the
+[execution handoff](docs/WATTEN_EXECUTION_HANDOFF.md). The target host is
+`watten.zockdiewandan.online`, including SEO, robots.txt, sitemap and Search
+Console submission after public release. Both orientations remain fully
+playable, with a discreet, dismissible landscape recommendation.
+
+The [detailed rules audit](docs/WATTEN_RULES_AUDIT.md) separates Ladinisch,
+blind/open announcements, critical-card variants, trump obligations and bidding.
+Each final mode must define every rule case unambiguously; published sources
+describe different profiles and do not fully cover every combination. watten.org
+is a rules reference; its card designs are not adopted.
+
+The [design references](docs/WATTEN_DESIGN_REFERENCES.md) preserve the owner's
+UltraWatten screenshots and observations of the live interface. They provide
+interaction ideas for an independent design; the existing Hausdepp card artwork
+remains required.
+
+The [Hausdepp retrospective](docs/HAUSDEPP_RETROSPECTIVE_2026-10-18.md)
+examines the first implementation and 20 later PRs. All 81 findings and
+contracts have concrete preventive actions and acceptance scenarios in the
+[Watten implementation plan](docs/WATTEN_IMPLEMENTATION_PLAN.md), covering
+rules, CPUs, team selection, accounts, invitations, recovery, presentation and
+delivery. Outstanding rule decisions must be settled before dependent work.
+
+Implementation has started. The [execution log](docs/WATTEN_EXECUTION_LOG.md)
+tracks the work packages and all 81 findings. The fixed host
+`watten.zockdiewandan.online` stays closed during preparation; it cannot serve
+another game, its PWA or personal data. The [P1 contracts](docs/WATTEN_P1_CONTRACTS.md)
+cover accounts, routes, passkeys, PWA and suite services together. Playable
+Watten has not been publicly released.
+
+Isolated local development already has native shared-account journeys at
+`/watten`: signup/sign-in, passkeys, settings and recovery. They require
+`ROLLTHEDICE_WATTEN_ACCOUNT_PREVIEW=1` and both a configured and requested
+loopback/localhost origin. Real production hosts stay closed even with the
+flag. The existing isolated passkey browser suite uses disposable accounts.
+The local account preview has its own DE/EN manifests, icons and a narrow worker
+without offline private-data storage. Supporting browsers can install it locally;
+existing installed suite identity survives game switching. Automated tests cover
+real workers and simulated standalone contexts, not physical iPhone installation
+or real accounts.
+
 ## Hausdepp — öffentlicher V3-Start / public V3 launch
 
 **Deutsch:** Mit V3 ergänzt Hausdepp die Suite als öffentliches drittes Spiel.

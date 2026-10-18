@@ -24,8 +24,9 @@ async function openPwaHarness(page, {
   standalone = false,
   pathname = "/",
   controllerScript = null,
+  savedEntry = null,
 }) {
-  await page.addInitScript(({ language: initialLanguage, standalone: installed, controllerScript: initialController }) => {
+  await page.addInitScript(({ language: initialLanguage, standalone: installed, controllerScript: initialController, savedEntry: initialEntry }) => {
     const state = {
       registerCalls: [],
       registerOptions: [],
@@ -46,6 +47,7 @@ async function openPwaHarness(page, {
       globalThis.ZDWA_I18N = { getLanguage: () => "en" };
     }
     if (installed) Object.defineProperty(Navigator.prototype, "standalone", { configurable: true, get: () => true });
+    if (initialEntry && !sessionStorage.getItem("rollthedice:pwa-entry:v1")) sessionStorage.setItem("rollthedice:pwa-entry:v1", initialEntry);
 
     Object.defineProperty(Navigator.prototype, "onLine", {
       configurable: true,
@@ -84,7 +86,7 @@ async function openPwaHarness(page, {
         },
       },
     });
-  }, { language, standalone, controllerScript });
+  }, { language, standalone, controllerScript, savedEntry });
 
   await page.route(`${origin}/**`, async route => {
     const url = new URL(route.request().url());
@@ -315,4 +317,34 @@ test("Zilch selects its English manifest for an English app session", async ({ p
     "href",
     "https://zilch.zockdiewandan.online/zilch-manifest-en.webmanifest",
   );
+});
+
+for (const language of ["de", "en"]) {
+  test(`local installed Watten keeps its ${language} identity on existing suite pages`, async ({ page }) => {
+    const origin = "http://rollthedice.localhost";
+    await openPwaHarness(page, { origin, game: "zdwa", language, standalone: true, pathname: "/?pwa=watten" });
+    for (const game of ["zdwa", "zilch", "hausdepp"]) {
+      await page.goto(`${origin}/?game=${game}`);
+      await expect.poll(() => page.evaluate(() => globalThis.__pwaHarness.registerCalls)).toEqual(["/watten-sw.js"]);
+      expect(await page.evaluate(() => globalThis.__pwaHarness.registerOptions)).toEqual([{ updateViaCache: "none", scope: "/watten" }]);
+      await expect(page.locator('link[rel="manifest"]')).toHaveAttribute("href", `${origin}/watten-manifest${language === "en" ? "-en" : ""}.webmanifest`);
+      expect(await page.evaluate(() => globalThis.__pwaHarness.unregisterCalls)).toBe(0);
+      expect(await page.evaluate(() => globalThis.__pwaHarness.cacheDeletes)).toEqual([]);
+    }
+  });
+}
+
+test("a local installed Zilch keeps its existing identity after returning from Watten", async ({ page }) => {
+  await openPwaHarness(page, { origin: "http://zilch.rollthedice.localhost", game: "zilch", standalone: true, savedEntry: "zilch", controllerScript: "/watten-sw.js" });
+  await expect.poll(() => page.evaluate(() => globalThis.__pwaHarness.registerCalls)).toEqual(["/zilch-sw.js"]);
+  await expect(page.locator('link[rel="manifest"]')).toHaveAttribute("data-pwa-product", "zilch");
+  expect(await page.evaluate(() => globalThis.__pwaHarness.unregisterCalls)).toBe(0);
+  expect(await page.evaluate(() => globalThis.__pwaHarness.cacheDeletes)).toEqual([]);
+});
+
+test("a forged Watten launch or saved entry cannot rewrite a production PWA", async ({ page }) => {
+  await openPwaHarness(page, { origin: "https://zockdiewandan.online", game: "zdwa", standalone: true, pathname: "/?pwa=watten", savedEntry: "watten" });
+  await expect.poll(() => page.evaluate(() => globalThis.__pwaHarness.registerCalls)).toEqual(["/sw.js"]);
+  expect(await page.locator('link[rel="manifest"][data-pwa-product="watten"]').count()).toBe(0);
+  expect(await page.evaluate(() => sessionStorage.getItem("rollthedice:pwa-entry:v1"))).toBe("zdwa");
 });

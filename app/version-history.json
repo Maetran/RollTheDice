@@ -2294,5 +2294,12 @@
     "date": "2026-10-18",
     "bump": "minor",
     "summary": "Hausdepp: sichtbare Schlucke und Häppchen, Putzlumpen und neue kleine Tischüberraschungen. / Hausdepp: visible sips and bites, a cleaning cloth and new little table surprises."
+  },
+  {
+    "version": "3.12.0",
+    "revision": "766bcb3f0aa21593673b0f47112caa15e17856b3",
+    "date": "2026-10-18",
+    "bump": "minor",
+    "summary": "Hausdepp belohnt seltene Funde mit zwei Sammelreihen und 20 neuen Erfolgen. / Hausdepp rewards rare finds with two collections and 20 new achievements."
   }
 ]

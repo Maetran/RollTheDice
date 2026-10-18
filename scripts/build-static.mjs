@@ -15,6 +15,8 @@ const targets = [
   { source: "frontend/shared/auth.js", output: "app/static/auth.js", format: "esm" },
   { source: "frontend/shared/game-tours.js", output: "app/static/game-tours.js", format: "esm" },
   { source: "frontend/email-action.js", output: "app/static/email-action.js", format: "esm" },
+  { source: "frontend/watten/account.js", output: "app/static/watten-account.js", format: "esm" },
+  { source: "frontend/styles/watten-account.css", output: "app/static/watten-account.css" },
   { source: "frontend/dashboard.js", output: "app/static/dashboard.js", format: "esm" },
   { source: "frontend/styles/dashboard.css", output: "app/static/dashboard.css" },
   { source: "frontend/shared/web-push.js", output: "app/static/web-push.js", format: "esm" },

@@ -22,6 +22,7 @@ import httpx
 from fastapi.routing import iter_route_contexts
 
 from app import main
+from app.product_hosts import WATTEN_ORIGIN
 from app.site_seo import HAUSDEPP_ORIGIN, PUBLIC_SEO_PAGES, SITE_ORIGIN, ZILCH_ORIGIN
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -74,6 +75,7 @@ DOCUMENT_ROUTES = (
     RouteCoverage(
         ("/registrierung/bestaetigen", "/passwort-vergessen", "/passwort-zuruecksetzen", "/email-bestaetigen"),
         "tests/browser/email-navigation.spec.js",
+        browser_tests=("tests/browser-passkeys/watten-account.spec.js",),
     ),
     RouteCoverage(
         ("/zdwa", "/zdwa/{path:path}"), "tests/test_zilch_product_routes.py",
@@ -149,6 +151,11 @@ DOCUMENT_ROUTES = (
         ("tests/browser/hausdepp-leaderboard.spec.js",),
     ),
     RouteCoverage(
+        ("/watten", "/watten/anmelden", "/watten/konto", "/watten/konto/einstellungen"),
+        "tests/test_watten_accounts.py", "test_native_routes_protect_settings_and_keep_static_templates_private",
+        ("tests/browser-passkeys/watten-account.spec.js",),
+    ),
+    RouteCoverage(
         ("/anmelden",), "tests/test_zilch_product_routes.py",
         "test_public_guest_explicit_login_reaches_apex_form_with_safe_continuation",
         ("tests/browser/passkey-signup.spec.js",),
@@ -166,6 +173,20 @@ DOCUMENT_ROUTES = (
     ),
 )
 
+# Existing path names must also keep the new, reserved product host closed.
+# There is no Watten document or installable app yet, so this host contract
+# deliberately has no browser journey or public SEO registration.
+RESERVED_HOST_DOCUMENT_ROUTES = {
+    WATTEN_ORIGIN: (
+        RouteCoverage(
+            ("/", "/watten", "/watten/regeln", "/konto", "/hausdepp", "/zilch/anmelden",
+             "/spiel/example", "/watten/spiel/example/zuschauen", "/auth/continue"),
+            "tests/test_watten_readiness.py",
+            "test_all_documents_private_apis_and_static_aliases_are_closed_before_routing",
+        ),
+    ),
+}
+
 # Finite exclusions, not a suffix filter: a new route must be reviewed even if
 # it happens to end in .json or resembles an infrastructure endpoint.
 TECHNICAL_ROUTES = {
@@ -179,9 +200,12 @@ TECHNICAL_ROUTES = {
     "/zilch-manifest-en.webmanifest": "English Zilch PWA metadata; test_zilch_product_routes.",
     "/hausdepp-manifest.webmanifest": "Public Hausdepp installation; test_hausdepp_pwa and browser/hausdepp-pwa.spec.js.",
     "/hausdepp-manifest-en.webmanifest": "English public Hausdepp installation; test_hausdepp_pwa.",
+    "/watten-manifest.webmanifest": "Opt-in local account PWA metadata; test_watten_pwa and browser-passkeys/watten-pwa.spec.js.",
+    "/watten-manifest-en.webmanifest": "English opt-in local PWA metadata; test_watten_pwa and browser-passkeys/watten-pwa.spec.js.",
     "/sw.js": "ZDWA service worker; test_http_shell.",
     "/zilch-sw.js": "Zilch service worker; test_zilch_product_routes.",
     "/hausdepp-sw.js": "Narrow, network-only Hausdepp service worker; test_hausdepp_pwa and browser/hausdepp-pwa.spec.js.",
+    "/watten-sw.js": "Guarded local network-only worker; test_watten_pwa and browser-passkeys/watten-pwa.spec.js; production remains closed.",
     "/favicon.ico": "Product artwork; test_http_shell.",
     "/apple-touch-icon.png": "Anonymous GET/HEAD Apple icon discovery; host-specific public 180px PNG, test_hausdepp_pwa.",
     "/apple-touch-icon-precomposed.png": "Legacy Apple GET/HEAD icon discovery; same public product artwork, test_hausdepp_pwa.",
@@ -209,7 +233,8 @@ class NavigationInventoryTests(TestCase):
         )
 
     def test_inventory_references_existing_regression_tests(self):
-        for group in DOCUMENT_ROUTES:
+        host_groups = tuple(group for groups in RESERVED_HOST_DOCUMENT_ROUTES.values() for group in groups)
+        for group in (*DOCUMENT_ROUTES, *host_groups):
             with self.subTest(paths=group.paths):
                 test_file = ROOT / group.test_file
                 self.assertTrue(test_file.is_file(), group.test_file)
@@ -224,7 +249,8 @@ class NavigationInventoryTests(TestCase):
                     self.assertTrue(group.test_file.startswith("tests/browser/"))
                     self.assertIn("test(", source, "Browser coverage must contain executable tests")
                 for browser_test in group.browser_tests:
-                    self.assertTrue(browser_test.startswith(("tests/browser/", "tests/browser-hausdepp-passkeys/")))
+                    self.assertTrue(browser_test.startswith(("tests/browser/", "tests/browser-passkeys/",
+                                                            "tests/browser-hausdepp-passkeys/")))
                     self.assertIn("test(", (ROOT / browser_test).read_text(encoding="utf-8"))
 
 

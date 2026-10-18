@@ -2,12 +2,27 @@
 
 from urllib.parse import parse_qs, quote, urlencode, urlsplit
 
-from .product_hosts import DEFAULT_SITE_ORIGIN, HAUSDEPP_ORIGIN, is_hausdepp_host, safe_hausdepp_path, site_origin
+from fastapi import HTTPException
+
+from .product_hosts import (
+    DEFAULT_SITE_ORIGIN,
+    HAUSDEPP_ORIGIN,
+    is_hausdepp_host,
+    is_watten_host,
+    safe_hausdepp_path,
+    safe_watten_account_path,
+    site_origin,
+)
+from .watten_readiness import watten_account_preview_enabled
 
 
 def account_app_context(request, requested: str = "zdwa") -> str:
     # Host identity wins over a stale tab's payload. A product choice changes
     # presentation only; it never changes token ownership or authentication.
+    if is_watten_host(request) or requested == "watten":
+        if not watten_account_preview_enabled(request):
+            raise HTTPException(status_code=503, detail="watten_not_available")
+        return "watten"
     return "hausdepp" if is_hausdepp_host(request) or requested == "hausdepp" else "zdwa"
 
 
@@ -45,6 +60,11 @@ def house_account_return_path(value: str | None) -> str:
 def account_action_url(path: str, raw_token: str, language: str, *, app: str = "zdwa", return_to: str | None = None) -> str:
     origin = site_origin()
     parameters = {"lang": "en" if language == "en" else "de"}
+    if app == "watten":
+        if not watten_account_preview_enabled():
+            raise RuntimeError("Watten account preview requires a local deployment")
+        parameters["app"] = "watten"
+        parameters["return_to"] = safe_watten_account_path(return_to)
     if app == "hausdepp":
         # Staging/local tokens stay in their configured environment. Only the
         # production suite uses its fixed Hausdepp origin, never request Host.

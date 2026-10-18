@@ -6,7 +6,10 @@
   const INSTALL_DISMISS_MS = 7 * 24 * 60 * 60 * 1000;
   const ZILCH_HOSTNAME = "zilch.zockdiewandan.online";
   const HAUSDEPP_HOSTNAME = "hausdepp.zockdiewandan.online";
+  const localWattenHost = () => location.hostname === "localhost" || location.hostname.endsWith(".localhost")
+    || location.hostname === "[::1]" || /^127(?:\.\d{1,3}){3}$/.test(location.hostname);
   const INSTALLED_ENTRY_KEY = "rollthedice:pwa-entry:v1";
+  const WINDOW_ENTRY_PREFIX = `${INSTALLED_ENTRY_KEY}:`;
   const APP_VERSION = (() => {
     try {
       return new URL(document.currentScript?.src || "", location.href).searchParams.get("v") || "unversioned";
@@ -192,17 +195,22 @@
     // A distinct launch URL identifies the installed Hausdepp app even when
     // an older, broader suite worker controls its first launch.
     const launchedHausdepp = new URL(location.href).searchParams.get("pwa") === "hausdepp";
+    const launchedWatten = localWattenHost() && new URL(location.href).searchParams.get("pwa") === "watten";
     const controlledHausdepp = navigator.serviceWorker?.controller?.scriptURL?.includes("/hausdepp-sw.js");
-    try {
-      const saved = sessionStorage.getItem(INSTALLED_ENTRY_KEY);
-      const entry = launchedHausdepp ? "hausdepp" : ["zdwa", "zilch", "hausdepp"].includes(saved) ? saved
-        : controlledHausdepp || location.hostname.toLowerCase() === HAUSDEPP_HOSTNAME ? "hausdepp" : isZilchOrigin() ? "zilch" : "zdwa";
-      sessionStorage.setItem(INSTALLED_ENTRY_KEY, entry);
-      return entry;
-    } catch {
-      if (launchedHausdepp || controlledHausdepp || location.hostname.toLowerCase() === HAUSDEPP_HOSTNAME) return "hausdepp";
-      return isZilchOrigin() ? "zilch" : "zdwa";
+    const controlledWatten = localWattenHost() && navigator.serviceWorker?.controller?.scriptURL?.includes("/watten-sw.js");
+    let saved = null;
+    try { saved = sessionStorage.getItem(INSTALLED_ENTRY_KEY); } catch {
+      // Product identity only: retain it across same-origin navigation even
+      // when storage is disabled and a narrow account worker takes control.
+      if (window.name.startsWith(WINDOW_ENTRY_PREFIX)) saved = window.name.slice(WINDOW_ENTRY_PREFIX.length);
     }
+    const entry = launchedWatten ? "watten" : launchedHausdepp ? "hausdepp"
+      : ["zdwa", "zilch", "hausdepp", ...(localWattenHost() ? ["watten"] : [])].includes(saved) ? saved
+        : controlledWatten ? "watten"
+          : controlledHausdepp || location.hostname.toLowerCase() === HAUSDEPP_HOSTNAME ? "hausdepp" : isZilchOrigin() ? "zilch" : "zdwa";
+    try { sessionStorage.setItem(INSTALLED_ENTRY_KEY, entry); } catch {}
+    window.name = WINDOW_ENTRY_PREFIX + entry;
+    return entry;
   }
 
   function ensureManifest(product) {
@@ -214,7 +222,7 @@
     link.rel = "manifest";
     link.href = manifestUrl.href;
     link.dataset.pwaProduct = product;
-    if (product === "hausdepp") link.crossOrigin = "use-credentials";
+    if (["hausdepp", "watten"].includes(product)) link.crossOrigin = "use-credentials";
     else link.removeAttribute("crossorigin");
     if (!link.isConnected) document.head.append(link);
   }
@@ -260,6 +268,14 @@
   const isHausdeppDocument = document.documentElement.dataset.game === "hausdepp"
     || document.documentElement.dataset.hausdeppLogin === "true";
   const entry = installedEntry();
+  if (entry === "watten" && localWattenHost()) {
+    // Manifest scope keeps suite/recovery navigation inside the installed app;
+    // the account worker itself never expands beyond the new Watten paths.
+    ensureManifest("watten");
+    setupPwaLifecycle({ installDismissKey: "watten_install_prompt_dismissed", workerUrl: "/watten-sw.js",
+      globalName: "WATTEN_PWA", scope: "/watten" });
+    return;
+  }
   if (entry === "hausdepp" || (isHausdeppDocument && !entry)) {
     ensureManifest("hausdepp");
     setupPwaLifecycle({
@@ -271,6 +287,13 @@
     return;
   }
   if (isHausdeppDocument && entry === "zdwa") ensureManifest("zdwa");
+  if (entry === "zilch" && localWattenHost()) {
+    // An opted-in Watten page can live inside this existing local Zilch app.
+    // Its saved owner must still win when returning to Zilch's own pages.
+    ensureZilchManifest();
+    setupPwaLifecycle({ installDismissKey: "zilch_install_prompt_dismissed", workerUrl: "/zilch-sw.js", globalName: "ZILCH_PWA" });
+    return;
+  }
   // The Apex `/zilch` handoff stays entirely under its already-installed ZDWA
   // worker. Only Zilch's own host (including the narrow ZDWA bridge) owns the
   // isolated Zilch worker.

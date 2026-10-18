@@ -1,0 +1,35 @@
+{
+  "purpose": "Gestaltungsreferenz zur Dokumentation, kein Produktasset und keine Kopiervorlage",
+  "website": "https://www.ultra-watten.com/online-spielen",
+  "recorded_date": "2026-10-17",
+  "files": [
+    {
+      "file": "ultrawatten-varianten-owner-2026-10-17.png",
+      "provenance": "Vom Owner angehängt: Variantendialog",
+      "source_filename": "codex-clipboard-8c6abc12-9aa3-4c75-9942-e80731aaf44d.png",
+      "bytes": 78523,
+      "sha256": "1b88b675778073808058015f6f18259c0c327c0517f248257c4ecb1c9fc25a7b"
+    },
+    {
+      "file": "ultrawatten-neues-spiel-owner-2026-10-17.png",
+      "provenance": "Vom Owner angehängt: Neues Spiel",
+      "source_filename": "codex-clipboard-117a692e-81fe-4c82-bb22-7f68dc68ca01.png",
+      "bytes": 179473,
+      "sha256": "6bd5481dedbb6cd8dd0b1e3c6de2c6658513184a5adef7aa045b6b561bb28318"
+    },
+    {
+      "file": "ultrawatten-spieltisch-owner-2026-10-17.png",
+      "provenance": "Vom Owner angehängt: Spieltisch",
+      "source_filename": "codex-clipboard-a612e6c9-25e8-4fc9-80a7-3f34fc1d7136.png",
+      "bytes": 978644,
+      "sha256": "614cf7897d8c6479fe69eb8c58bf0f2e69aa68e1f36cf9a74ff28b23025cff13"
+    },
+    {
+      "file": "ultrawatten-varianten-live-2026-10-17.png",
+      "provenance": "Browserbeobachtung am 17.10.2026: Variantendialog",
+      "source_filename": "ultrawatten-live-varianten-2026-10-17.png",
+      "bytes": 86571,
+      "sha256": "68d2e6e6f4b6a43c83fc6c129a3d980b6c6eb94cf278b9a24a58e12a7a49e8e1"
+    }
+  ]
+}

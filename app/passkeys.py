@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session as DatabaseSession
 
 from .models import PasskeyCredential, PasskeySignupCeremony, User, WebAuthnCeremony
 from .models import Session as LoginSession
-from .product_hosts import HAUSDEPP_ORIGIN, site_origin, zilch_origin
+from .product_hosts import HAUSDEPP_ORIGIN, WATTEN_ORIGIN, site_origin, zilch_origin
 from .security import (
     as_utc,
     has_password,
@@ -157,6 +157,8 @@ def passkey_config() -> PasskeyConfig:
     # test/local RPs or derive a new WebAuthn audience from request headers.
     if _hostname(HAUSDEPP_ORIGIN) == f"hausdepp.{rp_id}":
         origins = tuple(dict.fromkeys((*origins, HAUSDEPP_ORIGIN)))
+    if _hostname(WATTEN_ORIGIN) == f"watten.{rp_id}":
+        origins = tuple(dict.fromkeys((*origins, WATTEN_ORIGIN)))
     for origin in origins:
         _validate_secure_origin(origin)
         host = _hostname(origin)

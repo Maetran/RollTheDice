@@ -126,6 +126,37 @@ test('suite switch reaches ZDWA and returns to the public Hausdepp lobby', async
   await expect(page.locator('#hausdeppCreateForm')).toBeVisible();
 });
 
+test('suite switch is visibly disabled while the second auth refresh is pending', async ({ page }) => {
+  await owner(page);
+  let authRequests = 0;
+  let refreshHeld = false;
+  let releaseRefresh;
+  const pendingRefresh = new Promise(resolve => { releaseRefresh = resolve; });
+  await page.route('**/api/auth/me', async route => {
+    if (++authRequests === 2) {
+      refreshHeld = true;
+      await pendingRefresh;
+    }
+    await route.continue();
+  });
+  try {
+    await page.goto('/hausdepp/konto');
+    await expect.poll(() => refreshHeld).toBe(true);
+    const switchButton = page.locator('[data-game-switch]');
+    await expect(switchButton).toBeVisible();
+    await expect(switchButton).toBeDisabled();
+    await expect(page.locator('#suiteGameMenu')).toHaveCount(0);
+
+    releaseRefresh();
+    await expect(switchButton).toBeEnabled();
+    await switchButton.click();
+    await page.locator('#suiteGameMenu').getByRole('link', { name: 'ZDWA', exact: true }).click();
+    await expect(page).toHaveURL(/\/$/);
+  } finally {
+    releaseRefresh();
+  }
+});
+
 test('waiting table retains real seats and the lobby resumes the same account seat', async ({ page }) => {
   const headers = await owner(page);
   const created = await page.request.post('/api/games', {

@@ -1,4 +1,4 @@
-import { hausdeppAccountReturnPath } from "../multigame/routes.js";
+import { hausdeppAccountReturnPath, wattenAccountReturnPath } from "../multigame/routes.js";
 import { adminProfileMarkup, avatarMarkup } from "./avatar.js";
 import { createPasskeyCredential, requestPasskeyAssertion, passkeysSupported } from "./passkeys.js";
 
@@ -404,6 +404,10 @@ export async function mountPasskeySettings(container, { zilch = false } = {}) {
 }
 
 function accountPresentationContext() {
+  if (document.documentElement.dataset.game === 'watten') {
+    const candidate = wattenAccountReturnPath(new URLSearchParams(location.search).get('return_to'));
+    return { account_app: 'watten', return_to: candidate || '/watten/konto/einstellungen' };
+  }
   const house = document.documentElement.dataset.game === 'hausdepp' || document.documentElement.dataset.hausdeppLogin === 'true';
   if (!house) return {};
   const candidate = hausdeppAccountReturnPath(new URLSearchParams(location.search).get('return_to'));

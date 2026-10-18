@@ -23,6 +23,21 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 3.12.1 — Zuverlässiger Spielwechsel / reliable game switching — 2026-10-18
+
+**Deutsch:** Auf Kontoseiten bleibt der Spielwechsler sichtbar deaktiviert,
+bis die Anmeldung geprüft ist. Dadurch verschluckt er keinen frühen Klick
+mehr. Öffentliche Spielübersichten bleiben sofort bedienbar. Die feste
+Watten-Domain erhält eine geschlossene Hostgrenze für HTTP und WebSockets;
+sie liefert während der Vorbereitung keine fremde Spiel- oder Kontoansicht,
+kein Manifest und keinen Worker. Watten ist damit noch nicht spielbar.
+
+**English:** On account pages, the game switch stays visibly disabled until
+sign-in has been checked, so it no longer loses an early click. Public game
+lobbies remain immediately usable. The fixed Watten domain gains a closed
+HTTP and WebSocket boundary. During preparation it cannot serve another
+game, account view, manifest or worker. Watten is not playable yet.
+
 ## 3.12.0 — Hausdepp: seltene Funde sammeln / collecting rare finds — 2026-10-18
 
 ### Deutsch

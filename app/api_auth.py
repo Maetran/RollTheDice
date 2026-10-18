@@ -104,7 +104,7 @@ class RegisterRequest(BaseModel):
     password: str | None = Field(default=None, min_length=1, max_length=256)
     turnstile_token: str | None = Field(default=None, max_length=4096)
     preferred_language: Literal["de", "en"] = "de"
-    account_app: Literal["zdwa", "hausdepp"] = "zdwa"
+    account_app: Literal["zdwa", "hausdepp", "watten"] = "zdwa"
     return_to: str | None = Field(default=None, max_length=2048)
 
 
@@ -120,7 +120,7 @@ class TokenInspectionRequest(BaseModel):
 class PasswordResetRequest(BaseModel):
     email: str = Field(min_length=1, max_length=254)
     preferred_language: Literal["de", "en"] = "de"
-    account_app: Literal["zdwa", "hausdepp"] = "zdwa"
+    account_app: Literal["zdwa", "hausdepp", "watten"] = "zdwa"
     return_to: str | None = Field(default=None, max_length=2048)
 
 
@@ -130,7 +130,7 @@ class PasswordResetCompletionRequest(BaseModel):
 
 
 class AccountEmailRequest(AccountConfirmation):
-    account_app: Literal["zdwa", "hausdepp"] = "zdwa"
+    account_app: Literal["zdwa", "hausdepp", "watten"] = "zdwa"
     email: str = Field(min_length=3, max_length=254)
 
 
@@ -264,6 +264,7 @@ def auth_login(payload: LoginRequest, request: Request, response: Response):
 @router.post("/auth/register", status_code=status.HTTP_202_ACCEPTED)
 def auth_register(payload: RegisterRequest, request: Request, response: Response, background_tasks: BackgroundTasks):
     validate_request_origin(request)
+    account_app = account_app_context(request, payload.account_app)
     enforce_registration_rate_limit(request)
     verify_registration_challenge(request, payload.turnstile_token)
     try:
@@ -288,7 +289,7 @@ def auth_register(payload: RegisterRequest, request: Request, response: Response
             username=payload.username,
             email=payload.email,
             preferred_language=payload.preferred_language,
-            account_app=account_app_context(request, payload.account_app), return_to=payload.return_to,
+            account_app=account_app, return_to=payload.return_to,
             delivery=lambda **message: background_tasks.add_task(send_account_email_safely, **message),
         )
     except (EmailDeliveryUnavailable, EmailDeliveryFailed) as exc:

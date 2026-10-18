@@ -237,3 +237,8 @@ export function hausdeppSignInUrl(returnTo = "/hausdepp", { register = false } =
   const destination = normalizeHausdeppPageUrl(String(returnTo).split("#", 1)[0]) || "/hausdepp";
   return `/hausdepp/anmelden?return_to=${encodeURIComponent(destination)}${register ? "#zilchRegistrationForm" : ""}`;
 }
+
+/** The local account preview has no game destinations or nested handoffs. */
+export function wattenAccountReturnPath(value) {
+  return ["/watten", "/watten/konto", "/watten/konto/einstellungen"].includes(value) ? value : null;
+}

@@ -1,0 +1,812 @@
+{
+  "schema_version": 1,
+  "source": "WATTEN_IMPLEMENTATION_PLAN.md",
+  "date": "2026-10-18",
+  "scope": "All 81 findings remain required; partial groundwork does not close a finding.",
+  "findings": [
+    {
+      "id": "S01",
+      "summary": "Öffentlicher Einstieg ohne Konto und bei gestörter Identitätsabfrage",
+      "packages": [
+        "P0",
+        "P1",
+        "P8"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "S02",
+      "summary": "Native Anmeldung und Kontoeinstellungen trotz gemeinsamem Konto",
+      "packages": [
+        "P1"
+      ],
+      "status": "partial",
+      "evidence": [
+        "Native local account journeys in 9bda650: shared identity/settings, signup/sign-in, six DE/EN browser cases. Public product journey remains open."
+      ]
+    },
+    {
+      "id": "S03",
+      "summary": "Passkey-Ursprünge ausdrücklich erlauben",
+      "packages": [
+        "P0",
+        "P1"
+      ],
+      "status": "partial",
+      "evidence": [
+        "Fixed Watten origin allowed only beneath matching configured RP; real software signatures and local browser ceremonies verified. Public deployment/PWA remains open."
+      ]
+    },
+    {
+      "id": "S04",
+      "summary": "Produktkontext in Recovery- und E-Mail-Links",
+      "packages": [
+        "P1"
+      ],
+      "status": "partial",
+      "evidence": [
+        "Finite local Watten recovery context and fragment tokens, no production mail links before activation; source 9bda650 and isolated mailed-token tests. Public product origin flow remains open."
+      ]
+    },
+    {
+      "id": "S05",
+      "summary": "Logout gegen parallele 401-Antwort absichern",
+      "packages": [
+        "P1"
+      ],
+      "status": "partial",
+      "evidence": [
+        "Native logout uses one auth-state navigation; deterministic late-401 browser flow passed. Public Watten journey remains open."
+      ]
+    },
+    {
+      "id": "S06",
+      "summary": "Konto-Wechsel entfernt montierte private Inhalte",
+      "packages": [
+        "P1",
+        "P4"
+      ],
+      "status": "partial",
+      "evidence": [
+        "Local account-switch mutation and BFCache regressions reproduced/guarded in 9bda650. Future table hand/team/knowledge invalidation remains open."
+      ]
+    },
+    {
+      "id": "S07",
+      "summary": "Spielwechsel im Browser und in installierten Apps",
+      "packages": [
+        "P1",
+        "P8"
+      ],
+      "status": "partial",
+      "evidence": [
+        "Local PWA source 36e258b and test-isolation fix a1bbfe5: 17 account/real-worker cases plus 19 installed-identity isolation cases pass without retries in the isolated author worktree. Public game switching and physical installed-device acceptance remain open."
+      ]
+    },
+    {
+      "id": "S08",
+      "summary": "Sitzanzahl, CPUs und Start als getrennte Konzepte",
+      "packages": [
+        "P2"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "S09",
+      "summary": "Hausdepp-Sitzreihenfolge nicht als Watten-Teammodell übernehmen",
+      "packages": [
+        "P0",
+        "P2"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "S10",
+      "summary": "CPU-Sitzersatz mit Reservationsvorrang",
+      "packages": [
+        "P2"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "S11",
+      "summary": "Kontofavoriten ohne Raumgeheimnisse",
+      "packages": [
+        "P0",
+        "P2"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "S12",
+      "summary": "Geschützte Tischlinks enthalten kein Passwort",
+      "packages": [
+        "P2"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "S13",
+      "summary": "Warteraum verlassen, Verbindung verlieren und abbrechen unterscheiden",
+      "packages": [
+        "P2"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "S14",
+      "summary": "Eigene dauerhafte Ablaufuhr für Warteräume",
+      "packages": [
+        "P2"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "S15",
+      "summary": "Kontogebundener Rejoin vor Kapazitätsprüfung",
+      "packages": [
+        "P2",
+        "P3"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "S16",
+      "summary": "Eigene informationsarme Zuschauerprojektion",
+      "packages": [
+        "P3",
+        "P4"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "S17",
+      "summary": "Gemeinsamer Folgetisch nur mit ausdrücklicher Annahme",
+      "packages": [
+        "P2"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "S18",
+      "summary": "Dauerhafte Folgetisch-Rezepte ohne erneute Wertung",
+      "packages": [
+        "P2",
+        "P6"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "S19",
+      "summary": "Reservation, Ablehnung und späteren Join unterscheiden",
+      "packages": [
+        "P2"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "S20",
+      "summary": "Optionale Einladungen unterbrechen keine aktive Interaktion",
+      "packages": [
+        "P2",
+        "P4"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "S21",
+      "summary": "Teilen, persönliche Einladung und allgemeiner Spielerruf trennen",
+      "packages": [
+        "P2",
+        "P7"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "S22",
+      "summary": "Geräteberechtigung ist kein Kategorieopt-in",
+      "packages": [
+        "P1",
+        "P7"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "S23",
+      "summary": "Reminder, Freundestarts und Settingssprache vollständig integrieren",
+      "packages": [
+        "P7",
+        "P8"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "S24",
+      "summary": "PWA-Identität über Manifest hinaus abnehmen",
+      "packages": [
+        "P7",
+        "P8"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "S25",
+      "summary": "Sichtbare Hilfe vor langsamen Einstellungen binden",
+      "packages": [
+        "P1",
+        "P4",
+        "P7"
+      ],
+      "status": "partial",
+      "evidence": [
+        "Existing picker race fixed in cac1aab; deterministic old-source failure and 14 passing focused browser tests. Watten-specific help/team UI remains open."
+      ]
+    },
+    {
+      "id": "S26",
+      "summary": "SEO- und Navigationsregister als Lieferbestandteil",
+      "packages": [
+        "P1",
+        "P8"
+      ],
+      "status": "partial",
+      "evidence": [
+        "Staged host boundary beaa32c and explicit reserved-host navigation mapping; public Watten routes/SEO remain open."
+      ]
+    },
+    {
+      "id": "S27",
+      "summary": "Offene Rematch-Rezeptfrage bei neuer flexibler Lobby",
+      "packages": [
+        "P0",
+        "P2"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "S28",
+      "summary": "Hausdepp-Freundestarts fehlen in Browser-Zielmatrix",
+      "packages": [
+        "P7",
+        "P8"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "S29",
+      "summary": "Dokumentationsnachlauf zu Hausdepp-Remindern",
+      "packages": [
+        "P7",
+        "P8"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "B01",
+      "summary": "Hausregeln als ausführbare, versionierte Domäne",
+      "packages": [
+        "P0",
+        "P3"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "B02",
+      "summary": "Regelumsetzung und aktive Spielerhandlung getrennt prüfen",
+      "packages": [
+        "P0",
+        "P3",
+        "P4"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "B03",
+      "summary": "Gleichzeitige Handlungen brauchen fachliche Konfliktklassen",
+      "packages": [
+        "P0",
+        "P3"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "B04",
+      "summary": "Sitzreihenfolge kann Zufallsrollen unbeabsichtigt verzerren",
+      "packages": [
+        "P0",
+        "P2",
+        "P3"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "B05",
+      "summary": "Autorität nach dem Warten auf die Spielsperre erneut prüfen",
+      "packages": [
+        "P3"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "B06",
+      "summary": "Wiederholungsschutz und wiederholbare Bestätigung sind verschiedene Verträge",
+      "packages": [
+        "P0",
+        "P3",
+        "P6"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "B07",
+      "summary": "Datenschutz durch Projektionen und echten Fanout beweisen",
+      "packages": [
+        "P3",
+        "P4"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "B08",
+      "summary": "CPU und Tipps erhalten nur das Wissen ihres Sitzes",
+      "packages": [
+        "P3",
+        "P5"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "B09",
+      "summary": "CPU-Timing braucht unabhängige Fristen und Neuberechnung",
+      "packages": [
+        "P3",
+        "P5"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "B10",
+      "summary": "Legalität allein reicht für die CPU-Abnahme nicht",
+      "packages": [
+        "P5"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "B11",
+      "summary": "Sanftere Stärke darf sichere Abschlüsse nicht zerstören",
+      "packages": [
+        "P5"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "B12",
+      "summary": "Benchmarks müssen echte Produktionsparameter und Referenzen verwenden",
+      "packages": [
+        "P5"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "B13",
+      "summary": "Invarianten und serialisierte Wiederaufnahme über ganze Partien",
+      "packages": [
+        "P3"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "B14",
+      "summary": "Finalisierung vor Abschluss-Broadcast; Terminalzustand bis dauerhafter Buchung behalten",
+      "packages": [
+        "P6"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "B15",
+      "summary": "Runde, Partie, Turnier und Tisch sind verschiedene Identitäten",
+      "packages": [
+        "P0",
+        "P6"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "B16",
+      "summary": "Erfolge aus bewiesenen Ereignissen; fehlende Historie ist kein Beweis",
+      "packages": [
+        "P6"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "B17",
+      "summary": "XP, Grantgeneration und Anzeigequittung getrennt modellieren",
+      "packages": [
+        "P0",
+        "P6"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "B18",
+      "summary": "Rundenwert ist nicht der kumulierte Kontowert",
+      "packages": [
+        "P6"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "B19",
+      "summary": "Private Historie braucht echte Mitgliedschaft und stabile Pagination",
+      "packages": [
+        "P6"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "B20",
+      "summary": "Langzeitprogression und lokale Zeit explizit testen",
+      "packages": [
+        "P0",
+        "P6"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "U01",
+      "summary": "Identische Kartendesigns wiederverwenden, fertige Asset-Pipeline übernehmen",
+      "packages": [
+        "P4"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "U02",
+      "summary": "Lizenz und sichtbare Kartennamen gehören zur Wiederverwendung",
+      "packages": [
+        "P0",
+        "P4",
+        "P8"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "U03",
+      "summary": "Bilder müssen dekodiert sein, bevor ein privater Tisch spielbereit wird",
+      "packages": [
+        "P4"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "U04",
+      "summary": "Öffentliche Bildbytes und private Spielzustände brauchen unterschiedliche Cachewege",
+      "packages": [
+        "P4",
+        "P8"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "U05",
+      "summary": "Fliegende Karten müssen die tatsächliche Papiergrösse und Drehung behalten",
+      "packages": [
+        "P4"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "U06",
+      "summary": "Ein Tap darf genau eine visuelle Karte erzeugen, deren Serverbestätigung dieselbe Bewegung fortsetzt",
+      "packages": [
+        "P4"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "U07",
+      "summary": "Akzeptierter Spielstand muss sofort sichtbar werden; Lesbarkeitsanimation darf ihn nicht verdecken",
+      "packages": [
+        "P4"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "U08",
+      "summary": "Schnelle Folgetaps niemals als Handlung in einer neuen Gelegenheit wiederverwenden",
+      "packages": [
+        "P3",
+        "P4"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "U09",
+      "summary": "Lesbarkeit des Stichabschlusses ist eine Präsentationsaufgabe, kein Eingabe-Lock",
+      "packages": [
+        "P4"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "U10",
+      "summary": "Reload, Reconnect und neue Runde sind verschiedene Animationsfälle",
+      "packages": [
+        "P4"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "U11",
+      "summary": "DOM-Identität ist Spielstabilität: ACK und Chat dürfen keine ankommenden Karten neu montieren",
+      "packages": [
+        "P4"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "U12",
+      "summary": "Gegnerhände brauchen öffentliche Mengen und anonyme Rückseiten, keine erfundenen Identitäten",
+      "packages": [
+        "P4"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "U13",
+      "summary": "Für blindes Watten dürfen Komfortsignale das Geheimnis nicht verraten",
+      "packages": [
+        "P0",
+        "P3",
+        "P4"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "U14",
+      "summary": "Überlappende Karten dürfen keine Taps an die darunterliegende Nachbarkarte durchreichen",
+      "packages": [
+        "P4"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "U15",
+      "summary": "Mobile Geometrie muss Tisch, Tastatur und sekundäre Sheets gemeinsam abdecken",
+      "packages": [
+        "P4"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "U16",
+      "summary": "Deaktivierte Aktion darf öffentlich sichtbare Karten und Informationen nicht ausbleichen",
+      "packages": [
+        "P4"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "U17",
+      "summary": "Langes Halten, Kontextmenü und Dialogschliessen dürfen keinen versteckten Spielzug auslösen",
+      "packages": [
+        "P0",
+        "P4"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "U18",
+      "summary": "Tischdeko und Reaktionen sind spätere Produktwünsche mit eigenen Spielschutzverträgen",
+      "packages": [
+        "P0",
+        "P4"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "U19",
+      "summary": "Kommunikationsfunktionen müssen zum Watten-Ansagezustand passen",
+      "packages": [
+        "P0",
+        "P3",
+        "P4"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "U20",
+      "summary": "Rematch muss bewusst sein und darf Teamwahl nicht stillschweigend ersetzen",
+      "packages": [
+        "P2",
+        "P4"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "U21",
+      "summary": "Zufallsänderungen und bessere CPUs entwerten alte Testannahmen, nicht automatisch das Produkt",
+      "packages": [
+        "P3",
+        "P4",
+        "P5"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "O01",
+      "summary": "Produktionsimage muss sämtliche ausgelieferten Dateien enthalten",
+      "packages": [
+        "P8"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "O02",
+      "summary": "Host-Aktivierung braucht überprüfte Bereitschaft nach Reload",
+      "packages": [
+        "P0",
+        "P8"
+      ],
+      "status": "partial",
+      "evidence": [
+        "Closed infrastructure activated 2026-10-18 16:30:55 Europe/Zurich; separate verified TLS and renewal, rollback ownership, all old hosts healthy. Public game route/release remains open."
+      ]
+    },
+    {
+      "id": "O03",
+      "summary": "Versionen auf tatsächlich ausgelieferte Revisionen beziehen",
+      "packages": [
+        "P8"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "O04",
+      "summary": "Testserver, Konten und Ratenlimits müssen isoliert sein",
+      "packages": [
+        "P8"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "O05",
+      "summary": "Beobachteten Browserzustand mit derselben Darstellung vergleichen",
+      "packages": [
+        "P3",
+        "P4",
+        "P8"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "O06",
+      "summary": "Ein exakter vollständiger Nachweis statt verstreuter Teilprüfungen",
+      "packages": [
+        "P8"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "O07",
+      "summary": "Technische Emulation und echte Geräteabnahme auseinanderhalten",
+      "packages": [
+        "P8"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "O08",
+      "summary": "Früh einen vollständigen Produktablauf abnehmen",
+      "packages": [
+        "P0",
+        "P1",
+        "P8"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "O09",
+      "summary": "Prüfpartien dürfen persönliche Ergebnisse nicht verunreinigen",
+      "packages": [
+        "P8"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "O10",
+      "summary": "Dokumentation und Nachweise müssen denselben Produktstand beschreiben",
+      "packages": [
+        "P8"
+      ],
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "O11",
+      "summary": "Ein neuer Spieladapter erweitert nicht automatisch alle Suite-Register",
+      "packages": [
+        "P1",
+        "P7",
+        "P8"
+      ],
+      "status": "partial",
+      "evidence": [
+        "WATTEN_P1_CONTRACTS.md inventories independent suite registries. Their actual Watten integration remains open."
+      ]
+    }
+  ]
+}

@@ -9,6 +9,9 @@ DEFAULT_SITE_ORIGIN = "https://zockdiewandan.online"
 DEFAULT_ZILCH_ORIGIN = "https://zilch.zockdiewandan.online"
 HAUSDEPP_PREVIEW_HOST = "hausdepp.zockdiewandan.online"
 HAUSDEPP_ORIGIN = f"https://{HAUSDEPP_PREVIEW_HOST}"
+WATTEN_HOST = "watten.zockdiewandan.online"
+WATTEN_ORIGIN = f"https://{WATTEN_HOST}"
+WATTEN_ACCOUNT_PATHS = frozenset({"/watten", "/watten/konto", "/watten/konto/einstellungen"})
 
 _ZILCH_EXACT_PATHS = frozenset(
     {
@@ -128,6 +131,24 @@ def is_hausdepp_host(connection) -> bool:
     return request_hostname(connection) == HAUSDEPP_PREVIEW_HOST
 
 
+def is_watten_host(connection) -> bool:
+    """Keep the staged host closed, including ambiguous Host header forms.
+
+    Nginx supplies the validated Host and rejects ambiguous requests. Checking
+    every raw value also closes the boundary in direct ASGI tests; forwarded
+    host headers never establish product identity.
+    """
+    for value in connection.headers.getlist("host"):
+        for candidate in value.split(","):
+            try:
+                hostname = urlsplit(f"//{candidate.strip()}").hostname or ""
+            except ValueError:
+                continue
+            if hostname.casefold().rstrip(".") == WATTEN_HOST:
+                return True
+    return False
+
+
 def is_site_host(connection) -> bool:
     return request_hostname(connection) == _origin_hostname(site_origin())
 
@@ -178,3 +199,8 @@ def safe_hausdepp_path(value: str | None) -> str:
 
 def hausdepp_url(path: str | None = "/hausdepp") -> str:
     return f"{HAUSDEPP_ORIGIN}{safe_hausdepp_path(path)}"
+
+
+def safe_watten_account_path(value: str | None) -> str:
+    """Only concrete account-preview destinations, without nested redirects."""
+    return value if isinstance(value, str) and value in WATTEN_ACCOUNT_PATHS else "/watten"

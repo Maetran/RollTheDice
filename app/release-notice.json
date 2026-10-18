@@ -1,27 +1,25 @@
 {
   "kind": "usability",
   "games": [
+    "zdwa",
+    "zilch",
     "hausdepp"
   ],
-  "summary_de": "Hausdepp: 20 neue Erfolge fürs Auslösen und Miterleben seltener Tischfunde.",
-  "summary_en": "Hausdepp: 20 new achievements for triggering and witnessing rare table finds.",
+  "summary_de": "Der Spielwechsler wird aktiv, sobald deine Anmeldung geprüft ist. So geht der erste Klick zuverlässig durch.",
+  "summary_en": "The game switch becomes active once your sign-in has been checked, so your first click works reliably.",
   "player_notes": {
     "de": {
-      "title": "Hausdepp 3.12: Das Kuriositätenkabinett wartet",
+      "title": "Zuverlässig zwischen Spielen wechseln",
       "changes": [
-        "Sammle die acht seltenen Funde in zwei Reihen: selbst ausgelöst und gemeinsam miterlebt. Wer auslöst, sammelt beides.",
-        "Einzelfunde geben 50 beziehungsweise 25 EP. Vier verschiedene bringen zusätzlich 100/50 EP, alle acht zusätzlich 500/250 EP.",
-        "Beim Auslösen müssen mindestens zwei Menschen verbunden mitspielen. Die Runde muss regulär abgeschlossen werden.",
-        "Neue Abzeichen zeigen beide Sammlungen im Konto und Erfolgsfeed. Gleiche Funde und Wiederholungen geben keine doppelten Punkte."
+        "Beim Öffnen einer Kontoseite zeigt der Spielwechsler jetzt klar, wann er bereit ist.",
+        "Sobald er aktiv ist, öffnet dein erster Klick die Spielauswahl."
       ]
     },
     "en": {
-      "title": "Hausdepp 3.12: Your cabinet of curiosities awaits",
+      "title": "Switch games reliably",
       "changes": [
-        "Collect the eight rare finds in two tracks: trigger them yourself and witness them together. The activator collects both.",
-        "Single finds grant 50 and 25 XP. Four different finds add 100/50 XP; all eight add another 500/250 XP.",
-        "At least two humans must be connected when a find is triggered, and the round must finish normally.",
-        "New badges show both collections in your account and achievement feed. Repeated finds and retries never duplicate points."
+        "When you open an account page, the game switch now clearly shows when it is ready.",
+        "Once it becomes active, your first click opens the game selection."
       ]
     }
   }

@@ -1158,6 +1158,16 @@ export const HAUSDEPP_MESSAGES = {
 };
 
 export const EN = {
+    "Lokale Kontovorschau: Das Watten-Spiel ist noch nicht verfügbar.": "Local account preview: the Watten game is not available yet.",
+    "Kontovorschau installieren": "Install account preview",
+    "Kontovorschau aktualisieren": "Update account preview",
+    "Bei Watten anmelden": "Sign in to Watten",
+    "Watten – Dein Spielerkonto": "Watten – Your player account",
+    "Watten ist noch nicht verfügbar. Dein Konto kannst du hier verwalten.": "Watten is not available yet. You can manage your account here.",
+    "Für Anmeldung und Kontoeinstellungen brauchst du JavaScript.": "You need JavaScript to sign in and manage your account settings.",
+    "Dein gemeinsames Spielerkonto: Anmeldung, Passkeys, Profil, Sprache und sichere Wiederherstellung.": "Your shared player account: sign-in, passkeys, profile, language and secure recovery.",
+    "Bestätige dein gemeinsames Spielerkonto, deine E-Mail-Adresse oder setze dein Passwort sicher zurück.": "Confirm your shared player account or email address, or securely reset your password.",
+    "Gespeichert.": "Saved.",
   "Einsteigertouren": "Beginner tours",
   "Beim ersten eigenen Spiel wird dir eine freiwillige kurze Tour angeboten. Sie erklärt passende Aktionen direkt am Spieltisch und lässt sich jederzeit mit Tour beenden, × oder Escape schliessen. Deine Partie läuft weiter.": "Your first game as a player offers a short, optional tour. It explains relevant actions at the table. Close it at any time with End tour, × or Escape; your game continues.",
   "Unter Konto → Einstellungen → Hilfe & Neuigkeiten → Einsteigertouren kannst du die Tour erneut starten, als Beispiel anschauen oder automatische Angebote ausschalten. Als Gast findest du Einsteigertouren unter Einstellungen in der Lobby; deine Wahl bleibt in diesem Browser.": "Under Account → Settings → Help & updates → Beginner tours, you can restart a tour, view examples or switch off automatic offers. Guests find Beginner tours under Settings in the lobby; their choice stays in this browser.",
