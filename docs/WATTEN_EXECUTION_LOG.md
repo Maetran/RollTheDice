@@ -871,3 +871,22 @@ der gezielte Gegenlauf ist grün. Belege liegen unter
 `test-results/browser/watten-owner-preview-logout-fix/`.
 Ein weiterer vollständiger Lauf auf dem finalen sauberen Commit folgt vor
 Push und Release.
+
+
+Der dritte vollständige Lauf `5adf3b8` bestand Qualität, Tools,2535 Backendfälle,
+Produktionsimage und Container-Smoke. Alle sieben Browserteile liefen fertig;
+ein Fortschrittstest scheiterte beim zweiten Tisch. Der Trace belegt, dass
+seine Mitgliedschafts-Polls noch vor Beginn der neuen WebSockets erfolgreich
+waren: Die gespeicherte Projektion des ersten Tisches genügte dem alten
+Helfer. Ein Sitzklick während des neuen Beitritts wurde vom Server korrekt
+als veraltete Revision abgelehnt. Kein Produkt-Retry oder gelockerter Guard.
+Der rote Originalbericht unter
+`test-results/local-checks/5adf3b811a3a-1792358452264-54a10e6d/` bleibt erhalten.
+
+Der Helfer wartet jetzt ausdrücklich auf die neue Spiel-ID, echte Mitgliedschaft,
+die vollständige gleiche Teilnehmermenge und dieselbe aktuelle Raumrevision
+aller Empfänger. Der sichtbare Mitgliederstand bestätigt die Darstellung vor
+dem nächsten Sitzschritt; nach Bestätigung wird vor dem nächsten Akteur erneut
+abgeglichen. Der betroffene echte Browserfall besteht gezielt unter
+`test-results/browser/watten-current-room-bindings/`. Der finale vollständige
+Nachweis bleibt weiterhin vor jedem Push und Release erforderlich.
