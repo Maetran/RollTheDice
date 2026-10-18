@@ -50,6 +50,23 @@ er veröffentlicht die Anwendung nicht.
    tatsächlichen Deploy-Commit. Ein dringender Hotfix beginnt auf `master`,
    erhält einen Patch-Release und fliesst danach ebenfalls nach `develop` zurück.
 
+**CI-Nachweis für die Releasefreigabe:** Vor dem Push nach `master` muss der
+`develop`-Push-Lauf des exakten Commits grün sein:
+
+```bash
+gh run list --workflow quality.yml --branch develop --event push --commit "$(git rev-parse origin/develop)"
+```
+
+Der `master`-Lauf desselben Commits prüft im Job **Release evidence** über die
+GitHub-API dieselben Bedingungen erneut. Er verlangt denselben Workflow und dasselbe
+Repository, ausschliesslich grüne `develop`-Läufe dieses Commits und darin jeden
+Prüfjob sowie **Quality result** grün. Ausserdem muss der Commit noch in `develop`
+enthalten sein und der Push ohne Force erfolgen. Nur dann überspringt der Lauf die
+Prüfjobs. **Quality result** nennt und verlinkt den wiederverwendeten Lauf. Fehlt
+ein Nachweis oder ist er unklar, läuft automatisch die vollständige Prüfung. Das
+gilt auch für einen neuen Merge-Commit oder einen noch laufenden `develop`-Lauf.
+Für das Deployment zählt das grüne **Quality result** des `master`-Laufs.
+
 Eine Feature-Integration ist noch kein Release. Versionsmetadaten und der
 gemeinsame Hinweis müssen zum geplanten Release passen; parallele Agenten
 dürfen nicht unabhängig dieselbe neue Version oder Migrationsrevision vergeben.
@@ -84,8 +101,15 @@ Coordinate versions,
 release notes, migration IDs and generated assets when integrating. A develop
 push runs CI without publishing the app. After the combined revision passes CI
 and the release is approved, promote it to `master` by fast-forward or a normal
-merge, preserving referenced commits and release tags. Verify and deploy the
-actual master revision, then tag the successful rollout. Bring release merges
+merge, preserving referenced commits and release tags. Before pushing `master`,
+confirm with the `gh run list` command above that the develop push run of the
+exact commit is green. The master run then reuses it only after **Release
+evidence** has verified the same commit, workflow and repository. That job also
+requires every full-check job and **Quality result** to be green, `develop` to
+still contain the commit and a non-forced push. Otherwise the full check runs.
+**Quality result** links the evidence and is the check that counts for the
+deployment. Verify and deploy the actual master revision, then tag the
+successful rollout. Bring release merges
 and master hotfixes back into develop before the next version bump, so version
 history references the actual deployed revision. An integration alone is not a
 release; existing version mappings remain unchanged.

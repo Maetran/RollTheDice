@@ -2,16 +2,52 @@ name: Quality
 
 on:
   push:
-    # Release tags point to revisions already checked on their branch.
-    branches: ["**"]
+    # Feature branches are checked once, through their pull request. Integrated
+    # develop states and master promotions run on push; release tags point to
+    # revisions already checked on their branch.
+    branches: ["develop", "master"]
   pull_request:
   workflow_dispatch:
+
+# A newer push to the same pull request or branch supersedes its older run.
+# Other pull requests, branches and event types keep separate groups.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
+  # A fast-forward to master may reuse the completed, fully successful develop
+  # run of the exact same commit. Any missing or unclear evidence runs the full
+  # check; scripts/ci_release_evidence.py documents every condition.
+  release-evidence:
+    name: Release evidence
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      reuse: ${{ steps.evidence.outputs.reuse }}
+      evidence_run_id: ${{ steps.evidence.outputs.evidence_run_id }}
+      evidence_url: ${{ steps.evidence.outputs.evidence_url }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          sparse-checkout: scripts/ci_release_evidence.py
+          sparse-checkout-cone-mode: false
+      - id: evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/ci_release_evidence.py verify
+
   production-image:
+    needs: release-evidence
+    if: ${{ !cancelled() && needs.release-evidence.outputs.reuse != 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -22,6 +58,8 @@ jobs:
       - run: docker run --rm --interactive --network none --tmpfs /app/data --entrypoint python rollthedice-ci - < tests/container_smoke.py
 
   backend:
+    needs: release-evidence
+    if: ${{ !cancelled() && needs.release-evidence.outputs.reuse != 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -41,6 +79,8 @@ jobs:
 
   browser:
     name: Browser (${{ matrix.suite }}, ${{ matrix.shard }}/${{ matrix.shards }})
+    needs: release-evidence
+    if: ${{ !cancelled() && needs.release-evidence.outputs.reuse != 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
@@ -103,3 +143,22 @@ jobs:
             test-results/
           if-no-files-found: ignore
           retention-days: 7
+
+  # The single meaningful result: green only after every full-check job passed,
+  # or after verified reuse with all full-check jobs skipped. Skipped, failed or
+  # cancelled jobs never count as a pass on their own.
+  result:
+    name: Quality result
+    needs: [release-evidence, production-image, backend, browser]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          sparse-checkout: scripts/ci_release_evidence.py
+          sparse-checkout-cone-mode: false
+      - env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: python3 scripts/ci_release_evidence.py result
