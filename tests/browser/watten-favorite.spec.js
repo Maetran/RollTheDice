@@ -17,7 +17,7 @@ for (const language of ['de', 'en']) {
       await form.locator('[data-watten-advanced] summary').click();
       await form.locator('[name=critical]').check();
       await form.locator('[name=trick_history]').check();
-      await form.locator('[data-watten-cpu-seat][value="1"]').check();
+      await form.locator('[data-watten-cpu-seat][value="1"] + span').click();
       await form.locator('[data-watten-password-protection]').check();
       await form.locator('[data-watten-password]').fill('first-favorite-password');
       await own.page.locator('[data-watten-favorite-action=save]').click();

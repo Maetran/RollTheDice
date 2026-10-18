@@ -133,7 +133,8 @@
       ],
       "status": "partial",
       "evidence": [
-        "app/watten_recipe.py has a strict versioned secret-free allowlist and no account/participant IDs. Actual account favorites, authorization and durable writes remain open."
+        "app/watten_recipe.py has a strict versioned secret-free allowlist and no account/participant IDs. Actual account favorites, authorization and durable writes remain open.",
+        "Local native one-per-account favorite (0069) plus strict GET/PUT/DELETE and DE/EN creator apply/save/delete are integrated. Actual browser checks preserve CPU wishes and protection, require fresh password or explicit uncheck, never auto-create/start or save a secret. Public product acceptance remains open."
       ]
     },
     {
@@ -771,7 +772,8 @@
       ],
       "status": "partial",
       "evidence": [
-        "app/watten_engine.py permits only private good/bad/unsure partner feedback, including pending bids, without public revision/ACK-eviction leakage. Actual chat/reaction/CPU communication permissions, durable private delivery and DE/EN browser acceptance remain open."
+        "app/watten_engine.py permits only private good/bad/unsure partner feedback, including pending bids, without public revision/ACK-eviction leakage. Actual chat/reaction/CPU communication permissions, durable private delivery and DE/EN browser acceptance remain open.",
+        "Owner explicitly confirmed free chat and public emojis remain allowed during a deal and when gestrichen; card hints remain forbidden. Own opening-bid restrictions and private partner advice stay separate. Native free-chat/emoji UI remains to implement."
       ]
     },
     {

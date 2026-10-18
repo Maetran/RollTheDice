@@ -543,3 +543,32 @@ Folgetischreise werden separat ergänzt; Kommunikationsgrenze für freie
 Nachrichten/Emojis bei gestrichen ist konkret beim Owner nachgefragt.
 Physische Geräte, öffentliche PWA/SEO-Veröffentlichung und vollständige
 Produktabnahme bleiben offen.
+
+### P6/Favoriten – gezielter integrierter Stand vor Vollprüfung
+
+Alle **23** isolierten Watten-Browserfälle bestehen in 1.2 Minuten unter
+`test-results/browser/watten/account-favorites-cpu-final/`: die bisherigen
+13 Spielreisen, acht Fortschritts-/Fehler-/Archiv-/Feedfälle und zwei
+DE/EN-Favoritenreisen. Favoriten behalten CPU-Wünsche und Passwortschutz;
+Anwenden leert das Passwort, ein neuer Tisch verlangt frisches Passwort oder
+ausdrückliche Abwahl. Keine automatische Erstellung oder Startaktion.
+Der Browserfahrer wartet jetzt nach «Nächste Gabe» auf die bestätigte neue
+Gaben-ID. Der erste Zweier-CPU-Versuch hatte denselben Button zweimal angefragt,
+während die nächste Gabe bereits lief; der Trace belegt beide Klicks. Der
+Fahrer erzwingt nun eine erste Zweipunktegabe und prüft diesen Übergang immer.
+Ein früherer eigener Favoritentest klickte die unsichtbare Checkbox statt
+ihrer sichtbaren Beschriftung; nur der Testselektor wurde korrigiert.
+
+Eigene alte Resultate ohne XP-Journal geben ein leeres Abschluss-Belohnungspanel
+zurück, weiterhin ohne Backfill. Fremde Resultate bleiben unerreichbar. Sieben
+native Fortschritts-HTTP-Fälle bestanden; Favoritenautorisierung wird nach
+asynchronem Body/Worker erneut geprüft. Zwei echte Session-Widerrufe während
+des Body-Reads lassen beide Kontofavoriten unverändert; 22 native HTTP-Tests
+des Favoritenpakets bestanden. Quellreview und kleine Regressionen ersetzen
+keinen Vollnachweis. Dieser folgt auf dem sauberen committeten Stand.
+
+Owner bestätigt am 18.10.2026: Freier Chat und öffentliche Emojis bleiben
+auch gestrichen während der Gabe erlaubt; Kartenhinweise bleiben verboten.
+Die frühere offene Planformulierung wurde durch diese Entscheidung ersetzt.
+Folgetisch-Backend/UI bleiben separat, bis ihre atomare Zwei-Checkpoint- und
+Neustart-/CPU-/Stale-Writer-Prüfung und die Browserreise integriert sind.

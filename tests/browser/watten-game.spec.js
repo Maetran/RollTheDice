@@ -148,6 +148,7 @@ for (const count of [2, 3, 4]) {
       expect(new Set(host.traffic.snapshot.room.seats.map(seat => seat.name)).size).toBe(count);
       await host.page.locator('[data-watten-command=start]').click();
       let observedPlay = false;
+      let continuedDeal = false;
       for (let turn = 0; turn < 60; turn += 1) {
         await expect.poll(() => {
           const engine = host.traffic.snapshot?.engine;
@@ -157,7 +158,10 @@ for (const count of [2, 3, 4]) {
         const engine = host.traffic.snapshot.engine;
         if (engine.phase === 'match_complete') break;
         if (engine.phase === 'deal_complete') {
+          const previousDeal = engine.deal_id;
           await host.page.locator('[data-watten-command=next-deal]').click();
+          await expect.poll(() => host.traffic.snapshot.engine.deal_id).not.toBe(previousDeal);
+          continuedDeal = true;
           continue;
         }
         const before = engine.opportunity;
@@ -166,8 +170,9 @@ for (const count of [2, 3, 4]) {
         else if (engine.actions.includes('inspection_ack')) kind = 'inspection_ack';
         else if (engine.actions.includes('announce_strike')) { kind = 'announce_strike'; value = '7'; }
         else if (engine.actions.includes('announce_colour')) { kind = 'announce_colour'; value = 'bells'; }
+        else if (count === 2 && !continuedDeal && engine.actions.includes('respond_go')) { kind = 'respond_go'; value = 'go'; }
         else if (engine.actions.includes('respond_hold')) { kind = 'respond_hold'; value = 'hold'; }
-        else if (engine.actions.includes('bid')) kind = 'bid';
+        else if ((count !== 2 || continuedDeal) && engine.actions.includes('bid')) kind = 'bid';
         if (kind) {
           await host.page.locator(`[data-watten-action="${kind}"]${value ? `[data-value="${value}"]` : ''}`).click();
         } else {
@@ -188,6 +193,7 @@ for (const count of [2, 3, 4]) {
         if (count !== 2 && observedPlay) break;
       }
       if (count === 2) {
+        expect(continuedDeal).toBe(true);
         await expect(host.page.locator('[data-watten-match-result]')).toBeVisible();
         expect(host.traffic.snapshot.result_persisted).toBe(true);
       } else expect(observedPlay).toBe(true);

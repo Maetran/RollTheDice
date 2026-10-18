@@ -40,11 +40,12 @@ in den [Gestaltungsleitplanken](WATTEN_DESIGN_REFERENCES.md#responsive-ausrichtu
 Die identischen Hausdepp-Kartendesigns bleiben. Referenzen werden eigenständig
 interpretiert, weder fremde Karten noch die Referenzoberfläche kopiert.
 
-Die Anforderung «gestrichen darf man nichts mehr sagen» bleibt verbindlich.
-Die noch offene Abgrenzung von eigenem Gebot, notwendiger Gebotsantwort,
-normaler Ansage, freiem Chat und Reaktionen wird vor ihrer Implementierung
-geschlossen. Keine Quelle und kein übernommener Hausdepp-Default darf diese
-Entscheidung still treffen.
+Die frühere Formulierung «gestrichen darf man nichts mehr sagen» ist durch die
+[konkreten Owner-Entscheidungen](WATTEN_OWNER_DECISIONS.md) präzisiert:
+Gestrichen sperrt das eigene Eröffnungsgebot. Halten, Gehen und Aufbieten als
+Antwort, privates Partnergefühl sowie freie Nachrichten und öffentliche Emojis
+bleiben ausdrücklich erlaubt, auch während der Gabe. Konkrete Kartenhinweise
+bleiben verboten; ein zuverlässiger automatischer Inhaltsfilter ist nicht behauptet.
 
 | Entscheidung vor Entwicklungsbeginn (P0) | Erforderliches Ergebnis |
 | --- | --- |
