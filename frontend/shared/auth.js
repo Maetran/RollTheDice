@@ -497,12 +497,15 @@ export async function requestAccountEmail(email, verification) {
 }
 
 export async function logout() {
-  const response = await apiFetch('/api/auth/logout', { method: 'POST' });
-  if (!response.ok) throw new Error('Abmelden fehlgeschlagen');
   // An anonymous visitor may still use a public game. Preserve that
   // server-confirmed capability for the logout notification so a mounted
   // product shell does not briefly revoke a public route before navigation.
-  const gameAccess = authState.cache?.game_access || authState.cache?.user?.game_access;
+  // Read it before the request: another request that already sees the ended
+  // session (401) clears the cache while the logout response is on its way.
+  const current = await loadAuth();
+  const gameAccess = current?.game_access || current?.user?.game_access;
+  const response = await apiFetch('/api/auth/logout', { method: 'POST' });
+  if (!response.ok) throw new Error('Abmelden fehlgeschlagen');
   authState.epoch += 1;
   authState.cache = null;
   authState.request = null;
