@@ -62,6 +62,33 @@ async function player(browser, baseURL, language = 'de') {
   return { context, page, user, traffic };
 }
 
+async function waitingRoomReady(players, gameId, participants) {
+  const members = [...participants].sort();
+  // Each mutation broadcasts separately to every recipient. Wait for the whole
+  // current room before the next actor chooses a revision-bound command.
+  await expect.poll(() => {
+    const revision = players[0].traffic.snapshot?.room?.revision;
+    return players.map(item => {
+      const snapshot = item.traffic.snapshot;
+      return {
+        id: snapshot?.id,
+        participant_id: snapshot?.viewer?.participant_id,
+        members: snapshot?.room?.members.map(member => member.participant_id).sort(),
+        same_revision: Number.isInteger(revision) && snapshot?.room?.revision === revision,
+      };
+    });
+  }).toEqual(players.map((_, index) => ({
+    id: gameId, participant_id: participants[index], members, same_revision: true,
+  })));
+  // The protocol observer can receive a frame before the controller has painted
+  // it. Real waiting-room member names also confirm the current visible roster.
+  for (const item of players) {
+    for (const other of players.filter(peer => peer !== item)) {
+      await expect(item.page.locator('.wt-waiting')).toContainText(other.user.username);
+    }
+  }
+}
+
 async function create(players, { count = players.length, target = 3, reference = false, start = true, password, determination } = {}) {
   const host = players[0];
   await host.page.goto('/watten');
@@ -80,21 +107,29 @@ async function create(players, { count = players.length, target = 3, reference =
   }
   await form.locator('button[type=submit]').click();
   await expect(host.page).toHaveURL(/\/watten\/spiel\/[0-9a-f]{16}$/);
-  await expect.poll(() => host.traffic.snapshot?.viewer?.participant_id).toBeTruthy();
   const path = new URL(host.page.url()).pathname;
+  const gameId = path.split('/').pop();
+  await expect.poll(() => host.traffic.snapshot?.id === gameId
+    && host.traffic.snapshot.viewer?.participant_id).toBeTruthy();
+  const participants = [host.traffic.snapshot.viewer.participant_id];
   for (let index = 1; index < players.length; index += 1) {
     await players[index].page.goto(path);
     if (password) await players[index].page.locator('[data-watten-join] [name=password]').fill(password);
     await players[index].page.locator('[data-watten-join] button[type=submit]').click();
-    await expect.poll(() => players[index].traffic.snapshot?.viewer?.participant_id).toBeTruthy();
+    await expect.poll(() => players[index].traffic.snapshot?.id === gameId
+      && players[index].traffic.snapshot.viewer?.participant_id).toBeTruthy();
+    participants.push(players[index].traffic.snapshot.viewer.participant_id);
   }
   for (let seat = 0; seat < players.length; seat += 1) {
+    await waitingRoomReady(players, gameId, participants);
     await players[seat].page.locator(`[data-watten-command=take-seat][data-seat="${seat}"]`).click();
-    await expect.poll(() => players[seat].traffic.snapshot?.viewer?.seat).toBe(seat);
+    await expect.poll(() => players[seat].traffic.snapshot?.id === gameId
+      ? players[seat].traffic.snapshot.viewer?.seat : null).toBe(seat);
+    await waitingRoomReady(players, gameId, participants);
   }
   if (start) {
     await host.page.locator('[data-watten-command=start]').click();
-    await expect.poll(() => host.traffic.snapshot?.started).toBe(true);
+    await expect.poll(() => host.traffic.snapshot?.id === gameId && host.traffic.snapshot.started).toBe(true);
   }
   return path;
 }
