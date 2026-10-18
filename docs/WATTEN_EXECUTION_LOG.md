@@ -683,3 +683,64 @@ Accepted human calls, cards and bidding decisions now record the account play
 day atomically with the checkpoint. Replay, inspection, advice and CPU paths
 remain excluded. Independent review and focused regressions passed; native
 push delivery and complete product acceptance remain open.
+
+
+### P7 Folgetische/Kommunikation/Deko nach Develop integriert
+
+PR #57 ist normal nach `develop` gemergt: Source
+`ca548e4c255fa43fa9e9bb1e370413691811f96e`, Basis
+`a92258b628445a1ee88a0fe1afd18b1bf6c0acc8`, Merge
+`a31e13ae2bc5ef2c8e0d791d6aff0b8adfaf8dac`. Merge-Eltern und gleicher Tree
+`2cb3de1ea81cd30391223bca4baa8c61f38153e1` wurden geprüft. Der unveränderte
+Integrationsstand übernimmt den echten vollständigen Source-Nachweis;
+PR- und Develop-CI sind grün. Version3.15.0 ist damit integriert.
+
+Der erste Vollbrowserlauf scheiterte an Chromium-Signal11 beim Anlegen des
+Testcontexts vor dem deutschen Hausdepp-PWA-Testkörper. Alle anderen sechs
+Browserteile bestanden; kein gültiger Nachweis oder Push daraus. Der zweite
+vollständige Lauf auf exakt denselben sauberen Quellen bestand sämtliche
+sieben Gruppen, **2’352 Backendtests bei85.91% Coverage**, Produktionsimage,
+Container sowie alle sieben isolierten Browser-/Kontoteile. Nachweis:
+`test-results/local-checks/ca548e4c255f-1792352629866-65e965ec/`.
+Kein Master-/Produktionsrelease oder physischer Gerätenachweis.
+
+### Nächste Suite-Dienste – gemeinsame Backendbasis, Oberflächen offen
+
+Auf dem separaten Integrationszweig sind geprüfte Grundlagen für persönliche
+Einladungen0073, Freunde/Startmeldungen, Tourzustand0071, gespeicherte
+Gerätekontexte0072, Monitoring und Spieltage zusammengeführt. Persönlich
+angenommene Einladungen erlauben wie vom Owner bestätigt Zugriff auf genau
+diesen geschützten Folgetisch ohne Passwort; sie nehmen keinen Sitz und
+starten keine Partie.22 neue Einladungsfälle plus75 verwandte Prüfungen
+bestanden unabhängig. Alle Pakete wurden separat quellengeprüft.
+
+Die erste gemeinsame Backendrunde bestand97 Fälle und fand einen veralteten
+Test-Stub: der simulierte Start-Speicherfehler akzeptierte den neuen optionalen
+Spieltagparameter nicht. Der Stub prüft nun ausdrücklich `human_actor=None`
+beim Start; der betroffene Fall plus neun Spieltagfälle bestehen erneut
+(10Tests,8.76s). Keine Produktumgehung und kein Vollnachweis daraus.
+
+Der Monitoringreview fand eine falsche Vorperioden-Trafficabdeckung aus einem
+alten ZDWA-Event. Regression zunächst rot, Korrektur1701dee6 mit48Tests plus
+284Unterfällen grün, erneuter unabhängiger Review sauber. Fehlende native
+Trafficdaten bleiben ausdrücklich nicht gemessen; echte Ergebnisvergleiche
+bleiben erhalten. Menschenzahlen zählen frisch authentifizierte Konten über
+Geräte/Tische einmal; historische Teilnahmen sind ausdrücklich Sitze inkl.CPU.
+
+Der vorbereitete native Worker04d1914 validiert Push-Payload und Klickziel
+getrennt, nutzt feste Wattenicons, keine CacheStorage und keine fremden oder
+anderen laufenden Spielfenster.10 echte Handler-VM-Tests unterNode22 bestanden
+unabhängig erneut;17 PWA-/Gerätekontextfälle plus acht Unterfälle grün.
+Watten bleibt in allen tatsächlichen Versand-/Claim-/Empfängerpfaden gesperrt.
+Eine gespeicherte Registrierung ist kein Zustellungsversprechen.
+
+Freunde-/Auswahl-, Einladungs-, Tour- und Monitoringoberflächen sowie die
+vollständige Push-/Empfängerkette sind weiterhin offen. Die separate Claude-
+Arbeitsbasis und ein präziser Frontendauftrag liegen bereit; vor22:20Uhr gibt
+es keinen neuen Claude-Aufruf. Keine Zusatznutzung, Schlüssel oder Umgehung.
+Alle81 Findings bleiben erforderlich; Teilgrundlagen schliessen keine Abnahme.
+
+PR57 passed the complete same-source rerun and is merged into develop with
+matching source/merge trees and green CI. The following suite backends and
+validated worker remain local groundwork: their native interfaces, actual
+notification delivery and physical-device acceptance are still open.

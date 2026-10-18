@@ -227,7 +227,8 @@
       ],
       "status": "partial",
       "evidence": [
-        "Own reservation remains separate from admission/seat/team, is projected only to its account, and can be explicitly released through strict durable native room commands. Lost ACK/restart replay, later rejoin, counterfeit account and stale room cases pass. A real four-human browser journey releases all reservations then chooses different teams manually. Broader host-transfer transport races remain open."
+        "Own reservation remains separate from admission/seat/team, is projected only to its account, and can be explicitly released through strict durable native room commands. Lost ACK/restart replay, later rejoin, counterfeit account and stale room cases pass. A real four-human browser journey releases all reservations then chooses different teams manually. Broader host-transfer transport races remain open.",
+        "Native personal invitations now keep consent and account/target password access separate from membership, reservation, seat, team and start. Accepted access survives the pending expiry until the target closes; transport/UI acceptance is still pending."
       ]
     },
     {
@@ -237,8 +238,10 @@
         "P2",
         "P4"
       ],
-      "status": "open",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Private backend invitation receipts are account/target bound with fixed pending deadlines, idempotent decisions and restart recovery. No invitation UI yet: inspection/bid/modal priority and late-navigation browser acceptance remain open."
+      ]
     },
     {
       "id": "S21",
@@ -247,8 +250,10 @@
         "P2",
         "P7"
       ],
-      "status": "open",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Share/rematch, personal invitations and general calls have separate backend boundaries. Personal accepted consent bypasses only the exact target password. General Watten delivery remains unavailable; its audience, frontend and end-to-end dispatch remain open."
+      ]
     },
     {
       "id": "S22",
@@ -257,8 +262,10 @@
         "P1",
         "P7"
       ],
-      "status": "open",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Migration0072 preserves Watten device identity only in locally gated explicit registration, with fresh Expected-ID and CSRF. Staged devices cannot displace legacy send devices or activate categories. Reviewed worker handlers have10 real VM tests; registration/settings and actual delivery are not accepted yet."
+      ]
     },
     {
       "id": "S23",
@@ -267,8 +274,10 @@
         "P7",
         "P8"
       ],
-      "status": "open",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Frozen native friend-start backend emits only safe selected human names, captured account consent and explicit four-product URLs after the first real start commit. Migration0071 supplies private atomic tour offers;32 reminder texts and atomic human play-day accounting are prepared. Native frontend/settings/tours and enabled notification chains remain open."
+      ]
     },
     {
       "id": "S24",
@@ -277,8 +286,10 @@
         "P7",
         "P8"
       ],
-      "status": "open",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Local native PWA metadata/offline boundaries retain their existing browser evidence. A prepared narrow network-only worker now independently validates push and click targets;10 actual handler VM cases and17 PWA/device-context cases pass. Delivery is still disabled; installed-device and physical push acceptance remain open."
+      ]
     },
     {
       "id": "S25",
@@ -325,8 +336,10 @@
         "P7",
         "P8"
       ],
-      "status": "open",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Native friend-start context supports all four explicit safe product/target pairs and legacy contexts cannot receive Watten events. The native consumer and complete browser/PWA navigation matrix remain pending; backend coverage alone does not close this finding."
+      ]
     },
     {
       "id": "S29",
