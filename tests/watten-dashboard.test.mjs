@@ -77,13 +77,15 @@ class FakeElement extends EventTarget {
   querySelector() { return null; }
   querySelectorAll() { return this.children; }
   setAttribute(name, value) { this[name] = value; }
+  replaceChildren() { this.innerHTML = ""; this.textContent = ""; }
 }
 
 function dashboardDom(design = "mission") {
   const toggles = ["sessions", "page_views"].map(series => Object.assign(new FakeElement(), { dataset: { series } }));
   const elements = new Map([["trafficSeries", new FakeElement(toggles)]]);
-  globalThis.document = { body: { dataset: { dashboardDesign: design } },
-    getElementById: id => { if (!elements.has(id)) elements.set(id, new FakeElement()); return elements.get(id); } };
+  globalThis.document = Object.assign(new EventTarget(), { hidden: false, documentElement: { dataset: {} },
+    body: { dataset: { dashboardDesign: design } }, querySelectorAll: () => [],
+    getElementById: id => { if (!elements.has(id)) elements.set(id, new FakeElement()); return elements.get(id); } });
   globalThis.window = Object.assign(new EventTarget(), { requestAnimationFrame: () => 1, cancelAnimationFrame() {} });
   return { $: id => globalThis.document.getElementById(id), toggles };
 }
@@ -139,17 +141,25 @@ const account = (id, monitoring = true) => ({ authenticated: true, user: { id, c
 const pageEvent = (type, persisted) => Object.assign(new Event(type), { persisted });
 
 // The real lifecycle with a recorded view: render installs private data,
-// clear/unavailable remove it, exactly as the dashboard hooks do.
+// clear/unavailable remove it, exactly as the dashboard hooks do. `cookie` is
+// the account the server would report for a new /me read; with `hold` set,
+// each read stays pending until the test resolves it.
 function harness() {
   const win = makeWindow();
   const doc = new FakeDocument();
   const loads = [];
   const requests = [];
   const state = { filters: { days: "7", game: "all" }, view: null, rendered: [], failed: [], denied: [], bound: [],
-    busy: [], cleared: 0, unavailable: 0, inflight: null, writes: 0 };
+    busy: [], cleared: 0, unavailable: 0, inflight: null, writes: 0, cookie: account(7), hold: false };
   const lifecycle = watten.createDashboardLifecycle({
     win, doc, now: () => 1_000_000,
-    loadAuth: options => { assert.equal(options.refresh, true); const next = deferred(); loads.push(next); return next.promise; },
+    loadAuth: options => {
+      assert.equal(options.refresh, true);
+      const next = deferred();
+      loads.push(next);
+      if (!state.hold) next.resolve(state.cookie);
+      return next.promise;
+    },
     authInFlight: () => state.inflight,
     fetch: (url, init) => { const next = deferred(); requests.push({ url, init, ...next }); return next.promise; },
     hooks: {
@@ -167,14 +177,14 @@ function harness() {
   });
   return { win, doc, loads, requests, state, lifecycle };
 }
-async function connected(h, id = 7, data = native({ period: { game: "all" } })) {
+async function connected(h, data = native({ period: { game: "all" } })) {
   h.lifecycle.start();
   void h.lifecycle.initialize();
-  await until(() => h.loads.length === 1, "fresh /me read missing");
-  h.loads[0].resolve(account(id));
   await until(() => h.requests.length === 1, "analytics request missing");
+  assert.equal(h.loads.length, 1, "fresh /me read before the request");
   h.requests[0].resolve(reply(200, data));
   await until(() => h.state.rendered.length === 1, "first render missing");
+  assert.equal(h.loads.length, 2, "the body is confirmed by its own /me read");
 }
 
 test("a removed Watten audience falls back to all games and clears the private Watten view first", async () => {
@@ -324,6 +334,7 @@ test("duration statements distinguish recorded, purely unknown and truncated sam
 test("account change and pagehide invalidate pending auth and analytics before anything is installed", async () => {
   // Pending /me, then pagehide: no request, no timer, no write afterwards.
   const early = harness();
+  early.state.hold = true;
   early.lifecycle.start();
   void early.lifecycle.initialize();
   await until(() => early.loads.length === 1);
@@ -340,19 +351,22 @@ test("account change and pagehide invalidate pending auth and analytics before a
   assert.equal(early.requests.length, 0);
   early.loads[1].resolve(account(7));
   await until(() => early.requests.length === 1);
+  early.state.hold = false;
   early.requests[0].resolve(reply(200, native()));
   await until(() => early.state.rendered.length === 1);
   assert.equal(early.win.of("interval").length, 1);
 
   // Pending analytics for A, then the shared auth state reports B.
   const switched = harness();
+  switched.state.hold = true;
   switched.lifecycle.start();
   void switched.lifecycle.initialize();
   await until(() => switched.loads.length === 1);
   switched.loads[0].resolve(account(7));
   await until(() => switched.requests.length === 1);
   assert.equal(switched.win.of("timeout").length, 1);
-  switched.win.dispatchEvent(new CustomEvent("zdwa:auth-state", { detail: account(8) }));
+  switched.state.cookie = account(8);
+  switched.win.dispatchEvent(new CustomEvent("zdwa:auth-state", { detail: switched.state.cookie }));
   assert.equal(switched.state.cleared, 1, "private output is removed synchronously");
   assert.equal(switched.requests[0].init.signal.aborted, true);
   assert.equal(switched.win.of("timeout").length, 0, "no orphaned request timeout");
@@ -362,6 +376,7 @@ test("account change and pagehide invalidate pending auth and analytics before a
   assert.equal(switched.state.rendered.length, 0, "late A is never installed");
   switched.loads[1].resolve(account(8));
   await until(() => switched.requests.length === 2);
+  switched.state.hold = false;
   const forB = native({ generated_at: "2026-10-18T12:01:00Z" });
   switched.requests[1].resolve(reply(200, forB));
   await until(() => switched.state.rendered.length === 1);
@@ -370,6 +385,7 @@ test("account change and pagehide invalidate pending auth and analytics before a
 
   // An already running /me read from before the change is not a confirmation.
   const shared = harness();
+  shared.state.hold = true;
   const old = deferred();
   shared.state.inflight = old.promise;
   void shared.lifecycle.initialize();
@@ -386,10 +402,10 @@ test("account change and pagehide invalidate pending auth and analytics before a
   // Revoked monitoring for the same account also clears and rechecks.
   const revoked = harness();
   await connected(revoked);
-  revoked.win.dispatchEvent(new CustomEvent("zdwa:auth-state", { detail: account(7, false) }));
+  revoked.state.cookie = account(7, false);
+  revoked.win.dispatchEvent(new CustomEvent("zdwa:auth-state", { detail: revoked.state.cookie }));
   assert.equal(revoked.state.view, null);
-  await until(() => revoked.loads.length === 2);
-  revoked.loads[1].resolve(account(7, false));
+  await until(() => revoked.loads.length === 3);
   await until(() => revoked.state.denied.length === 1);
   assert.deepEqual(revoked.state.denied, [403]);
   // The same account confirmed again is not an account change.
@@ -397,7 +413,7 @@ test("account change and pagehide invalidate pending auth and analytics before a
   await connected(same);
   same.win.dispatchEvent(new CustomEvent("zdwa:auth-state", { detail: account(7) }));
   assert.equal(same.state.cleared, 0);
-  assert.equal(same.loads.length, 1);
+  assert.equal(same.loads.length, 2);
 });
 
 test("pagehide during a pending response leaves no timer, write or display; 401 denies", async () => {
@@ -429,19 +445,18 @@ test("pagehide during a pending response leaves no timer, write or display; 401 
 test("a same-account 503 stays a visible failure and never becomes a measured zero", async () => {
   const h = harness();
   const first = native();
-  await connected(h, 7, first);
+  await connected(h, first);
   void h.lifecycle.refresh();
   h.requests[1].resolve(reply(503, { detail: "unavailable" }));
   await until(() => h.state.failed.length === 1);
   assert.deepEqual(h.state.failed, [{ retained: true }]);
   assert.equal(h.state.view, first, "the last data of the same account stays");
   assert.equal(h.state.rendered.length, 1);
+  assert.equal(h.loads.length, 3, "retaining cached data after 503 requires a new /me confirmation");
 
   const cold = harness();
   cold.lifecycle.start();
   void cold.lifecycle.initialize();
-  await until(() => cold.loads.length === 1);
-  cold.loads[0].resolve(account(7));
   await until(() => cold.requests.length === 1);
   cold.requests[0].resolve(reply(503));
   await until(() => cold.state.failed.length === 1);
@@ -452,13 +467,186 @@ test("a same-account 503 stays a visible failure and never becomes a measured ze
   // After an account change nothing from the old account is retained.
   const moved = harness();
   await connected(moved);
-  moved.win.dispatchEvent(new CustomEvent("zdwa:auth-state", { detail: account(8) }));
-  moved.loads[1].resolve(account(8));
+  moved.state.cookie = account(8);
+  moved.win.dispatchEvent(new CustomEvent("zdwa:auth-state", { detail: moved.state.cookie }));
   await until(() => moved.requests.length === 2);
   moved.requests[1].resolve(reply(503));
   await until(() => moved.state.failed.length === 1);
   assert.deepEqual(moved.state.failed, [{ retained: false }]);
   assert.equal(moved.state.view, null);
+});
+
+test("cookie-only account change while an A response body is pending never installs it for B", async () => {
+  const h = harness(), body = deferred();
+  void h.lifecycle.initialize();
+  await until(() => h.requests.length === 1);
+  let reading = false;
+  h.requests[0].resolve({ status: 200, ok: true, json: () => { reading = true; return body.promise; } });
+  await until(() => reading);
+  h.state.cookie = account(8); // No zdwa:auth-state event in this document.
+  body.resolve(native({ generated_at: "A-private-result" }));
+  await until(() => h.requests.length === 2, "B must be freshly bound before requesting its own data");
+  assert.equal(h.state.view, null);
+  assert.deepEqual(h.state.rendered, []);
+  assert.deepEqual(h.state.bound, [7, 8]);
+  const forB = native({ generated_at: "B-result" });
+  h.requests[1].resolve(reply(200, forB));
+  await until(() => h.state.rendered.length === 1);
+  assert.equal(h.state.view, forB);
+});
+
+test("post-body confirmation drains an already running A auth read before a new cookie-only B read", async () => {
+  const h = harness(), oldAuth = deferred();
+  void h.lifecycle.initialize();
+  await until(() => h.requests.length === 1);
+  h.state.inflight = oldAuth.promise;
+  h.requests[0].resolve(reply(200, native()));
+  await settle();
+  assert.equal(h.loads.length, 1, "an old in-flight read is drained, not counted as post-body confirmation");
+  assert.equal(h.state.view, null);
+  h.state.cookie = account(8);
+  h.state.inflight = null;
+  oldAuth.resolve(account(7));
+  await until(() => h.requests.length === 2);
+  assert.deepEqual(h.state.bound, [7, 8]);
+  assert.equal(h.state.rendered.length, 0);
+  assert.equal(h.loads.length, 3, "B is seen by a new read and then bound by initialization");
+});
+
+test("a cookie-only B change during 503 never retains cached A values", async () => {
+  const h = harness();
+  await connected(h);
+  void h.lifecycle.refresh();
+  h.state.cookie = account(8);
+  h.requests[1].resolve(reply(503));
+  await until(() => h.requests.length === 3);
+  assert.equal(h.state.view, null, "the old account's cached values are removed");
+  assert.equal(h.state.rendered.length, 1);
+  assert.deepEqual(h.state.bound, [7, 8]);
+  assert.deepEqual(h.state.failed, [], "A's failure cannot become B's retained-data notice");
+  h.requests[2].resolve(reply(503));
+  await until(() => h.state.failed.length === 1);
+  assert.deepEqual(h.state.failed, [{ retained: false }]);
+  assert.equal(h.state.view, null);
+});
+
+test("pagehide during post-body auth leaves no timers or late writes", async () => {
+  const h = harness();
+  h.lifecycle.start();
+  void h.lifecycle.initialize();
+  await until(() => h.requests.length === 1);
+  h.state.hold = true;
+  h.requests[0].resolve(reply(200, native()));
+  await until(() => h.loads.length === 2, "the result must wait for post-body auth");
+  assert.equal(h.state.view, null);
+  h.win.dispatchEvent(pageEvent("pagehide", true));
+  const writes = h.state.writes;
+  assert.equal(h.requests[0].init.signal.aborted, true);
+  assert.equal(h.win.timers.size, 0);
+  h.loads[1].resolve(account(7));
+  await settle();
+  assert.equal(h.state.writes, writes);
+  assert.equal(h.state.rendered.length, 0);
+});
+
+test("unverifiable or revoked post-body auth clears cached data instead of retaining it", async () => {
+  for (const result of ["unavailable", "signed-out", "revoked"]) {
+    const h = harness();
+    await connected(h);
+    h.state.hold = true;
+    void h.lifecycle.refresh();
+    h.requests[1].resolve(reply(503));
+    await until(() => h.loads.length === 3);
+    assert.equal(h.state.rendered.length, 1);
+    if (result === "unavailable") h.loads[2].reject(new Error("auth unavailable"));
+    else h.loads[2].resolve(result === "signed-out" ? { authenticated: false, user: null } : account(7, false));
+    await until(() => h.state.view === null, result);
+    assert.ok(h.state.failed.every(failure => !failure.retained), result);
+    assert.equal(h.state.rendered.length, 1, result);
+    assert.equal(h.win.of("timeout").length, 0, result);
+    if (result !== "unavailable") assert.deepEqual(h.state.denied, [result === "signed-out" ? 401 : 403]);
+  }
+});
+
+for (const language of ["de", "en"]) {
+  test(`${language}: geography hides unmeasured zeros and restores a real measured zero`, () => {
+    const f = fmt(language), viz = new FakeElement(), note = new FakeElement();
+    let clears = 0;
+    const updates = [];
+    const globe = { clear() { clears += 1; viz.textContent = "0 / 0"; }, update(rows) { updates.push(rows); viz.textContent = "0 / 0"; } };
+    const deps = { viz, note, globe, ...f };
+    assert.equal(watten.presentGeography(native(), deps), false);
+    assert.equal(viz.hidden, true, "all zero summaries and the map are hidden together");
+    assert.equal(note.hidden, false);
+    assert.ok(note.innerHTML.includes(escapeHtml(f.t("Für Watten nicht erfasst"))));
+    assert.ok(note.innerHTML.includes(escapeHtml(f.t("Herkunft wird für Watten nicht erfasst."))));
+    assert.equal(updates.length, 0);
+    assert.equal(clears, 1);
+    const noCollector = legacy("hausdepp", { metric_coverage: { traffic: "not_instrumented" } });
+    watten.presentGeography(noCollector, deps);
+    assert.equal(viz.hidden, true);
+    assert.ok(!note.innerHTML.includes("Watten"), "an unmeasured legacy filter is not relabelled as Watten");
+    const measured = legacy("zdwa", { geography: [] });
+    assert.equal(watten.presentGeography(measured, deps), true);
+    assert.equal(viz.hidden, false);
+    assert.equal(viz.textContent, "0 / 0", "a genuinely measured empty geography is still zero");
+    assert.equal(note.hidden, true);
+    assert.equal(note.innerHTML, "");
+    assert.deepEqual(updates, [[]]);
+  });
+}
+
+test("the actual dashboard wires geography coverage through its game-filter render", async () => {
+  const f = fmt("en"), { $ } = dashboardDom();
+  const win = Object.assign(makeWindow(), { requestAnimationFrame: () => 1, cancelAnimationFrame() {},
+    matchMedia: () => ({ matches: true, addEventListener() {} }), ZDWA_I18N: { t: f.t, locale: f.locale } });
+  globalThis.window = win;
+  $("dashboardGame").value = "all";
+  $("dashboardDays").value = "7";
+  win.fetch = async url => {
+    const game = new URL(url, "https://example.test").searchParams.get("game");
+    return reply(200, game === "watten" ? native() : legacy(game, { available_games: ALL, geography: [],
+      ...(game === "hausdepp" ? { metric_coverage: { traffic: "not_instrumented" } } : {}) }));
+  };
+  const moduleUrl = source => `data:text/javascript;base64,${Buffer.from(source).toString("base64")}`;
+  const auth = moduleUrl(`export const escapeHtml = ${escapeHtml.toString()}; export const loadAuth = async () => (${JSON.stringify(account(7))});`);
+  const favorites = moduleUrl('export const createFavorites = () => Object.fromEntries(["beforeMetricsRender", "setUser", "setEnabled", "refresh", "clear"].map(key => [key, () => {}]));');
+  const globe = moduleUrl('export const createGlobe = viz => { const update = () => { viz.textContent = "0 mapped / 0 unmapped"; viz.dataset.updates = String(Number(viz.dataset.updates || 0) + 1); }; return { update, clear: update, suspend() {}, resume() {}, setPaused() {}, refreshDesign() {} }; };');
+  let dashboard = await readFile(new URL("../frontend/dashboard.js", import.meta.url), "utf8");
+  dashboard = dashboard.replace('import "./i18n/index.js";', "");
+  for (const [path, replacement] of [["./shared/auth.js", auth], ["./dashboard/favorites.js", favorites], ["./dashboard/globe.js", globe]]) {
+    dashboard = dashboard.replace(JSON.stringify(path), JSON.stringify(replacement));
+  }
+  for (const path of ["./dashboard/watten.js", "./dashboard/analysis.js"]) {
+    dashboard = dashboard.replace(JSON.stringify(path), JSON.stringify(moduleUrl(await readFile(new URL(`../frontend/${path.slice(2)}`, import.meta.url), "utf8"))));
+  }
+  const html = await readFile(new URL("../app/static/dashboard.html", import.meta.url), "utf8");
+  assert.match(html, /id="geographyUnmeasured"[^>]*hidden/);
+  try {
+    await import(moduleUrl(dashboard));
+    await until(() => $("geographyViz").dataset.updates === "1");
+    assert.equal($("geographyViz").hidden, false);
+    $("dashboardGame").value = "watten";
+    $("dashboardGame").dispatchEvent(new Event("change"));
+    await until(() => $("geographyUnmeasured").hidden === false);
+    assert.equal($("geographyViz").hidden, true, "the real dashboard hides its globe's visible zero counters");
+    assert.ok($("geographyUnmeasured").innerHTML.includes("Not measured for Watten"));
+    assert.equal($("countryNote").textContent, f.t("Herkunft wird für Watten nicht erfasst."));
+    assert.equal($("collectionNote").textContent, f.t("Für Watten werden keine Browserbesuche erfasst; Partien und Live-Tische stammen vom Server."));
+    $("dashboardGame").value = "hausdepp";
+    $("dashboardGame").dispatchEvent(new Event("change"));
+    await until(() => $("geographyViz").dataset.updates === "3");
+    assert.equal($("geographyViz").hidden, true);
+    const generic = f.t("Für diesen Filter werden keine Browserbesuche gemessen.");
+    assert.deepEqual({ country: $("countryNote").textContent, collection: $("collectionNote").textContent },
+      { country: generic, collection: generic }, "neither actual legacy note may claim that its product is Watten");
+    assert.ok(!$("geographyUnmeasured").innerHTML.includes("Watten"));
+    $("dashboardGame").value = "zdwa";
+    $("dashboardGame").dispatchEvent(new Event("change"));
+    await until(() => $("geographyViz").hidden === false);
+    assert.equal($("geographyUnmeasured").hidden, true);
+    assert.equal($("geographyViz").textContent, "0 mapped / 0 unmapped");
+  } finally { win.dispatchEvent(pageEvent("pagehide", true)); }
 });
 
 test("existing products, labels and all three dashboard designs keep their measured views; Watten adds no tournaments or profiles", () => {

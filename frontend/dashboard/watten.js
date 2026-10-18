@@ -66,6 +66,24 @@ export function unmeasuredCopy(data) {
     : { title: "Nicht erfasst", description: "Für diesen Filter werden keine Browserbesuche gemessen." };
 }
 
+// The globe reports mapped countries and sessions without a map point. Fed an
+// empty list for a product without a collector it would show measured zeros,
+// so the visualization and its accessible summary are replaced in place.
+export function presentGeography(data, { viz, note, globe, t, e }) {
+  const copy = unmeasuredCopy(data);
+  viz.hidden = Boolean(copy);
+  note.hidden = !copy;
+  if (copy) {
+    globe.clear();
+    const description = data?.period?.game === "watten" ? "Herkunft wird für Watten nicht erfasst." : copy.description;
+    note.innerHTML = `<div class="empty-state"><span class="empty-icon" aria-hidden="true">⌁</span><strong>${e(t(copy.title))}</strong><p>${e(t(description))}</p></div>`;
+    return false;
+  }
+  note.replaceChildren();
+  globe.update(data?.geography || data?.countries || []);
+  return true;
+}
+
 export function trafficSourceNote(data, { t }) {
   if ((data?.period?.game || "all") !== "all" || !Array.isArray(data?.metric_coverage?.traffic_games)) return "";
   const games = authorizedGames(data.available_games);
@@ -174,11 +192,11 @@ export function createDashboardLifecycle({ win, doc, loadAuth, authInFlight = ()
 
   // loadAuth shares an in-flight /me read. One that was already running may
   // predate the change this check must observe, so let it finish first.
-  async function freshAuth(expectedEpoch) {
+  async function freshAuth(isCurrent) {
     const shared = authInFlight();
     if (shared) {
       try { await shared; } catch { /* The fresh read below reports failures. */ }
-      if (disposed || expectedEpoch !== epoch) return null;
+      if (!isCurrent()) return null;
     }
     return loadAuth({ refresh: true });
   }
@@ -191,7 +209,7 @@ export function createDashboardLifecycle({ win, doc, loadAuth, authInFlight = ()
     const ownEpoch = ++epoch;
     hooks.retry(false);
     try {
-      const auth = await freshAuth(ownEpoch);
+      const auth = await freshAuth(() => !disposed && ownEpoch === epoch);
       if (disposed || ownEpoch !== epoch) return;
       if (!auth?.authenticated || auth.user?.id == null) { deny(401); return; }
       if (!hooks.canMonitor(auth.user)) { deny(403); return; }
@@ -221,24 +239,45 @@ export function createDashboardLifecycle({ win, doc, loadAuth, authInFlight = ()
     let unavailable = false;
     hooks.busy(true, { connecting: !latest });
     try {
-      const response = await request(`/api/admin/analytics?${new URLSearchParams(filters)}`, { cache: "no-store", signal: controller.signal });
+      let data = null;
+      let failure = false;
+      try {
+        const response = await request(`/api/admin/analytics?${new URLSearchParams(filters)}`, { cache: "no-store", signal: controller.signal });
+        if (!current()) return;
+        if (response.status === 401) { deny(401); return; }
+        if (response.status === 403) {
+          // A removed product falls back to all games; a general 403 ends access.
+          if (filters.game !== "all") unavailable = true; else deny(403);
+          return;
+        }
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        data = await response.json();
+      } catch {
+        failure = true;
+      }
       if (!current()) return;
-      if (response.status === 401) { deny(401); return; }
-      if (response.status === 403) {
-        // A removed product falls back to all games; a general 403 ends access.
-        if (filters.game !== "all") unavailable = true; else deny(403);
+      // The response carries no viewer and the cookie may have changed in
+      // another tab without a local auth event. Neither installing it nor
+      // keeping earlier values after a failure is allowed until a fresh /me
+      // read confirms the bound account and its monitoring capability.
+      let auth;
+      try {
+        auth = await freshAuth(current);
+      } catch {
+        if (!current()) return;
+        invalidate();
+        hooks.failed({ retained: false });
         return;
       }
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const data = await response.json();
       if (!current()) return;
+      if (!auth?.authenticated || auth.user?.id == null) { deny(401); return; }
+      if (auth.user.id !== ownViewer) { invalidate(); void initialize(); return; }
+      if (!hooks.canMonitor(auth.user)) { deny(403); return; }
+      if (failure) { hooks.failed({ retained: latest }); return; }
       if (!scopeAuthorized(data, filters.game)) { unavailable = true; return; }
       latest = true;
       lastFetched = now();
       hooks.render(data);
-    } catch {
-      if (!current()) return;
-      hooks.failed({ retained: latest });
     } finally {
       if (own === generation) {
         win.clearTimeout(activeTimeout);

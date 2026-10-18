@@ -4,7 +4,7 @@ import { createAnalysisVisuals } from "./dashboard/analysis.js";
 import { createGlobe } from "./dashboard/globe.js";
 import { createFavorites } from "./dashboard/favorites.js";
 import {
-  DASHBOARD_GAMES, countText, createDashboardLifecycle, dashboardGameName, gameSelection, overviewCoverage,
+  DASHBOARD_GAMES, countText, createDashboardLifecycle, dashboardGameName, gameSelection, overviewCoverage, presentGeography,
   trafficMeasured, trafficSourceNote, unmeasuredCopy, visibleGames, wattenGameCard, wattenModeLabel, wattenMonitoringNote,
 } from "./dashboard/watten.js";
 
@@ -408,14 +408,14 @@ function render(data) {
   ranks("deviceHardwareRanks", data.device_hardware, "device_family", "sessions", value => t(HARDWARE_LABELS[value] || "Unbekannt"), { share: true, limit: 10, ...emptyCopy });
   clientContext(data, copy);
   ranks("countryRanks", data.countries, "country", "sessions", countryName, { share: true, ...emptyCopy });
-  byId("countryNote").textContent = t(copy ? "Herkunft wird für Watten nicht erfasst." : ["trusted_proxy", "cloudflare_verified_peer"].includes(data.collection?.country_source) ? "Länder stammen aus einem vertrauenswürdigen Geo-Proxy; unbekannte Herkunft bleibt unbekannt." : "Ohne vertrauenswürdigen Geo-Proxy bleibt die Herkunft unbekannt. Es gibt keine IP-Geolokalisierung.");
+  byId("countryNote").textContent = t(copy ? data.period?.game === "watten" ? "Herkunft wird für Watten nicht erfasst." : copy.description : ["trusted_proxy", "cloudflare_verified_peer"].includes(data.collection?.country_source) ? "Länder stammen aus einem vertrauenswürdigen Geo-Proxy; unbekannte Herkunft bleibt unbekannt." : "Ohne vertrauenswürdigen Geo-Proxy bleibt die Herkunft unbekannt. Es gibt keine IP-Geolokalisierung.");
   pageRanks(data.pages, copy);
   ranks("actionRanks", data.actions, "action", "count", value => t(ACTION_LABELS[value] || "Andere Bedienaktion"), { game: true, limit: 10, ...emptyCopy });
   gameCards(data);
   designUsage(data);
   serverMetrics(data.server);
   analysis.update(data);
-  globe.update(data.geography || data.countries || []);
+  presentGeography(data, { viz: byId("geographyViz"), note: byId("geographyUnmeasured"), globe, t, e });
   requestTraffic(data);
   byId("nexusRooms").textContent = number(data.server?.active_rooms);
   byId("nexusPlayers").textContent = number(data.server?.players_online);
@@ -424,7 +424,7 @@ function render(data) {
   favorites.refresh();
   syncMotion();
   const firstSeen = data.collection?.first_seen_at;
-  byId("collectionNote").textContent = !trafficMeasured(data) ? t("Für Watten werden keine Browserbesuche erfasst; Partien und Live-Tische stammen vom Server.") : firstSeen ? `${t("Messwerte verfügbar seit")} ${timestamp(firstSeen)}` : t("Die Besuchsmessung beginnt mit diesem Release.");
+  byId("collectionNote").textContent = copy ? t(data.period?.game === "watten" ? "Für Watten werden keine Browserbesuche erfasst; Partien und Live-Tische stammen vom Server." : copy.description) : firstSeen ? `${t("Messwerte verfügbar seit")} ${timestamp(firstSeen)}` : t("Die Besuchsmessung beginnt mit diesem Release.");
   const dropped = count(data.collection?.dropped);
   byId("queueNote").hidden = !dropped && !data.collection?.cap_reached;
   byId("queueNote").textContent = data.collection?.cap_reached ? t("Die Ereignisgrenze ist erreicht. Ältere Messwerte werden entfernt; der Zeitraum kann unvollständig sein.") : `${t("Verworfene Ereignisse bei Überlastung")}: ${number(dropped)}. ${t("Diese Messung kann unvollständig sein.")}`;
@@ -528,10 +528,11 @@ function clearPrivateData() {
   globe.clear();
   globe.suspend();
   syncGameOptions(["zdwa", "zilch"]);
-  for (const id of ["hausdeppMonitoringNote", "wattenMonitoringNote"]) {
+  for (const id of ["hausdeppMonitoringNote", "wattenMonitoringNote", "geographyUnmeasured"]) {
     byId(id).hidden = true;
     byId(id).textContent = "";
   }
+  byId("geographyViz").hidden = false;
   for (const id of ["overviewMetrics", "comparisonNote", "dailyChart", "dailyTable", "dailySelection", "hourlyChart", "activityHeatmap", "heatmapSelection", "pageRanks", "pageBubbles", "pageDetail", "pageFocus", "journeyFlow", "journeyDetail", "journeyTable", "journeyFocus", "journeySample", "referrerRanks", "deviceRanks", "deviceSoftwareRanks", "deviceHardwareRanks", "deviceDonut", "appModeChart", "appModeRanks", "pwaInstalledCount", "pwaFirstOpenCount", "browserRanks", "browserLanguageRanks", "requestTrafficSummary", "requestCountryRanks", "requestStatusRanks", "requestAgentRanks", "requestChannelRanks", "requestRecordedAt", "requestDroppedNote", "countryRanks", "gameCards", "gameModes", "actionRanks", "designComparison", "designAccounts", "designLooks", "designTable", "designCollectionNote", "serverGauges", "serverVitals", "queueNote", "collectionNote", "lastUpdated", "nexusRooms", "nexusPlayers", "nexusWindow"]) byId(id).replaceChildren();
 }
 function syncMotion() {
