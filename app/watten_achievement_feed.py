@@ -7,7 +7,7 @@ read session. No source identifiers or private projections leave this module.
 
 from __future__ import annotations
 
-from sqlalchemy import func, select
+from sqlalchemy import exists, func, select
 
 from .database import database_schema_ready, session_scope
 from .models import User, WattenAchievementGrant, WattenProgressState
@@ -47,6 +47,12 @@ def build_watten_achievement_feed(viewer_user_id: int, *, page=1, limit=12) -> d
         users = list(db.execute(select(User.id, User.is_active)))
         existing = {identifier for identifier, _active in users}
         _require(any(identifier == viewer_user_id and active for identifier, active in users), "watten_feed_invalid_user")
+        # A missing epoch must not silently remove an active grant owner before
+        # pagination. Detect this using identity metadata, before private JSON.
+        orphan = select(User.id).where(User.is_active.is_(True),
+            exists(select(WattenAchievementGrant.user_id).where(WattenAchievementGrant.user_id == User.id)),
+            ~exists(select(WattenProgressState.user_id).where(WattenProgressState.user_id == User.id))).limit(1)
+        _require(db.scalar(orphan) is None, "watten_feed_invalid_source")
         criteria = (User.is_active.is_(True), WattenAchievementGrant.generation == WattenProgressState.generation)
         base = select(WattenAchievementGrant, User.username).join(
             User, User.id == WattenAchievementGrant.user_id).join(

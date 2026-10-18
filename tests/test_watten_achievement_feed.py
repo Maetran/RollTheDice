@@ -5,10 +5,10 @@ from dataclasses import replace
 from types import SimpleNamespace
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import event, select
 
 from app import watten_achievement_feed as feed
-from app.database import session_scope
+from app.database import get_engine, session_scope
 from app.models import (
     GameParticipant,
     HausdeppAchievementUnlock,
@@ -186,3 +186,29 @@ def test_future_catalog_same_id_is_archived_and_known_unknown_bid_claim_fails_cl
         grant.catalog_version = 1  # impossible claimed v1 goal: original public bids are UNKNOWN
     with pytest.raises(feed.WattenAchievementFeedError, match="invalid_source"):
         feed.build_watten_achievement_feed(owner[0].user_id)
+
+
+def test_foreign_active_grant_owner_without_state_fails_closed_before_json_and_without_get_writes(server, monkeypatch):
+    viewer, other = runtime_tests.account("IntactFeedViewer"), runtime_tests.account("OrphanFeedOwner")
+    with session_scope() as db:
+        persist_own(db, viewer, "intact-feed-source")
+        persist_own(db, other, "orphan-feed-source")
+        db.delete(db.get(WattenProgressState, other[0].user_id))
+    with session_scope() as db:
+        before = snapshot(db)
+    statements = []
+
+    def observed(_connection, _cursor, statement, _parameters, _context, _many):
+        statements.append(statement)
+
+    monkeypatch.setattr(feed, "_owned_matches", lambda *_args: pytest.fail("orphan check read private match JSON"))
+    event.listen(get_engine(), "before_cursor_execute", observed)
+    try:
+        with pytest.raises(feed.WattenAchievementFeedError, match="invalid_source"):
+            feed.build_watten_achievement_feed(viewer[0].user_id)
+    finally:
+        event.remove(get_engine(), "before_cursor_execute", observed)
+    assert statements and all(statement.lstrip().upper().startswith("SELECT") and "_json" not in statement
+                              for statement in statements)
+    with session_scope() as db:
+        assert snapshot(db) == before
