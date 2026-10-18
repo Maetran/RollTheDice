@@ -46,12 +46,12 @@ function landscapeHint() {
   </aside>`;
 }
 
-function seatSlot(room, seat, { member, viewerSeat, busy }) {
+function seatSlot(room, seat, { member, viewerSeat, busy, canManageCpus }) {
   const info = room.seats[seat] || {};
   const count = room.recipe.player_count;
   const own = viewerSeat === seat;
   const host = info.participant_id && info.participant_id === room.host_participant_id;
-  const name = info.is_cpu ? t("seat.cpu") : info.name;
+  const name = info.name;
   const team = count === 4 ? seat % 2 : null;
   const label = count === 4
     ? t("seat.takeTeam", { seat: seat + 1, team: teamName(team) })
@@ -59,13 +59,18 @@ function seatSlot(room, seat, { member, viewerSeat, busy }) {
   const free = !info.participant_id && !info.is_cpu;
   const button = member && free && room.status === "waiting"
     ? `<button type="button" data-watten-command="take-seat" data-seat="${seat}" ${busy ? "disabled" : ""}>${esc(label)}</button>` : "";
+  const cpuButton = canManageCpus && room.status === "waiting" && (info.is_cpu
+    || (free && room.seats.filter(item => item.is_cpu).length < count - 1))
+    ? `<button type="button" class="wt-button--ghost" data-watten-command="${free ? "place-cpu" : "remove-cpu"}" data-seat="${seat}" ${busy ? "disabled" : ""}>${esc(t(free ? "seat.placeCpu" : "seat.removeCpu"))}</button>` : "";
   return `<li class="wt-seat-slot${own ? " is-own" : ""}${free ? " is-free" : ""}" data-watten-seat="${seat}">
     <span class="wt-seat-number">${esc(t("seat.number", { seat: seat + 1 }))}</span>
     ${free ? `<span class="wt-seat-free">${esc(t("seat.free"))}</span>`
-      : `<strong${info.is_cpu ? "" : " translate=\"no\""}>${esc(name || "")}</strong>`}
+      : `<strong translate="no">${esc(name || "")}</strong>`}
+    ${info.is_cpu ? `<span class="wt-tag">${esc(t("seat.cpu"))}</span>` : ""}
     ${own ? `<span class="wt-tag">${esc(t("seat.you"))}</span>` : ""}
     ${host ? `<span class="wt-tag wt-tag--host">${esc(t("seat.host"))}</span>` : ""}
     ${button}
+    ${cpuButton}
   </li>`;
 }
 
@@ -122,7 +127,7 @@ export function waitingRoomMarkup(snapshot, { mode, viewerId, busy = false, extr
     </header>
     ${member ? landscapeHint() : ""}
     ${status ? `<p class="wt-note" role="status">${esc(status)}</p>` : ""}
-    ${seatsMarkup(room, { member, viewerSeat, busy })}
+    ${seatsMarkup(room, { member, viewerSeat, busy, canManageCpus: isHost && snapshot.capabilities?.cpu_autoplay === true })}
     ${unseated.length ? `<p class="wt-note">${esc(t("waiting.unseated", { names: unseated.map(item => item.name).join(", ") }))}</p>` : ""}
     ${member && viewerSeat === null && room.status === "waiting" ? `<p class="wt-note wt-note--strong">${esc(t("waiting.chooseSeat"))}</p>` : ""}
     ${room.status === "waiting" ? `<p class="wt-note">${esc(isHost

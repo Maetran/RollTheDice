@@ -62,6 +62,7 @@ function seatBadge(vm, seat) {
   const awaited = vm.awaited.includes(info.player_id);
   const tags = [
     own ? t("seat.you") : "",
+    vm.room.seats[seat]?.is_cpu ? t("seat.cpu") : "",
     partner ? t("seat.partner") : "",
     vm.count === 4 ? t("team.label", { team: teamName(info.party) }) : "",
     seat === engine.dealer_seat ? t("seat.dealer") : "",

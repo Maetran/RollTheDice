@@ -142,7 +142,7 @@ function creatorMarkup(username) {
         <label class="wt-check"><input type="checkbox" name="partner_hand"><span>${esc(t("create.partnerHand"))}<small data-watten-partner-help>${esc(t("create.partnerHandHelp"))}</small></span></label>
         <label>${esc(t("create.password"))}<input name="password" type="password" autocomplete="new-password" maxlength="100"><small>${esc(t("create.passwordHelp"))}</small></label>
       </details>
-      <p class="wt-note">${esc(t("create.cpuLater"))}</p>
+      <p class="wt-note">${esc(t("create.cpuSeats"))}</p>
       <button type="submit" class="wt-primary">${esc(t("create.submit"))}</button>
       <p class="wt-error" role="alert" data-watten-create-error></p>
     </form>
@@ -949,6 +949,8 @@ app.addEventListener("click", event => {
       break;
     }
     case "start": roomCommand("watten_start"); break;
+    case "place-cpu": roomCommand("watten_place_cpu", { seat: Number(control.dataset.seat) }); break;
+    case "remove-cpu": roomCommand("watten_remove_cpu", { seat: Number(control.dataset.seat) }); break;
     case "leave-waiting": roomCommand("leave_waiting_game"); break;
     case "copy-link": void copyLink(control); break;
     case "dismiss-hint": dismissLandscapeHint(); control.closest("[data-watten-landscape-hint]")?.remove(); break;

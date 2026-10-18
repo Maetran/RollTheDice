@@ -34,7 +34,7 @@ async function player(browser, baseURL, language = 'de') {
   expect((await context.request.put('/api/auth/preferences/language', {
     headers: { 'X-CSRF-Token': user.csrf_token }, data: { preferred_language: language },
   })).ok()).toBeTruthy();
-  const traffic = { snapshot: null, commands: [], errors: [] };
+  const traffic = { snapshot: null, commands: [], errors: [], call: {} };
   page.on('pageerror', error => traffic.errors.push(error.message));
   page.on('websocket', socket => {
     socket.on('framesent', frame => {
@@ -43,7 +43,21 @@ async function player(browser, baseURL, language = 'de') {
     socket.on('framereceived', frame => {
       try {
         const message = JSON.parse(String(frame.payload));
-        if (message.scoreboard) traffic.snapshot = message.scoreboard;
+        if (message.scoreboard) {
+          const snapshot = message.scoreboard;
+          const engine = snapshot.engine;
+          if (engine?.deal_id !== traffic.snapshot?.engine?.deal_id) traffic.call = {};
+          for (const call of snapshot.pending_call_events || []) {
+            if (call.kind === 'strike_announced') traffic.call.strike = call.value;
+            if (call.kind === 'colour_announced') traffic.call.suit = call.value;
+          }
+          for (const shown of engine?.inspection?.cards || []) {
+            const [suit, rank] = shown.card.split('-');
+            if (shown.role === 'strike') traffic.call.strike = shown.card === 'bells-6' ? 'weli' : rank;
+            if (shown.role === 'colour') traffic.call.suit = suit;
+          }
+          traffic.snapshot = snapshot;
+        }
       } catch { /* Non-JSON protocol frame. */ }
     });
   });
@@ -240,6 +254,74 @@ test('page lifecycle handlers clear private state synchronously and restore thro
     expect(original.traffic.errors).toEqual([]);
   } finally { await Promise.allSettled(players.map(item => item.context.close())); }
 });
+
+for (const count of [2, 3, 4]) {
+  test(`${count}-player host chooses CPU seats, starts manually and receives autonomous play`, async ({ browser, baseURL }) => {
+    test.setTimeout(90000);
+    const host = await player(browser, baseURL, count === 3 ? 'en' : 'de');
+    try {
+      await create([host], { count, reference: true, start: false });
+      for (let seat = 1; seat < count; seat += 1) {
+        await host.page.locator(`[data-watten-command=place-cpu][data-seat="${seat}"]`).click();
+        await expect.poll(() => host.traffic.snapshot?.room.seats[seat].is_cpu).toBe(true);
+        await expect(host.page.locator(`[data-watten-seat="${seat}"] strong`)).not.toHaveText('');
+      }
+      await host.page.locator('[data-watten-command=remove-cpu][data-seat="1"]').click();
+      await expect.poll(() => host.traffic.snapshot.room.seats[1].is_cpu).toBe(false);
+      await host.page.locator('[data-watten-command=place-cpu][data-seat="1"]').click();
+      await expect.poll(() => host.traffic.snapshot.room.seats.every(seat => seat.participant_id)).toBe(true);
+      expect(host.traffic.snapshot.started).toBe(false);
+      expect(host.traffic.snapshot.room.seats.filter(seat => seat.is_cpu)).toHaveLength(count - 1);
+      expect(new Set(host.traffic.snapshot.room.seats.map(seat => seat.name)).size).toBe(count);
+      await host.page.locator('[data-watten-command=start]').click();
+      let observedPlay = false;
+      for (let turn = 0; turn < 60; turn += 1) {
+        await expect.poll(() => {
+          const engine = host.traffic.snapshot?.engine;
+          return engine && (engine.actions.some(kind => kind !== 'partner_feedback')
+            || ['deal_complete', 'match_complete'].includes(engine.phase));
+        }, { timeout: 20000 }).toBeTruthy();
+        const engine = host.traffic.snapshot.engine;
+        if (engine.phase === 'match_complete') break;
+        if (engine.phase === 'deal_complete') {
+          await host.page.locator('[data-watten-command=next-deal]').click();
+          continue;
+        }
+        const before = engine.opportunity;
+        let kind, value;
+        if (engine.actions.includes('show_ready')) kind = 'show_ready';
+        else if (engine.actions.includes('inspection_ack')) kind = 'inspection_ack';
+        else if (engine.actions.includes('announce_strike')) { kind = 'announce_strike'; value = '7'; }
+        else if (engine.actions.includes('announce_colour')) { kind = 'announce_colour'; value = 'bells'; }
+        else if (engine.actions.includes('respond_hold')) { kind = 'respond_hold'; value = 'hold'; }
+        else if (engine.actions.includes('bid')) kind = 'bid';
+        if (kind) {
+          await host.page.locator(`[data-watten-action="${kind}"]${value ? `[data-value="${value}"]` : ''}`).click();
+        } else {
+          expect(engine.actions).toContain('play_card');
+          const { strike, suit } = host.traffic.call;
+          const knows = !host.traffic.snapshot.room.recipe.blind || engine.reference_card?.face === 'card';
+          if (knows) { expect(strike).toBeTruthy(); expect(suit).toBeTruthy(); }
+          const cards = engine.hand.map(item => item.card);
+          const isStrike = card => strike === 'weli' ? card === 'bells-6' : card.endsWith(`-${strike}`);
+          const isTrump = card => card === 'bells-6' || card.startsWith(`${suit}-`);
+          const lead = engine.current_trick.cards[0]?.card;
+          const duty = knows && lead && isTrump(lead) && cards.some(card => isTrump(card) && !isStrike(card));
+          const card = (duty ? cards.filter(card => isTrump(card) || isStrike(card)) : cards)[0];
+          await host.page.locator(`[data-wt-hand] button[data-card="${card}"]`).press('Enter');
+          observedPlay = true;
+        }
+        await expect.poll(() => host.traffic.snapshot.engine.opportunity).not.toBe(before);
+        if (count !== 2 && observedPlay) break;
+      }
+      if (count === 2) {
+        await expect(host.page.locator('[data-watten-match-result]')).toBeVisible();
+        expect(host.traffic.snapshot.result_persisted).toBe(true);
+      } else expect(observedPlay).toBe(true);
+      expect(host.traffic.errors).toEqual([]);
+    } finally { await host.context.close(); }
+  });
+}
 
 test('four manually chosen seats preserve teams and blind inspection/reference roles', async ({ browser, baseURL }, testInfo) => {
   const players = [];
