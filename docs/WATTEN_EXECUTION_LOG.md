@@ -228,3 +228,10 @@ nicht ausgeliefert und nicht als historische Version erfunden. Alle alten
 Zuordnungen bleiben unverändert, der neue 3.12.0-Eintrag zeigt auf `766bcb3`.
 PWA-Quellen sind inzwischen im gleichen Einstiegspaket enthalten; neuer
 vollständiger Nachweis wird erst für diesen zusammengeführten Stand erzeugt.
+
+Der erste integrierte PWA-Lauf auf `b6046e2` bestand Qualität und Tools;
+Backend meldete **1430 bestanden, einen Fehler** bei der fehlenden ausdrücklichen
+technischen Inventarzuordnung der drei neuen PWA-Ressourcen. Die drei Einträge
+verweisen jetzt auf bestehende HTTP- und echte Worker-Browserprüfungen;
+Dokument-/Zugangsprüfung wird nicht umgangen. Originalbeleg bleibt unter
+`test-results/local-checks/b6046e24f168-1792337859380-126315df/` erhalten.
