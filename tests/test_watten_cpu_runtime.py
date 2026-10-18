@@ -418,7 +418,10 @@ def test_actual_short_mixed_match_uses_only_personal_policy_inputs_and_one_resul
                 if state.phase == "match_complete":
                     break
                 if state.phase == "deal_complete":
-                    data = room_command(game_id, "watten_next_deal", next(numbers), deal_id=state.deal_id, opportunity=state.opportunity)
+                    # A CPU bid/go may finish before this human acts. Keep the
+                    # first next-deal ID distinct from setup's room-0 seat ACK.
+                    data = room_command(game_id, "watten_next_deal", f"cpu-loop-{next(numbers)}",
+                                        deal_id=state.deal_id, opportunity=state.opportunity)
                     await _handle_locked(human, data["action"], data)
                 else:
                     view = snapshot_watten(game, human.player_id)["engine"]

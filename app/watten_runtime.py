@@ -675,15 +675,36 @@ def _record_human_play_day(db, checkpoint: dict, actor: tuple[int, str]) -> None
 
 
 def persist_watten_game(game: dict, *, creating: bool = False,
-                        human_actor: tuple[int, str] | None = None) -> None:
-    """Raise on storage failure; the caller must keep the prior live state."""
+                        human_actor: tuple[int, str] | None = None,
+                        expected_source: str | None = None, commit_guard=None) -> None:
+    """Commit before installation; optional internal authority precedes writers.
+
+    Background callers can bind their decision to an already inspected source.
+    A guard runs in the same source-locked transaction before result/progress
+    writers. Existing callers retain their transaction and checkpoint behavior.
+    """
     if not database_schema_ready():
         raise RuntimeError("watten_database_not_ready")
+    if commit_guard is not None and expected_source is None:
+        raise ValueError("watten_invalid_expected_source")
     checkpoint = copy_game(game)
     from .watten_cpu_runtime import observe_cpu_memories
 
     checkpoint["_watten"] = observe_cpu_memories(checkpoint["_watten"])
     with session_scope() as db:
+        if expected_source is not None:
+            if type(expected_source) is not str:
+                raise ValueError("watten_invalid_expected_source")
+            if db.get_bind().dialect.name == "sqlite":
+                connection = db.connection()
+                if not connection.connection.driver_connection.in_transaction:
+                    connection.exec_driver_sql("BEGIN IMMEDIATE")
+            current = db.scalar(select(ActiveGame.state_json).where(
+                ActiveGame.game_id == checkpoint["_id"]).with_for_update())
+            if current != expected_source:
+                raise ValueError("watten_stale_checkpoint")
+        if commit_guard is not None:
+            commit_guard(db, checkpoint)
         if checkpoint["_finished"]:
             from .watten_completion import store_completion_progress
             from .watten_results import store_result_in_session
@@ -691,7 +712,11 @@ def persist_watten_game(game: dict, *, creating: bool = False,
             checkpoint["_watten_result"] = store_result_in_session(db, checkpoint)
             checkpoint["_completion_persisted"] = True
             store_completion_progress(db, checkpoint)
-        _write_checkpoint(db, checkpoint, creating=creating)
+        options = {"creating": creating}
+        if expected_source is not None:
+            options["expected_json"] = expected_source
+        if not _write_checkpoint(db, checkpoint, **options):
+            raise ValueError("watten_stale_checkpoint")
         if human_actor is not None:
             _record_human_play_day(db, checkpoint, human_actor)
         from .watten_public_titles import refresh_public_titles

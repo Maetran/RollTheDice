@@ -15,25 +15,98 @@ import secrets
 from dataclasses import dataclass, replace
 from urllib.parse import urlsplit
 
+from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
+
+from .database import database_schema_ready, session_scope
+from .models import ActiveGame
+from .moderation import active_bans
 from .product_hosts import site_origin
-from .watten_access import _local
+from .watten_access import _local, watten_founder_account_id, watten_founder_deployment_enabled
 from .watten_cpu import CpuBudget, CpuProposal, CpuWait, decide
 from .watten_cpu_memory import CpuMemory, new_memory, observe
 from .watten_engine import EngineActor, EngineCommand
 from .watten_views import cpu_view
 
 logger = logging.getLogger(__name__)
-# The separately reviewed policy and memory validator are wired here. Host,
-# configured origin and the explicit local preview flag still gate execution.
+# Policy readiness is a pure deployment capability, never a room permission.
 CPU_POLICY_READY = True
 THINK_MIN_SECONDS = 0.35
 THINK_MAX_SECONDS = 1.25
 _RANDOM = secrets.SystemRandom()
 
 
-def cpu_autoplay_enabled() -> bool:
-    return bool(CPU_POLICY_READY and os.getenv("ROLLTHEDICE_WATTEN_GAME_PREVIEW", "0") == "1"
+def _local_preview_enabled() -> bool:
+    return bool(os.getenv("ROLLTHEDICE_WATTEN_GAME_PREVIEW", "0") == "1"
                 and _local((urlsplit(site_origin()).hostname or "").casefold()))
+
+
+def cpu_autoplay_enabled() -> bool:
+    """Pure capability for existing DTOs; actual execution needs authority."""
+    return bool(CPU_POLICY_READY and (_local_preview_enabled() or watten_founder_deployment_enabled()))
+
+
+@dataclass(frozen=True, slots=True, repr=False)
+class _Authority:
+    source: str
+    local: bool
+    founder_id: int | None
+
+
+def _founder_room(runtime, founder_id: int) -> bool:
+    room = runtime.room
+    if (len(room.members) != 1 or room.members[0].account_id != founder_id
+            or room.members[0].participant_id != room.host_participant_id
+            or any(item.account_id != founder_id for item in room.reservations)):
+        return False
+    return runtime.engine is None or all(
+        binding.account_id is None or binding.account_id == founder_id for binding in runtime.engine.recipe.bindings)
+
+
+def _founder_permission(db, runtime, *, lock=False) -> int | None:
+    if not watten_founder_deployment_enabled():
+        return None
+    founder = watten_founder_account_id(db, lock=lock)
+    if founder is None or not _founder_room(runtime, founder) or active_bans(db, founder, scope="play"):
+        return None
+    return founder
+
+
+def _authority(game: dict) -> _Authority | None:
+    """Read actual source before scheduling/deciding; no projection performs I/O."""
+    from .watten_runtime import restore_watten_json, serialize_watten_game
+
+    if not cpu_autoplay_enabled() or not database_schema_ready():
+        return None
+    try:
+        with session_scope() as db:
+            raw = db.scalar(select(ActiveGame.state_json).where(ActiveGame.game_id == game["_id"]))
+            if raw is None:
+                return None
+            stored = restore_watten_json(raw, refresh_titles=False)
+            if (stored["_id"] != game["_id"]
+                    or serialize_watten_game(stored) != serialize_watten_game(game)):
+                return None
+            local = _local_preview_enabled()
+            founder = None if local else _founder_permission(db, stored["_watten"])
+            if not local and founder is None:
+                return None
+            return _Authority(raw, local, founder)
+    except (SQLAlchemyError, ValueError, TypeError, KeyError):
+        logger.warning("Watten CPU cannot authorize stored table %s", game["_id"])
+        return None
+
+
+def _commit_guard(authority: _Authority):
+    def guard(db, checkpoint):
+        if not cpu_autoplay_enabled() or _local_preview_enabled() != authority.local:
+            raise ValueError("watten_cpu_access_required")
+        # persist_watten_game already owns the actual source lock and checked
+        # authority.source. Account/ownership locks therefore follow source.
+        if not authority.local and _founder_permission(db, checkpoint["_watten"], lock=True) != authority.founder_id:
+            raise ValueError("watten_cpu_access_required")
+
+    return guard
 
 
 def _view(runtime, player: str) -> dict:
@@ -117,6 +190,8 @@ def watch_game(game: dict) -> None:
     runtime = game["_watten"]
     active = (cpu_autoplay_enabled() and runtime.engine is not None and not runtime.absent
               and runtime.engine.phase not in {"deal_complete", "match_complete"})
+    if active:
+        active = _authority(game) is not None
     wanted = set()
     if active:
         for cpu in runtime.room.cpus:
@@ -163,6 +238,9 @@ async def _run(game: dict, player: str, job: _Job) -> None:
                     or runtime.absent or runtime.engine is None
                     or not any(cpu.participant_id == player for cpu in runtime.room.cpus)):
                 return
+            authority = _authority(game)
+            if authority is None:
+                return
             view = _view(runtime, player)
             if _context(runtime, view) != job.context:
                 return
@@ -192,7 +270,7 @@ async def _run(game: dict, player: str, job: _Job) -> None:
                 previous = {item.delivery_id for item in runtime.deliveries}
                 calls = {(item.kind, item.seat, item.value) for item in candidate["_watten"].deliveries
                          if item.delivery_id not in previous}
-                persist_watten_game(candidate)
+                persist_watten_game(candidate, expected_source=authority.source, commit_guard=_commit_guard(authority))
                 game.clear()
                 game.update(candidate)
                 events = tuple({"kind": kind, "seat": seat, "value": value} for kind, seat, value in sorted(calls))
