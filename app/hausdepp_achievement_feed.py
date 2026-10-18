@@ -19,13 +19,13 @@ from .security import as_utc
 
 
 def _hausdepp_difficulty(points: int) -> AchievementDifficulty:
-    """Map the one-time XP awards (10, 25, 50, 100) to the shared three bands."""
+    """Map the one-time XP awards, including rare collections, to three bands."""
 
     if points == 10:
         return "easy"
     if points == 25:
         return "medium"
-    if points in (50, 100):
+    if points in (50, 100, 250, 500):
         return "hard"
     raise RuntimeError(f"Hausdepp achievement needs a feed difficulty: {points}")
 

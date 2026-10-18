@@ -1,4 +1,4 @@
-"""Private Hausdepp XP, 115 one-time achievements and the 24-step ironic ladder.
+"""Private Hausdepp XP, 135 one-time achievements and the 24-step ironic ladder.
 
 Only validated, completed round membership can mint a credit. Database uniqueness
 makes retries and simultaneous account tabs harmless. This service never writes
@@ -20,6 +20,7 @@ from sqlalchemy.orm import selectinload
 from .database import database_schema_ready, session_scope
 from .game_types import HAUSDEPP_GAME_TYPE
 from .hausdepp_results import validated_hausdepp_membership
+from .hausdepp_surprise_collection import SURPRISE_EFFECTS
 from .models import (
     CompletedGame,
     GameParticipant,
@@ -214,7 +215,31 @@ _ACHIEVEMENT_DATA = (
     (113, "Zwei-Wochen-Lauf", "Fortnight streak", "An 14 aufeinanderfolgenden Tagen je eine Runde abschliessen.", "Complete a round on 14 days in a row.", 100),
     (114, "Stammgast", "Regular", "500 Runden abschliessen.", "Complete 500 rounds.", 100),
     (115, "Inventar mit Schlüssel", "Furniture with a key", "1000 Runden abschliessen.", "Complete 1000 rounds.", 100),
+    (116, "Sternstunde gezündet", "Sparked a star shower", "Den seltenen Sternenregen selbst auslösen und die Runde abschliessen; mindestens ein weiterer Mensch muss beim Auslösen verbunden mitspielen.", "Trigger the rare star shower yourself and complete the round; at least one other human must be connected and playing when you trigger it.", 50),
+    (117, "Hammermässiger Auftritt", "Hammer time", "Den seltenen Hammerschlag selbst auslösen und die Runde abschliessen; mindestens ein weiterer Mensch muss beim Auslösen verbunden mitspielen.", "Trigger the rare hammer strike yourself and complete the round; at least one other human must be connected and playing when you trigger it.", 50),
+    (118, "Besuch bestellt", "Called the visitors", "Den seltenen UFO-Besuch selbst auslösen und die Runde abschliessen; mindestens ein weiterer Mensch muss beim Auslösen verbunden mitspielen.", "Trigger the rare UFO visit yourself and complete the round; at least one other human must be connected and playing when you trigger it.", 50),
+    (119, "Tür ins Nirgendwo", "Door to nowhere", "Den seltenen Portalwirbel selbst auslösen und die Runde abschliessen; mindestens ein weiterer Mensch muss beim Auslösen verbunden mitspielen.", "Trigger the rare portal swirl yourself and complete the round; at least one other human must be connected and playing when you trigger it.", 50),
+    (120, "Feuer frei, Drache!", "Fire away, dragon!", "Den seltenen Drachenangriff selbst auslösen und die Runde abschliessen; mindestens ein weiterer Mensch muss beim Auslösen verbunden mitspielen.", "Trigger the rare dragon attack yourself and complete the round; at least one other human must be connected and playing when you trigger it.", 50),
+    (121, "Acht Arme bestellt", "Ordered eight arms", "Den seltenen Krakenbesuch selbst auslösen und die Runde abschliessen; mindestens ein weiterer Mensch muss beim Auslösen verbunden mitspielen.", "Trigger the rare kraken visit yourself and complete the round; at least one other human must be connected and playing when you trigger it.", 50),
+    (122, "Die Zeit angehalten", "Stopped the clock", "Den seltenen Zeitstillstand selbst auslösen und die Runde abschliessen; mindestens ein weiterer Mensch muss beim Auslösen verbunden mitspielen.", "Trigger the rare stopped clock yourself and complete the round; at least one other human must be connected and playing when you trigger it.", 50),
+    (123, "Loch im Stammtisch", "Hole in the table", "Das seltene schwarze Loch selbst auslösen und die Runde abschliessen; mindestens ein weiterer Mensch muss beim Auslösen verbunden mitspielen.", "Trigger the rare black hole yourself and complete the round; at least one other human must be connected and playing when you trigger it.", 50),
+    (124, "Vierfach verrückt", "Four kinds of strange", "Vier verschiedene seltene Tischüberraschungen selbst auslösen und die jeweiligen Runden abschliessen; beim Auslösen muss jeweils mindestens ein weiterer Mensch verbunden mitspielen.", "Trigger four different rare table surprises yourself and complete each round; at least one other human must be connected and playing when you trigger each surprise.", 100),
+    (125, "Das volle Kuriositätenkabinett", "The complete cabinet of curiosities", "Alle acht seltenen Tischüberraschungen selbst auslösen und die jeweiligen Runden abschliessen; beim Auslösen muss jeweils mindestens ein weiterer Mensch verbunden mitspielen.", "Trigger all eight rare table surprises yourself and complete each round; at least one other human must be connected and playing when you trigger each surprise.", 500),
+    (126, "Sternengast", "Guest of the stars", "Den seltenen Sternenregen als verbundener Mitspieler miterleben und die Runde abschliessen; beim Auslösen müssen mindestens zwei Menschen verbunden mitspielen.", "Witness the rare star shower as a connected player and complete the round; at least two humans must be connected and playing when it is triggered.", 25),
+    (127, "Das sass!", "What a hit!", "Den seltenen Hammerschlag als verbundener Mitspieler miterleben und die Runde abschliessen; beim Auslösen müssen mindestens zwei Menschen verbunden mitspielen.", "Witness the rare hammer strike as a connected player and complete the round; at least two humans must be connected and playing when it is triggered.", 25),
+    (128, "Nicht von dieser Welt", "Out of this world", "Den seltenen UFO-Besuch als verbundener Mitspieler miterleben und die Runde abschliessen; beim Auslösen müssen mindestens zwei Menschen verbunden mitspielen.", "Witness the rare UFO visit as a connected player and complete the round; at least two humans must be connected and playing when it is triggered.", 25),
+    (129, "Auf der anderen Seite", "On the other side", "Den seltenen Portalwirbel als verbundener Mitspieler miterleben und die Runde abschliessen; beim Auslösen müssen mindestens zwei Menschen verbunden mitspielen.", "Witness the rare portal swirl as a connected player and complete the round; at least two humans must be connected and playing when it is triggered.", 25),
+    (130, "Gut durchgebraten", "Well done", "Den seltenen Drachenangriff als verbundener Mitspieler miterleben und die Runde abschliessen; beim Auslösen müssen mindestens zwei Menschen verbunden mitspielen.", "Witness the rare dragon attack as a connected player and complete the round; at least two humans must be connected and playing when it is triggered.", 25),
+    (131, "Tentakel am Tisch", "Tentacles at the table", "Den seltenen Krakenbesuch als verbundener Mitspieler miterleben und die Runde abschliessen; beim Auslösen müssen mindestens zwei Menschen verbunden mitspielen.", "Witness the rare kraken visit as a connected player and complete the round; at least two humans must be connected and playing when it is triggered.", 25),
+    (132, "Zeitzeuge", "Time witness", "Den seltenen Zeitstillstand als verbundener Mitspieler miterleben und die Runde abschliessen; beim Auslösen müssen mindestens zwei Menschen verbunden mitspielen.", "Witness the rare stopped clock as a connected player and complete the round; at least two humans must be connected and playing when it is triggered.", 25),
+    (133, "Dem Nichts entkommen", "Escaped the void", "Das seltene schwarze Loch als verbundener Mitspieler miterleben und die Runde abschliessen; beim Auslösen müssen mindestens zwei Menschen verbunden mitspielen.", "Witness the rare black hole as a connected player and complete the round; at least two humans must be connected and playing when it is triggered.", 25),
+    (134, "Kurioser Stammgast", "Regular at the unusual", "Vier verschiedene seltene Tischüberraschungen als verbundener Mitspieler miterleben und die jeweiligen Runden abschliessen; beim Auslösen müssen jeweils mindestens zwei Menschen verbunden mitspielen.", "Witness four different rare table surprises as a connected player and complete each round; at least two humans must be connected and playing when each surprise is triggered.", 50),
+    (135, "Jetzt hab ich alles gesehen", "Now I’ve seen everything", "Alle acht seltenen Tischüberraschungen als verbundener Mitspieler miterleben und die jeweiligen Runden abschliessen; beim Auslösen müssen jeweils mindestens zwei Menschen verbunden mitspielen.", "Witness all eight rare table surprises as a connected player and complete each round; at least two humans must be connected and playing when each surprise is triggered.", 250),
 )
+_SURPRISE_ACHIEVEMENTS = {
+    **{116 + index: ("activated", effect) for index, effect in enumerate(SURPRISE_EFFECTS)},
+    **{126 + index: ("witnessed", effect) for index, effect in enumerate(SURPRISE_EFFECTS)},
+}
 _CATEGORIES = ("participation", "community", "cut_gamble", "tens", "four", "tempo", "mishaps", "endgame")
 # Swiss local time decides when a round counts as office hours, night or weekend.
 _PLAY_ZONE = ZoneInfo("Europe/Zurich")
@@ -238,6 +263,7 @@ _TOURNAMENT_TARGETS = {91: 3, 93: 3, 94: 3, 96: 3, 97: 3, 98: 5, 99: 3, 100: 3}
 _TARGETS = {f"hausdepp_{number:02}": target for number, target in {
     **_ROUND_TARGETS, **_TOURNAMENT_TARGETS, **_HABIT_TARGETS,
     2: 25, 8: 5, 12: 5, 13: 10, 14: 10, 15: 100, 16: 250, 29: 25, 86: 3, 87: 10,
+    124: 4, 125: 8, 134: 4, 135: 8,
 }.items()}
 
 _REPEATED_DESCRIPTIONS = {
@@ -288,6 +314,8 @@ def _description(number: int, de: str, en: str) -> dict[str, str]:
 
 
 def _category(number: int) -> str:
+    if number >= 116:
+        return "surprises_activated" if number <= 125 else "surprises_witnessed"
     if number > 100:
         return "habits"
     if number <= 64:
@@ -315,6 +343,7 @@ def _new_aggregate() -> dict:
     return {"rounds": 0, "sizes": Counter(), "opponents": Counter(), "flags": Counter(), "ten_clears": 0,
             "with_cpu": 0, "humans_three": 0, "humans_six": 0,
             "hausdepp": 0, "finished": 0, "tournaments": set(),
+            "surprises_activated": set(), "surprises_witnessed": set(),
             "office": 0, "lunch": 0, "evening": 0, "night": 0, "early": 0, "weekend": 0,
             "days": Counter(), "best_day": 0, "streak": 0, "best_streak": 0, "last_day": None}
 
@@ -333,6 +362,10 @@ def _accumulate(aggregate: dict, facts: dict, finished_at: datetime | None = Non
     aggregate["with_cpu"] += facts["cpu_count"] > 0
     aggregate["humans_three"] += facts["cpu_count"] == 0 and facts["human_count"] >= 3
     aggregate["humans_six"] += facts["human_count"] == 6
+    collection = facts.get("table_surprises", {})
+    for track in ("activated", "witnessed"):
+        aggregate[f"surprises_{track}"].update(effect for effect in collection.get(track, [])
+                                             if effect in SURPRISE_EFFECTS)
     aggregate[facts["outcome"]] += 1
     if tournament_id:
         aggregate["tournaments"].add(tournament_id)
@@ -360,7 +393,12 @@ def _accumulate_time(aggregate: dict, local: datetime) -> None:
 def _progress(aggregate: dict, achievement_id: str) -> tuple[int, int]:
     number = int(achievement_id.rsplit("_", 1)[1])
     current, target = aggregate["flags"][achievement_id], _TARGETS.get(achievement_id, 1)
-    if number in (1, 2, 15, 16):
+    if number in _SURPRISE_ACHIEVEMENTS:
+        track, effect = _SURPRISE_ACHIEVEMENTS[number]
+        current = int(effect in aggregate[f"surprises_{track}"])
+    elif number in (124, 125, 134, 135):
+        current = len(aggregate["surprises_activated" if number < 126 else "surprises_witnessed"])
+    elif number in (1, 2, 15, 16):
         current = aggregate["rounds"]
     elif 3 <= number <= 7:
         current = aggregate["sizes"][number - 1]

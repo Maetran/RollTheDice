@@ -448,7 +448,7 @@ Siegquote werden angezeigt. Tischgrössen von zwei bis sechs sind filterbar.
 Computer und deaktivierte Konten erscheinen nicht in der Rangliste.
 Der Bereich **Neueste erreichte Erfolge** (`/api/hausdepp/achievements/recent`,
 nur angemeldet) listet die jüngsten Freischaltungen aktiver Konten mit
-Kontoname, Erfolg, EP, Schwierigkeit (10 EP leicht, 25 EP mittel, 50/100 EP
+Kontoname, Erfolg, EP, Schwierigkeit (10 EP leicht, 25 EP mittel, 50/100/250/500 EP
 schwer) und Zeitpunkt. Konto-IDs, Avatare, Quellrunden und Karten verlassen den
 Server nicht.
 
@@ -509,8 +509,8 @@ und Verständlichkeit verfeinern; das führt keine erneute Zugangssperre ein.
 | --- | --- | --- |
 | Lobby und Tisch | Echte Mehrspielerpartien, Computer-Mitspieler, Zugang für aktive Konten, Tischstatus, direkte Aktionen | Weitere Verfeinerungen nach Spieltests |
 | Regeln | Vollständige DE-/EN-Hausregeln mit Schnellstart, Beispielen und Sprungmarken | Verständlichkeitsprüfung durch den Owner |
-| Punkte | Je abgeschlossener Runde 10 EP nur mit Menschen oder 2 EP mit mindestens einem Computer (75 % Reduktion, abgerundet); Erfolge einmalig volle 10/25/50/100 EP | Weiteres Balancing nach Spieltests |
-| Achievements | Bestätigter Katalog mit 115 Erfolgen, 24 Rängen und eigenen Aufstiegssprüchen | Weitere Gestaltungs- und Spieltests |
+| Punkte | Je abgeschlossener Runde 10 EP nur mit Menschen oder 2 EP mit mindestens einem Computer (75 % Reduktion, abgerundet); Erfolge einmalig volle 10/25/50/100/250/500 EP | Weiteres Balancing nach Spieltests |
+| Achievements | Bestätigter Katalog mit 135 Erfolgen, 24 Rängen und eigenen Aufstiegssprüchen | Weitere Gestaltungs- und Spieltests |
 | Konto | Private Statistik und Historie, EP, Rangfortschritt, Rangleiter und filterbare Erfolgssammlung | Weitere Gestaltungsverfeinerungen |
 | Chat und Reaktionen | Gemeinsame Suite-Funktionen am Tisch und Lobbychat | Weitere Verfeinerungen nach Spieltests |
 | Weitere Runden | Einzelrunden über die Lobby; Turnierserie am selben Tisch mit Geberrotation und Buchstabenstand | Weitere Gestaltungs- und Spieltests |
@@ -518,7 +518,7 @@ und Verständlichkeit verfeinern; das führt keine erneute Zugangssperre ein.
 
 ### Bestätigte Punkte, Erfolge und Ränge
 
-Der Owner hat den [Katalog mit 115 Erfolgen und 24 Rängen](HAUSDEPP_ACHIEVEMENTS.md)
+Der Owner hat den [Katalog mit 135 Erfolgen und 24 Rängen](HAUSDEPP_ACHIEVEMENTS.md)
 freigegeben. Jede regulär abgeschlossene Runde nur mit Menschen gibt dem
 beteiligten Konto **10 Erfahrungspunkte (EP)**. Sobald mindestens ein Computer
 am Tisch mitspielt, wird die Basis um 75 % reduziert und **je Runde auf ganze
@@ -528,7 +528,7 @@ Turnierrunde, unabhängig davon, ob das Konto fertig oder Hausdepp der Runde
 geworden ist. Es gibt keine Bruchteile: Drei Runden mit Computer ergeben
 zusammen 6 Runden-EP.
 
-Jeder Erfolg gibt weiterhin einmalig seine vollen **10, 25, 50 oder 100 EP**,
+Jeder Erfolg gibt weiterhin einmalig seine vollen **10, 25, 50, 100, 250 oder 500 EP**,
 auch mit Computer und bei Turniererfolgen. Mehrere Erfolge können in derselben
 Runde freigeschaltet werden. Es gibt keine Minuspunkte und keinen wiederholbaren
 Zusatzbonus fürs Verlieren. Abgeschlossene Runden und Siege zählen weiterhin
@@ -969,7 +969,7 @@ shown. Table sizes two through six can be filtered. Computers and inactive
 accounts are excluded.
 The **Latest achievements earned** section (`/api/hausdepp/achievements/recent`,
 signed in only) lists active accounts' newest unlocks with account name,
-achievement, XP, difficulty (10 XP easy, 25 XP medium, 50/100 XP hard) and time.
+achievement, XP, difficulty (10 XP easy, 25 XP medium, 50/100/250/500 XP hard) and time.
 Account IDs, avatars, source rounds and cards never leave the server.
 
 When creating a table, the host can choose a **HAUSDEPP tournament** instead of
@@ -1024,8 +1024,8 @@ and clarity without reinstating the former access restriction.
 | --- | --- | --- |
 | Lobby and table | Real multiplayer rounds, computer opponents, active-account access, table status, direct actions | Further playtest refinements |
 | Rules | Complete German/English house rules with quick start, examples and anchors | Owner review for clarity |
-| Points | Per completed round: 10 XP for all-human tables or 2 XP with any computer (75% reduction, rounded down); full one-time achievement rewards of 10/25/50/100 XP | Further balancing after playtests |
-| Achievements | Approved catalogue of 115 achievements, 24 ranks and individual sayings | Further design and playtests |
+| Points | Per completed round: 10 XP for all-human tables or 2 XP with any computer (75% reduction, rounded down); full one-time achievement rewards of 10/25/50/100/250/500 XP | Further balancing after playtests |
+| Achievements | Approved catalogue of 135 achievements, 24 ranks and individual sayings | Further design and playtests |
 | Account | Private facts/history, XP, rank progress, complete ladder and filterable achievement collection | Further design refinements |
 | Chat and reactions | Shared suite features at the table and lobby chat | Further playtest refinements |
 | Further rounds | Single rounds through the lobby; same-table tournaments with dealer rotation and letter scores | Further design and playtests |
@@ -1040,7 +1040,7 @@ experience points (XP)**. Any computer seat reduces the base round reward by
 every individual completed tournament round, regardless of the account's
 outcome. No fractions are awarded: three rounds with a computer give 6 round XP.
 
-Each achievement still grants its full **10, 25, 50 or 100 XP once**, including
+Each achievement still grants its full **10, 25, 50, 100, 250 or 500 XP once**, including
 computer and tournament achievements. Multiple achievements may unlock
 together. There are no negative points or repeatable losing bonus. Completed
 rounds and wins still count fully in statistics. Existing unlocks are neither
@@ -1133,3 +1133,28 @@ automatic refill does not light up. Names and hand sizes sit on dark plates, the
 player on turn on a gold one; the turn line is a pill, gold on the own turn.
 On phones the plate shows name and number in one line; with four or more
 opponents all seats share one even row above the stacks.
+
+
+### Seltene Funde und zwei Sammlungen / Rare finds and two collections (3.12.0)
+
+Die acht seltenen Tischfunde haben je einen Erfolg fürs eigene Auslösen (50 EP)
+und einen fürs Miterleben (25 EP). Vier unterschiedliche Funde bringen zusätzlich
+100/50 EP, alle acht zusätzlich 500/250 EP. Der Auslöser sammelt beide Reihen.
+Beim gültigen Auslösen müssen mindestens zwei menschliche Mitspieler verbunden
+sein. Die damalige Teilnahme wird privat serverseitig festgehalten; ein späterer
+Disconnect löscht sie nicht. Erst ein regulärer Rundenabschluss schreibt Erfolge
+gut. Wiederholte Varianten erhöhen die Sammlung nicht. Zuschauer, Solo mit CPUs,
+Offline-Spiel und Vorschauen zählen nicht. Alte Runden ohne diese Belege werden
+nicht nachträglich als Fund interpretiert. Der Katalog umfasst 135 Erfolge und
+5’605 Erfolgs-EP; die 24 Ränge bis 9’000 EP bleiben erhalten.
+
+Each of the eight rare finds has an achievement for triggering it (50 XP) and
+another for witnessing it (25 XP). Four different finds add 100/50 XP; all eight
+add 500/250 XP. The activator collects both tracks. At least two human players
+must be connected when the server accepts the activation. Their attendance is
+recorded privately; a later disconnect does not erase it. Only a normally
+completed round grants credit. Repeated variants do not grow either collection.
+Spectators, solo CPU games, offline play and previews do not count. Old rounds
+without these facts are not retroactively interpreted as discoveries. The
+catalogue totals 135 achievements and 5,605 achievement XP; the 24 ranks ending
+at 9,000 XP are retained.

@@ -291,3 +291,25 @@ late spectators; new tables start with clean paper. Only the triggering tab's ha
 Reduced motion, hidden tabs, round changes and navigation suppress or clear the
 effects. Forty-two new graphite marks also reveal a small local caption once
 per round.
+
+
+### Fund-Erfolge / Find achievements (3.12.0)
+
+Ein gültiger Claim hält ausserhalb der Engine genau einen privaten Beleg für
+die aktuelle Runde fest: Auslöser und damals verbundene menschliche Teilnehmer,
+ohne Kartenwerte oder Animationsverlauf. Mindestens zwei Menschen müssen
+mitspielen. Beim regulären Rundenabschluss werden die eigenen beiden
+Fund-Listen in eine Kopie der bestehenden privaten Ergebnisbelege übernommen.
+Der Kontodienst sammelt daraus eindeutige Varianten, vergibt jeden Erfolg einmal
+und zeigt die beiden Reihen für Auslösen und Miterleben. Neue private Belege
+werden weder in Live-Projektionen noch im öffentlichen Rundenverlauf ausgegeben.
+Alte Claims ohne diese Angaben werden nicht rückwirkend interpretiert.
+
+An accepted claim retains one private current-round fact outside the engine:
+the activator and the human players connected at that moment, with no card
+values or animation history. At least two humans must be playing. Normal round
+completion merges each player's own two find lists into a copy of the private
+result evidence. The account service collects distinct variants and unlocks
+each achievement once across the triggered and witnessed tracks. These private
+facts never enter live projections or public round history. Older claims without
+these facts are not credited retroactively.

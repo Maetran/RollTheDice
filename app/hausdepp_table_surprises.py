@@ -9,9 +9,10 @@ from .game_realtime import broadcast
 from .game_state import multiplayer_pause_reason
 from .game_ws_session import GameSocketSession
 from .hausdepp_gameplay import game_lock
+from .hausdepp_surprise_collection import SURPRISE_EFFECTS, record_surprise_collection
 
 HAUSDEPP_TABLE_ACTIONS = frozenset({"hausdepp_table_surprise"})
-_EFFECTS = ("star", "hammer", "ufo", "portal", "dragon", "kraken", "clock", "blackhole")
+_EFFECTS = SURPRISE_EFFECTS
 _CLAIM_KEY = "_hausdepp_table_surprise_claim"
 _SCORCHED_KEY = "_hausdepp_scorched_cards"
 
@@ -82,6 +83,7 @@ def _claim_surprise(session: GameSocketSession, data: dict) -> dict:
     # Existing active-game JSON retains it across a restart, but never an
     # animation payload, actor or private hand. No schema/history growth.
     game[_CLAIM_KEY] = {"round_number": offer["round_number"], "activated": True}
+    record_surprise_collection(game, session.player_id, effect, offer["round_number"])
     if effect == "dragon":
         # A bounded visual flag for this table, outside the card engine. New
         # tournament rounds keep the singed paper; a new table starts clean.
