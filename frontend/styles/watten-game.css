@@ -91,6 +91,19 @@ small { font-weight: 400; color: var(--wt-muted); display: block; }
 .wt-hero { margin-bottom: 1rem; }
 .wt-lead { font-size: 1.1rem; max-width: 60ch; }
 .wt-lobby-grid { display: grid; gap: 1rem; grid-template-columns: minmax(0, 1fr); }
+[data-watten-lobby-chat] { margin-top: 1rem; }
+.wt-lobby-chat { min-width: 0; }
+.wt-lobby-chat [data-watten-lobby-chat-messages] { list-style: none; padding: .5rem .75rem; margin: .75rem 0; max-height: min(360px, var(--wt-lobby-chat-height, 40dvh)); overflow: auto; overscroll-behavior: contain; border: 1px solid var(--wt-paper-edge); border-radius: 8px; background: #fffdf7; }
+.wt-lobby-chat li { padding: .5rem 0; border-bottom: 1px solid var(--wt-paper-edge); overflow-wrap: anywhere; }
+.wt-lobby-chat li:last-child { border-bottom: 0; }
+.wt-lobby-chat li p { margin: .25rem 0 0; white-space: pre-wrap; }
+.wt-lobby-chat time { color: var(--wt-muted); font-size: .8rem; }
+.wt-lobby-chat form { display: flex; flex-wrap: wrap; align-items: end; gap: .5rem; }
+.wt-lobby-chat form label { flex: 1 1 16rem; min-width: 0; }
+.wt-lobby-chat textarea { width: 100%; min-height: 72px; resize: vertical; padding: .6rem; font: inherit; color: var(--wt-ink); background: #fffdf7; border: 1px solid #a9a089; border-radius: 6px; }
+.wt-lobby-chat :is(button, select, textarea) { min-height: 44px; }
+@media (max-width: 420px) { .wt-lobby-chat .wt-actions button, .wt-lobby-chat form button { width: 100%; } }
+@media (prefers-reduced-motion: reduce) { .wt-lobby-chat *, .wt-lobby-chat { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
 @media (min-width: 860px) { .wt-lobby-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; } }
 .wt-create form { display: grid; gap: 1rem; }
 fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }

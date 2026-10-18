@@ -12,6 +12,7 @@ import { applyFavoriteToCreator, createFavorites, favoriteText, readCreatorRecip
 import { createRematch } from "./rematch.js";
 import { loadWattenDetail } from "./api.js";
 import { createSocial } from "./social.js";
+import { mountWattenLobbyChat } from "./lobby-chat.js";
 
 // Metadata only: these preview documents neither register a worker nor
 // advertise installation; the account pages own that local experiment.
@@ -324,8 +325,13 @@ async function mountLobby() {
   }
   account = { id: auth.user.id, username: auth.user.username };
   latestUserId = account.id;
-  app.innerHTML = `${lobbyIntro({ signedIn: true })}<div class="wt-lobby-grid">${creatorMarkup(account.username)}${tablesMarkup()}</div>`;
+  app.innerHTML = `${lobbyIntro({ signedIn: true })}<div class="wt-lobby-grid">${creatorMarkup(account.username)}${tablesMarkup()}</div><div data-watten-lobby-chat></div>`;
   mountCreator(gen);
+  const lobbyChat = mountWattenLobbyChat({ container: app.querySelector("[data-watten-lobby-chat]"), initialAuth: auth,
+    getExpectedAccountId: () => account?.id,
+    isCurrent: () => gen === generation && !navigating && latestUserId === account?.id,
+    onAccountChanged: reloadFresh, loadAuth, escapeHtml: esc });
+  cleanups.add(() => lobbyChat.destroy());
   void refreshTables(gen);
   const timer = setInterval(() => { if (document.visibilityState === "visible") void refreshTables(gen); }, 8000);
   cleanups.add(() => clearInterval(timer));

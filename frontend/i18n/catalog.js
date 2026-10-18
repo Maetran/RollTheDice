@@ -1,3 +1,42 @@
+export const WATTEN_LOBBY_CHAT_MESSAGES = {
+  de: {
+    title: "Gemeinsamer Lobbychat", privacy: "Hier schreiben angemeldete Konten aus ZDWA, Zilch, Hausdepp und Watten. Du siehst nur Nachrichten, für die du beim Senden verbunden und berechtigt warst. Sie werden nach drei Tagen gelöscht. Keine Kartenhinweise im Chat.",
+    consent: "Dein Lobbychat ist im Konto aktiviert. Erst mit «Chat öffnen» verbindest du diese Watten-Lobby.",
+    disabledConsent: "Der Lobbychat ist im Konto deaktiviert. «Aktivieren und öffnen» schaltet ihn ausdrücklich für alle unsere Spiele ein. Deine Popup-Einstellung bleibt erhalten.",
+    open: "Chat öffnen", enable: "Aktivieren und öffnen", close: "Chat hier schliessen", disable: "Für alle Spiele deaktivieren",
+    reconnect: "Neu verbinden", send: "Senden", filter: "Nach Spiel filtern", all: "Alle Spiele", zdwa: "ZDWA", zilch: "Zilch", hausdepp: "Hausdepp", watten: "Watten",
+    messages: "Dein persönlicher Lobbychat-Verlauf", empty: "Noch keine Nachrichten für diesen Filter.", message: "Nachricht (höchstens 400 Zeichen)",
+    limit: "Diese Ansicht zeigt die jüngsten {count} Nachrichten. Der berechtigte persönliche Verlauf wird serverseitig nach drei Tagen gelöscht.",
+    rateHelp: "Höchstens fünf Nachrichten in 30 Sekunden. Eine unbestätigte Nachricht wird nie automatisch nochmals gesendet.",
+    connecting: "Die Chatverbindung wird geprüft …", connected: "Verbunden. Deine Nachricht ist in dieser gemeinsamen Lobby sichtbar.", sending: "Nachricht wird gesendet …",
+    disabled: "Der Lobbychat ist im Konto deaktiviert.", muted: "Du bist stummgeschaltet. Du kannst deinen berechtigten Verlauf lesen.", excluded: "Dieses Konto ist vom Lobbychat ausgeschlossen.",
+    invalid: "Bitte schreibe eine Nachricht mit höchstens 400 Zeichen.", rate: "Bitte warte kurz: höchstens fünf Nachrichten in 30 Sekunden.",
+    network: "Die Verbindung oder Einstellung konnte nicht bestätigt werden. Dein Entwurf bleibt hier. Bitte prüfe die Verbindung und versuche es bewusst erneut.",
+    uncertain: "Es ist unklar, ob die Nachricht ankam. Dein Entwurf bleibt hier. Prüfe den Verlauf nach dem Neuverbinden, bevor du nochmals sendest.",
+    review: "Wieder verbunden. Prüfe den Verlauf, bevor du deinen behaltenen Entwurf nochmals sendest.",
+    unavailable: "Die Chatdaten konnten nicht sicher gelesen werden. Bitte schliesse den Chat und öffne ihn erneut.",
+    access: "Der Chat-Zugriff ist nicht mehr freigegeben. Bitte lade die Seite neu und prüfe deine Anmeldung.",
+  },
+  en: {
+    title: "Shared lobby chat", privacy: "Signed-in accounts from ZDWA, Zilch, Hausdepp and Watten chat here. You only see messages you were connected and eligible to receive when sent. They are deleted after three days. No card hints in chat.",
+    consent: "Lobby chat is enabled on your account. This Watten lobby only connects when you choose “Open chat”.",
+    disabledConsent: "Lobby chat is disabled on your account. “Enable and open” explicitly enables it for all our games. Your popup preference is preserved.",
+    open: "Open chat", enable: "Enable and open", close: "Close chat here", disable: "Disable for all games",
+    reconnect: "Reconnect", send: "Send", filter: "Filter by game", all: "All games", zdwa: "ZDWA", zilch: "Zilch", hausdepp: "Hausdepp", watten: "Watten",
+    messages: "Your personal lobby chat history", empty: "No messages for this filter yet.", message: "Message (up to 400 characters)",
+    limit: "This view shows the latest {count} messages. Your authorized personal history is deleted on the server after three days.",
+    rateHelp: "At most five messages in 30 seconds. An unconfirmed message is never sent again automatically.",
+    connecting: "Checking the chat connection …", connected: "Connected. Your message is visible in this shared lobby.", sending: "Sending message …",
+    disabled: "Lobby chat is disabled on your account.", muted: "You are muted. You can read your authorized history.", excluded: "This account is excluded from lobby chat.",
+    invalid: "Please write a message with up to 400 characters.", rate: "Please wait: at most five messages in 30 seconds.",
+    network: "The connection or setting could not be confirmed. Your draft stays here. Please check your connection and try again explicitly.",
+    uncertain: "It is unclear whether the message arrived. Your draft stays here. After reconnecting, check the history before sending again.",
+    review: "Reconnected. Check the history before sending your retained draft again.",
+    unavailable: "The chat data could not be read safely. Please close the chat and open it again.",
+    access: "Chat access is no longer available. Please reload the page and check your sign-in.",
+  },
+};
+
 export const WATTEN_SOCIAL_MESSAGES = {
   de: {
     title: "Öffentlicher Tischchat", open: "Tischchat & Emojis", close: "Schliessen", message: "Nachricht an den ganzen Tisch",
