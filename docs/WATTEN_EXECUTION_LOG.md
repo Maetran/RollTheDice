@@ -906,3 +906,38 @@ Alle vier Founder-Menüfälle bestehen gezielt unter
 `test-results/browser/watten-owner-preview-route-teardown/`; dies ist weiterhin
 kein vollständiger Pushnachweis. Vor jedem Push und Release folgt der volle
 Prüfablauf auf dem neuen sauberen Commit.
+
+
+### Korrigierte Hausregel und deterministische Dekoprüfung
+
+Der fünfte vollständige Lauf `426fb65` bestand alle Gruppen vor dem Browserteil;
+alle sieben Browserteile liefen fertig. Ein bestehender Hausdepp-Dekotest fand
+in30 zufälligen neuen Partien die gewünschte Betrachterposition nicht. Sein
+Originalbericht bleibt unter
+`test-results/local-checks/426fb65bdd09-1792360594587-f297e17e/` erhalten.
+Die Fixture benutzt jetzt einen einzigen echten Tisch mit sechs isolierten
+Konten und wählt das tatsächliche Konto nach dem unveränderten Zufallsgeber.
+Echte Schau, fünf Gegner, drei Handkarten, spielbarer Stock und alle alten
+Geometrie-/Bewegungsprüfungen bleiben bestehen. Der gezielte Browserlauf
+`test-results/browser/hausdepp-six-human-decor-fixture/` besteht44 Fälle.
+
+Beim direkten Abgleich wurde ein älterer Übertragungsfehler erkannt: Die
+Ownerantwort «Variante2 grundsätzlich» verlangt Trumpf statt eines gewöhnlichen
+Schlags, der den aktuellen Stich nicht übernimmt. Das Entscheidungsprotokoll
+hatte irrtümlich das Gegenteil behauptet. Fünf neue Gegenbeispiele scheitern
+am alten Code, vier zulässige Fälle bestehen weiterhin. Engine und CPU-Modell
+setzen nun dieselbe Regel um; gewöhnlicher Trumpf, Rechter und Kritische
+bleiben ohne Überstechzwang. Die unabhängige Referenzprüfung prüft die exakte
+legale Handmenge zusätzlich zu allen bisherigen Invarianten. Root besteht
+250 gezielte Play-/CPU-/Memory-/Engine-/View-Fälle in1,47s. Regeln, Entwickler-
+übergaben und DE/EN-Fehlerhinweise wurden entsprechend berichtigt.
+
+Das native Monitoring wird für die erste private Vorschau fertiggestellt,
+damit die bereits autorisierten nativen Aggregate korrekt dargestellt werden.
+Der Sourcecheckpoint wurde mit11 Nodefällen geprüft; zwei unabhängige Reviews
+fanden fehlende Kontobestätigung nach dem Analyticsbody und falsche Nullwerte
+im Weltkartenpanel. Die Korrektur und echte Browserabnahme bleiben vor dem
+abschliessenden vollständigen Nachweis erforderlich. Claude erreichte beim
+kleinen Korrekturpaket das tatsächliche Wochenlimit(100%, rejected); seine
+Teiländerungen sind gesichert und Codex übernimmt. Kein weiterer CLI-Auftrag,
+keine Zusatznutzung und kein App-Deployment sind dadurch erfolgt.

@@ -277,7 +277,8 @@
       ],
       "status": "partial",
       "evidence": [
-        "Frozen native friend-start backend emits only safe selected human names, captured account consent and explicit four-product URLs after the first real start commit. Migration0071 supplies private atomic tour offers;32 reminder texts and atomic human play-day accounting are prepared. Native frontend/settings/tours and enabled notification chains remain open."
+        "Native friend-start notices and account settings use selected human names, captured consent and explicit product URLs; 29 Node cases and three actual DE/EN/live-notice browser journeys passed, including bounded search and queued notices. Atomic human play days and reminder eligibility are integrated without enabling Watten delivery.",
+        "Migration0071 stores private atomic tour offers. Further native tours have separate source/browser checkpoints; they are not part of the first private release. Enabled notification chains and broader acceptance remain open."
       ]
     },
     {
@@ -361,7 +362,8 @@
       ],
       "status": "partial",
       "evidence": [
-        "Pure app/watten_cards.py, watten_rules.py, watten_bidding.py, watten_play.py and watten_engine.py encode the selected owner profiles; watten_recipe.py versions settings. Runtime adapter, persisted ruleset mapping and end-to-end acceptance remain open."
+        "Pure cards/rules/bidding/play/engine modules and versioned recipes implement the selected owner profiles; the native runtime and persisted checkpoints have targeted backend and browser coverage. Full profile and release acceptance remain incomplete.",
+        "Corrected a prior transcription of the explicit owner answer Variante2: with ordinary trump held, an ordinary strike alternative must actually win the current trick. Trump, Rechter and critical cards need not win. The old source failed five new counterexamples; engine, CPU model and independent invariant oracle now pass 250 targeted cases."
       ]
     },
     {
@@ -871,7 +873,9 @@
         "P8"
       ],
       "status": "open",
-      "evidence": []
+      "evidence": [
+        "Five complete exact-source attempts retained all required group and seven browser-part reports; none produced a valid green push receipt. Narrow fixture corrections, the owner-rule correction and native monitoring still require one complete final clean-commit run and remote CI before release."
+      ]
     },
     {
       "id": "O07",
@@ -926,7 +930,8 @@
       "status": "partial",
       "evidence": [
         "WATTEN_P1_CONTRACTS.md inventories independent suite registries. Their actual Watten integration remains open.",
-        "Watten native adapter explicitly wired into game types, storage, activity and transport under separate local gate. Typed result migration0066 added; generic history/reminders/statistics exclude undeveloped Watten readers. Broader suite integration remains required."
+        "Watten native adapter explicitly wired into game types, storage, activity and transport under separate local gate. Typed result migration0066 added; generic history/reminders/statistics exclude undeveloped Watten readers. Broader suite integration remains required.",
+        "Private Founder web capability is separate from public access, PWA, mail/signup, push delivery, stored device context, analytics audiences and CPU durable-source authority. Additive migrations0071–0074 supply backend services; native friend settings and authorized monitoring presentation are explicitly wired. Production PWA/mail/push and the fixed Watten host remain closed; their later acceptance remains open."
       ]
     }
   ]
