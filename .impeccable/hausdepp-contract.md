@@ -121,3 +121,11 @@ creation block, waiting block and the requested reaction control.
 Local validation and independent review are recorded in
 `docs/HAUSDEPP_FLEX_LOBBY_QA_2026-10-18.md`. A feature-branch build is not a
 production deployment; no real-account calls or share sends are QA actions.
+
+The owner accepted implementation of this design and additionally requested
+immediate open-packet updates. A confirmed play/follow-up/successful gamble
+must expose the authoritative packet count and matching-rank fan in the same
+render, without waiting for a flight, old-pile picture or presentation queue.
+Rapid accepted throws replace obsolete pile effects. Clearing and failed-gamble
+narration retain their readable transfer; reduced motion and reconnect remain
+quiet. Browser evidence inspects and freezes the first frame after acceptance.

@@ -59,3 +59,40 @@ Phone, tablet and desktop captures were visually inspected. Temporary captures
 and logs are task artifacts, not new shipping artwork. No new public route or
 SEO identity is introduced; personal/game routes keep their existing noindex.
 The navigation contract references the added browser flows.
+
+## Accepted packet updates and narrow-phone follow-up
+
+The owner accepted the place-card design and requested immediate display of a
+growing open packet. The browser regression reproduced the original glitch:
+the first accepted render already had count/run **2**, but packet opacity was
+**0** and an old-packet picture still covered it. Its flight kept the new fan
+hidden until the presentation finished.
+
+Confirmed prefix growth now exposes the real packet immediately. Obsolete pile
+flights, masks and queued pictures are removed; the new flight remains purely
+decorative. First-frame probes freeze the actual effects before paint, so the
+assertions cannot pass merely by waiting for an animation to finish. They cover
+own launches, remote two-card plays, successful gambling, rapid afterthrows,
+same-version acknowledgements, reduced motion and growth during a previous
+clearing presentation. Failed-gamble narration and hand-receipt identity keep
+their existing checks.
+
+The expanded layout run also caught a 320px regression: a two-row reaction dock
+removed 46px from the board and caused pile/seat overlap. The dock now fits
+seven 44px controls into one row using its side margins. Existing geometry and
+touch-target assertions remain unchanged. Five affected table-presence checks
+and all ten reaction checks passed after rebuilding.
+
+The focused backend/navigation suite passed **29 tests**, including actual
+admission into a full waiting table until all CPUs have been replaced; player
+calls stop once all six seats are human. `npm run check:quality` passed with
+rebuilt asset version `4b1932e7511f`. The independent motion review reported no
+remaining production finding. Auth/logout and device-switch fixes belong to a
+separate parallel task and are unchanged by this work.
+
+Final full `hausdepp.spec.js` run: **30 passed, 2 opt-in capture cases skipped**
+in 1.6 minutes, including all three first-frame packet regressions and both
+previously failing narrow-table checks. The ten flexible-lobby cases also
+passed in the expanded run before the narrow-dock correction.
+A final optional 320px capture case passed; the native screenshot was visually
+inspected and shows all seven controls without clipping or covered cards.

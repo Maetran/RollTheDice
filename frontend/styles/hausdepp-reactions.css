@@ -30,17 +30,13 @@ html[data-game="hausdepp"] .hd-reactions.hd-reactions-ready > button:disabled { 
 .hd-reaction-picker .hd-reaction-grid button:hover:not(:disabled) { border-color: var(--hd-green); }
 .hd-reaction-picker :focus-visible { outline: 3px solid var(--hd-red); outline-offset: 2px; }
 @media (max-width: 359px) and (orientation: portrait) {
-  /* At 320px, chat + five reaction targets + tools cannot share 44px of height.
-     Give reactions one complete row, retaining every target at 44px. */
-  html[data-game="hausdepp"] body.hd-playing .hd-room-layout:has(.hd-reactions-ready) { grid-template-rows: minmax(0, 1fr) 90px; }
-  html[data-game="hausdepp"] body.hd-playing .hd-room-layout > .hd-social:has(.hd-reactions-ready) { padding: 0; }
-  html[data-game="hausdepp"] body.hd-playing .hd-social-tools:has(.hd-reactions-ready) {
-    display: grid; grid-template-columns: minmax(44px, 1fr) 44px;
-    grid-template-rows: 44px 44px; gap: 2px; height: 90px;
+  /* Seven 44px targets fit at 320px by using the dock's side margins.
+     Keep the table's full height so its seats remain clear of both piles. */
+  html[data-game="hausdepp"] body.hd-playing .hd-room-layout > .hd-social:has(.hd-reactions-ready) {
+    width: calc(100% + 12px); margin-inline: -6px; padding-right: 46px;
   }
-  html[data-game="hausdepp"] body.hd-playing .hd-social-tools:has(.hd-reactions-ready) > #chatToggle { grid-column: 1; grid-row: 1; justify-self: start; }
-  html[data-game="hausdepp"] body.hd-playing .hd-social-tools > .hd-reactions.hd-reactions-ready { grid-column: 1 / -1; grid-row: 2; justify-self: center; }
-  html[data-game="hausdepp"] body.hd-playing .hd-social-tools:has(.hd-reactions-ready) > .hd-multi-actions { grid-column: 1 / -1; grid-row: 2; }
+  html[data-game="hausdepp"] body.hd-playing .hd-social-tools > .hd-reactions.hd-reactions-ready { gap: 0; }
+  html[data-game="hausdepp"] body.hd-playing .hd-table:has(+ .hd-social .hd-reactions-ready) > .hd-actions { right: -6px; }
 }
 @media (max-width: 1099px) and (orientation: landscape) {
   html[data-game="hausdepp"] body.hd-playing .hd-social-tools > .hd-reactions.hd-reactions-ready { margin-inline: auto; }

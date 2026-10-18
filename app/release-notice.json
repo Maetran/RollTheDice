@@ -12,7 +12,8 @@
         "Eröffne deinen Favoriten oder wähle feste/offene Plätze, Schnellspiel/Turnier und optional ein Passwort.",
         "Füge im Warteraum CPUs hinzu, entferne sie und starte selbst. Menschen ersetzen bei vollem Tisch einen CPU.",
         "Speichere deine Besetzung als Favorit im Konto. Geschützte Favoriten fragen jedes Mal nach einem neuen Passwort.",
-        "Spieler rufen und Teilen bleiben griffbereit. Vier schnelle Reaktionen und ein Pfeil bieten zwölf Symbole inklusive 💩."
+        "Spieler rufen und Teilen bleiben griffbereit. Vier schnelle Reaktionen und ein Pfeil bieten zwölf Symbole inklusive 💩.",
+        "Das offene Paket zeigt bestätigte Würfe und Nachwürfe sofort mit aktueller Kartenzahl und passendem Fächer."
       ]
     },
     "en": {
@@ -21,7 +22,8 @@
         "Open your favourite or choose fixed/open seats, quick game/tournament and an optional password.",
         "Add/remove CPUs in the waiting room and start explicitly. People replace a CPU when the table is full.",
         "Save your setup as an account-wide favourite. Protected favourites ask for a fresh password each time.",
-        "Player calls and sharing stay handy. Four quick reactions and an arrow offer twelve symbols, including 💩."
+        "Player calls and sharing stay handy. Four quick reactions and an arrow offer twelve symbols, including 💩.",
+        "The open pile shows accepted plays and follow-ups immediately with the current count and matching-rank fan."
       ]
     }
   }

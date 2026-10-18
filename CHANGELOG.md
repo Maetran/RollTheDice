@@ -32,7 +32,9 @@ fügt CPUs hinzu, entfernt sie und startet selbst; Menschen ersetzen bei einem
 vollen Wartetisch einen CPU. Ein Favorit gilt für das Konto, speichert jedoch
 kein Passwort. Spieler rufen, Teilen und Link-Kopieren bleiben verfügbar.
 Vier persönliche häufige Reaktionen plus Pfeil öffnen zwölf Symbole, darunter 💩;
-die Reihenfolge bleibt während einer Partie stabil.
+die Reihenfolge bleibt während einer Partie stabil. Nach bestätigtem Ablegen,
+Nachwerfen oder erfolgreichem Zocken wächst das offene Paket sofort sichtbar;
+Kartenflüge verzögern weder Kartenzahl noch Fächer gleicher Werte.
 
 **English:** “Open a table” offers your saved favourite or a short setup: fixed
 players or open up to six, quick game or tournament, with an optional password.
@@ -40,7 +42,9 @@ Place cards show the roster. The host adds/removes CPUs and starts explicitly;
 people replace a CPU at a full waiting table. Favourites follow the account and
 never retain passwords. Player calls, sharing and copying remain available.
 Four personal frequent reactions plus an arrow open twelve symbols, including 💩;
-the order stays stable during each game.
+the order stays stable during each game. Accepted plays, follow-ups and successful
+gambles grow the visible open pile immediately; card flights never delay its
+count or matching-rank fan.
 
 
 ## 3.8.2 — Klügere Hausdepp-Computer, spielneutrale Kontotexte / smarter Hausdepp computers, game-neutral account texts — 2026-10-18

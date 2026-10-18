@@ -937,6 +937,123 @@ test('labelled UI fixture: the table never fades its stacks, lights up only what
   expect(await ring('#hausdeppStock')).toBe('none');
 });
 
+for (const [name, viewport, firstActor, firstType] of [
+  ['phone', { width: 390, height: 844 }, 'own', 'play'],
+  ['tablet', { width: 768, height: 1024 }, 'opponent', 'play'],
+  ['desktop', { width: 1440, height: 900 }, 'opponent', 'gamble'],
+]) {
+  test(`labelled UI fixture: ${name} accepted pile growth is visible in the first frame, including rapid afterthrows`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await ownerSession(page);
+    const traffic = watchGame(page);
+    const room = await createCpuTable(page, traffic);
+    const fixture = labelledUiFixture(traffic.scoreboard, 'Paket ohne Wartezeit', firstActor === 'own'
+      ? ['hearts-U', 'bells-U', 'leaves-A'] : ['bells-U', 'leaves-A', 'acorns-A']);
+    const own = fixture._hausdepp.viewer_id;
+    const opponent = fixture._hausdepp.players.find(player => player.is_cpu).id;
+    // The tablet also exercises two matching cards accepted in one throw.
+    fixture._hausdepp.discard = name === 'tablet' ? ['acorns-9'] : ['acorns-U'];
+    fixture._hausdepp.players.find(player => player.id === opponent).hand_count = 3;
+    if (firstType === 'gamble') fixture._hausdepp.deck_count = 20;
+    const advance = (current, actor, type, cards) => {
+      const state = current._hausdepp;
+      state.version += 1;
+      if (actor === own) state.hand = state.hand.filter(card => !cards.includes(card));
+      state.discard.push(...cards);
+      state.current_player_id = opponent;
+      state.afterthrow = { player_id: own, rank: 'U' };
+      state.available_actions = ['afterthrow'];
+      state.playable_cards = state.hand.filter(card => card.endsWith('-U'));
+      state.last_event = { type, player_id: actor, cards, ...(type === 'gamble' ? { success: true } : {}) };
+    };
+    const mocked = await installUiFixture(page, room, fixture, ({ message, socket, fixture: current }) => {
+      advance(current, own, message.action.replace('hausdepp_', ''), message.cards);
+      socket.send(JSON.stringify({ scoreboard: current, hausdepp_command: {
+        command_id: message.command_id, accepted: true, version: current._hausdepp.version,
+      } }));
+    });
+    await page.addInitScript(() => {
+      window.immediatePileFrames = [];
+      window.addEventListener('hausdepp:motion', event => {
+        if (!['play', 'afterthrow', 'gamble'].includes(event.detail.type)) return;
+        // Inspect after the synchronous render has installed ALL effects, before
+        // any paint. Freeze them so a slow CI assertion cannot hide a delay.
+        queueMicrotask(() => {
+          const pile = document.getElementById('hausdeppPile');
+          for (const animation of document.getAnimations()) {
+            const target = animation.effect?.target;
+            if (target === pile || pile.contains(target)
+              || target?.matches?.('.hd-deal-card[data-target="pile"], .hd-deal-card[data-source="pile"]')) {
+              animation.pause();
+              animation.currentTime = 0;
+            }
+          }
+          if (Number(pile.dataset.cardCount) === 0) {
+            window.frozenPileClear = true;
+            return;
+          }
+          const faces = [...pile.querySelectorAll('.hd-pile-face')];
+          window.immediatePileFrames.push({
+            type: event.detail.type, delay: event.detail.delay,
+            count: Number(pile.dataset.cardCount), run: Number(pile.dataset.run),
+            opacity: Number(getComputedStyle(pile).opacity),
+            faces: faces.map(face => ({ opacity: Number(getComputedStyle(face).opacity),
+              cardOpacity: Number(getComputedStyle(face.querySelector('.hausdepp-card')).opacity),
+              step: Number(face.dataset.runStep), translate: getComputedStyle(face).translate })),
+            oldCopies: document.querySelectorAll('.hd-deal-card[data-motion-type="pile-rest"]').length,
+          });
+        });
+      });
+    });
+    await page.goto(room);
+    await expect(page.locator('#hausdeppRoomName')).toHaveText('UI-Test · Paket ohne Wartezeit');
+    if (name === 'tablet') {
+      // An earlier clear is still being presented when the new packet starts.
+      // Even that frozen mask must yield to the newly accepted pair immediately.
+      fixture._hausdepp.version += 1;
+      fixture._hausdepp.discard = [];
+      fixture._hausdepp.burned_count = 2;
+      fixture._hausdepp.last_event = { type: 'play', player_id: opponent, cards: ['hearts-10'],
+        burn_reason: 'ten', burned_count: 2 };
+      mocked.sendSnapshot(fixture);
+      await expect.poll(() => page.evaluate(() => window.frozenPileClear)).toBe(true);
+      await expect(page.locator('#hausdeppPile')).toHaveCSS('opacity', '0');
+    }
+    if (firstActor === 'own') await page.locator('#hausdeppHand [data-card-id="hearts-U"]').click();
+    else {
+      advance(fixture, opponent, firstType, name === 'tablet' ? ['hearts-U', 'leaves-U'] : ['hearts-U']);
+      mocked.sendSnapshot(fixture);
+    }
+    await expect.poll(() => page.evaluate(() => window.immediatePileFrames.length)).toBe(1);
+    // The first flight stays paused while another accepted card extends the fan.
+    await page.locator('#hausdeppHand [data-card-id="bells-U"]').click();
+    await expect.poll(() => page.evaluate(() => window.immediatePileFrames.length)).toBe(2);
+    const frames = await page.evaluate(() => window.immediatePileFrames);
+    for (const [index, frame] of frames.entries()) {
+      expect(frame).toMatchObject({ count: index + 2, run: index + 2, opacity: 1, delay: 0, oldCopies: 0 });
+      expect(frame.faces).toHaveLength(index + 2);
+      expect(frame.faces.every(face => face.opacity === 1 && face.cardOpacity === 1)).toBe(true);
+      expect(frame.faces[0].step).toBe(index + 1);
+      expect(frame.faces[0].translate).not.toBe('none');
+    }
+    // A same-version acknowledgement must not hide the already visible packet.
+    mocked.sendSnapshot(fixture);
+    await expect(page.locator('#hausdeppPile')).toHaveCSS('opacity', '1');
+    expect(await page.locator('.hd-deal-card[data-motion-type="play"], .hd-deal-card[data-motion-type="gamble"]').count()).toBe(0);
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await expect(page.locator('#hausdeppPile .hd-pile-face')).toHaveCount(3);
+    if (name === 'phone') {
+      advance(fixture, opponent, 'play', ['acorns-A']);
+      mocked.sendSnapshot(fixture);
+      await expect.poll(() => page.evaluate(() => window.immediatePileFrames.length)).toBe(3);
+      expect(await page.evaluate(() => window.immediatePileFrames[2]))
+        .toMatchObject({ count: 4, run: 1, opacity: 1, delay: 0, oldCopies: 0 });
+      await expect(page.locator('.hd-deal-card')).toHaveCount(0);
+    }
+    expect(traffic.pageErrors).toEqual([]);
+  });
+}
+
 test('labelled UI fixture: rapid matching taps send single cards in order without confirmation or a fixed cooldown', async ({ page }) => {
   await ownerSession(page);
   const traffic = watchGame(page);

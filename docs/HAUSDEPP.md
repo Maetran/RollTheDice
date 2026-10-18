@@ -336,7 +336,10 @@ reduzierter Bewegung bleibt nur die Beschriftung. Geben und Pflichtziehen zeigen
 den Weg vom verdeckten Stapel zur Hand. Beim
 Aufnehmen wandert das offene Paket zur Hand. Misslingt Zocken, geht zuerst die
 gezockte Karte vom verdeckten zum offenen Stapel und danach das ganze Paket zur
-Hand. Handkarten bewegen sich beim Legen zur Mitte. Diese Darstellung sperrt
+Hand. Handkarten bewegen sich beim Legen zur Mitte. Sobald ein Wurf, Nachwurf
+oder erfolgreiches Zocken bestätigt ist, zeigt das wachsende offene Paket sofort
+die aktuelle Kartenzahl und den Fächer gleicher Werte. Laufende Kartenflüge
+verzögern diese Anzeige nicht. Diese Darstellung sperrt
 keinen Zug, ändert kein Nachwurfrecht und wiederholt sich beim Wiederverbinden
 nicht. Reduzierte Bewegung bestätigt die Ankunft ohne räumlichen Flug.
 
@@ -867,7 +870,9 @@ suits remain private. Large hands use a denser fan without omitting any cards.
 Dealing and mandatory refills travel from the face-down stock to the hand.
 Picking up moves the open pile into the hand. A failed gamble first moves the
 new card from stock to pile, then the complete pile into the hand. Hand plays
-travel to the middle. Presentation never blocks turns, changes additional-card
+travel to the middle. Once a play, follow-up or successful gamble is accepted,
+the growing open pile immediately shows its current count and matching-rank fan.
+Active card flights never delay that display. Presentation never blocks turns, changes additional-card
 rights or repeats missed actions after reconnecting. Reduced motion acknowledges
 arrival without spatial travel.
 

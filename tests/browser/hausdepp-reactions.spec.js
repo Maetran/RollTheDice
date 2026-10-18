@@ -116,6 +116,9 @@ for (const [name, width, height] of VIEWPORTS) {
     await assertDockGeometry(page, `${name} quick dock`);
     const toggle = page.locator('.hd-reaction-toggle'), picker = page.locator('.hd-reaction-picker');
     await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    if (process.env.HAUSDEPP_CAPTURE_DIR && width === 320) {
+      await page.screenshot({ path: `${process.env.HAUSDEPP_CAPTURE_DIR}/mobile-reactions-dock.png`, fullPage: true });
+    }
     await toggle.click();
     await expect(picker).toBeVisible();
     await expect(toggle).toHaveAttribute('aria-expanded', 'true');

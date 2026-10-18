@@ -95,7 +95,9 @@ Desktop nutzen grössere Karten, auf dem Handy rücken grosse Hände und besonde
 gleiche Werte enger zusammen. Der Fächer bleibt horizontal verschiebbar; mit der
 Tastatur fokussierte Karten liegen zum Lesen und Auswählen vorne. Karten auf
 dem offenen Paket behalten während eines Zugs dieselbe zur Ansicht passende
-Grösse; die Animation geht ohne Grössensprung in den Stapel über.
+Grösse; die Animation geht ohne Grössensprung in den Stapel über. Sobald der
+Server einen Wurf oder Nachwurf bestätigt, zeigt das offene Paket sofort die
+neue Kartenzahl und den passenden Fächer, auch während laufender Kartenflüge.
 
 **English – follow the cards:** Played cards visibly arrive and rest briefly
 before a ten or four matching ranks clear the pile. Computers leave time to
@@ -105,6 +107,8 @@ use larger cards, while large phone hands pack more tightly, especially matching
 ranks. The fan still scrolls horizontally; keyboard-focused cards move to the
 front for reading and selection. Open-pile cards keep the same size throughout
 a play, matching the viewport; the animation joins the pile without a size jump.
+As soon as the server accepts a play or follow-up, the open pile shows its new
+count and matching-rank fan immediately, including during active card flights.
 
 **Deutsch – Tisch lesen:** Verdeckter Stapel und offenes Paket bleiben auch
 zwischen den Zügen hell; was gerade angetippt werden kann (zocken, abheben, Paket
