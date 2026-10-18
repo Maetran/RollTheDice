@@ -2329,5 +2329,12 @@
     "date": "2026-10-18",
     "bump": "minor",
     "summary": "Interne Watten-Oberfläche und persönliche Computergegner verbinden. / Connect the internal Watten interface and personal computer opponents."
+  },
+  {
+    "version": "3.14.0",
+    "revision": "a92258b628445a1ee88a0fe1afd18b1bf6c0acc8",
+    "date": "2026-10-18",
+    "bump": "minor",
+    "summary": "Lokalen Watten-Fortschritt, Erfolge, Wirtshaustitel und Ranglisten verbinden. / Connect local Watten progress, achievements, pub titles and standings."
   }
 ]

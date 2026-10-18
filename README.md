@@ -66,6 +66,55 @@ seat wishes. Passwords are never saved. Creating from a protected favorite
 requires a fresh password or an explicit choice to remove protection; applying
 a favorite neither creates nor starts a match.
 
+**Folgetisch / next table:** Nach dem Ende kann der Gastgeber einen neuen Tisch
+mit denselben Regeln und Computerplätzen vorbereiten. Passwortschutz wird neu
+gewählt; für einen geschützten Tisch ist ein neues Passwort nötig. Alle Menschen
+treten freiwillig bei und wählen ihren Platz, im Vierer samt Team, erneut. Der
+Gastgeber startet ausdrücklich. Erneutes Öffnen führt auch nach verlorener
+Antwort oder Neustart zum selben Folgetisch; vergangene Ergebnisse und XP
+werden dabei nicht verändert.
+
+After the match, the host can prepare a next table with the same rules and CPU
+seats. Protection is a fresh choice and requires a new password when enabled.
+People join voluntarily and choose their seats, including teams with four
+players, again. The host starts explicitly. Reopening uses the same next table
+after a lost response or restart, without changing earlier results or XP.
+
+**Chat und Emojis / chat and emoji:** Am Tisch lesen alle Mitspieler und
+zugelassenen Zuschauer den öffentlichen Tischchat. Nachrichten und zwölf Emojis
+bleiben auch bei einem offenen Gebot, während einer Pause und gestrichen
+erlaubt; Kartenhinweise sind verboten. «Gut/Schlecht/Unsicher» bleibt die
+separate private Partnerfunktion. Chat und Reaktionen verändern keine Karten
+oder Spielpunkte.
+
+The public table chat is visible to players and admitted spectators. Messages
+and twelve emoji remain available during a pending bid, a pause and when
+gestrichen; card hints are forbidden. “Good/Bad/Unsure” remains separate private
+partner advice. Chat and reactions never change cards or match points.
+
+Der gemeinsame Lobbychat wird in der lokalen Watten-Lobby bewusst geöffnet und
+respektiert die kontoweite Chat-Einstellung. Sein persönlicher Dreitagesverlauf
+enthält nur Nachrichten, bei deren Versand das Konto zum Empfängerkreis gehörte.
+Eine Deaktivierung beendet den Empfang; erneutes Aktivieren ergänzt keine
+verpassten Nachrichten. Der öffentliche Tischchat bleibt davon unabhängig.
+
+Opening the shared lobby chat in the local Watten lobby is explicit and respects
+the account-wide chat preference. Its personal three-day history contains only
+messages addressed to that account at send time. Disabling stops delivery;
+enabling again never adds missed messages. The public table chat is independent.
+
+**Tischdeko / table decorations:** «Tisch dekorieren» bietet acht lokale
+Gegenstände zum Aufstellen, Verschieben, Essen, Trinken oder Würfeln. Sie sind
+nur auf deinem Gerät sichtbar. Spielbereiche bleiben frei; auf kleinen Tischen
+steht eine eigene Deko-Ecke zur Verfügung. Verschüttetes lässt sich aufwischen,
+alles gemeinsam aufräumen. Auch mit reduzierter Bewegung bleibt die Bedienung
+verfügbar.
+
+“Decorate the table” offers eight local items to place, move, eat, drink or roll.
+They are visible only on your device. Play areas stay clear; small tables have a
+separate decoration corner. Wipe spills or clear everything together. Controls
+remain available with reduced motion.
+
 **Deutsch:** Watten ist als nächstes Spiel vorgemerkt: üblicherweise 4er
 ladinisch bis 11 Punkte («8+3 isch zmittag»), mit blindem Einschauen durch den
 Geber und den im Uhrzeigersinn nachfolgenden Spieler. Die identischen

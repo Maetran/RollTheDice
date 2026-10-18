@@ -1,16 +1,5 @@
 const { test, expect } = require('@playwright/test');
-const { player, create, action, normalCall, playOne } = require('./helpers/watten-journey.cjs');
-
-async function finish(players) {
-  const path = await create(players);
-  await normalCall(players);
-  await playOne(players);
-  await action(players, 'bid');
-  await action(players, 'respond_hold', 'hold');
-  for (let index = 0; index < 12 && players[0].traffic.snapshot.engine.phase === 'play'; index += 1) await playOne(players);
-  for (const item of players) await expect(item.page.locator('[data-watten-match-result]')).toBeVisible();
-  return path;
-}
+const { player, finishOpenMatch: finish } = require('./helpers/watten-journey.cjs');
 
 for (const language of ['de', 'en']) {
   test(`${language}: a native completed match reaches progress, history, filtered standings and explicit acknowledgement`, async ({ browser, baseURL }, testInfo) => {

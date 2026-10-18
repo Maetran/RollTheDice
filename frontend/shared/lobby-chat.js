@@ -22,7 +22,7 @@ function chatErrorMessage(code) {
 }
 
 function gameLabel(gameType) {
-  return ["zdwa", "zilch", "hausdepp"].includes(gameType) ? gameType : "zdwa";
+  return ["zdwa", "zilch", "hausdepp", "watten"].includes(gameType) ? gameType : "zdwa";
 }
 
 function eventText(message, { withSender = true } = {}) {
@@ -261,7 +261,7 @@ export function mountLobbyChat(mount, { context = "zdwa", initialAuth = null } =
       !["message", "presence"].includes(kind)
       || typeof message.id !== "number"
       || typeof message.sender !== "string"
-      || !["zdwa", "zilch", "hausdepp"].includes(message.game_type)
+      || !["zdwa", "zilch", "hausdepp", "watten"].includes(message.game_type)
       || (kind === "message" && typeof message.text !== "string")
     ) return false;
     if (state.seenMessageIds.has(message.id)) return true;

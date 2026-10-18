@@ -21,6 +21,7 @@ from .watten_runtime import (
     resume_account,
     snapshot_watten,
 )
+from .watten_social import SOCIAL_ACTIONS, handle_watten_social
 
 logger = logging.getLogger(__name__)
 
@@ -168,7 +169,8 @@ async def _handle_locked(session, action: str, data: dict) -> bool:
         if type(expected) is not int or expected != identity.user_id:
             raise ValueError("watten_actor_not_bound")
     session.auth_identity = identity
-    expire_waiting_game(game)
+    if action not in SOCIAL_ACTIONS:
+        expire_waiting_game(game)
     # A replaced socket cannot reclaim its seat with a queued join/rejoin.
     # Only an as-yet unbound new connection may establish account ownership.
     if session.player_id is not None or session.spectator_id is not None:
@@ -186,6 +188,9 @@ async def _handle_locked(session, action: str, data: dict) -> bool:
     if not owned:
         await _error(websocket, "watten_actor_not_bound", fatal=True)
         return True
+    if action in SOCIAL_ACTIONS:
+        await handle_watten_social(session, data, _identity)
+        return False
     if action == "get_state":
         if set(data) != {"action"}:
             raise ValueError("watten_invalid_command")

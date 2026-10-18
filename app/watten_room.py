@@ -218,7 +218,7 @@ class WattenRoom:
         for link in (self.rematch_of, self.rematch_room_id):
             if link is not None and _room_id(link) == self.room_id:
                 raise WattenRoomError("watten_invalid_rematch_link")
-        if self.rematch_room_id is not None and self.status != "finished":
+        if self.rematch_room_id is not None and self.status not in {"finished", "closed"}:
             raise WattenRoomError("watten_invalid_rematch_link")
 
 
@@ -553,7 +553,7 @@ def finish(room: WattenRoom, *, revision: int) -> WattenRoom:
 def create_rematch(source: WattenRoom, *, revision: int, account_id: int, target_room_id: str, now: datetime,
                    wait_seconds: int, reservations: Mapping[int, int] | None = None,
                    reservations_expire_at: datetime | None = None,
-                   protection_verifier: str | None = None) -> RematchCreated:
+                   protection_verifier: str | None = None, password_required: bool | None = None) -> RematchCreated:
     """Create exactly one follow-up waiting room from the source's complete recipe.
 
     The requesting player becomes the unseated host; nobody is moved
@@ -564,16 +564,22 @@ def create_rematch(source: WattenRoom, *, revision: int, account_id: int, target
     source = _current(source, revision)
     _account(account_id)
     now = _utc(now)
-    if source.status != "finished":
+    if source.status not in {"finished", "closed"}:
         raise WattenRoomError("watten_rematch_requires_finished_room")
+    if source.status == "closed":
+        _require_host(source, account_id)
     if source.rematch_room_id is not None:
         raise WattenRoomError("watten_rematch_exists")
     if _room_id(target_room_id) == source.room_id:
         raise WattenRoomError("watten_invalid_rematch_link")
-    players = {account for account in start_roster(source).accounts if account is not None}
+    players = ({account for account in start_roster(source).accounts if account is not None}
+               if source.status == "finished" else {member.account_id for member in source.members})
     if account_id not in players:
         raise WattenRoomError("watten_rematch_requires_player")
-    if source.recipe.password_required != (type(protection_verifier) is str and bool(protection_verifier)):
+    if password_required is not None and type(password_required) is not bool:
+        raise WattenRoomError("watten_rematch_protection_mismatch")
+    recipe = source.recipe if password_required is None else replace(source.recipe, password_required=password_required)
+    if recipe.password_required != (type(protection_verifier) is str and bool(protection_verifier)):
         raise WattenRoomError("watten_rematch_protection_mismatch")
     if protection_verifier is not None and type(protection_verifier) is not str:
         raise WattenRoomError("watten_rematch_protection_mismatch")
@@ -587,7 +593,7 @@ def create_rematch(source: WattenRoom, *, revision: int, account_id: int, target
     expires_at = _utc(reservations_expire_at) if pairs else None
     if (expires_at is not None and expires_at <= now) or (not pairs and reservations_expire_at is not None):
         raise WattenRoomError("watten_invalid_reservations")
-    room = create_room(target_room_id, source.recipe, host_account=account_id, now=now, wait_seconds=wait_seconds)
+    room = create_room(target_room_id, recipe, host_account=account_id, now=now, wait_seconds=wait_seconds)
     room = replace(room, rematch_of=source.room_id,
                    reservations=tuple(SeatReservation(key, seat, expires_at) for key, seat in pairs))
     return RematchCreated(_next(source, rematch_room_id=target_room_id), room, protection_verifier)

@@ -251,6 +251,7 @@ export function createTableView(container, { onCard }) {
       </div>
     </div>
     <div class="wt-panel" data-wt-panel role="region" aria-label="${esc(t("panel.label"))}"></div>
+    <div data-watten-rematch hidden></div>
     <div class="wt-private" data-wt-private></div>
     <div class="wt-hand-area" data-wt-hand-area>
       <div class="wt-hand" data-wt-hand role="group" aria-label="${esc(t("hand.label"))}"></div>

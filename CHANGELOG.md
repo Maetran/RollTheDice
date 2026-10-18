@@ -23,6 +23,32 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 3.15.0 — Watten-Folgetische und Gespräche / Watten next tables and conversation — 2026-10-18
+
+**Deutsch:** Ein Folgetisch übernimmt Regeln und gewünschte Computerplätze.
+Passwortschutz, Beitritt, Sitz, Team und Start bleiben bewusste Entscheidungen;
+die eigene Platzreservierung lässt sich freigeben. Auch nach Antwortverlust
+oder Neustart bleibt es derselbe Folgetisch, ohne frühere Punkte oder XP erneut
+zu vergeben. Tischchat und zwölf Reaktionen funktionieren unabhängig von
+Spielzügen und privatem Partnergefühl. Der bewusst geöffnete gemeinsame
+Lobbychat respektiert Opt-in und den persönlichen Dreitages-Empfängerkreis.
+Kontoübergänge, mobile Ansichten und verlorene Bestätigungen sind gezielt geprüft.
+Lokale Tischdeko bietet acht Gegenstände, Essen und Trinken, Verschütten und
+Aufräumen bei freigehaltenen Spielbereichen, auch mit reduzierter Bewegung.
+Watten bleibt eine lokale Vorschau; der öffentliche Host bleibt geschlossen.
+
+**English:** A next table carries over the rules and requested computer seats.
+Protection, joining, seat, team and start remain explicit choices, and people
+can release their own seat reservation. A lost response or restart keeps the
+same next table without granting earlier points or XP again. Table chat and
+twelve reactions work independently from gameplay and private partner advice.
+The explicitly opened shared lobby chat respects opt-in and its personal
+three-day audience history. Account transitions, mobile layouts and lost
+confirmations have targeted checks. Watten remains a local preview with its
+public host closed.
+Local table decorations offer eight items, eating and drinking, spills and
+cleanup while keeping play areas clear, including with reduced motion.
+
 ## 3.14.0 — Lokaler Watten-Fortschritt / local Watten progress — 2026-10-18
 
 **Deutsch:** Neu abgeschlossene lokale Wattenpartien verbuchen Ergebnis,

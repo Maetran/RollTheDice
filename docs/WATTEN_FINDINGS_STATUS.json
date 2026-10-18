@@ -216,7 +216,7 @@
       ],
       "status": "partial",
       "evidence": [
-        "app/watten_recipe.py and app/watten_room.py provide strict versioned JSON, complete rematch settings and a marked source link without altering results. Durable unique creation/restart/transaction failures and browser flows remain open."
+        "Native app/watten_rematch.py atomically links source and target checkpoints under row-lock/JSON CAS, retains the one target after lost ACK/new command ID/restart, preserves CPU memory and never revalues progress. Normal checkpoint writers cannot erase that link. Owned terminal/waiting checkpoint recovery also handles in-memory retirement; running matches are not resumed. Focused tests cover SQLite interleaving, write rollback, passwords, restart and retirement. Real DE/EN browsers confirm lost-response reuse and unchanged XP; PostgreSQL execution and physical-device acceptance remain open."
       ]
     },
     {
@@ -227,7 +227,7 @@
       ],
       "status": "partial",
       "evidence": [
-        "app/watten_room.py separates reserved capacity, seat acceptance, decline and expiry using explicit server time. Atomic retry/ACK-loss, host-change transport and browser cases remain open."
+        "Own reservation remains separate from admission/seat/team, is projected only to its account, and can be explicitly released through strict durable native room commands. Lost ACK/restart replay, later rejoin, counterfeit account and stale room cases pass. A real four-human browser journey releases all reservations then chooses different teams manually. Broader host-transfer transport races remain open."
       ]
     },
     {
@@ -685,7 +685,7 @@
       ],
       "status": "partial",
       "evidence": [
-        "Keyed hand/trick nodes retained in source review; pending ACK cannot replace accepted state with an animation. Broader chat/rotation/device checks remain open."
+        "Stable hand/trick nodes are retained; table social lives outside the view and its custom frames return before card adoption. Real DE/EN pending-bid browsers prove lost social ACK retry, unchanged engine/room state and identical hand DOM through chat/emoji/320x568 and568x320 rotation. Account/page lifecycle cleanup stays synchronous. Physical-device acceptance remains open."
       ]
     },
     {
@@ -759,8 +759,10 @@
         "P0",
         "P4"
       ],
-      "status": "open",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Local native decoration controller reuses owned Hausdepp atlas/consumable/spill assets without changing its helpers: eight items, drag/keyboard/move/rotate/consume/refill/spill/wipe/remove/clear. Whole64px footprints and five-card reserve protect seats, cards, calls, inspection, bids, responses, pause, results and all controls. Stable separate shell, corner fallback, modal suppression, layout/pointer/account/page cleanup and reduced motion. Independent source review closed one fresh-tap suppression issue with regression;12authored Node cases. Real DE/EN browsers PASS8.7s verify waiting/play, consume/spill/motion,320x568/568x320, forbidden drag, unchanged engine/commands/handDOM, chat suppression and teardown. Physical touch-device acceptance remains open."
+      ]
     },
     {
       "id": "U19",
@@ -772,8 +774,7 @@
       ],
       "status": "partial",
       "evidence": [
-        "app/watten_engine.py permits only private good/bad/unsure partner feedback, including pending bids, without public revision/ACK-eviction leakage. Actual chat/reaction/CPU communication permissions, durable private delivery and DE/EN browser acceptance remain open.",
-        "Owner explicitly confirmed free chat and public emojis remain allowed during a deal and when gestrichen; card hints remain forbidden. Own opening-bid restrictions and private partner advice stay separate. Native free-chat/emoji UI remains to implement."
+        "Owner explicitly allows free chat/public emojis during deals and when gestrichen. Native public table social independently authorizes admitted humans/spectators, fresh recipient sessions, strict public DTOs, shared per-account rate and replay-safe nonces; no engine/TTL/persistence effects. Tests cover all phases/gestrichen/mute/exclude/revocation;3real browser cases verify pending bids/lost ACK/DEEN/mobile/blind spectator privacy. Private good/bad/unsure advice stays separate and concrete card hints remain forbidden without claiming reliable content filtering."
       ]
     },
     {
@@ -785,7 +786,7 @@
       ],
       "status": "partial",
       "evidence": [
-        "app/watten_room.py rematch retains settings but requires new human admission and deliberate manual seats/teams. Durable invitations, replay races and real rematch UI/browser acceptance remain open."
+        "Native rematch copies complete canonical recipe and CPU seats, requires fresh password or explicit disabled protection, and never seats/starts humans. DE/EN lost-ACK browsers prove one target/manual start/unchanged XP/mobile layout; a real four-human open match releases each own reservation, chooses different teams and starts manually. Physical-device acceptance remains open."
       ]
     },
     {
