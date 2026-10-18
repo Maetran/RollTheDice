@@ -123,7 +123,7 @@ def test_unknown_rank_parameters_are_rejected(options):
         build_watten_leaderboard(1, **options)
 
 
-@pytest.mark.parametrize("damage", ("duplicate_sequence", "foreign_source", "missing_sequence", "wrong_player"))
+@pytest.mark.parametrize("damage", ("duplicate_sequence", "foreign_source", "missing_sequence", "wrong_player", "missing_state"))
 def test_xp_ranking_rejects_foreign_inconsistent_journal_metadata(server, damage):
     from sqlalchemy import select
 
@@ -142,6 +142,8 @@ def test_xp_ranking_rejects_foreign_inconsistent_journal_metadata(server, damage
             grant.source_game_id = "viewer-source"  # real FK, but not the grantee's match credit
         elif damage == "missing_sequence":
             db.get(WattenProgressState, other[0].user_id).grant_sequence += 1
+        elif damage == "missing_state":
+            db.delete(db.get(WattenProgressState, other[0].user_id))
         else:
             db.scalar(select(WattenMatchCredit).where(WattenMatchCredit.user_id == other[0].user_id)).player_id = "unbound-player"
     assert build_watten_account(viewer[0].user_id)["coverage"]["complete"]

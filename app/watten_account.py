@@ -172,20 +172,25 @@ def _progress(db, user_id, matches):
                      and item.grant_sequence not in seen)
             seen.add(item.grant_sequence)
         goals = {goal.achievement_id: goal for goal in DRAFT_ACHIEVEMENTS}
-        prefixes = {}
+        prefixes, contributions = {}, {}
         for grant in grants:
             _require(grant.source_game_id in sources)
             if grant.catalog_version == DRAFT_CATALOG_VERSION and grant.achievement_id in goals:
-                source = by_game[grant.source_game_id].evidence
+                source_match = by_game[grant.source_game_id]
+                source = source_match.evidence
                 _require(as_utc(grant.reached_at) == source.finished_at)
                 key = source.finished_at, source.game_id
                 if key not in prefixes:
                     prefix = tuple(item for item in inputs if (item.evidence.finished_at, item.evidence.game_id) <= key)
                     prefixes[key] = evaluate_draft(prefix, viewer_user_id=user_id).counters
+                if key not in contributions:
+                    source_input = MatchInput(source, source_match.original_bindings)
+                    contributions[key] = evaluate_draft((source_input,), viewer_user_id=user_id).counters
                 goal = goals[grant.achievement_id]
                 # Older matches may have arrived after this immutable grant.
                 # Its own qualified prefix matters, not today's earliest source.
-                _require(getattr(prefixes[key], goal.counter) >= goal.target)
+                _require(getattr(prefixes[key], goal.counter) >= goal.target
+                         and getattr(contributions[key], goal.counter) > 0)
         _require(len(seen) == sequence)
         proposal = evaluate_draft(tuple(inputs), viewer_user_id=user_id)
     except (ValueError, TypeError, KeyError) as exc:

@@ -224,3 +224,37 @@ def test_future_catalog_known_id_is_archived_without_inventing_current_eligibili
     assert progress["archived_achievements"] == [{"id": "watten_quiet_win", "name": {
         "de": "Gespeicherter Watten-Erfolg", "en": "Stored Watten achievement"}, "granted_xp": 73,
         "earned_at": FINISHED.isoformat(), "catalog_version": 2}]
+
+
+@pytest.mark.parametrize("goal", ("watten_quiet_win", "watten_normal", "watten_two"))
+def test_known_grant_source_must_itself_contribute_after_an_earlier_qualified_match(server, goal):
+    from dataclasses import replace
+
+    from app.watten_evidence import BidEvidence, PlayerBids
+    from tests.test_watten_evidence import public_evidence
+
+    owners = [runtime_tests.account(f"Contribution{index}") for index in range(3)]
+    first = game_for(owners[:2], game_id="qualified-earlier")
+    winner = first["_watten"].engine.ledger.winners[0][0]
+    viewer = owners["AB".index(winner)][0].user_id
+    with session_scope() as db:
+        row, _legacy, bindings = written(db, first)
+        # This real engine fixture accepts only call/inspection/card commands:
+        # complete zero public bids are observed, not inferred from legacy data.
+        evidence = public_evidence(json.loads(row.snapshot_json))
+        evidence = replace(evidence, bids=BidEvidence(True, tuple(PlayerBids(player, 0, 0, 0, 0) for player in "AB")))
+        store_draft_match(db, row, evidence, bindings)
+    later = game_for(owners, game_id="later-unknown-three", count_players=3)
+    later["_finished_at"] = (FINISHED + timedelta(seconds=1)).isoformat()
+    with session_scope() as db:
+        row, evidence, bindings = written(db, later)
+        store_draft_match(db, row, evidence, bindings)
+    valid = build_watten_account(viewer)["progress"]
+    assert next(item for item in valid["achievements"] if item["id"] == goal)["unlocked"]
+    with session_scope() as db:
+        grant = db.scalar(select(WattenAchievementGrant).where(WattenAchievementGrant.user_id == viewer,
+                                                               WattenAchievementGrant.achievement_id == goal))
+        assert grant.source_game_id == "qualified-earlier"
+        grant.source_game_id, grant.reached_at = later["_id"], FINISHED + timedelta(seconds=1)
+    with pytest.raises(WattenAccountError, match="invalid_journal"):
+        build_watten_account(viewer)

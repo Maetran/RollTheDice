@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections import defaultdict
 from fractions import Fraction
 
-from sqlalchemy import exists, func, select
+from sqlalchemy import exists, func, or_, select
 from sqlalchemy.orm import selectinload
 
 from .database import database_schema_ready, session_scope
@@ -37,6 +37,13 @@ def _require(condition, code="watten_leaderboard_invalid_input"):
 def _stored_xp(db):
     """Validate every ranked journal using relational metadata, never foreign JSON."""
     code = "watten_leaderboard_invalid_journal"
+    # A damaged missing state must not hide an otherwise active journal owner
+    # from the inner joins below. Inspect only relational identity metadata.
+    orphan = select(User.id).where(User.is_active.is_(True),
+        ~exists(select(WattenProgressState.user_id).where(WattenProgressState.user_id == User.id)),
+        or_(exists(select(WattenMatchCredit.user_id).where(WattenMatchCredit.user_id == User.id)),
+            exists(select(WattenAchievementGrant.user_id).where(WattenAchievementGrant.user_id == User.id)))).limit(1)
+    _require(db.scalar(orphan) is None, code)
     states = {}
     query = select(WattenProgressState).join(User, User.id == WattenProgressState.user_id).where(User.is_active.is_(True))
     for state in db.scalars(query.execution_options(yield_per=SOURCE_PAGE_SIZE)):
