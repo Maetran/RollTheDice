@@ -1,7 +1,8 @@
 # Watten – Achievements, Wirtshaustitel und Langzeitfortschritt
 
 **Stand:** 18.10.2026, Europe/Zurich. **Status:** verbindliche Produktvorgaben
-mit einem ausdrücklich vorläufigen Zahlen- und Namensentwurf. Keine Entwicklung.
+mit einem ausdrücklich vorläufigen Zahlen- und Namensentwurf. Die Umsetzung
+ist inzwischen freigegeben; siehe [Übergabe](WATTEN_EXECUTION_HANDOFF.md).
 Ergänzt den [Umsetzungsplan](WATTEN_IMPLEMENTATION_PLAN.md), insbesondere P0/P6
 und die Hausdepp-Erkenntnisse B16–B20.
 

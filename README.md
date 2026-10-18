@@ -55,8 +55,10 @@ danach zunehmend längere Etappen für ausdauernde Watter. Der
 und einen vorläufigen Kurvenentwurf. Vollständige Tests laufen soweit möglich
 lokal auf dem Mac; GitHub prüft nur den schlanken Integrationsnachweis.
 Hoch- und Querformat bleiben vollständig spielbar; Querformat wird mit
-einem dezenten, schliessbaren Hinweis empfohlen. Die Entwicklung hat noch
-nicht begonnen.
+einem dezenten, schliessbaren Hinweis empfohlen. Die Umsetzung ist jetzt
+freigegeben und startet gemäss [Übergabe](docs/WATTEN_EXECUTION_HANDOFF.md)
+in einem separaten Chat. Zielhost: `watten.zockdiewandan.online`, inklusive
+SEO, robots.txt, Sitemap und Search-Console-Einreichung nach öffentlicher Freigabe.
 
 Der [vertiefte Regelabgleich](docs/WATTEN_RULES_AUDIT.md) trennt Ladinisch,
 Blind-/Offen-Ansage, Varianten mit Kritischen, Trumpfzwang und Einsatzbieten.
@@ -89,9 +91,12 @@ pub-style titles, leaderboards and the surrounding progress features are
 required, with faster early promotions and growing later gaps rewarding
 persistence. The [progression plan](docs/WATTEN_PROGRESSION_PLAN.md) sets out
 achievable goals and a provisional curve. Full tests run locally on the Mac
-wherever possible; GitHub only validates integration evidence. Development
-has not started. Both orientations remain fully playable, with a discreet,
-dismissible landscape recommendation.
+wherever possible; GitHub only validates integration evidence. Implementation
+is now authorized in a separate chat; see the
+[execution handoff](docs/WATTEN_EXECUTION_HANDOFF.md). The target host is
+`watten.zockdiewandan.online`, including SEO, robots.txt, sitemap and Search
+Console submission after public release. Both orientations remain fully
+playable, with a discreet, dismissible landscape recommendation.
 
 The [detailed rules audit](docs/WATTEN_RULES_AUDIT.md) separates Ladinisch,
 blind/open announcements, critical-card variants, trump obligations and bidding.

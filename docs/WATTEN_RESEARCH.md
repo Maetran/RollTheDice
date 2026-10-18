@@ -1,7 +1,8 @@
 # Watten – Recherche für das nächste Spiel
 
 **Stand:** 16.10.2026, Europe/Zurich.
-**Status:** vorgemerkt; Recherche und offene Hausregeln, keine Entwicklung.
+**Status:** Umsetzung am 18.10.2026 durch den Owner freigegeben; offene
+Hausregeln weiter gemäss Audit klären. [Ausführungsübergabe](WATTEN_EXECUTION_HANDOFF.md).
 **Ursprünglicher Branch:** `codex/watten-recherche`.
 **Ausgangspunkt:** `62856e1` auf `master`.
 
@@ -18,6 +19,14 @@ Implementierung und 20 Folge-PRs gegen `origin/develop` (`80bc42d`). Alle
 Vorbeugung, Arbeitspaket und Abnahme. Historische Fehler, spätere Wünsche und
 heutige Deckungslücken bleiben getrennt. Die offenen Regelentscheidungen
 aus dem Regelabgleich bleiben Voraussetzung; es wurde keine Entwicklung begonnen.
+
+**Neue Freigabe:** Die Umsetzung startet in einem separaten Chat.
+`watten.zockdiewandan.online` ist als Zielhost gesetzt, einschliesslich
+robots.txt/Sitemap/SEO und später geprüfter Search-Console-Einreichung.
+Die ältere reine Recherchegrenze ist überholt; Hausregeln werden weiterhin
+nicht erfunden. Claude ist begrenzt einsetzbar, Codex führt und übernimmt
+bei Limits; Reaktivierung 17:20 und weitere Kontingentbeobachtung sind
+beauftragt. Details und Prüfblocker stehen in der Übergabe.
 
 ## 1. Vorgaben aus dem Auftrag
 
@@ -46,8 +55,8 @@ Owner beschriebene Spielrunde als Bezugspunkt:
   geschützte eigene Karten im Regelwerk getrennt definieren.
 - **Keine Regelauslegung während des Spiels:** Jeder gewählte Modus muss
   vollständig und eindeutig bestimmt sein.
-- Vorerst ausschliesslich recherchieren und dokumentieren. Es gibt noch keinen
-  Auftrag für Spielengine, Oberfläche, Routen, Bots, Integration oder Release.
+- Die ursprüngliche reine Recherchephase ist mit der Freigabe vom 18.10.2026
+  beendet. Umsetzung ist beauftragt; eine Produktionsfreigabe bleibt separat.
 
 Die folgenden Quellen helfen beim Ausarbeiten dieser Hausvariante. Eine Regel
 aus dem Internet ist damit noch keine bestätigte Regel unserer Spielrunde.
@@ -248,4 +257,6 @@ scope and variant rules still need to be defined. This document records sources,
 product ideas and unresolved house rules. The detailed audit covers blind and
 open announcements, Ladinisch, critical cards, trump obligations and two-/three-
 player variants. Each final mode must have unambiguous rules. External card
-designs are not adopted; development has not started.
+designs are not adopted. Implementation is now authorized; see the execution
+handoff for the fixed host, local workflow, Claude quota handling and remaining
+rule decisions.

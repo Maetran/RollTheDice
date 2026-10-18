@@ -1,6 +1,9 @@
 # Watten – Umsetzungsplan aus Recherche und Hausdepp-Retrospektive
 
-**Stand:** 18.10.2026, Europe/Zurich. **Status:** Planung, keine Entwicklungsfreigabe.
+**Stand:** 18.10.2026, Europe/Zurich. **Status:** Umsetzung durch den Owner freigegeben.
+Start und Orchestrierung erfolgen in einem separaten Ausführungs-Chat gemäss
+[Übergabe](WATTEN_EXECUTION_HANDOFF.md). Frühere Recherchegrenzen sind damit
+überholt; offene Fachregeln bleiben vor ihrem abhängigen Teil zu klären.
 Dieser Plan hält sämtliche Erkenntnisse des Hausdepp-Deep-Dives fest. Er ist
 zusammen mit dem [Regelabgleich](WATTEN_RULES_AUDIT.md), der
 [Produktrecherche](WATTEN_RESEARCH.md), den
@@ -49,6 +52,7 @@ Entscheidung still treffen.
 | Sitz und Team | Wählbare Plätze/Teams je Modus, Gleichzeitigkeit, CPU-Ersatz, Freigabe, Hostwechsel; getrennte Entscheidung über ersten Geber. Zufälliger Geber ist keine zufällige Teamzuweisung. |
 | Folgepartie | Was wird übernommen, was erneut gewählt/bestätigt? Profil, Zielpunkte, Team/Sitz, CPU-Besetzung, Schutz, Wartemodus und manueller Start in einem vollständigen Recipevertrag. |
 | Fortschritt und Ranglisten | Achievements, Titel/Ränge, Ranglisten samt Konto-, Verlaufs-, Abschluss- und Erfolgsanzeigen verbindlich liefern. Wirtshaustaugliche DE/EN-Namen, frühe Erreichbarkeit, steigende Rangabstände und Langzeithorizont nach WATTEN_PROGRESSION_PLAN.md kalibrieren; konkrete XP, Schwellen und Rankingmetriken noch schliessen. |
+| Host und Auffindbarkeit | Zielhost watten.zockdiewandan.online ist fest. DNS/TLS, Konto/Passkeys/PWA, öffentliche Canonicals, robots.txt, Sitemap und Search Console vollständig liefern; Einreichung erst nach öffentlicher Bereitstellung und erfolgreicher Prüfung, siehe Übergabe. |
 | Produkthülle | Zugangsmatrix und Host/PWA-Identität; Details von Konto, Einladungen, Freunden, Remindern, Tour sowie verbleibende optionale Favoriten/Reaktionen/Dekoration ausdrücklich entscheiden. Der Fortschrittsumfang oben steht bereits fest. |
 
 **P0-Abnahme:** Die Regeln erlauben für jeden Fall genau einen erwarteten
@@ -59,8 +63,9 @@ Recherche wird nicht durch geratenes Verhalten ersetzt.
 
 ## 2. Arbeitspakete und Reihenfolge
 
-Die Pakete sind eine vorgeschlagene spätere Umsetzung, keine jetzt gestartete
-Arbeit. Alle unten zugeordneten Erkenntnisse gehören in die jeweilige
+Die Umsetzung der folgenden Pakete ist nun freigegeben. P0-Fragen werden
+früh geklärt; unabhängige Grundlagen können parallel beginnen. Alle unten
+zugeordneten Erkenntnisse gehören in die jeweilige
 Abnahme. Ein MVP darf ausdrücklich zurückgestellte Komfortfunktionen haben;
 die vereinbarten Regeln, Wissensgrenzen und vollständigen Nutzerreisen bleiben
 Voraussetzung. Bestehende Infrastruktur wird gezielt erweitert. Ein Node.js-
@@ -226,8 +231,9 @@ Schutzvertrag, falls die Funktion im P0-Scope freigegeben wird.
 - Vollständige lokale Prüfung für den fertigen Commit und den aktuellen Develop-Stand sowie GitHub-Integrationsnachweis bestehen; schwere Suiten laufen lokal auf dem Mac statt nochmals in GitHub CI. Tatsächlicher Produktionsstand und physische Geräteabnahme werden separat belegt, falls Teil der Freigabe.
 - Keine persönlichen QA-Runden, unbeauftragten echten Pushs, ungeprüften Releasezuordnungen oder fremden Worktreeänderungen.
 
-**English brief:** This is a planning document, not authorization to implement
-Watten. It translates every documented Hausdepp finding into a specific work
+**English brief:** The owner has now authorized implementation in a separate
+execution chat; see WATTEN_EXECUTION_HANDOFF.md. Unresolved rules still require
+explicit resolution before dependent behavior is built. It translates every documented Hausdepp finding into a specific work
 package and acceptance scenario. Historical bugs, later requests, existing
 safeguards and current evidence gaps remain distinct. Rule profiles, bidding,
 three-player scoring, hidden knowledge and manual teams must be settled before
