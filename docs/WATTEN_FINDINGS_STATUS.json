@@ -69,7 +69,8 @@
       ],
       "status": "partial",
       "evidence": [
-        "Local account-switch mutation and BFCache regressions reproduced/guarded in 9bda650. Future table hand/team/knowledge invalidation remains open."
+        "Local account-switch mutation and BFCache regressions reproduced/guarded in 9bda650. Future table hand/team/knowledge invalidation remains open.",
+        "Native socket lifecycle314fcfa: fresh identity after awaited fanout; no old-account private leave frame. Human table DOM/BFCache acceptance remains open."
       ]
     },
     {
@@ -147,7 +148,8 @@
       ],
       "status": "partial",
       "evidence": [
-        "app/watten_room.py leave distinguishes deliberate waiting-room leave, eligible host succession and closed rooms; started seats cannot change. Real disconnect/rejoin/abort routing and races remain open."
+        "app/watten_room.py leave distinguishes deliberate waiting-room leave, eligible host succession and closed rooms; started seats cannot change. Real disconnect/rejoin/abort routing and races remain open.",
+        "Native durable absent set and lifecycle revision: intentional leave pauses until explicit same-account return, keeps seat/hand/bid/score across restart. 37 focused runtime/migration tests; UI acceptance remains open."
       ]
     },
     {
@@ -170,7 +172,8 @@
       ],
       "status": "partial",
       "evidence": [
-        "app/watten_room.py admit returns the account-bound participant before capacity checks; engine actors bind positive-int accounts to seats. Durable locked rejoin, old-socket revocation and multiple-device/browser acceptance remain open."
+        "app/watten_room.py admit returns the account-bound participant before capacity checks; engine actors bind positive-int accounts to seats. Durable locked rejoin, old-socket revocation and multiple-device/browser acceptance remain open.",
+        "Runtime admission and explicit resume are account-bound under the table lock, with current absence revision. Stale resume and cached leave regressions pass; complete device journey remains open."
       ]
     },
     {
@@ -182,7 +185,8 @@
       ],
       "status": "partial",
       "evidence": [
-        "app/watten_views.py spectator_view is an explicit public allowlist with no hidden hands, call, stock, account IDs or ACK cache. Real spectator authorization/fanout and browser noninterference remain open."
+        "app/watten_views.py spectator_view is an explicit public allowlist with no hidden hands, call, stock, account IDs or ACK cache. Real spectator authorization/fanout and browser noninterference remain open.",
+        "Dedicated per-viewer native fanout rechecks fresh authority before delivery. Spectators receive public projection only; UI/privacy acceptance remains open."
       ]
     },
     {
@@ -382,7 +386,8 @@
       ],
       "status": "partial",
       "evidence": [
-        "app/watten_engine.py require_actor checks account/seat binding on each command, rejecting Boolean account aliases. Re-deriving authority after acquiring the real transaction lock and old-socket tests remain open."
+        "app/watten_engine.py require_actor checks account/seat binding on each command, rejecting Boolean account aliases. Re-deriving authority after acquiring the real transaction lock and old-socket tests remain open.",
+        "Native HTTP/WS use shared table lock and rederive account/seat authority after lock acquisition; revoked connection tests included in37focused tests. Final integrated full proof pending."
       ]
     },
     {
@@ -395,7 +400,8 @@
       ],
       "status": "partial",
       "evidence": [
-        "app/watten_engine.py keeps at most64 ACKs per bound actor, replays only safe ACK metadata and uses private feedback sequences after eviction; aca3bc3/272cfdb. Durable atomic ACK/state storage, lost-delivery transport and browser recovery remain open."
+        "app/watten_engine.py keeps at most64 ACKs per bound actor, replays only safe ACK metadata and uses private feedback sequences after eviction; aca3bc3/272cfdb. Durable atomic ACK/state storage, lost-delivery transport and browser recovery remain open.",
+        "Native commands persist candidate/ACK before install, reject stale lifecycle opportunity and do not detach new sockets on cached Leave.37focused tests; integrated full proof pending."
       ]
     },
     {
@@ -407,7 +413,8 @@
       ],
       "status": "partial",
       "evidence": [
-        "app/watten_views.py has independent member/CPU/spectator allowlists and focused hidden-call noninterference tests; private feedback does not change public opportunity or another actor ACK retention. Actual authorized fanout, storage and browser proofs remain open."
+        "app/watten_views.py has independent member/CPU/spectator allowlists and focused hidden-call noninterference tests; private feedback does not change public opportunity or another actor ACK retention. Actual authorized fanout, storage and browser proofs remain open.",
+        "Native per-viewer websocket projection and fresh outbound authentication exercised with logout-during-broadcast. Full UI/audience acceptance pending."
       ]
     },
     {
@@ -467,7 +474,8 @@
       ],
       "status": "partial",
       "evidence": [
-        "Immutable pure deals/replayed plays conserve cards, rotate roles, score once and restore strict private schemas; focused cards/play/phase fixtures pass. Whole-match durable runtime restart, corrupted storage and browser acceptance remain open."
+        "Immutable pure deals/replayed plays conserve cards, rotate roles, score once and restore strict private schemas; focused cards/play/phase fixtures pass. Whole-match durable runtime restart, corrupted storage and browser acceptance remain open.",
+        "Native strict checkpoint restore includes paused matches, pending bid, long valid ledger and malformed-native-row retention.37focused runtime/migration tests; full proof pending."
       ]
     },
     {
@@ -478,7 +486,8 @@
       ],
       "status": "partial",
       "evidence": [
-        "app/watten_engine.py _finish accounts the pure terminal result before producing the transition; bid/score state rejects repeated accounting. Atomic CompletedGame/ActiveGame commit, retryable failure and completion broadcast acceptance remain open."
+        "app/watten_engine.py _finish accounts the pure terminal result before producing the transition; bid/score state rejects repeated accounting. Atomic CompletedGame/ActiveGame commit, retryable failure and completion broadcast acceptance remain open.",
+        "Native final result and terminal checkpoint commit atomically, failed transaction preserves prior state, duplicate finalization yields one result. Terminal delivery outbox retained; unsupported result deletion rejects409. Progression/UI acceptance pending."
       ]
     },
     {
@@ -861,7 +870,8 @@
       ],
       "status": "partial",
       "evidence": [
-        "WATTEN_P1_CONTRACTS.md inventories independent suite registries. Their actual Watten integration remains open."
+        "WATTEN_P1_CONTRACTS.md inventories independent suite registries. Their actual Watten integration remains open.",
+        "Watten native adapter explicitly wired into game types, storage, activity and transport under separate local gate. Typed result migration0066 added; generic history/reminders/statistics exclude undeveloped Watten readers. Broader suite integration remains required."
       ]
     }
   ]
