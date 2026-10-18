@@ -259,7 +259,17 @@ In der Tischhilfe gibt es zusätzlich **Paket ansehen**. Der Dialog zeigt nur di
 bereits offen gespielten Karten; Anschauen führt keinen Spielzug aus. Ein kurzer
 Tipp bleibt die unmittelbare Aufnahme. Abgeräumte Karten landen auf einem
 separaten, chaotisch gestapelten Rückseitenstapel **Aus dem Spiel** mit genauer
-Kartenanzahl. Er ist kein Nachziehstapel und lässt sich nicht aufnehmen.
+Kartenanzahl. Er ist kein Nachziehstapel und lässt sich nicht aufnehmen. Am Tisch
+steht dafür eine durchgestrichene Karte mit der Zahl; „Aus dem Spiel“ bleibt als
+Tooltip und für Screenreader erhalten.
+
+Seit 3.8.1 werden verdeckter Stapel und offenes Paket nie abgedunkelt, auch wenn
+andere am Zug sind. Ein goldener Leuchtrand markiert nur, was der Spieler selbst
+antippen kann (zocken, abheben, Paket nehmen); das automatische Nachziehen
+leuchtet nicht. Name und Kartenzahl stehen auf dunklen Schildern, der Spieler am
+Zug auf einem goldenen; die Statuszeile ist eine Pille, gold beim eigenen Zug.
+Auf dem Handy zeigt das Schild Name und Zahl in einer Zeile; ab vier Mitspielern
+sitzen alle dort in einer gleichmässigen Reihe über den Stapeln.
 
 Zum gerade gespielten Rang darf der Spieler weitere gleichrangige Karten
 **nachwerfen**. Das dürfen gerade nachgezogene Karten oder zunächst
@@ -1074,4 +1084,13 @@ Hold the open pile, right-click it or use Shift + Enter to inspect its public
 cards before pickup. **Inspect pile** in table help opens the same dialog.
 Inspection does not play a turn; a short tap still picks up the pile immediately.
 Cleared cards fly to a separate, untidy face-down **Out of play** stack with an
-exact count. That stack is neither stock nor available for pickup.
+exact count. That stack is neither stock nor available for pickup. On the table it
+shows a crossed-out card with the count; "Out of play" remains as the tooltip and
+for screen readers.
+
+Since 3.8.1 the stock and the open pile never fade, even while others are on turn.
+A gold ring marks only what the player can tap (gamble, cut, take the pile); the
+automatic refill does not light up. Names and hand sizes sit on dark plates, the
+player on turn on a gold one; the turn line is a pill, gold on the own turn.
+On phones the plate shows name and number in one line; with four or more
+opponents all seats share one even row above the stacks.

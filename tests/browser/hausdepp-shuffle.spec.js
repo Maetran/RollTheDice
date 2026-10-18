@@ -282,7 +282,8 @@ test('compact discard counters remain separate from stock captions and turn mess
         const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
         const result = [];
         while (walker.nextNode()) {
-          if (!walker.currentNode.textContent.trim()) continue;
+          // Only painted text counts: the screen-reader words are clipped away.
+          if (!walker.currentNode.textContent.trim() || walker.currentNode.parentElement.closest('.hd-sr')) continue;
           const range = document.createRange();
           range.selectNodeContents(walker.currentNode);
           result.push(...[...range.getClientRects()].map(rect => ({
@@ -442,10 +443,10 @@ test('enabling reduced motion cancels an active public sequence and reveals the 
   await pausePublicPictures(page);
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await expect(page.locator('.hd-deal-card')).toHaveCount(0);
-  // This accepted burn leaves an empty, disabled pile. Restore its ordinary
-  // disabled paint (.45), rather than mistaking it for an enabled pile (1).
+  // This accepted burn leaves an empty, disabled pile. Its mask is released:
+  // the table never fades its stacks, so the empty place is fully painted.
   await expect(page.locator('#hausdeppPile')).toBeDisabled();
-  await expect(page.locator('#hausdeppPile')).toHaveCSS('opacity', '0.45');
+  await expect(page.locator('#hausdeppPile')).toHaveCSS('opacity', '1');
   expect(await page.locator('#hausdeppPile').evaluate(element => element.getAnimations().length)).toBe(0);
   await expect(page.locator('#hausdeppBurnedCount')).toHaveText('2');
   // Mandatory refills are tapped automatically; nothing else may be sent.

@@ -3,29 +3,25 @@
   "games": [
     "hausdepp"
   ],
-  "summary_de": "Hausdepp: Rundenabschluss mit Platzierungen und EP, Tisch-Extras zum Ausprobieren und 15 neue Erfolge.",
-  "summary_en": "Hausdepp: a round summary with places and XP, table extras to play with and 15 new achievements.",
+  "summary_de": "Hausdepp: Der Spieltisch ist besser lesbar – helle Karten, Namensschilder und eine goldene Markierung für den Zug.",
+  "summary_en": "Hausdepp: the table is easier to read – bright cards, name plates and a gold marker for whose turn it is.",
   "player_notes": {
     "de": {
-      "title": "Hausdepp 3.8: Mehr los am Stammtisch",
+      "title": "Hausdepp 3.8.1: Klarer Blick auf den Tisch",
       "changes": [
-        "Das Rundenende zeigt alle Platzierungen, die EP der Runde und neu erreichte Erfolge.",
-        "Münze werfen, würfeln, vom Bier trinken (nicht zu wild!) oder die Nüsse verputzen – der Tisch spielt mit.",
-        "Mehrere gleiche Karten oben auf dem Paket sind aufgefächert, so siehst du sofort, wie viele liegen.",
-        "15 neue Erfolge für Spielzeit und Treue, von „Bürozeit“ bis „Wochenläufer“; die oberen Ränge brauchen jetzt mehr EP.",
-        "Schnellerer Start der App, ohne fehlende Kartenbilder; dein Profilbild oben führt direkt zur Profilbild-Einstellung.",
-        "Tägliche Spielerinnerungen und Startmeldungen deiner Spielerauswahl gibt es jetzt auch für Hausdepp."
+        "Stapel und Paket bleiben hell, auch wenn die anderen dran sind.",
+        "Was du gerade antippen kannst, leuchtet golden.",
+        "Wer dran ist, steht auf einem goldenen Namensschild; die Statuszeile wird bei deinem Zug gold.",
+        "Grössere Schrift am Tisch, und „Aus dem Spiel“ ist jetzt ein Symbol mit Zahl."
       ]
     },
     "en": {
-      "title": "Hausdepp 3.8: More going on at the table",
+      "title": "Hausdepp 3.8.1: A clearer view of the table",
       "changes": [
-        "The round end shows every place, the round's XP and newly reached achievements.",
-        "Toss the coin, roll the dice, drink your beer (not too wildly!) or finish the nuts – the table plays along.",
-        "Several equal cards on top of the pile fan out, so you see at once how many are there.",
-        "15 new achievements for play time and loyalty, from “Office hours” to “Week streak”; the top ranks now need more XP.",
-        "A faster app start without missing card pictures; your avatar at the top opens your profile picture setting.",
-        "Daily play reminders and start notices from your player selection now include Hausdepp."
+        "The stock and the pile stay bright while the others play.",
+        "Whatever you can tap right now lights up in gold.",
+        "The player on turn has a gold name plate; the turn line turns gold on your turn.",
+        "Larger text on the table, and “Out of play” is now an icon with its count."
       ]
     }
   }

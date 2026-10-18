@@ -1,0 +1,98 @@
+/* Table contrast: the cards never fade; what the player can tap lights up;
+   names, counts and the turn sit on dark plates that stay readable on every
+   wood grain and table extra. Loaded last so it wins over the layout files. */
+html[data-game="hausdepp"] {
+  --hd-table-ink: #f8f3e7;
+  --hd-table-ink-soft: #eedcbf;
+  --hd-table-gold: #ecd391;
+  --hd-table-active-ink: #1b2c25;
+  --hd-table-plate: rgba(16, 11, 8, .66);
+  --hd-table-plate-line: rgba(236, 211, 145, .3);
+  --hd-table-line: rgba(236, 211, 145, .65);
+  --hd-table-shadow: 0 1px 2px rgba(0, 0, 0, .75);
+}
+
+/* A lamp over the Stammtisch: a warm centre and darker edges. */
+html[data-game="hausdepp"] body.hd-playing {
+  background:
+    radial-gradient(ellipse 75% 50% at 50% 46%, rgba(255, 214, 150, .13), rgba(255, 214, 150, 0) 72%),
+    radial-gradient(ellipse 120% 90% at 50% 45%, rgba(18, 12, 9, 0) 45%, rgba(18, 12, 9, .55) 100%),
+    linear-gradient(rgba(30, 22, 17, .52), rgba(30, 22, 17, .52)),
+    url("/static/zilch-wood-table-v1.jpg") center top / 1024px;
+}
+
+/* Stock and open pile stay bright between turns, only slightly calmer. */
+html[data-game="hausdepp"] body.hd-playing .hd-table :is(#hausdeppStock, #hausdeppPile):disabled { opacity: 1; filter: saturate(.9) brightness(.94); }
+/* A gold ring marks a stack the player may tap now. Refills are tapped
+   automatically, so a due draw does not light up. */
+html[data-game="hausdepp"] body.hd-playing .hd-table :is(#hausdeppStock, #hausdeppPile) { transition: box-shadow 160ms ease-out; }
+html[data-game="hausdepp"] body.hd-playing .hd-table #hausdeppStock:not(:disabled):not([data-action="draw"]),
+html[data-game="hausdepp"] body.hd-playing .hd-table #hausdeppPile[data-pickup-available="true"] {
+  border-radius: 8px;
+  box-shadow: 0 0 0 3px rgba(236, 211, 145, .95), 0 0 22px 2px rgba(236, 211, 145, .45);
+}
+html[data-game="hausdepp"] body.hd-playing .hd-table #hausdeppStock.is-peeking:not(:disabled) { outline: 0; }
+@media (prefers-reduced-motion: reduce) {
+  html[data-game="hausdepp"] body.hd-playing .hd-table :is(#hausdeppStock, #hausdeppPile) { transition: none; }
+}
+
+/* Empty places read as places, not as fog. */
+html[data-game="hausdepp"] .hd-empty-pile { border: 1.5px dashed var(--hd-table-line); color: var(--hd-table-ink-soft); text-shadow: var(--hd-table-shadow); }
+html[data-game="hausdepp"] .hd-burned-stack.is-empty,
+html[data-game="hausdepp"] body.hd-playing #hausdeppStock.is-empty { border: 1.5px dashed var(--hd-table-line); }
+
+/* Seat plates: name and hand size on one dark plate; the active player in gold. */
+html[data-game="hausdepp"] .hd-table .hd-seat-plate {
+  display: flex; flex-direction: column; align-items: center; width: max-content; min-width: 0; max-width: calc(100% + 22px);
+  margin-top: 2px; padding: 1px 5px 2px; border: 1px solid var(--hd-table-plate-line); border-radius: 7px;
+  background: var(--hd-table-plate); box-shadow: 0 2px 6px rgba(0, 0, 0, .35);
+}
+html[data-game="hausdepp"] .hd-table .hd-seat-plate > strong { max-width: 100%; color: var(--hd-table-ink); }
+html[data-game="hausdepp"] .hd-table .hd-seat-plate > .hd-seat-count { color: var(--hd-table-ink-soft); white-space: nowrap; font-variant-numeric: tabular-nums; }
+html[data-game="hausdepp"] .hd-table .hd-seat.is-active .hd-seat-plate { background: var(--hd-table-gold); border-color: var(--hd-table-gold); box-shadow: 0 0 0 2px rgba(236, 211, 145, .3), 0 2px 8px rgba(0, 0, 0, .4); }
+html[data-game="hausdepp"] .hd-table .hd-seat.is-active .hd-seat-plate > :is(strong, .hd-seat-count) { color: var(--hd-table-active-ink); }
+html[data-game="hausdepp"] .hd-table .hd-seat.is-active .hd-seat-avatar { box-shadow: 0 0 0 3px var(--hd-table-gold), 0 0 14px rgba(236, 211, 145, .7); }
+/* Phones: one line, name and number. The fan above already shows the hand and
+   the seat label still names the cards for screen readers. The plate stays
+   lower than the old two-line caption, so it never reaches the stacks. */
+@media (max-width: 600px) and (orientation: portrait), (max-width: 1099px) and (max-height: 600px) and (orientation: landscape) {
+  html[data-game="hausdepp"] .hd-table .hd-seat-plate { flex-direction: row; align-items: baseline; gap: 4px; max-width: calc(100% + 22px); padding: 1px 6px; }
+  html[data-game="hausdepp"] .hd-table .hd-seat-plate > strong { flex: 0 1 auto; min-width: 0; }
+  html[data-game="hausdepp"] .hd-table .hd-seat-plate > .hd-seat-count { flex: none; font-weight: 700; }
+  html[data-game="hausdepp"] .hd-table .hd-seat-count-unit { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}
+/* On phones a full table sits in one flat, evenly shared row above the stacks
+   instead of a bunched arc whose outer seats cover each other or the stacks. */
+@media (max-width: 600px) and (orientation: portrait), (max-width: 1099px) and (max-height: 600px) and (orientation: landscape) {
+  html[data-game="hausdepp"] body.hd-playing .hd-table .hd-seats:is([data-count="4"], [data-count="5"]) { --hd-arc-depth: 12px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-table .hd-seats[data-count="4"] > .hd-seat { left: calc((var(--seat) + .5) * 25%); }
+  html[data-game="hausdepp"] body.hd-playing .hd-table .hd-seats[data-count="5"] > .hd-seat { left: calc((var(--seat) + .5) * 20%); }
+  html[data-game="hausdepp"] .hd-table .hd-seats:is([data-count="4"], [data-count="5"]) .hd-seat-plate { max-width: calc(100% + 26px); }
+}
+
+/* Captions under the stacks and around the hand. */
+html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre .hd-stack-action { color: var(--hd-table-ink); text-shadow: var(--hd-table-shadow); }
+html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre :is([id="hausdeppStockCount"], [id="hausdeppPileCount"], .hd-burned-meta) { color: var(--hd-table-ink-soft); text-shadow: var(--hd-table-shadow); }
+html[data-game="hausdepp"] body.hd-playing :is(.hd-room-heading, .hd-hand-heading) { text-shadow: var(--hd-table-shadow); }
+html[data-game="hausdepp"] body.hd-playing #hausdeppConnection { color: var(--hd-table-ink-soft); }
+
+/* Out of play: a crossed-out card and the count; the words stay for screen
+   readers and as the tooltip. */
+html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre .hd-burned > .hd-stack-action.hd-sr { position: absolute; width: 1px; height: 1px; min-height: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre .hd-burned > .hd-burned-meta { display: inline-flex; align-items: center; justify-content: center; gap: 3px; font-weight: 700; }
+html[data-game="hausdepp"] .hd-burned-icon { width: 1.2em; height: 1.2em; flex: 0 0 auto; }
+
+/* The turn line as a pill: dark while others play, gold when it is yours. */
+html[data-game="hausdepp"] body.hd-playing .hd-table > .hd-turn-status {
+  justify-self: center; width: fit-content; max-width: calc(100% - 16px); margin-inline: auto; padding: 3px 12px;
+  border: 1px solid var(--hd-table-plate-line); border-radius: 999px; background: var(--hd-table-plate); color: var(--hd-table-gold);
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+html[data-game="hausdepp"] body.hd-playing .hd-table > .hd-turn-status:empty { visibility: hidden; }
+html[data-game="hausdepp"] body.hd-playing .hd-table > .hd-turn-status.is-yours { background: var(--hd-table-gold); border-color: var(--hd-table-gold); color: var(--hd-table-active-ink); }
+@media (max-width: 1099px) and (orientation: landscape) {
+  html[data-game="hausdepp"] body.hd-playing .hd-table > .hd-turn-status { left: calc((100% - 12px) * .225); max-width: calc((100% - 12px) * .45); transform: translateX(-50%); }
+}
+
+/* Tool buttons keep their colour; disabled reads as an outline, not as fog. */
+html[data-game="hausdepp"] body.hd-playing .hd-multi-toggle:disabled { opacity: 1; color: var(--hd-table-ink-soft); background: var(--hd-table-plate); border-color: var(--hd-table-plate-line); }

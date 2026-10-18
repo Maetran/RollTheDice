@@ -1,10 +1,10 @@
 {
-  "version": "3.8.0",
-  "bump": "minor",
-  "date": "2026-10-17",
-  "previous_revision": "c4f7abc835f8613a150fbf6df94725a19c46fd43",
+  "version": "3.8.1",
+  "bump": "patch",
+  "date": "2026-10-18",
+  "previous_revision": "f5a66ce6777612f0b42b0916af182fc27888fa57",
   "summary": {
-    "de": "Hausdepp: Ausführlicher Rundenabschluss, lebendige Tisch-Extras, Profilbild führt ins Profil, ruhiger Start nach App-Neustart.",
-    "en": "Hausdepp: a richer round summary, playful table extras, the avatar opens your profile and a calmer start after an app restart."
+    "de": "Hausdepp: besser lesbarer Spieltisch – helle Karten auch zwischen den Zügen, Namensschilder, goldene Markierung für den Spieler am Zug.",
+    "en": "Hausdepp: a more readable table – cards stay bright between turns, name plates and a gold marker for the player on turn."
   }
 }
