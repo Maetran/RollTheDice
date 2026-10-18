@@ -412,3 +412,61 @@ Gedächtnis-/DTO-Prüflücken. Eine eigene neue Claude-Aufgabe korrigiert nur di
 vier Dateien; Tests führt Root aus. Drei fehlende Profilkombinationen werden
 vor der endgültigen CPU-Abnahme ebenfalls geprüft. Der getrennte Runner bleibt
 bis zur bestätigten Policy ausdrücklich ohne freigegebenes Autoplay.
+
+## 18.10.2026 – lokale Spieloberfläche und CPU zusammengeführt
+
+Claudes offizielle CLI-Aufträge endeten am Sitzungslimit. Es wurde kein
+Overage verwendet. Root übernahm die tatsächliche Prüfung und Korrektur der
+CPU-Policy sowie des ungetesteten Oberflächen-Checkpoints. Die zuvor genannten
+CPU-Befunde sind geschlossen: freiwillige Aufbietschleifen bei bereits
+partieentscheidendem Einsatz, unnötiges Opfern in sicher verlorenen Stichen,
+unzulässig rekonstruiertes Blindwissen und zu früh sichtbare Karten. Alle zwölf
+Profile sind in den gezielten Tests enthalten. Die kleine Paarmessung liefert
+keinen allgemeinen Spielstärkenachweis; breitere Kalibrierung bleibt offen.
+
+Der native CPU-Runner speichert erlaubtes Gedächtnis vor dem Schliessen des
+Einschaufensters und verwirft alte Fristen bei Pause, Zustandsersatz oder neuer
+Gelegenheit. Fehlerhafte Speicherung installiert keinen Spielzug und startet
+keine Wiederholungsschleife. Root-Gegenlauf über Policy, Gedächtnis, Runner,
+native Runtime und Resultmigration: **157 Tests bestanden, 17.96 Sekunden**.
+
+Die DE/EN-Oberfläche ist in `1a98ec8` integriert: öffentliche lokale Lobby und
+Regeln, manuelle Sitze/Viererteams, CPU-Platzwahl und -Entfernung, absichtlicher
+Start, Bieten, Einschauen, persönliche Referenz und Partnerberatung. Routen
+verlangen beide lokalen Preview-Flags, sichere Rückwege und Noindex/No-store.
+Die Hand wird erst nach erfolgreichem Bilddekodieren verbunden. Frische
+Anmeldung vor jeder neuen Verbindung und ein serverseitig unter derselben
+Sperre geprüftes `expected_account_id` verhindern fremde Kontobindung. Ein
+verlorenes Leave-ACK führt zu einer lesenden Klärung, keiner neuen Aufnahme.
+
+**13 isolierte Browserfälle bestanden in 45.8 Sekunden**:
+`test-results/browser/watten/integrated-game-1/`. Echte Zwei-/Drei-/Vierertische,
+Zweierabschluss mit offenem Gebot/Pause/ausdrücklicher Rückkehr, private
+Dreierberatung, blinde Einschauerrollen, alle CPU-Sitzanzahlen und ein
+dauerhafter Zweierabschluss gegen CPU sind enthalten. Weitere Fälle prüfen
+Kontowechsel während verzögerter Bilddekodierung, explizite Persisted-Page-
+Ereignisbehandlung, verlorenes Leave-ACK und frische gegenüber alten Taps.
+Mobile Geometrie ist bei 320×568, 568×320, 667×375 und 768×700 geprüft; der
+gefundene schmale Querformatüberlauf wurde in der Quellgeometrie behoben.
+Persisted-Page-Ereignisse sind kein Nachweis physischer BFCache-Eignung oder
+einer echten Telefoninstallation. Unabhängiger Quellenreview von `1a98ec8`
+bestätigt die fünf früheren UI-Befundgruppen als geschlossen, ohne Geräteabnahme.
+
+Seiten-, Konto-, Navigations- und Evidenzgegenlauf: **85 Tests, 196 Subtests,
+4.61 Sekunden**. Der strikte öffentliche Evidenzadapter ist unabhängig geprüft;
+v1-Resultate bleiben unverändert, unbekannte Profil-/Start-/Bietdaten UNKNOWN.
+Ein zusätzlicher reiner Draft-Katalog bietet 22 Titel und 27 DE/EN-Ziele mit
+10 XP je gültiger Partie und höchstens 2’110 einmaligen XP. Das ist eine
+überprüfbare Kalibrierung, keine dauerhafte Vergabe oder Produktionsfreigabe.
+Journal, Kontoseiten, Verlauf/Ranglisten und weitere Suite-Dienste folgen weiter.
+
+Vorbereitete interne Funktionsversion ist 3.13.0. Die neu archivierte 3.12.3
+verweist auf ihren tatsächlich geprüften Develop-Merge `f6e0e89`; bestehende
+Zuordnungen wurden nicht verändert. Der exakte vollständige Nachweis für diese
+neue Integration steht noch aus. Keine App-Veröffentlichung, kein Master-Merge,
+keine Watten-Gesamtabnahme; alle 81 Findings bleiben im Umfang.
+
+**English:** Native UI and personal CPU automation are now integrated locally.
+Thirteen isolated browser cases and focused backend checks passed. Physical
+devices, broader strength calibration, progression persistence/account views,
+suite services and the new complete verification receipt remain outstanding.

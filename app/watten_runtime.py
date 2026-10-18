@@ -2,7 +2,8 @@
 
 Sockets/HTTP must take game_lock before changing this state. Immutable room
 and engine replacements are committed before becoming live or acknowledged.
-There is deliberately no CPU policy, achievement grant or automatic forfeit.
+The personal CPU runner composes these transitions; no achievement grant or
+automatic forfeit is implied by this runtime.
 """
 
 from __future__ import annotations

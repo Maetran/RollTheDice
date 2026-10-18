@@ -23,6 +23,25 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 3.13.0 — Lokaler Watten-Spieltisch / local Watten table — 2026-10-18
+
+**Deutsch:** Die isolierte lokale Watten-Vorschau hat eine eigene zweisprachige
+Spieloberfläche für zwei, drei und vier Personen. Sitze und Viererteams werden
+bewusst gewählt; Computergegner lassen sich auf freie Plätze setzen. Ihre
+Automatik verwendet nur das eigene erlaubte Wissen und dauerhaft gespeicherte
+Beobachtungen. Bieten, einmaliges Einschauen und die ausdrückliche Rückkehr
+nach dem Verlassen sind an die native Runtime angeschlossen. Ein reiner
+Fortschrittsentwurf prüft Titel und Erfolge, vergibt aber noch keine XP.
+Die öffentliche Watten-Domain bleibt geschlossen; dies ist kein Produktionsrelease.
+
+**English:** The isolated local Watten preview has its own bilingual gameplay
+interface for two, three and four players. Seats and four-player teams are
+chosen deliberately; computer opponents can occupy specific free seats. Their
+automation uses only their own permitted knowledge and durable observations.
+Bidding, one-time inspection and explicit return after leaving use the native
+runtime. A pure progression proposal checks titles and achievements without
+awarding XP. The public Watten domain remains closed; this is not a production release.
+
 ## 3.12.3 — Interne Watten-Partien / internal Watten matches — 2026-10-18
 
 **Deutsch:** Die lokale Watten-Entwicklung nutzt bestehende Konten für

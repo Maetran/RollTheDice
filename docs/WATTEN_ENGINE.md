@@ -1,9 +1,8 @@
 # Watten pure engine and room foundation
 
-Source snapshot: 18 October 2026, integrated through `272cfdb` on
-`codex/watten-engine-core`. These modules are internal foundations, without a
-game adapter, gameplay HTTP/WebSocket route, database writer or game UI.
-The separate local account preview and closed production host are unchanged.
+Source snapshot: 18 October 2026, local game integration after PR #54. Pure
+transitions now have a gated native transport, durable result writer, personal
+CPU runner and DE/EN browser UI. The production host remains closed.
 [Owner decisions](WATTEN_OWNER_DECISIONS.md) define the house profiles;
 [all 81 findings](WATTEN_FINDINGS_STATUS.json) remain required.
 
@@ -25,7 +24,7 @@ The separate local account preview and closed production host are unchanged.
 Two players are open, with normal or Ladinisch determination. Three are open
 normal play with a rotating solo naming both values. Four default to blind
 Ladinisch; explicit open normal/Ladinisch profiles are represented too.
-The first dealer is supplied by a later server draw; subsequent dealers rotate
+The first dealer comes from a cryptographic server draw; subsequent dealers rotate
 clockwise. Four-player teams are chosen opposite seats, never inferred from joins.
 Guter/Schlechter stay unavailable; critical cards default off in table creation.
 Critical precedence is heart king > Weli > acorn seven > Rechter, including
@@ -73,8 +72,9 @@ lock. It rederives authority after lock acquisition, revokes replaced sockets,
 and commits candidate state and a final result in one database transaction before
 installing or acknowledging it. It uses explicit versioned storage and separate
 per-viewer projections. This is local development behind the independent
-`ROLLTHEDICE_WATTEN_GAME_PREVIEW` gate; production remains closed. Native UI,
-CPU scheduling and a complete rematch journey remain follow-up work.
+`ROLLTHEDICE_WATTEN_GAME_PREVIEW` gate; production remains closed. Native
+documents also require the account preview gate. The complete rematch journey
+remains follow-up work.
 
 One-time public calls use a durable delivery outbox with recipient-bound ACKs,
 so a crash after commit but before broadcast does not lose open C/D's initial
@@ -91,9 +91,28 @@ Allowed private partner feedback and delivery ACKs may continue. Restart retains
 the pause. Old leave replays cannot detach a fresh connection; a logout during
 an awaited broadcast cannot receive the former account's private leave snapshot.
 
+`watten_cpu.py` and `watten_cpu_memory.py` select tactics from only a CPU's
+personal DTO, public events and allowed observations remembered during play.
+`watten_cpu_runtime.py` schedules bounded decisions under the same lock. It
+persists each accepted observation before an inspection ACK can close the
+window. Pause, replaced runtime generations and stale opportunities invalidate
+old jobs; a failed checkpoint never installs a candidate or spins on retries.
+The private runtime schema is version 2, with strict version-1 human compatibility.
+
+The UI decodes public card assets before connecting, checks fresh account
+identity before every socket and binds its expected account in the server-side
+join guard. Intentional departure with a lost ACK is resolved through a read;
+it never automatically joins the departed account again. Private DOM is cleared
+synchronously on page departure. Mobile portrait and short landscape layouts
+have isolated browser checks; physical-device acceptance remains separate.
+
+`watten_evidence.py` validates public scoring evidence and complete relational
+membership. Result-v1 stays unchanged; missing profile, start and bid facts
+remain UNKNOWN. This adapter does not award XP or supply a public account feed.
+
 Focused unit/review evidence is recorded in the [execution log](WATTEN_EXECUTION_LOG.md).
-It is not the next integrated full-check receipt or complete P2/P3 acceptance.
-Browser flows, the final integrated full proof, CPU policy and physical-device
+It is not the next integrated full-check receipt or complete product acceptance.
+The integrated full proof, broader CPU strength calibration and physical-device
 acceptance remain open. Targeted native tests exercise real HTTP/WebSocket/SQLite
 matches, atomic failure/retry, restart, stale lifecycle commands and revoked
 private fanout. The [historical room handoff](WATTEN_ROOM_HANDOFF.md)

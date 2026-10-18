@@ -12,8 +12,10 @@
         "P1",
         "P8"
       ],
-      "status": "open",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Local game UI: real DE/EN anonymous lobby/rules remain usable when /me returns503; no game API read. Isolated browser integrated-game-1 passed; public activation still open."
+      ]
     },
     {
       "id": "S02",
@@ -70,7 +72,8 @@
       "status": "partial",
       "evidence": [
         "Local account-switch mutation and BFCache regressions reproduced/guarded in 9bda650. Future table hand/team/knowledge invalidation remains open.",
-        "Native socket lifecycle314fcfa: fresh identity after awaited fanout; no old-account private leave frame. Human table DOM/BFCache acceptance remains open."
+        "Native socket lifecycle314fcfa: fresh identity after awaited fanout; no old-account private leave frame. Human table DOM/BFCache acceptance remains open.",
+        "Native UI1a98ec8: mounted-account preconnect refresh plus under-lock expected_account_id; real delayed-decode account switch and persisted-page event cleanup passed. Physical BFCache/device acceptance remains open."
       ]
     },
     {
@@ -93,7 +96,8 @@
       ],
       "status": "partial",
       "evidence": [
-        "app/watten_room.py create_room/take_seat/start separates admission, concrete CPU seats and explicit host start; 1299d9d/f0c17a5. Runtime concurrent admission/start, persistence and browser flow remain open."
+        "app/watten_room.py create_room/take_seat/start separates admission, concrete CPU seats and explicit host start; 1299d9d/f0c17a5. Runtime concurrent admission/start, persistence and browser flow remain open.",
+        "UI1a98ec8: manual seat-count/start and targeted CPU placement/removal passed for2/3/4 in real isolated browser flows; full public journey remains open."
       ]
     },
     {
@@ -105,7 +109,8 @@
       ],
       "status": "partial",
       "evidence": [
-        "app/watten_room.py seat_team/StartRoster enforces manual opposite four-player seats and rotating three-player solo, independent of join order. Real lobby team choice and runtime races remain open."
+        "app/watten_room.py seat_team/StartRoster enforces manual opposite four-player seats and rotating three-player solo, independent of join order. Real lobby team choice and runtime races remain open.",
+        "Real four-player browser seats retain manually selected opposite teams[0,1,0,1]; no join-order team inference. Public/rematch journey remains open."
       ]
     },
     {
@@ -149,7 +154,8 @@
       "status": "partial",
       "evidence": [
         "app/watten_room.py leave distinguishes deliberate waiting-room leave, eligible host succession and closed rooms; started seats cannot change. Real disconnect/rejoin/abort routing and races remain open.",
-        "Native durable absent set and lifecycle revision: intentional leave pauses until explicit same-account return, keeps seat/hand/bid/score across restart. 37 focused runtime/migration tests; UI acceptance remains open."
+        "Native durable absent set and lifecycle revision: intentional leave pauses until explicit same-account return, keeps seat/hand/bid/score across restart. 37 focused runtime/migration tests; UI acceptance remains open.",
+        "Real two-human browser: leave with pending3, readmission paused, explicit same-account resume, durable completion. Lost waiting-room LeaveACK never auto-admits. Public/multidevice lifecycle remains open."
       ]
     },
     {
@@ -295,7 +301,8 @@
       ],
       "status": "partial",
       "evidence": [
-        "Staged host boundary beaa32c and explicit reserved-host navigation mapping; public Watten routes/SEO remain open."
+        "Staged host boundary beaa32c and explicit reserved-host navigation mapping; public Watten routes/SEO remain open.",
+        "Native local canonical rule/table/spectator documents have strict return paths, raw-template alias denial, noindex/no-store and navigation-contract coverage; public SEO activation remains open."
       ]
     },
     {
@@ -426,7 +433,8 @@
       ],
       "status": "partial",
       "evidence": [
-        "app/watten_views.py cpu_view uses exactly its bound seat personal allowlist, with no hidden legal-card hints or inferred official knowledge. Actual CPU scheduler/policy memory, tips and production-path acceptance remain open."
+        "app/watten_views.py cpu_view uses exactly its bound seat personal allowlist, with no hidden legal-card hints or inferred official knowledge. Actual CPU scheduler/policy memory, tips and production-path acceptance remain open.",
+        "Reviewed CPU policy+strict durable memory receives only own cpu_view/public observations; blind unknown-call and forged knowledge negatives pass; all12profiles represented. Public acceptance remains open."
       ]
     },
     {
@@ -436,8 +444,10 @@
         "P3",
         "P5"
       ],
-      "status": "open",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Native runner tests: own deadlines, fresh generation/phase/opportunity under lock, pause cancellation, persist-before-install and no retry spin on DB failure. Broader load/device acceptance remains open."
+      ]
     },
     {
       "id": "B10",
@@ -445,8 +455,10 @@
       "packages": [
         "P5"
       ],
-      "status": "open",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Focused tactical fixtures plus tiny paired baseline improved; broad production-budget strength calibration is still outstanding."
+      ]
     },
     {
       "id": "B11",
@@ -508,8 +520,10 @@
       "packages": [
         "P6"
       ],
-      "status": "open",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Strict result-v1 evidence adapter independently reviewed; replayed scoring/all3erwinners/full relational membership validated; absent profile/start/bid evidence stays UNKNOWN. Durable grant/account integration still open."
+      ]
     },
     {
       "id": "B17",
@@ -546,8 +560,10 @@
         "P0",
         "P6"
       ],
-      "status": "open",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Pure draft22titles/27DEENgoals/10XP/2110one-timeXP; growing gaps and350match/7day bound plus1000match target tested. No live grant or final production calibration."
+      ]
     },
     {
       "id": "U01",
@@ -555,8 +571,10 @@
       "packages": [
         "P4"
       ],
-      "status": "open",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Native UI uses the existing Hausdepp atlas/back pipeline, fixed suit/rank sorting independent of call. Mobile/device card acceptance remains open."
+      ]
     },
     {
       "id": "U02",
@@ -575,8 +593,10 @@
       "packages": [
         "P4"
       ],
-      "status": "open",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Card decode gates private detail/socket; rejected decode has explicit retry and no private request, real browser regression passed."
+      ]
     },
     {
       "id": "U04",
@@ -624,7 +644,8 @@
       ],
       "status": "partial",
       "evidence": [
-        "app/watten_engine.py requires exact deal/phase/opportunity and safe duplicate ACKs; stale actions do not consume a new turn. Actual rapid-tap browser and locked runtime acceptance remain open."
+        "app/watten_engine.py requires exact deal/phase/opportunity and safe duplicate ACKs; stale actions do not consume a new turn. Actual rapid-tap browser and locked runtime acceptance remain open.",
+        "Actual renderer rejects old-layout pointer press while accepting a fresh press immediately; native server binds opportunity. Broader touch/device acceptance remains open."
       ]
     },
     {
@@ -651,8 +672,10 @@
       "packages": [
         "P4"
       ],
-      "status": "open",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Keyed hand/trick nodes retained in source review; pending ACK cannot replace accepted state with an animation. Broader chat/rotation/device checks remain open."
+      ]
     },
     {
       "id": "U12",
@@ -675,7 +698,8 @@
       ],
       "status": "partial",
       "evidence": [
-        "app/watten_views.py suppresses persistent call/reference by default and applies official-knower reference/inspection rules; negative hidden-call/CPU/spectator fixtures cover permitted Danke only. Runtime fanout, sorting/ARIA/rendering and browser privacy acceptance remain open."
+        "app/watten_views.py suppresses persistent call/reference by default and applies official-knower reference/inspection rules; negative hidden-call/CPU/spectator fixtures cover permitted Danke only. Runtime fanout, sorting/ARIA/rendering and browser privacy acceptance remain open.",
+        "Blind4browser: only two official inspectors see original bottoms/reference; other hands remain backs until play. Reference-OFF live region clears announcements. Public/device acceptance remains open."
       ]
     },
     {
@@ -693,8 +717,10 @@
       "packages": [
         "P4"
       ],
-      "status": "open",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "Isolated four-player browser geometry passes320x568,568x320,667x375,768x700; corrected private-panel min-content overflow. Keyboard/sheets/physical mobile matrix remains open."
+      ]
     },
     {
       "id": "U16",
@@ -837,8 +863,10 @@
         "P1",
         "P8"
       ],
-      "status": "open",
-      "evidence": []
+      "status": "partial",
+      "evidence": [
+        "First complete native browser journey: two real accounts create/choose seats/start/bid/leave-return/finish durable result, plus complete human-CPU2match. Remaining full product/P6/P7 flows open."
+      ]
     },
     {
       "id": "O09",
