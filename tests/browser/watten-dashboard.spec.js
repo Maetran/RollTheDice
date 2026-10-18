@@ -231,3 +231,88 @@ test('a persisted founder view clears synchronously and restores only a delegate
       .toEqual(['zdwa', 'zilch']);
   } finally { await delegated.context.close(); }
 });
+
+test('a delegated dashboard binds its analytics request across a cookie B to founder A to B round trip', async ({ page, browser, baseURL }) => {
+  const delegated = await player(browser, baseURL);
+  const owner = await founder(page);
+  let release;
+  const released = new Promise(resolve => { release = resolve; });
+  let observed;
+  try {
+    expect((await page.request.put(`/api/admin/users/${delegated.user.id}/analytics-access`, {
+      headers: { 'X-CSRF-Token': owner.csrf_token }, data: { enabled: true },
+    })).status()).toBe(200);
+    page.dashboardOwner.revoked.push(delegated.user.id);
+    const loginB = () => page.request.post('/api/auth/login', {
+      data: { username: delegated.user.username, password: 'watten-test-password-123-final' },
+    });
+    expect((await loginB()).ok()).toBeTruthy();
+    const initial = responseFor(page, 'all');
+    await page.goto('/admin/dashboard');
+    const bResponse = await initial;
+    expect(bResponse.status()).toBe(200);
+    expect((await bResponse.json()).available_games).toEqual(['zdwa', 'zilch']);
+    await expect(page.locator('#dashboardData')).toHaveAttribute('aria-busy', 'false');
+    await expect(page.locator('#gameCards .game-card')).toHaveCount(2);
+    await expect(page.locator('#dashboardGame option[value=watten]')).toHaveCount(0);
+    observed = await page.evaluateHandle(() => {
+      const seen = [];
+      const observer = new MutationObserver(() => {
+        if (document.querySelector('#gameCards [data-game="watten"]')) seen.push('watten');
+      });
+      observer.observe(document.getElementById('gameCards'), { childList: true, subtree: true });
+      return { seen, stop: () => observer.disconnect() };
+    });
+
+    let markHeld, first = null, nextScope = null;
+    const held = new Promise(resolve => { markHeld = resolve; });
+    await page.route('**/api/admin/analytics?*', async route => {
+      const isFirst = first === null;
+      if (isFirst) first = { expected: route.request().headers()['x-analytics-expected-account-id'] };
+      const response = await route.fetch(); // No response/authority is fabricated.
+      const body = await response.json();
+      if (isFirst) {
+        first.status = response.status();
+        first.detail = body.detail;
+        first.cacheControl = response.headers()['cache-control'];
+        // Before the fix this real request returns A's private four-product
+        // aggregate. After the fix the captured B binding rejects it first.
+        if (response.status() === 200) expect(body.available_games).toContain('watten');
+        else expect(response.status()).toBe(409);
+        markHeld();
+        await released;
+      } else {
+        expect(response.status()).toBe(200);
+        nextScope = body.available_games;
+      }
+      await route.fulfill({ response });
+    });
+    // The mounted UI is still B. Cookie changes through real login API calls
+    // do not publish this document's shared auth-state event.
+    expect((await page.request.post('/api/auth/login', { data: credentials })).ok()).toBeTruthy();
+    expect((await (await page.request.get('/api/auth/me')).json()).user)
+      .toMatchObject({ id: owner.id, is_founder: true });
+    await page.locator('#dashboardRefresh').click();
+    await held;
+    expect((await loginB()).ok()).toBeTruthy();
+    expect((await (await page.request.get('/api/auth/me')).json()).user)
+      .toMatchObject({ id: delegated.user.id, is_founder: false, can_view_analytics: true });
+    release();
+    await expect(page.locator('#dashboardData')).toHaveAttribute('aria-busy', 'false');
+    await expect(page.locator('#gameCards .game-card')).toHaveCount(2);
+    await expect(nativeCard(page)).toHaveCount(0);
+    await expect(page.locator('#dashboardGame option[value=watten]')).toHaveCount(0);
+    await expect(page.locator('#wattenMonitoringNote')).toHaveText('');
+    expect(await observed.evaluate(state => state.seen)).toEqual([]);
+    expect(first).toEqual({ expected: String(delegated.user.id), status: 409,
+      detail: 'analytics_account_changed', cacheControl: 'no-store' });
+    await expect.poll(() => nextScope).toEqual(['zdwa', 'zilch']);
+    await expect(page.locator('#dashboardData')).toBeVisible();
+    await expect(page.locator('#dashboardData')).toHaveAttribute('aria-busy', 'false');
+  } finally {
+    release();
+    await page.unrouteAll({ behavior: 'wait' });
+    if (observed) { await observed.evaluate(state => state.stop()); await observed.dispose(); }
+    await delegated.context.close();
+  }
+});
