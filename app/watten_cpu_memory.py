@@ -174,6 +174,11 @@ def read_personal_view(view: object, *, player_id: str) -> SeatSnapshot:
     options = _object(view["options"], "show_rechter open_partner_hand trick_history")
     if any(type(item) is not bool for item in options.values()):
         _fail()
+    if options["open_partner_hand"] and (profile.blind or count == 2):
+        _fail()
+    if ((profile.determination == "normal" and phase in {"show_ready", "inspection"})
+            or (profile.determination == "ladinisch" and phase in {"strike", "colour"})):
+        _fail()
     dealer = view["dealer_seat"]
     if not _int(dealer, 0, count):
         _fail()
@@ -275,12 +280,25 @@ def read_personal_view(view: object, *, player_id: str) -> SeatSnapshot:
         hand = tuple(_card(_object(item, "card")["card"]) for item in hand_items)
         if len(set(hand)) != len(hand):
             _fail()
-    if hand is None and phase in PLAY_PHASES and counts[seat]:
+    hand_visible = phase in PLAY_PHASES or (
+        profile.determination == "normal" and seat in {roles.strike_announcer, roles.suit_announcer})
+    if counts[seat] and (hand is not None) != hand_visible:
         _fail()
     actions = tuple(_list(view["actions"]))
     if any(type(action) is not str or action not in VIEW_ACTIONS for action in actions):
         _fail()
     if len(set(actions)) != len(actions):
+        _fail()
+    if phase in {"strike", "colour"}:
+        action, announcer = (("announce_strike", roles.strike_announcer) if phase == "strike"
+                             else ("announce_colour", roles.suit_announcer))
+        if actions != ((action,) if seat == announcer else ()):
+            _fail()
+    elif phase in {"show_ready", "inspection"}:
+        action = "show_ready" if phase == "show_ready" else "inspection_ack"
+        if actions not in ((), (action,)) or (actions and seat not in inspectors):
+            _fail()
+    elif set(actions) & {"announce_strike", "announce_colour", "show_ready", "inspection_ack"}:
         _fail()
     inspection = None
     if view["inspection"] is not None:
@@ -294,6 +312,8 @@ def read_personal_view(view: object, *, player_id: str) -> SeatSnapshot:
         inspection = (_card(strike_item["card"]), _card(colour_item["card"]))
         if inspection[0] == inspection[1]:
             _fail()
+    if (inspection is not None) != ("inspection_ack" in actions):
+        _fail()
     mates = [index for index in range(count) if parties[index] == parties[seat] and index != seat]
     partner = mates[0] if len(mates) == 1 else None
     if len(mates) > 1:
@@ -301,7 +321,8 @@ def read_personal_view(view: object, *, player_id: str) -> SeatSnapshot:
     partner_cards = None
     if view["partner_hand"] is not None:
         raw = _object(view["partner_hand"], "player_id cards")
-        if not options["open_partner_hand"] or partner is None or raw["player_id"] != players[partner]:
+        if (phase not in PLAY_PHASES or not options["open_partner_hand"]
+                or partner is None or raw["player_id"] != players[partner]):
             _fail()
         partner_cards = tuple(_card(card) for card in _list(raw["cards"]))
         if len(partner_cards) != counts[partner] or set(partner_cards) & set(hand or ()):
@@ -397,6 +418,9 @@ class CpuMemory:
             _fail(code)
         roles = round_roles(count, self.dealer_seat, determination=profile.determination)
         inspectors = frozenset((roles.dealer, roles.clockwise_next))
+        # These fields record a received call, not deductions from public plays.
+        if profile.blind and self.seat not in inspectors and (self.strike is not None or self.suit is not None):
+            _fail(code)
         if self.inspected is not None:
             if (type(self.inspected) is not tuple or len(self.inspected) != 2
                     or profile.determination != "ladinisch" or self.seat not in inspectors):

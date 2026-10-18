@@ -210,6 +210,8 @@ def test_duplicate_observations_are_idempotent_and_stale_or_retired_views_fail_c
         observe(table.memories["A"], view)
     tampered = copy.deepcopy(table.view("A"))
     tampered["dealer_seat"] = 0
+    # Keep the forged DTO internally consistent to exercise the memory's dealer check.
+    tampered["actions"] = []
     with pytest.raises(WattenCpuMemoryError, match="knowledge_conflict"):
         observe(table.memories["A"], tampered)
 
@@ -285,6 +287,106 @@ def test_engine_state_storage_payload_foreign_or_extended_views_are_rejected():
     opponent["hand"].append({"card": table.state.play.hands[1][0]})
     with pytest.raises(WattenCpuMemoryError):
         observe(memory, opponent)
+
+
+@pytest.mark.parametrize("count,determination,blind,player", (
+    (3, "normal", False, "A"), (3, "normal", False, "C"),
+    (4, "normal", False, "C"), (4, "normal", False, "D"),
+    (2, "ladinisch", False, "A"), (2, "ladinisch", False, "B"),
+    (4, "ladinisch", False, "A"), (4, "ladinisch", False, "C"),
+    (4, "ladinisch", True, "A"), (4, "ladinisch", True, "C"),
+))
+def test_hidden_precall_hand_cannot_be_supplied_as_face_up_cards(count, determination, blind, player):
+    table = Table(start_match(cpu_recipe(count, determination, blind), "early-hand", dealt(count), first_dealer="A"))
+    leaked = table.view(player)
+    assert leaked["hand"] == [{"back": True}] * 5
+    leaked["hand"] = [{"card": card} for card in table.state.deal.hands[table.state.recipe.seats.index(player)]]
+    with pytest.raises(WattenCpuMemoryError, match="invalid_view"):
+        observe(new_memory(player), leaked)
+
+
+@pytest.mark.parametrize("count,determination,blind", (
+    (2, "normal", False), (3, "normal", False), (4, "normal", False),
+    (2, "ladinisch", False), (4, "ladinisch", False), (4, "ladinisch", True),
+))
+def test_actual_personal_views_remain_valid_across_precall_and_play(count, determination, blind):
+    table = Table(start_match(cpu_recipe(count, determination, blind), "valid-views", dealt(count), first_dealer="A"))
+    table.ready()
+    for player in table.state.recipe.seats:
+        assert table.view(player)["hand"] == [
+            {"card": card} for card in table.state.play.hands[table.state.recipe.seats.index(player)]]
+        assert observe(restored(table.memories[player]), table.view(player)) == table.memories[player]
+
+
+@pytest.mark.parametrize("count,determination,blind,started", (
+    (4, "ladinisch", True, True), (4, "normal", False, False),
+    (3, "normal", False, False), (4, "ladinisch", False, False),
+))
+def test_partner_cards_require_open_play_after_the_call(count, determination, blind, started):
+    recipe = cpu_recipe(count, determination, blind, **({} if blind else {"open_partner_hand": True}))
+    table = Table(start_match(recipe, "partner-leak", dealt(count), first_dealer="A"))
+    if started:
+        table.ready()
+    leaked = table.view("A")
+    assert leaked["partner_hand"] is None
+    leaked["options"]["open_partner_hand"] = True
+    hands = table.state.play.hands if table.state.play else table.state.deal.hands
+    leaked["partner_hand"] = {"player_id": "C", "cards": list(hands[2])}
+    with pytest.raises(WattenCpuMemoryError, match="invalid_view"):
+        observe(new_memory("A"), leaked)
+
+
+def test_two_player_view_cannot_enable_a_partner_hand_option():
+    table = Table(start_match(cpu_recipe(2), "no-partner", dealt(2), first_dealer="A"))
+    leaked = table.view("A")
+    leaked["options"]["open_partner_hand"] = True
+    with pytest.raises(WattenCpuMemoryError, match="invalid_view"):
+        observe(new_memory("A"), leaked)
+
+
+@pytest.mark.parametrize("count,determination", ((3, "normal"), (4, "normal"), (4, "ladinisch")))
+def test_actual_open_partner_cards_remain_valid_after_the_call(count, determination):
+    table = Table(start_match(cpu_recipe(count, determination, open_partner_hand=True), "open-partner",
+                              dealt(count), first_dealer="A"))
+    table.ready()
+    assert table.view("A")["partner_hand"] == {"player_id": "C", "cards": list(table.state.play.hands[2])}
+    for player in table.state.recipe.seats:
+        assert observe(table.memories[player], table.view(player)) == table.memories[player]
+
+
+@pytest.mark.parametrize("mutation", ("closed_window", "missing_action", "missing_cards", "wrong_action"))
+def test_original_inspection_cards_require_the_current_inspection_ack_window(mutation):
+    table = Table(start_match(cpu_recipe(4, "ladinisch", True), "inspection-leak", blind_deal(), first_dealer="A"))
+    table.act("A", "show_ready")
+    table.act("B", "show_ready")
+    leaked = table.view("A")
+    assert leaked["inspection"] is not None and leaked["actions"] == ["inspection_ack"]
+    if mutation == "closed_window":
+        original = leaked["inspection"]
+        table.act("A", "inspection_ack")
+        leaked = table.view("A")
+        assert leaked["inspection"] is None and leaked["actions"] == []
+        leaked["inspection"] = original
+    elif mutation == "missing_action":
+        leaked["actions"] = []
+    elif mutation == "missing_cards":
+        leaked["inspection"] = None
+    else:
+        leaked["actions"] = ["play_card"]
+    with pytest.raises(WattenCpuMemoryError, match="invalid_view"):
+        observe(new_memory("A"), leaked)
+
+
+@pytest.mark.parametrize("field,value", (("strike", "9"), ("suit", "bells"), ("strike", "weli")))
+@pytest.mark.parametrize("player", ("C", "D"))
+def test_blind_noninspector_cannot_restore_a_received_call(field, value, player):
+    table = Table(start_match(cpu_recipe(4, "ladinisch", True), "blind-stored-call", blind_deal(), first_dealer="A"))
+    table.ready()
+    payload = memory_to_storage(table.memories[player])
+    assert (payload["strike"], payload["suit"], payload["inspected"]) == (None, None, None)
+    payload[field] = value
+    with pytest.raises(WattenCpuMemoryError, match="invalid_memory"):
+        memory_from_storage(payload)
 
 
 def _stored_memory():
