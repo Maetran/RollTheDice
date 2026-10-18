@@ -4,6 +4,7 @@ import { renderAccountSettings } from "./settings.js";
 import { mountProgressNotices } from "./progress-notices.js";
 import { createRematch, mountRematchInvitations, rematchError } from "./rematch.js";
 import { renderTableDecor, presentTableSurprise, cancelTableSurprises } from "./decor.js";
+import { renderTableAppearance } from "./surprise-state.js";
 import { mountLobbyDemo } from "./lobby-demo.js";
 import { invitationMarkup, mountInvitations } from "./invitations.js";
 import { initializeGameViewport } from "../shared/game-viewport.js";
@@ -834,6 +835,10 @@ function connect() {
       renderState();
       completeCommand();
     }
+    if (payload.hausdepp_table_effects && snapshot?._hausdepp) {
+      snapshot._hausdepp_table_effects = payload.hausdepp_table_effects;
+      renderTableAppearance($("hausdeppTable"), snapshot._hausdepp_table_effects);
+    }
     if (payload.hausdepp_table_surprises && snapshot?._hausdepp
       && payload.hausdepp_table_surprises.round_number === (snapshot._hausdepp_tournament?.round_number || 1)) {
       snapshot._hausdepp_table_surprises = payload.hausdepp_table_surprises;
@@ -923,6 +928,7 @@ function renderState() {
   }
   if (snapshot?._aborted) { renderAbortedTable(); return; }
   const s = snapshot?._hausdepp;
+  renderTableAppearance($("hausdeppTable"), snapshot?._hausdepp_table_effects);
   if (!s) { handSelection?.selection.cancel(); hausdeppBeginnerTour.update({ eligible: false }); if (snapshot) renderWaiting(); return; }
   document.body.classList.remove("hd-waiting-room");
   $("hausdeppWaiting").hidden = true;

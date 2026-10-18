@@ -195,9 +195,12 @@ Gefäss/Brett, Flüssigkeit und einzelne fotobasierte Essensportionen mit SVG-/C
 Masken. Jeder Schluck senkt den Meniskus, bei null verschwinden Flüssigkeit und
 Schaum. Aufgegessene Schalen/Bretter bleiben bis zum Rundenwechsel leer.
 `decor-play.js` ergänzt einen karierten SVG-Putzlumpen: Schnelles Tippen leert die
-Restfüllung in eine begrenzte Pfütze, nach 3,8 Sekunden sind Pfütze und Lumpen
-entfernt. Ein leeres Glas erzeugt keine neue Flüssigkeit. Höchstens eine Pfütze
-je Glas und drei insgesamt, auf freiem Holz kollisionsgeprüft und pointer-inert.
+Restfüllung in eine begrenzte Pfütze. Der Lumpen ist eine erreichbare
+44-Pixel-Bedienfläche: Ziehen mit Maus oder Touch wischt schrittweise auf;
+Antippen, Enter oder Leertaste erledigt jeweils einen Teil. Er bleibt bis zum
+Aufwischen oder dem gemeinsamen Lifecycle-Cleanup liegen. Ein leeres Glas erzeugt keine neue Flüssigkeit. Höchstens eine Pfütze
+je Gefäss und drei insgesamt, auf freiem Holz kollisionsgeprüft. Nur der
+Lumpen nimmt Eingaben an; die übrige Pfütze bleibt pointer-inert.
 Rundenwechsel, Rundenende, Hintergrundtab und reduzierte Bewegung räumen Effekte
 auf. Neben Spielbereichen kippen Gläser innerhalb ihrer eigenen Grundfläche.
 
@@ -205,7 +208,10 @@ Ein eigener SVG-Bierdeckel bekommt bis zwanzig Graphitstriche in Fünfergruppen;
 der nächste Tipp dreht ihn auf die leere Rückseite. Ein vorhandener Bleistift
 schreibt auf einen sichtbaren Deckel mit. Verschobene Gläser hinterlassen maximal
 drei rasch verblassende Kondensringe. Das Windlicht lässt sich aus- und wieder
-anschalten. Die SVGs sind im Projekt gezeichnet; neue Bildquellen kamen nicht dazu.
+anschalten. Kräftige Richtungswechsel beim Verschieben löschen es kurz und
+starten eine erneute Zündung. Die Bierdose öffnet sich nach mehreren Tipps mit
+Schaum und platzt bei kräftigen Schüttelgesten; die kleine Stelle ist aufwischbar.
+Die SVGs sind im Projekt gezeichnet; neue Bildquellen kamen nicht dazu.
 Claude steuerte eine begrenzte Ideen-/Reviewrunde und die animierten
 Bierdeckelstriche bei. Codex prüfte den Beitrag und verantwortet Auswahl,
 Integration und Verifikation.
@@ -216,16 +222,20 @@ The original atlases remain unchanged. `decor-consumables.js` separates the
 vessel/board, liquid and individual photographic servings using SVG/CSS masks.
 Each sip lowers the meniscus; zero hides liquid and foam. Empty bowls and boards
 stay empty until the next round. `decor-play.js` adds a drawn checked cloth:
-rapid taps spill the remaining fill, then the puddle and cloth are removed after
-3.8 seconds. Empty glasses produce no liquid. At most one puddle per glass and
-three overall occupy collision-checked free wood, without accepting input.
+rapid taps spill the remaining fill. A reachable 44-pixel cloth lets mouse
+and touch users wipe incrementally; a click, Enter or Space clears one part.
+The spill stays until cleaned or until lifecycle cleanup. Empty glasses produce no liquid. At most one puddle per glass and
+three overall occupy collision-checked free wood. Only the cloth accepts input;
+the puddle itself remains pointer-inert.
 Round changes, finished rounds, hidden tabs and reduced motion clear effects.
 Glasses next to playable areas tip inside their own footprint.
 
 A drawn SVG beer mat takes twenty graphite tally marks in groups of five and
 then flips to its clean reverse. A visible pencil adds marks to a visible mat.
 Moved glasses leave up to three fading condensation rings. The lantern can be
-blown out and relit. SVGs are project-authored, with no new image sources.
+blown out and relit. Vigorous direction changes during a drag briefly put it
+out before automatic relighting. Repeated taps open the can with foam; vigorous
+shaking bursts it and leaves a small cleanable patch. SVGs are project-authored, with no new image sources.
 Claude contributed a bounded idea/review pass and the animated beer-mat strokes.
 Codex reviewed the contribution and owns selection, integration and verification.
 
@@ -235,19 +245,25 @@ Codex reviewed the contribution and owns selection, integration and verification
 Ein erster serverseitiger SHA-256-Bucket aus Tisch und Runde entscheidet mit
 ungefähr 1/200 über ein Angebot. Nur danach wählt eine unabhängige Hash-Domain
 einen von acht Funden: Stern, Runenhammer, UFO, Portal, Drache, Kraken, Taschenuhr
-oder schwarzes Loch (je ungefähr 1/1600). Der erste berechtigte Mensch beansprucht ihn
-atomar für diese Runde. Ein gesondertes Live-Ereignis zeigt den Effekt allen
+oder schwarzes Loch (je ungefähr 1/1600). Erst der Tipp eines berechtigten Menschen
+auf den sichtbaren Gegenstand beansprucht ihn atomar für diese Runde. Das Angebot
+allein startet keinen Effekt, auch nicht nach einer Wartezeit; Computer aktivieren
+keine Funde. Ein gesondertes Live-Ereignis zeigt den Effekt allen
 verbundenen Raumteilnehmern, ohne Karten, Zugrecht, Wertung, Spielversion oder
 Computerplanung anzufassen. Alte Runden, fremde/ersetzte Sockets und erneute
 Aktivierungen werden abgewiesen. Snapshots enthalten nur das unbenutzte Angebot,
 keine nachträglich abgespielte Explosion. Ein kleiner Claim im bestehenden
 Spielzustand erhält die Einmaligkeit bei Wiederaufnahme; es gibt keine neue Tabelle.
 
-`surprise-effects.js` und `hausdepp-surprise-effects.css` stammen aus Claudes
-begrenzter Implementierungsaufgabe und werden von Codex geprüft und integriert.
-Ihre SVGs sind eigene Zeichnungen. Ring, Hammer und Traktorstrahl bleiben
-pointer-inert unter den Karten, Namen und Aktionen; nur Dekoration darf kurz
-wackeln. Der Hammer kann ausschliesslich im auslösenden Tab und bei vorhandener
+Die SVG-Grundmotive, der erste Effektplayer und die Zylindermaus stammen aus
+Claudes begrenzten Beiträgen; Codex prüfte sie und überarbeitete die Inszenierung.
+Die SVGs sind eigene Zeichnungen. Die überarbeitete Inszenierung animiert
+pointer-inerte optische Doppelgänger von Karten und Gegenständen. Echte Knoten,
+Spielwerte und Trefferflächen bleiben an Ort und Stelle. Der Tisch darf während
+des schwarzen Lochs eine Sekunde schwarz werden; die Uhr zeigt zwei Sekunden
+visuelle Zeitpause, ohne Serverzeit oder Computerzüge anzuhalten. Ein einziges
+serverseitiges Bool-Flag projiziert nach dem Drachen die angesengten Ränder auch
+für Wiederaufnahme und spätere Zuschauer; neue Tische starten mit sauberem Papier. Der Hammer kann ausschliesslich im auslösenden Tab und bei vorhandener
 Browserunterstützung kurz vibrieren. Reduzierte Bewegung, Hintergrundtabs,
 Rundenwechsel und Navigation verhindern oder beenden die Effekte. Nach 42 neuen
 Graphitstrichen gibt es zudem einmal pro Runde eine kleine lokale Beschriftung.
@@ -256,16 +272,22 @@ A first server-side SHA-256 bucket of table and round decides eligibility
 (about 1/200). Only then does an independent hash domain select one of eight
 finds: star, rune hammer, UFO, portal, dragon, kraken, pocket watch or black hole
 (about 1/1600 each).
-The first eligible human atomically claims it for that round. A separate live
+The offer alone never starts an effect, including after a delay; computer players
+never activate finds. A human must tap the visible object to claim it atomically
+for that round. A separate live
 event shows the effect to everyone connected to the room without changing cards,
 turns, scoring, game versions or CPU scheduling. Old rounds, foreign/replaced
 sockets and repeated claims are rejected. Snapshots carry only an unused offer,
 never an old explosion. A small claim in the existing game state preserves
 once-per-round behaviour during recovery, with no new database table.
 
-Claude authored the bounded SVG/effect implementation, reviewed and integrated
-by Codex. Effects are pointer-inert below cards, names and actions; only decor
-may wobble. Only the triggering tab's hammer can briefly vibrate, when supported.
+Claude authored the SVG motifs, first effect player and top-hat mouse; Codex
+reviewed them and revised the scenes. The revised scenes animate pointer-inert visual doubles of cards
+and objects while real nodes, game values and hit boxes remain in place. The
+black hole can make the table black for one second; the watch shows a two-second
+visual time stop without pausing server time or CPU turns. One server-projected
+boolean preserves singed card edges after the dragon, including reconnects and
+late spectators; new tables start with clean paper. Only the triggering tab's hammer can briefly vibrate, when supported.
 Reduced motion, hidden tabs, round changes and navigation suppress or clear the
 effects. Forty-two new graphite marks also reveal a small local caption once
 per round.

@@ -3,16 +3,16 @@
   "games": [
     "hausdepp"
   ],
-  "summary_de": "Hausdepp: Gläser leeren sich, Snacks verschwinden Stück für Stück und ein Putzlumpen wischt Missgeschicke auf.",
-  "summary_en": "Hausdepp: glasses empty, snacks disappear piece by piece and a cloth wipes up little accidents.",
+  "summary_de": "Hausdepp: selbst Pfützen aufwischen, Dosen schütteln und acht seltene Tischspektakel entdecken.",
+  "summary_en": "Hausdepp: wipe up spills yourself, shake cans and discover eight rare table spectacles.",
   "player_notes": {
     "de": {
       "title": "Hausdepp 3.11: Noch ein Schluck, noch ein Häppchen",
       "changes": [
-        "Trinke Gläser sichtbar leer, verschütte beim schnellen Tippen den Rest und sieh dem Putzlumpen beim Aufwischen zu.",
+        "Trinke Gläser sichtbar leer, verschütte den Rest und wische selbst mit dem Putzlumpen auf – per Ziehen oder Antippen.",
         "Knabbere einzelne Snacks weg: Die leere Schale und das Marend-Brett bleiben stehen.",
-        "Entdecke Strichlisten auf Bierdeckeln, Glasränder und ein Windlicht zum Auspusten und Anzünden.",
-        "Ganz selten wartet einer von acht nerdigen Funden auf euch: einmal antippen, auf jedem Gerät gemeinsam staunen.",
+        "Dosen schäumen beim Öffnen und platzen beim Schütteln. Geschüttelte Windlichter gehen aus und zünden sich wieder an.",
+        "Acht seltene Funde bringen grosse Tischspektakel: fliegende Karten, eine magische Maus und ein schwarzes Loch. Der Drache sengt Kartenränder an.",
         "Punkte und Erfolge bleiben nach der Runde sichtbar – der zusätzliche Bestätigungsbutton entfällt.",
         "Der Endstand wartet, bis die letzte Karte liegt, und lässt dir danach noch einen kurzen Moment.",
         "Turnierbuchstaben haben bei jedem Gegner eine eigene, freie Zeile – auch zu sechst.",
@@ -22,10 +22,10 @@
     "en": {
       "title": "Hausdepp 3.11: One more sip, one more bite",
       "changes": [
-        "Watch drinks empty, spill the rest with rapid taps and see a cloth wipe it up.",
+        "Watch drinks empty, spill the rest and wipe up yourself with the cloth – by dragging or tapping.",
         "Nibble individual snacks away: the empty bowl and snack board stay on the table.",
-        "Discover beer-mat tallies, glass rings and a lantern to blow out and relight.",
-        "Very rarely, one of eight nerdy finds is waiting: tap once and surprise the whole table on any device.",
+        "Cans foam when opened and burst when shaken. Shaken lanterns go out and relight themselves.",
+        "Eight rare finds bring big table spectacles: flying cards, a magical mouse and a black hole. The dragon singes the card edges.",
         "Points and achievements stay visible after a round – the extra acknowledgement button is gone.",
         "The final result waits until the last card lands and gives you a brief moment afterwards.",
         "Tournament letters have a clear line at each opponent seat, including six-player tables.",

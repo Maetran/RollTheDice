@@ -1,0 +1,12 @@
+/* Singed edges leave ranks, suits, selection marks and playable hit boxes clear. */
+.hd-cards-scorched :is(.hausdepp-card, .hd-card-back, .hd-opponent-card, .hd-burned-card)::before {
+  content: ""; position: absolute; inset: 0; z-index: 1; border-radius: inherit; pointer-events: none;
+  background:
+    radial-gradient(ellipse at 0 14%, #1b110ecc, #6b3b16aa 3%, transparent 9%),
+    radial-gradient(ellipse at 100% 72%, #1b110eee, #86502099 4%, transparent 11%),
+    radial-gradient(ellipse at 28% 100%, #27160fee, #6d391888 5%, transparent 10%),
+    linear-gradient(90deg, #20120dcc, #67371966 2%, transparent 5% 95%, #67371966 98%, #20120dcc),
+    linear-gradient(#25130d, #6c371b88 2%, transparent 5% 95%, #6c371b88 98%, #25130d);
+  box-shadow: inset 0 0 2px 1px #1d100f;
+}
+.hd-cards-scorched .hausdepp-card.is-selected::after { z-index: 2; }

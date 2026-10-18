@@ -19,7 +19,12 @@ from app.game_ws_session import GameSocketSession
 from app.hausdepp_engine import apply_action, make_deck, new_round
 from app.hausdepp_gameplay import game_lock
 from app.hausdepp_state import new_hausdepp_game
-from app.hausdepp_table_surprises import _eligible_effect, handle_table_surprise, table_surprise_offer
+from app.hausdepp_table_surprises import (
+    _eligible_effect,
+    handle_table_surprise,
+    table_effects_projection,
+    table_surprise_offer,
+)
 
 ELIGIBLE_IDS = {
     "star": "surprise-225", "hammer": "surprise-1044", "ufo": "surprise-1740", "portal": "surprise-271",
@@ -85,6 +90,10 @@ class HausdeppTableSurpriseTests(unittest.TestCase):
             self.assertEqual(table_surprise_offer(game, "p1"), expected)
             self.assertEqual(table_surprise_offer(game, "p2"), expected)
             self.assertEqual(table_surprise_offer(deepcopy(game), "p1"), expected)
+            self.assertNotIn("_hausdepp_table_surprise_claim", game)
+            self.assertEqual(table_effects_projection(game), {"scorched_cards": False})
+            self.assertTrue(all(not person["ws"].messages for person in game["_players"]))
+        self.save.assert_not_called()
 
     def test_rarity_decision_precedes_separate_equal_eight_way_variant_draw(self):
         def digest(value):
@@ -144,11 +153,38 @@ class HausdeppTableSurpriseTests(unittest.TestCase):
                 self.assertEqual(len(event["id"]), 32)
                 self.assertNotIn("scoreboard", message)
                 self.assertNotIn("version", event)
+                self.assertEqual(message["hausdepp_table_effects"], {"scorched_cards": effect == "dragon"})
                 self.assertEqual(message, game["_players"][1]["ws"].messages[-1])
                 self.assertEqual(message, observer.messages[-1])
                 for key, value in before.items():
                     self.assertEqual(game[key], value, key)
                 self.assertEqual(self.save.call_args.args, (game,))
+
+    def test_dragon_marks_paper_for_every_viewer_and_restores_without_replaying_fire(self):
+        game = self.game(effect="dragon")
+        engine, turn = deepcopy(game["_hausdepp"]), deepcopy(game["_turn"])
+        asyncio.run(handle_table_surprise(self.session(game), {"effect": "dragon", "round_number": 1}))
+        self.assertEqual(game["_hausdepp"], engine)
+        self.assertEqual(game["_turn"], turn)
+        self.assertTrue(game["_hausdepp_scorched_cards"])
+        restored = serializable_game_state(game)
+        for viewer in ("p1", "p2", None, "spectator"):
+            self.assertEqual(snapshot(restored, viewer)["_hausdepp_table_effects"], {"scorched_cards": True})
+            self.assertNotIn("hausdepp_table_surprise", snapshot(restored, viewer))
+        # A new round replaces the engine state but keeps this table's paper.
+        restored["_hausdepp"] = new_round(restored["_participants"], deck=make_deck())
+        self.assertEqual(table_effects_projection(restored), {"scorched_cards": True})
+        fresh = new_hausdepp_game("fresh-table", "New table", 2, register=False)
+        self.assertEqual(table_effects_projection(fresh), {"scorched_cards": False})
+
+    def test_a_forged_dragon_cannot_mark_paper_and_only_true_restores_the_appearance(self):
+        game = self.game(effect="star")
+        asyncio.run(handle_table_surprise(self.session(game), {"effect": "dragon", "round_number": 1}))
+        self.assertNotIn("_hausdepp_scorched_cards", game)
+        self.assertEqual(table_effects_projection(game), {"scorched_cards": False})
+        for value in ("true", 1, {}, [], None):
+            game["_hausdepp_scorched_cards"] = value
+            self.assertEqual(table_effects_projection(game), {"scorched_cards": False})
 
     def test_forged_effect_ineligible_table_and_invalid_payloads_do_not_broadcast(self):
         game = self.game()

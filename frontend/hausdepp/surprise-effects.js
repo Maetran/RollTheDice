@@ -1,5 +1,7 @@
-// Rare table surprises. Purely decorative: they play below table objects,
-// cards and controls and never touch game state.
+import { snapshotTargets, drawSnapshot, woodenStage, protectControls, paintTableWood } from "./surprise-snapshots.js";
+import { magicalMouseArt } from "./surprise-mouse.js";
+// Rare table surprises use inert visual doubles; live cards, controls and
+// game state keep their real geometry and continue to accept normal input.
 const active = new WeakMap();
 const noop = () => {};
 let serial = 0;
@@ -10,8 +12,6 @@ const guarded = ".hd-seat, .hd-room-heading, .hd-stock-group, .hd-pile-group, .h
 const middle = [[.5, .5], [.5, .4], [.38, .46], [.62, .46], [.5, .32], [.3, .38], [.7, .38], [.42, .6], [.58, .6], [.22, .5], [.78, .5],
   [.16, .34], [.84, .34], [.16, .66], [.84, .66]];
 const upper = [[.5, .3], [.36, .3], [.64, .3], [.24, .34], [.76, .34], [.5, .42], [.36, .44], [.64, .44], [.5, .55]];
-const sides = [[.3, .42], [.7, .42], [.28, .6], [.72, .6], [.2, .34], [.8, .34], [.5, .44], [.5, .6]];
-const edges = [[.06, .42], [.94, .42], [.06, .58], [.94, .58], [.06, .3], [.94, .3], [.06, .7], [.94, .7]];
 const polar = (angle, radius, cx = 50, cy = 50) => [(cx + Math.sin(angle) * radius).toFixed(1), (cy - Math.cos(angle) * radius).toFixed(1)];
 const point = (...args) => polar(...args).join(" ");
 const svg = (body, view = "0 0 100 100") => `<svg viewBox="${view}" aria-hidden="true" focusable="false">${body}</svg>`;
@@ -128,21 +128,9 @@ const arts = {
 };
 
 // Separately drawn pieces for the effects; real table objects are never used.
-const walnut = svg(`<path d="M50 10c22 0 37 17 37 40S72 90 50 90 13 73 13 50s15-40 37-40z" fill="#a8743f" stroke="#5c3a1a" stroke-width="3"/>`
-  + `<path d="M50 13v74M28 30c7 5 7 12 0 17s0 15 7 18m37-35c-7 5-7 12 0 17s0 15-7 18M38 20c2 7 9 7 9 15m15-15c-2 7-9 7-9 15" fill="none" stroke="#6b4422" stroke-width="3" stroke-linecap="round"/>`
-  + `<path d="M30 25c5-7 12-10 18-10" fill="none" stroke="#e2b277" stroke-width="3" stroke-linecap="round" opacity=".7"/>`);
 const cracks = "l-9-4-6-9-10-2M50 50l8-6 4-10 10-5M50 50l11 3 7 7 11 1M50 50l-3 11-8 6-2 10M50 50l-12 5-8 9";
 const crack = svg(`<g fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M50 50${cracks}" stroke="#1d1009" stroke-width="2.4" opacity=".8"/>`
   + `<path d="M50 50${cracks}" stroke="#f0d6a0" stroke-width=".8" opacity=".45" transform="translate(1 1)"/></g>`);
-let spiral = "M50 50", bezel = "";
-for (let step = 1; step <= 60; step++) spiral += `L${point(step / 60 * Math.PI * 5, 2 + step / 60 * 46)}`;
-for (let hour = 0; hour < 12; hour++) bezel += `M${point(hour * Math.PI / 6, 44)}L${point(hour * Math.PI / 6, 48)}`;
-const vortex = svg(`<g fill="none" stroke-linecap="round" vector-effect="non-scaling-stroke"><path d="${spiral}" stroke="#f0cf7a" stroke-width="3" opacity=".85" vector-effect="non-scaling-stroke"/>`
-  + `<path d="${spiral}" stroke="#8fe3d0" stroke-width="1.5" opacity=".6" transform="rotate(180 50 50)" vector-effect="non-scaling-stroke"/><path d="${bezel}" stroke="#f0cf7a" stroke-width="3" opacity=".7" vector-effect="non-scaling-stroke"/></g>`);
-const tentacle = id => svg(`<defs><linearGradient id="${id}t" x1="0" y1="120" x2="0" y2="0" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#1d2f4a"/><stop offset=".6" stop-color="#3f7f86"/><stop offset="1" stop-color="#7cc4bd"/></linearGradient></defs>`
-  + `<g fill="none" stroke="url(#${id}t)" stroke-linecap="round"><path d="M20 120C18 94 26 76 22 58" stroke-width="15"/><path d="M22 58C19 42 30 32 28 21" stroke-width="10"/><path d="M28 21C27 10 16 8 15 15s7 9 10 4" stroke-width="5.5"/></g>`
-  + `<g fill="#e9d6bd" opacity=".8"><circle cx="14" cy="104" r="2.4"/><circle cx="15" cy="90" r="2.2"/><circle cx="17" cy="76" r="2"/><circle cx="16.5" cy="63" r="1.8"/><circle cx="17" cy="49" r="1.5"/><circle cx="20.5" cy="37" r="1.2"/></g>`, "0 0 40 120");
-
 export function tableSurpriseArt(effect) {
   return arts[effect]?.(uid()) || "";
 }
@@ -182,16 +170,13 @@ function freeSpot(table, box, size, spots, tall = size, avoid = []) {
 const at = (x, y, width, height = width) => `translate(${(x - width / 2).toFixed(1)}px,${(y - height / 2).toFixed(1)}px)`;
 // Ease each step on its own, so keyframe offsets stay real moments in time.
 const smooth = frames => frames.map(frame => ({ easing: "ease-in-out", ...frame }));
-// Only the pictures of table objects move; their hit boxes stay put.
-const decorArts = table => [...table.querySelectorAll(".hd-table-decor .hd-table-prop:not([hidden]) > .hd-prop-art")].slice(0, 14);
-
-function burst({ add, play }, x, y, { count, size, colors, reach, kind = "spark", delay = 0, duration = 800, angle = 0, spread = 360, drop = 0, stagger = 0 }) {
+function burst({ add, play, random }, x, y, { count, size, colors, reach, kind = "spark", delay = 0, duration = 800, angle = 0, spread = 360, drop = 0, stagger = 0 }) {
   const full = spread >= 360;
   for (let index = 0; index < count; index++) {
     const spark = add(kind, size);
     spark.style.setProperty("--spark", colors[index % colors.length]);
     const share = full ? index / count : index / Math.max(1, count - 1) - .5;
-    const turn = (angle + share * spread + Math.random() * 14 - 7) * Math.PI / 180, far = reach * (.75 + Math.random() * .45);
+    const turn = (angle + share * spread + random() * 14 - 7) * Math.PI / 180, far = reach * (.75 + random() * .45);
     const dx = Math.cos(turn) * far, dy = Math.sin(turn) * far;
     play(spark, [{ transform: `${at(x, y, size)} scale(1)`, opacity: 0 }, { opacity: 1, offset: .1 },
       { transform: `${at(x + dx * .85, y + dy * .85 + drop * .3, size)} scale(1)`, opacity: 1, offset: .55 },
@@ -199,241 +184,312 @@ function burst({ add, play }, x, y, { count, size, colors, reach, kind = "spark"
   }
 }
 
+function stageFade(fx, node, duration, { from = 0, until = duration, strength = 1 } = {}) {
+  fx.play(node, [{ opacity: 0 }, { opacity: strength, offset: Math.max(.001, from / duration) },
+    { opacity: strength, offset: Math.min(.999, until / duration) }, { opacity: 0 }], { duration });
+}
+
+function occlude(fx, target, duration, from, until) {
+  const patch = fx.add('occlusion', target.width + 8, target.height + 8);
+  patch.style.transform = `translate(${target.left - 4}px,${target.top - 4}px)`;
+  paintTableWood(fx, patch, target.left - 4, target.top - 4);
+  stageFade(fx, patch, duration, { from, until });
+  return patch;
+}
+
+function chooseTargets(fx, count = 3) {
+  const targets = snapshotTargets(fx.table), cards = targets.filter(target => target.kind === 'card');
+  const props = targets.filter(target => target.kind === 'prop');
+  const first = cards[Math.floor(fx.random() * cards.length)];
+  const second = props[Math.floor(fx.random() * props.length)];
+  const chosen = [first, second].filter(Boolean);
+  const remaining = targets.filter(target => !chosen.includes(target));
+  while (chosen.length < count && remaining.length) chosen.push(remaining.splice(Math.floor(fx.random() * remaining.length), 1)[0]);
+  return chosen;
+}
+
 function star(fx) {
-  const { add, play, unit, spot, rich } = fx;
-  const { x, y } = spot(unit * 2.2, middle);
-  const glow = add("glow", unit * 2.4), ring = add("ring", unit * 1.2), body = add("body", unit * 1.15, unit * 1.15, tableSurpriseArt("star"));
-  play(glow, [{ transform: `${at(x, y, unit * 2.4)} scale(.3)`, opacity: 0 }, { opacity: .7, offset: .22 }, { transform: `${at(x, y, unit * 2.4)} scale(1.25)`, opacity: 0 }],
-    { duration: 900, easing: "ease-out" });
-  play(ring, [{ transform: `${at(x, y, unit * 1.2)} scale(.25)`, opacity: 0 }, { opacity: .95, offset: .12 }, { transform: `${at(x, y, unit * 1.2)} scale(3)`, opacity: 0 }],
-    { duration: 950, delay: 200, easing: "cubic-bezier(.15,.75,.3,1)" });
-  const place = at(x, y, unit * 1.15);
-  play(body, [{ transform: `${place} scale(.2) rotate(-30deg)`, opacity: 0 }, { transform: `${place} scale(1.15) rotate(0deg)`, opacity: 1, offset: .22 },
-    { transform: `${place} scale(1) rotate(8deg)`, opacity: 1, offset: .5 }, { transform: `${place} scale(.55) rotate(26deg)`, opacity: 0 }],
-  { duration: 1150, easing: "cubic-bezier(.2,.7,.3,1)" });
-  burst(fx, x, y, { count: rich ? 14 : 10, size: Math.max(3, unit * .08), colors: ["#f4d27a", "#b49cff", "#fff4d6"], reach: unit * 1.5, delay: 250, duration: 850, drop: unit * .35 });
+  const { add, play, unit, spot, box, rich } = fx, duration = 2800;
+  const { x, y } = spot(unit * 2.4, middle);
+  const aura = add('glamour', box.width, box.height);
+  aura.style.setProperty('--origin-x', `${x}px`); aura.style.setProperty('--origin-y', `${y}px`);
+  stageFade(fx, aura, duration, { from: 480, until: 1850, strength: .55 });
+  const raySize = Math.min(Math.max(box.width, box.height) * .95, unit * 7.5);
+  const rays = add('rays', raySize);
+  const rayAt = at(x, y, raySize);
+  play(rays, smooth([{ transform: `${rayAt} scale(.05) rotate(-30deg)`, opacity: 0 },
+    { transform: `${rayAt} scale(.9) rotate(0deg)`, opacity: .75, offset: .28 },
+    { transform: `${rayAt} scale(1.15) rotate(22deg)`, opacity: .55, offset: .7 },
+    { transform: `${rayAt} scale(1.35) rotate(45deg)`, opacity: 0 }]), { duration });
+  for (let index = 0; index < 3; index++) {
+    const size = unit * (1.3 + index * .35), ring = add('ring', size), place = at(x, y, size);
+    play(ring, [{ transform: `${place} scale(.1)`, opacity: 0 }, { opacity: .85, offset: .13 },
+      { transform: `${place} scale(3.3)`, opacity: 0 }], { duration: 1650, delay: 350 + index * 210, easing: 'ease-out' });
+  }
+  const size = unit * 2.1, body = add('star', size, size, tableSurpriseArt('star')), place = at(x, y, size);
+  play(body, smooth([{ transform: `${at(x - unit * 2.7, y - unit * 2, size)} scale(.12) rotate(-180deg)`, opacity: 0 },
+    { transform: `${place} scale(1.15) rotate(0deg)`, opacity: 1, offset: .25 },
+    { transform: `${place} scale(.95) rotate(24deg)`, opacity: 1, offset: .52 },
+    { transform: `${place} scale(1.2) rotate(65deg)`, opacity: 1, offset: .72 },
+    { transform: `${place} scale(.1) rotate(160deg)`, opacity: 0 }]), { duration });
+  const constellation = add('constellation', Math.max(1, box.width), Math.max(1, box.height));
+  let d = '';
+  for (let index = 0; index < 7; index++) {
+    const angle = index / 7 * Math.PI * 2;
+    const px = Math.max(12, Math.min(box.width - 12, x + Math.cos(angle) * unit * 2.5));
+    const py = Math.max(12, Math.min(box.height - 12, y + Math.sin(angle) * unit * 1.8));
+    d += `${index ? 'L' : 'M'}${px.toFixed(1)} ${py.toFixed(1)}`;
+  }
+  constellation.innerHTML = svg(`<path d="${d}Z" fill="none" stroke="#ffe4a4" stroke-width="1.5" stroke-dasharray="3 8"/>`, `0 0 ${box.width} ${box.height}`);
+  stageFade(fx, constellation, duration, { from: 700, until: 1900, strength: .8 });
+  burst(fx, x, y, { count: rich ? 48 : 30, size: Math.max(3, unit * .07), colors: ['#ffe7a4', '#d3b4ff', '#fff9e5', '#efb945'], reach: unit * 3.4,
+    delay: 480, duration: 1700, stagger: 6, drop: unit * .6 });
 }
 
 function hammer(fx) {
-  const { table, box, add, play, unit, spot, local, extra, timers, rich } = fx;
-  const size = unit * 1.45, hit = 420;
-  const { x, y } = spot(size * 1.3, middle);
-  const split = add("crack", unit * 1.6, unit * 1.6, crack);
-  play(split, [{ transform: `${at(x, y, unit * 1.6)} scale(.5)`, opacity: 0 }, { transform: `${at(x, y, unit * 1.6)} scale(1)`, opacity: .9, offset: .08 },
-    { opacity: .75, offset: .7 }, { transform: `${at(x, y, unit * 1.6)} scale(1)`, opacity: 0 }], { duration: 680, delay: hit });
-  const tool = add("hammer", size, size, tableSurpriseArt("hammer"));
-  // The head (40%/31%) lands on the spot; the swing pivots at the pommel.
-  tool.style.transformOrigin = "68% 84%";
-  const base = `translate(${(x - size * .4).toFixed(1)}px,${(y - size * .31).toFixed(1)}px)`;
-  play(tool, [
-    { transform: `${base} rotate(22deg) scale(1.35)`, opacity: 0 },
-    { transform: `${base} rotate(30deg) scale(1.4)`, opacity: 1, offset: .15, easing: "cubic-bezier(.55,0,1,.5)" },
-    { transform: `${base} rotate(0deg) scale(1)`, opacity: 1, offset: .38, easing: "ease-out" },
-    { transform: `${base} rotate(-3deg) scale(1.03)`, opacity: 1, offset: .46 },
-    { transform: `${base} rotate(0deg) scale(1)`, opacity: 1, offset: .74 },
-    { transform: `${base} rotate(6deg) scale(1.08)`, opacity: 0 },
-  ], { duration: 1100 });
-  const impact = add("impact", unit);
-  play(impact, [{ transform: `${at(x, y, unit)} scale(.3)`, opacity: 0 }, { opacity: .85, offset: .06 }, { transform: `${at(x, y, unit)} scale(2.2)`, opacity: 0 }],
-    { duration: 520, delay: hit, easing: "ease-out" });
-  burst(fx, x, y, { kind: "dust", count: rich ? 6 : 4, size: Math.max(3, unit * .07), colors: ["#d8b27a"], reach: unit * .65, angle: 45, delay: hit, duration: 480 });
-  for (const art of decorArts(table)) {
-    const rect = art.getBoundingClientRect();
-    if (!rect.width) continue;
-    const distance = Math.hypot(rect.left + rect.width / 2 - box.left - x, rect.top + rect.height / 2 - box.top - y);
-    const amp = Math.max(.6, 2.6 - distance / (unit * 2.5));
-    extra.push(art.animate([{ translate: "0 0" }, { translate: `${amp}px ${-amp * .6}px` }, { translate: `${-amp * .8}px ${amp * .4}px` }, { translate: `${amp * .4}px 0` }, { translate: "0 0" }],
-      { duration: 240, delay: hit }));
+  const { add, play, unit, spot, box, local, timers } = fx, duration = 3400, hit = 650;
+  const x = box.width / 2, y = Math.max(unit * 1.4, Math.min(box.height - unit * 1.4, box.height * .42));
+  const stage = woodenStage(fx);
+  stageFade(fx, stage, duration, { from: hit, until: 3020 });
+  const targets = snapshotTargets(fx.table);
+  targets.forEach((target, index) => {
+    const copy = drawSnapshot(fx, target), distance = Math.hypot(target.x - x, target.y - y);
+    const angle = Math.atan2(target.y - y, target.x - x) + (index % 2 ? .3 : -.3);
+    const reach = Math.max(22, Math.min(unit * 1.8, Math.min(box.width, box.height) * .2));
+    const dx = Math.cos(angle) * reach, dy = Math.sin(angle) * reach - unit * .4;
+    const moved = `translate(${target.left + dx}px,${target.top + dy}px) rotate(${index % 2 ? 28 : -24}deg)`;
+    play(copy.host, smooth([{ transform: copy.place, opacity: 0 }, { transform: copy.place, opacity: 0, offset: .18 },
+      { transform: copy.place, opacity: 1, offset: hit / duration },
+      { transform: `${moved} scale(1.08)`, opacity: 1, offset: .36 + Math.min(.06, distance / 8000) },
+      { transform: `${moved} translate(${-dx * .22}px,${-dy * .2}px) rotate(${index % 2 ? -14 : 12}deg)`, opacity: 1, offset: .58 },
+      { transform: copy.place, opacity: 1, offset: .86 }, { transform: copy.place, opacity: 0 }]), { duration });
+  });
+  const crater = add('crack', unit * 3.2, unit * 3.2, crack), craterAt = at(x, y, unit * 3.2);
+  play(crater, [{ transform: `${craterAt} scale(.4)`, opacity: 0 }, { transform: `${craterAt} scale(1)`, opacity: .95, offset: .12 },
+    { transform: `${craterAt} scale(1.1)`, opacity: .8, offset: .75 }, { opacity: 0 }], { duration: 2300, delay: hit });
+  const size = unit * 2.7, tool = add('hammer', size, size, tableSurpriseArt('hammer'));
+  tool.style.transformOrigin = '68% 84%';
+  const base = `translate(${x - size * .4}px,${y - size * .31}px)`;
+  play(tool, smooth([{ transform: `${base} translate(${unit * .5}px,${-unit}px) rotate(62deg) scale(1.3)`, opacity: 0 },
+    { transform: `${base} translate(${unit * .5}px,${-unit}px) rotate(62deg) scale(1.3)`, opacity: 1, offset: .13, easing: 'cubic-bezier(.8,0,1,.6)' },
+    { transform: `${base} rotate(0deg) scale(1)`, opacity: 1, offset: hit / duration },
+    { transform: `${base} rotate(-8deg) scale(.94)`, opacity: 1, offset: .24 },
+    { transform: `${base} rotate(0deg) scale(1)`, opacity: 1, offset: .43 },
+    { transform: `${base} translate(${-unit * .2}px,${-unit}px) rotate(-28deg) scale(.7)`, opacity: 0, offset: .7 }, { opacity: 0 }]), { duration });
+  for (let index = 0; index < 3; index++) {
+    const ring = add(index ? 'shockwave' : 'impact', unit * 1.4), place = at(x, y, unit * 1.4);
+    play(ring, [{ transform: `${place} scale(.1)`, opacity: 0 }, { opacity: .95, offset: .1 }, { transform: `${place} scale(${4 + index})`, opacity: 0 }],
+      { duration: 900 + index * 150, delay: hit + index * 100, easing: 'ease-out' });
   }
-  if (local) timers.push(setTimeout(() => {
-    if (document.hidden) return;
-    try { navigator.vibrate?.([20, 25, 35]); } catch { /* Haptics are an optional decoration. */ }
-  }, hit));
+  burst(fx, x, y, { kind: 'dust', count: 24, size: unit * .09, colors: ['#d7ad77', '#ecd5a5', '#93613d'], reach: unit * 2.2, delay: hit, duration: 1400, drop: unit * 1.4 });
+  if (local) timers.push(setTimeout(() => { if (!document.hidden) { try { navigator.vibrate?.([35, 30, 65]); } catch { /* Optional local haptics. */ } } }, hit));
 }
 
-function ufo({ box, add, play, unit, spot }) {
-  const width = unit * 1.15, nutSize = Math.max(14, unit * .32), column = width * .4 + unit * 1.05 + nutSize / 2;
-  // The whole column from saucer to nut is kept clear, not just the nut.
-  const middleOf = spot(width, upper, column);
-  const hover = { x: middleOf.x, y: middleOf.y - column / 2 + width * .4 }, nut = { x: hover.x, y: hover.y + unit * 1.05 };
-  const fromLeft = nut.x < box.width / 2, side = fromLeft ? 1 : -1;
-  const enter = fromLeft ? -width : box.width + width, leave = fromLeft ? box.width + width : -width;
-  const saucer = add("ufo", width, width, tableSurpriseArt("ufo"));
-  play(saucer, [
-    { transform: `${at(enter, hover.y - unit * .3, width)} rotate(${side * 10}deg)`, easing: "cubic-bezier(.2,.8,.3,1)" },
-    { transform: `${at(hover.x, hover.y, width)} rotate(0deg)`, offset: .3 },
-    { transform: `${at(hover.x, hover.y + 2, width)} rotate(${-side * 2}deg)`, offset: .5 },
-    { transform: `${at(hover.x, hover.y, width)} rotate(0deg)`, offset: .7, easing: "cubic-bezier(.6,0,.9,.4)" },
-    { transform: `${at(leave, hover.y - unit * .7, width)} rotate(${side * 12}deg)` },
-  ], { duration: 1400 });
-  const top = hover.y + width * .22, bottom = nut.y + nutSize * .5, beamWidth = Math.max(nutSize * 2.2, width * .5);
-  const beam = add("beam", beamWidth, Math.max(1, bottom - top));
-  beam.style.transformOrigin = "50% 0";
-  const beamAt = `translate(${(hover.x - beamWidth / 2).toFixed(1)}px,${top.toFixed(1)}px)`;
-  play(beam, [{ transform: `${beamAt} scaleY(0)`, opacity: 0 }, { transform: `${beamAt} scaleY(0)`, opacity: 0, offset: .31 },
-    { transform: `${beamAt} scaleY(1)`, opacity: .85, offset: .38 }, { transform: `${beamAt} scaleY(1)`, opacity: .85, offset: .62 },
-    { transform: `${beamAt} scaleY(1)`, opacity: 0, offset: .7 }, { transform: `${beamAt} scaleY(1)`, opacity: 0 }], { duration: 1400 });
-  const shell = add("nut", nutSize, nutSize, walnut);
-  play(shell, [{ transform: `${at(nut.x, nut.y, nutSize)} rotate(0deg) scale(1)`, opacity: 0 }, { opacity: 1, offset: .12 },
-    { transform: `${at(nut.x, nut.y, nutSize)} rotate(0deg) scale(1)`, opacity: 1, offset: .38, easing: "cubic-bezier(.4,0,.6,1)" },
-    { transform: `${at(nut.x, top + nutSize * .2, nutSize)} rotate(200deg) scale(.55)`, opacity: 1, offset: .62 },
-    { transform: `${at(nut.x, top, nutSize)} rotate(220deg) scale(.4)`, opacity: 0, offset: .67 }, { opacity: 0 }], { duration: 1400 });
+function ufo(fx) {
+  const { add, play, unit, box, spot } = fx, duration = 3600;
+  const targets = chooseTargets(fx, fx.random() < .5 ? 2 : 3), size = unit * 2;
+  const hover = spot(size * 1.5, upper), saucer = add('ufo', size, size, tableSurpriseArt('ufo'));
+  const from = at(-size, hover.y - unit, size), place = at(hover.x, hover.y, size), leave = at(box.width + size, hover.y - unit, size);
+  play(saucer, smooth([{ transform: `${from} rotate(-15deg)`, opacity: 0 }, { transform: place, opacity: 1, offset: .18 },
+    { transform: `${place} translateY(-5px)`, opacity: 1, offset: .38 }, { transform: place, opacity: 1, offset: .72 },
+    { transform: `${leave} rotate(15deg)`, opacity: 0 }]), { duration });
+  targets.forEach((target, index) => {
+    occlude(fx, target, duration, 940, 2870);
+    const copy = drawSnapshot(fx, target); copy.host.dataset.abducted = 'true';
+    const beamWidth = Math.max(24, target.width * 1.2), dx = target.x - hover.x, dy = target.y - hover.y;
+    const beam = add('beam', beamWidth, Math.max(40, Math.hypot(dx, dy)));
+    beam.style.transformOrigin = '50% 0';
+    const beamAt = `translate(${hover.x - beamWidth / 2}px,${hover.y}px) rotate(${-Math.atan2(dx, dy) * 180 / Math.PI}deg)`;
+    play(beam, [{ transform: `${beamAt} scaleY(0)`, opacity: 0 }, { transform: `${beamAt} scaleY(0)`, opacity: 0, offset: .2 },
+      { transform: `${beamAt} scaleY(1)`, opacity: .75, offset: .3 }, { transform: `${beamAt} scaleY(1)`, opacity: .8, offset: .7 },
+      { transform: `${beamAt} scaleY(.1)`, opacity: 0, offset: .84 }, { opacity: 0 }], { duration });
+    const abduct = `translate(${hover.x - target.width / 2}px,${hover.y - target.height / 2}px) scale(.08) rotate(${index % 2 ? -220 : 220}deg)`;
+    play(copy.host, smooth([{ transform: copy.place, opacity: 0 }, { transform: copy.place, opacity: 0, offset: .22 },
+      { transform: copy.place, opacity: 1, offset: .27 }, { transform: `${copy.place} translateY(-12px) rotate(-8deg)`, opacity: 1, offset: .38 },
+      { transform: abduct, opacity: 0, offset: .59 + index * .025 }, { transform: abduct, opacity: 0, offset: .71 },
+      { transform: copy.place, opacity: 1, offset: .85 }, { transform: copy.place, opacity: 0 }]), { duration });
+  });
+  burst(fx, hover.x, hover.y + size * .2, { count: 18, size: unit * .06, colors: ['#b5ffd0', '#e8fff2', '#73eaaa'], reach: unit * 1.8, delay: 800, duration: 1700, drop: unit });
 }
 
 function portal(fx) {
-  const { box, add, play, unit, spot, rich } = fx;
-  const size = unit * 1.45, nutSize = Math.max(14, unit * .34);
-  const from = spot(size, middle, size * .6);
-  const apart = middle.filter(([px, py]) => Math.hypot(px * box.width - from.x, py * box.height - from.y) > unit * 2.4);
-  const to = spot(size, apart.length ? apart : middle, size * .6,
-    [{ left: from.x - size * .75, right: from.x + size * .75, top: from.y - size, bottom: from.y + size }]);
-  const gate = (where, delay) => {
-    const node = add("portal", size, size, tableSurpriseArt("portal")), place = at(where.x, where.y, size);
-    play(node, smooth([{ transform: `${place} scale(0,0) rotate(0deg)`, opacity: 0 }, { transform: `${place} scale(1.12,.52) rotate(-120deg)`, opacity: 1, offset: .14 },
-      { transform: `${place} scale(1,.46) rotate(-200deg)`, opacity: 1, offset: .24, easing: "linear" }, { transform: `${place} scale(1,.46) rotate(-560deg)`, opacity: 1, offset: .84 },
-      { transform: `${place} scale(0,0) rotate(-680deg)`, opacity: 0 }]), { duration: 1400 - delay, delay });
-  };
-  gate(from, 0);
-  gate(to, 120);
-  // A streak of light carries the nut from one gate to the other.
-  const left = Math.min(from.x, to.x) - 10, top = Math.min(from.y, to.y) - unit * 1.1, width = Math.abs(to.x - from.x) + 20, height = Math.max(from.y, to.y) - top + 10;
-  const arc = add("arc", width, height, svg(`<path d="M${(from.x - left).toFixed(1)} ${(from.y - top).toFixed(1)}Q${((from.x + to.x) / 2 - left).toFixed(1)} 0 ${(to.x - left).toFixed(1)} ${(to.y - top).toFixed(1)}" fill="none" stroke="#d6fff6" stroke-width="3" stroke-linecap="round"/>`,
-    `0 0 ${width.toFixed(1)} ${height.toFixed(1)}`));
-  arc.style.transform = `translate(${left.toFixed(1)}px,${top.toFixed(1)}px)`;
-  const path = arc.querySelector("path"), length = path.getTotalLength(), dash = `${length * .3} ${length * 1.4}`;
-  play(path, [{ strokeDasharray: dash, strokeDashoffset: length * .3, opacity: 0 }, { opacity: 1, offset: .15 }, { opacity: 1, offset: .8 },
-    { strokeDasharray: dash, strokeDashoffset: -length, opacity: 0 }], { duration: 300, delay: 560, easing: "ease-in-out" });
-  const shell = add("nut", nutSize, nutSize, walnut), sink = at(from.x, from.y + unit * .06, nutSize), rest = at(to.x, to.y - unit * .05, nutSize);
-  play(shell, [
-    { transform: `${at(from.x, from.y - unit * .05, nutSize)} scale(1) rotate(0deg)`, opacity: 0 },
-    { transform: `${at(from.x, from.y - unit * .05, nutSize)} scale(1) rotate(0deg)`, opacity: 1, offset: .14 },
-    { transform: `${at(from.x, from.y - unit * .05, nutSize)} scale(1) rotate(0deg)`, opacity: 1, offset: .26, easing: "cubic-bezier(.5,0,.9,.6)" },
-    { transform: `${sink} scale(.25) rotate(220deg)`, opacity: 0, offset: .42 },
-    { transform: `${at(to.x, to.y + unit * .06, nutSize)} scale(.25) rotate(220deg)`, opacity: 0, offset: .5, easing: "cubic-bezier(.2,.8,.4,1)" },
-    { transform: `${at(to.x, to.y - unit * .6, nutSize)} scale(1.15) rotate(400deg)`, opacity: 1, offset: .62, easing: "cubic-bezier(.5,0,.8,.5)" },
-    { transform: `${rest} scale(1) rotate(430deg)`, opacity: 1, offset: .72 },
-    { transform: `${rest} scale(1) rotate(430deg)`, opacity: 1, offset: .88 },
-    { transform: `${rest} scale(.9) rotate(430deg)`, opacity: 0 },
-  ], { duration: 1400 });
-  const sparkle = { count: rich ? 7 : 5, size: Math.max(3, unit * .07), colors: ["#7ff3e1", "#b49cff", "#f4fffb"], reach: unit * .8, duration: 600, drop: -unit * .25 };
-  burst(fx, from.x, from.y, { ...sparkle, delay: 420 });
-  burst(fx, to.x, to.y, { ...sparkle, delay: 720 });
+  const { add, play, unit, box, spot } = fx, duration = 3400;
+  const targets = chooseTargets(fx, 2), size = unit * 2;
+  const from = spot(size * 1.45, [[.24, .47], [.3, .55], [.24, .7]]), to = spot(size * 1.45, [[.76, .47], [.7, .55], [.76, .7]], size * 1.45,
+    [{ left: from.x - size, right: from.x + size, top: from.y - size, bottom: from.y + size }]);
+  for (const [index, point] of [from, to].entries()) {
+    const gate = add('portal', size, size, tableSurpriseArt('portal')), place = at(point.x, point.y, size);
+    gate.dataset.portalSide = index ? 'exit' : 'entry';
+    play(gate, smooth([{ transform: `${place} scale(.02) rotate(0deg)`, opacity: 0 }, { transform: `${place} scale(1.2,.65) rotate(-80deg)`, opacity: 1, offset: .15 },
+      { transform: `${place} scale(1,.58) rotate(-300deg)`, opacity: 1, offset: .4 },
+      { transform: `${place} scale(1.1,.65) rotate(-650deg)`, opacity: 1, offset: .82 },
+      { transform: `${place} scale(.01) rotate(-780deg)`, opacity: 0 }]), { duration: duration - index * 80, delay: index * 80 });
+  }
+  const bridge = add('bridge', box.width, box.height);
+  const curve = `M${from.x} ${from.y}Q${box.width / 2} ${Math.max(15, Math.min(from.y, to.y) - unit * 1.6)} ${to.x} ${to.y}`;
+  bridge.innerHTML = svg(`<path d="${curve}" fill="none" stroke="#9cf5dd" stroke-width="18" opacity=".15"/><path d="${curve}" fill="none" stroke="#d8fff5" stroke-width="4" stroke-dasharray="10 7"/><path d="${curve}" fill="none" stroke="#b9a1ff" stroke-width="1.5"/>`, `0 0 ${box.width} ${box.height}`);
+  stageFade(fx, bridge, duration, { from: 450, until: 2700, strength: .9 });
+  targets.forEach((target, index) => {
+    const entry = index ? to : from, exit = index ? from : to;
+    occlude(fx, target, duration, 560, 2900);
+    const copy = drawSnapshot(fx, target); copy.host.dataset.traveller = 'true';
+    const center = point => `translate(${point.x - target.width / 2}px,${point.y - target.height / 2}px)`;
+    play(copy.host, smooth([{ transform: copy.place, opacity: 0 }, { transform: copy.place, opacity: 1, offset: .17 },
+      { transform: `${center(entry)} scale(.2) rotate(160deg)`, opacity: .9, offset: .36 },
+      { transform: `${center(entry)} scale(.05) rotate(220deg)`, opacity: 0, offset: .4 },
+      { transform: `${center(exit)} scale(.05) rotate(220deg)`, opacity: 0, offset: .48 },
+      { transform: `${center(exit)} translateY(${-unit}px) scale(1.15) rotate(360deg)`, opacity: 1, offset: .66 },
+      { transform: copy.place, opacity: 1, offset: .9 }, { transform: copy.place, opacity: 0 }]), { duration });
+  });
+  for (const point of [from, to]) burst(fx, point.x, point.y, { count: 12, size: unit * .07, colors: ['#9af9e0', '#c4a5ff', '#fff5ca'], reach: unit * 1.8, delay: 500, duration: 1800, stagger: 12, drop: -unit * .5 });
 }
 
+const flameArt = id => svg(`<defs><linearGradient id="${id}f" x1="0" y1="1" x2="0" y2="0"><stop stop-color="#fff8c5"/><stop offset=".35" stop-color="#ffd25a"/><stop offset=".72" stop-color="#f47722"/><stop offset="1" stop-color="#b52c18" stop-opacity="0"/></linearGradient></defs><path d="M50 98C-12 75 12 39 20 20c2 19 15 21 14 2C34 14 43 5 48 0c-2 27 25 26 22 6C91 31 80 40 91 48c-5-18 18 23-3 39C75 99 60 101 50 98Z" fill="url(#${id}f)"/><path d="M48 94C21 77 35 58 39 39c0 17 20 17 20-1 22 26 13 43-11 56Z" fill="#fff5b3" opacity=".9"/>`);
+
 function dragon(fx) {
-  const { table, box, add, play, unit, spot, rich } = fx;
-  const size = unit * 1.5, length = unit * (rich ? 2.8 : 2.3), height = unit * .9;
-  const { x, y } = spot(size, sides);
-  // Breathe towards the centre unless the other side has more open table.
-  const covered = coverage(table, box), mouthY = y - size * .25, toward = x < box.width / 2 ? 1 : -1;
-  const blocked = side => {
-    const from = x + side * size * .38, to = from + side * length;
-    const left = Math.min(from, to), right = Math.max(from, to), top = mouthY - height / 2, bottom = mouthY + height / 2;
-    const visible = Math.max(0, Math.min(box.width, right) - Math.max(0, left))
-      * Math.max(0, Math.min(box.height, bottom) - Math.max(0, top));
-    return covered(left, top, right, bottom) + ((right - left) * height - visible) * 2;
-  };
-  const dir = blocked(-toward) < blocked(toward) ? -toward : toward, place = at(x, y, size);
-  const wyrm = add("dragon", size, size, tableSurpriseArt("dragon"));
-  const pose = (scale, turn = 0, shift = 0, rise = 0) => `${place} translate(${dir * shift}px,${rise}px) rotate(${dir * turn}deg) scale(${dir * scale},${scale})`;
-  play(wyrm, smooth([{ transform: pose(.5, 0, 0, 8), opacity: 0 }, { transform: pose(1.06, 0, 0, -2), opacity: 1, offset: .12 }, { transform: pose(1), opacity: 1, offset: .2 },
-    { transform: pose(1, -7, -3), opacity: 1, offset: .4 }, { transform: pose(1.04, 5, 5), opacity: 1, offset: .48 }, { transform: pose(1, 2, 3), opacity: 1, offset: .74 },
-    { transform: pose(1), opacity: 1, offset: .86 }, { transform: pose(.8, 0, 0, 4), opacity: 0 }]), { duration: 1500 });
-  // Wings unfold from the shoulder, beat once and fold again.
-  const wing = (selector, sign) => play(wyrm.querySelector(selector), smooth([
-    { transform: `rotate(${sign * 24}deg) scale(.3)` }, { transform: `rotate(${sign * 24}deg) scale(.3)`, offset: .14 },
-    { transform: "rotate(0deg) scale(1.08)", offset: .28 }, { transform: `rotate(${sign * 12}deg) scale(.84)`, offset: .38 },
-    { transform: "rotate(0deg) scale(1)", offset: .46 }, { transform: "rotate(0deg) scale(1)", offset: .84 },
-    { transform: `rotate(${sign * 20}deg) scale(.4)` }]), { duration: 1500 });
-  wing(".hd-wing-a", 1);
-  wing(".hd-wing-b", -1);
-  const mouth = { x: x + dir * size * .38, y: mouthY };
-  const flame = add("breath", length, height);
-  flame.style.transformOrigin = "0 50%";
-  const start = `translate(${mouth.x.toFixed(1)}px,${(mouth.y - height / 2).toFixed(1)}px) scaleX(${dir}) rotate(8deg)`;
-  play(flame, [{ transform: `${start} scale(0,.4)`, opacity: 0 }, { transform: `${start} scale(1,1)`, opacity: .95, offset: .3 },
-    { transform: `${start} scale(1.1,1.2)`, opacity: 0 }], { duration: 620, delay: 690, easing: "ease-out" });
-  burst(fx, mouth.x, mouth.y, { count: rich ? 14 : 9, size: Math.max(3, unit * .075), colors: ["#ffe08a", "#ffb347", "#fff6dc", "#e9a23b"], reach: length * .95,
-    angle: dir > 0 ? 8 : 172, spread: 34, delay: 690, duration: 620, stagger: 12, drop: unit * .15 });
+  const { add, play, unit, spot, box } = fx, duration = 3500;
+  const anchor = spot(unit * 2, [[.16, .26], [.84, .26], [.16, .48], [.84, .48]]), direction = anchor.x < box.width / 2 ? 1 : -1;
+  const size = unit * 2.2, wyrm = add('dragon', size, size, tableSurpriseArt('dragon')), place = at(anchor.x, anchor.y, size);
+  const pose = (scale, angle = 0) => `${place} rotate(${direction * angle}deg) scale(${direction * scale},${scale})`;
+  play(wyrm, smooth([{ transform: `${pose(.2)} translateY(${-unit}px)`, opacity: 0 }, { transform: pose(1.12), opacity: 1, offset: .16 },
+    { transform: pose(1, -12), opacity: 1, offset: .26 }, { transform: pose(1.08, 8), opacity: 1, offset: .37 },
+    { transform: pose(1, 4), opacity: 1, offset: .78 }, { transform: `${pose(.65, -18)} translateY(${-unit}px)`, opacity: 0 }]), { duration });
+  for (const [selector, sign] of [['.hd-wing-a', 1], ['.hd-wing-b', -1]]) {
+    const wing = wyrm.querySelector(selector);
+    if (wing) play(wing, smooth([{ transform: `rotate(${sign * 28}deg) scale(.3)` }, { transform: 'rotate(0deg) scale(1.1)', offset: .2 },
+      { transform: `rotate(${sign * 18}deg) scale(.8)`, offset: .36 }, { transform: 'rotate(0deg) scale(1.12)', offset: .5 },
+      { transform: `rotate(${sign * 15}deg) scale(.82)`, offset: .68 }, { transform: 'rotate(0deg) scale(1)', offset: .82 }, { transform: 'scale(.3)' }]), { duration });
+  }
+  const targets = snapshotTargets(fx.table, { groupHand: false, only: target => target.kind === 'card' || target.kind === 'burned' });
+  const mouth = { x: anchor.x + direction * size * .36, y: anchor.y - size * .24 };
+  // A curling stream reaches every visible card, then individual edges flare.
+  targets.forEach((target, index) => {
+    const line = add('breath', box.width, box.height), end = { x: target.x, y: target.y };
+    line.innerHTML = svg(`<path d="M${mouth.x} ${mouth.y}Q${(mouth.x + end.x) / 2} ${Math.min(mouth.y, end.y) - unit * .5} ${end.x} ${end.y}" fill="none" stroke="#f37126" stroke-width="15" stroke-linecap="round" opacity=".45"/><path d="M${mouth.x} ${mouth.y}Q${(mouth.x + end.x) / 2} ${Math.min(mouth.y, end.y) - unit * .5} ${end.x} ${end.y}" fill="none" stroke="#ffe9a3" stroke-width="4" stroke-linecap="round"/>`, `0 0 ${box.width} ${box.height}`);
+    const delay = 720 + Math.min(index, 9) * 45;
+    stageFade(fx, line, 1300, { from: 130, until: 700, strength: .9 });
+    line.getAnimations().forEach(animation => animation.effect.updateTiming({ delay }));
+    const width = Math.max(32, Math.min(target.width * 1.15, unit * 1.5)), height = Math.min(target.height * .9, unit * 1.8);
+    const flame = add('flame', width, height, flameArt(uid())), flameAt = at(target.x, target.y + target.height * .08, width, height);
+    play(flame, smooth([{ transform: `${flameAt} scale(.3,.05)`, opacity: 0 }, { transform: `${flameAt} scale(1,1.1)`, opacity: .95, offset: .25 },
+      { transform: `${flameAt} scale(.8,1.2) rotate(-5deg)`, opacity: .9, offset: .5 },
+      { transform: `${flameAt} scale(1.1,.9) rotate(5deg)`, opacity: .8, offset: .72 }, { transform: `${flameAt} translateY(${-unit * .4}px) scale(.4,1.4)`, opacity: 0 }]), { duration: 1700, delay: 1000 + Math.min(index, 20) * 35 });
+  });
+  if (!targets.length) {
+    const flame = add('flame', unit * 1.6, unit * 2, flameArt(uid()));
+    play(flame, [{ transform: `${at(box.width / 2, box.height / 2, unit * 1.6, unit * 2)} scale(.1)`, opacity: 0 }, { opacity: .9, offset: .25 }, { transform: `${at(box.width / 2, box.height / 2, unit * 1.6, unit * 2)} scale(1.2)`, opacity: 0 }], { duration: 2200, delay: 800 });
+  }
+  burst(fx, mouth.x, mouth.y, { count: 32, size: unit * .07, colors: ['#ffdc7b', '#ff8b3b', '#fff6c8'], reach: unit * 3, angle: direction > 0 ? 15 : 165, spread: 70, delay: 800, duration: 1900, stagger: 10, drop: unit * .8 });
 }
 
 function kraken(fx) {
-  const { box, add, play, unit, spot, rich } = fx;
-  const anchor = spot(unit * 1.6, edges, unit * 2.4);
-  const left = anchor.x < box.width / 2, edge = left ? 0 : box.width, base = left ? 90 : -90, inward = left ? 1 : -1;
-  [-.8, 0, .75].forEach((offset, index) => {
-    const height = unit * (index === 1 ? 2.3 : 1.8) * (rich ? 1.15 : 1), width = height / 3;
-    const arm = add("tentacle", width, height, tentacle(uid()));
-    arm.style.transformOrigin = "50% 100%";
-    const root = `translate(${(edge - width / 2).toFixed(1)}px,${(anchor.y + offset * unit - height).toFixed(1)}px)`;
-    const pose = (turn, out) => `${root} rotate(${base + inward * turn}deg) translateY(${(height * out).toFixed(1)}px) scaleX(${index % 2 ? -1 : 1})`;
-    play(arm, [{ transform: pose(-6, 1.05) }, { transform: pose(14, .18), offset: .3, easing: "ease-in-out" }, { transform: pose(-10, .1), offset: .5, easing: "ease-in-out" },
-      { transform: pose(6, .2), offset: .66, easing: "cubic-bezier(.5,0,.9,.5)" }, { transform: pose(-4, 1.05) }], { duration: 1250, delay: index * 110 });
+  const { add, play, unit, box, spot } = fx, duration = 3400;
+  const all = snapshotTargets(fx.table), burned = all.filter(target => target.kind === 'burned');
+  const expendable = all.filter(target => target.kind === 'prop').sort((a, b) => Number(b.prop === 'beer') - Number(a.prop === 'beer'));
+  const targets = (burned.length ? burned : expendable).slice(0, 3);
+  const anchor = targets[0] || { x: box.width * .85, y: box.height * .62 };
+  const edge = anchor.x < box.width / 2 ? -unit * .2 : box.width + unit * .2, inward = edge < 0 ? 1 : -1;
+  const size = unit * 1.8, monster = add('kraken', size, size, tableSurpriseArt('kraken'));
+  // The discarded pile can sit inside the lower caption cut-outs. The kraken
+  // lives on free upper wood and reaches down, keeping its face in plain sight.
+  const berth = spot(size * 1.35, [[.68, .22], [.32, .22], [.5, .28], [.8, .3], [.2, .3]], size * 1.35);
+  const monsterAt = at(berth.x, berth.y, size);
+  play(monster, smooth([{ transform: `${monsterAt} translateX(${-inward * unit * 2}px)`, opacity: 0 },
+    { transform: monsterAt, opacity: 1, offset: .2 }, { transform: `${monsterAt} rotate(${inward * 8}deg)`, opacity: 1, offset: .65 },
+    { transform: `${monsterAt} translateX(${-inward * unit * 2}px)`, opacity: 0 }]), { duration });
+  const reaching = targets.length ? targets : [anchor];
+  reaching.forEach((target, index) => {
+    const start = { x: berth.x + (index - 1) * size * .1, y: berth.y + size * .18 }, end = { x: target.x, y: target.y };
+    const arm = add('tentacle', box.width, box.height);
+    const curve = `M${start.x} ${start.y}Q${(start.x + end.x) / 2} ${end.y - unit * 1.2} ${end.x} ${end.y}`;
+    arm.innerHTML = svg(`<path d="${curve}" fill="none" stroke="#173844" stroke-width="20" stroke-linecap="round"/><path d="${curve}" fill="none" stroke="#65a9a3" stroke-width="13" stroke-linecap="round"/><path d="${curve}" fill="none" stroke="#efdcc3" stroke-width="4" stroke-dasharray="1 13" stroke-linecap="round"/>`, `0 0 ${box.width} ${box.height}`);
+    const paths = [...arm.querySelectorAll('path')];
+    paths.forEach((path, pathIndex) => { const length = path.getTotalLength();
+      if (pathIndex === 2) {
+        play(path, [{ opacity: 0 }, { opacity: 0, offset: .25 }, { opacity: 1, offset: .38 }, { opacity: 1, offset: .6 }, { opacity: 0 }], { duration: 2500, delay: index * 100 });
+        return;
+      }
+      path.style.strokeDasharray = `${length}`;
+      play(path, [{ strokeDashoffset: length, opacity: 0 }, { strokeDashoffset: 0, opacity: 1, offset: .38 },
+        { strokeDashoffset: 0, opacity: 1, offset: .6 }, { strokeDashoffset: length, opacity: 0 }], { duration: 2500, delay: index * 100 }); });
+    if (target.node) {
+      occlude(fx, target, duration, 900, 2900);
+      const copy = drawSnapshot(fx, target); copy.host.dataset.taken = 'true';
+      play(copy.host, smooth([{ transform: copy.place, opacity: 0 }, { transform: copy.place, opacity: 0, offset: .25 },
+        { transform: copy.place, opacity: 1, offset: .3 }, { transform: `${copy.place} rotate(${-inward * 16}deg) scale(1.05)`, opacity: 1, offset: .46 },
+        { transform: `translate(${edge - target.width / 2}px,${target.top + unit * .3}px) rotate(${inward * 95}deg) scale(.2)`, opacity: 0, offset: .8 }, { opacity: 0 }]), { duration });
+    }
   });
-  // The retreating kraken leaves a shimmering ink bubble that pops.
-  const size = unit * .85, inkX = edge + inward * unit * 1.2, inkY = anchor.y + unit * .1, place = at(inkX, inkY, size);
-  const ink = add("ink", size);
-  play(ink, [{ transform: `${place} scale(.2)`, opacity: 0, filter: "hue-rotate(0deg)" }, { transform: `${place} scale(.2)`, opacity: 0, offset: .52 },
-    { transform: `${place} scale(1.12)`, opacity: .95, offset: .62 }, { transform: `${place} scale(.92,1.04)`, opacity: .95, offset: .69 },
-    { transform: `${place} scale(1.04,.97)`, opacity: .95, offset: .76 }, { transform: `${place} scale(1)`, opacity: .95, offset: .86 },
-    { transform: `${place} scale(1.3)`, opacity: 0, filter: "hue-rotate(80deg)" }], { duration: 1550 });
-  burst(fx, inkX, inkY, { kind: "drop", count: rich ? 6 : 4, size: Math.max(3, unit * .09), colors: ["#2b1f4f"], reach: unit * .7, delay: 1330, duration: 220 });
+  const inkSize = unit * 1.7, ink = add('ink', inkSize), inkAt = at(Math.max(inkSize / 2, Math.min(box.width - inkSize / 2, edge + inward * unit)), anchor.y, inkSize);
+  play(ink, [{ transform: `${inkAt} scale(.1)`, opacity: 0 }, { transform: `${inkAt} scale(1)`, opacity: .85, offset: .2 },
+    { transform: `${inkAt} scale(1.3)`, opacity: .65, offset: .6 }, { transform: `${inkAt} scale(1.6)`, opacity: 0 }], { duration: 1300, delay: 1900 });
 }
 
 function clock(fx) {
-  const { table, box, add, play, unit, spot, extra } = fx;
-  const size = unit * 1.25;
-  const { x, y } = spot(size * 1.2, middle);
-  const watch = add("clock", size, size, arts.clock(uid(), true)), place = at(x, y, size);
-  play(watch, smooth([{ transform: `${place} scale(.5) rotate(-12deg)`, opacity: 0 }, { transform: `${place} scale(1.06) rotate(3deg)`, opacity: 1, offset: .12 },
-    { transform: `${place} scale(1) rotate(0deg)`, opacity: 1, offset: .2 }, { transform: `${place} scale(1) rotate(0deg)`, opacity: 1, offset: .82 },
-    { transform: `${place} scale(.85) rotate(6deg)`, opacity: 0 }]), { duration: 1450 });
-  play(watch.querySelector(".hd-lid"), [{ transform: "scaleX(1)" }, { transform: "scaleX(1)", offset: .12, easing: "ease-out" },
-    { transform: "scaleX(-.42)", offset: .26 }, { transform: "scaleX(-.42)", offset: .84 }, { transform: "scaleX(.2)" }], { duration: 1450 });
-  for (const [selector, from, to] of [[".hd-hand-m", 60, 780], [".hd-hand-h", -60, 0]]) {
-    play(watch.querySelector(selector), [{ transform: `rotate(${from}deg)` }, { transform: `rotate(${from}deg)`, offset: .26, easing: "cubic-bezier(.55,0,.35,1)" },
-      { transform: `rotate(${to}deg)`, offset: .7 }, { transform: `rotate(${to}deg)` }], { duration: 1450 });
+  const { add, play, unit, spot, box } = fx, duration = 3800;
+  const freeze = woodenStage(fx); freeze.dataset.stage = 'freeze'; freeze.dataset.freezeFrom = '120'; freeze.dataset.freezeTo = '2120';
+  play(freeze, [{ opacity: 0 }, { opacity: 1, offset: 120 / duration }, { opacity: 1, offset: 2120 / duration }, { opacity: 0, offset: 2420 / duration }, { opacity: 0 }], { duration, easing: 'linear' });
+  snapshotTargets(fx.table).forEach(target => {
+    const copy = drawSnapshot(fx, target);
+    play(copy.host, [{ transform: copy.place, opacity: 0 }, { transform: copy.place, opacity: 1, offset: 120 / duration },
+      { transform: copy.place, opacity: 1, offset: 2120 / duration }, { transform: copy.place, opacity: 0, offset: 2420 / duration }, { opacity: 0 }], { duration });
+  });
+  const cold = add('time-glass', box.width, box.height);
+  play(cold, [{ opacity: 0 }, { opacity: .5, offset: 120 / duration }, { opacity: .5, offset: 2120 / duration }, { opacity: 0, offset: 2420 / duration }, { opacity: 0 }], { duration });
+  const { x, y } = spot(unit * 1.8, middle), size = unit * 1.8, watch = add('clock', size, size, arts.clock(uid(), true)), place = at(x, y, size);
+  const exit = { x: box.width + size, y: Math.min(box.height - unit * .7, y + unit * .6) };
+  play(watch, smooth([{ transform: `${place} scale(.15) rotate(-20deg)`, opacity: 0 }, { transform: place, opacity: 1, offset: .12 },
+    { transform: place, opacity: 1, offset: .66 }, { transform: `${place} translateY(${-unit * .25}px) scale(.7) rotate(25deg)`, opacity: 1, offset: .74 },
+    { transform: `${at(exit.x, exit.y - unit * .3, size)} scale(.65) rotate(35deg)`, opacity: 0 }]), { duration });
+  const lid = watch.querySelector('.hd-lid');
+  if (lid) play(lid, [{ transform: 'scaleX(1)' }, { transform: 'scaleX(-.4)', offset: .12 }, { transform: 'scaleX(-.4)', offset: .72 }, { transform: 'scaleX(.2)' }], { duration });
+  // Hands really hold still for the two-second visual time stop.
+  for (const [selector, angle] of [['.hd-hand-m', 60], ['.hd-hand-h', -60]]) {
+    const hand = watch.querySelector(selector);
+    if (hand) play(hand, [{ transform: `rotate(${angle}deg)` }, { transform: `rotate(${angle}deg)`, offset: 2120 / duration }, { transform: `rotate(${angle + 1080}deg)` }], { duration });
   }
-  // A time swirl sweeps the whole table; table objects sway as it passes.
-  const reach = Math.hypot(Math.max(x, box.width - x), Math.max(y, box.height - y)), swirlSize = reach * 2;
-  const swirl = add("vortex", swirlSize, swirlSize, vortex), swirlAt = at(x, y, swirlSize);
-  play(swirl, [{ transform: `${swirlAt} scale(.06) rotate(0deg)`, opacity: 0 }, { transform: `${swirlAt} scale(.3) rotate(-70deg)`, opacity: .9, offset: .25 },
-    { transform: `${swirlAt} scale(1) rotate(-220deg)`, opacity: 0 }], { duration: 900, delay: 520, easing: "cubic-bezier(.3,.5,.5,1)" });
-  for (const art of decorArts(table)) {
-    const rect = art.getBoundingClientRect();
-    if (!rect.width) continue;
-    const distance = Math.hypot(rect.left + rect.width / 2 - box.left - x, rect.top + rect.height / 2 - box.top - y);
-    extra.push(art.animate([{ rotate: "0deg" }, { rotate: "8deg" }, { rotate: "-5deg" }, { rotate: "0deg" }],
-      { duration: 420, delay: Math.min(1020, 560 + distance / reach * 700), easing: "ease-in-out" }));
+  const mouseSize = unit * 1.6, mouse = add('mouse', mouseSize, mouseSize, magicalMouseArt(uid()));
+  mouse.dataset.arrivesAt = '2100';
+  const mouseY = Math.min(box.height - mouseSize / 2, y + size * .45), start = at(-mouseSize, mouseY, mouseSize), near = at(x - size * .4, mouseY, mouseSize);
+  play(mouse, smooth([{ transform: start, opacity: 0 }, { transform: start, opacity: 0, offset: 2100 / duration },
+    { transform: `${near} rotate(-7deg)`, opacity: 1, offset: .68 }, { transform: `${near} rotate(5deg)`, opacity: 1, offset: .76 },
+    { transform: `${at(exit.x, exit.y, mouseSize)} rotate(-5deg)`, opacity: 0 }]), { duration });
+  for (const [selector, sign] of [['.hd-mouse-leg-a', 1], ['.hd-mouse-leg-b', -1]]) {
+    const leg = mouse.querySelector(selector);
+    if (leg) play(leg, [{ transform: `rotate(${sign * 16}deg)` }, { transform: `rotate(${-sign * 16}deg)`, offset: .5 }, { transform: `rotate(${sign * 16}deg)` }], { duration: 160, iterations: 10, delay: 2100 });
   }
+  burst(fx, x, y, { count: 20, size: unit * .065, colors: ['#fff2bc', '#c7b2ff', '#aedbe2'], reach: unit * 2, delay: 2200, duration: 1250, stagger: 7, drop: -unit * .4 });
 }
 
 function blackhole(fx) {
-  const { add, play, unit, spot, rich } = fx;
-  const size = unit * 1.45;
-  const { x, y } = spot(size * 2, middle);
-  const hole = add("hole", size, size, tableSurpriseArt("blackhole")), place = at(x, y, size);
-  play(hole, smooth([{ transform: `${place} scale(0) rotate(-20deg)`, opacity: 0 }, { transform: `${place} scale(1.08) rotate(-6deg)`, opacity: 1, offset: .16 },
-    { transform: `${place} scale(1) rotate(0deg)`, opacity: 1, offset: .24 }, { transform: `${place} scale(.86) rotate(10deg)`, opacity: 1, offset: .6, easing: "cubic-bezier(.3,1.6,.5,1)" },
-    { transform: `${place} scale(1.18) rotate(12deg)`, opacity: 1, offset: .68 }, { transform: `${place} scale(.25) rotate(40deg)`, opacity: 0 }]), { duration: 1500 });
-  // Crumbs spiral into the disc, which lies flat on the table.
-  const crumbs = rich ? 10 : 7;
-  for (let index = 0; index < crumbs; index++) {
-    const grain = Math.max(4, unit * (.08 + index % 3 * .025)), crumb = add("crumb", grain);
-    const start = index / crumbs * Math.PI * 2 + Math.random() * .5, far = unit * (1.3 + Math.random() * .7);
-    play(crumb, [0, .2, .5, .78, 1].map((offset, step) => {
-      const t = step / 4, turn = start + t * 2.4, radius = far * (1 - t) ** 1.3 + unit * .3 * t;
-      return { offset, opacity: step && step < 4 ? 1 : 0,
-        transform: `${at(x + Math.cos(turn) * radius, y + Math.sin(turn) * radius * (1 - t * .6), grain)} scale(${1 - t * .7}) rotate(${t * 300}deg)` };
-    }), { duration: 820, delay: 150 + index * 25, easing: "cubic-bezier(.45,0,.75,.6)" });
-  }
-  // ...and a small star escapes.
-  const ring = add("ring", unit * .8), little = unit * .6, spark = add("body", little, little, tableSurpriseArt("star"));
-  play(ring, [{ transform: `${at(x, y, unit * .8)} scale(.3)`, opacity: 0 }, { opacity: .9, offset: .1 }, { transform: `${at(x, y, unit * .8)} scale(2.6)`, opacity: 0 }],
-    { duration: 480, delay: 990, easing: "ease-out" });
-  play(spark, [{ transform: `${at(x, y, little)} scale(0) rotate(-40deg)`, opacity: 0 }, { transform: `${at(x, y - unit * .55, little)} scale(1.3) rotate(0deg)`, opacity: 1, offset: .35 },
-    { transform: `${at(x, y - unit * .7, little)} scale(1) rotate(15deg)`, opacity: 1, offset: .7 }, { transform: `${at(x, y - unit * .85, little)} scale(.8) rotate(25deg)`, opacity: 0 }],
-  { duration: 500, delay: 990, easing: "cubic-bezier(.2,.8,.3,1)" });
+  const { add, play, unit, box, spot } = fx, duration = 3900;
+  const { x, y } = spot(unit * 2.4, middle);
+  const blackout = add('blackout', box.width, box.height); blackout.dataset.blackFrom = '1400'; blackout.dataset.blackTo = '2400';
+  play(blackout, [{ opacity: 0 }, { opacity: 0, offset: 1000 / duration }, { opacity: 1, offset: 1400 / duration },
+    { opacity: 1, offset: 2400 / duration }, { opacity: 0, offset: 3100 / duration }, { opacity: 0 }], { duration, easing: 'linear' });
+  // A stationary void hides the live scene while its wooden double shrinks.
+  // It stays behind the returning doubles until they exactly reach home.
+  const voidStage = add('void', box.width, box.height);
+  stageFade(fx, voidStage, duration, { from: duration * .08, until: duration * .94 });
+  const wood = woodenStage(fx); wood.style.transformOrigin = `${x}px ${y}px`;
+  play(wood, smooth([{ transform: 'scale(1) rotate(0deg)', opacity: 0 }, { transform: 'scale(1) rotate(0deg)', opacity: 1, offset: .08 },
+    { transform: 'scale(.01) rotate(210deg)', opacity: 1, offset: 1400 / duration },
+    { transform: 'scale(.01) rotate(210deg)', opacity: 0, offset: 2400 / duration },
+    { transform: 'scale(.01) rotate(210deg)', opacity: 1, offset: 2500 / duration },
+    { transform: 'scale(1) rotate(360deg)', opacity: 1, offset: .93 }, { transform: 'scale(1) rotate(360deg)', opacity: 0 }]), { duration });
+  snapshotTargets(fx.table).forEach((target, index) => {
+    const copy = drawSnapshot(fx, target), into = `translate(${x - target.width / 2}px,${y - target.height / 2}px) scale(.01) rotate(${index % 2 ? 300 : -300}deg)`;
+    play(copy.host, smooth([{ transform: copy.place, opacity: 0 }, { transform: copy.place, opacity: 1, offset: .08 },
+      { transform: `${copy.place} translate(${(x - target.x) * .2}px,${(y - target.y) * .2}px) rotate(${index % 2 ? 30 : -30}deg)`, opacity: 1, offset: .2 },
+      { transform: into, opacity: 0, offset: 1400 / duration }, { transform: into, opacity: 0, offset: 2400 / duration },
+      { transform: into, opacity: 1, offset: 2500 / duration }, { transform: copy.place, opacity: 1, offset: .93 }, { transform: copy.place, opacity: 0 }]), { duration });
+  });
+  const size = unit * 3.2, hole = add('hole', size, size, tableSurpriseArt('blackhole')), place = at(x, y, size);
+  play(hole, smooth([{ transform: `${place} scale(.05) rotate(-30deg)`, opacity: 0 }, { transform: `${place} scale(1.2) rotate(30deg)`, opacity: 1, offset: .22 },
+    { transform: `${place} scale(.05) rotate(150deg)`, opacity: 0, offset: 1400 / duration },
+    { transform: `${place} scale(.05) rotate(150deg)`, opacity: 0, offset: 2400 / duration },
+    { transform: `${place} scale(1.2) rotate(260deg)`, opacity: 1, offset: .72 }, { transform: `${place} scale(.02) rotate(360deg)`, opacity: 0 }]), { duration });
+  burst(fx, x, y, { count: 28, size: unit * .065, colors: ['#ffe3a3', '#bd8fff', '#df914c'], reach: unit * 3.5, delay: 160, duration: 1120, stagger: 3, drop: unit * .2 });
 }
 
 // Reduced motion: the symbol only fades in and out where it would have played.
@@ -446,22 +502,98 @@ function quiet({ add, play, unit, spot }, effect) {
 
 const effects = { star, hammer, ufo, portal, dragon, kraken, clock, blackhole };
 
-export function playTableSurprise(table, effect, { local = false } = {}) {
+function randomFor(seed) {
+  let value = 2166136261;
+  for (const letter of String(seed)) value = Math.imul(value ^ letter.charCodeAt(0), 16777619) >>> 0;
+  return () => { value ^= value << 13; value ^= value >>> 17; value ^= value << 5; return (value >>> 0) / 4294967296; };
+}
+
+// Reveal a blacked-out table before accepting a blind gameplay activation.
+// This guard belongs only to that one pointer/key gesture, never to game time.
+function revealActivation(event, table) {
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  if (event.type === "keydown") {
+    let timer;
+    const release = () => {
+      clearTimeout(timer);
+      window.removeEventListener("keyup", releaseKey, true);
+      window.removeEventListener("pointerdown", release, true);
+      window.removeEventListener("pagehide", release);
+    };
+    const releaseKey = keyEvent => {
+      if (keyEvent.key !== event.key) return;
+      keyEvent.preventDefault(); keyEvent.stopImmediatePropagation(); release();
+    };
+    window.addEventListener("keyup", releaseKey, true);
+    window.addEventListener("pointerdown", release, { capture: true, once: true });
+    window.addEventListener("pagehide", release, { once: true });
+    timer = setTimeout(release, 5000);
+    return;
+  }
+  let timer;
+  const release = () => {
+    clearTimeout(timer);
+    window.removeEventListener("click", swallow, true);
+    window.removeEventListener("pointerup", afterRelease, true);
+    window.removeEventListener("pointerdown", release, true);
+    window.removeEventListener("keydown", release, true);
+    window.removeEventListener("pointercancel", release, true);
+    window.removeEventListener("pagehide", release);
+  };
+  const swallow = click => {
+    if (table.contains(click.target)) { click.preventDefault(); click.stopImmediatePropagation(); }
+    release();
+  };
+  const afterRelease = () => { clearTimeout(timer); timer = setTimeout(release, 160); };
+  window.addEventListener("click", swallow, true);
+  window.addEventListener("pointerup", afterRelease, { capture: true, once: true });
+  window.addEventListener("pointerdown", release, { capture: true, once: true });
+  window.addEventListener("keydown", release, { capture: true, once: true });
+  window.addEventListener("pointercancel", release, { capture: true, once: true });
+  window.addEventListener("pagehide", release, { once: true });
+  timer = setTimeout(release, 5000);
+}
+
+export function playTableSurprise(table, effect, { local = false, seed = effect } = {}) {
   active.get(table)?.();
   if (!table?.isConnected || !effects[effect] || document.hidden) return noop;
   const layer = document.createElement("div");
   layer.className = "hd-surprise-layer";
+  layer.dataset.effect = effect;
   layer.setAttribute("aria-hidden", "true");
+  layer.inert = true;
   table.append(layer);
-  const box = layer.getBoundingClientRect();
+  const box = layer.getBoundingClientRect(), tableSize = table.getBoundingClientRect();
   if (!box.width || !box.height) { layer.remove(); return noop; }
-  const own = [], extra = [], timers = [];
-  let done = false;
+  const screen = document.createElement("div");
+  screen.className = "hd-surprise-screen";
+  layer.append(screen);
+  const own = [], timers = [], reduced = matchMedia("(prefers-reduced-motion: reduce)");
+  let done = false, observer = null, resize = null, blackoutAnimation = null;
+  const onVisibility = () => { if (document.hidden) cleanup(); };
+  const onInput = event => {
+    if (event.type === "keydown" && !["Enter", " "].includes(event.key)) return;
+    const target = event.target;
+    if (target.closest?.(".hd-table-prop,.hd-surprise-layer")) return;
+    if (!target.closest?.("#hausdeppHand,button,a[href],input,select,textarea,[role='button'],summary")) return;
+    const time = Number(blackoutAnimation?.currentTime ?? -1);
+    const gameplay = target.closest?.("#hausdeppHand .hausdepp-card,#hausdeppStock,#hausdeppPile,.hd-stock-group>.hd-card-back,.hd-pile-group>.hausdepp-card");
+    if (gameplay && time >= 1400 && time < 2400) revealActivation(event, table);
+    cleanup();
+  };
   const cleanup = () => {
     if (done) return;
     done = true;
     timers.forEach(clearTimeout);
-    for (const animation of [...own, ...extra]) animation.cancel();
+    observer?.disconnect(); resize?.disconnect();
+    document.removeEventListener("visibilitychange", onVisibility);
+    window.removeEventListener("pagehide", cleanup);
+    window.removeEventListener("resize", cleanup);
+    table.removeEventListener("pointerdown", onInput, true);
+    table.removeEventListener("keydown", onInput, true);
+    reduced.removeEventListener("change", cleanup);
+    for (const animation of own) animation.cancel();
     layer.remove();
     if (active.get(table) === cleanup) active.delete(table);
   };
@@ -469,19 +601,47 @@ export function playTableSurprise(table, effect, { local = false } = {}) {
   const add = (kind, width, height = width, html = "") => {
     const node = document.createElement("div");
     node.className = `hd-surprise-node hd-surprise-${kind}`;
+    node.dataset.stage = kind;
     node.setAttribute("aria-hidden", "true");
-    node.style.width = `${width.toFixed(1)}px`;
-    node.style.height = `${height.toFixed(1)}px`;
+    node.style.width = `${Math.max(1, width).toFixed(1)}px`;
+    node.style.height = `${Math.max(1, height).toFixed(1)}px`;
     node.innerHTML = html;
-    layer.append(node);
+    // Only the one-second singularity blackout covers names and controls.
+    (kind === "blackout" ? layer : screen).append(node);
     return node;
   };
-  const play = (node, frames, options) => { own.push(node.animate(frames, { fill: "both", ...options })); };
+  const play = (node, frames, options) => {
+    if (!node) return;
+    const animation = node.animate(frames, { fill: "both", ...options });
+    own.push(animation);
+    if (node.dataset.stage === "blackout") blackoutAnimation = animation;
+    return animation;
+  };
   const unit = Math.round(Math.max(40, Math.min(76, Math.min(box.width, box.height) * .14)));
-  const fx = { table, box, add, play, unit, local, extra, timers, rich: box.width >= 700, spot: (...args) => freeSpot(table, box, ...args) };
-  if (matchMedia("(prefers-reduced-motion: reduce)").matches) quiet(fx, effect);
-  else effects[effect](fx);
-  // Any finish or outside cancel ends the whole surprise.
+  const fx = { table, box, add, play, unit, local, timers, random: randomFor(`${effect}:${seed}`), rich: box.width >= 700, spot: (...args) => freeSpot(table, box, ...args) };
+  if (reduced.matches) quiet(fx, effect);
+  else {
+    protectControls(screen, table, box);
+    effects[effect](fx);
+  }
+  document.addEventListener("visibilitychange", onVisibility);
+  window.addEventListener("pagehide", cleanup);
+  window.addEventListener("resize", cleanup);
+  table.addEventListener("pointerdown", onInput, { capture: true, passive: false });
+  table.addEventListener("keydown", onInput, true);
+  reduced.addEventListener("change", cleanup);
+  // Remote turns keep running beneath this short theatre. They must not cut
+  // off the mouse's late entrance. Local input always reveals the live scene.
+  // The round owner also invokes cleanup when its round key changes.
+  observer = new MutationObserver(() => {
+    if (!table.isConnected || (table.dataset.phase && table.dataset.phase !== "playing")) cleanup();
+  });
+  observer.observe(document.documentElement, { subtree: true, childList: true, attributes: true, attributeFilter: ["data-phase"] });
+  resize = new ResizeObserver(() => {
+    const next = table.getBoundingClientRect();
+    if (Math.abs(next.width - tableSize.width) > 1 || Math.abs(next.height - tableSize.height) > 1) cleanup();
+  });
+  resize.observe(table);
   Promise.all(own.map(animation => animation.finished)).then(cleanup, cleanup);
   return cleanup;
 }

@@ -13,6 +13,12 @@ from .hausdepp_gameplay import game_lock
 HAUSDEPP_TABLE_ACTIONS = frozenset({"hausdepp_table_surprise"})
 _EFFECTS = ("star", "hammer", "ufo", "portal", "dragon", "kraken", "clock", "blackhole")
 _CLAIM_KEY = "_hausdepp_table_surprise_claim"
+_SCORCHED_KEY = "_hausdepp_scorched_cards"
+
+
+def table_effects_projection(game: dict) -> dict:
+    """Public cosmetic state, including for viewers who join after the dragon."""
+    return {"scorched_cards": game.get(_SCORCHED_KEY) is True}
 
 
 def _round_number(game: dict) -> int:
@@ -76,11 +82,16 @@ def _claim_surprise(session: GameSocketSession, data: dict) -> dict:
     # Existing active-game JSON retains it across a restart, but never an
     # animation payload, actor or private hand. No schema/history growth.
     game[_CLAIM_KEY] = {"round_number": offer["round_number"], "activated": True}
+    if effect == "dragon":
+        # A bounded visual flag for this table, outside the card engine. New
+        # tournament rounds keep the singed paper; a new table starts clean.
+        game[_SCORCHED_KEY] = True
     return {
         "hausdepp_table_surprise": {"id": uuid4().hex, "game_id": str(game["_id"]),
                                     "round_number": offer["round_number"], "actor_id": session.player_id,
                                     "effect": effect},
         "hausdepp_table_surprises": {"round_number": offer["round_number"], "effect": None},
+        "hausdepp_table_effects": table_effects_projection(game),
     }
 
 

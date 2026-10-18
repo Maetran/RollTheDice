@@ -6,6 +6,12 @@ test.use({ serviceWorkers: 'block', viewport: { width: 1600, height: 1000 } });
 const OVERLAY = '.hd-surprise-layer';
 const HAND = ['hearts-6', 'bells-U', 'acorns-10'];
 const EFFECTS = ['star', 'hammer', 'ufo', 'portal', 'dragon', 'kraken', 'clock', 'blackhole'];
+const STORY_STAGES = {
+  star: ['star', 'rays', 'constellation'], hammer: ['hammer', 'impact', 'shockwave'], ufo: ['ufo', 'beam'],
+  portal: ['portal', 'bridge'], dragon: ['dragon', 'breath', 'flame'], kraken: ['tentacle', 'ink'],
+  clock: ['freeze', 'clock', 'mouse'], blackhole: ['hole', 'blackout', 'wood-stage', 'void'],
+};
+const STORY_TIME = { star: 1000, hammer: 1150, ufo: 1600, portal: 2000, dragon: 1750, kraken: 1550, clock: 2650, blackhole: 900 };
 
 test.beforeAll(({ baseURL }) => {
   expect(new URL(baseURL).port, 'Surprise tests require the disposable browser server').not.toBe('8000');
@@ -23,7 +29,7 @@ async function initializeClient(page) {
   await page.route('**/api/auth/tours/offer', route => route.fulfill({ json: { show: false, enabled: false, games: {} } }));
 }
 
-async function roomFixture(page, effect, { spectator = false, reduced = false, crowded = false } = {}) {
+async function roomFixture(page, effect, { spectator = false, reduced = false, crowded = false, scorched = false } = {}) {
   await initializeClient(page);
   if (reduced) await page.emulateMedia({ reducedMotion: 'reduce' });
   const login = await page.request.post('/api/auth/login', {
@@ -51,7 +57,7 @@ async function roomFixture(page, effect, { spectator = false, reduced = false, c
   // on the disposable server as a result of a synthetic surprise or card ACK.
   const base = structuredClone(actual);
   Object.assign(base, { _paused: false, _finished: false, _aborted: false, _hausdepp_tournament: null,
-    _hausdepp_table_surprises: { round_number: 1, effect } });
+    _hausdepp_table_surprises: { round_number: 1, effect }, _hausdepp_table_effects: { scorched_cards: scorched } });
   Object.assign(base._hausdepp, { phase: 'playing', hand: [...HAND], discard: ['leaves-6'], deck_count: 14,
     burned_count: 0, current_player_id: self, available_actions: ['play', 'pickup', 'gamble'],
     playable_cards: [...HAND], afterthrow: null, pending_refill: null, pending_refills: [],
@@ -88,14 +94,44 @@ async function roomFixture(page, effect, { spectator = false, reduced = false, c
   const emit = (selected = effect, { id = 'labelled-surprise-1', actor = self, round = 1, game = gameId, consume = true } = {}) => {
     const offer = { round_number: round, effect: null };
     if (consume) for (const client of clients) client.board._hausdepp_table_surprises = offer;
+    const tableEffects = selected === 'dragon' ? { scorched_cards: true } : null;
+    if (tableEffects) for (const client of clients) client.board._hausdepp_table_effects = tableEffects;
     broadcast({ hausdepp_table_surprise: { id, game_id: game, round_number: round, actor_id: actor, effect: selected },
-      ...(consume ? { hausdepp_table_surprises: offer } : {}) });
+      ...(consume ? { hausdepp_table_surprises: offer } : {}), ...(tableEffects ? { hausdepp_table_effects: tableEffects } : {}) });
   };
   return { gameId, self, remote, room, first, addClient, clients, send, emit };
 }
 
 async function settleMessages(page) {
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+}
+
+async function expectStory(layer, effect) {
+  await expect(layer).toHaveAttribute('data-effect', effect);
+  for (const stage of STORY_STAGES[effect]) await expect.poll(() => layer.locator(`[data-stage="${stage}"]`).count(),
+    `${effect}: ${stage} story part`).toBeGreaterThan(0);
+  const hosts = layer.locator('[data-source-kind]');
+  if (!['star', 'dragon'].includes(effect)) expect(await hosts.count()).toBeGreaterThan(0);
+  expect(await hosts.count()).toBeLessThanOrEqual(24);
+  expect(await layer.locator('[data-stage]').count()).toBeLessThanOrEqual(180);
+  expect(await hosts.evaluateAll(elements => elements.every(element => element.inert && element.tabIndex < 0
+    && getComputedStyle(element).pointerEvents === 'none'
+    && !element.querySelector('[id], [onclick], [data-card-id], [data-action], [data-hausdepp-action], button, a[href], input, select, textarea')))).toBe(true);
+  await expect.poll(() => hosts.locator('[data-card-id]').count()).toBe(0);
+  if (effect === 'ufo') {
+    const abducted = layer.locator('[data-abducted="true"]');
+    expect(await abducted.count()).toBeGreaterThanOrEqual(2);
+    expect(await abducted.count()).toBeLessThanOrEqual(3);
+    expect(await layer.locator('[data-abducted="true"][data-source-kind="card"]').count()).toBeGreaterThan(0);
+  }
+  if (effect === 'portal') {
+    await expect(layer.locator('[data-stage="portal"]')).toHaveCount(2);
+    await expect(layer.locator('[data-traveller="true"]')).toHaveCount(2);
+  }
+  if (effect === 'kraken') expect(await layer.locator('[data-taken="true"][data-source-kind="burned"]').count()).toBeGreaterThan(0);
+  if (effect === 'dragon') {
+    expect(await layer.locator('[data-stage="flame"]').count()).toBeGreaterThanOrEqual(HAND.length);
+  }
 }
 
 for (const effect of EFFECTS) {
@@ -105,6 +141,13 @@ for (const effect of EFFECTS) {
     const other = await fixture.addClient(otherPage, fixture.remote);
     const prop = page.locator(`[data-prop="${effect}"]:visible`);
     await expect(prop).toBeEnabled();
+    const box = await prop.boundingBox();
+    expect(box.width).toBeGreaterThanOrEqual(44);
+    expect(box.height).toBeGreaterThanOrEqual(44);
+    await page.waitForTimeout(300);
+    await expect(page.locator(OVERLAY)).toHaveCount(0);
+    expect(fixture.first.commands).toEqual([]);
+    expect(other.commands).toEqual([]);
     await prop.click();
     await expect.poll(() => fixture.first.commands.filter(command => command.action === 'hausdepp_table_surprise').length).toBe(1);
     expect(fixture.first.commands[0]).toEqual({ action: 'hausdepp_table_surprise', effect, round_number: 1 });
@@ -117,7 +160,7 @@ for (const effect of EFFECTS) {
       await expect(client.page.locator(`[data-prop="${effect}"]:visible`)).toHaveCount(0);
     }
     if (effect === 'hammer') await expect.poll(() => page.evaluate(() => window.__tableVibrations.length)).toBe(1);
-    expect(await page.evaluate(() => window.__tableVibrations)).toEqual(effect === 'hammer' ? [[20, 25, 35]] : []);
+    expect(await page.evaluate(() => window.__tableVibrations)).toEqual(effect === 'hammer' ? [[35, 30, 65]] : []);
     expect(await otherPage.evaluate(() => window.__tableVibrations)).toEqual([]);
     expect(other.commands).toEqual([]);
     await otherPage.close();
@@ -270,23 +313,216 @@ async function pauseSurpriseForCapture(page) {
   }, OVERLAY);
 }
 
-async function seekSurpriseCapture(page) {
-  return page.evaluate(async () => {
+async function seekSurpriseCapture(page, time = 700) {
+  return page.evaluate(async time => {
     const animations = window.__tableSurpriseCapture.animations;
     await Promise.all(animations.map(animation => animation.ready.catch(() => {})));
-    for (const animation of animations) animation.currentTime = 700;
+    for (const animation of animations) animation.currentTime = time;
     return animations.length;
-  });
+  }, time);
 }
 
 async function resumeSurpriseCapture(page) {
   await page.evaluate(() => {
     const capture = window.__tableSurpriseCapture;
     Element.prototype.animate = capture.original;
-    for (const animation of capture.animations) if (animation.playState !== 'finished') animation.play();
+    for (const animation of capture.animations) if (animation.playState === 'paused') animation.play();
     delete window.__tableSurpriseCapture;
   });
 }
+
+test('the clock freezes its visual copies for two seconds before the animal mouse arrives', async ({ page }) => {
+  const fixture = await roomFixture(page, 'clock');
+  const before = await playGeometry(page);
+  await pauseSurpriseForCapture(page);
+  fixture.emit('clock', { actor: fixture.remote });
+  const layer = page.locator(OVERLAY), freeze = layer.locator('[data-stage="freeze"]');
+  await expect(freeze).toHaveAttribute('data-freeze-from', '120');
+  await expect(freeze).toHaveAttribute('data-freeze-to', '2120');
+  const plateau = await freeze.evaluate(element => {
+    const animation = element.getAnimations()[0], frames = animation.effect.getKeyframes();
+    return frames.filter(frame => Number(frame.opacity) === 1).map(frame => frame.offset * animation.effect.getTiming().duration);
+  });
+  expect(plateau[1] - plateau[0]).toBeCloseTo(2000, 4);
+  let frozen;
+  for (const time of [120, 1000, 2119]) {
+    await seekSurpriseCapture(page, time);
+    await expect(freeze).toHaveCSS('opacity', '1');
+    const frame = await layer.locator('[data-source-kind="card"], [data-stage="clock"] .hd-hand').evaluateAll(elements =>
+      elements.map(element => getComputedStyle(element).transform));
+    if (frozen) expect(frame).toEqual(frozen);
+    frozen = frame;
+    expectSameGeometry(await playGeometry(page), before);
+  }
+  await seekSurpriseCapture(page, 2650);
+  await expect(freeze).toHaveCSS('opacity', '0');
+  const mouse = layer.locator('[data-stage="mouse"]');
+  await expect(mouse).toBeVisible();
+  expect(Number(await mouse.evaluate(element => getComputedStyle(element).opacity))).toBeGreaterThan(.5);
+  await expect(mouse.locator('.hd-mouse-leg-a, .hd-mouse-leg-b')).toHaveCount(2);
+  expect(await mouse.locator('svg path').count()).toBeGreaterThan(5);
+  expectSameGeometry(await playGeometry(page), before);
+  expect(fixture.first.commands).toEqual([]);
+  await resumeSurpriseCapture(page);
+  await expect(layer).toHaveCount(0, { timeout: 6000 });
+});
+
+test('the singularity holds one continuous second of blackout and restores the live table', async ({ page }) => {
+  const fixture = await roomFixture(page, 'blackhole');
+  const before = await playGeometry(page);
+  await pauseSurpriseForCapture(page);
+  fixture.emit('blackhole', { actor: fixture.remote });
+  const layer = page.locator(OVERLAY), blackout = layer.locator('[data-stage="blackout"]');
+  await expect(blackout).toHaveAttribute('data-black-from', '1400');
+  await expect(blackout).toHaveAttribute('data-black-to', '2400');
+  const plateau = await blackout.evaluate(element => {
+    const animation = element.getAnimations()[0], frames = animation.effect.getKeyframes();
+    return frames.filter(frame => Number(frame.opacity) === 1).map(frame => frame.offset * animation.effect.getTiming().duration);
+  });
+  expect(plateau[1] - plateau[0]).toBeCloseTo(1000, 4);
+  for (const time of [1400, 1900, 2400]) {
+    await seekSurpriseCapture(page, time);
+    await expect(blackout).toHaveCSS('opacity', '1');
+    expectSameGeometry(await playGeometry(page), before);
+  }
+  await seekSurpriseCapture(page, 3101);
+  await expect(blackout).toHaveCSS('opacity', '0');
+  await expect(page.locator('#hausdeppHand [data-card-id]')).toHaveCount(HAND.length);
+  expect(fixture.first.commands).toEqual([]);
+  await resumeSurpriseCapture(page);
+  await expect(layer).toHaveCount(0, { timeout: 6000 });
+});
+
+for (const [name, target] of [
+  ['card', '#hausdeppHand [data-card-id="hearts-6"]'],
+  ['stock', '#hausdeppStock'],
+  ['pile', '#hausdeppPile'],
+]) {
+  test(`a blind ${name} tap dismisses the opaque blackout without issuing a game command`, async ({ page }) => {
+    const fixture = await roomFixture(page, 'blackhole');
+    await pauseSurpriseForCapture(page);
+    fixture.emit('blackhole', { actor: fixture.remote });
+    const layer = page.locator(OVERLAY);
+    await expect(layer).toBeVisible();
+    await seekSurpriseCapture(page, 1900);
+    await expect(layer.locator('[data-stage="blackout"]')).toHaveCSS('opacity', '1');
+    await page.locator(target).click();
+    await expect(layer).toHaveCount(0);
+    await settleMessages(page);
+    expect(fixture.first.commands).toEqual([]);
+    await resumeSurpriseCapture(page);
+    await page.locator('#hausdeppHand [data-card-id="hearts-6"]').click();
+    await expect.poll(() => fixture.first.commands.filter(command => command.action === 'hausdepp_play').length).toBe(1);
+    expect(fixture.first.commands).toHaveLength(1);
+  });
+}
+
+test('dragon scorch persists through the same table round and rejoin while real cards remain playable', async ({ page }) => {
+  const fixture = await roomFixture(page, 'dragon');
+  const before = await playGeometry(page), table = page.locator('#hausdeppTable');
+  await expect(table).toHaveAttribute('data-scorched-cards', 'false');
+  fixture.emit('dragon', { actor: fixture.remote });
+  await expect(table).toHaveClass(/hd-cards-scorched/);
+  await expect(table).toHaveAttribute('data-scorched-cards', 'true');
+  expectSameGeometry(await playGeometry(page), before);
+  expect(await page.locator('#hausdeppHand [data-card-id]').evaluateAll(elements => elements.map(element => element.dataset.cardId))).toEqual(HAND);
+  const scorch = await page.locator('#hausdeppHand [data-card-id]').first().evaluate(element => ({
+    content: getComputedStyle(element, '::before').content, pointer: getComputedStyle(element, '::before').pointerEvents,
+  }));
+  expect(scorch.content).not.toBe('none');
+  expect(scorch.pointer).toBe('none');
+  const board = fixture.first.board;
+  board._hausdepp_tournament = { round_number: 2, dealer_id: fixture.self, letters: {}, losses: {},
+    completed: false, round_complete: false, can_start_next_round: false };
+  board._hausdepp_table_surprises = { round_number: 2, effect: null };
+  board._hausdepp.version += 1;
+  fixture.send(fixture.first, { scoreboard: board });
+  await settleMessages(page);
+  await expect(table).toHaveAttribute('data-scorched-cards', 'true');
+  await expect(page.locator(OVERLAY)).toHaveCount(0);
+  await page.reload();
+  await expect(table).toHaveAttribute('data-phase', 'playing');
+  await expect(table).toHaveClass(/hd-cards-scorched/);
+  await expect(page.locator(OVERLAY)).toHaveCount(0);
+  const card = page.locator('#hausdeppHand [data-card-id="bells-U"]');
+  await expect(card).toBeEnabled();
+  await card.click();
+  await expect.poll(() => fixture.first.commands.some(command => command.action === 'hausdepp_play')).toBe(true);
+  expect(board._hausdepp.hand).toEqual(HAND);
+  await roomFixture(page, 'star');
+  await expect(table).toHaveAttribute('data-scorched-cards', 'false');
+  await expect(table).not.toHaveClass(/hd-cards-scorched/);
+});
+
+test('a remote intermediate score update lets the clock story finish but local card input restores the live table', async ({ page }) => {
+  const fixture = await roomFixture(page, 'clock');
+  await pauseSurpriseForCapture(page);
+  fixture.emit('clock', { actor: fixture.remote });
+  const layer = page.locator(OVERLAY);
+  await expect(layer).toBeVisible();
+  await layer.evaluate(element => { window.__remoteUpdateStory = element; });
+  await seekSurpriseCapture(page, 700);
+  const board = fixture.first.board;
+  board._hausdepp.version += 1;
+  board._hausdepp.discard.push('leaves-9');
+  board._hausdepp.players.find(player => player.id === fixture.remote).hand_count -= 1;
+  board._hausdepp.last_event = { type: 'play', player_id: fixture.remote, cards: ['leaves-9'] };
+  fixture.send(fixture.first, { scoreboard: board });
+  await settleMessages(page);
+  await expect(layer).toHaveCount(1);
+  expect(await layer.evaluate(element => element === window.__remoteUpdateStory)).toBe(true);
+  await seekSurpriseCapture(page, 2650);
+  expect(Number(await layer.locator('[data-stage="mouse"]').evaluate(element => getComputedStyle(element).opacity))).toBeGreaterThan(.5);
+  await page.locator('#hausdeppHand [data-card-id="hearts-6"]').click();
+  await expect(layer).toHaveCount(0);
+  await expect.poll(() => fixture.first.commands.some(command => command.action === 'hausdepp_play')).toBe(true);
+  await resumeSurpriseCapture(page);
+});
+
+test('active visual doubles clear on lifecycle changes and local keyboard input', async ({ page }) => {
+  const fixture = await roomFixture(page, 'hammer');
+  const endings = ['hidden', 'reduced', 'resize', 'local-keyboard', 'disconnect'];
+  for (const [index, ending] of endings.entries()) {
+    const round = index + 1, board = fixture.first.board;
+    board._hausdepp_tournament = { round_number: round, dealer_id: fixture.self, letters: {}, losses: {},
+      completed: false, round_complete: false, can_start_next_round: false };
+    board._hausdepp_table_surprises = { round_number: round, effect: 'hammer' };
+    board._hausdepp.version += 1;
+    fixture.send(fixture.first, { scoreboard: board });
+    await settleMessages(page);
+    await pauseSurpriseForCapture(page);
+    fixture.emit('hammer', { id: `cleanup-${ending}`, actor: fixture.remote, round });
+    const layer = page.locator(OVERLAY);
+    await expect(layer).toBeVisible();
+    await seekSurpriseCapture(page, 1150);
+    await expect.poll(() => layer.locator('[data-source-kind]').count()).toBeGreaterThan(0);
+    const before = await playGeometry(page);
+    if (ending === 'hidden') await page.evaluate(() => {
+      Object.defineProperty(document, 'hidden', { configurable: true, get: () => true });
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    else if (ending === 'reduced') await page.emulateMedia({ reducedMotion: 'reduce' });
+    else if (ending === 'resize') await page.setViewportSize({ width: 1580, height: 1000 });
+    else if (ending === 'disconnect') await page.locator('#hausdeppTable').evaluate(element => element.remove());
+    else {
+      await page.locator('#hausdeppHand [data-card-id="hearts-6"]').focus();
+      await page.keyboard.press('Enter');
+    }
+    await expect(layer, `${ending}: no stale doubles`).toHaveCount(0);
+    expect(await page.evaluate(() => window.__tableSurpriseCapture.animations.filter(animation => animation.playState === 'running').length)).toBe(0);
+    await resumeSurpriseCapture(page);
+    if (ending === 'hidden') await page.evaluate(() => {
+      Object.defineProperty(document, 'hidden', { configurable: true, get: () => false });
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    if (ending === 'reduced') await page.emulateMedia({ reducedMotion: 'no-preference' });
+    if (ending === 'resize') await page.setViewportSize({ width: 1600, height: 1000 });
+    if (['hidden', 'reduced'].includes(ending)) expectSameGeometry(await playGeometry(page), before);
+    expect(fixture.first.commands.filter(command => command.action === 'hausdepp_play')).toHaveLength(
+      ['local-keyboard', 'disconnect'].includes(ending) ? 1 : 0);
+    expect(fixture.first.commands.filter(command => command.action === 'hausdepp_table_surprise')).toEqual([]);
+  }
+});
 
 for (const device of [
   { name: 'WebKit phone', browserName: 'webkit', viewport: { width: 390, height: 844 } },
@@ -307,36 +543,27 @@ for (const device of [
           completed: false, round_complete: false, can_start_next_round: false };
         board._hausdepp_table_surprises = { round_number: round, effect };
         board._hausdepp.version += 1;
+        board._hausdepp.burned_count = effect === 'kraken' ? 4 : 0;
         fixture.send(fixture.first, { scoreboard: board });
         await settleMessages(page);
         const prop = page.locator(`[data-prop="${effect}"]:visible`);
         await expect(prop, `${effect}: reachable object`).toBeEnabled();
         const before = await playGeometry(page);
-        if (process.env.HAUSDEPP_CAPTURE === '1') await pauseSurpriseForCapture(page);
+        await pauseSurpriseForCapture(page);
         fixture.emit(effect, { id: `labelled-${device.name}-${round}`, actor: fixture.remote, round });
         const layer = page.locator(OVERLAY);
         await expect(layer, `${effect}: visible effect`).toBeVisible();
-        if (process.env.HAUSDEPP_CAPTURE === '1') expect(await seekSurpriseCapture(page)).toBeGreaterThan(0);
-        await expect.poll(() => layer.evaluate(element => {
+        expect(await seekSurpriseCapture(page, STORY_TIME[effect])).toBeGreaterThan(0);
+        await expect.poll(() => layer.evaluate((element, hero) => {
           const frame = element.getBoundingClientRect();
-          return [...element.children].some(child => {
+          return [...element.querySelectorAll(`[data-stage="${hero}"]`)].some(child => {
             const box = child.getBoundingClientRect(), style = getComputedStyle(child);
-            return Number(style.opacity) > .05 && style.visibility !== 'hidden'
-              && Math.min(box.right, frame.right, innerWidth) - Math.max(box.left, frame.left, 0) > 3
-              && Math.min(box.bottom, frame.bottom, innerHeight) - Math.max(box.top, frame.top, 0) > 3;
+            return Number(style.opacity) > .5 && style.visibility !== 'hidden'
+              && Math.min(box.right, frame.right, innerWidth) - Math.max(box.left, frame.left, 0) > 30
+              && Math.min(box.bottom, frame.bottom, innerHeight) - Math.max(box.top, frame.top, 0) > 30;
           });
-        }), `${effect}: a drawn part is visible inside the table`).toBe(true);
-        if (device.browserName === 'webkit' && effect === 'star') {
-          const covered = await layer.locator('.hd-surprise-body').evaluate(body => {
-            const star = body.getBoundingClientRect();
-            return [...document.querySelectorAll('#hausdeppStock, #hausdeppPile, #hausdeppHand [data-card-id], .hd-seat')]
-              .filter(element => element.getClientRects().length).filter(element => {
-                const box = element.getBoundingClientRect();
-                return star.left < box.right && star.right > box.left && star.top < box.bottom && star.bottom > box.top;
-              }).map(element => element.id || element.dataset.cardId || element.dataset.playerId || element.className);
-          });
-          expect(covered, 'the phone star stays clear of cards, stock, packet and seats').toEqual([]);
-        }
+        }, effect === 'blackhole' ? 'hole' : effect), `${effect}: its central character is visible inside the table`).toBe(true);
+        await expectStory(layer, effect);
         const geometry = await layer.evaluate(element => {
           const layerBox = element.getBoundingClientRect(), tableBox = document.getElementById('hausdeppTable').getBoundingClientRect();
           const rect = box => ({ left: box.left, right: box.right, top: box.top, bottom: box.bottom });
@@ -361,8 +588,8 @@ for (const device of [
           await page.locator('#hausdeppTable').screenshot({
             path: `/tmp/rollthedice-playful-surprises-qa/${device.name.toLowerCase().replaceAll(' ', '-')}-${effect}.png`,
           });
-          await resumeSurpriseCapture(page);
         }
+        await resumeSurpriseCapture(page);
         await expect(layer, `${effect}: complete cleanup`).toHaveCount(0, { timeout: 6000 });
         expectSameGeometry(await playGeometry(page), before);
       }
@@ -372,6 +599,46 @@ for (const device of [
     });
   });
 }
+
+test('WebKit phone: the kraken body remains visible outside protected control cutouts', async ({ playwright, baseURL }) => {
+  const { page, browser } = await isolatedBrowserClient(playwright, baseURL, 'webkit', { width: 390, height: 844 });
+  try {
+    const fixture = await roomFixture(page, 'kraken');
+    fixture.first.board._hausdepp.burned_count = 4;
+    fixture.first.board._hausdepp.version += 1;
+    fixture.send(fixture.first, { scoreboard: fixture.first.board });
+    await settleMessages(page);
+    const before = await playGeometry(page);
+    await pauseSurpriseForCapture(page);
+    fixture.emit('kraken', { actor: fixture.remote });
+    const layer = page.locator(OVERLAY);
+    await expect(layer).toBeVisible();
+    await seekSurpriseCapture(page, STORY_TIME.kraken);
+    const visible = await layer.locator('[data-stage="kraken"]').evaluate(hero => {
+      const body = hero.getBoundingClientRect(), screen = hero.closest('.hd-surprise-screen');
+      const frame = screen.getBoundingClientRect(), clipping = getComputedStyle(screen).clipPath;
+      const match = clipping.match(/^path\((?:(evenodd|nonzero),\s*)?["']([\s\S]*)["']\)$/);
+      if (!match) return { visible: 0, samples: 25, clipping };
+      const path = new Path2D(match[2]), context = document.createElement('canvas').getContext('2d');
+      let visible = 0;
+      // Sample the character's drawn central body, beyond mere transformed
+      // bounds: an opaque control cutout can otherwise hide the entire animal.
+      for (const dx of [.3, .4, .5, .6, .7]) for (const dy of [.3, .4, .5, .6, .7]) {
+        const x = body.left + body.width * dx, y = body.top + body.height * dy;
+        if (x >= Math.max(0, frame.left) && x <= Math.min(innerWidth, frame.right)
+          && y >= Math.max(0, frame.top) && y <= Math.min(innerHeight, frame.bottom)
+          && context.isPointInPath(path, x - frame.left, y - frame.top, match[1] || 'nonzero')) visible += 1;
+      }
+      return { visible, samples: 25, clipping };
+    });
+    expect(visible.clipping).toMatch(/^path\(/);
+    expect(visible.visible, 'most of the kraken body must survive table clipping and control cutouts').toBeGreaterThanOrEqual(15);
+    expectSameGeometry(await playGeometry(page), before);
+    expect(fixture.first.commands).toEqual([]);
+    await resumeSurpriseCapture(page);
+    await expect(layer).toHaveCount(0, { timeout: 6000 });
+  } finally { await browser.close(); }
+});
 
 test.describe('crowded phone offer', () => {
   test('the rare object stays touchable beside six occupied seats and the card hand', async ({ playwright, baseURL }) => {

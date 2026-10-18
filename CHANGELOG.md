@@ -26,17 +26,28 @@ not asserted deployment dates. See the [complete version history](docs/VERSION_H
 ## 3.11.0 — Hausdepp: kleine Überraschungen am Tisch / little table surprises — 2026-10-18
 
 **Deutsch:** Bier, Tee und Limonade zeigen jeden Schluck am Füllstand. Schnelles
-Tippen verschüttet die restliche Flüssigkeit; ein karierter Putzlumpen wischt
-hinterher. Weiteres Tippen wirft das leere Glas um, das sich nach kurzer Pause
+Tippen verschüttet die restliche Flüssigkeit; ein karierter Putzlumpen erscheint.
+Du ziehst ihn selbst über die Pfütze oder tippst ihn
+mehrfach an. Weiteres Tippen wirft das leere Glas um, das sich nach kurzer Pause
 wieder aufstellen und nachfüllen lässt. Snacks werden Stück für Stück gegessen,
 Schalen und Marend-Brett bleiben stehen. Der Bierdeckel zählt in Fünfergruppen,
-der Bleistift schreibt mit, verschobene Gläser hinterlassen kurz einen Ring und
-das Windlicht lässt sich auspusten und anzünden. Die Effekte bleiben lokal,
+der Bleistift schreibt mit und verschobene Gläser hinterlassen kurz einen Ring.
+Die Dose öffnet sich mit Schaum, kräftiges Hin-und-her-Schütteln lässt sie platzen
+und hinterlässt eine kleine Pfütze zum Aufwischen. Ein geschütteltes Windlicht
+geht kurz aus und zündet sich selbst wieder an. Diese Spielereien bleiben lokal,
 begrenzt, leise und unter den Karten; reduzierte Bewegung beendet sie.
 Ungefähr jede 200. Runde erhält einen von acht seltenen Funden: Stern,
 Runenhammer, UFO, Portal, Drache, Kraken, Taschenuhr oder schwarzes Loch. Erst
 entscheidet der Server über das seltene Angebot, dann über die Variante. Ein
-Tipp überrascht den ganzen Tisch mit einer kurzen, eigenen Inszenierung. Nur der selbst
+Tipp überrascht den ganzen Tisch mit einer opulenten Inszenierung: Der Stern
+strahlt über den Tisch, der Hammer wirbelt auch Karten durcheinander und sortiert
+sie zurück. UFO und Portale entführen optische Doppelgänger von Karten und
+Gegenständen, der Kraken greift nach abgeräumten Karten oder einem unnötigen
+Gegenstand. Eine magische Maus mit Zylinder holt während einer zweisekündigen
+visuellen Zeitpause die Uhr. Das schwarze Loch schluckt die ganze Szene samt
+Holztisch, hält sie eine Sekunde schwarz und spuckt alles zurück. Nach dem Drachen
+bleiben die Kartenränder für den Rest dieses Tisches angesengt, auch beim erneuten
+Verbinden. Die echten Kartenwerte, Züge, Stapel und Trefferflächen bleiben korrekt. Nur der selbst
 ausgelöste Hammer darf auf unterstützten Geräten kurz vibrieren. Der Server
 verhindert gefälschte Angebote, alte Rundenklicks und doppelte Aktivierungen.
 Nach 42 Bierdeckelstrichen gibt es ausserdem eine kleine nerdige Antwort.
@@ -50,16 +61,26 @@ zeigen Endstand, Tischkopf und Lobby ausdrücklich «Turnier beendet»; der
 Tages-Hausdepp bleibt genannt. Die bestehende Endbedingung bleibt unverändert.
 
 **English:** Beer, tea and lemonade show each sip in their fill level. Rapid taps
-spill the remaining drink and a checked cloth wipes up afterwards. More taps
+spill the remaining drink and a checked cloth lets you wipe up yourself by
+dragging or repeated taps. More taps
 topple the empty glass, which can be stood up and refilled after a brief pause.
 Snacks are eaten piece by piece, leaving bowls and the snack board behind. The
 beer mat counts in groups of five, the pencil adds marks, moved glasses briefly
-leave a ring, and the lantern can be blown out and relit. Effects remain local,
+leave a ring. Repeated taps open the can with foam; vigorous back-and-forth
+shaking bursts it and leaves a small puddle to wipe up. Shaken lanterns go out
+briefly and relight themselves. Ordinary interactions remain local,
 bounded, quiet and below the cards; reduced motion clears them. About one round
 in 200 offers one of eight rare finds: star, rune hammer, UFO, portal, dragon,
 kraken, pocket watch or black hole. The server first decides whether a round
 gets a find, then selects its variant. One tap shows everyone a brief, distinct
-visual surprise.
+visual spectacle: the star shines across the table; the hammer scatters cards
+and sorts them back. UFOs and portals abduct visual doubles of cards and objects;
+the kraken grabs out-of-play cards or an unneeded object. A magical mouse in a top
+hat retrieves the watch during a two-second visual time stop. The black hole
+swallows the entire scene and wooden table, holds it black for one second and
+spits everything back. The dragon leaves singed card edges for the rest of this
+table session, including reconnects. Real card values, turns, stacks and hit boxes
+remain correct.
 Only the locally triggered hammer may briefly vibrate on supported devices.
 The server rejects forged offers, stale round taps and duplicate claims.
 Forty-two beer-mat strokes also reveal a little nerdy answer. The extra progress

@@ -102,8 +102,8 @@ test('table props retain their nodes across updates and respect reduced motion',
   expect(await props.evaluateAll(elements => elements.every((element, index) => element === window.hausdeppDecorQaNodes[index]))).toBe(true);
   expect(await props.evaluateAll(elements => elements.map(element => element.className))).toEqual(before.map(prop => prop.className));
   if (process.env.HAUSDEPP_CAPTURE === '1') {
-    await mkdir('.impeccable/review', { recursive: true });
-    await page.screenshot({ path: '.impeccable/review/hausdepp-table-decor-desktop.png', fullPage: true });
+    await mkdir('/tmp/rollthedice-playful-decor-qa', { recursive: true });
+    await page.screenshot({ path: '/tmp/rollthedice-playful-decor-qa/hausdepp-table-decor-desktop.png', fullPage: true });
   }
 });
 
@@ -115,11 +115,13 @@ async function motionFixture(page, prop, reduced = false) {
   await page.setViewportSize({ width: 1600, height: 1100 });
   await page.goto('/hausdepp/regeln');
   await expect(page.locator('#hausdeppHeader .hd-header-tools')).toBeVisible();
-  const [source, consumables, play, surprises, css, consumableCss, playCss, surpriseCss] = await Promise.all([
+  const [source, consumables, play, surprises, snapshots, mouse, css, consumableCss, playCss, surpriseCss] = await Promise.all([
     readFile('frontend/hausdepp/decor.js', 'utf8'),
     readFile('frontend/hausdepp/decor-consumables.js', 'utf8'),
     readFile('frontend/hausdepp/decor-play.js', 'utf8'),
     readFile('frontend/hausdepp/surprise-effects.js', 'utf8'),
+    readFile('frontend/hausdepp/surprise-snapshots.js', 'utf8'),
+    readFile('frontend/hausdepp/surprise-mouse.js', 'utf8'),
     readFile('frontend/styles/hausdepp-decor.css', 'utf8'),
     readFile('frontend/styles/hausdepp-decor-consumables.css', 'utf8'),
     readFile('frontend/styles/hausdepp-decor-play.css', 'utf8'),
@@ -129,6 +131,8 @@ async function motionFixture(page, prop, reduced = false) {
   await page.route('**/__test__/decor-consumables.js', route => route.fulfill({ body: consumables, contentType: 'text/javascript' }));
   await page.route('**/__test__/decor-play.js', route => route.fulfill({ body: play, contentType: 'text/javascript' }));
   await page.route('**/__test__/surprise-effects.js', route => route.fulfill({ body: surprises, contentType: 'text/javascript' }));
+  await page.route('**/__test__/surprise-snapshots.js', route => route.fulfill({ body: snapshots, contentType: 'text/javascript' }));
+  await page.route('**/__test__/surprise-mouse.js', route => route.fulfill({ body: mouse, contentType: 'text/javascript' }));
   await page.setContent(`<style>${css}${consumableCss}${playCss}${surpriseCss}html,body{margin:0}#fixture{position:relative;width:1400px;height:900px;background:#492c1d}</style><section id="fixture" class="hd-table" aria-label="Labelled prop renderer"></section>`);
   await page.evaluate(async ({ moduleUrl, prop }) => {
     const module = await import(moduleUrl);
@@ -152,23 +156,72 @@ async function motionFixture(page, prop, reduced = false) {
   return page.locator(`[data-prop="${prop}"]:visible`);
 }
 
-test('a can falls around its foot, stays down across updates, and can be stood up with the keyboard', async ({ page }) => {
+async function pointerGesture(page, points, { touch = false, cancel = false } = {}) {
+  if (!touch) {
+    await page.mouse.move(points[0].x, points[0].y);
+    await page.mouse.down();
+    for (const point of points.slice(1)) await page.mouse.move(point.x, point.y, { steps: 2 });
+    await page.mouse.up();
+    return;
+  }
+  const session = await page.context().newCDPSession(page);
+  try {
+    await session.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [points[0]] });
+    for (const point of points.slice(1)) await session.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [point] });
+    await session.send('Input.dispatchTouchEvent', { type: cancel ? 'touchCancel' : 'touchEnd', touchPoints: [] });
+  } finally { await session.detach(); }
+}
+
+async function shakeProp(page, prop, { touch = false } = {}) {
+  const box = await prop.boundingBox(), x = box.x + box.width / 2, y = box.y + box.height / 2;
+  const reach = Math.max(36, box.width * .3);
+  await pointerGesture(page, [{ x, y }, ...Array.from({ length: 7 }, (_, index) => ({ x: x + (index % 2 ? -reach : reach), y }))], { touch });
+}
+
+async function spilledBeer(page) {
+  const beer = await motionFixture(page, 'beer');
+  for (let tap = 0; tap < 3; tap += 1) await beer.dispatchEvent('click');
+  const patch = page.locator('.hd-prop-spill');
+  await expect(patch).toHaveCount(1);
+  return { beer, patch, cloth: patch.locator('button.hd-prop-cloth') };
+}
+
+async function wipeCloth(page, patch, cloth, { touch = false } = {}) {
+  const box = await patch.boundingBox(), handle = await cloth.boundingBox();
+  const left = box.x + box.width * .2, right = box.x + box.width * .8, y = box.y + box.height * .5;
+  await pointerGesture(page, [{ x: handle.x + handle.width / 2, y: handle.y + handle.height / 2 },
+    { x: handle.x + handle.width / 2 + 10, y: handle.y + handle.height / 2 + 2 },
+    ...Array.from({ length: 8 }, (_, index) => ({ x: index % 2 ? left : right, y: y + (index % 3 - 1) * 8 }))], { touch });
+}
+
+test('three quick taps open a sealed can with foam and preserve its opened state across updates', async ({ page }) => {
   const can = await motionFixture(page, 'can');
-  await can.click();
-  await expect(can).toHaveAttribute('data-last-motion', 'can-fall');
-  await expect(can).toHaveAttribute('aria-pressed', 'true');
-  await expect(can).toHaveAttribute('data-moving', 'false');
-  expect(await can.locator('.hd-prop-art').evaluate(element => Math.abs(Number(element.dataset.fallAngle)))).toBe(76);
+  await expect(can).toHaveAttribute('data-can-state', 'sealed');
+  await can.focus();
+  for (const key of ['Enter', 'Space', 'Enter']) await page.keyboard.press(key);
+  await expect(can).toHaveAttribute('data-can-state', 'open');
+  await expect(can.locator('.hd-can-opening')).toBeVisible();
+  await expect(can.locator('.hd-can-foam')).toBeVisible();
   await page.evaluate(() => {
     const { module, table, gameId } = window.__decorFixture;
     module.renderTableDecor(table, { gameId, roundNumber: 1, phase: 'playing' });
   });
-  await expect(can).toHaveAttribute('aria-pressed', 'true');
-  await expect(can).toHaveAttribute('data-fallen', 'true');
-  await can.focus();
-  await page.keyboard.press('Enter');
-  await expect(can).toHaveAttribute('data-last-motion', 'can-stand');
-  await expect(can).toHaveAttribute('aria-pressed', 'false');
+  await expect(can).toHaveAttribute('data-can-state', 'open');
+  await expect(can.locator('.hd-can-opening')).toBeVisible();
+  await expect(can).not.toHaveAttribute('data-fallen', 'true');
+});
+
+test('a deliberate mouse shake bursts a can once and leaves a manually cleanable spill', async ({ page }) => {
+  const can = await motionFixture(page, 'can');
+  await expect(can).not.toHaveAttribute('data-moving', 'true');
+  await shakeProp(page, can);
+  await expect(can).toHaveAttribute('data-last-gesture', 'shake');
+  await expect(can).toHaveAttribute('data-shake-count', '1');
+  await expect(can).toHaveAttribute('data-can-state', 'burst');
+  await expect(can.locator('.hd-can-burst')).toBeVisible();
+  const patch = page.locator('.hd-prop-spill[data-source="can"]');
+  await expect(patch).toHaveCount(1);
+  await expect(patch.locator('button.hd-prop-cloth')).toBeEnabled();
 });
 
 test('dice are thrown to a random result', async ({ page }) => {
@@ -266,18 +319,83 @@ for (const prop of ['beer', 'tea', 'lemonade']) {
   });
 }
 
-test('wild tapping empties a beer and a cleaning cloth wipes up its spill', async ({ page }) => {
-  const beer = await motionFixture(page, 'beer');
-  await expect(beer).toHaveAttribute('data-foam', 'fresh');
-  for (let tap = 0; tap < 3; tap += 1) await beer.dispatchEvent('click');
+test('wild tapping empties a beer and its spill waits for a deliberate mouse wipe', async ({ page }) => {
+  const { beer, patch, cloth } = await spilledBeer(page);
   await expect(beer).toHaveAttribute('data-last-motion', 'glass-spill');
   await expect(beer).toHaveAttribute('data-level', '0');
   await expect(beer.locator('.hd-drink-liquid')).toBeHidden();
   await expect(beer.locator('.hd-consumable-original')).toBeHidden();
-  await expect(page.locator('.hd-prop-puddle')).toHaveCount(1);
-  await expect(page.locator('.hd-prop-cloth')).toHaveCount(1);
-  await expect(page.locator('.hd-prop-puddle')).toHaveCount(0, { timeout: 6000 });
-  await expect(page.locator('.hd-prop-cloth')).toHaveCount(0);
+  await expect(patch).toHaveAttribute('data-cleaned', '0');
+  await expect(patch).toHaveAttribute('data-wipe-state', 'waiting');
+  await expect(cloth).toBeEnabled();
+  await page.waitForTimeout(4500);
+  await expect(patch).toHaveAttribute('data-cleaned', '0');
+  await expect(patch.locator('.hd-prop-puddle')).toHaveCount(1);
+  await wipeCloth(page, patch, cloth);
+  await expect(patch).toHaveCount(0);
+  await expect(page.locator('.hd-prop-puddle, .hd-prop-cloth')).toHaveCount(0);
+});
+
+test('Enter and Space clean one quarter of a spill per activation', async ({ page }) => {
+  const { patch, cloth } = await spilledBeer(page);
+  await cloth.focus();
+  await expect(cloth).toBeFocused();
+  for (const [index, key] of ['Enter', 'Space', 'Enter', 'Space'].entries()) {
+    await page.keyboard.press(key);
+    if (index < 3) await expect(patch).toHaveAttribute('data-cleaned', String((index + 1) * 25));
+  }
+  await expect(patch).toHaveCount(0);
+});
+
+test('a fast mouse swipe captures the cloth even when its first move leaves the small handle', async ({ page }) => {
+  const { patch, cloth } = await spilledBeer(page);
+  const box = await patch.boundingBox(), handle = await cloth.boundingBox();
+  const x = handle.x + handle.width / 2, y = handle.y + handle.height / 2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  // A real browser can coalesce the entire initial move into one pointer frame.
+  await page.mouse.move(box.x + box.width * .85, box.y + box.height * .7);
+  await expect(patch).toHaveAttribute('data-wipe-state', 'wiping');
+  expect(Number(await patch.getAttribute('data-cleaned'))).toBeGreaterThan(0);
+  for (let stroke = 0; stroke < 5 && await patch.count(); stroke += 1) {
+    await page.mouse.move(box.x + box.width * (stroke % 2 ? .85 : .15), box.y + box.height * .5);
+  }
+  await page.mouse.up();
+  await expect(patch).toHaveCount(0);
+});
+
+test.describe('native touch table gestures', () => {
+  test.use({ hasTouch: true });
+
+  test('a touch swipe moves the cloth and cleans the spill without an accidental extra click', async ({ page }) => {
+    const { patch, cloth } = await spilledBeer(page);
+    await wipeCloth(page, patch, cloth, { touch: true });
+    await expect(patch).toHaveCount(0);
+    await expect(page.locator('.hd-prop-cloth')).toHaveCount(0);
+  });
+
+  test('touch cancellation preserves the partly wiped spill and keyboard cleaning can continue', async ({ page }) => {
+    const { patch, cloth } = await spilledBeer(page);
+    const handle = await cloth.boundingBox(), x = handle.x + handle.width / 2, y = handle.y + handle.height / 2;
+    await pointerGesture(page, [{ x, y }, { x: x + 22, y: y + 4 }], { touch: true, cancel: true });
+    await expect(patch).toHaveAttribute('data-wipe-state', 'waiting');
+    const cleaned = Number(await patch.getAttribute('data-cleaned'));
+    expect(cleaned).toBeGreaterThan(0);
+    expect(cleaned).toBeLessThan(100);
+    await page.waitForTimeout(150);
+    await expect(patch).toHaveAttribute('data-cleaned', String(cleaned));
+    await cloth.focus();
+    for (let press = 0; press < 4 && await patch.count(); press += 1) await page.keyboard.press('Enter');
+    await expect(patch).toHaveCount(0);
+  });
+
+  test('a native touch shake bursts a sealed can exactly once', async ({ page }) => {
+    const can = await motionFixture(page, 'can');
+    await shakeProp(page, can, { touch: true });
+    await expect(can).toHaveAttribute('data-can-state', 'burst');
+    await expect(can).toHaveAttribute('data-shake-count', '1');
+    await expect(page.locator('.hd-prop-spill[data-source="can"]')).toHaveCount(1);
+  });
 });
 
 test('wilder tapping topples an empty glass without creating another puddle', async ({ page }) => {
@@ -381,13 +499,14 @@ test('a new round before first paint docks only its own surprise once', async ({
 });
 
 test('enabling reduced motion while a cloth wipes removes the cloth and puddle', async ({ page }) => {
-  const beer = await motionFixture(page, 'beer');
-  for (let tap = 0; tap < 3; tap += 1) await beer.dispatchEvent('click');
-  const cloth = page.locator('.hd-prop-cloth');
+  const { beer, patch, cloth } = await spilledBeer(page);
   await expect(cloth).toBeVisible();
-  // Start during the wipe itself, after the cloth has travelled onto the spill.
-  await expect.poll(() => cloth.evaluate(element => Number(getComputedStyle(element).opacity))).toBeGreaterThan(.5);
+  const handle = await cloth.boundingBox(), x = handle.x + handle.width / 2, y = handle.y + handle.height / 2;
+  await page.mouse.move(x, y); await page.mouse.down();
+  await page.mouse.move(x + 22, y + 4, { steps: 3 });
+  await expect(patch).toHaveAttribute('data-wipe-state', 'wiping');
   await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.mouse.up();
   await expect(page.locator('.hd-prop-cloth')).toHaveCount(0);
   await expect(page.locator('.hd-prop-puddle')).toHaveCount(0);
   await expect(beer).toBeDisabled();
@@ -436,7 +555,7 @@ test('a spill and cloth fit beside a nearby stock button and cannot intercept it
   expect(patch.width).toBeLessThan(140);
   expect(patch.x + patch.width).toBeLessThan(stock.x);
   expect(await spill.evaluate(element => getComputedStyle(element).pointerEvents)).toBe('none');
-  expect(await spill.locator('.hd-prop-cloth').evaluate(element => getComputedStyle(element).pointerEvents)).toBe('none');
+  expect(await spill.locator('button.hd-prop-cloth').evaluate(element => getComputedStyle(element).pointerEvents)).toBe('auto');
   await page.locator('#hausdeppStock').click();
   expect(await page.evaluate(() => window.__decorStockTaps)).toBe(1);
 });
@@ -489,6 +608,61 @@ test('the lantern can be blown out and relit without changing the table', async 
   await expect(lantern).toHaveAttribute('data-last-motion', 'candle-light');
   await expect(lantern).toHaveAttribute('aria-label', 'Windlicht auspusten');
 });
+
+test('shaking a lantern blows it out briefly and it relights after 2.8 seconds', async ({ page }) => {
+  await page.clock.install({ time: new Date('2026-10-18T12:00:00Z') });
+  const lantern = await motionFixture(page, 'lantern');
+  await page.clock.pauseAt('2026-10-18T12:00:10Z');
+  await shakeProp(page, lantern);
+  await expect(lantern).toHaveAttribute('data-lit', 'false');
+  await expect(lantern).toHaveAttribute('data-relighting', 'true');
+  await expect(lantern).toHaveAttribute('data-last-motion', 'candle-shake-out');
+  await page.clock.fastForward(2799);
+  await expect(lantern).toHaveAttribute('data-lit', 'false');
+  await page.clock.fastForward(2);
+  await expect(lantern).toHaveAttribute('data-lit', 'true');
+  await expect(lantern).not.toHaveAttribute('data-relighting', 'true');
+  await expect(lantern).toHaveAttribute('data-last-motion', 'candle-relight');
+});
+
+test('reduced motion cancels a pending lantern relight and leaves the manual state quiet', async ({ page }) => {
+  await page.clock.install({ time: new Date('2026-10-18T12:00:00Z') });
+  const lantern = await motionFixture(page, 'lantern');
+  await page.clock.pauseAt('2026-10-18T12:00:10Z');
+  await shakeProp(page, lantern);
+  await expect(lantern).toHaveAttribute('data-relighting', 'true');
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await expect(lantern).toBeDisabled();
+  await page.clock.fastForward(10000);
+  await expect(lantern).toHaveAttribute('data-lit', 'false');
+  await expect(lantern).not.toHaveAttribute('data-relighting', 'true');
+  expect(await lantern.evaluate(element => element.getAnimations({ subtree: true })
+    .filter(animation => animation.playState === 'running').length)).toBe(0);
+});
+
+for (const ending of ['hidden', 'pagehide', 'round']) {
+  test(`${ending} cancels a pending lantern relight without reviving an old object`, async ({ page }) => {
+    await page.clock.install({ time: new Date('2026-10-18T12:00:00Z') });
+    const lantern = await motionFixture(page, 'lantern');
+    await page.clock.pauseAt('2026-10-18T12:00:10Z');
+    await shakeProp(page, lantern);
+    await expect(lantern).toHaveAttribute('data-relighting', 'true');
+    await lantern.evaluate(node => { window.__oldLantern = node; });
+    await page.evaluate(ending => {
+      if (ending === 'hidden') {
+        Object.defineProperty(document, 'hidden', { configurable: true, get: () => true });
+        document.dispatchEvent(new Event('visibilitychange'));
+      } else if (ending === 'pagehide') window.dispatchEvent(new Event('pagehide'));
+      else {
+        const { module, table, gameId } = window.__decorFixture;
+        module.renderTableDecor(table, { gameId, roundNumber: 2, phase: 'playing' });
+      }
+    }, ending);
+    await page.clock.fastForward(10000);
+    expect(await page.evaluate(() => ({ lit: window.__oldLantern.dataset.lit,
+      relighting: window.__oldLantern.dataset.relighting }))).toEqual({ lit: 'false', relighting: 'false' });
+  });
+}
 
 test('reduced motion keeps interactive props still and disabled', async ({ page }) => {
   const can = await motionFixture(page, 'can', true);
