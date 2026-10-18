@@ -3,6 +3,10 @@ import { escapeHtml, loadAuth } from "./shared/auth.js";
 import { createAnalysisVisuals } from "./dashboard/analysis.js";
 import { createGlobe } from "./dashboard/globe.js";
 import { createFavorites } from "./dashboard/favorites.js";
+import {
+  DASHBOARD_GAMES, countText, createDashboardLifecycle, dashboardGameName, gameSelection, overviewCoverage,
+  trafficMeasured, trafficSourceNote, unmeasuredCopy, visibleGames, wattenGameCard, wattenModeLabel, wattenMonitoringNote,
+} from "./dashboard/watten.js";
 
 const REFRESH_MS = 30000;
 const byId = id => document.getElementById(id);
@@ -21,8 +25,8 @@ function storedDesign() {
 // Dashboard appearance is a local preference, separate from either game's skin.
 document.body.dataset.dashboardDesign = storedDesign();
 byId("dashboardDesign").value = document.body.dataset.dashboardDesign;
-const gameName = game => ({ zdwa: "ZDWA", zilch: "Zilch", hausdepp: "Hausdepp" })[game] || t("Beide Spiele");
-const gameBadge = game => ["zdwa", "zilch", "hausdepp"].includes(game) ? `<span class="game-badge">${gameName(game)}</span>` : "";
+const gameName = game => dashboardGameName(game) || t("Beide Spiele");
+const gameBadge = game => DASHBOARD_GAMES.includes(game) ? `<span class="game-badge">${gameName(game)}</span>` : "";
 const duration = seconds => {
   if (seconds == null) return "—";
   const value = Math.round(count(seconds));
@@ -80,13 +84,6 @@ const DESIGN_SIDES = {
   zilch: [{ label: "Wirtshaustisch", looks: ["zilch:tavern"] }, { label: "LCARS", looks: ["zilch:lcars"] }],
 };
 
-let latest = null;
-let authReady = false;
-let activeRequest = null;
-let generation = 0;
-let lastFetched = 0;
-let disposed = false;
-let refreshTimer = null;
 const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
 let motionPaused = motionQuery.matches;
 try { motionPaused ||= localStorage.getItem("rollthedice:dashboard:motion") === "paused"; } catch { /* Motion controls remain available without browser storage. */ }
@@ -115,8 +112,9 @@ function overview(data) {
     { id: "avg-active-seconds", label: "Ø Zeit je Besuch", value: duration(totals.avg_active_seconds), hint: "Sichtbar und aktiv", series: "active_seconds", comparison: "avg_active_seconds" },
     { id: "completed-games", label: "Partien beendet", value: totals.completed_games, hint: "Gespeicherte Ergebnisse", series: "completed_games", comparison: "completed_games" },
   ];
+  const coverage = overviewCoverage(data);
   const comparison = metric => {
-    if (data.period?.game === "hausdepp" && metric.comparison !== "completed_games") return "";
+    if (coverage.unknown && metric.comparison !== "completed_games") return "";
     const previous = data.comparison?.overview?.[metric.comparison];
     if (!previous) return "";
     if (metric.comparison !== "completed_games" && data.comparison?.previous_data_coverage !== "complete") return `<span class="metric-delta neutral">${e(t(data.comparison?.previous_data_coverage === "partial" ? "Vorperiode unvollständig" : "Keine Vergleichsbasis"))}</span>`;
@@ -124,13 +122,13 @@ function overview(data) {
     const change = Number(previous.change_percent) || 0;
     return `<span class="metric-delta ${change >= 0 ? "positive" : "negative"}"><span aria-hidden="true">${change >= 0 ? "↗" : "↘"}</span> ${change > 0 ? "+" : ""}${percent(change)}% <small>${e(t("zur Vorperiode"))}</small></span>`;
   };
-  const noBrowserMeasurement = data.period?.game === "hausdepp";
   byId("overviewMetrics").innerHTML = metrics.map(metric => {
-    const unknown = noBrowserMeasurement && metric.id !== "completed-games";
-    const label = noBrowserMeasurement && metric.id === "completed-games" ? "Runden beendet" : metric.label;
-    return `<article class="metric-card" data-favorite-id="metric-${metric.id}" data-favorite-kind="metric"><p class="metric-label">${e(t(label))}${metric.live ? '<span class="signal-dot" aria-hidden="true" style="margin-left:8px"></span>' : ""}</p><div class="metric-value">${unknown ? "—" : metric.series === "active_seconds" ? e(metric.value) : number(metric.value)}</div><p class="metric-hint">${e(t(unknown ? "Browserbesuche bisher nicht erfasst" : metric.hint))}</p>${comparison(metric)}${sparkline(!unknown && metric.series ? days.map(day => count(day[metric.series])) : [])}</article>`;
+    const unknown = coverage.unknown && metric.id !== "completed-games";
+    const label = metric.id === "completed-games" ? coverage.completedLabel : metric.label;
+    return `<article class="metric-card" data-favorite-id="metric-${metric.id}" data-favorite-kind="metric"><p class="metric-label">${e(t(label))}${metric.live ? '<span class="signal-dot" aria-hidden="true" style="margin-left:8px"></span>' : ""}</p><div class="metric-value">${unknown ? "—" : metric.series === "active_seconds" ? e(metric.value) : number(metric.value)}</div><p class="metric-hint">${e(t(unknown ? coverage.hint : metric.hint))}</p>${comparison(metric)}${sparkline(!unknown && metric.series ? days.map(day => count(day[metric.series])) : [])}</article>`;
   }).join("");
-  byId("comparisonNote").textContent = data.comparison ? t("Heute (UTC) ist noch unvollständig. Verglichen wird mit den vorangehenden Kalendertagen; fehlende ältere Messwerte ergeben keinen Wachstumstrend.") : "";
+  const sources = trafficSourceNote(data, { t });
+  byId("comparisonNote").textContent = data.comparison ? `${t("Heute (UTC) ist noch unvollständig. Verglichen wird mit den vorangehenden Kalendertagen; fehlende ältere Messwerte ergeben keinen Wachstumstrend.")}${sources ? ` ${sources}` : ""}` : "";
 }
 
 function dailyChart(data) {
@@ -162,9 +160,9 @@ function dailyChart(data) {
   byId("dailyTable").innerHTML = `<div class="data-scroll"><table><caption class="sr-only">${e(t("Besuche und Seitenaufrufe je UTC-Tag"))}</caption><thead><tr>${["UTC-Tag", "Besuche", "Seitenaufrufe", "Aktive Zeit", "Partien beendet"].map(label => `<th scope="col">${e(t(label))}</th>`).join("")}</tr></thead><tbody>${rows.map(row => `<tr><td>${e(row.date)}</td><td>${number(row.sessions)}</td><td>${number(row.page_views)}</td><td>${e(duration(row.active_seconds))}</td><td>${number(row.completed_games)}</td></tr>`).join("")}</tbody></table></div>`;
 }
 
-function hourlyChart(rows = []) {
-  if (!rows.some(row => count(row.page_views))) {
-    byId("hourlyChart").innerHTML = empty();
+function hourlyChart(rows = [], copy = null) {
+  if (copy || !rows.some(row => count(row.page_views))) {
+    byId("hourlyChart").innerHTML = copy ? empty(copy.title, copy.description) : empty();
     byId("hourlyChart").classList.remove("hourly-chart");
     return;
   }
@@ -224,10 +222,11 @@ function browserLanguageName(value) {
   catch { return String(value).toUpperCase(); }
 }
 
-function clientContext(data) {
+function clientContext(data, copy = null) {
   const modes = (data.app_modes || []).filter(row => count(row.sessions));
   const total = modes.reduce((sum, row) => sum + count(row.sessions), 0);
-  if (!total) byId("appModeChart").innerHTML = empty();
+  const emptyCopy = copy ? { emptyTitle: copy.title, emptyDescription: copy.description } : {};
+  if (copy || !total) byId("appModeChart").innerHTML = copy ? empty(copy.title, copy.description) : empty();
   else {
     const pwa = modes.filter(row => row.app_mode === "pwa").reduce((sum, row) => sum + count(row.sessions), 0);
     const known = modes.some(row => row.app_mode === "pwa" || row.app_mode === "browser");
@@ -235,11 +234,12 @@ function clientContext(data) {
     const circumference = 2 * Math.PI * 44;
     byId("appModeChart").innerHTML = `<div class="launch-summary"><div class="launch-orbit" aria-hidden="true"><svg viewBox="0 0 110 110"><circle class="launch-orbit-track" cx="55" cy="55" r="44"/>${pwa ? `<circle class="launch-orbit-meter" cx="55" cy="55" r="44" stroke-dasharray="${circumference}" stroke-dashoffset="${circumference * (1 - share / 100)}"/>` : ""}</svg><span>${known ? `${percent(share)}<small>%</small>` : "—"}</span></div><div class="launch-copy"><strong>${e(t(known ? "Als PWA geöffnet" : "Startkontext unbekannt"))}</strong><p>${known ? `${number(pwa)} ${e(t("Besuche"))} · ${e(t("Anteil aller Besuche"))}` : e(t("Ältere Angaben bleiben unbekannt."))}</p></div></div><div class="launch-stack" aria-hidden="true">${modes.map(row => `<span class="launch-segment launch-${["pwa", "browser"].includes(row.app_mode) ? row.app_mode : "unknown"} rank-fill" style="width:${count(row.sessions) / total * 100}%"></span>`).join("")}</div>`;
   }
-  ranks("appModeRanks", modes, "app_mode", "sessions", value => t(APP_MODE_LABELS[value] || "Unbekannt"), { share: true, limit: 3 });
-  byId("pwaInstalledCount").textContent = number(count(data.pwa?.confirmed_installations));
-  byId("pwaFirstOpenCount").textContent = number(count(data.pwa?.first_detected_starts));
-  ranks("browserRanks", data.browsers, "browser", "sessions", value => t(BROWSER_LABELS[value] || "Unbekannt"), { share: true, limit: 9 });
-  ranks("browserLanguageRanks", data.browser_languages, "browser_language", "sessions", browserLanguageName, { share: true, limit: 8 });
+  ranks("appModeRanks", modes, "app_mode", "sessions", value => t(APP_MODE_LABELS[value] || "Unbekannt"), { share: true, limit: 3, ...emptyCopy });
+  // Unknown counters stay unknown instead of becoming a measured zero.
+  byId("pwaInstalledCount").textContent = countText(data.pwa?.confirmed_installations, number);
+  byId("pwaFirstOpenCount").textContent = countText(data.pwa?.first_detected_starts, number);
+  ranks("browserRanks", data.browsers, "browser", "sessions", value => t(BROWSER_LABELS[value] || "Unbekannt"), { share: true, limit: 9, ...emptyCopy });
+  ranks("browserLanguageRanks", data.browser_languages, "browser_language", "sessions", browserLanguageName, { share: true, limit: 8, ...emptyCopy });
 }
 
 function countryName(value) {
@@ -253,16 +253,16 @@ function pageLabel(value) {
   return t(PAGE_LABELS[normalized] || "Andere Seite");
 }
 
-function pageRanks(rows = []) {
-  if (!rows.length) { byId("pageRanks").innerHTML = empty(); return; }
+function pageRanks(rows = [], copy = null) {
+  if (!rows.length) { byId("pageRanks").innerHTML = copy ? empty(copy.title, copy.description) : empty(); return; }
   byId("pageRanks").innerHTML = `<div class="page-row head" aria-hidden="true"><span>${e(t("Seite"))}</span><span>${e(t("Aufrufe"))}</span><span>${e(t("Aktive Zeit"))}</span><span>${e(t("Ø je Besuch"))}</span></div><ol class="rank-list" style="gap:0">${rows.slice(0, 12).map(row => `<li class="page-row"><span class="page-label"><i class="page-bar" aria-hidden="true"></i><span>${e(pageLabel(row.page))}${gameBadge(row.game)}</span></span><span><span class="sr-only">${e(t("Aufrufe"))}: </span>${number(row.views)}</span><span><span class="sr-only">${e(t("Aktive Zeit"))}: </span>${e(duration(row.active_seconds))}</span><span><span class="sr-only">${e(t("Ø je Besuch"))}: </span>${e(duration(row.avg_active_seconds))}</span></li>`).join("")}</ol>`;
 }
 
 function gameCards(data) {
-  const gameFilter = data.period?.game || "all";
-  const games = gameFilter === "all" ? data.available_games || ["zdwa", "zilch"] : [gameFilter];
+  const games = visibleGames(data);
   byId("gameCards").innerHTML = games.map(game => {
     const row = data.games?.find(item => item.game === game) || {};
+    if (game === "watten") return wattenGameCard(row, { t, e, number, duration });
     const details = [["Teilnahmen", number(row.participants || 0)], [game === "hausdepp" ? "Ø Rundendauer" : "Ø Partiedauer", duration(row.avg_duration_seconds)]];
     if (game === "hausdepp") details.push(
       ["Tische live", number(row.live?.active_tables)], ["Menschen verbunden", number(row.live?.connected_humans)],
@@ -275,7 +275,12 @@ function gameCards(data) {
   const hausdepp = games.includes("hausdepp");
   byId("hausdeppMonitoringNote").hidden = !hausdepp;
   byId("hausdeppMonitoringNote").textContent = hausdepp ? t("Hausdepp: Ergebnisse und Live-Tische werden serverseitig gezählt. Browserbesuche wurden bisher nicht erfasst. Dauer bleibt bei älteren Ergebnissen unbekannt. Abbrüche werden ab dieser Version erfasst; ältere Abbrüche werden nicht nachgetragen.") : "";
-  byId("gameModes").innerHTML = (data.modes || []).slice(0, 8).map(row => `<span class="mode-chip">${gameName(row.game)} · ${e(t(MODE_LABELS[row.mode] || "Anderer Modus"))}${row.hardcore ? " · Hardcore" : ""}<strong>${number(row.completed_games)}</strong></span>`).join("");
+  const watten = wattenMonitoringNote(data, { t, number, duration });
+  byId("wattenMonitoringNote").hidden = !watten;
+  byId("wattenMonitoringNote").textContent = watten;
+  // Watten result modes are seat counts; they carry no rule profile.
+  const modeLabel = row => row.game === "watten" ? t(wattenModeLabel(row.mode)) : `${t(MODE_LABELS[row.mode] || "Anderer Modus")}${row.hardcore ? " · Hardcore" : ""}`;
+  byId("gameModes").innerHTML = (data.modes || []).filter(row => games.includes(row.game)).slice(0, 8).map(row => `<span class="mode-chip">${gameName(row.game)} · ${e(modeLabel(row))}<strong>${number(row.completed_games)}</strong></span>`).join("");
 }
 
 // The stored account choice only applies while the 2026 design is released
@@ -308,7 +313,7 @@ function designAccounts(choices, mode, share) {
 function designUsage(data) {
   const usage = data.design_usage || {};
   const filter = data.period?.game || "all";
-  const games = filter === "hausdepp" ? [] : filter === "zdwa" || filter === "zilch" ? [filter] : ["zdwa", "zilch"];
+  const games = filter === "hausdepp" || filter === "watten" ? [] : filter === "zdwa" || filter === "zilch" ? [filter] : ["zdwa", "zilch"];
   const times = new Map();
   const known = new Set(DESIGN_GROUPS.flatMap(group => group.looks.map(([look]) => look)));
   for (const row of usage.looks || []) {
@@ -341,7 +346,7 @@ function designUsage(data) {
     const label = `${name}: ${[a, b].map(entry => `${t(entry.label)} ${percent(share(entry.seconds, sum))}%`).join(", ")}`;
     const values = [a, b].map((entry, index) => `<div class="design-side ${index ? "is-b" : "is-a"}"><dt><i class="legend-dot" aria-hidden="true"></i>${e(t(entry.label))}</dt><dd><strong class="design-share">${percent(share(entry.seconds, sum))}<small>%</small></strong>${clock(entry.seconds)}<small class="design-side-table">${e(t("Am Spieltisch"))}: ${e(span(entry.table))}</small></dd></div>`).join("");
     return `<div class="design-duel" data-game="${game}"><div class="design-duel-head"><h4>${e(name)}</h4><span>${e(t("Gesamt"))} ${clock(sum)}</span></div><div class="design-split" role="img" aria-label="${e(label)}"><span class="is-a" style="width:${share(a.seconds, sum)}%"></span><span class="is-b" style="width:${share(b.seconds, sum)}%"></span></div><dl class="design-sides">${values}</dl></div>`;
-  }).join("") : empty(firstDay ? "Keine Design-Messwerte im Zeitraum" : "Noch keine Design-Messwerte", firstDay ? "Im gewählten Zeitraum wurde keine sichtbare Zeit gemessen." : "Sobald jemand die Spiele nutzt, erscheint hier die sichtbare Zeit je Design.");
+  }).join("") : filter === "watten" ? empty("Für Watten nicht erfasst", "Design-Nutzung wird für Watten nicht erfasst.") : empty(firstDay ? "Keine Design-Messwerte im Zeitraum" : "Noch keine Design-Messwerte", firstDay ? "Im gewählten Zeitraum wurde keine sichtbare Zeit gemessen." : "Sobald jemand die Spiele nutzt, erscheint hier die sichtbare Zeit je Design.");
   const choices = usage.zdwa_account_choices && games.includes("zdwa") ? usage.zdwa_account_choices : null;
   byId("designAccountsPanel").hidden = !choices;
   byId("designGrid").classList.toggle("is-single", !choices);
@@ -366,7 +371,7 @@ function designUsage(data) {
     const value = time(look);
     return `<tr><th scope="row">${e(t(group.title))} · ${e(t(label))}</th><td>${number(value.seconds)}</td><td>${number(value.table)}</td><td>${number(value.seconds - value.table)}</td><td>${percent(share(value.seconds, gameSeconds[group.game]))}%</td></tr>`;
   })).join("")}</tbody></table></div>` : "";
-  byId("designCollectionNote").textContent = firstDay ? `${t("Design-Nutzung erfasst seit")} ${utcDay(`${firstDay}T00:00:00Z`)} (UTC). ${t("Aufbewahrung")}: ${number(count(usage.retention_days))} ${t("Tage")}.` : t("Die Messung der Design-Nutzung beginnt mit diesem Release.");
+  byId("designCollectionNote").textContent = filter === "watten" ? t("Design-Nutzung wird für Watten nicht erfasst.") : firstDay ?`${t("Design-Nutzung erfasst seit")} ${utcDay(`${firstDay}T00:00:00Z`)} (UTC). ${t("Aufbewahrung")}: ${number(count(usage.retention_days))} ${t("Tage")}.` : t("Die Messung der Design-Nutzung beginnt mit diesem Release.");
 }
 
 function serverMetrics(server = {}) {
@@ -390,18 +395,22 @@ function serverMetrics(server = {}) {
 
 function render(data) {
   syncGameOptions(data.available_games || ["zdwa", "zilch"]);
+  // Browser panels of a product without a collector show "not measured",
+  // never an empty measurement that reads like zero visitors.
+  const copy = unmeasuredCopy(data);
+  const emptyCopy = copy ? { emptyTitle: copy.title, emptyDescription: copy.description } : {};
   overview(data);
   dailyChart(data);
-  hourlyChart(data.hourly);
-  ranks("referrerRanks", data.referrers, "source", "sessions", value => REFERRER_LABELS[value] ? t(REFERRER_LABELS[value]) : String(value || t("Andere Websites")), { share: true });
-  ranks("deviceRanks", data.devices, "device", "sessions", value => t(DEVICE_LABELS[value] || "Unbekannt"), { share: true });
-  ranks("deviceSoftwareRanks", data.device_software, "os", "sessions", value => t(OS_LABELS[value] || "Unbekannt"), { share: true, limit: 10 });
-  ranks("deviceHardwareRanks", data.device_hardware, "device_family", "sessions", value => t(HARDWARE_LABELS[value] || "Unbekannt"), { share: true, limit: 10 });
-  clientContext(data);
-  ranks("countryRanks", data.countries, "country", "sessions", countryName, { share: true });
-  byId("countryNote").textContent = t(["trusted_proxy", "cloudflare_verified_peer"].includes(data.collection?.country_source) ? "Länder stammen aus einem vertrauenswürdigen Geo-Proxy; unbekannte Herkunft bleibt unbekannt." : "Ohne vertrauenswürdigen Geo-Proxy bleibt die Herkunft unbekannt. Es gibt keine IP-Geolokalisierung.");
-  pageRanks(data.pages);
-  ranks("actionRanks", data.actions, "action", "count", value => t(ACTION_LABELS[value] || "Andere Bedienaktion"), { game: true, limit: 10 });
+  hourlyChart(data.hourly, copy);
+  ranks("referrerRanks", data.referrers, "source", "sessions", value => REFERRER_LABELS[value] ? t(REFERRER_LABELS[value]) : String(value || t("Andere Websites")), { share: true, ...emptyCopy });
+  ranks("deviceRanks", data.devices, "device", "sessions", value => t(DEVICE_LABELS[value] || "Unbekannt"), { share: true, ...emptyCopy });
+  ranks("deviceSoftwareRanks", data.device_software, "os", "sessions", value => t(OS_LABELS[value] || "Unbekannt"), { share: true, limit: 10, ...emptyCopy });
+  ranks("deviceHardwareRanks", data.device_hardware, "device_family", "sessions", value => t(HARDWARE_LABELS[value] || "Unbekannt"), { share: true, limit: 10, ...emptyCopy });
+  clientContext(data, copy);
+  ranks("countryRanks", data.countries, "country", "sessions", countryName, { share: true, ...emptyCopy });
+  byId("countryNote").textContent = t(copy ? "Herkunft wird für Watten nicht erfasst." : ["trusted_proxy", "cloudflare_verified_peer"].includes(data.collection?.country_source) ? "Länder stammen aus einem vertrauenswürdigen Geo-Proxy; unbekannte Herkunft bleibt unbekannt." : "Ohne vertrauenswürdigen Geo-Proxy bleibt die Herkunft unbekannt. Es gibt keine IP-Geolokalisierung.");
+  pageRanks(data.pages, copy);
+  ranks("actionRanks", data.actions, "action", "count", value => t(ACTION_LABELS[value] || "Andere Bedienaktion"), { game: true, limit: 10, ...emptyCopy });
   gameCards(data);
   designUsage(data);
   serverMetrics(data.server);
@@ -415,21 +424,19 @@ function render(data) {
   favorites.refresh();
   syncMotion();
   const firstSeen = data.collection?.first_seen_at;
-  byId("collectionNote").textContent = firstSeen ? `${t("Messwerte verfügbar seit")} ${timestamp(firstSeen)}` : t("Die Besuchsmessung beginnt mit diesem Release.");
+  byId("collectionNote").textContent = !trafficMeasured(data) ? t("Für Watten werden keine Browserbesuche erfasst; Partien und Live-Tische stammen vom Server.") : firstSeen ? `${t("Messwerte verfügbar seit")} ${timestamp(firstSeen)}` : t("Die Besuchsmessung beginnt mit diesem Release.");
   const dropped = count(data.collection?.dropped);
   byId("queueNote").hidden = !dropped && !data.collection?.cap_reached;
   byId("queueNote").textContent = data.collection?.cap_reached ? t("Die Ereignisgrenze ist erreicht. Ältere Messwerte werden entfernt; der Zeitraum kann unvollständig sein.") : `${t("Verworfene Ereignisse bei Überlastung")}: ${number(dropped)}. ${t("Diese Messung kann unvollständig sein.")}`;
 }
 
 function syncGameOptions(games) {
-  const allowed = ["zdwa", "zilch", "hausdepp"].filter(game => games.includes(game));
   const selector = byId("dashboardGame");
-  const selected = selector.value;
-  selector.innerHTML = `<option value="all">${e(t(allowed.length > 2 ? "Alle Spiele" : "Beide Spiele"))}</option>${allowed.map(game => `<option value="${game}">${gameName(game)}</option>`).join("")}`;
-  selector.value = allowed.includes(selected) ? selected : "all";
-  for (const scope of document.querySelectorAll("[data-dashboard-game-scope]")) scope.textContent = allowed.map(gameName).join(" + ");
-  byId("dashboardSuiteDescription").textContent = t(allowed.length > 2
-    ? "Dein Kontrollzentrum für alle Spiele." : "Dein Kontrollzentrum für ZDWA & Zilch.");
+  const selection = gameSelection(games, selector.value);
+  selector.innerHTML = `<option value="all">${e(t(selection.allLabel))}</option>${selection.allowed.map(game => `<option value="${game}">${e(gameName(game))}</option>`).join("")}`;
+  selector.value = selection.value;
+  for (const scope of document.querySelectorAll("[data-dashboard-game-scope]")) scope.textContent = selection.allowed.map(gameName).join(" + ");
+  byId("dashboardSuiteDescription").textContent = t(selection.description);
 }
 
 function connection(label, tone = "") {
@@ -445,8 +452,6 @@ function message(text, { retry = true, login = false } = {}) {
 }
 
 function denied(status) {
-  authReady = false;
-  clearPrivateData();
   byId("dashboardData").hidden = true;
   byId("dashboardFilters").hidden = true;
   byId("dashboardLogin").href = "/zilch/anmelden?return_to=%2Fadmin%2Fdashboard";
@@ -454,133 +459,90 @@ function denied(status) {
   message(status === 401 ? "Bitte melde dich an, um Mission Control zu öffnen." : "Bitte den Gründer um Zugriff auf Mission Control.", { retry: false, login: status === 401 });
 }
 
-async function refresh() {
-  if (!authReady || disposed) return;
-  activeRequest?.abort();
-  const requestGeneration = ++generation;
-  const controller = new AbortController();
-  activeRequest = controller;
-  const timeout = window.setTimeout(() => controller.abort(), 15000);
-  byId("dashboardData").setAttribute("aria-busy", "true");
-  byId("dashboardRefresh").disabled = true;
-  if (!latest) connection("Verbindung wird aufgebaut …");
-  try {
-    const query = new URLSearchParams({ days: byId("dashboardDays").value, game: byId("dashboardGame").value });
-    const response = await fetch(`/api/admin/analytics?${query}`, { cache: "no-store", signal: controller.signal });
-    if (requestGeneration !== generation) return;
-    if (response.status === 401 || response.status === 403) { denied(response.status); return; }
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const data = await response.json();
-    if (requestGeneration !== generation) return;
-    latest = data;
-    lastFetched = Date.now();
-    byId("dashboardData").hidden = false;
-    byId("dashboardMessage").hidden = true;
-    render(data);
-    connection("Telemetrie verbunden");
-    byId("lastUpdated").textContent = `${t("Aktualisiert")}: ${timestamp(data.generated_at)}`;
-  } catch {
-    if (requestGeneration !== generation || disposed) return;
-    connection("Verbindung unterbrochen", "warning");
-    message(latest ? "Aktualisierung fehlgeschlagen. Die letzten Messwerte bleiben sichtbar. Bitte versuche es erneut." : "Das Dashboard konnte nicht geladen werden. Bitte versuche es erneut.");
-    if (!latest) byId("lastUpdated").textContent = t("Keine Datenverbindung");
-  } finally {
-    clearTimeout(timeout);
-    if (requestGeneration === generation) {
-      activeRequest = null;
-      byId("dashboardData").setAttribute("aria-busy", "false");
-      byId("dashboardRefresh").disabled = false;
-    }
-  }
-}
-
-async function initialize() {
-  authReady = false;
-  const identityGeneration = generation;
-  byId("dashboardRetry").disabled = true;
-  try {
-    const auth = await loadAuth({ refresh: true });
-    if (disposed || identityGeneration !== generation) return;
-    if (!auth?.authenticated) { denied(401); return; }
-    if (!(auth.user?.is_founder || auth.user?.can_view_analytics || auth.user?.analytics_access)) { denied(403); return; }
-    favorites.setUser(auth.user.id);
-    authReady = true;
-    favorites.setEnabled(document.body.dataset.dashboardDesign === "nexus");
-    byId("dashboardFilters").hidden = false;
-    await refresh();
-  } catch {
-    if (disposed) return;
-    connection("Verbindung unterbrochen", "warning");
-    message("Das Dashboard konnte nicht geladen werden. Bitte versuche es erneut.");
-  } finally {
-    byId("dashboardRetry").disabled = false;
-  }
-}
+// shared/auth.js keeps its in-flight /me read on this cross-bundle symbol.
+const authInFlight = () => window[Symbol.for("rollthedice.auth-state")]?.request || null;
+const lifecycle = createDashboardLifecycle({
+  win: window, doc: document, loadAuth, authInFlight, fetch: (...args) => window.fetch(...args), refreshMs: REFRESH_MS,
+  hooks: {
+    filters: () => ({ days: byId("dashboardDays").value, game: byId("dashboardGame").value }),
+    canMonitor: user => Boolean(user?.is_founder || user?.can_view_analytics || user?.analytics_access),
+    bound(user) {
+      favorites.setUser(user.id);
+      favorites.setEnabled(document.body.dataset.dashboardDesign === "nexus");
+      byId("dashboardFilters").hidden = false;
+    },
+    busy(active, { connecting = false } = {}) {
+      byId("dashboardData").setAttribute("aria-busy", String(active));
+      byId("dashboardRefresh").disabled = active;
+      if (active && connecting) connection("Verbindung wird aufgebaut …");
+    },
+    render(data) {
+      byId("dashboardData").hidden = false;
+      byId("dashboardMessage").hidden = true;
+      render(data);
+      connection("Telemetrie verbunden");
+      byId("lastUpdated").textContent = `${t("Aktualisiert")}: ${timestamp(data.generated_at)}`;
+    },
+    failed({ retained }) {
+      connection("Verbindung unterbrochen", "warning");
+      message(retained ? "Aktualisierung fehlgeschlagen. Die letzten Messwerte bleiben sichtbar. Bitte versuche es erneut." : "Das Dashboard konnte nicht geladen werden. Bitte versuche es erneut.");
+      if (!retained) byId("lastUpdated").textContent = t("Keine Datenverbindung");
+    },
+    denied,
+    // A restored document or another account must verify its current
+    // permission before any private snapshot becomes visible again.
+    clear() {
+      clearPrivateData();
+      byId("dashboardData").hidden = true;
+    },
+    // A product removed from this account's audience falls back to all games.
+    unavailable() {
+      clearPrivateData();
+      byId("dashboardData").hidden = true;
+      byId("dashboardGame").value = "all";
+    },
+    retry(enabled) { byId("dashboardRetry").disabled = !enabled; },
+  },
+});
 
 byId("dashboardFilters").addEventListener("submit", event => event.preventDefault());
-byId("dashboardDays").addEventListener("change", refresh);
-byId("dashboardGame").addEventListener("change", refresh);
-byId("dashboardRefresh").addEventListener("click", refresh);
-byId("dashboardRetry").addEventListener("click", () => authReady ? refresh() : initialize());
-document.addEventListener("visibilitychange", () => {
-  syncMotion();
-  if (!document.hidden && Date.now() - lastFetched >= REFRESH_MS) refresh();
-});
-function startRefreshTimer() {
-  if (refreshTimer !== null) return;
-  refreshTimer = window.setInterval(() => { if (!document.hidden) refresh(); }, REFRESH_MS);
-}
-window.addEventListener("pagehide", () => {
-  disposed = true;
-  authReady = false;
-  generation += 1;
-  activeRequest?.abort();
-  activeRequest = null;
-  clearInterval(refreshTimer);
-  refreshTimer = null;
-  latest = null;
-  lastFetched = 0;
-  clearPrivateData();
-  // A restored document must verify its current permission before displaying
-  // a cached snapshot, including when access was revoked on another page.
-  byId("dashboardData").hidden = true;
-});
-window.addEventListener("pageshow", event => {
-  if (!event.persisted) return;
-  disposed = false;
-  startRefreshTimer();
-  initialize();
-});
+byId("dashboardDays").addEventListener("change", () => lifecycle.refresh());
+byId("dashboardGame").addEventListener("change", () => lifecycle.refresh());
+byId("dashboardRefresh").addEventListener("click", () => lifecycle.refresh());
+byId("dashboardRetry").addEventListener("click", () => lifecycle.retry());
+document.addEventListener("visibilitychange", () => syncMotion());
 
-const analysis = createAnalysisVisuals({ t, e, number, percent, duration, gameName, pageLabel, locale });
+const analysis = createAnalysisVisuals({ t, e, number, percent, duration, gameName, pageLabel, locale, measured: trafficMeasured, unmeasuredCopy });
 const globe = createGlobe(byId("geographyViz"), { t, number, locale, countryName });
 byId("dashboardDesign").addEventListener("change", event => {
   const design = DESIGNS.has(event.target.value) ? event.target.value : "mission";
   document.body.dataset.dashboardDesign = design;
   try { localStorage.setItem(DESIGN_KEY, design); } catch { /* This document can still switch designs. */ }
-  favorites.setEnabled(design === "nexus" && authReady && !disposed);
+  favorites.setEnabled(design === "nexus" && lifecycle.ready && !lifecycle.disposed);
   analysis.refreshLayout();
   globe.refreshDesign();
 });
 function clearPrivateData() {
-  latest = null;
   favorites.clear();
   analysis.resetSession();
   globe.clear();
   globe.suspend();
   syncGameOptions(["zdwa", "zilch"]);
-  byId("hausdeppMonitoringNote").hidden = true;
-  byId("hausdeppMonitoringNote").textContent = "";
+  for (const id of ["hausdeppMonitoringNote", "wattenMonitoringNote"]) {
+    byId(id).hidden = true;
+    byId(id).textContent = "";
+  }
   for (const id of ["overviewMetrics", "comparisonNote", "dailyChart", "dailyTable", "dailySelection", "hourlyChart", "activityHeatmap", "heatmapSelection", "pageRanks", "pageBubbles", "pageDetail", "pageFocus", "journeyFlow", "journeyDetail", "journeyTable", "journeyFocus", "journeySample", "referrerRanks", "deviceRanks", "deviceSoftwareRanks", "deviceHardwareRanks", "deviceDonut", "appModeChart", "appModeRanks", "pwaInstalledCount", "pwaFirstOpenCount", "browserRanks", "browserLanguageRanks", "requestTrafficSummary", "requestCountryRanks", "requestStatusRanks", "requestAgentRanks", "requestChannelRanks", "requestRecordedAt", "requestDroppedNote", "countryRanks", "gameCards", "gameModes", "actionRanks", "designComparison", "designAccounts", "designLooks", "designTable", "designCollectionNote", "serverGauges", "serverVitals", "queueNote", "collectionNote", "lastUpdated", "nexusRooms", "nexusPlayers", "nexusWindow"]) byId(id).replaceChildren();
 }
 function syncMotion() {
   const paused = motionPaused || motionQuery.matches;
-  document.documentElement.dataset.motion = paused || document.hidden || !authReady || disposed ? "paused" : "running";
+  const live = lifecycle.ready && !lifecycle.disposed;
+  document.documentElement.dataset.motion = paused || document.hidden || !live ? "paused" : "running";
   byId("dashboardMotion").setAttribute("aria-pressed", paused);
   byId("dashboardMotion").disabled = motionQuery.matches;
   byId("dashboardMotion").innerHTML = `<span aria-hidden="true">${paused ? "▷" : "Ⅱ"}</span><span>${e(t(motionQuery.matches ? "Reduzierte Bewegung aktiv" : paused ? "Animation fortsetzen" : "Animation pausieren"))}</span>`;
   globe.setPaused(paused);
-  if (document.hidden || !authReady || disposed) globe.suspend(); else globe.resume();
+  if (document.hidden || !live) globe.suspend(); else globe.resume();
 }
 function setMotion(paused, persist = true) {
   motionPaused = Boolean(paused);
@@ -595,5 +557,5 @@ window.addEventListener("mission:motion", event => setMotion(Boolean(event.detai
 motionQuery.addEventListener("change", () => { if (motionQuery.matches) setMotion(true, false); else syncMotion(); });
 syncMotion();
 overview({});
-startRefreshTimer();
-initialize();
+lifecycle.start();
+lifecycle.initialize();
