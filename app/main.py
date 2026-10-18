@@ -2776,6 +2776,7 @@ def admin_delete_completed_game(game_id: str, payload: DeleteCompletedGameReq, r
         from .watten_access import require_watten_access
 
         require_watten_access(request, identity)
+        raise HTTPException(status_code=409, detail="watten_result_delete_unsupported")
     if stored_type == HAUSDEPP_GAME_TYPE and not can_access_hausdepp(identity):
         raise HTTPException(status_code=404, detail="game_not_found")
     if stored_type == ZILCH_GAME_TYPE and not can_access_zilch_preview(identity):

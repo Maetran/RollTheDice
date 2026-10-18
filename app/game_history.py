@@ -345,6 +345,10 @@ def delete_completed_game(*, game_id: str, admin_user_id: int, reason: str) -> d
         game = db.scalar(select(CompletedGame).where(CompletedGame.game_id == str(game_id)))
         if not game:
             raise LookupError("game_not_found")
+        if game.game_type == "watten":
+            # Its terminal checkpoint still owns retry/call-delivery receipts.
+            # Generic deletion cannot retire that native state atomically.
+            raise ValueError("watten_result_delete_unsupported")
         participants = list(game.participants)
         winner_points = max((int(participant.points) for participant in participants), default=0)
         affected_user_ids = sorted(

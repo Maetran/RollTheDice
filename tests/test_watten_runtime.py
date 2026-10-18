@@ -4,6 +4,7 @@ import asyncio
 import json
 from contextlib import ExitStack, asynccontextmanager, contextmanager
 from copy import deepcopy
+from dataclasses import replace
 from datetime import timedelta
 from itertools import count
 from unittest.mock import patch
@@ -24,6 +25,7 @@ from app.game_state import games
 from app.game_ws_session import GameSocketSession
 from app.models import ActiveGame, CompletedGame, DeletedGame, GameParticipant, User, UserAchievement
 from app.security import utcnow
+from app.watten_bidding import DealResult, ScoreAccount, ScoreLedger
 from app.watten_play import legal_cards
 from app.watten_recipe import WattenRecipe, recipe_to_payload
 from app.watten_rules import round_roles
@@ -515,6 +517,15 @@ def test_stored_watten_results_never_fall_through_main_result_history_stats_dele
     denied = server.request("DELETE", f"https://zockdiewandan.online/api/admin/completed-games/{result_id}", headers=headers,
                             json={"confirmation_game_id": result_id, "reason": "Local result privacy test"})
     assert denied.status_code == 404
+    local_headers = {**headers, "Host": "localhost:8127", "Origin": LOCAL}
+    unsupported = server.request("DELETE", f"/api/admin/completed-games/{result_id}", headers=local_headers,
+                                 json={"confirmation_game_id": result_id, "reason": "Local result privacy test"})
+    assert unsupported.status_code == 409
+    assert unsupported.json()["detail"] == "watten_result_delete_unsupported"
+    from app.game_history import delete_completed_game
+
+    with pytest.raises(ValueError, match="watten_result_delete_unsupported"):
+        delete_completed_game(game_id=result_id, admin_user_id=identity.user_id, reason="Local result privacy test")
     from app.game_activity import not_played_on, play_day
 
     with session_scope() as db:
@@ -789,3 +800,27 @@ def test_logout_during_awaited_peer_leave_fanout_cannot_emit_late_private_snapsh
     assert sender.websocket.messages == []
     assert sender.websocket.closes[-1][0] == 1008
     assert games[game_id]["_watten"].absent == (sender.player_id,)
+
+
+def test_canonical_large_valid_checkpoint_restores_without_asymmetric_reader_limit(server):
+    game_id, _owners, _sessions = local_started(server, count_players=2, target=10000)
+    game = games[game_id]
+    runtime = game["_watten"]
+    engine = runtime.engine
+    # Construct validated durable score evidence directly: this tests storage,
+    # not thousands of already-covered card transitions. Both targets and a
+    # match's number of past deals intentionally have no invented size limit.
+    results = tuple(DealResult(f"old-{game_id}-{index:016x}",
+                               replace(engine.parties, dealer_id=engine.recipe.seats[(engine.dealer_seat + index) % 2]),
+                               index % 2, 2, "tricks") for index in range(3000))
+    accounts = tuple(ScoreAccount(item.members, sum(result.points for result in results
+                                                   if set(item.members) <= set(result.roles.parties[result.winning_party])))
+                     for item in engine.ledger.accounts)
+    ledger = ScoreLedger(engine.ledger.target, accounts, results)
+    game["_watten"] = replace(runtime, engine=replace(engine, ledger=ledger, opportunity=150000))
+    persist_watten_game(game)
+    with session_scope() as db:
+        saved = db.scalar(select(ActiveGame.state_json).where(ActiveGame.game_id == game_id))
+    assert len(saved) > 512000
+    assert serializable_game_state(restore_watten_json(saved)) == serializable_game_state(game)
+    assert serializable_game_state(load_active_games()[game_id]) == serializable_game_state(game)

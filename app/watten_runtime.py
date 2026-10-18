@@ -554,7 +554,7 @@ def persist_watten_game(game: dict, *, creating: bool = False) -> None:
 
 
 def restore_watten_json(text: str) -> dict:
-    if type(text) is not str or len(text) > 512_000:
+    if type(text) is not str:
         raise ValueError("watten_invalid_storage")
 
     def unique(pairs):
