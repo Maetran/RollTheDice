@@ -20,7 +20,7 @@ from .game_types import HAUSDEPP_GAME_TYPE, game_type_from_state
 from .models import AdminHelpRecipient, AdminHelpRequest, User, WebPushSubscription
 from .product_hosts import site_origin, zilch_origin
 from .security import as_utc, utcnow
-from .web_push import StoredSubscription, _send_web_push, web_push_available
+from .web_push import PUSH_DELIVERY_CONTEXTS, StoredSubscription, _send_web_push, web_push_available
 
 logger = logging.getLogger(__name__)
 ADMIN_HELP_PUSH_TTL_SECONDS = 5 * 60
@@ -93,6 +93,7 @@ def _freeze_recipients(db, request: AdminHelpRequest) -> None:
     for admin in admins:
         subscriptions = list(db.scalars(select(WebPushSubscription).where(
             WebPushSubscription.user_id == admin.id,
+            WebPushSubscription.product_context.in_(PUSH_DELIVERY_CONTEXTS),
         ).order_by(WebPushSubscription.updated_at.desc(), WebPushSubscription.id.desc()))) if admin.admin_help_push_enabled else []
         # One product's devices per account avoids receiving the same call
         # from both installed games. All devices of that product remain useful.

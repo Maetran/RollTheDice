@@ -541,7 +541,7 @@ class WebPushSubscription(Base):
 
     __table_args__ = (
         CheckConstraint(
-            "product_context IN ('zdwa', 'zilch', 'hausdepp')",
+            "product_context IN ('zdwa', 'zilch', 'hausdepp', 'watten')",
             name="ck_web_push_subscriptions_product_context",
         ),
         Index("ix_web_push_subscriptions_user", "user_id"),
@@ -595,7 +595,7 @@ class PushReleaseRecipient(Base):
     claimed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     __table_args__ = (
-        CheckConstraint("product_context IN ('zdwa', 'zilch', 'hausdepp')", name="ck_push_release_recipient_context"),
+        CheckConstraint("product_context IN ('zdwa', 'zilch', 'hausdepp', 'watten')", name="ck_push_release_recipient_context"),
         Index("ix_push_release_pending", "claimed_at", "revision"),
     )
 

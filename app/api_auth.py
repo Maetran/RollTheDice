@@ -683,7 +683,16 @@ def web_push_subscription_get(request: Request, response: Response):
 
 @router.put("/web-push/subscription")
 def web_push_subscription_put(payload: WebPushSubscriptionRequest, request: Request):
+    from .watten_access import require_watten_access, watten_game_preview_enabled
+
+    if payload.product_context == "watten" and not watten_game_preview_enabled(request):
+        raise HTTPException(status_code=404, detail="game_not_found", headers={"Cache-Control": "no-store"})
     identity = require_user(request)
+    if payload.product_context == "watten":
+        require_watten_access(request, identity)
+    expected = request.headers.getlist("X-Watten-Expected-Account-Id")
+    if expected and (len(expected) != 1 or expected[0] != str(identity.user_id)):
+        raise HTTPException(status_code=409, detail="watten_account_changed", headers={"Cache-Control": "no-store"})
     require_csrf(request, identity)
     try:
         result = save_web_push_subscription(
@@ -692,6 +701,7 @@ def web_push_subscription_put(payload: WebPushSubscriptionRequest, request: Requ
             product_context=payload.product_context or (
                 "hausdepp" if is_hausdepp_host(request) else "zilch" if is_zilch_host(request) else "zdwa"
             ),
+            connection=request,
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc

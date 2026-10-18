@@ -14,7 +14,7 @@ from sqlalchemy import delete, or_, select, update
 from .database import session_scope
 from .game_access import can_account_access_zilch
 from .game_activity import not_played_on
-from .game_types import HAUSDEPP_GAME_TYPE, ZILCH_GAME_TYPE
+from .game_types import HAUSDEPP_GAME_TYPE, WATTEN_GAME_TYPE, ZILCH_GAME_TYPE
 from .models import User, WebPushSubscription
 from .product_hosts import site_origin, zilch_url
 from .push_reminder_copy import REMINDER_COPY
@@ -23,6 +23,7 @@ from .web_push import (
     DAILY_REMINDER_END_HOUR,
     DAILY_REMINDER_START_HOUR,
     DAILY_REMINDER_TIMEZONE,
+    PUSH_DELIVERY_CONTEXTS,
     StoredSubscription,
     _send_web_push,
     web_push_available,
@@ -65,6 +66,17 @@ def reminder_expires_at(day: date) -> datetime:
     return datetime.combine(day, time(DAILY_REMINDER_END_HOUR), ZoneInfo(DAILY_REMINDER_TIMEZONE))
 
 
+def reminder_choice(user_id: int, sequence: int, contexts) -> tuple[str, int]:
+    """Pure rotation contract, including stored-only Watten; grants no send."""
+    if (type(contexts) not in {tuple, list, set, frozenset}
+            or type(user_id) is not int or user_id <= 0 or type(sequence) is not int or sequence < 0
+            or not contexts or any(type(context) is not str or context not in REMINDER_COPY for context in contexts)):
+        raise ValueError("daily_reminder_context_invalid")
+    available = sorted(set(contexts))
+    context = available[(sequence + user_id) % len(available)]
+    return context, (sequence // len(available) + user_id) % len(REMINDER_COPY[context])
+
+
 def claim_daily_reminder(user_id: int, now: datetime) -> DailyReminder | None:
     day = reminder_day(now)
     if day is None or as_utc(now) < reminder_scheduled_at(user_id, day):
@@ -76,7 +88,7 @@ def claim_daily_reminder(user_id: int, now: datetime) -> DailyReminder | None:
         subscriptions = db.scalars(
             select(WebPushSubscription).where(WebPushSubscription.user_id == user_id).order_by(WebPushSubscription.id)
         ).all()
-        subscriptions = [subscription for subscription in subscriptions if subscription.product_context in REMINDER_COPY and (
+        subscriptions = [subscription for subscription in subscriptions if subscription.product_context in PUSH_DELIVERY_CONTEXTS and (
             subscription.product_context != ZILCH_GAME_TYPE
             or can_account_access_zilch(username=user.username, role=user.role)
         )]
@@ -104,13 +116,13 @@ def claim_daily_reminder(user_id: int, now: datetime) -> DailyReminder | None:
         # two reminders. All subscribed devices of the selected game receive
         # the same reminder; other game subscriptions are left alone today.
         sequence = claimed - 1
-        context = contexts[(sequence + user_id) % len(contexts)]
+        context, variant = reminder_choice(user_id, sequence, contexts)
         return DailyReminder(
             user_id=user_id,
             day=day,
             game_type=context,
             language="en" if user.preferred_language == "en" else "de",
-            variant=(sequence // len(contexts) + user_id) % len(REMINDER_COPY[context]),
+            variant=variant,
             subscriptions=tuple(StoredSubscription(
                 id=subscription.id, user_id=user.id, endpoint=subscription.endpoint,
                 p256dh=subscription.p256dh, auth=subscription.auth, product_context=context,
@@ -122,16 +134,17 @@ def claim_daily_reminder(user_id: int, now: datetime) -> DailyReminder | None:
 def reminder_payload(reminder: DailyReminder) -> dict[str, object]:
     zilch = reminder.game_type == ZILCH_GAME_TYPE
     hausdepp = reminder.game_type == HAUSDEPP_GAME_TYPE
+    watten = reminder.game_type == WATTEN_GAME_TYPE
     english = reminder.language == "en"
-    title = ("Up for Hausdepp?" if hausdepp else "Ready for Zilch?" if zilch else "Ready for ZDWA?") if english else (
-        "Eine Runde Hausdepp?" if hausdepp else "Heute schon gezilcht?" if zilch else "Heute schon die Wand angezockt?"
+    title = ("A round of Watten?" if watten else "Up for Hausdepp?" if hausdepp else "Ready for Zilch?" if zilch else "Ready for ZDWA?") if english else (
+        "Eine Runde Watten?" if watten else "Eine Runde Hausdepp?" if hausdepp else "Heute schon gezilcht?" if zilch else "Heute schon die Wand angezockt?"
     )
-    icon = ("/static/icons/hausdepp-icon-192-v2.png" if hausdepp else
+    icon = ("/static/watten/icons/watten-icon-192.png" if watten else "/static/icons/hausdepp-icon-192-v2.png" if hausdepp else
             "/static/icons/zilch-icon-192.png" if zilch else "/static/icons/icon-192.png")
     return {
         "title": title,
         "body": REMINDER_COPY[reminder.game_type][reminder.variant][1 if english else 0],
-        "url": "/hausdepp" if hausdepp else zilch_url("/") if zilch else f"{site_origin()}/",
+        "url": "/watten" if watten else "/hausdepp" if hausdepp else zilch_url("/") if zilch else f"{site_origin()}/",
         "tag": f"daily-reminder-{reminder.day.isoformat()}",
         "icon": icon,
         "badge": icon,
@@ -150,6 +163,7 @@ async def dispatch_daily_reminders(*, now: datetime | None = None) -> int:
             .join(WebPushSubscription, WebPushSubscription.user_id == User.id)
             .where(
                 User.is_active.is_(True), User.daily_reminder_push_enabled.is_(True),
+                WebPushSubscription.product_context.in_(PUSH_DELIVERY_CONTEXTS),
                 not_played_on(day),
                 or_(User.daily_reminder_push_last_sent_on.is_(None), User.daily_reminder_push_last_sent_on < day),
             )
@@ -178,6 +192,7 @@ async def dispatch_daily_reminders(*, now: datetime | None = None) -> int:
                     WebPushSubscription.id == subscription.id,
                     WebPushSubscription.user_id == user_id,
                     User.is_active.is_(True), User.daily_reminder_push_enabled.is_(True),
+                    WebPushSubscription.product_context.in_(PUSH_DELIVERY_CONTEXTS),
                     not_played_on(day),
                 ))
             if still_eligible is None:
