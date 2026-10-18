@@ -69,8 +69,9 @@ Open Ladinisch emits its public call once when the final ACK opens play; blind
 Ladinisch does not. Public Danke depends only on actual shown Rechter cards.
 
 Only official knowers follow ordinary-trump/Rechter leads. A critical lead never
-triggers duty; a later critical does not remove an existing duty. A nonwinning
-strike is an allowed alternative. Without ordinary trump, protected cards are
+triggers duty; a later critical does not remove an existing duty. An ordinary
+strike substitutes only when it takes the current trick. Trump, the Rechter
+and critical cards need not win. Without ordinary trump, protected cards are
 not forced. A pending bid freezes card play, while private partner feedback
 remains possible. Gestrichen opening rights use the initiating player's own
 score; designated hold/go/counter responses remain possible. The chosen source

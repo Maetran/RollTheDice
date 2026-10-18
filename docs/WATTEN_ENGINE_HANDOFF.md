@@ -36,8 +36,9 @@ Teilnehmer-IDs nicht mit den numerischen Karten-Sitzindizes verwechseln.
    Auslöser ist **die erste Stichkarte**, wenn gewöhnlicher Trumpf/Rechter.
    Kritische lösen nie aus, auch bei gedruckter Trumpffarbe/Überschneidung.
 4. Hat ein verpflichteter Spieler gewöhnlichen Trumpf, darf er Trumpf,
-   Schlag, Rechten oder Kritischen legen. Schlag ist auch erlaubt, wenn ein
-   bereits liegender Kritischer höher ist. Keine Stechpflicht. Rechter und
+   Rechten oder Kritischen legen; ein gewöhnlicher Schlag ist nur als
+   tatsächlich gewinnender Stecher erlaubt. Für Trumpf, Rechten und Kritische
+   gilt keine Stechpflicht. Rechter und
    Kritische werden nie erzwungen; ohne gewöhnlichen Trumpf bleibt freie Wahl.
    Späterer kritischer Überstich hebt ausgelöste Pflicht nicht auf.
 5. Bestehende reine Stichbewertung benutzen. Dritter gewonnener Parteistich
@@ -53,7 +54,8 @@ Teilnehmer-IDs nicht mit den numerischen Karten-Sitzindizes verwechseln.
    Kritischer. Ohne Kritische ist Weli-Schlag alleiniger geschützter Rechter.
 
 Tests müssen die bestätigten Grenzhände, alle 2/3/4-Rollen, kritischen
-Überstich, nicht gewinnenden Schlag, alleinige geschützte Karten, Kartenerhalt,
+Überstich, Abweisung eines nicht gewinnenden gewöhnlichen Schlags,
+alleinige geschützte Karten, Kartenerhalt,
 Zugrecht, sofortigen Abschluss und Gebotssperre unabhängig prüfen.
 Diese interne Struktur **niemals** unmittelbar an Spieler/CPU serialisieren;
 Allowlist-Projektion und Inspektions-/Wiederholungsvertrag folgen separat.

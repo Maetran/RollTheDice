@@ -45,6 +45,11 @@ begrenzt. Persönliche Folgetisch-Einladungen, Tourpräferenzen, Gerätebindung
 und Monitoring sind serverseitig vorbereitet; ihre übrigen nativen Oberflächen
 und die öffentliche Freigabe stehen noch aus.
 
+Die Trumpfzugabe entspricht der bestätigten Variante 2: Ein gewöhnlicher
+Schlag ersetzt vorhandenen Trumpf nur, wenn er den aktuellen Stich übernimmt.
+Trumpf, Rechter und Kritische haben weiterhin keinen Überstechzwang. Engine,
+CPU-Simulation und die zweisprachigen Hinweise verwenden dieselbe Regel.
+
 **English:** A server flag, off by default, makes the first Watten web preview
 available only to the permanently bound founder account on the existing
 production host. The chooser follows freshly checked account permissions.
@@ -63,6 +68,11 @@ only. Account settings save consent and player selection; search results and
 pending notices stay bounded. Personal follow-up invitations, tour preferences,
 device context and monitoring have backend foundations; their remaining native
 interfaces and public release are still pending.
+
+Following trump uses the confirmed second option: an ordinary rank card can
+replace held trump only when it takes the current trick. Trump, the Right and
+critical cards still have no duty to overtrump. The engine, CPU simulation and
+bilingual guidance use the same rule.
 
 ## 3.15.0 — Watten-Folgetische und Gespräche / Watten next tables and conversation — 2026-10-18
 
