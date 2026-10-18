@@ -23,7 +23,7 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
-## 3.8.1 — Spielneutrale Kontotexte / game-neutral account texts — 2026-10-18
+## 3.8.2 — Spielneutrale Kontotexte / game-neutral account texts — 2026-10-18
 
 **Deutsch:** Anmeldung, Konto, Einstellungen und Spielanleitung zählen die Spiele
 nicht mehr einzeln auf: Ein Konto, Passwort, Benutzername, Sprache, Lobby-Chat,
@@ -45,6 +45,32 @@ players, profile picture, username, shared version, release notes, play reminder
 are updated too. The lobby chat paragraph in the Zilch rules now mentions the quick
 filters and appears in English too. Old, unused texts were removed from the language
 catalog.
+
+## 3.8.1 — Hausdepp: besser lesbarer Spieltisch / a more readable table — 2026-10-18
+
+**Deutsch:** Verdeckter Stapel und offenes Paket werden nicht mehr abgedunkelt,
+wenn andere Spieler dran sind; vorher lagen sie dann bei 45 % Deckkraft, was
+Kartenweiss von 12,8:1 auf 3,8:1 Kontrast drückte. Was du gerade antippen kannst
+(zocken, abheben, Paket nehmen), bekommt einen goldenen Leuchtrand; das
+automatische Nachziehen leuchtet nicht. Name und Kartenzahl jedes Mitspielers
+stehen auf einem dunklen Schild, der Spieler am Zug auf einem goldenen; auf dem
+Handy in einer Zeile, und volle Tische sitzen dort in einer gleichmässigen Reihe. Die
+Statuszeile ist eine Pille, gold bei deinem Zug, und zeigt keinen kleinen
+Scrollbalken mehr. „Aus dem Spiel“ ist jetzt eine durchgestrichene Karte mit
+Zahl; der Text bleibt für Screenreader und als Tooltip. Kein Tischtext ist
+kleiner als 11 px, „Tisch frei“ und die gestrichelten Plätze sind kräftiger, und
+ein sanfter Lichtkegel über der Tischmitte hebt die Karten vom Holz ab.
+
+**English:** The stock and the open pile no longer fade while other players are
+on turn; they used to sit at 45% opacity, which dropped card white from 12.8:1 to
+3.8:1 contrast. Whatever you can tap now (gamble, cut, take the pile) gets a gold
+ring; the automatic refill does not light up. Each opponent's name and hand size
+sit on a dark plate, the player on turn on a gold one; on phones in one line, and
+full tables sit there in one even row. The turn line is a pill,
+gold on your turn, and no longer shows a tiny scrollbar. "Out of play" is now a
+crossed-out card with its count; the words stay for screen readers and as the
+tooltip. No table caption is smaller than 11px, "Table clear" and the dashed
+places are stronger, and a soft lamp over the centre lifts the cards off the wood.
 
 ## 3.8.0 — Hausdepp: Rundenabschluss, Tisch-Extras, neue Erfolge / round summary, table extras, new achievements — 2026-10-17
 

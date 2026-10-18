@@ -802,6 +802,123 @@ test('labelled UI fixture: FIFO stock lock leaves the next hand tappable and war
   expect(await page.locator('#hausdeppDrawAlert').evaluate(element => getComputedStyle(element).animationName)).toBe('none');
 });
 
+test('labelled UI fixture: the table never fades its stacks, lights up only what may be tapped and keeps every caption readable', async ({ page }) => {
+  test.setTimeout(90000);
+  await ownerSession(page);
+  const traffic = watchGame(page);
+  const room = await createCpuTable(page, traffic);
+  const base = labelledUiFixture(traffic.scoreboard, 'Kontrast', ['hearts-U', 'bells-A', 'leaves-9']);
+  const cpu = base._hausdepp.players.find(player => player.is_cpu);
+  const snapshot = (changes, turn) => {
+    const next = JSON.parse(JSON.stringify(base));
+    Object.assign(next._hausdepp, changes);
+    next._turn = { player_id: turn };
+    return next;
+  };
+  const waiting = snapshot({ current_player_id: cpu.id, discard: ['hearts-9', 'bells-9'], deck_count: 20, burned_count: 4,
+    available_actions: [], playable_cards: [] }, cpu.id);
+  const mocked = await installUiFixture(page, room, waiting);
+  const ring = selector => page.locator(selector).evaluate(element => getComputedStyle(element).boxShadow);
+  const status = page.locator('#hausdeppStatus');
+  const plate = page.locator(`.hd-seat[data-player-id="${cpu.id}"] .hd-seat-plate`);
+  const gold = 'rgb(236, 211, 145)';
+  for (const [name, viewport] of VIEWPORTS) {
+    await page.setViewportSize(viewport);
+    mocked.setSnapshot(waiting);
+    await page.goto(room);
+    await expect(page.locator('#hausdeppRoomName')).toHaveText('UI-Test · Kontrast');
+    // Between turns the stacks stay fully painted and carry no ring.
+    await expect(page.locator('#hausdeppStock')).toBeDisabled();
+    await expect(page.locator('#hausdeppStock')).toHaveCSS('opacity', '1');
+    await expect(page.locator('#hausdeppPile')).toHaveCSS('opacity', '1');
+    expect(await ring('#hausdeppStock'), name).toBe('none');
+    expect(await ring('#hausdeppPile'), name).toBe('none');
+    // The computer on turn wears a gold plate; the turn line is a dark pill
+    // that clips long text instead of growing a scrollbar.
+    await expect(plate).toHaveCSS('background-color', gold);
+    await expect(status).not.toHaveClass(/is-yours/);
+    expect(await status.evaluate(element => ({ overflow: getComputedStyle(element).overflowY,
+      scrollbar: element.offsetWidth - element.clientWidth > 2 || element.offsetHeight - element.clientHeight > 2 })), name)
+      .toEqual({ overflow: 'hidden', scrollbar: false });
+    // Out of play is a crossed-out card with its count; the words remain
+    // for screen readers and as the tooltip.
+    const burned = page.locator('.hd-burned');
+    await expect(burned.locator('.hd-burned-icon')).toBeVisible();
+    await expect(page.locator('#hausdeppBurnedCount')).toHaveText('4');
+    await expect(burned).toHaveAttribute('title', 'Aus dem Spiel');
+    await expect(burned.locator('.hd-stack-action')).toHaveText('Aus dem Spiel');
+    expect(await burned.locator('.hd-stack-action').evaluate(element => element.getBoundingClientRect().width), name).toBeLessThanOrEqual(1);
+    // No caption on the wood is smaller than 11px.
+    const small = await page.evaluate(() => [...document.querySelectorAll(
+      '.hd-seat-plate > *, .hd-centre .hd-stack-action:not(.hd-sr), #hausdeppStockCount, #hausdeppPileCount, .hd-burned-meta, #hausdeppStatus, #hausdeppHandTitle, #hausdeppSelection, #hausdeppConnection')]
+      .filter(element => element.textContent.trim() && element.getClientRects().length && getComputedStyle(element).visibility !== 'hidden')
+      .map(element => ({ text: element.textContent.trim(), size: parseFloat(getComputedStyle(element).fontSize) }))
+      .filter(item => item.size < 11));
+    expect(small, name).toEqual([]);
+  }
+
+  // A full table keeps every plate inside the screen and clear of its neighbours,
+  // even with a long name on the smallest phones.
+  const names = ['Vroni', 'Alois', 'Franziska-Maria', 'Sepp', 'Burgl'];
+  const opponent = base._hausdepp.players.find(player => player.is_cpu);
+  const seated = base._participants.find(player => player.is_cpu);
+  const six = snapshot({ current_player_id: 'cpu-x2', discard: ['hearts-9', 'bells-9'], deck_count: 12, burned_count: 7,
+    available_actions: [], playable_cards: [] }, 'cpu-x2');
+  six._hausdepp.players = [six._hausdepp.players.find(player => !player.is_cpu),
+    ...names.map((name, index) => ({ ...opponent, id: `cpu-x${index}`, name, hand_count: 3 + index, finished: false }))];
+  six._participants = [six._participants.find(player => !player.is_cpu),
+    ...names.map((name, index) => ({ ...seated, id: `cpu-x${index}`, name, hand_count: 3 + index, finished: false }))];
+  six._mode = '6';
+  six._expected = 6;
+  for (const [width, height] of [[320, 568], [360, 740], [375, 667], [390, 844], [667, 375], [844, 390], [768, 1024]]) {
+    await page.setViewportSize({ width, height });
+    mocked.setSnapshot(six);
+    await page.goto(room);
+    await expect(page.locator('.hd-seat-plate')).toHaveCount(5);
+    const crowding = await page.evaluate(() => {
+      const meets = (a, b) => Math.min(a.right, b.right) - Math.max(a.left, b.left) > 1 && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 1;
+      const seats = [...document.querySelectorAll('.hd-seat')];
+      const plates = seats.map(seat => seat.querySelector('.hd-seat-plate').getBoundingClientRect());
+      const stacks = [...document.querySelectorAll('#hausdeppStock, #hausdeppPile, .hd-known-bottom-cards:not([hidden]) .hausdepp-card')]
+        .map(node => node.getBoundingClientRect());
+      const fans = seats.map(seat => [...seat.querySelectorAll('.hd-opponent-card, .hd-seat-avatar')].map(node => node.getBoundingClientRect()));
+      return { overlaps: plates.flatMap((a, i) => plates.slice(i + 1).filter(b => meets(a, b)).map(() => i)),
+        stacks: plates.filter(plate => stacks.some(stack => meets(plate, stack))).length,
+        fans: plates.filter((plate, i) => fans.some((fan, j) => i !== j && fan.some(card => meets(plate, card)))).length,
+        outside: plates.filter(rect => rect.left < 0 || rect.right > innerWidth).length };
+    });
+    expect(crowding, `${width}×${height}: seat plates stay apart, uncovered and on screen`).toEqual({ overlaps: [], stacks: 0, fans: 0, outside: 0 });
+    await expect(page.locator('.hd-seat[data-player-id="cpu-x2"]')).toHaveAttribute('aria-label', /5 Karten/);
+  }
+
+  // In the own turn only tappable stacks light up: gambling and pickup here.
+  mocked.setSnapshot(snapshot({ discard: ['hearts-9'], deck_count: 20, available_actions: ['play', 'pickup', 'gamble'],
+    playable_cards: ['hearts-U', 'bells-A'] }, base._hausdepp.viewer_id));
+  await page.goto(room);
+  await expect(status).toHaveClass(/is-yours/);
+  await expect(status).toHaveCSS('background-color', gold);
+  await expect(plate).toHaveCSS('background-color', 'rgba(16, 11, 8, 0.66)');
+  await expect.poll(() => ring('#hausdeppStock')).toContain('rgba(236, 211, 145, 0.95)');
+  await expect.poll(() => ring('#hausdeppPile')).toContain('rgba(236, 211, 145, 0.95)');
+
+  // Playing only (empty table, empty stock): nothing glows, the empty place stays bright.
+  mocked.setSnapshot(snapshot({ discard: [], deck_count: 0, available_actions: ['play'] }, base._hausdepp.viewer_id));
+  await page.goto(room);
+  await expect(page.locator('.hd-empty-pile')).toHaveText('Tisch frei');
+  await expect(page.locator('#hausdeppPile')).toBeDisabled();
+  await expect(page.locator('#hausdeppPile')).toHaveCSS('opacity', '1');
+  expect(await ring('#hausdeppStock')).toBe('none');
+  expect(await ring('#hausdeppPile')).toBe('none');
+
+  // A due refill is tapped automatically, so the stock does not ask for a tap.
+  const debt = { player_id: base._hausdepp.viewer_id, remaining: 1, continuation: 'advance', rank: '9' };
+  mocked.setSnapshot(snapshot({ discard: ['hearts-9'], deck_count: 20, pending_refills: [debt], pending_refill: debt,
+    draw_required: true, available_actions: ['draw'], playable_cards: [] }, base._hausdepp.viewer_id));
+  await page.goto(room);
+  await expect.poll(() => mocked.commands.filter(command => command.action === 'hausdepp_draw').length).toBe(1);
+  expect(await ring('#hausdeppStock')).toBe('none');
+});
+
 test('labelled UI fixture: rapid matching taps send single cards in order without confirmation or a fixed cooldown', async ({ page }) => {
   await ownerSession(page);
   const traffic = watchGame(page);

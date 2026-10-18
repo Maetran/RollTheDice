@@ -9,7 +9,7 @@
   "summary_en": "Account and settings texts now speak of all our games instead of listing each one.",
   "player_notes": {
     "de": {
-      "title": "3.8.1: Ein Konto für alle unsere Spiele",
+      "title": "3.8.2: Ein Konto für alle unsere Spiele",
       "changes": [
         "Anmeldung, Konto und Einstellungen sagen jetzt „alle unsere Spiele“, statt ZDWA, Zilch und Hausdepp einzeln aufzuzählen.",
         "Die Spielanleitung erklärt Profilbild, Spielerauswahl, Benutzername, Lobby-Chat und Versionshinweise für alle Spiele statt nur für zwei.",
@@ -17,7 +17,7 @@
       ]
     },
     "en": {
-      "title": "3.8.1: One account for all our games",
+      "title": "3.8.2: One account for all our games",
       "changes": [
         "Sign-in, account and settings now say “all our games” instead of listing ZDWA, Zilch and Hausdepp one by one.",
         "The rules explain profile pictures, player selection, usernames, lobby chat and release notes for every game, not just two.",

@@ -11,6 +11,7 @@
 @import "./hausdepp-rematch.css";
 @import "./hausdepp-table-polish.css";
 @import "./hausdepp-readable-table.css";
+@import "./hausdepp-contrast.css";
 :root {
   --hd-paper: #f6f2e6; --hd-ink: #20372e; --hd-muted: #526157;
   --hd-red: #a63335; --hd-red-hover: #842628; --hd-gold: #dfc895;
@@ -303,7 +304,7 @@ a { color: inherit; text-underline-offset: 4px; }
 .hd-seat-avatar { width: 44px; height: 44px; border-radius: 50%; background: #f1e4cc; color: #59412e; display: grid; place-items: center; font-weight: 750; box-shadow: 0 4px 10px #160d0966; margin-bottom: 4px; }
 .hd-seat.is-active .hd-seat-avatar { background: var(--hd-gold); outline: 2px solid var(--hd-gold); outline-offset: 4px; }
 .hd-seat strong { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
-.hd-seat > span:not(.hd-seat-avatar) { font-size: 13px; color: #e4d1b6; display: flex; align-items: center; gap: 4px; }
+.hd-seat-count { font-size: 13px; color: #e4d1b6; display: flex; align-items: center; justify-content: center; gap: 4px; }
 .hd-seat small { color: #d8c4aa; font-size: 11px; }
 .hd-seat.is-finished { opacity: .65; }
 .hd-seat.is-finished .hd-icon { width: 14px; height: 14px; }
@@ -575,7 +576,7 @@ button.hd-pile:hover { background: #f3eadd18; }
   .hd-seat { min-width: 50px; max-width: 75px; }
   .hd-seat-avatar { width: 36px; height: 36px; font-size: 14px; }
   .hd-seat strong { font-size: 12px; }
-  .hd-seat > span:not(.hd-seat-avatar) { font-size: 11px; }
+  .hd-seat-count { font-size: 11px; }
   .hd-seat small { display: none; }
   .hd-opponent-hand { --opponent-card: 24px; --opponent-spread: 30px; --opponent-step: 8px; height: calc(var(--opponent-card)*57/36 + 10px); }
   .hd-seats[data-count="1"] .hd-seat { max-width: 160px; }
@@ -642,8 +643,7 @@ button.hd-pile:hover { background: #f3eadd18; }
   .hd-opponent-hand { --opponent-card: 22px; --opponent-spread: 28px; --opponent-step: 7px; height: calc(var(--opponent-card)*57/36 + 8px); margin-top: 0; }
   .hd-seats[data-count="1"] .hd-seat { display: grid; grid-template-columns: auto auto; column-gap: 12px; max-width: 170px; }
   .hd-seats[data-count="1"] .hd-opponent-hand { --opponent-card: 36px; --opponent-spread: 70px; --opponent-step: 12px; grid-column: 1; grid-row: 1 / 4; }
-  .hd-seats[data-count="1"] .hd-seat > strong { grid-column: 2; grid-row: 1; align-self: end; }
-  .hd-seats[data-count="1"] .hd-seat > span { grid-column: 2; grid-row: 2; align-self: start; }
+  .hd-seats[data-count="1"] .hd-seat-plate { grid-column: 2; grid-row: 1 / 3; align-self: center; }
   .hd-centre { grid-column: 2; grid-row: 2 / 4; align-self: start; height: 136px; gap: 27px; padding: 3px 10px 0; }
   .hd-centre .hausdepp-card, .hd-pile, .hd-card-back { width: 58px; }
   .hd-stock-group, .hd-pile-group { gap: 7px; }

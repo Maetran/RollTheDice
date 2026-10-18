@@ -106,6 +106,19 @@ ranks. The fan still scrolls horizontally; keyboard-focused cards move to the
 front for reading and selection. Open-pile cards keep the same size throughout
 a play, matching the viewport; the animation joins the pile without a size jump.
 
+**Deutsch – Tisch lesen:** Verdeckter Stapel und offenes Paket bleiben auch
+zwischen den Zügen hell; was gerade angetippt werden kann (zocken, abheben, Paket
+nehmen), leuchtet golden. Name und Kartenzahl der Mitspieler stehen auf dunklen
+Schildern, der Spieler am Zug auf einem goldenen, und die Statuszeile wird bei
+deinem Zug gold. Tischtexte sind mindestens 11 px gross; „Aus dem Spiel“ zeigt eine
+durchgestrichene Karte mit Zahl.
+
+**English – reading the table:** The stock and the open pile stay bright between
+turns; whatever can be tapped right now (gamble, cut, take the pile) lights up in
+gold. Opponents' names and hand sizes sit on dark plates, the player on turn on a
+gold one, and the turn line turns gold on your turn. Table captions are at least
+11px; "Out of play" shows a crossed-out card with its count.
+
 Die [Regel- und Produktspezifikation](docs/HAUSDEPP.md) hält die bestätigten
 Details fest; [Karten und Quellen](docs/HAUSDEPP_ASSETS.md) dokumentiert das
 Tellbild und die Blitz-Rückseite. Die Regelseite ergänzt Schnellstart,
