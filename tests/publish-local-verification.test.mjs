@@ -200,3 +200,14 @@ test('a malformed or foreign POST response is rejected without retrying the writ
     assert.equal(api.writes().length, 1);
   });
 });
+
+test('an unchanged develop merge retains the original source status without publishing a new base', t => {
+  const f = fixture(t);
+  f.git(['checkout', '-q', 'develop']);
+  f.git(['merge', '--no-ff', '-qm', 'Merge the verified feature', 'codex/publisher-test']);
+  f.git(['push', '-q', 'origin', 'HEAD:refs/heads/develop']);
+  const api = mockGitHub(f);
+  assert.deepEqual(publishVerification({ cwd: f.cwd, execute: api.execute }),
+    { published: false, inheritedFrom: f.receipt.head });
+  assert.deepEqual(api.calls, []);
+});

@@ -34,6 +34,13 @@ export function publishVerification({ cwd = process.cwd(), execute = gh } = {}) 
   git(['fetch', 'origin'], cwd);
   const receipt = checkReceipt(cwd);
   const repository = githubRepository(git(['remote', 'get-url', 'origin'], cwd));
+  if (receipt.inheritedFrom) {
+    // GitHub already checks the original source status when accepting this PR
+    // merge. Do not create a second status with base=merge on the merge itself:
+    // that would change the evidence seen by a later re-run of its develop job.
+    console.log(`[local] Unchanged integration retains its verified source status: https://github.com/${repository}/commit/${receipt.inheritedFrom}`);
+    return { published: false, inheritedFrom: receipt.inheritedFrom };
+  }
   const owner = execute(['api', '--hostname', 'github.com', `repos/${repository}`, '--jq', '.owner.login'], { cwd });
   const actor = execute(['api', '--hostname', 'github.com', 'user', '--jq', '.login'], { cwd });
   if (owner !== actor) throw new Error(`Only repository owner ${owner} may publish the trusted local verification status; signed in as ${actor}.`);

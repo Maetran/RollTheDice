@@ -76,6 +76,8 @@ erneut geprüft. Zeiten und Berichte bleiben unverändert, die Herkunft wird als
 `inheritedFrom` aufgezeichnet. Andere Commits oder neue Quellen brauchen einen
 neuen Volltest. So können `master` und der zugehörige Tag denselben geprüften
 Stand übernehmen, ohne die lokalen Suiten nochmals zu wiederholen.
+Der Publisher behält dabei den bestehenden Source-Status des PRs bei, statt
+auf dem Merge einen zweiten Status mit einer anderen Basis zu erzeugen.
 
 Für die Entwicklung bleiben gezielte Prüfungen verfügbar:
 
@@ -144,3 +146,5 @@ environment and all groups are checked again; original reports and timestamps
 remain unchanged and `inheritedFrom` records the source. New sources require a
 new full run. This lets the master fast-forward and release tag reuse the same
 local source verification.
+The publisher retains the PR's original source status for an inherited receipt;
+it does not publish a second merge status with a different base.
