@@ -19,12 +19,20 @@ heutiger Sicherung und konkreter Watten-Abnahme dokumentiert. Es sind nicht
 Verantwortungsperspektiven sichtbar. Jede ID ist vollständig in den
 [Watten-Umsetzungsplan](WATTEN_IMPLEMENTATION_PLAN.md) übertragen.
 
-Drei heutige Restpunkte sind gesondert eingegrenzt: **S27** Rezeptübernahme
+Drei im ursprünglichen Deep-Dive eingegrenzte Restpunkte sind: **S27** Rezeptübernahme
 neuer Warteraumoptionen (offene Vertragsfrage), **S28** fehlende Browserkombination
 für Hausdepp-Freundestarts (Abdeckungslücke) und **S29** nachlaufender
 Remindertext (Dokumentationslücke). Daraus wird kein unbelegter aktueller
 Spiel-, Versand- oder Datenschutzfehler behauptet. **B06** ist ein noch
 festzulegender Wiederholungs-/Quittungsvertrag; **O07** eine Geräte-Nachweisgrenze.
+
+**Nachtrag 18.10.2026:** Beim lokalen Volllauf für die reine Responsive-
+Planergänzung wurde zusätzlich ein **bestehendes Initialisierungsrennen beim
+Hausdepp-Spielwechsler** beobachtet und anhand des Traces/der Bootfolge
+bestätigt. Details stehen als weiterer Fall des Bereitschaftsvertrags **S25**.
+Der Volllauf ist fehlgeschlagen; er erzeugt keinen gültigen Push-Nachweis.
+Zum Zeitpunkt dieses Nachtrags blieb die Ergänzung lokal committet und
+wurde wegen des fehlgeschlagenen Vollnachweises nicht gepusht.
 
 ## Untersuchung und Aussagegrenzen
 
@@ -309,6 +317,39 @@ halten eigene Hand, öffentlichen Verlauf und Zufallszustand gleich.
 - **Tests:** [tests/browser/game-tours.spec.js:442](https://github.com/Maetran/RollTheDice/blob/80bc42df17eb5852a5153582b263f6d065138f35/tests/browser/game-tours.spec.js#L442) sichtbare Aktionen vor Präferenzantwort, `:469` Toggle, `:763` Hausdepp wartet auf echte Aktion nach Einschauen.
 - **Watten-Aktion:** Teamwahl/Regeln/Hilfe/Abbrechen sofort binden oder erkennbar deaktivieren; Tour löst keine echten Ansagen/Einschauaktionen aus.
 - **Abnahme:** Konto-/Favoriten-/Tourrequest blockiert, unmittelbar sichtbare Aktion klicken: funktioniert ohne späteren Geisterklick.
+
+**Nachtrag zum bestehenden S25-Vertrag – Spielauswahl:** Der unveränderte
+Test `tests/browser/hausdepp-product.spec.js:117` lief im Vollnachweis auf
+`76c3455133ac81231ebe07202a9567d4f25b0aa4` in einen 30-Sekunden-Timeout:
+Nach dem Klick auf den sichtbaren aktiven Spielwechsler erschien kein Menü.
+Der Trace zeigt den Klick bei 93’709,711 ms, während der zweite erfolgreiche
+`/api/auth/me`-Refresh erst bei 93’718,421 ms endete. Beide Antworten waren
+HTTP 200 mit denselben Berechtigungen; es wurde kein Aktivitätsabruf für ein
+geöffnetes Menü ausgelöst.
+
+Die Bootfolge in
+[frontend/hausdepp/index.js:212](https://github.com/Maetran/RollTheDice/blob/80bc42df17eb5852a5153582b263f6d065138f35/frontend/hausdepp/index.js#L212)
+und
+[frontend/multigame/app-mode.js:83](https://github.com/Maetran/RollTheDice/blob/80bc42df17eb5852a5153582b263f6d065138f35/frontend/multigame/app-mode.js#L83)
+startet mit `allowed=false` und lädt Auth nochmals asynchron. Der Guard bei
+[app-mode.js:162](https://github.com/Maetran/RollTheDice/blob/80bc42df17eb5852a5153582b263f6d065138f35/frontend/multigame/app-mode.js#L162)
+ignoriert den frühen Klick, obwohl der Headerbutton schon bedienbar erscheint.
+Ein unabhängiger Quell-/Trace-Review bestätigt dieses Timingfenster. Die
+beteiligten Quellen, Assets und Tests sind gegenüber `origin/develop=80bc42d`
+unverändert. Der Befund ist offen; eine Laufzeitkorrektur wurde nicht begonnen.
+
+Lokaler Bericht: `test-results/local-checks/76c3455133ac-1792331247090-dcb957a4/`;
+Trace und Fehlerkontext liegen dort unter
+`browser/main-2/artifacts/hausdepp-product-suite-swi-8ccad-o-the-public-Hausdepp-lobby/`.
+Qualität/Sicherheit, 91 Werkzeugtests, 1’360 Backendtests, Produktionsimage und
+HTTP-Smoke bestanden; Browser: **1’118 bestanden, ein Fehler, neun optionale
+Capture-Skips**. Alle sieben Browserteile liefen aus. Der fehlgeschlagene
+Vollnachweis wurde weder durch Teilprüfungen ersetzt noch zum Push verwendet.
+
+**Zusätzliche Watten-Abnahme zu S25:** Auth-Refresh absichtlich verzögern und
+den Spielwechsler unmittelbar nach sichtbarem Seitenaufbau bedienen. Entweder
+ist er bis zur Bereitschaft erkennbar deaktiviert oder der Klick öffnet die
+erlaubte Auswahl. Kein sichtbarer aktiver Knopf darf den Klick still verlieren.
 
 ### S26 — SEO- und Navigationsregister als Lieferbestandteil
 
