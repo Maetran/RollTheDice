@@ -732,6 +732,14 @@ class WattenFavorite(Base):
     recipe_json: Mapped[str] = mapped_column(Text, nullable=False)
 
 
+class WattenOpenSeatClaim(Base):
+    """Durable room flood barrier; no audience, message or room secrets."""
+
+    __tablename__ = "watten_open_seat_claims"
+    game_id: Mapped[str] = mapped_column(ForeignKey("active_games.game_id", ondelete="CASCADE"), primary_key=True)
+    claimed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
 class WattenPersonalInvitation(Base):
     """Private explicit follow-up consent; acceptance grants only table access."""
 

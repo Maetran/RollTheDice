@@ -417,24 +417,23 @@ def claim_game_invite_push(user_id: int) -> int:
     request with no currently reachable recipients consumes the account slot.
     Return zero on success, otherwise the remaining cooldown in seconds.
     """
-    now = utcnow()
-    cutoff = now - timedelta(seconds=GAME_INVITE_PUSH_ACCOUNT_COOLDOWN_SECONDS)
     with session_scope() as db:
-        claimed = db.execute(
-            update(User)
-            .where(
-                User.id == user_id,
-                or_(User.game_invite_push_last_sent_at.is_(None), User.game_invite_push_last_sent_at <= cutoff),
-            )
-            .values(game_invite_push_last_sent_at=now)
-            .returning(User.id)
-        ).scalar_one_or_none()
-        if claimed is not None:
-            return 0
-        sent_at = db.scalar(select(User.game_invite_push_last_sent_at).where(User.id == user_id))
-        if sent_at is None:
-            raise LookupError("user_not_found")
-        return max(1, math.ceil(GAME_INVITE_PUSH_ACCOUNT_COOLDOWN_SECONDS - (now - as_utc(sent_at)).total_seconds()))
+        return claim_game_invite_push_in_session(db, user_id, now=utcnow())
+
+
+def claim_game_invite_push_in_session(db, user_id: int, *, now: datetime) -> int:
+    """The same cross-game claim, with transaction ownership kept by the caller."""
+    cutoff = now - timedelta(seconds=GAME_INVITE_PUSH_ACCOUNT_COOLDOWN_SECONDS)
+    claimed = db.execute(update(User).where(
+        User.id == user_id,
+        or_(User.game_invite_push_last_sent_at.is_(None), User.game_invite_push_last_sent_at <= cutoff),
+    ).values(game_invite_push_last_sent_at=now).returning(User.id)).scalar_one_or_none()
+    if claimed is not None:
+        return 0
+    sent_at = db.scalar(select(User.game_invite_push_last_sent_at).where(User.id == user_id))
+    if sent_at is None:
+        raise LookupError("user_not_found")
+    return max(1, math.ceil(GAME_INVITE_PUSH_ACCOUNT_COOLDOWN_SECONDS - (now - as_utc(sent_at)).total_seconds()))
 
 
 def game_invite_account_cooldown_remaining(user_id: int) -> int:

@@ -2177,6 +2177,11 @@ async def api_games(request: Request, game_type: str = Query(default=DEFAULT_GAM
 async def api_game_notify_open_seat(game_id: str, request: Request):
     """Let a seated player invite opted-in accounts within the product audience."""
     from .moderation import ensure_play_allowed
+    from .watten_open_seat import maybe_notify_open_seat
+
+    native_response = await maybe_notify_open_seat(game_id, request, games.get(game_id))
+    if native_response is not None:
+        return native_response
 
     identity = require_user(request)
     require_csrf(request, identity)
