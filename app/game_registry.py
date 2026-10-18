@@ -10,6 +10,7 @@ from .game_state import GameDict
 from .game_types import (
     DEFAULT_GAME_TYPE,
     HAUSDEPP_GAME_TYPE,
+    WATTEN_GAME_TYPE,
     ZILCH_GAME_TYPE,
     GameType,
     game_type_from_state,
@@ -173,13 +174,36 @@ def _hausdepp_adapter() -> GameAdapter:
     )
 
 
+def _watten_adapter() -> GameAdapter:
+    from .watten_runtime import (
+        WATTEN_ACTIONS,
+        finalize_watten_game,
+        never_autostart_watten,
+        new_watten_game,
+        reject_generic_watten_join,
+        snapshot_watten,
+    )
+    from .watten_websocket import handle_watten_gameplay_action
+
+    return GameAdapter(
+        game_type=WATTEN_GAME_TYPE, create_state=new_watten_game, join_player=reject_generic_watten_join,
+        start_game=never_autostart_watten, project_snapshot=snapshot_watten, project_progress=lambda _game: [],
+        gameplay_actions=WATTEN_ACTIONS, handle_gameplay=handle_watten_gameplay_action,
+        finalize_completed_game=finalize_watten_game,
+    )
+
+
 def adapter_for_game_type(value: object | None) -> GameAdapter:
     game_type = normalize_game_type(value)
     if game_type == ZILCH_GAME_TYPE:
         return _zilch_adapter()
     if game_type == HAUSDEPP_GAME_TYPE:
         return _hausdepp_adapter()
-    return _zdwa_adapter()
+    if game_type == WATTEN_GAME_TYPE:
+        return _watten_adapter()
+    if game_type == DEFAULT_GAME_TYPE:
+        return _zdwa_adapter()
+    raise ValueError("invalid_game_type")
 
 
 def adapter_for_game(game: GameDict) -> GameAdapter:
@@ -218,6 +242,10 @@ async def dispatch_gameplay_action(
 
 
 def project_game_snapshot(game: GameDict, viewer_id: str | None = None) -> dict:
+    if game_type_from_state(game) == WATTEN_GAME_TYPE:
+        from .watten_runtime import snapshot_watten
+
+        return snapshot_watten(game, viewer_id)
     if game_type_from_state(game) == HAUSDEPP_GAME_TYPE:
         from .hausdepp_snapshot import snapshot_hausdepp
 

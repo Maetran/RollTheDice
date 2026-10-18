@@ -33,7 +33,7 @@ def _error(code: str, status: int = 409) -> HTTPException:
 
 
 def game_is_active(game: dict | None) -> bool:
-    return bool(game and game_type_from_state(game) != HAUSDEPP_GAME_TYPE and not game.get("_finished") and not game.get("_aborted") and not game.get("_completion_persisted"))
+    return bool(game and game_type_from_state(game) not in {HAUSDEPP_GAME_TYPE, "watten"} and not game.get("_finished") and not game.get("_aborted") and not game.get("_completion_persisted"))
 
 
 def is_game_player(game: dict | None, user_id: int) -> bool:

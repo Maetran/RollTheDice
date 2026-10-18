@@ -84,6 +84,11 @@ def check_timeout_and_abort(g, *, now: datetime | None = None) -> bool:
     Rückgabe:
     - True, wenn das Spiel soeben als abgebrochen markiert wurde, sonst False.
     """
+    if g.get("_game_type") == "watten":
+        # The native asynchronous coordinator applies waiting deadlines under
+        # the same table lock as socket mutations. Never race it from a sync
+        # HTTP sweep or invent a running forfeit/abandonment policy here.
+        return False
     try:
         # ``now`` is an intentionally small test seam.  Production callers
         # always use the authoritative server clock; tests can prove that the
@@ -405,6 +410,8 @@ def correction_disabled_reason(g: GameDict) -> str | None:
 
 def _join_block_reason(g: GameDict) -> str | None:
     """Prueft, ob ein neuer Spieler dem Spiel noch beitreten darf."""
+    if g.get("_game_type") == "watten":
+        return "watten_authenticated_coordinator_required"
     if g.get("_finished") or g.get("_aborted"):
         return "Spiel ist bereits beendet"
     if g.get("_started"):

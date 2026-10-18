@@ -128,6 +128,13 @@ async def serve_game_websocket(
         await close_with_error(websocket, "Game nicht gefunden", fatal=True, code=1000)
         return
 
+    if game_type_from_state(game) == "watten":
+        from .watten_websocket import serve_watten_websocket
+
+        await serve_watten_websocket(websocket, game, reserve_connection=reserve_connection,
+                                     release_connection=release_connection)
+        return
+
     identity = resolve_session(websocket)
     if identity and user_play_banned(identity.user_id):
         await websocket.accept()

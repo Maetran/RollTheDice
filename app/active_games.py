@@ -35,6 +35,10 @@ def _json_safe(value: Any) -> Any:
 
 def serializable_game_state(game: dict) -> dict:
     """Return durable state; live connections are rebuilt on rejoin."""
+    if game_type_from_state(game) == "watten":
+        from .watten_runtime import serialize_watten_game
+
+        return serialize_watten_game(game)
     state = _json_safe(game)
     # A reversible in-browser Zilch draft is shared only with people currently
     # watching the room. It is never a persisted scoring hold and must not
@@ -64,6 +68,11 @@ def save_active_game(game: dict) -> None:
     safely found inapplicable for an unstarted/guest-only room). This applies
     to both supported game types; their payload construction remains separate.
     """
+    if game_type_from_state(game) == "watten":
+        from .watten_runtime import persist_watten_game
+
+        persist_watten_game(game)
+        return
     if not database_schema_ready():
         return
     game_id = str(game.get("_id") or "").strip()
@@ -143,6 +152,14 @@ def load_active_games() -> dict[str, dict]:
         game: dict | None = None
         try:
             game = json.loads(state_json)
+            if isinstance(game, dict) and game.get("_game_type") == "watten":
+                from .watten_runtime import restore_watten_json
+
+                game = restore_watten_json(state_json)
+                if game["_id"] != game_id:
+                    raise ValueError("watten_storage_context_mismatch")
+                restored[game_id] = game
+                continue
             if not isinstance(game, dict):
                 delete_active_game(game_id)
                 continue
@@ -207,6 +224,9 @@ def load_active_games() -> dict[str, dict]:
                     pause_zilch_solo_timer(game, count_elapsed=False)
             restored[game_id] = game
         except (TypeError, ValueError, json.JSONDecodeError):
+            if isinstance(game, dict) and game.get("_game_type") == "watten":
+                logger.exception("Retaining unrouteable private Watten checkpoint %s", game_id)
+                continue
             if isinstance(game, dict) and game.get("_finished"):
                 logger.exception("Retaining unrouteable terminal active game %s", game_id)
                 continue

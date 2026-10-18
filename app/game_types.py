@@ -4,12 +4,13 @@ from __future__ import annotations
 
 from typing import Final, Literal
 
-GameType = Literal["zdwa", "zilch", "hausdepp"]
+GameType = Literal["zdwa", "zilch", "hausdepp", "watten"]
 
 DEFAULT_GAME_TYPE: Final[GameType] = "zdwa"
 ZILCH_GAME_TYPE: Final[GameType] = "zilch"
 HAUSDEPP_GAME_TYPE: Final[GameType] = "hausdepp"
-GAME_TYPES: Final[frozenset[str]] = frozenset({DEFAULT_GAME_TYPE, ZILCH_GAME_TYPE, HAUSDEPP_GAME_TYPE})
+WATTEN_GAME_TYPE: Final[GameType] = "watten"
+GAME_TYPES: Final[frozenset[str]] = frozenset({DEFAULT_GAME_TYPE, ZILCH_GAME_TYPE, HAUSDEPP_GAME_TYPE, WATTEN_GAME_TYPE})
 
 
 def normalize_game_type(value: object | None, *, default: GameType = DEFAULT_GAME_TYPE) -> GameType:

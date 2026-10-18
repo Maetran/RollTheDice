@@ -29,6 +29,7 @@ def not_played_on(day: date):
     end = datetime.combine(day + timedelta(days=1), time.min, zone).astimezone(timezone.utc)
     completed_today = select(GameParticipant.id).join(CompletedGame).where(
         GameParticipant.user_id == User.id,
+        CompletedGame.game_type.in_(("zdwa", "zilch", "hausdepp")),
         CompletedGame.finished_at >= start,
         CompletedGame.finished_at < end,
     ).exists()
