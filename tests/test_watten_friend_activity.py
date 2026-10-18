@@ -133,7 +133,8 @@ def test_failed_start_transaction_cannot_publish_or_install_and_retry_publishes_
     original, before = transport.persist_watten_game, stored(game)
     command = native.room_command(game["_id"], "watten_start", "retry-same-start")
 
-    def fail(_candidate):
+    def fail(_candidate, *, human_actor):
+        assert human_actor is None  # Starting a table is not a played action.
         raise SQLAlchemyError("deterministic checkpoint failure")
 
     monkeypatch.setattr(transport, "persist_watten_game", fail)
