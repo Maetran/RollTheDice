@@ -494,3 +494,52 @@ gezielt auf Englisch vorbereitete Regression und alle acht Zwei-Client-Effekte
 bestanden: **9 Fälle, 17.9 Sekunden**, ohne Retries. Beleg:
 `test-results/browser/watten/hdd-language-isolation/`. Dies bleibt ein
 gezielter Gegenlauf; der neue Commit braucht weiterhin einen Vollnachweis.
+
+
+## Spieltisch und CPUs nach develop integriert; lokales P6 wächst
+
+PR #55 ist normal nach develop integriert: Source
+`cdbbdb141b18fcc3b5da6ec8493a0b79aa1f44cb`, getestete Basis
+`f6e0e89185d8aa862335b773adeff1c3bc021dd9`, Merge
+`782972bcec9e53a741e43ddb561cf32a4d614dc6`. Der vollständige lokale
+Prüfablauf bestand alle sieben Gruppen: 2058 Backendtests, 85.34% Coverage,
+alle sieben Browserteile sowie Qualität/Tools/Container. Source-Ownerstatus,
+PR-CI und Develop-CI grün. Unveränderter Merge-Tree durch den vorhandenen
+Nachweisvertrag verifiziert; derselbe Quellenbeleg wurde übernommen.
+Kein Master-/App-/Produktionsdeploy.
+
+Der separate Konto-Branch verbindet die Draft-Journale 0067/0068, native
+atomare Finalisierung, akzeptierte Gebotszählung, private Historie, Erfolge,
+22 Wirtshaustitel, nachvollziehbare Ranglisten und Erfolgsfeed. Leser erzeugen
+keine Vergaben. Historische unbekannte Ansagen/Gebote bleiben unbekannt.
+Quellberechtigung und tatsächlicher eigener Beitrag werden vor aktuellen
+Erfolgslabels geprüft; zukünftige Kataloge bleiben generisch archiviert bei
+erhaltenen ursprünglichen XP. Beschädigte Journale oder Anzeigegrenzen
+werden geschlossen abgelehnt. Titelprojektion hat keine DB-I/O, nur einen
+privaten begrenzten Cache, der erst nach Commit installiert wird.
+
+Sechs neue reale Konto-Browserfälle bestehen in 16.7 Sekunden: DE/EN-Ende
+zu Konto/Verlauf/gefilterter Rangliste, explizite globale Bestätigung,
+Initialfehler mit Wiederholung, überholte Ranglistenfehler, Kontowechsel
+zwischen Identität und privatem Request sowie Match-Bestätigung/Reload bei
+älterer ungesehener Partie. 320×568, 568×320 und 768×700 ohne Seitenscrollen.
+Der erste Kontowechseltest hatte eine eigene fehlerhafte Interception-Freigabe;
+der korrigierte Ablauf verwendet den tatsächlich gewechselten Cookiekontext.
+Ein parallel zu einem Asset-Neubau gestarteter gezielter HTTP-Shell-Test
+sah zwei unterschiedliche Assetstände; seine 16 Fälle bestehen nach stabilem
+Build. Dies ist kein neuer vollständiger P6-Prüfnachweis.
+
+Standalone CPU-Benchmark mit realem Policybudget24 und acht Seeds:
+608/608 gepaarte Gaben über alle zwölf Profile, 11583 gültige Enginebefehle,
+keine Fehler; Policy484 gegen Baseline124 Gabensiege. Karten-/Gebotslatenz
+p50 1.1327ms, p95 3.4855ms. Die Baseline spielt erste erlaubte Karte, bietet
+nie und hält immer. Synthetische, abhängige Gaben beweisen keine menschliche
+Spielstärke oder Elo. Voller Bericht ignoriert gesichert unter
+`test-results/watten-cpu-benchmark/run-20261018-default608.json`, SHA256
+`4390ae5be880c1ecd824d735586590bdd1bcf4e384260e60e36e004209b23aac`.
+
+Alle 81 Erkenntnisse bleiben verbindlich. Native Favoriten/Schutzwahl und
+Folgetischreise werden separat ergänzt; Kommunikationsgrenze für freie
+Nachrichten/Emojis bei gestrichen ist konkret beim Owner nachgefragt.
+Physische Geräte, öffentliche PWA/SEO-Veröffentlichung und vollständige
+Produktabnahme bleiben offen.

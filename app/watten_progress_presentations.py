@@ -2,7 +2,10 @@
 
 from copy import deepcopy
 
+from sqlalchemy import select
+
 from .database import session_scope
+from .models import CompletedGame, GameParticipant
 from .watten_progression_receipts import read_match_presentation_boundaries
 
 
@@ -30,15 +33,20 @@ def apply_match_receipts(account, *, user_id):
 def match_presentation(account, *, user_id, game_id):
     """Only this match's unacknowledged credit/awards, never another match."""
     progress = account["progress"]
-    if progress["grant_sequence"] == 0:
-        raise ValueError("watten_presentation_not_found")
     # Check membership even when a global acknowledgement hid all pending items.
     with session_scope() as db:
         boundaries = read_match_presentation_boundaries(
-            db, user_id=user_id, generation=progress["generation"], game_ids=(game_id,))
-    if game_id not in boundaries:
-        raise ValueError("watten_presentation_not_found")
-    boundary = boundaries[game_id]
+            db, user_id=user_id, generation=progress["generation"], game_ids=(game_id,)) if progress["grant_sequence"] else {}
+        if game_id not in boundaries:
+            # The account reader already validated all owned result sources.
+            # Older legitimate results intentionally have no retrospective XP.
+            owned = db.scalar(select(CompletedGame.id).join(GameParticipant,
+                GameParticipant.game_id == CompletedGame.id).where(
+                    CompletedGame.game_id == game_id, CompletedGame.game_type == "watten",
+                    GameParticipant.user_id == user_id).limit(1))
+            if owned is None:
+                raise ValueError("watten_presentation_not_found")
+    boundary = boundaries.get(game_id, 0)
     credit = next((item for item in progress["pending"]["credits"]
                    if item["game_id"] == game_id and item["sequence"] > boundary), None)
     awards = [item for item in progress["pending"]["achievements"]

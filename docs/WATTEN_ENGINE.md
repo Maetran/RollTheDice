@@ -1,5 +1,26 @@
 # Watten pure engine and room foundation
 
+## Local account progress
+
+Both local preview flags also gate `/watten/konto/fortschritt`,
+`/watten/konto/verlauf` and `/watten/rangliste`. A newly completed native match
+commits its unchanged result-v1 record, immutable evidence, own-account credit,
+one-time achievements and checkpoint atomically. Failure rolls back all of
+them; restart and repeated completion cannot grant again. Historical result
+reads never backfill XP or invent missing profile/bid evidence.
+
+The current 22 pub titles, 27 achievements and XP values are a labelled draft.
+XP standings measure persistence; wins and win rate use explicit table/CPU
+filters and a ten-match minimum for a win-rate place. A match's reward panel
+acknowledges only its own displayed sequence; the account's explicit “Seen”
+action acknowledges the displayed global boundary. Older unseen match rewards
+remain pending. None of these reads writes grants or advances an acknowledgement.
+
+DE/EN names, conditions and the actual stored award price appear in the account
+and achievement feed. Archived catalog entries retain their stored XP and use
+an archive label instead of a guessed condition. The public Watten host remains
+closed; these pages are noindex, no-store and authenticated.
+
 Source snapshot: 18 October 2026, local game integration after PR #54. Pure
 transitions now have a gated native transport, durable result writer, personal
 CPU runner and DE/EN browser UI. The production host remains closed.

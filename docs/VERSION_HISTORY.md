@@ -1,6 +1,6 @@
 # Versionen / Versions
 
-Aktuelle gemeinsame Produktversion / Current shared product version: **3.13.0**.
+Aktuelle gemeinsame Produktversion / Current shared product version: **3.14.0**.
 
 ZDWA und Zilch werden gemeinsam versioniert. Major steht für einen großen
 Produktmeilenstein, Minor für neue Funktionen und Patch für Fehlerkorrekturen
@@ -27,6 +27,7 @@ Detailed player-facing descriptions are in the [changelog](../CHANGELOG.md).
 
 | Version | Datum / Date | Art / Type | Änderung / Change | Commit |
 | --- | --- | --- | --- | --- |
+| 3.13.0 | 2026-10-18 | minor | Interne Watten-Oberfläche und persönliche Computergegner verbinden. / Connect the internal Watten interface and personal computer opponents. | [782972b](https://github.com/Maetran/RollTheDice/commit/782972bcec9e53a741e43ddb561cf32a4d614dc6) |
 | 3.12.3 | 2026-10-18 | patch | Dauerhafte interne Watten-Partien und persönliche Spielzustände anbinden. / Connect durable internal Watten matches and personal game state. | [f6e0e89](https://github.com/Maetran/RollTheDice/commit/f6e0e89185d8aa862335b773adeff1c3bc021dd9) |
 | 3.12.2 | 2026-10-18 | patch | Interne Watten-Regelengine und Tischgrundlagen vorbereiten. / Prepare internal Watten rules and table foundations. | [8d914e1](https://github.com/Maetran/RollTheDice/commit/8d914e1bd4f21e304400e1b73d4690527f654018) |
 | 3.12.1 | 2026-10-18 | patch | Zuverlässiger Spielwechsel und geschlossene Watten-Kontogrundlage. / Reliable game switching and a closed Watten account foundation. | [da66185](https://github.com/Maetran/RollTheDice/commit/da66185aa77a784cabc09a97d9e471eea6603aba) |

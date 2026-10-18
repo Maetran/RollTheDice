@@ -110,7 +110,7 @@ function renderSettings(auth) {
     <details><summary>${copy('Benutzername ändern')}</summary><div data-username-settings></div></details>
     <details><summary>${copy('Dein Profilbild')}</summary><div data-avatar-upload></div></details>
     <details><summary>${copy('Sprache')}</summary><form data-language><label>${copy('Sprache')}<select name="language"><option value="de">Deutsch</option><option value="en">English</option></select></label><button type="submit">${copy('Sprache speichern')}</button><p role="status"></p></form></details>
-    <div class="actions"><a href="/watten">${copy('Zurück')}</a><button data-logout type="button">${copy('Abmelden')}</button></div><p data-account-message role="status"></p>`;
+    <div class="actions"><a href="/watten">${copy('Zurück')}</a><a href="/watten/konto/fortschritt">${copy('Fortschritt')}</a><button data-logout type="button">${copy('Abmelden')}</button></div><p data-account-message role="status"></p>`;
   mountUsernameSettings(root.querySelector('[data-username-settings]'), { user, onChanged: changed => {
     const name = root.querySelector('[data-account-name]');
     if (name && changed.user.id === viewerId) name.textContent = changed.user.username;

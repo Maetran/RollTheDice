@@ -1,10 +1,10 @@
 {
-  "version": "3.13.0",
+  "version": "3.14.0",
   "bump": "minor",
   "date": "2026-10-18",
-  "previous_revision": "f6e0e89185d8aa862335b773adeff1c3bc021dd9",
+  "previous_revision": "782972bcec9e53a741e43ddb561cf32a4d614dc6",
   "summary": {
-    "de": "Interne Watten-Oberfläche und persönliche Computergegner verbinden.",
-    "en": "Connect the internal Watten interface and personal computer opponents."
+    "de": "Lokalen Watten-Fortschritt, Erfolge, Wirtshaustitel und Ranglisten verbinden.",
+    "en": "Connect local Watten progress, achievements, pub titles and standings."
   }
 }

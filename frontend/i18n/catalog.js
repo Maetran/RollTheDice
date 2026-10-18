@@ -5049,6 +5049,7 @@ export const WATTEN_MESSAGES = {
 
 export const WATTEN_PROGRESS_MESSAGES = {
   de: {
+    description: "Dein privater Watten-Fortschritt, eigene Partien und Ranglisten in der lokalen Vorschau.", rules: "Regeln", settings: "Einstellungen",
     archived: "Früher verbuchte Erfolge", archivedAchievement: "Gespeicherter Watten-Erfolg",
     feed: "Am Stammtisch erreicht", feedHelp: "Die neuesten Erfolge mit den aktuellen Wirtshaustiteln.", emptyFeed: "Noch keine verbuchten Erfolge.", previous: "Zurück", next: "Weiter",
     navigation: "Dein Watten-Konto", progress: "Fortschritt", history: "Deine Partien", leaderboard: "Rangliste",
@@ -5073,6 +5074,7 @@ export const WATTEN_PROGRESS_MESSAGES = {
     ranked: "{count} Konten in dieser Rangliste", place: "Platz", player: "Spieler", emptyRanking: "Für diese Auswahl gibt es noch keine Platzierungen.", ownPlace: "Dein Eintrag",
   },
   en: {
+    description: "Your private Watten progress, own matches and standings in the local preview.", rules: "Rules", settings: "Settings",
     archived: "Previously credited achievements", archivedAchievement: "Stored Watten achievement",
     feed: "Earned at the table", feedHelp: "Recent achievements with each player's current pub title.", emptyFeed: "No credited achievements yet.", previous: "Previous", next: "Next",
     navigation: "Your Watten account", progress: "Progress", history: "Your matches", leaderboard: "Leaderboard",

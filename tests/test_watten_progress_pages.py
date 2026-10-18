@@ -155,3 +155,22 @@ def test_progress_expected_account_guard_rejects_cookie_switch_before_reads_and_
     assert response.status_code == 409
     with session_scope() as db:
         assert db.scalar(select(func.count()).select_from(WattenProgressState)) == 0
+
+
+def test_older_owned_result_without_credit_has_no_reward_panel_and_never_gets_backfilled(server, monkeypatch):
+    from app import watten_completion
+
+    owner, _opponent = native.account("OlderPresentation"), native.account("OlderOpponent")
+    match = NativeMatch(2, target=3, game_id="3333333333333333")
+    match.ready()
+    match.finish()
+    with monkeypatch.context() as patch:
+        patch.setattr(watten_completion, "store_completion_progress", lambda *_args: None)
+        persist_watten_game(match.game, creating=True)
+    response = server.get("/api/watten/account/matches/3333333333333333/presentation", headers={"Cookie": owner[1]})
+    assert response.status_code == 200, response.text
+    assert response.json()["credit"] is None and response.json()["achievements"] == []
+    assert response.json()["through_sequence"] == 0
+    with session_scope() as db:
+        assert db.scalar(select(func.count()).select_from(WattenMatchCredit)) == 0
+        assert db.scalar(select(func.count()).select_from(WattenProgressState)) == 0

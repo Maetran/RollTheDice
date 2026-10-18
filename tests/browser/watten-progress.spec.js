@@ -18,6 +18,8 @@ for (const language of ['de', 'en']) {
     const own = players[0];
     try {
       const gamePath = await finish(players);
+      await expect(own.page.locator('[data-watten-match-progress-action=dismiss]')).toBeVisible();
+      await expect(own.page.locator('.wt-seat-public-title')).toHaveCount(2);
       const account = await (await own.context.request.get('/api/watten/account')).json();
       expect(account.statistics.all_matches).toBe(1);
       expect(account.progress.total_xp).toBeGreaterThan(10);
@@ -33,6 +35,7 @@ for (const language of ['de', 'en']) {
         await own.page.setViewportSize(viewport);
         expect(await own.page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
         await own.page.screenshot({ path: testInfo.outputPath(`progress-${viewport.width}x${viewport.height}.png`), fullPage: true });
+        await own.page.screenshot({ path: testInfo.outputPath(`progress-${viewport.width}x${viewport.height}-viewport.png`) });
       }
       await own.page.locator('[data-progress-action=acknowledge]').click();
       await expect(own.page.locator('[data-progress-action=acknowledge]')).toHaveCount(0);
@@ -103,9 +106,12 @@ test('a cookie account switch between initial identity and private GET rejects t
   const players = [await player(browser, baseURL), await player(browser, baseURL)];
   const own = players[0];
   let unblock;
+  let intercepted = false;
   try {
     let attempted;
     await own.page.route('**/api/watten/account', async route => {
+      if (intercepted) { await route.continue(); return; }
+      intercepted = true;
       attempted = route.request().headers()['x-watten-expected-account-id'];
       await new Promise(resolve => { unblock = resolve; });
       // Use the context's current cookie jar after the second tab switched it.
@@ -120,10 +126,71 @@ test('a cookie account switch between initial identity and private GET rejects t
     await own.context.clearCookies();
     await own.context.addCookies(await players[1].context.cookies());
     const guard = own.page.waitForResponse(response => response.url().includes('/api/watten/account') && response.status() === 409);
-    await own.page.unroute('**/api/watten/account');
     unblock(); unblock = null;
     await guard;
     await expect(own.page.locator('.wt-progress-title')).toContainText('0 XP');
     expect(own.traffic.errors).toEqual([]);
   } finally { unblock?.(); await Promise.allSettled(players.map(item => item.context.close())); }
+});
+
+test('a match reward dismissal survives reload and leaves a previous unseen match pending', async ({ browser, baseURL }) => {
+  const players = [await player(browser, baseURL), await player(browser, baseURL)];
+  const own = players[0];
+  try {
+    const older = await finish(players);
+    await expect(own.page.locator('[data-watten-match-progress-action=dismiss]')).toBeVisible();
+    const current = await finish(players);
+    await own.page.locator('[data-watten-match-progress-action=dismiss]').click();
+    await expect(own.page.locator('[data-watten-match-progress]')).toBeHidden();
+    await own.page.reload();
+    await expect(own.page.locator('[data-watten-match-result]')).toBeVisible();
+    await expect(own.page.locator('[data-watten-match-progress]')).toBeHidden();
+    const account = await (await own.context.request.get('/api/watten/account')).json();
+    expect(account.progress.pending.credits.map(item => item.game_id)).toEqual([older.split('/').pop()]);
+    expect(account.history.matches.map(item => item.game_id)).toContain(current.split('/').pop());
+    expect(account.progress.acknowledged_sequence).toBe(0);
+    expect(own.traffic.errors).toEqual([]);
+  } finally { await Promise.allSettled(players.map(item => item.context.close())); }
+});
+
+test('a future catalog pending grant keeps its archive label instead of claiming a locked current goal', async ({ browser, baseURL }) => {
+  const own = await player(browser, baseURL);
+  try {
+    const account = await (await own.context.request.get('/api/watten/account')).json();
+    const goal = account.progress.achievements.find(item => item.id === 'watten_quiet_win');
+    expect(goal.unlocked).toBe(false);
+    account.progress.pending.achievements = [{ id: goal.id, source_game_id: 'aaaaaaaaaaaaaaaa', sequence: 1, xp: 73 }];
+    account.progress.grant_sequence = 1;
+    await own.page.route('**/api/watten/account', route => route.fulfill({ json: account }));
+    await own.page.goto('/watten/konto/fortschritt');
+    const pending = own.page.locator('[data-progress-pending]');
+    await expect(pending).toContainText('Gespeicherter Watten-Erfolg');
+    await expect(pending).not.toContainText(goal.name.de);
+    expect(own.traffic.errors).toEqual([]);
+  } finally { await own.context.close(); }
+});
+
+test('retrying a failed feed page does not skip the missing page', async ({ browser, baseURL }) => {
+  const own = await player(browser, baseURL);
+  const pages = [];
+  try {
+    const base = await (await own.context.request.get('/api/watten/achievements/feed')).json();
+    let failed = false;
+    await own.page.route('**/api/watten/achievements/feed?**', async route => {
+      const page = Number(new URL(route.request().url()).searchParams.get('page')); pages.push(page);
+      if (page === 2 && !failed) {
+        failed = true; await route.fulfill({ status: 503, json: { detail: 'unavailable' } }); return;
+      }
+      await route.fulfill({ json: { ...base, pagination: { page, limit: 12, total_entries: 25,
+        total_pages: 3, has_next: page < 3, has_previous: page > 1 } } });
+    });
+    await own.page.goto('/watten/konto/fortschritt');
+    const next = own.page.locator('[data-progress-action=feed-next]');
+    await expect(next).toBeEnabled(); await next.click();
+    await expect(own.page.locator('[data-progress-error]')).toContainText('nicht vollständig');
+    await next.click();
+    await expect(own.page.locator('[data-progress-action=feed-previous]')).toBeVisible();
+    expect(pages).toEqual([1, 2, 2]);
+    expect(own.traffic.errors).toEqual([]);
+  } finally { await own.context.close(); }
 });

@@ -15,7 +15,7 @@ const date = value => new Intl.DateTimeFormat(language() === "de" ? "de-CH" : "e
   dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Zurich",
 }).format(new Date(value));
 const number = value => new Intl.NumberFormat(language() === "de" ? "de-CH" : "en-GB").format(value);
-let accountId = null, epoch = 0, rankingSerial = 0, feedPage = 1, data = null, history = [], navigating = false;
+let accountId = null, epoch = 0, rankingSerial = 0, feedSerial = 0, feedPage = 1, data = null, history = [], navigating = false;
 const controllers = new Set();
 
 function clear() { epoch += 1; for (const controller of controllers) controller.abort(); controllers.clear(); root.replaceChildren(); }
@@ -121,7 +121,7 @@ function pendingMarkup(progress) {
   if (!pending.credits.length && !pending.achievements.length) return `<p>${esc(t("noNewMoments"))}</p>`;
   const matchXP = pending.credits.reduce((sum, item) => sum + item.xp, 0);
   const awardXP = pending.achievements.reduce((sum, item) => sum + item.xp, 0);
-  const names = new Map(progress.achievements.map(item => [item.id, localText(item.name)]));
+  const names = new Map(progress.achievements.filter(item => item.unlocked).map(item => [item.id, localText(item.name)]));
   return `<p>${esc(t("pendingMatches", { count: pending.credits.length, xp: number(matchXP) }))}</p>
     <p>${esc(t("pendingAwards", { count: pending.achievements.length, xp: number(awardXP) }))}</p>
     ${pending.achievements.length ? `<ul>${pending.achievements.map(item => `<li>${esc(names.get(item.id) || t("archivedAchievement"))} · ${esc(number(item.xp))} XP</li>`).join("")}</ul>` : ""}
@@ -176,12 +176,15 @@ async function ranking(form) {
   finally { if (form.isConnected && serial === rankingSerial) form.querySelector("button").disabled = false; }
 }
 
-async function feed() {
-  const requestedPage = feedPage;
-  const result = await request(`/api/watten/achievements/feed?page=${requestedPage}`);
-  if (!result || requestedPage !== feedPage) return;
+async function feed(requestedPage = feedPage) {
+  const serial = ++feedSerial;
+  let result;
+  try { result = await request(`/api/watten/achievements/feed?page=${requestedPage}`); }
+  catch (error) { if (serial === feedSerial && !navigating) failure(error.message); return; }
+  if (!result || serial !== feedSerial) return;
   if (result.game_type !== "watten" || result.schema_version !== 1 || !result.coverage?.complete) throw new Error(t("unavailable"));
   const node = root.querySelector("[data-progress-feed-entries]"); if (!node) return;
+  feedPage = requestedPage;
   node.innerHTML = `<p class="wt-note">${esc(t("feedHelp"))}</p>${result.entries.length ? `<ol class="wt-feed">${result.entries.map(item =>
     `<li><p><strong translate="no">${esc(item.player.display_name)}</strong>${item.player.is_self ? ` · ${esc(t("you"))}` : ""}
       · ${esc(localText(item.player.title.name))}</p><h3>${esc(localText(item.achievement.name))}</h3>
@@ -204,7 +207,7 @@ root.addEventListener("click", async event => {
   control.disabled = true;
   try {
     if (control.dataset.progressAction.startsWith("feed-")) {
-      feedPage += control.dataset.progressAction === "feed-next" ? 1 : -1; await feed();
+      await feed(feedPage + (control.dataset.progressAction === "feed-next" ? 1 : -1));
     } else if (control.dataset.progressAction === "more") {
       const result = await request(`/api/watten/account?before=${encodeURIComponent(data.history.next_cursor)}`);
       if (!result) return;
@@ -233,6 +236,10 @@ async function accountView() {
 }
 async function mount() {
   const current = epoch;
+  document.title = `${t(page)} · Watten`;
+  document.querySelector('meta[name="description"]')?.setAttribute("content", t("description"));
+  const nav = document.querySelector("[data-watten-progress-nav]");
+  if (nav) nav.innerHTML = `<a href="/watten">Lobby</a><a href="/watten/regeln">${esc(t("rules"))}</a><a href="/watten/konto/einstellungen">${esc(t("settings"))}</a>`;
   shell(`<p role="status" data-progress-loading>${esc(t("loading"))}</p>`);
   try {
     const auth = await loadAuth({ refresh: true });

@@ -23,6 +23,23 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 3.14.0 — Lokaler Watten-Fortschritt / local Watten progress — 2026-10-18
+
+**Deutsch:** Neu abgeschlossene lokale Wattenpartien verbuchen Ergebnis,
+Partie-XP und belegte Erfolge zusammen in einer Transaktion. Eigene Partien,
+Fortschritt mit Wirtshaustiteln, Ranglisten mit erklärten Kennzahlen und ein
+Erfolgsfeed erhalten eigene DE/EN-Ansichten. Bestätigungen im Partieabschluss
+gelten nur für die angezeigte Partie; ältere ungesehene Fortschritte bleiben
+offen. Gespeicherte XP und Erfolgswerte werden beim Lesen nicht neu vergeben.
+Die Werte bleiben als Entwurf gekennzeichnet und der öffentliche Host geschlossen.
+
+**English:** Newly completed local Watten matches atomically store results,
+match XP and evidenced achievements. Dedicated DE/EN pages show own matches,
+progress and pub titles, standings with explicit measures and an achievement
+feed. Acknowledging a match's closing rewards leaves older unseen progress
+pending. Reads never grant XP again or reprice earlier awards. Values remain
+labelled as a proposal and the public host stays closed.
+
 ## 3.13.0 — Lokaler Watten-Spieltisch / local Watten table — 2026-10-18
 
 **Deutsch:** Die isolierte lokale Watten-Vorschau hat eine eigene zweisprachige

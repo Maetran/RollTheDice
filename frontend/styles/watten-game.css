@@ -338,3 +338,4 @@ html[lang="en"] .wt-rules-text[lang="de"], html:not([lang="en"]) .wt-rules-text[
 .wt-feed { list-style: none; padding: 0; }
 .wt-feed > li { border-block-start: 1px solid var(--wt-paper-edge); padding-block: .75rem; overflow-wrap: anywhere; }
 .wt-feed h3 { margin-block: .25rem; }
+.wt-seat-slot .wt-seat-public-title { color: var(--wt-muted); }

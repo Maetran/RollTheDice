@@ -4,8 +4,17 @@ Standalone B12 measurement tool: `tests/watten_cpu_benchmark.py`. It is outside
 pytest discovery, imports production policy/engine modules directly, and uses no
 database, HTTP server, runtime runner, pytest helper or real account.
 
-**Current status:** source prepared; no benchmark was run while the shared full
-verification pool was active. Execute only after coordinating the machine load.
+**Measured 18 October 2026:** the coordinated default run completed before the
+next shared full verification pool started. All 608 cases completed without
+errors: 11,583 accepted commands, 484 policy versus 124 baseline deal wins,
+1,442 versus 318 awarded stake points. Card/bid decision latency was p50
+1.1327ms and p95 3.4855ms; the complete run took 12.44 seconds. These synthetic
+opening deals and simple baseline do not establish human strength or Elo.
+
+The ignored report is preserved at
+`test-results/watten-cpu-benchmark/run-20261018-default608.json`; SHA-256
+`4390ae5be880c1ecd824d735586590bdd1bcf4e384260e60e36e004209b23aac`.
+Coordinate machine load again before rerunning.
 
 From the repository root, using its existing Python environment:
 

@@ -2,6 +2,7 @@
 // page controller binds the click to its mounted account and socket.
 import { escapeHtml as esc } from "../shared/auth.js";
 import { t } from "./cards.js";
+import { publicTitleMarkup } from "./match-progress.js";
 
 const TEAM_NAMES = ["A", "B"];
 const HINT_KEY = "watten_landscape_hint_dismissed";
@@ -66,6 +67,7 @@ function seatSlot(room, seat, { member, viewerSeat, busy, canManageCpus }) {
     <span class="wt-seat-number">${esc(t("seat.number", { seat: seat + 1 }))}</span>
     ${free ? `<span class="wt-seat-free">${esc(t("seat.free"))}</span>`
       : `<strong translate="no">${esc(name || "")}</strong>`}
+    ${publicTitleMarkup(info.public_title, { language: window.ZDWA_I18N.getLanguage(), escapeHtml: esc })}
     ${info.is_cpu ? `<span class="wt-tag">${esc(t("seat.cpu"))}</span>` : ""}
     ${own ? `<span class="wt-tag">${esc(t("seat.you"))}</span>` : ""}
     ${host ? `<span class="wt-tag wt-tag--host">${esc(t("seat.host"))}</span>` : ""}
