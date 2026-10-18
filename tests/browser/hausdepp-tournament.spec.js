@@ -1,4 +1,5 @@
 const { test, expect } = require('@playwright/test');
+const { startHausdeppCpuGame } = require('./hausdepp-create');
 const { mkdir } = require('node:fs/promises');
 
 test.use({ serviceWorkers: 'block' });
@@ -36,12 +37,7 @@ async function realTournament(page, language = 'de', { players = 2 } = {}) {
     socket.on('framesent', event => { try { commands.push(JSON.parse(String(event.payload))); } catch {} });
   });
   await page.goto('/hausdepp');
-  await page.locator('input[name="tournament"][value="true"]').check();
-  if (players !== 2) {
-    await page.locator('[name="players"]').selectOption(String(players));
-    await page.locator('[name="cpu_count"]').selectOption(String(players - 1));
-  }
-  await page.locator('#hausdeppCreate').click();
+  await startHausdeppCpuGame(page, { players, cpu: players - 1, tournament: true });
   await expect.poll(() => scoreboard?._hausdepp_tournament?.round_number).toBe(1);
   return { get scoreboard() { return scoreboard; }, commands, room: page.url() };
 }

@@ -319,6 +319,23 @@ function presentGroups(groups, options, previous) {
   }
   const presentation = presentationFor(options.gameId);
   const now = performance.now();
+  if (options.instantPile) {
+    // The accepted packet is already rendered. Old pile pictures and queued
+    // transfers must never cover its new count or matching-rank fan, even when
+    // the next accepted throw arrives before the previous flight has finished.
+    presentation.mask?.cancel();
+    presentation.mask = null;
+    for (const flight of flights.get(options.gameId) || []) {
+      const { source, target } = flight.element.dataset;
+      if (source !== "pile" && target !== "pile") continue;
+      flight.animation.cancel();
+      flight.reveal?.cancel();
+      flight.cue?.cancel();
+      flight.element.remove();
+      flights.get(options.gameId)?.delete(flight);
+    }
+    presentation.until = now;
+  }
   // A fast CPU/human stream can outrun readable motion. Keep the action that
   // is already on the wood, discard only waiting pictures, then show the latest
   // accepted action. Never accumulate seconds of obsolete table history.
@@ -340,7 +357,7 @@ function presentGroups(groups, options, previous) {
   const duration = Math.max(...groups.map(groupSpan));
   const scheduled = { ...options, wait, now };
   const publicPlay = groups.some(group => ["play", "afterthrow", "gamble"].includes(group.type));
-  if (publicPlay) {
+  if (publicPlay && !options.instantPile) {
     const burn = groups.find(group => group.type === "burn");
     const pickup = groups.find(group => group.type === "pickup");
     const rest = burn?.delay ?? pickup?.delay ?? duration;
@@ -377,7 +394,7 @@ function stationaryReceipt(element) {
   ], { duration: 240, easing: EASING });
 }
 
-function moveCards(group, { gameId, playerId, before, after, reducedMotion, wait = 0, now = performance.now() }) {
+function moveCards(group, { gameId, playerId, before, after, reducedMotion, instantPile = false, wait = 0, now = performance.now() }) {
   const source = group.source === "stock"
     ? position(after, group.source) || position(before, group.source)
     : position(before, group.source) || position(after, group.source);
@@ -466,9 +483,9 @@ function moveCards(group, { gameId, playerId, before, after, reducedMotion, wait
     const end = `translate(${toX - fromX}px,${toY - fromY}px) rotate(${destination.angle || 0}deg) scale(${destination.width / width},${destinationHeight / height})`;
     const arrival = Math.min(.9, (group.travel || duration * .9) / cardDuration);
     const fade = Math.max(arrival, 1 - (group.fade || PLAY_FADE) / cardDuration);
-    // A pile picture hands over to the identical real card in the same frame.
-    // Fading it out first would flash an empty pile beneath the mask.
-    const last = group.target === "pile" ? 1 : 0;
+    // A growing packet is visible immediately; its flight is only decorative.
+    // Other pile transfers hand over without flashing beneath their mask.
+    const last = group.target === "pile" && !instantPile ? 1 : 0;
     const queued = Boolean(delay + index * stagger);
     const frames = group.stationary ? [
       { transform: end, opacity: queued ? 0 : 1, offset: 0 },
@@ -487,7 +504,7 @@ function moveCards(group, { gameId, playerId, before, after, reducedMotion, wait
     // The launch keeps painting until this flight has taken over its pose.
     if (adopted) adopted.animation.cancel();
     // The real card is already interactive; the visual arrival alone follows the flight.
-    const revealed = targetCard || (group.target === "pile" && !group.stationary ? pileCard : null);
+    const revealed = targetCard || (group.target === "pile" && !group.stationary && !instantPile ? pileCard : null);
     const reveal = revealed?.element.animate?.(last ? [{ opacity: 0 }, { opacity: 0 }] : [
       { opacity: 0, offset: 0 }, { opacity: 0, offset: .88 }, { opacity: 1, offset: 1 },
     ], { duration: delay + index * stagger + cardDuration, fill: "none", easing: EASING });
@@ -615,8 +632,11 @@ function explainAcceptedState(state, { gameId, playerId, peekCaption }, prepared
   const before = prepared.before;
   const after = captureGeometry(playerId);
   const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const options = { gameId, playerId, before, after, reducedMotion };
   const event = state.last_event || {};
+  const instantPile = ["play", "afterthrow", "gamble"].includes(event.type)
+    && state.discard.length > previous.discard.length
+    && previous.discard.every((card, index) => state.discard[index] === card);
+  const options = { gameId, playerId, before, after, reducedMotion, instantPile };
   const actorId = event.player_id;
   const receivedState = { ...state, viewer_id: playerId };
   const groups = [];

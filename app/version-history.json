@@ -2259,5 +2259,12 @@
     "date": "2026-10-18",
     "bump": "patch",
     "summary": "Hausdepp: besser lesbarer Spieltisch – helle Karten auch zwischen den Zügen, Namensschilder, goldene Markierung für den Spieler am Zug. / Hausdepp: a more readable table – cards stay bright between turns, name plates and a gold marker for the player on turn."
+  },
+  {
+    "version": "3.8.2",
+    "revision": "f27c488e170a17adaeece9a7ceca164f4270f0cc",
+    "date": "2026-10-18",
+    "bump": "patch",
+    "summary": "Hausdepp-Computer wägen im Zweikampf ein Ass oben ab, statt es fast immer mit der 10 abzuräumen; Konto- und Einstellungstexte sprechen von allen unseren Spielen. / Hausdepp computers weigh an ace on top in a duel instead of nearly always clearing it with a ten; account and settings texts speak of all our games."
   }
 ]

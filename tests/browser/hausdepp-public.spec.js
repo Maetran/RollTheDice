@@ -1,4 +1,5 @@
 const { test, expect } = require('@playwright/test');
+const { startHausdeppCpuGame } = require('./hausdepp-create');
 const { readFile } = require('node:fs/promises');
 const { openPasswordLogin } = require('./password-login');
 
@@ -105,7 +106,7 @@ for (const preferred of ['de', 'en']) {
     expect(me.authenticated).toBe(true);
     expect(me.user.is_owner).toBeFalsy();
     expect(me.game_access.hausdepp_public).toBe(true);
-    await page.locator('#hausdeppCreate').click();
+    await startHausdeppCpuGame(page);
     await expect(page).toHaveURL(/\/hausdepp\/spiel\/[^/]+$/);
     await expect(page.locator('#hausdeppTable')).toHaveAttribute('data-phase', 'peeking');
     for (let inspected = 0; inspected < 5; inspected += 1) {

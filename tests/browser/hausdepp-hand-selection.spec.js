@@ -351,12 +351,19 @@ test.describe('own card flights and follow-up timing', () => {
     // The flight is the very element launched at the tap, never a second copy.
     expect(await launched.evaluate(node => node.isConnected && node.dataset.motionType)).toBe('play');
     await expect(page.locator('.hd-deal-card[data-motion-type="play"], .hd-deal-card[data-motion-type="launch"]')).toHaveCount(1);
-    // The moving card is never hidden under the resting picture of the old pile.
-    const layers = await page.evaluate(() => [...document.querySelectorAll('.hd-deal-card')]
-      .map(node => ({ type: node.dataset.motionType, z: Number(getComputedStyle(node).zIndex) })));
-    const flying = layers.find(layer => layer.type === 'play');
-    expect(layers.filter(layer => layer.type === 'pile-rest').length).toBeGreaterThan(0);
-    expect(layers.filter(layer => layer.type === 'pile-rest').every(layer => layer.z < flying.z)).toBe(true);
+    // The accepted packet is already visible while this same card keeps flying;
+    // an old-pile picture must never hide its new count or destination card.
+    const packet = await page.locator('#hausdeppPile').evaluate(node => ({
+      count: Number(node.dataset.cardCount), opacity: Number(getComputedStyle(node).opacity),
+      cards: [...node.querySelectorAll('[data-card-id]')].map(card => ({
+        id: card.dataset.cardId, opacity: Number(getComputedStyle(card).opacity),
+        wrapperOpacity: Number(getComputedStyle(card.parentElement).opacity),
+      })),
+      oldPictures: document.querySelectorAll('.hd-deal-card[data-motion-type="pile-rest"]').length,
+    }));
+    expect(packet).toMatchObject({ count: 2, opacity: 1, oldPictures: 0 });
+    expect(packet.cards.map(card => card.id)).toEqual(s.discard);
+    expect(packet.cards.every(card => card.opacity === 1 && card.wrapperOpacity === 1)).toBe(true);
     await expect(page.locator('.hd-deal-card')).toHaveCount(0, { timeout: 3000 });
     await expect(page.locator('#hausdeppPile [data-card-id]').last()).toHaveAttribute('data-card-id', HAND[0]);
   });

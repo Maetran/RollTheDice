@@ -99,3 +99,33 @@ manual name field is removed. CPU rounds grant 2 whole EP after 75% reduction
 and per-round flooring, human-only rounds 10, achievements full. Native
 installation and actual OS Push delivery remain outside headless proof.
 See `docs/HAUSDEPP_LOCALHOST_TEST_2026-10-16.md`. Owner acceptance remains open.
+
+
+## Owner-approved place-card lobby — 2026-10-18
+
+Owner selected Platzkarten for the creation block and waiting room. A compact
+entry opens a two-choice prompt: create the saved account favourite or define a
+mode. Configuration stays short: fixed/open count, quick game/tournament and
+optional password. CPUs are added/removed in the waiting room. Open tables start
+manually at two to six participants; fixed tables need the selected capacity.
+Humans use free seats first, then replace a CPU at a full prestart table.
+
+The owner explicitly retains player calls and sharing and asks for less
+information. Use readable 2-column phone / 3-column tablet-desktop place cards,
+a short mode line and only necessary status hints. Reuse native share/copy and
+player-call permissions/cooldowns. Favourites store settings across devices,
+never passwords. Four personal frequent reactions plus an up-chevron open a
+12-symbol picker; positions stay stable during a room. Scope stays within the
+creation block, waiting block and the requested reaction control.
+
+Local validation and independent review are recorded in
+`docs/HAUSDEPP_FLEX_LOBBY_QA_2026-10-18.md`. A feature-branch build is not a
+production deployment; no real-account calls or share sends are QA actions.
+
+The owner accepted implementation of this design and additionally requested
+immediate open-packet updates. A confirmed play/follow-up/successful gamble
+must expose the authoritative packet count and matching-rank fan in the same
+render, without waiting for a flight, old-pile picture or presentation queue.
+Rapid accepted throws replace obsolete pile effects. Clearing and failed-gamble
+narration retain their readable transfer; reduced motion and reconnect remain
+quiet. Browser evidence inspects and freezes the first frame after acceptance.

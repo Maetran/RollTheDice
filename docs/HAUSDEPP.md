@@ -336,7 +336,10 @@ reduzierter Bewegung bleibt nur die Beschriftung. Geben und Pflichtziehen zeigen
 den Weg vom verdeckten Stapel zur Hand. Beim
 Aufnehmen wandert das offene Paket zur Hand. Misslingt Zocken, geht zuerst die
 gezockte Karte vom verdeckten zum offenen Stapel und danach das ganze Paket zur
-Hand. Handkarten bewegen sich beim Legen zur Mitte. Diese Darstellung sperrt
+Hand. Handkarten bewegen sich beim Legen zur Mitte. Sobald ein Wurf, Nachwurf
+oder erfolgreiches Zocken bestätigt ist, zeigt das wachsende offene Paket sofort
+die aktuelle Kartenzahl und den Fächer gleicher Werte. Laufende Kartenflüge
+verzögern diese Anzeige nicht. Diese Darstellung sperrt
 keinen Zug, ändert kein Nachwurfrecht und wiederholt sich beim Wiederverbinden
 nicht. Reduzierte Bewegung bestätigt die Ankunft ohne räumlichen Flug.
 
@@ -375,15 +378,33 @@ Die Lobby zeigt eigene offene Tische mit Spielstatus und belegten Plätzen.
 Neue Tische erhalten beim Erstellen automatisch einen zufälligen Wirtshausnamen
 aus 50 Varianten mit dem aktuellen Kontonamen, etwa „Manis Gsuff“. Es gibt kein
 zusätzliches Namensfeld; im Turnier bleibt der einmal gewählte Tischname bestehen.
-Beim Erstellen zählen Menschen und Computer gemeinsam zur gewählten Tischgrösse;
-das eigene Konto belegt genau einen menschlichen Platz. Ein Wartetisch zeigt,
-wie viele Menschen noch fehlen. Der Tischlink kann kopiert werden; die
-gültige Anmeldung wird beim Öffnen weiterhin serverseitig geprüft. Wiederaufnahme
+Der Einstieg bietet den kontoweit gespeicherten Favoriten oder „Modus definieren“.
+Wählbar sind eine feste Spielerzahl (2–6) oder offen bis sechs, Schnellspiel oder
+Turnier und optional ein Passwort. Menschen und CPUs zählen gemeinsam; das eigene
+Konto belegt einen Platz. Im Warteraum stehen kompakte Platzkarten. Der Gastgeber
+kann CPUs einzeln hinzufügen/entfernen und startet ausdrücklich: offen ab zwei
+Teilnehmern, fix erst bei vollständiger Besetzung. Alle Menschen müssen verbunden
+sein. Ein Mensch nimmt zuerst einen freien Platz und ersetzt bei vollem Wartetisch
+einen CPU. Nach Spielstart ist die Besetzung fest.
+
+„Als Favorit speichern“ übernimmt Spielerzahl, Offen/Fix, Spielart, aktuelle CPU-
+Anzahl und die Wahl eines Passwortschutzes in das eigene Konto. Das tatsächliche
+Passwort wird nie im Favoriten gespeichert und muss beim Erstellen neu festgelegt
+werden. Der konkrete Tischzugang bleibt nur für diese Browsersitzung beim eigenen
+Konto verfügbar; das Passwort erscheint weder im Tischlink noch in einer URL.
+Teilen, Kopieren und Mitspieler-Ruf bleiben direkt erreichbar. Wiederaufnahme
 führt an denselben Sitz zurück.
 
+Vier schnelle Reaktionen starten mit 👍 😂 😮 💩. Der Pfeil nach oben öffnet zwölf
+Symbole. Eigene bestätigte Sendungen bestimmen die persönliche Häufigkeit in
+diesem Browser, getrennt nach Konto. Die vier Positionen bleiben während einer
+Partie stabil; erst der nächste Einstieg übernimmt eine neue Rangfolge. Auswahl,
+Escape und ein Tipp ausserhalb schliessen die Auswahl; der Schliess-Tipp spielt
+keine darunterliegende Karte.
+
 An einem ungeschützten Wartetisch kann ein sitzender Spieler ausdrücklich per
-**Mitspieler-Ruf** nach weiteren Menschen suchen. Freie Computerplätze zählen
-dabei nicht als einladbare Plätze. Es gelten dieselben Kontoeinstellungen wie
+**Mitspieler-Ruf** nach weiteren Menschen suchen. Ein voller Wartetisch mit
+ersetzbaren CPUs bleibt dabei für menschliche Mitspieler offen. Es gelten dieselben Kontoeinstellungen wie
 in ZDWA und Zilch: Browser-/Gerätefreigabe, aktivierte Mitspieler-Rufe und die
 private Absenderauswahl. Sender und Empfänger müssen bei der Anfrage und vor
 dem Versand weiterhin für Hausdepp freigegeben sein; Selbstbenachrichtigungen
@@ -849,7 +870,9 @@ suits remain private. Large hands use a denser fan without omitting any cards.
 Dealing and mandatory refills travel from the face-down stock to the hand.
 Picking up moves the open pile into the hand. A failed gamble first moves the
 new card from stock to pile, then the complete pile into the hand. Hand plays
-travel to the middle. Presentation never blocks turns, changes additional-card
+travel to the middle. Once a play, follow-up or successful gamble is accepted,
+the growing open pile immediately shows its current count and matching-rank fan.
+Active card flights never delay that display. Presentation never blocks turns, changes additional-card
 rights or repeats missed actions after reconnecting. Reduced motion acknowledges
 arrival without spatial travel.
 
@@ -884,13 +907,29 @@ The lobby shows your open tables with game status and occupied seats. New
 tables automatically receive a random tavern-style name from 50 variants built
 around the current account name, such as “Mani’s nightcap”. No separate name
 field is needed; the chosen table name remains throughout a tournament. Humans
-and computers together fill the selected table size; your account occupies one
-human seat. A waiting table shows how many humans are still needed. Its link
-can be copied; opening it still requires valid sign-in. Resuming
-returns to the same seat.
+and CPUs count together; your account occupies one seat. The entry offers your
+account-wide favourite or Define a mode: fixed 2–6 or open up to six, quick game
+or tournament, with an optional password. Place cards show the roster. The host
+adds/removes CPUs and starts explicitly, with at least two participants in an
+open room or every chosen seat filled in a fixed room. All humans must be
+connected. People take free seats first, then replace one CPU at a full waiting
+table. The roster becomes final on start.
+
+Saving a favourite stores only the setup and the choice of password protection,
+never the password. Protected favourites ask for a fresh password. The concrete
+table password stays only in this browser session, separated by account; it
+never enters a shared link or URL. Sharing, copying and player calls remain
+available. Resuming returns to the same seat.
+
+Four quick reactions begin with 👍 😂 😮 💩; the up arrow opens twelve symbols.
+Only your own confirmed sends determine personal frequency in this browser,
+separately for each account. Positions remain fixed during a game; the next room
+uses the new ranking. Selecting, Escape or an outside tap closes the picker;
+the dismissal tap never plays an underlying card.
 
 At an unprotected waiting table, a seated player can explicitly **call for
-players** when human seats remain open. Computer seats are not invitable.
+players** while a human seat is available, including a full waiting table
+with a replaceable CPU.
 The same settings apply as in ZDWA and Zilch: browser/device permission,
 enabled player calls and the private sender allowlist. Both sender and
 recipient must retain Hausdepp access when requested and before dispatch;

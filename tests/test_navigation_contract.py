@@ -121,14 +121,16 @@ DOCUMENT_ROUTES = (
         ("/hausdepp", "/hausdepp/regeln"),
         "tests/test_hausdepp_integration.py", "test_founder_product_pages_and_game_type_routes",
         ("tests/browser/hausdepp.spec.js", "tests/browser/hausdepp-public.spec.js",
-         "tests/browser/hausdepp-card-reload.spec.js", "tests/browser/hausdepp-rematch.spec.js"),
+         "tests/browser/hausdepp-card-reload.spec.js", "tests/browser/hausdepp-rematch.spec.js",
+         "tests/browser/hausdepp-flex-lobby.spec.js"),
     ),
     RouteCoverage(
         ("/hausdepp/spiel/{game_id}", "/hausdepp/spiel/{game_id}/zuschauen"),
         "tests/test_hausdepp_integration.py", "test_founder_product_pages_and_game_type_routes",
         ("tests/browser/hausdepp.spec.js", "tests/browser/hausdepp-public.spec.js",
          "tests/browser/game-tours.spec.js", "tests/browser/hausdepp-hand-selection.spec.js",
-         "tests/browser/hausdepp-rematch.spec.js", "tests/browser/hausdepp-rematch-real.spec.js"),
+         "tests/browser/hausdepp-rematch.spec.js", "tests/browser/hausdepp-rematch-real.spec.js",
+         "tests/browser/hausdepp-flex-lobby.spec.js", "tests/browser/hausdepp-reactions.spec.js"),
     ),
     RouteCoverage(
         ("/hausdepp/anmelden", "/hausdepp/konto/einstellungen"), "tests/test_hausdepp_auth_flow.py",

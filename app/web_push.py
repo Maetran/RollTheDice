@@ -449,8 +449,8 @@ def open_seat_invitation_error(game: dict, *, user_id: int) -> str | None:
         return "game_invite_not_player"
     try:
         game_type = game_type_from_state(game)
-        expected = int(game.get("_expected_connections", 0) if game_type == HAUSDEPP_GAME_TYPE
-                       else game.get("_expected", 0))
+        # A waiting Hausdepp CPU can yield its seat to a joining human.
+        expected = int(game.get("_expected", 0))
     except (TypeError, ValueError):
         return "game_invite_not_waiting"
     if game_type == ZILCH_GAME_TYPE and game.get("_play_mode", "multiplayer") != "multiplayer":

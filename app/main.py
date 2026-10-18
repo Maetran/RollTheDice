@@ -42,6 +42,7 @@ from .api_avatars import router as avatars_router
 from .api_engagement import router as engagement_router
 from .api_friend_activity import router as friend_activity_router
 from .api_game_activity import router as game_activity_router
+from .api_hausdepp_favourite import router as hausdepp_favourite_router
 from .api_moderation import router as moderation_router
 from .api_passkeys import router as passkeys_router
 from .api_releases import router as releases_router
@@ -534,6 +535,7 @@ app.include_router(avatars_router)
 app.include_router(engagement_router)
 app.include_router(friend_activity_router)
 app.include_router(game_activity_router)
+app.include_router(hausdepp_favourite_router)
 app.include_router(users_router)
 app.include_router(admin_help_router)
 app.include_router(moderation_router)
@@ -1876,6 +1878,8 @@ class CreateReq(BaseModel):
     cpu_strategy: str | None = Field(default=None, max_length=32)
     cpu_count: int | None = Field(default=None, ge=0, le=5)
     tournament: bool = Field(default=False, strict=True)
+    waiting_mode: str = Field(default="fixed", pattern="^(fixed|open)$")
+    manual_start: bool = Field(default=False, strict=True)
 
     @field_validator("name")
     @classmethod
@@ -1923,7 +1927,10 @@ class CreateReq(BaseModel):
             from .hausdepp_state import validate_hausdepp_mode
 
             validate_hausdepp_mode(self.mode)
-            self.play_mode = self.play_mode or "cpu"
+            if self.waiting_mode == "open":
+                self.mode = "6"
+                self.manual_start = True
+            self.play_mode = self.play_mode or ("multiplayer" if self.waiting_mode == "open" else "cpu")
             if self.play_mode not in {"cpu", "multiplayer"} or self.hardcore or self.cpu_strategy is not None:
                 raise ValueError("hausdepp_invalid_options")
             self.cpu_count = (1 if self.play_mode == "cpu" else 0) if self.cpu_count is None else self.cpu_count
@@ -1932,7 +1939,8 @@ class CreateReq(BaseModel):
             if self.play_mode == "cpu" and self.cpu_count == 0:
                 raise ValueError("hausdepp_invalid_cpu_count")
             return self
-        if self.mode not in {"1", "2", "3", "2v2"} or self.cpu_count is not None or self.tournament:
+        if (self.mode not in {"1", "2", "3", "2v2"} or self.cpu_count is not None or self.tournament
+                or self.waiting_mode != "fixed" or self.manual_start):
             raise ValueError("invalid_game_mode")
         if self.game_type == ZILCH_GAME_TYPE:
             if self.hardcore:
@@ -2071,7 +2079,7 @@ async def api_games(request: Request, game_type: str = Query(default=DEFAULT_GAM
                 ),
             }
             if requested_game_type == HAUSDEPP_GAME_TYPE:
-                from .hausdepp_state import hausdepp_progress
+                from .hausdepp_state import hausdepp_progress, hausdepp_waiting_summary
                 from .hausdepp_tournament import project_hausdepp_tournament
 
                 entry.update({"play_mode": g.get("_play_mode"), "participants": hausdepp_progress(g),
@@ -2080,7 +2088,7 @@ async def api_games(request: Request, game_type: str = Query(default=DEFAULT_GAM
                               "expected_connections": g.get("_expected_connections"),
                               "current_player_id": (g.get("_turn") or {}).get("player_id"),
                               "spectator_available": bool(g.get("_started")),
-                              "tournament": project_hausdepp_tournament(g)})
+                              "tournament": project_hausdepp_tournament(g), **hausdepp_waiting_summary(g)})
                 entry["can_notify_open_seat"] = bool(account_player and not
                     open_seat_invitation_error(g, user_id=auth_identity.user_id))
                 entry["invite_retry_after_seconds"] = max(game_invite_cooldown_remaining(g), account_invite_retry)
@@ -2243,7 +2251,7 @@ def game_info(
         ),
     }
     if game_type_from_state(g) == HAUSDEPP_GAME_TYPE:
-        from .hausdepp_state import hausdepp_progress
+        from .hausdepp_state import hausdepp_progress, hausdepp_waiting_summary
         from .hausdepp_tournament import project_hausdepp_tournament
 
         account_player = next((player for player in g.get("_players", [])
@@ -2255,7 +2263,7 @@ def game_info(
                        "current_player_id": (g.get("_turn") or {}).get("player_id"),
                        "my_player_id": account_player["id"] if account_player else None,
                        "spectator_available": bool(g.get("_started")),
-                       "tournament": project_hausdepp_tournament(g)})
+                       "tournament": project_hausdepp_tournament(g), **hausdepp_waiting_summary(g)})
     if game_type_from_state(g) == ZILCH_GAME_TYPE:
         current_player_id, current_player_name = _lobby_current_player(g)
         solo_projection = zilch_solo_objective_projection(g)
@@ -2656,7 +2664,7 @@ async def api_games_create(req: CreateReq, request: Request):
         from .hausdepp_state import configure_hausdepp_game
 
         configure_hausdepp_game(g, host_user_id=identity.user_id, cpu_count=req.cpu_count or 0,
-                                tournament=req.tournament)
+                                tournament=req.tournament, waiting_mode=req.waiting_mode, manual_start=req.manual_start)
     if req.game_type == ZILCH_GAME_TYPE and req.play_mode == ZILCH_CPU_MODE:
         # The creator is the only human seat.  The CPU is a durable domain
         # participant and receives neither account data nor a socket record.
