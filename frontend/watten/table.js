@@ -262,7 +262,7 @@ export function createTableView(container, { onCard }) {
   const handNodes = new Map();
   const trickNodes = new Map();
   const signatures = {};
-  let layout = 0, guardUntil = 0, pressed = null, lastLive = "";
+  let layout = 0, pressed = null, lastLive = "";
 
   // Only a press that started on this exact card in the current layout can
   // play it. A reflow after the previous play cannot hand a tap to its neighbour.
@@ -274,7 +274,7 @@ export function createTableView(container, { onCard }) {
     const node = event.target.closest("[data-wt-card]");
     if (!node || node.disabled) return;
     const pointer = event.detail > 0;
-    if (pointer && (performance.now() < guardUntil || !pressed || pressed.key !== node.dataset.key || pressed.layout !== layout)) return;
+    if (pointer && (!pressed || pressed.key !== node.dataset.key || pressed.layout !== layout)) return;
     pressed = null;
     onCard(node.dataset.card);
   });
@@ -327,7 +327,7 @@ export function createTableView(container, { onCard }) {
     });
     elements.hand.style.setProperty("--count", String(Math.max(1, keys.length)));
     elements.hand.dataset.state = !hand.length ? "empty" : playable ? "playable" : "idle";
-    if (changed) { layout += 1; guardUntil = performance.now() + 280; pressed = null; }
+    if (changed) { layout += 1; pressed = null; }
     return { created, nodes: keys.map(key => handNodes.get(key)) };
   }
 
@@ -384,7 +384,7 @@ export function createTableView(container, { onCard }) {
     const hand = vm.spectator ? { created: [], nodes: [] } : renderHand(vm);
     const trick = { created: renderTrick(vm) };
     const live = vm.liveMessage || "";
-    if (live && live !== lastLive) elements.live.textContent = live;
+    if (live !== lastLive) elements.live.textContent = live;
     lastLive = live;
     return { hand, trick };
   }

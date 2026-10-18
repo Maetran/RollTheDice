@@ -226,13 +226,14 @@ html[lang="en"] .wt-rules-text[lang="de"], html:not([lang="en"]) .wt-rules-text[
 @keyframes wt-bubble { 0% { opacity: 0; scale: .85; } 6%, 85% { opacity: 1; scale: 1; } 100% { opacity: 0; } }
 
 .wt-panel, .wt-private > section {
+  min-width: 0; overflow-wrap: anywhere;
   background: var(--wt-paper); color: var(--wt-ink); border-radius: var(--wt-radius); padding: .65rem .8rem;
   border: 1px solid var(--wt-paper-edge); box-shadow: 0 6px 16px #0a160f40;
 }
 .wt-panel { grid-area: panel; min-height: 44px; }
 .wt-panel:empty { display: none; }
 .wt-panel h3 { margin-bottom: .35rem; }
-.wt-private { grid-area: private; display: grid; gap: .5rem; }
+.wt-private { grid-area: private; display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; gap: .5rem; }
 .wt-private:empty { display: none; }
 .wt-private h3 { font-size: 1rem; }
 .wt-feedback { border-left: 4px solid var(--wt-gold) !important; }

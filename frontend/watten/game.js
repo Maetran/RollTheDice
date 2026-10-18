@@ -313,6 +313,7 @@ const session = {
   bound: false, playerId: null, spectator: page === "spectator", live: false, snapshot: null, preview: null,
   inFlight: null, queued: null, reconnectTimer: 0, reconnectAttempts: 0, rejoinAttempts: 0, joinAttempts: 0,
   fatal: "", joinError: "", spectateError: "", joining: false,
+  pendingDeparture: null,
   deliveries: new Map(), ackTimer: 0, bubbles: [], flash: "", flashKind: "", flashTimer: 0,
   view: null, viewKind: "", connection: "",
 };
@@ -390,9 +391,21 @@ function sendRaw(payload) {
   return true;
 }
 
-function connect(intent, password = null) {
+async function connect(intent, password = null) {
   closeSocket();
   const gen = generation, serial = session.serial;
+  try {
+    const fresh = await loadAuth({ refresh: true });
+    if (gen !== generation || serial !== session.serial || navigating) return;
+    if (!fresh.authenticated || fresh.user.id !== account?.id) { reloadFresh(); return; }
+  } catch {
+    if (gen === generation && serial === session.serial) {
+      setConnection("");
+      showMessage(t("auth.unavailableTitle"), t("auth.unavailable"),
+        `<button type="button" data-watten-command="reconnect">${esc(t("connection.retry"))}</button>${lobbyLink()}`);
+    }
+    return;
+  }
   session.intent = intent;
   session.password = password;
   session.live = false;
@@ -418,6 +431,7 @@ function connect(intent, password = null) {
 
 function scheduleReconnect() {
   clearTimeout(session.reconnectTimer);
+  if (session.pendingDeparture) return;
   const gen = generation;
   const delay = Math.min(10000, 800 * 2 ** Math.min(session.reconnectAttempts, 4));
   session.reconnectAttempts += 1;
@@ -466,9 +480,10 @@ function onMessage(data) {
 function onGreeting(greeting) {
   if (greeting.id !== gameId) { closeSocket(); showMessage(t("table.notFound"), t("table.notFoundBody"), lobbyLink()); return; }
   const passphrase = session.password ? { passphrase: session.password } : {};
-  if (session.intent === "spectate") sendRaw({ action: "spectate_game", ...passphrase });
-  else if (session.intent === "join") sendRaw({ action: "join_game", revision: greeting.room_revision, ...passphrase });
-  else sendRaw({ action: "rejoin_game", revision: greeting.room_revision });
+  const expected_account_id = account.id;
+  if (session.intent === "spectate") sendRaw({ action: "spectate_game", expected_account_id, ...passphrase });
+  else if (session.intent === "join") sendRaw({ action: "join_game", revision: greeting.room_revision, expected_account_id, ...passphrase });
+  else sendRaw({ action: "rejoin_game", revision: greeting.room_revision, expected_account_id });
 }
 
 function onError(data) {
@@ -509,6 +524,7 @@ function onError(data) {
   }
   const failed = session.inFlight;
   clearInFlight();
+  if (failed?.action === "watten_leave" || failed?.action === "leave_waiting_game") session.pendingDeparture = null;
   if (failed?.action === "watten_delivery_ack") {
     for (const id of failed.ids || []) if (session.deliveries.get(id) === "sending") session.deliveries.set(id, "shown");
   } else {
@@ -525,6 +541,7 @@ function onClose(event) {
   session.bound = false;
   clearInFlight();
   session.queued = null;
+  if (session.pendingDeparture) { void reconcileDeparture(); return; }
   if (session.intent === "join" && !wasBound) {
     session.joining = false;
     session.joinError = t("error.network");
@@ -543,6 +560,7 @@ function onClose(event) {
 }
 
 async function manualReconnect() {
+  session.pendingDeparture = null;
   const gen = generation;
   try {
     const auth = await loadAuth({ refresh: true });
@@ -567,6 +585,7 @@ function commandId() {
 /** One authoritative command at a time, bound to the account that mounted it. */
 function dispatch(payload, meta) {
   if (!session.bound || session.spectator || navigating || !account) return false;
+  if (session.pendingDeparture) return false;
   if (latestUserId !== account.id) { reloadFresh(); return false; }
   if (session.inFlight) {
     if (session.inFlight.action === "watten_delivery_ack" && !meta.background && !session.queued) {
@@ -577,10 +596,12 @@ function dispatch(payload, meta) {
     return false;
   }
   if (!sendRaw(payload)) return false;
+  if (meta.action === "watten_leave" || meta.action === "leave_waiting_game") session.pendingDeparture = meta.action;
   const gen = generation;
   session.inFlight = { ...meta, id: payload.command_id, timer: setTimeout(() => {
     if (gen !== generation || session.inFlight?.id !== payload.command_id) return;
     clearInFlight();
+    if (session.pendingDeparture) { void reconcileDeparture(); return; }
     flash(t("error.noAnswer"));
     sendRaw({ action: "get_state" });
     render();
@@ -618,6 +639,7 @@ function onAck(ack) {
   if (!done || ack.command_id !== done.id) return;
   clearInFlight();
   if (done.action === "watten_leave" || done.action === "leave_waiting_game") {
+    session.pendingDeparture = null;
     // Only an accepted leave returns to the lobby.
     navigate("/watten");
     return;
@@ -634,7 +656,7 @@ function resume() {
   if (latestUserId !== account.id) { reloadFresh(); return; }
   // Explicit return in a fresh lifecycle epoch. A stale answer is reported,
   // never retried automatically as a new intent.
-  if (!sendRaw({ action: "rejoin_game", revision: snapshot.room.revision, resume: true, lifecycle_revision: snapshot.lifecycle_revision })) return;
+  if (!sendRaw({ action: "rejoin_game", revision: snapshot.room.revision, expected_account_id: account.id, resume: true, lifecycle_revision: snapshot.lifecycle_revision })) return;
   const gen = generation;
   session.inFlight = { action: "resume", id: null, timer: setTimeout(() => {
     if (gen !== generation || session.inFlight?.action !== "resume") return;
@@ -642,6 +664,22 @@ function resume() {
     render();
   }, 10000) };
   render();
+}
+
+async function reconcileDeparture() {
+  const gen = generation;
+  setConnection("");
+  showMessage(t("leave.checking"), t("leave.checkingBody"), lobbyLink());
+  try {
+    const fresh = await loadAuth({ refresh: true });
+    if (gen !== generation || !fresh.authenticated || fresh.user.id !== account?.id) return;
+    const response = await fetch(`/api/games/${gameId}`, { cache: "no-store" });
+    const data = response.ok ? await response.json() : null;
+    if (gen !== generation || !session.pendingDeparture) return;
+    if (data?.exists && (!data.viewer?.participant_id || data.can_resume)) { navigate("/watten"); return; }
+  } catch { /* Keep the unresolved leave intent; never admit the account again automatically. */ }
+  if (gen === generation && !navigating) showMessage(t("leave.uncertain"), t("leave.uncertainBody"),
+    `${lobbyLink()}<button type="button" data-watten-command="reconnect">${esc(t("connection.here"))}</button>`);
 }
 
 // Normal calls: show each allowed delivery once, then acknowledge it.
@@ -701,6 +739,7 @@ function adopt(snapshot, publicCalls) {
   const live = session.live;
   session.snapshot = snapshot;
   session.live = true;
+  if (session.pendingDeparture && !session.inFlight) return;
   setConnection("");
   if (!session.spectator) consumeCalls(snapshot);
   else if (Array.isArray(publicCalls)) for (const event of publicCalls) presentCall(event, snapshot);

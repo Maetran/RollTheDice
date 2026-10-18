@@ -1,7 +1,8 @@
 const { defineConfig } = require('@playwright/test');
 const { browserTestEnvironment } = require('./scripts/playwright-test-environment.cjs');
 
-const isolated = browserTestEnvironment({ name: 'watten', portVariable: 'ROLLTHEDICE_WATTEN_TEST_PORT', defaultPort: 8034 });
+const isolated = browserTestEnvironment({ name: 'watten', portVariable: 'ROLLTHEDICE_WATTEN_TEST_PORT', defaultPort: 8034,
+  defaultOutputDir: 'test-results/browser/watten' });
 const baseURL = `http://127.0.0.1:${isolated.port}`;
 
 module.exports = defineConfig({
@@ -20,6 +21,8 @@ module.exports = defineConfig({
       ROLLTHEDICE_WATTEN_ACCOUNT_PREVIEW: '1', ROLLTHEDICE_WATTEN_GAME_PREVIEW: '1',
       ROLLTHEDICE_ADMIN_USERNAME: 'Admin', ROLLTHEDICE_FOUNDER_USER_ID: '1',
       ROLLTHEDICE_ADMIN_PASSWORD: 'temporary-password-123',
+      ROLLTHEDICE_GAME_CREATE_BURST_MAX: '100', ROLLTHEDICE_GAME_CREATE_IP_MAX: '600',
+      ROLLTHEDICE_GAME_CREATE_GLOBAL_MAX: '1000',
     },
     url: baseURL, reuseExistingServer: false, gracefulShutdown: isolated.gracefulShutdown, timeout: 20000,
   },
