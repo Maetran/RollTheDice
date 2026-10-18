@@ -141,3 +141,21 @@ consistently across the supported player counts, preserves the existing
 seat/hand/call/bid state and distinguishes an intentional departure from a
 network disconnect. Fresh account-bound return and a lifecycle revision
 protect against stale commands; returning never grants another inspection.
+
+
+## Persönliche Folgeeinladung – Owner-Antwort vom18.10.2026
+
+Der Owner bestätigt den konkreten geschützten Folgetischfall: Eine ausdrücklich
+angenommene persönliche Einladung erlaubt dem eingeladenen Konto den Zugang
+zu genau diesem Folgetisch, ohne zusätzlich das neue Tischpasswort eingeben
+zu müssen. Sitz, Team und Start bleiben bewusst manuell. Ein gewöhnlicher
+Folgetischlink oder eine nicht angenommene Einladung erteilt diesen Zugang
+nicht; dort bleibt der Passwortschutz wirksam. Annahme ist kein Spielzug und
+gewährt weder eine neue Wertung noch allgemeine Passwortrechte.
+
+The owner confirmed the protected next-table case: explicitly accepting a
+personal invitation grants that invited account access to that exact table
+without additionally entering its new password. Seat, team and start remain
+manual choices. An ordinary next-table link or an unaccepted invitation does
+not grant that access and still requires the password. Acceptance is no game
+move and grants neither another score nor general password privileges.
