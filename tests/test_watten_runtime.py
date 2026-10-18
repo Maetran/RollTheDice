@@ -566,16 +566,45 @@ def test_result_writer_never_invents_account_binding_for_a_deleted_participant(s
     assert "account_id" not in json.dumps(game["_watten_result"])
 
 
-def test_invalid_private_checkpoint_is_retained_for_recovery_but_never_routed(server):
-    game_id, _owners, _sessions = local_started(server, count_players=2)
+@pytest.mark.parametrize("damage", ("unknown_engine_field", "missing_marker", "wrong_marker", "duplicate_last_marker"))
+def test_invalid_private_checkpoint_is_retained_for_recovery_but_never_routed(server, damage):
+    game_id, _owners, sessions = local_started(server, count_players=2)
+    game = games[game_id]
+    if damage != "unknown_engine_field":
+        # A real terminal native checkpoint must never fall through legacy
+        # _completion_persisted cleanup merely because its marker is damaged.
+        numbers = count()
+        accounts = {session.player_id: session.auth_identity.user_id for session in sessions}
+        for _ in range(300):
+            engine = game["_watten"].engine
+            if engine.phase == "match_complete":
+                break
+            if engine.phase == "deal_complete":
+                player = sessions[0].player_id
+                command = room_command(game_id, "watten_next_deal", next(numbers), deal_id=engine.deal_id, opportunity=engine.opportunity)
+            else:
+                player, command = next_move(game_id, numbers)
+            candidate, *_ = apply_runtime_action(game, accounts[player], player, command)
+            game.update(candidate)
+        assert game["_finished"]
+        persist_watten_game(game)
+        assert game["_completion_persisted"]
     with session_scope() as db:
         row = db.scalar(select(ActiveGame).where(ActiveGame.game_id == game_id))
         value = json.loads(row.state_json)
-        value["_watten"]["engine"]["unknown_private_field"] = "invalid"
-        row.state_json = json.dumps(value)
+        if damage == "unknown_engine_field":
+            value["_watten"]["engine"]["unknown_private_field"] = "invalid"
+        elif damage == "missing_marker":
+            value.pop("_game_type")
+        elif damage == "wrong_marker":
+            value["_game_type"] = "zdwa"
+        malformed = json.dumps(value)
+        if damage == "duplicate_last_marker":
+            malformed = malformed[:-1] + ', "_game_type":"zdwa"}'
+        row.state_json = malformed
     assert game_id not in load_active_games()
     with session_scope() as db:
-        assert db.scalar(select(ActiveGame.id).where(ActiveGame.game_id == game_id)) is not None
+        assert db.scalar(select(ActiveGame.state_json).where(ActiveGame.game_id == game_id)) == malformed
 
 
 @pytest.mark.parametrize("phase", ("strike", "colour", "show_ready", "inspection", "play", "bid_response", "deal_complete"))

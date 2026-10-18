@@ -152,7 +152,10 @@ def load_active_games() -> dict[str, dict]:
         game: dict | None = None
         try:
             game = json.loads(state_json)
-            if isinstance(game, dict) and game.get("_game_type") == "watten":
+            # A native payload signature still requires its strict decoder
+            # when the discriminator is damaged; never use legacy defaults
+            # or terminal cleanup for a private Watten recovery checkpoint.
+            if isinstance(game, dict) and (game.get("_game_type") == "watten" or "_watten" in game):
                 from .watten_runtime import restore_watten_json
 
                 game = restore_watten_json(state_json)
@@ -224,7 +227,7 @@ def load_active_games() -> dict[str, dict]:
                     pause_zilch_solo_timer(game, count_elapsed=False)
             restored[game_id] = game
         except (TypeError, ValueError, json.JSONDecodeError):
-            if isinstance(game, dict) and game.get("_game_type") == "watten":
+            if isinstance(game, dict) and (game.get("_game_type") == "watten" or "_watten" in game):
                 logger.exception("Retaining unrouteable private Watten checkpoint %s", game_id)
                 continue
             if isinstance(game, dict) and game.get("_finished"):
