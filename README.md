@@ -1822,16 +1822,29 @@ Generated files under `app/static/` must be committed alongside their sources.
 ### Quality checks
 
 ```bash
-npm run check:quality
-npm run test:backend
-npm run test:browser
-git diff --check
+npm run hooks:install                   # once per repository
+npm run push:checked -- -u origin codex/my-feature
+# Or verify first, then use a normal git push:
+npm run verify:local
 ```
 
-Browser tests start a separate server on port 8010 with a disposable SQLite
-database. `npm run test:browser` also runs the username-change suite against a
-fresh server in public Zilch mode (`playwright.username.config.js`), separately
-from the private-preview scenarios. `npm run check:quality` includes lint,
+Commit changes before verification. The pre-push hook requires a complete local
+check for the exact clean commit, current `origin/develop` base and installed
+environment. A successful receipt remains valid for 24 hours; changing any of
+those inputs requires a new run. It lives in Git metadata and is never accepted
+as GitHub CI evidence. The full check runs quality/security checks, Node tooling
+tests, backend coverage, the production Docker build and offline container smoke
+test, every browser suite and `git diff --check`. Docker must use a local socket.
+See [local checks](docs/LOCAL_CHECKS.md) for prerequisites, focused commands and
+logs. Check for another agent's full test pool before starting one.
+
+`npm run test:browser` runs the main suite on four parallel, isolated servers,
+each with its own free port, SQLite database, legacy JSON data and report files.
+Each server keeps one worker. Username changes in public Zilch mode
+(`playwright.username.config.js`), passkeys and Hausdepp passkeys then run
+separately, even if an earlier suite failed. Servers are never reused; interruption
+cleans up only this run's processes and temporary data. Filtered runs are marked
+incomplete and cannot authorize a push. `npm run check:quality` includes lint,
 dependency consistency, Bandit and the dependency vulnerability audit, matching
 the backend checks in [the quality workflow](.github/workflows/quality.yml).
 CI runs the main browser suite in four isolated shards and the username and
@@ -1855,11 +1868,19 @@ passes only after every full-check job succeeded or after verified reuse, and it
 summary links the evidence run. To benefit from reuse, push `master` only after the
 `develop` run is green, as the release process already requires.
 
-**Deutsch – Qualitätsprüfung:** `npm run check:quality` führt dieselben Lint-,
-Sicherheits- und Abhängigkeitsprüfungen wie GitHub aus. Die Browser-Suite läuft
-in vier getrennten Teilen; Benutzername und Passkeys haben eigene Prüfjobs.
-Chromium und WebKit werden für alle verwendeten Browser-Engines installiert.
-Alle Tests bleiben erhalten.
+**Deutsch – Qualitätsprüfung:** Einmal `npm run hooks:install` ausführen, dann
+mit `npm run push:checked -- <git-push-Argumente>` pushen. Der vollständige lokale
+Prüfer läuft vor dem Push; der Hook akzeptiert nur einen erfolgreichen Nachweis
+für den exakten, sauberen Commit mit aktueller `origin/develop`-Basis und
+unveränderter Umgebung. Der Nachweis gilt höchstens 24 Stunden und liegt nur in
+den Git-Metadaten. Enthalten sind Lint, Sicherheit, Node-Tooltests,
+Backend-Abdeckung, lokaler Produktionscontainer samt Offline-Prüfung und alle
+Browser-Suiten. Die Hauptsuite läuft gleichzeitig auf vier eigenen Servern mit
+je einem Worker, freiem Port, SQLite-Datenbank, JSON-Daten und eigenen Berichten.
+Die drei Konto-Suiten folgen einzeln. Teilprüfungen berechtigen nie zum Push;
+Abbruch beendet nur eigene Prozesse. Chromium, WebKit und ein lokaler Docker-Daemon
+müssen bereitstehen. Bei einem fremden vollen Testpool zuerst abstimmen.
+Details und Teilbefehle stehen in [Lokale Prüfungen](docs/LOCAL_CHECKS.md).
 
 GitHub prüft jede Änderung genau einmal. Feature-Branches laufen nur über ihren
 Pull Request, unabhängig vom Zielbranch. Pushes starten die CI nur auf `develop`

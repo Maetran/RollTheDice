@@ -21,6 +21,19 @@
   nötigenfalls Assets neu bauen und relevante Prüfungen wiederholen. Danach vor
   dem nächsten Push erneut abrufen und vergleichen. Einen wegen neuer Remote-
   Commits abgelehnten Push durch erneuten Abgleich lösen, niemals per Force-Push.
+- Vor jedem Push den vollständigen lokalen Prüfablauf auf dem fertig
+  committeten, sauberen Stand bestehen lassen: einmal `npm run hooks:install`
+  pro Repository, danach `npm run push:checked -- <git-push-Argumente>`.
+  Alternativ `npm run verify:local` und anschliessend normal pushen. Der Hook
+  verlangt einen gültigen Nachweis für exakt diesen Commit, die aktuelle
+  `origin/develop`-Basis und die unveränderte lokale Umgebung. Keine Hooks
+  umgehen und keine Teilprüfung als Vollprüfung ausgeben. Alle Qualitäts-,
+  Sicherheits-, Tool-, Backend-, Container- und Browserprüfungen sind enthalten.
+  Die Haupt-Browser-Suite läuft auf vier eigenen Servern mit getrennten
+  Datenverzeichnissen und je einem Worker; die drei Konto-Suiten folgen separat.
+  Vor einem vollen Lauf laufende fremde Testpools prüfen und abstimmen; keine
+  zweite volle Testsuite parallel zu einem fremden Vollpool starten. Einzelheiten
+  und Voraussetzungen stehen in [docs/LOCAL_CHECKS.md](docs/LOCAL_CHECKS.md).
 - `develop` nach `master` per Fast-forward oder normalem Merge übernehmen,
   ohne Squash/Rebase der referenzierten Historie. Einen Release-Merge oder
   Hotfix auf `master` vor der nächsten Versionserhöhung nach `develop`

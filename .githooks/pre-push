@@ -1,0 +1,17 @@
+#!/bin/sh
+# RollTheDice local verification hook; installed into the common Git directory.
+set -eu
+if ! root=$(git rev-parse --show-toplevel 2>/dev/null); then
+  echo '[local] Cannot locate this checkout; push verification is required.' >&2
+  exit 1
+fi
+verification="$root/scripts/verify-local.mjs"
+if [ ! -f "$verification" ]; then
+  echo '[local] This checkout has no scripts/verify-local.mjs; integrate the local verification tooling before pushing.' >&2
+  exit 1
+fi
+if ! command -v node >/dev/null 2>&1; then
+  echo '[local] Node.js is required for push verification.' >&2
+  exit 1
+fi
+exec node "$verification" --pre-push "$@"
