@@ -2,6 +2,13 @@ const { test, expect } = require("@playwright/test");
 
 test.use({ serviceWorkers: "block" });
 
+test.afterEach(async ({ page }) => {
+  // Native navigation can start one more real identity projection after the
+  // visible assertions finish. Complete page-owned handlers before teardown
+  // disposes their responses; handler failures still fail the test.
+  await page.unrouteAll({ behavior: "wait" });
+});
+
 // Browser coverage uses the explicitly enabled local preview. The real
 // production Founder/Host/HTTP/WS audience is checked against disposable DBs in
 // test_watten_founder_access.py and test_watten_founder_preview.py.

@@ -890,3 +890,19 @@ dem nächsten Sitzschritt; nach Bestätigung wird vor dem nächsten Akteur erneu
 abgeglichen. Der betroffene echte Browserfall besteht gezielt unter
 `test-results/browser/watten-current-room-bindings/`. Der finale vollständige
 Nachweis bleibt weiterhin vor jedem Push und Release erforderlich.
+
+
+Der vierte vollständige Lauf `91b8a56` bestand wiederum alle Gruppen vor dem
+Browserteil. Alle sieben Browserteile liefen fertig; genau ein neu ergänzter
+Founder-Menüfall scheiterte erst beim Teardown: Sein noch laufender eigener
+Auth-Routehandler las einen bereits geschlossenen Responsebody. Die sichtbaren
+Menü-, Fokus- und Navigationsassertions waren bestanden; der rote Originalbericht
+unter `test-results/local-checks/91b8a56994cf-1792359663205-c54515ca/` bleibt erhalten.
+
+Der Test wartet jetzt in seiner Bereinigung auf seine eigenen laufenden
+Page-Routehandler mit `unrouteAll({ behavior: "wait" })`. Kein Fehler wird
+ignoriert, keine Assertion entfernt und keine Retry- oder Timeoutgrenze erhöht.
+Alle vier Founder-Menüfälle bestehen gezielt unter
+`test-results/browser/watten-owner-preview-route-teardown/`; dies ist weiterhin
+kein vollständiger Pushnachweis. Vor jedem Push und Release folgt der volle
+Prüfablauf auf dem neuen sauberen Commit.
