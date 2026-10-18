@@ -159,3 +159,39 @@ without additionally entering its new password. Seat, team and start remain
 manual choices. An ordinary next-table link or an unaccepted invitation does
 not grant that access and still requires the password. Acceptance is no game
 move and grants neither another score nor general password privileges.
+
+
+## Private Produktionsvorschau für das Ownerkonto (18.10.2026)
+
+Owner: «kannst du es mit dev flag auf prod ausrollen, wenn die erste version
+steht? also dass es nur mein konto (owner konto) in der spiele liste sieht
+und keiner sonst zugreifen kann?»
+
+Dies ist die bedingte Freigabe für einen privaten Produktionsrollout, sobald
+eine zusammenhängende erste Spielversion, die kontoabhängigen Zugriffssperren
+und der vollständige lokale/CI-Nachweis bestehen. Sichtbarkeit und Spielzugriff
+gehören ausschliesslich zum fest gebundenen Founder-Konto. Weitere Admins,
+delegierte Owner, normale Konten und Gäste erhalten weder Spieleintrag noch
+Zugriff über Seiten, APIs, WebSockets oder Einladungs-/Reservationsgrants.
+Keine Bindung an Benutzernamen, keinen geratenen numerischen Kontoschlüssel.
+
+Der neue Produktionsschalter ist standardmässig aus. Bestehende lokale
+Entwicklungsflags bleiben lokal begrenzt. Für die erste private Webvorschau
+wird der Apexpfad `/watten` verwendet; der feste Wattenhost bleibt bis zur
+späteren vollständigen Hostintegration im Holdingzustand. Das gesetzte finale
+Produktziel `watten.zockdiewandan.online` bleibt erhalten. Anmeldung erfolgt
+über die bestehende gemeinsame Kontoreise. Private Vorschau bedeutet keine
+Öffnung von PWA-Installation, Registrierungs-/Mailkontexten, SEO oder Push.
+
+Lieferweg bleibt `develop → master → prod`, mit kompletter Prüfung und
+serverseitigen Negativtests gegen alle anderen Kontorollen. Diese Freigabe
+umfasst keinen öffentlichen Wattenstart. Alle81 Findings bleiben im Umfang;
+eine private erste Vorschau ist keine vollständige Produktabnahme.
+
+The owner authorizes a private production preview once the first coherent
+version and its complete checks are ready. Only the immutable founder account
+may discover or access Watten. The initial web preview uses the main site's
+`/watten` path; the final dedicated product host remains the project target.
+Other accounts, direct links and invitation grants cannot bypass the gate.
+Public rollout, PWA/mail discovery and actual push delivery are not authorized
+by this private-preview request.
