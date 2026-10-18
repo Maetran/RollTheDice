@@ -53,8 +53,8 @@ behaupteten Hausregeln: Dieselbe Pause gilt konsistent für die angebotenen
 Zweier-, Dreier- und Viererprofile. Konto, Sitz, Team, Hand, Ansagewissen,
 Punktestand und ein bereits offenes Gebot bleiben erhalten. Mehrere bewusst
 Abwesende werden getrennt gespeichert; erst die Rückkehr aller löst die Pause.
-Ein Mitglied ohne Spielplatz oder ein Zuschauer kann die Partie nicht pausieren. Wiederaufnahme
-braucht eine frisch authentifizierte Rückkehr des betreffenden Kontos;
+Ein Mitglied ohne Spielplatz oder ein Zuschauer kann die Partie nicht pausieren.
+Wiederaufnahme braucht eine frisch authentifizierte Rückkehr des betreffenden Kontos;
 blosse Zuschauerverbindungen, alte Sockets und wiederholte alte Leave-ACKs
 dürfen sie nicht auslösen oder einen zurückgekehrten Spieler erneut entfernen.
 Eine eigene Lebenszyklusversion schützt alle Spielkommandos vor Eingaben aus
@@ -111,8 +111,10 @@ four-player defaults to blind Ladinisch. Guter and critical cards default off.
 The critical order is heart king, Weli, acorn seven, all above the main strike;
 with critical cards off, Weli is the smallest trump. Bidding starts with the
 first card at three, counterbids rise by one, and play pauses for the response.
-Gestrichen parties cannot initiate a bid but may hold, fold or counterbid in
-response. There is no obligation to win a trick or sacrifice the main strike
+An initiating player's own score determines whether they are gestrichen;
+their partner's different three-player score does not block their bid.
+Gestrichen players may still hold, fold or counterbid in response.
+There is no obligation to win a trick or sacrifice the main strike
 or critical cards. The owner accepted a 33-card/five-card-hand implementation
 basis and clockwise dealer/announcement/lead roles. Both opponents in rotating
 three-player solo receive their own points and can win together. The dealer
