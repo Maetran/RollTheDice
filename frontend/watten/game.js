@@ -10,6 +10,7 @@ import { createMotion } from "./motion.js";
 import { createMatchProgress } from "./match-progress.js";
 import { applyFavoriteToCreator, createFavorites, favoriteText, readCreatorRecipe, syncCreatorProtection } from "./favorites.js";
 import { createRematch } from "./rematch.js";
+import { loadWattenDetail } from "./api.js";
 
 // Metadata only: these preview documents neither register a worker nor
 // advertise installation; the account pages own that local experiment.
@@ -886,31 +887,27 @@ function renderSpectatePrompt() {
 }
 
 async function loadDetail(gen) {
-  let response;
-  try { response = await fetch(`/api/games/${gameId}`, { cache: "no-store" }); } catch {
+  const expectedAccountId = account?.id;
+  let result;
+  try {
+    result = await loadWattenDetail({ gameId, accountId: expectedAccountId, fetcher: (url, options) => fetch(url, options), loadAuth,
+      isCurrent: () => gen === generation && !navigating && account?.id === expectedAccountId && latestUserId === expectedAccountId,
+      onAccountChanged: reloadFresh });
+  } catch {
     if (gen === generation) showMessage(t("connection.failed"), t("error.network"), `<button type="button" data-watten-command="reconnect">${esc(t("connection.retry"))}</button>`);
     return;
   }
-  if (gen !== generation) return;
-  if (response.status === 401) { refreshAuth(); return; }
-  const data = response.ok ? await response.json().catch(() => null) : null;
-  if (gen !== generation) return;
-  if (!data || data.exists === false || !data.room) {
+  if (!result || gen !== generation) return;
+  const data = result.data;
+  if (!result.ok || !data || data.exists === false || !data.room) {
     showMessage(t("table.notFound"), t("table.notFoundBody"), lobbyLink());
     return;
   }
   session.preview = data;
   const member = Boolean(data.viewer?.participant_id || data.my_player_id);
   if (data.room.status === "closed" && member && page !== "spectator") {
-    // Closed rooms need no socket admission. Bind the private HTTP projection
-    // again after its body before exposing the host's rematch controls.
-    try {
-      for (let index = 0; index < 2; index += 1) {
-        const fresh = await loadAuth({ refresh: true });
-        if (gen !== generation || navigating) return;
-        if (!fresh.authenticated || fresh.user.id !== account?.id) { reloadFresh(); return; }
-      }
-    } catch { if (gen === generation) showMessage(t("connection.failed"), t("error.network"), lobbyLink()); return; }
+    // Closed rooms need no socket admission. The HTTP projection is already
+    // bound to the mounted account before exposing its rematch controls.
     session.snapshot = data;
     session.playerId = data.viewer?.participant_id || data.my_player_id;
     setConnection(""); render(); return;

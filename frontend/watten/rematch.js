@@ -114,7 +114,7 @@ export function createRematch({ gameId, fetcher, loadAuth, escapeHtml: esc, rend
       }
       if (!await verify(token, true)) return;
       if (!response.ok) {
-        error = response.status === 409 ? "stale" : "unavailable";
+        error = response.status === 409 || response.status === 403 && result?.detail === "csrf_rejected" ? "stale" : "unavailable";
         throw new Error("rematch unavailable");
       }
       if (!object(result) || result.schema_version !== 1 || result.game_type !== "watten"

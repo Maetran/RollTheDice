@@ -255,3 +255,22 @@ test("503 retains the exact original envelope and CSRF until explicit retry", as
   assert.equal(f.calls[0].options.headers["X-CSRF-Token"], f.calls[1].options.headers["X-CSRF-Token"]);
   assert.deepEqual(f.navigations, [`/watten/spiel/${targetId}`]);
 });
+
+test("same-account session rotation offers source reload after the captured CSRF is rejected", async () => {
+  const f = fixture({ fetcher: async (_url, _options, attempt) => attempt === 1
+    ? response({ detail: "watten_storage_unavailable" }, 503) : response({ detail: "csrf_rejected" }, 403) });
+  f.update(); f.freshPassword("clear-on-reload"); f.container.submit();
+  await until(() => f.container.innerHTML.includes('action="retry"'));
+  f.container.click("retry");
+  await until(() => f.container.innerHTML.includes('action="reload"'));
+  assert.doesNotMatch(f.container.innerHTML, /action="retry"/);
+  assert.equal(f.calls.length, 2);
+  assert.equal(f.calls[0].options.body, f.calls[1].options.body);
+  assert.equal(f.calls[0].options.headers["X-CSRF-Token"], f.calls[1].options.headers["X-CSRF-Token"]);
+  assert.deepEqual(f.navigations, []);
+  const input = f.container.fields.get("rematch_password");
+  f.container.click("reload");
+  assert.deepEqual(f.navigations, [`/watten/spiel/${gameId}`]);
+  assert.equal(input.value, ""); assert.equal(f.container.innerHTML, "");
+  assert.equal(f.calls.length, 2);
+});
