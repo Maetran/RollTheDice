@@ -42,8 +42,12 @@ und ohne Karteninformationen an. Zuschauen braucht einen bewussten Klick;
 am laufenden Tisch erscheint nur Text. Kontoeinstellungen speichern die eigene
 Zustimmung und Spielerauswahl; Suchergebnisse und wartende Meldungen bleiben
 begrenzt. Persönliche Folgetisch-Einladungen, Tourpräferenzen, Gerätebindung
-und Monitoring sind serverseitig vorbereitet; ihre übrigen nativen Oberflächen
-und die öffentliche Freigabe stehen noch aus.
+sind serverseitig vorbereitet; ihre übrigen nativen Oberflächen und die
+öffentliche Freigabe stehen noch aus. Das bestehende Dashboard ergänzt Watten
+ausschliesslich aus der aktuellen Analytics-Freigabe. Partien, Menschen,
+Computerplätze und belegte Dauer werden getrennt angezeigt; fehlende Besuchs-,
+Installations- und Herkunftsmessung bleibt unbekannt. Kontowechsel entfernen
+private Altwerte auch bei verzögerten Antworten.
 
 Die Trumpfzugabe entspricht der bestätigten Variante 2: Ein gewöhnlicher
 Schlag ersetzt vorhandenen Trumpf nur, wenn er den aktuellen Stich übernimmt.
@@ -66,8 +70,12 @@ Native friend notices briefly show selected players starting games without
 card information. Watching needs an explicit click; an active table shows text
 only. Account settings save consent and player selection; search results and
 pending notices stay bounded. Personal follow-up invitations, tour preferences,
-device context and monitoring have backend foundations; their remaining native
-interfaces and public release are still pending.
+and device context have backend foundations; their remaining native interfaces
+and public release are still pending. The existing dashboard adds Watten only
+from its current analytics authorization. Matches, people, computer seats and
+evidenced duration are distinct; unavailable traffic, installation and geography
+measurements stay unknown. Account changes clear old private values even when
+responses are delayed.
 
 Following trump uses the confirmed second option: an ordinary rank card can
 replace held trump only when it takes the current trick. Trump, the Right and

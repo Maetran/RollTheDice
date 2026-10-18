@@ -53,6 +53,21 @@ account. It uses the normal suite login; other accounts, administrators and
 delegated owners receive no access. The fixed Watten host, installation,
 Watten account emails and push delivery remain closed.
 
+**Privates Monitoring / private monitoring:** Das bestehende Dashboard bietet
+Watten nur an, wenn die aktuelle Analytics-Antwort es für das Konto freigibt.
+Es unterscheidet abgeschlossene Partien, gespeicherte Plätze einschliesslich
+Computern und verbundene Menschen. Unbekannte Besuchs-, Installations- und
+Herkunftswerte bleiben unbekannt; sie werden nicht als Nullmessung ausgegeben.
+Partiedauern nennen ihre belegte Stichprobe. HTTP-Anfragen und Serverlast
+bleiben als Messungen der gesamten Website gekennzeichnet.
+
+The existing dashboard offers Watten only when the current analytics response
+authorizes it for the account. It distinguishes completed matches, recorded
+seats including computers, and connected people. Unknown traffic, installation
+and geography values stay unknown rather than becoming measured zeros. Match
+duration states its evidenced sample. HTTP requests and server load remain
+labelled as measurements for the entire website.
+
 **Freunde und Spielerauswahl / friends and player selection:** Die native Lobby
 zeigt bei eigener Zustimmung kurz den Spielstart ausgewählter Menschen.
 Zuschauen braucht einen Klick; am laufenden Tisch erscheint nur Text ohne
