@@ -156,6 +156,16 @@ DOCUMENT_ROUTES = (
         ("tests/browser-passkeys/watten-account.spec.js",),
     ),
     RouteCoverage(
+        ("/watten/regeln",), "tests/test_watten_pages.py",
+        "test_local_public_lobby_and_rules_serve_actual_game_documents",
+        ("tests/browser/watten-game.spec.js",),
+    ),
+    RouteCoverage(
+        ("/watten/spiel/{game_id}", "/watten/spiel/{game_id}/zuschauen"), "tests/test_watten_pages.py",
+        "test_authenticated_player_and_spectator_documents_keep_canonical_context",
+        ("tests/browser/watten-game.spec.js",),
+    ),
+    RouteCoverage(
         ("/anmelden",), "tests/test_zilch_product_routes.py",
         "test_public_guest_explicit_login_reaches_apex_form_with_safe_continuation",
         ("tests/browser/passkey-signup.spec.js",),

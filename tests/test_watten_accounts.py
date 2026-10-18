@@ -29,6 +29,7 @@ class WattenAccountsTests(unittest.TestCase):
             "ROLLTHEDICE_DATABASE_URL": f"sqlite:///{self.temp.name}/accounts.sqlite3",
             "ROLLTHEDICE_SITE_ORIGIN": LOCAL, "ROLLTHEDICE_ZILCH_ORIGIN": "http://zilch.rollthedice.localhost:8057",
             "ROLLTHEDICE_WATTEN_ACCOUNT_PREVIEW": "1", "ROLLTHEDICE_COOKIE_DOMAIN": "",
+            "ROLLTHEDICE_WATTEN_GAME_PREVIEW": "0",
             "ROLLTHEDICE_COOKIE_SECURE": "0", "ROLLTHEDICE_PASSKEYS_ENABLED": "0",
             "ROLLTHEDICE_EMAIL_ENABLED": "1", "ROLLTHEDICE_RESEND_API_KEY": "test-only",
             "ROLLTHEDICE_EMAIL_FROM": "account@example.test", "ROLLTHEDICE_TURNSTILE_SITE_KEY": "",
@@ -176,16 +177,23 @@ class WattenAccountsTests(unittest.TestCase):
             self.assertEqual(self.client.get("/passwort-vergessen?app=watten").status_code, 503)
 
     def test_return_paths_reject_foreign_games_queries_duplicates_and_nested_handoffs(self):
+        table = "/watten/spiel/0123456789abcdef"
         for candidate in ("https://evil.invalid/", "//evil.invalid/", "/watten/spiel/one", "/watten/anmelden",
                           "/watten/../konto", "/watten%2fkonto", "/watten/konto?return_to=//evil.invalid",
-                          "/auth/continue?app=watten&path=/watten", "/hausdepp/konto", "/watten#token=secret"):
+                          "/auth/continue?app=watten&path=/watten", "/hausdepp/konto", "/watten#token=secret",
+                          table.upper(), table[:-1], table + "0", table + "/", table + "?pass=secret",
+                          table + "#token=secret", table + "\n", table + "\r", table + "%0a"):
             self.assertEqual(safe_watten_account_path(candidate), "/watten")
             response = self.client.get("/watten/anmelden", params={"return_to": candidate})
             self.assertEqual(response.status_code, 303)
             self.assertEqual(response.headers["location"], "/watten/anmelden?return_to=%2Fwatten")
         self.assertEqual(self.client.get("/watten/anmelden?return_to=/watten&return_to=/watten/konto").status_code, 303)
-        for candidate in ("/watten", "/watten/konto", "/watten/konto/einstellungen"):
+        for candidate in ("/watten", "/watten/konto", "/watten/konto/einstellungen", "/watten/regeln",
+                          table, table + "/zuschauen"):
             self.assertEqual(safe_watten_account_path(candidate), candidate)
+            response = self.client.get("/watten/anmelden", params={"return_to": candidate})
+            self.assertEqual(response.status_code, 200)
+            self.assertNotIn("location", response.headers)
 
 
 if __name__ == "__main__":
