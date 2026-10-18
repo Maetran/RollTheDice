@@ -229,3 +229,29 @@ test("new DE/EN catalogs have identical complete keys and guarded integration ne
   assert.match(game, /rematch\?\.update\(\{ container: root.querySelector\("\[data-watten-rematch\]"\)/);
   assert.match(game, /Closed rooms need no socket admission/);
 });
+
+test("stale revision offers deliberate source reload instead of repeating an obsolete envelope", async () => {
+  const f = fixture({ fetcher: async () => response({ detail: "watten_stale_room_revision" }, 409) });
+  f.update(); f.freshPassword("retain-until-reload"); f.container.submit();
+  await until(() => f.container.innerHTML.includes('action="reload"'));
+  assert.doesNotMatch(f.container.innerHTML, /action="retry"/);
+  assert.equal(f.calls.length, 1); assert.deepEqual(f.navigations, []);
+  const input = f.container.fields.get("rematch_password");
+  assert.equal(input.value, "retain-until-reload");
+  f.container.click("reload"); await until(() => f.navigations.length === 1);
+  assert.deepEqual(f.navigations, [`/watten/spiel/${gameId}`]);
+  assert.equal(input.value, ""); assert.equal(f.container.innerHTML, ""); assert.equal(f.calls.length, 1);
+});
+
+test("503 retains the exact original envelope and CSRF until explicit retry", async () => {
+  const f = fixture({ fetcher: async (_url, _options, attempt) => attempt === 1
+    ? response({ detail: "watten_storage_unavailable" }, 503) : response({ ...result(), created: false }) });
+  f.update(); f.freshPassword("same-request"); f.container.submit();
+  await until(() => f.container.innerHTML.includes('action="retry"'));
+  assert.doesNotMatch(f.container.innerHTML, /action="reload"/);
+  assert.equal(f.calls.length, 1); assert.deepEqual(f.navigations, []);
+  f.container.click("retry"); await until(() => f.navigations.length === 1);
+  assert.equal(f.calls.length, 2); assert.equal(f.calls[0].options.body, f.calls[1].options.body);
+  assert.equal(f.calls[0].options.headers["X-CSRF-Token"], f.calls[1].options.headers["X-CSRF-Token"]);
+  assert.deepEqual(f.navigations, [`/watten/spiel/${targetId}`]);
+});

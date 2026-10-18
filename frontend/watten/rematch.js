@@ -55,7 +55,7 @@ export function createRematch({ gameId, fetcher, loadAuth, escapeHtml: esc, rend
               <option value="disabled">${esc(t(recipe.password_required ? "disableExplicit" : "unprotected"))}</option></select></label>
             <label${mode === "fresh_password" ? "" : " hidden"}>${esc(t("password"))}
               <input name="rematch_password" type="password" autocomplete="new-password" maxlength="100"${mode === "fresh_password" ? " required" : ""}${disabled || envelope ? " disabled" : ""}></label>
-            ${envelope ? `<button type="button" data-watten-rematch-action="retry"${disabled ? " disabled" : ""}>${esc(t(busy ? "busy" : "retry"))}</button>`
+            ${envelope ? `<button type="button" data-watten-rematch-action="${error === "stale" ? "reload" : "retry"}"${disabled ? " disabled" : ""}>${esc(t(busy ? "busy" : error === "stale" ? "reload" : "retry"))}</button>`
               : `<button type="submit" data-watten-rematch-action="create"${disabled ? " disabled" : ""}>${esc(t(busy ? "busy" : "create"))}</button>`}
           </form>`}
       <p class="wt-note">${esc(t("manual"))}</p>
@@ -156,6 +156,9 @@ export function createRematch({ gameId, fetcher, loadAuth, escapeHtml: esc, rend
     if (!control || control.disabled || !container?.contains(control)) return;
     if (control.dataset.wattenRematchAction === "retry") void send();
     if (control.dataset.wattenRematchAction === "open") void open();
+    if (control.dataset.wattenRematchAction === "reload" && current(serial) && !busy) {
+      password = ""; envelope = null; clearSecret(); navigate(`/watten/spiel/${gameId}`);
+    }
   }
   function detach() {
     if (!container) return;
