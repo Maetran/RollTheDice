@@ -30,7 +30,8 @@ not asserted deployment dates. See the [complete version history](docs/VERSION_H
 - **ALLGEMEIN:** Gerätestatus prüft lokales Abo, Schlüssel, Konto und tatsächlichen
   Spiel-Worker gegen den Server. Statusabfragen verändern keine Abos. Identische
   erneute Anmeldungen erhalten ausstehende Versionshinweise; Kontowechsel und
-  echte Schlüsseländerungen bleiben geschützt.
+  echte Schlüsseländerungen bleiben geschützt. Ältere Appfenster ohne expliziten
+  Spielhinweis überschreiben bestehende öffentliche Gerätezuordnungen nicht mehr.
 - **HAUSDEPP:** Ein Abo eines anderen Spiels oder Geräts versteckt die
   Geräteanmeldung nicht mehr. Fehlende oder veraltete Anmeldungen lassen sich
   mit einem bewussten Klick reparieren, ohne die Push-Auswahl zu ändern.
@@ -42,7 +43,8 @@ not asserted deployment dates. See the [complete version history](docs/VERSION_H
 - **GENERAL:** Device status checks the local subscription, keys, account and
   actual game worker against the server. Status checks never change subscriptions.
   Identical registrations preserve pending release alerts; account switches and
-  actual key changes remain protected.
+  actual key changes remain protected. Older app windows without an explicit
+  product hint cannot overwrite an existing public device binding.
 - **HAUSDEPP:** A subscription for another game or device no longer hides device
   registration. Repair missing or stale registrations with a deliberate click
   while keeping category choices.

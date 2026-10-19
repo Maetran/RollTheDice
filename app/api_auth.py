@@ -722,6 +722,7 @@ def web_push_subscription_put(payload: WebPushSubscriptionRequest, request: Requ
                 "hausdepp" if is_hausdepp_host(request) else "zilch" if is_zilch_host(request) else "zdwa"
             ),
             connection=request,
+            context_is_inferred=payload.product_context is None,
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc

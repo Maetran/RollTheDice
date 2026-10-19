@@ -170,7 +170,8 @@ def test_explicit_registration_rejects_a_switched_or_ambiguous_account(device_st
         assert db.scalars(select(WebPushSubscription)).first() is None
 
 
-def test_identical_registration_preserves_timestamps_and_frozen_pending_release(device_store, device_client):
+@pytest.mark.parametrize("legacy_root", (False, True))
+def test_identical_registration_preserves_timestamps_and_frozen_pending_release(device_store, device_client, legacy_root):
     payload = house_subscription()
     registered = device_client.put("/api/web-push/subscription", json=payload.model_dump())
     assert registered.status_code == 200, registered.text
@@ -182,13 +183,61 @@ def test_identical_registration_preserves_timestamps_and_frozen_pending_release(
     })
     assert release_push.publish_release_notice(notice) == 1
     before = device_rows()
+    body = payload.model_dump()
+    target = "/api/web-push/subscription"
+    headers = {}
+    if legacy_root:
+        del body["product_context"]
+        target = "https://zockdiewandan.online/api/web-push/subscription"
+        headers["Origin"] = "https://zockdiewandan.online"
     with patch("app.web_push.utcnow", return_value=utcnow() + timedelta(minutes=2)):
-        registered = device_client.put("/api/web-push/subscription", json=payload.model_dump())
+        registered = device_client.put(target, json=body, headers=headers)
     assert registered.status_code == 200, registered.text
     assert device_rows() == before
     with patch.object(release_push, "_send_web_push", return_value=(True, False)) as send:
         assert asyncio.run(release_push.dispatch_release_notifications()) == 1
         send.assert_called_once()
+
+
+def test_legacy_hausdepp_host_keeps_known_root_context_until_explicit_repair(device_store, device_client):
+    payload = house_subscription().model_copy(update={"product_context": "zdwa"})
+    root = "https://zockdiewandan.online/api/web-push/subscription"
+    result = device_client.put(root, json=payload.model_dump(), headers={"Origin": "https://zockdiewandan.online"})
+    assert result.status_code == 200, result.text
+    before = device_rows()
+    legacy = payload.model_dump(exclude={"product_context"})
+    result = device_client.put("/api/web-push/subscription", json=legacy)
+    assert result.status_code == 200, result.text
+    assert device_rows() == before
+    result = device_client.put("/api/web-push/subscription", json=house_subscription().model_dump())
+    assert result.status_code == 200, result.text
+    with session_scope() as db:
+        assert db.scalars(select(WebPushSubscription)).one().product_context == "hausdepp"
+
+
+def test_legacy_account_change_does_not_inherit_the_previous_owners_context(device_store, device_client):
+    other = create_user("LegacyDeviceOwner", "test-password-123", must_change_password=False)
+    payload = house_subscription()
+    save_web_push_subscription(user_id=other.id, payload=payload, product_context="hausdepp")
+    result = device_client.put("https://zockdiewandan.online/api/web-push/subscription",
+        json=payload.model_dump(exclude={"product_context"}), headers={"Origin": "https://zockdiewandan.online"})
+    assert result.status_code == 200, result.text
+    with session_scope() as db:
+        device = db.scalars(select(WebPushSubscription)).one()
+        assert (device.user_id, device.product_context) == (device_store.user.id, "zdwa")
+
+
+def test_legacy_root_context_cannot_reclassify_a_stored_watten_device(device_store, device_client):
+    payload = house_subscription()
+    save_web_push_subscription(user_id=device_store.user.id, payload=payload, product_context="hausdepp")
+    with session_scope() as db:
+        db.scalars(select(WebPushSubscription)).one().product_context = "watten"
+    before = device_rows()
+    result = device_client.put("https://zockdiewandan.online/api/web-push/subscription",
+        json=payload.model_dump(exclude={"product_context"}), headers={"Origin": "https://zockdiewandan.online"})
+    assert result.status_code == 400, result.text
+    assert result.json()["detail"] == "web_push_context_unavailable"
+    assert device_rows() == before
 
 
 def test_consentless_identical_put_keeps_prompt_and_user_timestamps(device_store, device_client):

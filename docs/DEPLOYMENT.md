@@ -1019,7 +1019,10 @@ Antwort ist `no-store`. Der Check verlangt Anmeldung und CSRF, schreibt weder
 Abos noch Einwilligungen und gibt keine fremden Abo-Daten zurück.
 
 Die bewusste Geräteanmeldung sendet den Kontext des tatsächlich gewählten
-Workers. Hausdepp erlaubt keinen Ersatz durch einen anderen Worker. Check und
+Workers. Hausdepp erlaubt keinen Ersatz durch einen anderen Worker. Ein älterer
+Client ohne expliziten Kontexthinweis behält für denselben Endpoint und Besitzer
+die vorhandene öffentliche Spielzuordnung; ein Host-Fallback darf sie nicht
+überschreiben. Der neue Client kann Fehlzuordnungen ausdrücklich reparieren. Check und
 Anmeldung senden `X-Push-Expected-Account-Id`; ein inzwischen gewechseltes
 Konto wird mit 409 abgewiesen. Bei identischen Schlüsseln, Konto und Kontext
 bleiben Abo-Zeitstempel unverändert, damit ein erneutes Anmelden ausstehende

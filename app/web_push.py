@@ -265,6 +265,7 @@ def save_web_push_subscription(
     payload: WebPushSubscriptionRequest,
     product_context: str,
     connection=None,
+    context_is_inferred: bool = False,
 ) -> dict[str, object]:
     if product_context not in PUSH_DEVICE_CONTEXTS or payload.product_context not in {None, product_context}:
         raise ValueError("web_push_context_invalid")
@@ -285,6 +286,13 @@ def save_web_push_subscription(
                 and watten_founder_account_id(db) != user_id):
             raise ValueError("web_push_context_unavailable")
         subscription = db.scalar(select(WebPushSubscription).where(WebPushSubscription.endpoint == endpoint))
+        if context_is_inferred and subscription is not None and subscription.user_id == user.id:
+            if subscription.product_context == WATTEN_GAME_TYPE:
+                raise ValueError("web_push_context_unavailable")
+            if subscription.product_context in PUSH_DELIVERY_CONTEXTS:
+                # An old client may submit this same worker's endpoint from
+                # shared settings. Its page host must not relabel the device.
+                context = subscription.product_context
         changed = subscription is None or (
             subscription.user_id, subscription.p256dh, subscription.auth, subscription.product_context
         ) != (user.id, p256dh, auth, context)
