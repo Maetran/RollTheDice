@@ -104,6 +104,38 @@ async function rotate(page, viewport) {
   });
 }
 
+for (const browserName of ["chromium", "webkit"]) {
+  test.describe(`ZDWA iPhone 16 Pro Max ${browserName} gameplay rotation`, () => {
+    test("painted dice and score cells send the intended actions after repeated rotation", async ({ playwright, baseURL }) => {
+      const browser = await playwright[browserName].launch();
+      const portrait = { width:440, height:956 };
+      const context = await browser.newContext({ baseURL, viewport:portrait, isMobile:true, hasTouch:true, serviceWorkers:"block", reducedMotion:"reduce" });
+      const page = await context.newPage();
+      try {
+        const actions = await openGame(page);
+        const headerTop = await page.locator(".room-header").evaluate(element => element.getBoundingClientRect().top);
+        // An absolute root avoids iOS's separate fixed-body hit-test layer.
+        await expect(page.locator("body")).toHaveCSS("position", "absolute");
+        for (let cycle = 0; cycle < 2; cycle += 1) {
+          await rotate(page, { width:956, height:440 });
+          await rotate(page, portrait);
+          await expectPortraitRestored(page, headerTop);
+          const count = actions.filter(action => action.action === "set_hold").length;
+          await tapPaintedCenter(page, '#diceBar .die[data-i="0"]');
+          await expect.poll(() => actions.filter(action => action.action === "set_hold").length).toBe(count + 1);
+          const hold = actions.filter(action => action.action === "set_hold").at(-1);
+          expect(hold.holds.slice(1)).toEqual([false, false, false, false]);
+        }
+        const cell = '.player-card.me td.cell.clickable[data-field="free"][data-row="1"]';
+        await tapPaintedCenter(page, cell);
+        await expect.poll(() => actions.filter(action => action.action === "write_field")).toEqual([
+          { action:"write_field", row:1, field:"free" },
+        ]);
+      } finally { await browser.close(); }
+    });
+  });
+}
+
 for (const theme of ["light", "dark", "classic"]) {
   for (const device of devices) {
     test(`ZDWA ${theme} ${device.name}: portrait survives rotation, delayed viewport settlement and chat keyboard`, async ({ browser, baseURL }, testInfo) => {

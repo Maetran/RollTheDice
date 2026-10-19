@@ -4953,7 +4953,8 @@ html[data-game="zilch"]:has(.zilch-shell--game) {
   overscroll-behavior: none;
 }
 html[data-game="zilch"]:has(.zilch-shell--game) body {
-  position: fixed;
+  /* Keep the locked table out of iOS's stale fixed-root hit-test layer. */
+  position: absolute;
   inset: 0;
   height: 100vh;
   height: 100dvh;

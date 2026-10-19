@@ -12,7 +12,8 @@
 @media (max-width: 1099px) {
   html[data-game="hausdepp"]:has(body.hd-playing) { height: 100%; overflow: hidden; overscroll-behavior: none; }
   html[data-game="hausdepp"] body.hd-playing {
-    position: fixed; inset: 0; top: var(--game-viewport-top, 0px); display: flex; flex-direction: column;
+    /* A fixed body can leave iOS touch targets at the pre-rotation origin. */
+    position: absolute; inset: 0; top: var(--game-viewport-top, 0px); display: flex; flex-direction: column;
     height: 100vh; height: var(--game-viewport-height, 100dvh); min-height: 0; overflow: hidden;
     padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
     overscroll-behavior: none;

@@ -5,27 +5,19 @@
     "zilch",
     "hausdepp"
   ],
-  "summary_de": "Die Lobby erinnert wieder an Push und die App-Installation – passend zu deinem Gerät und mit Pausen zwischen den Hinweisen.",
-  "summary_en": "The lobby offers Push and app installation again when useful for your device, with pauses between reminders.",
+  "summary_de": "Nach dem Drehen bleiben Würfel, Spielzettel und Karten direkt antippbar.",
+  "summary_en": "Dice, score cells and cards stay directly tappable after rotation.",
   "player_notes": {
     "de": {
-      "title": "Push und App: Die Lobby fragt wieder passend nach.",
+      "title": "Sicher tippen nach dem Drehen",
       "changes": [
-        "ALLGEMEIN: Fehlt Push auf diesem Gerät, fragen wir höchstens alle 14 Tage nach. Deine bestehende Auswahl bleibt erhalten.",
-        "ALLGEMEIN: Nach einer neuen Version kann der Installhinweis wieder erscheinen. Auf iPhone/iPad hilft Teilen → Zum Home-Bildschirm; Schliessen pausiert sieben Tage.",
-        "HAUSDEPP: Die Push-Nachfrage ist jetzt auch hier eingebunden und führt direkt zu deinen Benachrichtigungseinstellungen.",
-        "ZDWA: Ein aktives Abo auf einem anderen Gerät verhindert die Nachfrage auf diesem Gerät nicht mehr.",
-        "ZILCH: Installations- und Push-Hinweise warten aufeinander und bleiben ausserhalb laufender Partien."
+        "Würfel, Spielzettel und Karten bleiben nach dem Wechsel zwischen Hoch- und Querformat an ihrer sichtbaren Position bedienbar."
       ]
     },
     "en": {
-      "title": "Push and app: useful reminders return to the lobby.",
+      "title": "Accurate taps after rotation",
       "changes": [
-        "GENERAL: If this device is missing Push, we ask at most once every 14 days. Your existing choices are kept.",
-        "GENERAL: A new version can offer installation again. On iPhone/iPad, use Share → Add to Home Screen; dismissal pauses the hint for seven days.",
-        "HAUSDEPP: The Push invitation is now available here too and opens your notification settings directly.",
-        "ZDWA: An active subscription on another device no longer prevents this device from being invited.",
-        "ZILCH: Installation and Push offers wait for each other and stay out of ongoing games."
+        "Dice, score cells and cards remain usable at their visible positions after switching between portrait and landscape."
       ]
     }
   }

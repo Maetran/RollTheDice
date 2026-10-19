@@ -9,7 +9,9 @@ body.room-page{
   --room-safe-top:env(safe-area-inset-top, 0px);
   --room-safe-bottom:env(safe-area-inset-bottom, 0px);
   --room-chat-control-safe-pad:min(var(--room-safe-bottom), .875rem);
-  position:fixed;
+  /* Avoid a fixed root layer: iOS can retain its pre-rotation hit-test origin.
+     The locked document and explicit viewport height keep the table in place. */
+  position:absolute;
   inset:0;
   top:var(--game-viewport-top, 0px);
   display:flex;

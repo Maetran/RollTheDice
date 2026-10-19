@@ -20,6 +20,21 @@ export function initializeGameViewport() {
     style.removeProperty("--game-viewport-top");
     style.removeProperty("--game-viewport-bottom");
   };
+  const restorePageOrigin = () => {
+    // iOS may leave the root scroll origin displaced after rotating a locked
+    // game surface. Its native hit testing can then disagree with the paint.
+    // Never move a normal document (Watten), a zoomed page or a focused input;
+    // score sheets, card fans and chat histories keep their own scroll state.
+    if (hasEditableFocus() || keyboardVisible ||
+        !["absolute", "fixed"].includes(getComputedStyle(document.body).position) ||
+        getComputedStyle(document.documentElement).overflow !== "hidden") return;
+    if (window.scrollX || window.scrollY || document.documentElement.scrollTop ||
+        document.documentElement.scrollLeft || document.body.scrollTop || document.body.scrollLeft) {
+      window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+      document.documentElement.scrollTop = document.documentElement.scrollLeft = 0;
+      document.body.scrollTop = document.body.scrollLeft = 0;
+    }
+  };
   const update = () => {
     frame = 0;
     const style = document.documentElement.style;
@@ -37,6 +52,7 @@ export function initializeGameViewport() {
     keyboardVisible = keyboardGeometry && (hasEditableFocus() || keyboardVisible);
     if (!keyboardVisible) {
       reset(style);
+      restorePageOrigin();
       return;
     }
     // Keep tracking the dismissal animation after blur until the viewport
@@ -50,7 +66,7 @@ export function initializeGameViewport() {
   const settle = () => {
     settleTimers.forEach(clearTimeout);
     // Mobile engines can finish rotating after their final resize event.
-    // Resample briefly, without a permanent animation loop or scrolling.
+    // Resample briefly, without a permanent animation loop.
     settleTimers = [100, 250, 500, 1000].map(delay => setTimeout(schedule, delay));
     schedule();
   };
@@ -69,6 +85,6 @@ export function initializeGameViewport() {
   window.screen.orientation?.addEventListener("change", onRotation);
   window.addEventListener("pageshow", onRotation, { passive: true });
   document.addEventListener("focusin", schedule);
-  document.addEventListener("focusout", schedule);
+  document.addEventListener("focusout", settle);
   update();
 }

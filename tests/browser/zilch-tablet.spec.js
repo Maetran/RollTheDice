@@ -55,6 +55,55 @@ function tabletSnapshot({ mode = "multiplayer", active = "p1", choices = true, l
   };
 }
 
+for (const browserName of ["chromium", "webkit"]) {
+  const rotationTest = test.extend({ browser: [async ({ playwright }, use) => {
+    const browser = await playwright[browserName].launch();
+    try { await use(browser); } finally { await browser.close(); }
+  }, { scope: "worker" }] });
+  rotationTest.describe(`Zilch ${browserName} mobile rotation hit targets`, () => {
+
+    for (const theme of ["light", "lcars"]) {
+      rotationTest(`${theme}: iPhone portrait return banks the die tapped at its painted position`, async ({ browser, baseURL }) => {
+        const portrait = { width: 440, height: 956 };
+        const context = await browser.newContext({ baseURL, viewport: portrait, hasTouch: true,
+          isMobile: true, deviceScaleFactor: 3, serviceWorkers: "block", reducedMotion: "reduce" });
+        const page = await context.newPage();
+        const tapAtPaintedPosition = async locator => {
+          await expect(locator).toBeVisible();
+          await expect(locator).toBeEnabled();
+          const box = await locator.boundingBox();
+          expect(box).not.toBeNull();
+          await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+        };
+        try {
+          await openTabletFixture(page, { theme });
+          await page.evaluate(() => document.fonts.ready);
+          for (let turn = 0; turn < 3; turn += 1) {
+            for (const viewport of [{ width: 956, height: 440 }, portrait]) {
+              await page.setViewportSize(viewport);
+              await page.evaluate(() => {
+                window.dispatchEvent(new Event("orientationchange"));
+                screen.orientation?.dispatchEvent(new Event("change"));
+              });
+              await expectFixedTable(page, [".zilch-header", ".zilch-dice-dock"]);
+            }
+          }
+          // A raw coordinate tap cannot scroll or retarget the control for us.
+          // It must select precisely the die painted beneath the finger.
+          const die = page.locator('[data-zilch-die-index="0"]');
+          await tapAtPaintedPosition(die);
+          await expect(die).toHaveAttribute("aria-pressed", "true");
+          await expect(page.locator('[data-zilch-die-index="1"]')).toHaveAttribute("aria-pressed", "false");
+          await tapAtPaintedPosition(page.locator("[data-zilch-bank]"));
+          await expect.poll(() => page.evaluate(() => window.__tabletMessages
+            .filter(message => message.action === "zilch_bank_points")))
+            .toEqual([expect.objectContaining({ action: "zilch_bank_points", option_id: "one", turn_id: 65, version: 1 })]);
+        } finally { await context.close(); }
+      });
+    }
+  });
+}
+
 async function openTabletFixture(page, { theme, mode = "multiplayer", spectator = false, language = "de" }) {
   const gameId = `tablet-${theme}-${mode}`;
   const routePath = `/zilch/spiel/${gameId}${spectator ? "/zuschauen" : ""}`;
