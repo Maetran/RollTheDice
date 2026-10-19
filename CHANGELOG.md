@@ -23,6 +23,32 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 3.16.2 — Verlässlicher Push-Status / Reliable push status — 2026-10-19
+
+**Deutsch:** Push zeigt jetzt, ob dieses Gerät tatsächlich angemeldet ist.
+
+- **ALLGEMEIN:** Gerätestatus prüft lokales Abo, Schlüssel, Konto und tatsächlichen
+  Spiel-Worker gegen den Server. Statusabfragen verändern keine Abos. Identische
+  erneute Anmeldungen erhalten ausstehende Versionshinweise; Kontowechsel und
+  echte Schlüsseländerungen bleiben geschützt.
+- **HAUSDEPP:** Ein Abo eines anderen Spiels oder Geräts versteckt die
+  Geräteanmeldung nicht mehr. Fehlende oder veraltete Anmeldungen lassen sich
+  mit einem bewussten Klick reparieren, ohne die Push-Auswahl zu ändern.
+- **ZDWA / ZILCH:** Einstellungen und freiwilliger Push-Dialog unterscheiden
+  ebenfalls zwischen Kontoeinwilligung und tatsächlicher Geräteanmeldung.
+
+**English:** Push now shows whether this device is actually registered.
+
+- **GENERAL:** Device status checks the local subscription, keys, account and
+  actual game worker against the server. Status checks never change subscriptions.
+  Identical registrations preserve pending release alerts; account switches and
+  actual key changes remain protected.
+- **HAUSDEPP:** A subscription for another game or device no longer hides device
+  registration. Repair missing or stale registrations with a deliberate click
+  while keeping category choices.
+- **ZDWA / ZILCH:** Settings and the optional push prompt also distinguish
+  account consent from the actual device registration.
+
 ## 3.16.1 — Sichere Kartentipps / Reliable card taps — 2026-10-19
 
 **Deutsch:** Hausdepp bindet einen Kartentipp an die beim Aufsetzen bereits

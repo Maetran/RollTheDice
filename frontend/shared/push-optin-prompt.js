@@ -40,7 +40,7 @@ export function initializePushOptInPrompt({ context = "zdwa" } = {}) {
     state.timer = window.setTimeout(() => { void maybePrompt(); }, delay);
   };
 
-  const inviteMessage = status => status.subscribed
+  const inviteMessage = status => status.device_subscribed
     ? t("Push ist auf diesem Gerät schon bereit. Wähle jetzt selbst aus, welche Hinweise zu dir passen: Mitspieler-Rufe für freie Plätze, tägliche Spielideen oder Versionshinweise. Mit deiner Spielerauswahl kannst du Mitspieler-Rufe auf bekannte Leute begrenzen.")
     : t("Wenn in einem unserer Spiele ein Platz frei ist, bist du mit einem Tipp dabei. Erlaube Push auf diesem Gerät und wähle danach selbst: Mitspieler-Rufe, tägliche Spielideen oder Versionshinweise. Mit deiner Spielerauswahl kannst du Mitspieler-Rufe auf bekannte Leute begrenzen.");
 
@@ -55,8 +55,8 @@ export function initializePushOptInPrompt({ context = "zdwa" } = {}) {
     const activateAndOpenSettings = async ({ button }) => {
       // Call this before the first await: its implementation opens the native
       // permission sheet synchronously from this exact user gesture.
-      const registration = status.subscribed ? null : enableGameInvitePush();
-      button.textContent = t(status.subscribed ? "Push-Auswahl öffnen …" : "Push wird vorbereitet …");
+      const registration = status.device_subscribed ? null : enableGameInvitePush();
+      button.textContent = t(status.device_subscribed ? "Push-Auswahl öffnen …" : "Push wird vorbereitet …");
       try {
         await registration;
       } catch (_) {
@@ -73,7 +73,7 @@ export function initializePushOptInPrompt({ context = "zdwa" } = {}) {
         { id: "later", label: t("Später"), className: "ghost" },
         {
           id: "configure",
-          label: t(status.subscribed ? "Push-Auswahl öffnen" : "Push zulassen & auswählen"),
+          label: t(status.device_subscribed ? "Push-Auswahl öffnen" : "Push zulassen & auswählen"),
           className: "primary",
           onAction: activateAndOpenSettings,
         },

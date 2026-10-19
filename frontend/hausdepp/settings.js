@@ -5,7 +5,7 @@ import { mountAllowlistSettings } from '../shared/player-allowlist.js';
 import { renderAccountBans } from '../shared/admin-help.js';
 import { mountFriendActivitySettings } from '../shared/friend-activity.js';
 import { mountTourSettings } from '../shared/game-tours.js';
-import { bindPushPreferences, disableGameInvitePush, enableGameInvitePush, getGameInvitePushStatus, syncPushPreferences, webPushErrorMessage } from '../shared/web-push.js';
+import { bindPushPreferences, devicePushStatusMessage, disableGameInvitePush, enableGameInvitePush, getGameInvitePushStatus, syncPushPreferences, webPushErrorMessage } from '../shared/web-push.js';
 
 const t = text => window.ZDWA_I18N?.t?.(text) || text;
 const copy = text => esc(t(text));
@@ -109,8 +109,9 @@ export function renderAccountSettings(root, auth, { onUserChanged } = {}) {
       syncPushPreferences(root.querySelector('#hausdeppPushPreferences'), status);
       pushDisable.hidden = !status.subscribed;
       pushEnable.disabled = !status.available || !status.browser_supported || status.permission === 'denied';
-      pushEnable.hidden = status.subscribed;
-      pushStatus.textContent = t(!status.available ? 'Push-Benachrichtigungen sind momentan noch nicht eingerichtet.' : !status.browser_supported ? 'Dieser Browser unterstützt keine Push-Benachrichtigungen.' : status.permission === 'denied' ? 'Die Push-Berechtigung wurde nicht erteilt.' : status.subscribed ? 'Push ist für dieses Gerät bereit. Wähle unten aus, wofür du benachrichtigt werden möchtest.' : 'Push-Benachrichtigungen sind ausgeschaltet.');
+      pushEnable.hidden = false;
+      pushEnable.textContent = t(status.subscribed ? 'Dieses Gerät für Push anmelden' : 'Push auf diesem Gerät zulassen');
+      pushStatus.textContent = t(!status.available ? 'Push-Benachrichtigungen sind momentan noch nicht eingerichtet.' : !status.browser_supported ? 'Dieser Browser unterstützt keine Push-Benachrichtigungen.' : status.permission === 'denied' ? 'Die Push-Berechtigung wurde nicht erteilt.' : devicePushStatusMessage(status));
     } catch (error) { pushStatus.textContent = webPushErrorMessage(error); pushEnable.disabled = true; }
   };
   const changePush = async (button, action) => {

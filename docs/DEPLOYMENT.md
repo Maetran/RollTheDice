@@ -1007,6 +1007,33 @@ Spielaktivität, mit ihren bestehenden separaten Flood-Limits.
 Es gibt keinen öffentlichen Trigger-Endpunkt für den Scheduler. In Tests Versand
 und Uhrzeit mocken, niemals einen Test-Batch gegen produktive Empfänger starten.
 
+### Geräteanmeldung und Abgleich
+
+`GET /api/web-push/subscription` liefert kontoweite Kategorien und `viewer_id`;
+`subscribed` belegt ausdrücklich kein Abo des aktuellen Browsers. Der Client
+prüft den lokalen aktiven Worker mit Scope und liest dessen Push-Subscription.
+`POST /api/web-push/subscription/check` prüft den vollständigen Subscription-
+Body (Endpoint, beide Schlüssel und expliziter `product_context`) für das
+angemeldete Konto. Das Ergebnis `device_subscribed` ist gerätebezogen; die
+Antwort ist `no-store`. Der Check verlangt Anmeldung und CSRF, schreibt weder
+Abos noch Einwilligungen und gibt keine fremden Abo-Daten zurück.
+
+Die bewusste Geräteanmeldung sendet den Kontext des tatsächlich gewählten
+Workers. Hausdepp erlaubt keinen Ersatz durch einen anderen Worker. Check und
+Anmeldung senden `X-Push-Expected-Account-Id`; ein inzwischen gewechseltes
+Konto wird mit 409 abgewiesen. Bei identischen Schlüsseln, Konto und Kontext
+bleiben Abo-Zeitstempel unverändert, damit ein erneutes Anmelden ausstehende
+Release-Zustellungen nicht entwertet. Echte Änderungen invalidieren ältere
+Snapshots weiterhin. Fehlende oder abgelaufene Abos werden nur nach bewusstem
+Klick erneuert, damit ein kontoweiter Opt-out nicht rückgängig gemacht wird.
+
+The account status and the current device status are distinct. The read-only,
+authenticated CSRF-protected check compares the endpoint, both keys, account
+and actual worker context. It never registers devices or changes consent.
+Explicit registration repairs stale bindings, preserves category choices and
+keeps identical registrations idempotent. Expected-account guards reject
+account switches; opt-out and frozen release audiences remain authoritative.
+
 ### Versionshinweise nach Deployments
 
 Revision `20260906_0028` ergänzt separat aktivierbare Versionshinweise
@@ -1080,6 +1107,10 @@ Release beide pflegen. Die App rendert nur Klartext, kein Markdown oder HTML.
   `changes` (1–8 Stichpunkte, je 1–300 Zeichen). Beide Sprachen haben gleich
   viele Punkte. Normalerweise reichen 2–4 kurze Punkte: Was ist neu, was bringt
   es den Spielern, wo finden sie es? Keine internen Implementierungsdetails.
+- Mit einem kurzen einleitenden Satz beginnen; Änderungen danach nach
+  betroffener Suite-Komponente benennen: `ALLGEMEIN:`, `ZDWA:`, `ZILCH:`,
+  `HAUSDEPP:` usw. Nur betroffene Bereiche aufnehmen, vollständig DE/EN.
+  `games` bezeichnet weiterhin die tatsächlich betroffenen Spiele.
 - Die einmalige Einführung bündelt zusätzlich die jüngsten Änderungen zu Chat,
   Allowlist und Push. Diesen Rückblick nicht in spätere Meldungen kopieren.
 - `npm run lint` validiert die aktuellen Metadaten; der Deploy validiert sie

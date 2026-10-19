@@ -2,22 +2,27 @@
 
 from __future__ import annotations
 
+import asyncio
 import os
+from contextlib import asynccontextmanager
+from datetime import timedelta
 from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
 from alembic.config import Config
+from fastapi.testclient import TestClient
 from pydantic import ValidationError
 from sqlalchemy import select, text
 from starlette.requests import Request
 
 from alembic import command
-from app import main
+from app import api_auth, main, release_push
 from app.api_auth import web_push_subscription_put
 from app.auth import create_user, login
 from app.database import configure_database, get_engine, session_scope, upgrade_database
 from app.models import HausdeppPresentationReceipt, PushRelease, PushReleaseRecipient, User, WebPushSubscription
+from app.release_manifest import ReleaseNotice
 from app.security import utcnow
 from app.web_push import WebPushSubscriptionRequest, save_web_push_subscription
 from tests import test_web_push as push_fixtures
@@ -48,6 +53,168 @@ def request_for_device(store, host):
                     (b"x-csrf-token", store.identity.csrf_token.encode())],
         "client": ("127.0.0.1", 1234), "server": (host, 443),
     })
+
+
+@asynccontextmanager
+async def quiet_device_lifespan(_app):
+    yield
+
+
+@pytest.fixture
+def device_client(device_store, monkeypatch):
+    monkeypatch.setattr(main.app.router, "lifespan_context", quiet_device_lifespan)
+    with TestClient(main.app, base_url="https://hausdepp.zockdiewandan.online") as client:
+        client.headers.update({
+            "Cookie": f"rollthedice_session={device_store.token}",
+            "Origin": "https://hausdepp.zockdiewandan.online",
+            "X-CSRF-Token": device_store.identity.csrf_token,
+            "X-Push-Expected-Account-Id": str(device_store.user.id),
+        })
+        yield client
+
+
+def house_subscription():
+    return push_fixtures.WebPushTestCase.subscription().model_copy(update={"product_context": "hausdepp"})
+
+
+def device_rows():
+    with get_engine().connect() as connection:
+        return {table: connection.execute(text(f"SELECT * FROM {table}")).fetchall()
+                for table in ("users", "web_push_subscriptions", "push_releases", "push_release_recipients")}
+
+
+@pytest.mark.parametrize("mismatch", (None, "user", "context", "endpoint", "p256dh", "auth"))
+def test_device_probe_matches_only_this_accounts_exact_registration_without_writes(device_store, device_client, monkeypatch, mismatch):
+    payload = house_subscription()
+    owner = device_store.user.id
+    context = "hausdepp"
+    if mismatch == "user":
+        owner = create_user("OtherProbeOwner", "test-password-123", must_change_password=False).id
+    if mismatch == "context":
+        context = "zdwa"
+    registered = payload.model_copy(update={"product_context": context})
+    save_web_push_subscription(user_id=owner, payload=registered, product_context=context)
+    with session_scope() as db:
+        db.get(User, device_store.user.id).release_push_enabled = True
+    body = payload.model_dump()
+    if mismatch == "endpoint":
+        body["endpoint"] += "-missing"
+    if mismatch in {"p256dh", "auth"}:
+        body["keys"][mismatch] = push_fixtures._base64url(
+            b"\x04" + b"\x09" * 64 if mismatch == "p256dh" else b"\x09" * 16)
+    before = device_rows()
+    monkeypatch.setattr(api_auth, "record_engagement_safely", lambda *_args: pytest.fail("probe recorded engagement"))
+    response = device_client.post("/api/web-push/subscription/check", json=body)
+    assert response.status_code == 200, response.text
+    assert response.headers["cache-control"] == "no-store"
+    result = response.json()
+    assert result["viewer_id"] == device_store.user.id
+    assert result["device_subscribed"] is (mismatch is None)
+    assert result["subscribed"] is (mismatch != "user")
+    assert result["release_notifications_enabled"] is (mismatch != "user")
+    assert not ({"endpoint", "keys", "p256dh", "auth", "product_context", "user_id"} & result.keys())
+    assert device_rows() == before
+
+
+def test_missing_device_probe_neither_registers_nor_needs_delivery_configuration(device_client):
+    before = device_rows()
+    with patch("app.web_push.web_push_config", return_value=SimpleNamespace(enabled=False, public_key="")):
+        response = device_client.post("/api/web-push/subscription/check", json=house_subscription().model_dump())
+    assert response.status_code == 200, response.text
+    assert response.json()["device_subscribed"] is False
+    assert response.json()["available"] is False
+    assert device_rows() == before
+
+
+@pytest.mark.parametrize("failure,expected", (("guest", 401), ("csrf", 403), ("origin", 403),
+    ("account", 409), ("duplicate_account", 409), ("missing_context", 400), ("invalid_keys", 400), ("watten", 404)))
+def test_device_probe_enforces_access_and_explicit_context(device_store, device_client, monkeypatch, failure, expected):
+    body = house_subscription().model_dump()
+    if failure == "guest":
+        device_client.headers["Cookie"] = "rollthedice_session=missing"
+    elif failure == "csrf":
+        device_client.headers["X-CSRF-Token"] = "wrong"
+    elif failure == "origin":
+        device_client.headers["Origin"] = "https://untrusted.invalid"
+    elif failure == "account":
+        device_client.headers["X-Push-Expected-Account-Id"] = str(device_store.user.id + 1)
+    elif failure == "duplicate_account":
+        del device_client.headers["X-Push-Expected-Account-Id"]
+    elif failure == "missing_context":
+        del body["product_context"]
+    elif failure == "invalid_keys":
+        body["keys"]["auth"] = "invalid"
+    elif failure == "watten":
+        body["product_context"] = "watten"
+        monkeypatch.setattr("app.watten_access.watten_request_enabled", lambda *_args: False)
+        monkeypatch.setattr(api_auth, "require_user", lambda *_args: pytest.fail("closed Watten resolved auth"))
+    headers = ([('X-Push-Expected-Account-Id', str(device_store.user.id))] * 2
+               if failure == "duplicate_account" else None)
+    before = device_rows()
+    response = device_client.post("/api/web-push/subscription/check", json=body, headers=headers)
+    assert response.status_code == expected, response.text
+    assert response.headers["cache-control"] == "no-store"
+    assert device_rows() == before
+
+
+@pytest.mark.parametrize("header", ("wrong", "duplicate"))
+def test_explicit_registration_rejects_a_switched_or_ambiguous_account(device_store, device_client, header):
+    del device_client.headers["X-Push-Expected-Account-Id"]
+    expected = str(device_store.user.id + 1) if header == "wrong" else str(device_store.user.id)
+    headers = [("X-Push-Expected-Account-Id", expected)] * (2 if header == "duplicate" else 1)
+    response = device_client.put("/api/web-push/subscription", json=house_subscription().model_dump(), headers=headers)
+    assert response.status_code == 409, response.text
+    assert response.json()["detail"] == "web_push_account_changed"
+    assert response.headers["cache-control"] == "no-store"
+    with session_scope() as db:
+        assert db.scalars(select(WebPushSubscription)).first() is None
+
+
+def test_identical_registration_preserves_timestamps_and_frozen_pending_release(device_store, device_client):
+    payload = house_subscription()
+    registered = device_client.put("/api/web-push/subscription", json=payload.model_dump())
+    assert registered.status_code == 200, registered.text
+    assert registered.json()["device_subscribed"] is True
+    with session_scope() as db:
+        db.get(User, device_store.user.id).release_push_enabled = True
+    notice = ReleaseNotice.from_payload({
+        "revision": "c" * 40, "kind": "backend", "games": ["hausdepp"],
+    })
+    assert release_push.publish_release_notice(notice) == 1
+    before = device_rows()
+    with patch("app.web_push.utcnow", return_value=utcnow() + timedelta(minutes=2)):
+        registered = device_client.put("/api/web-push/subscription", json=payload.model_dump())
+    assert registered.status_code == 200, registered.text
+    assert device_rows() == before
+    with patch.object(release_push, "_send_web_push", return_value=(True, False)) as send:
+        assert asyncio.run(release_push.dispatch_release_notifications()) == 1
+        send.assert_called_once()
+
+
+def test_consentless_identical_put_keeps_prompt_and_user_timestamps(device_store, device_client):
+    payload = house_subscription()
+    assert device_client.put("/api/web-push/subscription", json=payload.model_dump()).status_code == 200
+    before = device_rows()
+    with patch("app.web_push.utcnow", return_value=utcnow() + timedelta(minutes=2)):
+        assert device_client.put("/api/web-push/subscription", json=payload.model_dump()).status_code == 200
+    assert device_rows() == before
+
+
+def test_explicit_put_still_repairs_context_and_keys(device_store, device_client):
+    payload = house_subscription()
+    original = payload.model_copy(update={"product_context": "zdwa"}, deep=True)
+    original.keys.auth = push_fixtures._base64url(b"\x09" * 16)
+    save_web_push_subscription(user_id=device_store.user.id, payload=original, product_context="zdwa")
+    with session_scope() as db:
+        previous = db.scalars(select(WebPushSubscription)).one()
+        previous_id, previous_time = previous.id, previous.updated_at
+    response = device_client.put("/api/web-push/subscription", json=payload.model_dump())
+    assert response.status_code == 200, response.text
+    with session_scope() as db:
+        current = db.scalars(select(WebPushSubscription)).one()
+        assert current.id == previous_id
+        assert current.product_context == "hausdepp" and current.auth == payload.keys.auth
+        assert current.updated_at > previous_time
 
 
 @pytest.mark.parametrize("host,hint,expected", [

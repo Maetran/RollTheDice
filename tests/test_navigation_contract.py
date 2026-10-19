@@ -138,7 +138,8 @@ DOCUMENT_ROUTES = (
     RouteCoverage(
         ("/hausdepp/anmelden", "/hausdepp/konto/einstellungen"), "tests/test_hausdepp_auth_flow.py",
         "test_house_auth_pages_keep_product_identity_and_protected_settings",
-        ("tests/browser-hausdepp-passkeys/in-origin.spec.js", "tests/browser-hausdepp-passkeys/account-flow.spec.js"),
+        ("tests/browser-hausdepp-passkeys/in-origin.spec.js", "tests/browser-hausdepp-passkeys/account-flow.spec.js",
+         "tests/browser/hausdepp-push-settings.spec.js"),
     ),
     RouteCoverage(
         ("/hausdepp/konto",), "tests/test_hausdepp_integration.py",

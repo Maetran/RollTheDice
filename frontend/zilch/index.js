@@ -13,7 +13,7 @@ import { renderAccountBans, setAdminHelpGameContext } from "../shared/admin-help
 import { mountFriendActivitySettings } from "../shared/friend-activity.js";
 import { createGameTour, mountTourSettings } from "../shared/game-tours.js";
 import {
-  bindPushPreferences,
+  bindPushPreferences, devicePushStatusMessage,
   disableGameInvitePush,
   enableGameInvitePush,
   getGameInvitePushStatus,
@@ -2557,11 +2557,7 @@ function bindZilchAccountSettings() {
           return;
         }
         pushEnableButton.disabled = false;
-        pushStatus.textContent = t(enabled
-          ? "Push-Benachrichtigungen sind aktiviert."
-          : status.subscribed
-            ? "Push ist für dieses Gerät bereit. Wähle unten aus, wofür du benachrichtigt werden möchtest."
-            : "Push-Benachrichtigungen sind ausgeschaltet.");
+        pushStatus.textContent = t(devicePushStatusMessage(status));
       } catch (error) {
         pushEnableButton.disabled = true;
         pushDisableButton.hidden = true;

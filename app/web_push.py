@@ -225,6 +225,7 @@ def web_push_subscription_status(user_id: int) -> dict[str, object]:
             PushInviteAllowedSender, PushInviteAllowedSender.sender_user_id == User.id,
         ).where(PushInviteAllowedSender.recipient_user_id == user_id, User.is_active.is_(True)).order_by(User.username_normalized)))
     return {
+        "viewer_id": user_id,
         "available": config.enabled,
         "public_key": config.public_key if config.enabled else None,
         "enabled": game_invites_enabled or daily_reminder_enabled or release_enabled or (admin_help_enabled and subscribed),
@@ -240,6 +241,22 @@ def web_push_subscription_status(user_id: int) -> dict[str, object]:
         "daily_reminder_window_end": f"{DAILY_REMINDER_END_HOUR:02d}:00",
         "daily_reminder_timezone": DAILY_REMINDER_TIMEZONE,
     }
+
+
+def check_web_push_subscription(*, user_id: int, payload: WebPushSubscriptionRequest) -> dict[str, object]:
+    """Match this device without registering it or changing account consent."""
+    if payload.product_context not in PUSH_DEVICE_CONTEXTS:
+        raise ValueError("web_push_context_invalid")
+    endpoint, p256dh, auth = _validated_subscription(payload)
+    with session_scope() as db:
+        subscribed = db.scalar(select(WebPushSubscription.id).where(
+            WebPushSubscription.user_id == user_id,
+            WebPushSubscription.endpoint == endpoint,
+            WebPushSubscription.p256dh == p256dh,
+            WebPushSubscription.auth == auth,
+            WebPushSubscription.product_context == payload.product_context,
+        )) is not None
+    return {**web_push_subscription_status(user_id), "device_subscribed": subscribed}
 
 
 def save_web_push_subscription(
@@ -268,6 +285,9 @@ def save_web_push_subscription(
                 and watten_founder_account_id(db) != user_id):
             raise ValueError("web_push_context_unavailable")
         subscription = db.scalar(select(WebPushSubscription).where(WebPushSubscription.endpoint == endpoint))
+        changed = subscription is None or (
+            subscription.user_id, subscription.p256dh, subscription.auth, subscription.product_context
+        ) != (user.id, p256dh, auth, context)
         if subscription is None:
             db.add(
                 WebPushSubscription(
@@ -280,7 +300,7 @@ def save_web_push_subscription(
                     updated_at=now,
                 )
             )
-        else:
+        elif changed:
             # A device can legitimately be signed out and then used by a
             # different account. Its endpoint must belong to the currently
             # authenticated account, never to a previous browser session.
@@ -294,11 +314,12 @@ def save_web_push_subscription(
         # reminders and release notes below in the account settings.  Treating
         # a fresh device registration as an interaction also prevents the
         # lobby from immediately asking the same account again.
-        if not user.game_invite_push_enabled and not user.daily_reminder_push_enabled and not user.release_push_enabled:
-            user.push_opt_in_prompted_at = now
-        user.updated_at = now
+        if changed:
+            if not user.game_invite_push_enabled and not user.daily_reminder_push_enabled and not user.release_push_enabled:
+                user.push_opt_in_prompted_at = now
+            user.updated_at = now
         db.flush()
-    return web_push_subscription_status(user_id)
+    return {**web_push_subscription_status(user_id), "device_subscribed": True}
 
 
 def update_web_push_preferences(user_id: int, payload: WebPushPreferencesRequest) -> dict[str, object]:

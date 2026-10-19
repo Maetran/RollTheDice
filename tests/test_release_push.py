@@ -241,8 +241,11 @@ class ReleasePushTestCase(unittest.TestCase):
             asyncio.run(dispatch_release_notifications(now=self.now))
             send.assert_not_called()
         publish_release_notice(ReleaseNotice.from_payload({**NOTES, "revision": "f" * 40}), now=self.now)
-        # Same device explicitly registered again: still no old release.
-        self.subscribe(suffix="replacement")
+        # A real key rotation changes this registration's frozen identity;
+        # identical re-registration is idempotent and preserves pending delivery.
+        rotated = fixtures.WebPushTestCase.subscription("https://fcm.googleapis.com/fcm/send/replacement")
+        rotated.keys.auth = fixtures._base64url(b"\x09" * 16)
+        save_web_push_subscription(user_id=self.player.id, payload=rotated, product_context="zdwa")
         with patch.object(release_push, "_send_web_push") as send:
             asyncio.run(dispatch_release_notifications(now=self.now))
             send.assert_not_called()

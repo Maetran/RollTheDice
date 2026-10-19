@@ -1846,6 +1846,20 @@ player's explicit **Allow push on this device** click does that, then the player
 chooses the categories. The account-wide off switch removes every stored device
 subscription, even when used from a browser that cannot itself receive push.
 
+**Geräteprüfung / device check:** Die Push-Auswahl gilt für das Konto; die
+Anmeldung wird zusätzlich für dieses Gerät und seinen tatsächlichen Spiel-
+Worker geprüft. Ein anderes Gerät oder Spiel zeigt deshalb kein falsches
+«bereit» mehr. Mit **Dieses Gerät für Push anmelden** lässt sich ein fehlendes
+oder veraltetes Abo bewusst erneuern; die gewählten Kategorien bleiben erhalten.
+Statusprüfungen melden keine Geräte an und heben keinen Opt-out auf.
+
+The category choices apply to the account. Readiness additionally checks this
+browser's subscription, keys, account and actual game worker against the server.
+Use **Enable push on this device** to repair a missing or stale registration
+without changing category choices. Reading status neither registers a device
+nor reverses an opt-out. Identical registration requests preserve pending
+release deliveries; actual key or account changes invalidate old snapshots.
+
 The invitation is deliberately useful rather than generic: **player calls**
 make it easy to join a public room with a free seat. A player can restrict those
 calls to their private, account-bound player selection, while daily play ideas

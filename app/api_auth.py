@@ -82,6 +82,7 @@ from .security import normalize_email_address, utcnow
 from .web_push import (
     WebPushPreferencesRequest,
     WebPushSubscriptionRequest,
+    check_web_push_subscription,
     claim_web_push_opt_in_prompt,
     remove_web_push_subscriptions,
     save_web_push_subscription,
@@ -679,8 +680,7 @@ def web_push_subscription_get(request: Request, response: Response):
     return web_push_subscription_status(identity.user_id)
 
 
-@router.put("/web-push/subscription")
-def web_push_subscription_put(payload: WebPushSubscriptionRequest, request: Request):
+def _web_push_subscription_actor(payload: WebPushSubscriptionRequest, request: Request):
     from .watten_access import require_watten_access, watten_request_enabled
 
     if payload.product_context == "watten" and not watten_request_enabled(request):
@@ -688,10 +688,32 @@ def web_push_subscription_put(payload: WebPushSubscriptionRequest, request: Requ
     identity = require_user(request)
     if payload.product_context == "watten":
         require_watten_access(request, identity)
+    expected_push = request.headers.getlist("X-Push-Expected-Account-Id")
+    if expected_push and (len(expected_push) != 1 or expected_push[0] != str(identity.user_id)):
+        raise HTTPException(status_code=409, detail="web_push_account_changed", headers={"Cache-Control": "no-store"})
     expected = request.headers.getlist("X-Watten-Expected-Account-Id")
     if expected and (len(expected) != 1 or expected[0] != str(identity.user_id)):
         raise HTTPException(status_code=409, detail="watten_account_changed", headers={"Cache-Control": "no-store"})
     require_csrf(request, identity)
+    return identity
+
+
+@router.post("/web-push/subscription/check")
+def web_push_subscription_check(payload: WebPushSubscriptionRequest, request: Request, response: Response):
+    response.headers["Cache-Control"] = "no-store"
+    try:
+        identity = _web_push_subscription_actor(payload, request)
+        return check_web_push_subscription(user_id=identity.user_id, payload=payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc), headers={"Cache-Control": "no-store"}) from exc
+    except HTTPException as exc:
+        exc.headers = {**(exc.headers or {}), "Cache-Control": "no-store"}
+        raise
+
+
+@router.put("/web-push/subscription")
+def web_push_subscription_put(payload: WebPushSubscriptionRequest, request: Request):
+    identity = _web_push_subscription_actor(payload, request)
     try:
         result = save_web_push_subscription(
             user_id=identity.user_id,
