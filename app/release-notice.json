@@ -3,23 +3,23 @@
   "games": [
     "hausdepp"
   ],
-  "summary_de": "Kartentipps bleiben bei der angetippten Karte, auch wenn sich die Hand währenddessen verändert.",
-  "summary_en": "Card taps stay with the card you touched, even when your hand changes during the tap.",
+  "summary_de": "Danke, Martin! Ab sofort wird wieder fair gespielt 😉 Schnelles Tippen wirft keine nachgerückten Karten mehr ab.",
+  "summary_en": "Thanks, Martin! Fair play is back 😉 Rapid taps no longer play cards that moved under your finger.",
   "player_notes": {
     "de": {
-      "title": "Kartentipps bleiben eindeutig",
+      "title": "Danke, Martin – fair gespielt! 😉",
       "changes": [
-        "Ein Tipp spielt nur die beim Aufsetzen bereits erlaubte Karte.",
-        "Rückt eine andere Karte nach oder wird sie gerade erst spielbar, tippe sie neu an.",
-        "Gleiche Karten kannst du weiterhin schnell nacheinander nachwerfen."
+        "Danke an Martin fürs Aufspüren des Fehlers beim schnellen Antippen!",
+        "Ein Tipp spielt jetzt nur die beim Aufsetzen bereits erlaubte Karte. Nachgerückte Karten bleiben auf deiner Hand.",
+        "Gleiche Karten kannst du weiterhin schnell nachwerfen – für weitere Karten braucht es einen neuen, bewussten Tipp. 😉"
       ]
     },
     "en": {
-      "title": "Reliable card taps",
+      "title": "Thanks, Martin – fair play! 😉",
       "changes": [
-        "A tap plays only the card already permitted when you touch it.",
-        "If another card moves into its place or only just becomes playable, tap it again.",
-        "You can still play matching cards in rapid succession."
+        "Thanks to Martin for spotting the rapid-tap bug!",
+        "A tap now plays only the card already permitted when you touched it. Cards that move into its place stay in your hand.",
+        "You can still throw matching cards in rapid succession – any further card needs a new, deliberate tap. 😉"
       ]
     }
   }
