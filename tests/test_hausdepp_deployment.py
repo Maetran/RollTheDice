@@ -7,6 +7,7 @@ import io
 import json
 import os
 import subprocess
+import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -85,11 +86,15 @@ bash() { echo INSTALL >&2; return "$INSTALL_FAIL"; }
             "HTTP_FAILURES": "0", "HTTP_WRONG_BODIES": "0",
             "HTTP_FAIL_FROM": "0", "HTTP_STATUS": "200", "PROOF_RESPONSE": "__exact__",
         }
-        return subprocess.run(
-            ["bash", "-s"], input=doubles + (BASE / "scripts/activate_hausdepp.sh").read_text(),
-            text=True, capture_output=True, cwd=BASE,
-            env={**os.environ, **defaults, **flags},
-        )
+        # A regular-file stdin avoids a Darwin pipe deadlock while Bash emits
+        # output before subprocess.communicate() finishes sending the script.
+        with tempfile.TemporaryFile(mode="w+", encoding="utf-8") as script:
+            script.write(doubles + (BASE / "scripts/activate_hausdepp.sh").read_text())
+            script.seek(0)
+            return subprocess.run(
+                ["bash", "-s"], stdin=script, text=True, capture_output=True, cwd=BASE, timeout=10,
+                env={**os.environ, **defaults, **flags},
+            )
 
     def test_dry_run_does_not_write_stage_issue_reload_or_install(self):
         result = self.execute(APPLY="0")

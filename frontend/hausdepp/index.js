@@ -627,7 +627,7 @@ function renderTableShell() {
   });
   $("hausdeppPile").addEventListener("click", () => command("pickup"));
   // Holding a playable card selects all cards of its rank for one throw.
-  let hold = null, suppressClick = false;
+  let hold = null, suppressClick = false, pointerTap = null;
   const endHold = () => { if (hold) clearTimeout(hold.timer); hold = null; };
   const startSelection = card => {
     if (!card || handSelection.selection.enabled || !handSelection.selection.startWith(card)) return false;
@@ -636,19 +636,24 @@ function renderTableShell() {
     return true;
   };
   $("hausdeppHand").addEventListener("pointerdown", event => {
-    const button = event.target.closest("button[data-card-id]:not(:disabled)");
+    const button = event.target.closest("button[data-card-id]");
+    // A server update can enable or move cards before touch release. The
+    // eventual click belongs only to the card that was usable at touch-down.
+    pointerTap = { pointerId: event.pointerId, card: button?.dataset.cardId,
+      enabled: !!button && !button.disabled && event.button === 0, selecting: handSelection.selection.enabled };
     endHold();
     suppressClick = false;
-    if (!button || event.button > 0) return;
+    if (!pointerTap.enabled) return;
     hold = { x: event.clientX, y: event.clientY, timer: setTimeout(() => {
       hold = null;
       if (startSelection(button.dataset.cardId)) suppressClick = true;
     }, 420) };
-  });
+  }, { capture: true });
   $("hausdeppHand").addEventListener("pointermove", event => {
-    if (hold && Math.hypot(event.clientX - hold.x, event.clientY - hold.y) > 10) endHold();
+    if (hold && Math.hypot(event.clientX - hold.x, event.clientY - hold.y) > 10) { endHold(); pointerTap = null; }
   });
   for (const type of ["pointerup", "pointercancel", "pointerleave"]) $("hausdeppHand").addEventListener(type, endHold);
+  $("hausdeppHand").addEventListener("pointercancel", () => { pointerTap = null; });
   // No browser callout or menu over a held card; right-click selects too.
   $("hausdeppHand").addEventListener("contextmenu", event => {
     const button = event.target.closest("button[data-card-id]");
@@ -663,9 +668,17 @@ function renderTableShell() {
     startSelection(button.dataset.cardId);
   });
   $("hausdeppHand").addEventListener("click", event => {
-    const card = event.target.closest("button[data-card-id]")?.dataset.cardId;
+    const button = event.target.closest("button[data-card-id]");
+    const card = button?.dataset.cardId;
     const s = snapshot?._hausdepp;
+    const tap = pointerTap;
+    pointerTap = null;
     if (suppressClick) { suppressClick = false; return; }
+    if (!button || button.disabled) return;
+    // Keyboard and assistive activation have no pointer gesture. Touch/mouse
+    // clicks must not inherit a newly enabled card or a replacement target.
+    if ((event.pointerType || event.detail > 0) && (!tap?.enabled || tap.card !== card ||
+      (event.pointerId > 0 && event.pointerId !== tap.pointerId) || tap.selecting !== handSelection.selection.enabled)) return;
     if (handSelection.selection.enabled) {
       if (card && handSelection.selection.select(card)) renderState();
       return;

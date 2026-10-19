@@ -1,27 +1,25 @@
 {
   "kind": "usability",
   "games": [
-    "zdwa",
-    "zilch",
     "hausdepp"
   ],
-  "summary_de": "Die Spieleauswahl wird nach der Anmeldung und beim Zurückkehren zur App frisch geprüft.",
-  "summary_en": "The game selection is checked again after sign-in and when returning to the app.",
+  "summary_de": "Danke, Martin! Ab sofort wird wieder fair gespielt 😉 Schnelles Tippen wirft keine nachgerückten Karten mehr ab.",
+  "summary_en": "Thanks, Martin! Fair play is back 😉 Rapid taps no longer play cards that moved under your finger.",
   "player_notes": {
     "de": {
-      "title": "Spieleauswahl bleibt aktuell",
+      "title": "Danke, Martin – fair gespielt! 😉",
       "changes": [
-        "Nach dem An- oder Abmelden passt sich die Spieleauswahl deinem Konto an.",
-        "Auch beim Zurückkehren zur App wird die Verfügbarkeit erneut geprüft.",
-        "Neu verfügbare Spiele erscheinen im offenen Menü, ohne deinen Fokus zu verschieben."
+        "Danke an Martin fürs Aufspüren des Fehlers beim schnellen Antippen!",
+        "Ein Tipp spielt jetzt nur die beim Aufsetzen bereits erlaubte Karte. Nachgerückte Karten bleiben auf deiner Hand.",
+        "Gleiche Karten kannst du weiterhin schnell nachwerfen – für weitere Karten braucht es einen neuen, bewussten Tipp. 😉"
       ]
     },
     "en": {
-      "title": "An up-to-date game selection",
+      "title": "Thanks, Martin – fair play! 😉",
       "changes": [
-        "The game selection follows your account after signing in or out.",
-        "Availability is checked again when you return to the app.",
-        "Newly available games appear in the open menu without moving your focus."
+        "Thanks to Martin for spotting the rapid-tap bug!",
+        "A tap now plays only the card already permitted when you touched it. Cards that move into its place stay in your hand.",
+        "You can still throw matching cards in rapid succession – any further card needs a new, deliberate tap. 😉"
       ]
     }
   }

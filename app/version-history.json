@@ -2343,5 +2343,12 @@
     "date": "2026-10-18",
     "bump": "minor",
     "summary": "Watten-Folgetische, Tischchat, gemeinsame Lobby und lokale Tischdeko verbinden. / Connect Watten next tables, table chat, the shared lobby and local decorations."
+  },
+  {
+    "version": "3.16.0",
+    "revision": "9f2896b750769c23d303f61da014faf230bb4539",
+    "date": "2026-10-19",
+    "bump": "minor",
+    "summary": "Private Watten-Webvorschau für das gebundene Ownerkonto und native Freundesmeldungen. / Private Watten web preview for the bound founder account and native friend start notices."
   }
 ]

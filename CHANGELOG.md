@@ -23,6 +23,20 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 3.16.1 — Sichere Kartentipps / Reliable card taps — 2026-10-19
+
+**Deutsch:** Hausdepp bindet einen Kartentipp an die beim Aufsetzen bereits
+spielbare Karte. Wird eine Karte erst während des Tipps freigegeben oder rückt
+eine andere unter den Finger, legt das Loslassen keine zusätzliche Karte.
+Schnelle gültige Einzeltipps und Nachwürfe bleiben ohne feste Wartezeit möglich.
+Danke an Martin fürs Aufspüren – ab sofort wird wieder fair gespielt. 😉
+
+**English:** Hausdepp binds each card tap to the card already playable at
+touch-down. Releasing a finger cannot play an extra card that only became
+available during the tap or moved into its place. Valid rapid single-card plays
+and follow-ups remain available without a fixed delay.
+Thanks to Martin for spotting it – fair play is back. 😉
+
 ## 3.16.0 — Private Watten-Owner-Vorschau / Private Watten founder preview — 2026-10-18
 
 **Deutsch:** Ein standardmässig ausgeschaltetes Serverflag erlaubt die erste

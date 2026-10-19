@@ -235,7 +235,10 @@ bereits geschlossenes Nachwurffenster.
 
 Die eigene Hand ist von links nach rechts aufsteigend sortiert, mit den 10ern
 ganz rechts. **Ein Tipp auf eine Handkarte legt sie unmittelbar.** Es gibt keine
-zusätzliche Bestätigung. Weitere gleiche Karten können schnell nacheinander
+zusätzliche Bestätigung. Ein Tipp gilt nur für die beim Aufsetzen bereits
+spielbare Karte. Rückt eine andere Karte unter den Finger oder wird sie erst
+während des Tipps freigegeben, ist ein neuer Tipp nötig.
+Weitere gleiche Karten können schnell nacheinander
 angetippt werden, solange das Nachwurfrecht noch besteht.
 
 **Langes Halten einer spielbaren Handkarte** (rund 0,4 s; Rechtsklick oder

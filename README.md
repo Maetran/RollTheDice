@@ -373,6 +373,8 @@ Handkarten legen; ziehen oder zocken kann er erst, wenn ältere
 Auffüllpflichten erledigt sind. „Du musst ziehen“ mit sanft rotem Rahmen zeigt,
 wessen Auffüllung an der Reihe ist. Ein Tipp auf
 eine Handkarte legt sie sofort, ein Tipp auf das offene Paket nimmt es auf.
+Der Tipp gilt nur für die beim Aufsetzen bereits spielbare Karte. Rückt eine
+andere Karte nach oder wird sie erst während des Tipps freigegeben, tippe erneut.
 Langes Halten einer Handkarte (oder der Schalter Mehrfachauswahl) wählt alle
 gleichrangigen Karten für genau einen Wurf, ein Tipp nimmt einzelne wieder heraus. Der erste Geber jedes Tisches wird ausgelost,
 gegen Computer wie gegen Menschen; im Turnier gibt danach reihum der nächste
@@ -509,6 +511,8 @@ gambling waits for earlier refill obligations. “You must draw” with a gentle
 red frame reminds the player responsible. Each account may turn on “Refill to
 three automatically”, at the table in the table help or in account settings.
 Tapping a hand card plays it immediately; tapping the face-up pile takes it.
+A tap applies only to the card already playable when you touch it. If another
+card moves into its place or becomes playable during the tap, tap again.
 In multi-select, one tap selects every card of that rank and another tap takes
 single cards out. The first dealer of every table is drawn at random, against
 computers and people alike; in tournaments the deal then passes clockwise. Cards
