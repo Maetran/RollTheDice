@@ -2,7 +2,7 @@ const { test, expect } = require("@playwright/test");
 
 test.use({ serviceWorkers: "block", viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
 
-async function fixture(page, { language = "de", permission = "default", localDevice = false, show = true, manualInstallHint = false } = {}) {
+async function fixture(page, { language = "de", permission = "default", localDevice = false, show = true, manualInstallHint = false, holdClaim = false } = {}) {
   const login = await page.request.post("/api/auth/login", {
     data: { username: "Admin", password: "temporary-password-123" },
   });
@@ -18,6 +18,7 @@ async function fixture(page, { language = "de", permission = "default", localDev
   await page.route("**/api/hausdepp/progress-notices", route => route.fulfill({ json: { notices: [] } }));
   await page.route("**/api/hausdepp/invitations", route => route.fulfill({ json: { invitations: [] } }));
   const claims = [], checks = [], writes = [];
+  let heldClaim = null;
   // Another registered account device already has every voluntary category
   // enabled. This browser's registration is modelled independently below.
   const status = {
@@ -45,7 +46,10 @@ async function fixture(page, { language = "de", permission = "default", localDev
     const payload = route.request().postDataJSON();
     expect(payload).toEqual({ device_missing: true });
     claims.push(payload);
-    return route.fulfill({ json: { show, interval_days: 14 } });
+    if (holdClaim && claims.length === 1) { heldClaim = route; return; }
+    // A successful reservation is spent. Repeating the POST cannot recover a
+    // delayed dialog; the server's account-wide cooldown now rejects it.
+    return route.fulfill({ json: { show: holdClaim ? false : show, interval_days: 14 } });
   });
   await page.addInitScript(({ permission: initialPermission, localDevice, manualInstallHint }) => {
     if (manualInstallHint) {
@@ -80,7 +84,29 @@ async function fixture(page, { language = "de", permission = "default", localDev
   await page.goto("/hausdepp");
   await expect(page.locator("#hausdeppCreateForm")).toBeVisible();
   await page.waitForFunction(() => Boolean(window.ZDWA_PUSH_OPT_IN_PROMPT));
-  return { claims, checks, writes };
+  return { claims, checks, writes,
+    hasHeldClaim: () => Boolean(heldClaim),
+    resolveClaim: async () => {
+      expect(heldClaim).not.toBeNull();
+      const route = heldClaim;
+      heldClaim = null;
+      const response = page.waitForResponse(candidate => new URL(candidate.url()).pathname === "/api/web-push/opt-in-prompt"
+        && candidate.request().method() === "POST");
+      await route.fulfill({ json: { show: true, interval_days: 14 } });
+      await (await response).finished();
+      await page.evaluate(() => Promise.resolve());
+    },
+  };
+}
+
+async function expectDialogWithClock(page, dialog) {
+  // A retry can await a fresh network status before scheduling its next timer.
+  // Advance while observing the visible result, rather than advancing once
+  // before the response and leaving a later timer frozen indefinitely.
+  await expect.poll(async () => {
+    await page.clock.runFor(500);
+    return dialog.isVisible();
+  }).toBe(true);
 }
 
 test.afterEach(async ({ page }) => {
@@ -145,8 +171,7 @@ for (const language of ["de", "en"]) {
     await page.screenshot({ path: testInfo.outputPath(`hausdepp-install-hint-${language}-mobile.png`) });
     await close.click();
     await expect(hint).toHaveCount(0);
-    await page.clock.runFor(2_200);
-    await expect(page.getByRole("dialog", { name: language === "de" ? "Lust auf eine Runde?" : "Fancy a game?" })).toBeVisible();
+    await expectDialogWithClock(page, page.getByRole("dialog", { name: language === "de" ? "Lust auf eine Runde?" : "Fancy a game?" }));
     expect(state.claims).toEqual([{ device_missing: true }]);
     expect(state.writes).toEqual([]);
   });
@@ -183,3 +208,52 @@ test("the server cooldown keeps an eligible missing Hausdepp device quiet", asyn
   expect(state.writes).toEqual([]);
   expect(await page.evaluate(() => window.reminderPermissionRequests)).toBe(0);
 });
+
+for (const blocker of ["install hint", "modal", "hidden page"]) {
+  test(`a claimed Hausdepp reminder survives a ${blocker} appearing while its response is pending`, async ({ page }) => {
+    const state = await fixture(page, { holdClaim: true });
+    await expect.poll(state.hasHeldClaim).toBe(true);
+    await page.clock.install();
+    await page.evaluate(kind => {
+      if (kind === "install hint") {
+        const hint = document.createElement("aside");
+        hint.dataset.pwaInstallHint = "true";
+        hint.textContent = "Labelled transient install hint";
+        document.body.append(hint);
+      } else if (kind === "modal") {
+        void window.ZDWA_UI.dialog({
+          id: "reminder-transient-modal", title: "Transient fixture dialog",
+          actions: [{ id: "close", label: "Close fixture dialog" }],
+        });
+      } else {
+        // A visibility capability fixture keeps the real page and prompt
+        // controller alive, modelling a tab hidden after its claim was sent.
+        window.reminderPageHidden = true;
+        Object.defineProperty(document, "hidden", { configurable: true, get: () => window.reminderPageHidden });
+        Object.defineProperty(document, "visibilityState", { configurable: true, get: () => window.reminderPageHidden ? "hidden" : "visible" });
+        document.dispatchEvent(new Event("visibilitychange"));
+      }
+    }, blocker);
+    await state.resolveClaim();
+    await page.clock.runFor(2_400);
+    const reminder = page.getByRole("dialog", { name: "Lust auf eine Runde?" });
+    await expect(reminder).toBeHidden();
+    expect(state.claims).toEqual([{ device_missing: true }]);
+
+    if (blocker === "modal") {
+      await page.getByRole("dialog", { name: "Transient fixture dialog" }).getByRole("button", { name: "Close fixture dialog" }).click();
+    } else {
+      await page.evaluate(kind => {
+        if (kind === "install hint") document.querySelector("[data-pwa-install-hint]").remove();
+        else {
+          window.reminderPageHidden = false;
+          document.dispatchEvent(new Event("visibilitychange"));
+        }
+      }, blocker);
+    }
+    await expectDialogWithClock(page, reminder);
+    expect(state.claims).toEqual([{ device_missing: true }]);
+    expect(state.writes).toEqual([]);
+    expect(await page.evaluate(() => window.reminderPermissionRequests)).toBe(0);
+  });
+}

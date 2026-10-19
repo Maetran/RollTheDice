@@ -35,6 +35,7 @@ export function initializePushOptInPrompt({ context = "zdwa" } = {}) {
     timer: null,
     inFlight: false,
     promptedUserId: null,
+    pendingUserId: null,
   };
 
   const schedule = (delay = PROMPT_DELAY_MS) => {
@@ -47,11 +48,12 @@ export function initializePushOptInPrompt({ context = "zdwa" } = {}) {
     : t("Wenn in einem unserer Spiele ein Platz frei ist, bist du mit einem Tipp dabei. Erlaube Push auf diesem Gerät und wähle danach selbst: Mitspieler-Rufe, tägliche Spielideen oder Versionshinweise. Mit deiner Spielerauswahl kannst du Mitspieler-Rufe auf bekannte Leute begrenzen.");
 
   async function showPrompt(status, userId) {
-    if (state.promptedUserId === userId) return;
-    if (!window.ZDWA_UI?.dialog || visibleModalIsOpen()) {
+    if (state.promptedUserId === userId || document.hidden) return;
+    if (!window.ZDWA_UI?.dialog || visibleModalIsOpen() || window.ZDWA_DESIGN_PROMPT?.busy?.()) {
       schedule(DIALOG_RETRY_MS);
       return;
     }
+    state.pendingUserId = null;
     state.promptedUserId = userId;
     const destination = settingsUrl(state.context);
     const activateAndOpenSettings = async ({ button }) => {
@@ -89,6 +91,7 @@ export function initializePushOptInPrompt({ context = "zdwa" } = {}) {
     try {
       const auth = await loadAuth();
       const userId = auth?.authenticated ? auth.user?.id : null;
+      if (state.pendingUserId !== userId) state.pendingUserId = null;
       if (!userId || state.promptedUserId === userId || Notification.permission === "denied") return;
       const status = await getGameInvitePushStatus();
       if (!status.available || !status.browser_supported || status.device_check_failed
@@ -100,16 +103,27 @@ export function initializePushOptInPrompt({ context = "zdwa" } = {}) {
         schedule(DIALOG_RETRY_MS);
         return;
       }
+      if (state.pendingUserId === userId) {
+        const current = await loadAuth();
+        if (current?.authenticated && current.user?.id === userId && state.pendingUserId === userId) {
+          await showPrompt(status, userId);
+        }
+        return;
+      }
       const response = await apiFetch("/api/web-push/opt-in-prompt", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Push-Expected-Account-Id": String(userId) },
         body: JSON.stringify({ device_missing: status.device_subscribed !== true }),
       });
       const payload = await response.json().catch(() => ({}));
-      if (!response.ok || payload.show !== true || document.hidden) return;
+      if (!response.ok || payload.show !== true) return;
       const current = await loadAuth();
       if (!current?.authenticated || current.user?.id !== userId) return;
-      await showPrompt(status, userId);
+      // Keep an authorized invitation while a native sheet, another dialog or
+      // a hidden tab delays display. Reclaiming would spend the 14-day cooldown
+      // without ever asking. The retry refreshes this device's eligibility.
+      state.pendingUserId = userId;
+      schedule(0);
     } catch (_) {
       // Push must never disrupt a lobby.  A later lobby visit may retry.
     } finally {
@@ -120,6 +134,7 @@ export function initializePushOptInPrompt({ context = "zdwa" } = {}) {
   window.addEventListener("zdwa:auth-state", event => {
     const userId = event.detail?.authenticated ? event.detail.user?.id : null;
     if (state.promptedUserId !== userId) state.promptedUserId = null;
+    if (state.pendingUserId !== userId) state.pendingUserId = null;
     if (userId) schedule();
   });
   window.addEventListener("online", () => schedule());
