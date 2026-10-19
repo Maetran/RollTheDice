@@ -1,6 +1,6 @@
 # Versionen / Versions
 
-Aktuelle gemeinsame Produktversion / Current shared product version: **3.16.0**.
+Aktuelle gemeinsame Produktversion / Current shared product version: **3.16.1**.
 
 ZDWA und Zilch werden gemeinsam versioniert. Major steht für einen großen
 Produktmeilenstein, Minor für neue Funktionen und Patch für Fehlerkorrekturen
@@ -27,6 +27,7 @@ Detailed player-facing descriptions are in the [changelog](../CHANGELOG.md).
 
 | Version | Datum / Date | Art / Type | Änderung / Change | Commit |
 | --- | --- | --- | --- | --- |
+| 3.16.0 | 2026-10-19 | minor | Private Watten-Webvorschau für das gebundene Ownerkonto und native Freundesmeldungen. / Private Watten web preview for the bound founder account and native friend start notices. | [9f2896b](https://github.com/Maetran/RollTheDice/commit/9f2896b750769c23d303f61da014faf230bb4539) |
 | 3.15.0 | 2026-10-18 | minor | Watten-Folgetische, Tischchat, gemeinsame Lobby und lokale Tischdeko verbinden. / Connect Watten next tables, table chat, the shared lobby and local decorations. | [0ea8f58](https://github.com/Maetran/RollTheDice/commit/0ea8f5800ecf6765fdebf8df1b873eecddc1b758) |
 | 3.14.0 | 2026-10-18 | minor | Lokalen Watten-Fortschritt, Erfolge, Wirtshaustitel und Ranglisten verbinden. / Connect local Watten progress, achievements, pub titles and standings. | [a92258b](https://github.com/Maetran/RollTheDice/commit/a92258b628445a1ee88a0fe1afd18b1bf6c0acc8) |
 | 3.13.0 | 2026-10-18 | minor | Interne Watten-Oberfläche und persönliche Computergegner verbinden. / Connect the internal Watten interface and personal computer opponents. | [782972b](https://github.com/Maetran/RollTheDice/commit/782972bcec9e53a741e43ddb561cf32a4d614dc6) |

@@ -1,10 +1,10 @@
 {
-  "version": "3.16.0",
-  "bump": "minor",
-  "date": "2026-10-18",
-  "previous_revision": "0ea8f5800ecf6765fdebf8df1b873eecddc1b758",
+  "version": "3.16.1",
+  "bump": "patch",
+  "date": "2026-10-19",
+  "previous_revision": "9f2896b750769c23d303f61da014faf230bb4539",
   "summary": {
-    "de": "Private Watten-Webvorschau für das gebundene Ownerkonto und native Freundesmeldungen.",
-    "en": "Private Watten web preview for the bound founder account and native friend start notices."
+    "de": "Hausdepp bindet schnelle Kartentipps an die beim Aufsetzen spielbare Karte.",
+    "en": "Hausdepp binds rapid card taps to the card playable at touch-down."
   }
 }

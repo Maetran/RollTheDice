@@ -1139,6 +1139,97 @@ test('labelled UI fixture: rapid matching taps send single cards in order withou
   await expect(page.locator('#hausdeppActionError')).toBeEmpty();
 });
 
+test.describe('mobile touch gestures across accepted hand updates', () => {
+  test.use({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
+
+  test('labelled UI fixture: a touch beginning on a disabled next-rank card cannot play it after an own clearance', async ({ page, context }) => {
+    await ownerSession(page);
+    const traffic = watchGame(page);
+    const room = await createCpuTable(page, traffic);
+    const fixture = labelledUiFixture(traffic.scoreboard, 'Berührung vor dem Abräumen', ['leaves-9', 'leaves-A']);
+    const s = fixture._hausdepp;
+    Object.assign(s, { current_player_id: s.players.find(player => player.is_cpu).id,
+      discard: ['acorns-9', 'hearts-9', 'bells-9'], available_actions: ['afterthrow'], playable_cards: ['leaves-9'],
+      afterthrow: { player_id: s.viewer_id, rank: '9' } });
+    let activeSocket;
+    const mocked = await installUiFixture(page, room, fixture, ({ socket }) => { activeSocket = socket; });
+    await page.goto(room);
+    const nine = page.locator('#hausdeppHand button[data-card-id="leaves-9"]');
+    const ace = page.locator('#hausdeppHand button[data-card-id="leaves-A"]');
+    await nine.tap();
+    await expect.poll(() => mocked.commands.length).toBe(1);
+    expect(mocked.commands[0]).toMatchObject({ action: 'hausdepp_afterthrow', cards: ['leaves-9'] });
+    await expect(ace).toBeDisabled();
+    const box = await ace.boundingBox();
+    const input = await context.newCDPSession(page);
+    try {
+      // Native Chromium touch compatibility clicks are decided at release:
+      // this card is disabled at touchStart, but becomes legal before touchEnd.
+      await input.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [
+        { x: box.x + box.width * .65, y: box.y + box.height * .4 },
+      ] });
+      const cleared = structuredClone(fixture);
+      Object.assign(cleared._hausdepp, { version: s.version + 1, hand: ['leaves-A'], discard: [], burned_count: 4,
+        current_player_id: s.viewer_id, afterthrow: null, available_actions: ['play'], playable_cards: ['leaves-A'],
+        last_event: { type: 'afterthrow', player_id: s.viewer_id, cards: ['leaves-9'],
+          burn_reason: 'four_of_a_kind', burned_count: 4 } });
+      cleared._hausdepp.players = cleared._hausdepp.players.map(player => player.id === s.viewer_id ? { ...player, hand_count: 1 } : player);
+      mocked.sendSnapshot(cleared);
+      activeSocket.send(JSON.stringify({ hausdepp_command: { command_id: mocked.commands[0].command_id,
+        accepted: true, version: cleared._hausdepp.version } }));
+      await expect(ace).toBeEnabled();
+      await input.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+      await expect(ace).toBeEnabled();
+      expect(mocked.commands).toHaveLength(1);
+
+      // The guard consumes only the unsafe gesture; a fresh tap works at once.
+      await ace.tap();
+      await expect.poll(() => mocked.commands.length).toBe(2);
+      expect(mocked.commands[1]).toMatchObject({ action: 'hausdepp_play', cards: ['leaves-A'], version: cleared._hausdepp.version });
+    } finally { await input.detach(); }
+  });
+
+  test('labelled UI fixture: removing a touched card cannot pass its release to the card exposed beneath it', async ({ page, context }) => {
+    await ownerSession(page);
+    const traffic = watchGame(page);
+    const room = await createCpuTable(page, traffic);
+    const fixture = labelledUiFixture(traffic.scoreboard, 'Berührung auf einer entfernten Karte', ['bells-9', 'hearts-9']);
+    const mocked = await installUiFixture(page, room, fixture);
+    await page.goto(room);
+    const touched = page.locator('#hausdeppHand button[data-card-id="hearts-9"]');
+    const replacement = page.locator('#hausdeppHand button[data-card-id="bells-9"]');
+    await expect(touched).toBeEnabled();
+    const box = await touched.boundingBox();
+    const point = { x: box.x + box.width * .25, y: box.y + box.height * .4 };
+    const cardAtPoint = () => page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.closest('button[data-card-id]')?.dataset.cardId, point);
+    expect(await cardAtPoint()).toBe('hearts-9');
+    const input = await context.newCDPSession(page);
+    try {
+      await input.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [point] });
+      const next = structuredClone(fixture);
+      Object.assign(next._hausdepp, { version: next._hausdepp.version + 1, hand: ['bells-9'],
+        current_player_id: next._hausdepp.players.find(player => player.is_cpu).id,
+        discard: ['hearts-9'], available_actions: ['afterthrow'], playable_cards: ['bells-9'],
+        afterthrow: { player_id: next._hausdepp.viewer_id, rank: '9' },
+        last_event: { type: 'play', player_id: next._hausdepp.viewer_id, cards: ['hearts-9'] } });
+      next._hausdepp.players = next._hausdepp.players.map(player => player.id === next._hausdepp.viewer_id ? { ...player, hand_count: 1 } : player);
+      mocked.sendSnapshot(next);
+      await expect(touched).toHaveCount(0);
+      expect(await cardAtPoint()).toBe('bells-9');
+      // Native Chrome retargets pointerup and the compatibility click to the
+      // newly exposed button when the original touch target was removed.
+      await input.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+      await expect(replacement).toBeEnabled();
+      expect(mocked.commands).toEqual([]);
+      // Keyboard activation has no pointerdown and remains a deliberate input.
+      await replacement.focus();
+      await page.keyboard.press('Enter');
+      await expect.poll(() => mocked.commands.length).toBe(1);
+      expect(mocked.commands[0]).toMatchObject({ action: 'hausdepp_afterthrow', cards: ['bells-9'], version: next._hausdepp.version });
+    } finally { await input.detach(); }
+  });
+});
+
 test('labelled UI fixture: every card of a sorted 35-card fan remains reachable by horizontal hand scrolling', async ({ page }) => {
   test.setTimeout(90000);
   await ownerSession(page);

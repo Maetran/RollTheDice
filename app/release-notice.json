@@ -1,27 +1,25 @@
 {
   "kind": "usability",
   "games": [
-    "zdwa",
-    "zilch",
     "hausdepp"
   ],
-  "summary_de": "Die Spieleauswahl wird nach der Anmeldung und beim Zurückkehren zur App frisch geprüft.",
-  "summary_en": "The game selection is checked again after sign-in and when returning to the app.",
+  "summary_de": "Kartentipps bleiben bei der angetippten Karte, auch wenn sich die Hand währenddessen verändert.",
+  "summary_en": "Card taps stay with the card you touched, even when your hand changes during the tap.",
   "player_notes": {
     "de": {
-      "title": "Spieleauswahl bleibt aktuell",
+      "title": "Kartentipps bleiben eindeutig",
       "changes": [
-        "Nach dem An- oder Abmelden passt sich die Spieleauswahl deinem Konto an.",
-        "Auch beim Zurückkehren zur App wird die Verfügbarkeit erneut geprüft.",
-        "Neu verfügbare Spiele erscheinen im offenen Menü, ohne deinen Fokus zu verschieben."
+        "Ein Tipp spielt nur die beim Aufsetzen bereits erlaubte Karte.",
+        "Rückt eine andere Karte nach oder wird sie gerade erst spielbar, tippe sie neu an.",
+        "Gleiche Karten kannst du weiterhin schnell nacheinander nachwerfen."
       ]
     },
     "en": {
-      "title": "An up-to-date game selection",
+      "title": "Reliable card taps",
       "changes": [
-        "The game selection follows your account after signing in or out.",
-        "Availability is checked again when you return to the app.",
-        "Newly available games appear in the open menu without moving your focus."
+        "A tap plays only the card already permitted when you touch it.",
+        "If another card moves into its place or only just becomes playable, tap it again.",
+        "You can still play matching cards in rapid succession."
       ]
     }
   }
