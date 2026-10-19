@@ -1,0 +1,34 @@
+/* One compact result sheet: round facts first, personal progress, then play on. */
+html[data-game="hausdepp"] body.hd-playing #hausdeppResult:not([hidden]) {
+  position: fixed; z-index: 40; inset: 58px auto auto 50%; transform: translateX(-50%);
+  width: min(620px, calc(100vw - 16px)); height: auto;
+  max-height: calc(var(--game-viewport-height, 100dvh) - 118px);
+  overflow: auto; overscroll-behavior: contain; margin: 0; padding: 16px;
+  text-align: left; border-radius: 8px; box-shadow: 0 12px 32px #0c100d66;
+}
+#hausdeppResult h2 { margin: 0 0 6px; font: 700 24px/1.25 Georgia, serif; overflow-wrap: anywhere; }
+#hausdeppResult .hd-result-context { margin: 0 0 12px; color: var(--hd-muted); font-size: 14px; }
+#hausdeppResult .hd-result-places { margin: 0 0 12px; max-width: none; gap: 0; }
+#hausdeppResult .hd-result-place { grid-template-columns: 70px 28px minmax(0, 1fr) auto; gap: 4px 8px; padding: 8px 0; background: none; border: 0; border-bottom: 1px solid var(--hd-edge); border-radius: 0; box-shadow: none; }
+#hausdeppResult .hd-result-avatar { width: 28px; height: 28px; }
+#hausdeppResult .hd-result-avatar > * { max-width: 28px; max-height: 28px; }
+#hausdeppResult .hd-result-reward { grid-column: auto; justify-self: end; }
+#hausdeppResult .hd-result-place.is-self .hd-result-name { font-weight: 800; }
+#hausdeppResult .hd-result-awards { gap: 4px; }
+#hausdeppResult .hd-tournament-score { margin: 8px 0 12px; max-width: none; }
+#hausdeppResult .hd-tournament-score li { padding: 6px 0; }
+#hausdeppResult .hd-round-progress { margin: 12px 0 0; padding-top: 12px; border-top: 1px solid var(--hd-edge); }
+#hausdeppResult .hd-round-earned { margin: 0 0 10px; display: grid; gap: 3px; }
+#hausdeppResult .hd-round-earned strong { font-size: 16px; }
+#hausdeppResult .hd-round-earned > span, #hausdeppResult .hd-round-next { color: var(--hd-muted); font-size: 14px; }
+#hausdeppResult .hd-round-account p { display: flex; justify-content: space-between; gap: 4px 12px; flex-wrap: wrap; margin: 0; font-size: 14px; }
+#hausdeppResult .hd-round-account .hd-round-next { margin-top: 4px; }
+#hausdeppResult .hd-result-links { margin-top: 16px; max-width: none; }
+#hausdeppResult .hd-result-links > a:last-child { min-height: 44px; padding: 4px; font-size: 14px; background: none; border: 0; box-shadow: none; font-weight: 500; text-decoration: underline; text-underline-offset: 3px; }
+#hausdeppResult .hd-error:empty { display: none; }
+@media (min-width: 1100px) {
+  html[data-game="hausdepp"] body.hd-playing #hausdeppResult:not([hidden]) {
+    top: 92px; left: calc((100vw - 330px) / 2);
+    width: min(620px, calc(100vw - 400px)); max-height: calc(100dvh - 116px);
+  }
+}

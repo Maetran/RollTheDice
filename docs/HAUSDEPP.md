@@ -328,7 +328,12 @@ sie sich leicht nach links oben auf. So sieht man auf einen Blick, wie viele
 Gleiche schon liegen (bei vier räumt das Paket ab). Am Rundenende zeigt das
 Ergebnisfenster alle Platzierungen in der Reihenfolge, in der die Spieler fertig
 wurden, den Hausdepp zuletzt, und für jedes Konto die in dieser Runde verdienten
-EP und neu erreichten Erfolge.
+EP und neu erreichten Erfolge. Das kompakte Ergebnisblatt passt seine Höhe an
+den Inhalt an. Es nennt die tatsächliche Tischbesetzung und trennt bei der
+eigenen Gutschrift Runden-EP von Erfolgs-EP. Darunter stehen der aktuelle eigene
+Kontorang, Gesamt-EP und der Abstand zum nächsten Rang. Kontohinweise aus früheren
+Runden werden niemals als Gutschrift der gerade beendeten Runde ausgegeben.
+Allgemeine Glückwünsche und Wiederholungs-Erklärungen entfallen.
 
 Die eigene Hand bleibt offen und sortiert. Bei anderen Spielern ist für jede
 Handkarte eine Rückseite sichtbar; die genaue Anzahl steht zusätzlich beim

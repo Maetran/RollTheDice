@@ -204,30 +204,51 @@ test('Watten settings clear before BFCache and reload without reusing an old ide
   const newGate = new Promise(resolve => { releaseNew = resolve; });
   let oldSeen;
   let newSeen;
+  let oldFulfilled;
   const oldObserved = new Promise(resolve => { oldSeen = resolve; });
   const newObserved = new Promise(resolve => { newSeen = resolve; });
+  const oldResponseFulfilled = new Promise(resolve => { oldFulfilled = resolve; });
   let requests = 0;
-  await page.route('**/api/auth/me', async route => {
-    const response = await route.fetch();
-    requests += 1;
-    if (requests === 1) { oldSeen(); await oldGate; }
-    if (requests === 2) { newSeen(); await newGate; }
-    await route.fulfill({ response });
-  });
-  await page.evaluate(() => { void import('/static/auth.js').then(auth => auth.loadAuth({ refresh: true })); });
-  await oldObserved;
-  await page.evaluate(() => dispatchEvent(new PageTransitionEvent('pagehide', { persisted: true })));
-  await expect(page.locator('#wattenAccount')).toBeEmpty();
-  const other = await page.request.post('/api/auth/register', { headers: { Origin: baseURL, 'X-Forwarded-For': '192.0.2.222' },
-    data: { username: 'WattenCacheB', password: 'cache-other-password-123' } });
-  expect(other.status()).toBe(201);
-  releaseOld();
-  const loaded = page.waitForEvent('load');
-  await page.evaluate(() => dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true })));
-  await loaded;
-  await newObserved;
-  await expect(page.locator('[data-account-name]')).toHaveCount(0);
-  await expect(page.locator('#wattenAccount')).not.toContainText('WattenCacheA');
-  releaseNew();
-  await expect(page.locator('[data-account-name]')).toHaveText('WattenCacheB');
+  try {
+    await page.route('**/api/auth/me', async route => {
+      const requestNumber = ++requests;
+      const response = await route.fetch();
+      // Keep plain response data while the test holds it across account changes.
+      // A navigation may otherwise dispose the fetched APIResponse first.
+      const payload = { status: response.status(), headers: response.headers(), body: await response.body() };
+      if (requestNumber === 1) { oldSeen(); await oldGate; }
+      if (requestNumber === 2) { newSeen(); await newGate; }
+      await route.fulfill(payload);
+      if (requestNumber === 1) oldFulfilled();
+    });
+    await page.evaluate(() => {
+      window.__wattenOldIdentityRequest = import('/static/auth.js').then(auth => auth.loadAuth({ refresh: true }));
+    });
+    await oldObserved;
+    await page.evaluate(() => dispatchEvent(new PageTransitionEvent('pagehide', { persisted: true })));
+    await expect(page.locator('#wattenAccount')).toBeEmpty();
+    const other = await page.request.post('/api/auth/register', { headers: { Origin: baseURL, 'X-Forwarded-For': '192.0.2.222' },
+      data: { username: 'WattenCacheB', password: 'cache-other-password-123' } });
+    expect(other.status()).toBe(201);
+    releaseOld();
+    await oldResponseFulfilled;
+    await page.evaluate(() => window.__wattenOldIdentityRequest);
+    // Consuming the delayed A response must not repopulate the hidden document.
+    await expect(page.locator('#wattenAccount')).toBeEmpty();
+    await expect(page.locator('[data-account-name]')).toHaveCount(0);
+    const loaded = page.waitForEvent('load');
+    await page.evaluate(() => dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true })));
+    await loaded;
+    await newObserved;
+    await expect(page.locator('[data-account-name]')).toHaveCount(0);
+    await expect(page.locator('#wattenAccount')).not.toContainText('WattenCacheA');
+    releaseNew();
+    await expect(page.locator('[data-account-name]')).toHaveText('WattenCacheB');
+  } finally {
+    releaseOld();
+    releaseNew();
+    // Settings may start another identity refresh after rendering B. Finish
+    // its route handler before Playwright disposes the request context.
+    await page.unrouteAll({ behavior: 'wait' });
+  }
 });

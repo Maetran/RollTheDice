@@ -23,6 +23,29 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 3.16.6 — Klare Rundenbilanz / A clear round summary — 2026-10-19
+
+Am Rundenende stehen konkrete Ergebnisse und Fortschritt im Mittelpunkt.
+The end of a round focuses on actual results and progress.
+
+### HAUSDEPP
+
+**Deutsch:** Das Ergebnisblatt passt seine Höhe dem Inhalt an und zeigt die
+Tischbesetzung, Platzierungen und tatsächlich in dieser Runde verdienten EP
+und Erfolge. Eine kompakte Aufteilung erklärt Runden- und Erfolgs-EP; der eigene
+aktuelle Rang, Gesamt-EP und Abstand zum nächsten Rang geben Orientierung.
+Der grosse Glückwunschblock und der allgemeine Wiederholungs-Hinweis entfallen.
+Ältere Kontohinweise werden nicht als Ertrag der aktuellen Runde dargestellt.
+Stiller Usability-Fix ohne Push oder In-App-Versionsmeldung.
+
+**English:** The result sheet sizes itself to its content and shows the table
+composition, finishing order, and XP and achievements actually earned in this
+round. A compact breakdown explains round and achievement XP; your current rank,
+total XP and distance to the next rank provide context. The large congratulations
+block and generic rematch hint are removed. Older account notices never appear
+as earnings from the current round. Silent usability fix without push or an
+in-app version announcement.
+
 ## 3.16.5 — Abheben klar verfolgen / Follow the cut clearly — 2026-10-19
 
 Abhebekarten bleiben lesbar, ohne alte Hinweise in neue Turnierrunden mitzunehmen.
