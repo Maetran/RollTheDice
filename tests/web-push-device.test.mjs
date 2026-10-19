@@ -21,7 +21,7 @@ async function until(condition) {
 // contacts a real Push service or changes an actual account/device subscription.
 function fixture({ subscribed = true, local = snapshot(), checked = true,
   worker = '/hausdepp-sw.js', scope = '/hausdepp', manifest = 'hausdepp', permission = 'granted',
-  statusHook, checkHook, localHook } = {}) {
+  statusHook, checkHook, localHook, initialAccount } = {}) {
   const calls = [], events = new Map(), registrationReads = [];
   const counts = { subscribe: 0, unsubscribe: 0, permission: 0, local: 0 };
   let currentLocal = local;
@@ -42,6 +42,9 @@ function fixture({ subscribed = true, local = snapshot(), checked = true,
       if (!events.has(type)) events.set(type, new Set());
       events.get(type).add(callback);
     },
+  };
+  if (initialAccount !== undefined) win[Symbol.for('rollthedice.auth-state')] = {
+    cache: { authenticated: initialAccount !== null, user: initialAccount === null ? null : { id: initialAccount } },
   };
   const Notification = { permission,
     requestPermission: async () => { counts.permission += 1; Notification.permission = 'granted'; return 'granted'; } };
@@ -190,4 +193,38 @@ test('an explicit enable captures its initiating account through asynchronous wo
   await assert.rejects(pending);
   assert.deepEqual(f.writes(), []);
   assert.equal(f.counts.subscribe, 0);
+});
+
+for (const initialAccount of [undefined, 1]) {
+  test(`initial auth hydration of the same account is not a switch (cached=${initialAccount !== undefined})`, async () => {
+    let finish;
+    const gate = new Promise(resolve => { finish = resolve; });
+    const f = fixture({ initialAccount, local: null, statusHook: async () => {
+      await gate;
+      return response({ viewer_id: 1, available: false, subscribed: true });
+    } });
+    const pending = f.getGameInvitePushStatus();
+    await until(() => f.calls.length === 1);
+    f.auth(1);
+    finish();
+    const status = await pending;
+    assert.equal(status.viewer_id, 1);
+    assert.equal(status.available, false);
+    assert.deepEqual(f.writes(), []);
+  });
+}
+
+test('a different first auth identity cannot apply an older response while identity was unknown', async () => {
+  let finish;
+  const gate = new Promise(resolve => { finish = resolve; });
+  const f = fixture({ local: null, statusHook: async () => {
+    await gate;
+    return response({ viewer_id: 1, available: true, subscribed: true });
+  } });
+  const pending = f.getGameInvitePushStatus();
+  await until(() => f.calls.length === 1);
+  f.auth(2);
+  finish();
+  await assert.rejects(pending, error => error.code === 'web_push_account_changed');
+  assert.deepEqual(f.writes(), []);
 });

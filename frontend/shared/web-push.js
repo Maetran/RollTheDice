@@ -2,9 +2,13 @@ import { apiFetch } from "./auth.js";
 
 let lastPushStatus = null;
 let accountGeneration = 0;
-let accountId;
+const initialAuth = window[Symbol.for("rollthedice.auth-state")]?.cache;
+let accountId = initialAuth ? (initialAuth.authenticated ? initialAuth.user?.id : null) : undefined;
 window.addEventListener("zdwa:auth-state", event => {
   const next = event.detail?.authenticated ? event.detail.user?.id : null;
+  // Another bundle can hydrate our shared auth cache after this module loads.
+  // The first identity is checked against the response's viewer_id below.
+  if (accountId === undefined) { accountId = next; return; }
   if (next !== accountId) {
     accountId = next;
     accountGeneration += 1;
@@ -58,6 +62,10 @@ export async function getGameInvitePushStatus() {
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw apiError(data);
   requireSameAccount(generation);
+  if (data.viewer_id != null) {
+    if (accountId !== undefined && accountId !== data.viewer_id) throw apiError({ detail: "web_push_account_changed" });
+    accountId = data.viewer_id;
+  }
   const status = {
     ...data,
     browser_supported: canUseWebPush(),
