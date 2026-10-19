@@ -25,8 +25,10 @@ async function openPwaHarness(page, {
   pathname = "/",
   controllerScript = null,
   savedEntry = null,
+  productVersion = null,
+  ios = false,
 }) {
-  await page.addInitScript(({ language: initialLanguage, standalone: installed, controllerScript: initialController, savedEntry: initialEntry }) => {
+  await page.addInitScript(({ language: initialLanguage, standalone: installed, controllerScript: initialController, savedEntry: initialEntry, productVersion: release, ios: mobileSafari }) => {
     const state = {
       registerCalls: [],
       registerOptions: [],
@@ -34,15 +36,25 @@ async function openPwaHarness(page, {
       cacheDeletes: [],
       toasts: [],
       dismissInstall: null,
+      installAction: null,
     };
     globalThis.__pwaHarness = state;
     globalThis.ZDWA_UI = {
       toast: (message, options = {}) => {
         state.toasts.push({ message, actionLabel: options.actionLabel || "" });
         state.dismissInstall = options.onDismiss || null;
-        return document.createElement("div");
+        state.installAction = options.onAction || null;
+        const element = document.createElement("div");
+        element.textContent = message;
+        document.body?.append(element);
+        return element;
       },
     };
+    const currentRelease = new URL(location.href).searchParams.get("productVersion") || release;
+    if (currentRelease) globalThis.__ROLLTHEDICE_PRODUCT_VERSION__ = currentRelease;
+    if (mobileSafari) Object.defineProperty(Navigator.prototype, "userAgent", {
+      configurable: true, get: () => "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile Safari/604.1",
+    });
     if (initialLanguage === "en") {
       globalThis.ZDWA_I18N = { getLanguage: () => "en" };
     }
@@ -86,7 +98,7 @@ async function openPwaHarness(page, {
         },
       },
     });
-  }, { language, standalone, controllerScript, savedEntry });
+  }, { language, standalone, controllerScript, savedEntry, productVersion, ios });
 
   await page.route(`${origin}/**`, async route => {
     const url = new URL(route.request().url());
@@ -304,6 +316,98 @@ test("the Zilch install hint is snoozed for seven days, except after a new versi
   await expect.poll(() => page.evaluate(() => globalThis.__pwaHarness.toasts)).toEqual([
     { message: "Die App kann installiert werden.", actionLabel: "Installieren" },
   ]);
+});
+
+test("product releases reset install snooze independently from asset fingerprints", async ({ page }) => {
+  const origin = "https://zockdiewandan.online";
+  await openPwaHarness(page, { origin, game: "zdwa", version: "asset-one", productVersion: "3.16.3" });
+  await dispatchInstallPrompt(page);
+  await page.evaluate(() => globalThis.__pwaHarness.dismissInstall());
+  expect(await page.evaluate(() => globalThis.ZDWA_PWA.appVersion)).toBe("3.16.3");
+  await page.goto(`${origin}/?pwaVersion=asset-two`);
+  await dispatchInstallPrompt(page);
+  expect(await page.evaluate(() => globalThis.__pwaHarness.toasts)).toEqual([]);
+  await page.goto(`${origin}/?pwaVersion=asset-two&productVersion=3.16.4`);
+  await dispatchInstallPrompt(page);
+  expect(await page.evaluate(() => globalThis.__pwaHarness.toasts)).toHaveLength(1);
+  await dispatchInstallPrompt(page);
+  expect(await page.evaluate(() => globalThis.__pwaHarness.toasts)).toHaveLength(1);
+});
+
+test("native install sheets only open on click and dismissal snoozes that release", async ({ page }) => {
+  const origin = "https://hausdepp.zockdiewandan.online";
+  await openPwaHarness(page, { origin, game: "hausdepp", pathname: "/hausdepp", productVersion: "3.16.3" });
+  await page.evaluate(() => {
+    window.installCalls = 0;
+    const event = new Event("beforeinstallprompt", { cancelable: true });
+    event.prompt = async () => { window.installCalls += 1; };
+    event.userChoice = new Promise(resolve => { window.finishInstallChoice = resolve; });
+    window.dispatchEvent(event);
+  });
+  expect(await page.evaluate(() => window.installCalls)).toBe(0);
+  await expect(page.locator('[data-pwa-install-hint="true"]')).toBeVisible();
+  await page.evaluate(() => { void globalThis.__pwaHarness.installAction(); });
+  expect(await page.evaluate(() => window.installCalls)).toBe(1);
+  expect(await page.evaluate(() => window.ZDWA_PWA_INSTALL_BUSY)).toBe(true);
+  await page.evaluate(() => window.finishInstallChoice({ outcome: "dismissed" }));
+  await expect.poll(() => page.evaluate(() => window.ZDWA_PWA_INSTALL_BUSY)).toBe(false);
+  expect(await page.evaluate(() => globalThis.HAUSDEPP_PWA.installPromptSuppressed())).toBe(true);
+  await page.reload();
+  await dispatchInstallPrompt(page);
+  expect(await page.evaluate(() => globalThis.__pwaHarness.toasts)).toEqual([]);
+});
+
+test("install offers wait for a modal to close and stay out of running game routes", async ({ page }) => {
+  const origin = "https://zockdiewandan.online";
+  await openPwaHarness(page, { origin, game: "zdwa" });
+  await page.evaluate(() => {
+    const dialog = document.createElement("dialog");
+    dialog.textContent = "Existing dialog";
+    document.body.append(dialog);
+    dialog.showModal();
+  });
+  await dispatchInstallPrompt(page);
+  expect(await page.evaluate(() => globalThis.__pwaHarness.toasts)).toEqual([]);
+  await page.evaluate(() => document.querySelector("dialog").close());
+  await expect.poll(() => page.evaluate(() => globalThis.__pwaHarness.toasts.length)).toBe(1);
+  for (const path of ["/spiel/room", "/zilch/spiel/room", "/hausdepp/spiel/room", "/watten"]) {
+    await page.goto(`${origin}${path}`);
+    await dispatchInstallPrompt(page);
+    expect(await page.evaluate(() => globalThis.__pwaHarness.toasts)).toEqual([]);
+  }
+});
+
+test("iOS browser lobbies offer manual installation once and retain seven-day release snooze", async ({ page }) => {
+  const origin = "https://hausdepp.zockdiewandan.online";
+  await openPwaHarness(page, { origin, game: "hausdepp", pathname: "/hausdepp", ios: true, productVersion: "3.16.3" });
+  await expect.poll(() => page.evaluate(() => globalThis.__pwaHarness.toasts.length)).toBe(1);
+  const hint = page.locator('[data-pwa-install-hint="true"]');
+  await expect(hint).toContainText("Zum Home-Bildschirm");
+  expect(await page.evaluate(() => globalThis.__pwaHarness.installAction)).toBeNull();
+  await page.evaluate(() => globalThis.__pwaHarness.dismissInstall());
+  await page.reload();
+  await page.waitForTimeout(1400);
+  expect(await page.evaluate(() => globalThis.__pwaHarness.toasts)).toEqual([]);
+  await page.goto(`${origin}/hausdepp?productVersion=3.16.4`);
+  await expect.poll(() => page.evaluate(() => globalThis.__pwaHarness.toasts.length)).toBe(1);
+});
+
+test("installed and standalone apps stay quiet while a fresh native offer clears an older install marker", async ({ page }) => {
+  const origin = "https://zockdiewandan.online";
+  await openPwaHarness(page, { origin, game: "zdwa", ios: true, productVersion: "3.16.3" });
+  await page.evaluate(() => window.dispatchEvent(new Event("appinstalled")));
+  await page.reload();
+  await page.waitForTimeout(1400);
+  expect(await page.evaluate(() => globalThis.__pwaHarness.toasts)).toEqual([]);
+  await dispatchInstallPrompt(page);
+  expect(await page.evaluate(() => globalThis.__pwaHarness.toasts)).toHaveLength(1);
+  await page.addInitScript(() => Object.defineProperty(Navigator.prototype, "standalone", {
+    configurable: true, get: () => true,
+  }));
+  await page.reload();
+  await dispatchInstallPrompt(page);
+  await page.waitForTimeout(1400);
+  expect(await page.evaluate(() => globalThis.__pwaHarness.toasts)).toEqual([]);
 });
 
 test("Zilch selects its English manifest for an English app session", async ({ page }) => {

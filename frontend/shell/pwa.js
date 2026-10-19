@@ -10,13 +10,15 @@
     || location.hostname === "[::1]" || /^127(?:\.\d{1,3}){3}$/.test(location.hostname);
   const INSTALLED_ENTRY_KEY = "rollthedice:pwa-entry:v1";
   const WINDOW_ENTRY_PREFIX = `${INSTALLED_ENTRY_KEY}:`;
-  const APP_VERSION = (() => {
+  const ASSET_VERSION = (() => {
     try {
       return new URL(document.currentScript?.src || "", location.href).searchParams.get("v") || "unversioned";
     } catch {
       return "unversioned";
     }
   })();
+  const APP_VERSION = typeof __ROLLTHEDICE_PRODUCT_VERSION__ === "string"
+    ? __ROLLTHEDICE_PRODUCT_VERSION__ : ASSET_VERSION;
   let presenceSocket = null;
   let presenceHeartbeat = null;
   let presenceRetry = null;
@@ -75,6 +77,40 @@
     let refreshRequested = false;
     let updateToast = null;
     let offlineToast = null;
+    let installToast = null;
+    let installOffered = false;
+    let installTimer = null;
+    const installedKey = `${installDismissKey}:installed`;
+    let installed = isStandalone();
+
+    function knownInstalled() {
+      if (installed || isStandalone()) return true;
+      try { return localStorage.getItem(installedKey) === APP_VERSION; } catch { return false; }
+    }
+
+    function rememberInstalled() {
+      installed = true;
+      try { localStorage.setItem(installedKey, APP_VERSION); } catch {}
+      clearTimeout(installTimer);
+      installToast?.remove();
+      installToast = null;
+    }
+    if (installed) rememberInstalled();
+
+    function installLobby() {
+      return globalName !== "WATTEN_PWA"
+        && ["/", "/zdwa", "/zilch", "/hausdepp"].includes(location.pathname.replace(/\/$/, "") || "/");
+    }
+
+    function iosBrowser() {
+      return /iPad|iPhone|iPod/.test(navigator.userAgent || "")
+        || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    }
+
+    function modalOpen() {
+      return [...document.querySelectorAll('dialog[open], [role="dialog"][aria-modal="true"]')]
+        .some(element => element.getClientRects().length > 0);
+    }
 
     function installPromptSuppressed() {
       try {
@@ -95,6 +131,42 @@
       } catch {
         // Storage can be unavailable in private/restricted browsing contexts.
       }
+    }
+
+    function showInstallHint() {
+      clearTimeout(installTimer);
+      if (installOffered || !installLobby() || knownInstalled() || installPromptSuppressed()) return;
+      const manual = !installPrompt && iosBrowser();
+      if (!installPrompt && !manual) return;
+      if (document.hidden) return;
+      if (modalOpen()) {
+        installTimer = setTimeout(showInstallHint, 2000);
+        return;
+      }
+      installToast = toast(manual
+        ? "Spiel direkt vom Home-Bildschirm öffnen? Tippe auf „Teilen“ und dann auf „Zum Home-Bildschirm“."
+        : "Die App kann installiert werden.", {
+        kind: "info", duration: 0, onDismiss: dismissInstallPrompt,
+        ...(manual ? {} : {
+          actionLabel: "Installieren",
+          onAction: async () => {
+            const prompt = installPrompt;
+            installPrompt = null;
+            installToast = null;
+            if (!prompt) return;
+            window.ZDWA_PWA_INSTALL_BUSY = true;
+            try {
+              const result = await prompt.prompt();
+              const choice = prompt.userChoice ? await prompt.userChoice : result;
+              if (choice?.outcome === "dismissed") dismissInstallPrompt();
+              if (choice?.outcome === "accepted") rememberInstalled();
+            } catch { /* The native install sheet can become unavailable. */ }
+            finally { window.ZDWA_PWA_INSTALL_BUSY = false; }
+          },
+        }),
+      });
+      if (installToast?.dataset) installToast.dataset.pwaInstallHint = "true";
+      installOffered = Boolean(installToast);
     }
 
     function showUpdate(registration) {
@@ -123,24 +195,17 @@
 
     window.addEventListener("beforeinstallprompt", event => {
       event.preventDefault();
-      installPrompt = event;
-      if (matchMedia("(display-mode: standalone)").matches) return;
-      if (installPromptSuppressed()) return;
-      toast("Die App kann installiert werden.", {
-        kind: "info",
-        duration: 0,
-        actionLabel: "Installieren",
-        onDismiss: dismissInstallPrompt,
-        onAction: async () => {
-          const prompt = installPrompt;
-          installPrompt = null;
-          if (prompt) await prompt.prompt();
-        },
-      });
+      if (isStandalone() || installed) return;
+      // A fresh native offer is authoritative even after a remembered install
+      // was removed. A browser never needs a permanent installation marker.
+      try { localStorage.removeItem(installedKey); } catch {}
+      installPrompt ||= event;
+      showInstallHint();
     });
 
     window.addEventListener("appinstalled", () => {
       installPrompt = null;
+      rememberInstalled();
       try { localStorage.removeItem(installDismissKey); } catch {}
       toast("Die App wurde installiert.", { kind: "success" });
     });
@@ -162,6 +227,7 @@
     });
 
     window.addEventListener("load", async () => {
+      installTimer = setTimeout(showInstallHint, 1200);
       try {
         await beforeRegister?.();
         const registration = await navigator.serviceWorker.register(workerUrl, {
@@ -173,6 +239,8 @@
         console.warn("SW registration failed:", error);
       }
     });
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) showInstallHint(); });
+    window.addEventListener("pagehide", () => clearTimeout(installTimer));
 
     window[globalName] = {
       showUpdate,
@@ -217,7 +285,7 @@
     const language = window.ZDWA_I18N?.getLanguage?.() === "en" ? "en" : "de";
     const prefix = product === "zdwa" ? "" : `${product}-`;
     const manifestUrl = new URL(`/${prefix}manifest${language === "en" ? "-en" : ""}.webmanifest`, location.origin);
-    if (APP_VERSION !== "unversioned") manifestUrl.searchParams.set("v", APP_VERSION);
+    if (ASSET_VERSION !== "unversioned") manifestUrl.searchParams.set("v", ASSET_VERSION);
     const link = document.querySelector('link[rel="manifest"]') || document.createElement("link");
     link.rel = "manifest";
     link.href = manifestUrl.href;

@@ -6,6 +6,8 @@ import { dirname, resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "..");
 const check = process.argv.includes("--check");
+const productVersion = JSON.parse(await readFile(resolve(root, "app/version.json"), "utf8")).version;
+if (typeof productVersion !== "string" || !/^\d+\.\d+\.\d+$/.test(productVersion)) throw new Error("Invalid product version");
 // Static asset URL placeholders are resolved by sync_static_versions.py after the
 // build. Compare their normalized form here; the asset check separately
 // validates that every shipped URL uses the actual content fingerprint.
@@ -96,6 +98,7 @@ for (const target of targets) {
     format: target.format,
     platform: "browser",
     target: ["es2020"],
+    define: { __ROLLTHEDICE_PRODUCT_VERSION__: JSON.stringify(productVersion) },
     external: ["/static/*"],
     charset: "utf8",
     legalComments: "none",

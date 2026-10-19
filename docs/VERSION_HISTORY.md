@@ -1,6 +1,6 @@
 # Versionen / Versions
 
-Aktuelle gemeinsame Produktversion / Current shared product version: **3.16.2**.
+Aktuelle gemeinsame Produktversion / Current shared product version: **3.16.3**.
 
 ZDWA und Zilch werden gemeinsam versioniert. Major steht für einen großen
 Produktmeilenstein, Minor für neue Funktionen und Patch für Fehlerkorrekturen
@@ -27,6 +27,7 @@ Detailed player-facing descriptions are in the [changelog](../CHANGELOG.md).
 
 | Version | Datum / Date | Art / Type | Änderung / Change | Commit |
 | --- | --- | --- | --- | --- |
+| 3.16.2 | 2026-10-19 | patch | Push prüft die Anmeldung des tatsächlichen Geräts und bewahrt die Spiel- und Kontozuordnung. / Push checks the actual device registration and preserves its game and account binding. | [4d3e30f](https://github.com/Maetran/RollTheDice/commit/4d3e30fe5b69606fb56e52951d091ce69e3ebc71) |
 | 3.16.1 | 2026-10-19 | patch | Hausdepp bindet schnelle Kartentipps an die beim Aufsetzen spielbare Karte. / Hausdepp binds rapid card taps to the card playable at touch-down. | [aa47a95](https://github.com/Maetran/RollTheDice/commit/aa47a959ed22de57c72f3d7f5edb8303b1d701cc) |
 | 3.16.0 | 2026-10-19 | minor | Private Watten-Webvorschau für das gebundene Ownerkonto und native Freundesmeldungen. / Private Watten web preview for the bound founder account and native friend start notices. | [9f2896b](https://github.com/Maetran/RollTheDice/commit/9f2896b750769c23d303f61da014faf230bb4539) |
 | 3.15.0 | 2026-10-18 | minor | Watten-Folgetische, Tischchat, gemeinsame Lobby und lokale Tischdeko verbinden. / Connect Watten next tables, table chat, the shared lobby and local decorations. | [0ea8f58](https://github.com/Maetran/RollTheDice/commit/0ea8f5800ecf6765fdebf8df1b873eecddc1b758) |

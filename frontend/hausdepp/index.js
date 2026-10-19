@@ -11,6 +11,7 @@ import { invitationMarkup, mountInvitations } from "./invitations.js";
 import { initializeGameViewport } from "../shared/game-viewport.js";
 import { zdwaAppEntryUrl, hausdeppSignInUrl } from "../multigame/routes.js";
 import { initializeAppMode } from "../multigame/app-mode.js";
+import { initializePushOptInPrompt } from "../shared/push-optin-prompt.js";
 import { mountLobbyChat } from "../shared/lobby-chat.js";
 import { initChat, addChatMessage } from "../room/chat.js";
 import { HAUSDEPP_MESSAGES } from "../i18n/catalog.js";
@@ -1378,6 +1379,7 @@ async function start() {
     if (page === "rules") renderRules(); else if (page === "settings") renderAccountSettings(root, auth, { onUserChanged: data => { auth = data; header(); } }); else if (page === "account") renderAccount(); else if (page === "leaderboard") renderLeaderboard(); else if (page === "table") renderTableShell(); else renderLobby();
     if (page === "lobby" || page === "table") invitations = mountInvitations(root, t);
     document.body.classList.remove("hd-loading");
+    if (page === "lobby") initializePushOptInPrompt({ context: "hausdepp" });
     if (auth.authenticated && !spectating) {
       progressNotices = mountProgressNotices({
         userId: auth.user.id,

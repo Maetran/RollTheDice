@@ -5,25 +5,27 @@
     "zilch",
     "hausdepp"
   ],
-  "summary_de": "Push prüft jetzt die Anmeldung dieses Geräts. Fehlende Hausdepp-Abos lassen sich erneuern; deine Auswahl bleibt erhalten.",
-  "summary_en": "Push now checks this device’s registration. Missing Hausdepp subscriptions can be renewed while keeping your choices.",
+  "summary_de": "Die Lobby erinnert wieder an Push und die App-Installation – passend zu deinem Gerät und mit Pausen zwischen den Hinweisen.",
+  "summary_en": "The lobby offers Push and app installation again when useful for your device, with pauses between reminders.",
   "player_notes": {
     "de": {
-      "title": "Push zeigt jetzt, ob dein Gerät wirklich bereit ist.",
+      "title": "Push und App: Die Lobby fragt wieder passend nach.",
       "changes": [
-        "ALLGEMEIN: Die Push-Anzeige prüft jetzt dieses Gerät. Deine Auswahl für Einladungen, Erinnerungen und Versionshinweise bleibt erhalten.",
-        "HAUSDEPP: Falls Push bisher nur aktiv aussah, öffne Konto → Einstellungen → Benachrichtigungen und tippe auf „Dieses Gerät für Push anmelden“.",
-        "ZDWA: Ein Abo auf einem anderen Gerät zählt nicht mehr als Anmeldung dieses Geräts. Erneutes Anmelden bleibt möglich.",
-        "ZILCH: Auch hier unterscheidet die Push-Anzeige zwischen deiner Kontoeinstellung und der Anmeldung dieses Geräts."
+        "ALLGEMEIN: Fehlt Push auf diesem Gerät, fragen wir höchstens alle 14 Tage nach. Deine bestehende Auswahl bleibt erhalten.",
+        "ALLGEMEIN: Nach einer neuen Version kann der Installhinweis wieder erscheinen. Auf iPhone/iPad hilft Teilen → Zum Home-Bildschirm; Schliessen pausiert sieben Tage.",
+        "HAUSDEPP: Die Push-Nachfrage ist jetzt auch hier eingebunden und führt direkt zu deinen Benachrichtigungseinstellungen.",
+        "ZDWA: Ein aktives Abo auf einem anderen Gerät verhindert die Nachfrage auf diesem Gerät nicht mehr.",
+        "ZILCH: Installations- und Push-Hinweise warten aufeinander und bleiben ausserhalb laufender Partien."
       ]
     },
     "en": {
-      "title": "Push now shows whether your device is really ready.",
+      "title": "Push and app: useful reminders return to the lobby.",
       "changes": [
-        "GENERAL: Push status now checks this device. Your choices for invitations, reminders and app update alerts are kept.",
-        "HAUSDEPP: If push previously only appeared active, open Account → Settings → Notifications and tap “Enable push on this device”.",
-        "ZDWA: A subscription on another device no longer counts as this device being registered. You can register this device again.",
-        "ZILCH: Push status here also distinguishes your account preferences from this device’s registration."
+        "GENERAL: If this device is missing Push, we ask at most once every 14 days. Your existing choices are kept.",
+        "GENERAL: A new version can offer installation again. On iPhone/iPad, use Share → Add to Home Screen; dismissal pauses the hint for seven days.",
+        "HAUSDEPP: The Push invitation is now available here too and opens your notification settings directly.",
+        "ZDWA: An active subscription on another device no longer prevents this device from being invited.",
+        "ZILCH: Installation and Push offers wait for each other and stay out of ongoing games."
       ]
     }
   }

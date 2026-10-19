@@ -15,6 +15,7 @@ from unittest.mock import AsyncMock, Mock, patch
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from fastapi import HTTPException, Response
+from fastapi.testclient import TestClient
 from starlette.requests import Request
 
 from app import main
@@ -175,6 +176,111 @@ class WebPushTestCase(unittest.TestCase):
             result = web_push_opt_in_prompt_post(request_for(token=token, csrf=identity.csrf_token), response)
         self.assertTrue(result["show"])
         self.assertEqual(response.headers["Cache-Control"], "no-store")
+
+    def test_missing_device_prompt_keeps_one_account_wide_fourteen_day_reservation(self) -> None:
+        player = create_user("MissingPromptDevice", "a-secure-password-123", must_change_password=False)
+        save_web_push_subscription(user_id=player.id, payload=self.subscription(), product_context="zdwa")
+        update_web_push_preferences(player.id, WebPushPreferencesRequest(
+            game_invites_enabled=True, daily_reminder_enabled=True, release_notifications_enabled=True,
+        ))
+        now = datetime(2026, 9, 6, 12, tzinfo=timezone.utc)
+        with session_scope() as db:
+            db.get(User, player.id).push_opt_in_prompted_at = now - timedelta(days=14)
+            device_before = db.query(WebPushSubscription).one().updated_at
+        with patch("app.web_push.utcnow", return_value=now):
+            # Legacy and already-registered clients never ask while Push is active.
+            self.assertFalse(claim_web_push_opt_in_prompt(player.id)["show"])
+            self.assertFalse(claim_web_push_opt_in_prompt(player.id, device_missing=False)["show"])
+            with ThreadPoolExecutor(max_workers=6) as pool:
+                results = list(pool.map(lambda _: claim_web_push_opt_in_prompt(player.id, device_missing=True), range(6)))
+        self.assertEqual(sum(result["show"] for result in results), 1)
+        self.assertTrue(all(result["interval_days"] == 14 for result in results))
+        with patch("app.web_push.utcnow", return_value=now + timedelta(days=14) - timedelta(seconds=1)):
+            self.assertFalse(claim_web_push_opt_in_prompt(player.id, device_missing=True)["show"])
+        with patch("app.web_push.utcnow", return_value=now + timedelta(days=14)):
+            self.assertTrue(claim_web_push_opt_in_prompt(player.id, device_missing=True)["show"])
+        with session_scope() as db:
+            user = db.get(User, player.id)
+            self.assertTrue(user.game_invite_push_enabled and user.daily_reminder_push_enabled and user.release_push_enabled)
+            self.assertEqual(db.query(WebPushSubscription).count(), 1)
+            self.assertEqual(db.query(WebPushSubscription).one().updated_at, device_before)
+
+    def test_missing_device_claim_cannot_override_opt_out_cooldown_or_enable_push(self) -> None:
+        player = create_user("MissingPromptOptOut", "a-secure-password-123", must_change_password=False)
+        now = datetime(2026, 9, 6, 12, tzinfo=timezone.utc)
+        with patch("app.web_push.utcnow", return_value=now):
+            self.assertTrue(claim_web_push_opt_in_prompt(player.id, device_missing=True)["show"])
+        with patch("app.web_push.utcnow", return_value=now + timedelta(days=1)):
+            remove_web_push_subscriptions(player.id)
+        with patch("app.web_push.utcnow", return_value=now + timedelta(days=15) - timedelta(seconds=1)):
+            self.assertFalse(claim_web_push_opt_in_prompt(player.id, device_missing=True)["show"])
+        with patch("app.web_push.utcnow", return_value=now + timedelta(days=15)):
+            self.assertTrue(claim_web_push_opt_in_prompt(player.id, device_missing=True)["show"])
+        with session_scope() as db:
+            user = db.get(User, player.id)
+            self.assertFalse(user.game_invite_push_enabled or user.daily_reminder_push_enabled or user.release_push_enabled)
+            self.assertEqual(db.query(WebPushSubscription).count(), 0)
+
+    def test_missing_device_prompt_requires_active_account_and_available_push(self) -> None:
+        player = create_user("MissingPromptInactive", "a-secure-password-123", must_change_password=False)
+        with session_scope() as db:
+            db.get(User, player.id).is_active = False
+        self.assertFalse(claim_web_push_opt_in_prompt(player.id, device_missing=True)["show"])
+        with session_scope() as db:
+            self.assertIsNone(db.get(User, player.id).push_opt_in_prompted_at)
+            db.get(User, player.id).is_active = True
+        with patch("app.web_push.web_push_available", return_value=False):
+            self.assertFalse(claim_web_push_opt_in_prompt(player.id, device_missing=True)["show"])
+        with session_scope() as db:
+            self.assertIsNone(db.get(User, player.id).push_opt_in_prompted_at)
+
+    def test_prompt_device_hint_endpoint_binds_cookie_account_csrf_and_optional_body(self) -> None:
+        player = create_user("PromptBodyOwner", "a-secure-password-123", must_change_password=False)
+        other = create_user("PromptBodyOther", "a-secure-password-123", must_change_password=False)
+        identity, token = login(request_for(token="none", csrf="none"), player.username, "a-secure-password-123")
+        other_identity, other_token = login(request_for(token="none", csrf="none"), other.username, "a-secure-password-123")
+        save_web_push_subscription(user_id=player.id, payload=self.subscription(), product_context="zdwa")
+        update_web_push_preferences(player.id, WebPushPreferencesRequest(
+            game_invites_enabled=True, daily_reminder_enabled=False, release_notifications_enabled=True,
+        ))
+        with session_scope() as db:
+            db.get(User, player.id).push_opt_in_prompted_at = None
+        origin = "https://hausdepp.zockdiewandan.online"
+        headers = {"Cookie": f"rollthedice_session={token}", "Origin": origin,
+                   "X-CSRF-Token": identity.csrf_token, "X-Push-Expected-Account-Id": str(player.id)}
+        client = TestClient(main.app, base_url=origin)
+        try:
+            for body in (None, {}, {"device_missing": False}):
+                response = client.post("/api/web-push/opt-in-prompt", headers=headers, json=body)
+                self.assertEqual(response.status_code, 200, response.text)
+                self.assertEqual(response.json(), {"show": False, "interval_days": 14})
+                self.assertEqual(response.headers["Cache-Control"], "no-store")
+            denied_headers = [
+                ({**headers, "Cookie": "rollthedice_session=missing"}, 401),
+                ({**headers, "X-CSRF-Token": "wrong"}, 403),
+                ({**headers, "Origin": "https://untrusted.invalid"}, 403),
+                ({**headers, "Cookie": f"rollthedice_session={other_token}",
+                  "X-CSRF-Token": other_identity.csrf_token}, 409),
+                (list(headers.items()) + [("X-Push-Expected-Account-Id", str(player.id))], 409),
+            ]
+            for request_headers, expected in denied_headers:
+                response = client.post("/api/web-push/opt-in-prompt", headers=request_headers, json={"device_missing": True})
+                self.assertEqual(response.status_code, expected, response.text)
+                self.assertEqual(response.headers["Cache-Control"], "no-store")
+            response = client.post("/api/web-push/opt-in-prompt", headers=headers, json={"device_missing": "true"})
+            self.assertEqual(response.status_code, 422, response.text)
+            with session_scope() as db:
+                self.assertIsNone(db.get(User, player.id).push_opt_in_prompted_at)
+                self.assertIsNone(db.get(User, other.id).push_opt_in_prompted_at)
+            response = client.post("/api/web-push/opt-in-prompt", headers=headers, json={"device_missing": True})
+            self.assertEqual(response.status_code, 200, response.text)
+            self.assertEqual(response.json(), {"show": True, "interval_days": 14})
+            self.assertEqual(response.headers["Cache-Control"], "no-store")
+            with session_scope() as db:
+                self.assertIsNotNone(db.get(User, player.id).push_opt_in_prompted_at)
+                self.assertIsNone(db.get(User, other.id).push_opt_in_prompted_at)
+        finally:
+            client.close()
 
     def test_only_opted_in_unseated_accounts_receive_a_public_room_invitation(self) -> None:
         seated = create_user("Seated", "a-secure-password-123", must_change_password=False)

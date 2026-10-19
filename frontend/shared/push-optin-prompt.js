@@ -7,6 +7,7 @@ const PROMPT_DELAY_MS = 1_500;
 const DIALOG_RETRY_MS = 2_000;
 
 function settingsUrl(context) {
+  if (context === "hausdepp") return "/hausdepp/konto/einstellungen#hausdeppPushSettings";
   const path = context === "zilch" ? zilchPath("/konto") : zdwaPath("/konto");
   const url = new URL(path, window.location.origin);
   url.searchParams.set("push", "1");
@@ -15,6 +16,7 @@ function settingsUrl(context) {
 }
 
 function visibleModalIsOpen() {
+  if (window.ZDWA_PWA_INSTALL_BUSY || document.querySelector("[data-pwa-install-hint]")) return true;
   return Array.from(document.querySelectorAll('dialog[open], [role="dialog"][aria-modal="true"]'))
     .some(element => element.getClientRects().length > 0);
 }
@@ -29,7 +31,7 @@ function visibleModalIsOpen() {
 export function initializePushOptInPrompt({ context = "zdwa" } = {}) {
   if (window.ZDWA_PUSH_OPT_IN_PROMPT) return window.ZDWA_PUSH_OPT_IN_PROMPT;
   const state = {
-    context: context === "zilch" ? "zilch" : "zdwa",
+    context: ["zilch", "hausdepp"].includes(context) ? context : "zdwa",
     timer: null,
     inFlight: false,
     promptedUserId: null,
@@ -89,16 +91,24 @@ export function initializePushOptInPrompt({ context = "zdwa" } = {}) {
       const userId = auth?.authenticated ? auth.user?.id : null;
       if (!userId || state.promptedUserId === userId || Notification.permission === "denied") return;
       const status = await getGameInvitePushStatus();
-      if (!status.available || !status.browser_supported || status.enabled === true || status.permission === "denied") return;
+      if (!status.available || !status.browser_supported || status.device_check_failed
+          || (status.enabled === true && status.device_subscribed === true) || status.permission === "denied") return;
+      if (status.viewer_id != null && status.viewer_id !== userId) return;
       // The one-time design question goes first; claiming now could spend the
       // invitation on a dialog that then has to wait behind it.
       if (visibleModalIsOpen() || window.ZDWA_DESIGN_PROMPT?.busy?.()) {
         schedule(DIALOG_RETRY_MS);
         return;
       }
-      const response = await apiFetch("/api/web-push/opt-in-prompt", { method: "POST" });
+      const response = await apiFetch("/api/web-push/opt-in-prompt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Push-Expected-Account-Id": String(userId) },
+        body: JSON.stringify({ device_missing: status.device_subscribed !== true }),
+      });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok || payload.show !== true || document.hidden) return;
+      const current = await loadAuth();
+      if (!current?.authenticated || current.user?.id !== userId) return;
       await showPrompt(status, userId);
     } catch (_) {
       // Push must never disrupt a lobby.  A later lobby visit may retry.
