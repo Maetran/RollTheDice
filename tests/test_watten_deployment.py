@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import subprocess
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -111,11 +112,15 @@ curl() {
             "TLS_FAILURES": "0", "PUBLIC_FAIL": "0", "CLOSED_STATUS": "503",
             "CACHE_POLICY": "no-store", "COOKIE_PRESENT": "0", "EXISTING_FAIL": "0",
         }
-        return subprocess.run(
-            ["bash", "-s"], input=doubles + (BASE / "scripts/activate_watten.sh").read_text(),
-            cwd=BASE, text=True, capture_output=True, timeout=10,
-            env={**os.environ, **defaults, **flags},
-        )
+        # A regular-file stdin avoids a Darwin pipe deadlock while Bash emits
+        # output before subprocess.communicate() finishes sending the script.
+        with tempfile.TemporaryFile(mode="w+", encoding="utf-8") as script:
+            script.write(doubles + (BASE / "scripts/activate_watten.sh").read_text())
+            script.seek(0)
+            return subprocess.run(
+                ["bash", "-s"], stdin=script, cwd=BASE, text=True, capture_output=True, timeout=10,
+                env={**os.environ, **defaults, **flags},
+            )
 
     def test_dry_run_has_no_writes_certificate_requests_or_reloads(self):
         result = self.execute(APPLY="0")
