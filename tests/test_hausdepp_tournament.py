@@ -137,6 +137,34 @@ def test_first_dealer_is_random_and_the_deal_then_passes_clockwise(database):
     assert game["_hausdepp"]["peek_information"]["player_id"] == "p0"
 
 
+@pytest.mark.parametrize("stopper", ["bells-10", "bells-K"])
+def test_next_round_clears_previous_successful_and_private_cut_cards(database, stopper):
+    game = table(database, count=3, dealer=1)
+    cards = ["hearts-A", stopper]
+    deck = [card for card in make_deck() if card not in cards]
+    game["_hausdepp"] = new_round(game["_participants"], dealer_index=1, deck=[*deck, *reversed(cards)])
+    for _ in cards:
+        apply_hausdepp_command(game, "p0", {"action": "peek", "version": game["_hausdepp"]["version"]})
+    assert project_state(game["_hausdepp"], "p0")["private_peek"] == cards
+    assert game["_hausdepp"]["peek_information"]["success"] is (stopper == "bells-10")
+
+    finish_round(game)
+    version = game["_hausdepp"]["version"]
+    assert finalize_hausdepp_result(game)["result_persisted"]
+    start_next_round(game, "p0", version)
+
+    state = game["_hausdepp"]
+    assert state["peek_information"] == {
+        "player_id": "p1", "cards": [], "success": None, "complete": False,
+    }
+    for viewer in ("p0", "p1", "cpu-1", None):
+        projection = project_state(state, viewer)
+        assert projection["private_peek"] == []
+        assert projection["private_peek_in_stock"] == []
+        assert "cards" not in projection["peek"]
+        assert projection["peek_information"] == state["peek_information"]
+
+
 def test_next_round_requires_host_finished_persisted_round_and_fresh_version(database):
     game = table(database)
     with pytest.raises(HausdeppRuleError, match="hausdepp_tournament_round_not_finished"):

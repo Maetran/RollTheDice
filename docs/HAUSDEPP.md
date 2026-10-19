@@ -114,7 +114,11 @@ Stapels an. Das Anschauen, Weiterschauen nach einem Ass und Behalten bei Erfolg
 sind verpflichtend; es gibt kein Auslassen, Ablehnen oder vorzeitiges Aufhören.
 Der bestimmte Spieler hebt aktiv ab: Ein Tipp auf den verdeckten Stapel prüft
 eine Karte. Nach jedem Ass löst er das Weiterschauen mit einem weiteren Tipp
-aus. Ein Computer führt seine eigenen Abhebeaktionen aus.
+aus. Ass und Folgekarte erscheinen direkt am Stapel. Nach einem Fehlversuch
+bleiben alle angeschauten Karten drei Sekunden lang lesbar, auch bei reduzierter
+Bewegung. Die Tischhilfe öffnet sich nicht automatisch; ihre Abhebehistorie wird
+vor jeder neuen Turnierrunde vollständig geleert. Ein Computer führt seine
+eigenen Abhebeaktionen aus.
 
 1. Ist die unterste Karte eine **10**, erhält der Spieler diese eine Karte.
 2. Ist sie ein **Ass**, schaut der Spieler die nächste Karte darüber im
@@ -335,7 +339,7 @@ Erfolgreich abgehobene Karten fliegen für alle offen vom verdeckten Stapel in
 die Tischmitte. Dort steht gut eine Sekunde lang, wer sie bekommt („Liesl bekommt
 Ass · 10“), danach fliegen sie zu dieser Hand; erst dann wird ausgeteilt. Ein
 Computer wartet mit seinem ersten Zug, bis diese Vorführung vorbei ist. Bei
-reduzierter Bewegung bleibt nur die Beschriftung. Geben und Pflichtziehen zeigen
+reduzierter Bewegung bleiben die Karten samt Beschriftung kurz statisch sichtbar. Geben und Pflichtziehen zeigen
 den Weg vom verdeckten Stapel zur Hand. Beim
 Aufnehmen wandert das offene Paket zur Hand. Misslingt Zocken, geht zuerst die
 gezockte Karte vom verdeckten zum offenen Stapel und danach das ganze Paket zur

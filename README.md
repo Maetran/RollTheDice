@@ -380,6 +380,14 @@ gleichrangigen Karten für genau einen Wurf, ein Tipp nimmt einzelne wieder hera
 gegen Computer wie gegen Menschen; im Turnier gibt danach reihum der nächste
 Spieler im Uhrzeigersinn. Erfolglos angeschaute Karten bleiben für den
 Abhebenden direkt am Stapel sichtbar, solange sie noch darin liegen.
+Ass und Folgekarte erscheinen direkt am Stapel; nach einem Fehlversuch bleiben
+sie noch drei Sekunden lesbar. Die Abhebehistorie öffnet sich nur auf Wunsch in
+der Tischhilfe und wird vor jeder neuen Turnierrunde geleert.
+
+Aces and the following card appear directly at the deck; an unsuccessful
+sequence stays readable for three seconds. Cut history opens only on request
+in table help and is cleared before each new tournament round.
+
 Vor dem aktiven Abheben zeigt eine kurze einmalige Mischanimation die
 Kartenrückseiten. Neuladen und Wiederverbinden wiederholen sie nicht; sie
 sperrt keine Aktion und entfällt bei reduzierter Bewegung. Das Austeilen wird

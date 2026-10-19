@@ -2371,5 +2371,12 @@
     "date": "2026-10-19",
     "bump": "patch",
     "summary": "Die Lobby bietet Push gerätebezogen alle 14 Tage und die App-Installation je Produktversion an. / The lobby offers device-aware Push every 14 days and app installation for each product version."
+  },
+  {
+    "version": "3.16.4",
+    "revision": "c520a1344ca760b9475c87570de5deac2137e31f",
+    "date": "2026-10-19",
+    "bump": "patch",
+    "summary": "Tippflächen bleiben nach dem Drehen des Smartphones an der sichtbaren Position. / Touch targets stay aligned with their visible position after rotating a phone."
   }
 ]

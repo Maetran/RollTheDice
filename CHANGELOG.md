@@ -23,6 +23,28 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 3.16.5 — Abheben klar verfolgen / Follow the cut clearly — 2026-10-19
+
+Abhebekarten bleiben lesbar, ohne alte Hinweise in neue Turnierrunden mitzunehmen.
+Cut cards stay readable without carrying old hints into new tournament rounds.
+
+### HAUSDEPP
+
+**Deutsch:** Ass und Folgekarte erscheinen direkt am Stapel. Nach einem
+Fehlversuch bleiben die angeschauten Karten drei Sekunden lang sichtbar, auch
+bei reduzierter Bewegung. Die Abhebehistorie liegt in der Tischhilfe und öffnet
+sich nur auf Wunsch. Neue Turnierrunden leeren alte Karten vollständig; Neuladen
+wiederholt keine abgelaufene Vorschau. Erfolgreich abgehobene Karten werden
+weiterhin allen kurz gezeigt. Nach einem Ass deckt ein weiterer Tipp auf den
+Stapel die nächste Karte auf.
+
+**English:** Aces and the following card appear directly at the deck. After an
+unsuccessful cut, inspected cards stay visible for three seconds, including
+with reduced motion. Cut history stays in table help and opens on request.
+New tournament rounds clear old cards completely; reloading does not replay
+an expired preview. Successful cuts are still briefly shown to everyone.
+After an ace, another tap on the deck reveals the next card.
+
 ## 3.16.4 — Treffende Tippflächen nach dem Drehen / Aligned touch targets after rotation — 2026-10-19
 
 **Deutsch:** ZDWA, Zilch und Hausdepp vermeiden eine auf iOS anfällige Fixierung
