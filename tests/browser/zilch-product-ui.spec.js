@@ -1146,6 +1146,11 @@ test("private Zilch awards use server projections and acknowledge a sequential a
     await expect(page.locator('[aria-labelledby="zilchAbandonmentStatisticsTitle"]')).toContainText("Abgebrochene Partien");
 
     await page.goto("/zilch/konto#achievements");
+    // The account tab can render before private-game discovery finishes its
+    // fresh identity read. Finish that refresh before changing the language,
+    // so its older preference cannot cancel the switcher's pending write.
+    await expect(page.getByRole("tab", { name: "Erfolge" })).toHaveAttribute("aria-selected", "true");
+    await page.evaluate(() => window.ZDWA_APP_MODE.refresh());
     await Promise.all([
       page.waitForNavigation({ waitUntil: "domcontentloaded" }),
       page.locator("[data-language-switcher]").selectOption("en"),
