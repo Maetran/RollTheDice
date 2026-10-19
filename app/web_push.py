@@ -102,6 +102,11 @@ class WebPushSubscriptionRequest(BaseModel):
     product_context: Literal["zdwa", "zilch", "hausdepp", "watten"] | None = None
 
 
+class WebPushOptInPromptRequest(BaseModel):
+    # This only requests a settings reminder, never registration or consent.
+    device_missing: bool = Field(default=False, strict=True)
+
+
 class WebPushPreferencesRequest(BaseModel):
     game_invites_enabled: bool
     daily_reminder_enabled: bool
@@ -389,12 +394,14 @@ def remove_web_push_subscriptions(user_id: int) -> dict[str, object]:
     return web_push_subscription_status(user_id)
 
 
-def claim_web_push_opt_in_prompt(user_id: int) -> dict[str, object]:
+def claim_web_push_opt_in_prompt(user_id: int, *, device_missing: bool = False) -> dict[str, object]:
     """Atomically reserve the optional lobby Push invitation for 14 days.
 
-    A prompt never requests browser permission by itself and is shown only to
-    active accounts with *no* enabled Push category.  The compare-and-set
-    update makes parallel ZDWA/Zilch tabs share one account-wide cooldown.
+    A client may ask about its missing device even when another device is
+    active. This declaration only reserves the account's settings reminder;
+    it cannot register a device, enable a category or authorize delivery.
+    Legacy callers still require no effective Push. All callers share the
+    same compare-and-set account-wide cooldown.
     """
     if not web_push_available():
         return {"show": False, "interval_days": PUSH_OPT_IN_PROMPT_INTERVAL.days}
@@ -416,7 +423,7 @@ def claim_web_push_opt_in_prompt(user_id: int) -> dict[str, object]:
             .where(
                 User.id == user_id,
                 User.is_active.is_(True),
-                no_effective_push,
+                True if device_missing else no_effective_push,
                 or_(User.push_opt_in_prompted_at.is_(None), User.push_opt_in_prompted_at <= cutoff),
             )
             .values(push_opt_in_prompted_at=now, updated_at=now)

@@ -2826,6 +2826,7 @@ export const EN = {
     "Eine neue Version ist verfügbar.": "A new version is available.",
     "Jetzt aktualisieren": "Update now",
     "ZDWA kann als App installiert werden.": "ZDWA can be installed as an app.",
+    "Spiel direkt vom Home-Bildschirm öffnen? Tippe auf „Teilen“ und dann auf „Zum Home-Bildschirm“.": "Open the game directly from your Home Screen? Tap “Share”, then “Add to Home Screen”.",
     "Die App kann installiert werden.": "The app can be installed.",
     "Installieren": "Install",
     "ZDWA wurde installiert.": "ZDWA was installed.",

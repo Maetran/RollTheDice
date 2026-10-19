@@ -1007,6 +1007,38 @@ Spielaktivität, mit ihren bestehenden separaten Flood-Limits.
 Es gibt keinen öffentlichen Trigger-Endpunkt für den Scheduler. In Tests Versand
 und Uhrzeit mocken, niemals einen Test-Batch gegen produktive Empfänger starten.
 
+### Periodische Push- und Installationshinweise
+
+ZDWA, Zilch und Hausdepp initialisieren den gemeinsamen Push-Hinweis nur in
+der Lobby. Aktuelle Geräte mit mindestens einer aktivierten Kategorie bleiben
+ruhig; ein fehlendes Gerät darf trotz Abos auf anderen Geräten nachfragen.
+`POST /api/web-push/opt-in-prompt` akzeptiert optional `{"device_missing": true}`
+und `X-Push-Expected-Account-Id`. Die Geräteangabe reserviert ausschliesslich
+den eigenen Dialog. Sie registriert kein Abo und aktiviert keine Kategorie.
+Anmeldung, CSRF, aktives Konto und der atomare kontoweite 14-Tage-Abstand gelten
+weiterhin. Legacy-Aufrufe ohne Angabe behalten ihre bisherige Auswahl.
+Browserberechtigung `denied` und fehlgeschlagene Geräteprüfungen bleiben still.
+
+Die PWA-Hinweise vergleichen die Produktversion aus `app/version.json`, die
+beim Static-Build in den gemeinsamen Shellcode eingebettet wird. Nach jeder
+Versionsänderung `npm run build:static` ausführen. Ein neuer Release darf die
+Installationsfrage erneut anbieten; innerhalb derselben Version pausiert
+Schliessen oder native Ablehnung für sieben Tage. Installierte Appfenster und
+bekannte Installationen derselben Version werden ausgenommen. Ohne natives
+Installationsereignis gibt es auf iPhone/iPad einen manuellen Hinweis gemäss
+[Apple](https://support.apple.com/guide/iphone/iphea86e5236/ios). Die native
+Abfrage benötigt weiter einen Klick; siehe [MDN](https://developer.mozilla.org/en-US/docs/Web/API/Window/beforeinstallprompt_event).
+Hinweise erscheinen nur in Lobbys, warten auf offene Dialoge und überlagern
+weder einander noch die native Installationsabfrage. Installationsstatus ist
+browserabhängig; eine Deinstallation ist nicht überall direkt erkennbar.
+
+All three public games use the same14-day account-wide Push invitation cadence.
+A missing current device may be invited even when another device is active.
+The prompt is consent-neutral. Installation offers use the product version,
+respect the seven-day same-release snooze and offer manual iOS instructions.
+Neither offer interrupts a table or another dialog. Build static assets after
+bumping the product version.
+
 ### Geräteanmeldung und Abgleich
 
 `GET /api/web-push/subscription` liefert kontoweite Kategorien und `viewer_id`;

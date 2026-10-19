@@ -23,6 +23,32 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 3.16.3 — Push und App wieder anbieten / Renew Push and app offers — 2026-10-19
+
+**Deutsch:** Die Lobby erinnert wieder passend an Push und die App-Installation.
+
+- **ALLGEMEIN:** Push darf auf einem noch nicht angemeldeten Gerät auch dann
+  nachfragen, wenn ein anderes Gerät bereits aktiv ist. Der gemeinsame Abstand
+  bleibt 14 Tage. PWA-Installhinweise verwenden die Produktversion, pausieren nach
+  Schliessen für sieben Tage und warten auf andere Dialoge. Auf iPhone/iPad
+  erklärt ein Hinweis die Installation über Teilen → Zum Home-Bildschirm.
+- **HAUSDEPP:** Die bisher fehlende periodische Push-Nachfrage führt jetzt
+  direkt zu den eigenen Benachrichtigungseinstellungen.
+- **ZDWA / ZILCH:** Auch hier unterdrückt ein anderes aktives Gerät die
+  Nachfrage nicht mehr. Installations- und Push-Hinweise erscheinen nur in der
+  Lobby und nicht gleichzeitig.
+
+**English:** The lobby again offers Push and app installation when useful.
+
+- **GENERAL:** A missing device may be invited to enable Push even when another
+  device is active. The shared interval remains 14 days. Installation offers use
+  the product version, snooze for seven days after dismissal and wait for other
+  dialogs. An iPhone/iPad hint explains Share → Add to Home Screen.
+- **HAUSDEPP:** The previously missing recurring Push invitation now opens its
+  own notification settings directly.
+- **ZDWA / ZILCH:** Another active device no longer suppresses the invitation.
+  Installation and Push offers stay in the lobby and do not overlap.
+
 ## 3.16.2 — Verlässlicher Push-Status / Reliable push status — 2026-10-19
 
 **Deutsch:** Push zeigt jetzt, ob dieses Gerät tatsächlich angemeldet ist.

@@ -2357,5 +2357,12 @@
     "date": "2026-10-19",
     "bump": "patch",
     "summary": "Hausdepp bindet schnelle Kartentipps an die beim Aufsetzen spielbare Karte. / Hausdepp binds rapid card taps to the card playable at touch-down."
+  },
+  {
+    "version": "3.16.2",
+    "revision": "4d3e30fe5b69606fb56e52951d091ce69e3ebc71",
+    "date": "2026-10-19",
+    "bump": "patch",
+    "summary": "Push prüft die Anmeldung des tatsächlichen Geräts und bewahrt die Spiel- und Kontozuordnung. / Push checks the actual device registration and preserves its game and account binding."
   }
 ]

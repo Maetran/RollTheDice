@@ -1,10 +1,10 @@
 {
-  "version": "3.16.2",
+  "version": "3.16.3",
   "bump": "patch",
   "date": "2026-10-19",
-  "previous_revision": "aa47a959ed22de57c72f3d7f5edb8303b1d701cc",
+  "previous_revision": "4d3e30fe5b69606fb56e52951d091ce69e3ebc71",
   "summary": {
-    "de": "Push prüft die Anmeldung des tatsächlichen Geräts und bewahrt die Spiel- und Kontozuordnung.",
-    "en": "Push checks the actual device registration and preserves its game and account binding."
+    "de": "Die Lobby bietet Push gerätebezogen alle 14 Tage und die App-Installation je Produktversion an.",
+    "en": "The lobby offers device-aware Push every 14 days and app installation for each product version."
   }
 }

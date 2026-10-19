@@ -80,6 +80,7 @@ from .passkeys import passkey_public_config
 from .product_hosts import is_hausdepp_host, is_zilch_host
 from .security import normalize_email_address, utcnow
 from .web_push import (
+    WebPushOptInPromptRequest,
     WebPushPreferencesRequest,
     WebPushSubscriptionRequest,
     check_web_push_subscription,
@@ -749,15 +750,21 @@ def web_push_subscription_delete(request: Request):
 
 
 @router.post("/web-push/opt-in-prompt")
-def web_push_opt_in_prompt_post(request: Request, response: Response):
+def web_push_opt_in_prompt_post(request: Request, response: Response, payload: WebPushOptInPromptRequest | None = None):
     """Claim the gentle lobby prompt; browser permission remains client-side."""
-    identity = require_user(request)
-    require_csrf(request, identity)
     response.headers["Cache-Control"] = "no-store"
     try:
-        return claim_web_push_opt_in_prompt(identity.user_id)
+        identity = require_user(request)
+        expected = request.headers.getlist("X-Push-Expected-Account-Id")
+        if expected and (len(expected) != 1 or expected[0] != str(identity.user_id)):
+            raise HTTPException(status_code=409, detail="web_push_account_changed", headers={"Cache-Control": "no-store"})
+        require_csrf(request, identity)
+        return claim_web_push_opt_in_prompt(identity.user_id, device_missing=bool(payload and payload.device_missing))
     except LookupError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except HTTPException as exc:
+        exc.headers = {**(exc.headers or {}), "Cache-Control": "no-store"}
+        raise
 
 
 @router.put("/web-push/preferences")

@@ -1839,9 +1839,10 @@ selection membership, room access and account status are rechecked at delivery.
 Push is optional. Register each device from account settings and grant browser
 permission. Registering a device only prepares it; invitations, reminders and
 app update alerts are separate switches and **all start off** until the player
-chooses them. In a supported lobby, a signed-in account with no enabled Push
-category may see a friendly invitation to review the settings at most once per
-14 days. It never opens the system permission sheet on its own: only the
+chooses them. In ZDWA, Zilch and Hausdepp lobbies, a signed-in player with no ready Push
+device or no enabled category may see a friendly invitation to review the
+settings at most once per 14 days across the account. An active subscription
+on another device does not hide this device’s missing registration. It never opens the system permission sheet on its own: only the
 player's explicit **Allow push on this device** click does that, then the player
 chooses the categories. The account-wide off switch removes every stored device
 subscription, even when used from a browser that cannot itself receive push.
@@ -1859,6 +1860,24 @@ Use **Enable push on this device** to repair a missing or stale registration
 without changing category choices. Reading status neither registers a device
 nor reverses an opt-out. Identical registration requests preserve pending
 release deliveries; actual key or account changes invalidate old snapshots.
+
+**Regelmässige Hinweise / recurring offers:** Push fragt höchstens alle 14 Tage
+kontoweit nach, wenn auf diesem Gerät Push fehlt oder keine Kategorie gewählt
+ist. Das gilt auch in Hausdepp. Ein im Browser ausdrücklich blockiertes Push
+bleibt ohne automatische Nachfrage. Die Installation wird je Produktversion
+neu angeboten, sofern diese App noch nicht als installiert erkannt ist:
+mit der nativen Browserfunktion oder auf iPhone/iPad als Hinweis auf
+Teilen → Zum Home-Bildschirm. Schliessen pausiert die Installation für sieben
+Tage innerhalb derselben Version. Beide Hinweise bleiben auf die Lobby
+beschränkt und warten aufeinander sowie auf andere Dialoge.
+
+Push uses a shared 14-day account cooldown when the current device is missing
+or no category is enabled. Browser-blocked permission stays quiet. Installation
+is offered again for a new product version, using the native browser flow or
+an iPhone/iPad Home Screen hint. Dismissal snoozes the same release for seven
+days. Known installed apps stay quiet; lobby-only offers do not overlap with
+other dialogs or one another. After bumping a version, rebuild the static
+assets so the PWA offer includes the current product version.
 
 The invitation is deliberately useful rather than generic: **player calls**
 make it easy to join a public room with a free seat. A player can restrict those
