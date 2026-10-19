@@ -257,6 +257,51 @@ test('the fixed table keeps chat above the keyboard and recovers its full window
   }
 });
 
+for (const browserName of ['chromium', 'webkit']) {
+  const rotationTest = test.extend({ browser: [async ({ playwright }, use) => {
+    const browser = await playwright[browserName].launch();
+    try { await use(browser); } finally { await browser.close(); }
+  }, { scope: 'worker' }] });
+  rotationTest.describe(`Hausdepp ${browserName} mobile rotation hit targets`, () => {
+    rotationTest.use({ hasTouch: true, isMobile: true, deviceScaleFactor: 3,
+      viewport: { width: 440, height: 956 }, reducedMotion: 'reduce' });
+
+    rotationTest('iPhone portrait return plays the card tapped at its painted position', async ({ page }) => {
+      const portrait = { width: 440, height: 956 };
+      const fixture = await labelledTable(page, { viewport: portrait });
+      for (let turn = 0; turn < 3; turn += 1) {
+        for (const viewport of [{ width: 956, height: 440 }, portrait]) {
+          await page.setViewportSize(viewport);
+          await page.evaluate(() => {
+            window.dispatchEvent(new Event('orientationchange'));
+            screen.orientation?.dispatchEvent(new Event('change'));
+          });
+          await expect.poll(() => page.locator('#hausdeppHand').evaluate(element => {
+            const rect = element.getBoundingClientRect();
+            return rect.top >= 0 && rect.bottom <= innerHeight + 1;
+          })).toBe(true);
+          await expectFixedGameWindow(page, `${browserName} ${viewport.width}×${viewport.height} rotation ${turn + 1}`);
+        }
+      }
+      // Safari's compatibility mouse click may follow a touch pointer with a
+      // different ID. Two native touch pointers must still never share a tap.
+      await page.locator('#hausdeppHand [data-card-id="bells-U"]').evaluate(button => {
+        for (const [type, pointerId] of [['pointerdown', 7], ['pointerup', 7], ['click', 8]]) {
+          button.dispatchEvent(new PointerEvent(type, { bubbles: true, pointerType: 'touch', pointerId,
+            button: 0, detail: type === 'click' ? 1 : 0 }));
+        }
+      });
+      const card = page.locator('#hausdeppHand [data-card-id="hearts-6"]');
+      await expect(card).toBeEnabled();
+      const box = await card.boundingBox();
+      expect(box).not.toBeNull();
+      await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+      await expect.poll(() => fixture.commands.filter(command => command.action === 'hausdepp_play'))
+        .toEqual([expect.objectContaining({ action: 'hausdepp_play', cards: ['hearts-6'], version: fixture.board._hausdepp.version })]);
+    });
+  });
+}
+
 for (const language of ['de', 'en']) {
   test(`${language}: navigation buttons keep real destinations and opaque touch surfaces`, async ({ page }) => {
     test.setTimeout(60000);

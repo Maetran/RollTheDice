@@ -1,10 +1,10 @@
 {
-  "version": "3.16.3",
+  "version": "3.16.4",
   "bump": "patch",
   "date": "2026-10-19",
-  "previous_revision": "4d3e30fe5b69606fb56e52951d091ce69e3ebc71",
+  "previous_revision": "35656c5b783c71b38c1c56a4084be5c237539182",
   "summary": {
-    "de": "Die Lobby bietet Push gerätebezogen alle 14 Tage und die App-Installation je Produktversion an.",
-    "en": "The lobby offers device-aware Push every 14 days and app installation for each product version."
+    "de": "Tippflächen bleiben nach dem Drehen des Smartphones an der sichtbaren Position.",
+    "en": "Touch targets stay aligned with their visible position after rotating a phone."
   }
 }

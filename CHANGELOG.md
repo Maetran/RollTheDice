@@ -23,6 +23,28 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 3.16.4 — Treffende Tippflächen nach dem Drehen / Aligned touch targets after rotation — 2026-10-19
+
+**Deutsch:** ZDWA, Zilch und Hausdepp vermeiden eine auf iOS anfällige Fixierung
+der gesamten Spielseite, die nach dem Drehen sichtbare Elemente und Tippflächen
+gegeneinander verschieben kann. Ein verschobener Seitenursprung wird ausserhalb
+von Texteingabe und Zoom zurückgesetzt; interne Spiel- und Chatansichten behalten
+ihre Scrollposition. Wiederholte Drehungen mit echten Koordinaten-Tipps auf
+Spielaktionen werden in Chromium und WebKit geprüft, ebenso Wattens normaler
+Seitenfluss. Stiller Bugfix ohne Push oder In-App-Versionsmeldung.
+Hausdepp akzeptiert ausserdem Safaris aus einem Touch erzeugten Mausklick trotz
+abweichender Zeiger-ID; Kartenidentität und Schutz vor veralteten Tipps bleiben
+geprüft.
+
+**English:** ZDWA, Zilch and Hausdepp avoid a fixed page root that can separate
+painted controls from their touch targets on iOS after rotation. Displaced page
+origins recover outside text entry and zoom; internal game and chat views keep
+their scroll position. Repeated rotations with coordinate taps on game actions
+are covered in Chromium and WebKit, along with Watten's normal document flow.
+Silent bugfix without Push or an in-app release notice.
+Hausdepp also accepts Safari's mouse click synthesized from a touch with a
+different pointer ID, retaining card identity and stale-tap guards.
+
 ## 3.16.3 — Push und App wieder anbieten / Renew Push and app offers — 2026-10-19
 
 **Deutsch:** Die Lobby erinnert wieder passend an Push und die App-Installation.

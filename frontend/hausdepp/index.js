@@ -640,7 +640,7 @@ function renderTableShell() {
     const button = event.target.closest("button[data-card-id]");
     // A server update can enable or move cards before touch release. The
     // eventual click belongs only to the card that was usable at touch-down.
-    pointerTap = { pointerId: event.pointerId, card: button?.dataset.cardId,
+    pointerTap = { pointerId: event.pointerId, pointerType: event.pointerType, card: button?.dataset.cardId,
       enabled: !!button && !button.disabled && event.button === 0, selecting: handSelection.selection.enabled };
     endHold();
     suppressClick = false;
@@ -679,7 +679,10 @@ function renderTableShell() {
     // Keyboard and assistive activation have no pointer gesture. Touch/mouse
     // clicks must not inherit a newly enabled card or a replacement target.
     if ((event.pointerType || event.detail > 0) && (!tap?.enabled || tap.card !== card ||
-      (event.pointerId > 0 && event.pointerId !== tap.pointerId) || tap.selecting !== handSelection.selection.enabled)) return;
+      // WebKit can synthesize a mouse click with a different ID after touch-up.
+      // IDs identify a gesture only within the same pointer type.
+      (event.pointerType === tap.pointerType && event.pointerId > 0 && event.pointerId !== tap.pointerId) ||
+      tap.selecting !== handSelection.selection.enabled)) return;
     if (handSelection.selection.enabled) {
       if (card && handSelection.selection.select(card)) renderState();
       return;

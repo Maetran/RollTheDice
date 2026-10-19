@@ -1603,6 +1603,11 @@ Spielerwechsel und neu hochgeladene Profilbilder werden weiterhin angezeigt.
 Nach dem Drehen zwischen Hoch- und Querformat bleiben Header, Spielzettel und
 Chat an ihren sichtbaren Tippflächen. Die Tastatur kann den Chat weiterhin
 verkleinern; ein begonnener Text bleibt beim Drehen erhalten.
+ZDWA, Zilch und Hausdepp vermeiden dabei eine auf iOS anfällige Fixierung der
+gesamten Seite. Würfel, Spielzettel und Karten bleiben auch nach mehrmaligem
+Drehen direkt an ihrer sichtbaren Position bedienbar.
+Hausdepp erkennt auch von Safari aus Touch erzeugte Mausklicks korrekt als
+denselben Karten-Tipp.
 Mobile spectator chat keeps the input reachable with the keyboard open and
 shows spectators with their profile picture. Tablet score sheets use the
 available space without clipping the controls.
@@ -1622,6 +1627,11 @@ still appear.
 After rotating between portrait and landscape, headers, score sheets and chat
 remain aligned with their visible touch targets. The keyboard can still resize
 the chat, and drafts survive rotation.
+ZDWA, Zilch and Hausdepp avoid a fixed page root that can displace touch targets
+on iOS. Dice, score cells and cards remain usable at their visible positions
+after repeated rotations.
+Hausdepp also recognizes Safari's mouse clicks synthesized from touch as the
+same card tap.
 
 Unter **Spieler & Ranking → Neueste Erfolge** zeigt jedes Spiel die jüngsten
 Freischaltungen der Community mit Spieler, Zeitpunkt und Schwierigkeit, fest
