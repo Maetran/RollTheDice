@@ -170,7 +170,8 @@ async function completeActivePeek(page, traffic, { expectMotion } = {}) {
       expect(traffic.state.peek.cards || []).toEqual([]);
       expect(traffic.state.hand).toEqual([]);
       expect(traffic.state.discard).toEqual([]);
-      await expect(page.locator('#hausdeppPeekContinue')).toBeVisible();
+      await expect(page.locator('#hausdeppCutPreview')).toBeVisible();
+      await expect(page.locator('#hausdeppStock')).toBeEnabled();
     }
   }
   await expect.poll(() => traffic.state?.phase, { timeout: 12000 }).toBe('playing');

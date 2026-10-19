@@ -1,23 +1,23 @@
 {
   "kind": "usability",
   "games": [
-    "zdwa",
-    "zilch",
     "hausdepp"
   ],
-  "summary_de": "Nach dem Drehen bleiben Würfel, Spielzettel und Karten direkt antippbar.",
-  "summary_en": "Dice, score cells and cards stay directly tappable after rotation.",
+  "summary_de": "Beim Abheben bleiben Ass und Folgekarte sichtbar. Alte Hinweise verschwinden vor der nächsten Turnierrunde.",
+  "summary_en": "Aces and the following card stay visible when cutting. Old hints clear before the next tournament round.",
   "player_notes": {
     "de": {
-      "title": "Sicher tippen nach dem Drehen",
+      "title": "Abheben besser verfolgen",
       "changes": [
-        "Würfel, Spielzettel und Karten bleiben nach dem Wechsel zwischen Hoch- und Querformat an ihrer sichtbaren Position bedienbar."
+        "Ass und Folgekarte erscheinen direkt am Stapel und bleiben nach einem Fehlversuch drei Sekunden lesbar.",
+        "Die Tischhilfe öffnet sich nur auf Wunsch. Alte Abhebekarten verschwinden vor der nächsten Turnierrunde."
       ]
     },
     "en": {
-      "title": "Accurate taps after rotation",
+      "title": "Follow the cut clearly",
       "changes": [
-        "Dice, score cells and cards remain usable at their visible positions after switching between portrait and landscape."
+        "Aces and the following card appear at the deck and stay readable for three seconds after an unsuccessful cut.",
+        "Table help opens on request. Old cut cards clear before the next tournament round."
       ]
     }
   }

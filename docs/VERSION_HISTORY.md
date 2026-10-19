@@ -1,6 +1,6 @@
 # Versionen / Versions
 
-Aktuelle gemeinsame Produktversion / Current shared product version: **3.16.4**.
+Aktuelle gemeinsame Produktversion / Current shared product version: **3.16.5**.
 
 ZDWA und Zilch werden gemeinsam versioniert. Major steht für einen großen
 Produktmeilenstein, Minor für neue Funktionen und Patch für Fehlerkorrekturen
@@ -27,6 +27,7 @@ Detailed player-facing descriptions are in the [changelog](../CHANGELOG.md).
 
 | Version | Datum / Date | Art / Type | Änderung / Change | Commit |
 | --- | --- | --- | --- | --- |
+| 3.16.4 | 2026-10-19 | patch | Tippflächen bleiben nach dem Drehen des Smartphones an der sichtbaren Position. / Touch targets stay aligned with their visible position after rotating a phone. | [c520a13](https://github.com/Maetran/RollTheDice/commit/c520a1344ca760b9475c87570de5deac2137e31f) |
 | 3.16.3 | 2026-10-19 | patch | Die Lobby bietet Push gerätebezogen alle 14 Tage und die App-Installation je Produktversion an. / The lobby offers device-aware Push every 14 days and app installation for each product version. | [35656c5](https://github.com/Maetran/RollTheDice/commit/35656c5b783c71b38c1c56a4084be5c237539182) |
 | 3.16.2 | 2026-10-19 | patch | Push prüft die Anmeldung des tatsächlichen Geräts und bewahrt die Spiel- und Kontozuordnung. / Push checks the actual device registration and preserves its game and account binding. | [4d3e30f](https://github.com/Maetran/RollTheDice/commit/4d3e30fe5b69606fb56e52951d091ce69e3ebc71) |
 | 3.16.1 | 2026-10-19 | patch | Hausdepp bindet schnelle Kartentipps an die beim Aufsetzen spielbare Karte. / Hausdepp binds rapid card taps to the card playable at touch-down. | [aa47a95](https://github.com/Maetran/RollTheDice/commit/aa47a959ed22de57c72f3d7f5edb8303b1d701cc) |

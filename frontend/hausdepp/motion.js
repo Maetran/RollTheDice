@@ -563,11 +563,36 @@ function revealPeek(state, { gameId, playerId, before, after, reducedMotion, pee
   };
   const captionFrames = [{ opacity: 0 }, { opacity: 1, offset: .12 }, { opacity: 1, offset: .9 }, { opacity: 0 }];
   if (reducedMotion || !document.body.animate) {
-    // Still say who received the cards, without any flight.
-    register(caption, caption.animate?.(captionFrames, { duration: 2600, fill: "both" })
-      || { finished: new Promise(resolve => setTimeout(resolve, 2600)) });
+    // The public information still needs faces when travel is disabled.
+    // Fit complete cards beside one another, with no movement or overlap.
+    presentationFor(gameId);
+    const hold = element => {
+      let finish;
+      const finished = new Promise(resolve => { finish = resolve; });
+      const timer = setTimeout(finish, total);
+      register(element, { finished, cancel() { clearTimeout(timer); finish(); } });
+    };
+    const gap = 6;
+    const faceWidth = Math.min(width * 1.08, (innerWidth - 16 - gap * (cards.length - 1)) / cards.length);
+    const faceHeight = faceWidth / CARD_RATIO;
+    const groupWidth = faceWidth * cards.length + gap * (cards.length - 1);
+    const left = Math.min(Math.max(centre.x - groupWidth / 2, 8), innerWidth - 8 - groupWidth);
+    const top = Math.min(Math.max(centre.y - faceHeight / 2, 8), innerHeight - 8 - faceHeight);
+    Object.assign(caption.style, { left: `${left + groupWidth / 2}px`, top: `${top + faceHeight + 8}px` });
+    hold(caption);
+    cards.forEach((card, index) => {
+      const face = document.createElement("div");
+      face.className = "hd-deal-card has-face";
+      face.setAttribute("aria-hidden", "true");
+      Object.assign(face.dataset, { motionType: "peek-reveal", target: `hand:${receiver}` });
+      face.innerHTML = cardArt(card);
+      Object.assign(face.style, { left: `${left + index * (faceWidth + gap)}px`, top: `${top}px`,
+        width: `${faceWidth}px`, height: `${faceHeight}px` });
+      document.body.append(face);
+      hold(face);
+    });
     stationaryReceipt(hand.element);
-    return 0;
+    return total;
   }
   register(caption, caption.animate(captionFrames, { duration: total, fill: "both" }));
   cards.forEach((card, index) => {

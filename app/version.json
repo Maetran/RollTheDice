@@ -1,10 +1,10 @@
 {
-  "version": "3.16.4",
+  "version": "3.16.5",
   "bump": "patch",
   "date": "2026-10-19",
-  "previous_revision": "35656c5b783c71b38c1c56a4084be5c237539182",
+  "previous_revision": "c520a1344ca760b9475c87570de5deac2137e31f",
   "summary": {
-    "de": "Tippflächen bleiben nach dem Drehen des Smartphones an der sichtbaren Position.",
-    "en": "Touch targets stay aligned with their visible position after rotating a phone."
+    "de": "Hausdepp zeigt Ass und Folgekarte lesbar am Stapel und leert alte Abhebehinweise vor der nächsten Turnierrunde.",
+    "en": "Hausdepp keeps aces and the following card readable at the deck and clears old cut history before the next tournament round."
   }
 }
