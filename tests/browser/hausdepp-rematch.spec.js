@@ -388,9 +388,10 @@ for (const language of ['de', 'en']) {
     const fixture = await setup(page, language);
     const account = await (await page.request.get('/api/hausdepp/account')).json();
     const revision = 9001;
+    account.history = { rounds: [{ game_id: 'visible-round-receipt' }] };
     const achievement = account.achievements.items[0];
     account.presentation = { pending: {
-      revision, points_earned: 2, achievement_ids: [achievement.id], rank_up: false,
+      revision, points_earned: 2 + achievement.points, achievement_ids: [achievement.id], rank_up: false,
     } };
     await page.addInitScript(() => Object.defineProperty(document, 'hidden', {
       configurable: true, get: () => window.__roundSummaryHidden !== false,
@@ -403,15 +404,21 @@ for (const language of ['de', 'en']) {
       return route.fulfill({ status: attempts === 1 ? 503 : 200, json: { acknowledged: attempts > 1 } });
     });
     const source = await finishedRenderer(page, fixture);
+    source.snapshot._hausdepp_round_summary = { round_id: 'visible-round-receipt', players: {
+      [source.snapshot._hausdepp.viewer_id]: { xp: 2 + achievement.points, round_xp: 2,
+        achievements: [{ id: achievement.id, points: achievement.points, name: achievement.name }] },
+    } };
+    // Hydrate a complete authoritative round summary; the account pending
+    // receipt happens to cover exactly this round, so it can be confirmed.
+    await page.reload();
     const notice = page.locator('#hausdeppRoundProgress');
     for (let visit = 0; visit < 2; visit++) {
       if (visit) await page.reload();
       await expect(notice).toBeVisible();
       await notice.scrollIntoViewIfNeeded();
       await expect(notice.locator('button, [role=alert]')).toHaveCount(0);
-      await expect(notice.locator('.hd-notice-reward')).toContainText(language === 'de' ? '+2 EP' : '+2 XP');
-      await notice.locator('summary').click();
-      await expect(notice.locator('li')).toContainText(achievement.name[language]);
+      await expect(notice.locator('.hd-round-earned')).toContainText(`+${2 + achievement.points} ${language === 'de' ? 'EP' : 'XP'}`);
+      await expect(page.locator('.hd-result-places')).toContainText(achievement.name[language]);
       // Background tabs do not confirm a summary that has not been shown.
       expect(attempts).toBe(visit);
       await page.evaluate(() => {
@@ -422,7 +429,7 @@ for (const language of ['de', 'en']) {
       // Neither a failed receipt nor its retry removes the points or adds UI.
       await expect(notice).toBeVisible();
       await expect(notice.locator('button, [role=alert]')).toHaveCount(0);
-      await expect(notice.locator('.hd-notice-reward')).toContainText(language === 'de' ? '+2 EP' : '+2 XP');
+      await expect(notice.locator('.hd-round-earned')).toContainText(`+${2 + achievement.points} ${language === 'de' ? 'EP' : 'XP'}`);
     }
     await expect(page).toHaveURL(new RegExp(`/hausdepp/spiel/${source.id}$`));
     await expect(page.locator('#hausdeppRecreate')).toBeVisible();

@@ -3,21 +3,21 @@
   "games": [
     "hausdepp"
   ],
-  "summary_de": "Beim Abheben bleiben Ass und Folgekarte sichtbar. Alte Hinweise verschwinden vor der nächsten Turnierrunde.",
-  "summary_en": "Aces and the following card stay visible when cutting. Old hints clear before the next tournament round.",
+  "summary_de": "Rundenende kompakter: Platzierungen, Runden-EP und Erfolge sowie dein konkreter Rangfortschritt.",
+  "summary_en": "A compact round result: finishing order, round XP and achievements, plus your actual rank progress.",
   "player_notes": {
     "de": {
-      "title": "Abheben besser verfolgen",
+      "title": "Deine Runde auf einen Blick",
       "changes": [
-        "Ass und Folgekarte erscheinen direkt am Stapel und bleiben nach einem Fehlversuch drei Sekunden lesbar.",
-        "Die Tischhilfe öffnet sich nur auf Wunsch. Alte Abhebekarten verschwinden vor der nächsten Turnierrunde."
+        "Platzierungen, Runden-EP und neue Erfolge ersetzen den grossen Glückwunschblock.",
+        "Dein aktueller Rang, Gesamt-EP und der Abstand zum nächsten Rang geben dem Fortschritt einen Kontext."
       ]
     },
     "en": {
-      "title": "Follow the cut clearly",
+      "title": "Your round at a glance",
       "changes": [
-        "Aces and the following card appear at the deck and stay readable for three seconds after an unsuccessful cut.",
-        "Table help opens on request. Old cut cards clear before the next tournament round."
+        "Finishing order, round XP and new achievements replace the large congratulations block.",
+        "Your current rank, total XP and distance to the next rank put progress in context."
       ]
     }
   }

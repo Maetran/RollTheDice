@@ -1104,7 +1104,7 @@ function renderState() {
     }
     $("hausdeppResult").dataset.roundId = roundKey;
     const title = snapshot._aborted ? t("tournamentStopped") : tournament?.completed ? `${t("tournamentComplete")}. ${t("tournamentLoser", { name: finalLoser?.name || "…" })}` : t("loser", { name: loser?.name || "…" });
-    $("hausdeppResult").innerHTML = `<h2>${esc(title)}</h2><p>${t(snapshot._aborted ? "tournamentStoppedHint" : tournament ? tournament.completed ? "tournamentCompleteHint" : "tournamentRoundHint" : "resultHint")}</p>${snapshot._aborted ? "" : roundPlacements(s, snapshot._hausdepp_round_summary)}${tournamentScoreboard(tournament, s.players)}<div class="hd-result-links">${tournament && !tournament.completed && !snapshot._aborted ? tournament.can_start_next_round ? `<button id="hausdeppNextRound" class="hd-primary" type="button" ${pending || tournamentEnding || !connected || snapshot._paused ? "disabled" : ""}>${t("startNextRound", { round: nonnegative(tournament.round_number) + 1 })} ${icon("arrow")}</button><button id="hausdeppEndTournament" class="hd-secondary" type="button" ${pending || tournamentEnding || !connected ? "disabled" : ""}>${t("endTournament")}</button>` : `<p class="hd-tournament-wait">${t("tournamentHostWait")}</p>` : `<a class="hd-primary" href="/hausdepp">${t(tournament ? "newTournament" : "nextRound")} ${icon("arrow")}</a>`}<a href="/hausdepp/konto#erfolge">${t("accountProgressLink")}</a></div><div id="hausdeppRoundProgress" hidden></div>`;
+    $("hausdeppResult").innerHTML = `<h2>${esc(title)}</h2><p class="hd-result-context">${esc(roundResultContext(s, tournament))}</p>${snapshot._aborted ? "" : roundPlacements(s, snapshot._hausdepp_round_summary)}${tournamentScoreboard(tournament, s.players)}<div id="hausdeppRoundProgress" hidden></div><div class="hd-result-links">${tournament && !tournament.completed && !snapshot._aborted ? tournament.can_start_next_round ? `<button id="hausdeppNextRound" class="hd-primary" type="button" ${pending || tournamentEnding || !connected || snapshot._paused ? "disabled" : ""}>${t("startNextRound", { round: nonnegative(tournament.round_number) + 1 })} ${icon("arrow")}</button><button id="hausdeppEndTournament" class="hd-secondary" type="button" ${pending || tournamentEnding || !connected ? "disabled" : ""}>${t("endTournament")}</button>` : `<p class="hd-tournament-wait">${t("tournamentHostWait")}</p>` : `<a class="hd-primary" href="/hausdepp">${t(tournament ? "newTournament" : "nextRound")} ${icon("arrow")}</a>`}<a href="/hausdepp/konto#erfolge">${t("resultAccountLink")}</a></div>`;
     if (snapshot._finished && (!tournament || tournament.completed) && hasPreviousSeat()) appendRematchAction();
     $("hausdeppNextRound")?.addEventListener("click", () => command("next_round"));
     $("hausdeppEndTournament")?.addEventListener("click", () => {
@@ -1116,7 +1116,7 @@ function renderState() {
       }
       renderState();
     });
-    if (!spectating) void loadRoundProgress(roundKey);
+    if (!spectating) { renderRoundProgress($("hausdeppRoundProgress")); void loadRoundProgress(roundKey); }
   }
 }
 
@@ -1180,6 +1180,31 @@ function hasPreviousSeat() {
   return !spectating && snapshot?._participants?.some(player => !player.is_cpu && (player.id === playerId || player.user_id === auth?.user?.id));
 }
 
+function roundResultContext(state, tournament) {
+  const cpuCount = state.players.filter(player => player.is_cpu).length;
+  return [tournament ? t("tournamentRoundShort", { round: tournament.round_number }) : "",
+    counted("roundPeople", state.players.length), cpuCount ? counted("roundCpuCount", cpuCount) : t("roundHumansOnly")]
+    .filter(Boolean).join(" · ");
+}
+
+// The table shows this round's credit separately from the current account.
+// Account catch-up notices never stand in for a round's actual earnings.
+function renderRoundProgress(container, data) {
+  const earned = snapshot?._hausdepp_round_summary?.players?.[playerId];
+  const hasCredit = Number.isFinite(earned?.xp) && Number.isFinite(earned?.round_xp);
+  const scoring = data?.scoring;
+  const hasAccount = scoring?.available && Number.isFinite(scoring.points) && data?.rank?.name;
+  container.hidden = !hasCredit && !hasAccount;
+  container.className = "hd-round-progress";
+  const awards = hasCredit ? (earned.achievements || []).reduce((sum, award) => sum + nonnegative(award.points), 0) : 0;
+  const creditDetail = hasCredit ? awards
+    ? t("roundCreditBreakdown", { round: pointNumber(earned.round_xp), awards: pointNumber(awards) })
+    : t(snapshot._hausdepp.players.some(player => player.is_cpu) ? "roundCreditCpu" : "roundCreditHuman", { points: pointNumber(earned.round_xp) }) : "";
+  const rank = data?.rank;
+  const next = rank?.next;
+  container.innerHTML = `${hasCredit ? `<p class="hd-round-earned"><strong>${esc(t("roundEarned", { points: pointNumber(earned.xp) }))}</strong><span>${esc(creditDetail)}</span></p>` : ""}${hasAccount ? `<div class="hd-round-account"><p><span>${t("currentRank")}: <strong>${esc(localized(rank.name))}</strong></span><span>${esc(t("roundAccountTotal", { points: pointNumber(scoring.points) }))}</span></p>${next && Number.isFinite(next.threshold) ? `<p class="hd-round-next">${esc(t("roundRankNext", { points: pointNumber(Math.max(0, next.threshold - scoring.points)), name: localized(next.name) }))}</p>` : ""}</div>` : ""}`;
+}
+
 // Everyone's place in the round just played, with what each person earned.
 function roundPlacements(s, summary) {
   const order = [...(s.finished_order || []), ...(s.loser_id ? [s.loser_id] : [])];
@@ -1238,14 +1263,11 @@ function appendRematchAction() {
   lobby.href = "/hausdepp";
   lobby.textContent = t("lobby");
   button.after(lobby);
-  const hint = document.createElement("p");
-  hint.className = "hd-fine";
-  hint.textContent = t("rematchCreateHint");
   const output = document.createElement("p");
   output.id = "hausdeppRematchError";
   output.className = "hd-error";
   output.setAttribute("role", "alert");
-  $("hausdeppResult").append(hint, output);
+  $("hausdeppResult").append(output);
   button.addEventListener("click", async () => {
     if (rematchCreating || stopped) return;
     rematchCreating = true;
@@ -1304,8 +1326,18 @@ async function loadRoundProgress(roundKey) {
     const data = await json("/api/hausdepp/account?limit=1");
     if (stopped || !$("hausdeppRoundProgress") || $("hausdeppResult").dataset.roundId !== roundKey) return;
     const container = $("hausdeppRoundProgress");
-    renderProgressNotice(container, data, { acknowledge: false });
-    acknowledgeRoundProgressWhenVisible(container, data.presentation?.pending, roundKey);
+    renderRoundProgress(container, data);
+    const earned = snapshot?._hausdepp_round_summary?.players?.[playerId];
+    const notice = data.presentation?.pending;
+    // Pending account notices may cover several rounds. Only acknowledge this
+    // round automatically when every part of that notice is actually visible.
+    const roundAwards = (earned?.achievements || []).map(award => award.id).sort();
+    if (data.history?.rounds?.[0]?.game_id === snapshot?._hausdepp_round_summary?.round_id
+        && (!notice?.rank_up || (data.scoring?.available && data.rank?.name))
+        && earned?.xp != null && notice?.points_earned === earned.xp
+        && JSON.stringify([...(notice.achievement_ids || [])].sort()) === JSON.stringify(roundAwards)) {
+      acknowledgeRoundProgressWhenVisible(container, notice, roundKey);
+    }
     if (!snapshot?._aborted) void progressNotices?.refresh();
   } catch {
     // The final account link remains available when the summary cannot load.
@@ -1380,7 +1412,7 @@ async function start() {
         canPresent: () => !stopped && (page !== "table" || Boolean(snapshot?._hausdepp?.phase === "finished" && !snapshot?._aborted && roundResultVisible())),
         onPending: () => {
           popupProgressPending = true;
-          for (const id of ["hausdeppProgressNotice", "hausdeppRoundProgress"]) if ($(id)) $(id).hidden = true;
+          if ($("hausdeppProgressNotice")) $("hausdeppProgressNotice").hidden = true;
         },
         onComplete: data => { acknowledgedProgressRevision = Math.max(acknowledgedProgressRevision, data.revision); },
       });

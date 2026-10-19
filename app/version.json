@@ -1,10 +1,10 @@
 {
-  "version": "3.16.5",
+  "version": "3.16.6",
   "bump": "patch",
   "date": "2026-10-19",
-  "previous_revision": "c520a1344ca760b9475c87570de5deac2137e31f",
+  "previous_revision": "ad82d066517bc46ed6bcbf71b2cc772c9e5ecb3d",
   "summary": {
-    "de": "Hausdepp zeigt Ass und Folgekarte lesbar am Stapel und leert alte Abhebehinweise vor der nächsten Turnierrunde.",
-    "en": "Hausdepp keeps aces and the following card readable at the deck and clears old cut history before the next tournament round."
+    "de": "Hausdepp zeigt am Rundenende eine kompakte Bilanz mit Runden-EP, Erfolgen und konkretem Rangfortschritt.",
+    "en": "Hausdepp ends each round with a compact summary of round XP, achievements and concrete rank progress."
   }
 }

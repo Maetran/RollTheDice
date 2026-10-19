@@ -547,3 +547,13 @@ session marker suppresses reload/reconnect replay; reduced motion stays quiet.
 This deliberate round-start cue is separate from the quiet initial baseline
 for source-to-destination transfers. Compact table captions reserve an inline
 out-of-play row clear of stock captions and turn/event text.
+
+
+### Compact Hausdepp round result, 2026-10-19
+
+The result sheet uses a 24px outcome heading and content-sized paper. It lists
+the actual table composition, finishing order, round-only XP and unlocks. A
+compact own-credit breakdown and private current-rank/total/next-threshold line
+replace the generic congratulation card. Rematch keeps its direct action without
+a generic explanatory paragraph. Pending account notices never stand in for
+this round’s earnings; silent receipts require the matching latest round ID.

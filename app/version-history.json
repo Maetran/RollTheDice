@@ -2378,5 +2378,12 @@
     "date": "2026-10-19",
     "bump": "patch",
     "summary": "Tippflächen bleiben nach dem Drehen des Smartphones an der sichtbaren Position. / Touch targets stay aligned with their visible position after rotating a phone."
+  },
+  {
+    "version": "3.16.5",
+    "revision": "ad82d066517bc46ed6bcbf71b2cc772c9e5ecb3d",
+    "date": "2026-10-19",
+    "bump": "patch",
+    "summary": "Hausdepp zeigt Ass und Folgekarte lesbar am Stapel und leert alte Abhebehinweise vor der nächsten Turnierrunde. / Hausdepp keeps aces and the following card readable at the deck and clears old cut history before the next tournament round."
   }
 ]

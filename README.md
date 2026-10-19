@@ -777,7 +777,12 @@ ab, das schwarze Loch schluckt sogar den Holztisch. Der Drache hinterlässt für
 den Rest des Tisches angesengte Kartenränder. Kartenwerte und Züge bleiben korrekt. Nur der eigene Hammer kann auf
 unterstützten Geräten kurz vibrieren. Nach 42 geschriebenen Bierdeckelstrichen
 gibt es eine kleine Antwort auf alles. Nach der Runde bleibt die Punkteübersicht
-ohne zusätzlichen Quittierungsbutton sichtbar. Der Endstand erscheint erst,
+ohne zusätzlichen Quittierungsbutton sichtbar. Das kompakte Ergebnisblatt nennt
+die Tischbesetzung, Platzierungen und nur die EP und Erfolge dieser Runde.
+Rundengutschrift und Erfolgs-EP werden aufgeschlüsselt; der eigene aktuelle Rang,
+Gesamt-EP und Abstand zum nächsten Rang geben dem Fortschritt einen Kontext.
+Allgemeine Glückwünsche und Wiederholungs-Erklärungen entfallen.
+Der Endstand erscheint erst,
 wenn die letzte Karte liegt und weitere 750 ms verstrichen sind. Turnierbuchstaben
 stehen am Gegnerplatz in einer eigenen Zeile, auch bei sechs Spielern. Das erste
 vollständige HAUSDEPP beendet das Turnier; Endstand, Tischkopf und Lobby zeigen
@@ -802,7 +807,11 @@ black hole even swallows the wooden table. The dragon leaves singed card edges
 for the rest of the table session. Card values and turns remain correct. Only the local hammer may briefly
 vibrate on supported devices. Forty-two beer-mat strokes reveal a small answer
 to everything. After a round, the points
-notice stays visible without an extra acknowledgement button. The final result
+summary stays visible without an extra acknowledgement button. The compact
+result sheet shows the table composition, finishing order and only this round’s
+XP and achievements. Round credit and achievement XP are broken down; your current
+rank, total XP and distance to the next rank put progress in context. Generic
+congratulations and rematch explanations are omitted. The final result
 waits until the last card lands, then another 750 ms. Tournament letters have
 their own line at each opponent seat, including six-player tables. The first
 complete HAUSDEPP ends the tournament; the final result, table heading and lobby

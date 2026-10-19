@@ -98,6 +98,15 @@ async function rollUntilQuickHold(pages) {
     const existing = await selectableQuickHold(pages);
     if (existing) return existing;
     for (const page of pages) {
+      // A mixed hold can be offered only by the all-scoreable-dice tile.
+      // Selecting it also exposes that exact draft in the recommendation rail.
+      const combined = await enabledLocator(page, "[data-zilch-combined-score]");
+      if (combined) {
+        await combined.click();
+        await expect(combined).toHaveClass(/is-selected/);
+        const selected = await selectableQuickHold(pages);
+        if (selected) return selected;
+      }
       const roll = await enabledLocator(page, "[data-zilch-roll]");
       if (!roll) continue;
       await roll.click();
@@ -661,7 +670,7 @@ test("two explicitly allowed humans can create, rejoin, and play a private Zilch
 
     const selected = await rollUntilQuickHold([mani, preview]);
     const selectedOption = selected.page.locator(`[data-zilch-recommendation=${JSON.stringify(selected.optionId)}]`);
-    await selectedOption.click();
+    if (!await selectedOption.evaluate(node => node.classList.contains("is-selected"))) await selectedOption.click();
     await expect(selectedOption).toHaveClass(/is-selected/);
     const waitingOpponent = selected.page === mani ? preview : mani;
     // The selected draft is a live, read-only projection for the other seat:
