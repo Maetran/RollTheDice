@@ -1,25 +1,29 @@
 {
   "kind": "usability",
   "games": [
+    "zdwa",
+    "zilch",
     "hausdepp"
   ],
-  "summary_de": "Danke, Martin! Ab sofort wird wieder fair gespielt 😉 Schnelles Tippen wirft keine nachgerückten Karten mehr ab.",
-  "summary_en": "Thanks, Martin! Fair play is back 😉 Rapid taps no longer play cards that moved under your finger.",
+  "summary_de": "Push prüft jetzt die Anmeldung dieses Geräts. Fehlende Hausdepp-Abos lassen sich erneuern; deine Auswahl bleibt erhalten.",
+  "summary_en": "Push now checks this device’s registration. Missing Hausdepp subscriptions can be renewed while keeping your choices.",
   "player_notes": {
     "de": {
-      "title": "Danke, Martin – fair gespielt! 😉",
+      "title": "Push zeigt jetzt, ob dein Gerät wirklich bereit ist.",
       "changes": [
-        "Danke an Martin fürs Aufspüren des Fehlers beim schnellen Antippen!",
-        "Ein Tipp spielt jetzt nur die beim Aufsetzen bereits erlaubte Karte. Nachgerückte Karten bleiben auf deiner Hand.",
-        "Gleiche Karten kannst du weiterhin schnell nachwerfen – für weitere Karten braucht es einen neuen, bewussten Tipp. 😉"
+        "ALLGEMEIN: Die Push-Anzeige prüft jetzt dieses Gerät. Deine Auswahl für Einladungen, Erinnerungen und Versionshinweise bleibt erhalten.",
+        "HAUSDEPP: Falls Push bisher nur aktiv aussah, öffne Konto → Einstellungen → Benachrichtigungen und tippe auf „Dieses Gerät für Push anmelden“.",
+        "ZDWA: Ein Abo auf einem anderen Gerät zählt nicht mehr als Anmeldung dieses Geräts. Erneutes Anmelden bleibt möglich.",
+        "ZILCH: Auch hier unterscheidet die Push-Anzeige zwischen deiner Kontoeinstellung und der Anmeldung dieses Geräts."
       ]
     },
     "en": {
-      "title": "Thanks, Martin – fair play! 😉",
+      "title": "Push now shows whether your device is really ready.",
       "changes": [
-        "Thanks to Martin for spotting the rapid-tap bug!",
-        "A tap now plays only the card already permitted when you touched it. Cards that move into its place stay in your hand.",
-        "You can still throw matching cards in rapid succession – any further card needs a new, deliberate tap. 😉"
+        "GENERAL: Push status now checks this device. Your choices for invitations, reminders and app update alerts are kept.",
+        "HAUSDEPP: If push previously only appeared active, open Account → Settings → Notifications and tap “Enable push on this device”.",
+        "ZDWA: A subscription on another device no longer counts as this device being registered. You can register this device again.",
+        "ZILCH: Push status here also distinguishes your account preferences from this device’s registration."
       ]
     }
   }

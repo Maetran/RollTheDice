@@ -56,7 +56,7 @@ async function mockPush(page, { enabled = false, available = true, denied = fals
     await route.fulfill({ json: { viewer_id: viewer, audience, players: [], limit: 100 } });
   });
   const status = () => ({
-    available, enabled: gameInvites || dailyReminder || releaseAlerts, subscribed,
+    viewer_id: viewer, available, enabled: gameInvites || dailyReminder || releaseAlerts, subscribed,
     game_invites_enabled: gameInvites, daily_reminder_enabled: dailyReminder,
     release_notifications_enabled: releaseAlerts, game_invite_audience: audience, allowed_sender_usernames: allowedSenders,
     daily_reminder_window_start: "17:00", daily_reminder_window_end: "21:00", daily_reminder_timezone: "Europe/Zurich",
@@ -69,6 +69,9 @@ async function mockPush(page, { enabled = false, available = true, denied = fals
     if (method === "DELETE") { subscribed = false; gameInvites = false; dailyReminder = false; releaseAlerts = false; }
     await route.fulfill({ json: status() });
   });
+  await page.route("**/api/web-push/subscription/check", route => route.fulfill({ json: {
+    ...status(), device_subscribed: subscribed,
+  } }));
   await page.route("**/api/web-push/preferences", async route => {
     expect(route.request().method()).toBe("PUT");
     expect(route.request().headers()["x-csrf-token"]).toBeTruthy();
@@ -85,28 +88,31 @@ async function mockPush(page, { enabled = false, available = true, denied = fals
     allowedSenders = payload.allowed_sender_usernames ?? allowedSenders;
     await route.fulfill({ json: status() });
   });
-  await page.addInitScript(({ denied }) => {
+  await page.addInitScript(({ denied, enabled }) => {
+    let localSubscribed = enabled || sessionStorage.getItem("push-test-subscribed") === "true";
+    let permission = enabled || sessionStorage.getItem("push-test-permission") === "granted" ? "granted" : "default";
     const subscription = {
       toJSON: () => ({ endpoint: "https://fcm.googleapis.com/fcm/send/browser-test", keys: { p256dh: "test", auth: "test" } }),
       unsubscribe: async () => { throw new Error("Local browser cleanup is unavailable"); },
     };
     const registration = {
-      pushManager: { getSubscription: async () => null, subscribe: async () => subscription },
+      scope: `${location.origin}/`, active: { scriptURL: `${location.origin}${location.pathname.startsWith('/zilch') ? '/zilch-sw.js' : '/sw.js'}`, state: 'activated' },
+      pushManager: {
+        getSubscription: async () => localSubscribed ? subscription : null,
+        subscribe: async () => { localSubscribed = true; sessionStorage.setItem("push-test-subscribed", "true"); return subscription; },
+      },
     };
     Object.defineProperty(navigator.serviceWorker, "ready", { get: () => Promise.resolve(registration) });
-    navigator.serviceWorker.getRegistration = async () => ({
-      pushManager: { getSubscription: async () => subscription },
-    });
-    // Headless Chromium may start with a denied permission policy.  Each UI
-    // test needs to exercise the deliberate in-app request from a neutral
-    // browser state instead; the request mock below supplies its outcome.
-    Object.defineProperty(Notification, "permission", { configurable: true, get: () => "default" });
+    navigator.serviceWorker.getRegistration = async () => registration;
+    Object.defineProperty(Notification, "permission", { configurable: true, get: () => permission });
     Notification.requestPermission = async () => {
       window.pushPermissionHadUserGesture = navigator.userActivation.isActive;
       sessionStorage.setItem("pushPermissionHadUserGesture", String(window.pushPermissionHadUserGesture));
-      return denied ? "denied" : "granted";
+      permission = denied ? "denied" : "granted";
+      sessionStorage.setItem("push-test-permission", permission);
+      return permission;
     };
-  }, { denied });
+  }, { denied, enabled });
   return calls;
 }
 

@@ -2350,5 +2350,12 @@
     "date": "2026-10-19",
     "bump": "minor",
     "summary": "Private Watten-Webvorschau für das gebundene Ownerkonto und native Freundesmeldungen. / Private Watten web preview for the bound founder account and native friend start notices."
+  },
+  {
+    "version": "3.16.1",
+    "revision": "aa47a959ed22de57c72f3d7f5edb8303b1d701cc",
+    "date": "2026-10-19",
+    "bump": "patch",
+    "summary": "Hausdepp bindet schnelle Kartentipps an die beim Aufsetzen spielbare Karte. / Hausdepp binds rapid card taps to the card playable at touch-down."
   }
 ]
