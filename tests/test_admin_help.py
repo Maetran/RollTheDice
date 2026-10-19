@@ -292,13 +292,26 @@ class AdminHelpTestCase(unittest.TestCase):
                 claim_help_request(request["id"], self.second_admin.id)
                 resolve_help_request(request["id"], self.second_admin.id, "resolved")
 
-    def test_new_or_reregistered_devices_do_not_receive_an_old_request(self):
+    def test_new_or_changed_devices_do_not_receive_an_old_request(self):
+        self.subscribe()
+        self.create()
+        self.subscribe(suffix="new")
+        payload = fixtures.WebPushTestCase.subscription("https://fcm.googleapis.com/fcm/send/device")
+        payload.keys.auth = fixtures._base64url(b"\x05" * 16)
+        save_web_push_subscription(user_id=self.admin.id, payload=payload, product_context="zdwa")
+        asyncio.run(dispatch_admin_help_notifications())
+        self.send.assert_not_called()
+
+    def test_identical_registration_preserves_pending_help_without_backfilling_new_devices(self):
         self.subscribe()
         self.create()
         self.subscribe(suffix="new")
         self.subscribe()
         asyncio.run(dispatch_admin_help_notifications())
-        self.send.assert_not_called()
+        self.send.assert_called_once()
+        self.assertEqual(self.send.call_args.args[0].endpoint, "https://fcm.googleapis.com/fcm/send/device")
+        asyncio.run(dispatch_admin_help_notifications())
+        self.send.assert_called_once()
 
     def test_push_ttl_expired_devices_and_language_are_bounded(self):
         self.subscribe()
