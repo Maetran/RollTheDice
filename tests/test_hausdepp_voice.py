@@ -290,6 +290,34 @@ class HausdeppVoiceTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(self.fake.sessions["s1"])
         self.assertTrue((await self.command(self.sessions[0], "heartbeat", member_token=token))["ok"])
 
+    async def test_departed_historical_seats_cannot_keep_solo_cpu_voice_available(self):
+        self.game.update(_started=True, _hausdepp={"phase": "playing"},
+                         _participants=[{key: value for key, value in player.items() if key != "ws"}
+                                        for player in self.game["_players"]])
+        first, second = await self.join(0), await self.join(1)
+        await self.publish(0, first)
+        await self.publish(1, second)
+        departed = self.sessions[1].player_id
+        self.game["_hausdepp_departures"] = {departed: {"forfeited_round": True}}
+        self.game["_players"] = [player for player in self.game["_players"] if player["id"] != departed]
+        await voice.voice_socket_disconnected(self.sessions[1], revoke=True)
+        state = await self.command(self.sessions[0], "state")
+        self.assertTrue(state["state"]["available"], "two remaining people retain voice")
+        self.assertNotIn(2, [member["user_id"] for member in state["state"]["members"]])
+
+        other = self.sessions[2].player_id
+        self.game["_hausdepp_departures"][other] = {"forfeited_round": True}
+        self.game["_players"] = [self.game["_players"][0]]
+        self.game["_participants"].append({"id": "cpu-1", "is_cpu": True, "user_id": None})
+        await voice.reap_voice()
+        state = await self.command(self.sessions[0], "state")
+        self.assertFalse(state["state"]["available"], "historical accounts must not count as active opponents")
+        self.assertEqual(state["state"]["publications"], [])
+        room = voice._rooms[self.game["_hausdepp_voice_room_id"]]
+        self.assertEqual(room.members, {})
+        rejected = await self.command(self.sessions[0], "heartbeat", member_token=first)
+        self.assertFalse(rejected["ok"])
+
     async def test_played_table_needs_distinct_positive_non_cpu_account_ids(self):
         self.game["_players"] = self.game["_players"][:1]
         self.game["_participants"] = [{"user_id": uid} for uid in (1, 1, None, 0, -1, True)] + [

@@ -3,23 +3,23 @@
   "games": [
     "hausdepp"
   ],
-  "summary_de": "Sprachchat als Beta: freiwillig zuhören, Mikro separat einschalten und gemeinsam weiterspielen.",
-  "summary_en": "Voice chat beta: opt into listening, enable your mic separately and keep talking between rounds.",
+  "summary_de": "Leise Wirtshauskulisse einschalten und bei Bedarf einzeln die Partie verlassen.",
+  "summary_en": "Enable quiet tavern ambience and leave a game individually when needed.",
   "player_notes": {
     "de": {
-      "title": "Sprachchat am Tisch: Beta",
+      "title": "Wirtshausklang und eigener Ausstieg",
       "changes": [
-        "Teste den Sprachchat als Beta: freiwillig zuhören und das Mikro separat einschalten.",
-        "Audio aus schaltet auch das Mikro stumm; einzelne Mitspieler schaltest du nur für dich stumm.",
-        "Die Sprachsitzung bleibt über Turniere und Neu erstellen mit derselben Gruppe erhalten."
+        "Mit dem Notenschalter aktivierst du eine sehr leise lokale Wirtshauskulisse – auch gegen CPUs.",
+        "Bei aktiviertem Sound bestätigen kurze Töne deine Sound-, Lautsprecher- und Mikrofonschalter.",
+        "Partie verlassen beendet nach Bestätigung nur deine Teilnahme; die übrigen spielen weiter. Aufgeben bringt keine EP oder normalen Erfolge, der Zonk-Erfolg gibt 0 EP."
       ]
     },
     "en": {
-      "title": "Table voice chat: beta",
+      "title": "Tavern ambience and individual departure",
       "changes": [
-        "Try voice chat in beta: opt into listening and turn on your microphone separately.",
-        "Audio off also mutes your microphone; mute individual players only for yourself.",
-        "Your voice session continues through tournaments and Create again with the same group."
+        "Use the music-note switch for very quiet local tavern ambience, including CPU games.",
+        "When sound is enabled, short tones confirm sound, speaker and microphone changes.",
+        "Leave game ends only your participation after confirmation; everyone else continues. Giving up earns no XP or ordinary achievements; the Zonk achievement is worth 0 XP."
       ]
     }
   }

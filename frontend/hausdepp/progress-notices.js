@@ -35,7 +35,7 @@ export function mountProgressNotices({ userId, canPresent = () => true, onPendin
           element.className = className; message.append(element); return element;
         };
         const name = document.createElement("h3"); name.textContent = localized(notice.name); message.append(name);
-        if (notice.kind === "achievement") paragraph(`+${t("experiencePoints", { points: notice.points })}`, "hd-notice-reward");
+        if (notice.kind === "achievement") paragraph(`${notice.points > 0 ? "+" : ""}${t("experiencePoints", { points: notice.points })}`, "hd-notice-reward");
         else paragraph(localized(notice.quote), "hd-notice-quote");
         paragraph(t("progressPopupCondition"), "hd-account-kicker"); paragraph(localized(notice.condition));
         paragraph(t("progressPopupReason"), "hd-account-kicker"); paragraph(localized(notice.reason));

@@ -51,7 +51,7 @@ def build_hausdepp_leaderboard(user_id: int, *, players: int | None = None, limi
                 if players is not None and len(row.participants) != players:
                     continue
                 for account_id in {seat.user_id for seat in row.participants if seat.user_id is not None}:
-                    validated = validated_hausdepp_membership(row, account_id)
+                    validated = validated_hausdepp_membership(row, account_id, db=db)
                     if validated is None:
                         continue
                     record, _private_facts = validated

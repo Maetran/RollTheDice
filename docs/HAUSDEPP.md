@@ -8,6 +8,76 @@ release. Further playtests will continue to refine the appearance.
 
 ## Deutsch
 
+### Partie verlassen / Leave game
+
+Ein eigener Schalter am laufenden Tisch öffnet eine Bestätigung. Aussteigen
+beendet ausschliesslich die eigene Teilnahme, auch bei Verbindungs-/Pausenproblemen.
+Eigene Handkarten kommen endgültig aus dem Spiel, nicht auf das aufnehmbare
+Paket. Eigene offene Auffüllpflichten und Nachwurfrechte entfallen; die
+verbleibende Gruppe spielt weiter. Bei nur einem verbleibenden Spieler mit
+Karten endet die Runde ohne Hausdepp. Die verbleibenden Teilnehmer erhalten
+reguläre Runden-EP; es entsteht kein erfundener erster Ausstieg oder Hausdepp.
+
+Ein aufgegebener Spieler erhält für diese Hand keine Runden-EP und keine normalen
+Erfolge. Ein eigener dauerhafter Ausstiegsbeleg verhindert spätere Nachvergütung
+bei Kontowiederherstellung. Der erste Zonk-Erfolg für freiwilliges Aufgeben gibt
+0 EP und beeinflusst den Rang nicht. Wer seine Karten bereits regulär
+losgeworden ist, behält die normale Rundenvergütung.
+
+Im Turnier gilt der Ausstieg für die ganze Sitzung. Historische Teilnehmer,
+Verluste, abgeschlossene Runden und bereits verdiente EP bleiben erhalten;
+weitere Runden spielen nur die Verbleibenden. Bei weniger als zwei verbleibenden
+Turnierteilnehmern endet das Turnier vorzeitig ohne erfundenen Tageshausdepp.
+Bleiben nur CPUs übrig, spielen sie die laufende Runde noch fertig; danach
+endet das Turnier ohne Folgerunde. So bleiben regulär fertige Hände vergütbar.
+Hostwechsel und Neu erstellen verwenden die verbleibende Gruppe. Ein blosses
+Disconnect bleibt wiederaufnehmbar und zählt nicht als freiwilliger Ausstieg.
+
+Leave game opens a confirmation and ends only the leaving person's participation,
+including while paused. Their hand leaves play permanently, never entering the
+pick-up pile. Their refill obligations and follow-up rights are removed; everyone
+else continues. With just one player holding cards, the round ends without a
+Hausdepp. Remaining participants earn normal round XP, without inventing a first
+finish or loser. Giving up an unfinished hand earns no round XP or ordinary
+achievements, including through later account reconciliation. A separate durable
+departure record awards only the new Zonk achievement, worth 0 XP without rank
+progress. Players who finished their hands normally retain their credit. Tournament departure covers the
+whole session; historical participants, losses, rounds and XP stay intact. With
+fewer than two remaining tournament participants, it ends early without inventing
+a day's Hausdepp. If only CPUs remain, they finish the current round, then the
+tournament ends without another round so normally finished hands can retain
+their credit. Host transfer and rematch use the remaining group. A disconnect
+remains resumable and never counts as voluntary departure.
+
+### Lokale Wirtshauskulisse / Local tavern ambience
+
+Der separate Notenschalter aktiviert eine sehr leise Wirtshauskulisse mit
+Stimmengewirr, Gläsern, Geschirr und gelegentlichem Lachen. Standardmässig ist
+sie aus, auch am CPU-Tisch ist sie verfügbar. Die vier CC0-Audiodateien
+(zusammen 1.62 MiB) werden erst nach Opt-in geladen, im normalen HTTP-Cache
+wiederverwendet und ausschliesslich lokal wiedergegeben. Sie werden dem
+Mikrofonsignal und dem Sprachchat nicht zugemischt und gehören nicht zu dessen Verbrauchsmessung.
+Systemlautstärke und System-Audiogeräte gelten. Bei aktiviertem Sound bestätigen
+kurze Töne die manuellen Sound-, Sprachchat- und Mikrofonschalter. Sound aus
+stoppt die Kulisse sofort und spielt noch einen letzten Abschaltton; danach
+bleiben auch Mikrofon- und Sprachchatbestätigungen still. Automatische
+Verbindungs-/Statusänderungen erzeugen keine Töne. Turniere und Neu erstellen
+auf derselben Seite behalten die Einstellung; Verlassen, Abmelden und Schliessen
+beenden sie. Browser/PWA-Gerätetests bleiben für die akustische Mischung nötig.
+Quellen und Bearbeitung: [Audio assets](HAUSDEPP_AUDIO_ASSETS.md).
+
+The separate music-note switch opts into very quiet pub ambience with room
+chatter, glasses, dishes and occasional laughter, including CPU tables. It
+starts off. Four CC0 clips (1.62 MiB total) load only after opt-in, reuse the
+normal HTTP cache and play locally, without microphone/voice transmission or
+voice usage telemetry. Use system volume and audio devices. Short tones confirm
+manual sound, voice and microphone changes while sound is enabled. Sound off
+stops ambience immediately, plays one final acknowledgement, then keeps further
+voice/microphone confirmations silent. Automatic status changes stay silent.
+Tournaments and Create again on the same page retain the setting; leaving,
+signing out or closing ends it. Acoustic mixing still needs real device/PWA
+acceptance.
+
 ### Freiwilliger Sprachchat (Beta)
 
 Bei aktivierter Funktion gibt es am Tisch zwei dauernd erreichbare Schalter:
@@ -574,7 +644,7 @@ und Verständlichkeit verfeinern; das führt keine erneute Zugangssperre ein.
 | Lobby und Tisch | Echte Mehrspielerpartien, Computer-Mitspieler, Zugang für aktive Konten, Tischstatus, direkte Aktionen | Weitere Verfeinerungen nach Spieltests |
 | Regeln | Vollständige DE-/EN-Hausregeln mit Schnellstart, Beispielen und Sprungmarken | Verständlichkeitsprüfung durch den Owner |
 | Punkte | Je abgeschlossener Runde 10 EP nur mit Menschen oder 2 EP mit mindestens einem Computer (75 % Reduktion, abgerundet); Erfolge einmalig volle 10/25/50/100/250/500 EP | Weiteres Balancing nach Spieltests |
-| Achievements | Bestätigter Katalog mit 135 Erfolgen, 24 Rängen und eigenen Aufstiegssprüchen | Weitere Gestaltungs- und Spieltests |
+| Achievements | Bestätigter Katalog mit 136 Erfolgen, 24 Rängen und eigenen Aufstiegssprüchen | Weitere Gestaltungs- und Spieltests |
 | Konto | Private Statistik und Historie, EP, Rangfortschritt, Rangleiter und filterbare Erfolgssammlung | Weitere Gestaltungsverfeinerungen |
 | Chat und Reaktionen | Gemeinsame Suite-Funktionen am Tisch und Lobbychat | Weitere Verfeinerungen nach Spieltests |
 | Weitere Runden | Einzelrunden über die Lobby; Turnierserie am selben Tisch mit Geberrotation und Buchstabenstand | Weitere Gestaltungs- und Spieltests |
@@ -582,7 +652,7 @@ und Verständlichkeit verfeinern; das führt keine erneute Zugangssperre ein.
 
 ### Bestätigte Punkte, Erfolge und Ränge
 
-Der Owner hat den [Katalog mit 135 Erfolgen und 24 Rängen](HAUSDEPP_ACHIEVEMENTS.md)
+Der Owner hat den [Katalog mit 136 Erfolgen und 24 Rängen](HAUSDEPP_ACHIEVEMENTS.md)
 freigegeben. Jede regulär abgeschlossene Runde nur mit Menschen gibt dem
 beteiligten Konto **10 Erfahrungspunkte (EP)**. Sobald mindestens ein Computer
 am Tisch mitspielt, wird die Basis um 75 % reduziert und **je Runde auf ganze
@@ -1089,7 +1159,7 @@ and clarity without reinstating the former access restriction.
 | Lobby and table | Real multiplayer rounds, computer opponents, active-account access, table status, direct actions | Further playtest refinements |
 | Rules | Complete German/English house rules with quick start, examples and anchors | Owner review for clarity |
 | Points | Per completed round: 10 XP for all-human tables or 2 XP with any computer (75% reduction, rounded down); full one-time achievement rewards of 10/25/50/100/250/500 XP | Further balancing after playtests |
-| Achievements | Approved catalogue of 135 achievements, 24 ranks and individual sayings | Further design and playtests |
+| Achievements | Approved catalogue of 136 achievements, 24 ranks and individual sayings | Further design and playtests |
 | Account | Private facts/history, XP, rank progress, complete ladder and filterable achievement collection | Further design refinements |
 | Chat and reactions | Shared suite features at the table and lobby chat | Further playtest refinements |
 | Further rounds | Single rounds through the lobby; same-table tournaments with dealer rotation and letter scores | Further design and playtests |

@@ -18,6 +18,7 @@ from .hausdepp_state import hausdepp_progress, hausdepp_waiting_summary
 
 
 def snapshot_hausdepp(game: GameDict, viewer_id: str | None = None) -> dict:
+    from .hausdepp_departure import departure_permissions
     from .hausdepp_engine import project_state
     from .hausdepp_table_surprises import table_effects_projection, table_surprise_offer
     from .hausdepp_tournament import project_hausdepp_tournament
@@ -68,6 +69,7 @@ def snapshot_hausdepp(game: GameDict, viewer_id: str | None = None) -> dict:
         "_hausdepp_table_effects": table_effects_projection(game),
         "_hausdepp_tournament_enabled": bool(game.get("_hausdepp_tournament_enabled")),
         "_waiting_permissions": waiting_permissions(game, valid_viewer),
+        "_departure_permissions": departure_permissions(game, valid_viewer),
         "_waiting_mode": waiting["waiting_mode"], "_manual_start": waiting["manual_start"],
         "_waiting_capacity": game["_expected"], "_free_seats": waiting["free_seats"],
         "_replaceable_cpus": waiting["replaceable_cpus"],

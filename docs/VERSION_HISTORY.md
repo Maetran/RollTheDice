@@ -1,6 +1,6 @@
 # Versionen / Versions
 
-Aktuelle gemeinsame Produktversion / Current shared product version: **3.17.0**.
+Aktuelle gemeinsame Produktversion / Current shared product version: **3.18.0**.
 
 ZDWA und Zilch werden gemeinsam versioniert. Major steht für einen großen
 Produktmeilenstein, Minor für neue Funktionen und Patch für Fehlerkorrekturen
@@ -27,6 +27,7 @@ Detailed player-facing descriptions are in the [changelog](../CHANGELOG.md).
 
 | Version | Datum / Date | Art / Type | Änderung / Change | Commit |
 | --- | --- | --- | --- | --- |
+| 3.17.0 | 2026-10-20 | minor | Sprachchat-Beta für Hausdepp mit getrennten Schaltern und Verbrauchsübersicht in Mission Control. / Hausdepp voice chat beta with separate controls and a usage overview in Mission Control. | [73b9f49](https://github.com/Maetran/RollTheDice/commit/73b9f49f24c6b8fa00101f473e686a47f2f491b9) |
 | 3.16.6 | 2026-10-20 | patch | Hausdepp zeigt am Rundenende eine kompakte Bilanz mit Runden-EP, Erfolgen und konkretem Rangfortschritt. / Hausdepp ends each round with a compact summary of round XP, achievements and concrete rank progress. | [fa4d2a9](https://github.com/Maetran/RollTheDice/commit/fa4d2a98850452ca88f718ec4f01b1ba0a8f5d32) |
 | 3.16.5 | 2026-10-19 | patch | Hausdepp zeigt Ass und Folgekarte lesbar am Stapel und leert alte Abhebehinweise vor der nächsten Turnierrunde. / Hausdepp keeps aces and the following card readable at the deck and clears old cut history before the next tournament round. | [ad82d06](https://github.com/Maetran/RollTheDice/commit/ad82d066517bc46ed6bcbf71b2cc772c9e5ecb3d) |
 | 3.16.4 | 2026-10-19 | patch | Tippflächen bleiben nach dem Drehen des Smartphones an der sichtbaren Position. / Touch targets stay aligned with their visible position after rotating a phone. | [c520a13](https://github.com/Maetran/RollTheDice/commit/c520a1344ca760b9475c87570de5deac2137e31f) |

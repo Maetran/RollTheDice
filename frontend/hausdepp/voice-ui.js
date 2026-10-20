@@ -7,7 +7,7 @@ const shapes = {
 const symbol = (name, enabled) => `<svg class="hd-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${shapes[name]}${enabled ? "" : '<path d="m2 2 20 20"/>'}</svg>`;
 
 /** The two primary controls stay in the header, including tournament results. */
-export function mountHausdeppVoiceUI({ controller, t, userId, getPlayers }) {
+export function mountHausdeppVoiceUI({ controller, t, userId, getPlayers, sound }) {
   const toolbar = document.createElement("div");
   toolbar.className = "hd-voice-controls";
   toolbar.setAttribute("role", "group");
@@ -39,6 +39,7 @@ export function mountHausdeppVoiceUI({ controller, t, userId, getPlayers }) {
   document.body.append(notice);
   let panelSignature = "";
   let noticeSignature = "";
+  let destroyed = false, outputRevision = 0, microphoneRevision = 0;
 
   const toggle = (button, enabled, label, shape) => {
     button.innerHTML = symbol(shape, enabled);
@@ -47,11 +48,37 @@ export function mountHausdeppVoiceUI({ controller, t, userId, getPlayers }) {
     button.title = label;
   };
   const run = operation => { void Promise.resolve(operation).catch(() => {}); };
+  const unlockSound = () => { try { sound?.unlock(); } catch { /* Voice remains usable when local sound fails. */ } };
+  const cue = kind => { try { sound?.cue(kind); } catch { /* Local feedback never changes voice participation. */ } };
+  const changeAudio = enabled => {
+    unlockSound();
+    const before = controller.snapshot();
+    const revision = ++outputRevision;
+    microphoneRevision++;
+    const operation = controller.setAudio(enabled);
+    if (!enabled && before.audio && !controller.snapshot().audio) cue("voice-off");
+    run(Promise.resolve(operation).then(ok => {
+      if (!destroyed && revision === outputRevision && enabled && !before.audio && ok && controller.snapshot().audio) cue("voice-on");
+    }));
+  };
   output.addEventListener("click", () => {
     const state = controller.snapshot();
-    run(controller.setAudio(!state.audio));
+    changeAudio(!state.audio);
   });
-  microphone.addEventListener("click", () => run(controller.setMicrophone(!controller.snapshot().microphone)));
+  microphone.addEventListener("click", () => {
+    unlockSound();
+    const before = controller.snapshot();
+    const enabled = !before.microphone;
+    const revision = ++microphoneRevision, audioRevision = outputRevision;
+    const operation = controller.setMicrophone(enabled);
+    // Capture stops locally before the asynchronous signalling acknowledgement.
+    if (!enabled && before.microphone && !controller.snapshot().microphone) cue("mic-off");
+    run(Promise.resolve(operation).then(ok => {
+      const after = controller.snapshot();
+      if (!destroyed && revision === microphoneRevision && audioRevision === outputRevision
+        && enabled && !before.microphone && ok && after.audio && after.microphone) cue("mic-on");
+    }));
+  });
   panel.addEventListener("click", event => {
     const button = event.target.closest("[data-voice-mute]");
     if (button) controller.muteUser(Number(button.dataset.voiceMute), button.getAttribute("aria-pressed") !== "true");
@@ -90,7 +117,7 @@ export function mountHausdeppVoiceUI({ controller, t, userId, getPlayers }) {
           const retry = document.createElement("button");
           retry.type = "button";
           retry.textContent = t("voiceRetry");
-          retry.addEventListener("click", () => run(controller.setAudio(true)));
+          retry.addEventListener("click", () => changeAudio(true));
           notice.append(retry);
         }
       }
@@ -137,6 +164,7 @@ export function mountHausdeppVoiceUI({ controller, t, userId, getPlayers }) {
   const unsubscribe = controller.subscribe(render);
   attach();
   return { attach, render, destroy() {
+    destroyed = true; outputRevision++; microphoneRevision++;
     unsubscribe(); toolbar.remove(); panel.remove(); notice.remove();
     document.body.classList.remove("hd-voice-available");
     document.querySelectorAll(".hd-voice-seat-status").forEach(badge => badge.remove());

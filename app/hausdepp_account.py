@@ -54,8 +54,8 @@ def _decode_cursor(value: str | None) -> tuple[datetime, int] | None:
         raise ValueError("hausdepp_invalid_cursor") from exc
 
 
-def _private_round(row: CompletedGame, user_id: int) -> dict | None:
-    validated = validated_hausdepp_membership(row, user_id)
+def _private_round(row: CompletedGame, user_id: int, *, db=None) -> dict | None:
+    validated = validated_hausdepp_membership(row, user_id, db=db)
     return validated[0] if validated else None
 
 
@@ -99,11 +99,12 @@ def build_hausdepp_account_for_user(
             if not rows:
                 break
             for row in rows:
-                record = _private_round(row, user_id)
+                record = _private_round(row, user_id, db=db)
                 if record is None:
                     continue
                 statistics["rounds_played"] += 1
-                statistics[f"{record['outcome']}_rounds"] += 1
+                if record["outcome"] in {"finished", "hausdepp"}:
+                    statistics[f"{record['outcome']}_rounds"] += 1
                 if statistics["last_finished_at"] is None:
                     statistics["last_finished_at"] = record["finished_at"]
                 if boundary is not None and (as_utc(row.finished_at), row.id) >= boundary:

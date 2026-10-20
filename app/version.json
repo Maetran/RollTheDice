@@ -1,10 +1,10 @@
 {
-  "version": "3.17.0",
+  "version": "3.18.0",
   "bump": "minor",
   "date": "2026-10-20",
-  "previous_revision": "fa4d2a98850452ca88f718ec4f01b1ba0a8f5d32",
+  "previous_revision": "73b9f49f24c6b8fa00101f473e686a47f2f491b9",
   "summary": {
-    "de": "Sprachchat-Beta für Hausdepp mit getrennten Schaltern und Verbrauchsübersicht in Mission Control.",
-    "en": "Hausdepp voice chat beta with separate controls and a usage overview in Mission Control."
+    "de": "Hausdepp: leise Wirtshauskulisse und einzeln den Tisch verlassen.",
+    "en": "Hausdepp: quiet tavern ambience and individual table departure."
   }
 }

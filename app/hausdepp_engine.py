@@ -125,7 +125,7 @@ def new_round(
 
 
 def _deal_after_peek(state: dict[str, Any], rng: Any = None) -> None:
-    players = state["players"]
+    players = [player for player in state["players"] if player["id"] not in state.get("withdrawn_ids", [])]
     dealer_index = next(i for i, player in enumerate(players) if player["id"] == state["dealer_id"])
     sequence = []
     for _ in range(3):
@@ -158,7 +158,7 @@ def _next_player(state: Mapping[str, Any], previous_id: str) -> str:
     index = next(index for index, player in enumerate(players) if player["id"] == previous_id)
     for offset in range(1, len(players) + 1):
         player = players[(index + offset) % len(players)]
-        if not player["finished"]:
+        if not player["finished"] and player["id"] not in state.get("withdrawn_ids", []):
             return player["id"]
     raise HausdeppRuleError("hausdepp_invalid_state")
 
@@ -196,6 +196,9 @@ def _normalize_state(state: Mapping[str, Any]) -> dict[str, Any]:
     result.setdefault("table_version", result["version"])
     result.setdefault("player_versions", {})
     result.setdefault("deal", None)
+    result.setdefault("withdrawn_ids", [])
+    result.setdefault("round_end_reason", "normal" if result["phase"] == "finished" else None)
+    result.setdefault("remaining_player_id", None)
     _sync_refill_alias(result)
     return result
 
@@ -207,13 +210,14 @@ def _settle_finishes(state: dict[str, Any]) -> None:
         state["pending_refills"] = {}
         _sync_refill_alias(state)
         for player in state["players"]:
-            if not player["hand"] and not player["finished"]:
+            if not player["hand"] and not player["finished"] and player["id"] not in state.get("withdrawn_ids", []):
                 player["finished"] = True
                 state["finished_order"].append(player["id"])
-    active = [p for p in state["players"] if not p["finished"]]
+    active = [p for p in state["players"] if not p["finished"] and p["id"] not in state.get("withdrawn_ids", [])]
     if len(active) == 1:
         state["phase"] = "finished"
         state["loser_id"] = active[0]["id"]
+        state["round_end_reason"] = "normal"
         state["current_player_id"] = None
         state["afterthrow"] = None
         state["pending_refill"] = None
@@ -296,7 +300,7 @@ def apply_action(
     if state["phase"] == "finished":
         raise HausdeppRuleError("hausdepp_round_finished")
     actor = _find_player(state, actor_id)
-    if actor is None or actor["finished"]:
+    if actor is None or actor["finished"] or actor_id in state["withdrawn_ids"]:
         raise HausdeppRuleError("hausdepp_invalid_player")
     if action == "follow":
         action = "afterthrow"
@@ -425,6 +429,67 @@ def apply_action(
     return record_transition(state, result, actor_id, action, event)
 
 
+
+def withdraw_player(
+    state: Mapping[str, Any], actor_id: str, *, version: int,
+) -> dict[str, Any]:
+    """Forfeit only this unfinished hand; removed cards never enter the packet.
+
+    Finished hands retain their earned exit position. The transport separately
+    removes their seat from the remaining tournament roster. No departure is a
+    card play, a first finish, or a Hausdepp loss.
+    """
+    result = _normalize_state(state)
+    if type(version) is not int or version != result["version"]:
+        raise HausdeppRuleError("hausdepp_stale_version")
+    player = _find_player(result, actor_id)
+    if player is None:
+        raise HausdeppRuleError("hausdepp_invalid_player")
+    if actor_id in result["withdrawn_ids"]:
+        return result
+    if result["phase"] == "finished" or player["finished"]:
+        return result
+    if result["phase"] not in {"peeking", "playing"}:
+        raise HausdeppRuleError("hausdepp_game_not_running")
+
+    result["version"] += 1
+    result["table_version"] = result["version"]
+    result["player_versions"][actor_id] = result["version"]
+    result["withdrawn_ids"].append(actor_id)
+    count = len(player["hand"])
+    result["burned"].extend(player["hand"])
+    player["hand"] = []
+    result["pending_refills"].pop(actor_id, None)
+    _sync_refill_alias(result)
+    if (result.get("afterthrow") or {}).get("player_id") == actor_id:
+        result["afterthrow"] = None
+    active = [person for person in result["players"]
+              if not person["finished"] and person["id"] not in result["withdrawn_ids"]]
+    result["last_event"] = {"type": "withdraw", "player_id": actor_id, "removed_count": count}
+    if len(active) <= 1:
+        result.update(phase="finished", loser_id=None, round_end_reason="insufficient_players",
+                      remaining_player_id=active[0]["id"] if active else None,
+                      current_player_id=None, afterthrow=None, pending_refill=None, pending_refills={})
+        return result
+
+    if result["phase"] == "peeking" and result["dealer_id"] == actor_id:
+        # Before dealing, the replacement really deals this round. Afterwards
+        # retain the original anchor so the next round rotates exactly once.
+        result["dealer_id"] = _next_player(result, actor_id)
+    if result["phase"] == "peeking":
+        if result["peek_information"]["player_id"] == actor_id:
+            # Known bottom cards stay private to the former peeker. The new
+            # peeker starts their own inspection without inheriting that view.
+            dealer = next(index for index, person in enumerate(active) if person["id"] == result["dealer_id"])
+            replacement = active[(dealer - 1) % len(active)]["id"]
+            result["peek_information"] = {"player_id": replacement, "cards": [],
+                                          "success": None, "complete": False}
+            result["current_player_id"] = replacement
+    elif result["current_player_id"] == actor_id:
+        result["current_player_id"] = _next_player(result, actor_id)
+    return result
+
+
 def project_state(state: Mapping[str, Any], viewer_id: str | None) -> dict[str, Any]:
     """Build an explicit allowlist: no opponent hand or deck order escapes.
 
@@ -439,6 +504,7 @@ def project_state(state: Mapping[str, Any], viewer_id: str | None) -> dict[str, 
         for key in (
             "ruleset_version", "phase", "version", "dealer_id", "current_player_id",
             "discard", "afterthrow", "finished_order", "loser_id", "last_event", "deal",
+            "withdrawn_ids", "round_end_reason", "remaining_player_id",
         )
     }
     projection["viewer_id"] = viewer_id if viewer else None
@@ -447,6 +513,11 @@ def project_state(state: Mapping[str, Any], viewer_id: str | None) -> dict[str, 
         {
             "id": player["id"], "name": player["name"], "is_cpu": player["is_cpu"],
             "hand_count": len(player["hand"]), "finished": player["finished"],
+            "withdrawn": player["id"] in state["withdrawn_ids"],
+            "outcome": ("withdrawn" if player["id"] in state["withdrawn_ids"] else
+                        "finished" if player["finished"] else
+                        "remaining" if player["id"] == state["remaining_player_id"] else
+                        "hausdepp" if player["id"] == state["loser_id"] else None),
         }
         for player in state["players"]
     ]
@@ -476,7 +547,7 @@ def project_state(state: Mapping[str, Any], viewer_id: str | None) -> dict[str, 
     }
     projection["available_actions"] = []
     projection["playable_cards"] = []
-    if not viewer or viewer["finished"]:
+    if not viewer or viewer["finished"] or viewer_id in state["withdrawn_ids"]:
         return projection
     if state["phase"] == "peeking":
         if peek["player_id"] == viewer_id:

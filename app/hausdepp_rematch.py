@@ -45,7 +45,8 @@ def retain_rematch_source(game: dict) -> bool:
     if not game.get("_aborted") and (not game.get("_finished") or (tournament and not tournament.get("completed"))):
         return True
     ids = {person["user_id"] for person in game.get("_participants", [])
-           if not person.get("is_cpu") and type(person.get("user_id")) is int and person["user_id"] > 0}
+           if not person.get("is_cpu") and type(person.get("user_id")) is int and person["user_id"] > 0
+           and person.get("id") not in game.get("_hausdepp_departures", {})}
     if not ids:
         return True
     try:
@@ -56,7 +57,10 @@ def retain_rematch_source(game: dict) -> bool:
             # The retained recipe has no reusable plaintext secret. Subsequent
             # rematches reuse the salted verifier, never hash it a second time.
             verifier = {"hausdepp_hash": _ROOM_HASH.hash(code)} if isinstance(code, str) and code else code
-            settings = {"_name": game["_name"], "_mode": game["_mode"],
+            remaining_count = sum(person.get("id") not in game.get("_hausdepp_departures", {})
+                                  for person in game.get("_participants", []))
+            mode = str(max(2, remaining_count)) if game.get("_hausdepp_departures") else game["_mode"]
+            settings = {"_name": game["_name"], "_mode": mode,
                         "_hausdepp_cpu_count": game.get("_hausdepp_cpu_count", 0),
                         "_hausdepp_tournament_enabled": bool(game.get("_hausdepp_tournament_enabled") or tournament),
                         "_passphrase": verifier}
@@ -236,7 +240,8 @@ def create_rematch(source_id: str, user_id: int, *, before_create: Callable | No
                         or not recovered.get("_hausdepp_rematch_source_pending")):
                     raise RematchError("game_not_found", 404)
                 ids = {person["user_id"] for person in recovered.get("_participants", [])
-                       if not person.get("is_cpu") and type(person.get("user_id")) is int and person["user_id"] > 0}
+                       if not person.get("is_cpu") and type(person.get("user_id")) is int and person["user_id"] > 0
+                       and person.get("id") not in recovered.get("_hausdepp_departures", {})}
                 if user_id not in ids:
                     raise RematchError("game_not_found", 404)
                 if not retain_rematch_source(recovered):
@@ -255,7 +260,8 @@ def create_rematch(source_id: str, user_id: int, *, before_create: Callable | No
                     source = {**json.loads(recipe.settings_json), "_finished": True, "_game_type": HAUSDEPP_GAME_TYPE}
         elif game_type_from_state(source) == HAUSDEPP_GAME_TYPE:
             ids = {player["user_id"] for player in source.get("_participants", [])
-                   if not player.get("is_cpu") and type(player.get("user_id")) is int and player["user_id"] > 0}
+                   if not player.get("is_cpu") and type(player.get("user_id")) is int and player["user_id"] > 0
+                   and player.get("id") not in source.get("_hausdepp_departures", {})}
         else:
             raise RematchError("game_not_found", 404)
         if user_id not in ids:
@@ -266,7 +272,11 @@ def create_rematch(source_id: str, user_id: int, *, before_create: Callable | No
         if before_create:
             before_create()
         game_id, rematch_id = uuid.uuid4().hex[:8], uuid.uuid4().hex
-        game = new_hausdepp_game(game_id, source["_name"], source["_mode"], register=False)
+        mode = source["_mode"]
+        if source.get("_hausdepp_departures"):
+            mode = str(max(2, sum(person.get("id") not in source["_hausdepp_departures"]
+                                  for person in source.get("_participants", []))))
+        game = new_hausdepp_game(game_id, source["_name"], mode, register=False)
         configure_hausdepp_game(game, host_user_id=user_id, cpu_count=source.get("_hausdepp_cpu_count", 0),
                                 tournament=bool(source.get("_hausdepp_tournament_enabled") or tournament))
         game["_passphrase"] = source.get("_passphrase")

@@ -795,6 +795,24 @@ class HausdeppRoundCredit(Base):
     facts_json: Mapped[str] = mapped_column(Text, nullable=False)
 
 
+class HausdeppWithdrawal(Base):
+    """Explicit forfeiture evidence, independent of completed-round statistics."""
+
+    __tablename__ = "hausdepp_withdrawals"
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    result_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    table_game_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    player_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    departed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    schema_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+
+    __table_args__ = (
+        CheckConstraint("schema_version = 1", name="ck_hausdepp_withdrawal_schema"),
+        Index("ix_hausdepp_withdrawal_user_time", "user_id", "departed_at"),
+        Index("ix_hausdepp_withdrawal_table", "table_game_id"),
+    )
+
+
 class HausdeppAchievementUnlock(Base):
     """Hausdepp awards are isolated from the public cross-game achievement feed."""
 

@@ -28,6 +28,9 @@ import { waitingControlsMarkup, waitingSeatMarkup, mountWaitingControls } from "
 import { createHausdeppVoice } from "./voice.js";
 import { createVoiceSignaling } from "./voice-signaling.js";
 import { mountHausdeppVoiceUI } from "./voice-ui.js";
+import { createHausdeppSound } from "./sound.js";
+import { mountHausdeppSoundUI } from "./sound-ui.js";
+import { mountHausdeppDepartureUI } from "./departure-ui.js";
 
 const root = document.getElementById("hausdeppApp");
 const page = root?.dataset.page || "lobby";
@@ -57,6 +60,8 @@ const seenChat = new Set();
 const seenReactions = new Set(), visibleReactions = new Map();
 let reactionObserver, reactionControls;
 let voice, voiceUI;
+let sound, soundUI;
+let departureUI;
 const voiceSignaling = createVoiceSignaling({ send: data => send(data) });
 const $ = id => document.getElementById(id);
 const lang = () => window.ZDWA_I18N?.getLanguage?.() === "en" ? "en" : "de";
@@ -224,6 +229,7 @@ function header() {
   language.addEventListener("change", () => window.ZDWA_I18N.setLanguage(language.value));
   initializeAppMode({ mode: "hausdepp" });
   voiceUI?.attach();
+  soundUI?.attach();
 }
 
 function signInUrl({ register = false } = {}) {
@@ -330,11 +336,14 @@ function renderAccount() {
   void loadAccount();
 }
 
-const achievementCategories = ["participation", "community", "cut_gamble", "tens", "four", "tempo", "mishaps", "endgame", "comebacks", "style", "tournament", "habits", "surprises_activated", "surprises_witnessed"];
+const achievementCategories = ["participation", "community", "cut_gamble", "tens", "four", "tempo", "mishaps", "endgame", "comebacks", "style", "tournament", "habits", "surprises_activated", "surprises_witnessed", "zonk"];
 const localized = value => typeof value === "object" && value ? value[lang()] || value.de || value.en || "" : String(value ?? "");
 const nonnegative = value => Math.max(0, Number(value) || 0);
 const pointNumber = value => new Intl.NumberFormat(lang() === "en" ? "en-GB" : "de-CH").format(Math.floor(nonnegative(value)));
 const xp = value => t("experiencePoints", { points: pointNumber(value) });
+const earnedXp = value => t("experiencePoints", { points: `${nonnegative(value) > 0 ? "+" : ""}${pointNumber(value)}` });
+const outcomeLabel = outcome => t(({ hausdepp: "outcomeHausdepp", finished: "outcomeFinished",
+  remaining: "outcomeRemaining", withdrawn: "outcomeWithdrawn" })[outcome] || "outcomeUnknown");
 
 function renderAccountProgress(data) {
   accountProgress = data;
@@ -402,7 +411,7 @@ function renderProgressNotice(container, data, { acknowledge = true } = {}) {
   container.hidden = false;
   container.className = "hd-progress-notice";
   container.setAttribute("role", "status");
-  container.innerHTML = `<p class="hd-account-kicker">${t(rankUp ? "rankUpLabel" : awards.length ? "newAchievements" : "newProgress")}</p><h3>${esc(rankUp ? localized(notice.message) || t("rankCongratulations") : t(!knownReward ? "progressRecorded" : awards.length ? "achievementCongratulations" : "roundCongratulations"))}</h3>${rankUp ? `<p class="hd-notice-new-rank">${esc(t("newRank", { name: localized(notice.to_rank?.name) }))}</p><p class="hd-notice-quote">${esc(localized(notice.quote || notice.to_rank?.quote))}</p>${nonnegative(notice.to_rank?.level) - nonnegative(notice.from_rank?.level) > 1 ? `<p class="hd-fine">${esc(t("ranksSkipped", { count: notice.to_rank.level - notice.from_rank.level }))}</p>` : ""}` : ""}${reward ? `<p class="hd-notice-reward">${esc(reward)}</p>` : ""}${awards.length ? `<details><summary>${t("showNewAchievements")}</summary><ul>${awards.map(item => `<li><span class="hd-notice-achievement">${surpriseAchievementBadge(item.id)}<span>${esc(localized(item.name))}</span></span><strong>+${esc(xp(item.points))}</strong></li>`).join("")}</ul></details>` : ""}${acknowledge ? `<button class="hd-primary" type="button" data-progress-ack>${t("continueProgress")}</button><p class="hd-notice-error" role="alert" hidden></p>` : ""}`;
+  container.innerHTML = `<p class="hd-account-kicker">${t(rankUp ? "rankUpLabel" : awards.length ? "newAchievements" : "newProgress")}</p><h3>${esc(rankUp ? localized(notice.message) || t("rankCongratulations") : t(!knownReward ? "progressRecorded" : awards.length ? "achievementCongratulations" : "roundCongratulations"))}</h3>${rankUp ? `<p class="hd-notice-new-rank">${esc(t("newRank", { name: localized(notice.to_rank?.name) }))}</p><p class="hd-notice-quote">${esc(localized(notice.quote || notice.to_rank?.quote))}</p>${nonnegative(notice.to_rank?.level) - nonnegative(notice.from_rank?.level) > 1 ? `<p class="hd-fine">${esc(t("ranksSkipped", { count: notice.to_rank.level - notice.from_rank.level }))}</p>` : ""}` : ""}${reward ? `<p class="hd-notice-reward">${esc(reward)}</p>` : ""}${awards.length ? `<details><summary>${t("showNewAchievements")}</summary><ul>${awards.map(item => `<li><span class="hd-notice-achievement">${surpriseAchievementBadge(item.id)}<span>${esc(localized(item.name))}</span></span><strong>${esc(earnedXp(item.points))}</strong></li>`).join("")}</ul></details>` : ""}${acknowledge ? `<button class="hd-primary" type="button" data-progress-ack>${t("continueProgress")}</button><p class="hd-notice-error" role="alert" hidden></p>` : ""}`;
   if (!acknowledge) return;
   container.querySelector("[data-progress-ack]").addEventListener("click", async event => {
     const button = event.currentTarget;
@@ -451,7 +460,7 @@ function feedItemMarkup(item) {
   const achievement = item && typeof item.achievement === "object" && item.achievement ? item.achievement : {};
   const player = item && typeof item.player === "object" && item.player ? item.player : {};
   const level = feedDifficulties.includes(achievement.difficulty) ? achievement.difficulty : "medium";
-  return `<li class="hd-feed-item${player.is_self ? " is-self" : ""}" data-feed-item data-feed-item-difficulty="${level}"><span class="hd-achievement-symbol" aria-hidden="true">${surpriseAchievementBadge(achievement.id) || icon("check")}</span><div class="hd-feed-copy"><p class="hd-feed-earned"><strong class="hd-feed-player" translate="no">${esc(player.display_name || t("leaderboardUnknownPlayer"))}</strong>${player.is_self ? `<span class="hd-self-tag">${t("yourSeat")}</span>` : ""}<time datetime="${esc(item.unlocked_at || "")}">${esc(formatRoundDate(item.unlocked_at))}</time></p><h3>${esc(localized(achievement.name))}</h3><p>${esc(localized(achievement.description))}</p><p class="hd-feed-meta"><span class="hd-feed-difficulty hd-feed-difficulty--${level}">${t(`difficulty_${level}`)}</span><span class="hd-achievement-points">${esc(xp(achievement.points))}</span></p></div></li>`;
+  return `<li class="hd-feed-item${player.is_self ? " is-self" : ""}" data-feed-item data-feed-item-difficulty="${level}"><span class="hd-achievement-symbol" aria-hidden="true">${surpriseAchievementBadge(achievement.id) || icon("check")}</span><div class="hd-feed-copy"><p class="hd-feed-earned"><strong class="hd-feed-player" translate="no">${esc(player.display_name || t("leaderboardUnknownPlayer"))}</strong>${player.is_self ? `<span class="hd-self-tag">${t("yourSeat")}</span>` : ""}<time datetime="${esc(item.unlocked_at || "")}">${esc(formatRoundDate(item.unlocked_at))}</time></p><h3>${esc(localized(achievement.name))}</h3><p>${esc(localized(achievement.description))}</p><p class="hd-feed-meta"><span class="hd-feed-difficulty hd-feed-difficulty--${level}">${t(achievement.points === 0 ? "category_zonk" : `difficulty_${level}`)}</span><span class="hd-achievement-points">${esc(xp(achievement.points))}</span></p></div></li>`;
 }
 
 async function loadAchievementFeed({ focus = false } = {}) {
@@ -530,7 +539,7 @@ function formatRoundDate(value) {
 function historyRow(round) {
   const isHausdepp = round.outcome === "hausdepp";
   const players = Array.isArray(round.participants) ? round.participants : [];
-  return `<article class="hd-history-round" data-round-id="${esc(round.game_id)}"><div class="hd-history-round-heading"><div><time datetime="${esc(round.finished_at || "")}">${esc(formatRoundDate(round.finished_at))}</time><h3>${esc(round.name || t("defaultTable"))}</h3></div><span class="hd-outcome ${isHausdepp ? "is-hausdepp" : ""}">${t(isHausdepp ? "outcomeHausdepp" : "outcomeFinished")}</span></div><p class="hd-history-meta">${t("roundPeople", { count: Number(round.participant_count) || players.length })}${round.cpu_count ? ` · ${t("cpuCount", { count: round.cpu_count })}` : ""}${!isHausdepp && Number.isInteger(round.finished_position) ? ` · ${t("exitPosition", { position: round.finished_position })}` : ""}</p><details class="hd-history-players"><summary>${t("historyParticipants", { count: players.length })}</summary><ul>${players.map(player => `<li><span>${esc(player.name)}${player.is_cpu ? `<small>${t("computer")}</small>` : ""}</span><span>${t(player.outcome === "hausdepp" ? "outcomeHausdepp" : "outcomeFinished")}${player.outcome !== "hausdepp" && Number.isInteger(player.finished_position) ? ` · ${t("exitPosition", { position: player.finished_position })}` : ""}</span></li>`).join("")}</ul></details></article>`;
+  return `<article class="hd-history-round" data-round-id="${esc(round.game_id)}"><div class="hd-history-round-heading"><div><time datetime="${esc(round.finished_at || "")}">${esc(formatRoundDate(round.finished_at))}</time><h3>${esc(round.name || t("defaultTable"))}</h3></div><span class="hd-outcome ${isHausdepp ? "is-hausdepp" : ""}">${outcomeLabel(round.outcome)}</span></div><p class="hd-history-meta">${t("roundPeople", { count: Number(round.participant_count) || players.length })}${round.cpu_count ? ` · ${t("cpuCount", { count: round.cpu_count })}` : ""}${round.outcome === "finished" && Number.isInteger(round.finished_position) ? ` · ${t("exitPosition", { position: round.finished_position })}` : ""}</p><details class="hd-history-players"><summary>${t("historyParticipants", { count: players.length })}</summary><ul>${players.map(player => `<li><span>${esc(player.name)}${player.is_cpu ? `<small>${t("computer")}</small>` : ""}</span><span>${outcomeLabel(player.outcome)}${player.outcome === "finished" && Number.isInteger(player.finished_position) ? ` · ${t("exitPosition", { position: player.finished_position })}` : ""}</span></li>`).join("")}</ul></details></article>`;
 }
 
 async function loadAccount({ more = false } = {}) {
@@ -732,22 +741,35 @@ function renderTableShell() {
   reactionObserver = new ResizeObserver(positionReactions);
   reactionObserver.observe($("hausdeppTable"));
   if (!spectating && auth.authenticated) {
+    if (!sound) {
+      sound = createHausdeppSound();
+      soundUI = mountHausdeppSoundUI({ controller: sound, t });
+    }
     if (!voice) {
       voice = createHausdeppVoice({ send: (operation, payload) => voiceSignaling.request(operation, payload), t, userId: auth.user.id });
-      voiceUI = mountHausdeppVoiceUI({ controller: voice, t, userId: auth.user.id,
+      voiceUI = mountHausdeppVoiceUI({ controller: voice, t, userId: auth.user.id, sound,
         getPlayers: () => (snapshot?._participants || snapshot?._hausdepp?.players || snapshot?._players || []).map(player => seatIdentity(player)),
       });
     }
     voiceUI.attach();
-  } else if (voice) {
-    voice.destroy(); voiceUI?.destroy(); voice = null; voiceUI = null;
+    soundUI.attach();
+  } else {
+    voice?.destroy(); voiceUI?.destroy(); voice = null; voiceUI = null;
+    sound?.destroy(); soundUI?.destroy(); sound = null; soundUI = null;
   }
+  departureUI?.destroy();
+  departureUI = mountHausdeppDepartureUI({ t, send, onLeft: leaveTableForLobby,
+    getState: () => ({ permissions: snapshot?._departure_permissions, version: snapshot?._hausdepp?.version,
+      connected: socket?.readyState === WebSocket.OPEN, busy: pending || tournamentEnding, spectating }),
+    onPendingChange: value => { pending = value; renderState(); },
+  });
   connect();
 }
 
-// A new round with the same people keeps page-owned services (including voice)
+// A new round with the same people keeps page-owned services (voice and sound)
 // alive. Only the old table's transport, gestures and temporary presentation end.
 function disposeTable() {
+  departureUI?.destroy(); departureUI = null;
   voiceSignaling.reset();
   voice?.disconnected();
   const previousSocket = socket;
@@ -932,11 +954,9 @@ function connect() {
       if (payload.hausdepp_voice.event === "state") void voice?.receive(payload.hausdepp_voice);
       return;
     }
+    if (departureUI?.receive(payload)) return;
     if (payload.left_waiting_game) {
-      stopped = true;
-      waitingLeaving = false;
-      socket.close();
-      location.assign("/hausdepp");
+      leaveTableForLobby();
       return;
     }
     if (payload.player_id) {
@@ -952,6 +972,7 @@ function connect() {
       renderState();
       completeCommand();
     }
+    if (departureUI?.reject(payload)) return;
     if (payload.hausdepp_table_effects && snapshot?._hausdepp) {
       snapshot._hausdepp_table_effects = payload.hausdepp_table_effects;
       renderTableAppearance($("hausdeppTable"), snapshot._hausdepp_table_effects);
@@ -1024,7 +1045,11 @@ function connect() {
   connection.addEventListener("close", event => {
     if (!current()) return;
     voiceSignaling.reset();
-    if ([1008, 4001].includes(event.code)) { voice?.destroy(); voiceUI?.destroy(); voice = null; voiceUI = null; }
+    departureUI?.disconnected();
+    if ([1008, 4001].includes(event.code)) {
+      voice?.destroy(); voiceUI?.destroy(); voice = null; voiceUI = null;
+      sound?.destroy(); soundUI?.destroy(); sound = null; soundUI = null;
+    }
     else voice?.disconnected();
     requestedSurprise = null;
     cancelTableSurprises($("hausdeppTable"));
@@ -1046,6 +1071,18 @@ function connect() {
 function renderState() {
   renderStateContent();
   voiceUI?.render();
+  soundUI?.render();
+  departureUI?.render();
+}
+
+function leaveTableForLobby() {
+  stopped = true;
+  pending = waitingLeaving = false;
+  departureUI?.destroy();
+  voice?.destroy(); voiceUI?.destroy(); voiceSignaling.reset();
+  sound?.destroy(); soundUI?.destroy();
+  socket?.close();
+  location.assign("/hausdepp");
 }
 
 function renderStateContent() {
@@ -1117,7 +1154,7 @@ function renderStateContent() {
   const stockBlocker = s.players.find(p => p.id === s.stock_blocked_by);
   const urgentDraw = Boolean(s.draw_urgent);
   $("hausdeppPlayers").dataset.count = String(opponents.length);
-  renderOpponents(opponents.map((p, i) => `<div class="hd-seat ${p.id === s.current_player_id ? "is-active" : ""} ${p.finished ? "is-finished" : ""} ${refillPlayers.has(p.id) ? "needs-draw" : ""} ${p.id === s.stock_blocked_by ? "is-draw-blocker" : ""}" data-player-id="${esc(p.id)}" style="--seat:${i};--seat-x:${(50 + 40 * Math.cos(opponents.length === 1 ? Math.PI / 2 : Math.PI - i * Math.PI / (opponents.length - 1))).toFixed(4)}%;--seat-depth:${(1 - Math.sin(opponents.length === 1 ? Math.PI / 2 : Math.PI - i * Math.PI / (opponents.length - 1))).toFixed(4)}" aria-label="${esc(`${p.name}${p.is_cpu ? `, ${t("computer")}` : ""}: ${p.finished ? t("finished") : counted("cardsInHand", p.hand_count)}`)}">${opponentHand(p)}${tournament?.letters?.[p.id] ? `<b class="hd-tournament-prefix">${esc(tournament.letters[p.id])}</b>` : ""}<div class="hd-seat-plate"><strong>${esc(p.name)}</strong><span class="hd-seat-count">${p.finished ? `${icon("check")} ${t("finished")}` : `<span class="hd-seat-count-n">${p.hand_count}</span><span class="hd-seat-count-unit"> ${t(p.hand_count === 1 ? "cardWordOne" : "cardWord")}</span>`}</span></div>${p.is_cpu ? `<small>${t("computer")}</small>` : ""}</div>`).join(""));
+  renderOpponents(opponents.map((p, i) => `<div class="hd-seat ${p.id === s.current_player_id ? "is-active" : ""} ${p.finished ? "is-finished" : ""} ${p.withdrawn ? "is-withdrawn" : ""} ${refillPlayers.has(p.id) ? "needs-draw" : ""} ${p.id === s.stock_blocked_by ? "is-draw-blocker" : ""}" data-player-id="${esc(p.id)}" style="--seat:${i};--seat-x:${(50 + 40 * Math.cos(opponents.length === 1 ? Math.PI / 2 : Math.PI - i * Math.PI / (opponents.length - 1))).toFixed(4)}%;--seat-depth:${(1 - Math.sin(opponents.length === 1 ? Math.PI / 2 : Math.PI - i * Math.PI / (opponents.length - 1))).toFixed(4)}" aria-label="${esc(`${p.name}${p.is_cpu ? `, ${t("computer")}` : ""}: ${p.withdrawn ? t("outcomeWithdrawn") : p.finished ? t("finished") : counted("cardsInHand", p.hand_count)}`)}">${opponentHand(p)}${tournament?.letters?.[p.id] ? `<b class="hd-tournament-prefix">${esc(tournament.letters[p.id])}</b>` : ""}<div class="hd-seat-plate"><strong>${esc(p.name)}</strong><span class="hd-seat-count">${p.withdrawn ? t("outcomeWithdrawn") : p.finished ? `${icon("check")} ${t("finished")}` : `<span class="hd-seat-count-n">${p.hand_count}</span><span class="hd-seat-count-unit"> ${t(p.hand_count === 1 ? "cardWordOne" : "cardWord")}</span>`}</span></div>${p.is_cpu ? `<small>${t("computer")}</small>` : ""}</div>`).join(""));
   $("hausdeppStockCount").textContent = t(s.phase === "peeking" ? "undealtCount" : "stockCount", { count: s.deck_count });
   $("hausdeppStock").classList.toggle("is-empty", !s.deck_count);
   $("hausdeppStock").classList.toggle("is-peeking", s.phase === "peeking");
@@ -1175,7 +1212,7 @@ function renderStateContent() {
   }
   const e = s.last_event || {};
   const actor = s.players.find(p => p.id === e.player_id);
-  const eventKey = s.phase === "peeking" ? "eventPeeking" : e.type === "draw" ? "eventDraw" : e.burn_reason ? actor?.finished ? "eventBurnFinished" : "eventBurn" : e.type === "pickup" || (e.type === "gamble" && !e.success) ? "eventPickup" : ["play", "afterthrow", "gamble"].includes(e.type) ? "eventPlay" : "eventStart";
+  const eventKey = e.type === "withdraw" ? "eventWithdraw" : s.phase === "peeking" ? "eventPeeking" : e.type === "draw" ? "eventDraw" : e.burn_reason ? actor?.finished ? "eventBurnFinished" : "eventBurn" : e.type === "pickup" || (e.type === "gamble" && !e.success) ? "eventPickup" : ["play", "afterthrow", "gamble"].includes(e.type) ? "eventPlay" : "eventStart";
   $("hausdeppEvent").textContent = counted(eventKey, e.drawn_count || e.picked_up_count || e.cards?.length || 0, { name: actor?.name || peeker?.name || "" });
   peekFeedback.update(s, roundKey, playerId);
   animateCardMotion(s, { gameId, playerId, peekCaption: (receiver, cards) => {
@@ -1197,7 +1234,7 @@ function renderStateContent() {
     if (!roundResultReady(`${gameId}:${tournament?.round_number || 1}`, Boolean(motion.previous && motion.previous.phase !== "finished"))) return;
     const loser = s.players.find(p => p.id === s.loser_id);
     const finalLoser = s.players.find(p => p.id === tournament?.tages_hausdepp_id);
-    const roundKey = `${gameId}:${tournament?.round_number || 1}:${Boolean(tournament?.completed)}:${Boolean(tournament?.can_start_next_round)}:${Boolean(snapshot._aborted)}`;
+    const roundKey = `${gameId}:${tournament?.round_number || 1}:${Boolean(tournament?.completed)}:${Boolean(tournament?.can_start_next_round)}:${Boolean(snapshot._aborted)}:${JSON.stringify(tournament?.departed_ids || [])}`;
     $("hausdeppResult").hidden = false;
     if ($("hausdeppResult").dataset.roundId === roundKey) {
       const recreate = $("hausdeppRecreate");
@@ -1209,8 +1246,10 @@ function renderStateContent() {
       return;
     }
     $("hausdeppResult").dataset.roundId = roundKey;
-    const title = snapshot._aborted ? t("tournamentStopped") : tournament?.completed ? `${t("tournamentComplete")}. ${t("tournamentLoser", { name: finalLoser?.name || "…" })}` : t("loser", { name: loser?.name || "…" });
-    $("hausdeppResult").innerHTML = `<h2>${esc(title)}</h2><p class="hd-result-context">${esc(roundResultContext(s, tournament))}</p>${snapshot._aborted ? "" : roundPlacements(s, snapshot._hausdepp_round_summary)}${tournamentScoreboard(tournament, s.players)}<div id="hausdeppRoundProgress" hidden></div><div class="hd-result-links">${tournament && !tournament.completed && !snapshot._aborted ? tournament.can_start_next_round ? `<button id="hausdeppNextRound" class="hd-primary" type="button" ${pending || tournamentEnding || !connected || snapshot._paused ? "disabled" : ""}>${t("startNextRound", { round: nonnegative(tournament.round_number) + 1 })} ${icon("arrow")}</button><button id="hausdeppEndTournament" class="hd-secondary" type="button" ${pending || tournamentEnding || !connected ? "disabled" : ""}>${t("endTournament")}</button>` : `<p class="hd-tournament-wait">${t("tournamentHostWait")}</p>` : `<a class="hd-primary" href="/hausdepp">${t(tournament ? "newTournament" : "nextRound")} ${icon("arrow")}</a>`}<a href="/hausdepp/konto#erfolge">${t("resultAccountLink")}</a></div>`;
+    const title = snapshot._aborted ? t("tournamentStopped") : tournament?.completed ? finalLoser
+      ? `${t("tournamentComplete")}. ${t("tournamentLoser", { name: finalLoser.name })}` : t("tournamentWithoutHausdepp")
+      : loser ? t("loser", { name: loser.name }) : t("roundWithoutHausdepp");
+    $("hausdeppResult").innerHTML = `<h2>${esc(title)}</h2><p class="hd-result-context">${esc(roundResultContext(s, tournament))}</p>${snapshot._aborted ? "" : roundPlacements(s, snapshot._hausdepp_round_summary)}${tournamentScoreboard(tournament, snapshot._participants?.length ? snapshot._participants.map(player => seatIdentity(player)) : s.players)}<div id="hausdeppRoundProgress" hidden></div><div class="hd-result-links">${tournament && !tournament.completed && !snapshot._aborted ? tournament.can_start_next_round ? `<button id="hausdeppNextRound" class="hd-primary" type="button" ${pending || tournamentEnding || !connected || snapshot._paused ? "disabled" : ""}>${t("startNextRound", { round: nonnegative(tournament.round_number) + 1 })} ${icon("arrow")}</button><button id="hausdeppEndTournament" class="hd-secondary" type="button" ${pending || tournamentEnding || !connected ? "disabled" : ""}>${t("endTournament")}</button>` : `<p class="hd-tournament-wait">${t("tournamentHostWait")}</p>` : `<a class="hd-primary" href="/hausdepp">${t(tournament ? "newTournament" : "nextRound")} ${icon("arrow")}</a>`}<a href="/hausdepp/konto#erfolge">${t("resultAccountLink")}</a></div>`;
     if (snapshot._finished && (!tournament || tournament.completed) && hasPreviousSeat()) appendRematchAction();
     $("hausdeppNextRound")?.addEventListener("click", () => command("next_round"));
     $("hausdeppEndTournament")?.addEventListener("click", () => {
@@ -1313,24 +1352,29 @@ function renderRoundProgress(container, data) {
 
 // Everyone's place in the round just played, with what each person earned.
 function roundPlacements(s, summary) {
-  const order = [...(s.finished_order || []), ...(s.loser_id ? [s.loser_id] : [])];
+  const order = [...(s.finished_order || []), ...(s.loser_id ? [s.loser_id] : s.remaining_player_id ? [s.remaining_player_id] : []), ...(s.withdrawn_ids || [])];
   const missing = s.players.filter(player => !order.includes(player.id)).map(player => player.id);
   const rows = [...order, ...missing].map((id, index) => {
     const player = s.players.find(item => item.id === id);
     if (!player) return "";
     const loser = id === s.loser_id;
+    const withdrawn = player.withdrawn || player.outcome === "withdrawn" || s.withdrawn_ids?.includes(id);
+    const remaining = player.outcome === "remaining" || id === s.remaining_player_id;
     const earned = summary?.players?.[id];
-    const awards = (earned?.achievements || []).map(award => `<li><span class="hd-result-award-name">${esc(award.name?.[lang()] || award.name?.de || "")}</span><small>${esc(t("experiencePoints", { points: `+${award.points}` }))}</small></li>`).join("");
+    const awards = (earned?.achievements || []).map(award => `<li><span class="hd-result-award-name">${esc(award.name?.[lang()] || award.name?.de || "")}</span><small>${esc(earnedXp(award.points))}</small></li>`).join("");
     const reward = player.is_cpu ? `<span class="hd-result-reward is-cpu">${t("computer")}</span>`
-      : earned?.xp != null ? `<span class="hd-result-reward">${esc(t("experiencePoints", { points: `+${earned.xp}` }))}</span>` : "";
-    return `<li class="hd-result-place${loser ? " is-hausdepp" : ""}${id === playerId ? " is-self" : ""}"><span class="hd-result-rank">${loser ? t("resultHausdepp") : t("resultPlace", { place: index + 1 })}</span><span class="hd-result-avatar">${seatAvatar(player, { key: `result-${player.id}` })}</span><span class="hd-result-name" translate="no">${esc(player.name)}</span>${reward}${awards ? `<ul class="hd-result-awards" aria-label="${esc(t("resultAwards"))}">${awards}</ul>` : ""}</li>`;
+      : earned?.xp != null ? `<span class="hd-result-reward">${esc(earnedXp(earned.xp))}</span>` : "";
+    const place = withdrawn ? t("outcomeWithdrawn") : remaining ? t("outcomeRemaining") : loser ? t("resultHausdepp")
+      : s.finished_order?.includes(id) ? t("resultPlace", { place: index + 1 }) : t("outcomeUnknown");
+    return `<li class="hd-result-place${loser ? " is-hausdepp" : ""}${id === playerId ? " is-self" : ""}"><span class="hd-result-rank">${place}</span><span class="hd-result-avatar">${seatAvatar(player, { key: `result-${player.id}` })}</span><span class="hd-result-name" translate="no">${esc(player.name)}</span>${reward}${awards ? `<ul class="hd-result-awards" aria-label="${esc(t("resultAwards"))}">${awards}</ul>` : ""}</li>`;
   }).join("");
   return `<ol class="hd-result-places" aria-label="${esc(t("resultPlacements"))}">${rows}</ol>`;
 }
 
 function tournamentScoreboard(tournament, players) {
   if (!tournament) return "";
-  return `<ul class="hd-tournament-score">${players.map(player => `<li class="${player.id === tournament.tages_hausdepp_id ? "is-hausdepp" : ""}"><span>${esc(player.name)}</span><strong aria-label="${esc(t("tournamentLetters", { letters: tournament.letters?.[player.id] || "", losses: tournament.losses?.[player.id] || 0 }))}">${esc(tournament.letters?.[player.id] || "—")}</strong><small>${nonnegative(tournament.losses?.[player.id])} / 8</small></li>`).join("")}</ul>`;
+  const departed = new Set(tournament.departed_ids || []);
+  return `<ul class="hd-tournament-score">${players.map(player => `<li class="${player.id === tournament.tages_hausdepp_id ? "is-hausdepp" : ""}"><span>${esc(player.name)}${departed.has(player.id) ? `<small class="hd-tournament-departed">${t("outcomeWithdrawn")}</small>` : ""}</span><strong aria-label="${esc(t("tournamentLetters", { letters: tournament.letters?.[player.id] || "", losses: tournament.losses?.[player.id] || 0 }))}">${esc(tournament.letters?.[player.id] || "—")}</strong><small>${nonnegative(tournament.losses?.[player.id])} / 8</small></li>`).join("")}</ul>`;
 }
 
 function renderAbortedTable() {
@@ -1488,7 +1532,7 @@ function renderRules() {
   document.title = t("rulesTitle");
   const sections = [{ id: "ziel", key: "goal" }, { id: "kartenwerte", key: "deck" }, { id: "abheben", key: "peek", example: true }, { id: "austeilen", key: "deal" }, { id: "dein-zug", key: "moves", example: true }, { id: "abraeumen", key: "burn", example: true }, { id: "auffuellen", key: "refill", example: true }, { id: "nachwerfen", key: "after", example: true }, { id: "endspiel", key: "end", example: true }, { id: "taktik", key: "tips" }, { id: "bedienung", key: "interface" }, { id: "punkte-erfolge", key: "scoring" }, { id: "turnier", key: "tournament" }, { id: "neu-erstellen", key: "rematch" }];
   const rankLine = `<div class="hd-rank-line" aria-label="${t("rankOrder")}">${ranks.map(rank => `<span>${esc(t(`rank${rank}`))}</span>`).join("<b aria-hidden='true'>‹</b>")}</div>`;
-  root.innerHTML = `<article class="hd-rulebook"><div class="hd-rulebook-heading"><h1>${t("rulesTitle")}</h1><p>${t("rulesIntro")}</p></div><section id="einsteigertouren" class="hd-rule-section"><h2>${t("tourHeading")}</h2><p>${t("tourBody")}</p></section><section id="tisch-eroeffnen" class="hd-rule-section"><h2>${t("setupHeading")}</h2><p>${t("setupBody")}</p></section><section id="sprachchat" class="hd-rule-section"><h2>${t("voiceRulesHeading")}</h2><p>${t("voiceRulesBody")}</p></section><section id="schnellstart" class="hd-rules-quickstart" aria-labelledby="hausdeppQuickstartTitle"><h2 id="hausdeppQuickstartTitle">${t("quickstartHeading")}</h2><ol>${["quickstartOne", "quickstartTwo", "quickstartThree"].map(key => `<li>${t(key)}</li>`).join("")}</ol></section><nav class="hd-rules-toc" aria-label="${t("rulesContents")}"><p>${t("rulesContents")}</p><ol>${sections.map(({ id, key }) => `<li><a href="#${id}">${t(`${key}Nav`)}</a></li>`).join("")}</ol></nav>${sections.map(({ id, key, example }) => `<section id="${id}" class="hd-rule-section" aria-labelledby="rule-${id}"><h2 id="rule-${id}">${t(`${key}Heading`)}</h2><p>${t(`${key}Body`)}</p>${key === "deck" ? rankLine : ""}${key === "scoring" ? `<h3>${t("surpriseAchievementsHeading")}</h3><p>${t("surpriseAchievementsBody")}</p><a href="/hausdepp/konto#erfolge">${t("accountProgressLink")} ${icon("arrow")}</a>` : ""}${example ? `<aside class="hd-rule-example"><strong>${t("exampleLabel")}</strong><p>${t(`${key}Example`)}</p></aside>` : ""}</section>`).join("")}<section id="begriffe"><h2>${t("glossaryHeading")}</h2><ul class="hd-rules-glossary">${["glossaryStock", "glossaryPile", "glossaryClear", "glossaryFinish"].map(key => `<li>${t(key)}</li>`).join("")}</ul></section><section id="karten" class="hd-rule-credits"><h2>${t("cardCredits")}</h2><p>${t("creditsBody")} <a href="https://commons.wikimedia.org/wiki/File:Doppeldeutsche_Preference.JPG" target="_blank" rel="noopener noreferrer">FUZxxl / Karl432</a> · <a href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noopener noreferrer">CC BY 3.0</a> · <a href="https://commons.wikimedia.org/wiki/File:Original-Hungarian-Tell-set.jpg" target="_blank" rel="noopener noreferrer">SZERVÁC Attila</a> · <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a></p></section><a class="hd-primary" href="/hausdepp">${t("takeSeat")} ${icon("arrow")}</a></article>${footer()}`;
+  root.innerHTML = `<article class="hd-rulebook"><div class="hd-rulebook-heading"><h1>${t("rulesTitle")}</h1><p>${t("rulesIntro")}</p></div><section id="einsteigertouren" class="hd-rule-section"><h2>${t("tourHeading")}</h2><p>${t("tourBody")}</p></section><section id="tisch-eroeffnen" class="hd-rule-section"><h2>${t("setupHeading")}</h2><p>${t("setupBody")}</p></section><section id="sprachchat" class="hd-rule-section"><h2>${t("voiceRulesHeading")}</h2><p>${t("voiceRulesBody")}</p></section><section id="wirtshauskulisse" class="hd-rule-section"><h2>${t("soundRulesHeading")}</h2><p>${t("soundRulesBody")}</p></section><section id="aussteigen" class="hd-rule-section"><h2>${t("departureRulesHeading")}</h2><p>${t("departureRulesBody")}</p></section><section id="schnellstart" class="hd-rules-quickstart" aria-labelledby="hausdeppQuickstartTitle"><h2 id="hausdeppQuickstartTitle">${t("quickstartHeading")}</h2><ol>${["quickstartOne", "quickstartTwo", "quickstartThree"].map(key => `<li>${t(key)}</li>`).join("")}</ol></section><nav class="hd-rules-toc" aria-label="${t("rulesContents")}"><p>${t("rulesContents")}</p><ol>${sections.map(({ id, key }) => `<li><a href="#${id}">${t(`${key}Nav`)}</a></li>`).join("")}</ol></nav>${sections.map(({ id, key, example }) => `<section id="${id}" class="hd-rule-section" aria-labelledby="rule-${id}"><h2 id="rule-${id}">${t(`${key}Heading`)}</h2><p>${t(`${key}Body`)}</p>${key === "deck" ? rankLine : ""}${key === "scoring" ? `<h3>${t("surpriseAchievementsHeading")}</h3><p>${t("surpriseAchievementsBody")}</p><a href="/hausdepp/konto#erfolge">${t("accountProgressLink")} ${icon("arrow")}</a>` : ""}${example ? `<aside class="hd-rule-example"><strong>${t("exampleLabel")}</strong><p>${t(`${key}Example`)}</p></aside>` : ""}</section>`).join("")}<section id="begriffe"><h2>${t("glossaryHeading")}</h2><ul class="hd-rules-glossary">${["glossaryStock", "glossaryPile", "glossaryClear", "glossaryFinish"].map(key => `<li>${t(key)}</li>`).join("")}</ul></section><section id="karten" class="hd-rule-credits"><h2>${t("cardCredits")}</h2><p>${t("creditsBody")} <a href="https://commons.wikimedia.org/wiki/File:Doppeldeutsche_Preference.JPG" target="_blank" rel="noopener noreferrer">FUZxxl / Karl432</a> · <a href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noopener noreferrer">CC BY 3.0</a> · <a href="https://commons.wikimedia.org/wiki/File:Original-Hungarian-Tell-set.jpg" target="_blank" rel="noopener noreferrer">SZERVÁC Attila</a> · <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a></p></section><a class="hd-primary" href="/hausdepp">${t("takeSeat")} ${icon("arrow")}</a></article>${footer()}`;
 }
 
 async function start() {
@@ -1547,6 +1591,8 @@ window.addEventListener("zdwa:auth-state", event => {
   // progress mounted after sign-out or an account change in another tab.
   stopped = true;
   voice?.destroy(); voiceUI?.destroy(); voiceSignaling.reset();
+  sound?.destroy(); soundUI?.destroy();
+  departureUI?.destroy();
   cancelTableSurprises($("hausdeppTable"));
   roundProgressReceipt?.();
   cancelRoundResultPresentation();
@@ -1562,6 +1608,6 @@ window.addEventListener("zdwa:auth-state", event => {
   if (page === "settings" && !event.detail?.user) location.replace("/hausdepp");
   else location.reload();
 });
-window.addEventListener("pagehide", () => { voice?.destroy(); voiceUI?.destroy(); voiceSignaling.reset(); stopped = true; disposeTable(); gameCreator?.destroy(); progressNotices?.destroy(); rematchInvitations?.destroy(); rematchLifetime.abort(); stopLobbyDemo?.(); invitations?.destroy(); clearInterval(lobbyTimer); });
+window.addEventListener("pagehide", () => { voice?.destroy(); voiceUI?.destroy(); voiceSignaling.reset(); sound?.destroy(); soundUI?.destroy(); departureUI?.destroy(); stopped = true; disposeTable(); gameCreator?.destroy(); progressNotices?.destroy(); rematchLifetime.abort(); stopLobbyDemo?.(); invitations?.destroy(); clearInterval(lobbyTimer); });
 window.addEventListener("pageshow", event => { if (event.persisted) location.reload(); });
 void start();

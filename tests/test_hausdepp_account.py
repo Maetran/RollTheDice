@@ -80,7 +80,7 @@ class HausdeppAccountTests(unittest.TestCase):
         self.assertTrue(account["scoring"]["available"])
         self.assertEqual(account["scoring"]["round_points"], 526)
         self.assertTrue(account["achievements"]["available"])
-        self.assertEqual(len(account["achievements"]["items"]), 135)
+        self.assertEqual(len(account["achievements"]["items"]), 136)
         self.assertEqual(len(account["ranks"]), 24)
 
     def test_timestamp_boundaries_reject_invalid_cursors_and_skip_corrupt_results(self):

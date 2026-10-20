@@ -11,7 +11,7 @@ if (typeof productVersion !== "string" || !/^\d+\.\d+\.\d+$/.test(productVersion
 // Static asset URL placeholders are resolved by sync_static_versions.py after the
 // build. Compare their normalized form here; the asset check separately
 // validates that every shipped URL uses the actual content fingerprint.
-const assetVersion = /((?:\/static\/|\.\/)[A-Za-z0-9_./-]+\.(?:ttf|woff2?|png|jpe?g|webp|svg)\?v=)[A-Za-z0-9._-]+/g;
+const assetVersion = /((?:\/static\/|\.\/)[A-Za-z0-9_./-]+\.(?:ttf|woff2?|png|jpe?g|webp|svg|mp3|ogg|wav|m4a)\?v=)[A-Za-z0-9._-]+/g;
 const normalizedBundle = bytes => Buffer.from(bytes).toString("utf8").replace(assetVersion, "$1ASSET_VERSION");
 const targets = [
   { source: "frontend/shared/auth.js", output: "app/static/auth.js", format: "esm" },
