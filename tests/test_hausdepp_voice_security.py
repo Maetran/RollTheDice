@@ -17,8 +17,15 @@ class BarrierProvider(FakeProvider):
         super().__init__()
         self.block_location = None
         self.block_new = False
+        self.block_ice = False
         self.entered = asyncio.Event()
         self.release = asyncio.Event()
+
+    async def ice_servers(self):
+        if self.block_ice:
+            self.entered.set()
+            await self.release.wait()
+        return await super().ice_servers()
 
     async def request(self, method, path, payload=None):
         if (path == "sessions/new" and self.block_new or
@@ -123,11 +130,56 @@ class HausdeppVoiceSecurityTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn(1, voice._rooms[self.game["_hausdepp_voice_room_id"]].members)
         self.assertTrue(all(not tracks for tracks in self.provider.sessions.values()))
 
+    async def test_logout_during_join_ice_rejects_membership_without_allocating_media(self):
+        self.provider.block_ice = True
+        joining = asyncio.create_task(self.command(0, "join"))
+        try:
+            await asyncio.wait_for(self.provider.entered.wait(), 2)
+            self.sessions[0].websocket.identity = None
+        finally:
+            self.provider.release.set()
+        reply = await joining
+        self.assertFalse(reply["ok"], reply)
+        self.assertEqual(reply["error_code"], "hausdepp_voice_forbidden")
+        self.assertNotIn("sessionDescription", reply)
+        self.assertNotIn("session_id", reply)
+        self.assertNotIn("member_token", reply)
+        self.assertEqual(voice._rooms[self.game["_hausdepp_voice_room_id"]].members, {})
+        self.assertEqual(self.provider.calls, [])
+        self.assertEqual(self.provider.sessions, {})
+
+    async def test_logout_during_lazy_session_allocation_cleans_known_id_without_publishing(self):
+        token = await self.join(0)
+        self.assertEqual(self.provider.calls, [])
+        self.provider.block_new = True
+        publishing = asyncio.create_task(self.command(0, "publish", member_token=token,
+                                                     sessionDescription=description(), mid="0"))
+        try:
+            await asyncio.wait_for(self.provider.entered.wait(), 2)
+            room = voice._rooms[self.game["_hausdepp_voice_room_id"]]
+            self.assertTrue(room.lock.locked())
+            self.assertTrue(room.members[1].lock.locked())
+            self.sessions[0].websocket.identity = None
+        finally:
+            self.provider.release.set()
+        reply = await publishing
+        self.assertFalse(reply["ok"], reply)
+        self.assertEqual(reply["error_code"], "hausdepp_voice_forbidden")
+        self.assertNotIn("sessionDescription", reply)
+        self.assertNotIn("session_id", reply)
+        self.assertNotIn(1, room.members)
+        self.assertFalse(any(path.endswith("tracks/new") for _, path, _ in self.provider.calls))
+        self.assertIn(("GET", "sessions/s1", None), self.provider.calls)
+        self.assertEqual(self.provider.sessions, {"s1": {}})
+        self.assertEqual(voice._cleanup, [])
+
     async def test_logout_during_subscribe_closes_new_receive_track_before_reply(self):
         publisher_token, listener_token = await self.join(0), await self.join(1)
         published = await self.command(0, "publish", member_token=publisher_token,
                                        sessionDescription=description(), mid="0")
         self.assertTrue(published["ok"], published)
+        ready = await self.command(0, "microphone", member_token=publisher_token, enabled=True)
+        self.assertTrue(ready["ok"], ready)
         self.provider.block_location = "remote"
         subscribing = asyncio.create_task(self.command(1, "subscribe", member_token=listener_token, user_ids=[1]))
         try:
@@ -142,7 +194,7 @@ class HausdeppVoiceSecurityTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn(2, voice._rooms[self.game["_hausdepp_voice_room_id"]].members)
 
     async def test_room_cap_cannot_evict_a_pending_join_with_no_member_yet(self):
-        self.provider.block_new = True
+        self.provider.block_ice = True
         with patch.object(voice, "MAX_ROOMS", 1):
             joining = asyncio.create_task(self.command(0, "join"))
             try:
@@ -165,6 +217,8 @@ class HausdeppVoiceSecurityTests(unittest.IsolatedAsyncioTestCase):
                 joined = await joining
         self.assertTrue(joined["ok"], joined)
         self.assertIn(1, voice._rooms[room_id].members)
+        self.assertIsNone(joined["session_id"])
+        self.assertEqual(self.provider.calls, [])
 
     async def test_status_without_audio_does_not_retain_an_idle_table(self):
         state = await self.command(0, "state")

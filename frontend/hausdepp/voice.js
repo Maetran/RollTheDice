@@ -15,7 +15,7 @@ export function createHausdeppVoice({
   clearInterval: cancelRepeat = globalThis.clearInterval,
   setTimeout: delay = globalThis.setTimeout,
   clearTimeout: cancelDelay = globalThis.clearTimeout,
-  iceGatheringTimeoutMs = 5000, disconnectGraceMs = 15000,
+  iceGatheringTimeoutMs = 5000, connectionTimeoutMs = 15000, disconnectGraceMs = 15000,
 } = {}) {
   const account = String(userId ?? ""), listeners = new Set();
   const supported = typeof PeerConnection === "function" && typeof Stream === "function";
@@ -25,6 +25,7 @@ export function createHausdeppVoice({
   let sender = null, published = false, speaking = false, epoch = 0, micRevision = 0;
   let queue = Promise.resolve(), disconnectedTimer = null, pollPending = false;
   let subscriptionSignature = "";
+  let connectionWaiter = null;
   const muted = new Set(), media = new Map(), receiving = new Map();
 
   const snapshot = () => ({
@@ -74,6 +75,7 @@ export function createHausdeppVoice({
     microphone = false;
     speaking = false;
     micRevision++;
+    connectionWaiter?.();
     for (const track of localStream?.getTracks() || []) { track.enabled = false; track.stop(); }
     localStream = null;
   };
@@ -125,6 +127,12 @@ export function createHausdeppVoice({
     if (connection.iceGatheringState !== "complete") {
       await new Promise((resolve, reject) => {
         let timer;
+        const hasUsableCandidate = () => {
+          const relayOnly = connection.getConfiguration?.().iceTransportPolicy === "relay";
+          const candidates = connection.localDescription?.sdp || "";
+          return relayOnly ? /^a=candidate:[^\r\n]*\styp\s+relay(?:\s|$)/m.test(candidates)
+            : /^a=candidate:[^\r\n]*\styp\s+(?:srflx|relay)(?:\s|$)/m.test(candidates);
+        };
         const finish = error => {
           cancelDelay(timer);
           connection.removeEventListener("icegatheringstatechange", changed);
@@ -137,7 +145,11 @@ export function createHausdeppVoice({
         };
         connection.addEventListener("icegatheringstatechange", changed);
         connection.addEventListener("connectionstatechange", changed);
-        timer = delay(() => finish(new Error("voiceConnectionError")), iceGatheringTimeoutMs);
+        // Some optional STUN/TURN routes can keep gathering after a usable
+        // public/relay candidate is ready. Bound the wait without discarding
+        // that SDP; a relay-only connection must already have a relay.
+        timer = delay(() => finish(connection.connectionState !== "closed" && hasUsableCandidate()
+          ? null : new Error("voiceConnectionError")), iceGatheringTimeoutMs);
         changed();
       });
     }
@@ -179,16 +191,44 @@ export function createHausdeppVoice({
       if (track.errorCode) throw new Error(track.errorDescription || "voiceConnectionError");
     }
   };
+  const acceptSession = response => {
+    if (response.session_id == null) return;
+    if (sessionId != null && response.session_id !== sessionId) throw new Error("voiceConnectionError");
+    sessionId = response.session_id;
+  };
+  const waitForConnection = (connection, attempt, revision) => new Promise((resolve, reject) => {
+    let timer, settled = false;
+    const finish = (error, connected = false) => {
+      if (settled) return;
+      settled = true;
+      cancelDelay(timer);
+      connection.removeEventListener("connectionstatechange", changed);
+      if (connectionWaiter === changed) connectionWaiter = null;
+      if (error) reject(error); else resolve(connected);
+    };
+    const changed = () => {
+      if (!current(attempt) || pc !== connection || revision !== micRevision || !online) finish(null);
+      else if (connection.connectionState === "connected") finish(null, true);
+      else if (["failed", "closed"].includes(connection.connectionState)) finish(new Error("voiceConnectionError"));
+    };
+    connectionWaiter = changed;
+    connection.addEventListener("connectionstatechange", changed);
+    timer = delay(() => finish(new Error("voiceConnectionError")), connectionTimeoutMs);
+    changed();
+  });
   const finishExchange = async (response, connection, attempt, token) => {
-    acceptTracks(response);
     if (!current(attempt) || connection !== pc) return false;
+    acceptTracks(response);
+    acceptSession(response);
     if (response.sessionDescription) {
       await connection.setRemoteDescription(response.sessionDescription);
       if (!current(attempt) || connection !== pc) return false;
       if (response.sessionDescription.type === "offer") {
         const description = await setLocalDescription(connection, await connection.createAnswer());
         if (!current(attempt) || connection !== pc) return false;
-        await request("answer", { sessionDescription: description }, token);
+        const answered = await request("answer", { sessionDescription: description }, token);
+        if (!current(attempt) || connection !== pc) return false;
+        acceptSession(answered);
       }
     } else if (response.requiresImmediateRenegotiation) throw new Error("voiceConnectionError");
     return current(attempt) && connection === pc;
@@ -247,8 +287,8 @@ export function createHausdeppVoice({
   const join = async attempt => {
     const response = await request("join", {}, null);
     if (!current(attempt)) { leave(response.member_token); return false; }
-    if (!response.member_token || !response.session_id) throw new Error("voiceConnectionError");
-    memberToken = response.member_token; sessionId = response.session_id;
+    if (!response.member_token) throw new Error("voiceConnectionError");
+    memberToken = response.member_token; sessionId = response.session_id ?? null;
     if (response.state) updateState(response.state);
     if (!current(attempt)) return false;
     pc = makeConnection(response.ice_servers);
@@ -339,9 +379,16 @@ export function createHausdeppVoice({
           if (response.sessionDescription?.type !== "answer") throw new Error("voiceConnectionError");
           if (!await finishExchange(response, connection, attempt, token)) return false;
           published = true;
-          negotiating = false;
         }
         if (!current(attempt) || revision !== micRevision) return false;
+        // The provider can accept a publication before its peer has connected.
+        // Announce readiness only once the native transport can send audio.
+        negotiating = true;
+        if (!await waitForConnection(connection, attempt, revision)) {
+          if (localStream === stream) { stopMicrophone(); emit(); }
+          return false;
+        }
+        negotiating = false;
         await request("microphone", { enabled: true, speaking: false }, token);
         if (!current(attempt) || revision !== micRevision) return false;
         microphone = true; status = "connected"; errorKey = ""; emit();
@@ -373,7 +420,7 @@ export function createHausdeppVoice({
         try {
           const response = await request("resume");
           if (!current(attempt)) return false;
-          if (response.session_id && response.session_id !== sessionId) throw new Error("voiceConnectionError");
+          acceptSession(response);
           if (response.state) updateState(response.state);
           if (!current(attempt)) return false;
           status = "connected"; errorKey = ""; emit();
@@ -391,6 +438,7 @@ export function createHausdeppVoice({
   const disconnected = () => {
     if (destroyed) return;
     online = false;
+    connectionWaiter?.();
     if (audio) {
       status = "reconnecting";
       cancelDelay(disconnectedTimer);

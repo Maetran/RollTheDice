@@ -50,6 +50,10 @@ async function installMedia(page, language) {
           const event = new Event('track'); event.track = audioTrack(); event.transceiver = { mid };
           this.dispatchEvent(event);
         }
+        if (description.type === 'answer') {
+          this.connectionState = 'connected';
+          this.dispatchEvent(new Event('connectionstatechange'));
+        }
       }
       async getStats() { return new Map(); }
       close() { this.connectionState = 'closed'; this.dispatchEvent(new Event('connectionstatechange')); }

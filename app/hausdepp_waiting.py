@@ -44,6 +44,7 @@ async def handle_waiting_action(session, action: str, data: dict, *, finalize_ga
     from .hausdepp_cpu_runner import maybe_schedule_cpu_turn
     from .hausdepp_gameplay import game_lock
     from .hausdepp_rematch import rematch_waiting_guard
+    from .hausdepp_voice import refresh_voice_game
 
     game = session.game
     async with game_lock(game):
@@ -74,6 +75,7 @@ async def handle_waiting_action(session, action: str, data: dict, *, finalize_ga
             await session.websocket.send_json({"error": code, "error_code": code,
                                                "scoreboard": snapshot(game, session.player_id)})
             return
+        await refresh_voice_game(game)
         await broadcast(game, {"scoreboard": snapshot(game)})
         if action == "hausdepp_start_game":
             await publish_friend_game_start(game)

@@ -210,6 +210,13 @@ need separate apps. Optional TURN credentials support restrictive networks;
 only short-lived ICE credentials reach the browser. Hausdepp's Nginx host
 allows its own microphone; other products and cameras remain blocked.
 
+Cloudflare-Budgetwarnungen begrenzen die Kosten nicht und schalten Realtime
+nicht ab. Sie verwenden USD und gelten für die nutzungsabhängigen Kosten des
+gesamten Kontos. Ein garantiertes Kosten-Cap in CHF wird dadurch nicht erreicht.
+
+Cloudflare budget alerts do not cap spending or stop Realtime. They use USD
+and cover usage-based costs across the account; they cannot guarantee a CHF cap.
+
 Vor öffentlicher Freigabe ein kontrolliertes Gespräch mit zwei bis sechs
 Testkonten auf verschiedenen Geräten durchführen: ohne Mikrofon zuhören,
 gleichzeitig sprechen, lokale Stummschaltung, Ausgabe aus/ein, Turnier und

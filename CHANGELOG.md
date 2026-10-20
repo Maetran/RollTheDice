@@ -34,7 +34,8 @@ can be enabled after configuring the media service.
 **Deutsch:** Zwei Schalter steuern Zuhören und Mikrofon. Audio aus schaltet auch
 das Mikro stumm; erneutes Einschalten startet nur das Zuhören. Einzelne Menschen
 lassen sich lokal stummschalten; Status und Sprechen sind sichtbar. Account und
-eigener Sitz sind erforderlich. Turniere und erneute Partien derselben Gruppe
+eigener Sitz sind erforderlich. Bei Partien nur gegen CPUs werden die
+Sprachchat-Schalter ausgeblendet. Turniere und erneute Partien derselben Gruppe
 behalten die Sprachsitzung; Neu erstellen wechselt dafür innerhalb derselben
 Seite. Systemlautstärke und System-Audiogeräte gelten. Kein Mitschnitt oder
 Push-to-talk. Ohne serverseitig eingerichtete Cloudflare-SFU-App bleibt die
@@ -43,7 +44,8 @@ Funktion aus; mobiles Hintergrundverhalten ist geräteabhängig.
 **English:** Two controls manage listening and the microphone. Audio off also
 mutes the microphone; switching audio back on starts listening only. Mute
 individual people locally and see voice and speaking status. An account and
-your own seat are required. Tournaments and rematches with the same group retain
+your own seat are required. Voice controls are hidden in games against CPUs
+only. Tournaments and rematches with the same group retain
 the voice session; Create again switches tables within the same page. System
 volume and audio devices apply. No recording or push-to-talk. Voice remains off
 without a configured server-side Cloudflare SFU app; mobile background operation

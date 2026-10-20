@@ -22,7 +22,8 @@ Geräuschunterdrückung soweit vom Browser unterstützt. Alle Teilnehmer können
 gleichzeitig sprechen und hören. Es gibt weder Aufzeichnung noch Push-to-talk.
 
 Nur aktive Account-Mitspieler nehmen teil; Gäste, Zuschauer und CPUs sind
-ausgeschlossen. Der freiwillige Status vom Wartetisch bleibt beim Spielstart,
+ausgeschlossen. Bei Partien nur gegen CPUs sind die Sprachchat-Schalter nicht
+verfügbar. Der freiwillige Status vom Wartetisch bleibt beim Spielstart,
 über Turnier-Zwischenstände und nächste Runden sowie beim erneuten Spielen mit
 derselben Gruppe bestehen. Ein Gruppenwechsel, Abmelden oder Schliessen beendet
 die Teilnahme. Ein neues Gerät übernimmt die Teilnahme erst nach erneuter
@@ -41,7 +42,8 @@ persists within the voice session. Show participants' voice state and speaking
 activity. Use system volume and routing, with browser-supported echo/noise
 suppression. Everyone can speak and hear simultaneously. No recording or
 push-to-talk. Only active signed-in players may join; guests, spectators and
-CPUs are excluded. Opt-in persists through waiting, play, tournament standings,
+CPUs are excluded. Voice controls are unavailable in games against CPUs only.
+Opt-in persists through waiting, play, tournament standings,
 further rounds and rematches with the same group. Changing groups, signing out
 or closing ends participation. A replacement device must opt in again and
 revokes the old device's media. Show connection problems. Background operation

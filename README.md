@@ -351,6 +351,7 @@ die Audiogeräte des Betriebssystems gelten. Turnierrunden, Zwischenstände und
 erneute Partien derselben Gruppe behalten die Sprachsitzung. Verlassen,
 Abmelden und Schliessen beenden sie; ein neuer Einstieg startet ausgeschaltet.
 Gäste, Computer und Zuschauer nehmen nicht teil. Es gibt keine Aufzeichnung.
+Bei Partien nur gegen Computer werden die Sprachchat-Schalter ausgeblendet.
 Die PWA wird empfohlen; Hintergrundbetrieb und Geräteschaltung hängen von
 Browser und Betriebssystem ab. Die Funktion bleibt ohne eingerichteten
 Cloudflare-Audiodienst deaktiviert; siehe [Betrieb](docs/DEPLOYMENT.md#hausdepp-sprachchat--voice-chat).
@@ -362,8 +363,9 @@ on starts listening only. Mute individual players for yourself. Use system
 volume and the operating system's audio devices. Tournament rounds, standings
 and rematches with the same group retain the voice session. Leaving, signing
 out or closing ends it; a fresh visit starts off. Guests, CPUs and spectators
-cannot participate. No conversations are recorded. Installing the PWA is
-recommended; background operation and routing depend on browser and OS. Voice
+cannot participate. No conversations are recorded. Voice controls are hidden
+in games against CPUs only. Installing the PWA is recommended; background
+operation and routing depend on browser and OS. Voice
 stays disabled until Cloudflare media services are configured.
 
 **Deutsch:** Mit V3 ergänzt Hausdepp die Suite als öffentliches drittes Spiel.

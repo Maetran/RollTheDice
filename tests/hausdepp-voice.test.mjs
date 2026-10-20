@@ -26,7 +26,8 @@ const state = (publications = [], extra = {}) => ({ event: "state", available: t
     { user_id: 2, player_id: "seat-b", audio: true, microphone: true }], publications, ...extra });
 const publication = (userId = 2, session = "publisher-b") => ({ user_id: userId, session_id: session, track_name: "microphone" });
 
-function setup({ send: customSend, getUserMedia, audioFails = false, iceComplete = true } = {}) {
+function setup({ send: customSend, getUserMedia, audioFails = false, iceComplete = true,
+  candidateType = null, icePolicy = "all", autoConnect = true } = {}) {
   const calls = [], peers = [], elements = [], captures = [], intervals = new Map(), timeouts = new Map();
   const lifecycle = new EventTarget();
   let nextTimer = 0, nextMid = 1, currentState = state(), currentToken = "token-a";
@@ -42,7 +43,9 @@ function setup({ send: customSend, getUserMedia, audioFails = false, iceComplete
         sender: { track, async replaceTrack(next) { this.track = next; } } };
       this.transceivers.push(transceiver); return transceiver;
     }
-    async createOffer() { return { type: "offer", sdp: "local-offer" }; }
+    getConfiguration() { return { ...this.configuration, iceTransportPolicy: icePolicy }; }
+    async createOffer() { return { type: "offer", sdp: `local-offer${candidateType
+      ? `\r\na=candidate:1 1 udp 100 192.0.2.1 3478 typ ${candidateType}\r\n` : ""}` }; }
     async createAnswer() { return { type: "answer", sdp: "local-answer" }; }
     async setLocalDescription(description) {
       this.localDescription = description;
@@ -55,6 +58,10 @@ function setup({ send: customSend, getUserMedia, audioFails = false, iceComplete
         const event = new Event("track");
         event.track = new Track(); event.transceiver = { mid };
         this.dispatchEvent(event);
+      }
+      if (autoConnect && description.type === "answer") {
+        this.connectionState = "connected";
+        this.dispatchEvent(new Event("connectionstatechange"));
       }
     }
     async getStats() {
@@ -118,6 +125,115 @@ test("receive-only joins without microphone permission and maps each remote outp
   assert.equal(app.elements.length, 2);
   assert.ok(app.elements.every(element => element.srcObject.getAudioTracks().length === 1));
   app.controller.destroy();
+});
+
+test("an empty listening room can join and resume before an SFU session is allocated", async () => {
+  const app = setup({ send: async (operation, payload, fallback) => {
+    const response = await fallback(operation, payload);
+    return operation === "join" || operation === "resume" ? { ...response, session_id: null } : response;
+  } });
+  await app.controller.connected(); await app.controller.setAudio(true);
+  const peer = app.peers[0];
+  app.controller.disconnected(); await app.controller.connected();
+  assert.equal(app.controller.snapshot().audio, true);
+  assert.equal(app.controller.snapshot().microphone, false);
+  assert.equal(app.peers[0], peer);
+  assert.equal(app.peers.length, 1);
+  assert.equal(app.captures.length, 0);
+  assert.equal(app.calls.filter(call => ["publish", "subscribe", "answer"].includes(call.operation)).length, 0);
+  app.controller.destroy();
+});
+
+test("the first publish or subscription learns a lazy session and rejects a changed resume allocation", async () => {
+  for (const operation of ["publish", "subscribe"]) {
+    let resumedSession = "lazy-session";
+    const app = setup({ send: async (requested, payload, fallback) => {
+      const response = await fallback(requested, payload);
+      if (requested === "join") return { ...response, session_id: null };
+      if (requested === operation) return { ...response, session_id: "lazy-session" };
+      if (requested === "resume") return { ...response, session_id: resumedSession };
+      return response;
+    } });
+    await app.controller.connected(); await app.controller.setAudio(true);
+    if (operation === "publish") await app.controller.setMicrophone(true);
+    else await app.controller.receive(state([publication()]));
+    app.controller.disconnected(); await app.controller.connected();
+    assert.equal(app.controller.snapshot().audio, true);
+    assert.equal(app.peers.length, 1);
+    const captured = app.peers[0].transceivers[0]?.sender.track;
+    resumedSession = "unexpected-session";
+    app.controller.disconnected(); await app.controller.connected();
+    assert.equal(app.controller.snapshot().audio, false);
+    assert.equal(app.controller.snapshot().errorKey, "voiceConnectionError");
+    assert.equal(app.peers[0].connectionState, "closed");
+    if (captured) assert.equal(captured.stopped, true);
+    app.controller.destroy();
+  }
+});
+
+test("media responses cannot replace a known SFU allocation", async () => {
+  for (const operation of ["publish", "subscribe", "answer"]) {
+    const app = setup({ send: async (requested, payload, fallback) => {
+      const response = await fallback(requested, payload);
+      return requested === operation ? { ...response, session_id: "unexpected-session" } : response;
+    } });
+    await app.controller.connected(); await app.controller.setAudio(true);
+    if (operation === "publish") await app.controller.setMicrophone(true);
+    else await app.controller.receive(state([publication()]));
+    assert.equal(app.controller.snapshot().audio, false);
+    assert.equal(app.controller.snapshot().errorKey, "voiceConnectionError");
+    assert.equal(app.peers[0].connectionState, "closed");
+    app.controller.destroy();
+  }
+});
+
+test("microphone readiness is announced only after the native publisher connection is connected", async () => {
+  const app = setup({ autoConnect: false }); await app.controller.connected(); await app.controller.setAudio(true);
+  const enabling = app.controller.setMicrophone(true); await turn();
+  assert.equal(app.calls.filter(call => call.operation === "publish").length, 1);
+  assert.equal(app.calls.filter(call => call.operation === "microphone" && call.payload.enabled).length, 0);
+  assert.equal(app.controller.snapshot().microphone, false);
+  app.peers[0].connectionState = "connected";
+  app.peers[0].dispatchEvent(new Event("connectionstatechange"));
+  assert.equal(await enabling, true);
+  assert.equal(app.calls.filter(call => call.operation === "microphone" && call.payload.enabled).length, 1);
+  assert.equal(app.controller.snapshot().microphone, true);
+  assert.equal(app.timeouts.size, 0);
+  app.controller.destroy();
+});
+
+test("a publisher connection deadline releases capture and retires the unready allocation", async () => {
+  const app = setup({ autoConnect: false }); await app.controller.connected(); await app.controller.setAudio(true);
+  const enabling = app.controller.setMicrophone(true); await turn();
+  const track = app.peers[0].transceivers[0].sender.track;
+  app.tickTimeout(15000); assert.equal(await enabling, false);
+  assert.equal(track.stopped, true);
+  assert.equal(app.controller.snapshot().audio, false);
+  assert.equal(app.controller.snapshot().errorKey, "voiceConnectionError");
+  assert.equal(app.peers[0].connectionState, "closed");
+  assert.equal(app.calls.filter(call => call.operation === "microphone" && call.payload.enabled).length, 0);
+  app.controller.destroy();
+});
+
+test("off, stale signalling and failed publishers cannot announce readiness after a late connection", async () => {
+  for (const action of ["microphone-off", "output-off", "disconnected", "failed"]) {
+    const app = setup({ autoConnect: false }); await app.controller.connected(); await app.controller.setAudio(true);
+    const enabling = app.controller.setMicrophone(true); await turn();
+    const peer = app.peers[0], track = peer.transceivers[0].sender.track;
+    let stopping;
+    if (action === "microphone-off") stopping = app.controller.setMicrophone(false);
+    else if (action === "output-off") stopping = app.controller.setAudio(false);
+    else if (action === "disconnected") app.controller.disconnected();
+    else { peer.connectionState = "failed"; peer.dispatchEvent(new Event("connectionstatechange")); }
+    await Promise.all([enabling, stopping]);
+    assert.equal(track.stopped, true);
+    peer.connectionState = "connected"; peer.dispatchEvent(new Event("connectionstatechange"));
+    await turn();
+    assert.equal(app.controller.snapshot().microphone, false);
+    assert.equal(app.calls.filter(call => call.operation === "microphone" && call.payload.enabled).length, 0);
+    app.controller.destroy();
+    assert.equal(app.timeouts.size, 0);
+  }
 });
 
 test("audio off stops capture immediately and audio on never restores the microphone", async () => {
@@ -414,4 +530,48 @@ test("ICE gathering is bounded and cannot leave a microphone running after timeo
   assert.equal(app.controller.snapshot().audio, false);
   assert.equal(app.calls.filter(call => call.operation === "publish").length, 0);
   app.controller.destroy();
+});
+
+test("the ICE deadline forwards usable partial SDP while optional routes are still gathering", async () => {
+  for (const candidateType of ["srflx", "relay"]) {
+    const app = setup({ iceComplete: false, candidateType }); await app.controller.connected(); await app.controller.setAudio(true);
+    const enabling = app.controller.setMicrophone(true); await turn();
+    assert.equal(app.calls.filter(call => call.operation === "publish").length, 0);
+    app.tickTimeout(5000); await enabling;
+    assert.equal(app.peers[0].iceGatheringState, "gathering");
+    assert.equal(app.controller.snapshot().microphone, true);
+    const publication = app.calls.find(call => call.operation === "publish");
+    assert.ok(publication.payload.sessionDescription.sdp.includes(`typ ${candidateType}`));
+    app.controller.destroy();
+  }
+});
+
+test("relay-only ICE cannot use a server-reflexive candidate at the deadline", async () => {
+  for (const candidateType of ["srflx", "relay"]) {
+    const app = setup({ iceComplete: false, candidateType, icePolicy: "relay" });
+    await app.controller.connected(); await app.controller.setAudio(true);
+    const enabling = app.controller.setMicrophone(true); await turn();
+    const track = app.peers[0].transceivers[0].sender.track;
+    app.tickTimeout(5000); await enabling;
+    assert.equal(app.controller.snapshot().microphone, candidateType === "relay");
+    assert.equal(track.stopped, candidateType !== "relay");
+    assert.equal(app.calls.filter(call => call.operation === "publish").length, candidateType === "relay" ? 1 : 0);
+    app.controller.destroy();
+  }
+});
+
+test("host-only partial ICE and a closed peer fail without publishing or resurrecting capture", async () => {
+  for (const closed of [false, true]) {
+    const app = setup({ iceComplete: false, candidateType: closed ? "relay" : "host" });
+    await app.controller.connected(); await app.controller.setAudio(true);
+    const enabling = app.controller.setMicrophone(true); await turn();
+    const track = app.peers[0].transceivers[0].sender.track;
+    if (closed) await app.controller.setAudio(false);
+    else app.tickTimeout(5000);
+    await enabling;
+    assert.equal(track.stopped, true);
+    assert.equal(app.controller.snapshot().microphone, false);
+    assert.equal(app.calls.filter(call => call.operation === "publish").length, 0);
+    app.controller.destroy();
+  }
 });

@@ -41,6 +41,7 @@ _rooms: dict[str, VoiceRoom] = {}
 _cleanup: list[VoiceCleanup] = []
 _watchdog: asyncio.Task | None = None
 _allocations: dict[int, deque[float]] = {}
+_admissions: dict[int, deque[float]] = {}
 
 
 class VoiceError(ValueError):
@@ -76,6 +77,7 @@ class CloudflareVoiceProvider:
         body = json.dumps(payload).encode() if payload is not None else None
         request = Request(url, data=body, method=method, headers={
             "Authorization": f"Bearer {secret}", "Content-Type": "application/json",
+            "User-Agent": "RollTheDice-HausdeppVoice/1.0 (+https://zockdiewandan.online)",
         })
         try:
             class NoRedirect(HTTPRedirectHandler):
@@ -144,12 +146,13 @@ class VoiceMember:
     game: dict
     websocket: object
     token: str
-    session_id: str
+    session_id: str | None = None
     last_seen: float = field(default_factory=time.monotonic)
     disconnected_at: float | None = None
     microphone: bool = False
     speaking: bool = False
     track_name: str | None = None
+    publication_ready: bool = False
     mids: set[str] = field(default_factory=set)
     subscriptions: dict[int, tuple[str, str, str]] = field(default_factory=dict)
     ice_servers: list[dict] = field(default_factory=list)
@@ -178,8 +181,17 @@ class VoiceRoom:
 
 
 def _roster(game: dict) -> set[int]:
-    return {p["user_id"] for p in game.get("_players", [])
-            if type(p.get("user_id")) is int and p["user_id"] > 0 and not p.get("is_cpu")}
+    return {p["user_id"] for p in [*game.get("_players", []), *game.get("_participants", [])]
+            if type(p.get("user_id")) is int and p["user_id"] > 0
+            and not p.get("is_cpu") and p.get("type") != "cpu"}
+
+
+def _game_eligible(game: dict) -> bool:
+    """Waiting friends may opt in; a played table needs two durable accounts."""
+    if game_type_from_state(game) != HAUSDEPP_GAME_TYPE or game.get("_aborted"):
+        return False
+    waiting = not game.get("_started") and not game.get("_finished") and game.get("_hausdepp") is None
+    return waiting or len(_roster(game)) >= 2
 
 
 def carry_voice_room(source: dict, target: dict, user_ids: set[int]) -> None:
@@ -190,7 +202,7 @@ def carry_voice_room(source: dict, target: dict, user_ids: set[int]) -> None:
         target["_hausdepp_voice_allowed_user_ids"] = sorted(user_ids)
 
 
-def _actor(session):
+def _actor(session, *, require_eligible: bool = True):
     identity = resolve_session(session.websocket)
     player = next((p for p in session.game.get("_players", []) if p.get("id") == session.player_id), None)
     if (game_type_from_state(session.game) != HAUSDEPP_GAME_TYPE or session.is_spectator
@@ -198,27 +210,52 @@ def _actor(session):
             or player.get("ws") is not session.websocket or session.game.get("_aborted")
             or user_play_banned(identity.user_id)):
         raise VoiceError("hausdepp_voice_forbidden")
+    if require_eligible and not _game_eligible(session.game):
+        raise VoiceError("hausdepp_voice_unavailable")
     return identity, player
 
 
-def _consume_allocation(user_id: int, *, now: float | None = None) -> None:
-    """Account budget survives leave, new sockets and different table IDs."""
+def _consume_budget(budgets: dict[int, deque[float]], user_id: int, *, now: float | None = None) -> None:
+    """Bound each account across leave, new sockets and different table IDs."""
     now = time.monotonic() if now is None else now
-    for account_id, entries in list(_allocations.items()):
+    for account_id, entries in list(budgets.items()):
         while entries and entries[0] <= now - 3600:
             entries.popleft()
         if not entries:
-            _allocations.pop(account_id, None)
-    entries = _allocations.get(user_id)
+            budgets.pop(account_id, None)
+    entries = budgets.get(user_id)
     if entries is None:
-        if len(_allocations) >= MAX_ALLOCATION_ACCOUNTS:
+        if len(budgets) >= MAX_ALLOCATION_ACCOUNTS:
             raise VoiceError("hausdepp_voice_rate_limited")
-        entries = _allocations[user_id] = deque()
+        entries = budgets[user_id] = deque()
     if len(entries) >= ALLOCATION_HOURLY or sum(timestamp > now - 60 for timestamp in entries) >= ALLOCATION_BURST:
         raise VoiceError("hausdepp_voice_rate_limited")
-    # Count only requests that are about to allocate; a lost provider response
-    # may have allocated successfully and must not enable an unlimited retry.
+    # A lost provider response may have succeeded and must still count.
     entries.append(now)
+
+
+def _consume_allocation(user_id: int, *, now: float | None = None) -> None:
+    _consume_budget(_allocations, user_id, now=now)
+
+
+def _consume_admission(user_id: int, *, now: float | None = None) -> None:
+    _consume_budget(_admissions, user_id, now=now)
+
+
+async def _ensure_sfu_session(member: VoiceMember, session) -> str:
+    """Allocate only when validated media is ready, under room/member locks."""
+    if member.session_id is None:
+        if len(_cleanup) >= MAX_MEMBERS:
+            raise VoiceError("hausdepp_voice_unavailable")
+        _consume_allocation(member.user_id)
+        result = await provider.request("POST", "sessions/new")
+        session_id = result.get("sessionId")
+        if not isinstance(session_id, str) or not _ID.fullmatch(session_id):
+            raise VoiceError("hausdepp_voice_provider_failed")
+        # Record first so revoked authorization can retire the known allocation.
+        member.session_id = session_id
+        _actor(session)
+    return member.session_id
 
 
 async def _room_for(game: dict) -> VoiceRoom:
@@ -283,8 +320,10 @@ def _prune_rooms(now: float) -> None:
                 room.games.pop(game_id, None)
 
 
-def _state(room: VoiceRoom, *, publications: bool) -> dict:
-    seats = {p["user_id"]: p["id"] for game in room.games.values() for p in game.get("_players", [])
+def _state(room: VoiceRoom, game: dict, *, publications: bool) -> dict:
+    if not voice_available() or not _game_eligible(game):
+        return {"event": "state", "available": False, "room_id": None, "members": [], "publications": []}
+    seats = {p["user_id"]: p["id"] for p in game.get("_players", [])
              if type(p.get("user_id")) is int and p["user_id"] in room.allowed_users}
     result = {"event": "state", "available": voice_available(), "room_id": room.id, "members": [
         {"user_id": uid, "player_id": seats[uid], "audio": uid in room.members,
@@ -293,7 +332,8 @@ def _state(room: VoiceRoom, *, publications: bool) -> dict:
     ], "publications": []}
     if publications:
         result["publications"] = [{"user_id": m.user_id, "session_id": m.session_id, "track_name": m.track_name}
-                                  for m in room.members.values() if m.track_name]
+                                  for m in room.members.values()
+                                  if m.track_name and m.session_id and m.publication_ready and _game_eligible(m.game)]
     return result
 
 
@@ -310,7 +350,7 @@ async def _broadcast(room: VoiceRoom) -> None:
             member = room.members.get(identity.user_id)
             joined = bool(member and member.websocket is websocket)
             try:
-                await asyncio.wait_for(websocket.send_json({"hausdepp_voice": _state(room, publications=joined)}), 2)
+                await asyncio.wait_for(websocket.send_json({"hausdepp_voice": _state(room, game, publications=joined)}), 2)
             except (TimeoutError, RuntimeError, OSError):
                 continue
 
@@ -356,6 +396,8 @@ def _track_results(member: VoiceMember, result: dict) -> list[dict]:
 
 async def _cleanup_member(member: VoiceMember | VoiceCleanup) -> bool:
     """Inspect too: a timed-out provider mutation may have allocated more mids."""
+    if member.session_id is None:
+        return True
     try:
         state = await provider.request("GET", f"sessions/{member.session_id}")
         if state.get("_session_absent") is True:
@@ -382,6 +424,7 @@ async def _remove_member(room: VoiceRoom, member: VoiceMember) -> None:
         return
     room.members.pop(member.user_id, None)
     member.microphone = member.speaking = False
+    member.publication_ready = False
     # Withdraw discovery immediately, before network cleanup.
     if not await _cleanup_member(member):
         if not any(job.session_id == member.session_id for job in _cleanup):
@@ -407,7 +450,7 @@ async def reap_voice(*, now: float | None = None) -> None:
                 expired = (now - member.last_seen > HEARTBEAT_SECONDS
                            or member.disconnected_at is not None and now - member.disconnected_at > RECONNECT_SECONDS)
                 if (not voice_available() or not identity or identity.user_id != member.user_id
-                        or user_play_banned(member.user_id) or member.game.get("_aborted") or expired
+                        or user_play_banned(member.user_id) or not _game_eligible(member.game) or expired
                         or not owns and member.disconnected_at is None):
                     async with member.lock:
                         await _remove_member(room, member)
@@ -448,6 +491,7 @@ async def stop_voice() -> None:
                     await _remove_member(room, member)
     _rooms.clear()
     _allocations.clear()
+    _admissions.clear()
 
 
 async def voice_socket_disconnected(session, *, revoke: bool = False) -> None:
@@ -470,6 +514,11 @@ async def refresh_voice_game(game: dict) -> None:
     if game_type_from_state(game) != HAUSDEPP_GAME_TYPE or not game.get("_hausdepp_voice_room_id"):
         return
     room = await _room_for(game)
+    async with room.lock:
+        for member in list(room.members.values()):
+            if member.game is game and not _game_eligible(game):
+                async with member.lock:
+                    await _remove_member(room, member)
     await _broadcast(room)
 
 
@@ -479,7 +528,7 @@ async def handle_voice_action(session, data: dict) -> None:
     try:
         if reply["request_id"] is None or len(json.dumps(data).encode()) > 98304:
             raise VoiceError("hausdepp_voice_invalid_request")
-        identity, player = _actor(session)
+        identity, player = _actor(session, require_eligible=False)
         operation = data.get("operation")
         if operation not in {"state", "join", "publish", "subscribe", "answer", "microphone", "leave", "heartbeat", "resume"}:
             raise VoiceError("hausdepp_voice_invalid_request")
@@ -491,9 +540,12 @@ async def handle_voice_action(session, data: dict) -> None:
         else:
             room = await _room_for(session.game)
             async with room.lock:
+                if operation != "state":
+                    _actor(session)
                 member = room.members.get(identity.user_id)
                 if operation == "state":
-                    reply.update(ok=True, state=_state(room, publications=bool(member and member.websocket is session.websocket)))
+                    reply.update(ok=True, state=_state(room, session.game,
+                                                      publications=bool(member and member.websocket is session.websocket)))
                 elif operation == "join":
                     if member and member.websocket is not session.websocket:
                         async with member.lock:
@@ -502,21 +554,15 @@ async def handle_voice_action(session, data: dict) -> None:
                     if member is None:
                         if len(_cleanup) >= MAX_MEMBERS or sum(len(r.members) for r in _rooms.values()) >= MAX_MEMBERS:
                             raise VoiceError("hausdepp_voice_unavailable")
-                        _consume_allocation(identity.user_id)
-                        result = await provider.request("POST", "sessions/new")
-                        session_id = result.get("sessionId")
-                        if not isinstance(session_id, str) or not _ID.fullmatch(session_id):
-                            raise VoiceError("hausdepp_voice_provider_failed")
-                        # Revalidate after awaiting provider I/O; logout/takeover can race it.
-                        _actor(session)
+                        _consume_admission(identity.user_id)
                         member = VoiceMember(identity.user_id, player["id"], session.game, session.websocket,
-                                             secrets.token_urlsafe(32), session_id)
+                                             secrets.token_urlsafe(32))
                         member.ice_servers = await provider.ice_servers()
                         _actor(session)
                         room.members[identity.user_id] = member
                     member.last_seen = time.monotonic()
                     reply.update(ok=True, room_id=room.id, member_token=member.token, session_id=member.session_id,
-                                 ice_servers=member.ice_servers, state=_state(room, publications=True))
+                                 ice_servers=member.ice_servers, state=_state(room, session.game, publications=True))
                     _start_watchdog()
                 else:
                     token = data.get("member_token")
@@ -529,18 +575,20 @@ async def handle_voice_action(session, data: dict) -> None:
                         raise VoiceError("hausdepp_voice_membership_required")
                     async with member.lock:
                         member.last_seen = time.monotonic()
-                        reply.update(ok=True, **await _member_operation(room, member, operation, data))
+                        reply.update(ok=True, **await _member_operation(room, member, operation, data, session))
                         if operation != "leave":
                             _actor(session)
             if operation != "state":
                 await _broadcast(room)
             # Broadcasting can yield to logout or takeover too. Revalidate
             # immediately before releasing any correlated provider response.
-            _actor(session)
+            _actor(session, require_eligible=operation != "state")
     except (VoiceError, TypeError, OverflowError) as exc:
-        if isinstance(exc, VoiceError) and str(exc) in {"hausdepp_voice_provider_failed", "hausdepp_voice_forbidden"} and "room" in locals():
+        if (isinstance(exc, VoiceError) and str(exc) in {
+                "hausdepp_voice_provider_failed", "hausdepp_voice_forbidden", "hausdepp_voice_unavailable",
+        } and "room" in locals()):
             failed_member = room.members.get(identity.user_id)
-            if failed_member and failed_member.websocket is session.websocket:
+            if failed_member and failed_member.websocket is session.websocket and failed_member.game is session.game:
                 async with room.lock:
                     async with failed_member.lock:
                         await _remove_member(room, failed_member)
@@ -550,19 +598,23 @@ async def handle_voice_action(session, data: dict) -> None:
     await session.websocket.send_json({"hausdepp_voice": reply})
 
 
-async def _member_operation(room: VoiceRoom, member: VoiceMember, operation: str, data: dict) -> dict:
+async def _member_operation(room: VoiceRoom, member: VoiceMember, operation: str, data: dict, session) -> dict:
     if operation == "leave":
         await _remove_member(room, member)
-        return {"state": _state(room, publications=False)}
+        return {"state": _state(room, session.game, publications=False)}
     if operation in {"heartbeat", "resume"}:
         return {"room_id": room.id, "session_id": member.session_id, "ice_servers": member.ice_servers,
-                "state": _state(room, publications=True)}
+                "state": _state(room, session.game, publications=True)}
     if operation == "microphone":
         enabled, speaking = data.get("enabled"), data.get("speaking", False)
         if type(enabled) is not bool or type(speaking) is not bool or enabled and not member.track_name:
             raise VoiceError("hausdepp_voice_invalid_request")
+        if enabled:
+            # The publisher acknowledges its connected peer before discovery.
+            # Later pauses retain this track and its existing subscriptions.
+            member.publication_ready = True
         member.microphone, member.speaking = enabled, enabled and speaking
-        return {"state": _state(room, publications=True)}
+        return {"state": _state(room, session.game, publications=True)}
     if member.awaiting_answer and operation != "answer":
         raise VoiceError("hausdepp_voice_negotiation_pending")
     if operation == "publish":
@@ -571,6 +623,7 @@ async def _member_operation(room: VoiceRoom, member: VoiceMember, operation: str
         if member.track_name or not isinstance(mid, str) or not _ID.fullmatch(mid) or f"a=mid:{mid}" not in description["sdp"].splitlines():
             raise VoiceError("hausdepp_voice_invalid_request")
         track_name = secrets.token_hex(16)
+        await _ensure_sfu_session(member, session)
         result = await provider.request("POST", f"sessions/{member.session_id}/tracks/new", {
             "sessionDescription": description, "tracks": [{"location": "local", "mid": mid, "trackName": track_name}],
         })
@@ -587,7 +640,8 @@ async def _member_operation(room: VoiceRoom, member: VoiceMember, operation: str
         publishers = []
         for uid in user_ids:
             publisher = room.members.get(uid)
-            if uid == member.user_id or uid not in room.allowed_users or not publisher or not publisher.track_name:
+            if (uid == member.user_id or uid not in room.allowed_users or not publisher
+                    or not publisher.track_name or not publisher.publication_ready):
                 raise VoiceError("hausdepp_voice_forbidden")
             previous = member.subscriptions.get(uid)
             if not previous or previous[1:] != (publisher.session_id, publisher.track_name):
@@ -607,7 +661,9 @@ async def _member_operation(room: VoiceRoom, member: VoiceMember, operation: str
                 member.mids.discard(mid)
                 removed.append({"user_id": uid, "mid": mid})
         if not publishers:
-            return {"tracks": [], "removed": removed, "requiresImmediateRenegotiation": False}
+            return {"session_id": member.session_id, "tracks": [], "removed": removed,
+                    "requiresImmediateRenegotiation": False}
+        await _ensure_sfu_session(member, session)
         result = await provider.request("POST", f"sessions/{member.session_id}/tracks/new", {
             "tracks": [{"location": "remote", "sessionId": p.session_id, "trackName": p.track_name} for p in publishers],
         })
@@ -630,4 +686,5 @@ async def _member_operation(room: VoiceRoom, member: VoiceMember, operation: str
         member.awaiting_answer = False
     else:
         raise VoiceError("hausdepp_voice_invalid_request")
-    return {**_provider_result(result), **({"removed": result["removed"]} if "removed" in result else {})}
+    return {**_provider_result(result), "session_id": member.session_id,
+            **({"removed": result["removed"]} if "removed" in result else {})}
