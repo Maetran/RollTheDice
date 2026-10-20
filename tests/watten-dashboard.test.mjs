@@ -682,7 +682,7 @@ test("the actual dashboard wires geography coverage through its game-filter rend
   for (const [path, replacement] of [["./shared/auth.js", auth], ["./dashboard/favorites.js", favorites], ["./dashboard/globe.js", globe]]) {
     dashboard = dashboard.replace(JSON.stringify(path), JSON.stringify(replacement));
   }
-  for (const path of ["./dashboard/watten.js", "./dashboard/analysis.js"]) {
+  for (const path of ["./dashboard/watten.js", "./dashboard/analysis.js", "./dashboard/voice.js"]) {
     dashboard = dashboard.replace(JSON.stringify(path), JSON.stringify(moduleUrl(await readFile(new URL(`../frontend/${path.slice(2)}`, import.meta.url), "utf8"))));
   }
   const html = await readFile(new URL("../app/static/dashboard.html", import.meta.url), "utf8");
