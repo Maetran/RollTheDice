@@ -80,6 +80,9 @@ async function finishedRenderer(page, fixture, { spectator = false, tournament =
     name: player.id === loser ? 'Rosi' : player.id === self ? 'Admin' : 'Hilde',
     hand_count: player.id === loser ? 1 : 0, finished: player.id !== loser,
   }));
+  board._participants = board._participants.map(player => ({ ...player,
+    name: board._hausdepp.players.find(person => person.id === player.id)?.name || player.name,
+  }));
   Object.assign(board, { _finished: true, _aborted: false, _paused: false,
     _hausdepp_tournament: tournament ? {
       round_number: 4, completed: false, round_complete: true, can_start_next_round: true,
@@ -99,7 +102,9 @@ async function finishedRenderer(page, fixture, { spectator = false, tournament =
     viewer_id: spectator ? null : self,
   });
   const sent = [];
+  const simulatedSockets = new Set();
   await page.routeWebSocket(new RegExp(`/ws/${id}$`), socket => {
+    simulatedSockets.add(socket);
     socket.onMessage(raw => {
       const message = JSON.parse(String(raw));
       if (handleDisabledHausdeppVoice(socket, message)) return;
@@ -111,7 +116,9 @@ async function finishedRenderer(page, fixture, { spectator = false, tournament =
   if (spectator) await page.goto(`/hausdepp/spiel/${id}/zuschauen`);
   else await page.reload();
   await expect(page.locator('#hausdeppResult')).toBeVisible();
-  return { id, board, self, loser, sent };
+  return { id, board, self, loser, sent,
+    publish() { for (const socket of simulatedSockets) socket.send(JSON.stringify({ scoreboard: board })); },
+  };
 }
 
 async function expectCompactGeometry(page, width, height) {
@@ -146,6 +153,44 @@ async function expectCompactGeometry(page, width, height) {
     expect(control.height).toBeGreaterThanOrEqual(44);
   }
 }
+
+test('an insufficient-player tournament ending labels remaining and withdrawn seats without invented places', async ({ page }) => {
+  const fixture = await setup(page);
+  const rendered = await finishedRenderer(page, fixture, { tournament: true });
+  const board = rendered.board, state = board._hausdepp;
+  const withdrawn = state.players.filter(player => player.id !== rendered.self).map(player => player.id);
+  Object.assign(state, { loser_id: null, finished_order: [], withdrawn_ids: withdrawn,
+    round_end_reason: 'insufficient_players', remaining_player_id: rendered.self });
+  state.players = state.players.map(player => ({ ...player, finished: false,
+    withdrawn: withdrawn.includes(player.id), outcome: player.id === rendered.self ? 'remaining' : 'withdrawn' }));
+  Object.assign(board._hausdepp_tournament, { completed: true, end_reason: 'insufficient_players', tages_hausdepp_id: null });
+  board._departure_permissions = { can_leave: false, forfeits_round: false, ends_tournament_participation: false };
+  board._hausdepp_round_summary.players = { [rendered.self]: { xp: 2, round_xp: 2, achievements: [] } };
+  await page.reload();
+  await expect(page.locator('#hausdeppResult h2')).toHaveText('Turnier ohne Tages-Hausdepp beendet');
+  await expect(page.locator('.hd-result-place.is-self .hd-result-rank')).toHaveText('Verblieben');
+  await expect(page.locator('.hd-result-place.is-self .hd-result-reward')).toHaveText('+2 EP');
+  await expect(page.locator('.hd-result-place:not(.is-self) .hd-result-rank')).toHaveText(['Ausgestiegen', 'Ausgestiegen']);
+  await expect(page.locator('.hd-result-place.is-hausdepp')).toHaveCount(0);
+});
+
+test('a departure updates cached tournament standings while preserving a regular round place', async ({ page }) => {
+  const fixture = await setup(page);
+  const rendered = await finishedRenderer(page, fixture, { tournament: true });
+  const departed = rendered.board._hausdepp.finished_order.find(id => id !== rendered.self);
+  const person = rendered.board._hausdepp.players.find(player => player.id === departed);
+  const place = page.locator('.hd-result-place').filter({ has: page.locator('.hd-result-name', { hasText: person.name }) });
+  const previousPlace = await place.locator('.hd-result-rank').innerText();
+  rendered.board._hausdepp_tournament.departed_ids = [departed];
+  rendered.publish();
+  await expect(page.locator('.hd-tournament-score li').filter({ hasText: person.name })).toContainText('Ausgestiegen');
+  await expect(place.locator('.hd-result-rank')).toHaveText(previousPlace);
+  rendered.board._hausdepp.players = rendered.board._hausdepp.players.filter(player => player.id !== departed);
+  rendered.board._hausdepp.finished_order = rendered.board._hausdepp.finished_order.filter(id => id !== departed);
+  rendered.board._hausdepp_tournament.round_number++;
+  rendered.publish();
+  await expect(page.locator('.hd-tournament-score li').filter({ hasText: person.name })).toContainText('Ausgestiegen');
+});
 
 for (const language of ['de', 'en']) {
   test(`${language}: compact result shows the actual round, earned XP and account context`, async ({ page }, info) => {

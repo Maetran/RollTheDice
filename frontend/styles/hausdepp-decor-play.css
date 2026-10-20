@@ -27,4 +27,4 @@
 .hd-table-prop--lantern[data-lit="false"] .hd-prop-art::after { animation: none; opacity: 0; }
 .hd-table-prop--lantern[data-lit="false"] .hd-prop-art::before { width: 8%; height: 36%; left: 46%; top: 8%; background: none; border-left: 2px solid #ddd5; border-radius: 50%; filter: blur(1px); animation: hd-candle-smoke 1.2s ease-out both; }
 @keyframes hd-candle-smoke { from { opacity: .6; transform: translateY(10px) scale(.7); } to { opacity: 0; transform: translateY(-8px) scale(1.2); } }
-@media (prefers-reduced-motion: reduce) { .hd-prop-spill, .hd-prop-glass-ring { display: none; } .hd-can-foam, .hd-can-burst { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { .hd-prop-spill:not(.hd-prop-spill--shared), .hd-prop-glass-ring { display: none; } .hd-can-foam, .hd-can-burst { animation: none !important; } }

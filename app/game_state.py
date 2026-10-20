@@ -441,12 +441,17 @@ def _offline_players(g: GameDict) -> list[dict]:
     relevant_players = g.get("_players", [])
     if g.get("_game_type") == "hausdepp":
         active_ids = {player.get("id") for player in (g.get("_hausdepp") or {}).get("players", [])
-                      if not player.get("finished")}
+                      if not player.get("finished") and player.get("id") not in
+                      (g.get("_hausdepp") or {}).get("withdrawn_ids", [])}
         active_humans = [player for player in relevant_players if player.get("id") in active_ids]
         # Finished people may leave while active human seats continue. When
         # only CPUs remain, retain the human observer as the pause anchor.
         if active_humans:
             relevant_players = active_humans
+        elif g.get("_hausdepp_departures"):
+            # After an explicit departure, the remaining computers may settle
+            # the dealt round for people who already finished and went offline.
+            relevant_players = []
     return [
         {
             "id": str(p.get("id")),

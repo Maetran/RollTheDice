@@ -34,6 +34,13 @@ async function signIn(page) {
   }
   const signedIn = await page.request.post("/api/auth/login", { data: { username, password } });
   expect(signedIn.ok()).toBeTruthy();
+  const user = (await signedIn.json()).user;
+  const language = await page.request.put("/api/auth/preferences/language", {
+    headers: { "X-CSRF-Token": user.csrf_token },
+    data: { preferred_language: "de" },
+  });
+  expect(language.status()).toBe(200);
+  expect((await language.json()).preferred_language).toBe("de");
 }
 
 async function mockPush(page, { enabled = false, available = true, denied = false } = {}) {

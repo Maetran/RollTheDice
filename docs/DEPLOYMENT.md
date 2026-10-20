@@ -175,6 +175,16 @@ their snapshots. Never force removal or delete branches as a blanket cleanup.
 
 ## Hausdepp-Sprachchat / Voice chat
 
+Die optionale Wirtshauskulisse wird unabhängig vom Sprachdienst als lokale,
+versionierte MP3-Dateien ausgeliefert. Sie braucht keine weiteren Cloudflare-
+Zugangsdaten. Erst der freiwillige Notenschalter lädt die rund 1.62 MiB; der
+Browser verwendet den normalen öffentlichen HTTP-Cache. Die Dateien werden
+nicht dem Mikrofonsignal zugemischt und erscheinen nicht in der Realtime-
+Verbrauchsmessung. / Optional tavern ambience ships independently as local,
+versioned MP3 assets without additional Cloudflare credentials. Only opting in
+with the music-note switch loads about 1.62 MiB, reusing the normal public HTTP
+cache. Clips are not mixed into microphone audio or included in Realtime usage.
+
 Der Sprachchat verwendet den vorhandenen authentifizierten Spiel-WebSocket für
 Steuerung und Status. Audio fliesst per WebRTC über Cloudflare Realtime SFU;
 der Spielserver speichert keine Audiodaten. Zuschauer erhalten weder

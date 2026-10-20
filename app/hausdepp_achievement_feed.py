@@ -13,7 +13,7 @@ from .achievement_feed import (
     _normalize_feed_request,
 )
 from .database import database_schema_ready, session_scope
-from .hausdepp_achievements import ACHIEVEMENTS
+from .hausdepp_achievements import ACHIEVEMENTS, _unlock_source_allowed
 from .models import HausdeppAchievementUnlock, User
 from .security import as_utc
 
@@ -21,7 +21,7 @@ from .security import as_utc
 def _hausdepp_difficulty(points: int) -> AchievementDifficulty:
     """Map the one-time XP awards, including rare collections, to three bands."""
 
-    if points == 10:
+    if points in (0, 10):
         return "easy"
     if points == 25:
         return "medium"
@@ -57,7 +57,7 @@ def list_hausdepp_achievement_feed(
     if not database_schema_ready():
         return _feed_envelope(items=[], page=page, total=0, difficulty=difficulty)
     offset = (page - 1) * ACHIEVEMENT_FEED_PAGE_SIZE
-    criteria = (User.is_active.is_(True), HausdeppAchievementUnlock.achievement_id.in_(keys))
+    criteria = (User.is_active.is_(True), HausdeppAchievementUnlock.achievement_id.in_(keys), _unlock_source_allowed())
     with session_scope() as db:
         total = int(db.scalar(
             select(func.count())

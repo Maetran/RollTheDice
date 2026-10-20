@@ -1,4 +1,4 @@
-"""Private Hausdepp XP, 135 one-time achievements and the 24-step ironic ladder.
+"""Private Hausdepp XP, 136 one-time achievements and the 24-step ironic ladder.
 
 Only validated, completed round membership can mint a credit. Database uniqueness
 makes retries and simultaneous account tabs harmless. This service never writes
@@ -12,13 +12,14 @@ from collections import Counter
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import select, update
+from sqlalchemy import or_, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.orm import selectinload
 
 from .database import database_schema_ready, session_scope
 from .game_types import HAUSDEPP_GAME_TYPE
+from .hausdepp_departure_store import source_not_withdrawn
 from .hausdepp_results import validated_hausdepp_membership
 from .hausdepp_surprise_collection import SURPRISE_EFFECTS
 from .models import (
@@ -27,12 +28,24 @@ from .models import (
     HausdeppAchievementUnlock,
     HausdeppPresentationReceipt,
     HausdeppRoundCredit,
+    HausdeppWithdrawal,
 )
 from .security import as_utc
 
 ROUND_POINTS = 10
 CPU_ROUND_POINTS = 2
 PRESENTATION_SNAPSHOT_LIMIT = 64
+WITHDRAWAL_ACHIEVEMENT_ID = "hausdepp_136"
+
+
+def _unlock_source_allowed():
+    return or_(HausdeppAchievementUnlock.achievement_id == WITHDRAWAL_ACHIEVEMENT_ID,
+               source_not_withdrawn(HausdeppAchievementUnlock.user_id, HausdeppAchievementUnlock.source_game_id))
+
+
+def _revision_points(points: int) -> int:
+    """Zero-XP grants still advance delivery; historic positive revisions stay stable."""
+    return max(points, 1)
 
 
 def _round_points(credits: list) -> int:
@@ -235,6 +248,7 @@ _ACHIEVEMENT_DATA = (
     (133, "Dem Nichts entkommen", "Escaped the void", "Das seltene schwarze Loch als verbundener Mitspieler miterleben und die Runde abschliessen; beim Auslösen müssen mindestens zwei Menschen verbunden mitspielen.", "Witness the rare black hole as a connected player and complete the round; at least two humans must be connected and playing when it is triggered.", 25),
     (134, "Kurioser Stammgast", "Regular at the unusual", "Vier verschiedene seltene Tischüberraschungen als verbundener Mitspieler miterleben und die jeweiligen Runden abschliessen; beim Auslösen müssen jeweils mindestens zwei Menschen verbunden mitspielen.", "Witness four different rare table surprises as a connected player and complete each round; at least two humans must be connected and playing when each surprise is triggered.", 50),
     (135, "Jetzt hab ich alles gesehen", "Now I’ve seen everything", "Alle acht seltenen Tischüberraschungen als verbundener Mitspieler miterleben und die jeweiligen Runden abschliessen; beim Auslösen müssen jeweils mindestens zwei Menschen verbunden mitspielen.", "Witness all eight rare table surprises as a connected player and complete each round; at least two humans must be connected and playing when each surprise is triggered.", 250),
+    (136, "Zonk: Ich bin dann mal weg", "Zonk: I'm off", "Eine laufende Runde ausdrücklich verlassen, bevor du deine Karten regulär losgeworden bist. Dieser Zonk bringt 0 EP.", "Explicitly leave a running round before finishing your cards normally. This Zonk grants 0 XP.", 0),
 )
 _SURPRISE_ACHIEVEMENTS = {
     **{116 + index: ("activated", effect) for index, effect in enumerate(SURPRISE_EFFECTS)},
@@ -314,6 +328,8 @@ def _description(number: int, de: str, en: str) -> dict[str, str]:
 
 
 def _category(number: int) -> str:
+    if number == 136:
+        return "zonk"
     if number >= 116:
         return "surprises_activated" if number <= 125 else "surprises_witnessed"
     if number > 100:
@@ -342,7 +358,7 @@ def _rank(points: int) -> dict:
 def _new_aggregate() -> dict:
     return {"rounds": 0, "sizes": Counter(), "opponents": Counter(), "flags": Counter(), "ten_clears": 0,
             "with_cpu": 0, "humans_three": 0, "humans_six": 0,
-            "hausdepp": 0, "finished": 0, "tournaments": set(),
+            "hausdepp": 0, "finished": 0, "remaining": 0, "withdrawals": 0, "tournaments": set(),
             "surprises_activated": set(), "surprises_witnessed": set(),
             "office": 0, "lunch": 0, "evening": 0, "night": 0, "early": 0, "weekend": 0,
             "days": Counter(), "best_day": 0, "streak": 0, "best_streak": 0, "last_day": None}
@@ -393,7 +409,9 @@ def _accumulate_time(aggregate: dict, local: datetime) -> None:
 def _progress(aggregate: dict, achievement_id: str) -> tuple[int, int]:
     number = int(achievement_id.rsplit("_", 1)[1])
     current, target = aggregate["flags"][achievement_id], _TARGETS.get(achievement_id, 1)
-    if number in _SURPRISE_ACHIEVEMENTS:
+    if number == 136:
+        current = aggregate["withdrawals"]
+    elif number in _SURPRISE_ACHIEVEMENTS:
         track, effect = _SURPRISE_ACHIEVEMENTS[number]
         current = int(effect in aggregate[f"surprises_{track}"])
     elif number in (124, 125, 134, 135):
@@ -444,9 +462,11 @@ def public_hausdepp_ranks(db, user_ids: list[int]) -> dict[int, dict]:
         return {}
     credits = {value: [] for value in ids}
     unlocks = {value: [] for value in ids}
-    for credit in db.scalars(select(HausdeppRoundCredit).where(HausdeppRoundCredit.user_id.in_(ids))):
+    for credit in db.scalars(select(HausdeppRoundCredit).where(HausdeppRoundCredit.user_id.in_(ids),
+            source_not_withdrawn(HausdeppRoundCredit.user_id, HausdeppRoundCredit.game_id))):
         credits[credit.user_id].append(credit)
-    for unlock in db.scalars(select(HausdeppAchievementUnlock).where(HausdeppAchievementUnlock.user_id.in_(ids))):
+    for unlock in db.scalars(select(HausdeppAchievementUnlock).where(
+            HausdeppAchievementUnlock.user_id.in_(ids), _unlock_source_allowed())):
         unlocks[unlock.user_id].append(unlock)
     result = {}
     for user_id in ids:
@@ -470,10 +490,11 @@ def synchronize_hausdepp_progress(user_id: int) -> dict:
             HausdeppPresentationReceipt.user_id == user_id,
         ).values(acknowledged_points=HausdeppPresentationReceipt.acknowledged_points))
         unlocks = db.scalars(select(HausdeppAchievementUnlock)
-                             .where(HausdeppAchievementUnlock.user_id == user_id)).all()
-        existing_credits = db.scalars(select(HausdeppRoundCredit).where(HausdeppRoundCredit.user_id == user_id)).all()
+                             .where(HausdeppAchievementUnlock.user_id == user_id, _unlock_source_allowed())).all()
+        existing_credits = db.scalars(select(HausdeppRoundCredit).where(HausdeppRoundCredit.user_id == user_id,
+            source_not_withdrawn(HausdeppRoundCredit.user_id, HausdeppRoundCredit.game_id))).all()
         awarded_points = len(existing_credits) * ROUND_POINTS + sum(
-            _ACHIEVEMENTS_BY_ID[unlock.achievement_id]["points"] for unlock in unlocks
+            _revision_points(_ACHIEVEMENTS_BY_ID[unlock.achievement_id]["points"]) for unlock in unlocks
             if unlock.achievement_id in _ACHIEVEMENTS_BY_ID)
         receipt = db.get(HausdeppPresentationReceipt, user_id)
         if receipt.acknowledged_score_points is None and receipt.acknowledged_points == awarded_points:
@@ -499,7 +520,7 @@ def synchronize_hausdepp_progress(user_id: int) -> dict:
             if not rows:
                 break
             for row in rows:
-                validated = validated_hausdepp_membership(row, user_id)
+                validated = validated_hausdepp_membership(row, user_id, db=db)
                 if validated is None:
                     continue
                 _record, facts = validated
@@ -511,6 +532,7 @@ def synchronize_hausdepp_progress(user_id: int) -> dict:
                     awarded_points += ROUND_POINTS
             last_id = rows[-1].id
         credits = db.scalars(select(HausdeppRoundCredit).where(HausdeppRoundCredit.user_id == user_id)
+                             .where(source_not_withdrawn(HausdeppRoundCredit.user_id, HausdeppRoundCredit.game_id))
                              .order_by(HausdeppRoundCredit.finished_at, HausdeppRoundCredit.game_id)).all()
         unlocked_ids = {unlock.achievement_id for unlock in unlocks}
         aggregate = _new_aggregate()
@@ -519,14 +541,24 @@ def synchronize_hausdepp_progress(user_id: int) -> dict:
             for item in ACHIEVEMENTS:
                 current, target = _progress(aggregate, item["id"])
                 if item["id"] not in unlocked_ids and current >= target:
-                    awarded_points += item["points"]
+                    awarded_points += _revision_points(item["points"])
                     _insert_once(db, HausdeppAchievementUnlock, {
                         "user_id": user_id, "achievement_id": item["id"], "unlocked_at": credit.finished_at,
                         "source_game_id": credit.game_id, "awarded_points": awarded_points,
                     })
                     unlocked_ids.add(item["id"])
+        withdrawals = db.scalars(select(HausdeppWithdrawal).where(HausdeppWithdrawal.user_id == user_id)
+                                 .order_by(HausdeppWithdrawal.departed_at, HausdeppWithdrawal.result_id)).all()
+        aggregate["withdrawals"] = len(withdrawals)
+        if withdrawals and WITHDRAWAL_ACHIEVEMENT_ID not in unlocked_ids:
+            awarded_points += 1
+            first = withdrawals[0]
+            _insert_once(db, HausdeppAchievementUnlock, {
+                "user_id": user_id, "achievement_id": WITHDRAWAL_ACHIEVEMENT_ID, "unlocked_at": first.departed_at,
+                "source_game_id": first.result_id, "awarded_points": awarded_points,
+            })
         unlocks = db.scalars(select(HausdeppAchievementUnlock)
-                             .where(HausdeppAchievementUnlock.user_id == user_id)).all()
+                             .where(HausdeppAchievementUnlock.user_id == user_id, _unlock_source_allowed())).all()
         result = _projection(credits, unlocks, aggregate, receipt.acknowledged_points,
                              receipt.acknowledged_score_points)
         scores = _presentation_scores(receipt)
@@ -548,7 +580,8 @@ def _projection(credits: list, unlocks: list, aggregate: dict, acknowledged: int
     achievement_points = sum(_ACHIEVEMENTS_BY_ID[key]["points"] for key in known_unlocks)
     points = round_points + achievement_points
     # Revisions represent grant order, independently of the weighted score.
-    revision = len(credits) * ROUND_POINTS + achievement_points
+    revision = len(credits) * ROUND_POINTS + sum(_revision_points(_ACHIEVEMENTS_BY_ID[key]["points"])
+                                               for key in known_unlocks)
     rank = _rank(points)
     next_rank = next((dict(item) for item in RANKS if item["threshold"] > points), None)
     gap = next_rank["threshold"] - rank["threshold"] if next_rank else 0

@@ -1,0 +1,23 @@
+.hd-sound-controls { position: relative; display: grid; grid-template-columns: 44px; height: 44px; }
+.hd-sound-label { position: absolute; z-index: 1; top: 3px; left: 0; width: 44px; color: var(--hd-paper); font-size: 10px; font-weight: 700; line-height: 12px; text-align: center; pointer-events: none; }
+.hd-sound-controls > button { display: grid; place-items: center; width: 44px; height: 44px; min-height: 44px; padding: 17px 9px 4px; color: var(--hd-paper); background: var(--hd-green-hover); border: 1px solid var(--hd-edge); border-radius: 4px; }
+.hd-sound-controls > button:hover { background: var(--hd-green); }
+.hd-sound-controls > button[aria-pressed="true"] { color: var(--hd-green); background: var(--hd-paper); }
+.hd-sound-controls:has(> button[aria-pressed="true"]) > .hd-sound-label { color: var(--hd-green); }
+.hd-sound-controls[data-status="error"] > button,
+.hd-sound-controls[data-status="blocked"] > button { border-color: var(--hd-gold); border-bottom-width: 3px; }
+.hd-sound-notice { position: fixed; z-index: 61; top: calc(env(safe-area-inset-top, 0px) + 76px); left: 50%; transform: translateX(-50%); width: max-content; max-width: min(560px, calc(100vw - 24px)); padding: 10px 14px; color: var(--hd-paper); background: var(--hd-green); border: 1px solid var(--hd-gold); border-radius: 5px; font-size: 13px; line-height: 1.4; }
+@media (max-width: 1099px) {
+  html[data-game="hausdepp"] body.hd-playing.hd-sound-available .hd-header-tools { margin-left: auto; gap: 3px; }
+  html[data-game="hausdepp"] body.hd-playing.hd-sound-available .hd-brand > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+}
+@media (max-width: 480px) {
+  html[data-game="hausdepp"] body.hd-playing.hd-sound-available .hd-switch[data-game-picker] { width: 44px; min-width: 44px; }
+  html[data-game="hausdepp"] body.hd-playing.hd-sound-available [data-game-picker] :is(.suite-game-trigger__name, .suite-game-trigger__chevron) { display: none; }
+}
+@media (max-width: 359px) {
+  html[data-game="hausdepp"] body.hd-playing.hd-sound-available > .hd-header { gap: 4px; }
+  html[data-game="hausdepp"] body.hd-playing.hd-sound-available .hd-header-tools { gap: 1px; }
+  html[data-game="hausdepp"] body.hd-playing.hd-sound-available .hd-brand img { width: 24px; height: 24px; flex-basis: 24px; }
+  html[data-game="hausdepp"] body.hd-playing.hd-sound-available .hd-language select { width: 44px; padding-inline: 2px; }
+}

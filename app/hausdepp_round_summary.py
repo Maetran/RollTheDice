@@ -15,8 +15,9 @@ from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 
 from .database import database_schema_ready, session_scope
-from .hausdepp_achievements import _ACHIEVEMENTS_BY_ID, CPU_ROUND_POINTS, ROUND_POINTS
-from .models import HausdeppAchievementUnlock, HausdeppRoundCredit
+from .hausdepp_achievements import _ACHIEVEMENTS_BY_ID, CPU_ROUND_POINTS, ROUND_POINTS, _unlock_source_allowed
+from .hausdepp_departure_store import source_not_withdrawn
+from .models import HausdeppAchievementUnlock, HausdeppRoundCredit, HausdeppWithdrawal
 
 logger = logging.getLogger(__name__)
 
@@ -30,11 +31,16 @@ def build_round_summary(result_id: str, participants: list[dict]) -> dict | None
         with session_scope() as db:
             credits = {credit.user_id: json.loads(credit.facts_json) for credit in db.scalars(
                 select(HausdeppRoundCredit).where(HausdeppRoundCredit.game_id == result_id,
-                                                  HausdeppRoundCredit.user_id.in_(set(people.values()))))}
+                                                  HausdeppRoundCredit.user_id.in_(set(people.values())),
+                                                  source_not_withdrawn(HausdeppRoundCredit.user_id,
+                                                                       HausdeppRoundCredit.game_id)))}
+            withdrawn = set(db.scalars(select(HausdeppWithdrawal.user_id).where(
+                HausdeppWithdrawal.result_id == result_id, HausdeppWithdrawal.user_id.in_(set(people.values())))))
             unlocks = defaultdict(list)
             for unlock in db.scalars(select(HausdeppAchievementUnlock).where(
                     HausdeppAchievementUnlock.source_game_id == result_id,
                     HausdeppAchievementUnlock.user_id.in_(set(people.values())))
+                    .where(_unlock_source_allowed())
                     .order_by(HausdeppAchievementUnlock.achievement_id)):
                 # awarded_points is the account's running total, not this award's value.
                 unlocks[unlock.user_id].append(unlock.achievement_id)
@@ -44,10 +50,10 @@ def build_round_summary(result_id: str, participants: list[dict]) -> dict | None
     players = {}
     for player_id, user_id in people.items():
         facts = credits.get(user_id)
-        if facts is None:
+        if facts is None and user_id not in withdrawn:
             players[player_id] = {"xp": None, "round_xp": None, "achievements": []}
             continue
-        round_xp = CPU_ROUND_POINTS if facts.get("cpu_count") else ROUND_POINTS
+        round_xp = 0 if user_id in withdrawn else CPU_ROUND_POINTS if facts.get("cpu_count") else ROUND_POINTS
         achievements = [{"id": achievement_id, "points": _ACHIEVEMENTS_BY_ID[achievement_id]["points"],
                          "name": dict(_ACHIEVEMENTS_BY_ID[achievement_id]["name"])}
                         for achievement_id in unlocks[user_id] if achievement_id in _ACHIEVEMENTS_BY_ID]

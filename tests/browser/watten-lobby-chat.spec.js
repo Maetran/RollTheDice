@@ -56,9 +56,16 @@ for (const language of ['de', 'en']) {
         expect((await input(guest).boundingBox()).height).toBeGreaterThanOrEqual(44);
         await guest.page.screenshot({ path: testInfo.outputPath(`lobby-${viewport.width}x${viewport.height}.png`) });
       }
+      const disabling = host.page.waitForResponse(response =>
+        new URL(response.url()).pathname === '/api/auth/preferences/lobby-chat'
+        && response.request().method() === 'PUT'
+        && response.request().postDataJSON()?.lobby_chat_enabled === false);
       await action(host, 'disable').click();
       await expect(host.page.locator('[data-watten-lobby-chat-body]')).toBeHidden();
       await expect(messages(host)).toBeEmpty();
+      const disabled = await disabling;
+      expect(disabled.status()).toBe(200);
+      expect((await disabled.json()).lobby_chat_enabled).toBe(false);
       expect((await (await host.context.request.get('/api/auth/me')).json()).user.preferences.lobby_chat_enabled).toBe(false);
       await input(guest).fill('Sent while the first account opted out'); await action(guest, 'send').click();
       await expect(input(guest)).toHaveValue('');

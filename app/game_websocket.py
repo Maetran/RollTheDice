@@ -37,6 +37,7 @@ from .game_ws_session import (
 )
 from .game_ws_social import SOCIAL_ACTIONS, handle_social_action
 from .hausdepp_gameplay import HAUSDEPP_GAMEPLAY_ACTIONS
+from .hausdepp_table_props import HAUSDEPP_PROP_ACTIONS, handle_table_prop
 from .hausdepp_table_surprises import HAUSDEPP_TABLE_ACTIONS, handle_table_surprise
 from .moderation import user_play_banned
 from .zilch_gameplay import ZILCH_GAMEPLAY_ACTIONS
@@ -46,7 +47,7 @@ logger = logging.getLogger(__name__)
 # Kept as the complete public action vocabulary for compatibility with tests
 # and diagnostics. Runtime validation below deliberately narrows it per game.
 KNOWN_ACTIONS = SESSION_ACTIONS | GAMEPLAY_ACTIONS | ZILCH_GAMEPLAY_ACTIONS | HAUSDEPP_GAMEPLAY_ACTIONS | HAUSDEPP_TABLE_ACTIONS | SUPERADMIN_ACTIONS | SOCIAL_ACTIONS
-KNOWN_ACTIONS = KNOWN_ACTIONS | {"hausdepp_voice"}
+KNOWN_ACTIONS = KNOWN_ACTIONS | {"hausdepp_voice"} | HAUSDEPP_PROP_ACTIONS
 
 ReserveConnection = Callable[[WebSocket], str | None]
 ReleaseConnection = Callable[[str | None], None]
@@ -95,7 +96,7 @@ class MessageRateLimiter:
         self._messages.append(now)
         if len(self._messages) > 60:
             return "close"
-        if action in {"send_emoji", "chat_message"} | HAUSDEPP_TABLE_ACTIONS:
+        if action in {"send_emoji", "chat_message"} | HAUSDEPP_TABLE_ACTIONS | HAUSDEPP_PROP_ACTIONS:
             self._prune(self._social_messages, now - 5)
             self._social_messages.append(now)
             if len(self._social_messages) > 10:
@@ -263,7 +264,9 @@ async def _receive_messages(
         if rate_limit == "wait":
             await session.websocket.send_json({"error": "Bitte kurz warten",
                                                **({"error_code": "hausdepp_table_surprise_rate_limited"}
-                                                  if action in HAUSDEPP_TABLE_ACTIONS else {})})
+                                                  if action in HAUSDEPP_TABLE_ACTIONS else
+                                                  {"error_code": "hausdepp_table_prop_rate_limited"}
+                                                  if action in HAUSDEPP_PROP_ACTIONS else {})})
             continue
 
         allowed_gameplay_actions = gameplay_actions_for_game(session.game)
@@ -273,7 +276,7 @@ async def _receive_messages(
         # its rules engine; ``end_game`` is the player's deliberate return to
         # the lobby and therefore produces no scored Zilch result.
         allowed_social_actions = SOCIAL_ACTIONS
-        allowed_table_actions = HAUSDEPP_TABLE_ACTIONS if game_type_from_state(session.game) == HAUSDEPP_GAME_TYPE else frozenset()
+        allowed_table_actions = (HAUSDEPP_TABLE_ACTIONS | HAUSDEPP_PROP_ACTIONS) if game_type_from_state(session.game) == HAUSDEPP_GAME_TYPE else frozenset()
         allowed_voice_actions = {"hausdepp_voice"} if game_type_from_state(session.game) == HAUSDEPP_GAME_TYPE else set()
         allowed_actions = SESSION_ACTIONS | allowed_gameplay_actions | allowed_superadmin_actions | allowed_social_actions | allowed_table_actions | allowed_voice_actions
         if action not in allowed_actions:
@@ -283,7 +286,8 @@ async def _receive_messages(
             continue
         if not session.player_id and not session.spectator_id and action not in SESSION_ACTIONS:
             await session.websocket.send_json({"error": "Nicht beigetreten",
-                                               **({"error_code": "hausdepp_table_surprise_invalid_actor"}
+                                               **({"error_code": ("hausdepp_table_prop_invalid_actor" if action in HAUSDEPP_PROP_ACTIONS
+                                                                  else "hausdepp_table_surprise_invalid_actor")}
                                                   if action in allowed_table_actions else {})})
             continue
 
@@ -322,7 +326,8 @@ async def _receive_messages(
             spectator_actions.add("rejoin_game")
         if session.is_spectator and action not in spectator_actions:
             await session.websocket.send_json({"error": "Nur fuer Spieler",
-                                               **({"error_code": "hausdepp_table_surprise_invalid_actor"}
+                                               **({"error_code": ("hausdepp_table_prop_invalid_actor" if action in HAUSDEPP_PROP_ACTIONS
+                                                                  else "hausdepp_table_surprise_invalid_actor")}
                                                   if action in allowed_table_actions else {})})
             continue
         if allowed_superadmin_actions:
@@ -339,7 +344,8 @@ async def _receive_messages(
         ) - {"zilch_abandon_solo"}
         if paused_reason and action in pause_blocked_actions:
             await session.websocket.send_json({"error": paused_reason,
-                                               **({"error_code": "hausdepp_table_surprise_unavailable"}
+                                               **({"error_code": ("hausdepp_table_prop_unavailable" if action in HAUSDEPP_PROP_ACTIONS
+                                                                  else "hausdepp_table_surprise_unavailable")}
                                                   if action in allowed_table_actions else {})})
             continue
 
@@ -350,6 +356,8 @@ async def _receive_messages(
         elif action in SESSION_ACTIONS:
             if await handle_session_action(session, action, data, finalize_game=finalize_game):
                 return
+        elif action in HAUSDEPP_PROP_ACTIONS and action in allowed_table_actions:
+            await handle_table_prop(session, data)
         elif action in allowed_table_actions:
             await handle_table_surprise(session, data)
         elif action in allowed_gameplay_actions:

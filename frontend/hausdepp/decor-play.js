@@ -55,8 +55,8 @@ export function clearTableEffects(state) {
   }
 }
 
-export function wipeSpill(table, state, sprite, color, amount, fits) {
-  if (amount <= 0 || state.reduced.matches || document.hidden) return;
+export function wipeSpill(table, state, sprite, color, amount, fits, { shared = false, onComplete } = {}) {
+  if (amount <= 0 || (!shared && state.reduced.matches) || document.hidden) return;
   sprite._spillEffect?._finish();
   // Bound repeated tapping across several glasses as well as one glass.
   const spills = [...(state.effects || [])].filter(node => node.classList.contains('hd-prop-spill'));
@@ -77,7 +77,7 @@ export function wipeSpill(table, state, sprite, color, amount, fits) {
     }
   }
   const patch = document.createElement('span');
-  patch.className = 'hd-prop-spill';
+  patch.className = `hd-prop-spill${shared ? ' hd-prop-spill--shared' : ''}`;
   patch.dataset.source = sprite.dataset.prop;
   patch.dataset.cleaned = '0';
   patch.dataset.wipeState = 'waiting';
@@ -87,11 +87,12 @@ export function wipeSpill(table, state, sprite, color, amount, fits) {
   state.layer.append(patch);
   sprite._spillEffect = patch;
   const cloth = patch.querySelector('.hd-prop-cloth');
+  cloth.disabled = state.reduced.matches || (shared && !state.interactive);
   const puddle = patch.querySelector('.hd-prop-puddle');
   const trail = patch.querySelector('.hd-prop-wipe-trail');
   const events = new AbortController();
   const listen = (name, callback) => cloth.addEventListener(name, callback, { signal: events.signal });
-  let start = null, clean = 0, x = 0, y = 0, ignoreClick = false;
+  let start = null, clean = 0, x = 0, y = 0, ignoreClick = false, awaiting = false, cancelPending = null;
   const points = [];
   const stopDrag = () => {
     if (start && cloth.hasPointerCapture?.(start.id)) cloth.releasePointerCapture(start.id);
@@ -101,7 +102,7 @@ export function wipeSpill(table, state, sprite, color, amount, fits) {
   };
   const finish = (restoreFocus = false) => {
     const focused = document.activeElement === cloth;
-    stopDrag(); events.abort();
+    stopDrag(); events.abort(); cancelPending?.();
     for (const animation of patch.getAnimations({ subtree: true })) animation.cancel();
     patch.remove(); state.effects.delete(patch);
     if (sprite._spillEffect === patch) sprite._spillEffect = null;
@@ -111,6 +112,7 @@ export function wipeSpill(table, state, sprite, color, amount, fits) {
   state.effects ||= new Set();
   state.effects.add(patch);
   const wipe = (amount, point) => {
+    if (awaiting) return;
     clean = Math.min(1, clean + amount);
     patch.dataset.cleaned = String(Math.round(clean * 100));
     cloth.setAttribute('aria-label', `${copy('Pfütze aufwischen')} – ${Math.round(clean * 100)}%`);
@@ -121,7 +123,23 @@ export function wipeSpill(table, state, sprite, color, amount, fits) {
       if (points.length > 96) points.shift();
       trail.setAttribute('d', `M${points.join('L')}`);
     }
-    if (clean >= 1) { patch.dataset.wipeState = 'clean'; finish(true); }
+    if (clean >= 1) {
+      if (!onComplete) { patch.dataset.wipeState = 'clean'; finish(true); return; }
+      // The finger's path stays private. Only completion is a shared gesture;
+      // retain the patch until its authoritative state confirms the cleanup.
+      stopDrag();
+      const reset = () => {
+        awaiting = false; clean = 0; points.length = 0;
+        trail.removeAttribute('d');
+        cloth.disabled = state.reduced.matches || !state.interactive;
+        patch.dataset.wipeState = 'waiting';
+        wipe(0);
+      };
+      if (onComplete()) {
+        awaiting = true; cloth.disabled = true; patch.dataset.wipeState = 'pending';
+        cancelPending = schedulePropEffect(state, reset, 5000);
+      } else reset();
+    }
   };
   wipe(0);
   listen('pointerdown', event => {
@@ -217,9 +235,9 @@ function coasterFace(count, worn) {
   return `<svg class="hd-prop-tally" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="46" fill="#d6c5a0" stroke="#a68d5d" stroke-width="2"/><circle cx="50" cy="50" r="40" fill="#e8dbbc" stroke="#baa77c" stroke-dasharray="1 3"/><g ${ink}>${strokes}</g>${used && `<g class="hd-prop-tally-worn" opacity="0" ${ink}>${used}</g>`}</svg>`;
 }
 
-export function markCoaster(sprite) {
+export function markCoaster(sprite, { value, animate: allowAnimation = true } = {}) {
   const tally = Number(sprite.dataset.tally || 0);
-  const next = tally >= 20 ? 0 : tally + 1;
+  const next = value === undefined ? tally >= 20 ? 0 : tally + 1 : Math.max(0, Math.min(20, value));
   sprite.dataset.tally = String(next);
   const art = sprite.firstElementChild;
   const face = art.querySelector('.hd-prop-tally');
@@ -229,9 +247,9 @@ export function markCoaster(sprite) {
     face.querySelector('.hd-prop-tally-worn')?.remove();
   }
   // Mounting and reduced motion show the result at once; only a visible tap animates.
-  const animate = face && !matchMedia('(prefers-reduced-motion: reduce)').matches && !document.hidden;
+  const animate = allowAnimation && face && !matchMedia('(prefers-reduced-motion: reduce)').matches && !document.hidden;
   const ink = face?.querySelector('g');
-  if (next && ink?.childElementCount === tally) {
+  if (next === tally + 1 && ink?.childElementCount === tally) {
     const [x, y, dx, dy] = tallyStroke(tally);
     const stroke = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     stroke.setAttribute('d', `M${x} ${y}l${dx} ${dy}`);

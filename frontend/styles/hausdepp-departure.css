@@ -1,0 +1,11 @@
+.hd-hand-controls > .hd-departure-button { display: inline-flex; align-items: center; justify-content: center; width: 44px; min-width: 44px; height: 44px; min-height: 44px; padding: 9px; color: var(--hd-paper); background: var(--hd-green); border: 1px solid var(--hd-edge); border-radius: 4px; }
+.hd-hand-controls > .hd-departure-button:hover { background: var(--hd-green-hover); }
+.hd-departure-text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.hd-seat.is-withdrawn { opacity: .65; }
+.hd-tournament-score .hd-tournament-departed { display: block; color: var(--hd-muted); font-size: 12px; }
+.hd-departure-notice { position: fixed; z-index: 62; top: calc(env(safe-area-inset-top, 0px) + 80px); left: 50%; transform: translateX(-50%); width: max-content; max-width: min(560px, calc(100vw - 24px)); margin: 0; padding: 10px 14px; color: var(--hd-paper); background: var(--hd-green); border: 1px solid var(--hd-gold); border-radius: 5px; font-size: 14px; line-height: 1.4; }
+@media (min-width: 1100px) {
+  /* The desktop selection stays below the hand; only the exit uses this
+     side column. Neither control changes the table's seating arena. */
+  html[data-game="hausdepp"] body.hd-playing .hd-hand-region:has(.hd-hand-controls > .hd-departure-button:not([hidden])) { grid-template-columns: minmax(0, 1fr) 44px; }
+}

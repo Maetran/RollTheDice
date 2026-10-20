@@ -413,7 +413,7 @@ class HausdeppIntegrationTests(unittest.TestCase):
             self.assertTrue(data["scoring"]["available"])
             self.assertEqual(data["scoring"]["points"], 0)
             self.assertTrue(data["achievements"]["available"])
-            self.assertEqual(len(data["achievements"]["items"]), 135)
+            self.assertEqual(len(data["achievements"]["items"]), 136)
             self.assertEqual(len(data["ranks"]), 24)
             for query in ("limit=0", "limit=31", "limit=abc"):
                 self.assertEqual(client.get(f"/api/hausdepp/account?{query}").status_code, 422)

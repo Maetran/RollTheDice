@@ -6,7 +6,7 @@ Der ursprüngliche Katalog mit 64 Erfolgen wurde am 16.10.2026 freigegeben und a
 
 Jede regulär abgeschlossene Runde nur mit Menschen gibt 10 EP. Sobald mindestens ein Computer mitspielt, wird die Basis um 75 % reduziert und je Runde auf ganze EP abgerundet: **2 EP**, auch an gemischten Tischen und für jede einzelne abgeschlossene Turnierrunde. Jeder Erfolg gibt seine **volle** Belohnung einmalig pro Konto, auch Computer- und Turniererfolge. Gute Züge, Gesellschaft und Missgeschicke zählen zum Fortschritt. Keine Minuspunkte und kein wiederholbarer Zusatzbonus fürs Verlieren. Der dauerhafte Titel ist vom Hausdepp einer Runde getrennt. Runden, Siege und bestehende Freischaltungen bleiben erhalten; die geänderte Rundenbelohnung vergibt keine Erfolge erneut.
 
-Die Vergabe erfolgt nach Rundenabschluss. Bereits vorhandene Ergebnisse können Teilnahme-, Gesellschafts- und Ergebniserfolge belegen; besondere Kartenaktionen benötigen neue Spielereignisse. Abhebeinformationen bleiben privat; der Erfolgsfeed der Rangliste nennt nur Kontoname, Erfolg und Zeitpunkt nach Rundenabschluss. Vierer-Erfolge betreffen 6 bis Ass. Fertigwerden setzt einen leeren Nachziehstapel voraus. Gleiche Karten dürfen durch gültige Nachwürfe zusammenkommen. Abschliessende Turniererfolge zählen erst, wenn jemand HAUSDEPP vollständig hat; drei und zehn Turniere zählen eindeutige abgeschlossene Sitzungen.
+Normale Erfolge werden nach Rundenabschluss vergeben. Bereits vorhandene Ergebnisse können Teilnahme-, Gesellschafts- und Ergebniserfolge belegen; besondere Kartenaktionen benötigen neue Spielereignisse. Abhebeinformationen bleiben privat; der Erfolgsfeed der Rangliste nennt nur Kontoname, Erfolg und Zeitpunkt. Vierer-Erfolge betreffen 6 bis Ass. Fertigwerden setzt einen leeren Nachziehstapel voraus. Gleiche Karten dürfen durch gültige Nachwürfe zusammenkommen. Abschliessende Turniererfolge zählen erst, wenn jemand HAUSDEPP vollständig hat; drei und zehn Turniere zählen eindeutige abgeschlossene Sitzungen. Für einen ausdrücklich bestätigten Ausstieg gibt es einen eigenen Zonk mit 0 EP; aufgegebene Hände zählen nicht für normale Erfolge oder Runden-EP.
 
 | Nr. | Erfolg | Bedingung | EP |
 | --- | --- | --- | --- |
@@ -381,3 +381,29 @@ Die neue Aktiviert-Reihe gibt insgesamt 1’000 EP, die Miterlebt-Reihe 500 EP.
 Die 1’500 zusätzlichen EP verändern bereits verdiente Erfolge oder Ränge nicht.
 / The triggered collection totals 1,000 XP and the witnessed collection 500 XP.
 The additional 1,500 XP do not reset existing achievements or ranks.
+
+
+## Zonk: Tisch verlassen / Leave the table (3.18.0)
+
+Der Katalog umfasst jetzt **136 Erfolge**, weiterhin **5’605 Erfolgs-EP** und
+24 Ränge. Die bisherigen 135 IDs und Bedingungen bleiben erhalten.
+
+| Nr. / No. | Erfolg / Achievement | Bedingung / Condition | EP / XP |
+| --- | --- | --- | --- |
+| 136 | Zonk: Ich bin dann mal weg / Zonk: I'm off | Eine laufende Hand ausdrücklich verlassen, bevor du deine Karten regulär losgeworden bist. / Explicitly leave a running hand before finishing your cards normally. | 0 |
+
+Der Server speichert den freiwilligen Ausstieg getrennt von einer regulär
+abgeschlossenen Runde. Er zählt weder als Rundenteilnahme noch als Sieg und
+vergibt keine normalen Erfolge oder Runden-EP, auch nach erneutem Login.
+Der Zonk ist einmalig pro Konto, bringt keine EP und verändert den Rang nicht.
+Ein späterer regulärer Tischabgang nach leerer Hand erhält die normale
+Rundenvergütung und löst keinen Ausstiegs-Zonk aus. Disconnects zählen nicht.
+
+The catalogue now contains **136 achievements**, still worth **5,605 achievement
+XP**, with 24 ranks. All previous 135 IDs and conditions remain intact. The server
+stores an explicit departure separately from a normally completed round. It
+counts as neither a completed round nor a win and grants no normal achievements
+or round XP, including after signing in again. The Zonk unlocks once per account,
+awards no XP and never changes the rank. Leaving after finishing your hand
+normally retains normal round credit and does not unlock a departure Zonk.
+Disconnects do not count.

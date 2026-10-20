@@ -222,6 +222,16 @@ def start_hausdepp_game(game: GameDict, *, manual: bool = False) -> None:
     game["_turn"] = {"player_id": game["_hausdepp"]["current_player_id"]}
 
 
+
+def hausdepp_is_host(game: dict, participant: dict) -> bool:
+    """An account host may transfer to one exact guest seat, never every guest."""
+    seat = game.get("_hausdepp_host_player_id")
+    if seat is not None:
+        return participant.get("id") == seat
+    account = game.get("_hausdepp_host_user_id")
+    return type(account) is int and account > 0 and participant.get("user_id") == account
+
+
 def hausdepp_participants(game: GameDict) -> list[dict]:
     return game.get("_participants", [])
 
@@ -235,5 +245,7 @@ def hausdepp_progress(game: GameDict) -> list[dict]:
              "participant_type": player["type"], "connected": (None if player.get("is_cpu") else
                  connections.get(player["id"], {}).get("ws") is not None),
              "hand_count": len(state_players.get(player["id"], {}).get("hand", [])),
-             "finished": bool(state_players.get(player["id"], {}).get("finished"))}
+             "finished": bool(state_players.get(player["id"], {}).get("finished")),
+             "withdrawn": player["id"] in (game.get("_hausdepp") or {}).get("withdrawn_ids", []),
+             "departed": player["id"] in game.get("_hausdepp_departures", {})}
             for player in hausdepp_participants(game)]

@@ -11,24 +11,33 @@ from .database import database_schema_ready, session_scope
 from .hausdepp_achievements import (
     ACHIEVEMENTS,
     RANKS,
+    WITHDRAWAL_ACHIEVEMENT_ID,
     _accumulate,
     _insert_once,
     _new_aggregate,
     _progress,
+    _unlock_source_allowed,
     synchronize_hausdepp_progress,
 )
-from .models import HausdeppAchievementUnlock, HausdeppNoticeReceipt, HausdeppRoundCredit
+from .hausdepp_departure_store import source_not_withdrawn
+from .models import HausdeppAchievementUnlock, HausdeppNoticeReceipt, HausdeppRoundCredit, HausdeppWithdrawal
 from .security import as_utc
 
 
-def _achievement_notice(item: dict, unlock, credit, progress: tuple[int, int]) -> dict:
+def _achievement_notice(item: dict, unlock, credit, progress: tuple[int, int], *, withdrawal=None) -> dict:
     current, target = progress
     source = None
     if credit is not None:
         facts = json.loads(credit.facts_json)
         source = {"finished_at": as_utc(credit.finished_at).isoformat(),
                   "players": facts["participant_count"], "with_computer": facts["cpu_count"] > 0}
-    if current >= target:
+    if item["id"] == WITHDRAWAL_ACHIEVEMENT_ID and withdrawal is not None:
+        current, target = 1, 1
+        reason = {
+            "de": "Dein ausdrücklicher Ausstieg aus einer noch laufenden Runde ist gespeichert. Dafür gibt es diesen Zonk mit 0 EP; die aufgegebene Runde bringt dir keine Runden-EP oder normalen Erfolge.",
+            "en": "Your explicit departure from a running round is recorded. It earns this Zonk with 0 XP; the forfeited round grants you no round XP or regular achievements.",
+        }
+    elif current >= target:
         reason = {
             "de": f"Deine gespeicherten Runden belegen dieses Ziel: {current} von {target} erforderlichen Schritten erreicht.",
             "en": f"Your saved rounds confirm this goal: {current} of {target} required steps reached.",
@@ -57,10 +66,14 @@ def pending_hausdepp_notices(user_id: int) -> dict:
         seen = set(db.scalars(select(HausdeppNoticeReceipt.notice_key).where(HausdeppNoticeReceipt.user_id == user_id)))
         unlocks = db.scalars(select(HausdeppAchievementUnlock).where(
             HausdeppAchievementUnlock.user_id == user_id,
+            _unlock_source_allowed(),
         ).order_by(HausdeppAchievementUnlock.awarded_points, HausdeppAchievementUnlock.achievement_id)).all()
         credits = db.scalars(select(HausdeppRoundCredit).where(HausdeppRoundCredit.user_id == user_id)
+                             .where(source_not_withdrawn(HausdeppRoundCredit.user_id, HausdeppRoundCredit.game_id))
                              .order_by(HausdeppRoundCredit.finished_at, HausdeppRoundCredit.game_id)).all()
         catalog = {item["id"]: item for item in ACHIEVEMENTS}
+        withdrawals = {row.result_id: row for row in db.scalars(select(HausdeppWithdrawal)
+                       .where(HausdeppWithdrawal.user_id == user_id))}
         wanted_sources = {unlock.source_game_id for unlock in unlocks
                           if f"achievement:{unlock.achievement_id}" not in seen and unlock.achievement_id in catalog}
         by_source = {}
@@ -77,7 +90,8 @@ def pending_hausdepp_notices(user_id: int) -> dict:
             if key in seen or item is None:
                 continue
             credit, counts = by_source.get(unlock.source_game_id, (None, {}))
-            result["notices"].append(_achievement_notice(item, unlock, credit, counts.get(item["id"], (0, 1))))
+            result["notices"].append(_achievement_notice(item, unlock, credit, counts.get(item["id"], (0, 1)),
+                                     withdrawal=withdrawals.get(unlock.source_game_id)))
         for rank in RANKS[1:]:
             key = f"rank:{rank['id']}"
             if key in seen or rank["threshold"] > result["points"]:

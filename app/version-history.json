@@ -2392,5 +2392,12 @@
     "date": "2026-10-20",
     "bump": "patch",
     "summary": "Hausdepp zeigt am Rundenende eine kompakte Bilanz mit Runden-EP, Erfolgen und konkretem Rangfortschritt. / Hausdepp ends each round with a compact summary of round XP, achievements and concrete rank progress."
+  },
+  {
+    "version": "3.17.0",
+    "revision": "73b9f49f24c6b8fa00101f473e686a47f2f491b9",
+    "date": "2026-10-20",
+    "bump": "minor",
+    "summary": "Sprachchat-Beta für Hausdepp mit getrennten Schaltern und Verbrauchsübersicht in Mission Control. / Hausdepp voice chat beta with separate controls and a usage overview in Mission Control."
   }
 ]

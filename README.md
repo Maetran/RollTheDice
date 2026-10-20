@@ -342,6 +342,55 @@ The production host remains closed.
 
 ## Hausdepp — öffentlicher V3-Start / public V3 launch
 
+**Gemeinsame Tischdeko / Shared table props:** Snacks essen, Getränke benutzen
+und andere Dekoaktionen werden für alle am Tisch synchronisiert. Die Platzierung
+bleibt passend zum jeweiligen Bildschirm; Drag-Bewegungen bleiben lokal.
+Verbrauch, Gegenstandszustände und Würfel-/Münzergebnisse kommen vom Server.
+Wiederverbinden zeigt den aktuellen Zustand ohne alte Animationen; jede neue
+Runde beginnt frisch. Die Deko verändert weder Spielkarten noch EP.
+
+Eating snacks, using drinks and other prop actions are shared with everyone
+at the table. Placement adapts to each display and dragging stays local.
+Consumption, prop states and dice/coin results come from the server.
+Reconnecting shows current state without replaying old animations; each new
+round starts fresh. Props affect neither cards nor XP.
+
+**Einzeln aussteigen / Individual departure:** „Partie verlassen“ fragt nach
+Bestätigung und beendet nur die eigene Teilnahme. Die Handkarten verlassen das
+Spiel endgültig, die übrigen spielen weiter. Bei nur einem Spieler mit Karten
+endet die Runde ohne Hausdepp mit regulären EP für die Verbleibenden. Wer eine
+laufende Hand aufgibt, erhält keine Runden-EP oder normalen Erfolge; der neue
+Zonk-Erfolg gibt 0 EP. Bereits regulär fertig gespielte Hände behalten ihre
+Vergütung. Im Turnier gilt der Ausstieg für die ganze Sitzung, frühere Runden
+und EP bleiben erhalten.
+
+Leave game asks for confirmation and ends only your own participation. Your
+hand cards leave play permanently; everyone else continues. With just one player
+with cards left, the round ends without a Hausdepp and remaining players receive
+normal XP. Giving up an unfinished hand awards no round XP or ordinary
+achievements; the new Zonk achievement is worth 0 XP. Hands already finished
+normally remain credited. Tournament departure applies to the whole session;
+earlier rounds and XP remain intact.
+
+**Lokale Wirtshauskulisse / Local tavern ambience:** Der Notenschalter startet
+freiwillig eine sehr leise Kulisse aus Stimmengewirr, Gläsern, Geschirr und
+gelegentlichem Lachen, auch bei CPU-Partien. Vier kleine Dateien (zusammen
+1.62 MiB) werden erst beim Einschalten geladen und im normalen HTTP-Cache
+wiederverwendet. Die Wiedergabe bleibt lokal, ohne Cloudflare Realtime.
+Kurze Töne bestätigen Sound-/Sprachchat-/Mikrofonschalter nur bei aktiviertem
+Sound; beim Ausschalten erklingt ein letzter Abschaltton. Systemlautstärke und
+Audiogeräte gelten. Turniere und Neu erstellen auf derselben Seite behalten
+die Einstellung; Verlassen, Abmelden oder Schliessen beendet sie.
+[Aufnahmen, CC0-Lizenzen und Bearbeitung](docs/HAUSDEPP_AUDIO_ASSETS.md).
+
+The music-note switch opts into very quiet pub ambience, including CPU games.
+Four small files (1.62 MiB total) load only when enabled and reuse the normal
+HTTP cache. Playback stays local without Cloudflare Realtime. Short tones
+confirm sound, voice and microphone changes only while sound is enabled;
+switching sound off plays one final acknowledgement. Use system volume and
+audio devices. Tournaments and Create again on the same page retain the
+setting; leaving, signing out or closing ends it.
+
 **Sprachchat / Voice chat (Beta):** Bei aktivierter Sprachfunktion können angemeldete
 Mitspieler am Wartetisch freiwillig Audio einschalten und ohne Mikrofonfreigabe
 zuhören. Das Mikrofon wird separat eingeschaltet. Audio aus schaltet auch das
@@ -487,7 +536,7 @@ Der private Kontobereich zeigt eigene abgeschlossene Runden, Runden als Hausdepp
 und Runden mit leerer Hand sowie einen nachladbaren Verlauf tatsächlicher
 Ergebnisse; allgemeine Einstellungen sind direkt unter
 `/hausdepp/konto/einstellungen` erreichbar und gelten für das gemeinsame Konto.
-Das Konto enthält **135 Erfolge und 24 Ränge**, mit Suche, Filtern und der ganzen
+Das Konto enthält **136 Erfolge und 24 Ränge**, mit Suche, Filtern und der ganzen
 Rangleiter. Innerhalb jeder Gruppe stehen erreichte Erfolge vor den noch offenen.
 Häufige Kartenaktionen benötigen mehrere passende abgeschlossene Runden;
 jede Runde zählt je Ziel höchstens einmal. Seltene Kunststücke bleiben direkt
@@ -495,7 +544,8 @@ erreichbar. Eine abgeschlossene Runde nur mit Menschen gibt 10 Erfahrungspunkte.
 Sobald mindestens ein Computer mitspielt, wird die Basis um 75 % reduziert
 und je Runde auf ganze EP abgerundet: **2 EP**,
 auch an gemischten Tischen und für jede einzelne Turnierrunde. Jeder Erfolg
-gibt weiterhin einmalig seine vollen 10, 25, 50, 100, 250 oder 500 EP. Runden, Siege und
+gibt weiterhin einmalig seine vollen 10, 25, 50, 100, 250 oder 500 EP;
+der Ausstiegs-Zonk gibt ausdrücklich 0 EP. Runden, Siege und
 die Anzahl bereits freigeschalteter Erfolge bleiben dabei erhalten.
 Die acht seltenen Tischfunde haben zwei Sammelreihen: selbst ausgelöst und
 miterlebt, mit je acht Einzelerfolgen sowie Boni für vier und alle acht
@@ -583,14 +633,15 @@ Tell pattern and lightning back. The rules page adds a quick start, anchors,
 examples and terminology. Round outcomes are stored separately. The private
 account area shows your completed rounds, rounds as the Hausdepp and rounds
 finished with an empty hand, plus a loadable history of actual results. General
-settings at `/hausdepp/konto/einstellungen` manage the shared account. The account includes **135 achievements
+settings at `/hausdepp/konto/einstellungen` manage the shared account. The account includes **136 achievements
 and 24 ranks**, with search, filters and the complete rank ladder. Each group
 shows earned achievements before locked ones. Common card actions require
 several qualifying completed rounds, with each round counting at most once per
 goal; rare feats can still unlock immediately. A completed all-human round earns
 10 experience points. Any computer seat reduces the base round reward by 75%,
 rounded down per round to **2 XP**, including mixed tables and each individual
-tournament round. Achievements still grant their full 10, 25, 50, 100, 250 or 500 XP once each.
+tournament round. Achievements still grant their full 10, 25, 50, 100, 250 or 500 XP once each;
+the departure Zonk is explicitly worth 0 XP.
 Round and win counts and the number of existing unlocks are retained.
 The eight rare table finds have two collection tracks: trigger them yourself
 and witness them, each with eight single achievements and bonuses for four
@@ -809,8 +860,11 @@ schreibt mit, wenn ein Deckel daliegt. Verschobene Gläser hinterlassen kurz
 Kondensringe. Die Bierdose öffnet sich mit Schaum und platzt bei heftigem
 Hin-und-her-Schütteln; auch diese kleine Stelle lässt sich wegwischen.
 Das Windlicht geht beim Schütteln aus und zündet sich selbst wieder an.
-Diese Spielereien bleiben lokal, leise und ausserhalb der Karten und Aktionen;
-reduzierte Bewegung deaktiviert sie. Ungefähr jede 50. Runde bietet zusätzlich
+Seit 3.18 teilen alle am Tisch Verbrauch, Nutzungszustände und Zufallsergebnisse;
+Platzierung und Ziehbewegungen bleiben passend zum jeweiligen Display lokal.
+Die Deko bleibt leise und ausserhalb der Karten und Aktionen. Reduzierte Bewegung
+deaktiviert die Bedienung und Animationen, zeigt aber den gemeinsamen Endzustand.
+Ungefähr jede 50. Runde bietet zusätzlich
 einen von acht seltenen Funden: Stern, Runenhammer, UFO, Portal, Drache, Kraken,
 Taschenuhr oder schwarzes Loch. Ein Tipp löst einmalig eine
 opulente Überraschung für den ganzen Tisch aus: Karten und Gegenstände wirbeln,
@@ -839,8 +893,11 @@ The beer mat counts tally marks in groups of five and flips after twenty; the
 pencil adds a mark if a mat is present. Moving a glass leaves a brief condensation
 ring. Repeated taps open the beer can with foam; vigorous back-and-forth shaking
 bursts it and leaves another small spot to wipe up. Shaking the lantern puts it
-out before it relights itself. Ordinary interactions are local and quiet and
-keep cards and controls clear; reduced motion disables them. About one round
+out before it relights itself. Since 3.18, consumption, usage state and random
+results are shared by everyone at the table; placement and dragging remain local
+to each display. Props stay quiet and keep cards and controls clear. Reduced
+motion disables interaction and animation while showing the shared end state.
+About one round
 in 50 also offers one of eight rare finds: star, rune hammer, UFO, portal, dragon,
 kraken, pocket watch or black hole. One tap triggers a brief
 lavish scene for the whole table, once per round. Cards and objects scatter,
@@ -1359,8 +1416,9 @@ suite. The ZDWA and Zilch settings pages follow the same four sections:
 **Help & updates**. Profile and sign-in open first, with passkeys as the
 preferred sign-in method. Open profile editing or password changes when needed;
 email settings appear only when email is enabled. Shared language and lobby-chat
-preferences save separately from ZDWA gameplay options. Statistics and
-achievements keep their own tabs.
+preferences save separately from ZDWA gameplay options. An explicit language
+choice takes priority over older account responses; rapid changes save in order
+and keep the latest choice. Statistics and achievements keep their own tabs.
 
 **Deutsch:** Ein Konto gilt für alle unsere Spiele. Konto- und
 Einstellungstexte sagen das, ohne jedes Spiel einzeln aufzuzählen, und bleiben
@@ -1371,7 +1429,9 @@ folgen derselben Reihenfolge:
 als bevorzugter Anmeldung. Profilbearbeitung und Passwortwechsel öffnest du
 bei Bedarf; E-Mail-Einstellungen erscheinen erst bei aktiviertem Versand.
 Gemeinsame Sprache und Lobby-Chat werden getrennt von ZDWA-Spieloptionen
-gespeichert. Statistik und Erfolge behalten eigene Tabs.
+gespeichert. Eine bewusst gewählte Sprache hat Vorrang vor älteren
+Kontoantworten; schnelle Wechsel werden der Reihe nach gespeichert, die letzte
+Wahl bleibt erhalten. Statistik und Erfolge behalten eigene Tabs.
 
 ZDWA offers locally saved Light, Dark and Classic appearances through its compact
 header appearance button. Classic turns the table into a coffee-table score

@@ -186,7 +186,8 @@ class VoiceRoom:
 def _roster(game: dict) -> set[int]:
     return {p["user_id"] for p in [*game.get("_players", []), *game.get("_participants", [])]
             if type(p.get("user_id")) is int and p["user_id"] > 0
-            and not p.get("is_cpu") and p.get("type") != "cpu"}
+            and not p.get("is_cpu") and p.get("type") != "cpu"
+            and p.get("id") not in game.get("_hausdepp_departures", {})}
 
 
 def _game_eligible(game: dict) -> bool:

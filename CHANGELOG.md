@@ -23,6 +23,61 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 3.18.0 — Gemeinsam am Wirtshaustisch / Together at the tavern table — 2026-10-20
+
+**Deutsch:** Hausdepp erhält eine freiwillige, sehr leise Wirtshauskulisse mit
+echten Raum-, Gläser-, Geschirr- und Lachaufnahmen. Der eigene Notenschalter
+funktioniert auch gegen CPUs. Die kleinen Dateien werden erst beim Einschalten
+geladen und lokal abgespielt, ohne Sprachchat-Übertragung. Kurze Töne bestätigen
+manuelle Sound-, Lautsprecher- und Mikrofonschalter nur bei aktiviertem Sound;
+nach dem letzten Abschaltton bleibt alles still. Systemlautstärke und Audiogeräte
+gelten. Turniere und Neu erstellen auf derselben Seite behalten die Einstellung.
+
+Die normale Tischdeko wird gemeinsam benutzt: gegessene Snacks, Getränke,
+verschüttete Gläser, Dose, Windlicht, Bierdeckel sowie Würfel- und Münzergebnisse
+teilen alle am Tisch. Jeder Bildschirm behält seine passende Platzierung.
+Wiederverbinden stellt den aktuellen Zustand wieder her, ohne alte Animationen
+nachzuspielen; eine neue Runde beginnt frisch. Spielkarten und EP bleiben von
+der Deko unabhängig. Die vorhandene Sprechmarkierung bleibt unverändert.
+
+„Partie verlassen“ beendet nach Bestätigung nur die eigene Teilnahme. Die
+Handkarten verschwinden endgültig; die übrigen spielen weiter. Bleibt nur ein
+Spieler mit Karten, endet die Runde ohne Hausdepp, mit regulären EP für die
+Verbleibenden. Wer eine laufende Hand aufgibt, erhält dafür keine Runden-EP und
+keine normalen Erfolge, auch nach erneutem Login; der neue Zonk-Erfolg gibt
+ausdrücklich 0 EP. Bereits regulär fertig gespielte Hände und frühere Runden
+bleiben gutgeschrieben. Im Turnier gilt der Ausstieg für die ganze Sitzung.
+
+Der gemeinsame Sprachwechsel wird zuverlässig gespeichert, auch wenn gleichzeitig
+noch Kontodaten laden. Ältere Antworten überschreiben die bewusste Auswahl nicht;
+bei mehreren schnellen Wechseln bleibt die letzte Wahl erhalten.
+
+**English:** Hausdepp adds optional, very quiet tavern ambience with real room,
+glass, dish and laughter recordings. A separate music-note switch also works
+against CPUs. Small clips load only when enabled and play locally without
+voice-chat transmission. Short tones confirm manual sound, speaker and microphone
+changes only while sound is enabled; after one final off tone, everything stays
+silent. Use system volume and audio devices. Tournaments and Create again on
+the same page retain the setting.
+
+Ordinary table props share their use: eaten snacks, drinks, spills, the can,
+lantern, coaster and dice/coin results update for everyone at the table. Each
+display keeps its own suitable placement. Reconnecting restores current state
+without replaying old animations; a new round starts fresh. Props never affect
+cards or XP. The existing speaking indicator remains unchanged.
+
+Leave game ends only your participation after confirmation. Your hand cards
+leave play permanently and everyone else continues. When just one player with
+cards remains, the round ends without a Hausdepp and the remaining players earn
+normal XP. Giving up an unfinished hand awards no round XP or ordinary
+achievements, including after signing in again; the new Zonk achievement is
+explicitly worth 0 XP. Hands already finished normally and earlier rounds remain
+credited. Leaving a tournament ends participation for the whole session.
+
+Shared language changes save reliably even while account data is still loading.
+Older responses cannot undo an explicit selection; when switching several times
+quickly, the latest choice is kept.
+
 ## 3.17.0 — Gemeinsam am Tisch sprechen / Talk together at the table — 2026-10-20
 
 Hausdepp ergänzt einen freiwilligen, sichtbar als Beta gekennzeichneten

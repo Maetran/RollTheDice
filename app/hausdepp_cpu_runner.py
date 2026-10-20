@@ -47,8 +47,19 @@ def _memories_for(game: dict) -> dict:
 def cpu_action_is_due(game: dict) -> bool:
     return bool(game_type_from_state(game) == HAUSDEPP_GAME_TYPE and game.get("_started")
                 and not game.get("_finished") and not game.get("_aborted") and not multiplayer_pause_reason(game)
-                and any(player.get("ws") is not None for player in game.get("_players", []))
+                and (any(player.get("ws") is not None for player in game.get("_players", []))
+                     or _unattended_cpu_remainder(game))
                 and _cpu_decision(game) is not None)
+
+
+
+def _unattended_cpu_remainder(game: dict) -> bool:
+    """Complete an already dealt round after the final person deliberately left."""
+    state = game.get("_hausdepp") or {}
+    active = [player for player in state.get("players", []) if not player.get("finished")
+              and player.get("id") not in state.get("withdrawn_ids", [])]
+    return bool(game.get("_hausdepp_departures") and active
+                and all(player.get("is_cpu") for player in active))
 
 
 def _personality(game: dict, actor_id: str) -> float:

@@ -69,7 +69,7 @@ for (const language of ['de', 'en']) {
     await expect(page.locator('.hd-leaderboard-name').nth(1)).toContainText('<Stammtischfreundin mit einem langen Namen>');
     await expect(page.locator('[data-player-rank]')).toHaveText(['Bohr', 'Newton', 'Einstein'].map(name => `${language === 'de' ? 'Aktueller Rang' : 'Current rank'}: ${name}`));
     await expect(page.locator('.hd-leaderboard-table script, .hd-leaderboard-table Stammtischfreundin')).toHaveCount(0);
-    await expect(page.locator('.is-self .hd-self-tag')).toHaveText(language === 'de' ? 'Du' : 'You');
+    await expect(page.locator('.hd-leaderboard-table .is-self .hd-self-tag')).toHaveText(language === 'de' ? 'Du' : 'You');
     await expect(page.locator('#hausdeppLeaderboardScoring')).toContainText(language === 'de' ? 'Karten loswirst' : 'finish all your cards');
     await page.locator('#hausdeppLeaderboardSize').selectOption('2');
     await expect(page.locator('.hd-leaderboard-table tbody tr')).toHaveCount(1);

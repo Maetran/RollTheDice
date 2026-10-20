@@ -151,6 +151,8 @@ test("history accepts a session change without a local auth event and does not r
   const server = await mockReleases(page, { viewer: user.id });
   await page.goto("/");
   await expect(page.locator(".release-notes-dialog")).toBeVisible();
+  // Finish the initial identity check before simulating a change in another tab.
+  await page.evaluate(() => window.ZDWA_APP_MODE.refresh());
   const gets = server.gets;
   // Another tab can sign out, or a session can expire, without this page
   // dispatching zdwa:auth-state. The history endpoint owns its current viewer.
