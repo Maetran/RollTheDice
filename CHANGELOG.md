@@ -28,7 +28,9 @@ not asserted deployment dates. See the [complete version history](docs/VERSION_H
 Die Spielesuite wird übersichtlicher: vom Seitenkopf bis zum Rundenabschluss.
 The game suite becomes clearer, from page navigation to round results.
 
-### ALLGEMEIN**Deutsch:** ZDWA, Zilch, Hausdepp und Watten nutzen einen zweizeiligen Header.
+### ALLGEMEIN
+
+**Deutsch:** ZDWA, Zilch, Hausdepp und Watten nutzen einen zweizeiligen Header.
 Oben stehen Spielsymbol und Name, Sprache, vorhandener Darstellungswechsel und
 Spielauswahl; darunter Lobby, Spieler & Ranking, Regeln und Konto. Ausserhalb
 der Spieltische bleibt er beim Scrollen oben sichtbar, auch auf kleinen Handys.

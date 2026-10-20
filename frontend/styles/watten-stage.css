@@ -60,7 +60,7 @@ html[data-watten-active="true"] .wt-felt {
 }
 html[data-watten-active="true"] .wt-seats { display: contents; }
 html[data-watten-active="true"] .wt-seat {
-  position: absolute; display: grid; grid-template-columns: auto; justify-items: center;
+  position: absolute; display: grid; grid-template-columns: minmax(0, 1fr); justify-items: center;
   width: 146px; max-width: none; min-width: 0; gap: 6px; padding: 0;
   color: var(--wt-ink); background: none; border: 0; border-radius: 0; box-shadow: none;
 }
@@ -214,7 +214,7 @@ html[data-watten-active="true"] .wt-social-bubble { position: fixed; top: 100px;
   html[data-watten-active="true"] .wt-avatar { width: 30px; height: 30px; font-size: .95rem; }
   html[data-watten-active="true"] .wt-seat-tags { display: none; }
   html[data-watten-active="true"] .wt-seat-meta { display: block; font-size: .6rem; white-space: nowrap; }
-  html[data-watten-active="true"] .wt-seat-name { max-width: 88px; font-size: .8rem; }
+  html[data-watten-active="true"] .wt-seat-name { min-width: 0; max-width: min(88px, 100%); font-size: .8rem; }
   html[data-watten-active="true"] .wt-centre { top: 39%; }
   html[data-watten-active="true"] .wt-hand-area { left: 50%; bottom: calc(var(--wt-dock-h) + 12px); width: calc(100% - 24px); }
   html[data-watten-active="true"] .wt-panel { left: 12px; right: 12px; bottom: 12px; width: auto; height: var(--wt-dock-h); min-height: 0; max-height: none; padding: 9px 11px; }
