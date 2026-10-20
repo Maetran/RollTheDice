@@ -210,15 +210,33 @@ for (const count of [2, 3, 4]) {
       await host.page.locator('[data-watten-command=start]').click();
       let observedPlay = false;
       let continuedDeal = false;
+      // Optional requests remain available while a CPU owns the next move.
+      // Only an actual human progress action may release this driver.
+      const progressActions = new Set(['show_ready', 'inspection_ack', 'announce_strike', 'announce_colour',
+        'respond_go', 'respond_hold', 'bid', 'play_card']);
       for (let turn = 0; turn < 60; turn += 1) {
         await expect.poll(() => {
           const engine = host.traffic.snapshot?.engine;
-          return engine && (engine.actions.some(kind => kind !== 'partner_feedback')
+          return engine && (engine.actions.some(kind => progressActions.has(kind))
             || ['deal_complete', 'match_complete'].includes(engine.phase));
         }, { timeout: 20000 }).toBeTruthy();
         const engine = host.traffic.snapshot.engine;
         if (engine.phase === 'match_complete') break;
         if (engine.phase === 'deal_complete') {
+          if (engine.retourschneider?.status === 'available') {
+            const choice = engine.retourschneider;
+            const cpuCanChoose = choice.members.some(id => !choice.accepted_by.includes(id)
+              && host.traffic.snapshot.room.seats.some(seat => seat.participant_id === id && seat.is_cpu));
+            if (cpuCanChoose) {
+              // A CPU candidate declines autonomously; avoid racing its button removal.
+              await expect.poll(() => host.traffic.snapshot.engine.retourschneider?.status,
+                { timeout: 20000 }).not.toBe('available');
+            } else {
+              expect(engine.actions).toContain('retourschneider');
+              await action([host], 'retourschneider', 'decline');
+            }
+            continue;
+          }
           const previousDeal = engine.deal_id;
           await host.page.locator('[data-watten-command=next-deal]').click();
           await expect.poll(() => host.traffic.snapshot.engine.deal_id).not.toBe(previousDeal);
@@ -260,6 +278,12 @@ for (const count of [2, 3, 4]) {
       if (count === 2) {
         expect(continuedDeal).toBe(true);
         await expect(host.page.locator('[data-watten-match-result]')).toBeVisible();
+        expect(host.traffic.snapshot.result_persisted).toBe(true);
+      } else if (!observedPlay) {
+        // The confirmed house rule permits folding before the first card.
+        // A wholly autonomous completed match is valid only with a scored fold.
+        expect(host.traffic.snapshot.engine.phase).toBe('match_complete');
+        expect(host.traffic.snapshot.engine.bid.result.reason).toBe('go');
         expect(host.traffic.snapshot.result_persisted).toBe(true);
       } else expect(observedPlay).toBe(true);
       expect(host.traffic.errors).toEqual([]);

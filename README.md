@@ -356,16 +356,25 @@ and twelve emoji remain available during a pending bid, a pause and when
 gestrichen; card hints are forbidden. “Good/Bad/Unsure” remains separate private
 partner advice. Chat and reactions never change cards or match points.
 
-Der gemeinsame Lobbychat wird in der lokalen Watten-Lobby bewusst geöffnet und
-respektiert die kontoweite Chat-Einstellung. Sein persönlicher Dreitagesverlauf
+Der gemeinsame Lobbychat wird in der öffentlichen Watten-Beta bewusst geöffnet
+und respektiert die kontoweite Chat-Einstellung. Auf den vier kanonischen
+Produkt-Hosts braucht er eine frisch bestätigte öffentliche Watten-Freigabe;
+die lokale Entwicklung und die private Founder-Vorschau bleiben verfügbar.
+Sein persönlicher Dreitagesverlauf
 enthält nur Nachrichten, bei deren Versand das Konto zum Empfängerkreis gehörte.
 Eine Deaktivierung beendet den Empfang; erneutes Aktivieren ergänzt keine
 verpassten Nachrichten. Der öffentliche Tischchat bleibt davon unabhängig.
+Die Spieleauswahl kennzeichnet nur die öffentliche Freigabe als «[BETA]» und
+beschreibt die geschlossene Vorschau ausdrücklich als privat.
 
-Opening the shared lobby chat in the local Watten lobby is explicit and respects
-the account-wide chat preference. Its personal three-day history contains only
+Opening the shared lobby chat in the public Watten beta is explicit and respects
+the account-wide chat preference. The four canonical product hosts require a
+freshly confirmed public Watten capability; local development and the private
+founder preview remain available. Its personal three-day history contains only
 messages addressed to that account at send time. Disabling stops delivery;
 enabling again never adds missed messages. The public table chat is independent.
+The game picker marks only public availability as “[BETA]” and labels the closed
+preview as private.
 
 **Deko-Bedienung / decoration controls:** Acht lokale Gegenstände können
 zufällig am Tisch erscheinen. Antippen isst, trinkt oder würfelt, Ziehen oder

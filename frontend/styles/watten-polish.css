@@ -125,7 +125,7 @@ html[data-watten-active="true"] .wt-history [data-wt-trick-team="own"] .is-winni
 html[data-watten-active="true"] .wt-history [data-wt-trick-team="opponent"] .is-winning-card { outline-color: #a13929; }
 html[data-watten-active="true"] .wt-trick-label { font-size: .95rem; line-height: 1.4; padding: 2px 7px; }
 html[data-watten-active="true"] .wt-table:not([data-phase="match_complete"]) .wt-end-sheet {
-  position: absolute; z-index: 9; left: 12px; right: 12px; bottom: calc(var(--wt-hand-w) * 1.8 + 24px);
+  position: absolute; z-index: 19; left: 12px; right: 12px; bottom: calc(var(--wt-hand-w) * 1.8 + 24px);
   display: flex; flex-direction: column; gap: 8px; align-items: stretch;
   max-height: calc(100% - var(--wt-hand-w) * 1.8 - 144px); pointer-events: none;
 }
@@ -144,7 +144,42 @@ html[data-watten-active="true"] .wt-table:not([data-phase="match_complete"]) .wt
   background: #fff1dfe8; padding: 0 12px;
 }
 html[data-watten-active="true"] .wt-history-box summary { min-height: 44px; font-size: .9rem; }
-html[data-watten-active="true"] .wt-table:not([data-phase="match_complete"]) .wt-history-box[open] { width: 100%; background: #fff3e1; }
+html[data-watten-active="true"] .wt-table:not([data-phase="match_complete"]) .wt-history-box[open] {
+  width: 100%; height: min(40dvh, 320px); min-height: 152px; overflow: hidden; background: #fff3e1;
+}
+/* A single touch-height toolbar leaves a complete card row visible below it.
+   Only the cards scroll; the title, pin toggle and close target stay put. */
+html[data-watten-active="true"] .wt-table:not([data-phase="match_complete"]) .wt-history-box[open] > summary {
+  position: absolute; inset: 0 100px auto 12px; height: 44px; padding-right: 0; line-height: 1.2;
+}
+html[data-watten-active="true"] .wt-table:not([data-phase="match_complete"]) .wt-history-box[open] > .wt-history-pin {
+  position: absolute; inset: 0 46px auto auto; width: 44px; height: 44px; margin: 0;
+  justify-content: center; border-radius: 7px;
+}
+html[data-watten-active="true"] .wt-table:not([data-phase="match_complete"]) .wt-history-box[open] > .wt-history-pin input {
+  position: absolute; inset: 0; width: 44px; height: 44px; opacity: 0; cursor: pointer;
+}
+html[data-watten-active="true"] .wt-table:not([data-phase="match_complete"]) .wt-history-box[open] > .wt-history-pin .wt-history-pin-copy {
+  position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+}
+html[data-watten-active="true"] .wt-table:not([data-phase="match_complete"]) .wt-history-box[open] > .wt-history-pin .wt-history-pin-symbol {
+  display: block; width: 20px; height: 20px; pointer-events: none;
+}
+html[data-watten-active="true"] .wt-table:not([data-phase="match_complete"]) .wt-history-box[open] > .wt-history-pin:has(input:checked) {
+  color: #843225; background: #e7c8a0;
+}
+html[data-watten-active="true"] .wt-table:not([data-phase="match_complete"]) .wt-history-box[open] > .wt-history-pin:has(input:checked) svg {
+  fill: currentColor;
+}
+html[data-watten-active="true"] .wt-table:not([data-phase="match_complete"]) .wt-history-box[open] > .wt-history-pin:has(input:focus-visible) {
+  outline: 2px solid #843225; outline-offset: -3px;
+}
+html[data-watten-active="true"] .wt-table:not([data-phase="match_complete"]) .wt-history-box[open] > .wt-history {
+  position: absolute; inset: 44px 12px 4px; margin: 0; min-height: 0; overflow: auto; overscroll-behavior: contain;
+}
+html[data-watten-active="true"] .wt-table:not([data-phase="match_complete"]) .wt-history-box[open] > .wt-history-close {
+  position: absolute; top: 0; right: 2px; float: none; margin: 0;
+}
 html[data-watten-active="true"] .wt-history figure { max-width: 72px; }
 html[data-watten-active="true"] .wt-history .wt-card--mini { width: 60px; }
 html[data-watten-active="true"] .wt-history .wt-mini-cards { flex-wrap: nowrap; justify-content: center; width: 100%; gap: 9px; padding: 7px 0; }
@@ -193,6 +228,8 @@ html[data-watten-active="true"] .wt-seat-call-role { color: #623321; font: 700 .
 html[data-watten-active="true"] .wt-history-box { scrollbar-width: thin; }
 html[data-watten-active="true"] .wt-history-pin { display: flex; align-items: center; gap: 8px; min-height: 44px; font-size: .75rem; cursor: pointer; color: #6b4733; }
 html[data-watten-active="true"] .wt-history-pin input { width: 18px; height: 18px; min-height: 0; accent-color: #843225; margin: 0; }
+html[data-watten-active="true"] .wt-history-pin-symbol { display: none; }
+html[data-watten-active="true"] .wt-history-pin-symbol svg { display: block; width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; }
 html[data-watten-active="true"] .wt-history { gap: 4px; margin-bottom: 5px; }
 html[data-watten-active="true"] .wt-history li { gap: 1px; padding-bottom: 5px; border-bottom: 1px solid #bd976c44; }
 html[data-watten-active="true"] .wt-history figure { max-width: 60px; margin: 1px 0; gap: 2px; }
@@ -215,6 +252,7 @@ html[data-watten-active="true"] .wt-table[data-phase="match_complete"] .wt-end-s
 html[data-watten-active="true"] .wt-table[data-phase="match_complete"] .wt-history-box { display: block; position: relative; inset: auto; flex: 0 0 auto; width: auto; max-width: 100%; max-height: none; overflow: visible; }
 html[data-watten-active="true"] .wt-table[data-phase="match_complete"] .wt-panel { order: -1; flex: 0 0 auto; }
 @media (min-width: 761px) and (min-height: 520px) {
+  html[data-watten-active="true"] .wt-table:not([data-phase="match_complete"]) .wt-history-box[open] { min-height: 168px; }
   html[data-watten-active="true"] .wt-history .wt-card--mini { width: 56px; }
   html[data-watten-active="true"] .wt-history figcaption { font-size: .7rem; }
   html[data-watten-active="true"] .wt-end-sheet > .wt-stake { align-self: stretch; width: 100%; }
@@ -339,3 +377,104 @@ html[data-watten-active="true"] .wt-final-call > summary::after,
 html[data-watten-active="true"] .wt-rematch-options > summary::after { content: "⌄"; margin-left: 8px; font: 700 1rem/1 system-ui, sans-serif; }
 html[data-watten-active="true"] .wt-final-call[open] > summary::after,
 html[data-watten-active="true"] .wt-rematch-options[open] > summary::after { content: "⌃"; }
+
+/* Review yields space to live decisions; buttons never shrink behind a scroller. */
+html[data-watten-active="true"] .wt-table:not([data-phase="match_complete"]) .wt-end-sheet {
+  justify-content: flex-end;
+}
+html[data-watten-active="true"] .wt-table:not([data-phase="match_complete"]) .wt-end-sheet > .wt-panel {
+  flex-shrink: 0;
+}
+/* In portrait, the gap between the two side fans owns the closed review tab. */
+@media (orientation: portrait) and (max-width: 760px) {
+  html[data-watten-active="true"] .wt-panel:has(.wt-bid) { padding: 8px 10px; }
+  html[data-watten-active="true"] .wt-bid > .wt-bid-speaker,
+  html[data-watten-active="true"] .wt-bid:has(.wt-choice-row) > p { display: none; }
+  html[data-watten-active="true"] .wt-bid > .wt-choice-row > button { padding-block: 4px; line-height: 1.2; }
+  html[data-watten-active="true"] .wt-bid:not(:has(.wt-choice-row)) > p:not(.wt-note) {
+    font-size: .75rem; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0;
+  }
+  html[data-watten-active="true"] .wt-table:not([data-phase="match_complete"]) .wt-history-box:not([open]) {
+    align-self: center;
+    max-width: calc(100% - var(--wt-back-w) * 5.6 - 32px);
+  }
+}
+@media (orientation: portrait) and (max-width: 350px) {
+  html[data-watten-active="true"] .wt-table:not([data-phase="match_complete"]) .wt-history-box[open] { min-height: 146px; }
+  html[data-watten-active="true"] .wt-table:not([data-phase="match_complete"]) .wt-end-sheet { gap: 6px; }
+  /* The received mood fits the free header slot beside leave/voice controls.
+     Its long accessible name does not consume the card review's height. */
+  html[data-watten-active="true"] .wt-table:not([data-phase="match_complete"]) .wt-end-sheet > .wt-private:has(.wt-feedback-received) {
+    position: fixed; inset: calc(var(--game-viewport-top, 0px) + 100px) auto auto 12px;
+    width: 44px; height: 44px; min-height: 44px; align-items: center; justify-content: center; gap: 0;
+  }
+  html[data-watten-active="true"] .wt-private .wt-feedback-received {
+    position: relative; width: 44px; height: 44px; min-width: 44px; min-height: 44px;
+    margin: 0; padding: 0; font-size: 0;
+  }
+  html[data-watten-active="true"] .wt-feedback-received::before {
+    content: "?"; position: absolute; inset: 0; display: grid; place-items: center; font: 700 24px/1 system-ui, sans-serif;
+  }
+  html[data-watten-active="true"] .wt-feedback-received[data-feedback-value="good"]::before { content: "👍"; }
+  html[data-watten-active="true"] .wt-feedback-received[data-feedback-value="bad"]::before { content: "👎"; }
+}
+@media (orientation: landscape) and (max-height: 519px) {
+  html[data-watten-active="true"] .wt-table:not([data-phase="match_complete"]) .wt-end-sheet {
+    gap: 2px; bottom: 8px;
+  }
+  html[data-watten-active="true"] .wt-table:not([data-phase="match_complete"]) .wt-history-box[open] {
+    min-height: 140px;
+  }
+  html[data-watten-active="true"] .wt-history figure { margin: 0; gap: 1px; }
+  html[data-watten-active="true"] .wt-history figcaption { line-height: 1.1; }
+  html[data-watten-active="true"] .wt-table:not([data-phase="match_complete"]) .wt-end-sheet:has(.wt-bid) > .wt-stake {
+    display: none;
+  }
+  html[data-watten-active="true"] .wt-table:not([data-phase="match_complete"]) .wt-panel:has(.wt-bid) {
+    padding: 4px 9px;
+  }
+  html[data-watten-active="true"] .wt-table:not([data-phase="match_complete"]) .wt-bid {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 3px 5px;
+  }
+  html[data-watten-active="true"] .wt-table:not([data-phase="match_complete"]) .wt-bid > h3 {
+    grid-column: 1; margin: 0; font-size: .8rem; line-height: 1.2;
+  }
+  html[data-watten-active="true"] .wt-table:not([data-phase="match_complete"]) .wt-bid > .wt-choice-row {
+    grid-column: 1 / -1; margin: 0;
+  }
+  html[data-watten-active="true"] .wt-table:not([data-phase="match_complete"]) .wt-bid > .wt-choice-row > button {
+    line-height: 1.2;
+  }
+  html[data-watten-active="true"] .wt-table:not([data-phase="match_complete"]) .wt-panel .wt-bid > .wt-note {
+    display: block; grid-column: 2; grid-row: 1; margin: 0; font-size: .6rem; line-height: 1.2; white-space: nowrap;
+  }
+  /* Private partner advice uses the clear strip between the left and top
+     hands, rather than reducing the height of the three bid buttons. */
+  html[data-watten-active="true"] .wt-table:not([data-phase="match_complete"]) .wt-end-sheet > .wt-private {
+    position: fixed; inset: 102px auto auto calc(var(--wt-back-w) * 2.8 + 24px);
+    width: max(68px, calc(51vw - var(--wt-back-w) * 4.2 - 32px)); max-width: 200px;
+  }
+  html[data-watten-active="true"] .wt-private .wt-feedback-received {
+    margin: 0; padding: 4px 6px; font-size: .65rem; line-height: 1.3;
+  }
+}
+
+/* A closed review occupies the narrow clear column between landscape hands. */
+@media (orientation: landscape) and (max-height: 519px) {
+  html[data-watten-active="true"] .wt-table:not([data-phase="match_complete"]) .wt-history-box:not([open]) {
+    position: fixed; inset: calc(100dvh - var(--wt-hand-w) * 1.85 - 66px) auto auto calc(var(--wt-back-w) * 2.8 + 24px);
+    width: max(68px, calc(51vw - var(--wt-back-w) * 4.2 - 32px)); max-width: 200px;
+  }
+  html[data-watten-active="true"] .wt-table:not([data-phase="match_complete"]) .wt-end-sheet > .wt-private { top: 96px; }
+  html[data-watten-active="true"] .wt-private .wt-feedback-received { padding: 2px 4px; line-height: 1.2; overflow-wrap: anywhere; }
+}
+@media (orientation: landscape) and (max-height: 700px) {
+  html[data-game="watten"][data-watten-active="true"] .wt-table .wt-partner-popover {
+    top: calc(var(--game-viewport-top, 0px) + 98px);
+  }
+}
+@media (orientation: portrait) and (max-height: 700px) {
+  html[data-game="watten"][data-watten-active="true"] .wt-table .wt-partner-popover {
+    top: calc(var(--game-viewport-top, 0px) + 152px);
+  }
+}

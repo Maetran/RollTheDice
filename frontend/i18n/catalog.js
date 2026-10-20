@@ -345,6 +345,7 @@ export const GAME_PICKER_MESSAGES = {
     zilchDescription: "Weiterwürfeln oder Punkte sichern.",
     hausdeppDescription: "Karten loswerden. Nicht als Letzter bleiben.",
     wattenDescription: "Öffentliche Beta · Blind oder offen watten, mit Freunden oder CPUs.",
+    wattenPrivateDescription: "Private Vorschau · Blind oder offen watten, mit Freunden oder CPUs.",
   },
   en: {
     title: "Choose a game",
@@ -360,6 +361,7 @@ export const GAME_PICKER_MESSAGES = {
     zilchDescription: "Roll again or bank your points.",
     hausdeppDescription: "Shed your cards. Avoid being last.",
     wattenDescription: "Public beta · Play blind or open Watten with friends or CPUs.",
+    wattenPrivateDescription: "Private preview · Play blind or open Watten with friends or CPUs.",
   },
 };
 

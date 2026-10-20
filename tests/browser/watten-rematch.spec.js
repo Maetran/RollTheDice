@@ -137,11 +137,14 @@ test('ordinary four-player rematches retain the original people, teams and loss 
     const sourceMarks = structuredClone(host.traffic.snapshot.room.series.nockerl);
     await host.page.locator('[data-watten-rematch-action=create]').click();
     await expect.poll(() => new URL(host.page.url()).pathname).not.toBe(source);
+    const targetId = new URL(host.page.url()).pathname.split('/').pop();
     for (const item of players) {
       if (item !== host) {
         await item.page.locator('[data-watten-rematch-action=open]').click();
         await item.page.locator('[data-watten-join] button[type=submit]').click();
       }
+      await expect.poll(() => item.traffic.snapshot?.id === targetId
+        && Boolean(item.traffic.snapshot.viewer?.participant_id)).toBe(true);
       await expect(item.page.locator('[data-watten-command=decline-reservation]')).toHaveCount(0);
       await expect(item.page.locator('[data-watten-command=place-cpu], [data-watten-command=remove-cpu]')).toHaveCount(0);
       await expect(item.page.locator('[data-watten-rematch-reservation]')).toHaveCount(0);

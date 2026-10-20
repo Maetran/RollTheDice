@@ -11,19 +11,19 @@ last ten published versions easy to read. The
 [complete development history](https://github.com/Maetran/RollTheDice/commits/master/)
 also includes older and internal changes.
 
-ZDWA und Zilch verwenden eine gemeinsame Versionsfolge: Major für neue
+Alle RollTheDice-Spiele verwenden eine gemeinsame Versionsfolge: Major für neue
 Produktgenerationen, Minor für neue Funktionen, Patch für Fehlerkorrekturen
 und Wartung. Historische Nummern wurden rückwirkend anhand der Git-Änderungen
 zugeordnet; ihre Daten sind Commitdaten, keine behaupteten Deploymentdaten.
 Die vollständige Zuordnung steht in der [Versionsübersicht](docs/VERSION_HISTORY.md).
 
-ZDWA and Zilch share one version sequence: Major for new product generations,
+All RollTheDice games share one version sequence: Major for new product generations,
 Minor for new features, Patch for fixes and maintenance. Historical numbers
 were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
-## 3.19.0 — 2026-10-20
+## 4.0.0 — 2026-10-21
 
 Watten wird als öffentliche Beta mit eigenem Wirtshaustisch, Turnieren und PWA freigeschaltet.
 Watten opens in public beta with its own tavern table, tournaments and PWA.

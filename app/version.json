@@ -1,7 +1,7 @@
 {
-  "version": "3.19.0",
-  "bump": "minor",
-  "date": "2026-10-20",
+  "version": "4.0.0",
+  "bump": "major",
+  "date": "2026-10-21",
   "previous_revision": "50306cf0d602518aa47e9bd3f72c92b55f3aa410",
   "summary": {
     "de": "Watten startet als öffentliche Beta mit Turnieren, taktischen CPUs, Bierblock-Anschrift und eigener PWA.",

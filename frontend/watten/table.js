@@ -422,7 +422,10 @@ function privateMarkup(vm) {
         <p class="wt-note">${esc(t("feedback.privacy"))}</p>
       </dialog>`);
     }
-    if (received) parts.push(`<p class="wt-feedback-received" data-watten-feedback-received role="status">${esc(t("feedback.received", { name: partnerName, value: t(`feedback.${received.value}`) }))}</p>`);
+    if (received) {
+      const message = t("feedback.received", { name: partnerName, value: t(`feedback.${received.value}`) });
+      parts.push(`<p class="wt-feedback-received" data-watten-feedback-received data-feedback-value="${esc(received.value)}" role="status" title="${esc(message)}" aria-label="${esc(message)}">${esc(message)}</p>`);
+    }
   }
   if (engine.partner_hand?.cards?.length) {
     const title = t("partnerHand.title", { name: nameOf(vm, engine.partner_hand.player_id) });
@@ -440,7 +443,7 @@ function historyMarkup(vm, pinned) {
   if (!history.length && !finished) return "";
   return `<summary>${esc(t(finished ? "history.round" : Array.isArray(vm.engine.trick_history) ? "history.title" : "history.last", { count: history.length }))}</summary>
     <button type="button" class="wt-history-close" data-wt-history-close aria-label="${esc(t("history.close"))}" title="${esc(t("history.close"))}"><span aria-hidden="true">×</span></button>
-    <label class="wt-history-pin"><input type="checkbox" data-wt-history-pin ${pinned ? "checked" : ""}>${esc(t("history.pin"))}</label>
+    <label class="wt-history-pin" title="${esc(t("history.pin"))}"><input type="checkbox" data-wt-history-pin aria-label="${esc(t("history.pin"))}" ${pinned ? "checked" : ""}><span class="wt-history-pin-symbol" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M7 4h10v16l-5-3-5 3z"/></svg></span><span class="wt-history-pin-copy">${esc(t("history.pin"))}</span></label>
     ${history.length ? `<ol class="wt-history">${history.map(trick => `
     <li data-wt-trick-team="${trickRelation(vm, trick.winner)}"><div class="wt-mini-cards">${trick.cards.map(item => `<figure class="${item.seat === trick.winner ? "is-winning-card" : ""}">${cardFace(item.card, { className: "wt-card--mini" })}<figcaption translate="no">${esc(seatName(vm, item.seat))}</figcaption></figure>`).join("")}</div>
       <span>${esc(t("history.winner", { name: seatName(vm, trick.winner) }))}</span></li>`).join("")}</ol>` : `<p class="wt-note">${esc(t("history.empty"))}</p>`}`;

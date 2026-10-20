@@ -11,8 +11,11 @@ const message = (key, values = {}) => String(GAME_PICKER_MESSAGES[language()][ke
 const escapeMarkup = value => String(value ?? "").replace(/[&<>"']/g, character => ({
   "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
 }[character]));
-const gameName = game => `${game.name}${game.id === "watten" ? " [BETA]" : ""}`;
-const betaBadge = game => game.id === "watten" ? ' <small class="suite-game-beta">[BETA]</small>' : "";
+const publicWatten = game => game.id === "watten" && game.publicBeta === true;
+const gameName = game => `${game.name}${publicWatten(game) ? " [BETA]" : ""}`;
+const betaBadge = game => publicWatten(game) ? ' <small class="suite-game-beta">[BETA]</small>' : "";
+const description = game => game.description || message(game.id === "watten" && !publicWatten(game)
+  ? "wattenPrivateDescription" : `${game.id}Description`);
 
 /** Small authored marks remain legible beside each game's full name. */
 export function gameIcon(id) {
@@ -234,7 +237,7 @@ export function createGamePicker({ button, currentMode, games = [], onSelect } =
     const status = game.id === current
       ? `<span class="suite-game-option__current">${escapeMarkup(message("current"))}</span>`
       : '<svg class="suite-game-option__arrow" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 10h12m-5-5 5 5-5 5"/></svg>';
-    link.innerHTML = `<span class="suite-game-option__icon" data-game-icon="${escapeMarkup(game.id)}">${gameIcon(game.id)}</span><span class="suite-game-option__copy"><span class="suite-game-option__name" translate="no">${escapeMarkup(game.name)}${betaBadge(game)}</span><span class="suite-game-option__description" id="${escapeMarkup(descriptionId)}">${escapeMarkup(game.description || message(`${game.id}Description`))}</span><span class="suite-game-option__activity" id="${escapeMarkup(activityId)}" data-game-activity data-state="loading">${escapeMarkup(message("activityLoading"))}</span></span>${status}`;
+    link.innerHTML = `<span class="suite-game-option__icon" data-game-icon="${escapeMarkup(game.id)}">${gameIcon(game.id)}</span><span class="suite-game-option__copy"><span class="suite-game-option__name" translate="no">${escapeMarkup(game.name)}${betaBadge(game)}</span><span class="suite-game-option__description" id="${escapeMarkup(descriptionId)}">${escapeMarkup(description(game))}</span><span class="suite-game-option__activity" id="${escapeMarkup(activityId)}" data-game-activity data-state="loading">${escapeMarkup(message("activityLoading"))}</span></span>${status}`;
     link.addEventListener("click", event => {
       onSelect?.(game.id, game, event);
       close();

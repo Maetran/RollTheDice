@@ -1,12 +1,12 @@
 # Versionen / Versions
 
-Aktuelle gemeinsame Produktversion / Current shared product version: **3.19.0**.
+Aktuelle gemeinsame Produktversion / Current shared product version: **4.0.0**.
 
-ZDWA und Zilch werden gemeinsam versioniert. Major steht für einen großen
+Alle RollTheDice-Spiele werden gemeinsam versioniert. Major steht für einen großen
 Produktmeilenstein, Minor für neue Funktionen und Patch für Fehlerkorrekturen
 oder Wartung. Ein Major-Schritt setzt Minor und Patch zurück; Minor setzt Patch zurück.
 
-ZDWA and Zilch share one version stream. Major marks a major product milestone,
+All RollTheDice games share one version stream. Major marks a major product milestone,
 Minor adds features, and Patch covers fixes or maintenance. Major resets Minor
 and Patch; Minor resets Patch.
 
@@ -21,6 +21,9 @@ This creates no historical tags or notifications. Original commit titles are kep
 
 1.0.0 bezeichnet das erste spielbare ZDWA, 2.0.0 die öffentliche Zilch-Beta als zweites Spiel.
 1.0.0 identifies the first playable ZDWA; 2.0.0 introduces the public Zilch beta as a second game.
+
+4.0.0 startet die öffentliche Watten-Beta als viertes Spiel.
+4.0.0 introduces the public Watten beta as the fourth game.
 
 Die ausführlichen Beschreibungen stehen im [Changelog](../CHANGELOG.md).
 Detailed player-facing descriptions are in the [changelog](../CHANGELOG.md).

@@ -99,6 +99,8 @@ for (const language of ["de", "en"]) {
       const entry = await confirmedChooser(page);
       await expect(page.locator("#suiteGameMenu [data-game-entry]")).toHaveCount(4);
       await expect(entry).toHaveAttribute("href", "/watten");
+      await expect(entry).toHaveAttribute("aria-label", "Watten");
+      await expect(entry.locator(".suite-game-beta")).toHaveCount(0);
       await expect(entry).toContainText(language === "de" ? "Private Vorschau" : "Private preview");
       await entry.scrollIntoViewIfNeeded();
       await expect(entry).toBeVisible();
@@ -118,6 +120,7 @@ for (const language of ["de", "en"]) {
     const nativeTrigger = page.locator("#wattenSuitePicker");
     await expect(nativeTrigger).toBeEnabled();
     await expect(nativeTrigger).toContainText("Watten");
+    await expect(nativeTrigger.locator(".suite-game-beta")).toHaveCount(0);
     await nativeTrigger.click();
     await expect(page.locator('#suiteGameMenu [data-game-entry="watten"]')).toHaveAttribute("aria-current", "page");
     await page.keyboard.press("Escape");

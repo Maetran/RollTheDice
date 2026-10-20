@@ -110,7 +110,8 @@ export function initializeAppMode({
     { id: "zdwa", name: "ZDWA", href: zdwaAppEntryUrl() },
     ...(zilchAllowed ? [{ id: "zilch", name: "Zilch", href: zilchAppEntryUrl("/") }] : []),
     ...(hausdeppAllowed ? [{ id: "hausdepp", name: "Hausdepp", href: hausdeppAppEntryUrl() }] : []),
-    ...(wattenAllowed ? [{ id: "watten", name: "Watten", href: wattenAppEntryUrl(window.location, globalThis, { publicBeta: wattenPublic }) }] : []),
+    ...(wattenAllowed ? [{ id: "watten", name: "Watten", publicBeta: wattenPublic,
+      href: wattenAppEntryUrl(window.location, globalThis, { publicBeta: wattenPublic }) }] : []),
   ];
   const syncPickers = () => {
     updateSwitch(allowed);

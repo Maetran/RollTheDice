@@ -4,6 +4,13 @@ const { player } = require('./helpers/watten-journey.cjs');
 const input = item => item.page.locator('[data-watten-lobby-chat-input]');
 const messages = item => item.page.locator('[data-watten-lobby-chat-messages]');
 const action = (item, name) => item.page.locator(`[data-watten-lobby-chat-action=${name}]`);
+const disclosure = item => item.page.locator('.wt-lobby-chat-disclosure');
+const revealChat = async item => {
+  await expect(disclosure(item)).not.toHaveAttribute('open', '');
+  await expect(action(item, 'open')).toBeHidden();
+  await disclosure(item).locator('summary').click();
+  await expect(action(item, 'open')).toBeVisible();
+};
 
 for (const language of ['de', 'en']) {
   test(`${language}: shared lobby preserves consent, fixed audiences, product labels and mobile drafts`, async ({ browser, baseURL }, testInfo) => {
@@ -12,7 +19,7 @@ for (const language of ['de', 'en']) {
     try {
       for (const item of players) {
         await item.page.goto('/watten');
-        await expect(action(item, 'open')).toBeVisible();
+        await revealChat(item);
         expect(item.traffic.commands).toEqual([]);
       }
       for (const item of [host, guest]) {
@@ -27,7 +34,8 @@ for (const language of ['de', 'en']) {
       await expect(messages(newcomer)).not.toContainText(first);
       await input(newcomer).fill('Only the current audience sees this'); await action(newcomer, 'send').click();
       for (const item of players) await expect(messages(item)).toContainText('Only the current audience sees this');
-      await guest.page.reload(); await action(guest, 'open').click(); await expect(input(guest)).toBeEnabled();
+      await guest.page.reload(); await revealChat(guest);
+      await action(guest, 'open').click(); await expect(input(guest)).toBeEnabled();
       await expect(messages(guest)).toContainText(first);
       await expect(messages(guest)).toContainText('Only the current audience sees this');
 

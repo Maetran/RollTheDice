@@ -22,6 +22,31 @@ async function settled(players, phase) {
   for (const item of players) await expect(item.page.locator('[data-wt-table]')).toHaveAttribute('data-phase', phase);
 }
 
+async function clickNeutralWood(page) {
+  let point;
+  await expect.poll(async () => {
+    point = await page.evaluate(() => {
+      const felt = document.querySelector('[data-wt-felt]');
+      const bounds = felt.getBoundingClientRect();
+      const excluded = [...document.querySelectorAll('button, a, input, select, textarea, summary, [role="button"], '
+        + '[tabindex]:not([tabindex="-1"]), [data-wt-seat], [data-wt-hand-area], .wt-card, .wt-hand-card, .wt-backs, .wt-taken, '
+        + '[data-wt-panel], [data-wt-history], [data-wt-private], [data-wt-stake], .wt-scorepad, dialog, '
+        + '[data-watten-decor-item], .wt-stock, .wt-reference, .wt-reveal')]
+        .map(node => node.getBoundingClientRect()).filter(rect => rect.width > 0 && rect.height > 0);
+      for (let y = Math.max(8, bounds.top + 8); y < Math.min(innerHeight - 8, bounds.bottom - 8); y += 12) {
+        for (let x = Math.max(8, bounds.left + 8); x < Math.min(innerWidth - 8, bounds.right - 8); x += 12) {
+          if (excluded.some(rect => x >= rect.left - 6 && x <= rect.right + 6
+            && y >= rect.top - 6 && y <= rect.bottom + 6)) continue;
+          if (document.elementFromPoint(x, y) === felt) return { x, y };
+        }
+      }
+      return null;
+    });
+    return point !== null;
+  }, { message: 'a clear wooden table point is available outside controls, cards, review and decoration' }).toBe(true);
+  await page.mouse.click(point.x, point.y);
+}
+
 async function expectStage(item, count) {
   const { page, traffic } = item;
   await expect(page.locator('html')).toHaveAttribute('data-watten-active', 'true');
@@ -43,7 +68,14 @@ async function expectStage(item, count) {
     await expect(page.locator('.wt-score').nth(index).locator('.wt-score-tricks'))
       .toHaveText(`${tricks} ${language === 'en' ? (tricks === 1 ? 'trick' : 'tricks') : (tricks === 1 ? 'Stich' : 'Stiche')}`);
   }
-  await expect(page.locator('.wt-seat-meta')).toHaveCount(0);
+  // Card/trick-count metadata is gone; public tavern titles remain valid.
+  await expect(page.locator('.wt-seat-meta:not(.wt-seat-public-title)')).toHaveCount(0);
+  for (const seat of engine.seats) {
+    const title = traffic.snapshot.room.seats[seat.seat]?.public_title;
+    const label = page.locator(`[data-wt-seat="${seat.seat}"] .wt-seat-public-title`);
+    if (title) await expect(label).toHaveText(title.name[language]);
+    else await expect(label).toHaveCount(0);
+  }
   const strikeSeat = engine.announcement_roles?.strike ?? (engine.dealer_seat + 1) % count;
   const colourSeat = engine.announcement_roles?.colour
     ?? (count === 3 && engine.profile.determination === 'normal' ? strikeSeat : engine.dealer_seat);
@@ -55,8 +87,34 @@ async function expectStage(item, count) {
     .toHaveText(language === 'en' ? 'Leave' : 'Verlassen');
   await expect(page.locator('[data-watten-decor-action="toggle"]')).toHaveCount(0);
   await expect(page.locator('[data-wt-scores] .wt-stake')).toHaveCount(0);
-  await expect(page.locator('.wt-end-sheet > [data-wt-stake]')).toBeVisible();
-  await expectReachable(page, '.wt-end-sheet > [data-wt-stake] > button');
+  const viewport = page.viewportSize();
+  const compactBid = viewport.width > viewport.height && viewport.height < 520 && engine.phase === 'bid_response';
+  const stake = page.locator('.wt-end-sheet > [data-wt-stake]');
+  if (compactBid) {
+    await expect(stake).toBeHidden();
+    const inlineStake = page.locator('[data-watten-bid] > .wt-note');
+    await expect(inlineStake).toBeVisible();
+    await expect(inlineStake).toHaveText(language === 'en'
+      ? `Stake: ${engine.bid.accepted_stake} points` : `Einsatz: ${engine.bid.accepted_stake} Punkte`);
+    await expect.poll(() => inlineStake.evaluate(node => {
+      const rect = node.getBoundingClientRect();
+      const title = node.parentElement.querySelector('h3').getBoundingClientRect();
+      return {
+        besideTitle: rect.left >= title.right - 1
+          && Math.min(rect.bottom, title.bottom) > Math.max(rect.top, title.top),
+        inViewport: rect.left >= -1 && rect.top >= -1 && rect.right <= innerWidth + 1 && rect.bottom <= innerHeight + 1,
+      };
+    }), { message: 'accepted running stake remains beside the offer title in short landscape' })
+      .toEqual({ besideTitle: true, inViewport: true });
+  } else {
+    await expect(stake).toBeVisible();
+    await expect(stake).toHaveAttribute('data-points', String(engine.bid.pending?.points ?? engine.bid.accepted_stake));
+    await expect(stake.locator('button > strong')).toHaveText(String(engine.bid.pending?.points ?? engine.bid.accepted_stake));
+    await expectReachable(page, '.wt-end-sheet > [data-wt-stake] > button');
+    const stakeBox = await stake.locator('button').boundingBox();
+    expect(stakeBox.width).toBeGreaterThanOrEqual(44);
+    expect(stakeBox.height).toBeGreaterThanOrEqual(44);
+  }
   const ownSeat = engine.viewer.seat;
   const backCount = engine.seats.filter(seat => seat.seat !== ownSeat).reduce((sum, seat) => sum + seat.card_count, 0);
   await expect(page.locator('.wt-backs > i:not([hidden])')).toHaveCount(backCount);
@@ -112,7 +170,11 @@ async function expectStage(item, count) {
     return [...new Set(violations)];
   }), { message: 'all five-card opponent fans and the own hand remain complete and clear' }).toEqual([]);
 
-  for (const selector of ['[data-wt-hand] button:first-child', '[data-wt-scores]']) await expectReachable(page, selector);
+  await expectReachable(page, '[data-wt-hand] button:first-child');
+  // The score list includes intentional gaps; each score opens its own pad.
+  for (let index = 0; index < scores.length; index += 1) {
+    await expectReachable(page, `[data-wt-scores] > .wt-score:nth-child(${index + 1}) > [data-wt-score-open]`);
+  }
   if (engine.last_trick) {
     const history = page.locator('.wt-end-sheet > [data-wt-history]');
     await expect(history).toBeVisible();
@@ -147,6 +209,49 @@ async function expectStage(item, count) {
     const miniWidth = await history.locator('.wt-card--mini').first().evaluate(node => Number.parseFloat(getComputedStyle(node).width));
     expect(miniWidth).toBeGreaterThanOrEqual(44);
     expect(miniWidth).toBeLessThanOrEqual(56);
+    await expect(history.locator('.wt-history > li').first().locator('.wt-mini-cards > figure'))
+      .toHaveCount(engine.last_trick.cards.length);
+    await expect.poll(() => history.evaluate(node => {
+      const failures = [];
+      const scroller = node.querySelector(':scope > .wt-history');
+      const bounds = scroller.getBoundingClientRect();
+      const port = { left: bounds.left + scroller.clientLeft, top: bounds.top + scroller.clientTop,
+        right: bounds.left + scroller.clientLeft + scroller.clientWidth,
+        bottom: bounds.top + scroller.clientTop + scroller.clientHeight };
+      const inside = (rect, area) => rect.left >= area.left - 1 && rect.top >= area.top - 1
+        && rect.right <= area.right + 1 && rect.bottom <= area.bottom + 1;
+      const viewport = { left: 0, top: 0, right: innerWidth, bottom: innerHeight };
+      const figures = [...scroller.querySelectorAll(':scope > li:first-child > .wt-mini-cards > figure')];
+      let rowTop = Infinity, rowBottom = -Infinity;
+      for (const [index, figure] of figures.entries()) {
+        const card = figure.querySelector('.wt-card--mini');
+        const svg = card?.querySelector('svg');
+        const caption = figure.querySelector('figcaption');
+        if (!card || !svg || !caption) { failures.push(`mini ${index}: card SVG or player name missing`); continue; }
+        const width = Number.parseFloat(getComputedStyle(card).width);
+        if (width < 44 || width > 56) failures.push(`mini ${index}: width ${width} outside 44–56px`);
+        if (!caption.textContent.trim()) failures.push(`mini ${index}: player name is empty`);
+        for (const [label, element] of [['card', card], ['SVG', svg], ['player name', caption]]) {
+          const rect = element.getBoundingClientRect();
+          rowTop = Math.min(rowTop, rect.top); rowBottom = Math.max(rowBottom, rect.bottom);
+          if (rect.width <= 0 || rect.height <= 0 || getComputedStyle(element).visibility !== 'visible'
+            || Number.parseFloat(getComputedStyle(element).opacity) === 0
+            || (element.checkVisibility && !element.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true }))) {
+            failures.push(`mini ${index} ${label}: not rendered`);
+          }
+          if (!inside(rect, port)) failures.push(`mini ${index} ${label}: clipped by history scroller`);
+          if (!inside(rect, viewport)) failures.push(`mini ${index} ${label}: outside viewport`);
+          const hit = document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2);
+          if (!figure.contains(hit)) failures.push(`mini ${index} ${label}: center covered by ${hit?.tagName || 'nothing'}`);
+        }
+      }
+      // The winner sentence can scroll. The cards and their player names must
+      // fit together without scrolling merely to understand this first trick.
+      if (!figures.length || scroller.clientHeight < rowBottom - rowTop - 1) {
+        failures.push(`history card/name row needs ${rowBottom - rowTop}px; scroller offers ${scroller.clientHeight}px`);
+      }
+      return failures;
+    }), { message: 'the first history trick shows complete mini-card SVGs and player names inside its scroller' }).toEqual([]);
     await expect(history.locator('[data-wt-history-pin]')).toBeVisible();
     await expectReachable(page, '[data-wt-history-pin]');
     await expectReachable(page, '[data-wt-history-close]');
@@ -283,13 +388,13 @@ for (const language of ['de', 'en']) {
           // A pinned review ignores outside taps. Its explicit close unpins;
           // an ordinary review then closes on an outside tap or Escape.
           const reviewOpportunity = decider.traffic.snapshot.engine.opportunity;
-          await decider.page.locator('.wt-score-name').first().click();
+          await clickNeutralWood(decider.page);
           await expect(decider.page.locator('[data-wt-history]')).toHaveAttribute('open', '');
           await decider.page.locator('[data-wt-history-close]').click();
           await expect(decider.page.locator('[data-wt-history]')).not.toHaveAttribute('open', '');
           await expect(decider.page.locator('[data-wt-history-pin]')).not.toBeChecked();
           await decider.page.locator('[data-wt-history] > summary').click();
-          await decider.page.locator('.wt-score-name').first().click();
+          await clickNeutralWood(decider.page);
           await expect(decider.page.locator('[data-wt-history]')).not.toHaveAttribute('open', '');
           await decider.page.locator('[data-wt-history] > summary').click();
           await decider.page.keyboard.press('Escape');

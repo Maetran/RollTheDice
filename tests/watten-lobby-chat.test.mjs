@@ -60,14 +60,14 @@ class Socket extends Events {
 }
 const clients = new Set();
 test.afterEach(() => { for (const client of clients) client.destroy(); clients.clear(); });
-function fixture({ enabled = true, muted = false, excluded = false, language = "de", href = "http://localhost:8127/watten", auth, fetcher, authenticated = true, preview, initialAuth } = {}) {
+function fixture({ enabled = true, muted = false, excluded = false, language = "de", href = "http://localhost:8127/watten", auth, fetcher, authenticated = true, preview, publicBeta, initialAuth } = {}) {
   const container = new Container(), sockets = [], calls = [], timers = new Map();
   const win = new Events(); win.location = { href }; win.innerHeight = 700; win.visualViewport = new Events(); win.visualViewport.height = 500;
   win.setTimeout = callback => { const id = Symbol(); timers.set(id, callback); return id; };
   win.clearTimeout = id => timers.delete(id);
   const dom = { activeElement: null, createElement: () => new Node() };
   let current = true, changed = 0, reads = 0, expected = 1;
-  const identity = () => ({ authenticated, game_access: { watten_preview: preview }, user: { id: 1, username: "Mounted player", csrf_token: "mounted-csrf",
+  const identity = () => ({ authenticated, game_access: { watten_preview: preview, watten_public: publicBeta }, user: { id: 1, username: "Mounted player", csrf_token: "mounted-csrf",
     preferences: { lobby_chat_enabled: enabled, lobby_chat_muted: muted, lobby_chat_excluded: excluded, lobby_chat_popups: false } } });
   const client = mountWattenLobbyChat({ container, initialAuth: initialAuth === undefined ? identity() : initialAuth, getExpectedAccountId: () => expected,
     isCurrent: () => current, onAccountChanged: () => { changed += 1; }, escapeHtml: esc,
@@ -124,6 +124,86 @@ test("only the exact HTTPS apex with an explicit boolean capability adds a produ
     "https://zockdiewandan.online./watten", "https://owner@zockdiewandan.online/watten",
     "https://owner:secret@zockdiewandan.online/watten", "https://zockdiewandan.online@evil.invalid/watten"]) {
     assert.equal(lobbySocketUrl({ href }, 7, true), null);
+  }
+});
+
+test("a strict public capability permits only the four canonical HTTPS product origins", () => {
+  for (const host of ["zockdiewandan.online", "zilch.zockdiewandan.online", "hausdepp.zockdiewandan.online", "watten.zockdiewandan.online"]) {
+    const href = `https://${host}:443/watten?discard=secret#old`;
+    assert.equal(lobbySocketUrl({ href }, 7, false, true), `wss://${host}/ws/lobby-chat?context=watten&expected_account_id=7`);
+    for (const capability of [undefined, false, 1, "true", {}]) assert.equal(lobbySocketUrl({ href }, 7, false, capability), null);
+  }
+  for (const href of ["http://watten.zockdiewandan.online/watten", "https://watten.zockdiewandan.online:8443/watten",
+    "https://www.zockdiewandan.online/watten", "https://zdwa.zockdiewandan.online/watten",
+    "https://watten.zockdiewandan.online.evil.invalid/watten", "https://watten.zockdiewandan.online./watten",
+    "https://owner@watten.zockdiewandan.online/watten", "https://owner:secret@watten.zockdiewandan.online/watten",
+    "https://watten.zockdiewandan.online@evil.invalid/watten", "https://192.168.1.2/watten"]) {
+    assert.equal(lobbySocketUrl({ href }, 7, false, true), null);
+  }
+});
+
+test("ordinary public accounts may explicitly open chat on each product host without a preview grant", async () => {
+  for (const host of ["zockdiewandan.online", "zilch.zockdiewandan.online", "hausdepp.zockdiewandan.online", "watten.zockdiewandan.online"]) {
+    const f = fixture({ href: `https://${host}/watten`, publicBeta: true });
+    assert.deepEqual(f.sockets, []); assert.deepEqual(f.calls, []); assert.equal(f.reads(), 0);
+    const ws = await f.open();
+    assert.equal(ws.url, `wss://${host}/ws/lobby-chat?context=watten&expected_account_id=1`);
+    assert.ok(f.reads() >= 4); assert.deepEqual(f.calls, []);
+  }
+});
+
+test("a public URL, nested capability, role or truthy value cannot grant a production lobby subscription", () => {
+  const href = "https://watten.zockdiewandan.online/watten?watten_public=true";
+  for (const args of [{}, { publicBeta: false }, { publicBeta: "true" }, { publicBeta: 1 }, { preview: true },
+    { publicBeta: true, authenticated: false }, { publicBeta: true, authenticated: 1 },
+    { publicBeta: true, href: "https://watten.zockdiewandan.online.evil.invalid/watten" },
+    { initialAuth: { authenticated: true, user: { id: 1, game_access: { watten_public: true } } } },
+    { initialAuth: { authenticated: true, user: { id: 1, role: "admin", is_founder: true } } },
+    { initialAuth: { authenticated: true, user: { id: 2 }, game_access: { watten_public: true } } }]) {
+    const denied = fixture({ href, ...args });
+    assert.equal(denied.container.innerHTML, ""); assert.deepEqual(denied.sockets, []);
+    assert.deepEqual(denied.calls, []); assert.equal(denied.reads(), 0);
+  }
+});
+
+test("public capability must remain freshly confirmed when opening, accepting history and sending", async () => {
+  const href = "https://watten.zockdiewandan.online/watten";
+  const opening = fixture({ href, publicBeta: true, auth: (_reads, identity) => {
+    const value = identity(); value.game_access.watten_public = false; return value;
+  } });
+  opening.container.click("open"); await until(() => opening.changed() === 1);
+  assert.deepEqual(opening.sockets, []); assert.deepEqual(opening.calls, []);
+
+  let release;
+  const history = fixture({ href, publicBeta: true, auth: (reads, identity) => reads === 4
+    ? new Promise(resolve => { release = () => { const value = identity(); delete value.game_access.watten_public; resolve(value); }; })
+    : identity() });
+  history.container.click("open"); await until(() => history.sockets.length === 1);
+  const previous = history.sockets[0]; previous.emit("open"); previous.frame(event(1, { text: "UNCONFIRMED HISTORY" }), true);
+  await until(() => release);
+  const log = history.field("messages"); assert.doesNotMatch(log.children.map(row => row.innerHTML).join(""), /UNCONFIRMED/);
+  release(); await until(() => history.changed() === 1);
+  assert.ok(previous.closed); assert.equal(log.children.length, 0); assert.equal(history.container.innerHTML, "");
+
+  let revoked = false;
+  const sending = fixture({ href, publicBeta: true, auth: (_reads, identity) => {
+    const value = identity(); if (revoked) value.game_access.watten_public = "true"; return value;
+  } });
+  const ws = await sending.open(); sending.draft("must not send"); revoked = true; sending.submit();
+  await until(() => sending.changed() === 1);
+  assert.deepEqual(ws.sent, []); assert.ok(ws.closed); assert.deepEqual(sending.calls, []);
+});
+
+test("withdrawing public access synchronously clears an active chat even if a dedicated-host preview flag remains", async () => {
+  for (const capability of [false, undefined, "true"]) {
+    const f = fixture({ href: "https://watten.zockdiewandan.online/watten", publicBeta: true });
+    const ws = await f.open(); ws.frame(event()); f.draft("private draft"); f.submit(); await until(() => ws.sent.length === 1);
+    const input = f.field("input"), log = f.field("messages");
+    f.win.emit("zdwa:auth-state", { detail: { authenticated: true, user: { id: 1 },
+      game_access: { watten_preview: true, watten_public: capability } } });
+    assert.equal(f.container.innerHTML, ""); assert.ok(ws.closed); assert.equal(f.changed(), 1);
+    assert.equal(input.value, ""); assert.equal(log.children.length, 0); assert.equal(f.timers.size, 0);
+    ws.frame(event(2)); f.win.emit("resize"); assert.equal(f.container.innerHTML, "");
   }
 });
 
@@ -190,7 +270,7 @@ test("fresh send verification withdraws production capability before any draft r
   assert.deepEqual(ws.sent, []); assert.ok(ws.closed); assert.equal(f.container.innerHTML, ""); assert.deepEqual(f.calls, []);
 });
 
-test("no subscription/preference mutation before explicit opening, and no public/anonymous mount", async () => {
+test("no subscription/preference mutation before explicit opening, and no ungranted/anonymous mount", async () => {
   const f = fixture(); await tick(); assert.deepEqual(f.calls, []); assert.deepEqual(f.sockets, []); assert.equal(f.reads(), 0);
   assert.equal(f.field("body").hidden, true); assert.match(f.container.innerHTML, /drei Tagen|three days/);
   for (const args of [{ href: "https://watten.zockdiewandan.online/watten" }, { authenticated: false }]) {

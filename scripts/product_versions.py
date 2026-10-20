@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check or deliberately advance the shared ZDWA/Zilch product version."""
+"""Check or deliberately advance the shared RollTheDice product version."""
 
 from __future__ import annotations
 
@@ -58,10 +58,10 @@ def history_document(current: dict, history: list[dict]) -> str:
     lines = [
         "# Versionen / Versions", "",
         f"Aktuelle gemeinsame Produktversion / Current shared product version: **{current['version']}**.", "",
-        "ZDWA und Zilch werden gemeinsam versioniert. Major steht für einen großen",
+        "Alle RollTheDice-Spiele werden gemeinsam versioniert. Major steht für einen großen",
         "Produktmeilenstein, Minor für neue Funktionen und Patch für Fehlerkorrekturen",
         "oder Wartung. Ein Major-Schritt setzt Minor und Patch zurück; Minor setzt Patch zurück.", "",
-        "ZDWA and Zilch share one version stream. Major marks a major product milestone,",
+        "All RollTheDice games share one version stream. Major marks a major product milestone,",
         "Minor adds features, and Patch covers fixes or maintenance. Major resets Minor",
         "and Patch; Minor resets Patch.", "",
         "Die ersten 264 Einträge bis einschließlich 2.35.1 wurden am 20.09.2026 rückwirkend",
@@ -73,6 +73,8 @@ def history_document(current: dict, history: list[dict]) -> str:
         "This creates no historical tags or notifications. Original commit titles are kept for traceability.", "",
         "1.0.0 bezeichnet das erste spielbare ZDWA, 2.0.0 die öffentliche Zilch-Beta als zweites Spiel.",
         "1.0.0 identifies the first playable ZDWA; 2.0.0 introduces the public Zilch beta as a second game.", "",
+        "4.0.0 startet die öffentliche Watten-Beta als viertes Spiel.",
+        "4.0.0 introduces the public Watten beta as the fourth game.", "",
         "Die ausführlichen Beschreibungen stehen im [Changelog](../CHANGELOG.md).",
         "Detailed player-facing descriptions are in the [changelog](../CHANGELOG.md).", "",
         "| Version | Datum / Date | Art / Type | Änderung / Change | Commit |",

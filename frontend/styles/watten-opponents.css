@@ -44,6 +44,20 @@ html[data-watten-active="true"] .wt-seat--bottom .wt-taken {
     --wt-taken-w: 30px;
   }
 }
+@media (orientation: portrait) and (max-width: 350px) and (max-height: 700px) {
+  html[data-watten-active="true"] :is(.wt-seat--left, .wt-seat--right) { top: calc(11% - 8px); }
+  /* Keep the solo caller's combined role below the avatar/name row, using the
+     full badge width instead of squeezing it into four short lines. */
+  html[data-watten-active="true"] .wt-table[data-count="3"] :is(.wt-seat--left, .wt-seat--right):has(.wt-seat-call-role) {
+    top: calc(11% - 24px);
+  }
+  html[data-watten-active="true"] .wt-table[data-count="3"] :is(.wt-seat--left, .wt-seat--right) .wt-seat-badge {
+    display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 2px 3px; width: 100%;
+  }
+  html[data-watten-active="true"] .wt-table[data-count="3"] :is(.wt-seat--left, .wt-seat--right) .wt-seat-call-role {
+    grid-column: 1 / -1; justify-self: stretch; text-align: center;
+  }
+}
 @media (orientation: landscape) and (max-height: 519px) {
   html[data-watten-active="true"] .wt-table {
     --wt-back-w: clamp(28px, 10dvh, 40px);
@@ -67,3 +81,27 @@ html[data-watten-active="true"] .wt-taken-packet { display: block; position: rel
 html[data-watten-active="true"] :is(.wt-seat--right, .wt-seat--top) .wt-taken { left: auto; right: calc(100% + 10px); }
 html[data-watten-active="true"] .wt-seat--bottom .wt-taken { top: auto; bottom: 0; translate: none; }
 html[data-watten-active="true"] .wt-taken::after { content: attr(data-count); position: absolute; right: -8px; bottom: -7px; display: grid; place-items: center; min-width: 19px; height: 19px; padding: 0 3px; border-radius: 20px; font: 700 12px/1 system-ui, sans-serif; color: #fff7e7; background: #663d28; border: 1px solid #e8c79a; }
+
+/* A combined Schlag/Farbe label needs its full height above a landscape fan. */
+@media (orientation: landscape) and (max-height: 519px) {
+  html[data-watten-active="true"] :is(.wt-seat--left, .wt-seat--right) { top: 0; }
+}
+
+/* The upper badge owns the centre; its fan stays beside the trick column. */
+@media (min-width: 761px) and (min-height: 520px) {
+  html[data-watten-active="true"] .wt-seat--top { display: grid; width: 146px; top: 2%; }
+  html[data-watten-active="true"] .wt-seat--top .wt-backs { position: absolute; left: calc(100% + 16px); top: 0; }
+  html[data-watten-active="true"] :is(.wt-seat--left, .wt-seat--right) { top: 5%; }
+}
+/* Separate the role row from avatar/name so both languages need one line. */
+@media (orientation: landscape) and (max-height: 519px) {
+  html[data-watten-active="true"] :is(.wt-seat--left, .wt-seat--right) .wt-seat-badge {
+    display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 2px 3px;
+    width: 120px; max-width: none;
+  }
+  html[data-watten-active="true"] .wt-seat--left .wt-seat-badge { justify-self: start; }
+  html[data-watten-active="true"] .wt-seat--right .wt-seat-badge { justify-self: end; }
+  html[data-watten-active="true"] :is(.wt-seat--left, .wt-seat--right) .wt-seat-call-role {
+    grid-column: 1 / -1; white-space: nowrap; font-size: .65rem; padding: 2px 4px;
+  }
+}
