@@ -1,3 +1,4 @@
+const { handleDisabledHausdeppVoice } = require('./hausdepp-voice-fixture');
 const { test, expect } = require('@playwright/test');
 
 test.use({ serviceWorkers: 'block', viewport: { width: 390, height: 844 } });
@@ -210,6 +211,7 @@ async function finishedRenderer(page, fixture) {
     active = socket;
     socket.onMessage(raw => {
       const message = JSON.parse(String(raw));
+      if (handleDisabledHausdeppVoice(socket, message)) return;
       if (message.action === 'join_game') socket.send(JSON.stringify({ scoreboard: snapshot, player_id: self }));
       else sent.push(message);
     });

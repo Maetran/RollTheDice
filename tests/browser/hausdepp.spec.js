@@ -1,3 +1,4 @@
+const { handleDisabledHausdeppVoice, isHausdeppVoice } = require('./hausdepp-voice-fixture');
 const { test, expect } = require('@playwright/test');
 const { mkdir, readFile, writeFile } = require('node:fs/promises');
 const { openPasswordLogin } = require('./password-login');
@@ -90,11 +91,14 @@ test.afterEach(async ({ page }) => {
 });
 
 function watchGame(page) {
-  const traffic = { state: null, scoreboard: null, messages: [], commands: [], pageErrors: [] };
+  const traffic = { state: null, scoreboard: null, messages: [], commands: [], voiceCommands: [], pageErrors: [] };
   page.on('pageerror', error => traffic.pageErrors.push(error.message));
   page.on('websocket', socket => {
     socket.on('framesent', event => {
-      try { traffic.commands.push(JSON.parse(String(event.payload))); } catch { /* Protocol-level frames have no JSON. */ }
+      try {
+        const command = JSON.parse(String(event.payload));
+        (isHausdeppVoice(command) ? traffic.voiceCommands : traffic.commands).push(command);
+      } catch { /* Protocol-level frames have no JSON. */ }
     });
     socket.on('framereceived', event => {
       let message;
@@ -469,6 +473,7 @@ async function installUiFixture(page, room, initial, onCommand) {
     connections += 1;
     socket.onMessage(raw => {
       const message = JSON.parse(String(raw));
+      if (handleDisabledHausdeppVoice(socket, message)) return;
       if (message.action === 'join_game') {
         socket.send(JSON.stringify({ player_id: fixture._hausdepp.viewer_id, scoreboard: fixture }));
       } else {
@@ -2004,6 +2009,7 @@ test('capture approved Hausdepp responsive review screens', async ({ page }) => 
   await page.routeWebSocket(new RegExp(`/ws/${fixtureId}$`), socket => {
     socket.onMessage(raw => {
       const message = JSON.parse(String(raw));
+      if (handleDisabledHausdeppVoice(socket, message)) return;
       if (message.action === 'join_game') socket.send(JSON.stringify({ player_id: viewerId, scoreboard: fixture }));
     });
   });

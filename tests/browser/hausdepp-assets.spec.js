@@ -1,3 +1,4 @@
+const { handleDisabledHausdeppVoice } = require('./hausdepp-voice-fixture');
 const { test, expect } = require('@playwright/test');
 
 test.use({ serviceWorkers: 'allow' });
@@ -81,7 +82,9 @@ test('newly drawn card faces reuse warm images without requests or a loading wai
   await page.routeWebSocket(new RegExp(`/ws/${room.split('/').pop()}$`), routed => {
     socket = routed;
     routed.onMessage(raw => {
-      if (['join_game', 'spectate_game'].includes(JSON.parse(raw).action)) {
+      const message = JSON.parse(String(raw));
+      if (handleDisabledHausdeppVoice(routed, message)) return;
+      if (['join_game', 'spectate_game'].includes(message.action)) {
         routed.send(JSON.stringify({ player_id: board._hausdepp.viewer_id, scoreboard: board }));
       }
     });

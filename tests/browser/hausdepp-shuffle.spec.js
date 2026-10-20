@@ -1,3 +1,4 @@
+const { handleDisabledHausdeppVoice } = require('./hausdepp-voice-fixture');
 const { test, expect } = require('@playwright/test');
 
 test.use({ serviceWorkers: 'block', viewport: { width: 390, height: 844 } });
@@ -113,6 +114,7 @@ async function rendererFixture(page, { initial = 'waiting', round = null } = {})
     connections += 1;
     socket.onMessage(raw => {
       const message = JSON.parse(String(raw));
+      if (handleDisabledHausdeppVoice(socket, message)) return;
       if (['join_game', 'spectate_game'].includes(message.action)) {
         socket.send(JSON.stringify({ player_id: real.board._hausdepp.viewer_id, scoreboard: current }));
       } else commands.push(message);
