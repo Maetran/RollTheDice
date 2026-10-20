@@ -167,6 +167,8 @@ for (const count of [2, 3, 4]) test(`${count} players: completed public trick ho
   assert.equal(frames[0].translate, "0 0"); assert.equal(frames[1].translate, "0 0"); assert.ok(frames[1].offset > .6);
   assert.equal(frames[2].translate, `${target.x - start.x}px ${target.y - start.y}px`);
   assert.equal(group.animations[0].options.duration, 980);
+  assert.equal(group.animations[0].options.easing, "linear", "the hold uses wall-clock time, not globally eased progress");
+  assert.ok(frames[1].easing, "ease only the final flight segment");
   group.animations[0].finish(); await tick();
   assert.equal(f.ghosts().length, 0); assert.ok(last.nodes.every(node => node.style.visibility === "hidden"), "collected last trick must not reappear");
   f.present(engine(last), engine(last), result());
