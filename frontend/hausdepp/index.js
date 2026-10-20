@@ -760,6 +760,7 @@ function renderTableShell() {
   }
   departureUI?.destroy();
   departureUI = mountHausdeppDepartureUI({ t, send, onLeft: leaveTableForLobby, handControls: handSelection.controls,
+    spectatorControls: $("hausdeppTable").querySelector(".hd-room-heading"),
     getState: () => ({ permissions: snapshot?._departure_permissions, version: snapshot?._hausdepp?.version,
       connected: socket?.readyState === WebSocket.OPEN, busy: pending || tournamentEnding, spectating }),
     onPendingChange: value => { pending = value; renderState(); },

@@ -1,5 +1,10 @@
-.hd-hand-controls > .hd-departure-button { display: inline-flex; align-items: center; justify-content: center; width: 44px; min-width: 44px; height: 44px; min-height: 44px; padding: 9px; color: var(--hd-paper); background: var(--hd-green); border: 1px solid var(--hd-edge); border-radius: 4px; }
-.hd-hand-controls > .hd-departure-button:hover { background: var(--hd-green-hover); }
+:is(.hd-hand-controls, .hd-room-heading) > .hd-departure-button { display: inline-flex; align-items: center; justify-content: center; width: 44px; min-width: 44px; height: 44px; min-height: 44px; padding: 9px; color: var(--hd-paper); background: var(--hd-green); border: 1px solid var(--hd-edge); border-radius: 4px; }
+:is(.hd-hand-controls, .hd-room-heading) > .hd-departure-button:hover { background: var(--hd-green-hover); }
+/* Spectators have no hand controls. Reserve the full exit target in the heading
+   without changing participant geometry; the result has its own exit. */
+.hd-room-heading > .hd-departure-button { flex: 0 0 44px; }
+html[data-game="hausdepp"] .hd-table:has(> .hd-room-heading > .hd-departure-button:not([hidden])) { --hd-surprise-heading: 44px; }
+html[data-game="hausdepp"] body.hd-playing .hd-table[data-phase="waiting"] > .hd-room-heading:has(> .hd-departure-button:not([hidden])) { flex-shrink: 0; min-height: 44px; }
 .hd-departure-text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 .hd-seat.is-withdrawn { opacity: .65; }
 .hd-tournament-score .hd-tournament-departed { display: block; color: var(--hd-muted); font-size: 12px; }

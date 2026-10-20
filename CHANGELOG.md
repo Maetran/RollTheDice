@@ -23,6 +23,25 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 3.18.1 — Zuschauen verlassen und Mikrofon freigeben / Leave spectating and allow the microphone — 2026-10-20
+
+**Deutsch:** Auch Zuschauer können den Hausdepp-Tisch jetzt direkt verlassen,
+einschliesslich Warteraum, Turnierzwischenstand und unterbrochener Verbindung.
+Der Schalter führt zur Lobby, ohne eine Aufgabe auszulösen oder die laufende
+Partie und ihre EP zu verändern. Hausdepp-Sprachchat darf das eigene Mikrofon
+auch über die Suite-Domains verwenden. Das behebt eine Serverregel, die den
+Zugriff für dort installierte PWAs blockiert hat. Die ausdrückliche Freigabe
+durch Browser und Betriebssystem bleibt erforderlich und kann dort für weitere
+Besuche gespeichert werden.
+
+**English:** Spectators can now leave a Hausdepp table directly, including
+waiting rooms, tournament breaks and disconnected views. The button returns
+to the lobby without forfeiting or changing the running game and its XP.
+Hausdepp voice chat can also request the local microphone through the suite
+domains, fixing a server policy that blocked PWAs installed there. Explicit
+browser and operating-system permission is still required and can be saved
+there for future visits.
+
 ## 3.18.0 — Gemeinsam am Wirtshaustisch / Together at the tavern table — 2026-10-20
 
 **Deutsch:** Hausdepp erhält eine freiwillige, sehr leise Wirtshauskulisse mit

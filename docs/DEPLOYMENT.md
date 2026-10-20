@@ -207,18 +207,24 @@ ausgeschaltet. Optional richten `ROLLTHEDICE_VOICE_TURN_KEY_ID` und
 `ROLLTHEDICE_VOICE_TURN_API_TOKEN` kurzlebige TURN-Zugangsdaten für restriktive
 Netze ein; der Browser erhält ausschliesslich diese kurzlebigen Zugangsdaten.
 SFU-App-Secret und TURN-API-Token dürfen nie im Browser, Checkpoint, Log oder
-Git landen. Der Nginx-Server für Hausdepp erlaubt `microphone=(self)`;
-die übrigen Produkt-Hosts behalten ihr Mikrofonverbot. Keine Kamerafreigabe.
+Git landen. Die vertrauenswürdigen Suite-Hosts (Apex, WWW und Zilch), der
+ZDWA-Weiterleitungseinstieg und die Hausdepp-Subdomain erlauben
+`microphone=(self)`. So funktioniert Hausdepp auch innerhalb bestehender
+Suite-PWAs. Browser und Betriebssystem müssen den Zugriff weiterhin ausdrücklich
+erlauben; es gibt keine Freigabe für fremde Origins oder Kameras.
 Beim freigegebenen Rollout die aktualisierte Nginx-Konfiguration mit
 `bash scripts/install_nginx_config.sh` installieren; der reine Container-Deploy
 übernimmt diese Host-Konfiguration nicht. Danach den tatsächlichen
-`Permissions-Policy`-Header auf der Hausdepp-Seite prüfen.
+`Permissions-Policy`-Header auf allen fünf TLS-Einstiegshosts prüfen.
 
 Configure an isolated Cloudflare SFU app, keep its ID and secret server-side,
 and set the enable flag only after configuration. Development and production
 need separate apps. Optional TURN credentials support restrictive networks;
-only short-lived ICE credentials reach the browser. Hausdepp's Nginx host
-allows its own microphone; other products and cameras remain blocked.
+only short-lived ICE credentials reach the browser. Trusted suite hosts
+(apex, WWW and Zilch), the ZDWA redirect entry and the Hausdepp subdomain allow
+only their own origin to request the microphone, so existing suite PWAs can use
+Hausdepp voice chat. Explicit browser and OS consent is still required. Cameras
+and cross-origin delegation remain blocked.
 
 Cloudflare-Budgetwarnungen begrenzen die Kosten nicht und schalten Realtime
 nicht ab. Sie verwenden USD und gelten für die nutzungsabhängigen Kosten des

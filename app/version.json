@@ -1,10 +1,10 @@
 {
-  "version": "3.18.0",
-  "bump": "minor",
+  "version": "3.18.1",
+  "bump": "patch",
   "date": "2026-10-20",
-  "previous_revision": "73b9f49f24c6b8fa00101f473e686a47f2f491b9",
+  "previous_revision": "68cab46201c7374f618b9b2c7971193c437ef76b",
   "summary": {
-    "de": "Hausdepp: gemeinsame Tischdeko, leise Wirtshauskulisse und eigener Ausstieg; zuverlässiger Sprachwechsel.",
-    "en": "Hausdepp: shared table props, quiet tavern ambience and individual departure; reliable language switching."
+    "de": "Hausdepp: Tisch auch beim Zuschauen verlassen; Mikrofon für Suite-PWAs freigeschaltet.",
+    "en": "Hausdepp: leave tables while spectating; microphone enabled for suite PWAs."
   }
 }
