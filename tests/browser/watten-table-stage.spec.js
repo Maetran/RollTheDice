@@ -2,7 +2,7 @@ const { test, expect } = require('@playwright/test');
 const { player, create, action, normalCall, playOne } = require('./helpers/watten-journey.cjs');
 const { expectFixedTable, expectReachable } = require('./table-viewport');
 
-const VIEWPORTS = [{ width: 390, height: 844 }, { width: 568, height: 320 }, { width: 1280, height: 800 }];
+const VIEWPORTS = [{ width: 390, height: 844 }, { width: 568, height: 320 }, { width: 1280, height: 800 }, { width: 320, height: 568 }];
 const gameBrowser = browser => ({ newContext: options => browser.newContext({ ...options,
   viewport: VIEWPORTS[0], serviceWorkers: 'block' }) });
 
@@ -53,7 +53,8 @@ async function expectStage(item, count) {
     const protectedAreas = [...document.querySelectorAll('[data-wt-hand-area], [data-wt-panel], [data-wt-private] button, .wt-trick-card')].filter(shown);
     for (const back of document.querySelectorAll('.wt-backs > i:not([hidden])')) {
       const box = rect(back);
-      if (protectedAreas.some(area => intersects(box, rect(area)))) violations.push(`${label(back)} overlaps hand, action or trick`);
+      const overlaps = protectedAreas.filter(area => intersects(box, rect(area)));
+      if (overlaps.length) violations.push(`${label(back)} overlaps ${overlaps.map(area => area.className || area.tagName).join(', ')} at ${innerWidth}x${innerHeight}`);
       const seat = back.closest('[data-wt-seat]');
       if ([...seat.querySelectorAll('.wt-seat-name, .wt-seat-tags, .wt-seat-meta')].filter(shown)
         .some(name => intersects(box, rect(name)))) violations.push(`${label(back)} covered by seat label`);
@@ -218,3 +219,32 @@ test('normal motion: an actual completed trick travels to its winner, who leads 
     expect(players.flatMap(item => item.traffic.errors)).toEqual([]);
   } finally { await Promise.allSettled(players.map(item => item.context.close())); }
 });
+
+for (const count of [3, 4]) {
+  test(`${count}: an optional open partner hand stays clear of the own hand in small landscape`, async ({ browser, baseURL }) => {
+    const players = [];
+    try {
+      for (let index = 0; index < count; index += 1) players.push(await player(gameBrowser(browser), baseURL));
+      await create(players, { determination: 'normal', partnerHand: true, target: 15 });
+      await normalCall(players);
+      await settled(players, 'play');
+      const partner = players.find(item => item.traffic.snapshot.engine.partner_hand?.cards.length === 5);
+      expect(partner).toBeTruthy();
+      for (const viewport of [VIEWPORTS[1], VIEWPORTS[0]]) {
+        await partner.page.setViewportSize(viewport);
+        await expectStage(partner, count);
+        const details = partner.page.locator('.wt-partner-hand');
+        if (!await details.evaluate(node => node.open)) await details.locator('summary').click();
+        await expect(partner.page.locator('.wt-partner-popover')).toBeVisible();
+        await expect(partner.page.locator('.wt-partner-popover .wt-card')).toHaveCount(5);
+        expect(await partner.page.locator('[data-wt-hand] button').evaluateAll(nodes => nodes.every(node => {
+          const rect = node.getBoundingClientRect();
+          return node.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2));
+        }))).toBe(true);
+      }
+      await playOne(players);
+      await expect(partner.page.locator('.wt-partner-hand')).toHaveAttribute('open', '');
+      expect(players.flatMap(item => item.traffic.errors)).toEqual([]);
+    } finally { await Promise.allSettled(players.map(item => item.context.close())); }
+  });
+}

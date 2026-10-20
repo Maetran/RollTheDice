@@ -217,7 +217,7 @@ export function createMotion({ win = window, doc = document } = {}) {
       { translate: "0 0", scale: "1", opacity: 1, offset: 0 },
       { translate: "0 0", scale: "1", opacity: 1, offset: hold, easing },
       { translate: `${b.x - a.x}px ${b.y - a.y}px`, scale: ".18", opacity: 0, offset: 1 },
-    ], { duration: FLIGHT + HOLD + COLLECT, easing: "linear" }, () => {
+    ], { duration: FLIGHT + HOLD + COLLECT, easing: "linear", fill: "forwards" }, () => {
       // The accepted last-trick DOM keeps its geometry for the label, but must
       // not reappear at centre when its decorative flight has finished.
       for (const item of items) {

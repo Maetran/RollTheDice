@@ -1,6 +1,6 @@
 /* Zilch PWA: private game/account data stays network-only.
    Only the explicit, anonymous local-play package is cached. */
-const CACHE_VERSION = 'assets-0bee3a26bf78';
+const CACHE_VERSION = 'assets-8967c7e772b8';
 const PRECACHE = `offline-zilch-${CACHE_VERSION}`;
 const OFFLINE_PAGES = new Set([
   "/offline-spielen",
