@@ -11,9 +11,11 @@ for (const language of ['de', 'en']) {
     const host = players[0];
     try {
       if (language === 'en') await host.page.emulateMedia({ reducedMotion: 'no-preference' });
-      await create(players, { start: false });
-      await control(host, 'toggle').click();
+      await create(players); await normalCall(players);
+      await expect(control(host, 'toggle')).toHaveCount(0);
+      await prop(host, 'beer').click({ button: 'right' });
       await expect(host.page.locator('[data-watten-decor-add]')).toHaveCount(8);
+      await control(host, 'clear').click();
       await host.page.locator('[data-watten-decor-corner]').scrollIntoViewIfNeeded();
       await add(host, 'beer').click();
       await expect(prop(host, 'beer')).toBeVisible();
@@ -35,16 +37,17 @@ for (const language of ['de', 'en']) {
         expect(await host.page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
         await host.page.screenshot({ path: testInfo.outputPath(`decor-${viewport.width}x${viewport.height}.png`) });
       }
-      await control(host, 'clear').click(); await expect(host.page.locator('[data-watten-decor-item]')).toHaveCount(0);
-      await control(host, 'close').click();
       await host.page.setViewportSize({ width: 1280, height: 800 });
-      await host.page.locator('[data-watten-command=start]').click(); await normalCall(players);
+      await control(host, 'clear').click(); await add(host, 'beer').click();
+      await control(host, 'close').click();
+      await expect(prop(host, 'beer')).toBeVisible();
+      const desktopProp = await prop(host, 'beer').boundingBox(); expect(desktopProp.width).toBe(88);
       await expect.poll(() => players.every(item => item.traffic.snapshot.pending_call_events.length === 0)).toBe(true);
       const before = host.traffic.snapshot.engine.opportunity, commands = host.traffic.commands.length;
       await host.page.evaluate(() => { window.decorHandNodes = [...document.querySelectorAll('[data-wt-hand] button')]; });
-      await control(host, 'toggle').click();
+      await prop(host, 'beer').click({ button: 'right' });
       await host.page.locator('[data-watten-decor-corner]').scrollIntoViewIfNeeded();
-      await add(host, 'beer').click(); await expect(prop(host, 'beer')).toBeVisible();
+      await expect(prop(host, 'beer')).toBeVisible();
       const source = await prop(host, 'beer').boundingBox();
       const hand = await host.page.locator('[data-wt-hand-area]').boundingBox();
       await host.page.mouse.move(source.x + 32, source.y + 32); await host.page.mouse.down();
@@ -62,6 +65,7 @@ for (const language of ['de', 'en']) {
         });
       });
       expect(overlap).toBe(false);
+      await control(host, 'close').click();
       await host.page.locator('[data-watten-social-action=toggle]').click();
       await expect(prop(host, 'beer')).toBeHidden();
       await host.page.keyboard.press('Escape');

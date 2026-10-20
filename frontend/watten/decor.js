@@ -13,7 +13,7 @@ export const DECOR_ITEMS = Object.freeze({
   sweets: { sheet: "evening", cell: 1, food: true },
   dice: { sheet: "snacks", cell: 0 },
 });
-export const DECOR_PROTECTED = ".wt-seat, .wt-seat-slot, .wt-hand-card, .wt-trick-card, "
+export const DECOR_PROTECTED = ".wt-seat, .wt-seat-slot, .wt-taken, .wt-hand-card, .wt-trick-card, "
   + "[data-wt-reference], [data-wt-bubbles], [data-wt-panel], [data-wt-private], [data-wt-history], [data-wt-scores], "
   + "[data-wt-tools], [data-watten-inspection], [data-watten-bid], [data-watten-paused], [data-watten-match-result], "
   + "[data-watten-deal-result], [data-watten-match-progress], [data-watten-rematch], [data-watten-social], "
@@ -73,14 +73,14 @@ export function createDecor({ container, root, getExpectedAccountId, isCurrent, 
   const accountId = getExpectedAccountId(), lifecycle = new AbortController(), items = new Map(), animations = new Set();
   const reduced = win.matchMedia("(prefers-reduced-motion: reduce)");
   let opened = false, destroyed = false, phase = "preview", selected = null, serial = 0, drag = null, ignoreClick = null;
-  let geometry = { regions: [], protectedRects: [] }, notice = "", hidden = false, autoPlaced = false;
+  let geometry = { regions: [], protectedRects: [] }, notice = "", hidden = false, autoPlaced = false, propSide = SIDE;
+  let contextOrigin = null;
   let surprise = null, rareNode = null, surprisePending = false, surpriseCleanup = null, lastSurprise = null;
   const current = () => !destroyed && Number.isSafeInteger(accountId) && accountId > 0
     && isCurrent() && getExpectedAccountId() === accountId;
   const t = (key, values = {}) => WATTEN_DECOR_MESSAGES[language() === "en" ? "en" : "de"][key]
     .replace(/\{(\w+)\}/g, (_, name) => String(values[name] ?? ""));
   container.innerHTML = `<section class="wt-decor" aria-label="${esc(t("title"))}">
-    <div class="wt-decor-toolbar" data-watten-decor-controls><button type="button" data-watten-decor-action="toggle" aria-expanded="false">${esc(t("open"))}</button></div>
     <div data-watten-decor-panel hidden><div data-watten-decor-controls><p class="wt-note">${esc(t("help"))}</p>
       <div class="wt-decor-palette">${Object.keys(DECOR_ITEMS).map(kind => `<button type="button" data-watten-decor-add="${kind}">${esc(t(kind))}</button>`).join("")}</div>
       <p class="wt-note" data-watten-decor-status role="status"></p>
@@ -92,14 +92,14 @@ export function createDecor({ container, root, getExpectedAccountId, isCurrent, 
   const $ = selector => container.querySelector(selector);
   const ui = { panel: $("[data-watten-decor-panel]"), corner: $("[data-watten-decor-corner]"),
     status: $("[data-watten-decor-status]"), layer: $("[data-watten-decor-layer]"),
-    toggle: $('[data-watten-decor-action="toggle"]') };
+    close: $('[data-watten-decor-action="close"]') };
   const effects = { layer: ui.layer, nodes: new Map(), effects: new Set(), reduced };
   const listen = (node, name, callback) => node?.addEventListener(name, callback, { signal: lifecycle.signal });
   function visible(node) { return node && node.getClientRects().length && !node.closest("[hidden]"); }
   function rectFor(item) {
     const region = geometry.regions.find(area => area.name === item.position?.region);
-    return region ? box(region.left + item.position.x * (region.right - region.left - SIDE),
-      region.top + item.position.y * (region.bottom - region.top - SIDE), SIDE, SIDE) : null;
+    return region ? box(region.left + item.position.x * (region.right - region.left - propSide),
+      region.top + item.position.y * (region.bottom - region.top - propSide), propSide, propSide) : null;
   }
   function occupied(except) { return [...items.values()].filter(item => item !== except && !item.node.hidden).map(rectFor).filter(finite); }
   function cancelDrag(restore = true) {
@@ -131,6 +131,9 @@ export function createDecor({ container, root, getExpectedAccountId, isCurrent, 
     refreshSpillControl();
   }
   function measure() {
+    // Use the same responsive size as the rendered buttons, including after a resize.
+    const renderedSide = Number.parseFloat(win.getComputedStyle?.(ui.layer).getPropertyValue("--wt-decor-side"));
+    propSide = Number.isFinite(renderedSide) && renderedSide >= 44 ? renderedSide : SIDE;
     const blocked = root.querySelector('[data-watten-social-drawer]:not([hidden]), dialog[open]');
     const table = root.querySelector("[data-wt-table]"), felt = root.querySelector("[data-wt-felt]");
     const protectedRects = [...root.querySelectorAll(DECOR_PROTECTED)]
@@ -154,7 +157,7 @@ export function createDecor({ container, root, getExpectedAccountId, isCurrent, 
       let rect = rectFor(item);
       if (!fitsDecor(rect, geometry, used)) {
         const replacement = opened || geometry.regions.some(region => region.name === item.position?.region)
-          ? findDecorPosition(geometry, used) : null;
+          ? findDecorPosition(geometry, used, propSide) : null;
         if (replacement) { item.position = replacement; rect = rectFor(item); }
         else rect = null;
       }
@@ -169,22 +172,27 @@ export function createDecor({ container, root, getExpectedAccountId, isCurrent, 
     controls();
   }
   function open(value) {
+    if (value) contextOrigin = items.get(selected)?.node || null;
     stopEffects(); opened = value; ui.panel.hidden = !value;
-    ui.toggle.setAttribute("aria-expanded", String(value));
-    ui.toggle.textContent = t(value ? "close" : "open");
     layout();
-    if (!value) ui.toggle.focus({ preventScroll: true });
+    if (value) ui.close.focus({ preventScroll: true });
+    else {
+      const target = visible(contextOrigin) ? contextOrigin : [...items.values()].find(item => visible(item.node))?.node
+        || root.querySelector('.wt-hand-card, [data-wt-scores] button, [data-wt-tools] button, [data-watten-social-action="toggle"]');
+      if (visible(target)) target.focus({ preventScroll: true });
+      contextOrigin = null;
+    }
   }
   function add(kind, { automatic = false } = {}) {
     if ((!opened && !automatic) || !DECOR_ITEMS[kind] || !current()) return;
     if (items.size >= LIMIT) { notice = t("limit", { count: LIMIT }); controls(); return; }
     measure();
-    let position = findDecorPosition(geometry, occupied());
+    let position = findDecorPosition(geometry, occupied(), propSide);
     if (position?.region === "table") {
       const area = geometry.regions.find(region => region.name === "table");
-      const top = area.top + position.y * (area.bottom - area.top - SIDE);
-      if (top < 0 || top + SIDE > win.innerHeight) {
-        position = findDecorPosition({ ...geometry, regions: geometry.regions.filter(region => region.name === "corner") }, occupied());
+      const top = area.top + position.y * (area.bottom - area.top - propSide);
+      if (top < 0 || top + propSide > win.innerHeight) {
+        position = findDecorPosition({ ...geometry, regions: geometry.regions.filter(region => region.name === "corner") }, occupied(), propSide);
       }
     }
     if (!position) { notice = t("noSpace"); controls(); return; }
@@ -221,7 +229,7 @@ export function createDecor({ container, root, getExpectedAccountId, isCurrent, 
       const dx = event.clientX - drag.startX, dy = event.clientY - drag.startY;
       if (!drag.moved && Math.hypot(dx, dy) < 7) return;
       drag.moved = true; node.dataset.dragging = "true";
-      move(item, box(drag.rect.left + dx, drag.rect.top + dy, SIDE, SIDE));
+      move(item, box(drag.rect.left + dx, drag.rect.top + dy, propSide, propSide));
     });
     listenItem("pointerup", event => {
       if (!drag || event.pointerId !== drag.pointer) return;
@@ -240,7 +248,10 @@ export function createDecor({ container, root, getExpectedAccountId, isCurrent, 
       const directions = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
       if (directions[event.key]) {
         event.preventDefault(); measure(); const rect = rectFor(item), [x, y] = directions[event.key];
-        if (rect) move(item, box(rect.left + x * 16, rect.top + y * 16, SIDE, SIDE));
+        if (rect) move(item, box(rect.left + x * 16, rect.top + y * 16, propSide, propSide));
+      }
+      if (event.key === "ContextMenu" || event.key === "F10" && event.shiftKey) {
+        event.preventDefault(); selected = item.id; notice = ""; open(true);
       }
       if (event.key === "Delete" || event.key === "Backspace") { event.preventDefault(); selected = item.id; act("remove"); }
       if (event.key === "Escape") { event.stopPropagation?.(); cancelDrag(); open(false); }
@@ -252,8 +263,8 @@ export function createDecor({ container, root, getExpectedAccountId, isCurrent, 
     measure();
     if (!fitsDecor(rect, geometry, occupied(item))) return false;
     const region = geometry.regions.find(area => rect.left >= area.left && rect.right <= area.right && rect.top >= area.top && rect.bottom <= area.bottom);
-    item.position = { region: region.name, x: (rect.left - region.left) / Math.max(1, region.right - region.left - SIDE),
-      y: (rect.top - region.top) / Math.max(1, region.bottom - region.top - SIDE) };
+    item.position = { region: region.name, x: (rect.left - region.left) / Math.max(1, region.right - region.left - propSide),
+      y: (rect.top - region.top) / Math.max(1, region.bottom - region.top - propSide) };
     item.node.style.left = `${rect.left}px`; item.node.style.top = `${rect.top}px`; return true;
   }
   function animate(item) {
@@ -288,7 +299,7 @@ export function createDecor({ container, root, getExpectedAccountId, isCurrent, 
   function act(action) {
     if (!current()) { destroy(); return; }
     const item = items.get(selected), config = item && DECOR_ITEMS[item.kind];
-    if (action === "toggle" || action === "close") { open(action === "toggle" && !opened); return; }
+    if (action === "close") { open(false); return; }
     if (action === "clear") {
       stopEffects(); for (const entry of items.values()) { entry.events.abort(); entry.node.remove(); }
       items.clear(); effects.nodes.clear(); selected = null; notice = t("cleared");
@@ -296,7 +307,7 @@ export function createDecor({ container, root, getExpectedAccountId, isCurrent, 
     else if (item) {
       if (action === "remove") {
         stopEffects(); item.events.abort(); item.node.remove(); items.delete(item.id); effects.nodes.delete(item.id); selected = null; notice = "";
-        ui.toggle.focus({ preventScroll: true });
+        if (opened) ui.close.focus({ preventScroll: true });
       } else if (action === "rotate") {
         cancelDrag(); item.turn = (item.turn + 15) % 360; item.art.style.rotate = `${item.turn}deg`;
       } else if (action === "refill") {
@@ -335,12 +346,12 @@ export function createDecor({ container, root, getExpectedAccountId, isCurrent, 
   }
   function layoutRare() {
     if (!rareNode) return;
-    const position = surprise && !surprisePending ? findDecorPosition(geometry, occupied()) : null;
+    const position = surprise && !surprisePending ? findDecorPosition(geometry, occupied(), propSide) : null;
     rareNode.hidden = !position;
     if (!position) return;
     const area = geometry.regions.find(region => region.name === position.region);
-    rareNode.style.left = `${area.left + position.x * (area.right - area.left - SIDE)}px`;
-    rareNode.style.top = `${area.top + position.y * (area.bottom - area.top - SIDE)}px`;
+    rareNode.style.left = `${area.left + position.x * (area.right - area.left - propSide)}px`;
+    rareNode.style.top = `${area.top + position.y * (area.bottom - area.top - propSide)}px`;
   }
   function updateRare(offer) {
     const next = offer && typeof offer.deal_id === "string" && RARE_EFFECTS.has(offer.effect) ? offer : null;
@@ -391,7 +402,7 @@ export function createDecor({ container, root, getExpectedAccountId, isCurrent, 
   observer?.observe(root); observer?.observe(ui.corner);
   const mutation = win.MutationObserver ? new win.MutationObserver(resized) : null;
   const view = root.querySelector("[data-watten-view]");
-  if (view) mutation?.observe(view, { childList: true, subtree: true });
+  if (view) mutation?.observe(view, { childList: true, subtree: true, attributes: true, attributeFilter: ["open", "hidden"] });
   for (const selector of ["[data-watten-social]", "[data-watten-leave-dialog]"]) {
     const node = root.querySelector(selector);
     if (node) mutation?.observe(node, { attributes: true, subtree: true, attributeFilter: ["hidden", "open"] });

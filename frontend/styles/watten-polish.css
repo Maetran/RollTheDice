@@ -96,3 +96,94 @@ html[data-watten-active="true"] .wt-table[data-playable="true"] .wt-hand { filte
 
 html[data-watten-active="true"] .wt-feedback-dialog .wt-choice-row > button::before { content: none; }
 html[data-watten-active="true"] .wt-feedback-dialog .wt-feedback-symbol { display: block; font: 700 28px/1 system-ui, sans-serif; }
+
+/* Table feedback: one lower control area, relative team scores and readable tricks. */
+html[data-watten-active="true"] .wt-table { --wt-trick-w: clamp(62px, 18vw, 84px); }
+html[data-watten-active="true"] .wt-score { min-height: 42px; gap: 8px; }
+html[data-watten-active="true"] .wt-score-caption { display: grid; gap: 0; line-height: 1.1; min-width: 0; }
+html[data-watten-active="true"] .wt-score-name { font-size: 1rem; font-weight: 700; }
+html[data-watten-active="true"] .wt-score-tricks { color: #6e5038; font-size: .7rem; white-space: nowrap; }
+html[data-watten-active="true"] .wt-score.is-own .wt-score-name { color: #305f3d; }
+html[data-watten-active="true"] .wt-scores:has(.is-own) .wt-score:not(.is-own) .wt-score-name { color: #9b382b; }
+html[data-watten-active="true"] .wt-topbar-actions { right: 56px; }
+html[data-watten-active="true"] [data-watten-social] { right: 8px; }
+html[data-watten-active="true"] [data-watten-voice] { right: 164px; }
+html[data-watten-active="true"] .wt-stake { max-width: calc(100% - 208px); }
+html[data-watten-active="true"] [data-watten-command="leave-match"] {
+  display: inline-flex; gap: 6px; width: auto; min-width: 100px; height: 44px;
+  padding: 0 8px; font-size: .85rem; color: #613b29; background: #fff1dc88; border: 1px solid #bd976c88;
+}
+html[data-watten-active="true"] [data-watten-command="leave-match"]::before { content: none; }
+html[data-watten-active="true"] .wt-card-owner { font-size: .75rem; bottom: -23px; }
+html[data-watten-active="true"] [data-wt-trick-team="own"] { color: #245e35; }
+html[data-watten-active="true"] [data-wt-trick-team="opponent"] { color: #9d3025; }
+html[data-watten-active="true"] .wt-trick-label[data-wt-trick-team="own"] { background: #e6f0dfe8; }
+html[data-watten-active="true"] .wt-trick-label[data-wt-trick-team="opponent"] { background: #fff0e9ed; }
+html[data-watten-active="true"] .wt-trick[data-winner-team="own"] .is-winning-card { outline-color: #387744; }
+html[data-watten-active="true"] .wt-trick[data-winner-team="opponent"] .is-winning-card { outline-color: #a13929; }
+html[data-watten-active="true"] .wt-history [data-wt-trick-team="own"] .is-winning-card { outline-color: #387744; }
+html[data-watten-active="true"] .wt-history [data-wt-trick-team="opponent"] .is-winning-card { outline-color: #a13929; }
+html[data-watten-active="true"] .wt-trick-label { font-size: .95rem; line-height: 1.4; padding: 2px 7px; }
+html[data-watten-active="true"] .wt-table:not([data-phase="match_complete"]) .wt-end-sheet {
+  position: absolute; z-index: 9; left: 12px; right: 12px; bottom: calc(var(--wt-hand-w) * 1.8 + 24px);
+  display: flex; flex-direction: column; gap: 8px; align-items: stretch;
+  max-height: calc(100% - var(--wt-hand-w) * 1.8 - 144px); pointer-events: none;
+}
+html[data-watten-active="true"] .wt-table:not([data-phase="match_complete"]) .wt-end-sheet > * { pointer-events: auto; }
+html[data-watten-active="true"] .wt-table:not([data-phase="match_complete"]) .wt-end-sheet > .wt-panel {
+  position: relative; inset: auto; translate: none; width: 100%; height: auto; min-height: 0; flex: 0 1 auto;
+  max-height: min(42dvh, 320px); overflow: auto; margin: 0;
+}
+html[data-watten-active="true"] .wt-table:not([data-phase="match_complete"]) .wt-end-sheet > .wt-private {
+  position: relative; inset: auto; translate: none; width: 100%; gap: 6px; flex: 0 0 auto; align-items: end; justify-content: end;
+}
+html[data-watten-active="true"] .wt-table:not([data-phase="match_complete"]) .wt-end-sheet > .wt-private:empty { display: none; }
+html[data-watten-active="true"] .wt-table:not([data-phase="match_complete"]) .wt-history-box {
+  position: relative; inset: auto; translate: none; align-self: end; margin: 0; width: fit-content;
+  max-width: 100%; max-height: min(40dvh, 320px); overflow: auto; flex: 0 1 auto;
+  background: #fff1dfe8; padding: 0 12px;
+}
+html[data-watten-active="true"] .wt-history-box summary { min-height: 44px; font-size: .9rem; }
+html[data-watten-active="true"] .wt-table:not([data-phase="match_complete"]) .wt-history-box[open] { width: 100%; background: #fff3e1; }
+html[data-watten-active="true"] .wt-history figure { max-width: 72px; }
+html[data-watten-active="true"] .wt-history .wt-card--mini { width: 60px; }
+html[data-watten-active="true"] .wt-history .wt-mini-cards { flex-wrap: nowrap; justify-content: center; width: 100%; gap: 9px; padding: 7px 0; }
+html[data-watten-active="true"] .wt-history li > span { font-size: .9rem; font-weight: 700; }
+html[data-watten-active="true"] .wt-table[data-viewer="spectator"] .wt-end-sheet { bottom: 16px; }
+html[data-watten-active="true"] .wt-table[data-phase="deal_complete"] .wt-end-sheet { bottom: 16px; }
+html[data-watten-active="true"] .wt-table[data-phase="match_complete"] .wt-history-box { display: none; }
+html[data-watten-active="true"] .wt-table[data-phase="match_complete"] .wt-private:empty { display: none; }
+@media (min-width: 761px) and (min-height: 520px) {
+  html[data-watten-active="true"] .wt-table { --wt-trick-w: clamp(104px, min(14vw, 20dvh), 152px); }
+  html[data-watten-active="true"] .wt-topbar { padding-right: 224px; }
+  html[data-watten-active="true"] .wt-score { min-width: 118px; }
+  html[data-watten-active="true"] .wt-stake { max-width: none; }
+  html[data-watten-active="true"] .wt-table:not([data-phase="match_complete"]) .wt-end-sheet {
+    left: auto; right: 3%; bottom: 24px; width: min(34%, 440px); max-height: calc(100% - 90px);
+  }
+  html[data-watten-active="true"] .wt-history figure { max-width: 90px; }
+  html[data-watten-active="true"] .wt-history .wt-card--mini { width: clamp(44px, calc((34vw - 64px) / 4), 76px); }
+  html[data-watten-active="true"] .wt-history figcaption { font-size: .75rem; }
+  html[data-watten-active="true"] .wt-trick-label { font-size: 1.05rem; }
+  html[data-watten-active="true"] .wt-card-owner { font-size: .85rem; bottom: -26px; }
+}
+@media (orientation: portrait) and (max-height: 700px) {
+  html[data-watten-active="true"] .wt-table { --wt-trick-w: clamp(52px, 15vw, 64px); }
+}
+@media (orientation: landscape) and (max-height: 519px) {
+  html[data-watten-active="true"] .wt-table { --wt-trick-w: clamp(42px, 13dvh, 64px); }
+  html[data-watten-active="true"] .wt-topbar { padding-right: 218px; }
+  html[data-watten-active="true"] .wt-stake { max-width: none; }
+  html[data-watten-active="true"] .wt-table:not([data-phase="match_complete"]) .wt-end-sheet {
+    left: auto; right: 12px; bottom: 10px; width: 39%; max-height: calc(100% - 62px);
+  }
+  html[data-watten-active="true"] .wt-score { min-width: 86px; }
+  html[data-watten-active="true"] .wt-score-name { font-size: .9rem; }
+  html[data-watten-active="true"] .wt-score-tricks { font-size: .65rem; }
+  html[data-watten-active="true"] .wt-history-box summary { font-size: .8rem; }
+  html[data-watten-active="true"] .wt-history .wt-card--mini { width: 44px; }
+  html[data-watten-active="true"] .wt-history .wt-mini-cards { gap: 7px; }
+}
+
+html[data-watten-active="true"] .wt-table[data-count="3"] .wt-scores { grid-template-columns: repeat(3, minmax(0, 1fr)) auto; }
+html[data-watten-active="true"] .wt-history-box[open] summary { position: sticky; top: 0; z-index: 2; background: #fff3e1; }

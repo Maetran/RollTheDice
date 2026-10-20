@@ -50,6 +50,18 @@ Nockerl, Schneider and an explicit Retourschneider choice follow the confirmed
 house rules. Scattered usable decorations and rare shared surprises return with evidenced completion achievements. Global voice is a per-table option, and the game mark is renewed.
 Public PWA/push release remains pending.
 
+**Deutsch – Tisch-Nachschliff:** Grössere Desktop-Stichkarten und Dekoration,
+Rückschau im unteren Aktionsbereich oberhalb der Gebotsantworten. «Mir»/«Dir»
+zeigt immer die Spielerperspektive; Stichzahlen stehen beim Punktestand.
+Stichgewinn der eigenen Seite ist grün, der gegnerischen rot markiert.
+Überflüssige Spielerzeilen und das Deko-Sternmenü entfallen, «Verlassen» ist beschriftet.
+
+**English – table refinement:** Larger desktop trick cards and decorations,
+with trick review in the lower action area above bid responses. “Us”/“Them”
+always follows the player’s perspective, and trick counts accompany scores.
+Own-side trick wins are green, opposing wins red. Redundant player labels and
+the decoration star menu are removed; the leave control has a text label.
+
 **Deutsch – CPU-Taktik (eigener Commit):** Subjektiv gute Blätter und der
 Spielstand bestimmen Gebote; jede Erhöhung verlangt mehr Sicherheit.
 Die Berechnung wächst mit abgeschlossenen Spielen. Partnerstich und rechtzeitiger

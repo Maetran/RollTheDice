@@ -95,27 +95,38 @@ in the waiting room.
 **Spieltisch / game table:** Mobile zuerst: die helle Tiroler Schnitzstube bleibt
 mit grösseren Schnitzecken sichtbar. Vor dem Aufdecken erscheint kein leerer
 Handkartenfächer. Bei der ladinischen Ansage gleiten die beiden zulässigen Karten
-mit Schlag/Farbe zusammen. Teamstand, gemeinsames Ziel und antippbarer Einsatz
-stehen oben; der dauernde Zug-Hinweis entfällt. Abgeschlossene Stiche bleiben
+mit Schlag/Farbe zusammen. Teamstand, Stichzahl, gemeinsames Ziel und antippbarer Einsatz
+stehen oben. «Mir» ist immer deine Seite, «Dir» die gegnerische; Zuschauer sehen
+die neutralen Teamnamen. Karten- und Teamzeilen unter den Namen entfallen.
+Der dauernde Zug-Hinweis entfällt. Abgeschlossene Stiche bleiben
 rund drei Sekunden sichtbar, mit Siegerrahmen und Spielernamen. Der letzte Stich
-kann lokal erneut angesehen werden. Ein gegnerisches Gebot fragt beide
+kann lokal erneut angesehen werden, im unteren Aktionsbereich oberhalb der
+Gebotsentscheidung. Desktop-Karten in der Mitte und in der Rückschau sind
+grösser. Stichgewinne sind für die eigene Seite grün, für die andere rot markiert. Ein gegnerisches Gebot fragt beide
 angebotenen Partner einmal privat nach ihrem Gefühl; die Auswahl schliesst den
 Dialog, die Antwort geht nur an den Partner.
 Mobile first: the light Tyrolean carved table keeps its larger corners visible.
 No empty hand appears before cards are revealed. Ladinisch calls slide the two
-authorized cards together, labelled Strike and Trump suit. Scores, one shared
-target and the tappable stake sit above the table. Completed tricks stay for
+authorized cards together, labelled Strike and Trump suit. Scores, trick counts, one shared
+target and the tappable stake sit above the table. “Us” always means your side,
+“Them” the other side; spectators see neutral team names. Card-count and team
+labels below player names are removed. Completed tricks stay for
 about three seconds with a winner outline and player names; the last trick can
-be reviewed locally. Only receiving an opposing bid opens a private feeling
+be reviewed locally, in the lower action area above any bid decision. Desktop
+centre and review cards are larger. Trick wins are marked green for your side
+and red for the other side. Only receiving an opposing bid opens a private feeling
 prompt for both partners; answering closes it and informs only the partner.
 
 **Tischdeko / table decorations:** Getränke, Snacks und Dekowürfel liegen frei
-auf dem Tisch. Antippen benutzt sie, Ziehen oder Pfeiltasten verschieben sie.
+auf dem Tisch. Antippen benutzt sie, Ziehen oder Pfeiltasten verschieben sie. Desktop-Deko ist
+grösser; ein zusätzliches Stern-Menü entfällt. Weitere Aktionen bleiben über das
+Kontextmenü des Gegenstands erreichbar.
 Acht seltene Überraschungen können gemeinsam auftreten. Auslösung und Miterleben
 werden serverseitig einmal je Runde belegt und erst mit dem gültig abgeschlossenen
 Spiel als Erfolge verbucht; mindestens zwei Menschen müssen verbunden mitspielen.
 Drinks, snacks and decoration dice scatter over the table. Tap to use, drag or
-use arrow keys to move. Eight rare surprises can occur together at the table.
+use arrow keys to move. Desktop props are larger; there is no separate star
+menu. Further actions remain in the item’s context menu. Eight rare surprises can occur together at the table.
 Server evidence records activation and connected witnesses once per round;
 achievements are granted only after a valid completed match with at least two
 connected human players at the time of the event.
@@ -243,17 +254,16 @@ the account-wide chat preference. Its personal three-day history contains only
 messages addressed to that account at send time. Disabling stops delivery;
 enabling again never adds missed messages. The public table chat is independent.
 
-**Tischdeko / table decorations:** «Tisch dekorieren» bietet acht lokale
-Gegenstände zum Aufstellen, Verschieben, Essen, Trinken oder Würfeln. Sie sind
-nur auf deinem Gerät sichtbar. Spielbereiche bleiben frei; auf kleinen Tischen
-steht eine eigene Deko-Ecke zur Verfügung. Verschüttetes lässt sich aufwischen,
-alles gemeinsam aufräumen. Auch mit reduzierter Bewegung bleibt die Bedienung
-verfügbar.
-
-“Decorate the table” offers eight local items to place, move, eat, drink or roll.
-They are visible only on your device. Play areas stay clear; small tables have a
-separate decoration corner. Wipe spills or clear everything together. Controls
-remain available with reduced motion.
+**Deko-Bedienung / decoration controls:** Acht lokale Gegenstände können
+zufällig am Tisch erscheinen. Antippen isst, trinkt oder würfelt, Ziehen oder
+Pfeiltasten verschieben. Das Kontextmenü am Gegenstand bietet weitere Aktionen,
+auch per Kontextmenütaste oder Umschalt+F10; es gibt keinen zusätzlichen
+Deko-Stern. Spielbereiche bleiben frei. Auch mit reduzierter Bewegung bleibt
+die Bedienung verfügbar.
+Eight local items can appear randomly at the table. Tap to eat, drink or roll;
+drag or use arrow keys to move. Each item’s context menu offers further actions,
+including via the context-menu key or Shift+F10; there is no separate star
+control. Play areas remain clear, and controls work with reduced motion.
 
 **Deutsch:** Watten ist als nächstes Spiel vorgemerkt: üblicherweise 4er
 ladinisch bis 11 Punkte («8+3 isch zmittag»), mit blindem Einschauen durch den

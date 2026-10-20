@@ -1,5 +1,5 @@
 const { test, expect } = require('@playwright/test');
-const { player, openCreator, create, normalCall } = require('./helpers/watten-journey.cjs');
+const { player, openCreator, create, action, answerPartnerFeedback, normalCall, playOne } = require('./helpers/watten-journey.cjs');
 const { expectFixedTable, expectReachable } = require('./table-viewport');
 
 for (const browserName of ['chromium', 'webkit']) {
@@ -107,6 +107,54 @@ for (const browserName of ['chromium', 'webkit']) {
           .toEqual([expect.objectContaining({ action: 'watten_command', kind: 'play_card', value: card, opportunity })]);
         await expect.poll(() => traffic.snapshot.engine.opportunity).not.toBe(opportunity);
         expect(traffic.errors).toEqual([]);
+        // Complete this real trick, then keep its history open while an actual
+        // bid awaits a decision. Both lower-dock controls must survive rotation.
+        await playOne(players);
+        await expect.poll(() => players.every(item => item.traffic.snapshot.engine.phase === 'play'
+          && item.traffic.snapshot.engine.last_trick?.cards.length === 2)).toBe(true);
+        await action(players, 'bid');
+        await expect.poll(() => players.every(item => item.traffic.snapshot.engine.phase === 'bid_response')).toBe(true);
+        await answerPartnerFeedback(players);
+        const responder = players.find(item => item.traffic.snapshot.engine.actions.includes('respond_hold'));
+        expect(responder).toBeTruthy();
+        const decisionPage = responder.page;
+        await decisionPage.bringToFront();
+        for (const viewport of [{ width: 956, height: 440 }, portrait, { width: 956, height: 440 }, portrait]) {
+          await decisionPage.setViewportSize(viewport);
+          await decisionPage.evaluate(() => window.dispatchEvent(new Event('orientationchange')));
+          const history = decisionPage.locator('.wt-end-sheet > [data-wt-history]');
+          await expect(history).toBeVisible();
+          if (!await history.evaluate(node => node.open)) await history.locator('summary').click();
+          await expectFixedTable(decisionPage, ['[data-wt-felt]', '[data-wt-scores]', '[data-wt-hand-area]']);
+          await expectReachable(decisionPage, '[data-wt-history] > summary');
+          await expect.poll(() => history.evaluate(node => {
+            const rect = node.getBoundingClientRect();
+            const panel = node.parentElement.querySelector('[data-wt-panel]');
+            const summary = node.querySelector('summary').getBoundingClientRect();
+            const hand = document.querySelector('[data-wt-hand-area]').getBoundingClientRect();
+            const overlaps = (a, b) => Math.min(a.right, b.right) - Math.max(a.left, b.left) > 2
+              && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 2;
+            return {
+              aboveDecision: rect.bottom <= panel.getBoundingClientRect().top + 1,
+              clearOfHand: !overlaps(summary, hand),
+              controlsClearOfHistory: [...panel.querySelectorAll('button')].every(button => !overlaps(rect, button.getBoundingClientRect())),
+              readableCards: [...node.querySelectorAll('.wt-card--mini')].every(card => Number.parseFloat(getComputedStyle(card).width) >= 44),
+            };
+          }), { message: 'rotating keeps history above the bid, away from the hand and decision targets' })
+            .toEqual({ aboveDecision: true, clearOfHand: true, controlsClearOfHistory: true, readableCards: true });
+          for (const response of ['respond_hold', 'respond_go', 'respond_counter']) {
+            const selector = `[data-watten-action="${response}"]`;
+            const target = decisionPage.locator(selector);
+            await expect(target).toBeEnabled();
+            const targetBox = await target.boundingBox();
+            expect(targetBox.width).toBeGreaterThanOrEqual(44);
+            expect(targetBox.height).toBeGreaterThanOrEqual(44);
+            await expectReachable(decisionPage, selector);
+          }
+        }
+        await action(players, 'respond_hold', 'hold');
+        await expect.poll(() => players.every(item => item.traffic.snapshot.engine.phase === 'play')).toBe(true);
+        expect(players.flatMap(item => item.traffic.errors)).toEqual([]);
         // Locking is confined to an active game. The compact lobby opens a
         // scrollable native creator; the long rulebook scrolls as a document.
         await page.setViewportSize({ width: 390, height: 600 });

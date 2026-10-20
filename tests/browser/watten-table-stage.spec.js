@@ -3,8 +3,9 @@ const { player, create, action, answerPartnerFeedback, normalCall, playOne } = r
 const { expectFixedTable, expectReachable } = require('./table-viewport');
 const { expectTableHeaderReachable } = require('./helpers/watten-header.cjs');
 
-// Each case creates up to four real accounts and checks four viewport sizes
-// before and during a bid. Keep individual assertions at their normal timeout.
+// Each case checks four viewport sizes before and during a real bid; the
+// four-player case also admits one spectator for the neutral score labels.
+// Keep individual assertions at their normal timeout.
 test.setTimeout(90_000);
 
 const VIEWPORTS = [{ width: 390, height: 844 }, { width: 568, height: 320 }, { width: 1280, height: 800 }, { width: 320, height: 568 }];
@@ -26,6 +27,26 @@ async function expectStage(item, count) {
   await expect(page.locator('html')).toHaveAttribute('data-watten-active', 'true');
   await expect(page.locator('[data-wt-seat]')).toHaveCount(count);
   const engine = traffic.snapshot.engine;
+  const language = await page.locator('html').getAttribute('lang');
+  const ownId = traffic.snapshot.viewer.participant_id;
+  const scores = [...engine.scores].sort((a, b) =>
+    Number(b.members.includes(ownId)) - Number(a.members.includes(ownId)));
+  await expect(page.locator('.wt-score')).toHaveCount(scores.length);
+  await expect(page.locator('.wt-score').first()).toHaveClass(/is-own/);
+  if (count === 4 || count === 2) {
+    await expect(page.locator('.wt-score-name')).toHaveText(language === 'en' ? ['Us', 'Them'] : ['Mir', 'Dir']);
+  }
+  for (const [index, score] of scores.entries()) {
+    const party = engine.seats.find(seat => score.members.includes(seat.player_id)).party;
+    await expect(page.locator('.wt-score').nth(index).locator('.wt-score-points')).toHaveText(String(score.points));
+    const tricks = engine.party_tricks[party];
+    await expect(page.locator('.wt-score').nth(index).locator('.wt-score-tricks'))
+      .toHaveText(`${tricks} ${language === 'en' ? (tricks === 1 ? 'trick' : 'tricks') : (tricks === 1 ? 'Stich' : 'Stiche')}`);
+  }
+  await expect(page.locator('.wt-seat-meta')).toHaveCount(0);
+  await expect(page.locator('[data-wt-tools] [data-watten-action="leave"]'))
+    .toHaveText(language === 'en' ? 'Leave' : 'Verlassen');
+  await expect(page.locator('[data-watten-decor-action="toggle"]')).toHaveCount(0);
   const ownSeat = engine.viewer.seat;
   const backCount = engine.seats.filter(seat => seat.seat !== ownSeat).reduce((sum, seat) => sum + seat.card_count, 0);
   await expect(page.locator('.wt-backs > i:not([hidden])')).toHaveCount(backCount);
@@ -59,7 +80,7 @@ async function expectStage(item, count) {
       const box = rect(name);
       if (box.left < -1 || box.right > innerWidth + 1) violations.push(`seat ${name.closest('[data-wt-seat]').dataset.wtSeat} name outside ${innerWidth}x${innerHeight}: ${box.left}–${box.right}`);
     }
-    const protectedAreas = [...document.querySelectorAll('[data-wt-hand-area], [data-wt-panel], [data-wt-private] button, .wt-trick-card')].filter(shown);
+    const protectedAreas = [...document.querySelectorAll('[data-wt-hand-area], [data-wt-panel], [data-wt-history]:not([open]), [data-wt-private] button, .wt-trick-card')].filter(shown);
     for (const back of document.querySelectorAll('.wt-backs > i:not([hidden])')) {
       const box = rect(back);
       const overlaps = protectedAreas.filter(area => intersects(box, rect(area)));
@@ -72,6 +93,42 @@ async function expectStage(item, count) {
   }), { message: 'all five-card opponent fans and the own hand remain complete and clear' }).toEqual([]);
 
   for (const selector of ['[data-wt-hand] button:first-child', '[data-wt-scores]']) await expectReachable(page, selector);
+  if (engine.last_trick) {
+    const history = page.locator('.wt-end-sheet > [data-wt-history]');
+    await expect(history).toBeVisible();
+    const winnerParty = engine.seats[engine.last_trick.winner].party;
+    const ownParty = engine.seats[engine.viewer.seat].party;
+    await expect(history.locator('.wt-history > li').last())
+      .toHaveAttribute('data-wt-trick-team', winnerParty === ownParty ? 'own' : 'opponent');
+    if (!await history.evaluate(node => node.open)) await history.locator('summary').click();
+    await expectReachable(page, '[data-wt-history] > summary');
+    await expect.poll(() => history.evaluate(node => {
+      const rect = node.getBoundingClientRect();
+      const panel = node.parentElement.querySelector('[data-wt-panel]');
+      const panelRect = panel.getBoundingClientRect();
+      const summaryRect = node.querySelector('summary').getBoundingClientRect();
+      const hand = document.querySelector('[data-wt-hand-area]').getBoundingClientRect();
+      const overlap = (a, b) => Math.min(a.right, b.right) - Math.max(a.left, b.left) > 2
+        && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 2;
+      return {
+        abovePanel: !panelRect.height || rect.bottom <= panelRect.top + 1,
+        beforePanel: Boolean(node.compareDocumentPosition(panel) & Node.DOCUMENT_POSITION_FOLLOWING),
+        clearOfHand: !overlap(summaryRect, hand),
+        controlsClearOfHistory: [...panel.querySelectorAll('button')].every(button => !overlap(rect, button.getBoundingClientRect())),
+      };
+    }), { message: 'history shares the lower dock above decisions, including when the panel is empty' })
+      .toEqual({ abovePanel: true, beforePanel: true, clearOfHand: true, controlsClearOfHistory: true });
+    const miniWidth = await history.locator('.wt-card--mini').first().evaluate(node => Number.parseFloat(getComputedStyle(node).width));
+    const desktop = page.viewportSize().width >= 761 && page.viewportSize().height >= 520;
+    expect(miniWidth).toBeGreaterThanOrEqual(desktop ? 70 : 44);
+  }
+  if (page.viewportSize().width >= 761 && page.viewportSize().height >= 520 && await page.locator('.wt-trick-card').count()) {
+    for (const card of await page.locator('.wt-trick-card').all()) {
+      const width = await card.evaluate(node => Number.parseFloat(getComputedStyle(node).width));
+      expect(width).toBeGreaterThanOrEqual(90);
+      expect(width).toBeLessThanOrEqual(160);
+    }
+  }
   for (const control of await page.locator('[data-wt-panel] button, [data-wt-private] button, [data-wt-tools] button, [data-wt-scores] button').all()) {
     if (!await control.isVisible()) continue;
     const box = await control.boundingBox();
@@ -95,11 +152,19 @@ for (const language of ['de', 'en']) {
   for (const count of [2, 3, 4]) {
     test(`${language}: ${count} real humans keep complete fans and bid decisions on one fixed table`, async ({ browser, baseURL }, testInfo) => {
       const players = [];
+      let spectator;
       try {
         for (let index = 0; index < count; index += 1) players.push(await player(gameBrowser(browser), baseURL, language));
-        await create(players, { determination: 'normal', target: 15 });
+        const path = await create(players, { determination: 'normal', target: 15 });
         await normalCall(players);
         await settled(players, 'play');
+        if (count === 4) {
+          spectator = await player(gameBrowser(browser), baseURL, language);
+          await spectator.page.goto(`${path}/zuschauen`);
+          await expect(spectator.page.locator('[data-wt-table]')).toBeVisible();
+          await expect(spectator.page.locator('.wt-score-name')).toHaveText(['Team A', 'Team B']);
+          await expect(spectator.page.locator('.wt-score.is-own')).toHaveCount(0);
+        }
         for (const viewport of VIEWPORTS) {
           for (const item of players) {
             await item.page.setViewportSize(viewport);
@@ -107,8 +172,11 @@ for (const language of ['de', 'en']) {
             await expectStage(item, count);
           }
         }
-        await playOne(players);
-        await settled(players, 'play');
+        for (let card = 0; card < count; card += 1) {
+          await playOne(players);
+          await settled(players, 'play');
+        }
+        await expect.poll(() => players.every(item => item.traffic.snapshot.engine.last_trick?.cards.length === count)).toBe(true);
         await action(players, 'bid');
         await settled(players, 'bid_response');
         await answerPartnerFeedback(players);
@@ -159,7 +227,7 @@ for (const language of ['de', 'en']) {
           await settled(players, 'play');
         } finally { decider.page.off('websocket', onSocket); }
         expect(players.flatMap(item => item.traffic.errors)).toEqual([]);
-      } finally { await Promise.allSettled(players.map(item => item.context.close())); }
+      } finally { await Promise.allSettled([...players, spectator].filter(Boolean).map(item => item.context.close())); }
     });
   }
 }

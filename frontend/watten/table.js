@@ -64,16 +64,35 @@ function reconcile(parent, next) {
   while (parent.childNodes.length > next.childNodes.length) parent.lastChild.remove();
 }
 
+function teamRelation(vm, party) {
+  const own = vm.spectator || vm.viewerSeat === null ? null : vm.engine.seats[vm.viewerSeat]?.party;
+  return own === null || own === undefined ? "neutral" : party === own ? "own" : "opponent";
+}
+
+function partyLabel(vm, party) {
+  const relation = teamRelation(vm, party);
+  return relation === "neutral" ? t("team.label", { team: teamName(party) }) : t(`team.${relation}`);
+}
+
+function trickRelation(vm, seat) {
+  const party = vm.engine.seats[seat]?.party;
+  return party === undefined ? "neutral" : teamRelation(vm, party);
+}
+
 function scoreMarkup(vm) {
   const engine = vm.engine;
-  return engine.scores.map(score => {
+  const scores = engine.scores.slice().sort((a, b) =>
+    Number(b.members.includes(vm.playerId)) - Number(a.members.includes(vm.playerId)));
+  return scores.map(score => {
     const own = score.members.includes(vm.playerId);
+    const party = engine.seats.find(item => item.player_id === score.members[0])?.party ?? 0;
     const won = engine.winners.some(group => group.length === score.members.length && group.every(id => score.members.includes(id)));
-    const label = vm.count === 4
-      ? t("team.label", { team: teamName(engine.seats.find(item => item.player_id === score.members[0])?.party ?? 0) })
-      : names(score.members.map(id => nameOf(vm, id)));
+    const label = vm.count === 4 || vm.count === 2 ? partyLabel(vm, party)
+      : own ? t("team.own") : names(score.members.map(id => nameOf(vm, id)));
+    const tricks = engine.party_tricks?.[party] ?? 0;
     return `<li class="wt-score${own ? " is-own" : ""}${won ? " is-winner" : ""}">
-      <span class="wt-score-name"${vm.count === 4 ? "" : " translate=\"no\""}>${esc(label)}</span>
+      <span class="wt-score-caption"><span class="wt-score-name"${vm.count === 3 && !own ? " translate=\"no\"" : ""}>${esc(label)}</span>
+        <span class="wt-score-tricks">${esc(t(tricks === 1 ? "score.trick" : "score.tricks", { count: tricks }))}</span></span>
       <strong class="wt-score-points" aria-label="${esc(t("score.aria", { points: score.points, target: engine.target_points }))}">${score.points}</strong>
     </li>`;
   }).join("");
@@ -84,14 +103,11 @@ function seatBadge(vm, seat) {
   const info = engine.seats[seat];
   const position = seatPosition(seat, vm.anchorSeat, vm.count);
   const own = seat === vm.viewerSeat;
-  const partner = !own && vm.viewerSeat !== null && info.party === engine.seats[vm.viewerSeat]?.party;
   const solo = vm.count === 3 && partyMembers(engine, info.party).length === 1;
   const awaited = vm.awaited.includes(info.player_id);
   const tags = [
     own ? t("seat.you") : "",
     vm.room.seats[seat]?.is_cpu ? t("seat.cpu") : "",
-    partner ? t("seat.partner") : "",
-    vm.count === 4 ? t("team.label", { team: teamName(info.party) }) : "",
     seat === engine.dealer_seat ? t("seat.dealer") : "",
     solo ? t("seat.solo") : "",
     awaited ? t("seat.away") : "",
@@ -99,7 +115,6 @@ function seatBadge(vm, seat) {
   const turn = engine.card_turn === seat && !engine.bid.pending;
   const decider = engine.bid.pending?.decider === info.player_id;
   const thanks = engine.transcript?.some(item => item.kind === "watten_thanks" && item.seat === seat);
-  const tricks = engine.party_tricks?.[info.party] ?? 0;
   const name = seatName(vm, seat);
   const initial = Array.from(name.trim())[0] || "?";
   return { position, own, turn, decider, awaited, count: Math.max(0, Math.min(5, info.card_count)),
@@ -109,7 +124,6 @@ function seatBadge(vm, seat) {
       language: window.ZDWA_I18N?.getLanguage?.(), escapeHtml: esc,
     })}
     <span class="wt-seat-tags">${tags.map(tag => `<span class="wt-tag">${esc(tag)}</span>`).join("")}</span>
-    <span class="wt-seat-meta">${esc(t("seat.cards", { count: info.card_count }))} · ${esc(t("seat.tricks", { count: tricks }))}</span>
     ${turn ? `<span class="wt-visually-hidden">${esc(t("seat.turn"))}</span>` : ""}
     ${thanks ? `<span class="wt-bubble wt-bubble--thanks">${esc(t("call.thanks"))}</span>` : ""}
   ` };
@@ -126,7 +140,7 @@ function inspectionMarkup(vm) {
 
 function bidMarkup(vm) {
   const engine = vm.engine, pending = engine.bid.pending;
-  const bidders = vm.count === 4 ? t("team.label", { team: teamName(pending.party) })
+  const bidders = vm.count === 4 ? partyLabel(vm, pending.party)
     : names(partyMembers(engine, pending.party).map(id => nameOf(vm, id)));
   const decider = nameOf(vm, pending.decider);
   const respond = RESPONSES.filter(([, action]) => vm.actions.includes(action));
@@ -241,7 +255,7 @@ function historyMarkup(vm) {
     : vm.engine.last_trick ? [vm.engine.last_trick] : [];
   if (!history.length) return "";
   return `<summary>${esc(t(Array.isArray(vm.engine.trick_history) ? "history.title" : "history.last", { count: history.length }))}</summary>${history.length ? `<ol class="wt-history">${history.map(trick => `
-    <li><div class="wt-mini-cards">${trick.cards.map(item => `<figure class="${item.seat === trick.winner ? "is-winning-card" : ""}">${cardFace(item.card, { className: "wt-card--mini" })}<figcaption translate="no">${esc(seatName(vm, item.seat))}</figcaption></figure>`).join("")}</div>
+    <li data-wt-trick-team="${trickRelation(vm, trick.winner)}"><div class="wt-mini-cards">${trick.cards.map(item => `<figure class="${item.seat === trick.winner ? "is-winning-card" : ""}">${cardFace(item.card, { className: "wt-card--mini" })}<figcaption translate="no">${esc(seatName(vm, item.seat))}</figcaption></figure>`).join("")}</div>
       <span>${esc(t("history.winner", { name: seatName(vm, trick.winner) }))}</span></li>`).join("")}</ol>` : `<p class="wt-note">${esc(t("history.empty"))}</p>`}`;
 }
 
@@ -274,14 +288,14 @@ export function createTableView(container, { onCard }) {
       </div>
     </div>
     <div class="wt-end-sheet">
+      <div class="wt-private" data-wt-private></div>
+      <details class="wt-history-box" data-wt-history hidden></details>
       <div class="wt-panel" data-wt-panel role="region" aria-label="${esc(t("panel.label"))}"></div>
       <div data-watten-rematch hidden></div>
     </div>
-    <div class="wt-private" data-wt-private></div>
     <div class="wt-hand-area" data-wt-hand-area>
       <div class="wt-hand" data-wt-hand role="group" aria-label="${esc(t("hand.label"))}"></div>
     </div>
-    <details class="wt-history-box" data-wt-history hidden></details>
     <p class="wt-visually-hidden" data-wt-live aria-live="polite"></p>
   </section>`;
   const $ = selector => container.querySelector(selector);
@@ -426,6 +440,8 @@ export function createTableView(container, { onCard }) {
     });
     elements.trick.dataset.state = last ? "last" : current.length ? "current" : "empty";
     elements.trick.classList.toggle("is-collecting", Boolean(last && vm.freshTrickEnd));
+    elements.trick.dataset.winnerTeam = last ? trickRelation(vm, last.winner) : "neutral";
+    elements.trickLabel.dataset.wtTrickTeam = last ? trickRelation(vm, last.winner) : "neutral";
     elements.trickLabel.textContent = last ? t("trick.wonBy", { name: seatName(vm, last.winner) })
       : "";
     return { created, nodes: cards.map(item => trickNodes.get(item.card)), cards, last: engine.last_trick || null };
@@ -444,7 +460,7 @@ export function createTableView(container, { onCard }) {
         <span>${esc(t(vm.engine.bid.pending ? "bid.offered" : "bid.running"))}</span><strong>${stake}</strong>${canBid ? '<span aria-hidden="true">＋</span>' : ""}</button></li>
       ${vm.engine.retourschneider?.status === "active" ? `<li class="wt-retour-tag">${esc(t("retour.active"))}</li>` : ""}`);
     patch(elements.tools, "tools", vm.canLeave
-      ? button(t("leave.button"), `data-watten-command="leave-match" data-watten-action="leave"`, { disabled: vm.busy, className: "wt-button--ghost wt-button--small" })
+      ? button(t("leave.short"), `data-watten-command="leave-match" data-watten-action="leave" aria-label="${esc(t("leave.button"))}"`, { disabled: vm.busy, className: "wt-button--ghost wt-button--small" })
       : vm.spectator ? `<span class="wt-tag">${esc(t("spectator.kicker"))}</span>` : "");
     renderSeats(vm);
     patch(elements.reference, "reference", referenceMarkup(vm));
