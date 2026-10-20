@@ -11,7 +11,7 @@
     "de": {
       "title": "Mehr Übersicht in der Spielesuite",
       "changes": [
-        "ALLGEMEIN: Der zweizeilige Seitenkopf zeigt Spiel, Sprache, Darstellung und Spielauswahl über der Navigation. Ausserhalb des Spieltisches bleibt er beim Scrollen sichtbar.",
+        "ALLGEMEIN: Der zweizeilige Seitenkopf zeigt Spiel, Sprache, Darstellung und Spielauswahl über der Navigation. Ausserhalb des Spieltisches bleibt er beim Scrollen sichtbar. Schnelle Seitenwechsel behalten ihr gewähltes Ziel.",
         "ZDWA: Onlinezahl, beendete Partien und Durchschnittswerte mit Trends findest du unter Spieler & Ranking.",
         "HAUSDEPP: Ergebniszeilen bleiben auch auf kleinen Displays lesbar. Beim Verlassen kannst du in einer passenden Bestätigung am Tisch bleiben.",
         "WATTEN: Die private Vorschau bekommt einen festen Wirtshaustisch mit vollständigen Kartenfächern, klaren Gebotswerten und Kartenflügen zum Stichgewinner."
@@ -20,7 +20,7 @@
     "en": {
       "title": "A clearer game suite",
       "changes": [
-        "ALLGEMEIN: The two-row header puts the game, language, appearance and game picker above navigation. Outside game tables it stays visible while scrolling.",
+        "ALLGEMEIN: The two-row header puts the game, language, appearance and game picker above navigation. Outside game tables it stays visible while scrolling. Quick page changes keep their chosen destination.",
         "ZDWA: Find the online count, completed games and averages with trends under Players & Ranking.",
         "HAUSDEPP: Round results remain readable on small screens. A matching departure confirmation lets you choose to stay at the table.",
         "WATTEN: The private preview gains a fixed tavern table with complete card fans, clear bid values and card flights to the trick winner."
