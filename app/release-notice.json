@@ -3,21 +3,19 @@
   "games": [
     "hausdepp"
   ],
-  "summary_de": "Tisch auch beim Zuschauen verlassen; Sprachchat funktioniert auch über bestehende Suite-PWAs.",
-  "summary_en": "Leave tables while spectating; voice chat also works through existing suite PWAs.",
+  "summary_de": "Ergebniszeilen bleiben auf kleinen Displays lesbar: Status, Avatar, Name und EP überlappen sich nicht.",
+  "summary_en": "Readable results on small screens: status, avatar, player name and XP stay separate.",
   "player_notes": {
     "de": {
-      "title": "Tisch verlassen und Mikrofon nutzen",
+      "title": "Klarer Rundenabschluss",
       "changes": [
-        "Beim Zuschauen führt Tisch verlassen direkt zurück zur Lobby – auch im Warteraum, zwischen Runden und ohne Verbindung.",
-        "Hausdepp-Sprachchat kann das Mikrofon jetzt auch in bestehenden Suite-PWAs anfragen. Bestätige dafür die Mikrofonfreigabe deines Geräts."
+        "Auch längere Statuswörter wie Verblieben und Ausgestiegen haben auf kleinen Displays Platz neben Avatar, Name und Runden-EP."
       ]
     },
     "en": {
-      "title": "Leave the table and use your microphone",
+      "title": "Clear round results",
       "changes": [
-        "While spectating, Leave table returns directly to the lobby, including waiting rooms, round breaks and disconnected views.",
-        "Hausdepp voice chat can now request the microphone in existing suite PWAs too. Confirm microphone permission on your device."
+        "Longer labels such as Remaining and Withdrawn have room beside the avatar, name and round XP on small screens."
       ]
     }
   }

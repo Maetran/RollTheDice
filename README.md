@@ -456,7 +456,8 @@ aktuellen Kontonamen, etwa „Manis Gsuff“. Ein Namensfeld ist dafür nicht n�
 Zwei bis fünf, höchstens sechs Teilnehmer spielen mit 36 doppeldeutschen Karten;
 Computer sind echte Mitspieler mit eigenen verdeckten Händen. Gleiche Ränge oben auf dem offenen Paket
 sind leicht aufgefächert, das Rundenende zeigt Platzierungen, Runden-EP und neue
-Erfolge, und die Gegenstände am Tisch lassen sich benutzen: Münze werfen, würfeln,
+Erfolge. Längere Ergebnisstatus bleiben auch auf kleinen Displays von Avatar und
+Spielername getrennt. Die Gegenstände am Tisch lassen sich benutzen: Münze werfen, würfeln,
 vom Bier trinken (zu wild, und es kippt um) oder die Nüsse verputzen. Sie kaufen kleine
 wertvolle Pakete statt ihre 10 zu verbrennen, auch ein Ass im Zweikampf, legen von Ober, König und Ass
 zunächst nur eine Karte und halten den Rest zurück, spielen mal besser, mal schlechter
@@ -914,7 +915,8 @@ vibrate on supported devices. Forty-two beer-mat strokes reveal a small answer
 to everything. After a round, the points
 summary stays visible without an extra acknowledgement button. The compact
 result sheet shows the table composition, finishing order and only this round’s
-XP and achievements. Round credit and achievement XP are broken down; your current
+XP and achievements. Longer status labels stay separate from avatars and player
+names on small screens. Round credit and achievement XP are broken down; your current
 rank, total XP and distance to the next rank put progress in context. Generic
 congratulations and rematch explanations are omitted. The final result
 waits until the last card lands, then another 750 ms. Tournament letters have

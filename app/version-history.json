@@ -2406,5 +2406,12 @@
     "date": "2026-10-20",
     "bump": "minor",
     "summary": "Hausdepp: gemeinsame Tischdeko, leise Wirtshauskulisse und eigener Ausstieg; zuverlässiger Sprachwechsel. / Hausdepp: shared table props, quiet tavern ambience and individual departure; reliable language switching."
+  },
+  {
+    "version": "3.18.1",
+    "revision": "7a66e1051190fa81f25d8d1802d27bf88411959a",
+    "date": "2026-10-20",
+    "bump": "patch",
+    "summary": "Hausdepp: Tisch auch beim Zuschauen verlassen; Mikrofon für Suite-PWAs freigeschaltet. / Hausdepp: leave tables while spectating; microphone enabled for suite PWAs."
   }
 ]

@@ -1,10 +1,10 @@
 {
-  "version": "3.18.1",
+  "version": "3.18.2",
   "bump": "patch",
   "date": "2026-10-20",
-  "previous_revision": "68cab46201c7374f618b9b2c7971193c437ef76b",
+  "previous_revision": "7a66e1051190fa81f25d8d1802d27bf88411959a",
   "summary": {
-    "de": "Hausdepp: Tisch auch beim Zuschauen verlassen; Mikrofon für Suite-PWAs freigeschaltet.",
-    "en": "Hausdepp: leave tables while spectating; microphone enabled for suite PWAs."
+    "de": "Hausdepp: Status und Namen im Rundenabschluss auf kleinen Displays ohne Überlappung.",
+    "en": "Hausdepp: round-result status and player names stay clear on small screens."
   }
 }

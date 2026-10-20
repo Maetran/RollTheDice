@@ -511,7 +511,9 @@ den Inhalt an. Es nennt die tatsächliche Tischbesetzung und trennt bei der
 eigenen Gutschrift Runden-EP von Erfolgs-EP. Darunter stehen der aktuelle eigene
 Kontorang, Gesamt-EP und der Abstand zum nächsten Rang. Kontohinweise aus früheren
 Runden werden niemals als Gutschrift der gerade beendeten Runde ausgegeben.
-Allgemeine Glückwünsche und Wiederholungs-Erklärungen entfallen.
+Allgemeine Glückwünsche und Wiederholungs-Erklärungen entfallen. Längere
+Statuswörter wie „Verblieben“ und „Ausgestiegen“ erhalten auch auf kleinen
+Displays eigenen Platz neben Avatar, Spielername und Runden-EP.
 
 Die eigene Hand bleibt offen und sortiert. Bei anderen Spielern ist für jede
 Handkarte eine Rückseite sichtbar; die genaue Anzahl steht zusätzlich beim
@@ -1052,6 +1054,9 @@ and grants another turn if the player still has hand cards. This is tactical
 advice, not an additional special rule.
 
 ### Visible hands and card movement
+
+Round results keep status labels, avatars, player names and round XP separate
+and readable, including “Remaining” and “Withdrawn” on small screens.
 
 Your own hand stays face up and sorted. Other players show one card back for
 every hand card, with the exact count also beside their name. Opposing ranks and
