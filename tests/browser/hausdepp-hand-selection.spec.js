@@ -1,3 +1,4 @@
+const { handleDisabledHausdeppVoice } = require('./hausdepp-voice-fixture');
 const { test, expect } = require('@playwright/test');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -109,6 +110,7 @@ async function fixture(page, language) {
     socket = active;
     active.onMessage(raw => {
       const message = JSON.parse(String(raw));
+      if (handleDisabledHausdeppVoice(active, message)) return;
       if (message.action === 'join_game') active.send(JSON.stringify({ player_id: self, scoreboard: board }));
       else commands.push(message);
     });

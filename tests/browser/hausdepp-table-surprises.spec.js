@@ -1,3 +1,4 @@
+const { handleDisabledHausdeppVoice } = require('./hausdepp-voice-fixture');
 const { test, expect } = require('@playwright/test');
 const { mkdir } = require('node:fs/promises');
 
@@ -81,6 +82,7 @@ async function roomFixture(page, effect, { spectator = false, reduced = false, c
       client.socket = socket;
       socket.onMessage(raw => {
         const command = JSON.parse(String(raw));
+        if (handleDisabledHausdeppVoice(socket, command)) return;
         if (['join_game', 'spectate_game'].includes(command.action)) socket.send(JSON.stringify({
           ...(isSpectator ? {} : { player_id: viewer }), scoreboard: client.board,
         }));

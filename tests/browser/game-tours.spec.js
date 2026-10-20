@@ -1,3 +1,4 @@
+const { handleDisabledHausdeppVoice } = require('./hausdepp-voice-fixture');
 const { test, expect } = require("@playwright/test");
 const { readFile } = require("node:fs/promises");
 
@@ -129,6 +130,7 @@ async function harness(page, { language = "de", authenticated = true, enabled = 
     sockets.push(connection);
     connection.onMessage(raw => {
       const action = JSON.parse(String(raw));
+      if (game === "hausdepp" && handleDisabledHausdeppVoice(connection, action)) return;
       actions.push(action);
       if (["join_game", "rejoin_game", "spectate_game"].includes(action.action)) {
         connection.send(JSON.stringify(spectator ? { spectator_id: "s1", auth } : {

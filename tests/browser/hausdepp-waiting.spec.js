@@ -1,3 +1,4 @@
+const { handleDisabledHausdeppVoice } = require('./hausdepp-voice-fixture');
 const { test, expect } = require('@playwright/test');
 
 test.use({ serviceWorkers: 'block', viewport: { width: 320, height: 568 } });
@@ -99,6 +100,7 @@ for (const language of ['de', 'en']) {
     const commands = [];
     await page.routeWebSocket(new RegExp(`/ws/${room.split('/').pop()}$`), socket => socket.onMessage(raw => {
       const message = JSON.parse(String(raw));
+      if (handleDisabledHausdeppVoice(socket, message)) return;
       if (message.action === 'join_game') socket.send(JSON.stringify({ scoreboard: actual, player_id: actual._players.find(player => player.name === 'Admin').id }));
       else {
         commands.push(message.action);

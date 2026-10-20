@@ -536,6 +536,9 @@ async def lifespan(_app: FastAPI):
                              admin_help_scheduler, return_exceptions=True)
         await stop_cpu_runners()
         await stop_hausdepp()
+        from .hausdepp_voice import stop_voice
+
+        await stop_voice()
         await shutdown_friend_activity()
         if owns_analytics:
             await stop_analytics()

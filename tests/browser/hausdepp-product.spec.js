@@ -1,3 +1,4 @@
+const { isHausdeppVoice } = require('./hausdepp-voice-fixture');
 const { test, expect } = require('@playwright/test');
 const { mkdir } = require('node:fs/promises');
 
@@ -195,9 +196,14 @@ test('explicit spectator route sends a read-only action and receives no private 
   const id = (await created.json()).game_id;
   await page.goto(`/hausdepp/spiel/${id}`);
   await expect(page.locator('#hausdeppTable')).toHaveAttribute('data-phase', 'peeking');
-  const commands = [], states = [];
+  const commands = [], voiceCommands = [], states = [];
   page.on('websocket', socket => {
-    socket.on('framesent', ({ payload }) => { try { commands.push(JSON.parse(String(payload))); } catch {} });
+    socket.on('framesent', ({ payload }) => {
+      try {
+        const command = JSON.parse(String(payload));
+        (isHausdeppVoice(command) ? voiceCommands : commands).push(command);
+      } catch {}
+    });
     socket.on('framereceived', ({ payload }) => { try { const message = JSON.parse(String(payload)); if (message.scoreboard?._hausdepp) states.push(message.scoreboard._hausdepp); } catch {} });
   });
   await page.goto(`/hausdepp/spiel/${id}/zuschauen`);

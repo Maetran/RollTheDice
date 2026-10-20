@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import date, datetime, timezone
 
 from sqlalchemy import (
+    BigInteger,
     Boolean,
     CheckConstraint,
     Date,
@@ -35,6 +36,23 @@ def _new_account_design_prompted_at() -> datetime | None:
 
 class Base(DeclarativeBase):
     pass
+
+
+class VoiceUsageBucket(Base):
+    """Anonymous browser-reported WebRTC payload totals, one UTC row per day."""
+
+    __tablename__ = "voice_usage_buckets"
+
+    day: Mapped[str] = mapped_column(String(10), primary_key=True)
+    received_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0, server_default="0")
+    sent_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0, server_default="0")
+    reports: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0, server_default="0")
+    first_reported_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    last_reported_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    __table_args__ = (
+        CheckConstraint("received_bytes >= 0 AND sent_bytes >= 0 AND reports >= 0", name="ck_voice_usage_nonnegative"),
+    )
 
 
 class AccountOwnership(Base):

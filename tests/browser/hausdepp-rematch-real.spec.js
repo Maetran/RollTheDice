@@ -95,6 +95,8 @@ test('real retired source recreates a CPU tournament and only explicit invitatio
     await host.evaluate(() => window.__realRematchSocket.send(JSON.stringify({ action: 'end_game' })));
     await expect(host.locator('#hausdeppRecreate')).toBeVisible();
     await expect(guest.locator('#hausdeppRecreate')).toBeVisible();
+    const hostDocument = await host.evaluate(() => { window.__realRematchDocument = crypto.randomUUID(); return window.__realRematchDocument; });
+    const guestDocument = await guest.evaluate(() => { window.__realRematchDocument = crypto.randomUUID(); return window.__realRematchDocument; });
     await expect.poll(async () => (await (await host.request.get(`/api/games/${source}`)).json()).exists).toBe(false);
     const response = host.waitForResponse(value => value.url().endsWith(`/api/hausdepp/games/${source}/rematch`)
       && value.request().method() === 'POST');
@@ -109,6 +111,7 @@ test('real retired source recreates a CPU tournament and only explicit invitatio
     expect(target).not.toBe(source);
     await expect(host).toHaveURL(new RegExp(`/hausdepp/spiel/${target}$`));
     await expect(host.locator('#hausdeppWaiting')).toBeVisible();
+    expect(await host.evaluate(() => window.__realRematchDocument)).toBe(hostDocument);
     const waiting = await (await host.request.get(`/api/games/${target}`)).json();
     expect(waiting.started).toBe(false);
     expect(waiting.mode).toBe('3');
@@ -126,6 +129,7 @@ test('real retired source recreates a CPU tournament and only explicit invitatio
     expect(ownInvitations[0].status).toBe('pending');
     await guest.locator('[data-dialog-action=accept]').click();
     await expect(guest).toHaveURL(new RegExp(`/hausdepp/spiel/${target}$`));
+    expect(await guest.evaluate(() => window.__realRematchDocument)).toBe(guestDocument);
     await expect.poll(() => guest.evaluate(() => window.__realRematchBoard?._started)).toBe(true);
     await expect.poll(() => host.evaluate(() => window.__realRematchBoard?._started)).toBe(true);
     const actual = await guest.evaluate(() => window.__realRematchBoard);

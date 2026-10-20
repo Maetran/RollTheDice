@@ -50,6 +50,8 @@ from sqlalchemy.orm import Mapped, Session, mapped_column
 from .database import get_engine, session_scope
 from .models import AbandonedGame, Base, CompletedGame, GameParticipant, User, WattenMatchEvidence
 from .security import as_utc, utcnow
+from .voice_usage import prune_usage
+from .voice_usage import usage_stats as voice_usage_stats
 from .zdwa_design import configured_zdwa_design_mode
 
 logger = logging.getLogger(__name__)
@@ -571,6 +573,7 @@ def persist_batches(batches: list[dict], *, now: datetime | None = None, sweep: 
             connection.commit()
         try:
             if sweep:
+                prune_usage(db, now)
                 first_day = (now - timedelta(days=RETENTION_DAYS - 1)).date().isoformat()
                 db.execute(delete(AnalyticsRequestBucket).where(AnalyticsRequestBucket.day < first_day))
             request_rejected = _persist_request_counts(db, request_counts or {})
@@ -1141,6 +1144,7 @@ def dashboard_stats(days: int = 7, game: str = "all", *, now: datetime | None = 
         ).where(*filters)).one()
         # Network demand is sitewide, even when gameplay is filtered to one game.
         request_traffic = _request_traffic_stats(db, start, now)
+        voice_usage = voice_usage_stats(db, start, now) if include_hausdepp and game in {"all", "hausdepp"} else None
         live = db.scalar(select(func.count(func.distinct(AnalyticsEvent.session_id))).where(
             *filters, AnalyticsEvent.received_at >= now - timedelta(seconds=LIVE_WINDOW_SECONDS))) or 0
         page_rows = db.execute(select(AnalyticsEvent.page, AnalyticsEvent.game, views,
@@ -1313,4 +1317,5 @@ def dashboard_stats(days: int = 7, game: str = "all", *, now: datetime | None = 
             "heatmap": heatmap, "journeys": journeys,
             "comparison": comparison,
             "daily": daily, "pages": pages, **dimensions, "actions": actions, "pwa": pwa, "games": games,
-            "modes": modes, "hourly": hourly, "design_usage": design_usage, "server": server}
+            "modes": modes, "hourly": hourly, "design_usage": design_usage, "server": server,
+            "voice_usage": voice_usage}

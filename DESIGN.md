@@ -455,6 +455,20 @@ The first debtor sees a soft red stock frame with “Du musst ziehen” / “You
 
 The shared chat and labelled emoji reactions keep their established behavior. Desktop chat uses the rail; smaller screens use the closeable sheet. Rulebook and result surfaces reuse the same paper, headings and primary action.
 
+### Hausdepp voice beta and usage instrument
+
+Voice keeps the existing Hausdepp paper, forest-green and brass vocabulary.
+A visible Beta label sits above the two (44px) audio controls, with an accessible
+description on their group. Pressed states, labelled participant controls and
+text status carry meaning alongside the speaker and microphone icons.
+
+The machine-room usage panel inherits the selected Mission Control, LCARS or
+NEXUS theme and can move as one live favorite instrument in NEXUS. Four labelled
+payload values pair received/sent volume with the selected period and current
+UTC month; a captioned daily table keeps units, report count and measurement
+limits visible. Missing reports show a dash; a reported zero remains (0 B).
+The panel describes browser-reported payload rather than billing or a cost cap.
+
 ## Do's and Don'ts
 
 ### Do:

@@ -1,3 +1,4 @@
+const { handleDisabledHausdeppVoice } = require('./hausdepp-voice-fixture');
 const { test, expect } = require('@playwright/test');
 
 test.use({ serviceWorkers: 'block' });
@@ -143,6 +144,7 @@ async function labelledTable(page, { count = 6, language = 'de', viewport = { wi
     activeSocket = socket;
     socket.onMessage(raw => {
       const message = JSON.parse(String(raw));
+      if (handleDisabledHausdeppVoice(socket, message)) return;
       if (['join_game', 'spectate_game'].includes(message.action)) {
         socket.send(JSON.stringify({ player_id: self, scoreboard: board }));
       } else commands.push(message);

@@ -173,6 +173,103 @@ checkout and worktrees that are active, pinned, shared or owned by others.
 Archive managed Codex worktrees for recovery; ignored files are not included in
 their snapshots. Never force removal or delete branches as a blanket cleanup.
 
+## Hausdepp-Sprachchat / Voice chat
+
+Der Sprachchat verwendet den vorhandenen authentifizierten Spiel-WebSocket für
+Steuerung und Status. Audio fliesst per WebRTC über Cloudflare Realtime SFU;
+der Spielserver speichert keine Audiodaten. Zuschauer erhalten weder
+Medienzugänge noch Veröffentlichungskennungen. Der Server prüft bei jeder
+Steueraktion Account, aktuelle Sitzverbindung und Sprachraumzugehörigkeit.
+Ein eigenes SFU-/TURN-Netz auf dem Spielserver ist nicht erforderlich.
+
+Voice uses the authenticated game WebSocket for control and presence. WebRTC
+media flows through Cloudflare Realtime SFU; the game server stores no audio.
+Spectators receive no media access or publication identifiers. Account, current
+seat connection and voice-room membership are checked on each control action.
+
+In einer getrennten Cloudflare-Realtime-SFU-App die App-ID und das App-Secret
+einrichten. Für Entwicklung und Produktion verschiedene Apps verwenden. Nur
+serverseitig `ROLLTHEDICE_VOICE_SFU_APP_ID` und
+`ROLLTHEDICE_VOICE_SFU_APP_SECRET` setzen und erst mit
+`ROLLTHEDICE_VOICE_ENABLED=1` einschalten. Ohne vollständige Konfiguration
+bleibt die Funktion unsichtbar und gesperrt. Das Compose-Standardverhalten ist
+ausgeschaltet. Optional richten `ROLLTHEDICE_VOICE_TURN_KEY_ID` und
+`ROLLTHEDICE_VOICE_TURN_API_TOKEN` kurzlebige TURN-Zugangsdaten für restriktive
+Netze ein; der Browser erhält ausschliesslich diese kurzlebigen Zugangsdaten.
+SFU-App-Secret und TURN-API-Token dürfen nie im Browser, Checkpoint, Log oder
+Git landen. Der Nginx-Server für Hausdepp erlaubt `microphone=(self)`;
+die übrigen Produkt-Hosts behalten ihr Mikrofonverbot. Keine Kamerafreigabe.
+Beim freigegebenen Rollout die aktualisierte Nginx-Konfiguration mit
+`bash scripts/install_nginx_config.sh` installieren; der reine Container-Deploy
+übernimmt diese Host-Konfiguration nicht. Danach den tatsächlichen
+`Permissions-Policy`-Header auf der Hausdepp-Seite prüfen.
+
+Configure an isolated Cloudflare SFU app, keep its ID and secret server-side,
+and set the enable flag only after configuration. Development and production
+need separate apps. Optional TURN credentials support restrictive networks;
+only short-lived ICE credentials reach the browser. Hausdepp's Nginx host
+allows its own microphone; other products and cameras remain blocked.
+
+Cloudflare-Budgetwarnungen begrenzen die Kosten nicht und schalten Realtime
+nicht ab. Sie verwenden USD und gelten für die nutzungsabhängigen Kosten des
+gesamten Kontos. Ein garantiertes Kosten-Cap in CHF wird dadurch nicht erreicht.
+
+Cloudflare budget alerts do not cap spending or stop Realtime. They use USD
+and cover usage-based costs across the account; they cannot guarantee a CHF cap.
+
+### Verbrauchsmessung / Usage measurement
+
+Aktive Sprachverbindungen melden etwa alle zehn Sekunden kumulative
+`RTCTransportStats.bytesReceived`/`bytesSent` über den bestehenden, authentisierten
+WebSocket. Die Zähler messen Nutzdaten ohne Header, Padding oder ICE-Prüfungen;
+TURN wird nicht zusätzlich addiert. Der Server dedupliziert Meldungen und
+speichert ausschliesslich UTC-Tagessummen (400 Tage), keine dauerhaften
+Teilnehmer-, Raum- oder Providerkennungen. Tageszuordnung ist der Eingang auf
+dem Server; ein Intervall über Mitternacht zählt zum neuen Tag. Mission Control
+aktualisiert sich alle 30 Sekunden und zeigt die Daten nur im bestehenden
+Gründerzugriff auf Hausdepp. Bei Filtern auf andere Spiele bleibt die Anzeige aus.
+Der laufende UTC-Monat ist unabhängig vom Zeitraumfilter. Browsermeldungen sind
+unvollständig, können manipuliert sein und taugen nicht zur Kostenbegrenzung.
+Fehlende/letzte Meldungen bei Abbruch und Netzwerk-Overhead werden nicht
+nachgerechnet. Es werden keine neuen Cloudflare-Accountrechte benötigt.
+
+Active voice connections report cumulative browser transport payload counters
+about every ten seconds through the authenticated WebSocket. Only anonymous
+daily UTC totals are retained for 400 days. The reporting interval crossing
+midnight belongs to the server receipt day. Mission Control refreshes every
+30 seconds and uses the existing founder-only Hausdepp scope. Current-month
+totals are independent of its period filter. Reports may be missing or forged;
+these counters exclude network overhead and are not authoritative billing or
+a spending cap. No additional Cloudflare account permissions are required.
+
+Die Beta-Kennzeichnung bleibt an den Audio-Schaltern sichtbar. Sie ersetzt keine
+Geräteabnahme: echte Gespräche, Echo, PWA und Headset-Routing bleiben bei einem
+bewusst freigegebenen Beta-Rollout auf den Zielgeräten zu prüfen.
+
+The beta label remains visible beside the voice controls. An explicitly
+approved beta rollout still needs real-device conversation, echo, PWA and
+headset-routing checks.
+
+Für die Geräteabnahme ein kontrolliertes Gespräch mit zwei bis sechs
+Testkonten auf verschiedenen Geräten durchführen: ohne Mikrofon zuhören,
+gleichzeitig sprechen, lokale Stummschaltung, Ausgabe aus/ein, Turnier und
+erneute Partie, Netzverlust, Geräteübernahme und Abmeldung. iOS Safari/PWA,
+Android Chrome/PWA sowie Desktop mit Lautsprecher und Headsets prüfen.
+Hintergrundbetrieb, Sperren und Bluetooth bleiben Plattformverhalten; PWA
+allein garantiert keine Fortsetzung. Automatisierte Provider-Mocks belegen die
+Anwendungslogik, keinen tatsächlich funktionierenden Medienpfad.
+
+For device acceptance, verify actual media with controlled test accounts on
+different networks and devices, including mobile installed apps, interruption,
+headset changes and revocation. Mocked provider tests establish application
+behavior, not a working external audio path. Roll back by disabling the voice
+flag through the regular deployment flow; game state remains intact.
+
+Quellen / Sources: [Connection patterns](https://developers.cloudflare.com/realtime/sfu/get-started/connection-patterns/),
+[SFU API](https://developers.cloudflare.com/realtime/sfu/api/),
+[TURN](https://developers.cloudflare.com/realtime/turn/),
+[Pricing](https://developers.cloudflare.com/realtime/sfu/platform/pricing/).
+
 ## Produktionsumgebung
 
 | Bereich | Wert |

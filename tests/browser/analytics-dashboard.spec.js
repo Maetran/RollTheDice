@@ -68,6 +68,10 @@ async function mockedDashboard(page, language, options = {}) {
     if (!state.permitted) return route.fulfill({ status: 403, json: { detail: 'Forbidden' } });
     if (state.fail) return route.fulfill({ status: 503, json: { detail: 'unavailable' } });
     const data = sampleAnalytics(game, days);
+    if (state.voiceUsage !== undefined) {
+      data.available_games = ['zdwa', 'zilch', 'hausdepp'];
+      data.voice_usage = ['all', 'hausdepp'].includes(game) ? state.voiceUsage : null;
+    }
     data.overview.live_sessions = state.liveSessions;
     data.generated_at = new Date(Date.parse(data.generated_at) + (state.calls.length - 1) * 30000).toISOString();
     data.server.measurement_at = data.generated_at;
@@ -176,6 +180,54 @@ async function expectReadableNexusLabels(page) {
 }
 
 for (const language of ['de', 'en']) {
+  for (const design of ['mission', 'lcars', 'nexus']) {
+    test(`${language}: voice usage reports remain explicit and readable in ${design}`, async ({ page }, testInfo) => {
+      const usage = {
+        source: 'browser_transport_payload', first_reported_at: '2026-10-01T12:00:00Z',
+        last_reported_at: '2026-10-07T14:30:00Z', retention_days: 400,
+        period: { received_bytes: 24000000, sent_bytes: 12000000, reports: 42 },
+        month: { from: '2026-10-01', received_bytes: 1500000000, sent_bytes: 600000000, reports: 1234 },
+        daily: [{ day: '2026-10-05', received_bytes: 0, sent_bytes: 0, reports: 0 },
+          { day: '2026-10-06', received_bytes: 0, sent_bytes: 0, reports: 2 },
+          { day: '2026-10-07', received_bytes: 24000000, sent_bytes: 12000000, reports: 40 }],
+      };
+      const state = await mockedDashboard(page, language, { voiceUsage: usage });
+      await page.locator('#dashboardDesign').selectOption(design);
+      const panel = page.locator('#voiceUsagePanel');
+      await expect(panel).toBeVisible();
+      await expect(panel).toContainText(language === 'en' ? 'Received this calendar month' : 'Empfangen im laufenden Monat');
+      await expect(panel).toContainText(language === 'en' ? 'not Cloudflare billing' : 'Keine Cloudflare-Abrechnung');
+      await expect(page.locator('#voiceUsageSummary')).toContainText('24 MB');
+      const rows = page.locator('#voiceUsageDaily tbody tr');
+      await expect(rows.nth(0)).toContainText('—');
+      await expect(rows.nth(1)).toContainText('0 B');
+      await expect(page.locator('#voiceUsageUpdated')).toContainText('42');
+      if (design === 'nexus') {
+        await panel.locator('.favorite-toggle').click();
+        await expect(page.locator('#dashboardFavoritesGrid #voiceUsagePanel')).toHaveCount(1);
+      }
+      for (const width of [390, 1440]) {
+        await page.setViewportSize({ width, height: 1000 });
+        await panel.scrollIntoViewIfNeeded();
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+        expect(await page.locator('#voiceUsageDaily .data-scroll').evaluate(element => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
+        const path = `/tmp/rtd-voice-usage-${design}-${language}-${width}.png`;
+        await panel.screenshot({ path });
+        await testInfo.attach(`voice-usage-${design}-${width}`, { path, contentType: 'image/png' });
+      }
+      await page.locator('#dashboardGame').selectOption('zilch');
+      await expect(panel).toBeHidden();
+      await expect(page.locator('#voiceUsageSummary')).toBeEmpty();
+      state.voiceUsage = { ...usage, first_reported_at: null, last_reported_at: null, daily: [] };
+      await page.locator('#dashboardGame').selectOption('all');
+      await expect(panel).toContainText(language === 'en' ? 'Missing reports do not prove zero usage' : 'Fehlende Meldungen sind kein Beleg für null Verbrauch');
+      await expect(page.locator('#voiceUsageDaily')).toBeEmpty();
+      state.permitted = false;
+      await page.locator('#dashboardRefresh').click();
+      await expect(panel).toBeHidden();
+      await expect(page.locator('#voiceUsageSummary')).toBeEmpty();
+    });
+  }
   test(`${language}: mocked analytics charts are readable on mobile, tablet and desktop`, async ({ page }, testInfo) => {
     const state = await mockedDashboard(page, language);
     await expect(page.locator('label[for="dashboardGame"]')).toHaveText(language === 'en' ? 'Game filter' : 'Spiel filtern');

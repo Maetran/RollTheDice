@@ -18,6 +18,11 @@ export function initChat(websocket, opts = {}) {
   chatClose = document.getElementById("chatClose");
   chatBackdrop = document.getElementById("chatBackdrop");
   chatToggleCount = document.getElementById("chatToggleCount");
+  if (opts.reset) {
+    unreadCount = 0;
+    chatSheetInitialized = false;
+    renderUnreadCount();
+  }
 
   if (chatSend && !chatSend._bound) {
     chatSend._bound = true;

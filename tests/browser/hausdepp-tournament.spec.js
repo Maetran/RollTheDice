@@ -1,3 +1,4 @@
+const { handleDisabledHausdeppVoice, isHausdeppVoice } = require('./hausdepp-voice-fixture');
 const { test, expect } = require('@playwright/test');
 const { startHausdeppCpuGame } = require('./hausdepp-create');
 const { mkdir } = require('node:fs/promises');
@@ -29,17 +30,22 @@ test.afterEach(async ({ page }) => {
 async function realTournament(page, language = 'de', { players = 2 } = {}) {
   await owner(page, language);
   let scoreboard;
-  const commands = [];
+  const commands = [], voiceCommands = [];
   page.on('websocket', socket => {
     socket.on('framereceived', event => {
       try { const message = JSON.parse(String(event.payload)); if (message.scoreboard?._hausdepp) scoreboard = message.scoreboard; } catch {}
     });
-    socket.on('framesent', event => { try { commands.push(JSON.parse(String(event.payload))); } catch {} });
+    socket.on('framesent', event => {
+      try {
+        const command = JSON.parse(String(event.payload));
+        (isHausdeppVoice(command) ? voiceCommands : commands).push(command);
+      } catch {}
+    });
   });
   await page.goto('/hausdepp');
   await startHausdeppCpuGame(page, { players, cpu: players - 1, tournament: true });
   await expect.poll(() => scoreboard?._hausdepp_tournament?.round_number).toBe(1);
-  return { get scoreboard() { return scoreboard; }, commands, room: page.url() };
+  return { get scoreboard() { return scoreboard; }, commands, voiceCommands, room: page.url() };
 }
 
 function labelledRoundEnd(real, { final = false, host = true } = {}) {
@@ -73,6 +79,7 @@ async function installLabelledTournament(page, room, initial, onCommand) {
     activeSocket = socket;
     socket.onMessage(raw => {
       const message = JSON.parse(String(raw));
+      if (handleDisabledHausdeppVoice(socket, message)) return;
       if (['join_game', 'spectate_game'].includes(message.action)) socket.send(JSON.stringify({ player_id: current._hausdepp.viewer_id, scoreboard: current }));
       else { commands.push(message); onCommand?.({ message, socket, current }); }
     });
