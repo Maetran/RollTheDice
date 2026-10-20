@@ -23,6 +23,22 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 3.18.2 — Klarer Rundenabschluss und Ausstieg / Clear results and departure — 2026-10-20
+
+**Deutsch:** Im Hausdepp-Rundenabschluss erhalten auch längere Statuswörter
+wie „Verblieben“ und „Ausgestiegen“ ihren benötigten Platz. Auf kleinen
+Displays bleiben Status, Avatar, Spielername und Runden-EP getrennt lesbar.
+Beim Verlassen ersetzt eine Bestätigung im Hausdepp-Design den Systemdialog.
+„Am Tisch bleiben“ ist vorausgewählt; Schliessen und Escape brechen ab.
+Die Hinweise zu aufgegebener Hand und Turnier bleiben vor der Bestätigung sichtbar.
+
+**English:** Hausdepp round results give longer status labels such as
+“Remaining” and “Withdrawn” the space they need. Status, avatar, player name
+and round XP remain separate and readable on small screens.
+Leaving now uses a confirmation in the Hausdepp design instead of a system
+dialog. Stay at the table receives focus first; closing or Escape cancels.
+Hand-forfeiture and tournament warnings remain visible before confirmation.
+
 ## 3.18.1 — Zuschauen verlassen und Mikrofon freigeben / Leave spectating and allow the microphone — 2026-10-20
 
 **Deutsch:** Auch Zuschauer können den Hausdepp-Tisch jetzt direkt verlassen,

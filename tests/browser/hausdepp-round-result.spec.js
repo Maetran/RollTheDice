@@ -125,17 +125,50 @@ async function expectCompactGeometry(page, width, height) {
   await page.setViewportSize({ width, height });
   const result = page.locator('#hausdeppResult');
   await expect(result).toBeVisible();
+  await page.evaluate(() => document.fonts.ready);
   const geometry = await result.evaluate(node => {
     const rect = node.getBoundingClientRect();
+    const bounds = element => {
+      const box = element.getBoundingClientRect();
+      return { left: box.left, right: box.right, top: box.top, bottom: box.bottom, width: box.width };
+    };
+    const textBounds = element => {
+      const range = document.createRange();
+      range.selectNodeContents(element);
+      return [...range.getClientRects()].map(box => ({
+        left: box.left, right: box.right, top: box.top, bottom: box.bottom, width: box.width,
+      }));
+    };
+    const overlaps = (a, b) => Math.min(a.right, b.right) - Math.max(a.left, b.left) > 0.5
+      && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 0.5;
     return {
       left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom, width: rect.width,
       viewportWidth: innerWidth, viewportHeight: innerHeight,
       overflow: node.scrollWidth > node.clientWidth + 1,
       pageOverflow: document.documentElement.scrollWidth > innerWidth + 1,
       headingSize: Number.parseFloat(getComputedStyle(node.querySelector('h2')).fontSize),
-      controls: [...node.querySelectorAll('button, a[href]')].map(control => {
+      controls: [...node.querySelectorAll('button, a[href]')].filter(control => control.getClientRects().length).map(control => {
         const controlRect = control.getBoundingClientRect();
         return { width: controlRect.width, height: controlRect.height };
+      }),
+      rows: [...node.querySelectorAll('.hd-result-place')].map(row => {
+        const rank = row.querySelector('.hd-result-rank');
+        const name = row.querySelector('.hd-result-name');
+        const avatar = row.querySelector('.hd-result-avatar');
+        const reward = row.querySelector('.hd-result-reward');
+        const rankBox = bounds(rank), rowBox = bounds(row), nameBox = bounds(name);
+        const neighbours = [
+          { label: 'avatar', ...bounds(avatar) }, { label: 'name', ...nameBox },
+          ...(reward ? textBounds(reward).map(box => ({ label: 'XP', ...box })) : []),
+        ];
+        const statusText = textBounds(rank);
+        return {
+          status: rank.textContent, name: name.textContent, nameWidth: nameBox.width,
+          // Measure the painted glyphs: a fixed grid cell can fit while its
+          // unwrapped status text extends into the neighbouring avatar.
+          statusText, rankBox, rowBox,
+          collisions: statusText.flatMap(text => neighbours.filter(box => overlaps(text, box)).map(box => box.label)),
+        };
       }),
     };
   });
@@ -152,6 +185,26 @@ async function expectCompactGeometry(page, width, height) {
     expect(control.width).toBeGreaterThanOrEqual(44);
     expect(control.height).toBeGreaterThanOrEqual(44);
   }
+  expect(geometry.rows.length).toBeGreaterThan(0);
+  for (const row of geometry.rows) {
+    const label = `${width}x${height}: ${row.status} / ${row.name}`;
+    expect(row.nameWidth, `${label}: name has usable space`).toBeGreaterThan(0);
+    expect(row.collisions, `${label}: painted status must not overlap avatar, name or XP`).toEqual([]);
+    for (const text of row.statusText) {
+      expect(text.left, `${label}: status fits its column`).toBeGreaterThanOrEqual(row.rankBox.left - 1);
+      expect(text.right, `${label}: status fits its column`).toBeLessThanOrEqual(row.rankBox.right + 1);
+      expect(text.left, `${label}: status fits the row`).toBeGreaterThanOrEqual(row.rowBox.left - 1);
+      expect(text.right, `${label}: status fits the row`).toBeLessThanOrEqual(row.rowBox.right + 1);
+    }
+  }
+}
+
+function useLongResultNames(board) {
+  const names = ['Franziska-Maria-vom-Stammtisch', 'Maximilian-Alexander-am-Tisch', 'Sophie-von-der-langen-Tafel'];
+  board._hausdepp.players.forEach((player, index) => { player.name = names[index]; });
+  board._participants.forEach(player => {
+    player.name = board._hausdepp.players.find(person => person.id === player.id)?.name || player.name;
+  });
 }
 
 test('an insufficient-player tournament ending labels remaining and withdrawn seats without invented places', async ({ page }) => {
@@ -193,9 +246,53 @@ test('a departure updates cached tournament standings while preserving a regular
 });
 
 for (const language of ['de', 'en']) {
+  test(`${language}: two human players retain readable remaining and withdrawn results`, async ({ page }, info) => {
+    const fixture = await setup(page, language);
+    const rendered = await finishedRenderer(page, fixture);
+    const board = rendered.board, state = board._hausdepp;
+    const other = state.players.find(player => player.id !== rendered.self).id;
+    state.players = [rendered.self, other].map(id => ({
+      ...state.players.find(player => player.id === id),
+      name: id === rendered.self ? 'Sophie' : 'Mani', is_cpu: false, participant_type: 'human',
+      finished: false, withdrawn: id === other, outcome: id === other ? 'withdrawn' : 'remaining',
+      hand_count: id === other ? 0 : 1,
+    }));
+    board._participants = state.players.map(player => ({ ...player }));
+    Object.assign(board, { _mode: '2', _expected: 2,
+      _departure_permissions: { can_leave: false, forfeits_round: false, ends_tournament_participation: false },
+      _hausdepp_round_summary: { round_id: `${rendered.id}:two-human`, players: {
+        [rendered.self]: { xp: 10, round_xp: 10, achievements: [] },
+        [other]: { xp: 0, round_xp: 0, achievements: [] },
+      } },
+    });
+    Object.assign(state, { loser_id: null, finished_order: [], withdrawn_ids: [other],
+      round_end_reason: 'insufficient_players', remaining_player_id: rendered.self });
+    await page.reload();
+    const result = page.locator('#hausdeppResult');
+    const xp = language === 'de' ? 'EP' : 'XP';
+    await expect(result.locator('h2')).toHaveText(language === 'de'
+      ? 'Runde ohne Hausdepp beendet' : 'Round ended without a Hausdepp');
+    await expect(result.locator('.hd-result-place')).toHaveCount(2);
+    await expect(result.locator('.hd-result-name')).toHaveText(['Sophie', 'Mani']);
+    await expect(result.locator('.hd-result-rank')).toHaveText(language === 'de'
+      ? ['Verblieben', 'Ausgestiegen'] : ['Remaining', 'Withdrawn']);
+    await expect(result.locator('.hd-result-reward')).toHaveText([`+10 ${xp}`, `0 ${xp}`]);
+    await expect(result.locator('.hd-result-place.is-hausdepp, .hd-result-reward.is-cpu')).toHaveCount(0);
+    for (const [width, height] of [[375, 812], [320, 568], [390, 844], [844, 390], [1440, 900]]) {
+      await expectCompactGeometry(page, width, height);
+      if (width === 375) {
+        const names = await result.locator('.hd-result-name').evaluateAll(nodes => nodes.map(node => ({
+          name: node.textContent, clipped: node.scrollWidth > node.clientWidth + 1,
+        })));
+        expect(names).toEqual([{ name: 'Sophie', clipped: false }, { name: 'Mani', clipped: false }]);
+        await page.screenshot({ path: info.outputPath(`two-human-result-${language}-${width}x${height}.png`) });
+      }
+    }
+  });
+
   test(`${language}: compact result shows the actual round, earned XP and account context`, async ({ page }, info) => {
     const fixture = await setup(page, language);
-    await finishedRenderer(page, fixture);
+    const rendered = await finishedRenderer(page, fixture);
     const result = page.locator('#hausdeppResult');
     const xp = language === 'de' ? 'EP' : 'XP';
     await expect(result.locator('h2')).toContainText('Rosi');
@@ -219,8 +316,12 @@ for (const language of ['de', 'en']) {
     await expect(result).not.toContainText(/Ein Abend, der zählt|An evening that counts|Gleiche Tischgrösse|Same table size/);
     await expect(page.locator('#hausdeppRecreate')).toHaveText(language === 'de' ? 'Neu erstellen' : 'Create again');
 
+    useLongResultNames(rendered.board);
+    await page.reload();
+    await expect(result.locator('.hd-result-name')).toHaveCount(3);
+
     const deScenario = language === 'de';
-    for (const [width, height] of [[320, 568], [390, 844], [844, 390], [1440, 900]]) {
+    for (const [width, height] of [[320, 568], [375, 812], [390, 844], [844, 390], [1440, 900]]) {
       await expectCompactGeometry(page, width, height);
       // deScenario: keep mobile and desktop evidence with the same earned data.
       if (deScenario && (width === 390 || width === 1440)) {
@@ -258,7 +359,12 @@ for (const language of ['de', 'en']) {
     await expect(page.locator('#hausdeppNextRound')).toBeVisible();
     await expect(page.locator('#hausdeppNextRound')).toContainText('5');
     await expect(page.locator('#hausdeppRecreate')).toHaveCount(0);
-    await expectCompactGeometry(page, 320, 568);
+    useLongResultNames(source.board);
+    await page.reload();
+    await expect(result.locator('.hd-result-name')).toHaveCount(3);
+    for (const [width, height] of [[320, 568], [375, 812], [390, 844], [844, 390], [1440, 900]]) {
+      await expectCompactGeometry(page, width, height);
+    }
     await page.locator('#hausdeppNextRound').click();
     await expect.poll(() => source.sent.some(message => message.action === 'hausdepp_next_round')).toBe(true);
   });

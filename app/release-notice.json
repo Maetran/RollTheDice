@@ -3,21 +3,21 @@
   "games": [
     "hausdepp"
   ],
-  "summary_de": "Tisch auch beim Zuschauen verlassen; Sprachchat funktioniert auch über bestehende Suite-PWAs.",
-  "summary_en": "Leave tables while spectating; voice chat also works through existing suite PWAs.",
+  "summary_de": "Hausdepp: klare Ergebniszeilen auf kleinen Displays und eine passende Bestätigung beim Verlassen.",
+  "summary_en": "Hausdepp: clear results on small screens and a matching confirmation when leaving.",
   "player_notes": {
     "de": {
-      "title": "Tisch verlassen und Mikrofon nutzen",
+      "title": "Klarer Rundenabschluss und Ausstieg",
       "changes": [
-        "Beim Zuschauen führt Tisch verlassen direkt zurück zur Lobby – auch im Warteraum, zwischen Runden und ohne Verbindung.",
-        "Hausdepp-Sprachchat kann das Mikrofon jetzt auch in bestehenden Suite-PWAs anfragen. Bestätige dafür die Mikrofonfreigabe deines Geräts."
+        "Auch längere Statuswörter wie Verblieben und Ausgestiegen haben auf kleinen Displays Platz neben Avatar, Name und Runden-EP.",
+        "Beim Verlassen erscheint die Bestätigung im Hausdepp-Design. Mit Am Tisch bleiben, Schliessen oder Escape bleibst du in der Partie."
       ]
     },
     "en": {
-      "title": "Leave the table and use your microphone",
+      "title": "Clear results and departure",
       "changes": [
-        "While spectating, Leave table returns directly to the lobby, including waiting rooms, round breaks and disconnected views.",
-        "Hausdepp voice chat can now request the microphone in existing suite PWAs too. Confirm microphone permission on your device."
+        "Longer labels such as Remaining and Withdrawn have room beside the avatar, name and round XP on small screens.",
+        "Leaving opens a confirmation in the Hausdepp design. Choose Stay at the table, close it or press Escape to keep playing."
       ]
     }
   }

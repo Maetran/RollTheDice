@@ -1,6 +1,6 @@
 # Versionen / Versions
 
-Aktuelle gemeinsame Produktversion / Current shared product version: **3.18.1**.
+Aktuelle gemeinsame Produktversion / Current shared product version: **3.18.2**.
 
 ZDWA und Zilch werden gemeinsam versioniert. Major steht für einen großen
 Produktmeilenstein, Minor für neue Funktionen und Patch für Fehlerkorrekturen
@@ -27,6 +27,7 @@ Detailed player-facing descriptions are in the [changelog](../CHANGELOG.md).
 
 | Version | Datum / Date | Art / Type | Änderung / Change | Commit |
 | --- | --- | --- | --- | --- |
+| 3.18.1 | 2026-10-20 | patch | Hausdepp: Tisch auch beim Zuschauen verlassen; Mikrofon für Suite-PWAs freigeschaltet. / Hausdepp: leave tables while spectating; microphone enabled for suite PWAs. | [7a66e10](https://github.com/Maetran/RollTheDice/commit/7a66e1051190fa81f25d8d1802d27bf88411959a) |
 | 3.18.0 | 2026-10-20 | minor | Hausdepp: gemeinsame Tischdeko, leise Wirtshauskulisse und eigener Ausstieg; zuverlässiger Sprachwechsel. / Hausdepp: shared table props, quiet tavern ambience and individual departure; reliable language switching. | [68cab46](https://github.com/Maetran/RollTheDice/commit/68cab46201c7374f618b9b2c7971193c437ef76b) |
 | 3.17.0 | 2026-10-20 | minor | Sprachchat-Beta für Hausdepp mit getrennten Schaltern und Verbrauchsübersicht in Mission Control. / Hausdepp voice chat beta with separate controls and a usage overview in Mission Control. | [73b9f49](https://github.com/Maetran/RollTheDice/commit/73b9f49f24c6b8fa00101f473e686a47f2f491b9) |
 | 3.16.6 | 2026-10-20 | patch | Hausdepp zeigt am Rundenende eine kompakte Bilanz mit Runden-EP, Erfolgen und konkretem Rangfortschritt. / Hausdepp ends each round with a compact summary of round XP, achievements and concrete rank progress. | [fa4d2a9](https://github.com/Maetran/RollTheDice/commit/fa4d2a98850452ca88f718ec4f01b1ba0a8f5d32) |

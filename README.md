@@ -355,8 +355,10 @@ Consumption, prop states and dice/coin results come from the server.
 Reconnecting shows current state without replaying old animations; each new
 round starts fresh. Props affect neither cards nor XP.
 
-**Einzeln aussteigen / Individual departure:** „Partie verlassen“ fragt nach
-Bestätigung und beendet nur die eigene Teilnahme. Die Handkarten verlassen das
+**Einzeln aussteigen / Individual departure:** „Partie verlassen“ öffnet eine
+Bestätigung im Hausdepp-Design. „Am Tisch bleiben“, Schliessen oder Escape
+bricht den Ausstieg ab. Erst die ausdrückliche Bestätigung beendet die eigene
+Teilnahme. Die Handkarten verlassen das
 Spiel endgültig, die übrigen spielen weiter. Bei nur einem Spieler mit Karten
 endet die Runde ohne Hausdepp mit regulären EP für die Verbleibenden. Wer eine
 laufende Hand aufgibt, erhält keine Runden-EP oder normalen Erfolge; der neue
@@ -365,7 +367,9 @@ Vergütung. Im Turnier gilt der Ausstieg für die ganze Sitzung, frühere Runden
 und EP bleiben erhalten. Zuschauer können den Tisch über denselben Schalter
 sofort zur Lobby verlassen, auch ohne Verbindung. Das beendet nur das Zuschauen.
 
-Leave game asks for confirmation and ends only your own participation. Your
+Leave game opens a confirmation in the Hausdepp design. Stay at the table,
+closing the dialog or Escape cancels leaving. Only explicit confirmation ends
+your own participation. Your
 hand cards leave play permanently; everyone else continues. With just one player
 with cards left, the round ends without a Hausdepp and remaining players receive
 normal XP. Giving up an unfinished hand awards no round XP or ordinary
@@ -456,7 +460,8 @@ aktuellen Kontonamen, etwa „Manis Gsuff“. Ein Namensfeld ist dafür nicht n�
 Zwei bis fünf, höchstens sechs Teilnehmer spielen mit 36 doppeldeutschen Karten;
 Computer sind echte Mitspieler mit eigenen verdeckten Händen. Gleiche Ränge oben auf dem offenen Paket
 sind leicht aufgefächert, das Rundenende zeigt Platzierungen, Runden-EP und neue
-Erfolge, und die Gegenstände am Tisch lassen sich benutzen: Münze werfen, würfeln,
+Erfolge. Längere Ergebnisstatus bleiben auch auf kleinen Displays von Avatar und
+Spielername getrennt. Die Gegenstände am Tisch lassen sich benutzen: Münze werfen, würfeln,
 vom Bier trinken (zu wild, und es kippt um) oder die Nüsse verputzen. Sie kaufen kleine
 wertvolle Pakete statt ihre 10 zu verbrennen, auch ein Ass im Zweikampf, legen von Ober, König und Ass
 zunächst nur eine Karte und halten den Rest zurück, spielen mal besser, mal schlechter
@@ -914,7 +919,8 @@ vibrate on supported devices. Forty-two beer-mat strokes reveal a small answer
 to everything. After a round, the points
 summary stays visible without an extra acknowledgement button. The compact
 result sheet shows the table composition, finishing order and only this round’s
-XP and achievements. Round credit and achievement XP are broken down; your current
+XP and achievements. Longer status labels stay separate from avatars and player
+names on small screens. Round credit and achievement XP are broken down; your current
 rank, total XP and distance to the next rank put progress in context. Generic
 congratulations and rematch explanations are omitted. The final result
 waits until the last card lands, then another 750 ms. Tournament letters have
