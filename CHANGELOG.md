@@ -48,6 +48,10 @@ keine normalen Erfolge, auch nach erneutem Login; der neue Zonk-Erfolg gibt
 ausdrücklich 0 EP. Bereits regulär fertig gespielte Hände und frühere Runden
 bleiben gutgeschrieben. Im Turnier gilt der Ausstieg für die ganze Sitzung.
 
+Der gemeinsame Sprachwechsel wird zuverlässig gespeichert, auch wenn gleichzeitig
+noch Kontodaten laden. Ältere Antworten überschreiben die bewusste Auswahl nicht;
+bei mehreren schnellen Wechseln bleibt die letzte Wahl erhalten.
+
 **English:** Hausdepp adds optional, very quiet tavern ambience with real room,
 glass, dish and laughter recordings. A separate music-note switch also works
 against CPUs. Small clips load only when enabled and play locally without
@@ -69,6 +73,10 @@ normal XP. Giving up an unfinished hand awards no round XP or ordinary
 achievements, including after signing in again; the new Zonk achievement is
 explicitly worth 0 XP. Hands already finished normally and earlier rounds remain
 credited. Leaving a tournament ends participation for the whole session.
+
+Shared language changes save reliably even while account data is still loading.
+Older responses cannot undo an explicit selection; when switching several times
+quickly, the latest choice is kept.
 
 ## 3.17.0 — Gemeinsam am Tisch sprechen / Talk together at the table — 2026-10-20
 

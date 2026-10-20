@@ -85,7 +85,10 @@ export function mountHandSelection({ handRegion, tools, reactions, t, onChange, 
   hint.className = "hd-sr";
   hint.textContent = t("multiSelectHint");
   toggle.setAttribute("aria-describedby", hint.id);
-  handRegion.append(toggle, hint);
+  const controls = document.createElement("div");
+  controls.className = "hd-hand-controls";
+  controls.append(toggle);
+  handRegion.append(controls, hint);
 
   // The toggle itself ends a selection, so there is no separate cancel button.
   const actions = document.createElement("div");
@@ -108,7 +111,7 @@ export function mountHandSelection({ handRegion, tools, reactions, t, onChange, 
   const wide = matchMedia("(min-width: 1100px)");
   const place = () => {
     if (wide.matches) bar.append(toggle, actions);
-    else { handRegion.insertBefore(toggle, hint); tools.append(actions); }
+    else { controls.prepend(toggle); tools.append(actions); }
     reactions.hidden = selection.enabled && !wide.matches;
   };
   place();
@@ -134,6 +137,7 @@ export function mountHandSelection({ handRegion, tools, reactions, t, onChange, 
   });
 
   return {
+    controls,
     selection,
     update(context) {
       selection.sync(context);

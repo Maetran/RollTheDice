@@ -2,6 +2,9 @@
 .hd-playing .hd-hand-region { display: grid; grid-template-columns: minmax(0, 1fr) 44px; column-gap: 4px; }
 .hd-playing .hd-hand-heading { grid-column: 1 / -1; }
 .hd-playing .hd-hand { grid-column: 1; min-width: 0; }
+.hd-playing .hd-hand-controls { grid-column: 2; grid-row: 2; align-self: center; display: flex; flex-direction: column; gap: 4px; width: 44px; min-width: 44px; }
+.hd-playing .hd-hand-controls:not(:has(> button:not([hidden]))) { display: none; }
+.hd-playing .hd-hand-controls > button { flex: 0 0 44px; }
 .hd-playing .hd-multi-toggle { grid-column: 2; grid-row: 2; align-self: center; width: 44px; height: 44px; min-width: 44px; min-height: 44px; padding: 9px; border: 1px solid var(--hd-edge); }
 .hd-playing .hd-multi-toggle[aria-pressed="true"] { color: var(--hd-paper); background: var(--hd-red); border-color: var(--hd-paper); box-shadow: 0 0 0 2px var(--hd-red); }
 .hd-playing .hd-multi-toggle:disabled { opacity: .55; cursor: default; }

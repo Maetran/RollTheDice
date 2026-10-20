@@ -8,7 +8,7 @@ const exitIcon = '<svg class="hd-icon" viewBox="0 0 24 24" fill="none" stroke="c
 
 /** Explicit server-confirmed departure, separate from ending everyone's game. */
 export function mountHausdeppDepartureUI({
-  t, getState, send, onLeft, onPendingChange = () => {},
+  t, getState, send, onLeft, handControls, onPendingChange = () => {},
   confirm: confirmLeave = message => globalThis.window.confirm(message),
   setTimeout: delay = globalThis.setTimeout, clearTimeout: cancelDelay = globalThis.clearTimeout,
   confirmationTimeoutMs = 10000,
@@ -78,8 +78,7 @@ export function mountHausdeppDepartureUI({
     resultButton.textContent = action;
     notice.hidden = !errorKey;
     notice.textContent = errorKey ? t(errorKey) : "";
-    const heading = document.querySelector(".hd-room-heading");
-    if (heading && tableButton.parentElement !== heading) heading.append(tableButton);
+    if (handControls && tableButton.parentElement !== handControls) handControls.append(tableButton);
     const result = document.querySelector("#hausdeppResult .hd-result-links");
     if (result && resultButton.parentElement !== result) {
       const account = result.querySelector('a[href="/hausdepp/konto#erfolge"]');

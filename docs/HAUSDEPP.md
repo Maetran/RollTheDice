@@ -43,7 +43,7 @@ rules. Reduced motion applies the same end state without the extra animation.
 
 ### Partie verlassen / Leave game
 
-Ein eigener Schalter am laufenden Tisch öffnet eine Bestätigung. Aussteigen
+Ein eigener Schalter neben den eigenen Karten öffnet eine Bestätigung. Aussteigen
 beendet ausschliesslich die eigene Teilnahme, auch bei Verbindungs-/Pausenproblemen.
 Eigene Handkarten kommen endgültig aus dem Spiel, nicht auf das aufnehmbare
 Paket. Eigene offene Auffüllpflichten und Nachwurfrechte entfallen; die

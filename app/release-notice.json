@@ -1,10 +1,12 @@
 {
   "kind": "usability",
   "games": [
+    "zdwa",
+    "zilch",
     "hausdepp"
   ],
-  "summary_de": "Gemeinsame Tischdeko, leiser Wirtshausklang und einzeln die Partie verlassen.",
-  "summary_en": "Shared table props, quiet tavern ambience and leaving a game individually.",
+  "summary_de": "Gemeinsame Tischdeko, Wirtshausklang, eigener Ausstieg und zuverlässiger Sprachwechsel.",
+  "summary_en": "Shared table props, tavern ambience, individual departure and reliable language switching.",
   "player_notes": {
     "de": {
       "title": "Gemeinsam am Wirtshaustisch",
@@ -12,7 +14,8 @@
         "Mit dem Notenschalter aktivierst du eine sehr leise lokale Wirtshauskulisse – auch gegen CPUs.",
         "Nüsse essen, Getränke nutzen und andere Dekoaktionen sehen jetzt alle am Tisch – passend zum eigenen Display.",
         "Bei aktiviertem Sound bestätigen kurze Töne deine Sound-, Lautsprecher- und Mikrofonschalter.",
-        "Partie verlassen beendet nach Bestätigung nur deine Teilnahme; die übrigen spielen weiter. Aufgeben bringt keine EP oder normalen Erfolge, der Zonk-Erfolg gibt 0 EP."
+        "Partie verlassen beendet nach Bestätigung nur deine Teilnahme; die übrigen spielen weiter. Aufgeben bringt keine EP oder normalen Erfolge, der Zonk-Erfolg gibt 0 EP.",
+        "Deine gewählte Sprache bleibt beim Wechseln und Neuladen zuverlässig erhalten."
       ]
     },
     "en": {
@@ -21,7 +24,8 @@
         "Use the music-note switch for very quiet local tavern ambience, including CPU games.",
         "Everyone at the table sees snacks being eaten, drinks being used and other prop actions, placed to suit their own display.",
         "When sound is enabled, short tones confirm sound, speaker and microphone changes.",
-        "Leave game ends only your participation after confirmation; everyone else continues. Giving up earns no XP or ordinary achievements; the Zonk achievement is worth 0 XP."
+        "Leave game ends only your participation after confirmation; everyone else continues. Giving up earns no XP or ordinary achievements; the Zonk achievement is worth 0 XP.",
+        "Your chosen language stays consistent when switching and reloading."
       ]
     }
   }

@@ -4,6 +4,7 @@ import test from "node:test";
 
 const dataURL = source => `data:text/javascript;base64,${Buffer.from(source).toString("base64")}`;
 const { mountHausdeppDepartureUI } = await import(dataURL(await readFile(new URL("../frontend/hausdepp/departure-ui.js", import.meta.url), "utf8")));
+const { mountHandSelection } = await import(dataURL(await readFile(new URL("../frontend/hausdepp/hand-selection.js", import.meta.url), "utf8")));
 const { HAUSDEPP_MESSAGES } = await import(dataURL(await readFile(new URL("../frontend/i18n/catalog.js", import.meta.url), "utf8")));
 
 class Element extends EventTarget {
@@ -19,6 +20,7 @@ class Element extends EventTarget {
   setAttribute(key, value) { this.attributes.set(key, String(value)); }
   getAttribute(key) { return this.attributes.get(key) ?? null; }
   append(node) { node.remove(); node.parentElement = this; this.children.push(node); }
+  prepend(node) { node.remove(); node.parentElement = this; this.children.unshift(node); }
   insertBefore(node, before) {
     node.remove(); node.parentElement = this;
     this.children.splice(before ? this.children.indexOf(before) : this.children.length, 0, node);
@@ -32,24 +34,24 @@ class Element extends EventTarget {
 }
 
 function setup(language = "de") {
-  const body = new Element(), heading = new Element(), result = new Element(), account = new Element();
+  const body = new Element(), handControls = new Element(), result = new Element(), account = new Element();
   account.account = true; result.append(account);
   globalThis.document = { body, createElement: () => new Element(),
-    querySelector: selector => selector === ".hd-room-heading" ? heading : result };
+    querySelector: () => result };
   const state = { connected: true, busy: false, spectating: false, version: 7,
     permissions: { can_leave: true, forfeits_round: true, ends_tournament_participation: false } };
   const prompts = [], requests = [], pending = [], timers = new Map();
   let timerId = 0;
   let confirm = true, sendOk = true, left = 0;
-  const ui = mountHausdeppDepartureUI({ t: key => HAUSDEPP_MESSAGES[language][key] || key,
+  const ui = mountHausdeppDepartureUI({ t: key => HAUSDEPP_MESSAGES[language][key] || key, handControls,
     getState: () => state, confirm(message) { prompts.push(message); return confirm; },
     send(message) { requests.push(message); return sendOk; }, onLeft() { left++; },
     onPendingChange(value) { state.busy = value; pending.push(value); },
     setTimeout(callback) { const id = ++timerId; timers.set(id, callback); return id; },
     clearTimeout(id) { timers.delete(id); },
   });
-  return { ui, body, state, prompts, requests, pending, heading, result, timers,
-    button: heading.children[0], resultButton: result.children[0], notice: body.children[0],
+  return { ui, body, state, prompts, requests, pending, handControls, result, timers,
+    button: handControls.children[0], resultButton: result.children[0], notice: body.children[0],
     setConfirm(value) { confirm = value; }, setSendOk(value) { sendOk = value; }, get left() { return left; } };
 }
 
@@ -102,7 +104,7 @@ test("lost connection and missing permissions never navigate or silently submit 
   app.state.permissions.can_leave = true; app.state.spectating = true; app.ui.render();
   assert.equal(app.button.hidden, true); app.button.click(); assert.equal(app.requests.length, 1);
   app.ui.destroy(); app.ui.destroy();
-  assert.equal(app.heading.children.length, 0); assert.equal(app.result.children.length, 1);
+  assert.equal(app.handControls.children.length, 0); assert.equal(app.result.children.length, 1);
 });
 
 test("an unconfirmed departure has a bounded wait and only an explicit retry sends again", () => {
@@ -114,4 +116,25 @@ test("an unconfirmed departure has a bounded wait and only an explicit retry sen
   assert.equal(app.notice.textContent, HAUSDEPP_MESSAGES.de.departureConnectionLost);
   app.button.click(); assert.equal(app.requests.length, 2); assert.equal(app.prompts.length, 2);
   app.ui.destroy(); assert.equal(app.timers.size, 0);
+});
+
+test("rotation keeps the exit in the hand rail while the same selection switch moves to the desktop bar and back", () => {
+  const hand = new Element(), tools = new Element(), reactions = new Element();
+  const wide = new EventTarget(); wide.matches = false;
+  globalThis.document = { createElement: () => new Element() };
+  globalThis.matchMedia = () => wide;
+  const ui = mountHandSelection({ handRegion: hand, tools, reactions, t: key => key, onChange() {}, onPlay() {} });
+  const toggle = ui.controls.children[0], exit = new Element();
+  ui.controls.append(exit);
+  const bar = hand.children.find(node => node.id === "hausdeppHandActions");
+  assert.deepEqual(ui.controls.children, [toggle, exit]);
+  wide.matches = true; wide.dispatchEvent(new Event("change"));
+  assert.equal(toggle.parentElement, bar);
+  assert.deepEqual(ui.controls.children, [exit]);
+  wide.matches = false; wide.dispatchEvent(new Event("change"));
+  assert.deepEqual(ui.controls.children, [toggle, exit]);
+  assert.equal(toggle.parentElement, ui.controls);
+  ui.destroy();
+  wide.matches = true; wide.dispatchEvent(new Event("change"));
+  assert.deepEqual(ui.controls.children, [toggle, exit]);
 });

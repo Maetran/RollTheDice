@@ -1416,8 +1416,9 @@ suite. The ZDWA and Zilch settings pages follow the same four sections:
 **Help & updates**. Profile and sign-in open first, with passkeys as the
 preferred sign-in method. Open profile editing or password changes when needed;
 email settings appear only when email is enabled. Shared language and lobby-chat
-preferences save separately from ZDWA gameplay options. Statistics and
-achievements keep their own tabs.
+preferences save separately from ZDWA gameplay options. An explicit language
+choice takes priority over older account responses; rapid changes save in order
+and keep the latest choice. Statistics and achievements keep their own tabs.
 
 **Deutsch:** Ein Konto gilt für alle unsere Spiele. Konto- und
 Einstellungstexte sagen das, ohne jedes Spiel einzeln aufzuzählen, und bleiben
@@ -1428,7 +1429,9 @@ folgen derselben Reihenfolge:
 als bevorzugter Anmeldung. Profilbearbeitung und Passwortwechsel öffnest du
 bei Bedarf; E-Mail-Einstellungen erscheinen erst bei aktiviertem Versand.
 Gemeinsame Sprache und Lobby-Chat werden getrennt von ZDWA-Spieloptionen
-gespeichert. Statistik und Erfolge behalten eigene Tabs.
+gespeichert. Eine bewusst gewählte Sprache hat Vorrang vor älteren
+Kontoantworten; schnelle Wechsel werden der Reihe nach gespeichert, die letzte
+Wahl bleibt erhalten. Statistik und Erfolge behalten eigene Tabs.
 
 ZDWA offers locally saved Light, Dark and Classic appearances through its compact
 header appearance button. Classic turns the table into a coffee-table score

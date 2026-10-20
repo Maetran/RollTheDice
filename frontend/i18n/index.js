@@ -12,6 +12,9 @@ import { DE_MESSAGES, EN, EN_MESSAGES } from "./catalog.js";
 
   const STORAGE_KEY = "zdwa_language";
   const SUPPORTED = new Set(["de", "en"]);
+  let languageChangeGeneration = 0;
+  let explicitLanguageChange = null;
+  let languagePersistence = Promise.resolve();
 
   const PHRASES = Object.entries(EN)
     .filter(([source, target]) => source.length >= 8 && source !== target)
@@ -172,11 +175,13 @@ import { DE_MESSAGES, EN, EN_MESSAGES } from "./catalog.js";
     }
   }
 
-  async function persistAccountLanguage(language) {
+  async function persistAccountLanguage(language, isCurrent) {
     try {
+      if (!isCurrent()) return;
       const me = await fetch("/api/auth/me", { cache: "no-store" });
-      if (!me.ok) return;
+      if (!me.ok || !isCurrent()) return;
       const auth = await me.json();
+      if (!isCurrent()) return;
       const csrf = auth?.user?.csrf_token;
       if (!auth?.authenticated || !csrf) return;
       await fetch("/api/auth/preferences/language", {
@@ -189,13 +194,26 @@ import { DE_MESSAGES, EN, EN_MESSAGES } from "./catalog.js";
 
   async function setLanguage(language, { persist = true, reload = true } = {}) {
     if (!SUPPORTED.has(language)) return;
+    const generation = ++languageChangeGeneration;
+    explicitLanguageChange = generation;
+    const isCurrent = () => explicitLanguageChange === generation;
     storeLanguage(language);
     document.documentElement.lang = language;
-    if (persist) await persistAccountLanguage(language);
+    if (persist) {
+      // Keep an already sent write before the latest choice. Superseded reads
+      // never send a write, and only the latest choice may reload this page.
+      languagePersistence = languagePersistence.then(() => persistAccountLanguage(language, isCurrent));
+      await languagePersistence;
+    }
+    if (!isCurrent()) return;
     if (reload) location.reload();
+    else explicitLanguageChange = null;
   }
 
   function syncAccountLanguage(language) {
+    // An older /me response must not undo the user's explicit selection while
+    // it is being saved, or between its planned reload and navigation commit.
+    if (explicitLanguageChange !== null) return false;
     if (!SUPPORTED.has(language) || language === getLanguage()) return false;
     // Without storage a reload would ask again and loop.
     if (!storeLanguage(language)) return false;

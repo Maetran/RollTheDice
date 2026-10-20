@@ -759,7 +759,7 @@ function renderTableShell() {
     sound?.destroy(); soundUI?.destroy(); sound = null; soundUI = null;
   }
   departureUI?.destroy();
-  departureUI = mountHausdeppDepartureUI({ t, send, onLeft: leaveTableForLobby,
+  departureUI = mountHausdeppDepartureUI({ t, send, onLeft: leaveTableForLobby, handControls: handSelection.controls,
     getState: () => ({ permissions: snapshot?._departure_permissions, version: snapshot?._hausdepp?.version,
       connected: socket?.readyState === WebSocket.OPEN, busy: pending || tournamentEnding, spectating }),
     onPendingChange: value => { pending = value; renderState(); },
