@@ -77,7 +77,7 @@ export function wipeSpill(table, state, sprite, color, amount, fits, { shared = 
     }
   }
   const patch = document.createElement('span');
-  patch.className = 'hd-prop-spill';
+  patch.className = `hd-prop-spill${shared ? ' hd-prop-spill--shared' : ''}`;
   patch.dataset.source = sprite.dataset.prop;
   patch.dataset.cleaned = '0';
   patch.dataset.wipeState = 'waiting';

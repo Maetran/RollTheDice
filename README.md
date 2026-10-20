@@ -860,8 +860,11 @@ schreibt mit, wenn ein Deckel daliegt. Verschobene Gläser hinterlassen kurz
 Kondensringe. Die Bierdose öffnet sich mit Schaum und platzt bei heftigem
 Hin-und-her-Schütteln; auch diese kleine Stelle lässt sich wegwischen.
 Das Windlicht geht beim Schütteln aus und zündet sich selbst wieder an.
-Diese Spielereien bleiben lokal, leise und ausserhalb der Karten und Aktionen;
-reduzierte Bewegung deaktiviert sie. Ungefähr jede 50. Runde bietet zusätzlich
+Seit 3.18 teilen alle am Tisch Verbrauch, Nutzungszustände und Zufallsergebnisse;
+Platzierung und Ziehbewegungen bleiben passend zum jeweiligen Display lokal.
+Die Deko bleibt leise und ausserhalb der Karten und Aktionen. Reduzierte Bewegung
+deaktiviert die Bedienung und Animationen, zeigt aber den gemeinsamen Endzustand.
+Ungefähr jede 50. Runde bietet zusätzlich
 einen von acht seltenen Funden: Stern, Runenhammer, UFO, Portal, Drache, Kraken,
 Taschenuhr oder schwarzes Loch. Ein Tipp löst einmalig eine
 opulente Überraschung für den ganzen Tisch aus: Karten und Gegenstände wirbeln,
@@ -890,8 +893,11 @@ The beer mat counts tally marks in groups of five and flips after twenty; the
 pencil adds a mark if a mat is present. Moving a glass leaves a brief condensation
 ring. Repeated taps open the beer can with foam; vigorous back-and-forth shaking
 bursts it and leaves another small spot to wipe up. Shaking the lantern puts it
-out before it relights itself. Ordinary interactions are local and quiet and
-keep cards and controls clear; reduced motion disables them. About one round
+out before it relights itself. Since 3.18, consumption, usage state and random
+results are shared by everyone at the table; placement and dragging remain local
+to each display. Props stay quiet and keep cards and controls clear. Reduced
+motion disables interaction and animation while showing the shared end state.
+About one round
 in 50 also offers one of eight rare finds: star, rune hammer, UFO, portal, dragon,
 kraken, pocket watch or black hole. One tap triggers a brief
 lavish scene for the whole table, once per round. Cards and objects scatter,

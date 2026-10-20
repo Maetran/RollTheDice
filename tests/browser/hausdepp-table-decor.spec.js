@@ -382,7 +382,8 @@ test('real accounts share ordinary table use across phone and desktop and reload
   const shared = page.hausdeppDecorShared, events = page.hausdeppDecorEvents, boards = page.hausdeppDecorBoards;
   await expect.poll(() => shared.get(page)?.schema_version).toBe(1);
   const visible = await page.locator('.hd-table-prop:visible').evaluateAll(nodes => nodes.map(node => node.dataset.prop));
-  const objectId = visible.find(id => shared.get(page).objects[id]?.remaining > 0) || visible.find(id => shared.get(page).objects[id]);
+  const objectId = visible.find(id => shared.get(page).objects[id]?.remaining > 1)
+    || visible.find(id => shared.get(page).objects[id] && shared.get(page).objects[id].remaining === undefined);
   expect(objectId).toBeTruthy();
   const before = structuredClone(shared.get(page).objects[objectId]);
   const version = boards.get(page).version, revision = shared.get(page).revision;
@@ -406,6 +407,9 @@ test('real accounts share ordinary table use across phone and desktop and reload
   testInfo.annotations.push({ type: 'shared-object', description: objectId });
   await page.screenshot({ path: testInfo.outputPath('shared-use-desktop.png'), fullPage: true });
   await other.setViewportSize({ width: 390, height: 844 });
+  const closeChat = other.locator('#chatClose');
+  if (await closeChat.isVisible()) await closeChat.click();
+  await expect(other.locator('#chatBackdrop')).toBeHidden();
   await other.screenshot({ path: testInfo.outputPath('shared-use-phone.png'), fullPage: true });
 });
 
