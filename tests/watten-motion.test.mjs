@@ -60,6 +60,8 @@ function fixture({ reduced = false } = {}) {
   doc.body = new Node(doc, rect(0, 0, 900, 700));
   media.matches = reduced;
   win.innerWidth = 900; win.innerHeight = 700; win.screen = { orientation: new Events() }; win.visualViewport = new Events(); win.matchMedia = () => media;
+  let clock = 0;
+  win.performance = { now: () => clock };
   const motion = createMotion({ win, doc });
   const deck = new Node(doc, rect(400, 260, 42, 65), "deck", "back");
   const seats = Array.from({ length: 4 }, (_, seat) => new Node(doc, rect(30 + seat * 190, 20, 60, 90), `seat-${seat}`, "back"));
@@ -69,7 +71,7 @@ function fixture({ reduced = false } = {}) {
   const ghosts = kind => doc.body.children.filter(node => !kind || node.dataset.wtMotion === kind);
   const present = (previous, engine, result, { live = true, captured = capture([]) } = {}) => motion.present({ previous, engine, result, live, captured, view });
   const close = () => motion.destroy();
-  return { doc, win, media, motion, deck, seats, view, node, capture, ghosts, present, close };
+  return { doc, win, media, motion, deck, seats, view, node, capture, ghosts, present, close, advance: milliseconds => { clock += milliseconds; } };
 }
 const engine = (last = null, deal = "deal-1") => ({ deal_id: deal, last_trick: last });
 const result = ({ hand = [], nodes = [], cards = [], created = [], last = null } = {}) => ({ hand: { nodes: hand, created: [] }, trick: { nodes, cards, created, last } });
@@ -180,6 +182,7 @@ test("fast CPU next play and duplicate accepted state keep the existing collecti
   const f = fixture(), last = publicTrick(f, 4), captured = f.capture(last.nodes);
   f.present(engine(), engine(last), result({ ...last, last }), { captured });
   const collect = f.ghosts("collect")[0], animation = collect.animations[0];
+  f.advance(200);
   for (const node of last.nodes) node.remove();
   const next = f.node("hearts-K", rect(390, 280));
   f.present(engine(last), engine(last), result({ nodes: [next], cards: [{ seat: 3, card: "hearts-K" }],
@@ -187,7 +190,59 @@ test("fast CPU next play and duplicate accepted state keep the existing collecti
   f.present(engine(last), engine(last), result({ nodes: [next], cards: [{ seat: 3, card: "hearts-K" }], last }));
   assert.equal(f.ghosts("collect").length, 1); assert.equal(f.ghosts("collect")[0], collect);
   assert.equal(animation.cancelled, false); assert.equal(f.ghosts("arrive").length, 1);
+  const arrival = f.ghosts("arrive")[0];
+  assert.equal(arrival.animations[0].options.delay, 780, "wait only the remaining collection time");
+  assert.equal(arrival.animations[0].frames[0].opacity, 0, "no stationary future card during the wait");
+  assert.equal(next.style.visibility, "hidden");
+  f.advance(100); f.present(engine(last), engine(last), result({ nodes: [next], cards: [{ seat: 3, card: "hearts-K" }], last }));
+  assert.equal(f.ghosts("arrive")[0], arrival); assert.equal(arrival.animations.length, 1, "ACK does not extend/restart the wait");
   f.close();
+});
+
+test("a complete following CPU trick also waits behind the previous collection, with a hard catch-up budget", () => {
+  const f = fixture(), first = publicTrick(f, 2);
+  f.present(engine(), engine(first), result({ ...first, last: first }));
+  f.advance(100);
+  const second = publicTrick(f, 2, 0);
+  second.cards = [{ seat: 0, card: "hearts-K" }, { seat: 1, card: "bells-A" }];
+  second.nodes.forEach((node, index) => { node.dataset.key = second.cards[index].card; node.face = node.dataset.key; });
+  f.present(engine(first), engine(first), result({ nodes: [second.nodes[0]], cards: [second.cards[0]],
+    created: [{ ...second.cards[0], node: second.nodes[0] }], last: first }));
+  f.advance(100);
+  f.present(engine(first), engine(second), result({ ...second, created: [{ ...second.cards[1], node: second.nodes[1] }], last: second }));
+  const queued = f.ghosts("collect")[1];
+  assert.equal(queued.animations.at(-1).options.delay, 780);
+  assert.equal(f.ghosts("arrive").length, 0, "waiting arrival is transferred to its already completed public trick");
+  const from = centre(f.seats[0].bounds), to = centre(second.nodes[0].bounds);
+  assert.equal(queued.children[0].animations[0].frames[0].translate, `${from.x - to.x}px ${from.y - to.y}px`, "still-hidden arrival starts at its actual source, not a phantom centre position");
+  assert.equal(queued.style.opacity, "0", "the second public collection cannot cover the first one while waiting");
+  assert.ok(second.nodes.every(node => node.style.visibility === "hidden"));
+  f.present(engine(second), engine(second), result({ ...second, last: second }));
+  assert.equal(f.ghosts("collect").length, 2, "ACK-only repaint cannot cancel queued collection despite its later end time");
+  assert.equal(queued.animations.at(-1).cancelled, false);
+  // A third trick would need more than 980ms entry delay / ~2s total backlog.
+  // Catch up to the current accepted public DOM instead of extending history.
+  f.advance(50);
+  const current = f.node("leaves-8", rect(360, 300));
+  f.present(engine(second), engine(second), result({ nodes: [current], cards: [{ seat: 0, card: "leaves-8" }],
+    created: [{ node: current, seat: 0, card: "leaves-8" }], last: second }));
+  assert.equal(f.ghosts().length, 0); assert.equal(current.style.visibility, ""); f.close();
+});
+
+test("cancel/reduced motion and reconnect remove a delayed future card and reveal only the accepted state", () => {
+  for (const reason of ["cancel", "reduced", "reconnect"]) {
+    const f = fixture(), last = publicTrick(f, 2);
+    f.present(engine(), engine(last), result({ ...last, last }));
+    f.advance(20);
+    const current = f.node("hearts-K", rect(390, 280)), currentResult = result({ nodes: [current], cards: [{ seat: 1, card: "hearts-K" }],
+      created: [{ node: current, seat: 1, card: "hearts-K" }], last });
+    f.present(engine(last), engine(last), currentResult);
+    assert.equal(f.ghosts("arrive")[0].animations[0].options.delay, 960);
+    if (reason === "cancel") f.motion.cancel();
+    if (reason === "reduced") { f.media.matches = true; f.media.emit("change"); }
+    if (reason === "reconnect") f.present(engine(last), engine(last), currentResult, { live: false });
+    assert.equal(f.ghosts().length, 0); assert.equal(current.style.visibility, ""); f.close();
+  }
 });
 
 test("a still-flying penultimate card continues from its actual displayed geometry inside the collected trick", () => {

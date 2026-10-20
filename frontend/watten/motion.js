@@ -1,6 +1,7 @@
 // Presentation only: accepted state and controls update immediately. Ghosts copy
 // only currently permitted DOM faces/backs; no hand, stock or call is inferred.
 const FLIGHT = 240, HOLD = 380, COLLECT = 360, MAX_GHOSTS = 24;
+const TRICK_TIME = FLIGHT + HOLD + COLLECT, MAX_PRESENTATION = TRICK_TIME * 2;
 const easing = "cubic-bezier(.2,.7,.2,1)";
 const usable = rect => rect && rect.width > 0 && rect.height > 0;
 const centre = rect => ({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
@@ -23,7 +24,9 @@ export function createMotion({ win = window, doc = document } = {}) {
   const reduced = win.matchMedia?.("(prefers-reduced-motion: reduce)");
   const running = new Set(), ghosts = new Set(), arrivals = new Map(), flips = new Map(), hidden = new Map(), settled = new Map();
   let epoch = 0, destroyed = false;
+  let collectBatchStart = null;
   let width = win.innerWidth, height = win.innerHeight;
+  const now = () => win.performance?.now?.() ?? performance.now();
   const enabled = () => !destroyed && !reduced?.matches && !doc.hidden && doc.visibilityState !== "hidden"
     && typeof doc.body?.animate === "function";
 
@@ -40,9 +43,9 @@ export function createMotion({ win = window, doc = document } = {}) {
     };
   }
 
-  function animate(node, frames, options, done = () => {}) {
+  function animate(node, frames, options, done = () => {}, delay) {
     if (typeof node.animate !== "function") { done(); return null; }
-    const animation = node.animate(frames, options);
+    const animation = node.animate(frames, delay === undefined ? options : { ...options, delay });
     const entry = { cancel: () => { animation.cancel(); finish(); } };
     let finished = false;
     function finish() {
@@ -63,6 +66,7 @@ export function createMotion({ win = window, doc = document } = {}) {
     for (const release of settled.values()) release();
     settled.clear();
     arrivals.clear(); flips.clear();
+    collectBatchStart = null;
   }
 
   const geometryChanged = () => {
@@ -120,6 +124,7 @@ export function createMotion({ win = window, doc = document } = {}) {
       for (const entry of animations) entry?.cancel();
       for (const release of releases) release();
       node.remove(); ghosts.delete(job);
+      if (![...ghosts].some(item => item.node.dataset.wtMotion === "collect")) collectBatchStart = null;
     } };
     doc.body.append(node); ghosts.add(job);
     return job;
@@ -158,6 +163,7 @@ export function createMotion({ win = window, doc = document } = {}) {
     const to = element?.getBoundingClientRect();
     if (!enabled() || !element?.isConnected || !usable(from) || !usable(to)) return;
     const job = ghost(kind, to);
+    job.from = from; job.startsAt = now() + delay;
     // Opponent i elements obtain their existing back artwork through the same
     // ancestor selector as the real fan; no card face is manufactured.
     if (kind === "deal") job.node.className = "wt-backs";
@@ -166,7 +172,11 @@ export function createMotion({ win = window, doc = document } = {}) {
     // the deal. Animation never disables or waits to install a legal action.
     job.releases.push(hide(element, kind === "deal" ? "opacity" : "visibility"));
     if (card) arrivals.set(card, job);
-    job.animations.push(animate(job.node, [movement(from, to), { translate: "0 0", scale: "1" }],
+    const start = movement(from, to);
+    const frames = delay > 0
+      ? [{ ...start, opacity: 0, offset: 0 }, { ...start, opacity: 1, offset: .001 }, { translate: "0 0", scale: "1", opacity: 1, offset: 1 }]
+      : [start, { translate: "0 0", scale: "1" }];
+    job.animations.push(animate(job.node, frames,
       { duration: FLIGHT, delay, fill: "backwards", easing }, () => {
         if (arrivals.get(card) === job) arrivals.delete(card);
         job.remove();
@@ -185,7 +195,10 @@ export function createMotion({ win = window, doc = document } = {}) {
     }
   }
 
-  function collect(result, captured, view) {
+  const collectionDelay = time => Math.max(0, ...[...ghosts]
+    .filter(job => job.node.dataset.wtMotion === "collect").map(job => job.endsAt - time));
+
+  function collect(result, captured, view, time, delay) {
     const last = result.trick.last;
     const target = view.collectionNode(last.winner)?.getBoundingClientRect();
     if (!usable(target)) return false;
@@ -202,15 +215,20 @@ export function createMotion({ win = window, doc = document } = {}) {
     const bounds = { left, top, width: Math.max(...items.map(item => item.rect.left + item.rect.width)) - left,
       height: Math.max(...items.map(item => item.rect.top + item.rect.height)) - top };
     const job = ghost("collect", bounds, last.winner);
+    collectBatchStart ??= time;
+    job.endsAt = time + delay + TRICK_TIME;
+    // During a queued collection its accepted public originals stay hidden,
+    // and the group itself has no paint until the previous trick has left.
+    job.node.style.opacity = "0";
     for (const item of items) {
       const arriving = arrivals.get(item.card);
       const created = result.trick.created.some(card => card.card === item.card);
-      const from = arriving?.node.getBoundingClientRect() || (created
+      const from = (arriving ? time < arriving.startsAt ? arriving.from : arriving.node.getBoundingClientRect() : null) || (created
         ? captured.rects.get(item.card) || captured.rects.get(`seat-${item.seat}`) : null);
       arriving?.remove(); arrivals.delete(item.card);
       const clone = copyCard(item.node, job.node, item.rect, bounds);
       if (item.node.isConnected) job.releases.push(hide(item.node));
-      if (usable(from)) job.animations.push(animate(clone, [movement(from, item.rect), { translate: "0 0", scale: "1" }], { duration: FLIGHT, easing }));
+      if (usable(from)) job.animations.push(animate(clone, [movement(from, item.rect), { translate: "0 0", scale: "1" }], { duration: FLIGHT, delay, easing }));
     }
     const a = centre(bounds), b = centre(target), hold = (FLIGHT + HOLD) / (FLIGHT + HOLD + COLLECT);
     job.animations.push(animate(job.node, [
@@ -224,7 +242,7 @@ export function createMotion({ win = window, doc = document } = {}) {
         if (item.node.isConnected && !settled.has(item.node)) settled.set(item.node, hide(item.node));
       }
       job.remove();
-    }));
+    }, delay));
     return true;
   }
 
@@ -244,11 +262,18 @@ export function createMotion({ win = window, doc = document } = {}) {
     }
     if (!transition.sameDeal) return;
     flip(result.hand.nodes, captured);
-    const collected = transition.collect && result.trick.last && collect(result, captured, view);
+    const time = now(), delay = collectionDelay(time);
+    if ((transition.collect || result.trick.created.length) && (delay > TRICK_TIME ||
+        (collectBatchStart !== null && time + delay + (transition.collect ? TRICK_TIME : FLIGHT) > collectBatchStart + MAX_PRESENTATION + 1))) {
+      // Fast repeated whole tricks must not build a playback archive. Restore
+      // the current accepted DOM once a further flight would exceed the budget.
+      cancel(); return;
+    }
+    const collected = transition.collect && result.trick.last && collect(result, captured, view, time, delay);
     const completedCards = collected ? new Set(result.trick.last.cards.map(item => item.card)) : new Set();
     for (const item of result.trick.created) {
       if (!completedCards.has(item.card)) fly(item.node,
-        captured.rects.get(item.card) || captured.rects.get(`seat-${item.seat}`), "arrive", item.card);
+        captured.rects.get(item.card) || captured.rects.get(`seat-${item.seat}`), "arrive", item.card, delay);
     }
   }
 
