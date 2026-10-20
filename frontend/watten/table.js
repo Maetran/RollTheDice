@@ -43,7 +43,9 @@ function button(label, attributes, { disabled = false, className = "" } = {}) {
 function reconcile(parent, next) {
   [...next.childNodes].forEach((incoming, index) => {
     const current = parent.childNodes[index];
-    if (!current || current.nodeType !== incoming.nodeType || current.nodeName !== incoming.nodeName) {
+    const identity = node => node.nodeType === Node.ELEMENT_NODE && node.hasAttribute("data-watten-command")
+      ? [node.dataset.wattenCommand, node.dataset.kind, node.dataset.value, node.dataset.seat].join("|") : null;
+    if (!current || current.nodeType !== incoming.nodeType || current.nodeName !== incoming.nodeName || identity(current) !== identity(incoming)) {
       if (current) current.replaceWith(incoming.cloneNode(true));
       else parent.append(incoming.cloneNode(true));
       return;
@@ -159,6 +161,7 @@ function panelMarkup(vm) {
       <p><strong translate="no">${esc(winners.join(", "))}</strong> · ${esc(t("match.winners", { count: winners.length }))}</p>
       <p class="wt-note">${esc(vm.snapshot.result_persisted ? t("match.saved") : t("match.saving"))}</p>
       <div data-watten-match-progress hidden></div>
+      <a class="wt-button" href="/watten/konto/fortschritt">${esc(t("nav.progress"))}</a>
       <a class="wt-button" href="/watten">${esc(t("nav.lobby"))}</a>
     </div>`;
   }
@@ -278,8 +281,10 @@ export function createTableView(container, { onCard }) {
         <div class="wt-bubbles" data-wt-bubbles></div>
       </div>
     </div>
-    <div class="wt-panel" data-wt-panel role="region" aria-label="${esc(t("panel.label"))}"></div>
-    <div data-watten-rematch hidden></div>
+    <div class="wt-end-sheet">
+      <div class="wt-panel" data-wt-panel role="region" aria-label="${esc(t("panel.label"))}"></div>
+      <div data-watten-rematch hidden></div>
+    </div>
     <div class="wt-private" data-wt-private></div>
     <div class="wt-hand-area" data-wt-hand-area>
       <div class="wt-hand" data-wt-hand role="group" aria-label="${esc(t("hand.label"))}"></div>

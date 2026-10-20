@@ -132,6 +132,7 @@ for (const count of [2, 3, 4]) {
   test(`${count}-player host chooses CPU seats, starts manually and receives autonomous play`, async ({ browser, baseURL }) => {
     test.setTimeout(90000);
     const host = await player(browser, baseURL, count === 3 ? 'en' : 'de');
+    if (count === 4) await host.page.emulateMedia({ reducedMotion: 'no-preference' });
     try {
       await create([host], { count, reference: true, start: false });
       for (let seat = 1; seat < count; seat += 1) {

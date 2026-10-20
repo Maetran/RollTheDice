@@ -2,6 +2,10 @@ const { test, expect } = require('@playwright/test');
 const { player, create, action, normalCall, playOne } = require('./helpers/watten-journey.cjs');
 const { expectFixedTable, expectReachable } = require('./table-viewport');
 
+// Each case creates up to four real accounts and checks four viewport sizes
+// before and during a bid. Keep individual assertions at their normal timeout.
+test.setTimeout(90_000);
+
 const VIEWPORTS = [{ width: 390, height: 844 }, { width: 568, height: 320 }, { width: 1280, height: 800 }, { width: 320, height: 568 }];
 const gameBrowser = browser => ({ newContext: options => browser.newContext({ ...options,
   viewport: VIEWPORTS[0], serviceWorkers: 'block' }) });

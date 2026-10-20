@@ -13,7 +13,7 @@ for (const language of ['de', 'en']) {
       expect(account.statistics.all_matches).toBe(1);
       expect(account.progress.total_xp).toBeGreaterThan(10);
       expect(account.progress.pending.credits).toHaveLength(1);
-      await own.page.locator('[data-watten-nav] a[href="/watten/konto/fortschritt"]').click();
+      await own.page.locator('[data-watten-match-result] a[href="/watten/konto/fortschritt"]').click();
       await expect(own.page).toHaveURL(/\/watten\/konto\/fortschritt$/);
       await expect(own.page.locator('html')).toHaveAttribute('lang', language);
       await expect(own.page.locator('.wt-progress-title h2')).toHaveText(account.progress.title.name[language]);
