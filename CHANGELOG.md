@@ -23,6 +23,32 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## Unveröffentlicht / Unreleased
+
+Die Navigation erhält in der gesamten Suite einen gemeinsamen Aufbau.
+The suite navigation now follows one shared layout.
+
+### ALLGEMEIN
+
+**Deutsch:** ZDWA, Zilch, Hausdepp und Watten nutzen einen zweizeiligen Header.
+Oben stehen Spielsymbol und Name, Sprache, vorhandener Darstellungswechsel und
+Spielauswahl; darunter Lobby, Spieler & Ranking, Regeln und Konto. Ausserhalb
+der Spieltische bleibt er beim Scrollen oben sichtbar, auch auf kleinen Handys.
+
+**English:** ZDWA, Zilch, Hausdepp and Watten share a two-row header. The game
+icon and name, language, available appearance switch and game picker sit above
+Lobby, Players & Ranking, Rules and Account. Outside game tables it stays at
+the top while scrolling, including on small phones.
+
+### ZDWA
+
+**Deutsch:** Onlinezahl, beendete Partien und Normal-/Hardcore-Durchschnitte mit
+Trends stehen neu als Community-Statistik unter Spieler & Ranking.
+
+**English:** Online count, completed games and Normal/Hardcore averages with
+trends now appear as community statistics under Players & Ranking.
+
+
 ## 3.18.1 — Zuschauen verlassen und Mikrofon freigeben / Leave spectating and allow the microphone — 2026-10-20
 
 **Deutsch:** Auch Zuschauer können den Hausdepp-Tisch jetzt direkt verlassen,

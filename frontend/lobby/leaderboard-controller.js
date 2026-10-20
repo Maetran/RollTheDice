@@ -61,31 +61,6 @@ function localizedNumber(value) {
   }).format(value);
 }
 
-function renderAverage(bucket, valueElement, trendElement) {
-  const value = Number(bucket?.average_points);
-  if (valueElement) valueElement.textContent = Number.isFinite(value) ? localizedNumber(value) : "—";
-  if (!trendElement) return;
-
-  const recentAverage = Number(bucket?.recent_average_points);
-  const detail = Number(bucket?.trend_games) >= 3 && Number.isFinite(recentAverage)
-    ? ` (Ø letzte 3: ${localizedNumber(recentAverage)})`
-    : " (noch keine 3 Spiele)";
-  const trends = {
-    up: { text: "↑", className: "avg-trend avg-up", title: `Trend positiv${detail}` },
-    down: { text: "↓", className: "avg-trend avg-down", title: `Trend negativ${detail}` },
-    same: { text: "–", className: "avg-trend avg-same", title: `Trend stagnierend${detail}` },
-  };
-  const trend = trends[bucket?.trend] || {
-    text: "–",
-    className: "avg-trend avg-same",
-    title: "Zu wenig Daten",
-  };
-  trendElement.textContent = trend.text;
-  trendElement.className = trend.className;
-  trendElement.title = trend.title;
-  trendElement.setAttribute("aria-label", trend.title);
-}
-
 function renderRows(table, entries, { absolute = false, emptyText = "Keine Einträge" } = {}) {
   const rows = Array.isArray(entries) ? entries : [];
   const occurrences = new Map();
@@ -151,12 +126,6 @@ export async function loadLeaderboard() {
     const response = await fetch("/api/leaderboard", { cache: "no-store" });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const payload = await response.json();
-    const stats = payload.stats || {};
-    const averages = stats.average_points || {};
-    dom.gamesPlayed.textContent = stats.games_played ?? 0;
-    renderAverage(averages.normal, dom.averageNormalPoints, dom.averageNormalTrend);
-    renderAverage(averages.hc, dom.averageHardcorePoints, dom.averageHardcoreTrend);
-
     const recent = payload.recent || { normal: [], hc: [] };
     const alltime = payload.alltime || { normal: [], hc: [] };
     const shame = payload.shame || { recent: [], alltime: [] };

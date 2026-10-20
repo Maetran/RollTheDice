@@ -2826,6 +2826,7 @@ export const EN = {
     "Meister": "Master",
     "Elite": "Elite",
     "Nutzer online": "users online",
+    "Community-Statistik": "Community statistics",
     "Online würfeln": "Roll online",
     "Zock die Wand an – Würfelspiel online": "Zock die Wand an – Online Dice Game",
     "Fülle dein Punkteblatt mit Köpfchen, spiele allein oder mit Freunden und starte direkt im Browser – kostenlos und ohne Konto.": "Fill your scorecard strategically, play solo or with friends, and start right in your browser – free and without an account.",

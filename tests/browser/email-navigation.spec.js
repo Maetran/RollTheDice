@@ -100,6 +100,49 @@ test("a successful password reset returns to the requested app sign in", async (
   await expect(page.locator("#zilchLoginForm")).toBeVisible();
 });
 
+for (const game of ["hausdepp", "watten"]) {
+  test(`${game}: recovery header language changes preserve the filled form and its scrubbed token`, async ({ page }) => {
+    const inspection = [], completions = [], privateReads = [], documentRequests = [];
+    page.on("request", request => {
+      if (["/api/auth/me", "/api/game-activity"].includes(new URL(request.url()).pathname)) privateReads.push(request.url());
+    });
+    await page.route("**/api/auth/password-reset/inspect", route => {
+      inspection.push(route.request().postDataJSON());
+      return route.fulfill({ json: { valid: true } });
+    });
+    await page.route("**/api/auth/password-reset/complete", route => {
+      completions.push(route.request().postDataJSON());
+      return route.fulfill({ json: { ok: true } });
+    });
+    await page.goto(`/passwort-zuruecksetzen?app=${game}&lang=en#token=header-language-test-token`);
+    const header = page.locator(".suite-header"), form = page.locator("[data-password-form]");
+    await expect(header.locator(".suite-header__nav a")).toHaveText(["Lobby", "Players & Ranking", "Rules", "Account"]);
+    await expect(header.locator("[data-language-switcher]")).toHaveValue("en");
+    await expect(header.locator("[data-game-switch]")).toHaveCount(0);
+    await expect(form).toBeVisible();
+    await expect(page).not.toHaveURL(/token=/);
+    const formNode = await form.elementHandle();
+    await form.locator('[name="password"]').fill("header-navigation-password");
+    await form.locator('[name="confirmation"]').fill("header-navigation-password");
+    page.on("request", request => {
+      if (request.isNavigationRequest() && request.frame() === page.mainFrame()) documentRequests.push(request.url());
+    });
+    await header.locator("[data-language-switcher]").selectOption("de");
+    await expect(header.locator(".suite-header__nav a")).toHaveText(["Lobby", "Spieler & Ranking", "Regeln", "Konto"]);
+    await expect(page.locator("html")).toHaveAttribute("lang", "de");
+    expect(new URL(page.url()).searchParams.get("lang")).toBe("de");
+    await expect(form.locator('[name="password"]')).toHaveValue("header-navigation-password");
+    expect(await form.evaluate((node, previous) => node === previous, formNode)).toBe(true);
+    await form.locator('button[type="submit"]').click();
+    await expect(page.getByRole("heading", { name: "Dein Passwort wurde geändert.", exact: true })).toBeVisible();
+    expect(inspection).toEqual([{ token: "header-language-test-token" }]);
+    expect(completions).toEqual([{ token: "header-language-test-token", password: "header-navigation-password" }]);
+    expect(privateReads).toEqual([]);
+    expect(documentRequests).toEqual([]);
+    await formNode.dispose();
+  });
+}
+
 test("Zilch password help returns to Zilch sign in without trapping the user", async ({ page }) => {
   const returnTo = "/auth/continue?app=zilch&path=%2Fkonto";
   await page.goto(`/zilch/anmelden?return_to=${encodeURIComponent(returnTo)}`);

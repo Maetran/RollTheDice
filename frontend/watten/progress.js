@@ -3,10 +3,14 @@ import { loadAuth, apiFetch, escapeHtml as esc } from "../shared/auth.js";
 import { wattenAccountReturnPath } from "../multigame/routes.js";
 import { initializeWattenPwa } from "./pwa.js";
 import { WATTEN_PROGRESS_MESSAGES } from "../i18n/catalog.js";
+import { initializeSuiteHeader } from "../shell/header.js";
+import { initializeAppMode } from "../multigame/app-mode.js";
 
 initializeWattenPwa({ registerWorker: false, installControls: false });
+initializeSuiteHeader();
 const root = document.getElementById("wattenProgress");
 const page = document.documentElement.dataset.wattenProgressPage;
+document.querySelector('[data-watten-progress-nav] a[href="/watten/rangliste"]')?.setAttribute("aria-current", "page");
 const language = () => window.ZDWA_I18N.getLanguage() === "en" ? "en" : "de";
 const t = (key, values = {}) => String(WATTEN_PROGRESS_MESSAGES[language()][key] ?? key)
   .replace(/\{(\w+)\}/g, (_, name) => String(values[name] ?? ""));
@@ -238,8 +242,6 @@ async function mount() {
   const current = epoch;
   document.title = `${t(page)} · Watten`;
   document.querySelector('meta[name="description"]')?.setAttribute("content", t("description"));
-  const nav = document.querySelector("[data-watten-progress-nav]");
-  if (nav) nav.innerHTML = `<a href="/watten">Lobby</a><a href="/watten/regeln">${esc(t("rules"))}</a><a href="/watten/konto/einstellungen">${esc(t("settings"))}</a>`;
   shell(`<p role="status" data-progress-loading>${esc(t("loading"))}</p>`);
   try {
     const auth = await loadAuth({ refresh: true });
@@ -250,6 +252,7 @@ async function mount() {
       return;
     }
     accountId = auth.user.id;
+    if ((auth.game_access || auth.user.game_access)?.watten_preview === true) initializeAppMode({ mode: "watten" });
     if (page === "leaderboard") { shell(`<section class="wt-card-panel">${leaderboardForm()}</section>`); await ranking(root.querySelector("form")); }
     else await accountView();
   } catch (error) { if (current === epoch && !navigating) failure(error.message); }

@@ -1299,14 +1299,16 @@ server-accepted room action. They are then aborted without a completed result.
 
 Both lobbies group resumable, running and waiting tables in one compact games
 section. Player names, ranks and progress appear together without repeating
-the same identity. Community figures sit in the header, new-game forms take
+the same identity. ZDWA’s online count, completed games and Normal/Hardcore
+averages with trends appear under Players & Ranking. New-game forms take
 less space, and ZDWA's Wall of Shame keeps both periods in a compact view.
 
 **Deutsch:** Beide Lobbys bündeln fortsetzbare, laufende und wartende Partien
 in einem kompakten Spielbereich. Name, Rang und Fortschritt stehen zusammen,
-ohne dieselbe Person mehrfach aufzuführen. Die Community-Zahlen stehen im
-Header, neue Spiele brauchen weniger Platz und ZDWAs Wall of Shame zeigt
-beide Zeiträume kompakter.
+ohne dieselbe Person mehrfach aufzuführen. ZDWAs Onlinezahl, beendete Partien
+und Normal-/Hardcore-Durchschnitte samt Trends stehen unter Spieler & Ranking.
+Neue Spiele brauchen weniger Platz und ZDWAs Wall of Shame zeigt beide
+Zeiträume kompakter.
 
 **Deutsch:** Melde dich nach einem Gerätewechsel mit demselben Konto an, um
 deinen vorhandenen Platz in ZDWA oder Zilch wieder aufzunehmen. Bei öffentlichen
@@ -1701,15 +1703,17 @@ doppelten Vergabeversuchen.
 Bei deaktiviertem E-Mail-Feature ist die bisherige Registrierung mit
 Benutzername und Passwort wieder verfügbar.
 
-On touch tablets, both products center their main navigation in a dedicated
-row below the title and tools in portrait and landscape. Desktop navigation
-is centered too, including the ZDWA lobby and Zilch's LCARS theme. Zilch's
-unavailable-link page keeps its header tools at the right edge.
-Auf Touch-Tablets steht die Hauptnavigation in beiden Spielen im Hoch- und
-Querformat mittig in einer eigenen Zeile unter Titel und Werkzeugen.
-Auch am Desktop bleibt sie mittig, einschließlich ZDWA-Lobby und Zilchs
-LCARS-Design. Auf Zilchs Seite für nicht verfügbare Links stehen die
-Header-Werkzeuge am rechten Rand.
+Outside game tables, all four games share a two-row header: game icon and
+name, language, available design switch and game picker above; Lobby,
+Players & Ranking, Rules and Account below. It stays at the top while scrolling,
+on phones, tablets and desktops. Game tables retain their compact controls.
+
+**Deutsch:** Alle vier Spiele nutzen ausserhalb des Spieltischs denselben
+zweizeiligen Header: oben Spielsymbol und -name, Sprache, vorhandener
+Darstellungswechsel und Spielauswahl; darunter Lobby, Spieler & Ranking, Regeln
+und Konto. Er bleibt auf Handy, Tablet und Desktop beim Scrollen oben sichtbar.
+Spieltische behalten ihre kompakten Bedienelemente.
+
 Der mobile Zuschauerchat hält die Eingabe auch bei geöffneter Tastatur
 erreichbar und zeigt Zuschauer mit ihrem Profilbild. Tablet-Spielblöcke nutzen
 den verfügbaren Platz, ohne die Bedienelemente abzuschneiden.

@@ -18,15 +18,6 @@ import { playerNameMarkup } from "../shared/auth.js";
 import { replaceChildrenPreservingAvatars } from "../shared/avatar.js";
 import { requestGameInvitePush, webPushErrorMessage } from "../shared/web-push.js";
 
-function renderOnlineUsers(value) {
-  if (!dom.onlineUsers) return;
-  const label = window.ZDWA_I18N?.t?.("Nutzer online") || "Nutzer online";
-  const count = value !== null && value !== undefined && Number.isFinite(Number(value))
-    ? Math.max(0, Math.floor(Number(value)))
-    : "—";
-  dom.onlineUsers.innerHTML = `<span class="online-dot" aria-hidden="true"></span><b>${count}</b> ${escapeHtml(label)}`;
-}
-
 function renderOpenGames(games) {
   if (!dom.gamesList) return;
   dom.openGamesCard.hidden = games.length === 0;
@@ -181,7 +172,6 @@ export async function fetchGames({ showLoading = false } = {}) {
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const payload = await response.json();
     const games = Array.isArray(payload.games) ? payload.games : [];
-    renderOnlineUsers(payload.online_users);
     const availableGames = games.filter((game) => !game.finished && !game.aborted);
     if (dom.gamesEmpty) dom.gamesEmpty.hidden = availableGames.length > 0;
     renderOpenGames(availableGames.filter((game) => !game.started)
@@ -196,7 +186,6 @@ export async function fetchGames({ showLoading = false } = {}) {
           - Date.parse(left.updated_at || left.started_at || 0)),
     );
   } catch {
-    renderOnlineUsers(null);
     dom.openGamesCard.hidden = false;
     dom.runningGamesCard.hidden = true;
     if (dom.gamesEmpty) dom.gamesEmpty.hidden = true;
