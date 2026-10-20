@@ -32,7 +32,9 @@ Partie und ihre EP zu verändern. Hausdepp-Sprachchat darf das eigene Mikrofon
 auch über die Suite-Domains verwenden. Das behebt eine Serverregel, die den
 Zugriff für dort installierte PWAs blockiert hat. Die ausdrückliche Freigabe
 durch Browser und Betriebssystem bleibt erforderlich und kann dort für weitere
-Besuche gespeichert werden.
+Besuche gespeichert werden. Auf sehr kleinen Displays bleiben die Namen an
+vollen Tischen auch mit seltener Tischdeko und beim Zuschauen getrennt und
+frei von den Kartenstapeln.
 
 **English:** Spectators can now leave a Hausdepp table directly, including
 waiting rooms, tournament breaks and disconnected views. The button returns
@@ -40,7 +42,9 @@ to the lobby without forfeiting or changing the running game and its XP.
 Hausdepp voice chat can also request the local microphone through the suite
 domains, fixing a server policy that blocked PWAs installed there. Explicit
 browser and operating-system permission is still required and can be saved
-there for future visits.
+there for future visits. On very small displays, names at full tables stay
+separate and clear of the card stacks, including rare table decorations and
+spectator views.
 
 ## 3.18.0 — Gemeinsam am Wirtshaustisch / Together at the tavern table — 2026-10-20
 
