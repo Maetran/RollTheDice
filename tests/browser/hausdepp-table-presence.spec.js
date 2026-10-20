@@ -316,9 +316,21 @@ for (const language of ['de', 'en']) {
         await page.evaluate(() => document.fonts.ready);
         const controls = await page.locator('.hd-nav a').evaluateAll(elements => elements.map(element => {
           const css = getComputedStyle(element);
-          const rgba = css.backgroundColor.match(/^rgba\([^,]+,[^,]+,[^,]+,\s*([\d.]+)\)$/);
-          return { tag: element.tagName, href: element.getAttribute('href'), height: element.getBoundingClientRect().height,
-            background: css.backgroundColor, alpha: rgba ? Number(rgba[1]) : css.backgroundColor === 'transparent' ? 0 : 1,
+          const header = element.closest('.suite-header');
+          const backing = getComputedStyle(header);
+          const alpha = color => {
+            const rgba = color.match(/^rgba\([^,]+,[^,]+,[^,]+,\s*([\d.]+)\)$/);
+            return rgba ? Number(rgba[1]) : color === 'transparent' ? 0 : 1;
+          };
+          const box = element.getBoundingClientRect();
+          const surface = header.getBoundingClientRect();
+          return { tag: element.tagName, href: element.getAttribute('href'), height: box.height,
+            background: `${css.backgroundColor} over ${backing.backgroundColor}`,
+            alpha: 1 - (1 - alpha(css.backgroundColor)) * (1 - alpha(backing.backgroundColor)),
+            opacity: Number(backing.opacity),
+            contained: box.left >= surface.left && box.right <= surface.right
+              && box.top >= surface.top && box.bottom <= surface.bottom,
+            reachable: element.contains(document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)),
             border: parseFloat(css.borderTopWidth) };
         }));
         expect(controls.map(control => control.href)).toEqual(['/hausdepp', '/hausdepp/rangliste', '/hausdepp/regeln', '/hausdepp/konto']);
@@ -327,6 +339,9 @@ for (const language of ['de', 'en']) {
           expect(control.height, `${language} ${name} ${path} ${control.href}`).toBeGreaterThanOrEqual(44);
           expect(control.border).toBeGreaterThanOrEqual(1);
           expect(control.alpha, `${control.href}: ${control.background}`).toBe(1);
+          expect(control.opacity).toBe(1);
+          expect(control.contained, `${control.href}: opaque header backs the whole touch surface`).toBe(true);
+          expect(control.reachable, `${control.href}: touch surface stays reachable`).toBe(true);
         }
         await expect(page.locator(`.hd-nav a[href="${path}"]`)).toHaveAttribute('aria-current', 'page');
         if (path === '/hausdepp/konto') {

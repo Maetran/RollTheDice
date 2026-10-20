@@ -339,7 +339,11 @@ test("the public Hausdepp switch respects Zilch permissions across ZDWA pages an
   await page.setViewportSize({ width: 390, height: 844 });
   const compactZdwaSwitch = page.locator("[data-game-switch]");
   await expect(compactZdwaSwitch.locator("svg.game-switch-icon")).toBeVisible();
-  expectCompactSwitchContent(await switchContentGeometry(compactZdwaSwitch, "ZDWA"));
+  await expect(compactZdwaSwitch.locator(".suite-game-trigger__name")).toBeHidden();
+  await expect(compactZdwaSwitch).toHaveAccessibleName(/ZDWA/);
+  const compactBrand = page.locator(".suite-header__brand > span:last-child");
+  await expect(compactBrand).toBeVisible();
+  await expect(compactBrand).toHaveText("ZDWA");
   await page.setViewportSize({ width: 720, height: 844 });
   await expect(compactZdwaSwitch.locator("svg.game-switch-icon")).toBeVisible();
   expectCompactSwitchContent(await switchContentGeometry(compactZdwaSwitch, "ZDWA"));
