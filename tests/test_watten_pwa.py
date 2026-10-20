@@ -3,6 +3,7 @@
 import io
 import os
 import unittest
+from html.parser import HTMLParser
 from unittest.mock import patch
 
 from PIL import Image
@@ -17,11 +18,23 @@ RESOURCES = ("/watten-manifest.webmanifest", "/watten-manifest-en.webmanifest", 
 ICONS = tuple(f"/static/watten/icons/watten-icon-{size}.png" for size in (32, 180, 192, 512))
 
 
+class GameSwitchParser(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.switches = []
+
+    def handle_starttag(self, tag, attrs):
+        attributes = dict(attrs)
+        if "data-game-switch" in attributes:
+            self.switches.append((tag, attributes))
+
+
 class WattenPwaTests(unittest.TestCase):
     def setUp(self):
         self.env = patch.dict(os.environ, {
             "ROLLTHEDICE_SITE_ORIGIN": LOCAL, "ROLLTHEDICE_ZILCH_ORIGIN": "http://zilch.rollthedice.localhost:8057",
             "ROLLTHEDICE_WATTEN_ACCOUNT_PREVIEW": "1",
+            "ROLLTHEDICE_WATTEN_GAME_PREVIEW": "0",
         })
         self.env.start()
         self.client = TestClient(main.app, base_url=LOCAL)
@@ -103,7 +116,21 @@ class WattenPwaTests(unittest.TestCase):
             self.assertNotIn('/static/shell.js', response.text)
             self.assertNotIn('/static/hausdepp.js', response.text)
             self.assertNotIn('/static/zilch.js', response.text)
-            self.assertNotIn('data-game-switch', response.text)
+            self.assertNotIn('data-game-picker', response.text)
+            if path.startswith("/passwort-vergessen"):
+                self.assertNotIn('data-game-switch', response.text)
+            else:
+                # The shared header may reserve an inert control. Account-only
+                # preview must not mount game discovery or activate it.
+                parser = GameSwitchParser()
+                parser.feed(response.text)
+                self.assertEqual(len(parser.switches), 1)
+                tag, attributes = parser.switches[0]
+                self.assertEqual(tag, "button")
+                self.assertEqual(attributes.get("id"), "wattenSuitePicker")
+                self.assertIn("hidden", attributes)
+                self.assertIn("disabled", attributes)
+                self.assertNotIn("aria-expanded", attributes)
 
     def test_generated_icons_match_our_vector_and_decode_at_every_promised_size(self):
         for filename, expected in rendered_icons().items():

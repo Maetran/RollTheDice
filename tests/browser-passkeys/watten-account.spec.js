@@ -11,6 +11,15 @@ async function openSection(page, selector) {
   if (!await row.evaluate(node => node.open)) await row.locator('summary').click();
 }
 
+async function expectInertGamePicker(page) {
+  const picker = page.locator('#wattenSuitePicker');
+  await expect(picker).toHaveCount(1);
+  await expect(picker).toBeHidden();
+  await expect(picker).toBeDisabled();
+  await expect(page.locator('[data-game-picker], #suiteGameMenu')).toHaveCount(0);
+  expect(await page.evaluate(() => Boolean(window.ZDWA_APP_MODE?.initialized))).toBe(false);
+}
+
 for (const language of ['de', 'en']) {
   test(`Watten ${language}: local native passkey account, shared settings, backup and logout race`, async ({ page, context, baseURL }, testInfo) => {
     // Distinct simulated visitors keep real signup rate limits enabled.
@@ -20,6 +29,11 @@ for (const language of ['de', 'en']) {
     }, language);
     const foreign = [];
     const sockets = [];
+    const gameReads = [];
+    page.on('request', request => {
+      const pathname = new URL(request.url()).pathname;
+      if (pathname === '/api/game-activity' || /^\/api\/games(?:\/|$)/.test(pathname)) gameReads.push(pathname);
+    });
     await context.route('**/*', route => {
       const url = new URL(route.request().url());
       if (url.origin !== new URL(baseURL).origin) { foreign.push(url.href); return route.abort(); }
@@ -36,8 +50,10 @@ for (const language of ['de', 'en']) {
       await page.goto('/watten');
       await expect(page.locator('h1')).toHaveText('Watten');
       await expect(page.locator('link[rel=manifest]')).toHaveAttribute('data-pwa-product', 'watten');
+      await expectInertGamePicker(page);
       await page.goto('/watten/anmelden?return_to=%2Fwatten%2Fkonto%2Feinstellungen');
       await expect(page.locator('h1')).toHaveText(language === 'de' ? 'Bei Watten anmelden' : 'Sign in to Watten');
+      await expectInertGamePicker(page);
       await page.locator('#wattenRegistrationUsername').fill(`WattenNative_${language}`);
       await page.locator('#wattenRegistrationMethod').selectOption('passkey');
       const signed = page.waitForResponse(response => response.url().endsWith('/api/auth/passkeys/signup/verify'));
@@ -46,6 +62,7 @@ for (const language of ['de', 'en']) {
       await expect(page).toHaveURL(`${baseURL}/watten/konto/einstellungen`);
       await expect(page.locator('h1')).toHaveText(language === 'de' ? 'Kontoeinstellungen' : 'Account settings');
       await expect(page.locator('[data-passkey-list] li')).toHaveCount(1);
+      await expectInertGamePicker(page);
       // Friend settings can still refresh the old document's identity while
       // reload starts. Keep auth unavailable until the new page shows its
       // error, rather than consuming a one-shot failure on that old request.
@@ -54,6 +71,7 @@ for (const language of ['de', 'en']) {
       try {
         await page.reload();
         await expect(page.locator('[role=alert]')).toBeVisible();
+        await expectInertGamePicker(page);
       } finally {
         await page.unroute('**/api/auth/me', authUnavailable);
       }
@@ -113,6 +131,7 @@ for (const language of ['de', 'en']) {
       expect((await (await page.request.get('/api/auth/me')).json()).user.id).toBe(initial.user.id);
       expect(sockets).toEqual([]);
       expect(foreign).toEqual([]);
+      expect(gameReads).toEqual([]);
       expect(await page.evaluate(() => navigator.serviceWorker.getRegistrations().then(items => items.map(item => new URL(item.scope).pathname)))).toEqual([]);
       for (const viewport of [{ width: 320, height: 844 }, { width: 568, height: 320 }]) {
         await page.setViewportSize(viewport);
