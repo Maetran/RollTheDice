@@ -54,6 +54,10 @@ async function expectStage(item, count) {
           && (box.top < bounds.top - 1 || box.bottom > bounds.bottom + 1)) violations.push(`${label(node)} clipped vertically`);
       }
     }
+    for (const name of document.querySelectorAll('.wt-seat-name')) {
+      const box = rect(name);
+      if (box.left < -1 || box.right > innerWidth + 1) violations.push(`seat ${name.closest('[data-wt-seat]').dataset.wtSeat} name outside ${innerWidth}x${innerHeight}: ${box.left}–${box.right}`);
+    }
     const protectedAreas = [...document.querySelectorAll('[data-wt-hand-area], [data-wt-panel], [data-wt-private] button, .wt-trick-card')].filter(shown);
     for (const back of document.querySelectorAll('.wt-backs > i:not([hidden])')) {
       const box = rect(back);
