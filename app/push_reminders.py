@@ -23,9 +23,9 @@ from .web_push import (
     DAILY_REMINDER_END_HOUR,
     DAILY_REMINDER_START_HOUR,
     DAILY_REMINDER_TIMEZONE,
-    PUSH_DELIVERY_CONTEXTS,
     StoredSubscription,
     _send_web_push,
+    push_delivery_contexts,
     web_push_available,
 )
 
@@ -88,7 +88,7 @@ def claim_daily_reminder(user_id: int, now: datetime) -> DailyReminder | None:
         subscriptions = db.scalars(
             select(WebPushSubscription).where(WebPushSubscription.user_id == user_id).order_by(WebPushSubscription.id)
         ).all()
-        subscriptions = [subscription for subscription in subscriptions if subscription.product_context in PUSH_DELIVERY_CONTEXTS and (
+        subscriptions = [subscription for subscription in subscriptions if subscription.product_context in push_delivery_contexts() and (
             subscription.product_context != ZILCH_GAME_TYPE
             or can_account_access_zilch(username=user.username, role=user.role)
         )]
@@ -163,7 +163,7 @@ async def dispatch_daily_reminders(*, now: datetime | None = None) -> int:
             .join(WebPushSubscription, WebPushSubscription.user_id == User.id)
             .where(
                 User.is_active.is_(True), User.daily_reminder_push_enabled.is_(True),
-                WebPushSubscription.product_context.in_(PUSH_DELIVERY_CONTEXTS),
+                WebPushSubscription.product_context.in_(push_delivery_contexts()),
                 not_played_on(day),
                 or_(User.daily_reminder_push_last_sent_on.is_(None), User.daily_reminder_push_last_sent_on < day),
             )
@@ -192,7 +192,7 @@ async def dispatch_daily_reminders(*, now: datetime | None = None) -> int:
                     WebPushSubscription.id == subscription.id,
                     WebPushSubscription.user_id == user_id,
                     User.is_active.is_(True), User.daily_reminder_push_enabled.is_(True),
-                    WebPushSubscription.product_context.in_(PUSH_DELIVERY_CONTEXTS),
+                    WebPushSubscription.product_context.in_(push_delivery_contexts()),
                     not_played_on(day),
                 ))
             if still_eligible is None:

@@ -68,12 +68,11 @@ class Container extends Node {
   fields = new Map(); markup = "";
   set innerHTML(value) {
     this.markup = value; this.children = []; this.fields.clear();
-    for (const field of ["panel", "corner", "status", "layer"]) {
+    for (const field of ["status", "layer"]) {
       const node = new Node(this.dom, field === "corner" ? this.dom.corner : field === "layer" ? this.dom.viewport : rect(0, 400, 300, 44));
       node.hidden = field === "panel"; if (field === "layer") node.dataset.wattenDecorLayer = true;
       this.fields.set(`[data-watten-decor-${field}]`, node); this.append(node);
     }
-    this.querySelector("[data-watten-decor-panel]").append(this.querySelector("[data-watten-decor-corner]"));
     for (const match of value.matchAll(/data-watten-decor-(action|add)="([^"]+)"/g)) {
       const node = new Node(this.dom); node.dataset[match[1] === "action" ? "wattenDecorAction" : "wattenDecorAdd"] = match[2];
       this.fields.set(`[data-watten-decor-${match[1]}="${match[2]}"]`, node); this.append(node);
@@ -132,11 +131,6 @@ function fixture({ width = 800, height = 700, reducedMotion = false, language = 
   return { client, root, container, view, win, dom, reduced, observers, protectedAreas, modal, servingCalls, spillCalls,
     update: publicPhase => client.update({ publicPhase }),
     props,
-    openActions() { props().find(node => !node.hidden).emit("contextmenu", { preventDefault() {} }); },
-    emptyPalette() {
-      client.update({ publicPhase: "play" }); props()[0].emit("contextmenu", { preventDefault() {} });
-      container.click("clear"); client.update({ publicPhase: "preview" });
-    },
     resize(nextWidth, nextHeight) {
       win.innerWidth = nextWidth; win.innerHeight = nextHeight;
       dom.propSide = nextWidth >= 900 && nextHeight >= 520 ? 88 : 56;
@@ -171,31 +165,23 @@ test("geometry protects the full five-card reserve and rejects action overlap at
     "data-watten-match-result", "data-watten-social", ".wt-bubble", "data-wt-panel", "button", "input"]) assert.ok(DECOR_PROTECTED.includes(selector));
 });
 
-test("explicit palette fits eight items in the phone corner, caps count and never creates a game command", () => {
-  for (const width of [320, 568]) {
-    const f = fixture({ width }); f.update("preview");
-    assert.equal(f.props().length, 0); f.container.click("beer", true); assert.equal(f.props().length, 0);
-    f.emptyPalette();
-    for (const kind of Object.keys(DECOR_ITEMS)) f.container.click(kind, true);
-    assert.equal(f.props().length, 8); assert.ok(f.props().every(node => !node.hidden));
-    assert.equal(f.field("corner").scrolled, true);
-    const geometry = { regions: [{ ...f.dom.corner, name: "corner" }], protectedRects: [] }, used = [];
-    for (const node of f.props()) { const area = node.getBoundingClientRect(); assert.ok(fitsDecor(area, geometry, used)); used.push(area); }
-    f.container.click("beer", true); assert.equal(f.props().length, 8); assert.match(f.field("status").textContent, /8/);
-  }
+test("random table props remain local and no palette or context menu is mounted", () => {
+  const f = fixture(); f.update("preview"); assert.equal(f.props().length, 0);
+  f.update("play"); assert.equal(f.props().length, 3);
+  assert.doesNotMatch(f.container.markup, /data-watten-decor-(panel|corner|add|action)/);
+  const node = f.props()[0]; let prevented = false;
+  node.emit("contextmenu", { preventDefault() { prevented = true; } });
+  assert.equal(prevented, false); assert.equal(f.props().length, 3);
   assert.doesNotMatch(original, /fetch\(|WebSocket|sendRaw|localStorage|sessionStorage|\.engine|\.hand\b/);
 });
 
-test("stable table layout and context close/reopen preserve nodes, servings, positions and visible focus", () => {
-  const f = fixture(); f.update("play"); f.openActions();
+test("stable table updates preserve nodes, servings and positions without a decoration menu", () => {
+  const f = fixture(); f.update("play");
   const node = f.props()[0], before = [node.style.left, node.style.top];
+  node.emit("click"); assert.equal(f.servingCalls.at(-1).level, 3);
   f.update("play"); f.update("play"); assert.equal(f.props()[0], node);
   assert.deepEqual([node.style.left, node.style.top], before);
-  f.container.click("close"); assert.equal(node.hidden, false);
-  assert.equal(f.dom.activeElement, node);
-  f.openActions(); assert.equal(node.hidden, false);
-  assert.deepEqual([node.style.left, node.style.top], before);
-  assert.doesNotMatch(f.container.markup, /wt-decor-toolbar|data-watten-decor-action="toggle"/);
+  assert.doesNotMatch(f.container.markup, /wt-decor-toolbar|data-watten-decor-panel/);
 });
 
 test("desktop props grow with their protected footprint and reposition safely on a phone resize", () => {
@@ -212,11 +198,10 @@ test("desktop props grow with their protected footprint and reposition safely on
   }
 });
 
-test("keyboard context menu opens controls and returns focus to its visible prop", () => {
+test("keyboard menu gestures do not open a decoration panel", () => {
   const f = fixture(); f.update("play"); const node = f.props()[0];
   node.emit("keydown", { key: "F10", shiftKey: true, preventDefault() {} });
-  assert.equal(f.field("panel").hidden, false);
-  f.container.click("close"); assert.equal(f.dom.activeElement, node);
+  assert.equal(f.field("panel"), null);
 });
 
 test("drag never paints across a protected action and interrupted capture returns to its original valid spot", () => {
@@ -235,18 +220,15 @@ test("drag never paints across a protected action and interrupted capture return
   f.win.emit("orientationchange"); assert.equal(node.captured, null);
 });
 
-test("keyboard movement, rotation, consumption, refill and removal keep their local controls", () => {
-  const f = fixture({ language: "en" }); f.emptyPalette(); f.container.click("chips", true);
-  const food = f.props()[0], initial = food.style.left;
+test("keyboard movement, direct consumption and removal remain available", () => {
+  const f = fixture({ language: "en" }); f.update("play");
+  const food = f.props().find(node => node.dataset.wattenDecorKind === "nuts"), initial = food.style.left;
   food.emit("keydown", { key: "ArrowRight", preventDefault() {} }); assert.notEqual(food.style.left, initial);
-  f.container.click("use"); assert.equal(f.servingCalls.at(-1).remaining, 2);
-  f.container.click("refill"); assert.equal(f.servingCalls.at(-1).remaining, 3);
-  const turn = Number.parseInt(food.children[0].style.rotate);
-  f.container.click("rotate"); assert.equal(food.children[0].style.rotate, `${turn + 15}deg`);
-  food.emit("keydown", { key: "Delete", preventDefault() {} }); assert.equal(f.props().length, 0);
+  food.emit("click"); assert.equal(f.servingCalls.at(-1).remaining, 2);
+  food.emit("keydown", { key: "Delete", preventDefault() {} }); assert.equal(f.props().length, 2);
   assert.ok([...food.handlers.values()].every(handlers => handlers.size === 0));
-  f.container.click("beer", true); f.container.click("use"); assert.equal(f.servingCalls.at(-1).level, 3);
-  f.container.click("refill"); assert.equal(f.servingCalls.at(-1).level, 4);
+  f.props().find(node => node.dataset.wattenDecorKind === "beer").emit("click");
+  assert.equal(f.servingCalls.at(-1).level, 3);
 });
 
 test("a fresh intentional tap is not swallowed when a previous drag produced no compatibility click", () => {
@@ -255,55 +237,42 @@ test("a fresh intentional tap is not swallowed when a previous drag produced no 
   node.emit("pointerdown", { button: 0, pointerId: 1, clientX: initial.left, clientY: initial.top });
   node.emit("pointermove", { pointerId: 1, clientX: initial.left + 16, clientY: initial.top });
   node.emit("pointerup", { pointerId: 1 });
-  assert.equal(node.hidden, false); assert.equal(f.field("panel").hidden, true);
+  assert.equal(node.hidden, false); assert.equal(f.field("panel"), null);
   const area = node.getBoundingClientRect();
   node.emit("pointerdown", { button: 0, pointerId: 2, clientX: area.left, clientY: area.top });
   node.emit("pointerup", { pointerId: 2 });
   node.emit("click");
-  assert.equal(f.field("panel").hidden, true);
+  assert.equal(f.field("panel"), null);
   assert.match(node.children[1].textContent, /^[1-6]$/);
 });
 
-test("existing spill helper receives the same safety guard; close and fresh protected phases remove effects", () => {
-  const f = fixture(); f.update("play"); f.openActions(); f.container.click("clear");
-  f.container.click("beer", true); f.container.click("spill");
-  assert.equal(f.spillCalls.length, 1);
-  assert.equal(f.spillCalls[0].fits(f.protectedAreas[0].getBoundingClientRect()), false);
+
+
+test("reduced motion keeps direct object use and bounded servings", () => {
+  const f = fixture({ reducedMotion: true }); f.update("play");
+  const node = f.props().find(node => node.dataset.wattenDecorKind === "beer");
+  for (let i = 0; i < 8; i += 1) node.emit("click");
   assert.equal(f.servingCalls.at(-1).level, 0);
-  assert.equal(f.field("layer").children.length, 2);
-  f.container.click("close"); assert.equal(f.field("layer").children.length, 1);
-  f.update("play"); f.openActions(); f.container.click("refill"); f.container.click("spill");
-  f.update("inspection"); assert.equal(f.field("layer").children.length, 1);
+  assert.equal(f.field("layer").children.length, 3);
 });
 
-test("reduced motion retains static spill/wipe and manual object use without animations", () => {
-  const f = fixture({ reducedMotion: true }); f.emptyPalette(); f.container.click("tea", true);
-  f.container.click("spill"); assert.equal(f.spillCalls.length, 0);
-  const patch = f.field("layer").children.find(node => node.className === "wt-decor-static-spill"); assert.ok(patch);
-  patch.emit("click"); assert.equal(patch.isConnected, false);
-  f.container.click("refill"); f.container.click("use"); assert.equal(f.servingCalls.at(-1).level, 3);
-});
-
-test("repeated reduced-motion spills stay bounded and Escape ends capture without focusing a hidden control", () => {
-  const f = fixture({ reducedMotion: true }); f.update("play"); f.openActions();
-  f.container.click("clear"); f.container.click("tea", true);
-  for (let index = 0; index < 8; index += 1) { f.container.click("refill"); f.container.click("spill"); }
-  assert.equal(f.field("layer").children.length, 2); // one selected prop and one replaceable spill
+test("Escape ends capture directly without focusing a hidden menu control", () => {
+  const f = fixture(); f.update("play");
   const node = f.props()[0], area = node.getBoundingClientRect();
   node.emit("pointerdown", { button: 0, pointerId: 1, clientX: area.left, clientY: area.top });
-  f.container.emit("keydown", { key: "Escape", preventDefault() {} });
-  assert.equal(node.captured, null); assert.equal(f.field("layer").children.length, 1);
-  assert.equal(f.dom.activeElement, node);
+  node.emit("keydown", { key: "Escape", preventDefault() {} });
+  assert.equal(node.captured, null); assert.equal(f.field("panel"), null);
 });
 
 test("social/dialog protection immediately hides decoration; phase controls cannot become decoration targets", () => {
-  const f = fixture(); f.update("play"); f.openActions(); f.container.click("dice", true);
+  const f = fixture(); f.update("play");
   const node = f.props()[0]; assert.equal(node.hidden, false);
   f.modal.hidden = false; f.observers[1].callback(); assert.equal(node.hidden, true);
   f.modal.hidden = true; f.observers[1].callback(); assert.equal(node.hidden, false);
   for (const phase of ["strike", "colour", "show_ready", "inspection", "bid_response", "paused", "deal_complete", "match_complete"]) {
     f.update(phase); const area = node.getBoundingClientRect();
-    assert.ok(fitsDecor(area, { regions: [{ ...f.dom.corner, name: "corner" }, ...(phase === "paused" ? [] : [{ ...rect(0, 0, 800, 260), name: "table" }])],
+    if (phase === "paused") assert.equal(node.hidden, true);
+    else assert.ok(fitsDecor(area, { regions: [{ ...rect(0, 0, 800, 260), name: "table" }],
       protectedRects: f.protectedAreas.map(item => item.getBoundingClientRect()) }));
   }
 });
@@ -323,9 +292,9 @@ test("opening last-trick details reflows phone props outside the expanded histor
   assert.ok(f.props().some(node => !node.hidden));
 });
 
-test("clear/account switch/pagehide end captures and remove every item, effect and listener", () => {
-  for (const finish of [f => f.container.click("clear"), f => { f.changeAccount(); f.update("play"); }, f => f.win.emit("pagehide")]) {
-    const f = fixture(); f.emptyPalette(); f.container.click("tea", true);
+test("destroy/account switch/pagehide end captures and remove every item, effect and listener", () => {
+  for (const finish of [f => f.client.destroy(), f => { f.changeAccount(); f.update("play"); }, f => f.win.emit("pagehide")]) {
+    const f = fixture(); f.update("play");
     const node = f.props()[0], area = node.getBoundingClientRect();
     node.emit("pointerdown", { button: 0, pointerId: 1, clientX: area.left, clientY: area.top });
     finish(f); assert.equal(node.captured, null); assert.equal(node.isConnected, false);
@@ -343,5 +312,5 @@ test("bilingual catalog, protected stable shell and existing serving assets are 
   const css = await readFile(new URL("../frontend/styles/watten-game.css", import.meta.url), "utf8");
   assert.match(css, /hausdepp-decor-consumables\.css/); assert.match(css, /hausdepp-decor-play\.css/);
   assert.match(css, /prefers-reduced-motion/); assert.match(css, /wt-decor-layer[^}]*pointer-events: none/);
-  assert.match(original, /hausdepp-table-props/); assert.match(original, /mountConsumable/); assert.match(original, /wipeSpill/);
+  assert.match(original, /hausdepp-table-props/); assert.match(original, /mountConsumable/); assert.doesNotMatch(original, /wipeSpill|data-watten-decor-panel/);
 });

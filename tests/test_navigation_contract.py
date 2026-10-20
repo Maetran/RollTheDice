@@ -192,9 +192,7 @@ DOCUMENT_ROUTES = (
     ),
 )
 
-# Existing path names must also keep the new, reserved product host closed.
-# There is no Watten document or installable app yet, so this host contract
-# deliberately has no browser journey or public SEO registration.
+# Rollback retains the reserved-host boundary when the explicit public flag is off.
 RESERVED_HOST_DOCUMENT_ROUTES = {
     WATTEN_ORIGIN: (
         RouteCoverage(
@@ -202,6 +200,12 @@ RESERVED_HOST_DOCUMENT_ROUTES = {
              "/spiel/example", "/watten/spiel/example/zuschauen", "/auth/continue"),
             "tests/test_watten_readiness.py",
             "test_all_documents_private_apis_and_static_aliases_are_closed_before_routing",
+        ),
+        RouteCoverage(
+            ("/watten", "/watten/regeln", "/watten/anmelden", "/watten/konto/einstellungen"),
+            "tests/test_watten_public_beta.py",
+            "test_public_documents_have_real_localized_content_and_private_routes_keep_noindex",
+            ("tests/browser/watten-game.spec.js", "tests/browser-passkeys/watten-account.spec.js"),
         ),
     ),
 }
@@ -219,12 +223,12 @@ TECHNICAL_ROUTES = {
     "/zilch-manifest-en.webmanifest": "English Zilch PWA metadata; test_zilch_product_routes.",
     "/hausdepp-manifest.webmanifest": "Public Hausdepp installation; test_hausdepp_pwa and browser/hausdepp-pwa.spec.js.",
     "/hausdepp-manifest-en.webmanifest": "English public Hausdepp installation; test_hausdepp_pwa.",
-    "/watten-manifest.webmanifest": "Opt-in local account PWA metadata; test_watten_pwa and browser-passkeys/watten-pwa.spec.js.",
+    "/watten-manifest.webmanifest": "Public-beta or opt-in local PWA metadata; test_watten_pwa and browser-passkeys/watten-pwa.spec.js.",
     "/watten-manifest-en.webmanifest": "English opt-in local PWA metadata; test_watten_pwa and browser-passkeys/watten-pwa.spec.js.",
     "/sw.js": "ZDWA service worker; test_http_shell.",
     "/zilch-sw.js": "Zilch service worker; test_zilch_product_routes.",
     "/hausdepp-sw.js": "Narrow, network-only Hausdepp service worker; test_hausdepp_pwa and browser/hausdepp-pwa.spec.js.",
-    "/watten-sw.js": "Guarded local network-only worker; test_watten_pwa and browser-passkeys/watten-pwa.spec.js; production remains closed.",
+    "/watten-sw.js": "Guarded network-only worker; test_watten_pwa and browser-passkeys/watten-pwa.spec.js; public-beta rollout is explicit.",
     "/favicon.ico": "Product artwork; test_http_shell.",
     "/apple-touch-icon.png": "Anonymous GET/HEAD Apple icon discovery; host-specific public 180px PNG, test_hausdepp_pwa.",
     "/apple-touch-icon-precomposed.png": "Legacy Apple GET/HEAD icon discovery; same public product artwork, test_hausdepp_pwa.",
@@ -295,7 +299,7 @@ class PublicNavigationLinkTests(IsolatedAsyncioTestCase):
     async def test_public_page_links_and_fragments_reach_documents_and_no_page_is_orphaned(self):
         # No external requests, accounts, token actions or writes. The public
         # registry makes this grow automatically when a new SEO page is added.
-        origins = {SITE_ORIGIN, ZILCH_ORIGIN, HAUSDEPP_ORIGIN}
+        origins = {SITE_ORIGIN, ZILCH_ORIGIN, HAUSDEPP_ORIGIN, WATTEN_ORIGIN}
         pages = {page.canonical_url for page in PUBLIC_SEO_PAGES}
         inbound: dict[str, set[str]] = {page: set() for page in pages}
         documents: dict[str, _NavigationDocument] = {}
@@ -303,6 +307,7 @@ class PublicNavigationLinkTests(IsolatedAsyncioTestCase):
             "ROLLTHEDICE_SITE_ORIGIN": SITE_ORIGIN,
             "ROLLTHEDICE_ZILCH_ORIGIN": ZILCH_ORIGIN,
             "ROLLTHEDICE_ZILCH_ACCESS_MODE": "public",
+            "ROLLTHEDICE_WATTEN_PUBLIC_BETA": "1",
         }
         with patch.dict(os.environ, environment):
             async with httpx.AsyncClient(

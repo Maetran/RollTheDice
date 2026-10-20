@@ -30,6 +30,11 @@ test('two real human accounts bid, pause with an open bid, return and finish a d
   try {
     const path = await create(players);
     await normalCall(players);
+    for (const item of players) {
+      expect(item.traffic.snapshot.engine.round_summary).toBeUndefined();
+      expect(item.traffic.snapshot.engine.trick_history).toBeNull();
+      await expect(item.page.locator('[data-watten-round-call]')).toHaveCount(0);
+    }
     await playOne(players);
     await action(players, 'bid');
     await expect.poll(() => players.every(item => item.traffic.snapshot.engine.phase === 'bid_response')).toBe(true);
@@ -53,10 +58,39 @@ test('two real human accounts bid, pause with an open bid, return and finish a d
       await expect(item.page.locator('[data-watten-match-result]')).toBeVisible();
       expect(item.traffic.snapshot.result_persisted).toBe(true);
       expect(item.traffic.snapshot.engine.scores.some(score => score.points === 3)).toBe(true);
+      const engine = item.traffic.snapshot.engine;
+      expect(engine.round_summary).toEqual({ strike_rank: '7', trump_suit: 'bells', rechter: 'bells-7' });
+      expect(engine.options.trick_history).toBe(false);
+      expect(engine.trick_history.length).toBeGreaterThan(0);
+      expect(engine.trick_history.length).toBeLessThanOrEqual(5);
+      const language = await item.page.locator('html').getAttribute('lang');
+      const roundCall = item.page.locator('[data-watten-round-call]');
+      await item.page.locator('.wt-final-call > summary').click();
+      await expect(roundCall).toBeVisible();
+      await expect(roundCall.locator('dt')).toHaveText(language === 'en' ? ['Strike', 'Trump suit'] : ['Schlag', 'Farbe']);
+      await expect(roundCall.locator('figure [data-card]')).toHaveAttribute('data-card', 'bells-7');
+      const history = item.page.locator('[data-wt-history]');
+      await expect(history).toBeVisible();
+      await expect(history.locator('summary')).toHaveText(language === 'en'
+        ? `Round history (${engine.trick_history.length})` : `Rundenverlauf (${engine.trick_history.length})`);
+      if (!await history.evaluate(node => node.open)) await history.locator('summary').click();
+      await expect(history.locator('.wt-history > li')).toHaveCount(engine.trick_history.length);
+      expect(await history.locator('.wt-history [data-card]').evaluateAll(nodes => nodes.map(node => node.dataset.card)))
+        .toEqual(engine.trick_history.flatMap(trick => trick.cards.map(card => card.card)));
+      expect(await history.locator('.wt-history > li').evaluateAll(nodes => nodes.every((node, index) =>
+        !index || node.getBoundingClientRect().top >= nodes[index - 1].getBoundingClientRect().bottom - 1))).toBe(true);
       expect(item.traffic.errors).toEqual([]);
       expect(item.traffic.commands.filter(command => ['join_game', 'rejoin_game'].includes(command.action))
         .every(command => command.expected_account_id === item.user.id)).toBe(true);
     }
+    // The final call and all played tricks are reconstructed on a real reload;
+    // the table option restricts live history, rather than the finished round.
+    const finalTricks = players[0].traffic.snapshot.engine.trick_history;
+    await players[0].page.reload();
+    await expect(players[0].page.locator('[data-watten-match-result]')).toBeVisible();
+    expect(players[0].traffic.snapshot.engine.round_summary).toEqual({ strike_rank: '7', trump_suit: 'bells', rechter: 'bells-7' });
+    expect(players[0].traffic.snapshot.engine.trick_history).toEqual(finalTricks);
+    await expect(players[0].page.locator('[data-wt-history]')).toBeVisible();
   } finally { await Promise.allSettled(players.map(item => item.context.close())); }
 });
 

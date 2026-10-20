@@ -130,18 +130,28 @@ for (const browserName of ['chromium', 'webkit']) {
           await expect.poll(() => history.evaluate(node => {
             const rect = node.getBoundingClientRect();
             const panel = node.parentElement.querySelector('[data-wt-panel]');
+            const stake = node.parentElement.querySelector('[data-wt-stake]');
+            const panelRect = panel.getBoundingClientRect(), stakeRect = stake.getBoundingClientRect();
             const summary = node.querySelector('summary').getBoundingClientRect();
             const hand = document.querySelector('[data-wt-hand-area]').getBoundingClientRect();
             const overlaps = (a, b) => Math.min(a.right, b.right) - Math.max(a.left, b.left) > 2
               && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 2;
             return {
-              aboveDecision: rect.bottom <= panel.getBoundingClientRect().top + 1,
+              aboveDecision: rect.bottom <= panelRect.top + 1,
+              aboveStake: rect.bottom <= stakeRect.top + 1,
+              stakeBelowDecision: panelRect.bottom <= stakeRect.top + 1,
               clearOfHand: !overlaps(summary, hand),
-              controlsClearOfHistory: [...panel.querySelectorAll('button')].every(button => !overlaps(rect, button.getBoundingClientRect())),
-              readableCards: [...node.querySelectorAll('.wt-card--mini')].every(card => Number.parseFloat(getComputedStyle(card).width) >= 44),
+              controlsClearOfHistory: [...panel.querySelectorAll('button'), ...stake.querySelectorAll('button')]
+                .every(button => !overlaps(rect, button.getBoundingClientRect())),
+              compactReadableCards: [...node.querySelectorAll('.wt-card--mini')].every(card => {
+                const width = Number.parseFloat(getComputedStyle(card).width);
+                return width >= 44 && width <= 56;
+              }),
             };
           }), { message: 'rotating keeps history above the bid, away from the hand and decision targets' })
-            .toEqual({ aboveDecision: true, clearOfHand: true, controlsClearOfHistory: true, readableCards: true });
+            .toEqual({ aboveDecision: true, aboveStake: true, stakeBelowDecision: true, clearOfHand: true,
+              controlsClearOfHistory: true, compactReadableCards: true });
+          await expectReachable(decisionPage, '.wt-end-sheet > [data-wt-stake] > button');
           for (const response of ['respond_hold', 'respond_go', 'respond_counter']) {
             const selector = `[data-watten-action="${response}"]`;
             const target = decisionPage.locator(selector);

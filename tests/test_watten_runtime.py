@@ -55,6 +55,7 @@ def server(tmp_path, monkeypatch):
         "ROLLTHEDICE_DATABASE_URL": f"sqlite:///{tmp_path / 'watten.sqlite3'}",
         "ROLLTHEDICE_SITE_ORIGIN": LOCAL, "ROLLTHEDICE_ZILCH_ORIGIN": "http://zilch.localhost:8127",
         "ROLLTHEDICE_WATTEN_GAME_PREVIEW": "1", "ROLLTHEDICE_WATTEN_ACCOUNT_PREVIEW": "0",
+        "ROLLTHEDICE_WATTEN_PUBLIC_BETA": "0",
         "ROLLTHEDICE_COOKIE_SECURE": "0", "ROLLTHEDICE_COOKIE_DOMAIN": "",
         "ROLLTHEDICE_TURNSTILE_SITE_KEY": "", "ROLLTHEDICE_TURNSTILE_SECRET": "",
     }.items():

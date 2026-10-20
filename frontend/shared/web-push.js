@@ -16,7 +16,12 @@ window.addEventListener("zdwa:auth-state", event => {
   }
 });
 
-function requireSameAccount(generation) {
+function abortIfNeeded(signal) {
+  if (signal?.aborted) { const error = new Error("Push settings closed"); error.name = "AbortError"; throw error; }
+}
+
+function requireSameAccount(generation, signal) {
+  abortIfNeeded(signal);
   if (generation !== accountGeneration) throw apiError({ detail: "web_push_account_changed" });
 }
 
@@ -56,12 +61,12 @@ export function canUseWebPush() {
   );
 }
 
-export async function getGameInvitePushStatus() {
+export async function getGameInvitePushStatus({ signal } = {}) {
   const generation = accountGeneration;
-  const response = await apiFetch("/api/web-push/subscription");
+  const response = await apiFetch("/api/web-push/subscription", { signal });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw apiError(data);
-  requireSameAccount(generation);
+  requireSameAccount(generation, signal);
   if (data.viewer_id != null) {
     if (accountId !== undefined && accountId !== data.viewer_id) throw apiError({ detail: "web_push_account_changed" });
     accountId = data.viewer_id;
@@ -76,26 +81,26 @@ export async function getGameInvitePushStatus() {
   // status never subscribes, transfers an endpoint or undoes an account opt-out.
   try {
     if (status.browser_supported && status.permission === "granted") {
-      const registration = await pushRegistration();
+      const registration = await pushRegistration({ signal });
       const subscription = await registration?.pushManager.getSubscription();
-      requireSameAccount(generation);
+      requireSameAccount(generation, signal);
       if (subscription) {
         const check = await apiFetch("/api/web-push/subscription/check", {
-          method: "POST", headers: accountHeaders(status),
+          method: "POST", headers: accountHeaders(status), signal,
           body: JSON.stringify({ ...subscription.toJSON(), product_context: registrationContext(registration) }),
         });
         const checked = await check.json().catch(() => ({}));
         if (!check.ok) throw apiError(checked);
-        requireSameAccount(generation);
+        requireSameAccount(generation, signal);
         status.device_subscribed = checked.device_subscribed === true;
       }
     }
   } catch (error) {
-    requireSameAccount(generation);
+    requireSameAccount(generation, signal);
     if (error.code === "web_push_account_changed") throw error;
     status.device_check_failed = true;
   }
-  requireSameAccount(generation);
+  requireSameAccount(generation, signal);
   lastPushStatus = status;
   return lastPushStatus;
 }
@@ -115,43 +120,53 @@ function registrationContext(registration) {
     const worker = new URL(registration.active.scriptURL, location.href);
     const scope = new URL(registration.scope, location.href);
     if (worker.origin !== location.origin || scope.origin !== location.origin) return null;
+    if (worker.pathname === "/watten-sw.js") {
+      if (["/watten", "/watten/"].includes(scope.pathname)) return "watten";
+      return scope.pathname === "/" && location.hostname === "watten.zockdiewandan.online" ? "watten" : null;
+    }
     if (worker.pathname === "/hausdepp-sw.js" && scope.pathname === "/hausdepp") return "hausdepp";
     if (scope.pathname !== "/") return null;
     return { "/sw.js": "zdwa", "/zilch-sw.js": "zilch" }[worker.pathname] || null;
   } catch (_) { return null; }
 }
 
-function usesHausdeppRegistration() {
+function narrowRegistrationProduct() {
   const manifest = document.querySelector('link[rel="manifest"]');
-  if (window.HAUSDEPP_PWA || manifest?.dataset.pwaProduct === "hausdepp") return true;
+  if (window.WATTEN_PWA || location.hostname === "watten.zockdiewandan.online"
+      || /^\/watten(?:\/|$)/.test(location.pathname) || manifest?.dataset.pwaProduct === "watten") return "watten";
+  if (window.HAUSDEPP_PWA || manifest?.dataset.pwaProduct === "hausdepp") return "hausdepp";
   try {
-    return /^\/hausdepp-manifest(?:-en)?\.webmanifest$/.test(new URL(manifest?.href || "", location.href).pathname);
-  } catch (_) { return false; }
+    return /^\/(watten|hausdepp)-manifest(?:-en)?\.webmanifest$/.exec(new URL(manifest?.href || "", location.href).pathname)?.[1] || null;
+  } catch (_) { return null; }
 }
 
-async function pushRegistration({ wait = false } = {}) {
-  if (!usesHausdeppRegistration()) {
+async function pushRegistration({ wait = false, signal } = {}) {
+  abortIfNeeded(signal);
+  const product = narrowRegistrationProduct();
+  if (!product) {
     const registration = await (wait ? navigator.serviceWorker.ready : navigator.serviceWorker.getRegistration());
+    abortIfNeeded(signal);
     if (registrationContext(registration)) return registration;
     if (!wait) return null;
     throw apiError({ detail: "web_push_unavailable" });
   }
-  // Shared account settings sit outside /hausdepp. A fresh installed Hausdepp
-  // app has no worker controlling that document, so its `ready` never resolves.
-  // Reuse the narrowly scoped registration without widening private caching.
+  // Settings may sit outside their worker's scope. Resolve the product's
+  // explicit registration, never a different worker controlling the page.
   const deadline = Date.now() + 15_000;
   do {
-    const registration = await navigator.serviceWorker.getRegistration("/hausdepp");
+    abortIfNeeded(signal);
+    const registration = await navigator.serviceWorker.getRegistration(`/${product}`);
+    abortIfNeeded(signal);
     const worker = registration?.active;
-    const belongsToHausdepp = registrationContext(registration) === "hausdepp";
-    if (belongsToHausdepp && (!wait || worker?.state === "activated")) return registration;
+    if (registrationContext(registration) === product && (!wait || worker?.state === "activated")) return registration;
     if (!wait) return null;
     await new Promise(resolve => window.setTimeout(resolve, 100));
   } while (Date.now() < deadline);
   throw apiError({ detail: "web_push_unavailable" });
 }
 
-export async function enableGameInvitePush() {
+export async function enableGameInvitePush({ signal } = {}) {
+  abortIfNeeded(signal);
   // Settings preload the server configuration. Do not put a network await
   // before the permission prompt: Safari requires this user-click gesture.
   if (!canUseWebPush()) throw apiError({ detail: "web_push_browser_unsupported" });
@@ -162,26 +177,26 @@ export async function enableGameInvitePush() {
     ? "granted"
     : await Notification.requestPermission();
   if (permission !== "granted") throw apiError({ detail: "web_push_permission_denied" });
-  requireSameAccount(generation);
+  requireSameAccount(generation, signal);
   let readyTimeout;
   const registration = await Promise.race([
-    pushRegistration({ wait: true }),
+    pushRegistration({ wait: true, signal }),
     new Promise((_, reject) => {
       readyTimeout = window.setTimeout(() => reject(apiError({ detail: "web_push_unavailable" })), 15000);
     }),
   ]).finally(() => window.clearTimeout(readyTimeout));
-  requireSameAccount(generation);
+  requireSameAccount(generation, signal);
   let subscription = await registration.pushManager.getSubscription();
-  requireSameAccount(generation);
+  requireSameAccount(generation, signal);
   if (!subscription) {
     subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: applicationServerKey(status.public_key),
     });
   }
-  requireSameAccount(generation);
+  requireSameAccount(generation, signal);
   const response = await apiFetch("/api/web-push/subscription", {
-    method: "PUT",
+    method: "PUT", signal,
     headers: accountHeaders(status),
     body: JSON.stringify({
       ...subscription.toJSON(),
@@ -190,25 +205,32 @@ export async function enableGameInvitePush() {
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw apiError(data);
-  requireSameAccount(generation);
+  requireSameAccount(generation, signal);
   return data;
 }
 
-export async function disableGameInvitePush() {
-  // The account-wide opt-out must succeed even if this browser cannot access
-  // its worker or no longer permits local subscription operations.
-  const response = await apiFetch("/api/web-push/subscription", { method: "DELETE" });
+export async function disableGameInvitePush({ signal } = {}) {
+  // The account-wide opt-out also works without a usable browser worker.
+  const generation = accountGeneration;
+  requireSameAccount(generation, signal);
+  const response = await apiFetch("/api/web-push/subscription", { method: "DELETE", signal,
+    headers: accountHeaders(lastPushStatus || { viewer_id: accountId }) });
   const data = await response.json().catch(() => ({}));
+  requireSameAccount(generation, signal);
   if (!response.ok) throw apiError(data);
   try {
     if (canUseWebPush()) {
-      const registration = await pushRegistration();
+      const registration = await pushRegistration({ signal });
       const subscription = await registration?.pushManager.getSubscription();
+      requireSameAccount(generation, signal);
       if (subscription) await subscription.unsubscribe();
     }
-  } catch {
-    // Delivery has already been disabled and all endpoints removed server-side.
+  } catch (error) {
+    requireSameAccount(generation, signal);
+    if (error.code === "web_push_account_changed") throw error;
+    // All server-side endpoints have already been removed.
   }
+  requireSameAccount(generation, signal);
   return data;
 }
 

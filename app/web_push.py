@@ -32,6 +32,7 @@ from .models import PushInviteAllowedSender, User, WebPushSubscription
 from .product_hosts import site_origin, zilch_url
 from .security import as_utc, normalize_username, utcnow
 from .watten_access import watten_founder_account_id, watten_game_preview_enabled, watten_request_enabled
+from .watten_readiness import watten_public_beta_enabled
 
 logger = logging.getLogger(__name__)
 
@@ -42,10 +43,13 @@ GAME_INVITE_PUSH_COOLDOWN_SECONDS = 10 * 60
 GAME_INVITE_PUSH_ACCOUNT_COOLDOWN_SECONDS = 60
 GAME_INVITE_PUSH_SENT_AT_KEY = "_game_invite_push_sent_at"
 PUSH_OPT_IN_PROMPT_INTERVAL = timedelta(days=14)
-# Device presentation metadata is ready before delivery. Watten stays closed
-# until its worker, UI and each notification authority are reviewed together.
+# The rollout flag controls delivery; stored devices remain valid across rollback.
 PUSH_DEVICE_CONTEXTS = frozenset({DEFAULT_GAME_TYPE, ZILCH_GAME_TYPE, HAUSDEPP_GAME_TYPE, WATTEN_GAME_TYPE})
 PUSH_DELIVERY_CONTEXTS = frozenset({DEFAULT_GAME_TYPE, ZILCH_GAME_TYPE, HAUSDEPP_GAME_TYPE})
+def push_delivery_contexts() -> frozenset[str]:
+    return PUSH_DELIVERY_CONTEXTS | {WATTEN_GAME_TYPE} if watten_public_beta_enabled() else PUSH_DELIVERY_CONTEXTS
+
+
 DAILY_REMINDER_START_HOUR = 17
 DAILY_REMINDER_END_HOUR = 21
 DAILY_REMINDER_TIMEZONE = PLAY_DAY_TIMEZONE
@@ -287,14 +291,14 @@ def save_web_push_subscription(
             raise LookupError("user_not_found")
         if context == WATTEN_GAME_TYPE and not user.is_active:
             raise LookupError("user_not_found")
-        if (context == WATTEN_GAME_TYPE and not watten_game_preview_enabled(connection)
+        if (context == WATTEN_GAME_TYPE and not watten_public_beta_enabled(connection) and not watten_game_preview_enabled(connection)
                 and watten_founder_account_id(db) != user_id):
             raise ValueError("web_push_context_unavailable")
         subscription = db.scalar(select(WebPushSubscription).where(WebPushSubscription.endpoint == endpoint))
         if context_is_inferred and subscription is not None and subscription.user_id == user.id:
             if subscription.product_context == WATTEN_GAME_TYPE:
                 raise ValueError("web_push_context_unavailable")
-            if subscription.product_context in PUSH_DELIVERY_CONTEXTS:
+            if subscription.product_context in push_delivery_contexts():
                 # An old client may submit this same worker's endpoint from
                 # shared settings. Its page host must not relabel the device.
                 context = subscription.product_context
@@ -612,7 +616,7 @@ def _hausdepp_push_account_ids(db) -> set[int]:
 def game_invite_push_recipients(game: dict, *, sender_user_id: int | None = None) -> list[StoredSubscription]:
     """Load only opted-in accounts allowed to see this product and not seated."""
     game_type = game_type_from_state(game)
-    if game_type not in PUSH_DELIVERY_CONTEXTS:
+    if game_type not in push_delivery_contexts():
         return []
     if game_type == HAUSDEPP_GAME_TYPE and (type(sender_user_id) is not int or
             open_seat_invitation_error(game, user_id=sender_user_id)):
@@ -633,7 +637,7 @@ def game_invite_push_recipients(game: dict, *, sender_user_id: int | None = None
         query = (select(WebPushSubscription, User)
             .join(User, WebPushSubscription.user_id == User.id)
             .where(User.is_active.is_(True), User.game_invite_push_enabled.is_(True), invitation_sender_allowed(sender_user_id),
-                   WebPushSubscription.product_context.in_(PUSH_DELIVERY_CONTEXTS)))
+                   WebPushSubscription.product_context.in_(push_delivery_contexts())))
         if allowed_ids is not None:
             query = query.where(User.id.in_(allowed_ids))
         rows = db.execute(query).all()
@@ -667,7 +671,7 @@ def _push_failure_status(error: BaseException) -> int | None:
 
 def _send_web_push(subscription: StoredSubscription, payload: dict[str, object], *, ttl: int = 300) -> tuple[bool, bool]:
     """Return (accepted_by_push_service, subscription_expired)."""
-    if subscription.product_context not in PUSH_DELIVERY_CONTEXTS:
+    if subscription.product_context not in push_delivery_contexts():
         return False, False
     config = web_push_config()
     try:

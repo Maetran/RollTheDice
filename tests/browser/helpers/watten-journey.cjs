@@ -100,18 +100,24 @@ async function openCreator(page, { favorite = false } = {}) {
   return form;
 }
 
-async function create(players, { count = players.length, target = 3, reference = false, partnerHand = false, start = true, password, determination, cpuFill = false } = {}) {
+async function create(players, { count = players.length, target = 3, reference = false, partnerHand = false, schoeneres = false, tournament = null, start = true, password, determination, cpuFill = false } = {}) {
   const host = players[0];
   await host.page.goto('/watten');
   const form = await openCreator(host.page);
   await form.locator(`[name=count][value="${count}"] + span`).click();
   if (determination) await form.locator(`[name=determination][value="${determination}"] + span`).click();
+  if (tournament !== null) {
+    const preset = [3, 5, 8, 10, 15, 20].includes(tournament);
+    await form.locator('[name=tournament_target]').selectOption(preset ? String(tournament) : 'custom');
+    if (!preset) await form.locator('[name=tournament_custom]').fill(String(tournament));
+  }
   await form.locator('[name=target]').selectOption(String(target));
   if (partnerHand && await form.locator('[name=blind]').isChecked()) await form.locator('[name=blind]').uncheck();
-  if (reference || partnerHand) {
+  if (reference || partnerHand || schoeneres) {
     await form.locator('[data-watten-advanced] > summary').click();
     if (reference) await form.locator('[name=show_rechter]').check();
     if (partnerHand) await form.locator('[name=partner_hand]').check();
+    if (schoeneres) await form.locator('[name=schoeneres_enabled]').check();
   }
   if (password) await form.locator('[name=password]').fill(password);
   if (cpuFill) await form.locator('[name=cpu_fill]').check();

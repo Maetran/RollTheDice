@@ -39,6 +39,7 @@ from app.watten_runtime import (
     copy_game,
     persist_watten_game,
 )
+from app.watten_tournament import NockerlSeries
 from app.web_push import PUSH_DELIVERY_CONTEXTS, claim_game_invite_push
 from tests import test_watten_runtime as native
 from tests.test_watten_rematch import checkpoints
@@ -114,6 +115,12 @@ def test_pure_admitted_unseated_capacity_and_live_reservations_take_priority_ove
         with pytest.raises(calls.WattenOpenSeatError, match="no_open_seat"):
             calls.eligible_open_seat(unavailable, 1, now=now)
     assert calls.eligible_open_seat(held, 1, now=now + timedelta(seconds=30)) is None
+    for target in (None, 5):
+        locked = replace(room, recipe=replace(room.recipe, tournament_nockerl_target=target),
+                         series=NockerlSeries("locked", ("h:1", "h:2"), (0, 0),
+                                                   target=target, continuation_locked=True))
+        with pytest.raises(calls.WattenOpenSeatError, match="watten_tournament_roster_locked"):
+            calls.eligible_open_seat(locked, 1, now=now)
     for unavailable, code in ((replace(room, recipe=replace(room.recipe, password_required=True)), "private_room"),
                               (replace(room, status="closed"), "not_waiting"),
                               (replace(room, wait_expires_at=now), "not_waiting")):

@@ -8,9 +8,12 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import RedirectResponse, Response
 
 from .auth import resolve_session
+from .product_hosts import is_watten_host
+from .site_seo import PUBLIC_WATTEN_DOCUMENTS
 from .watten_access import require_watten_access, watten_game_preview_enabled, watten_request_enabled
 from .watten_pwa import account_pwa_head
-from .watten_readiness import watten_account_preview_enabled
+from .watten_readiness import watten_account_preview_enabled, watten_public_beta_enabled
+from .watten_seo import public_watten_metadata
 
 router = APIRouter()
 _STATIC = Path(__file__).resolve().parent / "static"
@@ -21,6 +24,8 @@ _GAME_ID = re.compile(r"[0-9a-f]{16}")
 def _require_preview(request: Request) -> None:
     if not watten_request_enabled(request):
         raise HTTPException(status_code=404, detail="game_not_found", headers=_HEADERS)
+    if watten_public_beta_enabled(request):
+        return
     if watten_game_preview_enabled(request):
         if not watten_account_preview_enabled(request):
             raise HTTPException(status_code=404, detail="game_not_found", headers=_HEADERS)
@@ -30,12 +35,26 @@ def _require_preview(request: Request) -> None:
 
 def _page(request: Request, filename: str, page: str, *, game_id: str = "") -> Response:
     _require_preview(request)
+    public = watten_public_beta_enabled(request) and page in {"lobby", "rules"}
+    language = "en" if request.query_params.getlist("lang") == ["en"] else "de"
+    if public:
+        filename = PUBLIC_WATTEN_DOCUMENTS["/watten/regeln" if page == "rules" else "/watten"]
     path = _STATIC / filename
     if not path.is_file():
         raise HTTPException(status_code=503, detail="watten_preview_not_ready", headers=_HEADERS)
     content = path.read_text(encoding="utf-8").replace("{watten_page}", page).replace("{game_id}", game_id)
+    headers = dict(_HEADERS)
+    if public:
+        if page == "rules":
+            rules = (_STATIC / "watten-rules.html").read_text(encoding="utf-8")
+            article = re.search(r'<article lang="' + language + r'".*?</article>', rules, re.DOTALL)
+            content = content.replace("{watten_rules_content}", article.group(0) if article else "")
+        content, canonical = public_watten_metadata(content, page=page, language=language)
+        headers.update({"Content-Language": language, "Link": f'<{canonical}>; rel="canonical"'})
+        if is_watten_host(request):
+            del headers["X-Robots-Tag"]
     return Response(account_pwa_head(content) if watten_account_preview_enabled(request) else content,
-                    media_type="text/html", headers=_HEADERS)
+                    media_type="text/html", headers=headers)
 
 
 def home_page(request: Request) -> Response:

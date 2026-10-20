@@ -20,50 +20,56 @@ visitor-IP trust chain and rollback. Production starts through
 checks the physical Nginx peer before resolving the visitor IP.
 `FORWARDED_ALLOW_IPS` remains restricted to the current Docker gateway.
 
-## Private Watten-Webvorschau / Private Watten web preview
+## Öffentliche Watten-Beta / Public Watten beta
 
-`ROLLTHEDICE_WATTEN_FOUNDER_PREVIEW=0` bleibt der Standard in `.env.example`
-und Docker Compose. Nach vollständiger Prüfung und bewusster Releasefreigabe
-kann der normale Deploymentweg diesen Schalter auf `1` übernehmen. Er öffnet
-ausschliesslich `https://zockdiewandan.online/watten` für das bereits gebundene,
-aktive Founder-Konto aus `account_ownerships`. Anzeigename, Adminrolle und
-delegierte Ownership ersetzen diese unveränderliche Kontobindung nicht. Eine
-fehlende Founder-Bindung oder ein DB-Fehler gewährt keinen Zugriff.
+`ROLLTHEDICE_WATTEN_PUBLIC_BETA=1` schaltet die öffentliche Beta bewusst frei.
+Der Standard bleibt `0`; dann gelten weiterhin die geschlossenen lokalen bzw.
+kontogebundenen Founder-Vorschauen. Die öffentliche Spielauswahl zeigt **Watten
+[BETA]** auch Gästen. Spielen und persönliche Daten benötigen ein normales
+Suite-Konto. Spieltische, Konten, Anmeldung und Wiederherstellung bleiben
+`no-store` und `noindex`.
 
-Die gemeinsame Anmeldung und Kontoverwaltung bleiben auf den vorhandenen
-Suite-Seiten. Die drei bestehenden Produkt-Hosts dürfen nur dem Founder den
-Link auf die Apex-Vorschau zeigen; native Spiel- und Datenrouten akzeptieren
-produktiv nur den einzelnen kanonischen Apex-Host. Doppelte oder gemischte
-Host-Felder, Lookalikes und Forwarding-Header gewähren keine Berechtigung.
-Jede private Seite bleibt `no-store` und `noindex`; Einladungen, Reservierungen
-oder frühere Mitgliedschaft erweitern den Vorschau-Empfängerkreis nicht.
+Die kanonischen öffentlichen Seiten liegen auf
+`https://watten.zockdiewandan.online/watten` und `/watten/regeln`, jeweils mit
+eigener englischer Variante `?lang=en`. Die Subdomain verwendet ihre bestehende,
+separate TLS-Lineage; Cloudflare-Proxy, Origin-Firewall und vertrauenswürdige
+Besucher-IP-Kette bleiben aktiv. `robots.txt` nennt die eigene Sitemap; diese
+enthält nur die vier öffentlichen DE/EN-Seiten. Meta-Titel, Beschreibungen,
+Canonical, hreflang und strukturierte Daten werden serverseitig geliefert.
 
-Der feste Host `watten.zockdiewandan.online` bleibt auf seiner Holding-Seite
-mit gesperrtem Robots-Dokument und fehlender Sitemap. Produktions-Manifeste,
-Worker, Installationsicons, Watten-Signup/-Kontomails und Push-Zustellung werden
-hiermit nicht geöffnet. Geräte-Metadaten dürfen nur für den Founder gespeichert
-werden; die bestehenden drei Push-Zustellprodukte bleiben unverändert. Die
-lokalen Vorschauflags sind weiterhin ausschliesslich für lokale Deployments
-und lokale Requests wirksam. Zur Rücknahme den Founder-Schalter auf `0` setzen
-und den üblichen Container-Neustart ausführen; gespeicherte Partien und XP
-werden dadurch nicht gelöscht oder zurückgesetzt.
+Nach geprüftem Merge über `develop → master` auf dem Origin den Beta-Schalter
+in der vorhandenen `.env` auf `1` setzen und mit
+`ACTIVATE_WATTEN=1 scripts/deploy_zdwa.sh` ausrollen. Nach dem Containerstart
+ersetzt `scripts/activate_watten_public.sh` nur die eigene verwaltete Reservation
+in `/etc/nginx/conf.d/watten-reserved.conf` durch die versionierte öffentliche
+Vhost-Konfiguration. Der Helfer prüft vorher Zertifikat und öffentlichen
+Backend-Zugang, sichert den bisherigen Vhost und stellt ihn bei Fehlern wieder
+her. DNS und Zertifikate werden dabei nicht verändert. Der öffentliche
+Release-Gate prüft danach reales HTTPS, Sicherheit, Metadaten, Sprachseiten,
+Sitemap, Robots, Manifest und Worker vor dem Releasehinweis.
 
-`ROLLTHEDICE_WATTEN_FOUNDER_PREVIEW` defaults to `0`. After the complete checks
-and an explicit release approval, the normal deployment flow may enable only
-the existing immutable founder account's private web preview on the production
-apex. Shared login and account management stay on the existing suite pages.
-Other accounts, administrators and delegated owners gain no access; missing
-ownership or database failures fail closed. The three existing product hosts
-may expose the founder's link, while native gameplay/data accept only the
-canonical apex Host. Forwarded or ambiguous Host values grant nothing.
+Die eigene PWA verwendet `id: /watten`, einen Netzwerk-Worker ohne gespeicherte
+Karten/Kontodaten und eigene Icons einschliesslich Maskenvariante. Nur auf der
+Watten-Subdomain darf der Worker die gesamte installierte Suite-Navigation
+abdecken; lokale und andere Suite-Origins behalten `/watten` als Workergrenze.
+Push-Zustellung ist nur im ausdrücklich freigegebenen Beta-Kontext und mit
+bestehender Geräte-/Kontoeinwilligung möglich. Sprachchat nutzt die vorhandene
+SFU-Konfiguration als einen gemeinsamen Tischkanal.
 
-Private pages remain non-cacheable and non-indexable. The fixed Watten host,
-production installation resources, Watten account email/signup context and
-push delivery stay closed. Stored-only device metadata does not activate a
-delivery product. Local preview flags retain their strict local behavior.
-Disabling the founder switch through the ordinary restart flow revokes this
-preview without deleting checkpoints or progress; an invitation, reservation
-or old membership never grants preview access.
+Rücknahme: die beim Aktivieren ausgegebene Vhost-Sicherung wiederherstellen,
+`nginx -t` prüfen und Nginx neu laden; anschliessend den Beta-Schalter auf `0`
+setzen und den Container über den normalen Weg neu starten. Gespeicherte Spiele,
+Nockerl und Fortschritt werden nicht gelöscht. Der Founder-Schalter kann für
+eine private Apex-Vorschau separat bestehen bleiben.
+
+**English:** Set `ROLLTHEDICE_WATTEN_PUBLIC_BETA=1` deliberately before the normal
+master deployment and use `ACTIVATE_WATTEN=1` for the first public activation.
+The dedicated, already-certified Cloudflare-proxied host serves indexable DE/EN
+lobby and rule pages, its own four-page sitemap, manifest and network-only PWA.
+Accounts and tables stay private. The activation helper validates readiness,
+backs up only its managed vhost and rolls back failed activation; the public
+release gate runs before announcements. Restore that vhost backup and disable
+the beta flag to close access without removing saved game or account data.
 
 ## Entwicklung und Releasebranches
 

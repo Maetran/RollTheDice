@@ -5,6 +5,10 @@ import { escapeHtml as esc } from "../shared/auth.js";
 import { t, cardFace, cardBack, cardName, sortHand, suitName, strikeName, SUITS, STRIKES, isCard } from "./cards.js";
 import { teamName } from "./waiting-room.js";
 import { publicTitleMarkup } from "./match-progress.js";
+import { roundOptionsMarkup, bloedelnCardsMarkup } from "./round-options.js";
+import { retourschneiderChoiceMarkup, createRetourAnnouncement } from "./retourschneider.js";
+import { seriesMarks, seriesTargetMarkup, seriesFinishedTitle } from "./series.js";
+import { createScorepad, nockerlMarksMarkup } from "./scorepad.js";
 
 const POSITIONS = { 2: ["bottom", "top"], 3: ["bottom", "left", "right"], 4: ["bottom", "left", "top", "right"] };
 const FEEDBACK = ["good", "bad", "unsure"];
@@ -90,10 +94,15 @@ function scoreMarkup(vm) {
     const label = vm.count === 4 || vm.count === 2 ? partyLabel(vm, party)
       : own ? t("team.own") : names(score.members.map(id => nameOf(vm, id)));
     const tricks = engine.party_tricks?.[party] ?? 0;
-    return `<li class="wt-score${own ? " is-own" : ""}${won ? " is-winner" : ""}">
+    const seats = engine.seats.filter(seat => score.members.includes(seat.player_id)).map(seat => seat.seat);
+    const marks = seriesMarks(vm.room, seats, engine);
+    const struck = score.points >= engine.target_points - 2;
+    return `<li class="wt-score${own ? " is-own" : ""}${won ? " is-winner" : ""}${struck ? " is-gestrichen" : ""}">
+      <button type="button" class="wt-score-open" data-wt-score-open="${seats.join(",")}" aria-haspopup="dialog" aria-expanded="false" aria-label="${esc(t("scorepad.open", { name: label, points: score.points }) + (marks === null ? "" : ` · ${t("series.marks", { count: marks })}`))}">
       <span class="wt-score-caption"><span class="wt-score-name"${vm.count === 3 && !own ? " translate=\"no\"" : ""}>${esc(label)}</span>
-        <span class="wt-score-tricks">${esc(t(tricks === 1 ? "score.trick" : "score.tricks", { count: tricks }))}</span></span>
-      <strong class="wt-score-points" aria-label="${esc(t("score.aria", { points: score.points, target: engine.target_points }))}">${score.points}</strong>
+        <span class="wt-score-tricks">${esc(t(tricks === 1 ? "score.trick" : "score.tricks", { count: tricks }))}</span>
+        ${nockerlMarksMarkup(marks)}</span>
+      <strong class="wt-score-points" aria-label="${esc(t("score.aria", { points: score.points, target: engine.target_points }))}">${score.points}</strong></button>
     </li>`;
   }).join("");
 }
@@ -105,6 +114,9 @@ function seatBadge(vm, seat) {
   const own = seat === vm.viewerSeat;
   const solo = vm.count === 3 && partyMembers(engine, info.party).length === 1;
   const awaited = vm.awaited.includes(info.player_id);
+  const strikeSeat = engine.announcement_roles?.strike;
+  const colourSeat = engine.announcement_roles?.colour;
+  const roles = [seat === strikeSeat ? t("inspection.strike") : "", seat === colourSeat ? t("inspection.colour") : ""].filter(Boolean);
   const tags = [
     own ? t("seat.you") : "",
     vm.room.seats[seat]?.is_cpu ? t("seat.cpu") : "",
@@ -114,12 +126,16 @@ function seatBadge(vm, seat) {
   ].filter(Boolean);
   const turn = engine.card_turn === seat && !engine.bid.pending;
   const decider = engine.bid.pending?.decider === info.player_id;
-  const thanks = engine.transcript?.some(item => item.kind === "watten_thanks" && item.seat === seat);
+  const thanks = !engine.last_trick && engine.transcript?.some(item => item.kind === "watten_thanks" && item.seat === seat);
   const name = seatName(vm, seat);
   const initial = Array.from(name.trim())[0] || "?";
+  const tricks = Math.max(0, Math.min(5, Number.isInteger(info.tricks_won) ? info.tricks_won : 0));
+  const trickLabel = t(tricks === 1 ? "score.trick" : "score.tricks", { count: tricks });
   return { position, own, turn, decider, awaited, count: Math.max(0, Math.min(5, info.card_count)),
     badge: `<span class="wt-avatar" aria-hidden="true">${esc(initial.toLocaleUpperCase())}</span>
-    <span class="wt-seat-name" translate="no" title="${esc(name)}">${esc(name)}</span>
+    <span class="wt-seat-name-row"><span class="wt-seat-name" translate="no" title="${esc(name)}">${esc(name)}</span>
+      <span class="wt-taken" data-wt-catch="${seat}" data-count="${tricks}" data-filled="${tricks > 0}" role="img" aria-label="${esc(trickLabel)}" title="${esc(trickLabel)}" ${tricks ? "" : "hidden"}>${Array.from({ length: tricks }, () => '<span class="wt-taken-packet" aria-hidden="true"><i></i><i></i><i></i></span>').join("")}</span></span>
+    ${roles.length ? `<span class="wt-seat-call-role">${roles.map(esc).join(" · ")}</span>` : ""}
     ${publicTitleMarkup(vm.room.seats[seat]?.public_title, {
       language: window.ZDWA_I18N?.getLanguage?.(), escapeHtml: esc,
     })}
@@ -131,11 +147,165 @@ function seatBadge(vm, seat) {
 
 function inspectionMarkup(vm) {
   const cards = vm.engine.inspection?.cards || [];
+  // These public roles identify the source seats, never an additional card.
+  const strikeSeat = vm.engine.announcement_roles?.strike;
+  const colourSeat = vm.engine.announcement_roles?.colour;
   return `<div class="wt-inspection" data-watten-inspection role="group" aria-labelledby="wattenInspectionTitle">
     <h3 id="wattenInspectionTitle" class="wt-visually-hidden">${esc(t("inspection.title"))}</h3>
-    <div class="wt-inspection-cards">${cards.map(item => `<figure class="wt-reveal-card wt-reveal-card--${item.role}">${cardFace(item.card)}<figcaption>${esc(t(item.role === "strike" ? "inspection.strike" : "inspection.colour"))}</figcaption></figure>`).join("")}</div>
+    <div class="wt-inspection-cards">${cards.map(item => `<figure class="wt-reveal-card wt-reveal-card--${item.role}" data-wt-inspection-seat="${item.role === "strike" ? strikeSeat : colourSeat}">${cardFace(item.card)}<figcaption>${esc(t(item.role === "strike" ? "inspection.strike" : "inspection.colour"))}</figcaption></figure>`).join("")}</div>
     ${button(t("inspection.ack"), `data-watten-command="engine" data-kind="inspection_ack" data-watten-action="inspection_ack"`, { disabled: vm.busy, className: "wt-primary" })}
   </div>`;
+}
+
+function createInspectionMotion(reveal, seatNodes) {
+  const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)");
+  const centre = rect => ({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
+  const clamp = (value, min, max) => max < min ? (min + max) / 2 : Math.max(min, Math.min(value, max));
+  const overlaps = (a, b) => a.left < b.right + 4 && a.right > b.left - 4 && a.top < b.bottom + 4 && a.bottom > b.top - 4;
+  let key = "", playedKey = "", figures = [], observer = null, flights = [], geometry = "", frame = 0;
+  let viewerSeat = null, lastHandOrigin = null;
+  const settle = () => { flights.forEach(flight => flight.cancel()); flights = []; };
+  const stop = () => {
+    settle(); observer?.disconnect(); observer = null;
+    cancelAnimationFrame(frame); frame = 0;
+    key = ""; figures = []; geometry = "";
+    delete reveal.dataset.wtInspectionPositioned;
+  };
+
+  function position() {
+    if (!reveal.isConnected || figures.length !== 2 || !figures.every(figure => figure.isConnected)) { stop(); return; }
+    const felt = reveal.parentElement, bounds = felt.getBoundingClientRect();
+    if (!bounds.width || !bounds.height) return;
+    const ownHand = felt.closest(".wt-table")?.querySelector(".wt-hand-area:not([hidden]) .wt-hand");
+    const handBounds = ownHand?.getBoundingClientRect();
+    if (handBounds?.width && handBounds?.height) {
+      const point = centre(handBounds);
+      lastHandOrigin = { x: (point.x - bounds.left) / bounds.width, y: (point.y - bounds.top) / bounds.height };
+    }
+    const origins = figures.map(figure => {
+      const seat = Number(figure.dataset.wtInspectionSeat), player = seatNodes.get(seat);
+      if (seat === viewerSeat) return {
+        x: clamp((lastHandOrigin?.x ?? .5) * bounds.width, 20, bounds.width - 20),
+        y: clamp((lastHandOrigin?.y ?? .9) * bounds.height, 20, bounds.height - 20),
+      };
+      const fan = player?.querySelector(".wt-backs:not([hidden])");
+      const fanBounds = fan?.getBoundingClientRect();
+      const source = fanBounds?.width && fanBounds?.height ? fanBounds : player?.querySelector(".wt-avatar")?.getBoundingClientRect();
+      if (!source) return null;
+      const point = centre(source);
+      return { x: point.x - bounds.left, y: point.y - bounds.top };
+    });
+    if (origins.some(origin => !origin)) return;
+    const delta = { x: origins[1].x - origins[0].x, y: origins[1].y - origins[0].y };
+    const distance = Math.hypot(delta.x, delta.y) || 1;
+    const unit = { x: delta.x / distance, y: delta.y / distance };
+    const angle = Math.atan2(unit.y, unit.x) * 180 / Math.PI + 90;
+    const cards = figures.map(figure => figure.querySelector(".wt-card"));
+    const captions = figures.map(figure => figure.querySelector("figcaption"));
+    const ack = reveal.querySelector('[data-kind="inspection_ack"]');
+    if (!ack) return;
+    const hand = felt.closest(".wt-table")?.querySelector(".wt-hand-area:not([hidden])")?.getBoundingClientRect();
+    const region = { left: 10, top: 10, right: bounds.width - 10,
+      bottom: Math.min(bounds.height - 10, hand?.height ? hand.top - bounds.top - 12 : bounds.height - 10) };
+    cards.forEach(card => card.style.removeProperty("width"));
+    const baseWidths = cards.map(card => card.offsetWidth);
+    const labelSizes = captions.map(caption => ({ width: caption.offsetWidth, height: caption.offsetHeight }));
+    const ackSize = { width: ack.offsetWidth, height: ack.offsetHeight };
+    function arrangement(scale) {
+      cards.forEach((card, index) => { card.style.width = `${baseWidths[index] * scale}px`; });
+      const poses = cards.map((card, index) => {
+        const width = card.offsetWidth, height = card.offsetHeight, rotation = angle + index * 180;
+        const radians = rotation * Math.PI / 180, direction = index ? 1 : -1;
+        const x = direction * unit.x * (height / 2 + 2), y = direction * unit.y * (height / 2 + 2);
+        const extentX = (Math.abs(Math.cos(radians)) * width + Math.abs(Math.sin(radians)) * height) / 2;
+        const extentY = (Math.abs(Math.sin(radians)) * width + Math.abs(Math.cos(radians)) * height) / 2;
+        return { x, y, width, height, rotation, left: x - extentX, right: x + extentX, top: y - extentY, bottom: y + extentY };
+      });
+      let labels = poses.map((pose, index) => ({ x: pose.x, top: pose.bottom + 8,
+        left: pose.x - labelSizes[index].width / 2, right: pose.x + labelSizes[index].width / 2,
+        bottom: pose.bottom + 8 + labelSizes[index].height }));
+      // Below an upper vertical card is the other face, so move both captions
+      // below the pair rather than covering it. Captions never rotate.
+      if (labels.some((label, index) => overlaps(label, poses[1 - index])) || overlaps(labels[0], labels[1])) {
+        const top = Math.max(...poses.map(pose => pose.bottom)) + 8;
+        const total = labelSizes[0].width + labelSizes[1].width + 8;
+        labels = labelSizes.map((size, index) => {
+          const left = -total / 2 + (index ? labelSizes[0].width + 8 : 0);
+          return { x: left + size.width / 2, top, left, right: left + size.width, bottom: top + size.height };
+        });
+      }
+      const ackTop = Math.max(...labels.map(label => label.bottom), ...poses.map(pose => pose.bottom)) + 12;
+      const left = Math.min(...poses.map(pose => pose.left), ...labels.map(label => label.left), -ackSize.width / 2);
+      const right = Math.max(...poses.map(pose => pose.right), ...labels.map(label => label.right), ackSize.width / 2);
+      const top = Math.min(...poses.map(pose => pose.top)), bottom = ackTop + ackSize.height;
+      return { poses, labels, ackTop, left, right, top, bottom, width: right - left, height: bottom - top };
+    }
+    let arranged = arrangement(1);
+    const fits = value => value.width <= region.right - region.left && value.height <= region.bottom - region.top;
+    if (!fits(arranged)) {
+      let low = .25, high = 1;
+      for (let step = 0; step < 8; step += 1) {
+        const middle = (low + high) / 2;
+        if (fits(arrangement(middle))) low = middle; else high = middle;
+      }
+      arranged = arrangement(low);
+    }
+    const midpoint = {
+      x: clamp((origins[0].x + origins[1].x) / 2, region.left - arranged.left, region.right - arranged.right),
+      y: clamp((origins[0].y + origins[1].y) / 2, region.top - arranged.top, region.bottom - arranged.bottom),
+    };
+    arranged.poses.forEach((pose, index) => {
+      const figure = figures[index], card = cards[index], caption = captions[index], label = arranged.labels[index];
+      figure.style.left = `${midpoint.x + pose.x}px`; figure.style.top = `${midpoint.y + pose.y}px`;
+      card.style.left = `${-pose.width / 2}px`; card.style.top = `${-pose.height / 2}px`; card.style.rotate = `${pose.rotation}deg`;
+      caption.style.left = `${label.x - pose.x}px`; caption.style.top = `${label.top - pose.y}px`;
+    });
+    ack.style.left = `${midpoint.x}px`; ack.style.top = `${midpoint.y + arranged.ackTop}px`;
+    reveal.dataset.wtInspectionPositioned = "true";
+    geometry = [bounds.width, bounds.height].join(":");
+    if (playedKey === key || document.hidden) return;
+    if (reduced?.matches || cards.some(card => typeof card.animate !== "function")) { playedKey = key; return; }
+    playedKey = key;
+    flights = cards.map((card, index) => card.animate([
+      { translate: `${origins[index].x - midpoint.x - arranged.poses[index].x}px ${origins[index].y - midpoint.y - arranged.poses[index].y}px` },
+      { translate: "0 0" },
+    ], { duration: 1500, easing: "cubic-bezier(.22,.65,.25,1)", fill: "backwards" }));
+  }
+  const schedule = () => { cancelAnimationFrame(frame); frame = requestAnimationFrame(() => { frame = 0; position(); }); };
+  const visibilityChanged = () => { if (document.hidden) settle(); else if (key && playedKey !== key) schedule(); };
+  const preferenceChanged = () => { settle(); if (key) schedule(); };
+  document.addEventListener("visibilitychange", visibilityChanged);
+  reduced?.addEventListener?.("change", preferenceChanged);
+
+  const update = vm => {
+    viewerSeat = vm.spectator ? null : vm.viewerSeat;
+    const feltBounds = reveal.parentElement.getBoundingClientRect();
+    const handBounds = reveal.closest(".wt-table")?.querySelector(".wt-hand-area:not([hidden]) .wt-hand")?.getBoundingClientRect();
+    if (feltBounds.width && feltBounds.height && handBounds?.width && handBounds?.height) {
+      const point = centre(handBounds);
+      lastHandOrigin = { x: (point.x - feltBounds.left) / feltBounds.width, y: (point.y - feltBounds.top) / feltBounds.height };
+    }
+    const nextFigures = [...reveal.querySelectorAll("[data-wt-inspection-seat]")];
+    if (!nextFigures.length) { stop(); return; }
+    const nextKey = `${vm.engine.deal_id}:${vm.engine.deal_revision ?? 0}`;
+    if (key === nextKey && figures.every((figure, index) => figure === nextFigures[index])) return;
+    settle(); observer?.disconnect();
+    figures = nextFigures; key = nextKey;
+    schedule();
+    if (typeof ResizeObserver !== "function") return;
+    observer = new ResizeObserver(() => {
+      if (!reveal.isConnected) { stop(); return; }
+      const bounds = reveal.parentElement.getBoundingClientRect();
+      if (geometry !== [bounds.width, bounds.height].join(":")) { settle(); schedule(); }
+    });
+    observer.observe(reveal.parentElement);
+  };
+  update.destroy = () => {
+    stop(); playedKey = "";
+    document.removeEventListener("visibilitychange", visibilityChanged);
+    reduced?.removeEventListener?.("change", preferenceChanged);
+  };
+  return update;
 }
 
 function bidMarkup(vm) {
@@ -162,21 +332,34 @@ function resultMarkup(vm) {
   return `<p class="wt-result-line">${esc(t(result.reason === "go" ? "result.go" : "result.tricks", { names: winners, points: result.points }))}</p>`;
 }
 
+function roundSummaryMarkup(vm) {
+  const summary = vm.engine.round_summary;
+  if (!summary || !["deal_complete", "match_complete"].includes(vm.engine.phase)) return "";
+  return `<section class="wt-round-call" data-watten-round-call aria-label="${esc(t("round.call"))}">
+    <dl><div><dt>${esc(t("inspection.strike"))}</dt><dd>${esc(strikeName(summary.strike_rank))}</dd></div>
+      <div><dt>${esc(t("inspection.colour"))}</dt><dd>${esc(suitName(summary.trump_suit))}</dd></div></dl>
+    <figure>${isCard(summary.rechter) ? cardFace(summary.rechter, { className: "wt-card--mini" }) : ""}
+      <figcaption>${esc(t(isCard(summary.rechter) ? "reference.label" : "round.noRechter"))}</figcaption></figure>
+  </section>`;
+}
+
 function panelMarkup(vm) {
   const engine = vm.engine, actions = vm.actions;
   const phase = engine.phase;
   if (phase === "match_complete") {
     const winners = engine.winners.flat().map(id => nameOf(vm, id));
     const mine = engine.winners.some(group => group.includes(vm.playerId));
-    return `<div class="wt-final" data-watten-match-result>
-      <h3>${esc(mine ? t("match.youWon") : t("match.over"))}</h3>
-      ${resultMarkup(vm)}
-      ${(engine.nockerl || []).map(item => `<p class="wt-nockerl">${esc(t(`nockerl.${item.reason}`, { names: names(item.members.map(id => nameOf(vm, id))), count: item.count }))}</p>`).join("")}
-      <p><strong translate="no">${esc(winners.join(", "))}</strong> · ${esc(t("match.winners", { count: winners.length }))}</p>
-      <p class="wt-note">${esc(vm.snapshot.result_persisted ? t("match.saved") : t("match.saving"))}</p>
+    return `<div class="wt-final" data-watten-match-result data-outcome="${vm.spectator ? "neutral" : mine ? "won" : "lost"}">
+      <h3 class="wt-final-heading">${esc(seriesFinishedTitle(vm) || t(vm.spectator ? "match.over" : mine ? "match.youWon" : "match.youLost"))}</h3>
+      <p class="wt-final-winner">${esc(t("match.wonBy", { names: names(winners) }))}</p>
+      ${(engine.nockerl || []).map(item => `<p class="wt-final-award" data-loss-kind="${esc(item.reason)}">
+        ${item.reason === "loss" ? "" : `<strong>${esc(t(`match.lossType.${item.reason}`))}</strong> · `}${esc(t("match.awarded", { count: item.count, names: names(item.members.map(id => nameOf(vm, id))) }))}
+      </p>`).join("")}
+      <p class="wt-visually-hidden" role="status">${esc(vm.snapshot.result_persisted ? t("match.saved") : t("match.saving"))}</p>
+      ${engine.round_summary ? `<details class="wt-final-call"><summary>${esc(t("round.call"))}</summary>${roundSummaryMarkup(vm)}</details>` : ""}
       <div data-watten-match-progress hidden></div>
-      <a class="wt-button" href="/watten/konto/fortschritt">${esc(t("nav.progress"))}</a>
-      <a class="wt-button" href="/watten">${esc(t("nav.lobby"))}</a>
+      <div class="wt-final-actions"><a class="wt-button" href="/watten">${esc(t("match.toLobby"))}</a>
+        <a class="wt-button wt-button-secondary wt-final-progress" href="/watten/konto/fortschritt">${esc(t("nav.progress"))}</a></div>
     </div>`;
   }
   if (vm.paused) {
@@ -192,8 +375,8 @@ function panelMarkup(vm) {
   if (phase === "deal_complete") {
     return `<div class="wt-deal-result" data-watten-deal-result>
       <h3>${esc(t("deal.over"))}</h3>${resultMarkup(vm)}
-      ${engine.retourschneider?.status === "available" ? `<div class="wt-retour"><h3>${esc(t("retour.title"))}</h3><p>${esc(t("retour.offer"))}</p>
-        ${actions.includes("retourschneider") ? `<div class="wt-choice-row">${button(t("retour.accept"), `data-watten-command="engine" data-kind="retourschneider" data-value="accept"`, { disabled: vm.busy, className: "wt-primary" })}${button(t("retour.decline"), `data-watten-command="engine" data-kind="retourschneider" data-value="decline"`, { disabled: vm.busy })}</div>` : `<p>${esc(t("retour.waiting", { name: nameOf(vm, engine.retourschneider.decider) }))}</p>`}</div>` : vm.isHost && !vm.spectator ? button(t("deal.next"), `data-watten-command="next-deal" data-watten-action="next_deal"`, { disabled: vm.busy, className: "wt-primary" })
+      ${roundSummaryMarkup(vm)}
+      ${engine.retourschneider?.status === "available" ? retourschneiderChoiceMarkup(vm) : vm.isHost && !vm.spectator ? button(t("deal.next"), `data-watten-command="next-deal" data-watten-action="next_deal"`, { disabled: vm.busy, className: "wt-primary" })
         : `<p class="wt-note">${esc(t("deal.waitHost", { name: nameOf(vm, vm.room.host_participant_id) }))}</p>`}
     </div>`;
   }
@@ -250,11 +433,15 @@ function privateMarkup(vm) {
   return parts.join("");
 }
 
-function historyMarkup(vm) {
-  const history = Array.isArray(vm.engine.trick_history) ? vm.engine.trick_history
-    : vm.engine.last_trick ? [vm.engine.last_trick] : [];
-  if (!history.length) return "";
-  return `<summary>${esc(t(Array.isArray(vm.engine.trick_history) ? "history.title" : "history.last", { count: history.length }))}</summary>${history.length ? `<ol class="wt-history">${history.map(trick => `
+function historyMarkup(vm, pinned) {
+  const history = (Array.isArray(vm.engine.trick_history) ? vm.engine.trick_history
+    : vm.engine.last_trick ? [vm.engine.last_trick] : []).slice(-5);
+  const finished = ["deal_complete", "match_complete"].includes(vm.engine.phase);
+  if (!history.length && !finished) return "";
+  return `<summary>${esc(t(finished ? "history.round" : Array.isArray(vm.engine.trick_history) ? "history.title" : "history.last", { count: history.length }))}</summary>
+    <button type="button" class="wt-history-close" data-wt-history-close aria-label="${esc(t("history.close"))}" title="${esc(t("history.close"))}"><span aria-hidden="true">×</span></button>
+    <label class="wt-history-pin"><input type="checkbox" data-wt-history-pin ${pinned ? "checked" : ""}>${esc(t("history.pin"))}</label>
+    ${history.length ? `<ol class="wt-history">${history.map(trick => `
     <li data-wt-trick-team="${trickRelation(vm, trick.winner)}"><div class="wt-mini-cards">${trick.cards.map(item => `<figure class="${item.seat === trick.winner ? "is-winning-card" : ""}">${cardFace(item.card, { className: "wt-card--mini" })}<figcaption translate="no">${esc(seatName(vm, item.seat))}</figcaption></figure>`).join("")}</div>
       <span>${esc(t("history.winner", { name: seatName(vm, trick.winner) }))}</span></li>`).join("")}</ol>` : `<p class="wt-note">${esc(t("history.empty"))}</p>`}`;
 }
@@ -268,7 +455,7 @@ function referenceMarkup(vm) {
   return `<figure class="wt-reference" data-watten-reference>${face}<figcaption>${esc(t("reference.label"))}</figcaption></figure>`;
 }
 
-export function createTableView(container, { onCard }) {
+export function createTableView(container, { onCard, accountId = null }) {
   document.documentElement.dataset.wattenActive = "true";
   container.innerHTML = `<section class="wt-table" data-wt-table aria-labelledby="wattenTableTitle">
     <h2 id="wattenTableTitle" class="wt-visually-hidden" data-wt-title></h2>
@@ -282,6 +469,7 @@ export function createTableView(container, { onCard }) {
       <div class="wt-seats" data-wt-seats></div>
       <div class="wt-centre">
         <div data-wt-reference></div>
+        <div data-wt-bloedeln></div>
         <div class="wt-trick" data-wt-trick role="group" aria-label="${esc(t("trick.current"))}"></div>
         <p class="wt-trick-label" data-wt-trick-label></p>
         <div class="wt-bubbles" data-wt-bubbles></div>
@@ -291,25 +479,65 @@ export function createTableView(container, { onCard }) {
       <div class="wt-private" data-wt-private></div>
       <details class="wt-history-box" data-wt-history hidden></details>
       <div class="wt-panel" data-wt-panel role="region" aria-label="${esc(t("panel.label"))}"></div>
+      <div class="wt-stake" data-wt-stake></div>
       <div data-watten-rematch hidden></div>
     </div>
     <div class="wt-hand-area" data-wt-hand-area>
       <div class="wt-hand" data-wt-hand role="group" aria-label="${esc(t("hand.label"))}"></div>
     </div>
     <p class="wt-visually-hidden" data-wt-live aria-live="polite"></p>
+    <div class="wt-retour-announcement" data-wt-retour-announcement aria-hidden="true" hidden></div>
+    <p class="wt-visually-hidden" data-wt-retour-live aria-live="polite" aria-atomic="true"></p>
   </section>`;
   const $ = selector => container.querySelector(selector);
   const elements = {
     reveal: $("[data-wt-reveal]"), title: $("[data-wt-title]"), scores: $("[data-wt-scores]"), tools: $("[data-wt-tools]"), seats: $("[data-wt-seats]"),
-    reference: $("[data-wt-reference]"), trick: $("[data-wt-trick]"), trickLabel: $("[data-wt-trick-label]"),
+    reference: $("[data-wt-reference]"), bloedeln: $("[data-wt-bloedeln]"), trick: $("[data-wt-trick]"), trickLabel: $("[data-wt-trick-label]"),
     bubbles: $("[data-wt-bubbles]"), panel: $("[data-wt-panel]"), private: $("[data-wt-private]"),
-    hand: $("[data-wt-hand]"), handArea: $("[data-wt-hand-area]"), history: $("[data-wt-history]"), live: $("[data-wt-live]"),
+    hand: $("[data-wt-hand]"), handArea: $("[data-wt-hand-area]"), history: $("[data-wt-history]"), live: $("[data-wt-live]"), stake: $("[data-wt-stake]"), retour: $("[data-wt-retour-announcement]"),
   };
   const handNodes = new Map();
   const trickNodes = new Map();
   const seatNodes = new Map();
+  const positionInspection = createInspectionMotion(elements.reveal, seatNodes);
+  const retourAnnouncement = createRetourAnnouncement(elements.retour, { accountId, liveNode: $("[data-wt-retour-live]") });
+  const scorepad = createScorepad(elements.scores);
   const signatures = {};
   let layout = 0, pressed = null, lastLive = "";
+  const pinKey = accountId ? `watten:history-pinned:${accountId}` : null;
+  let historyPinned = false;
+  try { historyPinned = Boolean(pinKey && localStorage.getItem(pinKey) === "true"); } catch { /* Optional local display preference. */ }
+  function setHistoryPinned(value) {
+    historyPinned = value;
+    elements.history.dataset.pinned = String(value);
+    const input = elements.history.querySelector("[data-wt-history-pin]");
+    if (input) input.checked = value;
+    try { if (pinKey) localStorage.setItem(pinKey, String(value)); } catch { /* Session-only fallback. */ }
+  }
+  function closeHistory() {
+    setHistoryPinned(false);
+    elements.history.open = false;
+  }
+  const outsideHistory = event => {
+    if (elements.history.open && !historyPinned && !elements.history.contains(event.target)) elements.history.open = false;
+  };
+  document.addEventListener("pointerdown", outsideHistory, { passive: true });
+  elements.history.addEventListener("click", event => {
+    if (event.target.closest("[data-wt-history-close]")) closeHistory();
+  });
+  elements.history.addEventListener("keydown", event => {
+    if (event.key !== "Escape" || !elements.history.open) return;
+    closeHistory();
+    elements.history.querySelector("summary")?.focus({ preventScroll: true });
+  });
+  elements.history.addEventListener("change", event => {
+    if (!event.target.matches("[data-wt-history-pin]")) return;
+    setHistoryPinned(event.target.checked);
+    if (historyPinned) elements.history.open = true;
+  });
+  elements.history.addEventListener("toggle", () => {
+    if (!elements.history.open && historyPinned) setHistoryPinned(false);
+  });
 
   // Only a press that started on this exact card in the current layout can
   // play it. A reflow after the previous play cannot hand a tap to its neighbour.
@@ -340,6 +568,10 @@ export function createTableView(container, { onCard }) {
   function renderHand(vm) {
     const hand = vm.engine.hand ? sortHand(vm.engine.hand) : [];
     const playable = vm.actions.includes("play_card") && !vm.busy;
+    // This is an explicit public forced card after both Blödeln consents. Other
+    // legality (trump, strike, bids) stays entirely with the engine.
+    const forced = !vm.engine.last_trick
+      ? vm.engine.preplay?.bloedeln_cards?.find(item => item.seat === vm.viewerSeat)?.card : null;
     elements.handArea.hidden = !hand.some(item => isCard(item.card));
     const keys = hand.map((item, index) => isCard(item.card) ? item.card : `back-${index}`);
     let changed = false;
@@ -373,8 +605,9 @@ export function createTableView(container, { onCard }) {
       if (elements.hand.children[index] !== node) elements.hand.insertBefore(node, elements.hand.children[index] || null);
       node.style.setProperty("--i", String(index));
       if (node.tagName === "BUTTON") {
-        node.disabled = !playable;
-        node.dataset.wattenPlayable = String(playable);
+        const enabled = playable && (!forced || card === forced);
+        node.disabled = !enabled;
+        node.dataset.wattenPlayable = String(enabled);
       }
     });
     elements.hand.style.setProperty("--count", String(Math.max(1, keys.length)));
@@ -393,8 +626,7 @@ export function createTableView(container, { onCard }) {
         node = document.createElement("div");
         node.dataset.wtSeat = String(seat);
         node.innerHTML = `<div class="wt-seat-badge"></div>
-          <span class="wt-backs" data-key="seat-${seat}" aria-hidden="true">${Array.from({ length: 5 }, (_, index) => `<i style="--i:${index}" hidden></i>`).join("")}</span>
-          <span class="wt-taken" data-wt-catch="${seat}" aria-hidden="true"><i></i><i></i><i></i></span>`;
+          <span class="wt-backs" data-key="seat-${seat}" aria-hidden="true">${Array.from({ length: 5 }, (_, index) => `<i style="--i:${index}" hidden></i>`).join("")}</span>`;
         seatNodes.set(seat, node);
         elements.seats.append(node);
       }
@@ -404,7 +636,6 @@ export function createTableView(container, { onCard }) {
       backs.hidden = data.own;
       backs.style.setProperty("--count", String(Math.max(1, data.count)));
       [...backs.children].forEach((back, index) => { back.hidden = data.own || index >= data.count; });
-      node.querySelector(".wt-taken").dataset.filled = String(vm.engine.last_trick?.winner === seat);
     }
   }
 
@@ -454,30 +685,39 @@ export function createTableView(container, { onCard }) {
     container.querySelector("[data-wt-table]").dataset.viewer = vm.spectator ? "spectator" : "player";
     const canBid = vm.actions.includes("bid");
     const stake = vm.engine.bid.pending?.points ?? vm.engine.bid.accepted_stake;
-    patch(elements.scores, "scores", scoreMarkup(vm) + `<li class="wt-target">${esc(t("score.target", { target: vm.engine.target_points }))}</li>
-      <li class="wt-stake" data-points="${stake}"><button type="button" ${canBid ? 'data-watten-command="engine" data-kind="bid" data-watten-action="bid"' : ""}
-        ${!canBid || vm.busy ? "disabled" : ""} aria-label="${esc(t(canBid ? "bid.tapOffer" : "bid.stake", { points: stake }))}">
-        <span>${esc(t(vm.engine.bid.pending ? "bid.offered" : "bid.running"))}</span><strong>${stake}</strong>${canBid ? '<span aria-hidden="true">＋</span>' : ""}</button></li>
+    patch(elements.scores, "scores", scoreMarkup(vm) + `<li class="wt-target">${esc(t("score.target", { target: vm.engine.target_points }))}</li>${seriesTargetMarkup(vm.room)}
       ${vm.engine.retourschneider?.status === "active" ? `<li class="wt-retour-tag">${esc(t("retour.active"))}</li>` : ""}`);
+    scorepad.update(vm);
+    patch(elements.stake, "stake", `<button type="button" ${canBid ? 'data-watten-command="engine" data-kind="bid" data-watten-action="bid"' : ""}
+        ${!canBid || vm.busy ? "disabled" : ""} aria-label="${esc(t(canBid ? "bid.tapOffer" : "bid.stake", { points: stake }))}">
+        <span>${esc(t(vm.engine.bid.pending ? "bid.offered" : "bid.running"))}</span><strong>${stake}</strong>${canBid ? `<span class="wt-stake-action">${esc(t("bid.raise"))} ＋</span>` : ""}</button>`);
+    elements.stake.dataset.points = String(stake);
+    elements.stake.hidden = !["play", "bid_response"].includes(vm.engine.phase);
     patch(elements.tools, "tools", vm.canLeave
       ? button(t("leave.short"), `data-watten-command="leave-match" data-watten-action="leave" aria-label="${esc(t("leave.button"))}"`, { disabled: vm.busy, className: "wt-button--ghost wt-button--small" })
       : vm.spectator ? `<span class="wt-tag">${esc(t("spectator.kicker"))}</span>` : "");
     renderSeats(vm);
     patch(elements.reference, "reference", referenceMarkup(vm));
+    patch(elements.bloedeln, "bloedeln", bloedelnCardsMarkup(vm));
     patch(elements.reveal, "reveal", vm.engine.inspection && vm.actions.includes("inspection_ack") ? inspectionMarkup(vm) : "");
-    patch(elements.panel, "panel", panelMarkup(vm));
+    const roundOptions = roundOptionsMarkup(vm);
+    patch(elements.panel, "panel", !vm.paused && vm.engine.preplay?.pending ? roundOptions : panelMarkup(vm) + roundOptions);
     patch(elements.private, "private", privateMarkup(vm));
     const feedbackDialog = elements.private.querySelector("[data-watten-feedback-dialog]");
     if (feedbackDialog && !feedbackDialog.open && typeof feedbackDialog.showModal === "function") feedbackDialog.showModal();
     patch(elements.bubbles, "bubbles", vm.bubbles.map(bubble =>
       `<span class="wt-bubble wt-bubble--${seatPosition(bubble.seat, vm.anchorSeat, vm.count)}" data-watten-call>${esc(bubble.text)}</span>`).join(""));
-    const history = historyMarkup(vm);
+    const history = historyMarkup(vm, historyPinned);
     elements.history.hidden = !history;
     patch(elements.history, "history", history);
+    elements.history.dataset.pinned = String(historyPinned);
+    if (history && historyPinned) elements.history.open = true;
     elements.handArea.hidden = vm.spectator;
     container.querySelector("[data-wt-table]").dataset.playable = String(vm.actions.includes("play_card"));
     const hand = vm.spectator ? { created: [], nodes: [] } : renderHand(vm);
+    positionInspection(vm);
     const trick = renderTrick(vm);
+    retourAnnouncement.update(vm);
     const live = vm.liveMessage || "";
     if (live !== lastLive) elements.live.textContent = live;
     lastLive = live;
@@ -493,7 +733,7 @@ export function createTableView(container, { onCard }) {
     return elements.seats.querySelector(`[data-wt-seat="${seat}"]`);
   }
 
-  return { update, motionSources, seatNode, trickNode: () => elements.trick,
+  return { update, destroy() { document.removeEventListener("pointerdown", outsideHistory); positionInspection.destroy(); retourAnnouncement.destroy(); scorepad.destroy(); }, motionSources, seatNode, trickNode: () => elements.trick,
     deckNode: () => $("[data-wt-deck]"), collectionNode: seat => elements.seats.querySelector(`[data-wt-catch="${seat}"]`),
     backNodes: () => [...elements.seats.querySelectorAll(".wt-backs:not([hidden]) > i:not([hidden])")] };
 }

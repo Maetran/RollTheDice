@@ -192,7 +192,6 @@ html[data-watten-active="true"] :is([data-watten-social-action="toggle"], [data-
 html[data-watten-active="true"] [data-watten-social-action="toggle"]::before { content: "💬"; font-size: 21px; }
 html[data-watten-active="true"] [data-watten-decor-action="toggle"]::before { content: "✦"; font-size: 26px; }
 html[data-watten-active="true"] [data-watten-command="leave-match"]::before { content: "↗"; font-size: 26px; }
-html[data-watten-active="true"] [data-watten-decor-panel]:not([hidden]) { position: fixed; z-index: 35; inset: 104px 12px 12px auto; width: min(420px, calc(100vw - 24px)); padding: 16px; overflow: auto; border: 1px solid #bd976c; border-radius: 12px; background: #fff1df; box-shadow: 0 8px 30px #4e291f55; }
 html[data-watten-active="true"] [data-watten-social]:has([data-watten-social-drawer]:not([hidden])) { z-index: 40; }
 html[data-watten-active="true"] .wt-social-drawer { z-index: 40; }
 html[data-watten-active="true"] .wt-social-backdrop { z-index: 39; }

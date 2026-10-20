@@ -11,9 +11,10 @@ from types import SimpleNamespace
 import pytest
 
 from app import watten_runtime as runtime_module
+from app.watten_bidding import retourschneider_candidate
 from app.watten_cpu_runtime import observe_cpu_memories
 from app.watten_engine import EngineActor, EngineCommand
-from app.watten_evidence import BidEvidence, evidence_to_payload
+from app.watten_evidence import BidEvidence, evidence_from_payload, evidence_to_payload
 from app.watten_match_evidence import terminal_evidence
 from app.watten_play import legal_cards
 from app.watten_recipe import WattenRecipe
@@ -38,11 +39,12 @@ def deterministic_deal(monkeypatch):
 
 class NativeMatch:
     def __init__(self, players=2, *, cpus=(), target=7, determination="normal", blind=False, start=True,
-                 game_id="native-public-evidence"):
+                 game_id="native-public-evidence", schoeneres=False):
         self.numbers = count()
         self.expected = Counter()
         self.game = new_watten_game(game_id, "Evidence", players)
-        recipe = WattenRecipe(players, determination, blind, False, target_points=target, cpu_seats=cpus)
+        recipe = WattenRecipe(players, determination, blind, False, target_points=target, cpu_seats=cpus,
+                              schoeneres_enabled=schoeneres)
         configure_watten_game(self.game, recipe, SimpleNamespace(user_id=1, username="Human 1"), None)
         for index, seat in enumerate(seat for seat in range(players) if seat not in cpus):
             identity = SimpleNamespace(user_id=index + 1, username=f"Human {index + 1}")
@@ -130,6 +132,9 @@ class NativeMatch:
             if self.engine.phase == "match_complete":
                 return
             if self.engine.phase == "deal_complete":
+                candidate = retourschneider_candidate(self.engine.ledger)
+                if candidate is not None:
+                    self.act(candidate[0], "retourschneider", "decline")
                 self.next_deal()
                 self.ready()
             self.card()
@@ -249,6 +254,7 @@ def test_legacy_waiting_room_gets_fresh_complete_counters_only_on_start(version)
 def test_private_partner_advice_and_delivery_ack_do_not_touch_counters_or_public_views():
     match = NativeMatch(4, cpus=(2, 3))
     match.ready()
+    match.act(match.engine.play.current_player_id, "bid")
     before_counts = match.runtime.bid_counters
     before_public = snapshot_watten(match.game)
     before_updated = match.game["_updated_at"]
@@ -333,8 +339,9 @@ def test_rejected_commands_and_client_supplied_counter_claims_have_no_authority(
     match.ready()
     before = match.runtime
     player = match.engine.play.current_player_id
-    with pytest.raises(ValueError, match="first_card_required"):
-        match.act(player, "bid")
+    other = next(item for item in match.engine.recipe.seats if item != player)
+    with pytest.raises(ValueError, match="card_turn_required"):
+        match.act(other, "bid")
     assert match.runtime == before
     binding = next(item for item in match.engine.recipe.bindings if item.player_id == player)
     command = match.command(player, "play_card", legal_cards(match.engine.play, match.engine.bid_state, player)[0])
@@ -345,6 +352,39 @@ def test_rejected_commands_and_client_supplied_counter_claims_have_no_authority(
     with pytest.raises(ValueError):
         apply_runtime_action(match.game, binding.account_id, player, data)
     assert match.runtime == before
+
+
+def test_opening_bid_then_schoeneres_preserves_accepted_journal_and_terminal_evidence():
+    match = NativeMatch(target=3, schoeneres=True)
+    match.ready()
+    player = match.engine.play.current_player_id
+    match.act(player, "bid")
+    match.respond("hold")
+    match.act(player, "request_schoeneres")
+    responder = match.engine.recipe.seats[match.engine.preplay_request.responder]
+    accepted = match.act(responder, "preplay_accept")
+    assert match.engine.discarded_bid_increases == 1 and match.engine.bid_state.accepted_stake == 2
+    assert match.apply(responder, accepted)[0]
+    assert match.engine.discarded_bid_increases == 1
+    match.assert_counts()
+    match.restart()
+    match.ready()
+    match.act(match.engine.play.current_player_id, "bid")
+    match.respond("counter")
+    match.respond("go")
+    assert match.engine.phase == "match_complete" and not match.engine.play.plays and not match.engine.play.tricks
+    match.assert_counts()
+    evidence = terminal_evidence(match.game, finished_at=datetime.fromisoformat(match.game["_finished_at"]))
+    assert evidence.bids.complete and evidence.bids.discarded_bid_increases == 1
+    payload = evidence_to_payload(evidence)
+    assert evidence_from_payload(payload) == evidence
+    for invalid in (True, -1, "1", 0):
+        forged = deepcopy(payload)
+        forged["bids"]["discarded_bid_increases"] = invalid
+        with pytest.raises(ValueError):
+            evidence_from_payload(forged)
+    match.restart()
+    assert match.engine.discarded_bid_increases == 1
 
 
 def test_counter_only_claim_cannot_explain_a_held_raised_deal():

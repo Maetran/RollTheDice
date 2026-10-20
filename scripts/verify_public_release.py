@@ -20,6 +20,7 @@ WWW = "https://www.zockdiewandan.online"
 ZILCH = "https://zilch.zockdiewandan.online"
 HAUSDEPP = "https://hausdepp.zockdiewandan.online"
 ALIAS = "https://zdwa.zockdiewandan.online"
+WATTEN = "https://watten.zockdiewandan.online"
 SECURITY_HEADERS = (
     "strict-transport-security", "x-content-type-options", "x-frame-options",
     "referrer-policy", "permissions-policy", "content-security-policy",
@@ -169,8 +170,55 @@ def verify_release() -> None:
     _, headers = fetch(f"{HAUSDEPP}/hausdepp-sw.js")
     if headers.get("service-worker-allowed") != "/hausdepp":
         raise ValueError("Hausdepp service worker must remain scoped to /hausdepp")
-    print("Public lobbies, Hausdepp rules, canonical sitemap, in-origin sign-in and isolated PWA ready")
+    # A release with the beta flag disabled retains its closed reservation.
+    auth_body, _ = fetch(f"{APEX}/api/auth/me")
+    if json.loads(auth_body).get("game_access", {}).get("watten_public") is True:
+        verify_watten(checkout)
+    print("Public lobbies, rules, canonical sitemaps, in-origin sign-in and isolated PWAs ready")
 
+
+
+def verify_watten(checkout: Path) -> None:
+    expected = ReleaseDocument()
+    expected.feed((checkout / "app/static/watten-game.html").read_text(encoding="utf-8"))
+    body, headers = fetch(f"{WATTEN}/api/health")
+    if json.loads(body).get("status") != "ok" or any(not headers.get(key) for key in SECURITY_HEADERS):
+        raise ValueError("Watten health, TLS or security headers are incomplete")
+    body, _ = fetch(f"{WATTEN}/api/auth/me")
+    if json.loads(body).get("game_access", {}).get("watten_public") is not True:
+        raise ValueError("Watten beta is not publicly discoverable")
+    fetch(f"{WATTEN}/", final_url=f"{WATTEN}/watten")
+    for path in ("/watten", "/watten/regeln"):
+        for suffix in ("", "?lang=en"):
+            body, headers = fetch(f"{WATTEN}{path}{suffix}")
+            page = ReleaseDocument()
+            page.feed(body)
+            if f"{WATTEN}{path}{suffix}" not in page.canonicals or "noindex" in page.robots.lower() or "noindex" in headers.get("x-robots-tag", "").lower():
+                raise ValueError(f"Watten public metadata/indexing invalid: {path}{suffix}")
+            if path == "/watten" and page.versioned_assets != expected.versioned_assets:
+                raise ValueError("Watten public lobby references stale assets")
+    body, _ = fetch(f"{WATTEN}/sitemap.xml")
+    page = ReleaseDocument()
+    page.feed(body)
+    expected_urls = {f"{WATTEN}{path}{suffix}" for path in ("/watten", "/watten/regeln") for suffix in ("", "?lang=en")}
+    if page.locations != expected_urls:
+        raise ValueError("Watten sitemap must contain only the public DE/EN lobby and rules")
+    robots, _ = fetch(f"{WATTEN}/robots.txt")
+    if f"Sitemap: {WATTEN}/sitemap.xml" not in robots:
+        raise ValueError("Watten robots.txt lacks its own sitemap")
+    for suffix in (".webmanifest", "-en.webmanifest"):
+        body, _ = fetch(f"{WATTEN}/watten-manifest{suffix}")
+        manifest = json.loads(body)
+        if manifest.get("start_url") != "/watten?pwa=watten" or manifest.get("scope") != "/" or "BETA" not in manifest.get("name", ""):
+            raise ValueError("Watten install metadata is incomplete")
+        for icon in manifest.get("icons", []):
+            icon_path = urlsplit(icon["src"]).path
+            if not icon_path.startswith("/static/watten/icons/") or not (checkout / "app" / icon_path.lstrip("/")).is_file():
+                raise ValueError("Watten icon is missing or belongs to another product")
+    _, headers = fetch(f"{WATTEN}/watten-sw.js")
+    if headers.get("service-worker-allowed") != "/":
+        raise ValueError("The dedicated Watten PWA must keep its suite navigation within its own origin")
+    print("Watten [BETA]: canonical DE/EN pages, sitemap, robots, PWA and icons ready")
 
 def main() -> int:
     try:

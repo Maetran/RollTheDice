@@ -1,10 +1,10 @@
-"""Pure, explicitly DRAFT Watten progression proposal; no persistent awards.
+"""Pure Watten progression evaluation, consumed by the native durable journal.
 
 Version 1 is the calibration example from WATTEN_PROGRESSION_PLAN.md. Humans
 receive the same ten proposed XP at human/CPU tables, including valid short
 matches. XP measures participation, not skill, Elo or a competition ranking.
-Calling evaluate_draft again recomputes the same complete proposal; a later
-transactional grant writer must separately enforce durable exactly-once grants.
+Calling evaluate_draft again recomputes the same complete proposal; the
+transactional journal separately enforces durable exactly-once grants.
 """
 
 from __future__ import annotations
@@ -15,7 +15,7 @@ from datetime import datetime
 from .watten_evidence import UNKNOWN, MatchEvidence, ProjectedBinding, validate_membership
 
 DRAFT_POLICY_VERSION = 1
-DRAFT_CATALOG_VERSION = 1
+DRAFT_CATALOG_VERSION = 2
 DRAFT_MATCH_XP = 10
 MAX_ONETIME_XP_BUDGET = 3500
 
@@ -138,6 +138,26 @@ DRAFT_ACHIEVEMENTS = (
     _goal("quiet_win", "Leise gewonnen", "Quiet win",
           "Gewinne ohne eigenes Bieten oder Kontern; die Gebotsdaten müssen vollständig belegt sein.",
           "Win without initiating or countering a bid; public bid records must be complete.", "quiet_wins", 1, 40),
+    _goal("schneider_win", "Sauber gschneidert", "Clean Schneider",
+          "Gewinne ein vollständig belegtes Spiel, ohne dass die Gegenseite Punkte erzielt. Ein angenommener Retourschneider zählt nicht.",
+          "Win a fully recorded match while every opposing score remains zero. An accepted Retourschneider does not count.",
+          "schneider_wins", 1, 60),
+    _goal("retourschneider_win", "Vier Nockerl, bitte!", "Four loss marks, please!",
+          "Gewinne mit deinem Team einen angenommenen Retourschneider vollständig: Nach dem Löschen eurer Punkte müsst ihr jede Runde bis zum Spielsieg gewinnen.",
+          "Win an accepted Retourschneider with your team: after erasing your score, win every remaining round until the match is won.",
+          "retourschneider_wins", 1, 120),
+    _goal("eight_plus_three", "8+3 isch Mittag", "8+3 means lunchtime",
+          "Gewinne zehn vollständig belegte Spiele bis elf mit der letzten Runde von genau acht auf elf Punkte. Die letzte Runde muss drei Punkte bringen; angenommene Retourschneider zählen nicht.",
+          "Win ten fully recorded matches played to eleven by moving from exactly eight to eleven points in the final three-point round. Accepted Retourschneider games do not count.",
+          "eight_plus_three_wins", 10, 80),
+    _goal("retourschneider_eight_plus_three_three", "8+3 isch Feiertag", "8+3 means a holiday",
+          "Gewinne mit deinem Team drei angenommene Retourschneider bis elf mit der letzten Runde von genau acht auf elf Punkte. Die letzte Runde muss drei Punkte bringen.",
+          "Win three accepted Retourschneider matches played to eleven with your team, moving from exactly eight to eleven points in the final three-point round.",
+          "retourschneider_eight_plus_three_wins", 3, 100),
+    _goal("retourschneider_eight_plus_three", "8+3 isch a Wunder", "8+3 means a miracle",
+          "Gewinne mit deinem Team zehn angenommene Retourschneider bis elf mit der letzten Runde von genau acht auf elf Punkte. Die letzte Runde muss drei Punkte bringen.",
+          "Win ten accepted Retourschneider matches played to eleven with your team, moving from exactly eight to eleven points in the final three-point round.",
+          "retourschneider_eight_plus_three_wins", 10, 200),
 )
 MAX_DRAFT_ACHIEVEMENT_XP = sum(item.xp for item in DRAFT_ACHIEVEMENTS)
 
@@ -190,6 +210,10 @@ class Counters:
     bid_matches: int = 0
     counter_matches: int = 0
     quiet_wins: int = 0
+    schneider_wins: int = 0
+    retourschneider_wins: int = 0
+    eight_plus_three_wins: int = 0
+    retourschneider_eight_plus_three_wins: int = 0
 
 
 @dataclass(frozen=True, slots=True)
@@ -239,6 +263,24 @@ def _advance(current: Counters, evidence: MatchEvidence, own, days: set[str]) ->
         values["bid_matches"] = current.bid_matches + (bids.initiated > 0)
         values["counter_matches"] = current.counter_matches + (bids.countered > 0)
         values["quiet_wins"] = current.quiet_wins + (own.won and bids.initiated == bids.countered == 0)
+    if own.won and evidence.source == "public_match_v1":
+        # Native completed evidence has already replayed every score and the
+        # accepted erasure. Legacy unknown data cannot invent a comeback.
+        retour = evidence.retourschneider
+        own_score = next(score for score in evidence.scores if own.player_id in score.members)
+        final = evidence.deals[-1]
+        # Full evidence replays scores and earlier erasures: final 11 minus
+        # the last three-point round proves an immediately preceding eight.
+        eight_plus_three = (evidence.target_points == 11 and own_score.points == 11 and final.points == 3
+                            and own.player_id in final.parties[final.winning_party])
+        if retour is not None and retour.accepted:
+            values["retourschneider_wins"] = current.retourschneider_wins + (own.player_id in retour.members)
+            values["retourschneider_eight_plus_three_wins"] = current.retourschneider_eight_plus_three_wins + (
+                eight_plus_three and own.player_id in retour.members)
+        elif all(score.points == 0 for score in evidence.scores if score.members not in evidence.winners):
+            values["schneider_wins"] = current.schneider_wins + 1
+        if retour is None or not retour.accepted:
+            values["eight_plus_three_wins"] = current.eight_plus_three_wins + eight_plus_three
     result = replace(current, **values)
     return replace(result, variety=sum(getattr(result, key) > 0 for key in ("two", "three", "four")))
 

@@ -14,8 +14,7 @@ from app import watten_rematch as rematch
 from app.database import session_scope
 from app.game_state import games
 from app.models import ActiveGame
-from app.security import hash_password, utcnow, verify_password
-from app.watten_recipe import recipe_to_payload
+from app.security import hash_password, utcnow
 from app.watten_room import close_expired
 from app.watten_runtime import (
     _sync,
@@ -82,14 +81,16 @@ def test_real_host_follow_up_copies_canonical_recipe_without_moving_starting_or_
     target = games[follow["game_id"]]
     room = target["_watten"].room
     assert follow["created"] and room.rematch_of == source["_id"] and room.status == "waiting"
-    assert room.recipe == recipe and recipe_to_payload(room.recipe) == recipe_to_payload(recipe)
+    assert room.recipe == replace(recipe, password_required=False)
     assert room.members[0].account_id == owners[0][0].user_id and room.members[0].seat is None and len(room.members) == 1
     assert tuple(cpu.seat for cpu in room.cpus) == cpus and target["_watten"].engine is None
     assert not target["_started"] and not target["_completion_persisted"] and target["_watten_result"] is None
     assert source["_watten"].room.rematch_room_id == target["_id"]
+    assert room.series == replace(source["_watten"].room.series, continuation_locked=True) and room.series.completed_games == 1
     stored = checkpoints()
     assert len(stored) == 2
     restored_target = restore_watten_json(stored[target["_id"]])
+    assert restored_target["_watten"].room.series == room.series
     assert tuple(item.player_id for item in restored_target["_watten"].cpu_memories) == tuple(item.participant_id for item in room.cpus)
     retry = post(server, source, owners[0], data)
     assert retry.status_code == 200 and retry.json()["game_id"] == target["_id"] and not retry.json()["created"]
@@ -133,41 +134,29 @@ def test_lost_ack_restart_and_different_command_id_reuse_exact_same_persisted_ta
     assert calls == ["new-table"] and checkpoints() == raw
 
 
-def test_fresh_password_is_not_copied_plaintext_and_explicit_disable_is_a_new_choice(server):
+def test_password_free_rematch_uses_fixed_account_membership_instead_of_the_source_password(server):
     match, owners = source_for(password="old-source-only")
     old_hash = match.game["_passphrase"]
-    password = "new-follow-up-only"
-    protected = {"mode": "fresh_password", "password": password}
-    data = command(match.game, protection=protected)
+    data = {"command_id": "fixed-rematch", "revision": match.runtime.room.revision}
     response = post(server, match.game, owners[0], data)
     assert response.status_code == 200, response.text
     target = games[response.json()["game_id"]]
-    assert target["_passphrase"] != old_hash and verify_password(password, target["_passphrase"])
-    assert not verify_password("old-source-only", target["_passphrase"])
-    assert all(secret not in json.dumps(checkpoints()) for secret in (password, "old-source-only"))
-    assert password not in json.dumps(snapshot_watten(target)) and old_hash not in json.dumps(response.json())
+    assert target["_passphrase"] is None and not target["_watten"].room.recipe.password_required
+    assert target["_watten"].room.series.roster_locked and match.game["_passphrase"] == old_hash
+    assert "old-source-only" not in json.dumps(checkpoints()) and old_hash not in json.dumps(response.json())
+    stranger = native.account("ForeignRematchAccount")
+    with pytest.raises(ValueError, match="roster_locked"):
+        admit_account(target, stranger[0], target["_watten"].room.revision, None)
     assert post(server, match.game, owners[0], data).json()["game_id"] == target["_id"]
-    assert post(server, match.game, owners[0], command(match.game)).status_code == 409
-    # A second independent source can explicitly discard protection without
-    # changing that source's recipe or verifier.
-    closed = NativeMatch(start=False)
-    closed.game["_id"] = "closed-source-for-disable"
-    room = replace(closed.runtime.room, room_id=closed.game["_id"], recipe=replace(closed.runtime.room.recipe, password_required=True),
-                   wait_expires_at=utcnow() - timedelta(seconds=1))
-    _sync(closed.game, replace(closed.runtime, room=close_expired(room, revision=room.revision, now=utcnow())), public=True)
-    closed.game["_passphrase"] = old_hash
-    persist_watten_game(closed.game, creating=True)
-    games[closed.game["_id"]] = closed.game
-    disabled = post(server, closed.game, owners[0], command(closed.game))
-    assert disabled.status_code == 200, disabled.text
-    assert games[disabled.json()["game_id"]]["_passphrase"] is None and closed.game["_passphrase"] == old_hash
+    assert post(server, match.game, owners[0], command(match.game)).status_code == 200
+    assert post(server, match.game, owners[0], command(match.game, protection={"mode": "fresh_password", "password": "unused"})).status_code == 409
 
 
-def test_closed_waiting_host_can_create_but_running_match_has_no_abort_shortcut(server):
+def test_closed_waiting_and_running_matches_have_no_completed_match_rematch_shortcut(server):
     match, owners = source_for(closed=True)
     assert match.game["_aborted"] and match.runtime.engine is None
     response = post(server, match.game, owners[0], command(match.game))
-    assert response.status_code == 200 and not games[response.json()["game_id"]]["_started"]
+    assert response.status_code == 409
     ongoing = NativeMatch()
     ongoing.game["_id"] = "ongoing-is-not-aborted"
     # Use a fully fresh canonical room ID rather than editing engine identity.

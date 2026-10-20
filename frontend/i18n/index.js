@@ -97,6 +97,8 @@ import { DE_MESSAGES, EN, EN_MESSAGES } from "./catalog.js";
 
   // Blocked site data makes every storage access throw; the page then stays German.
   function getLanguage() {
+    const pageLanguage = document.documentElement?.dataset?.wattenSeoLanguage;
+    if (SUPPORTED.has(pageLanguage)) return pageLanguage;
     let saved = null;
     try { saved = localStorage.getItem(STORAGE_KEY); } catch (_) {}
     return SUPPORTED.has(saved) ? saved : "de";
@@ -206,14 +208,19 @@ import { DE_MESSAGES, EN, EN_MESSAGES } from "./catalog.js";
       await languagePersistence;
     }
     if (!isCurrent()) return;
-    if (reload) location.reload();
+    if (reload && document.documentElement?.dataset?.wattenSeoLanguage) {
+      const destination = new URL(location.href);
+      if (language === "en") destination.searchParams.set("lang", "en");
+      else destination.searchParams.delete("lang");
+      location.assign(destination.href);
+    } else if (reload) location.reload();
     else explicitLanguageChange = null;
   }
 
   function syncAccountLanguage(language) {
     // An older /me response must not undo the user's explicit selection while
     // it is being saved, or between its planned reload and navigation commit.
-    if (explicitLanguageChange !== null) return false;
+    if (explicitLanguageChange !== null || document.documentElement?.dataset?.wattenSeoLanguage) return false;
     if (!SUPPORTED.has(language) || language === getLanguage()) return false;
     // Without storage a reload would ask again and loop.
     if (!storeLanguage(language)) return false;

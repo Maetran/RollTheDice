@@ -119,6 +119,7 @@ from .product_hosts import (
     hausdepp_url,
     is_hausdepp_host,
     is_site_host,
+    is_watten_host,
     is_zilch_host,
     safe_hausdepp_path,
     safe_zilch_path,
@@ -135,8 +136,11 @@ from .site_seo import (
     HAUSDEPP_ORIGIN,
     PUBLIC_HAUSDEPP_IMAGE_PATHS,
     PUBLIC_SEO_PAGES,
+    PUBLIC_WATTEN_DOCUMENTS,
+    PUBLIC_WATTEN_IMAGE_PATHS,
     PUBLIC_ZILCH_IMAGE_PATHS,
     SITE_ORIGIN,
+    WATTEN_ORIGIN,
     hausdepp_page_is_indexable,
     robots_document,
     sitemap_document,
@@ -150,7 +154,7 @@ from .watten_invitations import router as watten_invitations_router
 from .watten_pages import router as watten_pages_router
 from .watten_progress_pages import router as watten_progress_router
 from .watten_pwa import router as watten_pwa_router
-from .watten_readiness import WattenReadinessMiddleware
+from .watten_readiness import WattenReadinessMiddleware, watten_public_beta_enabled
 from .watten_rematch import router as watten_rematch_router
 from .web_push import (
     GAME_INVITE_PUSH_ACCOUNT_COOLDOWN_SECONDS,
@@ -653,6 +657,8 @@ async def response_cache_policy(request: Request, call_next):
         "/static/dashboard-denied.html",
         "/static/watten-account.html",
         "/static/watten-game.html",
+        "/static/watten-lobby.html",
+        "/static/watten-public-rules.html",
         "/static/watten-rules.html",
         "/static/watten-progress.html",
         "/static/watten-email-action.html",
@@ -706,13 +712,13 @@ async def response_cache_policy(request: Request, call_next):
         # canonical also keeps the SPA shell honest when a crawler reaches the
         # clean subdomain route directly rather than through its HTML head.
         response.headers["Link"] = f'<{zilch_url(request.url.path)}>; rel="canonical"'
-    elif not zilch_host and not is_hausdepp_host(request) and response.status_code == 200:
+    elif not zilch_host and not is_hausdepp_host(request) and not is_watten_host(request) and response.status_code == 200:
         public_page = next((page for page in PUBLIC_SEO_PAGES
                             if page.origin == SITE_ORIGIN and page.path == request.url.path), None)
         if public_page is not None:
             response.headers["Link"] = f'<{public_page.canonical_url}>; rel="canonical"'
     public_hausdepp_document = bool(
-        hausdepp_page_is_indexable(request.url.path) and response.status_code == 200
+        hausdepp_page_is_indexable(request.url.path) and not is_watten_host(request) and response.status_code == 200
         and response.headers.get("content-type", "").startswith("text/html")
     )
     public_hausdepp_image = bool(
@@ -725,6 +731,18 @@ async def response_cache_policy(request: Request, call_next):
             del response.headers["X-Robots-Tag"]
         if public_hausdepp_document:
             response.headers["Link"] = f'<{HAUSDEPP_ORIGIN}{request.url.path}>; rel="canonical"'
+    if is_watten_host(request):
+        public_document = (watten_public_beta_enabled(request) and request.url.path in PUBLIC_WATTEN_DOCUMENTS
+                           and response.status_code == 200
+                           and response.headers.get("content-type", "").startswith("text/html"))
+        public_image = (watten_public_beta_enabled(request) and request.url.path in PUBLIC_WATTEN_IMAGE_PATHS
+                        and (response.status_code == 304 or (response.status_code in {200, 206}
+                             and response.headers.get("content-type", "").startswith("image/"))))
+        if public_document or public_image:
+            if "X-Robots-Tag" in response.headers:
+                del response.headers["X-Robots-Tag"]
+        elif request.url.path not in {"/robots.txt", "/sitemap.xml"}:
+            response.headers["X-Robots-Tag"] = "noindex, nofollow"
     return response
 
 
@@ -836,7 +854,9 @@ def zilch_service_worker(request: Request):
 @app.get("/favicon.ico", include_in_schema=False)
 def favicon(request: Request):
     """Use the product-specific favicon on each canonical origin."""
-    if is_hausdepp_host(request):
+    if is_watten_host(request):
+        icon = STATIC_DIR / "watten" / "icons" / "watten-icon-32.png"
+    elif is_hausdepp_host(request):
         icon = STATIC_DIR / "icons" / "hausdepp-icon-32.png"
     else:
         icon = STATIC_DIR / "icons" / "zilch-icon-32.png" if is_zilch_host(request) else STATIC_DIR / "favicon.png"
@@ -847,6 +867,9 @@ def favicon(request: Request):
 @app.api_route("/apple-touch-icon-precomposed.png", methods=["GET", "HEAD"], include_in_schema=False)
 def apple_touch_icon(request: Request):
     """Serve Apple's anonymous root discovery aliases with fixed product art."""
+    if is_watten_host(request):
+        return FileResponse(str(STATIC_DIR / "watten" / "icons" / "watten-icon-180.png"),
+                            media_type="image/png", headers={"Cache-Control": "no-cache, must-revalidate"})
     filename = ("hausdepp-apple-touch-icon-180-v2.png" if is_hausdepp_host(request)
                 else "zilch-apple-touch-icon-180.png" if is_zilch_host(request)
                 else "apple-touch-icon-180.png")
@@ -857,6 +880,8 @@ def apple_touch_icon(request: Request):
 @app.get("/robots.txt", include_in_schema=False, response_class=PlainTextResponse)
 def robots_txt(request: Request) -> str:
     """Expose crawler rules and the canonical sitemap location."""
+    if is_watten_host(request):
+        return robots_document(origin=WATTEN_ORIGIN) if watten_public_beta_enabled(request) else "User-agent: *\nDisallow: /\n"
     if is_hausdepp_host(request):
         return robots_document(origin=HAUSDEPP_ORIGIN)
     if is_zilch_host(request):
@@ -872,6 +897,10 @@ def robots_txt(request: Request) -> str:
 @app.get("/sitemap.xml", include_in_schema=False)
 def sitemap_xml(request: Request) -> Response:
     """List the stable public pages that are useful in search results."""
+    if is_watten_host(request):
+        if not watten_public_beta_enabled(request):
+            return Response(status_code=404, headers={"Cache-Control": "no-store"})
+        return Response(content=sitemap_document(origin=WATTEN_ORIGIN), media_type="application/xml")
     if is_hausdepp_host(request):
         return Response(content=sitemap_document(origin=HAUSDEPP_ORIGIN), media_type="application/xml")
     if is_zilch_host(request):
@@ -1010,11 +1039,12 @@ def _bridge_path_segment(path: str, prefix: str, *, suffix: str = "") -> str | N
 def _serve_zilch_pwa_zdwa_bridge(request: Request, path: str = "") -> Response:
     """Map the finite ZDWA document surface onto Zilch's PWA origin."""
     hausdepp_host = is_hausdepp_host(request)
-    if not is_zilch_host(request) and not hausdepp_host:
+    watten_host = is_watten_host(request) and watten_public_beta_enabled(request)
+    if not is_zilch_host(request) and not hausdepp_host and not watten_host:
         raise HTTPException(status_code=404, detail="not_found")
 
     def bridge_page(filename: str) -> Response:
-        return _embedded_zdwa_pwa_page(filename, product="hausdepp" if hausdepp_host else "zilch")
+        return _embedded_zdwa_pwa_page(filename, product="watten" if watten_host else "hausdepp" if hausdepp_host else "zilch")
 
     route = f"/{path}".rstrip("/") or "/"
     if route == "/":
@@ -1069,6 +1099,8 @@ def zilch_pwa_zdwa_bridge_page(request: Request, path: str = "") -> Response:
 
 @app.get("/regeln", include_in_schema=False)
 def rules_page(request: Request):
+    if is_watten_host(request) and watten_public_beta_enabled(request):
+        return RedirectResponse("/watten/regeln" + (f"?{request.url.query}" if request.url.query else ""), status_code=308)
     if is_zilch_host(request):
         return _serve_zilch_shell(request, engagement_event="rules_viewed")
     record_request_engagement(request, "rules_viewed")
@@ -1895,6 +1927,9 @@ async def presence(websocket: WebSocket) -> None:
 @app.get("/")
 def root(request: Request):
     """Liefer Startseite (Lobby) aus dem Static-Verzeichnis aus."""
+    if is_watten_host(request) and watten_public_beta_enabled(request):
+        return RedirectResponse("/watten" + (f"?{request.url.query}" if request.url.query else ""), status_code=308,
+                                headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"})
     if is_hausdepp_host(request):
         return RedirectResponse("/hausdepp", status_code=308,
                                 headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"})

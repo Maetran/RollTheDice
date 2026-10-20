@@ -19,31 +19,46 @@ explicit schema below may be written to private storage.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Final
 
 from .watten_cards import CARDS_PER_HAND, WATTEN_NORMAL_RANKS, WATTEN_SUITS, WELI, card_rank, card_suit, validate_card
 from .watten_play import PlayProfile, WattenPlayError, official_knower_seats
-from .watten_rules import WELI_STRIKE, ComparisonRules, WattenCall, WattenRuleError, round_roles, trick_winner
+from .watten_rules import (
+    WELI_STRIKE,
+    CardKind,
+    ComparisonRules,
+    RoundRoles,
+    WattenCall,
+    WattenRuleError,
+    card_kind,
+    round_roles,
+    trick_winner,
+)
 
 MEMORY_SCHEMA: Final = 1
 RETIRED_DEAL_LIMIT: Final = 16
 MAX_TRICKS: Final = 5
 STRIKES: Final = (*WATTEN_NORMAL_RANKS, WELI_STRIKE)
 PLAY_PHASES: Final = frozenset({"play", "bid_response", "deal_complete", "match_complete"})
+ROUND_COMPLETE_PHASES: Final = frozenset({"deal_complete", "match_complete"})
 _PHASES: Final = frozenset({"strike", "colour", "show_ready", "inspection"}) | PLAY_PHASES
 _VIEW_KEYS: Final = frozenset((
     "schema deal_id phase opportunity profile options dealer_seat seats scores target_points winners party_tricks "
     "card_turn current_trick last_trick bid transcript trick_history viewer hand actions inspection partner_hand "
     "feedback feedback_opportunity").split())
-_OPTIONAL_VIEW_KEYS: Final = frozenset({"announced_strike", "reference_card", "retourschneider", "nockerl"})
+_OPTIONAL_VIEW_KEYS: Final = frozenset({"announced_strike", "reference_card", "retourschneider", "nockerl", "round_summary",
+                                      "deal_revision", "announcement_roles", "preplay"})
+REQUEST_ACTIONS: Final = frozenset({"request_schoeneres", "request_schlagwechsel", "request_bloedeln"})
+PREPLAY_RESPONSES: Final = frozenset({"preplay_accept", "preplay_decline"})
 VIEW_ACTIONS: Final = frozenset({"announce_strike", "announce_colour", "show_ready", "inspection_ack", "play_card",
-                                 "bid", "respond_hold", "respond_go", "respond_counter", "partner_feedback", "retourschneider"})
+                                 "bid", "respond_hold", "respond_go", "respond_counter", "partner_feedback", "retourschneider"}) | REQUEST_ACTIONS | PREPLAY_RESPONSES
 FEEDBACK_VALUES: Final = frozenset({"good", "bad", "unsure"})
 _STORAGE_KEYS: Final = frozenset((
     "schema kind player_id seat profile deal_id dealer_seat opportunity strike suit inspected thanks plays winners "
     "retired_deals").split())
 _STORAGE_KIND: Final = "watten_cpu_memory"
+_OPTIONAL_STORAGE_KEYS: Final = frozenset({"deal_revision", "announcement_roles"})
 
 
 class WattenCpuMemoryError(ValueError):
@@ -94,6 +109,21 @@ def call_from_bottoms(strike_card: str, colour_card: str) -> tuple[str, str]:
     return (WELI_STRIKE if strike_card == WELI else card_rank(strike_card)), card_suit(colour_card)
 
 
+def _roles(profile: PlayProfile, dealer: int, value: object = None, *, code: str = "watten_cpu_invalid_view") -> RoundRoles:
+    base = round_roles(profile.player_count, dealer, determination=profile.determination)
+    if value is None:
+        return base
+    raw = _object(value, "strike colour first_player", code=code)
+    if any(not _int(item, 0, profile.player_count) for item in raw.values()) or raw["first_player"] != base.first_player:
+        _fail(code)
+    actual = (raw["strike"], raw["colour"])
+    ordinary = (base.strike_announcer, base.suit_announcer)
+    swapped = profile.determination == "normal" and not profile.blind and profile.player_count in {2, 4}
+    if actual != ordinary and not (swapped and actual == ordinary[::-1]):
+        _fail(code)
+    return replace(base, strike_announcer=actual[0], suit_announcer=actual[1])
+
+
 @dataclass(frozen=True, slots=True, repr=False)
 class SeatSnapshot:
     """One parsed personal DTO; derived values only from fields that DTO contains."""
@@ -108,6 +138,7 @@ class SeatSnapshot:
     players: tuple[str, ...]
     seat_parties: tuple[int, ...]
     card_counts: tuple[int, ...]
+    tricks_won: tuple[int, ...]
     scores: tuple[tuple[tuple[str, ...], int], ...]
     target_points: int
     finished: bool
@@ -131,6 +162,11 @@ class SeatSnapshot:
     partner_feedback: str | None
     own_feedback: str | None
     feedback_opportunity: int
+    deal_revision: int
+    announcement_roles: RoundRoles
+    schoeneres_enabled: bool
+    preplay_pending: tuple[str, int, int] | None
+    bloedeln_cards: tuple[tuple[int, str], ...]
 
     def __repr__(self) -> str:
         return f"SeatSnapshot(deal_id={self.deal_id!r}, phase={self.phase!r}, opportunity={self.opportunity})"
@@ -171,10 +207,13 @@ def read_personal_view(view: object, *, player_id: str) -> SeatSnapshot:
     except WattenPlayError:
         _fail()
     count = profile.player_count
-    options = _object(view["options"], "show_rechter open_partner_hand trick_history")
+    options = _object(view["options"], "show_rechter open_partner_hand trick_history", frozenset({"schoeneres_enabled"}))
     if any(type(item) is not bool for item in options.values()):
         _fail()
     if options["open_partner_hand"] and (profile.blind or count == 2):
+        _fail()
+    schoeneres_enabled = options.get("schoeneres_enabled", False)
+    if schoeneres_enabled and count not in {2, 4}:
         _fail()
     if ((profile.determination == "normal" and phase in {"show_ready", "inspection"})
             or (profile.determination == "ladinisch" and phase in {"strike", "colour"})):
@@ -182,18 +221,31 @@ def read_personal_view(view: object, *, player_id: str) -> SeatSnapshot:
     dealer = view["dealer_seat"]
     if not _int(dealer, 0, count):
         _fail()
+    revision = view.get("deal_revision", 0)
+    if not _int(revision) or ("announcement_roles" in view and view["announcement_roles"] is None):
+        _fail()
+    roles = _roles(profile, dealer, view.get("announcement_roles"))
+    base_roles = round_roles(count, dealer, determination=profile.determination)
+    if roles != base_roles and revision == 0:
+        _fail()
+    inspectors = frozenset((roles.dealer, roles.clockwise_next))
     seats = _list(view["seats"])
     if len(seats) != count:
         _fail()
-    players, parties, counts = [], [], []
+    players, parties, counts, tricks_won = [], [], [], []
+    provided_trick_counts = ["tricks_won" in item for item in seats if type(item) is dict]
+    if any(provided_trick_counts) and not all(provided_trick_counts):
+        _fail()
     for index, item in enumerate(seats):
-        item = _object(item, "seat player_id party card_count")
+        item = _object(item, "seat player_id party card_count", frozenset({"tricks_won"}))
         if (not _int(item["seat"]) or item["seat"] != index or not _text(item["player_id"])
-                or not _int(item["party"], 0, 2) or not _int(item["card_count"], 0, CARDS_PER_HAND + 1)):
+                or not _int(item["party"], 0, 2) or not _int(item["card_count"], 0, CARDS_PER_HAND + 1)
+                or not _int(item.get("tricks_won", 0), 0, MAX_TRICKS + 1)):
             _fail()
         players.append(item["player_id"])
         parties.append(item["party"])
         counts.append(item["card_count"])
+        tricks_won.append(item.get("tricks_won", 0))
     if len(set(players)) != count or set(parties) != {0, 1}:
         _fail()
     scores = []
@@ -211,12 +263,15 @@ def read_personal_view(view: object, *, player_id: str) -> SeatSnapshot:
         _fail()
     retour = view.get("retourschneider")
     if retour is not None:
-        raw = _object(retour, "status members opponent_members decider erased_points after_deal_id")
+        raw = _object(retour, "status members opponent_members decider erased_points after_deal_id", frozenset({"accepted_by"}))
         members, opponents = tuple(_list(raw["members"])), tuple(_list(raw["opponent_members"]))
+        accepted_by = tuple(_list(raw.get("accepted_by", [])))
         if (count != 4 or raw["status"] not in {"available", "declined", "active", "succeeded", "failed"}
                 or {frozenset(members), frozenset(opponents)} != {frozenset(group) for group, _ in scores}
                 or raw["decider"] not in members or not _int(raw["erased_points"])
-                or not _text(raw["after_deal_id"]) or (raw["status"] == "available" and phase != "deal_complete")):
+                or not _text(raw["after_deal_id"]) or (raw["status"] == "available" and phase != "deal_complete")
+                or any(type(member) is not str or member not in members for member in accepted_by)
+                or len(set(accepted_by)) != len(accepted_by)):
             _fail()
     for item in _list(view.get("nockerl", [])):
         raw = _object(item, "members count reason")
@@ -228,6 +283,10 @@ def read_personal_view(view: object, *, player_id: str) -> SeatSnapshot:
     if len(party_tricks) != 2 or not all(_int(item, 0, 4) for item in party_tricks):
         _fail()
     completed = sum(party_tricks)
+    if all(provided_trick_counts) and any(
+            sum(won for seat, won in enumerate(tricks_won) if parties[seat] == party) != party_tricks[party]
+            for party in (0, 1)):
+        _fail()
     card_turn = view["card_turn"]
     if card_turn is not None and not _int(card_turn, 0, count):
         _fail()
@@ -235,13 +294,63 @@ def read_personal_view(view: object, *, player_id: str) -> SeatSnapshot:
     last = None if view["last_trick"] is None else _trick(view["last_trick"], count, complete=True)
     if (last is None) != (completed == 0) or completed > MAX_TRICKS or (current and completed == MAX_TRICKS):
         _fail()
+    if all(provided_trick_counts) and last is not None and not tricks_won[last[1]]:
+        _fail()
     history = None
     if view["trick_history"] is not None:
-        if not options["trick_history"]:
+        if not options["trick_history"] and phase not in ROUND_COMPLETE_PHASES:
             _fail()
         history = tuple(_trick(item, count, complete=True) for item in _list(view["trick_history"]))
         if len(history) != completed or (history and history[-1] != last):
             _fail()
+        if all(provided_trick_counts) and any(
+                tricks_won[seat] != sum(winner == seat for _, winner in history) for seat in range(count)):
+            _fail()
+    if "round_summary" in view:
+        raw = _object(view["round_summary"], "strike_rank trump_suit rechter")
+        if phase not in ROUND_COMPLETE_PHASES:
+            _fail()
+        try:
+            call = WattenCall(raw["strike_rank"], raw["trump_suit"])
+            rules = ComparisonRules(call, critical=profile.critical)
+        except WattenRuleError:
+            _fail()
+        if profile.determination == "normal" and profile.critical and call.strike_rank == WELI_STRIKE:
+            _fail()
+        matching = WELI if call.strike_rank == WELI_STRIKE else f"{call.trump_suit}-{call.strike_rank}"
+        expected = matching if card_kind(matching, rules) == CardKind.RECHTER else None
+        if raw["rechter"] != expected:
+            _fail()
+        # The end-of-round explanation is display data. It never supplies a
+        # call to an in-progress CPU decision or survives into the next deal.
+    preplay_pending = None
+    bloedeln = []
+    if "preplay" in view:
+        raw_preplay = _object(view["preplay"], "pending bloedeln_cards")
+        for item in _list(raw_preplay["bloedeln_cards"]):
+            item = _object(item, "seat card")
+            if not _int(item["seat"], 0, count):
+                _fail()
+            bloedeln.append((item["seat"], _card(item["card"])))
+        if bloedeln and (not profile.blind or count != 4
+                         or tuple(seat for seat, _ in bloedeln) != tuple(seat for seat in range(count) if seat not in inspectors)
+                         or len({card for _, card in bloedeln}) != 2):
+            _fail()
+        if raw_preplay["pending"] is not None:
+            raw = _object(raw_preplay["pending"], "kind requester responder")
+            kind = raw["kind"]
+            if type(kind) is not str or kind not in {"schoeneres", "schlagwechsel", "bloedeln"}:
+                _fail()
+            eligible = set(range(count)) - inspectors if kind == "bloedeln" else {roles.strike_announcer, roles.suit_announcer}
+            if (any(not _int(raw[key], 0, count) for key in ("requester", "responder"))
+                    or raw["requester"] == raw["responder"] or {raw["requester"], raw["responder"]} != eligible
+                    or phase not in {"strike", "colour", "show_ready", "inspection", "play"} or completed or current
+                    or counts != [CARDS_PER_HAND] * count
+                    or (kind == "schoeneres" and not schoeneres_enabled)
+                    or (kind == "schlagwechsel" and (phase != "strike" or profile.determination != "normal" or profile.blind or count not in {2, 4}))
+                    or (kind == "bloedeln" and (not profile.blind or count != 4 or bloedeln))):
+                _fail()
+            preplay_pending = (kind, raw["requester"], raw["responder"])
     raw_bid = _object(view["bid"], "accepted_stake pending result")
     if not _int(raw_bid["accepted_stake"], 2):
         _fail()
@@ -268,8 +377,6 @@ def read_personal_view(view: object, *, player_id: str) -> SeatSnapshot:
         _fail("watten_cpu_foreign_view")
     if not _int(seat, 0, count) or players[seat] != player_id:
         _fail()
-    roles = round_roles(count, dealer, determination=profile.determination)
-    inspectors = frozenset((roles.dealer, roles.clockwise_next))
     announced = view.get("announced_strike")
     if "announced_strike" in view and (phase != "colour" or announced not in STRIKES):
         _fail()
@@ -305,19 +412,36 @@ def read_personal_view(view: object, *, player_id: str) -> SeatSnapshot:
     if len(set(actions)) != len(actions):
         _fail()
     if "retourschneider" in actions and (retour is None or retour["status"] != "available"
-                                          or retour["decider"] != player_id):
+                                          or player_id not in retour["members"]
+                                          or player_id in retour.get("accepted_by", [])
+                                          or ("accepted_by" not in retour and retour["decider"] != player_id)):
         _fail()
-    if phase in {"strike", "colour"}:
+    ordinary_actions = tuple(action for action in actions if action not in REQUEST_ACTIONS)
+    if preplay_pending is not None:
+        if actions != (("preplay_accept", "preplay_decline") if seat == preplay_pending[2] else ()):
+            _fail()
+    elif set(actions) & PREPLAY_RESPONSES:
+        _fail()
+    elif phase in {"strike", "colour"}:
         action, announcer = (("announce_strike", roles.strike_announcer) if phase == "strike"
                              else ("announce_colour", roles.suit_announcer))
-        if actions != ((action,) if seat == announcer else ()):
+        if ordinary_actions != ((action,) if seat == announcer else ()):
             _fail()
     elif phase in {"show_ready", "inspection"}:
         action = "show_ready" if phase == "show_ready" else "inspection_ack"
-        if actions not in ((), (action,)) or (actions and seat not in inspectors):
+        if ordinary_actions not in ((), (action,)) or (ordinary_actions and seat not in inspectors):
             _fail()
     elif set(actions) & {"announce_strike", "announce_colour", "show_ready", "inspection_ack"}:
         _fail()
+    for action in set(actions) & REQUEST_ACTIONS:
+        kind = action.removeprefix("request_")
+        if (phase not in {"strike", "colour", "show_ready", "inspection", "play"} or completed or current
+                or counts != [CARDS_PER_HAND] * count
+                or (kind == "schoeneres" and (not schoeneres_enabled or seat not in {roles.strike_announcer, roles.suit_announcer}))
+                or (kind == "schlagwechsel" and (phase != "strike" or profile.determination != "normal" or profile.blind or count not in {2, 4}
+                                                 or seat not in {roles.strike_announcer, roles.suit_announcer}))
+                or (kind == "bloedeln" and (not profile.blind or count != 4 or seat in inspectors or bloedeln))):
+            _fail()
     inspection = None
     if view["inspection"] is not None:
         raw = _object(view["inspection"], "cards")
@@ -330,7 +454,7 @@ def read_personal_view(view: object, *, player_id: str) -> SeatSnapshot:
         inspection = (_card(strike_item["card"]), _card(colour_item["card"]))
         if inspection[0] == inspection[1]:
             _fail()
-    if (inspection is not None) != ("inspection_ack" in actions):
+    if (inspection is not None) != ("inspection_ack" in actions) and preplay_pending is None:
         _fail()
     mates = [index for index in range(count) if parties[index] == parties[seat] and index != seat]
     partner = mates[0] if len(mates) == 1 else None
@@ -366,10 +490,22 @@ def read_personal_view(view: object, *, player_id: str) -> SeatSnapshot:
         played |= {card for _, card in last[0]}
     if played & (set(hand or ()) | set(partner_cards or ())):
         _fail()
+    public = dict(bloedeln)
+    for index, visible in ((seat, hand), (partner, partner_cards)):
+        if visible is not None and any(card in visible and owner != index for owner, card in bloedeln):
+            _fail()
+        if (visible is not None and index in public and completed == 0 and index not in {owner for owner, _ in current}
+                and public[index] not in visible):
+            _fail()
+    if inspection is not None and set(inspection) & set(public.values()):
+        _fail()
+    first_cards = history[0][0] if history else current if completed == 0 else last[0] if completed == 1 and last else ()
+    if any(owner in public and public[owner] != card for owner, card in first_cards):
+        _fail()
     return SeatSnapshot(
         deal_id=view["deal_id"], phase=phase, opportunity=opportunity, profile=profile,
         show_rechter=options["show_rechter"], open_partner_hand=options["open_partner_hand"], dealer_seat=dealer,
-        players=tuple(players), seat_parties=tuple(parties), card_counts=tuple(counts), scores=tuple(scores),
+        players=tuple(players), seat_parties=tuple(parties), card_counts=tuple(counts), tricks_won=tuple(tricks_won), scores=tuple(scores),
         target_points=target, finished=bool(view["winners"]) or raw_bid["result"] is not None,
         party_tricks=(party_tricks[0], party_tricks[1]), card_turn=card_turn, current_trick=current, last_trick=last,
         history=history, accepted_stake=raw_bid["accepted_stake"], pending=pending, thanks=tuple(sorted(thanks)),
@@ -377,6 +513,8 @@ def read_personal_view(view: object, *, player_id: str) -> SeatSnapshot:
         actions=actions, inspection=inspection, partner_seat=partner, partner_cards=partner_cards,
         partner_feedback=partner_feedback, own_feedback=own_feedback,
         feedback_opportunity=view["feedback_opportunity"],
+        deal_revision=revision, announcement_roles=roles, schoeneres_enabled=schoeneres_enabled,
+        preplay_pending=preplay_pending, bloedeln_cards=tuple(bloedeln),
     )
 
 
@@ -403,16 +541,21 @@ class CpuMemory:
     plays: tuple[tuple[int, int, int, str], ...] = ()
     winners: tuple[tuple[int, int], ...] = ()
     retired_deals: tuple[str, ...] = ()
+    deal_revision: int = 0
+    announcement_roles: tuple[int, int, int] | None = None
 
     def __post_init__(self) -> None:
         try:
             self._validate()
+            if self.deal_id is not None and self.announcement_roles is None:
+                roles = round_roles(self.profile.player_count, self.dealer_seat, determination=self.profile.determination)
+                object.__setattr__(self, "announcement_roles", (roles.strike_announcer, roles.suit_announcer, roles.first_player))
         except (WattenRuleError, WattenPlayError, TypeError) as exc:
             raise WattenCpuMemoryError("watten_cpu_invalid_memory") from exc
 
     def _validate(self) -> None:
         code = "watten_cpu_invalid_memory"
-        if not _text(self.player_id) or (self.seat is None) != (self.profile is None):
+        if not _text(self.player_id) or (self.seat is None) != (self.profile is None) or not _int(self.deal_revision):
             _fail(code)
         if self.profile is not None and (not isinstance(self.profile, PlayProfile)
                                          or not _int(self.seat, 0, self.profile.player_count)):
@@ -423,13 +566,13 @@ class CpuMemory:
             _fail(code)
         if self.deal_id is None:
             if (self.dealer_seat, self.opportunity, self.strike, self.suit, self.inspected) != (None,) * 5 or (
-                    self.thanks or self.plays or self.winners):
+                    self.thanks or self.plays or self.winners or self.deal_revision != 0 or self.announcement_roles is not None):
                 _fail(code)
             return
         if self.profile is None or not _text(self.deal_id) or self.deal_id in retired:
             _fail(code)
         profile, count = self.profile, self.profile.player_count
-        if not _int(self.dealer_seat, 0, count) or not _int(self.opportunity):
+        if not _int(self.dealer_seat, 0, count) or not _int(self.opportunity) or not _int(self.deal_revision):
             _fail(code)
         if self.strike is not None and (type(self.strike) is not str or self.strike not in STRIKES):
             _fail(code)
@@ -437,7 +580,14 @@ class CpuMemory:
             _fail(code)
         if profile.critical and profile.determination == "normal" and self.strike == WELI_STRIKE:
             _fail(code)
-        roles = round_roles(count, self.dealer_seat, determination=profile.determination)
+        if self.announcement_roles is not None and (type(self.announcement_roles) is not tuple or len(self.announcement_roles) != 3):
+            _fail(code)
+        if self.deal_revision and self.announcement_roles is None:
+            _fail(code)
+        role_data = None if self.announcement_roles is None else dict(zip(("strike", "colour", "first_player"), self.announcement_roles))
+        roles = _roles(profile, self.dealer_seat, role_data, code=code)
+        if self.deal_revision == 0 and roles != round_roles(count, self.dealer_seat, determination=profile.determination):
+            _fail(code)
         inspectors = frozenset((roles.dealer, roles.clockwise_next))
         # These fields record a received call, not deductions from public plays.
         if profile.blind and self.seat not in inspectors and (self.strike is not None or self.suit is not None):
@@ -522,11 +672,24 @@ def remember(memory: CpuMemory, snapshot: SeatSnapshot, events: tuple = ()) -> C
     if memory.profile is not None and (memory.profile != snap.profile or memory.seat != snap.seat):
         _fail("watten_cpu_seat_mismatch")
     if memory.deal_id == snap.deal_id:
-        if snap.opportunity < memory.opportunity:
+        if snap.opportunity < memory.opportunity or snap.deal_revision < memory.deal_revision:
             _fail("watten_cpu_stale_observation")
         if snap.dealer_seat != memory.dealer_seat:
             _fail("watten_cpu_knowledge_conflict")
-        base = memory
+        if snap.deal_revision == memory.deal_revision:
+            previous_roles = memory.announcement_roles
+            if previous_roles is not None and previous_roles != (
+                    snap.announcement_roles.strike_announcer, snap.announcement_roles.suit_announcer,
+                    snap.announcement_roles.first_player):
+                _fail("watten_cpu_knowledge_conflict")
+            base = memory
+        else:
+            if snap.opportunity <= memory.opportunity:
+                _fail("watten_cpu_stale_observation")
+            base = CpuMemory(memory.player_id, snap.seat, snap.profile, snap.deal_id, snap.dealer_seat,
+                             snap.opportunity, retired_deals=memory.retired_deals, deal_revision=snap.deal_revision,
+                             announcement_roles=(snap.announcement_roles.strike_announcer,
+                                                 snap.announcement_roles.suit_announcer, snap.announcement_roles.first_player))
     else:
         if snap.deal_id in memory.retired_deals or (memory.opportunity is not None
                                                     and snap.opportunity <= memory.opportunity):
@@ -536,9 +699,11 @@ def remember(memory: CpuMemory, snapshot: SeatSnapshot, events: tuple = ()) -> C
             retired = (*retired, memory.deal_id)[-RETIRED_DEAL_LIMIT:]
         # A new deal never inherits private cards, calls or plays of an earlier one.
         base = CpuMemory(memory.player_id, snap.seat, snap.profile, snap.deal_id, snap.dealer_seat,
-                         snap.opportunity, retired_deals=retired)
+                         snap.opportunity, retired_deals=retired, deal_revision=snap.deal_revision,
+                         announcement_roles=(snap.announcement_roles.strike_announcer,
+                                             snap.announcement_roles.suit_announcer, snap.announcement_roles.first_player))
     profile, count = snap.profile, snap.profile.player_count
-    roles = round_roles(count, snap.dealer_seat, determination=profile.determination)
+    roles = snap.announcement_roles
     inspectors = frozenset((roles.dealer, roles.clockwise_next))
     strike, suit, inspected, thanks = base.strike, base.suit, base.inspected, set(base.thanks)
     if type(events) is not tuple:
@@ -559,6 +724,9 @@ def remember(memory: CpuMemory, snapshot: SeatSnapshot, events: tuple = ()) -> C
             if profile.blind:
                 # Blind Ladinisch never publishes the call; such an event is a leak.
                 _fail("watten_cpu_unpermitted_call")
+            if snap.phase not in PLAY_PHASES and not (
+                    profile.determination == "normal" and kind == "strike_announced" and snap.phase == "colour"):
+                _fail("watten_cpu_invalid_event")
             if kind == "strike_announced":
                 if (seat != roles.strike_announcer or value not in STRIKES
                         or (value == WELI_STRIKE and profile.critical and profile.determination == "normal")):
@@ -603,13 +771,18 @@ def remember(memory: CpuMemory, snapshot: SeatSnapshot, events: tuple = ()) -> C
         record(completed - 1, *snap.last_trick)
     if snap.current_trick:
         record(completed, snap.current_trick, None)
+    forced = dict(snap.bloedeln_cards)
+    if any(trick == 0 and seat in forced and forced[seat] != card
+           for (trick, _), (seat, card) in plays.items()):
+        _fail("watten_cpu_knowledge_conflict")
     if {card for _, card in plays.values()} & set(snap.hand or ()):
         _fail("watten_cpu_knowledge_conflict")
     return CpuMemory(
         memory.player_id, snap.seat, profile, snap.deal_id, snap.dealer_seat, snap.opportunity, strike, suit,
         inspected, tuple(sorted(thanks)),
         tuple((trick, position, seat, card) for (trick, position), (seat, card) in sorted(plays.items())),
-        tuple(sorted(winners.items())), base.retired_deals,
+        tuple(sorted(winners.items())), base.retired_deals, snap.deal_revision,
+        (roles.strike_announcer, roles.suit_announcer, roles.first_player),
     )
 
 
@@ -638,13 +811,16 @@ def memory_to_storage(memory: CpuMemory) -> dict:
                   for trick, position, seat, card in memory.plays],
         "winners": [{"trick": trick, "seat": seat} for trick, seat in memory.winners],
         "retired_deals": list(memory.retired_deals),
+        "deal_revision": memory.deal_revision,
+        "announcement_roles": None if memory.announcement_roles is None else dict(zip(
+            ("strike", "colour", "first_player"), memory.announcement_roles)),
     }
 
 
 def memory_from_storage(payload: object) -> CpuMemory:
     """Restore exactly our own schema; any unknown, missing or invalid value fails closed."""
     code = "watten_cpu_invalid_memory"
-    value = _object(payload, " ".join(sorted(_STORAGE_KEYS)), code=code)
+    value = _object(payload, " ".join(sorted(_STORAGE_KEYS)), _OPTIONAL_STORAGE_KEYS, code=code)
     if type(value["schema"]) is not int or value["schema"] != MEMORY_SCHEMA or value["kind"] != _STORAGE_KIND:
         _fail(code)
     profile = None
@@ -661,6 +837,11 @@ def memory_from_storage(payload: object) -> CpuMemory:
         for item in (_object(entry, "trick position seat card", code=code) for entry in _list(value["plays"], code)))
     winners = tuple((item["trick"], item["seat"])
                     for item in (_object(entry, "trick seat", code=code) for entry in _list(value["winners"], code)))
+    roles = value.get("announcement_roles")
+    if roles is not None:
+        raw = _object(roles, "strike colour first_player", code=code)
+        roles = (raw["strike"], raw["colour"], raw["first_player"])
     return CpuMemory(value["player_id"], value["seat"], profile, value["deal_id"], value["dealer_seat"],
                      value["opportunity"], value["strike"], value["suit"], inspected,
-                     tuple(_list(value["thanks"], code)), plays, winners, tuple(_list(value["retired_deals"], code)))
+                     tuple(_list(value["thanks"], code)), plays, winners, tuple(_list(value["retired_deals"], code)),
+                     value.get("deal_revision", 0), roles)

@@ -21,15 +21,16 @@ async function until(condition) {
 // contacts a real Push service or changes an actual account/device subscription.
 function fixture({ subscribed = true, local = snapshot(), checked = true,
   worker = '/hausdepp-sw.js', scope = '/hausdepp', manifest = 'hausdepp', permission = 'granted',
-  statusHook, checkHook, localHook, initialAccount } = {}) {
+  statusHook, checkHook, localHook, initialAccount, siteOrigin = origin } = {}) {
+  const pagePath = manifest === 'watten' ? '/watten/konto/einstellungen' : '/hausdepp/konto/einstellungen';
   const calls = [], events = new Map(), registrationReads = [];
   const counts = { subscribe: 0, unsubscribe: 0, permission: 0, local: 0 };
   let currentLocal = local;
   const subscription = () => currentLocal && { toJSON: () => structuredClone(currentLocal),
     unsubscribe: async () => { counts.unsubscribe += 1; currentLocal = null; return true; } };
   const registration = {
-    scope: new URL(scope, origin).href,
-    active: worker ? { scriptURL: new URL(worker, origin).href, state: 'activated' } : null,
+    scope: new URL(scope, siteOrigin).href,
+    active: worker ? { scriptURL: new URL(worker, siteOrigin).href, state: 'activated' } : null,
     pushManager: {
       getSubscription: async () => { counts.local += 1; if (localHook) await localHook(); return subscription(); },
       subscribe: async () => { counts.subscribe += 1; currentLocal = snapshot(); return subscription(); },
@@ -37,6 +38,7 @@ function fixture({ subscribed = true, local = snapshot(), checked = true,
   };
   const win = {
     isSecureContext: true, PushManager: class {}, Notification: {}, HAUSDEPP_PWA: manifest === 'hausdepp' ? {} : undefined,
+    WATTEN_PWA: manifest === 'watten' ? {} : undefined,
     setTimeout, clearTimeout,
     addEventListener: (type, callback) => {
       if (!events.has(type)) events.set(type, new Set());
@@ -59,20 +61,21 @@ function fixture({ subscribed = true, local = snapshot(), checked = true,
     }
     if (url === '/api/web-push/subscription/check') return checkHook ? checkHook(call) : response({ device_subscribed: checked });
     if (url === '/api/web-push/subscription' && call.method === 'PUT') return response({ viewer_id: 1, subscribed: true });
+    if (url === '/api/web-push/subscription' && call.method === 'DELETE') return response({ viewer_id: 1, subscribed: false });
     assert.fail(`unexpected transport ${call.method} ${url}`);
   };
   const context = vm.createContext({ apiFetch, URL, Uint8Array, atob, console, window: win, Notification,
-    document: { querySelector: () => ({ dataset: { pwaProduct: manifest }, href: `${origin}/${manifest === 'zdwa' ? '' : `${manifest}-`}manifest.webmanifest` }) },
-    location: { origin, href: `${origin}/hausdepp/konto/einstellungen`, hostname: new URL(origin).hostname, pathname: '/hausdepp/konto/einstellungen' },
+    document: { querySelector: () => ({ dataset: { pwaProduct: manifest }, href: `${siteOrigin}/${manifest === 'zdwa' ? '' : `${manifest}-`}manifest.webmanifest` }) },
+    location: { origin: siteOrigin, href: `${siteOrigin}${pagePath}`, hostname: new URL(siteOrigin).hostname, pathname: pagePath },
     navigator: { serviceWorker: {
       getRegistration: async path => { registrationReads.push(path); return registration; },
       get ready() {
-        if (manifest === 'hausdepp') assert.fail('narrow Hausdepp settings must not wait for a controlling-page worker');
+        if (['hausdepp', 'watten'].includes(manifest)) assert.fail('product settings must not wait for a controlling-page worker');
         return Promise.resolve(registration);
       },
     } },
   });
-  vm.runInContext(`${source}\nglobalThis.pushModule = { getGameInvitePushStatus, enableGameInvitePush };`, context);
+  vm.runInContext(`${source}\nglobalThis.pushModule = { getGameInvitePushStatus, enableGameInvitePush, disableGameInvitePush };`, context);
   return { ...context.pushModule, calls, counts, registration, registrationReads,
     auth(userId) { for (const fn of events.get('zdwa:auth-state') || []) fn({ detail: { authenticated: userId !== null,
       user: userId === null ? null : { id: userId } } }); },
@@ -227,4 +230,56 @@ test('a different first auth identity cannot apply an older response while ident
   finish();
   await assert.rejects(pending, error => error.code === 'web_push_account_changed');
   assert.deepEqual(f.writes(), []);
+});
+
+
+test('Watten narrow and dedicated-host root registrations use their own account-bound context', async () => {
+  for (const options of [
+    { siteOrigin: 'http://127.0.0.1:8176', scope: '/watten' },
+    { siteOrigin: 'http://127.0.0.1:8176', scope: '/watten/' },
+    { siteOrigin: 'https://watten.zockdiewandan.online', scope: '/' },
+  ]) {
+    const f = fixture({ ...options, manifest: 'watten', worker: '/watten-sw.js' });
+    const status = await f.getGameInvitePushStatus();
+    assert.equal(status.device_subscribed, true);
+    assert.deepEqual(f.registrationReads, ['/watten']);
+    assert.equal(f.counts.permission, 0, 'reading settings cannot prompt for permission');
+    assert.deepEqual(f.checks()[0].body, { ...snapshot(), product_context: 'watten' });
+    await f.enableGameInvitePush();
+    assert.deepEqual(f.writes()[0].body, { ...snapshot(), product_context: 'watten' });
+    assert.equal(new Headers(f.writes()[0].options.headers).get('X-Push-Expected-Account-Id'), '1');
+    await f.disableGameInvitePush();
+    assert.equal(new Headers(f.writes().at(-1).options.headers).get('X-Push-Expected-Account-Id'), '1');
+    assert.equal(f.counts.unsubscribe, 1);
+  }
+});
+
+test('Watten rejects foreign products, foreign origins and broad scopes outside its dedicated host', async () => {
+  for (const options of [
+    { worker: '/sw.js', scope: '/' },
+    { worker: '/hausdepp-sw.js', scope: '/hausdepp' },
+    { worker: '/zilch-sw.js', scope: '/watten' },
+    { worker: '/watten-sw.js', scope: '/', siteOrigin: 'http://127.0.0.1:8176' },
+    { worker: '/watten-sw.js', scope: '/wattenish' },
+    { worker: '/watten-sw.js', scope: '/watten/spiel' },
+    { worker: 'https://foreign.test/watten-sw.js', scope: '/watten' },
+    { worker: '/watten-sw.js', scope: 'https://foreign.test/watten' },
+  ]) {
+    const f = fixture({ ...options, manifest: 'watten' });
+    f.registration.waiting = { scriptURL: `${options.siteOrigin || origin}/watten-sw.js`, state: 'installed' };
+    assert.equal((await f.getGameInvitePushStatus()).device_subscribed, false, JSON.stringify(options));
+    assert.equal(f.counts.local, 0); assert.equal(f.counts.subscribe, 0); assert.equal(f.counts.permission, 0);
+    assert.equal(f.checks().length, 0); assert.deepEqual(f.writes(), []);
+    assert.deepEqual(f.registrationReads, ['/watten']);
+  }
+});
+
+test('closing Watten settings while permission is pending prevents later endpoint registration', async () => {
+  const f = fixture({ manifest: 'watten', worker: '/watten-sw.js', scope: '/watten', permission: 'default', local: null });
+  await f.getGameInvitePushStatus();
+  const controller = new AbortController();
+  const pending = f.enableGameInvitePush({ signal: controller.signal });
+  controller.abort();
+  await assert.rejects(pending, error => error.name === 'AbortError');
+  assert.equal(f.counts.permission, 1); assert.equal(f.counts.subscribe, 0); assert.deepEqual(f.writes(), []);
 });

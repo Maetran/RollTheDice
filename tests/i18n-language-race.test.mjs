@@ -7,15 +7,17 @@ const source = (await readFile(new URL("../frontend/i18n/index.js", import.meta.
   .replace('import { DE_MESSAGES, EN, EN_MESSAGES } from "./catalog.js";', "");
 const settle = () => new Promise(resolve => setImmediate(resolve));
 
-function setup(initial = "de") {
+function setup(initial = "de", { seoLanguage, href = "https://watten.zockdiewandan.online/watten" } = {}) {
   const saved = new Map([["zdwa_language", initial]]), requests = [];
-  const html = { lang: initial };
+  const html = { lang: initial, dataset: seoLanguage ? { wattenSeoLanguage: seoLanguage } : {} };
+  const navigations = [];
   let reloads = 0;
   const window = { alert() {}, confirm() {}, prompt() {} };
   vm.runInNewContext(source, {
     window, document: { documentElement: html, querySelector: () => null, addEventListener() {} },
     localStorage: { getItem: key => saved.get(key) ?? null, setItem: (key, value) => saved.set(key, value) },
-    location: { reload() { reloads++; } },
+    URL,
+    location: { href, assign(value) { navigations.push(value); }, reload() { reloads++; } },
     fetch(url, options = {}) {
       let resolve, reject;
       const pending = new Promise((done, fail) => { resolve = done; reject = fail; });
@@ -27,7 +29,7 @@ function setup(initial = "de") {
   const replyAuth = (request, language) => request.resolve({ ok: true,
     json: async () => ({ authenticated: true, user: { csrf_token: "test-csrf", preferences: { preferred_language: language } } }) });
   const replySaved = request => request.resolve({ ok: true });
-  return { i18n: window.ZDWA_I18N, html, requests, replyAuth, replySaved, get reloads() { return reloads; } };
+  return { i18n: window.ZDWA_I18N, html, requests, navigations, replyAuth, replySaved, get reloads() { return reloads; } };
 }
 
 test("an older account-language response cannot undo an explicit change before its reload", async () => {
@@ -115,4 +117,25 @@ test("ordinary auth sync, invalid choices and explicit changes without persisten
   assert.equal(app.reloads, 1);
   assert.equal(app.i18n.syncAccountLanguage("en"), true);
   assert.equal(app.reloads, 2);
+});
+
+test("public Watten language follows its SSR URL and account sync cannot replace the discovery language", async () => {
+  for (const language of ["de", "en"]) {
+    const other = language === "de" ? "en" : "de";
+    const app = setup(other, { seoLanguage: language });
+    assert.equal(app.i18n.getLanguage(), language);
+    assert.equal(app.html.lang, language);
+    assert.equal(app.i18n.syncAccountLanguage(other), false);
+    assert.equal(app.reloads, 0);
+    await app.i18n.setLanguage(other, { persist: false });
+    assert.equal(app.navigations.length, 1);
+    assert.equal(new URL(app.navigations[0]).searchParams.get("lang"), other === "en" ? "en" : null);
+    assert.equal(app.reloads, 0);
+  }
+});
+
+test("public Watten language switches keep the rule path, other query values and fragment", async () => {
+  const app = setup("en", { seoLanguage: "en", href: "https://watten.zockdiewandan.online/watten/regeln?lang=en&source=help#bidding" });
+  await app.i18n.setLanguage("de", { persist: false });
+  assert.equal(app.navigations[0], "https://watten.zockdiewandan.online/watten/regeln?source=help#bidding");
 });

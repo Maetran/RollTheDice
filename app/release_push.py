@@ -20,7 +20,7 @@ from .models import PushRelease, PushReleaseRecipient, User, WebPushSubscription
 from .product_hosts import site_origin, zilch_url
 from .release_manifest import ReleaseNotice
 from .security import as_utc, utcnow
-from .web_push import PUSH_DELIVERY_CONTEXTS, StoredSubscription, _send_web_push, web_push_available
+from .web_push import StoredSubscription, _send_web_push, push_delivery_contexts, web_push_available
 
 logger = logging.getLogger(__name__)
 RELEASE_TTL_SECONDS = 24 * 60 * 60
@@ -51,7 +51,7 @@ def publish_release_notice(notice: ReleaseNotice, *, now: datetime | None = None
         ).where(
             User.is_active.is_(True), User.release_push_enabled.is_(True),
             WebPushSubscription.product_context.in_(notice.games),
-            WebPushSubscription.product_context.in_(PUSH_DELIVERY_CONTEXTS),
+            WebPushSubscription.product_context.in_(push_delivery_contexts()),
         ).order_by(WebPushSubscription.updated_at.desc(), WebPushSubscription.id.desc())).all()
         audience: dict[int, list[WebPushSubscription]] = {}
         for user, subscription in rows:
@@ -100,7 +100,7 @@ async def dispatch_release_notifications(*, now: datetime | None = None) -> int:
     with session_scope() as db:
         pending = db.execute(select(PushReleaseRecipient.revision, PushReleaseRecipient.user_id).join(PushRelease).where(
             PushReleaseRecipient.claimed_at.is_(None),
-            PushReleaseRecipient.product_context.in_(PUSH_DELIVERY_CONTEXTS),
+            PushReleaseRecipient.product_context.in_(push_delivery_contexts()),
         ).order_by(PushRelease.published_at, PushReleaseRecipient.user_id).limit(RELEASE_BATCH_SIZE)).all()
     claimed_count = 0
     for revision, user_id in pending:
@@ -109,7 +109,7 @@ async def dispatch_release_notifications(*, now: datetime | None = None) -> int:
             claimed = db.execute(update(PushReleaseRecipient).where(
                 PushReleaseRecipient.revision == revision, PushReleaseRecipient.user_id == user_id,
                 PushReleaseRecipient.claimed_at.is_(None),
-                PushReleaseRecipient.product_context.in_(PUSH_DELIVERY_CONTEXTS),
+                PushReleaseRecipient.product_context.in_(push_delivery_contexts()),
             ).values(claimed_at=current).returning(PushReleaseRecipient.revision)).scalar_one_or_none()
             if claimed is None:
                 continue

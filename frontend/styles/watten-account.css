@@ -2,7 +2,7 @@
 @import "./passkey-login.css";
 @import "./game-switch-menu.css";
 
-:root { color-scheme: light; --card: #fffdf5; --text: #24382e; --muted: #56655c; --border: #a5b2a5; --accent: #26583e; font: 17px/1.6 system-ui, sans-serif; background: #e8ede4; color: var(--text); }
+:root { color-scheme: light; --card: #fbf0dc; --text: #38251b; --muted: #70533f; --border: #bd9c74; --accent: #823a2b; font: 17px/1.6 system-ui, sans-serif; background: #e8d5b6; color: var(--text); }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 body { margin: 0; }
@@ -52,3 +52,6 @@ aside { padding: .75rem; border-left: 3px solid var(--accent); }
   body > header label { font-size: .85rem; }
   h1 { font-size: 1.35rem; }
 }
+
+body { background: linear-gradient(#ead8b9, #dfc49c); min-height: 100dvh; }
+main { box-shadow: 0 8px 24px #69432d16; }

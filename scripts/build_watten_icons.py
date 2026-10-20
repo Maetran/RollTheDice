@@ -50,6 +50,14 @@ def rendered_icons() -> dict[str, bytes]:
         output = io.BytesIO()
         image.resize((size, size), Image.Resampling.LANCZOS).save(output, format="PNG", optimize=True)
         result[f"watten-icon-{size}.png"] = output.getvalue()
+    # Keep the card mark inside the central safe zone when an OS crops the
+    # install icon to a circle, squircle or rounded square.
+    maskable = Image.new("RGB", image.size, "#713d2c")
+    inset = round(512 * scale * .09)
+    maskable.paste(image.resize((512 * scale - inset * 2, 512 * scale - inset * 2), Image.Resampling.LANCZOS), (inset, inset))
+    output = io.BytesIO()
+    maskable.resize((512, 512), Image.Resampling.LANCZOS).save(output, format="PNG", optimize=True)
+    result["watten-icon-maskable-512.png"] = output.getvalue()
     return result
 
 

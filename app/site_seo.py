@@ -7,6 +7,15 @@ from dataclasses import dataclass
 SITE_ORIGIN = "https://zockdiewandan.online"
 ZILCH_ORIGIN = "https://zilch.zockdiewandan.online"
 HAUSDEPP_ORIGIN = "https://hausdepp.zockdiewandan.online"
+WATTEN_ORIGIN = "https://watten.zockdiewandan.online"
+PUBLIC_WATTEN_DOCUMENTS = {
+    "/watten": "watten-lobby.html",
+    "/watten/regeln": "watten-public-rules.html",
+}
+PUBLIC_WATTEN_IMAGE_PATHS = frozenset({
+    "/favicon.ico", "/static/watten/icons/watten-icon-32.png",
+    "/static/watten/icons/watten-icon-192.png", "/static/watten/icons/watten-icon-512.png",
+})
 
 # Deliberately separate from indexable pages: a new private route must never
 # enter a sitemap just because it has a useful title or complete rule text.
@@ -74,6 +83,8 @@ PUBLIC_SEO_PAGES: tuple[PublicSeoPage, ...] = (
     PublicSeoPage("/regeln", "zilch-rules.html", "monthly", 0.8, origin=ZILCH_ORIGIN),
     PublicSeoPage("/hausdepp", "hausdepp-lobby.html", "weekly", 0.8, origin=HAUSDEPP_ORIGIN),
     PublicSeoPage("/hausdepp/regeln", "hausdepp-rules.html", "monthly", 0.8, origin=HAUSDEPP_ORIGIN),
+    PublicSeoPage("/watten", "watten-lobby.html", "weekly", 0.8, origin=WATTEN_ORIGIN),
+    PublicSeoPage("/watten/regeln", "watten-public-rules.html", "monthly", 0.8, origin=WATTEN_ORIGIN),
 )
 
 
@@ -94,7 +105,8 @@ def robots_document(*, origin: str = SITE_ORIGIN) -> str:
 
 def sitemap_document(*, origin: str = SITE_ORIGIN) -> str:
     """Render one host's stable public pages from the shared registry."""
-    lines = ['<?xml version="1.0" encoding="UTF-8"?>', '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
+    lines = ['<?xml version="1.0" encoding="UTF-8"?>', '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" '
+             'xmlns:xhtml="http://www.w3.org/1999/xhtml">']
     for page in PUBLIC_SEO_PAGES:
         if page.origin != origin:
             continue
@@ -107,6 +119,18 @@ def sitemap_document(*, origin: str = SITE_ORIGIN) -> str:
                 "  </url>",
             )
         )
+        if page.origin == WATTEN_ORIGIN:
+            # Distinct DE/EN documents share reciprocal language alternatives.
+            lines[-1:-1] = [
+                f'    <xhtml:link rel="alternate" hreflang="de" href="{page.canonical_url}"/>',
+                f'    <xhtml:link rel="alternate" hreflang="en" href="{page.canonical_url}?lang=en"/>',
+                f'    <xhtml:link rel="alternate" hreflang="x-default" href="{page.canonical_url}"/>',
+            ]
+            lines.extend(("  <url>", f"    <loc>{page.canonical_url}?lang=en</loc>",
+                          f'    <xhtml:link rel="alternate" hreflang="de" href="{page.canonical_url}"/>',
+                          f'    <xhtml:link rel="alternate" hreflang="en" href="{page.canonical_url}?lang=en"/>',
+                          f'    <xhtml:link rel="alternate" hreflang="x-default" href="{page.canonical_url}"/>',
+                          "  </url>"))
     lines.extend(("</urlset>", ""))
     return "\n".join(lines)
 

@@ -10,7 +10,9 @@ from sqlalchemy import func, select
 from app.database import session_scope
 from app.models import CompletedGame, GameParticipant, User, WattenAchievementGrant, WattenMatchEvidence
 from app.watten_account import WattenAccountError, build_watten_account
+from app.watten_progression import DRAFT_ACHIEVEMENTS, DRAFT_CATALOG_VERSION
 from app.watten_progression_store import acknowledge_draft_progress, store_draft_match
+from app.watten_surprises import SURPRISE_ACHIEVEMENTS
 from tests import test_watten_runtime as runtime_tests
 from tests.test_watten_evidence import FINISHED
 from tests.test_watten_progression_store import JOURNAL_MODELS, counts, game_for, written
@@ -23,7 +25,8 @@ def test_empty_and_uncredited_account_reads_never_synchronize_or_award(server):
     empty = build_watten_account(owner[0].user_id)
     assert empty["schema_version"] == 1 and empty["status"] == "draft" and empty["coverage"]["complete"]
     assert empty["statistics"]["all_matches"] == empty["statistics"]["credited_matches"] == 0
-    assert empty["progress"]["total_xp"] == 0 and len(empty["progress"]["achievements"]) == 27
+    assert empty["progress"]["total_xp"] == 0
+    assert len(empty["progress"]["achievements"]) == len(DRAFT_ACHIEVEMENTS) + len(SURPRISE_ACHIEVEMENTS)
     with session_scope() as db:
         written(db, game_for([owner], cpus=(1,)))
         before = counts(db)
@@ -42,6 +45,7 @@ def test_own_frozen_amounts_catalog_and_pending_use_only_credited_evidence(serve
         store_draft_match(db, row, evidence, bindings)
         grant = db.scalar(select(WattenAchievementGrant).where(WattenAchievementGrant.achievement_id == "watten_matches_1"))
         grant.xp = 73  # an immutable historical price, not today's catalog reward
+        grant.catalog_version = 1  # an older known ID remains unlocked in the additive catalogue
         row, evidence, bindings = written(db, game_for([foreign], game_id="foreign-only-match", cpus=(1,)))
         store_draft_match(db, row, evidence, bindings)
         written(db, game_for([owner], game_id="not-credited-yet", cpus=(1,)))
@@ -216,14 +220,14 @@ def test_future_catalog_known_id_is_archived_without_inventing_current_eligibili
     with session_scope() as db:
         row, evidence, bindings = written(db, game_for([owner], cpus=(1,)))
         store_draft_match(db, row, evidence, bindings)
-        _extra_grant(db, owner[0].user_id, row.game_id, "watten_quiet_win", catalog=2, xp=73)
+        _extra_grant(db, owner[0].user_id, row.game_id, "watten_quiet_win", catalog=DRAFT_CATALOG_VERSION + 1, xp=73)
     progress = build_watten_account(owner[0].user_id)["progress"]
     goal = next(item for item in progress["achievements"] if item["id"] == "watten_quiet_win")
     assert not goal["unlocked"] and goal["granted_xp"] == 0 and goal["earned_at"] is None
     assert progress["total_xp"] == 133
     assert progress["archived_achievements"] == [{"id": "watten_quiet_win", "name": {
         "de": "Gespeicherter Watten-Erfolg", "en": "Stored Watten achievement"}, "granted_xp": 73,
-        "earned_at": FINISHED.isoformat(), "catalog_version": 2}]
+        "earned_at": FINISHED.isoformat(), "catalog_version": DRAFT_CATALOG_VERSION + 1}]
 
 
 @pytest.mark.parametrize("goal", ("watten_quiet_win", "watten_normal", "watten_two"))

@@ -1,20 +1,42 @@
 {
   "id": "/watten",
-  "name": "Watten – Kontovorschau",
+  "name": "Watten [BETA]",
   "short_name": "Watten",
-  "description": "Lokale Kontovorschau für Watten. Das Spiel ist noch nicht verfügbar.",
+  "description": "Watten online spielen: blind oder offen, mit Freunden oder CPUs. Öffentliche Beta.",
   "start_url": "/watten?pwa=watten",
   "scope": "/",
   "display": "standalone",
   "lang": "de",
-  "background_color": "#e8ede4",
-  "theme_color": "#26583e",
+  "background_color": "#cda877",
+  "theme_color": "#713d2c",
   "shortcuts": [
-    {"name": "Kontovorschau", "url": "/watten"},
-    {"name": "Kontoeinstellungen", "url": "/watten/konto/einstellungen"}
+    {
+      "name": "Watten spielen",
+      "url": "/watten"
+    },
+    {
+      "name": "Spielregeln",
+      "url": "/watten/regeln"
+    }
   ],
   "icons": [
-    {"src": "/static/watten/icons/watten-icon-192.png?v=db01f8627e63", "sizes": "192x192", "type": "image/png", "purpose": "any"},
-    {"src": "/static/watten/icons/watten-icon-512.png?v=db01f8627e63", "sizes": "512x512", "type": "image/png", "purpose": "any"}
+    {
+      "src": "/static/watten/icons/watten-icon-192.png?v=0897f5a0471b",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/watten/icons/watten-icon-512.png?v=0897f5a0471b",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/watten/icons/watten-icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
   ]
 }

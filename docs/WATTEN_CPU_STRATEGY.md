@@ -86,8 +86,9 @@ Their different regional rules are not imported into the house rules.
 
 ## Verification status
 
-Only source syntax and targeted Ruff checks were run for this change, as
-requested. No test suite or new strength benchmark was run. The older benchmark
+Source syntax, targeted Ruff checks and behavioural tests cover the changes.
+The release additionally requires the repository’s complete local verification.
+No new strength benchmark was run. The older benchmark
 in `WATTEN_CPU_BENCHMARK.md` predates this strategy and does not measure the new
 tiers or prove a strength increase against people.
 
@@ -111,5 +112,9 @@ wiederholtem Merkmal beträgt der weiche Nachteil 0,5 × Partnerschaftsgewicht,
 zusammen höchstens 1,8–3,5 Prozentpunkte innerhalb des bestehenden Fensters für
 ähnlich gute Züge. Daraus wird kein Wissen über den geheimen Schlag oder die
 Farbe abgeleitet. Diese Eröffnungskonvention ist eine ausdrückliche Vorgabe des
-Eigentümers. Neue Messungen zur Spielstärke und eine Testsuite wurden für diese
-Änderung ausdrücklich nicht ausgeführt.
+Eigentümers. Vermutlich sichere Partnerstiche werden geschont; wenn danach noch
+spielende Gegner den Stich in den erlaubten hypothetischen Verteilungen
+gefährden, kann eine stärkere Deckung sinnvoll sein. Uninformierte CPUs mitteln
+über mögliche Ansagen, informierte nutzen die wirklich bekannte Ansage. Die Taktiken werden durch gezielte Verhaltenstests geprüft; vor der Freigabe
+folgt zusätzlich der vollständige lokale Releaseablauf. Neue Messungen zur
+Spielstärke wurden nicht durchgeführt.

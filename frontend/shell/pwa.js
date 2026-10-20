@@ -8,6 +8,8 @@
   const HAUSDEPP_HOSTNAME = "hausdepp.zockdiewandan.online";
   const localWattenHost = () => location.hostname === "localhost" || location.hostname.endsWith(".localhost")
     || location.hostname === "[::1]" || /^127(?:\.\d{1,3}){3}$/.test(location.hostname);
+  const wattenPwaHost = () => localWattenHost() || location.hostname.toLowerCase() === "watten.zockdiewandan.online"
+    || document.documentElement.dataset.wattenPublicBeta === "true";
   const INSTALLED_ENTRY_KEY = "rollthedice:pwa-entry:v1";
   const WINDOW_ENTRY_PREFIX = `${INSTALLED_ENTRY_KEY}:`;
   const ASSET_VERSION = (() => {
@@ -263,9 +265,9 @@
     // A distinct launch URL identifies the installed Hausdepp app even when
     // an older, broader suite worker controls its first launch.
     const launchedHausdepp = new URL(location.href).searchParams.get("pwa") === "hausdepp";
-    const launchedWatten = localWattenHost() && new URL(location.href).searchParams.get("pwa") === "watten";
+    const launchedWatten = wattenPwaHost() && new URL(location.href).searchParams.get("pwa") === "watten";
     const controlledHausdepp = navigator.serviceWorker?.controller?.scriptURL?.includes("/hausdepp-sw.js");
-    const controlledWatten = localWattenHost() && navigator.serviceWorker?.controller?.scriptURL?.includes("/watten-sw.js");
+    const controlledWatten = wattenPwaHost() && navigator.serviceWorker?.controller?.scriptURL?.includes("/watten-sw.js");
     let saved = null;
     try { saved = sessionStorage.getItem(INSTALLED_ENTRY_KEY); } catch {
       // Product identity only: retain it across same-origin navigation even
@@ -273,8 +275,9 @@
       if (window.name.startsWith(WINDOW_ENTRY_PREFIX)) saved = window.name.slice(WINDOW_ENTRY_PREFIX.length);
     }
     const entry = launchedWatten ? "watten" : launchedHausdepp ? "hausdepp"
-      : ["zdwa", "zilch", "hausdepp", ...(localWattenHost() ? ["watten"] : [])].includes(saved) ? saved
+      : ["zdwa", "zilch", "hausdepp", ...(wattenPwaHost() ? ["watten"] : [])].includes(saved) ? saved
         : controlledWatten ? "watten"
+          : location.hostname.toLowerCase() === "watten.zockdiewandan.online" ? "watten"
           : controlledHausdepp || location.hostname.toLowerCase() === HAUSDEPP_HOSTNAME ? "hausdepp" : isZilchOrigin() ? "zilch" : "zdwa";
     try { sessionStorage.setItem(INSTALLED_ENTRY_KEY, entry); } catch {}
     window.name = WINDOW_ENTRY_PREFIX + entry;
@@ -336,12 +339,12 @@
   const isHausdeppDocument = document.documentElement.dataset.game === "hausdepp"
     || document.documentElement.dataset.hausdeppLogin === "true";
   const entry = installedEntry();
-  if (entry === "watten" && localWattenHost()) {
+  if (entry === "watten" && wattenPwaHost()) {
     // Manifest scope keeps suite/recovery navigation inside the installed app;
     // the account worker itself never expands beyond the new Watten paths.
     ensureManifest("watten");
     setupPwaLifecycle({ installDismissKey: "watten_install_prompt_dismissed", workerUrl: "/watten-sw.js",
-      globalName: "WATTEN_PWA", scope: "/watten" });
+      globalName: "WATTEN_PWA", scope: location.hostname.toLowerCase() === "watten.zockdiewandan.online" ? "/" : "/watten" });
     return;
   }
   if (entry === "hausdepp" || (isHausdeppDocument && !entry)) {

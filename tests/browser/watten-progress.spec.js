@@ -17,7 +17,7 @@ for (const language of ['de', 'en']) {
       await expect(own.page).toHaveURL(/\/watten\/konto\/fortschritt$/);
       await expect(own.page.locator('html')).toHaveAttribute('lang', language);
       await expect(own.page.locator('.wt-progress-title h2')).toHaveText(account.progress.title.name[language]);
-      await expect(own.page.locator('.wt-achievement-grid > li')).toHaveCount(27);
+      await expect(own.page.locator('.wt-achievement-grid > li')).toHaveCount(48);
       await expect(own.page.locator('.wt-feed')).toContainText(own.user.username);
       await expect(own.page.locator('[data-progress-action=acknowledge]')).toBeVisible();
       for (const viewport of [{ width: 320, height: 568 }, { width: 568, height: 320 }, { width: 768, height: 700 }]) {

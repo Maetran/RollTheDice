@@ -681,6 +681,15 @@ def web_push_subscription_get(request: Request, response: Response):
     return web_push_subscription_status(identity.user_id)
 
 
+def _web_push_expected_account(request: Request, identity) -> None:
+    expected_push = request.headers.getlist("X-Push-Expected-Account-Id")
+    if expected_push and (len(expected_push) != 1 or expected_push[0] != str(identity.user_id)):
+        raise HTTPException(status_code=409, detail="web_push_account_changed", headers={"Cache-Control": "no-store"})
+    expected = request.headers.getlist("X-Watten-Expected-Account-Id")
+    if expected and (len(expected) != 1 or expected[0] != str(identity.user_id)):
+        raise HTTPException(status_code=409, detail="watten_account_changed", headers={"Cache-Control": "no-store"})
+
+
 def _web_push_subscription_actor(payload: WebPushSubscriptionRequest, request: Request):
     from .watten_access import require_watten_access, watten_request_enabled
 
@@ -689,12 +698,7 @@ def _web_push_subscription_actor(payload: WebPushSubscriptionRequest, request: R
     identity = require_user(request)
     if payload.product_context == "watten":
         require_watten_access(request, identity)
-    expected_push = request.headers.getlist("X-Push-Expected-Account-Id")
-    if expected_push and (len(expected_push) != 1 or expected_push[0] != str(identity.user_id)):
-        raise HTTPException(status_code=409, detail="web_push_account_changed", headers={"Cache-Control": "no-store"})
-    expected = request.headers.getlist("X-Watten-Expected-Account-Id")
-    if expected and (len(expected) != 1 or expected[0] != str(identity.user_id)):
-        raise HTTPException(status_code=409, detail="watten_account_changed", headers={"Cache-Control": "no-store"})
+    _web_push_expected_account(request, identity)
     require_csrf(request, identity)
     return identity
 
@@ -739,6 +743,7 @@ def web_push_subscription_put(payload: WebPushSubscriptionRequest, request: Requ
 @router.delete("/web-push/subscription")
 def web_push_subscription_delete(request: Request):
     identity = require_user(request)
+    _web_push_expected_account(request, identity)
     require_csrf(request, identity)
     try:
         result = remove_web_push_subscriptions(identity.user_id)
@@ -755,9 +760,7 @@ def web_push_opt_in_prompt_post(request: Request, response: Response, payload: W
     response.headers["Cache-Control"] = "no-store"
     try:
         identity = require_user(request)
-        expected = request.headers.getlist("X-Push-Expected-Account-Id")
-        if expected and (len(expected) != 1 or expected[0] != str(identity.user_id)):
-            raise HTTPException(status_code=409, detail="web_push_account_changed", headers={"Cache-Control": "no-store"})
+        _web_push_expected_account(request, identity)
         require_csrf(request, identity)
         return claim_web_push_opt_in_prompt(identity.user_id, device_missing=bool(payload and payload.device_missing))
     except LookupError as exc:
@@ -770,6 +773,7 @@ def web_push_opt_in_prompt_post(request: Request, response: Response, payload: W
 @router.put("/web-push/preferences")
 def web_push_preferences_put(payload: WebPushPreferencesRequest, request: Request):
     identity = require_user(request)
+    _web_push_expected_account(request, identity)
     require_csrf(request, identity)
     try:
         result = update_web_push_preferences(identity.user_id, payload)

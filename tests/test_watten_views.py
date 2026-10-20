@@ -11,6 +11,7 @@ from app.watten_engine import (
     SeatBinding,
     WattenEngineError,
     apply_command,
+    next_deal,
     restore_storage,
     start_match,
     storage_payload,
@@ -18,7 +19,7 @@ from app.watten_engine import (
 from app.watten_play import legal_cards
 from app.watten_rules import round_roles
 from app.watten_views import cpu_view, member_view, spectator_view
-from tests.test_watten_engine import actor, command, dealt, ready, recipe, step
+from tests.test_watten_engine import actor, command, dealt, finish, ready, recipe, step
 
 
 def personal(state, player):
@@ -50,11 +51,27 @@ def test_normal_precall_hands_only_actual_announcers_then_all_own_hands(count, d
             roles.strike_announcer, roles.suit_announcer} else [{"back": True}] * 5
         assert view["hand"] == expected
         assert view["inspection"] is None and view["partner_hand"] is None
+        assert [item["tricks_won"] for item in view["seats"]] == [0] * count
     state = ready(state)
     for seat, player in enumerate(state.recipe.seats):
         assert personal(state, player)["hand"] == [{"card": card} for card in state.play.hands[seat]]
     spectator = spectator_view(state)
     assert "hand" not in spectator and "viewer" not in spectator and "actions" not in spectator
+
+
+def test_public_trick_counts_retain_earlier_winners_without_enabling_live_history():
+    state = ready(start_match(recipe(4, trick_history=False), "public-piles", dealt(4), first_dealer="A"))
+    for player, card in (("B", "hearts-O"), ("C", "bells-9"), ("D", "bells-A"), ("A", "hearts-7"),
+                         ("A", "hearts-8"), ("B", "hearts-K"), ("C", "bells-10"), ("D", "leaves-7")):
+        state = step(state, player, "play_card", card)
+    assert state.play.tricks[0].winner == 0 and state.play.tricks[1].winner == 3
+    for view in [spectator_view(state), *(personal(state, player) for player in "ABCD")]:
+        assert [item["tricks_won"] for item in view["seats"]] == [1, 0, 0, 1]
+        assert view["trick_history"] is None
+        assert sum(item["tricks_won"] for item in view["seats"]) == sum(view["party_tricks"])
+    state = finish(state)
+    state = next_deal(state, "public-piles-next", dealt(4))
+    assert [item["tricks_won"] for item in spectator_view(state)["seats"]] == [0, 0, 0, 0]
 
 
 @pytest.mark.parametrize("blind", (False, True))
@@ -123,17 +140,16 @@ def test_hidden_call_changes_leave_blind_cpu_spectator_and_personal_views_identi
     for variant in ("base", "secret"):
         state = ready(start_match(recipe(4, "ladinisch", True, critical, show_rechter=show_rechter),
                                   "privacy", blind_deal(variant), first_dealer="A"))
+        state = step(state, "B", "bid")
         state = step(state, "A", "partner_feedback", "good")
-        state = step(state, "B", "partner_feedback", "unsure")
-        state = step(state, "B", "play_card", "hearts-A")
         states.append(state)
     left, right = states
     assert left.call != right.call and left.thanks == right.thanks == ()
     assert spectator_view(left) == spectator_view(right)
     for player in "CD":
         assert personal(left, player) == personal(right, player)
-        assert personal(left, player)["feedback"]
-    assert legal_cards(left.play, left.bid_state, "C") == legal_cards(right.play, right.bid_state, "C") == left.play.hands[2]
+        assert bool(personal(left, player)["feedback"]) is (player == "C")
+    assert legal_cards(left.play, left.bid_state, "C") == legal_cards(right.play, right.bid_state, "C") == ()
     # A CPU assigned to C receives exactly the same personal allowlist. A
     # derived guess about the call cannot elevate it to an official knower.
     cpu_states = []
@@ -160,8 +176,7 @@ def test_public_thanks_is_the_only_permitted_difference_when_a_shown_rechter_cha
 @pytest.mark.parametrize("count", (3, 4))
 def test_private_feedback_changes_no_opponent_or_public_snapshot_even_during_bid(count):
     state = ready(start_match(recipe(count), "feedback", dealt(count), first_dealer="A"))
-    state = step(state, "B", "play_card", legal_cards(state.play, state.bid_state, "B")[0])
-    state = step(state, "C", "bid")
+    state = step(state, "B", "bid")
     public = spectator_view(state)
     opponent = personal(state, "B")
     changed = step(state, "A", "partner_feedback", "good")
@@ -185,9 +200,12 @@ def test_other_actors_private_feedback_cannot_be_probed_through_public_ack_evict
     public_request = command(initial, "B", "announce_strike", "7", "public-probe")
     state = apply_command(initial, actor(initial, "B"), public_request).state
     state = step(state, "A", "announce_colour", "bells")
+    state = step(state, "B", "bid")
     before = apply_command(state, actor(state, "B"), public_request)
+    state = step(state, "A", "partner_feedback", "good", "private-first")
     for index in range(ACK_LIMIT + 1):
-        state = step(state, "A", "partner_feedback", "good", f"private-{index}")
+        with pytest.raises(WattenEngineError, match="feedback_unavailable"):
+            step(state, "A", "partner_feedback", "good", f"private-{index}")
     after = apply_command(state, actor(state, "B"), public_request)
     assert before.ack == after.ack and before.replayed == after.replayed
     assert before.public_events == after.public_events == ()
@@ -237,6 +255,61 @@ def test_trick_history_contains_only_already_public_current_deal_cards(history):
     assert all(card not in encoded for card in state.deal.stock)
     assert all(card in state.play.plays for card in public_cards)
     assert "account_id" not in encoded and "ack_cache" not in encoded and "bottom_cards" not in encoded
+
+
+@pytest.mark.parametrize("history", (False, True))
+@pytest.mark.parametrize("determination,blind", (("normal", False), ("ladinisch", True)))
+def test_completed_round_publicly_explains_call_and_all_completed_tricks_then_drops_review(history, determination, blind):
+    state = ready(start_match(recipe(4, determination, blind, trick_history=history), "round-review",
+                              blind_deal(), first_dealer="A"))
+    assert "round_summary" not in spectator_view(state)
+    assert all("round_summary" not in personal(state, player) for player in state.recipe.seats)
+    state = finish(state)
+    public = spectator_view(state)
+    assert state.phase == "deal_complete"
+    assert public["round_summary"] == {"strike_rank": state.call.strike_rank, "trump_suit": state.call.trump_suit,
+                                       "rechter": f"{state.call.trump_suit}-{state.call.strike_rank}"}
+    assert len(public["trick_history"]) == len(state.play.tricks) <= 5
+    assert public["trick_history"][-1] == public["last_trick"]
+    for player in state.recipe.seats:
+        assert personal(state, player)["round_summary"] == public["round_summary"]
+        assert personal(state, player)["trick_history"] == public["trick_history"]
+    encoded = json.dumps(public)
+    permitted = {card["card"] for trick in public["trick_history"] for card in trick["cards"]}
+    permitted.add(public["round_summary"]["rechter"])
+    assert all(card in permitted or card not in encoded for hand in state.play.hands for card in hand)
+    assert all(card in permitted or card not in encoded for card in state.deal.stock)
+    assert "bottom_cards" not in encoded and "hand" not in public
+    state = next_deal(state, "round-after-review", dealt())
+    assert "round_summary" not in spectator_view(state)
+    assert spectator_view(state)["trick_history"] is None
+
+
+@pytest.mark.parametrize("critical,bottoms,rechter", (
+    (False, ("hearts-8", "bells-6", "leaves-8", "acorns-8"), "bells-6"),
+    (True, ("hearts-8", "bells-6", "leaves-8", "acorns-8"), None),
+    (True, ("hearts-8", "bells-K", "leaves-8", "acorns-8"), None),
+    (True, ("acorns-8", "hearts-7", "leaves-8", "bells-8"), None),
+))
+def test_completed_blind_round_has_no_invented_rechter_when_matching_card_is_critical(critical, bottoms, rechter):
+    state = ready(start_match(recipe(4, "ladinisch", True, critical), "critical-review",
+                              dealt(4, bottoms=bottoms), first_dealer="A"))
+    state = finish(state)
+    assert spectator_view(state)["round_summary"] == {
+        "strike_rank": state.call.strike_rank, "trump_suit": state.call.trump_suit, "rechter": rechter}
+
+
+def test_folded_round_review_keeps_partial_trick_separate_and_match_end_is_reviewable():
+    state = ready(start_match(recipe(2, target_points=3), "fold-review", dealt(2), first_dealer="A"))
+    state = step(state, "B", "play_card", legal_cards(state.play, state.bid_state, "B")[0])
+    state = step(state, "A", "bid")
+    state = step(state, "B", "respond", "counter")
+    state = step(state, "A", "respond", "go")
+    public = spectator_view(state)
+    assert state.phase == "match_complete"
+    assert public["round_summary"] == {"strike_rank": "7", "trump_suit": "bells", "rechter": "bells-7"}
+    assert public["trick_history"] == [] and public["last_trick"] is None
+    assert len(public["current_trick"]["cards"]) == 1
 
 
 def test_role_requests_fail_closed_and_returned_views_cannot_mutate_internal_state():

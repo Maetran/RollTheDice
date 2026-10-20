@@ -59,10 +59,11 @@ def test_every_dealer_and_party_order_uses_the_confirmed_decider(count):
 
 
 @pytest.mark.parametrize("count", (2, 3, 4))
-def test_any_current_player_can_offer_three_after_first_card(count):
+@pytest.mark.parametrize("cards", (0, 1))
+def test_any_current_player_can_offer_three_from_the_opening_card_turn(count, cards):
     for actor in "ABCD"[:count]:
         initial = BidState("first", roles(count))
-        state = bid(initial, actor, turn(actor), gestrichen=frozenset())
+        state = bid(initial, actor, turn(actor, cards), gestrichen=frozenset())
         assert initial.pending is None
         assert state.accepted_stake == 2
         assert state.pending == Offer(state.roles.party_of(actor), 3)
@@ -74,25 +75,25 @@ def test_any_current_player_can_offer_three_after_first_card(count):
 
 
 @pytest.mark.parametrize("progress,error", (
-    (turn("A", 0), "first_card_required"),
     (turn("B"), "card_turn_required"),
     (turn(None), "card_turn_required"),
     (turn("A", ended=True), "deal_finished"),
 ))
-def test_no_early_off_turn_or_terminal_offer(progress, error):
+def test_no_off_turn_or_terminal_offer(progress, error):
     with pytest.raises(WattenBiddingError, match=error):
         bid(BidState("first", roles()), "A", progress, gestrichen=frozenset())
 
 
 @pytest.mark.parametrize("count", (2, 3, 4))
 @pytest.mark.parametrize("action", ("hold", "go", "counter"))
-def test_only_assigned_opponent_decider_responds_immediately_independent_of_card_turn(count, action):
+@pytest.mark.parametrize("cards", (0, 1))
+def test_only_assigned_opponent_decider_responds_immediately_independent_of_card_turn(count, action, cards):
     for actor in "ABCD"[:count]:
         state = opened(count, actor)
         other_party = 1 - state.pending.party
         decider = state.roles.decider(other_party)
         # The bidder still owns the card turn: answering does not wait for it.
-        changed = respond(state, decider, action, turn(actor))
+        changed = respond(state, decider, action, turn(actor, cards))
         assert changed != state
         for wrong_actor in (*state.roles.seats, "unknown"):
             if wrong_actor == decider:

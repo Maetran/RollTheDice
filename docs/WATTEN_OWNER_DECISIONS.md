@@ -1,6 +1,6 @@
 # Watten – verbindliche Owner-Entscheidungen
 
-**Stand:** 18.10.2026, Ausführungs-Chat. Dieses Protokoll konkretisiert P0;
+**Stand:** 20.10.2026, Ausführungs-Chat. Dieses Protokoll konkretisiert P0;
 Quellenregeln entscheiden keine hier noch offenen Fälle.
 
 ## Bestätigt
@@ -17,13 +17,13 @@ Quellenregeln entscheiden keine hier noch offenen Fälle.
 | Weli | Kritisch EIN: Herz-König > Weli > Eichel-Sieben > Rechter. Kritisch AUS: Weli ist kleinster Trumpf. Die zunächst allgemein formulierte Aussage wurde damit ausdrücklich präzisiert. |
 | Weli und Ansage | Weli als Schlag bestimmt **Weli als einzigen Schlag** dieser Gabe, frei angesagt ebenso wie ladinisch. Ohne Kritische ist er dann Rechter, höher als alle gewöhnlichen Trümpfe und von der Zugabepflicht ausgenommen. Weli als Farbkarte bestimmt **Schellen**. Ansonsten gehört Weli immer zur tatsächlich angesagten Trumpffarbe; seine aufgedruckte Farbe begrenzt ihn nicht auf Schellen. |
 | Kritische und Überschneidungen | Owner bestätigt: Kritisch behält Vorrang, auch wenn die Karte zugleich rechnerisch Rechter wäre. Herz-König bei König/Herz bleibt höchster Kritischer, Eichel-7 entsprechend dritter. Kein zusätzlicher Rechter wird erfunden. Ladinisch als Schlag gezeigter Weli bleibt bei Kritisch EIN zweithöchster Kritischer; kein weiterer Schlag/Rechter. Freie Weli-Ansage mit Kritischen und Trumpfpflicht bei Kollision wurden zur Quellenentscheidung gegeben, siehe unten. |
-| Bieten | Ab erster Karte immer möglich. Erstes Gebot Drei, jedes Gegengebot genau um eins höher. Ein Gebot hält das Spiel an; bis Halten, Gehen oder Aufbieten keine weitere Spielaktion. |
+| Bieten | Owner-Nachtrag vom 20.10.2026 ersetzt die frühere Erstkarten-Sperre: Sobald die vollständige Ansage beziehungsweise das Einschauen abgeschlossen und Kartenspiel freigegeben ist, darf der Spieler am eigenen Kartenzug schon vor der ersten ausgespielten Karte bieten. Erstes Gebot Drei, jedes Gegengebot genau um eins höher. Ein Gebot hält das Spiel an; bis Halten, Gehen oder Aufbieten keine weitere Spielaktion. |
 | Halten / Gehen | A bietet Drei, B geht: A erhält zwei Punkte. B hält: Sieger erhält drei Punkte. B darf direkt Vier gegenbieten. A bietet Drei, B direkt Vier, A geht: B erhält **drei** Punkte. Weitere Stufen folgen dem bestätigten Einer-Schritt; deren vorheriger Einsatz bleibt ausdrücklich im Zustand erhalten. |
 | Gestrichen | Kein eigenes Eröffnungsgebot. Auf ein gegnerisches Gebot sind Halten, Gehen **und Aufbieten** ausdrücklich auch gestrichen erlaubt. Dieser Nachtrag präzisiert das frühere pauschale Bietverbot. |
-| Eigene Gebotsberechtigung | Einsatzbieten: Jeder Spieler darf ein eigenes Drei nur eröffnen, wenn er gerade eine Karte spielen dürfte, und erst nachdem die erste Karte der Gabe liegt. Zuständiger Entscheider darf Halten/Gehen/Aufbieten als Antwort sofort ausserhalb seines Kartenzugs. Schlag-/Farbansagerrollen werden nicht neu verteilt. |
+| Eigene Gebotsberechtigung | Einsatzbieten: Jeder Spieler darf ein eigenes Drei eröffnen, wenn er gerade eine Karte spielen dürfte, ausdrücklich auch vor der ersten ausgespielten Karte nach abgeschlossener Ansage. Zuständiger Entscheider darf Halten/Gehen/Aufbieten als Antwort sofort ausserhalb seines Kartenzugs. Schlag-/Farbansagerrollen werden durch das Bieten nicht neu verteilt. Ein vereinbartes Schöneres bleibt nach Halten bis zum ersten Ausspielen möglich; es beginnt die Ansage neu und setzt den Einsatz auf zwei zurück. Tatsächlich angenommene Bietaktionen bleiben im Beweisjournal gezählt. |
 | Dreierpunkte | Verliert das Solo eine Gabe ohne Gebot, bekommen beide Gegenpartner je zwei Punkte. Erreichen dadurch beide elf, gewinnen beide. Gebotserhöhungen müssen dieselbe individuelle Zurechnung bewahren. |
 | Dreier-Entscheider | Geber A, Solist B, Gegenpartner C: B bietet, A entscheidet für A+C über Halten/Gehen/Aufbieten. Kein Rennen, bei dem C eine andere Antwort durchsetzt. |
-| Dreier und gestrichener Partner | Geber A mit neun Punkten, Partner C mit vier, Solo B mit sechs: C darf auf eigenem Kartenzug nach der ersten Karte Drei eröffnen. As gestrichener Stand sperrt C nicht. Die eigene Eröffnungsberechtigung richtet sich nach dem bietenden Spieler. |
+| Dreier und gestrichener Partner | Geber A mit neun Punkten, Partner C mit vier, Solo B mit sechs: C darf auf eigenem Kartenzug Drei eröffnen. As gestrichener Stand sperrt C nicht. Die eigene Eröffnungsberechtigung richtet sich nach dem bietenden Spieler. |
 | Vierer-Entscheider | Teams A+C/B+D, Geber A und Einschauer B: B oder D bietet → A entscheidet für A+C; A oder C bietet → B entscheidet für B+D. C/D beraten ihren jeweiligen Entscheider über den privaten Rückmeldungskanal. |
 | Private Partner-Rückmeldung | Mitspieler kann «fühl mich gut / schlecht / keine Ahnung» privat an seinen jeweiligen Partner melden, ausdrücklich auch im Vierer. Keine konkrete Karte oder geheime Ansage in dieser Nachricht. Nachrichten werden als erlaubter privater Informationsverlauf behandelt; Gegner/Zuschauer bekommen sie nicht. |
 | Trumpfzugabe | Gewöhnlicher Trumpf eröffnet, Einschauer hält Trumpf und Schlag: Ein gewöhnlicher Schlag darf statt Trumpf gelegt werden, wenn er den aktuellen Stich übernimmt, siehe die konkrete Variante-2-Präzisierung unten. «Stechen ist immer möglich», aber kein allgemeiner Stichzwang. Rechter und Kritische müssen nicht geopfert werden. «Geschützt» war nur unser Sammelbegriff für diese Ausnahmen, keine weitere Kartenklasse. |
@@ -110,8 +110,12 @@ explicitly requested Ladinisch option;
 three-player is a rotating solo against two, with the solo naming rank and suit;
 four-player defaults to blind Ladinisch. Guter and critical cards default off.
 The critical order is heart king, Weli, acorn seven, all above the main strike;
-with critical cards off, Weli is the smallest trump. Bidding starts with the
-first card at three, counterbids rise by one, and play pauses for the response.
+with critical cards off, Weli is the smallest trump. The owner's explicit
+20 October 2026 revision allows bidding on one's own card turn as soon as the
+call or inspection is complete, including before the first card. Bids start
+at three, counterbids rise by one, and play pauses for the response. An agreed
+redeal after a held opening bid remains possible until the first card: calling
+starts again with a stake of two, while accepted bid actions remain recorded.
 An initiating player's own score determines whether they are gestrichen;
 their partner's different three-player score does not block their bid.
 Gestrichen players may still hold, fold or counterbid in response.

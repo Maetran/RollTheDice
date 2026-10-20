@@ -8,17 +8,22 @@ CPU views use the same personal projection as their own authorized seat.
 from __future__ import annotations
 
 from .watten_bidding import nockerl, retourschneider_candidate
+from .watten_cards import WELI
 from .watten_engine import (
     EngineActor,
     EngineState,
     WattenEngineError,
+    announcement_roles,
+    bloedeln_cards,
     gestrichen_players,
     partner_id,
+    preplay_available,
+    preplay_seats,
     require_actor,
     retourschneider_decider,
 )
 from .watten_play import official_knower_seats
-from .watten_rules import WELI_STRIKE, round_roles
+from .watten_rules import WELI_STRIKE, CardKind, ComparisonRules, card_kind
 
 
 def _trick(leader: int, cards: tuple[str, ...], count: int, winner: int | None = None) -> dict:
@@ -41,6 +46,7 @@ def _retourschneider(state: EngineState) -> dict | None:
                   else "failed" if state.ledger.winners else "active")
     return {"status": status, "members": list(members), "opponent_members": list(opponents),
             "decider": retourschneider_decider(state, members),
+            "accepted_by": list(members) if choice and choice.accepted else list(state.retour_accepted_by),
             "erased_points": choice.erased_points if choice else next(
                 account.points for account in state.ledger.accounts if account.members == members),
             "after_deal_id": choice.after_deal_id if choice else state.deal_id}
@@ -49,6 +55,8 @@ def _retourschneider(state: EngineState) -> dict | None:
 def _public(state: EngineState) -> dict:
     play, bidding, recipe = state.play, state.bid_state, state.recipe
     count = recipe.profile.player_count
+    round_complete = state.phase in {"deal_complete", "match_complete"}
+    roles = announcement_roles(state)
     result = bidding.result
     current = _trick(play.trick_leader, play.trick_cards, count) if play else {"cards": []}
     last = _trick(play.tricks[-1].leader, play.tricks[-1].cards, count, play.tricks[-1].winner) if play and play.tricks else None
@@ -59,11 +67,19 @@ def _public(state: EngineState) -> dict:
         "profile": {"player_count": count, "determination": recipe.profile.determination,
                     "blind": recipe.profile.blind, "critical": recipe.profile.critical},
         "options": {"show_rechter": recipe.show_rechter, "open_partner_hand": recipe.open_partner_hand,
-                    "trick_history": recipe.trick_history},
+                    "trick_history": recipe.trick_history, "schoeneres_enabled": recipe.schoeneres_enabled},
         "dealer_seat": state.dealer_seat,
+        "deal_revision": state.deal_revision,
+        "announcement_roles": {"strike": roles.strike_announcer, "colour": roles.suit_announcer,
+                               "first_player": roles.first_player},
+        "preplay": {"pending": None if state.preplay_request is None else {
+            "kind": state.preplay_request.kind, "requester": state.preplay_request.requester,
+            "responder": state.preplay_request.responder},
+            "bloedeln_cards": [{"seat": seat, "card": card} for seat, card in bloedeln_cards(state)]},
         "seats": [{"seat": seat, "player_id": binding.player_id,
                    "party": state.parties.party_of(binding.player_id),
-                   "card_count": len(play.hands[seat]) if play else 5}
+                   "card_count": len(play.hands[seat]) if play else 5,
+                   "tricks_won": sum(trick.winner == seat for trick in play.tricks) if play else 0}
                   for seat, binding in enumerate(recipe.bindings)],
         "scores": [{"members": list(account.members), "points": account.points} for account in state.ledger.accounts],
         "target_points": recipe.target_points,
@@ -72,7 +88,7 @@ def _public(state: EngineState) -> dict:
         "nockerl": [{"members": list(members), "count": count, "reason": reason}
                     for members, count, reason in nockerl(state.ledger)],
         "party_tricks": list(play.party_tricks) if play else [0, 0],
-        "card_turn": play.current_seat if play and not result else None,
+        "card_turn": play.current_seat if play and not result and state.preplay_request is None else None,
         "current_trick": current, "last_trick": last,
         "bid": {"accepted_stake": bidding.accepted_stake,
                 "pending": None if bidding.pending is None else {
@@ -82,8 +98,16 @@ def _public(state: EngineState) -> dict:
                                                        "points": result.points, "reason": result.reason}},
         "transcript": [{"kind": "watten_thanks", "seat": seat} for seat in state.thanks],
         "trick_history": [_trick(trick.leader, trick.cards, count, trick.winner) for trick in play.tricks]
-        if recipe.trick_history and play else None,
+        if play and (recipe.trick_history or round_complete) else None,
     }
+    if round_complete:
+        # Only a scored round ends blind knowledge restrictions. Publish the
+        # final call and already played tricks, never original bottoms, stock
+        # or unplayed hands. Critical overlaps do not create another Rechter.
+        matching = WELI if state.call.strike_rank == WELI_STRIKE else f"{state.call.trump_suit}-{state.call.strike_rank}"
+        rules = ComparisonRules(state.call, critical=recipe.profile.critical)
+        view["round_summary"] = {"strike_rank": state.call.strike_rank, "trump_suit": state.call.trump_suit,
+                                 "rechter": matching if card_kind(matching, rules) == CardKind.RECHTER else None}
     if state.phase == "colour":
         # Normal announcements are public. This transient partial call is
         # needed by the colour chooser; it disappears when the call finishes.
@@ -95,23 +119,27 @@ def _public(state: EngineState) -> dict:
 
 def _actions(state: EngineState, seat: int) -> list[str]:
     player = state.recipe.seats[seat]
-    roles = round_roles(len(state.recipe.seats), state.dealer_seat, determination=state.recipe.profile.determination)
+    roles = announcement_roles(state)
+    if state.preplay_request is not None:
+        return ["preplay_accept", "preplay_decline"] if seat == state.preplay_request.responder else []
+    requests = [f"request_{kind}" for kind in ("schoeneres", "schlagwechsel", "bloedeln")
+                if preplay_available(state, kind) and seat in preplay_seats(state, kind)]
     if state.phase == "strike":
-        return ["announce_strike"] if seat == roles.strike_announcer else []
+        return requests + (["announce_strike"] if seat == roles.strike_announcer else [])
     if state.phase == "colour":
-        return ["announce_colour"] if seat == roles.suit_announcer else []
+        return requests + (["announce_colour"] if seat == roles.suit_announcer else [])
     if state.phase == "show_ready":
-        return ["show_ready"] if seat in state.inspectors and seat not in state.shown else []
+        return requests + (["show_ready"] if seat in state.inspectors and seat not in state.shown else [])
     if state.phase == "inspection":
-        return ["inspection_ack"] if seat in state.inspectors and seat not in state.acknowledged else []
-    actions = []
+        return requests + (["inspection_ack"] if seat in state.inspectors and seat not in state.acknowledged else [])
+    actions = requests
     members = retourschneider_candidate(state.ledger)
     if (state.phase == "deal_complete" and members is not None
-            and player == retourschneider_decider(state, members)):
+            and player in members and player not in state.retour_accepted_by):
         actions.append("retourschneider")
     if state.phase == "play" and player == state.play.current_player_id:
         actions.append("play_card")
-        if (state.play.plays and player not in gestrichen_players(state)
+        if (player not in gestrichen_players(state)
                 and state.parties.party_of(player) != state.bid_state.last_offering_party):
             actions.append("bid")
     if state.phase == "bid_response" and player == state.parties.decider(1 - state.bid_state.pending.party):
@@ -126,7 +154,7 @@ def _actions(state: EngineState, seat: int) -> list[str]:
 def _personal(state: EngineState, seat: int) -> dict:
     view = _public(state)
     recipe, player = state.recipe, state.recipe.seats[seat]
-    roles = round_roles(len(recipe.seats), state.dealer_seat, determination=recipe.profile.determination)
+    roles = announcement_roles(state)
     announcer = seat in {roles.strike_announcer, roles.suit_announcer}
     hand_visible = state.play is not None or (recipe.profile.determination == "normal" and announcer)
     hand = state.play.hands[seat] if state.play else state.deal.hands[seat]

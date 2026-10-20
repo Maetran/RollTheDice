@@ -34,6 +34,7 @@ from .watten_recipe import (
     recipe_to_payload,
     require_fields,
 )
+from .watten_tournament import NockerlSeries, bind_room_series, series_from_payload, series_to_payload
 
 ROOM_SCHEMA_VERSION: Final = 1
 _ROOM_KIND: Final = "watten_room"
@@ -44,7 +45,7 @@ _MAX_ROOM_ID_LENGTH: Final = 128
 _ROOM_KEYS: Final = frozenset({
     "kind", "schema_version", "room_id", "recipe", "revision", "status", "host_participant_id", "members",
     "cpus", "reservations", "participant_counter", "wait_seconds", "wait_expires_at", "first_dealer",
-    "rematch_of", "rematch_room_id",
+    "rematch_of", "rematch_room_id", "series",
 })
 _MEMBER_KEYS: Final = frozenset({"participant_id", "account_id", "seat", "team"})
 _CPU_KEYS: Final = frozenset({"participant_id", "seat"})
@@ -167,6 +168,7 @@ class WattenRoom:
     first_dealer: int | None = None
     rematch_of: str | None = None
     rematch_room_id: str | None = None
+    series: NockerlSeries | None = None
 
     def __post_init__(self) -> None:
         _room_id(self.room_id)
@@ -220,6 +222,18 @@ class WattenRoom:
                 raise WattenRoomError("watten_invalid_rematch_link")
         if self.rematch_room_id is not None and self.status not in {"finished", "closed"}:
             raise WattenRoomError("watten_invalid_rematch_link")
+        if self.series is not None:
+            if (not isinstance(self.series, NockerlSeries) or len(self.series.bindings) != count
+                    or self.series.target != self.recipe.tournament_nockerl_target):
+                raise WattenRoomError("watten_invalid_nockerl_series")
+            if self.series.roster_locked:
+                if (any(self.series.seat_for_account(member.account_id) is None
+                        or member.seat is not None and self.series.seat_for_account(member.account_id) != member.seat
+                        for member in self.members)
+                        or {f"c:{cpu.seat}" for cpu in self.cpus} != {token for token in self.series.bindings if token.startswith("c:")}
+                        or any(self.series.seat_for_account(item.account_id) != item.seat for item in self.reservations)
+                        or self.series.finished and self.status == "started"):
+                    raise WattenRoomError("watten_tournament_roster_locked")
 
 
 @dataclass(frozen=True, slots=True)
@@ -392,6 +406,8 @@ def admit(room: WattenRoom, *, revision: int, account_id: int, now: datetime,
         return Admission(room, existing.participant_id, True)
     if room.status != "waiting":
         raise WattenRoomError(f"watten_room_{room.status}")
+    if room.series is not None and room.series.roster_locked and room.series.seat_for_account(account_id) is None:
+        raise WattenRoomError("watten_tournament_roster_locked")
     if room.recipe.password_required and not protection_verified:
         raise WattenRoomError("watten_room_protected")
     held = sum(1 for item in room.reservations
@@ -416,6 +432,8 @@ def take_seat(room: WattenRoom, *, revision: int, account_id: int, seat: int, te
     member = _required_member(room, account_id)
     now = _open_waiting(room, now)
     seat = _seat(room, seat)
+    if room.series is not None and room.series.roster_locked and room.series.seat_for_account(account_id) != seat:
+        raise WattenRoomError("watten_tournament_roster_locked")
     expected = seat_team(room.recipe.player_count, seat)
     if expected is None and team is not None:
         raise WattenRoomError("watten_team_not_used")
@@ -442,6 +460,8 @@ def take_seat(room: WattenRoom, *, revision: int, account_id: int, seat: int, te
 def place_cpu(room: WattenRoom, *, revision: int, account_id: int, seat: int, now: datetime) -> WattenRoom:
     """Host places a CPU on a named free seat that no valid reservation holds."""
     room = _current(room, revision)
+    if room.series is not None and room.series.roster_locked:
+        raise WattenRoomError("watten_tournament_roster_locked")
     _require_host(room, account_id)
     now = _open_waiting(room, now)
     seat = _seat(room, seat)
@@ -459,6 +479,8 @@ def place_cpu(room: WattenRoom, *, revision: int, account_id: int, seat: int, no
 def remove_cpu(room: WattenRoom, *, revision: int, account_id: int, seat: int, now: datetime) -> WattenRoom:
     """Host frees exactly the named CPU seat; it stays empty."""
     room = _current(room, revision)
+    if room.series is not None and room.series.roster_locked:
+        raise WattenRoomError("watten_tournament_roster_locked")
     _require_host(room, account_id)
     _open_waiting(room, now)
     seat = _seat(room, seat)
@@ -538,6 +560,7 @@ def start(room: WattenRoom, *, revision: int, account_id: int, now: datetime, fi
         raise WattenRoomError("watten_invalid_first_dealer")
     if not all(_occupied(room, seat) for seat in range(count)):
         raise WattenRoomError("watten_seats_incomplete")
+    room = bind_room_series(room)
     started = _next(room, status="started", first_dealer=first_dealer, reservations=())
     return RoomStart(started, start_roster(started))
 
@@ -564,21 +587,25 @@ def create_rematch(source: WattenRoom, *, revision: int, account_id: int, target
     source = _current(source, revision)
     _account(account_id)
     now = _utc(now)
-    if source.status not in {"finished", "closed"}:
+    if source.status != "finished":
         raise WattenRoomError("watten_rematch_requires_finished_room")
-    if source.status == "closed":
-        _require_host(source, account_id)
+    if source.series is not None and source.series.finished:
+        raise WattenRoomError("watten_tournament_finished")
     if source.rematch_room_id is not None:
         raise WattenRoomError("watten_rematch_exists")
     if _room_id(target_room_id) == source.room_id:
         raise WattenRoomError("watten_invalid_rematch_link")
     players = ({account for account in start_roster(source).accounts if account is not None}
                if source.status == "finished" else {member.account_id for member in source.members})
+    if source.series is not None and source.series.roster_locked:
+        players = {int(token[2:]) for token in source.series.bindings if token.startswith("h:")}
     if account_id not in players:
         raise WattenRoomError("watten_rematch_requires_player")
     if password_required is not None and type(password_required) is not bool:
         raise WattenRoomError("watten_rematch_protection_mismatch")
-    recipe = source.recipe if password_required is None else replace(source.recipe, password_required=password_required)
+    if password_required is True or protection_verifier is not None:
+        raise WattenRoomError("watten_rematch_password_not_supported")
+    recipe = replace(source.recipe, password_required=False)
     if recipe.password_required != (type(protection_verifier) is str and bool(protection_verifier)):
         raise WattenRoomError("watten_rematch_protection_mismatch")
     if protection_verifier is not None and type(protection_verifier) is not str:
@@ -593,9 +620,11 @@ def create_rematch(source: WattenRoom, *, revision: int, account_id: int, target
     expires_at = _utc(reservations_expire_at) if pairs else None
     if (expires_at is not None and expires_at <= now) or (not pairs and reservations_expire_at is not None):
         raise WattenRoomError("watten_invalid_reservations")
+    series = source.series if source.series is not None else bind_room_series(source).series
     room = create_room(target_room_id, recipe, host_account=account_id, now=now, wait_seconds=wait_seconds)
     room = replace(room, rematch_of=source.room_id,
-                   reservations=tuple(SeatReservation(key, seat, expires_at) for key, seat in pairs))
+                   reservations=tuple(SeatReservation(key, seat, expires_at) for key, seat in pairs),
+                   series=replace(series, continuation_locked=True))
     return RematchCreated(_next(source, rematch_room_id=target_room_id), room, protection_verifier)
 
 
@@ -622,6 +651,7 @@ def room_to_payload(room: WattenRoom) -> dict:
         "first_dealer": room.first_dealer,
         "rematch_of": room.rematch_of,
         "rematch_room_id": room.rematch_room_id,
+        "series": series_to_payload(room.series),
     }
 
 
@@ -638,6 +668,8 @@ def _time(value: object) -> datetime:
 
 
 def room_from_payload(payload: object) -> WattenRoom:
+    if type(payload) is dict and "series" not in payload:
+        payload = {**payload, "series": None}
     fields = require_fields(payload, _ROOM_KEYS, WattenRoomError, "watten_room")
     if fields["kind"] != _ROOM_KIND:
         raise WattenRoomError("watten_room_invalid_payload")
@@ -649,6 +681,10 @@ def room_from_payload(payload: object) -> WattenRoom:
         recipe = recipe_from_payload(fields["recipe"])
     except WattenRecipeError as exc:
         raise WattenRoomError(exc.code) from exc
+    try:
+        series = series_from_payload(fields["series"])
+    except ValueError as exc:
+        raise WattenRoomError("watten_invalid_nockerl_series") from exc
     members = tuple(Member(**require_fields(item, _MEMBER_KEYS, WattenRoomError, "watten_member"))
                     for item in fields["members"])
     cpus = tuple(CpuOccupant(**require_fields(item, _CPU_KEYS, WattenRoomError, "watten_cpu"))
@@ -663,6 +699,7 @@ def room_from_payload(payload: object) -> WattenRoom:
         participant_counter=fields["participant_counter"], wait_seconds=fields["wait_seconds"],
         wait_expires_at=_time(fields["wait_expires_at"]), first_dealer=fields["first_dealer"],
         rematch_of=fields["rematch_of"], rematch_room_id=fields["rematch_room_id"],
+        series=series,
     )
 
 

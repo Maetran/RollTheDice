@@ -29,8 +29,10 @@ from .watten_engine import (
     EngineRecipe,
     EngineState,
     SeatBinding,
+    announcement_roles,
     apply_command,
     next_deal,
+    preplay_seats,
     restore_storage,
     start_match,
     storage_payload,
@@ -60,7 +62,6 @@ from .watten_room import (
     start_roster,
     take_seat,
 )
-from .watten_rules import round_roles
 from .watten_views import member_view, spectator_view
 
 _LOCKS: WeakValueDictionary[str, asyncio.Lock] = WeakValueDictionary()
@@ -151,7 +152,7 @@ class WattenRuntime:
                 expected = self.engine.call.strike_rank
             if item.value != expected:
                 raise ValueError("watten_invalid_delivery")
-            roles = round_roles(self.room.recipe.player_count, self.engine.dealer_seat, determination=self.room.recipe.determination)
+            roles = announcement_roles(self.engine)
             if item.seat != (roles.strike_announcer if item.kind == "strike_announced" else roles.suit_announcer):
                 raise ValueError("watten_invalid_delivery")
             delivery_keys.append((item.participant_id, item.kind))
@@ -186,7 +187,8 @@ def _engine_recipe(roster) -> EngineRecipe:
     recipe = roster.recipe
     return EngineRecipe(roster.profile, tuple(SeatBinding(player, account) for player, account in zip(roster.seats, roster.accounts)),
                         roster.deal_parties(roster.first_dealer).parties if recipe.player_count == 4 else None,
-                        recipe.target_points, recipe.show_rechter, recipe.partner_hand, recipe.trick_history)
+                        recipe.target_points, recipe.show_rechter, recipe.partner_hand, recipe.trick_history,
+                        recipe.schoeneres_enabled)
 
 
 def cryptographic_deal(count: int, dealer: int):
@@ -197,6 +199,20 @@ def cryptographic_deal(count: int, dealer: int):
     # Explicit server allocation, without asserting a regional packet animation.
     schedule = tuple((dealer + 1 + offset) % count for _ in range(5) for offset in range(count))
     return deal_cards(cards, player_count=count, recipient_order=schedule)
+
+
+def _redraw_callers(engine: EngineState):
+    """Trusted partial redeal: only consenting callers return cards to stock."""
+    from .watten_cards import DealtCards
+
+    callers = preplay_seats(engine, "schoeneres")
+    pool = [*engine.deal.stock, *(card for seat in callers for card in engine.deal.hands[seat])]
+    _RANDOM.shuffle(pool)
+    hands = list(engine.deal.hands)
+    for seat in callers:
+        hands[seat] = tuple(pool[:5])
+        del pool[:5]
+    return DealtCards(tuple(hands), tuple(pool), tuple(hand[-1] for hand in hands))
 
 
 def new_watten_game(game_id: str, name: str, mode: object) -> dict:
@@ -434,19 +450,26 @@ def _cpu_names(room: WattenRoom, names: dict[str, str]) -> dict[str, str]:
 def _apply_engine_command(game: dict, actor: EngineActor, command: EngineCommand) -> tuple[dict, dict, bool, set[str] | None]:
     runtime = game["_watten"]
     candidate = copy_game(game)
-    transition = apply_command(runtime.engine, actor, command)
+    request = runtime.engine.preplay_request
+    replacement = _redraw_callers(runtime.engine) if (
+        command.kind == "preplay_accept" and request is not None and request.kind == "schoeneres") else None
+    transition = apply_command(runtime.engine, actor, command, replacement_deal=replacement)
     ack = {"command_id": transition.ack.command_id, "accepted": True,
            "deal_id": transition.ack.deal_id, "opportunity": transition.ack.opportunity,
            "lifecycle_revision": runtime.lifecycle_revision}
     if transition.replayed:
         return candidate, ack, True, {actor.player_id}
-    deliveries = list(runtime.deliveries)
+    deliveries = [] if transition.state.deal_revision != runtime.engine.deal_revision else list(runtime.deliveries)
     for kind, seat, value in transition.public_events:
         if kind in _CALL_KINDS:
             for recipient in transition.state.recipe.seats:
                 deliveries.append(CallDelivery(f"{transition.state.deal_id}:{transition.state.opportunity}:{kind}:{recipient}",
                                                recipient, transition.state.deal_id, kind, seat, value))
     room = finish(runtime.room, revision=runtime.room.revision) if transition.state.phase == "match_complete" else runtime.room
+    if transition.state.phase == "match_complete":
+        from .watten_tournament import complete_room_series
+
+        room = complete_room_series(room, transition.state)
     runtime = replace(runtime, room=room, engine=transition.state, deliveries=tuple(deliveries),
                       bid_counters=advance_bid_counters(runtime.bid_counters, actor.player_id, command.kind, command.value))
     private = None
@@ -465,6 +488,7 @@ def _ack_payload(ack: RuntimeAck, lifecycle_revision: int) -> dict:
 def snapshot_watten(game: dict, viewer_id: str | None = None, *, viewer_account_id: int | None = None) -> dict:
     from .watten_public_titles import public_title
     from .watten_surprises import surprise_offer
+    from .watten_tournament import public_score_history, public_series
 
     runtime = game["_watten"]
     room, engine = runtime.room, runtime.engine
@@ -490,16 +514,21 @@ def snapshot_watten(game: dict, viewer_id: str | None = None, *, viewer_account_
     return {"game_type": "watten", "id": game["_id"], "name": game["_name"], "started": game["_started"],
             "finished": game["_finished"], "aborted": game["_aborted"],
             "room": {"revision": room.revision, "status": room.status, "recipe": recipe_to_payload(room.recipe),
+                     "series": public_series(room),
+                     "required_seat": room.series.seat_for_account(account) if (
+                         room.series is not None and room.series.roster_locked and type(account) is int) else None,
                      "host_participant_id": room.host_participant_id, "seats": seats,
                      "rematch": {"source_game_id": room.rematch_of, "game_id": room.rematch_room_id,
                                  "can_create": bool(host and type(account) is int and host.account_id == account
-                                     and room.status in {"finished", "closed"} and room.rematch_room_id is None)},
+                                     and room.status == "finished" and room.rematch_room_id is None
+                                     and not (room.series and room.series.finished))},
                      "reservation": {"seat": reservation.seat, "expires_at": reservation.expires_at.isoformat()} if reservation else None,
                      "members": [{"participant_id": item.participant_id, "name": names[item.participant_id],
                                   "seat": item.seat, "team": item.team} for item in room.members],
                      "wait_expires_at": room.wait_expires_at.isoformat() if room.status == "waiting" else None},
             "viewer": {"participant_id": member.participant_id, "seat": member.seat} if member else None,
             "engine": engine_view,
+            "score_history": public_score_history(engine),
             "lifecycle_revision": runtime.lifecycle_revision, "paused": bool(runtime.absent),
             "awaited_participant_ids": list(runtime.absent), "can_resume": bool(member and member.participant_id in runtime.absent),
             "pending_call_events": [{"delivery_id": item.delivery_id, "deal_id": item.deal_id,

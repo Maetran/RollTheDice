@@ -21,6 +21,7 @@ from app.watten_cpu import (
     own_legal_cards,
 )
 from app.watten_cpu_memory import WattenCpuMemoryError, memory_from_storage, memory_to_storage
+from app.watten_cpu_skill import CpuSkill
 from app.watten_engine import EngineCommand, apply_command, restore_storage, start_match, storage_payload
 from app.watten_play import legal_cards
 from app.watten_rules import CardKind, ComparisonRules, card_kind
@@ -144,6 +145,9 @@ def test_match_deciding_counterbids_stop_without_changing_engine_bidding_rules(c
         table.act(decider, "respond", "counter")
     decider = table.state.parties.decider(1 - table.state.bid_state.pending.party)
     response = turn(table, decider)
+    if response.kind == "partner_feedback":
+        table.propose(decider, response)
+        response = turn(table, decider)
     assert response.kind == "respond" and response.value in {"hold", "go"}
     table.propose(decider, response)
     assert table.state.bid_state.pending is None
@@ -165,6 +169,81 @@ def test_partner_already_winning_with_rechter_gets_a_cheap_card_not_a_trump():
     rules = ComparisonRules(table.state.call)
     assert card_kind(decision.value, rules) == CardKind.NORMAL
     table.propose("A", decision)
+
+
+@pytest.mark.parametrize("strong", (False, True))
+def test_cpu_answers_schoeneres_once_from_its_own_hand_and_never_initiates_requests(strong):
+    own = ("bells-7", "hearts-7", "leaves-7", "acorns-7", "bells-A") if strong else (
+        "leaves-8", "leaves-9", "leaves-10", "leaves-U", "leaves-O")
+    deal = explicit_deal(("hearts-8", "hearts-9", "hearts-10", "hearts-U", "hearts-O"), own)
+    table = Table(start_match(cpu_recipe(2, schoeneres_enabled=True), "consent", deal, first_dealer="A"))
+    assert isinstance(turn(table, "A"), CpuWait)
+    assert turn(table, "B").kind == "announce_strike"
+    table.ready("7", "bells")
+    table.act("A", "request_schoeneres")
+    assert isinstance(turn(table, "A"), CpuWait)
+    decision = turn(table, "B")
+    assert decision.kind == ("preplay_decline" if strong else "preplay_accept")
+    assert decision.value is None
+    assert not decision.kind.startswith("request_")
+
+
+def test_cpu_declines_a_redeal_while_its_hand_is_hidden_instead_of_reading_engine_cards():
+    table = Table(start_match(cpu_recipe(4, "ladinisch", True, schoeneres_enabled=True),
+                              "hidden-consent", blind_deal(), first_dealer="A"))
+    table.act("A", "request_schoeneres")
+    assert table.view("B")["hand"] == [{"back": True}] * 5
+    assert turn(table, "B").kind == "preplay_decline"
+
+
+def test_cpu_bloedeln_plays_the_public_original_bottoms_only_in_the_first_trick():
+    table = Table(start_match(cpu_recipe(4, "ladinisch", True), "forced-bottom", blind_deal(), first_dealer="A"))
+    table.ready()
+    table.act("C", "request_bloedeln")
+    table.act("D", "preplay_accept")
+    forced = dict(table.state.play.forced_opening)
+    for _ in range(4):
+        player = table.state.play.current_player_id
+        seat = table.state.play.current_seat
+        legal = own_legal_cards(table.view(player), table.memories[player])
+        assert legal == legal_cards(table.state.play, table.state.bid_state, player)
+        decision = card_choice(table, player)
+        if seat in forced:
+            assert legal == (forced[seat],) and decision.value == forced[seat]
+        table.propose(player, decision)
+    assert len(table.state.play.tricks) == 1
+    for _ in range(4):
+        player = table.state.play.current_player_id
+        if player in {"C", "D"}:
+            assert own_legal_cards(table.view(player), table.memories[player]) == table.state.play.hands["ABCD".index(player)]
+        table.play(player)
+
+
+@pytest.mark.parametrize("blind", (False, True))
+def test_partner_cover_preference_conserves_a_strike_when_safe_and_covers_sampled_later_threats(blind):
+    deal = explicit_deal(
+        ("hearts-10", "hearts-U", "hearts-K", "leaves-A", "bells-8"),
+        ("bells-K", "hearts-7", "leaves-U", "acorns-A", "hearts-9"),
+        ("hearts-8", "leaves-8", "acorns-8", "leaves-K", "acorns-10"),
+        ("acorns-9", "leaves-7", "leaves-10", "acorns-O", "hearts-O"),
+    )
+    table = Table(start_match(cpu_recipe(4, "ladinisch" if blind else "normal", blind),
+                              "partner-cover", deal, first_dealer="A"))
+    table.ready("9", "bells")
+    table.play("B", "bells-K")
+    table.play("C", "hearts-8")
+    view, memory = table.view("D"), table.memories["D"]
+    ctx = cpu_policy._prepare(view, memory, ())
+    model = ctx.model("9", "bells")
+    # These are explicit hypothetical worlds for the narrow tie preference,
+    # supplied without reading any opponent engine hand in the policy.
+    safe = (("hearts-10", "hearts-U", "hearts-K", "leaves-A", "bells-8"), (), (), ctx.hand)
+    threatened = (("bells-A", *safe[0][1:]), (), (), ctx.hand)
+    preference = cpu_policy._partner_cover_preference
+    weak, strong = "leaves-7", "acorns-9"
+    assert preference(ctx, weak, [(model, safe)], CpuSkill()) > preference(ctx, strong, [(model, safe)], CpuSkill())
+    assert preference(ctx, strong, [(model, threatened)], CpuSkill()) > preference(ctx, weak, [(model, threatened)], CpuSkill())
+    assert (ctx.memory.strike, ctx.memory.suit) == ((None, None) if blind else ("9", "bells"))
 
 
 @pytest.mark.parametrize("better_repeated", (None, "hearts-10", "acorns-8"))
@@ -312,7 +391,6 @@ def test_blind_non_inspector_keeps_call_uncertain_is_never_bound_and_infers_from
 def _blind_decision(variant, seed=11):
     table = Table(start_match(cpu_recipe(4, "ladinisch", True), "privacy", blind_deal(variant), first_dealer="A"))
     table.ready()
-    table.act("A", "partner_feedback", "good")
     table.play("B", "hearts-A")
     view = table.view("C")
     return table, view, decide(view, table.memories["C"], seed=seed, budget=CpuBudget(12))
@@ -331,7 +409,6 @@ def test_hidden_state_independence_for_secret_call_opponent_hands_and_stock():
     swapped = replace(deal, hands=tuple(map(tuple, hands)), stock=tuple(stock))
     table = Table(start_match(cpu_recipe(4, "ladinisch", True), "privacy", swapped, first_dealer="A"))
     table.ready()
-    table.act("A", "partner_feedback", "good")
     table.play("B", "hearts-A")
     assert table.view("C") == base_view
     other = decide(table.view("C"), table.memories["C"], seed=11, budget=CpuBudget(12))
@@ -405,6 +482,9 @@ def test_three_player_roles_rotate_and_only_the_actual_partner_advises_its_decid
     table.propose("C", advice)
     assert isinstance(turn(table, "C"), CpuWait)
     assert isinstance(turn(table, "B"), CpuWait)
+    own_advice = turn(table, "A")
+    assert own_advice.kind == "partner_feedback"
+    table.propose("A", own_advice)
     response = turn(table, "A")
     assert response.kind == "respond" and response.value in {"hold", "go", "counter"}
     table.propose("A", response)
@@ -421,6 +501,9 @@ def test_three_player_roles_rotate_and_only_the_actual_partner_advises_its_decid
     advice = turn(table, "A")
     assert advice.kind == "partner_feedback"
     table.propose("A", advice)
+    own_advice = turn(table, "B")
+    assert own_advice.kind == "partner_feedback"
+    table.propose("B", own_advice)
     assert turn(table, "B").kind == "respond"
 
 
@@ -517,31 +600,3 @@ def test_small_paired_seeded_comparison_against_simple_legal_baseline(count):
     # Recorded with ``-s`` for review; eight paired deals cannot establish general strength.
     print(f"paired {count}p points: {totals}")
     assert sum(totals.values()) >= 2 * 8
-
-
-@pytest.mark.parametrize("blind", (False, True))
-def test_partner_cover_preference_conserves_a_strike_when_safe_and_covers_sampled_later_threats(blind):
-    deal = explicit_deal(
-        ("hearts-10", "hearts-U", "hearts-K", "leaves-A", "bells-8"),
-        ("bells-K", "hearts-7", "leaves-U", "acorns-A", "hearts-9"),
-        ("hearts-8", "leaves-8", "acorns-8", "leaves-K", "acorns-10"),
-        ("acorns-9", "leaves-7", "leaves-10", "acorns-O", "hearts-O"),
-    )
-    table = Table(start_match(cpu_recipe(4, "ladinisch" if blind else "normal", blind),
-                              "partner-cover", deal, first_dealer="A"))
-    table.ready("9", "bells")
-    table.play("B", "bells-K")
-    table.play("C", "hearts-8")
-    view, memory = table.view("D"), table.memories["D"]
-    ctx = cpu_policy._prepare(view, memory, ())
-    model = ctx.model("9", "bells")
-    # These are explicit hypothetical worlds for the narrow tie preference,
-    # supplied without reading any opponent engine hand in the policy.
-    safe = (("hearts-10", "hearts-U", "hearts-K", "leaves-A", "bells-8"), (), (), ctx.hand)
-    threatened = (("bells-A", *safe[0][1:]), (), (), ctx.hand)
-    preference = cpu_policy._partner_cover_preference
-    weak, strong = "leaves-7", "acorns-9"
-    assert preference(ctx, weak, [(model, safe)], CpuSkill()) > preference(ctx, strong, [(model, safe)], CpuSkill())
-    assert preference(ctx, strong, [(model, threatened)], CpuSkill()) > preference(ctx, weak, [(model, threatened)], CpuSkill())
-    assert (ctx.memory.strike, ctx.memory.suit) == ((None, None) if blind else ("9", "bells"))
-

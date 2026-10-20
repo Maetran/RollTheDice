@@ -26,6 +26,7 @@ from app.models import (
     WattenMatchPresentationAck,
     WattenProgressState,
 )
+from app.watten_progression import DRAFT_CATALOG_VERSION
 from app.watten_progression_store import acknowledge_draft_progress, store_draft_match
 from tests import test_watten_runtime as runtime_tests
 from tests.test_watten_evidence import FINISHED
@@ -113,7 +114,7 @@ def test_later_valid_source_grant_remains_visible_above_the_receipt(two_matches)
         late_sequence = state.grant_sequence
         assert late_sequence > max(new)
         db.add(WattenAchievementGrant(user_id=own, generation=1, achievement_id="watten_later_catalog_goal",
-                                      catalog_version=2, source_game_id="receipt-old", reached_at=FINISHED,
+                                      catalog_version=DRAFT_CATALOG_VERSION + 1, source_game_id="receipt-old", reached_at=FINISHED,
                                       xp=47, policy_version=2, grant_sequence=late_sequence))
     with session_scope() as db:
         boundaries = receipts.read_match_presentation_boundaries(db, user_id=own, generation=1, game_ids=("receipt-old", "receipt-new"))
@@ -240,11 +241,11 @@ def test_read_rejects_receipt_boundaries_without_a_current_own_same_source_event
             state.grant_sequence += 1
             boundary = state.grant_sequence
             db.add(WattenAchievementGrant(user_id=own, generation=1, achievement_id="other-source-later-grant",
-                                         catalog_version=2, source_game_id="receipt-new", reached_at=FINISHED,
+                                         catalog_version=DRAFT_CATALOG_VERSION, source_game_id="receipt-new", reached_at=FINISHED,
                                          xp=0, policy_version=2, grant_sequence=boundary))
         if damage == "future_generation_event":
             db.add(WattenAchievementGrant(user_id=own, generation=2, achievement_id="future-epoch-source",
-                                         catalog_version=2, source_game_id="receipt-old", reached_at=FINISHED,
+                                         catalog_version=DRAFT_CATALOG_VERSION, source_game_id="receipt-old", reached_at=FINISHED,
                                          xp=0, policy_version=2, grant_sequence=boundary))
         db.add(WattenMatchPresentationAck(user_id=own, generation=1, game_id="receipt-old", through_sequence=boundary))
     with session_scope() as db:

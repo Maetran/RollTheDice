@@ -5,6 +5,9 @@
 @import "./watten-lobby.css";
 @import "./watten-voice.css";
 @import "./watten-polish.css";
+@import "./watten-opponents.css";
+@import "./watten-inspection.css";
+@import "./watten-scorepad.css";
 @import "./watten-decor.css";
 @import "./hausdepp-surprise-effects.css";
 
@@ -378,12 +381,6 @@ html[lang="en"] .wt-rules-text[lang="de"], html:not([lang="en"]) .wt-rules-text[
 
 /* Decorations live in their own shell and never enlarge a protected hit area. */
 .wt-decor { margin-block: .5rem; }
-.wt-decor-toolbar { display: flex; flex-wrap: wrap; gap: .5rem; }
-[data-watten-decor-panel] { margin-block: .5rem; padding: .75rem; color: var(--wt-ink); background: var(--wt-paper); border: 1px solid var(--wt-paper-edge); border-radius: var(--wt-radius); }
-.wt-decor-palette { display: flex; flex-wrap: wrap; gap: .35rem; }
-.wt-decor-palette button { flex: 1 1 7rem; min-height: 44px; }
-.wt-decor-corner { position: relative; height: 248px; width: 100%; overflow: hidden; border-radius: 8px; border: 1px dashed var(--wt-felt-line); background: var(--wt-felt-deep); color: var(--wt-paper); }
-.wt-decor-corner > span { position: absolute; right: .35rem; bottom: .2rem; font-size: .75rem; opacity: .65; pointer-events: none; }
 .wt-decor-layer { position: fixed; inset: 0; z-index: 4; pointer-events: none; user-select: none; }
 .wt-decor-prop { position: absolute; display: block; width: 64px; height: 64px; min-width: 64px; min-height: 64px; margin: 0; padding: 0; border: 0; border-radius: 8px; overflow: hidden; background: transparent; pointer-events: auto; cursor: grab; touch-action: none; -webkit-tap-highlight-color: transparent; }
 .wt-decor-prop:hover, .wt-decor-prop:active { background: transparent; filter: none; }
@@ -394,8 +391,6 @@ html[lang="en"] .wt-rules-text[lang="de"], html:not([lang="en"]) .wt-rules-text[
 .wt-decor-badge { position: absolute; right: 2px; bottom: 2px; max-width: 60px; overflow: hidden; padding: 0 3px; border-radius: 4px; color: var(--wt-ink); background: var(--wt-paper); font-size: .7rem; line-height: 1.2; pointer-events: none; }
 .wt-decor-badge:empty { display: none; }
 .wt-decor-layer .hd-prop-puddle { position: absolute; pointer-events: none; }
-.wt-decor-static-spill { position: absolute; z-index: 5; width: 44px; height: 44px; min-width: 44px; min-height: 44px; padding: 0; border: 2px dashed var(--wt-paper); border-radius: 48% 35% 55% 38%; background: var(--spill-color); pointer-events: auto; cursor: pointer; }
-@media (max-width: 600px) { [data-watten-decor-panel] { padding: .5rem; } [data-watten-decor-panel] .wt-actions > button { flex: 1 1 8rem; } }
 @media (prefers-reduced-motion: reduce) { .wt-decor *, .wt-decor-layer * { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
 .wt-table > [data-watten-rematch] { grid-column: 1 / -1; min-width: 0; }
 .wt-rematch { overflow-wrap: anywhere; }
@@ -432,3 +427,19 @@ html[lang="en"] .wt-rules-text[lang="de"], html:not([lang="en"]) .wt-rules-text[
 @media (prefers-reduced-motion: reduce) {
   .wt-social *, .wt-social-drawer, [data-watten-social-log] { animation: none; transition: none; scroll-behavior: auto; }
 }
+
+/* Private progress keeps the same warm paper and compact rhythm as the lobby. */
+html[data-watten-progress-page] .wt-main { max-width: 1100px; padding: clamp(14px, 3vw, 28px); }
+html[data-watten-progress-page] .wt-progress-tabs { gap: 6px; padding: 5px; border: 1px solid #b38a5d66; border-radius: 12px; background: #dfc7a4; width: fit-content; max-width: 100%; }
+html[data-watten-progress-page] .wt-progress-tabs a { border: 0; border-radius: 8px; color: #633a28; font-weight: 600; text-decoration: none; }
+html[data-watten-progress-page] .wt-progress-tabs [aria-current] { background: #823a2b; color: #fff5df; box-shadow: 0 2px 5px #5b321e25; }
+html[data-watten-progress-page] .wt-progress-title { padding: clamp(16px, 3vw, 24px); border: 1px solid #ba9366; border-radius: 14px; background: linear-gradient(130deg, #fff4de, #ead4b4); box-shadow: 0 5px 18px #64402b14; }
+html[data-watten-progress-page] .wt-progress-stats { gap: 16px 28px; margin-bottom: 0; }
+html[data-watten-progress-page] .wt-achievement-grid { gap: 10px; }
+html[data-watten-progress-page] .wt-achievement-grid .wt-card-panel { padding: 16px; border: 1px solid #c2a17c; background: #f5e8d1; box-shadow: 0 3px 10px #64402b0c; }
+html[data-watten-progress-page] .wt-achievement-grid .is-earned { border-color: #a76c32; background: linear-gradient(130deg, #fff0c6, #edd4a8); box-shadow: inset 3px 0 #a76c32; }
+html[data-watten-progress-page] .wt-achievement-grid h3 { color: #743c28; }
+html[data-watten-progress-page] .wt-achievement-grid p { margin: .5rem 0 0; }
+
+.watten-install { width: min(100% - 24px, 1100px); margin: 12px auto 24px; }
+.watten-install button { min-height: 44px; margin-right: 8px; }

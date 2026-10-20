@@ -113,3 +113,7 @@ html[data-game="zilch"] .suite-game-menu {
 @media (prefers-reduced-motion: reduce) {
   .suite-game-menu { animation: none; }
 }
+
+.suite-game-beta { display: inline-block; padding: 1px 4px; border: 1px solid currentColor; border-radius: 4px; color: #92551d; font: 700 .65em/1.3 system-ui, sans-serif; vertical-align: middle; white-space: nowrap; }
+
+[data-game-picker="watten"] .suite-game-beta { color: #fff0cb; border-color: #e4be7d; }

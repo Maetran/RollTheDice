@@ -161,12 +161,14 @@ class PlayerBids:
 class BidEvidence:
     complete: bool = False
     players: tuple[PlayerBids, ...] = ()
+    discarded_bid_increases: int = 0
 
     def __post_init__(self):
         _require(type(self.complete) is bool and type(self.players) is tuple
                  and all(type(item) is PlayerBids for item in self.players)
                  and len({item.player_id for item in self.players}) == len(self.players)
-                 and (self.complete or not self.players))
+                 and _integer(self.discarded_bid_increases)
+                 and (self.complete or (not self.players and self.discarded_bid_increases == 0)))
 
 
 def _validate_scoring(roster: tuple[Participant, ...], target: int, scores: tuple[Score, ...],
@@ -273,7 +275,7 @@ class MatchEvidence:
                      == sum(item.held + item.went for item in self.bids.players))
             _require(sum(item.went for item in self.bids.players) == sum(item.reason == "go" for item in self.deals))
             _require(sum(item.held + item.countered for item in self.bids.players)
-                     == sum(item.points - 2 for item in self.deals))
+                     == sum(item.points - 2 for item in self.deals) + self.bids.discarded_bid_increases)
 
     @property
     def play_day(self) -> str:
@@ -366,6 +368,8 @@ def evidence_to_payload(evidence: MatchEvidence) -> dict:
     }
     if evidence.retourschneider is not None:
         payload["retourschneider"] = _retourschneider_payload(evidence.retourschneider)
+    if evidence.bids.discarded_bid_increases:
+        payload["bids"]["discarded_bid_increases"] = evidence.bids.discarded_bid_increases
     return payload
 
 
@@ -384,7 +388,7 @@ def evidence_from_payload(payload: object) -> MatchEvidence:
         item = _fields(raw["profile"], "ruleset_id ruleset_version determination blind critical show_rechter trick_history partner_hand")
         profile = PublicProfile(item["ruleset_id"], item["ruleset_version"], item["determination"], item["blind"],
                                 item["critical"], item["show_rechter"], item["trick_history"], item["partner_hand"])
-    bids = _fields(raw["bids"], "completeness players")
+    bids = _fields(raw["bids"], "completeness players", frozenset({"discarded_bid_increases"}))
     _require(type(bids["completeness"]) is str and bids["completeness"] in {"complete", UNKNOWN.value})
     players = []
     for value in _items(bids["players"]):
@@ -395,7 +399,7 @@ def evidence_from_payload(payload: object) -> MatchEvidence:
                              tuple(tuple(_items(item)) for item in _items(raw["winners"])),
                              tuple(_deal(item) for item in _items(raw["deals"])), _timestamp(raw["finished_at"]), profile,
                              UNKNOWN if raw["started_at"] == UNKNOWN.value else _timestamp(raw["started_at"]),
-                             BidEvidence(bids["completeness"] == "complete", tuple(players)),
+                             BidEvidence(bids["completeness"] == "complete", tuple(players), bids.get("discarded_bid_increases", 0)),
                              _retourschneider(raw.get("retourschneider")))
     _require(type(raw["play_day"]) is str and raw["play_day"] == evidence.play_day)
     return evidence

@@ -6,12 +6,13 @@ import { initializeWattenPwa } from "./pwa.js";
 import { t, prepareWattenCards, strikeName, suitName, STRIKES, SUITS } from "./cards.js";
 import { dismissLandscapeHint, joinFormMarkup, recipeMarkup, spectateFormMarkup, waitingRoomMarkup } from "./waiting-room.js";
 import { createTableView } from "./table.js";
-import { createMotion } from "./motion.js";
+import { createMotion, sameHandVersion } from "./motion.js";
 import { createMatchProgress } from "./match-progress.js";
 import { applyFavoriteToCreator, createFavorites, favoriteText, readCreatorRecipe, syncCreatorProtection } from "./favorites.js";
 import { lobbyText as lt } from "./lobby-copy.js";
 import { generateWattenTableName } from "./table-names.js";
 import { createRematch } from "./rematch.js";
+import { createOpenSeatNotifications } from "./open-seat-notify.js";
 import { loadWattenDetail } from "./api.js";
 import { createSocial } from "./social.js";
 import { mountWattenLobbyChat } from "./lobby-chat.js";
@@ -21,14 +22,16 @@ import { createFriendActivity } from "./friend-activity.js";
 import { initializeAppMode } from "../multigame/app-mode.js";
 import { initializeSuiteHeader } from "../shell/header.js";
 
-// Metadata only: these preview documents neither register a worker nor
-// advertise installation; the account pages own that local experiment.
-initializeWattenPwa({ registerWorker: false, installControls: false });
+// Public lobby launches own the install flow; active tables only register.
+const publicBetaDocument = document.documentElement.dataset.wattenPublicBeta === "true";
+initializeWattenPwa({ registerWorker: publicBetaDocument,
+  installControls: publicBetaDocument && document.documentElement.dataset.wattenPage === "lobby" });
 
 const html = document.documentElement;
 const page = ["lobby", "table", "spectator", "rules"].includes(html.dataset.wattenPage) ? html.dataset.wattenPage : "lobby";
 const gameId = /^[0-9a-f]{16}$/.test(html.dataset.gameId || "") ? html.dataset.gameId : "";
 const app = document.getElementById("wattenApp");
+const publicLandingMarkup = publicBetaDocument && page === "lobby" ? app.innerHTML : "";
 const nav = document.querySelector("[data-watten-nav]");
 document.querySelector(".suite-header")?.classList.toggle("suite-header--table", page === "table" || page === "spectator");
 initializeSuiteHeader();
@@ -45,6 +48,9 @@ const ERRORS = new Set([
   "watten_storage_unavailable", "watten_free_weli_strike_with_critical", "watten_leave_unavailable",
   "watten_running_leave_unsupported", "watten_command_conflict", "watten_feedback_unavailable",
   "watten_deal_finished", "watten_already_joined", "watten_not_a_member", "watten_not_started",
+  "watten_preplay_response_required", "watten_preplay_unavailable", "watten_schoeneres_requires_two_callers",
+  "watten_retourschneider_decision_pending", "watten_retourschneider_unavailable",
+  "watten_invalid_tournament_target", "watten_tournament_finished", "watten_tournament_roster_locked",
   "game_creation_temporarily_blocked", "authentication_required", "game_not_found", "watten_password_option_mismatch",
 ]);
 
@@ -55,6 +61,7 @@ let anonymousMount = false;
 let navigating = false;
 let matchProgress = null;
 let rematch = null;
+let openSeatNotifications = null;
 let social = null;
 let decor = null;
 let voice = null;
@@ -88,6 +95,7 @@ function teardown() {
   for (const cleanup of cleanups) cleanup();
   cleanups.clear();
   closeSocket();
+  session.view?.destroy?.();
   if (page !== "rules") app.replaceChildren();
 }
 
@@ -168,11 +176,17 @@ function creatorMarkup() {
         <label><input type="radio" name="determination" value="ladinisch" checked><span>${esc(t("create.ladinisch"))}</span></label>
       </fieldset>
       <label>${esc(t("create.target"))}<select name="target">${targets.map(points => `<option value="${points}"${points === 11 ? " selected" : ""}>${esc(t(points === 3 ? "create.targetShort" : "create.targetOption", { points }))}</option>`).join("")}</select></label></div>
+      <div class="wt-create-tournament"><label>${esc(lt("tournament"))}<select name="tournament_target">
+        <option value="">${esc(lt("singleGame"))}</option>${[3, 5, 8, 10, 15, 20].map(count => `<option value="${count}">${esc(lt("tournamentTarget", { count }))}</option>`).join("")}
+        <option value="custom">${esc(lt("tournamentCustom"))}</option></select></label>
+        <label data-watten-tournament-custom hidden>${esc(lt("tournamentNumber"))}<input name="tournament_custom" type="number" inputmode="numeric" min="1" max="9007199254740991" step="1" disabled></label>
+        <small data-watten-tournament-help hidden>${esc(lt("tournamentHelp"))}</small></div>
       <label class="wt-check"><input type="checkbox" name="blind" checked><span>${esc(t("create.blind"))}<small>${esc(t("create.blindHelp"))}</small></span></label>
       <label class="wt-check"><input type="checkbox" name="cpu_fill"><span>${esc(lt("cpuFill"))}<small>${esc(lt("cpuHelp"))}</small></span></label>
       <label class="wt-check"><input type="checkbox" name="voice_enabled" checked><span>${esc(lt("audio"))}<small>${esc(lt("audioHelp"))}</small></span></label>
       <details class="wt-more" data-watten-advanced><summary>${esc(t("create.more"))}</summary>
         <label class="wt-check"><input type="checkbox" name="critical"><span>${esc(t("create.critical"))}<small>${esc(t("create.criticalHelp"))}</small></span></label>
+        <label class="wt-check"><input type="checkbox" name="schoeneres_enabled"><span>${esc(lt("schoeneres"))}<small data-watten-schoeneres-help>${esc(lt("schoeneresHelp"))}</small></span></label>
         <label class="wt-check"><input type="checkbox" name="show_rechter"><span>${esc(t("create.showRechter"))}<small>${esc(t("create.showRechterHelp"))}</small></span></label>
         <label class="wt-check"><input type="checkbox" name="trick_history"><span>${esc(t("create.trickHistory"))}<small>${esc(t("create.trickHistoryHelp"))}</small></span></label>
         <label class="wt-check"><input type="checkbox" name="partner_hand"><span>${esc(t("create.partnerHand"))}<small data-watten-partner-help>${esc(t("create.partnerHandHelp"))}</small></span></label>
@@ -203,6 +217,20 @@ function syncCreator(form, countChanged) {
   const partnerAllowed = count !== 2 && !form.elements.blind.checked;
   form.elements.partner_hand.disabled = !partnerAllowed;
   if (!partnerAllowed) form.elements.partner_hand.checked = false;
+  const schoeneresAllowed = count !== 3;
+  form.elements.schoeneres_enabled.disabled = !schoeneresAllowed;
+  if (!schoeneresAllowed) form.elements.schoeneres_enabled.checked = false;
+  form.querySelector("[data-watten-schoeneres-help]").textContent = lt(schoeneresAllowed ? "schoeneresHelp" : "schoeneresUnavailable");
+  const tournament = form.elements.tournament_target;
+  tournament.disabled = count === 3;
+  if (count === 3) tournament.value = "";
+  const customTournament = tournament.value === "custom";
+  form.querySelector("[data-watten-tournament-custom]").hidden = !customTournament;
+  form.elements.tournament_custom.disabled = !customTournament;
+  form.elements.tournament_custom.required = customTournament;
+  const tournamentHelp = form.querySelector("[data-watten-tournament-help]");
+  tournamentHelp.hidden = !tournament.value && count !== 3;
+  tournamentHelp.textContent = lt(count === 3 ? "tournamentUnavailable" : "tournamentHelp");
   syncCreatorProtection(form);
   form.querySelector("[data-watten-count-note]").textContent = t(`create.count${count}Note`);
 }
@@ -246,6 +274,7 @@ function mountCreator(gen) {
       favoriteButton.disabled = favoriteBusy || !favorite;
       dialog.querySelector("[data-watten-favourite-summary]").textContent = favorite
         ? favoriteText("summary", { players: favorite.player_count, target: favorite.target_points, cpus: favorite.cpu_seats.length })
+          + (favorite.tournament_nockerl_target ? ` · ${lt("tournamentTarget", { count: favorite.tournament_nockerl_target })}` : "")
         : favoriteBusy ? favoriteText("loading") : lt("favouriteEmpty");
       dialog.querySelector("[data-watten-favourite-error]").textContent = failed ? favoriteText(message) : "";
     } });
@@ -359,19 +388,21 @@ async function refreshTables(gen) {
 
 async function mountLobby() {
   const gen = generation;
-  app.innerHTML = lobbyIntro({ status: t("lobby.loading") });
+  if (!publicLandingMarkup) app.innerHTML = lobbyIntro({ status: t("lobby.loading") });
   let auth;
   try { auth = await loadAuth({ refresh: true }); } catch {
     if (gen !== generation) return;
     renderNav(null);
-    app.innerHTML = lobbyIntro({ status: t("auth.unavailable") });
+    app.innerHTML = publicLandingMarkup || lobbyIntro({ status: t("auth.unavailable") });
+    if (publicLandingMarkup) initializeAppMode({ mode: "watten" });
     return;
   }
   if (gen !== generation) return;
   renderNav(auth);
   if (!auth.authenticated) {
     anonymousMount = true;
-    app.innerHTML = lobbyIntro();
+    app.innerHTML = publicLandingMarkup || lobbyIntro();
+    if (publicLandingMarkup) initializeAppMode({ mode: "watten" });
     return;
   }
   account = { id: auth.user.id, username: auth.user.username };
@@ -463,6 +494,7 @@ function showMessage(title, body, actions = "") {
   decor?.suspend();
   motion.cancel();
   delete html.dataset.wattenActive;
+  session.view?.destroy?.();
   session.view = null;
   session.viewKind = "message";
   const root = viewRoot();
@@ -858,6 +890,10 @@ function adopt(snapshot, publicCalls) {
   const previous = session.snapshot;
   const live = session.live;
   session.snapshot = snapshot;
+  if (previous?.engine && snapshot.engine && !sameHandVersion(previous.engine, snapshot.engine)) {
+    session.bubbles = [];
+    session.callAnnouncement = "";
+  }
   session.live = true;
   if (session.pendingDeparture && !session.inFlight) return;
   setConnection("");
@@ -881,6 +917,9 @@ function preserveFocus(update) {
 function liveMessage(snapshot, engine, actions) {
   if (snapshot.paused) return t(snapshot.can_resume ? "pause.self" : "pause.title");
   if (session.callAnnouncement) return session.callAnnouncement;
+  if (actions.includes("preplay_accept") && engine.preplay?.pending) {
+    return t(`roundOptions.${engine.preplay.pending.kind}.pending`, { name: snapshot.room.seats[engine.preplay.pending.requester]?.name || t("seat.unknown") });
+  }
   if (actions.some(action => action.startsWith("respond_"))) return t("bid.yourDecision");
   if (actions.includes("play_card")) return t("play.yourTurn");
   if (engine.inspection) return t("inspection.title");
@@ -898,6 +937,7 @@ function render(previous = null, live = false, accepted = false) {
   setHeading(snapshot.name);
   if (!snapshot.engine) {
     motion.cancel();
+    session.view?.destroy?.();
     delete html.dataset.wattenActive;
     if (snapshot.room.status === "closed") {
       if (session.viewKind !== "closed" || !root.querySelector("[data-watten-rematch]")) {
@@ -918,20 +958,22 @@ function render(previous = null, live = false, accepted = false) {
         busy: Boolean(session.inFlight) || !session.bound,
       });
     });
+    openSeatNotifications?.update();
     syncDecor();
     return;
   }
   if (session.viewKind !== "table" || !session.view) {
     motion.cancel();
+    session.view?.destroy?.();
     session.viewKind = "table";
-    session.view = createTableView(root, { onCard: card => engineCommand("play_card", card) });
+    session.view = createTableView(root, { onCard: card => engineCommand("play_card", card), accountId: account?.id });
   }
   html.dataset.wattenActive = "true";
   const engine = snapshot.engine;
   const count = snapshot.room.recipe.player_count;
   const viewerSeat = session.spectator ? null : engine.viewer?.seat ?? null;
   const actions = session.spectator ? [] : Array.isArray(engine.actions) ? engine.actions : [];
-  const sameDeal = live && previous?.engine?.deal_id === engine.deal_id;
+  const sameDeal = live && sameHandVersion(previous?.engine, engine);
   const prevTrick = previous?.engine?.current_trick?.cards?.length || 0;
   const vm = {
     snapshot, engine, room: snapshot.room, count, viewerSeat, anchorSeat: viewerSeat ?? 0,
@@ -1057,11 +1099,18 @@ async function mountTable() {
   cleanups.add(() => { matchProgress?.destroy(); matchProgress = null; });
   rematch?.destroy();
   rematch = createRematch({ gameId, fetcher: (url, options) => fetch(url, options), loadAuth, escapeHtml: esc,
-    renderRecipe: recipeMarkup, makeCommandId: commandId, navigate,
+    makeCommandId: commandId, navigate,
     getExpectedAccountId: () => account?.id,
     isCurrent: () => gen === generation && !navigating && latestUserId === account?.id,
     onAccountChanged: reloadFresh });
   cleanups.add(() => { rematch?.destroy(); rematch = null; });
+  openSeatNotifications?.destroy();
+  openSeatNotifications = createOpenSeatNotifications({ root: app, gameId, apiFetch, loadAuth,
+    getSnapshot: () => session.spectator ? null : session.snapshot,
+    getExpectedAccountId: () => account?.id, isBusy: () => Boolean(session.inFlight) || !session.bound,
+    isCurrent: () => gen === generation && !navigating && latestUserId === account?.id,
+    onAccountChanged: reloadFresh });
+  cleanups.add(() => { openSeatNotifications?.destroy(); openSeatNotifications = null; });
   social?.destroy();
   social = createSocial({ gameId, escapeHtml: esc,
     getExpectedAccountId: () => account?.id,
@@ -1188,7 +1237,8 @@ cleanups.add(() => { closeLeaveDialog(); motion.destroy(); });
 if (page === "rules") {
   loadAuth().then(auth => {
     renderNav(auth);
-    if (auth.authenticated && (auth.game_access || auth.user?.game_access)?.watten_preview === true) {
+    const access = auth.game_access || auth.user?.game_access;
+    if (access?.watten_public === true || (auth.authenticated && access?.watten_preview === true)) {
       initializeAppMode({ mode: "watten" });
     }
   }).catch(() => renderNav(null));

@@ -1,4 +1,4 @@
-"""Installation metadata for the explicitly opted-in local account preview."""
+"""Installation metadata for local previews and the explicitly enabled public beta."""
 
 from pathlib import Path
 
@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import FileResponse
 
 from .http_cache import read_static_asset_version
-from .watten_readiness import watten_account_preview_enabled
+from .watten_readiness import watten_account_preview_enabled, watten_public_beta_enabled
 
 router = APIRouter()
 _STATIC = Path(__file__).resolve().parent / "static"
@@ -30,16 +30,17 @@ def watten_manifest(request: Request):
 def watten_worker(request: Request):
     _require_local_preview(request)
     return FileResponse(_STATIC / "watten-sw.js", media_type="text/javascript",
-                        headers={**_HEADERS, "Service-Worker-Allowed": "/watten"})
+                        headers={**_HEADERS, "Service-Worker-Allowed": "/" if watten_public_beta_enabled() and request.url.hostname == "watten.zockdiewandan.online" else "/watten"})
 
 
 def account_pwa_head(content: str) -> str:
     """Only guarded account renderers may add these local install resources."""
     version = read_static_asset_version(_STATIC)
     suffix = f"?v={version}" if version else ""
-    return content.replace('<html lang="de"', '<html lang="de" data-watten-pwa-preview="true"', 1).replace(
+    marker = ' data-watten-public-beta="true"' if watten_public_beta_enabled() else ""
+    return content.replace('<html lang="de"', '<html lang="de" data-watten-pwa-preview="true"' + marker, 1).replace(
         "</head>",
-        '<meta name="theme-color" content="#26583e">'
+        '<meta name="theme-color" content="#713d2c">'
         '<meta name="apple-mobile-web-app-capable" content="yes">'
         '<meta name="apple-mobile-web-app-title" content="Watten">'
         f'<link rel="manifest" data-pwa-product="watten" href="/watten-manifest.webmanifest{suffix}">'

@@ -1,10 +1,10 @@
 {
-  "version": "3.18.2",
-  "bump": "patch",
+  "version": "3.19.0",
+  "bump": "minor",
   "date": "2026-10-20",
-  "previous_revision": "7a66e1051190fa81f25d8d1802d27bf88411959a",
+  "previous_revision": "50306cf0d602518aa47e9bd3f72c92b55f3aa410",
   "summary": {
-    "de": "Einheitliche Navigation, ZDWA-Community-Statistiken, klare Hausdepp-Dialoge und ein fester Tisch in der privaten Watten-Vorschau.",
-    "en": "Consistent navigation, ZDWA community statistics, clear Hausdepp dialogs and a fixed table in the private Watten preview."
+    "de": "Watten startet als öffentliche Beta mit Turnieren, taktischen CPUs, Bierblock-Anschrift und eigener PWA.",
+    "en": "Watten launches in public beta with tournaments, tactical CPUs, a pub scorepad and its own PWA."
   }
 }

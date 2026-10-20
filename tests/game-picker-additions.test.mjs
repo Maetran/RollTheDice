@@ -116,7 +116,7 @@ for (const compact of [false, true]) {
     assert.equal(f.doc.body.style.overflow, compact ? "hidden" : "scroll");
     const added = f.links()[2];
     assert.equal(added.href, "/watten");
-    assert.equal(added.getAttribute("aria-label"), "Watten");
+    assert.equal(added.getAttribute("aria-label"), "Watten [BETA]");
     assert.ok(added.querySelector("[data-game-activity]"));
     assert.equal(oldActivity.options.signal.aborted, true);
     assert.equal(f.requests.length, 2);

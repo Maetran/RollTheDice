@@ -8,6 +8,7 @@ BRANCH="${BRANCH:-master}"
 SILENT_RELEASE="${SILENT_RELEASE:-0}"
 FOUNDER_USER_ID="${FOUNDER_USER_ID:-}"
 ACTIVATE_HAUSDEPP="${ACTIVATE_HAUSDEPP:-0}"
+ACTIVATE_WATTEN="${ACTIVATE_WATTEN:-0}"
 
 if [[ "$SILENT_RELEASE" != "0" && "$SILENT_RELEASE" != "1" ]]; then
   echo "SILENT_RELEASE must be 0 or 1" >&2
@@ -15,6 +16,11 @@ if [[ "$SILENT_RELEASE" != "0" && "$SILENT_RELEASE" != "1" ]]; then
 fi
 if [[ "$ACTIVATE_HAUSDEPP" != "0" && "$ACTIVATE_HAUSDEPP" != "1" ]]; then
   echo "ACTIVATE_HAUSDEPP must be 0 or 1" >&2
+  exit 2
+fi
+
+if [[ "$ACTIVATE_WATTEN" != "0" && "$ACTIVATE_WATTEN" != "1" ]]; then
+  echo "ACTIVATE_WATTEN must be 0 or 1" >&2
   exit 2
 fi
 
@@ -53,7 +59,7 @@ fi
 
 printf 'Deploy target: %s:%s\n' "$REMOTE" "$REMOTE_DIR"
 
-remote_env="REMOTE_DIR=$(printf '%q' "$REMOTE_DIR") BRANCH=$(printf '%q' "$BRANCH") SILENT_RELEASE=$(printf '%q' "$SILENT_RELEASE") FOUNDER_USER_ID=$(printf '%q' "$FOUNDER_USER_ID") ACTIVATE_HAUSDEPP=$(printf '%q' "$ACTIVATE_HAUSDEPP")"
+remote_env="REMOTE_DIR=$(printf '%q' "$REMOTE_DIR") BRANCH=$(printf '%q' "$BRANCH") SILENT_RELEASE=$(printf '%q' "$SILENT_RELEASE") FOUNDER_USER_ID=$(printf '%q' "$FOUNDER_USER_ID") ACTIVATE_HAUSDEPP=$(printf '%q' "$ACTIVATE_HAUSDEPP") ACTIVATE_WATTEN=$(printf '%q' "$ACTIVATE_WATTEN")"
 ssh "$REMOTE" "$remote_env bash -s" <<'REMOTE_SCRIPT'
 set -euo pipefail
 
@@ -61,6 +67,7 @@ cd "$REMOTE_DIR"
 SILENT_RELEASE="${SILENT_RELEASE:-0}"
 FOUNDER_USER_ID="${FOUNDER_USER_ID:-}"
 ACTIVATE_HAUSDEPP="${ACTIVATE_HAUSDEPP:-0}"
+ACTIVATE_WATTEN="${ACTIVATE_WATTEN:-0}"
 
 compose() {
   if [[ -n "$FOUNDER_USER_ID" ]]; then
@@ -154,6 +161,11 @@ if command -v curl >/dev/null 2>&1; then
   curl --retry 15 --retry-delay 2 --retry-connrefused --retry-all-errors \
     -fsS http://127.0.0.1:8000/api/health >/dev/null
   echo "local app and database ready"
+fi
+
+if [[ "$ACTIVATE_WATTEN" == "1" ]]; then
+  echo "== Explicit Watten public beta activation =="
+  APPLY=1 bash scripts/activate_watten_public.sh
 fi
 
 echo "== Public product readiness =="

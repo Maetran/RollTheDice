@@ -6,7 +6,7 @@ import { WATTEN_PROGRESS_MESSAGES } from "../i18n/catalog.js";
 import { initializeSuiteHeader } from "../shell/header.js";
 import { initializeAppMode } from "../multigame/app-mode.js";
 
-initializeWattenPwa({ registerWorker: false, installControls: false });
+initializeWattenPwa({ registerWorker: document.documentElement.dataset.wattenPublicBeta === "true", installControls: false });
 initializeSuiteHeader();
 const root = document.getElementById("wattenProgress");
 const page = document.documentElement.dataset.wattenProgressPage;
@@ -42,7 +42,7 @@ function navigation() {
 
 function shell(content) {
   root.innerHTML = `<h1>${esc(t(page))}</h1>${navigation()}
-    <p class="wt-draft-note">${esc(t("draft"))}</p>
+    ${document.documentElement.dataset.wattenPublicBeta === "true" ? "" : `<p class="wt-draft-note">${esc(t("draft"))}</p>`}
     <p class="wt-error" data-progress-error role="alert"></p>${content}`;
 }
 
@@ -252,7 +252,7 @@ async function mount() {
       return;
     }
     accountId = auth.user.id;
-    if ((auth.game_access || auth.user.game_access)?.watten_preview === true) initializeAppMode({ mode: "watten" });
+    if ((auth.game_access || auth.user.game_access)?.watten_preview === true || (auth.game_access || auth.user.game_access)?.watten_public === true) initializeAppMode({ mode: "watten" });
     if (page === "leaderboard") { shell(`<section class="wt-card-panel">${leaderboardForm()}</section>`); await ranking(root.querySelector("form")); }
     else await accountView();
   } catch (error) { if (current === epoch && !navigating) failure(error.message); }

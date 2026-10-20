@@ -78,7 +78,7 @@ test("DE/EN private entry appears only after a fresh confirmed strict capability
     await f.controller.refresh();
     assert.equal(f.reads(), 2);
     const game = f.games().find(game => game.id === "watten");
-    assert.deepEqual(game, { id: "watten", name: "Watten", href: "/watten", description: language === "de" ? "Private Vorschau" : "Private preview" });
+    assert.deepEqual(game, { id: "watten", name: "Watten", href: "/watten" });
     const pickerSource = await read("../frontend/multigame/game-picker.js"), catalog = await read("../frontend/i18n/catalog.js");
     const picker = await import(url(pickerSource.replace('"../i18n/catalog.js"', JSON.stringify(url(catalog)))));
     assert.notEqual(picker.gameIcon("watten"), picker.gameIcon("zdwa"));
@@ -238,4 +238,32 @@ test("shared logout preserves ordinary public capabilities while dropping the pr
   assert.equal(events.at(-1).authenticated, false);
   assert.equal(Object.hasOwn(events.at(-1).game_access, "watten_preview"), false);
   assert.equal(events.at(-1).game_access.hausdepp_public, true); assert.equal(events.at(-1).game_access.zilch_public, true);
+});
+
+
+test("public beta discovery is available to guests and ordinary accounts with a clear beta mark", async () => {
+  for (const id of [null, 2]) {
+    const f = await fixture({ state: auth(id, { watten_public: true }) });
+    await f.controller.refresh();
+    assert.equal(f.games().some(game => game.id === "watten"), true);
+    assert.equal(f.reads(), 1);
+    f.win.location.hostname = "hausdepp.zockdiewandan.online";
+    f.win.location.href = "https://hausdepp.zockdiewandan.online/hausdepp";
+    assert.equal(f.controller.set("watten"), true);
+    assert.equal(new URL(f.visits.at(-1)[1]).origin, "https://watten.zockdiewandan.online");
+  }
+  const source = await read("../frontend/multigame/game-picker.js"), catalog = await read("../frontend/i18n/catalog.js");
+  const picker = await import(url(source.replace('"../i18n/catalog.js"', JSON.stringify(url(catalog)))));
+  assert.match(picker.gamePickerButtonMarkup({ id: "watten", name: "Watten" }), /\[BETA\]/);
+});
+
+test("public Watten keeps installed suite navigation on its own origin", () => {
+  const desktop = { matchMedia: () => ({ matches: false }) };
+  const installed = { navigator: { standalone: true } };
+  const watten = { hostname: "watten.zockdiewandan.online", pathname: "/watten" };
+  assert.equal(routes.wattenAppEntryUrl(watten, desktop, { publicBeta: true }), "https://watten.zockdiewandan.online/watten");
+  assert.equal(routes.wattenAppEntryUrl(watten, installed, { publicBeta: true }), "/watten");
+  assert.equal(routes.zdwaAppEntryUrl(watten, installed), "/zdwa");
+  assert.equal(routes.zilchAppEntryUrl("/", watten, installed), "/zilch");
+  assert.equal(routes.hausdeppAppEntryUrl(watten, installed), "/hausdepp");
 });

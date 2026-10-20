@@ -37,7 +37,7 @@ from typing import Final
 from .watten_cards import WATTEN_SUITS, WELI, card_rank, card_suit, make_deck
 from .watten_cpu_memory import STRIKES, CpuMemory, SeatSnapshot, call_from_bottoms, read_personal_view, remember
 from .watten_cpu_skill import CpuSkill
-from .watten_play import TRICKS_TO_WIN, official_knower_seats
+from .watten_play import TRICKS_TO_WIN
 from .watten_rules import (
     WELI_STRIKE,
     CardKind,
@@ -46,7 +46,6 @@ from .watten_rules import (
     card_kind,
     card_strength,
     effective_suit,
-    round_roles,
 )
 
 # Typical Tyrolean first names; the runtime picks one not used by a human at the table.
@@ -56,7 +55,7 @@ DEFAULT_SAMPLES: Final = 24
 MAX_SAMPLES: Final = 64
 ATTEMPTS_PER_SAMPLE: Final = 8
 COMMAND_KINDS: Final = frozenset({"announce_strike", "announce_colour", "show_ready", "inspection_ack", "play_card",
-                                  "bid", "respond", "partner_feedback", "retourschneider"})
+                                  "bid", "respond", "partner_feedback", "retourschneider", "preplay_accept", "preplay_decline"})
 _RESPONSE_ACTIONS: Final = frozenset({"respond_hold", "respond_go", "respond_counter"})
 _RESPONSES: Final = frozenset({"hold", "go", "counter"})
 _FEEDBACK: Final = frozenset({"good", "bad", "unsure"})
@@ -128,7 +127,8 @@ class CpuProposal:
             raise WattenCpuError("watten_cpu_invalid_proposal")
         if (self.kind == "respond") != (self.value in _RESPONSES) or (
                 self.kind == "partner_feedback" and self.value not in _FEEDBACK) or (
-                self.kind == "retourschneider" and self.value not in {"accept", "decline"}):
+                self.kind == "retourschneider" and self.value not in {"accept", "decline"}) or (
+                self.kind in {"preplay_accept", "preplay_decline"} and self.value is not None):
             raise WattenCpuError("watten_cpu_invalid_proposal")
 
     @property
@@ -276,8 +276,9 @@ class _Context:
         self.count, self.critical, self.seat = profile.player_count, profile.critical, snap.seat
         self.parties = snap.seat_parties
         self.my_party = self.parties[self.seat]
-        self.knowers = official_knower_seats(profile, snap.dealer_seat)
-        self.roles = round_roles(self.count, snap.dealer_seat, determination=profile.determination)
+        self.roles = snap.announcement_roles
+        self.knowers = (frozenset((self.roles.strike_announcer, self.roles.suit_announcer)) if profile.blind
+                        else frozenset(range(self.count)))
         self.hand = snap.hand or ()
         self.known = {self.seat: self.hand}
         if snap.partner_cards is not None:
@@ -289,7 +290,14 @@ class _Context:
             self.tricks.setdefault(trick, {})[position] = (seat, card)
             self.played_by[seat].append((trick, card))
             self.played_seat[card] = seat
+        if sum(snap.party_tricks):
+            # These public cards had to be spent in trick one, including on a
+            # late reconnect with live trick history disabled.
+            for seat, card in snap.bloedeln_cards:
+                self.played_seat.setdefault(card, seat)
         self.seen = set(self.hand) | set(snap.partner_cards or ()) | set(self.played_seat)
+        self.public_held = {card: seat for seat, card in snap.bloedeln_cards
+                            if not sum(snap.party_tricks) and card not in self.played_seat}
         self.winners = dict(memory.winners)
         for trick, positions in self.tricks.items():
             if trick and trick - 1 not in self.winners:
@@ -311,7 +319,8 @@ def _origin_candidates(ctx: _Context, origin: int) -> list[str]:
     if origin in ctx.known:
         return [card for card in _DECK if card in ctx.known[origin] or ctx.played_seat.get(card) == origin]
     return [card for card in _DECK
-            if not any(card in cards for cards in ctx.known.values()) and ctx.played_seat.get(card, origin) == origin]
+            if not any(card in cards for cards in ctx.known.values()) and ctx.played_seat.get(card, origin) == origin
+            and ctx.public_held.get(card, origin) == origin]
 
 
 def _consistent(ctx: _Context, model: _Model) -> bool:
@@ -380,6 +389,9 @@ def _options(ctx: _Context) -> list[tuple[_Model, str | None, str | None]]:
 
 
 def _own_legal(ctx: _Context, options: list) -> tuple[str, ...]:
+    forced = dict(ctx.snap.bloedeln_cards).get(ctx.seat) if not sum(ctx.snap.party_tricks) else None
+    if forced is not None and forced in ctx.hand:
+        return (forced,)
     if ctx.seat not in ctx.knowers:
         return ctx.hand
     trick_cards = [card for _, card in ctx.trick]
@@ -400,6 +412,9 @@ def _sample(ctx: _Context, option: tuple, stream: _Stream) -> tuple[_Model, tupl
         for card, origin in zip(cards or (), origins):
             if card is not None and origin in fixed and card not in ctx.seen:
                 fixed[origin].add(card)
+    for card, owner in ctx.public_held.items():
+        if owner in fixed:
+            fixed[owner].add(card)
     placed = set().union(*fixed.values())
     pool = [card for card in _DECK if card not in ctx.seen and card not in placed]
     stream.shuffle(pool)
@@ -442,6 +457,9 @@ def _worlds(ctx: _Context, options: list, stream: _Stream, samples: int) -> list
 def _simulated_card(model: _Model, seat: int, hands: list[list[str]], trick: list[tuple[int, str]],
                     ctx: _Context) -> str:
     """Simple sensible play for every seat inside one hypothetical world."""
+    forced = dict(ctx.snap.bloedeln_cards).get(seat)
+    if forced is not None and forced in hands[seat]:
+        return forced
     cards = [card for _, card in trick]
     legal = model.allowed(hands[seat], cards, seat in ctx.knowers)
     cheapest = min(legal, key=model.order.__getitem__)
@@ -581,6 +599,32 @@ def _choose_colour(ctx: _Context) -> str:
     return max(WATTEN_SUITS, key=lambda suit: _hand_score(hand, ctx.model(strike, suit)))
 
 
+def _preplay_answer(ctx: _Context) -> str:
+    """Respond once from our own visible hand; never initiate renegotiations."""
+    kind = ctx.snap.preplay_pending[0]
+    if ctx.snap.hand is None:
+        return "preplay_decline"
+    hand = ctx.hand
+    if kind == "bloedeln":
+        # The original bottom is still unknown before consent. Judge the whole
+        # visible hand, without pretending to know which card will be exposed.
+        high = sum(card_rank(card) == "A" for card in hand)
+        return "preplay_accept" if high >= 2 else "preplay_decline"
+    strikes = tuple(strike for strike in STRIKES if not (strike == WELI_STRIKE and ctx.critical))
+    values = {(strike, suit): _hand_score(hand, ctx.model(strike, suit)) for strike in strikes for suit in WATTEN_SUITS}
+    if kind == "schlagwechsel":
+        as_striker = max(sum(values[strike, suit] for suit in WATTEN_SUITS) / len(WATTEN_SUITS) for strike in strikes)
+        as_colourer = sum(max(values[strike, suit] for suit in WATTEN_SUITS) for strike in strikes) / len(strikes)
+        before, after = ((as_striker, as_colourer) if ctx.seat == ctx.roles.strike_announcer
+                         else (as_colourer, as_striker))
+        return "preplay_accept" if after > before + .25 else "preplay_decline"
+    if ctx.memory.strike is not None and ctx.memory.suit is not None:
+        strength = _hand_score(hand, ctx.model(ctx.memory.strike, ctx.memory.suit))
+    else:
+        strength = sum(values.values()) / len(values)
+    return "preplay_accept" if strength < (13 if ctx.critical else 8.5) else "preplay_decline"
+
+
 def _conserve_hopeless(ctx: _Context, legal: tuple[str, ...], options: list) -> tuple[str, ...]:
     """Keep strength when no legal card can beat the already public winner.
 
@@ -664,13 +708,16 @@ def _partner_cover_preference(ctx: _Context, card: str, worlds: list, skill: Cpu
     return skill.partnership * value / len(worlds)
 
 
-
 def _choose(ctx: _Context, seed: int, budget: CpuBudget, skill: CpuSkill) -> CpuProposal | CpuWait:
     snap, actions = ctx.snap, ctx.snap.actions
 
     def propose(kind: str, value: str | None = None, private: int | None = None) -> CpuProposal:
         return CpuProposal(snap.player_id, snap.deal_id, snap.opportunity, snap.phase, kind, value, private)
 
+    if snap.preplay_pending is not None:
+        if "preplay_accept" in actions:
+            return propose(_preplay_answer(ctx))
+        return CpuWait(snap.deal_id, snap.opportunity, snap.phase, "watten_cpu_preplay_waiting")
     if "retourschneider" in actions:
         # The optional all-or-nothing challenge is deliberately conservative
         # until a separate comeback strategy is designed.

@@ -7,13 +7,14 @@ from fastapi import HTTPException
 from .product_hosts import (
     DEFAULT_SITE_ORIGIN,
     HAUSDEPP_ORIGIN,
+    WATTEN_ORIGIN,
     is_hausdepp_host,
     is_watten_host,
     safe_hausdepp_path,
     safe_watten_account_path,
     site_origin,
 )
-from .watten_readiness import watten_account_preview_enabled
+from .watten_readiness import watten_account_preview_enabled, watten_public_beta_enabled
 
 
 def account_app_context(request, requested: str = "zdwa") -> str:
@@ -63,6 +64,8 @@ def account_action_url(path: str, raw_token: str, language: str, *, app: str = "
     if app == "watten":
         if not watten_account_preview_enabled():
             raise RuntimeError("Watten account preview requires a local deployment")
+        if watten_public_beta_enabled() and origin == DEFAULT_SITE_ORIGIN:
+            origin = WATTEN_ORIGIN
         parameters["app"] = "watten"
         parameters["return_to"] = safe_watten_account_path(return_to)
     if app == "hausdepp":

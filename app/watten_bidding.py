@@ -165,15 +165,14 @@ def _active_progress(state: BidState, progress: DealProgress) -> None:
         raise WattenBiddingError("watten_deal_finished")
     if progress.current_player_id is not None:
         state.roles.party_of(progress.current_player_id)
-    if progress.cards_played < 1:
-        raise WattenBiddingError("watten_first_card_required")
 
 
 def bid(state: BidState, player_id: str, progress: DealProgress, *, gestrichen: frozenset[str]) -> BidState:
     """Offer three initially, or the next single point after a held offer.
 
     Opening and later unsolicited raising require this player's current card
-    opportunity. Gestrichen is checked for the initiating individual; a clear
+    opportunity, including the opening turn before any card is played once
+    calling has completed. Gestrichen is checked for the initiating individual; a clear
     three-player partner may offer even if the other partner is gestrichen.
     Pending response counters use respond() instead.
     """

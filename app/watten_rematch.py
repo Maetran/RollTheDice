@@ -21,7 +21,7 @@ from .database import session_scope
 from .game_state import games
 from .models import ActiveGame, User
 from .moderation import ensure_play_allowed
-from .security import hash_password, utcnow, verify_password
+from .security import utcnow
 from .watten_access import require_watten_access
 from .watten_http import _response
 from .watten_public_titles import refresh_public_titles
@@ -37,6 +37,7 @@ from .watten_runtime import (
     new_watten_game,
     restore_watten_json,
 )
+from .watten_tournament import complete_room_series
 
 router = APIRouter()
 _HEADERS = {"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"}
@@ -64,21 +65,15 @@ class FollowUp:
 
 
 def _request(data):
+    if type(data) is dict and "protection" not in data:
+        data = {**data, "protection": {"mode": "disabled"}}
     fields = require_fields(data, frozenset({"command_id", "revision", "protection"}), WattenRematchError, "watten_rematch")
     if (type(fields["command_id"]) is not str or not 1 <= len(fields["command_id"]) <= 160
             or type(fields["revision"]) is not int or fields["revision"] < 0):
         raise WattenRematchError("watten_rematch_invalid_request")
-    protection = fields["protection"]
-    if type(protection) is not dict:
-        raise WattenRematchError("watten_rematch_invalid_protection")
-    if protection == {"mode": "disabled"}:
-        return fields["revision"], None
-    require_fields(protection, frozenset({"mode", "password"}), WattenRematchError, "watten_rematch_protection")
-    password = protection["password"]
-    if (protection["mode"] != "fresh_password" or type(password) is not str
-            or not 1 <= len(password) <= 100 or not password.strip() or password != password.strip()):
-        raise WattenRematchError("watten_rematch_invalid_protection")
-    return fields["revision"], password
+    if fields["protection"] != {"mode": "disabled"}:
+        raise WattenRematchError("watten_rematch_password_not_supported")
+    return fields["revision"]
 
 
 def _stored(db, game_id, *, lock=False):
@@ -94,7 +89,7 @@ def _stored(db, game_id, *, lock=False):
     return raw, game
 
 
-def _attempt(source_id, identity, revision, password, before_create):
+def _attempt(source_id, identity, revision, before_create):
     with session_scope() as db:
         raw, source = _stored(db, source_id, lock=True)
         runtime, now = source["_watten"], utcnow()
@@ -107,28 +102,31 @@ def _attempt(source_id, identity, revision, password, before_create):
             if revision not in {room.revision - 1, room.revision}:
                 raise WattenRematchError("watten_stale_room_revision")
             _target_raw, target = _stored(db, room.rematch_room_id)
-            if (target["_watten"].room.rematch_of != source_id
-                    or bool(target["_passphrase"]) != (password is not None)
-                    or password is not None and not verify_password(password, target["_passphrase"])):
+            if target["_watten"].room.rematch_of != source_id or target["_passphrase"] is not None:
                 raise WattenRematchError("watten_rematch_conflict")
             created = False
         else:
             if revision != room.revision:
                 raise WattenRematchError("watten_stale_room_revision")
-            if room.status not in {"finished", "closed"}:
+            if room.status != "finished":
                 raise WattenRematchError("watten_rematch_requires_finished_room")
             if runtime.engine is not None and not source["_completion_persisted"]:
                 raise WattenRematchError("watten_rematch_result_not_persisted")
+            if runtime.engine is not None and runtime.engine.phase == "match_complete":
+                room = complete_room_series(room, runtime.engine)
+                runtime = replace(runtime, room=room)
             if before_create is not None:
                 before_create()
             active = set(db.scalars(select(User.id).where(User.is_active.is_(True))))
             suggestions = {item.account_id: item.seat for item in room.members
                            if item.seat is not None and item.account_id in active}
-            verifier = hash_password(password) if password is not None else None
+            if room.series is not None:
+                suggestions = {int(token[2:]): seat for seat, token in enumerate(room.series.bindings)
+                               if token.startswith("h:")}
             result = create_rematch(room, revision=revision, account_id=identity.user_id, target_room_id=secrets.token_hex(8),
                 now=now, wait_seconds=room.wait_seconds, reservations=suggestions,
                 reservations_expire_at=now + timedelta(seconds=300) if suggestions else None,
-                protection_verifier=verifier, password_required=password is not None)
+                protection_verifier=None, password_required=False)
             candidate = copy_game(source)
             _sync(candidate, replace(runtime, room=result.source), public=True)
             # This write must precede the target INSERT; a losing process leaves
@@ -159,10 +157,10 @@ def create_follow_up(source_id: str, identity, data: dict, *, before_create=None
     A bounded transaction retry after losing that race reloads the winning link.
     Both source and target writes commit together; no result/grant writer runs.
     """
-    revision, password = _request(data)
+    revision = _request(data)
     for attempt in range(2):
         try:
-            return _attempt(source_id, identity, revision, password, before_create)
+            return _attempt(source_id, identity, revision, before_create)
         except _LostSourceCAS:
             if attempt:
                 raise WattenRematchError("watten_rematch_retry") from None

@@ -178,12 +178,12 @@ def _progress(db, user_id, matches):
         prefixes, contributions = {}, {}
         for grant in grants:
             _require(grant.source_game_id in sources)
-            if grant.catalog_version == DRAFT_CATALOG_VERSION and grant.achievement_id in rare_goals:
+            if grant.catalog_version <= DRAFT_CATALOG_VERSION and grant.achievement_id in rare_goals:
                 source_match = by_game[grant.source_game_id]
                 _require(as_utc(grant.reached_at) == source_match.evidence.finished_at
                          and grant.achievement_id in qualifying_surprises(db, source_match.evidence,
                                                                          source_match.original_bindings, user_id, facts=rare_facts))
-            if grant.catalog_version == DRAFT_CATALOG_VERSION and grant.achievement_id in goals:
+            if grant.catalog_version <= DRAFT_CATALOG_VERSION and grant.achievement_id in goals:
                 source_match = by_game[grant.source_game_id]
                 source = source_match.evidence
                 _require(as_utc(grant.reached_at) == source.finished_at)
@@ -205,7 +205,7 @@ def _progress(db, user_id, matches):
         raise WattenAccountError("watten_account_invalid_journal") from exc
     match_xp, achievement_xp = sum(item.xp for item in credits), sum(item.xp for item in grants)
     title = title_for_xp(match_xp + achievement_xp)
-    grants_by_id = {item.achievement_id: item for item in grants if item.catalog_version == DRAFT_CATALOG_VERSION}
+    grants_by_id = {item.achievement_id: item for item in grants if item.catalog_version <= DRAFT_CATALOG_VERSION}
     catalog = []
     for goal in DRAFT_ACHIEVEMENTS:
         grant = grants_by_id.get(goal.achievement_id)
@@ -226,11 +226,12 @@ def _progress(db, user_id, matches):
                         "unlocked": grant is not None})
     counters = {key: getattr(proposal.counters, key) for key in (
         "completed", "wins", "two", "three", "four", "variety", "team_wins", "cpu_matches", "days",
-        "normal", "ladinisch", "blind", "critical", "bid_matches", "counter_matches", "quiet_wins")}
+        "normal", "ladinisch", "blind", "critical", "bid_matches", "counter_matches", "quiet_wins",
+        "schneider_wins", "retourschneider_wins", "eight_plus_three_wins", "retourschneider_eight_plus_three_wins")}
     current_ids = {item.achievement_id for item in (*DRAFT_ACHIEVEMENTS, *SURPRISE_ACHIEVEMENTS)}
     archived = [{"id": item.achievement_id, "name": {"de": "Gespeicherter Watten-Erfolg", "en": "Stored Watten achievement"},
                  "granted_xp": item.xp, "earned_at": as_utc(item.reached_at).isoformat(), "catalog_version": item.catalog_version}
-                for item in grants if item.catalog_version != DRAFT_CATALOG_VERSION or item.achievement_id not in current_ids]
+             for item in grants if item.catalog_version > DRAFT_CATALOG_VERSION or item.achievement_id not in current_ids]
     return {"generation": generation, "grant_sequence": sequence, "acknowledged_sequence": ack,
             "catalog_version": DRAFT_CATALOG_VERSION, "match_xp": match_xp, "achievement_xp": achievement_xp,
             "total_xp": match_xp + achievement_xp, "title": _title(title.current),

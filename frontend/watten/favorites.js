@@ -5,8 +5,9 @@ const currentLanguage = () => globalThis.window?.ZDWA_I18N?.getLanguage?.() === 
 const integer = (value, minimum = 0) => Number.isSafeInteger(value) && value >= minimum;
 const object = value => value !== null && typeof value === "object" && !Array.isArray(value);
 const recipeKeys = new Set(["kind", "schema_version", "ruleset_id", "ruleset_version", "player_count", "determination", "blind",
-  "critical", "target_points", "cpu_seats", "show_rechter", "trick_history", "partner_hand", "password_required", "voice_enabled"]);
-const flags = ["blind", "critical", "show_rechter", "trick_history", "partner_hand", "password_required", "voice_enabled"];
+  "critical", "target_points", "cpu_seats", "show_rechter", "trick_history", "partner_hand", "password_required", "voice_enabled", "schoeneres_enabled", "tournament_nockerl_target"]);
+const tournamentPresets = [3, 5, 8, 10, 15, 20];
+const flags = ["blind", "critical", "show_rechter", "trick_history", "partner_hand", "password_required", "voice_enabled", "schoeneres_enabled"];
 
 export function favoriteText(key, values = {}, language = currentLanguage()) {
   return WATTEN_FAVORITE_MESSAGES[language === "en" ? "en" : "de"][key]
@@ -22,7 +23,16 @@ function validRecipe(recipe) {
     && recipe.cpu_seats.every((seat, index) => integer(seat) && seat < recipe.player_count && (!index || seat > recipe.cpu_seats[index - 1]))
     && (recipe.player_count !== 3 || recipe.determination === "normal")
     && (!recipe.blind || recipe.player_count === 4 && recipe.determination === "ladinisch")
-    && (!recipe.partner_hand || recipe.player_count !== 2 && !recipe.blind);
+    && (!recipe.partner_hand || recipe.player_count !== 2 && !recipe.blind)
+    && (!recipe.schoeneres_enabled || [2, 4].includes(recipe.player_count))
+    && (recipe.tournament_nockerl_target === null || integer(recipe.tournament_nockerl_target, 1) && [2, 4].includes(recipe.player_count));
+}
+
+function normalizedRecipe(value) {
+  if (!object(value)) return null;
+  // Existing favorites predate the optional audio and redeal preferences.
+  const recipe = { voice_enabled: true, schoeneres_enabled: false, tournament_nockerl_target: null, ...value };
+  return validRecipe(recipe) ? recipe : null;
 }
 
 export function syncCreatorProtection(form) {
@@ -36,6 +46,7 @@ export function readCreatorRecipe(form, { language = currentLanguage() } = {}) {
   const password = form.elements.password.value.trim();
   const protectedTable = Boolean(password);
   const count = Number(form.elements.count.value);
+  const tournament = form.elements.tournament_target?.value || "";
   const recipe = {
     kind: "watten_recipe", schema_version: 1, ruleset_id: "watten-house", ruleset_version: 1,
     player_count: count, determination: form.elements.determination.value,
@@ -45,6 +56,8 @@ export function readCreatorRecipe(form, { language = currentLanguage() } = {}) {
     show_rechter: form.elements.show_rechter.checked, trick_history: form.elements.trick_history.checked,
     partner_hand: form.elements.partner_hand.checked, password_required: protectedTable,
     voice_enabled: form.elements.voice_enabled.checked,
+    schoeneres_enabled: form.elements.schoeneres_enabled.checked,
+    tournament_nockerl_target: tournament ? Number(tournament === "custom" ? form.elements.tournament_custom.value : tournament) : null,
   };
   if (recipe.cpu_seats.length >= recipe.player_count) throw new Error(favoriteText("allCpu", {}, language));
   if (!validRecipe(recipe)) throw new Error(favoriteText("invalid", {}, language));
@@ -53,7 +66,8 @@ export function readCreatorRecipe(form, { language = currentLanguage() } = {}) {
 
 /** Explicit apply changes settings only, clears the secret, and never submits. */
 export function applyFavoriteToCreator(form, recipe) {
-  if (!validRecipe(recipe)) throw new Error(favoriteText("invalid"));
+  recipe = normalizedRecipe(recipe);
+  if (!recipe) throw new Error(favoriteText("invalid"));
   form.elements.count.value = String(recipe.player_count);
   form.elements.determination.value = recipe.determination;
   if (![...form.elements.target.options].some(option => option.value === String(recipe.target_points))) {
@@ -63,6 +77,11 @@ export function applyFavoriteToCreator(form, recipe) {
     form.elements.target.add(option);
   }
   form.elements.target.value = String(recipe.target_points);
+  if (form.elements.tournament_target) {
+    form.elements.tournament_target.value = recipe.tournament_nockerl_target === null ? ""
+      : tournamentPresets.includes(recipe.tournament_nockerl_target) ? String(recipe.tournament_nockerl_target) : "custom";
+    form.elements.tournament_custom.value = recipe.tournament_nockerl_target === null ? "" : String(recipe.tournament_nockerl_target);
+  }
   for (const key of flags.filter(key => key !== "password_required")) form.elements[key].checked = recipe[key];
   form.elements.cpu_fill.checked = recipe.cpu_seats.length > 0;
   form.elements.password.value = "";
@@ -70,7 +89,7 @@ export function applyFavoriteToCreator(form, recipe) {
   const passwordNote = form.querySelector("[data-watten-password-note]");
   if (passwordNote) passwordNote.textContent = lobbyText(recipe.password_required ? "savedPassword" : "passwordHelp");
   const advanced = form.querySelector("[data-watten-advanced]");
-  if (advanced && (recipe.password_required || recipe.cpu_seats.length)) advanced.open = true;
+  if (advanced && (recipe.password_required || recipe.cpu_seats.length || recipe.schoeneres_enabled)) advanced.open = true;
 }
 
 /** Account-bound private favorite controls; no automatic apply/create/start. */
@@ -124,8 +143,8 @@ export function createFavorites({ container, apiFetch, loadAuth, escapeHtml: esc
       if (!response.ok) throw new Error("watten_favorite_unavailable");
       if (!await verify(token, true)) return;
       if (!object(data) || data.schema_version !== 1 || data.game_type !== "watten"
-          || (data.recipe !== null && !validRecipe(data.recipe))) throw new Error("watten_favorite_invalid_response");
-      favorite = data.recipe === null ? null : structuredClone(data.recipe);
+          || (data.recipe !== null && !normalizedRecipe(data.recipe))) throw new Error("watten_favorite_invalid_response");
+      favorite = data.recipe === null ? null : normalizedRecipe(data.recipe);
       message = operation.method === "PUT" ? "saved" : operation.method === "DELETE" ? "deleted" : favorite ? "ready" : "empty";
     } catch (error) {
       if (!current(token) || error.name === "AbortError") return;

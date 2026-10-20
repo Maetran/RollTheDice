@@ -44,13 +44,33 @@ async function expectStage(item, count) {
       .toHaveText(`${tricks} ${language === 'en' ? (tricks === 1 ? 'trick' : 'tricks') : (tricks === 1 ? 'Stich' : 'Stiche')}`);
   }
   await expect(page.locator('.wt-seat-meta')).toHaveCount(0);
+  const strikeSeat = engine.announcement_roles?.strike ?? (engine.dealer_seat + 1) % count;
+  const colourSeat = engine.announcement_roles?.colour
+    ?? (count === 3 && engine.profile.determination === 'normal' ? strikeSeat : engine.dealer_seat);
+  await expect(page.locator(`[data-wt-seat="${strikeSeat}"] .wt-seat-call-role`))
+    .toContainText(language === 'en' ? 'Strike' : 'Schlag');
+  await expect(page.locator(`[data-wt-seat="${colourSeat}"] .wt-seat-call-role`))
+    .toContainText(language === 'en' ? 'Trump suit' : 'Farbe');
   await expect(page.locator('[data-wt-tools] [data-watten-action="leave"]'))
     .toHaveText(language === 'en' ? 'Leave' : 'Verlassen');
   await expect(page.locator('[data-watten-decor-action="toggle"]')).toHaveCount(0);
+  await expect(page.locator('[data-wt-scores] .wt-stake')).toHaveCount(0);
+  await expect(page.locator('.wt-end-sheet > [data-wt-stake]')).toBeVisible();
+  await expectReachable(page, '.wt-end-sheet > [data-wt-stake] > button');
   const ownSeat = engine.viewer.seat;
   const backCount = engine.seats.filter(seat => seat.seat !== ownSeat).reduce((sum, seat) => sum + seat.card_count, 0);
   await expect(page.locator('.wt-backs > i:not([hidden])')).toHaveCount(backCount);
   await expect(page.locator('[data-wt-hand] button')).toHaveCount(engine.hand.length);
+  for (const seat of engine.seats) {
+    const pile = page.locator(`[data-wt-catch="${seat.seat}"]`);
+    await expect(pile).toHaveAttribute('data-count', String(seat.tricks_won));
+    await expect(pile.locator('.wt-taken-packet')).toHaveCount(seat.tricks_won);
+    if (seat.tricks_won) {
+      await expect(pile).toBeVisible();
+      await expect(pile).toHaveAttribute('aria-label', `${seat.tricks_won} ${language === 'en'
+        ? (seat.tricks_won === 1 ? 'trick' : 'tricks') : (seat.tricks_won === 1 ? 'Stich' : 'Stiche')}`);
+    } else await expect(pile).toBeHidden();
+  }
   await expectFixedTable(page, ['[data-wt-felt]', '[data-wt-scores]', '[data-wt-hand-area]']);
   await expect.poll(() => page.evaluate(() => {
     const violations = [];
@@ -60,7 +80,7 @@ async function expectStage(item, count) {
     const shown = node => rect(node).width > 0 && rect(node).height > 0;
     const label = node => node.matches('.wt-backs > i') ? `opponent card at seat ${node.closest('[data-wt-seat]').dataset.wtSeat}`
       : node.getAttribute('data-wt-card') || node.className;
-    const cards = [...document.querySelectorAll('.wt-backs > i:not([hidden]), [data-wt-hand] button, .wt-trick-card')].filter(shown);
+    const cards = [...document.querySelectorAll('.wt-backs > i:not([hidden]), [data-wt-hand] button, .wt-trick-card, .wt-taken[data-filled="true"] i')].filter(shown);
     for (const node of cards) {
       const box = rect(node);
       if (box.left < -1 || box.top < -1 || box.right > innerWidth + 1 || box.bottom > innerHeight + 1) {
@@ -80,13 +100,13 @@ async function expectStage(item, count) {
       const box = rect(name);
       if (box.left < -1 || box.right > innerWidth + 1) violations.push(`seat ${name.closest('[data-wt-seat]').dataset.wtSeat} name outside ${innerWidth}x${innerHeight}: ${box.left}–${box.right}`);
     }
-    const protectedAreas = [...document.querySelectorAll('[data-wt-hand-area], [data-wt-panel], [data-wt-history]:not([open]), [data-wt-private] button, .wt-trick-card')].filter(shown);
+    const protectedAreas = [...document.querySelectorAll('[data-wt-hand-area], [data-wt-panel], [data-wt-stake], [data-wt-history]:not([open]), [data-wt-private] button, .wt-trick-card')].filter(shown);
     for (const back of document.querySelectorAll('.wt-backs > i:not([hidden])')) {
       const box = rect(back);
       const overlaps = protectedAreas.filter(area => intersects(box, rect(area)));
       if (overlaps.length) violations.push(`${label(back)} overlaps ${overlaps.map(area => area.className || area.tagName).join(', ')} at ${innerWidth}x${innerHeight}`);
       const seat = back.closest('[data-wt-seat]');
-      if ([...seat.querySelectorAll('.wt-seat-name, .wt-seat-tags, .wt-seat-meta')].filter(shown)
+      if ([...seat.querySelectorAll('.wt-seat-name, .wt-seat-call-role, .wt-seat-tags, .wt-seat-meta')].filter(shown)
         .some(name => intersects(box, rect(name)))) violations.push(`${label(back)} covered by seat label`);
     }
     return [...new Set(violations)];
@@ -106,21 +126,33 @@ async function expectStage(item, count) {
       const rect = node.getBoundingClientRect();
       const panel = node.parentElement.querySelector('[data-wt-panel]');
       const panelRect = panel.getBoundingClientRect();
+      const stake = node.parentElement.querySelector('[data-wt-stake]');
+      const stakeRect = stake.getBoundingClientRect();
       const summaryRect = node.querySelector('summary').getBoundingClientRect();
       const hand = document.querySelector('[data-wt-hand-area]').getBoundingClientRect();
       const overlap = (a, b) => Math.min(a.right, b.right) - Math.max(a.left, b.left) > 2
         && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 2;
       return {
         abovePanel: !panelRect.height || rect.bottom <= panelRect.top + 1,
+        aboveStake: !stakeRect.height || rect.bottom <= stakeRect.top + 1,
+        stakeBelowPanel: !panelRect.height || !stakeRect.height || panelRect.bottom <= stakeRect.top + 1,
         beforePanel: Boolean(node.compareDocumentPosition(panel) & Node.DOCUMENT_POSITION_FOLLOWING),
         clearOfHand: !overlap(summaryRect, hand),
-        controlsClearOfHistory: [...panel.querySelectorAll('button')].every(button => !overlap(rect, button.getBoundingClientRect())),
+        controlsClearOfHistory: [...panel.querySelectorAll('button'), ...stake.querySelectorAll('button')]
+          .every(button => !overlap(rect, button.getBoundingClientRect())),
       };
     }), { message: 'history shares the lower dock above decisions, including when the panel is empty' })
-      .toEqual({ abovePanel: true, beforePanel: true, clearOfHand: true, controlsClearOfHistory: true });
+      .toEqual({ abovePanel: true, aboveStake: true, stakeBelowPanel: true, beforePanel: true,
+        clearOfHand: true, controlsClearOfHistory: true });
     const miniWidth = await history.locator('.wt-card--mini').first().evaluate(node => Number.parseFloat(getComputedStyle(node).width));
-    const desktop = page.viewportSize().width >= 761 && page.viewportSize().height >= 520;
-    expect(miniWidth).toBeGreaterThanOrEqual(desktop ? 70 : 44);
+    expect(miniWidth).toBeGreaterThanOrEqual(44);
+    expect(miniWidth).toBeLessThanOrEqual(56);
+    await expect(history.locator('[data-wt-history-pin]')).toBeVisible();
+    await expectReachable(page, '[data-wt-history-pin]');
+    await expectReachable(page, '[data-wt-history-close]');
+    const closeBox = await history.locator('[data-wt-history-close]').boundingBox();
+    expect(closeBox.width).toBeGreaterThanOrEqual(44);
+    expect(closeBox.height).toBeGreaterThanOrEqual(44);
   }
   if (page.viewportSize().width >= 761 && page.viewportSize().height >= 520 && await page.locator('.wt-trick-card').count()) {
     for (const card of await page.locator('.wt-trick-card').all()) {
@@ -129,7 +161,16 @@ async function expectStage(item, count) {
       expect(width).toBeLessThanOrEqual(160);
     }
   }
-  for (const control of await page.locator('[data-wt-panel] button, [data-wt-private] button, [data-wt-tools] button, [data-wt-scores] button').all()) {
+  const desktop = page.viewportSize().width >= 761 && page.viewportSize().height >= 520;
+  for (const card of await page.locator('.wt-backs > i:not([hidden])').all()) {
+    expect(await card.evaluate(node => Number.parseFloat(getComputedStyle(node).width)))
+      .toBeGreaterThanOrEqual(desktop ? 56 : 28);
+  }
+  for (const pile of await page.locator('.wt-taken[data-filled="true"] .wt-taken-packet').all()) {
+    expect(await pile.evaluate(node => Number.parseFloat(getComputedStyle(node).width)))
+      .toBeGreaterThanOrEqual(desktop ? 44 : 26);
+  }
+  for (const control of await page.locator('[data-wt-panel] button, [data-wt-private] button, [data-wt-tools] button, [data-wt-stake] button').all()) {
     if (!await control.isVisible()) continue;
     const box = await control.boundingBox();
     expect(box.width).toBeGreaterThanOrEqual(44);
@@ -137,7 +178,7 @@ async function expectStage(item, count) {
     await expectReachable(page, await control.evaluate(node => {
       // Existing commands have stable public action identifiers, not test IDs.
       if (!node.hasAttribute('data-watten-action') && !node.hasAttribute('data-watten-command')) {
-        return '[data-wt-scores] .wt-stake > button';
+        return '.wt-end-sheet > [data-wt-stake] > button';
       }
       const attribute = node.hasAttribute('data-watten-action') ? 'data-watten-action' : 'data-watten-command';
       const value = node.getAttribute(attribute);
@@ -201,6 +242,16 @@ for (const language of ['de', 'en']) {
           for (const response of await decider.page.locator('[data-watten-bid] [data-kind="respond"]').all()) await expect(response).toBeEnabled();
           await decider.page.screenshot({ path: testInfo.outputPath(`table-bid-${language}-${count}-${viewport.width}x${viewport.height}.png`) });
         }
+        const pinnedHistory = decider.page.locator('[data-wt-history]');
+        await expect(pinnedHistory.locator('[data-wt-history-pin]')).not.toBeChecked();
+        await pinnedHistory.locator('[data-wt-history-pin]').check();
+        await expect(pinnedHistory).toHaveAttribute('data-pinned', 'true');
+        await expect(pinnedHistory).toHaveAttribute('open', '');
+        const boundPreferences = await decider.page.evaluate(({ own, others }) => ({
+          own: localStorage.getItem(`watten:history-pinned:${own}`),
+          others: others.map(id => localStorage.getItem(`watten:history-pinned:${id}`)),
+        }), { own: decider.user.id, others: players.filter(item => item !== decider).map(item => item.user.id) });
+        expect(boundPreferences).toEqual({ own: 'true', others: players.filter(item => item !== decider).map(() => null) });
         // A real reconnect must hydrate this same frozen bid and hand. Observe
         // a NEW socket frame, rather than accepting the collector's old state.
         const rejoined = [];
@@ -216,6 +267,8 @@ for (const language of ['de', 'en']) {
         try {
           await decider.page.reload();
           await expect.poll(() => rejoined.some(snapshot => snapshot.viewer?.participant_id === before[players.indexOf(decider)].participant)).toBe(true);
+          await expect(decider.page.locator('[data-wt-history-pin]')).toBeChecked();
+          await expect(decider.page.locator('[data-wt-history]')).toHaveAttribute('open', '');
           await expectStage(decider, count);
           const original = before[players.indexOf(decider)];
           expect(decider.traffic.snapshot.engine.hand).toEqual(original.hand);
@@ -225,6 +278,23 @@ for (const language of ['de', 'en']) {
           await expect(decider.page.locator('[data-watten-action="respond_hold"]')).toBeEnabled();
           await action(players, 'respond_hold', 'hold');
           await settled(players, 'play');
+          await expect(decider.page.locator('[data-wt-history-pin]')).toBeChecked();
+          await expect(decider.page.locator('[data-wt-history]')).toHaveAttribute('open', '');
+          // A pinned review ignores outside taps. Its explicit close unpins;
+          // an ordinary review then closes on an outside tap or Escape.
+          const reviewOpportunity = decider.traffic.snapshot.engine.opportunity;
+          await decider.page.locator('.wt-score-name').first().click();
+          await expect(decider.page.locator('[data-wt-history]')).toHaveAttribute('open', '');
+          await decider.page.locator('[data-wt-history-close]').click();
+          await expect(decider.page.locator('[data-wt-history]')).not.toHaveAttribute('open', '');
+          await expect(decider.page.locator('[data-wt-history-pin]')).not.toBeChecked();
+          await decider.page.locator('[data-wt-history] > summary').click();
+          await decider.page.locator('.wt-score-name').first().click();
+          await expect(decider.page.locator('[data-wt-history]')).not.toHaveAttribute('open', '');
+          await decider.page.locator('[data-wt-history] > summary').click();
+          await decider.page.keyboard.press('Escape');
+          await expect(decider.page.locator('[data-wt-history]')).not.toHaveAttribute('open', '');
+          expect(decider.traffic.snapshot.engine.opportunity).toBe(reviewOpportunity);
         } finally { decider.page.off('websocket', onSocket); }
         expect(players.flatMap(item => item.traffic.errors)).toEqual([]);
       } finally { await Promise.allSettled([...players, spectator].filter(Boolean).map(item => item.context.close())); }

@@ -28,7 +28,7 @@ def _require(condition, code="watten_feed_invalid_request"):
 
 def _achievement(grant):
     definition = next((item for item in (*DRAFT_ACHIEVEMENTS, *SURPRISE_ACHIEVEMENTS) if item.achievement_id == grant.achievement_id
-                       and grant.catalog_version == DRAFT_CATALOG_VERSION), None)
+                       and 1 <= grant.catalog_version <= DRAFT_CATALOG_VERSION), None)
     if definition is None:
         name = {"de": "Gespeicherter Watten-Erfolg", "en": "Stored Watten achievement"}
         description = {"de": "Die ursprüngliche Bedingung ist in diesem Katalog nicht enthalten.",
