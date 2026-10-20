@@ -1,22 +1,23 @@
 @import "./hausdepp-decor-consumables.css";
 @import "./hausdepp-decor-play.css";
 @import "./game-switch-menu.css";
+@import "./watten-stage.css";
 
-/* Watten: calm green table, warm paper, clear type, restrained gold and ink. */
+/* Watten: a bright wooden inn table, warm paper and dark red accents. */
 :root {
   color-scheme: light;
   --wt-paper: #f7f1e3;
   --wt-paper-2: #ece2cb;
   --wt-paper-edge: #d8c9a6;
-  --wt-ink: #1f2a24;
-  --wt-muted: #4f5d55;
-  --wt-felt: #2d5b45;
-  --wt-felt-deep: #1c3c2e;
-  --wt-felt-line: #4e8467;
+  --wt-ink: #38251b;
+  --wt-muted: #70533f;
+  --wt-felt: #dbad79;
+  --wt-felt-deep: #bc8857;
+  --wt-felt-line: #a46b39;
   --wt-gold: #d2a64a;
   --wt-gold-ink: #7a5714;
   --wt-red: #9b3b26;
-  --wt-green: #24553d;
+  --wt-green: #823a2b;
   --wt-radius: 12px;
   --wt-hand-w: clamp(52px, min(18vw, 15dvh), 104px);
   --wt-trick-w: clamp(38px, min(13vw, 12dvh), 84px);
@@ -31,8 +32,8 @@
 [hidden] { display: none !important; }
 body { margin: 0; min-height: 100dvh; overflow-x: hidden; background: linear-gradient(#f3ead6, var(--wt-paper-2)); }
 html[data-watten-page="table"] body, html[data-watten-page="spectator"] body {
-  background: radial-gradient(120% 90% at 50% 20%, #33664d 0%, var(--wt-felt) 45%, var(--wt-felt-deep) 100%) fixed;
-  color: var(--wt-paper);
+  background: #e0bb8e;
+  color: var(--wt-ink);
 }
 h1, h2, h3 { font-family: Georgia, "Iowan Old Style", "Times New Roman", serif; line-height: 1.2; margin: 0 0 .5rem; }
 h1 { font-size: clamp(1.8rem, 7vw, 2.6rem); }

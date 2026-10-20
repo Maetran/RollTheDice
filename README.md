@@ -82,6 +82,21 @@ Local native account settings save consent, the shared player selection and the
 invitation audience. Search keeps at most100 results visible, replacing older
 pages while retaining the selection. These settings do not activate push.
 
+**Spieltisch / game table:** Die helle Tiroler Schnitzstube hält Hand,
+Gegnerfächer, Stich und aktuelle Entscheidung auf einer festen Spielfläche.
+Während der Partie brauchst du die Seite nicht zu scrollen; Lobby und Anleitung
+bleiben normal scrollbar. Karten bewegen sich vom jeweiligen Platz zum Stich,
+der abgeschlossene Stich zum Gewinner. Dieser spielt den nächsten Stich aus.
+Ansagen und Gebotsantworten bleiben bei den Karten erreichbar. Mit reduzierter
+Bewegung erscheinen dieselben Spielzustände ohne Kartenflüge.
+
+The light Tyrolean carved-wood table keeps your hand, opponents' fans, the
+trick and the current decision on one fixed play surface. The active game needs
+no page scrolling; the lobby and rules retain normal scrolling. Cards move from
+their seat to the trick, and the completed trick moves to its winner, who leads
+the next trick. Calls and bid responses remain reachable beside the cards.
+Reduced motion shows the same game states without card flights.
+
 **Lokaler Kontofortschritt / local account progress:** Die lokale Watten-Vorschau
 verbucht neue abgeschlossene Partien zusammen mit Ergebnis und Fortschritt in
 einer Transaktion. `/watten/konto/fortschritt`, `/watten/konto/verlauf` und
