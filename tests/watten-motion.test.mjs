@@ -59,7 +59,7 @@ function fixture({ reduced = false } = {}) {
   doc.createElement = () => new Node(doc);
   doc.body = new Node(doc, rect(0, 0, 900, 700));
   media.matches = reduced;
-  win.innerWidth = 900; win.innerHeight = 700; win.screen = { orientation: new Events() }; win.matchMedia = () => media;
+  win.innerWidth = 900; win.innerHeight = 700; win.screen = { orientation: new Events() }; win.visualViewport = new Events(); win.matchMedia = () => media;
   const motion = createMotion({ win, doc });
   const deck = new Node(doc, rect(400, 260, 42, 65), "deck", "back");
   const seats = Array.from({ length: 4 }, (_, seat) => new Node(doc, rect(30 + seat * 190, 20, 60, 90), `seat-${seat}`, "back"));
@@ -215,12 +215,15 @@ test("reconnect drops old geometry/ghosts and never replays completed cards", ()
   assert.equal(f.ghosts().length, 0); assert.ok(last.nodes.every(node => node.style.visibility === "")); f.close();
 });
 
-for (const reason of ["resize", "orientation", "scroll", "hidden", "reduced"]) test(`${reason} cancels stale screen geometry and restores accepted DOM immediately`, () => {
+for (const reason of ["resize", "orientation", "scroll", "visual resize", "visual scroll", "hidden", "reduced"]) test(`${reason} cancels stale screen geometry and restores accepted DOM immediately`, () => {
   const f = fixture(), last = publicTrick(f, 2), captured = f.capture(last.nodes);
   f.present(engine(), engine(last), result({ ...last, last }), { captured });
   if (reason === "resize") { f.win.innerWidth = 700; f.win.emit("resize"); }
   if (reason === "orientation") f.win.screen.orientation.emit("change");
   if (reason === "scroll") f.win.emit("scroll");
+  // Keyboard/visual viewport updates do not require a layout-window resize.
+  if (reason === "visual resize") f.win.visualViewport.emit("resize");
+  if (reason === "visual scroll") f.win.visualViewport.emit("scroll");
   if (reason === "hidden") { f.doc.hidden = true; f.doc.emit("visibilitychange"); }
   if (reason === "reduced") { f.media.matches = true; f.media.emit("change"); }
   assert.equal(f.ghosts().length, 0); assert.ok(last.nodes.every(node => node.style.visibility === ""));
@@ -233,7 +236,7 @@ test("reduced motion creates no moving ghosts or hidden hand, and destroy remove
   const f = fixture({ reduced: true }), last = publicTrick(f, 2);
   f.present(engine(), engine(last), result({ ...last, hand: last.nodes, last }));
   assert.equal(f.ghosts().length, 0); assert.ok(last.nodes.every(node => node.style.visibility === ""));
-  f.close(); assert.equal(f.win.listenerCount + f.doc.listenerCount + f.media.listenerCount + f.win.screen.orientation.listenerCount, 0);
+  f.close(); assert.equal(f.win.listenerCount + f.doc.listenerCount + f.media.listenerCount + f.win.screen.orientation.listenerCount + f.win.visualViewport.listenerCount, 0);
 });
 
 test("a browser without WAAPI keeps the accepted DOM visible and interactive", () => {

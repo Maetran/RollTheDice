@@ -74,6 +74,10 @@ export function createMotion({ win = window, doc = document } = {}) {
   win.addEventListener("resize", geometryChanged, { passive: true });
   win.addEventListener("orientationchange", cancel, { passive: true });
   win.addEventListener("scroll", cancel, { passive: true, capture: true });
+  // iOS keyboards/panning can change the table's CSS viewport without changing
+  // window.innerWidth/innerHeight. Never fly to a stale pre-keyboard anchor.
+  win.visualViewport?.addEventListener("resize", cancel, { passive: true });
+  win.visualViewport?.addEventListener("scroll", cancel, { passive: true });
   win.screen?.orientation?.addEventListener?.("change", cancel);
   doc.addEventListener("visibilitychange", visibilityChanged);
   reduced?.addEventListener?.("change", cancel);
@@ -83,6 +87,8 @@ export function createMotion({ win = window, doc = document } = {}) {
     win.removeEventListener("resize", geometryChanged);
     win.removeEventListener("orientationchange", cancel);
     win.removeEventListener("scroll", cancel, true);
+    win.visualViewport?.removeEventListener("resize", cancel);
+    win.visualViewport?.removeEventListener("scroll", cancel);
     win.screen?.orientation?.removeEventListener?.("change", cancel);
     doc.removeEventListener("visibilitychange", visibilityChanged);
     reduced?.removeEventListener?.("change", cancel);
