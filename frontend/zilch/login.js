@@ -1,6 +1,7 @@
 import { authError, loadAuth, login, loginWithPasskey, logout, passkeysSupported } from "../shared/auth.js";
 import { mountRegistrationForm } from '../shared/registration.js';
 import { HAUSDEPP_MESSAGES } from '../i18n/catalog.js';
+import { initializeAppMode } from "../multigame/app-mode.js";
 import {
   applyZilchRouteLinks,
   hausdeppAppEntryUrl,
@@ -14,6 +15,7 @@ import {
 } from "../multigame/routes.js";
 
 applyZilchRouteLinks();
+initializeAppMode({ mode: document.documentElement.dataset.game, refreshOnInitialize: false, discoveryOnly: true });
 
 const form = document.getElementById("zilchLoginForm");
 const passkeyPanel = document.getElementById("zilchPasskeyLogin");

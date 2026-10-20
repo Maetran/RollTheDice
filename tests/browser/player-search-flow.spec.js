@@ -29,36 +29,40 @@ for (const game of [
       const auth = await response.json();
       await route.fulfill({ response, json: { ...auth, user: { ...auth.user, must_change_password: false } } });
     });
-    const auth = await (await page.request.get("/api/auth/me")).json();
-    const friendProfile = await (await page.request.get("/api/players/FinderFreshFriend")).json();
-    await page.request.delete(`/api/web-push/allowlist/${friendProfile.player.id}`, {
-      headers: { "X-CSRF-Token": auth.user.csrf_token }, data: { viewer_id: auth.user.id },
-    });
-    await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto(`${game.account}#settings`);
-    const social = page.locator('details[data-account-section="social"]');
-    if (await social.getAttribute("open") === null) await social.locator(":scope > summary").click();
-    await social.getByRole("link", { name: "Spieler finden", exact: true }).click();
-    const finder = page.locator("#player-search");
-    const input = finder.getByRole("searchbox", { name: "Benutzername", exact: true });
-    await expect(input).toBeFocused();
-    await input.fill("FinderFresh");
-    await finder.getByRole("button", { name: "Suchen", exact: true }).click();
-    const friend = finder.getByRole("link", { name: "FinderFreshFriend", exact: game.name === "Zilch" });
-    await expect(friend).toHaveAttribute("href", game.profile);
-    await expect(page).toHaveURL(/#player-search$/);
-    if (game.name === "Zilch") await expect(finder.locator("[data-rank-legend]")).toHaveCount(0);
-    expect(await input.evaluate(node => node.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    await finder.screenshot({ path: testInfo.outputPath("player-finder.png") });
-    await friend.click();
-    await expect(page).toHaveURL(new RegExp(`${game.profile}$`));
-    await page.getByRole("button", { name: "Zur Spielerauswahl hinzufügen", exact: true }).click();
-    await expect(page.getByRole("button", { name: "Aus Spielerauswahl entfernen", exact: true })).toBeVisible();
-    await page.getByRole("link", { name: "Spielerauswahl im Konto verwalten", exact: true }).click();
-    await expect(page).toHaveURL(new RegExp(`${game.account}\\?allowlist=1#settings$`));
-    await expect(social).toHaveAttribute("open", "");
-    await expect(social.getByRole("link", { name: "FinderFreshFriend", exact: true })).toBeVisible();
+    try {
+      const auth = await (await page.request.get("/api/auth/me")).json();
+      const friendProfile = await (await page.request.get("/api/players/FinderFreshFriend")).json();
+      await page.request.delete(`/api/web-push/allowlist/${friendProfile.player.id}`, {
+        headers: { "X-CSRF-Token": auth.user.csrf_token }, data: { viewer_id: auth.user.id },
+      });
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page.goto(`${game.account}#settings`);
+      const social = page.locator('details[data-account-section="social"]');
+      if (await social.getAttribute("open") === null) await social.locator(":scope > summary").click();
+      await social.getByRole("link", { name: "Spieler finden", exact: true }).click();
+      const finder = page.locator("#player-search");
+      const input = finder.getByRole("searchbox", { name: "Benutzername", exact: true });
+      await expect(input).toBeFocused();
+      await input.fill("FinderFresh");
+      await finder.getByRole("button", { name: "Suchen", exact: true }).click();
+      const friend = finder.getByRole("link", { name: "FinderFreshFriend", exact: game.name === "Zilch" });
+      await expect(friend).toHaveAttribute("href", game.profile);
+      await expect(page).toHaveURL(/#player-search$/);
+      if (game.name === "Zilch") await expect(finder.locator("[data-rank-legend]")).toHaveCount(0);
+      expect(await input.evaluate(node => node.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      await finder.screenshot({ path: testInfo.outputPath("player-finder.png") });
+      await friend.click();
+      await expect(page).toHaveURL(new RegExp(`${game.profile}$`));
+      await page.getByRole("button", { name: "Zur Spielerauswahl hinzufügen", exact: true }).click();
+      await expect(page.getByRole("button", { name: "Aus Spielerauswahl entfernen", exact: true })).toBeVisible();
+      await page.getByRole("link", { name: "Spielerauswahl im Konto verwalten", exact: true }).click();
+      await expect(page).toHaveURL(new RegExp(`${game.account}\\?allowlist=1#settings$`));
+      await expect(social).toHaveAttribute("open", "");
+      await expect(social.getByRole("link", { name: "FinderFreshFriend", exact: true })).toBeVisible();
+    } finally {
+      await page.unrouteAll({ behavior: "wait" });
+    }
   });
 
   test(`${game.name} finder paginates, handles empty searches, and retries an unavailable request`, async ({ page }) => {

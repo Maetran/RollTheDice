@@ -67,8 +67,12 @@ for (const preferred of ['de', 'en']) {
       await expect(page.locator('.hd-lobby-cards .hausdepp-card').first()).toBeVisible();
       await page.evaluate(() => document.fonts.ready);
       expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
-      for (const selector of ['#hausdeppSignIn', '#hausdeppRegister', '.hd-profile-button']) {
-        const rect = await page.locator(selector).boundingBox();
+      await expect(page.locator('.hd-profile-button')).toBeHidden();
+      for (const selector of ['#hausdeppSignIn', '#hausdeppRegister', '#hausdeppHeader .hd-nav a[href="/hausdepp/konto"]']) {
+        const control = page.locator(selector);
+        await expect(control).toBeVisible();
+        const rect = await control.boundingBox();
+        expect(rect).not.toBeNull();
         expect(rect.height).toBeGreaterThanOrEqual(44);
         expect(rect.x).toBeGreaterThanOrEqual(0);
         expect(rect.x + rect.width).toBeLessThanOrEqual(width + 1);

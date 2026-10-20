@@ -9,7 +9,8 @@ html[data-game="hausdepp"] body.hd-playing #hausdeppResult:not([hidden]) {
 #hausdeppResult h2 { margin: 0 0 6px; font: 700 24px/1.25 Georgia, serif; overflow-wrap: anywhere; }
 #hausdeppResult .hd-result-context { margin: 0 0 12px; color: var(--hd-muted); font-size: 14px; }
 #hausdeppResult .hd-result-places { margin: 0 0 12px; max-width: none; gap: 0; }
-#hausdeppResult .hd-result-place { grid-template-columns: 70px 28px minmax(0, 1fr) auto; gap: 4px 8px; padding: 8px 0; background: none; border: 0; border-bottom: 1px solid var(--hd-edge); border-radius: 0; box-shadow: none; }
+/* Status words keep their intrinsic width; only long player names may elide. */
+#hausdeppResult .hd-result-place { grid-template-columns: minmax(70px, max-content) 28px minmax(0, 1fr) auto; gap: 4px 8px; padding: 8px 0; background: none; border: 0; border-bottom: 1px solid var(--hd-edge); border-radius: 0; box-shadow: none; }
 #hausdeppResult .hd-result-avatar { width: 28px; height: 28px; }
 #hausdeppResult .hd-result-avatar > * { max-width: 28px; max-height: 28px; }
 #hausdeppResult .hd-result-reward { grid-column: auto; justify-self: end; }

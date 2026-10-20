@@ -435,10 +435,21 @@ test("Zilch product navigation is keyboard-friendly, responsive, and localized w
   expect(compactZilchSwitch).not.toBeNull();
   expect(compactZilchSwitch.iconWidth).toBeGreaterThan(0);
   expect(compactZilchSwitch.iconHeight).toBeGreaterThan(0);
-  expect(compactZilchSwitch.labelDisplay).not.toBe("none");
-  expect(compactZilchSwitch.labelWidth).toBeGreaterThan(1);
-  expect(compactZilchSwitch.labelHeight).toBeGreaterThan(1);
-  expect(compactZilchSwitch.labelPosition).not.toBe("absolute");
+  expect(compactZilchSwitch.labelDisplay).toBe("none");
+  expect(compactZilchSwitch.labelWidth).toBe(0);
+  expect(compactZilchSwitch.labelHeight).toBe(0);
+  await expect(zilchGameSwitch).toHaveAccessibleName(/Zilch/);
+  const compactBrand = page.locator(".suite-header__brand > span:last-child");
+  await expect(compactBrand).toBeVisible();
+  await expect(compactBrand).toHaveText("Zilch");
+  const compactSwitchHit = await zilchGameSwitch.evaluate(button => {
+    const box = button.getBoundingClientRect();
+    return { width: box.width, height: box.height,
+      reachable: button.contains(document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)) };
+  });
+  expect(compactSwitchHit.width).toBeGreaterThanOrEqual(44);
+  expect(compactSwitchHit.height).toBeGreaterThanOrEqual(44);
+  expect(compactSwitchHit.reachable).toBe(true);
   const lobbyAlignment = await page.evaluate(() => {
     const modes = [...document.querySelectorAll(".zilch-mode-option")].map(option => {
       const style = getComputedStyle(option);

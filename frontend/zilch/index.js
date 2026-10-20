@@ -1,3 +1,4 @@
+import { initializeSuiteHeader } from "../shell/header.js";
 import { apiFetch, authError, escapeHtml, loadAuth, logout, mountAccountVerification, revealAccountSetting, mountEmailSettings, mountPasskeySettings, mountPasskeyPrompt, mountUsernameSettings } from "../shared/auth.js";
 import { mountLobbyChat } from "../shared/lobby-chat.js";
 import { mountRegistrationForm, registrationFormMarkup } from "../shared/registration.js";
@@ -564,6 +565,7 @@ function renderNavigation() {
   const inGame = routeKind() === "game";
   if (!inGame) setAdminHelpGameContext({ gameId: "", spectator: false, canRequest: false });
   root?.classList.toggle("zilch-shell--game", inGame);
+  initializeSuiteHeader();
   if (roomContext) roomContext.hidden = !inGame;
   if (leaveGameButton) leaveGameButton.hidden = !inGame;
   if (roomRules) roomRules.hidden = !inGame;
@@ -583,7 +585,7 @@ function renderNavigation() {
     {
       key: "account",
       href: accountEntry.href,
-      label: accountEntry.label,
+      label: t("Konto"),
     },
   ];
   navigation.innerHTML = `<ul class="zilch-nav-list">${entries.map(entry => `<li><a href="${escapeHtml(entry.href)}"${entry.key === current ? ' aria-current="page"' : ""}>${escapeHtml(entry.label)}</a></li>`).join("")}</ul>`;

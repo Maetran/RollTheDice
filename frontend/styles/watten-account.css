@@ -1,10 +1,12 @@
 @import "./account-settings.css";
 @import "./passkey-login.css";
+@import "./game-switch-menu.css";
 
 :root { color-scheme: light; --card: #fffdf5; --text: #24382e; --muted: #56655c; --border: #a5b2a5; --accent: #26583e; font: 17px/1.6 system-ui, sans-serif; background: #e8ede4; color: var(--text); }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 body { margin: 0; }
+.wt-visually-hidden { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 body > header { max-width: 850px; margin: auto; display: flex; justify-content: space-between; gap: 1rem; align-items: center; padding: 1rem; }
 body > header > a { font: 700 1.6rem Georgia, serif; text-decoration: none; }
 body > header label { display: flex; align-items: center; gap: .5rem; }

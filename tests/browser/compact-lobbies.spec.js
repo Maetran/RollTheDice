@@ -65,8 +65,8 @@ for (const language of ["de", "en"]) {
       await expect(own).toContainText("123");
       await expect(own).not.toContainText("Modus:");
       expect((await own.boundingBox()).height).toBeLessThan(width <= 440 ? 185 : 150);
-      await expect(page.locator(".lobby-header #onlineUsers")).toContainText("3");
-      await expect(page.locator(".lobby-header #gamesPlayed")).toHaveText("42");
+      await expect(page.locator(".lobby-header #onlineUsers")).toHaveCount(0);
+      await expect(page.locator(".lobby-header #gamesPlayed")).toHaveCount(0);
       for (const selector of ["#gamesHub", "#createGameCard", "#abandonmentLeaderboard", ".lobby-header"]) await expectFits(page, selector);
       await expect(page.locator("[data-game-mode]")).toHaveCount(4);
       await page.locator('[data-hardcore="true"]').click();

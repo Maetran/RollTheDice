@@ -82,6 +82,21 @@ Local native account settings save consent, the shared player selection and the
 invitation audience. Search keeps at most100 results visible, replacing older
 pages while retaining the selection. These settings do not activate push.
 
+**Spieltisch / game table:** Die helle Tiroler Schnitzstube hält Hand,
+Gegnerfächer, Stich und aktuelle Entscheidung auf einer festen Spielfläche.
+Während der Partie brauchst du die Seite nicht zu scrollen; Lobby und Anleitung
+bleiben normal scrollbar. Karten bewegen sich vom jeweiligen Platz zum Stich,
+der abgeschlossene Stich zum Gewinner. Dieser spielt den nächsten Stich aus.
+Ansagen und Gebotsantworten bleiben bei den Karten erreichbar. Mit reduzierter
+Bewegung erscheinen dieselben Spielzustände ohne Kartenflüge.
+
+The light Tyrolean carved-wood table keeps your hand, opponents' fans, the
+trick and the current decision on one fixed play surface. The active game needs
+no page scrolling; the lobby and rules retain normal scrolling. Cards move from
+their seat to the trick, and the completed trick moves to its winner, who leads
+the next trick. Calls and bid responses remain reachable beside the cards.
+Reduced motion shows the same game states without card flights.
+
 **Lokaler Kontofortschritt / local account progress:** Die lokale Watten-Vorschau
 verbucht neue abgeschlossene Partien zusammen mit Ergebnis und Fortschritt in
 einer Transaktion. `/watten/konto/fortschritt`, `/watten/konto/verlauf` und
@@ -355,8 +370,10 @@ Consumption, prop states and dice/coin results come from the server.
 Reconnecting shows current state without replaying old animations; each new
 round starts fresh. Props affect neither cards nor XP.
 
-**Einzeln aussteigen / Individual departure:** „Partie verlassen“ fragt nach
-Bestätigung und beendet nur die eigene Teilnahme. Die Handkarten verlassen das
+**Einzeln aussteigen / Individual departure:** „Partie verlassen“ öffnet eine
+Bestätigung im Hausdepp-Design. „Am Tisch bleiben“, Schliessen oder Escape
+bricht den Ausstieg ab. Erst die ausdrückliche Bestätigung beendet die eigene
+Teilnahme. Die Handkarten verlassen das
 Spiel endgültig, die übrigen spielen weiter. Bei nur einem Spieler mit Karten
 endet die Runde ohne Hausdepp mit regulären EP für die Verbleibenden. Wer eine
 laufende Hand aufgibt, erhält keine Runden-EP oder normalen Erfolge; der neue
@@ -365,7 +382,9 @@ Vergütung. Im Turnier gilt der Ausstieg für die ganze Sitzung, frühere Runden
 und EP bleiben erhalten. Zuschauer können den Tisch über denselben Schalter
 sofort zur Lobby verlassen, auch ohne Verbindung. Das beendet nur das Zuschauen.
 
-Leave game asks for confirmation and ends only your own participation. Your
+Leave game opens a confirmation in the Hausdepp design. Stay at the table,
+closing the dialog or Escape cancels leaving. Only explicit confirmation ends
+your own participation. Your
 hand cards leave play permanently; everyone else continues. With just one player
 with cards left, the round ends without a Hausdepp and remaining players receive
 normal XP. Giving up an unfinished hand awards no round XP or ordinary
@@ -456,7 +475,8 @@ aktuellen Kontonamen, etwa „Manis Gsuff“. Ein Namensfeld ist dafür nicht n�
 Zwei bis fünf, höchstens sechs Teilnehmer spielen mit 36 doppeldeutschen Karten;
 Computer sind echte Mitspieler mit eigenen verdeckten Händen. Gleiche Ränge oben auf dem offenen Paket
 sind leicht aufgefächert, das Rundenende zeigt Platzierungen, Runden-EP und neue
-Erfolge, und die Gegenstände am Tisch lassen sich benutzen: Münze werfen, würfeln,
+Erfolge. Längere Ergebnisstatus bleiben auch auf kleinen Displays von Avatar und
+Spielername getrennt. Die Gegenstände am Tisch lassen sich benutzen: Münze werfen, würfeln,
 vom Bier trinken (zu wild, und es kippt um) oder die Nüsse verputzen. Sie kaufen kleine
 wertvolle Pakete statt ihre 10 zu verbrennen, auch ein Ass im Zweikampf, legen von Ober, König und Ass
 zunächst nur eine Karte und halten den Rest zurück, spielen mal besser, mal schlechter
@@ -914,7 +934,8 @@ vibrate on supported devices. Forty-two beer-mat strokes reveal a small answer
 to everything. After a round, the points
 summary stays visible without an extra acknowledgement button. The compact
 result sheet shows the table composition, finishing order and only this round’s
-XP and achievements. Round credit and achievement XP are broken down; your current
+XP and achievements. Longer status labels stay separate from avatars and player
+names on small screens. Round credit and achievement XP are broken down; your current
 rank, total XP and distance to the next rank put progress in context. Generic
 congratulations and rematch explanations are omitted. The final result
 waits until the last card lands, then another 750 ms. Tournament letters have
@@ -1299,14 +1320,16 @@ server-accepted room action. They are then aborted without a completed result.
 
 Both lobbies group resumable, running and waiting tables in one compact games
 section. Player names, ranks and progress appear together without repeating
-the same identity. Community figures sit in the header, new-game forms take
+the same identity. ZDWA’s online count, completed games and Normal/Hardcore
+averages with trends appear under Players & Ranking. New-game forms take
 less space, and ZDWA's Wall of Shame keeps both periods in a compact view.
 
 **Deutsch:** Beide Lobbys bündeln fortsetzbare, laufende und wartende Partien
 in einem kompakten Spielbereich. Name, Rang und Fortschritt stehen zusammen,
-ohne dieselbe Person mehrfach aufzuführen. Die Community-Zahlen stehen im
-Header, neue Spiele brauchen weniger Platz und ZDWAs Wall of Shame zeigt
-beide Zeiträume kompakter.
+ohne dieselbe Person mehrfach aufzuführen. ZDWAs Onlinezahl, beendete Partien
+und Normal-/Hardcore-Durchschnitte samt Trends stehen unter Spieler & Ranking.
+Neue Spiele brauchen weniger Platz und ZDWAs Wall of Shame zeigt beide
+Zeiträume kompakter.
 
 **Deutsch:** Melde dich nach einem Gerätewechsel mit demselben Konto an, um
 deinen vorhandenen Platz in ZDWA oder Zilch wieder aufzunehmen. Bei öffentlichen
@@ -1701,15 +1724,21 @@ doppelten Vergabeversuchen.
 Bei deaktiviertem E-Mail-Feature ist die bisherige Registrierung mit
 Benutzername und Passwort wieder verfügbar.
 
-On touch tablets, both products center their main navigation in a dedicated
-row below the title and tools in portrait and landscape. Desktop navigation
-is centered too, including the ZDWA lobby and Zilch's LCARS theme. Zilch's
-unavailable-link page keeps its header tools at the right edge.
-Auf Touch-Tablets steht die Hauptnavigation in beiden Spielen im Hoch- und
-Querformat mittig in einer eigenen Zeile unter Titel und Werkzeugen.
-Auch am Desktop bleibt sie mittig, einschließlich ZDWA-Lobby und Zilchs
-LCARS-Design. Auf Zilchs Seite für nicht verfügbare Links stehen die
-Header-Werkzeuge am rechten Rand.
+Outside game tables, all four games share a two-row header: game icon and
+name, language, available design switch and game picker above; Lobby,
+Players & Ranking, Rules and Account below. It stays at the top while scrolling,
+on phones, tablets and desktops. Game tables retain their compact controls.
+Quick page changes keep their chosen destination when an older sign-in check
+is cancelled by navigation.
+
+**Deutsch:** Alle vier Spiele nutzen ausserhalb des Spieltischs denselben
+zweizeiligen Header: oben Spielsymbol und -name, Sprache, vorhandener
+Darstellungswechsel und Spielauswahl; darunter Lobby, Spieler & Ranking, Regeln
+und Konto. Er bleibt auf Handy, Tablet und Desktop beim Scrollen oben sichtbar.
+Spieltische behalten ihre kompakten Bedienelemente.
+Schnelle Seitenwechsel behalten ihr gewähltes Ziel, auch wenn dabei eine ältere
+Anmeldungsprüfung abgebrochen wird.
+
 Der mobile Zuschauerchat hält die Eingabe auch bei geöffneter Tastatur
 erreichbar und zeigt Zuschauer mit ihrem Profilbild. Tablet-Spielblöcke nutzen
 den verfügbaren Platz, ohne die Bedienelemente abzuschneiden.

@@ -172,6 +172,43 @@ test("pagehide, visibility changes and bfcache cannot retain or resurrect a late
   assert.equal(f.games().some(game => game.id === "watten"), true);
 });
 
+test("unloading a private page invalidates a cancelled identity read before it can replace the chosen destination", async () => {
+  const cancelled = deferred(); let pendingRead = false;
+  const f = await fixture({ mode: "watten", publicDocument: false,
+    loader: () => pendingRead ? cancelled.promise : founder() });
+  await f.controller.refresh();
+  let cleared = 0;
+  f.roots.set("wattenApp", { replaceChildren() { cleared += 1; } });
+  pendingRead = true;
+  const pending = f.controller.refresh(); await settle();
+  f.win.emit("beforeunload");
+  cancelled.reject(new Error("navigation cancelled the old identity request"));
+  await pending;
+  assert.deepEqual(f.visits, []);
+  assert.equal(cleared, 0);
+  assert.equal(f.controller.set("watten"), false);
+  assert.equal(f.button.hidden, true);
+  pendingRead = false;
+  // A cancelled departure can focus this same live document again.
+  f.win.emit("focus"); await settle();
+  assert.equal(f.games().some(game => game.id === "watten"), true);
+});
+
+test("an identity error on a live private page still clears its content and redirects", async () => {
+  let fail = false;
+  const f = await fixture({ mode: "watten", publicDocument: false,
+    loader: () => { if (fail) throw new Error("identity unavailable"); return founder(); } });
+  await f.controller.refresh();
+  let cleared = 0;
+  f.roots.set("wattenApp", { replaceChildren() { cleared += 1; } });
+  fail = true;
+  await f.controller.refresh();
+  assert.equal(cleared, 1);
+  assert.equal(f.controller.set("watten"), false);
+  assert.equal(f.button.hidden, true);
+  assert.equal(f.visits.at(-1)[0], "replace");
+});
+
 test("a confirmed private selection navigates canonically but remembered mode never grants availability", async () => {
   const f = await fixture(); await f.controller.refresh();
   f.win.location.hostname = "hausdepp.zockdiewandan.online"; f.win.location.href = "https://hausdepp.zockdiewandan.online/hausdepp";

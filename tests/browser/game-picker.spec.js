@@ -74,10 +74,20 @@ async function openChooser(page) {
 async function expectCurrentGame(page, name) {
   const trigger = page.locator("[data-game-switch]");
   await expect(trigger).toContainText(name);
+  await expect(trigger).toHaveAccessibleName(new RegExp(name));
   await expect(trigger.locator("svg.game-switch-icon")).toBeVisible();
   const label = trigger.locator("span").filter({ hasText: new RegExp(`^${name}$`) }).first();
-  await expect(label).toBeVisible();
-  expect(await label.evaluate(node => node.getBoundingClientRect().width)).toBeGreaterThan(1);
+  const compactHeader = await trigger.evaluate(node => Boolean(node.closest(".suite-header:not(.suite-header--table)"))
+    && matchMedia("(max-width: 600px)").matches);
+  if (compactHeader) {
+    await expect(label).toBeHidden();
+    const brandName = page.locator(".suite-header__brand > span:last-child");
+    await expect(brandName).toBeVisible();
+    await expect(brandName).toContainText(name);
+  } else {
+    await expect(label).toBeVisible();
+    expect(await label.evaluate(node => node.getBoundingClientRect().width)).toBeGreaterThan(1);
+  }
   await expect(page.locator("#suiteGameMenu").getByRole("link", { name, exact: true }))
     .toHaveAttribute("aria-current", "page");
 }
@@ -93,6 +103,7 @@ async function expectHeaderGeometry(page) {
     const trigger = document.querySelector("[data-game-picker]");
     const bounds = trigger.getBoundingClientRect();
     for (const child of trigger.children) {
+      if (!visible(child)) continue;
       const box = child.getBoundingClientRect();
       if (box.left < bounds.left - 1 || box.right > bounds.right + 1
           || box.top < bounds.top - 1 || box.bottom > bounds.bottom + 1) {
