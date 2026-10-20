@@ -355,8 +355,10 @@ Consumption, prop states and dice/coin results come from the server.
 Reconnecting shows current state without replaying old animations; each new
 round starts fresh. Props affect neither cards nor XP.
 
-**Einzeln aussteigen / Individual departure:** „Partie verlassen“ fragt nach
-Bestätigung und beendet nur die eigene Teilnahme. Die Handkarten verlassen das
+**Einzeln aussteigen / Individual departure:** „Partie verlassen“ öffnet eine
+Bestätigung im Hausdepp-Design. „Am Tisch bleiben“, Schliessen oder Escape
+bricht den Ausstieg ab. Erst die ausdrückliche Bestätigung beendet die eigene
+Teilnahme. Die Handkarten verlassen das
 Spiel endgültig, die übrigen spielen weiter. Bei nur einem Spieler mit Karten
 endet die Runde ohne Hausdepp mit regulären EP für die Verbleibenden. Wer eine
 laufende Hand aufgibt, erhält keine Runden-EP oder normalen Erfolge; der neue
@@ -365,7 +367,9 @@ Vergütung. Im Turnier gilt der Ausstieg für die ganze Sitzung, frühere Runden
 und EP bleiben erhalten. Zuschauer können den Tisch über denselben Schalter
 sofort zur Lobby verlassen, auch ohne Verbindung. Das beendet nur das Zuschauen.
 
-Leave game asks for confirmation and ends only your own participation. Your
+Leave game opens a confirmation in the Hausdepp design. Stay at the table,
+closing the dialog or Escape cancels leaving. Only explicit confirmation ends
+your own participation. Your
 hand cards leave play permanently; everyone else continues. With just one player
 with cards left, the round ends without a Hausdepp and remaining players receive
 normal XP. Giving up an unfinished hand awards no round XP or ordinary

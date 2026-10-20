@@ -4,7 +4,7 @@
   "date": "2026-10-20",
   "previous_revision": "7a66e1051190fa81f25d8d1802d27bf88411959a",
   "summary": {
-    "de": "Hausdepp: Status und Namen im Rundenabschluss auf kleinen Displays ohne Überlappung.",
-    "en": "Hausdepp: round-result status and player names stay clear on small screens."
+    "de": "Hausdepp: lesbare Ergebniszeilen auf kleinen Displays und eine eigene Bestätigung beim Verlassen.",
+    "en": "Hausdepp: readable results on small screens and a matching confirmation when leaving."
   }
 }

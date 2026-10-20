@@ -51,7 +51,9 @@ While spectating, Leave table at the top of the table returns to the lobby
 immediately, including waiting rooms, tournament breaks and disconnected views.
 The current game and scoring are unaffected.
 
-Ein eigener Schalter neben den eigenen Karten öffnet eine Bestätigung. Aussteigen
+Ein eigener Schalter neben den eigenen Karten öffnet eine Bestätigung im
+Hausdepp-Design. „Am Tisch bleiben“ ist vorausgewählt; auch Schliessen oder
+Escape bricht ab. Erst die ausdrückliche Bestätigung führt den Ausstieg aus. Aussteigen
 beendet ausschliesslich die eigene Teilnahme, auch bei Verbindungs-/Pausenproblemen.
 Eigene Handkarten kommen endgültig aus dem Spiel, nicht auf das aufnehmbare
 Paket. Eigene offene Auffüllpflichten und Nachwurfrechte entfallen; die
@@ -74,7 +76,9 @@ endet das Turnier ohne Folgerunde. So bleiben regulär fertige Hände vergütbar
 Hostwechsel und Neu erstellen verwenden die verbleibende Gruppe. Ein blosses
 Disconnect bleibt wiederaufnehmbar und zählt nicht als freiwilliger Ausstieg.
 
-Leave game opens a confirmation and ends only the leaving person's participation,
+Leave game opens a confirmation in the Hausdepp design, with Stay at the table
+focused first. Closing it or Escape also cancels; leaving requires explicit
+confirmation and ends only the leaving person's participation,
 including while paused. Their hand leaves play permanently, never entering the
 pick-up pile. Their refill obligations and follow-up rights are removed; everyone
 else continues. With just one player holding cards, the round ends without a

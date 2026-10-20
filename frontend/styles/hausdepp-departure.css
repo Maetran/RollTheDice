@@ -9,6 +9,10 @@ html[data-game="hausdepp"] body.hd-playing .hd-table[data-phase="waiting"] > .hd
 .hd-seat.is-withdrawn { opacity: .65; }
 .hd-tournament-score .hd-tournament-departed { display: block; color: var(--hd-muted); font-size: 12px; }
 .hd-departure-notice { position: fixed; z-index: 62; top: calc(env(safe-area-inset-top, 0px) + 80px); left: 50%; transform: translateX(-50%); width: max-content; max-width: min(560px, calc(100vw - 24px)); margin: 0; padding: 10px 14px; color: var(--hd-paper); background: var(--hd-green); border: 1px solid var(--hd-gold); border-radius: 5px; font-size: 14px; line-height: 1.4; }
+html[data-game="hausdepp"] .app-dialog[data-kind="hausdepp-departure"] .app-dialog-message { white-space: pre-line; }
+html[data-game="hausdepp"] .app-dialog[data-kind="hausdepp-departure"] .app-dialog-actions .ghost { color: var(--hd-ink); background: var(--hd-paper); border-color: var(--hd-green); }
+html[data-game="hausdepp"] .app-dialog[data-kind="hausdepp-departure"] .app-dialog-actions .danger { color: var(--hd-paper); background: var(--hd-red); border-color: var(--hd-red); }
+html[data-game="hausdepp"] .app-dialog[data-kind="hausdepp-departure"] .app-dialog-actions .danger:hover { background: var(--hd-red-hover); }
 @media (min-width: 1100px) {
   /* The desktop selection stays below the hand; only the exit uses this
      side column. Neither control changes the table's seating arena. */

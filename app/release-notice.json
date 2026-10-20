@@ -3,19 +3,21 @@
   "games": [
     "hausdepp"
   ],
-  "summary_de": "Ergebniszeilen bleiben auf kleinen Displays lesbar: Status, Avatar, Name und EP überlappen sich nicht.",
-  "summary_en": "Readable results on small screens: status, avatar, player name and XP stay separate.",
+  "summary_de": "Hausdepp: klare Ergebniszeilen auf kleinen Displays und eine passende Bestätigung beim Verlassen.",
+  "summary_en": "Hausdepp: clear results on small screens and a matching confirmation when leaving.",
   "player_notes": {
     "de": {
-      "title": "Klarer Rundenabschluss",
+      "title": "Klarer Rundenabschluss und Ausstieg",
       "changes": [
-        "Auch längere Statuswörter wie Verblieben und Ausgestiegen haben auf kleinen Displays Platz neben Avatar, Name und Runden-EP."
+        "Auch längere Statuswörter wie Verblieben und Ausgestiegen haben auf kleinen Displays Platz neben Avatar, Name und Runden-EP.",
+        "Beim Verlassen erscheint die Bestätigung im Hausdepp-Design. Mit Am Tisch bleiben, Schliessen oder Escape bleibst du in der Partie."
       ]
     },
     "en": {
-      "title": "Clear round results",
+      "title": "Clear results and departure",
       "changes": [
-        "Longer labels such as Remaining and Withdrawn have room beside the avatar, name and round XP on small screens."
+        "Longer labels such as Remaining and Withdrawn have room beside the avatar, name and round XP on small screens.",
+        "Leaving opens a confirmation in the Hausdepp design. Choose Stay at the table, close it or press Escape to keep playing."
       ]
     }
   }
