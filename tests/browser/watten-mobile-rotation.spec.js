@@ -118,14 +118,18 @@ for (const browserName of ['chromium', 'webkit']) {
         const responder = players.find(item => item.traffic.snapshot.engine.actions.includes('respond_hold'));
         expect(responder).toBeTruthy();
         const decisionPage = responder.page;
+        const language = await decisionPage.locator('html').getAttribute('lang');
         await decisionPage.bringToFront();
         for (const viewport of [{ width: 956, height: 440 }, portrait, { width: 956, height: 440 }, portrait]) {
           await decisionPage.setViewportSize(viewport);
           await decisionPage.evaluate(() => window.dispatchEvent(new Event('orientationchange')));
           const history = decisionPage.locator('.wt-end-sheet > [data-wt-history]');
           await expect(history).toBeVisible();
-          if (!await history.evaluate(node => node.open)) await history.locator('summary').click();
           await expectFixedTable(decisionPage, ['[data-wt-felt]', '[data-wt-scores]', '[data-wt-hand-area]']);
+          // The scroll probe also taps outside the review, which dismisses an
+          // unpinned history. Reopen it before measuring its visible contents.
+          if (!await history.evaluate(node => node.open)) await history.locator('summary').click();
+          await expect(history).toHaveAttribute('open', '');
           await expectReachable(decisionPage, '[data-wt-history] > summary');
           await expect.poll(() => history.evaluate(node => {
             const rect = node.getBoundingClientRect();
@@ -138,8 +142,8 @@ for (const browserName of ['chromium', 'webkit']) {
               && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 2;
             return {
               aboveDecision: rect.bottom <= panelRect.top + 1,
-              aboveStake: rect.bottom <= stakeRect.top + 1,
-              stakeBelowDecision: panelRect.bottom <= stakeRect.top + 1,
+              aboveStake: !stakeRect.height || rect.bottom <= stakeRect.top + 1,
+              stakeBelowDecision: !stakeRect.height || panelRect.bottom <= stakeRect.top + 1,
               clearOfHand: !overlaps(summary, hand),
               controlsClearOfHistory: [...panel.querySelectorAll('button'), ...stake.querySelectorAll('button')]
                 .every(button => !overlaps(rect, button.getBoundingClientRect())),
@@ -151,7 +155,35 @@ for (const browserName of ['chromium', 'webkit']) {
           }), { message: 'rotating keeps history above the bid, away from the hand and decision targets' })
             .toEqual({ aboveDecision: true, aboveStake: true, stakeBelowDecision: true, clearOfHand: true,
               controlsClearOfHistory: true, compactReadableCards: true });
-          await expectReachable(decisionPage, '.wt-end-sheet > [data-wt-stake] > button');
+          const engine = responder.traffic.snapshot.engine;
+          const compactBid = viewport.width > viewport.height && viewport.height < 520 && engine.phase === 'bid_response';
+          const stake = decisionPage.locator('.wt-end-sheet > [data-wt-stake]');
+          if (compactBid) {
+            await expect(stake).toBeHidden();
+            const inlineStake = decisionPage.locator('[data-watten-bid] > .wt-note');
+            await expect(inlineStake).toBeVisible();
+            await expect(inlineStake).toHaveText(language === 'en'
+              ? `Stake: ${engine.bid.accepted_stake} points` : `Einsatz: ${engine.bid.accepted_stake} Punkte`);
+            await expect.poll(() => inlineStake.evaluate(node => {
+              const rect = node.getBoundingClientRect();
+              const title = node.parentElement.querySelector('h3').getBoundingClientRect();
+              return {
+                besideTitle: rect.left >= title.right - 1
+                  && Math.min(rect.bottom, title.bottom) > Math.max(rect.top, title.top),
+                inViewport: rect.left >= -1 && rect.top >= -1 && rect.right <= innerWidth + 1 && rect.bottom <= innerHeight + 1,
+              };
+            }), { message: 'accepted running stake remains beside the offer title in short landscape' })
+              .toEqual({ besideTitle: true, inViewport: true });
+          } else {
+            await expect(stake).toBeVisible();
+            const displayedPoints = engine.bid.pending?.points ?? engine.bid.accepted_stake;
+            await expect(stake).toHaveAttribute('data-points', String(displayedPoints));
+            await expect(stake.locator('button > strong')).toHaveText(String(displayedPoints));
+            await expectReachable(decisionPage, '.wt-end-sheet > [data-wt-stake] > button');
+            const stakeBox = await stake.locator('button').boundingBox();
+            expect(stakeBox.width).toBeGreaterThanOrEqual(44);
+            expect(stakeBox.height).toBeGreaterThanOrEqual(44);
+          }
           for (const response of ['respond_hold', 'respond_go', 'respond_counter']) {
             const selector = `[data-watten-action="${response}"]`;
             const target = decisionPage.locator(selector);
