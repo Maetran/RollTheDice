@@ -633,6 +633,38 @@ def _tactical_preference(ctx: _Context, card: str, models: list, skill: CpuSkill
     return preference
 
 
+def _partner_cover_preference(ctx: _Context, card: str, worlds: list, skill: CpuSkill) -> float:
+    """Preserve strength behind a likely safe partner; cover sampled later threats.
+
+    Every hand here is a hypothetical sample of this CPU's permitted knowledge.
+    The preference neither establishes a hidden call nor overrides the full
+    round rollout's near-best candidate boundary.
+    """
+    partner = ctx.snap.partner_seat
+    if partner is None or not ctx.trick or not worlds:
+        return 0.0
+    prefix = [played for _, played in ctx.trick]
+    later = [(ctx.leader + position) % ctx.count for position in range(len(ctx.trick) + 1, ctx.count)]
+    value = 0.0
+    for model, hands in worlds:
+        best = model.winner(prefix)
+        if ctx.trick[best][0] != partner:
+            continue
+        partner_strength = model.strength(prefix[best], prefix[0])
+        card_strength_value = model.strength(card, prefix[0])
+        threats = [model.strength(other, prefix[0]) for seat in later
+                   if ctx.parties[seat] != ctx.my_party for other in hands[seat]]
+        strength = model.order[card] / (len(_DECK) - 1)
+        if all(threat <= partner_strength for threat in threats):
+            value += -1.4 * strength if card_strength_value > partner_strength else 1.2 * (1 - strength)
+        elif card_strength_value > partner_strength and all(threat <= card_strength_value for threat in threats):
+            value += 1.2
+        else:
+            value -= .5 * strength
+    return skill.partnership * value / len(worlds)
+
+
+
 def _choose(ctx: _Context, seed: int, budget: CpuBudget, skill: CpuSkill) -> CpuProposal | CpuWait:
     snap, actions = ctx.snap, ctx.snap.actions
 
@@ -681,7 +713,8 @@ def _choose(ctx: _Context, seed: int, budget: CpuBudget, skill: CpuSkill) -> Cpu
         # but cannot override a clearly stronger permitted-card rollout.
         candidates = [card for card in legal if scores[card] >= best - skill.near_best]
         card = min(candidates, key=lambda card: (
-            -(scores[card] + _tactical_preference(ctx, card, models, skill)),
+            -(scores[card] + _tactical_preference(ctx, card, models, skill)
+              + _partner_cover_preference(ctx, card, worlds, skill)),
             sum(model.order[card] for model in models), card))
         if may_bid and worlds and _should_bid(ctx, _subjective_chance(best, skill, len(worlds)), skill):
             return propose("bid")

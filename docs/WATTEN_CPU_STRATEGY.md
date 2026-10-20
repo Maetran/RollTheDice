@@ -63,6 +63,14 @@ violates trump duties or excludes a clearly better simulated move. Later tricks
 keep the existing rank-only preference for uninformed seats. This convention is
 an explicit owner request, not an extra regional rule taken from the sources.
 
+A second close-choice preference preserves strength when the partner is likely
+already winning the current trick. It checks only the sampled hypothetical
+worlds: safe partner winners favour a cheap card; a later opposing seat with a
+sampled threat can favour a card that covers it. An uninformed CPU averages over
+its permitted call hypotheses, while an informed CPU uses the call it actually
+learned. This does not expose real opposing hands or turn the partner's card
+into proof of a hidden call. A clearly better full-round rollout still wins.
+
 The CPU does not treat customary partner play as proof of a hidden call. In
 particular, a low second-trick card never reveals its partner's actual hand or
 creates a private communication channel.

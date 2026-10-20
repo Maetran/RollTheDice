@@ -517,3 +517,31 @@ def test_small_paired_seeded_comparison_against_simple_legal_baseline(count):
     # Recorded with ``-s`` for review; eight paired deals cannot establish general strength.
     print(f"paired {count}p points: {totals}")
     assert sum(totals.values()) >= 2 * 8
+
+
+@pytest.mark.parametrize("blind", (False, True))
+def test_partner_cover_preference_conserves_a_strike_when_safe_and_covers_sampled_later_threats(blind):
+    deal = explicit_deal(
+        ("hearts-10", "hearts-U", "hearts-K", "leaves-A", "bells-8"),
+        ("bells-K", "hearts-7", "leaves-U", "acorns-A", "hearts-9"),
+        ("hearts-8", "leaves-8", "acorns-8", "leaves-K", "acorns-10"),
+        ("acorns-9", "leaves-7", "leaves-10", "acorns-O", "hearts-O"),
+    )
+    table = Table(start_match(cpu_recipe(4, "ladinisch" if blind else "normal", blind),
+                              "partner-cover", deal, first_dealer="A"))
+    table.ready("9", "bells")
+    table.play("B", "bells-K")
+    table.play("C", "hearts-8")
+    view, memory = table.view("D"), table.memories["D"]
+    ctx = cpu_policy._prepare(view, memory, ())
+    model = ctx.model("9", "bells")
+    # These are explicit hypothetical worlds for the narrow tie preference,
+    # supplied without reading any opponent engine hand in the policy.
+    safe = (("hearts-10", "hearts-U", "hearts-K", "leaves-A", "bells-8"), (), (), ctx.hand)
+    threatened = (("bells-A", *safe[0][1:]), (), (), ctx.hand)
+    preference = cpu_policy._partner_cover_preference
+    weak, strong = "leaves-7", "acorns-9"
+    assert preference(ctx, weak, [(model, safe)], CpuSkill()) > preference(ctx, strong, [(model, safe)], CpuSkill())
+    assert preference(ctx, strong, [(model, threatened)], CpuSkill()) > preference(ctx, weak, [(model, threatened)], CpuSkill())
+    assert (ctx.memory.strike, ctx.memory.suit) == ((None, None) if blind else ("9", "bells"))
+
