@@ -3,6 +3,7 @@ import { escapeHtml, loadAuth } from "./shared/auth.js";
 import { createAnalysisVisuals } from "./dashboard/analysis.js";
 import { createGlobe } from "./dashboard/globe.js";
 import { createFavorites } from "./dashboard/favorites.js";
+import { renderVoiceUsage } from "./dashboard/voice.js";
 import {
   DASHBOARD_GAMES, countText, createDashboardLifecycle, dashboardGameName, gameSelection, overviewCoverage, presentGeography,
   trafficMeasured, trafficSourceNote, unmeasuredCopy, visibleGames, wattenGameCard, wattenModeLabel, wattenMonitoringNote,
@@ -417,6 +418,7 @@ function render(data) {
   analysis.update(data);
   presentGeography(data, { viz: byId("geographyViz"), note: byId("geographyUnmeasured"), globe, t, e });
   requestTraffic(data);
+  renderVoiceUsage(data, { byId, t, e, number, timestamp, utcDay, locale });
   byId("nexusRooms").textContent = number(data.server?.active_rooms);
   byId("nexusPlayers").textContent = number(data.server?.players_online);
   const days = data.period?.days;
@@ -528,6 +530,7 @@ function clearPrivateData() {
   globe.clear();
   globe.suspend();
   syncGameOptions(["zdwa", "zilch"]);
+  renderVoiceUsage({}, { byId, t, e, number, timestamp, utcDay, locale });
   for (const id of ["hausdeppMonitoringNote", "wattenMonitoringNote", "geographyUnmeasured"]) {
     byId(id).hidden = true;
     byId(id).textContent = "";

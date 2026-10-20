@@ -11,6 +11,7 @@ const PANEL_TARGETS = [
   ["pwaInstalledCount", "pwa-growth"], ["pageBubbles", "pages"], ["journeyFlow", "journeys"],
   ["gameCards", "games"], ["actionRanks", "actions"], ["designComparison", "design-comparison"],
   ["designAccounts", "design-accounts"], ["designLooks", "design-looks"], ["serverGauges", "server"],
+  ["voiceUsageSummary", "voice-usage"],
 ];
 
 /** Move the real dashboard elements, keeping their controls and IDs intact. */

@@ -24,6 +24,8 @@ from urllib.request import HTTPRedirectHandler, Request, build_opener
 from .auth import resolve_session
 from .game_types import HAUSDEPP_GAME_TYPE, game_type_from_state
 from .moderation import user_play_banned
+from .security import utcnow
+from .voice_usage import UsageCounter, accept_usage, record_usage
 
 logger = logging.getLogger(__name__)
 HEARTBEAT_SECONDS = 30
@@ -153,6 +155,7 @@ class VoiceMember:
     speaking: bool = False
     track_name: str | None = None
     publication_ready: bool = False
+    usage: UsageCounter = field(default_factory=UsageCounter)
     mids: set[str] = field(default_factory=set)
     subscriptions: dict[int, tuple[str, str, str]] = field(default_factory=dict)
     ice_servers: list[dict] = field(default_factory=list)
@@ -599,6 +602,21 @@ async def handle_voice_action(session, data: dict) -> None:
 
 
 async def _member_operation(room: VoiceRoom, member: VoiceMember, operation: str, data: dict, session) -> dict:
+    if operation in {"heartbeat", "resume", "leave"} and member.session_id is not None:
+        delta = accept_usage(member.usage, data.get("usage"))
+        if delta is not None:
+            # Persist only anonymous deltas. Failed writes retain the previous
+            # baseline so a later cumulative report can recover the missing data.
+            reported_at = utcnow()
+            try:
+                if await asyncio.to_thread(record_usage, *delta, now=reported_at):
+                    usage = data["usage"]
+                    member.usage.sequence = usage["sequence"]
+                    member.usage.received_bytes = usage["received_bytes"]
+                    member.usage.sent_bytes = usage["sent_bytes"]
+                    member.usage.reported_at = member.usage.attempted_at
+            except Exception:
+                logger.warning("Voice usage observation unavailable; voice continues", exc_info=False)
     if operation == "leave":
         await _remove_member(room, member)
         return {"state": _state(room, session.game, publications=False)}

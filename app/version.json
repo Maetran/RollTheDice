@@ -4,7 +4,7 @@
   "date": "2026-10-20",
   "previous_revision": "fa4d2a98850452ca88f718ec4f01b1ba0a8f5d32",
   "summary": {
-    "de": "Optionaler Sprachchat für Hausdepp mit getrennten Audio- und Mikrofonschaltern.",
-    "en": "Optional Hausdepp voice chat with separate audio and microphone controls."
+    "de": "Sprachchat-Beta für Hausdepp mit getrennten Schaltern und Verbrauchsübersicht in Mission Control.",
+    "en": "Hausdepp voice chat beta with separate controls and a usage overview in Mission Control."
   }
 }

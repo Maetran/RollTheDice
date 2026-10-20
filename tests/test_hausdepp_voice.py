@@ -14,6 +14,7 @@ from app import hausdepp_voice as voice
 from app.game_ws_session import GameSocketSession
 from app.hausdepp_state import configure_hausdepp_game, join_hausdepp_player, new_hausdepp_game
 from app.hausdepp_waiting import handle_waiting_action
+from app.voice_usage import MAX_COUNTER
 
 
 def description(kind="offer", mid="0", media="audio"):
@@ -427,6 +428,130 @@ class HausdeppVoiceTests(unittest.IsolatedAsyncioTestCase):
         await voice.reap_voice(now=room.members[1].last_seen + 31)
         self.assertEqual(room.members, {})
         self.assertEqual(self.fake.sessions["s1"], {})
+
+    async def test_usage_reports_are_optional_and_require_an_allocated_transport(self):
+        token = await self.join()
+        with patch.object(voice, "record_usage", return_value=True) as record:
+            for operation, payload in (("heartbeat", {}), ("resume", {}),
+                                       ("heartbeat", {"usage": {"received_bytes": 100, "sent_bytes": 200, "sequence": 1}})):
+                reply = await self.command(self.sessions[0], operation, member_token=token, **payload)
+                self.assertTrue(reply["ok"], reply)
+            record.assert_not_called()
+            await self.publish(0, token)
+            heartbeat = await self.command(self.sessions[0], "heartbeat", member_token=token)
+            self.assertTrue(heartbeat["ok"], heartbeat)
+            record.assert_not_called()
+
+    async def test_cumulative_usage_ignores_duplicates_stale_decreasing_and_invalid_reports(self):
+        token = await self.join()
+        await self.publish(0, token)
+        member = voice._rooms[self.game["_hausdepp_voice_room_id"]].members[1]
+        initial = {"received_bytes": 1000, "sent_bytes": 200, "sequence": 1}
+        with patch.object(voice, "record_usage", return_value=True) as record:
+            first = await self.command(self.sessions[0], "heartbeat", member_token=token, usage=initial)
+            self.assertTrue(first["ok"], first)
+            self.assertEqual(record.call_args.args, (1000, 200))
+            self.assertEqual(set(record.call_args.kwargs), {"now"})
+            member.usage.reported_at -= 2
+            member.usage.attempted_at -= 2
+            for invalid in (initial, {**initial, "sequence": 0}, {**initial, "received_bytes": 2000},
+                            {**initial, "sequence": 2, "received_bytes": 999},
+                            {**initial, "sequence": 2, "sent_bytes": 199},
+                            {**initial, "sequence": True}, {**initial, "received_bytes": True},
+                            {**initial, "sequence": 2, "sent_bytes": -1},
+                            {**initial, "sequence": 2, "sent_bytes": "300"},
+                            {**initial, "sequence": 2, "received_bytes": float("nan")},
+                            {**initial, "sequence": 2, "received_bytes": MAX_COUNTER + 1},
+                            {**initial, "sequence": MAX_COUNTER + 1},
+                            {**initial, "sequence": 2, "account_id": "private"},
+                            {"sequence": 2}, None, [], "invalid"):
+                with self.subTest(usage=invalid):
+                    reply = await self.command(self.sessions[0], "heartbeat", member_token=token, usage=invalid)
+                    self.assertTrue(reply["ok"], reply)
+            self.assertEqual(record.call_count, 1)
+            self.assertEqual(member.usage.sequence, 1)
+            next_report = await self.command(self.sessions[0], "resume", member_token=token,
+                                             usage={"received_bytes": 1500, "sent_bytes": 350, "sequence": 2})
+            self.assertTrue(next_report["ok"], next_report)
+            self.assertEqual(record.call_args.args, (500, 150))
+            self.assertEqual(record.call_count, 2)
+            member.usage.reported_at -= 2
+            member.usage.attempted_at -= 2
+            await self.command(self.sessions[0], "heartbeat", member_token=token,
+                               usage={"received_bytes": 1500, "sent_bytes": 350, "sequence": 3})
+            self.assertEqual(record.call_args.args, (0, 0))
+            self.assertEqual(record.call_count, 3)
+        self.assertIs(voice._rooms[self.game["_hausdepp_voice_room_id"]].members[1], member)
+
+    async def test_usage_rate_and_implausible_byte_increases_do_not_advance_the_baseline(self):
+        token = await self.join()
+        await self.publish(0, token)
+        member = voice._rooms[self.game["_hausdepp_voice_room_id"]].members[1]
+        with patch.object(voice, "record_usage", return_value=True) as record:
+            excessive = await self.command(self.sessions[0], "heartbeat", member_token=token,
+                                           usage={"received_bytes": 2 ** 40, "sent_bytes": 0, "sequence": 1})
+            self.assertTrue(excessive["ok"], excessive)
+            record.assert_not_called()
+            await self.command(self.sessions[0], "heartbeat", member_token=token,
+                               usage={"received_bytes": 1000, "sent_bytes": 200, "sequence": 1})
+            self.assertEqual(record.call_count, 1)
+            report = {"received_bytes": 2000, "sent_bytes": 300, "sequence": 2}
+            await self.command(self.sessions[0], "heartbeat", member_token=token, usage=report)
+            self.assertEqual(record.call_count, 1)
+            self.assertEqual(member.usage.sequence, 1)
+            member.usage.reported_at -= 2
+            member.usage.attempted_at -= 2
+            await self.command(self.sessions[0], "heartbeat", member_token=token, usage=report)
+            self.assertEqual(record.call_count, 2)
+            self.assertEqual(record.call_args.args, (1000, 100))
+
+    async def test_leave_reports_last_delta_and_next_membership_has_a_fresh_counter(self):
+        token = await self.join()
+        await self.publish(0, token)
+        with patch.object(voice, "record_usage", return_value=True) as record:
+            reply = await self.command(self.sessions[0], "leave", member_token=token,
+                                       usage={"received_bytes": 3000, "sent_bytes": 400, "sequence": 1})
+            self.assertTrue(reply["ok"], reply)
+            self.assertEqual(record.call_args.args, (3000, 400))
+            self.assertEqual(self.fake.sessions["s1"], {})
+            token = await self.join()
+            await self.publish(0, token)
+            reply = await self.command(self.sessions[0], "heartbeat", member_token=token,
+                                       usage={"received_bytes": 100, "sent_bytes": 20, "sequence": 1})
+            self.assertTrue(reply["ok"], reply)
+            self.assertEqual(record.call_args.args, (100, 20))
+            self.assertEqual(record.call_count, 2)
+
+    async def test_usage_storage_failure_does_not_fail_voice_and_next_report_recovers_bytes(self):
+        token = await self.join()
+        await self.publish(0, token)
+        member = voice._rooms[self.game["_hausdepp_voice_room_id"]].members[1]
+        report = {"received_bytes": 1000, "sent_bytes": 200, "sequence": 1}
+        with patch.object(voice, "record_usage", side_effect=RuntimeError("database unavailable")) as record:
+            first = await self.command(self.sessions[0], "heartbeat", member_token=token, usage=report)
+            repeated = await self.command(self.sessions[0], "heartbeat", member_token=token, usage=report)
+            self.assertTrue(first["ok"], first)
+            self.assertTrue(repeated["ok"], repeated)
+            self.assertEqual(record.call_count, 1)
+        self.assertIs(voice._rooms[self.game["_hausdepp_voice_room_id"]].members[1], member)
+        self.assertEqual(member.usage.sequence, 0)
+        self.assertTrue(self.fake.sessions["s1"])
+        member.usage.attempted_at -= 2
+        with patch.object(voice, "record_usage", return_value=True) as recovered:
+            reply = await self.command(self.sessions[0], "heartbeat", member_token=token,
+                                       usage={"received_bytes": 1500, "sent_bytes": 300, "sequence": 2})
+        self.assertTrue(reply["ok"], reply)
+        self.assertEqual(recovered.call_args.args, (1500, 300))
+        self.assertEqual(member.usage.sequence, 2)
+
+    async def test_forged_membership_cannot_submit_usage(self):
+        token = await self.join()
+        await self.publish(0, token)
+        with patch.object(voice, "record_usage", return_value=True) as record:
+            reply = await self.command(self.sessions[1], "heartbeat", member_token=token,
+                                       usage={"received_bytes": 1000, "sent_bytes": 200, "sequence": 1})
+            self.assertEqual(reply["error_code"], "hausdepp_voice_membership_required")
+            record.assert_not_called()
 
     async def test_logout_retires_provider_media_independently_of_inbound_actions(self):
         token = await self.join()

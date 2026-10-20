@@ -3,21 +3,21 @@
   "games": [
     "hausdepp"
   ],
-  "summary_de": "Optionaler Sprachchat am Tisch: zuhören, Mikro separat einschalten und gemeinsam weiterspielen.",
-  "summary_en": "Optional table voice chat: listen, enable your mic separately and keep talking between rounds.",
+  "summary_de": "Sprachchat als Beta: freiwillig zuhören, Mikro separat einschalten und gemeinsam weiterspielen.",
+  "summary_en": "Voice chat beta: opt into listening, enable your mic separately and keep talking between rounds.",
   "player_notes": {
     "de": {
-      "title": "Gemeinsam am Tisch sprechen",
+      "title": "Sprachchat am Tisch: Beta",
       "changes": [
-        "Bei aktivierter Sprachfunktion freiwillig zuhören und das Mikro separat einschalten.",
+        "Teste den Sprachchat als Beta: freiwillig zuhören und das Mikro separat einschalten.",
         "Audio aus schaltet auch das Mikro stumm; einzelne Mitspieler schaltest du nur für dich stumm.",
         "Die Sprachsitzung bleibt über Turniere und Neu erstellen mit derselben Gruppe erhalten."
       ]
     },
     "en": {
-      "title": "Talk together at the table",
+      "title": "Table voice chat: beta",
       "changes": [
-        "When voice is enabled, opt into listening and turn on your microphone separately.",
+        "Try voice chat in beta: opt into listening and turn on your microphone separately.",
         "Audio off also mutes your microphone; mute individual players only for yourself.",
         "Your voice session continues through tournaments and Create again with the same group."
       ]

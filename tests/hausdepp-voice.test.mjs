@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-const source = await readFile(new URL("../frontend/hausdepp/voice.js", import.meta.url), "utf8");
+const usageSource = await readFile(new URL("../frontend/hausdepp/voice-usage.js", import.meta.url), "utf8");
+const usageURL = `data:text/javascript;base64,${Buffer.from(usageSource).toString("base64")}`;
+const source = (await readFile(new URL("../frontend/hausdepp/voice.js", import.meta.url), "utf8"))
+  .replace('"./voice-usage.js"', JSON.stringify(usageURL));
 const { createHausdeppVoice } = await import(`data:text/javascript;base64,${Buffer.from(source).toString("base64")}`);
 const deferred = () => {
   let resolve, reject;
@@ -25,6 +28,7 @@ const state = (publications = [], extra = {}) => ({ event: "state", available: t
   members: [{ user_id: 1, player_id: "seat-a", audio: true, microphone: false },
     { user_id: 2, player_id: "seat-b", audio: true, microphone: true }], publications, ...extra });
 const publication = (userId = 2, session = "publisher-b") => ({ user_id: userId, session_id: session, track_name: "microphone" });
+const byteStats = (received, sent) => new Map([["transport", { type: "transport", id: "transport", bytesReceived: received, bytesSent: sent }]]);
 
 function setup({ send: customSend, getUserMedia, audioFails = false, iceComplete = true,
   candidateType = null, icePolicy = "all", autoConnect = true } = {}) {
@@ -232,6 +236,7 @@ test("off, stale signalling and failed publishers cannot announce readiness afte
     assert.equal(app.controller.snapshot().microphone, false);
     assert.equal(app.calls.filter(call => call.operation === "microphone" && call.payload.enabled).length, 0);
     app.controller.destroy();
+    await turn();
     assert.equal(app.timeouts.size, 0);
   }
 });
@@ -492,6 +497,80 @@ test("heartbeat refreshes room state and speaking statistics never request captu
   app.controller.destroy();
 });
 
+test("heartbeats count transported audio while locally muted and preserve usage across signalling resume", async () => {
+  const app = setup(); app.setState(state([publication()]));
+  await app.controller.connected(); await app.controller.setAudio(true);
+  app.controller.muteUser(2, true);
+  app.peers[0].getStats = () => byteStats(1000, 50);
+  app.tickInterval(10000); await turn();
+  assert.deepEqual(app.calls.filter(call => call.operation === "heartbeat").at(-1).payload.usage,
+    { received_bytes: 1000, sent_bytes: 50, sequence: 1 });
+  assert.equal(app.elements[0].muted, true);
+  assert.equal(app.captures.length, 0);
+  app.controller.disconnected(); await app.controller.connected();
+  app.peers[0].getStats = () => byteStats(1700, 80);
+  app.tickInterval(10000); await turn();
+  assert.deepEqual(app.calls.filter(call => call.operation === "heartbeat").at(-1).payload.usage,
+    { received_bytes: 1700, sent_bytes: 80, sequence: 2 });
+  await app.controller.setAudio(false);
+  assert.deepEqual(app.calls.filter(call => call.operation === "leave").at(-1).payload.usage,
+    { received_bytes: 1700, sent_bytes: 80, sequence: 2 });
+  app.controller.destroy();
+});
+
+test("a pending stats read cannot delay leave behind a quick rejoin or contaminate the new peer", async () => {
+  let activeMember = null, nextMember = 0;
+  const app = setup({ send: async (operation, payload, fallback) => {
+    if (operation === "leave" && payload.member_token === activeMember) activeMember = null;
+    const response = await fallback(operation, payload);
+    if (operation === "join") {
+      activeMember ||= `token-${++nextMember}`;
+      return { ...response, member_token: activeMember, session_id: `session-${activeMember}` };
+    }
+    return response;
+  } });
+  await app.controller.connected(); await app.controller.setAudio(true); await app.controller.setMicrophone(true);
+  const peer = app.peers[0], captured = peer.transceivers[0].sender.track;
+  peer.getStats = () => byteStats(1000, 500);
+  app.tickInterval(10000); await turn();
+  const waiting = deferred(); peer.getStats = () => waiting.promise;
+  app.tickInterval(10000); await turn();
+  await app.controller.setAudio(false);
+  assert.equal(captured.stopped, true);
+  assert.equal(peer.connectionState, "closed");
+  assert.equal(activeMember, null);
+  const leaving = app.calls.filter(call => call.operation === "leave").at(-1);
+  assert.equal(leaving.payload.member_token, "token-1");
+  assert.deepEqual(leaving.payload.usage, { received_bytes: 1000, sent_bytes: 500, sequence: 1 });
+  const rejoining = app.controller.setAudio(true);
+  waiting.resolve(byteStats(999999, 999999)); await rejoining;
+  assert.equal(activeMember, "token-2");
+  assert.ok(app.calls.indexOf(leaving) < app.calls.findLastIndex(call => call.operation === "join"));
+  app.peers[1].getStats = () => byteStats(20, 5);
+  app.tickInterval(10000); await turn();
+  const heartbeat = app.calls.filter(call => call.operation === "heartbeat").at(-1);
+  assert.equal(heartbeat.payload.member_token, "token-2");
+  assert.deepEqual(heartbeat.payload.usage, { received_bytes: 20, sent_bytes: 5, sequence: 1 });
+  assert.equal(app.controller.snapshot().audio, true);
+  app.controller.destroy();
+});
+
+test("missing, failed or slow getStats never changes voice participation or fabricates usage", async () => {
+  const app = setup(); await app.controller.connected(); await app.controller.setAudio(true); await app.controller.setMicrophone(true);
+  for (const getStats of [undefined, () => { throw new Error("closing"); }, () => Promise.reject(new Error("unavailable"))]) {
+    app.peers[0].getStats = getStats;
+    app.tickInterval(10000); await turn();
+    assert.equal(app.calls.filter(call => call.operation === "heartbeat").at(-1).payload.usage, undefined);
+    assert.equal(app.controller.snapshot().audio, true);
+    assert.equal(app.controller.snapshot().microphone, true);
+  }
+  app.peers[0].getStats = () => new Promise(() => {});
+  app.tickInterval(10000); await turn(); app.tickTimeout(1000); await turn();
+  assert.equal(app.calls.filter(call => call.operation === "heartbeat").at(-1).payload.usage, undefined);
+  assert.equal(app.controller.snapshot().microphone, true);
+  app.controller.destroy();
+});
+
 test("room changes and page close immediately release all media; teardown is idempotent", async () => {
   const app = setup(); app.setState(state([publication()]));
   await app.controller.connected(); await app.controller.setAudio(true); await app.controller.setMicrophone(true);
@@ -504,6 +583,7 @@ test("room changes and page close immediately release all media; teardown is ide
   app.lifecycle.dispatchEvent(new Event("pagehide"));
   assert.equal(nextTrack.stopped, true);
   app.controller.destroy(); app.controller.destroy();
+  await turn();
   assert.equal(app.intervals.size, 0); assert.equal(app.timeouts.size, 0);
 });
 

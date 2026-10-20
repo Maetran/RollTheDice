@@ -1,3 +1,5 @@
+import { createHausdeppVoiceUsage } from "./voice-usage.js";
+
 // One controller belongs to the table session, including its rematches and
 // tournament intermissions. Its owner supplies authenticated game signalling.
 export function createHausdeppVoice({
@@ -26,6 +28,7 @@ export function createHausdeppVoice({
   let queue = Promise.resolve(), disconnectedTimer = null, pollPending = false;
   let subscriptionSignature = "";
   let connectionWaiter = null;
+  let usageTracker = null;
   const muted = new Set(), media = new Map(), receiving = new Map();
 
   const snapshot = () => ({
@@ -56,7 +59,11 @@ export function createHausdeppVoice({
     return unwrap(await send(operation, { ...payload, ...(token ? { member_token: token } : {}) }));
   };
   const quietly = promise => Promise.resolve(promise).catch(() => {});
-  const leave = token => { if (token && online) quietly(request("leave", {}, token)); };
+  const leave = retired => {
+    const token = typeof retired === "object" ? retired?.token : retired;
+    if (!token || !online) return;
+    quietly(request("leave", retired?.usage ? { usage: retired.usage } : {}, token));
+  };
   const problem = (error, fallback = "voiceConnectionError") => {
     if (destroyed) return;
     errorKey = error?.name === "NotAllowedError" ? "voiceMicrophoneDenied"
@@ -90,17 +97,21 @@ export function createHausdeppVoice({
   };
   const closeConnection = () => {
     stopMicrophone();
+    // Use the last completed observation: waiting for final getStats here can
+    // let a quick new join overtake leave and reuse the retiring membership.
+    const usage = usageTracker?.snapshot();
+    usageTracker = null;
     clearMedia();
     const old = pc; pc = null;
     if (old) old.close();
     sender = null; published = false; sessionId = null;
+    return usage;
   };
   const closeSession = () => {
     const token = memberToken;
     epoch++;
     memberToken = null;
-    closeConnection();
-    return token;
+    return { token, usage: closeConnection() };
   };
   const applyMute = () => {
     for (const [mid, element] of media) element.muted = !audio || muted.has(receiving.get(mid)?.userId);
@@ -157,6 +168,7 @@ export function createHausdeppVoice({
   };
   const makeConnection = iceServers => {
     const connection = new PeerConnection({ iceServers: Array.isArray(iceServers) ? iceServers : [] });
+    usageTracker = createHausdeppVoiceUsage(connection, { setTimeout: delay, clearTimeout: cancelDelay });
     const attempt = epoch;
     connection.addEventListener("track", event => {
       if (!current(attempt) || pc !== connection || event.track.kind !== "audio") return;
@@ -453,7 +465,9 @@ export function createHausdeppVoice({
       const attempt = epoch, token = memberToken;
       if (!current(attempt) || !token) return;
       try {
-        const response = await request("heartbeat", {}, token);
+        const usage = await usageTracker?.collect();
+        if (!current(attempt)) return;
+        const response = await request("heartbeat", usage ? { usage } : {}, token);
         if (!current(attempt)) return;
         if (response.state) updateState(response.state);
         await reconcile();

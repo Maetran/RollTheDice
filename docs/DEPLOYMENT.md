@@ -217,7 +217,40 @@ gesamten Kontos. Ein garantiertes Kosten-Cap in CHF wird dadurch nicht erreicht.
 Cloudflare budget alerts do not cap spending or stop Realtime. They use USD
 and cover usage-based costs across the account; they cannot guarantee a CHF cap.
 
-Vor öffentlicher Freigabe ein kontrolliertes Gespräch mit zwei bis sechs
+### Verbrauchsmessung / Usage measurement
+
+Aktive Sprachverbindungen melden etwa alle zehn Sekunden kumulative
+`RTCTransportStats.bytesReceived`/`bytesSent` über den bestehenden, authentisierten
+WebSocket. Die Zähler messen Nutzdaten ohne Header, Padding oder ICE-Prüfungen;
+TURN wird nicht zusätzlich addiert. Der Server dedupliziert Meldungen und
+speichert ausschliesslich UTC-Tagessummen (400 Tage), keine dauerhaften
+Teilnehmer-, Raum- oder Providerkennungen. Tageszuordnung ist der Eingang auf
+dem Server; ein Intervall über Mitternacht zählt zum neuen Tag. Mission Control
+aktualisiert sich alle 30 Sekunden und zeigt die Daten nur im bestehenden
+Gründerzugriff auf Hausdepp. Bei Filtern auf andere Spiele bleibt die Anzeige aus.
+Der laufende UTC-Monat ist unabhängig vom Zeitraumfilter. Browsermeldungen sind
+unvollständig, können manipuliert sein und taugen nicht zur Kostenbegrenzung.
+Fehlende/letzte Meldungen bei Abbruch und Netzwerk-Overhead werden nicht
+nachgerechnet. Es werden keine neuen Cloudflare-Accountrechte benötigt.
+
+Active voice connections report cumulative browser transport payload counters
+about every ten seconds through the authenticated WebSocket. Only anonymous
+daily UTC totals are retained for 400 days. The reporting interval crossing
+midnight belongs to the server receipt day. Mission Control refreshes every
+30 seconds and uses the existing founder-only Hausdepp scope. Current-month
+totals are independent of its period filter. Reports may be missing or forged;
+these counters exclude network overhead and are not authoritative billing or
+a spending cap. No additional Cloudflare account permissions are required.
+
+Die Beta-Kennzeichnung bleibt an den Audio-Schaltern sichtbar. Sie ersetzt keine
+Geräteabnahme: echte Gespräche, Echo, PWA und Headset-Routing bleiben bei einem
+bewusst freigegebenen Beta-Rollout auf den Zielgeräten zu prüfen.
+
+The beta label remains visible beside the voice controls. An explicitly
+approved beta rollout still needs real-device conversation, echo, PWA and
+headset-routing checks.
+
+Für die Geräteabnahme ein kontrolliertes Gespräch mit zwei bis sechs
 Testkonten auf verschiedenen Geräten durchführen: ohne Mikrofon zuhören,
 gleichzeitig sprechen, lokale Stummschaltung, Ausgabe aus/ein, Turnier und
 erneute Partie, Netzverlust, Geräteübernahme und Abmeldung. iOS Safari/PWA,
@@ -226,7 +259,7 @@ Hintergrundbetrieb, Sperren und Bluetooth bleiben Plattformverhalten; PWA
 allein garantiert keine Fortsetzung. Automatisierte Provider-Mocks belegen die
 Anwendungslogik, keinen tatsächlich funktionierenden Medienpfad.
 
-Before public rollout, verify actual media with controlled test accounts on
+For device acceptance, verify actual media with controlled test accounts on
 different networks and devices, including mobile installed apps, interruption,
 headset changes and revocation. Mocked provider tests establish application
 behavior, not a working external audio path. Roll back by disabling the voice

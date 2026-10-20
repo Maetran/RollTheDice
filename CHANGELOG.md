@@ -25,9 +25,8 @@ not asserted deployment dates. See the [complete version history](docs/VERSION_H
 
 ## 3.17.0 — Gemeinsam am Tisch sprechen / Talk together at the table — 2026-10-20
 
-Hausdepp ergänzt einen freiwilligen Sprachchat, der nach Einrichtung des
-Audiodienstes aktiviert werden kann. / Hausdepp adds optional voice chat that
-can be enabled after configuring the media service.
+Hausdepp ergänzt einen freiwilligen, sichtbar als Beta gekennzeichneten
+Sprachchat. / Hausdepp adds optional voice chat visibly labelled as beta.
 
 ### HAUSDEPP
 
@@ -50,6 +49,15 @@ the voice session; Create again switches tables within the same page. System
 volume and audio devices apply. No recording or push-to-talk. Voice remains off
 without a configured server-side Cloudflare SFU app; mobile background operation
 depends on the device.
+
+**Betrieb / Operations:** Mission Control zeigt dem Gründer regelmässig
+gemeldete Audio-Nutzdaten für Empfang und Versand, UTC-Tagessummen und den
+laufenden Monat. Die anonymen Summen bleiben 400 Tage gespeichert. Die
+Browsermessung kann unvollständig sein und ist weder Cloudflare-Abrechnung
+noch Kosten-Cap. / Mission Control shows the founder regularly reported audio
+payload received and sent, UTC daily totals and the current month. Anonymous
+totals are retained for 400 days. Browser measurements may be incomplete and
+are neither Cloudflare billing nor a spending cap.
 
 ## 3.16.6 — Klare Rundenbilanz / A clear round summary — 2026-10-19
 

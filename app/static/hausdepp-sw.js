@@ -1,6 +1,6 @@
 /* Hausdepp is an online multiplayer game. Nothing enters Cache Storage.
    Public artwork uses the browser's HTTP image cache; private content stays online-only. */
-const CACHE_VERSION = 'assets-faef505aa97b';
+const CACHE_VERSION = 'assets-62141973e5b9';
 
 self.addEventListener('message', event => {
   if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();

@@ -8,7 +8,7 @@ release. Further playtests will continue to refine the appearance.
 
 ## Deutsch
 
-### Freiwilliger Sprachchat
+### Freiwilliger Sprachchat (Beta)
 
 Bei aktivierter Funktion gibt es am Tisch zwei dauernd erreichbare Schalter:
 Lautsprecher für Audioausgabe und Mikrofon für das eigene Sprechen. Ein neuer
@@ -32,7 +32,12 @@ angezeigt. Hintergrundbetrieb und Audiogerätewechsel sind geräteabhängig und
 brauchen echte Browser-/PWA-Tests; eine Installation garantiert kein dauerhaftes
 Mikrofon im Hintergrund.
 
-### Optional voice chat (English)
+Für die Betriebsübersicht werden gemeldete Audio-Datenmengen regelmässig in
+anonymen UTC-Tagessummen gespeichert (400 Tage), keine Gesprächsinhalte oder
+dauerhaften Konto-/Raumkennungen. Die unvollständige Browsermessung ist keine
+Cloudflare-Abrechnung und kein Kosten-Cap.
+
+### Optional voice chat (Beta, English)
 
 Two persistent controls switch audio output and your microphone on or off.
 A fresh visit starts with both off. Listening never requests microphone access.
@@ -49,6 +54,11 @@ or closing ends participation. A replacement device must opt in again and
 revokes the old device's media. Show connection problems. Background operation
 and audio routing require actual browser/PWA device tests; installation alone
 does not guarantee background microphone operation.
+
+For operations, reported audio payload is regularly stored as anonymous daily
+UTC totals for 400 days, without conversation content or durable account/room
+identifiers. Incomplete browser measurements are neither Cloudflare billing nor
+a spending cap.
 
 ### Schnellstart für Spieler
 

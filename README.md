@@ -342,7 +342,7 @@ The production host remains closed.
 
 ## Hausdepp — öffentlicher V3-Start / public V3 launch
 
-**Sprachchat / Voice chat:** Bei aktivierter Sprachfunktion können angemeldete
+**Sprachchat / Voice chat (Beta):** Bei aktivierter Sprachfunktion können angemeldete
 Mitspieler am Wartetisch freiwillig Audio einschalten und ohne Mikrofonfreigabe
 zuhören. Das Mikrofon wird separat eingeschaltet. Audio aus schaltet auch das
 Mikro stumm; Audio wieder ein startet ausschliesslich das Zuhören. Einzelne
@@ -367,6 +367,22 @@ cannot participate. No conversations are recorded. Voice controls are hidden
 in games against CPUs only. Installing the PWA is recommended; background
 operation and routing depend on browser and OS. Voice
 stays disabled until Cloudflare media services are configured.
+
+Mission Control zeigt dem Gründer die vom Browser gemeldeten Audio-Nutzdaten
+getrennt nach Empfang und Versand, als UTC-Tagesverlauf und mit laufendem
+Monatswert. Aktiver Sprachchat meldet etwa alle zehn Sekunden; das Dashboard
+aktualisiert sich alle 30 Sekunden. Dauerhaft bleiben nur anonyme Tagessummen
+für 400 Tage erhalten, ohne Audioinhalte, Konto- oder Raumkennungen. Fehlende
+Meldungen und Netzwerk-Overhead werden nicht nachgerechnet. Die Messung ist
+keine Cloudflare-Abrechnung und kein Kosten-Cap; TURN wird nicht doppelt gezählt.
+
+Mission Control shows the founder browser-reported audio payload, split into
+received and sent bytes, UTC daily history and a current-month total. Active
+voice reports about every ten seconds; the dashboard refreshes every 30 seconds.
+Only anonymous daily totals are retained for 400 days, without audio content,
+account or room identifiers. Missing reports and network overhead are not
+estimated. These measurements are not Cloudflare billing or a spending cap;
+TURN is not counted twice.
 
 **Deutsch:** Mit V3 ergänzt Hausdepp die Suite als öffentliches drittes Spiel.
 Die Lobby unter `/hausdepp` und die vollständigen Hausregeln unter
