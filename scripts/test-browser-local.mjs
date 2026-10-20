@@ -8,6 +8,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
+import { resolveBrowserShards } from './test-parallelism.mjs';
 
 const execFileAsync = promisify(execFile);
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -25,7 +26,7 @@ export function parseArguments(argv) {
     const argument = argv[index];
     if (argument === '--') { options.filters = argv.slice(index + 1); break; }
     if (argument === '--help' || argument === '-h') { options.help = true; continue; }
-    if (!['--suite', '--config', '--output-dir', '--port-base'].includes(argument)) {
+    if (!['--suite', '--config', '--output-dir', '--port-base', '--shards'].includes(argument)) {
       throw new Error(`Unknown runner option ${argument}; put Playwright filters after --`);
     }
     const value = argv[++index];
@@ -33,9 +34,12 @@ export function parseArguments(argv) {
     if (argument === '--output-dir') options.outputDirectory = value;
     else if (argument === '--port-base') {
       options.portBase = Number(value);
-      if (!Number.isInteger(options.portBase) || options.portBase < 1024 || options.portBase > 65529) {
-        throw new Error('--port-base must be an integer from 1024 to 65529');
+      if (!Number.isInteger(options.portBase) || options.portBase < 1024 || options.portBase > 65535) {
+        throw new Error('--port-base must be an integer from 1024 to 65535; the complete suite must fit above it');
       }
+    } else if (argument === '--shards') {
+      options.shards = Number(value);
+      assertMainShards(options.shards);
     } else {
       const suite = argument === '--suite' ? value : Object.keys(CONFIGS).find(name => CONFIGS[name] === path.basename(value));
       if (!Object.hasOwn(CONFIGS, suite)) throw new Error(`Unknown browser suite/config: ${value}`);
@@ -43,17 +47,22 @@ export function parseArguments(argv) {
       options.suites.push(suite);
     }
   }
-  // These switches could silently bypass isolation, change the four shards or
+  // These switches could silently bypass isolation, change the chosen shards or
   // replace the durable report. Filters such as files, --grep and --project work.
   for (const argument of options.filters) {
-    if (/^(--(?:config|shard|workers|output|reporter|ui|ui-host|ui-port)(?:=|$)|-c|-j)/.test(argument)) {
+    if (/^(--(?:config|shards?|workers|output|reporter|ui|ui-host|ui-port)(?:=|$)|-c|-j)/.test(argument)) {
       throw new Error(`The local runner owns isolation option ${argument}`);
     }
   }
   return options;
 }
 
-function suiteDefinitions(suites = []) {
+function assertMainShards(shards) {
+  if (![4, 6, 8].includes(shards)) throw new Error('--shards must be 4, 6 or 8');
+}
+
+function suiteDefinitions(suites = [], shards = 4) {
+  assertMainShards(shards);
   const chosen = suites.length ? suites : Object.keys(CONFIGS);
   if (new Set(chosen).size !== chosen.length || chosen.some(name => !Object.hasOwn(CONFIGS, name))) {
     throw new Error('Select each known browser suite at most once');
@@ -61,15 +70,15 @@ function suiteDefinitions(suites = []) {
   const definitions = [];
   for (const suite of Object.keys(CONFIGS)) {
     if (!chosen.includes(suite)) continue;
-    if (suite === 'main') for (let shard = 1; shard <= 4; shard++) definitions.push({ name: `main-${shard}`, suite, shard });
+    if (suite === 'main') for (let shard = 1; shard <= shards; shard++) definitions.push({ name: `main-${shard}`, suite, shard });
     else definitions.push({ name: suite, suite });
   }
   return definitions;
 }
 
 export function createSuitePlan({ root = repositoryRoot, temporaryDirectory, outputDirectory, htmlDirectory, ports,
-  suites = [], filters = [], environment = process.env }) {
-  const definitions = suiteDefinitions(suites);
+  suites = [], filters = [], environment = process.env, shards = 4 }) {
+  const definitions = suiteDefinitions(suites, shards);
   if (ports.length !== definitions.length || new Set(ports).size !== ports.length
       || ports.some(port => !Number.isInteger(port) || port < 1024 || port > 65535)) throw new Error('Each suite needs a distinct valid port');
   return definitions.map((definition, index) => {
@@ -83,7 +92,7 @@ export function createSuitePlan({ root = repositoryRoot, temporaryDirectory, out
       PLAYWRIGHT_OUTPUT_DIR: outputDir, PLAYWRIGHT_HTML_OUTPUT_DIR: htmlDir, TMPDIR: testDirectory };
     delete env.PLAYWRIGHT_BASE_URL;
     const args = ['test', `--config=${path.join(root, CONFIGS[definition.suite])}`, '--workers=1'];
-    if (definition.shard) args.push(`--shard=${definition.shard}/4`);
+    if (definition.shard) args.push(`--shard=${definition.shard}/${shards}`);
     // A targeted file may belong to just one shard. A full run must never hide
     // an accidentally empty configuration with this option.
     if (filters.length) args.push('--pass-with-no-tests');
@@ -177,13 +186,18 @@ export async function runLocalBrowserTests(options = {}, dependencies = {}) {
   const root = dependencies.root || repositoryRoot;
   const environment = dependencies.environment || process.env;
   if (environment.PLAYWRIGHT_BASE_URL) throw new Error('PLAYWRIGHT_BASE_URL cannot be used by the isolated local runner');
-  const definitions = suiteDefinitions(options.suites);
+  const mainShards = resolveBrowserShards({ root, environment, shards: options.shards });
+  const definitions = suiteDefinitions(options.suites, mainShards);
+  if (options.portBase !== undefined && (!Number.isInteger(options.portBase) || options.portBase < 1024
+      || options.portBase > 65536 - definitions.length)) {
+    throw new Error(`--port-base must be an integer from 1024 to ${65536 - definitions.length} for ${definitions.length} suites`);
+  }
   const outputDirectory = await makeOutputDirectory(root, options.outputDirectory || environment.PLAYWRIGHT_LOCAL_OUTPUT_DIR);
   const lock = await open(path.join(outputDirectory, '.runner.lock'), 'wx');
   const temporaryDirectory = await mkdtemp(path.join(os.tmpdir(), 'rollthedice-local-browser-'));
   const reservations = [];
   const active = new Set();
-  const summary = { fullRun: false, startedAt: new Date().toISOString(), outputDirectory, filters: options.filters || [],
+  const summary = { fullRun: false, mainShards, startedAt: new Date().toISOString(), outputDirectory, filters: options.filters || [],
     results: definitions.map((suite, index) => ({ name: suite.name, exitCode: 1, port: options.portBase ? options.portBase + index : 0,
       outputDir: path.join(outputDirectory, suite.name, 'artifacts'), logPath: path.join(outputDirectory, suite.name, 'runner.log'),
       status: 'not-started' })) };
@@ -210,7 +224,7 @@ export async function runLocalBrowserTests(options = {}, dependencies = {}) {
     for (let index = 0; index < count; index++) reservations.push(await reservePort(options.portBase ? options.portBase + index : 0));
     const plan = createSuitePlan({ root, temporaryDirectory, outputDirectory,
       htmlDirectory: environment.PLAYWRIGHT_HTML_OUTPUT_DIR ? path.resolve(root, environment.PLAYWRIGHT_HTML_OUTPUT_DIR) : undefined,
-      ports: reservations.map(item => item.port), suites: options.suites, filters: options.filters, environment });
+      ports: reservations.map(item => item.port), suites: options.suites, filters: options.filters, environment, shards: mainShards });
     summary.results = plan.map(suite => ({ name: suite.name, exitCode: 1, port: suite.port, outputDir: suite.outputDir,
       htmlDir: suite.htmlDir, logPath: suite.logPath, status: 'not-started' }));
     for (const suite of plan) {
@@ -260,7 +274,7 @@ export async function runLocalBrowserTests(options = {}, dependencies = {}) {
     if (failedRunner) throw failedRunner.reason;
     for (const suite of plan.filter(suite => suite.suite !== 'main')) await runSuite(suite);
     summary.fullRun = !interruption && !(options.suites?.length) && !summary.filters.length
-      && summary.results.length === 7 && summary.results.every(result => ['passed', 'failed'].includes(result.status));
+      && summary.results.length === mainShards + 3 && summary.results.every(result => ['passed', 'failed'].includes(result.status));
   } catch (error) {
     summary.error = error.message;
     await Promise.all([...active].map(stopProcess));
@@ -282,8 +296,9 @@ export async function runLocalBrowserTests(options = {}, dependencies = {}) {
 async function main() {
   const options = parseArguments(process.argv.slice(2));
   if (options.help) {
-    console.log('Usage: node scripts/test-browser-local.mjs [--output-dir NEW_DIR] [--port-base PORT] [--suite NAME | --config FILE] [-- PLAYWRIGHT_FILTERS]\n'
+    console.log('Usage: node scripts/test-browser-local.mjs [--shards 4|6|8] [--output-dir NEW_DIR] [--port-base PORT] [--suite NAME | --config FILE] [-- PLAYWRIGHT_FILTERS]\n'
       + 'Default: four isolated main shards (one worker each), then username, passkeys and hausdepp-passkeys serially.\n'
+      + 'Override shards with --shards, ROLLTHEDICE_BROWSER_SHARDS or git config rollthedice.browserShards.\n'
       + 'PLAYWRIGHT_PYTHON is preserved. PLAYWRIGHT_LOCAL_OUTPUT_DIR selects the run output; logs, HTML and traces are retained.');
     return;
   }

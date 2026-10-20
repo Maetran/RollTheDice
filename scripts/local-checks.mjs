@@ -2,6 +2,7 @@ import { spawn, execFileSync } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import { createWriteStream, existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
+import { resolveBrowserShards } from './test-parallelism.mjs';
 
 export const REQUIRED_CHECKS = ['quality', 'tools', 'backend', 'image-build', 'production-image', 'browser', 'diff'];
 export const BROWSER_SUITES = ['main-1', 'main-2', 'main-3', 'main-4', 'username', 'passkeys', 'hausdepp-passkeys'];
@@ -43,15 +44,21 @@ export function environmentFingerprint(cwd = process.cwd(), env = commandEnviron
   const overrides = Object.fromEntries(Object.entries(env).filter(([name]) =>
     /^(PLAYWRIGHT_|PYTEST_|ROLLTHEDICE_|NODE_OPTIONS$|CI$|DOCKER_|BUILDX_|BUILDKIT_)/.test(name)).sort());
   return createHash('sha256').update(JSON.stringify({ node: process.version, python: version, packages, overrides,
+    browserShards: resolveBrowserShards({ root: cwd, environment: env }),
     nodeDependencies: existsSync(nodeLock) ? readFileSync(nodeLock, 'utf8') : null })).digest('hex');
 }
 
 export function assertFullBrowserResult(summary) {
-  if (!summary?.fullRun || !Array.isArray(summary.results)
-    || summary.results.length !== BROWSER_SUITES.length
-    || new Set(summary.results.map(item => item.name)).size !== BROWSER_SUITES.length
-    || BROWSER_SUITES.some(name => !summary.results.some(item => item.name === name && item.exitCode === 0))) {
-    throw new Error('Browser verification requires all four main shards and all three account suites, unfiltered and successful.');
+  // Summaries written before configurable parallelism always used four shards.
+  const mainShards = summary?.mainShards === undefined ? 4 : summary.mainShards;
+  const supported = [4, 6, 8].includes(mainShards);
+  const required = supported ? [...Array.from({ length: mainShards }, (_, index) => `main-${index + 1}`),
+    'username', 'passkeys', 'hausdepp-passkeys'] : [];
+  if (!supported || summary?.fullRun !== true || !Array.isArray(summary.results)
+    || summary.results.length !== required.length
+    || new Set(summary.results.map(item => item?.name)).size !== required.length
+    || required.some(name => !summary.results.some(item => item?.name === name && item.exitCode === 0))) {
+    throw new Error('Browser verification requires a supported main-shard count (4, 6 or 8), every main shard and all three account suites, unfiltered and successful.');
   }
 }
 

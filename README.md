@@ -2381,13 +2381,19 @@ test, every browser suite and `git diff --check`. Docker must use a local socket
 See [local checks](docs/LOCAL_CHECKS.md) for prerequisites, focused commands and
 logs. Check for another agent's full test pool before starting one.
 
-`npm run test:browser` runs the main suite on four parallel, isolated servers,
+`npm run test:browser` runs the main suite on 4, 6 or 8 parallel, isolated servers
+(four by default; a measured repository-local setting can select six or eight),
 each with its own free port, SQLite database, legacy JSON data and report files.
 Each server keeps one worker. Username changes in public Zilch mode
 (`playwright.username.config.js`), passkeys and Hausdepp passkeys then run
 separately, even if an earlier suite failed. Servers are never reused; interruption
 cleans up only this run's processes and temporary data. Filtered runs are marked
-incomplete and cannot authorize a push. `npm run check:quality` includes lint,
+incomplete and cannot authorize a push. Save a measured machine-local count with
+`git config --local rollthedice.browserShards 6` (allowed: 4, 6, 8); unset it to
+restore four. The setting applies to updated worktrees of this repository and
+forms part of the local verification environment. See the comparison procedure
+in [local checks](docs/LOCAL_CHECKS.md).
+`npm run check:quality` includes lint,
 dependency consistency, Bandit and the dependency vulnerability audit, matching
 the backend checks in [the quality workflow](.github/workflows/quality.yml).
 All expensive checks run locally. GitHub performs only the remote integration
@@ -2418,12 +2424,17 @@ für den exakten, sauberen Commit mit aktueller `origin/develop`-Basis und
 unveränderter Umgebung. Der Nachweis gilt höchstens 24 Stunden und liegt nur in
 den Git-Metadaten. Enthalten sind Lint, Sicherheit, Node-Tooltests,
 Backend-Abdeckung, lokaler Produktionscontainer samt Offline-Prüfung und alle
-Browser-Suiten. Die Hauptsuite läuft gleichzeitig auf vier eigenen Servern mit
+Browser-Suiten. Die Hauptsuite läuft gleichzeitig auf 4, 6 oder 8 eigenen Servern mit
 je einem Worker, freiem Port, SQLite-Datenbank, JSON-Daten und eigenen Berichten.
 Die drei Konto-Suiten folgen einzeln. Teilprüfungen berechtigen nie zum Push;
 Abbruch beendet nur eigene Prozesse. Chromium, WebKit und ein lokaler Docker-Daemon
 müssen bereitstehen. Bei einem fremden vollen Testpool zuerst abstimmen.
-Details und Teilbefehle stehen in [Lokale Prüfungen](docs/LOCAL_CHECKS.md).
+Ohne lokale Einstellung sind es vier. Eine gemessene Anzahl lässt sich mit
+`git config --local rollthedice.browserShards 6` für alle Worktrees dieses
+Repositories auf dieser Maschine setzen (erlaubt: 4, 6, 8). Mit
+`git config --local --unset rollthedice.browserShards` gilt wieder der Standard.
+Die Anzahl ist Teil des lokalen Umgebungsnachweises. Details und Teilbefehle
+stehen in [Lokale Prüfungen](docs/LOCAL_CHECKS.md).
 
 Alle aufwendigen Suiten laufen lokal. GitHub prüft nur den tatsächlichen
 Remote-Stand: Der vom Repository-Eigentümer veröffentlichte Commitstatus
