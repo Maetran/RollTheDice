@@ -8,14 +8,23 @@
   <meta name="referrer" content="same-origin">
   <meta name="color-scheme" content="light">
   <title>Watten – Spielregeln / Rules</title>
-  <link rel="stylesheet" href="/static/watten-game.css?v=ef2be78dbe42">
+  <link rel="stylesheet" href="/static/watten-game.css?v=fb5c01f34ac6">
+  <link rel="stylesheet" href="/static/suite-header.css?v=fb5c01f34ac6">
 </head>
 <body class="wt-body">
   <a class="wt-skip" href="#wattenApp">Zum Inhalt / Skip to content</a>
-  <header class="wt-header">
-    <a class="wt-brand" href="/watten" translate="no">Watten</a>
-    <nav class="wt-nav" data-watten-nav aria-label="Watten"><a href="/watten">Lobby</a><a href="/watten/regeln" aria-current="page">Regeln / Rules</a></nav>
-    <label class="wt-language"><span class="wt-visually-hidden">Sprache / Language</span><select data-language-switcher aria-label="Sprache / Language"><option value="de">Deutsch</option><option value="en">English</option></select></label>
+  <header class="wt-header suite-header">
+    <a class="wt-brand suite-header__brand" href="/watten" translate="no"><img class="suite-header__icon" src="/static/watten/icons/watten-icon-32.png?v=fb5c01f34ac6" width="32" height="32" alt=""><span>Watten</span></a>
+    <div class="suite-header__tools">
+      <label class="wt-language"><span class="wt-visually-hidden">Sprache / Language</span><select data-language-switcher aria-label="Sprache / Language"><option value="de">Deutsch</option><option value="en">English</option></select></label>
+      <button id="wattenSuitePicker" type="button" class="game-switch" data-game-switch hidden disabled aria-label="Spiele / Games"></button>
+    </div>
+    <nav class="wt-nav suite-header__nav" data-watten-nav aria-label="Watten">
+      <a href="/watten">Lobby</a>
+      <a href="/watten/rangliste">Spieler &amp; Ranking</a>
+      <a href="/watten/regeln" aria-current="page">Regeln</a>
+      <a href="/watten/konto/einstellungen">Konto</a>
+    </nav>
   </header>
   <main id="wattenApp" class="wt-main wt-rules" tabindex="-1">
     <h1>Watten – Spielregeln / Rules</h1>
@@ -190,6 +199,6 @@
       <p><a class="wt-button" href="/watten">To the lobby</a></p>
     </article>
   </main>
-  <script type="module" src="/static/watten-game.js?v=ef2be78dbe42"></script>
+  <script type="module" src="/static/watten-game.js?v=fb5c01f34ac6"></script>
 </body>
 </html>

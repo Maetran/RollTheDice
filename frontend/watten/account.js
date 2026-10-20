@@ -8,11 +8,16 @@ import { mountRegistrationForm, registrationFormMarkup } from '../shared/registr
 import { wattenAccountReturnPath } from '../multigame/routes.js';
 import { initializeWattenPwa } from './pwa.js';
 import { friendSettingsText, mountFriendSettings } from './friend-settings.js';
+import { initializeSuiteHeader } from '../shell/header.js';
+import { initializeAppMode } from '../multigame/app-mode.js';
 
 initializeWattenPwa();
+initializeSuiteHeader();
 
 const root = document.getElementById('wattenAccount');
 const page = document.documentElement.dataset.accountPage;
+document.querySelector(`[data-watten-nav] a[href="${page === 'home' ? '/watten' : '/watten/konto/einstellungen'}"]`)
+  ?.setAttribute('aria-current', 'page');
 const t = value => window.ZDWA_I18N.t(value);
 const copy = value => esc(t(value));
 const destination = wattenAccountReturnPath(new URLSearchParams(location.search).get('return_to')) || '/watten/konto/einstellungen';
@@ -105,6 +110,7 @@ function renderLogin() {
 
 function renderSettings(auth) {
   const user = auth.user;
+  if ((auth.game_access || user.game_access)?.watten_preview === true) initializeAppMode({ mode: 'watten' });
   viewerId = user.id;
   document.title = `Watten · ${t('Kontoeinstellungen')}`;
   root.innerHTML = `<h1>${copy('Kontoeinstellungen')}</h1><p>${copy('Ein Konto für alle unsere Spiele. Dein bestehender Passkey funktioniert hier ebenfalls.')}</p>

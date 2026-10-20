@@ -16,6 +16,7 @@ import { mountWattenLobbyChat } from "./lobby-chat.js";
 import { createDecor } from "./decor.js";
 import { createFriendActivity } from "./friend-activity.js";
 import { initializeAppMode } from "../multigame/app-mode.js";
+import { initializeSuiteHeader } from "../shell/header.js";
 
 // Metadata only: these preview documents neither register a worker nor
 // advertise installation; the account pages own that local experiment.
@@ -26,6 +27,8 @@ const page = ["lobby", "table", "spectator", "rules"].includes(html.dataset.watt
 const gameId = /^[0-9a-f]{16}$/.test(html.dataset.gameId || "") ? html.dataset.gameId : "";
 const app = document.getElementById("wattenApp");
 const nav = document.querySelector("[data-watten-nav]");
+document.querySelector(".suite-header")?.classList.toggle("suite-header--table", page === "table" || page === "spectator");
+initializeSuiteHeader();
 const GAME_PATH = /^[0-9a-f]{16}$/;
 const STALE = new Set(["watten_stale_room_revision", "watten_stale_revision", "watten_stale_lifecycle", "watten_stale_opportunity"]);
 const ERRORS = new Set([
@@ -65,11 +68,12 @@ function signInUrl(path = location.pathname) {
 function renderNav(auth) {
   if (!nav) return;
   const user = auth?.authenticated ? auth.user : null;
+  const label = text => esc(window.ZDWA_I18N.t(text));
   nav.innerHTML = `<a href="/watten"${page === "lobby" ? " aria-current=\"page\"" : ""}>${esc(t("nav.lobby"))}</a>
+    <a href="/watten/rangliste">${label("Spieler & Ranking")}</a>
     <a href="/watten/regeln"${page === "rules" ? " aria-current=\"page\"" : ""}>${esc(t("nav.rules"))}</a>
-    ${user ? `<a href="/watten/konto/fortschritt">${esc(t("nav.progress"))}</a><a href="/watten/rangliste">${esc(t("nav.ranking"))}</a>` : ""}
-    ${user ? `<a href="/watten/konto/einstellungen" aria-label="${esc(t("nav.accountOf", { name: user.username }))}"><span translate="no">${esc(user.username)}</span></a>`
-      : `<a href="${esc(signInUrl())}">${esc(t("nav.signIn"))}</a>`}`;
+    ${user ? `<a href="/watten/konto/einstellungen" aria-label="${esc(t("nav.accountOf", { name: user.username }))}">${label("Konto")}</a>`
+      : `<a href="${esc(signInUrl())}">${label("Konto")}</a>`}`;
 }
 
 /** Drop private state synchronously; late callbacks observe a new generation. */
@@ -1124,7 +1128,12 @@ app.addEventListener("submit", event => {
 cleanups.add(() => { closeLeaveDialog(); motion.destroy(); });
 
 if (page === "rules") {
-  loadAuth().then(renderNav).catch(() => renderNav(null));
+  loadAuth().then(auth => {
+    renderNav(auth);
+    if (auth.authenticated && (auth.game_access || auth.user?.game_access)?.watten_preview === true) {
+      initializeAppMode({ mode: "watten" });
+    }
+  }).catch(() => renderNav(null));
 } else if (page === "table" || page === "spectator") {
   initializeGameViewport();
   void mountTable();

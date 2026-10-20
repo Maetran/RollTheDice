@@ -96,7 +96,8 @@ test('account changes during card decoding bind the new mount before opening a s
     await original.context.clearCookies();
     await original.context.addCookies(await players[1].context.cookies());
     await original.page.evaluate(() => window.releaseWattenDecode());
-    await expect(original.page.locator('[data-watten-nav]')).toContainText(players[1].user.username);
+    await expect(original.page.locator('[data-watten-nav] a[href="/watten/konto/einstellungen"]'))
+      .toHaveAttribute('aria-label', new RegExp(`${players[1].user.username}$`));
     await expect(original.page.locator('.wt-seat-slot.is-own')).toContainText(players[1].user.username);
     const bindings = original.traffic.commands.slice(before).filter(command => ['join_game', 'rejoin_game'].includes(command.action));
     expect(bindings.length).toBeGreaterThan(0);

@@ -46,8 +46,9 @@ async function expectNoGermanUi(page) {
 
 test("public player search and ranking are available to guests", async ({ page }) => {
   await page.goto("/");
-  await expect(page.locator("#onlineUsers")).toContainText(/[1-9]\d* Nutzer online/);
+  await expect(page.locator("#onlineUsers")).toHaveCount(0);
   await page.goto("/spieler");
+  await expect(page.locator(".community-stats #onlineUsers")).toHaveText(/\d+/);
   await expect(page.getByRole("heading", { name: "Spieler suchen" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Spieler-Ranking" })).toBeVisible();
   await expect(page.locator("#rankingNormal")).toHaveClass(/active/);
@@ -261,19 +262,25 @@ test("mobile navigation keeps aligned destinations and touch targets between app
       const rect = link.getBoundingClientRect();
       return { left: rect.left, top: rect.top + window.scrollY, width: rect.width, height: rect.height };
     });
-    // Account security can deliberately scroll to a required password change.
-    // Compare the navigation's document geometry, independent of that focus.
-    return { left: nav.left, top: nav.top + window.scrollY, width: nav.width, height: nav.height, links };
+    // Compare resting layout after resetting deliberate login/security scrolling.
+    // Sticky headers otherwise include the current scroll offset.
+    return { left: nav.left, top: nav.top, width: nav.width, height: nav.height, links };
   });
 
+  await page.evaluate(() => scrollTo({ top: 0, behavior: "instant" }));
   const expected = await geometry();
   for (const path of ["/spieler", "/regeln", "/konto"]) {
     await page.goto(path);
     await expect(page.locator(".app-nav")).toBeVisible();
+    await page.evaluate(() => scrollTo({ top: 0, behavior: "instant" }));
     const actual = await geometry();
-    for (const key of ["left", "top", "width"]) {
+    for (const key of ["left", "width"]) {
       expect(actual[key]).toBeCloseTo(expected[key], 1);
     }
+    // Required account-security focus can scroll after load; sticky keeps
+    // the same header between its resting top and the viewport edge.
+    expect(actual.top).toBeGreaterThanOrEqual(0);
+    expect(actual.top).toBeLessThanOrEqual(expected.top + 1);
     expect(actual.links).toHaveLength(expected.links.length);
     actual.links.forEach((link, index) => {
       expect(link.height).toBeGreaterThanOrEqual(44);
@@ -481,8 +488,7 @@ test("mobile quick entry is opt-in for new accounts and writes the next ordered 
 test("mobile lobby cards and leaderboard tabs stay inside the viewport", async ({ page }) => {
   await page.setViewportSize({ width: 440, height: 956 });
   await page.goto("/");
-  await expect(page.locator(".lobby-header-stats")).toContainText("⌀ Normal");
-  await expect(page.locator(".lobby-header-stats")).toContainText("⌀ Hardcore");
+  await expect(page.locator(".lobby-header-stats")).toHaveCount(0);
   await page.locator("#lbTabLast").click();
 
   const layout = await page.evaluate(() => {

@@ -12,12 +12,13 @@ import { hausdeppAccountReturnPath, wattenAccountReturnPath } from "./multigame/
 
 import { EN } from "./i18n/catalog.js";
 import { initializeWattenPwa } from "./watten/pwa.js";
+import { initializeSuiteHeader } from "./shell/header.js";
 
 const actionParameters = new URLSearchParams(window.location.search);
 const hausdeppContext = document.documentElement.dataset.game === "hausdepp";
 const wattenContext = document.documentElement.dataset.game === "watten";
 const zilchContext = actionParameters.get("app") === "zilch";
-const language = (() => {
+let language = (() => {
   const requested = actionParameters.get('lang');
   if (['de', 'en'].includes(requested)) {
     // Keep the language from the account email when returning to the app.
@@ -35,9 +36,36 @@ document.documentElement.lang = language;
 // Action pages deliberately do not load the app shell or register a worker.
 // Supply only the language hooks used by the shared account request helpers.
 window.ZDWA_I18N = { getLanguage: () => language, t, syncAccountLanguage: () => {} };
+initializeSuiteHeader();
+initializeActionHeaderLanguage();
 
 function t(value) {
   return language === "en" ? (EN[value] || value) : value;
+}
+
+function initializeActionHeaderLanguage() {
+  // Keep recovery tokens and an already-filled form in their original closures.
+  // This narrow page has no shared i18n bootstrap or account-language requests.
+  const labels = [...document.querySelectorAll(".suite-header nav a")].map(node => [node, node.textContent]);
+  const switchers = [...document.querySelectorAll(".suite-header [data-language-switcher]")];
+  const render = () => {
+    for (const [node, source] of labels) node.textContent = t(source);
+    for (const select of switchers) {
+      select.value = language;
+      select.setAttribute("aria-label", t("Sprache wählen"));
+    }
+  };
+  for (const select of switchers) select.addEventListener("change", () => {
+    if (!["de", "en"].includes(select.value)) return;
+    language = select.value;
+    try { localStorage.setItem("zdwa_language", language); } catch (_) {}
+    document.documentElement.lang = language;
+    const url = new URL(window.location.href);
+    url.searchParams.set("lang", language);
+    window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+    render();
+  });
+  render();
 }
 
 function escapeHtml(value) {

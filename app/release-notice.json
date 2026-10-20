@@ -1,23 +1,29 @@
 {
   "kind": "usability",
   "games": [
+    "zdwa",
+    "zilch",
     "hausdepp"
   ],
-  "summary_de": "Hausdepp: klare Ergebniszeilen auf kleinen Displays und eine passende Bestätigung beim Verlassen.",
-  "summary_en": "Hausdepp: clear results on small screens and a matching confirmation when leaving.",
+  "summary_de": "Einheitliche Navigation, ZDWA-Statistiken bei Spieler & Ranking und klarere Hausdepp-Ergebnisse.",
+  "summary_en": "Consistent navigation, ZDWA statistics under Players & Ranking and clearer Hausdepp results.",
   "player_notes": {
     "de": {
-      "title": "Klarer Rundenabschluss und Ausstieg",
+      "title": "Mehr Übersicht in der Spielesuite",
       "changes": [
-        "Auch längere Statuswörter wie Verblieben und Ausgestiegen haben auf kleinen Displays Platz neben Avatar, Name und Runden-EP.",
-        "Beim Verlassen erscheint die Bestätigung im Hausdepp-Design. Mit Am Tisch bleiben, Schliessen oder Escape bleibst du in der Partie."
+        "ALLGEMEIN: Der zweizeilige Seitenkopf zeigt Spiel, Sprache, Darstellung und Spielauswahl über der Navigation. Ausserhalb des Spieltisches bleibt er beim Scrollen sichtbar.",
+        "ZDWA: Onlinezahl, beendete Partien und Durchschnittswerte mit Trends findest du unter Spieler & Ranking.",
+        "HAUSDEPP: Ergebniszeilen bleiben auch auf kleinen Displays lesbar. Beim Verlassen kannst du in einer passenden Bestätigung am Tisch bleiben.",
+        "WATTEN: Die private Vorschau bekommt einen festen Wirtshaustisch mit vollständigen Kartenfächern, klaren Gebotswerten und Kartenflügen zum Stichgewinner."
       ]
     },
     "en": {
-      "title": "Clear results and departure",
+      "title": "A clearer game suite",
       "changes": [
-        "Longer labels such as Remaining and Withdrawn have room beside the avatar, name and round XP on small screens.",
-        "Leaving opens a confirmation in the Hausdepp design. Choose Stay at the table, close it or press Escape to keep playing."
+        "ALLGEMEIN: The two-row header puts the game, language, appearance and game picker above navigation. Outside game tables it stays visible while scrolling.",
+        "ZDWA: Find the online count, completed games and averages with trends under Players & Ranking.",
+        "HAUSDEPP: Round results remain readable on small screens. A matching departure confirmation lets you choose to stay at the table.",
+        "WATTEN: The private preview gains a fixed tavern table with complete card fans, clear bid values and card flights to the trick winner."
       ]
     }
   }

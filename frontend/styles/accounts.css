@@ -431,6 +431,13 @@ body.app-dialog-open{ overflow:hidden; }
 .history-summary span { display: grid; gap: .15rem; padding: .65rem .8rem; border-radius: 12px; background: var(--surface-soft); }
 .history-summary small { color: var(--muted); }
 .history-summary strong { font-size: 1.15rem; }
+.community-stats-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .75rem; margin: .75rem 0 0; }
+.community-stats-grid > div { min-width: 0; padding: .75rem; border-radius: 12px; background: var(--surface-soft); }
+.community-stats-grid dt { display: flex; align-items: center; gap: .35rem; color: var(--muted); font-size: .85rem; }
+.community-stats-grid dd { margin: .35rem 0 0; font-size: 1.2rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+@media (max-width: 760px) {
+  .community-stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 .history-chart { min-height: 250px; overflow: hidden; border: 1px solid var(--border); border-radius:var(--radius-card); background: var(--surface-soft); }
 .history-chart > p { margin: 1rem; }
 .history-chart svg { display: block; width: 100%; height: auto; min-height: 250px; }
