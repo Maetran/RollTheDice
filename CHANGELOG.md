@@ -50,6 +50,17 @@ Nockerl, Schneider and an explicit Retourschneider choice follow the confirmed
 house rules. Scattered usable decorations and rare shared surprises return with evidenced completion achievements. Global voice is a per-table option, and the game mark is renewed.
 Public PWA/push release remains pending.
 
+**Deutsch – CPU-Taktik (eigener Commit):** Subjektiv gute Blätter und der
+Spielstand bestimmen Gebote; jede Erhöhung verlangt mehr Sicherheit.
+Die Berechnung wächst mit abgeschlossenen Spielen. Partnerstich und rechtzeitiger
+Einsatz starker Karten helfen als weiche Taktiken, ohne verborgene Informationen.
+Neue Stärkevergleiche wurden noch nicht ausgeführt.
+
+**English – CPU tactics (separate commit):** Subjectively strong hands and the
+score drive bids; each raise requires more confidence. Calculation grows with
+completed matches. Partner tricks and timely use of strong cards are soft
+tactics without hidden information. New strength comparisons are still pending.
+
 ### HAUSDEPP
 
 **Deutsch:** Audiochat lässt sich im Erstellungsdialog für die ganze Runde

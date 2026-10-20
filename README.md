@@ -120,6 +120,20 @@ Server evidence records activation and connected witnesses once per round;
 achievements are granted only after a valid completed match with at least two
 connected human players at the time of the event.
 
+**CPU-Taktik / CPU tactics:** Computer bieten bei subjektiv guten Chancen und
+berücksichtigen den Spielstand. Mit mehr abgeschlossenen Watten-Spielen der
+menschlichen Mitspieler werden ihre Entscheidungen genauer; bei gemischter
+Erfahrung zählt der unerfahrenste aktive Mensch. «Zweiter Stich ist Partnerstich»
+bleibt im blinden Ladinisch eine abwägbare Hilfe. Die CPU kennt nur ihre eigene
+erlaubte Sicht. Die [Strategiedokumentation](docs/WATTEN_CPU_STRATEGY.md) nennt
+Stufen, Quellen und Grenzen; eine neue Stärkeprüfung steht noch aus.
+CPUs bid on subjectively strong chances and account for the score. More completed
+Watten games by the human participants sharpen their decisions; mixed tables use
+the least experienced active human. Leaving the second trick to the partner
+remains a soft tactic in blind Ladinisch. The CPU only knows its own permitted
+view. The [strategy notes](docs/WATTEN_CPU_STRATEGY.md) document tiers, sources and
+limits; the new strength has not been benchmarked.
+
 **Wertung / scoring:** Eine Runde endet mit drei Stichen oder Gehen; das Spiel
 endet am Ziel. Verlierer bekommen ein Nockerl, ohne Punkte zwei (Schneider).
 Im Vierer kann das zurückliegende Team beim erstmals gestrichenen Gegner die

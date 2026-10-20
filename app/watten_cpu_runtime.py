@@ -15,16 +15,17 @@ import secrets
 from dataclasses import dataclass, replace
 from urllib.parse import urlsplit
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
 
 from .database import database_schema_ready, session_scope
-from .models import ActiveGame
+from .models import ActiveGame, CompletedGame, GameParticipant
 from .moderation import active_bans
 from .product_hosts import site_origin
 from .watten_access import _local, watten_founder_account_id, watten_founder_deployment_enabled
 from .watten_cpu import CpuBudget, CpuProposal, CpuWait, decide
 from .watten_cpu_memory import CpuMemory, new_memory, observe
+from .watten_cpu_skill import CpuSkill, skill_for_completed_games
 from .watten_engine import EngineActor, EngineCommand
 from .watten_views import cpu_view
 
@@ -52,6 +53,25 @@ class _Authority:
     source: str
     local: bool
     founder_id: int | None
+    skill: CpuSkill
+
+
+def _table_skill(db, runtime) -> CpuSkill:
+    """Only aggregate finished Watten counts of the table's actual humans.
+
+    Use the least experienced participant in a mixed table. Counts come from
+    existing durable results, so progression survives restarts without any
+    new history store, private hand access, or per-opponent profile.
+    """
+    accounts = tuple(sorted(member.account_id for member in runtime.room.members if member.seat is not None))
+    if not accounts:
+        return skill_for_completed_games(0)
+    counts = dict(db.execute(select(GameParticipant.user_id, func.count(func.distinct(CompletedGame.id)))
+        .join(CompletedGame, CompletedGame.id == GameParticipant.game_id)
+        .where(GameParticipant.user_id.in_(accounts), CompletedGame.game_type == "watten",
+               CompletedGame.imported_from_legacy.is_(False))
+        .group_by(GameParticipant.user_id)).all())
+    return skill_for_completed_games(min(counts.get(account, 0) for account in accounts))
 
 
 def _founder_room(runtime, founder_id: int) -> bool:
@@ -92,7 +112,7 @@ def _authority(game: dict) -> _Authority | None:
             founder = None if local else _founder_permission(db, stored["_watten"])
             if not local and founder is None:
                 return None
-            return _Authority(raw, local, founder)
+            return _Authority(raw, local, founder, _table_skill(db, stored["_watten"]))
     except (SQLAlchemyError, ValueError, TypeError, KeyError):
         logger.warning("Watten CPU cannot authorize stored table %s", game["_id"])
         return None
@@ -261,7 +281,8 @@ async def _run(game: dict, player: str, job: _Job) -> None:
             if _context(runtime, view) != job.context:
                 return
             memory = next(item for item in runtime.cpu_memories if item.player_id == player)
-            turn = decide(view, memory, seed=job.seed, events=_events(runtime, player), budget=CpuBudget())
+            turn = decide(view, memory, seed=job.seed, events=_events(runtime, player),
+                          budget=CpuBudget(authority.skill.samples), skill=authority.skill)
             if (not isinstance(turn.memory, CpuMemory) or turn.memory.player_id != player
                     or turn.memory != observe(memory, view, _events(runtime, player))):
                 raise ValueError("watten_cpu_invalid_memory")

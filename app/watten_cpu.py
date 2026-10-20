@@ -16,7 +16,9 @@ only; an inferred call never binds a blind non-inspector. There is no duty to
 win, and the Rechter or critical cards are never forced. A card that surely
 cannot take the current trick is only ever spent as the cheapest such card, and
 a stake that already decides the match is never raised. Guter/Schlechter,
-difficulty modes, think delays and scheduling are deliberately absent.
+user-selectable difficulty modes, think delays and scheduling are absent.
+An explicit ``CpuSkill`` supplies bounded experience parameters; it contains
+neither an account identity nor historical game information.
 
 Budget per decision: at most ``CpuBudget.samples`` (<= MAX_SAMPLES) accepted
 worlds from at most ``samples * ATTEMPTS_PER_SAMPLE`` draws; each candidate
@@ -34,6 +36,7 @@ from typing import Final
 
 from .watten_cards import WATTEN_SUITS, WELI, card_rank, make_deck
 from .watten_cpu_memory import STRIKES, CpuMemory, SeatSnapshot, call_from_bottoms, read_personal_view, remember
+from .watten_cpu_skill import CpuSkill
 from .watten_play import TRICKS_TO_WIN, official_knower_seats
 from .watten_rules import (
     WELI_STRIKE,
@@ -63,7 +66,6 @@ _DUTY_LEADS: Final = frozenset({CardKind.TRUMP, CardKind.RECHTER})
 # Fixed stake heuristics, not difficulty modes. An opposing bid signals strength
 # the uniform sample cannot see; a raised opponent goes at most half the time.
 OPPONENT_FOLD: Final = 0.5
-BID_MIN_WIN: Final = 0.62
 BID_MARGIN: Final = 0.02
 COUNTER_MARGIN: Final = 0.03
 BID_SIGNAL: Final = 0.85
@@ -481,11 +483,11 @@ def _rollout(ctx: _Context, world: tuple, first: str | None) -> int:
             leader, trick = winner, []
 
 
-def _win_chance(ctx: _Context, stream: _Stream, budget: CpuBudget) -> float:
+def _win_chance(ctx: _Context, stream: _Stream, budget: CpuBudget) -> tuple[float, int]:
     worlds = _worlds(ctx, _options(ctx), stream, budget.samples)
     if not worlds:
-        return 0.5
-    return sum(_rollout(ctx, world, None) for world in worlds) / len(worlds)
+        return 0.5, 0
+    return sum(_rollout(ctx, world, None) for world in worlds) / len(worlds), len(worlds)
 
 
 def _needs(ctx: _Context) -> tuple[int, int]:
@@ -496,7 +498,7 @@ def _needs(ctx: _Context) -> tuple[int, int]:
     return snap.target_points - mine, snap.target_points - theirs
 
 
-def _response(ctx: _Context, win: float) -> str:
+def _response(ctx: _Context, win: float, skill: CpuSkill) -> str:
     """Score-aware hold/go/counter for the designated decider; gestrichen never matters here."""
     ours, theirs = _needs(ctx)
     accepted, offered = ctx.snap.accepted_stake, ctx.snap.pending[1]
@@ -508,7 +510,10 @@ def _response(ctx: _Context, win: float) -> str:
     choice, value = ("go", go) if go > hold else ("hold", hold)
     if offered >= max(ours, theirs):
         return choice
-    return "counter" if counter > value + COUNTER_MARGIN else choice
+    # Each extra point needs distinctly more confidence. Small sampled
+    # advantages cannot sustain a first-round bidding ladder to the target.
+    return "counter" if (win >= _bid_threshold(offered, skill)
+                          and counter > value + COUNTER_MARGIN) else choice
 
 
 def _raise_value(ours: int, theirs: int, win: float, accepted: int) -> float:
@@ -519,11 +524,22 @@ def _raise_value(ours: int, theirs: int, win: float, accepted: int) -> float:
     return fold * _equity(ours - accepted, theirs) + (1 - fold) * _stake_value(ours, theirs, win, accepted + 1)
 
 
-def _should_bid(ctx: _Context, win: float) -> bool:
-    if win < BID_MIN_WIN:
-        return False
+def _bid_threshold(stake: int, skill: CpuSkill) -> float:
+    return skill.bid_minimum + max(0, stake - 2) * 0.075
+
+
+def _subjective_chance(win: float, skill: CpuSkill, samples: int) -> float:
+    # A handful of favourable hypothetical deals is not certainty. Retain
+    # uncertainty even when every sampled rollout happens to be a win.
+    reliability = skill.confidence * min(1.0, samples / 12)
+    return 0.5 + (win - 0.5) * reliability
+
+
+def _should_bid(ctx: _Context, win: float, skill: CpuSkill) -> bool:
     ours, theirs = _needs(ctx)
     stake = ctx.snap.accepted_stake
+    if stake >= max(ours, theirs) or win < _bid_threshold(stake, skill):
+        return False
     return _raise_value(ours, theirs, win, stake) > _stake_value(ours, theirs, win, stake) + BID_MARGIN
 
 
@@ -583,7 +599,34 @@ def _conserve_hopeless(ctx: _Context, legal: tuple[str, ...], options: list) -> 
     return (cheapest,)
 
 
-def _choose(ctx: _Context, seed: int, budget: CpuBudget) -> CpuProposal | CpuWait:
+def _tactical_preference(ctx: _Context, card: str, models: list, skill: CpuSkill) -> float:
+    """Soft tie preferences; never a compulsory partner trick or secret signal.
+
+    Strength is averaged only over permitted call hypotheses. An uninformed
+    seat never treats a partner's customary play as proof of strike or suit.
+    """
+    strength = sum(model.order[card] for model in models) / (len(models) * (len(_DECK) - 1))
+    completed = len(ctx.winners)
+    preference = 0.0
+    blind_ladinisch = ctx.snap.profile.blind and ctx.snap.profile.determination == "ladinisch"
+    partner = ctx.snap.partner_seat
+    if (blind_ladinisch and completed == 1 and partner is not None and ctx.trick
+            and partner not in {seat for seat, _ in ctx.trick}
+            and (ctx.leader + ctx.count - 1) % ctx.count == partner):
+        # Give a partner who acts last a chance to take the second trick
+        # cheaply. A clearly better rollout always overrides this preference.
+        preference += skill.partnership * (1 - strength)
+    if (ctx.snap.profile.blind and ctx.seat not in ctx.knowers and ctx.trick
+            and any(card_rank(played) == card_rank(card) for _, played in ctx.trick)):
+        preference -= skill.partnership * 0.5
+    if completed >= 2 or ctx.snap.party_tricks[1 - ctx.my_party] >= 2:
+        # Three tricks finish the round: do not retain useful strength until
+        # the round is over merely because the simulation scores are tied.
+        preference += skill.partnership * 0.7 * strength
+    return preference
+
+
+def _choose(ctx: _Context, seed: int, budget: CpuBudget, skill: CpuSkill) -> CpuProposal | CpuWait:
     snap, actions = ctx.snap, ctx.snap.actions
 
     def propose(kind: str, value: str | None = None, private: int | None = None) -> CpuProposal:
@@ -609,9 +652,13 @@ def _choose(ctx: _Context, seed: int, budget: CpuBudget) -> CpuProposal | CpuWai
     if snap.phase == "bid_response":
         # A pending bid blocks every card; only the designated decider answers.
         if "partner_feedback" in actions:
-            return propose("partner_feedback", _feedback(_win_chance(ctx, stream, budget)), snap.feedback_opportunity)
+            win, samples = _win_chance(ctx, stream, budget)
+            chance = _subjective_chance(win, skill, samples)
+            return propose("partner_feedback", _feedback(chance), snap.feedback_opportunity)
         if _RESPONSE_ACTIONS & set(actions):
-            return propose("respond", _response(ctx, _win_chance(ctx, stream, budget)))
+            win, samples = _win_chance(ctx, stream, budget)
+            chance = _subjective_chance(win, skill, samples)
+            return propose("respond", _response(ctx, chance, skill))
     elif "play_card" in actions:
         options = _options(ctx)
         legal = _conserve_hopeless(ctx, _own_legal(ctx, options), options)
@@ -623,10 +670,13 @@ def _choose(ctx: _Context, seed: int, budget: CpuBudget) -> CpuProposal | CpuWai
         scores = {card: (sum(_rollout(ctx, world, card) for world in worlds) / len(worlds) if worlds else 0.5)
                   for card in legal}
         best = max(scores.values())
-        # Ties conserve strength: the cheapest card across the sampled hypotheses.
-        card = min((card for card in legal if scores[card] == best),
-                   key=lambda card: (sum(model.order[card] for model in models), card))
-        if may_bid and worlds and _should_bid(ctx, best):
+        # Partnership and information preferences may break close choices,
+        # but cannot override a clearly stronger permitted-card rollout.
+        candidates = [card for card in legal if scores[card] >= best - skill.near_best]
+        card = min(candidates, key=lambda card: (
+            -(scores[card] + _tactical_preference(ctx, card, models, skill)),
+            sum(model.order[card] for model in models), card))
+        if may_bid and worlds and _should_bid(ctx, _subjective_chance(best, skill, len(worlds)), skill):
             return propose("bid")
         return propose("play_card", card)
     return CpuWait(snap.deal_id, snap.opportunity, snap.phase, "watten_cpu_waiting")
@@ -644,12 +694,12 @@ def _prepare(view: object, memory: CpuMemory, events: tuple) -> _Context:
 
 
 def decide(view: object, memory: CpuMemory, *, seed: int, events: tuple = (),
-           budget: CpuBudget = CpuBudget()) -> CpuTurn:
+           budget: CpuBudget = CpuBudget(), skill: CpuSkill = CpuSkill()) -> CpuTurn:
     """One bounded decision from the CPU's own DTO; identical inputs give identical output."""
-    if type(seed) is not int or not isinstance(budget, CpuBudget):
+    if type(seed) is not int or not isinstance(budget, CpuBudget) or not isinstance(skill, CpuSkill):
         raise WattenCpuError("watten_cpu_invalid_seed")
     ctx = _prepare(view, memory, events)
-    return CpuTurn(ctx.memory, _choose(ctx, seed, budget))
+    return CpuTurn(ctx.memory, _choose(ctx, seed, budget, skill))
 
 
 def call_hypotheses(view: object, memory: CpuMemory) -> tuple[tuple[str, str], ...]:
