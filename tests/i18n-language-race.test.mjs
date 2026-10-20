@@ -7,16 +7,19 @@ const source = (await readFile(new URL("../frontend/i18n/index.js", import.meta.
   .replace('import { DE_MESSAGES, EN, EN_MESSAGES } from "./catalog.js";', "");
 const settle = () => new Promise(resolve => setImmediate(resolve));
 
-function setup(initial = "de", { seoLanguage, href = "https://watten.zockdiewandan.online/watten" } = {}) {
+function setup(initial = "de", { seoLanguage, game, storageBlocked = false, href = "https://watten.zockdiewandan.online/watten" } = {}) {
   const saved = new Map([["zdwa_language", initial]]), requests = [];
-  const html = { lang: initial, dataset: seoLanguage ? { wattenSeoLanguage: seoLanguage } : {} };
+  const html = { lang: initial, dataset: { ...(seoLanguage ? { wattenSeoLanguage: seoLanguage } : {}), ...(game ? { game } : {}) } };
   const navigations = [];
   let reloads = 0;
   const window = { alert() {}, confirm() {}, prompt() {} };
   vm.runInNewContext(source, {
     window, document: { documentElement: html, querySelector: () => null, addEventListener() {} },
-    localStorage: { getItem: key => saved.get(key) ?? null, setItem: (key, value) => saved.set(key, value) },
-    URL,
+    localStorage: {
+      getItem: key => { if (storageBlocked) throw new Error("Storage blocked"); return saved.get(key) ?? null; },
+      setItem: (key, value) => { if (storageBlocked) throw new Error("Storage blocked"); saved.set(key, value); },
+    },
+    URL, Node: { ELEMENT_NODE: 1, TEXT_NODE: 3, DOCUMENT_NODE: 9 },
     location: { href, assign(value) { navigations.push(value); }, reload() { reloads++; } },
     fetch(url, options = {}) {
       let resolve, reject;
@@ -29,7 +32,7 @@ function setup(initial = "de", { seoLanguage, href = "https://watten.zockdiewand
   const replyAuth = (request, language) => request.resolve({ ok: true,
     json: async () => ({ authenticated: true, user: { csrf_token: "test-csrf", preferences: { preferred_language: language } } }) });
   const replySaved = request => request.resolve({ ok: true });
-  return { i18n: window.ZDWA_I18N, html, requests, navigations, replyAuth, replySaved, get reloads() { return reloads; } };
+  return { i18n: window.ZDWA_I18N, html, saved, requests, navigations, replyAuth, replySaved, get reloads() { return reloads; } };
 }
 
 test("an older account-language response cannot undo an explicit change before its reload", async () => {
@@ -138,4 +141,52 @@ test("public Watten language switches keep the rule path, other query values and
   const app = setup("en", { seoLanguage: "en", href: "https://watten.zockdiewandan.online/watten/regeln?lang=en&source=help#bidding" });
   await app.i18n.setLanguage("de", { persist: false });
   assert.equal(app.navigations[0], "https://watten.zockdiewandan.online/watten/regeln?source=help#bidding");
+});
+
+
+test("the initial public language URL is saved locally for login without account writes or reloads", () => {
+  for (const language of ["de", "en"]) {
+    const app = setup(language === "en" ? "de" : "en", { seoLanguage: language });
+    assert.equal(app.saved.get("zdwa_language"), language);
+    assert.deepEqual(app.requests, []); assert.deepEqual(app.navigations, []); assert.equal(app.reloads, 0);
+    const login = setup(app.saved.get("zdwa_language"), { href: "https://watten.zockdiewandan.online/watten/anmelden" });
+    assert.equal(login.i18n.getLanguage(), language);
+    assert.equal(login.html.lang, language); assert.deepEqual(login.requests, []);
+  }
+});
+
+test("a valid public language stays usable with blocked storage; invalid language markers never replace a saved choice", () => {
+  for (const language of ["de", "en"]) {
+    const app = setup(language === "en" ? "de" : "en", { seoLanguage: language, storageBlocked: true });
+    assert.equal(app.i18n.getLanguage(), language); assert.equal(app.html.lang, language);
+    assert.equal(app.i18n.syncAccountLanguage(language === "en" ? "de" : "en"), false);
+    assert.deepEqual(app.requests, []); assert.equal(app.reloads, 0);
+  }
+  const invalid = setup("en", { seoLanguage: "fr" });
+  assert.equal(invalid.i18n.getLanguage(), "en"); assert.equal(invalid.saved.get("zdwa_language"), "en");
+  assert.equal(setup("en", { storageBlocked: true }).i18n.getLanguage(), "de");
+});
+
+
+test("Watten login and dynamically rendered public return links keep English without changing explicit German or private links", () => {
+  const anchor = (href, hreflang, tagName = "A") => {
+    const attributes = new Map([["href", href], ...(hreflang ? [["hreflang", hreflang]] : [])]);
+    return { nodeType: 1, tagName, childNodes: [], querySelectorAll: () => [], closest: () => null,
+      hasAttribute: key => attributes.has(key), getAttribute: key => attributes.get(key),
+      setAttribute: (key, value) => attributes.set(key, value) };
+  };
+  const app = setup("en", { game: "watten", href: "https://watten.zockdiewandan.online/watten/anmelden" });
+  for (const [href, hreflang, expected, tag] of [
+    ["/watten", undefined, "/watten?lang=en"],
+    ["/watten/regeln?source=help#bieten", undefined, "/watten/regeln?source=help&lang=en#bieten"],
+    ["/watten/regeln", "de", "/watten/regeln"],
+    ["/watten/anmelden", undefined, "/watten/anmelden"],
+    ["https://elsewhere.test/watten", undefined, "https://elsewhere.test/watten"],
+    ["/watten", undefined, "/watten", "LINK"],
+  ]) {
+    const node = anchor(href, hreflang, tag); app.i18n.translateElement(node);
+    assert.equal(node.getAttribute("href"), expected);
+  }
+  const otherGame = setup("en", { game: "zdwa" }), untouched = anchor("/watten");
+  otherGame.i18n.translateElement(untouched); assert.equal(untouched.getAttribute("href"), "/watten");
 });

@@ -18,8 +18,8 @@ for (const language of ['de', 'en']) {
     await expect(page.locator('[data-watten-create]')).toHaveCount(0);
     await page.setViewportSize({ width: 320, height: 568 });
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
-    await page.locator('[data-watten-nav] a[href="/watten/regeln"]').click();
-    await expect(page).toHaveURL(/\/watten\/regeln$/);
+    await page.locator('[data-watten-nav] a[href^="/watten/regeln"]').click();
+    await expect(page).toHaveURL(new RegExp(`/watten/regeln${language === 'en' ? '\\?lang=en' : ''}$`));
     await expect(page.locator('html')).toHaveAttribute('lang', language);
     expect(privateReads).toEqual([]);
   });

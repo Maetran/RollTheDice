@@ -3,6 +3,7 @@
 import os
 import unittest
 from unittest.mock import patch
+from urllib.parse import parse_qs, urlsplit
 from xml.etree import ElementTree
 
 from sqlalchemy import select
@@ -94,6 +95,22 @@ class WattenPublicBetaTests(unittest.TestCase):
         self.client = TestClient(main.app, base_url=WATTEN_ORIGIN, follow_redirects=False)
         self.addCleanup(self.client.close)
 
+    def test_public_language_links_keep_the_selected_language_and_explicit_german_choice(self):
+        for path in ("/watten", "/watten/regeln"):
+            for language in ("de", "en"):
+                response = self.client.get(path + ("?lang=en" if language == "en" else ""))
+                self.assertEqual(response.status_code, 200)
+                document = _PublicDocument(response.text)
+                links = [link for link in document.links
+                         if urlsplit(link.get("href", "")).path in {"/watten", "/watten/regeln"}]
+                self.assertGreaterEqual(len(links), 4)
+                for link in links:
+                    expected = link.get("hreflang", language)
+                    query = parse_qs(urlsplit(link["href"]).query)
+                    self.assertEqual(query.get("lang"), ["en"] if expected == "en" else None, link)
+                german = next(link for link in links if link.get("hreflang") == "de")
+                self.assertEqual(german["href"], path)
+
     def test_public_documents_have_real_localized_content_and_private_routes_keep_noindex(self):
         for path, text in (("/watten", "Watten online"), ("/watten/regeln", "Schlag und Farbe")):
             for language in ("de", "en"):
@@ -175,3 +192,27 @@ class WattenPublicBetaTests(unittest.TestCase):
         self.assertIn("app=watten", url)
         self.assertIn("#token=private-token", url)
         self.assertIn("watten", push_delivery_contexts())
+
+
+def test_public_language_links_preserve_query_fragments_and_leave_foreign_private_targets_alone():
+    from app.watten_seo import public_watten_metadata
+
+    source = """<html lang="de"><head></head><body>
+      <a id="rules" href="/watten/regeln?source=help&amp;blank=&amp;lang=de#bieten">Rules</a>
+      <a id="german" href='/watten/regeln' hreflang='de'>Deutsch</a>
+      <a id="english" href="/watten?lang=en" hreflang="en">English</a>
+      <a id="foreign" href="https://elsewhere.test/watten/regeln">Foreign</a>
+      <a id="private" href="/watten/anmelden?return_to=%2Fwatten">Sign in</a>
+      <a id="prefix" href="/wattenish">Other</a></body></html>"""
+    for language in ("de", "en"):
+        rendered, canonical = public_watten_metadata(source, page="rules", language=language)
+        links = {link["id"]: link["href"] for link in _PublicDocument(rendered).links}
+        assert canonical == WATTEN_ORIGIN + "/watten/regeln" + ("?lang=en" if language == "en" else "")
+        rules = urlsplit(links["rules"])
+        assert parse_qs(rules.query, keep_blank_values=True) == {"source": ["help"], "blank": [""], "lang": [language]}
+        assert rules.fragment == "bieten"
+        assert links["german"] == "/watten/regeln"
+        assert links["english"] == "/watten?lang=en"
+        assert links["foreign"] == "https://elsewhere.test/watten/regeln"
+        assert links["private"] == "/watten/anmelden?return_to=%2Fwatten"
+        assert links["prefix"] == "/wattenish"

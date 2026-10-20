@@ -150,10 +150,14 @@ def test_fixed_watten_origin_installation_signup_and_mail_stay_closed_even_for_f
     owner = native.account("NoProductionInstall", role="admin")
     enable(monkeypatch, owner, client=server)
     for path in ("/watten-manifest.webmanifest", "/watten-manifest-en.webmanifest", "/watten-sw.js",
-                 "/static/watten/icons/watten-icon-192.png", "/static/watten-sw.js", "/static/watten-game.html"):
+                 "/static/watten-sw.js", "/static/watten-game.html"):
         response = server.get(path, headers=headers(owner))
         assert response.status_code in {404, 503}
         private_headers(response)
+    icon = server.get("/static/watten/icons/watten-icon-192.png", headers=headers(owner))
+    assert icon.status_code == 200  # The private founder header may display its game icon.
+    private_headers(icon)
+    assert server.get("/static/watten/icons/watten-icon-192.png", headers=headers()).status_code in {404, 503}
     assert server.get("/watten/anmelden", headers=headers(owner)).status_code == 503
     assert server.get("/passwort-vergessen?app=watten", headers=headers(owner)).status_code == 503
     assert server.post("/api/auth/register", headers=headers(owner), json={"username": "NoPrivateSignup",

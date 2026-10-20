@@ -76,13 +76,17 @@ function signInUrl(path = location.pathname) {
   return `/watten/anmelden?return_to=${encodeURIComponent(wattenAccountReturnPath(path) || "/watten")}`;
 }
 
+function publicPageUrl(path) {
+  return window.ZDWA_I18N?.getLanguage?.() === "en" ? `${path}?lang=en` : path;
+}
+
 function renderNav(auth) {
   if (!nav) return;
   const user = auth?.authenticated ? auth.user : null;
   const label = text => esc(window.ZDWA_I18N.t(text));
-  nav.innerHTML = `<a href="/watten"${page === "lobby" ? " aria-current=\"page\"" : ""}>${esc(t("nav.lobby"))}</a>
+  nav.innerHTML = `<a href="${publicPageUrl("/watten")}"${page === "lobby" ? " aria-current=\"page\"" : ""}>${esc(t("nav.lobby"))}</a>
     <a href="/watten/rangliste">${label("Spieler & Ranking")}</a>
-    <a href="/watten/regeln"${page === "rules" ? " aria-current=\"page\"" : ""}>${esc(t("nav.rules"))}</a>
+    <a href="${publicPageUrl("/watten/regeln")}"${page === "rules" ? " aria-current=\"page\"" : ""}>${esc(t("nav.rules"))}</a>
     ${user ? `<a href="/watten/konto/einstellungen" aria-label="${esc(t("nav.accountOf", { name: user.username }))}">${label("Konto")}</a>`
       : `<a href="${esc(signInUrl())}">${label("Konto")}</a>`}`;
 }
@@ -144,7 +148,7 @@ function lobbyIntro({ signedIn = false, status = "" } = {}) {
     <div class="wt-actions">
       ${signedIn ? `<button type="button" class="wt-primary" data-watten-create-open>＋ ${esc(lt("open"))}</button>`
         : `<a class="wt-button" href="${esc(signInUrl("/watten"))}" data-watten-signin>${esc(t("lobby.signIn"))}</a>`}
-      <a class="wt-button wt-button--ghost" href="/watten/regeln">${esc(t("lobby.rules"))}</a>
+      <a class="wt-button wt-button--ghost" href="${publicPageUrl("/watten/regeln")}">${esc(t("lobby.rules"))}</a>
     </div>
     ${signedIn ? "" : `<p class="wt-note">${esc(t("lobby.signInHint"))}</p>`}
     <p class="wt-note" data-watten-lobby-status role="status">${esc(status)}</p>
@@ -503,7 +507,7 @@ function showMessage(title, body, actions = "") {
   decor?.update({ publicPhase: "offline" });
 }
 
-const lobbyLink = () => `<a class="wt-button" href="/watten">${esc(t("nav.lobby"))}</a>`;
+const lobbyLink = () => `<a class="wt-button" href="${publicPageUrl("/watten")}">${esc(t("nav.lobby"))}</a>`;
 
 function closeSocket() {
   voice?.disconnected();

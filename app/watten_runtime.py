@@ -249,6 +249,9 @@ def passphrase_matches(game: dict, value: object) -> bool:
 
 
 def account_protection_verified(game: dict, account: int, value: object) -> bool:
+    series = game["_watten"].room.series
+    if series is not None and series.roster_locked:
+        return series.seat_for_account(account) is not None
     if passphrase_matches(game, value):
         return True
     from .watten_invitations import accepted_invitation_access

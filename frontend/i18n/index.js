@@ -95,7 +95,7 @@ import { DE_MESSAGES, EN, EN_MESSAGES } from "./catalog.js";
     [/Keine Spieler/g, "No players"]
   ];
 
-  // Blocked site data makes every storage access throw; the page then stays German.
+  // Public language URLs also work when browser storage is blocked.
   function getLanguage() {
     const pageLanguage = document.documentElement?.dataset?.wattenSeoLanguage;
     if (SUPPORTED.has(pageLanguage)) return pageLanguage;
@@ -112,6 +112,11 @@ import { DE_MESSAGES, EN, EN_MESSAGES } from "./catalog.js";
       return false;
     }
   }
+
+  // A public language URL is an explicit local choice. Carry it into login and
+  // other documents without writing an account preference or reloading.
+  const pageLanguage = document.documentElement?.dataset?.wattenSeoLanguage;
+  if (SUPPORTED.has(pageLanguage)) storeLanguage(pageLanguage);
 
   function locale() {
     return getLanguage() === "en" ? "en-GB" : "de-CH";
@@ -147,6 +152,20 @@ import { DE_MESSAGES, EN, EN_MESSAGES } from "./catalog.js";
     return template.replace(/\{([a-zA-Z0-9_]+)\}/g, (_match, name) => String(params?.[name] ?? ""));
   }
 
+  function localizeWattenLink(element) {
+    const page = document.documentElement?.dataset;
+    if ((page?.game !== "watten" && !SUPPORTED.has(page?.wattenSeoLanguage))
+        || element.tagName !== "A" || element.getAttribute("hreflang")?.toLowerCase() === "de") return;
+    const href = element.getAttribute("href");
+    if (!href) return;
+    try {
+      const base = new URL(location.href), destination = new URL(href, base);
+      if (destination.origin !== base.origin || !["/watten", "/watten/regeln"].includes(destination.pathname)) return;
+      destination.searchParams.set("lang", "en");
+      element.setAttribute("href", destination.pathname + destination.search + destination.hash);
+    } catch (_) { /* Only valid local public links inherit the page language. */ }
+  }
+
   function translateElement(root) {
     if (getLanguage() !== "en" || !root) return;
     if (root.nodeType === Node.TEXT_NODE) {
@@ -159,6 +178,7 @@ import { DE_MESSAGES, EN, EN_MESSAGES } from "./catalog.js";
     if (root.nodeType !== Node.ELEMENT_NODE && root.nodeType !== Node.DOCUMENT_NODE) return;
     const elements = root.nodeType === Node.ELEMENT_NODE ? [root, ...root.querySelectorAll("*")] : [...root.querySelectorAll("*")];
     for (const element of elements) {
+      localizeWattenLink(element);
       // Account names and other literal user content are not interface copy.
       if (element.closest('script, style, [translate="no"]')) continue;
       for (const attr of ["placeholder", "title", "aria-label"]) {

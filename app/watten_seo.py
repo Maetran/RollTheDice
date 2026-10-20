@@ -2,7 +2,8 @@
 
 import json
 import re
-from html import escape
+from html import escape, unescape
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from .product_hosts import WATTEN_ORIGIN
 
@@ -28,6 +29,30 @@ _COPY = {
         "play": "Sign in and play", "rules": "Read the house rules", "language": "Language",
     },
 }
+
+
+def _localized_public_links(content: str, language: str) -> str:
+    if language != "en":
+        return content
+
+    def anchor(match):
+        tag = match.group(0)
+        explicit = re.search(r'''(?<![\w:-])hreflang\s*=\s*(["'])(.*?)\1''', tag, re.IGNORECASE)
+        if explicit and explicit.group(2).casefold() == "de":
+            return tag
+
+        def href(attribute):
+            url = urlsplit(unescape(attribute.group(3)))
+            if url.scheme or url.netloc or url.path not in {"/watten", "/watten/regeln"}:
+                return attribute.group(0)
+            query = [(key, value) for key, value in parse_qsl(url.query, keep_blank_values=True) if key != "lang"]
+            query.append(("lang", "en"))
+            destination = urlunsplit(("", "", url.path, urlencode(query), url.fragment))
+            return attribute.group(1) + attribute.group(2) + escape(destination, quote=True) + attribute.group(2)
+
+        return re.sub(r'''((?<![\w:-])href\s*=\s*)(["'])(.*?)\2''', href, tag, flags=re.IGNORECASE)
+
+    return re.sub(r"<a\b[^>]*>", anchor, content, flags=re.IGNORECASE)
 
 
 def public_watten_metadata(content: str, *, page: str, language: str) -> tuple[str, str]:
@@ -64,4 +89,4 @@ def public_watten_metadata(content: str, *, page: str, language: str) -> tuple[s
     content = content.replace('{watten_public_heading}', escape(title))
     for key in ("intro", "detail", "beta", "play", "rules", "language"):
         content = content.replace('{watten_public_' + key + '}', escape(text[key]))
-    return content, canonical
+    return _localized_public_links(content, language), canonical

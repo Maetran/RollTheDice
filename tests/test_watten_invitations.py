@@ -1,4 +1,4 @@
-"""Explicit private follow-up consent, native gates and durable password access."""
+"""Explicit private follow-up consent, native gates and fixed account access."""
 
 import importlib.util
 import io
@@ -52,8 +52,7 @@ def headers(owner, **extra):
 
 def setup(server, *, players=2, cpus=()):
     match, owners = source_for(players=players, cpus=cpus)
-    result = rematch_post(server, match.game, owners[0], rematch_command(match.game,
-                         protection={"mode": "fresh_password", "password": "private-target-only"}))
+    result = rematch_post(server, match.game, owners[0], rematch_command(match.game))
     assert result.status_code == 200, result.text
     return match.game, games[result.json()["game_id"]], owners
 
@@ -96,7 +95,7 @@ def test_explicit_host_choice_previous_humans_only_and_acceptance_changes_no_gam
     assert row["status"] == "pending" and not row["access_granted"]
     assert not {"account_id", "user_id", "password", "hand", "engine", "recipe", "reservations"} & set(row)
     assert "private-target-only" not in response.text
-    assert get_detail(server, target, owners[1], check=1).status_code == 403
+    assert get_detail(server, target, owners[1], check=1).status_code == 200
     accepted = respond(server, row, owners[1])
     assert accepted.status_code == 200 and accepted.json()["invitation"]["access_granted"]
     assert get_detail(server, target, owners[1], check=1).status_code == 200
@@ -114,7 +113,7 @@ def test_explicit_host_choice_previous_humans_only_and_acceptance_changes_no_gam
                 "lifecycle_revision": 0, "seat": 1, "team": 0}
         with pytest.raises(ValueError, match="team_confirmation"):
             apply_runtime_action(candidate, owners[1][0].user_id, player, data)
-        with pytest.raises(ValueError, match="seat_reserved"):
+        with pytest.raises(ValueError, match="roster_locked"):
             apply_runtime_action(candidate, owners[1][0].user_id, player, {**data, "seat": 2})
 
 
@@ -133,7 +132,7 @@ def test_lost_ack_restart_create_accept_and_decline_are_one_monotonic_identity_w
     assert create(server, target, owners[0]).json()["invitation"]["id"] == row["id"]
 
 
-def test_declined_pending_and_foreign_opaque_ids_never_grant_access_or_reveal_private_list(server):
+def test_declined_invites_preserve_fixed_roster_but_foreign_opaque_ids_grant_no_access(server):
     _source, target, owners = setup(server)
     stranger = native.account("NeverInvited")
     row = create(server, target, owners[0]).json()["invitation"]
@@ -146,26 +145,33 @@ def test_declined_pending_and_foreign_opaque_ids_never_grant_access_or_reveal_pr
     assert respond(server, row, owners[1], "declined").status_code == 200
     assert respond(server, row, owners[1]).status_code == 409
     assert row_data() == before
-    assert get_detail(server, target, owners[1], check=1).status_code == 403
+    assert get_detail(server, target, owners[1], check=1).status_code == 200
     assert get_detail(server, target, stranger, check=1).status_code == 403
-    assert get_detail(server, target, stranger, check=1, **{"pass": "private-target-only"}).status_code == 200
+    assert get_detail(server, target, stranger, check=1, **{"pass": "private-target-only"}).status_code == 403
 
 
-def test_real_http_and_websocket_admission_and_spectating_require_acceptance_for_same_account_target(server):
+def test_fixed_roster_http_and_websocket_access_needs_no_password_or_invitation_acceptance(server):
     _source, target, owners = setup(server)
+    stranger = native.account("NeverInOriginalRoster")
     row = create(server, target, owners[0]).json()["invitation"]
+    assert get_detail(server, target, owners[1], check=1).status_code == 200
+    assert get_detail(server, target, stranger, check=1).status_code == 403
     with ExitStack() as stack:
-        socket = stack.enter_context(server.websocket_connect(f"ws://localhost:8127/ws/{target['_id']}", headers=headers(owners[1])))
-        hello = socket.receive_json()
-        socket.send_json({"action": "join_game", "revision": hello["room_revision"], "expected_account_id": owners[1][0].user_id})
-        assert socket.receive_json()["error_code"] == "watten_wrong_passphrase"
-        assert respond(server, row, owners[1]).status_code == 200
+        denied = stack.enter_context(server.websocket_connect(f"ws://localhost:8127/ws/{target['_id']}", headers=headers(stranger)))
+        hello = denied.receive_json()
+        for action in ("join_game", "spectate_game"):
+            denied.send_json({"action": action, "expected_account_id": stranger[0].user_id,
+                              **({"revision": hello["room_revision"]} if action == "join_game" else {})})
+            assert denied.receive_json()["error_code"] == "watten_wrong_passphrase"
         spectator = stack.enter_context(server.websocket_connect(f"ws://localhost:8127/ws/{target['_id']}", headers=headers(owners[1])))
         spectator.receive_json()
         spectator.send_json({"action": "spectate_game", "expected_account_id": owners[1][0].user_id})
         assert native.receive(spectator, "spectator_id")["spectator"] is True
         assert len(target["_watten"].room.members) == 1
-        socket.send_json({"action": "join_game", "revision": target["_watten"].room.revision, "expected_account_id": owners[1][0].user_id})
+        assert respond(server, row, owners[1]).status_code == 200
+        socket = stack.enter_context(server.websocket_connect(f"ws://localhost:8127/ws/{target['_id']}", headers=headers(owners[1])))
+        hello = socket.receive_json()
+        socket.send_json({"action": "join_game", "revision": hello["room_revision"], "expected_account_id": owners[1][0].user_id})
         player = native.receive(socket, "player_id")["player_id"]
         assert next(item for item in target["_watten"].room.members if item.participant_id == player).seat is None
     other = native.create_game(server, owners[0], password="another-target")
@@ -229,9 +235,9 @@ def test_full_capacity_reservations_host_change_inactive_and_cpu_recipients_cann
         db.get(User, owners[2][0].user_id).is_active = False
     assert create(server, target, owners[0], source["_watten"].room.members[2].participant_id).status_code == 404
     row = create(server, target, owners[0], source["_watten"].room.members[1].participant_id).json()["invitation"]
-    # The future host joins deliberately with the real password; then the
+    # The future host joins deliberately through the fixed account binding; then the
     # original host leaves through the pure room transition and durable writer.
-    candidate, _player = admit_account(target, owners[1][0], target["_watten"].room.revision, "private-target-only")
+    candidate, _player = admit_account(target, owners[1][0], target["_watten"].room.revision, None)
     candidate, *_ = apply_runtime_action(candidate, owners[0][0].user_id, "p1",
         {"action": "leave_waiting_game", "command_id": "old-host-leaves", "revision": candidate["_watten"].room.revision,
          "lifecycle_revision": 0}, eligible_accounts=frozenset({owners[1][0].user_id}))
@@ -242,26 +248,22 @@ def test_full_capacity_reservations_host_change_inactive_and_cpu_recipients_cann
     assert server.get(f"/api/watten/games/{target['_id']}/invitations", headers=headers(owners[1])).status_code == 200
 
 
-def test_cannot_accept_when_capacity_fills_or_when_target_starts_or_closes(server):
+def test_foreign_capacity_cannot_replace_original_roster_and_pending_invite_expires_at_start(server):
     _source, target, owners = setup(server)
     row = create(server, target, owners[0]).json()["invitation"]
     outsider = native.account("TakesUnreservedCapacity")
     target["_watten"] = replace(target["_watten"], room=replace(target["_watten"].room, reservations=()))
     persist_watten_game(target)
-    candidate, _ = admit_account(target, outsider[0], target["_watten"].room.revision, "private-target-only")
-    persist_watten_game(candidate)
-    target.update(candidate)
-    assert respond(server, row, owners[1]).status_code == 409
-    assert get_detail(server, target, owners[1], check=1).status_code == 403
-    for seat, owner in enumerate((owners[0], outsider)):
-        player = next(item.participant_id for item in target["_watten"].room.members if item.account_id == owner[0].user_id)
-        candidate, *_ = apply_runtime_action(target, owner[0].user_id, player,
-            {"action": "watten_take_seat", "command_id": f"fill-{seat}", "revision": target["_watten"].room.revision,
+    with pytest.raises(ValueError, match="wrong_passphrase"):
+        admit_account(target, outsider[0], target["_watten"].room.revision, "private-target-only")
+    candidate, _ = admit_account(target, owners[1][0], target["_watten"].room.revision, None)
+    for seat, owner in enumerate(owners):
+        player = next(item.participant_id for item in candidate["_watten"].room.members if item.account_id == owner[0].user_id)
+        candidate, *_ = apply_runtime_action(candidate, owner[0].user_id, player,
+            {"action": "watten_take_seat", "command_id": f"fill-{seat}", "revision": candidate["_watten"].room.revision,
              "lifecycle_revision": 0, "seat": seat, "team": None})
-        persist_watten_game(candidate)
-        target.update(candidate)
-    candidate, *_ = apply_runtime_action(target, owners[0][0].user_id, "p1",
-        {"action": "watten_start", "command_id": "filled-start", "revision": target["_watten"].room.revision, "lifecycle_revision": 0})
+    candidate, *_ = apply_runtime_action(candidate, owners[0][0].user_id, "p1",
+        {"action": "watten_start", "command_id": "filled-start", "revision": candidate["_watten"].room.revision, "lifecycle_revision": 0})
     persist_watten_game(candidate)
     target.update(candidate)
     assert respond(server, row, owners[1]).status_code == 409
@@ -280,14 +282,14 @@ def test_closed_or_finished_target_revokes_only_invitation_access_and_cannot_gra
     _sync(target, replace(runtime, room=close_expired(expired, revision=expired.revision, now=utcnow())), public=True)
     persist_watten_game(target)
     assert not invites.accepted_invitation_access(target, owners[1][0].user_id)
-    assert get_detail(server, target, owners[1], check=1).status_code == 403
+    assert get_detail(server, target, owners[1], check=1).status_code == 200
     retry = respond(server, row, owners[1])
     assert retry.status_code == 200 and retry.json()["invitation"]["status"] == "accepted" and not retry.json()["invitation"]["access_granted"]
-    with pytest.raises(ValueError, match="wrong_passphrase"):
+    with pytest.raises(ValueError, match="room_closed"):
         admit_account(target, owners[1][0], target["_watten"].room.revision, None)
 
 
-def test_invalid_native_pair_corruption_and_db_failure_never_fall_back_to_password_grant(server, monkeypatch):
+def test_invalid_invitation_checkpoint_fails_closed_without_replacing_fixed_account_access(server, monkeypatch):
     _source, target, owners = setup(server)
     row = create(server, target, owners[0]).json()["invitation"]
     assert respond(server, row, owners[1]).status_code == 200
@@ -296,22 +298,29 @@ def test_invalid_native_pair_corruption_and_db_failure_never_fall_back_to_passwo
         raw = json.loads(checkpoint.state_json)
         raw["_game_type"] = "hausdepp"
         checkpoint.state_json = json.dumps(raw)
-    assert get_detail(server, target, owners[1], check=1).status_code == 503
+    # Existing roster authority is independent of invitation consent.
+    assert get_detail(server, target, owners[1], check=1).status_code == 200
     assert respond(server, row, owners[1]).status_code == 503
+    with pytest.raises(ValueError):
+        invites.accepted_invitation_access(target, owners[1][0].user_id)
     monkeypatch.setattr(invites, "_pair", lambda *_args, **_kwargs: (_ for _ in ()).throw(SQLAlchemyError("denied database")))
-    assert get_detail(server, target, owners[1], check=1).status_code == 503
+    assert get_detail(server, target, owners[1], check=1).status_code == 200
     with pytest.raises(SQLAlchemyError):
-        admit_account(target, owners[1][0], target["_watten"].room.revision, None)
+        invites.accepted_invitation_access(target, owners[1][0].user_id)
+    stranger = native.account("NoFallbackFromCorruptInvite")
+    assert get_detail(server, target, stranger, check=1).status_code == 403
 
 
-def test_accepted_grant_keeps_spectating_but_cannot_join_started_match_and_ends_at_real_completion(server):
+def test_invitation_access_ends_at_completion_but_original_roster_keeps_its_history(server):
     _source, target, owners = setup(server)
     row = create(server, target, owners[0]).json()["invitation"]
     assert respond(server, row, owners[1]).status_code == 200
-    outsider = native.account("ManuallyJoinedInstead")
+    outsider = native.account("CannotJoinInstead")
     target["_watten"] = replace(target["_watten"], room=replace(target["_watten"].room, reservations=()))
-    candidate, _ = admit_account(target, outsider[0], target["_watten"].room.revision, "private-target-only")
-    for seat, owner in enumerate((owners[0], outsider)):
+    with pytest.raises(ValueError, match="wrong_passphrase"):
+        admit_account(target, outsider[0], target["_watten"].room.revision, None)
+    candidate, _ = admit_account(target, owners[1][0], target["_watten"].room.revision, None)
+    for seat, owner in enumerate(owners):
         player = next(item.participant_id for item in candidate["_watten"].room.members if item.account_id == owner[0].user_id)
         candidate, *_ = apply_runtime_action(candidate, owner[0].user_id, player,
             {"action": "watten_take_seat", "command_id": f"manual-{seat}", "revision": candidate["_watten"].room.revision,
@@ -321,8 +330,8 @@ def test_accepted_grant_keeps_spectating_but_cannot_join_started_match_and_ends_
     persist_watten_game(candidate)
     target.update(candidate)
     assert invites.accepted_invitation_access(target, owners[1][0].user_id)
-    with pytest.raises(ValueError, match="room_started"):
-        admit_account(target, owners[1][0], target["_watten"].room.revision, None)
+    with pytest.raises(ValueError, match="wrong_passphrase"):
+        admit_account(target, outsider[0], target["_watten"].room.revision, None)
     with ExitStack() as stack:
         spectator, _ = native.join(server, stack, target["_id"], owners[1], spectate=True)
         spectator.send_json({"action": "get_state"})
@@ -334,7 +343,8 @@ def test_accepted_grant_keeps_spectating_but_cannot_join_started_match_and_ends_
     persist_watten_game(match.game)
     games[target["_id"]] = match.game
     assert not invites.accepted_invitation_access(match.game, owners[1][0].user_id)
-    assert get_detail(server, match.game, owners[1], check=1).status_code == 403
+    assert get_detail(server, match.game, owners[1], check=1).status_code == 200
+    assert get_detail(server, match.game, outsider, check=1).status_code == 403
 
 
 @pytest.mark.parametrize("operation", ("create", "accept"))

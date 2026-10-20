@@ -23,6 +23,7 @@ from tests.test_watten_runtime import (
     engine_command,
     local_started,
     next_move,
+    receive_opponent_bid,
 )
 from tests.test_watten_runtime import (
     server as runtime_server,
@@ -131,6 +132,9 @@ def test_ladinisch_show_inspect_delivery_and_private_advice_never_count(server):
                    "delivery_ids": delivery_ids}
         perform(sessions, session.player_id, command)
     session = sessions[0]
+    receive_opponent_bid(game_id, sessions, numbers, session.player_id)
+    # Bidding is genuine play; isolate the later private/transport operations.
+    reset_days()
     perform(sessions, session.player_id, engine_command(game_id, "partner_feedback", next(numbers), "good", session.player_id))
     asyncio.run(_handle_locked(session, "get_state", {"action": "get_state"}))
     assert set(days().values()) == {None}

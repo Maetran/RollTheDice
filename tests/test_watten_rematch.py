@@ -103,7 +103,8 @@ def test_real_host_follow_up_copies_canonical_recipe_without_moving_starting_or_
         assert detail.status_code == 200 and detail.json()["room"]["reservation"] == own
         stranger = native.account("NoForeignReservation")
         detail = server.get(f"/api/games/{target['_id']}", headers={"Cookie": stranger[1]})
-        assert detail.status_code == 200 and detail.json()["room"]["reservation"] is None
+        assert detail.status_code == 200 and detail.json()["room"]["reservation"] is None and "engine" not in detail.json()
+        assert server.get(f"/api/games/{target['_id']}?check=1", headers={"Cookie": stranger[1]}).status_code == 403
     public = snapshot_watten(target)
     assert public["room"]["reservation"] is None
     assert all(key not in json.dumps(public) for key in ('"account_id"', '"user_id"', '"reservations"'))
@@ -145,7 +146,7 @@ def test_password_free_rematch_uses_fixed_account_membership_instead_of_the_sour
     assert target["_watten"].room.series.roster_locked and match.game["_passphrase"] == old_hash
     assert "old-source-only" not in json.dumps(checkpoints()) and old_hash not in json.dumps(response.json())
     stranger = native.account("ForeignRematchAccount")
-    with pytest.raises(ValueError, match="roster_locked"):
+    with pytest.raises(ValueError, match="wrong_passphrase"):
         admit_account(target, stranger[0], target["_watten"].room.revision, None)
     assert post(server, match.game, owners[0], data).json()["game_id"] == target["_id"]
     assert post(server, match.game, owners[0], command(match.game)).status_code == 200

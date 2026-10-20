@@ -23,7 +23,7 @@ HAUSDEPP_SHELL_ARTIFACTS = {
     *PRIVATE_HAUSDEPP_DOCUMENTS.values(), *PUBLIC_HAUSDEPP_DOCUMENTS.values(), "hausdepp-email-action.html",
 }
 
-# Local-only account previews own their deferred controller and styling. They
+# Watten pages own their deferred controller and styling. They
 # must not inherit an existing game's icon or initialize its installed app.
 WATTEN_ACCOUNT_TEMPLATES = {
     "watten-account.html": "watten-account.js",
@@ -31,6 +31,8 @@ WATTEN_ACCOUNT_TEMPLATES = {
 }
 WATTEN_GAME_TEMPLATES = {
     "watten-game.html": "watten-game.js",
+    "watten-lobby.html": "watten-game.js",
+    "watten-public-rules.html": "watten-game.js",
     "watten-rules.html": "watten-game.js",
     "watten-progress.html": "watten-progress.js",
 }

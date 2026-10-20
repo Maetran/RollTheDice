@@ -53,7 +53,8 @@ def restore_owned_watten_game(game_id: str, user_id: int):
         return None
     own = any(member.account_id == user_id for member in room.members)
     reserved = any(item.account_id == user_id and item.expires_at > utcnow() for item in room.reservations)
-    if not own and not reserved:
+    continued = room.series is not None and room.series.roster_locked and room.series.seat_for_account(user_id) is not None
+    if not own and not reserved and not continued:
         from .watten_invitations import accepted_invitation_access
 
         if not accepted_invitation_access(game, user_id):

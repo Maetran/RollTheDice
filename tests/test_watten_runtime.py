@@ -25,7 +25,7 @@ from app.game_state import games
 from app.game_ws_session import GameSocketSession
 from app.models import ActiveGame, CompletedGame, DeletedGame, GameParticipant, User, UserAchievement
 from app.security import utcnow
-from app.watten_bidding import DealResult, ScoreAccount, ScoreLedger
+from app.watten_bidding import DealResult, ScoreAccount, ScoreLedger, retourschneider_candidate
 from app.watten_play import legal_cards
 from app.watten_recipe import WattenRecipe, recipe_to_payload
 from app.watten_rules import round_roles
@@ -213,6 +213,23 @@ def advance_to_play(game_id, sessions, numbers):
     raise AssertionError("No play phase")
 
 
+def receive_opponent_bid(game_id, sessions, numbers, receiver_id):
+    """Use real commands to offer a bid to the selected player's party."""
+    by_player = {session.player_id: session for session in sessions}
+    state = games[game_id]["_watten"].engine
+    assert state.phase == "play"
+    bidder = state.play.current_player_id
+    command = engine_command(game_id, "bid", f"offer-{next(numbers)}")
+    asyncio.run(_handle_locked(by_player[bidder], command["action"], command))
+    state = games[game_id]["_watten"].engine
+    if state.parties.party_of(receiver_id) == state.bid_state.pending.party:
+        decider = state.parties.decider(1 - state.bid_state.pending.party)
+        command = engine_command(game_id, "respond", f"counter-{next(numbers)}", "counter")
+        asyncio.run(_handle_locked(by_player[decider], command["action"], command))
+    state = games[game_id]["_watten"].engine
+    assert state.parties.party_of(receiver_id) != state.bid_state.pending.party
+
+
 def test_strict_local_gate_covers_generic_create_list_detail_websocket_and_host_confusion(server, monkeypatch):
     owner = account("RuntimeGate")
     game_id = create_game(server, owner)
@@ -304,6 +321,11 @@ def test_real_humans_finish_match_restart_and_replay_without_duplicate_results(s
             if state.phase == "match_complete":
                 break
             if state.phase == "deal_complete":
+                candidates = retourschneider_candidate(state.ledger)
+                if candidates is not None:
+                    player = candidates[0]
+                    send(by_player[player], engine_command(game_id, "retourschneider", next(numbers), "decline"))
+                    state = games[game_id]["_watten"].engine
                 send(host, room_command(game_id, "watten_next_deal", next(numbers), deal_id=state.deal_id, opportunity=state.opportunity))
                 continue
             player, data = next_move(game_id, numbers)
@@ -401,6 +423,7 @@ def test_private_feedback_changes_only_partner_frames_and_no_public_projection_o
     game = games[game_id]
     numbers = count()
     advance_to_play(game_id, sessions, numbers)
+    receive_opponent_bid(game_id, sessions, numbers, sessions[0].player_id)
     for session in sessions:
         session.websocket.messages.clear()
     sender = sessions[0]
@@ -799,6 +822,7 @@ def test_logout_and_new_account_login_blocks_outbound_secrets_before_old_socket_
     numbers = count()
     if phase == "play":
         advance_to_play(game_id, sessions, numbers)
+        receive_opponent_bid(game_id, sessions, numbers, sessions[2].player_id)
         victim = sessions[0]
         sender = sessions[2]
         command = engine_command(game_id, "partner_feedback", "after-account-switch", "bad", sender.player_id)

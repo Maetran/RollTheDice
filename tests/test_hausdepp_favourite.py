@@ -36,7 +36,7 @@ class HausdeppFavouriteTests(unittest.TestCase):
         self.identities = [login(request_for(), account.username, "secure-password-123") for account in self.accounts]
         self.client = TestClient(main.app)
         self.preset = {"waiting_mode": "fixed", "players": 3, "cpu_count": 2,
-                       "tournament": False, "password_required": True}
+                       "tournament": False, "password_required": True, "voice_enabled": True}
         self.path = "/api/hausdepp/favourite"
 
     def tearDown(self):
@@ -93,11 +93,21 @@ class HausdeppFavouriteTests(unittest.TestCase):
         self.client.put(self.path, json=self.preset, headers=self.headers())
         for changes in ({"players": 1}, {"players": 7}, {"players": True}, {"players": "3"},
                         {"cpu_count": -1}, {"cpu_count": 3}, {"cpu_count": True}, {"cpu_count": "2"},
-                        {"waiting_mode": "unknown"}, {"tournament": "false"}, {"password_required": 1}):
+                        {"waiting_mode": "unknown"}, {"tournament": "false"}, {"password_required": 1},
+                        {"voice_enabled": "false"}, {"voice_enabled": 1}):
             with self.subTest(changes=changes):
                 self.assertEqual(self.client.put(self.path, json={**self.preset, **changes},
                                                   headers=self.headers()).status_code, 422)
         self.assertEqual(self.client.get(self.path, headers=self.headers()).json(), {"favourite": self.preset})
+
+    def test_legacy_recipe_defaults_to_voice_and_explicit_opt_out_survives_reload(self):
+        legacy = {key: value for key, value in self.preset.items() if key != "voice_enabled"}
+        saved = self.client.put(self.path, json=legacy, headers=self.headers())
+        self.assertEqual(saved.json(), {"favourite": self.preset})
+        disabled = {**self.preset, "voice_enabled": False}
+        self.assertEqual(self.client.put(self.path, json=disabled, headers=self.headers()).json(),
+                         {"favourite": disabled})
+        self.assertEqual(self.client.get(self.path, headers=self.headers()).json(), {"favourite": disabled})
 
     def test_auto_refill_and_auth_payload_remain_compatible_and_independent(self):
         preference = self.client.put("/api/auth/preferences/hausdepp", json={"hausdepp_auto_refill": True},
