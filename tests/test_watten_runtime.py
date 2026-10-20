@@ -791,10 +791,19 @@ def test_multiple_deliberate_absences_restore_frozen_bid_until_explicit_account_
     before_public = snapshot_watten(game)
     for session in new_sessions:
         session.websocket.messages.clear()
-    advice = engine_command(game_id, "partner_feedback", "paused-advice", "unsure", new_sessions[2].player_id)
-    asyncio.run(_handle_locked(new_sessions[2], advice["action"], advice))
+    receiving_party = frozen.parties.parties[1 - frozen.bid_state.pending.party]
+    adviser = next(session for session in new_sessions
+                   if session.player_id in receiving_party and session.player_id not in game["_watten"].absent)
+    partner = next(player for player in receiving_party if player != adviser.player_id)
+    advice = engine_command(game_id, "partner_feedback", "paused-advice", "unsure", adviser.player_id)
+    asyncio.run(_handle_locked(adviser, advice["action"], advice))
     assert snapshot_watten(game) == before_public
-    assert new_sessions[1].websocket.messages == new_sessions[3].websocket.messages == []
+    for session in new_sessions:
+        if session.player_id not in receiving_party:
+            assert session.websocket.messages == []
+        else:
+            assert session.websocket.messages[0]["scoreboard"]["engine"]["feedback"] == [{
+                "sender": adviser.player_id, "recipient": partner, "value": "unsure", "sequence": 1}]
     for session in new_sessions[:2]:
         asyncio.run(_handle_locked(session, "rejoin_game", {"action": "rejoin_game", "revision": game["_watten"].room.revision,
                                                            "resume": True, "lifecycle_revision": game["_watten"].lifecycle_revision}))
