@@ -1,5 +1,5 @@
 /* Local account preview only. No account, token, game or asset enters Cache Storage. */
-const CACHE_VERSION = 'assets-67ad7f4de608';
+const CACHE_VERSION = 'assets-7f63fdcd2103';
 
 self.addEventListener('message', event => {
   if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();

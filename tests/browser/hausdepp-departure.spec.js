@@ -4,10 +4,29 @@ const { handleDisabledHausdeppVoice } = require('./hausdepp-voice-fixture');
 test.use({ serviceWorkers: 'block', viewport: { width: 390, height: 844 } });
 test.beforeAll(({ baseURL }) => expect(['8000', '8001']).not.toContain(new URL(baseURL).port));
 
-async function setup(page, language = 'de', { cpuCount = 2 } = {}) {
+async function setup(page, language = 'de', { cpuCount = 2, freshActor = false } = {}) {
   const response = await page.request.post('/api/auth/login', { data: { username: 'Admin', password: 'temporary-password-123' } });
   expect(response.ok()).toBeTruthy();
-  const user = (await response.json()).user, headers = { 'X-CSRF-Token': user.csrf_token };
+  let user = (await response.json()).user;
+  if (freshActor) {
+    // Real forfeitures earn a durable Zonk. Keep that result and its pending
+    // notice on this test's own account, away from the suite's shared Admin.
+    const username = `DepartureActor${language}${Date.now()}`;
+    const temporary = 'departure-actor-temporary-123', password = 'departure-actor-final-123';
+    const created = await page.request.post('/api/admin/users', { headers: { 'X-CSRF-Token': user.csrf_token },
+      data: { username, temporary_password: temporary, role: 'user' } });
+    expect(created.status()).toBe(201);
+    const initial = await page.request.post('/api/auth/login', { data: { username, password: temporary } });
+    expect(initial.ok()).toBeTruthy();
+    const initialUser = (await initial.json()).user;
+    const changed = await page.request.post('/api/auth/change-password', { headers: { 'X-CSRF-Token': initialUser.csrf_token },
+      data: { current_password: temporary, new_password: password } });
+    expect(changed.ok()).toBeTruthy();
+    const login = await page.request.post('/api/auth/login', { data: { username, password } });
+    expect(login.ok()).toBeTruthy();
+    user = (await login.json()).user;
+  }
+  const headers = { 'X-CSRF-Token': user.csrf_token };
   page.departureOwner = { headers, language: user.preferences?.preferred_language || 'de' };
   await page.request.put('/api/auth/preferences/language', { headers, data: { preferred_language: language } });
   await page.addInitScript(value => localStorage.setItem('zdwa_language', value), language);
@@ -35,7 +54,7 @@ test.afterEach(async ({ page }) => {
 
 for (const language of ['de', 'en']) {
   test(`${language}: real active departure is confirmed, stops local audio and returns to the lobby`, async ({ page }) => {
-    const app = await setup(page, language);
+    const app = await setup(page, language, { freshActor: true });
     let closedContexts = 0;
     await page.exposeFunction('__departureContextClosed', () => { closedContexts++; });
     await page.addInitScript(() => {

@@ -3,10 +3,27 @@
 .hd-seat.is-withdrawn { opacity: .65; }
 .hd-tournament-score .hd-tournament-departed { display: block; color: var(--hd-muted); font-size: 12px; }
 .hd-departure-notice { position: fixed; z-index: 62; top: calc(env(safe-area-inset-top, 0px) + 80px); left: 50%; transform: translateX(-50%); width: max-content; max-width: min(560px, calc(100vw - 24px)); margin: 0; padding: 10px 14px; color: var(--hd-paper); background: var(--hd-green); border: 1px solid var(--hd-gold); border-radius: 5px; font-size: 14px; line-height: 1.4; }
+@media (min-width: 1100px) {
+  /* The 44px exit row replaces a roughly 28px heading. Reserve its extra
+     height in the seating arena so the full-size hand stays in view. */
+  html[data-game="hausdepp"] body.hd-playing.hd-departure-available .hd-table:not([data-phase="waiting"]) { --hd-arc-height: 394px; }
+}
 @media (max-width: 1099px) {
   html[data-game="hausdepp"] body.hd-playing.hd-departure-available .hd-table { --hd-surprise-heading: 44px; }
   html[data-game="hausdepp"] body.hd-playing.hd-departure-available .hd-room-heading > div { flex: 1; overflow: hidden; }
   html[data-game="hausdepp"] body.hd-playing.hd-departure-available .hd-room-heading h1 { min-width: 0; }
   html[data-game="hausdepp"] body.hd-playing .hd-room-heading > .hd-departure-button { width: 44px; padding: 9px; }
   html[data-game="hausdepp"] body.hd-playing .hd-departure-text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+}
+@media (max-width: 359px) and (orientation: portrait) and (max-height: 620px) {
+  /* Like the rare-object dock, the exit needs twenty extra heading pixels:
+     flatten the 12px arc and recover eight from the gap below the piles. */
+  html[data-game="hausdepp"] body.hd-playing.hd-departure-available .hd-table .hd-seats:is([data-count="4"], [data-count="5"]) { --hd-arc-depth: 0px; }
+  html[data-game="hausdepp"] body.hd-playing.hd-departure-available .hd-table .hd-centre :is(.hd-stock-group, .hd-pile-group) > :is(.hd-card-back, .hd-pile) { margin-bottom: 4px; }
+}
+@media (max-width: 1099px) and (orientation: landscape) and (max-height: 440px) {
+  /* Return the same twenty pixels to the short landscape arena. Keep the
+     tournament letters clear above the unchanged card and touch sizes. */
+  html[data-game="hausdepp"] body.hd-playing.hd-departure-available .hd-table .hd-seats:is([data-count="4"], [data-count="5"]) { --hd-arc-depth: 0px; }
+  html[data-game="hausdepp"] body.hd-playing.hd-departure-available .hd-table .hd-centre :is(.hd-stock-group, .hd-pile-group) > :is(.hd-card-back, .hd-pile) { margin-bottom: 0; }
 }
