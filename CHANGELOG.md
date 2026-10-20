@@ -23,7 +23,7 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
-## 3.18.0 — Wirtshausklang und fairer Ausstieg / Tavern ambience and individual departure — 2026-10-20
+## 3.18.0 — Gemeinsam am Wirtshaustisch / Together at the tavern table — 2026-10-20
 
 **Deutsch:** Hausdepp erhält eine freiwillige, sehr leise Wirtshauskulisse mit
 echten Raum-, Gläser-, Geschirr- und Lachaufnahmen. Der eigene Notenschalter
@@ -32,6 +32,13 @@ geladen und lokal abgespielt, ohne Sprachchat-Übertragung. Kurze Töne bestäti
 manuelle Sound-, Lautsprecher- und Mikrofonschalter nur bei aktiviertem Sound;
 nach dem letzten Abschaltton bleibt alles still. Systemlautstärke und Audiogeräte
 gelten. Turniere und Neu erstellen auf derselben Seite behalten die Einstellung.
+
+Die normale Tischdeko wird gemeinsam benutzt: gegessene Snacks, Getränke,
+verschüttete Gläser, Dose, Windlicht, Bierdeckel sowie Würfel- und Münzergebnisse
+teilen alle am Tisch. Jeder Bildschirm behält seine passende Platzierung.
+Wiederverbinden stellt den aktuellen Zustand wieder her, ohne alte Animationen
+nachzuspielen; eine neue Runde beginnt frisch. Spielkarten und EP bleiben von
+der Deko unabhängig. Die vorhandene Sprechmarkierung bleibt unverändert.
 
 „Partie verlassen“ beendet nach Bestätigung nur die eigene Teilnahme. Die
 Handkarten verschwinden endgültig; die übrigen spielen weiter. Bleibt nur ein
@@ -48,6 +55,12 @@ voice-chat transmission. Short tones confirm manual sound, speaker and microphon
 changes only while sound is enabled; after one final off tone, everything stays
 silent. Use system volume and audio devices. Tournaments and Create again on
 the same page retain the setting.
+
+Ordinary table props share their use: eaten snacks, drinks, spills, the can,
+lantern, coaster and dice/coin results update for everyone at the table. Each
+display keeps its own suitable placement. Reconnecting restores current state
+without replaying old animations; a new round starts fresh. Props never affect
+cards or XP. The existing speaking indicator remains unchanged.
 
 Leave game ends only your participation after confirmation. Your hand cards
 leave play permanently and everyone else continues. When just one player with

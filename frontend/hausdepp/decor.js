@@ -1,5 +1,5 @@
-// Presentation only: one stable arrangement per round. Optional prop input
-// never sends a game command; motion stays outside the measured play areas.
+// One stable local arrangement per round. Ordinary prop use is confirmed by
+// the room; coordinates and motion stay outside the card engine and play areas.
 // Large props come from the three 2×2 atlases, small scatter pieces from the
 // 4×3 scatter atlas. `size` is the drawn size relative to a large prop.
 import { mountConsumable, updateDrink, eatPiece } from "./decor-consumables.js";
@@ -259,6 +259,7 @@ function shakeProp(table, state, sprite) {
   if (state.reduced.matches || document.hidden || state.phase !== "playing"
     || document.querySelector("dialog[open], [data-game-tour]")) return false;
   const prop = sprite.dataset.prop;
+  if (state.shared) return requestProp(state, prop, "shake");
   if (prop === "can" && sprite.dataset.canState !== "burst") {
     sprite.dataset.canState = "burst";
     sprite.dataset.bursting = "true";
@@ -499,6 +500,7 @@ function playWithProp(table, state, sprite) {
 
 // An untouched beer slowly loses its head of foam.
 function settleFoam(state) {
+  if (state.shared) return;
   if (Date.now() - (state.idleSince || 0) < 150000) return;
   for (const sprite of state.nodes.values()) {
     if (catalog[sprite.dataset.prop].foam && sprite.dataset.foam !== "flat") {
@@ -680,10 +682,12 @@ function spriteFor(table, state, prop) {
   if (prop === "coaster") { sprite.dataset.tally = "20"; markCoaster(sprite); }
   sprite.addEventListener("click", event => {
     if (state.swallowClick === sprite) { event.preventDefault(); state.swallowClick = null; return; }
+    if (state.shared && !item.rare) { requestProp(state, prop, "tap"); return; }
     if (state.reduced.matches || !playWithProp(table, state, sprite)) moveProp(table, state, sprite);
   });
   enableDrag(table, state, sprite);
   state.nodes.set(prop, sprite);
+  if (state.shared?.objects[prop]) hydrateProp(table, state, sprite, state.shared.objects[prop]);
   return sprite;
 }
 
@@ -716,7 +720,7 @@ function positionDecor(table, state) {
   // Hand growth is ordinary play, not a reason to move the table objects.
   // Reuse their positions until the viewport/format or the round changes.
   const layoutKey = `${Math.round(bounds.width)}:${innerWidth}:${innerHeight}`;
-  if (state.layoutKey === layoutKey) return;
+  if (state.layoutKey === layoutKey) { syncSpills(table, state); return; }
   for (const effect of [...(state.effects || [])]) {
     if (effect.classList.contains("hd-prop-spill") && !fits(table, effect.getBoundingClientRect(), controlRects(table), 2)) effect._finish();
   }
@@ -752,7 +756,8 @@ function positionDecor(table, state) {
           + `--prop-art:${art}px;--prop-angle:${state.angles[index % state.angles.length]}deg;--prop-delay:${index * 90}ms`;
         if (state.painted) sprite.style.animation = "none";
         sprite.hidden = false;
-        sprite.disabled = state.reduced.matches || (item.rare && state.surprisePending);
+        if (state.shared?.objects[prop]?.fallen) hydrateProp(table, state, sprite, state.shared.objects[prop]);
+        sprite.disabled = state.reduced.matches || (item.rare ? state.surprisePending : state.shared && !state.interactive);
         used.push(box);
         placed = true;
         index += 1;
@@ -768,12 +773,13 @@ function positionDecor(table, state) {
   // A preparatory snapshot can precede the table's first complete layout.
   // Freeze only an arrangement that has actually put an object on the wood.
   if (used.length) state.layoutKey = layoutKey;
+  syncSpills(table, state);
 }
 
 function resetMotion(state) {
   if (state.reduced.matches) clearTableEffects(state);
   for (const node of state.nodes.values()) {
-    node.disabled = state.reduced.matches;
+    node.disabled = state.reduced.matches || (state.shared && !catalog[node.dataset.prop].rare && !state.interactive);
     if (!state.reduced.matches) continue;
     node._cancelDrag?.();
     const art = node.firstElementChild;
@@ -787,9 +793,175 @@ function resetMotion(state) {
     art.style.setProperty("--prop-rest-x", "0px");
     if (node.dataset.prop === "can") node._canTaps = [];
   }
+  if (state.shared) {
+    for (const [prop, node] of state.nodes) if (state.shared.objects[prop]) hydrateProp(state.table, state, node, state.shared.objects[prop]);
+    syncSpills(state.table, state);
+  }
 }
 
-export function renderTableDecor(table, { gameId, roundNumber, phase, surprise = null, onSurprise }) {
+function requestProp(state, prop, operation) {
+  if (!state.shared?.objects[prop] || !state.interactive || state.reduced.matches || document.hidden
+    || !["peeking", "playing"].includes(state.phase) || document.querySelector("dialog[open], [data-game-tour]")) return false;
+  const actionId = globalThis.crypto?.randomUUID?.()
+    || `${Date.now().toString(36)}:${++state.actionSerial}:${Math.random().toString(36).slice(2)}`;
+  return Boolean(state.onPropAction?.({ object_id: prop, operation, action_id: actionId }));
+}
+
+function hydrateProp(table, state, sprite, value) {
+  const prop = sprite.dataset.prop, item = catalog[prop], art = sprite.firstElementChild;
+  sprite.dataset.uses = String(value.uses);
+  if (value.remaining !== undefined) {
+    sprite.dataset.totalBites = String(value.total);
+    sprite.dataset.keepsContainer = String(value.keeps_container);
+    sprite.dataset.bites = String(value.remaining);
+    sprite.dataset.empty = String(value.remaining === 0);
+    eatPiece(art, value.remaining);
+    if (value.remaining === 0) {
+      announce(sprite, copy("Aufgegessen – weiter verschiebbar"));
+      if (!value.keeps_container) { state.gone.add(prop); sprite.hidden = true; }
+    }
+  }
+  if (value.level !== undefined) {
+    const changed = Number(sprite.dataset.level) !== value.level || sprite.dataset.foam !== (value.foam_flat ? "flat" : "fresh");
+    sprite.dataset.level = String(value.level);
+    sprite.dataset.foam = value.foam_flat ? "flat" : "fresh";
+    sprite.dataset.fallen = String(value.fallen);
+    sprite.dataset.fallenAt = String(value.fallen_at);
+    if (value.fallen) sprite.dataset.compactFall = String(!roomAround(sprite, table, sprite.offsetWidth * .65, 2, true));
+    else sprite.dataset.compactFall = "false";
+    art.style.setProperty("--prop-rest-angle", value.fallen ? "80deg" : "0deg");
+    if (changed) updateDrink(art, value.level, value.foam_flat);
+    announce(sprite, copy(value.fallen ? "Glas wieder aufstellen" : value.level ? item.label : "Nachschenken"));
+  }
+  if (value.can_state) {
+    sprite.dataset.canState = value.can_state;
+    sprite.setAttribute("aria-pressed", String(value.can_state !== "sealed"));
+    announce(sprite, copy(value.can_state === "burst" ? "Geplatzte Dose verschieben" : value.can_state === "open" ? "Offene Dose schütteln" : item.label));
+  }
+  if (value.face) {
+    sprite.dataset.face = value.face;
+    announce(sprite, `${copy(item.label)} – ${copy(value.face === "heads" ? "Kopf" : "Zahl")}`);
+  }
+  if (value.value !== undefined) {
+    sprite.dataset.value = value.value === null ? "" : String(value.value);
+    announce(sprite, `${copy(item.label)}${value.value === null ? "" : ` – ${value.value}`}`);
+  }
+  if (value.tally !== undefined) {
+    if (Number(sprite.dataset.tally) !== value.tally) markCoaster(sprite, { value: value.tally, animate: false });
+    announce(sprite, `${copy(item.label)} – ${value.tally}/20`);
+  }
+  if (value.lit !== undefined) {
+    const pending = value.relight_at && value.relight_at > Date.now() + state.serverOffset;
+    sprite.dataset.lit = String(pending ? value.lit : value.relight_at ? true : value.lit);
+    sprite.dataset.relighting = String(Boolean(pending));
+    announce(sprite, copy(sprite.dataset.lit === "false" ? "Windlicht anzünden" : "Windlicht auspusten"));
+    if (sprite._sharedRelightAt !== (pending ? value.relight_at : null)) {
+      sprite._cancelRelight?.();
+      sprite._sharedRelightAt = pending ? value.relight_at : null;
+      if (pending) sprite._cancelRelight = schedulePropEffect(state, () => {
+        sprite._sharedRelightAt = null; sprite._cancelRelight = null;
+        if (layouts.get(table) === state) hydrateProp(table, state, sprite, state.shared.objects[prop]);
+      }, Math.max(0, value.relight_at - Date.now() - state.serverOffset), () => { sprite._sharedRelightAt = null; });
+    }
+  }
+}
+
+function syncSpills(table, state) {
+  if (!state.shared || ["waiting", "finished"].includes(state.phase) || document.hidden) return;
+  for (const [prop, sprite] of state.nodes) {
+    const spill = state.shared.objects[prop]?.spill;
+    if (!spill || sprite.hidden) { sprite._spillEffect?._finish(); continue; }
+    if (sprite._spillEffect?.dataset.spillId === spill.id) {
+      const cloth = sprite._spillEffect.querySelector("button");
+      cloth.disabled = state.reduced.matches || !state.interactive || sprite._spillEffect.dataset.wipeState === "pending";
+      continue;
+    }
+    const patch = wipeSpill(table, state, sprite, catalog[prop].drink || "#c8a25c", spill.amount,
+      box => fits(table, box, controlRects(table), 2), { shared: true, onComplete: () => requestProp(state, prop, "wipe") });
+    if (patch) patch.dataset.spillId = spill.id;
+  }
+}
+
+/** Confirmed live gestures animate at each display's local object position. */
+export function presentTableProp(table, event) {
+  const state = layouts.get(table);
+  if (!state?.shared || state.key !== `${event.game_id}:${event.round_number}`
+    || event.revision !== state.shared.revision || event.revision <= state.lastPropRevision) return;
+  state.lastPropRevision = event.revision;
+  if (!event.effect || !["peeking", "playing"].includes(state.phase) || state.reduced.matches || document.hidden
+    || document.querySelector("dialog[open], [data-game-tour]")) return;
+  const sprite = state.nodes.get(event.object_id), item = catalog[event.object_id];
+  if (!sprite || !item || (sprite.hidden && !(event.effect === "bite" && event.after.remaining === 0))) return;
+  const art = sprite.firstElementChild;
+  if (event.effect === "bite" && !event.after.keeps_container && event.after.remaining === 0) sprite.hidden = false;
+  if (!sprite.getClientRects().length) return;
+  const rest = `translateX(${Number(art.dataset.restX || 0)}px) rotate(${Number(art.dataset.turn || 0)}deg)`;
+  const run = (frames, duration, motion, origin = "50% 50%") => {
+    for (const animation of art.getAnimations()) animation.cancel();
+    sprite.dataset.moving = "true"; sprite.dataset.lastMotion = motion;
+    art.style.transformOrigin = origin;
+    const animation = art.animate(frames, { duration, easing: "cubic-bezier(.2,.7,.3,1)" });
+    sprite._motion = animation;
+    animation.finished.catch(() => {}).finally(() => {
+      if (sprite._motion === animation) {
+        sprite.dataset.moving = "false";
+        if (state.gone.has(event.object_id)) sprite.hidden = true;
+      }
+    });
+  };
+  const rock = (motion, duration = 450) => run([{ transform: rest }, { transform: `${rest} scale(.96) rotate(3deg)` }, { transform: rest }], duration, motion);
+  switch (event.effect) {
+    case "bite":
+      burst(sprite, item.crumbs, 4);
+      if (event.after.remaining === 0) caption(sprite, copy("Aufgegessen"));
+      if (event.after.remaining === 0 && !event.after.keeps_container) run([{ transform: rest, opacity: 1 }, { transform: `${rest} scale(.6)`, opacity: 0 }], 520, "eaten");
+      else rock(event.after.remaining ? "bite" : "eaten", 420);
+      break;
+    case "sip":
+      run([{ transform: rest }, { transform: `${rest} translateY(-8px) rotate(-14deg)` }, { transform: rest }], 900, "glass-sip", "50% 82%");
+      ripple(sprite); if (!event.after.level) caption(sprite, copy("Leer")); break;
+    case "spill":
+      rock("glass-spill", 650); if (event.before.level) { burst(sprite, [item.drink, "#fff8e8"], 6); caption(sprite, copy("Verschüttet!")); } break;
+    case "fall":
+      run([{ transform: "rotate(0deg)" }, { transform: "rotate(88deg)" }, { transform: "rotate(80deg)" }], 900, "glass-fall", "50% 82%");
+      caption(sprite, copy("Umgekippt!")); break;
+    case "stand":
+      run([{ transform: "rotate(80deg)" }, { transform: "rotate(-6deg)" }, { transform: "rotate(0deg)" }], 800, "glass-stand", "50% 82%"); break;
+    case "refill": rock("glass-refill", 700); caption(sprite, copy("Nachgeschenkt")); break;
+    case "can-open": case "can-burst":
+      sprite._cancelFoam?.(); sprite.dataset.foaming = "true";
+      sprite._cancelFoam = schedulePropEffect(state, () => { sprite.dataset.foaming = "false"; }, 1800, () => { sprite.dataset.foaming = "false"; });
+      if (event.effect === "can-burst") {
+        sprite.dataset.bursting = "true";
+        schedulePropEffect(state, () => { sprite.dataset.bursting = "false"; }, 380, () => { sprite.dataset.bursting = "false"; });
+      }
+      caption(sprite, copy(event.effect === "can-open" ? "Dose geöffnet" : "Dose geplatzt!")); rock(event.effect, 280); break;
+    case "can-nudge": rock(event.effect, 280); break;
+    case "candle-out": case "candle-light": case "candle-shake-out":
+      sprite.classList.toggle("is-flaring", event.effect === "candle-light");
+      rock(event.effect); break;
+    case "coin-toss":
+      run([{ transform: rest }, { transform: `${rest} translateY(-40px) scaleY(-1)` }, { transform: `${rest} translateY(-12px) scaleY(1)` }, { transform: rest }], 1100, event.effect);
+      schedulePropEffect(state, () => caption(sprite, copy(event.after.face === "heads" ? "Kopf" : "Zahl")), 1000); break;
+    case "dice-throw":
+      run([{ transform: rest }, { transform: `${rest} translateY(-14px) rotate(110deg)` }, { transform: rest }], 900, event.effect);
+      schedulePropEffect(state, () => caption(sprite, String(event.after.value)), 820); break;
+    case "coaster-mark": {
+      const coaster = state.nodes.get("coaster"), value = state.shared.objects.coaster;
+      if (coaster && !coaster.hidden && value) {
+        markCoaster(coaster, { value: value.tally ? value.tally - 1 : 20, animate: false });
+        markCoaster(coaster, { value: value.tally });
+        if (!value.tally) caption(coaster, copy("Neue Runde, leere Rückseite"));
+        if (value.total_tallies === 42) caption(coaster, copy("42. Die Antwort auf alles."));
+      }
+      moveProp(table, state, sprite); break;
+    }
+    case "nudge": moveProp(table, state, sprite); break;
+    default: break;
+  }
+}
+
+export function renderTableDecor(table, { gameId, roundNumber, phase, surprise = null, onSurprise, props = null, onPropAction, interactive = true }) {
   if (!table) return;
   const key = `${gameId}:${roundNumber}`;
   let state = layouts.get(table);
@@ -819,12 +991,18 @@ export function renderTableDecor(table, { gameId, roundNumber, phase, surprise =
       const x = rim ? (random() < .5 ? random() * .22 : .78 + random() * .22) : random();
       return { x, y: random() };
     }), random);
-    state = { key, layer, phase, count, scatterCount, random, reduced: matchMedia("(prefers-reduced-motion: reduce)"),
+    state = { key, table, layer, phase, count, scatterCount, random, reduced: matchMedia("(prefers-reduced-motion: reduce)"),
       props: shuffled(large, random), scatter: shuffled(scatter, random), positions,
       angles: Array.from({ length: 10 }, () => Math.round(random() * 16 - 8)), frame: null, nodes: new Map(),
-      gone: new Set(), idleSince: Date.now() };
+      gone: new Set(), idleSince: Date.now(), actionSerial: 0 };
     state.onMotionPreference = () => resetMotion(state);
-    state.onVisibility = () => { if (document.hidden) clearTableEffects(state); };
+    state.onVisibility = () => {
+      if (document.hidden) clearTableEffects(state);
+      else if (state.shared) {
+        for (const [prop, node] of state.nodes) if (state.shared.objects[prop]) hydrateProp(table, state, node, state.shared.objects[prop]);
+        syncSpills(table, state);
+      }
+    };
     state.onPageHide = () => { clearTableEffects(state); clearTimeout(state.timer); cancelAnimationFrame(state.frame); };
     state.reduced.addEventListener("change", state.onMotionPreference);
     document.addEventListener("visibilitychange", state.onVisibility);
@@ -837,6 +1015,26 @@ export function renderTableDecor(table, { gameId, roundNumber, phase, surprise =
     layouts.set(table, state);
     scheduleMotion(table, state);
   }
+  state.onPropAction = onPropAction;
+  state.interactive = interactive;
+  if (props?.schema_version === 1 && `${props.game_id}:${props.round_number}` === key
+    && props.layout && props.objects && (!state.shared || props.revision >= state.shared.revision)) {
+    if (!state.shared) {
+      state.lastPropRevision = props.revision;
+      state.layoutKey = null;
+    }
+    if (state.shared !== props) state.serverOffset = props.server_now_ms - Date.now();
+    state.shared = props;
+    state.props = props.layout.props.filter(prop => large.includes(prop));
+    state.scatter = props.layout.scatter.filter(prop => scatter.includes(prop));
+    state.count = props.layout.count;
+    state.scatterCount = props.layout.scatter_count;
+    for (const [prop, node] of state.nodes) if (props.objects[prop]) hydrateProp(table, state, node, props.objects[prop]);
+    for (const [prop, value] of Object.entries(props.objects)) {
+      if (value.remaining === 0 && !value.keeps_container) state.gone.add(prop);
+    }
+  }
+  for (const [prop, node] of state.nodes) if (!catalog[prop].rare) node.disabled = state.reduced.matches || (state.shared && !interactive);
   state.onSurprise = onSurprise;
   const offered = catalog[surprise]?.rare ? surprise : null;
   if (state.surprise !== offered) {

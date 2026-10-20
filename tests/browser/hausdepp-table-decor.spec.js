@@ -58,6 +58,7 @@ async function table(page, viewport, { browser, baseURL, reducedMotion = 'no-pre
   const gameId = (await created.json()).game_id;
   const latestByPage = new Map();
   const admissionByPage = new Map();
+  const sharedByPage = new Map(), propEventsByPage = new Map();
   for (const member of pages) {
     await member.route('**/api/releases**', route => route.fulfill({ json: { releases: [], can_prompt: false } }));
     // Optional beginner offers have separate coverage; the real room, private
@@ -73,7 +74,12 @@ async function table(page, viewport, { browser, baseURL, reducedMotion = 'no-pre
         try {
           const payload = JSON.parse(String(event.payload));
           if (payload.player_id) admission.playerId = payload.player_id;
-          if (payload.scoreboard) admission.room = payload.scoreboard;
+          if (payload.scoreboard) {
+            admission.room = payload.scoreboard;
+            if (payload.scoreboard._hausdepp_table_props) sharedByPage.set(member, payload.scoreboard._hausdepp_table_props);
+          }
+          if (payload.hausdepp_table_props) sharedByPage.set(member, payload.hausdepp_table_props);
+          if (payload.hausdepp_table_prop) propEventsByPage.set(member, payload.hausdepp_table_prop);
           const state = payload.scoreboard?._hausdepp;
           if (state) latestByPage.set(member, state);
         } catch { /* Protocol frames carry no JSON. */ }
@@ -119,6 +125,10 @@ async function table(page, viewport, { browser, baseURL, reducedMotion = 'no-pre
   await expect(viewer.locator('#hausdeppHand [data-card-id]')).toHaveCount(3);
   await expect(viewer.locator('#hausdeppHand [data-card-id]').first()).toBeVisible();
   await expect(viewer.locator('#hausdeppStock')).toBeEnabled();
+  viewer.hausdeppDecorPeers = pages;
+  viewer.hausdeppDecorShared = sharedByPage;
+  viewer.hausdeppDecorEvents = propEventsByPage;
+  viewer.hausdeppDecorBoards = latestByPage;
   return viewer;
 }
 
@@ -231,6 +241,173 @@ async function motionFixture(page, prop, reduced = false) {
   }, { moduleUrl: new URL('/__test__/decor.mjs', page.url()).href, prop });
   return page.locator(`[data-prop="${prop}"]:visible`);
 }
+
+async function sharedFixture(page, prop, object) {
+  await motionFixture(page, prop);
+  await page.evaluate(({ prop, object }) => {
+    const fixture = window.__decorFixture;
+    window.__propRequests = [];
+    fixture.props = { schema_version: 1, game_id: fixture.gameId, round_number: 1, revision: 0,
+      server_now_ms: Date.now(), layout: { props: [prop], scatter: [], count: 1, scatter_count: 0 },
+      objects: { [prop]: object } };
+    if (['coin', 'coaster', 'pencil', 'die'].includes(prop)) fixture.props.layout = { props: [], scatter: [prop], count: 0, scatter_count: 1 };
+    fixture.render = (objects, revision, event, extra = {}) => {
+      fixture.props = { ...fixture.props, objects, revision, server_now_ms: Date.now() };
+      fixture.module.renderTableDecor(fixture.table, { gameId: fixture.gameId, roundNumber: 1, phase: 'playing',
+        props: fixture.props, onPropAction: gesture => { window.__propRequests.push(gesture); return true; }, ...extra });
+      if (event) fixture.module.presentTableProp(fixture.table, { id: `${fixture.gameId}:1:${revision}`,
+        game_id: fixture.gameId, round_number: 1, revision, object_id: prop, ...event });
+    };
+    fixture.render(fixture.props.objects, 0);
+  }, { prop, object });
+  const sprite = page.locator(`[data-prop="${prop}"]:visible`);
+  await expect(sprite).toBeVisible();
+  return sprite;
+}
+
+test('shared snacks wait for confirmation and hydrate used portions without replay or echo', async ({ page }) => {
+  const nuts = await sharedFixture(page, 'nuts', { uses: 0, remaining: 16, total: 16, keeps_container: true });
+  await nuts.click();
+  await expect(nuts.locator('.hd-food-piece:not([hidden])')).toHaveCount(16);
+  expect(await page.evaluate(() => window.__propRequests)).toEqual([expect.objectContaining({ object_id: 'nuts', operation: 'tap' })]);
+  await page.evaluate(() => {
+    const fixture = window.__decorFixture, before = fixture.props.objects.nuts;
+    const after = { ...before, uses: 1, remaining: 15 };
+    fixture.render({ nuts: after }, 1, { effect: 'bite', before, after });
+  });
+  await expect(nuts.locator('.hd-food-piece:not([hidden])')).toHaveCount(15);
+  await expect(nuts).toHaveAttribute('data-last-motion', 'bite');
+  await expect(nuts).toHaveAttribute('data-moving', 'false');
+  await page.evaluate(() => {
+    const fixture = window.__decorFixture, after = fixture.props.objects.nuts;
+    fixture.module.presentTableProp(fixture.table, { game_id: fixture.gameId, round_number: 1, revision: 1,
+      object_id: 'nuts', effect: 'bite', after, before: { ...after, remaining: 16 } });
+  });
+  await expect(nuts).toHaveAttribute('data-moving', 'false');
+  expect(await page.evaluate(() => window.__propRequests.length)).toBe(1);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(nuts.locator('.hd-food-piece:not([hidden])')).toHaveCount(15);
+  await page.evaluate(() => {
+    const fixture = window.__decorFixture;
+    const replacement = fixture.table.cloneNode(false);
+    fixture.table.replaceWith(replacement); fixture.table = replacement;
+    fixture.render(fixture.props.objects, 1);
+  });
+  await expect(nuts.locator('.hd-food-piece:not([hidden])')).toHaveCount(15);
+  await expect(nuts).not.toHaveAttribute('data-last-motion', /./);
+  expect(await page.evaluate(() => window.__propRequests.length)).toBe(1);
+});
+
+test('shared spills send only completed wiping and wait for authoritative cleanup', async ({ page }) => {
+  await sharedFixture(page, 'beer', { uses: 0, level: 4, fallen: false, fallen_at: 0, foam_flat: false, spill: null });
+  await page.evaluate(() => {
+    const fixture = window.__decorFixture, before = fixture.props.objects.beer;
+    const after = { ...before, uses: 1, level: 0, foam_flat: true, spill: { id: '1:1', amount: 4, cleaned: 0 } };
+    fixture.render({ beer: after }, 1, { effect: 'spill', before, after });
+  });
+  const patch = page.locator('.hd-prop-spill[data-source="beer"]'), cloth = patch.locator('button');
+  await expect(patch).toBeVisible();
+  for (let tap = 0; tap < 3; tap++) await cloth.dispatchEvent('click');
+  expect(await page.evaluate(() => window.__propRequests.length)).toBe(0);
+  await cloth.dispatchEvent('click');
+  await expect(patch).toHaveAttribute('data-wipe-state', 'pending');
+  expect(await page.evaluate(() => window.__propRequests)).toEqual([expect.objectContaining({ object_id: 'beer', operation: 'wipe' })]);
+  await page.evaluate(() => {
+    const fixture = window.__decorFixture, before = fixture.props.objects.beer;
+    const after = { ...before, uses: 2, spill: null };
+    fixture.render({ beer: after }, 2, { effect: 'wipe', before, after });
+  });
+  await expect(patch).toHaveCount(0);
+  expect(await page.evaluate(() => window.__propRequests.length)).toBe(1);
+});
+
+test('reduced motion retains shared fallen glasses and ignores local input', async ({ page }) => {
+  const beer = await sharedFixture(page, 'beer', { uses: 1, level: 0, fallen: true, fallen_at: Date.now(), foam_flat: true,
+    spill: { id: '1:1', amount: 2, cleaned: 0 } });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await expect(beer).toHaveAttribute('data-fallen', 'true');
+  await expect(beer).toBeDisabled();
+  await expect.poll(() => beer.locator('.hd-prop-art').evaluate(art => art.style.getPropertyValue('--prop-rest-angle'))).toBe('80deg');
+  const cloth = page.locator('.hd-prop-cloth');
+  await expect(cloth).toBeVisible(); await expect(cloth).toBeDisabled();
+  await beer.dispatchEvent('click');
+  expect(await page.evaluate(() => window.__propRequests.length)).toBe(0);
+});
+
+test('shared dice show the server result and stale events never reroll it', async ({ page }) => {
+  const dice = await sharedFixture(page, 'dice', { uses: 0, value: null });
+  await dice.click();
+  await expect(dice).toHaveAttribute('data-value', '');
+  await page.evaluate(() => {
+    const fixture = window.__decorFixture, before = fixture.props.objects.dice;
+    const after = { uses: 1, value: 5 };
+    fixture.render({ dice: after }, 1, { effect: 'dice-throw', before, after });
+  });
+  await expect(dice).toHaveAttribute('data-value', '5');
+  await expect(dice).toHaveAttribute('aria-label', /– 5$/);
+  await expect(dice).toHaveAttribute('data-moving', 'false');
+  await page.evaluate(() => {
+    const fixture = window.__decorFixture;
+    fixture.module.presentTableProp(fixture.table, { game_id: fixture.gameId, round_number: 0, revision: 99,
+      object_id: 'dice', effect: 'dice-throw', before: {}, after: { value: 1 } });
+    fixture.render(fixture.props.objects, 1, undefined, { interactive: false });
+  });
+  await expect(dice).toBeDisabled(); await dice.dispatchEvent('click');
+  await expect(dice).toHaveAttribute('data-value', '5');
+  expect(await page.evaluate(() => window.__propRequests.length)).toBe(1);
+});
+
+test('reusing a shared lantern snapshot never postpones its confirmed relight', async ({ page }) => {
+  const lantern = await sharedFixture(page, 'lantern', { uses: 0, lit: true, relight_at: null });
+  await page.clock.install();
+  await page.evaluate(() => {
+    const fixture = window.__decorFixture, before = fixture.props.objects.lantern;
+    const after = { uses: 1, lit: false, relight_at: Date.now() + 1500 };
+    fixture.render({ lantern: after }, 1, { effect: 'candle-shake-out', before, after });
+  });
+  await expect(lantern).toHaveAttribute('data-lit', 'false');
+  await page.clock.runFor(800);
+  await page.evaluate(() => {
+    const fixture = window.__decorFixture;
+    fixture.module.renderTableDecor(fixture.table, { gameId: fixture.gameId, roundNumber: 1, phase: 'playing', props: fixture.props });
+  });
+  await page.clock.runFor(750);
+  await expect(lantern).toHaveAttribute('data-lit', 'true');
+  expect(await page.evaluate(() => window.__propRequests.length)).toBe(0);
+});
+
+test('real accounts share ordinary table use across phone and desktop and reload the current state', async ({ page, browser, baseURL }, testInfo) => {
+  page = await table(page, { width: 1600, height: 1000 }, { browser, baseURL });
+  const other = page.hausdeppDecorPeers.find(peer => peer !== page);
+  const shared = page.hausdeppDecorShared, events = page.hausdeppDecorEvents, boards = page.hausdeppDecorBoards;
+  await expect.poll(() => shared.get(page)?.schema_version).toBe(1);
+  const visible = await page.locator('.hd-table-prop:visible').evaluateAll(nodes => nodes.map(node => node.dataset.prop));
+  const objectId = visible.find(id => shared.get(page).objects[id]?.remaining > 0) || visible.find(id => shared.get(page).objects[id]);
+  expect(objectId).toBeTruthy();
+  const before = structuredClone(shared.get(page).objects[objectId]);
+  const version = boards.get(page).version, revision = shared.get(page).revision;
+  await other.setViewportSize({ width: 390, height: 844 });
+  await page.locator(`.hd-table-prop[data-prop="${objectId}"]:visible`).click();
+  await expect.poll(() => shared.get(other)?.revision).toBe(revision + 1);
+  await expect.poll(() => shared.get(page)?.revision).toBe(revision + 1);
+  const after = shared.get(page).objects[objectId];
+  expect(shared.get(other).objects[objectId]).toEqual(after);
+  expect(after.uses).toBe(before.uses + 1);
+  if (before.remaining !== undefined) expect(after.remaining).toBe(before.remaining - 1);
+  expect(boards.get(page).version).toBe(version);
+  expect(events.get(other).id).toBe(events.get(page).id);
+  await other.reload();
+  await expect.poll(() => shared.get(other)?.objects[objectId]).toEqual(after);
+  await other.setViewportSize({ width: 1600, height: 1000 });
+  const hydrated = other.locator(`.hd-table-prop[data-prop="${objectId}"]`);
+  await expect(hydrated).toHaveAttribute('data-uses', String(after.uses));
+  if (after.remaining !== undefined) await expect(hydrated).toHaveAttribute('data-bites', String(after.remaining));
+  await expect(hydrated).not.toHaveAttribute('data-last-motion', /./);
+  testInfo.annotations.push({ type: 'shared-object', description: objectId });
+  await page.screenshot({ path: testInfo.outputPath('shared-use-desktop.png'), fullPage: true });
+  await other.setViewportSize({ width: 390, height: 844 });
+  await other.screenshot({ path: testInfo.outputPath('shared-use-phone.png'), fullPage: true });
+});
 
 async function pointerGesture(page, points, { touch = false, cancel = false } = {}) {
   if (!touch) {

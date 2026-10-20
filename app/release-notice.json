@@ -3,21 +3,23 @@
   "games": [
     "hausdepp"
   ],
-  "summary_de": "Leise Wirtshauskulisse einschalten und bei Bedarf einzeln die Partie verlassen.",
-  "summary_en": "Enable quiet tavern ambience and leave a game individually when needed.",
+  "summary_de": "Gemeinsame Tischdeko, leiser Wirtshausklang und einzeln die Partie verlassen.",
+  "summary_en": "Shared table props, quiet tavern ambience and leaving a game individually.",
   "player_notes": {
     "de": {
-      "title": "Wirtshausklang und eigener Ausstieg",
+      "title": "Gemeinsam am Wirtshaustisch",
       "changes": [
         "Mit dem Notenschalter aktivierst du eine sehr leise lokale Wirtshauskulisse – auch gegen CPUs.",
+        "Nüsse essen, Getränke nutzen und andere Dekoaktionen sehen jetzt alle am Tisch – passend zum eigenen Display.",
         "Bei aktiviertem Sound bestätigen kurze Töne deine Sound-, Lautsprecher- und Mikrofonschalter.",
         "Partie verlassen beendet nach Bestätigung nur deine Teilnahme; die übrigen spielen weiter. Aufgeben bringt keine EP oder normalen Erfolge, der Zonk-Erfolg gibt 0 EP."
       ]
     },
     "en": {
-      "title": "Tavern ambience and individual departure",
+      "title": "Together at the tavern table",
       "changes": [
         "Use the music-note switch for very quiet local tavern ambience, including CPU games.",
+        "Everyone at the table sees snacks being eaten, drinks being used and other prop actions, placed to suit their own display.",
         "When sound is enabled, short tones confirm sound, speaker and microphone changes.",
         "Leave game ends only your participation after confirmation; everyone else continues. Giving up earns no XP or ordinary achievements; the Zonk achievement is worth 0 XP."
       ]

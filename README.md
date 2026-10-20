@@ -342,6 +342,19 @@ The production host remains closed.
 
 ## Hausdepp — öffentlicher V3-Start / public V3 launch
 
+**Gemeinsame Tischdeko / Shared table props:** Snacks essen, Getränke benutzen
+und andere Dekoaktionen werden für alle am Tisch synchronisiert. Die Platzierung
+bleibt passend zum jeweiligen Bildschirm; Drag-Bewegungen bleiben lokal.
+Verbrauch, Gegenstandszustände und Würfel-/Münzergebnisse kommen vom Server.
+Wiederverbinden zeigt den aktuellen Zustand ohne alte Animationen; jede neue
+Runde beginnt frisch. Die Deko verändert weder Spielkarten noch EP.
+
+Eating snacks, using drinks and other prop actions are shared with everyone
+at the table. Placement adapts to each display and dragging stays local.
+Consumption, prop states and dice/coin results come from the server.
+Reconnecting shows current state without replaying old animations; each new
+round starts fresh. Props affect neither cards nor XP.
+
 **Einzeln aussteigen / Individual departure:** „Partie verlassen“ fragt nach
 Bestätigung und beendet nur die eigene Teilnahme. Die Handkarten verlassen das
 Spiel endgültig, die übrigen spielen weiter. Bei nur einem Spieler mit Karten

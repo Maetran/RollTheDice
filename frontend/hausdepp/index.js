@@ -4,7 +4,8 @@ import { renderAccountSettings } from "./settings.js";
 import { mountProgressNotices } from "./progress-notices.js";
 import { surpriseAchievementBadge } from "./surprise-achievement-badges.js";
 import { createRematch, mountRematchInvitations, rematchError } from "./rematch.js";
-import { renderTableDecor, presentTableSurprise, cancelTableSurprises } from "./decor.js";
+import { renderTableDecor, presentTableProp, presentTableSurprise, cancelTableSurprises } from "./decor.js";
+import { preserveNewerTableProps } from "./decor-sync.js";
 import { renderTableAppearance } from "./surprise-state.js";
 import { mountLobbyDemo } from "./lobby-demo.js";
 import { invitationMarkup, mountInvitations } from "./invitations.js";
@@ -966,13 +967,22 @@ function connect() {
     if (payload.hausdepp_invitation) rematchInvitations?.refresh(payload.hausdepp_invitation);
     if (payload.scoreboard) {
       waitingControls?.acknowledge();
-      snapshot = payload.scoreboard;
+      snapshot = preserveNewerTableProps(snapshot, payload.scoreboard, gameId);
       if (!playerId && snapshot._hausdepp?.viewer_id) playerId = snapshot._hausdepp.viewer_id;
       for (const item of snapshot._chat_history || []) receiveChat(item);
       renderState();
       completeCommand();
     }
     if (departureUI?.reject(payload)) return;
+    if (payload.hausdepp_table_props && snapshot?._hausdepp
+      && payload.hausdepp_table_props.game_id === gameId
+      && payload.hausdepp_table_props.round_number === (snapshot._hausdepp_tournament?.round_number || 1)
+      && payload.hausdepp_table_props.revision >= (snapshot._hausdepp_table_props?.revision ?? -1)) {
+      snapshot._hausdepp_table_props = payload.hausdepp_table_props;
+      renderState();
+    }
+    if (payload.hausdepp_table_prop) presentTableProp($("hausdeppTable"), payload.hausdepp_table_prop);
+    if (String(payload.error_code || payload.error || "").startsWith("hausdepp_table_prop_")) return;
     if (payload.hausdepp_table_effects && snapshot?._hausdepp) {
       snapshot._hausdepp_table_effects = payload.hausdepp_table_effects;
       renderTableAppearance($("hausdeppTable"), snapshot._hausdepp_table_effects);
@@ -1116,6 +1126,13 @@ function renderStateContent() {
   const surprise = snapshot._hausdepp_table_surprises;
   renderTableDecor($("hausdeppTable"), {
     gameId, roundNumber, phase: s.phase,
+    props: snapshot._hausdepp_table_props,
+    interactive: !spectating && !snapshot._paused && socket?.readyState === WebSocket.OPEN && ["peeking", "playing"].includes(s.phase),
+    onPropAction: gesture => {
+      if (spectating || snapshot?._paused || !["peeking", "playing"].includes(snapshot?._hausdepp?.phase)) return false;
+      try { return send({ action: "hausdepp_table_prop", round_number: roundNumber, ...gesture }); }
+      catch { return false; }
+    },
     surprise: surprise?.round_number === roundNumber ? surprise.effect : null,
     onSurprise: effect => {
       if (spectating || requestedSurprise || snapshot?._paused || s.phase !== "playing") return false;

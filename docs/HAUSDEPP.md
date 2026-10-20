@@ -8,6 +8,39 @@ release. Further playtests will continue to refine the appearance.
 
 ## Deutsch
 
+### Gemeinsame Deko nutzen / Shared prop use
+
+Normale Deko hat pro Tisch und Runde gemeinsame Gegenstände und Nutzungszustände.
+Jeder Browser platziert die sichtbaren Gegenstände weiterhin passend zur eigenen
+Bildschirmgrösse und freien Fläche. Essen, Trinken, Nachschenken, Verschütten,
+Umfallen/Aufstellen, Dose, Windlicht, Bierdeckel, Würfeln und Münzwerfen werden
+für alle übernommen. Andere Spieler sehen die zugehörige Animation an der
+jeweiligen lokalen Position; verschobene Pixelkoordinaten werden nicht geteilt.
+Gleichzeitige Nutzungen werden serverseitig nacheinander angewendet, ohne Bisse
+doppelt zu zählen oder zu verlieren. Zuschauer sehen gemeinsame Zustände und
+Ereignisse, bedienen die Gegenstände aber nicht.
+
+Der Server begrenzt Gegenstände und Meldungen, prüft aktuelle Teilnahme und
+Runde und bestimmt Zufallsergebnisse. Die Deko verändert weder Karten,
+Zugversion, Nachwurfrecht noch Erfolge/EP. Wiederverbinden und Neustart stellen
+den aktuellen Verbrauch wieder her; vergangene Animationen werden nicht erneut
+abgespielt. Neue Runden und neue Tische beginnen mit frischer Deko. Seltene
+Tischfunde und ihre bisherigen Vergaberegeln bleiben erhalten. Reduzierte
+Bewegung übernimmt denselben Endzustand ohne die zusätzliche Bewegung.
+
+Ordinary props share identities and usage state per table and round. Each browser
+places the visible props according to its own screen and free space. Eating,
+drinking, refilling, spills, falling/standing glasses, the can, lantern, coaster,
+dice and coins update for everyone. Other players see the action at their local
+prop position; dragged pixel coordinates are not shared. Concurrent use is
+serialized by the server without duplicating or losing bites. Spectators see
+states and events but cannot use props. The server validates current membership,
+rounds and bounded messages and chooses random outcomes. Props never affect
+cards, turn versions, follow-ups, achievements or XP. Reconnects and restarts
+restore current consumption without replaying old animations. New rounds and
+tables start fresh. Rare finds retain their existing shared behavior and award
+rules. Reduced motion applies the same end state without the extra animation.
+
 ### Partie verlassen / Leave game
 
 Ein eigener Schalter am laufenden Tisch öffnet eine Bestätigung. Aussteigen

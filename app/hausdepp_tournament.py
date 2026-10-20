@@ -237,7 +237,7 @@ def start_next_round(game: dict, player_id: str, version: object) -> None:
         game["_manual_pause_by"] = None
         game["_manual_pause_by_name"] = None
         game["_manual_pause_at"] = None
-    for key in ("_completion_persisted", "_final_completion", "_finalization_pending", "_hausdepp_round_summary"):
+    for key in ("_completion_persisted", "_final_completion", "_finalization_pending", "_hausdepp_round_summary", "_hausdepp_table_props"):
         game.pop(key, None)
 
 
