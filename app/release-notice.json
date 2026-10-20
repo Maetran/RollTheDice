@@ -1,31 +1,23 @@
 {
   "kind": "usability",
   "games": [
-    "zdwa",
-    "zilch",
     "hausdepp"
   ],
-  "summary_de": "Gemeinsame Tischdeko, Wirtshausklang, eigener Ausstieg und zuverlässiger Sprachwechsel.",
-  "summary_en": "Shared table props, tavern ambience, individual departure and reliable language switching.",
+  "summary_de": "Tisch auch beim Zuschauen verlassen; Sprachchat funktioniert auch über bestehende Suite-PWAs.",
+  "summary_en": "Leave tables while spectating; voice chat also works through existing suite PWAs.",
   "player_notes": {
     "de": {
-      "title": "Gemeinsam am Wirtshaustisch",
+      "title": "Tisch verlassen und Mikrofon nutzen",
       "changes": [
-        "Mit dem Notenschalter aktivierst du eine sehr leise lokale Wirtshauskulisse – auch gegen CPUs.",
-        "Nüsse essen, Getränke nutzen und andere Dekoaktionen sehen jetzt alle am Tisch – passend zum eigenen Display.",
-        "Bei aktiviertem Sound bestätigen kurze Töne deine Sound-, Lautsprecher- und Mikrofonschalter.",
-        "Partie verlassen beendet nach Bestätigung nur deine Teilnahme; die übrigen spielen weiter. Aufgeben bringt keine EP oder normalen Erfolge, der Zonk-Erfolg gibt 0 EP.",
-        "Deine gewählte Sprache bleibt beim Wechseln und Neuladen zuverlässig erhalten."
+        "Beim Zuschauen führt Tisch verlassen direkt zurück zur Lobby – auch im Warteraum, zwischen Runden und ohne Verbindung.",
+        "Hausdepp-Sprachchat kann das Mikrofon jetzt auch in bestehenden Suite-PWAs anfragen. Bestätige dafür die Mikrofonfreigabe deines Geräts."
       ]
     },
     "en": {
-      "title": "Together at the tavern table",
+      "title": "Leave the table and use your microphone",
       "changes": [
-        "Use the music-note switch for very quiet local tavern ambience, including CPU games.",
-        "Everyone at the table sees snacks being eaten, drinks being used and other prop actions, placed to suit their own display.",
-        "When sound is enabled, short tones confirm sound, speaker and microphone changes.",
-        "Leave game ends only your participation after confirmation; everyone else continues. Giving up earns no XP or ordinary achievements; the Zonk achievement is worth 0 XP.",
-        "Your chosen language stays consistent when switching and reloading."
+        "While spectating, Leave table returns directly to the lobby, including waiting rooms, round breaks and disconnected views.",
+        "Hausdepp voice chat can now request the microphone in existing suite PWAs too. Confirm microphone permission on your device."
       ]
     }
   }

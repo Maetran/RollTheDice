@@ -206,3 +206,91 @@ test('a real participant leaves two other players in the same playable table wit
     await expect(guest.locator('[data-achievement-id="hausdepp_136"] .hd-achievement-points')).toHaveText('0 EP');
   } finally { await guestContext.close(); }
 });
+
+for (const language of ['de', 'en']) {
+  for (const stage of ['waiting', 'active']) {
+    test(`${language}: a spectator leaves a real ${stage} table locally across display sizes`, async ({ page, browser, baseURL }, testInfo) => {
+      const app = await setup(page, language, { cpuCount: stage === 'waiting' ? 1 : 2 });
+      await page.goto(app.room);
+      await expect(page.locator('#hausdeppTable')).toHaveAttribute('data-phase', stage === 'waiting' ? 'waiting' : 'peeking');
+      // A spectator owns no seat. Reusing the host's account would resume its
+      // waiting table after the return to the lobby and open a new player socket.
+      const username = `DWatch${language}${stage}${Date.now()}`;
+      const temporary = 'departure-watcher-temporary-123', password = 'departure-watcher-final-123';
+      const created = await page.request.post('/api/admin/users', { headers: page.departureOwner.headers,
+        data: { username, temporary_password: temporary, role: 'user' } });
+      expect(created.status()).toBe(201);
+      const watcherContext = await browser.newContext({ baseURL, serviceWorkers: 'block', viewport: { width: 390, height: 844 } });
+      try {
+        const watcher = await watcherContext.newPage(), sent = [], received = [], dialogs = [];
+        const initial = await watcher.request.post('/api/auth/login', { data: { username, password: temporary } });
+        expect(initial.ok()).toBeTruthy();
+        const initialUser = (await initial.json()).user;
+        const changed = await watcher.request.post('/api/auth/change-password', { headers: { 'X-CSRF-Token': initialUser.csrf_token },
+          data: { current_password: temporary, new_password: password } });
+        expect(changed.ok()).toBeTruthy();
+        const login = await watcher.request.post('/api/auth/login', { data: { username, password } });
+        expect(login.ok()).toBeTruthy();
+        const user = (await login.json()).user;
+        const languagePreference = await watcher.request.put('/api/auth/preferences/language', { headers: { 'X-CSRF-Token': user.csrf_token },
+          data: { preferred_language: language } });
+        expect(languagePreference.ok()).toBeTruthy();
+        await watcher.addInitScript(value => localStorage.setItem('zdwa_language', value), language);
+        await watcher.route('**/api/releases**', route => route.fulfill({ json: { releases: [], can_prompt: false } }));
+        await watcher.route('**/api/auth/tours/offer', route => route.fulfill({ json: { show: false, enabled: false, games: {} } }));
+        watcher.on('dialog', dialog => { dialogs.push(dialog.message()); void dialog.dismiss(); });
+        watcher.on('websocket', socket => {
+          if (!socket.url().endsWith(`/ws/${app.id}`)) return;
+          socket.on('framesent', ({ payload }) => { try { sent.push(JSON.parse(String(payload))); } catch {} });
+          socket.on('framereceived', ({ payload }) => { try { received.push(JSON.parse(String(payload))); } catch {} });
+        });
+        await watcher.goto(`${app.room}/zuschauen`);
+        await expect.poll(() => received.some(message => message.scoreboard)).toBe(true);
+        await expect.poll(() => app.received.filter(message => message.spectator?.event === 'joined' && message.spectator.name === username).length).toBe(1);
+        const leave = watcher.locator('#hausdeppLeaveGame');
+        await expect(leave).toHaveAccessibleName(language === 'de' ? 'Tisch verlassen' : 'Leave table');
+        await expect(leave).toBeEnabled();
+        for (const [width, height] of [[320, 568], [390, 844], [844, 390], [1440, 900]]) {
+          await watcher.setViewportSize({ width, height });
+          await expect(leave).toBeInViewport();
+          const bounds = await leave.boundingBox();
+          expect(bounds.width).toBeGreaterThanOrEqual(44); expect(bounds.height).toBeGreaterThanOrEqual(44);
+          const headerBounds = await watcher.locator('.hd-header').boundingBox();
+          expect(bounds.y).toBeGreaterThanOrEqual(headerBounds.y + headerBounds.height);
+          expect(bounds.y + bounds.height).toBeLessThanOrEqual(height);
+          expect(bounds.x).toBeGreaterThanOrEqual(0); expect(bounds.x + bounds.width).toBeLessThanOrEqual(width);
+          expect(await leave.evaluate(button => {
+            const box = button.getBoundingClientRect();
+            for (const x of [box.left + 2, box.left + box.width / 2, box.right - 2]) {
+              for (const y of [box.top + 2, box.top + box.height / 2, box.bottom - 2]) {
+                if (!button.contains(document.elementFromPoint(x, y))) return false;
+              }
+            }
+            return true;
+          })).toBe(true);
+          await leave.click({ trial: true });
+          expect(await watcher.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
+          if (width === 320 || width === 844) await watcher.screenshot({ path: testInfo.outputPath(`spectator-exit-${width}x${height}.png`) });
+        }
+        const previous = (await (await page.request.get(`/api/games/${app.id}`)).json());
+        await leave.click();
+        await expect(watcher).toHaveURL(url => url.pathname === '/hausdepp');
+        // A full navigation can discard Chromium's old DevTools socket-close
+        // event. The host's real departure event proves server-side cleanup.
+        await expect.poll(() => app.received.filter(message => message.spectator?.event === 'left' && message.spectator.name === username).length).toBe(1);
+        expect(dialogs).toEqual([]);
+        expect(sent.filter(message => typeof message.action === 'string').map(message => message.action)).toEqual(['spectate_game']);
+        const current = await (await page.request.get(`/api/games/${app.id}`)).json();
+        // The running game may deal cards or advance CPUs during navigation.
+        // Leaving the spectator view must preserve seats and departure status.
+        const seats = participants => participants.map(player => ({ id: player.id, user_id: player.user_id,
+          is_cpu: player.is_cpu, connected: player.connected, withdrawn: player.withdrawn, departed: player.departed }));
+        expect(previous.participants.length).toBeGreaterThan(0);
+        expect(seats(current.participants)).toEqual(seats(previous.participants));
+        expect(current.started).toBe(previous.started); expect(current.finished).toBe(previous.finished);
+        expect(current.aborted).toBe(previous.aborted);
+        await expect(page).toHaveURL(app.room);
+      } finally { await watcherContext.close(); }
+    });
+  }
+}

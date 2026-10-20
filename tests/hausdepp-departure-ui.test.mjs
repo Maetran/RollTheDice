@@ -33,25 +33,25 @@ class Element extends EventTarget {
   click() { if (!this.disabled) this.dispatchEvent(new Event("click")); }
 }
 
-function setup(language = "de") {
-  const body = new Element(), handControls = new Element(), result = new Element(), account = new Element();
+function setup(language = "de", initialState = {}) {
+  const body = new Element(), handControls = new Element(), spectatorControls = new Element(), result = new Element(), account = new Element();
   account.account = true; result.append(account);
   globalThis.document = { body, createElement: () => new Element(),
     querySelector: () => result };
   const state = { connected: true, busy: false, spectating: false, version: 7,
-    permissions: { can_leave: true, forfeits_round: true, ends_tournament_participation: false } };
+    permissions: { can_leave: true, forfeits_round: true, ends_tournament_participation: false }, ...initialState };
   const prompts = [], requests = [], pending = [], timers = new Map();
   let timerId = 0;
   let confirm = true, sendOk = true, left = 0;
-  const ui = mountHausdeppDepartureUI({ t: key => HAUSDEPP_MESSAGES[language][key] || key, handControls,
+  const ui = mountHausdeppDepartureUI({ t: key => HAUSDEPP_MESSAGES[language][key] || key, handControls, spectatorControls,
     getState: () => state, confirm(message) { prompts.push(message); return confirm; },
     send(message) { requests.push(message); return sendOk; }, onLeft() { left++; },
     onPendingChange(value) { state.busy = value; pending.push(value); },
     setTimeout(callback) { const id = ++timerId; timers.set(id, callback); return id; },
     clearTimeout(id) { timers.delete(id); },
   });
-  return { ui, body, state, prompts, requests, pending, handControls, result, timers,
-    button: handControls.children[0], resultButton: result.children[0], notice: body.children[0],
+  return { ui, body, state, prompts, requests, pending, handControls, spectatorControls, result, timers,
+    button: handControls.children[0] || spectatorControls.children[0], resultButton: result.children[0], notice: body.children[0],
     setConfirm(value) { confirm = value; }, setSendOk(value) { sendOk = value; }, get left() { return left; } };
 }
 
@@ -101,10 +101,58 @@ test("lost connection and missing permissions never navigate or silently submit 
   assert.equal(app.notice.textContent, HAUSDEPP_MESSAGES.de.departureConnectionLost);
   app.state.connected = true; app.state.permissions.can_leave = false; app.ui.render();
   assert.equal(app.button.hidden, true); app.button.click(); assert.equal(app.requests.length, 1);
-  app.state.permissions.can_leave = true; app.state.spectating = true; app.ui.render();
-  assert.equal(app.button.hidden, true); app.button.click(); assert.equal(app.requests.length, 1);
   app.ui.destroy(); app.ui.destroy();
   assert.equal(app.handControls.children.length, 0); assert.equal(app.result.children.length, 1);
+});
+
+for (const language of ["de", "en"]) {
+  for (const phase of ["connecting", "waiting", "peeking", "playing", "paused", "finished", "aborted", "disconnected"]) {
+    test(`${language}: spectators can leave ${phase} immediately without gameplay permission or a game action`, () => {
+      const app = setup(language, { spectating: true, phase, connected: !["connecting", "disconnected"].includes(phase),
+        busy: true, version: undefined, permissions: undefined });
+      app.setConfirm(false);
+      assert.equal(app.button.hidden, false);
+      assert.equal(app.button.disabled, false);
+      assert.equal(app.button.getAttribute("aria-label"), HAUSDEPP_MESSAGES[language].departureTable);
+      assert.equal(app.button.getAttribute("aria-busy"), "false");
+      assert.deepEqual(app.handControls.children, []);
+      assert.deepEqual(app.spectatorControls.children, [app.button]);
+      app.button.click(); app.button.click(); app.resultButton.click();
+      assert.equal(app.left, 1);
+      assert.deepEqual(app.prompts, []);
+      assert.deepEqual(app.requests, []);
+      assert.deepEqual(app.pending, []);
+      assert.equal(app.timers.size, 0);
+      app.ui.destroy();
+      assert.deepEqual(app.spectatorControls.children, []);
+    });
+  }
+  test(`${language}: spectator result exit stays local even when tournament departure permissions are present`, () => {
+    const app = setup(language, { spectating: true, connected: false, busy: true,
+      permissions: { can_leave: false, forfeits_round: true, ends_tournament_participation: true } });
+    assert.equal(app.resultButton.hidden, false);
+    assert.equal(app.resultButton.disabled, false);
+    assert.equal(app.resultButton.textContent, HAUSDEPP_MESSAGES[language].departureTable);
+    app.resultButton.click();
+    assert.equal(app.left, 1);
+    assert.deepEqual(app.requests, []);
+    assert.deepEqual(app.prompts, []);
+    app.ui.destroy();
+  });
+}
+
+test("the same exit follows a role change without moving a participant's hand controls", () => {
+  const app = setup();
+  app.state.spectating = true; app.ui.render();
+  assert.deepEqual(app.handControls.children, []);
+  assert.deepEqual(app.spectatorControls.children, [app.button]);
+  app.state.spectating = false; app.ui.render();
+  assert.deepEqual(app.spectatorControls.children, []);
+  assert.deepEqual(app.handControls.children, [app.button]);
+  app.button.click();
+  assert.deepEqual(app.requests, [{ action: "hausdepp_leave_game", version: 7 }]);
+  assert.equal(app.left, 0);
+  app.ui.destroy();
 });
 
 test("an unconfirmed departure has a bounded wait and only an explicit retry sends again", () => {

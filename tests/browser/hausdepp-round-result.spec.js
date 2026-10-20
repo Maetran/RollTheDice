@@ -266,7 +266,7 @@ for (const language of ['de', 'en']) {
 
 test('spectators see the public round result without requesting private account progress', async ({ page }) => {
   const fixture = await setup(page);
-  await finishedRenderer(page, fixture, { spectator: true });
+  const rendered = await finishedRenderer(page, fixture, { spectator: true });
   const result = page.locator('#hausdeppResult');
   await expect(result.locator('.hd-result-places')).toBeVisible();
   await expect(result.locator('h2')).toContainText('Rosi');
@@ -274,6 +274,12 @@ test('spectators see the public round result without requesting private account 
   await expect(result.locator('.hd-round-earned')).toHaveCount(0);
   await expect(page.locator('#hausdeppRecreate, #hausdeppNextRound')).toHaveCount(0);
   expect(fixture.accountReads()).toBe(0);
+  const leave = page.locator('#hausdeppLeaveGameResult');
+  await expect(leave).toHaveAccessibleName('Tisch verlassen');
+  await expect(leave).toBeEnabled();
+  await leave.click();
+  await expect(page).toHaveURL(url => url.pathname === '/hausdepp');
+  expect(rendered.sent).toEqual([]);
 });
 
 test('equal XP and achievements only acknowledge the currently displayed round source', async ({ page }) => {

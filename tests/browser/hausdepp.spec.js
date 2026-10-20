@@ -434,6 +434,21 @@ async function playLegalHandCard(page, traffic) {
   throw new Error('The real game did not offer a legal hand play in twelve turns.');
 }
 
+// The same strict geometry contract covers normal tables, rare docks and
+// spectator exits, including the real fan of privately known stock cards.
+function seatCrowding() {
+  const meets = (a, b) => Math.min(a.right, b.right) - Math.max(a.left, b.left) > 1 && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 1;
+  const seats = [...document.querySelectorAll('.hd-seat')];
+  const plates = seats.map(seat => seat.querySelector('.hd-seat-plate').getBoundingClientRect());
+  const stacks = [...document.querySelectorAll('#hausdeppStock, #hausdeppStock .hd-stock-card, #hausdeppPile, #hausdeppPile .hausdepp-card, .hd-known-bottom-cards:not([hidden]) .hausdepp-card')]
+    .map(node => node.getBoundingClientRect());
+  const fans = seats.map(seat => [...seat.querySelectorAll('.hd-opponent-card, .hd-seat-avatar')].map(node => node.getBoundingClientRect()));
+  return { overlaps: plates.flatMap((a, i) => plates.slice(i + 1).filter(b => meets(a, b)).map(() => i)),
+    stacks: plates.filter(plate => stacks.some(stack => meets(plate, stack))).length,
+    fans: plates.filter((plate, i) => fans.some((fan, j) => i !== j && fan.some(card => meets(plate, card)))).length,
+    outside: plates.filter(rect => rect.left < 0 || rect.right > innerWidth).length };
+}
+
 function labelledUiFixture(scoreboard, name, hand) {
   // Renderer-only evidence. Real authority/privacy/rules use the live game
   // flows above and the backend's two-account transport tests.
@@ -449,13 +464,14 @@ function labelledUiFixture(scoreboard, name, hand) {
   fixture._turn = { player_id: viewerId };
   fixture._chat_history = [];
   fixture._paused = false;
+  fixture._hausdepp_table_surprises = { round_number: 1, effect: null };
   fixture._hausdepp = {
     ...fixture._hausdepp, phase: 'playing', current_player_id: viewerId, dealer_id: cpu.id, hand,
     players: [{ ...viewer, hand_count: hand.length, finished: false }, { ...cpu, hand_count: 1, finished: false }],
     discard: [], deck_count: 0, burned_count: 0, pending_refill: null, pending_refills: [], afterthrow: null,
     available_actions: ['play'], playable_cards: hand, finished_order: [], loser_id: null,
     draw_required: false, draw_urgent: false, stock_blocked_by: null, deal: null,
-    peek: { player_id: viewerId, success: false, complete: true }, private_peek: [],
+    peek: { player_id: viewerId, success: false, complete: true }, private_peek: [], private_peek_in_stock: [],
     peek_information: { player_id: viewerId, success: false, complete: true, cards: [] },
     last_event: { type: 'round_started' },
   };
@@ -474,8 +490,9 @@ async function installUiFixture(page, room, initial, onCommand) {
     socket.onMessage(raw => {
       const message = JSON.parse(String(raw));
       if (handleDisabledHausdeppVoice(socket, message)) return;
-      if (message.action === 'join_game') {
-        socket.send(JSON.stringify({ player_id: fixture._hausdepp.viewer_id, scoreboard: fixture }));
+      if (['join_game', 'spectate_game'].includes(message.action)) {
+        socket.send(JSON.stringify({ ...(message.action === 'spectate_game'
+          ? { spectator_id: 'labelled-ui-spectator', spectator: true } : { player_id: fixture._hausdepp.viewer_id }), scoreboard: fixture }));
       } else {
         commands.push(message);
         onCommand?.({ message, socket, fixture });
@@ -935,18 +952,7 @@ test('labelled UI fixture: the table never fades its stacks, lights up only what
     mocked.setSnapshot(six);
     await page.goto(room);
     await expect(page.locator('.hd-seat-plate')).toHaveCount(5);
-    const crowding = await page.evaluate(() => {
-      const meets = (a, b) => Math.min(a.right, b.right) - Math.max(a.left, b.left) > 1 && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 1;
-      const seats = [...document.querySelectorAll('.hd-seat')];
-      const plates = seats.map(seat => seat.querySelector('.hd-seat-plate').getBoundingClientRect());
-      const stacks = [...document.querySelectorAll('#hausdeppStock, #hausdeppPile, .hd-known-bottom-cards:not([hidden]) .hausdepp-card')]
-        .map(node => node.getBoundingClientRect());
-      const fans = seats.map(seat => [...seat.querySelectorAll('.hd-opponent-card, .hd-seat-avatar')].map(node => node.getBoundingClientRect()));
-      return { overlaps: plates.flatMap((a, i) => plates.slice(i + 1).filter(b => meets(a, b)).map(() => i)),
-        stacks: plates.filter(plate => stacks.some(stack => meets(plate, stack))).length,
-        fans: plates.filter((plate, i) => fans.some((fan, j) => i !== j && fan.some(card => meets(plate, card)))).length,
-        outside: plates.filter(rect => rect.left < 0 || rect.right > innerWidth).length };
-    });
+    const crowding = await page.evaluate(seatCrowding);
     expect(crowding, `${width}×${height}: seat plates stay apart, uncovered and on screen`).toEqual({ overlaps: [], stacks: 0, fans: 0, outside: 0 });
     await expect(page.locator('.hd-seat[data-player-id="cpu-x2"]')).toHaveAttribute('aria-label', /5 Karten/);
   }
@@ -978,6 +984,84 @@ test('labelled UI fixture: the table never fades its stacks, lights up only what
   await expect.poll(() => mocked.commands.filter(command => command.action === 'hausdepp_draw').length).toBe(1);
   expect(await ring('#hausdeppStock')).toBe('none');
 });
+
+for (const spectator of [false, true]) {
+  test(`labelled UI fixture: crowded phones keep ${spectator ? 'six spectator seats and their exit' : 'rare docks and known stock cards'} clear`, async ({ page }, testInfo) => {
+    test.setTimeout(60000);
+    await ownerSession(page);
+    const traffic = watchGame(page);
+    const room = await createCpuTable(page, traffic);
+    const base = labelledUiFixture(traffic.scoreboard, 'Sechs Plätze auf kleinem Display', ['hearts-U', 'bells-A', 'leaves-9']);
+    const viewer = base._hausdepp.players.find(player => !player.is_cpu);
+    const cpu = base._hausdepp.players.find(player => player.is_cpu);
+    const seatedViewer = base._participants.find(player => !player.is_cpu);
+    const seatedCpu = base._participants.find(player => player.is_cpu);
+    const names = ['Vroni', 'Alois', 'Franziska-Maria', 'Sepp', 'Burgl'];
+    base._hausdepp.players = [viewer, ...names.map((name, index) => ({ ...cpu, id: `ui-crowd-${index}`, name, hand_count: 3 + index }))];
+    base._participants = [seatedViewer, ...names.map((name, index) => ({ ...seatedCpu, id: `ui-crowd-${index}`, name, hand_count: 3 + index }))];
+    Object.assign(base, { _mode: '6', _expected: 6, _hausdepp_tournament: null });
+    Object.assign(base._hausdepp, { current_player_id: 'ui-crowd-2', discard: ['hearts-9', 'bells-9', 'acorns-9'], deck_count: 5,
+      burned_count: 0, available_actions: [], playable_cards: [] });
+    if (spectator) Object.assign(base._hausdepp, { viewer_id: null, hand: [], private_peek: [], private_peek_in_stock: [] });
+    const mocked = await installUiFixture(page, room, base);
+    const knownStates = spectator ? [[]] : [[], ['bells-10'], ['hearts-A', 'leaves-A', 'bells-10']];
+    for (const clock of [false, true]) {
+      for (const known of knownStates) {
+        for (const [width, height] of [[320, 568], [390, 844], [568, 320], [740, 360], [667, 375], [844, 390]]) {
+          const fixture = structuredClone(base);
+          fixture._hausdepp_table_surprises = { round_number: 1, effect: clock ? 'clock' : null };
+          Object.assign(fixture._hausdepp, { private_peek: [...known], private_peek_in_stock: [...known],
+            peek_information: { player_id: spectator ? viewer.id : fixture._hausdepp.viewer_id, success: false, complete: true, cards: [...known] } });
+          mocked.setSnapshot(fixture);
+          await page.setViewportSize({ width, height });
+          await page.goto(`${room}${spectator ? '/zuschauen' : ''}`);
+          await expect(page.locator('.hd-seat-plate')).toHaveCount(spectator ? 6 : 5);
+          await expect(page.locator('#hausdeppPile')).toHaveAttribute('data-run', '3');
+          await expect(page.locator('#hausdeppPile .hausdepp-card')).toHaveCount(3);
+          await expect(page.locator('.hd-known-bottom-cards:not([hidden]) .hausdepp-card')).toHaveCount(known.length);
+          if (clock) await expect(page.locator('[data-prop="clock"]:visible')).toHaveCount(1);
+          if (clock && width === 320) await expect(page.locator('.hd-surprise-dock [data-prop="clock"]')).toBeVisible();
+          await page.evaluate(() => document.fonts.ready);
+          const label = `${spectator ? 'spectator' : 'participant'} ${width}×${height}, clock=${clock}, known=${known.length}`;
+          expect(await page.evaluate(seatCrowding), label).toEqual({ overlaps: [], stacks: 0, fans: 0, outside: 0 });
+          const paintedBounds = await page.evaluate(() => {
+            const box = rect => ({ left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom });
+            const stacks = [...document.querySelectorAll('#hausdeppStock, #hausdeppStock .hd-stock-card, #hausdeppPile, #hausdeppPile .hausdepp-card')]
+              .map(node => ({ name: node.id || node.className, ...box(node.getBoundingClientRect()) }));
+            const captions = [...document.querySelectorAll('#hausdeppStockAction, #hausdeppStockCount, #hausdeppPileAction, #hausdeppPileCount')]
+              .filter(node => node.textContent.trim() && node.getClientRects().length && getComputedStyle(node).visibility !== 'hidden')
+              .map(node => {
+                const range = document.createRange(); range.selectNodeContents(node);
+                return { name: node.id, ...box(range.getBoundingClientRect()) };
+              });
+            return { stacks, captions, headerBottom: document.querySelector('.hd-header').getBoundingClientRect().bottom };
+          });
+          expect(paintedBounds.captions.length, label).toBeGreaterThan(0);
+          for (const bounds of [...paintedBounds.stacks, ...paintedBounds.captions]) {
+            expect(bounds.left, `${label} ${bounds.name}: left`).toBeGreaterThanOrEqual(0);
+            expect(bounds.right, `${label} ${bounds.name}: right`).toBeLessThanOrEqual(width);
+            expect(bounds.top, `${label} ${bounds.name}: below header`).toBeGreaterThanOrEqual(paintedBounds.headerBottom);
+            expect(bounds.bottom, `${label} ${bounds.name}: inside viewport`).toBeLessThanOrEqual(height);
+          }
+          if (spectator) {
+            const exit = page.locator('#hausdeppLeaveGame');
+            await expect(exit).toHaveAccessibleName('Tisch verlassen');
+            await expect(exit).toBeEnabled();
+            const target = await exit.boundingBox(), header = await page.locator('.hd-header').boundingBox();
+            expect(target.width, label).toBeGreaterThanOrEqual(44); expect(target.height, label).toBeGreaterThanOrEqual(44);
+            expect(target.y, label).toBeGreaterThanOrEqual(header.y + header.height);
+            expect(target.y + target.height, label).toBeLessThanOrEqual(height);
+            await exit.click({ trial: true });
+          }
+          if (clock && known.length === 0 && [320, 568].includes(width)) await page.screenshot({
+            path: testInfo.outputPath(`${spectator ? 'spectator' : 'participant'}-44px-heading-${width}x${height}.png`),
+          });
+        }
+      }
+    }
+    expect(mocked.commands).toEqual([]);
+  });
+}
 
 for (const [name, viewport, firstActor, firstType] of [
   ['phone', { width: 390, height: 844 }, 'own', 'play'],
