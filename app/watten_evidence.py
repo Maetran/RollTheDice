@@ -1,6 +1,7 @@
 """Secret-free, immutable match evidence; no grants, database or runtime reads.
 
-The existing result-v1 payload remains unchanged. Its missing profile, start and
+The existing result-v1 payload accepts an optional public Retourschneider
+decision; older payloads remain valid. Its missing profile, start and
 bid observations are UNKNOWN, never defaults or proof that something did not
 happen. A future producer may supply the separate public-match contract below.
 Validation proves internal consistency, not provenance: callers must obtain
@@ -16,7 +17,16 @@ from datetime import datetime, timedelta, timezone
 from enum import StrEnum
 from zoneinfo import ZoneInfo
 
-from .watten_bidding import BidState, DealParties, DealResult, ScoreAccount, ScoreLedger, award_deal
+from .watten_bidding import (
+    BidState,
+    DealParties,
+    DealResult,
+    Retourschneider,
+    ScoreAccount,
+    ScoreLedger,
+    award_deal,
+    choose_retourschneider,
+)
 from .watten_recipe import WATTEN_RULESET_ID, WATTEN_RULESET_VERSION, WattenRecipe, dumps_canonical_json
 
 EVIDENCE_SCHEMA_VERSION = 1
@@ -50,8 +60,9 @@ def _text(value: object, maximum=64) -> bool:
     return type(value) is str and bool(value.strip()) and len(value) <= maximum
 
 
-def _fields(raw: object, names: str) -> dict:
-    _require(type(raw) is dict and set(raw) == set(names.split()))
+def _fields(raw: object, names: str, optional: frozenset[str] = frozenset()) -> dict:
+    required = set(names.split())
+    _require(type(raw) is dict and required <= set(raw) and not (set(raw) - required - optional))
     return raw
 
 
@@ -150,16 +161,19 @@ class PlayerBids:
 class BidEvidence:
     complete: bool = False
     players: tuple[PlayerBids, ...] = ()
+    discarded_bid_increases: int = 0
 
     def __post_init__(self):
         _require(type(self.complete) is bool and type(self.players) is tuple
                  and all(type(item) is PlayerBids for item in self.players)
                  and len({item.player_id for item in self.players}) == len(self.players)
-                 and (self.complete or not self.players))
+                 and _integer(self.discarded_bid_increases)
+                 and (self.complete or (not self.players and self.discarded_bid_increases == 0)))
 
 
 def _validate_scoring(roster: tuple[Participant, ...], target: int, scores: tuple[Score, ...],
-                      winners: tuple[tuple[str, ...], ...], deals: tuple[Deal, ...]) -> None:
+                      winners: tuple[tuple[str, ...], ...], deals: tuple[Deal, ...],
+                      retourschneider: Retourschneider | None = None) -> None:
     seats = tuple(player.player_id for player in roster)
     count = len(seats)
     accounts = tuple(ScoreAccount(item.members, 0) for item in scores)
@@ -191,6 +205,10 @@ def _validate_scoring(roster: tuple[Participant, ...], target: int, scores: tupl
                          last_offering_party=item.winning_party if item.reason == "go" or item.points > 2 else None,
                          result=result)
         ledger = award_deal(ledger, state)
+        if retourschneider is not None and item.deal_id == retourschneider.after_deal_id:
+            ledger = choose_retourschneider(ledger, retourschneider.members, accept=retourschneider.accepted)
+            _require(ledger.retourschneider == retourschneider)
+    _require(ledger.retourschneider == retourschneider)
     _require(tuple((item.members, item.points) for item in ledger.accounts)
              == tuple((item.members, item.points) for item in scores))
     _require(bool(ledger.winners) and winners == ledger.winners)
@@ -210,6 +228,7 @@ class MatchEvidence:
     profile: PublicProfile | Unknown = UNKNOWN
     started_at: datetime | Unknown = UNKNOWN
     bids: BidEvidence = BidEvidence()
+    retourschneider: Retourschneider | None = None
 
     def __post_init__(self):
         _require(_text(self.game_id) and type(self.source) is str and self.source in {"result_v1", "public_match_v1"}
@@ -222,7 +241,8 @@ class MatchEvidence:
                  and type(self.scores) is tuple and all(type(item) is Score for item in self.scores)
                  and type(self.winners) is tuple and all(type(item) is tuple for item in self.winners)
                  and type(self.deals) is tuple and bool(self.deals) and all(type(item) is Deal for item in self.deals)
-                 and type(self.bids) is BidEvidence)
+                 and type(self.bids) is BidEvidence
+                 and (self.retourschneider is None or type(self.retourschneider) is Retourschneider))
         object.__setattr__(self, "finished_at", _utc(self.finished_at))
         if self.started_at is not UNKNOWN:
             start = _utc(self.started_at)
@@ -244,7 +264,7 @@ class MatchEvidence:
         else:
             _require(type(self.profile) is PublicProfile and self.started_at is not UNKNOWN)
         try:
-            _validate_scoring(self.roster, self.target_points, self.scores, self.winners, self.deals)
+            _validate_scoring(self.roster, self.target_points, self.scores, self.winners, self.deals, self.retourschneider)
         except ValueError as exc:
             raise WattenEvidenceError() from exc
         if self.bids.complete:
@@ -255,7 +275,7 @@ class MatchEvidence:
                      == sum(item.held + item.went for item in self.bids.players))
             _require(sum(item.went for item in self.bids.players) == sum(item.reason == "go" for item in self.deals))
             _require(sum(item.held + item.countered for item in self.bids.players)
-                     == sum(item.points - 2 for item in self.deals))
+                     == sum(item.points - 2 for item in self.deals) + self.bids.discarded_bid_increases)
 
     @property
     def play_day(self) -> str:
@@ -274,12 +294,24 @@ def _deal(raw: object) -> Deal:
                 item["winning_party"], item["points"], item["reason"])
 
 
+def _retourschneider(raw: object) -> Retourschneider | None:
+    if raw is None:
+        return None
+    item = _fields(raw, "members after_deal_id erased_points accepted")
+    return Retourschneider(tuple(_items(item["members"])), item["after_deal_id"], item["erased_points"], item["accepted"])
+
+
+def _retourschneider_payload(choice: Retourschneider) -> dict:
+    return {"members": list(choice.members), "after_deal_id": choice.after_deal_id,
+            "erased_points": choice.erased_points, "accepted": choice.accepted}
+
+
 def validate_result_v1(payload: object) -> dict:
     """Validate and copy exactly the writer-v1 shape, adding/removing no fields."""
     raw = _fields(payload, "kind schema_version game_type game_id match participants")
     _require(raw["kind"] == "watten_result" and type(raw["schema_version"]) is int and raw["schema_version"] == 1
              and raw["game_type"] == "watten")
-    match = _fields(raw["match"], "target_points scores winners deals")
+    match = _fields(raw["match"], "target_points scores winners deals", frozenset({"retourschneider"}))
     roster = []
     for seat, value in enumerate(_items(raw["participants"])):
         item = _fields(value, "id name is_cpu")
@@ -287,7 +319,8 @@ def validate_result_v1(payload: object) -> dict:
     MatchEvidence(raw["game_id"], "result_v1", len(roster), match["target_points"], tuple(roster),
                   tuple(_score(item) for item in _items(match["scores"])),
                   tuple(tuple(_items(item)) for item in _items(match["winners"])),
-                  tuple(_deal(item) for item in _items(match["deals"])), datetime(2000, 1, 1, tzinfo=timezone.utc))
+                  tuple(_deal(item) for item in _items(match["deals"])), datetime(2000, 1, 1, tzinfo=timezone.utc),
+                  retourschneider=_retourschneider(match.get("retourschneider")))
     return deepcopy(raw)
 
 
@@ -304,13 +337,14 @@ def adapt_result_v1(payload: object, *, finished_at: datetime) -> MatchEvidence:
                                for seat, item in enumerate(raw["participants"])),
                          tuple(_score(item) for item in match["scores"]),
                          tuple(tuple(item) for item in match["winners"]),
-                         tuple(_deal(item) for item in match["deals"]), finished_at)
+                         tuple(_deal(item) for item in match["deals"]), finished_at,
+                         retourschneider=_retourschneider(match.get("retourschneider")))
 
 
 def evidence_to_payload(evidence: MatchEvidence) -> dict:
     _require(type(evidence) is MatchEvidence)
     profile = evidence.profile
-    return {
+    payload = {
         "kind": "watten_match_evidence", "schema_version": EVIDENCE_SCHEMA_VERSION, "game_type": "watten",
         "game_id": evidence.game_id, "source": evidence.source, "player_count": evidence.player_count,
         "target_points": evidence.target_points,
@@ -332,11 +366,16 @@ def evidence_to_payload(evidence: MatchEvidence) -> dict:
                  "players": [{"id": item.player_id, "initiated": item.initiated, "countered": item.countered,
                               "held": item.held, "went": item.went} for item in evidence.bids.players]},
     }
+    if evidence.retourschneider is not None:
+        payload["retourschneider"] = _retourschneider_payload(evidence.retourschneider)
+    if evidence.bids.discarded_bid_increases:
+        payload["bids"]["discarded_bid_increases"] = evidence.bids.discarded_bid_increases
+    return payload
 
 
 def evidence_from_payload(payload: object) -> MatchEvidence:
     raw = _fields(payload, "kind schema_version game_type game_id source player_count target_points roster scores winners deals "
-                  "finished_at started_at play_day play_day_zone profile bids")
+                  "finished_at started_at play_day play_day_zone profile bids", frozenset({"retourschneider"}))
     _require(raw["kind"] == "watten_match_evidence" and type(raw["schema_version"]) is int
              and raw["schema_version"] == EVIDENCE_SCHEMA_VERSION and raw["game_type"] == "watten"
              and raw["play_day_zone"] == PLAY_DAY_ZONE)
@@ -349,7 +388,7 @@ def evidence_from_payload(payload: object) -> MatchEvidence:
         item = _fields(raw["profile"], "ruleset_id ruleset_version determination blind critical show_rechter trick_history partner_hand")
         profile = PublicProfile(item["ruleset_id"], item["ruleset_version"], item["determination"], item["blind"],
                                 item["critical"], item["show_rechter"], item["trick_history"], item["partner_hand"])
-    bids = _fields(raw["bids"], "completeness players")
+    bids = _fields(raw["bids"], "completeness players", frozenset({"discarded_bid_increases"}))
     _require(type(bids["completeness"]) is str and bids["completeness"] in {"complete", UNKNOWN.value})
     players = []
     for value in _items(bids["players"]):
@@ -360,7 +399,8 @@ def evidence_from_payload(payload: object) -> MatchEvidence:
                              tuple(tuple(_items(item)) for item in _items(raw["winners"])),
                              tuple(_deal(item) for item in _items(raw["deals"])), _timestamp(raw["finished_at"]), profile,
                              UNKNOWN if raw["started_at"] == UNKNOWN.value else _timestamp(raw["started_at"]),
-                             BidEvidence(bids["completeness"] == "complete", tuple(players)))
+                             BidEvidence(bids["completeness"] == "complete", tuple(players), bids.get("discarded_bid_increases", 0)),
+                             _retourschneider(raw.get("retourschneider")))
     _require(type(raw["play_day"]) is str and raw["play_day"] == evidence.play_day)
     return evidence
 

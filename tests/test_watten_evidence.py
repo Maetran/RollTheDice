@@ -13,6 +13,7 @@ from sqlalchemy import select
 from app.database import session_scope
 from app.game_state import games
 from app.models import CompletedGame, User
+from app.watten_bidding import retourschneider_candidate
 from app.watten_engine import SeatBinding, next_deal, start_match
 from app.watten_evidence import (
     UNKNOWN,
@@ -48,6 +49,9 @@ def native_result(count_players=2, *, cpus=(), target=3):
         state = finish(ready(state))
         if state.phase == "match_complete":
             break
+        candidate = retourschneider_candidate(state.ledger)
+        if candidate is not None:
+            state = step(state, candidate[0], "retourschneider", "decline")
         state = next_deal(state, f"deal-{number + 1}", dealt(count_players))
     assert state.phase == "match_complete"
     return state, result_for(state)

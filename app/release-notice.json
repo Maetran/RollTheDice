@@ -3,27 +3,32 @@
   "games": [
     "zdwa",
     "zilch",
-    "hausdepp"
+    "hausdepp",
+    "watten"
   ],
-  "summary_de": "Einheitliche Navigation, ZDWA-Statistiken bei Spieler & Ranking und klarere Hausdepp-Ergebnisse.",
-  "summary_en": "Consistent navigation, ZDWA statistics under Players & Ranking and clearer Hausdepp results.",
+  "summary_de": "Watten ist als [BETA] für alle da: mit Freunden, CPUs, Turnieren und eigenem Bierblock.",
+  "summary_en": "Watten [BETA] is open to everyone: play with friends, CPUs, tournaments and your own pub scorepad.",
   "player_notes": {
     "de": {
-      "title": "Mehr Übersicht in der Spielesuite",
+      "title": "Watten ist da – als öffentliche Beta",
       "changes": [
-        "ALLGEMEIN: Der zweizeilige Seitenkopf zeigt Spiel, Sprache, Darstellung und Spielauswahl über der Navigation. Ausserhalb des Spieltisches bleibt er beim Scrollen sichtbar. Schnelle Seitenwechsel behalten ihr gewähltes Ziel.",
-        "ZDWA: Onlinezahl, beendete Partien und Durchschnittswerte mit Trends findest du unter Spieler & Ranking.",
-        "HAUSDEPP: Ergebniszeilen bleiben auch auf kleinen Displays lesbar. Beim Verlassen kannst du in einer passenden Bestätigung am Tisch bleiben.",
-        "WATTEN: Die private Vorschau bekommt einen festen Wirtshaustisch mit vollständigen Kartenfächern, klaren Gebotswerten und Kartenflügen zum Stichgewinner."
+        "ALLGEMEIN: Watten erscheint mit klarem [BETA]-Hinweis in der Spielauswahl.",
+        "WATTEN: Spiele blind oder offen mit zwei, drei oder vier Spielern. Freunde einladen oder freie Plätze mit CPUs auffüllen.",
+        "WATTEN: Grössere Karten, ruhige Stichrückschau und eine Bierblock-Anschrift halten den Tisch übersichtlich. Revanchen behalten Teams und Nockerl; Turniere spielen bis zu deinem Nockerlziel.",
+        "WATTEN: Schöneres, Blödeln, Schlagwechsel und Retourschneider folgen den gewählten Hausregeln. Taktische CPUs beachten ihre eigenen Informationen und den Partner.",
+        "WATTEN: Die eigene PWA auf watten.zockdiewandan.online lässt sich installieren. Globaler Sprachchat ist beim Erstellen wählbar; Konten und Tische bleiben privat.",
+        "HAUSDEPP: Beim Erstellen kannst du den Sprachchat für den Tisch ein- oder ausschalten."
       ]
     },
     "en": {
-      "title": "A clearer game suite",
+      "title": "Watten is here – in public beta",
       "changes": [
-        "ALLGEMEIN: The two-row header puts the game, language, appearance and game picker above navigation. Outside game tables it stays visible while scrolling. Quick page changes keep their chosen destination.",
-        "ZDWA: Find the online count, completed games and averages with trends under Players & Ranking.",
-        "HAUSDEPP: Round results remain readable on small screens. A matching departure confirmation lets you choose to stay at the table.",
-        "WATTEN: The private preview gains a fixed tavern table with complete card fans, clear bid values and card flights to the trick winner."
+        "ALLGEMEIN: Watten appears in the game picker with a clear [BETA] label.",
+        "WATTEN: Play blind or open with two, three or four players. Invite friends or fill empty seats with CPUs.",
+        "WATTEN: Larger cards, calm trick review and a pub scorepad keep the table clear. Rematches retain teams and loss marks; tournaments continue to your chosen loss-mark target.",
+        "WATTEN: Schöneres, Blödeln, caller swaps and Retourschneider follow your chosen house rules. Tactical CPUs use their own information and consider their partner.",
+        "WATTEN: Install the dedicated PWA at watten.zockdiewandan.online. Choose global voice chat when creating a table; accounts and tables stay private.",
+        "HAUSDEPP: Switch table voice chat on or off when creating a game."
       ]
     }
   }

@@ -35,11 +35,13 @@ from app.models import (
     WattenProgressState,
 )
 from app.security import as_utc
+from app.watten_bidding import retourschneider_candidate
 from app.watten_engine import SeatBinding, next_deal, start_match
 from app.watten_evidence import BidEvidence, PlayerBids, ProjectedBinding, adapt_result_v1, evidence_to_json
+from app.watten_progression import DRAFT_CATALOG_VERSION
 from app.watten_results import store_result_in_session
 from tests import test_watten_runtime as runtime_tests
-from tests.test_watten_engine import dealt, finish, ready, recipe
+from tests.test_watten_engine import dealt, finish, ready, recipe, step
 from tests.test_watten_evidence import FINISHED, public_evidence
 from tests.test_watten_results_migration import completed, snapshot, user
 
@@ -61,6 +63,9 @@ def game_for(owners, *, game_id="journal-match", count_players=2, cpus=()):
         state = finish(ready(state))
         if state.phase == "match_complete":
             break
+        candidate = retourschneider_candidate(state.ledger)
+        if candidate is not None:
+            state = step(state, candidate[0], "retourschneider", "decline")
         state = next_deal(state, f"proof-{number + 1}", dealt(count_players))
     assert state.phase == "match_complete"
     return {"_id": game_id, "_name": "Private DRAFT table", "_mode": str(count_players),
@@ -113,6 +118,32 @@ def test_real_writer_same_transaction_rollback_then_retry_and_new_session_are_ex
         assert evidence_to_json(evidence) == db.get(WattenMatchEvidence, row.game_id).evidence_json
         assert json.loads(db.scalars(select(WattenMatchCredit)).first().cohort_json)["profile"] == "unknown"
         assert tuple(tuple(db.execute(select(model.__table__))) for model in unrelated_models) == unrelated_before
+
+
+@pytest.mark.parametrize("fail", (False, True))
+def test_native_retourschneider_unlocks_only_successful_team_once_in_its_result_transaction(server, fail):
+    from tests.test_watten_progression import retourschneider_state
+
+    owners = [runtime_tests.account(f"NativeRetour{seat}") for seat in range(4)]
+    state = retourschneider_state(fail=fail)
+    state = replace(state, recipe=replace(state.recipe, bindings=tuple(
+        SeatBinding(player, owner[0].user_id) for player, owner in zip(state.recipe.seats, owners))), ack_cache=())
+    game = {"_id": "native-retour-result", "_name": "Verified comeback", "_mode": "4",
+            "_finished_at": FINISHED.isoformat(), "_watten": SimpleNamespace(
+                engine=state, names=tuple((player, owner[0].username) for player, owner in zip(state.recipe.seats, owners)))}
+    with session_scope() as db:
+        row, _legacy, bindings = written(db, game)
+        evidence = public_evidence(json.loads(row.snapshot_json))
+        first = journal.store_draft_match(db, row, evidence, bindings)
+        grants = tuple(db.scalars(select(WattenAchievementGrant).where(
+            WattenAchievementGrant.achievement_id == "watten_retourschneider_win")))
+        assert {grant.user_id for grant in grants} == (set() if fail else {owners[1][0].user_id, owners[3][0].user_id})
+        assert all(grant.xp == 120 and grant.catalog_version == 2 and grant.source_game_id == game["_id"] for grant in grants)
+        assert db.scalar(select(func.count()).select_from(WattenAchievementGrant).where(
+            WattenAchievementGrant.achievement_id == "watten_schneider_win")) == 0
+        repeated = journal.store_draft_match(db, row, evidence, bindings)
+        assert all(not status.new_credit and not status.new_achievement_ids for status in repeated)
+        assert [status.grant_sequence for status in repeated] == [status.grant_sequence for status in first]
 
 
 @pytest.mark.parametrize("damage", ("foreign_type", "detached", "forged_bindings", "changed_evidence", "changed_snapshot"))
@@ -270,12 +301,12 @@ def test_catalog_change_preserves_unlock_identity_price_source_and_sequence_but_
 
     def later_catalog(*args, **kwargs):
         proposal = real_evaluate(*args, **kwargs)
-        grants = tuple(replace(item, catalog_version=2, policy_version=2, xp=item.xp + 100)
+        grants = tuple(replace(item, catalog_version=DRAFT_CATALOG_VERSION + 1, policy_version=2, xp=item.xp + 100)
                        for item in proposal.achievements)
         if proposal.counters.completed >= 2:
             grants += (replace(grants[0], achievement_id="watten_new_catalog_goal", xp=47,
                                source_game_id="new-catalog-next", reached_at=FINISHED),)
-        return replace(proposal, catalog_version=2, policy_version=2, achievements=grants)
+        return replace(proposal, catalog_version=DRAFT_CATALOG_VERSION + 1, policy_version=2, achievements=grants)
 
     monkeypatch.setattr(journal, "evaluate_draft", later_catalog)
     with session_scope() as db:

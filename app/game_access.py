@@ -129,7 +129,10 @@ def public_game_access_payload(identity: AuthIdentity | None, connection=None) -
         "zilch_public": configured_zilch_access_mode() == ZILCH_ACCESS_MODE_PUBLIC,
     }
     from .watten_access import can_discover_watten
+    from .watten_readiness import watten_public_beta_enabled
 
-    if can_discover_watten(identity, connection):
+    if watten_public_beta_enabled(connection):
+        payload["watten_public"] = True
+    if identity is not None and can_discover_watten(identity, connection):
         payload["watten_preview"] = True
     return payload

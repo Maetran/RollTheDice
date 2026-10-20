@@ -165,15 +165,14 @@ def _active_progress(state: BidState, progress: DealProgress) -> None:
         raise WattenBiddingError("watten_deal_finished")
     if progress.current_player_id is not None:
         state.roles.party_of(progress.current_player_id)
-    if progress.cards_played < 1:
-        raise WattenBiddingError("watten_first_card_required")
 
 
 def bid(state: BidState, player_id: str, progress: DealProgress, *, gestrichen: frozenset[str]) -> BidState:
     """Offer three initially, or the next single point after a held offer.
 
     Opening and later unsolicited raising require this player's current card
-    opportunity. Gestrichen is checked for the initiating individual; a clear
+    opportunity, including the opening turn before any card is played once
+    calling has completed. Gestrichen is checked for the initiating individual; a clear
     three-player partner may offer even if the other partner is gestrichen.
     Pending response counters use respond() instead.
     """
@@ -237,12 +236,34 @@ class ScoreAccount:
 
 
 @dataclass(frozen=True, slots=True)
+class Retourschneider:
+    """Public, irreversible decision at the first gestrichen round boundary.
+
+    The challenging team erases its own score only after accepting. Every
+    following round must be won: one loss ends the game for two Nockerl;
+    reaching the target without a loss gives the original leaders four.
+    """
+
+    members: tuple[str, ...]
+    after_deal_id: str
+    erased_points: int
+    accepted: bool
+
+    def __post_init__(self):
+        if (not _members(self.members) or len(self.members) != 2
+                or type(self.after_deal_id) is not str or not self.after_deal_id.strip()
+                or not _integer(self.erased_points) or type(self.accepted) is not bool):
+            raise WattenBiddingError("watten_invalid_retourschneider")
+
+
+@dataclass(frozen=True, slots=True)
 class ScoreLedger:
     """Individual accounts for two/three, two team accounts for four."""
 
     target: int
     accounts: tuple[ScoreAccount, ...]
     applied_results: tuple[DealResult, ...] = ()
+    retourschneider: Retourschneider | None = None
 
     def __post_init__(self):
         if not _integer(self.target, 1) or type(self.accounts) is not tuple:
@@ -265,10 +286,82 @@ class ScoreLedger:
             if sizes == [2, 2] and {frozenset(account.members) for account in self.accounts} != {
                     frozenset(party) for party in result.roles.parties}:
                 raise WattenBiddingError("watten_score_teams_mismatch")
+        if self.retourschneider is not None:
+            choice = self.retourschneider
+            if (not isinstance(choice, Retourschneider) or sizes != [2, 2]
+                    or choice.members not in tuple(account.members for account in self.accounts)
+                    or choice.after_deal_id not in {result.deal_id for result in self.applied_results}):
+                raise WattenBiddingError("watten_invalid_retourschneider")
 
     @property
     def winners(self) -> tuple[tuple[str, ...], ...]:
         return tuple(account.members for account in self.accounts if account.points >= self.target)
+
+    @property
+    def replayed_accounts(self) -> tuple[ScoreAccount, ...]:
+        """Reconstruct public scores, including the explicitly accepted erasure."""
+        accounts = tuple(replace(account, points=0) for account in self.accounts)
+        choice = self.retourschneider
+        for index, result in enumerate(self.applied_results):
+            if any(account.points >= self.target for account in accounts):
+                raise WattenBiddingError("watten_result_after_match_end")
+            winning = set(result.roles.parties[result.winning_party])
+            accounts = tuple(replace(account, points=account.points + result.points)
+                             if set(account.members) <= winning else account for account in accounts)
+            if choice is not None and result.deal_id == choice.after_deal_id:
+                candidate = retourschneider_candidate(ScoreLedger(self.target, accounts, self.applied_results[:index + 1]))
+                if (candidate != choice.members
+                        or next(account.points for account in accounts if account.members == choice.members)
+                        != choice.erased_points):
+                    raise WattenBiddingError("watten_invalid_retourschneider")
+                if choice.accepted:
+                    accounts = tuple(replace(account, points=0) if account.members == choice.members else account
+                                     for account in accounts)
+        return accounts
+
+
+def retourschneider_candidate(ledger: ScoreLedger) -> tuple[str, ...] | None:
+    """A fixed four-player team gets one choice when opponents first cross nine.
+
+    For other targets the same confirmed gestrichen boundary is target minus
+    two. A game already won has no later comeback window.
+    """
+    if (ledger.retourschneider is not None or ledger.winners or not ledger.applied_results
+            or sorted(len(account.members) for account in ledger.accounts) != [2, 2]):
+        return None
+    latest = ledger.applied_results[-1]
+    leaders = latest.roles.parties[latest.winning_party]
+    lead = next(account for account in ledger.accounts if set(account.members) == set(leaders))
+    other = next(account for account in ledger.accounts if account is not lead)
+    boundary = ledger.target - 2
+    if lead.points >= boundary > lead.points - latest.points and other.points < boundary:
+        return other.members
+    return None
+
+
+def choose_retourschneider(ledger: ScoreLedger, members: tuple[str, ...], *, accept: bool) -> ScoreLedger:
+    if type(accept) is not bool or retourschneider_candidate(ledger) != members:
+        raise WattenBiddingError("watten_retourschneider_unavailable")
+    own = next(account for account in ledger.accounts if account.members == members)
+    choice = Retourschneider(members, ledger.applied_results[-1].deal_id, own.points, accept)
+    accounts = tuple(replace(account, points=0) if accept and account.members == members else account
+                     for account in ledger.accounts)
+    return replace(ledger, accounts=accounts, retourschneider=choice)
+
+
+def nockerl(ledger: ScoreLedger) -> tuple[tuple[tuple[str, ...], int, str], ...]:
+    """Loss marks belong to the losing accounts, never the round winner."""
+    if not ledger.winners:
+        return ()
+    choice = ledger.retourschneider
+    if choice is not None and choice.accepted:
+        succeeded = choice.members in ledger.winners
+        return tuple((account.members, 4 if succeeded else 2,
+                      "retourschneider" if succeeded else "retourschneider_failed")
+                     for account in ledger.accounts if account.members not in ledger.winners)
+    return tuple((account.members, 2 if account.points == 0 else 1,
+                  "schneider" if account.points == 0 else "loss")
+                 for account in ledger.accounts if account.members not in ledger.winners)
 
 
 def new_score_ledger(roles: DealParties, *, target: int) -> ScoreLedger:

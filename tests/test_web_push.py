@@ -16,6 +16,7 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from fastapi import HTTPException, Response
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 from starlette.requests import Request
 
 from app import main
@@ -127,6 +128,52 @@ class WebPushTestCase(unittest.TestCase):
         with session_scope() as db:
             self.assertEqual(db.query(WebPushSubscription).count(), 0)
             self.assertFalse(db.get(type(player), player.id).game_invite_push_enabled)
+
+    def test_delete_and_preferences_reject_a_changed_cookie_account_but_preserve_legacy_clients(self):
+        accounts = [create_user(name, "a-secure-password-123", must_change_password=False)
+                    for name in ("PushMountedOwner", "PushCookieOther")]
+        sessions = [login(request_for(token="none", csrf="none"), user.username, "a-secure-password-123")
+                    for user in accounts]
+        for user in accounts:
+            save_web_push_subscription(user_id=user.id,
+                payload=self.subscription(f"https://fcm.googleapis.com/fcm/send/bound-{user.id}"), product_context="zdwa")
+            update_web_push_preferences(user.id, WebPushPreferencesRequest(
+                game_invites_enabled=True, daily_reminder_enabled=True, release_notifications_enabled=True))
+
+        def snapshot():
+            with session_scope() as db:
+                return ([(user.id, user.game_invite_push_enabled, user.daily_reminder_push_enabled, user.release_push_enabled)
+                         for user in db.scalars(select(User).order_by(User.id))],
+                        [(device.id, device.user_id, device.endpoint) for device in
+                         db.scalars(select(WebPushSubscription).order_by(WebPushSubscription.id))])
+
+        origin = "https://hausdepp.zockdiewandan.online"
+        headers = {"Cookie": f"rollthedice_session={sessions[1][1]}", "Origin": origin,
+                   "X-CSRF-Token": sessions[1][0].csrf_token,
+                   "X-Push-Expected-Account-Id": str(accounts[0].id)}
+        disabled = {"game_invites_enabled": False, "daily_reminder_enabled": False,
+                    "release_notifications_enabled": False}
+        before = snapshot()
+        client = TestClient(main.app, base_url=origin)
+        self.addCleanup(client.close)
+        for operation in ("delete", "preferences"):
+            for sent_headers in (headers, list(headers.items()) + [("X-Push-Expected-Account-Id", str(accounts[0].id))]):
+                response = (client.delete("/api/web-push/subscription", headers=sent_headers) if operation == "delete"
+                            else client.put("/api/web-push/preferences", headers=sent_headers, json=disabled))
+                self.assertEqual(response.status_code, 409, response.text)
+                self.assertEqual(response.json(), {"detail": "web_push_account_changed"})
+                self.assertEqual(response.headers["Cache-Control"], "no-store")
+                self.assertEqual(snapshot(), before)
+        legacy = {key: value for key, value in headers.items() if key != "X-Push-Expected-Account-Id"}
+        accepted = client.put("/api/web-push/preferences", headers=legacy, json=disabled)
+        self.assertEqual(accepted.status_code, 200, accepted.text)
+        after = snapshot()
+        self.assertEqual(after[0][0], before[0][0])
+        self.assertEqual(after[0][1], (accounts[1].id, False, False, False))
+        self.assertEqual(after[1], before[1])
+        removed = client.delete("/api/web-push/subscription", headers=legacy)
+        self.assertEqual(removed.status_code, 200, removed.text)
+        self.assertEqual([row[1] for row in snapshot()[1]], [accounts[0].id])
 
     def test_opt_in_prompt_is_atomic_account_wide_and_requires_authentication(self) -> None:
         player = create_user("GentlePrompt", "a-secure-password-123", must_change_password=False)

@@ -39,7 +39,27 @@ criteria.
 
 ## Als Nächstes: Watten / Next game: Watten
 
-**Private Webvorschau / private web preview:** Ein eigener, standardmässig
+Öffentliche Gastgeber können im normalen Warteraum bewusst «Mitspieler benachrichtigen» wählen. Nur angemeldete Empfänger mit passender Einwilligung werden berücksichtigt; feste Revanchen bleiben davon ausgenommen. / Public hosts can explicitly notify players from a normal waiting room. Only eligible opted-in accounts are considered; fixed-roster rematches are excluded.
+
+**Öffentliche Beta / public beta:** `ROLLTHEDICE_WATTEN_PUBLIC_BETA=1` öffnet Watten
+für alle Konten unter `https://watten.zockdiewandan.online/watten`. Lobby und
+Regeln sind ohne Anmeldung lesbar, zum Spielen ist ein Konto nötig. Der
+Schalter hat Vorrang vor der älteren Founder-Vorschau und ist standardmässig aus.
+Die öffentliche Beta ermöglicht native Kontoseiten und Kontomails, Installation
+sowie freiwillige Push-Mitteilungen mit den bestehenden Kontoeinstellungen.
+`/watten` und `/watten/regeln` sind DE/EN-Suchseiten (`?lang=en`); Konto-, Tisch-
+und Ergebnisansichten bleiben `noindex`. Ein Rückrollen des Schalters schliesst
+den festen Watten-Host wieder und stoppt Watten-Push sowie CPU-Autoplay.
+
+`ROLLTHEDICE_WATTEN_PUBLIC_BETA=1` opens Watten to every account on its dedicated
+origin. Guests may read the lobby and rules; playing requires an account. This
+explicit switch defaults to off and takes precedence over the older founder
+preview. Native account pages and emails, installation and optional push use
+the existing account system. Only the DE/EN lobby and rules are indexable;
+personal pages and tables stay `noindex`. Turning the switch off restores the
+reserved-host gate and stops Watten push delivery and CPU autoplay.
+
+**Ältere private Webvorschau / older private web preview (ohne öffentliche Beta):** Ein eigener, standardmässig
 ausgeschalteter Schalter `ROLLTHEDICE_WATTEN_FOUNDER_PREVIEW` kann die Vorschau
 unter `https://zockdiewandan.online/watten` ausschliesslich für das bereits
 dauerhaft gebundene Founder-Konto öffnen. Die bestehende Suite-Anmeldung wird
@@ -82,20 +102,193 @@ Local native account settings save consent, the shared player selection and the
 invitation audience. Search keeps at most100 results visible, replacing older
 pages while retaining the selection. These settings do not activate push.
 
-**Spieltisch / game table:** Die helle Tiroler Schnitzstube hält Hand,
-Gegnerfächer, Stich und aktuelle Entscheidung auf einer festen Spielfläche.
-Während der Partie brauchst du die Seite nicht zu scrollen; Lobby und Anleitung
-bleiben normal scrollbar. Karten bewegen sich vom jeweiligen Platz zum Stich,
-der abgeschlossene Stich zum Gewinner. Dieser spielt den nächsten Stich aus.
-Ansagen und Gebotsantworten bleiben bei den Karten erreichbar. Mit reduzierter
-Bewegung erscheinen dieselben Spielzustände ohne Kartenflüge.
+**Lobby und Erstellung / lobby and creation:** Die kompakte Lobby öffnet die
+Spieleinstellungen in einem Dialog wie Hausdepp. 50 eigene Rundennamen werden
+mit dem Benutzernamen kombiniert. Freie Sitze lassen sich mit CPUs auffüllen;
+ein optionales Passwort aktiviert den Schutz. Favoriten speichern Einstellungen,
+keine Passwörter. Die Teambildung bleibt bewusst im Warteraum.
+The compact lobby opens settings in a dialog like Hausdepp. Fifty original round
+names combine with the username. CPU fill is optional; a nonempty password
+protects the table. Favorites save settings, never passwords. Teams are chosen
+in the waiting room.
 
-The light Tyrolean carved-wood table keeps your hand, opponents' fans, the
-trick and the current decision on one fixed play surface. The active game needs
-no page scrolling; the lobby and rules retain normal scrolling. Cards move from
-their seat to the trick, and the completed trick moves to its winner, who leads
-the next trick. Calls and bid responses remain reachable beside the cards.
-Reduced motion shows the same game states without card flights.
+**Spieltisch / game table:** Mobile zuerst: die helle Tiroler Schnitzstube bleibt
+mit grösseren Schnitzecken sichtbar. Vor dem Aufdecken erscheint kein leerer
+Handkartenfächer. Bei der ladinischen Ansage werden die beiden zulässigen Karten
+von den Ansagenden flach aufeinander geschoben, bis sich auf halbem Weg ihre
+kurzen Kopfkanten treffen, mit Schlag/Farbe
+darunter. Teamstand, Stichzahl und gemeinsames Ziel stehen oben.
+«Mir» ist immer deine Seite, «Dir» die gegnerische; Zuschauer sehen
+die neutralen Teamnamen. Karten- und Teamzeilen unter den Namen entfallen.
+Der dauernde Zug-Hinweis entfällt. Abgeschlossene Stiche bleiben
+rund drei Sekunden sichtbar, mit Siegerrahmen und Spielernamen. Der letzte Stich
+kann lokal erneut angesehen werden, im unteren Aktionsbereich oberhalb der
+Gebotsentscheidung. Gegnerische Karten und Stichpakete sind grösser. Die kompaktere
+Rückschau lässt sich dauerhaft einblenden. Nach Rundenende zeigt sie alle bis zu
+fünf Stiche; Schlag, Farbe und der Rechte werden dann für alle aufgedeckt.
+Gewonnene Stichpakete bleiben pro Spieler direkt neben seinem Namen sichtbar.
+Das Kreuz schliesst die Rückschau und löst ihre Anheftung; ungepinnt schliesst
+sie auch beim Antippen ausserhalb.
+Ansager sind am Spielernamen mit «Schlag» oder «Farbe» markiert. «Danke!» bleibt
+höchstens bis zum Abschluss des ersten Stichs sichtbar. Einsatz und Bieten stehen
+unten bei den eigenen Karten. Auf Desktop bleibt der eigene Fächer mittig;
+im Tablet-Querformat sitzt der Aktionsbereich darüber. Stichgewinne sind für die
+eigene Seite grün, für die andere rot markiert. Ein gegnerisches Gebot fragt beide
+angebotenen Partner einmal privat nach ihrem Gefühl; die Auswahl schliesst den
+Dialog, die Antwort geht nur an den Partner.
+Nach vollständiger Ansage oder abgeschlossenem Einschauen darf am eigenen
+Kartenzug schon vor der ersten Karte geboten werden. Ein nach Halten vereinbartes
+Schöneres bleibt bis zur ersten Karte möglich und setzt den Einsatz auf zwei zurück.
+Mobile first: the light Tyrolean carved table keeps its larger corners visible.
+No empty hand appears before cards are revealed. Ladinisch cards slide flat from
+their callers until their short top edges meet halfway, labelled Strike and Trump suit. Scores,
+trick counts and one shared target sit above the table. “Us” always means your side,
+“Them” the other side; spectators see neutral team names. Card-count and team
+labels below player names are removed. Completed tricks stay for
+about three seconds with a winner outline and player names; the last trick can
+be reviewed locally, in the lower action area above any bid decision. Desktop
+centre cards, opponent hands and captured piles are larger. The compact review
+can stay pinned open. After each round, everyone can review up to five tricks
+and see the strike, trump suit and Rechter. Every player keeps their won trick
+packets beside their name. The close button also unpins the review; when
+unpinned, tapping outside closes it. Announcers are labelled beside their
+names; “Thanks!” disappears when the first trick is complete. The stake and
+raising control sit below, beside your cards. Your desktop hand stays centred;
+landscape tablets place the action area above it. Trick wins are green for your side
+and red for the other side. Only receiving an opposing bid opens a private feeling
+prompt for both partners; answering closes it and informs only the partner.
+Once calling or inspection is complete, the player on their card turn may bid
+before the first card. An agreed redeal after holding remains possible until
+the first card and resets the stake to two.
+Der Spielabschluss stellt Sieg oder Niederlage in den Mittelpunkt; die Nockerl
+bleiben als kleine Kugelschreiberzeichen oben beim Teamstand sichtbar.
+Ansage und Stichverlauf bleiben aufklappbar, Revanche und Lobby direkt erreichbar;
+Kontofortschritt steht daneben zurückhaltend bereit.
+The result puts victory or defeat first; subtle pen-style loss marks remain
+beside the header score. The call and trick
+history remain available to open, with rematch and lobby within reach and
+account progress shown as a secondary link.
+
+**Vor dem Ausspielen / before play:** «Schöneres erlauben» ist eine eigene,
+standardmässig ausgeschaltete Tischoption für zwei oder vier Spieler. Bis zur
+ersten ausgespielten Karte können die beiden Ansagenden zustimmen, auch nach dem
+Einschauen: Ihre bisherigen Blätter werden mit dem Reststapel gemischt und beide
+bekommen je fünf neue Karten; andere Blätter bleiben gleich. Das ist mit erneuter
+beidseitiger Zustimmung wiederholbar. Bei normaler offener Ansage zu zweit oder
+viert können beide vor der Ansage Schlag und Farbe tauschen; Vorhand bleibt.
+Beim blinden Vierer können die beiden Nicht-Einschauer gemeinsam «Blödeln» wählen:
+Ihre ursprünglichen untersten Karten werden für alle aufgedeckt und müssen im
+ersten Stich gespielt werden, auch wenn eine andere Farbe ausgespielt wurde.
+“Allow a redeal” is a separate table option for two or four players, off by
+default. Until the first card is played, both callers may agree, including after
+inspection: their old hands are shuffled into the remaining stock, then each
+gets five new cards. Other hands stay the same. They may repeat this by agreeing
+again. In normal open two- or four-player games, the callers can agree to swap
+strike and suit before the announcement; the opening player stays the same.
+In blind four-player games, both non-lookers may agree to “Blödeln”: their original
+bottom cards are revealed to everyone and must be played in the first trick,
+even when a different suit is led.
+
+**Tischdeko / table decorations:** Getränke, Snacks und Dekowürfel liegen frei
+auf dem Tisch. Antippen benutzt sie, Ziehen oder Pfeiltasten verschieben sie.
+Desktop-Deko ist grösser. Deko-Ecke, Stern und Kontextmenüs entfallen vollständig;
+die Gegenstände werden direkt bedient, Spielbereiche bleiben frei.
+Acht seltene Überraschungen können gemeinsam auftreten. Auslösung und Miterleben
+werden serverseitig einmal je Runde belegt und erst mit dem gültig abgeschlossenen
+Spiel als Erfolge verbucht; mindestens zwei Menschen müssen verbunden mitspielen.
+Drinks, snacks and decoration dice scatter over the table. Tap to use, drag or
+use arrow keys to move. Desktop props are larger. The decoration corner, star
+and item context menus are removed; props are controlled directly and play areas
+stay clear. Eight rare surprises can occur together at the table.
+Server evidence records activation and connected witnesses once per round;
+achievements are granted only after a valid completed match with at least two
+connected human players at the time of the event.
+
+**CPU-Taktik / CPU tactics:** Computer bieten bei subjektiv guten Chancen und
+berücksichtigen den Spielstand. Mit mehr abgeschlossenen Watten-Spielen der
+menschlichen Mitspieler werden ihre Entscheidungen genauer; bei gemischter
+Erfahrung zählt der unerfahrenste aktive Mensch. «Zweiter Stich ist Partnerstich»
+bleibt im blinden Ladinisch eine abwägbare Hilfe. Im ersten blinden Stich bevorzugt sie neue sichtbare Werte und Farben. Die CPU kennt nur ihre eigene
+erlaubte Sicht. Die [Strategiedokumentation](docs/WATTEN_CPU_STRATEGY.md) nennt
+Stufen, Quellen und Grenzen; eine neue Stärkeprüfung steht noch aus.
+CPUs bid on subjectively strong chances and account for the score. More completed
+Watten games by the human participants sharpen their decisions; mixed tables use
+the least experienced active human. Leaving the second trick to the partner
+remains a soft tactic in blind Ladinisch. The blind opening prefers new visible ranks and suits. The CPU only knows its own permitted
+view. The [strategy notes](docs/WATTEN_CPU_STRATEGY.md) document tiers, sources and
+limits; the new strength has not been benchmarked.
+
+**Wertung / scoring:** Eine Runde endet mit drei Stichen oder Gehen; das Spiel
+endet am Ziel. Verlierer bekommen ein Nockerl, ohne Punkte zwei (Schneider).
+Im Vierer kann das zurückliegende Team beim erstmals gestrichenen Gegner die
+Anschrift löschen und einen Retourschneider versuchen: alle weiteren Runden
+gewinnen bringt den bisherigen Führenden vier Nockerl; einmal verlieren beendet
+das Spiel sofort mit zwei Nockerl für die Herausforderer. Beide Teammitglieder
+müssen getrennt zustimmen; ein Nein behält die Anschrift. Nach dem eigenen Ja
+zeigt der Tisch, auf wen noch gewartet wird. Erst nach beiden Ja kündigt ein
+kurzer bildschirmfüllender Auftritt den Retourschneider an, ohne die Bedienung
+zu sperren. Er erscheint je Einstieg einmal, auch nach erneutem Laden nicht nochmals.
+A round ends with three tricks or a fold, the match at its target. Losers receive
+one Nockerl, or two without scoring (Schneider). With four players, the trailing
+team may erase its score when the other team first becomes gestrichen. Winning
+every remaining round gives the former leaders four loss marks; losing once ends
+the match immediately and gives the challengers two. Both teammates must consent
+separately; one refusal keeps their score. After your yes, the table shows whose
+answer is pending. Once both agree, a brief full-screen announcement introduces
+the Retourschneider without blocking controls. Each entry is announced once,
+including across reloads.
+
+**8+3-Erfolge / milestones:** «8+3 isch Mittag» gibt es nach zehn normalen
+Spielsiegen bis elf, bei denen die letzte Drei-Punkte-Runde genau von acht
+auf elf führt. Gewonnene Retourschneider zählen separat: «8+3 isch Feiertag»
+nach drei solchen Abschlüssen, «8+3 isch a Wunder» nach zehn.
+“8+3 means lunchtime” requires ten regular match wins to eleven, moving from
+exactly eight to eleven in the final three-point round. Successful
+Retourschneider wins count separately: “8+3 means a holiday” after three such
+finishes and “8+3 means a miracle” after ten.
+
+**Nockerl-Serien / tournaments:** Revanchen mit gleicher Besetzung und gleichen
+Teams übernehmen die Nockerl. Bei zwei oder vier Spielern kannst du ein Turnier
+bis 3, 5, 8, 10, 15, 20 oder einer eigenen positiven Nockerlzahl erstellen.
+Wer das Limit erreicht oder überschreitet, verliert das Turnier. Konten,
+Teams und CPU-Sitze bleiben über seine Revanchen fest. Ein neues Turnier
+beginnt mit einem neuen Tisch. Der Bierblock zeigt gewertete Runden und die
+laufende Anschrift, einschliesslich Retourschneider-Löschung. Er öffnet nur per
+Tipp auf «Mir»/«Dir» beziehungsweise den Punktestand und schliesst über Kreuz,
+Esc oder Antippen ausserhalb. Gestrichen beginnt zwei Punkte vor dem Spielziel;
+dann sind Teamname und alle Zahlen der Anschrift durchgestrichen.
+Rematches with the same participants and teams carry their loss marks. With
+two or four players, choose a tournament limit of 3, 5, 8, 10, 15, 20 or a
+custom positive integer. Reaching or exceeding it loses the tournament.
+Accounts, teams and CPU seats stay fixed across its rematches; a new table
+starts a new tournament. The score notebook shows scored rounds and running
+totals, including Retourschneider erasure. Tap a team score to open it; the
+close button, Escape or an outside tap closes it. Gestrichen starts two points
+before the match target, crossing out the team label and every number on the pad. [Details](docs/WATTEN_TOURNAMENT.md).
+
+**Audiochat / voice chat:** Hausdepp und Watten bieten beim Erstellen einen
+standardmässig aktiven Audiochat-Schalter. Er erlaubt Audio für den Tisch;
+Zuhören und Mikrofon bleiben freiwillige getrennte Entscheidungen. Watten nutzt
+nur einen gemeinsamen Raum für zugelassene menschliche Mitspieler, ohne
+Teamkanäle und ohne Zuschauer oder CPUs. Die bestehende SFU-/TURN-Konfiguration
+wird wiederverwendet; echtes Audio über den Anbieter wurde hier noch nicht geprüft.
+Both creators offer an audio-chat checkbox, on by default. It allows audio for
+the table; listening and microphone are separate voluntary choices. Watten has
+one global room for admitted human players, with no team channels, spectators
+or CPUs. The existing SFU/TURN configuration is reused; provider audio has not
+been verified in this change.
+
+**PWA-Stand / PWA status:** Ein eigenes Spielsymbol und PNG-Icons in32/180/192/512
+Pixeln sind vorhanden. Die öffentliche Beta öffnet Manifest, Service Worker,
+Push-Empfang und sichere Benachrichtigungsziele. Push benötigt die bestehende
+VAPID-Konfiguration und die ausdrückliche Einwilligung im Konto. Mitspieleraufrufe
+prüfen den gespeicherten öffentlichen Warteraum und beide Flutbremsen vor dem
+Versand. Eine echte Provider-Zustellung wird durch serverseitige Tests nicht belegt.
+An original mark and PNG icons at32/180/192/512 pixels are present. Public beta
+enables its manifest, worker, push reception and safe notification targets.
+Push needs the existing VAPID configuration and explicit account consent.
+Open-seat calls validate the stored public waiting room and both durable
+cooldowns before sending. Backend tests do not prove real provider delivery.
 
 **Lokaler Kontofortschritt / local account progress:** Die lokale Watten-Vorschau
 verbucht neue abgeschlossene Partien zusammen mit Ergebnis und Fortschritt in
@@ -127,28 +320,29 @@ not enable Watten notifications.
 
 **Favorit / favorite:** Im lokalen Erstellformular lässt sich ein vollständiges
 Tischrezept je Konto speichern und bewusst wieder anwenden, einschliesslich
-Computerplätzen. Passwörter werden nicht mitgespeichert. Ein geschützter Favorit
-fordert beim Erstellen ein neues Passwort oder eine ausdrückliche Abwahl des
-Schutzes; Anwenden erstellt und startet keine Partie.
+Computerplätzen. Passwörter werden nicht mitgespeichert. Bei einem geschützten Favoriten
+entscheidet das neu eingegebene Passwort über den Schutz; Anwenden erstellt und startet keine Partie.
 
 The local creator saves one complete table recipe per account, including CPU
-seat wishes. Passwords are never saved. Creating from a protected favorite
-requires a fresh password or an explicit choice to remove protection; applying
+seat wishes. Passwords are never saved. The fresh password entered when using a protected favorite
+determines whether the new table is protected; applying
 a favorite neither creates nor starts a match.
 
-**Folgetisch / next table:** Nach dem Ende kann der Gastgeber einen neuen Tisch
-mit denselben Regeln und Computerplätzen vorbereiten. Passwortschutz wird neu
-gewählt; für einen geschützten Tisch ist ein neues Passwort nötig. Alle Menschen
-treten freiwillig bei und wählen ihren Platz, im Vierer samt Team, erneut. Der
-Gastgeber startet ausdrücklich. Erneutes Öffnen führt auch nach verlorener
-Antwort oder Neustart zum selben Folgetisch; vergangene Ergebnisse und XP
-werden dabei nicht verändert.
+**Revanche / rematch:** Nach dem Ende genügt «Revanche starten». Menschen,
+Sitze, Teams, CPUs, Modus und Einstellungen bleiben unverändert, eure Nockerl
+laufen weiter. Ein Passwort wird nicht erneut verlangt: Nur die ursprünglichen
+Konten dürfen ihre festen Plätze besetzen. Alle treten freiwillig bei, der
+Gastgeber startet ausdrücklich. Neue Teams oder Regeln legst du mit einem
+neuen Spiel über die Lobby fest. Erneutes Öffnen führt auch nach verlorener
+Antwort oder Neustart zur selben Revanche, ohne frühere Ergebnisse oder XP
+zu verändern.
 
-After the match, the host can prepare a next table with the same rules and CPU
-seats. Protection is a fresh choice and requires a new password when enabled.
-People join voluntarily and choose their seats, including teams with four
-players, again. The host starts explicitly. Reopening uses the same next table
-after a lost response or restart, without changing earlier results or XP.
+After the match, one “Start rematch” click continues with the same people,
+seats, teams, CPUs, mode and settings, carrying loss marks. No new password is
+needed: only the original accounts may take their assigned seats. Joining is
+voluntary and the host starts explicitly. Use a new game in the lobby for new
+teams or rules. Reopening returns to the same rematch after a lost response
+or restart, without changing earlier results or XP.
 
 **Chat und Emojis / chat and emoji:** Am Tisch lesen alle Mitspieler und
 zugelassenen Zuschauer den öffentlichen Tischchat. Nachrichten und zwölf Emojis
@@ -162,28 +356,34 @@ and twelve emoji remain available during a pending bid, a pause and when
 gestrichen; card hints are forbidden. “Good/Bad/Unsure” remains separate private
 partner advice. Chat and reactions never change cards or match points.
 
-Der gemeinsame Lobbychat wird in der lokalen Watten-Lobby bewusst geöffnet und
-respektiert die kontoweite Chat-Einstellung. Sein persönlicher Dreitagesverlauf
+Der gemeinsame Lobbychat wird in der öffentlichen Watten-Beta bewusst geöffnet
+und respektiert die kontoweite Chat-Einstellung. Auf den vier kanonischen
+Produkt-Hosts braucht er eine frisch bestätigte öffentliche Watten-Freigabe;
+die lokale Entwicklung und die private Founder-Vorschau bleiben verfügbar.
+Sein persönlicher Dreitagesverlauf
 enthält nur Nachrichten, bei deren Versand das Konto zum Empfängerkreis gehörte.
 Eine Deaktivierung beendet den Empfang; erneutes Aktivieren ergänzt keine
 verpassten Nachrichten. Der öffentliche Tischchat bleibt davon unabhängig.
+Die Spieleauswahl kennzeichnet nur die öffentliche Freigabe als «[BETA]» und
+beschreibt die geschlossene Vorschau ausdrücklich als privat.
 
-Opening the shared lobby chat in the local Watten lobby is explicit and respects
-the account-wide chat preference. Its personal three-day history contains only
+Opening the shared lobby chat in the public Watten beta is explicit and respects
+the account-wide chat preference. The four canonical product hosts require a
+freshly confirmed public Watten capability; local development and the private
+founder preview remain available. Its personal three-day history contains only
 messages addressed to that account at send time. Disabling stops delivery;
 enabling again never adds missed messages. The public table chat is independent.
+The game picker marks only public availability as “[BETA]” and labels the closed
+preview as private.
 
-**Tischdeko / table decorations:** «Tisch dekorieren» bietet acht lokale
-Gegenstände zum Aufstellen, Verschieben, Essen, Trinken oder Würfeln. Sie sind
-nur auf deinem Gerät sichtbar. Spielbereiche bleiben frei; auf kleinen Tischen
-steht eine eigene Deko-Ecke zur Verfügung. Verschüttetes lässt sich aufwischen,
-alles gemeinsam aufräumen. Auch mit reduzierter Bewegung bleibt die Bedienung
-verfügbar.
-
-“Decorate the table” offers eight local items to place, move, eat, drink or roll.
-They are visible only on your device. Play areas stay clear; small tables have a
-separate decoration corner. Wipe spills or clear everything together. Controls
-remain available with reduced motion.
+**Deko-Bedienung / decoration controls:** Acht lokale Gegenstände können
+zufällig am Tisch erscheinen. Antippen isst, trinkt oder würfelt, Ziehen oder
+Pfeiltasten verschieben. Deko-Ecke, Stern und Kontextmenü sind entfernt.
+Spielbereiche bleiben frei. Auch mit reduzierter Bewegung bleibt
+die Bedienung verfügbar.
+Eight local items can appear randomly at the table. Tap to eat, drink or roll;
+drag or use arrow keys to move. The decoration corner, star and context menus
+are removed. Play areas remain clear, and controls work with reduced motion.
 
 **Deutsch:** Watten ist als nächstes Spiel vorgemerkt: üblicherweise 4er
 ladinisch bis 11 Punkte («8+3 isch zmittag»), mit blindem Einschauen durch den

@@ -303,7 +303,9 @@ def test_incoming_auth_is_fresh_after_waiting_for_actual_table_lock(server):
 
 def test_private_partner_feedback_never_enters_public_history(server):
     game_id, _owners, sessions = native.local_started(server, count_players=4)
-    native.advance_to_play(game_id, sessions, count())
+    numbers = count()
+    native.advance_to_play(game_id, sessions, numbers)
+    native.receive_opponent_bid(game_id, sessions, numbers, sessions[0].player_id)
     history(sessions[0])
     call(sessions[0], native.engine_command(game_id, "partner_feedback", "private-advice", "good", sessions[0].player_id))
     assert history(sessions[0])["events"] == history(sessions[1])["events"] == []

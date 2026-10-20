@@ -1,0 +1,107 @@
+/* Keep the other hands readable without taking over the central trick. */
+html[data-watten-active="true"] .wt-table {
+  --wt-back-w: clamp(34px, 9.6vw, 46px);
+  --wt-taken-w: 34px;
+}
+html[data-watten-active="true"] :is(.wt-seat--left, .wt-seat--right) {
+  width: calc(var(--wt-back-w) * 2.8);
+}
+html[data-watten-active="true"] .wt-backs,
+html[data-watten-active="true"] :is(.wt-seat--left, .wt-seat--right) .wt-backs {
+  width: calc(var(--wt-back-w) * 2.8);
+  height: calc(var(--wt-back-w) * 2);
+  margin-inline: 0;
+}
+html[data-watten-active="true"] .wt-backs i {
+  transform: translateX(calc(-50% + (var(--i) - (var(--count) - 1) / 2) * var(--wt-back-w) * .28))
+    rotate(calc((var(--i) - (var(--count) - 1) / 2) * 6deg));
+}
+html[data-watten-active="true"] .wt-taken {
+  width: var(--wt-taken-w);
+  height: calc(var(--wt-taken-w) * 1.5833);
+  top: calc(100% + 8px);
+}
+html[data-watten-active="true"] .wt-taken i {
+  border-width: 2px;
+  border-radius: 6% / 4%;
+  box-shadow: 0 2px 4px #57341855;
+}
+html[data-watten-active="true"] .wt-taken i:nth-child(1) { transform: translate(-5px, -3px) rotate(-9deg); }
+html[data-watten-active="true"] .wt-taken i:nth-child(3) { transform: translate(5px, 3px) rotate(9deg); }
+/* The viewer's pile sits above their badge, clear of the playable hand. */
+html[data-watten-active="true"] .wt-seat--bottom .wt-taken {
+  top: calc(var(--wt-taken-w) * -1.5833 - 12px);
+}
+@media (min-width: 761px) and (min-height: 520px) {
+  html[data-watten-active="true"] .wt-table {
+    --wt-back-w: clamp(56px, min(6vw, 10dvh), 82px);
+    --wt-taken-w: 48px;
+  }
+}
+@media (orientation: portrait) and (max-height: 700px) {
+  html[data-watten-active="true"] .wt-table {
+    --wt-back-w: clamp(32px, 9.5vw, 38px);
+    --wt-taken-w: 30px;
+  }
+}
+@media (orientation: portrait) and (max-width: 350px) and (max-height: 700px) {
+  html[data-watten-active="true"] :is(.wt-seat--left, .wt-seat--right) { top: calc(11% - 8px); }
+  /* Keep the solo caller's combined role below the avatar/name row, using the
+     full badge width instead of squeezing it into four short lines. */
+  html[data-watten-active="true"] .wt-table[data-count="3"] :is(.wt-seat--left, .wt-seat--right):has(.wt-seat-call-role) {
+    top: calc(11% - 24px);
+  }
+  html[data-watten-active="true"] .wt-table[data-count="3"] :is(.wt-seat--left, .wt-seat--right) .wt-seat-badge {
+    display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 2px 3px; width: 100%;
+  }
+  html[data-watten-active="true"] .wt-table[data-count="3"] :is(.wt-seat--left, .wt-seat--right) .wt-seat-call-role {
+    grid-column: 1 / -1; justify-self: stretch; text-align: center;
+  }
+}
+@media (orientation: landscape) and (max-height: 519px) {
+  html[data-watten-active="true"] .wt-table {
+    --wt-back-w: clamp(28px, 10dvh, 40px);
+    --wt-taken-w: 26px;
+  }
+  html[data-watten-active="true"] .wt-seat--bottom .wt-taken {
+    left: 0;
+    top: calc(var(--wt-taken-w) * -1.5833 - 6px);
+    translate: -20% 0;
+  }
+}
+
+/* Each player keeps every captured packet beside their own name. */
+html[data-watten-active="true"] .wt-seat-name-row { display: inline-flex; position: relative; align-items: center; justify-content: center; min-width: 0; max-width: 100%; }
+html[data-watten-active="true"] .wt-seat .wt-taken {
+  display: inline-flex; position: absolute; left: calc(100% + 10px); right: auto; top: 50%; bottom: auto;
+  translate: 0 -50%; width: max-content; height: calc(var(--wt-taken-w) * 1.5833); gap: 12px; pointer-events: none;
+}
+html[data-watten-active="true"] .wt-seat .wt-taken[hidden] { display: none; }
+html[data-watten-active="true"] .wt-taken-packet { display: block; position: relative; width: var(--wt-taken-w); height: 100%; flex: 0 0 var(--wt-taken-w); }
+html[data-watten-active="true"] :is(.wt-seat--right, .wt-seat--top) .wt-taken { left: auto; right: calc(100% + 10px); }
+html[data-watten-active="true"] .wt-seat--bottom .wt-taken { top: auto; bottom: 0; translate: none; }
+html[data-watten-active="true"] .wt-taken::after { content: attr(data-count); position: absolute; right: -8px; bottom: -7px; display: grid; place-items: center; min-width: 19px; height: 19px; padding: 0 3px; border-radius: 20px; font: 700 12px/1 system-ui, sans-serif; color: #fff7e7; background: #663d28; border: 1px solid #e8c79a; }
+
+/* A combined Schlag/Farbe label needs its full height above a landscape fan. */
+@media (orientation: landscape) and (max-height: 519px) {
+  html[data-watten-active="true"] :is(.wt-seat--left, .wt-seat--right) { top: 0; }
+}
+
+/* The upper badge owns the centre; its fan stays beside the trick column. */
+@media (min-width: 761px) and (min-height: 520px) {
+  html[data-watten-active="true"] .wt-seat--top { display: grid; width: 146px; top: 2%; }
+  html[data-watten-active="true"] .wt-seat--top .wt-backs { position: absolute; left: calc(100% + 16px); top: 0; }
+  html[data-watten-active="true"] :is(.wt-seat--left, .wt-seat--right) { top: 5%; }
+}
+/* Separate the role row from avatar/name so both languages need one line. */
+@media (orientation: landscape) and (max-height: 519px) {
+  html[data-watten-active="true"] :is(.wt-seat--left, .wt-seat--right) .wt-seat-badge {
+    display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 2px 3px;
+    width: 120px; max-width: none;
+  }
+  html[data-watten-active="true"] .wt-seat--left .wt-seat-badge { justify-self: start; }
+  html[data-watten-active="true"] .wt-seat--right .wt-seat-badge { justify-self: end; }
+  html[data-watten-active="true"] :is(.wt-seat--left, .wt-seat--right) .wt-seat-call-role {
+    grid-column: 1 / -1; white-space: nowrap; font-size: .65rem; padding: 2px 4px;
+  }
+}

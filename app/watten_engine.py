@@ -17,18 +17,22 @@ from .watten_bidding import (
     DealParties,
     DealResult,
     Offer,
+    Retourschneider,
     ScoreAccount,
     ScoreLedger,
     award_deal,
     bid,
+    choose_retourschneider,
     new_score_ledger,
     respond,
+    retourschneider_candidate,
 )
 from .watten_cards import WATTEN_NORMAL_RANKS, WATTEN_SUITS, DealtCards
 from .watten_play import PlayProfile, PlayState, deal_progress, finish_deal, play_card, start_play
 from .watten_rules import (
     WELI_STRIKE,
     ComparisonRules,
+    RoundRoles,
     WattenCall,
     ladinisch_call,
     ladinisch_reveal_events,
@@ -77,6 +81,7 @@ class EngineRecipe:
     show_rechter: bool = False
     open_partner_hand: bool = False
     trick_history: bool = False
+    schoeneres_enabled: bool = False
 
     def __post_init__(self):
         if not isinstance(self.profile, PlayProfile) or type(self.bindings) is not tuple:
@@ -89,8 +94,10 @@ class EngineRecipe:
         if len(set(players)) != len(players) or len(set(accounts)) != len(accounts):
             raise WattenEngineError("watten_duplicate_binding")
         if not _number(self.target_points, 3) or any(type(value) is not bool for value in (
-                self.show_rechter, self.open_partner_hand, self.trick_history)):
+                self.show_rechter, self.open_partner_hand, self.trick_history, self.schoeneres_enabled)):
             raise WattenEngineError("watten_invalid_recipe")
+        if self.schoeneres_enabled and self.profile.player_count == 3:
+            raise WattenEngineError("watten_schoeneres_requires_two_callers")
         if self.open_partner_hand and self.profile.blind:
             raise WattenEngineError("watten_partner_hand_requires_open")
         if self.open_partner_hand and self.profile.player_count == 2:
@@ -156,6 +163,13 @@ class CachedAck:
     ack: CommandAck
 
 
+@dataclass(frozen=True, slots=True)
+class PreplayRequest:
+    kind: str
+    requester: int
+    responder: int
+
+
 @dataclass(frozen=True, slots=True, repr=False)
 class PrivateFeedback:
     sender: str
@@ -181,11 +195,18 @@ class EngineState:
     play: PlayState | None = None
     feedback: tuple[PrivateFeedback, ...] = ()
     ack_cache: tuple[CachedAck, ...] = ()
+    deal_revision: int = 0
+    call_swapped: bool = False
+    preplay_request: PreplayRequest | None = None
+    bloedeln: bool = False
+    retour_accepted_by: tuple[str, ...] = ()
+    discarded_bid_increases: int = 0
 
     def __post_init__(self):
         if (not isinstance(self.recipe, EngineRecipe) or not _text(self.deal_id)
                 or not isinstance(self.deal, DealtCards) or not isinstance(self.parties, DealParties)
                 or self.phase not in _PHASES or not _number(self.opportunity)
+                or not _number(self.discarded_bid_increases) or self.discarded_bid_increases > self.opportunity
                 or not isinstance(self.ledger, ScoreLedger) or not isinstance(self.bid_state, BidState)):
             raise WattenEngineError("watten_invalid_engine_state")
         if (len(self.deal.hands) != self.recipe.profile.player_count
@@ -199,14 +220,7 @@ class EngineState:
         expected_accounts = self.parties.parties if len(self.recipe.seats) == 4 else tuple((s,) for s in self.recipe.seats)
         if {frozenset(item.members) for item in self.ledger.accounts} != {frozenset(item) for item in expected_accounts}:
             raise WattenEngineError("watten_engine_score_mismatch")
-        totals = [0 for _ in self.ledger.accounts]
-        for result in self.ledger.applied_results:
-            if any(points >= self.ledger.target for points in totals):
-                raise WattenEngineError("watten_result_after_match_end")
-            winners = set(result.roles.parties[result.winning_party])
-            totals = [points + (result.points if set(account.members) <= winners else 0)
-                      for points, account in zip(totals, self.ledger.accounts)]
-        if tuple(totals) != tuple(account.points for account in self.ledger.accounts):
+        if self.ledger.replayed_accounts != self.ledger.accounts:
             raise WattenEngineError("watten_engine_score_mismatch")
         if (type(self.shown) is not frozenset or type(self.acknowledged) is not frozenset
                 or any(type(seat) is not int for seat in (*self.shown, *self.acknowledged))
@@ -239,10 +253,29 @@ class EngineState:
             elif self.phase != "show_ready" and self.acknowledged != self.inspectors:
                 raise WattenEngineError("watten_inspection_not_finished")
         active = self.phase in {"play", "bid_response", "deal_complete", "match_complete"}
+        if (not _number(self.deal_revision) or self.deal_revision > self.opportunity
+                or type(self.call_swapped) is not bool or type(self.bloedeln) is not bool
+                or (self.call_swapped and (self.recipe.profile.determination != "normal"
+                                          or self.recipe.profile.blind or len(self.recipe.seats) not in {2, 4}))
+                or (self.bloedeln and (not self.recipe.profile.blind or len(self.recipe.seats) != 4))):
+            raise WattenEngineError("watten_invalid_preplay")
+        request = self.preplay_request
+        if request is not None:
+            if (not isinstance(request, PreplayRequest) or not preplay_available(self, request.kind)
+                    or type(request.requester) is not int or type(request.responder) is not int
+                    or {request.requester, request.responder} != set(preplay_seats(self, request.kind))):
+                raise WattenEngineError("watten_invalid_preplay")
+        candidate = retourschneider_candidate(self.ledger)
+        if (type(self.retour_accepted_by) is not tuple or any(type(player) is not str for player in self.retour_accepted_by)
+                or len(set(self.retour_accepted_by)) != len(self.retour_accepted_by)
+                or (self.retour_accepted_by and (self.phase != "deal_complete" or candidate is None
+                                                or not set(self.retour_accepted_by) < set(candidate)))):
+            raise WattenEngineError("watten_invalid_retourschneider_votes")
         if active:
             if (not isinstance(self.play, PlayState) or self.play.deal_id != self.deal_id
                     or self.play.deal != self.deal or self.play.parties != self.parties
-                    or self.play.profile != self.recipe.profile or self.play.call != self.call):
+                    or self.play.profile != self.recipe.profile or self.play.call != self.call
+                    or self.play.forced_opening != bloedeln_cards(self)):
                 raise WattenEngineError("watten_engine_play_mismatch")
         elif self.play is not None or self.bid_state != BidState(self.deal_id, self.parties):
             raise WattenEngineError("watten_unstarted_play")
@@ -262,18 +295,16 @@ class EngineState:
         if active and not terminal:
             if self.play.ended or bool(self.bid_state.pending) != (self.phase == "bid_response"):
                 raise WattenEngineError("watten_invalid_play_phase")
-        if active and not self.play.plays and (self.bid_state.pending is not None
-                                               or self.bid_state.last_offering_party is not None
-                                               or self.bid_state.accepted_stake != 2):
-            raise WattenEngineError("watten_first_card_required")
         if type(self.feedback) is not tuple or len(self.feedback) > len(self.recipe.seats):
             raise WattenEngineError("watten_invalid_feedback")
-        if self.feedback and not active:
+        if self.feedback and self.phase != "bid_response":
             raise WattenEngineError("watten_invalid_feedback")
         senders = []
         for item in self.feedback:
             if (not isinstance(item, PrivateFeedback) or item.value not in _FEEDBACK
-                    or not _number(item.sequence, 1) or partner_id(self, item.sender) != item.recipient):
+                    or not _number(item.sequence, 1) or partner_id(self, item.sender) != item.recipient
+                    or self.bid_state.pending is None
+                    or self.parties.party_of(item.sender) == self.bid_state.pending.party):
                 raise WattenEngineError("watten_invalid_feedback")
             senders.append(item.sender)
         if len(set(senders)) != len(senders):
@@ -342,6 +373,44 @@ def _parties(recipe: EngineRecipe, dealer_id: str) -> DealParties:
     return DealParties(recipe.seats, dealer_id, groups)
 
 
+def announcement_roles(state: EngineState) -> RoundRoles:
+    """Accepted caller exchange changes announcements, never the original lead."""
+    roles = round_roles(len(state.recipe.seats), state.dealer_seat, determination=state.recipe.profile.determination)
+    return replace(roles, strike_announcer=roles.suit_announcer, suit_announcer=roles.strike_announcer) if state.call_swapped else roles
+
+
+def preplay_available(state: EngineState, kind: str) -> bool:
+    if state.phase not in {"strike", "colour", "show_ready", "inspection", "play"} or (state.play and state.play.plays):
+        return False
+    profile = state.recipe.profile
+    if kind == "schoeneres":
+        return state.recipe.schoeneres_enabled and profile.player_count in {2, 4}
+    if kind == "schlagwechsel":
+        return (state.phase == "strike" and profile.determination == "normal" and not profile.blind
+                and profile.player_count in {2, 4})
+    return kind == "bloedeln" and profile.blind and profile.player_count == 4 and not state.bloedeln
+
+
+def preplay_seats(state: EngineState, kind: str) -> tuple[int, ...]:
+    if kind == "bloedeln":
+        return tuple(seat for seat in range(len(state.recipe.seats)) if seat not in state.inspectors)
+    roles = announcement_roles(state)
+    return tuple(sorted({roles.strike_announcer, roles.suit_announcer}))
+
+
+def bloedeln_cards(state: EngineState) -> tuple[tuple[int, str], ...]:
+    return tuple((seat, state.deal.bottom_cards[seat]) for seat in range(len(state.recipe.seats))
+                 if seat not in state.inspectors) if state.bloedeln else ()
+
+
+def _reset_call(state: EngineState, **changes) -> EngineState:
+    return replace(state, normal_strike=None, call=None, play=None, shown=frozenset(), acknowledged=frozenset(),
+                   bid_state=BidState(state.deal_id, state.parties),
+                   discarded_bid_increases=state.discarded_bid_increases + state.bid_state.accepted_stake - 2,
+                   feedback=(), preplay_request=None, deal_revision=state.deal_revision + 1,
+                   phase="strike" if state.recipe.profile.determination == "normal" else "show_ready", **changes)
+
+
 def require_actor(state: EngineState, actor: EngineActor) -> int:
     if (not isinstance(actor, EngineActor) or not _text(actor.player_id)
             or (actor.account_id is not None and not _number(actor.account_id, 1))):
@@ -358,8 +427,17 @@ def partner_id(state: EngineState, player_id: str) -> str | None:
 
 
 def gestrichen_players(state: EngineState) -> frozenset[str]:
+    choice = state.ledger.retourschneider
+    comeback = frozenset(choice.members) if choice is not None and choice.accepted and not state.ledger.winners else frozenset()
     return frozenset(member for account in state.ledger.accounts
-                     if account.points >= state.recipe.gestrichen_from for member in account.members)
+                     if account.points >= state.recipe.gestrichen_from for member in account.members if member not in comeback)
+
+
+def retourschneider_decider(state: EngineState, members: tuple[str, ...]) -> str:
+    """Keep a mixed team's optional comeback decision with its human player."""
+    humans = tuple(binding.player_id for binding in state.recipe.bindings
+                   if binding.player_id in members and binding.account_id is not None)
+    return humans[0] if len(humans) == 1 else state.parties.decider(state.parties.party_of(members[0]))
 
 
 def start_match(recipe: EngineRecipe, deal_id: str, deal: DealtCards, *, first_dealer: str) -> EngineState:
@@ -374,13 +452,16 @@ def next_deal(state: EngineState, deal_id: str, deal: DealtCards) -> EngineState
     """Trusted server transition after a scored deal; no new teams or shuffle."""
     if state.phase != "deal_complete":
         raise WattenEngineError("watten_next_deal_unavailable")
+    if retourschneider_candidate(state.ledger) is not None:
+        raise WattenEngineError("watten_retourschneider_decision_pending")
     if deal_id == state.deal_id or any(result.deal_id == deal_id for result in state.ledger.applied_results):
         raise WattenEngineError("watten_deal_id_reused")
     roles = round_roles(len(state.recipe.seats), state.dealer_seat, determination=state.recipe.profile.determination)
     parties = _parties(state.recipe, state.recipe.seats[roles.next_dealer])
     return EngineState(state.recipe, deal_id, deal, parties,
                        "strike" if state.recipe.profile.determination == "normal" else "show_ready",
-                       state.opportunity + 1, state.ledger, BidState(deal_id, parties), ack_cache=state.ack_cache)
+                       state.opportunity + 1, state.ledger, BidState(deal_id, parties), ack_cache=state.ack_cache,
+                       discarded_bid_increases=state.discarded_bid_increases)
 
 
 def _finish(state: EngineState, play: PlayState, bidding: BidState) -> EngineState:
@@ -394,7 +475,8 @@ def _digest(command: EngineCommand) -> str:
     return hashlib.sha256(json.dumps(data, separators=(",", ":"), ensure_ascii=True).encode("ascii")).hexdigest()
 
 
-def apply_command(state: EngineState, actor: EngineActor, command: EngineCommand) -> EngineTransition:
+def apply_command(state: EngineState, actor: EngineActor, command: EngineCommand, *,
+                  replacement_deal: DealtCards | None = None) -> EngineTransition:
     """Reject stale inputs without consuming opportunity; replay only safe ACKs.
 
     An evicted command with its original envelope fails the ordinary stale
@@ -417,8 +499,33 @@ def apply_command(state: EngineState, actor: EngineActor, command: EngineCommand
     kind, value, events = command.kind, command.value, ()
     if kind != "partner_feedback" and command.private_opportunity is not None:
         raise WattenEngineError("watten_invalid_command")
-    roles = round_roles(len(state.recipe.seats), state.dealer_seat, determination=state.recipe.profile.determination)
-    if kind == "announce_strike" and state.phase == "strike":
+    roles = announcement_roles(state)
+    if state.preplay_request is not None:
+        request = state.preplay_request
+        if seat != request.responder or kind not in {"preplay_accept", "preplay_decline"} or value is not None:
+            raise WattenEngineError("watten_preplay_response_required")
+        changed = replace(state, preplay_request=None)
+        if kind == "preplay_accept":
+            if request.kind == "schoeneres":
+                callers = preplay_seats(state, request.kind)
+                if (not isinstance(replacement_deal, DealtCards) or len(replacement_deal.hands) != len(state.recipe.seats)
+                        or any(replacement_deal.hands[index] != state.deal.hands[index]
+                               for index in range(len(state.recipe.seats)) if index not in callers)):
+                    raise WattenEngineError("watten_replacement_deal_required")
+                changed = _reset_call(state, deal=replacement_deal)
+            elif request.kind == "schlagwechsel":
+                changed = _reset_call(state, call_swapped=not state.call_swapped)
+            else:
+                forced = tuple((index, state.deal.bottom_cards[index]) for index in preplay_seats(state, "bloedeln"))
+                changed = replace(changed, bloedeln=True,
+                                  play=replace(state.play, forced_opening=forced) if state.play else None)
+    elif kind.startswith("request_"):
+        feature = kind.removeprefix("request_")
+        if value is not None or not preplay_available(state, feature) or seat not in preplay_seats(state, feature):
+            raise WattenEngineError("watten_preplay_unavailable")
+        responder = next(index for index in preplay_seats(state, feature) if index != seat)
+        changed = replace(state, preplay_request=PreplayRequest(feature, seat, responder))
+    elif kind == "announce_strike" and state.phase == "strike":
         if seat != roles.strike_announcer:
             raise WattenEngineError("watten_announcer_required")
         if value not in (*WATTEN_NORMAL_RANKS, WELI_STRIKE):
@@ -433,7 +540,8 @@ def apply_command(state: EngineState, actor: EngineActor, command: EngineCommand
         if value not in WATTEN_SUITS:
             raise WattenEngineError("watten_invalid_trump_suit")
         call = WattenCall(state.normal_strike, value)
-        play = start_play(state.deal_id, state.deal, state.parties, state.recipe.profile, call=call)
+        play = start_play(state.deal_id, state.deal, state.parties, state.recipe.profile, call=call,
+                          forced_opening=bloedeln_cards(state))
         changed = replace(state, call=call, play=play, phase="play")
         events = (("colour_announced", seat, value),)
     elif kind == "show_ready" and state.phase == "show_ready":
@@ -452,7 +560,8 @@ def apply_command(state: EngineState, actor: EngineActor, command: EngineCommand
             raise WattenEngineError("watten_inspection_unavailable")
         acknowledged = state.acknowledged | {seat}
         if acknowledged == state.inspectors:
-            play = start_play(state.deal_id, state.deal, state.parties, state.recipe.profile, call=state.call)
+            play = start_play(state.deal_id, state.deal, state.parties, state.recipe.profile, call=state.call,
+                              forced_opening=bloedeln_cards(state))
             changed = replace(state, acknowledged=acknowledged, play=play, phase="play")
             if not state.recipe.profile.blind:
                 # Open Ladinisch officially informs every seat. Non-inspecting
@@ -466,14 +575,28 @@ def apply_command(state: EngineState, actor: EngineActor, command: EngineCommand
         changed = _finish(state, play, finish_deal(play, state.bid_state)) if play.ended else replace(state, play=play)
     elif kind == "bid" and state.phase == "play" and value is None:
         bidding = bid(state.bid_state, actor.player_id, deal_progress(state.play), gestrichen=gestrichen_players(state))
-        changed = replace(state, bid_state=bidding, phase="bid_response")
+        changed = replace(state, bid_state=bidding, phase="bid_response", feedback=())
     elif kind == "respond" and state.phase == "bid_response":
         bidding = respond(state.bid_state, actor.player_id, value, deal_progress(state.play))
-        changed = _finish(state, state.play, bidding) if bidding.result else replace(
-            state, bid_state=bidding, phase="bid_response" if bidding.pending else "play")
-    elif kind == "partner_feedback" and state.phase in {"play", "bid_response"}:
+        cleared = replace(state, feedback=())
+        changed = _finish(cleared, state.play, bidding) if bidding.result else replace(
+            cleared, bid_state=bidding, phase="bid_response" if bidding.pending else "play")
+    elif kind == "retourschneider" and state.phase == "deal_complete":
+        members = retourschneider_candidate(state.ledger)
+        if (members is None or value not in {"accept", "decline"}
+                or actor.player_id not in members or actor.player_id in state.retour_accepted_by):
+            raise WattenEngineError("watten_retourschneider_unavailable")
+        votes = (*state.retour_accepted_by, actor.player_id) if value == "accept" else ()
+        if value == "decline" or set(votes) == set(members):
+            changed = replace(state, ledger=choose_retourschneider(state.ledger, members, accept=value == "accept"),
+                              retour_accepted_by=())
+        else:
+            changed = replace(state, retour_accepted_by=votes)
+    elif kind == "partner_feedback" and state.phase == "bid_response":
         partner = partner_id(state, actor.player_id)
-        if partner is None or value not in _FEEDBACK:
+        if (partner is None or value not in _FEEDBACK
+                or state.parties.party_of(actor.player_id) == state.bid_state.pending.party
+                or any(item.sender == actor.player_id for item in state.feedback)):
             raise WattenEngineError("watten_feedback_unavailable")
         sequence = next((item.sequence + 1 for item in state.feedback if item.sender == actor.player_id), 1)
         if command.private_opportunity != sequence - 1:
@@ -511,20 +634,28 @@ def storage_payload(state: EngineState) -> dict:
                    "bindings": [{"player_id": binding.player_id, "account_id": binding.account_id} for binding in recipe.bindings],
                    "manual_parties": None if recipe.manual_parties is None else [list(party) for party in recipe.manual_parties],
                    "target_points": recipe.target_points, "show_rechter": recipe.show_rechter,
-                   "open_partner_hand": recipe.open_partner_hand, "trick_history": recipe.trick_history},
+                   "open_partner_hand": recipe.open_partner_hand, "trick_history": recipe.trick_history,
+                   "schoeneres_enabled": recipe.schoeneres_enabled},
         "deal": {"id": state.deal_id, "dealer_id": state.parties.dealer_id,
                  "hands": [list(hand) for hand in state.deal.hands], "stock": list(state.deal.stock),
                  "bottom_cards": list(state.deal.bottom_cards)},
         "phase": state.phase, "opportunity": state.opportunity, "normal_strike": state.normal_strike,
         "call": None if state.call is None else {"strike_rank": state.call.strike_rank, "trump_suit": state.call.trump_suit},
         "shown": sorted(state.shown), "acknowledged": sorted(state.acknowledged),
+        "preplay": {"deal_revision": state.deal_revision, "call_swapped": state.call_swapped,
+                    "bloedeln": state.bloedeln, "pending": None if state.preplay_request is None else {
+                        "kind": state.preplay_request.kind, "requester": state.preplay_request.requester,
+                        "responder": state.preplay_request.responder}},
+        "retour_accepted_by": list(state.retour_accepted_by),
+        "discarded_bid_increases": state.discarded_bid_increases,
         "plays": None if state.play is None else list(state.play.plays),
         "bid": {"accepted_stake": bidding.accepted_stake, "last_offering_party": bidding.last_offering_party,
                 "pending": None if bidding.pending is None else {"party": bidding.pending.party, "points": bidding.pending.points},
                 "result": _result_payload(bidding.result)},
         "ledger": {"target": state.ledger.target, "accounts": [{"members": list(account.members), "points": account.points}
                                                                 for account in state.ledger.accounts],
-                   "applied_results": [_result_payload(result) for result in state.ledger.applied_results]},
+                   "applied_results": [_result_payload(result) for result in state.ledger.applied_results],
+                   "retourschneider": retourschneider_payload(state.ledger.retourschneider)},
         "feedback": [{"sender": item.sender, "recipient": item.recipient, "value": item.value, "sequence": item.sequence}
                      for item in state.feedback],
         "ack_cache": [{"player_id": item.player_id, "account_id": item.account_id, "digest": item.digest,
@@ -533,8 +664,9 @@ def storage_payload(state: EngineState) -> dict:
     }
 
 
-def _object(value: object, keys: str) -> dict:
-    if type(value) is not dict or set(value) != set(keys.split()):
+def _object(value: object, keys: str, optional: frozenset[str] = frozenset()) -> dict:
+    required = set(keys.split())
+    if type(value) is not dict or not required <= set(value) or set(value) - required - optional:
         raise WattenEngineError("watten_invalid_storage")
     return value
 
@@ -557,20 +689,35 @@ def _restore_result(value: dict | None) -> DealResult | None:
     return DealResult(value["deal_id"], _restore_roles(value["roles"]), value["winning_party"], value["points"], value["reason"])
 
 
+def retourschneider_payload(choice: Retourschneider | None) -> dict | None:
+    return None if choice is None else {"members": list(choice.members), "after_deal_id": choice.after_deal_id,
+                                       "erased_points": choice.erased_points, "accepted": choice.accepted}
+
+
+def restore_retourschneider(value: dict | None) -> Retourschneider | None:
+    if value is None:
+        return None
+    raw = _object(value, "members after_deal_id erased_points accepted")
+    return Retourschneider(tuple(_list(raw["members"])), raw["after_deal_id"], raw["erased_points"], raw["accepted"])
+
+
 def restore_storage(value: dict) -> EngineState:
     """Validate/reconstruct our private schema, replaying card history for legality.
 
     This is not a client import endpoint. Durable transaction integrity and
     access control remain the responsibility of the later storage adapter.
     """
-    value = _object(value, "schema recipe deal phase opportunity normal_strike call shown acknowledged plays bid ledger feedback ack_cache")
+    value = _object(value, "schema recipe deal phase opportunity normal_strike call shown acknowledged plays bid ledger feedback ack_cache",
+                    frozenset({"preplay", "retour_accepted_by", "discarded_bid_increases"}))
     if type(value["schema"]) is not int or value["schema"] != 1:
         raise WattenEngineError("watten_invalid_storage")
-    raw = _object(value["recipe"], "profile bindings manual_parties target_points show_rechter open_partner_hand trick_history")
+    raw = _object(value["recipe"], "profile bindings manual_parties target_points show_rechter open_partner_hand trick_history",
+                  frozenset({"schoeneres_enabled"}))
     profile = PlayProfile(**_object(raw["profile"], "player_count determination blind critical"))
     bindings = tuple(SeatBinding(**_object(item, "player_id account_id")) for item in _list(raw["bindings"]))
     groups = None if raw["manual_parties"] is None else tuple(tuple(_list(party)) for party in _list(raw["manual_parties"]))
-    recipe = EngineRecipe(profile, bindings, groups, raw["target_points"], raw["show_rechter"], raw["open_partner_hand"], raw["trick_history"])
+    recipe = EngineRecipe(profile, bindings, groups, raw["target_points"], raw["show_rechter"], raw["open_partner_hand"],
+                          raw["trick_history"], raw.get("schoeneres_enabled", False))
     raw_deal = _object(value["deal"], "id dealer_id hands stock bottom_cards")
     deal = DealtCards(tuple(tuple(_list(hand)) for hand in _list(raw_deal["hands"])),
                      tuple(_list(raw_deal["stock"])), tuple(_list(raw_deal["bottom_cards"])))
@@ -580,13 +727,18 @@ def restore_storage(value: dict) -> EngineState:
     pending = None if raw_bid["pending"] is None else Offer(**_object(raw_bid["pending"], "party points"))
     bidding = BidState(raw_deal["id"], parties, raw_bid["accepted_stake"], raw_bid["last_offering_party"],
                        pending, _restore_result(raw_bid["result"]))
-    raw_ledger = _object(value["ledger"], "target accounts applied_results")
+    raw_ledger = _object(value["ledger"], "target accounts applied_results", frozenset({"retourschneider"}))
     accounts = []
     for item in _list(raw_ledger["accounts"]):
         item = _object(item, "members points")
         accounts.append(ScoreAccount(tuple(_list(item["members"])), item["points"]))
-    ledger = ScoreLedger(raw_ledger["target"], tuple(accounts), tuple(_restore_result(item) for item in _list(raw_ledger["applied_results"])))
+    ledger = ScoreLedger(raw_ledger["target"], tuple(accounts), tuple(_restore_result(item) for item in _list(raw_ledger["applied_results"])),
+                         restore_retourschneider(raw_ledger.get("retourschneider")))
     feedback = tuple(PrivateFeedback(**_object(item, "sender recipient value sequence")) for item in _list(value["feedback"]))
+    # Older checkpoints allowed unsolicited feedback outside a received bid.
+    # Those messages confer no new permission under the restricted flow.
+    feedback = tuple(item for item in feedback if value["phase"] == "bid_response" and pending is not None
+                     and parties.party_of(item.sender) != pending.party)
     cache = []
     for item in _list(value["ack_cache"]):
         item = _object(item, "player_id account_id digest ack")
@@ -598,6 +750,13 @@ def restore_storage(value: dict) -> EngineState:
         if any(type(seat) is not int for seat in seats) or len(set(seats)) != len(seats):
             raise WattenEngineError("watten_invalid_storage")
         inspection.append(frozenset(seats))
-    play = None if value["plays"] is None else PlayState(raw_deal["id"], deal, parties, profile, call, tuple(_list(value["plays"])))
+    preplay = _object(value.get("preplay", {"deal_revision": 0, "call_swapped": False, "bloedeln": False, "pending": None}),
+                      "deal_revision call_swapped bloedeln pending")
+    pending_request = None if preplay["pending"] is None else PreplayRequest(**_object(preplay["pending"], "kind requester responder"))
+    inspectors = {recipe.seats.index(parties.dealer_id), (recipe.seats.index(parties.dealer_id) + 1) % len(recipe.seats)}
+    forced = tuple((seat, deal.bottom_cards[seat]) for seat in range(len(recipe.seats)) if seat not in inspectors) if preplay["bloedeln"] else ()
+    play = None if value["plays"] is None else PlayState(raw_deal["id"], deal, parties, profile, call, tuple(_list(value["plays"])), forced)
     return EngineState(recipe, raw_deal["id"], deal, parties, value["phase"], value["opportunity"], ledger, bidding,
-                       value["normal_strike"], call, *inspection, play, feedback, tuple(cache))
+                       value["normal_strike"], call, *inspection, play, feedback, tuple(cache),
+                       preplay["deal_revision"], preplay["call_swapped"], pending_request, preplay["bloedeln"],
+                       tuple(_list(value.get("retour_accepted_by", []))), value.get("discarded_bid_increases", 0))

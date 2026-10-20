@@ -26,8 +26,8 @@ function canDiscoverHausdepp(auth) {
 
 function canDiscoverWatten(auth) {
   const access = auth?.game_access || auth?.user?.game_access;
-  return auth?.authenticated === true && Number.isSafeInteger(auth.user?.id) && auth.user.id > 0
-    && access?.watten_preview === true;
+  return access?.watten_public === true || (auth?.authenticated === true && Number.isSafeInteger(auth.user?.id) && auth.user.id > 0
+    && access?.watten_preview === true);
 }
 
 function updateSwitch(allowed) {
@@ -58,9 +58,9 @@ function clearRememberedWattenMode() {
   } catch (_) {}
 }
 
-function navigateToMode(mode) {
+function navigateToMode(mode, publicBeta = false) {
   rememberMode(mode);
-  const destination = mode === "watten" ? wattenAppEntryUrl()
+  const destination = mode === "watten" ? wattenAppEntryUrl(window.location, globalThis, { publicBeta })
     : mode === "hausdepp" ? hausdeppAppEntryUrl() : mode === "zilch" ? zilchAppEntryUrl("/") : zdwaAppEntryUrl();
   const url = new URL(destination, window.location.href);
   url.searchParams.set(
@@ -93,12 +93,14 @@ export function initializeAppMode({
     && document.querySelector('[data-zilch-root][data-zilch-public-lobby="true"]') !== null;
   const publicHausdeppDocument = currentMode === "hausdepp"
     && document.querySelector('[data-hausdepp-public="true"]') !== null;
-  let publicLobby = publicZilchDocument || publicHausdeppDocument;
+  const publicWattenDocument = currentMode === "watten" && document.documentElement.dataset.wattenPublicBeta === "true";
+  let publicLobby = publicZilchDocument || publicHausdeppDocument || publicWattenDocument;
   let allowed = publicLobby || discoveryOnly;
   let stopped = false;
   let hausdeppAllowed = publicHausdeppDocument;
   let zilchAllowed = publicZilchDocument;
-  let wattenAllowed = false;
+  let wattenAllowed = publicWattenDocument;
+  let wattenPublic = publicWattenDocument;
   let latestAuth = null;
   let refreshPromise = null;
   let refreshRevision = 0;
@@ -108,8 +110,8 @@ export function initializeAppMode({
     { id: "zdwa", name: "ZDWA", href: zdwaAppEntryUrl() },
     ...(zilchAllowed ? [{ id: "zilch", name: "Zilch", href: zilchAppEntryUrl("/") }] : []),
     ...(hausdeppAllowed ? [{ id: "hausdepp", name: "Hausdepp", href: hausdeppAppEntryUrl() }] : []),
-    ...(wattenAllowed ? [{ id: "watten", name: "Watten", href: wattenAppEntryUrl(),
-      description: window.ZDWA_I18N?.getLanguage?.() === "en" ? "Private preview" : "Private Vorschau" }] : []),
+    ...(wattenAllowed ? [{ id: "watten", name: "Watten", publicBeta: wattenPublic,
+      href: wattenAppEntryUrl(window.location, globalThis, { publicBeta: wattenPublic }) }] : []),
   ];
   const syncPickers = () => {
     updateSwitch(allowed);
@@ -142,7 +144,8 @@ export function initializeAppMode({
 
   const applyAuth = (auth, { confirmedPrivate = false } = {}) => {
     latestAuth = auth;
-    wattenAllowed = confirmedPrivate && canDiscoverWatten(auth);
+    wattenPublic = (auth?.game_access || auth?.user?.game_access)?.watten_public === true;
+    wattenAllowed = wattenPublic || (confirmedPrivate && canDiscoverWatten(auth));
     if (!canDiscoverWatten(auth)) clearRememberedWattenMode();
     const nextAllowed = canUseZilch(auth);
     // A server-confirmed help assignment can open this one spectator page
@@ -176,7 +179,8 @@ export function initializeAppMode({
       return false;
     }
     publicLobby = (publicZilchDocument && access?.zilch_public === true)
-      || (publicHausdeppDocument && access?.hausdepp_public === true);
+      || (publicHausdeppDocument && access?.hausdepp_public === true)
+      || (publicWattenDocument && access?.watten_public === true);
     if (!nextAllowed && !scopedAllowed && (currentMode === "zilch" || !hausdeppAllowed && !wattenAllowed)) {
       revokeZilch();
       return false;
@@ -187,7 +191,7 @@ export function initializeAppMode({
   };
 
   const dropPrivate = () => {
-    if (!wattenAllowed) return;
+    if (!wattenAllowed || wattenPublic) return;
     wattenAllowed = false;
     allowed = discoveryOnly || (currentMode === "watten" ? false : zilchAllowed || hausdeppAllowed);
     syncPickers();
@@ -203,7 +207,7 @@ export function initializeAppMode({
         let auth = await loadAuth({ refresh: true });
         // Shared /me reads coalesce. Finish an older in-flight identity first,
         // then obtain one request begun after it before showing a private game.
-        if (canDiscoverWatten(auth)) auth = await loadAuth({ refresh: true });
+        if (canDiscoverWatten(auth) && (auth?.game_access || auth?.user?.game_access)?.watten_public !== true) auth = await loadAuth({ refresh: true });
         if (revision !== refreshRevision || suspended || document.visibilityState === "hidden") return false;
         if (latestAuth && (latestAuth.authenticated !== auth.authenticated
           || latestAuth.user?.id !== auth.user?.id
@@ -220,7 +224,7 @@ export function initializeAppMode({
           syncPickers();
           return false;
         }
-        if (currentMode === "watten") {
+        if (currentMode === "watten" && !publicWattenDocument) {
           document.getElementById("wattenApp")?.replaceChildren();
           window.location.replace(zdwaAppEntryUrl());
           return false;
@@ -245,7 +249,7 @@ export function initializeAppMode({
     }
     // Routine same-account refreshes preserve a focused menu. A new account
     // can never inherit this proof, and focus/pageshow explicitly discard it.
-    const confirmedPrivate = wattenAllowed && canDiscoverWatten(auth) && latestAuth?.user?.id === auth.user.id;
+    const confirmedPrivate = wattenAllowed && canDiscoverWatten(auth) && latestAuth?.user?.id === auth.user?.id;
     const result = applyAuth(auth, { confirmedPrivate });
     if (canDiscoverWatten(auth) && !refreshPromise && !suspended) void refresh({ preserveKnownPrivate: confirmedPrivate });
     return result;
@@ -299,7 +303,7 @@ export function initializeAppMode({
     hotkey: ZILCH_HOTKEY,
     set: (nextMode) => {
       if (!allowed || !availableGames().some(game => game.id === nextMode)) return false;
-      navigateToMode(nextMode);
+      navigateToMode(nextMode, wattenPublic);
       return true;
     },
     refresh,

@@ -14,11 +14,13 @@ from app.watten_cpu_memory import (
     memory_to_storage,
     new_memory,
     observe,
+    read_personal_view,
 )
 from app.watten_engine import (
     EngineCommand,
     EngineRecipe,
     SeatBinding,
+    announcement_roles,
     apply_command,
     next_deal,
     start_match,
@@ -58,23 +60,22 @@ class Table:
         for player in self.memories:
             self.memories[player] = observe(self.memories[player], self.view(player), events)
 
-    def _apply(self, player, request):
-        transition = apply_command(self.state, actor(self.state, player), request)
+    def _apply(self, player, request, **options):
+        transition = apply_command(self.state, actor(self.state, player), request, **options)
         self.state = transition.state
         events = tuple((transition.ack.deal_id, *event) for event in transition.public_events)
         self.observe(events)
         return transition, events
 
-    def act(self, player, kind, value=None):
-        return self._apply(player, command(self.state, player, kind, value))
+    def act(self, player, kind, value=None, **options):
+        return self._apply(player, command(self.state, player, kind, value), **options)
 
     def propose(self, player, proposal):
         return self._apply(player, EngineCommand(**proposal.command_fields()))
 
     def ready(self, strike="7", suit="bells"):
         state = self.state
-        profile = state.recipe.profile
-        roles = round_roles(profile.player_count, state.dealer_seat, determination=profile.determination)
+        roles = announcement_roles(state)
         if state.recipe.profile.determination == "normal":
             self.act(state.recipe.seats[roles.strike_announcer], "announce_strike", strike)
             self.act(state.recipe.seats[roles.suit_announcer], "announce_colour", suit)
@@ -210,6 +211,9 @@ def test_duplicate_observations_are_idempotent_and_stale_or_retired_views_fail_c
         observe(table.memories["A"], view)
     tampered = copy.deepcopy(table.view("A"))
     tampered["dealer_seat"] = 0
+    roles = round_roles(tampered["profile"]["player_count"], 0, determination=tampered["profile"]["determination"])
+    tampered["announcement_roles"] = {"strike": roles.strike_announcer, "colour": roles.suit_announcer,
+                                     "first_player": roles.first_player}
     # Keep the forged DTO internally consistent to exercise the memory's dealer check.
     tampered["actions"] = []
     with pytest.raises(WattenCpuMemoryError, match="knowledge_conflict"):
@@ -231,6 +235,101 @@ def test_new_deal_drops_previous_private_cards_calls_and_plays():
     table.act("B", "show_ready")
     table.act("C", "show_ready")
     assert table.memories["C"].inspected is not None and table.memories["A"].inspected is None
+
+
+def test_accepted_schoeneres_resets_blind_memory_with_the_same_deal_and_rejects_old_revision():
+    table = Table(start_match(cpu_recipe(4, "ladinisch", True, schoeneres_enabled=True),
+                              "same-round", blind_deal(), first_dealer="A"))
+    table.ready()
+    old_view = table.view("A")
+    assert table.memories["A"].inspected is not None
+    table.act("A", "request_schoeneres")
+    hands = list(table.state.deal.hands)
+    pool = (*table.state.deal.stock, *hands[0], *hands[1])
+    hands[0], hands[1] = pool[:5], pool[5:10]
+    table.act("B", "preplay_accept", replacement_deal=explicit_deal(*hands))
+    for memory in table.memories.values():
+        assert memory.deal_id == "same-round" and memory.deal_revision == 1
+        assert (memory.strike, memory.suit, memory.inspected, memory.thanks, memory.plays, memory.winners) == (
+            None, None, None, (), (), ())
+        assert restored(memory) == memory
+    stale = copy.deepcopy(old_view)
+    stale["opportunity"] = table.state.opportunity + 10
+    with pytest.raises(WattenCpuMemoryError, match="stale_observation"):
+        observe(table.memories["A"], stale)
+    with pytest.raises(WattenCpuMemoryError, match="unpermitted_call"):
+        observe(table.memories["A"], table.view("A"), (("same-round", "colour_announced", 0, "bells"),))
+
+
+def test_schlagwechsel_resets_call_roles_and_next_events_follow_the_swapped_announcers():
+    table = Table(start_match(cpu_recipe(2), "swap", dealt(2), first_dealer="A"))
+    table.act("B", "request_schlagwechsel")
+    table.act("A", "preplay_accept")
+    assert table.memories["A"].deal_revision == 1
+    assert table.memories["A"].announcement_roles == (0, 1, 1)
+    table.ready("9", "hearts")
+    assert all((memory.strike, memory.suit) == ("9", "hearts") for memory in table.memories.values())
+    assert all(restored(memory) == memory for memory in table.memories.values())
+
+
+def test_old_cpu_memory_storage_and_personal_views_default_to_revision_zero():
+    table = Table(start_match(cpu_recipe(2), "legacy-revision", dealt(2), first_dealer="A"))
+    payload = memory_to_storage(table.memories["A"])
+    payload.pop("deal_revision")
+    payload.pop("announcement_roles")
+    assert memory_from_storage(payload) == table.memories["A"]
+    view = table.view("A")
+    for key in ("deal_revision", "announcement_roles", "preplay"):
+        view.pop(key)
+    view["options"].pop("schoeneres_enabled")
+    assert observe(table.memories["A"], view) == table.memories["A"]
+
+
+@pytest.mark.parametrize("bad_count", (True, -1, 6, "1", None))
+def test_public_trick_counts_reject_invalid_types_and_counts(bad_count):
+    table = Table(start_match(cpu_recipe(2), "strict-piles", dealt(2), first_dealer="A"))
+    view = table.view("A")
+    view["seats"][0]["tricks_won"] = bad_count
+    with pytest.raises(WattenCpuMemoryError, match="invalid_view"):
+        read_personal_view(view, player_id="A")
+
+
+def test_public_trick_counts_match_the_completed_public_tricks_and_legacy_fields_default_to_zero():
+    table = Table(start_match(cpu_recipe(2), "counted-piles", dealt(2), first_dealer="A"))
+    table.ready()
+    table.play("B")
+    table.play("A")
+    view = table.view("A")
+    winner = table.state.play.tricks[0].winner
+    counts = tuple(int(seat == winner) for seat in range(2))
+    assert read_personal_view(view, player_id="A").tricks_won == counts
+    forged = copy.deepcopy(view)
+    forged["seats"][winner]["tricks_won"] = 0
+    with pytest.raises(WattenCpuMemoryError, match="invalid_view"):
+        read_personal_view(forged, player_id="A")
+    for item in view["seats"]:
+        item.pop("tricks_won")
+    assert read_personal_view(view, player_id="A").tricks_won == (0, 0)
+
+
+@pytest.mark.parametrize("mutate", (
+    lambda view: view.update(deal_revision=True),
+    lambda view: view.update(deal_revision=-1),
+    lambda view: view["announcement_roles"].update(strike=True),
+    lambda view: view["announcement_roles"].update(colour=1),
+    lambda view: view["announcement_roles"].update(first_player=0),
+    lambda view: view["announcement_roles"].update(secret_call="hearts-7"),
+    lambda view: view["preplay"].update(hidden_hands=[]),
+    lambda view: view["preplay"].update(pending={"kind": "schoeneres", "requester": 0, "responder": 1}),
+    lambda view: view["preplay"].update(bloedeln_cards=[{"seat": 0, "card": "hearts-7"}]),
+    lambda view: view["options"].update(schoeneres_enabled="true"),
+))
+def test_preplay_and_revision_dto_extensions_fail_closed(mutate):
+    table = Table(start_match(cpu_recipe(2), "strict-preplay", dealt(2), first_dealer="A"))
+    view = table.view("A")
+    mutate(view)
+    with pytest.raises(WattenCpuMemoryError, match="invalid_view"):
+        read_personal_view(view, player_id="A")
 
 
 def test_retired_deals_are_bounded():
@@ -255,10 +354,32 @@ def test_public_plays_are_kept_independently_of_history_option_without_fetching_
     assert plays == set(table.state.play.plays)
     assert len(table.memories["C"].winners) == len(table.state.play.tricks)
     assert table.memories["C"] == run(not history).memories["C"]
-    # A late observer only remembers what this DTO shows: the archive only with the option.
+    # A completed round makes all played tricks public, also with the option off.
     late = observe(new_memory("C"), table.view("C"))
-    expected = len(table.state.play.tricks) if history else 1
-    assert len(late.winners) == expected
+    assert len(late.winners) == len(table.state.play.tricks)
+
+
+def test_round_summary_is_terminal_display_data_and_never_supplies_a_blind_cpu_call():
+    table = Table(start_match(cpu_recipe(4, "ladinisch", True), "blind-review", blind_deal(), first_dealer="A"))
+    table.ready()
+    active = table.view("C")
+    summary = {"strike_rank": "9", "trump_suit": "bells", "rechter": "bells-9"}
+    with pytest.raises(WattenCpuMemoryError, match="invalid_view"):
+        read_personal_view({**active, "round_summary": summary}, player_id="C")
+    table.finish()
+    terminal = table.view("C")
+    assert terminal["round_summary"] == summary and terminal["trick_history"]
+    assert read_personal_view(terminal, player_id="C").finished
+    # A restarted observer sees the round review without learning a reusable call.
+    late = observe(new_memory("C"), terminal)
+    assert (late.strike, late.suit, late.inspected) == (None, None, None)
+    for invalid in ({**summary, "rechter": "hearts-9"}, {**summary, "trump_suit": "violet"},
+                    {**summary, "stock": []}):
+        with pytest.raises(WattenCpuMemoryError, match="invalid_view"):
+            read_personal_view({**terminal, "round_summary": invalid}, player_id="C")
+    table.next_deal("blind-after-review", blind_deal("secret"))
+    assert "round_summary" not in table.view("C")
+    assert (table.memories["C"].strike, table.memories["C"].suit) == (None, None)
 
 
 @pytest.mark.parametrize("bad", (

@@ -10,6 +10,7 @@ import { initializeWattenPwa } from './pwa.js';
 import { friendSettingsText, mountFriendSettings } from './friend-settings.js';
 import { initializeSuiteHeader } from '../shell/header.js';
 import { initializeAppMode } from '../multigame/app-mode.js';
+import { mountWattenPushSettings, pushSettingsMarkup } from './push-settings.js';
 
 initializeWattenPwa();
 initializeSuiteHeader();
@@ -25,6 +26,9 @@ let viewerId = null;
 let navigating = false;
 let generation = 0;
 let friendSettings = null;
+let pushSettings = null;
+
+function clearPushSettings() { const previous = pushSettings; pushSettings = null; previous?.destroy(); }
 
 function clearFriendSettings() {
   const previous = friendSettings;
@@ -36,6 +40,7 @@ function navigate(path) {
   if (navigating) return;
   navigating = true;
   clearFriendSettings();
+  clearPushSettings();
   root.replaceChildren();
   location.assign(path);
 }
@@ -109,8 +114,10 @@ function renderLogin() {
 }
 
 function renderSettings(auth) {
+  clearPushSettings();
   const user = auth.user;
-  if ((auth.game_access || user.game_access)?.watten_preview === true) initializeAppMode({ mode: 'watten' });
+  const publicPush = (auth.game_access || user.game_access)?.watten_public === true;
+  if ((auth.game_access || user.game_access)?.watten_preview === true || (auth.game_access || user.game_access)?.watten_public === true) initializeAppMode({ mode: 'watten' });
   viewerId = user.id;
   document.title = `Watten · ${t('Kontoeinstellungen')}`;
   root.innerHTML = `<h1>${copy('Kontoeinstellungen')}</h1><p>${copy('Ein Konto für alle unsere Spiele. Dein bestehender Passkey funktioniert hier ebenfalls.')}</p>
@@ -126,6 +133,7 @@ function renderSettings(auth) {
     <details><summary>${copy('Dein Profilbild')}</summary><div data-avatar-upload></div></details>
     <details><summary>${esc(friendSettingsText('settingsTitle'))}</summary><div data-watten-friend-settings></div></details>
     <details><summary>${copy('Sprache')}</summary><form data-language><label>${copy('Sprache')}<select name="language"><option value="de">Deutsch</option><option value="en">English</option></select></label><button type="submit">${copy('Sprache speichern')}</button><p role="status"></p></form></details>
+    ${publicPush ? pushSettingsMarkup(copy) : ""}
     <div class="actions"><a href="/watten">${copy('Zurück')}</a><a href="/watten/konto/fortschritt">${copy('Fortschritt')}</a><button data-logout type="button">${copy('Abmelden')}</button></div><p data-account-message role="status"></p>`;
   mountUsernameSettings(root.querySelector('[data-username-settings]'), { user, onChanged: changed => {
     const name = root.querySelector('[data-account-name]');
@@ -144,6 +152,10 @@ function renderSettings(auth) {
       navigate('/watten/anmelden?return_to=%2Fwatten%2Fkonto%2Feinstellungen');
     },
     loadAuth, escapeHtml: esc });
+  if (publicPush) pushSettings = mountWattenPushSettings({ container: root.querySelector('[data-watten-push-settings]'), viewerId: user.id,
+    isCurrent: () => !navigating && generation === mountedGeneration && viewerId === user.id,
+    onAccountChanged: () => { generation += 1; navigate('/watten/anmelden?return_to=%2Fwatten%2Fkonto%2Feinstellungen'); },
+    loadAuth, translate: t });
   const password = root.querySelector('[data-password]');
   const verification = mountAccountVerification(password.querySelector('[data-account-verification]'));
   password.addEventListener('submit', event => {
@@ -186,6 +198,7 @@ else if (page === 'settings') {
       // Clearing precedes navigation; late requests may only update detached UI.
       generation += 1;
       clearFriendSettings();
+      clearPushSettings();
       root.replaceChildren();
       navigate(event.detail?.authenticated ? '/watten/anmelden?return_to=%2Fwatten%2Fkonto%2Feinstellungen' : '/watten');
     }
@@ -207,6 +220,7 @@ else if (page === 'settings') {
     generation += 1;
     viewerId = null;
     clearFriendSettings();
+    clearPushSettings();
     root.replaceChildren();
   };
   window.addEventListener('pagehide', clearPrivatePage);

@@ -17,6 +17,7 @@ from .product_hosts import (
     is_watten_host,
     site_origin,
 )
+from .watten_readiness import watten_public_beta_enabled
 
 _PRIVATE_HEADERS = {"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"}
 
@@ -76,7 +77,7 @@ def _founder_request_enabled(connection, *, discovery=False) -> bool:
 
 def watten_request_enabled(connection=None) -> bool:
     """Pre-auth deployment/host filter, never an account access decision."""
-    return watten_game_preview_enabled(connection) or _founder_request_enabled(connection)
+    return watten_public_beta_enabled(connection) or watten_game_preview_enabled(connection) or _founder_request_enabled(connection)
 
 
 def watten_founder_account_id(db, *, lock=False) -> int | None:
@@ -103,13 +104,13 @@ def _current_founder(identity) -> bool:
 
 
 def can_access_watten(identity, connection) -> bool:
-    return bool(identity is not None and (watten_game_preview_enabled(connection)
+    return bool(identity is not None and (watten_public_beta_enabled(connection) or watten_game_preview_enabled(connection)
                 or _founder_request_enabled(connection) and _current_founder(identity)))
 
 
 def can_discover_watten(identity, connection) -> bool:
     """The three existing suite hosts may link the founder to the apex preview."""
-    return bool(identity is not None and (watten_game_preview_enabled(connection)
+    return bool(watten_public_beta_enabled(connection) or identity is not None and (watten_game_preview_enabled(connection)
                 or _founder_request_enabled(connection, discovery=True) and _current_founder(identity)))
 
 

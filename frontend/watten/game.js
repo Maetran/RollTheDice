@@ -6,26 +6,32 @@ import { initializeWattenPwa } from "./pwa.js";
 import { t, prepareWattenCards, strikeName, suitName, STRIKES, SUITS } from "./cards.js";
 import { dismissLandscapeHint, joinFormMarkup, recipeMarkup, spectateFormMarkup, waitingRoomMarkup } from "./waiting-room.js";
 import { createTableView } from "./table.js";
-import { createMotion } from "./motion.js";
+import { createMotion, sameHandVersion } from "./motion.js";
 import { createMatchProgress } from "./match-progress.js";
 import { applyFavoriteToCreator, createFavorites, favoriteText, readCreatorRecipe, syncCreatorProtection } from "./favorites.js";
+import { lobbyText as lt } from "./lobby-copy.js";
+import { generateWattenTableName } from "./table-names.js";
 import { createRematch } from "./rematch.js";
+import { createOpenSeatNotifications } from "./open-seat-notify.js";
 import { loadWattenDetail } from "./api.js";
 import { createSocial } from "./social.js";
 import { mountWattenLobbyChat } from "./lobby-chat.js";
 import { createDecor } from "./decor.js";
+import { createWattenVoice } from "./voice.js";
 import { createFriendActivity } from "./friend-activity.js";
 import { initializeAppMode } from "../multigame/app-mode.js";
 import { initializeSuiteHeader } from "../shell/header.js";
 
-// Metadata only: these preview documents neither register a worker nor
-// advertise installation; the account pages own that local experiment.
-initializeWattenPwa({ registerWorker: false, installControls: false });
+// Public lobby launches own the install flow; active tables only register.
+const publicBetaDocument = document.documentElement.dataset.wattenPublicBeta === "true";
+initializeWattenPwa({ registerWorker: publicBetaDocument,
+  installControls: publicBetaDocument && document.documentElement.dataset.wattenPage === "lobby" });
 
 const html = document.documentElement;
 const page = ["lobby", "table", "spectator", "rules"].includes(html.dataset.wattenPage) ? html.dataset.wattenPage : "lobby";
 const gameId = /^[0-9a-f]{16}$/.test(html.dataset.gameId || "") ? html.dataset.gameId : "";
 const app = document.getElementById("wattenApp");
+const publicLandingMarkup = publicBetaDocument && page === "lobby" ? app.innerHTML : "";
 const nav = document.querySelector("[data-watten-nav]");
 document.querySelector(".suite-header")?.classList.toggle("suite-header--table", page === "table" || page === "spectator");
 initializeSuiteHeader();
@@ -42,6 +48,9 @@ const ERRORS = new Set([
   "watten_storage_unavailable", "watten_free_weli_strike_with_critical", "watten_leave_unavailable",
   "watten_running_leave_unsupported", "watten_command_conflict", "watten_feedback_unavailable",
   "watten_deal_finished", "watten_already_joined", "watten_not_a_member", "watten_not_started",
+  "watten_preplay_response_required", "watten_preplay_unavailable", "watten_schoeneres_requires_two_callers",
+  "watten_retourschneider_decision_pending", "watten_retourschneider_unavailable",
+  "watten_invalid_tournament_target", "watten_tournament_finished", "watten_tournament_roster_locked",
   "game_creation_temporarily_blocked", "authentication_required", "game_not_found", "watten_password_option_mismatch",
 ]);
 
@@ -52,8 +61,10 @@ let anonymousMount = false;
 let navigating = false;
 let matchProgress = null;
 let rematch = null;
+let openSeatNotifications = null;
 let social = null;
 let decor = null;
+let voice = null;
 const cleanups = new Set();
 
 function errorText(code) {
@@ -65,24 +76,30 @@ function signInUrl(path = location.pathname) {
   return `/watten/anmelden?return_to=${encodeURIComponent(wattenAccountReturnPath(path) || "/watten")}`;
 }
 
+function publicPageUrl(path) {
+  return window.ZDWA_I18N?.getLanguage?.() === "en" ? `${path}?lang=en` : path;
+}
+
 function renderNav(auth) {
   if (!nav) return;
   const user = auth?.authenticated ? auth.user : null;
   const label = text => esc(window.ZDWA_I18N.t(text));
-  nav.innerHTML = `<a href="/watten"${page === "lobby" ? " aria-current=\"page\"" : ""}>${esc(t("nav.lobby"))}</a>
+  nav.innerHTML = `<a href="${publicPageUrl("/watten")}"${page === "lobby" ? " aria-current=\"page\"" : ""}>${esc(t("nav.lobby"))}</a>
     <a href="/watten/rangliste">${label("Spieler & Ranking")}</a>
-    <a href="/watten/regeln"${page === "rules" ? " aria-current=\"page\"" : ""}>${esc(t("nav.rules"))}</a>
+    <a href="${publicPageUrl("/watten/regeln")}"${page === "rules" ? " aria-current=\"page\"" : ""}>${esc(t("nav.rules"))}</a>
     ${user ? `<a href="/watten/konto/einstellungen" aria-label="${esc(t("nav.accountOf", { name: user.username }))}">${label("Konto")}</a>`
       : `<a href="${esc(signInUrl())}">${label("Konto")}</a>`}`;
 }
 
 /** Drop private state synchronously; late callbacks observe a new generation. */
 function teardown() {
+  voice?.destroy(); voice = null;
   generation += 1;
   delete html.dataset.wattenActive;
   for (const cleanup of cleanups) cleanup();
   cleanups.clear();
   closeSocket();
+  session.view?.destroy?.();
   if (page !== "rules") app.replaceChildren();
 }
 
@@ -125,54 +142,67 @@ window.addEventListener("pageshow", event => {
 // Lobby
 
 function lobbyIntro({ signedIn = false, status = "" } = {}) {
-  return `<section class="wt-hero" aria-labelledby="wattenTitle">
-    <h1 id="wattenTitle" translate="no">Watten</h1>
-    <p class="wt-lead">${esc(t("lobby.intro"))}</p>
+  return `<section class="wt-hero wt-lobby-intro" aria-labelledby="wattenTitle">
+    <div class="wt-lobby-intro-copy"><h1 id="wattenTitle" translate="no">Watten</h1>
+    <p class="wt-lead">${esc(lt("intro"))}</p></div>
     <div class="wt-actions">
-      <a class="wt-button wt-button--ghost" href="/watten/regeln">${esc(t("lobby.rules"))}</a>
-      ${signedIn ? `<a class="wt-button wt-button--ghost" href="/watten/konto/einstellungen">${esc(t("lobby.account"))}</a>`
+      ${signedIn ? `<button type="button" class="wt-primary" data-watten-create-open>＋ ${esc(lt("open"))}</button>`
         : `<a class="wt-button" href="${esc(signInUrl("/watten"))}" data-watten-signin>${esc(t("lobby.signIn"))}</a>`}
+      <a class="wt-button wt-button--ghost" href="${publicPageUrl("/watten/regeln")}">${esc(t("lobby.rules"))}</a>
     </div>
     ${signedIn ? "" : `<p class="wt-note">${esc(t("lobby.signInHint"))}</p>`}
     <p class="wt-note" data-watten-lobby-status role="status">${esc(status)}</p>
   </section>`;
 }
 
-function creatorMarkup(username) {
+function creatorMarkup() {
   const targets = [3, 5, 7, 11, 13, 15, 18, 21];
-  return `<section class="wt-card-panel wt-create" aria-labelledby="wattenCreateTitle">
-    <h2 id="wattenCreateTitle">${esc(t("create.title"))}</h2>
-    <form data-watten-create novalidate>
-      <label>${esc(t("create.name"))}<input name="name" maxlength="80" required value="${esc(t("create.defaultName", { name: username }))}"></label>
-      <fieldset class="wt-segmented"><legend>${esc(t("create.players"))}</legend>
+  return `<dialog class="wt-create-dialog" data-watten-create-dialog aria-labelledby="wattenCreateTitle">
+    <header class="wt-create-heading"><h2 id="wattenCreateTitle">${esc(lt("choose"))}</h2>
+      <button type="button" class="wt-icon-button" data-watten-create-close aria-label="${esc(lt("close"))}">×</button></header>
+    <section data-watten-create-choice>
+      <div class="wt-create-choices">
+        <button type="button" class="wt-create-choice" data-watten-create-favourite disabled>
+          <span aria-hidden="true">★</span><strong>${esc(lt("favourite"))}</strong>
+          <small data-watten-favourite-summary>${esc(favoriteText("loading"))}</small></button>
+        <button type="button" class="wt-create-choice" data-watten-create-define>
+          <span aria-hidden="true">＋</span><strong>${esc(lt("define"))}</strong><small>${esc(lt("defineHelp"))}</small></button>
+      </div>
+      <p class="wt-error" role="alert" data-watten-favourite-error></p>
+    </section>
+    <form class="wt-create-form" data-watten-create novalidate hidden>
+      <fieldset class="wt-segmented wt-create-count"><legend>${esc(t("create.players"))}</legend>
         ${[2, 3, 4].map(count => `<label><input type="radio" name="count" value="${count}"${count === 4 ? " checked" : ""}><span>${esc(t(`create.count${count}`))}</span></label>`).join("")}
       </fieldset>
-      <p class="wt-note" data-watten-count-note></p>
-      <fieldset class="wt-segmented"><legend>${esc(t("create.determination"))}</legend>
+      <p class="wt-note wt-create-count-note" data-watten-count-note></p>
+      <div class="wt-create-rule-grid"><fieldset class="wt-segmented"><legend>${esc(t("create.determination"))}</legend>
         <label><input type="radio" name="determination" value="normal"><span>${esc(t("create.normal"))}</span></label>
         <label><input type="radio" name="determination" value="ladinisch" checked><span>${esc(t("create.ladinisch"))}</span></label>
       </fieldset>
+      <label>${esc(t("create.target"))}<select name="target">${targets.map(points => `<option value="${points}"${points === 11 ? " selected" : ""}>${esc(t(points === 3 ? "create.targetShort" : "create.targetOption", { points }))}</option>`).join("")}</select></label></div>
+      <div class="wt-create-tournament"><label>${esc(lt("tournament"))}<select name="tournament_target">
+        <option value="">${esc(lt("singleGame"))}</option>${[3, 5, 8, 10, 15, 20].map(count => `<option value="${count}">${esc(lt("tournamentTarget", { count }))}</option>`).join("")}
+        <option value="custom">${esc(lt("tournamentCustom"))}</option></select></label>
+        <label data-watten-tournament-custom hidden>${esc(lt("tournamentNumber"))}<input name="tournament_custom" type="number" inputmode="numeric" min="1" max="9007199254740991" step="1" disabled></label>
+        <small data-watten-tournament-help hidden>${esc(lt("tournamentHelp"))}</small></div>
       <label class="wt-check"><input type="checkbox" name="blind" checked><span>${esc(t("create.blind"))}<small>${esc(t("create.blindHelp"))}</small></span></label>
-      <label>${esc(t("create.target"))}<select name="target">${targets.map(points => `<option value="${points}"${points === 11 ? " selected" : ""}>${esc(t(points === 3 ? "create.targetShort" : "create.targetOption", { points }))}</option>`).join("")}</select></label>
+      <label class="wt-check"><input type="checkbox" name="cpu_fill"><span>${esc(lt("cpuFill"))}<small>${esc(lt("cpuHelp"))}</small></span></label>
+      <label class="wt-check"><input type="checkbox" name="voice_enabled" checked><span>${esc(lt("audio"))}<small>${esc(lt("audioHelp"))}</small></span></label>
       <details class="wt-more" data-watten-advanced><summary>${esc(t("create.more"))}</summary>
         <label class="wt-check"><input type="checkbox" name="critical"><span>${esc(t("create.critical"))}<small>${esc(t("create.criticalHelp"))}</small></span></label>
+        <label class="wt-check"><input type="checkbox" name="schoeneres_enabled"><span>${esc(lt("schoeneres"))}<small data-watten-schoeneres-help>${esc(lt("schoeneresHelp"))}</small></span></label>
         <label class="wt-check"><input type="checkbox" name="show_rechter"><span>${esc(t("create.showRechter"))}<small>${esc(t("create.showRechterHelp"))}</small></span></label>
         <label class="wt-check"><input type="checkbox" name="trick_history"><span>${esc(t("create.trickHistory"))}<small>${esc(t("create.trickHistoryHelp"))}</small></span></label>
         <label class="wt-check"><input type="checkbox" name="partner_hand"><span>${esc(t("create.partnerHand"))}<small data-watten-partner-help>${esc(t("create.partnerHandHelp"))}</small></span></label>
-        <fieldset class="wt-segmented"><legend>${esc(favoriteText("cpuWishes"))}</legend>
-          ${[0, 1, 2, 3].map(seat => `<label><input type="checkbox" name="cpu_seats" value="${seat}" data-watten-cpu-seat>
-            <span>${esc(favoriteText("cpuSeat", { seat: seat + 1 }))}</span></label>`).join("")}
-        </fieldset>
-        <label class="wt-check"><input type="checkbox" name="password_required" data-watten-password-protection><span>${esc(favoriteText("protection"))}
-          <small>${esc(favoriteText("protectionHelp"))}</small></span></label>
-        <label>${esc(t("create.password"))}<input name="password" type="password" autocomplete="new-password" maxlength="100" data-watten-password disabled><small>${esc(t("create.passwordHelp"))}</small></label>
       </details>
-      <p class="wt-note">${esc(t("create.cpuSeats"))}</p>
-      <section data-watten-favorite></section>
-      <button type="submit" class="wt-primary">${esc(t("create.submit"))}</button>
+      <label>${esc(lt("password"))}<input name="password" type="password" autocomplete="new-password" maxlength="100" data-watten-password><small data-watten-password-note>${esc(lt("passwordHelp"))}</small></label>
+      <details class="wt-more wt-create-favorite"><summary>☆ ${esc(lt("favoriteSettings"))}</summary><section data-watten-favorite></section></details>
       <p class="wt-error" role="alert" data-watten-create-error></p>
+      <footer class="wt-create-footer"><button type="button" class="wt-button--ghost" data-watten-create-back>${esc(lt("back"))}</button>
+        <button type="submit" class="wt-primary">${esc(t("create.submit"))}</button></footer>
+      <p class="wt-note wt-create-name-note">${esc(lt("tableName"))}</p>
     </form>
-  </section>`;
+  </dialog>`;
 }
 
 function syncCreator(form, countChanged) {
@@ -191,17 +221,26 @@ function syncCreator(form, countChanged) {
   const partnerAllowed = count !== 2 && !form.elements.blind.checked;
   form.elements.partner_hand.disabled = !partnerAllowed;
   if (!partnerAllowed) form.elements.partner_hand.checked = false;
-  for (const control of form.querySelectorAll("[data-watten-cpu-seat]")) {
-    control.disabled = Number(control.value) >= count;
-    control.closest("label").hidden = control.disabled;
-    if (control.disabled) control.checked = false;
-  }
+  const schoeneresAllowed = count !== 3;
+  form.elements.schoeneres_enabled.disabled = !schoeneresAllowed;
+  if (!schoeneresAllowed) form.elements.schoeneres_enabled.checked = false;
+  form.querySelector("[data-watten-schoeneres-help]").textContent = lt(schoeneresAllowed ? "schoeneresHelp" : "schoeneresUnavailable");
+  const tournament = form.elements.tournament_target;
+  tournament.disabled = count === 3;
+  if (count === 3) tournament.value = "";
+  const customTournament = tournament.value === "custom";
+  form.querySelector("[data-watten-tournament-custom]").hidden = !customTournament;
+  form.elements.tournament_custom.disabled = !customTournament;
+  form.elements.tournament_custom.required = customTournament;
+  const tournamentHelp = form.querySelector("[data-watten-tournament-help]");
+  tournamentHelp.hidden = !tournament.value && count !== 3;
+  tournamentHelp.textContent = lt(count === 3 ? "tournamentUnavailable" : "tournamentHelp");
   syncCreatorProtection(form);
   form.querySelector("[data-watten-count-note]").textContent = t(`create.count${count}Note`);
 }
 
 function recipeFromForm(form) {
-  return readCreatorRecipe(form, { requirePassword: true });
+  return readCreatorRecipe(form);
 }
 
 function detailCode(detail) {
@@ -210,63 +249,100 @@ function detailCode(detail) {
 }
 
 function mountCreator(gen) {
-  const form = app.querySelector("[data-watten-create]");
+  const dialog = app.querySelector("[data-watten-create-dialog]");
+  const form = dialog.querySelector("[data-watten-create]");
+  const choice = dialog.querySelector("[data-watten-create-choice]");
+  const title = dialog.querySelector("#wattenCreateTitle");
   const error = form.querySelector("[data-watten-create-error]");
   const submit = form.querySelector("button[type=submit]");
+  const favoriteButton = dialog.querySelector("[data-watten-create-favourite]");
+  const defineButton = dialog.querySelector("[data-watten-create-define]");
+  const closeButton = dialog.querySelector("[data-watten-create-close]");
   let busy = false;
+  const current = () => gen === generation && !navigating && latestUserId === account?.id;
+  function screen(showForm) {
+    form.hidden = !showForm; choice.hidden = showForm;
+    title.textContent = lt(showForm ? "setup" : "choose");
+    if (dialog.open) (showForm ? form.querySelector("input[name=count]:checked") : defineButton)?.focus();
+  }
+  function close() { if (!busy) dialog.close(); }
   syncCreator(form, true);
   const favorites = createFavorites({ container: form.querySelector("[data-watten-favorite]"), apiFetch, loadAuth, escapeHtml: esc,
     getRecipe: () => readCreatorRecipe(form).recipe,
-    applyRecipe: recipe => { applyFavoriteToCreator(form, recipe); syncCreator(form, false); error.textContent = ""; },
-    getExpectedAccountId: () => account?.id,
-    isCurrent: () => gen === generation && !navigating && latestUserId === account?.id,
-    onAccountChanged: reloadFresh });
-  cleanups.add(() => { favorites.destroy(); form.elements.password.value = ""; });
-  form.addEventListener("change", event => syncCreator(form, event.target.name === "count"));
-  form.addEventListener("submit", async event => {
+    applyRecipe: recipe => {
+      applyFavoriteToCreator(form, recipe); syncCreator(form, false); error.textContent = ""; screen(true);
+      if (recipe.password_required) form.elements.password.focus();
+    },
+    getExpectedAccountId: () => account?.id, isCurrent: current, onAccountChanged: reloadFresh,
+    onState: ({ favorite, busy: favoriteBusy, failed, message }) => {
+      favoriteButton.disabled = favoriteBusy || !favorite;
+      dialog.querySelector("[data-watten-favourite-summary]").textContent = favorite
+        ? favoriteText("summary", { players: favorite.player_count, target: favorite.target_points, cpus: favorite.cpu_seats.length })
+          + (favorite.tournament_nockerl_target ? ` · ${lt("tournamentTarget", { count: favorite.tournament_nockerl_target })}` : "")
+        : favoriteBusy ? favoriteText("loading") : lt("favouriteEmpty");
+      dialog.querySelector("[data-watten-favourite-error]").textContent = failed ? favoriteText(message) : "";
+    } });
+  const controller = new AbortController();
+  cleanups.add(() => { controller.abort(); favorites.destroy(); form.elements.password.value = ""; dialog.close(); });
+  const listen = (element, type, handler) => element.addEventListener(type, handler, { signal: controller.signal });
+  listen(app.querySelector("[data-watten-create-open]"), "click", () => {
+    if (!current()) return;
+    screen(false); dialog.showModal(); defineButton.focus();
+  });
+  listen(defineButton, "click", () => screen(true));
+  listen(favoriteButton, "click", () => favorites.applyStored());
+  listen(closeButton, "click", close);
+  listen(dialog, "cancel", event => { if (busy) event.preventDefault(); });
+  listen(dialog, "click", event => {
+    if (event.target !== dialog) return;
+    const bounds = dialog.getBoundingClientRect();
+    if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) close();
+  });
+  listen(dialog, "close", () => { form.elements.password.value = ""; });
+  listen(form.querySelector("[data-watten-create-back]"), "click", () => { if (!busy) { form.elements.password.value = ""; screen(false); } });
+  listen(form, "change", event => syncCreator(form, event.target.name === "count"));
+  listen(form, "submit", async event => {
     event.preventDefault();
-    if (busy) return;
-    const name = form.elements.name.value.trim();
-    if (!name) { error.textContent = t("create.nameRequired"); form.elements.name.focus(); return; }
+    if (busy || !current()) return;
     let recipe, password;
     try { ({ recipe, password } = recipeFromForm(form)); }
-    catch (failure) {
-      error.textContent = failure.message;
-      if (form.elements.password_required.checked && !form.elements.password.value.trim()) {
-        form.querySelector("[data-watten-advanced]").open = true;
-        form.elements.password.focus();
-      }
-      return;
-    }
+    catch (failure) { error.textContent = failure.message; return; }
+    const name = generateWattenTableName(account.username, window.ZDWA_I18N.getLanguage());
     busy = true;
-    submit.disabled = true;
-    error.textContent = "";
+    const controls = [...form.querySelectorAll("input, select, button, summary")];
+    const previouslyDisabled = controls.map(control => control.disabled);
+    controls.forEach(control => { if ("disabled" in control) control.disabled = true; });
+    closeButton.disabled = true; dialog.setAttribute("aria-busy", "true"); error.textContent = "";
     try {
       // Bind creation to the mounted account; never adopt another's CSRF token.
       const fresh = await loadAuth({ refresh: true });
-      if (gen !== generation || !fresh.authenticated || fresh.user.id !== account.id) throw new Error(t("auth.changed"));
+      if (!current() || !fresh.authenticated || fresh.user.id !== account.id) throw new Error(t("auth.changed"));
       const response = await fetch("/api/games", {
-        method: "POST", cache: "no-store",
-        headers: { "Content-Type": "application/json", "X-CSRF-Token": fresh.user.csrf_token },
+        method: "POST", cache: "no-store", signal: controller.signal,
+        headers: { "Content-Type": "application/json", "X-CSRF-Token": fresh.user.csrf_token,
+          "X-Watten-Expected-Account-Id": String(account.id) },
         body: JSON.stringify({ name, mode: String(recipe.player_count), game_type: "watten", watten_recipe: recipe, ...(password ? { pass: password } : {}) }),
       });
       const data = await response.json().catch(() => ({}));
-      if (gen !== generation) return;
+      if (!current()) return;
       if (response.status === 401) { refreshAuth(); throw new Error(t("error.authentication_required")); }
       if (!response.ok || !GAME_PATH.test(data.game_id || "")) throw new Error(errorText(detailCode(data.detail)));
       navigate(`/watten/spiel/${data.game_id}`);
     } catch (failure) {
       // Every selected option stays as chosen for a corrected retry.
-      if (gen === generation) error.textContent = failure.message || t("error.generic");
+      if (current() && failure.name !== "AbortError") error.textContent = failure.message || t("error.generic");
     } finally {
       busy = false;
-      if (gen === generation) submit.disabled = false;
+      if (current()) {
+        controls.forEach((control, index) => { if ("disabled" in control) control.disabled = previouslyDisabled[index]; });
+        submit.disabled = false; closeButton.disabled = false; dialog.removeAttribute("aria-busy");
+      }
     }
   });
 }
 
 function tablesMarkup() {
-  return `<section class="wt-card-panel" aria-labelledby="wattenTablesTitle">
+  return `<section class="wt-card-panel wt-tables-panel" aria-labelledby="wattenTablesTitle">
     <div class="wt-section-head"><h2 id="wattenTablesTitle">${esc(t("lobby.tables"))}</h2>
       <button type="button" class="wt-button--ghost wt-button--small" data-watten-command="refresh-tables">${esc(t("lobby.refresh"))}</button></div>
     <ul class="wt-table-list" data-watten-tables aria-busy="true"></ul>
@@ -288,9 +364,8 @@ function tableEntry(entry) {
   return `<li class="wt-table-entry" data-watten-table="${entry.id}">
     <div class="wt-table-entry-head"><strong translate="no">${esc(entry.name)}</strong>
       <span class="wt-tag">${esc(status)}</span>${entry.locked ? `<span class="wt-tag">${esc(t("recipe.password"))}</span>` : ""}</div>
-    ${recipeMarkup(entry.room.recipe)}
-    <p class="wt-note">${esc(t("lobby.seats", { taken, count: seats.length }))}</p>
-    <div class="wt-actions">${links}</div>
+    <p class="wt-table-entry-meta">${esc(t("recipe.players", { count: seats.length }))} · ${esc(t("recipe.target", { points: entry.room.recipe.target_points }))} · ${esc(t("lobby.seats", { taken, count: seats.length }))}</p>
+    <div class="wt-table-entry-foot"><span class="wt-note">${esc(t(entry.room.recipe.blind ? "recipe.blind" : "recipe.open"))} · ${esc(t(entry.room.recipe.determination === "ladinisch" ? "recipe.ladinisch" : "recipe.normal"))}</span><div class="wt-actions">${links}</div></div>
   </li>`;
 }
 
@@ -317,26 +392,28 @@ async function refreshTables(gen) {
 
 async function mountLobby() {
   const gen = generation;
-  app.innerHTML = lobbyIntro({ status: t("lobby.loading") });
+  if (!publicLandingMarkup) app.innerHTML = lobbyIntro({ status: t("lobby.loading") });
   let auth;
   try { auth = await loadAuth({ refresh: true }); } catch {
     if (gen !== generation) return;
     renderNav(null);
-    app.innerHTML = lobbyIntro({ status: t("auth.unavailable") });
+    app.innerHTML = publicLandingMarkup || lobbyIntro({ status: t("auth.unavailable") });
+    if (publicLandingMarkup) initializeAppMode({ mode: "watten" });
     return;
   }
   if (gen !== generation) return;
   renderNav(auth);
   if (!auth.authenticated) {
     anonymousMount = true;
-    app.innerHTML = lobbyIntro();
+    app.innerHTML = publicLandingMarkup || lobbyIntro();
+    if (publicLandingMarkup) initializeAppMode({ mode: "watten" });
     return;
   }
   account = { id: auth.user.id, username: auth.user.username };
   latestUserId = account.id;
   initializeAppMode({ mode: "watten" });
   app.innerHTML = `${lobbyIntro({ signedIn: true })}<div class="wt-friend-activity-host" data-watten-friend-activity aria-live="polite" hidden></div>
-    <div class="wt-lobby-grid">${creatorMarkup(account.username)}${tablesMarkup()}</div><div data-watten-lobby-chat></div>`;
+    <div class="wt-lobby-grid">${tablesMarkup()}<details class="wt-lobby-chat-disclosure"><summary>${esc(lt("chat"))}</summary><div data-watten-lobby-chat></div></details></div>${creatorMarkup()}`;
   mountCreator(gen);
   mountFriendActivity(gen, "lobby");
   const lobbyChat = mountWattenLobbyChat({ container: app.querySelector("[data-watten-lobby-chat]"), initialAuth: auth,
@@ -383,6 +460,7 @@ function shellMarkup() {
     <div class="wt-view" data-watten-view></div>
     <div data-watten-social hidden></div>
     <div data-watten-decor hidden></div>
+    <div data-watten-voice></div>
     <dialog class="wt-dialog" data-watten-leave-dialog aria-labelledby="wattenLeaveTitle">
       <h2 id="wattenLeaveTitle">${esc(t("leave.title"))}</h2>
       <p>${esc(t("leave.body"))}</p>
@@ -420,6 +498,7 @@ function showMessage(title, body, actions = "") {
   decor?.suspend();
   motion.cancel();
   delete html.dataset.wattenActive;
+  session.view?.destroy?.();
   session.view = null;
   session.viewKind = "message";
   const root = viewRoot();
@@ -428,9 +507,10 @@ function showMessage(title, body, actions = "") {
   decor?.update({ publicPhase: "offline" });
 }
 
-const lobbyLink = () => `<a class="wt-button" href="/watten">${esc(t("nav.lobby"))}</a>`;
+const lobbyLink = () => `<a class="wt-button" href="${publicPageUrl("/watten")}">${esc(t("nav.lobby"))}</a>`;
 
 function closeSocket() {
+  voice?.disconnected();
   motion.cancel();
   const socket = session.socket;
   session.socket = null;
@@ -515,6 +595,7 @@ function scheduleReconnect() {
 }
 
 function onMessage(data) {
+  if (voice?.receive(data) || decor?.receive(data)) return;
   // Public social frames update their own bounded log, never the card view.
   if (social?.receive(data)) return;
   if (typeof data.error === "string" || typeof data.error_code === "string") { onError(data); return; }
@@ -532,6 +613,7 @@ function onMessage(data) {
     setConnection("");
     if (session.inFlight?.action === "resume") clearInFlight();
     syncSocial();
+    voice?.connected();
     return;
   }
   if (typeof data.spectator_id === "string") {
@@ -606,6 +688,7 @@ function onError(data) {
 }
 
 function onClose(event) {
+  voice?.disconnected({ revoke: event.code === 1008 || Boolean(session.fatal) });
   motion.cancel();
   const wasBound = session.bound;
   session.socket = null;
@@ -711,6 +794,7 @@ function onAck(ack) {
   if (!done || ack.command_id !== done.id) return;
   clearInFlight();
   if (done.action === "watten_leave" || done.action === "leave_waiting_game") {
+    voice?.destroy(); voice = null;
     session.pendingDeparture = null;
     // Only an accepted leave returns to the lobby.
     navigate("/watten");
@@ -810,6 +894,10 @@ function adopt(snapshot, publicCalls) {
   const previous = session.snapshot;
   const live = session.live;
   session.snapshot = snapshot;
+  if (previous?.engine && snapshot.engine && !sameHandVersion(previous.engine, snapshot.engine)) {
+    session.bubbles = [];
+    session.callAnnouncement = "";
+  }
   session.live = true;
   if (session.pendingDeparture && !session.inFlight) return;
   setConnection("");
@@ -833,6 +921,9 @@ function preserveFocus(update) {
 function liveMessage(snapshot, engine, actions) {
   if (snapshot.paused) return t(snapshot.can_resume ? "pause.self" : "pause.title");
   if (session.callAnnouncement) return session.callAnnouncement;
+  if (actions.includes("preplay_accept") && engine.preplay?.pending) {
+    return t(`roundOptions.${engine.preplay.pending.kind}.pending`, { name: snapshot.room.seats[engine.preplay.pending.requester]?.name || t("seat.unknown") });
+  }
   if (actions.some(action => action.startsWith("respond_"))) return t("bid.yourDecision");
   if (actions.includes("play_card")) return t("play.yourTurn");
   if (engine.inspection) return t("inspection.title");
@@ -846,9 +937,11 @@ function render(previous = null, live = false, accepted = false) {
   const root = viewRoot();
   if (!snapshot || !root) return;
   decor?.suspend();
+  voice?.update(snapshot);
   setHeading(snapshot.name);
   if (!snapshot.engine) {
     motion.cancel();
+    session.view?.destroy?.();
     delete html.dataset.wattenActive;
     if (snapshot.room.status === "closed") {
       if (session.viewKind !== "closed" || !root.querySelector("[data-watten-rematch]")) {
@@ -869,20 +962,22 @@ function render(previous = null, live = false, accepted = false) {
         busy: Boolean(session.inFlight) || !session.bound,
       });
     });
+    openSeatNotifications?.update();
     syncDecor();
     return;
   }
   if (session.viewKind !== "table" || !session.view) {
     motion.cancel();
+    session.view?.destroy?.();
     session.viewKind = "table";
-    session.view = createTableView(root, { onCard: card => engineCommand("play_card", card) });
+    session.view = createTableView(root, { onCard: card => engineCommand("play_card", card), accountId: account?.id });
   }
   html.dataset.wattenActive = "true";
   const engine = snapshot.engine;
   const count = snapshot.room.recipe.player_count;
   const viewerSeat = session.spectator ? null : engine.viewer?.seat ?? null;
   const actions = session.spectator ? [] : Array.isArray(engine.actions) ? engine.actions : [];
-  const sameDeal = live && previous?.engine?.deal_id === engine.deal_id;
+  const sameDeal = live && sameHandVersion(previous?.engine, engine);
   const prevTrick = previous?.engine?.current_trick?.cards?.length || 0;
   const vm = {
     snapshot, engine, room: snapshot.room, count, viewerSeat, anchorSeat: viewerSeat ?? 0,
@@ -892,6 +987,7 @@ function render(previous = null, live = false, accepted = false) {
     isHost: !session.spectator && snapshot.room.host_participant_id === session.playerId,
     canLeave: !session.spectator && viewerSeat !== null && engine.phase !== "match_complete" && !snapshot.can_resume,
     bubbles: session.bubbles,
+    feedbackDismissed: session.inFlight?.kind === "partner_feedback",
     freshTrickEnd: sameDeal && prevTrick > 0 && !engine.current_trick?.cards?.length && Boolean(engine.last_trick),
     liveMessage: liveMessage(snapshot, engine, actions),
   };
@@ -1007,11 +1103,18 @@ async function mountTable() {
   cleanups.add(() => { matchProgress?.destroy(); matchProgress = null; });
   rematch?.destroy();
   rematch = createRematch({ gameId, fetcher: (url, options) => fetch(url, options), loadAuth, escapeHtml: esc,
-    renderRecipe: recipeMarkup, makeCommandId: commandId, navigate,
+    makeCommandId: commandId, navigate,
     getExpectedAccountId: () => account?.id,
     isCurrent: () => gen === generation && !navigating && latestUserId === account?.id,
     onAccountChanged: reloadFresh });
   cleanups.add(() => { rematch?.destroy(); rematch = null; });
+  openSeatNotifications?.destroy();
+  openSeatNotifications = createOpenSeatNotifications({ root: app, gameId, apiFetch, loadAuth,
+    getSnapshot: () => session.spectator ? null : session.snapshot,
+    getExpectedAccountId: () => account?.id, isBusy: () => Boolean(session.inFlight) || !session.bound,
+    isCurrent: () => gen === generation && !navigating && latestUserId === account?.id,
+    onAccountChanged: reloadFresh });
+  cleanups.add(() => { openSeatNotifications?.destroy(); openSeatNotifications = null; });
   social?.destroy();
   social = createSocial({ gameId, escapeHtml: esc,
     getExpectedAccountId: () => account?.id,
@@ -1020,9 +1123,17 @@ async function mountTable() {
   cleanups.add(() => { social?.destroy(); social = null; });
   decor?.destroy();
   decor = createDecor({ container: app.querySelector("[data-watten-decor]"), root: app, escapeHtml: esc,
+    onSurprise: payload => session.bound && !session.spectator && latestUserId === account?.id && sendRaw(payload),
     getExpectedAccountId: () => account?.id,
     isCurrent: () => gen === generation && !navigating && latestUserId === account?.id });
   cleanups.add(() => { decor?.destroy(); decor = null; });
+  if (page !== "spectator") {
+    voice?.destroy();
+    voice = createWattenVoice({ send: sendRaw, userId: account.id,
+      isCurrent: () => gen === generation && latestUserId === account?.id && !navigating });
+    voice.attach(app.querySelector("[data-watten-voice]"));
+    cleanups.add(() => { voice?.destroy(); voice = null; });
+  }
   mountFriendActivity(gen, "table");
   setConnection("cards");
   try { await prepareWattenCards(); } catch {
@@ -1042,7 +1153,7 @@ function syncSocial() {
 }
 
 function syncDecor() {
-  decor?.update({ publicPhase: session.snapshot?.paused ? "paused"
+  decor?.update({ surpriseOffer: session.snapshot?.table_surprise_offer, publicPhase: session.snapshot?.paused ? "paused"
     : session.snapshot?.engine?.phase || session.snapshot?.room?.status || "preview" });
 }
 
@@ -1130,7 +1241,8 @@ cleanups.add(() => { closeLeaveDialog(); motion.destroy(); });
 if (page === "rules") {
   loadAuth().then(auth => {
     renderNav(auth);
-    if (auth.authenticated && (auth.game_access || auth.user?.game_access)?.watten_preview === true) {
+    const access = auth.game_access || auth.user?.game_access;
+    if (access?.watten_public === true || (auth.authenticated && access?.watten_preview === true)) {
       initializeAppMode({ mode: "watten" });
     }
   }).catch(() => renderNav(null));

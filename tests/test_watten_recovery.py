@@ -67,6 +67,26 @@ def test_retired_source_and_target_reuse_one_follow_up_without_revaluing(server,
         assert counts(db) == journal
 
 
+
+def test_fixed_rematch_accounts_recover_without_invitation_or_unexpired_reservation(server):
+    source, owners = source_for()
+    target_id = post(server, source, owners[0], command(source)).json()["game_id"]
+    target = games[target_id]
+    target["_watten"] = replace(target["_watten"], room=replace(target["_watten"].room, reservations=()))
+    persist_watten_game(target)
+    before = checkpoints()
+    with session_scope() as db:
+        journal = counts(db)
+    games.clear()
+    denied = server.get(f"/api/games/{target_id}", headers={"Cookie": owners[2][1]})
+    assert denied.status_code == 200 and denied.json() == {"exists": False} and target_id not in games
+    recovered = server.get(f"/api/games/{target_id}", headers={"Cookie": owners[1][1]})
+    assert recovered.status_code == 200 and recovered.json()["exists"]
+    assert recovered.json()["room"]["required_seat"] == 1 and recovered.json()["engine"] is None
+    assert len(games[target_id]["_watten"].room.members) == 1 and checkpoints() == before
+    with session_scope() as db:
+        assert counts(db) == journal
+
 def test_foreign_finished_checkpoint_is_not_decoded_or_exposed(server, monkeypatch):
     source, owners = source_for()
     games.clear()

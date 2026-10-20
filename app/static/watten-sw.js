@@ -1,5 +1,5 @@
-/* Local account preview only. No account, token, game or asset enters Cache Storage. */
-const CACHE_VERSION = 'assets-787b1d1593ff';
+/* Watten uses the network. No account, token, game or asset enters Cache Storage. */
+const CACHE_VERSION = 'assets-9d27e7a8dd8c';
 
 self.addEventListener('message', event => {
   if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();
@@ -9,12 +9,12 @@ self.addEventListener('activate', event => event.waitUntil(self.clients.claim())
 function connectionNeeded() {
   return new Response(`<!doctype html><html lang="de"><head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <meta name="robots" content="noindex, nofollow"><meta name="theme-color" content="#26583e">
+    <meta name="robots" content="noindex, nofollow"><meta name="theme-color" content="#713d2c">
     <title>Watten · Offline</title><style>
-    *{box-sizing:border-box}body{margin:0;padding:24px;min-height:100vh;display:grid;place-items:center;background:#e8ede4;color:#24382e;font:17px/1.6 system-ui,sans-serif}main{max-width:36rem}h1{font:700 36px Georgia,serif}a{display:inline-flex;align-items:center;min-height:44px;padding:10px 16px;border:1px solid currentColor;border-radius:5px;color:#26583e}a:focus-visible{outline:3px solid #996c1f;outline-offset:3px}
+    *{box-sizing:border-box}body{margin:0;padding:24px;min-height:100vh;display:grid;place-items:center;background:#ecddc6;color:#39251b;font:17px/1.6 system-ui,sans-serif}main{max-width:36rem}h1{font:700 36px Georgia,serif}a{display:inline-flex;align-items:center;min-height:44px;padding:10px 16px;border:1px solid currentColor;border-radius:5px;color:#713d2c}a:focus-visible{outline:3px solid #996c1f;outline-offset:3px}
     </style></head><body><main><h1>Watten</h1>
-    <p>Für diese lokale Kontovorschau brauchst du eine Internetverbindung. Kontodaten werden nicht offline gespeichert.</p>
-    <p lang="en">This local account preview needs an internet connection. Account data is never stored for offline use.</p>
+    <p>Zum Watten brauchst du eine Internetverbindung. Deine Karten und Kontodaten werden nicht offline gespeichert.</p>
+    <p lang="en">Watten needs an internet connection. Your cards and account data are never stored for offline use.</p>
     <a href="/watten">Erneut verbinden / Reconnect</a></main></body></html>`, {
     status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store',
       'X-Robots-Tag': 'noindex, nofollow', 'X-Watten-Worker-Version': CACHE_VERSION },

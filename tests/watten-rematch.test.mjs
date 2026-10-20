@@ -57,7 +57,7 @@ function fixture({ fetcher, auth, language = "de" } = {}) {
   const calls = [], navigations = [], container = new Container();
   let current = true, identity = 1, changed = 0, authReads = 0, commandIds = 0;
   const client = createRematch({ gameId, escapeHtml, language: () => language,
-    renderRecipe: () => "<p>Explicit recipe</p>", makeCommandId: () => `rematch-${++commandIds}`,
+    makeCommandId: () => `rematch-${++commandIds}`,
     getExpectedAccountId: () => 1, isCurrent: () => current,
     navigate: path => { navigations.push(path); current = false; client.destroy(); },
     onAccountChanged: () => { changed += 1; },
@@ -69,8 +69,7 @@ function fixture({ fetcher, auth, language = "de" } = {}) {
       calls.push({ url, options }); return fetcher ? fetcher(url, options, calls.length) : response();
     } });
   const update = (extra = {}) => client.update({ container, snapshot: snapshot(), playerId: "p1", spectator: false, ...extra });
-  const freshPassword = password => { container.input("protection_mode", "fresh_password"); container.input("rematch_password", password); };
-  return { client, calls, navigations, container, update, freshPassword, changed: () => changed,
+  return { client, calls, navigations, container, update, changed: () => changed,
     setIdentity: value => { identity = value; }, invalidate: () => { current = false; } };
 }
 
@@ -82,72 +81,85 @@ test("terminal own host permission is required; updates never create or navigate
     f.update(extra); assert.equal(f.container.innerHTML, "");
   }
   f.update(); await tick();
-  assert.match(f.container.innerHTML, /Neue Partie am Folgetisch/);
-  assert.match(f.container.innerHTML, /Explicit recipe/);
+  assert.match(f.container.innerHTML, /Noch ein Spiel\?/);
+  assert.doesNotMatch(f.container.innerHTML, /<form|<input|<select|<details|Explicit recipe/);
   assert.equal(f.calls.length, 0); assert.deepEqual(f.navigations, []);
   f.client.destroy();
 });
 
-test("protected recipe requires fresh protection choice; explicit disable contains no secret", async () => {
-  const f = fixture(); f.update(); f.container.submit(); await tick();
-  assert.equal(f.calls.length, 0); assert.match(f.container.innerHTML, /ausdrücklich/);
-  f.container.input("protection_mode", "disabled"); f.container.submit();
+test("one click continues even a protected match without password or settings in the request", async () => {
+  const f = fixture(); f.update();
+  assert.equal(f.container.fields.size, 0);
+  f.container.click("create");
   await until(() => f.navigations.length === 1);
-  assert.deepEqual(JSON.parse(f.calls[0].options.body), { command_id: "rematch-1", revision: 8, protection: { mode: "disabled" } });
+  assert.deepEqual(JSON.parse(f.calls[0].options.body), { command_id: "rematch-1", revision: 8 });
   assert.equal(f.calls[0].options.headers["X-Watten-Expected-Account-Id"], "1");
   assert.equal(f.calls[0].options.headers["X-CSRF-Token"], "csrf-1");
   assert.equal(f.calls[0].options.cache, "no-store");
   assert.deepEqual(f.navigations, [`/watten/spiel/${targetId}`]);
 });
 
-test("fresh password stays in POST only; lost ACK retry keeps identical ID, revision, password and CSRF", async () => {
+test("lost ACK retry keeps the identical ID, revision and CSRF without configuration", async () => {
   const f = fixture({ fetcher: async (_url, _options, attempt) => {
     if (attempt === 1) throw new Error("lost response");
     return response({ ...result(), created: false });
   } });
-  f.update(); f.freshPassword("  Secret<&>  ");
-  f.container.submit(); await until(() => f.container.innerHTML.includes('action="retry"'));
-  assert.equal(f.container.fields.get("rematch_password").value, "  Secret<&>  ");
+  f.update();
+  f.container.click("create"); await until(() => f.container.innerHTML.includes('action="retry"'));
   assert.doesNotMatch(f.container.innerHTML, /Secret/);
   f.update({ snapshot: { ...snapshot(), room: { ...snapshot().room, revision: 9 } } });
   f.container.click("retry"); await until(() => f.navigations.length === 1);
   assert.equal(f.calls.length, 2); assert.equal(f.calls[0].options.body, f.calls[1].options.body);
   assert.equal(f.calls[0].options.headers["X-CSRF-Token"], f.calls[1].options.headers["X-CSRF-Token"]);
-  assert.deepEqual(JSON.parse(f.calls[0].options.body), { command_id: "rematch-1", revision: 8,
-    protection: { mode: "fresh_password", password: "Secret<&>" } });
+  assert.deepEqual(JSON.parse(f.calls[0].options.body), { command_id: "rematch-1", revision: 8 });
   assert.ok(f.calls.every(call => !call.url.includes("Secret")));
   assert.deepEqual(f.navigations, [`/watten/spiel/${targetId}`]);
 });
 
-test("same-container accepted snapshots retain form and secret; remount restores entries without card work", () => {
-  const f = fixture(); f.update(); f.freshPassword("retained");
-  const writes = f.container.writes, input = f.container.fields.get("rematch_password");
-  f.update(); f.update(); assert.equal(f.container.writes, writes); assert.equal(input.value, "retained");
+test("same-container snapshots preserve the controls and remount detaches the old container", () => {
+  const f = fixture(); f.update();
+  const writes = f.container.writes;
+  f.update(); f.update(); assert.equal(f.container.writes, writes);
   const next = new Container(); f.update({ container: next });
-  assert.equal(input.value, ""); assert.equal(next.fields.get("rematch_password").value, "retained");
+  assert.equal(f.container.innerHTML, ""); assert.equal(next.fields.size, 0);
+  assert.match(next.innerHTML, /Revanche starten/);
   f.client.destroy(); assert.equal(next.innerHTML, "");
 });
 
 test("snapshot's existing target is an explicit navigation with no POST or password request", async () => {
   const f = fixture({ language: "en" });
   f.update({ snapshot: { ...snapshot(), room: { ...snapshot().room, rematch: { can_create: false, game_id: targetId } } } });
-  assert.match(f.container.innerHTML, /existing next table/); assert.equal(f.container.fields.size, 0);
+  assert.match(f.container.innerHTML, /Go to rematch/); assert.equal(f.container.fields.size, 0);
   assert.deepEqual(f.navigations, []); f.container.click("open");
   await until(() => f.navigations.length === 1);
   assert.equal(f.calls.length, 0); assert.deepEqual(f.navigations, [`/watten/spiel/${targetId}`]);
 });
 
-test("closed host uses the same flow while CPU/manual seat behaviour stays with native room commands", async () => {
+test("closed host uses the same continuation without emitting seat or CPU commands", async () => {
   const f = fixture(); f.update({ snapshot: { ...snapshot(), room: { ...snapshot().room, status: "closed" } } });
-  f.container.input("protection_mode", "disabled"); f.container.submit(); await until(() => f.calls.length === 1);
+  f.container.click("create"); await until(() => f.calls.length === 1);
   assert.ok(f.calls.every(call => call.url.endsWith("/rematch")));
   assert.doesNotMatch(f.container.innerHTML, /watten_start|watten_take_seat|watten_place_cpu/);
 });
 
-test("pre-request and decisive post-body auth changes clear secrets and suppress navigation", async () => {
+test("tournament continuations retain server-fixed seats and completed tournaments offer no rematch", () => {
+  const f = fixture();
+  const tournament = { ...snapshot(), room: { ...snapshot().room, series: { target: 5, teams_locked: true, finished: false } } };
+  f.update({ snapshot: tournament });
+  assert.match(f.container.innerHTML, /Revanche starten/);
+  assert.doesNotMatch(f.container.innerHTML, /<form|<input|<select|<details/);
+  assert.equal(f.calls.length, 0);
+  f.update({ snapshot: { ...tournament, room: { ...tournament.room, series: { ...tournament.room.series, finished: true },
+    rematch: { can_create: false, game_id: null } } } });
+  assert.equal(f.container.innerHTML, "");
+  assert.equal(f.calls.length, 0);
+  f.client.destroy();
+});
+
+test("pre-request and decisive post-body auth changes clear controls and suppress navigation", async () => {
   for (const changedAt of [1, 2, 3]) {
     const f = fixture({ auth: async attempt => ({ authenticated: true, user: { id: attempt >= changedAt ? 2 : 1, csrf_token: "csrf" } }) });
-    f.update(); f.freshPassword("discard-me"); f.container.submit(); await until(() => f.changed() === 1);
+    f.update(); f.container.click("create"); await until(() => f.changed() === 1);
     assert.equal(f.container.innerHTML, ""); assert.equal(f.navigations.length, 0);
     assert.equal(f.calls.length, changedAt === 1 ? 0 : 1);
   }
@@ -155,7 +167,7 @@ test("pre-request and decisive post-body auth changes clear secrets and suppress
 
 test("destroy aborts uncertain request and late responses never navigate or remount", async () => {
   let resolve; const pending = new Promise(done => { resolve = done; });
-  const f = fixture({ fetcher: () => pending }); f.update(); f.freshPassword("destroyed"); f.container.submit();
+  const f = fixture({ fetcher: () => pending }); f.update(); f.container.click("create");
   await until(() => f.calls.length === 1); f.client.destroy();
   assert.equal(f.calls[0].options.signal.aborted, true); assert.equal(f.container.innerHTML, "");
   resolve(response()); await tick(); assert.equal(f.navigations.length, 0); assert.equal(f.container.innerHTML, "");
@@ -164,12 +176,12 @@ test("destroy aborts uncertain request and late responses never navigate or remo
 test("foreign/malformed success and account-mismatch errors cannot navigate; retry remains bounded", async () => {
   for (const body of [{ ...result(), source_game_id: targetId }, { ...result(), game_id: "//evil.invalid/" },
     { ...result(), game_id: gameId }, { ...result(), created: 1 }]) {
-    const f = fixture({ fetcher: async () => response(body) }); f.update(); f.freshPassword("keep"); f.container.submit();
+    const f = fixture({ fetcher: async () => response(body) }); f.update(); f.container.click("create");
     await until(() => f.container.innerHTML.includes('action="retry"'));
-    assert.deepEqual(f.navigations, []); assert.equal(f.container.fields.get("rematch_password").value, "keep"); f.client.destroy();
+    assert.deepEqual(f.navigations, []); assert.equal(f.container.fields.size, 0); f.client.destroy();
   }
   const f = fixture({ fetcher: async () => response({ detail: "watten_account_changed" }, 409) });
-  f.update(); f.freshPassword("drop"); f.container.submit(); await until(() => f.changed() === 1);
+  f.update(); f.container.click("create"); await until(() => f.changed() === 1);
   assert.equal(f.container.innerHTML, ""); assert.deepEqual(f.navigations, []);
 });
 
@@ -179,7 +191,7 @@ test("reservation uses only server's own seat/expiry and never claims or bypasse
   }
   const value = { seat: 2, expires_at: "2026-10-18T20:00:00Z" };
   assert.match(reservationMarkup(value, { escapeHtml, language: "de" }), /Platz 3/);
-  assert.match(reservationMarkup(value, { escapeHtml, language: "en" }), /seat 3/);
+  assert.match(reservationMarkup(value, { escapeHtml, language: "en" }), /Seat 3/);
   assert.doesNotMatch(reservationMarkup(value, { escapeHtml, language: "en" }), /account|password=|watten_take_seat/);
 });
 
@@ -188,7 +200,7 @@ test("revision is captured at the deliberate submit before a delayed identity re
   const pending = new Promise(resolve => { release = resolve; });
   const f = fixture({ auth: async attempt => attempt === 1 ? pending
     : { authenticated: true, user: { id: 1, csrf_token: "later" } } });
-  f.update(); f.container.input("protection_mode", "disabled"); f.container.submit();
+  f.update(); f.container.click("create");
   f.update({ snapshot: { ...snapshot(), room: { ...snapshot().room, revision: 9 } } });
   release({ authenticated: true, user: { id: 1, csrf_token: "initial" } });
   await until(() => f.navigations.length === 1);
@@ -199,7 +211,7 @@ test("busy blocks repeated submits and accepted next-table snapshots recover an 
   let release;
   const pending = new Promise(resolve => { release = resolve; });
   const f = fixture({ fetcher: () => pending });
-  f.update(); f.freshPassword("once"); f.container.submit(); f.container.submit();
+  f.update(); f.container.click("create"); f.container.click("create");
   await until(() => f.calls.length === 1);
   f.update({ snapshot: { ...snapshot(), room: { ...snapshot().room, rematch: { can_create: false, game_id: targetId } } } });
   assert.equal(f.container.fields.size, 0);
@@ -209,7 +221,7 @@ test("busy blocks repeated submits and accepted next-table snapshots recover an 
 
 test("an existing target shown after a lost response needs only explicit open, never another creation", async () => {
   const f = fixture({ fetcher: async () => { throw new Error("lost ACK"); } });
-  f.update(); f.freshPassword("once"); f.container.submit();
+  f.update(); f.container.click("create");
   await until(() => f.container.innerHTML.includes('action="retry"'));
   f.update({ snapshot: { ...snapshot(), room: { ...snapshot().room, rematch: { can_create: false, game_id: targetId } } } });
   assert.equal(f.container.fields.size, 0); f.container.click("open");
@@ -225,28 +237,27 @@ test("new DE/EN catalogs have identical complete keys and guarded integration ne
   }
   const table = await readFile(new URL("../frontend/watten/table.js", import.meta.url), "utf8");
   const game = await readFile(new URL("../frontend/watten/game.js", import.meta.url), "utf8");
-  assert.match(table, /data-wt-panel[^]*?<div data-watten-rematch hidden><\/div>[^]*?data-wt-private/);
+  assert.match(table, /data-wt-private[^]*?data-wt-history[^]*?data-wt-panel[^]*?data-wt-stake[^]*?<div data-watten-rematch hidden><\/div>/);
   assert.match(game, /rematch\?\.update\(\{ container: root.querySelector\("\[data-watten-rematch\]"\)/);
   assert.match(game, /Closed rooms need no socket admission/);
 });
 
 test("stale revision offers deliberate source reload instead of repeating an obsolete envelope", async () => {
   const f = fixture({ fetcher: async () => response({ detail: "watten_stale_room_revision" }, 409) });
-  f.update(); f.freshPassword("retain-until-reload"); f.container.submit();
+  f.update(); f.container.click("create");
   await until(() => f.container.innerHTML.includes('action="reload"'));
   assert.doesNotMatch(f.container.innerHTML, /action="retry"/);
   assert.equal(f.calls.length, 1); assert.deepEqual(f.navigations, []);
-  const input = f.container.fields.get("rematch_password");
-  assert.equal(input.value, "retain-until-reload");
+
   f.container.click("reload"); await until(() => f.navigations.length === 1);
   assert.deepEqual(f.navigations, [`/watten/spiel/${gameId}`]);
-  assert.equal(input.value, ""); assert.equal(f.container.innerHTML, ""); assert.equal(f.calls.length, 1);
+assert.equal(f.container.innerHTML, ""); assert.equal(f.calls.length, 1);
 });
 
 test("503 retains the exact original envelope and CSRF until explicit retry", async () => {
   const f = fixture({ fetcher: async (_url, _options, attempt) => attempt === 1
     ? response({ detail: "watten_storage_unavailable" }, 503) : response({ ...result(), created: false }) });
-  f.update(); f.freshPassword("same-request"); f.container.submit();
+  f.update(); f.container.click("create");
   await until(() => f.container.innerHTML.includes('action="retry"'));
   assert.doesNotMatch(f.container.innerHTML, /action="reload"/);
   assert.equal(f.calls.length, 1); assert.deepEqual(f.navigations, []);
@@ -259,7 +270,7 @@ test("503 retains the exact original envelope and CSRF until explicit retry", as
 test("same-account session rotation offers source reload after the captured CSRF is rejected", async () => {
   const f = fixture({ fetcher: async (_url, _options, attempt) => attempt === 1
     ? response({ detail: "watten_storage_unavailable" }, 503) : response({ detail: "csrf_rejected" }, 403) });
-  f.update(); f.freshPassword("clear-on-reload"); f.container.submit();
+  f.update(); f.container.click("create");
   await until(() => f.container.innerHTML.includes('action="retry"'));
   f.container.click("retry");
   await until(() => f.container.innerHTML.includes('action="reload"'));
@@ -268,9 +279,8 @@ test("same-account session rotation offers source reload after the captured CSRF
   assert.equal(f.calls[0].options.body, f.calls[1].options.body);
   assert.equal(f.calls[0].options.headers["X-CSRF-Token"], f.calls[1].options.headers["X-CSRF-Token"]);
   assert.deepEqual(f.navigations, []);
-  const input = f.container.fields.get("rematch_password");
   f.container.click("reload");
   assert.deepEqual(f.navigations, [`/watten/spiel/${gameId}`]);
-  assert.equal(input.value, ""); assert.equal(f.container.innerHTML, "");
+assert.equal(f.container.innerHTML, "");
   assert.equal(f.calls.length, 2);
 });

@@ -1,18 +1,21 @@
 // Presentation only: accepted state and controls update immediately. Ghosts copy
 // only currently permitted DOM faces/backs; no hand, stock or call is inferred.
-const FLIGHT = 240, HOLD = 380, COLLECT = 360, MAX_GHOSTS = 24;
+const FLIGHT = 240, HOLD = 3000, COLLECT = 360, MAX_GHOSTS = 24;
 const TRICK_TIME = FLIGHT + HOLD + COLLECT, MAX_PRESENTATION = TRICK_TIME * 2;
 const easing = "cubic-bezier(.2,.7,.2,1)";
 const usable = rect => rect && rect.width > 0 && rect.height > 0;
 const centre = rect => ({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
 let copyId = 0;
 const completedKey = (engine) => engine?.last_trick
-  ? `${engine.deal_id}:${engine.last_trick.winner}:${engine.last_trick.cards.map(item => `${item.seat}/${item.card}`).join(",")}` : "";
+  ? `${engine.deal_id}:${engine.deal_revision ?? 0}:${engine.last_trick.winner}:${engine.last_trick.cards.map(item => `${item.seat}/${item.card}`).join(",")}` : "";
+
+export const sameHandVersion = (previous, engine) => Boolean(previous && previous.deal_id === engine.deal_id
+  && (previous.deal_revision ?? 0) === (engine.deal_revision ?? 0));
 
 /** Cold snapshots establish a baseline. Only a live waiting/new-deal transition
  * deals cards; joining/reconnecting into an existing deal never pretends to. */
 export function motionTransition(previous, engine, live) {
-  const sameDeal = Boolean(live && previous?.deal_id === engine.deal_id);
+  const sameDeal = Boolean(live && sameHandVersion(previous, engine));
   return {
     sameDeal,
     deal: Boolean(live && (!previous || previous.deal_id !== engine.deal_id)),
@@ -254,10 +257,18 @@ export function createMotion({ win = window, doc = document } = {}) {
       if (!result.trick.nodes.includes(node)) { release(); settled.delete(node); }
     }
     const transition = motionTransition(previous, engine, live);
-    if (transition.deal) {
+    // A Schöneres replaces only the callers' hands. A role swap also advances
+    // deal_revision, but keeps every card and must not pretend to deal them.
+    const roles = engine.announcement_roles, priorRoles = previous?.announcement_roles;
+    const redeal = !transition.sameDeal && previous?.deal_id === engine.deal_id && roles && priorRoles
+      && roles.strike === priorRoles.strike && roles.colour === priorRoles.colour;
+    if (transition.deal || redeal) {
       cancel();
       const deck = view.deckNode()?.getBoundingClientRect();
-      [...result.hand.nodes, ...(view.backNodes?.() || [])].forEach((node, index) => fly(node, deck, "deal", null, (index % 5) * 45));
+      const callers = new Set([roles?.strike, roles?.colour]);
+      const hands = !redeal || callers.has(engine.viewer?.seat) ? result.hand.nodes : [];
+      const backs = (view.backNodes?.() || []).filter(node => !redeal || callers.has(Number(node.closest("[data-wt-seat]")?.dataset.wtSeat)));
+      [...hands, ...backs].forEach((node, index) => fly(node, deck, "deal", null, (index % 5) * 45));
       return;
     }
     if (!transition.sameDeal) return;

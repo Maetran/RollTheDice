@@ -1,6 +1,7 @@
 export const ZDWA_PRODUCTION_ORIGIN = "https://zockdiewandan.online";
 export const ZILCH_PRODUCTION_HOST = "zilch.zockdiewandan.online";
 export const HAUSDEPP_PRODUCTION_HOST = "hausdepp.zockdiewandan.online";
+export const WATTEN_PRODUCTION_HOST = "watten.zockdiewandan.online";
 
 const ZDWA_PRODUCTION_HOSTS = new Set([
   "zockdiewandan.online",
@@ -48,7 +49,7 @@ export function isProductionZdwaLocation(locationLike = window.location) {
 export function isZilchHostedZdwaLocation(locationLike = window.location) {
   const location = activeLocation(locationLike);
   const pathname = String(location.pathname || "/");
-  return (isProductionZilchLocation(location) || location.hostname === HAUSDEPP_PRODUCTION_HOST)
+  return (isProductionZilchLocation(location) || [HAUSDEPP_PRODUCTION_HOST, WATTEN_PRODUCTION_HOST].includes(location.hostname))
     && (pathname === ZDWA_PWA_BRIDGE_PREFIX || pathname.startsWith(`${ZDWA_PWA_BRIDGE_PREFIX}/`));
 }
 
@@ -132,7 +133,7 @@ export function zdwaPath(route = "/", locationLike = window.location) {
  */
 export function zdwaRoutePath(pathname = window.location.pathname, locationLike = window.location) {
   const raw = String(pathname || "/");
-  if (!isProductionZilchLocation(locationLike) && locationLike.hostname !== HAUSDEPP_PRODUCTION_HOST) return normalizedZdwaRoute(raw);
+  if (!isProductionZilchLocation(locationLike) && ![HAUSDEPP_PRODUCTION_HOST, WATTEN_PRODUCTION_HOST].includes(locationLike.hostname)) return normalizedZdwaRoute(raw);
   if (raw === ZDWA_PWA_BRIDGE_PREFIX || raw === `${ZDWA_PWA_BRIDGE_PREFIX}/`) return "/";
   if (!raw.startsWith(`${ZDWA_PWA_BRIDGE_PREFIX}/`)) return null;
   return normalizedZdwaRoute(raw);
@@ -151,7 +152,7 @@ export function applyZdwaBridgeLinks(scope = document, locationLike = window.loc
   for (const link of links) {
     // A game picker already resolved the destination for its game and PWA
     // origin. In particular, `/` means Zilch here, not the ZDWA bridge root.
-    if (["zdwa", "zilch", "hausdepp"].includes(link.getAttribute("data-game-entry"))) continue;
+    if (["zdwa", "zilch", "hausdepp", "watten"].includes(link.getAttribute("data-game-entry"))) continue;
     const href = link.getAttribute("href");
     if (!href || href.startsWith("#")) continue;
     let target;
@@ -183,7 +184,7 @@ export function applyZdwaBridgeLinks(scope = document, locationLike = window.loc
  */
 export function zilchAppEntryUrl(route = "/", locationLike = window.location, environmentLike = globalThis) {
   const destination = normalizedRoute(route);
-  const publicSuiteHost = isProductionZdwaLocation(locationLike) || locationLike.hostname === HAUSDEPP_PRODUCTION_HOST;
+  const publicSuiteHost = isProductionZdwaLocation(locationLike) || [HAUSDEPP_PRODUCTION_HOST, WATTEN_PRODUCTION_HOST].includes(locationLike.hostname);
   if (!publicSuiteHost || isStandalonePwa(environmentLike)) {
     return zilchPath(destination, locationLike);
   }
@@ -191,7 +192,7 @@ export function zilchAppEntryUrl(route = "/", locationLike = window.location, en
 }
 
 export function zdwaAppEntryUrl(locationLike = window.location, environmentLike = globalThis) {
-  const suiteHost = isProductionZilchLocation(locationLike) || locationLike.hostname === HAUSDEPP_PRODUCTION_HOST;
+  const suiteHost = isProductionZilchLocation(locationLike) || [HAUSDEPP_PRODUCTION_HOST, WATTEN_PRODUCTION_HOST].includes(locationLike.hostname);
   if (suiteHost && isStandalonePwa(environmentLike)) {
     return ZDWA_PWA_BRIDGE_PREFIX;
   }
@@ -206,17 +207,20 @@ export function zdwaAppEntryUrl(locationLike = window.location, environmentLike 
  */
 export function hausdeppAppEntryUrl(locationLike = window.location, environmentLike = globalThis) {
   const suiteHost = isProductionZdwaLocation(locationLike) || isProductionZilchLocation(locationLike)
-    || locationLike.hostname === HAUSDEPP_PRODUCTION_HOST;
+    || [HAUSDEPP_PRODUCTION_HOST, WATTEN_PRODUCTION_HOST].includes(locationLike.hostname);
   return suiteHost && !isStandalonePwa(environmentLike)
     ? `https://${HAUSDEPP_PRODUCTION_HOST}/hausdepp` : "/hausdepp";
 }
 
 
-/** The private web preview stays on the fixed apex, also in another product's PWA. */
-export function wattenAppEntryUrl(locationLike = window.location) {
-  return isProductionZdwaLocation(locationLike) || isProductionZilchLocation(locationLike)
-    || String(locationLike.hostname || "").toLowerCase() === HAUSDEPP_PRODUCTION_HOST
-    ? `${ZDWA_PRODUCTION_ORIGIN}/watten` : "/watten";
+/** Public browser entry has its own host; installed suite apps keep their origin. */
+export function wattenAppEntryUrl(locationLike = window.location, environmentLike = globalThis, { publicBeta = false } = {}) {
+  const host = String(locationLike.hostname || "").toLowerCase();
+  const production = isProductionZdwaLocation(locationLike) || isProductionZilchLocation(locationLike)
+    || [HAUSDEPP_PRODUCTION_HOST, WATTEN_PRODUCTION_HOST].includes(host);
+  if (!production) return "/watten";
+  if (publicBeta) return isStandalonePwa(environmentLike) ? "/watten" : `https://${WATTEN_PRODUCTION_HOST}/watten`;
+  return `${ZDWA_PRODUCTION_ORIGIN}/watten`;
 }
 
 /** The shared sign-in stays on the active origin, including an installed PWA. */

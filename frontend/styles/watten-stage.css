@@ -12,7 +12,7 @@ html[data-watten-active="true"] .wt-header {
 }
 html[data-watten-active="true"] .wt-brand { font-size: 1.4rem; }
 html[data-watten-active="true"] .wt-nav { flex-wrap: nowrap; }
-html[data-watten-active="true"] .wt-nav a:not([href="/watten/regeln"]) { display: none; }
+html[data-watten-active="true"] .wt-nav a:not([href="/watten/regeln"], [href^="/watten/regeln?"]) { display: none; }
 html[data-watten-active="true"] button[data-game-switch][data-game-picker] { min-width: 44px; width: 44px; max-width: 44px; padding-inline: 6px; gap: 0; }
 html[data-watten-active="true"] .suite-game-trigger__name { display: none; }
 html[data-watten-active="true"] .wt-nav a:first-child { display: none; }
@@ -31,10 +31,10 @@ html[data-watten-active="true"] .wt-table {
   --wt-back-w: clamp(34px, min(4.2vw, 7.8dvh), 56px);
   --wt-dock-h: 144px;
   position: absolute; inset: 0; display: grid; grid-template: 46px minmax(0, 1fr) / minmax(0, 1fr);
-  gap: 0; min-height: 0; isolation: isolate;
+  gap: 0; min-height: 0;
 }
 html[data-watten-active="true"] .wt-table::before {
-  content: ""; position: absolute; inset: 44px 0 0; z-index: -1; pointer-events: none;
+  content: ""; position: absolute; inset: 44px 0 0; z-index: 0; pointer-events: none;
   border: clamp(50px, 15vmin, 120px) solid transparent;
   border-image: url("/static/watten/table-schnitzstube.jpg?v=ASSET_VERSION") 300 350 fill / 1 / 0 stretch;
 }
@@ -192,7 +192,6 @@ html[data-watten-active="true"] :is([data-watten-social-action="toggle"], [data-
 html[data-watten-active="true"] [data-watten-social-action="toggle"]::before { content: "💬"; font-size: 21px; }
 html[data-watten-active="true"] [data-watten-decor-action="toggle"]::before { content: "✦"; font-size: 26px; }
 html[data-watten-active="true"] [data-watten-command="leave-match"]::before { content: "↗"; font-size: 26px; }
-html[data-watten-active="true"] [data-watten-decor-panel]:not([hidden]) { position: fixed; z-index: 35; inset: 104px 12px 12px auto; width: min(420px, calc(100vw - 24px)); padding: 16px; overflow: auto; border: 1px solid #bd976c; border-radius: 12px; background: #fff1df; box-shadow: 0 8px 30px #4e291f55; }
 html[data-watten-active="true"] [data-watten-social]:has([data-watten-social-drawer]:not([hidden])) { z-index: 40; }
 html[data-watten-active="true"] .wt-social-drawer { z-index: 40; }
 html[data-watten-active="true"] .wt-social-backdrop { z-index: 39; }

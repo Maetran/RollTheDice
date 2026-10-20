@@ -1,9 +1,11 @@
 const { expect } = require('@playwright/test');
 
 async function expectTableHeaderReachable(page) {
+  const language = await page.locator('html').getAttribute('lang');
+  const rulesPath = language === 'en' ? '/watten/regeln?lang=en' : '/watten/regeln';
   await expect(page.locator('.wt-header [data-language-switcher]')).toBeVisible();
   await expect(page.locator('.wt-header [data-game-picker]')).toBeVisible();
-  await expect(page.locator('.wt-header a[href="/watten/regeln"]')).toBeVisible();
+  await expect(page.locator(`.wt-header a[href="${rulesPath}"]`)).toBeVisible();
   await expect.poll(() => page.evaluate(() => {
     const header = document.querySelector('.wt-header');
     const controls = [...header.querySelectorAll('a, select, button'),

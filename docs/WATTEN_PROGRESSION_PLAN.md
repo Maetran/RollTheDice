@@ -186,3 +186,48 @@ The 22-title ladder and XP figures above are a calibration proposal, not
 approved production values. The example intensive-week calculation cannot
 finish the ladder or the proposed long-term catalogue. Final calibration
 requires measured game durations and all supported modes/CPU lineups.
+
+## Owner-Nachtrag vom 20.10.2026: Schneider und Retourschneider
+
+Der additive Katalog 2 ergänzt zwei einmalige Erfolge. «Sauber gschneidert»
+(60 XP) verlangt einen vollständig belegten Spielsieg, bei dem sämtliche
+gegnerischen Punktekonten null bleiben. Ein angenommener Retourschneider ist
+ausgenommen. «Vier Nockerl, bitte!» (120 XP) gehört den tatsächlichen
+Mitgliedern des aufholenden Teams nach einem vollständig gewonnenen,
+angenommenen Retourschneider. Annehmen allein, ein verlorener Versuch oder
+ein Spielabbruch reichen nicht. Es gelten weiterhin echte Kontoteilnahme und
+die geprüfte native Abschlussevidenz; unbekannte historische Daten werden
+nicht als Beleg für einen der beiden Erfolge ausgegeben.
+
+«8+3 isch Mittag» (80 XP) verlangt zehn belegte normale Spielsieg-Abschlüsse
+von genau acht auf elf Punkte durch die letzte Drei-Punkte-Runde, bei Ziel
+elf. Angenommene Retourschneider zählen ausschliesslich zum getrennten
+Retourschneider-Zähler: Nach drei solchen 8+3-Siegen gibt es «8+3 isch Feiertag»
+(100 XP), nach zehn «8+3 isch a Wunder» (200 XP). Andere Ausgangspunkte,
+Überschreiten der elf, andere Rundenwerte, einzelne Runden, Niederlagen und
+unbekannte Altbelege zählen nicht. Die drei neuen IDs bleiben im noch
+unveröffentlichten additiven Katalog 2.
+
+Der Hauptkatalog umfasst damit 32 Erfolge und höchstens 2’670 einmalige XP;
+mit den 16 seltenen Deko-Erfolgen sind es 48 Erfolge und 2’950 XP, weiterhin
+unter dem Budget von 3’500. Bestehende IDs, gespeicherte Preise und
+Freischaltzeitpunkte bleiben erhalten. Bekannte IDs älterer Katalogstände
+werden weiterhin als verdient angezeigt. Es gibt keine neue Vergabe beim
+Start oder beim blossen Lesen des Kontos und keinen zusätzlichen Backfill.
+
+**English:** Additive catalogue 2 introduces “Clean Schneider” (60 XP) for
+a verified native match win with every opposing score at zero, excluding an
+accepted Retourschneider. “Four loss marks, please!” (120 XP) requires the
+challenging team's completed win after an accepted Retourschneider. Mere
+acceptance, a failed challenge, an unfinished match or unknown legacy evidence
+does not qualify. Existing achievement identities, frozen rewards and unlock
+times remain intact, including earlier known catalogue versions.
+“8+3 means lunchtime” (80 XP) requires ten verified regular wins to eleven,
+moving from exactly eight to eleven in the final three-point round. Accepted
+Retourschneider games use a separate counter: three matching wins unlock
+“8+3 means a holiday” (100 XP), ten unlock “8+3 means a miracle” (200 XP).
+Different starting scores, overshooting eleven, different round values,
+unfinished rounds, losses and unknown legacy evidence do not count. The main
+catalogue totals 32 achievements and 2,670 XP; including 16 rare decoration
+goals, the totals are 48 and 2,950 XP. No startup/account-read grants or new
+backfill process are introduced.

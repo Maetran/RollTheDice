@@ -49,7 +49,7 @@ def validate_bid_counters(counters: tuple[PlayerBids, ...] | None, engine) -> No
                          and engine.bid_state.pending is None)
     _require(initiated == held + went + int(engine.bid_state.pending is not None)
              and went == sum(item.reason == "go" for item in results)
-             and held + countered == stake_increases
+             and held + countered == stake_increases + engine.discarded_bid_increases
              and held >= raised_closed and (not countered or initiated > 0)
              and initiated + countered + held + went <= engine.opportunity)
 
@@ -101,7 +101,7 @@ def terminal_evidence(game: dict, *, finished_at: datetime) -> MatchEvidence:
     """Produce public evidence alongside the trusted completed-result transaction.
 
     The caller supplies the aware UTC CompletedGame timestamp. Existing v1
-    result data must agree exactly; the writer's payload is never extended.
+    result data, including an optional Retourschneider decision, must agree exactly.
     This function performs no storage, grants, account lookup or client reads.
     """
     from .watten_results import result_payload
@@ -128,4 +128,5 @@ def terminal_evidence(game: dict, *, finished_at: datetime) -> MatchEvidence:
     profile = PublicProfile(recipe.ruleset_id, recipe.ruleset_version, recipe.determination, recipe.blind,
                             recipe.critical, recipe.show_rechter, recipe.trick_history, recipe.partner_hand)
     return replace(adapt_result_v1(result, finished_at=finished_at), source="public_match_v1", profile=profile,
-                   started_at=started_at, bids=BidEvidence() if runtime.bid_counters is None else BidEvidence(True, runtime.bid_counters))
+                   started_at=started_at, bids=BidEvidence() if runtime.bid_counters is None else BidEvidence(
+                       True, runtime.bid_counters, runtime.engine.discarded_bid_increases))

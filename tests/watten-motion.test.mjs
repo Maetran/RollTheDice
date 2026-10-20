@@ -4,7 +4,7 @@ import test from "node:test";
 import { runInNewContext } from "node:vm";
 
 const source = await readFile(new URL("../frontend/watten/motion.js", import.meta.url), "utf8");
-const { createMotion, motionTransition } = await import(`data:text/javascript;base64,${Buffer.from(source).toString("base64")}`);
+const { createMotion, motionTransition, sameHandVersion } = await import(`data:text/javascript;base64,${Buffer.from(source).toString("base64")}`);
 const rect = (left, top, width = 50, height = 80) => ({ left, top, width, height });
 const centre = value => ({ x: value.left + value.width / 2, y: value.top + value.height / 2 });
 const tick = () => new Promise(resolve => setImmediate(resolve));
@@ -166,9 +166,9 @@ for (const count of [2, 3, 4]) test(`${count} players: completed public trick ho
   assert.equal(group.dataset.targetSeat, String(count - 1));
   assert.deepEqual(group.children.map(node => node.face), last.cards.map(item => item.card));
   const frames = group.animations[0].frames, target = centre(f.seats[count - 1].bounds), start = centre(group.getBoundingClientRect());
-  assert.equal(frames[0].translate, "0 0"); assert.equal(frames[1].translate, "0 0"); assert.ok(frames[1].offset > .6);
+  assert.equal(frames[0].translate, "0 0"); assert.equal(frames[1].translate, "0 0"); assert.equal(frames[1].offset, .9, "hold the full public trick for three seconds after its 240ms arrival");
   assert.equal(frames[2].translate, `${target.x - start.x}px ${target.y - start.y}px`);
-  assert.equal(group.animations[0].options.duration, 980);
+  assert.equal(group.animations[0].options.duration, 3600);
   assert.equal(group.animations[0].options.easing, "linear", "the hold uses wall-clock time, not globally eased progress");
   assert.equal(group.animations[0].options.fill, "forwards", "retain the actual winner endpoint until cleanup removes the ghost");
   assert.ok(frames[1].easing, "ease only the final flight segment");
@@ -191,7 +191,7 @@ test("fast CPU next play and duplicate accepted state keep the existing collecti
   assert.equal(f.ghosts("collect").length, 1); assert.equal(f.ghosts("collect")[0], collect);
   assert.equal(animation.cancelled, false); assert.equal(f.ghosts("arrive").length, 1);
   const arrival = f.ghosts("arrive")[0];
-  assert.equal(arrival.animations[0].options.delay, 780, "wait only the remaining collection time");
+  assert.equal(arrival.animations[0].options.delay, 3400, "wait only the remaining collection time");
   assert.equal(arrival.animations[0].frames[0].opacity, 0, "no stationary future card during the wait");
   assert.equal(next.style.visibility, "hidden");
   f.advance(100); f.present(engine(last), engine(last), result({ nodes: [next], cards: [{ seat: 3, card: "hearts-K" }], last }));
@@ -211,7 +211,7 @@ test("a complete following CPU trick also waits behind the previous collection, 
   f.advance(100);
   f.present(engine(first), engine(second), result({ ...second, created: [{ ...second.cards[1], node: second.nodes[1] }], last: second }));
   const queued = f.ghosts("collect")[1];
-  assert.equal(queued.animations.at(-1).options.delay, 780);
+  assert.equal(queued.animations.at(-1).options.delay, 3400);
   assert.equal(f.ghosts("arrive").length, 0, "waiting arrival is transferred to its already completed public trick");
   const from = centre(f.seats[0].bounds), to = centre(second.nodes[0].bounds);
   assert.equal(queued.children[0].animations[0].frames[0].translate, `${from.x - to.x}px ${from.y - to.y}px`, "still-hidden arrival starts at its actual source, not a phantom centre position");
@@ -220,7 +220,7 @@ test("a complete following CPU trick also waits behind the previous collection, 
   f.present(engine(second), engine(second), result({ ...second, last: second }));
   assert.equal(f.ghosts("collect").length, 2, "ACK-only repaint cannot cancel queued collection despite its later end time");
   assert.equal(queued.animations.at(-1).cancelled, false);
-  // A third trick would need more than 980ms entry delay / ~2s total backlog.
+  // A third trick would need more than 3600ms entry delay / 7.2s total backlog.
   // Catch up to the current accepted public DOM instead of extending history.
   f.advance(50);
   const current = f.node("leaves-8", rect(360, 300));
@@ -237,7 +237,7 @@ test("cancel/reduced motion and reconnect remove a delayed future card and revea
     const current = f.node("hearts-K", rect(390, 280)), currentResult = result({ nodes: [current], cards: [{ seat: 1, card: "hearts-K" }],
       created: [{ node: current, seat: 1, card: "hearts-K" }], last });
     f.present(engine(last), engine(last), currentResult);
-    assert.equal(f.ghosts("arrive")[0].animations[0].options.delay, 960);
+    assert.equal(f.ghosts("arrive")[0].animations[0].options.delay, 3580);
     if (reason === "cancel") f.motion.cancel();
     if (reason === "reduced") { f.media.matches = true; f.media.emit("change"); }
     if (reason === "reconnect") f.present(engine(last), engine(last), currentResult, { live: false });
@@ -324,8 +324,8 @@ function controller(f, acceptedResult) {
   const root = { querySelector: () => null }, html = { dataset: {} };
   const session = { snapshot: null, view: null, viewKind: "waiting", playerId: "p0", spectator: false, bound: true, bubbles: [] };
   const view = { ...f.view, motionSources: () => [...f.seats, f.deck], update: () => acceptedResult };
-  const context = { session, html, viewRoot: () => root, decor: null, setHeading() {}, createTableView: () => view,
-    motion: f.motion, engineCommand() {}, liveMessage: () => "", preserveFocus: fn => fn(), matchProgress: null, rematch: null,
+  const context = { session, html, viewRoot: () => root, decor: null, voice: null, account: { id: 1 }, sameHandVersion, setHeading() {}, createTableView: () => view,
+    motion: f.motion, engineCommand() {}, liveMessage: () => "", preserveFocus: fn => fn(), matchProgress: null, rematch: null, openSeatNotifications: null,
     syncDecor() {}, waitingRoomMarkup: () => "", showMessage() {}, t: key => key, lobbyLink: () => "" };
   const renderSource = controllerSource.slice(controllerSource.indexOf("function render(previous ="), controllerSource.indexOf("function renderJoinPrompt()"));
   const render = runInNewContext(`${renderSource}; render;`, context);

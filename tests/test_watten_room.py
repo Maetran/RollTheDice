@@ -309,26 +309,27 @@ def test_start_roster_drives_the_existing_card_engine_for_every_dealer(count):
 def test_rematch_creates_one_follow_up_from_the_complete_recipe_without_moving_people():
     source = finished(4, cpu_seats=(3,), password=True, show_rechter=True, trick_history=True)
     created = create_rematch(source, revision=source.revision, account_id=201, target_room_id="room-2", now=NOW,
-                             wait_seconds=WAIT, protection_verifier="argon2-verifier")
+                             wait_seconds=WAIT)
     room = created.room
-    assert room.recipe == source.recipe and room.recipe.password_required
+    assert room.recipe == replace(source.recipe, password_required=False)
+    assert room.series.roster_locked and room.series.bindings == source.series.bindings
     assert room.rematch_of == "room-1" and room.status == "waiting" and room.revision == 0
     assert room.members == (Member("p1", 201),) and [cpu.seat for cpu in room.cpus] == [3]
-    assert created.protection_verifier == "argon2-verifier" and "argon2" not in repr(created)
+    assert created.protection_verifier is None
     marked = created.source
     assert marked.rematch_room_id == "room-2" and marked.revision == source.revision + 1
     assert marked.members == source.members and start_roster(marked) == start_roster(source)
     assert code_of(create_rematch, marked, revision=marked.revision, account_id=HOST, target_room_id="room-3",
                    now=NOW, wait_seconds=WAIT, protection_verifier="argon2-verifier") == "watten_rematch_exists"
-    for verifier in (None, "", 5):
+    for verifier in ("argon2-verifier", "", 5):
         assert code_of(create_rematch, source, revision=source.revision, account_id=201, target_room_id="room-2",
                        now=NOW, wait_seconds=WAIT,
-                       protection_verifier=verifier) == "watten_rematch_protection_mismatch"
+                       protection_verifier=verifier) == "watten_rematch_password_not_supported"
     open_source = finished(4)
     for verifier in ("argon2-verifier", 5):
         assert code_of(create_rematch, open_source, revision=open_source.revision, account_id=HOST,
                        target_room_id="room-2", now=NOW, wait_seconds=WAIT,
-                       protection_verifier=verifier) == "watten_rematch_protection_mismatch"
+                       protection_verifier=verifier) == "watten_rematch_password_not_supported"
     running = started(4)
     for room_state, account, target, code in (
             (open_source, 999, "room-2", "watten_rematch_requires_player"),
@@ -357,27 +358,28 @@ def test_rematch_seat_suggestions_must_name_former_players_and_human_seats(reser
                    reservations_expire_at=expires) == code
 
 
-def test_valid_private_reservations_hold_capacity_and_seats_until_accepted_declined_or_expired():
+def test_rematch_reservations_remain_account_bound_after_declining_or_expiring():
     source = finished(4)
     room = create_rematch(source, revision=source.revision, account_id=HOST, target_room_id="room-2", now=NOW,
                           wait_seconds=WAIT, reservations={201: 1, 202: 2}, reservations_expire_at=later(300)).room
     assert [(item.account_id, item.seat) for item in room.reservations] == [(201, 1), (202, 2)]
-    room = join(room, 300)
-    assert code_of(admit, room, revision=room.revision, account_id=301, now=NOW) == "watten_room_full"
+    assert code_of(admit, room, revision=room.revision, account_id=300, now=NOW) == "watten_tournament_roster_locked"
     room = join(room, 201)
-    assert code_of(sit, room, 300, 1) == "watten_seat_reserved"
+    assert code_of(sit, room, 201, 2) == "watten_tournament_roster_locked"
     assert code_of(place_cpu, room, revision=room.revision, account_id=HOST, seat=2, now=NOW) == (
-        "watten_seat_reserved")
+        "watten_tournament_roster_locked")
     room = sit(room, 201, 1)
     assert [(item.account_id, item.seat) for item in room.reservations] == [(202, 2)]
     declined = decline_reservation(room, revision=room.revision, account_id=202, now=NOW)
-    assert declined.reservations == () and join(declined, 301).members[-1].account_id == 301
+    assert declined.reservations == ()
+    assert code_of(admit, declined, revision=declined.revision, account_id=301, now=NOW) == (
+        "watten_tournament_roster_locked")
     assert code_of(decline_reservation, declined, revision=declined.revision, account_id=202, now=NOW) == (
         "watten_no_reservation")
-    expired = sit(room, 300, 2, now=later(300))
-    assert expired.members[1].seat == 2 and join(expired, 301, now=later(300)).members[-1].account_id == 301
-    cpu = place_cpu(room, revision=room.revision, account_id=HOST, seat=2, now=later(300))
-    assert cpu.reservations == () and cpu.recipe.cpu_seats == (2,)
+    expired = sit(join(room, 202, now=later(300)), 202, 2, now=later(300))
+    assert next(member for member in expired.members if member.account_id == 202).seat == 2
+    assert code_of(admit, expired, revision=expired.revision, account_id=301, now=later(300)) == (
+        "watten_tournament_roster_locked")
 
 
 def test_rooms_are_frozen():
@@ -479,16 +481,14 @@ def test_strict_room_json_rejects_duplicate_keys_and_constants():
         assert code_of(room_from_json, bad) == "watten_invalid_json"
 
 
-def test_closed_waiting_rematch_keeps_its_host_and_roundtrips_without_an_invented_match():
+def test_closed_waiting_room_has_no_completed_game_to_continue():
     source = join(new_room(4, cpu_seats=(3,)), 201)
     source = close_expired(source, revision=source.revision, now=later(WAIT))
-    created = create_rematch(source, revision=source.revision, account_id=HOST, target_room_id="closed-follow-up",
-                             now=later(WAIT), wait_seconds=WAIT)
-    assert created.source.status == "closed" and created.source.first_dealer is None
-    assert created.room.status == "waiting" and created.room.members == (Member("p1", HOST),)
-    assert room_from_json(room_to_json(created.source)) == created.source
-    assert code_of(create_rematch, source, revision=source.revision, account_id=201, target_room_id="other",
-                   now=later(WAIT), wait_seconds=WAIT) == "watten_host_required"
+    assert room_from_json(room_to_json(source)) == source
+    for account in (HOST, 201):
+        assert code_of(create_rematch, source, revision=source.revision, account_id=account,
+                       target_room_id="closed-follow-up", now=later(WAIT), wait_seconds=WAIT) == (
+            "watten_rematch_requires_finished_room")
 
 
 def test_rematch_protection_override_changes_only_target_recipe_and_verifier():

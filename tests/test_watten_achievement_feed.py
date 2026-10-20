@@ -18,6 +18,7 @@ from app.models import (
     WattenProgressState,
 )
 from app.watten_engine import SeatBinding, next_deal, start_match
+from app.watten_progression import DRAFT_CATALOG_VERSION
 from app.watten_progression_store import store_draft_match
 from tests import test_watten_runtime as runtime_tests
 from tests.test_watten_engine import dealt, recipe
@@ -174,7 +175,7 @@ def test_future_catalog_same_id_is_archived_and_known_unknown_bid_claim_fails_cl
         row = persist_own(db, owner, "future-private-source")
         state = db.get(WattenProgressState, owner[0].user_id)
         state.grant_sequence += 1
-        db.add(WattenAchievementGrant(user_id=owner[0].user_id, generation=1, catalog_version=2,
+        db.add(WattenAchievementGrant(user_id=owner[0].user_id, generation=1, catalog_version=DRAFT_CATALOG_VERSION + 1,
             achievement_id="watten_quiet_win", source_game_id=row.game_id, reached_at=FINISHED, xp=73,
             policy_version=2, grant_sequence=state.grant_sequence))
     entries = feed.build_watten_achievement_feed(owner[0].user_id)["entries"]
@@ -212,3 +213,17 @@ def test_foreign_active_grant_owner_without_state_fails_closed_before_json_and_w
                               for statement in statements)
     with session_scope() as db:
         assert snapshot(db) == before
+
+
+def test_compatible_v1_achievement_labels_survive_additive_catalog_upgrade():
+    from types import SimpleNamespace
+
+    from app.watten_achievement_feed import _achievement
+    from app.watten_progression import DRAFT_ACHIEVEMENTS
+
+    goal = DRAFT_ACHIEVEMENTS[0]
+    known = _achievement(SimpleNamespace(achievement_id=goal.achievement_id, catalog_version=1, xp=goal.xp))
+    assert known["id"] == goal.achievement_id and known["archived"] is False
+    assert known["name"]["de"] == goal.name.de and known["actual_xp"] == goal.xp
+    future = _achievement(SimpleNamespace(achievement_id=goal.achievement_id, catalog_version=DRAFT_CATALOG_VERSION + 1, xp=goal.xp))
+    assert future["archived"] is True

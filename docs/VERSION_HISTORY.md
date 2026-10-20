@@ -1,12 +1,12 @@
 # Versionen / Versions
 
-Aktuelle gemeinsame Produktversion / Current shared product version: **3.18.2**.
+Aktuelle gemeinsame Produktversion / Current shared product version: **4.0.0**.
 
-ZDWA und Zilch werden gemeinsam versioniert. Major steht für einen großen
+Alle RollTheDice-Spiele werden gemeinsam versioniert. Major steht für einen großen
 Produktmeilenstein, Minor für neue Funktionen und Patch für Fehlerkorrekturen
 oder Wartung. Ein Major-Schritt setzt Minor und Patch zurück; Minor setzt Patch zurück.
 
-ZDWA and Zilch share one version stream. Major marks a major product milestone,
+All RollTheDice games share one version stream. Major marks a major product milestone,
 Minor adds features, and Patch covers fixes or maintenance. Major resets Minor
 and Patch; Minor resets Patch.
 
@@ -22,11 +22,15 @@ This creates no historical tags or notifications. Original commit titles are kep
 1.0.0 bezeichnet das erste spielbare ZDWA, 2.0.0 die öffentliche Zilch-Beta als zweites Spiel.
 1.0.0 identifies the first playable ZDWA; 2.0.0 introduces the public Zilch beta as a second game.
 
+4.0.0 startet die öffentliche Watten-Beta als viertes Spiel.
+4.0.0 introduces the public Watten beta as the fourth game.
+
 Die ausführlichen Beschreibungen stehen im [Changelog](../CHANGELOG.md).
 Detailed player-facing descriptions are in the [changelog](../CHANGELOG.md).
 
 | Version | Datum / Date | Art / Type | Änderung / Change | Commit |
 | --- | --- | --- | --- | --- |
+| 3.18.2 | 2026-10-20 | patch | Einheitliche Navigation, ZDWA-Community-Statistiken, klare Hausdepp-Dialoge und ein fester Tisch in der privaten Watten-Vorschau. / Consistent navigation, ZDWA community statistics, clear Hausdepp dialogs and a fixed table in the private Watten preview. | [50306cf](https://github.com/Maetran/RollTheDice/commit/50306cf0d602518aa47e9bd3f72c92b55f3aa410) |
 | 3.18.1 | 2026-10-20 | patch | Hausdepp: Tisch auch beim Zuschauen verlassen; Mikrofon für Suite-PWAs freigeschaltet. / Hausdepp: leave tables while spectating; microphone enabled for suite PWAs. | [7a66e10](https://github.com/Maetran/RollTheDice/commit/7a66e1051190fa81f25d8d1802d27bf88411959a) |
 | 3.18.0 | 2026-10-20 | minor | Hausdepp: gemeinsame Tischdeko, leise Wirtshauskulisse und eigener Ausstieg; zuverlässiger Sprachwechsel. / Hausdepp: shared table props, quiet tavern ambience and individual departure; reliable language switching. | [68cab46](https://github.com/Maetran/RollTheDice/commit/68cab46201c7374f618b9b2c7971193c437ef76b) |
 | 3.17.0 | 2026-10-20 | minor | Sprachchat-Beta für Hausdepp mit getrennten Schaltern und Verbrauchsübersicht in Mission Control. / Hausdepp voice chat beta with separate controls and a usage overview in Mission Control. | [73b9f49](https://github.com/Maetran/RollTheDice/commit/73b9f49f24c6b8fa00101f473e686a47f2f491b9) |

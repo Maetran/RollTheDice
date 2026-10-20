@@ -726,6 +726,35 @@ class WattenAchievementGrant(Base):
     )
 
 
+class WattenTableSurpriseClaim(Base):
+    """One server-selected cosmetic claim per real match/deal; no private hand."""
+
+    __tablename__ = "watten_table_surprise_claims"
+    game_id: Mapped[str] = mapped_column(String(16), primary_key=True)
+    deal_id: Mapped[str] = mapped_column(String(160), primary_key=True)
+    effect: Mapped[str] = mapped_column(String(16), nullable=False)
+    event_id: Mapped[str] = mapped_column(String(32), nullable=False, unique=True)
+    claimed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    human_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    __table_args__ = (CheckConstraint("effect IN ('star','hammer','ufo','portal','dragon','kraken','clock','blackhole')",
+                                    name="ck_watten_surprise_effect"),
+                      CheckConstraint("human_count >= 2 AND human_count <= 4", name="ck_watten_surprise_humans"))
+
+
+class WattenTableSurpriseWitness(Base):
+    """Authenticated connected human membership at a rare effect's activation."""
+
+    __tablename__ = "watten_table_surprise_witnesses"
+    game_id: Mapped[str] = mapped_column(String(16), primary_key=True)
+    deal_id: Mapped[str] = mapped_column(String(160), primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    player_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    initiated: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    __table_args__ = (ForeignKeyConstraint(["game_id", "deal_id"],
+                                         ["watten_table_surprise_claims.game_id", "watten_table_surprise_claims.deal_id"],
+                                         ondelete="CASCADE", name="fk_watten_surprise_witness_claim"),)
+
+
 class WattenMatchPresentationAck(Base):
     """DRAFT presentation boundary for one owned credit; never a global cursor."""
 

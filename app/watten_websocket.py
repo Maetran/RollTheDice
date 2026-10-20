@@ -34,6 +34,9 @@ async def sweep_watten_waiting_games() -> int:
         if game.get("_game_type") == "watten":
             async with game_lock(game):
                 if expire_waiting_game(game):
+                    from .hausdepp_voice import refresh_voice_game
+
+                    await refresh_voice_game(game)
                     expired += 1
                     await broadcast_watten(game)
     return expired
@@ -143,6 +146,9 @@ async def _session_action(session, data: dict) -> None:
             await previous.close(code=1008, reason="Session replaced")
         except (RuntimeError, OSError):
             pass
+    from .hausdepp_voice import refresh_voice_game
+
+    await refresh_voice_game(game)
     await websocket.send_json({"player_id": player, "game_type": "watten"})
     await broadcast_watten(game)
 
@@ -191,6 +197,16 @@ async def _handle_locked(session, action: str, data: dict) -> bool:
     if action in SOCIAL_ACTIONS:
         await handle_watten_social(session, data, _identity)
         return False
+    if action == "watten_table_surprise":
+        from .watten_surprises import handle_surprise
+
+        await handle_surprise(session, data, _identity)
+        return False
+    if action == "watten_voice":
+        from .hausdepp_voice import handle_voice_action
+
+        await handle_voice_action(session, data)
+        return False
     if action == "get_state":
         if set(data) != {"action"}:
             raise ValueError("watten_invalid_command")
@@ -231,6 +247,12 @@ async def _handle_locked(session, action: str, data: dict) -> bool:
         # Revoke this transport synchronously before notifying any peer. Its
         # queued messages cannot deliberate-return or play after the leave.
         next(item for item in game["_players"] if item["id"] == session.player_id)["ws"] = None
+    if action in {"leave_waiting_game", "watten_leave", "watten_start"} and not replayed:
+        from .hausdepp_voice import refresh_voice_game, voice_socket_disconnected
+
+        if action == "leave_waiting_game" or leaving:
+            await voice_socket_disconnected(session, revoke=True)
+        await refresh_voice_game(game)
     # Private feedback and delivery acknowledgements deliberately do not pass
     # through global broadcast/touch or publish a room revision/timestamp.
     await broadcast_watten(game, participant_ids=private, public_call_events=public_call_events)
@@ -293,6 +315,13 @@ async def serve_watten_websocket(websocket, game: dict, *, reserve_connection, r
         pass
     finally:
         async with game_lock(game):
+            from .hausdepp_voice import voice_socket_disconnected
+
+            still_member = any(member.participant_id == session.player_id and member.account_id == identity.user_id
+                               for member in game["_watten"].room.members)
+            await voice_socket_disconnected(session, revoke=bool(
+                _identity(websocket) is None or game.get("_aborted") or not still_member
+                or session.player_id in game["_watten"].absent))
             for player in game["_players"]:
                 if player.get("ws") is websocket:
                     player["ws"] = None

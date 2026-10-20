@@ -1,5 +1,5 @@
 const { test, expect } = require('@playwright/test');
-const { player, create, normalCall } = require('./helpers/watten-journey.cjs');
+const { player, openCreator, create, action, answerPartnerFeedback, normalCall, playOne } = require('./helpers/watten-journey.cjs');
 const { expectFixedTable, expectReachable } = require('./table-viewport');
 
 for (const browserName of ['chromium', 'webkit']) {
@@ -17,7 +17,7 @@ for (const browserName of ['chromium', 'webkit']) {
       const rootNavigations = [];
       try {
         await page.goto('/watten');
-        await expect(page.locator('[data-watten-create]')).toBeVisible();
+        await expect(page.locator('[data-watten-create-open]')).toBeVisible();
         await expect.poll(() => page.evaluate(() => Boolean(window.ZDWA_APP_MODE?.initialized))).toBe(true);
         await page.evaluate(() => window.ZDWA_APP_MODE.refresh());
 
@@ -89,7 +89,7 @@ for (const browserName of ['chromium', 'webkit']) {
               screen.orientation?.dispatchEvent(new Event('change'));
             });
             await expect(page.locator('html')).toHaveAttribute('data-watten-active', 'true');
-            await expectFixedTable(page, ['[data-wt-felt]', '[data-wt-panel]', '[data-wt-hand-area]']);
+            await expectFixedTable(page, ['[data-wt-felt]', '[data-wt-scores]', '[data-wt-hand-area]']);
             await expectReachable(page, '[data-wt-hand] button:first-child');
             expect(await page.evaluate(() => window.rotationHandNodes.every((node, index) =>
               node === document.querySelectorAll('[data-wt-hand] button')[index]))).toBe(true);
@@ -107,16 +107,113 @@ for (const browserName of ['chromium', 'webkit']) {
           .toEqual([expect.objectContaining({ action: 'watten_command', kind: 'play_card', value: card, opportunity })]);
         await expect.poll(() => traffic.snapshot.engine.opportunity).not.toBe(opportunity);
         expect(traffic.errors).toEqual([]);
-        // Locking is confined to an active game. The real creator and long
-        // rulebook retain ordinary native document scrolling after departure.
-        await page.setViewportSize({ width: 390, height: 844 });
-        for (const path of ['/watten', '/watten/regeln']) {
-          await page.goto(path);
-          await expect(page.locator('html')).not.toHaveAttribute('data-watten-active', 'true');
-          await expect.poll(() => page.evaluate(() => document.documentElement.scrollHeight - innerHeight)).toBeGreaterThan(0);
-          await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
-          await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(0);
+        // Complete this real trick, then keep its history open while an actual
+        // bid awaits a decision. Both lower-dock controls must survive rotation.
+        await playOne(players);
+        await expect.poll(() => players.every(item => item.traffic.snapshot.engine.phase === 'play'
+          && item.traffic.snapshot.engine.last_trick?.cards.length === 2)).toBe(true);
+        await action(players, 'bid');
+        await expect.poll(() => players.every(item => item.traffic.snapshot.engine.phase === 'bid_response')).toBe(true);
+        await answerPartnerFeedback(players);
+        const responder = players.find(item => item.traffic.snapshot.engine.actions.includes('respond_hold'));
+        expect(responder).toBeTruthy();
+        const decisionPage = responder.page;
+        const language = await decisionPage.locator('html').getAttribute('lang');
+        await decisionPage.bringToFront();
+        for (const viewport of [{ width: 956, height: 440 }, portrait, { width: 956, height: 440 }, portrait]) {
+          await decisionPage.setViewportSize(viewport);
+          await decisionPage.evaluate(() => window.dispatchEvent(new Event('orientationchange')));
+          const history = decisionPage.locator('.wt-end-sheet > [data-wt-history]');
+          await expect(history).toBeVisible();
+          await expectFixedTable(decisionPage, ['[data-wt-felt]', '[data-wt-scores]', '[data-wt-hand-area]']);
+          // The scroll probe also taps outside the review, which dismisses an
+          // unpinned history. Reopen it before measuring its visible contents.
+          if (!await history.evaluate(node => node.open)) await history.locator('summary').click();
+          await expect(history).toHaveAttribute('open', '');
+          await expectReachable(decisionPage, '[data-wt-history] > summary');
+          await expect.poll(() => history.evaluate(node => {
+            const rect = node.getBoundingClientRect();
+            const panel = node.parentElement.querySelector('[data-wt-panel]');
+            const stake = node.parentElement.querySelector('[data-wt-stake]');
+            const panelRect = panel.getBoundingClientRect(), stakeRect = stake.getBoundingClientRect();
+            const summary = node.querySelector('summary').getBoundingClientRect();
+            const hand = document.querySelector('[data-wt-hand-area]').getBoundingClientRect();
+            const overlaps = (a, b) => Math.min(a.right, b.right) - Math.max(a.left, b.left) > 2
+              && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 2;
+            return {
+              aboveDecision: rect.bottom <= panelRect.top + 1,
+              aboveStake: !stakeRect.height || rect.bottom <= stakeRect.top + 1,
+              stakeBelowDecision: !stakeRect.height || panelRect.bottom <= stakeRect.top + 1,
+              clearOfHand: !overlaps(summary, hand),
+              controlsClearOfHistory: [...panel.querySelectorAll('button'), ...stake.querySelectorAll('button')]
+                .every(button => !overlaps(rect, button.getBoundingClientRect())),
+              compactReadableCards: [...node.querySelectorAll('.wt-card--mini')].every(card => {
+                const width = Number.parseFloat(getComputedStyle(card).width);
+                return width >= 44 && width <= 56;
+              }),
+            };
+          }), { message: 'rotating keeps history above the bid, away from the hand and decision targets' })
+            .toEqual({ aboveDecision: true, aboveStake: true, stakeBelowDecision: true, clearOfHand: true,
+              controlsClearOfHistory: true, compactReadableCards: true });
+          const engine = responder.traffic.snapshot.engine;
+          const compactBid = viewport.width > viewport.height && viewport.height < 520 && engine.phase === 'bid_response';
+          const stake = decisionPage.locator('.wt-end-sheet > [data-wt-stake]');
+          if (compactBid) {
+            await expect(stake).toBeHidden();
+            const inlineStake = decisionPage.locator('[data-watten-bid] > .wt-note');
+            await expect(inlineStake).toBeVisible();
+            await expect(inlineStake).toHaveText(language === 'en'
+              ? `Stake: ${engine.bid.accepted_stake} points` : `Einsatz: ${engine.bid.accepted_stake} Punkte`);
+            await expect.poll(() => inlineStake.evaluate(node => {
+              const rect = node.getBoundingClientRect();
+              const title = node.parentElement.querySelector('h3').getBoundingClientRect();
+              return {
+                besideTitle: rect.left >= title.right - 1
+                  && Math.min(rect.bottom, title.bottom) > Math.max(rect.top, title.top),
+                inViewport: rect.left >= -1 && rect.top >= -1 && rect.right <= innerWidth + 1 && rect.bottom <= innerHeight + 1,
+              };
+            }), { message: 'accepted running stake remains beside the offer title in short landscape' })
+              .toEqual({ besideTitle: true, inViewport: true });
+          } else {
+            await expect(stake).toBeVisible();
+            const displayedPoints = engine.bid.pending?.points ?? engine.bid.accepted_stake;
+            await expect(stake).toHaveAttribute('data-points', String(displayedPoints));
+            await expect(stake.locator('button > strong')).toHaveText(String(displayedPoints));
+            await expectReachable(decisionPage, '.wt-end-sheet > [data-wt-stake] > button');
+            const stakeBox = await stake.locator('button').boundingBox();
+            expect(stakeBox.width).toBeGreaterThanOrEqual(44);
+            expect(stakeBox.height).toBeGreaterThanOrEqual(44);
+          }
+          for (const response of ['respond_hold', 'respond_go', 'respond_counter']) {
+            const selector = `[data-watten-action="${response}"]`;
+            const target = decisionPage.locator(selector);
+            await expect(target).toBeEnabled();
+            const targetBox = await target.boundingBox();
+            expect(targetBox.width).toBeGreaterThanOrEqual(44);
+            expect(targetBox.height).toBeGreaterThanOrEqual(44);
+            await expectReachable(decisionPage, selector);
+          }
         }
+        await action(players, 'respond_hold', 'hold');
+        await expect.poll(() => players.every(item => item.traffic.snapshot.engine.phase === 'play')).toBe(true);
+        expect(players.flatMap(item => item.traffic.errors)).toEqual([]);
+        // Locking is confined to an active game. The compact lobby opens a
+        // scrollable native creator; the long rulebook scrolls as a document.
+        await page.setViewportSize({ width: 390, height: 600 });
+        await page.goto('/watten');
+        await expect(page.locator('html')).not.toHaveAttribute('data-watten-active', 'true');
+        await openCreator(page);
+        const dialog = page.locator('[data-watten-create-dialog]');
+        await expect.poll(() => dialog.evaluate(node => node.scrollHeight - node.clientHeight)).toBeGreaterThan(0);
+        await dialog.evaluate(node => { node.scrollTop = node.scrollHeight; });
+        await expect.poll(() => dialog.evaluate(node => node.scrollTop)).toBeGreaterThan(0);
+        await page.keyboard.press('Escape');
+        await expect(dialog).not.toBeVisible();
+        await page.goto('/watten/regeln');
+        await expect(page.locator('html')).not.toHaveAttribute('data-watten-active', 'true');
+        await expect.poll(() => page.evaluate(() => document.documentElement.scrollHeight - innerHeight)).toBeGreaterThan(0);
+        await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
+        await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(0);
       } finally { await Promise.allSettled(players.map(item => item.context.close())); }
     });
   });

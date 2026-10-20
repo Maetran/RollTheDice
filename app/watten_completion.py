@@ -1,7 +1,8 @@
 """Local draft progress in the same native result/checkpoint transaction.
 
 Exactly one match is processed per native persistence transaction. The writer's
-result-v1 remains unchanged; no grants are issued by account/history reads.
+result-v1 retains its public score evidence, including optional Retourschneider
+decisions; no grants are issued by account/history reads.
 The draft policy is a calibration proposal behind the closed game preview.
 """
 
@@ -24,4 +25,8 @@ def store_completion_progress(db, game: dict):
     bindings = tuple(ProjectedBinding(row.game_id, seat.position, seat.player_key, seat.display_name,
                                       seat.user_id, seat.points, seat.team) for seat in db.scalars(
         select(GameParticipant).where(GameParticipant.game_id == row.id).order_by(GameParticipant.position)))
-    return store_draft_match(db, row, evidence, bindings)
+    result = store_draft_match(db, row, evidence, bindings)
+    from .watten_surprises import store_surprise_achievements
+
+    store_surprise_achievements(db, evidence, bindings)
+    return result

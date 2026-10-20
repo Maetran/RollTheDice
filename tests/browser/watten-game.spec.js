@@ -4,7 +4,7 @@ const path = require('node:path');
 
 test.use({ serviceWorkers: 'block' });
 
-const { player, create, action, normalCall, playOne } = require('./helpers/watten-journey.cjs');
+const { player, create, action, answerPartnerFeedback, normalCall, playOne } = require('./helpers/watten-journey.cjs');
 const { expectTableHeaderReachable } = require('./helpers/watten-header.cjs');
 
 for (const language of ['de', 'en']) {
@@ -18,8 +18,8 @@ for (const language of ['de', 'en']) {
     await expect(page.locator('[data-watten-create]')).toHaveCount(0);
     await page.setViewportSize({ width: 320, height: 568 });
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
-    await page.locator('[data-watten-nav] a[href="/watten/regeln"]').click();
-    await expect(page).toHaveURL(/\/watten\/regeln$/);
+    await page.locator('[data-watten-nav] a[href^="/watten/regeln"]').click();
+    await expect(page).toHaveURL(new RegExp(`/watten/regeln${language === 'en' ? '\\?lang=en' : ''}$`));
     await expect(page.locator('html')).toHaveAttribute('lang', language);
     expect(privateReads).toEqual([]);
   });
@@ -30,6 +30,11 @@ test('two real human accounts bid, pause with an open bid, return and finish a d
   try {
     const path = await create(players);
     await normalCall(players);
+    for (const item of players) {
+      expect(item.traffic.snapshot.engine.round_summary).toBeUndefined();
+      expect(item.traffic.snapshot.engine.trick_history).toBeNull();
+      await expect(item.page.locator('[data-watten-round-call]')).toHaveCount(0);
+    }
     await playOne(players);
     await action(players, 'bid');
     await expect.poll(() => players.every(item => item.traffic.snapshot.engine.phase === 'bid_response')).toBe(true);
@@ -53,10 +58,39 @@ test('two real human accounts bid, pause with an open bid, return and finish a d
       await expect(item.page.locator('[data-watten-match-result]')).toBeVisible();
       expect(item.traffic.snapshot.result_persisted).toBe(true);
       expect(item.traffic.snapshot.engine.scores.some(score => score.points === 3)).toBe(true);
+      const engine = item.traffic.snapshot.engine;
+      expect(engine.round_summary).toEqual({ strike_rank: '7', trump_suit: 'bells', rechter: 'bells-7' });
+      expect(engine.options.trick_history).toBe(false);
+      expect(engine.trick_history.length).toBeGreaterThan(0);
+      expect(engine.trick_history.length).toBeLessThanOrEqual(5);
+      const language = await item.page.locator('html').getAttribute('lang');
+      const roundCall = item.page.locator('[data-watten-round-call]');
+      await item.page.locator('.wt-final-call > summary').click();
+      await expect(roundCall).toBeVisible();
+      await expect(roundCall.locator('dt')).toHaveText(language === 'en' ? ['Strike', 'Trump suit'] : ['Schlag', 'Farbe']);
+      await expect(roundCall.locator('figure [data-card]')).toHaveAttribute('data-card', 'bells-7');
+      const history = item.page.locator('[data-wt-history]');
+      await expect(history).toBeVisible();
+      await expect(history.locator('summary')).toHaveText(language === 'en'
+        ? `Round history (${engine.trick_history.length})` : `Rundenverlauf (${engine.trick_history.length})`);
+      if (!await history.evaluate(node => node.open)) await history.locator('summary').click();
+      await expect(history.locator('.wt-history > li')).toHaveCount(engine.trick_history.length);
+      expect(await history.locator('.wt-history [data-card]').evaluateAll(nodes => nodes.map(node => node.dataset.card)))
+        .toEqual(engine.trick_history.flatMap(trick => trick.cards.map(card => card.card)));
+      expect(await history.locator('.wt-history > li').evaluateAll(nodes => nodes.every((node, index) =>
+        !index || node.getBoundingClientRect().top >= nodes[index - 1].getBoundingClientRect().bottom - 1))).toBe(true);
       expect(item.traffic.errors).toEqual([]);
       expect(item.traffic.commands.filter(command => ['join_game', 'rejoin_game'].includes(command.action))
         .every(command => command.expected_account_id === item.user.id)).toBe(true);
     }
+    // The final call and all played tricks are reconstructed on a real reload;
+    // the table option restricts live history, rather than the finished round.
+    const finalTricks = players[0].traffic.snapshot.engine.trick_history;
+    await players[0].page.reload();
+    await expect(players[0].page.locator('[data-watten-match-result]')).toBeVisible();
+    expect(players[0].traffic.snapshot.engine.round_summary).toEqual({ strike_rank: '7', trump_suit: 'bells', rechter: 'bells-7' });
+    expect(players[0].traffic.snapshot.engine.trick_history).toEqual(finalTricks);
+    await expect(players[0].page.locator('[data-wt-history]')).toBeVisible();
   } finally { await Promise.allSettled(players.map(item => item.context.close())); }
 });
 
@@ -68,7 +102,18 @@ test('three-player solo owns both normal calls and private partner advice stays 
     expect(striker).toBe(colourer);
     const solo = striker;
     const pair = players.filter(item => item !== solo);
+    for (const item of players) await expect(item.page.locator('[data-watten-feedback-dialog]')).toHaveCount(0);
+    await playOne(players);
+    await action(pair, 'bid');
+    for (const bidder of pair) await expect(bidder.page.locator('[data-watten-feedback-dialog]')).toHaveCount(0);
+    // The solo's counteroffer makes the pair the receiving team. Advice is
+    // available to both receivers and remains private to that pair.
+    await action([solo], 'respond_counter', 'counter');
+    for (const receiver of pair) await expect(receiver.page.locator('[data-watten-feedback-dialog]')).toBeVisible();
+    await expect(solo.page.locator('[data-watten-feedback-dialog]')).toHaveCount(0);
     await pair[0].page.locator('[data-watten-command=feedback][data-value=good]').click();
+    await expect(pair[0].page.locator('[data-watten-feedback-dialog]')).toHaveCount(0);
+    await answerPartnerFeedback([pair[1]]);
     await expect(pair[1].page.locator('[data-watten-feedback-received]')).toBeVisible();
     await expect(solo.page.locator('[data-watten-feedback-received]')).toHaveCount(0);
     expect(pair[1].traffic.snapshot.engine.feedback.some(item => item.value === 'good')).toBe(true);
@@ -145,14 +190,13 @@ test('page lifecycle handlers clear private state synchronously and restore thro
 });
 
 for (const count of [2, 3, 4]) {
-  test(`${count}-player host chooses CPU seats, starts manually and receives autonomous play`, async ({ browser, baseURL }) => {
+  test(`${count}-player host fills CPU seats in creation, adjusts them and starts autonomous play manually`, async ({ browser, baseURL }) => {
     test.setTimeout(90000);
     const host = await player(browser, baseURL, count === 3 ? 'en' : 'de');
     if (count === 4) await host.page.emulateMedia({ reducedMotion: 'no-preference' });
     try {
-      await create([host], { count, reference: true, start: false });
+      await create([host], { count, reference: true, start: false, cpuFill: true });
       for (let seat = 1; seat < count; seat += 1) {
-        await host.page.locator(`[data-watten-command=place-cpu][data-seat="${seat}"]`).click();
         await expect.poll(() => host.traffic.snapshot?.room.seats[seat].is_cpu).toBe(true);
         await expect(host.page.locator(`[data-watten-seat="${seat}"] strong`)).not.toHaveText('');
       }
@@ -166,19 +210,41 @@ for (const count of [2, 3, 4]) {
       await host.page.locator('[data-watten-command=start]').click();
       let observedPlay = false;
       let continuedDeal = false;
+      // Optional requests remain available while a CPU owns the next move.
+      // Only an actual human progress action may release this driver.
+      const progressActions = new Set(['show_ready', 'inspection_ack', 'announce_strike', 'announce_colour',
+        'respond_go', 'respond_hold', 'bid', 'play_card']);
       for (let turn = 0; turn < 60; turn += 1) {
         await expect.poll(() => {
           const engine = host.traffic.snapshot?.engine;
-          return engine && (engine.actions.some(kind => kind !== 'partner_feedback')
+          return engine && (engine.actions.some(kind => progressActions.has(kind))
             || ['deal_complete', 'match_complete'].includes(engine.phase));
         }, { timeout: 20000 }).toBeTruthy();
         const engine = host.traffic.snapshot.engine;
         if (engine.phase === 'match_complete') break;
         if (engine.phase === 'deal_complete') {
+          if (engine.retourschneider?.status === 'available') {
+            const choice = engine.retourschneider;
+            const cpuCanChoose = choice.members.some(id => !choice.accepted_by.includes(id)
+              && host.traffic.snapshot.room.seats.some(seat => seat.participant_id === id && seat.is_cpu));
+            if (cpuCanChoose) {
+              // A CPU candidate declines autonomously; avoid racing its button removal.
+              await expect.poll(() => host.traffic.snapshot.engine.retourschneider?.status,
+                { timeout: 20000 }).not.toBe('available');
+            } else {
+              expect(engine.actions).toContain('retourschneider');
+              await action([host], 'retourschneider', 'decline');
+            }
+            continue;
+          }
           const previousDeal = engine.deal_id;
           await host.page.locator('[data-watten-command=next-deal]').click();
           await expect.poll(() => host.traffic.snapshot.engine.deal_id).not.toBe(previousDeal);
           continuedDeal = true;
+          continue;
+        }
+        if (engine.actions.includes('partner_feedback')) {
+          await answerPartnerFeedback([host]);
           continue;
         }
         const before = engine.opportunity;
@@ -212,6 +278,12 @@ for (const count of [2, 3, 4]) {
       if (count === 2) {
         expect(continuedDeal).toBe(true);
         await expect(host.page.locator('[data-watten-match-result]')).toBeVisible();
+        expect(host.traffic.snapshot.result_persisted).toBe(true);
+      } else if (!observedPlay) {
+        // The confirmed house rule permits folding before the first card.
+        // A wholly autonomous completed match is valid only with a scored fold.
+        expect(host.traffic.snapshot.engine.phase).toBe('match_complete');
+        expect(host.traffic.snapshot.engine.bid.result.reason).toBe('go');
         expect(host.traffic.snapshot.result_persisted).toBe(true);
       } else expect(observedPlay).toBe(true);
       expect(host.traffic.errors).toEqual([]);

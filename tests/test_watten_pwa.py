@@ -58,7 +58,7 @@ class WattenPwaTests(unittest.TestCase):
             # account recovery and existing suite pages live outside /watten.
             self.assertEqual(data["scope"], "/")
             self.assertEqual(data["lang"], language)
-            self.assertEqual([item["url"] for item in data["shortcuts"]], ["/watten", "/watten/konto/einstellungen"])
+            self.assertEqual([item["url"] for item in data["shortcuts"]], ["/watten", "/watten/regeln"])
             self.assertEqual(self.client.head(path).content, b"")
             for icon in data["icons"]:
                 fetched = self.client.get(icon["src"])
@@ -81,7 +81,7 @@ class WattenPwaTests(unittest.TestCase):
         from app.web_push import PUSH_DELIVERY_CONTEXTS
 
         self.assertNotIn("watten", PUSH_DELIVERY_CONTEXTS)
-        self.assertIn("This local account preview needs an internet connection", response.text)
+        self.assertIn("Watten needs an internet connection", response.text)
         self.assertEqual(self.client.head("/watten-sw.js").content, b"")
 
     def test_every_resource_and_icon_requires_both_local_deployment_and_local_request(self):

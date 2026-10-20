@@ -12,7 +12,7 @@ from starlette.requests import HTTPConnection
 from starlette.responses import PlainTextResponse
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-from .product_hosts import is_watten_host, request_hostname, site_origin
+from .product_hosts import HAUSDEPP_ORIGIN, WATTEN_ORIGIN, is_watten_host, request_hostname, site_origin, zilch_origin
 
 _HEADERS = {"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"}
 _UNAVAILABLE = (
@@ -40,12 +40,32 @@ def _local_hostname(hostname: str) -> bool:
         return False
 
 
+def watten_public_beta_enabled(connection: HTTPConnection | None = None) -> bool:
+    """Explicit public rollout capability, with strict raw product-host binding."""
+    if os.getenv("ROLLTHEDICE_WATTEN_PUBLIC_BETA", "0") != "1":
+        return False
+    if connection is None:
+        return True
+    hosts = connection.headers.getlist("host")
+    if len(hosts) != 1:
+        return False
+    allowed = set()
+    for origin in (site_origin(), zilch_origin(), HAUSDEPP_ORIGIN, WATTEN_ORIGIN):
+        parsed = urlsplit(origin)
+        allowed.update((parsed.netloc.casefold(), (parsed.hostname or "").casefold()))
+        if parsed.scheme == "https":
+            allowed.add(f"{parsed.hostname}:443".casefold())
+    return hosts[0].casefold() in allowed
+
+
 def watten_account_preview_enabled(connection: HTTPConnection | None = None) -> bool:
-    """Opt in only within a local development deployment and local request.
+    """Native accounts are available for public beta or a local preview.
 
     A real production origin stays closed even if this variable is copied into
     its environment. No request or forwarding header can choose the deployment.
     """
+    if watten_public_beta_enabled(connection):
+        return True
     if os.getenv("ROLLTHEDICE_WATTEN_ACCOUNT_PREVIEW", "0") != "1":
         return False
     if not _local_hostname((urlsplit(site_origin()).hostname or "").casefold()):
@@ -68,6 +88,43 @@ class WattenReadinessMiddleware:
             await self.app(scope, receive, send)
             return
         connection = HTTPConnection(scope)
+        if watten_public_beta_enabled(connection):
+            # Other products' workers/manifests must never claim this origin.
+            if is_watten_host(connection) and scope["path"] in _UNPUBLISHED_PATHS - {
+                    "/sitemap.xml", "/watten-manifest.webmanifest", "/watten-manifest-en.webmanifest", "/watten-sw.js"}:
+                if scope["type"] == "websocket":
+                    await send({"type": "websocket.close", "code": 1008})
+                else:
+                    await PlainTextResponse("Not found", status_code=404, headers=_HEADERS)(scope, receive, send)
+                return
+            if scope["type"] != "http":
+                await self.app(scope, receive, send)
+                return
+            start = None
+
+            async def send_beta(message: Message) -> None:
+                nonlocal start
+                if message["type"] == "http.response.start":
+                    headers = dict(message["headers"])
+                    if headers.get(b"content-type", b"").startswith(b"text/html"):
+                        start = message
+                        return
+                if start is not None:
+                    body = message.get("body", b"")
+                    if b"data-watten-public-beta=" not in body:
+                        changed = re.sub(br"<html(?=[\s>])", b'<html data-watten-public-beta="true"', body, count=1)
+                        if changed != body:
+                            delta = len(changed) - len(body)
+                            headers = [(key, str(int(value) + delta).encode("ascii") if key == b"content-length" else value)
+                                       for key, value in start["headers"]]
+                            start = {**start, "headers": headers}
+                            message = {**message, "body": changed}
+                    await send(start)
+                    start = None
+                await send(message)
+
+            await self.app(scope, receive, send_beta)
+            return
         fixed_host = is_watten_host(connection)
         local_account_path = scope["path"] == "/watten" or scope["path"].startswith("/watten/")
         # StaticFiles normalizes dot segments and separators, including on a
@@ -91,10 +148,16 @@ class WattenReadinessMiddleware:
                 from .auth import resolve_session
 
                 founder_document = can_access_watten(resolve_session(connection), connection)
+        founder_icon = False
+        if icon_path and scope["type"] == "http" and scope["method"] in {"GET", "HEAD"}:
+            from .auth import resolve_session
+            from .watten_access import can_access_watten, watten_request_enabled
+
+            founder_icon = watten_request_enabled(connection) and can_access_watten(resolve_session(connection), connection)
         if not fixed_host and (not local_account_path or local_document or founder_document) and (
                 not icon_path or (scope["type"] == "http" and scope["method"] in {"GET", "HEAD"}
-                                  and watten_account_preview_enabled(connection))):
-            if founder_document:
+                                  and (watten_account_preview_enabled(connection) or founder_icon))):
+            if founder_document or founder_icon:
                 async def send_private(message: Message) -> None:
                     if message["type"] == "http.response.start":
                         headers = [(key, value) for key, value in message["headers"]

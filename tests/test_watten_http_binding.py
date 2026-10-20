@@ -29,7 +29,7 @@ def assert_account_changed(response):
 
 
 def test_two_real_accounts_cannot_receive_another_viewer_or_reservation_with_an_old_expected_id(server):
-    match, owners = source_for(closed=True)
+    match, owners = source_for()
     first, second = owners
     expected_first, expected_second = str(first[0].user_id), str(second[0].user_id)
     path = f"/api/games/{match.game['_id']}"

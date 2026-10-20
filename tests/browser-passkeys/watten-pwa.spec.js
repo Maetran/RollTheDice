@@ -24,7 +24,7 @@ for (const language of ['de', 'en']) {
       await icon.decode();
       return [icon.naturalWidth, icon.naturalHeight];
     })).toEqual([180, 180]);
-    const install = page.getByRole('button', { name: language === 'de' ? 'Kontovorschau installieren' : 'Install account preview' });
+    const install = page.getByRole('button', { name: language === 'de' ? 'Watten installieren' : 'Install Watten' });
     await expect(install).toBeHidden();
     await page.evaluate(() => {
       window.__installCalls = 0;
@@ -55,7 +55,7 @@ test('Watten actual worker replaces a private account only with neutral offline 
   const response = await page.reload();
   expect(response.status()).toBe(503);
   expect(response.headers()['cache-control']).toBe('no-store');
-  await expect(page.getByText('This local account preview needs an internet connection.', { exact: false })).toBeVisible();
+  await expect(page.getByText('Watten needs an internet connection.', { exact: false })).toBeVisible();
   await expect(page.getByText('Kontodaten werden nicht offline gespeichert.', { exact: false })).toBeVisible();
   expect(await page.locator('input, [data-account-name]').count()).toBe(0);
   expect(await page.content()).not.toContain('WattenPwaOffline');
@@ -70,7 +70,7 @@ test('Watten activates a waiting narrow worker only after the explicit update ac
   await page.goto('/watten');
   await waitForWattenWorker(page);
   await page.evaluate(() => navigator.serviceWorker.register('/watten-sw.js?preview-update-check=1', { scope: '/watten', updateViaCache: 'none' }));
-  const update = page.getByRole('button', { name: 'Kontovorschau aktualisieren' });
+  const update = page.getByRole('button', { name: 'Watten aktualisieren' });
   await expect(update).toBeVisible();
   expect(await page.evaluate(() => navigator.serviceWorker.controller.scriptURL)).not.toContain('preview-update-check');
   const reloaded = page.waitForEvent('load');

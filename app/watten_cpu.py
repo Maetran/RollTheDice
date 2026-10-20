@@ -16,7 +16,9 @@ only; an inferred call never binds a blind non-inspector. There is no duty to
 win, and the Rechter or critical cards are never forced. A card that surely
 cannot take the current trick is only ever spent as the cheapest such card, and
 a stake that already decides the match is never raised. Guter/Schlechter,
-difficulty modes, think delays and scheduling are deliberately absent.
+user-selectable difficulty modes, think delays and scheduling are absent.
+An explicit ``CpuSkill`` supplies bounded experience parameters; it contains
+neither an account identity nor historical game information.
 
 Budget per decision: at most ``CpuBudget.samples`` (<= MAX_SAMPLES) accepted
 worlds from at most ``samples * ATTEMPTS_PER_SAMPLE`` draws; each candidate
@@ -32,9 +34,10 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Final
 
-from .watten_cards import WATTEN_SUITS, WELI, card_rank, make_deck
+from .watten_cards import WATTEN_SUITS, WELI, card_rank, card_suit, make_deck
 from .watten_cpu_memory import STRIKES, CpuMemory, SeatSnapshot, call_from_bottoms, read_personal_view, remember
-from .watten_play import TRICKS_TO_WIN, official_knower_seats
+from .watten_cpu_skill import CpuSkill
+from .watten_play import TRICKS_TO_WIN
 from .watten_rules import (
     WELI_STRIKE,
     CardKind,
@@ -43,7 +46,6 @@ from .watten_rules import (
     card_kind,
     card_strength,
     effective_suit,
-    round_roles,
 )
 
 # Typical Tyrolean first names; the runtime picks one not used by a human at the table.
@@ -53,7 +55,7 @@ DEFAULT_SAMPLES: Final = 24
 MAX_SAMPLES: Final = 64
 ATTEMPTS_PER_SAMPLE: Final = 8
 COMMAND_KINDS: Final = frozenset({"announce_strike", "announce_colour", "show_ready", "inspection_ack", "play_card",
-                                  "bid", "respond", "partner_feedback"})
+                                  "bid", "respond", "partner_feedback", "retourschneider", "preplay_accept", "preplay_decline"})
 _RESPONSE_ACTIONS: Final = frozenset({"respond_hold", "respond_go", "respond_counter"})
 _RESPONSES: Final = frozenset({"hold", "go", "counter"})
 _FEEDBACK: Final = frozenset({"good", "bad", "unsure"})
@@ -63,7 +65,6 @@ _DUTY_LEADS: Final = frozenset({CardKind.TRUMP, CardKind.RECHTER})
 # Fixed stake heuristics, not difficulty modes. An opposing bid signals strength
 # the uniform sample cannot see; a raised opponent goes at most half the time.
 OPPONENT_FOLD: Final = 0.5
-BID_MIN_WIN: Final = 0.62
 BID_MARGIN: Final = 0.02
 COUNTER_MARGIN: Final = 0.03
 BID_SIGNAL: Final = 0.85
@@ -125,7 +126,9 @@ class CpuProposal:
         if (self.kind == "partner_feedback") != (self.private_opportunity is not None):
             raise WattenCpuError("watten_cpu_invalid_proposal")
         if (self.kind == "respond") != (self.value in _RESPONSES) or (
-                self.kind == "partner_feedback" and self.value not in _FEEDBACK):
+                self.kind == "partner_feedback" and self.value not in _FEEDBACK) or (
+                self.kind == "retourschneider" and self.value not in {"accept", "decline"}) or (
+                self.kind in {"preplay_accept", "preplay_decline"} and self.value is not None):
             raise WattenCpuError("watten_cpu_invalid_proposal")
 
     @property
@@ -273,8 +276,9 @@ class _Context:
         self.count, self.critical, self.seat = profile.player_count, profile.critical, snap.seat
         self.parties = snap.seat_parties
         self.my_party = self.parties[self.seat]
-        self.knowers = official_knower_seats(profile, snap.dealer_seat)
-        self.roles = round_roles(self.count, snap.dealer_seat, determination=profile.determination)
+        self.roles = snap.announcement_roles
+        self.knowers = (frozenset((self.roles.strike_announcer, self.roles.suit_announcer)) if profile.blind
+                        else frozenset(range(self.count)))
         self.hand = snap.hand or ()
         self.known = {self.seat: self.hand}
         if snap.partner_cards is not None:
@@ -286,7 +290,14 @@ class _Context:
             self.tricks.setdefault(trick, {})[position] = (seat, card)
             self.played_by[seat].append((trick, card))
             self.played_seat[card] = seat
+        if sum(snap.party_tricks):
+            # These public cards had to be spent in trick one, including on a
+            # late reconnect with live trick history disabled.
+            for seat, card in snap.bloedeln_cards:
+                self.played_seat.setdefault(card, seat)
         self.seen = set(self.hand) | set(snap.partner_cards or ()) | set(self.played_seat)
+        self.public_held = {card: seat for seat, card in snap.bloedeln_cards
+                            if not sum(snap.party_tricks) and card not in self.played_seat}
         self.winners = dict(memory.winners)
         for trick, positions in self.tricks.items():
             if trick and trick - 1 not in self.winners:
@@ -308,7 +319,8 @@ def _origin_candidates(ctx: _Context, origin: int) -> list[str]:
     if origin in ctx.known:
         return [card for card in _DECK if card in ctx.known[origin] or ctx.played_seat.get(card) == origin]
     return [card for card in _DECK
-            if not any(card in cards for cards in ctx.known.values()) and ctx.played_seat.get(card, origin) == origin]
+            if not any(card in cards for cards in ctx.known.values()) and ctx.played_seat.get(card, origin) == origin
+            and ctx.public_held.get(card, origin) == origin]
 
 
 def _consistent(ctx: _Context, model: _Model) -> bool:
@@ -377,6 +389,9 @@ def _options(ctx: _Context) -> list[tuple[_Model, str | None, str | None]]:
 
 
 def _own_legal(ctx: _Context, options: list) -> tuple[str, ...]:
+    forced = dict(ctx.snap.bloedeln_cards).get(ctx.seat) if not sum(ctx.snap.party_tricks) else None
+    if forced is not None and forced in ctx.hand:
+        return (forced,)
     if ctx.seat not in ctx.knowers:
         return ctx.hand
     trick_cards = [card for _, card in ctx.trick]
@@ -397,6 +412,9 @@ def _sample(ctx: _Context, option: tuple, stream: _Stream) -> tuple[_Model, tupl
         for card, origin in zip(cards or (), origins):
             if card is not None and origin in fixed and card not in ctx.seen:
                 fixed[origin].add(card)
+    for card, owner in ctx.public_held.items():
+        if owner in fixed:
+            fixed[owner].add(card)
     placed = set().union(*fixed.values())
     pool = [card for card in _DECK if card not in ctx.seen and card not in placed]
     stream.shuffle(pool)
@@ -439,6 +457,9 @@ def _worlds(ctx: _Context, options: list, stream: _Stream, samples: int) -> list
 def _simulated_card(model: _Model, seat: int, hands: list[list[str]], trick: list[tuple[int, str]],
                     ctx: _Context) -> str:
     """Simple sensible play for every seat inside one hypothetical world."""
+    forced = dict(ctx.snap.bloedeln_cards).get(seat)
+    if forced is not None and forced in hands[seat]:
+        return forced
     cards = [card for _, card in trick]
     legal = model.allowed(hands[seat], cards, seat in ctx.knowers)
     cheapest = min(legal, key=model.order.__getitem__)
@@ -480,11 +501,11 @@ def _rollout(ctx: _Context, world: tuple, first: str | None) -> int:
             leader, trick = winner, []
 
 
-def _win_chance(ctx: _Context, stream: _Stream, budget: CpuBudget) -> float:
+def _win_chance(ctx: _Context, stream: _Stream, budget: CpuBudget) -> tuple[float, int]:
     worlds = _worlds(ctx, _options(ctx), stream, budget.samples)
     if not worlds:
-        return 0.5
-    return sum(_rollout(ctx, world, None) for world in worlds) / len(worlds)
+        return 0.5, 0
+    return sum(_rollout(ctx, world, None) for world in worlds) / len(worlds), len(worlds)
 
 
 def _needs(ctx: _Context) -> tuple[int, int]:
@@ -495,7 +516,7 @@ def _needs(ctx: _Context) -> tuple[int, int]:
     return snap.target_points - mine, snap.target_points - theirs
 
 
-def _response(ctx: _Context, win: float) -> str:
+def _response(ctx: _Context, win: float, skill: CpuSkill) -> str:
     """Score-aware hold/go/counter for the designated decider; gestrichen never matters here."""
     ours, theirs = _needs(ctx)
     accepted, offered = ctx.snap.accepted_stake, ctx.snap.pending[1]
@@ -507,7 +528,10 @@ def _response(ctx: _Context, win: float) -> str:
     choice, value = ("go", go) if go > hold else ("hold", hold)
     if offered >= max(ours, theirs):
         return choice
-    return "counter" if counter > value + COUNTER_MARGIN else choice
+    # Each extra point needs distinctly more confidence. Small sampled
+    # advantages cannot sustain a first-round bidding ladder to the target.
+    return "counter" if (win >= _bid_threshold(offered, skill)
+                          and counter > value + COUNTER_MARGIN) else choice
 
 
 def _raise_value(ours: int, theirs: int, win: float, accepted: int) -> float:
@@ -518,11 +542,22 @@ def _raise_value(ours: int, theirs: int, win: float, accepted: int) -> float:
     return fold * _equity(ours - accepted, theirs) + (1 - fold) * _stake_value(ours, theirs, win, accepted + 1)
 
 
-def _should_bid(ctx: _Context, win: float) -> bool:
-    if win < BID_MIN_WIN:
-        return False
+def _bid_threshold(stake: int, skill: CpuSkill) -> float:
+    return skill.bid_minimum + max(0, stake - 2) * 0.075
+
+
+def _subjective_chance(win: float, skill: CpuSkill, samples: int) -> float:
+    # A handful of favourable hypothetical deals is not certainty. Retain
+    # uncertainty even when every sampled rollout happens to be a win.
+    reliability = skill.confidence * min(1.0, samples / 12)
+    return 0.5 + (win - 0.5) * reliability
+
+
+def _should_bid(ctx: _Context, win: float, skill: CpuSkill) -> bool:
     ours, theirs = _needs(ctx)
     stake = ctx.snap.accepted_stake
+    if stake >= max(ours, theirs) or win < _bid_threshold(stake, skill):
+        return False
     return _raise_value(ours, theirs, win, stake) > _stake_value(ours, theirs, win, stake) + BID_MARGIN
 
 
@@ -564,6 +599,32 @@ def _choose_colour(ctx: _Context) -> str:
     return max(WATTEN_SUITS, key=lambda suit: _hand_score(hand, ctx.model(strike, suit)))
 
 
+def _preplay_answer(ctx: _Context) -> str:
+    """Respond once from our own visible hand; never initiate renegotiations."""
+    kind = ctx.snap.preplay_pending[0]
+    if ctx.snap.hand is None:
+        return "preplay_decline"
+    hand = ctx.hand
+    if kind == "bloedeln":
+        # The original bottom is still unknown before consent. Judge the whole
+        # visible hand, without pretending to know which card will be exposed.
+        high = sum(card_rank(card) == "A" for card in hand)
+        return "preplay_accept" if high >= 2 else "preplay_decline"
+    strikes = tuple(strike for strike in STRIKES if not (strike == WELI_STRIKE and ctx.critical))
+    values = {(strike, suit): _hand_score(hand, ctx.model(strike, suit)) for strike in strikes for suit in WATTEN_SUITS}
+    if kind == "schlagwechsel":
+        as_striker = max(sum(values[strike, suit] for suit in WATTEN_SUITS) / len(WATTEN_SUITS) for strike in strikes)
+        as_colourer = sum(max(values[strike, suit] for suit in WATTEN_SUITS) for strike in strikes) / len(strikes)
+        before, after = ((as_striker, as_colourer) if ctx.seat == ctx.roles.strike_announcer
+                         else (as_colourer, as_striker))
+        return "preplay_accept" if after > before + .25 else "preplay_decline"
+    if ctx.memory.strike is not None and ctx.memory.suit is not None:
+        strength = _hand_score(hand, ctx.model(ctx.memory.strike, ctx.memory.suit))
+    else:
+        strength = sum(values.values()) / len(values)
+    return "preplay_accept" if strength < (13 if ctx.critical else 8.5) else "preplay_decline"
+
+
 def _conserve_hopeless(ctx: _Context, legal: tuple[str, ...], options: list) -> tuple[str, ...]:
     """Keep strength when no legal card can beat the already public winner.
 
@@ -582,12 +643,85 @@ def _conserve_hopeless(ctx: _Context, legal: tuple[str, ...], options: list) -> 
     return (cheapest,)
 
 
-def _choose(ctx: _Context, seed: int, budget: CpuBudget) -> CpuProposal | CpuWait:
+def _tactical_preference(ctx: _Context, card: str, models: list, skill: CpuSkill) -> float:
+    """Soft tie preferences; never a compulsory partner trick or secret signal.
+
+    Strength is averaged only over permitted call hypotheses. An uninformed
+    seat never treats a partner's customary play as proof of strike or suit.
+    """
+    strength = sum(model.order[card] for model in models) / (len(models) * (len(_DECK) - 1))
+    completed = len(ctx.winners)
+    preference = 0.0
+    blind_ladinisch = ctx.snap.profile.blind and ctx.snap.profile.determination == "ladinisch"
+    partner = ctx.snap.partner_seat
+    if (blind_ladinisch and completed == 1 and partner is not None and ctx.trick
+            and partner not in {seat for seat, _ in ctx.trick}
+            and (ctx.leader + ctx.count - 1) % ctx.count == partner):
+        # Give a partner who acts last a chance to take the second trick
+        # cheaply. A clearly better rollout always overrides this preference.
+        preference += skill.partnership * (1 - strength)
+    if ctx.snap.profile.blind and ctx.trick:
+        repeated_rank = any(card_rank(played) == card_rank(card) for _, played in ctx.trick)
+        if completed == 0:
+            # Show new visible combinations in the opening trick, including
+            # when this seat knows the call. Printed suits/ranks are public;
+            # this custom never narrows any hidden-call hypothesis.
+            repeated_suit = any(card_suit(played) == card_suit(card) for _, played in ctx.trick)
+            preference -= skill.partnership * 0.5 * (int(repeated_rank) + int(repeated_suit))
+        elif ctx.seat not in ctx.knowers and repeated_rank:
+            preference -= skill.partnership * 0.5
+    if completed >= 2 or ctx.snap.party_tricks[1 - ctx.my_party] >= 2:
+        # Three tricks finish the round: do not retain useful strength until
+        # the round is over merely because the simulation scores are tied.
+        preference += skill.partnership * 0.7 * strength
+    return preference
+
+
+def _partner_cover_preference(ctx: _Context, card: str, worlds: list, skill: CpuSkill) -> float:
+    """Preserve strength behind a likely safe partner; cover sampled later threats.
+
+    Every hand here is a hypothetical sample of this CPU's permitted knowledge.
+    The preference neither establishes a hidden call nor overrides the full
+    round rollout's near-best candidate boundary.
+    """
+    partner = ctx.snap.partner_seat
+    if partner is None or not ctx.trick or not worlds:
+        return 0.0
+    prefix = [played for _, played in ctx.trick]
+    later = [(ctx.leader + position) % ctx.count for position in range(len(ctx.trick) + 1, ctx.count)]
+    value = 0.0
+    for model, hands in worlds:
+        best = model.winner(prefix)
+        if ctx.trick[best][0] != partner:
+            continue
+        partner_strength = model.strength(prefix[best], prefix[0])
+        card_strength_value = model.strength(card, prefix[0])
+        threats = [model.strength(other, prefix[0]) for seat in later
+                   if ctx.parties[seat] != ctx.my_party for other in hands[seat]]
+        strength = model.order[card] / (len(_DECK) - 1)
+        if all(threat <= partner_strength for threat in threats):
+            value += -1.4 * strength if card_strength_value > partner_strength else 1.2 * (1 - strength)
+        elif card_strength_value > partner_strength and all(threat <= card_strength_value for threat in threats):
+            value += 1.2
+        else:
+            value -= .5 * strength
+    return skill.partnership * value / len(worlds)
+
+
+def _choose(ctx: _Context, seed: int, budget: CpuBudget, skill: CpuSkill) -> CpuProposal | CpuWait:
     snap, actions = ctx.snap, ctx.snap.actions
 
     def propose(kind: str, value: str | None = None, private: int | None = None) -> CpuProposal:
         return CpuProposal(snap.player_id, snap.deal_id, snap.opportunity, snap.phase, kind, value, private)
 
+    if snap.preplay_pending is not None:
+        if "preplay_accept" in actions:
+            return propose(_preplay_answer(ctx))
+        return CpuWait(snap.deal_id, snap.opportunity, snap.phase, "watten_cpu_preplay_waiting")
+    if "retourschneider" in actions:
+        # The optional all-or-nothing challenge is deliberately conservative
+        # until a separate comeback strategy is designed.
+        return propose("retourschneider", "decline")
     if snap.finished:
         return CpuWait(snap.deal_id, snap.opportunity, snap.phase, "watten_cpu_deal_finished")
     if "announce_strike" in actions:
@@ -603,13 +737,14 @@ def _choose(ctx: _Context, seed: int, budget: CpuBudget) -> CpuProposal | CpuWai
     stream = _Stream(["watten-cpu-v1", seed, snap.player_id, snap.deal_id, snap.opportunity, snap.phase])
     if snap.phase == "bid_response":
         # A pending bid blocks every card; only the designated decider answers.
+        if "partner_feedback" in actions:
+            win, samples = _win_chance(ctx, stream, budget)
+            chance = _subjective_chance(win, skill, samples)
+            return propose("partner_feedback", _feedback(chance), snap.feedback_opportunity)
         if _RESPONSE_ACTIONS & set(actions):
-            return propose("respond", _response(ctx, _win_chance(ctx, stream, budget)))
-        decider = snap.players.index(snap.pending[2])
-        if "partner_feedback" in actions and decider == snap.partner_seat:
-            value = _feedback(_win_chance(ctx, stream, budget))
-            if value != snap.own_feedback:
-                return propose("partner_feedback", value, snap.feedback_opportunity)
+            win, samples = _win_chance(ctx, stream, budget)
+            chance = _subjective_chance(win, skill, samples)
+            return propose("respond", _response(ctx, chance, skill))
     elif "play_card" in actions:
         options = _options(ctx)
         legal = _conserve_hopeless(ctx, _own_legal(ctx, options), options)
@@ -621,10 +756,14 @@ def _choose(ctx: _Context, seed: int, budget: CpuBudget) -> CpuProposal | CpuWai
         scores = {card: (sum(_rollout(ctx, world, card) for world in worlds) / len(worlds) if worlds else 0.5)
                   for card in legal}
         best = max(scores.values())
-        # Ties conserve strength: the cheapest card across the sampled hypotheses.
-        card = min((card for card in legal if scores[card] == best),
-                   key=lambda card: (sum(model.order[card] for model in models), card))
-        if may_bid and worlds and _should_bid(ctx, best):
+        # Partnership and information preferences may break close choices,
+        # but cannot override a clearly stronger permitted-card rollout.
+        candidates = [card for card in legal if scores[card] >= best - skill.near_best]
+        card = min(candidates, key=lambda card: (
+            -(scores[card] + _tactical_preference(ctx, card, models, skill)
+              + _partner_cover_preference(ctx, card, worlds, skill)),
+            sum(model.order[card] for model in models), card))
+        if may_bid and worlds and _should_bid(ctx, _subjective_chance(best, skill, len(worlds)), skill):
             return propose("bid")
         return propose("play_card", card)
     return CpuWait(snap.deal_id, snap.opportunity, snap.phase, "watten_cpu_waiting")
@@ -642,12 +781,12 @@ def _prepare(view: object, memory: CpuMemory, events: tuple) -> _Context:
 
 
 def decide(view: object, memory: CpuMemory, *, seed: int, events: tuple = (),
-           budget: CpuBudget = CpuBudget()) -> CpuTurn:
+           budget: CpuBudget = CpuBudget(), skill: CpuSkill = CpuSkill()) -> CpuTurn:
     """One bounded decision from the CPU's own DTO; identical inputs give identical output."""
-    if type(seed) is not int or not isinstance(budget, CpuBudget):
+    if type(seed) is not int or not isinstance(budget, CpuBudget) or not isinstance(skill, CpuSkill):
         raise WattenCpuError("watten_cpu_invalid_seed")
     ctx = _prepare(view, memory, events)
-    return CpuTurn(ctx.memory, _choose(ctx, seed, budget))
+    return CpuTurn(ctx.memory, _choose(ctx, seed, budget, skill))
 
 
 def call_hypotheses(view: object, memory: CpuMemory) -> tuple[tuple[str, str], ...]:

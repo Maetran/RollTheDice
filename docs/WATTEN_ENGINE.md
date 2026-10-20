@@ -2,14 +2,21 @@
 
 ## Local account progress
 
-Both local preview flags also gate `/watten/konto/fortschritt`,
+Public beta enables native account access for normal users; without that flag,
+both local preview flags gate `/watten/konto/fortschritt`,
 `/watten/konto/verlauf` and `/watten/rangliste`. A newly completed native match
 commits its unchanged result-v1 record, immutable evidence, own-account credit,
 one-time achievements and checkpoint atomically. Failure rolls back all of
 them; restart and repeated completion cannot grant again. Historical result
 reads never backfill XP or invent missing profile/bid evidence.
 
-The current 22 pub titles, 27 achievements and XP values are a labelled draft.
+The current progression has 22 pub titles, 32 main achievements and 16 optional
+rare decoration goals. Catalogue 2 adds verified Schneider and successful
+Retourschneider wins for 60 and 120 XP; existing grants retain their frozen
+prices and remain visible across earlier catalogue versions. Exact 8-to-11
+finishes in a final three-point round have separate regular (ten wins) and
+successful Retourschneider (three/ten wins) milestones. The title/XP
+calibration remains labelled as a draft.
 XP standings measure persistence; wins and win rate use explicit table/CPU
 filters and a ten-match minimum for a win-rate place. A match's reward panel
 acknowledges only its own displayed sequence; the account's explicit “Seen”
@@ -18,12 +25,11 @@ remain pending. None of these reads writes grants or advances an acknowledgement
 
 DE/EN names, conditions and the actual stored award price appear in the account
 and achievement feed. Archived catalog entries retain their stored XP and use
-an archive label instead of a guessed condition. The public Watten host remains
-closed; these pages are noindex, no-store and authenticated.
+an archive label instead of a guessed condition. These personal pages remain noindex, no-store and authenticated in public beta.
 
 Source snapshot: 18 October 2026, local game integration after PR #54. Pure
 transitions now have a gated native transport, durable result writer, personal
-CPU runner and DE/EN browser UI. The production host remains closed.
+CPU runner and DE/EN browser UI. The public beta is controlled by an explicit deployment flag.
 [Owner decisions](WATTEN_OWNER_DECISIONS.md) define the house profiles;
 [all 81 findings](WATTEN_FINDINGS_STATUS.json) remain required.
 
@@ -72,10 +78,26 @@ Only official knowers follow ordinary-trump/Rechter leads. A critical lead never
 triggers duty; a later critical does not remove an existing duty. An ordinary
 strike substitutes only when it takes the current trick. Trump, the Rechter
 and critical cards need not win. Without ordinary trump, protected cards are
-not forced. A pending bid freezes card play, while private partner feedback
+not forced. Once calling or inspection has opened the play phase, the player
+on their card turn may bid even before the first card is played. A pending bid freezes card play, while private partner feedback
 remains possible. Gestrichen opening rights use the initiating player's own
 score; designated hold/go/counter responses remain possible. The chosen source
 threshold is target minus two, not an additional configurable house rule.
+
+An agreed Schöneres after a held opening bid still resets calling and the stake
+to two until the first card is played. A pending bid must be answered first.
+The durable `discarded_bid_increases` total explains accepted stake increases
+discarded by a call reset; actual accepted actor bid counters remain intact.
+It survives new rounds and restart, contributes to complete public evidence,
+and does not expose card information. A fold may end and score a round with
+zero played cards or completed tricks. Older storage/evidence defaults this
+additional total to zero; legacy result-v1 evidence retains unknown bid facts.
+
+**Deutsch:** Nach vollständiger Ansage beziehungsweise abgeschlossenem
+Einschauen ist Bieten am eigenen Kartenzug bereits vor der ersten Karte erlaubt.
+Nach Halten bleibt Schöneres bis zum ersten Ausspielen möglich und setzt Ansage
+und Einsatz auf zwei zurück. Das Journal bewahrt echte Bietaktionen und erklärt
+zurückgesetzte Erhöhungen gesondert. Gehen kann ohne ausgespielte Karte werten.
 
 Commands bind account and participant, deal, phase and public opportunity.
 Positive integer human accounts reject Boolean aliases; CPUs have explicit None
@@ -93,14 +115,36 @@ The local adapter in `watten_runtime.py`, `watten_http.py` and
 lock. It rederives authority after lock acquisition, revokes replaced sockets,
 and commits candidate state and a final result in one database transaction before
 installing or acknowledging it. It uses explicit versioned storage and separate
-per-viewer projections. This is local development behind the independent
-`ROLLTHEDICE_WATTEN_GAME_PREVIEW` gate; local native documents also require the
-account preview gate. A separate default-off `ROLLTHEDICE_WATTEN_FOUNDER_PREVIEW`
-can authorize only the immutable founder's private web preview on the existing
-production apex. The local booleans remain strictly local; production account
-authorization is a fresh active-account/ownership lookup. The fixed Watten
-origin, production PWA, Watten mail context and notification delivery remain
-closed. See the [deployment contract](DEPLOYMENT.md#private-watten-webvorschau--private-watten-web-preview).
+per-viewer projections. The explicit, default-off
+`ROLLTHEDICE_WATTEN_PUBLIC_BETA=1` enables native play for all active accounts,
+normal Watten account mail, installation and opt-in notification delivery. CPU
+authorization checks every seated human's active account and play bans before
+scheduling and again while committing its locked source. Rollback disables the
+public capability and restores the reserved-origin holding response.
+Local `ROLLTHEDICE_WATTEN_GAME_PREVIEW` / account preview and the older
+`ROLLTHEDICE_WATTEN_FOUNDER_PREVIEW` retain their separate, narrower boundaries
+when the public flag is off.
+
+Public discovery belongs only to `https://watten.zockdiewandan.online/watten`
+and `/watten/regeln`. Each has real initial DE text and an EN `?lang=en` URL,
+matching title/description, canonical, reciprocal DE/EN/x-default alternatives
+and factual WebPage/Game structured data. The host's robots and sitemap expose
+only these four documents; personal tables, accounts, results and suite PWA
+bridges stay noindex. Raw template aliases cannot bypass their route guards.
+Google's [AI search guidance](https://developers.google.com/search/docs/fundamentals/ai-optimization-guide)
+uses the same useful, crawlable content foundation. Language alternatives follow
+the [localized-page guidance](https://developers.google.com/search/docs/specialty/international/localized-versions).
+Structured data describes visible facts following the
+[structured-data policies](https://developers.google.com/search/docs/appearance/structured-data/sd-policies);
+there are no invented ratings, offers or promises of rich-result placement.
+
+Public-beta open-seat calls bind the actual seated account, current persisted
+room revision, password/capacity/reservation rules and fresh play permission.
+Room and account cooldowns commit atomically before dispatch. Fan-out reloads
+the room and rechecks device consent/allowlists, excluding all current human
+members. Only the existing VAPID transport performs delivery; a disabled public
+flag keeps stored Watten devices excluded from invite/reminder/release/help
+transport. No automatic retry follows uncertain delivery.
 
 One-time public calls use a durable delivery outbox with recipient-bound ACKs,
 so a crash after commit but before broadcast does not lose open C/D's initial
@@ -119,7 +163,12 @@ an awaited broadcast cannot receive the former account's private leave snapshot.
 
 `watten_cpu.py` and `watten_cpu_memory.py` select tactics from only a CPU's
 personal DTO, public events and allowed observations remembered during play.
-`watten_cpu_runtime.py` schedules bounded decisions under the same lock. It
+`watten_cpu_runtime.py` schedules bounded decisions under the same lock. Pure
+policy calculations run on at most two dedicated threads with detached
+personal DTO, memory and event snapshots; no database or runtime object enters
+those workers. Cancellation discards the result, retaining its computation
+slot until the worker actually finishes. Fresh source/account/moderation
+authority is checked after the await and again in the committing transaction. It
 persists each accepted observation before an inspection ACK can close the
 window. Pause, replaced runtime generations and stale opportunities invalidate
 old jobs; a failed checkpoint never installs a candidate or spins on retries.

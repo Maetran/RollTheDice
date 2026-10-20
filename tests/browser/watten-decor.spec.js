@@ -2,49 +2,37 @@ const { test, expect } = require('@playwright/test');
 const { player, create, normalCall } = require('./helpers/watten-journey.cjs');
 
 const control = (host, name) => host.page.locator(`[data-watten-decor-action=${name}]`);
-const add = (host, kind) => host.page.locator(`[data-watten-decor-add=${kind}]`);
 const prop = (host, kind) => host.page.locator(`[data-watten-decor-item][data-watten-decor-kind=${kind}]`);
 
 for (const language of ['de', 'en']) {
-  test(`${language}: local decorations consume, spill and move while gameplay stays protected`, async ({ browser, baseURL }, testInfo) => {
+  test(`${language}: local decorations consume and move without a context menu while gameplay stays protected`, async ({ browser, baseURL }, testInfo) => {
     const players = [await player(browser, baseURL, language), await player(browser, baseURL, language)];
     const host = players[0];
     try {
       if (language === 'en') await host.page.emulateMedia({ reducedMotion: 'no-preference' });
-      await create(players, { start: false });
-      await control(host, 'toggle').click();
-      await expect(host.page.locator('[data-watten-decor-add]')).toHaveCount(8);
-      await host.page.locator('[data-watten-decor-corner]').scrollIntoViewIfNeeded();
-      await add(host, 'beer').click();
-      await expect(prop(host, 'beer')).toBeVisible();
-      for (let sip = 0; sip < 4; sip += 1) await control(host, 'use').click();
-      await expect(control(host, 'use')).toBeDisabled();
-      await control(host, 'refill').click(); await expect(control(host, 'use')).toBeEnabled();
-      await control(host, 'spill').click();
-      await expect(host.page.locator('[data-watten-decor-spill]')).toBeVisible();
-      await control(host, 'wipe').click();
-      await expect(host.page.locator('[data-watten-decor-spill]')).toHaveCount(0);
-      await add(host, 'chips').click(); await control(host, 'use').click();
+      await create(players); await normalCall(players);
+      await expect(control(host, 'toggle')).toHaveCount(0);
+      await prop(host, 'beer').click({ button: 'right' });
+      await host.page.keyboard.press('Escape');
+      await expect(host.page.locator('[data-watten-decor-panel], [data-watten-decor-corner], [data-watten-decor-add]')).toHaveCount(0);
+      for (let sip = 0; sip < 4; sip += 1) await prop(host, 'beer').click();
+      await expect(prop(host, 'beer').locator('.wt-decor-badge')).not.toBeEmpty();
+      await prop(host, 'nuts').click();
       await expect(host.page.locator('[data-watten-decor-status]')).toHaveText(language === 'de' ? 'Ein Bissen – nur zum Spass.' : 'A bite, just for fun.');
-      await control(host, 'rotate').click();
-      await prop(host, 'chips').press('ArrowDown');
+      await prop(host, 'nuts').press('ArrowDown');
       for (const viewport of [{ width: 320, height: 568 }, { width: 568, height: 320 }]) {
         await host.page.setViewportSize(viewport);
-        await host.page.locator('[data-watten-decor-corner]').scrollIntoViewIfNeeded();
-        await expect(prop(host, 'beer')).toBeVisible(); await expect(prop(host, 'chips')).toBeVisible();
+        await expect(host.page.locator('[data-watten-decor-panel]')).toHaveCount(0);
         expect(await host.page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
         await host.page.screenshot({ path: testInfo.outputPath(`decor-${viewport.width}x${viewport.height}.png`) });
       }
-      await control(host, 'clear').click(); await expect(host.page.locator('[data-watten-decor-item]')).toHaveCount(0);
-      await control(host, 'close').click();
       await host.page.setViewportSize({ width: 1280, height: 800 });
-      await host.page.locator('[data-watten-command=start]').click(); await normalCall(players);
+      await expect(prop(host, 'beer')).toBeVisible();
+      const desktopProp = await prop(host, 'beer').boundingBox(); expect(desktopProp.width).toBe(88);
       await expect.poll(() => players.every(item => item.traffic.snapshot.pending_call_events.length === 0)).toBe(true);
       const before = host.traffic.snapshot.engine.opportunity, commands = host.traffic.commands.length;
       await host.page.evaluate(() => { window.decorHandNodes = [...document.querySelectorAll('[data-wt-hand] button')]; });
-      await control(host, 'toggle').click();
-      await host.page.locator('[data-watten-decor-corner]').scrollIntoViewIfNeeded();
-      await add(host, 'beer').click(); await expect(prop(host, 'beer')).toBeVisible();
+      await expect(prop(host, 'beer')).toBeVisible();
       const source = await prop(host, 'beer').boundingBox();
       const hand = await host.page.locator('[data-wt-hand-area]').boundingBox();
       await host.page.mouse.move(source.x + 32, source.y + 32); await host.page.mouse.down();
@@ -54,7 +42,7 @@ for (const language of ['de', 'en']) {
       expect(host.traffic.commands.slice(commands)).toEqual([]);
       expect(await host.page.evaluate(() => window.decorHandNodes.every((node, index) => node === document.querySelectorAll('[data-wt-hand] button')[index]))).toBe(true);
       const overlap = await host.page.evaluate(() => {
-        const protectedAreas = [...document.querySelectorAll('[data-wt-hand-area],.wt-seat,[data-wt-panel],[data-wt-scores]')]
+        const protectedAreas = [...document.querySelectorAll('[data-wt-hand-area],.wt-seat,.wt-taken,[data-wt-panel],[data-wt-history],[data-wt-stake],[data-wt-scores]')]
           .filter(node => !node.hidden).map(node => node.getBoundingClientRect());
         return [...document.querySelectorAll('[data-watten-decor-item]')].filter(node => !node.hidden).some(node => {
           const a = node.getBoundingClientRect();

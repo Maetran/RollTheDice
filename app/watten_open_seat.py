@@ -1,11 +1,4 @@
-"""General-call foundation. Public delivery is deliberately unavailable.
-
-The HTTP adapter never claims cooldowns or invokes a transport. There is no
-delivery switch: stored-only Watten Push stays excluded by web_push. The
-internal coordinator exists for isolated fake-transport verification only;
-recipient authorization, workers and release approval remain separate work.
-Personal invitations/password grants and friend starts are unrelated.
-"""
+"""Public-beta general calls with durable, atomic room/account cooldowns."""
 
 from __future__ import annotations
 
@@ -20,6 +13,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.exc import OperationalError, SQLAlchemyError
 
+from . import web_push
 from .auth import require_csrf
 from .database import session_scope
 from .models import ActiveGame, User, WattenOpenSeatClaim
@@ -28,6 +22,7 @@ from .security import as_utc, utcnow
 from .watten_access import watten_request_enabled
 from .watten_http import _HEADERS
 from .watten_http import _identity as _http_identity
+from .watten_readiness import watten_public_beta_enabled
 from .watten_recipe import loads_strict_json, require_fields
 from .watten_room import WattenRoom
 from .watten_runtime import game_lock, restore_watten_json
@@ -60,6 +55,8 @@ def eligible_open_seat(room: WattenRoom, account_id: int, *, now: datetime) -> N
         raise WattenOpenSeatError("watten_invalid_time")
     if room.recipe.password_required:
         raise WattenOpenSeatError("game_invite_private_room")
+    if room.series is not None and room.series.roster_locked:
+        raise WattenOpenSeatError("watten_tournament_roster_locked")
     if room.status != "waiting" or now >= room.wait_expires_at:
         raise WattenOpenSeatError("game_invite_not_waiting")
     if not any(member.account_id == account_id and member.seat is not None for member in room.members):
@@ -152,10 +149,10 @@ def claim_open_seat_in_session(db, game_id: str, account_id: int, revision: int,
 
 
 async def coordinate_open_seat(game_id, revision, *, resolve_actor, transport):
-    """Internal only: caller supplies fresh identity and an isolated transport.
+    """Caller supplies fresh identity and a transport.
 
     Claims commit before the transport, including on its failure. No retry of
-    an uncertain send is automatic. This function has no HTTP/send binding.
+    an uncertain send is automatic. The HTTP binding uses the explicit public-beta gate.
     """
     account_id = resolve_actor()
     async with game_lock({"_id": game_id}):
@@ -210,7 +207,7 @@ async def _body(request):
 
 
 async def maybe_notify_open_seat(game_id, request, game):
-    """Thin existing-route dispatch; native delivery always stops before claims."""
+    """The explicit public rollout binds the existing claim and push boundaries."""
     if game is not None and game.get("_game_type") != "watten" and "_watten" not in game:
         return None
     if game is None and not watten_request_enabled(request):
@@ -232,16 +229,46 @@ async def maybe_notify_open_seat(game_id, request, game):
         identity = _identity(request)
         data = await _body(request)
         identity = _identity(request, identity.user_id)
-        async with game_lock({"_id": game_id}):
-            identity = _identity(request, identity.user_id)
-            with session_scope() as db:
-                _stored(db, game_id, identity.user_id, data["revision"], utcnow())
-            raise HTTPException(status_code=503, detail="watten_push_unavailable", headers=_HEADERS)
+        if not watten_public_beta_enabled(request):
+            async with game_lock({"_id": game_id}):
+                identity = _identity(request, identity.user_id)
+                with session_scope() as db:
+                    _stored(db, game_id, identity.user_id, data["revision"], utcnow())
+                raise HTTPException(status_code=503, detail="watten_push_unavailable", headers=_HEADERS)
+        if not web_push.web_push_available():
+            raise HTTPException(status_code=503, detail="web_push_unavailable", headers=_HEADERS)
+        account_id = identity.user_id
+
+        async def transport(claim):
+            if not watten_public_beta_enabled(request):
+                return False
+            _identity(request, account_id)
+            # Reload after committing the flood barriers. A concurrent start,
+            # seat change or closure invalidates this call before fan-out.
+            try:
+                with session_scope() as db:
+                    raw, room = _stored(db, game_id, account_id, claim.room_revision, utcnow())
+            except WattenOpenSeatError:
+                return False
+            source = restore_watten_json(raw, refresh_titles=False)
+            names = dict(source["_watten"].names)
+            public_game = {"_id": game_id, "_game_type": "watten", "_players": [
+                {"user_id": member.account_id, "name": names.get(member.participant_id, "Watten")}
+                for member in room.members]}
+            recipients = web_push.game_invite_push_recipients(public_game, sender_user_id=account_id)
+            result = await web_push.dispatch_game_invite_push(public_game, recipients, sender_user_id=account_id)
+            return bool(result.accepted)
+
+        result = await coordinate_open_seat(game_id, data["revision"],
+            resolve_actor=lambda: _identity(request, account_id).user_id, transport=transport)
+        return {**result, "retry_after_seconds": GAME_INVITE_PUSH_COOLDOWN_SECONDS}
     except HTTPException as exc:
         exc.headers = {**(exc.headers or {}), **_HEADERS}
         raise
     except WattenOpenSeatError as exc:
-        status = 404 if str(exc) == "game_not_found" else 403 if str(exc) == "game_invite_not_player" else 409
-        raise HTTPException(status_code=status, detail=str(exc), headers=_HEADERS) from exc
+        cooldown = str(exc) in {"game_invite_cooldown", "game_invite_account_cooldown"}
+        status = 429 if cooldown else 404 if str(exc) == "game_not_found" else 403 if str(exc) == "game_invite_not_player" else 409
+        headers = {**_HEADERS, **({"Retry-After": str(exc.retry_after)} if cooldown else {})}
+        raise HTTPException(status_code=status, detail=str(exc), headers=headers) from exc
     except (ValueError, UnicodeError, SQLAlchemyError) as exc:
         raise HTTPException(status_code=503, detail="watten_storage_unavailable", headers=_HEADERS) from exc

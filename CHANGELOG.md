@@ -11,17 +11,170 @@ last ten published versions easy to read. The
 [complete development history](https://github.com/Maetran/RollTheDice/commits/master/)
 also includes older and internal changes.
 
-ZDWA und Zilch verwenden eine gemeinsame Versionsfolge: Major für neue
+Alle RollTheDice-Spiele verwenden eine gemeinsame Versionsfolge: Major für neue
 Produktgenerationen, Minor für neue Funktionen, Patch für Fehlerkorrekturen
 und Wartung. Historische Nummern wurden rückwirkend anhand der Git-Änderungen
 zugeordnet; ihre Daten sind Commitdaten, keine behaupteten Deploymentdaten.
 Die vollständige Zuordnung steht in der [Versionsübersicht](docs/VERSION_HISTORY.md).
 
-ZDWA and Zilch share one version sequence: Major for new product generations,
+All RollTheDice games share one version sequence: Major for new product generations,
 Minor for new features, Patch for fixes and maintenance. Historical numbers
 were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
+
+## 4.0.0 — 2026-10-21
+
+Watten wird als öffentliche Beta mit eigenem Wirtshaustisch, Turnieren und PWA freigeschaltet.
+Watten opens in public beta with its own tavern table, tournaments and PWA.
+
+### ALLGEMEIN
+
+Pillow 13.0.0 schliesst gemeldete Sicherheitslücken bei der Bildverarbeitung. / Pillow 13.0.0 addresses reported image-processing vulnerabilities.
+
+### WATTEN
+
+**Deutsch – öffentliche Beta:** Eigene Subdomain mit deutschen und englischen
+Suchseiten, kanonischen URLs, Sprachverweisen und schlanker Sitemap. Die PWA
+bekommt eigene Installationsicons und auswählbare Push-Hinweise. Die Spielauswahl
+kennzeichnet Watten klar als [BETA]. Revanchen behalten exakt die Spieler, Teams,
+Regeln und Nockerl, ohne Passwort oder erneute Teamauswahl. Turniere enden bei
+3, 5, 8, 10, 15, 20 oder frei gewählten Nockerl. Der aufklappbare Bierblock hält
+die Anschrift; gestrichen ist man zwei Punkte vor dem Ziel. CPU-Entscheidungen
+laufen begrenzt ausserhalb des gemeinsamen Serverloops.
+
+**English – public beta:** A dedicated subdomain provides German and English
+search pages, canonical URLs, language alternatives and a small sitemap. The PWA
+has its own install icons and selectable push alerts. The game picker clearly
+marks Watten as [BETA]. Rematches retain the exact players, teams, rules and
+loss marks, without passwords or another team selection. Tournaments end at
+3, 5, 8, 10, 15, 20 or a custom number of loss marks. The on-demand pub scorepad
+records points; gestrichen begins two points before the target. Bounded CPU
+calculations run outside the shared server event loop.
+
+**Deutsch – Bierblock und Revanche:** Kleine Kugelschreiber-Nockerl begleiten
+«Mir» und «Dir» oben am Teamstand. Ein Tipp auf den Punktestand öffnet die
+handschriftliche Anschrift mit Runden, Punktgewinnen und Retourlöschung;
+sonst bleibt sie geschlossen. Ab zwei Punkten vor dem Spielziel sind Teamname
+und alle Anschriftzahlen durchgestrichen. Ein Klick startet die Revanche mit
+denselben Konten, Sitzen, Teams, CPUs, Regeln und Nockerl – ohne neue
+Passwort- oder Spieleinstellungen. Neue Teams beginnen über die Lobby.
+
+**English – score pad and rematch:** Small pen-style loss marks accompany the
+header scores. Tapping a score opens its handwritten round-by-round points
+and any Retourschneider erasure; otherwise the pad stays closed. Two points
+before the match target, the team label and all journal numbers are crossed
+out. One click continues with the same accounts, seats, teams, CPUs, rules and
+loss marks, without passwords or new settings. New teams start in the lobby.
+
+Bieten ist nach abgeschlossener Ansage am eigenen Kartenzug schon vor der ersten Karte möglich; Schöneres nach Halten setzt den Einsatz auf zwei zurück. / Once calling is complete, bidding is available on your own card turn before the first card; an agreed redeal after holding resets the stake to two.
+
+**Deutsch:** Kompaktere, etwas dunklere Lobby mit Erstellungsdialog, 50 automatisch
+benannten Runden, CPU-Auffüllen, Favoriten und direktem Passwortschutz. Der Tisch
+zeigt grössere Teamstände, ein gemeinsames Ziel und einen antippbaren Einsatz.
+Ladinische Karten gleiten zur Ansage zusammen. Private Partnerstimmung erscheint
+nur bei empfangenen Geboten. Stiche bleiben rund drei Sekunden mit markierter
+Siegerkarte und Spielernamen sichtbar; der letzte Stich kann erneut angesehen
+werden. Runde/Spiel, Nockerl, Schneider und der ausdrücklich gewählte
+Retourschneider folgen den bestätigten Hausregeln. Verteilte, benutzbare Deko und seltene gemeinsame Überraschungen mit belegten Abschlusserfolgen sind wieder dabei. Globaler Audiochat ist je
+Tisch wählbar; das Spielsymbol wurde erneuert. Die eigene Subdomain und PWA mit kontrollierten Push-Mitteilungen werden mit dem öffentlichen Beta-Schalter freigegeben.
+
+**English:** A more compact, slightly darker lobby uses a creation dialog,
+50 generated round names, CPU fill, favorites and direct password protection.
+The table shows larger team scores, one shared target and a tappable stake.
+Ladinisch cards slide together for the call. Private partner feelings appear
+only on received bids. Tricks stay for about three seconds with the winner
+outlined and player names; the last trick can be reviewed. Rounds/matches,
+Nockerl, Schneider and an explicit Retourschneider choice follow the confirmed
+house rules. Scattered usable decorations and rare shared surprises return with evidenced completion achievements. Global voice is a per-table option, and the game mark is renewed.
+The dedicated subdomain and PWA with controlled push notifications are released behind the explicit public beta flag.
+
+**Deutsch – Tisch-Nachschliff:** Grössere Desktop-Stichkarten und Dekoration,
+Rückschau im unteren Aktionsbereich oberhalb der Gebotsantworten. «Mir»/«Dir»
+zeigt immer die Spielerperspektive; Stichzahlen stehen beim Punktestand.
+Stichgewinn der eigenen Seite ist grün, der gegnerischen rot markiert.
+Überflüssige Spielerzeilen und das Deko-Sternmenü entfallen, «Verlassen» ist beschriftet.
+
+**English – table refinement:** Larger desktop trick cards and decorations,
+with trick review in the lower action area above bid responses. “Us”/“Them”
+always follows the player’s perspective, and trick counts accompany scores.
+Own-side trick wins are green, opposing wins red. Redundant player labels and
+the decoration star menu are removed; the leave control has a text label.
+
+**Deutsch – CPU-Taktik (eigener Commit):** Subjektiv gute Blätter und der
+Spielstand bestimmen Gebote; jede Erhöhung verlangt mehr Sicherheit.
+Die Berechnung wächst mit abgeschlossenen Spielen. Partnerstich und rechtzeitiger
+Einsatz starker Karten helfen als weiche Taktiken, ohne verborgene Informationen.
+Neue Stärkevergleiche wurden noch nicht ausgeführt.
+
+**English – CPU tactics (separate commit):** Subjectively strong hands and the
+score drive bids; each raise requires more confidence. Calculation grows with
+completed matches. Partner tricks and timely use of strong cards are soft
+tactics without hidden information. New strength comparisons are still pending.
+
+**Deutsch – Rundenrückschau:** Grössere gegnerische Karten und Stichpakete, kompakte anheftbare Stichrückschau und Einsatz bei den eigenen Karten. Nach Rundenende sind Schlag, Farbe, Rechter und alle bis zu fünf Stiche nachvollziehbar. Die Ansagerrollen bleiben am Namen sichtbar; die Einschaukarten fliegen von diesen Spielern aufeinander zu. CPUs bevorzugen im ersten blinden Stich neue sichtbare Werte und Farben.
+
+**English – round review:** Larger opposing cards and captured piles, a compact pinnable trick review, and the stake beside your cards. Completed rounds reveal the strike, trump suit, Rechter and up to five tricks. Announcer labels remain beside names; inspection cards travel from those players towards each other. Blind opening CPUs prefer new visible ranks and suits.
+
+**Deutsch – Entscheidungen vor dem Ausspielen:** Die neue, standardmässig
+ausgeschaltete Tischoption «Schöneres erlauben» gilt zu zweit und zu viert.
+Bis zur ersten Karte, auch nach dem Einschauen, können beide Ansagenden gemeinsam
+ihre bisherigen Blätter mit dem Reststapel mischen und je fünf neue Karten
+bekommen; andere Blätter bleiben gleich. Erneute beidseitige Zustimmung erlaubt
+ein weiteres Schöneres. Bei normaler offener Ansage können beide vor der ersten
+Ansage Schlag und Farbe tauschen; Vorhand bleibt. Im blinden Vierer deckt
+«Blödeln» erst nach Zustimmung beider Nicht-Einschauer deren ursprüngliche
+unterste Karten auf. Diese müssen im ersten Stich gespielt werden, auch bei
+anderer ausgespielter Farbe.
+
+**English – choices before play:** The new “Allow a redeal” table option is off
+by default and available with two or four players. Until the first card,
+including after inspection, both callers may agree to shuffle their old hands
+into the stock and each receive five new cards; other hands stay unchanged.
+They can repeat this by agreeing again. With normal open calls, both callers
+may swap strike and suit before the first announcement; the opening player
+stays the same. In blind four-player play, Blödeln reveals both non-lookers’
+original bottom cards only after both consent. Each must play that card in the
+first trick, even when another suit is led.
+
+**Deutsch – gemeinsamer Retourschneider und ruhiger Tisch:** Beide Teammitglieder
+stimmen getrennt zu; ein Nein behält die Anschrift, nach einem Ja wird auf den
+Partner gewartet. Erst beide Ja starten den Retourschneider mit einem einmaligen,
+kurzen bildschirmfüllenden Auftritt. «Danke!» verschwindet nach dem ersten
+abgeschlossenen Stich. Der eigene Desktop-Fächer bleibt mittig, im
+Tablet-Querformat liegen die Aktionen darüber. Deko-Ecke und sämtliche
+Deko-Kontextmenüs entfallen; direkte Nutzung und Verschieben bleiben.
+
+**English – shared Retourschneider and clearer table:** Both teammates consent
+separately; one refusal keeps the score, and a saved yes waits for the partner.
+Only two yes votes begin the Retourschneider with a brief announcement that
+appears once. “Thanks!” disappears after the first completed trick. The desktop
+hand stays centred; landscape tablets place actions above it. The decoration
+corner and all decoration context menus are removed; direct use and moving
+remain available.
+
+**Deutsch – Spielabschluss:** Eine klarere Ergebnisansicht stellt Sieg oder
+Niederlage sowie Nockerl, Schneider und Retourschneider in den Mittelpunkt.
+Gewonnene Stichpakete bleiben bei jedem Gewinner direkt am Namen sichtbar.
+Das Kreuz schliesst und entpinnt die Rückschau; ungepinnt schliesst sie auch
+beim Antippen ausserhalb. Ansage und Stichverlauf bleiben aufklappbar,
+die Revanche heisst «Noch ein Spiel?»
+mit «Revanche starten». Lobby und Kontofortschritt bleiben erreichbar.
+
+**English – match result:** A clearer result puts victory or defeat and the loss
+marks, Schneider and Retourschneider first. Won trick packets stay beside each
+winner’s name. The close button closes and unpins the review; tapping outside
+also closes it when unpinned. The call and trick review remain
+available to open. “Another game?” offers “Start rematch”, with lobby and account
+progress within reach.
+
+### HAUSDEPP
+
+**Deutsch:** Audiochat lässt sich im Erstellungsdialog für die ganze Runde
+abschalten; standardmässig ist er erlaubt. Favorit und Folgetisch behalten die Wahl.
+
+**English:** Voice chat can be disabled for the whole table in the creation
+dialog; it is allowed by default. Favorites and next tables keep that choice.
 
 ## 3.18.2 — Einheitliche Navigation und klare Spieltische / Consistent navigation and clear game tables — 2026-10-20
 

@@ -12,20 +12,26 @@ import asyncio
 import logging
 import os
 import secrets
+from concurrent.futures import ThreadPoolExecutor
+from copy import deepcopy
 from dataclasses import dataclass, replace
+from functools import partial
 from urllib.parse import urlsplit
+from weakref import WeakKeyDictionary, ref
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
 
 from .database import database_schema_ready, session_scope
-from .models import ActiveGame
+from .models import ActiveGame, CompletedGame, GameParticipant, User
 from .moderation import active_bans
 from .product_hosts import site_origin
 from .watten_access import _local, watten_founder_account_id, watten_founder_deployment_enabled
 from .watten_cpu import CpuBudget, CpuProposal, CpuWait, decide
 from .watten_cpu_memory import CpuMemory, new_memory, observe
+from .watten_cpu_skill import CpuSkill, skill_for_completed_games
 from .watten_engine import EngineActor, EngineCommand
+from .watten_readiness import watten_public_beta_enabled
 from .watten_views import cpu_view
 
 logger = logging.getLogger(__name__)
@@ -33,7 +39,40 @@ logger = logging.getLogger(__name__)
 CPU_POLICY_READY = True
 THINK_MIN_SECONDS = 0.35
 THINK_MAX_SECONDS = 1.25
+TRICK_REVEAL_SECONDS = 3.0
 _RANDOM = secrets.SystemRandom()
+_POLICY_EXECUTOR = ThreadPoolExecutor(max_workers=2, thread_name_prefix="watten-cpu-policy")
+_POLICY_SLOTS: WeakKeyDictionary = WeakKeyDictionary()
+
+
+async def _decide_snapshot(view, memory, *, seed, events, budget, skill):
+    """Only pure, detached policy inputs enter the two-worker computation pool.
+
+    Cancellation retires the caller immediately, but its slot stays occupied
+    until that calculation actually finishes. This also bounds queued work.
+    Each ASGI loop owns its semaphore; isolated test loops cannot inherit one.
+    """
+    loop = asyncio.get_running_loop()
+    reference = _POLICY_SLOTS.get(loop)
+    slots = reference() if reference is not None else None
+    if slots is None:
+        slots = asyncio.Semaphore(2)
+        _POLICY_SLOTS[loop] = ref(slots)
+    await slots.acquire()
+    try:
+        pending = loop.run_in_executor(_POLICY_EXECUTOR, partial(
+            decide, deepcopy(view), deepcopy(memory), seed=seed, events=events, budget=budget, skill=skill))
+    except BaseException:
+        slots.release()
+        raise
+
+    def completed(result):
+        slots.release()
+        if not result.cancelled():
+            result.exception()  # A retired caller must not leave an unobserved failure.
+
+    pending.add_done_callback(completed)
+    return await asyncio.shield(pending)
 
 
 def _local_preview_enabled() -> bool:
@@ -43,7 +82,8 @@ def _local_preview_enabled() -> bool:
 
 def cpu_autoplay_enabled() -> bool:
     """Pure capability for existing DTOs; actual execution needs authority."""
-    return bool(CPU_POLICY_READY and (_local_preview_enabled() or watten_founder_deployment_enabled()))
+    return bool(CPU_POLICY_READY and (watten_public_beta_enabled() or _local_preview_enabled()
+                                      or watten_founder_deployment_enabled()))
 
 
 @dataclass(frozen=True, slots=True, repr=False)
@@ -51,6 +91,26 @@ class _Authority:
     source: str
     local: bool
     founder_id: int | None
+    skill: CpuSkill
+    public: bool = False
+
+
+def _table_skill(db, runtime) -> CpuSkill:
+    """Only aggregate finished Watten counts of the table's actual humans.
+
+    Use the least experienced participant in a mixed table. Counts come from
+    existing durable results, so progression survives restarts without any
+    new history store, private hand access, or per-opponent profile.
+    """
+    accounts = tuple(sorted(member.account_id for member in runtime.room.members if member.seat is not None))
+    if not accounts:
+        return skill_for_completed_games(0)
+    counts = dict(db.execute(select(GameParticipant.user_id, func.count(func.distinct(CompletedGame.id)))
+        .join(CompletedGame, CompletedGame.id == GameParticipant.game_id)
+        .where(GameParticipant.user_id.in_(accounts), CompletedGame.game_type == "watten",
+               CompletedGame.imported_from_legacy.is_(False))
+        .group_by(GameParticipant.user_id)).all())
+    return skill_for_completed_games(min(counts.get(account, 0) for account in accounts))
 
 
 def _founder_room(runtime, founder_id: int) -> bool:
@@ -72,6 +132,20 @@ def _founder_permission(db, runtime, *, lock=False) -> int | None:
     return founder
 
 
+def _public_permission(db, runtime, *, lock=False) -> bool:
+    accounts = {binding.account_id for binding in runtime.engine.recipe.bindings
+                if binding.account_id is not None} if runtime.engine is not None else {
+                    member.account_id for member in runtime.room.members if member.seat is not None}
+    if not accounts:
+        return False
+    statement = select(User).where(User.id.in_(accounts))
+    if lock:
+        statement = statement.with_for_update()
+    users = db.scalars(statement).all()
+    return ({user.id for user in users if user.is_active} == accounts
+            and not any(active_bans(db, account, scope="play") for account in sorted(accounts)))
+
+
 def _authority(game: dict) -> _Authority | None:
     """Read actual source before scheduling/deciding; no projection performs I/O."""
     from .watten_runtime import restore_watten_json, serialize_watten_game
@@ -88,10 +162,13 @@ def _authority(game: dict) -> _Authority | None:
                     or serialize_watten_game(stored) != serialize_watten_game(game)):
                 return None
             local = _local_preview_enabled()
-            founder = None if local else _founder_permission(db, stored["_watten"])
-            if not local and founder is None:
+            public = watten_public_beta_enabled()
+            founder = None if local or public else _founder_permission(db, stored["_watten"])
+            if public and not _public_permission(db, stored["_watten"]):
                 return None
-            return _Authority(raw, local, founder)
+            if not public and not local and founder is None:
+                return None
+            return _Authority(raw, local, founder, _table_skill(db, stored["_watten"]), public)
     except (SQLAlchemyError, ValueError, TypeError, KeyError):
         logger.warning("Watten CPU cannot authorize stored table %s", game["_id"])
         return None
@@ -99,11 +176,15 @@ def _authority(game: dict) -> _Authority | None:
 
 def _commit_guard(authority: _Authority):
     def guard(db, checkpoint):
-        if not cpu_autoplay_enabled() or _local_preview_enabled() != authority.local:
+        if (not cpu_autoplay_enabled() or _local_preview_enabled() != authority.local
+                or watten_public_beta_enabled() != authority.public):
             raise ValueError("watten_cpu_access_required")
         # persist_watten_game already owns the actual source lock and checked
         # authority.source. Account/ownership locks therefore follow source.
-        if not authority.local and _founder_permission(db, checkpoint["_watten"], lock=True) != authority.founder_id:
+        if authority.public and not _public_permission(db, checkpoint["_watten"], lock=True):
+            raise ValueError("watten_cpu_access_required")
+        if (not authority.public and not authority.local
+                and _founder_permission(db, checkpoint["_watten"], lock=True) != authority.founder_id):
             raise ValueError("watten_cpu_access_required")
 
     return guard
@@ -172,12 +253,13 @@ class _Job:
 
 _JOBS: dict[tuple[str, str], _Job] = {}
 _BLOCKED: dict[tuple[str, str], tuple[dict, tuple]] = {}
+_TRICK_REVEALS: dict[str, tuple[dict, str, int, float]] = {}
 
 
 def _may_decide(view: dict) -> bool:
     actions = set(view["actions"])
     return bool(actions & {"announce_strike", "announce_colour", "show_ready", "inspection_ack", "play_card",
-                           "respond_hold", "respond_go", "respond_counter"}
+                           "respond_hold", "respond_go", "respond_counter", "retourschneider", "preplay_accept"}
                 or (view["phase"] == "bid_response" and "partner_feedback" in actions))
 
 
@@ -188,8 +270,18 @@ def watch_game(game: dict) -> None:
     if games.get(game["_id"]) is not game:
         return
     runtime = game["_watten"]
+    now = asyncio.get_running_loop().time()
+    engine = runtime.engine
+    completed = len(engine.play.tricks) if engine is not None and engine.play is not None else 0
+    if completed and engine.phase != "match_complete":
+        previous_reveal = _TRICK_REVEALS.get(game["_id"])
+        if (previous_reveal is None or previous_reveal[0] is not game
+                or previous_reveal[1:3] != (engine.deal_id, completed)):
+            _TRICK_REVEALS[game["_id"]] = (game, engine.deal_id, completed, now + TRICK_REVEAL_SECONDS)
+    else:
+        _TRICK_REVEALS.pop(game["_id"], None)
     active = (cpu_autoplay_enabled() and runtime.engine is not None and not runtime.absent
-              and runtime.engine.phase not in {"deal_complete", "match_complete"})
+              and runtime.engine.phase != "match_complete")
     if active:
         active = _authority(game) is not None
     wanted = set()
@@ -210,7 +302,11 @@ def watch_game(game: dict) -> None:
             if blocked is not None and blocked[0] is game and blocked[1] == context:
                 continue
             _BLOCKED.pop(key, None)
-            job = _Job(game, context, asyncio.get_running_loop().time() + _RANDOM.uniform(THINK_MIN_SECONDS, THINK_MAX_SECONDS),
+            deadline = now + _RANDOM.uniform(THINK_MIN_SECONDS, THINK_MAX_SECONDS)
+            reveal = _TRICK_REVEALS.get(game["_id"])
+            if reveal is not None and view["phase"] == "play" and not view["current_trick"]["cards"]:
+                deadline = max(deadline, reveal[3])
+            job = _Job(game, context, deadline,
                        secrets.randbits(64))
             _JOBS[key] = job
             job.task = asyncio.create_task(_run(game, cpu.participant_id, job), name=f"watten-cpu-{game['_id']}-{cpu.participant_id}")
@@ -245,9 +341,20 @@ async def _run(game: dict, player: str, job: _Job) -> None:
             if _context(runtime, view) != job.context:
                 return
             memory = next(item for item in runtime.cpu_memories if item.player_id == player)
-            turn = decide(view, memory, seed=job.seed, events=_events(runtime, player), budget=CpuBudget())
+            events = _events(runtime, player)
+            turn = await _decide_snapshot(view, memory, seed=job.seed, events=events,
+                                          budget=CpuBudget(authority.skill.samples), skill=authority.skill)
+            # Account moderation and rollout capabilities may change while the
+            # pure policy is awaiting a thread, despite our per-table lock.
+            current = _authority(game)
+            if (games.get(game["_id"]) is not game or _JOBS.get(key) is not job
+                    or game["_watten"] is not runtime or current is None
+                    or (current.source, current.local, current.public, current.founder_id)
+                    != (authority.source, authority.local, authority.public, authority.founder_id)):
+                return
+            authority = current
             if (not isinstance(turn.memory, CpuMemory) or turn.memory.player_id != player
-                    or turn.memory != observe(memory, view, _events(runtime, player))):
+                    or turn.memory != observe(memory, view, events)):
                 raise ValueError("watten_cpu_invalid_memory")
             if isinstance(turn.decision, CpuWait):
                 _BLOCKED[key] = (game, job.context)
@@ -302,6 +409,7 @@ async def stop_cpu_runners() -> None:
     jobs = list(_JOBS.values())
     _JOBS.clear()
     _BLOCKED.clear()
+    _TRICK_REVEALS.clear()
     tasks = [job.task for job in jobs if job.task is not None]
     for task in tasks:
         task.cancel()

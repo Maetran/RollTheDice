@@ -45,9 +45,10 @@ function metadata(product) {
   if (title) title.content = details.name;
 }
 
-/** Local account pages can use a narrow worker without changing their PWA owner. */
+/** Keep the installed product owner while Watten adds its own network-only worker. */
 export function initializeWattenPwa({ registerWorker = true, installControls = true } = {}) {
-  if (document.documentElement.dataset.wattenPwaPreview !== 'true' || !localPwaHostname(location.hostname)) return;
+  const publicBeta = document.documentElement.dataset.wattenPublicBeta === 'true';
+  if (!publicBeta && (document.documentElement.dataset.wattenPwaPreview !== 'true' || !localPwaHostname(location.hostname))) return;
   const standalone = navigator.standalone === true || matchMedia('(display-mode: standalone)').matches;
   let saved = null;
   try { saved = sessionStorage.getItem(ENTRY_KEY); } catch (_) {
@@ -72,39 +73,42 @@ export function initializeWattenPwa({ registerWorker = true, installControls = t
   let updateRequested = false;
   let install;
   let update;
+  let aside;
+  const syncControls = () => { if (aside) aside.hidden = Boolean(install?.hidden && update?.hidden); };
   if (installControls) {
-    const aside = document.createElement('aside');
+    aside = document.createElement('aside');
+    aside.hidden = true;
     aside.className = 'watten-install';
     aside.dataset.wattenInstall = '';
-    const copy = document.createElement('p');
-    copy.textContent = t('Lokale Kontovorschau: Das Watten-Spiel ist noch nicht verfügbar.');
     install = document.createElement('button');
     install.type = 'button';
-    install.textContent = t('Kontovorschau installieren');
+    install.textContent = t('Watten installieren');
     install.hidden = true;
     install.addEventListener('click', async () => {
       const current = prompt;
       prompt = null;
       install.hidden = true;
+      syncControls();
       if (current) await current.prompt();
     });
     update = document.createElement('button');
     update.type = 'button';
-    update.textContent = t('Kontovorschau aktualisieren');
+    update.textContent = t('Watten aktualisieren');
     update.hidden = true;
     update.addEventListener('click', () => {
       updateRequested = true;
       waiting?.postMessage({ type: 'SKIP_WAITING' });
     });
-    aside.append(copy, install, update);
+    aside.append(install, update);
     document.body.append(aside);
     window.addEventListener('beforeinstallprompt', event => {
       if (standalone) return;
       event.preventDefault();
       prompt = event;
       install.hidden = false;
+      syncControls();
     });
-    window.addEventListener('appinstalled', () => { prompt = null; install.hidden = true; });
+    window.addEventListener('appinstalled', () => { prompt = null; install.hidden = true; syncControls(); });
   }
   navigator.serviceWorker.addEventListener('controllerchange', () => {
     if (!updateRequested) return;
@@ -114,8 +118,9 @@ export function initializeWattenPwa({ registerWorker = true, installControls = t
   const observeWaiting = registration => {
     waiting = registration.waiting;
     if (update) update.hidden = !waiting || !navigator.serviceWorker.controller;
+    syncControls();
   };
-  const ready = navigator.serviceWorker.register('/watten-sw.js', { scope: '/watten', updateViaCache: 'none' }).then(registration => {
+  const ready = navigator.serviceWorker.register('/watten-sw.js', { scope: location.hostname === 'watten.zockdiewandan.online' ? '/' : '/watten', updateViaCache: 'none' }).then(registration => {
     observeWaiting(registration);
     registration.addEventListener('updatefound', () => {
       registration.installing?.addEventListener('statechange', () => observeWaiting(registration));

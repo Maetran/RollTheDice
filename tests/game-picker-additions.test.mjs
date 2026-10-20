@@ -6,7 +6,7 @@ const dataUrl = source => `data:text/javascript;base64,${Buffer.from(source).toS
 const catalog = dataUrl(await readFile(new URL("../frontend/i18n/catalog.js", import.meta.url), "utf8"));
 const source = (await readFile(new URL("../frontend/multigame/game-picker.js", import.meta.url), "utf8"))
   .replace('"../i18n/catalog.js"', JSON.stringify(catalog));
-const { createGamePicker } = await import(dataUrl(source));
+const { createGamePicker, gamePickerButtonMarkup } = await import(dataUrl(source));
 
 class Events {
   listeners = new Map();
@@ -63,6 +63,7 @@ class Element extends Events {
   }
   querySelector(selector) { return this.querySelectorAll(selector)[0] || null; }
   set innerHTML(html) {
+    this.markup = html;
     for (const child of [...this.children]) child.remove();
     const stack = [this];
     for (const match of html.matchAll(/<(\/)?([a-z][\w-]*)([^>]*)>/gi)) {
@@ -73,6 +74,7 @@ class Element extends Events {
       if (!match[3].endsWith("/") && !["input", "img", "br"].includes(match[2])) stack.push(child);
     }
   }
+  get innerHTML() { return this.markup || ""; }
 }
 
 const games = [
@@ -82,7 +84,7 @@ const games = [
 const watten = { id: "watten", name: "Watten", href: "/watten", description: "Private preview" };
 const settle = async () => { for (let index = 0; index < 8; index += 1) await Promise.resolve(); };
 
-function fixture(compact = false) {
+function fixture(compact = false, language = "en") {
   const doc = new Events(), win = new Events(), requests = [], timers = new Map(), selected = [];
   doc.body = new Element(doc, "body"); doc.body.style.overflow = "scroll";
   doc.visibilityState = "visible";
@@ -91,7 +93,7 @@ function fixture(compact = false) {
   content.append(button); doc.body.append(content); doc.activeElement = button;
   let timerId = 0;
   Object.assign(win, { innerWidth: 900, innerHeight: 700, matchMedia: () => ({ matches: compact }),
-    ZDWA_I18N: { getLanguage: () => "en" },
+    ZDWA_I18N: { getLanguage: () => language },
     setTimeout: fn => { timerId += 1; timers.set(timerId, fn); return timerId; },
     clearTimeout: id => timers.delete(id) });
   Object.assign(globalThis, { document: doc, window: win, HTMLElement: Element,
@@ -117,6 +119,7 @@ for (const compact of [false, true]) {
     const added = f.links()[2];
     assert.equal(added.href, "/watten");
     assert.equal(added.getAttribute("aria-label"), "Watten");
+    assert.doesNotMatch(added.innerHTML, /\[BETA\]/);
     assert.ok(added.querySelector("[data-game-activity]"));
     assert.equal(oldActivity.options.signal.aborted, true);
     assert.equal(f.requests.length, 2);
@@ -140,6 +143,40 @@ for (const compact of [false, true]) {
     f.picker.destroy();
   });
 }
+
+test("only a strict public game descriptor paints the beta badge, ARIA name and localized public description", () => {
+  for (const language of ["de", "en"]) {
+    for (const publicBeta of [undefined, false, 1, "true", true]) {
+      const f = fixture(false, language);
+      const game = { id: "watten", name: "Watten", href: "/watten", publicBeta };
+      f.picker.update({ currentMode: "watten", games: [...games, game] });
+      assert.equal(f.button.getAttribute("aria-label"), `${language === "en" ? "Choose a game" : "Spiel auswählen"}: Watten${publicBeta === true ? " [BETA]" : ""}`);
+      f.picker.toggle();
+      const link = f.links().at(-1);
+      assert.equal(link.getAttribute("aria-label"), `Watten${publicBeta === true ? " [BETA]" : ""}`);
+      assert.equal(link.querySelectorAll(".suite-game-beta").length, Number(publicBeta === true));
+      const text = publicBeta === true ? language === "en" ? "Public beta" : "Öffentliche Beta"
+        : language === "en" ? "Private preview" : "Private Vorschau";
+      assert.ok(link.innerHTML.includes(text));
+      assert.equal(gamePickerButtonMarkup(game).includes("[BETA]"), publicBeta === true);
+      f.picker.destroy();
+    }
+  }
+});
+
+test("withdrawing the public marker closes an open menu and removes beta branding from its trigger", () => {
+  const f = fixture(true);
+  const game = { id: "watten", name: "Watten", href: "/watten", publicBeta: true };
+  f.picker.update({ currentMode: "watten", games: [...games, game] });
+  f.picker.toggle();
+  assert.equal(f.button.getAttribute("aria-label"), "Choose a game: Watten [BETA]");
+  f.picker.update({ games: [...games, { ...game, publicBeta: false }] });
+  assert.equal(f.panel(), null);
+  assert.equal(f.button.getAttribute("aria-label"), "Choose a game: Watten");
+  assert.doesNotMatch(f.button.innerHTML, /\[BETA\]/);
+  assert.equal(f.content.inert, false);
+  f.picker.destroy();
+});
 
 test("withdrawing an appended private option closes immediately and discards its late activity response", async () => {
   const f = fixture(true);

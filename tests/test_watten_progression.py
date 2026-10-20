@@ -5,6 +5,8 @@ from datetime import timedelta
 
 import pytest
 
+from app.watten_bidding import retourschneider_candidate
+from app.watten_cards import DealtCards, make_deck
 from app.watten_engine import SeatBinding, next_deal, start_match
 from app.watten_evidence import UNKNOWN, BidEvidence, PlayerBids, PublicProfile, WattenEvidenceError, adapt_result_v1
 from app.watten_progression import (
@@ -20,7 +22,7 @@ from app.watten_progression import (
     evaluate_draft,
     title_for_xp,
 )
-from tests.test_watten_engine import dealt, finish, ready, recipe
+from tests.test_watten_engine import dealt, finish, ready, recipe, step
 from tests.test_watten_evidence import (
     FINISHED,
     bindings_for,
@@ -41,6 +43,9 @@ def observed_profile(count_players=4, *, determination="ladinisch", blind=True, 
         state = finish(ready(state))
         if state.phase == "match_complete":
             break
+        candidate = retourschneider_candidate(state.ledger)
+        if candidate is not None:
+            state = step(state, candidate[0], "retourschneider", "decline")
         state = next_deal(state, f"profile-{number + 1}", dealt(count_players))
     assert state.phase == "match_complete"
     old = adapt_result_v1(result_for(state), finished_at=FINISHED)
@@ -89,11 +94,76 @@ def counter_evidence():
     return replace(evidence, bids=BidEvidence(True, (PlayerBids("A", 1, 1, 0, 0), PlayerBids("B", 0, 1, 0, 1))))
 
 
+def schneider_evidence():
+    state = scored_go(start_match(recipe(2, target_points=3), "schneider", dealt(2), first_dealer="A"), 0, 4)
+    return public_evidence(result_for(state))
+
+
+def retourschneider_state(*, fail=False):
+    state = start_match(recipe(4), "retour-first", dealt(), first_dealer="A")
+    state = scored_go(state, 1, 2)
+    state = next_deal(state, "retour-gestrichen", dealt())
+    state = scored_go(state, 0, 9)
+    for player in state.parties.parties[1]:
+        state = step(state, player, "retourschneider", "accept")
+    if fail:
+        hands = (("bells-A", "bells-K", "bells-O", "bells-U", "bells-10"),
+                 ("hearts-8", "hearts-9", "hearts-10", "hearts-U", "hearts-O"),
+                 ("bells-7", "hearts-7", "leaves-7", "acorns-7", "bells-6"),
+                 ("leaves-8", "leaves-9", "leaves-10", "leaves-U", "leaves-O"))
+        used = {card for hand in hands for card in hand}
+        deal = DealtCards(hands, tuple(card for card in make_deck() if card not in used), tuple(hand[-1] for hand in hands))
+        state = finish(ready(next_deal(state, "retour-failed", deal)))
+    for number in range(6):
+        if state.phase == "match_complete":
+            break
+        state = next_deal(state, f"retour-comeback-{number}", dealt())
+        state = scored_go(state, 1, 2)
+        if state.phase == "match_complete":
+            break
+    assert state.phase == "match_complete"
+    return state
+
+
+def retourschneider_evidence(*, fail=False):
+    return public_evidence(result_for(retourschneider_state(fail=fail)))
+
+
+def eight_plus_three_evidence(*, retour=False, prefix=8, last_points=3, target=11):
+    state = start_match(recipe(4 if retour else 2, target_points=target), "eight-start", dealt(4 if retour else 2), first_dealer="A")
+    if retour:
+        state = scored_go(state, 1, 2)
+        state = scored_go(next_deal(state, "eight-gestrichen", dealt()), 0, 9)
+        for player in state.parties.parties[1]:
+            state = step(state, player, "retourschneider", "accept")
+        state = scored_go(next_deal(state, "eight-return", dealt()), 1, 8)
+        # A held three-point round lets the challengers finish 8+3 while
+        # the already gestrichen opponents never initiate a forbidden bid.
+        hands = (("hearts-8", "hearts-9", "hearts-10", "hearts-U", "hearts-O"),
+                 ("bells-A", "bells-K", "bells-O", "bells-U", "bells-10"),
+                 ("leaves-8", "leaves-9", "leaves-10", "leaves-U", "leaves-O"),
+                 ("bells-7", "hearts-7", "leaves-7", "acorns-7", "bells-6"))
+        used = {card for hand in hands for card in hand}
+        deal = DealtCards(hands, tuple(card for card in make_deck() if card not in used), tuple(hand[-1] for hand in hands))
+        state = ready(next_deal(state, "eight-final", deal))
+        first = state.play.current_player_id
+        state = step(state, first, "play_card", state.play.hands[state.recipe.seats.index(first)][0])
+        state = step(state, "B", "bid")
+        state = step(state, state.parties.decider(0), "respond", "hold")
+        state = finish(state)
+    else:
+        state = scored_go(state, 0, prefix)
+        state = next_deal(state, "eight-final", dealt(2))
+        state = scored_go(state, state.parties.party_of("A"), last_points)
+    assert state.phase == "match_complete"
+    return public_evidence(result_for(state))
+
+
 def test_empty_is_explicit_draft_and_first_regular_match_proposes_fast_early_progress():
     empty = evaluate_draft((), viewer_user_id=1)
     assert empty.status == "draft" and empty.total_xp == 0 and not empty.credits and not empty.achievements
     assert empty.policy_version == DRAFT_POLICY_VERSION == 1
-    assert empty.catalog_version == DRAFT_CATALOG_VERSION == 1
+    assert empty.catalog_version == DRAFT_CATALOG_VERSION == 2
     assert empty.title.current.level == 1 and empty.title.xp_to_next == 20
     _state, payload = native_result()
     item = input_for(adapt_result_v1(payload, finished_at=FINISHED))
@@ -210,21 +280,93 @@ def test_finite_bilingual_catalog_is_reachable_from_regular_legal_matches_in_all
     three = observed_profile(3, determination="normal", blind=False, critical=False, cpus=())
     four = observed_profile()
     templates = (input_for(two, own_player=winning_player(two)), input_for(three), input_for(counter_evidence()),
-                 input_for(four, own_player=winning_player(four)))
-    samples = tuple(reidentified(templates[index] if index < 3 else templates[3], index, day_offset=index * 2)
-                    for index in range(1000))
+                 input_for(four, own_player=winning_player(four)),
+                 input_for(schneider_evidence(), own_player="A"), input_for(retourschneider_evidence(), own_player="B"),
+                 input_for(eight_plus_three_evidence(), own_player="A"),
+                 input_for(eight_plus_three_evidence(retour=True), own_player="B"))
+    order = (*templates[:6], *(templates[6:] * 10))
+    order += (templates[3],) * (1000 - len(order))
+    samples = tuple(reidentified(item, index, day_offset=index * 2) for index, item in enumerate(order))
     proposal = evaluate_draft(samples, viewer_user_id=1)
     assert awarded(proposal) == {item.achievement_id for item in DRAFT_ACHIEVEMENTS}
-    assert len(awarded(proposal)) == len(DRAFT_ACHIEVEMENTS) == 27
-    assert proposal.achievement_xp == MAX_DRAFT_ACHIEVEMENT_XP == 2110 <= MAX_ONETIME_XP_BUDGET == 3500
-    assert proposal.total_xp == proposal.match_xp + proposal.achievement_xp == 12110
-    assert all(item.policy_version == item.catalog_version == 1 for item in (*proposal.credits, *proposal.achievements))
+    assert len(awarded(proposal)) == len(DRAFT_ACHIEVEMENTS) == 32
+    assert proposal.achievement_xp == MAX_DRAFT_ACHIEVEMENT_XP == 2670 <= MAX_ONETIME_XP_BUDGET == 3500
+    assert proposal.total_xp == proposal.match_xp + proposal.achievement_xp == 12670
+    assert all(item.policy_version == 1 and item.catalog_version == 2 for item in (*proposal.credits, *proposal.achievements))
     assert proposal.counters.completed == 1000 and proposal.counters.variety == 3
     assert proposal.title.current.level == 22 and proposal.title.next_title is None and proposal.title.xp_to_next == 0
     for definition in DRAFT_ACHIEVEMENTS:
         assert definition.name.de.strip() and definition.name.en.strip()
         assert definition.condition.de.strip() and definition.condition.en.strip()
         assert definition.target > 0 and definition.xp > 0
+
+
+def test_schneider_achievement_requires_a_native_winner_and_never_an_accepted_retour():
+    evidence = schneider_evidence()
+    for player, expected in (("A", True), ("B", False)):
+        proposal = evaluate_draft((input_for(evidence, own_player=player),), viewer_user_id=1)
+        assert ("watten_schneider_win" in awarded(proposal)) is expected
+    legacy = replace(evidence, source="result_v1", profile=UNKNOWN, started_at=UNKNOWN, bids=BidEvidence())
+    assert "watten_schneider_win" not in awarded(evaluate_draft((input_for(legacy, own_player="A"),), viewer_user_id=1))
+    failed_retour = retourschneider_evidence(fail=True)
+    proposal = evaluate_draft((input_for(failed_retour, own_player="A"),), viewer_user_id=1)
+    assert not {"watten_schneider_win", "watten_retourschneider_win"} & awarded(proposal)
+
+
+def test_retourschneider_achievement_belongs_only_to_the_successful_challenging_team():
+    evidence = retourschneider_evidence()
+    for player in ("B", "D"):
+        proposal = evaluate_draft((input_for(evidence, own_player=player),), viewer_user_id=1)
+        grant = next(item for item in proposal.achievements if item.achievement_id == "watten_retourschneider_win")
+        assert grant.xp == 120 and grant.source_game_id == evidence.game_id
+        assert proposal.counters.retourschneider_wins == 1 and proposal.counters.schneider_wins == 0
+    proposal = evaluate_draft((input_for(evidence, own_player="A"),), viewer_user_id=1)
+    assert "watten_retourschneider_win" not in awarded(proposal)
+    legacy = replace(evidence, source="result_v1", profile=UNKNOWN, started_at=UNKNOWN, bids=BidEvidence())
+    assert "watten_retourschneider_win" not in awarded(evaluate_draft((input_for(legacy, own_player="B"),), viewer_user_id=1))
+
+
+@pytest.mark.parametrize("retour,player", ((False, "A"), (True, "B")))
+def test_eight_plus_three_goals_have_separate_counters_and_unlock_at_three_and_ten(retour, player):
+    evidence = eight_plus_three_evidence(retour=retour)
+    item = input_for(evidence, own_player=player)
+    for count in (1, 2, 3, 9, 10):
+        matches = tuple(reidentified(item, number) for number in range(count))
+        proposal = evaluate_draft(matches, viewer_user_id=1)
+        goals = awarded(proposal)
+        assert proposal.counters.eight_plus_three_wins == (0 if retour else count)
+        assert proposal.counters.retourschneider_eight_plus_three_wins == (count if retour else 0)
+        assert ("watten_eight_plus_three" in goals) is (not retour and count >= 10)
+        assert ("watten_retourschneider_eight_plus_three_three" in goals) is (retour and count >= 3)
+        assert ("watten_retourschneider_eight_plus_three" in goals) is (retour and count >= 10)
+        if count == 10:
+            goal_id = "watten_retourschneider_eight_plus_three" if retour else "watten_eight_plus_three"
+            grant = next(grant for grant in proposal.achievements if grant.achievement_id == goal_id)
+            assert grant.source_game_id == matches[-1].evidence.game_id and grant.xp == (200 if retour else 80)
+            assert evaluate_draft((*matches, matches[-1]), viewer_user_id=1) == proposal
+
+
+@pytest.mark.parametrize("prefix,last_points,target", ((9, 3, 11), (8, 4, 11), (7, 4, 11), (8, 3, 10)))
+def test_eight_plus_three_rejects_other_start_final_scores_and_targets(prefix, last_points, target):
+    evidence = eight_plus_three_evidence(prefix=prefix, last_points=last_points, target=target)
+    proposal = evaluate_draft((input_for(evidence, own_player="A"),), viewer_user_id=1)
+    assert proposal.counters.eight_plus_three_wins == proposal.counters.retourschneider_eight_plus_three_wins == 0
+
+
+@pytest.mark.parametrize("retour,winner,loser", ((False, "A", "B"), (True, "B", "A")))
+def test_eight_plus_three_requires_completed_native_own_win_and_never_legacy(retour, winner, loser):
+    evidence = eight_plus_three_evidence(retour=retour)
+    for source, player in ((evidence, loser), (replace(evidence, source="result_v1", profile=UNKNOWN,
+                                                    started_at=UNKNOWN, bids=BidEvidence()), winner)):
+        proposal = evaluate_draft((input_for(source, own_player=player),), viewer_user_id=1)
+        assert proposal.counters.eight_plus_three_wins == proposal.counters.retourschneider_eight_plus_three_wins == 0
+
+
+def test_a_round_alone_cannot_supply_completed_match_evidence_for_eight_plus_three():
+    state = scored_go(start_match(recipe(2), "unfinished-eight", dealt(2), first_dealer="A"), 0, 8)
+    assert state.phase == "deal_complete"
+    with pytest.raises(ValueError):
+        result_for(state)
 
 
 def test_350_match_intensive_week_cannot_finish_catalog_or_reach_top_three_titles_even_with_maximum_bonus():

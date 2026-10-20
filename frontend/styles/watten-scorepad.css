@@ -1,0 +1,56 @@
+/* A quiet pen tally in the score; the paper pad opens only on request. */
+html[data-watten-active="true"] .wt-score { padding: 0; }
+html[data-watten-active="true"] .wt-score-open {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  width: 100%; min-height: 44px; padding: 5px 9px; border: 0; border-radius: inherit;
+  color: inherit; background: transparent; font: inherit; text-align: left;
+}
+html[data-watten-active="true"] .wt-score-caption { grid-template-columns: auto auto; align-items: center; column-gap: 5px; }
+html[data-watten-active="true"] .wt-score-tricks { grid-column: 1 / -1; grid-row: 2; }
+html[data-watten-active="true"] .wt-score.is-gestrichen .wt-score-name { text-decoration: line-through; text-decoration-thickness: 2px; }
+html[data-watten-active="true"] .wt-nockerl-marks {
+  display: inline-flex; align-items: center; gap: 0; color: #304b6b;
+  font: 600 11px/1 "Segoe Print", "Bradley Hand", "Chalkboard SE", cursive; white-space: nowrap;
+}
+.wt-nockerl-mark { display: block; flex: none; width: 10px; height: 13px; }
+.wt-nockerl-mark:nth-child(2n) { transform: rotate(7deg) translateY(1px); }
+.wt-nockerl-mark:nth-child(3n) { transform: rotate(-9deg); }
+.wt-nockerl-zero { width: 10px; opacity: .5; }
+.wt-scorepad {
+  position: fixed; inset: auto; z-index: 150; margin: 0; padding: 20px 20px 14px;
+  width: min(350px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); overflow: auto;
+  border: 1px solid #b9a67d; border-radius: 3px 3px 7px 5px; color: #293f65;
+  background: linear-gradient(90deg, transparent 33px, #aa4f4533 33px, #aa4f4533 34px, transparent 34px),
+    repeating-linear-gradient(#fbf4dc 0 31px, #708aaa26 31px 32px);
+  box-shadow: 2px 10px 35px #25180b55, inset 0 2px 0 #fff9e9;
+  font: 500 17px/1.4 "Segoe Print", "Bradley Hand", "Chalkboard SE", cursive;
+  overscroll-behavior: contain; scrollbar-width: thin;
+}
+.wt-scorepad::backdrop { background: transparent; }
+.wt-scorepad h3 { margin: 0 44px 1px 23px; font-family: inherit; font-size: 27px; font-weight: 700; line-height: 1.3; }
+.wt-scorepad p { margin: 0; }
+.wt-scorepad .wt-scorepad-kicker { margin: 0 44px 3px 23px; color: #775b43; font: 600 11px/1.4 system-ui, sans-serif; letter-spacing: .12em; text-transform: uppercase; }
+.wt-scorepad-names { padding-left: 23px; font-size: 12px; overflow-wrap: anywhere; }
+.wt-scorepad-close {
+  position: absolute; top: 4px; right: 4px; min-width: 44px; min-height: 44px; padding: 0;
+  border: 0; background: transparent; color: #4b5361; font: 400 26px/1 system-ui, sans-serif;
+}
+.wt-scorepad-lines { list-style: none; margin: 17px 0 0; padding: 0; }
+.wt-scorepad-lines li { display: grid; grid-template-columns: minmax(0, 1fr) 44px 40px; gap: 8px; align-items: center; min-height: 58px; padding: 5px 0 6px 23px; }
+.wt-scorepad-lines .wt-scorepad-empty { display: block; padding-block: 14px; font-size: 15px; }
+.wt-scorepad-round { font-size: 14px; line-height: 1.4; }
+.wt-scorepad-round small { display: block; font: 400 10px/1.3 system-ui, sans-serif; color: #6f6456; overflow-wrap: anywhere; }
+.wt-scorepad-add { font-size: 19px; }
+.wt-scorepad-number { display: inline-block; }
+.wt-scorepad-lines strong, .wt-scorepad-total strong { text-align: right; font-size: 24px; font-weight: 600; }
+.wt-scorepad-reset { color: #8c3f35; }
+.wt-scorepad .wt-scorepad-total { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 6px 0 0 23px; border-top: 2px solid #304b6b99; font-size: 14px; }
+.wt-scorepad.is-gestrichen .wt-scorepad-number, .wt-scorepad.is-gestrichen h3 { text-decoration: line-through; text-decoration-thickness: 2px; }
+html[data-watten-active="true"] .wt-final-award { margin: 0 0 8px; color: #74523a; font-size: .9rem; }
+.wt-scorepad :focus-visible { outline: 3px solid #8c5d26; outline-offset: 1px; }
+@media (min-width: 761px) { .wt-scorepad { width: min(370px, calc(100vw - 24px)); } }
+@media (orientation: landscape) and (max-height: 520px) {
+  .wt-scorepad { padding-top: 13px; }
+  .wt-scorepad-lines { margin-top: 8px; }
+  .wt-scorepad-lines li { min-height: 48px; }
+}

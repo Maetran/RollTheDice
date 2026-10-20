@@ -5,6 +5,7 @@ import json
 from contextlib import contextmanager
 from copy import deepcopy
 from itertools import count
+from threading import Event, Lock, get_ident
 from types import SimpleNamespace
 
 import pytest
@@ -17,7 +18,9 @@ from app.active_games import load_active_games, serializable_game_state
 from app.database import session_scope
 from app.game_state import games
 from app.game_ws_session import GameSocketSession
-from app.models import ActiveGame, CompletedGame, GameParticipant
+from app.models import ActiveGame, CompletedGame, GameParticipant, User, UserBan
+from app.security import utcnow
+from app.watten_bidding import retourschneider_candidate
 from app.watten_cpu import CpuBudget
 from app.watten_cpu_memory import memory_to_storage
 from app.watten_engine import EngineActor, EngineCommand
@@ -45,12 +48,41 @@ from tests.test_watten_runtime import (  # noqa: F401
 server = runtime_tests.server
 
 
+def test_public_cpu_authority_uses_all_active_humans_and_honors_bans_and_rollbacks(server, monkeypatch):
+    game_id, owners, _sessions = local_started(server, count_players=4, cpus=(2, 3))
+    game = games[game_id]
+    monkeypatch.setenv("ROLLTHEDICE_SITE_ORIGIN", "https://zockdiewandan.online")
+    monkeypatch.setenv("ROLLTHEDICE_WATTEN_GAME_PREVIEW", "0")
+    monkeypatch.setenv("ROLLTHEDICE_WATTEN_FOUNDER_PREVIEW", "0")
+    monkeypatch.setenv("ROLLTHEDICE_WATTEN_PUBLIC_BETA", "1")
+    authority = runner._authority(game)
+    assert authority is not None and authority.public and authority.founder_id is None
+    with session_scope() as db:
+        runner._commit_guard(authority)(db, game)
+        db.get(User, owners[1][0].user_id).is_active = False
+    assert runner._authority(game) is None
+    with session_scope() as db:
+        with pytest.raises(ValueError, match="watten_cpu_access_required"):
+            runner._commit_guard(authority)(db, game)
+        db.get(User, owners[1][0].user_id).is_active = True
+        db.add(UserBan(user_id=owners[1][0].user_id, scope="play", reason="isolated test", created_at=utcnow()))
+    assert runner._authority(game) is None
+    with session_scope() as db:
+        with pytest.raises(ValueError, match="watten_cpu_access_required"):
+            runner._commit_guard(authority)(db, game)
+    monkeypatch.setenv("ROLLTHEDICE_WATTEN_PUBLIC_BETA", "0")
+    assert not runner.cpu_autoplay_enabled()
+    with session_scope() as db, pytest.raises(ValueError, match="watten_cpu_access_required"):
+        runner._commit_guard(authority)(db, game)
+
+
 @pytest.fixture
 def ready(monkeypatch):
     monkeypatch.setattr(runner, "CPU_POLICY_READY", True)
     monkeypatch.setattr(runner, "THINK_MIN_SECONDS", 0.01)
     monkeypatch.setattr(runner, "THINK_MAX_SECONDS", 0.01)
-    monkeypatch.setattr(runner, "CpuBudget", lambda: CpuBudget(samples=1))
+    monkeypatch.setattr(runner, "TRICK_REVEAL_SECONDS", 0.0)
+    monkeypatch.setattr(runner, "CpuBudget", lambda _samples=1: CpuBudget(samples=1))
 
 
 def deterministic_dealer(monkeypatch, seat=0):
@@ -79,6 +111,147 @@ async def until(predicate, *, seconds=3):
     while not predicate():
         assert asyncio.get_running_loop().time() < end, "CPU deadline did not complete"
         await asyncio.sleep(0.002)
+
+
+def test_blocked_policy_leaves_event_loop_responsive_and_cancelled_job_never_commits(server, ready, monkeypatch):
+    deterministic_dealer(monkeypatch)
+    game_id, _owners, _sessions = local_started(server, count_players=2, cpus=(1,))
+    game = games[game_id]
+    before = serializable_game_state(game)
+    entered, release, finished = Event(), Event(), Event()
+    main_thread = get_ident()
+    actual = runner.decide
+
+    def blocking(view, memory, **values):
+        assert get_ident() != main_thread
+        assert "_watten" not in view and not hasattr(memory, "engine")
+        entered.set()
+        try:
+            assert release.wait(5), "test did not release pure computation"
+            return actual(view, memory, **values)
+        finally:
+            finished.set()
+
+    monkeypatch.setattr(runner, "decide", blocking)
+
+    async def scenario():
+        ticks = 0
+
+        async def heartbeat():
+            nonlocal ticks
+            while not finished.is_set():
+                ticks += 1
+                await asyncio.sleep(0.001)
+
+        pulse = asyncio.create_task(heartbeat())
+        try:
+            runner.watch_game(game)
+            await until(entered.is_set)
+            previous = ticks
+            await asyncio.sleep(0.015)
+            assert ticks > previous and not finished.is_set()
+            await runner.stop_cpu_runners()
+            assert serializable_game_state(game) == before
+            release.set()
+            await until(finished.is_set)
+            await asyncio.sleep(0)
+            assert serializable_game_state(game) == before and not runner._JOBS
+            with session_scope() as db:
+                restored = restore_watten_json(db.scalar(select(ActiveGame.state_json).where(ActiveGame.game_id == game_id)))
+                assert serializable_game_state(restored) == before
+        finally:
+            release.set()
+            await until(finished.is_set)
+            await runner.stop_cpu_runners()
+            await pulse
+
+    asyncio.run(scenario())
+
+
+def test_policy_pool_keeps_two_slots_until_cancelled_computation_actually_finishes(monkeypatch):
+    entered = [Event() for _ in range(3)]
+    released = [Event() for _ in range(3)]
+    counter_lock = Lock()
+    active = peak = 0
+
+    def blocking(_view, _memory, *, seed, **_values):
+        nonlocal active, peak
+        with counter_lock:
+            active += 1
+            peak = max(peak, active)
+        entered[seed].set()
+        try:
+            assert released[seed].wait(5), "test did not release pure computation"
+            return seed
+        finally:
+            with counter_lock:
+                active -= 1
+
+    monkeypatch.setattr(runner, "decide", blocking)
+
+    async def scenario():
+        tasks = [asyncio.create_task(runner._decide_snapshot({}, None, seed=seed, events=(), budget=None, skill=None))
+                 for seed in range(3)]
+        try:
+            await until(lambda: entered[0].is_set() and entered[1].is_set())
+            tasks[0].cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await tasks[0]
+            await asyncio.sleep(0.015)
+            assert not entered[2].is_set() and peak == 2
+            released[0].set()
+            await until(entered[2].is_set)
+            released[1].set()
+            released[2].set()
+            assert await tasks[1] == 1 and await tasks[2] == 2 and peak == 2
+        finally:
+            for event in released:
+                event.set()
+            await asyncio.gather(*tasks, return_exceptions=True)
+
+    asyncio.run(scenario())
+
+
+def test_public_ban_during_thread_computation_revokes_the_proposal_before_commit(server, ready, monkeypatch):
+    deterministic_dealer(monkeypatch)
+    game_id, owners, _sessions = local_started(server, count_players=2, cpus=(1,))
+    game = games[game_id]
+    monkeypatch.setenv("ROLLTHEDICE_SITE_ORIGIN", "https://zockdiewandan.online")
+    monkeypatch.setenv("ROLLTHEDICE_WATTEN_GAME_PREVIEW", "0")
+    monkeypatch.setenv("ROLLTHEDICE_WATTEN_PUBLIC_BETA", "1")
+    before = serializable_game_state(game)
+    entered, release, finished = Event(), Event(), Event()
+    actual = runner.decide
+
+    def blocking(view, memory, **values):
+        entered.set()
+        try:
+            assert release.wait(5)
+            return actual(view, memory, **values)
+        finally:
+            finished.set()
+
+    monkeypatch.setattr(runner, "decide", blocking)
+
+    async def scenario():
+        try:
+            runner.watch_game(game)
+            await until(entered.is_set)
+            job = next(iter(runner._JOBS.values()))
+            with session_scope() as db:
+                db.add(UserBan(user_id=owners[0][0].user_id, scope="play", reason="isolated test", created_at=utcnow()))
+            release.set()
+            await job.task
+            assert serializable_game_state(game) == before and not runner._JOBS
+            with session_scope() as db:
+                restored = restore_watten_json(db.scalar(select(ActiveGame.state_json).where(ActiveGame.game_id == game_id)))
+                assert serializable_game_state(restored) == before
+        finally:
+            release.set()
+            await until(finished.is_set)
+            await runner.stop_cpu_runners()
+
+    asyncio.run(scenario())
 
 
 def test_memory_is_committed_before_cpu_inspection_ack_closes_window_and_restores_without_repeek(server, ready, monkeypatch):
@@ -123,22 +296,25 @@ def test_memory_is_committed_before_cpu_inspection_ack_closes_window_and_restore
     assert owners[0][0].user_id not in {item.account_id for item in game["_watten"].engine.recipe.bindings if item.account_id is None}
 
 
-def test_private_unrelated_feedback_preserves_deadline_and_pause_cancels_old_timer(server, ready, monkeypatch):
+def test_inspection_ack_reschedules_current_opportunity_and_pause_cancels_old_timer(server, ready, monkeypatch):
     deterministic_dealer(monkeypatch, seat=1)
     monkeypatch.setattr(runner, "THINK_MIN_SECONDS", 0.08)
     monkeypatch.setattr(runner, "THINK_MAX_SECONDS", 0.08)
-    game_id, owners, sessions = local_started(server, cpus=(2, 3))
+    game_id, owners, sessions = local_started(server, cpus=(2, 3), blind=True)
     game = games[game_id]
-    complete_call(game_id)
+    for index, seat in enumerate((1, 2)):
+        player = game["_watten"].engine.recipe.seats[seat]
+        accepted_engine(game, player, engine_command(game_id, "show_ready", f"ready-{index}"))
 
     async def scenario():
         try:
             runner.watch_game(game)
             cpu = game["_watten"].engine.recipe.seats[2]
             job = runner._JOBS[(game_id, cpu)]
-            feedback = engine_command(game_id, "partner_feedback", "other-partner", "unsure", sessions[1].player_id)
-            await _handle_locked(sessions[1], "watten_command", feedback)
-            assert runner._JOBS[(game_id, cpu)] is job
+            ack = engine_command(game_id, "inspection_ack", "other-inspector")
+            await _handle_locked(sessions[1], "watten_command", ack)
+            assert runner._JOBS[(game_id, cpu)] is not job
+            assert runner._JOBS[(game_id, cpu)].context != job.context
             before = game["_watten"].engine
             leave = room_command(game_id, "watten_leave", "pause-before-fire")
             await _handle_locked(sessions[0], "watten_leave", leave)
@@ -418,6 +594,14 @@ def test_actual_short_mixed_match_uses_only_personal_policy_inputs_and_one_resul
                 if state.phase == "match_complete":
                     break
                 if state.phase == "deal_complete":
+                    if retourschneider_candidate(state.ledger) is not None:
+                        view = snapshot_watten(game, human.player_id)["engine"]
+                        if "retourschneider" in view["actions"]:
+                            data = engine_command(game_id, "retourschneider", next(numbers), "decline")
+                            await _handle_locked(human, data["action"], data)
+                        else:
+                            await asyncio.sleep(0.004)
+                        continue
                     # A CPU bid/go may finish before this human acts. Keep the
                     # first next-deal ID distinct from setup's room-0 seat ACK.
                     data = room_command(game_id, "watten_next_deal", f"cpu-loop-{next(numbers)}",

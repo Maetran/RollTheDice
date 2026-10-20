@@ -23,6 +23,7 @@ SHAPES = ((2, "normal", False), (2, "ladinisch", False), (3, "normal", False),
 ALLOWED_KEYS = {
     "kind", "schema_version", "ruleset_id", "ruleset_version", "player_count", "determination", "blind",
     "critical", "target_points", "cpu_seats", "show_rechter", "trick_history", "partner_hand", "password_required",
+    "voice_enabled", "schoeneres_enabled", "tournament_nockerl_target",
 }
 
 
@@ -41,7 +42,8 @@ def payload(**changes):
 def test_defaults_are_the_conservative_confirmed_options():
     recipe = WattenRecipe(4, "ladinisch", True, False)
     assert (recipe.target_points, recipe.cpu_seats, recipe.show_rechter, recipe.trick_history,
-            recipe.partner_hand, recipe.password_required) == (11, (), False, False, False, False)
+            recipe.partner_hand, recipe.password_required, recipe.voice_enabled,
+            recipe.schoeneres_enabled) == (11, (), False, False, False, False, True, False)
     assert (recipe.ruleset_id, recipe.ruleset_version) == (WATTEN_RULESET_ID, WATTEN_RULESET_VERSION)
     assert recipe.play_profile == PlayProfile(4, "ladinisch", True, False)
 
@@ -52,7 +54,7 @@ def test_every_confirmed_profile_roundtrips_with_all_options(shape, critical):
     count, determination, blind = shape
     recipe = WattenRecipe(count, determination, blind, critical, target_points=15,
                           cpu_seats=tuple(range(count - 1, 0, -1)), show_rechter=True, trick_history=True,
-                          partner_hand=not blind and count > 2, password_required=True)
+                          partner_hand=not blind and count > 2, password_required=True, schoeneres_enabled=count != 3)
     assert recipe.cpu_seats == tuple(range(1, count))
     data = recipe_to_payload(recipe)
     assert set(data) == ALLOWED_KEYS and data["schema_version"] == RECIPE_SCHEMA_VERSION
@@ -93,7 +95,7 @@ def test_at_least_one_seat_stays_human(count):
                    cpu_seats=tuple(range(count))) == "watten_cpu_seats_need_a_human"
 
 
-@pytest.mark.parametrize("option", ("show_rechter", "trick_history", "partner_hand", "password_required"))
+@pytest.mark.parametrize("option", ("show_rechter", "trick_history", "partner_hand", "password_required", "voice_enabled", "schoeneres_enabled"))
 def test_options_are_true_booleans(option):
     assert code_of(WattenRecipe, 4, "normal", False, False, **{option: 1}) == "watten_invalid_recipe_option"
 
@@ -121,11 +123,40 @@ def test_secrets_identities_and_unknown_fields_never_enter_a_recipe(secret):
     assert code_of(recipe_from_payload, payload(**{secret: "x"})) == "watten_recipe_unknown_field"
 
 
-@pytest.mark.parametrize("key", sorted(ALLOWED_KEYS))
+@pytest.mark.parametrize("key", sorted(ALLOWED_KEYS - {"voice_enabled", "schoeneres_enabled", "tournament_nockerl_target"}))
 def test_every_field_is_required(key):
     data = payload()
     del data[key]
     assert code_of(recipe_from_payload, data) == "watten_recipe_missing_field"
+
+
+def test_legacy_recipes_default_new_preplay_option_off_and_solo_cannot_enable_it():
+    data = payload()
+    data.pop("voice_enabled")
+    data.pop("schoeneres_enabled")
+    data.pop("tournament_nockerl_target")
+    restored = recipe_from_payload(data)
+    assert restored.voice_enabled and not restored.schoeneres_enabled and restored.tournament_nockerl_target is None
+    assert code_of(WattenRecipe, 3, "normal", False, False,
+                   schoeneres_enabled=True) == "watten_schoeneres_requires_two_callers"
+
+
+@pytest.mark.parametrize("target", (1, 3, 5, 8, 10, 15, 20, 37, 9_007_199_254_740_991))
+@pytest.mark.parametrize("count", (2, 4))
+def test_tournament_target_accepts_presets_and_free_positive_safe_integers(target, count):
+    recipe = WattenRecipe(count, "normal", False, False, tournament_nockerl_target=target)
+    assert recipe_from_payload(recipe_to_payload(recipe)) == recipe
+
+
+@pytest.mark.parametrize("target", (0, -1, True, 3.5, "5", 9_007_199_254_740_992))
+def test_tournament_target_rejects_non_positive_inexact_values(target):
+    assert code_of(WattenRecipe, 4, "normal", False, False,
+                   tournament_nockerl_target=target) == "watten_invalid_tournament_target"
+
+
+def test_three_player_rotating_solo_does_not_offer_a_fixed_team_tournament():
+    assert code_of(WattenRecipe, 3, "normal", False, False,
+                   tournament_nockerl_target=5) == "watten_invalid_tournament_target"
 
 
 @pytest.mark.parametrize("changes, code", (

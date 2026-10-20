@@ -1,6 +1,8 @@
 import { WATTEN_LOBBY_CHAT_MESSAGES } from "../i18n/catalog.js";
 
 const PRODUCTS = Object.freeze(["zdwa", "zilch", "hausdepp", "watten"]);
+const PUBLIC_ORIGINS = Object.freeze(["https://zockdiewandan.online", "https://zilch.zockdiewandan.online",
+  "https://hausdepp.zockdiewandan.online", "https://watten.zockdiewandan.online"]);
 const LIMIT = 500;
 const object = value => value !== null && typeof value === "object" && !Array.isArray(value);
 const languageNow = () => globalThis.window?.ZDWA_I18N?.getLanguage?.() === "en" ? "en" : "de";
@@ -19,14 +21,15 @@ export function lobbyMessage(value) {
     game_type: value.game_type, sent_at: value.sent_at, text: value.text });
 }
 
-export function lobbySocketUrl(location, accountId, founderPreview = false) {
+export function lobbySocketUrl(location, accountId, founderPreview = false, publicBeta = false) {
   if (!Number.isSafeInteger(accountId) || accountId <= 0) return null;
   const url = new URL(location.href);
   const host = url.hostname.toLowerCase();
   const local = ["http:", "https:"].includes(url.protocol) && (host === "localhost" || host.endsWith(".localhost")
     || host === "[::1]" || /^127(?:\.\d{1,3}){3}$/.test(host));
   const founder = founderPreview === true && url.origin === "https://zockdiewandan.online" && !url.username && !url.password;
-  if (!local && !founder) return null;
+  const publicProduct = publicBeta === true && PUBLIC_ORIGINS.includes(url.origin) && !url.username && !url.password;
+  if (!local && !founder && !publicProduct) return null;
   url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
   url.pathname = "/ws/lobby-chat"; url.search = ""; url.hash = "";
   url.searchParams.set("context", "watten");
@@ -40,10 +43,11 @@ export function mountWattenLobbyChat({ container, initialAuth, getExpectedAccoun
   language = languageNow, dom = document, win = window }) {
   const accountId = getExpectedAccountId();
   const localSocketUrl = lobbySocketUrl(win.location, accountId);
-  const requiresFounderCapability = localSocketUrl === null;
+  const authorizedSocketUrl = auth => localSocketUrl || lobbySocketUrl(win.location, accountId,
+    auth?.game_access?.watten_preview === true, auth?.game_access?.watten_public === true);
   const boundAuth = auth => auth?.authenticated === true && auth.user?.id === accountId
-    && (!requiresFounderCapability || auth.game_access?.watten_preview === true);
-  const socketUrl = localSocketUrl || lobbySocketUrl(win.location, accountId, boundAuth(initialAuth));
+    && authorizedSocketUrl(auth) !== null;
+  const socketUrl = boundAuth(initialAuth) ? authorizedSocketUrl(initialAuth) : null;
   const t = (key, values = {}) => WATTEN_LOBBY_CHAT_MESSAGES[language() === "en" ? "en" : "de"][key]
     .replace(/\{(\w+)\}/g, (_, name) => String(values[name] ?? ""));
   let destroyed = false, serial = 0, socket = null, socketSerial = 0, busy = false, connected = false;

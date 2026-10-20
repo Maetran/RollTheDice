@@ -20,52 +20,29 @@ export function reservationMarkup(reservation, { language, escapeHtml: esc, canD
 }
 
 /** Explicit new-room intent; no automatic join, seat, team confirmation or start. */
-export function createRematch({ gameId, fetcher, loadAuth, escapeHtml: esc, renderRecipe,
+export function createRematch({ gameId, fetcher, loadAuth, escapeHtml: esc,
   getExpectedAccountId, isCurrent, onAccountChanged, navigate, makeCommandId,
   language = () => globalThis.window?.ZDWA_I18N?.getLanguage?.() === "en" ? "en" : "de" }) {
   const accountId = getExpectedAccountId();
   let container = null, snapshot = null, active = false, destroyed = false, serial = 0, controller = null;
-  let busy = false, blocked = false, error = "", envelope = null, password = "", mode = null, markup = null;
+  let busy = false, blocked = false, error = "", envelope = null, markup = null;
   const current = token => !destroyed && active && token === serial && isCurrent()
     && getExpectedAccountId() === accountId;
   const t = (key, values) => message(language(), key, values);
   const target = () => id(snapshot?.room?.rematch?.game_id) && snapshot.room.rematch.game_id !== gameId
     ? snapshot.room.rematch.game_id : null;
 
-  function clearSecret(node = container) {
-    const input = node?.querySelector('[name="rematch_password"]');
-    if (input) input.value = "";
-  }
-
   function render() {
     if (!container) return;
-    if (!current(serial)) { clearSecret(); container.replaceChildren(); container.hidden = true; markup = null; return; }
-    const existing = target();
-    const recipe = snapshot.room.recipe;
-    if (mode === null) mode = recipe.password_required ? "" : "disabled";
-    const disabled = busy || blocked;
+    if (!current(serial)) { container.replaceChildren(); container.hidden = true; markup = null; return; }
+    const existing = target(), disabled = busy || blocked;
+    const action = existing ? "open" : envelope ? error === "stale" ? "reload" : "retry" : "create";
     const content = `<section class="wt-card-panel wt-rematch" aria-labelledby="wattenRematchTitle">
       <h3 id="wattenRematchTitle">${esc(t("heading"))}</h3>
-      <p>${esc(t(existing ? "existing" : "body"))}</p>
-      ${existing ? `<button type="button" data-watten-rematch-action="open"${disabled ? " disabled" : ""}>${esc(t("open"))}</button>`
-        : `${renderRecipe(recipe)}<p class="wt-note">${esc(t("cpuWishes", { count: recipe.cpu_seats.length }))}</p>
-          <form data-watten-rematch-form>
-            <label>${esc(t("protection"))}<select name="protection_mode" required${disabled || envelope ? " disabled" : ""}>
-              <option value="">${esc(t("choose"))}</option><option value="fresh_password">${esc(t("fresh"))}</option>
-              <option value="disabled">${esc(t(recipe.password_required ? "disableExplicit" : "unprotected"))}</option></select></label>
-            <label${mode === "fresh_password" ? "" : " hidden"}>${esc(t("password"))}
-              <input name="rematch_password" type="password" autocomplete="new-password" maxlength="100"${mode === "fresh_password" ? " required" : ""}${disabled || envelope ? " disabled" : ""}></label>
-            ${envelope ? `<button type="button" data-watten-rematch-action="${error === "stale" ? "reload" : "retry"}"${disabled ? " disabled" : ""}>${esc(t(busy ? "busy" : error === "stale" ? "reload" : "retry"))}</button>`
-              : `<button type="submit" data-watten-rematch-action="create"${disabled ? " disabled" : ""}>${esc(t(busy ? "busy" : "create"))}</button>`}
-          </form>`}
-      <p class="wt-note">${esc(t("manual"))}</p>
+      <button type="button" class="wt-primary" data-watten-rematch-action="${action}"${disabled ? " disabled" : ""}>${esc(t(busy ? "busy" : action))}</button>
       <p class="wt-error" role="alert" data-watten-rematch-error>${esc(error ? t(error) : "")}</p></section>`;
     container.hidden = false;
-    if (content !== markup) {
-      clearSecret(); container.innerHTML = content; markup = content;
-      const select = container.querySelector('[name="protection_mode"]'); if (select) select.value = mode;
-      const input = container.querySelector('[name="rematch_password"]'); if (input) input.value = password;
-    }
+    if (content !== markup) { container.innerHTML = content; markup = content; }
   }
 
   function changedAccount() { destroy(); onAccountChanged(); }
@@ -82,10 +59,6 @@ export function createRematch({ gameId, fetcher, loadAuth, escapeHtml: esc, rend
 
   async function send() {
     if (!current(serial) || busy || blocked || target()) return;
-    if (!envelope && (!['disabled', 'fresh_password'].includes(mode)
-        || (mode === "fresh_password" && (!password.trim() || password.length > 100)))) {
-      error = "invalidProtection"; render(); return;
-    }
     const revision = snapshot.room.revision;
     const token = ++serial;
     busy = true; error = ""; render();
@@ -95,8 +68,7 @@ export function createRematch({ gameId, fetcher, loadAuth, escapeHtml: esc, rend
       if (!envelope) {
         if (typeof auth.user.csrf_token !== "string" || !auth.user.csrf_token) throw new Error("missing csrf");
         envelope = {
-          body: JSON.stringify({ command_id: makeCommandId(), revision,
-            protection: mode === "fresh_password" ? { mode, password: password.trim() } : { mode: "disabled" } }),
+          body: JSON.stringify({ command_id: makeCommandId(), revision }),
           csrf: auth.user.csrf_token,
         };
       }
@@ -122,7 +94,7 @@ export function createRematch({ gameId, fetcher, loadAuth, escapeHtml: esc, rend
           || typeof result.created !== "boolean" || !integer(result.source_revision) || !integer(result.room_revision)) {
         throw new Error("invalid rematch response");
       }
-      password = ""; envelope = null; clearSecret();
+      envelope = null;
       navigate(`/watten/spiel/${result.game_id}`);
     } catch (failure) {
       if (!current(token) || failure.name === "AbortError") return;
@@ -142,28 +114,18 @@ export function createRematch({ gameId, fetcher, loadAuth, escapeHtml: esc, rend
     finally { if (current(token)) { busy = false; render(); } }
   }
 
-  function input(event) {
-    if (!current(serial) || envelope || busy) return;
-    if (event.target.name === "rematch_password") password = event.target.value;
-    if (event.target.name === "protection_mode") { mode = event.target.value; error = ""; render(); }
-  }
-  function submit(event) {
-    if (!event.target.matches?.("[data-watten-rematch-form]")) return;
-    event.preventDefault(); void send();
-  }
   function click(event) {
     const control = event.target.closest?.("[data-watten-rematch-action]");
     if (!control || control.disabled || !container?.contains(control)) return;
-    if (control.dataset.wattenRematchAction === "retry") void send();
+    if (["create", "retry"].includes(control.dataset.wattenRematchAction)) void send();
     if (control.dataset.wattenRematchAction === "open") void open();
     if (control.dataset.wattenRematchAction === "reload" && current(serial) && !busy) {
-      password = ""; envelope = null; clearSecret(); navigate(`/watten/spiel/${gameId}`);
+      envelope = null; navigate(`/watten/spiel/${gameId}`);
     }
   }
   function detach() {
     if (!container) return;
-    clearSecret();
-    for (const [name, handler] of [["click", click], ["submit", submit], ["input", input], ["change", input]]) {
+    for (const [name, handler] of [["click", click]]) {
       container.removeEventListener(name, handler);
     }
     container.replaceChildren(); container.hidden = true;
@@ -172,7 +134,7 @@ export function createRematch({ gameId, fetcher, loadAuth, escapeHtml: esc, rend
     if (destroyed) return;
     if (next !== container) {
       detach(); container = next; markup = null;
-      for (const [name, handler] of [["click", click], ["submit", submit], ["input", input], ["change", input]]) {
+      for (const [name, handler] of [["click", click]]) {
         container?.addEventListener(name, handler);
       }
     }
@@ -182,12 +144,12 @@ export function createRematch({ gameId, fetcher, loadAuth, escapeHtml: esc, rend
       && ["finished", "closed"].includes(latest.room?.status) && !spectator && typeof playerId === "string"
       && latest.viewer?.participant_id === playerId && object(latest.room.rematch)
       && (latest.room.rematch.can_create === true || target()));
-    if (!active) { serial += 1; controller?.abort(); envelope = null; password = ""; busy = false; }
-    if (target()) { password = ""; envelope = null; }
+    if (!active) { serial += 1; controller?.abort(); envelope = null; busy = false; }
+    if (target()) envelope = null;
     render();
   }
   function destroy() {
-    destroyed = true; active = false; serial += 1; controller?.abort(); envelope = null; password = "";
+    destroyed = true; active = false; serial += 1; controller?.abort(); envelope = null;
     detach(); container = null;
   }
   return { update, destroy };

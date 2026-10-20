@@ -159,7 +159,7 @@ test('native navigation stays network-only with no-store and a truthful private-
   assert.equal(offline.status, 503); assert.equal(offline.headers.get('cache-control'), 'no-store');
   assert.equal(offline.headers.get('x-robots-tag'), 'noindex, nofollow');
   const body = await offline.text();
-  assert.match(body, /Kontodaten werden nicht offline gespeichert/); assert.match(body, /Account data is never stored/);
+  assert.match(body, /Karten und Kontodaten werden nicht offline gespeichert/); assert.match(body, /cards and account data are never stored/);
   assert.doesNotMatch(body, /secret-card|account_id|0123456789abcdef/);
 });
 

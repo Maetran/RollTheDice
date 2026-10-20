@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from typing import Final
 
 from .watten_play import PlayProfile, WattenPlayError
+from .watten_tournament import valid_target
 
 RECIPE_SCHEMA_VERSION: Final = 1
 WATTEN_RULESET_ID: Final = "watten-house"
@@ -28,7 +29,7 @@ _KNOWN_RULESETS: Final = frozenset({(WATTEN_RULESET_ID, WATTEN_RULESET_VERSION)}
 _RECIPE_KEYS: Final = frozenset({
     "kind", "schema_version", "ruleset_id", "ruleset_version", "player_count", "determination", "blind",
     "critical", "target_points", "cpu_seats", "show_rechter", "trick_history", "partner_hand",
-    "password_required",
+    "password_required", "voice_enabled", "schoeneres_enabled", "tournament_nockerl_target",
 })
 
 
@@ -61,6 +62,9 @@ class WattenRecipe:
     trick_history: bool = False
     partner_hand: bool = False
     password_required: bool = False
+    voice_enabled: bool = True
+    schoeneres_enabled: bool = False
+    tournament_nockerl_target: int | None = None
     ruleset_id: str = WATTEN_RULESET_ID
     ruleset_version: int = WATTEN_RULESET_VERSION
 
@@ -75,8 +79,13 @@ class WattenRecipe:
         if type(self.target_points) is not int or self.target_points < MIN_TARGET_POINTS:
             raise WattenRecipeError("watten_invalid_target_points")
         if any(type(option) is not bool for option in (
-                self.show_rechter, self.trick_history, self.partner_hand, self.password_required)):
+                self.show_rechter, self.trick_history, self.partner_hand, self.password_required, self.voice_enabled,
+                self.schoeneres_enabled)):
             raise WattenRecipeError("watten_invalid_recipe_option")
+        if self.schoeneres_enabled and self.player_count == 3:
+            raise WattenRecipeError("watten_schoeneres_requires_two_callers")
+        if not valid_target(self.tournament_nockerl_target) or self.tournament_nockerl_target is not None and self.player_count == 3:
+            raise WattenRecipeError("watten_invalid_tournament_target")
         if (type(self.cpu_seats) is not tuple
                 or any(type(seat) is not int or not 0 <= seat < self.player_count for seat in self.cpu_seats)
                 or len(set(self.cpu_seats)) != len(self.cpu_seats)):
@@ -113,6 +122,9 @@ def recipe_to_payload(recipe: WattenRecipe) -> dict:
         "trick_history": recipe.trick_history,
         "partner_hand": recipe.partner_hand,
         "password_required": recipe.password_required,
+        "voice_enabled": recipe.voice_enabled,
+        "schoeneres_enabled": recipe.schoeneres_enabled,
+        "tournament_nockerl_target": recipe.tournament_nockerl_target,
     }
 
 
@@ -128,6 +140,14 @@ def require_fields(payload: object, keys: frozenset[str], error: type[ValueError
 
 
 def recipe_from_payload(payload: object) -> WattenRecipe:
+    # Recipes saved before the voice option existed retain its default. Every
+    # subsequent projection and save emits the complete normalized recipe.
+    if type(payload) is dict and "voice_enabled" not in payload:
+        payload = {**payload, "voice_enabled": True}
+    if type(payload) is dict and "schoeneres_enabled" not in payload:
+        payload = {**payload, "schoeneres_enabled": False}
+    if type(payload) is dict and "tournament_nockerl_target" not in payload:
+        payload = {**payload, "tournament_nockerl_target": None}
     fields = require_fields(payload, _RECIPE_KEYS, WattenRecipeError, "watten_recipe")
     if fields["kind"] != _RECIPE_KIND:
         raise WattenRecipeError("watten_recipe_invalid_payload")
@@ -146,6 +166,9 @@ def recipe_from_payload(payload: object) -> WattenRecipe:
         trick_history=fields["trick_history"],
         partner_hand=fields["partner_hand"],
         password_required=fields["password_required"],
+        voice_enabled=fields["voice_enabled"],
+        schoeneres_enabled=fields["schoeneres_enabled"],
+        tournament_nockerl_target=fields["tournament_nockerl_target"],
         ruleset_id=fields["ruleset_id"],
         ruleset_version=fields["ruleset_version"],
     )

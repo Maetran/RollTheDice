@@ -52,8 +52,8 @@ class ReleaseNotice:
         if kind not in ("backend", "usability"):
             raise ValueError("Release kind must be backend or usability")
         games = payload.get("games")
-        if not isinstance(games, list) or not games or any(game not in ("zdwa", "zilch", "hausdepp") for game in games):
-            raise ValueError("Release games must contain zdwa, zilch and/or hausdepp")
+        if not isinstance(games, list) or not games or any(game not in ("zdwa", "zilch", "hausdepp", "watten") for game in games):
+            raise ValueError("Release games must contain zdwa, zilch, hausdepp and/or watten")
         summaries = (STABILITY_DE, STABILITY_EN) if kind == "backend" else (
             payload.get("summary_de"), payload.get("summary_en"),
         )

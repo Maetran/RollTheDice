@@ -9,7 +9,6 @@ import pytest
 from app.watten_bidding import WattenBiddingError
 from app.watten_cards import DealtCards, deal_cards, make_deck
 from app.watten_engine import (
-    ACK_LIMIT,
     EngineActor,
     EngineCommand,
     EngineRecipe,
@@ -188,24 +187,29 @@ def test_duplicate_only_returns_safe_ack_and_never_reemits_normal_call_or_old_in
         apply_command(state, actor(state, "B"), replace(request, value="8"))
 
 
-def test_evicted_private_feedback_stays_stale_without_advancing_public_opportunity():
+def test_evicted_private_feedback_cannot_be_changed_or_applied_twice():
     state = start_match(recipe(), "private-replay", dealt(), first_dealer="A")
     public_request = command(state, "B", "announce_strike", "7", "old-public")
     state = apply_command(state, actor(state, "B"), public_request).state
     state = step(state, "A", "announce_colour", "bells")
+    state = step(state, "B", "bid")
     original = command(state, "A", "partner_feedback", "good", "old-feedback")
     public_opportunity = state.opportunity
-    state = apply_command(state, actor(state, "A"), original).state
-    for index in range(ACK_LIMIT):
-        state = step(state, "A", "partner_feedback", "unsure", f"feedback-{index}")
-    assert state.opportunity == public_opportunity
-    assert len(state.ack_cache) == ACK_LIMIT + 1
-    assert len(state.feedback) == 1 and state.feedback[0].sequence == ACK_LIMIT + 1
-    with pytest.raises(WattenEngineError, match="stale_opportunity"):
+    accepted = apply_command(state, actor(state, "A"), original)
+    state = accepted.state
+    replay = apply_command(state, actor(state, "A"), original)
+    assert replay.replayed and replay.ack == accepted.ack and state.opportunity == public_opportunity
+    assert len(state.feedback) == 1 and state.feedback[0].sequence == 1
+    with pytest.raises(WattenEngineError, match="feedback_unavailable"):
+        step(state, "A", "partner_feedback", "unsure", "fresh-second-choice")
+    # Simulate pruning this actor's old receipts: durable feedback still
+    # prevents another choice, independently of the bounded ACK cache.
+    state = replace(state, ack_cache=tuple(item for item in state.ack_cache if item.player_id != "A"))
+    with pytest.raises(WattenEngineError, match="feedback_unavailable"):
         apply_command(state, actor(state, "A"), original)
     assert apply_command(state, actor(state, "B"), public_request).replayed
     restored = restore_storage(json.loads(json.dumps(storage_payload(state))))
-    with pytest.raises(WattenEngineError, match="stale_opportunity"):
+    with pytest.raises(WattenEngineError, match="feedback_unavailable"):
         apply_command(restored, actor(restored, "A"), original)
 
 
@@ -289,14 +293,15 @@ def test_storage_roundtrips_each_inspection_and_pending_response_boundary_and_re
         stages.append(state)
     state = step(state, "B", "play_card", legal_cards(state.play, state.bid_state, "B")[0])
     state = step(state, "C", "bid")
-    stages.append(step(state, "A", "partner_feedback", "good"))
+    stages.append(step(state, "D", "partner_feedback", "good"))
     for stage in stages:
         raw = json.loads(json.dumps(storage_payload(stage)))
         assert restore_storage(raw) == stage
         assert raw == storage_payload(restore_storage(raw))
     raw = storage_payload(stages[0])
     for corrupt in ({**raw, "unexpected": "secret"}, {**raw, "phase": "play"}, {**raw, "acknowledged": [0]},
-                    {**raw, "shown": [0, 0]}, {**raw, "schema": True}):
+                    {**raw, "shown": [0, 0]}, {**raw, "schema": True},
+                    {**raw, "discarded_bid_increases": True}, {**raw, "discarded_bid_increases": 99}):
         with pytest.raises(ValueError):
             restore_storage(corrupt)
     score_corrupt = copy.deepcopy(storage_payload(stages[-1]))
@@ -307,8 +312,27 @@ def test_storage_roundtrips_each_inspection_and_pending_response_boundary_and_re
     precard_bid["phase"] = "bid_response"
     precard_bid["bid"]["last_offering_party"] = 0
     precard_bid["bid"]["pending"] = {"party": 0, "points": 3}
-    with pytest.raises(WattenEngineError, match="first_card_required"):
-        restore_storage(precard_bid)
+    restored_precard = restore_storage(precard_bid)
+    assert restored_precard.phase == "bid_response" and restored_precard.play.plays == ()
+    assert restored_precard.bid_state.pending.points == 3
+
+
+@pytest.mark.parametrize("count,determination,blind", ((2, "normal", False), (2, "ladinisch", False),
+                                                     (3, "normal", False), (4, "normal", False), (4, "ladinisch", True)))
+def test_opening_player_can_bid_before_any_card_after_call_and_fold_scores_without_a_trick(count, determination, blind):
+    state = start_match(recipe(count, determination, blind), "opening-offer", dealt(count), first_dealer="A")
+    with pytest.raises(WattenEngineError, match="action_unavailable"):
+        step(state, "B", "bid")
+    state = ready(state)
+    player = state.play.current_player_id
+    state = step(state, player, "bid")
+    assert state.phase == "bid_response" and not state.play.plays
+    decider = state.parties.decider(1 - state.bid_state.pending.party)
+    state = step(state, decider, "respond", "go")
+    assert state.phase == "deal_complete" and state.bid_state.result.reason == "go"
+    assert not state.play.tricks and not state.play.plays
+    assert sum(account.points > 0 for account in state.ledger.accounts) >= 1
+    assert restore_storage(storage_payload(state)) == state
 
 
 def test_secret_representations_are_redacted_and_unsupported_profiles_or_wrong_actions_fail_closed():

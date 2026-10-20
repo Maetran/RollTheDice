@@ -1,5 +1,5 @@
 /** Correlate voice replies on the existing authenticated table socket. */
-export function createVoiceSignaling({ send, timeoutMs = 25000 }) {
+export function createVoiceSignaling({ send, timeoutMs = 25000, action = "hausdepp_voice" }) {
   const pending = new Map();
   let sequence = 0;
   return {
@@ -11,7 +11,7 @@ export function createVoiceSignaling({ send, timeoutMs = 25000 }) {
           reject(new Error("voiceConnectionError"));
         }, timeoutMs);
         pending.set(requestId, { resolve, reject, timer });
-        if (!send({ ...payload, action: "hausdepp_voice", operation, request_id: requestId })) {
+        if (!send({ ...payload, action, operation, request_id: requestId })) {
           clearTimeout(timer); pending.delete(requestId);
           reject(new Error("voiceConnectionError"));
         }

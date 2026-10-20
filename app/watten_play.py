@@ -126,6 +126,7 @@ class PlayState:
     profile: PlayProfile
     call: WattenCall
     plays: tuple[str, ...] = ()
+    forced_opening: tuple[tuple[int, str], ...] = ()
     hands: tuple[tuple[str, ...], ...] = field(init=False)
     tricks: tuple[CompletedTrick, ...] = field(init=False)
     trick_leader: int = field(init=False)
@@ -150,6 +151,11 @@ class PlayState:
             raise WattenPlayError("watten_free_weli_strike_with_critical")
         if type(self.plays) is not tuple or not all(type(card) is str for card in self.plays):
             raise WattenPlayError("watten_invalid_play_history")
+        if (type(self.forced_opening) is not tuple or (self.forced_opening and (
+                count != 4 or not self.profile.blind
+                or self.forced_opening != tuple((seat, self.deal.bottom_cards[seat]) for seat in range(count)
+                                                if seat not in self.knower_seats)))):
+            raise WattenPlayError("watten_invalid_forced_opening")
         rules, knowers = self.rules, self.knower_seats
         hands = [list(hand) for hand in self.deal.hands]
         leader = round_roles(count, self.dealer_seat, determination=self.profile.determination).first_player
@@ -159,8 +165,9 @@ class PlayState:
         winning_party = None
         for card in self.plays:
             seat = (leader + len(trick)) % count
+            forced = dict(self.forced_opening).get(seat) if not tricks else None
             if winning_party is not None or card not in _allowed_cards(
-                    tuple(hands[seat]), tuple(trick), bound=seat in knowers, rules=rules):
+                    tuple(hands[seat]), tuple(trick), bound=seat in knowers, rules=rules) or (forced and card != forced):
                 raise WattenPlayError("watten_invalid_play_history")
             hands[seat].remove(card)
             trick.append(card)
@@ -212,7 +219,7 @@ class PlayState:
 
 
 def start_play(deal_id: str, deal: DealtCards, parties: DealParties, profile: PlayProfile, *,
-               call: WattenCall | None = None) -> PlayState:
+               call: WattenCall | None = None, forced_opening: tuple[tuple[int, str], ...] = ()) -> PlayState:
     """Open card play after the completed call, with no card played yet.
 
     A normal call is the completed announcement. Ladinisch derives the call
@@ -230,7 +237,7 @@ def start_play(deal_id: str, deal: DealtCards, parties: DealParties, profile: Pl
         call = derived
     elif call is None:
         raise WattenPlayError("watten_call_required")
-    return PlayState(deal_id, deal, parties, profile, call)
+    return PlayState(deal_id, deal, parties, profile, call, forced_opening=forced_opening)
 
 
 def _require_bid_context(state: PlayState, bid_state: BidState) -> None:
@@ -253,6 +260,9 @@ def legal_cards(state: PlayState, bid_state: BidState, player_id: str) -> tuple[
     if state.ended or bid_state.gameplay_frozen or player_id != state.current_player_id:
         return ()
     seat = state.current_seat
+    forced = dict(state.forced_opening).get(seat) if not state.tricks else None
+    if forced is not None:
+        return (forced,)
     return _allowed_cards(state.hands[seat], state.trick_cards, bound=seat in state.knower_seats, rules=state.rules)
 
 
