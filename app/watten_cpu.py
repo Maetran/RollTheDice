@@ -53,7 +53,7 @@ DEFAULT_SAMPLES: Final = 24
 MAX_SAMPLES: Final = 64
 ATTEMPTS_PER_SAMPLE: Final = 8
 COMMAND_KINDS: Final = frozenset({"announce_strike", "announce_colour", "show_ready", "inspection_ack", "play_card",
-                                  "bid", "respond", "partner_feedback"})
+                                  "bid", "respond", "partner_feedback", "retourschneider"})
 _RESPONSE_ACTIONS: Final = frozenset({"respond_hold", "respond_go", "respond_counter"})
 _RESPONSES: Final = frozenset({"hold", "go", "counter"})
 _FEEDBACK: Final = frozenset({"good", "bad", "unsure"})
@@ -125,7 +125,8 @@ class CpuProposal:
         if (self.kind == "partner_feedback") != (self.private_opportunity is not None):
             raise WattenCpuError("watten_cpu_invalid_proposal")
         if (self.kind == "respond") != (self.value in _RESPONSES) or (
-                self.kind == "partner_feedback" and self.value not in _FEEDBACK):
+                self.kind == "partner_feedback" and self.value not in _FEEDBACK) or (
+                self.kind == "retourschneider" and self.value not in {"accept", "decline"}):
             raise WattenCpuError("watten_cpu_invalid_proposal")
 
     @property
@@ -588,6 +589,10 @@ def _choose(ctx: _Context, seed: int, budget: CpuBudget) -> CpuProposal | CpuWai
     def propose(kind: str, value: str | None = None, private: int | None = None) -> CpuProposal:
         return CpuProposal(snap.player_id, snap.deal_id, snap.opportunity, snap.phase, kind, value, private)
 
+    if "retourschneider" in actions:
+        # The optional all-or-nothing challenge is deliberately conservative
+        # until a separate comeback strategy is designed.
+        return propose("retourschneider", "decline")
     if snap.finished:
         return CpuWait(snap.deal_id, snap.opportunity, snap.phase, "watten_cpu_deal_finished")
     if "announce_strike" in actions:
@@ -603,13 +608,10 @@ def _choose(ctx: _Context, seed: int, budget: CpuBudget) -> CpuProposal | CpuWai
     stream = _Stream(["watten-cpu-v1", seed, snap.player_id, snap.deal_id, snap.opportunity, snap.phase])
     if snap.phase == "bid_response":
         # A pending bid blocks every card; only the designated decider answers.
+        if "partner_feedback" in actions:
+            return propose("partner_feedback", _feedback(_win_chance(ctx, stream, budget)), snap.feedback_opportunity)
         if _RESPONSE_ACTIONS & set(actions):
             return propose("respond", _response(ctx, _win_chance(ctx, stream, budget)))
-        decider = snap.players.index(snap.pending[2])
-        if "partner_feedback" in actions and decider == snap.partner_seat:
-            value = _feedback(_win_chance(ctx, stream, budget))
-            if value != snap.own_feedback:
-                return propose("partner_feedback", value, snap.feedback_opportunity)
     elif "play_card" in actions:
         options = _options(ctx)
         legal = _conserve_hopeless(ctx, _own_legal(ctx, options), options)

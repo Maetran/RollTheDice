@@ -63,6 +63,7 @@ def retain_rematch_source(game: dict) -> bool:
             settings = {"_name": game["_name"], "_mode": mode,
                         "_hausdepp_cpu_count": game.get("_hausdepp_cpu_count", 0),
                         "_hausdepp_tournament_enabled": bool(game.get("_hausdepp_tournament_enabled") or tournament),
+                        "_voice_enabled": game.get("_voice_enabled", True) is True,
                         "_passphrase": verifier}
             if game.get("_hausdepp_voice_room_id"):
                 settings["_hausdepp_voice_room_id"] = game["_hausdepp_voice_room_id"]
@@ -278,7 +279,8 @@ def create_rematch(source_id: str, user_id: int, *, before_create: Callable | No
                                   for person in source.get("_participants", []))))
         game = new_hausdepp_game(game_id, source["_name"], mode, register=False)
         configure_hausdepp_game(game, host_user_id=user_id, cpu_count=source.get("_hausdepp_cpu_count", 0),
-                                tournament=bool(source.get("_hausdepp_tournament_enabled") or tournament))
+                                tournament=bool(source.get("_hausdepp_tournament_enabled") or tournament),
+                                voice_enabled=source.get("_voice_enabled", True) is True)
         game["_passphrase"] = source.get("_passphrase")
         game["_hausdepp_rematch_id"] = rematch_id
         game["_hausdepp_rematch_joined_ids"] = []

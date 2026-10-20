@@ -33,6 +33,7 @@ logger = logging.getLogger(__name__)
 CPU_POLICY_READY = True
 THINK_MIN_SECONDS = 0.35
 THINK_MAX_SECONDS = 1.25
+TRICK_REVEAL_SECONDS = 3.0
 _RANDOM = secrets.SystemRandom()
 
 
@@ -172,12 +173,13 @@ class _Job:
 
 _JOBS: dict[tuple[str, str], _Job] = {}
 _BLOCKED: dict[tuple[str, str], tuple[dict, tuple]] = {}
+_TRICK_REVEALS: dict[str, tuple[dict, str, int, float]] = {}
 
 
 def _may_decide(view: dict) -> bool:
     actions = set(view["actions"])
     return bool(actions & {"announce_strike", "announce_colour", "show_ready", "inspection_ack", "play_card",
-                           "respond_hold", "respond_go", "respond_counter"}
+                           "respond_hold", "respond_go", "respond_counter", "retourschneider"}
                 or (view["phase"] == "bid_response" and "partner_feedback" in actions))
 
 
@@ -188,8 +190,18 @@ def watch_game(game: dict) -> None:
     if games.get(game["_id"]) is not game:
         return
     runtime = game["_watten"]
+    now = asyncio.get_running_loop().time()
+    engine = runtime.engine
+    completed = len(engine.play.tricks) if engine is not None and engine.play is not None else 0
+    if completed and engine.phase != "match_complete":
+        previous_reveal = _TRICK_REVEALS.get(game["_id"])
+        if (previous_reveal is None or previous_reveal[0] is not game
+                or previous_reveal[1:3] != (engine.deal_id, completed)):
+            _TRICK_REVEALS[game["_id"]] = (game, engine.deal_id, completed, now + TRICK_REVEAL_SECONDS)
+    else:
+        _TRICK_REVEALS.pop(game["_id"], None)
     active = (cpu_autoplay_enabled() and runtime.engine is not None and not runtime.absent
-              and runtime.engine.phase not in {"deal_complete", "match_complete"})
+              and runtime.engine.phase != "match_complete")
     if active:
         active = _authority(game) is not None
     wanted = set()
@@ -210,7 +222,11 @@ def watch_game(game: dict) -> None:
             if blocked is not None and blocked[0] is game and blocked[1] == context:
                 continue
             _BLOCKED.pop(key, None)
-            job = _Job(game, context, asyncio.get_running_loop().time() + _RANDOM.uniform(THINK_MIN_SECONDS, THINK_MAX_SECONDS),
+            deadline = now + _RANDOM.uniform(THINK_MIN_SECONDS, THINK_MAX_SECONDS)
+            reveal = _TRICK_REVEALS.get(game["_id"])
+            if reveal is not None and view["phase"] == "play" and not view["current_trick"]["cards"]:
+                deadline = max(deadline, reveal[3])
+            job = _Job(game, context, deadline,
                        secrets.randbits(64))
             _JOBS[key] = job
             job.task = asyncio.create_task(_run(game, cpu.participant_id, job), name=f"watten-cpu-{game['_id']}-{cpu.participant_id}")
@@ -302,6 +318,7 @@ async def stop_cpu_runners() -> None:
     jobs = list(_JOBS.values())
     _JOBS.clear()
     _BLOCKED.clear()
+    _TRICK_REVEALS.clear()
     tasks = [job.task for job in jobs if job.task is not None]
     for task in tasks:
         task.cancel()

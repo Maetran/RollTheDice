@@ -14,6 +14,7 @@ from .models import User, WattenAchievementGrant, WattenProgressState
 from .security import as_utc
 from .watten_account import _owned_matches, _progress
 from .watten_progression import DRAFT_ACHIEVEMENTS, DRAFT_CATALOG_VERSION
+from .watten_surprises import SURPRISE_ACHIEVEMENTS
 
 
 class WattenAchievementFeedError(ValueError):
@@ -26,7 +27,7 @@ def _require(condition, code="watten_feed_invalid_request"):
 
 
 def _achievement(grant):
-    definition = next((item for item in DRAFT_ACHIEVEMENTS if item.achievement_id == grant.achievement_id
+    definition = next((item for item in (*DRAFT_ACHIEVEMENTS, *SURPRISE_ACHIEVEMENTS) if item.achievement_id == grant.achievement_id
                        and grant.catalog_version == DRAFT_CATALOG_VERSION), None)
     if definition is None:
         name = {"de": "Gespeicherter Watten-Erfolg", "en": "Stored Watten achievement"}

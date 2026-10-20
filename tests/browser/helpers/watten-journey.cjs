@@ -89,24 +89,32 @@ async function waitingRoomReady(players, gameId, participants) {
   }
 }
 
-async function create(players, { count = players.length, target = 3, reference = false, partnerHand = false, start = true, password, determination } = {}) {
+async function openCreator(page, { favorite = false } = {}) {
+  await page.locator('[data-watten-create-open]').click();
+  await expect(page.locator('[data-watten-create-dialog]')).toBeVisible();
+  const choice = page.locator(favorite ? '[data-watten-create-favourite]' : '[data-watten-create-define]');
+  await expect(choice).toBeEnabled();
+  await choice.click();
+  const form = page.locator('[data-watten-create]');
+  await expect(form).toBeVisible();
+  return form;
+}
+
+async function create(players, { count = players.length, target = 3, reference = false, partnerHand = false, start = true, password, determination, cpuFill = false } = {}) {
   const host = players[0];
   await host.page.goto('/watten');
-  const form = host.page.locator('[data-watten-create]');
-  await expect(form).toBeVisible();
+  const form = await openCreator(host.page);
   await form.locator(`[name=count][value="${count}"] + span`).click();
   if (determination) await form.locator(`[name=determination][value="${determination}"] + span`).click();
   await form.locator('[name=target]').selectOption(String(target));
   if (partnerHand && await form.locator('[name=blind]').isChecked()) await form.locator('[name=blind]').uncheck();
-  if (reference || password || partnerHand) {
-    await form.locator('summary').click();
+  if (reference || partnerHand) {
+    await form.locator('[data-watten-advanced] > summary').click();
     if (reference) await form.locator('[name=show_rechter]').check();
     if (partnerHand) await form.locator('[name=partner_hand]').check();
-    if (password) {
-      await form.locator('[name=password_required] + span').click();
-      await form.locator('[name=password]').fill(password);
-    }
   }
+  if (password) await form.locator('[name=password]').fill(password);
+  if (cpuFill) await form.locator('[name=cpu_fill]').check();
   await form.locator('button[type=submit]').click();
   await expect(host.page).toHaveURL(/\/watten\/spiel\/[0-9a-f]{16}$/);
   const path = new URL(host.page.url()).pathname;
@@ -136,9 +144,22 @@ async function create(players, { count = players.length, target = 3, reference =
   return path;
 }
 
+async function answerPartnerFeedback(players, value = 'unsure') {
+  for (const actor of players) {
+    if (!actor.traffic.snapshot?.engine?.actions.includes('partner_feedback')) continue;
+    const dialog = actor.page.locator('[data-watten-feedback-dialog]');
+    await expect(dialog).toBeVisible();
+    await dialog.locator(`[data-watten-command=feedback][data-value="${value}"]`).click();
+    await expect(dialog).toHaveCount(0);
+    await expect.poll(() => actor.traffic.snapshot.engine.feedback.some(item =>
+      item.sender === actor.traffic.snapshot.viewer.participant_id && item.value === value)).toBe(true);
+  }
+}
+
 async function action(players, kind, value) {
   await expect.poll(() => players.some(item => item.traffic.snapshot?.engine?.actions.includes(kind))).toBe(true);
   const actor = players.find(item => item.traffic.snapshot?.engine?.actions.includes(kind));
+  if (kind.startsWith('respond_')) await answerPartnerFeedback([actor]);
   const opportunity = actor.traffic.snapshot.engine.opportunity;
   const selector = `[data-watten-action="${kind}"]${value === undefined ? '' : `[data-value="${value}"]`}`;
   await actor.page.locator(selector).first().click();
@@ -187,4 +208,4 @@ async function finishOpenMatch(players, options = {}) {
   return path;
 }
 
-module.exports = { player, create, action, normalCall, playOne, finishOpenMatch };
+module.exports = { player, openCreator, create, action, answerPartnerFeedback, normalCall, playOne, finishOpenMatch };

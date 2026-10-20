@@ -36,9 +36,9 @@ _VIEW_KEYS: Final = frozenset((
     "schema deal_id phase opportunity profile options dealer_seat seats scores target_points winners party_tricks "
     "card_turn current_trick last_trick bid transcript trick_history viewer hand actions inspection partner_hand "
     "feedback feedback_opportunity").split())
-_OPTIONAL_VIEW_KEYS: Final = frozenset({"announced_strike", "reference_card"})
+_OPTIONAL_VIEW_KEYS: Final = frozenset({"announced_strike", "reference_card", "retourschneider", "nockerl"})
 VIEW_ACTIONS: Final = frozenset({"announce_strike", "announce_colour", "show_ready", "inspection_ack", "play_card",
-                                 "bid", "respond_hold", "respond_go", "respond_counter", "partner_feedback"})
+                                 "bid", "respond_hold", "respond_go", "respond_counter", "partner_feedback", "retourschneider"})
 FEEDBACK_VALUES: Final = frozenset({"good", "bad", "unsure"})
 _STORAGE_KEYS: Final = frozenset((
     "schema kind player_id seat profile deal_id dealer_seat opportunity strike suit inspected thanks plays winners "
@@ -209,6 +209,21 @@ def read_personal_view(view: object, *, player_id: str) -> SeatSnapshot:
     target = view["target_points"]
     if not _int(target, 3) or type(view["winners"]) is not list:
         _fail()
+    retour = view.get("retourschneider")
+    if retour is not None:
+        raw = _object(retour, "status members opponent_members decider erased_points after_deal_id")
+        members, opponents = tuple(_list(raw["members"])), tuple(_list(raw["opponent_members"]))
+        if (count != 4 or raw["status"] not in {"available", "declined", "active", "succeeded", "failed"}
+                or {frozenset(members), frozenset(opponents)} != {frozenset(group) for group, _ in scores}
+                or raw["decider"] not in members or not _int(raw["erased_points"])
+                or not _text(raw["after_deal_id"]) or (raw["status"] == "available" and phase != "deal_complete")):
+            _fail()
+    for item in _list(view.get("nockerl", [])):
+        raw = _object(item, "members count reason")
+        if (phase != "match_complete" or tuple(_list(raw["members"])) not in [group for group, _ in scores]
+                or type(raw["count"]) is not int or raw["count"] not in {1, 2, 4}
+                or raw["reason"] not in {"loss", "schneider", "retourschneider", "retourschneider_failed"}):
+            _fail()
     party_tricks = _list(view["party_tricks"])
     if len(party_tricks) != 2 or not all(_int(item, 0, 4) for item in party_tricks):
         _fail()
@@ -289,6 +304,9 @@ def read_personal_view(view: object, *, player_id: str) -> SeatSnapshot:
         _fail()
     if len(set(actions)) != len(actions):
         _fail()
+    if "retourschneider" in actions and (retour is None or retour["status"] != "available"
+                                          or retour["decider"] != player_id):
+        _fail()
     if phase in {"strike", "colour"}:
         action, announcer = (("announce_strike", roles.strike_announcer) if phase == "strike"
                              else ("announce_colour", roles.suit_announcer))
@@ -339,6 +357,9 @@ def read_personal_view(view: object, *, player_id: str) -> SeatSnapshot:
         else:
             _fail()
     if not _int(view["feedback_opportunity"]):
+        _fail()
+    if "partner_feedback" in actions and (phase != "bid_response" or partner is None
+                                             or parties[seat] == pending[0] or own_feedback is not None):
         _fail()
     played = {card for _, card in current} | {card for cards, _ in (history or ()) for _, card in cards}
     if last is not None:

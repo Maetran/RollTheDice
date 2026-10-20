@@ -28,7 +28,7 @@ _KNOWN_RULESETS: Final = frozenset({(WATTEN_RULESET_ID, WATTEN_RULESET_VERSION)}
 _RECIPE_KEYS: Final = frozenset({
     "kind", "schema_version", "ruleset_id", "ruleset_version", "player_count", "determination", "blind",
     "critical", "target_points", "cpu_seats", "show_rechter", "trick_history", "partner_hand",
-    "password_required",
+    "password_required", "voice_enabled",
 })
 
 
@@ -61,6 +61,7 @@ class WattenRecipe:
     trick_history: bool = False
     partner_hand: bool = False
     password_required: bool = False
+    voice_enabled: bool = True
     ruleset_id: str = WATTEN_RULESET_ID
     ruleset_version: int = WATTEN_RULESET_VERSION
 
@@ -75,7 +76,7 @@ class WattenRecipe:
         if type(self.target_points) is not int or self.target_points < MIN_TARGET_POINTS:
             raise WattenRecipeError("watten_invalid_target_points")
         if any(type(option) is not bool for option in (
-                self.show_rechter, self.trick_history, self.partner_hand, self.password_required)):
+                self.show_rechter, self.trick_history, self.partner_hand, self.password_required, self.voice_enabled)):
             raise WattenRecipeError("watten_invalid_recipe_option")
         if (type(self.cpu_seats) is not tuple
                 or any(type(seat) is not int or not 0 <= seat < self.player_count for seat in self.cpu_seats)
@@ -113,6 +114,7 @@ def recipe_to_payload(recipe: WattenRecipe) -> dict:
         "trick_history": recipe.trick_history,
         "partner_hand": recipe.partner_hand,
         "password_required": recipe.password_required,
+        "voice_enabled": recipe.voice_enabled,
     }
 
 
@@ -128,6 +130,10 @@ def require_fields(payload: object, keys: frozenset[str], error: type[ValueError
 
 
 def recipe_from_payload(payload: object) -> WattenRecipe:
+    # Recipes saved before the voice option existed retain its default. Every
+    # subsequent projection and save emits the complete normalized recipe.
+    if type(payload) is dict and "voice_enabled" not in payload:
+        payload = {**payload, "voice_enabled": True}
     fields = require_fields(payload, _RECIPE_KEYS, WattenRecipeError, "watten_recipe")
     if fields["kind"] != _RECIPE_KIND:
         raise WattenRecipeError("watten_recipe_invalid_payload")
@@ -146,6 +152,7 @@ def recipe_from_payload(payload: object) -> WattenRecipe:
         trick_history=fields["trick_history"],
         partner_hand=fields["partner_hand"],
         password_required=fields["password_required"],
+        voice_enabled=fields["voice_enabled"],
         ruleset_id=fields["ruleset_id"],
         ruleset_version=fields["ruleset_version"],
     )

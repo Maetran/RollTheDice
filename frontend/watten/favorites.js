@@ -1,11 +1,12 @@
 import { WATTEN_FAVORITE_MESSAGES } from "../i18n/catalog.js";
+import { lobbyText } from "./lobby-copy.js";
 
 const currentLanguage = () => globalThis.window?.ZDWA_I18N?.getLanguage?.() === "en" ? "en" : "de";
 const integer = (value, minimum = 0) => Number.isSafeInteger(value) && value >= minimum;
 const object = value => value !== null && typeof value === "object" && !Array.isArray(value);
 const recipeKeys = new Set(["kind", "schema_version", "ruleset_id", "ruleset_version", "player_count", "determination", "blind",
-  "critical", "target_points", "cpu_seats", "show_rechter", "trick_history", "partner_hand", "password_required"]);
-const flags = ["blind", "critical", "show_rechter", "trick_history", "partner_hand", "password_required"];
+  "critical", "target_points", "cpu_seats", "show_rechter", "trick_history", "partner_hand", "password_required", "voice_enabled"]);
+const flags = ["blind", "critical", "show_rechter", "trick_history", "partner_hand", "password_required", "voice_enabled"];
 
 export function favoriteText(key, values = {}, language = currentLanguage()) {
   return WATTEN_FAVORITE_MESSAGES[language === "en" ? "en" : "de"][key]
@@ -25,28 +26,28 @@ function validRecipe(recipe) {
 }
 
 export function syncCreatorProtection(form) {
-  const required = form.elements.password_required.checked;
-  form.elements.password.disabled = !required;
-  form.elements.password.required = required;
-  if (!required) form.elements.password.value = "";
+  // A password alone protects a table. No second control can contradict it.
+  form.elements.password.disabled = false;
+  form.elements.password.required = false;
 }
 
-/** A save can retain protection without a secret; creation requires a new one. */
-export function readCreatorRecipe(form, { requirePassword = false, language = currentLanguage() } = {}) {
-  const protectedTable = form.elements.password_required.checked;
-  const password = protectedTable ? form.elements.password.value.trim() : "";
+/** Favorites retain only protection intent, never the password itself. */
+export function readCreatorRecipe(form, { language = currentLanguage() } = {}) {
+  const password = form.elements.password.value.trim();
+  const protectedTable = Boolean(password);
+  const count = Number(form.elements.count.value);
   const recipe = {
     kind: "watten_recipe", schema_version: 1, ruleset_id: "watten-house", ruleset_version: 1,
-    player_count: Number(form.elements.count.value), determination: form.elements.determination.value,
+    player_count: count, determination: form.elements.determination.value,
     blind: form.elements.blind.checked, critical: form.elements.critical.checked,
-    target_points: Number(form.elements.target.value), cpu_seats: [...form.querySelectorAll("[data-watten-cpu-seat]")]
-      .filter(control => control.checked && !control.disabled).map(control => Number(control.value)).sort((a, b) => a - b),
+    target_points: Number(form.elements.target.value), cpu_seats: form.elements.cpu_fill.checked
+      ? Array.from({ length: count - 1 }, (_, index) => index + 1) : [],
     show_rechter: form.elements.show_rechter.checked, trick_history: form.elements.trick_history.checked,
     partner_hand: form.elements.partner_hand.checked, password_required: protectedTable,
+    voice_enabled: form.elements.voice_enabled.checked,
   };
   if (recipe.cpu_seats.length >= recipe.player_count) throw new Error(favoriteText("allCpu", {}, language));
   if (!validRecipe(recipe)) throw new Error(favoriteText("invalid", {}, language));
-  if (requirePassword && protectedTable && !password) throw new Error(favoriteText("passwordRequired", {}, language));
   return { recipe, password };
 }
 
@@ -62,17 +63,19 @@ export function applyFavoriteToCreator(form, recipe) {
     form.elements.target.add(option);
   }
   form.elements.target.value = String(recipe.target_points);
-  for (const key of flags) form.elements[key].checked = recipe[key];
-  for (const control of form.querySelectorAll("[data-watten-cpu-seat]")) control.checked = recipe.cpu_seats.includes(Number(control.value));
+  for (const key of flags.filter(key => key !== "password_required")) form.elements[key].checked = recipe[key];
+  form.elements.cpu_fill.checked = recipe.cpu_seats.length > 0;
   form.elements.password.value = "";
   syncCreatorProtection(form);
+  const passwordNote = form.querySelector("[data-watten-password-note]");
+  if (passwordNote) passwordNote.textContent = lobbyText(recipe.password_required ? "savedPassword" : "passwordHelp");
   const advanced = form.querySelector("[data-watten-advanced]");
   if (advanced && (recipe.password_required || recipe.cpu_seats.length)) advanced.open = true;
 }
 
 /** Account-bound private favorite controls; no automatic apply/create/start. */
 export function createFavorites({ container, apiFetch, loadAuth, escapeHtml: esc, getRecipe, applyRecipe,
-  getExpectedAccountId, isCurrent, onAccountChanged, language = currentLanguage }) {
+  getExpectedAccountId, isCurrent, onAccountChanged, onState = () => {}, language = currentLanguage }) {
   const expectedId = getExpectedAccountId();
   const t = (key, values = {}) => favoriteText(key, values, language());
   let destroyed = false, serial = 0, controller = null, favorite = null, busy = false;
@@ -81,14 +84,12 @@ export function createFavorites({ container, apiFetch, loadAuth, escapeHtml: esc
 
   function render() {
     if (!current(serial)) { container.replaceChildren(); return; }
-    container.innerHTML = `<h3>${esc(t("heading"))}</h3><p class="wt-note">${esc(t("help"))}</p>
-      ${favorite ? `<p>${esc(t("summary", { players: favorite.player_count, target: favorite.target_points, cpus: favorite.cpu_seats.length }))}
-        ${favorite.password_required ? `<strong>${esc(t("protected"))}</strong>` : ""}</p>` : ""}
-      <div class="wt-actions"><button type="button" data-watten-favorite-action="save"${busy ? " disabled" : ""}>${esc(t("save"))}</button>
-      <button type="button" data-watten-favorite-action="apply"${busy || !favorite ? " disabled" : ""}>${esc(t("apply"))}</button>
-      <button type="button" data-watten-favorite-action="delete"${busy || !favorite ? " disabled" : ""}>${esc(t("delete"))}</button>
+    container.innerHTML = `<p class="wt-note">${esc(t("help"))}</p>
+      <div class="wt-actions"><button type="button" class="wt-button--ghost" data-watten-favorite-action="save"${busy ? " disabled" : ""}>${esc(lobbyText("favoriteSave"))}</button>
+      <button type="button" class="wt-button--ghost" data-watten-favorite-action="delete"${busy || !favorite ? " disabled" : ""}>${esc(lobbyText("favoriteDelete"))}</button>
       ${failed ? `<button type="button" data-watten-favorite-action="retry">${esc(t("retry"))}</button>` : ""}</div>
-      <p data-watten-favorite-status class="${failed ? "wt-error" : "wt-note"}" role="${failed ? "alert" : "status"}">${esc(t(message))}</p>`;
+      <p data-watten-favorite-status class="${failed ? "wt-error" : "wt-note"}" role="${failed ? "alert" : "status"}">${["ready", "empty"].includes(message) ? "" : esc(t(message))}</p>`;
+    onState({ favorite: favorite ? structuredClone(favorite) : null, busy, failed, message });
   }
 
   function accountChanged() { destroy(); onAccountChanged(); }
@@ -138,10 +139,7 @@ export function createFavorites({ container, apiFetch, loadAuth, escapeHtml: esc
     const control = event.target.closest?.("[data-watten-favorite-action]");
     if (!control || control.disabled || !container.contains(control) || busy || !current(serial)) return;
     const action = control.dataset.wattenFavoriteAction;
-    if (action === "apply" && favorite) {
-      applyRecipe(structuredClone(favorite));
-      message = favorite.password_required ? "appliedProtected" : "applied"; failed = false; render();
-    } else if (action === "save") {
+    if (action === "save") {
       try {
         const recipe = getRecipe();
         if (!validRecipe(recipe)) throw new Error("invalid");
@@ -159,5 +157,10 @@ export function createFavorites({ container, apiFetch, loadAuth, escapeHtml: esc
 
   container.addEventListener("click", clicked);
   if (integer(expectedId, 1)) void send({ method: "GET" });
-  return { destroy };
+  return { destroy, applyStored() {
+    if (!favorite || busy || !current(serial)) return false;
+    applyRecipe(structuredClone(favorite));
+    message = "applied"; failed = false; render();
+    return true;
+  } };
 }

@@ -464,6 +464,7 @@ def _ack_payload(ack: RuntimeAck, lifecycle_revision: int) -> dict:
 
 def snapshot_watten(game: dict, viewer_id: str | None = None, *, viewer_account_id: int | None = None) -> dict:
     from .watten_public_titles import public_title
+    from .watten_surprises import surprise_offer
 
     runtime = game["_watten"]
     room, engine = runtime.room, runtime.engine
@@ -504,7 +505,8 @@ def snapshot_watten(game: dict, viewer_id: str | None = None, *, viewer_account_
             "pending_call_events": [{"delivery_id": item.delivery_id, "deal_id": item.deal_id,
                                      "kind": item.kind, "seat": item.seat, "value": item.value}
                                     for item in runtime.deliveries if member and item.participant_id == member.participant_id],
-            "capabilities": {"cpu_autoplay": _cpu_capability()}, "result_persisted": game["_completion_persisted"]}
+            "capabilities": {"cpu_autoplay": _cpu_capability()}, "result_persisted": game["_completion_persisted"],
+            "table_surprise_offer": surprise_offer(game, viewer_id)}
 
 
 def lobby_entry(game: dict, account: int) -> dict:

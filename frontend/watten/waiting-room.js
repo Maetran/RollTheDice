@@ -4,6 +4,7 @@ import { escapeHtml as esc } from "../shared/auth.js";
 import { lang, t } from "./cards.js";
 import { publicTitleMarkup } from "./match-progress.js";
 import { reservationMarkup } from "./rematch.js";
+import { lobbyText as lt } from "./lobby-copy.js";
 
 const TEAM_NAMES = ["A", "B"];
 const HINT_KEY = "watten_landscape_hint_dismissed";
@@ -139,10 +140,10 @@ export function waitingRoomMarkup(snapshot, { mode, viewerId, busy = false, extr
       ? t(full ? "waiting.hostReady" : "waiting.hostWaiting")
       : t("waiting.guestWaiting", { name: host?.name || "" }))}</p>` : ""}
     ${extra}
-    ${member ? `<div class="wt-actions">
-      ${isHost && room.status === "waiting" ? `<button type="button" data-watten-command="start" ${!full || busy ? "disabled" : ""}>${esc(t("waiting.start"))}</button>` : ""}
-      <button type="button" class="wt-button--ghost" data-watten-command="copy-link">${esc(t("waiting.copyLink"))}</button>
-      ${room.status === "waiting" ? `<button type="button" class="wt-button--ghost" data-watten-command="leave-waiting" ${busy ? "disabled" : ""}>${esc(t("waiting.leave"))}</button>` : ""}
+    ${member ? `<div class="wt-actions wt-waiting-actions">
+      ${isHost && room.status === "waiting" ? `<button type="button" class="wt-primary" data-watten-command="start" ${!full || busy ? "disabled" : ""}>${esc(lt("start"))}</button>` : ""}
+      <button type="button" class="wt-button--ghost" data-watten-command="copy-link" aria-label="${esc(lt("copyLabel"))}" title="${esc(lt("copyLabel"))}">${esc(lt("copy"))}</button>
+      ${room.status === "waiting" ? `<button type="button" class="wt-button--ghost" data-watten-command="leave-waiting" aria-label="${esc(lt("leaveLabel"))}" ${busy ? "disabled" : ""}>${esc(lt("leave"))}</button>` : ""}
     </div>
     ${room.recipe.password_required ? `<p class="wt-note">${esc(t("waiting.passwordSeparately"))}</p>` : ""}
     <p class="wt-note" data-watten-copy-status role="status"></p>` : ""}

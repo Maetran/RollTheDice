@@ -23,6 +23,41 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## Unveröffentlicht / Unreleased — 2026-10-20
+
+Die mobile Watten-Vorschau bekommt mehr Tischfläche und ruhigere Entscheidungen.
+The mobile Watten preview gains more table space and calmer decisions.
+
+### WATTEN
+
+**Deutsch:** Kompaktere, etwas dunklere Lobby mit Erstellungsdialog, 50 automatisch
+benannten Runden, CPU-Auffüllen, Favoriten und direktem Passwortschutz. Der Tisch
+zeigt grössere Teamstände, ein gemeinsames Ziel und einen antippbaren Einsatz.
+Ladinische Karten gleiten zur Ansage zusammen. Private Partnerstimmung erscheint
+nur bei empfangenen Geboten. Stiche bleiben rund drei Sekunden mit markierter
+Siegerkarte und Spielernamen sichtbar; der letzte Stich kann erneut angesehen
+werden. Runde/Spiel, Nockerl, Schneider und der ausdrücklich gewählte
+Retourschneider folgen den bestätigten Hausregeln. Verteilte, benutzbare Deko und seltene gemeinsame Überraschungen mit belegten Abschlusserfolgen sind wieder dabei. Globaler Audiochat ist je
+Tisch wählbar; das Spielsymbol wurde erneuert. Öffentliche PWA-/Push-Freigabe bleibt offen.
+
+**English:** A more compact, slightly darker lobby uses a creation dialog,
+50 generated round names, CPU fill, favorites and direct password protection.
+The table shows larger team scores, one shared target and a tappable stake.
+Ladinisch cards slide together for the call. Private partner feelings appear
+only on received bids. Tricks stay for about three seconds with the winner
+outlined and player names; the last trick can be reviewed. Rounds/matches,
+Nockerl, Schneider and an explicit Retourschneider choice follow the confirmed
+house rules. Scattered usable decorations and rare shared surprises return with evidenced completion achievements. Global voice is a per-table option, and the game mark is renewed.
+Public PWA/push release remains pending.
+
+### HAUSDEPP
+
+**Deutsch:** Audiochat lässt sich im Erstellungsdialog für die ganze Runde
+abschalten; standardmässig ist er erlaubt. Favorit und Folgetisch behalten die Wahl.
+
+**English:** Voice chat can be disabled for the whole table in the creation
+dialog; it is allowed by default. Favorites and next tables keep that choice.
+
 ## 3.18.2 — Einheitliche Navigation und klare Spieltische / Consistent navigation and clear game tables — 2026-10-20
 
 Die Spielesuite wird übersichtlicher: vom Seitenkopf bis zum Rundenabschluss.

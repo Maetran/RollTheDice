@@ -91,10 +91,16 @@ class WattenReadinessMiddleware:
                 from .auth import resolve_session
 
                 founder_document = can_access_watten(resolve_session(connection), connection)
+        founder_icon = False
+        if icon_path and scope["type"] == "http" and scope["method"] in {"GET", "HEAD"}:
+            from .auth import resolve_session
+            from .watten_access import can_access_watten, watten_request_enabled
+
+            founder_icon = watten_request_enabled(connection) and can_access_watten(resolve_session(connection), connection)
         if not fixed_host and (not local_account_path or local_document or founder_document) and (
                 not icon_path or (scope["type"] == "http" and scope["method"] in {"GET", "HEAD"}
-                                  and watten_account_preview_enabled(connection))):
-            if founder_document:
+                                  and (watten_account_preview_enabled(connection) or founder_icon))):
+            if founder_document or founder_icon:
                 async def send_private(message: Message) -> None:
                     if message["type"] == "http.response.start":
                         headers = [(key, value) for key, value in message["headers"]

@@ -112,7 +112,8 @@ for (const language of ["de", "en"]) {
     const entry = await confirmedChooser(page);
     await entry.click();
     await expect(page).toHaveURL(/\/watten(?:\?|$)/);
-    await expect(page.locator("[data-watten-create]")).toBeVisible();
+    await expect(page.locator("[data-watten-create-open]")).toBeVisible();
+    await expect(page.locator("[data-watten-create-dialog]")).not.toBeVisible();
     await expect(page.locator("html")).toHaveAttribute("lang", language);
     const nativeTrigger = page.locator("#wattenSuitePicker");
     await expect(nativeTrigger).toBeEnabled();

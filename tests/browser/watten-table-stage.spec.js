@@ -1,5 +1,5 @@
 const { test, expect } = require('@playwright/test');
-const { player, create, action, normalCall, playOne } = require('./helpers/watten-journey.cjs');
+const { player, create, action, answerPartnerFeedback, normalCall, playOne } = require('./helpers/watten-journey.cjs');
 const { expectFixedTable, expectReachable } = require('./table-viewport');
 const { expectTableHeaderReachable } = require('./helpers/watten-header.cjs');
 
@@ -30,7 +30,7 @@ async function expectStage(item, count) {
   const backCount = engine.seats.filter(seat => seat.seat !== ownSeat).reduce((sum, seat) => sum + seat.card_count, 0);
   await expect(page.locator('.wt-backs > i:not([hidden])')).toHaveCount(backCount);
   await expect(page.locator('[data-wt-hand] button')).toHaveCount(engine.hand.length);
-  await expectFixedTable(page, ['[data-wt-felt]', '[data-wt-panel]', '[data-wt-hand-area]']);
+  await expectFixedTable(page, ['[data-wt-felt]', '[data-wt-scores]', '[data-wt-hand-area]']);
   await expect.poll(() => page.evaluate(() => {
     const violations = [];
     const rect = node => node.getBoundingClientRect();
@@ -71,14 +71,17 @@ async function expectStage(item, count) {
     return [...new Set(violations)];
   }), { message: 'all five-card opponent fans and the own hand remain complete and clear' }).toEqual([]);
 
-  for (const selector of ['[data-wt-hand] button:first-child', '[data-wt-panel]']) await expectReachable(page, selector);
-  for (const control of await page.locator('[data-wt-panel] button, [data-wt-private] button, [data-wt-tools] button').all()) {
+  for (const selector of ['[data-wt-hand] button:first-child', '[data-wt-scores]']) await expectReachable(page, selector);
+  for (const control of await page.locator('[data-wt-panel] button, [data-wt-private] button, [data-wt-tools] button, [data-wt-scores] button').all()) {
     if (!await control.isVisible()) continue;
     const box = await control.boundingBox();
     expect(box.width).toBeGreaterThanOrEqual(44);
     expect(box.height).toBeGreaterThanOrEqual(44);
     await expectReachable(page, await control.evaluate(node => {
       // Existing commands have stable public action identifiers, not test IDs.
+      if (!node.hasAttribute('data-watten-action') && !node.hasAttribute('data-watten-command')) {
+        return '[data-wt-scores] .wt-stake > button';
+      }
       const attribute = node.hasAttribute('data-watten-action') ? 'data-watten-action' : 'data-watten-command';
       const value = node.getAttribute(attribute);
       const kind = node.getAttribute('data-value');
@@ -108,6 +111,7 @@ for (const language of ['de', 'en']) {
         await settled(players, 'play');
         await action(players, 'bid');
         await settled(players, 'bid_response');
+        await answerPartnerFeedback(players);
         const before = players.map(item => ({ hand: item.traffic.snapshot.engine.hand,
           opportunity: item.traffic.snapshot.engine.opportunity, pending: item.traffic.snapshot.engine.bid.pending,
           seat: item.traffic.snapshot.viewer.seat, participant: item.traffic.snapshot.viewer.participant_id }));
@@ -212,7 +216,7 @@ test('normal motion: an actual completed trick travels to its winner, who leads 
       animation.finish();
       return { from, to, trick, target, duration };
     });
-    expect(geometry.duration).toBeGreaterThan(0);
+    expect(geometry.duration).toBeGreaterThanOrEqual(3000);
     expect(Math.hypot(geometry.from.x - geometry.trick.x, geometry.from.y - geometry.trick.y)).toBeLessThanOrEqual(3);
     expect(Math.hypot(geometry.to.x - geometry.target.x, geometry.to.y - geometry.target.y)).toBeLessThanOrEqual(3);
     expect(Math.hypot(geometry.from.x - geometry.to.x, geometry.from.y - geometry.to.y)).toBeGreaterThan(20);

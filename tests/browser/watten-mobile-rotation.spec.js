@@ -1,5 +1,5 @@
 const { test, expect } = require('@playwright/test');
-const { player, create, normalCall } = require('./helpers/watten-journey.cjs');
+const { player, openCreator, create, normalCall } = require('./helpers/watten-journey.cjs');
 const { expectFixedTable, expectReachable } = require('./table-viewport');
 
 for (const browserName of ['chromium', 'webkit']) {
@@ -17,7 +17,7 @@ for (const browserName of ['chromium', 'webkit']) {
       const rootNavigations = [];
       try {
         await page.goto('/watten');
-        await expect(page.locator('[data-watten-create]')).toBeVisible();
+        await expect(page.locator('[data-watten-create-open]')).toBeVisible();
         await expect.poll(() => page.evaluate(() => Boolean(window.ZDWA_APP_MODE?.initialized))).toBe(true);
         await page.evaluate(() => window.ZDWA_APP_MODE.refresh());
 
@@ -89,7 +89,7 @@ for (const browserName of ['chromium', 'webkit']) {
               screen.orientation?.dispatchEvent(new Event('change'));
             });
             await expect(page.locator('html')).toHaveAttribute('data-watten-active', 'true');
-            await expectFixedTable(page, ['[data-wt-felt]', '[data-wt-panel]', '[data-wt-hand-area]']);
+            await expectFixedTable(page, ['[data-wt-felt]', '[data-wt-scores]', '[data-wt-hand-area]']);
             await expectReachable(page, '[data-wt-hand] button:first-child');
             expect(await page.evaluate(() => window.rotationHandNodes.every((node, index) =>
               node === document.querySelectorAll('[data-wt-hand] button')[index]))).toBe(true);
@@ -107,16 +107,23 @@ for (const browserName of ['chromium', 'webkit']) {
           .toEqual([expect.objectContaining({ action: 'watten_command', kind: 'play_card', value: card, opportunity })]);
         await expect.poll(() => traffic.snapshot.engine.opportunity).not.toBe(opportunity);
         expect(traffic.errors).toEqual([]);
-        // Locking is confined to an active game. The real creator and long
-        // rulebook retain ordinary native document scrolling after departure.
-        await page.setViewportSize({ width: 390, height: 844 });
-        for (const path of ['/watten', '/watten/regeln']) {
-          await page.goto(path);
-          await expect(page.locator('html')).not.toHaveAttribute('data-watten-active', 'true');
-          await expect.poll(() => page.evaluate(() => document.documentElement.scrollHeight - innerHeight)).toBeGreaterThan(0);
-          await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
-          await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(0);
-        }
+        // Locking is confined to an active game. The compact lobby opens a
+        // scrollable native creator; the long rulebook scrolls as a document.
+        await page.setViewportSize({ width: 390, height: 600 });
+        await page.goto('/watten');
+        await expect(page.locator('html')).not.toHaveAttribute('data-watten-active', 'true');
+        await openCreator(page);
+        const dialog = page.locator('[data-watten-create-dialog]');
+        await expect.poll(() => dialog.evaluate(node => node.scrollHeight - node.clientHeight)).toBeGreaterThan(0);
+        await dialog.evaluate(node => { node.scrollTop = node.scrollHeight; });
+        await expect.poll(() => dialog.evaluate(node => node.scrollTop)).toBeGreaterThan(0);
+        await page.keyboard.press('Escape');
+        await expect(dialog).not.toBeVisible();
+        await page.goto('/watten/regeln');
+        await expect(page.locator('html')).not.toHaveAttribute('data-watten-active', 'true');
+        await expect.poll(() => page.evaluate(() => document.documentElement.scrollHeight - innerHeight)).toBeGreaterThan(0);
+        await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
+        await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(0);
       } finally { await Promise.allSettled(players.map(item => item.context.close())); }
     });
   });

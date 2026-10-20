@@ -4,7 +4,7 @@ const path = require('node:path');
 
 test.use({ serviceWorkers: 'block' });
 
-const { player, create, action, normalCall, playOne } = require('./helpers/watten-journey.cjs');
+const { player, create, action, answerPartnerFeedback, normalCall, playOne } = require('./helpers/watten-journey.cjs');
 const { expectTableHeaderReachable } = require('./helpers/watten-header.cjs');
 
 for (const language of ['de', 'en']) {
@@ -68,7 +68,18 @@ test('three-player solo owns both normal calls and private partner advice stays 
     expect(striker).toBe(colourer);
     const solo = striker;
     const pair = players.filter(item => item !== solo);
+    for (const item of players) await expect(item.page.locator('[data-watten-feedback-dialog]')).toHaveCount(0);
+    await playOne(players);
+    await action(pair, 'bid');
+    for (const bidder of pair) await expect(bidder.page.locator('[data-watten-feedback-dialog]')).toHaveCount(0);
+    // The solo's counteroffer makes the pair the receiving team. Advice is
+    // available to both receivers and remains private to that pair.
+    await action([solo], 'respond_counter', 'counter');
+    for (const receiver of pair) await expect(receiver.page.locator('[data-watten-feedback-dialog]')).toBeVisible();
+    await expect(solo.page.locator('[data-watten-feedback-dialog]')).toHaveCount(0);
     await pair[0].page.locator('[data-watten-command=feedback][data-value=good]').click();
+    await expect(pair[0].page.locator('[data-watten-feedback-dialog]')).toHaveCount(0);
+    await answerPartnerFeedback([pair[1]]);
     await expect(pair[1].page.locator('[data-watten-feedback-received]')).toBeVisible();
     await expect(solo.page.locator('[data-watten-feedback-received]')).toHaveCount(0);
     expect(pair[1].traffic.snapshot.engine.feedback.some(item => item.value === 'good')).toBe(true);
@@ -145,14 +156,13 @@ test('page lifecycle handlers clear private state synchronously and restore thro
 });
 
 for (const count of [2, 3, 4]) {
-  test(`${count}-player host chooses CPU seats, starts manually and receives autonomous play`, async ({ browser, baseURL }) => {
+  test(`${count}-player host fills CPU seats in creation, adjusts them and starts autonomous play manually`, async ({ browser, baseURL }) => {
     test.setTimeout(90000);
     const host = await player(browser, baseURL, count === 3 ? 'en' : 'de');
     if (count === 4) await host.page.emulateMedia({ reducedMotion: 'no-preference' });
     try {
-      await create([host], { count, reference: true, start: false });
+      await create([host], { count, reference: true, start: false, cpuFill: true });
       for (let seat = 1; seat < count; seat += 1) {
-        await host.page.locator(`[data-watten-command=place-cpu][data-seat="${seat}"]`).click();
         await expect.poll(() => host.traffic.snapshot?.room.seats[seat].is_cpu).toBe(true);
         await expect(host.page.locator(`[data-watten-seat="${seat}"] strong`)).not.toHaveText('');
       }
@@ -179,6 +189,10 @@ for (const count of [2, 3, 4]) {
           await host.page.locator('[data-watten-command=next-deal]').click();
           await expect.poll(() => host.traffic.snapshot.engine.deal_id).not.toBe(previousDeal);
           continuedDeal = true;
+          continue;
+        }
+        if (engine.actions.includes('partner_feedback')) {
+          await answerPartnerFeedback([host]);
           continue;
         }
         const before = engine.opportunity;

@@ -11,6 +11,7 @@ from sqlalchemy import select
 
 from .models import CompletedGame, DeletedGame, GameParticipant, User
 from .security import utcnow
+from .watten_engine import retourschneider_payload
 
 
 def result_payload(game: dict) -> dict:
@@ -19,7 +20,7 @@ def result_payload(game: dict) -> dict:
     if engine is None or engine.phase != "match_complete":
         raise ValueError("watten_match_not_finished")
     names = dict(runtime.names)
-    return {
+    payload = {
         "kind": "watten_result", "schema_version": 1, "game_type": "watten", "game_id": game["_id"],
         "match": {
             "target_points": engine.ledger.target,
@@ -32,6 +33,9 @@ def result_payload(game: dict) -> dict:
         "participants": [{"id": binding.player_id, "name": names[binding.player_id],
                           "is_cpu": binding.account_id is None} for binding in engine.recipe.bindings],
     }
+    if engine.ledger.retourschneider is not None:
+        payload["match"]["retourschneider"] = retourschneider_payload(engine.ledger.retourschneider)
+    return payload
 
 
 def store_result_in_session(db, game: dict) -> dict:

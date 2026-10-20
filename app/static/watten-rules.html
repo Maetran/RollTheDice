@@ -8,13 +8,13 @@
   <meta name="referrer" content="same-origin">
   <meta name="color-scheme" content="light">
   <title>Watten – Spielregeln / Rules</title>
-  <link rel="stylesheet" href="/static/watten-game.css?v=787b1d1593ff">
-  <link rel="stylesheet" href="/static/suite-header.css?v=787b1d1593ff">
+  <link rel="stylesheet" href="/static/watten-game.css?v=c86a661d20ef">
+  <link rel="stylesheet" href="/static/suite-header.css?v=c86a661d20ef">
 </head>
 <body class="wt-body">
   <a class="wt-skip" href="#wattenApp">Zum Inhalt / Skip to content</a>
   <header class="wt-header suite-header">
-    <a class="wt-brand suite-header__brand" href="/watten" translate="no"><img class="suite-header__icon" src="/static/watten/icons/watten-icon-32.png?v=787b1d1593ff" width="32" height="32" alt=""><span>Watten</span></a>
+    <a class="wt-brand suite-header__brand" href="/watten" translate="no"><img class="suite-header__icon" src="/static/watten/icons/watten-icon-32.png?v=c86a661d20ef" width="32" height="32" alt=""><span>Watten</span></a>
     <div class="suite-header__tools">
       <label class="wt-language"><span class="wt-visually-hidden">Sprache / Language</span><select data-language-switcher aria-label="Sprache / Language"><option value="de">Deutsch</option><option value="en">English</option></select></label>
       <button id="wattenSuitePicker" type="button" class="game-switch" data-game-switch hidden disabled aria-label="Spiele / Games"></button>
@@ -43,7 +43,7 @@
       <section id="spielerzahl"><h2>Zweier, Dreier, Vierer</h2>
         <ul>
           <li><strong>Zweier:</strong> zwei Personen gegeneinander, immer offen. Standard ist die normale Ansage; ladinisch ist wählbar.</li>
-          <li><strong>Dreier:</strong> Ein Solist spielt gegen die beiden anderen. Der Solist wechselt jede Gabe und sagt Schlag und Farbe allein an. Immer offen mit normaler Ansage.</li>
+          <li><strong>Dreier:</strong> Ein Solist spielt gegen die beiden anderen. Der Solist wechselt jede Runde und sagt Schlag und Farbe allein an. Immer offen mit normaler Ansage.</li>
           <li><strong>Vierer:</strong> zwei feste Teams, Partner sitzen sich gegenüber (Platz 1 und 3, Platz 2 und 4). Ihr wählt eure Plätze und damit die Teams selbst. Standard ist blind mit ladinischer Bestimmung; offen und normal sind ebenfalls möglich.</li>
         </ul>
         <p>Der erste Geber wird gelost. Danach gibt jeweils der Nachbar im Uhrzeigersinn.</p>
@@ -51,7 +51,7 @@
       <section id="ansage"><h2>Schlag und Farbe</h2>
         <p>Der Nachbar des Gebers bestimmt den Schlag (einen Wert), der Geber die Trumpffarbe. Im Dreier sagt der Solist beides an. Der Nachbar des Gebers spielt die erste Karte aus.</p>
         <p><strong>Normale Ansage:</strong> Schlag und Farbe werden frei angesagt und allen am Tisch kurz angezeigt. Merk sie dir – ohne Rechter-Anzeige bleibt die Ansage danach nicht stehen.</p>
-        <p><strong>Ladinisch:</strong> Die unterste Karte des Nachbarn bestimmt den Schlag, die unterste Karte des Gebers die Farbe. Beide zeigen ihre Karte, schauen einmal ein und bestätigen mit «Gemerkt». Ein erneutes Einschauen gibt es nicht, ebenso keinen Blick in den Reststapel.</p>
+        <p><strong>Ladinisch:</strong> Die unterste Karte des Nachbarn bestimmt den Schlag, die unterste Karte des Gebers die Farbe. Beide Karten gleiten in der Tischmitte zusammen, mit «Schlag» und «Farbe» darunter. Nur die berechtigten Einschauer sehen sie. Mit «Auf geht’s» endet der einmalige Blick. Ein erneutes Einschauen gibt es nicht, ebenso keinen Blick in den Reststapel.</p>
         <p><strong>Blind (nur Vierer, ladinisch):</strong> Nur Geber und Nachbar kennen Schlag und Farbe. Ihre Partner erfahren die Ansage nicht. Ist eine der gezeigten Karten selbst der Rechte, sagt ihr Besitzer automatisch «Danke».</p>
       </section>
       <section id="rangfolge"><h2>Rangfolge</h2>
@@ -67,31 +67,36 @@
       <section id="zugeben"><h2>Zugeben und Stiche</h2>
         <p>Wer Schlag und Farbe offiziell kennt und einen gewöhnlichen Trumpf hält, muss auf ausgespielten Trumpf oder den ausgespielten Rechten Trumpf zugeben. Ein gewöhnlicher Schlag ist stattdessen nur erlaubt, wenn er den aktuellen Stich übernimmt. Trumpf, der Rechte oder ein Kritischer dürfen auch gelegt werden, wenn sie den Stich nicht gewinnen. Der Rechte und Kritische müssen nie geopfert werden. Ohne gewöhnlichen Trumpf darf jede Karte gelegt werden. Es gibt keinen allgemeinen Stichzwang. Ein ausgespielter Kritischer löst keine Trumpfpflicht aus; ein später gelegter Kritischer hebt eine bestehende Trumpfpflicht nicht auf.</p>
         <p>Offen kennen alle die Ansage. Blind gilt die Pflicht nur für die beiden Einschauer – Vermutungen zählen nicht.</p>
-        <p>Wer zuerst drei Stiche hat, gewinnt die Gabe sofort.</p>
+        <p>Wer zuerst drei Stiche hat, gewinnt die Runde sofort.</p>
       </section>
       <section id="bieten"><h2>Bieten</h2>
         <p>Ab der ersten Karte darf, wer am Zug ist, bieten. Das erste Gebot ist drei Punkte, jedes weitere genau einen mehr. Ein Gebot hält das Spiel an, bis die andere Seite antwortet:</p>
         <ul>
           <li><strong>Halten:</strong> Der neue Einsatz gilt, es wird weitergespielt.</li>
-          <li><strong>Gehen:</strong> Die Gabe ist vorbei; die bietende Seite bekommt den bisherigen Einsatz.</li>
+          <li><strong>Gehen:</strong> Die Runde ist vorbei; die bietende Seite bekommt den bisherigen Einsatz.</li>
           <li><strong>Aufbieten:</strong> Die Antwort erhöht um eins; jetzt muss die andere Seite antworten.</li>
         </ul>
         <p>Antworten darf nur die zuständige Person: im Zweier der Gegner; im Dreier der Geber für sich und seinen Partner oder der Solist für sich; im Vierer der Geber oder sein Nachbar für das jeweilige Team. Wer nur noch zwei Punkte oder weniger bis zum Ziel braucht, ist gestrichen und darf kein eigenes Gebot eröffnen, aber antworten.</p>
-        <p>Partner können sich privat melden: «Fühl mich gut», «Fühl mich schlecht» oder «Keine Ahnung». Nur der Partner sieht das. Konkrete Kartenhinweise sind nicht erlaubt.</p>
-        <p>Freie Nachrichten und öffentliche Emojis bleiben auch gestrichen und während der Gabe erlaubt. Konkrete Kartenhinweise bleiben verboten.</p>
+        <p>Nur wenn die andere Seite bietet, werden beide Partner gefragt, wie sie sich fühlen. Nach einer Auswahl schliesst sich die Abfrage; nur der Partner sieht die Antwort: «Fühl mich gut», «Fühl mich schlecht» oder «Keine Ahnung». Nur der Partner sieht das. Konkrete Kartenhinweise sind nicht erlaubt.</p>
+        <p>Freie Nachrichten und öffentliche Emojis bleiben auch gestrichen und während der Runde erlaubt. Konkrete Kartenhinweise bleiben verboten.</p>
       </section>
       <section id="punkte"><h2>Punkte</h2>
-        <p>Eine Gabe ohne Gebot zählt zwei Punkte. Im Dreier bekommen bei einem verlorenen Solo beide Gegenspieler ihre Punkte; erreichen beide das Ziel, gewinnen beide. Gespielt wird meist bis elf Punkte; beim Eröffnen kannst du ein anderes Ziel wählen. Gute und Schlechte werden nicht gespielt.</p>
+        <p>Eine Runde ohne Gebot zählt zwei Punkte. Im Dreier bekommen bei einem verlorenen Solo beide Gegenspieler ihre Punkte; erreichen beide das Ziel, gewinnen beide. Gespielt wird meist bis elf Punkte; beim Eröffnen kannst du ein anderes Ziel wählen. Gute und Schlechte werden nicht gespielt.</p>
+      </section>
+      <section id="nockerl"><h2>Nockerl, Schneider und Retourschneider</h2>
+        <p>Eine Runde endet mit drei Stichen oder «Gehen». Das ganze Spiel läuft bis zur vereinbarten Zielpunktzahl. Wer das Spiel verliert, bekommt ein Nockerl; ohne einen einzigen Punkt sind es zwei – ein Schneider.</p>
+        <p>Im Vierer darf das zurückliegende Team entscheiden, seine Anschrift zu löschen, sobald der Gegner erstmals gestrichen ist, etwa bei 9 von 11 Punkten. Danach muss es jede weitere Runde gewinnen. Gelingt der Retourschneider bis zum Ziel, bekommen die früher Führenden vier Nockerl. Eine einzige verlorene Runde beendet das Spiel sofort mit zwei Nockerl für das herausfordernde Team, auch wenn es inzwischen Punkte gesammelt hat. Vor der nächsten Runde wird die Entscheidung ausdrücklich getroffen.</p>
       </section>
       <section id="optionen"><h2>Tischoptionen</h2>
         <ul>
           <li><strong>Kritische</strong> (Standard aus).</li>
           <li><strong>Rechter-Anzeige</strong> (Standard aus): Wer offiziell weiss, sieht den Rechten als kleine Karte; alle anderen sehen dort eine verdeckte Karte.</li>
-          <li><strong>Stichverlauf</strong> (Standard aus): Alle Stiche der laufenden Gabe bleiben einsehbar. Ohne diese Option siehst du nur den gerade abgeschlossenen Stich.</li>
+          <li><strong>Stichverlauf</strong> (Standard aus): Alle Stiche der laufenden Runde bleiben einsehbar. Ohne diese Option siehst du nur den gerade abgeschlossenen Stich.</li>
           <li><strong>Partnerblatt offen</strong>: nur im offenen Spiel mit Partner.</li>
+          <li><strong>Audiochat</strong> (beim Erstellen standardmässig an): Ein gemeinsamer Sprachraum für alle menschlichen Mitspieler, ohne Teamkanäle. Zuhören und Mikrofon schaltest du freiwillig selbst ein. Ist Audiochat bei der Erstellung aus, bleibt er für diesen Tisch gesperrt.</li>
           <li><strong>Passwort</strong>: Nur wer es kennt, kann beitreten. Es steht nie im Einladungslink.</li>
         </ul>
-        <p>Der Gastgeber kann vor dem Start freie Plätze mit Computergegnern besetzen oder sie wieder freigeben. Ein Platz bleibt für einen Menschen. Auch mit Computern beginnt die Partie erst mit «Starten»; jeder Computer kennt ausschliesslich seine eigene erlaubte Sicht.</p>
+        <p>«Spiel erstellen» öffnet einen eigenen Dialog für die Einstellungen. Der Tischname wird aus deinem Benutzernamen und einem von 50 Rundennamen gebildet. Ein leeres Passwort lässt den Tisch öffentlich. Optional werden die freien Plätze direkt mit CPUs aufgefüllt. Im Warteraum kann der Gastgeber vor dem Start freie Plätze mit Computergegnern besetzen oder sie wieder freigeben. Ein Platz bleibt für einen Menschen. Auch mit Computern beginnt die Partie erst mit «Starten»; jeder Computer kennt ausschliesslich seine eigene erlaubte Sicht.</p>
       </section>
       <section id="verlassen"><h2>Pause und Rückkehr</h2>
         <p>Wer eine laufende Partie bewusst verlässt, pausiert sie. Platz, Karten, Punkte und ein offenes Gebot bleiben erhalten; niemand übernimmt, nichts läuft ab und es wird nichts gewertet. Die anderen sehen, auf wen die Partie wartet. Mit «Fortsetzen» geht es nach deiner Rückkehr weiter. Ein kurzer Verbindungsabbruch ist keine Pause – dein Platz bleibt einfach frei für dich.</p>
@@ -99,9 +104,9 @@
       </section>
       <section id="bedienung"><h2>Bedienung</h2>
         <p>Du kannst im Hoch- und im Querformat spielen. Handkarten, vollständige Gegnerfächer, Stich und aktuelle Entscheidung bleiben auf einem festen Tisch sichtbar; während der Partie musst du die Seite nicht scrollen. Lobby und Anleitung bleiben normal scrollbar. Alle Aktionen sind auch mit der Tastatur erreichbar.</p>
-        <p>Ausgespielte Karten wandern vom jeweiligen Platz in die Tischmitte. Der abgeschlossene Stich wird zum Gewinner eingezogen; er spielt den nächsten Stich aus. Ansagen und Gebotsantworten bleiben bei den Karten erreichbar. Mit reduzierter Bewegung siehst du dieselben Spielzustände ohne Kartenflüge.</p>
+        <p>Ausgespielte Karten wandern vom jeweiligen Platz in die Tischmitte. Der abgeschlossene Stich bleibt rund drei Sekunden liegen; die Siegerkarte ist umrahmt und jede Karte trägt den Namen ihres Spielers. «Letzten Stich ansehen» zeigt ihn auf deinem Gerät erneut. Danach wird er zum Gewinner eingezogen; er spielt den nächsten Stich aus. Teamstand und gemeinsames Ziel stehen gross im Kopfbereich. Der animierte Einsatz zeigt laufende und gebotene Punkte; wenn du bieten darfst, tippst du darauf. Ansagen und Gebotsantworten bleiben bei den Karten erreichbar. Mit reduzierter Bewegung siehst du dieselben Spielzustände ohne Kartenflüge.</p>
         <p>«Tischchat &amp; Emojis» öffnet die öffentliche Unterhaltung mit allen Mitspielern und zugelassenen Zuschauern. Auch bei offenem Gebot, in einer Pause und gestrichen darfst du schreiben oder reagieren; Kartenhinweise bleiben verboten. Für privates Partnergefühl nutze «Gut/Schlecht/Unsicher». Der Tischchat ist unabhängig von deiner Einstellung für den gemeinsamen Lobbychat.</p>
-        <p>Mit «Tisch dekorieren» stellst du auf deinem Gerät Getränke, Snacks oder einen Dekowürfel auf. Verschieben geht per Ziehen oder Pfeiltasten; Entf entfernt den gewählten Gegenstand. Essen, Trinken und der Dekowürfel verändern die Partie nicht. Bei wenig Platz wartet alles in deiner Deko-Ecke. «Tisch aufräumen» entfernt Gegenstände und Pfützen.</p>
+        <p>Mit «Tisch dekorieren» stellst du auf deinem Gerät Getränke, Snacks oder einen Dekowürfel auf. Verschieben geht per Ziehen oder Pfeiltasten; Entf entfernt den gewählten Gegenstand. Essen, Trinken und der Dekowürfel verändern die Partie nicht. Bei wenig Platz wartet alles in deiner Deko-Ecke. «Tisch aufräumen» entfernt Gegenstände und Pfützen. Seltene Überraschungen erlebt der ganze Tisch; nach einem gültigen Spielabschluss erhalten Auslöser und verbundene Mitspieler die belegten Erfolge. Dafür müssen mindestens zwei Menschen verbunden mitspielen.</p>
       </section>
       <section id="fortschritt"><h2>Erfolge und Wirtshaustitel</h2>
         <p>Abgeschlossene Partien erscheinen in deinem eigenen Verlauf. Partie-XP und einmalige Erfolge bauen deinen dauerhaften Wirtshaustitel auf; Spielpunkte entscheiden weiterhin die Partie. XP stehen für Ausdauer am Tisch und sind kein Mass für Spielstärke. In der lokalen Vorschau sind XP, Erfolgswerte und Titelstufen als Entwurf gekennzeichnet.</p>
@@ -136,7 +141,7 @@
       <section id="calling"><h2>Strike and trump suit</h2>
         <p>The dealer's neighbour determines the strike (a rank), the dealer the trump suit. With three players, the soloist names both. The dealer's neighbour leads the first card.</p>
         <p><strong>Normal announcement:</strong> strike and suit are named freely and briefly shown to everyone at the table. Remember them – without the Rechter option the call does not stay on screen.</p>
-        <p><strong>Ladinisch:</strong> the neighbour's bottom card sets the strike, the dealer's bottom card the suit. Both show their card, look once and confirm with “Got it”. There is no second look and no look at the remaining stock.</p>
+        <p><strong>Ladinisch:</strong> the neighbour's bottom card sets the strike, the dealer's bottom card the suit. The two cards slide together at the centre of the table, labelled Strike and Trump suit. Only authorized lookers see them. “Let’s play” closes this one-time view. There is no second look and no look at the remaining stock.</p>
         <p><strong>Blind (four players, Ladinisch only):</strong> only the dealer and their neighbour know strike and suit. Their partners do not learn the call. If a shown card is itself the Rechter, its owner automatically says “Thanks”.</p>
       </section>
       <section id="ranking"><h2>Card ranking</h2>
@@ -162,11 +167,15 @@
           <li><strong>Raise:</strong> the answer raises by one; now the other side must answer.</li>
         </ul>
         <p>Only the designated person answers: the opponent with two players; with three, the dealer for themselves and their partner, or the soloist for themselves; with four, the dealer or their neighbour for each team. A player who needs two points or fewer to reach the target is gestrichen and cannot open a bid, but may still answer.</p>
-        <p>Partners can send a private message: “Feeling good”, “Feeling bad” or “No idea”. Only the partner sees it. Concrete card hints are not allowed.</p>
+        <p>Only when receiving an opposing bid, both partners are asked how they feel. Selecting an answer closes the prompt; only the partner sees the answer: “Feeling good”, “Feeling bad” or “No idea”. Only the partner sees it. Concrete card hints are not allowed.</p>
         <p>Free messages and public emoji remain allowed during the deal, including when gestrichen. Concrete card hints remain forbidden.</p>
       </section>
       <section id="scoring"><h2>Points</h2>
         <p>A deal without a bid is worth two points. With three players, if the soloist loses, both opponents receive their points; if both reach the target, both win. Matches usually go to eleven points; you can choose another target when opening a table. Guter and Schlechter are not played.</p>
+      </section>
+      <section id="loss-marks"><h2>Nockerl, Schneider and Retourschneider</h2>
+        <p>A round ends with three tricks or a fold. The full match runs to the agreed target. Losing the match earns one loss mark (Nockerl); losing without scoring a point earns two, a Schneider.</p>
+        <p>With four players, when one team first becomes gestrichen, for example at 9 of 11 points, the trailing team may erase its score and play a Retourschneider. It must win every remaining round. Reaching the target awards four loss marks to the former leaders. Losing even one round ends the match immediately with two loss marks for the challengers, even if they have scored points since the reset. The choice is explicit before the next round.</p>
       </section>
       <section id="options"><h2>Table options</h2>
         <ul>
@@ -174,9 +183,10 @@
           <li><strong>Show the Rechter</strong> (off by default): players who officially know see the Rechter as a small card; everyone else sees a face-down card there.</li>
           <li><strong>Trick history</strong> (off by default): every trick of the current deal stays visible. Without it you only see the trick just completed.</li>
           <li><strong>Open partner hand</strong>: open play with a partner only.</li>
+          <li><strong>Audio chat</strong> (on by default when creating): one shared voice room for human players, with no team channels. Listening and microphone each require your choice. Turning audio chat off during creation disables it for the whole table.</li>
           <li><strong>Password</strong>: only people who know it can join. It is never part of the invitation link.</li>
         </ul>
-        <p>Before starting, the host can fill empty seats with computer opponents or remove them again. One seat remains human. Even with computers, the match begins only when the host chooses “Start”; each computer knows only its own permitted view.</p>
+        <p>“Create game” opens a separate settings dialog. Table names combine your username with one of 50 round names. Leaving the password empty makes the table public. You can fill empty seats with CPUs during creation. In the waiting room before starting, the host can fill empty seats with computer opponents or remove them again. One seat remains human. Even with computers, the match begins only when the host chooses “Start”; each computer knows only its own permitted view.</p>
       </section>
       <section id="leaving"><h2>Pause and return</h2>
         <p>Deliberately leaving a running match pauses it. Seat, cards, points and any open bid are kept; nobody takes over, nothing times out and nothing is scored. The others see who the match is waiting for. Choose “Resume” when you are back. A short connection loss is not a pause – your seat simply stays yours.</p>
@@ -186,7 +196,7 @@
         <p>You can play in portrait and landscape. Your hand, complete opponents' fans, the trick and the current decision stay visible on one fixed table; you do not need to scroll the page during play. The lobby and rules retain normal scrolling. Every action is also reachable with the keyboard.</p>
         <p>Played cards move from their seat to the middle of the table. The completed trick is collected towards its winner, who leads the next trick. Calls and bid responses remain reachable beside the cards. Reduced motion shows the same game states without card flights.</p>
         <p>“Table chat &amp; emoji” opens the public conversation with all players and admitted spectators. Messages and reactions remain allowed during a pending bid, a pause and when gestrichen; card hints remain forbidden. Use “Good/Bad/Unsure” for private partner advice. Table chat is independent of your shared lobby chat preference.</p>
-        <p>“Decorate the table” places drinks, snacks or a decoration die on your device. Drag items or use the arrow keys; Delete removes the selected item. Eating, drinking and the decoration die never affect the match. When space is tight, items wait in your decoration corner. “Clear the table” removes items and spills.</p>
+        <p>“Decorate the table” places drinks, snacks or a decoration die on your device. Drag items or use the arrow keys; Delete removes the selected item. Eating, drinking and the decoration die never affect the match. When space is tight, items wait in your decoration corner. “Clear the table” removes items and spills. Rare surprises are shared by the table; after a valid completed match, their trigger and connected witnesses receive evidenced achievements. At least two human players must be connected when the event occurs.</p>
       </section>
       <section id="progress"><h2>Achievements and pub titles</h2>
         <p>Completed matches appear in your own history. Match XP and one-time achievements build your permanent pub title; match points still decide the match. XP measures persistence at the table and is not a measure of playing strength. In the local preview, XP, achievement values and title levels are labelled as a proposal.</p>
@@ -199,6 +209,6 @@
       <p><a class="wt-button" href="/watten">To the lobby</a></p>
     </article>
   </main>
-  <script type="module" src="/static/watten-game.js?v=787b1d1593ff"></script>
+  <script type="module" src="/static/watten-game.js?v=c86a661d20ef"></script>
 </body>
 </html>

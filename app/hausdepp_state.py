@@ -49,7 +49,7 @@ def new_hausdepp_game(game_id: str, name: str, mode: object, *, register: bool =
 
 
 def configure_hausdepp_game(game: GameDict, *, host_user_id: int, cpu_count: int = 1, tournament: bool = False,
-                           waiting_mode: str = "fixed", manual_start: bool = False) -> None:
+                           waiting_mode: str = "fixed", manual_start: bool = False, voice_enabled: bool = True) -> None:
     if game.get("_players") or game.get("_started"):
         raise ValueError("hausdepp_game_already_configured")
     if type(host_user_id) is not int or host_user_id < 1:
@@ -61,6 +61,9 @@ def configure_hausdepp_game(game: GameDict, *, host_user_id: int, cpu_count: int
         raise ValueError("hausdepp_invalid_cpu_count")
     if type(tournament) is not bool:
         raise ValueError("hausdepp_invalid_tournament")
+    if type(voice_enabled) is not bool:
+        raise ValueError("hausdepp_invalid_voice_option")
+    game["_voice_enabled"] = voice_enabled
     game["_hausdepp_host_user_id"] = host_user_id
     game["_expected"] = capacity
     game["_mode"] = str(capacity)

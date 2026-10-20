@@ -7,7 +7,16 @@ CPU views use the same personal projection as their own authorized seat.
 
 from __future__ import annotations
 
-from .watten_engine import EngineActor, EngineState, WattenEngineError, gestrichen_players, partner_id, require_actor
+from .watten_bidding import nockerl, retourschneider_candidate
+from .watten_engine import (
+    EngineActor,
+    EngineState,
+    WattenEngineError,
+    gestrichen_players,
+    partner_id,
+    require_actor,
+    retourschneider_decider,
+)
 from .watten_play import official_knower_seats
 from .watten_rules import WELI_STRIKE, round_roles
 
@@ -17,6 +26,24 @@ def _trick(leader: int, cards: tuple[str, ...], count: int, winner: int | None =
     if winner is not None:
         result["winner"] = winner
     return result
+
+
+def _retourschneider(state: EngineState) -> dict | None:
+    choice = state.ledger.retourschneider
+    members = choice.members if choice is not None else (
+        retourschneider_candidate(state.ledger) if state.phase == "deal_complete" else None)
+    if members is None:
+        return None
+    opponents = next(account.members for account in state.ledger.accounts if account.members != members)
+    status = "available"
+    if choice is not None:
+        status = ("declined" if not choice.accepted else "succeeded" if members in state.ledger.winners
+                  else "failed" if state.ledger.winners else "active")
+    return {"status": status, "members": list(members), "opponent_members": list(opponents),
+            "decider": retourschneider_decider(state, members),
+            "erased_points": choice.erased_points if choice else next(
+                account.points for account in state.ledger.accounts if account.members == members),
+            "after_deal_id": choice.after_deal_id if choice else state.deal_id}
 
 
 def _public(state: EngineState) -> dict:
@@ -41,6 +68,9 @@ def _public(state: EngineState) -> dict:
         "scores": [{"members": list(account.members), "points": account.points} for account in state.ledger.accounts],
         "target_points": recipe.target_points,
         "winners": [list(members) for members in state.ledger.winners],
+        "retourschneider": _retourschneider(state),
+        "nockerl": [{"members": list(members), "count": count, "reason": reason}
+                    for members, count, reason in nockerl(state.ledger)],
         "party_tricks": list(play.party_tricks) if play else [0, 0],
         "card_turn": play.current_seat if play and not result else None,
         "current_trick": current, "last_trick": last,
@@ -75,6 +105,10 @@ def _actions(state: EngineState, seat: int) -> list[str]:
     if state.phase == "inspection":
         return ["inspection_ack"] if seat in state.inspectors and seat not in state.acknowledged else []
     actions = []
+    members = retourschneider_candidate(state.ledger)
+    if (state.phase == "deal_complete" and members is not None
+            and player == retourschneider_decider(state, members)):
+        actions.append("retourschneider")
     if state.phase == "play" and player == state.play.current_player_id:
         actions.append("play_card")
         if (state.play.plays and player not in gestrichen_players(state)
@@ -82,7 +116,9 @@ def _actions(state: EngineState, seat: int) -> list[str]:
             actions.append("bid")
     if state.phase == "bid_response" and player == state.parties.decider(1 - state.bid_state.pending.party):
         actions.extend(("respond_hold", "respond_go", "respond_counter"))
-    if state.phase in {"play", "bid_response"} and partner_id(state, player) is not None:
+    if (state.phase == "bid_response" and partner_id(state, player) is not None
+            and state.parties.party_of(player) != state.bid_state.pending.party
+            and not any(item.sender == player for item in state.feedback)):
         actions.append("partner_feedback")
     return actions
 

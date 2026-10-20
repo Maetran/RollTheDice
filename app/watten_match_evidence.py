@@ -101,7 +101,7 @@ def terminal_evidence(game: dict, *, finished_at: datetime) -> MatchEvidence:
     """Produce public evidence alongside the trusted completed-result transaction.
 
     The caller supplies the aware UTC CompletedGame timestamp. Existing v1
-    result data must agree exactly; the writer's payload is never extended.
+    result data, including an optional Retourschneider decision, must agree exactly.
     This function performs no storage, grants, account lookup or client reads.
     """
     from .watten_results import result_payload

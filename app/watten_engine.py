@@ -17,12 +17,15 @@ from .watten_bidding import (
     DealParties,
     DealResult,
     Offer,
+    Retourschneider,
     ScoreAccount,
     ScoreLedger,
     award_deal,
     bid,
+    choose_retourschneider,
     new_score_ledger,
     respond,
+    retourschneider_candidate,
 )
 from .watten_cards import WATTEN_NORMAL_RANKS, WATTEN_SUITS, DealtCards
 from .watten_play import PlayProfile, PlayState, deal_progress, finish_deal, play_card, start_play
@@ -199,14 +202,7 @@ class EngineState:
         expected_accounts = self.parties.parties if len(self.recipe.seats) == 4 else tuple((s,) for s in self.recipe.seats)
         if {frozenset(item.members) for item in self.ledger.accounts} != {frozenset(item) for item in expected_accounts}:
             raise WattenEngineError("watten_engine_score_mismatch")
-        totals = [0 for _ in self.ledger.accounts]
-        for result in self.ledger.applied_results:
-            if any(points >= self.ledger.target for points in totals):
-                raise WattenEngineError("watten_result_after_match_end")
-            winners = set(result.roles.parties[result.winning_party])
-            totals = [points + (result.points if set(account.members) <= winners else 0)
-                      for points, account in zip(totals, self.ledger.accounts)]
-        if tuple(totals) != tuple(account.points for account in self.ledger.accounts):
+        if self.ledger.replayed_accounts != self.ledger.accounts:
             raise WattenEngineError("watten_engine_score_mismatch")
         if (type(self.shown) is not frozenset or type(self.acknowledged) is not frozenset
                 or any(type(seat) is not int for seat in (*self.shown, *self.acknowledged))
@@ -268,12 +264,14 @@ class EngineState:
             raise WattenEngineError("watten_first_card_required")
         if type(self.feedback) is not tuple or len(self.feedback) > len(self.recipe.seats):
             raise WattenEngineError("watten_invalid_feedback")
-        if self.feedback and not active:
+        if self.feedback and self.phase != "bid_response":
             raise WattenEngineError("watten_invalid_feedback")
         senders = []
         for item in self.feedback:
             if (not isinstance(item, PrivateFeedback) or item.value not in _FEEDBACK
-                    or not _number(item.sequence, 1) or partner_id(self, item.sender) != item.recipient):
+                    or not _number(item.sequence, 1) or partner_id(self, item.sender) != item.recipient
+                    or self.bid_state.pending is None
+                    or self.parties.party_of(item.sender) == self.bid_state.pending.party):
                 raise WattenEngineError("watten_invalid_feedback")
             senders.append(item.sender)
         if len(set(senders)) != len(senders):
@@ -362,6 +360,13 @@ def gestrichen_players(state: EngineState) -> frozenset[str]:
                      if account.points >= state.recipe.gestrichen_from for member in account.members)
 
 
+def retourschneider_decider(state: EngineState, members: tuple[str, ...]) -> str:
+    """Keep a mixed team's optional comeback decision with its human player."""
+    humans = tuple(binding.player_id for binding in state.recipe.bindings
+                   if binding.player_id in members and binding.account_id is not None)
+    return humans[0] if len(humans) == 1 else state.parties.decider(state.parties.party_of(members[0]))
+
+
 def start_match(recipe: EngineRecipe, deal_id: str, deal: DealtCards, *, first_dealer: str) -> EngineState:
     """First dealer is a trusted server draw result; this module never draws it."""
     parties = _parties(recipe, first_dealer)
@@ -374,6 +379,8 @@ def next_deal(state: EngineState, deal_id: str, deal: DealtCards) -> EngineState
     """Trusted server transition after a scored deal; no new teams or shuffle."""
     if state.phase != "deal_complete":
         raise WattenEngineError("watten_next_deal_unavailable")
+    if retourschneider_candidate(state.ledger) is not None:
+        raise WattenEngineError("watten_retourschneider_decision_pending")
     if deal_id == state.deal_id or any(result.deal_id == deal_id for result in state.ledger.applied_results):
         raise WattenEngineError("watten_deal_id_reused")
     roles = round_roles(len(state.recipe.seats), state.dealer_seat, determination=state.recipe.profile.determination)
@@ -466,14 +473,23 @@ def apply_command(state: EngineState, actor: EngineActor, command: EngineCommand
         changed = _finish(state, play, finish_deal(play, state.bid_state)) if play.ended else replace(state, play=play)
     elif kind == "bid" and state.phase == "play" and value is None:
         bidding = bid(state.bid_state, actor.player_id, deal_progress(state.play), gestrichen=gestrichen_players(state))
-        changed = replace(state, bid_state=bidding, phase="bid_response")
+        changed = replace(state, bid_state=bidding, phase="bid_response", feedback=())
     elif kind == "respond" and state.phase == "bid_response":
         bidding = respond(state.bid_state, actor.player_id, value, deal_progress(state.play))
-        changed = _finish(state, state.play, bidding) if bidding.result else replace(
-            state, bid_state=bidding, phase="bid_response" if bidding.pending else "play")
-    elif kind == "partner_feedback" and state.phase in {"play", "bid_response"}:
+        cleared = replace(state, feedback=())
+        changed = _finish(cleared, state.play, bidding) if bidding.result else replace(
+            cleared, bid_state=bidding, phase="bid_response" if bidding.pending else "play")
+    elif kind == "retourschneider" and state.phase == "deal_complete":
+        members = retourschneider_candidate(state.ledger)
+        if (members is None or value not in {"accept", "decline"}
+                or actor.player_id != retourschneider_decider(state, members)):
+            raise WattenEngineError("watten_retourschneider_unavailable")
+        changed = replace(state, ledger=choose_retourschneider(state.ledger, members, accept=value == "accept"))
+    elif kind == "partner_feedback" and state.phase == "bid_response":
         partner = partner_id(state, actor.player_id)
-        if partner is None or value not in _FEEDBACK:
+        if (partner is None or value not in _FEEDBACK
+                or state.parties.party_of(actor.player_id) == state.bid_state.pending.party
+                or any(item.sender == actor.player_id for item in state.feedback)):
             raise WattenEngineError("watten_feedback_unavailable")
         sequence = next((item.sequence + 1 for item in state.feedback if item.sender == actor.player_id), 1)
         if command.private_opportunity != sequence - 1:
@@ -524,7 +540,8 @@ def storage_payload(state: EngineState) -> dict:
                 "result": _result_payload(bidding.result)},
         "ledger": {"target": state.ledger.target, "accounts": [{"members": list(account.members), "points": account.points}
                                                                 for account in state.ledger.accounts],
-                   "applied_results": [_result_payload(result) for result in state.ledger.applied_results]},
+                   "applied_results": [_result_payload(result) for result in state.ledger.applied_results],
+                   "retourschneider": retourschneider_payload(state.ledger.retourschneider)},
         "feedback": [{"sender": item.sender, "recipient": item.recipient, "value": item.value, "sequence": item.sequence}
                      for item in state.feedback],
         "ack_cache": [{"player_id": item.player_id, "account_id": item.account_id, "digest": item.digest,
@@ -533,8 +550,9 @@ def storage_payload(state: EngineState) -> dict:
     }
 
 
-def _object(value: object, keys: str) -> dict:
-    if type(value) is not dict or set(value) != set(keys.split()):
+def _object(value: object, keys: str, optional: frozenset[str] = frozenset()) -> dict:
+    required = set(keys.split())
+    if type(value) is not dict or not required <= set(value) or set(value) - required - optional:
         raise WattenEngineError("watten_invalid_storage")
     return value
 
@@ -555,6 +573,18 @@ def _restore_result(value: dict | None) -> DealResult | None:
         return None
     value = _object(value, "deal_id roles winning_party points reason")
     return DealResult(value["deal_id"], _restore_roles(value["roles"]), value["winning_party"], value["points"], value["reason"])
+
+
+def retourschneider_payload(choice: Retourschneider | None) -> dict | None:
+    return None if choice is None else {"members": list(choice.members), "after_deal_id": choice.after_deal_id,
+                                       "erased_points": choice.erased_points, "accepted": choice.accepted}
+
+
+def restore_retourschneider(value: dict | None) -> Retourschneider | None:
+    if value is None:
+        return None
+    raw = _object(value, "members after_deal_id erased_points accepted")
+    return Retourschneider(tuple(_list(raw["members"])), raw["after_deal_id"], raw["erased_points"], raw["accepted"])
 
 
 def restore_storage(value: dict) -> EngineState:
@@ -580,13 +610,18 @@ def restore_storage(value: dict) -> EngineState:
     pending = None if raw_bid["pending"] is None else Offer(**_object(raw_bid["pending"], "party points"))
     bidding = BidState(raw_deal["id"], parties, raw_bid["accepted_stake"], raw_bid["last_offering_party"],
                        pending, _restore_result(raw_bid["result"]))
-    raw_ledger = _object(value["ledger"], "target accounts applied_results")
+    raw_ledger = _object(value["ledger"], "target accounts applied_results", frozenset({"retourschneider"}))
     accounts = []
     for item in _list(raw_ledger["accounts"]):
         item = _object(item, "members points")
         accounts.append(ScoreAccount(tuple(_list(item["members"])), item["points"]))
-    ledger = ScoreLedger(raw_ledger["target"], tuple(accounts), tuple(_restore_result(item) for item in _list(raw_ledger["applied_results"])))
+    ledger = ScoreLedger(raw_ledger["target"], tuple(accounts), tuple(_restore_result(item) for item in _list(raw_ledger["applied_results"])),
+                         restore_retourschneider(raw_ledger.get("retourschneider")))
     feedback = tuple(PrivateFeedback(**_object(item, "sender recipient value sequence")) for item in _list(value["feedback"]))
+    # Older checkpoints allowed unsolicited feedback outside a received bid.
+    # Those messages confer no new permission under the restricted flow.
+    feedback = tuple(item for item in feedback if value["phase"] == "bid_response" and pending is not None
+                     and parties.party_of(item.sender) != pending.party)
     cache = []
     for item in _list(value["ack_cache"]):
         item = _object(item, "player_id account_id digest ack")

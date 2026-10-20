@@ -1924,6 +1924,7 @@ class CreateReq(BaseModel):
     tournament: bool = Field(default=False, strict=True)
     waiting_mode: str = Field(default="fixed", pattern="^(fixed|open)$")
     manual_start: bool = Field(default=False, strict=True)
+    voice_enabled: bool = Field(default=True, strict=True)
     watten_recipe: dict | None = None
 
     @field_validator("name")
@@ -2767,7 +2768,8 @@ async def api_games_create(req: CreateReq, request: Request):
         from .hausdepp_state import configure_hausdepp_game
 
         configure_hausdepp_game(g, host_user_id=identity.user_id, cpu_count=req.cpu_count or 0,
-                                tournament=req.tournament, waiting_mode=req.waiting_mode, manual_start=req.manual_start)
+                                tournament=req.tournament, waiting_mode=req.waiting_mode, manual_start=req.manual_start,
+                                voice_enabled=req.voice_enabled)
     if req.game_type == ZILCH_GAME_TYPE and req.play_mode == ZILCH_CPU_MODE:
         # The creator is the only human seat.  The CPU is a durable domain
         # participant and receives neither account data nor a socket record.

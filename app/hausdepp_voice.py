@@ -1,4 +1,4 @@
-"""Account-bound, ephemeral Hausdepp audio signaling. Audio never enters this app.
+"""Account-bound, ephemeral table audio signaling. Audio never enters this app.
 
 Cloudflare SFU identifiers are discovered only after seating authorization. This
 module owns every provider mutation and never accepts a provider URL, session or
@@ -22,7 +22,7 @@ from urllib.error import HTTPError, URLError
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 from .auth import resolve_session
-from .game_types import HAUSDEPP_GAME_TYPE, game_type_from_state
+from .game_types import HAUSDEPP_GAME_TYPE, WATTEN_GAME_TYPE, game_type_from_state
 from .moderation import user_play_banned
 from .security import utcnow
 from .voice_usage import UsageCounter, accept_usage, record_usage
@@ -184,6 +184,13 @@ class VoiceRoom:
 
 
 def _roster(game: dict) -> set[int]:
+    if game_type_from_state(game) == WATTEN_GAME_TYPE:
+        runtime = game.get("_watten")
+        if runtime is None:
+            return set()
+        return {member.account_id for member in runtime.room.members
+                if member.participant_id not in runtime.absent
+                and (runtime.engine is None or member.seat is not None)}
     return {p["user_id"] for p in [*game.get("_players", []), *game.get("_participants", [])]
             if type(p.get("user_id")) is int and p["user_id"] > 0
             and not p.get("is_cpu") and p.get("type") != "cpu"
@@ -192,10 +199,51 @@ def _roster(game: dict) -> set[int]:
 
 def _game_eligible(game: dict) -> bool:
     """Waiting friends may opt in; a played table needs two durable accounts."""
-    if game_type_from_state(game) != HAUSDEPP_GAME_TYPE or game.get("_aborted"):
+    game_type = game_type_from_state(game)
+    if game_type not in {HAUSDEPP_GAME_TYPE, WATTEN_GAME_TYPE} or game.get("_aborted"):
+        return False
+    if game_type == WATTEN_GAME_TYPE:
+        runtime = game.get("_watten")
+        if runtime is None or not runtime.room.recipe.voice_enabled or runtime.room.status == "closed":
+            return False
+        return runtime.room.status == "waiting" or len(_roster(game)) >= 2
+    if game.get("_voice_enabled", True) is not True:
         return False
     waiting = not game.get("_started") and not game.get("_finished") and game.get("_hausdepp") is None
     return waiting or len(_roster(game)) >= 2
+
+
+def _voice_key(game: dict, suffix: str) -> str:
+    prefix = "watten" if game_type_from_state(game) == WATTEN_GAME_TYPE else "hausdepp"
+    return f"_{prefix}_voice_{suffix}"
+
+
+def _envelope(game: dict) -> str:
+    return "watten_voice" if game_type_from_state(game) == WATTEN_GAME_TYPE else "hausdepp_voice"
+
+
+def _account_allowed(game: dict, websocket, identity) -> bool:
+    if not identity or user_play_banned(identity.user_id):
+        return False
+    if game_type_from_state(game) != WATTEN_GAME_TYPE:
+        return True
+    from .watten_access import can_access_watten
+
+    return can_access_watten(identity, websocket)
+
+
+def _authorized_member(game: dict, websocket, identity, player: dict) -> bool:
+    if (not _account_allowed(game, websocket, identity) or player.get("user_id") != identity.user_id
+            or player.get("ws") is not websocket):
+        return False
+    if game_type_from_state(game) != WATTEN_GAME_TYPE:
+        return player.get("id") not in game.get("_hausdepp_departures", {})
+    runtime = game.get("_watten")
+    return bool(runtime is not None
+                and player.get("id") not in runtime.absent
+                and any(member.participant_id == player.get("id") and member.account_id == identity.user_id
+                        and (runtime.engine is None or member.seat is not None)
+                        for member in runtime.room.members))
 
 
 def carry_voice_room(source: dict, target: dict, user_ids: set[int]) -> None:
@@ -209,10 +257,9 @@ def carry_voice_room(source: dict, target: dict, user_ids: set[int]) -> None:
 def _actor(session, *, require_eligible: bool = True):
     identity = resolve_session(session.websocket)
     player = next((p for p in session.game.get("_players", []) if p.get("id") == session.player_id), None)
-    if (game_type_from_state(session.game) != HAUSDEPP_GAME_TYPE or session.is_spectator
-            or not identity or not player or player.get("user_id") != identity.user_id
-            or player.get("ws") is not session.websocket or session.game.get("_aborted")
-            or user_play_banned(identity.user_id)):
+    if (game_type_from_state(session.game) not in {HAUSDEPP_GAME_TYPE, WATTEN_GAME_TYPE} or session.is_spectator
+            or not player or not _authorized_member(session.game, session.websocket, identity, player)
+            or session.game.get("_aborted")):
         raise VoiceError("hausdepp_voice_forbidden")
     if require_eligible and not _game_eligible(session.game):
         raise VoiceError("hausdepp_voice_unavailable")
@@ -264,8 +311,8 @@ async def _ensure_sfu_session(member: VoiceMember, session) -> str:
 
 async def _room_for(game: dict) -> VoiceRoom:
     _prune_rooms(time.monotonic())
-    room_id = game.get("_hausdepp_voice_room_id")
-    allowed = game.get("_hausdepp_voice_allowed_user_ids")
+    room_id = game.get(_voice_key(game, "room_id"))
+    allowed = game.get(_voice_key(game, "allowed_user_ids"))
     allowed = {x for x in allowed if type(x) is int and x > 0} if isinstance(allowed, list) else _roster(game)
     room = _rooms.get(room_id) if isinstance(room_id, str) else None
     if room is None:
@@ -278,7 +325,7 @@ async def _room_for(game: dict) -> VoiceRoom:
         room = VoiceRoom(room_id, allowed)
         _rooms[room_id] = room
     async with room.lock:
-        current_id = game.get("_hausdepp_voice_room_id")
+        current_id = game.get(_voice_key(game, "room_id"))
         if isinstance(current_id, str) and current_id != room.id and current_id in _rooms:
             # A previous waiter already rotated this group while we waited.
             return await _room_for(game)
@@ -296,8 +343,8 @@ async def _room_for(game: dict) -> VoiceRoom:
                 old_room.games.clear()
             room = VoiceRoom(secrets.token_hex(16), _roster(game))
             _rooms[room.id] = room
-        game["_hausdepp_voice_room_id"] = room.id
-        game["_hausdepp_voice_allowed_user_ids"] = sorted(room.allowed_users)
+        game[_voice_key(game, "room_id")] = room.id
+        game[_voice_key(game, "allowed_user_ids")] = sorted(room.allowed_users)
         room.games[str(game["_id"])] = game
         room.last_used = time.monotonic()
     _start_watchdog()
@@ -328,7 +375,8 @@ def _state(room: VoiceRoom, game: dict, *, publications: bool) -> dict:
     if not voice_available() or not _game_eligible(game):
         return {"event": "state", "available": False, "room_id": None, "members": [], "publications": []}
     seats = {p["user_id"]: p["id"] for p in game.get("_players", [])
-             if type(p.get("user_id")) is int and p["user_id"] in room.allowed_users}
+             if type(p.get("user_id")) is int and p["user_id"] in room.allowed_users
+             and p["user_id"] in _roster(game)}
     result = {"event": "state", "available": voice_available(), "room_id": room.id, "members": [
         {"user_id": uid, "player_id": seats[uid], "audio": uid in room.members,
          "microphone": bool(room.members.get(uid) and room.members[uid].microphone),
@@ -349,12 +397,12 @@ async def _broadcast(room: VoiceRoom) -> None:
             if websocket is None:
                 continue
             identity = resolve_session(websocket)
-            if not identity or identity.user_id != player.get("user_id") or user_play_banned(identity.user_id):
+            if not _authorized_member(game, websocket, identity, player):
                 continue
             member = room.members.get(identity.user_id)
             joined = bool(member and member.websocket is websocket)
             try:
-                await asyncio.wait_for(websocket.send_json({"hausdepp_voice": _state(room, game, publications=joined)}), 2)
+                await asyncio.wait_for(websocket.send_json({_envelope(game): _state(room, game, publications=joined)}), 2)
             except (TimeoutError, RuntimeError, OSError):
                 continue
 
@@ -449,12 +497,13 @@ async def reap_voice(*, now: float | None = None) -> None:
         async with room.lock:
             for member in list(room.members.values()):
                 identity = resolve_session(member.websocket)
-                owns = any(p.get("user_id") == member.user_id and p.get("ws") is member.websocket
+                owns = any(_authorized_member(member.game, member.websocket, identity, p)
+                           and p.get("user_id") == member.user_id
                            for p in member.game.get("_players", []))
                 expired = (now - member.last_seen > HEARTBEAT_SECONDS
                            or member.disconnected_at is not None and now - member.disconnected_at > RECONNECT_SECONDS)
-                if (not voice_available() or not identity or identity.user_id != member.user_id
-                        or user_play_banned(member.user_id) or not _game_eligible(member.game) or expired
+                if (not voice_available() or not _account_allowed(member.game, member.websocket, identity)
+                        or identity.user_id != member.user_id or not _game_eligible(member.game) or expired
                         or not owns and member.disconnected_at is None):
                     async with member.lock:
                         await _remove_member(room, member)
@@ -515,12 +564,12 @@ async def voice_socket_disconnected(session, *, revoke: bool = False) -> None:
 
 
 async def refresh_voice_game(game: dict) -> None:
-    if game_type_from_state(game) != HAUSDEPP_GAME_TYPE or not game.get("_hausdepp_voice_room_id"):
+    if game_type_from_state(game) not in {HAUSDEPP_GAME_TYPE, WATTEN_GAME_TYPE} or not game.get(_voice_key(game, "room_id")):
         return
     room = await _room_for(game)
     async with room.lock:
         for member in list(room.members.values()):
-            if member.game is game and not _game_eligible(game):
+            if member.game is game and (not _game_eligible(game) or member.user_id not in _roster(game)):
                 async with member.lock:
                     await _remove_member(room, member)
     await _broadcast(room)
@@ -532,11 +581,15 @@ async def handle_voice_action(session, data: dict) -> None:
     try:
         if reply["request_id"] is None or len(json.dumps(data).encode()) > 98304:
             raise VoiceError("hausdepp_voice_invalid_request")
+        # The only scope is this complete table. Clients cannot select a team,
+        # another room or arbitrary recipients for a private audio channel.
+        if any(key in data for key in {"channel", "team", "room_id", "recipients", "recipient_id"}):
+            raise VoiceError("hausdepp_voice_invalid_request")
         identity, player = _actor(session, require_eligible=False)
         operation = data.get("operation")
         if operation not in {"state", "join", "publish", "subscribe", "answer", "microphone", "leave", "heartbeat", "resume"}:
             raise VoiceError("hausdepp_voice_invalid_request")
-        if not voice_available():
+        if not voice_available() or not _game_eligible(session.game):
             if operation == "state":
                 reply.update(ok=True, state={"event": "state", "available": False, "room_id": None, "members": [], "publications": []})
             else:
@@ -599,7 +652,7 @@ async def handle_voice_action(session, data: dict) -> None:
                 await _broadcast(room)
         reply = {"request_id": reply.get("request_id"), "ok": False,
                  "error_code": str(exc) if isinstance(exc, VoiceError) else "hausdepp_voice_invalid_request"}
-    await session.websocket.send_json({"hausdepp_voice": reply})
+    await session.websocket.send_json({_envelope(session.game): reply})
 
 
 async def _member_operation(room: VoiceRoom, member: VoiceMember, operation: str, data: dict, session) -> dict:

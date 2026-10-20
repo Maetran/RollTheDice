@@ -34,6 +34,7 @@ from .watten_evidence import (
 from .watten_progression import DRAFT_ACHIEVEMENTS, DRAFT_CATALOG_VERSION, MatchInput, evaluate_draft, title_for_xp
 from .watten_progression_store import _bindings, _cohort, _json
 from .watten_recipe import dumps_canonical_json
+from .watten_surprises import SURPRISE_ACHIEVEMENTS, qualifying_surprises, surprise_facts
 
 SOURCE_PAGE_SIZE = 250
 
@@ -146,6 +147,7 @@ def _title(title):
 
 def _progress(db, user_id, matches):
     by_game = {item.evidence.game_id: item for item in matches}
+    rare_facts = surprise_facts(db, user_id)
     state = db.get(WattenProgressState, user_id)
     credits = list(db.scalars(select(WattenMatchCredit).where(WattenMatchCredit.user_id == user_id)))
     grants = list(db.scalars(select(WattenAchievementGrant).where(WattenAchievementGrant.user_id == user_id)))
@@ -172,9 +174,15 @@ def _progress(db, user_id, matches):
                      and item.grant_sequence not in seen)
             seen.add(item.grant_sequence)
         goals = {goal.achievement_id: goal for goal in DRAFT_ACHIEVEMENTS}
+        rare_goals = {goal.achievement_id: goal for goal in SURPRISE_ACHIEVEMENTS}
         prefixes, contributions = {}, {}
         for grant in grants:
             _require(grant.source_game_id in sources)
+            if grant.catalog_version == DRAFT_CATALOG_VERSION and grant.achievement_id in rare_goals:
+                source_match = by_game[grant.source_game_id]
+                _require(as_utc(grant.reached_at) == source_match.evidence.finished_at
+                         and grant.achievement_id in qualifying_surprises(db, source_match.evidence,
+                                                                         source_match.original_bindings, user_id, facts=rare_facts))
             if grant.catalog_version == DRAFT_CATALOG_VERSION and grant.achievement_id in goals:
                 source_match = by_game[grant.source_game_id]
                 source = source_match.evidence
@@ -206,10 +214,20 @@ def _progress(db, user_id, matches):
                         "progress": min(goal.target, getattr(proposal.counters, goal.counter)), "draft_xp": goal.xp,
                         "granted_xp": grant.xp if grant else 0, "earned_at": as_utc(grant.reached_at).isoformat() if grant else None,
                         "unlocked": grant is not None})
+    rare_progress = set()
+    for match_input in inputs:
+        rare_progress.update(qualifying_surprises(db, match_input.evidence, match_input.bindings, user_id, facts=rare_facts))
+    for goal in SURPRISE_ACHIEVEMENTS:
+        grant = grants_by_id.get(goal.achievement_id)
+        catalog.append({"id": goal.achievement_id, "name": {"de": goal.name.de, "en": goal.name.en},
+                        "description": {"de": goal.condition.de, "en": goal.condition.en}, "target": 1,
+                        "progress": int(goal.achievement_id in rare_progress), "draft_xp": goal.xp,
+                        "granted_xp": grant.xp if grant else 0, "earned_at": as_utc(grant.reached_at).isoformat() if grant else None,
+                        "unlocked": grant is not None})
     counters = {key: getattr(proposal.counters, key) for key in (
         "completed", "wins", "two", "three", "four", "variety", "team_wins", "cpu_matches", "days",
         "normal", "ladinisch", "blind", "critical", "bid_matches", "counter_matches", "quiet_wins")}
-    current_ids = {item.achievement_id for item in DRAFT_ACHIEVEMENTS}
+    current_ids = {item.achievement_id for item in (*DRAFT_ACHIEVEMENTS, *SURPRISE_ACHIEVEMENTS)}
     archived = [{"id": item.achievement_id, "name": {"de": "Gespeicherter Watten-Erfolg", "en": "Stored Watten achievement"},
                  "granted_xp": item.xp, "earned_at": as_utc(item.reached_at).isoformat(), "catalog_version": item.catalog_version}
                 for item in grants if item.catalog_version != DRAFT_CATALOG_VERSION or item.achievement_id not in current_ids]

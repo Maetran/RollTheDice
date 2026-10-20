@@ -82,20 +82,77 @@ Local native account settings save consent, the shared player selection and the
 invitation audience. Search keeps at most100 results visible, replacing older
 pages while retaining the selection. These settings do not activate push.
 
-**Spieltisch / game table:** Die helle Tiroler Schnitzstube hält Hand,
-Gegnerfächer, Stich und aktuelle Entscheidung auf einer festen Spielfläche.
-Während der Partie brauchst du die Seite nicht zu scrollen; Lobby und Anleitung
-bleiben normal scrollbar. Karten bewegen sich vom jeweiligen Platz zum Stich,
-der abgeschlossene Stich zum Gewinner. Dieser spielt den nächsten Stich aus.
-Ansagen und Gebotsantworten bleiben bei den Karten erreichbar. Mit reduzierter
-Bewegung erscheinen dieselben Spielzustände ohne Kartenflüge.
+**Lobby und Erstellung / lobby and creation:** Die kompakte Lobby öffnet die
+Spieleinstellungen in einem Dialog wie Hausdepp. 50 eigene Rundennamen werden
+mit dem Benutzernamen kombiniert. Freie Sitze lassen sich mit CPUs auffüllen;
+ein optionales Passwort aktiviert den Schutz. Favoriten speichern Einstellungen,
+keine Passwörter. Die Teambildung bleibt bewusst im Warteraum.
+The compact lobby opens settings in a dialog like Hausdepp. Fifty original round
+names combine with the username. CPU fill is optional; a nonempty password
+protects the table. Favorites save settings, never passwords. Teams are chosen
+in the waiting room.
 
-The light Tyrolean carved-wood table keeps your hand, opponents' fans, the
-trick and the current decision on one fixed play surface. The active game needs
-no page scrolling; the lobby and rules retain normal scrolling. Cards move from
-their seat to the trick, and the completed trick moves to its winner, who leads
-the next trick. Calls and bid responses remain reachable beside the cards.
-Reduced motion shows the same game states without card flights.
+**Spieltisch / game table:** Mobile zuerst: die helle Tiroler Schnitzstube bleibt
+mit grösseren Schnitzecken sichtbar. Vor dem Aufdecken erscheint kein leerer
+Handkartenfächer. Bei der ladinischen Ansage gleiten die beiden zulässigen Karten
+mit Schlag/Farbe zusammen. Teamstand, gemeinsames Ziel und antippbarer Einsatz
+stehen oben; der dauernde Zug-Hinweis entfällt. Abgeschlossene Stiche bleiben
+rund drei Sekunden sichtbar, mit Siegerrahmen und Spielernamen. Der letzte Stich
+kann lokal erneut angesehen werden. Ein gegnerisches Gebot fragt beide
+angebotenen Partner einmal privat nach ihrem Gefühl; die Auswahl schliesst den
+Dialog, die Antwort geht nur an den Partner.
+Mobile first: the light Tyrolean carved table keeps its larger corners visible.
+No empty hand appears before cards are revealed. Ladinisch calls slide the two
+authorized cards together, labelled Strike and Trump suit. Scores, one shared
+target and the tappable stake sit above the table. Completed tricks stay for
+about three seconds with a winner outline and player names; the last trick can
+be reviewed locally. Only receiving an opposing bid opens a private feeling
+prompt for both partners; answering closes it and informs only the partner.
+
+**Tischdeko / table decorations:** Getränke, Snacks und Dekowürfel liegen frei
+auf dem Tisch. Antippen benutzt sie, Ziehen oder Pfeiltasten verschieben sie.
+Acht seltene Überraschungen können gemeinsam auftreten. Auslösung und Miterleben
+werden serverseitig einmal je Runde belegt und erst mit dem gültig abgeschlossenen
+Spiel als Erfolge verbucht; mindestens zwei Menschen müssen verbunden mitspielen.
+Drinks, snacks and decoration dice scatter over the table. Tap to use, drag or
+use arrow keys to move. Eight rare surprises can occur together at the table.
+Server evidence records activation and connected witnesses once per round;
+achievements are granted only after a valid completed match with at least two
+connected human players at the time of the event.
+
+**Wertung / scoring:** Eine Runde endet mit drei Stichen oder Gehen; das Spiel
+endet am Ziel. Verlierer bekommen ein Nockerl, ohne Punkte zwei (Schneider).
+Im Vierer kann das zurückliegende Team beim erstmals gestrichenen Gegner die
+Anschrift löschen und einen Retourschneider versuchen: alle weiteren Runden
+gewinnen bringt den bisherigen Führenden vier Nockerl; einmal verlieren beendet
+das Spiel sofort mit zwei Nockerl für die Herausforderer. Die Wahl ist ausdrücklich.
+A round ends with three tricks or a fold, the match at its target. Losers receive
+one Nockerl, or two without scoring (Schneider). With four players, the trailing
+team may erase its score when the other team first becomes gestrichen. Winning
+every remaining round gives the former leaders four loss marks; losing once ends
+the match immediately and gives the challengers two. This choice is explicit.
+
+**Audiochat / voice chat:** Hausdepp und Watten bieten beim Erstellen einen
+standardmässig aktiven Audiochat-Schalter. Er erlaubt Audio für den Tisch;
+Zuhören und Mikrofon bleiben freiwillige getrennte Entscheidungen. Watten nutzt
+nur einen gemeinsamen Raum für zugelassene menschliche Mitspieler, ohne
+Teamkanäle und ohne Zuschauer oder CPUs. Die bestehende SFU-/TURN-Konfiguration
+wird wiederverwendet; echtes Audio über den Anbieter wurde hier noch nicht geprüft.
+Both creators offer an audio-chat checkbox, on by default. It allows audio for
+the table; listening and microphone are separate voluntary choices. Watten has
+one global room for admitted human players, with no team channels, spectators
+or CPUs. The existing SFU/TURN configuration is reused; provider audio has not
+been verified in this change.
+
+**PWA-Stand / PWA status:** Ein eigenes Spielsymbol und PNG-Icons in32/180/192/512
+Pixeln sind vorhanden. Manifest, Service Worker, Push-Empfang und sichere
+Benachrichtigungsziele sind vorbereitet. Installation und Watten-Push bleiben
+in der öffentlichen Founder-Vorschau absichtlich gesperrt; lokal gibt es eine
+Kontovorschau. Dieser Commit ist kein Freigabe- oder Zustellnachweis.
+An original mark and PNG icons at32/180/192/512 pixels are present. Manifest,
+service worker, push reception and safe notification targets exist. Installation
+and Watten push remain deliberately disabled in the public founder preview;
+localhost has an account preview. This commit is no release or delivery proof.
 
 **Lokaler Kontofortschritt / local account progress:** Die lokale Watten-Vorschau
 verbucht neue abgeschlossene Partien zusammen mit Ergebnis und Fortschritt in
@@ -127,13 +184,12 @@ not enable Watten notifications.
 
 **Favorit / favorite:** Im lokalen Erstellformular lässt sich ein vollständiges
 Tischrezept je Konto speichern und bewusst wieder anwenden, einschliesslich
-Computerplätzen. Passwörter werden nicht mitgespeichert. Ein geschützter Favorit
-fordert beim Erstellen ein neues Passwort oder eine ausdrückliche Abwahl des
-Schutzes; Anwenden erstellt und startet keine Partie.
+Computerplätzen. Passwörter werden nicht mitgespeichert. Bei einem geschützten Favoriten
+entscheidet das neu eingegebene Passwort über den Schutz; Anwenden erstellt und startet keine Partie.
 
 The local creator saves one complete table recipe per account, including CPU
-seat wishes. Passwords are never saved. Creating from a protected favorite
-requires a fresh password or an explicit choice to remove protection; applying
+seat wishes. Passwords are never saved. The fresh password entered when using a protected favorite
+determines whether the new table is protected; applying
 a favorite neither creates nor starts a match.
 
 **Folgetisch / next table:** Nach dem Ende kann der Gastgeber einen neuen Tisch

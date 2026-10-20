@@ -569,7 +569,7 @@ function revealActivation(event, table) {
   timer = setTimeout(release, 5000);
 }
 
-export function playTableSurprise(table, effect, { local = false, seed = effect } = {}) {
+export function playTableSurprise(table, effect, { local = false, seed = effect, activePhase = "playing" } = {}) {
   active.get(table)?.();
   if (!table?.isConnected || !effects[effect] || document.hidden) return noop;
   const layer = document.createElement("div");
@@ -648,7 +648,7 @@ export function playTableSurprise(table, effect, { local = false, seed = effect 
   // off the mouse's late entrance. Local input always reveals the live scene.
   // The round owner also invokes cleanup when its round key changes.
   observer = new MutationObserver(() => {
-    if (!table.isConnected || (table.dataset.phase && table.dataset.phase !== "playing")) cleanup();
+    if (!table.isConnected || (table.dataset.phase && table.dataset.phase !== activePhase)) cleanup();
   });
   observer.observe(document.documentElement, { subtree: true, childList: true, attributes: true, attributeFilter: ["data-phase"] });
   resize = new ResizeObserver(() => {

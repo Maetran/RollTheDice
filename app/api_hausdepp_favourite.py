@@ -26,6 +26,7 @@ class HausdeppFavouriteRequest(BaseModel):
     cpu_count: int = Field(default=0, strict=True, ge=0, le=5)
     tournament: bool = Field(default=False, strict=True)
     password_required: bool = Field(default=False, strict=True)
+    voice_enabled: bool = Field(default=True, strict=True)
 
     @model_validator(mode="after")
     def validate_seats(self):

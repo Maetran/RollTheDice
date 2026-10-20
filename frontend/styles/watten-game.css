@@ -2,6 +2,11 @@
 @import "./hausdepp-decor-play.css";
 @import "./game-switch-menu.css";
 @import "./watten-stage.css";
+@import "./watten-lobby.css";
+@import "./watten-voice.css";
+@import "./watten-polish.css";
+@import "./watten-decor.css";
+@import "./hausdepp-surprise-effects.css";
 
 /* Watten: a bright wooden inn table, warm paper and dark red accents. */
 :root {

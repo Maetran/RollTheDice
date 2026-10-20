@@ -1,6 +1,7 @@
 import { mountConsumable, updateDrink, eatPiece } from "../hausdepp/decor-consumables.js";
 import { clearTableEffects, wipeSpill } from "../hausdepp/decor-play.js";
 import { WATTEN_DECOR_MESSAGES } from "../i18n/catalog.js";
+import { tableSurpriseArt, playTableSurprise } from "../hausdepp/surprise-effects.js";
 
 export const DECOR_ITEMS = Object.freeze({
   beer: { sheet: "base", cell: 0, drink: "#d99a2b" },
@@ -12,13 +13,15 @@ export const DECOR_ITEMS = Object.freeze({
   sweets: { sheet: "evening", cell: 1, food: true },
   dice: { sheet: "snacks", cell: 0 },
 });
-export const DECOR_PROTECTED = ".wt-seat, .wt-seat-slot, [data-wt-hand-area], [data-wt-hand], [data-wt-trick], "
+export const DECOR_PROTECTED = ".wt-seat, .wt-seat-slot, .wt-hand-card, .wt-trick-card, "
   + "[data-wt-reference], [data-wt-bubbles], [data-wt-panel], [data-wt-private], [data-wt-history], [data-wt-scores], "
   + "[data-wt-tools], [data-watten-inspection], [data-watten-bid], [data-watten-paused], [data-watten-match-result], "
   + "[data-watten-deal-result], [data-watten-match-progress], [data-watten-rematch], [data-watten-social], "
   + ".wt-bubble, .wt-call-announcement, .wt-status-bar, [data-watten-decor-controls], "
   + "button, a[href], input, select, textarea, [role='button'], [role='dialog'], dialog[open]";
-const SIDE = 64, LIMIT = 8, GAP = 8;
+const SIDE = 56, LIMIT = 8, GAP = 8;
+const ACTIVE_PHASES = new Set(["strike", "colour", "show_ready", "inspection", "play", "bid_response", "deal_complete", "match_complete"]);
+const RARE_EFFECTS = new Set(["star", "hammer", "ufo", "portal", "dragon", "kraken", "clock", "blackhole"]);
 const PHASES = new Set(["preview", "waiting", "closed", "strike", "colour", "show_ready", "inspection", "play",
   "bid_response", "deal_complete", "match_complete", "paused", "offline"]);
 const box = (left, top, width, height) => ({ left, top, right: left + width, bottom: top + height, width, height });
@@ -44,6 +47,11 @@ export function fitsDecor(rect, geometry, occupied = []) {
 
 export function findDecorPosition(geometry, occupied = [], side = SIDE) {
   for (const region of geometry.regions) {
+    // Scatter along both sides and through the free centre before scanning.
+    for (const [x, y] of [[.12, .16], [.83, .2], [.18, .72], [.8, .74], [.22, .43], [.77, .47], [.48, .25], [.5, .65]]) {
+      const rect = box(region.left + x * (region.right - region.left - side), region.top + y * (region.bottom - region.top - side), side, side);
+      if (fitsDecor(rect, geometry, occupied)) return { region: region.name, x, y };
+    }
     for (let top = region.top + GAP; top + side <= region.bottom - GAP; top += 16) {
       for (let left = region.left + GAP; left + side <= region.right - GAP; left += 16) {
         const rect = box(left, top, side, side);
@@ -58,13 +66,15 @@ export function findDecorPosition(geometry, occupied = [], side = SIDE) {
 
 /** Local presentation only. The caller supplies a public phase and DOM, no game view. */
 export function createDecor({ container, root, getExpectedAccountId, isCurrent, escapeHtml: esc,
+  onSurprise = () => false,
   language = () => window.ZDWA_I18N?.getLanguage?.() === "en" ? "en" : "de",
   dom = document, win = window, consumables = { mount: mountConsumable, drink: updateDrink, eat: eatPiece },
   spills = { clear: clearTableEffects, create: wipeSpill } }) {
   const accountId = getExpectedAccountId(), lifecycle = new AbortController(), items = new Map(), animations = new Set();
   const reduced = win.matchMedia("(prefers-reduced-motion: reduce)");
   let opened = false, destroyed = false, phase = "preview", selected = null, serial = 0, drag = null, ignoreClick = null;
-  let geometry = { regions: [], protectedRects: [] }, notice = "", hidden = false;
+  let geometry = { regions: [], protectedRects: [] }, notice = "", hidden = false, autoPlaced = false;
+  let surprise = null, rareNode = null, surprisePending = false, surpriseCleanup = null, lastSurprise = null;
   const current = () => !destroyed && Number.isSafeInteger(accountId) && accountId > 0
     && isCurrent() && getExpectedAccountId() === accountId;
   const t = (key, values = {}) => WATTEN_DECOR_MESSAGES[language() === "en" ? "en" : "de"][key]
@@ -123,20 +133,15 @@ export function createDecor({ container, root, getExpectedAccountId, isCurrent, 
   function measure() {
     const blocked = root.querySelector('[data-watten-social-drawer]:not([hidden]), dialog[open]');
     const table = root.querySelector("[data-wt-table]"), felt = root.querySelector("[data-wt-felt]");
-    const hand = root.querySelector("[data-wt-hand-area]");
     const protectedRects = [...root.querySelectorAll(DECOR_PROTECTED)]
       .filter(node => !node.closest("[data-watten-decor-layer]") && visible(node)).map(node => node.getBoundingClientRect());
-    if (visible(hand) && visible(table)) {
-      const reserve = fiveCardReserve(hand.getBoundingClientRect(), table.getBoundingClientRect());
-      if (reserve) protectedRects.push(reserve);
-    }
     const regions = [];
     const region = (node, name) => {
       const rect = node.getBoundingClientRect();
       return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom, name };
     };
     if (!hidden && !visible(blocked)) {
-      if (phase === "play" && visible(felt)) regions.push(region(felt, "table"));
+      if (ACTIVE_PHASES.has(phase) && visible(table) && visible(felt)) regions.push(region(felt, "table"));
       if (opened && visible(ui.corner)) regions.push(region(ui.corner, "corner"));
     }
     geometry = { regions, protectedRects };
@@ -160,6 +165,7 @@ export function createDecor({ container, root, getExpectedAccountId, isCurrent, 
       }
     }
     for (const effect of [...effects.effects]) if (!fitsDecor(effect.getBoundingClientRect(), geometry)) effect._finish();
+    layoutRare();
     controls();
   }
   function open(value) {
@@ -169,8 +175,8 @@ export function createDecor({ container, root, getExpectedAccountId, isCurrent, 
     layout();
     if (!value) ui.toggle.focus({ preventScroll: true });
   }
-  function add(kind) {
-    if (!opened || !DECOR_ITEMS[kind] || !current()) return;
+  function add(kind, { automatic = false } = {}) {
+    if ((!opened && !automatic) || !DECOR_ITEMS[kind] || !current()) return;
     if (items.size >= LIMIT) { notice = t("limit", { count: LIMIT }); controls(); return; }
     measure();
     let position = findDecorPosition(geometry, occupied());
@@ -193,7 +199,9 @@ export function createDecor({ container, root, getExpectedAccountId, isCurrent, 
     badge.className = "wt-decor-badge"; badge.setAttribute("aria-hidden", "true");
     node.append(art, badge); ui.layer.append(node);
     const serving = consumables.mount(art, kind);
-    const item = { id: String(serial), kind, node, art, badge, position, turn: 0, level: 4,
+    const turn = Math.floor(Math.random() * 17) - 8;
+    art.style.rotate = `${turn}deg`;
+    const item = { id: String(serial), kind, node, art, badge, position, turn, level: 4,
       total: serving?.portions || 0, remaining: serving?.portions || 0, events: new AbortController() };
     const listenItem = (name, callback) => node.addEventListener(name, callback, { signal: item.events.signal });
     if (config.drink) consumables.drink(art, 4);
@@ -224,8 +232,9 @@ export function createDecor({ container, root, getExpectedAccountId, isCurrent, 
     listenItem("click", () => {
       if (!current()) { destroy(); return; }
       if (ignoreClick?.id === item.id && Date.now() <= ignoreClick.until) { ignoreClick = null; return; }
-      selected = item.id; notice = ""; open(true);
+      selected = item.id; notice = ""; act("use");
     });
+    listenItem("contextmenu", event => { event.preventDefault(); selected = item.id; notice = ""; open(true); });
     listenItem("keydown", event => {
       if (!current()) { destroy(); return; }
       const directions = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
@@ -237,7 +246,7 @@ export function createDecor({ container, root, getExpectedAccountId, isCurrent, 
       if (event.key === "Escape") { event.stopPropagation?.(); cancelDrag(); open(false); }
     });
     if (position.region === "corner") ui.corner.scrollIntoView?.({ block: "nearest", inline: "nearest", behavior: "instant" });
-    layout(); node.focus({ preventScroll: true });
+    layout(); if (!automatic) node.focus({ preventScroll: true });
   }
   function move(item, rect) {
     measure();
@@ -319,12 +328,58 @@ export function createDecor({ container, root, getExpectedAccountId, isCurrent, 
   listen(container, "keydown", event => {
     if (event.key === "Escape" && opened) { event.preventDefault(); cancelDrag(); open(false); }
   });
-  function suspend() { stopEffects(); for (const item of items.values()) item.node.hidden = true; }
-  function update({ publicPhase }) {
+  function suspend() {
+    stopEffects(); surpriseCleanup?.(); surprisePending = false;
+    for (const item of items.values()) item.node.hidden = true;
+    if (rareNode) rareNode.hidden = true;
+  }
+  function layoutRare() {
+    if (!rareNode) return;
+    const position = surprise && !surprisePending ? findDecorPosition(geometry, occupied()) : null;
+    rareNode.hidden = !position;
+    if (!position) return;
+    const area = geometry.regions.find(region => region.name === position.region);
+    rareNode.style.left = `${area.left + position.x * (area.right - area.left - SIDE)}px`;
+    rareNode.style.top = `${area.top + position.y * (area.bottom - area.top - SIDE)}px`;
+  }
+  function updateRare(offer) {
+    const next = offer && typeof offer.deal_id === "string" && RARE_EFFECTS.has(offer.effect) ? offer : null;
+    if (next?.deal_id === surprise?.deal_id && next?.effect === surprise?.effect) return;
+    surprise = next; surprisePending = false; rareNode?.remove(); rareNode = null;
+    if (!next) return;
+    rareNode = dom.createElement("button"); rareNode.type = "button"; rareNode.className = "wt-decor-prop wt-decor-prop--rare";
+    rareNode.innerHTML = tableSurpriseArt(next.effect); rareNode.setAttribute("aria-label", t("surprise"));
+    rareNode.title = t("surprise"); ui.layer.append(rareNode);
+    listen(rareNode, "click", () => {
+      if (!current() || surprisePending || !surprise) return;
+      surprisePending = onSurprise({ action: "watten_table_surprise", deal_id: surprise.deal_id, effect: surprise.effect }) === true;
+      layoutRare();
+    });
+  }
+  function receive(data) {
+    if (surprisePending && (typeof data?.error === "string" || typeof data?.error_code === "string")) {
+      surprisePending = false; layoutRare();
+    }
+    const event = data?.watten_table_surprise;
+    if (!event || typeof event.id !== "string" || !RARE_EFFECTS.has(event.effect)) return false;
+    if (!current() || lastSurprise === event.id || !ACTIVE_PHASES.has(phase)) return true;
+    lastSurprise = event.id; surprisePending = false; rareNode?.remove(); rareNode = null; surprise = null;
+    surpriseCleanup?.();
+    const table = root.querySelector("[data-wt-table]");
+    if (table && !reduced.matches) surpriseCleanup = playTableSurprise(table, event.effect, { seed: event.id, activePhase: "play" });
+    notice = t("surpriseSeen"); controls();
+    return true;
+  }
+  function update({ publicPhase, surpriseOffer = null }) {
     if (!current()) { destroy(); return; }
     if (!PHASES.has(publicPhase)) { phase = "offline"; suspend(); return; }
     if (phase !== publicPhase) stopEffects();
-    phase = publicPhase; layout();
+    phase = publicPhase; updateRare(surpriseOffer); layout();
+    if (!autoPlaced && ACTIVE_PHASES.has(phase) && geometry.regions.some(region => region.name === "table")) {
+      autoPlaced = true;
+      for (const kind of ["beer", "nuts", "dice"]) add(kind, { automatic: true });
+      selected = null; notice = ""; controls();
+    }
   }
   function resized() { stopEffects(); layout(); }
   listen(win, "resize", resized); listen(win, "orientationchange", resized); listen(win, "scroll", resized);
@@ -343,10 +398,10 @@ export function createDecor({ container, root, getExpectedAccountId, isCurrent, 
   }
   function destroy() {
     if (destroyed) return;
-    stopEffects(); destroyed = true; lifecycle.abort(); observer?.disconnect(); mutation?.disconnect();
+    stopEffects(); surpriseCleanup?.(); destroyed = true; lifecycle.abort(); observer?.disconnect(); mutation?.disconnect();
     for (const item of items.values()) item.events.abort();
     items.clear(); effects.nodes.clear(); selected = null; container.replaceChildren(); container.hidden = true;
   }
   controls();
-  return { update, suspend, destroy };
+  return { update, suspend, destroy, receive };
 }

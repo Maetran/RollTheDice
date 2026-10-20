@@ -1,6 +1,6 @@
 // Presentation only: accepted state and controls update immediately. Ghosts copy
 // only currently permitted DOM faces/backs; no hand, stock or call is inferred.
-const FLIGHT = 240, HOLD = 380, COLLECT = 360, MAX_GHOSTS = 24;
+const FLIGHT = 240, HOLD = 3000, COLLECT = 360, MAX_GHOSTS = 24;
 const TRICK_TIME = FLIGHT + HOLD + COLLECT, MAX_PRESENTATION = TRICK_TIME * 2;
 const easing = "cubic-bezier(.2,.7,.2,1)";
 const usable = rect => rect && rect.width > 0 && rect.height > 0;

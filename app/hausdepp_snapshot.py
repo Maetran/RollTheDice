@@ -70,6 +70,7 @@ def snapshot_hausdepp(game: GameDict, viewer_id: str | None = None) -> dict:
         "_hausdepp_table_effects": table_effects_projection(game),
         "_hausdepp_table_props": table_props_projection(game),
         "_hausdepp_tournament_enabled": bool(game.get("_hausdepp_tournament_enabled")),
+        "_voice_enabled": game.get("_voice_enabled", True) is True,
         "_waiting_permissions": waiting_permissions(game, valid_viewer),
         "_departure_permissions": departure_permissions(game, valid_viewer),
         "_waiting_mode": waiting["waiting_mode"], "_manual_start": waiting["manual_start"],
