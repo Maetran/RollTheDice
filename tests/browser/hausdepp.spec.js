@@ -440,7 +440,7 @@ function seatCrowding() {
   const meets = (a, b) => Math.min(a.right, b.right) - Math.max(a.left, b.left) > 1 && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 1;
   const seats = [...document.querySelectorAll('.hd-seat')];
   const plates = seats.map(seat => seat.querySelector('.hd-seat-plate').getBoundingClientRect());
-  const stacks = [...document.querySelectorAll('#hausdeppStock, #hausdeppPile, .hd-known-bottom-cards:not([hidden]) .hausdepp-card')]
+  const stacks = [...document.querySelectorAll('#hausdeppStock, #hausdeppStock .hd-stock-card, #hausdeppPile, #hausdeppPile .hausdepp-card, .hd-known-bottom-cards:not([hidden]) .hausdepp-card')]
     .map(node => node.getBoundingClientRect());
   const fans = seats.map(seat => [...seat.querySelectorAll('.hd-opponent-card, .hd-seat-avatar')].map(node => node.getBoundingClientRect()));
   return { overlaps: plates.flatMap((a, i) => plates.slice(i + 1).filter(b => meets(a, b)).map(() => i)),
@@ -1000,7 +1000,7 @@ for (const spectator of [false, true]) {
     base._hausdepp.players = [viewer, ...names.map((name, index) => ({ ...cpu, id: `ui-crowd-${index}`, name, hand_count: 3 + index }))];
     base._participants = [seatedViewer, ...names.map((name, index) => ({ ...seatedCpu, id: `ui-crowd-${index}`, name, hand_count: 3 + index }))];
     Object.assign(base, { _mode: '6', _expected: 6, _hausdepp_tournament: null });
-    Object.assign(base._hausdepp, { current_player_id: 'ui-crowd-2', discard: ['hearts-9', 'bells-9'], deck_count: 6,
+    Object.assign(base._hausdepp, { current_player_id: 'ui-crowd-2', discard: ['hearts-9', 'bells-9', 'acorns-9'], deck_count: 5,
       burned_count: 0, available_actions: [], playable_cards: [] });
     if (spectator) Object.assign(base._hausdepp, { viewer_id: null, hand: [], private_peek: [], private_peek_in_stock: [] });
     const mocked = await installUiFixture(page, room, base);
@@ -1016,12 +1016,33 @@ for (const spectator of [false, true]) {
           await page.setViewportSize({ width, height });
           await page.goto(`${room}${spectator ? '/zuschauen' : ''}`);
           await expect(page.locator('.hd-seat-plate')).toHaveCount(spectator ? 6 : 5);
+          await expect(page.locator('#hausdeppPile')).toHaveAttribute('data-run', '3');
+          await expect(page.locator('#hausdeppPile .hausdepp-card')).toHaveCount(3);
           await expect(page.locator('.hd-known-bottom-cards:not([hidden]) .hausdepp-card')).toHaveCount(known.length);
           if (clock) await expect(page.locator('[data-prop="clock"]:visible')).toHaveCount(1);
           if (clock && width === 320) await expect(page.locator('.hd-surprise-dock [data-prop="clock"]')).toBeVisible();
           await page.evaluate(() => document.fonts.ready);
           const label = `${spectator ? 'spectator' : 'participant'} ${width}×${height}, clock=${clock}, known=${known.length}`;
           expect(await page.evaluate(seatCrowding), label).toEqual({ overlaps: [], stacks: 0, fans: 0, outside: 0 });
+          const paintedBounds = await page.evaluate(() => {
+            const box = rect => ({ left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom });
+            const stacks = [...document.querySelectorAll('#hausdeppStock, #hausdeppStock .hd-stock-card, #hausdeppPile, #hausdeppPile .hausdepp-card')]
+              .map(node => ({ name: node.id || node.className, ...box(node.getBoundingClientRect()) }));
+            const captions = [...document.querySelectorAll('#hausdeppStockAction, #hausdeppStockCount, #hausdeppPileAction, #hausdeppPileCount')]
+              .filter(node => node.textContent.trim() && node.getClientRects().length && getComputedStyle(node).visibility !== 'hidden')
+              .map(node => {
+                const range = document.createRange(); range.selectNodeContents(node);
+                return { name: node.id, ...box(range.getBoundingClientRect()) };
+              });
+            return { stacks, captions, headerBottom: document.querySelector('.hd-header').getBoundingClientRect().bottom };
+          });
+          expect(paintedBounds.captions.length, label).toBeGreaterThan(0);
+          for (const bounds of [...paintedBounds.stacks, ...paintedBounds.captions]) {
+            expect(bounds.left, `${label} ${bounds.name}: left`).toBeGreaterThanOrEqual(0);
+            expect(bounds.right, `${label} ${bounds.name}: right`).toBeLessThanOrEqual(width);
+            expect(bounds.top, `${label} ${bounds.name}: below header`).toBeGreaterThanOrEqual(paintedBounds.headerBottom);
+            expect(bounds.bottom, `${label} ${bounds.name}: inside viewport`).toBeLessThanOrEqual(height);
+          }
           if (spectator) {
             const exit = page.locator('#hausdeppLeaveGame');
             await expect(exit).toHaveAccessibleName('Tisch verlassen');

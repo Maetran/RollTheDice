@@ -118,6 +118,11 @@
   html[data-game="hausdepp"] body.hd-playing .hd-table:has(> .hd-room-heading > :is(.hd-surprise-dock, .hd-departure-button:not([hidden]))) .hd-seats:is([data-count="4"], [data-count="5"], [data-count="6"]) { --hd-arc-depth: 0px; }
   html[data-game="hausdepp"] body.hd-playing .hd-table:has(> .hd-room-heading > :is(.hd-surprise-dock, .hd-departure-button:not([hidden]))) .hd-centre :is(.hd-stock-group, .hd-pile-group) > :is(.hd-card-back, .hd-pile) { margin-bottom: 4px; }
 }
+@media (max-width: 359px) and (orientation: portrait) and (max-height: 620px), (max-width: 1099px) and (orientation: landscape) and (max-height: 400px) {
+  /* A three-card run needs its full native height. Fan sideways on short
+     tables so the back faces leave names and the captions above/below free. */
+  html[data-game="hausdepp"] body.hd-playing .hd-table .hd-pile-face[data-run-step] { translate: calc(var(--run-step) * -12%) 0; rotate: 0deg; }
+}
 @media (max-width: 1099px) and (orientation: landscape) {
   html[data-game="hausdepp"] body.hd-playing { --hd-hand-card: clamp(68px, calc((100dvh - 300px) * .25 + 68px), 102px); }
   html[data-game="hausdepp"] body.hd-playing .hd-brand > span { display: none; }
