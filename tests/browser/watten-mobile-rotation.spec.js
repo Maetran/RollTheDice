@@ -9,6 +9,65 @@ for (const browserName of ['chromium', 'webkit']) {
   }, { scope: 'worker' }] });
   rotationTest.describe(`Watten ${browserName} mobile rotation hit targets`, () => {
 
+    rotationTest('a cancelled identity read during departure preserves the chosen Rules link', async ({ browser, baseURL }) => {
+      const mobileBrowser = { newContext: options => browser.newContext({ ...options,
+        viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, serviceWorkers: 'block' }) };
+      const { page, context, traffic } = await player(mobileBrowser, baseURL);
+      let heldAuth;
+      const rootNavigations = [];
+      try {
+        await page.goto('/watten');
+        await expect(page.locator('[data-watten-create]')).toBeVisible();
+        await expect.poll(() => page.evaluate(() => Boolean(window.ZDWA_APP_MODE?.initialized))).toBe(true);
+        await page.evaluate(() => window.ZDWA_APP_MODE.refresh());
+
+        let announceAuth;
+        const authHeld = new Promise(resolve => { announceAuth = resolve; });
+        await page.route('**/api/auth/me', route => {
+          if (heldAuth) return route.continue();
+          heldAuth = route;
+          announceAuth(route.request());
+        });
+        await page.evaluate(() => { window.pendingNavigationAuth = window.ZDWA_APP_MODE.refresh(); });
+        const identityRequest = await authHeld;
+        const identityFailed = page.waitForEvent('requestfailed', request => request === identityRequest);
+        const refreshSettled = page.evaluate(() => window.pendingNavigationAuth)
+          .then(value => ({ value }), error => ({ error: error.message }));
+        let announceRoot;
+        const rootRequested = new Promise(resolve => { announceRoot = resolve; });
+        page.on('request', request => {
+          if (request.isNavigationRequest() && request.frame() === page.mainFrame()
+            && new URL(request.url()).pathname === '/') {
+            rootNavigations.push(request.url());
+            announceRoot('unexpected home redirect');
+          }
+        });
+        await page.route('**/watten/regeln', async route => {
+          // Hold the chosen document until the old page's cancelled identity
+          // read has settled: pagehide cannot hide an early redirect here.
+          try { await heldAuth.abort('aborted'); }
+          catch (error) { if (!identityRequest.failure()) throw error; }
+          await identityFailed;
+          const outcome = await refreshSettled;
+          expect(outcome.error).toBeUndefined();
+          expect(outcome.value).toBe(false);
+          await route.continue();
+        });
+        const destination = Promise.race([
+          page.waitForURL(/\/watten\/regeln$/).then(() => 'chosen Rules page'), rootRequested,
+        ]);
+        await page.locator('.wt-header a[href="/watten/regeln"]').click({ noWaitAfter: true });
+        expect(await destination).toBe('chosen Rules page');
+        await expect(page.locator('.wt-rules')).toBeVisible();
+        expect(await page.evaluate(() => window.ZDWA_APP_MODE.refresh())).toBe(true);
+        expect(rootNavigations).toEqual([]);
+        expect(traffic.errors).toEqual([]);
+      } finally {
+        if (!page.isClosed()) await page.unrouteAll({ behavior: 'ignoreErrors' });
+        await context.close();
+      }
+    });
+
     rotationTest('iPhone portrait return keeps the active table fixed and ordinary pages scrollable', async ({ browser, baseURL }) => {
       const portrait = { width: 440, height: 956 };
       const mobileBrowser = { newContext: options => browser.newContext({ ...options, viewport: portrait,

@@ -275,17 +275,22 @@ export function initializeAppMode({
     pickers.get(document.querySelector("[data-game-switch]"))?.toggle();
   });
 
+  const suspend = () => {
+    suspended = true;
+    refreshRevision += 1;
+    refreshPromise = null;
+    dropPrivate();
+    for (const picker of pickers.values()) picker.close();
+  };
+  // WebKit can cancel the old document's identity read before pagehide.
+  // Retire that refresh before its rejection can replace the chosen page.
+  window.addEventListener("beforeunload", suspend);
+  window.addEventListener("pagehide", suspend);
   window.addEventListener("zdwa:auth-state", (event) => receiveAuth(event.detail));
-  window.addEventListener("focus", () => { void refresh(); });
+  window.addEventListener("focus", () => { suspended = false; void refresh(); });
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") { suspended = false; void refresh(); }
-    else {
-      suspended = true;
-      refreshRevision += 1;
-      refreshPromise = null;
-      dropPrivate();
-      for (const picker of pickers.values()) picker.close();
-    }
+    else suspend();
   });
 
   const controller = {
@@ -303,13 +308,6 @@ export function initializeAppMode({
   };
   window.ZDWA_APP_MODE = controller;
   // Keep the controller usable when a browser restores this document from bfcache.
-  window.addEventListener("pagehide", () => {
-    suspended = true;
-    refreshRevision += 1;
-    refreshPromise = null;
-    dropPrivate();
-    for (const picker of pickers.values()) picker.close();
-  });
   window.addEventListener("pageshow", event => {
     if (!event.persisted) return;
     suspended = false;

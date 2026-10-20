@@ -1728,12 +1728,16 @@ Outside game tables, all four games share a two-row header: game icon and
 name, language, available design switch and game picker above; Lobby,
 Players & Ranking, Rules and Account below. It stays at the top while scrolling,
 on phones, tablets and desktops. Game tables retain their compact controls.
+Quick page changes keep their chosen destination when an older sign-in check
+is cancelled by navigation.
 
 **Deutsch:** Alle vier Spiele nutzen ausserhalb des Spieltischs denselben
 zweizeiligen Header: oben Spielsymbol und -name, Sprache, vorhandener
 Darstellungswechsel und Spielauswahl; darunter Lobby, Spieler & Ranking, Regeln
 und Konto. Er bleibt auf Handy, Tablet und Desktop beim Scrollen oben sichtbar.
 Spieltische behalten ihre kompakten Bedienelemente.
+Schnelle Seitenwechsel behalten ihr gewähltes Ziel, auch wenn dabei eine ältere
+Anmeldungsprüfung abgebrochen wird.
 
 Der mobile Zuschauerchat hält die Eingabe auch bei geöffneter Tastatur
 erreichbar und zeigt Zuschauer mit ihrem Profilbild. Tablet-Spielblöcke nutzen

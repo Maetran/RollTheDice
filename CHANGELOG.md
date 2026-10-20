@@ -34,11 +34,15 @@ The game suite becomes clearer, from page navigation to round results.
 Oben stehen Spielsymbol und Name, Sprache, vorhandener Darstellungswechsel und
 Spielauswahl; darunter Lobby, Spieler & Ranking, Regeln und Konto. Ausserhalb
 der Spieltische bleibt er beim Scrollen oben sichtbar, auch auf kleinen Handys.
+Schnelle Seitenwechsel behalten ihr Ziel, wenn dabei eine ältere
+Anmeldungsprüfung abgebrochen wird.
 
 **English:** ZDWA, Zilch, Hausdepp and Watten share a two-row header. The game
 icon and name, language, available appearance switch and game picker sit above
 Lobby, Players & Ranking, Rules and Account. Outside game tables it stays at
 the top while scrolling, including on small phones.
+Quick page changes keep their destination when an older sign-in check is
+cancelled by navigation.
 
 ### ZDWA
 
