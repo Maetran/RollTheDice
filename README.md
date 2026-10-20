@@ -377,7 +377,8 @@ endet die Runde ohne Hausdepp mit regulären EP für die Verbleibenden. Wer eine
 laufende Hand aufgibt, erhält keine Runden-EP oder normalen Erfolge; der neue
 Zonk-Erfolg gibt 0 EP. Bereits regulär fertig gespielte Hände behalten ihre
 Vergütung. Im Turnier gilt der Ausstieg für die ganze Sitzung, frühere Runden
-und EP bleiben erhalten.
+und EP bleiben erhalten. Zuschauer können den Tisch über denselben Schalter
+sofort zur Lobby verlassen, auch ohne Verbindung. Das beendet nur das Zuschauen.
 
 Leave game asks for confirmation and ends only your own participation. Your
 hand cards leave play permanently; everyone else continues. With just one player
@@ -385,7 +386,8 @@ with cards left, the round ends without a Hausdepp and remaining players receive
 normal XP. Giving up an unfinished hand awards no round XP or ordinary
 achievements; the new Zonk achievement is worth 0 XP. Hands already finished
 normally remain credited. Tournament departure applies to the whole session;
-earlier rounds and XP remain intact.
+earlier rounds and XP remain intact. Spectators can use the same button to
+return to the lobby immediately, even when disconnected. This only stops watching.
 
 **Lokale Wirtshauskulisse / Local tavern ambience:** Der Notenschalter startet
 freiwillig eine sehr leise Kulisse aus Stimmengewirr, Gläsern, Geschirr und
@@ -415,6 +417,8 @@ die Audiogeräte des Betriebssystems gelten. Turnierrunden, Zwischenstände und
 erneute Partien derselben Gruppe behalten die Sprachsitzung. Verlassen,
 Abmelden und Schliessen beenden sie; ein neuer Einstieg startet ausgeschaltet.
 Gäste, Computer und Zuschauer nehmen nicht teil. Es gibt keine Aufzeichnung.
+Der Mikrofonzugriff funktioniert auf der Hausdepp-Subdomain und in bestehenden
+Suite-PWAs; die Gerätefreigabe bleibt erforderlich.
 Bei Partien nur gegen Computer werden die Sprachchat-Schalter ausgeblendet.
 Die PWA wird empfohlen; Hintergrundbetrieb und Geräteschaltung hängen von
 Browser und Betriebssystem ab. Die Funktion bleibt ohne eingerichteten
@@ -427,7 +431,9 @@ on starts listening only. Mute individual players for yourself. Use system
 volume and the operating system's audio devices. Tournament rounds, standings
 and rematches with the same group retain the voice session. Leaving, signing
 out or closing ends it; a fresh visit starts off. Guests, CPUs and spectators
-cannot participate. No conversations are recorded. Voice controls are hidden
+cannot participate. No conversations are recorded. Microphone access works on
+the Hausdepp subdomain and in existing suite PWAs; device permission is still
+required. Voice controls are hidden
 in games against CPUs only. Installing the PWA is recommended; background
 operation and routing depend on browser and OS. Voice
 stays disabled until Cloudflare media services are configured.

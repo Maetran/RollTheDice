@@ -43,6 +43,14 @@ rules. Reduced motion applies the same end state without the extra animation.
 
 ### Partie verlassen / Leave game
 
+Beim Zuschauen führt „Tisch verlassen“ oben am Tisch sofort zurück zur Lobby,
+auch im Warteraum, zwischen Turnierrunden und ohne Verbindung. Die laufende
+Partie und ihre Wertung bleiben davon unberührt.
+
+While spectating, Leave table at the top of the table returns to the lobby
+immediately, including waiting rooms, tournament breaks and disconnected views.
+The current game and scoring are unaffected.
+
 Ein eigener Schalter neben den eigenen Karten öffnet eine Bestätigung. Aussteigen
 beendet ausschliesslich die eigene Teilnahme, auch bei Verbindungs-/Pausenproblemen.
 Eigene Handkarten kommen endgültig aus dem Spiel, nicht auf das aufnehmbare
@@ -135,6 +143,14 @@ angezeigt. Hintergrundbetrieb und Audiogerätewechsel sind geräteabhängig und
 brauchen echte Browser-/PWA-Tests; eine Installation garantiert kein dauerhaftes
 Mikrofon im Hintergrund.
 
+Die Mikrofonfreigabe verwalten Browser und Betriebssystem auf dem jeweiligen
+Gerät, auch bei einer installierten PWA. In Chrome für Android speichert
+„Beim Besuch der Website zulassen“ die Erlaubnis auch für weitere Besuche.
+Bei blockiertem Zugriff in Chrome unter Einstellungen → Website-Einstellungen
+→ Mikrofon den verwendeten Hausdepp-/Suite-Host zulassen. Chrome braucht
+zusätzlich die Android-Mikrofonberechtigung. Ausschalten unseres Mikrofons
+beendet die Aufnahme, löscht aber keine gespeicherte Browserfreigabe.
+
 Für die Betriebsübersicht werden gemeldete Audio-Datenmengen regelmässig in
 anonymen UTC-Tagessummen gespeichert (400 Tage), keine Gesprächsinhalte oder
 dauerhaften Konto-/Raumkennungen. Die unvollständige Browsermessung ist keine
@@ -157,6 +173,13 @@ or closing ends participation. A replacement device must opt in again and
 revokes the old device's media. Show connection problems. Background operation
 and audio routing require actual browser/PWA device tests; installation alone
 does not guarantee background microphone operation.
+
+Browser and operating-system permissions are managed on each device, including
+installed PWAs. In Chrome for Android, Allow while visiting the site also saves
+permission for future visits. If access is blocked, allow the current Hausdepp
+or suite host in Chrome Settings → Site settings → Microphone. Chrome also
+needs Android microphone permission. Switching our microphone off ends capture
+without deleting a saved browser permission.
 
 For operations, reported audio payload is regularly stored as anonymous daily
 UTC totals for 400 days, without conversation content or durable account/room

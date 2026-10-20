@@ -2399,5 +2399,12 @@
     "date": "2026-10-20",
     "bump": "minor",
     "summary": "Sprachchat-Beta für Hausdepp mit getrennten Schaltern und Verbrauchsübersicht in Mission Control. / Hausdepp voice chat beta with separate controls and a usage overview in Mission Control."
+  },
+  {
+    "version": "3.18.0",
+    "revision": "68cab46201c7374f618b9b2c7971193c437ef76b",
+    "date": "2026-10-20",
+    "bump": "minor",
+    "summary": "Hausdepp: gemeinsame Tischdeko, leise Wirtshauskulisse und eigener Ausstieg; zuverlässiger Sprachwechsel. / Hausdepp: shared table props, quiet tavern ambience and individual departure; reliable language switching."
   }
 ]

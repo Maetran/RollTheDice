@@ -236,18 +236,39 @@ bash() { echo INSTALL >&2; return "$INSTALL_FAIL"; }
         regular = next(block for block in blocks if "www.zockdiewandan.online\n" in block)
         house = next(block for block in blocks if "server_name hausdepp.zockdiewandan.online;" in block
                      and "listen 443 ssl" in block)
-        # Voice may request only Hausdepp's own microphone. Camera/location
-        # remain blocked, and the existing products retain their denial.
+        # Both the dedicated Hausdepp PWA and existing suite PWAs may request
+        # their own microphone. Camera/location and cross-origin access stay closed.
         self.assertIn('Permissions-Policy "camera=(), microphone=(self), geolocation=()"', house)
-        self.assertIn('Permissions-Policy "camera=(), microphone=(), geolocation=()"', regular)
+        self.assertIn('Permissions-Policy "camera=(), microphone=(self), geolocation=()"', regular)
         for prefix in ("add_header", "proxy_", "client_max_body_size", "limit_req ", "limit_conn "):
             old = [line.strip() for line in regular.splitlines() if line.strip().startswith(prefix)]
-            new = [line.strip().replace("microphone=(self)", "microphone=()")
-                   for line in house.splitlines() if line.strip().startswith(prefix)]
+            new = [line.strip() for line in house.splitlines() if line.strip().startswith(prefix)]
             self.assertTrue(old, prefix)
             self.assertEqual(new, old, prefix)
         self.assertIn("/live/hausdepp.zockdiewandan.online/fullchain.pem", house)
         self.assertIn("location ^~ /.well-known/acme-challenge/", source)
+
+    def test_microphone_policy_covers_all_trusted_tls_entry_hosts_without_delegation(self):
+        source = (BASE / "deploy/nginx/rollthedice.conf").read_text()
+        entry_blocks = [block for block in source.split("server {\n")
+                        if "listen 443 ssl" in block and "server_name" in block]
+        covered_hosts = set()
+        for block in entry_blocks:
+            with self.subTest(server=block.split("server_name", 1)[1].split(";", 1)[0].strip()):
+                hosts = block.split("server_name", 1)[1].split(";", 1)[0].split()
+                covered_hosts.update(hosts)
+                policies = [line.strip() for line in block.splitlines()
+                            if line.strip().startswith("add_header Permissions-Policy ")]
+                self.assertEqual(policies, [
+                    'add_header Permissions-Policy "camera=(), microphone=(self), geolocation=()" always;'
+                ])
+        self.assertEqual(covered_hosts, {
+            "zockdiewandan.online", "www.zockdiewandan.online", "zdwa.zockdiewandan.online",
+            "zilch.zockdiewandan.online", "hausdepp.zockdiewandan.online",
+        })
+        legacy = next(block for block in entry_blocks
+                      if "server_name zdwa.zockdiewandan.online;" in block)
+        self.assertIn("return 308 https://zockdiewandan.online$request_uri;", legacy)
 
 
 class HausdeppInstallGuardTestCase(unittest.TestCase):

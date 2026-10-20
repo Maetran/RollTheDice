@@ -64,10 +64,12 @@ html[data-game="hausdepp"] .hd-table .hd-seat.is-active .hd-seat-avatar { box-sh
 /* On phones a full table sits in one flat, evenly shared row above the stacks
    instead of a bunched arc whose outer seats cover each other or the stacks. */
 @media (max-width: 600px) and (orientation: portrait), (max-width: 1099px) and (max-height: 600px) and (orientation: landscape) {
-  html[data-game="hausdepp"] body.hd-playing .hd-table .hd-seats:is([data-count="4"], [data-count="5"]) { --hd-arc-depth: 12px; }
+  html[data-game="hausdepp"] body.hd-playing .hd-table .hd-seats:is([data-count="4"], [data-count="5"], [data-count="6"]) { --hd-arc-depth: 12px; }
   html[data-game="hausdepp"] body.hd-playing .hd-table .hd-seats[data-count="4"] > .hd-seat { left: calc((var(--seat) + .5) * 25%); }
   html[data-game="hausdepp"] body.hd-playing .hd-table .hd-seats[data-count="5"] > .hd-seat { left: calc((var(--seat) + .5) * 20%); }
+  html[data-game="hausdepp"] body.hd-playing .hd-table .hd-seats[data-count="6"] > .hd-seat { left: calc((var(--seat) + .5) * 16.666666667%); }
   html[data-game="hausdepp"] .hd-table .hd-seats:is([data-count="4"], [data-count="5"]) .hd-seat-plate { max-width: calc(100% + 26px); }
+  html[data-game="hausdepp"] .hd-table .hd-seats[data-count="6"] .hd-seat-plate { max-width: calc(100% + 12px); }
 }
 
 /* Captions under the stacks and around the hand. */

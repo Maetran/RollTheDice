@@ -6,9 +6,9 @@ const departureErrors = {
 };
 const exitIcon = '<svg class="hd-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 4H4v16h6M9 12h12m-4-4 4 4-4 4"/></svg>';
 
-/** Explicit server-confirmed departure, separate from ending everyone's game. */
+/** Participants leave with server confirmation; spectators only close their view. */
 export function mountHausdeppDepartureUI({
-  t, getState, send, onLeft, handControls, onPendingChange = () => {},
+  t, getState, send, onLeft, handControls, spectatorControls, onPendingChange = () => {},
   confirm: confirmLeave = message => globalThis.window.confirm(message),
   setTimeout: delay = globalThis.setTimeout, clearTimeout: cancelDelay = globalThis.clearTimeout,
   confirmationTimeoutMs = 10000,
@@ -39,7 +39,14 @@ export function mountHausdeppDepartureUI({
   };
   const leave = () => {
     const state = getState(), permissions = state.permissions;
-    if (destroyed || completed || pending || state.busy || !state.connected || state.spectating || !permissions?.can_leave) return;
+    if (destroyed || completed) return;
+    if (state.spectating) {
+      clearConfirmation();
+      completed = true; pending = false; errorKey = "";
+      onLeft();
+      return;
+    }
+    if (pending || state.busy || !state.connected || !permissions?.can_leave) return;
     const warning = t(permissions.forfeits_round ? "departureForfeitConfirm" : "departureFinishedConfirm");
     const tournament = permissions.ends_tournament_participation ? `\n\n${t("departureTournamentConfirm")}` : "";
     if (!confirmLeave(`${warning}${tournament}`)) return;
@@ -65,20 +72,22 @@ export function mountHausdeppDepartureUI({
   function render() {
     if (destroyed) return;
     const state = getState();
-    const available = !state.spectating && state.permissions?.can_leave === true;
-    const action = t(state.permissions?.ends_tournament_participation ? "departureTournament" : "departureTable");
+    const spectator = state.spectating === true;
+    const available = spectator || state.permissions?.can_leave === true;
+    const action = t(!spectator && state.permissions?.ends_tournament_participation ? "departureTournament" : "departureTable");
     document.body.classList.toggle("hd-departure-available", available);
     tableButton.hidden = resultButton.hidden = !available;
-    tableButton.disabled = resultButton.disabled = pending || state.busy || !state.connected;
+    tableButton.disabled = resultButton.disabled = !spectator && (pending || state.busy || !state.connected);
     tableButton.innerHTML = `${exitIcon}<span class="hd-departure-text">${t("departureShort")}</span>`;
     tableButton.setAttribute("aria-label", action);
-    tableButton.setAttribute("aria-busy", String(pending));
-    resultButton.setAttribute("aria-busy", String(pending));
+    tableButton.setAttribute("aria-busy", String(!spectator && pending));
+    resultButton.setAttribute("aria-busy", String(!spectator && pending));
     tableButton.title = action;
     resultButton.textContent = action;
     notice.hidden = !errorKey;
     notice.textContent = errorKey ? t(errorKey) : "";
-    if (handControls && tableButton.parentElement !== handControls) handControls.append(tableButton);
+    const controls = spectator ? spectatorControls : handControls;
+    if (controls && tableButton.parentElement !== controls) controls.append(tableButton);
     const result = document.querySelector("#hausdeppResult .hd-result-links");
     if (result && resultButton.parentElement !== result) {
       const account = result.querySelector('a[href="/hausdepp/konto#erfolge"]');

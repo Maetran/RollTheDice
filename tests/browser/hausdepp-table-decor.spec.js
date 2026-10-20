@@ -129,6 +129,7 @@ async function table(page, viewport, { browser, baseURL, reducedMotion = 'no-pre
   viewer.hausdeppDecorShared = sharedByPage;
   viewer.hausdeppDecorEvents = propEventsByPage;
   viewer.hausdeppDecorBoards = latestByPage;
+  viewer.hausdeppDecorAdmissions = admissionByPage;
   return viewer;
 }
 
@@ -380,7 +381,31 @@ test('real accounts share ordinary table use across phone and desktop and reload
   page = await table(page, { width: 1600, height: 1000 }, { browser, baseURL });
   const other = page.hausdeppDecorPeers.find(peer => peer !== page);
   const shared = page.hausdeppDecorShared, events = page.hausdeppDecorEvents, boards = page.hausdeppDecorBoards;
-  await expect.poll(() => shared.get(page)?.schema_version).toBe(1);
+  const admissions = page.hausdeppDecorAdmissions;
+  async function reloadFresh(member) {
+    const previousAdmission = admissions.get(member), previousProjection = shared.get(member);
+    await member.reload();
+    await expect.poll(() => {
+      const admission = admissions.get(member), id = admission?.playerId;
+      const room = admission?.room, projection = shared.get(member);
+      return Boolean(admission && admission !== previousAdmission && !admission.closed
+        && id === previousAdmission.playerId && room?._connected?.[id] === true
+        && room?._participants?.some(player => player.id === id && !player.is_cpu)
+        && room?._hausdepp?.phase === 'playing' && room._hausdepp.viewer_id === id
+        && projection && projection !== previousProjection && projection.schema_version === 1
+        && projection === room._hausdepp_table_props && projection.revision >= previousProjection.revision);
+    }, { message: 'Reload must deliver a fresh admitted player and canonical prop projection' }).toBe(true);
+    const state = admissions.get(member).room._hausdepp;
+    expect(state.hand).toHaveLength(3);
+    await expect(member.locator('#hausdeppTable')).toHaveAttribute('data-phase', 'playing');
+    await expect(member.locator('#hausdeppHand [data-card-id]')).toHaveCount(state.hand.length);
+    await expect(member.locator('#hausdeppHand [data-card-id]').first()).toBeVisible();
+    await expect.poll(() => member.locator('.hd-table-prop:visible').count()).toBeGreaterThan(0);
+    return shared.get(member);
+  }
+  // Start with the complete playing layout. An arrangement retained from the
+  // peek phase can use wood that a fresh full hand must later reserve.
+  await reloadFresh(page);
   const visible = await page.locator('.hd-table-prop:visible').evaluateAll(nodes => nodes.map(node => node.dataset.prop));
   const objectId = visible.find(id => shared.get(page).objects[id]?.remaining > 1)
     || visible.find(id => shared.get(page).objects[id] && shared.get(page).objects[id].remaining === undefined);
@@ -391,16 +416,31 @@ test('real accounts share ordinary table use across phone and desktop and reload
   await page.locator(`.hd-table-prop[data-prop="${objectId}"]:visible`).click();
   await expect.poll(() => shared.get(other)?.revision).toBe(revision + 1);
   await expect.poll(() => shared.get(page)?.revision).toBe(revision + 1);
-  const after = shared.get(page).objects[objectId];
+  const after = structuredClone(shared.get(page).objects[objectId]);
   expect(shared.get(other).objects[objectId]).toEqual(after);
   expect(after.uses).toBe(before.uses + 1);
   if (before.remaining !== undefined) expect(after.remaining).toBe(before.remaining - 1);
   expect(boards.get(page).version).toBe(version);
   expect(events.get(other).id).toBe(events.get(page).id);
-  await other.reload();
-  await expect.poll(() => shared.get(other)?.objects[objectId]).toEqual(after);
   await other.setViewportSize({ width: 1600, height: 1000 });
-  const hydrated = other.locator(`.hd-table-prop[data-prop="${objectId}"]`);
+  const otherProjection = await reloadFresh(other);
+  expect(otherProjection.objects[objectId]).toEqual(after);
+  // Each display places only the objects that fit its own free wood. Every
+  // ordinary prop it does place must hydrate from the fresh shared projection.
+  const otherProps = await other.locator('.hd-table-prop:visible').evaluateAll(nodes => nodes.map(node => node.dataset.prop));
+  const ordinaryOtherProps = otherProps.filter(id => otherProjection.objects[id]);
+  expect(ordinaryOtherProps.length).toBeGreaterThan(0);
+  for (const id of ordinaryOtherProps) {
+    const prop = other.locator(`.hd-table-prop[data-prop="${id}"]`), canonical = otherProjection.objects[id];
+    await expect(prop).toHaveAttribute('data-uses', String(canonical.uses));
+    if (canonical.remaining !== undefined) await expect(prop).toHaveAttribute('data-bites', String(canonical.remaining));
+    await expect(prop).not.toHaveAttribute('data-last-motion', /./);
+  }
+  const actorProjection = await reloadFresh(page);
+  expect(actorProjection.objects[objectId]).toEqual(after);
+  expect(boards.get(page).version).toBe(version);
+  const hydrated = page.locator(`.hd-table-prop[data-prop="${objectId}"]`);
+  await expect(hydrated).toBeVisible();
   await expect(hydrated).toHaveAttribute('data-uses', String(after.uses));
   if (after.remaining !== undefined) await expect(hydrated).toHaveAttribute('data-bites', String(after.remaining));
   await expect(hydrated).not.toHaveAttribute('data-last-motion', /./);
