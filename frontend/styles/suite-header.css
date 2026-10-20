@@ -1,0 +1,244 @@
+/* Shared layout and controls; each selected design supplies its palette. */
+:root { --suite-header-height: 118px; }
+html:has(.suite-header:not(.suite-header--table)) { overflow-x: clip; scroll-padding-top: calc(var(--suite-header-height) + 12px); }
+html[data-game] body:has(.suite-header:not(.suite-header--table)) {
+  /* hidden creates a scroll container and breaks sticky in Safari/Chromium. */
+  overflow-x: clip;
+  overflow-y: visible;
+}
+html[data-game] body :is(#suiteHeader, #hausdeppHeader):not(.suite-header--table) {
+  --suite-paper: var(--surface, #fffaf0);
+  --suite-ink: var(--text, #302c25);
+  --suite-muted: var(--muted, #665f52);
+  --suite-line: var(--border, #d8d0bf);
+  --suite-soft: var(--surface-soft, #eee6d6);
+  --suite-accent: var(--accent-strong, #763b2e);
+  box-sizing: border-box;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: 44px minmax(44px, auto);
+  align-items: center;
+  align-self: start;
+  gap: 8px 12px;
+  width: min(1120px, calc(100vw - 32px));
+  max-width: none;
+  height: auto;
+  min-height: 0;
+  margin: 0 0 16px;
+  margin-inline: auto;
+  padding: calc(10px + env(safe-area-inset-top, 0px)) 12px 8px;
+  color: var(--suite-ink);
+  background: var(--suite-paper);
+  border: 1px solid var(--suite-line);
+  border-radius: 12px;
+  box-shadow: 0 3px 12px #00000012;
+  font: 14px/1.25 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+html[data-game] body :is(#suiteHeader, #hausdeppHeader):not(.suite-header--table)::after { content: none; }
+html[data-game] body :is(#suiteHeader, #hausdeppHeader):not(.suite-header--table) .suite-header__brand {
+  display: inline-flex;
+  grid-column: 1;
+  grid-row: 1;
+  align-items: center;
+  gap: 8px;
+  width: auto;
+  min-width: 0;
+  min-height: 44px;
+  margin: 0;
+  padding: 0;
+  color: inherit;
+  font: 750 20px/1.15 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  letter-spacing: -.03em;
+  text-decoration: none;
+}
+html[data-game] body :is(#suiteHeader, #hausdeppHeader):not(.suite-header--table) .suite-header__brand :is(img, .logo, .zilch-brand-mark, .suite-header__icon) {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 32px;
+  width: 32px;
+  height: 32px;
+  min-height: 0;
+  margin: 0;
+  border-radius: 7px;
+  object-fit: contain;
+  font-size: 24px;
+}
+html[data-game] body :is(#suiteHeader, #hausdeppHeader):not(.suite-header--table) .suite-header__brand > :last-child:not(img) {
+  display: inline;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+html[data-game] body :is(#suiteHeader, #hausdeppHeader):not(.suite-header--table) .suite-header__tools {
+  display: flex;
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: end;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 6px;
+  width: auto;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+}
+html[data-game] body :is(#suiteHeader, #hausdeppHeader):not(.suite-header--table) .suite-header__tools :is(label, .language-switcher) {
+  display: inline-flex;
+  align-items: center;
+  width: auto;
+  margin: 0;
+}
+html[data-game] body :is(#suiteHeader, #hausdeppHeader):not(.suite-header--table) .suite-header__tools :is(button, select) {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
+  margin: 0;
+  padding: 0 9px;
+  color: var(--suite-ink);
+  background: var(--suite-soft);
+  border: 1px solid var(--suite-line);
+  border-radius: 7px;
+  box-shadow: none;
+  font: 700 13px/1.2 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  letter-spacing: 0;
+}
+html[data-game] body :is(#suiteHeader, #hausdeppHeader):not(.suite-header--table) .suite-header__tools select { padding-right: 18px; }
+html[data-game] body :is(#suiteHeader, #hausdeppHeader):not(.suite-header--table) .suite-header__tools [data-theme-toggle] { width: 44px; padding: 0; }
+html[data-game] body :is(#suiteHeader, #hausdeppHeader):not(.suite-header--table) .suite-header__tools [data-game-picker] { min-width: 96px; gap: 6px; }
+html[data-game] body :is(#suiteHeader, #hausdeppHeader):not(.suite-header--table) :is(#zilchAccount, .hd-profile-button) { display: none; }
+html[data-game] body :is(#suiteHeader, #hausdeppHeader):not(.suite-header--table) .suite-header__nav {
+  display: block;
+  grid-column: 1 / -1;
+  grid-row: 2;
+  align-self: stretch;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 8px 0 0;
+  border: 0;
+  border-top: 1px solid var(--suite-line);
+  background: transparent;
+}
+html[data-game] body :is(#suiteHeader, #hausdeppHeader):not(.suite-header--table) .suite-header__nav,
+html[data-game] body :is(#suiteHeader, #hausdeppHeader):not(.suite-header--table) .suite-header__nav > ul {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+  list-style: none;
+}
+html[data-game] body :is(#suiteHeader, #hausdeppHeader):not(.suite-header--table) .suite-header__nav > ul { grid-column: 1 / -1; width: 100%; margin: 0; padding: 0; }
+html[data-game] body :is(#suiteHeader, #hausdeppHeader):not(.suite-header--table) .suite-header__nav li { min-width: 0; margin: 0; padding: 0; }
+html[data-game] body :is(#suiteHeader, #hausdeppHeader):not(.suite-header--table) .suite-header__nav a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-width: 0;
+  height: 44px;
+  max-width: none;
+  min-height: 44px;
+  margin: 0;
+  padding: 4px 8px;
+  color: var(--suite-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  box-shadow: none;
+  font: 700 14px/1.2 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  letter-spacing: 0;
+  text-align: center;
+  text-decoration: none;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+html[data-game] body :is(#suiteHeader, #hausdeppHeader):not(.suite-header--table) .suite-header__nav a:hover,
+html[data-game] body :is(#suiteHeader, #hausdeppHeader):not(.suite-header--table) .suite-header__nav a[aria-current="page"] {
+  color: var(--suite-accent);
+  background: var(--suite-soft);
+  border-color: var(--suite-line);
+}
+html[data-game] body :is(#suiteHeader, #hausdeppHeader):not(.suite-header--table) :is(a, button, select):focus-visible { outline: 3px solid var(--suite-accent); outline-offset: 2px; }
+html[data-game] body .suite-header.suite-header--table { position: relative; top: auto; }
+html[data-game] body:has(.suite-header:not(.suite-header--table)) .account-tabs {
+  top: calc(var(--suite-header-height) + 8px);
+  z-index: 10;
+}
+html[data-game="watten"] .wt-skip:focus { z-index: 21; }
+
+/* The fixed Watten table keeps one 52px row (44px in short landscape).
+   Its controls must fit alongside the game identity even at 320px. */
+html[data-game="watten"] .wt-header.suite-header--table .suite-header__brand { min-height: 44px; }
+html[data-game="watten"][data-watten-active="true"] { --wt-table-header-height: 52px; }
+html[data-game="watten"][data-watten-active="true"] .wt-header.suite-header--table { gap: 4px; }
+html[data-game="watten"][data-watten-active="true"] .wt-header .suite-header__brand {
+  flex: 0 0 auto;
+  gap: 4px;
+  min-width: 0;
+  font-size: 1rem;
+  white-space: nowrap;
+}
+html[data-game="watten"][data-watten-active="true"] .wt-header .suite-header__icon {
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+}
+html[data-game="watten"][data-watten-active="true"] .wt-header .suite-header__tools { flex: 0 0 auto; gap: 4px; }
+html[data-game="watten"][data-watten-active="true"] .wt-header .wt-language select {
+  width: 48px;
+  height: 44px;
+  min-width: 44px;
+  padding-inline: 4px;
+  font-size: 13px;
+}
+html[data-game="watten"][data-watten-active="true"] .wt-header .wt-nav { flex: 0 0 auto; min-width: 0; }
+html[data-game="watten"][data-watten-active="true"] .wt-header .wt-nav a { min-width: 44px; padding-inline: 4px; font-size: 13px; }
+html[data-game="watten"][data-watten-active="true"] .wt-header [data-game-picker] .suite-game-trigger__chevron { display: none; }
+@media (orientation: landscape) and (max-height: 700px) {
+  html[data-game="watten"][data-watten-active="true"] { --wt-table-header-height: 44px; }
+}
+@media (max-height: 700px) {
+  /* Partner cards belong to the table, so reserve a real header slot instead
+     of placing their disclosure over the wider suite brand. */
+  html[data-game="watten"][data-watten-active="true"]:has(details.wt-partner-hand) .wt-header {
+    padding-left: calc(max(10px, env(safe-area-inset-left)) + 48px);
+  }
+  html[data-game="watten"][data-watten-active="true"] details.wt-partner-hand {
+    left: max(10px, env(safe-area-inset-left));
+    top: calc(var(--game-viewport-top, 0px) + (var(--wt-table-header-height) - 44px) / 2);
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-partner-popover {
+    top: calc(var(--game-viewport-top, 0px) + var(--wt-table-header-height) + 4px);
+    left: max(10px, env(safe-area-inset-left));
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-private:has(details.wt-partner-hand) { translate: none; }
+}
+@media (orientation: portrait) and (max-height: 700px) {
+  /* A translated ancestor would anchor fixed partner controls to the advice
+     panel. Keep that panel centred without creating a fixed containing block. */
+  html[data-game="watten"][data-watten-active="true"] .wt-private:has(details.wt-partner-hand) {
+    left: calc(50% - 75px);
+    translate: none;
+  }
+}
+@media (max-width: 600px) {
+  html[data-game] body :is(#suiteHeader, #hausdeppHeader):not(.suite-header--table) { gap: 6px; padding-inline: 6px; border-radius: 8px; }
+  html[data-game] body :is(#suiteHeader, #hausdeppHeader):not(.suite-header--table) .suite-header__brand { gap: 5px; font-size: 16px; }
+  html[data-game] body :is(#suiteHeader, #hausdeppHeader):not(.suite-header--table) .suite-header__brand :is(img, .logo, .zilch-brand-mark, .suite-header__icon) { flex-basis: 24px; width: 24px; height: 24px; font-size: 20px; }
+  html[data-game] body :is(#suiteHeader, #hausdeppHeader):not(.suite-header--table) .suite-header__tools { gap: 4px; }
+  html[data-game] body :is(#suiteHeader, #hausdeppHeader):not(.suite-header--table) .suite-header__tools [data-game-picker] { min-width: 44px; width: 44px; gap: 0; padding: 0; }
+  html[data-game] body :is(#suiteHeader, #hausdeppHeader):not(.suite-header--table) [data-game-picker] :is(.suite-game-trigger__name, .suite-game-trigger__chevron) { display: none; }
+  html[data-game] body :is(#suiteHeader, #hausdeppHeader):not(.suite-header--table) .suite-header__nav a { padding-inline: 3px; font-size: 12px; }
+}

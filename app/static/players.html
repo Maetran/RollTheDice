@@ -13,14 +13,15 @@
   <meta property="og:url" content="https://zockdiewandan.online/spieler">
   <meta property="og:image" content="https://zockdiewandan.online/static/icons/icon-512.png">
   <meta name="twitter:card" content="summary">
-  <link rel="manifest" href="/manifest.webmanifest?v=900ce791b033">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=900ce791b033" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=900ce791b033" sizes="180x180">
+  <link rel="manifest" href="/manifest.webmanifest?v=24531f9085ea">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=24531f9085ea" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=24531f9085ea" sizes="180x180">
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"||t==="classic"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d==="dark"?"dark":"light";const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=d==="dark"?"#0b1120":d==="classic"?"#31583a":"#f4f6f8"}catch(_){}</script>
-  <link rel="stylesheet" href="/static/style.css?v=900ce791b033">
-  <link rel="stylesheet" href="/static/zdwa-design-2026.css?v=900ce791b033">
+  <link rel="stylesheet" href="/static/style.css?v=24531f9085ea">
+  <link rel="stylesheet" href="/static/zdwa-design-2026.css?v=24531f9085ea">
   <script>{const r=document.documentElement,g=k=>{try{return localStorage.getItem(k)}catch(_){return null}},q=new URLSearchParams(location.search).get("design");if(q!=="classic"&&g("zdwa_design")!=="old"&&g("zdwa_design_off")!=="1"&&(q==="2026"||g("zdwa_design_override")!=="old"))r.dataset.design="2026"}</script>
-  <script src="/static/shell.js?v=900ce791b033" defer></script>
+  <script src="/static/shell.js?v=24531f9085ea" defer></script>
+  <link rel="stylesheet" href="/static/suite-header.css?v=24531f9085ea">
 </head>
 <body class="lobby-page">
   <main class="wrap profile-shell">
@@ -35,6 +36,15 @@
       <p class="eyebrow">ZDWA Community</p>
       <h1 id="playersTitle">Spieler &amp; Ranking</h1>
       <p>Finde öffentliche Spielerprofile, vergleiche Ranglisten und entdecke die neuesten Erfolge der ZDWA-Community.</p>
+    </section>
+    <section class="card community-stats" aria-labelledby="communityStatsTitle">
+      <h2 id="communityStatsTitle">Community-Statistik</h2>
+      <dl class="community-stats-grid">
+        <div><dt><span class="online-dot" aria-hidden="true"></span> Nutzer online</dt><dd id="onlineUsers">—</dd></div>
+        <div><dt>beendete Partien</dt><dd id="gamesPlayed">—</dd></div>
+        <div><dt title="Durchschnittspunkte">⌀ Normal</dt><dd><span id="avgNormalPoints">—</span> <span id="avgNormalTrend" class="avg-trend avg-same">–</span></dd></div>
+        <div><dt title="Durchschnittspunkte">⌀ Hardcore</dt><dd><span id="avgHardcorePoints">—</span> <span id="avgHardcoreTrend" class="avg-trend avg-same">–</span></dd></div>
+      </dl>
     </section>
     <div class="community-view-switch" role="tablist" aria-label="Spieler und Ranking">
       <button id="communityRankingsTab" type="button" role="tab" data-achievement-tab="rankings" aria-controls="communityRankingsPanel" aria-selected="true">Rankings</button>
@@ -78,8 +88,8 @@
     <section id="communityAchievementsPanel" class="card community-view-panel achievement-feed-card" data-achievement-view="achievements" role="tabpanel" aria-labelledby="communityAchievementsTab" hidden></section>
   </main>
   <script type="module">
-    import { escapeHtml, formatNumber, playerNameMarkup, mountPlayerSearch } from '/static/auth.js?v=900ce791b033';
-    import { mountAchievementFeed } from '/static/achievement-feed.js?v=900ce791b033';
+    import { escapeHtml, formatNumber, playerNameMarkup, mountPlayerSearch } from '/static/auth.js?v=24531f9085ea';
+    import { mountAchievementFeed } from '/static/achievement-feed.js?v=24531f9085ea';
     const rankingSort = document.getElementById('rankingSort');
     const rankingNormal = document.getElementById('rankingNormal');
     const rankingHardcore = document.getElementById('rankingHardcore');
@@ -88,6 +98,63 @@
     const profileUrl = username => `/spieler/${encodeURIComponent(username)}`;
     let rankingMode = 'normal';
     let rankingLoaded = false;
+
+    function communityNumber(value, { count = false } = {}) {
+      if (value === null || value === undefined || !Number.isFinite(Number(value))) return '—';
+      const number = count ? Math.max(0, Math.floor(Number(value))) : Number(value);
+      return new Intl.NumberFormat(window.ZDWA_I18N?.locale?.() || 'de-CH', {
+        maximumFractionDigits: count ? 0 : 1,
+      }).format(number);
+    }
+
+    function renderCommunityAverage(bucket, pointsId, trendId) {
+      document.getElementById(pointsId).textContent = communityNumber(bucket?.average_points);
+      const recent = communityNumber(bucket?.recent_average_points);
+      const detail = Number(bucket?.trend_games) >= 3 && recent !== '—'
+        ? ` (Ø letzte 3: ${recent})` : ' (noch keine 3 Spiele)';
+      const trends = {
+        up: { text: '↑', css: 'avg-up', title: `Trend positiv${detail}` },
+        down: { text: '↓', css: 'avg-down', title: `Trend negativ${detail}` },
+        same: { text: '–', css: 'avg-same', title: `Trend stagnierend${detail}` },
+      };
+      const trend = trends[bucket?.trend] || { text: '–', css: 'avg-same', title: 'Zu wenig Daten' };
+      const element = document.getElementById(trendId);
+      element.textContent = trend.text;
+      element.className = `avg-trend ${trend.css}`;
+      element.title = window.ZDWA_I18N?.t?.(trend.title) || trend.title;
+      element.setAttribute('aria-label', element.title);
+    }
+
+    let communityStatsPending = false;
+    async function loadCommunityStats() {
+      if (communityStatsPending) return;
+      communityStatsPending = true;
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 8_000);
+      try {
+        const readStats = async endpoint => {
+          const response = await fetch(endpoint, { cache: 'no-store', signal: controller.signal });
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          return response.json();
+        };
+        const [presence, leaderboard] = await Promise.allSettled([
+          readStats('/api/games'), readStats('/api/leaderboard'),
+        ]);
+        document.getElementById('onlineUsers').textContent = communityNumber(
+          presence.status === 'fulfilled' ? presence.value?.online_users : null, { count: true },
+        );
+        const stats = leaderboard.status === 'fulfilled' ? leaderboard.value?.stats : null;
+        document.getElementById('gamesPlayed').textContent = communityNumber(stats?.games_played, { count: true });
+        renderCommunityAverage(stats?.average_points?.normal, 'avgNormalPoints', 'avgNormalTrend');
+        renderCommunityAverage(stats?.average_points?.hc, 'avgHardcorePoints', 'avgHardcoreTrend');
+      } finally {
+        clearTimeout(timeout);
+        communityStatsPending = false;
+      }
+    }
+
+    void loadCommunityStats();
+    setInterval(() => { if (!document.hidden) void loadCommunityStats(); }, 10_000);
 
     mountPlayerSearch(document.getElementById('player-search'), {
       renderPlayer: player => playerNameMarkup(player, { name: player.username, compactRank: true }),

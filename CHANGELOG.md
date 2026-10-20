@@ -23,6 +23,76 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 3.18.2 — Einheitliche Navigation und klare Spieltische / Consistent navigation and clear game tables — 2026-10-20
+
+Die Spielesuite wird übersichtlicher: vom Seitenkopf bis zum Rundenabschluss.
+The game suite becomes clearer, from page navigation to round results.
+
+### ALLGEMEIN
+
+**Deutsch:** ZDWA, Zilch, Hausdepp und Watten nutzen einen zweizeiligen Header.
+Oben stehen Spielsymbol und Name, Sprache, vorhandener Darstellungswechsel und
+Spielauswahl; darunter Lobby, Spieler & Ranking, Regeln und Konto. Ausserhalb
+der Spieltische bleibt er beim Scrollen oben sichtbar, auch auf kleinen Handys.
+
+**English:** ZDWA, Zilch, Hausdepp and Watten share a two-row header. The game
+icon and name, language, available appearance switch and game picker sit above
+Lobby, Players & Ranking, Rules and Account. Outside game tables it stays at
+the top while scrolling, including on small phones.
+
+### ZDWA
+
+**Deutsch:** Onlinezahl, beendete Partien und Normal-/Hardcore-Durchschnitte mit
+Trends stehen neu als Community-Statistik unter Spieler & Ranking.
+
+**English:** Online count, completed games and Normal/Hardcore averages with
+trends now appear as community statistics under Players & Ranking.
+
+### HAUSDEPP
+
+**Deutsch:** Im Hausdepp-Rundenabschluss erhalten auch längere Statuswörter
+wie „Verblieben“ und „Ausgestiegen“ ihren benötigten Platz. Auf kleinen
+Displays bleiben Status, Avatar, Spielername und Runden-EP getrennt lesbar.
+Beim Verlassen ersetzt eine Bestätigung im Hausdepp-Design den Systemdialog.
+„Am Tisch bleiben“ ist vorausgewählt; Schliessen und Escape brechen ab.
+Die Hinweise zu aufgegebener Hand und Turnier bleiben vor der Bestätigung sichtbar.
+
+**English:** Hausdepp round results give longer status labels such as
+“Remaining” and “Withdrawn” the space they need. Status, avatar, player name
+and round XP remain separate and readable on small screens.
+Leaving now uses a confirmation in the Hausdepp design instead of a system
+dialog. Stay at the table receives focus first; closing or Escape cancels.
+Hand-forfeiture and tournament warnings remain visible before confirmation.
+
+### WATTEN
+
+**Deutsch:** Die private Watten-Vorschau bekommt einen hellen Wirtshaustisch mit
+geschnitzten Ecken. Laufende Partien zeigen Kartenhand, vollständige Gegnerfächer
+und Bietentscheidung auf einer festen Spielseite. Im schmalen Querformat liegen
+Hand und Aktionen nebeneinander; Lobby und Anleitung bleiben normal scrollbar.
+Gebote zeigen Angebot, Haltewert, Gehwert und nächstes Gegengebot. Private
+Partnergefühle bleiben erreichbar; das optionale offene Partnerblatt öffnet sich
+platzsparend. Bedienelemente und Kartenknoten bleiben bei Bestätigungen erhalten.
+Karten fliegen vom Geberstapel beziehungsweise tatsächlichen Handfächer zum
+Stich, der sichtbar zum Gewinner wandert. Schnelle Folgekarten werden rein
+visuell kurz gestaffelt, ohne neue Wartepflicht oder Änderung der Regeln.
+Wiederverbinden zeigt den aktuellen Zustand ohne erfundene vergangene Flüge;
+reduzierte Bewegung und gedrehte beziehungsweise verschobene Ansichten werden
+berücksichtigt. Der tatsächliche Stichgewinner spielt weiterhin als Erster aus.
+
+**English:** The private Watten preview gains a bright tavern table with carved
+corners. Active games keep the hand, complete opponent fans and bid decisions on
+one fixed game screen. Short landscape screens place cards and actions beside
+each other; the lobby and rules retain ordinary document scrolling. Bids show
+the offer, hold and fold values, and the next raise. Private partner advice
+remains reachable; the optional open partner hand uses a compact disclosure.
+Controls and card nodes survive acknowledgements. Cards travel from the dealer
+stock or actual hand fan to the trick, then visibly to its winner. Fast following
+cards receive a bounded visual delay without changing legal turns or rules.
+Reconnect shows current state without replaying invented flights; reduced
+motion, rotation and viewport changes are respected. The actual trick winner
+continues to lead the next card.
+
 ## 3.18.1 — Zuschauen verlassen und Mikrofon freigeben / Leave spectating and allow the microphone — 2026-10-20
 
 **Deutsch:** Auch Zuschauer können den Hausdepp-Tisch jetzt direkt verlassen,

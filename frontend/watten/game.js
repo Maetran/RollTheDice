@@ -16,6 +16,7 @@ import { mountWattenLobbyChat } from "./lobby-chat.js";
 import { createDecor } from "./decor.js";
 import { createFriendActivity } from "./friend-activity.js";
 import { initializeAppMode } from "../multigame/app-mode.js";
+import { initializeSuiteHeader } from "../shell/header.js";
 
 // Metadata only: these preview documents neither register a worker nor
 // advertise installation; the account pages own that local experiment.
@@ -26,6 +27,8 @@ const page = ["lobby", "table", "spectator", "rules"].includes(html.dataset.watt
 const gameId = /^[0-9a-f]{16}$/.test(html.dataset.gameId || "") ? html.dataset.gameId : "";
 const app = document.getElementById("wattenApp");
 const nav = document.querySelector("[data-watten-nav]");
+document.querySelector(".suite-header")?.classList.toggle("suite-header--table", page === "table" || page === "spectator");
+initializeSuiteHeader();
 const GAME_PATH = /^[0-9a-f]{16}$/;
 const STALE = new Set(["watten_stale_room_revision", "watten_stale_revision", "watten_stale_lifecycle", "watten_stale_opportunity"]);
 const ERRORS = new Set([
@@ -65,16 +68,18 @@ function signInUrl(path = location.pathname) {
 function renderNav(auth) {
   if (!nav) return;
   const user = auth?.authenticated ? auth.user : null;
+  const label = text => esc(window.ZDWA_I18N.t(text));
   nav.innerHTML = `<a href="/watten"${page === "lobby" ? " aria-current=\"page\"" : ""}>${esc(t("nav.lobby"))}</a>
+    <a href="/watten/rangliste">${label("Spieler & Ranking")}</a>
     <a href="/watten/regeln"${page === "rules" ? " aria-current=\"page\"" : ""}>${esc(t("nav.rules"))}</a>
-    ${user ? `<a href="/watten/konto/fortschritt">${esc(t("nav.progress"))}</a><a href="/watten/rangliste">${esc(t("nav.ranking"))}</a>` : ""}
-    ${user ? `<a href="/watten/konto/einstellungen" aria-label="${esc(t("nav.accountOf", { name: user.username }))}"><span translate="no">${esc(user.username)}</span></a>`
-      : `<a href="${esc(signInUrl())}">${esc(t("nav.signIn"))}</a>`}`;
+    ${user ? `<a href="/watten/konto/einstellungen" aria-label="${esc(t("nav.accountOf", { name: user.username }))}">${label("Konto")}</a>`
+      : `<a href="${esc(signInUrl())}">${label("Konto")}</a>`}`;
 }
 
 /** Drop private state synchronously; late callbacks observe a new generation. */
 function teardown() {
   generation += 1;
+  delete html.dataset.wattenActive;
   for (const cleanup of cleanups) cleanup();
   cleanups.clear();
   closeSocket();
@@ -413,6 +418,8 @@ function setHeading(name) {
 
 function showMessage(title, body, actions = "") {
   decor?.suspend();
+  motion.cancel();
+  delete html.dataset.wattenActive;
   session.view = null;
   session.viewKind = "message";
   const root = viewRoot();
@@ -424,6 +431,7 @@ function showMessage(title, body, actions = "") {
 const lobbyLink = () => `<a class="wt-button" href="/watten">${esc(t("nav.lobby"))}</a>`;
 
 function closeSocket() {
+  motion.cancel();
   const socket = session.socket;
   session.socket = null;
   session.serial += 1;
@@ -598,6 +606,7 @@ function onError(data) {
 }
 
 function onClose(event) {
+  motion.cancel();
   const wasBound = session.bound;
   session.socket = null;
   session.bound = false;
@@ -806,7 +815,7 @@ function adopt(snapshot, publicCalls) {
   setConnection("");
   if (!session.spectator) consumeCalls(snapshot);
   else if (Array.isArray(publicCalls)) for (const event of publicCalls) presentCall(event, snapshot);
-  render(previous, live);
+  render(previous, live, true);
   scheduleDeliveryAck();
 }
 
@@ -832,13 +841,15 @@ function liveMessage(snapshot, engine, actions) {
   return "";
 }
 
-function render(previous = null, live = false) {
+function render(previous = null, live = false, accepted = false) {
   const snapshot = session.snapshot;
   const root = viewRoot();
   if (!snapshot || !root) return;
   decor?.suspend();
   setHeading(snapshot.name);
   if (!snapshot.engine) {
+    motion.cancel();
+    delete html.dataset.wattenActive;
     if (snapshot.room.status === "closed") {
       if (session.viewKind !== "closed" || !root.querySelector("[data-watten-rematch]")) {
         showMessage(t("waiting.closedTitle"), t("waiting.closed"), `${lobbyLink()}<div data-watten-rematch hidden></div>`);
@@ -865,9 +876,8 @@ function render(previous = null, live = false) {
     motion.cancel();
     session.viewKind = "table";
     session.view = createTableView(root, { onCard: card => engineCommand("play_card", card) });
-    previous = null;
-    live = false;
   }
+  html.dataset.wattenActive = "true";
   const engine = snapshot.engine;
   const count = snapshot.room.recipe.player_count;
   const viewerSeat = session.spectator ? null : engine.viewer?.seat ?? null;
@@ -886,7 +896,7 @@ function render(previous = null, live = false) {
     liveMessage: liveMessage(snapshot, engine, actions),
   };
   session.callAnnouncement = "";
-  const captured = sameDeal ? motion.capture(session.view.motionSources(), node => node.dataset.key) : null;
+  const captured = accepted ? motion.capture(session.view.motionSources()) : null;
   let result;
   preserveFocus(() => { result = session.view.update(vm); });
   matchProgress?.update({ container: root.querySelector("[data-watten-match-progress]"), snapshot,
@@ -894,14 +904,7 @@ function render(previous = null, live = false) {
   rematch?.update({ container: root.querySelector("[data-watten-rematch]"), snapshot,
     playerId: session.playerId, spectator: session.spectator, busy: Boolean(session.inFlight) || !session.bound });
   syncDecor();
-  if (captured) {
-    for (const item of result.trick.created) {
-      motion.arrive(item.node, captured.rects.get(item.card) || captured.rects.get(`seat-${item.seat}`), captured);
-    }
-    if (result.hand.created.length && result.hand.created.length === result.hand.nodes.length) motion.deal(result.hand.created);
-  } else if (live && previous?.engine && previous.engine.deal_id !== engine.deal_id) {
-    motion.deal(result.hand.nodes);
-  }
+  if (accepted) motion.present({ previous: previous?.engine, engine, live, captured, result, view: session.view });
 }
 
 function renderJoinPrompt() {
@@ -909,6 +912,8 @@ function renderJoinPrompt() {
   const root = viewRoot();
   if (!data || !root) return;
   decor?.suspend();
+  motion.cancel();
+  delete html.dataset.wattenActive;
   session.view = null;
   session.viewKind = "join";
   setHeading(data.name);
@@ -925,6 +930,8 @@ function renderSpectatePrompt() {
   const root = viewRoot();
   if (!data || !root) return;
   decor?.suspend();
+  motion.cancel();
+  delete html.dataset.wattenActive;
   session.view = null;
   session.viewKind = "spectate";
   setHeading(data.name);
@@ -1118,10 +1125,15 @@ app.addEventListener("submit", event => {
   }
 });
 
-cleanups.add(() => { closeLeaveDialog(); motion.cancel(); });
+cleanups.add(() => { closeLeaveDialog(); motion.destroy(); });
 
 if (page === "rules") {
-  loadAuth().then(renderNav).catch(() => renderNav(null));
+  loadAuth().then(auth => {
+    renderNav(auth);
+    if (auth.authenticated && (auth.game_access || auth.user?.game_access)?.watten_preview === true) {
+      initializeAppMode({ mode: "watten" });
+    }
+  }).catch(() => renderNav(null));
 } else if (page === "table" || page === "spectator") {
   initializeGameViewport();
   void mountTable();

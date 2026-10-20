@@ -53,7 +53,7 @@ test.afterEach(async ({ page }) => {
 });
 
 for (const language of ['de', 'en']) {
-  test(`${language}: real active departure is confirmed, stops local audio and returns to the lobby`, async ({ page }) => {
+  test(`${language}: real active departure is confirmed, stops local audio and returns to the lobby`, async ({ page }, testInfo) => {
     const app = await setup(page, language, { freshActor: true });
     let closedContexts = 0;
     await page.exposeFunction('__departureContextClosed', () => { closedContexts++; });
@@ -75,15 +75,47 @@ for (const language of ['de', 'en']) {
     }
     await page.locator('#hausdeppSound').click();
     await expect(page.locator('#hausdeppSound')).toHaveAttribute('aria-pressed', 'true');
-    let warning;
-    page.once('dialog', async dialog => { warning = dialog.message(); await dialog.dismiss(); });
+    const systemDialogs = [];
+    page.on('dialog', dialog => { systemDialogs.push(dialog.message()); void dialog.dismiss(); });
+    const dialog = page.locator('#appDialog[data-kind="hausdepp-departure"]');
+    const cancel = dialog.locator('[data-dialog-action="cancel"]');
+    const confirm = dialog.locator('[data-dialog-action="confirm"]');
+    const close = dialog.locator('#appDialogClose');
+    for (const [index, [width, height]] of [[320, 568], [375, 812], [844, 390], [1440, 900]].entries()) {
+      await page.setViewportSize({ width, height });
+      await leave.click();
+      await expect(dialog).toBeVisible();
+      await expect(dialog).toHaveAccessibleName(language === 'de' ? 'Turnier verlassen' : 'Leave tournament');
+      await expect(cancel).toHaveText(language === 'de' ? 'Am Tisch bleiben' : 'Stay at the table');
+      await expect(cancel).toBeFocused();
+      const warning = await dialog.locator('#appDialogMessage').innerText();
+      expect(warning).toContain(language === 'de' ? 'keine EP' : 'no XP');
+      expect(warning).toContain(language === 'de' ? 'Die anderen spielen weiter' : 'The others keep playing');
+      expect(warning).toContain(language === 'de' ? 'früherer Runden bleiben erhalten' : 'previous rounds are kept');
+      const bounds = await dialog.boundingBox();
+      expect(bounds.x).toBeGreaterThanOrEqual(0); expect(bounds.x + bounds.width).toBeLessThanOrEqual(width);
+      expect(bounds.y).toBeGreaterThanOrEqual(0); expect(bounds.y + bounds.height).toBeLessThanOrEqual(height);
+      for (const button of [cancel, confirm, close]) {
+        await button.scrollIntoViewIfNeeded();
+        await expect(button).toBeInViewport();
+        const target = await button.boundingBox();
+        expect(target.width).toBeGreaterThanOrEqual(44); expect(target.height).toBeGreaterThanOrEqual(44);
+      }
+      if (width === 375 || width === 844) await page.screenshot({ path: testInfo.outputPath(`departure-dialog-${language}-${width}x${height}.png`) });
+      if (index === 1) {
+        await confirm.focus(); await page.keyboard.press('Tab'); await expect(close).toBeFocused();
+        await page.keyboard.press('Shift+Tab'); await expect(confirm).toBeFocused();
+        await page.keyboard.press('Escape');
+      } else if (index === 2) await close.click();
+      else if (index === 3) await page.locator('#appDialogBackdrop').click({ position: { x: 2, y: 2 } });
+      else await cancel.click();
+      await expect(dialog).not.toBeVisible(); await expect(leave).toBeFocused();
+      expect(app.sent.some(message => message.action === 'hausdepp_leave_game')).toBe(false);
+    }
+    expect(systemDialogs).toEqual([]);
     await leave.click();
-    expect(warning).toContain(language === 'de' ? 'keine EP' : 'no XP');
-    expect(warning).toContain(language === 'de' ? 'Die anderen spielen weiter' : 'The others keep playing');
-    expect(warning).toContain(language === 'de' ? 'früherer Runden bleiben erhalten' : 'previous rounds are kept');
-    expect(app.sent.some(message => message.action === 'hausdepp_leave_game')).toBe(false);
-    page.once('dialog', dialog => dialog.accept());
-    await leave.click();
+    await expect(dialog).toBeVisible();
+    await confirm.click();
     await expect(page).toHaveURL(url => url.pathname === '/hausdepp');
     const departure = app.sent.filter(message => message.action === 'hausdepp_leave_game');
     expect(departure).toHaveLength(1); expect(Number.isSafeInteger(departure[0].version)).toBe(true);
@@ -117,11 +149,15 @@ test('a regularly finished hand can leave between tournament rounds without a fo
   }));
   await page.reload();
   const leave = page.locator('#hausdeppLeaveGameResult'); await expect(leave).toBeVisible();
-  let warning;
-  page.once('dialog', async dialog => { warning = dialog.message(); await dialog.dismiss(); });
   await leave.click();
+  const dialog = page.locator('#appDialog[data-kind="hausdepp-departure"]');
+  await expect(dialog).toBeVisible();
+  const warning = await dialog.locator('#appDialogMessage').innerText();
   expect(warning).toContain('reguläres Rundenergebnis'); expect(warning).not.toContain('keine EP');
   expect(warning).toContain('früherer Runden bleiben erhalten');
+  await dialog.locator('[data-dialog-action="cancel"]').click();
+  await expect(dialog).not.toBeVisible();
+  await expect(leave).toBeFocused();
   await expect(page).toHaveURL(app.room);
 });
 
@@ -179,8 +215,8 @@ test('a real participant leaves two other players in the same playable table wit
     const person = board().players.find(player => player.name === username);
     expect(person.hand_count).toBeGreaterThan(0);
     const priorBurned = board().burned_count, removedCards = person.hand_count;
-    guest.once('dialog', dialog => dialog.accept());
     await guest.locator('#hausdeppLeaveGame').click();
+    await guest.locator('#appDialog[data-kind="hausdepp-departure"] [data-dialog-action="confirm"]').click();
     await expect(guest).toHaveURL(url => url.pathname === '/hausdepp');
     await expect.poll(() => board().players.find(player => player.id === person.id).withdrawn).toBe(true);
     expect(board().players.find(player => player.id === person.id).hand_count).toBe(0);
@@ -279,6 +315,7 @@ for (const language of ['de', 'en']) {
         // event. The host's real departure event proves server-side cleanup.
         await expect.poll(() => app.received.filter(message => message.spectator?.event === 'left' && message.spectator.name === username).length).toBe(1);
         expect(dialogs).toEqual([]);
+        await expect(watcher.locator('#appDialogBackdrop')).not.toBeVisible();
         expect(sent.filter(message => typeof message.action === 'string').map(message => message.action)).toEqual(['spectate_game']);
         const current = await (await page.request.get(`/api/games/${app.id}`)).json();
         // The running game may deal cards or advance CPUs during navigation.

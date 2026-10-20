@@ -1,5 +1,6 @@
 const { test, expect } = require('@playwright/test');
 const { player, create, normalCall } = require('./helpers/watten-journey.cjs');
+const { expectFixedTable, expectReachable } = require('./table-viewport');
 
 for (const browserName of ['chromium', 'webkit']) {
   const rotationTest = test.extend({ browser: [async ({ playwright }, use) => {
@@ -8,7 +9,7 @@ for (const browserName of ['chromium', 'webkit']) {
   }, { scope: 'worker' }] });
   rotationTest.describe(`Watten ${browserName} mobile rotation hit targets`, () => {
 
-    rotationTest('iPhone portrait return plays its painted card and preserves document scrolling', async ({ browser, baseURL }) => {
+    rotationTest('iPhone portrait return keeps the active table fixed and ordinary pages scrollable', async ({ browser, baseURL }) => {
       const portrait = { width: 440, height: 956 };
       const mobileBrowser = { newContext: options => browser.newContext({ ...options, viewport: portrait,
         hasTouch: true, isMobile: true, deviceScaleFactor: 3, serviceWorkers: 'block' }) };
@@ -19,6 +20,8 @@ for (const browserName of ['chromium', 'webkit']) {
         await expect.poll(() => players.some(item => item.traffic.snapshot.engine.actions.includes('play_card'))).toBe(true);
         const actor = players.find(item => item.traffic.snapshot.engine.actions.includes('play_card'));
         const { page, traffic } = actor;
+        await page.bringToFront();
+        await page.evaluate(() => { window.rotationHandNodes = [...document.querySelectorAll('[data-wt-hand] button')]; });
         for (let turn = 0; turn < 3; turn += 1) {
           for (const viewport of [{ width: 956, height: 440 }, portrait]) {
             await page.setViewportSize(viewport);
@@ -26,11 +29,11 @@ for (const browserName of ['chromium', 'webkit']) {
               window.dispatchEvent(new Event('orientationchange'));
               screen.orientation?.dispatchEvent(new Event('change'));
             });
-            // Watten deliberately flows down the page. Rotation recovery for
-            // the fixed dice/card tables must leave its native scroll usable.
-            await expect.poll(() => page.evaluate(() => document.documentElement.scrollHeight > innerHeight)).toBe(true);
-            await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
-            await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(0);
+            await expect(page.locator('html')).toHaveAttribute('data-watten-active', 'true');
+            await expectFixedTable(page, ['[data-wt-felt]', '[data-wt-panel]', '[data-wt-hand-area]']);
+            await expectReachable(page, '[data-wt-hand] button:first-child');
+            expect(await page.evaluate(() => window.rotationHandNodes.every((node, index) =>
+              node === document.querySelectorAll('[data-wt-hand] button')[index]))).toBe(true);
           }
         }
         const card = traffic.snapshot.engine.hand[0].card;
@@ -45,6 +48,16 @@ for (const browserName of ['chromium', 'webkit']) {
           .toEqual([expect.objectContaining({ action: 'watten_command', kind: 'play_card', value: card, opportunity })]);
         await expect.poll(() => traffic.snapshot.engine.opportunity).not.toBe(opportunity);
         expect(traffic.errors).toEqual([]);
+        // Locking is confined to an active game. The real creator and long
+        // rulebook retain ordinary native document scrolling after departure.
+        await page.setViewportSize({ width: 390, height: 844 });
+        for (const path of ['/watten', '/watten/regeln']) {
+          await page.goto(path);
+          await expect(page.locator('html')).not.toHaveAttribute('data-watten-active', 'true');
+          await expect.poll(() => page.evaluate(() => document.documentElement.scrollHeight - innerHeight)).toBeGreaterThan(0);
+          await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
+          await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(0);
+        }
       } finally { await Promise.allSettled(players.map(item => item.context.close())); }
     });
   });

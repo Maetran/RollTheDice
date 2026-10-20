@@ -89,7 +89,7 @@ async function waitingRoomReady(players, gameId, participants) {
   }
 }
 
-async function create(players, { count = players.length, target = 3, reference = false, start = true, password, determination } = {}) {
+async function create(players, { count = players.length, target = 3, reference = false, partnerHand = false, start = true, password, determination } = {}) {
   const host = players[0];
   await host.page.goto('/watten');
   const form = host.page.locator('[data-watten-create]');
@@ -97,9 +97,11 @@ async function create(players, { count = players.length, target = 3, reference =
   await form.locator(`[name=count][value="${count}"] + span`).click();
   if (determination) await form.locator(`[name=determination][value="${determination}"] + span`).click();
   await form.locator('[name=target]').selectOption(String(target));
-  if (reference || password) {
+  if (partnerHand && await form.locator('[name=blind]').isChecked()) await form.locator('[name=blind]').uncheck();
+  if (reference || password || partnerHand) {
     await form.locator('summary').click();
     if (reference) await form.locator('[name=show_rechter]').check();
+    if (partnerHand) await form.locator('[name=partner_hand]').check();
     if (password) {
       await form.locator('[name=password_required] + span').click();
       await form.locator('[name=password]').fill(password);

@@ -23,7 +23,7 @@ export function initializeGameViewport() {
   const restorePageOrigin = () => {
     // iOS may leave the root scroll origin displaced after rotating a locked
     // game surface. Its native hit testing can then disagree with the paint.
-    // Never move a normal document (Watten), a zoomed page or a focused input;
+    // Never move a normal document (including Watten's lobby/rules), a zoomed page or a focused input;
     // score sheets, card fans and chat histories keep their own scroll state.
     if (hasEditableFocus() || keyboardVisible ||
         !["absolute", "fixed"].includes(getComputedStyle(document.body).position) ||

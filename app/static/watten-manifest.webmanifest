@@ -14,7 +14,7 @@
     {"name": "Kontoeinstellungen", "url": "/watten/konto/einstellungen"}
   ],
   "icons": [
-    {"src": "/static/watten/icons/watten-icon-192.png?v=900ce791b033", "sizes": "192x192", "type": "image/png", "purpose": "any"},
-    {"src": "/static/watten/icons/watten-icon-512.png?v=900ce791b033", "sizes": "512x512", "type": "image/png", "purpose": "any"}
+    {"src": "/static/watten/icons/watten-icon-192.png?v=24531f9085ea", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "/static/watten/icons/watten-icon-512.png?v=24531f9085ea", "sizes": "512x512", "type": "image/png", "purpose": "any"}
   ]
 }

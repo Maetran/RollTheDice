@@ -8,14 +8,23 @@
   <meta name="referrer" content="same-origin">
   <meta name="color-scheme" content="light">
   <title>Watten – Spielregeln / Rules</title>
-  <link rel="stylesheet" href="/static/watten-game.css?v=900ce791b033">
+  <link rel="stylesheet" href="/static/watten-game.css?v=24531f9085ea">
+  <link rel="stylesheet" href="/static/suite-header.css?v=24531f9085ea">
 </head>
 <body class="wt-body">
   <a class="wt-skip" href="#wattenApp">Zum Inhalt / Skip to content</a>
-  <header class="wt-header">
-    <a class="wt-brand" href="/watten" translate="no">Watten</a>
-    <nav class="wt-nav" data-watten-nav aria-label="Watten"><a href="/watten">Lobby</a><a href="/watten/regeln" aria-current="page">Regeln / Rules</a></nav>
-    <label class="wt-language"><span class="wt-visually-hidden">Sprache / Language</span><select data-language-switcher aria-label="Sprache / Language"><option value="de">Deutsch</option><option value="en">English</option></select></label>
+  <header class="wt-header suite-header">
+    <a class="wt-brand suite-header__brand" href="/watten" translate="no"><img class="suite-header__icon" src="/static/watten/icons/watten-icon-32.png?v=24531f9085ea" width="32" height="32" alt=""><span>Watten</span></a>
+    <div class="suite-header__tools">
+      <label class="wt-language"><span class="wt-visually-hidden">Sprache / Language</span><select data-language-switcher aria-label="Sprache / Language"><option value="de">Deutsch</option><option value="en">English</option></select></label>
+      <button id="wattenSuitePicker" type="button" class="game-switch" data-game-switch hidden disabled aria-label="Spiele / Games"></button>
+    </div>
+    <nav class="wt-nav suite-header__nav" data-watten-nav aria-label="Watten">
+      <a href="/watten">Lobby</a>
+      <a href="/watten/rangliste">Spieler &amp; Ranking</a>
+      <a href="/watten/regeln" aria-current="page">Regeln</a>
+      <a href="/watten/konto/einstellungen">Konto</a>
+    </nav>
   </header>
   <main id="wattenApp" class="wt-main wt-rules" tabindex="-1">
     <h1>Watten – Spielregeln / Rules</h1>
@@ -89,7 +98,8 @@
         <p>Nach dem Partieende kann der Gastgeber einen Folgetisch mit denselben Regeln und Computerplätzen vorbereiten. Den Passwortschutz wählt er neu; ein geschützter Folgetisch braucht ein neues Passwort. Alle treten freiwillig bei und wählen ihren Sitz und gegebenenfalls ihr Team erneut. Erst «Starten» beginnt die neue Partie. «Folgetisch öffnen» führt stets zu diesem einen Tisch, auch nach einer unterbrochenen Antwort; frühere Punkte und Erfolge bleiben erhalten.</p>
       </section>
       <section id="bedienung"><h2>Bedienung</h2>
-        <p>Du kannst im Hoch- und im Querformat spielen. Im Querformat hast du Tisch und Karten besser im Blick. Alle Aktionen sind auch mit der Tastatur erreichbar.</p>
+        <p>Du kannst im Hoch- und im Querformat spielen. Handkarten, vollständige Gegnerfächer, Stich und aktuelle Entscheidung bleiben auf einem festen Tisch sichtbar; während der Partie musst du die Seite nicht scrollen. Lobby und Anleitung bleiben normal scrollbar. Alle Aktionen sind auch mit der Tastatur erreichbar.</p>
+        <p>Ausgespielte Karten wandern vom jeweiligen Platz in die Tischmitte. Der abgeschlossene Stich wird zum Gewinner eingezogen; er spielt den nächsten Stich aus. Ansagen und Gebotsantworten bleiben bei den Karten erreichbar. Mit reduzierter Bewegung siehst du dieselben Spielzustände ohne Kartenflüge.</p>
         <p>«Tischchat &amp; Emojis» öffnet die öffentliche Unterhaltung mit allen Mitspielern und zugelassenen Zuschauern. Auch bei offenem Gebot, in einer Pause und gestrichen darfst du schreiben oder reagieren; Kartenhinweise bleiben verboten. Für privates Partnergefühl nutze «Gut/Schlecht/Unsicher». Der Tischchat ist unabhängig von deiner Einstellung für den gemeinsamen Lobbychat.</p>
         <p>Mit «Tisch dekorieren» stellst du auf deinem Gerät Getränke, Snacks oder einen Dekowürfel auf. Verschieben geht per Ziehen oder Pfeiltasten; Entf entfernt den gewählten Gegenstand. Essen, Trinken und der Dekowürfel verändern die Partie nicht. Bei wenig Platz wartet alles in deiner Deko-Ecke. «Tisch aufräumen» entfernt Gegenstände und Pfützen.</p>
       </section>
@@ -173,7 +183,8 @@
         <p>After the match, the host can prepare a next table with the same rules and computer seats. Protection is chosen again; a protected next table needs a new password. Everyone joins voluntarily and chooses their seat and team again where applicable. The new match begins only with “Start”. “Open next table” always leads to that one table, including after a lost response; previous points and achievements are kept.</p>
       </section>
       <section id="controls"><h2>Controls</h2>
-        <p>You can play in portrait and landscape. Landscape gives you a clearer view of the table and your cards. Every action is also reachable with the keyboard.</p>
+        <p>You can play in portrait and landscape. Your hand, complete opponents' fans, the trick and the current decision stay visible on one fixed table; you do not need to scroll the page during play. The lobby and rules retain normal scrolling. Every action is also reachable with the keyboard.</p>
+        <p>Played cards move from their seat to the middle of the table. The completed trick is collected towards its winner, who leads the next trick. Calls and bid responses remain reachable beside the cards. Reduced motion shows the same game states without card flights.</p>
         <p>“Table chat &amp; emoji” opens the public conversation with all players and admitted spectators. Messages and reactions remain allowed during a pending bid, a pause and when gestrichen; card hints remain forbidden. Use “Good/Bad/Unsure” for private partner advice. Table chat is independent of your shared lobby chat preference.</p>
         <p>“Decorate the table” places drinks, snacks or a decoration die on your device. Drag items or use the arrow keys; Delete removes the selected item. Eating, drinking and the decoration die never affect the match. When space is tight, items wait in your decoration corner. “Clear the table” removes items and spills.</p>
       </section>
@@ -188,6 +199,6 @@
       <p><a class="wt-button" href="/watten">To the lobby</a></p>
     </article>
   </main>
-  <script type="module" src="/static/watten-game.js?v=900ce791b033"></script>
+  <script type="module" src="/static/watten-game.js?v=24531f9085ea"></script>
 </body>
 </html>

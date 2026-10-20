@@ -79,6 +79,7 @@ export function initializeAppMode({
   mode = document.documentElement.dataset.game || "zdwa",
   refreshOnInitialize = true,
   scopedZilchSpectator = null,
+  discoveryOnly = false,
 } = {}) {
   const currentMode = ["zilch", "hausdepp", "watten"].includes(mode) ? mode : "zdwa";
   const existingController = window.ZDWA_APP_MODE;
@@ -93,7 +94,7 @@ export function initializeAppMode({
   const publicHausdeppDocument = currentMode === "hausdepp"
     && document.querySelector('[data-hausdepp-public="true"]') !== null;
   let publicLobby = publicZilchDocument || publicHausdeppDocument;
-  let allowed = publicLobby;
+  let allowed = publicLobby || discoveryOnly;
   let stopped = false;
   let hausdeppAllowed = publicHausdeppDocument;
   let zilchAllowed = publicZilchDocument;
@@ -126,7 +127,7 @@ export function initializeAppMode({
   // completes. Do not present an active button whose first click is ignored.
   // Public lobby documents already confirm their discovery capability above.
   for (const button of document.querySelectorAll("[data-game-switch]")) button.disabled = !allowed;
-  if (publicLobby) syncPickers();
+  if (publicLobby || discoveryOnly) syncPickers();
 
   const revokeZilch = () => {
     allowed = false;
@@ -153,6 +154,14 @@ export function initializeAppMode({
     const access = auth?.game_access || auth?.user?.game_access;
     hausdeppAllowed = canDiscoverHausdepp(auth);
     zilchAllowed = nextAllowed;
+    // Sign-in pages own their login/continuation flow. Discovery may offer
+    // confirmed games without treating the surrounding document as a lobby
+    // that must be left when a game is unavailable to the current account.
+    if (discoveryOnly) {
+      allowed = true;
+      syncPickers();
+      return true;
+    }
     if (currentMode === "watten" && !canDiscoverWatten(auth)) {
       for (const picker of pickers.values()) picker.close();
       document.getElementById("wattenApp")?.replaceChildren();
@@ -180,7 +189,7 @@ export function initializeAppMode({
   const dropPrivate = () => {
     if (!wattenAllowed) return;
     wattenAllowed = false;
-    allowed = currentMode === "watten" ? false : zilchAllowed || hausdeppAllowed;
+    allowed = discoveryOnly || (currentMode === "watten" ? false : zilchAllowed || hausdeppAllowed);
     syncPickers();
   };
 
@@ -204,6 +213,13 @@ export function initializeAppMode({
         if (revision !== refreshRevision || suspended) return false;
         dropPrivate();
         clearRememberedWattenMode();
+        if (discoveryOnly) {
+          zilchAllowed = false;
+          hausdeppAllowed = false;
+          allowed = true;
+          syncPickers();
+          return false;
+        }
         if (currentMode === "watten") {
           document.getElementById("wattenApp")?.replaceChildren();
           window.location.replace(zdwaAppEntryUrl());
