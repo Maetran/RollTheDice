@@ -22,6 +22,11 @@ services:
       ROLLTHEDICE_ZILCH_ORIGIN: ${ROLLTHEDICE_ZILCH_ORIGIN:-https://zilch.zockdiewandan.online}
       # Private web preview on the apex, restricted to the immutable founder.
       ROLLTHEDICE_WATTEN_FOUNDER_PREVIEW: ${ROLLTHEDICE_WATTEN_FOUNDER_PREVIEW:-0}
+      ROLLTHEDICE_VOICE_ENABLED: ${ROLLTHEDICE_VOICE_ENABLED:-0}
+      ROLLTHEDICE_VOICE_SFU_APP_ID: ${ROLLTHEDICE_VOICE_SFU_APP_ID:-}
+      ROLLTHEDICE_VOICE_SFU_APP_SECRET: ${ROLLTHEDICE_VOICE_SFU_APP_SECRET:-}
+      ROLLTHEDICE_VOICE_TURN_KEY_ID: ${ROLLTHEDICE_VOICE_TURN_KEY_ID:-}
+      ROLLTHEDICE_VOICE_TURN_API_TOKEN: ${ROLLTHEDICE_VOICE_TURN_API_TOKEN:-}
       # Uvicorn only trusts forwarded client data from these direct peers.
       # Production uses the Docker bridge gateway; local runs stay loopback-only.
       FORWARDED_ALLOW_IPS: ${FORWARDED_ALLOW_IPS:-127.0.0.1}

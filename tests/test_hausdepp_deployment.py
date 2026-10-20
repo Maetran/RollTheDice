@@ -236,9 +236,14 @@ bash() { echo INSTALL >&2; return "$INSTALL_FAIL"; }
         regular = next(block for block in blocks if "www.zockdiewandan.online\n" in block)
         house = next(block for block in blocks if "server_name hausdepp.zockdiewandan.online;" in block
                      and "listen 443 ssl" in block)
+        # Voice may request only Hausdepp's own microphone. Camera/location
+        # remain blocked, and the existing products retain their denial.
+        self.assertIn('Permissions-Policy "camera=(), microphone=(self), geolocation=()"', house)
+        self.assertIn('Permissions-Policy "camera=(), microphone=(), geolocation=()"', regular)
         for prefix in ("add_header", "proxy_", "client_max_body_size", "limit_req ", "limit_conn "):
             old = [line.strip() for line in regular.splitlines() if line.strip().startswith(prefix)]
-            new = [line.strip() for line in house.splitlines() if line.strip().startswith(prefix)]
+            new = [line.strip().replace("microphone=(self)", "microphone=()")
+                   for line in house.splitlines() if line.strip().startswith(prefix)]
             self.assertTrue(old, prefix)
             self.assertEqual(new, old, prefix)
         self.assertIn("/live/hausdepp.zockdiewandan.online/fullchain.pem", house)

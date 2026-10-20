@@ -8,6 +8,46 @@ release. Further playtests will continue to refine the appearance.
 
 ## Deutsch
 
+### Freiwilliger Sprachchat
+
+Bei aktivierter Funktion gibt es am Tisch zwei dauernd erreichbare Schalter:
+Lautsprecher für Audioausgabe und Mikrofon für das eigene Sprechen. Ein neuer
+Einstieg beginnt mit beiden aus. Zuhören braucht keine Mikrofonfreigabe.
+Das Mikrofon lässt sich erst bei eingeschalteter Ausgabe aktivieren. Ausgabe
+aus schaltet sofort auch das Mikro aus; Ausgabe wieder ein lässt das Mikro aus.
+Einzelne Mitspieler stummschalten wirkt nur lokal und bleibt innerhalb derselben
+Sprachsitzung erhalten. Teilnehmerstatus und tatsächliches Sprechen werden
+angezeigt. Die Systemlautstärke und System-Audiorouten gelten, mit Echo- und
+Geräuschunterdrückung soweit vom Browser unterstützt. Alle Teilnehmer können
+gleichzeitig sprechen und hören. Es gibt weder Aufzeichnung noch Push-to-talk.
+
+Nur aktive Account-Mitspieler nehmen teil; Gäste, Zuschauer und CPUs sind
+ausgeschlossen. Der freiwillige Status vom Wartetisch bleibt beim Spielstart,
+über Turnier-Zwischenstände und nächste Runden sowie beim erneuten Spielen mit
+derselben Gruppe bestehen. Ein Gruppenwechsel, Abmelden oder Schliessen beendet
+die Teilnahme. Ein neues Gerät übernimmt die Teilnahme erst nach erneuter
+Freigabe; das alte verliert seinen Medienzugang. Verbindungsprobleme werden
+angezeigt. Hintergrundbetrieb und Audiogerätewechsel sind geräteabhängig und
+brauchen echte Browser-/PWA-Tests; eine Installation garantiert kein dauerhaftes
+Mikrofon im Hintergrund.
+
+### Optional voice chat (English)
+
+Two persistent controls switch audio output and your microphone on or off.
+A fresh visit starts with both off. Listening never requests microphone access.
+The microphone requires enabled output. Output off immediately disables the
+microphone; output on again keeps it muted. Individual muting is local and
+persists within the voice session. Show participants' voice state and speaking
+activity. Use system volume and routing, with browser-supported echo/noise
+suppression. Everyone can speak and hear simultaneously. No recording or
+push-to-talk. Only active signed-in players may join; guests, spectators and
+CPUs are excluded. Opt-in persists through waiting, play, tournament standings,
+further rounds and rematches with the same group. Changing groups, signing out
+or closing ends participation. A replacement device must opt in again and
+revokes the old device's media. Show connection problems. Background operation
+and audio routing require actual browser/PWA device tests; installation alone
+does not guarantee background microphone operation.
+
 ### Schnellstart für Spieler
 
 1. **Mindestens gleich hoch legen.** Tippe eine erlaubte Handkarte an. Gleiche

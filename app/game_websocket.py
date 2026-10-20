@@ -46,6 +46,7 @@ logger = logging.getLogger(__name__)
 # Kept as the complete public action vocabulary for compatibility with tests
 # and diagnostics. Runtime validation below deliberately narrows it per game.
 KNOWN_ACTIONS = SESSION_ACTIONS | GAMEPLAY_ACTIONS | ZILCH_GAMEPLAY_ACTIONS | HAUSDEPP_GAMEPLAY_ACTIONS | HAUSDEPP_TABLE_ACTIONS | SUPERADMIN_ACTIONS | SOCIAL_ACTIONS
+KNOWN_ACTIONS = KNOWN_ACTIONS | {"hausdepp_voice"}
 
 ReserveConnection = Callable[[WebSocket], str | None]
 ReleaseConnection = Callable[[str | None], None]
@@ -273,7 +274,8 @@ async def _receive_messages(
         # the lobby and therefore produces no scored Zilch result.
         allowed_social_actions = SOCIAL_ACTIONS
         allowed_table_actions = HAUSDEPP_TABLE_ACTIONS if game_type_from_state(session.game) == HAUSDEPP_GAME_TYPE else frozenset()
-        allowed_actions = SESSION_ACTIONS | allowed_gameplay_actions | allowed_superadmin_actions | allowed_social_actions | allowed_table_actions
+        allowed_voice_actions = {"hausdepp_voice"} if game_type_from_state(session.game) == HAUSDEPP_GAME_TYPE else set()
+        allowed_actions = SESSION_ACTIONS | allowed_gameplay_actions | allowed_superadmin_actions | allowed_social_actions | allowed_table_actions | allowed_voice_actions
         if action not in allowed_actions:
             await session.websocket.send_json({"error": f"Unbekannte Aktion: {action_value}",
                                                **({"error_code": "hausdepp_table_surprise_unavailable"}
@@ -341,7 +343,11 @@ async def _receive_messages(
                                                   if action in allowed_table_actions else {})})
             continue
 
-        if action in SESSION_ACTIONS:
+        if action in allowed_voice_actions:
+            from .hausdepp_voice import handle_voice_action
+
+            await handle_voice_action(session, data)
+        elif action in SESSION_ACTIONS:
             if await handle_session_action(session, action, data, finalize_game=finalize_game):
                 return
         elif action in allowed_table_actions:

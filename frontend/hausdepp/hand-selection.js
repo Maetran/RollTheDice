@@ -152,5 +152,9 @@ export function mountHandSelection({ handRegion, tools, reactions, t, onChange, 
       notice.textContent = selection.notice ? t(selection.notice) : "";
       notice.hidden = !selection.notice;
     },
+    destroy() {
+      wide.removeEventListener("change", place);
+      selection.cancel();
+    },
   };
 }

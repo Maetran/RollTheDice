@@ -60,6 +60,9 @@ def retain_rematch_source(game: dict) -> bool:
                         "_hausdepp_cpu_count": game.get("_hausdepp_cpu_count", 0),
                         "_hausdepp_tournament_enabled": bool(game.get("_hausdepp_tournament_enabled") or tournament),
                         "_passphrase": verifier}
+            if game.get("_hausdepp_voice_room_id"):
+                settings["_hausdepp_voice_room_id"] = game["_hausdepp_voice_room_id"]
+                settings["_hausdepp_voice_allowed_user_ids"] = sorted(ids)
             _insert_once(db, HausdeppRematchSource, {
                 "game_id": game["_id"], "original_user_ids_json": json.dumps(sorted(ids)),
                 "settings_json": json.dumps(settings), "created_at": utcnow(),
@@ -269,6 +272,9 @@ def create_rematch(source_id: str, user_id: int, *, before_create: Callable | No
         game["_passphrase"] = source.get("_passphrase")
         game["_hausdepp_rematch_id"] = rematch_id
         game["_hausdepp_rematch_joined_ids"] = []
+        from .hausdepp_voice import carry_voice_room
+
+        carry_voice_room(source, game, ids)
         now = utcnow()
         settings = {"mode": game["_mode"], "cpu_count": game["_hausdepp_cpu_count"],
                     "tournament": game["_hausdepp_tournament_enabled"], "locked": bool(game["_passphrase"]),

@@ -115,6 +115,51 @@ test('failed acceptance stays in the dialog and retries once without unsafe navi
   expect(fixture.actions).toEqual(['accept', 'accept']);
 });
 
+test('accepting from a table preserves the document and history replaces only its table transport', async ({ page }) => {
+  const fixture = await setup(page);
+  const source = await fixture.create(), target = await fixture.create();
+  await page.addInitScript(() => {
+    const NativeWebSocket = window.WebSocket;
+    window.__rematchNavigationSockets = [];
+    window.WebSocket = class extends NativeWebSocket {
+      constructor(...args) { super(...args); window.__rematchNavigationSockets.push(this); }
+    };
+  });
+  await page.goto(`/hausdepp/spiel/${source}`);
+  await expect(page.locator('#hausdeppWaiting')).toBeVisible();
+  const documentToken = await page.evaluate(() => {
+    window.__rematchDocumentToken = crypto.randomUUID();
+    window.__rematchSwitches = [];
+    window.addEventListener('hausdepp:table-switch', event => window.__rematchSwitches.push(event.detail));
+    return window.__rematchDocumentToken;
+  });
+  fixture.queue([invitation(target)]);
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+  await expect(page.locator('#appDialog')).toHaveAttribute('data-kind', 'hausdepp-rematch');
+  await page.locator('[data-dialog-action=accept]').click();
+  await expect(page).toHaveURL(new RegExp(`/hausdepp/spiel/${target}$`));
+  await expect(page.locator('#hausdeppWaiting')).toBeVisible();
+  expect(await page.evaluate(() => window.__rematchDocumentToken)).toBe(documentToken);
+  expect(await page.evaluate(id => window.__rematchNavigationSockets.find(socket => socket.url.endsWith(`/ws/${id}`)).readyState, source)).toBe(3);
+  // Late events from the old socket must never stop or repaint the new table.
+  await page.evaluate(id => {
+    const old = window.__rematchNavigationSockets.find(socket => socket.url.endsWith(`/ws/${id}`));
+    old.dispatchEvent(new MessageEvent('message', { data: JSON.stringify({ error: 'stale source', fatal: true }) }));
+    old.dispatchEvent(new CloseEvent('close', { code: 1006 }));
+  }, source);
+  await expect(page.locator('#hausdeppConnection')).toHaveText('Verbunden');
+  await expect(page.locator('#hausdeppActionError')).toBeEmpty();
+  await page.goBack();
+  await expect(page).toHaveURL(new RegExp(`/hausdepp/spiel/${source}$`));
+  await expect(page.locator('#hausdeppWaiting')).toBeVisible();
+  await page.goForward();
+  await expect(page).toHaveURL(new RegExp(`/hausdepp/spiel/${target}$`));
+  await expect(page.locator('#hausdeppWaiting')).toBeVisible();
+  expect(await page.evaluate(() => window.__rematchDocumentToken)).toBe(documentToken);
+  expect(await page.evaluate(() => window.__rematchSwitches.map(({ gameId, previousGameId }) => [gameId, previousGameId])))
+    .toEqual([[target, source], [source, target], [target, source]]);
+});
+
 test('hidden tabs release the invitation lock and a native pile dialog has priority without declining', async ({ page }) => {
   const fixture = await setup(page);
   fixture.queue([invitation(await fixture.create())]);
@@ -445,6 +490,10 @@ for (const language of ['de', 'en']) {
     const fixture = await setup(page, language);
     const source = await finishedRenderer(page, fixture);
     const target = await fixture.create();
+    const documentToken = await page.evaluate(() => {
+      window.__rematchCreatorDocument = crypto.randomUUID();
+      return window.__rematchCreatorDocument;
+    });
     let calls = 0, release;
     const gate = new Promise(resolve => { release = resolve; });
     await page.route(`**/api/hausdepp/games/${source.id}/rematch`, async route => {
@@ -462,6 +511,7 @@ for (const language of ['de', 'en']) {
     release();
     await expect(page).toHaveURL(new RegExp(`/hausdepp/spiel/${target}$`));
     await expect(page.locator('#hausdeppWaiting')).toBeVisible();
+    expect(await page.evaluate(() => window.__rematchCreatorDocument)).toBe(documentToken);
     expect(calls).toBe(1);
   });
 }

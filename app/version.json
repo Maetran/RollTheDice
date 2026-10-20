@@ -1,10 +1,10 @@
 {
-  "version": "3.16.6",
-  "bump": "patch",
-  "date": "2026-10-19",
-  "previous_revision": "ad82d066517bc46ed6bcbf71b2cc772c9e5ecb3d",
+  "version": "3.17.0",
+  "bump": "minor",
+  "date": "2026-10-20",
+  "previous_revision": "fa4d2a98850452ca88f718ec4f01b1ba0a8f5d32",
   "summary": {
-    "de": "Hausdepp zeigt am Rundenende eine kompakte Bilanz mit Runden-EP, Erfolgen und konkretem Rangfortschritt.",
-    "en": "Hausdepp ends each round with a compact summary of round XP, achievements and concrete rank progress."
+    "de": "Optionaler Sprachchat für Hausdepp mit getrennten Audio- und Mikrofonschaltern.",
+    "en": "Optional Hausdepp voice chat with separate audio and microphone controls."
   }
 }

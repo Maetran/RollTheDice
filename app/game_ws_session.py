@@ -91,9 +91,13 @@ async def handle_session_action(
 ) -> bool:
     """Handle join/rejoin actions; return true when the socket should close."""
     if action == "leave_waiting_game":
+        from .hausdepp_voice import voice_socket_disconnected
         from .hausdepp_waiting import leave_waiting_session
 
-        return await leave_waiting_session(session)
+        left = await leave_waiting_session(session)
+        if left:
+            await voice_socket_disconnected(session, revoke=True)
+        return left
     if session.player_id or (session.spectator_id and action != "rejoin_game"):
         await session.websocket.send_json({"error": "Bereits beigetreten"})
         return False
@@ -183,6 +187,10 @@ async def _join_game(session: GameSocketSession, data: dict[str, Any], *, finali
         return True
 
     await websocket.send_json({"player_id": player_id, "resume_token": player["resume_token"]})
+    if game_type_from_state(g) == HAUSDEPP_GAME_TYPE:
+        from .hausdepp_voice import refresh_voice_game
+
+        await refresh_voice_game(g)
     touch(g)
     await broadcast(g, {"scoreboard": snapshot(g)})
     if not was_started and g.get("_started"):
@@ -318,6 +326,10 @@ async def _rejoin_game(session: GameSocketSession, data: dict[str, Any], *, fina
     if identity:
         player["achievement_rank"] = identity.achievement_rank
     if old_websocket and old_websocket is not websocket:
+        if game_type_from_state(g) == HAUSDEPP_GAME_TYPE:
+            from .hausdepp_voice import voice_socket_disconnected
+
+            await voice_socket_disconnected(GameSocketSession(old_websocket, g, identity), revoke=True)
         try:
             # Stop the previous device's auto-reconnect before closing it;
             # otherwise both browsers repeatedly reclaim the same seat.
@@ -388,6 +400,10 @@ async def _rejoin_game(session: GameSocketSession, data: dict[str, Any], *, fina
 async def disconnect_session(session: GameSocketSession) -> None:
     """Detach one player/spectator and publish resumable connection state."""
     g = session.game
+    if game_type_from_state(g) == HAUSDEPP_GAME_TYPE:
+        from .hausdepp_voice import voice_socket_disconnected
+
+        await voice_socket_disconnected(session, revoke=bool(g.get("_aborted")))
     player_id = session.player_id
     spectator_id = session.spectator_id
     # The timeout lifecycle has already sent the one final room frame before
