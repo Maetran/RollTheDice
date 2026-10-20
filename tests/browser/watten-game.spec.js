@@ -5,6 +5,7 @@ const path = require('node:path');
 test.use({ serviceWorkers: 'block' });
 
 const { player, create, action, normalCall, playOne } = require('./helpers/watten-journey.cjs');
+const { expectTableHeaderReachable } = require('./helpers/watten-header.cjs');
 
 for (const language of ['de', 'en']) {
   test(`${language}: public lobby survives unavailable auth without reading games`, async ({ page }) => {
@@ -62,7 +63,7 @@ test('two real human accounts bid, pause with an open bid, return and finish a d
 test('three-player solo owns both normal calls and private partner advice stays with its partner', async ({ browser, baseURL }) => {
   const players = await Promise.all([0, 1, 2].map(() => player(browser, baseURL)));
   try {
-    await create(players);
+    await create(players, { partnerHand: true });
     const { striker, colourer } = await normalCall(players);
     expect(striker).toBe(colourer);
     const solo = striker;
@@ -72,6 +73,20 @@ test('three-player solo owns both normal calls and private partner advice stays 
     await expect(solo.page.locator('[data-watten-feedback-received]')).toHaveCount(0);
     expect(pair[1].traffic.snapshot.engine.feedback.some(item => item.value === 'good')).toBe(true);
     expect(solo.traffic.snapshot.engine.feedback).toEqual([]);
+    const viewer = pair[0];
+    await expect(viewer.page.locator('.wt-partner-hand')).toBeVisible();
+    for (const viewport of [{ width: 320, height: 568 }, { width: 390, height: 600 }, { width: 568, height: 320 }, { width: 667, height: 600 }, { width: 760, height: 600 }]) {
+      await viewer.page.setViewportSize(viewport);
+      await viewer.page.evaluate(() => scrollTo(0, 0));
+      await expectTableHeaderReachable(viewer.page);
+      const disclosure = viewer.page.locator('details.wt-partner-hand > summary');
+      if (await disclosure.count()) {
+        await disclosure.click();
+        await expect(viewer.page.locator('.wt-partner-popover')).toBeVisible();
+        await expectTableHeaderReachable(viewer.page);
+        await disclosure.click();
+      }
+    }
   } finally { await Promise.allSettled(players.map(item => item.context.close())); }
 });
 
@@ -234,6 +249,8 @@ test('four manually chosen seats preserve teams and blind inspection/reference r
     for (const [width, height] of [[320, 568], [568, 320], [667, 375], [768, 700]]) {
       await page.setViewportSize({ width, height });
       await page.evaluate(() => document.fonts.ready);
+      await page.evaluate(() => scrollTo(0, 0));
+      await expectTableHeaderReachable(page);
       await page.screenshot({ path: testInfo.outputPath(`blind-table-${width}x${height}.png`), fullPage: true });
       const geometry = await page.evaluate(() => ({ overflow: document.documentElement.scrollWidth - innerWidth,
         outside: [...document.querySelectorAll('body *')].map(node => {
