@@ -6,6 +6,7 @@ from dataclasses import replace
 
 import pytest
 
+import app.watten_cpu as cpu_policy
 from app.watten_cards import deal_cards, make_deck
 from app.watten_cpu import (
     MAX_SAMPLES,
@@ -164,6 +165,48 @@ def test_partner_already_winning_with_rechter_gets_a_cheap_card_not_a_trump():
     rules = ComparisonRules(table.state.call)
     assert card_kind(decision.value, rules) == CardKind.NORMAL
     table.propose("A", decision)
+
+
+@pytest.mark.parametrize("better_repeated", (None, "hearts-10", "acorns-8"))
+def test_blind_opening_shows_new_rank_and_suit_only_between_close_simulated_choices(monkeypatch, better_repeated):
+    deal = explicit_deal(
+        ("bells-A", "bells-K", "hearts-7", "leaves-8", "acorns-9"),
+        ("hearts-8", "hearts-9", "hearts-A", "bells-7", "leaves-10"),
+        ("acorns-8", "bells-9", "hearts-10", "leaves-K", "acorns-A"),
+        ("leaves-9", "leaves-O", "hearts-U", "acorns-O", "acorns-K"),
+    )
+    table = Table(start_match(cpu_recipe(4, "ladinisch", True), "opening-combinations", deal, first_dealer="A"))
+    table.ready()
+    table.play("B", "hearts-8")
+    hypotheses = call_hypotheses(table.view("C"), table.memories["C"])
+    # Isolate the uncertain rollout boundary: three equally promising choices,
+    # or one clearly stronger move that repeats a public rank/suit.
+    def rollout(_ctx, _world, card):
+        if card == better_repeated:
+            return 0.8
+        return 0.5 if card in {"bells-9", "hearts-10", "acorns-8"} else 0.2
+
+    monkeypatch.setattr(cpu_policy, "_rollout", rollout)
+    decision = card_choice(table, "C")
+    assert decision.value == (better_repeated or "bells-9")
+    assert (table.memories["C"].strike, table.memories["C"].suit) == (None, None)
+    assert call_hypotheses(table.view("C"), table.memories["C"]) == hypotheses
+    table.propose("C", decision)
+
+
+def test_informed_blind_announcer_also_offers_new_opening_combinations(monkeypatch):
+    deal = explicit_deal(
+        ("bells-A", "hearts-K", "leaves-7", "acorns-U", "bells-8"),
+        ("hearts-8", "hearts-9", "hearts-10", "bells-7", "hearts-A"),
+        ("acorns-9", "bells-9", "leaves-K", "acorns-A", "leaves-A"),
+        ("leaves-10", "leaves-O", "hearts-U", "acorns-O", "acorns-K"),
+    )
+    table = Table(start_match(cpu_recipe(4, "ladinisch", True), "announcer-combinations", deal, first_dealer="A"))
+    table.ready()
+    for player, card in (("B", "hearts-8"), ("C", "acorns-9"), ("D", "leaves-10")):
+        table.play(player, card)
+    monkeypatch.setattr(cpu_policy, "_rollout", lambda _ctx, _world, _card: 0.5)
+    assert card_choice(table, "A").value == "bells-A"
 
 
 def test_rechter_lead_excludes_a_nonwinning_strike_in_cpu_and_engine_legality():

@@ -53,6 +53,16 @@ already played rank when the CPU does not know the call and encourage spending
 useful strength before the round ends. Legal-card and trump-duty checks always
 take precedence.
 
+For the first trick of a blind round, the owner's opening convention additionally
+favours a card whose printed rank and suit have not appeared in that trick.
+Each repeated attribute costs half the tier's partnership preference, at most
+1.8–3.5 percentage points combined. The existing close-choice window still
+limits which simulated moves can compete. This applies to informed announcers
+too, so their partner can see more combinations; it never forces a card that
+violates trump duties or excludes a clearly better simulated move. Later tricks
+keep the existing rank-only preference for uninformed seats. This convention is
+an explicit owner request, not an extra regional rule taken from the sources.
+
 The CPU does not treat customary partner play as proof of a hidden call. In
 particular, a low second-trick card never reveals its partner's actual hand or
 creates a private communication channel.
@@ -87,5 +97,11 @@ Geboten wird bei subjektiv guten Chancen und sinnvoller Punkteabwägung. Für
 jede weitere Erhöhung steigt die nötige Sicherheit. «Zweiter Stich ist
 Partnerstich» bleibt eine weiche Taktik im blinden Ladinisch, wenn der Partner
 zuletzt spielt. Klar bessere Kartenentscheidungen und sämtliche Spielregeln
-gehen vor. Neue Messungen zur Spielstärke und eine Testsuite wurden für diese
+gehen vor. Im ersten Stich eines blinden Spiels vermeiden sie nach Möglichkeit
+bereits sichtbare Kartenwerte und Farben, auch als informierte Ansager. Je
+wiederholtem Merkmal beträgt der weiche Nachteil 0,5 × Partnerschaftsgewicht,
+zusammen höchstens 1,8–3,5 Prozentpunkte innerhalb des bestehenden Fensters für
+ähnlich gute Züge. Daraus wird kein Wissen über den geheimen Schlag oder die
+Farbe abgeleitet. Diese Eröffnungskonvention ist eine ausdrückliche Vorgabe des
+Eigentümers. Neue Messungen zur Spielstärke und eine Testsuite wurden für diese
 Änderung ausdrücklich nicht ausgeführt.

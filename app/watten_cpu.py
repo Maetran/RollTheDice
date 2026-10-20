@@ -34,7 +34,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Final
 
-from .watten_cards import WATTEN_SUITS, WELI, card_rank, make_deck
+from .watten_cards import WATTEN_SUITS, WELI, card_rank, card_suit, make_deck
 from .watten_cpu_memory import STRIKES, CpuMemory, SeatSnapshot, call_from_bottoms, read_personal_view, remember
 from .watten_cpu_skill import CpuSkill
 from .watten_play import TRICKS_TO_WIN, official_knower_seats
@@ -616,9 +616,16 @@ def _tactical_preference(ctx: _Context, card: str, models: list, skill: CpuSkill
         # Give a partner who acts last a chance to take the second trick
         # cheaply. A clearly better rollout always overrides this preference.
         preference += skill.partnership * (1 - strength)
-    if (ctx.snap.profile.blind and ctx.seat not in ctx.knowers and ctx.trick
-            and any(card_rank(played) == card_rank(card) for _, played in ctx.trick)):
-        preference -= skill.partnership * 0.5
+    if ctx.snap.profile.blind and ctx.trick:
+        repeated_rank = any(card_rank(played) == card_rank(card) for _, played in ctx.trick)
+        if completed == 0:
+            # Show new visible combinations in the opening trick, including
+            # when this seat knows the call. Printed suits/ranks are public;
+            # this custom never narrows any hidden-call hypothesis.
+            repeated_suit = any(card_suit(played) == card_suit(card) for _, played in ctx.trick)
+            preference -= skill.partnership * 0.5 * (int(repeated_rank) + int(repeated_suit))
+        elif ctx.seat not in ctx.knowers and repeated_rank:
+            preference -= skill.partnership * 0.5
     if completed >= 2 or ctx.snap.party_tricks[1 - ctx.my_party] >= 2:
         # Three tricks finish the round: do not retain useful strength until
         # the round is over merely because the simulation scores are tied.
