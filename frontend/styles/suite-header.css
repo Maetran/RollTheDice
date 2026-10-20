@@ -177,6 +177,62 @@ html[data-game] body:has(.suite-header:not(.suite-header--table)) .account-tabs 
   z-index: 10;
 }
 html[data-game="watten"] .wt-skip:focus { z-index: 21; }
+
+/* The fixed Watten table keeps one 52px row (44px in short landscape).
+   Its controls must fit alongside the game identity even at 320px. */
+html[data-game="watten"] .wt-header.suite-header--table .suite-header__brand { min-height: 44px; }
+html[data-game="watten"][data-watten-active="true"] { --wt-table-header-height: 52px; }
+html[data-game="watten"][data-watten-active="true"] .wt-header.suite-header--table { gap: 4px; }
+html[data-game="watten"][data-watten-active="true"] .wt-header .suite-header__brand {
+  flex: 0 0 auto;
+  gap: 4px;
+  min-width: 0;
+  font-size: 1rem;
+  white-space: nowrap;
+}
+html[data-game="watten"][data-watten-active="true"] .wt-header .suite-header__icon {
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+}
+html[data-game="watten"][data-watten-active="true"] .wt-header .suite-header__tools { flex: 0 0 auto; gap: 4px; }
+html[data-game="watten"][data-watten-active="true"] .wt-header .wt-language select {
+  width: 48px;
+  height: 44px;
+  min-width: 44px;
+  padding-inline: 4px;
+  font-size: 13px;
+}
+html[data-game="watten"][data-watten-active="true"] .wt-header .wt-nav { flex: 0 0 auto; min-width: 0; }
+html[data-game="watten"][data-watten-active="true"] .wt-header .wt-nav a { min-width: 44px; padding-inline: 4px; font-size: 13px; }
+html[data-game="watten"][data-watten-active="true"] .wt-header [data-game-picker] .suite-game-trigger__chevron { display: none; }
+@media (orientation: landscape) and (max-height: 700px) {
+  html[data-game="watten"][data-watten-active="true"] { --wt-table-header-height: 44px; }
+}
+@media (max-height: 700px) {
+  /* Partner cards belong to the table, so reserve a real header slot instead
+     of placing their disclosure over the wider suite brand. */
+  html[data-game="watten"][data-watten-active="true"]:has(details.wt-partner-hand) .wt-header {
+    padding-left: calc(max(10px, env(safe-area-inset-left)) + 48px);
+  }
+  html[data-game="watten"][data-watten-active="true"] details.wt-partner-hand {
+    left: max(10px, env(safe-area-inset-left));
+    top: calc(var(--game-viewport-top, 0px) + (var(--wt-table-header-height) - 44px) / 2);
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-partner-popover {
+    top: calc(var(--game-viewport-top, 0px) + var(--wt-table-header-height) + 4px);
+    left: max(10px, env(safe-area-inset-left));
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-private:has(details.wt-partner-hand) { translate: none; }
+}
+@media (orientation: portrait) and (max-height: 700px) {
+  /* A translated ancestor would anchor fixed partner controls to the advice
+     panel. Keep that panel centred without creating a fixed containing block. */
+  html[data-game="watten"][data-watten-active="true"] .wt-private:has(details.wt-partner-hand) {
+    left: calc(50% - 75px);
+    translate: none;
+  }
+}
 @media (max-width: 600px) {
   html[data-game] body :is(#suiteHeader, #hausdeppHeader):not(.suite-header--table) { gap: 6px; padding-inline: 6px; border-radius: 8px; }
   html[data-game] body :is(#suiteHeader, #hausdeppHeader):not(.suite-header--table) .suite-header__brand { gap: 5px; font-size: 16px; }

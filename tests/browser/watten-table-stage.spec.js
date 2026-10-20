@@ -1,6 +1,7 @@
 const { test, expect } = require('@playwright/test');
 const { player, create, action, normalCall, playOne } = require('./helpers/watten-journey.cjs');
 const { expectFixedTable, expectReachable } = require('./table-viewport');
+const { expectTableHeaderReachable } = require('./helpers/watten-header.cjs');
 
 // Each case creates up to four real accounts and checks four viewport sizes
 // before and during a bid. Keep individual assertions at their normal timeout.
@@ -84,6 +85,7 @@ async function expectStage(item, count) {
       return `[${attribute}="${value}"]${kind === null ? '' : `[data-value="${kind}"]`}`;
     }));
   }
+  await expectTableHeaderReachable(page);
 }
 
 for (const language of ['de', 'en']) {
@@ -238,7 +240,7 @@ for (const count of [3, 4]) {
       await settled(players, 'play');
       const partner = players.find(item => item.traffic.snapshot.engine.partner_hand?.cards.length === 5);
       expect(partner).toBeTruthy();
-      for (const viewport of [VIEWPORTS[1], VIEWPORTS[0]]) {
+      for (const viewport of [VIEWPORTS[1], VIEWPORTS[0], VIEWPORTS[3], { width: 390, height: 600 }, { width: 760, height: 600 }]) {
         await partner.page.setViewportSize(viewport);
         await expectStage(partner, count);
         const details = partner.page.locator('.wt-partner-hand');
