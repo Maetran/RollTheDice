@@ -407,18 +407,20 @@ def test_storage_v3_strict_bindings_and_legacy_compatibility_without_denied_reco
     game_id, _owners, _sessions = local_started(server, count_players=2)
     raw = serializable_game_state(games[game_id])
     raw["_watten"].pop("bid_counters")
+    raw["_watten"].pop("round_review_started_at")
     if version == 1:
         raw["_watten"].pop("cpu_memories")
     raw["_watten"]["schema_version"] = version
     restored = restore_watten_json(json.dumps(raw))
     assert restored["_watten"].engine == games[game_id]["_watten"].engine
     assert restored["_watten"].bid_counters is None
-    assert serializable_game_state(restored)["_watten"]["schema_version"] == 3
+    assert serializable_game_state(restored)["_watten"]["schema_version"] == 4
     # A fresh separate account/game avoids fabricating any human CPU identity.
     owner = account("LegacyCpuOwner")
     waiting_id = create_game(server, owner, cpus=(1,))
     waiting = serializable_game_state(games[waiting_id])
     waiting["_watten"].pop("bid_counters")
+    waiting["_watten"].pop("round_review_started_at")
     if version == 1:
         waiting["_watten"].pop("cpu_memories")
     waiting["_watten"]["schema_version"] = version
@@ -429,6 +431,7 @@ def test_storage_v3_strict_bindings_and_legacy_compatibility_without_denied_reco
     cpu_raw = serializable_game_state(games[cpu_id])
     legacy_v2 = deepcopy(cpu_raw)
     legacy_v2["_watten"].pop("bid_counters")
+    legacy_v2["_watten"].pop("round_review_started_at")
     legacy_v2["_watten"]["schema_version"] = 2
     restored_v2 = restore_watten_json(json.dumps(legacy_v2))
     assert restored_v2["_watten"].cpu_memories == games[cpu_id]["_watten"].cpu_memories
@@ -439,6 +442,7 @@ def test_storage_v3_strict_bindings_and_legacy_compatibility_without_denied_reco
         restore_watten_json(json.dumps(bad))
     cpu_raw["_watten"].pop("cpu_memories")
     cpu_raw["_watten"].pop("bid_counters")
+    cpu_raw["_watten"].pop("round_review_started_at")
     cpu_raw["_watten"]["schema_version"] = 1
     with pytest.raises(ValueError, match="watten_cpu_legacy_memory_unavailable"):
         restore_watten_json(json.dumps(cpu_raw))

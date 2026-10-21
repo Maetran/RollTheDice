@@ -316,6 +316,30 @@ test("a burst stays bounded; a new deal removes every old public ghost before it
   f.close(); assert.equal(f.ghosts().length, 0);
 });
 
+test("a terminal trick replaces an older queued collection before its own review window", () => {
+  const f = fixture(), old = publicTrick(f, 2), final = publicTrick(f, 2, 0);
+  final.cards = final.cards.map((item, index) => ({ ...item, card: ["acorns-A", "bells-K"][index] }));
+  final.nodes.forEach((node, index) => { node.dataset.key = final.cards[index].card; node.face = final.cards[index].card; });
+  f.present(engine(), engine(old), result({ ...old, last: old }));
+  const previousFlight = f.ghosts("collect")[0];
+  f.present(engine(old), { ...engine(final), phase: "match_complete" }, result({ ...final, last: final }));
+  assert.equal(previousFlight.isConnected, false); assert.equal(f.ghosts("collect").length, 1);
+  assert.equal(f.motion.collectionActive(), true); assert.equal(f.motion.collectionRemaining(), 3600);
+  assert.equal(f.ghosts("collect")[0].animations.at(-1).options.delay, 0);
+  const finalFlight = f.ghosts("collect")[0], terminal = { ...engine(final), phase: "match_complete" };
+  f.present(terminal, terminal, result({ ...final, last: final }));
+  assert.equal(f.ghosts("collect")[0], finalFlight, "a terminal status/receipt repaint must not cancel its final trick");
+  f.close(); assert.equal(f.motion.collectionActive(), false);
+});
+
+test("a terminal Go settles an older trick backlog without pretending another trick was won", () => {
+  const f = fixture(), last = publicTrick(f, 2), previous = { ...engine(last), phase: "bid_response" };
+  f.present(engine(), previous, result({ ...last, last }));
+  assert.equal(f.motion.collectionActive(), true);
+  f.present(previous, { ...engine(last), phase: "deal_complete" }, result({ ...last, last }));
+  assert.equal(f.motion.collectionActive(), false); assert.equal(f.ghosts().length, 0); f.close();
+});
+
 // Exercise the owning controller's real render function with a small view/DOM
 // boundary. This catches accidental baseline resets or motion on ACK repaints;
 // geometry/WAAPI above use the actual motion implementation, not a mock policy.
@@ -328,6 +352,7 @@ function controller(f, acceptedResult) {
   const context = { session, html, viewRoot: () => root, decor: null, voice: null, account: { id: 1 }, sameHandVersion, setHeading() {}, createTableView: () => view,
     motion: f.motion, engineCommand() {}, liveMessage: () => "", preserveFocus: fn => fn(), matchProgress: null, rematch: null, openSeatNotifications: null,
     beginnerGuide: { update: state => guideUpdates.push(state) },
+    roundReview: { update: () => ({ stage: "ready" }), afterMotion() {}, discard() {} },
     syncDecor() {}, waitingRoomMarkup: () => "", showMessage() {}, t: key => key, lobbyLink: () => "" };
   const renderSource = controllerSource.slice(controllerSource.indexOf("function render(previous ="), controllerSource.indexOf("function renderJoinPrompt()"));
   const render = runInNewContext(`${renderSource}; render;`, context);

@@ -60,6 +60,13 @@ def server(tmp_path, monkeypatch):
         "ROLLTHEDICE_TURNSTILE_SITE_KEY": "", "ROLLTHEDICE_TURNSTILE_SECRET": "",
     }.items():
         monkeypatch.setenv(key, value)
+    # Older protocol tests deliberately advance deals synchronously. Keep this
+    # new background service isolated; its real clock/watchers have dedicated
+    # round-runtime tests and browser journeys.
+    from app import watten_round_runtime
+
+    monkeypatch.setattr(watten_round_runtime, "watch_game", lambda _game: None)
+    monkeypatch.setattr(watten_round_runtime, "utcnow", lambda: utcnow() + timedelta(seconds=10))
     previous = dict(games)
     games.clear()
     configure_database(tmp_path)

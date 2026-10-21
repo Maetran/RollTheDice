@@ -211,7 +211,7 @@ async function finishOpenMatch(players, options = {}) {
   await action(players, 'bid');
   await action(players, 'respond_hold', 'hold');
   for (let index = 0; index < players.length * 5 && players[0].traffic.snapshot.engine.phase === 'play'; index += 1) await playOne(players);
-  for (const item of players) await expect(item.page.locator('[data-watten-match-result]')).toBeVisible();
+  for (const item of players) await expect(item.page.locator('[data-watten-match-result]')).toBeVisible({ timeout: 10000 });
   return path;
 }
 

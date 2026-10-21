@@ -52,7 +52,7 @@ for (const language of ['de', 'en']) {
       const host = players[0];
       const before = structuredClone(host.traffic.snapshot.room.series);
       await host.page.reload();
-      await expect(host.page.locator('[data-watten-match-result]')).toBeVisible();
+      await expect(host.page.locator('[data-watten-match-result]')).toBeVisible({ timeout: 10000 });
       expect(host.traffic.snapshot.room.series).toEqual(before);
       expect(players.every(item => item.traffic.errors.length === 0)).toBe(true);
     } finally { await Promise.allSettled(players.map(item => item.context.close())); }

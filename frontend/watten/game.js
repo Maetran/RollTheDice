@@ -7,6 +7,7 @@ import { t, prepareWattenCards, strikeName, suitName, STRIKES, SUITS } from "./c
 import { dismissLandscapeHint, joinFormMarkup, recipeMarkup, spectateFormMarkup, waitingRoomMarkup } from "./waiting-room.js";
 import { createTableView } from "./table.js";
 import { createMotion, sameHandVersion } from "./motion.js";
+import { createRoundReview } from "./round-review.js";
 import { createMatchProgress } from "./match-progress.js";
 import { applyFavoriteToCreator, createFavorites, favoriteText, readCreatorRecipe, syncCreatorProtection } from "./favorites.js";
 import { lobbyText as lt } from "./lobby-copy.js";
@@ -53,6 +54,7 @@ const ERRORS = new Set([
   "watten_bloedeln_choice_unavailable", "watten_bloedeln_decision_pending",
   "watten_round_review_pending",
   "watten_retourschneider_decision_pending", "watten_retourschneider_unavailable",
+  "watten_round_review_pending",
   "watten_invalid_tournament_target", "watten_tournament_finished", "watten_tournament_roster_locked",
   "game_creation_temporarily_blocked", "authentication_required", "game_not_found", "watten_password_option_mismatch",
 ]);
@@ -97,6 +99,7 @@ function renderNav(auth) {
 
 /** Drop private state synchronously; late callbacks observe a new generation. */
 function teardown() {
+  roundReview.discard();
   beginnerGuide.discard();
   voice?.destroy(); voice = null;
   generation += 1;
@@ -465,6 +468,7 @@ const session = {
   view: null, viewKind: "", connection: "",
 };
 const motion = createMotion();
+const roundReview = createRoundReview({ motion, onChange: () => { if (!navigating) render(); } });
 
 function shellMarkup() {
   return `<h1 class="wt-visually-hidden" data-watten-heading translate="no">Watten</h1>
@@ -955,6 +959,7 @@ function render(previous = null, live = false, accepted = false) {
   voice?.update(snapshot);
   setHeading(snapshot.name);
   if (!snapshot.engine) {
+    roundReview.discard();
     beginnerGuide.update({ eligible: false });
     motion.cancel();
     session.view?.destroy?.();
@@ -1005,18 +1010,20 @@ function render(previous = null, live = false, accepted = false) {
     bubbles: session.bubbles,
     feedbackDismissed: session.inFlight?.kind === "partner_feedback",
     freshTrickEnd: sameDeal && prevTrick > 0 && !engine.current_trick?.cards?.length && Boolean(engine.last_trick),
+    roundPresentation: roundReview.update(snapshot, accepted),
     liveMessage: liveMessage(snapshot, engine, actions),
   };
   session.callAnnouncement = "";
   const captured = accepted ? motion.capture(session.view.motionSources()) : null;
   let result;
   preserveFocus(() => { result = session.view.update(vm); });
-  matchProgress?.update({ container: root.querySelector("[data-watten-match-progress]"), snapshot,
+  if (vm.roundPresentation.stage === "ready") matchProgress?.update({ container: root.querySelector("[data-watten-match-progress]"), snapshot,
     playerId: session.playerId, spectator: session.spectator });
-  rematch?.update({ container: root.querySelector("[data-watten-rematch]"), snapshot,
+  if (vm.roundPresentation.stage === "ready") rematch?.update({ container: root.querySelector("[data-watten-rematch]"), snapshot,
     playerId: session.playerId, spectator: session.spectator, busy: Boolean(session.inFlight) || !session.bound });
   syncDecor();
   if (accepted) motion.present({ previous: previous?.engine, engine, live, captured, result, view: session.view });
+  roundReview.afterMotion();
   beginnerGuide.update({ eligible: !session.spectator && viewerSeat !== null && engine.phase !== "match_complete",
     canAct: session.bound && !snapshot.paused, busy: Boolean(session.inFlight) || !session.bound });
 }

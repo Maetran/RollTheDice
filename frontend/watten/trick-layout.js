@@ -89,7 +89,7 @@ export function createTrickLayout(trick, { win = window } = {}) {
     queued = null;
     if (destroyed) return;
     clear();
-    if (win.innerWidth > 760 || win.innerWidth >= win.innerHeight || !trick.children.length) return;
+    if (win.innerWidth > 760 || win.innerWidth >= win.innerHeight || trick.hidden || !trick.children.length) return;
     const area = felt.getBoundingClientRect();
     const left = Math.max(12, area.left + 8), top = Math.max(8, area.top + 8);
     const right = Math.min(win.innerWidth - 12, area.right - 8), bottom = Math.min(win.innerHeight - 8, area.bottom - 8);

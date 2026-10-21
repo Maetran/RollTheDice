@@ -380,6 +380,8 @@ function roundSummaryMarkup(vm) {
 function panelMarkup(vm) {
   const engine = vm.engine, actions = vm.actions;
   const phase = engine.phase;
+  if (["deal_complete", "match_complete"].includes(phase) && vm.roundPresentation?.stage === "collect") return "";
+  if (phase === "match_complete" && vm.roundPresentation?.stage === "review") return roundSummaryMarkup(vm);
   if (phase === "match_complete") {
     const winners = engine.winners.flat().map(id => nameOf(vm, id));
     const mine = engine.winners.some(group => group.includes(vm.playerId));
@@ -410,8 +412,8 @@ function panelMarkup(vm) {
     return `<div class="wt-deal-result" data-watten-deal-result>
       <h3>${esc(t("deal.over"))}</h3>${resultMarkup(vm)}
       ${roundSummaryMarkup(vm)}
-      ${engine.retourschneider?.status === "available" ? retourschneiderChoiceMarkup(vm) : vm.isHost && !vm.spectator ? button(t("deal.next"), `data-watten-command="next-deal" data-watten-action="next_deal"`, { disabled: vm.busy, className: "wt-primary" })
-        : `<p class="wt-note">${esc(t("deal.waitHost", { name: nameOf(vm, vm.room.host_participant_id) }))}</p>`}
+      ${engine.retourschneider?.status === "available" ? retourschneiderChoiceMarkup(vm)
+        : `<p class="wt-note" role="status">${esc(t("deal.autoNext"))}</p>`}
     </div>`;
   }
   if (phase === "strike") {
@@ -723,6 +725,7 @@ export function createTableView(container, { onCard, accountId = null }) {
     elements.title.textContent = vm.snapshot.name || "";
     container.querySelector("[data-wt-table]").dataset.count = String(vm.count);
     container.querySelector("[data-wt-table]").dataset.phase = vm.engine.phase;
+    container.querySelector("[data-wt-table]").dataset.roundStage = vm.roundPresentation?.stage || "ready";
     container.querySelector("[data-wt-table]").dataset.viewer = vm.spectator ? "spectator" : "player";
     const canBid = vm.actions.includes("bid");
     const stake = vm.engine.bid.pending?.points ?? vm.engine.bid.accepted_stake;
@@ -750,17 +753,22 @@ export function createTableView(container, { onCard, accountId = null }) {
       `<span class="wt-bubble wt-bubble--${seatPosition(bubble.seat, vm.anchorSeat, vm.count)}" data-watten-call>${esc(bubble.text)}</span>`).join(""));
     const history = historyMarkup(vm, historyPinned);
     const historyFinished = ["deal_complete", "match_complete"].includes(vm.engine.phase);
-    elements.history.hidden = !history;
+    const reviewReady = !vm.roundPresentation || vm.roundPresentation.stage === "ready";
+    elements.history.hidden = !history || historyFinished && !reviewReady;
     elements.history.dataset.finished = String(historyFinished);
     patch(elements.history, "history", history);
     elements.history.dataset.pinned = String(historyPinned && !historyFinished);
-    if (history && (historyFinished ? !historyWasFinished : historyPinned)) elements.history.open = true;
-    historyWasFinished = historyFinished;
+    if (history && (historyFinished ? reviewReady && !historyWasFinished : historyPinned)) elements.history.open = true;
+    historyWasFinished = historyFinished && reviewReady;
     elements.handArea.hidden = vm.spectator;
     container.querySelector("[data-wt-table]").dataset.playable = String(vm.actions.includes("play_card"));
     const hand = vm.spectator ? { created: [], nodes: [] } : renderHand(vm);
     positionInspection(vm);
     const trick = renderTrick(vm);
+    const reviewing = ["deal_complete", "match_complete"].includes(vm.engine.phase)
+      && vm.roundPresentation && vm.roundPresentation.stage !== "collect";
+    elements.trick.hidden = Boolean(reviewing);
+    elements.trickLabel.hidden = Boolean(reviewing);
     positionTrick.update(vm);
     retourAnnouncement.update(vm);
     const live = vm.liveMessage || "";
