@@ -18,6 +18,15 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 393, height: 852 }
       const page = players[0].page;
       await expect(page.locator('.wt-trick-card')).toHaveCount(3);
       await expect(page.locator('[data-watten-call]')).toHaveCount(0);
+      await info.attach('portrait-layout', { contentType: 'application/json', body: JSON.stringify(await page.evaluate(() => {
+        const rect = node => { const { x, y, width, height, top, right, bottom, left } = node.getBoundingClientRect(); return { x, y, width, height, top, right, bottom, left }; };
+        return { centre: { ...document.querySelector('.wt-centre').dataset }, felt: rect(document.querySelector('.wt-felt')),
+          label: document.querySelector('.wt-trick-label').textContent,
+          obstacles: [...document.querySelectorAll('.wt-seat-badge, .wt-backs > i:not([hidden]), .wt-taken[data-filled="true"], .wt-stock, [data-wt-hand-area], [data-wt-panel], [data-wt-private] button, [data-wt-stake], [data-wt-history]:not([open])')]
+            .filter(node => !node.hidden && getComputedStyle(node).display !== 'none')
+            .map(node => ({ tag: node.tagName, class: node.className, rect: rect(node) })),
+          reference: document.querySelector('.wt-reference') ? rect(document.querySelector('.wt-reference')) : null };
+      }), null, 2) });
       await expect.poll(() => page.locator('.wt-trick-card').first().evaluate(node => Number.parseFloat(getComputedStyle(node).width)))
         .toBeGreaterThanOrEqual(viewport.width <= 350 ? 64 : 76);
       await expect.poll(() => page.evaluate(() => {
@@ -39,6 +48,14 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 393, height: 852 }
       await page.screenshot({ path: info.outputPath(`watten-current-${viewport.width}x${viewport.height}.png`) });
       await playOne(players);
       await expect.poll(() => players[0].traffic.snapshot?.engine?.last_trick?.cards.length).toBe(4);
+      await expect(page.locator('.wt-trick[data-state="last"] .wt-trick-card')).toHaveCount(4);
+      await expect.poll(() => page.locator('.wt-trick-card').first().evaluate(node => Number.parseFloat(getComputedStyle(node).width)))
+        .toBeGreaterThanOrEqual(viewport.width <= 350 ? 64 : 76);
+      await expect.poll(() => page.locator('.wt-trick-label').evaluate(node => {
+        const rect = node.getBoundingClientRect();
+        return node.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2));
+      }), { message: 'completed trick keeps its larger faces and a visible winner label' }).toBe(true);
+      await page.screenshot({ path: info.outputPath(`watten-completed-${viewport.width}x${viewport.height}.png`) });
       const history = page.locator('[data-wt-history]');
       if (!await history.evaluate(node => node.open)) await history.locator('summary').click();
       await expect(history.locator('.wt-history > li').last().locator('.wt-card--mini')).toHaveCount(4);
