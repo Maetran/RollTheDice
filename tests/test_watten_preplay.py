@@ -46,7 +46,8 @@ def test_schoeneres_requires_both_callers_and_resets_only_their_hands_and_call(a
     before = state
     state = step(state, "A", "request_schoeneres")
     assert personal(state, "B")["actions"] == ["preplay_accept", "preplay_decline"]
-    assert personal(state, "A")["actions"] == personal(state, "C")["actions"] == []
+    assert personal(state, "A")["actions"] == []
+    assert personal(state, "C")["actions"] == ([] if after_inspection else ["bloedeln_accept", "bloedeln_decline"])
     assert spectator_view(state)["preplay"]["bloedeln_cards"] == []
     for player, kind in (("A", "preplay_accept"), ("C", "preplay_accept"), ("B", "inspection_ack")):
         with pytest.raises(WattenEngineError, match="preplay_response_required"):
@@ -148,12 +149,12 @@ def test_schlagwechsel_is_unavailable_for_solo_ladinisch_and_blind(count, determ
 
 
 def test_bloedeln_needs_both_blind_partners_and_forces_their_public_bottoms_in_first_trick():
-    state = ready(start_match(recipe(4, "ladinisch", True), "bloedeln", blind_deal(), first_dealer="A"))
+    state = ready(start_match(recipe(4, "ladinisch", True), "bloedeln", blind_deal(), first_dealer="A"), bloedeln=None)
     assert spectator_view(state)["preplay"]["bloedeln_cards"] == []
-    with pytest.raises(WattenEngineError, match="preplay_unavailable"):
+    with pytest.raises(WattenEngineError, match="bloedeln_choice_unavailable"):
         step(state, "A", "request_bloedeln")
     state = step(state, "C", "request_bloedeln")
-    assert personal(state, "D")["actions"] == ["preplay_accept", "preplay_decline"]
+    assert personal(state, "D")["actions"] == ["bloedeln_accept", "bloedeln_decline"]
     assert spectator_view(state)["preplay"]["bloedeln_cards"] == []
     state = step(state, "D", "preplay_accept")
     exposed = [{"seat": seat, "card": state.deal.bottom_cards[seat]} for seat in (2, 3)]
@@ -181,7 +182,7 @@ def test_bloedeln_needs_both_blind_partners_and_forces_their_public_bottoms_in_f
 def test_bloedeln_only_publishes_the_consented_blind_bottoms_not_the_hidden_call():
     views = []
     for variant in ("base", "secret"):
-        state = ready(start_match(recipe(4, "ladinisch", True), "bloedeln-privacy", blind_deal(variant), first_dealer="A"))
+        state = ready(start_match(recipe(4, "ladinisch", True), "bloedeln-privacy", blind_deal(variant), first_dealer="A"), bloedeln=None)
         state = step(state, "C", "request_bloedeln")
         state = step(state, "D", "preplay_accept")
         views.append((spectator_view(state), personal(state, "C"), personal(state, "D")))
