@@ -25,6 +25,7 @@ async function realProjection(page, language) {
   await page.request.put('/api/auth/preferences/language', { headers, data: { preferred_language: language } });
   await page.addInitScript(value => localStorage.setItem('zdwa_language', value), language);
   await page.route('**/api/releases**', route => route.fulfill({ json: { releases: [], can_prompt: false } }));
+  await page.route('**/api/auth/game-guides', route => route.fulfill({ json: { enabled: false, acknowledged: {} } }));
   await page.route('**/api/auth/tours/offer', route => route.fulfill({ json: {
     show: false, enabled: true, games: { zdwa: 'unseen', zilch: 'unseen', hausdepp: 'dismissed' },
   } }));

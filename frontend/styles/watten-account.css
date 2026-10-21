@@ -1,6 +1,7 @@
 @import "./account-settings.css";
 @import "./passkey-login.css";
 @import "./game-switch-menu.css";
+@import "./game-tours.css";
 
 :root { color-scheme: light; --card: #fbf0dc; --text: #38251b; --muted: #70533f; --border: #bd9c74; --accent: #823a2b; font: 17px/1.6 system-ui, sans-serif; background: #e8d5b6; color: var(--text); }
 * { box-sizing: border-box; }
