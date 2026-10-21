@@ -88,7 +88,7 @@ function renderLogin() {
       <label>${copy('Benutzername oder E-Mail-Adresse')}<input name="username" autocomplete="username" required></label>
       <label>${copy('Passwort')}<input name="password" type="password" autocomplete="current-password" required></label>
       <button type="submit">${copy('Anmelden')}</button><p role="status"></p>
-    </form></details><p><a data-forgot href="/passwort-vergessen?app=watten">${copy('Passwort vergessen?')}</a></p>
+    </form></details><p><a class="button-link ghost" data-forgot href="/passwort-vergessen?app=watten">${copy('Passwort vergessen?')}</a></p>
     ${registrationFormMarkup('wattenRegistration')}<p data-account-message role="status"></p>`;
   const form = root.querySelector('[data-login]');
   form.addEventListener('submit', event => {
@@ -122,7 +122,7 @@ function renderSettings(auth) {
   document.title = `Watten · ${t('Kontoeinstellungen')}`;
   root.innerHTML = `<h1>${copy('Kontoeinstellungen')}</h1><p>${copy('Ein Konto für alle unsere Spiele. Dein bestehender Passkey funktioniert hier ebenfalls.')}</p>
     <p data-account-name translate="no">${esc(user.username)}</p>
-    <details open><summary>${copy('Passkeys')}</summary><div data-passkey-settings></div></details>
+    <details><summary>${copy('Passkeys')}</summary><div data-passkey-settings></div></details>
     <details${user.must_change_password ? ' open' : ''}><summary>${copy('Passwort ändern')}</summary>
       <form data-password><div data-account-verification></div>
         <label>${copy('Neues Passwort')}<input name="password" type="password" autocomplete="new-password" minlength="8" maxlength="256" required></label>
@@ -134,7 +134,7 @@ function renderSettings(auth) {
     <details><summary>${esc(friendSettingsText('settingsTitle'))}</summary><div data-watten-friend-settings></div></details>
     <details><summary>${copy('Sprache')}</summary><form data-language><label>${copy('Sprache')}<select name="language"><option value="de">Deutsch</option><option value="en">English</option></select></label><button type="submit">${copy('Sprache speichern')}</button><p role="status"></p></form></details>
     ${publicPush ? pushSettingsMarkup(copy) : ""}
-    <div class="actions"><a href="/watten">${copy('Zurück')}</a><a href="/watten/konto/fortschritt">${copy('Fortschritt')}</a><button data-logout type="button">${copy('Abmelden')}</button></div><p data-account-message role="status"></p>`;
+    <div class="actions"><a class="button-link ghost" href="/watten">${copy('Zurück')}</a><a class="button-link ghost" href="/watten/konto/fortschritt">${copy('Fortschritt')}</a><button data-logout type="button">${copy('Abmelden')}</button></div><p data-account-message role="status"></p>`;
   mountUsernameSettings(root.querySelector('[data-username-settings]'), { user, onChanged: changed => {
     const name = root.querySelector('[data-account-name]');
     if (name && changed.user.id === viewerId) name.textContent = changed.user.username;

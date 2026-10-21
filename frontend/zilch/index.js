@@ -1146,7 +1146,7 @@ async function renderLobby({ authReady = null } = {}) {
       <p class="eyebrow">${escapeHtml(t("Online würfeln"))}</p>
       <h1>${escapeHtml(t("Zilch die Wand an – Würfelspiel online"))}</h1>
       <p>${escapeHtml(t("Such dir einen Platz am Tisch aus: Solo, gegen den Würfelwirt oder zu zweit. Mit sechs Würfeln sammelst du Punkte, sicherst sie rechtzeitig und jagst die 10’000."))}</p>
-      <p class="zilch-intro-help"><span>${escapeHtml(t("Direkt im Browser, auch als Gast ohne Anmeldung."))}</span> <a href="${zilchPath("/regeln")}" data-zilch-path="/regeln">${escapeHtml(t("Zilch-Regeln und Punktetabelle"))}</a></p>
+      <p class="zilch-intro-help"><span>${escapeHtml(t("Direkt im Browser, auch als Gast ohne Anmeldung."))}</span> <a class="button-link small" href="${zilchPath("/regeln")}" data-zilch-path="/regeln">${escapeHtml(t("Zilch-Regeln und Punktetabelle"))}</a></p>
     </section>
     <section class="zilch-card zilch-create-card">
       <div class="zilch-create-heading"><h2>${escapeHtml(t("Neue Zilch-Partie"))}</h2><section class="zilch-lobby-identity" aria-label="${escapeHtml(`${t("Du spielst als")} ${username}`)}">
@@ -2221,7 +2221,7 @@ function zilchAccountSettingsMarkup(username) {
     : "";
   return `<div class="zilch-account-settings-grid">
     <p class="account-settings-intro">${escapeHtml(t("Ein Konto für alle unsere Spiele: Profil, Anmeldung und Hinweise gelten überall."))}</p>
-    <details class="account-settings-group" data-account-section="access" open><summary><h2 class="account-settings-group__heading"><span class="account-settings-group__title">${escapeHtml(t("Profil & Zugang"))}</span><span class="account-settings-group__description">${escapeHtml(t("Passkeys, Profil und Passwort"))}</span></h2></summary><div class="account-settings-group__body"><section class="account-settings-block" aria-labelledby="passkeySettingsTitle" data-passkey-section hidden>
+    <details class="account-settings-group" data-account-section="access"><summary><h2 class="account-settings-group__heading"><span class="account-settings-group__title">${escapeHtml(t("Profil & Zugang"))}</span><span class="account-settings-group__description">${escapeHtml(t("Passkeys, Profil und Passwort"))}</span></h2></summary><div class="account-settings-group__body"><section class="account-settings-block" aria-labelledby="passkeySettingsTitle" data-passkey-section hidden>
       <h3 id="passkeySettingsTitle">${escapeHtml(t("Passkeys"))}</h3><p class="account-settings-recommendation">${escapeHtml(t("Empfohlen für deine Anmeldung"))}</p>
       <div data-passkey-settings></div>
     </section>
@@ -2306,8 +2306,8 @@ function zilchAccountSettingsMarkup(username) {
       <details class="release-notes-support">
         <summary>${escapeHtml(t("Hilfe & weitere Details"))}</summary>
         <p>${escapeHtml(t("Du hast einen Fehler entdeckt? Beschreibe auf GitHub kurz, was passiert ist, in welchem Spiel und auf welchem Gerät. Teile keine Passwörter oder privaten Spielraum-Codes. Zum Melden brauchst du ein GitHub-Konto."))}</p>
-        <a href="/go/github/issues" target="_blank" rel="noopener noreferrer">${escapeHtml(t("Problem auf GitHub melden"))}</a><br>
-        <a href="/go/github/changelog" target="_blank" rel="noopener noreferrer">${escapeHtml(t("Ausführliche Versionshistorie auf GitHub"))}</a>
+        <div class="account-settings-links"><a class="button-link ghost" href="/go/github/issues" target="_blank" rel="noopener noreferrer">${escapeHtml(t("Problem auf GitHub melden"))}</a>
+        <a class="button-link ghost" href="/go/github/changelog" target="_blank" rel="noopener noreferrer">${escapeHtml(t("Ausführliche Versionshistorie auf GitHub"))}</a></div>
       </details>
     </section></div></details>
   </div>

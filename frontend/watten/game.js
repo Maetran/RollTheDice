@@ -144,7 +144,7 @@ window.addEventListener("pageshow", event => {
 function lobbyIntro({ signedIn = false, status = "" } = {}) {
   return `<section class="wt-hero wt-lobby-intro" aria-labelledby="wattenTitle">
     <div class="wt-lobby-intro-copy"><h1 id="wattenTitle" translate="no">Watten</h1>
-    <p class="wt-lead">${esc(lt("intro"))}</p></div>
+    <p class="wt-lead">${esc(t("lobby.onlineIntro"))}</p></div>
     <div class="wt-actions">
       ${signedIn ? `<button type="button" class="wt-primary" data-watten-create-open>＋ ${esc(lt("open"))}</button>`
         : `<a class="wt-button" href="${esc(signInUrl("/watten"))}" data-watten-signin>${esc(t("lobby.signIn"))}</a>`}
@@ -152,6 +152,15 @@ function lobbyIntro({ signedIn = false, status = "" } = {}) {
     </div>
     ${signedIn ? "" : `<p class="wt-note">${esc(t("lobby.signInHint"))}</p>`}
     <p class="wt-note" data-watten-lobby-status role="status">${esc(status)}</p>
+  </section>`;
+}
+
+function lobbyGuide() {
+  return `<section class="wt-lobby-guide" data-watten-lobby-guide aria-labelledby="wattenGuideTitle">
+    <h2 id="wattenGuideTitle">${esc(t("lobby.guideTitle"))}</h2>
+    <h3>${esc(t("lobby.guidePlayTitle"))}</h3><p>${esc(t("lobby.guidePlay"))}</p>
+    <h3>${esc(t("lobby.guideVariantsTitle"))}</h3><p>${esc(t("lobby.guideVariants"))}</p>
+    <h3>${esc(t("lobby.guideFriendsTitle"))}</h3><p>${esc(t("lobby.guideFriends"))}</p>
   </section>`;
 }
 
@@ -392,12 +401,12 @@ async function refreshTables(gen) {
 
 async function mountLobby() {
   const gen = generation;
-  if (!publicLandingMarkup) app.innerHTML = lobbyIntro({ status: t("lobby.loading") });
+  if (!publicLandingMarkup) app.innerHTML = lobbyIntro({ status: t("lobby.loading") }) + lobbyGuide();
   let auth;
   try { auth = await loadAuth({ refresh: true }); } catch {
     if (gen !== generation) return;
     renderNav(null);
-    app.innerHTML = publicLandingMarkup || lobbyIntro({ status: t("auth.unavailable") });
+    app.innerHTML = publicLandingMarkup || lobbyIntro({ status: t("auth.unavailable") }) + lobbyGuide();
     if (publicLandingMarkup) initializeAppMode({ mode: "watten" });
     return;
   }
@@ -405,7 +414,7 @@ async function mountLobby() {
   renderNav(auth);
   if (!auth.authenticated) {
     anonymousMount = true;
-    app.innerHTML = publicLandingMarkup || lobbyIntro();
+    app.innerHTML = publicLandingMarkup || lobbyIntro() + lobbyGuide();
     if (publicLandingMarkup) initializeAppMode({ mode: "watten" });
     return;
   }
@@ -413,7 +422,7 @@ async function mountLobby() {
   latestUserId = account.id;
   initializeAppMode({ mode: "watten" });
   app.innerHTML = `${lobbyIntro({ signedIn: true })}<div class="wt-friend-activity-host" data-watten-friend-activity aria-live="polite" hidden></div>
-    <div class="wt-lobby-grid">${tablesMarkup()}<details class="wt-lobby-chat-disclosure"><summary>${esc(lt("chat"))}</summary><div data-watten-lobby-chat></div></details></div>${creatorMarkup()}`;
+    <div class="wt-lobby-grid">${tablesMarkup()}<details class="wt-lobby-chat-disclosure"><summary>${esc(lt("chat"))}</summary><div data-watten-lobby-chat></div></details></div>${lobbyGuide()}${creatorMarkup()}`;
   mountCreator(gen);
   mountFriendActivity(gen, "lobby");
   const lobbyChat = mountWattenLobbyChat({ container: app.querySelector("[data-watten-lobby-chat]"), initialAuth: auth,

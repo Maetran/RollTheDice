@@ -46,7 +46,8 @@ DOCUMENT_ROUTES = (
         ("/regeln", "/spieler/{username}", "/rangabzeichen",
          "/ergebnis/{game_id}", "/offline"),
         "tests/test_http_shell.py", "test_clean_page_routes_and_legacy_redirects",
-        ("tests/browser/account-settings-layout.spec.js", "tests/browser/game-picker.spec.js"),
+        ("tests/browser/account-settings-layout.spec.js", "tests/browser/game-picker.spec.js",
+         "tests/browser/suite-link-styling.spec.js"),
     ),
     RouteCoverage(
         ("/konto",), "tests/test_http_shell.py", "test_clean_page_routes_and_legacy_redirects",
@@ -71,7 +72,7 @@ DOCUMENT_ROUTES = (
     RouteCoverage(
         ("/offline-spielen", "/zilch/offline-spielen"), "tests/test_offline_routes.py",
         "test_offline_entries_are_anonymous_noindex_and_keep_the_correct_game_and_home",
-        ("tests/browser/offline-play.spec.js",),
+        ("tests/browser/offline-play.spec.js", "tests/browser/suite-link-styling.spec.js"),
     ),
     RouteCoverage(
         ("/registrierung/bestaetigen", "/passwort-vergessen", "/passwort-zuruecksetzen", "/email-bestaetigen"),
@@ -94,7 +95,7 @@ DOCUMENT_ROUTES = (
     RouteCoverage(
         ("/zilch/historie", "/zilch/statistiken", "/zilch/erfolge", "/zilch/regeln"),
         "tests/test_zilch_product_routes.py", "test_history_rules_shells_and_rules_api_use_the_central_preview_policy",
-        ("tests/browser/zdwa-game-switcher.spec.js",),
+        ("tests/browser/zdwa-game-switcher.spec.js", "tests/browser/suite-link-styling.spec.js"),
     ),
     RouteCoverage(
         ("/zilch/konto",), "tests/test_zilch_product_routes.py",
@@ -125,7 +126,7 @@ DOCUMENT_ROUTES = (
         "tests/test_hausdepp_integration.py", "test_founder_product_pages_and_game_type_routes",
         ("tests/browser/hausdepp.spec.js", "tests/browser/hausdepp-public.spec.js",
          "tests/browser/hausdepp-card-reload.spec.js", "tests/browser/hausdepp-rematch.spec.js",
-         "tests/browser/hausdepp-flex-lobby.spec.js"),
+         "tests/browser/hausdepp-flex-lobby.spec.js", "tests/browser/suite-link-styling.spec.js"),
     ),
     RouteCoverage(
         ("/hausdepp/spiel/{game_id}", "/hausdepp/spiel/{game_id}/zuschauen"),
@@ -139,13 +140,15 @@ DOCUMENT_ROUTES = (
         ("/hausdepp/anmelden", "/hausdepp/konto/einstellungen"), "tests/test_hausdepp_auth_flow.py",
         "test_house_auth_pages_keep_product_identity_and_protected_settings",
         ("tests/browser-hausdepp-passkeys/in-origin.spec.js", "tests/browser-hausdepp-passkeys/account-flow.spec.js",
-         "tests/browser/hausdepp-push-settings.spec.js", "tests/browser/push-reminder-eligibility.spec.js"),
+         "tests/browser/hausdepp-push-settings.spec.js", "tests/browser/push-reminder-eligibility.spec.js",
+         "tests/browser/account-settings-layout.spec.js"),
     ),
     RouteCoverage(
         ("/hausdepp/konto",), "tests/test_hausdepp_integration.py",
         "test_founder_product_pages_and_game_type_routes",
         ("tests/browser/hausdepp-product.spec.js", "tests/browser/game-picker.spec.js",
-         "tests/browser/hausdepp-achievements.spec.js", "tests/browser/hausdepp-rematch.spec.js"),
+         "tests/browser/hausdepp-achievements.spec.js", "tests/browser/hausdepp-rematch.spec.js",
+         "tests/browser/account-settings-layout.spec.js"),
     ),
     RouteCoverage(
         ("/hausdepp/rangliste",), "tests/test_hausdepp_progress_api.py",
@@ -156,7 +159,8 @@ DOCUMENT_ROUTES = (
         ("/watten", "/watten/anmelden", "/watten/konto", "/watten/konto/einstellungen"),
         "tests/test_watten_accounts.py", "test_native_routes_protect_settings_and_keep_static_templates_private",
         ("tests/browser-passkeys/watten-account.spec.js", "tests/browser/watten-lobby-chat.spec.js",
-         "tests/browser/watten-founder-picker.spec.js"),
+         "tests/browser/watten-founder-picker.spec.js", "tests/browser/watten-game.spec.js",
+         "tests/browser/watten-public-language.spec.js", "tests/browser/account-settings-layout.spec.js"),
     ),
     RouteCoverage(
         ("/watten/konto/fortschritt", "/watten/konto/verlauf", "/watten/rangliste"),
@@ -166,7 +170,8 @@ DOCUMENT_ROUTES = (
     RouteCoverage(
         ("/watten/regeln",), "tests/test_watten_pages.py",
         "test_local_public_lobby_and_rules_serve_actual_game_documents",
-        ("tests/browser/watten-game.spec.js",),
+        ("tests/browser/watten-game.spec.js", "tests/browser/watten-public-language.spec.js",
+         "tests/browser/suite-link-styling.spec.js"),
     ),
     RouteCoverage(
         ("/watten/spiel/{game_id}", "/watten/spiel/{game_id}/zuschauen"), "tests/test_watten_pages.py",

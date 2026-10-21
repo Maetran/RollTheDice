@@ -18,6 +18,11 @@ for (const language of ['de', 'en']) {
     test.skip(await page.locator('html').getAttribute('data-watten-seo-language') === null, 'Requires the explicit public-beta SSR rollout');
     await expect(page.locator('html')).toHaveAttribute('lang', language);
     await expect.poll(() => page.evaluate(() => localStorage.getItem('zdwa_language'))).toBe(language);
+    const guide = page.locator('[data-watten-lobby-guide]');
+    await expect(guide).toBeVisible();
+    await expect(guide.locator('h2')).toHaveText(language === 'en' ? 'Watten at a glance' : 'Watten kurz erklärt');
+    await expect(guide).toContainText(language === 'en' ? 'Everyone receives five cards.' : 'Jede Person bekommt fünf Karten.');
+    await expect(page.getByRole('link', { name: language === 'en' ? 'Read the house rules' : 'Hausregeln lesen', exact: true })).toHaveClass(/wt-button/);
     await expect(page.locator('[data-watten-nav] a[href^="/watten/regeln"]')).toHaveAttribute('href', `/watten/regeln${query}`);
     await page.getByRole('link', { name: language === 'en' ? 'Read the house rules' : 'Hausregeln lesen', exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`/watten/regeln${language === 'en' ? '\\?lang=en' : ''}$`));

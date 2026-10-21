@@ -36,7 +36,7 @@ export function renderAccountSettings(root, auth, { onUserChanged } = {}) {
     ])}
     ${group('mitspieler', 'Mitspieler & Chat', [
       item('Lobby-Chat', 'Chat in der Lobby ein- oder ausschalten.', `<form id="hausdeppChatForm" class="form-stack"><label><input name="enabled" type="checkbox"> ${copy('Lobby-Chat aktivieren')}</label><label><input name="popups" type="checkbox"> ${copy('Neue Nachrichten im Lobby-Chat oben einblenden')}</label><button class="primary" type="submit">${copy('Chat-Einstellung speichern')}</button><p data-message role="status"></p></form>`),
-      item('Deine Spielerauswahl', 'Wer dich zu Runden rufen darf.', '<div data-allowlist-settings></div>'),
+      item('Deine Spielerauswahl', 'Wer dich zu Runden rufen darf.', '<div data-allowlist-settings></div>', 'id="spielerauswahl"'),
       item('Startmeldungen deiner Spielerauswahl', 'Hinweis, wenn deine Leute ein Spiel starten.', '<div data-friend-activity-settings></div>'),
     ])}
     ${group('benachrichtigungen', 'Benachrichtigungen', [

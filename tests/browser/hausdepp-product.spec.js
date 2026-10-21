@@ -53,12 +53,12 @@ for (const language of ['de', 'en']) {
     await expect(page.locator('#hausdeppAccountStats')).toBeVisible();
     await expect(page.locator('#hausdeppHistory')).toBeVisible();
     await expect(page.locator('html')).toHaveAttribute('lang', language);
-    await expect(page.locator('a[href="/hausdepp/konto"][aria-current="page"]')).toBeVisible();
+    await expect(page.locator('.hd-nav a[href="/hausdepp/konto/einstellungen"][aria-current="page"]')).toBeVisible();
     const account = await page.request.get('/api/hausdepp/account');
     expect(account.status()).toBe(200);
     expect(account.headers()['cache-control']).toBe('no-store');
     expect((await account.json()).achievements.available).toBe(true);
-    await page.locator('a[href="/hausdepp/konto/einstellungen"]').click();
+    await page.locator('.hd-account-settings a[href="/hausdepp/konto/einstellungen"]').click();
     await expect(page).toHaveURL(/\/hausdepp\/konto\/einstellungen$/);
     await expect(page.locator('.hd-settings')).toBeVisible();
     await expect(page.locator('html')).toHaveAttribute('data-game', 'hausdepp');

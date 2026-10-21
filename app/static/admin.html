@@ -6,15 +6,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Geschützter Administrationsbereich von ZDWA.">
   <meta name="robots" content="noindex, nofollow">
-  <link rel="manifest" href="/manifest.webmanifest?v=9d27e7a8dd8c">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=9d27e7a8dd8c" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=9d27e7a8dd8c" sizes="180x180">
+  <link rel="manifest" href="/manifest.webmanifest?v=fddf0784ec44">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=fddf0784ec44" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=fddf0784ec44" sizes="180x180">
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"||t==="classic"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d==="dark"?"dark":"light";const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=d==="dark"?"#0b1120":d==="classic"?"#31583a":"#f4f6f8"}catch(_){}</script>
-  <link rel="stylesheet" href="/static/style.css?v=9d27e7a8dd8c">
-  <link rel="stylesheet" href="/static/zdwa-design-2026.css?v=9d27e7a8dd8c">
+  <link rel="stylesheet" href="/static/style.css?v=fddf0784ec44">
+  <link rel="stylesheet" href="/static/zdwa-design-2026.css?v=fddf0784ec44">
   <script>{const r=document.documentElement,g=k=>{try{return localStorage.getItem(k)}catch(_){return null}},q=new URLSearchParams(location.search).get("design");if(q!=="classic"&&g("zdwa_design")!=="old"&&g("zdwa_design_off")!=="1"&&(q==="2026"||g("zdwa_design_override")!=="old"))r.dataset.design="2026"}</script>
-  <script src="/static/shell.js?v=9d27e7a8dd8c" defer></script>
-  <link rel="stylesheet" href="/static/suite-header.css?v=9d27e7a8dd8c">
+  <script src="/static/shell.js?v=fddf0784ec44" defer></script>
+  <link rel="stylesheet" href="/static/suite-header.css?v=fddf0784ec44">
 </head>
 <body class="lobby-page">
   <main class="wrap admin-shell">
@@ -105,7 +105,7 @@
     </section>
   </main>
   <script type="module">
-    import { apiFetch, authError, escapeHtml, loadAuth, playerNameMarkup } from '/static/auth.js?v=9d27e7a8dd8c';
+    import { apiFetch, authError, escapeHtml, loadAuth, playerNameMarkup } from '/static/auth.js?v=fddf0784ec44';
     const auth = await loadAuth();
     if (!auth?.user?.is_admin) location.replace(window.ZDWA_ROUTE?.path('/') || '/');
     document.getElementById('analyticsDashboardLink').hidden = !auth?.user?.can_view_analytics;
@@ -296,7 +296,7 @@
           <span class="admin-user-manage">${escapeHtml(t('Verwalten'))}</span>
         </summary>
         <div class="admin-user-details">
-          <a class="admin-user-profile" href="/spieler/${encodeURIComponent(user.username)}">${escapeHtml(t('Profil öffnen'))} ↗</a>
+          <a class="admin-user-profile button-link" href="/spieler/${encodeURIComponent(user.username)}">${escapeHtml(t('Profil öffnen'))} ↗</a>
           <div class="admin-user-sections">
             <section class="admin-user-section"><h3>${escapeHtml(t('Zugriffsrechte'))}</h3>${roleControls(user)}</section>
             <section class="admin-user-section"><h3>${escapeHtml(t('Passwort'))}</h3>

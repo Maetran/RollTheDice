@@ -1,8 +1,9 @@
 import { apiFetch } from "./auth.js";
-import { zdwaPath, zilchPath } from "../multigame/routes.js";
+import { hausdeppSignInUrl, zdwaPath, zilchPath } from "../multigame/routes.js";
 
 const t = value => window.ZDWA_I18N?.t?.(value) || value;
 const endpoint = "/api/web-push/allowlist";
+const navigationClass = context => context === "hausdepp" ? "hd-secondary" : "button-link small ghost";
 
 function element(tag, text = "", className = "") {
   const node = document.createElement(tag);
@@ -16,7 +17,7 @@ export function playerProfileHref(username, context = "zdwa") {
 }
 
 function accountHref(context) {
-  if (context === "hausdepp") return "/hausdepp/konto/einstellungen?allowlist=1#mitspieler";
+  if (context === "hausdepp") return "/hausdepp/konto/einstellungen?allowlist=1#spielerauswahl";
   return (context === "zilch" ? zilchPath : zdwaPath)("/konto?allowlist=1#settings");
 }
 
@@ -62,9 +63,10 @@ function mountController(mount, render, context) {
       controls.replaceChildren();
       message.textContent = errorText(error);
       if (error.message === "authentication_required") {
-        const link = element("a", t("Anmelden"));
-        link.href = context === "zilch"
-          ? zilchPath(`/anmelden?return_to=${encodeURIComponent(window.location.pathname + window.location.search)}`)
+        const link = element("a", t("Anmelden"), navigationClass(context));
+        link.href = context === "hausdepp"
+          ? hausdeppSignInUrl(window.location.pathname + window.location.search)
+          : context === "zilch" ? zilchPath(`/anmelden?return_to=${encodeURIComponent(window.location.pathname + window.location.search)}`)
           : zdwaPath("/#accountLogin");
         controls.append(link);
       } else {
@@ -125,7 +127,7 @@ export function mountProfileAllowlist(mount, { userId, context = "zdwa" }) {
     const hint = element("p", t(data.audience === "allowlist"
       ? "Nur ausgewählte Spieler dürfen dich per Push einladen, wenn du Mitspieler-Einladungen aktiviert hast."
       : "Aktuell erlaubst du Einladungen von allen Spielern. Im Konto kannst du deine Auswahl als Filter aktivieren."), "player-allowlist-hint");
-    const link = element("a", t("Spielerauswahl im Konto verwalten"));
+    const link = element("a", t("Spielerauswahl im Konto verwalten"), navigationClass(context));
     link.href = accountHref(context);
     controls.append(button, hint, link);
   }, context);
@@ -155,7 +157,7 @@ export function mountAllowlistSettings(mount, { context = "zdwa" } = {}) {
     const list = element("ul", "", "player-allowlist-list");
     for (const player of data.players) {
       const row = element("li");
-      const name = element(player.active ? "a" : "span", player.username);
+      const name = element(player.active ? "a" : "span", player.username, player.active ? navigationClass(context) : "");
       if (player.active) name.href = playerProfileHref(player.username, context);
       const remove = element("button", t("Entfernen"), "small ghost");
       remove.type = "button";
@@ -166,7 +168,7 @@ export function mountAllowlistSettings(mount, { context = "zdwa" } = {}) {
       list.append(row);
     }
     if (!data.players.length) list.append(element("li", t("Noch keine Spieler ausgewählt. Füge Spieler direkt über ihr Profil hinzu.")));
-    const find = element("a", t("Spieler finden"));
+    const find = element("a", t("Spieler finden"), navigationClass(context));
     find.href = context === "zilch" ? zilchPath("/bestenlisten#player-search") : zdwaPath("/spieler#player-search");
     controls.replaceChildren(form, hint, count, list, find);
   }, context);

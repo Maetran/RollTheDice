@@ -8,16 +8,25 @@ const { player, create, action, answerPartnerFeedback, normalCall, playOne } = r
 const { expectTableHeaderReachable } = require('./helpers/watten-header.cjs');
 
 for (const language of ['de', 'en']) {
-  test(`${language}: public lobby survives unavailable auth without reading games`, async ({ page }) => {
+  test(`${language}: public lobby survives unavailable auth without reading games`, async ({ page }, testInfo) => {
     await page.addInitScript(value => localStorage.setItem('zdwa_language', value), language);
     const privateReads = [];
     page.on('request', request => { if (new URL(request.url()).pathname.startsWith('/api/games')) privateReads.push(request.url()); });
     await page.route('**/api/auth/me', route => route.fulfill({ status: 503, json: { detail: 'unavailable' } }));
-    await page.goto('/watten');
+    await page.goto(`/watten${language === 'en' ? '?lang=en' : ''}`);
     await expect(page.locator('[data-watten-signin]')).toBeVisible();
+    const guide = page.locator('[data-watten-lobby-guide]');
+    await expect(guide).toBeVisible();
+    await expect(guide.locator('h2')).toHaveText(language === 'en' ? 'Watten at a glance' : 'Watten kurz erklärt');
+    await expect(guide).toContainText(language === 'en' ? 'Everyone receives five cards.' : 'Jede Person bekommt fünf Karten.');
     await expect(page.locator('[data-watten-create]')).toHaveCount(0);
-    await page.setViewportSize({ width: 320, height: 568 });
-    expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
+    for (const viewport of [{ width: 320, height: 568 }, { width: 1280, height: 900 }]) {
+      await page.setViewportSize(viewport);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
+      const play = await page.locator('[data-watten-signin]').boundingBox();
+      expect(play.y + play.height).toBeLessThan(viewport.height);
+      await page.screenshot({ path: testInfo.outputPath(`watten-lobby-${language}-${viewport.width}.png`), fullPage: true });
+    }
     await page.locator('[data-watten-nav] a[href^="/watten/regeln"]').click();
     await expect(page).toHaveURL(new RegExp(`/watten/regeln${language === 'en' ? '\\?lang=en' : ''}$`));
     await expect(page.locator('html')).toHaveAttribute('lang', language);
@@ -28,6 +37,14 @@ for (const language of ['de', 'en']) {
 test('two real human accounts bid, pause with an open bid, return and finish a durable match', async ({ browser, baseURL }) => {
   const players = [await player(browser, baseURL), await player(browser, baseURL, 'en')];
   try {
+    for (const [index, item] of players.entries()) {
+      await item.page.goto(`/watten${index ? '?lang=en' : ''}`);
+      await expect(item.page.locator('[data-watten-create-open]')).toBeVisible();
+      const guide = item.page.locator('[data-watten-lobby-guide]');
+      await expect(guide).toBeVisible();
+      await expect(guide.locator('h2')).toHaveText(index ? 'Watten at a glance' : 'Watten kurz erklärt');
+      await expect(guide).toContainText(index ? 'Everyone receives five cards.' : 'Jede Person bekommt fünf Karten.');
+    }
     const path = await create(players);
     await normalCall(players);
     for (const item of players) {

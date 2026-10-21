@@ -2420,5 +2420,12 @@
     "date": "2026-10-20",
     "bump": "patch",
     "summary": "Einheitliche Navigation, ZDWA-Community-Statistiken, klare Hausdepp-Dialoge und ein fester Tisch in der privaten Watten-Vorschau. / Consistent navigation, ZDWA community statistics, clear Hausdepp dialogs and a fixed table in the private Watten preview."
+  },
+  {
+    "version": "4.0.0",
+    "revision": "b9252dc6030d98da13a356705260bbc0f81a4625",
+    "date": "2026-10-21",
+    "bump": "major",
+    "summary": "Watten startet als öffentliche Beta mit Turnieren, taktischen CPUs, Bierblock-Anschrift und eigener PWA. / Watten launches in public beta with tournaments, tactical CPUs, a pub scorepad and its own PWA."
   }
 ]

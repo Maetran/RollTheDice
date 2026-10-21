@@ -131,6 +131,7 @@ test("account avatar upload accepts ordinary phone-photo limits", async ({ page 
   await page.reload();
   await expect.poll(() => page.evaluate(() => Boolean(navigator.serviceWorker.controller))).toBe(true);
 
+  await openAccountSection(page, "access");
   await page.locator("details[data-account-action=profile] > summary").click();
   const upload = page.locator("[data-avatar-upload]");
   await expect(upload).toBeVisible();
