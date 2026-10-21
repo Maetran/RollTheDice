@@ -153,10 +153,17 @@ def test_hidden_call_changes_leave_blind_cpu_spectator_and_personal_views_identi
     # A CPU assigned to C receives exactly the same personal allowlist. A
     # derived guess about the call cannot elevate it to an official knower.
     cpu_states = []
-    for state in states:
+    for state, variant in zip(states, ("base", "secret"), strict=True):
         bindings = tuple(SeatBinding(item.player_id, None if item.player_id == "C" else item.account_id)
                          for item in state.recipe.bindings)
-        cpu_states.append(replace(state, recipe=replace(state.recipe, bindings=bindings)))
+        cpu_recipe = replace(state.recipe, bindings=bindings)
+        # C's accepted feedback ACK is bound to its original actor. Rebinding
+        # afterwards must fail; start a genuine CPU table with the same inputs.
+        with pytest.raises(WattenEngineError, match="watten_actor_not_bound"):
+            replace(state, recipe=cpu_recipe)
+        cpu_state = ready(start_match(cpu_recipe, "privacy", blind_deal(variant), first_dealer="A"))
+        cpu_state = step(cpu_state, "B", "bid")
+        cpu_states.append(step(cpu_state, "C", "partner_feedback", "good"))
     assert cpu_view(cpu_states[0], player_id="C") == personal(left, "C")
     assert cpu_view(cpu_states[0], player_id="C") == cpu_view(cpu_states[1], player_id="C")
     assert "legal_cards" not in json.dumps(personal(left, "C"))
