@@ -563,6 +563,7 @@ html[data-watten-active="true"] .wt-bloedeln-status { margin: 0; font-size: .8re
 }
 
 @media (orientation: portrait) and (max-width: 760px) {
+  html[data-watten-active="true"] .wt-table:has([data-wt-history][open]:not([hidden])) .wt-centre > .wt-trick-label { visibility: hidden; }
   html[data-watten-active="true"] .wt-centre[data-wt-portrait-label] > .wt-trick-label {
     position: fixed; left: var(--wt-portrait-label-x); top: var(--wt-portrait-label-y);
     width: var(--wt-portrait-label-width); max-width: none; height: 20px;
