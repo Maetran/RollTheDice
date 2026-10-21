@@ -9,20 +9,12 @@ for (const language of ['de', 'en']) {
     try {
       await create([host], { count: 2, cpuFill: true });
       const guide = host.page.locator('[data-game-tour="watten"]');
-      await expect(guide).toHaveAttribute('data-tour-step', 'offer');
-      await expect(guide).toHaveAttribute('aria-live', 'off');
-      await expect(guide.locator('p')).toHaveCount(0);
-      await expect(host.page.locator('[data-tour-start]')).toHaveText(language === 'de' ? 'Einführung ansehen' : 'View introduction');
-      const invitationSize = await guide.boundingBox();
-      expect(invitationSize.height).toBeLessThan(80);
-      expect(await guide.evaluate(node => node.contains(document.activeElement))).toBe(false);
+      await expect(guide).toHaveAttribute('data-tour-step', 'welcome');
       await host.page.locator('[data-tour-close]').click();
       await expect(guide).toBeHidden();
       let preferences = await host.context.request.get('/api/auth/game-guides');
       expect((await preferences.json()).acknowledged.watten).toBe(0);
       await host.page.reload();
-      await expect(guide).toHaveAttribute('data-tour-step', 'offer');
-      await host.page.locator('[data-tour-start]').click();
       await expect(guide).toHaveAttribute('data-tour-step', 'welcome');
       const actionsBefore = host.traffic.commands.filter(message => message.action === 'watten_command').length;
       for (const step of ['calls', 'play', 'bid', 'partner', 'history', 'finish']) {

@@ -16,17 +16,6 @@ html[data-game="watten"] .game-tour button,
 html[data-game="watten"] .game-tour-settings-games button {
   background: #fff8e9; border-color: #a77954; color: #683224;
 }
-html[data-game="watten"] .game-tour[data-tour-mode="offer"] {
-  width: min(250px, calc(100vw - 24px)); padding: 7px 44px 7px 8px;
-  border-width: 1px; box-shadow: 0 3px 10px #38251b24;
-}
-html[data-game="watten"] .game-tour[data-tour-mode="offer"] .game-tour-actions { display: block; }
-html[data-game="watten"] .game-tour[data-tour-mode="offer"] .game-tour-actions button {
-  width: 100%; padding: 8px 10px; border-color: transparent; background: transparent;
-}
-html[data-game="watten"] .game-tour[data-tour-mode="offer"] .game-tour-close {
-  width: 44px; min-height: 44px; top: 6px; right: 1px;
-}
 .game-tour h2 { font: 700 18px/1.3 system-ui, sans-serif; margin: 0 26px 9px 0; color: #172c28; }
 .game-tour p, .game-tour-entry p { margin: 0 0 12px; color: #172c28; }
 .game-tour .game-tour-progress { font-size: 12px; margin-right: 24px; color: #49625b; }

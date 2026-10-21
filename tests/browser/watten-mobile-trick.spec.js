@@ -17,6 +17,7 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 393, height: 852 }
       }
       const page = players[0].page;
       await expect(page.locator('.wt-trick-card')).toHaveCount(3);
+      await expect(page.locator('[data-watten-call]')).toHaveCount(0);
       await expect.poll(() => page.locator('.wt-trick-card').first().evaluate(node => Number.parseFloat(getComputedStyle(node).width)))
         .toBeGreaterThanOrEqual(viewport.width <= 350 ? 64 : 76);
       await expect.poll(() => page.evaluate(() => {

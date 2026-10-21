@@ -995,6 +995,9 @@ function render(previous = null, live = false, accepted = false) {
   }
   html.dataset.wattenActive = "true";
   const engine = snapshot.engine;
+  // The call is a brief introduction to the deal. Once cards are played,
+  // keep the public trick clear; the separate automatic Thanks remains.
+  if (engine.current_trick?.cards?.length || engine.last_trick) session.bubbles = [];
   const count = snapshot.room.recipe.player_count;
   const viewerSeat = session.spectator ? null : engine.viewer?.seat ?? null;
   const actions = session.spectator ? [] : Array.isArray(engine.actions) ? engine.actions : [];

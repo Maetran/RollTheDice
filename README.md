@@ -58,9 +58,8 @@ Spielzug und quittierst sie einmalig mit **Verstanden**. **Später**, × oder
 Escape schliessen sie für diesen Besuch; ohne Quittierung bleibt sie beim
 nächsten Einstieg verfügbar. Die Partie läuft weiter, die Einführung führt
 keine Spielaktion aus.
-Watten bietet die Einführung zunächst nur als kleinen Knopf an. Erst mit
-**Einführung ansehen** öffnest du die Schritte; laufende Spielmeldungen schalten
-die Anleitung weder weiter noch erneut ein.
+Die kurzen Schlag-/Farbe-Sprechblasen verschwinden mit der ersten gelegten
+Karte und lassen den Stich frei; das automatische «Danke» bleibt davon getrennt.
 
 Hausdepp erklärt besonders die versteckten Gesten: Eine spielbare Handkarte
 lange berühren wählt alle spielbaren Karten desselben Werts zur gemeinsamen
@@ -79,8 +78,8 @@ In Hausdepp and Watten, read the hints independently of the next move and
 acknowledge them once with **Understood**. **Later**, × or Escape close them
 for this visit; without acknowledgement, they remain available next time.
 The game continues and the introduction performs no game actions.
-Watten first offers only a small **View introduction** button. Open the steps
-when you want to read them; live game messages neither advance nor reopen them.
+Brief strike/suit speech bubbles clear when the first card is played, leaving
+the trick unobstructed. The automatic “Thanks” keeps its separate display.
 
 Hausdepp highlights the hidden gestures: hold a playable hand card to select
 all playable cards of the same rank for a group play. Hold the open pile to

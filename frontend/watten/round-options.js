@@ -51,7 +51,10 @@ export function roundOptionsMarkup(vm) {
 }
 
 export function bloedelnCardsMarkup(vm) {
-  if (vm.engine.last_trick || !["show_ready", "inspection", "play", "bid_response"].includes(vm.engine.phase)) return "";
+  // Reveal the agreed original bottoms before play. During the trick, own
+  // forced cards stay marked in the hand and the public centre belongs to plays.
+  if (vm.engine.last_trick || vm.engine.current_trick?.cards?.length
+      || !["show_ready", "inspection", "play", "bid_response"].includes(vm.engine.phase)) return "";
   const played = new Set((vm.engine.current_trick?.cards || []).map(item => item.card));
   const cards = (vm.engine.preplay?.bloedeln_cards || []).filter(item => isCard(item.card) && !played.has(item.card));
   if (!cards.length) return "";

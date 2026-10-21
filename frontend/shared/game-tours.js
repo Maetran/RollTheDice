@@ -357,7 +357,7 @@ export function createGameTour(game) {
     if (!card) {
       card = document.createElement("aside"); card.className = "game-tour"; card.dataset.gameTour = game;
       card.setAttribute("role", "region"); card.setAttribute("aria-label", t("title"));
-      card.setAttribute("aria-live", game === "watten" ? "off" : "polite");
+      card.setAttribute("aria-live", "polite");
       document.body.append(card);
       card.addEventListener("click", event => {
         const button = event.target.closest("button");
@@ -380,8 +380,7 @@ export function createGameTour(game) {
     }
     card.dataset.tourMode = mode === "offer" ? "offer" : paused ? "paused" : mode;
     card.dataset.tourStep = mode === "offer" ? "offer" : step.id;
-    const body = mode === "offer" && game === "watten" ? `<div class="game-tour-actions"><button type="button" data-tour-start>${esc(t("wattenGuideOpen"))}</button></div>`
-      : mode === "offer" ? `<h2>${esc(t("offer", { game: games[game] }))}</h2><p>${esc(t("offerBody"))}</p><div class="game-tour-actions"><button type="button" data-tour-start>${esc(t("start"))}</button><button type="button" data-tour-dismiss>${esc(t("without"))}</button></div>`
+    const body = mode === "offer" ? `<h2>${esc(t("offer", { game: games[game] }))}</h2><p>${esc(t("offerBody"))}</p><div class="game-tour-actions"><button type="button" data-tour-start>${esc(t("start"))}</button><button type="button" data-tour-dismiss>${esc(t("without"))}</button></div>`
       : `<p class="game-tour-progress">${esc(games[game])} · ${esc(t("progress", { current: index + 1, total: steps.length }))}${mode === "view" ? ` · ${esc(t("example"))}` : ""}</p><h2>${esc(t(step.title))}</h2><p aria-live="polite">${esc(t(paused ? !context.canAct ? "waitTurn" : context.busy ? "waitMotion" : step.waiting || "waitTarget" : step.body))}</p>${mode === "view" ? `<div class="game-tour-example"><span>${esc(t("example"))}</span><strong>${exampleFor(game)}</strong></div>` : ""}<div class="game-tour-actions"><button type="button" data-tour-back ${index === 0 ? "disabled" : ""}>${esc(t("back"))}</button><button type="button" data-tour-next ${paused ? "disabled" : ""}>${esc(t(index === steps.length - 1 ? guide ? "understood" : "done" : "next"))}</button><button type="button" data-tour-end>${esc(t(guide ? "later" : "end"))}</button></div>`;
     const markup = `<button type="button" class="game-tour-close" data-tour-close aria-label="${esc(t(guide ? "later" : "end"))}">×</button>${body}`;
     if (markup !== lastMarkup) {
@@ -442,20 +441,15 @@ export function createGameTour(game) {
       }
       if (guideDeferredEpoch === viewerEpoch || !data.enabled || preferences?.enabled === false
         || (data.acknowledged[game] || 0) >= guideRevisions[game]) return;
-      if (game === "watten") {
-        // Offer the once-only guide quietly. Live table snapshots must never
-        // open the full explanation or move focus away from a player's turn.
-        mode = "offer"; currentTour = controller; render();
-      } else begin();
+      begin();
     } catch { /* Reading a guide never delays or blocks a running game. */ }
     finally { offerInFlight = false; }
   }
   function update(next) {
     context = next;
     if (!next.eligible && mode) { end(false); return; }
-    if (mode) {
-      if (!(game === "watten" && mode === "active")) render();
-    } else void maybeOffer();
+    if (mode) render();
+    else void maybeOffer();
   }
   controller.view = () => { context = {}; begin(true); };
   document.addEventListener("keydown", event => {
