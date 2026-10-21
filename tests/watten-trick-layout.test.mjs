@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const source = await readFile(new URL("../frontend/watten/trick-layout.js", import.meta.url), "utf8");
-const { fitPortraitTrick, fitPortraitPrompt, createTrickLayout } = await import(`data:text/javascript;base64,${Buffer.from(source).toString("base64")}`);
+const { fitPortraitTrick, fitPortraitPrompt, fitPortraitTrickView, createTrickLayout } = await import(`data:text/javascript;base64,${Buffer.from(source).toString("base64")}`);
 const rect = (left, top, width, height) => ({ left, top, width, height, right: left + width, bottom: top + height });
 const overlap = (a, b) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
 const valid = (result, bounds, obstacles) => {
@@ -144,3 +144,33 @@ test("review toggle schedules layout immediately and its listener is cleaned up"
   assert.equal(cancelled, 1);
   assert.equal(callbacks.size, 0);
 });
+
+const portraitFixtures = JSON.parse(await readFile(new URL("./fixtures/watten-portrait-tricks.json", import.meta.url), "utf8"));
+for (const fixture of portraitFixtures) for (const [seatIndex, seat] of ["bottom", "left", "top", "right"].entries()) for (const packets of [1, 3]) {
+  test(`${fixture.name}: completed trick stays readable with ${packets} captured packet(s) at ${seat}`, () => {
+    const bounds = rect(12, 156, fixture.width - 24, fixture.height - 164);
+    const short = fixture.width <= 350;
+    const ownRoleOffset = !short && fixture.obstacles.find(item => item[0] === "bottom")[4] > 60 ? 20.4 : 0;
+    const obstacles = fixture.obstacles.map(([region, left, top, width, height]) => rect(left,
+      top + (region === "bottom" ? short ? 14 : ownRoleOffset : short && /^(left|right)(-hand)?$/.test(region) ? -6 : 0), width, height));
+    let [left, top, width, height] = fixture.piles[seatIndex];
+    if (seat === "bottom") top += ownRoleOffset;
+    if (short) top += seat === "bottom" ? 14 : ["left", "right"].includes(seat) ? -6 : 0;
+    const extra = (packets - 1) * (width + 12);
+    if (["right", "top"].includes(seat)) left -= extra;
+    obstacles.push(rect(left, top, width + extra, height));
+    const result = fitPortraitTrickView({ bounds, obstacles, count: 4, minimumWidth: short ? 64 : 76, labelHeight: 24, history: true });
+    assert.ok(result.fit);
+    assert.ok(result.fit.cardWidth >= (short ? 64 : 76));
+    assert.ok(result.historyFit);
+    assert.equal(result.historyFit.height, 44);
+    for (const box of [result.fit, result.historyFit, result.labelFit].filter(Boolean)) {
+      for (const obstacle of obstacles) assert.equal(overlap(box, obstacle), false);
+    }
+    assert.equal(overlap(result.fit, result.historyFit), false);
+    if (result.labelFit) {
+      assert.equal(overlap(result.labelFit, result.fit), false);
+      assert.equal(overlap(result.labelFit, result.historyFit), false);
+    }
+  });
+}

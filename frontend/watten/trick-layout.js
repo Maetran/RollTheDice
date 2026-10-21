@@ -3,7 +3,7 @@ const GAP = 8, CAPTION = 20, LABEL = 24;
 const intersects = (a, b) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
 const usable = rect => rect && rect.width > 0 && rect.height > 0;
 
-export function fitPortraitPrompt(bounds, obstacles, { height = 20, widths = [180, 140, 100, 80] } = {}) {
+export function fitPortraitPrompt(bounds, obstacles, { height = 20, widths = [180, 140, 100, 80], accept = null } = {}) {
   const blocked = obstacles.filter(usable).map(rect => ({ left: rect.left - 4, right: rect.right + 4, top: rect.top - 4, bottom: rect.bottom + 4 }));
   for (const width of widths.filter(width => width <= bounds.width)) {
     const xs = [...new Set([bounds.left + (bounds.width - width) / 2, bounds.left, bounds.right - width,
@@ -13,14 +13,14 @@ export function fitPortraitPrompt(bounds, obstacles, { height = 20, widths = [18
     for (const top of ys) for (const left of xs) {
       const result = { left, top, right: left + width, bottom: top + height, width, height };
       if (left >= bounds.left && top >= bounds.top && result.right <= bounds.right && result.bottom <= bounds.bottom
-          && !blocked.some(obstacle => intersects(result, obstacle))) return result;
+          && !blocked.some(obstacle => intersects(result, obstacle)) && (!accept || accept(result))) return result;
     }
   }
   return null;
 }
 
 /** Fit a complete public trick between the real table's occupied regions. */
-export function fitPortraitTrick({ bounds, obstacles = [], count, desiredWidth = 104, minimumWidth = 64, labelHeight = LABEL }) {
+export function fitPortraitTrick({ bounds, obstacles = [], count, desiredWidth = 104, minimumWidth = 64, labelHeight = LABEL, accept = null }) {
   if (!usable(bounds) || ![2, 3, 4].includes(count)) return null;
   const padding = 5;
   const blocked = obstacles.filter(usable).map(rect => ({ left: rect.left - padding, right: rect.right + padding,
@@ -54,11 +54,35 @@ export function fitPortraitTrick({ bounds, obstacles = [], count, desiredWidth =
         width, height, rowHeight, cardWidth, mode, captionHeight, positions })));
       candidates.sort((a, b) => Math.abs(a.left - preferredX) + Math.abs(a.top - preferredY)
         - Math.abs(b.left - preferredX) - Math.abs(b.top - preferredY));
-      const result = candidates.find(candidate => !blocked.some(obstacle => intersects(candidate, obstacle)));
+      const result = candidates.find(candidate => !blocked.some(obstacle => intersects(candidate, obstacle)) && (!accept || accept(candidate)));
       if (result) return result;
     }
   }
   return null;
+}
+
+/** Fit the trick and its optional review/winner labels as one composition. */
+export function fitPortraitTrickView({ bounds, obstacles, count, minimumWidth, labelHeight = 0, history = false }) {
+  for (const separateLabel of labelHeight ? [false, true] : [false]) {
+    let extras;
+    const fit = fitPortraitTrick({ bounds, obstacles, count, minimumWidth, labelHeight: separateLabel ? 0 : labelHeight,
+      accept: candidate => {
+        const occupied = [...obstacles, candidate];
+        let labelFit = null;
+        const acceptHistory = historyFit => {
+          labelFit = separateLabel ? fitPortraitPrompt(bounds, historyFit ? [...occupied, historyFit] : occupied,
+            { widths: [180, 140, 100, 80, 72, 64] }) : null;
+          return !separateLabel || Boolean(labelFit);
+        };
+        const historyFit = history ? fitPortraitPrompt(bounds, occupied,
+          { height: 44, widths: [136, 128, 112, 96, 80, 64], accept: acceptHistory }) : null;
+        if (history ? !historyFit : !acceptHistory(null)) return false;
+        extras = { labelFit, historyFit };
+        return true;
+      } });
+    if (fit) return { fit, ...extras };
+  }
+  return { fit: null, labelFit: null, historyFit: null };
 }
 
 /** Presentation only: public faces already present in the trick DOM. */
@@ -104,41 +128,30 @@ export function createTrickLayout(trick, { win = window } = {}) {
     const neutralPrompt = panel?.children.length === 1 && panel.firstElementChild.matches(".wt-prompt") ? panel : null;
     const protectedNodes = [...table.querySelectorAll(".wt-seat-badge, .wt-backs > i:not([hidden]), .wt-taken[data-filled='true'], .wt-stock, "
       + "[data-wt-hand-area], [data-wt-panel], [data-wt-private] button, [data-wt-stake], [data-wt-history]:not([open])")].filter(node => node !== neutralPrompt);
-    const history = table.querySelector("[data-wt-history]:not([open])");
-    // A second 44px dock row would displace the trick on the shortest phone.
-    // The closed review instead uses a measured gap between the other hands.
-    if (win.innerWidth <= 350 && win.innerHeight <= 700 && box(history) && (!panel?.children.length || neutralPrompt)) {
-      const occupied = protectedNodes.filter(node => node !== history && !node.matches("[data-wt-stake]")).map(box).filter(Boolean);
-      if (reference) occupied.push(reference);
-      const historyFit = fitPortraitPrompt(bounds, occupied, { height: 44, widths: [136, 128, 112] });
-      if (historyFit) {
-        history.dataset.wtPortraitHistory = "true";
-        for (const [key, value] of [["x", historyFit.left], ["y", historyFit.top], ["width", historyFit.width]]) history.style.setProperty(`--wt-portrait-history-${key}`, `${value}px`);
-      }
+    const history = table.querySelector("[data-wt-history]:not([open])"), historyBox = box(history);
+    const moveHistory = Boolean(historyBox && table.dataset.phase === "play" && (!panel?.children.length || neutralPrompt));
+    // Remove the extra dock row before measuring. Its final 44px position is
+    // chosen together with the trick, rather than consuming the first gap.
+    if (moveHistory) {
+      history.dataset.wtPortraitHistory = "true";
+      for (const [key, value] of [["x", historyBox.left], ["y", historyBox.top], ["width", historyBox.width]]) history.style.setProperty(`--wt-portrait-history-${key}`, `${value}px`);
     }
-    const obstacles = protectedNodes.map(box).filter(Boolean);
+    const obstacles = protectedNodes.filter(node => !moveHistory || node !== history).map(box).filter(Boolean);
     if (reference) obstacles.push(reference);
     const originalWidth = Number.parseFloat(win.getComputedStyle(trick.firstElementChild).width) || 0;
     const minimumWidth = Math.max(win.innerWidth >= 360 ? 76 : 64, Math.ceil(originalWidth));
-    const labelHeight = centre.querySelector(".wt-trick-label")?.textContent.trim() ? LABEL : 0;
-    const resolve = occupied => {
-      let fit = fitPortraitTrick({ bounds, obstacles: occupied, count, labelHeight, minimumWidth });
-      let labelFit = null;
-      if (!fit && labelHeight) {
-        fit = fitPortraitTrick({ bounds, obstacles: occupied, count, labelHeight: 0, minimumWidth });
-        labelFit = fit && fitPortraitPrompt(bounds, [...occupied, fit]);
-        if (!labelFit) fit = null;
-      }
-      return { fit, labelFit };
-    };
-    let { fit, labelFit } = resolve(obstacles);
-    if (!fit) { centre.dataset.wtPortraitTrickFallback = "space"; return; }
-    const promptFit = neutralPrompt ? fitPortraitPrompt(bounds, [...obstacles, fit, labelFit].filter(Boolean)) : null;
+    const label = centre.querySelector(".wt-trick-label"), labelHeight = label?.textContent.trim() ? LABEL : 0;
+    if (label) label.title = label.textContent.trim();
+    const resolve = occupied => fitPortraitTrickView({ bounds, obstacles: occupied, count, labelHeight, minimumWidth, history: moveHistory });
+    let { fit, labelFit, historyFit } = resolve(obstacles);
+    if (!fit) { clear(); centre.dataset.wtPortraitTrickFallback = "space"; return; }
+    const promptFit = neutralPrompt ? fitPortraitPrompt(bounds, [...obstacles, fit, labelFit, historyFit].filter(Boolean)) : null;
     if (neutralPrompt && !promptFit) {
       const promptBox = box(neutralPrompt);
-      ({ fit, labelFit } = resolve(promptBox ? [...obstacles, promptBox] : obstacles));
-      if (!fit) { centre.dataset.wtPortraitTrickFallback = "prompt"; return; }
+      ({ fit, labelFit, historyFit } = resolve(promptBox ? [...obstacles, promptBox] : obstacles));
+      if (!fit) { clear(); centre.dataset.wtPortraitTrickFallback = "prompt"; return; }
     }
+    if (historyFit) for (const [key, value] of [["x", historyFit.left], ["y", historyFit.top], ["width", historyFit.width]]) history.style.setProperty(`--wt-portrait-history-${key}`, `${value}px`);
     const set = (name, value) => {
       const next = `${Math.round(value * 100) / 100}px`;
       if (centre.style.getPropertyValue(name) !== next) centre.style.setProperty(name, next);
