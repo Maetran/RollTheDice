@@ -72,7 +72,7 @@ sudo() {
   case "$*" in
     *"docker compose build"*) echo BUILD; return "$BUILD_FAIL" ;;
     *"docker compose up"*) echo RECREATE; echo "COMPOSE_ARGS:$*"; return "$RECREATE_FAIL" ;;
-    *"docker compose ps --status running"*) echo rollthedice ;;
+    *"docker compose ps --status running"*) echo rollthedice; return "$PS_FAIL" ;;
     *"docker compose stop"*) echo STOP >&2 ;;
     *"docker compose start"*) echo RECOVER_START >&2 ;;
     *"docker compose exec"*"python -c"*) return "$CAPABILITY_STATUS" ;;
@@ -97,14 +97,14 @@ curl() { echo HEALTH >&2; return "$HEALTH_FAIL"; }
 sleep() { echo "WAIT:$*"; if [[ "$CANCEL_WAIT" == "1" ]]; then kill -TERM "$$"; fi; }
 '''
         defaults = {name: "0" for name in ("BUILD_FAIL", "RECREATE_FAIL", "HEALTH_FAIL", "PUBLIC_FAIL", "QUEUE_FAIL",
-                                           "ANNOUNCE_FAIL", "BACKUP_FAIL", "CAPABILITY_STATUS", "CANCEL_WAIT")}
+                                           "ANNOUNCE_FAIL", "BACKUP_FAIL", "CAPABILITY_STATUS", "CANCEL_WAIT", "PS_FAIL")}
         return subprocess.run(["bash", "-s"], input=doubles + remote, capture_output=True, text=True,
                               env={**os.environ, **defaults, "FOUNDER_USER_ID": "2", "REMOTE_DIR": str(directory),
                                    "BRANCH": "master", "DEPLOY_HEAD": "b" * 40, "NEW_REVISION": "b" * 40, **flags})
 
     def test_release_is_published_only_after_build_and_health_and_marker_survives_retries(self):
         old, new = "a" * 40, "b" * 40
-        for failure in ("BUILD_FAIL", "ANNOUNCE_FAIL", "BACKUP_FAIL", "RECREATE_FAIL", "HEALTH_FAIL", "PUBLIC_FAIL", "QUEUE_FAIL", None):
+        for failure in ("BUILD_FAIL", "PS_FAIL", "ANNOUNCE_FAIL", "BACKUP_FAIL", "RECREATE_FAIL", "HEALTH_FAIL", "PUBLIC_FAIL", "QUEUE_FAIL", None):
             with self.subTest(failure=failure), tempfile.TemporaryDirectory() as directory:
                 root = Path(directory)
                 marker = root / ".deployment-marker"
@@ -114,7 +114,7 @@ sleep() { echo "WAIT:$*"; if [[ "$CANCEL_WAIT" == "1" ]]; then kill -TERM "$$"; 
                 self.assertIn(f"BASE:{old}", result.stderr)
                 self.assertEqual(result.returncode == 0, failure is None, result.stdout + result.stderr)
                 self.assertEqual(marker.read_text(encoding="utf-8").strip(), new if failure is None else old)
-                if failure in ("BUILD_FAIL", "ANNOUNCE_FAIL"):
+                if failure in ("BUILD_FAIL", "PS_FAIL", "ANNOUNCE_FAIL"):
                     self.assertNotIn("STOP", result.stderr)
                     self.assertNotIn("BACKUP", result.stdout)
                     self.assertNotIn("RECREATE", result.stdout)
