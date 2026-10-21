@@ -619,7 +619,7 @@ export function createTableView(container, { onCard, accountId = null }) {
   function renderHand(vm) {
     const hand = vm.engine.hand ? sortHand(vm.engine.hand) : [];
     const playable = vm.actions.includes("play_card") && !vm.busy;
-    // This is an explicit public forced card after both Blödeln consents. Other
+    // Only the own private forced card is projected after Blödeln is agreed. Other
     // legality (trump, strike, bids) stays entirely with the engine.
     const forced = !vm.engine.last_trick
       ? vm.engine.preplay?.bloedeln_cards?.find(item => item.seat === vm.viewerSeat)?.card : null;
@@ -753,7 +753,8 @@ export function createTableView(container, { onCard, accountId = null }) {
     patch(elements.bloedeln, "bloedeln", bloedelnCardsMarkup(vm));
     patch(elements.reveal, "reveal", vm.engine.inspection && vm.actions.includes("inspection_ack") ? inspectionMarkup(vm) : "");
     const roundOptions = roundOptionsMarkup(vm);
-    patch(elements.panel, "panel", !vm.paused && vm.engine.preplay?.pending ? roundOptions : panelMarkup(vm) + roundOptions);
+    const exclusiveRequest = vm.engine.preplay?.pending && vm.engine.preplay.pending.kind !== "bloedeln";
+    patch(elements.panel, "panel", !vm.paused && exclusiveRequest ? roundOptions : panelMarkup(vm) + roundOptions);
     patch(elements.private, "private", privateMarkup(vm));
     const feedbackDialog = elements.private.querySelector("[data-watten-feedback-dialog]");
     if (feedbackDialog && !feedbackDialog.open && typeof feedbackDialog.showModal === "function") feedbackDialog.showModal();
