@@ -62,6 +62,7 @@ from .auth import (
 )
 from .auth_protection import enforce_game_creation_rate_limit, validate_auth_protection_config
 from .database import configure_database, database_schema_ready, session_scope, upgrade_database
+from .deployment_notice import read_notice
 from .email_delivery import validate_account_email_config
 from .engagement import record_request_engagement
 from .friend_activity import serve_friend_activity_websocket, shutdown_friend_activity
@@ -1713,6 +1714,14 @@ def offline_play_page(request: Request):
 def zilch_offline_play_page():
     """Keep the local/development and same-origin Zilch entry usable offline."""
     return _offline_play_page("zilch", home="/zilch")
+
+
+@app.get("/api/deployment-notice", include_in_schema=False)
+def deployment_notice(response: Response):
+    """Public, ephemeral rollout timing; only the operator CLI can change it."""
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["X-Robots-Tag"] = "noindex, nofollow"
+    return {"notice": read_notice(DATA_DIR)}
 
 
 @app.get("/api/health", include_in_schema=False)

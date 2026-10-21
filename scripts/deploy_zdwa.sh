@@ -9,6 +9,7 @@ SILENT_RELEASE="${SILENT_RELEASE:-0}"
 FOUNDER_USER_ID="${FOUNDER_USER_ID:-}"
 ACTIVATE_HAUSDEPP="${ACTIVATE_HAUSDEPP:-0}"
 ACTIVATE_WATTEN="${ACTIVATE_WATTEN:-0}"
+ALLOW_NOTICE_BOOTSTRAP="${ALLOW_NOTICE_BOOTSTRAP:-0}"
 
 if [[ "$SILENT_RELEASE" != "0" && "$SILENT_RELEASE" != "1" ]]; then
   echo "SILENT_RELEASE must be 0 or 1" >&2
@@ -21,6 +22,10 @@ fi
 
 if [[ "$ACTIVATE_WATTEN" != "0" && "$ACTIVATE_WATTEN" != "1" ]]; then
   echo "ACTIVATE_WATTEN must be 0 or 1" >&2
+  exit 2
+fi
+if [[ "$ALLOW_NOTICE_BOOTSTRAP" != "0" && "$ALLOW_NOTICE_BOOTSTRAP" != "1" ]]; then
+  echo "ALLOW_NOTICE_BOOTSTRAP must be 0 or 1" >&2
   exit 2
 fi
 
@@ -59,7 +64,7 @@ fi
 
 printf 'Deploy target: %s:%s\n' "$REMOTE" "$REMOTE_DIR"
 
-remote_env="REMOTE_DIR=$(printf '%q' "$REMOTE_DIR") BRANCH=$(printf '%q' "$BRANCH") SILENT_RELEASE=$(printf '%q' "$SILENT_RELEASE") FOUNDER_USER_ID=$(printf '%q' "$FOUNDER_USER_ID") ACTIVATE_HAUSDEPP=$(printf '%q' "$ACTIVATE_HAUSDEPP") ACTIVATE_WATTEN=$(printf '%q' "$ACTIVATE_WATTEN")"
+remote_env="REMOTE_DIR=$(printf '%q' "$REMOTE_DIR") BRANCH=$(printf '%q' "$BRANCH") SILENT_RELEASE=$(printf '%q' "$SILENT_RELEASE") FOUNDER_USER_ID=$(printf '%q' "$FOUNDER_USER_ID") ACTIVATE_HAUSDEPP=$(printf '%q' "$ACTIVATE_HAUSDEPP") ACTIVATE_WATTEN=$(printf '%q' "$ACTIVATE_WATTEN") ALLOW_NOTICE_BOOTSTRAP=$(printf '%q' "$ALLOW_NOTICE_BOOTSTRAP")"
 ssh "$REMOTE" "$remote_env bash -s" <<'REMOTE_SCRIPT'
 set -euo pipefail
 
@@ -68,6 +73,7 @@ SILENT_RELEASE="${SILENT_RELEASE:-0}"
 FOUNDER_USER_ID="${FOUNDER_USER_ID:-}"
 ACTIVATE_HAUSDEPP="${ACTIVATE_HAUSDEPP:-0}"
 ACTIVATE_WATTEN="${ACTIVATE_WATTEN:-0}"
+ALLOW_NOTICE_BOOTSTRAP="${ALLOW_NOTICE_BOOTSTRAP:-0}"
 
 compose() {
   if [[ -n "$FOUNDER_USER_ID" ]]; then
@@ -100,33 +106,6 @@ fi
 previous_revision="$(< "$deployment_marker")"
 command -v curl >/dev/null || { echo "curl is required to verify a release before announcing it." >&2; exit 1; }
 
-echo "== Data backup =="
-if [[ -d data ]]; then
-  service_was_running=0
-  resume_service() {
-    if [[ "$service_was_running" == "1" ]]; then
-      compose start rollthedice >/dev/null
-      service_was_running=0
-    fi
-  }
-  trap resume_service EXIT
-  if compose ps --status running --services 2>/dev/null | grep -qx 'rollthedice'; then
-    service_was_running=1
-    compose stop rollthedice >/dev/null
-  fi
-  backup_dir="data.backup-$(date +%Y%m%d-%H%M%S)"
-  # Docker's root-mapped process owns SQLite and its WAL files. Preserve their
-  # ownership and copy them via sudo so a later deployment stays writable.
-  sudo -n cp -a data "$backup_dir"
-  resume_service
-  trap - EXIT
-  echo "Created $backup_dir"
-else
-  sudo -n mkdir -p data
-  sudo -n chown root:root data
-  echo "Created missing data directory for first deploy"
-fi
-
 echo "== Update code =="
 git fetch origin "$BRANCH"
 git checkout "$BRANCH"
@@ -148,12 +127,73 @@ else
   release_notice="$(python3 scripts/prepare_release_notice.py --previous "$previous_revision")"
 fi
 
-echo "== Docker deploy =="
+echo "== Docker build while the current service remains live =="
+compose build rollthedice
+
 if [[ "$ACTIVATE_HAUSDEPP" == "1" ]]; then
   echo "== Explicit first Hausdepp TLS activation =="
   APPLY=1 bash scripts/activate_hausdepp.sh
 fi
-compose up -d --build
+
+notice_id="$(git rev-parse HEAD)-$(date +%s)"
+notice_active=0
+service_was_running=0
+service_stopped=0
+deployment_cleanup() {
+  exit_status=$1
+  trap - EXIT
+  if [[ "$service_stopped" == "1" ]]; then
+    # If backup or recreation failed, restore the existing service first.
+    compose start rollthedice >/dev/null || true
+  fi
+  if [[ "$notice_active" == "1" ]]; then
+    compose exec -T rollthedice python -m app.deployment_notice clear --id "$notice_id" || true
+  fi
+  exit "$exit_status"
+}
+trap 'deployment_cleanup "$?"' EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
+if compose ps --status running --services | grep -qx 'rollthedice'; then
+  service_was_running=1
+  echo "== Upcoming rollout: 30 seconds before the first service stop =="
+  # Detect only the expected first-installation limitation. All other CLI
+  # errors fail before stopping the live server; no public write API exists.
+  if compose exec -T rollthedice python -c 'import importlib.util, sys; sys.exit(0 if importlib.util.find_spec("app.deployment_notice") else 42)'; then
+    notice_active=1
+    compose exec -T rollthedice python -m app.deployment_notice announce --id "$notice_id" --delay 30
+  else
+    notice_status=$?
+    if [[ "$notice_status" != "42" || "$ALLOW_NOTICE_BOOTSTRAP" != "1" ]]; then
+      echo "Rollout notice unavailable; refusing to stop the live server (status $notice_status)." >&2
+      echo "Only when installing this feature for the first time: ALLOW_NOTICE_BOOTSTRAP=1." >&2
+      exit 1
+    fi
+    echo "First installation: the old version cannot deliver rollout notices to open clients. Waiting 30 seconds; notices work after loading the new version."
+  fi
+  sleep 30
+fi
+
+echo "== Data backup =="
+if [[ -d data ]]; then
+  if [[ "$service_was_running" == "1" ]]; then
+    service_stopped=1
+    compose stop rollthedice >/dev/null
+  fi
+  backup_dir="data.backup-$(date +%Y%m%d-%H%M%S)"
+  # Docker owns SQLite and its WAL files. No writer runs during this copy.
+  sudo -n cp -a data "$backup_dir"
+  echo "Created $backup_dir"
+else
+  sudo -n mkdir -p data
+  sudo -n chown root:root data
+  echo "Created missing data directory for first deploy"
+fi
+
+echo "== Docker deploy from the prebuilt image =="
+compose up -d --no-build rollthedice
+service_stopped=0
 compose ps
 
 echo "== Local health =="
@@ -161,6 +201,11 @@ if command -v curl >/dev/null 2>&1; then
   curl --retry 15 --retry-delay 2 --retry-connrefused --retry-all-errors \
     -fsS http://127.0.0.1:8000/api/health >/dev/null
   echo "local app and database ready"
+fi
+
+if [[ "$notice_active" == "1" ]]; then
+  compose exec -T rollthedice python -m app.deployment_notice clear --id "$notice_id"
+  notice_active=0
 fi
 
 if [[ "$ACTIVATE_WATTEN" == "1" ]]; then
