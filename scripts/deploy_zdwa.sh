@@ -155,7 +155,8 @@ trap 'deployment_cleanup "$?"' EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
-if compose ps --status running --services | grep -qx 'rollthedice'; then
+running_services="$(compose ps --status running --services)"
+if printf '%s\n' "$running_services" | grep -qx 'rollthedice'; then
   service_was_running=1
   echo "== Upcoming rollout: 30 seconds before the first service stop =="
   # Detect only the expected first-installation limitation. All other CLI
