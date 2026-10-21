@@ -129,9 +129,10 @@ export function waitingRoomMarkup(snapshot, { mode, viewerId, busy = false, extr
   const unseated = room.members.filter(item => item.seat === null && item.participant_id !== viewerId);
   const status = room.status === "closed" ? t("waiting.closed") : "";
   return `<section class="wt-waiting" aria-labelledby="wattenWaitingTitle">
+    <div data-watten-waiting-tools></div>
     <header class="wt-waiting-head">
       <p class="wt-kicker">${esc(t(mode === "spectator" ? "spectator.kicker" : "waiting.kicker"))}</p>
-      <h2 id="wattenWaitingTitle" translate="no">${esc(snapshot.name || "")}</h2>
+      <h2 id="wattenWaitingTitle" translate="no" tabindex="-1">${esc(snapshot.name || "")}</h2>
       ${recipeMarkup(room.recipe)}
     </header>
     ${member ? landscapeHint() : ""}
