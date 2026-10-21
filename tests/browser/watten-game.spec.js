@@ -168,6 +168,11 @@ test('account changes during card decoding bind the new mount before opening a s
       };
     });
     const before = original.traffic.commands.length;
+    const unexpectedHome = [];
+    original.page.on('request', request => {
+      if (request.isNavigationRequest() && request.frame() === original.page.mainFrame()
+        && new URL(request.url()).pathname === '/') unexpectedHome.push(request.url());
+    });
     await original.page.goto(tablePath);
     await expect.poll(() => original.page.evaluate(() => typeof window.releaseWattenDecode)).toBe('function');
     await original.context.clearCookies();
@@ -176,6 +181,8 @@ test('account changes during card decoding bind the new mount before opening a s
     await expect(original.page.locator('[data-watten-nav] a[href="/watten/konto/einstellungen"]'))
       .toHaveAttribute('aria-label', new RegExp(`${players[1].user.username}$`));
     await expect(original.page.locator('.wt-seat-slot.is-own')).toContainText(players[1].user.username);
+    await expect(original.page).toHaveURL(new RegExp(`${tablePath}$`));
+    expect(unexpectedHome).toEqual([]);
     const bindings = original.traffic.commands.slice(before).filter(command => ['join_game', 'rejoin_game'].includes(command.action));
     expect(bindings.length).toBeGreaterThan(0);
     expect(bindings.every(command => command.expected_account_id === players[1].user.id)).toBe(true);

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { runInNewContext } from "node:vm";
 
 const read = path => readFile(new URL(path, import.meta.url), "utf8");
 const url = source => `data:text/javascript;base64,${Buffer.from(source).toString("base64")}`;
@@ -26,7 +27,7 @@ class Element extends Events {
   getAttribute(name) { return this.attributes.get(name); }
   closest() { return null; }
 }
-async function fixture({ state = founder(), mode = "zdwa", language = "de", loader, publicDocument = true, publicWattenDocument = false } = {}) {
+async function fixture({ state = founder(), mode = "zdwa", language = "de", loader, publicDocument = true, publicWattenDocument = false, beforeInitialize } = {}) {
   const win = new Events(), doc = new Events(), button = new Element(), pickers = [], storage = new Map(), visits = [];
   doc.documentElement = { dataset: { game: mode } }; doc.visibilityState = "visible"; doc.activeElement = null;
   if (publicWattenDocument) doc.documentElement.dataset.wattenPublicBeta = "true";
@@ -58,6 +59,7 @@ async function fixture({ state = founder(), mode = "zdwa", language = "de", load
     .replace('"./routes.js"', JSON.stringify(url(routesSource)))
     .replace('"./game-picker.js"', JSON.stringify(url("export const createGamePicker=(...args)=>globalThis.__founderPicker.createGamePicker(...args);")));
   const { initializeAppMode } = await import(url(`${source}\n// fixture ${++serial}`));
+  beforeInitialize?.({ win, visits });
   const controller = initializeAppMode({ mode, refreshOnInitialize: false });
   return { controller, win, doc, button, pickers, storage, visits, roots, reads: () => reads,
     games: () => pickers.at(-1)?.games || [], state(value) { currentState = value; },
@@ -208,6 +210,60 @@ test("an identity error on a live private page still clears its content and redi
   assert.equal(f.controller.set("watten"), false);
   assert.equal(f.button.hidden, true);
   assert.equal(f.visits.at(-1)[0], "replace");
+});
+
+test("Watten's own reload/navigation retires identity callbacks before teardown can reject them", async () => {
+  const game = await read("../frontend/watten/game.js");
+  const navigation = game.slice(game.indexOf("function navigate(path)"), game.indexOf('window.addEventListener("zdwa:auth-state"'));
+  for (const kind of ["reloadFresh", "navigate"]) {
+    const cancelled = deferred(); let pendingRead = false;
+    const f = await fixture({ mode: "watten", publicDocument: false,
+      loader: () => pendingRead ? cancelled.promise : founder() });
+    await f.controller.refresh();
+    let cleared = 0; f.roots.set("wattenApp", { replaceChildren() { cleared++; } });
+    pendingRead = true;
+    const pending = f.controller.refresh(); await settle();
+    f.win.location.reload = () => f.visits.push(["reload"]);
+    const callbacks = runInNewContext(`${navigation}; ({ navigate, reloadFresh });`, {
+      window: f.win, location: f.win.location, navigating: false,
+      teardown() { cancelled.reject(new Error("navigation cancelled the old identity read before beforeunload")); },
+    });
+    callbacks[kind]("/watten/regeln");
+    await pending;
+    // A late account event from the outgoing document cannot choose another
+    // destination either. The next document checks the real session afresh.
+    f.event(auth(null));
+    assert.deepEqual(f.visits, kind === "navigate" ? [["assign", "/watten/regeln"]] : [["reload"]]);
+    assert.equal(cleared, 0); assert.equal(f.controller.set("watten"), false);
+    assert.equal(f.button.hidden, true);
+    // This owner has already destroyed its page. Later lifecycle listeners
+    // must not revive that outgoing controller before navigation commits.
+    const reads = f.reads(); pendingRead = false;
+    f.win.emit("focus"); f.doc.emit("visibilitychange"); f.win.emit("pageshow", { persisted: true }); await settle();
+    assert.equal(f.reads(), reads); assert.equal(cleared, 0);
+    assert.equal(f.controller.set("watten"), false);
+  }
+});
+
+test("a Watten BFCache restore listener can request reload before the later app-mode pageshow listener", async () => {
+  const game = await read("../frontend/watten/game.js");
+  const navigation = game.slice(game.indexOf("function navigate(path)"), game.indexOf('window.addEventListener("zdwa:auth-state"'));
+  const restoreStart = game.indexOf('window.addEventListener("pageshow"');
+  const restore = game.slice(restoreStart, game.indexOf("\n// ----------------------------------------------------------------", restoreStart));
+  let callbacks;
+  const f = await fixture({ mode: "watten", publicDocument: false, beforeInitialize({ win, visits }) {
+    win.location.reload = () => visits.push(["reload"]);
+    callbacks = runInNewContext(`${navigation}\n${restore}; ({ navigate });`, {
+      window: win, location: win.location, page: "table", navigating: false, teardown() {},
+    });
+  } });
+  await f.controller.refresh();
+  // The real owner first leaves, then returns from BFCache with navigating=true.
+  callbacks.navigate("/watten/regeln"); f.win.emit("pagehide");
+  const reads = f.reads(); f.win.emit("pageshow", { persisted: true }); await settle();
+  f.event(auth(null));
+  assert.equal(f.reads(), reads); assert.deepEqual(f.visits, [["assign", "/watten/regeln"], ["reload"]]);
+  assert.equal(f.controller.set("watten"), false); assert.equal(f.button.hidden, true);
 });
 
 test("a confirmed private selection navigates canonically but remembered mode never grants availability", async () => {
