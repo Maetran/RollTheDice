@@ -19,6 +19,8 @@ for (const browserName of ['chromium', 'webkit']) {
         await page.goto('/watten');
         await expect(page.locator('[data-watten-create-open]')).toBeVisible();
         await expect.poll(() => page.evaluate(() => Boolean(window.ZDWA_APP_MODE?.initialized))).toBe(true);
+        await page.bringToFront();
+        await expect.poll(() => page.evaluate(() => document.visibilityState)).toBe('visible');
         await page.evaluate(() => window.ZDWA_APP_MODE.refresh());
 
         let announceAuth;
@@ -28,7 +30,12 @@ for (const browserName of ['chromium', 'webkit']) {
           heldAuth = route;
           announceAuth(route.request());
         });
-        await page.evaluate(() => { window.pendingNavigationAuth = window.ZDWA_APP_MODE.refresh(); });
+        // A refresh can coalesce an identity read begun before interception.
+        // Arrange a genuinely held read before exercising its cancellation.
+        await expect.poll(async () => {
+          await page.evaluate(() => { window.pendingNavigationAuth = window.ZDWA_APP_MODE.refresh(); });
+          return Boolean(heldAuth);
+        }, { message: 'arrange an intercepted identity read before leaving the lobby' }).toBe(true);
         const identityRequest = await authHeld;
         const identityFailed = page.waitForEvent('requestfailed', request => request === identityRequest);
         const refreshSettled = page.evaluate(() => window.pendingNavigationAuth)
