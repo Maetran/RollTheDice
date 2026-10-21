@@ -1,36 +1,27 @@
 {
   "kind": "usability",
-  "games": [
-    "zdwa",
-    "zilch",
-    "hausdepp",
-    "watten"
-  ],
-  "summary_de": "Einführungen für Watten und Hausdepp, Rollout-Hinweise und zehn Wirtshauskulissen.",
-  "summary_en": "Watten and Hausdepp introductions, advance rollout notices and ten tavern ambiences.",
+  "games": ["watten"],
+  "summary_de": "Watten: mehr Platz auf dem Handy, klarer Warteraum, bewusste Blödeln-Wahl und kurze Rundenrückschau.",
+  "summary_en": "Watten: more room on mobile, a clear waiting room, explicit Blödeln choices and a brief review between deals.",
   "player_notes": {
     "de": {
-      "title": "Gut einsteigen und entspannt weiterspielen",
+      "title": "WATTEN – Mehr Platz und klare Abläufe",
       "changes": [
-        "ALLGEMEIN: Vor künftigen Rollouts erscheint ein Hinweis zum kurzen Neustart. Mit «OK» schliesst du ihn; gespeicherte Spiele gehen danach weiter.",
-        "HAUSDEPP & WATTEN: Neue Einführungen quittierst du einmalig mit «Verstanden». Hausdepp erklärt lange Berührungen für Mehrfachauswahl und alle Karten des offenen Stapels.",
-        "HAUSDEPP: Beim Einschalten wird eine von zehn leisen Wirtshauskulissen zufällig gewählt.",
-        "HAUSDEPP: Bist du allein gegen CPUs und schon fertig, verkürzt «CPUs schneller» die Pausen bis zum Rundenende.",
-        "WATTEN: Schlag und Farbe stehen direkt an ihrer Karte. «Danke» ist grösser; der fertige Rundenverlauf braucht keinen Anheftschalter.",
-        "WATTEN: Im blinden Vierer entscheidet der wissende Spieler über Gebote und Antworten. Nur sein blinder Partner gibt ihm ein privates Signal.",
-        "HAUSDEPP: Der Sprachchat ist ohne Beta-Label verfügbar."
+        "Der mobile Spielkopf zeigt kompakte Teamstände und übersichtliche Symbole. Verlassen bleibt mit Bestätigung erreichbar.",
+        "Im Warteraum entfällt der grosse Seitenkopf. Sprache, Regeln und Sprachchat bleiben direkt im Wartebereich erreichbar.",
+        "Ausgespielte Karten und die Stichrückschau sind im Hochformat grösser. Laufende Spielhinweise treten zurück; die Einführung bleibt erhalten.",
+        "Beim Blödeln wählen beide Nichtansager ausdrücklich Ja oder Nein und sehen die Antwort des anderen. Erst danach beginnt das Ausspielen; ein Nein verhindert Blödeln.",
+        "Nach einer Gabe wird zuerst abgeräumt. Schlag, Farbe und der Rechte bleiben etwa drei Sekunden sichtbar; danach werden automatisch neue Karten gegeben. Auch das Endergebnis wartet auf das Abräumen."
       ]
     },
     "en": {
-      "title": "Get started and keep playing",
+      "title": "WATTEN – More room and clearer play",
       "changes": [
-        "GENERAL: Before future rollouts, a notice announces the brief restart. Close it with “OK”; saved games continue afterwards.",
-        "HAUSDEPP & WATTEN: Acknowledge the new introductions once with “Understood”. Hausdepp explains long presses for multiple selection and all cards in the open pile.",
-        "HAUSDEPP: Enabling sounds randomly chooses one of ten quiet tavern ambiences.",
-        "HAUSDEPP: When you are the only human and have finished, “Speed up CPUs” shortens pauses until the round ends.",
-        "WATTEN: Strike and suit labels sit at their card edge. “Thanks” is larger; finished round history needs no pin control.",
-        "WATTEN: In blind four-player play the informed player decides bids and responses. Only the blind partner sends private advice.",
-        "HAUSDEPP: Voice chat is available without a beta label."
+        "The mobile table header has compact team scores and orderly icons. Leaving still asks for confirmation.",
+        "The large page header is hidden in the waiting room. Language, rules and voice chat stay directly available there.",
+        "Played cards and trick review are larger in portrait. Ongoing game hints are quieter; the introduction stays available.",
+        "For Blödeln, both non-callers explicitly choose yes or no and see each other's answer. Card play waits for both; one no declines Blödeln.",
+        "After a deal, cards are collected first. Strike, suit and the Rechter remain visible for about three seconds before new cards are dealt automatically. The match result also waits for collection."
       ]
     }
   }

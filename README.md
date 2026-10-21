@@ -163,10 +163,16 @@ Spieleinstellungen in einem Dialog wie Hausdepp. 50 eigene Rundennamen werden
 mit dem Benutzernamen kombiniert. Freie Sitze lassen sich mit CPUs auffüllen;
 ein optionales Passwort aktiviert den Schutz. Favoriten speichern Einstellungen,
 keine Passwörter. Die Teambildung bleibt bewusst im Warteraum.
+Im Warteraum entfällt der grosse Seitenkopf. Rückweg, Regeln, Sprache und
+Sprachchat sind kompakt innerhalb der Wartefläche erreichbar; beim Wechsel
+zurück zur Lobby kehrt deren normale Navigation wieder.
 The compact lobby opens settings in a dialog like Hausdepp. Fifty original round
 names combine with the username. CPU fill is optional; a nonempty password
 protects the table. Favorites save settings, never passwords. Teams are chosen
 in the waiting room.
+The large page header is hidden in the waiting room. Back navigation, rules,
+language and voice chat are compactly available inside it; returning to the
+lobby restores its normal navigation.
 
 **Spieltisch / game table:** Mobile zuerst: die helle Tiroler Schnitzstube bleibt
 mit grösseren Schnitzecken sichtbar. Vor dem Aufdecken erscheint kein leerer
@@ -176,10 +182,14 @@ kurzen Kopfkanten treffen. «Schlag» und «Farbe» bleiben jeweils direkt an de
 Kante der zugehörigen Karte lesbar. Teamstand, Stichzahl und gemeinsames Ziel stehen oben.
 «Mir» ist immer deine Seite, «Dir» die gegnerische; Zuschauer sehen
 die neutralen Teamnamen. Karten- und Teamzeilen unter den Namen entfallen.
+Auf dem Handy bleiben die Teamstände schmal; Sprachchat, Verlassen und Tischchat
+stehen als geordnete Symbole daneben. Das Verlassen-Symbol öffnet weiterhin
+die Bestätigung zum Pausieren der Partie.
 Der dauernde Zug-Hinweis entfällt. Abgeschlossene Stiche bleiben
 rund drei Sekunden sichtbar, mit Siegerrahmen und Spielernamen. Der letzte Stich
-kann lokal erneut angesehen werden, im unteren Aktionsbereich oberhalb der
-Gebotsentscheidung. Gegnerische Karten und Stichpakete sind grösser. Die kompaktere
+kann lokal erneut angesehen werden. Im Hochformat nutzt der geschlossene
+Verlauf einen freien Platz auf dem Tisch; offene Rückschau und Gebotsentscheidung
+bleiben bei den eigenen Karten. Gegnerische Karten und Stichpakete sind grösser. Die kompaktere
 Rückschau lässt sich während der Partie dauerhaft einblenden. Nach Rundenende
 öffnet sie alle bis zu fünf Stiche ohne zusätzlichen Anheftschalter; Schlag,
 Farbe und der Rechte werden dann für alle aufgedeckt.
@@ -206,9 +216,13 @@ their callers into the clear table centre until their short top edges meet.
 Strike and Trump suit labels stay readable at the edge of their respective card. Scores,
 trick counts and one shared target sit above the table. “Us” always means your side,
 “Them” the other side; spectators see neutral team names. Card-count and team
-labels below player names are removed. Completed tricks stay for
+labels below player names are removed.
+The mobile scores stay narrow, with orderly voice-chat, leave and table-chat
+icons beside them. The leave icon still asks for confirmation before pausing.
+Completed tricks stay for
 about three seconds with a winner outline and player names; the last trick can
-be reviewed locally, in the lower action area above any bid decision. Desktop
+be reviewed locally. In portrait, the closed review uses a clear space on the
+table; open review and bid decisions remain beside your hand. Desktop
 centre cards, opponent hands and captured piles are larger. The compact review
 can stay pinned open during play. After each round, history opens with up to
 five tricks and no extra pin control; everyone can see the strike, trump suit
