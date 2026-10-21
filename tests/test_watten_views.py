@@ -141,7 +141,7 @@ def test_hidden_call_changes_leave_blind_cpu_spectator_and_personal_views_identi
         state = ready(start_match(recipe(4, "ladinisch", True, critical, show_rechter=show_rechter),
                                   "privacy", blind_deal(variant), first_dealer="A"))
         state = step(state, "B", "bid")
-        state = step(state, "A", "partner_feedback", "good")
+        state = step(state, "C", "partner_feedback", "good")
         states.append(state)
     left, right = states
     assert left.call != right.call and left.thanks == right.thanks == ()
@@ -153,13 +153,40 @@ def test_hidden_call_changes_leave_blind_cpu_spectator_and_personal_views_identi
     # A CPU assigned to C receives exactly the same personal allowlist. A
     # derived guess about the call cannot elevate it to an official knower.
     cpu_states = []
-    for state in states:
+    for state, variant in zip(states, ("base", "secret"), strict=True):
         bindings = tuple(SeatBinding(item.player_id, None if item.player_id == "C" else item.account_id)
                          for item in state.recipe.bindings)
-        cpu_states.append(replace(state, recipe=replace(state.recipe, bindings=bindings)))
+        cpu_recipe = replace(state.recipe, bindings=bindings)
+        # C's accepted feedback ACK is bound to its original actor. Rebinding
+        # afterwards must fail; start a genuine CPU table with the same inputs.
+        with pytest.raises(WattenEngineError, match="watten_actor_not_bound"):
+            replace(state, recipe=cpu_recipe)
+        cpu_state = ready(start_match(cpu_recipe, "privacy", blind_deal(variant), first_dealer="A"))
+        cpu_state = step(cpu_state, "B", "bid")
+        cpu_states.append(step(cpu_state, "C", "partner_feedback", "good"))
     assert cpu_view(cpu_states[0], player_id="C") == personal(left, "C")
     assert cpu_view(cpu_states[0], player_id="C") == cpu_view(cpu_states[1], player_id="C")
     assert "legal_cards" not in json.dumps(personal(left, "C"))
+
+
+@pytest.mark.parametrize("dealer", tuple("ABCD"))
+def test_blind_actions_keep_bid_and_response_with_knower_and_feedback_with_its_partner(dealer):
+    state = ready(start_match(recipe(4, "ladinisch", True), "blind-actions", dealt(), first_dealer=dealer))
+    first = state.play.current_player_id
+    state = step(state, first, "play_card", legal_cards(state.play, state.bid_state, first)[0])
+    card_player = state.play.current_player_id
+    party = state.parties.party_of(card_player)
+    bidder = state.parties.decider(party)
+    assert personal(state, card_player)["actions"] == ["play_card"]
+    assert personal(state, bidder)["actions"] == ["bid"]
+    assert all("bid" not in personal(state, player)["actions"]
+               for player in state.recipe.seats if player != bidder)
+    state = step(state, bidder, "bid")
+    decider = state.parties.decider(1 - party)
+    partner = next(player for player in state.parties.parties[1 - party] if player != decider)
+    assert personal(state, decider)["actions"] == ["respond_hold", "respond_go", "respond_counter"]
+    assert personal(state, partner)["actions"] == ["partner_feedback"]
+    assert all(not personal(state, player)["actions"] for player in state.parties.parties[party])
 
 
 def test_public_thanks_is_the_only_permitted_difference_when_a_shown_rechter_changes():

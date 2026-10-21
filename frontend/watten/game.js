@@ -21,6 +21,7 @@ import { createWattenVoice } from "./voice.js";
 import { createFriendActivity } from "./friend-activity.js";
 import { initializeAppMode } from "../multigame/app-mode.js";
 import { initializeSuiteHeader } from "../shell/header.js";
+import { createGameTour } from "../shared/game-tours.js";
 
 // Public lobby launches own the install flow; active tables only register.
 const publicBetaDocument = document.documentElement.dataset.wattenPublicBeta === "true";
@@ -66,6 +67,7 @@ let social = null;
 let decor = null;
 let voice = null;
 const cleanups = new Set();
+const beginnerGuide = createGameTour("watten");
 
 function errorText(code) {
   if (STALE.has(code)) return t("error.stale");
@@ -86,13 +88,14 @@ function renderNav(auth) {
   const label = text => esc(window.ZDWA_I18N.t(text));
   nav.innerHTML = `<a href="${publicPageUrl("/watten")}"${page === "lobby" ? " aria-current=\"page\"" : ""}>${esc(t("nav.lobby"))}</a>
     <a href="/watten/rangliste">${label("Spieler & Ranking")}</a>
-    <a href="${publicPageUrl("/watten/regeln")}"${page === "rules" ? " aria-current=\"page\"" : ""}>${esc(t("nav.rules"))}</a>
+    <a class="wt-button wt-button--ghost" href="${publicPageUrl("/watten/regeln")}"${page === "rules" ? " aria-current=\"page\"" : ""}>${esc(t("nav.rules"))}</a>
     ${user ? `<a href="/watten/konto/einstellungen" aria-label="${esc(t("nav.accountOf", { name: user.username }))}">${label("Konto")}</a>`
       : `<a href="${esc(signInUrl())}">${label("Konto")}</a>`}`;
 }
 
 /** Drop private state synchronously; late callbacks observe a new generation. */
 function teardown() {
+  beginnerGuide.discard();
   voice?.destroy(); voice = null;
   generation += 1;
   delete html.dataset.wattenActive;
@@ -949,6 +952,7 @@ function render(previous = null, live = false, accepted = false) {
   voice?.update(snapshot);
   setHeading(snapshot.name);
   if (!snapshot.engine) {
+    beginnerGuide.update({ eligible: false });
     motion.cancel();
     session.view?.destroy?.();
     delete html.dataset.wattenActive;
@@ -1010,6 +1014,8 @@ function render(previous = null, live = false, accepted = false) {
     playerId: session.playerId, spectator: session.spectator, busy: Boolean(session.inFlight) || !session.bound });
   syncDecor();
   if (accepted) motion.present({ previous: previous?.engine, engine, live, captured, result, view: session.view });
+  beginnerGuide.update({ eligible: !session.spectator && viewerSeat !== null && engine.phase !== "match_complete",
+    canAct: session.bound && !snapshot.paused, busy: Boolean(session.inFlight) || !session.bound });
 }
 
 function renderJoinPrompt() {

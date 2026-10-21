@@ -1,7 +1,19 @@
 // These public assets use the browser's HTTP cache. No part of this graph is
 // connected to the microphone, MediaStream or the voice transport.
+const rooms = [
+  "/static/audio/hausdepp/tavern-room.mp3?v=ASSET_VERSION",
+  "/static/audio/hausdepp/tavern-room-02.mp3?v=ASSET_VERSION",
+  "/static/audio/hausdepp/tavern-room-03.mp3?v=ASSET_VERSION",
+  "/static/audio/hausdepp/tavern-room-04.mp3?v=ASSET_VERSION",
+  "/static/audio/hausdepp/tavern-room-05.mp3?v=ASSET_VERSION",
+  "/static/audio/hausdepp/tavern-room-06.mp3?v=ASSET_VERSION",
+  "/static/audio/hausdepp/tavern-room-07.mp3?v=ASSET_VERSION",
+  "/static/audio/hausdepp/tavern-room-08.mp3?v=ASSET_VERSION",
+  "/static/audio/hausdepp/tavern-room-09.mp3?v=ASSET_VERSION",
+  "/static/audio/hausdepp/tavern-room-10.mp3?v=ASSET_VERSION",
+].map(url => ({ name: url.slice(url.lastIndexOf("/") + 1).split(".")[0], url, gain: 0.065 }));
+const roomNames = new Set(rooms.map(clip => clip.name));
 const clips = {
-  room: { url: "/static/audio/hausdepp/tavern-room.mp3?v=ASSET_VERSION", gain: 0.065 },
   glasses: { url: "/static/audio/hausdepp/glasses.mp3?v=ASSET_VERSION", gain: 0.035 },
   dishwasher: { url: "/static/audio/hausdepp/dishwasher.mp3?v=ASSET_VERSION", gain: 0.025 },
   laughter: { url: "/static/audio/hausdepp/laughter.mp3?v=ASSET_VERSION", gain: 0.035 },
@@ -22,10 +34,10 @@ export function createHausdeppSound({
   clearTimeout: cancelDelay = globalThis.clearTimeout,
 } = {}) {
   const supported = typeof Context === "function" && typeof fetchAsset === "function";
-  const listeners = new Set(), buffers = new Map(), nodes = new Set();
+  const listeners = new Set(), buffers = new Map(), loading = new Map(), nodes = new Set();
   let context = null, enabled = false, destroyed = false, revision = 0;
-  let status = "idle", errorKey = "", loading = null, abort = null, suspension = null;
-  let room = null, detailTimer = null, suspendTimer = null;
+  let status = "idle", errorKey = "", suspension = null;
+  let selectedRoom = null, room = null, detailTimer = null, suspendTimer = null;
   const snapshot = () => ({ enabled, supported, status, errorKey });
   const emit = () => {
     if (destroyed) return;
@@ -112,24 +124,51 @@ export function createHausdeppSound({
   const cue = kind => {
     if (enabled && !destroyed && notes[kind] && kind !== "sound-off" && kind !== "sound-on") tone(kind);
   };
-  const load = () => {
-    if (loading) return loading;
+  const cancelLoads = () => {
+    for (const pending of loading.values()) pending.abort.abort();
+    loading.clear();
+  };
+  const selectRoom = () => {
+    selectedRoom = rooms[Math.min(rooms.length - 1, Math.floor(random() * rooms.length))];
+    // Cache the small shared details and at most one decoded room. A previous
+    // room may still be decoding, so its result must also pass the job check.
+    for (const name of buffers.keys()) {
+      if (roomNames.has(name) && name !== selectedRoom.name) buffers.delete(name);
+    }
+    for (const [name, pending] of loading) {
+      if (!pending.room || name === selectedRoom.name) continue;
+      loading.delete(name);
+      pending.abort.abort();
+    }
+  };
+  const loadClip = (name, clip, isRoom = false) => {
+    if (buffers.has(name)) return Promise.resolve();
+    if (loading.has(name)) return loading.get(name).promise;
     const audio = context;
-    abort = new AbortController();
-    const signal = abort.signal;
-    loading = Promise.all(Object.entries(clips).map(async ([name, clip]) => {
-      if (buffers.has(name)) return;
+    const pending = { abort: new AbortController(), room: isRoom, promise: null };
+    const active = () => !destroyed && loading.get(name) === pending && (!isRoom || selectedRoom === clip);
+    const signal = pending.abort.signal;
+    pending.promise = (async () => {
       const response = await fetchAsset(clip.url, { mode: "same-origin", credentials: "omit", cache: "force-cache", signal });
       if (!response.ok) throw new Error("soundUnavailable");
+      if (!active()) return;
       const data = await response.arrayBuffer();
-      if (destroyed) return;
+      if (!active()) return;
       const buffer = await audio.decodeAudioData(data);
-      if (!destroyed) buffers.set(name, buffer);
-    })).catch(error => { loading = null; throw error; });
-    return loading;
+      if (active()) buffers.set(name, buffer);
+    })().finally(() => {
+      if (loading.get(name) === pending) loading.delete(name);
+    });
+    loading.set(name, pending);
+    return pending.promise;
   };
+  const load = () => Promise.all([
+    loadClip(selectedRoom.name, selectedRoom, true),
+    ...Object.entries(clips).map(([name, clip]) => loadClip(name, clip)),
+  ]);
   const playClip = (name, loop = false) => {
-    const buffer = buffers.get(name);
+    const clip = loop ? selectedRoom : clips[name];
+    const buffer = buffers.get(loop ? clip.name : name);
     if (!enabled || destroyed || !buffer || context.state !== "running") return null;
     const source = context.createBufferSource(), gain = context.createGain();
     const entry = { source, gain };
@@ -137,7 +176,7 @@ export function createHausdeppSound({
     source.buffer = buffer;
     source.loop = loop;
     gain.gain.setValueAtTime(0, context.currentTime);
-    gain.gain.linearRampToValueAtTime(clips[name].gain, context.currentTime + (loop ? 1.5 : 0.04));
+    gain.gain.linearRampToValueAtTime(clip.gain, context.currentTime + (loop ? 1.5 : 0.04));
     source.connect(gain);
     gain.connect(context.destination);
     source.onended = () => forget(entry);
@@ -182,6 +221,7 @@ export function createHausdeppSound({
       emit();
       return true;
     }
+    selectRoom();
     status = "loading";
     emit();
     try {
@@ -201,6 +241,7 @@ export function createHausdeppSound({
     } catch {
       if (!current(attempt)) return false;
       enabled = false;
+      cancelLoads();
       stopNodes();
       status = "error";
       errorKey = "soundUnavailable";
@@ -216,7 +257,7 @@ export function createHausdeppSound({
     revision++;
     cancelSuspension();
     stopNodes();
-    abort?.abort();
+    cancelLoads();
     buffers.clear();
     listeners.clear();
     try { quietly(context?.close()); } catch { /* Page teardown is best effort. */ }

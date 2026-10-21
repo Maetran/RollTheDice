@@ -78,7 +78,7 @@ function hausdeppSnapshot() {
 /** The real room renders a small authoritative snapshot; only identity, tour
  * persistence and its game socket are mocked. No game/account is created. */
 async function harness(page, { language = "de", authenticated = true, enabled = true,
-  games = {}, spectator = false, game = "zdwa", initial = snapshot() } = {}) {
+  games = {}, spectator = false, game = "zdwa", initial = snapshot(), acknowledged = {} } = {}) {
   const user = { id: 42, username: "Anna", is_admin: false, role: "user", csrf_token: "tour-fixture-csrf",
     must_change_password: false, preferences: { preferred_language: language, auto_write_announced: false },
     design: { zdwa_2026_available: true, zdwa: "new", prompt_pending: false } };
@@ -86,7 +86,7 @@ async function harness(page, { language = "de", authenticated = true, enabled = 
     game_access: { zilch_public: true, zilch_preview: true, hausdepp_public: true },
     passkeys: { enabled: false }, registration: { email_enabled: false, turnstile_enabled: false } };
   const server = { data: { enabled, games: { zdwa: "unseen", zilch: "unseen", hausdepp: "unseen", ...games } },
-    claims: [], writes: [], requests: [] };
+    claims: [], writes: [], requests: [], guideWrites: [], guides: { enabled, acknowledged: { hausdepp: 0, watten: 0, ...acknowledged } } };
   await page.addInitScript(lang => localStorage.setItem("zdwa_language", lang), language);
   await page.route("**/api/auth/me", route => route.fulfill({ json: auth }));
   await page.route("**/api/releases**", route => route.fulfill({
@@ -109,6 +109,15 @@ async function harness(page, { language = "de", authenticated = true, enabled = 
     const show = server.data.enabled && server.data.games[game] === "unseen";
     if (show) server.data.games[game] = "dismissed";
     await route.fulfill({ json: { show, ...server.data } });
+  });
+  await page.route("**/api/auth/game-guides", async route => {
+    if (!auth.authenticated) return route.fulfill({ status: 401, json: {} });
+    if (route.request().method() === "PUT") {
+      const patch = route.request().postDataJSON();
+      server.guideWrites.push(patch);
+      server.guides.acknowledged[patch.game_type] = 1;
+    }
+    await route.fulfill({ json: server.guides });
   });
   const actions = [];
   const sockets = [];
@@ -155,6 +164,7 @@ async function harness(page, { language = "de", authenticated = true, enabled = 
     disconnect() { socket.close({ code: 1012, reason: "tour reconnect fixture" }); },
     signIn() { auth.authenticated = true; auth.user = user; },
     signOut() { auth.authenticated = false; auth.user = null; },
+    switchAccount(id) { user.id = id; auth.user = user; server.guides.acknowledged.hausdepp = 0; },
   };
 }
 
@@ -727,117 +737,134 @@ for (const game of ["zdwa", "zilch"]) {
   });
 }
 
-test("Hausdepp offers its own guide once and dismissing it never plays a card", async ({ page }) => {
-  const room = await harness(page, { game: "hausdepp", initial: hausdeppSnapshot(),
-    games: { zdwa: "completed", zilch: "completed" } });
+test("Hausdepp defers its guide without acknowledging, then remembers Understood across reload", async ({ page }) => {
+  const room = await harness(page, { game: "hausdepp", initial: hausdeppSnapshot(), games: { hausdepp: "completed" } });
   await room.open();
-  await expect(page.locator(`${TOUR}[data-tour-mode="offer"]`)).toBeVisible();
-  expect(room.server.claims).toEqual(["hausdepp"]);
-  await page.locator("[data-tour-dismiss]").click();
+  await expect(page.locator(TOUR)).toHaveAttribute("data-tour-mode", "active");
+  await page.locator("[data-tour-close]").click();
   await expect(page.locator(TOUR)).toBeHidden();
+  expect(room.server.guideWrites).toEqual([]);
   await page.reload();
-  await expect(page.locator("#hausdeppHand [data-card-id]")).toHaveCount(3);
-  await expect.poll(() => room.server.requests.length).toBeGreaterThanOrEqual(2);
-  await expect(page.locator(TOUR)).toBeHidden();
-  expect(gameActions(room)).toEqual([]);
-  expect(room.server.data.games).toEqual({ zdwa: "completed", zilch: "completed", hausdepp: "dismissed" });
-});
-
-test("Hausdepp Next explains hand, stock, pile and special cards without any real card action", async ({ page }) => {
-  const room = await harness(page, { game: "hausdepp", initial: hausdeppSnapshot() });
-  await room.open();
-  await startOfferedTour(page);
-  for (const step of ["play", "stock", "pile", "special", "finish"]) {
+  await expect(page.locator(TOUR)).toHaveAttribute("data-tour-step", "welcome");
+  for (const step of ["play", "multiple", "stock", "pile", "inspect", "special", "finish"]) {
     await page.locator("[data-tour-next]").click();
     await expect(page.locator(TOUR)).toHaveAttribute("data-tour-step", step);
+    if (step === "multiple") await expect(page.locator(TOUR)).toContainText("gedrückt");
+    if (step === "inspect") await expect(page.locator(TOUR)).toContainText("gerade darin liegen");
     expect(gameActions(room)).toEqual([]);
   }
+  await expect(page.locator("[data-tour-next]")).toHaveText("Verstanden");
   await page.locator("[data-tour-next]").click();
+  await expect.poll(() => room.server.guides.acknowledged.hausdepp).toBe(1);
+  await page.reload();
+  await expect(page.locator("#hausdeppHand [data-card-id]")).toHaveCount(3);
   await expect(page.locator(TOUR)).toBeHidden();
-  await expect.poll(() => room.server.data.games.hausdepp).toBe("completed");
-  expect(gameActions(room)).toEqual([]);
-  // The player's explicit card click still has the existing immediate behavior.
-  await page.locator('#hausdeppHand [data-card-id="hearts-7"]').click();
-  await expect.poll(() => gameActions(room).length).toBe(1);
-  expect(gameActions(room)[0]).toMatchObject({ action: "hausdepp_play", cards: ["hearts-7"] });
+  expect(room.server.claims).toEqual([]);
+  expect(room.server.guideWrites).toEqual([{ game_type: "hausdepp" }]);
+  expect(room.server.data.games.hausdepp).toBe("completed");
 });
 
-test("Hausdepp waits through peeking and first offers the tour when a real own action is available", async ({ page }) => {
-  await page.emulateMedia({ reducedMotion: "reduce" });
+test("Hausdepp acknowledgement stays with its account and cannot suppress the next login", async ({ page }) => {
+  const room = await harness(page, { game: "hausdepp", initial: hausdeppSnapshot() });
+  await room.open();
+  for (let index = 0; index < 8; index += 1) await page.locator("[data-tour-next]").click();
+  await expect.poll(() => room.server.guideWrites.length).toBe(1);
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("rollthedice.tours.v1.user.42.guides")));
+  expect(saved.hausdepp).toBe(1);
+  room.switchAccount(84);
+  await page.reload();
+  await expect(page.locator(TOUR)).toHaveAttribute("data-tour-step", "welcome");
+  await page.locator("[data-tour-close]").click();
+  expect(room.server.guideWrites).toEqual([{ game_type: "hausdepp" }]);
+  expect(await page.evaluate(() => localStorage.getItem("rollthedice.tours.v1.user.84.guides"))).toBeNull();
+});
+
+test("a deferred guide in a reused controller does not defer the next account", async ({ page }) => {
+  const room = await harness(page);
+  await page.route("**/game-guide-viewer-fixture", route => route.fulfill({ contentType: "text/html", body:
+    '<html data-game="hausdepp"><link rel="stylesheet" href="/static/hausdepp.css"><body><div id="hausdeppHand">Hand</div></body></html>' }));
+  await page.goto("/game-guide-viewer-fixture");
+  await page.evaluate(async () => {
+    const { createGameTour } = await import("/static/game-tours.js");
+    window.reusedGuide = createGameTour("hausdepp");
+    window.reusedGuide.update({ eligible: true, canAct: true, busy: false });
+  });
+  await expect(page.locator(TOUR)).toHaveAttribute("data-tour-step", "welcome");
+  await page.locator("[data-tour-end]").click();
+  room.switchAccount(84);
+  await page.evaluate(async () => {
+    const { loadAuth } = await import("/static/auth.js");
+    await loadAuth({ refresh: true });
+    window.reusedGuide.update({ eligible: true, canAct: true, busy: false });
+  });
+  await expect(page.locator(TOUR)).toHaveAttribute("data-tour-step", "welcome");
+  expect(room.server.guideWrites).toEqual([]);
+});
+
+test("Hausdepp guide never requires a move, and hides during peeking or for spectators", async ({ page }) => {
   const initial = hausdeppSnapshot();
   Object.assign(initial._hausdepp, { phase: "peeking", hand: [], available_actions: ["peek"], playable_cards: [] });
   const room = await harness(page, { game: "hausdepp", initial });
   await room.open();
-  await expect(page.locator("#hausdeppStock")).toBeEnabled();
   await expect(page.locator(TOUR)).toBeHidden();
-  expect(room.server.claims).toEqual([]);
   Object.assign(room.state, hausdeppSnapshot());
-  room.state._hausdepp.version = 2;
-  room.push();
-  await expect(page.locator(`${TOUR}[data-tour-mode="offer"]`)).toBeVisible();
-  expect(room.server.claims).toEqual(["hausdepp"]);
-  expect(gameActions(room)).toEqual([]);
-});
-
-test("Hausdepp keeps tour exits available during opponent turns, pauses and reconnection", async ({ page }) => {
-  const room = await harness(page, { game: "hausdepp", initial: hausdeppSnapshot() });
-  await room.open();
-  await startOfferedTour(page);
-  await page.locator("[data-tour-next]").click();
-  await expect(page.locator(TOUR)).toHaveAttribute("data-tour-step", "play");
-  const actions = [...room.state._hausdepp.available_actions];
   room.state._hausdepp.available_actions = [];
   room.state._hausdepp.current_player_id = "p2";
+  room.state._hausdepp.version = 2;
   room.push();
-  await expect(page.locator(TOUR)).toHaveAttribute("data-tour-mode", "paused");
-  await expect(page.locator("[data-tour-end]")).toBeVisible();
-  room.state._hausdepp.available_actions = actions;
-  room.state._hausdepp.current_player_id = "p1";
-  room.state._paused = true;
-  room.push();
-  await expect(page.locator(TOUR)).toHaveAttribute("data-tour-mode", "paused");
-  room.state._paused = false;
-  room.push();
-  await expect(page.locator(TOUR)).toHaveAttribute("data-tour-mode", "active");
-  room.disconnect();
-  await expect(page.locator(TOUR)).toHaveAttribute("data-tour-mode", "paused");
-  await expect.poll(() => room.sockets.length).toBe(2);
-  await expect(page.locator(TOUR)).toHaveAttribute("data-tour-mode", "active");
+  await expect(page.locator(TOUR)).toHaveAttribute("data-tour-step", "welcome");
+  for (const step of ["play", "multiple", "stock", "pile", "inspect", "special", "finish"]) {
+    await page.locator("[data-tour-next]").click();
+    await expect(page.locator(TOUR)).toHaveAttribute("data-tour-step", step);
+    await expect(page.locator("[data-tour-next]")).toBeEnabled();
+  }
   await page.keyboard.press("Escape");
-  await expect(page.locator(TOUR)).toBeHidden();
-  expect(room.server.claims).toEqual(["hausdepp"]);
+  expect(room.server.guideWrites).toEqual([]);
   expect(gameActions(room)).toEqual([]);
 });
 
-test("Hausdepp spectators never see the private hand tour or claim its offer", async ({ page }) => {
+test("Hausdepp spectators never see the private hand guide", async ({ page }) => {
   const initial = hausdeppSnapshot();
   Object.assign(initial._hausdepp, { viewer_id: null, hand: [], available_actions: [], playable_cards: [] });
   const room = await harness(page, { game: "hausdepp", initial, spectator: true });
   await room.open();
   await expect(page.locator("#hausdeppStock")).toBeDisabled();
   await expect(page.locator(TOUR)).toBeHidden();
-  expect(room.server.claims).toEqual([]);
-  expect(gameActions(room)).toEqual([]);
+  expect(room.server.guideWrites).toEqual([]);
+});
+
+test("Hausdepp acknowledged guides and automatic opt-out do not reopen", async ({ page }) => {
+  const room = await harness(page, { game: "hausdepp", initial: hausdeppSnapshot(), enabled: false });
+  await room.open();
+  await expect(page.locator("#hausdeppHand [data-card-id]")).toHaveCount(3);
+  await expect(page.locator(TOUR)).toBeHidden();
+  expect(room.server.guideWrites).toEqual([]);
 });
 
 for (const language of ["de", "en"]) {
-  test(`Hausdepp ${language} mobile tour leaves playable cards and its own close button reachable`, async ({ page }, testInfo) => {
+  test(`Hausdepp ${language} mobile guide keeps cards and dismissal reachable`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 320, height: 740 });
     await page.emulateMedia({ reducedMotion: "reduce" });
     const room = await harness(page, { game: "hausdepp", initial: hausdeppSnapshot(), language });
     await room.open();
-    await expect(page.locator("[data-tour-start]")).toHaveText(language === "de" ? "Tour starten" : "Start tour");
-    await startOfferedTour(page);
+    await expect(page.locator(TOUR)).toHaveAttribute("data-tour-step", "welcome");
     await page.locator("[data-tour-next]").click();
-    await expect(page.locator(TOUR)).toHaveAttribute("data-tour-step", "play");
     await page.locator('#hausdeppHand [data-card-id="hearts-7"]').click({ trial: true });
-    const end = await page.locator("[data-tour-end]").boundingBox();
-    expect(end.x + end.width).toBeLessThanOrEqual(321);
-    expect(end.y + end.height).toBeLessThanOrEqual(741);
-    await page.screenshot({ path: testInfo.outputPath(`hausdepp-tour-mobile-${language}.png`), animations: "disabled" });
+    await page.locator("[data-tour-next]").click();
+    await expect(page.locator(TOUR)).toHaveAttribute("data-tour-step", "multiple");
+    for (const viewport of [{ width: 320, height: 740 }, { width: 393, height: 852 }, { width: 568, height: 320 }, { width: 1280, height: 800 }]) {
+      await page.setViewportSize(viewport);
+      await page.locator("[data-tour-end]").scrollIntoViewIfNeeded();
+      const end = await page.locator("[data-tour-end]").boundingBox();
+      expect(end.x).toBeGreaterThanOrEqual(0);
+      expect(end.x + end.width).toBeLessThanOrEqual(viewport.width + 1);
+      expect(end.y + end.height).toBeLessThanOrEqual(viewport.height + 1);
+    }
+    await expect(page.locator("[data-tour-end]")).toHaveText(language === "de" ? "Später" : "Later");
+    await page.screenshot({ path: testInfo.outputPath(`hausdepp-guide-mobile-${language}.png`), animations: "disabled" });
     await page.locator("[data-tour-close]").click();
-    await expect(page.locator(TOUR)).toBeHidden();
     expect(gameActions(room)).toEqual([]);
+    expect(room.server.guideWrites).toEqual([]);
   });
 }
 

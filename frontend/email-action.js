@@ -13,6 +13,7 @@ import { hausdeppAccountReturnPath, wattenAccountReturnPath } from "./multigame/
 import { EN } from "./i18n/catalog.js";
 import { initializeWattenPwa } from "./watten/pwa.js";
 import { initializeSuiteHeader } from "./shell/header.js";
+import { initializeDeploymentNotice } from "./shared/deployment-notice.js";
 
 const actionParameters = new URLSearchParams(window.location.search);
 const hausdeppContext = document.documentElement.dataset.game === "hausdepp";
@@ -36,6 +37,7 @@ document.documentElement.lang = language;
 // Action pages deliberately do not load the app shell or register a worker.
 // Supply only the language hooks used by the shared account request helpers.
 window.ZDWA_I18N = { getLanguage: () => language, t, syncAccountLanguage: () => {} };
+initializeDeploymentNotice();
 initializeSuiteHeader();
 initializeActionHeaderLanguage();
 

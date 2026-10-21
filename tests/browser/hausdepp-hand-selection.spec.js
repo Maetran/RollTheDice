@@ -81,6 +81,7 @@ async function fixture(page, language) {
   await page.addInitScript(value => localStorage.setItem('zdwa_language', value), language);
   await page.route('**/api/releases**', route => route.fulfill({ json: { releases: [], can_prompt: false } }));
   // Renderer-only scenarios; real beginner tours remain in game-tours.spec.
+  await page.route('**/api/auth/game-guides', route => route.fulfill({ json: { enabled: false, acknowledged: {} } }));
   await page.route('**/api/auth/tours/offer', route => route.fulfill({ json: { show: false, enabled: true, games: {} } }));
   const created = await page.request.post('/api/games', { headers, data: {
     name: 'Renderer-Test · Atomare Mehrfachauswahl', mode: '6', game_type: 'hausdepp', play_mode: 'cpu', cpu_count: 5,

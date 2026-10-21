@@ -12,16 +12,17 @@ class HausdeppAudioDeliveryTestCase(unittest.IsolatedAsyncioTestCase):
     async def test_local_clips_have_versioned_cache_and_work_with_conditional_and_range_requests(self):
         version = content_version()
         transport = httpx.ASGITransport(app=main.app)
-        total_bytes = 0
+        room_names = ["tavern-room", *(f"tavern-room-{index:02d}" for index in range(2, 11))]
+        asset_bytes = {}
         async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
-            for name in ("tavern-room", "glasses", "dishwasher", "laughter"):
+            for name in (*room_names, "glasses", "dishwasher", "laughter"):
                 path = f"/static/audio/hausdepp/{name}.mp3"
                 url = f"{path}?v={version}"
                 response = await client.get(url)
                 self.assertEqual(response.status_code, 200)
                 self.assertEqual(response.headers["content-type"], "audio/mpeg")
                 self.assertEqual(response.headers["cache-control"], "public, max-age=31536000, immutable")
-                total_bytes += len(response.content)
+                asset_bytes[name] = len(response.content)
                 cached = await client.get(url, headers={"If-None-Match": response.headers["etag"]})
                 self.assertEqual(cached.status_code, 304)
                 self.assertIn("immutable", cached.headers["cache-control"])
@@ -33,5 +34,9 @@ class HausdeppAudioDeliveryTestCase(unittest.IsolatedAsyncioTestCase):
                 stale = await client.get(f"{path}?v=stale")
                 self.assertIn("no-cache", unversioned.headers["cache-control"])
                 self.assertIn("no-cache", stale.headers["cache-control"])
-        self.assertGreater(total_bytes, 1_000_000)
-        self.assertLess(total_bytes, 1_800_000)
+        detail_bytes = sum(asset_bytes[name] for name in ("glasses", "dishwasher", "laughter"))
+        for name in room_names:
+            # One opt-in downloads one random room and the shared details; the
+            # browser never needs all ten room recordings at the same time.
+            self.assertGreater(asset_bytes[name], 500_000)
+            self.assertLess(asset_bytes[name] + detail_bytes, 1_800_000)

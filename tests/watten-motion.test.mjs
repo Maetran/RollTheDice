@@ -322,15 +322,17 @@ test("a burst stays bounded; a new deal removes every old public ghost before it
 const controllerSource = await readFile(new URL("../frontend/watten/game.js", import.meta.url), "utf8");
 function controller(f, acceptedResult) {
   const root = { querySelector: () => null }, html = { dataset: {} };
+  const guideUpdates = [];
   const session = { snapshot: null, view: null, viewKind: "waiting", playerId: "p0", spectator: false, bound: true, bubbles: [] };
   const view = { ...f.view, motionSources: () => [...f.seats, f.deck], update: () => acceptedResult };
   const context = { session, html, viewRoot: () => root, decor: null, voice: null, account: { id: 1 }, sameHandVersion, setHeading() {}, createTableView: () => view,
     motion: f.motion, engineCommand() {}, liveMessage: () => "", preserveFocus: fn => fn(), matchProgress: null, rematch: null, openSeatNotifications: null,
+    beginnerGuide: { update: state => guideUpdates.push(state) },
     syncDecor() {}, waitingRoomMarkup: () => "", showMessage() {}, t: key => key, lobbyLink: () => "" };
   const renderSource = controllerSource.slice(controllerSource.indexOf("function render(previous ="), controllerSource.indexOf("function renderJoinPrompt()"));
   const render = runInNewContext(`${renderSource}; render;`, context);
   const snapshot = currentEngine => ({ name: "Real table", engine: { ...currentEngine, actions: [], viewer: { seat: 0 } }, room: { recipe: { player_count: 2 }, seats: [] } });
-  return { render, session, html, snapshot };
+  return { render, session, html, snapshot, guideUpdates };
 }
 
 test("actual controller preserves live waiting→first-deal and does not restart/cancel it on an ACK repaint", () => {
@@ -340,6 +342,7 @@ test("actual controller preserves live waiting→first-deal and does not restart
   assert.equal(f.ghosts("deal").length, 1); assert.equal(c.html.dataset.wattenActive, "true");
   const first = f.ghosts("deal")[0]; c.render();
   assert.equal(f.ghosts("deal").length, 1); assert.equal(f.ghosts("deal")[0], first); assert.equal(first.animations[0].cancelled, false);
+  assert.equal(c.guideUpdates.length, 2); assert.ok(c.guideUpdates.every(state => state.eligible && state.canAct && !state.busy));
   f.close();
 });
 
@@ -348,5 +351,6 @@ test("actual controller's cold/reconnect render stays static and waiting removes
   c.session.snapshot = c.snapshot(engine()); c.render(null, false, true);
   assert.equal(f.ghosts().length, 0); assert.equal(c.html.dataset.wattenActive, "true");
   c.session.snapshot = { name: "Waiting", room: { status: "waiting" } }; c.render();
-  assert.equal(c.html.dataset.wattenActive, undefined); assert.equal(f.ghosts().length, 0); f.close();
+  assert.equal(c.html.dataset.wattenActive, undefined); assert.equal(f.ghosts().length, 0);
+  assert.equal(c.guideUpdates.at(-1).eligible, false); f.close();
 });

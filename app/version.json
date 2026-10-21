@@ -1,10 +1,10 @@
 {
-  "version": "4.0.1",
-  "bump": "patch",
+  "version": "4.1.0",
+  "bump": "minor",
   "date": "2026-10-21",
-  "previous_revision": "b9252dc6030d98da13a356705260bbc0f81a4625",
+  "previous_revision": "9c0d991c80634a3ece6060752f80a45eff558c87",
   "summary": {
-    "de": "Einheitliche Spielbuttons, übersichtliche Kontoeinstellungen und eine informativere Watten-Lobby.",
-    "en": "Consistent game buttons, clearer account settings and a more informative Watten lobby."
+    "de": "Einführungen, Rollout-Hinweise, zehn Wirtshauskulissen und klarere Entscheidungen am Kartentisch.",
+    "en": "Introductions, advance rollout notices, ten tavern ambiences and clearer decisions at the card table."
   }
 }

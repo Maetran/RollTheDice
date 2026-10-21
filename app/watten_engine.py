@@ -302,7 +302,7 @@ class EngineState:
         senders = []
         for item in self.feedback:
             if (not isinstance(item, PrivateFeedback) or item.value not in _FEEDBACK
-                    or not _number(item.sequence, 1) or partner_id(self, item.sender) != item.recipient
+                    or not _number(item.sequence, 1) or partner_feedback_recipient(self, item.sender) != item.recipient
                     or self.bid_state.pending is None
                     or self.parties.party_of(item.sender) == self.bid_state.pending.party):
                 raise WattenEngineError("watten_invalid_feedback")
@@ -424,6 +424,14 @@ def require_actor(state: EngineState, actor: EngineActor) -> int:
 def partner_id(state: EngineState, player_id: str) -> str | None:
     members = state.parties.parties[state.parties.party_of(player_id)]
     return next((member for member in members if member != player_id), None)
+
+
+def partner_feedback_recipient(state: EngineState, player_id: str) -> str | None:
+    """In blind play only the uninformed partner advises the deciding knower."""
+    if (state.recipe.profile.blind
+            and player_id == state.parties.decider(state.parties.party_of(player_id))):
+        return None
+    return partner_id(state, player_id)
 
 
 def gestrichen_players(state: EngineState) -> frozenset[str]:
@@ -574,7 +582,8 @@ def apply_command(state: EngineState, actor: EngineActor, command: EngineCommand
         play = play_card(state.play, state.bid_state, actor.player_id, value)
         changed = _finish(state, play, finish_deal(play, state.bid_state)) if play.ended else replace(state, play=play)
     elif kind == "bid" and state.phase == "play" and value is None:
-        bidding = bid(state.bid_state, actor.player_id, deal_progress(state.play), gestrichen=gestrichen_players(state))
+        bidding = bid(state.bid_state, actor.player_id, deal_progress(state.play),
+                      gestrichen=gestrichen_players(state), decider_only=state.recipe.profile.blind)
         changed = replace(state, bid_state=bidding, phase="bid_response", feedback=())
     elif kind == "respond" and state.phase == "bid_response":
         bidding = respond(state.bid_state, actor.player_id, value, deal_progress(state.play))
@@ -593,7 +602,7 @@ def apply_command(state: EngineState, actor: EngineActor, command: EngineCommand
         else:
             changed = replace(state, retour_accepted_by=votes)
     elif kind == "partner_feedback" and state.phase == "bid_response":
-        partner = partner_id(state, actor.player_id)
+        partner = partner_feedback_recipient(state, actor.player_id)
         if (partner is None or value not in _FEEDBACK
                 or state.parties.party_of(actor.player_id) == state.bid_state.pending.party
                 or any(item.sender == actor.player_id for item in state.feedback)):
@@ -735,10 +744,11 @@ def restore_storage(value: dict) -> EngineState:
     ledger = ScoreLedger(raw_ledger["target"], tuple(accounts), tuple(_restore_result(item) for item in _list(raw_ledger["applied_results"])),
                          restore_retourschneider(raw_ledger.get("retourschneider")))
     feedback = tuple(PrivateFeedback(**_object(item, "sender recipient value sequence")) for item in _list(value["feedback"]))
-    # Older checkpoints allowed unsolicited feedback outside a received bid.
-    # Those messages confer no new permission under the restricted flow.
+    # Older checkpoints allowed unsolicited feedback and blind knowers advising
+    # their partners. Neither message confers permission in the restricted flow.
     feedback = tuple(item for item in feedback if value["phase"] == "bid_response" and pending is not None
-                     and parties.party_of(item.sender) != pending.party)
+                     and parties.party_of(item.sender) != pending.party
+                     and (not profile.blind or item.recipient == parties.decider(parties.party_of(item.sender))))
     cache = []
     for item in _list(value["ack_cache"]):
         item = _object(item, "player_id account_id digest ack")

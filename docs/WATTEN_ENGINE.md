@@ -79,8 +79,13 @@ triggers duty; a later critical does not remove an existing duty. An ordinary
 strike substitutes only when it takes the current trick. Trump, the Rechter
 and critical cards need not win. Without ordinary trump, protected cards are
 not forced. Once calling or inspection has opened the play phase, the player
-on their card turn may bid even before the first card is played. A pending bid freezes card play, while private partner feedback
-remains possible. Gestrichen opening rights use the initiating player's own
+on their card turn may bid even before the first card is played. In blind
+four-player play, only the team's designated informed player (dealer or next
+seat) may bid, on either teammate's card turn. The same informed player answers
+opposing bids. Only the blind teammate may send private feedback to that
+decision maker; reverse feedback is unavailable. A pending bid freezes card
+play, while permitted private partner feedback remains possible.
+Gestrichen opening rights use the initiating player's own
 score; designated hold/go/counter responses remain possible. The chosen source
 threshold is target minus two, not an additional configurable house rule.
 
@@ -94,7 +99,9 @@ zero played cards or completed tricks. Older storage/evidence defaults this
 additional total to zero; legacy result-v1 evidence retains unknown bid facts.
 
 **Deutsch:** Nach vollständiger Ansage beziehungsweise abgeschlossenem
-Einschauen ist Bieten am eigenen Kartenzug bereits vor der ersten Karte erlaubt.
+Einschauen ist Bieten bereits vor der ersten Karte erlaubt. Im blinden Vierer
+bietet nur der wissende Entscheider am Kartenzug seines Teams; er hält, geht
+oder bietet auf und empfängt das private Signal seines blinden Partners.
 Nach Halten bleibt Schöneres bis zum ersten Ausspielen möglich und setzt Ansage
 und Einsatz auf zwei zurück. Das Journal bewahrt echte Bietaktionen und erklärt
 zurückgesetzte Erhöhungen gesondert. Gehen kann ohne ausgespielte Karte werten.

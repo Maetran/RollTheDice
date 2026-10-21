@@ -139,7 +139,7 @@ REQUEST_AGENT_PATTERNS = tuple((family, re.compile(pattern, re.IGNORECASE)) for 
     ("browser", r"\b(?:Chrome|Chromium|CriOS|Safari|Firefox|FxiOS|Edg|EdgA|EdgiOS|Edge|OPR|OPiOS|SamsungBrowser|Silk)/"),
 ))
 REQUEST_AGENT_FAMILIES = frozenset({*(family for family, _ in REQUEST_AGENT_PATTERNS), "unknown"})
-REQUEST_EXCLUDED_PATHS = frozenset({"/health", "/api/health", "/admin/dashboard", "/api/admin/analytics", "/static/dashboard.html"})
+REQUEST_EXCLUDED_PATHS = frozenset({"/health", "/api/health", "/api/deployment-notice", "/admin/dashboard", "/api/admin/analytics", "/static/dashboard.html"})
 REQUEST_ASSET_PATHS = frozenset({
     "/sw.js", "/zilch-sw.js", "/manifest.webmanifest", "/manifest-en.webmanifest",
     "/zilch-manifest.webmanifest", "/zilch-manifest-en.webmanifest", "/favicon.ico",

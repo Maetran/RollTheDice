@@ -2427,5 +2427,12 @@
     "date": "2026-10-21",
     "bump": "major",
     "summary": "Watten startet als öffentliche Beta mit Turnieren, taktischen CPUs, Bierblock-Anschrift und eigener PWA. / Watten launches in public beta with tournaments, tactical CPUs, a pub scorepad and its own PWA."
+  },
+  {
+    "version": "4.0.1",
+    "revision": "9c0d991c80634a3ece6060752f80a45eff558c87",
+    "date": "2026-10-21",
+    "bump": "patch",
+    "summary": "Einheitliche Spielbuttons, übersichtliche Kontoeinstellungen und eine informativere Watten-Lobby. / Consistent game buttons, clearer account settings and a more informative Watten lobby."
   }
 ]

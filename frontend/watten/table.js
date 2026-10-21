@@ -198,7 +198,11 @@ function createInspectionMotion(reveal, seatNodes) {
     if (origins.some(origin => !origin)) return;
     const delta = { x: origins[1].x - origins[0].x, y: origins[1].y - origins[0].y };
     const distance = Math.hypot(delta.x, delta.y) || 1;
-    const unit = { x: delta.x / distance, y: delta.y / distance };
+    // In a short landscape viewport a flat horizontal pair leaves room for
+    // the badges and ACK without reducing the actual faces to tiny thumbnails.
+    const shortLandscape = bounds.height < 320 && bounds.width > bounds.height * 1.5;
+    const unit = shortLandscape
+      ? { x: delta.x < 0 ? -1 : 1, y: 0 } : { x: delta.x / distance, y: delta.y / distance };
     const angle = Math.atan2(unit.y, unit.x) * 180 / Math.PI + 90;
     const cards = figures.map(figure => figure.querySelector(".wt-card"));
     const captions = figures.map(figure => figure.querySelector("figcaption"));
@@ -211,6 +215,10 @@ function createInspectionMotion(reveal, seatNodes) {
     const baseWidths = cards.map(card => card.offsetWidth);
     const labelSizes = captions.map(caption => ({ width: caption.offsetWidth, height: caption.offsetHeight }));
     const ackSize = { width: ack.offsetWidth, height: ack.offsetHeight };
+    const obstacles = [...felt.querySelectorAll('.wt-seat-badge, .wt-backs:not([hidden]), .wt-stock')]
+      .map(node => node.getBoundingClientRect()).filter(rect => rect.width && rect.height)
+      .map(rect => ({ left: rect.left - bounds.left - 8, right: rect.right - bounds.left + 8,
+        top: rect.top - bounds.top - 8, bottom: rect.bottom - bounds.top + 8 }));
     function arrangement(scale) {
       cards.forEach((card, index) => { card.style.width = `${baseWidths[index] * scale}px`; });
       const poses = cards.map((card, index) => {
@@ -221,52 +229,77 @@ function createInspectionMotion(reveal, seatNodes) {
         const extentY = (Math.abs(Math.sin(radians)) * width + Math.abs(Math.cos(radians)) * height) / 2;
         return { x, y, width, height, rotation, left: x - extentX, right: x + extentX, top: y - extentY, bottom: y + extentY };
       });
-      let labels = poses.map((pose, index) => ({ x: pose.x, top: pose.bottom + 8,
-        left: pose.x - labelSizes[index].width / 2, right: pose.x + labelSizes[index].width / 2,
-        bottom: pose.bottom + 8 + labelSizes[index].height }));
-      // Below an upper vertical card is the other face, so move both captions
-      // below the pair rather than covering it. Captions never rotate.
-      if (labels.some((label, index) => overlaps(label, poses[1 - index])) || overlaps(labels[0], labels[1])) {
-        const top = Math.max(...poses.map(pose => pose.bottom)) + 8;
-        const total = labelSizes[0].width + labelSizes[1].width + 8;
-        labels = labelSizes.map((size, index) => {
-          const left = -total / 2 + (index ? labelSizes[0].width + 8 : 0);
-          return { x: left + size.width / 2, top, left, right: left + size.width, bottom: top + size.height };
-        });
+      // Each upright badge meets its own long card edge. Opposite sides keep
+      // the labels distinct even when the two short top edges meet vertically.
+      const labels = poses.map((pose, index) => {
+        const size = labelSizes[index], side = index ? -1 : 1;
+        const normal = { x: -unit.y * side, y: unit.x * side };
+        const offset = pose.width / 2 + (Math.abs(normal.x) * size.width + Math.abs(normal.y) * size.height) / 2 + 2;
+        const x = pose.x + normal.x * offset, y = pose.y + normal.y * offset;
+        return { x, top: y - size.height / 2, left: x - size.width / 2,
+          right: x + size.width / 2, bottom: y + size.height / 2 };
+      });
+      const faceTop = Math.min(...poses.map(pose => pose.top), ...labels.map(label => label.top));
+      const faceBottom = Math.max(...poses.map(pose => pose.bottom), ...labels.map(label => label.bottom));
+      const faceRight = Math.max(...poses.map(pose => pose.right), ...labels.map(label => label.right));
+      // A side ACK preserves readable faces below the fans on short screens.
+      const ackX = shortLandscape ? faceRight + 12 + ackSize.width / 2 : 0;
+      const ackTop = shortLandscape ? (faceTop + faceBottom - ackSize.height) / 2 : faceBottom + 12;
+      const left = Math.min(...poses.map(pose => pose.left), ...labels.map(label => label.left), ackX - ackSize.width / 2);
+      const right = Math.max(faceRight, ackX + ackSize.width / 2);
+      const top = Math.min(faceTop, ackTop), bottom = Math.max(faceBottom, ackTop + ackSize.height);
+      return { poses, labels, ackX, ackTop, left, right, top, bottom, width: right - left, height: bottom - top };
+    }
+    function placement(value) {
+      if (value.width > region.right - region.left || value.height > region.bottom - region.top) return null;
+      const xMin = region.left - value.left, xMax = region.right - value.right;
+      const yMin = region.top - value.top, yMax = region.bottom - value.bottom;
+      const desired = { x: (region.left + region.right - value.left - value.right) / 2,
+        y: (region.top + region.bottom - value.top - value.bottom) / 2 };
+      const xs = [desired.x, xMin, xMax, ...obstacles.flatMap(rect => [rect.left - value.right, rect.right - value.left])];
+      const ys = [desired.y, yMin, yMax, ...obstacles.flatMap(rect => [rect.top - value.bottom, rect.bottom - value.top])];
+      let best = null, bestDistance = Infinity;
+      for (const candidateX of xs) for (const candidateY of ys) {
+        const x = clamp(candidateX, xMin, xMax), y = clamp(candidateY, yMin, yMax);
+        const parts = [...value.poses, ...value.labels,
+          { left: value.ackX - ackSize.width / 2, right: value.ackX + ackSize.width / 2,
+            top: value.ackTop, bottom: value.ackTop + ackSize.height }];
+        if (parts.some(part => obstacles.some(obstacle => overlaps({ left: x + part.left, right: x + part.right,
+          top: y + part.top, bottom: y + part.bottom }, obstacle)))) continue;
+        const distance = ((x - desired.x) / bounds.width) ** 2 + ((y - desired.y) / bounds.height) ** 2;
+        if (distance < bestDistance) { best = { x, y, distance }; bestDistance = distance; }
       }
-      const ackTop = Math.max(...labels.map(label => label.bottom), ...poses.map(pose => pose.bottom)) + 12;
-      const left = Math.min(...poses.map(pose => pose.left), ...labels.map(label => label.left), -ackSize.width / 2);
-      const right = Math.max(...poses.map(pose => pose.right), ...labels.map(label => label.right), ackSize.width / 2);
-      const top = Math.min(...poses.map(pose => pose.top)), bottom = ackTop + ackSize.height;
-      return { poses, labels, ackTop, left, right, top, bottom, width: right - left, height: bottom - top };
+      return best;
     }
     let arranged = arrangement(1);
-    const fits = value => value.width <= region.right - region.left && value.height <= region.bottom - region.top;
-    if (!fits(arranged)) {
+    let midpoint = placement(arranged);
+    if (!midpoint || (!shortLandscape && midpoint.distance > .04)) {
       let low = .25, high = 1;
       for (let step = 0; step < 8; step += 1) {
         const middle = (low + high) / 2;
-        if (fits(arrangement(middle))) low = middle; else high = middle;
+        const point = placement(arrangement(middle));
+        if (point && (shortLandscape || point.distance <= .04)) low = middle; else high = middle;
       }
       arranged = arrangement(low);
+      midpoint = placement(arranged);
     }
-    const midpoint = {
-      x: clamp((origins[0].x + origins[1].x) / 2, region.left - arranged.left, region.right - arranged.right),
-      y: clamp((origins[0].y + origins[1].y) / 2, region.top - arranged.top, region.bottom - arranged.bottom),
-    };
+    // Only a severely constrained viewport can exhaust the free region. Keep
+    // the complete group inside the table rather than returning to source hands.
+    midpoint ??= { x: clamp(bounds.width / 2, region.left - arranged.left, region.right - arranged.right),
+      y: clamp(bounds.height / 2, region.top - arranged.top, region.bottom - arranged.bottom) };
     arranged.poses.forEach((pose, index) => {
       const figure = figures[index], card = cards[index], caption = captions[index], label = arranged.labels[index];
       figure.style.left = `${midpoint.x + pose.x}px`; figure.style.top = `${midpoint.y + pose.y}px`;
       card.style.left = `${-pose.width / 2}px`; card.style.top = `${-pose.height / 2}px`; card.style.rotate = `${pose.rotation}deg`;
       caption.style.left = `${label.x - pose.x}px`; caption.style.top = `${label.top - pose.y}px`;
     });
-    ack.style.left = `${midpoint.x}px`; ack.style.top = `${midpoint.y + arranged.ackTop}px`;
+    ack.style.left = `${midpoint.x + arranged.ackX}px`; ack.style.top = `${midpoint.y + arranged.ackTop}px`;
     reveal.dataset.wtInspectionPositioned = "true";
     geometry = [bounds.width, bounds.height].join(":");
     if (playedKey === key || document.hidden) return;
     if (reduced?.matches || cards.some(card => typeof card.animate !== "function")) { playedKey = key; return; }
     playedKey = key;
-    flights = cards.map((card, index) => card.animate([
+    flights = figures.map((figure, index) => figure.animate([
       { translate: `${origins[index].x - midpoint.x - arranged.poses[index].x}px ${origins[index].y - midpoint.y - arranged.poses[index].y}px` },
       { translate: "0 0" },
     ], { duration: 1500, easing: "cubic-bezier(.22,.65,.25,1)", fill: "backwards" }));
@@ -443,7 +476,7 @@ function historyMarkup(vm, pinned) {
   if (!history.length && !finished) return "";
   return `<summary>${esc(t(finished ? "history.round" : Array.isArray(vm.engine.trick_history) ? "history.title" : "history.last", { count: history.length }))}</summary>
     <button type="button" class="wt-history-close" data-wt-history-close aria-label="${esc(t("history.close"))}" title="${esc(t("history.close"))}"><span aria-hidden="true">×</span></button>
-    <label class="wt-history-pin" title="${esc(t("history.pin"))}"><input type="checkbox" data-wt-history-pin aria-label="${esc(t("history.pin"))}" ${pinned ? "checked" : ""}><span class="wt-history-pin-symbol" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M7 4h10v16l-5-3-5 3z"/></svg></span><span class="wt-history-pin-copy">${esc(t("history.pin"))}</span></label>
+    ${finished ? "" : `<label class="wt-history-pin" title="${esc(t("history.pin"))}"><input type="checkbox" data-wt-history-pin aria-label="${esc(t("history.pin"))}" ${pinned ? "checked" : ""}><span class="wt-history-pin-symbol" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M7 4h10v16l-5-3-5 3z"/></svg></span><span class="wt-history-pin-copy">${esc(t("history.pin"))}</span></label>`}
     ${history.length ? `<ol class="wt-history">${history.map(trick => `
     <li data-wt-trick-team="${trickRelation(vm, trick.winner)}"><div class="wt-mini-cards">${trick.cards.map(item => `<figure class="${item.seat === trick.winner ? "is-winning-card" : ""}">${cardFace(item.card, { className: "wt-card--mini" })}<figcaption translate="no">${esc(seatName(vm, item.seat))}</figcaption></figure>`).join("")}</div>
       <span>${esc(t("history.winner", { name: seatName(vm, trick.winner) }))}</span></li>`).join("")}</ol>` : `<p class="wt-note">${esc(t("history.empty"))}</p>`}`;
@@ -508,7 +541,7 @@ export function createTableView(container, { onCard, accountId = null }) {
   const signatures = {};
   let layout = 0, pressed = null, lastLive = "";
   const pinKey = accountId ? `watten:history-pinned:${accountId}` : null;
-  let historyPinned = false;
+  let historyPinned = false, historyWasFinished = false;
   try { historyPinned = Boolean(pinKey && localStorage.getItem(pinKey) === "true"); } catch { /* Optional local display preference. */ }
   function setHistoryPinned(value) {
     historyPinned = value;
@@ -518,11 +551,12 @@ export function createTableView(container, { onCard, accountId = null }) {
     try { if (pinKey) localStorage.setItem(pinKey, String(value)); } catch { /* Session-only fallback. */ }
   }
   function closeHistory() {
-    setHistoryPinned(false);
+    if (elements.history.dataset.finished !== "true") setHistoryPinned(false);
     elements.history.open = false;
   }
   const outsideHistory = event => {
-    if (elements.history.open && !historyPinned && !elements.history.contains(event.target)) elements.history.open = false;
+    if (elements.history.dataset.finished !== "true" && elements.history.open && !historyPinned
+        && !elements.history.contains(event.target)) elements.history.open = false;
   };
   document.addEventListener("pointerdown", outsideHistory, { passive: true });
   elements.history.addEventListener("click", event => {
@@ -539,7 +573,7 @@ export function createTableView(container, { onCard, accountId = null }) {
     if (historyPinned) elements.history.open = true;
   });
   elements.history.addEventListener("toggle", () => {
-    if (!elements.history.open && historyPinned) setHistoryPinned(false);
+    if (elements.history.dataset.finished !== "true" && !elements.history.open && historyPinned) setHistoryPinned(false);
   });
 
   // Only a press that started on this exact card in the current layout can
@@ -560,7 +594,9 @@ export function createTableView(container, { onCard, accountId = null }) {
   function patch(element, key, markup) {
     if (signatures[key] === markup) return false;
     signatures[key] = markup;
-    if (key === "panel" || key === "private" || key === "tools" || key.startsWith("badge-")) {
+    // Card artwork has fresh SVG clip IDs on each render. Keep the history's
+    // close/pin controls and scroll container in place during those repaints.
+    if (key === "panel" || key === "private" || key === "tools" || key === "history" || key.startsWith("badge-")) {
       const template = document.createElement("template");
       template.innerHTML = markup;
       reconcile(element, template.content);
@@ -711,10 +747,13 @@ export function createTableView(container, { onCard, accountId = null }) {
     patch(elements.bubbles, "bubbles", vm.bubbles.map(bubble =>
       `<span class="wt-bubble wt-bubble--${seatPosition(bubble.seat, vm.anchorSeat, vm.count)}" data-watten-call>${esc(bubble.text)}</span>`).join(""));
     const history = historyMarkup(vm, historyPinned);
+    const historyFinished = ["deal_complete", "match_complete"].includes(vm.engine.phase);
     elements.history.hidden = !history;
+    elements.history.dataset.finished = String(historyFinished);
     patch(elements.history, "history", history);
-    elements.history.dataset.pinned = String(historyPinned);
-    if (history && historyPinned) elements.history.open = true;
+    elements.history.dataset.pinned = String(historyPinned && !historyFinished);
+    if (history && (historyFinished ? !historyWasFinished : historyPinned)) elements.history.open = true;
+    historyWasFinished = historyFinished;
     elements.handArea.hidden = vm.spectator;
     container.querySelector("[data-wt-table]").dataset.playable = String(vm.actions.includes("play_card"));
     const hand = vm.spectator ? { created: [], nodes: [] } : renderHand(vm);

@@ -292,7 +292,7 @@ def test_storage_roundtrips_each_inspection_and_pending_response_boundary_and_re
         state = step(state, player, kind, value)
         stages.append(state)
     state = step(state, "B", "play_card", legal_cards(state.play, state.bid_state, "B")[0])
-    state = step(state, "C", "bid")
+    state = step(state, "A", "bid")
     stages.append(step(state, "D", "partner_feedback", "good"))
     for stage in stages:
         raw = json.loads(json.dumps(storage_payload(stage)))
@@ -315,6 +315,50 @@ def test_storage_roundtrips_each_inspection_and_pending_response_boundary_and_re
     restored_precard = restore_storage(precard_bid)
     assert restored_precard.phase == "bid_response" and restored_precard.play.plays == ()
     assert restored_precard.bid_state.pending.points == 3
+
+
+@pytest.mark.parametrize("dealer", tuple("ABCD"))
+@pytest.mark.parametrize("response", ("hold", "go", "counter"))
+def test_blind_decider_bids_on_partner_turn_and_only_blind_partner_advises_response(dealer, response):
+    state = ready(start_match(recipe(4, "ladinisch", True), "blind-deciders", dealt(), first_dealer=dealer))
+    current = state.play.current_player_id
+    state = step(state, current, "play_card", legal_cards(state.play, state.bid_state, current)[0])
+    blind_bidder = state.play.current_player_id
+    party = state.parties.party_of(blind_bidder)
+    bidder = state.parties.decider(party)
+    assert blind_bidder != bidder
+    with pytest.raises(WattenBiddingError, match="designated_decider"):
+        step(state, blind_bidder, "bid")
+    state = step(state, bidder, "bid")
+    responding_party = 1 - party
+    decider = state.parties.decider(responding_party)
+    partner = next(player for player in state.parties.parties[responding_party] if player != decider)
+    with pytest.raises(WattenEngineError, match="feedback_unavailable"):
+        step(state, decider, "partner_feedback", "good")
+    with pytest.raises(WattenBiddingError, match="designated_decider"):
+        step(state, partner, "respond", response)
+    before = state.opportunity
+    state = step(state, partner, "partner_feedback", "good")
+    assert state.opportunity == before
+    assert state.feedback[0].recipient == decider and state.feedback[0].sender == partner
+    assert restore_storage(storage_payload(state)) == state
+    state = step(state, decider, "respond", response)
+    assert not state.feedback
+    assert state.bid_state.accepted_stake == (2 if response == "go" else 3)
+    if response == "counter":
+        assert state.bid_state.pending.party == responding_party and state.bid_state.pending.points == 4
+
+
+def test_restoring_legacy_blind_feedback_discards_knower_to_blind_partner_message():
+    state = ready(start_match(recipe(4, "ladinisch", True), "legacy-signal", dealt(), first_dealer="A"))
+    state = step(state, "B", "bid")
+    state = step(state, "C", "partner_feedback", "good")
+    raw = storage_payload(state)
+    raw["feedback"].append({"sender": "A", "recipient": "C", "value": "bad", "sequence": 1})
+    restored = restore_storage(raw)
+    assert restored == state
+    with pytest.raises(WattenEngineError, match="feedback_unavailable"):
+        step(restored, "A", "partner_feedback", "good")
 
 
 @pytest.mark.parametrize("count,determination,blind", ((2, "normal", False), (2, "ladinisch", False),

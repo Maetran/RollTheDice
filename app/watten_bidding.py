@@ -167,19 +167,28 @@ def _active_progress(state: BidState, progress: DealProgress) -> None:
         state.roles.party_of(progress.current_player_id)
 
 
-def bid(state: BidState, player_id: str, progress: DealProgress, *, gestrichen: frozenset[str]) -> BidState:
+def bid(state: BidState, player_id: str, progress: DealProgress, *, gestrichen: frozenset[str],
+        decider_only: bool = False) -> BidState:
     """Offer three initially, or the next single point after a held offer.
 
     Opening and later unsolicited raising require this player's current card
     opportunity, including the opening turn before any card is played once
     calling has completed. Gestrichen is checked for the initiating individual; a clear
     three-player partner may offer even if the other partner is gestrichen.
-    Pending response counters use respond() instead.
+    In blind partnership play the engine sets decider_only: the informed
+    decider may offer on either member's card turn, while the blind partner
+    cannot commit the team. Pending response counters use respond() instead.
     """
     require_gameplay_allowed(state)
     _active_progress(state, progress)
     party = state.roles.party_of(player_id)
-    if progress.current_player_id != player_id:
+    if decider_only:
+        if player_id != state.roles.decider(party):
+            raise WattenBiddingError("watten_designated_decider_required")
+        if (progress.current_player_id is None
+                or state.roles.party_of(progress.current_player_id) != party):
+            raise WattenBiddingError("watten_card_turn_required")
+    elif progress.current_player_id != player_id:
         raise WattenBiddingError("watten_card_turn_required")
     if type(gestrichen) is not frozenset or not gestrichen <= set(state.roles.seats):
         raise WattenBiddingError("watten_invalid_gestrichen")

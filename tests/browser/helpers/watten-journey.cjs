@@ -1,8 +1,9 @@
 const { expect } = require('@playwright/test');
 
-async function player(browser, baseURL, language = 'de') {
+async function player(browser, baseURL, language = 'de', { guide = false } = {}) {
   const context = await browser.newContext({ baseURL, reducedMotion: 'reduce' });
   const page = await context.newPage();
+  if (!guide) await page.route('**/api/auth/game-guides', route => route.fulfill({ json: { enabled: false, acknowledged: {} } }));
   await page.addInitScript(value => {
     if (!localStorage.getItem('zdwa_language')) localStorage.setItem('zdwa_language', value);
   }, language);

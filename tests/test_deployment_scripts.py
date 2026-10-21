@@ -53,11 +53,11 @@ class ReleaseDeploymentTestCase(unittest.TestCase):
         # All other page, worker, icon and version files live under app/.
         self.assertIn(("app", "/app/app"), copies)
 
-    def test_release_is_published_only_after_build_and_health_and_marker_survives_retries(self):
+    def _run_deployment(self, directory, **flags):
         source = (BASE_DIR / "scripts" / "deploy_zdwa.sh").read_text(encoding="utf-8")
         remote = source.split("<<'REMOTE_SCRIPT'\n", 1)[1].rsplit("\nREMOTE_SCRIPT", 1)[0]
-        # Execute the real remote workflow with local command doubles. No SSH,
-        # Docker daemon, production database or push service is contacted.
+        # Run the real remote shell with command doubles: no SSH, Docker,
+        # production database, external notification or real wait is involved.
         doubles = r'''
 git() {
   case "$1" in
@@ -70,10 +70,16 @@ git() {
 }
 sudo() {
   case "$*" in
-    *"docker compose up"*) echo BUILD; echo "COMPOSE_ARGS:$*"; return "$BUILD_FAIL" ;;
-    # Read the notice like app.release_push does; an unread pipe can SIGPIPE
-    # the release printf under pipefail and fail the run at random.
-    *"docker compose exec"*) echo "PUBLISH:$(cat)"; return "$QUEUE_FAIL" ;;
+    *"docker compose build"*) echo BUILD; return "$BUILD_FAIL" ;;
+    *"docker compose up"*) echo RECREATE; echo "COMPOSE_ARGS:$*"; return "$RECREATE_FAIL" ;;
+    *"docker compose ps --status running"*) echo rollthedice; return "$PS_FAIL" ;;
+    *"docker compose stop"*) echo STOP >&2 ;;
+    *"docker compose start"*) echo RECOVER_START >&2 ;;
+    *"docker compose exec"*"python -c"*) return "$CAPABILITY_STATUS" ;;
+    *"docker compose exec"*"deployment_notice announce"*) echo NOTICE; return "$ANNOUNCE_FAIL" ;;
+    *"docker compose exec"*"deployment_notice clear"*) echo CLEAR ;;
+    *"docker compose exec"*"app.release_push"*) echo "PUBLISH:$(cat)"; return "$QUEUE_FAIL" ;;
+    *"cp -a data"*) echo BACKUP; return "$BACKUP_FAIL" ;;
     *"prune_data_backups.sh"*) echo RETENTION ;;
   esac
   return 0
@@ -88,33 +94,73 @@ python3() {
   fi
 }
 curl() { echo HEALTH >&2; return "$HEALTH_FAIL"; }
+sleep() { echo "WAIT:$*"; if [[ "$CANCEL_WAIT" == "1" ]]; then kill -TERM "$$"; fi; }
 '''
+        defaults = {name: "0" for name in ("BUILD_FAIL", "RECREATE_FAIL", "HEALTH_FAIL", "PUBLIC_FAIL", "QUEUE_FAIL",
+                                           "ANNOUNCE_FAIL", "BACKUP_FAIL", "CAPABILITY_STATUS", "CANCEL_WAIT", "PS_FAIL")}
+        return subprocess.run(["bash", "-s"], input=doubles + remote, capture_output=True, text=True,
+                              env={**os.environ, **defaults, "FOUNDER_USER_ID": "2", "REMOTE_DIR": str(directory),
+                                   "BRANCH": "master", "DEPLOY_HEAD": "b" * 40, "NEW_REVISION": "b" * 40, **flags})
+
+    def test_release_is_published_only_after_build_and_health_and_marker_survives_retries(self):
         old, new = "a" * 40, "b" * 40
-        for failure in ("BUILD_FAIL", "HEALTH_FAIL", "PUBLIC_FAIL", "QUEUE_FAIL", None):
+        for failure in ("BUILD_FAIL", "PS_FAIL", "ANNOUNCE_FAIL", "BACKUP_FAIL", "RECREATE_FAIL", "HEALTH_FAIL", "PUBLIC_FAIL", "QUEUE_FAIL", None):
             with self.subTest(failure=failure), tempfile.TemporaryDirectory() as directory:
-                marker = Path(directory) / ".deployment-marker"
-                # Simulate a checkout already advanced by a failed first try.
+                root = Path(directory)
+                marker = root / ".deployment-marker"
                 marker.write_text(old + "\n", encoding="utf-8")
-                flags = {"BUILD_FAIL": "0", "HEALTH_FAIL": "0", "PUBLIC_FAIL": "0", "QUEUE_FAIL": "0"}
-                if failure:
-                    flags[failure] = "1"
-                result = subprocess.run(["bash", "-s"], input=doubles + remote, capture_output=True, text=True,
-                                        env={**os.environ, **flags, "FOUNDER_USER_ID": "2", "REMOTE_DIR": directory, "BRANCH": "master", "DEPLOY_HEAD": new, "NEW_REVISION": new})
+                (root / "data").mkdir()
+                result = self._run_deployment(root, **({failure: "1"} if failure else {}))
                 self.assertIn(f"BASE:{old}", result.stderr)
-                self.assertIn("env ROLLTHEDICE_FOUNDER_USER_ID=2 docker compose up", result.stdout)
-                self.assertEqual(result.returncode == 0, failure is None)
+                self.assertEqual(result.returncode == 0, failure is None, result.stdout + result.stderr)
                 self.assertEqual(marker.read_text(encoding="utf-8").strip(), new if failure is None else old)
-                if failure in ("BUILD_FAIL", "HEALTH_FAIL", "PUBLIC_FAIL"):
+                if failure in ("BUILD_FAIL", "PS_FAIL", "ANNOUNCE_FAIL"):
+                    self.assertNotIn("STOP", result.stderr)
+                    self.assertNotIn("BACKUP", result.stdout)
+                    self.assertNotIn("RECREATE", result.stdout)
+                if failure in ("BACKUP_FAIL", "RECREATE_FAIL"):
+                    self.assertIn("RECOVER_START", result.stderr)
+                if failure not in (None, "QUEUE_FAIL"):
                     self.assertNotIn("PUBLISH", result.stdout)
                 if failure:
                     self.assertNotIn("RETENTION", result.stdout)
                 else:
-                    self.assertLess(result.stdout.index("BUILD"), result.stdout.index("PUBLISH"))
-                    self.assertIn('PUBLISH:{"skip":true}', result.stdout)
+                    self.assertIn("env ROLLTHEDICE_FOUNDER_USER_ID=2 docker compose up -d --no-build", result.stdout)
+                    self.assertIn("STOP", result.stderr)
                     self.assertIn("HEALTH", result.stderr)
-                    self.assertLess(result.stdout.index("BUILD"), result.stdout.index("PUBLIC_SMOKE"))
-                    self.assertLess(result.stdout.index("PUBLIC_SMOKE"), result.stdout.index("PUBLISH"))
-                    self.assertLess(result.stdout.index("PUBLISH"), result.stdout.index("RETENTION"))
+                    self.assertIn('PUBLISH:{"skip":true}', result.stdout)
+                    steps = ["BUILD", "NOTICE", "WAIT:30", "BACKUP", "RECREATE", "CLEAR", "PUBLIC_SMOKE", "PUBLISH", "RETENTION"]
+                    offsets = [result.stdout.index(step) for step in steps]
+                    self.assertEqual(offsets, sorted(offsets))
+
+    def test_old_notice_capability_requires_explicit_first_installation_override(self):
+        for capability, bootstrap, succeeds in (("42", "0", False), ("42", "1", True), ("1", "1", False)):
+            with self.subTest(capability=capability, bootstrap=bootstrap), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                (root / "data").mkdir()
+                result = self._run_deployment(root, CAPABILITY_STATUS=capability, ALLOW_NOTICE_BOOTSTRAP=bootstrap)
+                self.assertEqual(result.returncode == 0, succeeds, result.stdout + result.stderr)
+                self.assertNotIn("NOTICE\n", result.stdout)
+                if succeeds:
+                    self.assertIn("old version cannot deliver rollout notices", result.stdout)
+                    self.assertIn("WAIT:30", result.stdout)
+                    self.assertIn("STOP", result.stderr)
+                else:
+                    self.assertNotIn("STOP", result.stderr)
+                    self.assertNotIn("RECREATE", result.stdout)
+
+    def test_cancelling_the_warning_clears_it_without_stopping_the_service(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "data").mkdir()
+            result = self._run_deployment(root, CANCEL_WAIT="1")
+            self.assertEqual(result.returncode, 143)
+            self.assertIn("NOTICE", result.stdout)
+            self.assertIn("CLEAR", result.stdout)
+            self.assertNotIn("STOP", result.stderr)
+            self.assertNotIn("RECOVER_START", result.stderr)
+            self.assertNotIn("RECREATE", result.stdout)
+            self.assertNotIn("PUBLISH", result.stdout)
 
     def test_founder_binding_rejects_names_and_shell_input_before_ssh(self):
         for invalid in ("Mani", "0", "-1", "2;exit", "2 3"):
@@ -125,6 +171,12 @@ curl() { echo HEALTH >&2; return "$HEALTH_FAIL"; }
                 )
                 self.assertEqual(result.returncode, 2)
                 self.assertIn("FOUNDER_USER_ID must be a positive account ID", result.stderr)
+
+    def test_notice_bootstrap_rejects_invalid_flag_before_ssh(self):
+        result = subprocess.run([str(BASE_DIR / "scripts" / "deploy_zdwa.sh")], capture_output=True, text=True,
+                                env={**os.environ, "ALLOW_NOTICE_BOOTSTRAP": "sometimes"})
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("ALLOW_NOTICE_BOOTSTRAP must be 0 or 1", result.stderr)
 
 
 class BackupRetentionTestCase(unittest.TestCase):

@@ -19,6 +19,31 @@ from .models import GameTourPreferences
 GameType = Literal["zdwa", "zilch", "hausdepp", "watten"]
 TourState = Literal["dismissed", "started", "completed"]
 GAME_TYPES: tuple[GameType, ...] = ("zdwa", "zilch", "hausdepp")
+GUIDE_REVISIONS = {"hausdepp": 1, "watten": 1}
+
+
+class GameGuideAcknowledgement(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    game_type: Literal["hausdepp", "watten"]
+
+
+def game_guide_preferences(db: Session, user_id: int, *, include_watten: bool = False) -> dict:
+    stored = db.get(GameTourPreferences, user_id)
+    games = GUIDE_REVISIONS if include_watten else {"hausdepp": GUIDE_REVISIONS["hausdepp"]}
+    return {
+        "enabled": stored.enabled if stored is not None else True,
+        "acknowledged": {game: getattr(stored, f"{game}_guide_revision") if stored is not None else 0 for game in games},
+    }
+
+
+def acknowledge_game_guide(db: Session, user_id: int, game_type: str, *, include_watten: bool = False) -> dict:
+    if game_type == "watten" and not include_watten:
+        raise ValueError("watten_tour_unavailable")
+    _ensure_preferences(db, user_id)
+    db.execute(update(GameTourPreferences).where(GameTourPreferences.user_id == user_id)
+               .values({f"{game_type}_guide_revision": GUIDE_REVISIONS[game_type]}))
+    return game_guide_preferences(db, user_id, include_watten=include_watten)
 
 
 class TourPreferencesRequest(BaseModel):

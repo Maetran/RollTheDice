@@ -67,6 +67,7 @@ async function installMedia(page, language) {
     };
   }, language);
   await page.route('**/api/releases**', route => route.fulfill({ json: { releases: [], can_prompt: false } }));
+  await page.route('**/api/auth/game-guides', route => route.fulfill({ json: { enabled: false, acknowledged: {} } }));
   await page.route('**/api/auth/tours/offer', route => route.fulfill({ json: { show: false, enabled: false, games: {} } }));
   await page.route('**/api/hausdepp/progress-notices', route => route.fulfill({ json: { notices: [], revision: 0 } }));
 }
@@ -181,12 +182,8 @@ for (const language of ['de', 'en']) {
     try {
       const output = page.locator('#hausdeppVoiceAudio'), mic = page.locator('#hausdeppVoiceMicrophone');
       const sound = page.locator('#hausdeppSound');
-      const beta = page.locator('#hausdeppVoiceBeta');
-      await expect(beta).toBeVisible();
-      await expect(beta).toHaveText('Beta');
-      await expect(beta).toHaveAttribute('title', language === 'de' ? 'Der Sprachchat ist eine Beta-Funktion.' : 'Voice chat is a beta feature.');
-      await expect(page.locator('.hd-voice-controls')).toHaveAttribute('aria-describedby', 'hausdeppVoiceBetaDescription');
-      await expect(page.locator('#hausdeppVoiceBetaDescription')).toHaveText(language === 'de' ? 'Der Sprachchat ist eine Beta-Funktion.' : 'Voice chat is a beta feature.');
+      await expect(page.locator('#hausdeppVoiceBeta, #hausdeppVoiceBetaDescription')).toHaveCount(0);
+      await expect(page.locator('.hd-voice-controls')).toHaveAccessibleName(language === 'de' ? 'Sprachchat am Tisch' : 'Table voice chat');
       await expect(output).toHaveAttribute('aria-pressed', 'false');
       await expect(sound).toHaveAttribute('aria-pressed', 'false');
       await expect(sound).toHaveAccessibleName(language === 'de' ? 'Wirtshaus-Sound einschalten' : 'Turn tavern sound on');
@@ -198,7 +195,7 @@ for (const language of ['de', 'en']) {
       await expect(mic).toBeDisabled();
       await output.click();
       await expect(output).toHaveAttribute('aria-pressed', 'true');
-      await expect(beta).toBeVisible();
+      await expect(page.locator('#hausdeppVoiceBeta')).toHaveCount(0);
       expect(await page.evaluate(() => window.__voiceHarness.captures)).toBe(0);
       await app.start();
       await expect(output).toHaveAttribute('aria-pressed', 'true');
@@ -208,7 +205,7 @@ for (const language of ['de', 'en']) {
       expect(await page.evaluate(() => window.__voiceHarness.captures)).toBe(1);
       await output.click();
       await expect(output).toHaveAttribute('aria-pressed', 'false');
-      await expect(beta).toBeVisible();
+      await expect(page.locator('#hausdeppVoiceBeta')).toHaveCount(0);
       await expect(mic).toHaveAttribute('aria-pressed', 'false');
       await expect(mic).toBeDisabled();
       expect(await page.evaluate(() => window.__voiceHarness.tracks[0].readyState)).toBe('ended');
@@ -245,7 +242,7 @@ for (const language of ['de', 'en']) {
               .map(node => ({ class: node.className, hidden: node.hidden, display: getComputedStyle(node).display,
                 visibility: getComputedStyle(node).visibility, bounds: node.getBoundingClientRect().toJSON() })) }));
           await page.screenshot({ path: path.join(screenshotDirectory, `voice-${width}x${height}.png`) });
-          await expect(output, JSON.stringify(diagnostic)).toBeInViewport(); await expect(mic).toBeInViewport(); await expect(beta).toBeInViewport();
+          await expect(output, JSON.stringify(diagnostic)).toBeInViewport(); await expect(mic).toBeInViewport();
           await expect(sound).toBeInViewport();
           const picker = page.locator('[data-game-picker]');
           await expect(picker).toBeInViewport({ ratio: 1 });

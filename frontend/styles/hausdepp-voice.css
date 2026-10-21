@@ -1,6 +1,5 @@
 /* Voice controls use the table's existing paper, green and gold vocabulary. */
 .hd-voice-controls { display: grid; grid-template-columns: repeat(2, 44px); gap: 2px 4px; }
-.hd-voice-beta { grid-column: 1 / -1; justify-self: center; color: var(--hd-paper); font-size: 10px; font-weight: 700; line-height: 12px; }
 .hd-voice-controls > button { display: grid; place-items: center; width: 44px; height: 44px; min-height: 44px; padding: 9px; color: var(--hd-paper); background: var(--hd-green-hover); border: 1px solid var(--hd-edge); border-radius: 4px; }
 .hd-voice-controls > button:hover { background: var(--hd-green); }
 .hd-voice-controls > button[aria-pressed="true"] { color: var(--hd-green); background: var(--hd-paper); }

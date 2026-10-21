@@ -27,6 +27,7 @@ async function initializeClient(page) {
     } });
   });
   await page.route('**/api/releases**', route => route.fulfill({ json: { releases: [], can_prompt: false } }));
+  await page.route('**/api/auth/game-guides', route => route.fulfill({ json: { enabled: false, acknowledged: {} } }));
   await page.route('**/api/auth/tours/offer', route => route.fulfill({ json: { show: false, enabled: false, games: {} } }));
 }
 

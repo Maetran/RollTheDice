@@ -1,7 +1,9 @@
 """Human-paced CPU clocks without artificial protection for additional cards."""
 
 import asyncio
+import json
 import os
+from copy import deepcopy
 from random import Random
 from unittest import IsolatedAsyncioTestCase
 from unittest.mock import Mock, patch
@@ -9,7 +11,9 @@ from unittest.mock import Mock, patch
 import pytest
 
 from app import hausdepp_cpu_runner as runner
-from app.hausdepp_engine import apply_action
+from app.active_games import serializable_game_state
+from app.hausdepp_cpu_tempo import cpu_tempo_permissions, enable_fast_cpu_tempo, fast_cpu_tempo, paced_cpu_delay
+from app.hausdepp_engine import HausdeppRuleError, apply_action
 from tests.test_hausdepp_engine import scenario
 
 
@@ -75,6 +79,81 @@ def game_for(state, *, cpu_ids):
             "_players": [{"id": "human", "ws": object()}]}
 
 
+def solo_cpu_endgame():
+    state = scenario([[], ["hearts-6"], ["bells-7"]], current="p1")
+    game = game_for(state, cpu_ids={"p1", "p2"})
+    game["_participants"][0]["user_id"] = 7
+    game["_players"] = [{"id": "p0", "user_id": 7, "ws": object()}]
+    return game
+
+
+def test_solo_endgame_tempo_only_changes_pauses_and_survives_checkpoint():
+    game = solo_cpu_endgame()
+    before = deepcopy(game["_hausdepp"])
+    with patch("app.hausdepp_cpu_tempo.multiplayer_pause_reason", return_value=None):
+        assert cpu_tempo_permissions(game, "p0") == {"fast": False, "can_speed_up": True}
+        assert not cpu_tempo_permissions(game, None)["can_speed_up"]
+        assert not cpu_tempo_permissions(game, "p1")["can_speed_up"]
+        enable_fast_cpu_tempo(game, "p0", 1)
+        assert cpu_tempo_permissions(game, "p0") == {"fast": True, "can_speed_up": False}
+    assert game["_hausdepp"] == before
+    assert paced_cpu_delay(game, 2.0) == pytest.approx(0.6)
+    assert paced_cpu_delay(game, 1.3) == 0.4
+    assert paced_cpu_delay(game, 0.2) == 0.4
+    assert paced_cpu_delay(game, 0.0) == 0.0
+    restored = json.loads(json.dumps(serializable_game_state(game)))
+    assert fast_cpu_tempo(restored)
+    restored["_hausdepp_tournament"] = {"round_number": 2}
+    assert not fast_cpu_tempo(restored)
+    assert paced_cpu_delay(restored, 2.0) == 2.0
+
+
+def test_selected_tempo_survives_the_final_card_and_finished_round_but_not_a_new_deal():
+    game = solo_cpu_endgame()
+    enable_fast_cpu_tempo(game, "p0", 1)
+    game["_finished"] = True
+    game["_hausdepp"]["phase"] = "finished"
+    game["_hausdepp"]["players"][1].update(finished=True, hand=[])
+    with patch("app.hausdepp_cpu_tempo.multiplayer_pause_reason", return_value=None):
+        assert cpu_tempo_permissions(game, "p0") == {"fast": True, "can_speed_up": False}
+    with pytest.raises(HausdeppRuleError, match="hausdepp_cpu_tempo_unavailable"):
+        enable_fast_cpu_tempo(game, "p0", 1)
+    game["_hausdepp_tournament"] = {"round_number": 2}
+    assert not fast_cpu_tempo(game)
+
+
+@pytest.mark.parametrize("change", ["human-playing", "other-human", "withdrawn", "finished", "aborted", "wrong-account"])
+def test_tempo_rejects_other_people_and_ineligible_rounds_even_with_saved_flag(change):
+    game = solo_cpu_endgame()
+    if change == "human-playing":
+        game["_hausdepp"]["players"][0].update(finished=False, hand=["leaves-A"])
+    elif change == "other-human":
+        game["_participants"][1]["is_cpu"] = False
+    elif change == "withdrawn":
+        game["_hausdepp"]["withdrawn_ids"] = ["p0"]
+    elif change == "finished":
+        game["_finished"] = True
+    elif change == "aborted":
+        game["_aborted"] = True
+    else:
+        game["_players"][0]["user_id"] = 8
+    with pytest.raises(HausdeppRuleError, match="hausdepp_cpu_tempo_unavailable"):
+        enable_fast_cpu_tempo(game, "p0", 1)
+    game["_hausdepp_cpu_fast_round"] = 1
+    assert not fast_cpu_tempo(game)
+    assert paced_cpu_delay(game, 2.0) == 2.0
+
+
+def test_tempo_requires_the_finished_players_own_seat_and_current_round():
+    game = solo_cpu_endgame()
+    for actor in ("p1", "unseated", None):
+        with pytest.raises(HausdeppRuleError, match="hausdepp_cpu_tempo_unavailable"):
+            enable_fast_cpu_tempo(game, actor, 1)
+    for number in (None, True, "1", 0, 2):
+        with pytest.raises(HausdeppRuleError, match="hausdepp_stale_version"):
+            enable_fast_cpu_tempo(game, "p0", number)
+
+
 def test_bounded_cpu_memory_survives_human_turns_and_resets_for_a_new_round_or_disconnect():
     game = {"_id": "memory-table", "_participants": [{"id": "cpu", "is_cpu": True}]}
     with patch.dict(runner.games, {game["_id"]: game}, clear=True), patch.dict(runner._MEMORIES, clear=True):
@@ -131,6 +210,37 @@ class CpuRunnerRaceTests(IsolatedAsyncioTestCase):
                 events, _ = await self.run_cpu(game, delay=delay)
                 assert events[0]["player_id"] == faster
                 assert events[0]["type"] == ("afterthrow" if faster == "p0" else "play")
+
+    async def test_fast_floor_preserves_raw_reaction_order_instead_of_participant_order(self):
+        for activate_during_sleep in (False, True):
+            with self.subTest(activate_during_sleep=activate_during_sleep):
+                state = scenario([[], ["hearts-K", "hearts-7"], ["hearts-U", "hearts-A"]],
+                                 discard=["bells-U"], current="p1", afterthrow={"player_id": "p2", "rank": "U"})
+                game = game_for(state, cpu_ids={"p1", "p2"})
+                game["_participants"][0]["user_id"] = 7
+                game["_players"] = [{"id": "p0", "user_id": 7, "ws": object()}]
+                if not activate_during_sleep:
+                    enable_fast_cpu_tempo(game, "p0", 1)
+                waits = []
+
+                async def accelerate(seconds):
+                    waits.append(seconds)
+                    if activate_during_sleep and len(waits) == 1:
+                        enable_fast_cpu_tempo(game, "p0", 1)
+                        # The actual runner remains alive; only its current
+                        # sleep wakes, retaining every sampled reaction.
+                        with patch.dict(runner._TASKS, {game["_id"]: asyncio.current_task()}, clear=True):
+                            await runner.refresh_cpu_tempo(game)
+
+                def delay(view, _command, **_kwargs):
+                    return 0.7 if view["viewer_id"] == "p1" else 0.1
+
+                events, sampled = await self.run_cpu(game, sleep=accelerate, delay=delay)
+                assert events[0]["player_id"] == "p2"
+                assert events[0]["type"] == "afterthrow"
+                assert sampled.call_count == 2
+                assert len(waits) == (2 if activate_during_sleep else 1)
+                assert 0.39 <= waits[-1] <= 0.41
 
     async def test_human_additional_card_is_accepted_during_wait_and_cpu_recomputes(self):
         state = scenario([["hearts-U", "hearts-6", "hearts-A"], ["acorns-U", "hearts-K", "hearts-10"]],

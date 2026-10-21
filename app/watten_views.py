@@ -16,6 +16,7 @@ from .watten_engine import (
     announcement_roles,
     bloedeln_cards,
     gestrichen_players,
+    partner_feedback_recipient,
     partner_id,
     preplay_available,
     preplay_seats,
@@ -137,14 +138,20 @@ def _actions(state: EngineState, seat: int) -> list[str]:
     if (state.phase == "deal_complete" and members is not None
             and player in members and player not in state.retour_accepted_by):
         actions.append("retourschneider")
-    if state.phase == "play" and player == state.play.current_player_id:
-        actions.append("play_card")
-        if (player not in gestrichen_players(state)
-                and state.parties.party_of(player) != state.bid_state.last_offering_party):
+    if state.phase == "play":
+        if player == state.play.current_player_id:
+            actions.append("play_card")
+        party = state.parties.party_of(player)
+        bid_turn = player == state.play.current_player_id
+        if state.recipe.profile.blind:
+            bid_turn = (player == state.parties.decider(party)
+                        and party == state.parties.party_of(state.play.current_player_id))
+        if (bid_turn and player not in gestrichen_players(state)
+                and party != state.bid_state.last_offering_party):
             actions.append("bid")
     if state.phase == "bid_response" and player == state.parties.decider(1 - state.bid_state.pending.party):
         actions.extend(("respond_hold", "respond_go", "respond_counter"))
-    if (state.phase == "bid_response" and partner_id(state, player) is not None
+    if (state.phase == "bid_response" and partner_feedback_recipient(state, player) is not None
             and state.parties.party_of(player) != state.bid_state.pending.party
             and not any(item.sender == player for item in state.feedback)):
         actions.append("partner_feedback")

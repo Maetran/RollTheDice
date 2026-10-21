@@ -30,27 +30,61 @@ open individually. A required password change opens the relevant section directl
 The Watten lobby explains players, variants and the aim of the game after sign-in
 as well; guests receive the same guide in German or English without JavaScript.
 
+## Hinweise vor dem Rollout / advance rollout notices
+
+**Deutsch:** Eine Meldung oben in der geöffneten App kündigt einen bevorstehenden
+Rollout und kurzen Serverneustart an. «OK» quittiert genau diese Ankündigung.
+Gespeicherte Partien können danach fortgesetzt werden. Das neue Image wird
+zuerst gebaut; vor dem ersten Stopp wartet der Deploy nach der Ankündigung
+30 Sekunden. Die Anzeige benötigt diese App-Version; bereits geöffnete ältere
+Versionen erhalten sie erst nach dem nächsten Laden. Stille Releases
+unterdrücken den Vorabhinweis nicht. Rein lokale Offline-Übungen führen keine
+Rollout-Abfragen aus.
+
+**English:** A notice at the top of the open app announces an upcoming rollout
+and brief server restart. “OK” acknowledges that announcement. Saved games can
+continue afterwards. Deployment builds the new image first and waits 30 seconds
+after announcing before the first stop. The display requires this app version;
+already open older versions receive it after their next load. Silent releases
+still show the advance notice. Fully local offline practice makes no rollout
+requests.
+
 ## Einsteigertouren / beginner tours
 
-**Deutsch:** ZDWA, Zilch und Hausdepp bieten beim ersten eigenen Spiel je eine
-kurze, freiwillige Tour an. Sie zeigt direkt am passenden Bedienelement, was du
-wann tun kannst und warum; jede Spielaktion führst du selbst aus. **Tour
-beenden**, × oder Escape schliessen sie sofort, während die Partie weiterläuft.
-Unter **Konto → Einstellungen → Hilfe & Neuigkeiten → Einsteigertouren** kannst
-du sie erneut starten, mit Beispielen anschauen oder automatische Angebote
-ausschalten. Als Gast erreichst du dieselben Tourfunktionen in den
-**Einstellungen** der ZDWA- oder Zilch-Lobby. Konten speichern ihre Auswahl je
-Spiel auf allen Geräten, Gäste in ihrem Browser. Die
+**Deutsch:** Alle vier Spiele bieten beim ersten eigenen Spiel eine kurze,
+freiwillige Einführung. ZDWA und Zilch zeigen die Bedienung Schritt für Schritt
+am Tisch. In Hausdepp und Watten liest du die Hinweise unabhängig vom nächsten
+Spielzug und quittierst sie einmalig mit **Verstanden**. **Später**, × oder
+Escape schliessen sie für diesen Besuch; ohne Quittierung bleibt sie beim
+nächsten Einstieg verfügbar. Die Partie läuft weiter, die Einführung führt
+keine Spielaktion aus.
+
+Hausdepp erklärt besonders die versteckten Gesten: Eine spielbare Handkarte
+lange berühren wählt alle spielbaren Karten desselben Werts zur gemeinsamen
+Auswahl. Den offenen Stapel lange berühren zeigt alle Karten, die aktuell darin
+liegen. Watten erklärt Hand, Schlag/Farbe, Bieten und die privaten Partnersignale
+im blinden Vierer. Unter **Konto → Einstellungen → Hilfe & Neuigkeiten →
+Einsteigertouren** kannst du Einführungen erneut starten, mit Beispielen ansehen
+oder automatische Angebote ausschalten. Gäste erreichen dieselbe Auswahl in
+den **Einstellungen** der ZDWA- oder Zilch-Lobby. Konten speichern ihre Auswahl
+je Spiel auf allen Geräten, Gäste in ihrem Browser. Die
 [Produktspezifikation](docs/GAME_GUIDES_PLAN.md) beschreibt Ablauf und Abnahme.
 
-**English:** ZDWA, Zilch and Hausdepp each offer a short, optional tour on your
-first game as a player. It points to the relevant control and explains what to
-do, when and why; you make every game move yourself. **End tour**, × or Escape
-close it immediately while the game continues. Under **Account → Settings →
-Help & updates → Beginner tours**, you can restart a tour, view examples or switch
-off automatic offers. Guests find the same tour controls in **Settings** in
-the ZDWA or Zilch lobby. Account choices are saved per game across devices;
-guest choices stay in that browser. The
+**English:** All four games offer a short, optional introduction on your first
+game as a player. ZDWA and Zilch explain controls step by step at the table.
+In Hausdepp and Watten, read the hints independently of the next move and
+acknowledge them once with **Understood**. **Later**, × or Escape close them
+for this visit; without acknowledgement, they remain available next time.
+The game continues and the introduction performs no game actions.
+
+Hausdepp highlights the hidden gestures: hold a playable hand card to select
+all playable cards of the same rank for a group play. Hold the open pile to
+inspect every card currently in it. Watten explains your hand, strike/suit,
+bidding and private partner signals in blind four-player play. Under
+**Account → Settings → Help & updates → Beginner tours**, restart introductions,
+view examples or switch automatic offers off. Guests find the same controls in
+**Settings** in the ZDWA or Zilch lobby. Account choices are saved per game across
+devices; guest choices stay in that browser. The
 [product specification](docs/GAME_GUIDES_PLAN.md) defines the flow and acceptance
 criteria.
 
@@ -133,48 +167,59 @@ in the waiting room.
 **Spieltisch / game table:** Mobile zuerst: die helle Tiroler Schnitzstube bleibt
 mit grösseren Schnitzecken sichtbar. Vor dem Aufdecken erscheint kein leerer
 Handkartenfächer. Bei der ladinischen Ansage werden die beiden zulässigen Karten
-von den Ansagenden flach aufeinander geschoben, bis sich auf halbem Weg ihre
-kurzen Kopfkanten treffen, mit Schlag/Farbe
-darunter. Teamstand, Stichzahl und gemeinsames Ziel stehen oben.
+von den Ansagenden flach zur freien Tischmitte geschoben, bis sich ihre
+kurzen Kopfkanten treffen. «Schlag» und «Farbe» bleiben jeweils direkt an der
+Kante der zugehörigen Karte lesbar. Teamstand, Stichzahl und gemeinsames Ziel stehen oben.
 «Mir» ist immer deine Seite, «Dir» die gegnerische; Zuschauer sehen
 die neutralen Teamnamen. Karten- und Teamzeilen unter den Namen entfallen.
 Der dauernde Zug-Hinweis entfällt. Abgeschlossene Stiche bleiben
 rund drei Sekunden sichtbar, mit Siegerrahmen und Spielernamen. Der letzte Stich
 kann lokal erneut angesehen werden, im unteren Aktionsbereich oberhalb der
 Gebotsentscheidung. Gegnerische Karten und Stichpakete sind grösser. Die kompaktere
-Rückschau lässt sich dauerhaft einblenden. Nach Rundenende zeigt sie alle bis zu
-fünf Stiche; Schlag, Farbe und der Rechte werden dann für alle aufgedeckt.
+Rückschau lässt sich während der Partie dauerhaft einblenden. Nach Rundenende
+öffnet sie alle bis zu fünf Stiche ohne zusätzlichen Anheftschalter; Schlag,
+Farbe und der Rechte werden dann für alle aufgedeckt.
 Gewonnene Stichpakete bleiben pro Spieler direkt neben seinem Namen sichtbar.
 Das Kreuz schliesst die Rückschau und löst ihre Anheftung; ungepinnt schliesst
 sie auch beim Antippen ausserhalb.
-Ansager sind am Spielernamen mit «Schlag» oder «Farbe» markiert. «Danke!» bleibt
-höchstens bis zum Abschluss des ersten Stichs sichtbar. Einsatz und Bieten stehen
+Ansager sind am Spielernamen mit «Schlag» oder «Farbe» markiert. «Danke!» erscheint
+grösser und bleibt höchstens bis zum Abschluss des ersten Stichs sichtbar. Einsatz und Bieten stehen
 unten bei den eigenen Karten. Auf Desktop bleibt der eigene Fächer mittig;
 im Tablet-Querformat sitzt der Aktionsbereich darüber. Stichgewinne sind für die
-eigene Seite grün, für die andere rot markiert. Ein gegnerisches Gebot fragt beide
-angebotenen Partner einmal privat nach ihrem Gefühl; die Auswahl schliesst den
-Dialog, die Antwort geht nur an den Partner.
+eigene Seite grün, für die andere rot markiert. Im blinden Vierer entscheidet der
+wissende Spieler jedes Teams über Bieten, Halten, Gehen und Aufbieten: Geber
+beziehungsweise Gebernachbar. Er darf bieten, wenn er selbst oder sein Partner
+am Kartenzug ist. Bei einem gegnerischen Gebot kann nur der blinde Partner ihm
+einmal privat sein Gefühl mitteilen; die Auswahl schliesst den Dialog. Der
+wissende Entscheider sendet kein Gegensignal. In offenen Spielen bleibt die
+gegenseitige Abfrage.
 Nach vollständiger Ansage oder abgeschlossenem Einschauen darf am eigenen
 Kartenzug schon vor der ersten Karte geboten werden. Ein nach Halten vereinbartes
 Schöneres bleibt bis zur ersten Karte möglich und setzt den Einsatz auf zwei zurück.
 Mobile first: the light Tyrolean carved table keeps its larger corners visible.
 No empty hand appears before cards are revealed. Ladinisch cards slide flat from
-their callers until their short top edges meet halfway, labelled Strike and Trump suit. Scores,
+their callers into the clear table centre until their short top edges meet.
+Strike and Trump suit labels stay readable at the edge of their respective card. Scores,
 trick counts and one shared target sit above the table. “Us” always means your side,
 “Them” the other side; spectators see neutral team names. Card-count and team
 labels below player names are removed. Completed tricks stay for
 about three seconds with a winner outline and player names; the last trick can
 be reviewed locally, in the lower action area above any bid decision. Desktop
 centre cards, opponent hands and captured piles are larger. The compact review
-can stay pinned open. After each round, everyone can review up to five tricks
-and see the strike, trump suit and Rechter. Every player keeps their won trick
+can stay pinned open during play. After each round, history opens with up to
+five tricks and no extra pin control; everyone can see the strike, trump suit
+and Rechter. Every player keeps their won trick
 packets beside their name. The close button also unpins the review; when
 unpinned, tapping outside closes it. Announcers are labelled beside their
-names; “Thanks!” disappears when the first trick is complete. The stake and
+names; the larger “Thanks!” remains visible until the first trick is complete. The stake and
 raising control sit below, beside your cards. Your desktop hand stays centred;
 landscape tablets place the action area above it. Trick wins are green for your side
-and red for the other side. Only receiving an opposing bid opens a private feeling
-prompt for both partners; answering closes it and informs only the partner.
+and red for the other side. In blind four-player play, each team's informed player
+decides bids, holds, folds and raises: the dealer or the dealer's neighbour.
+They may bid on their own or their partner's card turn. When receiving an
+opposing bid, only the blind partner may send them one private feeling signal;
+answering closes the prompt. The informed decision maker sends no signal back.
+Open games retain the mutual prompt.
 Once calling or inspection is complete, the player on their card turn may bid
 before the first card. An agreed redeal after holding remains possible until
 the first card and resets the stake to two.
@@ -611,11 +656,28 @@ normally remain credited. Tournament departure applies to the whole session;
 earlier rounds and XP remain intact. Spectators can use the same button to
 return to the lobby immediately, even when disconnected. This only stops watching.
 
+**Schneller CPU-Abschluss / Faster CPU finish:** Spielst du allein gegen CPUs
+und hast deine Karten regulär fertig gespielt, erscheint an ihrer bisherigen
+Stelle «CPUs schneller». Einmal antippen verkürzt die verbleibenden CPU-Pausen
+dieser Runde um 70 %, mit mindestens 400 ms zum Mitverfolgen. Kartenbewegungen
+passen sich an; Entscheidungen und Wertung bleiben gleich. Die nächste Runde
+beginnt wieder im Normaltempo. Mit weiteren Menschen am Tisch gibt es den
+Schalter nicht.
+
+When you are the only human and have finished your hand normally, “Speed up
+CPUs” appears where your cards were. Tap once to shorten the remaining CPU
+pauses in this round by 70%, with a 400 ms minimum so you can follow play.
+Card movement adapts; decisions and scoring stay the same. The next round
+returns to normal speed. The control is unavailable with other humans at the
+table.
+
 **Lokale Wirtshauskulisse / Local tavern ambience:** Der Notenschalter startet
 freiwillig eine sehr leise Kulisse aus Stimmengewirr, Gläsern, Geschirr und
-gelegentlichem Lachen, auch bei CPU-Partien. Vier kleine Dateien (zusammen
-1.62 MiB) werden erst beim Einschalten geladen und im normalen HTTP-Cache
-wiederverwendet. Die Wiedergabe bleibt lokal, ohne Cloudflare Realtime.
+gelegentlichem Lachen, auch bei CPU-Partien. Bei jedem Einschalten wird eine
+von zehn Raumkulissen zufällig gewählt. Nur diese Aufnahme und drei gemeinsame
+Detaildateien werden geladen, zusammen höchstens etwa 1.62 MiB. Der normale
+HTTP-Cache wird wiederverwendet; im Arbeitsspeicher bleibt höchstens eine
+decodierte Raumaufnahme. Die Wiedergabe bleibt lokal, ohne Cloudflare Realtime.
 Kurze Töne bestätigen Sound-/Sprachchat-/Mikrofonschalter nur bei aktiviertem
 Sound; beim Ausschalten erklingt ein letzter Abschaltton. Systemlautstärke und
 Audiogeräte gelten. Turniere und Neu erstellen auf derselben Seite behalten
@@ -623,14 +685,16 @@ die Einstellung; Verlassen, Abmelden oder Schliessen beendet sie.
 [Aufnahmen, CC0-Lizenzen und Bearbeitung](docs/HAUSDEPP_AUDIO_ASSETS.md).
 
 The music-note switch opts into very quiet pub ambience, including CPU games.
-Four small files (1.62 MiB total) load only when enabled and reuse the normal
-HTTP cache. Playback stays local without Cloudflare Realtime. Short tones
+Each time it is switched on, one of ten ambience mixes is chosen at random.
+Only that room loop and three shared detail clips load, at most about 1.62 MiB
+in total. They reuse the normal HTTP cache; memory retains at most one decoded
+room recording. Playback stays local without Cloudflare Realtime. Short tones
 confirm sound, voice and microphone changes only while sound is enabled;
 switching sound off plays one final acknowledgement. Use system volume and
 audio devices. Tournaments and Create again on the same page retain the
 setting; leaving, signing out or closing ends it.
 
-**Sprachchat / Voice chat (Beta):** Bei aktivierter Sprachfunktion können angemeldete
+**Sprachchat / Voice chat:** Bei aktivierter Sprachfunktion können angemeldete
 Mitspieler am Wartetisch freiwillig Audio einschalten und ohne Mikrofonfreigabe
 zuhören. Das Mikrofon wird separat eingeschaltet. Audio aus schaltet auch das
 Mikro stumm; Audio wieder ein startet ausschliesslich das Zuhören. Einzelne

@@ -264,13 +264,13 @@ totals are independent of its period filter. Reports may be missing or forged;
 these counters exclude network overhead and are not authoritative billing or
 a spending cap. No additional Cloudflare account permissions are required.
 
-Die Beta-Kennzeichnung bleibt an den Audio-Schaltern sichtbar. Sie ersetzt keine
-Geräteabnahme: echte Gespräche, Echo, PWA und Headset-Routing bleiben bei einem
-bewusst freigegebenen Beta-Rollout auf den Zielgeräten zu prüfen.
+Die Audio-Schalter und die Verbrauchsübersicht tragen keine Beta-Kennzeichnung
+mehr. Die Geräteabnahme umfasst echte Gespräche, Echo, PWA und Headset-Routing
+auf den Zielgeräten.
 
-The beta label remains visible beside the voice controls. An explicitly
-approved beta rollout still needs real-device conversation, echo, PWA and
-headset-routing checks.
+The voice controls and usage overview no longer carry a beta label. Device
+acceptance covers real conversations, echo, PWA use and headset routing on the
+target devices.
 
 Für die Geräteabnahme ein kontrolliertes Gespräch mit zwei bis sechs
 Testkonten auf verschiedenen Geräten durchführen: ohne Mikrofon zuhören,
@@ -334,8 +334,9 @@ Server eine zeitgestempelte Kopie des vollständigen Verzeichnisses entstehen.
 
 SQLite verwendet WAL-Dateien. Deshalb darf `data/` nicht kopiert werden, während
 der Container in die Datenbank schreibt. Das Deployment-Skript stoppt den
-Container kurz, kopiert das vollständige Verzeichnis und startet ihn sofort
-wieder.
+Container nach der 30-Sekunden-Ankündigung kurz, kopiert das vollständige
+Verzeichnis und startet direkt das zuvor gebaute neue Image. Der Build läuft
+vorher bei weiterhin erreichbarer Anwendung.
 
 Folgende Befehle sind auf Produktion nicht Teil eines Deployments:
 
@@ -514,10 +515,10 @@ V3-Release-Inhalte und unveränderte persistente Daten geprüft sein. Danach:
 ACTIVATE_HAUSDEPP=1 scripts/deploy_zdwa.sh
 ```
 
-Der normale Deploy erstellt zuerst das konsistente vollständige Datenbackup,
-aktualisiert den sauberen produktiven Checkout und validiert Version und
-Release-Text. Die explizite Aktivierungsoption führt danach den folgenden
-Infrastrukturablauf aus, bevor das neue Anwendungsimage startet:
+Der normale Deploy aktualisiert den sauberen produktiven Checkout, validiert
+Version und Release-Text und baut das neue Image bei laufender Anwendung. Die
+explizite Aktivierungsoption führt danach den folgenden Infrastrukturablauf aus,
+bevor Ankündigung, konsistentes Datenbackup und Start des neuen Images erfolgen:
 
 1. `scripts/activate_hausdepp.sh` prüft Nginx, öffentlichen DNS und den aktiven
    `certbot.timer`. Ohne `APPLY=1` bleibt es ein reiner Trockenlauf.
@@ -880,14 +881,72 @@ Das Skript führt auf `ssh zdwa` folgende Schritte aus:
 
 1. Wechsel nach `/home/manuel/RollTheDice`.
 2. Abbruch, falls der produktive Git-Arbeitsbaum verändert ist.
-3. Kurzer Stopp des Containers für ein konsistentes `data`-Backup.
-4. Sofortiger Neustart des bestehenden Containers nach dem Backup.
-5. Fast-forward-only-Update von `origin/master`.
-6. Prüfung der inhaltsbasierten Asset-/Service-Worker-Version.
-7. Neubau und Neustart mit `docker compose up -d --build`.
-8. Ausgabe des Containerstatus und Readiness-Prüfung mit Retries.
-9. Nach erfolgreicher Readiness-Prüfung automatische Bereinigung auf die fünf
-   neuesten `data.backup-*`-Verzeichnisse.
+3. Fast-forward-only-Update von `origin/master`, Asset-/Versionsprüfung und
+   Prüfung der Releasehinweise bei weiterhin laufender Anwendung.
+4. Neues Image mit `docker compose build rollthedice` bauen.
+5. Den bevorstehenden Neustart ankündigen und 30 Sekunden warten.
+6. Container kurz stoppen und das vollständige konsistente `data`-Backup kopieren.
+7. Das fertige Image mit `docker compose up -d --no-build rollthedice` starten.
+8. Lokale Readiness prüfen, Ankündigung entfernen und öffentliche Produktprüfung
+   mit echtem HTTPS ausführen.
+9. Versionshinweise veröffentlichen (ausser bei ausdrücklich stillem Release)
+   und nach erfolgreichem Rollout die fünf neuesten `data.backup-*` erhalten.
+
+### Ankündigung vor dem Neustart / Notice before restart
+
+Der Betreiber-CLI `python -m app.deployment_notice announce --id <revision-attempt>
+--delay 30` schreibt atomar eine kleine Datei im selben persistenten
+Datenverzeichnis wie die Anwendung. `GET /api/deployment-notice` liefert nur
+Kennung und UTC-Zeitpunkte, ohne Konten oder Spielinformationen. Der lesende
+Endpunkt benötigt keine Anmeldung, gilt auch auf der geschlossenen
+Watten-Subdomain und ist `no-store`/`noindex`. Es gibt keinen HTTP-Schreibzugang.
+Die Abfragen werden nicht als Besucheraufrufe gezählt.
+
+Die geöffneten Anwendungen fragen alle drei Sekunden ab und zeigen oben einen
+DE/EN-Hinweis mit **OK**: Der Server startet kurz neu, die gespeicherten
+Spielstände bleiben erhalten und das Spiel kann danach weitergehen. Die
+Bestätigung schliesst nur den Hinweis im Browser; sie verzögert den Rollout
+nicht. Hintergrund-Tabs holen den aktuellen Hinweis beim Zurückkehren nach.
+Offline oder vollständig geschlossene Anwendungen können keine Live-Meldung
+empfangen. Rein lokale Offline-Übungen starten auch bei bestehender
+Netzverbindung keinen Rollout-Poller.
+
+Der Deploy baut und prüft zuerst, kündigt danach an und wartet vor dem ersten
+Containerstopp 30 Sekunden. Ein fehlgeschlagener Build unterbricht das laufende
+Spiel nicht. Abbruch oder Fehler nach der Ankündigung entfernen nach Möglichkeit
+genau diese Meldung; ein neuerer Rollout wird dabei nicht überschrieben. Nach
+erfolgreichem Neustart wird die Meldung entfernt, spätestens fünf Minuten nach
+dem angekündigten Neustart läuft sie selbst ab. Das gilt auch für
+`SILENT_RELEASE=1`: Dieser Schalter unterdrückt nachträgliche Release-Pushes,
+aber keine betriebliche Neustartwarnung.
+
+**Erstinstallation:** Die alte Server-/Browser-Version enthält diesen Kanal
+noch nicht. Der normale Deploy bricht dann vor dem Stopp ab. Nur zum erstmaligen
+Installieren darf `ALLOW_NOTICE_BOOTSTRAP=1` gesetzt werden; der Deploy nennt die
+fehlende Zustellung ausdrücklich und wartet trotzdem 30 Sekunden. Bereits
+geöffnete alte Anwendungen erhalten dadurch keine nachgerüstete Meldung. Nach
+dem Laden dieser Version funktioniert die Ankündigung bei folgenden Rollouts.
+Andere Fehler beim Ankündigen bleiben auch mit diesem Schalter ein Abbruchgrund.
+
+**English:** The trusted container CLI atomically stores rollout timing in the
+application's persistent data directory. The public read-only, no-store/noindex
+API returns only the notice ID and UTC restart/expiry timestamps. Open apps poll
+every three seconds and show a translated top notice with **OK**, explaining the
+brief restart, preserved saved games and continuation afterwards. Acknowledging
+does not delay deployment. Background tabs refresh on return; offline or closed
+apps cannot receive a live notice. Fully local offline practice never starts a
+rollout poller, even with an available connection. These polls do not count as
+visitor traffic.
+
+The deployment validates and builds while the current service stays live, then
+announces, waits 30 seconds, stops for a consistent backup and starts the
+prebuilt image without another build. Successful startup, failure or cancellation
+clears only this attempt's notice when possible; it also expires five minutes
+after the announced restart. Silent releases still give this operational notice.
+The first installation explicitly requires `ALLOW_NOTICE_BOOTSTRAP=1` because
+the old server and already-open old clients cannot yet receive it. This override
+still waits 30 seconds and cannot bypass other announcement errors. Following
+rollouts notify clients after they have loaded the new version.
 
 Das Ziel kann bei Bedarf überschrieben werden:
 

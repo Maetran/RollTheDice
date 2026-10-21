@@ -12,6 +12,7 @@ import pytest
 from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
 
+from app import watten_cpu as cpu_policy
 from app import watten_cpu_runtime as runner
 from app import watten_runtime as runtime_module
 from app.active_games import load_active_games, serializable_game_state
@@ -458,9 +459,10 @@ def test_normal_three_cpu_solo_announces_both_and_only_its_authorized_calls_reac
     asyncio.run(scenario())
 
 
-def test_cpu_partner_advises_privately_before_its_real_designated_bid_response(server, ready, monkeypatch):
+@pytest.mark.parametrize("blind", (False, True))
+def test_cpu_partner_advises_privately_before_its_real_designated_bid_response(server, ready, monkeypatch, blind):
     deterministic_dealer(monkeypatch)
-    game_id, _owners, sessions = local_started(server, count_players=4, cpus=(1, 2, 3))
+    game_id, _owners, sessions = local_started(server, count_players=4, cpus=(1, 2, 3), blind=blind)
     game, human = games[game_id], sessions[0]
     complete_call(game_id)
     numbers = count(100)  # call setup already used engine-0/engine-1 command IDs
@@ -497,10 +499,63 @@ def test_cpu_partner_advises_privately_before_its_real_designated_bid_response(s
             assert advice[1] == advice[2]
             assert advice[3] == {game["_watten"].engine.recipe.seats[index] for index in (1, 3)}
             assert [kind for kind, *_rest in captured].index("partner_feedback") < [kind for kind, *_rest in captured].index("respond")
+            if blind:
+                first_response = [kind for kind, *_rest in captured].index("respond")
+                assert sum(kind == "partner_feedback" for kind, *_rest in captured[:first_response]) == 1
             # The human opposite party receives only freshly projected public
             # state; the CPU pair's private advice never enters that DTO.
             assert all(not message["scoreboard"]["engine"]["feedback"]
                        for message in human.websocket.messages if "scoreboard" in message)
+        finally:
+            await runner.stop_cpu_runners()
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("cpu_knower,raise_bid", ((True, False), (True, True), (False, True)))
+def test_blind_cpu_card_turn_waits_for_cpu_knower_bid_decision_but_never_for_human(server, ready, monkeypatch,
+                                                                               cpu_knower, raise_bid):
+    deterministic_dealer(monkeypatch)
+    cpus = (1, 2, 3) if cpu_knower else (2, 3)
+    game_id, _owners, _sessions = local_started(server, count_players=4, cpus=cpus, blind=True)
+    game = games[game_id]
+    complete_call(game_id)
+    for _ in range(2):
+        player, command = next_move(game_id, count(100))
+        accepted_engine(game, player, command)
+    state = game["_watten"].engine
+    knower, card_player = state.recipe.seats[1], state.recipe.seats[3]
+    assert state.play.current_player_id == card_player
+    start_opportunity = state.opportunity
+    monkeypatch.setattr(cpu_policy, "_should_bid", lambda *_args: raise_bid)
+    captured = []
+    real_decide = runner.decide
+
+    def checked(view, memory, **kwargs):
+        result = real_decide(view, memory, **kwargs)
+        captured.append((memory.player_id, result.decision))
+        return result
+
+    monkeypatch.setattr(runner, "decide", checked)
+
+    async def scenario():
+        try:
+            runner.watch_game(game)
+            assert ((game_id, card_player) not in runner._JOBS) is cpu_knower
+            if cpu_knower:
+                assert (game_id, knower) in runner._JOBS
+            await until(lambda: game["_watten"].engine.opportunity > start_opportunity)
+            if cpu_knower:
+                assert captured[0][0] == knower
+                if raise_bid:
+                    assert captured[0][1].kind == "bid"
+                    assert game["_watten"].engine.phase == "bid_response"
+                    assert game["_watten"].engine.play.current_player_id == card_player
+                else:
+                    assert isinstance(captured[0][1], runner.CpuWait)
+                    assert captured[1][0] == card_player and captured[1][1].kind == "play_card"
+            else:
+                assert captured[0][0] == card_player and captured[0][1].kind == "play_card"
         finally:
             await runner.stop_cpu_runners()
 

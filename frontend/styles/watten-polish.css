@@ -34,6 +34,10 @@ html[data-watten-active="true"] .wt-feedback-dialog .wt-choice-row { justify-con
 html[data-watten-active="true"] .wt-feedback-dialog .wt-choice-row > button { display: grid; place-items: center; flex: 0 0 64px; width: 64px; height: 64px; padding: 0; font-size: 0; line-height: 1; }
 html[data-watten-active="true"] .wt-feedback-dialog button::before { display: block; font-size: 28px; line-height: 1; }
 html[data-watten-active="true"] .wt-feedback-received { border-radius: 12px; padding: 7px 12px; background: #fff0dbea; color: #613b29; font-size: .85rem; box-shadow: 0 2px 8px #532d1c25; }
+html[data-watten-active="true"] .wt-seat .wt-bubble--thanks {
+  padding: .25rem .55rem; border-radius: 8px; background: #fff0db; color: #492b1d;
+  font: 700 clamp(1.15rem, 3.5vw, 1.45rem)/1.2 Georgia, serif; box-shadow: 0 3px 8px #532d1c40;
+}
 html[data-watten-active="true"] .wt-reveal { position: absolute; inset: 25% 8% auto; z-index: 10; pointer-events: none; }
 html[data-watten-active="true"] .wt-reveal:empty { display: none; }
 html[data-watten-active="true"] .wt-inspection { display: grid; justify-items: center; gap: 14px; pointer-events: auto; }
@@ -351,6 +355,7 @@ html[data-watten-active="true"] .wt-feedback-dialog .wt-choice-row > button {
 
 /* Review has an explicit close target; unpinned outside taps also dismiss it. */
 html[data-watten-active="true"] .wt-history-box[open] > summary { padding-right: 42px; }
+html[data-watten-active="true"] .wt-table[data-phase="deal_complete"] .wt-history-box[open] > summary { right: 46px; }
 html[data-watten-active="true"] .wt-history-close { display: none; }
 html[data-watten-active="true"] .wt-history-box[open] .wt-history-close {
   display: grid; place-items: center; position: sticky; top: 0; z-index: 3; float: right; margin: -44px -10px 0 0;

@@ -11,13 +11,6 @@ export function mountHausdeppVoiceUI({ controller, t, userId, getPlayers, sound 
   const toolbar = document.createElement("div");
   toolbar.className = "hd-voice-controls";
   toolbar.setAttribute("role", "group");
-  toolbar.setAttribute("aria-describedby", "hausdeppVoiceBetaDescription");
-  const beta = document.createElement("span");
-  beta.id = "hausdeppVoiceBeta";
-  beta.className = "hd-voice-beta";
-  const betaDescription = document.createElement("span");
-  betaDescription.id = "hausdeppVoiceBetaDescription";
-  betaDescription.className = "hd-sr";
   const output = document.createElement("button");
   output.id = "hausdeppVoiceAudio";
   output.type = "button";
@@ -27,7 +20,7 @@ export function mountHausdeppVoiceUI({ controller, t, userId, getPlayers, sound 
   const announcement = document.createElement("span");
   announcement.className = "hd-sr";
   announcement.setAttribute("role", "status");
-  toolbar.append(beta, output, microphone, betaDescription, announcement);
+  toolbar.append(output, microphone, announcement);
 
   const panel = document.createElement("section");
   panel.className = "hd-voice-participants";
@@ -89,9 +82,6 @@ export function mountHausdeppVoiceUI({ controller, t, userId, getPlayers, sound 
     panel.hidden = !state.available;
     document.body.classList.toggle("hd-voice-available", Boolean(state.available));
     toolbar.setAttribute("aria-label", t("voiceTitle"));
-    beta.textContent = t("voiceBeta");
-    beta.title = t("voiceBetaDescription");
-    betaDescription.textContent = t("voiceBetaDescription");
     toolbar.dataset.status = state.status;
     toggle(output, state.audio, t(state.audio ? "voiceAudioOff" : "voiceAudioOn"), "speaker");
     toggle(microphone, state.microphone, t(state.microphone ? "voiceMicOff" : "voiceMicOn"), "microphone");

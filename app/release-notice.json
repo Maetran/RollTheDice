@@ -6,23 +6,31 @@
     "hausdepp",
     "watten"
   ],
-  "summary_de": "Passende Spielbuttons, geschlossene Kontokategorien und mehr Orientierung in der Watten-Lobby.",
-  "summary_en": "Matching game buttons, collapsed account categories and more guidance in the Watten lobby.",
+  "summary_de": "Einführungen für Watten und Hausdepp, Rollout-Hinweise und zehn Wirtshauskulissen.",
+  "summary_en": "Watten and Hausdepp introductions, advance rollout notices and ten tavern ambiences.",
   "player_notes": {
     "de": {
-      "title": "Schneller zu Regeln und Konto",
+      "title": "Gut einsteigen und entspannt weiterspielen",
       "changes": [
-        "ALLGEMEIN: Weiterführende Aktionen nutzen das Button-Design deines Spiels. Kontokategorien öffnest du bei Bedarf einzeln.",
-        "HAUSDEPP: Konto führt direkt zu deinen Einstellungen. Spielverlauf und Fortschritt bleiben separat erreichbar.",
-        "WATTEN: Die Lobby erklärt Besetzung, Varianten und Spielziel, auch wenn du bereits angemeldet bist."
+        "ALLGEMEIN: Vor künftigen Rollouts erscheint ein Hinweis zum kurzen Neustart. Mit «OK» schliesst du ihn; gespeicherte Spiele gehen danach weiter.",
+        "HAUSDEPP & WATTEN: Neue Einführungen quittierst du einmalig mit «Verstanden». Hausdepp erklärt lange Berührungen für Mehrfachauswahl und alle Karten des offenen Stapels.",
+        "HAUSDEPP: Beim Einschalten wird eine von zehn leisen Wirtshauskulissen zufällig gewählt.",
+        "HAUSDEPP: Bist du allein gegen CPUs und schon fertig, verkürzt «CPUs schneller» die Pausen bis zum Rundenende.",
+        "WATTEN: Schlag und Farbe stehen direkt an ihrer Karte. «Danke» ist grösser; der fertige Rundenverlauf braucht keinen Anheftschalter.",
+        "WATTEN: Im blinden Vierer entscheidet der wissende Spieler über Gebote und Antworten. Nur sein blinder Partner gibt ihm ein privates Signal.",
+        "HAUSDEPP: Der Sprachchat ist ohne Beta-Label verfügbar."
       ]
     },
     "en": {
-      "title": "Find rules and account settings more easily",
+      "title": "Get started and keep playing",
       "changes": [
-        "ALLGEMEIN: Navigation actions use your game’s button style. Open individual account categories as needed.",
-        "HAUSDEPP: Account opens your settings directly. Match history and progress remain separately accessible.",
-        "WATTEN: The lobby explains players, variants and the aim of the game, including when you are signed in."
+        "GENERAL: Before future rollouts, a notice announces the brief restart. Close it with “OK”; saved games continue afterwards.",
+        "HAUSDEPP & WATTEN: Acknowledge the new introductions once with “Understood”. Hausdepp explains long presses for multiple selection and all cards in the open pile.",
+        "HAUSDEPP: Enabling sounds randomly chooses one of ten quiet tavern ambiences.",
+        "HAUSDEPP: When you are the only human and have finished, “Speed up CPUs” shortens pauses until the round ends.",
+        "WATTEN: Strike and suit labels sit at their card edge. “Thanks” is larger; finished round history needs no pin control.",
+        "WATTEN: In blind four-player play the informed player decides bids and responses. Only the blind partner sends private advice.",
+        "HAUSDEPP: Voice chat is available without a beta label."
       ]
     }
   }

@@ -26,6 +26,7 @@ async function prepare(page, language) {
   // Only unrelated optional notices are suppressed. Every room, invitation,
   // acceptance and WebSocket transition in this test uses the real backend.
   await page.route('**/api/releases**', route => route.fulfill({ json: { releases: [], can_prompt: false } }));
+  await page.route('**/api/auth/game-guides', route => route.fulfill({ json: { enabled: false, acknowledged: {} } }));
   await page.route('**/api/auth/tours/offer', route => route.fulfill({ json: { show: false, enabled: false, games: {} } }));
   await page.route('**/api/hausdepp/progress-notices', route => route.fulfill({ json: { notices: [], revision: 0 } }));
 }

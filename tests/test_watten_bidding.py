@@ -84,6 +84,38 @@ def test_no_off_turn_or_terminal_offer(progress, error):
         bid(BidState("first", roles()), "A", progress, gestrichen=frozenset())
 
 
+@pytest.mark.parametrize("dealer", tuple("ABCD"))
+@pytest.mark.parametrize("reverse", (False, True))
+def test_blind_team_only_its_informed_decider_bids_on_either_members_turn(dealer, reverse):
+    context = roles(4, dealer, reverse)
+    for party, members in enumerate(context.parties):
+        decider = context.decider(party)
+        blind_partner = next(member for member in members if member != decider)
+        for card_player in members:
+            initial = BidState("blind-offer", context)
+            state = bid(initial, decider, turn(card_player, 0), gestrichen=frozenset(), decider_only=True)
+            assert state.pending == Offer(party, 3)
+            with pytest.raises(WattenBiddingError, match="designated_decider"):
+                bid(initial, blind_partner, turn(card_player), gestrichen=frozenset(), decider_only=True)
+        for card_player in context.parties[1 - party]:
+            with pytest.raises(WattenBiddingError, match="card_turn_required"):
+                bid(BidState("blind-offer", context), decider, turn(card_player),
+                    gestrichen=frozenset(), decider_only=True)
+        with pytest.raises(WattenBiddingError, match="gestrichen_cannot_open"):
+            bid(BidState("blind-offer", context), decider, turn(blind_partner),
+                gestrichen=frozenset(members), decider_only=True)
+
+
+def test_blind_later_raises_stay_with_same_deciders_on_partner_card_turns():
+    initial = BidState("blind-raises", roles())
+    three = bid(initial, "A", turn("C"), gestrichen=frozenset(), decider_only=True)
+    held = respond(three, "B", "hold", turn("C"))
+    four = bid(held, "B", turn("D", 3), gestrichen=frozenset(), decider_only=True)
+    held = respond(four, "A", "hold", turn("D", 3))
+    five = bid(held, "A", turn("C", 6), gestrichen=frozenset(), decider_only=True)
+    assert five.pending == Offer(0, 5) and five.accepted_stake == 4
+
+
 @pytest.mark.parametrize("count", (2, 3, 4))
 @pytest.mark.parametrize("action", ("hold", "go", "counter"))
 @pytest.mark.parametrize("cards", (0, 1))
