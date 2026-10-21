@@ -594,7 +594,9 @@ export function createTableView(container, { onCard, accountId = null }) {
   function patch(element, key, markup) {
     if (signatures[key] === markup) return false;
     signatures[key] = markup;
-    if (key === "panel" || key === "private" || key === "tools" || key.startsWith("badge-")) {
+    // Card artwork has fresh SVG clip IDs on each render. Keep the history's
+    // close/pin controls and scroll container in place during those repaints.
+    if (key === "panel" || key === "private" || key === "tools" || key === "history" || key.startsWith("badge-")) {
       const template = document.createElement("template");
       template.innerHTML = markup;
       reconcile(element, template.content);
