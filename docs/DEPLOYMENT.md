@@ -264,13 +264,13 @@ totals are independent of its period filter. Reports may be missing or forged;
 these counters exclude network overhead and are not authoritative billing or
 a spending cap. No additional Cloudflare account permissions are required.
 
-Die Beta-Kennzeichnung bleibt an den Audio-Schaltern sichtbar. Sie ersetzt keine
-Geräteabnahme: echte Gespräche, Echo, PWA und Headset-Routing bleiben bei einem
-bewusst freigegebenen Beta-Rollout auf den Zielgeräten zu prüfen.
+Die Audio-Schalter und die Verbrauchsübersicht tragen keine Beta-Kennzeichnung
+mehr. Die Geräteabnahme umfasst echte Gespräche, Echo, PWA und Headset-Routing
+auf den Zielgeräten.
 
-The beta label remains visible beside the voice controls. An explicitly
-approved beta rollout still needs real-device conversation, echo, PWA and
-headset-routing checks.
+The voice controls and usage overview no longer carry a beta label. Device
+acceptance covers real conversations, echo, PWA use and headset routing on the
+target devices.
 
 Für die Geräteabnahme ein kontrolliertes Gespräch mit zwei bis sechs
 Testkonten auf verschiedenen Geräten durchführen: ohne Mikrofon zuhören,
