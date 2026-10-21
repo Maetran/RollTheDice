@@ -1,6 +1,6 @@
 # Versionen / Versions
 
-Aktuelle gemeinsame Produktversion / Current shared product version: **4.0.1**.
+Aktuelle gemeinsame Produktversion / Current shared product version: **4.1.0**.
 
 Alle RollTheDice-Spiele werden gemeinsam versioniert. Major steht für einen großen
 Produktmeilenstein, Minor für neue Funktionen und Patch für Fehlerkorrekturen
@@ -30,6 +30,7 @@ Detailed player-facing descriptions are in the [changelog](../CHANGELOG.md).
 
 | Version | Datum / Date | Art / Type | Änderung / Change | Commit |
 | --- | --- | --- | --- | --- |
+| 4.0.1 | 2026-10-21 | patch | Einheitliche Spielbuttons, übersichtliche Kontoeinstellungen und eine informativere Watten-Lobby. / Consistent game buttons, clearer account settings and a more informative Watten lobby. | [9c0d991](https://github.com/Maetran/RollTheDice/commit/9c0d991c80634a3ece6060752f80a45eff558c87) |
 | 4.0.0 | 2026-10-21 | major | Watten startet als öffentliche Beta mit Turnieren, taktischen CPUs, Bierblock-Anschrift und eigener PWA. / Watten launches in public beta with tournaments, tactical CPUs, a pub scorepad and its own PWA. | [b9252dc](https://github.com/Maetran/RollTheDice/commit/b9252dc6030d98da13a356705260bbc0f81a4625) |
 | 3.18.2 | 2026-10-20 | patch | Einheitliche Navigation, ZDWA-Community-Statistiken, klare Hausdepp-Dialoge und ein fester Tisch in der privaten Watten-Vorschau. / Consistent navigation, ZDWA community statistics, clear Hausdepp dialogs and a fixed table in the private Watten preview. | [50306cf](https://github.com/Maetran/RollTheDice/commit/50306cf0d602518aa47e9bd3f72c92b55f3aa410) |
 | 3.18.1 | 2026-10-20 | patch | Hausdepp: Tisch auch beim Zuschauen verlassen; Mikrofon für Suite-PWAs freigeschaltet. / Hausdepp: leave tables while spectating; microphone enabled for suite PWAs. | [7a66e10](https://github.com/Maetran/RollTheDice/commit/7a66e1051190fa81f25d8d1802d27bf88411959a) |

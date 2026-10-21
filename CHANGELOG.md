@@ -23,6 +23,43 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 4.1.0 — 2026-10-21
+
+Mehr Atmosphäre und ein zügiger CPU-Abschluss in Hausdepp; klarere Ansagen und Entscheidungen beim Watten.
+More atmosphere and faster CPU finishes in Hausdepp; clearer calls and decisions in Watten.
+
+### HAUSDEPP
+
+**Deutsch:** Beim Einschalten der Wirtshausgeräusche wird eine von zehn sehr
+leisen Kulissen zufällig gewählt: die bisherige Aufnahme und neun neue
+Mischungen der bewährten Raum- und Geräuschaufnahmen. Nur die gewählte Kulisse
+und gemeinsame Details werden geladen. Wer allein gegen CPUs spielt und seine
+Karten fertig hat, kann mit «CPUs schneller» die übrigen Pausen der Runde um
+70 % verkürzen. Mindestens 400 ms halten die Züge nachvollziehbar; die
+Nachwurf-Reihenfolge bleibt erhalten und die nächste Runde startet normal.
+
+**English:** Enabling tavern sounds randomly selects one of ten very quiet
+ambiences: the original and nine new mixes of the established room and object
+recordings. Only the selected ambience and shared details load. When the only
+human has finished, “Speed up CPUs” shortens the remaining pauses in the round
+by 70%. A 400 ms minimum keeps play readable; afterthrow order is preserved
+and the next round starts at normal speed.
+
+### WATTEN
+
+**Deutsch:** Schlag und Farbe stehen direkt an ihrer Karte; das Kartenpaar
+bleibt frei von den Händen. «Danke» ist grösser, der Regelaufruf nutzt einen
+Spielbutton. Im blinden Vierer entscheidet der wissende Spieler jedes Teams
+über Bieten und Gebotsantworten. Nur sein blinder Partner gibt ihm ein privates
+Gefühlssignal; die CPU berücksichtigt dieses vor ihrer Antwort. Der
+abgeschlossene Rundenverlauf braucht keinen Schalter «Dauerhaft anzeigen» mehr.
+
+**English:** Strike and suit labels sit at their respective card edge; the
+card pair stays clear of hands. “Thanks” is larger and rules use a game button.
+In blind four-player play each team's informed player decides bids and
+responses. Only the blind partner sends private advice; CPUs consider it before
+responding. Completed round history no longer needs a “Keep visible” control.
+
 ## 4.0.1 — 2026-10-21
 
 Die Navigation und Kontoeinstellungen sind übersichtlicher; die Watten-Lobby erklärt das Spiel auch nach der Anmeldung.
