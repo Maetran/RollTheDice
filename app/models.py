@@ -232,6 +232,8 @@ class GameTourPreferences(Base):
     zilch_state: Mapped[str] = mapped_column(String(16), nullable=False, default="unseen", server_default="unseen")
     hausdepp_state: Mapped[str] = mapped_column(String(16), nullable=False, default="unseen", server_default="unseen")
     watten_state: Mapped[str] = mapped_column(String(16), nullable=False, default="unseen", server_default="unseen")
+    hausdepp_guide_revision: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    watten_guide_revision: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
 
     __table_args__ = tuple(
         CheckConstraint(

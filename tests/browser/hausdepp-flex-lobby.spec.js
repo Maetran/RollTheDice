@@ -12,6 +12,7 @@ async function setup(page, language = 'de') {
   await page.request.delete('/api/hausdepp/favourite', { headers: { 'X-CSRF-Token': user.csrf_token } });
   await page.addInitScript(lang => localStorage.setItem('zdwa_language', lang), language);
   await page.route('**/api/releases**', route => route.fulfill({ json: { releases: [], can_prompt: false } }));
+  await page.route('**/api/auth/game-guides', route => route.fulfill({ json: { enabled: false, acknowledged: {} } }));
   await page.route('**/api/auth/tours/offer', route => route.fulfill({ json: { show: false, enabled: false, games: {} } }));
   await page.goto('/hausdepp');
   return user;

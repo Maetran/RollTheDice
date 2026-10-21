@@ -60,9 +60,12 @@ from .email_delivery import (
 from .engagement import record_engagement_safely
 from .game_access import public_game_access_payload
 from .game_tours import (
+    GameGuideAcknowledgement,
     TourOfferRequest,
     TourPreferencesRequest,
+    acknowledge_game_guide,
     claim_tour_offer,
+    game_guide_preferences,
     tour_preferences,
     update_tour_preferences,
 )
@@ -503,6 +506,28 @@ def auth_claim_tour_offer(payload: TourOfferRequest, request: Request, response:
     response.headers["Cache-Control"] = "no-store"
     with session_scope() as db:
         return claim_tour_offer(db, identity.user_id, payload.game_type, include_watten=can_access_watten(identity, request))
+
+
+@router.get("/auth/game-guides")
+def auth_game_guides(request: Request, response: Response):
+    from .watten_access import can_access_watten
+
+    identity = _tour_identity(request)
+    response.headers["Cache-Control"] = "no-store"
+    with session_scope() as db:
+        return game_guide_preferences(db, identity.user_id, include_watten=can_access_watten(identity, request))
+
+
+@router.put("/auth/game-guides")
+def auth_acknowledge_game_guide(payload: GameGuideAcknowledgement, request: Request, response: Response):
+    from .watten_access import can_access_watten
+
+    identity = _tour_identity(request, payload.game_type)
+    require_csrf(request, identity)
+    response.headers["Cache-Control"] = "no-store"
+    with session_scope() as db:
+        return acknowledge_game_guide(db, identity.user_id, payload.game_type,
+                                      include_watten=can_access_watten(identity, request))
 
 
 @router.put("/auth/preferences")

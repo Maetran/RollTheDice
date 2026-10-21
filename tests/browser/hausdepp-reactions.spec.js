@@ -29,6 +29,7 @@ async function playingRoom(page, { viewport = { width: 390, height: 844 } } = {}
   await page.request.put('/api/auth/preferences/language', { headers, data: { preferred_language: 'de' } });
   await page.addInitScript(() => localStorage.setItem('zdwa_language', 'de'));
   await page.route('**/api/releases**', route => route.fulfill({ json: { releases: [], can_prompt: false } }));
+  await page.route('**/api/auth/game-guides', route => route.fulfill({ json: { enabled: false, acknowledged: {} } }));
   await page.route('**/api/auth/tours/offer', route => route.fulfill({ json: {
     show: false, enabled: true, games: { zdwa: 'unseen', zilch: 'unseen', hausdepp: 'dismissed' },
   } }));

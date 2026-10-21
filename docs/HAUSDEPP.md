@@ -1383,3 +1383,25 @@ Spectators, solo CPU games, offline play and previews do not count. Old rounds
 without these facts are not retroactively interpreted as discoveries. The
 catalogue totals 135 achievements and 5,605 achievement XP; the 24 ranks ending
 at 9,000 XP are retained.
+
+### Einmaliger Bedienguide / One-time controls guide
+
+Der erste eigene Spieltisch zeigt einen kurzen, ohne Spielaktion lesbaren Guide.
+Langes Drücken auf eine **spielbare Handkarte** wählt die spielbaren Karten
+ihres Werts für einen bestätigten Mehrfachwurf. Langes Drücken auf das **offene
+Paket** zeigt nur die gerade darin liegenden öffentlichen Karten; abgeräumte
+Karten bleiben ausser Sicht. Beide Gesten haben sichtbare Knopf- und
+Tastaturalternativen. «Verstanden» bestätigt die Guide-Version einmalig im
+Konto. «Später», × oder Escape schliessen nur für den aktuellen Besuch.
+Automatische Guides lassen sich in den Einsteigertour-Einstellungen ausschalten;
+dort ist auch die erneute Ansicht möglich. Der Guide steuert oder pausiert das
+Spiel nicht und vergibt keine Punkte, Erfolge oder Spielaktionen.
+
+The first own table shows a brief guide that needs no game action to read.
+Holding a **playable hand card** selects playable cards of that rank for a
+confirmed multiple-card throw. Holding the **open pile** reveals only the public
+cards currently in it; cleared cards stay hidden. Buttons and keyboard shortcuts
+provide alternatives. “Understood” acknowledges the guide revision once for the
+account. “Later”, × or Escape closes it for this visit only. Beginner-tour
+settings offer replay and automatic-guide opt-out. The guide neither controls
+nor pauses play and grants no points, achievements or game actions.

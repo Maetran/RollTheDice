@@ -1,10 +1,11 @@
 import { loadAuth, escapeHtml as esc } from "./auth.js";
 import { GAME_TOUR_MESSAGES } from "../i18n/catalog.js";
-import { zdwaAppEntryUrl, zilchAppEntryUrl, hausdeppAppEntryUrl } from "../multigame/routes.js";
+import { zdwaAppEntryUrl, zilchAppEntryUrl, hausdeppAppEntryUrl, wattenAppEntryUrl } from "../multigame/routes.js";
 
-const games = { zdwa: "Zock die Wand an", zilch: "Zilch", hausdepp: "Hausdepp" };
+const games = { zdwa: "Zock die Wand an", zilch: "Zilch", hausdepp: "Hausdepp", watten: "Watten" };
 // Add games only once their room integration and browser checks are ready.
-const availableGames = ["zdwa", "zilch", "hausdepp"];
+const availableGames = ["zdwa", "zilch", "hausdepp", "watten"];
+const guideRevisions = { hausdepp: 1, watten: 1 };
 const key = "rollthedice.tours.v1";
 const t = (id, params = {}) => String(GAME_TOUR_MESSAGES[window.ZDWA_I18N?.getLanguage?.() === "en" ? "en" : "de"][id] || id)
   .replace(/\{(\w+)\}/g, (_, name) => String(params[name] ?? ""));
@@ -17,6 +18,7 @@ let viewerEpoch = 0, preferenceRevision = 0;
 const settings = new Set();
 const previews = new Map();
 let currentTour;
+let guidePreferences, guideRequest;
 
 function viewerId(auth = identity) { return auth?.authenticated && auth?.user?.id ? `user.${auth.user.id}` : "guest"; }
 function cacheKey(viewer = viewerId()) { return `${key}.${viewer}`; }
@@ -24,6 +26,7 @@ function sameViewer(epoch) { return epoch === viewerEpoch; }
 function fetchForViewer(path, options = {}, epoch = viewerEpoch) {
   if (!sameViewer(epoch) || !identity?.authenticated) throw new Error("tour_viewer_changed");
   const headers = new Headers(options.headers || {});
+  headers.set("X-Watten-Expected-Account-Id", String(identity.user.id));
   if (!["GET", "HEAD", "OPTIONS"].includes(String(options.method || "GET").toUpperCase())) {
     // Bind queued mutations to this identity. A cookie switch between request
     // dispatch and login notification must reject, never use a new account's CSRF.
@@ -39,6 +42,8 @@ function adoptIdentity(next) {
   viewerEpoch++;
   preferences = undefined;
   preferenceRequest = undefined;
+  guidePreferences = undefined;
+  guideRequest = undefined;
   mutations = Promise.resolve();
   currentTour?.discard();
   // A manual request belongs to the person who made it, not the next login.
@@ -151,6 +156,47 @@ async function refreshTourSettings(container) {
   }
 }
 
+function guideCacheKey() { return `${cacheKey()}.guides`; }
+
+async function loadGuidePreferences() {
+  if (guidePreferences) return guidePreferences;
+  if (guideRequest) return guideRequest;
+  const request = (async () => {
+    await loadPreferences();
+    const epoch = viewerEpoch;
+    const local = read(localStorage, guideCacheKey(), {});
+    if (!identity?.authenticated) return guidePreferences = { enabled: preferences.enabled, acknowledged: local };
+    const response = await fetchForViewer("/api/auth/game-guides", {}, epoch);
+    if (!response.ok) throw new Error("guide_preferences_unavailable");
+    const data = await response.json();
+    if (!sameViewer(epoch)) throw new Error("tour_viewer_changed");
+    guidePreferences = { enabled: data.enabled !== false, acknowledged: { ...data.acknowledged } };
+    for (const game of Object.keys(guideRevisions)) {
+      if (local[game] === guideRevisions[game] && (guidePreferences.acknowledged[game] || 0) < local[game]) {
+        void acknowledgeGuide(game);
+      }
+    }
+    return guidePreferences;
+  })();
+  guideRequest = request;
+  try { return await request; }
+  finally { if (guideRequest === request) guideRequest = undefined; }
+}
+
+async function acknowledgeGuide(game) {
+  const epoch = viewerEpoch;
+  const storageKey = guideCacheKey();
+  const acknowledged = { ...read(localStorage, storageKey, {}), [game]: guideRevisions[game] };
+  if (guidePreferences) guidePreferences.acknowledged[game] = guideRevisions[game];
+  write(localStorage, storageKey, acknowledged);
+  if (!identity?.authenticated) return;
+  try {
+    const response = await fetchForViewer("/api/auth/game-guides", { method: "PUT",
+      headers: { "Content-Type": "application/json" }, body: JSON.stringify({ game_type: game }) }, epoch);
+    if (!response.ok) throw new Error("guide_acknowledgement_unavailable");
+  } catch { /* Retry the same viewer's explicit acknowledgement on the next visit. */ }
+}
+
 function startKey(game) { return `${key}.start.${game}`; }
 
 function captureEntry() {
@@ -171,7 +217,8 @@ function captureEntry() {
 }
 
 function destination(game) {
-  const entry = game === "zdwa" ? zdwaAppEntryUrl() : game === "zilch" ? zilchAppEntryUrl() : hausdeppAppEntryUrl();
+  const entry = game === "zdwa" ? zdwaAppEntryUrl() : game === "zilch" ? zilchAppEntryUrl()
+    : game === "watten" ? wattenAppEntryUrl(window.location, globalThis, { publicBeta: true }) : hausdeppAppEntryUrl();
   const url = new URL(entry, location.href);
   url.searchParams.set("tour", game);
   return url.href;
@@ -202,16 +249,27 @@ function stepsFor(game, context = {}) {
   if (game === "hausdepp") return [
     { id: "welcome", title: "hausdeppWelcome", body: "hausdeppGoal", target: "#hausdeppHand" },
     { id: "play", title: "hausdeppPlay", body: "hausdeppPlayBody", target: "#hausdeppHand", ready: c => c.canPlay },
+    { id: "multiple", title: "hausdeppMultiple", body: "hausdeppMultipleBody", target: "#hausdeppHand" },
     { id: "stock", title: "hausdeppStock", body: "hausdeppStockBody", target: "#hausdeppStock", ready: c => c.canDraw },
     { id: "pile", title: "hausdeppPile", body: "hausdeppPileBody", target: "#hausdeppPile", ready: c => c.canPickup },
+    { id: "inspect", title: "hausdeppInspect", body: "hausdeppInspectBody", target: "#hausdeppPile" },
     { id: "special", title: "hausdeppSpecial", body: "hausdeppSpecialBody", target: "#hausdeppPile" },
-    { id: "finish", title: "finishTitle", body: "finishBody", target: ".hd-social-rules, #hausdeppStatus" },
+    { id: "finish", title: "finishTitle", body: "guideFinishBody", target: ".hd-social-rules, #hausdeppStatus" },
+  ];
+  if (game === "watten") return [
+    { id: "welcome", title: "wattenWelcome", body: "wattenGoal", target: "[data-wt-hand], .wt-table" },
+    { id: "calls", title: "wattenCalls", body: "wattenCallsBody", target: "[data-wt-panel], [data-wt-hand]" },
+    { id: "play", title: "wattenPlay", body: "wattenPlayBody", target: "[data-wt-hand]" },
+    { id: "bid", title: "wattenBid", body: "wattenBidBody", target: "[data-wt-panel], [data-wt-hand]" },
+    { id: "partner", title: "wattenPartner", body: "wattenPartnerBody", target: "[data-wt-panel], [data-wt-hand]" },
+    { id: "history", title: "wattenHistory", body: "wattenHistoryBody", target: "[data-wt-history-toggle], [data-wt-hand]" },
+    { id: "finish", title: "finishTitle", body: "guideFinishBody", target: ".wt-header, [data-wt-hand]" },
   ];
   return [];
 }
 
 function exampleFor(game) {
-  return game === "hausdepp" ? "7 · 9 · K · A · 10" : game === "zilch" ? "⚀ ⚀ ⚄ ⚂ ⚃ ⚅" : "⚂ ⚂ ⚄ ⚀ ⚅";
+  return ["hausdepp", "watten"].includes(game) ? "7 · 9 · K · A · 10" : game === "zilch" ? "⚀ ⚀ ⚄ ⚂ ⚃ ⚅" : "⚂ ⚂ ⚄ ⚀ ⚅";
 }
 
 function onScreen(node) {
@@ -233,6 +291,8 @@ function findTarget(selectors) {
 }
 
 export function createGameTour(game) {
+  const guide = Boolean(guideRevisions[game]);
+  let guideDeferredEpoch = -1;
   let context = {}, mode = "", index = 0, card, highlighted, lastMarkup = "", offerInFlight = false;
   let lastFocus;
   const controller = { update, end: () => end(false), discard: () => end(false, false) };
@@ -244,7 +304,11 @@ export function createGameTour(game) {
     clearTarget();
     card?.remove(); card = null; mode = ""; lastMarkup = "";
     if (currentTour === controller) currentTour = null;
-    if (persist && !wasView && hadMode) {
+    if (guide && !wasView && hadMode) {
+      if (persist) guideDeferredEpoch = viewerEpoch;
+      write(sessionStorage, startKey(game), false);
+      if (persist && completed) void acknowledgeGuide(game);
+    } else if (persist && !wasView && hadMode) {
       write(sessionStorage, startKey(game), false);
       void savePreferences({ game_type: game, state: completed ? "completed" : "dismissed" });
     }
@@ -258,7 +322,7 @@ export function createGameTour(game) {
     currentTour = controller;
     lastFocus = document.activeElement;
     mode = view ? "view" : "active"; index = 0;
-    if (!view) void savePreferences({ game_type: game, state: "started" });
+    if (!view && !guide) void savePreferences({ game_type: game, state: "started" });
     render();
     card?.querySelector("[data-tour-end]")?.focus({ preventScroll: true });
   }
@@ -268,7 +332,7 @@ export function createGameTour(game) {
     const height = card.offsetHeight, width = card.offsetWidth;
     const top = Math.min(Math.max(margin, Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--app-header-height")) || 72), Math.max(margin, innerHeight - height - margin));
     const rect = target?.getBoundingClientRect();
-    const reserved = [...document.querySelectorAll("#diceBar, .zilch-dice-dock, .zilch-chat, .hd-centre, #hausdeppHand")]
+    const reserved = [...document.querySelectorAll("#diceBar, .zilch-dice-dock, .zilch-chat, .hd-centre, #hausdeppHand, [data-wt-hand], [data-wt-panel]")]
       .filter(node => node.getClientRects().length).map(node => node.getBoundingClientRect());
     const candidates = [
       [Math.max(margin, innerWidth - width - margin), top], [margin, top],
@@ -310,15 +374,15 @@ export function createGameTour(game) {
     if (!step) { end(false); return; }
     const target = mode === "view" || mode === "offer" ? null : findTarget(step.target);
     const missingTarget = mode !== "view" && mode !== "offer" && (!target || !target.getClientRects().length);
-    const paused = mode !== "view" && (!context.canAct || context.busy || missingTarget || (step.ready && !step.ready(context)));
+    const paused = !guide && mode !== "view" && (!context.canAct || context.busy || missingTarget || (step.ready && !step.ready(context)));
     if (mode !== "view" && !paused && mode !== "offer") {
       if (target && target.getClientRects().length) { highlighted = target; target.classList.add("game-tour-target"); }
     }
     card.dataset.tourMode = mode === "offer" ? "offer" : paused ? "paused" : mode;
     card.dataset.tourStep = mode === "offer" ? "offer" : step.id;
     const body = mode === "offer" ? `<h2>${esc(t("offer", { game: games[game] }))}</h2><p>${esc(t("offerBody"))}</p><div class="game-tour-actions"><button type="button" data-tour-start>${esc(t("start"))}</button><button type="button" data-tour-dismiss>${esc(t("without"))}</button></div>`
-      : `<p class="game-tour-progress">${esc(games[game])} · ${esc(t("progress", { current: index + 1, total: steps.length }))}${mode === "view" ? ` · ${esc(t("example"))}` : ""}</p><h2>${esc(t(step.title))}</h2><p aria-live="polite">${esc(t(paused ? !context.canAct ? "waitTurn" : context.busy ? "waitMotion" : step.waiting || "waitTarget" : step.body))}</p>${mode === "view" ? `<div class="game-tour-example"><span>${esc(t("example"))}</span><strong>${exampleFor(game)}</strong></div>` : ""}<div class="game-tour-actions"><button type="button" data-tour-back ${index === 0 ? "disabled" : ""}>${esc(t("back"))}</button><button type="button" data-tour-next ${paused ? "disabled" : ""}>${esc(t(index === steps.length - 1 ? "done" : "next"))}</button><button type="button" data-tour-end>${esc(t("end"))}</button></div>`;
-    const markup = `<button type="button" class="game-tour-close" data-tour-close aria-label="${esc(t("end"))}">×</button>${body}`;
+      : `<p class="game-tour-progress">${esc(games[game])} · ${esc(t("progress", { current: index + 1, total: steps.length }))}${mode === "view" ? ` · ${esc(t("example"))}` : ""}</p><h2>${esc(t(step.title))}</h2><p aria-live="polite">${esc(t(paused ? !context.canAct ? "waitTurn" : context.busy ? "waitMotion" : step.waiting || "waitTarget" : step.body))}</p>${mode === "view" ? `<div class="game-tour-example"><span>${esc(t("example"))}</span><strong>${exampleFor(game)}</strong></div>` : ""}<div class="game-tour-actions"><button type="button" data-tour-back ${index === 0 ? "disabled" : ""}>${esc(t("back"))}</button><button type="button" data-tour-next ${paused ? "disabled" : ""}>${esc(t(index === steps.length - 1 ? guide ? "understood" : "done" : "next"))}</button><button type="button" data-tour-end>${esc(t(guide ? "later" : "end"))}</button></div>`;
+    const markup = `<button type="button" class="game-tour-close" data-tour-close aria-label="${esc(t(guide ? "later" : "end"))}">×</button>${body}`;
     if (markup !== lastMarkup) {
       const focused = card.contains(document.activeElement) ? document.activeElement?.getAttributeNames().find(name => name.startsWith("data-tour-")) : null;
       card.innerHTML = markup; lastMarkup = markup;
@@ -327,6 +391,7 @@ export function createGameTour(game) {
     position(highlighted);
   }
   async function maybeOffer() {
+    if (guide) { await maybeGuide(); return; }
     if (offerInFlight || mode || !context.eligible || !context.canAct || context.busy
       || (currentTour && currentTour !== controller)) return;
     offerInFlight = true;
@@ -362,6 +427,24 @@ export function createGameTour(game) {
     } catch { /* An unavailable account service never blocks playing or forces a tour. */ }
     finally { offerInFlight = false; }
   }
+  async function maybeGuide() {
+    if (offerInFlight || mode || !context.eligible || context.busy
+      || (currentTour && currentTour !== controller)) return;
+    offerInFlight = true;
+    const epoch = viewerEpoch;
+    try {
+      const data = await loadGuidePreferences();
+      if (!sameViewer(epoch) || !context.eligible || context.busy || mode
+        || (currentTour && currentTour !== controller)) return;
+      if (read(sessionStorage, startKey(game), false)) {
+        write(sessionStorage, startKey(game), false); begin(); return;
+      }
+      if (guideDeferredEpoch === viewerEpoch || !data.enabled || preferences?.enabled === false
+        || (data.acknowledged[game] || 0) >= guideRevisions[game]) return;
+      begin();
+    } catch { /* Reading a guide never delays or blocks a running game. */ }
+    finally { offerInFlight = false; }
+  }
   function update(next) {
     context = next;
     if (!next.eligible && mode) { end(false); return; }
@@ -392,13 +475,14 @@ export async function mountTourSettings(container) {
   if (!container) return;
   if (settings.has(container)) return refreshTourSettings(container);
   settings.add(container);
-  container.innerHTML = `<h3>${esc(t("title"))}</h3><p>${esc(t("settingsBody"))}</p><p data-tour-settings-status role="status"></p><label class="game-tour-toggle"><input type="checkbox" data-tour-enabled checked> ${esc(t("auto"))}</label><div class="game-tour-settings-games">${availableGames.map(game => `<div><strong>${esc(games[game])}</strong><div><button type="button" data-tour-action="start" data-tour-game="${game}">${esc(t("start"))}</button><button type="button" data-tour-action="view" data-tour-game="${game}">${esc(t("view"))}</button></div></div>`).join("")}</div>`;
+  container.innerHTML = `<h3>${esc(t("title"))}</h3><p>${esc(t("settingsBody"))}</p><p data-tour-settings-status role="status"></p><label class="game-tour-toggle"><input type="checkbox" data-tour-enabled checked> ${esc(t("auto"))}</label><div class="game-tour-settings-games">${availableGames.filter(game => game !== "watten" || document.documentElement.dataset.game === "watten" || identity?.game_access?.watten_public || identity?.game_access?.watten_preview).map(game => `<div><strong>${esc(games[game])}</strong><div><button type="button" data-tour-action="start" data-tour-game="${game}">${esc(t("start"))}</button><button type="button" data-tour-action="view" data-tour-game="${game}">${esc(t("view"))}</button></div></div>`).join("")}</div>`;
   const toggle = container.querySelector("[data-tour-enabled]");
   // Visible guide actions must already work while the initial account read is
   // pending. Only the preference toggle depends on that read and stays disabled.
   toggle.onchange = async () => {
     if (toggle.disabled) return;
     const epoch = viewerEpoch, enabled = toggle.checked;
+    if (guidePreferences) guidePreferences.enabled = enabled;
     if (!enabled) currentTour?.end();
     const saved = await savePreferences({ enabled });
     if (!sameViewer(epoch) || !container.isConnected) return;

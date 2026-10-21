@@ -20,6 +20,7 @@ async function tableFixture(page, language = 'de') {
   }, language);
   await page.route('**/api/releases**', route => route.fulfill({ json: { releases: [], can_prompt: false } }));
   // Isolated renderer scenarios; actual beginner offers remain in game-tours.spec.
+  await page.route('**/api/auth/game-guides', route => route.fulfill({ json: { enabled: false, acknowledged: {} } }));
   await page.route('**/api/auth/tours/offer', route => route.fulfill({ json: { show: false, enabled: false, games: {} } }));
   const created = await page.request.post('/api/games', { headers, data: {
     name: 'Renderer-Test · Öffentliches Paket', mode: '6', game_type: 'hausdepp', play_mode: 'cpu', cpu_count: 5,

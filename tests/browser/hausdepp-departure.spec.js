@@ -31,6 +31,7 @@ async function setup(page, language = 'de', { cpuCount = 2, freshActor = false }
   await page.request.put('/api/auth/preferences/language', { headers, data: { preferred_language: language } });
   await page.addInitScript(value => localStorage.setItem('zdwa_language', value), language);
   await page.route('**/api/releases**', route => route.fulfill({ json: { releases: [], can_prompt: false } }));
+  await page.route('**/api/auth/game-guides', route => route.fulfill({ json: { enabled: false, acknowledged: {} } }));
   await page.route('**/api/auth/tours/offer', route => route.fulfill({ json: { show: false, enabled: false, games: {} } }));
   await page.route('**/api/hausdepp/progress-notices', route => route.fulfill({ json: { notices: [], revision: 0 } }));
   await page.route('**/api/hausdepp/invitations', route => route.fulfill({ json: { invitations: [] } }));
@@ -199,6 +200,7 @@ test('a real participant leaves two other players in the same playable table wit
     const login = await guest.request.post('/api/auth/login', { data: { username, password } });
     expect(login.ok()).toBeTruthy();
     await guest.route('**/api/releases**', route => route.fulfill({ json: { releases: [], can_prompt: false } }));
+    await guest.route('**/api/auth/game-guides', route => route.fulfill({ json: { enabled: false, acknowledged: {} } }));
     await guest.route('**/api/auth/tours/offer', route => route.fulfill({ json: { show: false, enabled: false, games: {} } }));
     await guest.route('**/api/hausdepp/progress-notices', route => route.fulfill({ json: { notices: [], revision: 0 } }));
     await page.goto(app.room); await guest.goto(app.room);
@@ -273,6 +275,7 @@ for (const language of ['de', 'en']) {
         expect(languagePreference.ok()).toBeTruthy();
         await watcher.addInitScript(value => localStorage.setItem('zdwa_language', value), language);
         await watcher.route('**/api/releases**', route => route.fulfill({ json: { releases: [], can_prompt: false } }));
+        await watcher.route('**/api/auth/game-guides', route => route.fulfill({ json: { enabled: false, acknowledged: {} } }));
         await watcher.route('**/api/auth/tours/offer', route => route.fulfill({ json: { show: false, enabled: false, games: {} } }));
         watcher.on('dialog', dialog => { dialogs.push(dialog.message()); void dialog.dismiss(); });
         watcher.on('websocket', socket => {

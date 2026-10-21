@@ -63,6 +63,7 @@ async function table(page, viewport, { browser, baseURL, reducedMotion = 'no-pre
     await member.route('**/api/releases**', route => route.fulfill({ json: { releases: [], can_prompt: false } }));
     // Optional beginner offers have separate coverage; the real room, private
     // projection, cards and every game command below use the delivered backend.
+    await member.route('**/api/auth/game-guides', route => route.fulfill({ json: { enabled: false, acknowledged: {} } }));
     await member.route('**/api/auth/tours/offer', route => route.fulfill({ json: { show: false, enabled: false, games: {} } }));
     member.on('websocket', socket => {
       if (new URL(socket.url()).pathname !== `/ws/${gameId}`) return;

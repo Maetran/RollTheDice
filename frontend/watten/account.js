@@ -11,6 +11,7 @@ import { friendSettingsText, mountFriendSettings } from './friend-settings.js';
 import { initializeSuiteHeader } from '../shell/header.js';
 import { initializeAppMode } from '../multigame/app-mode.js';
 import { mountWattenPushSettings, pushSettingsMarkup } from './push-settings.js';
+import { mountTourSettings } from '../shared/game-tours.js';
 
 initializeWattenPwa();
 initializeSuiteHeader();
@@ -134,11 +135,13 @@ function renderSettings(auth) {
     <details><summary>${esc(friendSettingsText('settingsTitle'))}</summary><div data-watten-friend-settings></div></details>
     <details><summary>${copy('Sprache')}</summary><form data-language><label>${copy('Sprache')}<select name="language"><option value="de">Deutsch</option><option value="en">English</option></select></label><button type="submit">${copy('Sprache speichern')}</button><p role="status"></p></form></details>
     ${publicPush ? pushSettingsMarkup(copy) : ""}
+    <details><summary>${copy('Einsteigertouren')}</summary><div data-game-tour-settings></div></details>
     <div class="actions"><a class="button-link ghost" href="/watten">${copy('Zurück')}</a><a class="button-link ghost" href="/watten/konto/fortschritt">${copy('Fortschritt')}</a><button data-logout type="button">${copy('Abmelden')}</button></div><p data-account-message role="status"></p>`;
   mountUsernameSettings(root.querySelector('[data-username-settings]'), { user, onChanged: changed => {
     const name = root.querySelector('[data-account-name]');
     if (name && changed.user.id === viewerId) name.textContent = changed.user.username;
   } });
+  void mountTourSettings(root.querySelector('[data-game-tour-settings]'));
   void mountPasskeySettings(root.querySelector('[data-passkey-settings]'));
   void mountEmailSettings(root.querySelector('[data-email-settings]'));
   mountAvatarUpload(root.querySelector('[data-avatar-upload]'));
