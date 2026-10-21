@@ -91,6 +91,17 @@ html:has(.wt-create-dialog[open]) { overflow: hidden; }
 .wt-waiting .wt-landscape-hint { background-color: #ddd7bd; }
 .wt-waiting [data-watten-copy-status]:empty { display: none; }
 
+/* The waiting room owns these live controls while the suite header rests. */
+html[data-watten-waiting="true"] .wt-main { margin-top: max(.5rem, env(safe-area-inset-top)); }
+.wt-waiting-tools { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem; margin: -.25rem 0 .75rem; }
+.wt-waiting-tools .wt-waiting-back { flex: 0 0 44px; width: 44px; padding: 0; }
+.wt-waiting-back svg { width: 22px; height: 22px; }
+.wt-waiting-tools .wt-waiting-rules { margin-inline-start: auto; padding-inline: .6rem; font-size: .88rem; }
+.wt-waiting-tools > .wt-language { flex: 0 0 56px; width: 56px; }
+.wt-waiting-tools > [data-watten-voice] { position: static; inset: auto; z-index: auto; }
+.wt-waiting-tools .wt-voice-panel { position: absolute; top: calc(100% + .35rem); right: 0; width: min(310px, calc(100vw - 64px)); max-height: min(440px, calc(100dvh - 100px)); overflow: auto; }
+.wt-waiting-tools .wt-voice-notice { max-width: calc(100vw - 40px); }
+
 @media (min-width: 540px) {
   .wt-lobby-intro > .wt-actions { flex: 0 0 auto; }
   .wt-create-choices { grid-template-columns: repeat(2, minmax(0, 1fr)); }

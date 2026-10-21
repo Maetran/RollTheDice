@@ -5,6 +5,7 @@ import { wattenAccountReturnPath } from "../multigame/routes.js";
 import { initializeWattenPwa } from "./pwa.js";
 import { t, prepareWattenCards, strikeName, suitName, STRIKES, SUITS } from "./cards.js";
 import { dismissLandscapeHint, joinFormMarkup, recipeMarkup, spectateFormMarkup, waitingRoomMarkup } from "./waiting-room.js";
+import { createWaitingRoomChrome } from "./waiting-room-chrome.js";
 import { createTableView } from "./table.js";
 import { createMotion, sameHandVersion } from "./motion.js";
 import { createRoundReview } from "./round-review.js";
@@ -69,6 +70,7 @@ let openSeatNotifications = null;
 let social = null;
 let decor = null;
 let voice = null;
+let waitingChrome = null;
 const cleanups = new Set();
 const beginnerGuide = createGameTour("watten");
 
@@ -98,6 +100,7 @@ function renderNav(auth) {
 
 /** Drop private state synchronously; late callbacks observe a new generation. */
 function teardown() {
+  waitingChrome?.destroy(); waitingChrome = null;
   roundReview.discard();
   beginnerGuide.discard();
   voice?.destroy(); voice = null;
@@ -512,6 +515,7 @@ function setHeading(name) {
 }
 
 function showMessage(title, body, actions = "") {
+  waitingChrome?.restore();
   decor?.suspend();
   motion.cancel();
   delete html.dataset.wattenActive;
@@ -929,7 +933,11 @@ function preserveFocus(update) {
   const key = active?.closest?.("[data-watten-command]") && app.contains(active)
     ? [active.dataset.wattenCommand, active.dataset.seat, active.dataset.value, active.dataset.kind] : null;
   update();
-  if (!key || document.activeElement !== document.body) return;
+  if (document.activeElement !== document.body) return;
+  if (active?.isConnected && app.contains(active) && !active.closest("[hidden]")) {
+    active.focus({ preventScroll: true }); return;
+  }
+  if (!key) return;
   const match = [...app.querySelectorAll("[data-watten-command]")].find(node =>
     [node.dataset.wattenCommand, node.dataset.seat, node.dataset.value, node.dataset.kind].join("|") === key.join("|"));
   match?.focus({ preventScroll: true });
@@ -977,15 +985,18 @@ function render(previous = null, live = false, accepted = false) {
     session.view = null;
     session.viewKind = "waiting";
     preserveFocus(() => {
+      waitingChrome?.park();
       root.innerHTML = waitingRoomMarkup(snapshot, {
         mode: session.spectator ? "spectator" : "member", viewerId: session.playerId,
         busy: Boolean(session.inFlight) || !session.bound,
       });
+      showWaitingChrome(snapshot, session.spectator ? "spectator" : "member");
     });
     openSeatNotifications?.update();
     syncDecor();
     return;
   }
+  waitingChrome?.restore();
   if (session.viewKind !== "table" || !session.view) {
     motion.cancel();
     session.view?.destroy?.();
@@ -1030,6 +1041,15 @@ function render(previous = null, live = false, accepted = false) {
     canAct: session.bound && !snapshot.paused, busy: Boolean(session.inFlight) || !session.bound });
 }
 
+function showWaitingChrome(snapshot, mode) {
+  waitingChrome?.show(app.querySelector("[data-watten-waiting-tools]"), {
+    member: mode === "member", canLeave: snapshot.room.status === "waiting",
+    busy: Boolean(session.inFlight) || !session.bound,
+    lobbyUrl: publicPageUrl("/watten"), rulesUrl: publicPageUrl("/watten/regeln"),
+    leaveLabel: lt("leaveLabel"), lobbyLabel: t("nav.lobby"), rulesLabel: t("nav.rules"),
+  });
+}
+
 function renderJoinPrompt() {
   const data = session.preview;
   const root = viewRoot();
@@ -1041,10 +1061,12 @@ function renderJoinPrompt() {
   session.viewKind = "join";
   setHeading(data.name);
   const locked = data.locked ?? data.room.recipe.password_required;
+  waitingChrome?.park();
   root.innerHTML = waitingRoomMarkup(data, {
     mode: "preview", viewerId: null,
     extra: joinFormMarkup({ locked, error: session.joinError, busy: session.joining, started: data.room.status !== "waiting" }),
   });
+  showWaitingChrome(data, "preview");
   decor?.update({ publicPhase: "preview" });
 }
 
@@ -1058,8 +1080,10 @@ function renderSpectatePrompt() {
   session.view = null;
   session.viewKind = "spectate";
   setHeading(data.name);
+  waitingChrome?.park();
   root.innerHTML = waitingRoomMarkup(data, { mode: "spectator", viewerId: null,
     extra: spectateFormMarkup({ error: session.spectateError, busy: false }) });
+  showWaitingChrome(data, "spectator");
   decor?.update({ publicPhase: "preview" });
 }
 
@@ -1099,7 +1123,9 @@ async function loadDetail(gen) {
 
 async function mountTable() {
   const gen = generation;
+  waitingChrome?.destroy();
   app.innerHTML = shellMarkup();
+  waitingChrome = createWaitingRoomChrome({ root: app, header: document.querySelector(".suite-header") });
   app.classList.add("wt-main--table");
   setConnection("connecting");
   if (!gameId) { showMessage(t("table.notFound"), t("table.notFoundBody"), lobbyLink()); return; }
@@ -1224,6 +1250,7 @@ app.addEventListener("click", event => {
     case "start": roomCommand("watten_start"); break;
     case "place-cpu": roomCommand("watten_place_cpu", { seat: Number(control.dataset.seat) }); break;
     case "remove-cpu": roomCommand("watten_remove_cpu", { seat: Number(control.dataset.seat) }); break;
+    case "waiting-back":
     case "leave-waiting": roomCommand("leave_waiting_game"); break;
     case "copy-link": void copyLink(control); break;
     case "dismiss-hint": dismissLandscapeHint(); control.closest("[data-watten-landscape-hint]")?.remove(); break;

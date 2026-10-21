@@ -349,7 +349,7 @@ function controller(f, acceptedResult) {
   const guideUpdates = [];
   const session = { snapshot: null, view: null, viewKind: "waiting", playerId: "p0", spectator: false, bound: true, bubbles: [] };
   const view = { ...f.view, motionSources: () => [...f.seats, f.deck], update: () => acceptedResult };
-  const context = { session, html, viewRoot: () => root, decor: null, voice: null, account: { id: 1 }, sameHandVersion, setHeading() {}, createTableView: () => view,
+  const context = { session, html, viewRoot: () => root, decor: null, voice: null, waitingChrome: null, account: { id: 1 }, sameHandVersion, setHeading() {}, createTableView: () => view,
     motion: f.motion, engineCommand() {}, liveMessage: () => "", preserveFocus: fn => fn(), matchProgress: null, rematch: null, openSeatNotifications: null,
     beginnerGuide: { update: state => guideUpdates.push(state) },
     roundReview: { update: () => ({ stage: "ready" }), afterMotion() {}, discard() {} },
