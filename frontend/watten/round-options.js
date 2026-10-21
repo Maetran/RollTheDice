@@ -11,7 +11,8 @@ const commandButton = (vm, kind, label, primary = false) => `<button type="butto
 function bloedelnConsentMarkup(vm) {
   const consent = vm.engine.preplay?.bloedeln_consent;
   if (!consent || !Array.isArray(consent.decisions) || consent.decisions.length !== 2
-      || vm.engine.last_trick || ["deal_complete", "match_complete"].includes(vm.engine.phase)) return "";
+      || vm.engine.last_trick || (!consent.pending && vm.engine.current_trick?.cards?.length)
+      || ["deal_complete", "match_complete"].includes(vm.engine.phase)) return "";
   const canChoose = vm.actions.includes("bloedeln_accept") && vm.actions.includes("bloedeln_decline");
   const agreed = consent.decisions.every(item => item.accepted === true);
   const decisions = consent.decisions.map(item => {

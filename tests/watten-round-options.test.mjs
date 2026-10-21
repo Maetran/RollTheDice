@@ -48,6 +48,15 @@ test("one no stays a visible declined result even after the second player answer
   assert.doesNotMatch(html, /data-watten-bloedeln-waiting/);
 });
 
+test("two yes answers confirm Blödeln, then the compact status clears space as the first card is played", () => {
+  const engine = { phase: "play", current_trick: { cards: [] }, preplay: { bloedeln_consent: {
+    pending: false, decisions: [{ seat: 2, accepted: true }, { seat: 3, accepted: true }],
+  } } };
+  assert.match(markup({ actions: [], engine }), /Ihr blödelt/);
+  engine.current_trick.cards.push({ seat: 0, card: "bells-7" });
+  assert.equal(markup({ actions: [], engine }), "");
+});
+
 test("paused play, completed first tricks and grandfathered rounds do not offer stale consent", () => {
   assert.equal(markup({ paused: true }), "");
   assert.equal(markup({ actions: [], engine: { phase: "play", last_trick: { winner: 0 }, preplay: {

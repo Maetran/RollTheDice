@@ -51,6 +51,7 @@ const ERRORS = new Set([
   "watten_deal_finished", "watten_already_joined", "watten_not_a_member", "watten_not_started",
   "watten_preplay_response_required", "watten_preplay_unavailable", "watten_schoeneres_requires_two_callers",
   "watten_bloedeln_choice_unavailable", "watten_bloedeln_decision_pending",
+  "watten_round_review_pending",
   "watten_retourschneider_decision_pending", "watten_retourschneider_unavailable",
   "watten_invalid_tournament_target", "watten_tournament_finished", "watten_tournament_roster_locked",
   "game_creation_temporarily_blocked", "authentication_required", "game_not_found", "watten_password_option_mismatch",
