@@ -272,6 +272,11 @@ export function createMotion({ win = window, doc = document } = {}) {
       return;
     }
     if (!transition.sameDeal) return;
+    // The final trick owns the terminal review window. Finish any older queued
+    // collection now so neither a match result nor the next deal overtakes it.
+    if (["deal_complete", "match_complete"].includes(engine.phase)
+      && (transition.collect || !["deal_complete", "match_complete"].includes(previous?.phase))
+      && collectionDelay(now()) > 0) cancel();
     flip(result.hand.nodes, captured);
     const time = now(), delay = collectionDelay(time);
     if ((transition.collect || result.trick.created.length) && (delay > TRICK_TIME ||
@@ -288,5 +293,7 @@ export function createMotion({ win = window, doc = document } = {}) {
     }
   }
 
-  return { enabled, cancel, destroy, capture, present };
+  return { enabled, cancel, destroy, capture, present,
+    collectionActive: () => [...ghosts].some(job => job.node.dataset.wtMotion === "collect"),
+    collectionRemaining: () => collectionDelay(now()) };
 }

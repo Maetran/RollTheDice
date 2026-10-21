@@ -5333,6 +5333,7 @@ export const WATTEN_MESSAGES = {
     "bid.pendingShort": "Geboten: {points} Punkte", "bid.counterTo": "Auf {points} bieten", "bid.goStake": "Gehen ({points})",
     "result.tricks": "Runde an {names}: +{points} Punkte.", "result.go": "Gegangen – Runde an {names}: +{points} Punkte.",
     "deal.over": "Runde beendet", "deal.next": "Nächste Runde", "deal.waitHost": "{name} teilt die nächste Runde aus.",
+    "deal.autoNext": "Gleich werden die nächsten Karten automatisch ausgeteilt.",
     "match.over": "Spiel beendet", "match.youWon": "Gewonnen!", "match.youLost": "Diesmal verloren", "match.winners": "{count} Sieger",
     "match.wonBy": "Sieg für {names}", "match.lossMark": "{count} Nockerl", "match.lossMarks": "{count} Nockerl",
     "match.lossMarksFor": "für {names}", "match.lossType.schneider": "Schneider",
@@ -5405,6 +5406,7 @@ export const WATTEN_MESSAGES = {
     "error.watten_preplay_unavailable": "Diese Rundenoption ist gerade nicht möglich.",
     "error.watten_schoeneres_requires_two_callers": "Schöneres ist nur zu zweit oder zu viert verfügbar.",
     "error.watten_retourschneider_decision_pending": "Zuerst müssen beide über den Retourschneider entscheiden.",
+    "error.watten_round_review_pending": "Die letzte Runde wird noch kurz gezeigt. Gleich geht es weiter.",
     "error.watten_retourschneider_unavailable": "Deine Wahl zum Retourschneider ist hier nicht mehr offen.",
   },
   en: {
@@ -5527,6 +5529,7 @@ export const WATTEN_MESSAGES = {
     "bid.pendingShort": "Bid: {points} points", "bid.counterTo": "Raise to {points}", "bid.goStake": "Fold ({points})",
     "result.tricks": "Deal to {names}: +{points} points.", "result.go": "Folded – deal to {names}: +{points} points.",
     "deal.over": "Deal finished", "deal.next": "Next deal", "deal.waitHost": "{name} deals the next hand.",
+    "deal.autoNext": "The next hand will be dealt automatically in a moment.",
     "match.over": "Match finished", "match.youWon": "You won!", "match.youLost": "Beaten this time", "match.winners": "{count} winners",
     "match.wonBy": "Victory for {names}", "match.lossMark": "{count} loss mark", "match.lossMarks": "{count} loss marks",
     "match.lossMarksFor": "for {names}", "match.lossType.schneider": "Schneider",
@@ -5599,6 +5602,7 @@ export const WATTEN_MESSAGES = {
     "error.watten_preplay_unavailable": "That round option is not available right now.",
     "error.watten_schoeneres_requires_two_callers": "Schöneres is available with two or four players.",
     "error.watten_retourschneider_decision_pending": "Both players must decide on the Retourschneider first.",
+    "error.watten_round_review_pending": "The last deal is still being shown briefly. Play continues in a moment.",
     "error.watten_retourschneider_unavailable": "Your Retourschneider choice is no longer open.",
   },
 };

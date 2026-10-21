@@ -132,7 +132,7 @@ test('a match reward dismissal survives reload and leaves a previous unseen matc
     await own.page.locator('[data-watten-match-progress-action=dismiss]').click();
     await expect(own.page.locator('[data-watten-match-progress]')).toBeHidden();
     await own.page.reload();
-    await expect(own.page.locator('[data-watten-match-result]')).toBeVisible();
+    await expect(own.page.locator('[data-watten-match-result]')).toBeVisible({ timeout: 10000 });
     await expect(own.page.locator('[data-watten-match-progress]')).toBeHidden();
     const account = await (await own.context.request.get('/api/watten/account')).json();
     expect(account.progress.pending.credits.map(item => item.game_id)).toEqual([older.split('/').pop()]);
