@@ -116,6 +116,7 @@ function teardown() {
 function navigate(path) {
   if (navigating) return;
   navigating = true;
+  window.ZDWA_APP_MODE?.prepareNavigation?.();
   teardown();
   location.assign(path);
 }
@@ -123,6 +124,7 @@ function navigate(path) {
 function reloadFresh() {
   if (navigating) return;
   navigating = true;
+  window.ZDWA_APP_MODE?.prepareNavigation?.();
   teardown();
   location.reload();
 }
@@ -145,7 +147,12 @@ document.addEventListener("visibilitychange", refreshAuth);
 window.addEventListener("pagehide", () => { if (page !== "rules") teardown(); });
 window.addEventListener("pageshow", event => {
   // A restored document may carry another account's socket and DOM state.
-  if (event.persisted && page !== "rules") reloadFresh();
+  if (event.persisted && page !== "rules") {
+    // An explicitly departed document may return with navigating still set.
+    // It must reload its identity rather than keep the torn-down old view.
+    navigating = false;
+    reloadFresh();
+  }
 });
 
 // ---------------------------------------------------------------------------

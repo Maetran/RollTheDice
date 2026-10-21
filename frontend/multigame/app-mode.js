@@ -105,6 +105,7 @@ export function initializeAppMode({
   let refreshPromise = null;
   let refreshRevision = 0;
   let suspended = false;
+  let navigatingAway = false;
   const pickers = new Map();
   const availableGames = () => [
     { id: "zdwa", name: "ZDWA", href: zdwaAppEntryUrl() },
@@ -242,6 +243,9 @@ export function initializeAppMode({
   };
 
   const receiveAuth = (auth) => {
+    // The outgoing document has already handed navigation to its owner.
+    // A late identity event must not replace that chosen destination.
+    if (navigatingAway) return false;
     if (latestAuth && (latestAuth.authenticated ? latestAuth.user?.id : null)
       !== (auth?.authenticated ? auth.user?.id : null)) {
       refreshRevision += 1;
@@ -286,14 +290,15 @@ export function initializeAppMode({
     dropPrivate();
     for (const picker of pickers.values()) picker.close();
   };
+  const prepareNavigation = () => { navigatingAway = true; suspend(); };
   // WebKit can cancel the old document's identity read before pagehide.
   // Retire that refresh before its rejection can replace the chosen page.
   window.addEventListener("beforeunload", suspend);
   window.addEventListener("pagehide", suspend);
   window.addEventListener("zdwa:auth-state", (event) => receiveAuth(event.detail));
-  window.addEventListener("focus", () => { suspended = false; void refresh(); });
+  window.addEventListener("focus", () => { if (!navigatingAway) { suspended = false; void refresh(); } });
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") { suspended = false; void refresh(); }
+    if (document.visibilityState === "visible") { if (!navigatingAway) { suspended = false; void refresh(); } }
     else suspend();
   });
 
@@ -307,13 +312,14 @@ export function initializeAppMode({
       return true;
     },
     refresh,
+    prepareNavigation,
     applyAuth: receiveAuth,
     canUseZilch: () => zilchAllowed,
   };
   window.ZDWA_APP_MODE = controller;
   // Keep the controller usable when a browser restores this document from bfcache.
   window.addEventListener("pageshow", event => {
-    if (!event.persisted) return;
+    if (!event.persisted || navigatingAway) return;
     suspended = false;
     void refresh();
   });
