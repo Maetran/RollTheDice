@@ -10,7 +10,8 @@
         "Der mobile Spielkopf zeigt kompakte Teamstände und übersichtliche Symbole. Verlassen bleibt mit Bestätigung erreichbar.",
         "Im Warteraum entfällt der grosse Seitenkopf. Sprache, Regeln und Sprachchat bleiben direkt im Wartebereich erreichbar.",
         "Ausgespielte Karten und die Stichrückschau sind im Hochformat grösser. Laufende Spielhinweise treten zurück; die Einführung bleibt erhalten.",
-        "Beim Blödeln wählen beide Nichtansager ausdrücklich Ja oder Nein und sehen die Antwort des anderen. Erst danach beginnt das Ausspielen; ein Nein verhindert Blödeln.",
+        "Auch der blinde Partner darf am eigenen Kartenzug bieten. Halten, Gehen und Aufbieten als Antwort bleiben beim wissenden Spieler.",
+        "Beide Nichtansager können sofort «Blödeln?» anfragen. Erst eine offene Anfrage wartet auf Ja/Nein; ohne Anfrage geht es normal los. Pflichtkarten werden erst beim Ausspielen gezeigt.",
         "Nach einer Gabe wird zuerst abgeräumt. Schlag, Farbe und der Rechte bleiben etwa drei Sekunden sichtbar; danach werden automatisch neue Karten gegeben. Auch das Endergebnis wartet auf das Abräumen."
       ]
     },
@@ -20,7 +21,8 @@
         "The mobile table header has compact team scores and orderly icons. Leaving still asks for confirmation.",
         "The large page header is hidden in the waiting room. Language, rules and voice chat stay directly available there.",
         "Played cards and trick review are larger in portrait. Ongoing game hints are quieter; the introduction stays available.",
-        "For Blödeln, both non-callers explicitly choose yes or no and see each other's answer. Card play waits for both; one no declines Blödeln.",
+        "The blind partner may also bid on their own card turn. Hold, fold and counterbid responses stay with the informed player.",
+        "Both non-callers can immediately request Blödeln. Only an open request waits for yes/no; without one, play starts normally. Forced cards are revealed only when played.",
         "After a deal, cards are collected first. Strike, suit and the Rechter remain visible for about three seconds before new cards are dealt automatically. The match result also waits for collection."
       ]
     }

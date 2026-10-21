@@ -200,10 +200,11 @@ Ansager sind am Spielernamen mit «Schlag» oder «Farbe» markiert. «Danke!» 
 grösser und bleibt höchstens bis zum Abschluss des ersten Stichs sichtbar. Einsatz und Bieten stehen
 unten bei den eigenen Karten. Auf Desktop bleibt der eigene Fächer mittig;
 im Tablet-Querformat sitzt der Aktionsbereich darüber. Stichgewinne sind für die
-eigene Seite grün, für die andere rot markiert. Im blinden Vierer entscheidet der
-wissende Spieler jedes Teams über Bieten, Halten, Gehen und Aufbieten: Geber
-beziehungsweise Gebernachbar. Er darf bieten, wenn er selbst oder sein Partner
-am Kartenzug ist. Bei einem gegnerischen Gebot kann nur der blinde Partner ihm
+eigene Seite grün, für die andere rot markiert. Im blinden Vierer darf auch der
+blinde Partner am eigenen Kartenzug bieten. Der wissende Spieler, Geber oder
+Gebernachbar, darf zusätzlich auf dem Kartenzug seines Partners bieten. Über
+Halten, Gehen und Aufbieten als Antwort entscheidet weiterhin nur der Wissende.
+Bei einem gegnerischen Gebot kann nur der blinde Partner ihm
 einmal privat sein Gefühl mitteilen; die Auswahl schliesst den Dialog. Der
 wissende Entscheider sendet kein Gegensignal. In offenen Spielen bleibt die
 gegenseitige Abfrage.
@@ -232,9 +233,10 @@ unpinned, tapping outside closes it. Announcers are labelled beside their
 names; the larger “Thanks!” remains visible until the first trick is complete. The stake and
 raising control sit below, beside your cards. Your desktop hand stays centred;
 landscape tablets place the action area above it. Trick wins are green for your side
-and red for the other side. In blind four-player play, each team's informed player
-decides bids, holds, folds and raises: the dealer or the dealer's neighbour.
-They may bid on their own or their partner's card turn. When receiving an
+and red for the other side. In blind four-player play, the blind partner may
+also bid on their own card turn. The informed teammate, the dealer or their
+neighbour, may additionally bid on their partner's turn. Only the informed
+player handles hold, fold and counterbid responses. When receiving an
 opposing bid, only the blind partner may send them one private feeling signal;
 answering closes the prompt. The informed decision maker sends no signal back.
 Open games retain the mutual prompt.
@@ -257,26 +259,31 @@ Einschauen: Ihre bisherigen Blätter werden mit dem Reststapel gemischt und beid
 bekommen je fünf neue Karten; andere Blätter bleiben gleich. Das ist mit erneuter
 beidseitiger Zustimmung wiederholbar. Bei normaler offener Ansage zu zweit oder
 viert können beide vor der Ansage Schlag und Farbe tauschen; Vorhand bleibt.
-Beim blinden Vierer können die beiden Nicht-Einschauer gemeinsam «Blödeln» wählen:
-Ihre ursprünglichen untersten Karten werden für alle aufgedeckt und müssen im
-ersten Stich gespielt werden, auch wenn eine andere Farbe ausgespielt wurde.
-Beide sehen sofort **Ja, blödeln** und **Nein**, während die Ansagenden zeigen
-und einschauen können. Jede Antwort ist für den anderen sichtbar. Vor der ersten
-Karte müssen beide geantwortet haben, auch wenn bereits ein Nein vorliegt. Ein
-Nein verhindert Blödeln; keine menschliche Antwort wird durch Warten ersetzt.
+Beim blinden Vierer sehen beide Nicht-Einschauer sofort **Blödeln?**, ohne
+zuerst ein Menü zu öffnen. Fragt einer an, sieht der andere **XYZ will blödeln**
+mit Ja/Nein. Bis zur Antwort darf keine Karte gespielt und kein Gebot eröffnet
+werden; die Ansagenden können weiterhin zeigen und einschauen. Ohne Anfrage
+beginnt das Ausspielen nach dem Einschauen normal. Ein Nein verhindert Blödeln
+für dieses Blatt. Bei Ja müssen beide ihre ursprüngliche unterste Karte im
+ersten Stich spielen, auch wenn eine andere Farbe ausgespielt wurde. Jede
+Pflichtkarte wird für die anderen erst beim tatsächlichen Ausspielen sichtbar.
+CPUs fragen und antworten pro Blatt stabil zufällig mit 50 % Wahrscheinlichkeit,
+unabhängig von ihren Karten; Warten ersetzt keine menschliche Antwort.
 “Allow a redeal” is a separate table option for two or four players, off by
 default. Until the first card is played, both callers may agree, including after
 inspection: their old hands are shuffled into the remaining stock, then each
 gets five new cards. Other hands stay the same. They may repeat this by agreeing
 again. In normal open two- or four-player games, the callers can agree to swap
 strike and suit before the announcement; the opening player stays the same.
-In blind four-player games, both non-lookers may agree to “Blödeln”: their original
-bottom cards are revealed to everyone and must be played in the first trick,
-even when a different suit is led.
-Both immediately see **Yes, play Blödeln** and **No**, while callers may show
-and inspect. Each answer is visible to the other player. Both must answer before
-the first card, even after the first no. One no declines Blödeln; waiting never
-replaces a human answer.
+In blind four-player games, both non-lookers immediately see **Blödeln?**
+without opening a menu. When one asks, the other sees **XYZ wants to play
+Blödeln** with yes/no. Until they answer, no card may be played and no bid opened;
+callers may still show and inspect. With no request, card play starts normally
+after inspection. A no declines Blödeln for this hand. A yes requires both to
+play their original bottom card in the first trick, even when a different suit
+is led. Others see each forced card only when it is actually played.
+CPUs make a stable random 50% request/response choice per deal, independent of
+their cards; waiting never replaces a human answer.
 
 Nach einer Gabe wird zuerst der letzte Stich abgeräumt. Schlag, Farbe und der
 Rechte werden anschliessend etwa drei Sekunden für alle aufgedeckt; danach
