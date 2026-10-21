@@ -97,6 +97,7 @@ for (const language of ["de", "en"]) {
     assert.equal(app.requests[0].url, "/api/deployment-notice");
     assert.equal(app.requests[0].options.cache, "no-store");
     assert.equal(app.requests[0].options.credentials, "same-origin");
+    assert.equal(app.requests[0].options.keepalive, true);
     await app.reply({ notice: app.notice() });
     assert.equal(app.banner.children[0].attributes.get("role"), "status");
     assert.equal(app.banner.children[0].children[0].textContent, DEPLOYMENT_NOTICE_MESSAGES[language].title);
@@ -182,31 +183,64 @@ test("malformed responses and network errors retain a warning with bounded backo
   app.controller.destroy();
 });
 
-test("timeouts abort hung fetches; visibility, online and bfcache restore fetch immediately", async () => {
+test("initial pageshow, visibility and online events reuse the pending startup read", async () => {
   const app = setup();
-  await app.runTimer(5000);
-  assert.equal(app.requests[0].options.signal.aborted, true);
-  await app.runTimer(6000);
+  app.event(app.host, "pageshow");
+  app.event(app.doc, "visibilitychange");
+  app.event(app.host, "online");
+  assert.equal(app.requests.length, 1);
+  assert.equal(app.requests[0].options.signal.aborted, false);
+  await app.reply({ notice: app.notice() });
+  assert.ok(app.banner);
+  app.controller.destroy();
+});
+
+test("hidden and offline pages let pending reads settle without rendering or scheduling more reads", async () => {
+  const app = setup();
   app.doc.visibilityState = "hidden";
   app.event(app.doc, "visibilitychange");
-  assert.equal(app.requests[1].options.signal.aborted, true);
-  assert.equal(app.timers.size, 0);
-  // A response from the abandoned generation must not create a stale warning.
-  await app.reply({ notice: app.notice() }, 1);
+  assert.equal(app.requests[0].options.signal.aborted, false);
+  await app.reply({ notice: app.notice() });
   assert.equal(app.banner, undefined);
+  assert.equal(app.timers.size, 0);
+  app.event(app.host, "online");
+  assert.equal(app.requests.length, 1);
   app.doc.visibilityState = "visible";
   app.event(app.doc, "visibilitychange");
-  assert.equal(app.requests.length, 3);
+  assert.equal(app.requests.length, 2);
   await app.reply({ notice: app.notice() });
   app.event(app.host, "pagehide");
   assert.equal(app.timers.size, 1); // Only expiry, no network polling.
   app.event(app.host, "pageshow");
-  assert.equal(app.requests.length, 4);
+  assert.equal(app.requests.length, 3);
+  app.event(app.host, "pagehide");
+  app.event(app.host, "pageshow");
+  assert.equal(app.requests.length, 3);
+  assert.equal(app.requests[2].options.signal.aborted, false);
   await app.reply({ notice: null });
+  await app.runTimer(3000);
   app.host.navigator.onLine = false; app.event(app.host, "offline");
+  assert.equal(app.requests[3].options.signal.aborted, false);
+  await app.reply({ notice: app.notice() });
+  assert.equal(app.banner, undefined);
+  assert.equal(app.timers.size, 0);
   app.host.navigator.onLine = true; app.event(app.host, "online");
   assert.equal(app.requests.length, 5);
+  await app.reply({ notice: null });
+  app.controller.destroy();
+});
+
+test("only timeout and explicit destruction abort a pending read and never schedule stale work", async () => {
+  const app = setup();
+  await app.runTimer(5000);
+  assert.equal(app.requests[0].options.signal.aborted, true);
+  await app.runTimer(6000);
+  assert.equal(app.requests.length, 2);
   app.controller.destroy();
   assert.equal(app.requests.at(-1).options.signal.aborted, true);
+  await app.reply({ notice: app.notice() });
+  app.event(app.host, "pageshow");
+  assert.equal(app.banner, undefined);
+  assert.equal(app.requests.length, 2);
   assert.equal(app.timers.size, 0);
 });

@@ -122,17 +122,18 @@ export function initializeDeploymentNotice({ window: host = window, document: do
     requestJob = job;
     try {
       const response = await host.fetch("/api/deployment-notice", {
-        cache: "no-store", credentials: "same-origin", headers: { Accept: "application/json" }, signal: controller.signal,
+        cache: "no-store", credentials: "same-origin", keepalive: true,
+        headers: { Accept: "application/json" }, signal: controller.signal,
       });
       if (!response.ok) throw new Error("deployment_notice_unavailable");
       const payload = await response.json();
-      if (requestJob !== job || destroyed) return;
+      if (requestJob !== job || destroyed || controller.signal.aborted) return;
       if (!payload || !("notice" in payload)) throw new Error("deployment_notice_invalid");
       // An explicit null is the server's clear signal. Malformed data must not
       // dismiss an already visible warning during a transient proxy failure.
       const notice = payload.notice === null ? null : normalizeDeploymentNotice(payload.notice, -Infinity);
       if (payload.notice !== null && !notice) throw new Error("deployment_notice_invalid");
-      render(notice && notice.expiresAt > now() ? notice : null);
+      if (visible()) render(notice && notice.expiresAt > now() ? notice : null);
       retryMs = POLL_MS;
     } catch (_) {
       if (requestJob === job) retryMs = Math.min(6000, retryMs * 2);
@@ -147,6 +148,12 @@ export function initializeDeploymentNotice({ window: host = window, document: do
 
   function pause() {
     clearPoll();
+    // Visibility changes and the initial pageshow often arrive while the
+    // first read is pending. Let that bounded read finish; cancelling it
+    // would create normal-navigation network failures and duplicate GETs.
+  }
+
+  function cancelRequest() {
     const job = requestJob;
     requestJob = null;
     if (job) { host.clearTimeout(job.timeout); job.controller.abort(); }
@@ -178,6 +185,7 @@ export function initializeDeploymentNotice({ window: host = window, document: do
     destroy() {
       destroyed = true;
       pause();
+      cancelRequest();
       clearNotice();
       dialogObserver?.disconnect();
       for (const remove of listeners) remove();

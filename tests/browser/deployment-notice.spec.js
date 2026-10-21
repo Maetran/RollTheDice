@@ -41,6 +41,33 @@ for (const path of ["/offline-spielen", "/zilch/offline-spielen"]) {
   });
 }
 
+test("a slow startup read survives normal page lifecycle events without cancellation or duplicate requests", async ({ page, context }) => {
+  let requests = 0, release;
+  const ready = new Promise(resolve => { release = resolve; });
+  const failures = [];
+  page.on("requestfailed", request => {
+    if (new URL(request.url()).pathname === "/api/deployment-notice") failures.push(request.failure()?.errorText);
+  });
+  await context.route("**/api/deployment-notice", async route => {
+    requests++;
+    await ready;
+    await route.fulfill({ json: { notice: announcement("slow-startup-release") } });
+  });
+  await page.goto("/regeln", { waitUntil: "domcontentloaded" });
+  await expect.poll(() => requests).toBe(1);
+  await page.evaluate(() => {
+    window.dispatchEvent(new Event("pageshow"));
+    window.dispatchEvent(new Event("online"));
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+  expect(requests).toBe(1);
+  release();
+  await expect(page.locator(noticeSelector)).toBeVisible();
+  await page.goto("/hausdepp/regeln");
+  await expect(page.locator(noticeSelector)).toBeVisible();
+  expect(failures).toEqual([]);
+});
+
 for (const language of ["de", "en"]) {
   for (const product of products) {
     test(`${product.game} ${language}: mobile rollout notice is readable, preserves focus and remembers OK across navigation`, async ({ page, context }) => {
