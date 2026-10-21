@@ -195,9 +195,9 @@ rund drei Sekunden sichtbar, mit Siegerrahmen und Spielernamen. Der letzte Stich
 kann lokal erneut angesehen werden. Im Hochformat nutzt der geschlossene
 Verlauf einen freien Platz auf dem Tisch; offene Rückschau und Gebotsentscheidung
 bleiben bei den eigenen Karten. Gegnerische Karten und Stichpakete sind grösser. Die kompaktere
-Rückschau lässt sich während der Partie dauerhaft einblenden. Nach Rundenende
-öffnet sie alle bis zu fünf Stiche ohne zusätzlichen Anheftschalter; Schlag,
-Farbe und der Rechte werden dann für alle aufgedeckt.
+Rückschau lässt sich während der Partie dauerhaft einblenden. Nach Spielende
+öffnet sie die bis zu fünf Stiche der letzten Gabe ohne zusätzlichen
+Anheftschalter; Schlag, Farbe und der Rechte bleiben für alle aufgedeckt.
 Gewonnene Stichpakete bleiben pro Spieler direkt neben seinem Namen sichtbar.
 Das Kreuz schliesst die Rückschau und löst ihre Anheftung; ungepinnt schliesst
 sie auch beim Antippen ausserhalb.
@@ -230,9 +230,9 @@ about three seconds with a winner outline and player names; the last trick can
 be reviewed locally. In portrait, the closed review uses a clear space on the
 table; open review and bid decisions remain beside your hand. Desktop
 centre cards, opponent hands and captured piles are larger. The compact review
-can stay pinned open during play. After each round, history opens with up to
-five tricks and no extra pin control; everyone can see the strike, trump suit
-and Rechter. Every player keeps their won trick
+can stay pinned open during play. At match end, history opens with up to
+five tricks from the final deal and no extra pin control; everyone can see the
+strike, trump suit and Rechter. Every player keeps their won trick
 packets beside their name. The close button also unpins the review; when
 unpinned, tapping outside closes it. Announcers are labelled beside their
 names; the larger “Thanks!” remains visible until the first trick is complete. The stake and
