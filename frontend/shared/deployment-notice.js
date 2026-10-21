@@ -5,6 +5,14 @@ const ACK_PREFIX = "rollthedice.deployment-notice.ack.";
 const POLL_MS = 3000;
 const REQUEST_TIMEOUT_MS = 5000;
 
+export function isOfflinePracticeDocument(doc, host) {
+  // The explicit marker also survives service-worker fallback at an online
+  // URL. Keep the original document class/path as a bridge for older caches.
+  return doc.documentElement?.dataset?.offlinePractice === "true"
+    || doc.body?.classList?.contains("practice-page")
+    || /^\/(?:zilch\/|zdwa\/)?offline-spielen\/?$/.test(host.location?.pathname || "");
+}
+
 export function normalizeDeploymentNotice(value, now = Date.now()) {
   if (!value || typeof value.id !== "string" || !/^[A-Za-z0-9._-]{1,80}$/.test(value.id)) return null;
   const restartAt = Date.parse(value.restart_at), expiresAt = Date.parse(value.expires_at);
@@ -14,6 +22,7 @@ export function normalizeDeploymentNotice(value, now = Date.now()) {
 
 /** One non-modal announcement per origin, without changing any game state. */
 export function initializeDeploymentNotice({ window: host = window, document: doc = document, now = Date.now } = {}) {
+  if (isOfflinePracticeDocument(doc, host)) return null;
   if (host[SINGLETON]) return host[SINGLETON];
   let current = null, banner = null, expiryTimer = null, pollTimer = null;
   let requestJob = null, retryMs = POLL_MS, paused = false, destroyed = false;

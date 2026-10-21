@@ -31,6 +31,7 @@ class OfflineRouteTests(IsolatedAsyncioTestCase):
                         response = await client.get(url)
                         self.assertEqual(response.status_code, 200)
                         self.assertIn(f'data-game="{game}"', response.text)
+                        self.assertIn('data-offline-practice="true"', response.text)
                         self.assertIn(f'data-online-home="{home}"', response.text)
                         self.assertIn(f'href="{manifest}', response.text)
                         self.assertIn("noindex", response.headers["x-robots-tag"])

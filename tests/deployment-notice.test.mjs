@@ -20,17 +20,20 @@ class Element extends EventTarget {
   remove() { if (this.parent) this.parent.children.splice(this.parent.children.indexOf(this), 1); this.parent = null; }
 }
 
-function setup(language = "de", { storageBlocked = false } = {}) {
+function setup(language = "de", { storageBlocked = false, offlineMarker = false, legacyOffline = false, path = "/regeln" } = {}) {
   let clock = Date.parse("2026-10-21T18:00:00Z"), timerId = 0;
   const timers = new Map(), requests = [], saved = new Map(), session = new Map();
   const host = new EventTarget(), doc = new EventTarget();
   doc.body = new Element(); doc.createElement = () => new Element(); doc.visibilityState = "visible";
+  doc.documentElement = { dataset: { offlinePractice: String(offlineMarker) } };
+  doc.body.classList = { contains: name => legacyOffline && name === "practice-page" };
   const storage = values => ({
     getItem(key) { if (storageBlocked) throw new Error("blocked"); return values.get(key) ?? null; },
     setItem(key, value) { if (storageBlocked) throw new Error("blocked"); values.set(key, value); },
   });
   Object.assign(host, {
     navigator: { onLine: true }, AbortController,
+    location: { pathname: path },
     localStorage: storage(saved), sessionStorage: storage(session),
     ZDWA_I18N: { getLanguage: () => language },
     setTimeout(callback, delay) { const id = ++timerId; timers.set(id, { callback, delay }); return id; },
@@ -62,6 +65,22 @@ function setup(language = "de", { storageBlocked = false } = {}) {
     get button() { return doc.body.children[0]?.children[1]; },
   };
 }
+
+test("local practice never creates a poller, even online or restored at an online URL", () => {
+  for (const options of [
+    { offlineMarker: true, path: "/spiel/restored-online-path" },
+    { legacyOffline: true, path: "/spiel/restored-online-path" },
+    { path: "/offline-spielen" }, { path: "/zilch/offline-spielen" }, { path: "/zdwa/offline-spielen" },
+  ]) {
+    const app = setup("de", options);
+    assert.equal(app.controller, null);
+    for (const type of ["online", "pageshow", "offline", "online"]) app.event(app.host, type);
+    app.event(app.doc, "visibilitychange");
+    assert.equal(app.requests.length, 0);
+    assert.equal(app.timers.size, 0);
+    assert.equal(app.banner, undefined);
+  }
+});
 
 test("only a bounded id and valid future time range form an active announcement", () => {
   const now = Date.now(), value = { id: "release.4-1_0", restart_at: new Date(now + 30000).toISOString(), expires_at: new Date(now + 90000).toISOString() };
