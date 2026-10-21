@@ -5,6 +5,7 @@ from dataclasses import replace
 
 import pytest
 
+from app.watten_bidding import WattenBiddingError
 from app.watten_cards import DealtCards, make_deck
 from app.watten_engine import (
     ACK_LIMIT,
@@ -187,6 +188,42 @@ def test_blind_actions_keep_bid_and_response_with_knower_and_feedback_with_its_p
     assert personal(state, decider)["actions"] == ["respond_hold", "respond_go", "respond_counter"]
     assert personal(state, partner)["actions"] == ["partner_feedback"]
     assert all(not personal(state, player)["actions"] for player in state.parties.parties[party])
+
+
+@pytest.mark.parametrize("cpu_knower", (False, True))
+def test_second_trick_blind_card_turn_keeps_offer_with_informed_partner_after_restore(cpu_knower):
+    # Same visible situation as the reported mobile table: the blind player A
+    # owns the card turn after C and D have played into the second trick. C is
+    # A's partner and the colour-announcing dealer; D names the strike.
+    hands = (("hearts-8", "acorns-8", "acorns-O", "leaves-9", "bells-10"),
+             ("hearts-9", "hearts-10", "hearts-U", "hearts-O", "hearts-K"),
+             ("bells-A", "bells-U", "leaves-8", "leaves-10", "bells-9"),
+             ("acorns-9", "bells-7", "leaves-K", "acorns-K", "leaves-7"))
+    used = {card for hand in hands for card in hand}
+    deal = DealtCards(hands, tuple(card for card in make_deck() if card not in used), tuple(hand[-1] for hand in hands))
+    setup = recipe(4, "ladinisch", True)
+    if cpu_knower:
+        setup = replace(setup, bindings=tuple(SeatBinding(item.player_id, None if item.player_id == "C" else item.account_id)
+                                             for item in setup.bindings))
+    state = ready(start_match(setup, "second-trick-bid", deal, first_dealer="C"))
+    for player, card in (("D", "acorns-9"), ("A", "hearts-8"), ("B", "hearts-9"), ("C", "bells-A"),
+                         ("C", "bells-U"), ("D", "bells-7")):
+        state = step(state, player, "play_card", card)
+    assert len(state.play.tricks) == 1 and state.play.current_player_id == "A"
+    assert state.bid_state.accepted_stake == 2
+    restored = restore_storage(json.loads(json.dumps(storage_payload(state))))
+    for current in (state, restored):
+        assert personal(current, "A")["card_turn"] == 0
+        assert personal(current, "A")["actions"] == ["play_card"]
+        knower = cpu_view(current, player_id="C") if cpu_knower else personal(current, "C")
+        assert knower["actions"] == ["bid"]
+        with pytest.raises(WattenBiddingError, match="designated_decider"):
+            step(current, "A", "bid")
+        offered = step(current, "C", "bid")
+        assert offered.phase == "bid_response" and offered.bid_state.pending.points == 3
+        assert offered.play == current.play
+        assert personal(offered, "A")["actions"] == []
+        assert personal(offered, "D")["actions"] == ["respond_hold", "respond_go", "respond_counter"]
 
 
 def test_public_thanks_is_the_only_permitted_difference_when_a_shown_rechter_changes():
