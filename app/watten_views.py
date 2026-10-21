@@ -16,6 +16,7 @@ from .watten_engine import (
     announcement_roles,
     bloedeln_cards,
     bloedeln_pending,
+    bloedeln_status,
     gestrichen_players,
     partner_feedback_recipient,
     partner_id,
@@ -77,9 +78,7 @@ def _public(state: EngineState) -> dict:
         "preplay": {"pending": None if state.preplay_request is None else {
             "kind": state.preplay_request.kind, "requester": state.preplay_request.requester,
             "responder": state.preplay_request.responder},
-            "bloedeln_cards": [{"seat": seat, "card": card} for seat, card in bloedeln_cards(state)],
-            "bloedeln_consent": {"pending": bloedeln_pending(state), "decisions": [] if state.bloedeln_decisions is None else [
-                {"seat": seat, "accepted": dict(state.bloedeln_decisions).get(seat)} for seat in preplay_seats(state, "bloedeln")]}},
+            "bloedeln_cards": [], "bloedeln_status": bloedeln_status(state)},
         "seats": [{"seat": seat, "player_id": binding.player_id,
                    "party": state.parties.party_of(binding.player_id),
                    "card_count": len(play.hands[seat]) if play else 5,
@@ -124,12 +123,15 @@ def _public(state: EngineState) -> dict:
 def _actions(state: EngineState, seat: int) -> list[str]:
     player = state.recipe.seats[seat]
     roles = announcement_roles(state)
-    choices = (["bloedeln_accept", "bloedeln_decline"] if bloedeln_pending(state)
-               and seat in preplay_seats(state, "bloedeln") and seat not in dict(state.bloedeln_decisions) else [])
+    choices = []
     if state.preplay_request is not None:
-        return choices + (["preplay_accept", "preplay_decline"] if seat == state.preplay_request.responder else [])
+        choices = ["preplay_accept", "preplay_decline"] if seat == state.preplay_request.responder else []
+        if not bloedeln_pending(state):
+            return choices
     requests = choices + [f"request_{kind}" for kind in ("schoeneres", "schlagwechsel")
-                if preplay_available(state, kind) and seat in preplay_seats(state, kind)]
+                if state.preplay_request is None and preplay_available(state, kind) and seat in preplay_seats(state, kind)]
+    if state.preplay_request is None and preplay_available(state, "bloedeln") and seat in preplay_seats(state, "bloedeln"):
+        requests.append("request_bloedeln")
     if state.phase == "strike":
         return requests + (["announce_strike"] if seat == roles.strike_announcer else [])
     if state.phase == "colour":
@@ -149,8 +151,8 @@ def _actions(state: EngineState, seat: int) -> list[str]:
         party = state.parties.party_of(player)
         bid_turn = player == state.play.current_player_id
         if state.recipe.profile.blind:
-            bid_turn = (player == state.parties.decider(party)
-                        and party == state.parties.party_of(state.play.current_player_id))
+            bid_turn = bid_turn or (player == state.parties.decider(party)
+                                   and party == state.parties.party_of(state.play.current_player_id))
         if (bid_turn and player not in gestrichen_players(state)
                 and party != state.bid_state.last_offering_party):
             actions.append("bid")
@@ -172,6 +174,12 @@ def _personal(state: EngineState, seat: int) -> dict:
     hand = state.play.hands[seat] if state.play else state.deal.hands[seat]
     view["viewer"] = {"seat": seat, "player_id": player}
     view["hand"] = [{"card": card} if hand_visible else {"back": True} for card in hand]
+    if hand_visible and state.bloedeln and state.play and not state.play.tricks:
+        # Only the owner's still-held obligation is revealed to that owner.
+        # Other original bottoms stay hidden until ordinary card play.
+        view["preplay"]["bloedeln_cards"] = [{"seat": own_seat, "card": card}
+                                             for own_seat, card in bloedeln_cards(state)
+                                             if own_seat == seat and card in hand]
     view["actions"] = _actions(state, seat)
     view["inspection"] = None
     if state.phase == "inspection" and seat in state.inspectors and seat not in state.acknowledged:

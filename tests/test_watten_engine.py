@@ -68,10 +68,12 @@ def ready(state, *, bloedeln=False):
         state = step(state, state.recipe.seats[seat], "show_ready")
     for seat in sorted(state.inspectors):
         state = step(state, state.recipe.seats[seat], "inspection_ack")
-    if state.bloedeln_decisions is not None and bloedeln is not None:
-        for seat in range(len(state.recipe.seats)):
-            if seat not in state.inspectors and seat not in dict(state.bloedeln_decisions):
-                state = step(state, state.recipe.seats[seat], "bloedeln_accept" if bloedeln else "bloedeln_decline")
+    if bloedeln is True and state.preplay_request is None:
+        seat = next(seat for seat in range(len(state.recipe.seats)) if seat not in state.inspectors)
+        state = step(state, state.recipe.seats[seat], "request_bloedeln")
+    if state.preplay_request is not None and state.preplay_request.kind == "bloedeln" and bloedeln is not None:
+        state = step(state, state.recipe.seats[state.preplay_request.responder],
+                     "preplay_accept" if bloedeln else "preplay_decline")
     return state
 
 
@@ -295,8 +297,8 @@ def test_storage_roundtrips_each_inspection_and_pending_response_boundary_and_re
                                 ("A", "inspection_ack", None), ("B", "inspection_ack", None)):
         state = step(state, player, kind, value)
         stages.append(state)
-    for player in ("C", "D"):
-        state = step(state, player, "bloedeln_decline")
+    for player, kind in (("C", "request_bloedeln"), ("D", "preplay_decline")):
+        state = step(state, player, kind)
         stages.append(state)
     state = step(state, "B", "play_card", legal_cards(state.play, state.bid_state, "B")[0])
     state = step(state, "A", "bid")
@@ -326,7 +328,8 @@ def test_storage_roundtrips_each_inspection_and_pending_response_boundary_and_re
 
 @pytest.mark.parametrize("dealer", tuple("ABCD"))
 @pytest.mark.parametrize("response", ("hold", "go", "counter"))
-def test_blind_decider_bids_on_partner_turn_and_only_blind_partner_advises_response(dealer, response):
+@pytest.mark.parametrize("initiator", ("knower", "blind"))
+def test_blind_current_player_or_knower_bids_and_only_opposing_knower_responds(dealer, response, initiator):
     state = ready(start_match(recipe(4, "ladinisch", True), "blind-deciders", dealt(), first_dealer=dealer))
     current = state.play.current_player_id
     state = step(state, current, "play_card", legal_cards(state.play, state.bid_state, current)[0])
@@ -334,9 +337,11 @@ def test_blind_decider_bids_on_partner_turn_and_only_blind_partner_advises_respo
     party = state.parties.party_of(blind_bidder)
     bidder = state.parties.decider(party)
     assert blind_bidder != bidder
-    with pytest.raises(WattenBiddingError, match="designated_decider"):
-        step(state, blind_bidder, "bid")
-    state = step(state, bidder, "bid")
+    other_blind = next(player for seat, player in enumerate(state.recipe.seats)
+                       if seat not in state.inspectors and player != blind_bidder)
+    with pytest.raises(WattenBiddingError, match="card_turn_required"):
+        step(state, other_blind, "bid")
+    state = step(state, blind_bidder if initiator == "blind" else bidder, "bid")
     responding_party = 1 - party
     decider = state.parties.decider(responding_party)
     partner = next(player for player in state.parties.parties[responding_party] if player != decider)

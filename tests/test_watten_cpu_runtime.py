@@ -80,6 +80,9 @@ def test_public_cpu_authority_uses_all_active_humans_and_honors_bans_and_rollbac
 @pytest.fixture
 def ready(monkeypatch):
     monkeypatch.setattr(runner, "CPU_POLICY_READY", True)
+    # Unrelated runner tests do not negotiate the optional random mini-game.
+    # Dedicated Blödeln cases below exercise real/pinned request and answer coins.
+    monkeypatch.setattr(cpu_policy, "_bloedeln_coin", lambda *_args: False)
     monkeypatch.setattr(runner, "THINK_MIN_SECONDS", 0.01)
     monkeypatch.setattr(runner, "THINK_MAX_SECONDS", 0.01)
     monkeypatch.setattr(runner, "TRICK_REVEAL_SECONDS", 0.0)
@@ -101,7 +104,7 @@ def accepted_engine(game, player, command):
 def complete_call(game_id):
     for number in range(8):
         state = games[game_id]["_watten"].engine
-        if state.phase == "play" and (state.bloedeln_decisions is None or len(state.bloedeln_decisions) == 2):
+        if state.phase == "play" and state.preplay_request is None:
             return
         player, command = next_move(game_id, count(number))
         accepted_engine(games[game_id], player, command)
@@ -298,34 +301,94 @@ def test_memory_is_committed_before_cpu_inspection_ack_closes_window_and_restore
     assert [view["phase"] for view in inspector_calls] == ["show_ready", "inspection"]
     for view, _memory in captured:
         if view["viewer"]["seat"] != 1:
-            assert "bloedeln_decline" in view["actions"] and view["hand"] == [{"back": True}] * 5
+            assert view["hand"] == [{"back": True}] * 5
     assert owners[0][0].user_id not in {item.account_id for item in game["_watten"].engine.recipe.bindings if item.account_id is None}
 
 
-def test_cpu_bloedeln_choice_is_saved_but_never_substitutes_for_the_remaining_human(server, ready, monkeypatch):
+def test_cpu_optional_bloedeln_request_is_saved_and_never_answers_for_human(server, ready, monkeypatch):
     deterministic_dealer(monkeypatch)
+    monkeypatch.setattr(cpu_policy, "_bloedeln_coin", lambda _snap, purpose: purpose == "request")
     game_id, _owners, sessions = local_started(server, count_players=4, blind=True, cpus=(3,))
     game = games[game_id]
 
     async def scenario():
         try:
             runner.watch_game(game)
-            await until(lambda: 3 in dict(game["_watten"].engine.bloedeln_decisions))
-            assert dict(game["_watten"].engine.bloedeln_decisions) == {3: False}
-            # No CPU runner or elapsed think interval answers for human seat 2.
+            await until(lambda: game["_watten"].engine.preplay_request is not None)
+            pending = game["_watten"].engine.preplay_request
+            assert (pending.kind, pending.requester, pending.responder) == ("bloedeln", 3, 2)
             await asyncio.sleep(0.04)
             for _ in range(3):
                 runner.watch_game(game)
             await asyncio.sleep(0.04)
-            assert dict(game["_watten"].engine.bloedeln_decisions) == {3: False}
+            assert game["_watten"].engine.preplay_request == pending
             with session_scope() as db:
                 saved = restore_watten_json(db.scalar(select(ActiveGame.state_json).where(ActiveGame.game_id == game_id)))
-            assert saved["_watten"].engine.bloedeln_decisions == ((3, False),)
-            await _handle_locked(sessions[2], "watten_command", engine_command(game_id, "bloedeln_accept", "human-choice"))
-            assert game["_watten"].engine.bloedeln_decisions == ((2, True), (3, False))
-            assert not game["_watten"].engine.bloedeln
+            assert saved["_watten"].engine.preplay_request == pending
+            await _handle_locked(sessions[2], "watten_command", engine_command(game_id, "preplay_decline", "human-choice"))
+            assert game["_watten"].engine.bloedeln_decisions == ((2, False), (3, True))
+            assert not game["_watten"].engine.bloedeln and game["_watten"].engine.preplay_request is None
         finally:
             await runner.stop_cpu_runners()
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("accepted", (False, True))
+def test_cpu_answers_human_bloedeln_request_from_hidden_hand_and_saves_only_own_answer(server, ready, monkeypatch, accepted):
+    deterministic_dealer(monkeypatch)
+    monkeypatch.setattr(cpu_policy, "_bloedeln_coin", lambda _snap, purpose: accepted and purpose == "answer")
+    game_id, _owners, sessions = local_started(server, count_players=4, blind=True, cpus=(3,))
+    game = games[game_id]
+
+    async def scenario():
+        try:
+            await _handle_locked(sessions[2], "watten_command", engine_command(game_id, "request_bloedeln", "human-request"))
+            await until(lambda: game["_watten"].engine.preplay_request is None)
+            engine = game["_watten"].engine
+            assert engine.phase == "show_ready" and engine.bloedeln is accepted
+            assert engine.bloedeln_decisions == ((2, True), (3, accepted))
+            for seat in range(4):
+                assert snapshot_watten(game, engine.recipe.seats[seat])["engine"]["preplay"]["bloedeln_cards"] == []
+            with session_scope() as db:
+                saved = restore_watten_json(db.scalar(select(ActiveGame.state_json).where(ActiveGame.game_id == game_id)))
+            assert saved["_watten"].engine == engine
+        finally:
+            await runner.stop_cpu_runners()
+
+    asyncio.run(scenario())
+
+
+def test_bound_blind_human_can_bid_and_rejoin_pending_offer_but_other_blind_cannot_answer(server, ready, monkeypatch):
+    deterministic_dealer(monkeypatch)
+    game_id, owners, sessions = local_started(server, count_players=4, blind=True, target=11)
+    game = games[game_id]
+    complete_call(game_id)
+    player, card = next_move(game_id, count(100))
+    accepted_engine(game, player, card)
+    state = game["_watten"].engine
+    blind = sessions[2]
+    assert state.play.current_player_id == blind.player_id and state.recipe.seats.index(blind.player_id) not in state.inspectors
+    data = engine_command(game_id, "bid", "human-blind-offer")
+
+    async def scenario():
+        await _handle_locked(blind, "watten_command", data)
+        before = game["_watten"]
+        assert before.engine.phase == "bid_response" and before.engine.play == state.play
+        with pytest.raises(ValueError, match="designated_decider"):
+            await _handle_locked(sessions[3], "watten_command", engine_command(game_id, "respond", "forged-answer", "counter"))
+        await _handle_locked(blind, "watten_command", data)
+        assert game["_watten"].bid_counters == before.bid_counters
+        with session_scope() as db:
+            saved = restore_watten_json(db.scalar(select(ActiveGame.state_json).where(ActiveGame.game_id == game_id)))
+        games[game_id] = saved
+        joined = GameSocketSession(CapturingSocket(owners[2]), saved, owners[2][0])
+        await _handle_locked(joined, "rejoin_game", {"action": "rejoin_game", "revision": saved["_watten"].room.revision,
+                                                     "player_id": blind.player_id, "expected_account_id": owners[2][0].user_id})
+        view = snapshot_watten(saved, joined.player_id)["engine"]
+        assert view["bid"]["pending"]["decider"] == before.engine.recipe.seats[1]
+        assert view["actions"] == [] and saved["_watten"].engine.play == state.play
+        assert sum(item.initiated for item in saved["_watten"].bid_counters) == 1
 
     asyncio.run(scenario())
 
@@ -592,7 +655,7 @@ def test_blind_cpu_card_turn_waits_for_cpu_knower_bid_decision_but_never_for_hum
                     assert isinstance(captured[0][1], runner.CpuWait)
                     assert captured[1][0] == card_player and captured[1][1].kind == "play_card"
             else:
-                assert captured[0][0] == card_player and captured[0][1].kind == "play_card"
+                assert captured[0][0] == card_player and captured[0][1].kind == ("bid" if raise_bid else "play_card")
         finally:
             await runner.stop_cpu_runners()
 
@@ -702,7 +765,7 @@ def test_actual_short_mixed_match_uses_only_personal_policy_inputs_and_one_resul
                 else:
                     view = snapshot_watten(game, human.player_id)["engine"]
                     actions = view["actions"]
-                    kind = next((kind for kind in ("bloedeln_decline", "announce_strike", "announce_colour", "show_ready", "inspection_ack", "play_card") if kind in actions), None)
+                    kind = next((kind for kind in ("preplay_decline", "announce_strike", "announce_colour", "show_ready", "inspection_ack", "play_card") if kind in actions), None)
                     value = "7" if kind == "announce_strike" else "bells" if kind == "announce_colour" else (
                         legal_cards(state.play, state.bid_state, human.player_id)[0] if kind == "play_card" else None)
                     if any(action.startswith("respond_") for action in actions):

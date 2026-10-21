@@ -56,7 +56,7 @@ MAX_SAMPLES: Final = 64
 ATTEMPTS_PER_SAMPLE: Final = 8
 COMMAND_KINDS: Final = frozenset({"announce_strike", "announce_colour", "show_ready", "inspection_ack", "play_card",
                                   "bid", "respond", "partner_feedback", "retourschneider", "preplay_accept", "preplay_decline",
-                                  "bloedeln_accept", "bloedeln_decline"})
+                                  "bloedeln_accept", "bloedeln_decline", "request_bloedeln"})
 _RESPONSE_ACTIONS: Final = frozenset({"respond_hold", "respond_go", "respond_counter"})
 _RESPONSES: Final = frozenset({"hold", "go", "counter"})
 _FEEDBACK: Final = frozenset({"good", "bad", "unsure"})
@@ -600,17 +600,24 @@ def _choose_colour(ctx: _Context) -> str:
     return max(WATTEN_SUITS, key=lambda suit: _hand_score(hand, ctx.model(strike, suit)))
 
 
+def _bloedeln_coin(snapshot: SeatSnapshot, purpose: str) -> bool:
+    """One unbiased per-deal/seat choice, stable across snapshots and restarts.
+
+    The server's random deal ID supplies entropy. Neither hand strength nor
+    any secret call enters this optional request/answer coin.
+    """
+    material = json.dumps(["watten-bloedeln-v1", snapshot.deal_id, snapshot.player_id, purpose], separators=(",", ":"))
+    return bool(hashlib.sha256(material.encode("utf-8")).digest()[0] & 1)
+
+
 def _preplay_answer(ctx: _Context) -> str:
     """Respond once from our own visible hand; never initiate renegotiations."""
     kind = ctx.snap.preplay_pending[0]
+    if kind == "bloedeln":
+        return "preplay_accept" if _bloedeln_coin(ctx.snap, "answer") else "preplay_decline"
     if ctx.snap.hand is None:
         return "preplay_decline"
     hand = ctx.hand
-    if kind == "bloedeln":
-        # The original bottom is still unknown before consent. Judge the whole
-        # visible hand, without pretending to know which card will be exposed.
-        high = sum(card_rank(card) == "A" for card in hand)
-        return "preplay_accept" if high >= 2 else "preplay_decline"
     strikes = tuple(strike for strike in STRIKES if not (strike == WELI_STRIKE and ctx.critical))
     values = {(strike, suit): _hand_score(hand, ctx.model(strike, suit)) for strike in strikes for suit in WATTEN_SUITS}
     if kind == "schlagwechsel":
@@ -715,14 +722,11 @@ def _choose(ctx: _Context, seed: int, budget: CpuBudget, skill: CpuSkill) -> Cpu
     def propose(kind: str, value: str | None = None, private: int | None = None) -> CpuProposal:
         return CpuProposal(snap.player_id, snap.deal_id, snap.opportunity, snap.phase, kind, value, private)
 
-    if "bloedeln_accept" in actions:
-        # Before the show our own hand is hidden, so decline without looking
-        # into engine cards. A visible hand may support the existing heuristic.
-        high = sum(card_rank(card) == "A" for card in ctx.hand) if snap.hand is not None else 0
-        return propose("bloedeln_accept" if high >= 2 else "bloedeln_decline")
-    if snap.preplay_pending is not None:
-        if "preplay_accept" in actions:
-            return propose(_preplay_answer(ctx))
+    if "request_bloedeln" in actions and _bloedeln_coin(snap, "request"):
+        return propose("request_bloedeln")
+    if snap.preplay_pending is not None and "preplay_accept" in actions:
+        return propose(_preplay_answer(ctx))
+    if snap.preplay_pending is not None and not snap.bloedeln_pending:
         return CpuWait(snap.deal_id, snap.opportunity, snap.phase, "watten_cpu_preplay_waiting")
     if "retourschneider" in actions:
         # The optional all-or-nothing challenge is deliberately conservative

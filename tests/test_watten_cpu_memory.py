@@ -83,10 +83,12 @@ class Table:
         for kind in ("show_ready", "inspection_ack"):
             for seat in sorted(state.inspectors):
                 self.act(state.recipe.seats[seat], kind)
-        if self.state.bloedeln_decisions is not None and bloedeln is not None:
-            for seat in range(len(state.recipe.seats)):
-                if seat not in state.inspectors and seat not in dict(self.state.bloedeln_decisions):
-                    self.act(state.recipe.seats[seat], "bloedeln_accept" if bloedeln else "bloedeln_decline")
+        if bloedeln is True and self.state.preplay_request is None:
+            seat = next(seat for seat in range(len(state.recipe.seats)) if seat not in state.inspectors)
+            self.act(state.recipe.seats[seat], "request_bloedeln")
+        if self.state.preplay_request is not None and self.state.preplay_request.kind == "bloedeln" and bloedeln is not None:
+            self.act(state.recipe.seats[self.state.preplay_request.responder],
+                     "preplay_accept" if bloedeln else "preplay_decline")
 
     def play(self, player, card=None):
         options = legal_cards(self.state.play, self.state.bid_state, player)
@@ -176,6 +178,26 @@ def test_blind_cpu_view_rejects_knower_sending_a_reverse_partner_signal():
     table.act("C", "partner_feedback", "good")
     assert read_personal_view(table.view("A"), player_id="A").partner_feedback == "good"
     assert read_personal_view(table.view("C"), player_id="C").own_feedback == "good"
+
+
+def test_blind_offer_and_answer_actions_cannot_be_forged_for_other_seats():
+    table = Table(start_match(cpu_recipe(4, "ladinisch", True), "bid-rights", blind_deal(), first_dealer="A"))
+    table.ready()
+    table.play("B", "hearts-O")
+    assert read_personal_view(table.view("C"), player_id="C").actions == ("play_card", "bid")
+    wrong_turn = copy.deepcopy(table.view("D"))
+    wrong_turn["actions"].append("bid")
+    with pytest.raises(WattenCpuMemoryError):
+        read_personal_view(wrong_turn, player_id="D")
+    table.act("C", "bid")
+    wrong_answer = copy.deepcopy(table.view("D"))
+    wrong_answer["actions"].append("respond_counter")
+    with pytest.raises(WattenCpuMemoryError):
+        read_personal_view(wrong_answer, player_id="D")
+    wrong_decider = copy.deepcopy(table.view("B"))
+    wrong_decider["bid"]["pending"]["decider"] = "D"
+    with pytest.raises(WattenCpuMemoryError):
+        read_personal_view(wrong_decider, player_id="B")
 
 
 def test_open_events_must_match_roles_values_and_existing_knowledge():

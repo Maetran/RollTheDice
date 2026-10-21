@@ -7,6 +7,7 @@ from dataclasses import replace
 import pytest
 
 import app.watten_cpu as cpu_policy
+from app.watten_bidding import WattenBiddingError
 from app.watten_cards import deal_cards, make_deck
 from app.watten_cpu import (
     MAX_SAMPLES,
@@ -90,8 +91,8 @@ def baseline(table, player):
         return CpuProposal(player, view["deal_id"], view["opportunity"], view["phase"], kind, value)
 
     actions = view["actions"]
-    if "bloedeln_decline" in actions:
-        return make("bloedeln_decline")
+    if "preplay_decline" in actions:
+        return make("preplay_decline")
     if "announce_strike" in actions:
         return make("announce_strike", "7")
     if "announce_colour" in actions:
@@ -130,7 +131,7 @@ def test_cpus_finish_every_confirmed_profile_with_engine_accepted_commands(count
         kinds = {proposal.kind for _, proposal in proposals}
         assert "play_card" in kinds and kinds <= {"announce_strike", "announce_colour", "show_ready",
                                                   "inspection_ack", "play_card", "bid", "respond", "partner_feedback",
-                                                  "bloedeln_accept", "bloedeln_decline"}
+                                                  "request_bloedeln", "preplay_accept", "preplay_decline"}
         for player, proposal in proposals:
             assert proposal.player_id == player
             # Command kinds, not view action names, reach the engine.
@@ -199,7 +200,7 @@ def test_cpu_declines_a_redeal_while_its_hand_is_hidden_instead_of_reading_engin
     assert turn(table, "B").kind == "preplay_decline"
 
 
-def test_cpu_bloedeln_plays_the_public_original_bottoms_only_in_the_first_trick():
+def test_cpu_bloedeln_plays_its_private_original_bottom_only_in_the_first_trick():
     table = Table(start_match(cpu_recipe(4, "ladinisch", True), "forced-bottom", blind_deal(), first_dealer="A"))
     table.ready(bloedeln=None)
     table.act("C", "request_bloedeln")
@@ -536,9 +537,9 @@ def test_blind_cpu_knower_can_bid_while_its_partner_owns_card_turn(monkeypatch, 
     table.play("B")
     assert table.state.play.current_player_id == "C"
     assert table.view("A")["actions"] == ["bid"]
-    assert table.view("C")["actions"] == ["play_card"]
+    assert table.view("C")["actions"] == ["play_card", "bid"]
     monkeypatch.setattr(cpu_policy, "_should_bid", lambda *_args: raise_bid)
-    assert turn(table, "C").kind == "play_card"
+    assert turn(table, "C").kind == ("bid" if raise_bid else "play_card")
     decision = turn(table, "A")
     if raise_bid:
         assert decision.kind == "bid"
@@ -548,6 +549,29 @@ def test_blind_cpu_knower_can_bid_while_its_partner_owns_card_turn(monkeypatch, 
     else:
         assert isinstance(decision, CpuWait)
         assert table.state.phase == "play"
+
+
+def test_blind_cpu_can_offer_on_own_turn_without_learning_the_hidden_call_and_cannot_answer(monkeypatch):
+    monkeypatch.setattr(cpu_policy, "_should_bid", lambda *_args: True)
+    inputs, decisions = [], []
+    for variant in ("base", "secret"):
+        table = Table(start_match(cpu_recipe(4, "ladinisch", True), "blind-own-bid", blind_deal(variant), first_dealer="A"))
+        table.ready()
+        table.play("B", "hearts-O")
+        inputs.append((table.view("C"), table.memories["C"]))
+        assert (table.memories["C"].strike, table.memories["C"].suit, table.memories["C"].inspected) == (None, None, None)
+        decision = turn(table, "C")
+        assert decision.kind == "bid"
+        decisions.append(decision)
+        table.propose("C", decision)
+        assert table.view("B")["bid"]["pending"]["decider"] == "B"
+        with pytest.raises(WattenBiddingError, match="designated_decider"):
+            table.act("D", "respond", "counter")
+        table.act("B", "respond", "hold")
+        assert table.state.play.current_player_id == "C" and table.view("C")["actions"] == ["play_card"]
+        with pytest.raises(WattenBiddingError, match="alternating_bid"):
+            table.act("C", "bid")
+    assert inputs[0] == inputs[1] and decisions[0] == decisions[1]
 
 
 def _with_points(state, winner, points):

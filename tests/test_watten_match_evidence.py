@@ -117,15 +117,6 @@ class NativeMatch:
                 self.act(self.engine.recipe.seats[seat], "show_ready")
             for seat in sorted(self.engine.inspectors):
                 self.act(self.engine.recipe.seats[seat], "inspection_ack")
-        if self.engine.bloedeln_decisions is not None:
-            before = self.runtime.bid_counters
-            # This driver explicitly declines through each bound human/CPU actor,
-            # including the newly eligible pair after the dealer rotates.
-            for seat, player in enumerate(self.engine.recipe.seats):
-                if seat not in self.engine.inspectors and seat not in dict(self.engine.bloedeln_decisions):
-                    self.act(player, "bloedeln_decline")
-            assert len(self.engine.bloedeln_decisions) == 2
-            assert self.runtime.bid_counters == before
         assert self.engine.phase == "play"
 
     def card(self):
