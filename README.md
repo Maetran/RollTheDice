@@ -38,14 +38,16 @@ Gespeicherte Partien können danach fortgesetzt werden. Das neue Image wird
 zuerst gebaut; vor dem ersten Stopp wartet der Deploy nach der Ankündigung
 30 Sekunden. Die Anzeige benötigt diese App-Version; bereits geöffnete ältere
 Versionen erhalten sie erst nach dem nächsten Laden. Stille Releases
-unterdrücken den Vorabhinweis nicht.
+unterdrücken den Vorabhinweis nicht. Rein lokale Offline-Übungen führen keine
+Rollout-Abfragen aus.
 
 **English:** A notice at the top of the open app announces an upcoming rollout
 and brief server restart. “OK” acknowledges that announcement. Saved games can
 continue afterwards. Deployment builds the new image first and waits 30 seconds
 after announcing before the first stop. The display requires this app version;
 already open older versions receive it after their next load. Silent releases
-still show the advance notice.
+still show the advance notice. Fully local offline practice makes no rollout
+requests.
 
 ## Einsteigertouren / beginner tours
 

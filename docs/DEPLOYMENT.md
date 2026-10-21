@@ -908,7 +908,8 @@ Spielstände bleiben erhalten und das Spiel kann danach weitergehen. Die
 Bestätigung schliesst nur den Hinweis im Browser; sie verzögert den Rollout
 nicht. Hintergrund-Tabs holen den aktuellen Hinweis beim Zurückkehren nach.
 Offline oder vollständig geschlossene Anwendungen können keine Live-Meldung
-empfangen.
+empfangen. Rein lokale Offline-Übungen starten auch bei bestehender
+Netzverbindung keinen Rollout-Poller.
 
 Der Deploy baut und prüft zuerst, kündigt danach an und wartet vor dem ersten
 Containerstopp 30 Sekunden. Ein fehlgeschlagener Build unterbricht das laufende
@@ -933,7 +934,9 @@ API returns only the notice ID and UTC restart/expiry timestamps. Open apps poll
 every three seconds and show a translated top notice with **OK**, explaining the
 brief restart, preserved saved games and continuation afterwards. Acknowledging
 does not delay deployment. Background tabs refresh on return; offline or closed
-apps cannot receive a live notice. These polls do not count as visitor traffic.
+apps cannot receive a live notice. Fully local offline practice never starts a
+rollout poller, even with an available connection. These polls do not count as
+visitor traffic.
 
 The deployment validates and builds while the current service stays live, then
 announces, waits 30 seconds, stops for a consistent backup and starts the
