@@ -252,8 +252,14 @@ async function expectStage(item, count) {
       }
       return failures;
     }), { message: 'the first history trick shows complete mini-card SVGs and player names inside its scroller' }).toEqual([]);
-    await expect(history.locator('[data-wt-history-pin]')).toBeVisible();
-    await expectReachable(page, '[data-wt-history-pin]');
+    if (['deal_complete', 'match_complete'].includes(engine.phase)) {
+      await expect(history.locator('[data-wt-history-pin]')).toHaveCount(0);
+      await expect(history).toHaveAttribute('data-pinned', 'false');
+      await expect(history).toHaveAttribute('data-finished', 'true');
+    } else {
+      await expect(history.locator('[data-wt-history-pin]')).toBeVisible();
+      await expectReachable(page, '[data-wt-history-pin]');
+    }
     await expectReachable(page, '[data-wt-history-close]');
     const closeBox = await history.locator('[data-wt-history-close]').boundingBox();
     expect(closeBox.width).toBeGreaterThanOrEqual(44);

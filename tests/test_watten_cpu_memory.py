@@ -154,6 +154,26 @@ def test_blind_call_events_and_wrong_event_bindings_fail_closed():
             observe(memory, view, (event,))
 
 
+def test_blind_cpu_view_rejects_knower_sending_a_reverse_partner_signal():
+    table = Table(start_match(cpu_recipe(4, "ladinisch", True), "blind-signal-contract", blind_deal(), first_dealer="A"))
+    table.ready()
+    table.act("B", "bid")
+    view = table.view("A")
+    assert "partner_feedback" not in view["actions"]
+    reverse_action = copy.deepcopy(view)
+    reverse_action["actions"].append("partner_feedback")
+    with pytest.raises(WattenCpuMemoryError):
+        read_personal_view(reverse_action, player_id="A")
+    for viewer in ("A", "C"):
+        reverse_feedback = copy.deepcopy(table.view(viewer))
+        reverse_feedback["feedback"] = [{"sender": "A", "recipient": "C", "value": "good", "sequence": 1}]
+        with pytest.raises(WattenCpuMemoryError):
+            read_personal_view(reverse_feedback, player_id=viewer)
+    table.act("C", "partner_feedback", "good")
+    assert read_personal_view(table.view("A"), player_id="A").partner_feedback == "good"
+    assert read_personal_view(table.view("C"), player_id="C").own_feedback == "good"
+
+
 def test_open_events_must_match_roles_values_and_existing_knowledge():
     table = Table(start_match(cpu_recipe(2), "open-events", dealt(2), first_dealer="A"))
     _, events = table.act("B", "announce_strike", "9")

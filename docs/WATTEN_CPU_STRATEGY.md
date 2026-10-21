@@ -41,7 +41,10 @@ both sides' match cannot be raised just for a fictitious fold advantage.
 
 There is no scripted opening-round bidding ladder and no automatic bid merely
 because the action is legal. Feedback is assessed only while receiving a bid;
-an authorized partner may state good, bad or unsure once for that offer.
+an authorized partner may state good, bad or unsure once for that offer. In blind
+four-player play only the blind teammate sends feedback to the informed
+decision maker. The informed CPU may initiate a bid on either teammate's card
+turn and remains responsible for hold, fold and counterbid decisions.
 
 ## Soft playing preferences
 

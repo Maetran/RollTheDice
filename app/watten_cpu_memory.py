@@ -474,6 +474,10 @@ def read_personal_view(view: object, *, player_id: str) -> SeatSnapshot:
         item = _object(item, "sender recipient value sequence")
         if type(item["value"]) is not str or item["value"] not in FEEDBACK_VALUES or not _int(item["sequence"], 1):
             _fail()
+        if profile.blind and (item["sender"] not in players or item["recipient"] not in players
+                              or players.index(item["sender"]) in inspectors
+                              or players.index(item["recipient"]) not in inspectors):
+            _fail()
         if partner is not None and (item["sender"], item["recipient"]) == (players[partner], player_id):
             partner_feedback = item["value"]
         elif partner is not None and (item["sender"], item["recipient"]) == (player_id, players[partner]):
@@ -483,7 +487,8 @@ def read_personal_view(view: object, *, player_id: str) -> SeatSnapshot:
     if not _int(view["feedback_opportunity"]):
         _fail()
     if "partner_feedback" in actions and (phase != "bid_response" or partner is None
-                                             or parties[seat] == pending[0] or own_feedback is not None):
+                                             or parties[seat] == pending[0] or own_feedback is not None
+                                             or (profile.blind and seat in inspectors)):
         _fail()
     played = {card for _, card in current} | {card for cards, _ in (history or ()) for _, card in cards}
     if last is not None:

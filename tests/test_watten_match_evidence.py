@@ -158,7 +158,8 @@ def test_real_multi_deal_chains_restart_replay_and_exact_terminal_public_evidenc
     assert all(item.initiated == item.countered == item.held == item.went == 0 for item in match.runtime.bid_counters)
     match.ready()
     match.card()
-    bidder = match.engine.play.current_player_id
+    card_player = match.engine.play.current_player_id
+    bidder = match.engine.parties.decider(match.engine.parties.party_of(card_player)) if blind else card_player
     bid_command = match.act(bidder, "bid")
     before = match.runtime.bid_counters
     assert match.apply(bidder, bid_command)[0]
@@ -177,7 +178,9 @@ def test_real_multi_deal_chains_restart_replay_and_exact_terminal_public_evidenc
     assert match.runtime.bid_counters == before
     match.ready()
     match.card()
-    match.act(match.engine.play.current_player_id, "bid")
+    card_player = match.engine.play.current_player_id
+    bidder = match.engine.parties.decider(match.engine.parties.party_of(card_player)) if blind else card_player
+    match.act(bidder, "bid")
     match.respond("counter")
     match.respond("go")
     match.assert_counts()
