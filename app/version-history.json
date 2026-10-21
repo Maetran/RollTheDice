@@ -2434,5 +2434,12 @@
     "date": "2026-10-21",
     "bump": "patch",
     "summary": "Einheitliche Spielbuttons, übersichtliche Kontoeinstellungen und eine informativere Watten-Lobby. / Consistent game buttons, clearer account settings and a more informative Watten lobby."
+  },
+  {
+    "version": "4.1.0",
+    "revision": "305bef6c19b7ab25207e080be4c1eb3e46e500a9",
+    "date": "2026-10-21",
+    "bump": "minor",
+    "summary": "Einführungen, Rollout-Hinweise, zehn Wirtshauskulissen und klarere Entscheidungen am Kartentisch. / Introductions, advance rollout notices, ten tavern ambiences and clearer decisions at the card table."
   }
 ]
