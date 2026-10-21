@@ -18,6 +18,7 @@ from .hausdepp_state import hausdepp_progress, hausdepp_waiting_summary
 
 
 def snapshot_hausdepp(game: GameDict, viewer_id: str | None = None) -> dict:
+    from .hausdepp_cpu_tempo import cpu_tempo_permissions
     from .hausdepp_departure import departure_permissions
     from .hausdepp_engine import project_state
     from .hausdepp_table_props import table_props_projection
@@ -73,6 +74,7 @@ def snapshot_hausdepp(game: GameDict, viewer_id: str | None = None) -> dict:
         "_voice_enabled": game.get("_voice_enabled", True) is True,
         "_waiting_permissions": waiting_permissions(game, valid_viewer),
         "_departure_permissions": departure_permissions(game, valid_viewer),
+        "_cpu_tempo": cpu_tempo_permissions(game, valid_viewer),
         "_waiting_mode": waiting["waiting_mode"], "_manual_start": waiting["manual_start"],
         "_waiting_capacity": game["_expected"], "_free_seats": waiting["free_seats"],
         "_replaceable_cpus": waiting["replaceable_cpus"],

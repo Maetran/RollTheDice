@@ -1,7 +1,9 @@
 # Hausdepp: Wirtshauskulisse
 
-Die Kulisse besteht aus echten Raum- und Objektaufnahmen. Die vier Dateien
-werden lokal mit der Anwendung ausgeliefert; zur Wiedergabe ist kein Aufruf
+Die Kulisse besteht aus echten Raum- und Objektaufnahmen. Die bisherige
+Raumkulisse bleibt unverändert; neun neue Mischungen ergänzen sie auf zehn.
+Zusammen mit drei gemeinsamen Geräuschdetails werden 13 Dateien lokal mit der
+Anwendung ausgeliefert; zur Wiedergabe ist kein Aufruf
 von Freesound oder eines anderen Audiodienstes nötig. Es wurde keine Musik,
 synthetische Stimme oder erkennbare Prominentenstimme hinzugefügt.
 
@@ -24,6 +26,30 @@ Die Ausgangsdateien sind die öffentlichen HQ-MP3-Vorschauen derselben Werke.
 Ein gesonderter Fluchruf gehört nicht zu diesen Assets. Die Raumaufnahme
 enthält das natürliche Stimmengewirr des Pubs.
 
+## Zehn Kulissen beim Einschalten
+
+Bei jedem tatsächlichen Ausschalten und erneuten Einschalten wählt der Browser
+eine der zehn Raumkulissen zufällig. Wiederholtes Einschalten eines bereits
+aktiven Sounds und die Fortsetzung auf derselben Seite behalten die Auswahl.
+Geladen werden nur der ausgewählte Raum und die drei kleinen Detaildateien;
+höchstens ein decodierter Raum bleibt im Arbeitsspeicher. Der HTTP-Cache kann
+bereits geladene Varianten wiederverwenden.
+
+`tavern-room-02.mp3` bis `tavern-room-10.mp3` sind neun eigenständige
+Neumischungen der oben dokumentierten, bereits verwendeten vier Aufnahmen.
+Unterschiedliche Ausschnitte und Abschnittsfolgen, sanfte Raumfilter und
+Stereobreiten, leise versetzte Raumanteile und sparsame Gläser-, Geschirr- oder
+Lachdetails geben ihnen unterschiedliche Verläufe. Sie sind keine neuen
+Aufnahmen aus neun anderen Lokalen. Die bisherige Kulisse und die drei
+Detaildateien bleiben bytegenau unverändert. Musik, künstliche Stimmen und
+Tonhöhenänderungen werden nicht ergänzt.
+
+Die vollständigen Mischrezepte und technischen Messwerte stehen in
+[`references/hausdepp-ambience-variants.json`](references/hausdepp-ambience-variants.json).
+[`scripts/build_tavern_ambience.py`](../scripts/build_tavern_ambience.py)
+erstellt die neun Mischungen reproduzierbar aus den vorhandenen Dateien mit
+FFmpeg, ohne Netzabruf oder zusätzliche Projektabhängigkeiten.
+
 ## Bearbeitung
 
 Bearbeitet mit FFmpeg 7.1 (`libmp3lame`), 44.1 kHz. Ein Hochpass bei 100 Hz
@@ -42,7 +68,7 @@ den Spitzen und entsprechend einen niedrigeren Durchschnittspegel.
 | `dishwasher.mp3` | 3–16 s; 0.15 s Ein- und 0.8 s Ausblendung | 13 s | Mono / 80 kbit/s | 130’656 Bytes | −7.1 dBFS |
 | `laughter.mp3` | 3–11 s; 0.3 s Ein- und 1.2 s Ausblendung | 8 s | Mono / 80 kbit/s | 80’762 Bytes | −7.2 dBFS |
 
-Gesamt: **1’696’880 Bytes**, etwa **1.62 MiB**. Die Containerdauer kann wegen
+Die vier bisherigen Basisdateien zusammen: **1’696’880 Bytes**, etwa **1.62 MiB**. Die Containerdauer kann wegen
 des MP3-Encoder-Paddings um einige Hundertstelsekunden abweichen. Beim
 gapless Decodieren beträgt die Raumaufnahme genau 5’159’700 Samples je Kanal.
 
@@ -67,3 +93,29 @@ SHA-256
 2bbe62e430ec011c016abec7b132a8ee13bf31196ea6c0bccb82bbe6b9e94f42  dishwasher.mp3
 3e750f23bfb80978dcfa691fb85610aa3cb802a446372c7ad588e1c118e756a2  laughter.mp3
 ```
+
+## Technische Werte der neun Neumischungen
+
+Jede neue Kulisse dauert 108 s: 44.1 kHz, Stereo, MP3 mit 96 kbit/s,
+1’296’866 Bytes. Eine Aktivierung mit den drei Detaildateien lädt damit
+1’589’046 Bytes (rund 1.52 MiB). Alle 13 ausgelieferten Audiodateien zusammen
+belegen 13’368’674 Bytes (rund 12.75 MiB), werden aber nicht gemeinsam geladen.
+
+| Datei | Mischung | Lautheit | Decodierter Spitzenpegel |
+| --- | --- | ---: | ---: |
+| `tavern-room-02.mp3` | Nebenraum | -23.48 LUFS | -7.334 dBFS |
+| `tavern-room-03.mp3` | Fenstertisch | -23.52 LUFS | -7.499 dBFS |
+| `tavern-room-04.mp3` | Hintere Stube | -23.50 LUFS | -7.305 dBFS |
+| `tavern-room-05.mp3` | Gemuetliche Runde | -23.50 LUFS | -7.291 dBFS |
+| `tavern-room-06.mp3` | Tresenseite | -23.50 LUFS | -7.276 dBFS |
+| `tavern-room-07.mp3` | Ruhige Ecke | -23.49 LUFS | -7.394 dBFS |
+| `tavern-room-08.mp3` | Am Stammtisch | -23.55 LUFS | -7.449 dBFS |
+| `tavern-room-09.mp3` | Abendstube | -23.45 LUFS | -7.294 dBFS |
+| `tavern-room-10.mp3` | Tisch am Rand | -23.54 LUFS | -7.234 dBFS |
+
+Alle neun Dateien wurden vollständig und ohne Fehler decodiert. Jede enthält
+exakt 4’762’800 Samples je Kanal. Der gemessene Pegelsprung am decodierten
+Loop-Übergang liegt bei jeder Variante unter ihrem grössten inneren
+Sample-Sprung. Die vier Basisdateien wurden per SHA-256 unverändert bestätigt.
+Dies ist eine technische Assetprüfung, keine subjektive Hörabnahme und keine
+Ausführung der Anwendungs-Testsuite.

@@ -23,6 +23,24 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## Unveröffentlicht / Unreleased
+
+Hausdepp bekommt mehr Abwechslung im Hintergrund und einen zügigeren CPU-Abschluss.
+Hausdepp gains more background variety and a faster CPU finish.
+
+### HAUSDEPP
+
+**Deutsch:** Beim Einschalten der Wirtshausgeräusche wird eine von zehn sehr
+leisen Kulissen zufällig gewählt. Nur die gewählte Aufnahme und gemeinsame
+Geräuschdetails werden geladen. Wer allein gegen CPUs spielt und seine Karten
+fertig hat, kann mit «CPUs schneller» die verbleibenden Pausen der Runde um
+70 % verkürzen; eine Mindestpause hält die Züge nachvollziehbar.
+
+**English:** Enabling tavern sounds randomly selects one of ten very quiet
+ambiences. Only the selected recording and shared sound details load. When the
+only human has finished their cards against CPUs, “Speed up CPUs” shortens the
+remaining pauses in the round by 70%; a minimum pause keeps play readable.
+
 ## 4.0.1 — 2026-10-21
 
 Die Navigation und Kontoeinstellungen sind übersichtlicher; die Watten-Lobby erklärt das Spiel auch nach der Anmeldung.

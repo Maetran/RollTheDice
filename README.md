@@ -611,11 +611,28 @@ normally remain credited. Tournament departure applies to the whole session;
 earlier rounds and XP remain intact. Spectators can use the same button to
 return to the lobby immediately, even when disconnected. This only stops watching.
 
+**Schneller CPU-Abschluss / Faster CPU finish:** Spielst du allein gegen CPUs
+und hast deine Karten regulär fertig gespielt, erscheint an ihrer bisherigen
+Stelle «CPUs schneller». Einmal antippen verkürzt die verbleibenden CPU-Pausen
+dieser Runde um 70 %, mit mindestens 400 ms zum Mitverfolgen. Kartenbewegungen
+passen sich an; Entscheidungen und Wertung bleiben gleich. Die nächste Runde
+beginnt wieder im Normaltempo. Mit weiteren Menschen am Tisch gibt es den
+Schalter nicht.
+
+When you are the only human and have finished your hand normally, “Speed up
+CPUs” appears where your cards were. Tap once to shorten the remaining CPU
+pauses in this round by 70%, with a 400 ms minimum so you can follow play.
+Card movement adapts; decisions and scoring stay the same. The next round
+returns to normal speed. The control is unavailable with other humans at the
+table.
+
 **Lokale Wirtshauskulisse / Local tavern ambience:** Der Notenschalter startet
 freiwillig eine sehr leise Kulisse aus Stimmengewirr, Gläsern, Geschirr und
-gelegentlichem Lachen, auch bei CPU-Partien. Vier kleine Dateien (zusammen
-1.62 MiB) werden erst beim Einschalten geladen und im normalen HTTP-Cache
-wiederverwendet. Die Wiedergabe bleibt lokal, ohne Cloudflare Realtime.
+gelegentlichem Lachen, auch bei CPU-Partien. Bei jedem Einschalten wird eine
+von zehn Raumkulissen zufällig gewählt. Nur diese Aufnahme und drei gemeinsame
+Detaildateien werden geladen, zusammen höchstens etwa 1.62 MiB. Der normale
+HTTP-Cache wird wiederverwendet; im Arbeitsspeicher bleibt höchstens eine
+decodierte Raumaufnahme. Die Wiedergabe bleibt lokal, ohne Cloudflare Realtime.
 Kurze Töne bestätigen Sound-/Sprachchat-/Mikrofonschalter nur bei aktiviertem
 Sound; beim Ausschalten erklingt ein letzter Abschaltton. Systemlautstärke und
 Audiogeräte gelten. Turniere und Neu erstellen auf derselben Seite behalten
@@ -623,8 +640,10 @@ die Einstellung; Verlassen, Abmelden oder Schliessen beendet sie.
 [Aufnahmen, CC0-Lizenzen und Bearbeitung](docs/HAUSDEPP_AUDIO_ASSETS.md).
 
 The music-note switch opts into very quiet pub ambience, including CPU games.
-Four small files (1.62 MiB total) load only when enabled and reuse the normal
-HTTP cache. Playback stays local without Cloudflare Realtime. Short tones
+Each time it is switched on, one of ten ambience mixes is chosen at random.
+Only that room loop and three shared detail clips load, at most about 1.62 MiB
+in total. They reuse the normal HTTP cache; memory retains at most one decoded
+room recording. Playback stays local without Cloudflare Realtime. Short tones
 confirm sound, voice and microphone changes only while sound is enabled;
 switching sound off plays one final acknowledgement. Use system volume and
 audio devices. Tournaments and Create again on the same page retain the

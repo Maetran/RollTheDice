@@ -310,7 +310,17 @@ function groupSpan(group) {
   return (group.delay || 0) + (group.duration || 380) + Math.max(0, group.count - 1) * stagger;
 }
 
+function atCpuTempo(group, fastCpu) {
+  if (!fastCpu) return group;
+  const paced = { ...group };
+  for (const key of ["duration", "travel", "rest", "fade", "delay", "stagger", "staggerBudget"]) {
+    if (typeof paced[key] === "number") paced[key] *= .3;
+  }
+  return paced;
+}
+
 function presentGroups(groups, options, previous) {
+  groups = groups.map(group => atCpuTempo(group, options.fastCpu));
   if (!groups.length) return;
   if (options.reducedMotion || document.hidden) {
     stopPresentation(options.gameId);
@@ -671,7 +681,7 @@ export function cardMotionCompletion(gameId, { signal } = {}) {
   });
 }
 
-function explainAcceptedState(state, { gameId, playerId, peekCaption }, prepared) {
+function explainAcceptedState(state, { gameId, playerId, peekCaption, fastCpu = false }, prepared) {
   const previous = prepared?.previous;
   if (previous && state.version < previous.version) return;
   const current = copyState(state);
@@ -688,7 +698,7 @@ function explainAcceptedState(state, { gameId, playerId, peekCaption }, prepared
   const instantPile = ["play", "afterthrow", "gamble"].includes(event.type)
     && state.discard.length > previous.discard.length
     && previous.discard.every((card, index) => state.discard[index] === card);
-  const options = { gameId, playerId, before, after, reducedMotion, instantPile };
+  const options = { gameId, playerId, before, after, reducedMotion, instantPile, fastCpu };
   const actorId = event.player_id;
   const receivedState = { ...state, viewer_id: playerId };
   const groups = [];
@@ -719,8 +729,8 @@ function explainAcceptedState(state, { gameId, playerId, peekCaption }, prepared
   if (event.type === "draw") {
     // Refilling is a separate hand receipt. It must not erase or postpone the
     // public card being read on the pile, nor visually delay a playable hand.
-    moveCards(receivingGroup("draw", "stock", actorId, event.drawn_count || 0, receivedState, previous,
-      { duration: 380, stagger: 55, staggerBudget: 110 }), options);
+    moveCards(atCpuTempo(receivingGroup("draw", "stock", actorId, event.drawn_count || 0, receivedState, previous,
+      { duration: 380, stagger: 55, staggerBudget: 110 }), fastCpu), options);
   } else if (event.type === "pickup") {
     groups.push(receivingGroup("pickup", "pile", actorId, event.picked_up_count || 0, receivedState, previous,
       { cards: previous.discard, face: actorId === playerId, duration: 400, stagger: 20, staggerBudget: 240 }));

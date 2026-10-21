@@ -117,8 +117,45 @@ async function finishedRenderer(page, fixture, { spectator = false, tournament =
   else await page.reload();
   await expect(page.locator('#hausdeppResult')).toBeVisible();
   return { id, board, self, loser, sent,
-    publish() { for (const socket of simulatedSockets) socket.send(JSON.stringify({ scoreboard: board })); },
+    publish(extra = {}) { for (const socket of simulatedSockets) socket.send(JSON.stringify({ scoreboard: board, ...extra })); },
   };
+}
+
+for (const language of ['de', 'en']) {
+  test(`finished solo player can speed up CPUs in the vacant hand area (${language})`, async ({ page }) => {
+    const fixture = await setup(page, language);
+    const live = await finishedRenderer(page, fixture);
+    const { board, self } = live;
+    board._finished = false;
+    board._hausdepp.phase = 'playing';
+    board._hausdepp.loser_id = null;
+    board._hausdepp.current_player_id = board._hausdepp.players.find(player => player.id !== self).id;
+    board._hausdepp.players = board._hausdepp.players.map(player => ({ ...player,
+      finished: player.id === self, hand_count: player.id === self ? 0 : 3,
+    }));
+    board._cpu_tempo = { fast: false, can_speed_up: true };
+    live.publish();
+    const button = page.getByRole('button', { name: language === 'de' ? 'CPUs schneller' : 'Speed up CPUs', exact: true });
+    for (const width of [320, 1280]) {
+      await page.setViewportSize({ width, height: 844 });
+      await expect(button).toBeVisible();
+      const bounds = await button.boundingBox();
+      expect(bounds.width).toBeLessThan(250);
+      expect(bounds.height).toBeGreaterThanOrEqual(44);
+      expect(await button.evaluate(node => Boolean(node.closest('.hd-hand-region')))).toBe(true);
+      await expect(page.locator('#hausdeppHand')).toBeHidden();
+    }
+    await button.click();
+    await expect.poll(() => live.sent.find(message => message.action === 'hausdepp_speed_up_cpus')).toBeTruthy();
+    const command = live.sent.find(message => message.action === 'hausdepp_speed_up_cpus');
+    expect(command.round_number).toBe(1);
+    board._cpu_tempo = { fast: true, can_speed_up: false };
+    live.publish({ hausdepp_command: { command_id: command.command_id, accepted: true, version: board._hausdepp.version } });
+    await expect(page.getByRole('button', { name: language === 'de' ? 'Schnelles CPU-Tempo' : 'Faster CPU play', exact: true })).toBeDisabled();
+    board._cpu_tempo = { fast: false, can_speed_up: false };
+    live.publish();
+    await expect(page.locator('#hausdeppCpuTempo')).toBeHidden();
+  });
 }
 
 async function expectCompactGeometry(page, width, height) {

@@ -103,7 +103,9 @@ def test_configure_rotating_dealer_and_active_peek_without_replacing_seats(datab
     finish_round(game)
     version = game["_hausdepp"]["version"]
     assert finalize_hausdepp_result(game)["result_persisted"]
+    game["_hausdepp_cpu_fast_round"] = 1
     start_next_round(game, "p0", version)
+    assert "_hausdepp_cpu_fast_round" not in game
     assert game["_id"] == "stable-table"
     assert game["_hausdepp"]["phase"] == "peeking"
     assert game["_hausdepp"]["dealer_id"] == "p0"

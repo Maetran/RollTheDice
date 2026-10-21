@@ -14,9 +14,12 @@ from secrets import SystemRandom
 
 from .game_state import games, multiplayer_pause_reason
 from .game_types import HAUSDEPP_GAME_TYPE, game_type_from_state
+from .hausdepp_cpu_tempo import fast_cpu_tempo, paced_cpu_delay
 
 logger = logging.getLogger(__name__)
 _TASKS: dict[str, asyncio.Task] = {}
+_SLEEPING: set[asyncio.Task] = set()
+_TEMPO_WAKES: set[asyncio.Task] = set()
 _RANDOM = SystemRandom()
 _MEMORIES: OrderedDict[str, tuple[int, int, dict]] = OrderedDict()
 
@@ -178,39 +181,69 @@ async def _run(game: dict, *, finalize_game=None) -> None:
 
     game_id = str(game["_id"])
     memories = _memories_for(game)
-    pending: dict[str, tuple[tuple, float]] = {}
+    # Unscaled deadlines arbitrate concurrent throws. The separately paced
+    # deadline controls only waiting: a readability floor must never turn a
+    # faster reaction into a participant-order tie.
+    pending: dict[str, tuple[tuple, float, float]] = {}
     previous_actor = None
     clock = _now
-    presentation_until = clock() + _presentation_delay(game.get("_hausdepp") or {})
+    presentation_until = clock() + paced_cpu_delay(game, _presentation_delay(game.get("_hausdepp") or {}))
+    fast = fast_cpu_tempo(game)
+
+    def update_tempo() -> None:
+        nonlocal pending, presentation_until, fast
+        if not fast and fast_cpu_tempo(game):
+            now = clock()
+            pending = {actor: (window, sampled_deadline, now + paced_cpu_delay(game, max(0.0, deadline - now)))
+                       for actor, (window, sampled_deadline, deadline) in pending.items()}
+            presentation_until = now + paced_cpu_delay(game, max(0.0, presentation_until - now))
+            fast = True
 
     def human_landing() -> float:
         return game.get("_hausdepp_presentation_until") or 0.0
 
     try:
         while cpu_action_is_due(game) and games.get(game_id) is game:
+            update_tempo()
             choices = _cpu_choices(game, memories)
             eligible = {actor for actor, _, _ in choices}
             pending = {actor: wait for actor, wait in pending.items() if actor in eligible}
+            sampled_at = clock()
             for actor, projection, command in choices:
                 window = _decision_window(projection, command)
                 if actor not in pending or pending[actor][0] != window:
-                    pending[actor] = (window, clock() + _delay(projection, command, following=actor == previous_actor))
+                    delay = _delay(projection, command, following=actor == previous_actor)
+                    pending[actor] = (window, sampled_at + delay, sampled_at + paced_cpu_delay(game, delay))
             if not pending:
                 break
             actor_id = min(pending, key=lambda actor: pending[actor][1])
-            window, deadline = pending[actor_id]
+            window, _, deadline = pending[actor_id]
             game["_hausdepp_cpu_thinking"] = True
             # Keep the independently sampled CPU deadlines and their ordering.
             # Public cards land before the next computer move; a computer refill
             # closes no afterthrow and need not wait. Human commands stay open.
             landing = 0.0 if window[1] == "draw" else human_landing()
-            await asyncio.sleep(max(0.0, max(deadline, presentation_until, landing) - clock()))
+            task = asyncio.current_task()
+            _SLEEPING.add(task)
+            try:
+                await asyncio.sleep(max(0.0, max(deadline, presentation_until, landing) - clock()))
+            except asyncio.CancelledError:
+                if task not in _TEMPO_WAKES or task.cancelling() != 1:
+                    raise
+                task.uncancel()
+                # Continue this same runner with its sampled reactions, pending
+                # windows and strategy memory intact. Only waiting changes.
+                continue
+            finally:
+                _SLEEPING.discard(task)
+                _TEMPO_WAKES.discard(task)
             async with game_lock(game):
                 if not cpu_action_is_due(game) or games.get(game_id) is not game:
                     break
                 if window[1] != "draw" and human_landing() > clock():
                     # A human card was played during this wait; let it land first.
                     continue
+                update_tempo()
                 # Compute after the presentation delay: a human afterthrow may
                 # have changed the table. Unrelated draws never restart a wait.
                 decision = next((choice for choice in _cpu_choices(game, memories) if choice[0] == actor_id), None)
@@ -222,7 +255,7 @@ async def _run(game: dict, *, finalize_game=None) -> None:
                     pending.pop(actor_id, None)
                     continue
                 apply_hausdepp_command(game, actor_id, command, trusted_cpu=True)
-                presentation_until = clock() + _presentation_delay(game["_hausdepp"])
+                presentation_until = clock() + paced_cpu_delay(game, _presentation_delay(game["_hausdepp"]))
                 memories[actor_id].remember(projection, command)
                 pending.pop(actor_id, None)
                 previous_actor = actor_id
@@ -233,6 +266,8 @@ async def _run(game: dict, *, finalize_game=None) -> None:
     except HausdeppRuleError:
         logger.exception("Hausdepp CPU could not apply its legal decision for %s", game_id)
     finally:
+        _SLEEPING.discard(asyncio.current_task())
+        _TEMPO_WAKES.discard(asyncio.current_task())
         game["_hausdepp_cpu_thinking"] = False
         if game.get("_finished") or game.get("_aborted"):
             _MEMORIES.pop(game_id, None)
@@ -247,6 +282,14 @@ def maybe_schedule_cpu_turn(game: dict, *, finalize_game=None) -> None:
         return
     if cpu_action_is_due(game):
         _TASKS[game_id] = asyncio.create_task(_run(game, finalize_game=finalize_game), name=f"hausdepp-cpu:{game_id}")
+
+
+async def refresh_cpu_tempo(game: dict) -> None:
+    """Wake only a runner's sleep; never replace or resample its reactions."""
+    task = _TASKS.get(str(game["_id"]))
+    if task in _SLEEPING and task not in _TEMPO_WAKES and not task.cancelling():
+        _TEMPO_WAKES.add(task)
+        task.cancel()
 
 
 async def stop_cpu_runner(game_id: str) -> None:

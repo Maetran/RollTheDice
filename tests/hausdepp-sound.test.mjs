@@ -62,7 +62,9 @@ function setup({ fetchAsset, decode, resume, suspend, random = () => 0 } = {}) {
   }
   const fetch = async (url, options) => {
     const request = { url, options }; requests.push(request);
-    return fetchAsset ? fetchAsset(request) : { ok: true, arrayBuffer: async () => new ArrayBuffer(8) };
+    return fetchAsset ? fetchAsset(request) : { ok: true, arrayBuffer: async () => {
+      const data = new ArrayBuffer(8); data.asset = url; return data;
+    } };
   };
   const sound = createHausdeppSound({ AudioContext: Context, fetch, lifecycle, random,
     onState: state => states.push(state),
@@ -99,7 +101,7 @@ test("opt-in loads bounded same-origin clips once and routes only to local speak
   assert.equal(await app.sound.setEnabled(true), true);
   assert.equal(app.contexts.length, 1); assert.equal(app.requests.length, 4);
   for (const request of app.requests) {
-    assert.match(request.url, /^\/static\/audio\/hausdepp\/[a-z-]+\.mp3\?v=/);
+    assert.match(request.url, /^\/static\/audio\/hausdepp\/[a-z0-9-]+\.mp3\?v=/);
     assert.equal(request.options.mode, "same-origin"); assert.equal(request.options.credentials, "omit");
     assert.equal(request.options.cache, "force-cache");
   }
@@ -112,6 +114,41 @@ test("opt-in loads bounded same-origin clips once and routes only to local speak
   assert.equal(app.tones().length, 1, "rapid confirmations must not sum into a louder sound");
   await app.sound.setEnabled(true);
   assert.equal(app.requests.length, 4); assert.equal(app.clips().length, 1);
+  app.sound.destroy();
+});
+
+test("each of the ten room choices loads only that room and the three shared details", async () => {
+  for (let index = 0; index < 10; index++) {
+    // Include both ends of Math.random's range and every interval boundary.
+    const app = setup({ random: () => index === 9 ? 0.9999999999999999 : index / 10 });
+    assert.equal(await app.sound.setEnabled(true), true);
+    const filename = index === 0 ? "tavern-room" : `tavern-room-${String(index + 1).padStart(2, "0")}`;
+    assert.equal(app.requests.length, 4);
+    assert.deepEqual(app.requests.map(request => request.url.split("/").at(-1).split("?")[0]),
+      [`${filename}.mp3`, "glasses.mp3", "dishwasher.mp3", "laughter.mp3"]);
+    assert.match(app.clips()[0].buffer.data.asset, new RegExp(`/${filename}\\.mp3\\?v=`));
+    app.sound.destroy();
+  }
+});
+
+test("only a fresh off-to-on selects again, and decoded room caching stays bounded", async () => {
+  const rolls = [0.1, 0, 0.9, 0, 0.1, 0];
+  const app = setup({ random: () => rolls.shift() });
+  await app.sound.setEnabled(true);
+  const firstRoom = app.clips()[0];
+  await app.sound.setEnabled(true);
+  app.sound.unlock(); await turn();
+  assert.equal(app.clips()[0], firstRoom);
+  assert.equal(app.requests.length, 4);
+  assert.equal(rolls.length, 4, "same-page continuation must preserve the room and random sequence");
+  await app.sound.setEnabled(false);
+  await app.sound.setEnabled(true);
+  assert.match(app.clips()[0].buffer.data.asset, /\/tavern-room-10\.mp3\?v=/);
+  await app.sound.setEnabled(false);
+  await app.sound.setEnabled(true);
+  assert.match(app.clips()[0].buffer.data.asset, /\/tavern-room-02\.mp3\?v=/);
+  assert.equal(app.requests.length, 6, "returning to an evicted room refetches it without retaining all ten decoded rooms");
+  assert.equal(app.requests.filter(request => !request.url.includes("tavern-room")).length, 3);
   app.sound.destroy();
 });
 
@@ -153,6 +190,95 @@ test("late decoding stays silent after off and a new opt-in reuses only decoded 
   assert.equal(await first, false); assert.equal(app.clips().length, 0);
   assert.equal(await app.sound.setEnabled(true), true);
   assert.equal(app.requests.length, 4); assert.equal(app.clips().length, 1);
+  app.sound.destroy();
+});
+
+test("late decoding of an old room cannot replace the newly selected room or survive a round trip", async () => {
+  const decodes = [], rolls = [0, 0.9, 0, 0, 0];
+  const app = setup({ random: () => rolls.shift(), decode: data => {
+    if (!data.asset.includes("tavern-room")) return Promise.resolve({ data, duration: 4 });
+    const work = deferred(); decodes.push({ ...work, data }); return work.promise;
+  } });
+  const first = app.sound.setEnabled(true); await turn();
+  assert.equal(decodes.length, 1);
+  await app.sound.setEnabled(false);
+  const second = app.sound.setEnabled(true); await turn();
+  assert.equal(decodes.length, 2);
+  assert.equal(app.requests[0].options.signal.aborted, true);
+  decodes[1].resolve({ data: decodes[1].data, duration: 4 });
+  assert.equal(await second, true);
+  const newest = app.clips()[0];
+  assert.match(newest.buffer.data.asset, /\/tavern-room-10\.mp3\?v=/);
+  decodes[0].resolve({ data: decodes[0].data, duration: 4 });
+  assert.equal(await first, false);
+  assert.equal(app.clips()[0], newest);
+  await app.sound.setEnabled(false);
+  const third = app.sound.setEnabled(true); await turn();
+  assert.equal(decodes.length, 3, "stale decoding must not populate a second cached room");
+  decodes[2].resolve({ data: decodes[2].data, duration: 4 });
+  assert.equal(await third, true);
+  assert.match(app.clips()[0].buffer.data.asset, /\/tavern-room\.mp3\?v=/);
+  assert.equal(app.requests.length, 6);
+  app.sound.destroy();
+});
+
+test("an old failed request cannot disable a newer room activation", async () => {
+  const firstRequest = deferred(), rolls = [0, 0.9, 0];
+  const app = setup({ random: () => rolls.shift(), fetchAsset: request => {
+    if (request.url.includes("/tavern-room.mp3")) return firstRequest.promise;
+    return { ok: true, arrayBuffer: async () => new ArrayBuffer(8) };
+  } });
+  const first = app.sound.setEnabled(true); await turn();
+  await app.sound.setEnabled(false);
+  assert.equal(await app.sound.setEnabled(true), true);
+  firstRequest.reject(new Error("old request cancelled"));
+  assert.equal(await first, false);
+  assert.equal(app.sound.snapshot().status, "playing");
+  assert.equal(app.clips().length, 1);
+  app.sound.destroy();
+});
+
+test("returning to the same filename cannot revive its cancelled decode job", async () => {
+  const decodes = [], rolls = [0, 0.9, 0, 0];
+  const app = setup({ random: () => rolls.shift(), decode: data => {
+    if (!data.asset.includes("tavern-room")) return Promise.resolve({ data, duration: 4 });
+    const work = deferred(); decodes.push(work); return work.promise;
+  } });
+  const first = app.sound.setEnabled(true); await turn();
+  await app.sound.setEnabled(false);
+  const second = app.sound.setEnabled(true); await turn();
+  await app.sound.setEnabled(false);
+  const third = app.sound.setEnabled(true); await turn();
+  assert.equal(decodes.length, 3);
+  decodes[0].resolve({ duration: 4, retired: true });
+  decodes[1].resolve({ duration: 4, retired: true });
+  assert.equal(await first, false); assert.equal(await second, false);
+  assert.equal(app.sound.snapshot().status, "loading");
+  assert.equal(app.clips().length, 0);
+  const newest = { duration: 4, retired: false };
+  decodes[2].resolve(newest);
+  assert.equal(await third, true);
+  assert.equal(app.clips()[0].buffer, newest);
+  app.sound.destroy();
+});
+
+test("shared detail requests stay deduplicated while a new room loads", async () => {
+  const details = deferred(), retiredRoom = deferred(), rolls = [0, 0.9, 0];
+  const app = setup({ random: () => rolls.shift(), fetchAsset: request => {
+    if (request.url.includes("/tavern-room.mp3")) return retiredRoom.promise;
+    if (!request.url.includes("tavern-room")) return details.promise;
+    return { ok: true, arrayBuffer: async () => new ArrayBuffer(8) };
+  } });
+  const first = app.sound.setEnabled(true); await turn();
+  await app.sound.setEnabled(false);
+  const second = app.sound.setEnabled(true); await turn();
+  assert.equal(app.requests.length, 5);
+  assert.equal(app.requests.filter(request => !request.url.includes("tavern-room")).length, 3);
+  details.resolve({ ok: true, arrayBuffer: async () => new ArrayBuffer(8) });
+  assert.equal(await second, true);
+  retiredRoom.resolve({ ok: true, arrayBuffer: async () => new ArrayBuffer(8) });
+  assert.equal(await first, false);
+  assert.equal(app.clips().length, 1);
   app.sound.destroy();
 });
 
