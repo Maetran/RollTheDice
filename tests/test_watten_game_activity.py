@@ -123,6 +123,14 @@ def test_ladinisch_show_inspect_delivery_and_private_advice_never_count(server):
     reset_days()
     advance_to_play(game_id, sessions, numbers)
     assert set(days().values()) == {None}
+    state = games[game_id]["_watten"].engine
+    assert state.bloedeln_decisions == ()
+    for seat, player in enumerate(state.recipe.seats):
+        if seat not in state.inspectors:
+            perform(sessions, player, engine_command(game_id, "bloedeln_decline", next(numbers)))
+            assert dict(games[game_id]["_watten"].engine.bloedeln_decisions)[seat] is False
+            assert set(days().values()) == {None}
+    assert len(games[game_id]["_watten"].engine.bloedeln_decisions) == 2
     # Public call deliveries and partner advice change no participation day.
     for session in sessions:
         runtime = games[game_id]["_watten"]
