@@ -1,10 +1,10 @@
 {
-  "version": "4.1.0",
-  "bump": "minor",
-  "date": "2026-10-21",
-  "previous_revision": "9c0d991c80634a3ece6060752f80a45eff558c87",
+  "version": "4.1.1",
+  "bump": "patch",
+  "date": "2026-10-22",
+  "previous_revision": "305bef6c19b7ab25207e080be4c1eb3e46e500a9",
   "summary": {
-    "de": "Einführungen, Rollout-Hinweise, zehn Wirtshauskulissen und klarere Entscheidungen am Kartentisch.",
-    "en": "Introductions, advance rollout notices, ten tavern ambiences and clearer decisions at the card table."
+    "de": "Mobile Watten-Ansicht, Blödeln-Abfrage und Rundenübergänge korrigiert.",
+    "en": "Corrected the mobile Watten layout, Blödeln choices and transitions between deals."
   }
 }
