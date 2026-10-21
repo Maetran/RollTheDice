@@ -163,10 +163,8 @@ def next_move(game_id, numbers):
         seat = min(state.inspectors - state.acknowledged)
         return state.recipe.seats[seat], engine_command(game_id, "inspection_ack", next(numbers))
     assert state.phase == "play"
-    if state.bloedeln_decisions is not None and len(state.bloedeln_decisions) < 2:
-        seat = next(seat for seat in range(len(state.recipe.seats)) if seat not in state.inspectors
-                    and seat not in dict(state.bloedeln_decisions))
-        return state.recipe.seats[seat], engine_command(game_id, "bloedeln_decline", next(numbers))
+    if state.preplay_request is not None and state.preplay_request.kind == "bloedeln":
+        return state.recipe.seats[state.preplay_request.responder], engine_command(game_id, "preplay_decline", next(numbers))
     player = state.play.current_player_id
     return player, engine_command(game_id, "play_card", next(numbers), legal_cards(state.play, state.bid_state, player)[0])
 

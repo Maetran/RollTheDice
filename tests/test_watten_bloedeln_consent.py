@@ -1,11 +1,11 @@
-"""Both uninformed seats choose independently before any card or bid can start."""
+"""Optional Blödeln requests, explicit answers, private bottoms and CPU coins."""
 
 import copy
 import json
 
 import pytest
 
-from app.watten_cpu import CpuProposal, decide, own_legal_cards
+from app.watten_cpu import CpuProposal, CpuWait, _bloedeln_coin, decide, own_legal_cards
 from app.watten_cpu_memory import WattenCpuMemoryError, new_memory, read_personal_view
 from app.watten_engine import WattenEngineError, apply_command, next_deal, restore_storage, start_match, storage_payload
 from app.watten_play import legal_cards
@@ -19,29 +19,37 @@ def restored(state):
     return restore_storage(json.loads(json.dumps(storage_payload(state))))
 
 
-def consent(state):
-    return spectator_view(state)["preplay"]["bloedeln_consent"]
+def status(state):
+    return spectator_view(state)["preplay"]["bloedeln_status"]
 
 
 @pytest.mark.parametrize("dealer", tuple("ABCD"))
-@pytest.mark.parametrize("choices", ((True, True), (True, False), (False, True), (False, False)))
-def test_both_explicit_choices_are_required_even_after_no_and_inspectors_progress_in_parallel(dealer, choices):
-    state = start_match(recipe(4, "ladinisch", True), "both-choose", dealt(), first_dealer=dealer)
+def test_no_request_needs_no_answer_and_never_blocks_the_first_card_or_bid(dealer):
+    state = start_match(recipe(4, "ladinisch", True), "optional", dealt(), first_dealer=dealer)
+    assert status(state) == "available" and state.preplay_request is None
+    for seat, player in enumerate(state.recipe.seats):
+        assert ("request_bloedeln" in personal(state, player)["actions"]) is (seat not in state.inspectors)
+    state = ready(state)
+    leader = state.play.current_player_id
+    assert {"play_card", "bid"} <= set(personal(state, leader)["actions"])
+    assert step(state, leader, "bid").phase == "bid_response"
+    played = step(state, leader, "play_card", legal_cards(state.play, state.bid_state, leader)[0])
+    assert status(played) is None and played.bloedeln_decisions == ()
+    assert restored(played) == played
+
+
+@pytest.mark.parametrize("dealer", tuple("ABCD"))
+@pytest.mark.parametrize("accepted", (False, True))
+def test_request_waits_for_only_the_other_noncaller_while_inspectors_progress(dealer, accepted):
+    state = start_match(recipe(4, "ladinisch", True), "request", dealt(), first_dealer=dealer)
     seats = [seat for seat in range(4) if seat not in state.inspectors]
-    assert consent(state) == {"pending": True, "decisions": [{"seat": seat, "accepted": None} for seat in seats]}
-    for seat in range(4):
-        actions = personal(state, state.recipe.seats[seat])["actions"]
-        assert ("bloedeln_accept" in actions) is (seat in seats)
-        assert ("show_ready" in actions) is (seat in state.inspectors)
-    first = state.recipe.seats[seats[0]]
-    state = step(state, first, "bloedeln_accept" if choices[0] else "bloedeln_decline")
-    assert restored(state) == state and consent(state)["pending"]
-    assert consent(state)["decisions"][0]["accepted"] is choices[0]
-    assert "bloedeln_accept" not in personal(state, first)["actions"]
-    # Both announcers may show and close their private windows while the other
-    # uninformed player is still deciding. Only card play/bidding stay blocked.
+    first, second = (state.recipe.seats[seat] for seat in seats)
+    state = step(state, first, "request_bloedeln")
+    assert status(state) == "pending" and restored(state) == state
+    assert spectator_view(state)["preplay"]["pending"] == {"kind": "bloedeln", "requester": seats[0], "responder": seats[1]}
+    assert personal(state, second)["actions"] == ["preplay_accept", "preplay_decline"]
     state = ready(state, bloedeln=None)
-    assert state.phase == "play" and consent(state)["pending"]
+    assert state.phase == "play" and status(state) == "pending"
     assert spectator_view(state)["card_turn"] is None
     for player in state.recipe.seats:
         assert not {"play_card", "bid"} & set(personal(state, player)["actions"])
@@ -49,108 +57,134 @@ def test_both_explicit_choices_are_required_even_after_no_and_inspectors_progres
     for kind, value in (("play_card", legal_cards(state.play, state.bid_state, leader)[0]), ("bid", None)):
         with pytest.raises(WattenEngineError, match="bloedeln_decision_pending"):
             step(state, leader, kind, value)
-    second = state.recipe.seats[seats[1]]
-    state = step(state, second, "bloedeln_accept" if choices[1] else "bloedeln_decline")
-    assert not consent(state)["pending"] and state.bloedeln is all(choices)
+    state = step(state, second, "preplay_accept" if accepted else "preplay_decline")
+    assert status(state) == ("accepted" if accepted else "declined") and state.bloedeln is accepted
     assert restored(state) == state and "play_card" in personal(state, leader)["actions"]
-    cards = spectator_view(state)["preplay"]["bloedeln_cards"]
-    assert cards == ([{"seat": seat, "card": state.deal.bottom_cards[seat]} for seat in seats] if all(choices) else [])
+    assert spectator_view(state)["preplay"]["bloedeln_cards"] == []
+    for seat, player in enumerate(state.recipe.seats):
+        assert personal(state, player)["preplay"]["bloedeln_cards"] == (
+            [{"seat": seat, "card": state.deal.bottom_cards[seat]}] if accepted and seat in seats else [])
+    for player in (first, second):
+        with pytest.raises(WattenEngineError, match="preplay_unavailable"):
+            step(state, player, "request_bloedeln")
 
 
-def test_choice_replays_are_idempotent_and_stale_or_changed_choices_never_replace_a_vote():
+def test_request_and_answer_replay_and_racing_request_cannot_change_a_decline():
     state = start_match(recipe(4, "ladinisch", True), "race", dealt(), first_dealer="A")
-    first, second = command(state, "C", "bloedeln_decline", command_id="first"), command(state, "D", "bloedeln_accept", command_id="second")
-    state = apply_command(state, actor(state, "C"), first).state
+    request = command(state, "C", "request_bloedeln", command_id="request")
+    race = command(state, "D", "request_bloedeln", command_id="race")
+    state = apply_command(state, actor(state, "C"), request).state
+    assert apply_command(state, actor(state, "C"), request).replayed
     with pytest.raises(WattenEngineError, match="stale_opportunity"):
-        apply_command(state, actor(state, "D"), second)
-    assert apply_command(state, actor(state, "C"), first).replayed
-    with pytest.raises(WattenEngineError, match="choice_unavailable"):
-        step(state, "C", "bloedeln_accept")
-    with pytest.raises(WattenEngineError, match="choice_unavailable"):
-        step(state, "A", "bloedeln_accept")
-    state = step(state, "D", "bloedeln_accept")
-    assert dict(state.bloedeln_decisions) == {2: False, 3: True} and not state.bloedeln
-    assert apply_command(state, actor(state, "C"), first).state == state
+        apply_command(state, actor(state, "D"), race)
+    for player in "ABC":
+        with pytest.raises(WattenEngineError, match="preplay_response_required"):
+            step(state, player, "preplay_accept")
+    answer = command(state, "D", "preplay_decline", command_id="decline")
+    state = apply_command(state, actor(state, "D"), answer).state
+    assert apply_command(restored(state), actor(state, "D"), answer).replayed
+    with pytest.raises(WattenEngineError, match="action_unavailable"):
+        step(state, "D", "preplay_accept")
+    assert status(state) == "declined" and not state.bloedeln
 
 
-def test_public_choices_do_not_disclose_a_hidden_call_before_both_yes_votes():
-    views = []
-    for variant in ("base", "secret"):
-        state = start_match(recipe(4, "ladinisch", True), "privacy-consent", blind_deal(variant), first_dealer="A")
-        state = step(state, "C", "bloedeln_accept")
-        views.append([spectator_view(state), personal(state, "C"), personal(state, "D")])
-    assert views[0] == views[1]
-    assert views[0][0]["preplay"]["bloedeln_cards"] == []
+@pytest.mark.parametrize("alias,accepted", (("bloedeln_accept", True), ("bloedeln_decline", False)))
+def test_legacy_answer_alias_needs_real_pending_request_and_real_responder(alias, accepted):
+    state = start_match(recipe(4, "ladinisch", True), "alias", dealt(), first_dealer="A")
+    with pytest.raises(WattenEngineError, match="bloedeln_choice_unavailable"):
+        step(state, "C", alias)
+    state = step(state, "C", "request_bloedeln")
+    with pytest.raises(WattenEngineError, match="preplay_response_required"):
+        step(state, "C", alias)
+    assert step(state, "D", alias).bloedeln is accepted
 
 
-def test_next_round_rotates_eligible_seats_and_drops_both_previous_decisions():
-    state = finish(ready(start_match(recipe(4, "ladinisch", True, target_points=15), "old", dealt(), first_dealer="A")))
-    state = next_deal(state, "next", dealt())
-    assert state.bloedeln_decisions == () and consent(state)["pending"]
-    assert [item["seat"] for item in consent(state)["decisions"]] == [0, 3]
-    assert restored(state) == state
+def test_accepting_before_inspection_exposes_no_bottom_to_any_view():
+    state = start_match(recipe(4, "ladinisch", True), "private", blind_deal(), first_dealer="A")
+    state = step(step(state, "C", "request_bloedeln"), "D", "preplay_accept")
+    for view in (spectator_view(state), *(personal(state, player) for player in "ABCD")):
+        assert view["preplay"]["bloedeln_cards"] == []
+    state = ready(state)
+    assert spectator_view(state)["preplay"]["bloedeln_cards"] == []
+    for player in "AB":
+        assert personal(state, player)["preplay"]["bloedeln_cards"] == []
 
 
-def test_legacy_early_round_requires_choices_but_played_cards_and_existing_consents_are_preserved():
-    early = ready(start_match(recipe(4, "ladinisch", True), "legacy", dealt(), first_dealer="A"), bloedeln=None)
+def test_next_round_rotates_optional_requesters_and_drops_previous_decline():
+    state = ready(start_match(recipe(4, "ladinisch", True, target_points=15), "old", dealt(), first_dealer="A"))
+    state = step(step(state, "C", "request_bloedeln"), "D", "preplay_decline")
+    state = next_deal(finish(state), "next", dealt())
+    assert state.bloedeln_decisions == () and status(state) == "available"
+    assert {seat for seat, player in enumerate(state.recipe.seats) if "request_bloedeln" in personal(state, player)["actions"]} == {0, 3}
+
+
+def test_legacy_early_and_started_rounds_keep_cards_and_consents_without_mandatory_votes():
+    early = ready(start_match(recipe(4, "ladinisch", True), "legacy", dealt(), first_dealer="A"))
     raw = storage_payload(early)
     del raw["preplay"]["bloedeln_decisions"]
-    assert consent(restore_storage(raw))["pending"]
+    saved = restore_storage(raw)
+    assert status(saved) == "available" and "play_card" in personal(saved, "B")["actions"]
     accepted = ready(start_match(recipe(4, "ladinisch", True), "accepted", dealt(), first_dealer="A"), bloedeln=True)
     raw = storage_payload(accepted)
     del raw["preplay"]["bloedeln_decisions"]
     assert restore_storage(raw).bloedeln_decisions == ((2, True), (3, True))
-    started = step(step(early, "C", "bloedeln_decline"), "D", "bloedeln_decline")
-    started = step(started, "B", "play_card", legal_cards(started.play, started.bid_state, "B")[0])
-    raw = storage_payload(started)
+    played = step(early, "B", "play_card", legal_cards(early.play, early.bid_state, "B")[0])
+    raw = storage_payload(played)
     del raw["preplay"]["bloedeln_decisions"]
-    saved = restore_storage(raw)
-    assert saved.play == started.play and saved.opportunity == started.opportunity
-    assert consent(saved) == {"pending": False, "decisions": []}
+    assert restore_storage(raw).play == played.play
 
 
-def test_legacy_pending_request_keeps_requesters_explicit_yes_and_accepts_old_response_alias():
-    state = start_match(recipe(4, "ladinisch", True), "legacy-pending", dealt(), first_dealer="A")
+def test_legacy_request_and_intermediate_partial_vote_preserve_the_real_decision():
+    state = step(start_match(recipe(4, "ladinisch", True), "old-request", dealt(), first_dealer="A"), "D", "request_bloedeln")
     raw = storage_payload(state)
     del raw["preplay"]["bloedeln_decisions"]
-    raw["preplay"]["pending"] = {"kind": "bloedeln", "requester": 3, "responder": 2}
-    state = restore_storage(raw)
-    assert state.preplay_request is None and state.bloedeln_decisions == ((3, True),)
-    state = step(state, "C", "preplay_decline")
-    assert not state.bloedeln and not consent(state)["pending"]
+    assert restore_storage(raw) == state
+    raw = storage_payload(state)
+    raw["preplay"]["pending"] = None
+    assert restore_storage(raw) == state
+    raw["preplay"]["bloedeln_decisions"] = [{"seat": 3, "accepted": False}]
+    assert status(restore_storage(raw)) == "declined"
 
 
 @pytest.mark.parametrize("bad", (None, [{"seat": 0, "accepted": True}], [{"seat": 2, "accepted": 1}],
                                   [{"seat": 2, "accepted": True}, {"seat": 2, "accepted": False}]))
-def test_explicit_new_storage_cannot_forge_missing_or_foreign_choices(bad):
+def test_explicit_storage_cannot_forge_missing_or_foreign_choices(bad):
     raw = storage_payload(start_match(recipe(4, "ladinisch", True), "invalid", dealt(), first_dealer="A"))
     raw["preplay"]["bloedeln_decisions"] = bad
-    with pytest.raises(WattenEngineError, match="bloedeln_consent"):
+    with pytest.raises(WattenEngineError):
         restore_storage(raw)
 
 
-def test_cpu_decides_from_hidden_own_view_and_cannot_obtain_legal_cards_before_other_human_vote():
-    state = start_match(cpu_recipe(4, "ladinisch", True), "cpu-consent", dealt(), first_dealer="A")
-    view = cpu_view(state, player_id="C")
-    decision = decide(view, new_memory("C"), seed=1).decision
-    assert isinstance(decision, CpuProposal) and decision.kind == "bloedeln_decline"
+def test_cpu_coin_is_stable_per_deal_and_never_reads_hand_strength_or_secret_call():
+    for purpose in ("request", "answer"):
+        coins = []
+        for index in range(128):
+            variants = []
+            for variant in ("base", "secret"):
+                state = start_match(cpu_recipe(4, "ladinisch", True), f"coin-{index}", blind_deal(variant), first_dealer="A")
+                snapshot = read_personal_view(cpu_view(state, player_id="C"), player_id="C")
+                variants.append(_bloedeln_coin(snapshot, purpose))
+            assert variants[0] == variants[1]
+            coins.append(variants[0])
+        assert 40 < sum(coins) < 88
+
+
+def test_cpu_may_request_or_answer_from_hidden_hand_but_never_bypasses_pending_guard(monkeypatch):
+    import app.watten_cpu as policy
+
+    state = start_match(cpu_recipe(4, "ladinisch", True), "cpu", dealt(), first_dealer="A")
+    monkeypatch.setattr(policy, "_bloedeln_coin", lambda *_args: False)
+    assert isinstance(decide(cpu_view(state, player_id="C"), new_memory("C"), seed=1).decision, CpuWait)
+    monkeypatch.setattr(policy, "_bloedeln_coin", lambda *_args: True)
+    decision = decide(cpu_view(state, player_id="C"), new_memory("C"), seed=1).decision
+    assert isinstance(decision, CpuProposal) and decision.kind == "request_bloedeln"
     state = step(state, "C", decision.kind)
+    response = decide(cpu_view(state, player_id="D"), new_memory("D"), seed=1).decision
+    assert response.kind == "preplay_accept"
     state = ready(state, bloedeln=None)
     view = cpu_view(state, player_id="B")
     assert own_legal_cards(view, new_memory("B")) == ()
-    invalid = copy.deepcopy(view)
-    invalid["actions"] = ["play_card", "bid"]
+    forged = copy.deepcopy(view)
+    forged["actions"] = ["play_card", "bid"]
     with pytest.raises(WattenCpuMemoryError):
-        read_personal_view(invalid, player_id="B")
-
-
-def test_schoeneres_preserves_choices_for_unchanged_nonannouncer_hands():
-    from tests.test_watten_preplay import deterministic_redraw
-
-    state = start_match(recipe(4, "ladinisch", True, schoeneres_enabled=True), "parallel", dealt(), first_dealer="A")
-    state = step(state, "A", "request_schoeneres")
-    state = step(state, "C", "bloedeln_decline")
-    state = apply_command(state, actor(state, "B"), command(state, "B", "preplay_accept"),
-                          replacement_deal=deterministic_redraw(state)).state
-    assert state.bloedeln_decisions == ((2, False),) and consent(state)["pending"]
-    assert restored(state) == state
+        read_personal_view(forged, player_id="B")

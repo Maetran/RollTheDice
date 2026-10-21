@@ -260,7 +260,7 @@ _STOPPING = False
 def _may_decide(view: dict) -> bool:
     actions = set(view["actions"])
     return bool(actions & {"announce_strike", "announce_colour", "show_ready", "inspection_ack", "play_card", "bid",
-                           "respond_hold", "respond_go", "respond_counter", "retourschneider", "preplay_accept", "bloedeln_accept"}
+                           "respond_hold", "respond_go", "respond_counter", "retourschneider", "preplay_accept", "request_bloedeln"}
                 or (view["phase"] == "bid_response" and "partner_feedback" in actions))
 
 
@@ -276,9 +276,9 @@ def _cpu_partner_feedback_pending(runtime, view: dict, cpu_ids: set[str]) -> boo
 
 
 def _cpu_decider_bid_pending(game: dict, runtime, view: dict, cpu_ids: set[str]) -> bool:
-    """A blind CPU partner plays after its CPU knower has considered bidding."""
+    """A blind CPU partner considers its own bid/card after its CPU knower."""
     if (not view["profile"]["blind"] or view["phase"] != "play"
-            or "play_card" not in view["actions"] or "bid" in view["actions"]):
+            or "play_card" not in view["actions"]):
         return False
     own = view["seats"][view["viewer"]["seat"]]
     decider = runtime.engine.parties.decider(own["party"])

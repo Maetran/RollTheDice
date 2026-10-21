@@ -169,7 +169,7 @@ class SeatSnapshot:
     preplay_pending: tuple[str, int, int] | None
     bloedeln_cards: tuple[tuple[int, str], ...]
     bloedeln_pending: bool
-    bloedeln_decisions: tuple[tuple[int, bool | None], ...]
+    bloedeln_status: str | None
 
     def __repr__(self) -> str:
         return f"SeatSnapshot(deal_id={self.deal_id!r}, phase={self.phase!r}, opportunity={self.opportunity})"
@@ -329,36 +329,21 @@ def read_personal_view(view: object, *, player_id: str) -> SeatSnapshot:
     preplay_pending = None
     bloedeln = []
     bloedeln_pending = False
-    bloedeln_decisions = ()
+    bloedeln_status = None
     if "preplay" in view:
-        raw_preplay = _object(view["preplay"], "pending bloedeln_cards", frozenset({"bloedeln_consent"}))
-        if "bloedeln_consent" in raw_preplay:
-            consent = _object(raw_preplay["bloedeln_consent"], "pending decisions")
-            if type(consent["pending"]) is not bool:
-                _fail()
-            choices = []
-            for item in _list(consent["decisions"]):
-                item = _object(item, "seat accepted")
-                if (not _int(item["seat"], 0, count) or item["seat"] in inspectors
-                        or (item["accepted"] is not None and type(item["accepted"]) is not bool)):
-                    _fail()
-                choices.append((item["seat"], item["accepted"]))
-            if (choices and (not profile.blind or count != 4 or tuple(seat for seat, _ in choices)
-                            != tuple(index for index in range(count) if index not in inspectors))
-                    or consent["pending"] != any(accepted is None for _, accepted in choices)):
-                _fail()
-            bloedeln_pending, bloedeln_decisions = consent["pending"], tuple(choices)
+        raw_preplay = _object(view["preplay"], "pending bloedeln_cards", frozenset({"bloedeln_status"}))
+        bloedeln_status = raw_preplay.get("bloedeln_status")
+        if (bloedeln_status is not None and (type(bloedeln_status) is not str
+                or bloedeln_status not in {"available", "pending", "accepted", "declined"})) or (
+                bloedeln_status is not None and (not profile.blind or count != 4)):
+            _fail()
         for item in _list(raw_preplay["bloedeln_cards"]):
             item = _object(item, "seat card")
             if not _int(item["seat"], 0, count):
                 _fail()
             bloedeln.append((item["seat"], _card(item["card"])))
-        if bloedeln and (not profile.blind or count != 4
-                         or tuple(seat for seat, _ in bloedeln) != tuple(seat for seat in range(count) if seat not in inspectors)
-                         or len({card for _, card in bloedeln}) != 2):
-            _fail()
-        if bloedeln and "bloedeln_consent" in raw_preplay and bloedeln_decisions and (
-                len(bloedeln_decisions) != 2 or not all(accepted is True for _, accepted in bloedeln_decisions)):
+        if bloedeln and (not profile.blind or count != 4 or len(bloedeln) != 1
+                         or bloedeln_status != "accepted"):
             _fail()
         if raw_preplay["pending"] is not None:
             raw = _object(raw_preplay["pending"], "kind requester responder")
@@ -375,6 +360,9 @@ def read_personal_view(view: object, *, player_id: str) -> SeatSnapshot:
                     or (kind == "bloedeln" and (not profile.blind or count != 4 or bloedeln))):
                 _fail()
             preplay_pending = (kind, raw["requester"], raw["responder"])
+            bloedeln_pending = kind == "bloedeln"
+        if (bloedeln_status == "pending") != bloedeln_pending:
+            _fail()
     raw_bid = _object(view["bid"], "accepted_stake pending result")
     if not _int(raw_bid["accepted_stake"], 2):
         _fail()
@@ -443,16 +431,35 @@ def read_personal_view(view: object, *, player_id: str) -> SeatSnapshot:
                                           or player_id in retour.get("accepted_by", [])
                                           or ("accepted_by" not in retour and retour["decider"] != player_id)):
         _fail()
-    expected_choices = BLOEDELN_CHOICES if bloedeln_pending and dict(bloedeln_decisions).get(seat, False) is None else frozenset()
-    if set(actions) & BLOEDELN_CHOICES != expected_choices:
+    if set(actions) & BLOEDELN_CHOICES:
         _fail()
     if bloedeln_pending and set(actions) & {"play_card", "bid"}:
         _fail()
+    if "bid" in actions:
+        own_turn = card_turn == seat
+        partner_turn = (profile.blind and seat in inspectors and card_turn is not None
+                        and parties[card_turn] == parties[seat])
+        comeback = retour is not None and retour["status"] == "active" and player_id in retour["members"]
+        points = next(points for members, points in scores if player_id in members)
+        if (phase != "play" or pending is not None or raw_bid["result"] is not None or preplay_pending is not None
+                or not (own_turn or partner_turn) or (points >= target - 2 and not comeback)):
+            _fail()
+    if pending is not None:
+        decider = players[dealer] if parties[dealer] != pending[0] else players[(dealer + 1) % count]
+        if pending[2] != decider:
+            _fail()
+    if set(actions) & {"respond_hold", "respond_go", "respond_counter"} and (
+            phase != "bid_response" or pending is None or pending[2] != player_id):
+        _fail()
     ordinary_actions = tuple(action for action in actions if action not in REQUEST_ACTIONS | BLOEDELN_CHOICES)
-    if preplay_pending is not None:
+    if bloedeln_pending:
+        if set(actions) & PREPLAY_RESPONSES != (PREPLAY_RESPONSES if seat == preplay_pending[2] else frozenset()):
+            _fail()
+        ordinary_actions = tuple(action for action in ordinary_actions if action not in PREPLAY_RESPONSES)
+    if preplay_pending is not None and not bloedeln_pending:
         if ordinary_actions != (("preplay_accept", "preplay_decline") if seat == preplay_pending[2] else ()):
             _fail()
-    elif set(actions) & PREPLAY_RESPONSES:
+    elif set(actions) & PREPLAY_RESPONSES and not bloedeln_pending:
         _fail()
     elif phase in {"strike", "colour"}:
         action, announcer = (("announce_strike", roles.strike_announcer) if phase == "strike"
@@ -486,7 +493,7 @@ def read_personal_view(view: object, *, player_id: str) -> SeatSnapshot:
         inspection = (_card(strike_item["card"]), _card(colour_item["card"]))
         if inspection[0] == inspection[1]:
             _fail()
-    if (inspection is not None) != ("inspection_ack" in actions) and preplay_pending is None:
+    if (inspection is not None) != ("inspection_ack" in actions) and (preplay_pending is None or bloedeln_pending):
         _fail()
     mates = [index for index in range(count) if parties[index] == parties[seat] and index != seat]
     partner = mates[0] if len(mates) == 1 else None
@@ -527,6 +534,9 @@ def read_personal_view(view: object, *, player_id: str) -> SeatSnapshot:
         played |= {card for _, card in last[0]}
     if played & (set(hand or ()) | set(partner_cards or ())):
         _fail()
+    if bloedeln and (bloedeln[0][0] != seat or seat in inspectors or completed or hand is None
+                     or bloedeln[0][1] not in hand or seat in {owner for owner, _ in current}):
+        _fail()
     public = dict(bloedeln)
     for index, visible in ((seat, hand), (partner, partner_cards)):
         if visible is not None and any(card in visible and owner != index for owner, card in bloedeln):
@@ -552,7 +562,7 @@ def read_personal_view(view: object, *, player_id: str) -> SeatSnapshot:
         feedback_opportunity=view["feedback_opportunity"],
         deal_revision=revision, announcement_roles=roles, schoeneres_enabled=schoeneres_enabled,
         preplay_pending=preplay_pending, bloedeln_cards=tuple(bloedeln),
-        bloedeln_pending=bloedeln_pending, bloedeln_decisions=bloedeln_decisions,
+        bloedeln_pending=bloedeln_pending, bloedeln_status=bloedeln_status,
     )
 
 
