@@ -35,7 +35,8 @@ Symbole für Sprachchat, Verlassen und Tischchat. Im Warteraum entfällt der
 grosse Seitenkopf; Sprache, Regeln und Sprachchat bleiben in der Wartefläche
 erreichbar. Ausgespielte Karten und die Stichrückschau sind im Hochformat
 grösser. Laufende Hinweise sind dezenter, der einmalig bestätigte Guide bleibt
-erhalten.
+erhalten. Ein Kontowechsel während des Kartenladens lädt den Tisch zuverlässig
+mit dem neuen Konto, auch beim Wiederherstellen einer gespeicherten Browserseite.
 
 Im blinden Vierer darf auch der blinde Partner auf seinem eigenen Kartenzug
 bieten. Halten, Gehen und Aufbieten als Antwort bleiben beim Wissenden des Teams.
@@ -55,7 +56,9 @@ des ganzen Spiels erscheint erst nach Abräumen und Rückschau.
 icons for voice chat, leaving and table chat. The large page header is hidden
 in the waiting room; language, rules and voice chat stay available inside it.
 Played cards and trick review are larger in portrait. Ongoing hints are quieter;
-the introduction and its saved acknowledgement remain available.
+the introduction and its saved acknowledgement remain available. Switching
+accounts while cards load reliably reloads the table for the new account,
+including when restoring a cached browser page.
 
 The blind partner may also bid on their own card turn. Hold, fold and counterbid
 responses remain with the informed teammate. Both non-callers immediately see

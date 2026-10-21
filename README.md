@@ -174,6 +174,11 @@ The large page header is hidden in the waiting room. Back navigation, rules,
 language and voice chat are compactly available inside it; returning to the
 lobby restores its normal navigation.
 
+Ein Kontowechsel lädt den Watten-Tisch frisch für das neue Konto, auch wenn
+Karten noch geladen werden oder die Seite aus dem Browser-Zwischenspeicher kommt.
+Switching accounts reloads the Watten table for the new account, including while
+cards load or when the browser restores a cached page.
+
 **Spieltisch / game table:** Mobile zuerst: die helle Tiroler Schnitzstube bleibt
 mit grösseren Schnitzecken sichtbar. Vor dem Aufdecken erscheint kein leerer
 Handkartenfächer. Bei der ladinischen Ansage werden die beiden zulässigen Karten
