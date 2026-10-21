@@ -20,17 +20,20 @@ class Element extends EventTarget {
   remove() { if (this.parent) this.parent.children.splice(this.parent.children.indexOf(this), 1); this.parent = null; }
 }
 
-function setup(language = "de", { storageBlocked = false } = {}) {
+function setup(language = "de", { storageBlocked = false, offlineMarker = false, legacyOffline = false, path = "/regeln" } = {}) {
   let clock = Date.parse("2026-10-21T18:00:00Z"), timerId = 0;
   const timers = new Map(), requests = [], saved = new Map(), session = new Map();
   const host = new EventTarget(), doc = new EventTarget();
   doc.body = new Element(); doc.createElement = () => new Element(); doc.visibilityState = "visible";
+  doc.documentElement = { dataset: { offlinePractice: String(offlineMarker) } };
+  doc.body.classList = { contains: name => legacyOffline && name === "practice-page" };
   const storage = values => ({
     getItem(key) { if (storageBlocked) throw new Error("blocked"); return values.get(key) ?? null; },
     setItem(key, value) { if (storageBlocked) throw new Error("blocked"); values.set(key, value); },
   });
   Object.assign(host, {
     navigator: { onLine: true }, AbortController,
+    location: { pathname: path },
     localStorage: storage(saved), sessionStorage: storage(session),
     ZDWA_I18N: { getLanguage: () => language },
     setTimeout(callback, delay) { const id = ++timerId; timers.set(id, { callback, delay }); return id; },
@@ -63,6 +66,22 @@ function setup(language = "de", { storageBlocked = false } = {}) {
   };
 }
 
+test("local practice never creates a poller, even online or restored at an online URL", () => {
+  for (const options of [
+    { offlineMarker: true, path: "/spiel/restored-online-path" },
+    { legacyOffline: true, path: "/spiel/restored-online-path" },
+    { path: "/offline-spielen" }, { path: "/zilch/offline-spielen" }, { path: "/zdwa/offline-spielen" },
+  ]) {
+    const app = setup("de", options);
+    assert.equal(app.controller, null);
+    for (const type of ["online", "pageshow", "offline", "online"]) app.event(app.host, type);
+    app.event(app.doc, "visibilitychange");
+    assert.equal(app.requests.length, 0);
+    assert.equal(app.timers.size, 0);
+    assert.equal(app.banner, undefined);
+  }
+});
+
 test("only a bounded id and valid future time range form an active announcement", () => {
   const now = Date.now(), value = { id: "release.4-1_0", restart_at: new Date(now + 30000).toISOString(), expires_at: new Date(now + 90000).toISOString() };
   assert.equal(normalizeDeploymentNotice(value, now).id, value.id);
@@ -78,6 +97,7 @@ for (const language of ["de", "en"]) {
     assert.equal(app.requests[0].url, "/api/deployment-notice");
     assert.equal(app.requests[0].options.cache, "no-store");
     assert.equal(app.requests[0].options.credentials, "same-origin");
+    assert.equal(app.requests[0].options.keepalive, true);
     await app.reply({ notice: app.notice() });
     assert.equal(app.banner.children[0].attributes.get("role"), "status");
     assert.equal(app.banner.children[0].children[0].textContent, DEPLOYMENT_NOTICE_MESSAGES[language].title);
@@ -163,31 +183,64 @@ test("malformed responses and network errors retain a warning with bounded backo
   app.controller.destroy();
 });
 
-test("timeouts abort hung fetches; visibility, online and bfcache restore fetch immediately", async () => {
+test("initial pageshow, visibility and online events reuse the pending startup read", async () => {
   const app = setup();
-  await app.runTimer(5000);
-  assert.equal(app.requests[0].options.signal.aborted, true);
-  await app.runTimer(6000);
+  app.event(app.host, "pageshow");
+  app.event(app.doc, "visibilitychange");
+  app.event(app.host, "online");
+  assert.equal(app.requests.length, 1);
+  assert.equal(app.requests[0].options.signal.aborted, false);
+  await app.reply({ notice: app.notice() });
+  assert.ok(app.banner);
+  app.controller.destroy();
+});
+
+test("hidden and offline pages let pending reads settle without rendering or scheduling more reads", async () => {
+  const app = setup();
   app.doc.visibilityState = "hidden";
   app.event(app.doc, "visibilitychange");
-  assert.equal(app.requests[1].options.signal.aborted, true);
-  assert.equal(app.timers.size, 0);
-  // A response from the abandoned generation must not create a stale warning.
-  await app.reply({ notice: app.notice() }, 1);
+  assert.equal(app.requests[0].options.signal.aborted, false);
+  await app.reply({ notice: app.notice() });
   assert.equal(app.banner, undefined);
+  assert.equal(app.timers.size, 0);
+  app.event(app.host, "online");
+  assert.equal(app.requests.length, 1);
   app.doc.visibilityState = "visible";
   app.event(app.doc, "visibilitychange");
-  assert.equal(app.requests.length, 3);
+  assert.equal(app.requests.length, 2);
   await app.reply({ notice: app.notice() });
   app.event(app.host, "pagehide");
   assert.equal(app.timers.size, 1); // Only expiry, no network polling.
   app.event(app.host, "pageshow");
-  assert.equal(app.requests.length, 4);
+  assert.equal(app.requests.length, 3);
+  app.event(app.host, "pagehide");
+  app.event(app.host, "pageshow");
+  assert.equal(app.requests.length, 3);
+  assert.equal(app.requests[2].options.signal.aborted, false);
   await app.reply({ notice: null });
+  await app.runTimer(3000);
   app.host.navigator.onLine = false; app.event(app.host, "offline");
+  assert.equal(app.requests[3].options.signal.aborted, false);
+  await app.reply({ notice: app.notice() });
+  assert.equal(app.banner, undefined);
+  assert.equal(app.timers.size, 0);
   app.host.navigator.onLine = true; app.event(app.host, "online");
   assert.equal(app.requests.length, 5);
+  await app.reply({ notice: null });
+  app.controller.destroy();
+});
+
+test("only timeout and explicit destruction abort a pending read and never schedule stale work", async () => {
+  const app = setup();
+  await app.runTimer(5000);
+  assert.equal(app.requests[0].options.signal.aborted, true);
+  await app.runTimer(6000);
+  assert.equal(app.requests.length, 2);
   app.controller.destroy();
   assert.equal(app.requests.at(-1).options.signal.aborted, true);
+  await app.reply({ notice: app.notice() });
+  app.event(app.host, "pageshow");
+  assert.equal(app.banner, undefined);
+  assert.equal(app.requests.length, 2);
   assert.equal(app.timers.size, 0);
 });

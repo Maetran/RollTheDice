@@ -20,6 +20,54 @@ async function mockNotice(context, initial = null) {
   return state;
 }
 
+for (const path of ["/offline-spielen", "/zilch/offline-spielen"]) {
+  test(`${path}: local practice stays independent of rollout servers while online and across reload`, async ({ page, context }) => {
+    const state = await mockNotice(context, announcement("local-practice-must-stay-local"));
+    await page.clock.install();
+    await page.goto(path);
+    await expect(page.locator("html")).toHaveAttribute("data-offline-practice", "true");
+    await expect(page.locator(".practice-page")).toBeVisible();
+    await page.evaluate(() => {
+      window.dispatchEvent(new Event("online"));
+      window.dispatchEvent(new Event("pageshow"));
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    await page.clock.fastForward(10000);
+    await expect(page.locator(noticeSelector)).toHaveCount(0);
+    expect(state.requests).toBe(0);
+    await page.reload();
+    await page.clock.fastForward(10000);
+    expect(state.requests).toBe(0);
+  });
+}
+
+test("a slow startup read survives normal page lifecycle events without cancellation or duplicate requests", async ({ page, context }) => {
+  let requests = 0, release;
+  const ready = new Promise(resolve => { release = resolve; });
+  const failures = [];
+  page.on("requestfailed", request => {
+    if (new URL(request.url()).pathname === "/api/deployment-notice") failures.push(request.failure()?.errorText);
+  });
+  await context.route("**/api/deployment-notice", async route => {
+    requests++;
+    await ready;
+    await route.fulfill({ json: { notice: announcement("slow-startup-release") } });
+  });
+  await page.goto("/regeln", { waitUntil: "domcontentloaded" });
+  await expect.poll(() => requests).toBe(1);
+  await page.evaluate(() => {
+    window.dispatchEvent(new Event("pageshow"));
+    window.dispatchEvent(new Event("online"));
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+  expect(requests).toBe(1);
+  release();
+  await expect(page.locator(noticeSelector)).toBeVisible();
+  await page.goto("/hausdepp/regeln");
+  await expect(page.locator(noticeSelector)).toBeVisible();
+  expect(failures).toEqual([]);
+});
+
 for (const language of ["de", "en"]) {
   for (const product of products) {
     test(`${product.game} ${language}: mobile rollout notice is readable, preserves focus and remembers OK across navigation`, async ({ page, context }) => {
