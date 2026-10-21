@@ -333,7 +333,7 @@ for (const language of ['de', 'en']) {
             reachable: element.contains(document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)),
             border: parseFloat(css.borderTopWidth) };
         }));
-        expect(controls.map(control => control.href)).toEqual(['/hausdepp', '/hausdepp/rangliste', '/hausdepp/regeln', '/hausdepp/konto']);
+        expect(controls.map(control => control.href)).toEqual(['/hausdepp', '/hausdepp/rangliste', '/hausdepp/regeln', '/hausdepp/konto/einstellungen']);
         for (const control of controls) {
           expect(control.tag).toBe('A');
           expect(control.height, `${language} ${name} ${path} ${control.href}`).toBeGreaterThanOrEqual(44);
@@ -343,7 +343,8 @@ for (const language of ['de', 'en']) {
           expect(control.contained, `${control.href}: opaque header backs the whole touch surface`).toBe(true);
           expect(control.reachable, `${control.href}: touch surface stays reachable`).toBe(true);
         }
-        await expect(page.locator(`.hd-nav a[href="${path}"]`)).toHaveAttribute('aria-current', 'page');
+        const activeDestination = path === "/hausdepp/konto" ? "/hausdepp/konto/einstellungen" : path;
+        await expect(page.locator(`.hd-nav a[href="${activeDestination}"]`)).toHaveAttribute('aria-current', 'page');
         if (path === '/hausdepp/konto') {
           const shortcuts = await page.locator('.hd-account-shortcuts a').evaluateAll(elements => elements.map(element => {
             const rect = element.getBoundingClientRect();
