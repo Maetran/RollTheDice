@@ -43,6 +43,14 @@ function button(label, attributes, { disabled = false, className = "" } = {}) {
   return `<button type="button" class="${className}" title="${esc(label)}" ${attributes} ${disabled ? "disabled" : ""}>${esc(label)}</button>`;
 }
 
+export function leaveMatchMarkup(disabled = false) {
+  const label = t("leave.button");
+  return `<button type="button" class="wt-button--ghost wt-button--small wt-leave-icon" title="${esc(label)}" aria-label="${esc(label)}"
+    data-watten-command="leave-match" data-watten-action="leave" ${disabled ? "disabled" : ""}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 4H4v16h6M14 8l4 4-4 4M8 12h10"/></svg>
+    <span class="wt-visually-hidden">${esc(t("leave.short"))}</span></button>`;
+}
+
 // Reconcile small controls in place. A busy ACK must not replace a focused
 // decision button or the private advice controls underneath a pending tap.
 function reconcile(parent, next) {
@@ -738,7 +746,7 @@ export function createTableView(container, { onCard, accountId = null }) {
     elements.stake.dataset.points = String(stake);
     elements.stake.hidden = !["play", "bid_response"].includes(vm.engine.phase);
     patch(elements.tools, "tools", vm.canLeave
-      ? button(t("leave.short"), `data-watten-command="leave-match" data-watten-action="leave" aria-label="${esc(t("leave.button"))}"`, { disabled: vm.busy, className: "wt-button--ghost wt-button--small" })
+      ? leaveMatchMarkup(vm.busy)
       : vm.spectator ? `<span class="wt-tag">${esc(t("spectator.kicker"))}</span>` : "");
     renderSeats(vm);
     patch(elements.reference, "reference", referenceMarkup(vm));

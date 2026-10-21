@@ -117,11 +117,11 @@ html[data-watten-active="true"] .wt-score.is-own .wt-score-name { color: #305f3d
 html[data-watten-active="true"] .wt-scores:has(.is-own) .wt-score:not(.is-own) .wt-score-name { color: #9b382b; }
 html[data-watten-active="true"] .wt-topbar-actions { right: 56px; }
 html[data-watten-active="true"] [data-watten-social] { right: 8px; }
-html[data-watten-active="true"] [data-watten-voice] { right: 164px; }
+html[data-watten-active="true"] [data-watten-voice] { right: 104px; }
 html[data-watten-active="true"] .wt-stake { max-width: calc(100% - 208px); }
 html[data-watten-active="true"] [data-watten-command="leave-match"] {
-  display: inline-flex; gap: 6px; width: auto; min-width: 100px; height: 44px;
-  padding: 0 8px; font-size: .85rem; color: #613b29; background: #fff1dc88; border: 1px solid #bd976c88;
+  display: inline-grid; place-items: center; gap: 0; width: 44px; min-width: 44px; max-width: 44px; height: 44px;
+  padding: 0; font-size: 0; color: #613b29; background: #fff1dc88; border: 1px solid #bd976c88;
 }
 html[data-watten-active="true"] [data-watten-command="leave-match"]::before { content: none; }
 html[data-watten-active="true"] .wt-card-owner { font-size: .75rem; bottom: -23px; }
@@ -200,7 +200,7 @@ html[data-watten-active="true"] .wt-table[data-phase="match_complete"][data-roun
 html[data-watten-active="true"] .wt-table[data-phase="match_complete"][data-round-stage="ready"] .wt-private:empty { display: none; }
 @media (min-width: 761px) and (min-height: 520px) {
   html[data-watten-active="true"] .wt-table { --wt-trick-w: clamp(104px, min(14vw, 20dvh), 152px); }
-  html[data-watten-active="true"] .wt-topbar { padding-right: 224px; }
+  html[data-watten-active="true"] .wt-topbar { padding-right: 164px; }
   html[data-watten-active="true"] .wt-score { min-width: 118px; }
   html[data-watten-active="true"] .wt-stake { max-width: none; }
   html[data-watten-active="true"] .wt-table:not([data-phase="match_complete"][data-round-stage="ready"]) .wt-end-sheet {
@@ -218,7 +218,7 @@ html[data-watten-active="true"] .wt-table[data-phase="match_complete"][data-roun
 
 @media (orientation: landscape) and (max-height: 519px) {
   html[data-watten-active="true"] .wt-table { --wt-trick-w: clamp(42px, 13dvh, 64px); }
-  html[data-watten-active="true"] .wt-topbar { padding-right: 218px; }
+  html[data-watten-active="true"] .wt-topbar { padding-right: 164px; }
   html[data-watten-active="true"] .wt-stake { max-width: none; }
   html[data-watten-active="true"] .wt-table:not([data-phase="match_complete"][data-round-stage="ready"]) .wt-end-sheet {
     left: auto; right: 12px; bottom: 10px; width: 39%; max-height: calc(100% - 62px);
@@ -583,4 +583,22 @@ html[data-watten-active="true"] .wt-bloedeln-status { margin: 0; font-size: .8re
   html[data-watten-active="true"] .wt-table[data-count="4"][data-phase="play"]:not(:has([data-wt-history][open])):is(:has(> .wt-end-sheet > [data-wt-panel]:empty), :has(> .wt-end-sheet > [data-wt-panel] > .wt-prompt:only-child)) .wt-seat--bottom:has(.wt-seat-call-role) {
     bottom: calc(var(--wt-hand-w) * 1.8 + 14px - .9rem);
   }
+}
+
+/* One score group and one aligned action row keep the table header quiet. */
+html[data-watten-active="true"] .wt-leave-icon > svg { display: block; width: 22px; height: 22px; }
+@media (orientation: portrait) and (max-width: 760px) {
+  html[data-watten-active="true"] .wt-topbar { padding: 2px 10px; }
+  html[data-watten-active="true"] .wt-scores { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; width: auto; max-width: 100%; }
+  html[data-watten-active="true"] .wt-score { flex: 0 1 auto; min-width: 76px; max-width: 120px; min-height: 44px; }
+  html[data-watten-active="true"] .wt-topbar .wt-score-open { width: 100%; min-height: 44px; padding: 4px 7px; gap: 8px; }
+  html[data-watten-active="true"] .wt-score-name { max-width: 7ch; font-size: .82rem; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  html[data-watten-active="true"] .wt-score-tricks { font-size: .65rem; }
+  html[data-watten-active="true"] .wt-score-points { font-size: 1.35rem; }
+  html[data-watten-active="true"] .wt-target { padding-inline: 3px; font-size: .72rem; }
+  html[data-watten-active="true"] .wt-table[data-count="3"] .wt-scores { flex-wrap: nowrap; }
+  html[data-watten-active="true"] .wt-table[data-count="3"] .wt-score { min-width: 0; }
+  html[data-watten-active="true"] .wt-topbar-actions,
+  html[data-watten-active="true"] [data-watten-social],
+  html[data-watten-active="true"] [data-watten-voice] { top: 48px; }
 }
