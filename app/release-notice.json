@@ -13,7 +13,7 @@
       "title": "Gut einsteigen und entspannt weiterspielen",
       "changes": [
         "ALLGEMEIN: Vor künftigen Rollouts erscheint ein Hinweis zum kurzen Neustart. Mit «OK» schliesst du ihn; gespeicherte Spiele gehen danach weiter.",
-        "HAUSDEPP & WATTEN: Neue Einführungen quittierst du einmalig mit «Verstanden». Hausdepp zeigt auch lange Berührungen für Mehrfachauswahl und Stapelverlauf.",
+        "HAUSDEPP & WATTEN: Neue Einführungen quittierst du einmalig mit «Verstanden». Hausdepp erklärt lange Berührungen für Mehrfachauswahl und alle Karten des offenen Stapels.",
         "HAUSDEPP: Beim Einschalten wird eine von zehn leisen Wirtshauskulissen zufällig gewählt.",
         "HAUSDEPP: Bist du allein gegen CPUs und schon fertig, verkürzt «CPUs schneller» die Pausen bis zum Rundenende.",
         "WATTEN: Schlag und Farbe stehen direkt an ihrer Karte. «Danke» ist grösser; der fertige Rundenverlauf braucht keinen Anheftschalter.",
@@ -25,7 +25,7 @@
       "title": "Get started and keep playing",
       "changes": [
         "GENERAL: Before future rollouts, a notice announces the brief restart. Close it with “OK”; saved games continue afterwards.",
-        "HAUSDEPP & WATTEN: Acknowledge the new introductions once with “Understood”. Hausdepp also explains long presses for multiple selection and pile history.",
+        "HAUSDEPP & WATTEN: Acknowledge the new introductions once with “Understood”. Hausdepp explains long presses for multiple selection and all cards in the open pile.",
         "HAUSDEPP: Enabling sounds randomly chooses one of ten quiet tavern ambiences.",
         "HAUSDEPP: When you are the only human and have finished, “Speed up CPUs” shortens pauses until the round ends.",
         "WATTEN: Strike and suit labels sit at their card edge. “Thanks” is larger; finished round history needs no pin control.",

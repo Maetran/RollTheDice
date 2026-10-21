@@ -53,7 +53,7 @@ Karten fertig hat, kann mit «CPUs schneller» die übrigen Pausen der Runde um
 Nachwurf-Reihenfolge bleibt erhalten und die nächste Runde startet normal.
 Der Sprachchat trägt kein Beta-Label mehr. Die einmalig quittierbare Einführung
 erklärt insbesondere die Mehrfachauswahl durch langes Tippen auf die Hand und
-den Stapelverlauf durch langes Tippen auf den offenen Stapel.
+alle aktuell offenen Stapelkarten durch langes Tippen auf den offenen Stapel.
 
 **English:** Enabling tavern sounds randomly selects one of ten very quiet
 ambiences: the original and nine new mixes of the established room and object
@@ -63,7 +63,7 @@ by 70%. A 400 ms minimum keeps play readable; afterthrow order is preserved
 and the next round starts at normal speed.
 Voice chat no longer carries a beta label. The introduction, acknowledged once,
 highlights long-pressing your hand for multiple selection and long-pressing the
-open pile to inspect its history.
+open pile to inspect all cards currently in it.
 
 ### WATTEN
 

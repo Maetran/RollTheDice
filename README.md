@@ -49,25 +49,40 @@ still show the advance notice.
 
 ## Einsteigertouren / beginner tours
 
-**Deutsch:** ZDWA, Zilch und Hausdepp bieten beim ersten eigenen Spiel je eine
-kurze, freiwillige Tour an. Sie zeigt direkt am passenden Bedienelement, was du
-wann tun kannst und warum; jede Spielaktion führst du selbst aus. **Tour
-beenden**, × oder Escape schliessen sie sofort, während die Partie weiterläuft.
-Unter **Konto → Einstellungen → Hilfe & Neuigkeiten → Einsteigertouren** kannst
-du sie erneut starten, mit Beispielen anschauen oder automatische Angebote
-ausschalten. Als Gast erreichst du dieselben Tourfunktionen in den
-**Einstellungen** der ZDWA- oder Zilch-Lobby. Konten speichern ihre Auswahl je
-Spiel auf allen Geräten, Gäste in ihrem Browser. Die
+**Deutsch:** Alle vier Spiele bieten beim ersten eigenen Spiel eine kurze,
+freiwillige Einführung. ZDWA und Zilch zeigen die Bedienung Schritt für Schritt
+am Tisch. In Hausdepp und Watten liest du die Hinweise unabhängig vom nächsten
+Spielzug und quittierst sie einmalig mit **Verstanden**. **Später**, × oder
+Escape schliessen sie für diesen Besuch; ohne Quittierung bleibt sie beim
+nächsten Einstieg verfügbar. Die Partie läuft weiter, die Einführung führt
+keine Spielaktion aus.
+
+Hausdepp erklärt besonders die versteckten Gesten: Eine spielbare Handkarte
+lange berühren wählt alle spielbaren Karten desselben Werts zur gemeinsamen
+Auswahl. Den offenen Stapel lange berühren zeigt alle Karten, die aktuell darin
+liegen. Watten erklärt Hand, Schlag/Farbe, Bieten und die privaten Partnersignale
+im blinden Vierer. Unter **Konto → Einstellungen → Hilfe & Neuigkeiten →
+Einsteigertouren** kannst du Einführungen erneut starten, mit Beispielen ansehen
+oder automatische Angebote ausschalten. Gäste erreichen dieselbe Auswahl in
+den **Einstellungen** der ZDWA- oder Zilch-Lobby. Konten speichern ihre Auswahl
+je Spiel auf allen Geräten, Gäste in ihrem Browser. Die
 [Produktspezifikation](docs/GAME_GUIDES_PLAN.md) beschreibt Ablauf und Abnahme.
 
-**English:** ZDWA, Zilch and Hausdepp each offer a short, optional tour on your
-first game as a player. It points to the relevant control and explains what to
-do, when and why; you make every game move yourself. **End tour**, × or Escape
-close it immediately while the game continues. Under **Account → Settings →
-Help & updates → Beginner tours**, you can restart a tour, view examples or switch
-off automatic offers. Guests find the same tour controls in **Settings** in
-the ZDWA or Zilch lobby. Account choices are saved per game across devices;
-guest choices stay in that browser. The
+**English:** All four games offer a short, optional introduction on your first
+game as a player. ZDWA and Zilch explain controls step by step at the table.
+In Hausdepp and Watten, read the hints independently of the next move and
+acknowledge them once with **Understood**. **Later**, × or Escape close them
+for this visit; without acknowledgement, they remain available next time.
+The game continues and the introduction performs no game actions.
+
+Hausdepp highlights the hidden gestures: hold a playable hand card to select
+all playable cards of the same rank for a group play. Hold the open pile to
+inspect every card currently in it. Watten explains your hand, strike/suit,
+bidding and private partner signals in blind four-player play. Under
+**Account → Settings → Help & updates → Beginner tours**, restart introductions,
+view examples or switch automatic offers off. Guests find the same controls in
+**Settings** in the ZDWA or Zilch lobby. Account choices are saved per game across
+devices; guest choices stay in that browser. The
 [product specification](docs/GAME_GUIDES_PLAN.md) defines the flow and acceptance
 criteria.
 
