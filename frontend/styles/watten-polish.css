@@ -524,7 +524,7 @@ html[data-watten-active="true"] .wt-table:not([data-phase="match_complete"][data
   html[data-watten-active="true"] .wt-history .wt-card--mini { width: var(--wt-history-card-w); }
   html[data-watten-active="true"] .wt-history .wt-mini-cards { gap: 6px; }
   html[data-watten-active="true"] .wt-table:not([data-phase="match_complete"][data-round-stage="ready"]) .wt-history-box[open] {
-    min-height: calc(68px + var(--wt-history-card-w) * 1.5834);
+    min-height: calc(76px + var(--wt-history-card-w) * 1.5834);
   }
 }
 
@@ -541,3 +541,29 @@ html[data-watten-active="true"] .wt-bloedeln-decisions > li[data-decision="no"] 
 html[data-watten-active="true"] .wt-bloedeln-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
 html[data-watten-active="true"] .wt-bloedeln-controls > button { min-width: 0; min-height: 44px; padding: 5px 8px; }
 html[data-watten-active="true"] .wt-bloedeln-status { margin: 0; font-size: .8rem; line-height: 1.35; }
+
+/* On the shortest phone, the normal stake can use the last 16px of empty
+   space above the hand's actual card edges. Decisions and open review retain
+   their existing dock, and every action keeps its 44px touch target. */
+@media (orientation: portrait) and (max-width: 350px) and (max-height: 700px) {
+  html[data-watten-active="true"] .wt-history .wt-mini-cards { padding-block: 2px; }
+  html[data-watten-active="true"] .wt-history figure { margin-block: 0; }
+  html[data-watten-active="true"] .wt-table[data-viewer="player"][data-phase="play"]:not(:has([data-wt-history][open])):has(> .wt-end-sheet > [data-wt-panel]:empty) > .wt-end-sheet,
+  html[data-watten-active="true"] .wt-table[data-viewer="player"][data-phase="play"]:not(:has([data-wt-history][open])):has(> .wt-end-sheet > [data-wt-panel] > .wt-prompt:only-child) > .wt-end-sheet {
+    bottom: calc(var(--wt-hand-w) * 1.8 + 8px);
+  }
+}
+
+@media (orientation: portrait) and (max-width: 760px) {
+  html[data-watten-active="true"] .wt-centre[data-wt-portrait-label] > .wt-trick-label {
+    position: fixed; left: var(--wt-portrait-label-x); top: var(--wt-portrait-label-y);
+    width: var(--wt-portrait-label-width); max-width: none; height: 20px;
+  }
+  html[data-watten-active="true"] .wt-table .wt-end-sheet > .wt-history-box[data-wt-portrait-history] {
+    position: fixed; inset: auto; left: var(--wt-portrait-history-x); top: var(--wt-portrait-history-y);
+    width: var(--wt-portrait-history-width); height: 44px; max-height: 44px; padding: 0 5px;
+  }
+  html[data-watten-active="true"] .wt-history-box[data-wt-portrait-history] > summary {
+    justify-content: center; min-height: 44px; font-size: .7rem; line-height: 1.2; text-align: center;
+  }
+}

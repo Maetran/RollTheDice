@@ -26,6 +26,18 @@ test("four complete cards remain readable within a 320px portrait table", () => 
   assert.ok(result.top >= 311 && result.bottom <= 475);
 });
 
+test("320x568 normal play makes a 64px row possible by using the spare space above the actual hand", () => {
+  const bounds = rect(12, 156, 296, 390);
+  const fixed = [rect(5.46, 219.8, 85.05, 56.205), rect(236.03, 220.21, 71.97, 55.05), rect(100, 158, 120, 65),
+    rect(40, 210, 24, 38), rect(9.59, 416, 65, 24), rect(8, 440, 304, 116)];
+  assert.equal(fitPortraitTrick({ bounds, obstacles: [...fixed, rect(151, 392, 157, 44)], count: 4, labelHeight: 0 }), null);
+  const fit = fitPortraitTrick({ bounds, obstacles: [...fixed, rect(158, 408, 150, 44)], count: 4, labelHeight: 0 });
+  assert.ok(fit);
+  assert.equal(fit.mode, "row");
+  assert.equal(fit.cardWidth, 64);
+  assert.ok(fit.top >= 281 && fit.bottom <= 403);
+});
+
 for (const count of [2, 3, 4]) {
   test(`${count} players: spare portrait space goes to larger faces while names and controls remain clear`, () => {
     const bounds = rect(12, 156, 366, 660);
@@ -99,3 +111,36 @@ for (const viewport of [{ width: 1280, height: 800 }, { width: 568, height: 320 
     assert.equal(listeners.size, 0);
   });
 }
+
+test("closed review uses a clear 44px target and leaves a separate winner label beside the complete trick", () => {
+  const bounds = rect(12, 156, 296, 404);
+  const occupied = [rect(5.46, 219.8, 85.05, 56.205), rect(236.03, 220.21, 71.97, 55.05), rect(60, 182.09, 100, 24),
+    rect(172.81, 166.62, 71.97, 55.04), rect(38.39, 190, 24, 38), rect(9.59, 416, 65, 24), rect(8, 440, 304, 116)];
+  const history = fitPortraitPrompt(bounds, occupied, { height: 44, widths: [136, 128, 112] });
+  assert.ok(history);
+  assert.equal(history.height, 44);
+  const obstacles = [...occupied, history, rect(158, 408, 150, 44)];
+  const fit = fitPortraitTrick({ bounds, obstacles, count: 4, labelHeight: 0 });
+  assert.ok(fit);
+  assert.equal(fit.cardWidth, 64);
+  const winner = fitPortraitPrompt(bounds, [...obstacles, fit]);
+  assert.ok(winner);
+  assert.equal(overlap(winner, fit), false);
+  assert.equal(overlap(winner, history), false);
+});
+
+test("review toggle schedules layout immediately and its listener is cleaned up", () => {
+  const callbacks = new Map(), history = { addEventListener: (type, callback) => callbacks.set(type, callback), removeEventListener: type => callbacks.delete(type) };
+  const table = { querySelector: selector => selector === "[data-wt-history]" ? history : null };
+  const felt = { closest: () => table }, centre = { parentElement: felt, dataset: {}, style: { removeProperty() {} } };
+  const trick = { parentElement: centre, children: [] };
+  let scheduled = 0, cancelled = 0;
+  const win = { innerWidth: 320, innerHeight: 568, addEventListener() {}, removeEventListener() {},
+    requestAnimationFrame() { scheduled++; return 1; }, cancelAnimationFrame() { cancelled++; } };
+  const layout = createTrickLayout(trick, { win });
+  callbacks.get("toggle")();
+  assert.equal(scheduled, 1);
+  layout.destroy();
+  assert.equal(cancelled, 1);
+  assert.equal(callbacks.size, 0);
+});
