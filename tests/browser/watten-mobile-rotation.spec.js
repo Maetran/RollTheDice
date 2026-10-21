@@ -138,7 +138,9 @@ for (const browserName of ['chromium', 'webkit']) {
           if (!await history.evaluate(node => node.open)) await history.locator('summary').click();
           await expect(history).toHaveAttribute('open', '');
           await expectReachable(decisionPage, '[data-wt-history] > summary');
-          await expect.poll(() => history.evaluate(node => {
+          const portraitReview = viewport.width < viewport.height && viewport.width <= 760;
+          const reviewWidth = { minimum: portraitReview ? 60 : 44, maximum: portraitReview ? 72 : 56 };
+          await expect.poll(() => history.evaluate((node, reviewWidth) => {
             const rect = node.getBoundingClientRect();
             const panel = node.parentElement.querySelector('[data-wt-panel]');
             const stake = node.parentElement.querySelector('[data-wt-stake]');
@@ -156,10 +158,10 @@ for (const browserName of ['chromium', 'webkit']) {
                 .every(button => !overlaps(rect, button.getBoundingClientRect())),
               compactReadableCards: [...node.querySelectorAll('.wt-card--mini')].every(card => {
                 const width = Number.parseFloat(getComputedStyle(card).width);
-                return width >= 44 && width <= 56;
+                return width >= reviewWidth.minimum && width <= reviewWidth.maximum;
               }),
             };
-          }), { message: 'rotating keeps history above the bid, away from the hand and decision targets' })
+          }, reviewWidth), { message: 'rotating keeps history above the bid, away from the hand and decision targets' })
             .toEqual({ aboveDecision: true, aboveStake: true, stakeBelowDecision: true, clearOfHand: true,
               controlsClearOfHistory: true, compactReadableCards: true });
           const engine = responder.traffic.snapshot.engine;
