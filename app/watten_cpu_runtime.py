@@ -258,9 +258,36 @@ _TRICK_REVEALS: dict[str, tuple[dict, str, int, float]] = {}
 
 def _may_decide(view: dict) -> bool:
     actions = set(view["actions"])
-    return bool(actions & {"announce_strike", "announce_colour", "show_ready", "inspection_ack", "play_card",
+    return bool(actions & {"announce_strike", "announce_colour", "show_ready", "inspection_ack", "play_card", "bid",
                            "respond_hold", "respond_go", "respond_counter", "retourschneider", "preplay_accept"}
                 or (view["phase"] == "bid_response" and "partner_feedback" in actions))
+
+
+def _cpu_partner_feedback_pending(runtime, view: dict, cpu_ids: set[str]) -> bool:
+    """Let a blind CPU knower use its CPU partner's one permitted signal first."""
+    if (not view["profile"]["blind"] or view["phase"] != "bid_response"
+            or "respond_hold" not in view["actions"]):
+        return False
+    own = view["seats"][view["viewer"]["seat"]]
+    partner = next((seat["player_id"] for seat in view["seats"]
+                    if seat["party"] == own["party"] and seat["player_id"] != own["player_id"]), None)
+    return partner in cpu_ids and "partner_feedback" in _view(runtime, partner)["actions"]
+
+
+def _cpu_decider_bid_pending(game: dict, runtime, view: dict, cpu_ids: set[str]) -> bool:
+    """A blind CPU partner plays after its CPU knower has considered bidding."""
+    if (not view["profile"]["blind"] or view["phase"] != "play"
+            or "play_card" not in view["actions"] or "bid" in view["actions"]):
+        return False
+    own = view["seats"][view["viewer"]["seat"]]
+    decider = runtime.engine.parties.decider(own["party"])
+    if decider not in cpu_ids or decider == own["player_id"]:
+        return False
+    decision_view = _view(runtime, decider)
+    if "bid" not in decision_view["actions"]:
+        return False
+    evaluated = _BLOCKED.get((game["_id"], decider))
+    return evaluated is None or evaluated[0] is not game or evaluated[1] != _context(runtime, decision_view)
 
 
 def watch_game(game: dict) -> None:
@@ -286,9 +313,11 @@ def watch_game(game: dict) -> None:
         active = _authority(game) is not None
     wanted = set()
     if active:
+        cpu_ids = {cpu.participant_id for cpu in runtime.room.cpus}
         for cpu in runtime.room.cpus:
             view = _view(runtime, cpu.participant_id)
-            if not _may_decide(view):
+            if (not _may_decide(view) or _cpu_partner_feedback_pending(runtime, view, cpu_ids)
+                    or _cpu_decider_bid_pending(game, runtime, view, cpu_ids)):
                 continue
             key = game["_id"], cpu.participant_id
             wanted.add(key)

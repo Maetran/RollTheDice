@@ -23,6 +23,28 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## Unveröffentlicht / Unreleased
+
+Die nächsten Korrekturen machen Ansage und Entscheidungen am Watten-Tisch klarer.
+The next fixes make calling and decisions at the Watten table clearer.
+
+### WATTEN
+
+**Deutsch:** Schlag und Farbe stehen direkt an ihrer Karte; das Kartenpaar bleibt
+in der freien Tischmitte. «Danke» ist grösser, der Regelaufruf nutzt einen
+Spielbutton. Im blinden Vierer entscheidet der wissende Spieler jedes Teams über
+Bieten und Gebotsantworten. Nur sein blinder Partner gibt ihm ein privates
+Gefühlssignal. Die CPU berücksichtigt verfügbare Partnersignale vor ihrer
+Antwort. Der abgeschlossene Rundenverlauf braucht keinen Schalter
+«Dauerhaft anzeigen» mehr.
+
+**English:** Strike and trump suit labels sit at their respective card edge;
+the card pair stays in the clear table centre. “Thanks” is larger and rules use
+a game button. In blind four-player play, each team's informed player decides
+bids and responses. Only their blind partner sends them a private feeling
+signal. CPUs consider available partner signals before responding. Completed
+round history no longer needs a “Keep visible” control.
+
 ## 4.0.1 — 2026-10-21
 
 Die Navigation und Kontoeinstellungen sind übersichtlicher; die Watten-Lobby erklärt das Spiel auch nach der Anmeldung.

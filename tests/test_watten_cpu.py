@@ -507,6 +507,46 @@ def test_three_player_roles_rotate_and_only_the_actual_partner_advises_its_decid
     assert turn(table, "B").kind == "respond"
 
 
+@pytest.mark.parametrize("dealer", tuple("ABCD"))
+def test_blind_cpu_partner_advises_knower_and_knower_responds_without_reverse_signal(dealer):
+    table = Table(start_match(cpu_recipe(4, "ladinisch", True), "blind-signal", shuffled_deal(4, 9),
+                              first_dealer=dealer))
+    table.ready()
+    table.act(table.state.play.current_player_id, "bid")
+    party = 1 - table.state.bid_state.pending.party
+    decider = table.state.parties.decider(party)
+    partner = next(player for player in table.state.parties.parties[party] if player != decider)
+    assert "partner_feedback" not in table.view(decider)["actions"]
+    advice = turn(table, partner)
+    assert advice.kind == "partner_feedback" and advice.value in {"good", "bad", "unsure"}
+    table.propose(partner, advice)
+    assert isinstance(turn(table, partner), CpuWait)
+    response = turn(table, decider)
+    assert response.kind == "respond" and response.value in {"hold", "go", "counter"}
+    table.propose(decider, response)
+
+
+@pytest.mark.parametrize("raise_bid", (False, True))
+def test_blind_cpu_knower_can_bid_while_its_partner_owns_card_turn(monkeypatch, raise_bid):
+    table = Table(start_match(cpu_recipe(4, "ladinisch", True), "blind-bid", shuffled_deal(4, 9), first_dealer="A"))
+    table.ready()
+    table.play("B")
+    assert table.state.play.current_player_id == "C"
+    assert table.view("A")["actions"] == ["bid"]
+    assert table.view("C")["actions"] == ["play_card"]
+    monkeypatch.setattr(cpu_policy, "_should_bid", lambda *_args: raise_bid)
+    assert turn(table, "C").kind == "play_card"
+    decision = turn(table, "A")
+    if raise_bid:
+        assert decision.kind == "bid"
+        table.propose("A", decision)
+        assert table.state.bid_state.pending.party == table.state.parties.party_of("A")
+        assert table.state.play.current_player_id == "C"
+    else:
+        assert isinstance(decision, CpuWait)
+        assert table.state.phase == "play"
+
+
 def _with_points(state, winner, points):
     """Real two-player engine state whose ledger already holds earlier scored deals."""
     payload = storage_payload(state)

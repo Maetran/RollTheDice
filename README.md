@@ -133,48 +133,59 @@ in the waiting room.
 **Spieltisch / game table:** Mobile zuerst: die helle Tiroler Schnitzstube bleibt
 mit grösseren Schnitzecken sichtbar. Vor dem Aufdecken erscheint kein leerer
 Handkartenfächer. Bei der ladinischen Ansage werden die beiden zulässigen Karten
-von den Ansagenden flach aufeinander geschoben, bis sich auf halbem Weg ihre
-kurzen Kopfkanten treffen, mit Schlag/Farbe
-darunter. Teamstand, Stichzahl und gemeinsames Ziel stehen oben.
+von den Ansagenden flach zur freien Tischmitte geschoben, bis sich ihre
+kurzen Kopfkanten treffen. «Schlag» und «Farbe» bleiben jeweils direkt an der
+Kante der zugehörigen Karte lesbar. Teamstand, Stichzahl und gemeinsames Ziel stehen oben.
 «Mir» ist immer deine Seite, «Dir» die gegnerische; Zuschauer sehen
 die neutralen Teamnamen. Karten- und Teamzeilen unter den Namen entfallen.
 Der dauernde Zug-Hinweis entfällt. Abgeschlossene Stiche bleiben
 rund drei Sekunden sichtbar, mit Siegerrahmen und Spielernamen. Der letzte Stich
 kann lokal erneut angesehen werden, im unteren Aktionsbereich oberhalb der
 Gebotsentscheidung. Gegnerische Karten und Stichpakete sind grösser. Die kompaktere
-Rückschau lässt sich dauerhaft einblenden. Nach Rundenende zeigt sie alle bis zu
-fünf Stiche; Schlag, Farbe und der Rechte werden dann für alle aufgedeckt.
+Rückschau lässt sich während der Partie dauerhaft einblenden. Nach Rundenende
+öffnet sie alle bis zu fünf Stiche ohne zusätzlichen Anheftschalter; Schlag,
+Farbe und der Rechte werden dann für alle aufgedeckt.
 Gewonnene Stichpakete bleiben pro Spieler direkt neben seinem Namen sichtbar.
 Das Kreuz schliesst die Rückschau und löst ihre Anheftung; ungepinnt schliesst
 sie auch beim Antippen ausserhalb.
-Ansager sind am Spielernamen mit «Schlag» oder «Farbe» markiert. «Danke!» bleibt
-höchstens bis zum Abschluss des ersten Stichs sichtbar. Einsatz und Bieten stehen
+Ansager sind am Spielernamen mit «Schlag» oder «Farbe» markiert. «Danke!» erscheint
+grösser und bleibt höchstens bis zum Abschluss des ersten Stichs sichtbar. Einsatz und Bieten stehen
 unten bei den eigenen Karten. Auf Desktop bleibt der eigene Fächer mittig;
 im Tablet-Querformat sitzt der Aktionsbereich darüber. Stichgewinne sind für die
-eigene Seite grün, für die andere rot markiert. Ein gegnerisches Gebot fragt beide
-angebotenen Partner einmal privat nach ihrem Gefühl; die Auswahl schliesst den
-Dialog, die Antwort geht nur an den Partner.
+eigene Seite grün, für die andere rot markiert. Im blinden Vierer entscheidet der
+wissende Spieler jedes Teams über Bieten, Halten, Gehen und Aufbieten: Geber
+beziehungsweise Gebernachbar. Er darf bieten, wenn er selbst oder sein Partner
+am Kartenzug ist. Bei einem gegnerischen Gebot kann nur der blinde Partner ihm
+einmal privat sein Gefühl mitteilen; die Auswahl schliesst den Dialog. Der
+wissende Entscheider sendet kein Gegensignal. In offenen Spielen bleibt die
+gegenseitige Abfrage.
 Nach vollständiger Ansage oder abgeschlossenem Einschauen darf am eigenen
 Kartenzug schon vor der ersten Karte geboten werden. Ein nach Halten vereinbartes
 Schöneres bleibt bis zur ersten Karte möglich und setzt den Einsatz auf zwei zurück.
 Mobile first: the light Tyrolean carved table keeps its larger corners visible.
 No empty hand appears before cards are revealed. Ladinisch cards slide flat from
-their callers until their short top edges meet halfway, labelled Strike and Trump suit. Scores,
+their callers into the clear table centre until their short top edges meet.
+Strike and Trump suit labels stay readable at the edge of their respective card. Scores,
 trick counts and one shared target sit above the table. “Us” always means your side,
 “Them” the other side; spectators see neutral team names. Card-count and team
 labels below player names are removed. Completed tricks stay for
 about three seconds with a winner outline and player names; the last trick can
 be reviewed locally, in the lower action area above any bid decision. Desktop
 centre cards, opponent hands and captured piles are larger. The compact review
-can stay pinned open. After each round, everyone can review up to five tricks
-and see the strike, trump suit and Rechter. Every player keeps their won trick
+can stay pinned open during play. After each round, history opens with up to
+five tricks and no extra pin control; everyone can see the strike, trump suit
+and Rechter. Every player keeps their won trick
 packets beside their name. The close button also unpins the review; when
 unpinned, tapping outside closes it. Announcers are labelled beside their
-names; “Thanks!” disappears when the first trick is complete. The stake and
+names; the larger “Thanks!” remains visible until the first trick is complete. The stake and
 raising control sit below, beside your cards. Your desktop hand stays centred;
 landscape tablets place the action area above it. Trick wins are green for your side
-and red for the other side. Only receiving an opposing bid opens a private feeling
-prompt for both partners; answering closes it and informs only the partner.
+and red for the other side. In blind four-player play, each team's informed player
+decides bids, holds, folds and raises: the dealer or the dealer's neighbour.
+They may bid on their own or their partner's card turn. When receiving an
+opposing bid, only the blind partner may send them one private feeling signal;
+answering closes the prompt. The informed decision maker sends no signal back.
+Open games retain the mutual prompt.
 Once calling or inspection is complete, the player on their card turn may bid
 before the first card. An agreed redeal after holding remains possible until
 the first card and resets the stake to two.

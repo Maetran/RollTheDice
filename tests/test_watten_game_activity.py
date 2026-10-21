@@ -133,6 +133,11 @@ def test_ladinisch_show_inspect_delivery_and_private_advice_never_count(server):
         perform(sessions, session.player_id, command)
     session = sessions[0]
     receive_opponent_bid(game_id, sessions, numbers, session.player_id)
+    state = games[game_id]["_watten"].engine
+    party = state.parties.party_of(session.player_id)
+    decider = state.parties.decider(party)
+    session = next(item for item in sessions
+                   if state.parties.party_of(item.player_id) == party and item.player_id != decider)
     # Bidding is genuine play; isolate the later private/transport operations.
     reset_days()
     perform(sessions, session.player_id, engine_command(game_id, "partner_feedback", next(numbers), "good", session.player_id))

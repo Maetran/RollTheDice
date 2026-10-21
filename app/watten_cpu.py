@@ -745,6 +745,13 @@ def _choose(ctx: _Context, seed: int, budget: CpuBudget, skill: CpuSkill) -> Cpu
             win, samples = _win_chance(ctx, stream, budget)
             chance = _subjective_chance(win, skill, samples)
             return propose("respond", _response(ctx, chance, skill))
+    elif "bid" in actions and "play_card" not in actions:
+        # The informed blind-team decider can bid while its partner owns the
+        # card turn. It evaluates the same permitted personal information and
+        # never manufactures a card action for the partner.
+        win, samples = _win_chance(ctx, stream, budget)
+        if _should_bid(ctx, _subjective_chance(win, skill, samples), skill):
+            return propose("bid")
     elif "play_card" in actions:
         options = _options(ctx)
         legal = _conserve_hopeless(ctx, _own_legal(ctx, options), options)
