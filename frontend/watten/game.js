@@ -50,6 +50,7 @@ const ERRORS = new Set([
   "watten_running_leave_unsupported", "watten_command_conflict", "watten_feedback_unavailable",
   "watten_deal_finished", "watten_already_joined", "watten_not_a_member", "watten_not_started",
   "watten_preplay_response_required", "watten_preplay_unavailable", "watten_schoeneres_requires_two_callers",
+  "watten_bloedeln_choice_unavailable", "watten_bloedeln_decision_pending",
   "watten_retourschneider_decision_pending", "watten_retourschneider_unavailable",
   "watten_invalid_tournament_target", "watten_tournament_finished", "watten_tournament_roster_locked",
   "game_creation_temporarily_blocked", "authentication_required", "game_not_found", "watten_password_option_mismatch",
@@ -933,6 +934,7 @@ function preserveFocus(update) {
 function liveMessage(snapshot, engine, actions) {
   if (snapshot.paused) return t(snapshot.can_resume ? "pause.self" : "pause.title");
   if (session.callAnnouncement) return session.callAnnouncement;
+  if (engine.preplay?.bloedeln_consent?.pending) return t("roundOptions.bloedeln.waitBoth");
   if (actions.includes("preplay_accept") && engine.preplay?.pending) {
     return t(`roundOptions.${engine.preplay.pending.kind}.pending`, { name: snapshot.room.seats[engine.preplay.pending.requester]?.name || t("seat.unknown") });
   }

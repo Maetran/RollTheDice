@@ -58,6 +58,9 @@ Spielzug und quittierst sie einmalig mit **Verstanden**. **Später**, × oder
 Escape schliessen sie für diesen Besuch; ohne Quittierung bleibt sie beim
 nächsten Einstieg verfügbar. Die Partie läuft weiter, die Einführung führt
 keine Spielaktion aus.
+Watten bietet die Einführung zunächst nur als kleinen Knopf an. Erst mit
+**Einführung ansehen** öffnest du die Schritte; laufende Spielmeldungen schalten
+die Anleitung weder weiter noch erneut ein.
 
 Hausdepp erklärt besonders die versteckten Gesten: Eine spielbare Handkarte
 lange berühren wählt alle spielbaren Karten desselben Werts zur gemeinsamen
@@ -76,6 +79,8 @@ In Hausdepp and Watten, read the hints independently of the next move and
 acknowledge them once with **Understood**. **Later**, × or Escape close them
 for this visit; without acknowledgement, they remain available next time.
 The game continues and the introduction performs no game actions.
+Watten first offers only a small **View introduction** button. Open the steps
+when you want to read them; live game messages neither advance nor reopen them.
 
 Hausdepp highlights the hidden gestures: hold a playable hand card to select
 all playable cards of the same rank for a group play. Hold the open pile to
@@ -242,6 +247,10 @@ viert können beide vor der Ansage Schlag und Farbe tauschen; Vorhand bleibt.
 Beim blinden Vierer können die beiden Nicht-Einschauer gemeinsam «Blödeln» wählen:
 Ihre ursprünglichen untersten Karten werden für alle aufgedeckt und müssen im
 ersten Stich gespielt werden, auch wenn eine andere Farbe ausgespielt wurde.
+Beide sehen sofort **Ja, blödeln** und **Nein**, während die Ansagenden zeigen
+und einschauen können. Jede Antwort ist für den anderen sichtbar. Vor der ersten
+Karte müssen beide geantwortet haben, auch wenn bereits ein Nein vorliegt. Ein
+Nein verhindert Blödeln; keine menschliche Antwort wird durch Warten ersetzt.
 “Allow a redeal” is a separate table option for two or four players, off by
 default. Until the first card is played, both callers may agree, including after
 inspection: their old hands are shuffled into the remaining stock, then each
@@ -251,6 +260,20 @@ strike and suit before the announcement; the opening player stays the same.
 In blind four-player games, both non-lookers may agree to “Blödeln”: their original
 bottom cards are revealed to everyone and must be played in the first trick,
 even when a different suit is led.
+Both immediately see **Yes, play Blödeln** and **No**, while callers may show
+and inspect. Each answer is visible to the other player. Both must answer before
+the first card, even after the first no. One no declines Blödeln; waiting never
+replaces a human answer.
+
+Nach einer Gabe wird zuerst der letzte Stich abgeräumt. Schlag, Farbe und der
+Rechte werden anschliessend etwa drei Sekunden für alle aufgedeckt; danach
+startet die nächste Gabe automatisch. Eine Pause oder offene Retourschneider-
+Entscheidung hält den Wechsel an. Auch das Endergebnis eines ganzen Spiels
+erscheint erst nach dem Abräumen und der kurzen Rückschau.
+After a deal, the final trick is collected first. Strike, suit and the Rechter
+are then revealed to everyone for about three seconds before the next deal
+starts automatically. A pause or pending Retourschneider decision stops that
+transition. A completed match's result likewise waits for collection and review.
 
 **Tischdeko / table decorations:** Getränke, Snacks und Dekowürfel liegen frei
 auf dem Tisch. Antippen benutzt sie, Ziehen oder Pfeiltasten verschieben sie.
