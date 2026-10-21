@@ -149,7 +149,7 @@ Tournaments and Create again on the same page retain the setting; leaving,
 signing out or closing ends it. Acoustic mixing still needs real device/PWA
 acceptance.
 
-### Freiwilliger Sprachchat (Beta)
+### Freiwilliger Sprachchat
 
 Bei aktivierter Funktion gibt es am Tisch zwei dauernd erreichbare Schalter:
 Lautsprecher für Audioausgabe und Mikrofon für das eigene Sprechen. Ein neuer
@@ -186,7 +186,7 @@ anonymen UTC-Tagessummen gespeichert (400 Tage), keine Gesprächsinhalte oder
 dauerhaften Konto-/Raumkennungen. Die unvollständige Browsermessung ist keine
 Cloudflare-Abrechnung und kein Kosten-Cap.
 
-### Optional voice chat (Beta, English)
+### Optional voice chat (English)
 
 Two persistent controls switch audio output and your microphone on or off.
 A fresh visit starts with both off. Listening never requests microphone access.

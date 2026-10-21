@@ -25,8 +25,22 @@ not asserted deployment dates. See the [complete version history](docs/VERSION_H
 
 ## 4.1.0 — 2026-10-21
 
-Mehr Atmosphäre und ein zügiger CPU-Abschluss in Hausdepp; klarere Ansagen und Entscheidungen beim Watten.
-More atmosphere and faster CPU finishes in Hausdepp; clearer calls and decisions in Watten.
+Neue Einführungen, Hinweise vor dem Rollout und mehr Atmosphäre am Kartentisch.
+New introductions, advance rollout notices and more atmosphere at the card table.
+
+### ALLGEMEIN
+
+**Deutsch:** Vor einem Rollout erscheint in der geöffneten App ein Hinweis mit
+«OK». Er kündigt den kurzen Serverneustart an und erklärt, dass gespeicherte
+Partien danach fortgesetzt werden können. Der Deploy baut das neue Image vorab
+und wartet nach der Ankündigung 30 Sekunden vor dem ersten Stopp. Die neue
+Anzeige steht nach dem Laden dieser App-Version für weitere Rollouts bereit.
+
+**English:** Before a rollout, the open app shows a notice with an “OK” button.
+It announces the brief server restart and explains that saved games can
+continue afterwards. Deployment builds the new image first and waits 30 seconds
+after announcing before the first stop. The new display becomes available for
+subsequent rollouts once this app version has loaded.
 
 ### HAUSDEPP
 
@@ -37,6 +51,9 @@ und gemeinsame Details werden geladen. Wer allein gegen CPUs spielt und seine
 Karten fertig hat, kann mit «CPUs schneller» die übrigen Pausen der Runde um
 70 % verkürzen. Mindestens 400 ms halten die Züge nachvollziehbar; die
 Nachwurf-Reihenfolge bleibt erhalten und die nächste Runde startet normal.
+Der Sprachchat trägt kein Beta-Label mehr. Die einmalig quittierbare Einführung
+erklärt insbesondere die Mehrfachauswahl durch langes Tippen auf die Hand und
+den Stapelverlauf durch langes Tippen auf den offenen Stapel.
 
 **English:** Enabling tavern sounds randomly selects one of ten very quiet
 ambiences: the original and nine new mixes of the established room and object
@@ -44,6 +61,9 @@ recordings. Only the selected ambience and shared details load. When the only
 human has finished, “Speed up CPUs” shortens the remaining pauses in the round
 by 70%. A 400 ms minimum keeps play readable; afterthrow order is preserved
 and the next round starts at normal speed.
+Voice chat no longer carries a beta label. The introduction, acknowledged once,
+highlights long-pressing your hand for multiple selection and long-pressing the
+open pile to inspect its history.
 
 ### WATTEN
 
@@ -53,12 +73,16 @@ Spielbutton. Im blinden Vierer entscheidet der wissende Spieler jedes Teams
 über Bieten und Gebotsantworten. Nur sein blinder Partner gibt ihm ein privates
 Gefühlssignal; die CPU berücksichtigt dieses vor ihrer Antwort. Der
 abgeschlossene Rundenverlauf braucht keinen Schalter «Dauerhaft anzeigen» mehr.
+Eine neue Einführung erklärt die wichtigsten Bedienelemente und wird einmalig
+mit «Verstanden» bestätigt.
 
 **English:** Strike and suit labels sit at their respective card edge; the
 card pair stays clear of hands. “Thanks” is larger and rules use a game button.
 In blind four-player play each team's informed player decides bids and
 responses. Only the blind partner sends private advice; CPUs consider it before
 responding. Completed round history no longer needs a “Keep visible” control.
+A new introduction explains the main controls and is acknowledged once with
+“Understood”.
 
 ## 4.0.1 — 2026-10-21
 

@@ -30,6 +30,23 @@ open individually. A required password change opens the relevant section directl
 The Watten lobby explains players, variants and the aim of the game after sign-in
 as well; guests receive the same guide in German or English without JavaScript.
 
+## Hinweise vor dem Rollout / advance rollout notices
+
+**Deutsch:** Eine Meldung oben in der geöffneten App kündigt einen bevorstehenden
+Rollout und kurzen Serverneustart an. «OK» quittiert genau diese Ankündigung.
+Gespeicherte Partien können danach fortgesetzt werden. Das neue Image wird
+zuerst gebaut; vor dem ersten Stopp wartet der Deploy nach der Ankündigung
+30 Sekunden. Die Anzeige benötigt diese App-Version; bereits geöffnete ältere
+Versionen erhalten sie erst nach dem nächsten Laden. Stille Releases
+unterdrücken den Vorabhinweis nicht.
+
+**English:** A notice at the top of the open app announces an upcoming rollout
+and brief server restart. “OK” acknowledges that announcement. Saved games can
+continue afterwards. Deployment builds the new image first and waits 30 seconds
+after announcing before the first stop. The display requires this app version;
+already open older versions receive it after their next load. Silent releases
+still show the advance notice.
+
 ## Einsteigertouren / beginner tours
 
 **Deutsch:** ZDWA, Zilch und Hausdepp bieten beim ersten eigenen Spiel je eine
@@ -660,7 +677,7 @@ switching sound off plays one final acknowledgement. Use system volume and
 audio devices. Tournaments and Create again on the same page retain the
 setting; leaving, signing out or closing ends it.
 
-**Sprachchat / Voice chat (Beta):** Bei aktivierter Sprachfunktion können angemeldete
+**Sprachchat / Voice chat:** Bei aktivierter Sprachfunktion können angemeldete
 Mitspieler am Wartetisch freiwillig Audio einschalten und ohne Mikrofonfreigabe
 zuhören. Das Mikrofon wird separat eingeschaltet. Audio aus schaltet auch das
 Mikro stumm; Audio wieder ein startet ausschliesslich das Zuhören. Einzelne

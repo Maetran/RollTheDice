@@ -181,12 +181,8 @@ for (const language of ['de', 'en']) {
     try {
       const output = page.locator('#hausdeppVoiceAudio'), mic = page.locator('#hausdeppVoiceMicrophone');
       const sound = page.locator('#hausdeppSound');
-      const beta = page.locator('#hausdeppVoiceBeta');
-      await expect(beta).toBeVisible();
-      await expect(beta).toHaveText('Beta');
-      await expect(beta).toHaveAttribute('title', language === 'de' ? 'Der Sprachchat ist eine Beta-Funktion.' : 'Voice chat is a beta feature.');
-      await expect(page.locator('.hd-voice-controls')).toHaveAttribute('aria-describedby', 'hausdeppVoiceBetaDescription');
-      await expect(page.locator('#hausdeppVoiceBetaDescription')).toHaveText(language === 'de' ? 'Der Sprachchat ist eine Beta-Funktion.' : 'Voice chat is a beta feature.');
+      await expect(page.locator('#hausdeppVoiceBeta, #hausdeppVoiceBetaDescription')).toHaveCount(0);
+      await expect(page.locator('.hd-voice-controls')).toHaveAccessibleName(language === 'de' ? 'Sprachchat am Tisch' : 'Table voice chat');
       await expect(output).toHaveAttribute('aria-pressed', 'false');
       await expect(sound).toHaveAttribute('aria-pressed', 'false');
       await expect(sound).toHaveAccessibleName(language === 'de' ? 'Wirtshaus-Sound einschalten' : 'Turn tavern sound on');
@@ -198,7 +194,7 @@ for (const language of ['de', 'en']) {
       await expect(mic).toBeDisabled();
       await output.click();
       await expect(output).toHaveAttribute('aria-pressed', 'true');
-      await expect(beta).toBeVisible();
+      await expect(page.locator('#hausdeppVoiceBeta')).toHaveCount(0);
       expect(await page.evaluate(() => window.__voiceHarness.captures)).toBe(0);
       await app.start();
       await expect(output).toHaveAttribute('aria-pressed', 'true');
@@ -208,7 +204,7 @@ for (const language of ['de', 'en']) {
       expect(await page.evaluate(() => window.__voiceHarness.captures)).toBe(1);
       await output.click();
       await expect(output).toHaveAttribute('aria-pressed', 'false');
-      await expect(beta).toBeVisible();
+      await expect(page.locator('#hausdeppVoiceBeta')).toHaveCount(0);
       await expect(mic).toHaveAttribute('aria-pressed', 'false');
       await expect(mic).toBeDisabled();
       expect(await page.evaluate(() => window.__voiceHarness.tracks[0].readyState)).toBe('ended');
