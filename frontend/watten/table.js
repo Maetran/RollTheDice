@@ -9,6 +9,7 @@ import { roundOptionsMarkup, bloedelnCardsMarkup } from "./round-options.js";
 import { retourschneiderChoiceMarkup, createRetourAnnouncement } from "./retourschneider.js";
 import { seriesMarks, seriesTargetMarkup, seriesFinishedTitle } from "./series.js";
 import { createScorepad, nockerlMarksMarkup } from "./scorepad.js";
+import { createTrickLayout } from "./trick-layout.js";
 
 const POSITIONS = { 2: ["bottom", "top"], 3: ["bottom", "left", "right"], 4: ["bottom", "left", "top", "right"] };
 const FEEDBACK = ["good", "bad", "unsure"];
@@ -536,6 +537,7 @@ export function createTableView(container, { onCard, accountId = null }) {
   const trickNodes = new Map();
   const seatNodes = new Map();
   const positionInspection = createInspectionMotion(elements.reveal, seatNodes);
+  const positionTrick = createTrickLayout(elements.trick);
   const retourAnnouncement = createRetourAnnouncement(elements.retour, { accountId, liveNode: $("[data-wt-retour-live]") });
   const scorepad = createScorepad(elements.scores);
   const signatures = {};
@@ -759,6 +761,7 @@ export function createTableView(container, { onCard, accountId = null }) {
     const hand = vm.spectator ? { created: [], nodes: [] } : renderHand(vm);
     positionInspection(vm);
     const trick = renderTrick(vm);
+    positionTrick.update(vm);
     retourAnnouncement.update(vm);
     const live = vm.liveMessage || "";
     if (live !== lastLive) elements.live.textContent = live;
@@ -775,7 +778,7 @@ export function createTableView(container, { onCard, accountId = null }) {
     return elements.seats.querySelector(`[data-wt-seat="${seat}"]`);
   }
 
-  return { update, destroy() { document.removeEventListener("pointerdown", outsideHistory); positionInspection.destroy(); retourAnnouncement.destroy(); scorepad.destroy(); }, motionSources, seatNode, trickNode: () => elements.trick,
+  return { update, destroy() { document.removeEventListener("pointerdown", outsideHistory); positionInspection.destroy(); positionTrick.destroy(); retourAnnouncement.destroy(); scorepad.destroy(); }, motionSources, seatNode, trickNode: () => elements.trick,
     deckNode: () => $("[data-wt-deck]"), collectionNode: seat => elements.seats.querySelector(`[data-wt-catch="${seat}"]`),
     backNodes: () => [...elements.seats.querySelectorAll(".wt-backs:not([hidden]) > i:not([hidden])")] };
 }
