@@ -147,7 +147,7 @@ deployment_cleanup() {
     compose start rollthedice >/dev/null || true
   fi
   if [[ "$notice_active" == "1" ]]; then
-    compose exec -T rollthedice python -m app.deployment_notice clear --id "$notice_id" || true
+    compose exec -T rollthedice python -m app.deployment_notice clear --id "$notice_id" </dev/null || true
   fi
   exit "$exit_status"
 }
@@ -161,9 +161,11 @@ if printf '%s\n' "$running_services" | grep -qx 'rollthedice'; then
   echo "== Upcoming rollout: 30 seconds before the first service stop =="
   # Detect only the expected first-installation limitation. All other CLI
   # errors fail before stopping the live server; no public write API exists.
-  if compose exec -T rollthedice python -c 'import importlib.util, sys; sys.exit(0 if importlib.util.find_spec("app.deployment_notice") else 42)'; then
+  # Compose exec is interactive even with -T. Never let these no-input CLIs
+  # consume the remaining remote `bash -s` deployment script from SSH stdin.
+  if compose exec -T rollthedice python -c 'import importlib.util, sys; sys.exit(0 if importlib.util.find_spec("app.deployment_notice") else 42)' </dev/null; then
     notice_active=1
-    compose exec -T rollthedice python -m app.deployment_notice announce --id "$notice_id" --delay 30
+    compose exec -T rollthedice python -m app.deployment_notice announce --id "$notice_id" --delay 30 </dev/null
   else
     notice_status=$?
     if [[ "$notice_status" != "42" || "$ALLOW_NOTICE_BOOTSTRAP" != "1" ]]; then
@@ -205,7 +207,7 @@ if command -v curl >/dev/null 2>&1; then
 fi
 
 if [[ "$notice_active" == "1" ]]; then
-  compose exec -T rollthedice python -m app.deployment_notice clear --id "$notice_id"
+  compose exec -T rollthedice python -m app.deployment_notice clear --id "$notice_id" </dev/null
   notice_active=0
 fi
 

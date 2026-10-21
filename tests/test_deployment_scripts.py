@@ -69,6 +69,13 @@ git() {
   esac
 }
 sudo() {
+  if [[ "$DRAIN_EXEC_STDIN" == "1" && "$*" == *"docker compose exec"* && "$*" != *"app.release_push"* ]]; then
+    # Like interactive Compose exec, actively read inherited SSH stdin. A
+    # missing /dev/null redirect drains the remote bash -s script and can
+    # produce a false successful exit without deploying or updating its marker.
+    consumed_input="$(cat)"
+    if [[ -n "$consumed_input" ]]; then echo "CONSUMED_DEPLOY_STDIN:$*" >&2; fi
+  fi
   case "$*" in
     *"docker compose build"*) echo BUILD; return "$BUILD_FAIL" ;;
     *"docker compose up"*) echo RECREATE; echo "COMPOSE_ARGS:$*"; return "$RECREATE_FAIL" ;;
@@ -97,7 +104,7 @@ curl() { echo HEALTH >&2; return "$HEALTH_FAIL"; }
 sleep() { echo "WAIT:$*"; if [[ "$CANCEL_WAIT" == "1" ]]; then kill -TERM "$$"; fi; }
 '''
         defaults = {name: "0" for name in ("BUILD_FAIL", "RECREATE_FAIL", "HEALTH_FAIL", "PUBLIC_FAIL", "QUEUE_FAIL",
-                                           "ANNOUNCE_FAIL", "BACKUP_FAIL", "CAPABILITY_STATUS", "CANCEL_WAIT", "PS_FAIL")}
+                                           "ANNOUNCE_FAIL", "BACKUP_FAIL", "CAPABILITY_STATUS", "CANCEL_WAIT", "PS_FAIL", "DRAIN_EXEC_STDIN")}
         return subprocess.run(["bash", "-s"], input=doubles + remote, capture_output=True, text=True,
                               env={**os.environ, **defaults, "FOUNDER_USER_ID": "2", "REMOTE_DIR": str(directory),
                                    "BRANCH": "master", "DEPLOY_HEAD": "b" * 40, "NEW_REVISION": "b" * 40, **flags})
@@ -148,6 +155,36 @@ sleep() { echo "WAIT:$*"; if [[ "$CANCEL_WAIT" == "1" ]]; then kill -TERM "$$"; 
                 else:
                     self.assertNotIn("STOP", result.stderr)
                     self.assertNotIn("RECREATE", result.stdout)
+
+    def test_interactive_compose_reads_cannot_consume_the_remaining_remote_deployment_script(self):
+        for capability in ("0", "42"):
+            with self.subTest(capability=capability), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                marker = root / ".deployment-marker"
+                marker.write_text("a" * 40 + "\n", encoding="utf-8")
+                (root / "data").mkdir()
+                result = self._run_deployment(root, DRAIN_EXEC_STDIN="1", CAPABILITY_STATUS=capability,
+                                              ALLOW_NOTICE_BOOTSTRAP="1")
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertNotIn("CONSUMED_DEPLOY_STDIN", result.stderr)
+                self.assertIn("WAIT:30", result.stdout)
+                self.assertIn("STOP", result.stderr)
+                steps = ["BUILD", "BACKUP", "RECREATE", "PUBLIC_SMOKE", "PUBLISH", "RETENTION"]
+                offsets = [result.stdout.index(step) for step in steps]
+                self.assertEqual(offsets, sorted(offsets))
+                self.assertIn('PUBLISH:{"skip":true}', result.stdout, "the intentional release JSON pipe must remain readable")
+                self.assertEqual(marker.read_text(encoding="utf-8").strip(), "b" * 40)
+
+    def test_notice_cleanup_during_cancellation_also_closes_inherited_script_input(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "data").mkdir()
+            result = self._run_deployment(root, DRAIN_EXEC_STDIN="1", CANCEL_WAIT="1")
+            self.assertEqual(result.returncode, 143)
+            self.assertIn("CLEAR", result.stdout)
+            self.assertNotIn("CONSUMED_DEPLOY_STDIN", result.stderr)
+            self.assertNotIn("STOP", result.stderr)
+            self.assertNotIn("PUBLISH", result.stdout)
 
     def test_cancelling_the_warning_clears_it_without_stopping_the_service(self):
         with tempfile.TemporaryDirectory() as directory:
