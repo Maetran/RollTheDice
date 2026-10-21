@@ -15,18 +15,18 @@
   <meta name="twitter:card" content="summary">
   <meta name="theme-color" content="#f4f6f8">
   <meta name="color-scheme" content="light dark">
-  <link rel="manifest" href="/manifest.webmanifest?v=9d27e7a8dd8c">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=9d27e7a8dd8c" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=9d27e7a8dd8c" sizes="180x180">
+  <link rel="manifest" href="/manifest.webmanifest?v=fddf0784ec44">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=fddf0784ec44" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=fddf0784ec44" sizes="180x180">
   <!--
     rules.html - Spielanleitung
     ---------------------------
     Referenz fuer Spielablauf, Wertung, Modi sowie Desktop-/Mobilsteuerung.
   -->
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"||t==="classic"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d==="dark"?"dark":"light";const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=d==="dark"?"#0b1120":d==="classic"?"#31583a":"#f4f6f8"}catch(_){}</script>
-  <script src="/static/shell.js?v=9d27e7a8dd8c" defer></script>
-  <link rel="stylesheet" href="/static/style.css?v=9d27e7a8dd8c" />
-  <link rel="stylesheet" href="/static/zdwa-design-2026.css?v=9d27e7a8dd8c">
+  <script src="/static/shell.js?v=fddf0784ec44" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=fddf0784ec44" />
+  <link rel="stylesheet" href="/static/zdwa-design-2026.css?v=fddf0784ec44">
   <script>{const r=document.documentElement,g=k=>{try{return localStorage.getItem(k)}catch(_){return null}},q=new URLSearchParams(location.search).get("design");if(q!=="classic"&&g("zdwa_design")!=="old"&&g("zdwa_design_off")!=="1"&&(q==="2026"||g("zdwa_design_override")!=="old"))r.dataset.design="2026"}</script>
   <style>
     /* Schlanke Dokumentationsstyles; die App-Komponenten kommen aus style.css. */
@@ -61,7 +61,7 @@
   <script type="application/ld+json" data-suite-discovery>
     {"@context":"https://schema.org","@type":"WebPage","@id":"https://zockdiewandan.online/regeln#page","url":"https://zockdiewandan.online/regeln","name":"Zock die Wand an: Spielregeln & Anleitung","description":"Die Spielregeln für Zock die Wand an: Rundenablauf, Punkte, Spalten, Ansage, Normal- und Hardcore-Modus sowie Erfolge verständlich erklärt.","inLanguage":["de","en"],"about":{"@id":"https://zockdiewandan.online/#game"}}
   </script>
-  <link rel="stylesheet" href="/static/suite-header.css?v=9d27e7a8dd8c">
+  <link rel="stylesheet" href="/static/suite-header.css?v=fddf0784ec44">
 </head>
 <body class="rules-page">
   <!-- Dokumentations-Container -->
@@ -92,6 +92,11 @@
       <summary>Einsteigertouren</summary>
       <p>Beim ersten eigenen Spiel wird dir eine freiwillige kurze Tour angeboten. Sie erklärt passende Aktionen direkt am Spieltisch und lässt sich jederzeit mit Tour beenden, × oder Escape schliessen. Deine Partie läuft weiter.</p>
       <p>Unter Konto → Einstellungen → Hilfe &amp; Neuigkeiten → Einsteigertouren kannst du die Tour erneut starten, als Beispiel anschauen oder automatische Angebote ausschalten. Als Gast findest du Einsteigertouren unter Einstellungen in der Lobby; deine Wahl bleibt in diesem Browser.</p>
+    </details>
+
+    <details>
+      <summary>Konto und Navigation</summary>
+      <p>Weiterführende Aktionen nutzen das Button-Design des jeweiligen Spiels. Die Kategorien der Kontoeinstellungen sind zunächst geschlossen; tippe auf eine Kategorie, um sie zu öffnen. In Hausdepp führt Konto direkt zu den Einstellungen. Spielverlauf und Fortschritt bleiben separat erreichbar.</p>
     </details>
 
     <!-- Rundenablauf -->
@@ -198,7 +203,7 @@
     <p>Am Spielende bleibt dein Spielstand sichtbar, während Erfolge im Hintergrund geprüft werden. Erreichst du beim Spielabschluss mehrere Erfolge, wird jeder einzeln gezeigt und bestätigt. Erreichst du dadurch eine höhere Rangstufe, folgt danach eine eigene „LEVEL UP!“-Karte, bevor der Endstand erscheint.</p>
     <h3>Achievement-Ränge</h3>
     <p>Dein Achievement-Rang wird aus deinen Ehrenberg-Marken berechnet und erscheint mit einem Sternabzeichen neben deinem Namen – in Lobby, Spielraum, Chat, Profilen, Ergebnisansichten und Ranglisten. Die Stufen reichen von Newbie bis Mythos. Bereits veröffentlichte Punktschwellen bleiben fest; neue hohe Ränge erweitern den Weg, ohne jemanden zurückzustufen.</p>
-    <p>Die Rang-Legende erklärt alle Stufen und die jeweils nötigen Ehrenberg-Marken: <a href="/rangabzeichen">Rangabzeichen ansehen</a>.</p>
+    <p>Die Rang-Legende erklärt alle Stufen und die jeweils nötigen Ehrenberg-Marken: <a class="button-link" href="/rangabzeichen">Rangabzeichen ansehen</a>.</p>
 
     <!-- Spielmodi -->
     <h2>Spielmodi</h2>
@@ -218,7 +223,7 @@
     <h2>Offline spielen</h2>
     <p>Über Offline spielen in der Lobby startest du ein normales Solospiel nur auf diesem Gerät. Jeder Einstieg wird bestätigt: keine Erfolge, keine Ranglistenwertung und kein Upload. Auch beim Zurückwechseln in den Online-Modus erscheint eine Bestätigung.</p>
     <p>Spielstand und Bestwerte bleiben in diesem Browser. Öffne den Offline-Bereich einmal mit Internet, bis die Dateien bereit sind. Eine unterbrochene Online-Partie wird nicht automatisch zum Offline-Spiel.</p>
-    <p><a href="/offline-spielen">Offline spielen</a></p>
+    <p><a class="button-link" href="/offline-spielen">Offline spielen</a></p>
 
     <!-- Steuerung & Shortcuts -->
     <h2>Steuerung & Shortcuts</h2>

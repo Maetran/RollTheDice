@@ -6,29 +6,23 @@
     "hausdepp",
     "watten"
   ],
-  "summary_de": "Watten ist als [BETA] für alle da: mit Freunden, CPUs, Turnieren und eigenem Bierblock.",
-  "summary_en": "Watten [BETA] is open to everyone: play with friends, CPUs, tournaments and your own pub scorepad.",
+  "summary_de": "Passende Spielbuttons, geschlossene Kontokategorien und mehr Orientierung in der Watten-Lobby.",
+  "summary_en": "Matching game buttons, collapsed account categories and more guidance in the Watten lobby.",
   "player_notes": {
     "de": {
-      "title": "Watten ist da – als öffentliche Beta",
+      "title": "Schneller zu Regeln und Konto",
       "changes": [
-        "ALLGEMEIN: Watten erscheint mit klarem [BETA]-Hinweis in der Spielauswahl.",
-        "WATTEN: Spiele blind oder offen mit zwei, drei oder vier Spielern. Freunde einladen oder freie Plätze mit CPUs auffüllen.",
-        "WATTEN: Grössere Karten, ruhige Stichrückschau und eine Bierblock-Anschrift halten den Tisch übersichtlich. Revanchen behalten Teams und Nockerl; Turniere spielen bis zu deinem Nockerlziel.",
-        "WATTEN: Schöneres, Blödeln, Schlagwechsel und Retourschneider folgen den gewählten Hausregeln. Taktische CPUs beachten ihre eigenen Informationen und den Partner.",
-        "WATTEN: Die eigene PWA auf watten.zockdiewandan.online lässt sich installieren. Globaler Sprachchat ist beim Erstellen wählbar; Konten und Tische bleiben privat.",
-        "HAUSDEPP: Beim Erstellen kannst du den Sprachchat für den Tisch ein- oder ausschalten."
+        "ALLGEMEIN: Weiterführende Aktionen nutzen das Button-Design deines Spiels. Kontokategorien öffnest du bei Bedarf einzeln.",
+        "HAUSDEPP: Konto führt direkt zu deinen Einstellungen. Spielverlauf und Fortschritt bleiben separat erreichbar.",
+        "WATTEN: Die Lobby erklärt Besetzung, Varianten und Spielziel, auch wenn du bereits angemeldet bist."
       ]
     },
     "en": {
-      "title": "Watten is here – in public beta",
+      "title": "Find rules and account settings more easily",
       "changes": [
-        "ALLGEMEIN: Watten appears in the game picker with a clear [BETA] label.",
-        "WATTEN: Play blind or open with two, three or four players. Invite friends or fill empty seats with CPUs.",
-        "WATTEN: Larger cards, calm trick review and a pub scorepad keep the table clear. Rematches retain teams and loss marks; tournaments continue to your chosen loss-mark target.",
-        "WATTEN: Schöneres, Blödeln, caller swaps and Retourschneider follow your chosen house rules. Tactical CPUs use their own information and consider their partner.",
-        "WATTEN: Install the dedicated PWA at watten.zockdiewandan.online. Choose global voice chat when creating a table; accounts and tables stay private.",
-        "HAUSDEPP: Switch table voice chat on or off when creating a game."
+        "ALLGEMEIN: Navigation actions use your game’s button style. Open individual account categories as needed.",
+        "HAUSDEPP: Account opens your settings directly. Match history and progress remain separately accessible.",
+        "WATTEN: The lobby explains players, variants and the aim of the game, including when you are signed in."
       ]
     }
   }

@@ -12,14 +12,14 @@
   <meta property="og:title" content="Watten online [BETA] – zu zweit, zu dritt oder zu viert">
   <meta property="og:description" content="Watten online: unsere Hausregeln, eigene Tische, Teams und Computergegner. Öffentliche Beta.">
   <meta property="og:url" content="https://watten.zockdiewandan.online/watten">
-  <link rel="icon" type="image/png" sizes="32x32" href="/static/watten/icons/watten-icon-32.png?v=9d27e7a8dd8c">
-  <link rel="stylesheet" href="/static/watten-game.css?v=9d27e7a8dd8c">
-  <link rel="stylesheet" href="/static/suite-header.css?v=9d27e7a8dd8c">
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/watten/icons/watten-icon-32.png?v=fddf0784ec44">
+  <link rel="stylesheet" href="/static/watten-game.css?v=fddf0784ec44">
+  <link rel="stylesheet" href="/static/suite-header.css?v=fddf0784ec44">
 </head>
 <body class="wt-body">
   <a class="wt-skip" href="#wattenApp">Zum Inhalt / Skip to content</a>
   <header class="wt-header suite-header">
-    <a class="wt-brand suite-header__brand" href="/watten" translate="no"><img class="suite-header__icon" src="/static/watten/icons/watten-icon-32.png?v=9d27e7a8dd8c" width="32" height="32" alt=""><span>Watten</span></a>
+    <a class="wt-brand suite-header__brand" href="/watten" translate="no"><img class="suite-header__icon" src="/static/watten/icons/watten-icon-32.png?v=fddf0784ec44" width="32" height="32" alt=""><span>Watten</span></a>
     <div class="suite-header__tools">
       <label class="wt-language"><span class="wt-visually-hidden">Sprache / Language</span><select data-language-switcher aria-label="Sprache / Language"><option value="de">DE</option><option value="en">EN</option></select></label>
       <button id="wattenSuitePicker" type="button" class="game-switch" data-game-switch hidden disabled aria-label="Spiele / Games"></button>
@@ -32,13 +32,22 @@
     </nav>
   </header>
   <main id="wattenApp" class="wt-main" tabindex="-1">
-    <h1>{watten_public_heading}</h1>
-    <p class="wt-lead">{watten_public_intro}</p>
-    <p>{watten_public_detail}</p>
-    <p>{watten_public_beta}</p>
-    <p><a class="wt-button" href="/watten/anmelden">{watten_public_play}</a> · <a href="/watten/regeln">{watten_public_rules}</a></p>
-    <nav aria-label="{watten_public_language}"><a href="/watten" lang="de" hreflang="de">Deutsch</a> · <a href="/watten?lang=en" lang="en" hreflang="en">English</a></nav>
+    <section class="wt-hero wt-lobby-intro" aria-labelledby="wattenTitle">
+      <div class="wt-lobby-intro-copy"><h1 id="wattenTitle">{watten_public_heading}</h1>
+        <p class="wt-lead">{watten_public_intro}</p></div>
+      <div class="wt-actions"><a class="wt-button" href="/watten/anmelden" data-watten-signin>{watten_public_play}</a>
+        <a class="wt-button wt-button--ghost" href="/watten/regeln">{watten_public_rules}</a></div>
+      <p class="wt-note">{watten_public_detail}</p>
+    </section>
+    <section class="wt-lobby-guide" data-watten-lobby-guide aria-labelledby="wattenGuideTitle">
+      <h2 id="wattenGuideTitle">{watten_public_guide_title}</h2>
+      <h3>{watten_public_guide_play_title}</h3><p>{watten_public_guide_play}</p>
+      <h3>{watten_public_guide_variants_title}</h3><p>{watten_public_guide_variants}</p>
+      <h3>{watten_public_guide_friends_title}</h3><p>{watten_public_guide_friends}</p>
+      <p class="wt-note">{watten_public_beta}</p>
+    </section>
+    <nav class="wt-actions wt-lobby-languages" aria-label="{watten_public_language}"><a class="wt-button wt-button--ghost" href="/watten" lang="de" hreflang="de">Deutsch</a><a class="wt-button wt-button--ghost" href="/watten?lang=en" lang="en" hreflang="en">English</a></nav>
   </main>
-  <script type="module" src="/static/watten-game.js?v=9d27e7a8dd8c"></script>
+  <script type="module" src="/static/watten-game.js?v=fddf0784ec44"></script>
 </body>
 </html>

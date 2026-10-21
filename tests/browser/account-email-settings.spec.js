@@ -64,6 +64,7 @@ for (const product of ["zdwa", "zilch"]) {
       });
       await page.setViewportSize({ width: 375, height: 844 });
       await page.goto(`${product === "zilch" ? "/zilch/konto" : "/konto"}#settings`);
+      await page.locator("details[data-account-section=access] > summary").click();
       const section = page.locator("[data-email-section]");
       const email = section.locator("[data-email-settings]");
       await expect(page.locator("html")).toHaveAttribute("lang", language);
@@ -83,12 +84,14 @@ for (const product of ["zdwa", "zilch"]) {
 
       emailStatus = { delivery_available: true, email: "new-mail@example.test", email_confirmed: true, pending_email: null };
       await page.reload();
+      await page.locator("details[data-account-section=access] > summary").click();
       await expect(email).toContainText(language === "de" ? "Bestätigte E-Mail-Adresse:" : "Confirmed email address:");
       await expect(email.locator("strong")).toHaveText("new-mail@example.test");
       await expect(email).not.toContainText(language === "de" ? "Bestätigung ausstehend für" : "Confirmation pending for");
 
       emailStatus = { ...emailStatus, pending_email: "replacement@example.test" };
       await page.reload();
+      await page.locator("details[data-account-section=access] > summary").click();
       await expect(email.locator("strong")).toHaveText(["new-mail@example.test", "replacement@example.test"]);
       await expect(page.locator("details[data-account-section=access]")).toHaveAttribute("open", "");
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);

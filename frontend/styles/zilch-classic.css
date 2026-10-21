@@ -132,8 +132,8 @@ html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-intro > p:not(.eyebrow)
   line-height: 1.6;
   max-width: 67ch;
 }
-html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-intro a { color: #e3cda5; text-underline-offset: .2em; }
-html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-intro a:hover { color: #fff5df; }
+html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-intro a:not(.button-link) { color: #e3cda5; text-underline-offset: .2em; }
+html[data-game="zilch"]:not([data-theme="lcars"]) .zilch-intro a:not(.button-link):hover { color: #fff5df; }
 html[data-game="zilch"]:not([data-theme="lcars"]) .eyebrow {
   font-family: var(--zilch-classic-font);
   font-weight: 650;

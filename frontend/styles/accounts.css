@@ -5,7 +5,7 @@
   display:inline-flex;
   align-items:center;
   justify-content:center;
-  min-height:2.35rem;
+  min-height:44px;
   padding:.52rem .78rem;
   border:1px solid var(--border);
   border-radius:var(--radius-sm);
@@ -19,7 +19,7 @@
 }
 .button-link:hover{ background:var(--surface-soft); border-color:var(--border-strong); }
 .button-link:active{ transform:translateY(1px); }
-.button-link.small{ min-height:2rem; padding:.35rem .58rem; font-size:.85rem; }
+.button-link.small{ min-height:44px; padding:.35rem .58rem; font-size:.85rem; }
 .button-link.secondary{
   background:#eef4ff;
   border-color:#c8d9ff;

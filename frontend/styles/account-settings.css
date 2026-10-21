@@ -29,6 +29,8 @@ html[data-game="zilch"] .passkey-setup-prompt a { background: var(--zilch-blue);
   --account-settings-muted: var(--zilch-muted);
   --account-settings-accent: var(--zilch-blue);
 }
+.account-settings-links { display: flex; flex-wrap: wrap; gap: .65rem; margin-block: 1rem; }
+.account-settings-links > a { min-height: 44px; max-width: 100%; box-sizing: border-box; text-align: center; }
 .account-settings-intro { margin: 0; color: var(--account-settings-muted); line-height: 1.5; }
 .zilch-account-settings-grid > .account-settings-intro { color: #fff8e8; }
 .account-settings-group {

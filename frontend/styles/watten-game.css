@@ -162,8 +162,16 @@ legend { font-weight: 700; margin-bottom: .35rem; padding: 0; }
 .wt-rules-text section { margin-top: 1.5rem; }
 .wt-rules-text ul, .wt-rules-text ol { padding-left: 1.3rem; }
 .wt-rules-text li { margin-bottom: .4rem; }
-.wt-toc ol { columns: 2 12rem; padding-left: 1.3rem; }
-.wt-toc a { display: inline-block; min-height: 32px; }
+.wt-rules-text .wt-toc ol { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; padding: 0; list-style: none; }
+.wt-toc li { min-width: 0; margin: 0; }
+.wt-toc .wt-button { width: 100%; height: 100%; padding: .5rem .6rem; font-size: .9rem; text-align: center; overflow-wrap: anywhere; }
+.wt-page-actions { display: flex; flex-wrap: wrap; align-items: stretch; gap: .5rem; margin-bottom: .75rem; }
+.wt-page-actions > .wt-button { flex: 1 1 10rem; min-width: 0; text-align: center; overflow-wrap: anywhere; }
+.wt-rules-text section[id] { scroll-margin-top: 1rem; }
+@media (min-width: 640px) {
+  .wt-rules-text .wt-toc ol { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .wt-page-actions > .wt-button { flex: 0 1 auto; }
+}
 .wt-credits { font-size: .9rem; color: var(--wt-muted); }
 html[lang="en"] .wt-rules-text[lang="de"], html:not([lang="en"]) .wt-rules-text[lang="en"] { display: none; }
 

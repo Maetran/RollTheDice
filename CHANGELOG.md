@@ -23,6 +23,39 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 4.0.1 — 2026-10-21
+
+Die Navigation und Kontoeinstellungen sind übersichtlicher; die Watten-Lobby erklärt das Spiel auch nach der Anmeldung.
+Navigation and account settings are clearer; the Watten lobby explains the game after sign-in as well.
+
+### ALLGEMEIN
+
+**Deutsch:** Weiterführende Aktionen in Regeln, Lobby und Konto erscheinen im
+Button-Design des jeweiligen Spiels. Kontokategorien starten geschlossen;
+eine erforderliche Passwortänderung bleibt direkt erreichbar.
+
+**English:** Navigation actions in rules, lobbies and accounts use the relevant
+game's button style. Account categories start collapsed; required password
+changes remain directly accessible.
+
+### HAUSDEPP
+
+**Deutsch:** «Konto» führt direkt zu den Kontoeinstellungen. Spielverlauf und
+Fortschritt bleiben über eigene Schaltflächen erreichbar.
+
+**English:** “Account” leads directly to account settings. Dedicated buttons
+keep match history and progress accessible.
+
+### WATTEN
+
+**Deutsch:** Die Lobby erklärt Besetzung, Varianten und Spielziel auf Deutsch
+und Englisch, auch nach der Anmeldung. Öffentliche Inhalte bleiben ohne
+JavaScript lesbar und über echte Links erreichbar.
+
+**English:** The lobby explains players, variants and the aim of the game in
+German and English, including after sign-in. Public content remains readable
+without JavaScript and reachable through real links.
+
 ## 4.0.0 — 2026-10-21
 
 Watten wird als öffentliche Beta mit eigenem Wirtshaustisch, Turnieren und PWA freigeschaltet.

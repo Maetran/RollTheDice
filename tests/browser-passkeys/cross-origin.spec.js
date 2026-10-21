@@ -40,6 +40,7 @@ test("native passkey created on the apex origin signs into the allowed Zilch sub
   });
   try {
     await page.goto("/konto#settings");
+    await page.locator("details[data-account-section=access] > summary").click();
     expect(await page.evaluate(() => window.isSecureContext)).toBe(true);
     const settings = page.locator("[data-passkey-settings]");
     await settings.locator('[name="current_password"]').fill(password);

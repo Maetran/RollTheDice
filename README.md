@@ -12,6 +12,24 @@ Guests can play ZDWA and Zilch. Hausdepp has a public lobby and rules; playing
 requires an active account. One account provides history, statistics, achievements
 and community features across the suite.
 
+## Navigation und Konto / navigation and account
+
+**Deutsch:** Weiterführende Aktionen und Regelübersichten verwenden das
+Button-Design des jeweiligen Spiels. «Konto» öffnet in Hausdepp direkt die
+Kontoeinstellungen; Spielverlauf und Fortschritt bleiben separat erreichbar.
+Die Kategorien der Kontoeinstellungen starten geschlossen und lassen sich einzeln
+öffnen. Eine erforderliche Passwortänderung öffnet den passenden Bereich direkt.
+Die Watten-Lobby erklärt Besetzung, Varianten und Spielziel auch nach der
+Anmeldung; Gäste erhalten diese Inhalte bereits ohne JavaScript auf Deutsch
+oder Englisch.
+
+**English:** Navigation actions and rule contents use each game's button style.
+In Hausdepp, “Account” opens account settings directly; match history and progress
+remain separately accessible. Account settings categories start collapsed and
+open individually. A required password change opens the relevant section directly.
+The Watten lobby explains players, variants and the aim of the game after sign-in
+as well; guests receive the same guide in German or English without JavaScript.
+
 ## Einsteigertouren / beginner tours
 
 **Deutsch:** ZDWA, Zilch und Hausdepp bieten beim ersten eigenen Spiel je eine

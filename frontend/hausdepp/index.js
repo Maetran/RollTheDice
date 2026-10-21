@@ -224,7 +224,7 @@ function renderOpponents(markup) {
 function header() {
   const identity = auth?.authenticated && auth.user;
   $("hausdeppHeader").innerHTML = `<a class="hd-brand" href="/hausdepp" aria-label="Hausdepp"><img src="/static/icons/hausdepp-icon-192-v2.png" width="36" height="36" alt=""><span>Hausdepp</span></a>
-    <nav class="hd-nav" aria-label="${esc(t("navigation"))}"><a href="/hausdepp" ${page === "lobby" ? 'aria-current="page"' : ""}>${t("lobby")}</a><a href="/hausdepp/rangliste" ${page === "leaderboard" ? 'aria-current="page"' : ""}>${window.ZDWA_I18N.t("Spieler & Ranking")}</a><a href="/hausdepp/regeln" ${page === "rules" ? 'aria-current="page"' : ""}>${t("rules")}</a><a href="/hausdepp/konto" ${["account", "settings"].includes(page) ? 'aria-current="page"' : ""}>${t("account")}</a></nav>
+    <nav class="hd-nav" aria-label="${esc(t("navigation"))}"><a href="/hausdepp" ${page === "lobby" ? 'aria-current="page"' : ""}>${t("lobby")}</a><a href="/hausdepp/rangliste" ${page === "leaderboard" ? 'aria-current="page"' : ""}>${window.ZDWA_I18N.t("Spieler & Ranking")}</a><a href="/hausdepp/regeln" ${page === "rules" ? 'aria-current="page"' : ""}>${t("rules")}</a><a href="/hausdepp/konto/einstellungen" ${["account", "settings"].includes(page) ? 'aria-current="page"' : ""}>${t("account")}</a></nav>
     <div class="hd-header-tools"><a class="hd-profile-button" href="${identity ? "/hausdepp/konto/einstellungen#profilbild" : signInUrl()}" aria-label="${esc(identity ? t("editProfile", { name: identity.username }) : t("signIn"))}" title="${esc(identity ? t("editProfile", { name: identity.username }) : t("signIn"))}">${identity ? avatarMarkup(identity, { size: "small", avatarKey: "header-self" }) : icon("account")}</a><label class="hd-language"><span class="hd-sr">${t("language")}</span><select data-language-switcher aria-label="${t("language")}"><option value="de">DE</option><option value="en">EN</option></select></label><button type="button" data-game-switch class="hd-switch" aria-label="${t("switch")}">${icon("switch")}<span>${t("games")}</span></button></div>`;
   const language = $("hausdeppHeader").querySelector("select");
   language.value = lang();
@@ -1597,7 +1597,7 @@ async function start() {
         && (!(snapshot?._finished || snapshot?._hausdepp?.phase === "finished") || roundResultVisible())
       )),
     });
-  } catch (error) { root.innerHTML = `<section class="hd-unavailable"><h1>Hausdepp</h1><p role="alert">${esc(error.message || t("requestFailed"))}</p><a href="${zdwaAppEntryUrl()}">${t("backSuite")}</a></section>`; document.body.classList.remove("hd-loading"); }
+  } catch (error) { root.innerHTML = `<section class="hd-unavailable"><h1>Hausdepp</h1><p role="alert">${esc(error.message || t("requestFailed"))}</p><a class="hd-secondary" href="${zdwaAppEntryUrl()}">${t("backSuite")}</a></section>`; document.body.classList.remove("hd-loading"); }
 }
 
 window.addEventListener("resize", positionReactions);

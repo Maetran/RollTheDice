@@ -146,6 +146,30 @@ class WattenPublicBetaTests(unittest.TestCase):
             self.assertIn(response.status_code, (200, 303))
             self.assertEqual(response.headers["x-robots-tag"], "noindex, nofollow")
 
+    def test_public_lobby_explains_play_before_javascript_with_localized_button_actions(self):
+        for language, snippets in (
+            ("de", ("Watten kurz erklärt", "Jede Person bekommt fünf Karten.", "ein wechselnder Solist",
+                    "lade Freunde per Link ein")),
+            ("en", ("Watten at a glance", "Everyone receives five cards.", "playing solo against a pair",
+                    "invite friends with a link")),
+        ):
+            with self.subTest(language=language):
+                response = self.client.get("/watten" + ("?lang=en" if language == "en" else ""))
+                self.assertEqual(response.status_code, 200)
+                guide_start = response.text.index('<section class="wt-lobby-guide"')
+                guide = response.text[guide_start:response.text.index("</section>", guide_start)]
+                for snippet in snippets:
+                    self.assertIn(snippet, guide)
+                self.assertNotIn("hidden", guide)
+                # The playable entry stays ahead of the explanatory content.
+                self.assertLess(response.text.index("data-watten-signin"), guide_start)
+                links = _PublicDocument(response.text).links
+                body_actions = [link for link in links if link.get("class", "").startswith("wt-button")]
+                self.assertEqual(len(body_actions), 4)
+                self.assertTrue(any(link["href"] == "/watten/anmelden" for link in body_actions))
+                self.assertTrue(any(urlsplit(link["href"]).path == "/watten/regeln" for link in body_actions))
+                self.assertEqual({link.get("hreflang") for link in body_actions if "hreflang" in link}, {"de", "en"})
+
     def test_public_host_aliases_sitemap_and_suite_bridges_have_no_route_loop(self):
         self.assertEqual(self.client.get("/?lang=en").headers["location"], "/watten?lang=en")
         self.assertEqual(self.client.get("/regeln?lang=en").headers["location"], "/watten/regeln?lang=en")

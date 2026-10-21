@@ -57,6 +57,7 @@ for (const product of ['zdwa', 'zilch']) {
       let secondAuthenticator;
       try {
         await page.goto(`${product === 'zilch' ? '/zilch/konto' : '/konto'}#settings`);
+        await page.locator('[data-account-section=access] > summary').click();
         const keys = page.locator('[data-passkey-settings]');
         const add = keys.locator('button[type=submit]');
         await keys.locator('[name=current_password]').fill(password);

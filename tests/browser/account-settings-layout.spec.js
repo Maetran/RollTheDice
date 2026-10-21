@@ -64,13 +64,13 @@ for (const product of products) {
       expect(await sections.evaluateAll(nodes => nodes.map(node => node.dataset.accountSection))).toEqual(["access", "play", "social", "help"]);
       for (let index = 0; index < 4; index += 1) {
         await expect(sections.nth(index).locator(":scope > summary")).toContainText(sectionNames[language][index]);
-        if (index === 0) await expect(sections.nth(index)).toHaveAttribute("open", "");
-        else await expect(sections.nth(index)).not.toHaveAttribute("open", "");
+        await expect(sections.nth(index)).not.toHaveAttribute("open", "");
       }
       await expect(page.locator("[data-email-settings]")).toBeHidden();
       await expect(page.locator("#emailSettingsTitle")).toBeHidden();
       await expect(page.locator("[data-passkey-settings]")).toBeHidden();
       // Feature flags must hide their own card, never the surrounding profile section.
+      await openSection(page, "access");
       const profile = page.locator("details[data-account-action=profile]");
       const password = page.locator("details[data-account-action=password]");
       await expect(profile.locator(":scope > summary")).toBeVisible();
@@ -140,6 +140,62 @@ for (const product of products) {
       await expect(page.getByRole("tab").nth(2)).toHaveAttribute("aria-selected", "true");
       await expect(page.locator('details[data-account-section="social"]')).not.toHaveAttribute("open", "");
     }
+  });
+}
+
+for (const language of ["de", "en"]) {
+  test(`Hausdepp Konto opens its native settings with every category collapsed (${language})`, async ({ page }) => {
+    await createAccount(page, `Navigation_hausdepp_${language}`, language);
+    await page.setViewportSize({ width: 320, height: 844 });
+    await page.goto("/hausdepp");
+    const accountLink = page.locator('.hd-nav a').filter({ hasText: language === "de" ? /^Konto$/ : /^Account$/ });
+    await expect(accountLink).toHaveAttribute("href", "/hausdepp/konto/einstellungen");
+    await accountLink.click();
+    await expect(page).toHaveURL(/\/hausdepp\/konto\/einstellungen$/);
+    await expect(page.locator(".hd-settings")).toBeVisible();
+    await expect(page.locator(".hd-settings-item[open]")).toHaveCount(0);
+    const first = page.locator(".hd-settings-item").filter({ has: page.locator("[data-username-settings]") });
+    await first.locator(":scope > summary").focus();
+    await page.keyboard.press("Enter");
+    await expect(first).toHaveAttribute("open", "");
+    await page.keyboard.press("Space");
+    await expect(first).not.toHaveAttribute("open", "");
+    await expect(page.locator('.hd-settings-footer a[href="/hausdepp/konto"]')).toHaveClass(/hd-secondary/);
+    await page.locator('.hd-settings-footer a[href="/hausdepp/konto"]').click();
+    await expect(page.locator('main[data-page="account"]')).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    // The shared header deliberately hides its redundant profile shortcut.
+    // Follow its deep link directly to verify the targeted settings row.
+    const profileUrl = await page.locator('.hd-profile-button').getAttribute("href");
+    expect(profileUrl).toBe("/hausdepp/konto/einstellungen#profilbild");
+    await page.goto(profileUrl);
+    await expect(page).toHaveURL(/\/hausdepp\/konto\/einstellungen#profilbild$/);
+    await expect(page.locator('.hd-settings-item[open]')).toHaveCount(1);
+    await expect(page.locator('[data-avatar-upload]')).toBeVisible();
+    await page.goto("/hausdepp/konto/einstellungen?allowlist=1#spielerauswahl");
+    await expect(page.locator('.hd-settings-item[open]')).toHaveCount(1);
+    await expect(page.locator('#spielerauswahl [data-allowlist-settings]')).toBeVisible();
+  });
+
+  test(`Watten account starts collapsed and keeps navigation in its button design (${language})`, async ({ page }) => {
+    await createAccount(page, `Navigation_watten_${language}`, language);
+    await page.setViewportSize({ width: 320, height: 844 });
+    await page.goto("/watten/konto/einstellungen");
+    await expect(page.locator("#wattenAccount [data-account-name]")).toHaveText(`Navigation_watten_${language}`);
+    await expect(page.locator("#wattenAccount details[open]")).toHaveCount(0);
+    const languageSection = page.locator("#wattenAccount details").filter({ has: page.locator("[data-language]") });
+    await languageSection.locator(":scope > summary").focus();
+    await page.keyboard.press("Enter");
+    await expect(page.locator("[data-language] select")).toBeVisible();
+    const links = page.locator("#wattenAccount > .actions a");
+    await expect(links).toHaveCount(2);
+    for (const link of await links.all()) {
+      await expect(link).toHaveClass(/button-link/);
+      expect(await link.evaluate(node => node.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
+    }
+    await links.first().click();
+    await expect(page).toHaveURL(new RegExp(`/watten${language === "en" ? "\\?lang=en" : ""}$`));
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
   });
 }
 

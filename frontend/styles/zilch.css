@@ -130,6 +130,33 @@ html[data-game="zilch"] .zilch-page :where(button, a, input, select, textarea) {
   touch-action: manipulation;
 }
 
+/* This standalone shell also owns links that use the game's button face. */
+:where(html[data-game="zilch"]) .button-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .4rem;
+  min-height: 44px;
+  max-width: 100%;
+  padding: .55rem .8rem;
+  border: 1px solid var(--zilch-paper-edge);
+  border-radius: var(--zilch-radius-sm);
+  color: var(--zilch-ink);
+  background: var(--zilch-paper);
+  box-shadow: var(--zilch-shadow-soft);
+  font: inherit;
+  font-weight: 700;
+  line-height: 1.3;
+  text-align: center;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+:where(html[data-game="zilch"]) .button-link:hover { background: var(--zilch-paper-soft); border-color: var(--zilch-blue); }
+:where(html[data-game="zilch"]) .button-link:where(.primary) { color: #fff; background: var(--zilch-blue); border-color: var(--zilch-blue); }
+:where(html[data-game="zilch"]) .button-link:where(.primary):hover { background: var(--zilch-blue-strong); border-color: var(--zilch-blue-strong); }
+:where(html[data-game="zilch"]) .button-link:where(.small) { padding: .45rem .65rem; font-size: .85rem; }
+html[data-game="zilch"] .zilch-intro-help { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .7rem; }
+
 html[data-game="zilch"] .zilch-shell :where(a, button, input, select, textarea, [tabindex]):focus-visible {
   outline: 3px solid var(--zilch-focus-ring);
   outline-offset: 3px;
