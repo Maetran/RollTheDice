@@ -179,9 +179,9 @@ html[data-watten-active="true"] .wt-history-box {
 html[data-watten-active="true"] .wt-history-box summary { font-size: .8rem; }
 html[data-watten-active="true"] .wt-history-box[open] { background: #fff3e1; box-shadow: 0 5px 16px #4e291f40; }
 html[data-watten-active="true"] .wt-end-sheet { display: contents; }
-html[data-watten-active="true"] .wt-table[data-phase="match_complete"] .wt-end-sheet { position: absolute; z-index: 19; inset: 12px max(12px, 12%); padding: 12px; display: block; background: var(--wt-paper); overflow: auto; overscroll-behavior: contain; border: 1px solid #ba9167; border-radius: 12px; box-shadow: 0 4px 18px #4e291f40; }
-html[data-watten-active="true"] .wt-table[data-phase="match_complete"] .wt-panel { position: static; width: auto; min-height: 0; max-height: none; height: auto; translate: none; border: 0; background: none; box-shadow: none; overflow: visible; }
-html[data-watten-active="true"] .wt-table[data-phase="match_complete"] [data-watten-rematch] { position: static; padding: 0; }
+html[data-watten-active="true"] .wt-table[data-phase="match_complete"][data-round-stage="ready"] .wt-end-sheet { position: absolute; z-index: 19; inset: 12px max(12px, 12%); padding: 12px; display: block; background: var(--wt-paper); overflow: auto; overscroll-behavior: contain; border: 1px solid #ba9167; border-radius: 12px; box-shadow: 0 4px 18px #4e291f40; }
+html[data-watten-active="true"] .wt-table[data-phase="match_complete"][data-round-stage="ready"] .wt-panel { position: static; width: auto; min-height: 0; max-height: none; height: auto; translate: none; border: 0; background: none; box-shadow: none; overflow: visible; }
+html[data-watten-active="true"] .wt-table[data-phase="match_complete"][data-round-stage="ready"] [data-watten-rematch] { position: static; padding: 0; }
 html[data-watten-active="true"] .wt-panel:has(:is(.wt-inspection, .wt-final, .wt-pause)) { top: 21%; bottom: auto; left: 50%; right: auto; translate: -50% 0; width: min(440px, calc(100% - 28px)); max-height: 70%; }
 html[data-watten-active="true"] [data-watten-social] { position: absolute; top: 0; right: 50px; z-index: 12; }
 html[data-watten-active="true"] .wt-social { margin: 0; }
