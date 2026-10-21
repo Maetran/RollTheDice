@@ -73,7 +73,7 @@ class Table:
     def propose(self, player, proposal):
         return self._apply(player, EngineCommand(**proposal.command_fields()))
 
-    def ready(self, strike="7", suit="bells"):
+    def ready(self, strike="7", suit="bells", *, bloedeln=False):
         state = self.state
         roles = announcement_roles(state)
         if state.recipe.profile.determination == "normal":
@@ -83,6 +83,10 @@ class Table:
         for kind in ("show_ready", "inspection_ack"):
             for seat in sorted(state.inspectors):
                 self.act(state.recipe.seats[seat], kind)
+        if self.state.bloedeln_decisions is not None and bloedeln is not None:
+            for seat in range(len(state.recipe.seats)):
+                if seat not in state.inspectors and seat not in dict(self.state.bloedeln_decisions):
+                    self.act(state.recipe.seats[seat], "bloedeln_accept" if bloedeln else "bloedeln_decline")
 
     def play(self, player, card=None):
         options = legal_cards(self.state.play, self.state.bid_state, player)

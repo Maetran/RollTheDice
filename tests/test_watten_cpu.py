@@ -66,7 +66,7 @@ def run_cpus(table, *, seed=3, budget=FAST, policy_seats=None, limit=240):
         decisions = {}
         for player in table.state.recipe.seats:
             if player in policy_seats:
-                if table.state.phase == "play" and table.state.play.current_player_id == player:
+                if table.state.phase == "play" and table.state.play.current_player_id == player and "play_card" in table.view(player)["actions"]:
                     view = table.view(player)
                     assert own_legal_cards(view, table.memories[player]) == legal_cards(
                         table.state.play, table.state.bid_state, player)
@@ -90,6 +90,8 @@ def baseline(table, player):
         return CpuProposal(player, view["deal_id"], view["opportunity"], view["phase"], kind, value)
 
     actions = view["actions"]
+    if "bloedeln_decline" in actions:
+        return make("bloedeln_decline")
     if "announce_strike" in actions:
         return make("announce_strike", "7")
     if "announce_colour" in actions:
@@ -127,7 +129,8 @@ def test_cpus_finish_every_confirmed_profile_with_engine_accepted_commands(count
         assert table.state.phase in {"deal_complete", "match_complete"}
         kinds = {proposal.kind for _, proposal in proposals}
         assert "play_card" in kinds and kinds <= {"announce_strike", "announce_colour", "show_ready",
-                                                  "inspection_ack", "play_card", "bid", "respond", "partner_feedback"}
+                                                  "inspection_ack", "play_card", "bid", "respond", "partner_feedback",
+                                                  "bloedeln_accept", "bloedeln_decline"}
         for player, proposal in proposals:
             assert proposal.player_id == player
             # Command kinds, not view action names, reach the engine.
@@ -198,7 +201,7 @@ def test_cpu_declines_a_redeal_while_its_hand_is_hidden_instead_of_reading_engin
 
 def test_cpu_bloedeln_plays_the_public_original_bottoms_only_in_the_first_trick():
     table = Table(start_match(cpu_recipe(4, "ladinisch", True), "forced-bottom", blind_deal(), first_dealer="A"))
-    table.ready()
+    table.ready(bloedeln=None)
     table.act("C", "request_bloedeln")
     table.act("D", "preplay_accept")
     forced = dict(table.state.play.forced_opening)

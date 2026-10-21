@@ -55,7 +55,8 @@ DEFAULT_SAMPLES: Final = 24
 MAX_SAMPLES: Final = 64
 ATTEMPTS_PER_SAMPLE: Final = 8
 COMMAND_KINDS: Final = frozenset({"announce_strike", "announce_colour", "show_ready", "inspection_ack", "play_card",
-                                  "bid", "respond", "partner_feedback", "retourschneider", "preplay_accept", "preplay_decline"})
+                                  "bid", "respond", "partner_feedback", "retourschneider", "preplay_accept", "preplay_decline",
+                                  "bloedeln_accept", "bloedeln_decline"})
 _RESPONSE_ACTIONS: Final = frozenset({"respond_hold", "respond_go", "respond_counter"})
 _RESPONSES: Final = frozenset({"hold", "go", "counter"})
 _FEEDBACK: Final = frozenset({"good", "bad", "unsure"})
@@ -128,7 +129,7 @@ class CpuProposal:
         if (self.kind == "respond") != (self.value in _RESPONSES) or (
                 self.kind == "partner_feedback" and self.value not in _FEEDBACK) or (
                 self.kind == "retourschneider" and self.value not in {"accept", "decline"}) or (
-                self.kind in {"preplay_accept", "preplay_decline"} and self.value is not None):
+                self.kind in {"preplay_accept", "preplay_decline", "bloedeln_accept", "bloedeln_decline"} and self.value is not None):
             raise WattenCpuError("watten_cpu_invalid_proposal")
 
     @property
@@ -714,6 +715,11 @@ def _choose(ctx: _Context, seed: int, budget: CpuBudget, skill: CpuSkill) -> Cpu
     def propose(kind: str, value: str | None = None, private: int | None = None) -> CpuProposal:
         return CpuProposal(snap.player_id, snap.deal_id, snap.opportunity, snap.phase, kind, value, private)
 
+    if "bloedeln_accept" in actions:
+        # Before the show our own hand is hidden, so decline without looking
+        # into engine cards. A visible hand may support the existing heuristic.
+        high = sum(card_rank(card) == "A" for card in ctx.hand) if snap.hand is not None else 0
+        return propose("bloedeln_accept" if high >= 2 else "bloedeln_decline")
     if snap.preplay_pending is not None:
         if "preplay_accept" in actions:
             return propose(_preplay_answer(ctx))

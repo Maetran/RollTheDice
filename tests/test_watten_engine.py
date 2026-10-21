@@ -59,7 +59,7 @@ def step(state, player, kind, value=None, command_id=None):
     return apply_command(state, actor(state, player), command(state, player, kind, value, command_id)).state
 
 
-def ready(state):
+def ready(state, *, bloedeln=False):
     roles = round_roles(len(state.recipe.seats), state.dealer_seat, determination=state.recipe.profile.determination)
     if state.recipe.profile.determination == "normal":
         state = step(state, state.recipe.seats[roles.strike_announcer], "announce_strike", "7")
@@ -68,6 +68,10 @@ def ready(state):
         state = step(state, state.recipe.seats[seat], "show_ready")
     for seat in sorted(state.inspectors):
         state = step(state, state.recipe.seats[seat], "inspection_ack")
+    if state.bloedeln_decisions is not None and bloedeln is not None:
+        for seat in range(len(state.recipe.seats)):
+            if seat not in state.inspectors and seat not in dict(state.bloedeln_decisions):
+                state = step(state, state.recipe.seats[seat], "bloedeln_accept" if bloedeln else "bloedeln_decline")
     return state
 
 
@@ -291,6 +295,9 @@ def test_storage_roundtrips_each_inspection_and_pending_response_boundary_and_re
                                 ("A", "inspection_ack", None), ("B", "inspection_ack", None)):
         state = step(state, player, kind, value)
         stages.append(state)
+    for player in ("C", "D"):
+        state = step(state, player, "bloedeln_decline")
+        stages.append(state)
     state = step(state, "B", "play_card", legal_cards(state.play, state.bid_state, "B")[0])
     state = step(state, "A", "bid")
     stages.append(step(state, "D", "partner_feedback", "good"))
@@ -308,7 +315,7 @@ def test_storage_roundtrips_each_inspection_and_pending_response_boundary_and_re
     score_corrupt["ledger"]["accounts"][0]["points"] = 9
     with pytest.raises(WattenEngineError, match="score_mismatch"):
         restore_storage(score_corrupt)
-    precard_bid = storage_payload(stages[4])
+    precard_bid = storage_payload(stages[6])
     precard_bid["phase"] = "bid_response"
     precard_bid["bid"]["last_offering_party"] = 0
     precard_bid["bid"]["pending"] = {"party": 0, "points": 3}

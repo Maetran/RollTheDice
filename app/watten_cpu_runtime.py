@@ -259,7 +259,7 @@ _TRICK_REVEALS: dict[str, tuple[dict, str, int, float]] = {}
 def _may_decide(view: dict) -> bool:
     actions = set(view["actions"])
     return bool(actions & {"announce_strike", "announce_colour", "show_ready", "inspection_ack", "play_card", "bid",
-                           "respond_hold", "respond_go", "respond_counter", "retourschneider", "preplay_accept"}
+                           "respond_hold", "respond_go", "respond_counter", "retourschneider", "preplay_accept", "bloedeln_accept"}
                 or (view["phase"] == "bid_response" and "partner_feedback" in actions))
 
 

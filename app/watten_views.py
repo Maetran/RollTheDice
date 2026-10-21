@@ -15,6 +15,7 @@ from .watten_engine import (
     WattenEngineError,
     announcement_roles,
     bloedeln_cards,
+    bloedeln_pending,
     gestrichen_players,
     partner_feedback_recipient,
     partner_id,
@@ -76,7 +77,9 @@ def _public(state: EngineState) -> dict:
         "preplay": {"pending": None if state.preplay_request is None else {
             "kind": state.preplay_request.kind, "requester": state.preplay_request.requester,
             "responder": state.preplay_request.responder},
-            "bloedeln_cards": [{"seat": seat, "card": card} for seat, card in bloedeln_cards(state)]},
+            "bloedeln_cards": [{"seat": seat, "card": card} for seat, card in bloedeln_cards(state)],
+            "bloedeln_consent": {"pending": bloedeln_pending(state), "decisions": [] if state.bloedeln_decisions is None else [
+                {"seat": seat, "accepted": dict(state.bloedeln_decisions).get(seat)} for seat in preplay_seats(state, "bloedeln")]}},
         "seats": [{"seat": seat, "player_id": binding.player_id,
                    "party": state.parties.party_of(binding.player_id),
                    "card_count": len(play.hands[seat]) if play else 5,
@@ -89,7 +92,7 @@ def _public(state: EngineState) -> dict:
         "nockerl": [{"members": list(members), "count": count, "reason": reason}
                     for members, count, reason in nockerl(state.ledger)],
         "party_tricks": list(play.party_tricks) if play else [0, 0],
-        "card_turn": play.current_seat if play and not result and state.preplay_request is None else None,
+        "card_turn": play.current_seat if play and not result and state.preplay_request is None and not bloedeln_pending(state) else None,
         "current_trick": current, "last_trick": last,
         "bid": {"accepted_stake": bidding.accepted_stake,
                 "pending": None if bidding.pending is None else {
@@ -121,9 +124,11 @@ def _public(state: EngineState) -> dict:
 def _actions(state: EngineState, seat: int) -> list[str]:
     player = state.recipe.seats[seat]
     roles = announcement_roles(state)
+    choices = (["bloedeln_accept", "bloedeln_decline"] if bloedeln_pending(state)
+               and seat in preplay_seats(state, "bloedeln") and seat not in dict(state.bloedeln_decisions) else [])
     if state.preplay_request is not None:
-        return ["preplay_accept", "preplay_decline"] if seat == state.preplay_request.responder else []
-    requests = [f"request_{kind}" for kind in ("schoeneres", "schlagwechsel", "bloedeln")
+        return choices + (["preplay_accept", "preplay_decline"] if seat == state.preplay_request.responder else [])
+    requests = choices + [f"request_{kind}" for kind in ("schoeneres", "schlagwechsel")
                 if preplay_available(state, kind) and seat in preplay_seats(state, kind)]
     if state.phase == "strike":
         return requests + (["announce_strike"] if seat == roles.strike_announcer else [])
@@ -138,7 +143,7 @@ def _actions(state: EngineState, seat: int) -> list[str]:
     if (state.phase == "deal_complete" and members is not None
             and player in members and player not in state.retour_accepted_by):
         actions.append("retourschneider")
-    if state.phase == "play":
+    if state.phase == "play" and not bloedeln_pending(state):
         if player == state.play.current_player_id:
             actions.append("play_card")
         party = state.parties.party_of(player)
