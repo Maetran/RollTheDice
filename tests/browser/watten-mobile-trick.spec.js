@@ -1,7 +1,25 @@
 const { test, expect } = require('@playwright/test');
+const { writeFile } = require('node:fs/promises');
 const { player, create, normalCall, playOne } = require('./helpers/watten-journey.cjs');
 
 test.setTimeout(90_000);
+
+async function recordLayout(page, info, stage) {
+  const path = info.outputPath(`${stage}-portrait-layout.json`);
+  const geometry = await page.evaluate(() => {
+    const rect = node => { const { x, y, width, height, top, right, bottom, left } = node.getBoundingClientRect(); return { x, y, width, height, top, right, bottom, left }; };
+    return {
+      centre: { ...document.querySelector('.wt-centre').dataset }, felt: rect(document.querySelector('.wt-felt')),
+      label: document.querySelector('.wt-trick-label').textContent,
+      obstacles: [...document.querySelectorAll('.wt-seat-badge, .wt-backs > i:not([hidden]), .wt-taken[data-filled="true"], .wt-stock, [data-wt-hand-area], [data-wt-panel], [data-wt-private] button, [data-wt-stake], [data-wt-history]:not([open])')]
+        .filter(node => !node.hidden && getComputedStyle(node).display !== 'none')
+        .map(node => ({ tag: node.tagName, class: node.className, rect: rect(node) })),
+      reference: document.querySelector('.wt-reference') ? rect(document.querySelector('.wt-reference')) : null,
+    };
+  });
+  await writeFile(path, JSON.stringify(geometry, null, 2));
+  await info.attach(`${stage}-portrait-layout`, { path, contentType: 'application/json' });
+}
 
 for (const viewport of [{ width: 320, height: 568 }, { width: 393, height: 852 }]) {
   test(`four-player portrait ${viewport.width}x${viewport.height}: larger live trick and readable review`, async ({ browser, baseURL }, info) => {
@@ -18,15 +36,7 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 393, height: 852 }
       const page = players[0].page;
       await expect(page.locator('.wt-trick-card')).toHaveCount(3);
       await expect(page.locator('[data-watten-call]')).toHaveCount(0);
-      await info.attach('portrait-layout', { contentType: 'application/json', body: JSON.stringify(await page.evaluate(() => {
-        const rect = node => { const { x, y, width, height, top, right, bottom, left } = node.getBoundingClientRect(); return { x, y, width, height, top, right, bottom, left }; };
-        return { centre: { ...document.querySelector('.wt-centre').dataset }, felt: rect(document.querySelector('.wt-felt')),
-          label: document.querySelector('.wt-trick-label').textContent,
-          obstacles: [...document.querySelectorAll('.wt-seat-badge, .wt-backs > i:not([hidden]), .wt-taken[data-filled="true"], .wt-stock, [data-wt-hand-area], [data-wt-panel], [data-wt-private] button, [data-wt-stake], [data-wt-history]:not([open])')]
-            .filter(node => !node.hidden && getComputedStyle(node).display !== 'none')
-            .map(node => ({ tag: node.tagName, class: node.className, rect: rect(node) })),
-          reference: document.querySelector('.wt-reference') ? rect(document.querySelector('.wt-reference')) : null };
-      }), null, 2) });
+      await recordLayout(page, info, 'live');
       await expect.poll(() => page.locator('.wt-trick-card').first().evaluate(node => Number.parseFloat(getComputedStyle(node).width)))
         .toBeGreaterThanOrEqual(viewport.width <= 350 ? 64 : 76);
       await expect.poll(() => page.evaluate(() => {
@@ -49,6 +59,7 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 393, height: 852 }
       await playOne(players);
       await expect.poll(() => players[0].traffic.snapshot?.engine?.last_trick?.cards.length).toBe(4);
       await expect(page.locator('.wt-trick[data-state="last"] .wt-trick-card')).toHaveCount(4);
+      await recordLayout(page, info, 'completed');
       await expect.poll(() => page.locator('.wt-trick-card').first().evaluate(node => Number.parseFloat(getComputedStyle(node).width)))
         .toBeGreaterThanOrEqual(viewport.width <= 350 ? 64 : 76);
       await expect.poll(() => page.locator('.wt-trick-label').evaluate(node => {
