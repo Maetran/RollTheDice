@@ -77,7 +77,7 @@ class WattenReadinessMiddleware:
     """Deny HTTP and WebSocket entry before any legacy or account routing.
 
     This is a closed staging boundary, not a game adapter or an access grant.
-    Only the existing database readiness probe is forwarded to the app.
+    Only readiness and the public, read-only rollout timing reach the app.
     """
 
     def __init__(self, app: ASGIApp) -> None:
@@ -179,7 +179,7 @@ class WattenReadinessMiddleware:
 
         method = scope["method"]
         path = scope["path"]
-        if method in {"GET", "HEAD"} and path == "/api/health":
+        if method in {"GET", "HEAD"} and path in {"/api/health", "/api/deployment-notice"}:
             async def send_health(message: Message) -> None:
                 if message["type"] == "http.response.start":
                     headers = [(key, value) for key, value in message["headers"]
