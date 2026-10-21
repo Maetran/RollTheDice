@@ -58,6 +58,8 @@ Spielzug und quittierst sie einmalig mit **Verstanden**. **Später**, × oder
 Escape schliessen sie für diesen Besuch; ohne Quittierung bleibt sie beim
 nächsten Einstieg verfügbar. Die Partie läuft weiter, die Einführung führt
 keine Spielaktion aus.
+Die kurzen Schlag-/Farbe-Sprechblasen verschwinden mit der ersten gelegten
+Karte und lassen den Stich frei; das automatische «Danke» bleibt davon getrennt.
 
 Hausdepp erklärt besonders die versteckten Gesten: Eine spielbare Handkarte
 lange berühren wählt alle spielbaren Karten desselben Werts zur gemeinsamen
@@ -76,6 +78,8 @@ In Hausdepp and Watten, read the hints independently of the next move and
 acknowledge them once with **Understood**. **Later**, × or Escape close them
 for this visit; without acknowledgement, they remain available next time.
 The game continues and the introduction performs no game actions.
+Brief strike/suit speech bubbles clear when the first card is played, leaving
+the trick unobstructed. The automatic “Thanks” keeps its separate display.
 
 Hausdepp highlights the hidden gestures: hold a playable hand card to select
 all playable cards of the same rank for a group play. Hold the open pile to
@@ -159,10 +163,21 @@ Spieleinstellungen in einem Dialog wie Hausdepp. 50 eigene Rundennamen werden
 mit dem Benutzernamen kombiniert. Freie Sitze lassen sich mit CPUs auffüllen;
 ein optionales Passwort aktiviert den Schutz. Favoriten speichern Einstellungen,
 keine Passwörter. Die Teambildung bleibt bewusst im Warteraum.
+Im Warteraum entfällt der grosse Seitenkopf. Rückweg, Regeln, Sprache und
+Sprachchat sind kompakt innerhalb der Wartefläche erreichbar; beim Wechsel
+zurück zur Lobby kehrt deren normale Navigation wieder.
 The compact lobby opens settings in a dialog like Hausdepp. Fifty original round
 names combine with the username. CPU fill is optional; a nonempty password
 protects the table. Favorites save settings, never passwords. Teams are chosen
 in the waiting room.
+The large page header is hidden in the waiting room. Back navigation, rules,
+language and voice chat are compactly available inside it; returning to the
+lobby restores its normal navigation.
+
+Ein Kontowechsel lädt den Watten-Tisch frisch für das neue Konto, auch wenn
+Karten noch geladen werden oder die Seite aus dem Browser-Zwischenspeicher kommt.
+Switching accounts reloads the Watten table for the new account, including while
+cards load or when the browser restores a cached page.
 
 **Spieltisch / game table:** Mobile zuerst: die helle Tiroler Schnitzstube bleibt
 mit grösseren Schnitzecken sichtbar. Vor dem Aufdecken erscheint kein leerer
@@ -172,13 +187,17 @@ kurzen Kopfkanten treffen. «Schlag» und «Farbe» bleiben jeweils direkt an de
 Kante der zugehörigen Karte lesbar. Teamstand, Stichzahl und gemeinsames Ziel stehen oben.
 «Mir» ist immer deine Seite, «Dir» die gegnerische; Zuschauer sehen
 die neutralen Teamnamen. Karten- und Teamzeilen unter den Namen entfallen.
+Auf dem Handy bleiben die Teamstände schmal; Sprachchat, Verlassen und Tischchat
+stehen als geordnete Symbole daneben. Das Verlassen-Symbol öffnet weiterhin
+die Bestätigung zum Pausieren der Partie.
 Der dauernde Zug-Hinweis entfällt. Abgeschlossene Stiche bleiben
 rund drei Sekunden sichtbar, mit Siegerrahmen und Spielernamen. Der letzte Stich
-kann lokal erneut angesehen werden, im unteren Aktionsbereich oberhalb der
-Gebotsentscheidung. Gegnerische Karten und Stichpakete sind grösser. Die kompaktere
-Rückschau lässt sich während der Partie dauerhaft einblenden. Nach Rundenende
-öffnet sie alle bis zu fünf Stiche ohne zusätzlichen Anheftschalter; Schlag,
-Farbe und der Rechte werden dann für alle aufgedeckt.
+kann lokal erneut angesehen werden. Im Hochformat nutzt der geschlossene
+Verlauf einen freien Platz auf dem Tisch; offene Rückschau und Gebotsentscheidung
+bleiben bei den eigenen Karten. Gegnerische Karten und Stichpakete sind grösser. Die kompaktere
+Rückschau lässt sich während der Partie dauerhaft einblenden. Nach Spielende
+öffnet sie die bis zu fünf Stiche der letzten Gabe ohne zusätzlichen
+Anheftschalter; Schlag, Farbe und der Rechte bleiben für alle aufgedeckt.
 Gewonnene Stichpakete bleiben pro Spieler direkt neben seinem Namen sichtbar.
 Das Kreuz schliesst die Rückschau und löst ihre Anheftung; ungepinnt schliesst
 sie auch beim Antippen ausserhalb.
@@ -186,10 +205,11 @@ Ansager sind am Spielernamen mit «Schlag» oder «Farbe» markiert. «Danke!» 
 grösser und bleibt höchstens bis zum Abschluss des ersten Stichs sichtbar. Einsatz und Bieten stehen
 unten bei den eigenen Karten. Auf Desktop bleibt der eigene Fächer mittig;
 im Tablet-Querformat sitzt der Aktionsbereich darüber. Stichgewinne sind für die
-eigene Seite grün, für die andere rot markiert. Im blinden Vierer entscheidet der
-wissende Spieler jedes Teams über Bieten, Halten, Gehen und Aufbieten: Geber
-beziehungsweise Gebernachbar. Er darf bieten, wenn er selbst oder sein Partner
-am Kartenzug ist. Bei einem gegnerischen Gebot kann nur der blinde Partner ihm
+eigene Seite grün, für die andere rot markiert. Im blinden Vierer darf auch der
+blinde Partner am eigenen Kartenzug bieten. Der wissende Spieler, Geber oder
+Gebernachbar, darf zusätzlich auf dem Kartenzug seines Partners bieten. Über
+Halten, Gehen und Aufbieten als Antwort entscheidet weiterhin nur der Wissende.
+Bei einem gegnerischen Gebot kann nur der blinde Partner ihm
 einmal privat sein Gefühl mitteilen; die Auswahl schliesst den Dialog. Der
 wissende Entscheider sendet kein Gegensignal. In offenen Spielen bleibt die
 gegenseitige Abfrage.
@@ -202,21 +222,26 @@ their callers into the clear table centre until their short top edges meet.
 Strike and Trump suit labels stay readable at the edge of their respective card. Scores,
 trick counts and one shared target sit above the table. “Us” always means your side,
 “Them” the other side; spectators see neutral team names. Card-count and team
-labels below player names are removed. Completed tricks stay for
+labels below player names are removed.
+The mobile scores stay narrow, with orderly voice-chat, leave and table-chat
+icons beside them. The leave icon still asks for confirmation before pausing.
+Completed tricks stay for
 about three seconds with a winner outline and player names; the last trick can
-be reviewed locally, in the lower action area above any bid decision. Desktop
+be reviewed locally. In portrait, the closed review uses a clear space on the
+table; open review and bid decisions remain beside your hand. Desktop
 centre cards, opponent hands and captured piles are larger. The compact review
-can stay pinned open during play. After each round, history opens with up to
-five tricks and no extra pin control; everyone can see the strike, trump suit
-and Rechter. Every player keeps their won trick
+can stay pinned open during play. At match end, history opens with up to
+five tricks from the final deal and no extra pin control; everyone can see the
+strike, trump suit and Rechter. Every player keeps their won trick
 packets beside their name. The close button also unpins the review; when
 unpinned, tapping outside closes it. Announcers are labelled beside their
 names; the larger “Thanks!” remains visible until the first trick is complete. The stake and
 raising control sit below, beside your cards. Your desktop hand stays centred;
 landscape tablets place the action area above it. Trick wins are green for your side
-and red for the other side. In blind four-player play, each team's informed player
-decides bids, holds, folds and raises: the dealer or the dealer's neighbour.
-They may bid on their own or their partner's card turn. When receiving an
+and red for the other side. In blind four-player play, the blind partner may
+also bid on their own card turn. The informed teammate, the dealer or their
+neighbour, may additionally bid on their partner's turn. Only the informed
+player handles hold, fold and counterbid responses. When receiving an
 opposing bid, only the blind partner may send them one private feeling signal;
 answering closes the prompt. The informed decision maker sends no signal back.
 Open games retain the mutual prompt.
@@ -239,18 +264,41 @@ Einschauen: Ihre bisherigen Blätter werden mit dem Reststapel gemischt und beid
 bekommen je fünf neue Karten; andere Blätter bleiben gleich. Das ist mit erneuter
 beidseitiger Zustimmung wiederholbar. Bei normaler offener Ansage zu zweit oder
 viert können beide vor der Ansage Schlag und Farbe tauschen; Vorhand bleibt.
-Beim blinden Vierer können die beiden Nicht-Einschauer gemeinsam «Blödeln» wählen:
-Ihre ursprünglichen untersten Karten werden für alle aufgedeckt und müssen im
-ersten Stich gespielt werden, auch wenn eine andere Farbe ausgespielt wurde.
+Beim blinden Vierer sehen beide Nicht-Einschauer sofort **Blödeln?**, ohne
+zuerst ein Menü zu öffnen. Fragt einer an, sieht der andere **XYZ will blödeln**
+mit Ja/Nein. Bis zur Antwort darf keine Karte gespielt und kein Gebot eröffnet
+werden; die Ansagenden können weiterhin zeigen und einschauen. Ohne Anfrage
+beginnt das Ausspielen nach dem Einschauen normal. Ein Nein verhindert Blödeln
+für dieses Blatt. Bei Ja müssen beide ihre ursprüngliche unterste Karte im
+ersten Stich spielen, auch wenn eine andere Farbe ausgespielt wurde. Jede
+Pflichtkarte wird für die anderen erst beim tatsächlichen Ausspielen sichtbar.
+CPUs fragen und antworten pro Blatt stabil zufällig mit 50 % Wahrscheinlichkeit,
+unabhängig von ihren Karten; Warten ersetzt keine menschliche Antwort.
 “Allow a redeal” is a separate table option for two or four players, off by
 default. Until the first card is played, both callers may agree, including after
 inspection: their old hands are shuffled into the remaining stock, then each
 gets five new cards. Other hands stay the same. They may repeat this by agreeing
 again. In normal open two- or four-player games, the callers can agree to swap
 strike and suit before the announcement; the opening player stays the same.
-In blind four-player games, both non-lookers may agree to “Blödeln”: their original
-bottom cards are revealed to everyone and must be played in the first trick,
-even when a different suit is led.
+In blind four-player games, both non-lookers immediately see **Blödeln?**
+without opening a menu. When one asks, the other sees **XYZ wants to play
+Blödeln** with yes/no. Until they answer, no card may be played and no bid opened;
+callers may still show and inspect. With no request, card play starts normally
+after inspection. A no declines Blödeln for this hand. A yes requires both to
+play their original bottom card in the first trick, even when a different suit
+is led. Others see each forced card only when it is actually played.
+CPUs make a stable random 50% request/response choice per deal, independent of
+their cards; waiting never replaces a human answer.
+
+Nach einer Gabe wird zuerst der letzte Stich abgeräumt. Schlag, Farbe und der
+Rechte werden anschliessend etwa drei Sekunden für alle aufgedeckt; danach
+startet die nächste Gabe automatisch. Eine Pause oder offene Retourschneider-
+Entscheidung hält den Wechsel an. Auch das Endergebnis eines ganzen Spiels
+erscheint erst nach dem Abräumen und der kurzen Rückschau.
+After a deal, the final trick is collected first. Strike, suit and the Rechter
+are then revealed to everyone for about three seconds before the next deal
+starts automatically. A pause or pending Retourschneider decision stops that
+transition. A completed match's result likewise waits for collection and review.
 
 **Tischdeko / table decorations:** Getränke, Snacks und Dekowürfel liegen frei
 auf dem Tisch. Antippen benutzt sie, Ziehen oder Pfeiltasten verschieben sie.

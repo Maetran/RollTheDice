@@ -35,6 +35,9 @@ from app.watten_runtime import (
 @pytest.fixture(autouse=True)
 def deterministic_deal(monkeypatch):
     monkeypatch.setattr(runtime_module, "_RANDOM", SimpleNamespace(randrange=lambda _count: 0, shuffle=lambda _deck: None))
+    from app import watten_round_runtime
+
+    monkeypatch.setattr(watten_round_runtime, "utcnow", lambda: runtime_module.utcnow() + timedelta(seconds=10))
 
 
 class NativeMatch:
@@ -221,6 +224,7 @@ def test_legacy_running_counters_remain_unknown_through_bids_next_deal_and_finis
     raw = serialize_watten_game(match.game)
     raw["_watten"]["schema_version"] = version
     raw["_watten"].pop("bid_counters")
+    raw["_watten"].pop("round_review_started_at")
     if version == 1:
         raw["_watten"].pop("cpu_memories")
     match.game = restore_watten_json(json.dumps(raw))
@@ -244,6 +248,7 @@ def test_legacy_waiting_room_gets_fresh_complete_counters_only_on_start(version)
     raw = serialize_watten_game(match.game)
     raw["_watten"]["schema_version"] = version
     raw["_watten"].pop("bid_counters")
+    raw["_watten"].pop("round_review_started_at")
     if version == 1:
         raw["_watten"].pop("cpu_memories")
     match.game = restore_watten_json(json.dumps(raw))
@@ -280,7 +285,7 @@ def test_private_partner_advice_and_delivery_ack_do_not_touch_counters_or_public
 @pytest.mark.parametrize("damage", (
     lambda data: data.pop("bid_counters"),
     lambda data: data.update(schema_version=True),
-    lambda data: data.update(schema_version=4),
+    lambda data: data.update(schema_version=5),
     lambda data: data.update(unexpected=True),
     lambda data: data.update(bid_counters={}),
     lambda data: data["bid_counters"][0].update(initiated=True),
@@ -296,7 +301,7 @@ def test_private_partner_advice_and_delivery_ack_do_not_touch_counters_or_public
 def test_version_three_rejects_malformed_or_inconsistent_counter_storage(damage):
     match = NativeMatch()
     raw = serialize_watten_game(match.game)
-    assert raw["_watten"]["schema_version"] == 3
+    assert raw["_watten"]["schema_version"] == 4
     damage(raw["_watten"])
     with pytest.raises(ValueError):
         restore_watten_json(json.dumps(raw))

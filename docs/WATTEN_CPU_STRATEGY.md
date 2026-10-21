@@ -44,7 +44,15 @@ because the action is legal. Feedback is assessed only while receiving a bid;
 an authorized partner may state good, bad or unsure once for that offer. In blind
 four-player play only the blind teammate sends feedback to the informed
 decision maker. The informed CPU may initiate a bid on either teammate's card
-turn and remains responsible for hold, fold and counterbid decisions.
+turn; a blind CPU teammate may also initiate a bid on its own card turn.
+The informed player remains responsible for hold, fold and counterbid responses.
+
+Blödeln is a separate optional request between the two non-callers. Requesting
+and answering use stable random 50% choices per deal and CPU seat, independent
+of card strength. An unanswered request blocks card play and bidding, while
+showing and inspection continue. No request means normal play. A CPU receives
+only its own forced bottom card; another player's forced card is learned only
+when it is actually played.
 
 ## Soft playing preferences
 

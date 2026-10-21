@@ -72,7 +72,7 @@ test('two real human accounts bid, pause with an open bid, return and finish a d
     await action(players, 'respond_hold', 'hold');
     for (let count = 0; count < 12 && players[0].traffic.snapshot.engine.phase === 'play'; count += 1) await playOne(players);
     for (const item of players) {
-      await expect(item.page.locator('[data-watten-match-result]')).toBeVisible();
+      await expect(item.page.locator('[data-watten-match-result]')).toBeVisible({ timeout: 10000 });
       expect(item.traffic.snapshot.result_persisted).toBe(true);
       expect(item.traffic.snapshot.engine.scores.some(score => score.points === 3)).toBe(true);
       const engine = item.traffic.snapshot.engine;
@@ -104,7 +104,7 @@ test('two real human accounts bid, pause with an open bid, return and finish a d
     // the table option restricts live history, rather than the finished round.
     const finalTricks = players[0].traffic.snapshot.engine.trick_history;
     await players[0].page.reload();
-    await expect(players[0].page.locator('[data-watten-match-result]')).toBeVisible();
+    await expect(players[0].page.locator('[data-watten-match-result]')).toBeVisible({ timeout: 10000 });
     expect(players[0].traffic.snapshot.engine.round_summary).toEqual({ strike_rank: '7', trump_suit: 'bells', rechter: 'bells-7' });
     expect(players[0].traffic.snapshot.engine.trick_history).toEqual(finalTricks);
     await expect(players[0].page.locator('[data-wt-history]')).toBeVisible();
@@ -168,6 +168,11 @@ test('account changes during card decoding bind the new mount before opening a s
       };
     });
     const before = original.traffic.commands.length;
+    const unexpectedHome = [];
+    original.page.on('request', request => {
+      if (request.isNavigationRequest() && request.frame() === original.page.mainFrame()
+        && new URL(request.url()).pathname === '/') unexpectedHome.push(request.url());
+    });
     await original.page.goto(tablePath);
     await expect.poll(() => original.page.evaluate(() => typeof window.releaseWattenDecode)).toBe('function');
     await original.context.clearCookies();
@@ -176,6 +181,8 @@ test('account changes during card decoding bind the new mount before opening a s
     await expect(original.page.locator('[data-watten-nav] a[href="/watten/konto/einstellungen"]'))
       .toHaveAttribute('aria-label', new RegExp(`${players[1].user.username}$`));
     await expect(original.page.locator('.wt-seat-slot.is-own')).toContainText(players[1].user.username);
+    await expect(original.page).toHaveURL(new RegExp(`${tablePath}$`));
+    expect(unexpectedHome).toEqual([]);
     const bindings = original.traffic.commands.slice(before).filter(command => ['join_game', 'rejoin_game'].includes(command.action));
     expect(bindings.length).toBeGreaterThan(0);
     expect(bindings.every(command => command.expected_account_id === players[1].user.id)).toBe(true);
@@ -230,7 +237,7 @@ for (const count of [2, 3, 4]) {
       // Optional requests remain available while a CPU owns the next move.
       // Only an actual human progress action may release this driver.
       const progressActions = new Set(['show_ready', 'inspection_ack', 'announce_strike', 'announce_colour',
-        'respond_go', 'respond_hold', 'bid', 'play_card']);
+        'respond_go', 'respond_hold', 'bid', 'play_card', 'preplay_decline']);
       for (let turn = 0; turn < 60; turn += 1) {
         await expect.poll(() => {
           const engine = host.traffic.snapshot?.engine;
@@ -255,9 +262,16 @@ for (const count of [2, 3, 4]) {
             continue;
           }
           const previousDeal = engine.deal_id;
-          await host.page.locator('[data-watten-command=next-deal]').click();
-          await expect.poll(() => host.traffic.snapshot.engine.deal_id).not.toBe(previousDeal);
+          await expect.poll(() => host.traffic.snapshot.engine.deal_id, { timeout: 10000 }).not.toBe(previousDeal);
           continuedDeal = true;
+          continue;
+        }
+        if (engine.actions.includes('preplay_decline')) {
+          // CPUs may offer Blödeln. Ordinary play needs no preliminary vote;
+          // answer only the real request addressed to this human seat.
+          expect(engine.preplay.pending).toMatchObject({ kind: 'bloedeln', responder: engine.viewer.seat });
+          expect(engine.preplay.bloedeln_status).toBe('pending');
+          await action([host], 'preplay_decline');
           continue;
         }
         if (engine.actions.includes('partner_feedback')) {
@@ -294,7 +308,7 @@ for (const count of [2, 3, 4]) {
       }
       if (count === 2) {
         expect(continuedDeal).toBe(true);
-        await expect(host.page.locator('[data-watten-match-result]')).toBeVisible();
+        await expect(host.page.locator('[data-watten-match-result]')).toBeVisible({ timeout: 10000 });
         expect(host.traffic.snapshot.result_persisted).toBe(true);
       } else if (!observedPlay) {
         // The confirmed house rule permits folding before the first card.

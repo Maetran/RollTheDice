@@ -39,7 +39,7 @@ logger = logging.getLogger(__name__)
 CPU_POLICY_READY = True
 THINK_MIN_SECONDS = 0.35
 THINK_MAX_SECONDS = 1.25
-TRICK_REVEAL_SECONDS = 3.0
+TRICK_REVEAL_SECONDS = 3.6
 _RANDOM = secrets.SystemRandom()
 _POLICY_EXECUTOR = ThreadPoolExecutor(max_workers=2, thread_name_prefix="watten-cpu-policy")
 _POLICY_SLOTS: WeakKeyDictionary = WeakKeyDictionary()
@@ -254,12 +254,13 @@ class _Job:
 _JOBS: dict[tuple[str, str], _Job] = {}
 _BLOCKED: dict[tuple[str, str], tuple[dict, tuple]] = {}
 _TRICK_REVEALS: dict[str, tuple[dict, str, int, float]] = {}
+_STOPPING = False
 
 
 def _may_decide(view: dict) -> bool:
     actions = set(view["actions"])
     return bool(actions & {"announce_strike", "announce_colour", "show_ready", "inspection_ack", "play_card", "bid",
-                           "respond_hold", "respond_go", "respond_counter", "retourschneider", "preplay_accept"}
+                           "respond_hold", "respond_go", "respond_counter", "retourschneider", "preplay_accept", "request_bloedeln"}
                 or (view["phase"] == "bid_response" and "partner_feedback" in actions))
 
 
@@ -275,9 +276,9 @@ def _cpu_partner_feedback_pending(runtime, view: dict, cpu_ids: set[str]) -> boo
 
 
 def _cpu_decider_bid_pending(game: dict, runtime, view: dict, cpu_ids: set[str]) -> bool:
-    """A blind CPU partner plays after its CPU knower has considered bidding."""
+    """A blind CPU partner considers its own bid/card after its CPU knower."""
     if (not view["profile"]["blind"] or view["phase"] != "play"
-            or "play_card" not in view["actions"] or "bid" in view["actions"]):
+            or "play_card" not in view["actions"]):
         return False
     own = view["seats"][view["viewer"]["seat"]]
     decider = runtime.engine.parties.decider(own["party"])
@@ -294,8 +295,11 @@ def watch_game(game: dict) -> None:
     """Called on the ASGI loop under its table lock, or during startup recovery."""
     from .game_state import games
 
-    if games.get(game["_id"]) is not game:
+    if _STOPPING or games.get(game["_id"]) is not game:
         return
+    from .watten_round_runtime import watch_game as watch_round
+
+    watch_round(game)
     runtime = game["_watten"]
     now = asyncio.get_running_loop().time()
     engine = runtime.engine
@@ -435,11 +439,19 @@ async def resume_cpu_games(games: dict) -> None:
 
 
 async def stop_cpu_runners() -> None:
-    jobs = list(_JOBS.values())
-    _JOBS.clear()
-    _BLOCKED.clear()
-    _TRICK_REVEALS.clear()
-    tasks = [job.task for job in jobs if job.task is not None]
-    for task in tasks:
-        task.cancel()
-    await asyncio.gather(*tasks, return_exceptions=True)
+    global _STOPPING
+    from .watten_round_runtime import stop_round_runners
+
+    _STOPPING = True
+    try:
+        jobs = list(_JOBS.values())
+        _JOBS.clear()
+        _BLOCKED.clear()
+        _TRICK_REVEALS.clear()
+        tasks = [job.task for job in jobs if job.task is not None]
+        for task in tasks:
+            task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+        await stop_round_runners()
+    finally:
+        _STOPPING = False

@@ -176,6 +176,8 @@ async function expectStage(item, count) {
     await expectReachable(page, `[data-wt-scores] > .wt-score:nth-child(${index + 1}) > [data-wt-score-open]`);
   }
   if (engine.last_trick) {
+    const portraitPhone = viewport.width < viewport.height && viewport.width <= 760;
+    const reviewWidth = { minimum: portraitPhone ? 60 : 44, maximum: portraitPhone ? 72 : 56 };
     const history = page.locator('.wt-end-sheet > [data-wt-history]');
     await expect(history).toBeVisible();
     const winnerParty = engine.seats[engine.last_trick.winner].party;
@@ -207,11 +209,11 @@ async function expectStage(item, count) {
       .toEqual({ abovePanel: true, aboveStake: true, stakeBelowPanel: true, beforePanel: true,
         clearOfHand: true, controlsClearOfHistory: true });
     const miniWidth = await history.locator('.wt-card--mini').first().evaluate(node => Number.parseFloat(getComputedStyle(node).width));
-    expect(miniWidth).toBeGreaterThanOrEqual(44);
-    expect(miniWidth).toBeLessThanOrEqual(56);
+    expect(miniWidth).toBeGreaterThanOrEqual(reviewWidth.minimum);
+    expect(miniWidth).toBeLessThanOrEqual(reviewWidth.maximum);
     await expect(history.locator('.wt-history > li').first().locator('.wt-mini-cards > figure'))
       .toHaveCount(engine.last_trick.cards.length);
-    await expect.poll(() => history.evaluate(node => {
+    await expect.poll(() => history.evaluate((node, reviewWidth) => {
       const failures = [];
       const scroller = node.querySelector(':scope > .wt-history');
       const bounds = scroller.getBoundingClientRect();
@@ -229,7 +231,7 @@ async function expectStage(item, count) {
         const caption = figure.querySelector('figcaption');
         if (!card || !svg || !caption) { failures.push(`mini ${index}: card SVG or player name missing`); continue; }
         const width = Number.parseFloat(getComputedStyle(card).width);
-        if (width < 44 || width > 56) failures.push(`mini ${index}: width ${width} outside 44–56px`);
+        if (width < reviewWidth.minimum || width > reviewWidth.maximum) failures.push(`mini ${index}: width ${width} outside ${reviewWidth.minimum}–${reviewWidth.maximum}px`);
         if (!caption.textContent.trim()) failures.push(`mini ${index}: player name is empty`);
         for (const [label, element] of [['card', card], ['SVG', svg], ['player name', caption]]) {
           const rect = element.getBoundingClientRect();
@@ -251,7 +253,7 @@ async function expectStage(item, count) {
         failures.push(`history card/name row needs ${rowBottom - rowTop}px; scroller offers ${scroller.clientHeight}px`);
       }
       return failures;
-    }), { message: 'the first history trick shows complete mini-card SVGs and player names inside its scroller' }).toEqual([]);
+    }, reviewWidth), { message: 'the first history trick shows complete mini-card SVGs and player names inside its scroller' }).toEqual([]);
     if (['deal_complete', 'match_complete'].includes(engine.phase)) {
       await expect(history.locator('[data-wt-history-pin]')).toHaveCount(0);
       await expect(history).toHaveAttribute('data-pinned', 'false');

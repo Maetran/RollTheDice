@@ -23,6 +23,56 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 4.1.1 — 2026-10-22
+
+Mehr Platz auf dem Handy und klarere Abläufe vor und zwischen den Watten-Gaben.
+More room on mobile and clearer play before and between Watten deals.
+
+### WATTEN
+
+**Deutsch:** Der mobile Spielkopf zeigt schmalere Teamstände und geordnete
+Symbole für Sprachchat, Verlassen und Tischchat. Im Warteraum entfällt der
+grosse Seitenkopf; Sprache, Regeln und Sprachchat bleiben in der Wartefläche
+erreichbar. Ausgespielte Karten und die Stichrückschau sind im Hochformat
+grösser. Laufende Hinweise sind dezenter, der einmalig bestätigte Guide bleibt
+erhalten. Ein Kontowechsel während des Kartenladens lädt den Tisch zuverlässig
+mit dem neuen Konto, auch beim Wiederherstellen einer gespeicherten Browserseite.
+
+Im blinden Vierer darf auch der blinde Partner auf seinem eigenen Kartenzug
+bieten. Halten, Gehen und Aufbieten als Antwort bleiben beim Wissenden des Teams.
+Beide Nichtansager sehen sofort «Blödeln?». Nach einer Anfrage muss der andere
+Ja oder Nein antworten; nur diese offene Anfrage hält das Ausspielen an. Ohne
+Anfrage geht es nach dem Einschauen normal los. Bei Ja müssen beide ihre
+ursprüngliche unterste Karte im ersten Stich spielen; die anderen sehen sie
+erst beim tatsächlichen Ausspielen. CPUs fragen und antworten unabhängig von
+der Handstärke zufällig mit je 50 % Wahrscheinlichkeit und bleiben bei ihrer
+Wahl für dieses Blatt. Ein Nein verhindert Blödeln. Am Ende einer Gabe wird zuerst der letzte Stich
+abgeräumt. Schlag, Farbe und der Rechte bleiben anschliessend etwa drei
+Sekunden für alle sichtbar, bevor der Server automatisch neu gibt. Pause oder
+eine offene Retourschneider-Entscheidung halten den Wechsel an. Das Endergebnis
+des ganzen Spiels erscheint erst nach Abräumen und Rückschau.
+
+**English:** The mobile table header has narrower team scores and orderly
+icons for voice chat, leaving and table chat. The large page header is hidden
+in the waiting room; language, rules and voice chat stay available inside it.
+Played cards and trick review are larger in portrait. Ongoing hints are quieter;
+the introduction and its saved acknowledgement remain available. Switching
+accounts while cards load reliably reloads the table for the new account,
+including when restoring a cached browser page.
+
+The blind partner may also bid on their own card turn. Hold, fold and counterbid
+responses remain with the informed teammate. Both non-callers immediately see
+“Blödeln?”. After one requests it, the other must answer yes or no; only this
+open request blocks card play. With no request, normal play begins after
+inspection. If agreed, both must play their original bottom card in the first
+trick, revealing it to others only when actually played. CPUs request and
+respond randomly with a 50% chance each, independent of card strength, and keep
+that choice for the hand. One no declines Blödeln.
+At the end of a deal, the final trick is collected first. Strike, suit and the
+Rechter are then shown to everyone for about three seconds before the server
+automatically deals again. A pause or pending Retourschneider decision stops
+the transition. The full match result waits for collection and review.
+
 ## 4.1.0 — 2026-10-21
 
 Neue Einführungen, Hinweise vor dem Rollout und mehr Atmosphäre am Kartentisch.

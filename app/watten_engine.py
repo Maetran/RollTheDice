@@ -201,6 +201,9 @@ class EngineState:
     bloedeln: bool = False
     retour_accepted_by: tuple[str, ...] = ()
     discarded_bid_increases: int = 0
+    # None is reserved for other modes and already-started legacy rounds.
+    # Optional request/answer receipts; one explicit No seals this deal.
+    bloedeln_decisions: tuple[tuple[int, bool], ...] | None = None
 
     def __post_init__(self):
         if (not isinstance(self.recipe, EngineRecipe) or not _text(self.deal_id)
@@ -265,6 +268,23 @@ class EngineState:
                     or type(request.requester) is not int or type(request.responder) is not int
                     or {request.requester, request.responder} != set(preplay_seats(self, request.kind))):
                 raise WattenEngineError("watten_invalid_preplay")
+        choices = self.bloedeln_decisions
+        eligible = preplay_seats(self, "bloedeln")
+        required = self.recipe.profile.blind and len(self.recipe.seats) == 4
+        if choices is None:
+            if required and not _round_already_begun(self):
+                raise WattenEngineError("watten_invalid_bloedeln_consent")
+        elif (not required or type(choices) is not tuple
+              or any(type(item) is not tuple or len(item) != 2 or type(item[0]) is not int
+                     or item[0] not in eligible or type(item[1]) is not bool for item in choices)
+              or tuple(sorted(choices)) != choices or len({seat for seat, _ in choices}) != len(choices)
+              or self.bloedeln != (len(choices) == 2 and all(accepted for _, accepted in choices))):
+            raise WattenEngineError("watten_invalid_bloedeln_consent")
+        if (choices and len(choices) == 1 and choices[0][1] and (
+                request is None or request.kind != "bloedeln" or request.requester != choices[0][0])):
+            raise WattenEngineError("watten_invalid_bloedeln_consent")
+        if request is not None and request.kind == "bloedeln" and choices != ((request.requester, True),):
+            raise WattenEngineError("watten_invalid_bloedeln_consent")
         candidate = retourschneider_candidate(self.ledger)
         if (type(self.retour_accepted_by) is not tuple or any(type(player) is not str for player in self.retour_accepted_by)
                 or len(set(self.retour_accepted_by)) != len(self.retour_accepted_by)
@@ -388,7 +408,9 @@ def preplay_available(state: EngineState, kind: str) -> bool:
     if kind == "schlagwechsel":
         return (state.phase == "strike" and profile.determination == "normal" and not profile.blind
                 and profile.player_count in {2, 4})
-    return kind == "bloedeln" and profile.blind and profile.player_count == 4 and not state.bloedeln
+    return (kind == "bloedeln" and profile.blind and profile.player_count == 4
+            and state.bloedeln_decisions is not None and len(state.bloedeln_decisions) < 2
+            and not any(not accepted for _, accepted in state.bloedeln_decisions) and not state.bloedeln)
 
 
 def preplay_seats(state: EngineState, kind: str) -> tuple[int, ...]:
@@ -403,11 +425,33 @@ def bloedeln_cards(state: EngineState) -> tuple[tuple[int, str], ...]:
                  if seat not in state.inspectors) if state.bloedeln else ()
 
 
+def _round_already_begun(state: EngineState) -> bool:
+    return bool((state.play and state.play.plays) or state.bid_state.pending is not None
+                or state.bid_state.accepted_stake > 2 or state.bid_state.result is not None)
+
+
+def bloedeln_pending(state: EngineState) -> bool:
+    return state.preplay_request is not None and state.preplay_request.kind == "bloedeln"
+
+
+def bloedeln_status(state: EngineState) -> str | None:
+    if state.bloedeln_decisions is None:
+        return None
+    if bloedeln_pending(state):
+        return "pending"
+    if state.bloedeln:
+        return "accepted"
+    if any(not accepted for _, accepted in state.bloedeln_decisions):
+        return "declined"
+    return "available" if preplay_available(state, "bloedeln") else None
+
+
 def _reset_call(state: EngineState, **changes) -> EngineState:
     return replace(state, normal_strike=None, call=None, play=None, shown=frozenset(), acknowledged=frozenset(),
                    bid_state=BidState(state.deal_id, state.parties),
                    discarded_bid_increases=state.discarded_bid_increases + state.bid_state.accepted_stake - 2,
                    feedback=(), preplay_request=None, deal_revision=state.deal_revision + 1,
+                   bloedeln_decisions=() if state.bloedeln_decisions is None and state.recipe.profile.blind else state.bloedeln_decisions,
                    phase="strike" if state.recipe.profile.determination == "normal" else "show_ready", **changes)
 
 
@@ -453,7 +497,8 @@ def start_match(recipe: EngineRecipe, deal_id: str, deal: DealtCards, *, first_d
     parties = _parties(recipe, first_dealer)
     return EngineState(recipe, deal_id, deal, parties,
                        "strike" if recipe.profile.determination == "normal" else "show_ready", 0,
-                       new_score_ledger(parties, target=recipe.target_points), BidState(deal_id, parties))
+                       new_score_ledger(parties, target=recipe.target_points), BidState(deal_id, parties),
+                       bloedeln_decisions=() if recipe.profile.blind and len(recipe.seats) == 4 else None)
 
 
 def next_deal(state: EngineState, deal_id: str, deal: DealtCards) -> EngineState:
@@ -469,7 +514,8 @@ def next_deal(state: EngineState, deal_id: str, deal: DealtCards) -> EngineState
     return EngineState(state.recipe, deal_id, deal, parties,
                        "strike" if state.recipe.profile.determination == "normal" else "show_ready",
                        state.opportunity + 1, state.ledger, BidState(deal_id, parties), ack_cache=state.ack_cache,
-                       discarded_bid_increases=state.discarded_bid_increases)
+                       discarded_bid_increases=state.discarded_bid_increases,
+                       bloedeln_decisions=() if state.recipe.profile.blind and len(state.recipe.seats) == 4 else None)
 
 
 def _finish(state: EngineState, play: PlayState, bidding: BidState) -> EngineState:
@@ -508,7 +554,23 @@ def apply_command(state: EngineState, actor: EngineActor, command: EngineCommand
     if kind != "partner_feedback" and command.private_opportunity is not None:
         raise WattenEngineError("watten_invalid_command")
     roles = announcement_roles(state)
-    if state.preplay_request is not None:
+    if kind in {"bloedeln_accept", "bloedeln_decline"}:
+        # Older clients may answer with these names, but can never create a
+        # vote without an actual request or answer for its other participant.
+        if not bloedeln_pending(state):
+            raise WattenEngineError("watten_bloedeln_choice_unavailable")
+        kind = "preplay_accept" if kind == "bloedeln_accept" else "preplay_decline"
+    if bloedeln_pending(state) and kind in {"preplay_accept", "preplay_decline"}:
+        request = state.preplay_request
+        if seat != request.responder or value is not None:
+            raise WattenEngineError("watten_preplay_response_required")
+        enabled = kind == "preplay_accept"
+        choices = tuple(sorted(((request.requester, True), (seat, enabled))))
+        forced = tuple((index, state.deal.bottom_cards[index]) for index in preplay_seats(state, "bloedeln")) if enabled else ()
+        changed = replace(state, preplay_request=None, bloedeln_decisions=choices, bloedeln=enabled,
+                          play=replace(state.play, forced_opening=forced) if state.play else None)
+    elif state.preplay_request is not None and not (
+            bloedeln_pending(state) and kind in {"show_ready", "inspection_ack", "play_card", "bid"}):
         request = state.preplay_request
         if seat != request.responder or kind not in {"preplay_accept", "preplay_decline"} or value is not None:
             raise WattenEngineError("watten_preplay_response_required")
@@ -523,16 +585,13 @@ def apply_command(state: EngineState, actor: EngineActor, command: EngineCommand
                 changed = _reset_call(state, deal=replacement_deal)
             elif request.kind == "schlagwechsel":
                 changed = _reset_call(state, call_swapped=not state.call_swapped)
-            else:
-                forced = tuple((index, state.deal.bottom_cards[index]) for index in preplay_seats(state, "bloedeln"))
-                changed = replace(changed, bloedeln=True,
-                                  play=replace(state.play, forced_opening=forced) if state.play else None)
     elif kind.startswith("request_"):
         feature = kind.removeprefix("request_")
         if value is not None or not preplay_available(state, feature) or seat not in preplay_seats(state, feature):
             raise WattenEngineError("watten_preplay_unavailable")
         responder = next(index for index in preplay_seats(state, feature) if index != seat)
-        changed = replace(state, preplay_request=PreplayRequest(feature, seat, responder))
+        changed = replace(state, preplay_request=PreplayRequest(feature, seat, responder),
+                          bloedeln_decisions=((seat, True),) if feature == "bloedeln" else state.bloedeln_decisions)
     elif kind == "announce_strike" and state.phase == "strike":
         if seat != roles.strike_announcer:
             raise WattenEngineError("watten_announcer_required")
@@ -579,11 +638,15 @@ def apply_command(state: EngineState, actor: EngineActor, command: EngineCommand
         else:
             changed = replace(state, acknowledged=acknowledged)
     elif kind == "play_card" and state.phase == "play":
+        if bloedeln_pending(state):
+            raise WattenEngineError("watten_bloedeln_decision_pending")
         play = play_card(state.play, state.bid_state, actor.player_id, value)
         changed = _finish(state, play, finish_deal(play, state.bid_state)) if play.ended else replace(state, play=play)
     elif kind == "bid" and state.phase == "play" and value is None:
+        if bloedeln_pending(state):
+            raise WattenEngineError("watten_bloedeln_decision_pending")
         bidding = bid(state.bid_state, actor.player_id, deal_progress(state.play),
-                      gestrichen=gestrichen_players(state), decider_only=state.recipe.profile.blind)
+                      gestrichen=gestrichen_players(state), allow_partner_decider=state.recipe.profile.blind)
         changed = replace(state, bid_state=bidding, phase="bid_response", feedback=())
     elif kind == "respond" and state.phase == "bid_response":
         bidding = respond(state.bid_state, actor.player_id, value, deal_progress(state.play))
@@ -652,6 +715,8 @@ def storage_payload(state: EngineState) -> dict:
         "call": None if state.call is None else {"strike_rank": state.call.strike_rank, "trump_suit": state.call.trump_suit},
         "shown": sorted(state.shown), "acknowledged": sorted(state.acknowledged),
         "preplay": {"deal_revision": state.deal_revision, "call_swapped": state.call_swapped,
+                    "bloedeln_decisions": None if state.bloedeln_decisions is None else [
+                        {"seat": seat, "accepted": accepted} for seat, accepted in state.bloedeln_decisions],
                     "bloedeln": state.bloedeln, "pending": None if state.preplay_request is None else {
                         "kind": state.preplay_request.kind, "requester": state.preplay_request.requester,
                         "responder": state.preplay_request.responder}},
@@ -761,12 +826,35 @@ def restore_storage(value: dict) -> EngineState:
             raise WattenEngineError("watten_invalid_storage")
         inspection.append(frozenset(seats))
     preplay = _object(value.get("preplay", {"deal_revision": 0, "call_swapped": False, "bloedeln": False, "pending": None}),
-                      "deal_revision call_swapped bloedeln pending")
+                      "deal_revision call_swapped bloedeln pending", frozenset({"bloedeln_decisions"}))
     pending_request = None if preplay["pending"] is None else PreplayRequest(**_object(preplay["pending"], "kind requester responder"))
     inspectors = {recipe.seats.index(parties.dealer_id), (recipe.seats.index(parties.dealer_id) + 1) % len(recipe.seats)}
     forced = tuple((seat, deal.bottom_cards[seat]) for seat in range(len(recipe.seats)) if seat not in inspectors) if preplay["bloedeln"] else ()
     play = None if value["plays"] is None else PlayState(raw_deal["id"], deal, parties, profile, call, tuple(_list(value["plays"])), forced)
+    choices = None
+    if "bloedeln_decisions" in preplay:
+        if preplay["bloedeln_decisions"] is not None:
+            choices = tuple((item["seat"], item["accepted"]) for item in (
+                _object(item, "seat accepted") for item in _list(preplay["bloedeln_decisions"])))
+        # The short-lived mandatory-choice format already recorded explicit
+        # Yes/No. Preserve No; a lone Yes becomes its actual pending request.
+        if choices and len(choices) == 1 and choices[0][1] and pending_request is None:
+            responder = next(seat for seat in range(4) if seat not in inspectors and seat != choices[0][0])
+            pending_request = PreplayRequest("bloedeln", choices[0][0], responder)
+    elif profile.blind and len(recipe.seats) == 4:
+        eligible = tuple(seat for seat in range(4) if seat not in inspectors)
+        if preplay["bloedeln"]:
+            choices = tuple((seat, True) for seat in eligible)
+        elif pending_request is not None and pending_request.kind == "bloedeln":
+            # The old request was an explicit Yes from its requester. Keep it;
+            # the other seat must still choose, with no manufactured No.
+            if {pending_request.requester, pending_request.responder} != set(eligible):
+                raise WattenEngineError("watten_invalid_preplay")
+            choices = ((pending_request.requester, True),)
+        elif not ((play and play.plays) or bidding.pending is not None or bidding.accepted_stake > 2 or bidding.result is not None):
+            choices = ()
     return EngineState(recipe, raw_deal["id"], deal, parties, value["phase"], value["opportunity"], ledger, bidding,
                        value["normal_strike"], call, *inspection, play, feedback, tuple(cache),
                        preplay["deal_revision"], preplay["call_swapped"], pending_request, preplay["bloedeln"],
-                       tuple(_list(value.get("retour_accepted_by", []))), value.get("discarded_bid_increases", 0))
+                       tuple(_list(value.get("retour_accepted_by", []))), value.get("discarded_bid_increases", 0),
+                       bloedeln_decisions=choices)

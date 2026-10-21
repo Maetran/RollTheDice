@@ -35,7 +35,7 @@ for (const language of ['de', 'en']) {
       await item.page.locator('.wt-final-heading').click();
       await expect(pad).toBeHidden();
       await item.page.reload();
-      await expect(item.page.locator('[data-watten-match-result]')).toBeVisible();
+      await expect(item.page.locator('[data-watten-match-result]')).toBeVisible({ timeout: 10000 });
       await expect(item.page.locator('.wt-scorepad')).toBeHidden();
       await item.page.locator('.wt-score.is-own .wt-score-open').click();
       await expect(item.page.locator('.wt-scorepad-total strong')).toHaveText(String(total));

@@ -60,6 +60,13 @@ def server(tmp_path, monkeypatch):
         "ROLLTHEDICE_TURNSTILE_SITE_KEY": "", "ROLLTHEDICE_TURNSTILE_SECRET": "",
     }.items():
         monkeypatch.setenv(key, value)
+    # Older protocol tests deliberately advance deals synchronously. Keep this
+    # new background service isolated; its real clock/watchers have dedicated
+    # round-runtime tests and browser journeys.
+    from app import watten_round_runtime
+
+    monkeypatch.setattr(watten_round_runtime, "watch_game", lambda _game: None)
+    monkeypatch.setattr(watten_round_runtime, "utcnow", lambda: utcnow() + timedelta(seconds=10))
     previous = dict(games)
     games.clear()
     configure_database(tmp_path)
@@ -156,6 +163,8 @@ def next_move(game_id, numbers):
         seat = min(state.inspectors - state.acknowledged)
         return state.recipe.seats[seat], engine_command(game_id, "inspection_ack", next(numbers))
     assert state.phase == "play"
+    if state.preplay_request is not None and state.preplay_request.kind == "bloedeln":
+        return state.recipe.seats[state.preplay_request.responder], engine_command(game_id, "preplay_decline", next(numbers))
     player = state.play.current_player_id
     return player, engine_command(game_id, "play_card", next(numbers), legal_cards(state.play, state.bid_state, player)[0])
 
