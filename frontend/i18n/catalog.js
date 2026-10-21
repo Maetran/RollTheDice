@@ -362,7 +362,7 @@ export const GAME_TOUR_MESSAGES = {
     "wattenPartner": "Your blind partner’s feeling helps",
     "wattenPartnerBody": "When the other side bids, the blind partner can privately tell the informed decision-maker how they feel: good, bad or unsure. This helps with Hold, Go or Counterbid. The informed player does not need to send a signal back. Keep hidden cards and calls out of the chat.",
     "wattenHistory": "Look back at tricks and scores",
-    "wattenHistoryBody": "If trick history is enabled at your table, you can review played tricks there. It opens automatically after the deal. Tap Mir or Dir and the score at the top to open the handwritten score pad. Hidden cards stay hidden.",
+    "wattenHistoryBody": "If trick history is enabled at your table, you can review played tricks there. It opens automatically after the deal. Tap Us or Them and the score at the top to open the handwritten score pad. Hidden cards stay hidden.",
     "hausdeppSpecial": "Tens and four of a kind",
     "hausdeppSpecialBody": "A ten or four consecutive cards of the same rank clears the pile. The rules explain special cases and how play continues."
   }
