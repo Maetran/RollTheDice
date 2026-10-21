@@ -620,6 +620,8 @@ function renderTableShell() {
     }
   });
   $("hausdeppTools").querySelector(".hd-tools-close").addEventListener("click", () => { $("hausdeppTools").open = false; $("hausdeppTools").querySelector("summary").focus(); });
+  $("hausdeppHand").insertAdjacentHTML("afterend", `<div id="hausdeppCpuTempo" class="hd-cpu-tempo" hidden><button id="hausdeppSpeedUpCpus" class="hd-secondary" type="button" aria-describedby="hausdeppCpuTempoHint">${t("speedUpCpus")}</button><p id="hausdeppCpuTempoHint">${t("speedUpCpusHint")}</p><span id="hausdeppCpuTempoStatus" class="hd-sr" role="status" aria-live="polite"></span></div>`);
+  $("hausdeppSpeedUpCpus").addEventListener("click", () => command("speed_up_cpus"));
   $("hausdeppStock").addEventListener("click", () => {
     const actions = snapshot?._hausdepp?.available_actions || [];
     command(actions.includes("peek") ? "peek" : actions.includes("draw") ? "draw" : "gamble");
@@ -886,7 +888,8 @@ function receiveReaction(reaction) {
 }
 
 function command(action, cards) {
-  const allowed = action === "next_round" ? snapshot?._hausdepp_tournament?.can_start_next_round : snapshot?._hausdepp?.available_actions?.includes(action);
+  const allowed = action === "next_round" ? snapshot?._hausdepp_tournament?.can_start_next_round
+    : action === "speed_up_cpus" ? snapshot?._cpu_tempo?.can_speed_up : snapshot?._hausdepp?.available_actions?.includes(action);
   if (pending || tournamentEnding || !allowed) return;
   handSelection?.selection.clear();
   cancelShuffle(gameId);
@@ -894,7 +897,8 @@ function command(action, cards) {
   const commandId = `hd-${Date.now().toString(36)}-${++commandSequence}`;
   commandInFlight = { id: commandId, action, cards, acceptedVersion: null };
   $("hausdeppActionError").textContent = "";
-  if (!send({ action: `hausdepp_${action}`, command_id: commandId, version: snapshot._hausdepp.version, ...(cards ? { cards } : {}) })) {
+  if (!send({ action: `hausdepp_${action}`, command_id: commandId, version: snapshot._hausdepp.version,
+    ...(action === "speed_up_cpus" ? { round_number: snapshot._hausdepp_tournament?.round_number || 1 } : {}), ...(cards ? { cards } : {}) })) {
     resetCommand();
     $("hausdeppActionError").textContent = t("connectionLost");
   } else if (["play", "afterthrow"].includes(action)) launchOwnPlay(gameId, playerId, cards);
@@ -1168,6 +1172,16 @@ function renderStateContent() {
   if (oldFocus) $("hausdeppHand").querySelector(`[data-card-id="${CSS.escape(oldFocus)}"]`)?.focus({ preventScroll: true });
   $("hausdeppSelection").textContent = s.phase === "peeking" ? "" : counted("cardsInHand", hand.length);
   const mine = s.players.find(p => p.id === playerId);
+  const cpuTempo = snapshot._cpu_tempo || {};
+  const showCpuTempo = !spectating && mine?.finished && s.phase === "playing" && (cpuTempo.can_speed_up || cpuTempo.fast);
+  $("hausdeppCpuTempo").hidden = !showCpuTempo;
+  document.querySelector(".hd-hand-region").classList.toggle("has-cpu-tempo", !!showCpuTempo);
+  const tempoButton = $("hausdeppSpeedUpCpus");
+  tempoButton.textContent = t(cpuTempo.fast ? "fastCpuTempo" : "speedUpCpus");
+  tempoButton.disabled = !!cpuTempo.fast || pending || !connected || !!snapshot._paused;
+  tempoButton.setAttribute("aria-pressed", String(!!cpuTempo.fast));
+  $("hausdeppCpuTempoHint").textContent = t(cpuTempo.fast ? "fastCpuTempoHint" : "speedUpCpusHint");
+  $("hausdeppCpuTempoStatus").textContent = showCpuTempo && cpuTempo.fast ? t("fastCpuTempoHint") : "";
   const ownSeat = s.players.findIndex(player => player.id === playerId);
   const opponents = ownSeat < 0 ? s.players : [...s.players.slice(ownSeat + 1), ...s.players.slice(0, ownSeat)];
   const refillPlayers = new Set((s.pending_refills || []).map(debt => debt.player_id));
@@ -1235,7 +1249,7 @@ function renderStateContent() {
   const eventKey = e.type === "withdraw" ? "eventWithdraw" : s.phase === "peeking" ? "eventPeeking" : e.type === "draw" ? "eventDraw" : e.burn_reason ? actor?.finished ? "eventBurnFinished" : "eventBurn" : e.type === "pickup" || (e.type === "gamble" && !e.success) ? "eventPickup" : ["play", "afterthrow", "gamble"].includes(e.type) ? "eventPlay" : "eventStart";
   $("hausdeppEvent").textContent = counted(eventKey, e.drawn_count || e.picked_up_count || e.cards?.length || 0, { name: actor?.name || peeker?.name || "" });
   peekFeedback.update(s, roundKey, playerId);
-  animateCardMotion(s, { gameId, playerId, peekCaption: (receiver, cards) => {
+  animateCardMotion(s, { gameId, playerId, fastCpu: !!cpuTempo.fast, peekCaption: (receiver, cards) => {
     const names = cards.map(card => t(`rank${card.split("-")[1]}`)).join(" · ");
     return receiver === playerId ? t("peekRevealSelf", { cards: names })
       : t("peekRevealOther", { name: s.players.find(player => player.id === receiver)?.name || "…", cards: names });

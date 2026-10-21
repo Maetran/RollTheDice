@@ -94,13 +94,36 @@ tournament ends without another round so normally finished hands can retain
 their credit. Host transfer and rematch use the remaining group. A disconnect
 remains resumable and never counts as voluntary departure.
 
+### Schneller CPU-Abschluss / Faster CPU finish
+
+Ist am Tisch genau ein Mensch und hat er seine Hand regulär beendet, erscheint
+an der bisherigen Kartenposition «CPUs schneller». Der Schalter verkürzt
+CPU-Denk- und öffentliche Kartenpausen für den Rest dieser Runde auf 30 % des
+Normalwerts, mit mindestens 400 ms. Die Kartenbewegungen passen sich an, damit
+keine alten Animationen auflaufen. Spielentscheidungen und Wertung ändern sich
+nicht. Das schnellere Tempo übersteht Wiederverbinden und Neustarts; eine neue
+Runde beginnt wieder im Normaltempo. Andere Menschen, Zuschauer und noch nicht
+fertige Spieler können es nicht aktivieren.
+
+With exactly one human at the table, finishing their hand normally reveals
+“Speed up CPUs” where their cards were. It reduces CPU thinking and public-card
+pauses to 30% of normal for the rest of this round, with a 400 ms minimum.
+Card motion adapts so animations do not build up. Decisions and scoring stay
+unchanged. The faster pace survives reconnects and restarts; a new round starts
+at normal speed. Other humans, spectators and players who have not finished
+cannot activate it.
+
 ### Lokale Wirtshauskulisse / Local tavern ambience
 
 Der separate Notenschalter aktiviert eine sehr leise Wirtshauskulisse mit
 Stimmengewirr, Gläsern, Geschirr und gelegentlichem Lachen. Standardmässig ist
-sie aus, auch am CPU-Tisch ist sie verfügbar. Die vier CC0-Audiodateien
-(zusammen 1.62 MiB) werden erst nach Opt-in geladen, im normalen HTTP-Cache
-wiederverwendet und ausschliesslich lokal wiedergegeben. Sie werden dem
+sie aus, auch am CPU-Tisch ist sie verfügbar. Bei jedem Einschalten wird eine
+von zehn Kulissen aus echten CC0-Aufnahmen zufällig gewählt. Nur diese und die drei gemeinsamen
+Details werden geladen, zusammen höchstens etwa 1.62 MiB. Die Aufnahme bleibt
+bei Turnierrunden und Neu erstellen auf derselben Seite erhalten, solange der
+Sound eingeschaltet bleibt. Der normale HTTP-Cache wird wiederverwendet;
+höchstens ein decodierter Raum bleibt im Speicher. Alles wird ausschliesslich
+lokal wiedergegeben und dem
 Mikrofonsignal und dem Sprachchat nicht zugemischt und gehören nicht zu dessen Verbrauchsmessung.
 Systemlautstärke und System-Audiogeräte gelten. Bei aktiviertem Sound bestätigen
 kurze Töne die manuellen Sound-, Sprachchat- und Mikrofonschalter. Sound aus
@@ -113,8 +136,11 @@ Quellen und Bearbeitung: [Audio assets](HAUSDEPP_AUDIO_ASSETS.md).
 
 The separate music-note switch opts into very quiet pub ambience with room
 chatter, glasses, dishes and occasional laughter, including CPU tables. It
-starts off. Four CC0 clips (1.62 MiB total) load only after opt-in, reuse the
-normal HTTP cache and play locally, without microphone/voice transmission or
+starts off. Each activation randomly chooses one of ten mixes of real CC0 recordings.
+Only that room loop and three shared detail clips load, at most about 1.62 MiB
+in total. Keeping sound enabled through tournament rounds or Create again
+retains the selection. Clips reuse the normal HTTP cache; memory retains at
+most one decoded room. Playback stays local, without microphone/voice transmission or
 voice usage telemetry. Use system volume and audio devices. Short tones confirm
 manual sound, voice and microphone changes while sound is enabled. Sound off
 stops ambience immediately, plays one final acknowledgement, then keeps further

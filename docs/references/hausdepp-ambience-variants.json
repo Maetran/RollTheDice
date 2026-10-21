@@ -1,0 +1,654 @@
+{
+  "schema_version": 1,
+  "purpose": "Nine different mixes of four previously approved real CC0 room/object recordings, alongside the unchanged original room loop.",
+  "source_scope": "These are nine new compositions, not recordings of nine additional pubs.",
+  "generator": "scripts/build_tavern_ambience.py",
+  "ffmpeg_version": "ffmpeg version 7.1 Copyright (c) 2000-2024 the FFmpeg developers",
+  "reproduction": "python3 scripts/build_tavern_ambience.py --ffmpeg /absolute/path/to/ffmpeg",
+  "sources": [
+    {
+      "file": "tavern-room.mp3",
+      "author": "domasmo",
+      "title": "Pub in Cambridge",
+      "page": "https://freesound.org/people/domasmo/sounds/376456/",
+      "preview": "https://cdn.freesound.org/previews/376/376456_4339600-hq.mp3",
+      "sha256": "3aac8d98b7f37c00a08645d6193e01d3203c63791c982499d45176274b06383b",
+      "approved_processing": "Original 0.750–120.750 s, 3 s tail/head crossfade; 117 s local room loop.",
+      "license": "CC0 1.0 Universal",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "license_documented_on": "2026-10-20",
+      "license_evidence": "docs/HAUSDEPP_AUDIO_ASSETS.md"
+    },
+    {
+      "file": "glasses.mp3",
+      "author": "EpicWizard",
+      "title": "Drinking Glasses contact (Clink)",
+      "page": "https://freesound.org/people/EpicWizard/sounds/325195/",
+      "preview": "https://cdn.freesound.org/previews/325/325195_2291325-hq.mp3",
+      "sha256": "9733bd5aaf1cac3e29df531033cc1b67f93990e12cc71e4c69c1694677da4d7a",
+      "approved_processing": "Original 2–10 s; 0.08 s entrance and 0.6 s exit fade.",
+      "license": "CC0 1.0 Universal",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "license_documented_on": "2026-10-20",
+      "license_evidence": "docs/HAUSDEPP_AUDIO_ASSETS.md"
+    },
+    {
+      "file": "dishwasher.mp3",
+      "author": "Caitlin_100",
+      "title": "Emptying a dishwasher.mp3",
+      "page": "https://freesound.org/people/Caitlin_100/sounds/365551/",
+      "preview": "https://cdn.freesound.org/previews/365/365551_5407590-hq.mp3",
+      "sha256": "2bbe62e430ec011c016abec7b132a8ee13bf31196ea6c0bccb82bbe6b9e94f42",
+      "approved_processing": "Original 3–16 s; 0.15 s entrance and 0.8 s exit fade.",
+      "license": "CC0 1.0 Universal",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "license_documented_on": "2026-10-20",
+      "license_evidence": "docs/HAUSDEPP_AUDIO_ASSETS.md"
+    },
+    {
+      "file": "laughter.mp3",
+      "author": "HowardV",
+      "title": "live audience comedy show genuine laughter_moderate.wav",
+      "page": "https://freesound.org/people/HowardV/sounds/581528/",
+      "preview": "https://cdn.freesound.org/previews/581/581528_1654262-hq.mp3",
+      "sha256": "3e750f23bfb80978dcfa691fb85610aa3cb802a446372c7ad588e1c118e756a2",
+      "approved_processing": "Original 3–11 s; 0.3 s entrance and 1.2 s exit fade.",
+      "license": "CC0 1.0 Universal",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "license_documented_on": "2026-10-20",
+      "license_evidence": "docs/HAUSDEPP_AUDIO_ASSETS.md"
+    }
+  ],
+  "treatment": {
+    "arrangement": "Rotate the original 117-second room; reorder four 29.25-second blocks, each used once; join with three 2-second linear crossfades.",
+    "normalization": "Two-pass loudnorm I=-23 LUFS, TP=-7 dBTP, LRA=7; linear when supported by source measurements.",
+    "limiter": "alimiter=limit=0.45:level=false (no automatic makeup gain)",
+    "loop": "3-second linear tail/head crossfade: body[3:D-3], then tail[D-3:D] mixed with head[0:3]; 111-second arrangement becomes 108-second loop.",
+    "encoding": "44.1 kHz stereo, libmp3lame 96 kbit/s; metadata stripped, gapless Xing header retained.",
+    "safety": "Additional constant attenuation only when needed to keep encoded sample peaks at or below -7.2 dBFS."
+  },
+  "content_review": {
+    "assets": "Previously approved actual room/object recordings; no synthetic voices, music or pitch changes added.",
+    "audition": "No subjective listening review recorded for the new mixes.",
+    "technical_qa": "All nine fully decoded; duration, byte budget, loudness, sample peaks, true peaks and loop-boundary sample steps measured."
+  },
+  "new_room_assets_total_bytes": 11671794,
+  "variants": [
+    {
+      "file": "app/static/audio/hausdepp/tavern-room-02.mp3",
+      "composition_name": "Nebenraum",
+      "composition": {
+        "room_rotation_seconds": 0,
+        "quarter_block_order_zero_based": [
+          0,
+          2,
+          1,
+          3
+        ],
+        "quarter_block_duration_seconds": 29.25,
+        "internal_crossfade_seconds": 2,
+        "secondary_room_layer_gain": 0.1,
+        "secondary_room_layer_offset_seconds": 17,
+        "stereo_width": 0.84,
+        "highpass_hz": 100,
+        "lowpass_hz": 5200,
+        "sparse_details": [
+          {
+            "source": "glasses.mp3",
+            "start_before_final_loop_join_seconds": 18,
+            "linear_gain": 0.1
+          },
+          {
+            "source": "dishwasher.mp3",
+            "start_before_final_loop_join_seconds": 69,
+            "linear_gain": 0.065
+          }
+        ]
+      },
+      "duration_seconds": 108.0,
+      "sample_rate_hz": 44100,
+      "channels": 2,
+      "mp3_bitrate_kbps": 96,
+      "size_bytes": 1296866,
+      "room_plus_details_bytes": 1589046,
+      "sha256": "2bc9c921c0288b43bfea613c190e394dfd8b28ed3e05b09b9053392c6e543dfb",
+      "decode": "complete, without decoder errors",
+      "decoded_frames_per_channel": 4762800,
+      "decoded_sample_peak_dbfs": -7.334,
+      "decoded_integrated_loudness_lufs": -23.48,
+      "decoded_true_peak_dbtp": -7.33,
+      "decoded_loudness_range_lu": 5.2,
+      "post_encode_safety_gain_db": 0.0,
+      "normalization_input_measurement": {
+        "input_i": "-25.34",
+        "input_tp": "-7.92",
+        "input_lra": "5.40",
+        "input_thresh": "-35.34",
+        "output_i": "-22.84",
+        "output_tp": "-7.00",
+        "output_lra": "5.10",
+        "output_thresh": "-32.84",
+        "normalization_type": "dynamic",
+        "target_offset": "-0.16"
+      },
+      "loop_seam": {
+        "pcm_boundary_step_dbfs": -35.999,
+        "decoded_boundary_step_dbfs": -34.658,
+        "largest_internal_sample_step_dbfs": -19.053,
+        "boundary_step_below_largest_internal_step": true
+      }
+    },
+    {
+      "file": "app/static/audio/hausdepp/tavern-room-03.mp3",
+      "composition_name": "Fenstertisch",
+      "composition": {
+        "room_rotation_seconds": 7,
+        "quarter_block_order_zero_based": [
+          2,
+          0,
+          3,
+          1
+        ],
+        "quarter_block_duration_seconds": 29.25,
+        "internal_crossfade_seconds": 2,
+        "secondary_room_layer_gain": 0.12,
+        "secondary_room_layer_offset_seconds": 29,
+        "stereo_width": 1.08,
+        "highpass_hz": 100,
+        "lowpass_hz": 5800,
+        "sparse_details": [
+          {
+            "source": "glasses.mp3",
+            "start_before_final_loop_join_seconds": 37,
+            "linear_gain": 0.09
+          },
+          {
+            "source": "laughter.mp3",
+            "start_before_final_loop_join_seconds": 84,
+            "linear_gain": 0.045
+          }
+        ]
+      },
+      "duration_seconds": 108.0,
+      "sample_rate_hz": 44100,
+      "channels": 2,
+      "mp3_bitrate_kbps": 96,
+      "size_bytes": 1296866,
+      "room_plus_details_bytes": 1589046,
+      "sha256": "55ec70c61be7b05d8243076795f2cbfeb25b51cffe8e397d3a89b0340eb0c17a",
+      "decode": "complete, without decoder errors",
+      "decoded_frames_per_channel": 4762800,
+      "decoded_sample_peak_dbfs": -7.499,
+      "decoded_integrated_loudness_lufs": -23.52,
+      "decoded_true_peak_dbtp": -7.5,
+      "decoded_loudness_range_lu": 5.1,
+      "post_encode_safety_gain_db": 0.0,
+      "normalization_input_measurement": {
+        "input_i": "-24.93",
+        "input_tp": "-7.77",
+        "input_lra": "5.90",
+        "input_thresh": "-34.93",
+        "output_i": "-23.41",
+        "output_tp": "-7.00",
+        "output_lra": "5.10",
+        "output_thresh": "-33.41",
+        "normalization_type": "dynamic",
+        "target_offset": "0.41"
+      },
+      "loop_seam": {
+        "pcm_boundary_step_dbfs": -47.335,
+        "decoded_boundary_step_dbfs": -44.205,
+        "largest_internal_sample_step_dbfs": -20.056,
+        "boundary_step_below_largest_internal_step": true
+      }
+    },
+    {
+      "file": "app/static/audio/hausdepp/tavern-room-04.mp3",
+      "composition_name": "Hintere Stube",
+      "composition": {
+        "room_rotation_seconds": 14,
+        "quarter_block_order_zero_based": [
+          1,
+          3,
+          0,
+          2
+        ],
+        "quarter_block_duration_seconds": 29.25,
+        "internal_crossfade_seconds": 2,
+        "secondary_room_layer_gain": 0.15,
+        "secondary_room_layer_offset_seconds": 43,
+        "stereo_width": 0.78,
+        "highpass_hz": 100,
+        "lowpass_hz": 4800,
+        "sparse_details": [
+          {
+            "source": "dishwasher.mp3",
+            "start_before_final_loop_join_seconds": 24,
+            "linear_gain": 0.055
+          },
+          {
+            "source": "glasses.mp3",
+            "start_before_final_loop_join_seconds": 77,
+            "linear_gain": 0.11
+          }
+        ]
+      },
+      "duration_seconds": 108.0,
+      "sample_rate_hz": 44100,
+      "channels": 2,
+      "mp3_bitrate_kbps": 96,
+      "size_bytes": 1296866,
+      "room_plus_details_bytes": 1589046,
+      "sha256": "973f38326d86d6cba615be3ea3d8c1e37a5c1f849d6224ad3980f1753f3332e1",
+      "decode": "complete, without decoder errors",
+      "decoded_frames_per_channel": 4762800,
+      "decoded_sample_peak_dbfs": -7.305,
+      "decoded_integrated_loudness_lufs": -23.5,
+      "decoded_true_peak_dbtp": -7.29,
+      "decoded_loudness_range_lu": 5.1,
+      "post_encode_safety_gain_db": 0.0,
+      "normalization_input_measurement": {
+        "input_i": "-25.72",
+        "input_tp": "-8.34",
+        "input_lra": "5.50",
+        "input_thresh": "-35.72",
+        "output_i": "-22.66",
+        "output_tp": "-7.00",
+        "output_lra": "4.90",
+        "output_thresh": "-32.66",
+        "normalization_type": "dynamic",
+        "target_offset": "-0.34"
+      },
+      "loop_seam": {
+        "pcm_boundary_step_dbfs": -34.213,
+        "decoded_boundary_step_dbfs": -32.819,
+        "largest_internal_sample_step_dbfs": -19.905,
+        "boundary_step_below_largest_internal_step": true
+      }
+    },
+    {
+      "file": "app/static/audio/hausdepp/tavern-room-05.mp3",
+      "composition_name": "Gemuetliche Runde",
+      "composition": {
+        "room_rotation_seconds": 21,
+        "quarter_block_order_zero_based": [
+          3,
+          1,
+          2,
+          0
+        ],
+        "quarter_block_duration_seconds": 29.25,
+        "internal_crossfade_seconds": 2,
+        "secondary_room_layer_gain": 0.1,
+        "secondary_room_layer_offset_seconds": 61,
+        "stereo_width": 0.95,
+        "highpass_hz": 100,
+        "lowpass_hz": 5500,
+        "sparse_details": [
+          {
+            "source": "laughter.mp3",
+            "start_before_final_loop_join_seconds": 31,
+            "linear_gain": 0.04
+          },
+          {
+            "source": "glasses.mp3",
+            "start_before_final_loop_join_seconds": 88,
+            "linear_gain": 0.095
+          }
+        ]
+      },
+      "duration_seconds": 108.0,
+      "sample_rate_hz": 44100,
+      "channels": 2,
+      "mp3_bitrate_kbps": 96,
+      "size_bytes": 1296866,
+      "room_plus_details_bytes": 1589046,
+      "sha256": "d9644bc0da6d06e050815bca829f98dd8785d937b38d0e013c15b6956edf7440",
+      "decode": "complete, without decoder errors",
+      "decoded_frames_per_channel": 4762800,
+      "decoded_sample_peak_dbfs": -7.291,
+      "decoded_integrated_loudness_lufs": -23.5,
+      "decoded_true_peak_dbtp": -7.26,
+      "decoded_loudness_range_lu": 5.2,
+      "post_encode_safety_gain_db": -0.0385,
+      "normalization_input_measurement": {
+        "input_i": "-24.91",
+        "input_tp": "-7.76",
+        "input_lra": "5.90",
+        "input_thresh": "-34.91",
+        "output_i": "-22.71",
+        "output_tp": "-7.00",
+        "output_lra": "5.10",
+        "output_thresh": "-32.71",
+        "normalization_type": "dynamic",
+        "target_offset": "-0.29"
+      },
+      "loop_seam": {
+        "pcm_boundary_step_dbfs": -45.217,
+        "decoded_boundary_step_dbfs": -42.076,
+        "largest_internal_sample_step_dbfs": -18.407,
+        "boundary_step_below_largest_internal_step": true
+      }
+    },
+    {
+      "file": "app/static/audio/hausdepp/tavern-room-06.mp3",
+      "composition_name": "Tresenseite",
+      "composition": {
+        "room_rotation_seconds": 28,
+        "quarter_block_order_zero_based": [
+          0,
+          3,
+          2,
+          1
+        ],
+        "quarter_block_duration_seconds": 29.25,
+        "internal_crossfade_seconds": 2,
+        "secondary_room_layer_gain": 0.0,
+        "secondary_room_layer_offset_seconds": 0,
+        "stereo_width": 1.12,
+        "highpass_hz": 100,
+        "lowpass_hz": 6000,
+        "sparse_details": [
+          {
+            "source": "glasses.mp3",
+            "start_before_final_loop_join_seconds": 15,
+            "linear_gain": 0.12
+          },
+          {
+            "source": "dishwasher.mp3",
+            "start_before_final_loop_join_seconds": 66,
+            "linear_gain": 0.07
+          }
+        ]
+      },
+      "duration_seconds": 108.0,
+      "sample_rate_hz": 44100,
+      "channels": 2,
+      "mp3_bitrate_kbps": 96,
+      "size_bytes": 1296866,
+      "room_plus_details_bytes": 1589046,
+      "sha256": "2bf6aa1f40ccbfda4ac7b7ff81b4de406c3e7603602ac3234e38d087415695a2",
+      "decode": "complete, without decoder errors",
+      "decoded_frames_per_channel": 4762800,
+      "decoded_sample_peak_dbfs": -7.276,
+      "decoded_integrated_loudness_lufs": -23.5,
+      "decoded_true_peak_dbtp": -7.24,
+      "decoded_loudness_range_lu": 4.8,
+      "post_encode_safety_gain_db": 0.0,
+      "normalization_input_measurement": {
+        "input_i": "-23.89",
+        "input_tp": "-6.54",
+        "input_lra": "5.30",
+        "input_thresh": "-33.89",
+        "output_i": "-22.64",
+        "output_tp": "-7.00",
+        "output_lra": "4.90",
+        "output_thresh": "-32.64",
+        "normalization_type": "dynamic",
+        "target_offset": "-0.36"
+      },
+      "loop_seam": {
+        "pcm_boundary_step_dbfs": -43.483,
+        "decoded_boundary_step_dbfs": -47.637,
+        "largest_internal_sample_step_dbfs": -18.354,
+        "boundary_step_below_largest_internal_step": true
+      }
+    },
+    {
+      "file": "app/static/audio/hausdepp/tavern-room-07.mp3",
+      "composition_name": "Ruhige Ecke",
+      "composition": {
+        "room_rotation_seconds": 35,
+        "quarter_block_order_zero_based": [
+          2,
+          1,
+          0,
+          3
+        ],
+        "quarter_block_duration_seconds": 29.25,
+        "internal_crossfade_seconds": 2,
+        "secondary_room_layer_gain": 0.14,
+        "secondary_room_layer_offset_seconds": 37,
+        "stereo_width": 0.74,
+        "highpass_hz": 100,
+        "lowpass_hz": 4500,
+        "sparse_details": [
+          {
+            "source": "glasses.mp3",
+            "start_before_final_loop_join_seconds": 46,
+            "linear_gain": 0.075
+          },
+          {
+            "source": "laughter.mp3",
+            "start_before_final_loop_join_seconds": 91,
+            "linear_gain": 0.035
+          }
+        ]
+      },
+      "duration_seconds": 108.0,
+      "sample_rate_hz": 44100,
+      "channels": 2,
+      "mp3_bitrate_kbps": 96,
+      "size_bytes": 1296866,
+      "room_plus_details_bytes": 1589046,
+      "sha256": "c0dea0d33ed24dabf28544c9a1099738f0c80a91cffe6e488f98a5fbe6d7e36c",
+      "decode": "complete, without decoder errors",
+      "decoded_frames_per_channel": 4762800,
+      "decoded_sample_peak_dbfs": -7.394,
+      "decoded_integrated_loudness_lufs": -23.49,
+      "decoded_true_peak_dbtp": -7.37,
+      "decoded_loudness_range_lu": 5.2,
+      "post_encode_safety_gain_db": 0.0,
+      "normalization_input_measurement": {
+        "input_i": "-25.64",
+        "input_tp": "-8.47",
+        "input_lra": "5.90",
+        "input_thresh": "-35.64",
+        "output_i": "-23.38",
+        "output_tp": "-7.00",
+        "output_lra": "5.20",
+        "output_thresh": "-33.38",
+        "normalization_type": "dynamic",
+        "target_offset": "0.38"
+      },
+      "loop_seam": {
+        "pcm_boundary_step_dbfs": -54.004,
+        "decoded_boundary_step_dbfs": -45.164,
+        "largest_internal_sample_step_dbfs": -20.759,
+        "boundary_step_below_largest_internal_step": true
+      }
+    },
+    {
+      "file": "app/static/audio/hausdepp/tavern-room-08.mp3",
+      "composition_name": "Am Stammtisch",
+      "composition": {
+        "room_rotation_seconds": 42,
+        "quarter_block_order_zero_based": [
+          1,
+          0,
+          3,
+          2
+        ],
+        "quarter_block_duration_seconds": 29.25,
+        "internal_crossfade_seconds": 2,
+        "secondary_room_layer_gain": 0.1,
+        "secondary_room_layer_offset_seconds": 53,
+        "stereo_width": 1.02,
+        "highpass_hz": 100,
+        "lowpass_hz": 5700,
+        "sparse_details": [
+          {
+            "source": "laughter.mp3",
+            "start_before_final_loop_join_seconds": 20,
+            "linear_gain": 0.05
+          },
+          {
+            "source": "dishwasher.mp3",
+            "start_before_final_loop_join_seconds": 73,
+            "linear_gain": 0.06
+          }
+        ]
+      },
+      "duration_seconds": 108.0,
+      "sample_rate_hz": 44100,
+      "channels": 2,
+      "mp3_bitrate_kbps": 96,
+      "size_bytes": 1296866,
+      "room_plus_details_bytes": 1589046,
+      "sha256": "4dc8bd06962032ed6feee44e46667a3a9f031e8a91c489a0e5ce8a38d69ef89f",
+      "decode": "complete, without decoder errors",
+      "decoded_frames_per_channel": 4762800,
+      "decoded_sample_peak_dbfs": -7.449,
+      "decoded_integrated_loudness_lufs": -23.55,
+      "decoded_true_peak_dbtp": -7.44,
+      "decoded_loudness_range_lu": 4.9,
+      "post_encode_safety_gain_db": -0.0538,
+      "normalization_input_measurement": {
+        "input_i": "-24.85",
+        "input_tp": "-7.58",
+        "input_lra": "5.80",
+        "input_thresh": "-34.85",
+        "output_i": "-23.86",
+        "output_tp": "-7.00",
+        "output_lra": "4.90",
+        "output_thresh": "-33.86",
+        "normalization_type": "dynamic",
+        "target_offset": "0.86"
+      },
+      "loop_seam": {
+        "pcm_boundary_step_dbfs": -45.064,
+        "decoded_boundary_step_dbfs": -40.76,
+        "largest_internal_sample_step_dbfs": -18.897,
+        "boundary_step_below_largest_internal_step": true
+      }
+    },
+    {
+      "file": "app/static/audio/hausdepp/tavern-room-09.mp3",
+      "composition_name": "Abendstube",
+      "composition": {
+        "room_rotation_seconds": 49,
+        "quarter_block_order_zero_based": [
+          3,
+          2,
+          0,
+          1
+        ],
+        "quarter_block_duration_seconds": 29.25,
+        "internal_crossfade_seconds": 2,
+        "secondary_room_layer_gain": 0.13,
+        "secondary_room_layer_offset_seconds": 23,
+        "stereo_width": 0.88,
+        "highpass_hz": 100,
+        "lowpass_hz": 5000,
+        "sparse_details": [
+          {
+            "source": "dishwasher.mp3",
+            "start_before_final_loop_join_seconds": 35,
+            "linear_gain": 0.05
+          },
+          {
+            "source": "glasses.mp3",
+            "start_before_final_loop_join_seconds": 87,
+            "linear_gain": 0.085
+          }
+        ]
+      },
+      "duration_seconds": 108.0,
+      "sample_rate_hz": 44100,
+      "channels": 2,
+      "mp3_bitrate_kbps": 96,
+      "size_bytes": 1296866,
+      "room_plus_details_bytes": 1589046,
+      "sha256": "a97e4486fc3ee2cf123511f76b8455bed5b978b656b13619a61d85d8a6b2cbe2",
+      "decode": "complete, without decoder errors",
+      "decoded_frames_per_channel": 4762800,
+      "decoded_sample_peak_dbfs": -7.294,
+      "decoded_integrated_loudness_lufs": -23.45,
+      "decoded_true_peak_dbtp": -7.29,
+      "decoded_loudness_range_lu": 4.6,
+      "post_encode_safety_gain_db": 0.0,
+      "normalization_input_measurement": {
+        "input_i": "-25.26",
+        "input_tp": "-8.16",
+        "input_lra": "6.00",
+        "input_thresh": "-35.26",
+        "output_i": "-22.15",
+        "output_tp": "-7.00",
+        "output_lra": "4.30",
+        "output_thresh": "-32.15",
+        "normalization_type": "dynamic",
+        "target_offset": "-0.85"
+      },
+      "loop_seam": {
+        "pcm_boundary_step_dbfs": -43.147,
+        "decoded_boundary_step_dbfs": -39.667,
+        "largest_internal_sample_step_dbfs": -19.785,
+        "boundary_step_below_largest_internal_step": true
+      }
+    },
+    {
+      "file": "app/static/audio/hausdepp/tavern-room-10.mp3",
+      "composition_name": "Tisch am Rand",
+      "composition": {
+        "room_rotation_seconds": 56,
+        "quarter_block_order_zero_based": [
+          2,
+          3,
+          1,
+          0
+        ],
+        "quarter_block_duration_seconds": 29.25,
+        "internal_crossfade_seconds": 2,
+        "secondary_room_layer_gain": 0.11,
+        "secondary_room_layer_offset_seconds": 71,
+        "stereo_width": 0.98,
+        "highpass_hz": 100,
+        "lowpass_hz": 5400,
+        "sparse_details": [
+          {
+            "source": "glasses.mp3",
+            "start_before_final_loop_join_seconds": 28,
+            "linear_gain": 0.105
+          },
+          {
+            "source": "laughter.mp3",
+            "start_before_final_loop_join_seconds": 79,
+            "linear_gain": 0.04
+          }
+        ]
+      },
+      "duration_seconds": 108.0,
+      "sample_rate_hz": 44100,
+      "channels": 2,
+      "mp3_bitrate_kbps": 96,
+      "size_bytes": 1296866,
+      "room_plus_details_bytes": 1589046,
+      "sha256": "0210550159be1631e46a261fbe8dfb5122d3c0cddecdc3ecfcf5839f2cf44a96",
+      "decode": "complete, without decoder errors",
+      "decoded_frames_per_channel": 4762800,
+      "decoded_sample_peak_dbfs": -7.234,
+      "decoded_integrated_loudness_lufs": -23.54,
+      "decoded_true_peak_dbtp": -7.23,
+      "decoded_loudness_range_lu": 5.3,
+      "post_encode_safety_gain_db": 0.0,
+      "normalization_input_measurement": {
+        "input_i": "-24.92",
+        "input_tp": "-7.81",
+        "input_lra": "5.50",
+        "input_thresh": "-34.92",
+        "output_i": "-22.51",
+        "output_tp": "-7.00",
+        "output_lra": "5.20",
+        "output_thresh": "-32.51",
+        "normalization_type": "dynamic",
+        "target_offset": "-0.49"
+      },
+      "loop_seam": {
+        "pcm_boundary_step_dbfs": -47.294,
+        "decoded_boundary_step_dbfs": -41.554,
+        "largest_internal_sample_step_dbfs": -18.784,
+        "boundary_step_below_largest_internal_step": true
+      }
+    }
+  ]
+}

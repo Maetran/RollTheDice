@@ -11,7 +11,7 @@ from .active_games import save_active_game
 from .game_realtime import broadcast
 from .game_state import multiplayer_pause_reason, touch
 
-HAUSDEPP_GAMEPLAY_ACTIONS = frozenset({"hausdepp_play", "hausdepp_pickup", "hausdepp_gamble", "hausdepp_afterthrow", "hausdepp_draw", "hausdepp_peek", "hausdepp_next_round", "hausdepp_add_cpu", "hausdepp_remove_cpu", "hausdepp_start_game"})
+HAUSDEPP_GAMEPLAY_ACTIONS = frozenset({"hausdepp_play", "hausdepp_pickup", "hausdepp_gamble", "hausdepp_afterthrow", "hausdepp_draw", "hausdepp_peek", "hausdepp_next_round", "hausdepp_add_cpu", "hausdepp_remove_cpu", "hausdepp_start_game", "hausdepp_speed_up_cpus"})
 _LOCKS: WeakValueDictionary[str, asyncio.Lock] = WeakValueDictionary()
 
 
@@ -48,6 +48,14 @@ def apply_hausdepp_command(game: dict, player_id: str, command: dict, *, trusted
     participant = next((player for player in game.get("_participants", []) if player["id"] == player_id), None)
     if not participant or bool(participant.get("is_cpu")) != trusted_cpu:
         raise HausdeppRuleError("hausdepp_invalid_actor")
+    if command.get("action") == "speed_up_cpus":
+        from .hausdepp_cpu_tempo import enable_fast_cpu_tempo
+
+        if trusted_cpu:
+            raise HausdeppRuleError("hausdepp_invalid_actor")
+        enable_fast_cpu_tempo(game, player_id, command.get("round_number"))
+        touch(game)
+        return
     version = command.get("version")
     if type(version) is not int:
         raise HausdeppRuleError("hausdepp_version_required")
@@ -115,9 +123,14 @@ async def handle_hausdepp_gameplay_action(session, action: str, data: dict, *, f
                                                **acknowledgement(False)})
             return
         try:
+            if action == "hausdepp_speed_up_cpus" and (not session.auth_identity or not any(
+                player.get("id") == session.player_id and player.get("user_id") == session.auth_identity.user_id
+                for player in game.get("_participants", [])
+            )):
+                raise HausdeppRuleError("hausdepp_invalid_actor")
             apply_hausdepp_command(game, session.player_id,
                                    {"action": action.removeprefix("hausdepp_"), "cards": data.get("cards"),
-                                    "version": data.get("version")})
+                                    "version": data.get("version"), "round_number": data.get("round_number")})
         except (HausdeppRuleError, TypeError, KeyError) as exc:
             code = getattr(exc, "code", "hausdepp_invalid_command")
             await session.websocket.send_json({"error_code": code, "error": code,
@@ -127,6 +140,10 @@ async def handle_hausdepp_gameplay_action(session, action: str, data: dict, *, f
 
         accepted_version = game["_hausdepp"]["version"]
         record_gameplay(session)
+        if action == "hausdepp_speed_up_cpus":
+            from .hausdepp_cpu_runner import refresh_cpu_tempo
+
+            await refresh_cpu_tempo(game)
         await publish_hausdepp_transition(game, finalize_game=finalize_game)
         if command_id:
             await session.websocket.send_json(acknowledgement(True, accepted_version))

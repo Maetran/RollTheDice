@@ -282,6 +282,38 @@ class HausdeppIntegrationTests(unittest.TestCase):
                 self.assertEqual(game["_hausdepp"]["version"], version)
         asyncio.run(scenario())
 
+    def test_only_the_authenticated_finished_solo_player_can_speed_up_remaining_cpus(self):
+        async def scenario():
+            game = self.game(cpu_count=2, count=3)
+            state = game["_hausdepp"]
+            own = next(player for player in state["players"] if player["id"] == "human-0")
+            own.update(hand=[], finished=True)
+            state["finished_order"] = ["human-0"]
+            state["deck"] = []
+            state["current_player_id"] = next(player["id"] for player in state["players"] if player.get("is_cpu"))
+            before = json.dumps(state, sort_keys=True)
+            socket = game["_players"][0]["ws"]
+            session = GameSocketSession(socket, game, self.identity, player_id="human-0")
+            self.assertTrue(snapshot(game, "human-0")["_cpu_tempo"]["can_speed_up"])
+            for identity, active_socket, spectator in ((None, socket, False), (self.identity, RecordingSocket(), False),
+                                                         (self.identity, socket, True)):
+                rejected = GameSocketSession(active_socket, game, identity, player_id="human-0", is_spectator=spectator)
+                await handle_hausdepp_gameplay_action(rejected, "hausdepp_speed_up_cpus", {"round_number": 1})
+                self.assertEqual(active_socket.messages[-1]["error_code"], "hausdepp_invalid_actor")
+                self.assertNotIn("_hausdepp_cpu_fast_round", game)
+            with patch("app.hausdepp_cpu_runner.maybe_schedule_cpu_turn"):
+                await handle_hausdepp_gameplay_action(session, "hausdepp_speed_up_cpus", {
+                    "round_number": 1, "command_id": "faster-cpus",
+                })
+                self.assertTrue(socket.messages[-1]["hausdepp_command"]["accepted"])
+                self.assertTrue(snapshot(game, "human-0")["_cpu_tempo"]["fast"])
+                self.assertFalse(snapshot(game)["_cpu_tempo"]["can_speed_up"])
+                restored = load_active_games()[game["_id"]]
+                self.assertEqual(restored["_hausdepp_cpu_fast_round"], 1)
+                self.assertTrue(snapshot(restored, "human-0")["_cpu_tempo"]["fast"])
+            self.assertEqual(json.dumps(game["_hausdepp"], sort_keys=True), before)
+        asyncio.run(scenario())
+
     def test_active_human_peek_acknowledges_each_tap_and_rejection_restores_private_projection(self):
         async def scenario():
             game = self.game(start_play=False)
