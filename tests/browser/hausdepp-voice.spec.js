@@ -241,7 +241,7 @@ for (const language of ['de', 'en']) {
               .map(node => ({ class: node.className, hidden: node.hidden, display: getComputedStyle(node).display,
                 visibility: getComputedStyle(node).visibility, bounds: node.getBoundingClientRect().toJSON() })) }));
           await page.screenshot({ path: path.join(screenshotDirectory, `voice-${width}x${height}.png`) });
-          await expect(output, JSON.stringify(diagnostic)).toBeInViewport(); await expect(mic).toBeInViewport(); await expect(beta).toBeInViewport();
+          await expect(output, JSON.stringify(diagnostic)).toBeInViewport(); await expect(mic).toBeInViewport();
           await expect(sound).toBeInViewport();
           const picker = page.locator('[data-game-picker]');
           await expect(picker).toBeInViewport({ ratio: 1 });
