@@ -1,3 +1,16 @@
+export const DEPLOYMENT_NOTICE_MESSAGES = {
+  de: {
+    title: "Gleich kommt ein Update",
+    message: "Die Server starten in Kürze für das Update neu. Eure Spielstände bleiben gespeichert. Danach könnt ihr hier weiterspielen.",
+    acknowledge: "OK",
+  },
+  en: {
+    title: "An update is coming",
+    message: "The servers will restart briefly for an update. Your games stay saved. You can continue playing here afterwards.",
+    acknowledge: "OK",
+  },
+};
+
 export const WATTEN_DECOR_MESSAGES = {
   de: {
     title: "Tischdeko", choose: "Getränke und Snacks kannst du direkt antippen oder verschieben.",

@@ -1,4 +1,5 @@
 import { DE_MESSAGES, EN, EN_MESSAGES } from "./catalog.js";
+import { initializeDeploymentNotice } from "../shared/deployment-notice.js";
 
 /*
   ZDWA localization
@@ -276,6 +277,7 @@ import { DE_MESSAGES, EN, EN_MESSAGES } from "./catalog.js";
   }
 
   document.addEventListener("DOMContentLoaded", () => {
+    initializeDeploymentNotice();
     document.title = translateString(document.title);
     translateElement(document);
     for (const switcher of document.querySelectorAll("[data-language-switcher]")) {

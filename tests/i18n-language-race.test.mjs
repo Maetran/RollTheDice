@@ -4,7 +4,8 @@ import test from "node:test";
 import vm from "node:vm";
 
 const source = (await readFile(new URL("../frontend/i18n/index.js", import.meta.url), "utf8"))
-  .replace('import { DE_MESSAGES, EN, EN_MESSAGES } from "./catalog.js";', "");
+  .replace('import { DE_MESSAGES, EN, EN_MESSAGES } from "./catalog.js";', "")
+  .replace('import { initializeDeploymentNotice } from "../shared/deployment-notice.js";', "");
 const settle = () => new Promise(resolve => setImmediate(resolve));
 
 function setup(initial = "de", { seoLanguage, game, storageBlocked = false, href = "https://watten.zockdiewandan.online/watten" } = {}) {
