@@ -230,7 +230,7 @@ for (const count of [2, 3, 4]) {
       // Optional requests remain available while a CPU owns the next move.
       // Only an actual human progress action may release this driver.
       const progressActions = new Set(['show_ready', 'inspection_ack', 'announce_strike', 'announce_colour',
-        'respond_go', 'respond_hold', 'bid', 'play_card', 'bloedeln_decline']);
+        'respond_go', 'respond_hold', 'bid', 'play_card', 'preplay_decline']);
       for (let turn = 0; turn < 60; turn += 1) {
         await expect.poll(() => {
           const engine = host.traffic.snapshot?.engine;
@@ -259,8 +259,12 @@ for (const count of [2, 3, 4]) {
           continuedDeal = true;
           continue;
         }
-        if (engine.actions.includes('bloedeln_decline')) {
-          await action([host], 'bloedeln_decline');
+        if (engine.actions.includes('preplay_decline')) {
+          // CPUs may offer Blödeln. Ordinary play needs no preliminary vote;
+          // answer only the real request addressed to this human seat.
+          expect(engine.preplay.pending).toMatchObject({ kind: 'bloedeln', responder: engine.viewer.seat });
+          expect(engine.preplay.bloedeln_status).toBe('pending');
+          await action([host], 'preplay_decline');
           continue;
         }
         if (engine.actions.includes('partner_feedback')) {
