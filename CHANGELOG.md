@@ -23,6 +23,24 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 4.1.3 — 2026-10-22
+
+### HAUSDEPP
+
+**Deutsch:** Computer füllen ihre Hand unter drei Karten zeitnah auf, solange
+Nachziehkarten übrig sind. Laufende Kartenanimationen und die Wartezeit eines
+anderen Computers verzögern das Auffüllen nicht mehr. Wird Nachziehen während
+einer CPU-Wartezeit frei, prüft der bestehende Ablauf es sofort neu. Die
+Ziehreihenfolge, bereits begonnene Reaktionen und das Zwischenwerfen bleiben
+erhalten; Nachziehen verkürzt die Sichtbarkeit des letzten Wurfs nicht.
+
+**English:** Computers promptly refill hands below three while draw cards
+remain. Card animations and another computer’s reaction time no longer delay
+refilling. A refill becoming available during a CPU wait is reconsidered
+immediately. Draw order, reactions already under way and matching follow-up
+throws remain intact; drawing does not shorten the last public card’s display.
+
+
 ## 4.1.2 — 2026-10-22
 
 ### WATTEN

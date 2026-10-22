@@ -1,31 +1,25 @@
 {
   "kind": "usability",
   "games": [
-    "watten"
+    "hausdepp"
   ],
-  "summary_de": "Watten: größere Karten, übersichtliche Stichstapel und klarere Aktionen. Blödeln spielt die unterste Karte automatisch.",
-  "summary_en": "Watten: larger cards, clearer trick piles and actions. Blödeln automatically plays the bottom card.",
+  "summary_de": "Hausdepp: Computer füllen ihre Karten ohne unnötige Wartezeiten auf. Zwischenwerfen bleibt möglich.",
+  "summary_en": "Hausdepp: computers refill their hands without unnecessary waits. Matching follow-up throws remain available.",
   "player_notes": {
     "de": {
-      "title": "WATTEN – Klarer Tisch und größere Karten",
+      "title": "HAUSDEPP – Zügig auf drei auffüllen",
       "changes": [
-        "Im Hochformat teilen sich Punkte, Verlassen und Chat eine Reihe. Im mobilen Querformat sitzen die Bedienelemente links und die Spieler gegenüber.",
-        "Größere Handkarten und Fächer öffnen sich von jedem Bildschirmrand zur Tischmitte. Auch der Stich nutzt im Querformat mehr Platz.",
-        "Ausgespielte Karten liegen als versetzter Stapel nach ihren Spielerplätzen. Die Gewinnerkarte ist deutlich markiert und bleibt an ihrem Platz.",
-        "Beim Einschauen genügt Schlag zeigen oder Farbe zeigen neben der eigenen Hand. Die Rechter-Anzeige erscheint erst beim Spielen und verdeckt keine Namen.",
-        "Die Auskunft deines Partners steht mit seinem Namen direkt über Halten, Gehen und Aufbieten.",
-        "Bei vereinbartem Blödeln wird die ursprüngliche unterste Karte automatisch im ersten Stich gespielt, sobald ihr Besitzer am Zug ist."
+        "Computer füllen Hände unter drei Karten auf, sobald sie mit Nachziehen an der Reihe sind und noch Karten im Stapel liegen.",
+        "Kartenanimationen und die Wartezeit anderer Computer halten das Nachziehen nicht mehr auf.",
+        "Die Ziehreihenfolge bleibt erhalten. Nachwerfen bleibt möglich, solange der nächste Spieler noch nicht gehandelt hat."
       ]
     },
     "en": {
-      "title": "WATTEN – A clearer table and larger cards",
+      "title": "HAUSDEPP – Prompt refills to three",
       "changes": [
-        "Portrait scores, leave and chat share one row. In mobile landscape the controls sit on the left and players face each other.",
-        "Larger hand cards and fans open from each screen edge toward the table centre. Landscape tricks use more space too.",
-        "Played cards form an offset pile that follows the player seats. The winning card is clearly marked and stays in its original position.",
-        "Inspection starts with Show strike or Show trump suit beside your own hand. The Rechter reference appears only during play and keeps names clear.",
-        "Your partner’s advice appears with their name directly above hold, fold and counterbid.",
-        "When Blödeln is agreed, each original bottom card is played automatically on its owner’s first turn in the first trick."
+        "Computers refill hands below three as soon as their draw is due and cards remain in the stock.",
+        "Card animations and other computers’ reaction times no longer hold up a refill.",
+        "Draw order stays intact. Matching cards can still be added until the next player acts."
       ]
     }
   }

@@ -18,8 +18,8 @@ from .hausdepp_cpu_tempo import fast_cpu_tempo, paced_cpu_delay
 
 logger = logging.getLogger(__name__)
 _TASKS: dict[str, asyncio.Task] = {}
-_SLEEPING: set[asyncio.Task] = set()
-_TEMPO_WAKES: set[asyncio.Task] = set()
+_SLEEPING: dict[asyncio.Task, int] = {}
+_WAKE_REQUESTS: set[asyncio.Task] = set()
 _RANDOM = SystemRandom()
 _MEMORIES: OrderedDict[str, tuple[int, int, dict]] = OrderedDict()
 
@@ -217,26 +217,37 @@ async def _run(game: dict, *, finalize_game=None) -> None:
             if not pending:
                 break
             actor_id = min(pending, key=lambda actor: pending[actor][1])
-            window, _, deadline = pending[actor_id]
+
+            def ready_at(actor: str) -> float:
+                window, _, deadline = pending[actor]
+                if window[1] == "draw":
+                    return deadline
+                return max(deadline, presentation_until, human_landing())
+
+            # Preserve the sampled race between public throws. A refill can
+            # nevertheless arrive while that winner's public card must wait.
+            for actor, (window, _, _) in pending.items():
+                if window[1] == "draw" and ready_at(actor) <= max(clock(), ready_at(actor_id)):
+                    actor_id = actor
+            window = pending[actor_id][0]
             game["_hausdepp_cpu_thinking"] = True
             # Keep the independently sampled CPU deadlines and their ordering.
             # Public cards land before the next computer move; a computer refill
             # closes no afterthrow and need not wait. Human commands stay open.
-            landing = 0.0 if window[1] == "draw" else human_landing()
             task = asyncio.current_task()
-            _SLEEPING.add(task)
+            _SLEEPING[task] = game["_hausdepp"]["version"]
             try:
-                await asyncio.sleep(max(0.0, max(deadline, presentation_until, landing) - clock()))
+                await asyncio.sleep(max(0.0, ready_at(actor_id) - clock()))
             except asyncio.CancelledError:
-                if task not in _TEMPO_WAKES or task.cancelling() != 1:
+                if task not in _WAKE_REQUESTS or task.cancelling() != 1:
                     raise
                 task.uncancel()
                 # Continue this same runner with its sampled reactions, pending
-                # windows and strategy memory intact. Only waiting changes.
+                # windows and strategy memory intact. Recheck newly due refills.
                 continue
             finally:
-                _SLEEPING.discard(task)
-                _TEMPO_WAKES.discard(task)
+                _SLEEPING.pop(task, None)
+                _WAKE_REQUESTS.discard(task)
             async with game_lock(game):
                 if not cpu_action_is_due(game) or games.get(game_id) is not game:
                     break
@@ -255,7 +266,11 @@ async def _run(game: dict, *, finalize_game=None) -> None:
                     pending.pop(actor_id, None)
                     continue
                 apply_hausdepp_command(game, actor_id, command, trusted_cpu=True)
-                presentation_until = clock() + paced_cpu_delay(game, _presentation_delay(game["_hausdepp"]))
+                # A private refill must not erase the landing time of the last
+                # public card and let the next throw close its afterthrow early.
+                if command["action"] != "draw":
+                    presentation_until = max(presentation_until,
+                                             clock() + paced_cpu_delay(game, _presentation_delay(game["_hausdepp"])))
                 memories[actor_id].remember(projection, command)
                 pending.pop(actor_id, None)
                 previous_actor = actor_id
@@ -266,8 +281,8 @@ async def _run(game: dict, *, finalize_game=None) -> None:
     except HausdeppRuleError:
         logger.exception("Hausdepp CPU could not apply its legal decision for %s", game_id)
     finally:
-        _SLEEPING.discard(asyncio.current_task())
-        _TEMPO_WAKES.discard(asyncio.current_task())
+        _SLEEPING.pop(asyncio.current_task(), None)
+        _WAKE_REQUESTS.discard(asyncio.current_task())
         game["_hausdepp_cpu_thinking"] = False
         if game.get("_finished") or game.get("_aborted"):
             _MEMORIES.pop(game_id, None)
@@ -279,6 +294,10 @@ def maybe_schedule_cpu_turn(game: dict, *, finalize_game=None) -> None:
     game_id = str(game["_id"])
     existing = _TASKS.get(game_id)
     if existing and not existing.done():
+        # Scheduling the same state again is idempotent. Only an accepted
+        # transition can expose a new refill or change the public-card race.
+        if existing is not asyncio.current_task() and _SLEEPING.get(existing) != game["_hausdepp"]["version"]:
+            _wake_sleeping_runner(existing)
         return
     if cpu_action_is_due(game):
         _TASKS[game_id] = asyncio.create_task(_run(game, finalize_game=finalize_game), name=f"hausdepp-cpu:{game_id}")
@@ -286,9 +305,12 @@ def maybe_schedule_cpu_turn(game: dict, *, finalize_game=None) -> None:
 
 async def refresh_cpu_tempo(game: dict) -> None:
     """Wake only a runner's sleep; never replace or resample its reactions."""
-    task = _TASKS.get(str(game["_id"]))
-    if task in _SLEEPING and task not in _TEMPO_WAKES and not task.cancelling():
-        _TEMPO_WAKES.add(task)
+    _wake_sleeping_runner(_TASKS.get(str(game["_id"])))
+
+
+def _wake_sleeping_runner(task: asyncio.Task | None) -> None:
+    if task in _SLEEPING and task not in _WAKE_REQUESTS and not task.cancelling():
+        _WAKE_REQUESTS.add(task)
         task.cancel()
 
 
