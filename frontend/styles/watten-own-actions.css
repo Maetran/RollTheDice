@@ -11,9 +11,27 @@ html[data-game="watten"][data-watten-active="true"] .wt-table:not([data-phase="m
 html[data-game="watten"][data-watten-active="true"] .wt-table .wt-announce > [data-watten-action="show_ready"] {
   min-width: 72px; min-height: 44px; padding: 8px 12px; margin: 0;
 }
+@media (orientation: portrait) {
+  html[data-game="watten"][data-watten-active="true"] .wt-table:not([data-phase="match_complete"][data-round-stage="ready"]) .wt-end-sheet > .wt-panel > .wt-announce:has(> [data-watten-action="show_ready"]) {
+    bottom: calc(var(--wt-hand-w) * 1.8 + max(20px, env(safe-area-inset-bottom, 0px)));
+  }
+}
 @media (orientation: landscape) and (max-height: 700px) {
   html[data-game="watten"][data-watten-active="true"] .wt-table:not([data-phase="match_complete"][data-round-stage="ready"]) .wt-end-sheet > .wt-panel > .wt-announce:has(> [data-watten-action="show_ready"]) {
-    right: max(12px, calc((100vw - var(--wt-rail-width)) / 2 - var(--wt-hand-w) * 2.15 - 72px), env(safe-area-inset-right, 0px));
+    right: max(12px, calc((100vw - var(--wt-rail-width)) / 2 - var(--wt-hand-w) * 2.65 - 72px), env(safe-area-inset-right, 0px));
     bottom: calc(var(--wt-hand-w) * .65 + 30px + env(safe-area-inset-bottom, 0px));
+  }
+}
+@media (orientation: landscape) and (max-height: 700px) and (max-width: 720px) {
+  html[data-game="watten"][data-watten-active="true"] .wt-hand[data-state="blind"] > .wt-hand-card {
+    margin-inline: calc(var(--wt-hand-w) * -.3);
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table:not([data-phase="match_complete"][data-round-stage="ready"]) .wt-end-sheet > .wt-panel > .wt-announce:has(> [data-watten-action="show_ready"]) {
+    right: max(12px, env(safe-area-inset-right, 0px));
+    bottom: calc(34px + env(safe-area-inset-bottom, 0px));
+    max-width: 84px;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table .wt-announce > [data-watten-action="show_ready"] {
+    width: 84px; padding: 6px 4px; font-size: .65rem;
   }
 }

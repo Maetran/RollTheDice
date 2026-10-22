@@ -3,6 +3,22 @@ const CAPTION = 11, LABEL = 24;
 const intersects = (a, b) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
 const usable = rect => rect && rect.width > 0 && rect.height > 0;
 
+/** Fit the complete public clover between the two inward-facing hands. */
+export function fitLandscapeTrick({ top, bottom, desiredWidth, minimumWidth = 48 }) {
+  if (![top, bottom, desiredWidth, minimumWidth].every(Number.isFinite) || bottom <= top || desiredWidth < minimumWidth) return null;
+  for (const padding of [7, 1]) for (const spread of [.52, .44, .36, .24]) {
+    const compact = spread === .24;
+    const angle = compact ? 0 : 2 * Math.PI / 180;
+    const heightPerWidth = RATIO * (spread + Math.cos(angle)) + Math.sin(angle);
+    const cardWidth = Math.min(Math.floor(desiredWidth), Math.floor((bottom - top - padding * 2) / heightPerWidth));
+    if (cardWidth < minimumWidth) continue;
+    const height = cardWidth * heightPerWidth;
+    return { cardWidth, height, y: (top + bottom) / 2, spread, compact, insetWinner: padding < 7,
+      top: (top + bottom - height) / 2, bottom: (top + bottom + height) / 2 };
+  }
+  return null;
+}
+
 export function fitPortraitPrompt(bounds, obstacles, { height = 20, widths = [180, 140, 100, 80], accept = null } = {}) {
   const blocked = obstacles.filter(usable).map(rect => ({ left: rect.left - 4, right: rect.right + 4, top: rect.top - 4, bottom: rect.bottom + 4 }));
   for (const width of widths.filter(width => width <= bounds.width)) {
@@ -26,30 +42,37 @@ export function fitPortraitTrick({ bounds, obstacles = [], count, positions = nu
   const blocked = obstacles.filter(usable).map(rect => ({ left: rect.left - padding, right: rect.right + padding,
     top: rect.top - padding, bottom: rect.bottom + padding }));
   const seats = positions || (count === 2 ? ["bottom", "top"] : count === 3 ? ["bottom", "left", "right"] : ["bottom", "left", "top", "right"]);
-  for (const spread of [.52, .44, .36]) for (let cardWidth = Math.floor(desiredWidth); cardWidth >= minimumWidth; cardWidth--) {
+  // Keep the pile on the table's centre line even when a captured packet would
+  // permit a larger face only at a screen edge. Use that edge space only when
+  // no readable centred composition can fit at all.
+  for (const centred of [true, false]) for (const spread of [.52, .44, .36]) for (let cardWidth = Math.floor(desiredWidth); cardWidth >= minimumWidth; cardWidth--) {
     const cardHeight = cardWidth * RATIO;
     // The side cards reach towards their owners; the top and bottom cards
     // share a centre line. Captions stay outside the other card faces while
     // the original play order determines which cards overlap in front.
-    const width = cardWidth * 2.5;
+    // Three seats have no upper player to join the two side cards. Their
+    // side faces must overlap directly, including a left→right opening.
+    const sideReach = cardWidth * (count === 3 ? .9 : 1.5);
+    const inset = count === 3 ? cardWidth * .15 : 0;
+    const width = cardWidth + sideReach + inset * 2;
     const rowHeight = cardHeight * (1 + spread) + CAPTION;
     const captionHeight = CAPTION;
     const height = rowHeight + captionHeight + labelHeight;
     if (width > bounds.width || height > bounds.height) continue;
     const anchors = {
-      top: { x: cardWidth * .75, y: CAPTION, ownerX: 0, ownerY: -CAPTION, ownerWidth: cardWidth },
-      bottom: { x: cardWidth * .75, y: CAPTION + cardHeight * spread, ownerX: 0, ownerY: cardHeight, ownerWidth: cardWidth },
-      left: { x: 0, y: CAPTION + cardHeight * spread / 2,
-        ownerX: 0, ownerY: cardHeight * .53, ownerWidth: cardWidth * .6 },
-      right: { x: cardWidth * 1.5, y: CAPTION + cardHeight * spread / 2,
-        ownerX: cardWidth * .4, ownerY: cardHeight * .53, ownerWidth: cardWidth * .6 },
+      top: { x: inset + sideReach / 2, y: CAPTION, ownerX: 0, ownerY: -CAPTION, ownerWidth: cardWidth },
+      bottom: { x: inset + sideReach / 2, y: CAPTION + cardHeight * spread, ownerX: 0, ownerY: cardHeight, ownerWidth: cardWidth },
+      left: { x: inset, y: CAPTION + cardHeight * spread / 2,
+        ownerX: -inset, ownerY: cardHeight * .53, ownerWidth: cardWidth * .6 },
+      right: { x: inset + sideReach, y: CAPTION + cardHeight * spread / 2,
+        ownerX: cardWidth * (count === 3 ? .55 : .4), ownerY: cardHeight * .53, ownerWidth: cardWidth * .6 },
     };
     const cardPositions = seats.map(seat => anchors[seat] || anchors.bottom);
     const preferredX = bounds.left + (bounds.width - width) / 2;
     const preferredY = bounds.top + bounds.height * .56 - height / 2;
     const clampX = x => Math.max(bounds.left, Math.min(bounds.right - width, x));
     const clampY = y => Math.max(bounds.top, Math.min(bounds.bottom - height, y));
-    const xs = [...new Set([preferredX, bounds.left, bounds.right - width,
+    const xs = centred ? [preferredX] : [...new Set([preferredX, bounds.left, bounds.right - width,
       ...blocked.flatMap(rect => [rect.left - width, rect.right])].map(clampX))];
     const ys = [...new Set([preferredY, bounds.top, bounds.bottom - height,
       ...blocked.flatMap(rect => [rect.top - height, rect.bottom])].map(clampY))];
@@ -90,10 +113,14 @@ export function fitPortraitTrickView({ bounds, obstacles, count, positions = nul
 /** Presentation only: public faces already present in the trick DOM. */
 export function createTrickLayout(trick, { win = window } = {}) {
   const centre = trick.parentElement, felt = centre.parentElement, table = felt.closest("[data-wt-table]");
-  const variables = ["--wt-portrait-x", "--wt-portrait-y", "--wt-portrait-width", "--wt-portrait-card-width", "--wt-portrait-row-height", "--wt-portrait-caption-height",
+  const variables = ["--wt-landscape-x", "--wt-landscape-y", "--wt-landscape-card-width", "--wt-landscape-height", "--wt-landscape-reach",
+    "--wt-portrait-x", "--wt-portrait-y", "--wt-portrait-width", "--wt-portrait-card-width", "--wt-portrait-row-height", "--wt-portrait-caption-height",
     "--wt-portrait-reference-left", "--wt-portrait-reference-top", "--wt-portrait-label-x", "--wt-portrait-label-y", "--wt-portrait-label-width"];
-  let count = 0, queued = null, destroyed = false;
+  let count = 0, queued = null, destroyed = false, landscape = null, deal = "";
   const clear = () => {
+    delete centre.dataset.wtLandscapeTrick;
+    delete centre.dataset.wtLandscapeCompact;
+    delete centre.dataset.wtLandscapeInsetWinner;
     delete centre.dataset.wtPortraitTrick;
     delete centre.dataset.wtPortraitTrickMode;
     delete centre.dataset.wtPortraitTrickFallback;
@@ -135,7 +162,37 @@ export function createTrickLayout(trick, { win = window } = {}) {
     queued = null;
     if (destroyed) return;
     clear();
-    if (win.innerWidth > 760 || win.innerWidth >= win.innerHeight || trick.hidden || !trick.children.length) return;
+    if (trick.hidden || !trick.children.length) { landscape = null; return; }
+    if (win.innerWidth >= win.innerHeight && win.innerHeight <= 700) {
+      const area = felt.getBoundingClientRect();
+      const key = [deal, trick.firstElementChild.dataset.key, count, win.innerWidth, win.innerHeight,
+        area.left, area.top, area.width, area.height].join(":");
+      if (landscape?.key !== key) {
+        // Arrival animations can hide a face temporarily without removing its
+        // physical slot. Measure the accepted DOM geometry, including those
+        // slots, then retain this complete footprint until the next trick.
+        const frames = selector => [...table.querySelectorAll(selector)].filter(node => !node.hidden)
+          .map(node => node.getBoundingClientRect()).filter(usable);
+        const topHand = frames(".wt-seat--top .wt-backs > i:not([hidden])");
+        const ownHand = frames("[data-wt-hand-area]:not([hidden]) [data-wt-hand] > *, .wt-seat--bottom .wt-backs > i:not([hidden])");
+        const top = topHand.length ? Math.max(...topHand.map(rect => rect.bottom)) : area.top + 40;
+        const bottom = ownHand.length ? Math.min(...ownHand.map(rect => rect.top)) : area.bottom - 40;
+        const desiredWidth = Number.parseFloat(win.getComputedStyle(trick.firstElementChild).width);
+        landscape = { key, fit: fitLandscapeTrick({ top, bottom, desiredWidth }) };
+      }
+      if (landscape.fit) {
+        const fit = landscape.fit;
+        centre.dataset.wtLandscapeTrick = "true";
+        if (fit.compact) centre.dataset.wtLandscapeCompact = "true";
+        if (fit.insetWinner) centre.dataset.wtLandscapeInsetWinner = "true";
+        for (const [name, value] of [["x", area.width / 2], ["y", fit.y - area.top],
+          ["card-width", fit.cardWidth], ["height", fit.height]]) centre.style.setProperty(`--wt-landscape-${name}`, `${value}px`);
+        centre.style.setProperty("--wt-landscape-reach", `${fit.spread * 50}%`);
+      }
+      return;
+    }
+    landscape = null;
+    if (win.innerWidth > 760 || win.innerWidth >= win.innerHeight) return;
     const area = felt.getBoundingClientRect();
     const left = Math.max(12, area.left + 8), top = Math.max(8, area.top + 8);
     const right = Math.min(win.innerWidth - 12, area.right - 8), bottom = Math.min(win.innerHeight - 8, area.bottom - 8);
@@ -223,7 +280,12 @@ export function createTrickLayout(trick, { win = window } = {}) {
   win.addEventListener("resize", schedule, { passive: true });
   win.visualViewport?.addEventListener("resize", schedule, { passive: true });
   return {
-    update(vm) { count = vm.count; if (queued !== null) win.cancelAnimationFrame(queued); layout(); },
+    update(vm) {
+      count = vm.count;
+      deal = `${vm.engine?.deal_id ?? ""}:${vm.engine?.deal_revision ?? 0}`;
+      if (queued !== null) win.cancelAnimationFrame(queued);
+      layout();
+    },
     destroy() {
       destroyed = true;
       if (queued !== null) win.cancelAnimationFrame(queued);

@@ -662,7 +662,9 @@ export function createTableView(container, { onCard, accountId = null }) {
     // The server plays the packet bottom as part of the turn transition.
     // A stale/recovered projection must not turn it into a manual choice.
     const playable = vm.actions.includes("play_card") && !vm.busy && !hand.some(item => item.card === forced);
-    elements.handArea.hidden = !hand.some(item => isCard(item.card));
+    // A blind packet still occupies the owner's hand. Only the active two-card
+    // inspection uses this area for its reveal/ACK; no hidden face is inferred.
+    elements.handArea.hidden = !hand.length || Boolean(vm.engine.inspection && vm.actions.includes("inspection_ack"));
     const keys = hand.map((item, index) => isCard(item.card) ? item.card : `back-${index}`);
     let changed = false;
     const created = [];
@@ -701,7 +703,7 @@ export function createTableView(container, { onCard, accountId = null }) {
       }
     });
     elements.hand.style.setProperty("--count", String(Math.max(1, keys.length)));
-    elements.hand.dataset.state = !hand.length ? "empty" : playable ? "playable" : "idle";
+    elements.hand.dataset.state = !hand.length ? "empty" : hand.every(item => !isCard(item.card)) ? "blind" : playable ? "playable" : "idle";
     if (changed) { layout += 1; pressed = null; }
     return { created, nodes: keys.map(key => handNodes.get(key)) };
   }
@@ -751,11 +753,7 @@ export function createTableView(container, { onCard, accountId = null }) {
       }
       node.dataset.position = seatPosition(item.seat, vm.anchorSeat, vm.count);
       node.classList.toggle("is-winning-card", Boolean(last && item.seat === last.winner));
-      node.setAttribute("aria-label", `${cardName(item.card)} · ${seatName(vm, item.seat)}${last && item.seat === last.winner ? ` · ${t("trick.winner")}` : ""}`);
-      let owner = node.querySelector(".wt-card-owner");
-      if (!owner) { owner = document.createElement("span"); owner.className = "wt-card-owner"; node.append(owner); }
-      owner.textContent = seatName(vm, item.seat);
-      owner.setAttribute("translate", "no");
+      node.setAttribute("aria-label", `${t("trick.playOrder", { number: index + 1 })} · ${cardName(item.card)} · ${seatName(vm, item.seat)}${last && item.seat === last.winner ? ` · ${t("trick.winner")}` : ""}`);
       node.style.setProperty("--order", String(index));
       if (elements.trick.children[index] !== node) elements.trick.insertBefore(node, elements.trick.children[index] || null);
     });

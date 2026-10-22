@@ -2448,5 +2448,12 @@
     "date": "2026-10-22",
     "bump": "patch",
     "summary": "Mobile Watten-Ansicht, Blödeln-Abfrage und Rundenübergänge korrigiert. / Corrected the mobile Watten layout, Blödeln choices and transitions between deals."
+  },
+  {
+    "version": "4.1.2",
+    "revision": "7e41b6b4a9302386299cba571b104cb8ddaacfc7",
+    "date": "2026-10-22",
+    "bump": "patch",
+    "summary": "Watten-Tisch mit größeren Karten, klareren Stichstapeln und automatischer Blödeln-Karte korrigiert. / Improved the Watten table with larger cards, clearer trick piles and automatic Blödeln card play."
   }
 ]

@@ -1,5 +1,5 @@
 /* Watten uses the network. No account, token, game or asset enters Cache Storage. */
-const CACHE_VERSION = 'assets-b80d31eb3eba';
+const CACHE_VERSION = 'assets-9e1a222cfeb8';
 
 self.addEventListener('message', event => {
   if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();

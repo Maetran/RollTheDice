@@ -45,7 +45,7 @@ test.afterEach(async ({ page }) => {
   });
 });
 
-async function realCpuTable(page, language = 'de') {
+async function realCpuTable(page, language = 'de', { requireViewerPeeker = true } = {}) {
   const headers = await owner(page, language);
   let board;
   page.on('websocket', socket => socket.on('framereceived', ({ payload }) => {
@@ -54,8 +54,10 @@ async function realCpuTable(page, language = 'de') {
       if (message.scoreboard?._hausdepp) board = message.scoreboard;
     } catch { /* Ignore non-JSON protocol frames. */ }
   }));
-  // The first dealer is random; open tables until the viewer is the one who peeks.
-  for (let attempt = 0; attempt < 12; attempt += 1) {
+  // Only real peeking-flow tests require a random deal with the viewer peeking.
+  // Renderer fixtures replace the phase and can use the first real projection.
+  const attempts = requireViewerPeeker ? 12 : 1;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
     const created = await page.request.post('/api/games', {
       headers, data: { name: 'Shuffle-Test · Echte Ausgangsprojektion', mode: '2',
         game_type: 'hausdepp', play_mode: 'cpu', cpu_count: 1 },
@@ -66,7 +68,9 @@ async function realCpuTable(page, language = 'de') {
     await page.goto(room);
     await expect.poll(() => board?._hausdepp?.viewer_id).toBeTruthy();
     const state = board._hausdepp;
-    if (state.phase === 'peeking' && state.peek?.player_id === state.viewer_id) return { room, board: structuredClone(board) };
+    if (!requireViewerPeeker || (state.phase === 'peeking' && state.peek?.player_id === state.viewer_id)) {
+      return { room, board: structuredClone(board) };
+    }
   }
   throw new Error('No table with the viewer as peeker after 12 random deals');
 }
@@ -101,7 +105,7 @@ function phaseBoard(real, phase, { round = null, version = 20 } = {}) {
 }
 
 async function rendererFixture(page, { initial = 'waiting', round = null } = {}) {
-  const real = await realCpuTable(page);
+  const real = await realCpuTable(page, 'de', { requireViewerPeeker: false });
   // The fixture only replaces the renderer's WebSocket stream. The real table's
   // server state, cards, permissions and achievements are never rewritten.
   await page.evaluate(() => sessionStorage.clear());

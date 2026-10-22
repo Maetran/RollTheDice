@@ -1,6 +1,6 @@
 # Versionen / Versions
 
-Aktuelle gemeinsame Produktversion / Current shared product version: **4.1.2**.
+Aktuelle gemeinsame Produktversion / Current shared product version: **4.1.3**.
 
 Alle RollTheDice-Spiele werden gemeinsam versioniert. Major steht für einen großen
 Produktmeilenstein, Minor für neue Funktionen und Patch für Fehlerkorrekturen
@@ -30,6 +30,7 @@ Detailed player-facing descriptions are in the [changelog](../CHANGELOG.md).
 
 | Version | Datum / Date | Art / Type | Änderung / Change | Commit |
 | --- | --- | --- | --- | --- |
+| 4.1.2 | 2026-10-22 | patch | Watten-Tisch mit größeren Karten, klareren Stichstapeln und automatischer Blödeln-Karte korrigiert. / Improved the Watten table with larger cards, clearer trick piles and automatic Blödeln card play. | [7e41b6b](https://github.com/Maetran/RollTheDice/commit/7e41b6b4a9302386299cba571b104cb8ddaacfc7) |
 | 4.1.1 | 2026-10-22 | patch | Mobile Watten-Ansicht, Blödeln-Abfrage und Rundenübergänge korrigiert. / Corrected the mobile Watten layout, Blödeln choices and transitions between deals. | [e4705e8](https://github.com/Maetran/RollTheDice/commit/e4705e8fdd8f30b9cd73d1bb6ee9e6a060e9a24d) |
 | 4.1.0 | 2026-10-21 | minor | Einführungen, Rollout-Hinweise, zehn Wirtshauskulissen und klarere Entscheidungen am Kartentisch. / Introductions, advance rollout notices, ten tavern ambiences and clearer decisions at the card table. | [305bef6](https://github.com/Maetran/RollTheDice/commit/305bef6c19b7ab25207e080be4c1eb3e46e500a9) |
 | 4.0.1 | 2026-10-21 | patch | Einheitliche Spielbuttons, übersichtliche Kontoeinstellungen und eine informativere Watten-Lobby. / Consistent game buttons, clearer account settings and a more informative Watten lobby. | [9c0d991](https://github.com/Maetran/RollTheDice/commit/9c0d991c80634a3ece6060752f80a45eff558c87) |

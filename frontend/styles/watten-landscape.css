@@ -36,7 +36,7 @@
   html[data-game="watten"][data-watten-active="true"] .wt-main { grid-column: 2; grid-row: 1; height: 100%; width: 100%; }
   html[data-game="watten"][data-watten-active="true"] .wt-table:not([data-phase="match_complete"][data-round-stage="ready"]) {
     --wt-hand-w: clamp(60px, calc(21.92dvh - 10.14px), 76px); --wt-back-w: clamp(33.6px, 8.4dvh, 43.2px);
-    --wt-trick-w: clamp(52px, calc(16.44dvh - .608px), 64px); --wt-taken-w: 26px;
+    --wt-trick-w: clamp(52px, calc(16.44dvh - 4.608px), 64px); --wt-taken-w: 26px;
     grid-template: minmax(0, 1fr) / minmax(0, 1fr);
   }
   html[data-game="watten"][data-watten-active="true"] .wt-table::before { inset: 0; border-width: 30px; }
@@ -134,15 +134,53 @@
   }
   html[data-game="watten"][data-watten-active="true"] .wt-hand-area { left: 50%; bottom: 34px; width: min(80%, calc(var(--wt-hand-w) * 4 + 24px)); padding-inline: 4px; }
   html[data-game="watten"][data-watten-active="true"] .wt-hand { min-height: 0; padding-block: 0; }
-  html[data-game="watten"][data-watten-active="true"] .wt-centre { left: 50%; top: calc(40% + 6px); translate: none; gap: 0; width: 0; height: 0; display: block; }
-  html[data-game="watten"][data-watten-active="true"] .wt-trick { position: absolute; left: 0; top: 0; translate: -50% -50%; width: calc(var(--wt-trick-w) * 2.9); height: calc(var(--wt-trick-w) * 2.9); }
-  /* A broad pile exposes the larger faces without entering either hand. */
-  html[data-game="watten"][data-watten-active="true"] .wt-trick-card[data-position="top"] { --x: -90%; --y: -52%; }
-  html[data-game="watten"][data-watten-active="true"] .wt-trick-card[data-position="bottom"] { --x: -10%; --y: -48%; }
-  html[data-game="watten"][data-watten-active="true"] .wt-trick-card[data-position="left"] { --x: -175%; --y: -50%; --r: -4deg; }
-  html[data-game="watten"][data-watten-active="true"] .wt-trick-card[data-position="right"] { --x: 75%; --y: -50%; --r: 4deg; }
-  html[data-game="watten"][data-watten-active="true"] .wt-trick-card[data-position="top"] .wt-card-owner { top: 0; bottom: auto; }
-  html[data-game="watten"][data-watten-active="true"] .wt-trick-card[data-position="bottom"] .wt-card-owner { bottom: 0; }
+  html[data-game="watten"][data-watten-active="true"] .wt-centre { left: 50%; top: 43%; translate: none; gap: 0; width: 0; height: 0; display: block; }
+  /* One clover follows the four seats. Reserve its complete footprint from
+     the first card; every pair overlaps, even before the other players act.
+     The accepted play order alone determines which card rests above another. */
+  html[data-game="watten"][data-watten-active="true"] .wt-trick {
+    position: absolute; left: 0; top: 0; translate: -50% -50%;
+    width: calc(var(--wt-trick-w) * 1.9);
+    height: calc(var(--wt-trick-w) * 1.583333 * 1.52);
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-trick-card[data-position] {
+    --x: -50%; --y: -50%; --r: 0deg;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-trick-card[data-position="top"] { --y: -76%; --r: -2deg; }
+  html[data-game="watten"][data-watten-active="true"] .wt-trick-card[data-position="bottom"] { --y: -24%; --r: 2deg; }
+  html[data-game="watten"][data-watten-active="true"] .wt-trick-card[data-position="left"] { --x: -95%; --r: -3deg; }
+  html[data-game="watten"][data-watten-active="true"] .wt-trick-card[data-position="right"] { --x: -5%; --r: 3deg; }
+  @media (max-height: 360px) {
+    html[data-game="watten"][data-watten-active="true"] .wt-trick { height: calc(var(--wt-trick-w) * 1.583333 * 1.24); }
+    html[data-game="watten"][data-watten-active="true"] .wt-trick-card[data-position] { --r: 0deg; }
+    html[data-game="watten"][data-watten-active="true"] .wt-trick-card[data-position="top"] { --y: -62%; }
+    html[data-game="watten"][data-watten-active="true"] .wt-trick-card[data-position="bottom"] { --y: -38%; }
+    html[data-game="watten"][data-watten-active="true"] .wt-trick .is-winning-card {
+      outline-offset: -4px; box-shadow: 0 2px 6px #3c251850;
+    }
+  }
+  @media (max-height: 330px) {
+    html[data-game="watten"][data-watten-active="true"] .wt-table:not([data-phase="match_complete"][data-round-stage="ready"]) {
+      --wt-trick-w: clamp(48px, calc(40dvh - 80px), 52px);
+    }
+    html[data-game="watten"][data-watten-active="true"] .wt-centre { top: 43.25%; }
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-centre[data-wt-landscape-trick] {
+    left: var(--wt-landscape-x); top: var(--wt-landscape-y); --wt-trick-w: var(--wt-landscape-card-width);
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-centre[data-wt-landscape-trick] > .wt-trick {
+    height: var(--wt-landscape-height);
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-centre[data-wt-landscape-trick] .wt-trick-card[data-position="top"] {
+    --y: calc(-50% - var(--wt-landscape-reach));
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-centre[data-wt-landscape-trick] .wt-trick-card[data-position="bottom"] {
+    --y: calc(-50% + var(--wt-landscape-reach));
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-centre[data-wt-landscape-compact] .wt-trick-card[data-position] { --r: 0deg; }
+  html[data-game="watten"][data-watten-active="true"] .wt-centre[data-wt-landscape-inset-winner] .wt-trick .is-winning-card {
+    outline-offset: -4px; box-shadow: 0 2px 6px #3c251850;
+  }
   html[data-game="watten"][data-watten-active="true"] .wt-trick-label {
     position: fixed; inset: auto auto calc(6px + env(safe-area-inset-bottom, 0px)) calc(var(--wt-rail-width) + 8px);
     width: clamp(60px, calc((100vw - var(--wt-rail-width) - env(safe-area-inset-right, 0px) - var(--wt-hand-w) * 4) / 2 - 16px), 132px); max-width: 132px; height: 22px;

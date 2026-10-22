@@ -225,8 +225,11 @@ die freie Fläche zwischen den Spielern. Alle Handfächer öffnen sich zur
 Tischmitte; ihre gedachte Griffseite zeigt zum jeweiligen Bildschirmrand.
 Die optionale Rechter-Anzeige erscheint erst nach
 der Ansage beziehungsweise dem Einschauen, ohne zusätzliche verdeckte Karte
-während der Vorbereitung. Ausgespielte Karten liegen mit gut sichtbaren Kartenflächen als lockerer,
-überlappender Stapel in Richtung ihres Spielers; die Gewinnerkarte erhält einen klaren Rahmen und bleibt an ihrer Position und in derselben Überlappungsreihenfolge.
+während der Vorbereitung. Ausgespielte Karten bilden ab der zweiten Karte einen zusammenhängenden,
+überlappenden Stapel in Kleeblatt-Anordnung. Jede Karte liegt in Richtung
+ihres Spielers, ohne sichtbare Nummern oder Namensschilder. Neue Karten liegen
+über früheren und machen dadurch die Spielreihenfolge erkennbar. Die Gewinnerkarte erhält
+einen klaren Rahmen und bleibt an ihrer Position und in derselben Überlappungsreihenfolge.
 Nach vollständiger Ansage oder abgeschlossenem Einschauen darf am eigenen
 Kartenzug schon vor der ersten Karte geboten werden. Ein nach Halten vereinbartes
 Schöneres bleibt bis zur ersten Karte möglich und setzt den Einsatz auf zwei zurück.
@@ -269,7 +272,10 @@ the players in landscape. Every hand fan opens toward the table centre, with
 its imaginary grip pointing toward that player's screen edge.
 The optional Rechter reference appears after calling
 or inspection, without an extra face-down placeholder during preparation. Played cards
-form a looser overlapping pile toward their player's seat, exposing more of each face; the winning card is outlined in its original position and overlap order.
+form one connected, overlapping cloverleaf pile from the second card onward.
+Each card points toward its player, without visible numbers or name labels.
+New cards overlap earlier ones to preserve the play order.
+The winning card is outlined in its original position and overlap order.
 Once calling or inspection is complete, the player on their card turn may bid
 before the first card. An agreed redeal after holding remains possible until
 the first card and resets the stake to two.
@@ -299,8 +305,12 @@ bei beiden die ursprüngliche unterste Karte automatisch im ersten Stich
 ausgespielt, sobald sie am Zug sind, auch wenn eine andere Farbe ausgespielt wurde.
 Eine Kartenauswahl gibt es dabei nicht. Jede
 Pflichtkarte wird für die anderen erst beim tatsächlichen Ausspielen sichtbar.
-CPUs fragen und antworten pro Blatt stabil zufällig mit 50 % Wahrscheinlichkeit,
-unabhängig von ihren Karten; Warten ersetzt keine menschliche Antwort.
+Sind beide Nicht-Einschauer CPUs, ist ungefähr in jedem dritten Blatt mindestens
+eine anfragebereit; jede CPU entscheidet sich mit rund 18 % dafür und antwortet
+weiterhin mit 50 % mit Ja. Die Anfrage muss vor dem ersten Ausspielen erfolgen;
+die sichtbare Quote kann deshalb niedriger liegen. Diese Wahl bleibt pro Blatt
+gleich und verwendet keine verdeckten Karten. Status und Anfrage nennen die tatsächlich Beteiligten;
+Warten ersetzt keine menschliche Antwort.
 “Allow a redeal” is a separate table option for two or four players, off by
 default. Until the first card is played, both callers may agree, including after
 inspection: their old hands are shuffled into the remaining stock, then each
@@ -315,8 +325,11 @@ after inspection. A no declines Blödeln for this hand without an extra status
 message. A yes automatically plays each original bottom card on its owner's
 first turn, even when a different suit is led; there is no card choice.
 Others see each forced card only when it is actually played.
-CPUs make a stable random 50% request/response choice per deal, independent of
-their cards; waiting never replaces a human answer.
+With two CPU non-lookers, at least one is willing to request Blödeln in roughly
+one in three deals: each CPU chooses to ask about 18% of the time and still
+answers yes with a 50% chance. The request must precede the first play, so the
+visible rate can be lower. The choice stays stable for the deal and uses no hidden cards. Requests and
+status messages name the actual participants; waiting never replaces a human answer.
 
 Nach einer Gabe wird zuerst der letzte Stich abgeräumt. Schlag, Farbe und der
 Rechte werden anschliessend etwa drei Sekunden für alle aufgedeckt; danach
@@ -843,7 +856,8 @@ dazu kurze Tipps in ihrer Zugzeile. Die Serverregeln
 schützen fremde Karten und den Nachziehstapel. Ein Tipp auf den verdeckten Stapel
 zockt vor dem Ablegen. Danach füllt das Spiel für alle automatisch alle
 fehlenden Karten bis auf drei auf, sobald die eigene Auffüllung an der Reihe
-ist; eine Einstellung dafür gibt es nicht mehr. Der nächste Spieler darf schon
+ist; eine Einstellung dafür gibt es nicht mehr. Computer füllen unabhängig von
+laufenden Kartenanimationen und anderen CPU-Wartezeiten auf. Der nächste Spieler darf schon
 Handkarten legen; ziehen oder zocken kann er erst, wenn ältere
 Auffüllpflichten erledigt sind. „Du musst ziehen“ mit sanft rotem Rahmen zeigt,
 wessen Auffüllung an der Reihe ist. Ein Tipp auf
@@ -989,11 +1003,13 @@ your current account name, such as “Mani’s nightcap”; no name field is nee
 Two to five participants, six at most, play with 36 double-headed German cards.
 Computers are real participants with their own private hands. Server rules
 protect opposing cards and the draw pile. Tapping the face-down pile takes a
-chance before playing, or afterwards draws all missing cards up to three as a
-mandatory refill. The next player may already play hand cards; drawing or
+chance before playing. After playing, the game automatically draws all missing
+cards up to three for everyone as soon as their refill is due. Computers refill
+independently of card animations and other computers' reaction times.
+The next player may already play hand cards; drawing or
 gambling waits for earlier refill obligations. “You must draw” with a gentle
-red frame reminds the player responsible. Each account may turn on “Refill to
-three automatically”, at the table in the table help or in account settings.
+red frame shows whose refill is due. Refilling keeps any still-open opportunity
+to add matching cards and never reopens one that has already ended.
 Tapping a hand card plays it immediately; tapping the face-up pile takes it.
 A tap applies only to the card already playable when you touch it. If another
 card moves into its place or becomes playable during the tap, tap again.

@@ -9,6 +9,25 @@ let copyId = 0;
 const completedKey = (engine) => engine?.last_trick
   ? `${engine.deal_id}:${engine.deal_revision ?? 0}:${engine.last_trick.winner}:${engine.last_trick.cards.map(item => `${item.seat}/${item.card}`).join(",")}` : "";
 
+const multiply = ([a, b, c, d], [e, f, g, h]) => [a * e + c * f, b * e + d * f, a * g + c * h, b * g + d * h];
+
+/** Preserve the painted card's angle and proportions outside its seat wrapper. */
+export function cardCopyPose(rect, styles = []) {
+  let matrix = [1, 0, 0, 1];
+  for (const style of styles) {
+    const values = style.transform?.match(/^matrix(3d)?\(([^)]+)\)$/);
+    const numbers = values?.[2].split(",").map(Number);
+    const transform = numbers ? values[1] ? [numbers[0], numbers[1], numbers[4], numbers[5]] : numbers.slice(0, 4) : [1, 0, 0, 1];
+    const angle = (Number.parseFloat(style.rotate) || 0) * Math.PI / 180;
+    const rotation = [Math.cos(angle), Math.sin(angle), -Math.sin(angle), Math.cos(angle)];
+    matrix = multiply(multiply(rotation, transform), matrix);
+  }
+  const width = Number.parseFloat(styles[0]?.width) || rect.width;
+  const height = Number.parseFloat(styles[0]?.height) || rect.height;
+  return { left: rect.left + (rect.width - width) / 2, top: rect.top + (rect.height - height) / 2,
+    width, height, transform: `matrix(${matrix.join(",")},0,0)` };
+}
+
 export const sameHandVersion = (previous, engine) => Boolean(previous && previous.deal_id === engine.deal_id
   && (previous.deal_revision ?? 0) === (engine.deal_revision ?? 0));
 
@@ -134,7 +153,19 @@ export function createMotion({ win = window, doc = document } = {}) {
   }
 
   function copyCard(source, parent, rect, origin) {
+    const styles = [];
+    if (win.getComputedStyle) for (let node = source; node; node = node.parentElement) styles.push(win.getComputedStyle(node));
+    const pose = cardCopyPose(rect, styles);
     const clone = source.cloneNode(true);
+    const freeze = (original, copy) => {
+      const style = win.getComputedStyle?.(original);
+      if (!style) return;
+      for (const property of style) copy.style.setProperty(property, style.getPropertyValue(property));
+      Object.assign(copy.style, { visibility: "visible", animation: "none", transition: "none" });
+    };
+    freeze(source, clone);
+    const owners = source.querySelectorAll(".wt-card-owner"), copiedOwners = clone.querySelectorAll(".wt-card-owner");
+    owners.forEach((owner, index) => freeze(owner, copiedOwners[index]));
     const nodes = [clone, ...clone.querySelectorAll("*")], ids = new Map();
     // No duplicate focus targets/IDs/commands in a purely decorative ghost.
     // Hausdepp artwork uses SVG clipPaths: keep their fragment references valid
@@ -150,8 +181,8 @@ export function createMotion({ win = window, doc = document } = {}) {
       const replacement = value.replace(/url\(#([^)]*)\)/g, (match, id) => ids.has(id) ? `url(#${ids.get(id)})` : match);
       node.setAttribute(attribute, ids.has(value.slice(1)) && value.startsWith("#") ? `#${ids.get(value.slice(1))}` : replacement);
     }
-    Object.assign(clone.style, { position: "absolute", left: `${rect.left - origin.left}px`, top: `${rect.top - origin.top}px`,
-      width: `${rect.width}px`, height: `${rect.height}px`, minWidth: "0", margin: "0", transform: "none", translate: "none",
+    Object.assign(clone.style, { position: "absolute", left: `${pose.left - origin.left}px`, top: `${pose.top - origin.top}px`,
+      width: `${pose.width}px`, height: `${pose.height}px`, minWidth: "0", margin: "0", transform: pose.transform, transformOrigin: "center", translate: "none",
       rotate: "none", scale: "none", visibility: "visible", opacity: "1", animation: "none", transition: "none", pointerEvents: "none" });
     parent.append(clone);
     return clone;

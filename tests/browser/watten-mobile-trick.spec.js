@@ -9,6 +9,38 @@ const { expectFixedTable, expectReachable } = require('./table-viewport');
 
 test.setTimeout(90_000);
 
+async function expectPlainAccessibleTrick(peer) {
+  await expect(peer.page.locator('[data-wt-trick] .wt-card-owner')).toHaveCount(0);
+  const engine = peer.traffic.snapshot.engine;
+  const cards = engine.current_trick.cards.length ? engine.current_trick.cards : engine.last_trick?.cards || [];
+  for (const item of cards) {
+    const card = peer.page.locator(`[data-wt-trick] > [data-key="${item.card}"]`);
+    await expect(card).toHaveCount(1);
+    expect(await card.getAttribute('aria-label')).toContain(` · ${peer.traffic.snapshot.room.seats[item.seat].name}`);
+  }
+}
+
+async function expectCloverGeometry(page) {
+  await expect.poll(() => page.locator('[data-wt-trick] > .wt-trick-card').evaluateAll(cards => {
+    const errors = [];
+    const shapes = Object.fromEntries(cards.map(card => {
+      const rect = card.getBoundingClientRect();
+      return [card.dataset.position, { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom,
+        x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }];
+    }));
+    if (cards.length !== 4 || !shapes.left || !shapes.right || !shapes.top || !shapes.bottom) return ['four source positions required'];
+    if (shapes.left.x >= shapes.top.x || shapes.right.x <= shapes.top.x) errors.push('left/right clover petals lost');
+    if (shapes.top.y >= shapes.left.y || shapes.bottom.y <= shapes.left.y) errors.push('top/bottom clover petals lost');
+    if (Math.abs(shapes.top.x - shapes.bottom.x) > 2 || Math.abs(shapes.left.y - shapes.right.y) > 2) errors.push('opposite clover petals are not symmetric');
+    const faces = Object.values(shapes);
+    for (let first = 0; first < faces.length; first++) for (let second = first + 1; second < faces.length; second++) {
+      if (Math.min(faces[first].right, faces[second].right) - Math.max(faces[first].left, faces[second].left) <= 1
+        || Math.min(faces[first].bottom, faces[second].bottom) - Math.max(faces[first].top, faces[second].top) <= 1) errors.push('clover petals do not overlap');
+    }
+    return errors;
+  }), { message: 'four cards form symmetric overlapping clover petals toward their source players' }).toEqual([]);
+}
+
 async function expectExposedFaces(page, minimum = .25) {
   await expect.poll(() => page.locator('.wt-trick-card').evaluateAll((cards, minimum) => cards.flatMap(card => {
     const box = card.getBoundingClientRect();
@@ -41,7 +73,7 @@ async function expectPortraitSeatLabelsClear(page) {
 
 async function expectLargerLandscapeCards(page, viewport, { trick = false } = {}) {
   const ownWidth = viewport.width === 568 ? 60 : 76;
-  const trickWidth = viewport.width === 568 ? 52 : 64;
+  const trickWidth = viewport.height <= 360 ? 48 : viewport.height <= 410 ? 52 : 64;
   await expect.poll(() => page.locator('[data-wt-hand] button').evaluateAll(cards =>
     Math.min(...cards.map(node => Number.parseFloat(getComputedStyle(node).width)))))
     .toBeGreaterThanOrEqual(ownWidth - .1);
@@ -109,8 +141,7 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 393, height: 852 }
           const bounds = card.getBoundingClientRect();
           if (bounds.left < 0 || bounds.right > innerWidth || bounds.top < 0 || bounds.bottom > innerHeight) errors.push('card outside viewport');
           if (protectedNodes.some(node => intersects(bounds, node.getBoundingClientRect()))) errors.push('card overlaps hand, avatar or control');
-          const owner = card.querySelector('.wt-card-owner'), ownerBounds = owner.getBoundingClientRect();
-          if (!owner.textContent.trim() || !owner.contains(document.elementFromPoint(ownerBounds.x + ownerBounds.width / 2, ownerBounds.y + ownerBounds.height / 2))) errors.push('owner name covered');
+          if (card.querySelector('.wt-card-owner')) errors.push('trick card has an unwanted visible owner/order label');
         }
         const positions = Object.fromEntries(cards.map(card => [card.dataset.position, card.getBoundingClientRect()]));
         if (positions.left && positions.right && positions.left.x >= positions.right.x) errors.push('left/right source placement lost');
@@ -124,7 +155,8 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 393, height: 852 }
         }
         if (connected.size !== bounds.length) errors.push('played cards do not form one connected pile');
         return errors;
-      }), { message: 'cards overlap toward their source seats while owner labels and controls stay clear' }).toEqual([]);
+      }), { message: 'plain cards overlap toward their source seats while player badges and controls stay clear' }).toEqual([]);
+      await expectPlainAccessibleTrick(players[0]);
       await expectPortraitSeatLabelsClear(page);
       await expect(page.locator('.wt-centre')).toHaveAttribute('data-wt-portrait-trick-mode', 'stack');
       await expectExposedFaces(page);
@@ -133,6 +165,7 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 393, height: 852 }
       await playOne(players);
       await expect.poll(() => players[0].traffic.snapshot?.engine?.last_trick?.cards.length).toBe(4);
       await expect(page.locator('.wt-trick[data-state="last"] .wt-trick-card')).toHaveCount(4);
+      await expectPlainAccessibleTrick(players[0]);
       const winningCard = players[0].traffic.snapshot.engine.last_trick.cards.find(item =>
         item.seat === players[0].traffic.snapshot.engine.last_trick.winner).card;
       await expect(page.locator(`.wt-trick-card.is-winning-card[data-card="${winningCard}"]`)).toHaveCount(1);
@@ -164,6 +197,8 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 393, height: 852 }
       const history = page.locator('[data-wt-history]');
       if (!await history.evaluate(node => node.open)) await history.locator('summary').click();
       await expect(history.locator('.wt-history > li').last().locator('.wt-card--mini')).toHaveCount(4);
+      await expect(history.locator('.wt-history > li').last().locator('figcaption')).toHaveText(
+        players[0].traffic.snapshot.engine.last_trick.cards.map(item => players[0].traffic.snapshot.room.seats[item.seat].name));
       await expect.poll(() => history.locator('.wt-card--mini').first().evaluate(node => Number.parseFloat(getComputedStyle(node).width))).toBeGreaterThanOrEqual(60);
       await expect.poll(() => history.evaluate(node => {
         const cards = [...node.querySelectorAll('.wt-history > li:last-child .wt-mini-cards > figure')];
@@ -210,16 +245,21 @@ test(`four-player mobile landscape ${viewport.width}x${viewport.height}: left ra
     }
     for (let index = 0; index < 3; index++) await playOne(players);
     await expect(page.locator('.wt-trick-card')).toHaveCount(3);
+    await expectPlainAccessibleTrick(players[0]);
     await expectLandscapeTable(page);
     await expectLargerLandscapeCards(page, viewport, { trick: true });
-    await expectExposedFaces(page);
+    await expectExposedFaces(page, viewport.height <= 360 ? .075 : .2);
     await page.screenshot({ path: info.outputPath(`watten-live-${viewport.width}x${viewport.height}.png`) });
     await playOne(players);
     await expect(page.locator('.wt-trick[data-state="last"] .wt-trick-card')).toHaveCount(4);
+    await expectPlainAccessibleTrick(players[0]);
+    await expectCloverGeometry(page);
     await expectLandscapeTable(page, { completedPile: true });
     await expectLargerLandscapeCards(page, viewport, { trick: true });
     await expectFixedTable(page, ['[data-wt-felt]', '[data-wt-scores]', '[data-wt-hand-area]']);
-    await expectExposedFaces(page, .4);
+    // Compact short-screen clovers expose a smaller edge band. Require the
+    // clover's full geometry above as well as a painted part of every face.
+    await expectExposedFaces(page, viewport.height <= 360 ? .075 : .2);
     await exportTableReview(players[0], `completed-trick-landscape-${viewport.width}`);
     if (viewport.width === 852) await exportTableReview(players[0], 'completed-trick-landscape');
     await page.screenshot({ path: info.outputPath(`watten-completed-${viewport.width}x${viewport.height}.png`) });
@@ -245,6 +285,8 @@ test(`four-player mobile landscape ${viewport.width}x${viewport.height}: left ra
     if (!await history.evaluate(node => node.open)) await history.locator('summary').click();
     await expect(history).toHaveAttribute('open', '');
     await expect(history.locator('.wt-history > li').last().locator('.wt-card--mini')).toHaveCount(4);
+    await expect(history.locator('.wt-history > li').last().locator('figcaption')).toHaveText(
+      decider.traffic.snapshot.engine.last_trick.cards.map(item => decider.traffic.snapshot.room.seats[item.seat].name));
     await expect.poll(() => history.locator(':scope > .wt-history').evaluate(node => node.clientHeight)).toBeGreaterThan(0);
     await expectLandscapeTable(decider.page);
     await expectReachable(decider.page, '[data-wt-history-close]');

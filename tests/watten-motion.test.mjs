@@ -4,7 +4,7 @@ import test from "node:test";
 import { runInNewContext } from "node:vm";
 
 const source = await readFile(new URL("../frontend/watten/motion.js", import.meta.url), "utf8");
-const { createMotion, motionTransition, sameHandVersion } = await import(`data:text/javascript;base64,${Buffer.from(source).toString("base64")}`);
+const { createMotion, motionTransition, sameHandVersion, cardCopyPose } = await import(`data:text/javascript;base64,${Buffer.from(source).toString("base64")}`);
 const rect = (left, top, width = 50, height = 80) => ({ left, top, width, height });
 const centre = value => ({ x: value.left + value.width / 2, y: value.top + value.height / 2 });
 const tick = () => new Promise(resolve => setImmediate(resolve));
@@ -80,6 +80,27 @@ const publicTrick = (f, count, winner = count - 1) => {
   const nodes = cards.map((item, index) => f.node(item.card, rect(340 + index * 20, 260 + index * 12)));
   return { cards, nodes, winner };
 };
+
+test("card copies retain their printed dimensions and the rotation inherited from an inward-facing hand", () => {
+  const pose = cardCopyPose(rect(100, 200, 80, 50), [
+    { width: "50px", height: "80px", transform: "matrix(1, 0, 0, 1, -25, 0)", rotate: "none" },
+    { transform: "none", rotate: "90deg" },
+  ]);
+  assert.equal(pose.width, 50); assert.equal(pose.height, 80);
+  assert.equal(pose.left, 115); assert.equal(pose.top, 185);
+  const values = pose.transform.match(/matrix\((.+)\)/)[1].split(",").map(Number);
+  assert.ok(Math.abs(values[0]) < 1e-10); assert.equal(values[1], 1);
+  assert.equal(values[2], -1); assert.ok(Math.abs(values[3]) < 1e-10);
+  assert.deepEqual(values.slice(4), [0, 0], "parent translation is already captured by the painted card centre");
+});
+
+test("a tilted played card keeps its angle instead of stretching to its rotated bounding rectangle", () => {
+  const radians = 4 * Math.PI / 180;
+  const pose = cardCopyPose(rect(10, 20, 71, 106), [{ width: "64px", height: "101.333px", rotate: "none",
+    transform: `matrix(${Math.cos(radians)},${Math.sin(radians)},${-Math.sin(radians)},${Math.cos(radians)},-32,-50)` }]);
+  assert.equal(pose.width, 64); assert.equal(pose.height, 101.333);
+  assert.match(pose.transform, new RegExp(`^matrix\\(${Math.cos(radians)},${Math.sin(radians)},`));
+});
 
 test("live waiting and new deal animate; cold entry/reconnect and repeated snapshots do not invent a deal or collection", () => {
   const last = { cards: [{ seat: 0, card: "hearts-7" }, { seat: 1, card: "leaves-A" }], winner: 1 };

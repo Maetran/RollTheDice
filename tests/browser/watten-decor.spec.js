@@ -42,7 +42,7 @@ for (const language of ['de', 'en']) {
       expect(host.traffic.commands.slice(commands)).toEqual([]);
       expect(await host.page.evaluate(() => window.decorHandNodes.every((node, index) => node === document.querySelectorAll('[data-wt-hand] button')[index]))).toBe(true);
       const overlap = await host.page.evaluate(() => {
-        const protectedAreas = [...document.querySelectorAll('[data-wt-hand-area],.wt-seat,.wt-taken,[data-wt-panel],[data-wt-history],[data-wt-stake],[data-wt-scores]')]
+        const protectedAreas = [...document.querySelectorAll('[data-wt-hand-area],.wt-seat,.wt-taken,.wt-stock,.wt-stock > i,[data-wt-panel],[data-wt-history],[data-wt-stake],[data-wt-scores]')]
           .filter(node => !node.hidden).map(node => node.getBoundingClientRect());
         return [...document.querySelectorAll('[data-watten-decor-item]')].filter(node => !node.hidden).some(node => {
           const a = node.getBoundingClientRect();
