@@ -21,6 +21,24 @@ async function expectExposedFaces(page, minimum = .25) {
   }), minimum), { message: `each played card retains at least ${minimum * 100}% of its visible face in the spread pile` }).toEqual([]);
 }
 
+async function expectPortraitSeatLabelsClear(page) {
+  await expect.poll(() => page.evaluate(() => {
+    const visible = node => {
+      const bounds = node.getBoundingClientRect(), style = getComputedStyle(node);
+      return !node.hidden && style.display !== 'none' && style.visibility !== 'hidden'
+        && bounds.width > 0 && bounds.height > 0;
+    };
+    const labels = [...document.querySelectorAll('.wt-seat-name, .wt-seat-call-role')].filter(visible);
+    const surfaces = [...document.querySelectorAll('.wt-trick-card, .wt-trick-label, [data-wt-history]:not([open])')]
+      .filter(node => visible(node) && (node.matches('.wt-trick-card') || node.textContent.trim()));
+    const intersects = (a, b) => Math.min(a.right, b.right) - Math.max(a.left, b.left) > 2
+      && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 2;
+    return labels.flatMap(label => surfaces.filter(surface => intersects(label.getBoundingClientRect(), surface.getBoundingClientRect()))
+      .map(surface => ({ label: label.textContent.trim(), labelClass: label.className, surface: surface.className,
+        labelBounds: label.getBoundingClientRect().toJSON(), surfaceBounds: surface.getBoundingClientRect().toJSON() })));
+  }), { message: 'played cards, winner caption and closed review keep the actual player names and call roles clear' }).toEqual([]);
+}
+
 async function expectLargerLandscapeCards(page, viewport, { trick = false } = {}) {
   const ownWidth = viewport.width === 568 ? 60 : 76;
   const trickWidth = viewport.width === 568 ? 52 : 64;
@@ -52,7 +70,7 @@ async function recordLayout(page, info, stage) {
     return {
       centre: { ...document.querySelector('.wt-centre').dataset }, felt: rect(document.querySelector('.wt-felt')),
       label: document.querySelector('.wt-trick-label').textContent,
-      obstacles: [...document.querySelectorAll('.wt-seat-badge, .wt-backs > i:not([hidden]), .wt-taken[data-filled="true"], .wt-stock, [data-wt-hand-area], [data-wt-panel], [data-wt-private] button, [data-wt-stake], [data-wt-history]:not([open])')]
+      obstacles: [...document.querySelectorAll('.wt-seat-badge, .wt-seat-name, .wt-seat-call-role, .wt-backs > i:not([hidden]), .wt-taken[data-filled="true"], .wt-stock, [data-wt-hand-area], [data-wt-panel], [data-wt-private] button, [data-wt-stake], [data-wt-history]:not([open])')]
         .filter(node => !node.hidden && getComputedStyle(node).display !== 'none')
         .map(node => ({ tag: node.tagName, class: node.className, rect: rect(node) })),
       reference: document.querySelector('.wt-reference') ? rect(document.querySelector('.wt-reference')) : null,
@@ -85,7 +103,7 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 393, height: 852 }
       await expect.poll(() => page.evaluate(() => {
         const errors = [], cards = [...document.querySelectorAll('.wt-trick-card')];
         const visible = node => node.getBoundingClientRect().width > 0 && node.getBoundingClientRect().height > 0;
-        const protectedNodes = [...document.querySelectorAll('.wt-seat-badge, .wt-backs > i:not([hidden]), [data-wt-hand-area], [data-wt-panel], [data-wt-stake]')].filter(visible);
+        const protectedNodes = [...document.querySelectorAll('.wt-seat-badge, .wt-seat-name, .wt-seat-call-role, .wt-backs > i:not([hidden]), [data-wt-hand-area], [data-wt-panel], [data-wt-stake]')].filter(visible);
         const intersects = (a, b) => Math.min(a.right, b.right) - Math.max(a.left, b.left) > 2 && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 2;
         for (const card of cards) {
           const bounds = card.getBoundingClientRect();
@@ -107,6 +125,7 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 393, height: 852 }
         if (connected.size !== bounds.length) errors.push('played cards do not form one connected pile');
         return errors;
       }), { message: 'cards overlap toward their source seats while owner labels and controls stay clear' }).toEqual([]);
+      await expectPortraitSeatLabelsClear(page);
       await expect(page.locator('.wt-centre')).toHaveAttribute('data-wt-portrait-trick-mode', 'stack');
       await expectExposedFaces(page);
       await exportTableReview(players[0], 'live-trick');
@@ -125,6 +144,7 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 393, height: 852 }
         const rect = node.getBoundingClientRect();
         return node.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2));
       }), { message: 'completed trick keeps its larger faces and a visible winner label' }).toBe(true);
+      await expectPortraitSeatLabelsClear(page);
       await expect.poll(() => page.locator('.wt-trick-card.is-winning-card').evaluate(node => {
         const pose = () => {
           const { x, y, width, height } = node.getBoundingClientRect();

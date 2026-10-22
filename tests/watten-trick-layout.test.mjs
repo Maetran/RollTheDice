@@ -142,9 +142,9 @@ test("closed review uses a clear 44px target and leaves a separate winner label 
 });
 
 test("the actual 320x568 own-winner layout retains readable faces beside its captured packet", () => {
-  // Native completed-trick bounds from the 902518a35095 browser regression.
-  // These include the current inward fans and the real 96px own badge, not
-  // the older fixture's translated header/seat approximations.
+  // Native completed-trick bounds from the 902518a35095 browser regression,
+  // with the relocated packet and visible external labels measured again in
+  // the R7 real own-winner flow. Badge frames alone do not cover these labels.
   const bounds = rect(12, 112, 296, 448);
   const obstacles = [
     rect(38.39062, 150.39062, 24, 38), // stock
@@ -166,6 +166,12 @@ test("the actual 320x568 own-winner layout retains readable faces beside its cap
     rect(251.79510, 246.52708, 60.52185, 43.46815),
     rect(150, 408, 158, 44), // actual enabled stake button
     rect(8, 440, 304, 116), // own hand
+    rect(45, 419.28125, 57, 17.4375), // own name
+    rect(33, 191.28125, 57, 17.4375), // left name
+    rect(24.890625, 213.8125, 46.21875, 18.390625), // left Farbe role
+    rect(175.9921875, 115, 57, 17.4375), // top name outside its 24px badge
+    rect(90.8828125, 115, 53.109375, 18.390625), // top Schlag role
+    rect(230, 191.28125, 57, 17.4375), // right name
     // The packet frame is now at x12/y330. Protect the complete measured
     // painted-card and counter envelope as well, beyond its 30px frame.
     rect(3.4706, 324.9458, 47.0588, 59.5386),

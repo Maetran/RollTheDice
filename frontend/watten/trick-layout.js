@@ -112,9 +112,24 @@ export function createTrickLayout(trick, { win = window } = {}) {
     }
   };
   const box = node => {
-    if (!node || node.hidden || win.getComputedStyle(node).display === "none") return null;
+    if (!node || node.hidden) return null;
+    const style = win.getComputedStyle(node);
+    if (style.display === "none" || style.visibility === "hidden" || style.visibility === "collapse" || style.opacity === "0") return null;
     const rect = node.getBoundingClientRect();
     return usable(rect) ? rect : null;
+  };
+  const counterBox = node => {
+    const frame = box(node);
+    if (!frame) return null;
+    const style = win.getComputedStyle(node, "::after");
+    if (style.content === "none" || style.content === "normal" || style.display === "none" || style.visibility === "hidden") return null;
+    const px = value => Number.parseFloat(value) || 0;
+    const borderBox = style.boxSizing === "border-box";
+    const width = px(style.width) + (borderBox ? 0 : px(style.paddingLeft) + px(style.paddingRight) + px(style.borderLeftWidth) + px(style.borderRightWidth));
+    const height = px(style.height) + (borderBox ? 0 : px(style.paddingTop) + px(style.paddingBottom) + px(style.borderTopWidth) + px(style.borderBottomWidth));
+    const right = frame.right - px(style.right), bottom = frame.bottom - px(style.bottom);
+    const result = { left: right - width, top: bottom - height, right, bottom, width, height };
+    return usable(result) ? result : null;
   };
   function layout() {
     queued = null;
@@ -128,7 +143,10 @@ export function createTrickLayout(trick, { win = window } = {}) {
     const reference = box(centre.querySelector(".wt-reference"));
     const panel = table.querySelector("[data-wt-panel]");
     const neutralPrompt = panel?.children.length === 1 && panel.firstElementChild.matches(".wt-prompt") ? panel : null;
-    const protectedNodes = [...table.querySelectorAll(".wt-seat-badge, .wt-backs > i:not([hidden]), .wt-taken[data-filled='true'], .wt-stock, "
+    // Names and roles can extend outside the small badge frames. Captured
+    // packets likewise paint rotated corners and a counter beyond their box.
+    const protectedNodes = [...table.querySelectorAll(".wt-seat-badge, .wt-avatar, .wt-seat-name, .wt-seat-call-role, .wt-seat-tags, .wt-seat-meta, .wt-bubble--thanks, "
+      + ".wt-backs > i:not([hidden]), .wt-taken[data-filled='true'], .wt-taken[data-filled='true'] i, .wt-stock, "
       + "[data-wt-hand-area], [data-wt-panel], [data-wt-private] button, [data-wt-stake], [data-wt-history]:not([open])")].filter(node => node !== neutralPrompt);
     const history = table.querySelector("[data-wt-history]:not([open])"), historyBox = box(history);
     const moveHistory = Boolean(historyBox && table.dataset.phase === "play" && (!panel?.children.length || neutralPrompt));
@@ -139,6 +157,7 @@ export function createTrickLayout(trick, { win = window } = {}) {
       for (const [key, value] of [["x", historyBox.left], ["y", historyBox.top], ["width", historyBox.width]]) history.style.setProperty(`--wt-portrait-history-${key}`, `${value}px`);
     }
     const obstacles = protectedNodes.filter(node => !moveHistory || node !== history).map(box).filter(Boolean);
+    obstacles.push(...[...table.querySelectorAll(".wt-taken[data-filled='true']")].map(counterBox).filter(Boolean));
     if (reference) obstacles.push(reference);
     const originalWidth = Number.parseFloat(win.getComputedStyle(trick.firstElementChild).width) || 0;
     const minimumWidth = Math.max(win.innerWidth >= 360 ? 76 : 64, Math.ceil(originalWidth));
