@@ -28,6 +28,49 @@ async function startBlind(browser, baseURL, language, players) {
 
 async function inspect(players) {
   await action(players, 'show_ready'); await action(players, 'show_ready');
+  if (players.some(peer => peer.traffic.snapshot.engine.preplay.pending?.kind === 'bloedeln'
+      || peer.traffic.snapshot.engine.preplay.bloedeln_status === 'accepted')) {
+    const callers = players.filter(peer => peer.traffic.snapshot.engine.actions.includes('inspection_ack'));
+    expect(callers).toHaveLength(2);
+    for (const viewport of [{ width: 393, height: 852 }, { width: 320, height: 568 }]) {
+      for (const peer of players) await peer.page.setViewportSize(viewport);
+      for (const caller of callers) {
+        await expectReachable(caller.page, '[data-watten-action=inspection_ack]');
+        await expect.poll(() => caller.page.evaluate(() => {
+          const rect = node => node.getBoundingClientRect();
+          const shown = node => rect(node).width > 0 && rect(node).height > 0 && getComputedStyle(node).visibility !== 'hidden';
+          const overlap = (a, b) => Math.min(a.right, b.right) - Math.max(a.left, b.left) > 2
+            && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 2;
+          const obstacles = [...document.querySelectorAll('.wt-seat-badge, .wt-seat-name, .wt-seat-call-role, '
+            + '.wt-backs > i:not([hidden]), .wt-stock, [data-wt-panel]')].filter(shown);
+          const faces = [...document.querySelectorAll('[data-watten-inspection] .wt-card')];
+          const captions = [...document.querySelectorAll('[data-watten-inspection] figcaption')];
+          const failures = [];
+          if (faces.length !== 2) failures.push('inspection must show exactly two permitted faces');
+          for (const [index, face] of faces.entries()) {
+            const box = rect(face), width = Number.parseFloat(getComputedStyle(face).width);
+            if (width < 51.9) failures.push(`face ${index} too small: ${width}px`);
+            if (box.left < -1 || box.top < -1 || box.right > innerWidth + 1 || box.bottom > innerHeight + 1) failures.push(`face ${index} outside viewport`);
+          }
+          for (const [index, part] of [...faces, ...captions].entries()) {
+            const box = rect(part);
+            for (const obstacle of obstacles) if (overlap(box, rect(obstacle))) {
+              failures.push(`inspection part ${index} overlaps ${obstacle.className || 'back card'} at seat ${obstacle.closest('[data-wt-seat]')?.dataset.wtSeat || '-'}`);
+            }
+          }
+          const ack = document.querySelector('[data-watten-action=inspection_ack]'), ackBox = rect(ack);
+          if (ackBox.width < 44 || ackBox.height < 44 || ackBox.left < 0 || ackBox.top < 0
+            || ackBox.right > innerWidth || ackBox.bottom > innerHeight) failures.push('ACK lacks a complete 44px target');
+          if (overlap(ackBox, rect(document.querySelector('[data-wt-panel]')))) failures.push('ACK overlaps Blödeln panel');
+          if (!ack.contains(document.elementFromPoint(ackBox.x + ackBox.width / 2, ackBox.y + ackBox.height / 2))) failures.push('ACK is covered');
+          return [...new Set(failures)];
+        }), { message: `${viewport.width}px inspection keeps readable faces, role labels and ACK clear of the real Blödeln panel and painted hands` }).toEqual([]);
+      }
+      for (const peer of players) for (const kind of ['preplay_accept', 'preplay_decline']) {
+        if (await peer.page.locator(`[data-watten-action=${kind}]`).count()) await expectReachable(peer.page, `[data-watten-action=${kind}]`);
+      }
+    }
+  }
   await action(players, 'inspection_ack'); await action(players, 'inspection_ack');
   await expect.poll(() => players.every(peer => peer.traffic.snapshot.engine.phase === 'play')).toBe(true);
 }

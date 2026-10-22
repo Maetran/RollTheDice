@@ -37,6 +37,9 @@
   }
   html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"] .wt-seat--left :is(.wt-taken, .wt-bubble--thanks) { left: 0; right: auto; }
   html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"] .wt-seat--right :is(.wt-taken, .wt-bubble--thanks) { right: 0; left: auto; }
+  /* Rotated packet corners need room inside both screen edges. */
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"] .wt-seat--left .wt-taken { left: 10px; }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"] .wt-seat--right .wt-taken { right: 10px; }
   html[data-game="watten"][data-watten-active="true"] body .wt-table[data-count="4"][data-phase][data-viewer]:not([data-phase="match_complete"][data-round-stage="ready"]) .wt-felt .wt-seat.wt-seat--bottom {
     left: 12px; bottom: calc(var(--wt-hand-w) * 1.8 + 20px); width: 96px;
   }
@@ -46,4 +49,12 @@
   html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"] .wt-seat--bottom .wt-seat-call-role { position: absolute; left: 0; top: -21px; white-space: nowrap; }
   html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"] .wt-seat--bottom .wt-bubble--thanks { position: absolute; left: 0; top: -43px; }
   html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"] .wt-avatar { flex: 0 0 24px; min-width: 24px; }
+  /* A live answer fits in the clear column between both side hands. */
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"][data-phase="bid_response"] > .wt-end-sheet > .wt-panel:has(.wt-bid .wt-choice-row) {
+    align-self: center; width: 180px; max-width: 100%; padding: 5px 8px;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"][data-phase="bid_response"] .wt-panel .wt-bid > .wt-partner-advice {
+    padding: 4px; font-size: .7rem; line-height: 1.2;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"][data-phase="bid_response"] .wt-partner-advice .wt-advice-name { max-width: 8ch; }
 }

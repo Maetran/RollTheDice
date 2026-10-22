@@ -132,7 +132,7 @@
     position: fixed; left: auto; right: calc(8px + env(safe-area-inset-right, 0px)); top: auto;
     bottom: calc(8px + env(safe-area-inset-bottom, 0px));
   }
-  html[data-game="watten"][data-watten-active="true"] .wt-hand-area { left: 50%; bottom: 34px; width: min(80%, 480px); padding-inline: 4px; }
+  html[data-game="watten"][data-watten-active="true"] .wt-hand-area { left: 50%; bottom: 34px; width: min(80%, calc(var(--wt-hand-w) * 4 + 24px)); padding-inline: 4px; }
   html[data-game="watten"][data-watten-active="true"] .wt-hand { min-height: 0; padding-block: 0; }
   html[data-game="watten"][data-watten-active="true"] .wt-centre { left: 50%; top: calc(40% + 6px); translate: none; gap: 0; width: 0; height: 0; display: block; }
   html[data-game="watten"][data-watten-active="true"] .wt-trick { position: absolute; left: 0; top: 0; translate: -50% -50%; width: calc(var(--wt-trick-w) * 2.9); height: calc(var(--wt-trick-w) * 2.9); }
@@ -204,7 +204,7 @@
     position: static; inset: auto; grid-column: 1; grid-row: 2; translate: none;
   }
   html[data-game="watten"][data-watten-active="true"] :is(.wt-seat--left, .wt-seat--right) .wt-seat-name {
-    position: absolute; top: -46px; width: max-content; translate: -50% 0;
+    position: absolute; top: calc(var(--wt-back-w) * -1.4); width: max-content; translate: -50% 0;
   }
   html[data-game="watten"][data-watten-active="true"] .wt-seat--left .wt-seat-name { left: calc(50% - 56px); }
   html[data-game="watten"][data-watten-active="true"] .wt-seat--right .wt-seat-name { left: calc(50% + 56px); }
@@ -215,7 +215,7 @@
   html[data-game="watten"][data-watten-active="true"] .wt-seat--left .wt-bubble--thanks { left: calc(50% - 56px); }
   html[data-game="watten"][data-watten-active="true"] .wt-seat--right .wt-bubble--thanks { left: calc(50% + 56px); }
   html[data-game="watten"][data-watten-active="true"] :is(.wt-seat--left, .wt-seat--right) .wt-seat-call-role {
-    position: absolute; top: -59px; width: max-content; max-width: 104px; white-space: nowrap;
+    position: absolute; top: calc(var(--wt-back-w) * -1.4 - 13px); width: max-content; max-width: 104px; white-space: nowrap;
   }
   html[data-game="watten"][data-watten-active="true"] .wt-seat--left .wt-seat-call-role { right: 0; }
   html[data-game="watten"][data-watten-active="true"] .wt-seat--right .wt-seat-call-role { left: 0; }

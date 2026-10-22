@@ -49,7 +49,7 @@ html[data-watten-active="true"] .wt-seat--bottom .wt-taken {
   /* Keep the solo caller's combined role below the avatar/name row, using the
      full badge width instead of squeezing it into four short lines. */
   html[data-watten-active="true"] .wt-table[data-count="3"] :is(.wt-seat--left, .wt-seat--right):has(.wt-seat-call-role) {
-    top: calc(11% - 24px);
+    top: calc(11% - 32px);
   }
   html[data-watten-active="true"] .wt-table[data-count="3"] :is(.wt-seat--left, .wt-seat--right) .wt-seat-badge {
     display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 2px 3px; width: 100%;
