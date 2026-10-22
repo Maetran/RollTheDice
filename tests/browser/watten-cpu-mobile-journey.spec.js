@@ -22,10 +22,13 @@ for (const viewport of [{ width: 440, height: 956 }, { width: 956, height: 440 }
           const felt = document.querySelector('[data-wt-felt]')?.getBoundingClientRect();
           if (!felt) return;
           for (const group of document.querySelectorAll('[data-wt-motion="collect"]')) {
-            const animation = group.getAnimations()[0], time = animation?.currentTime;
+            const animation = group.getAnimations()[0];
+            const time = animation?.currentTime;
+            const delay = animation?.effect.getTiming().delay || 0;
+            const activeTime = typeof time === 'number' ? time - delay : null;
             // Measure the real three-second resting presentation, after the
             // final card lands and before the packet travels to its winner.
-            if (typeof time !== 'number' || time < 300 || time > 3100 || getComputedStyle(group).opacity === '0') continue;
+            if (activeTime === null || activeTime < 300 || activeTime > 3100 || getComputedStyle(group).opacity === '0') continue;
             const cards = [...group.children];
             if (cards.length !== 4) continue;
             report.samples++;
@@ -36,7 +39,17 @@ for (const viewport of [{ width: 440, height: 956 }, { width: 956, height: 440 }
               if (!label?.textContent.trim()) { add('public card lost its owner'); continue; }
               const box = label.getBoundingClientRect();
               if (box.left < -1 || box.right > innerWidth + 1 || box.top < -1 || box.bottom > innerHeight + 1) add('public owner label left the viewport');
-              if (labels.slice(index + 1).some(other => overlaps(box, other.getBoundingClientRect()))) add('public owner labels overlap');
+              if (labels.slice(index + 1).some(other => overlaps(box, other.getBoundingClientRect()))) {
+                add('public owner labels overlap');
+                report.labelOverlap ??= { time, delay: animation.effect.getTiming().delay,
+                  arrivals: group.getAnimations({ subtree: true }).slice(1).map(flight => ({ time: flight.currentTime, timing: flight.effect.getTiming() })),
+                  cards: cards.map(card => {
+                  const owner = card.querySelector('.wt-card-owner');
+                  return { card: card.dataset.key, name: owner?.textContent,
+                    cardBounds: card.getBoundingClientRect().toJSON(), ownerBounds: owner?.getBoundingClientRect().toJSON(),
+                    ownerWidth: getComputedStyle(owner).width, order: getComputedStyle(card).zIndex };
+                }) };
+              }
             }
             const winner = cards.find(card => card.classList.contains('is-winning-card'));
             if (!winner || getComputedStyle(winner).outlineStyle !== 'solid') add('completed trick lost its winner highlight');

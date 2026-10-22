@@ -154,7 +154,6 @@
     left: 0; top: 100%; bottom: auto; translate: none;
     width: 60%; max-width: none; padding: 1px; font-size: .58rem; line-height: 1;
   }
-  html[data-game="watten"][data-watten-active="true"] .wt-trick-card:last-child .wt-card-owner { width: 100%; }
   html[data-game="watten"][data-watten-active="true"] .wt-trick-label {
     position: fixed; inset: auto auto calc(6px + env(safe-area-inset-bottom, 0px)) calc(var(--wt-rail-width) + 8px);
     width: clamp(60px, calc((100vw - var(--wt-rail-width) - env(safe-area-inset-right, 0px) - var(--wt-hand-w) * 4) / 2 - 16px), 132px); max-width: 132px; height: 22px;
