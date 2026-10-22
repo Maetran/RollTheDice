@@ -2441,5 +2441,12 @@
     "date": "2026-10-21",
     "bump": "minor",
     "summary": "Einführungen, Rollout-Hinweise, zehn Wirtshauskulissen und klarere Entscheidungen am Kartentisch. / Introductions, advance rollout notices, ten tavern ambiences and clearer decisions at the card table."
+  },
+  {
+    "version": "4.1.1",
+    "revision": "e4705e8fdd8f30b9cd73d1bb6ee9e6a060e9a24d",
+    "date": "2026-10-22",
+    "bump": "patch",
+    "summary": "Mobile Watten-Ansicht, Blödeln-Abfrage und Rundenübergänge korrigiert. / Corrected the mobile Watten layout, Blödeln choices and transitions between deals."
   }
 ]

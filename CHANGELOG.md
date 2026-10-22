@@ -23,6 +23,49 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 4.1.2 — 2026-10-22
+
+### WATTEN
+
+**Deutsch:** Der Spielkopf bleibt im Hochformat in einer kompakten Reihe mit
+Teamständen, Verlassen und Chat. Im mobilen Querformat stehen Navigation und
+Spielstand links; die Spieler sitzen einander symmetrisch gegenüber. Größere
+Hand- und Stichkarten nutzen die freie Tischfläche. Gegnerische Fächer sind im
+Hochformat etwa zehn und im Querformat etwa zwanzig Prozent größer; alle Fächer
+öffnen sich vom jeweiligen Bildschirmrand zur Tischmitte.
+
+Ausgespielte Karten bilden einen nach den Spielerplätzen versetzten Stapel mit
+mehr sichtbarer Kartenfläche. Die Gewinnerkarte wird umrahmt, ohne Position oder
+Überlappungsreihenfolge zu ändern. Beim Einschauen stehen nur «Schlag zeigen»
+beziehungsweise «Farbe zeigen» neben der eigenen Hand. Die optionale Rechter-
+Anzeige erscheint erst beim Spielen und bleibt im Hochformat außerhalb der
+Namensbereiche. Partnerauskünfte stehen mit dem tatsächlichen Spielernamen direkt
+über Halten, Gehen und Aufbieten.
+
+Bei vereinbartem Blödeln spielt der Server die ursprüngliche unterste Karte im
+ersten Stich automatisch, sobald ihr Besitzer am Zug ist. Eine manuelle
+Kartenauswahl entfällt. Die Pflichtkarte wird anderen weiterhin erst beim
+Ausspielen bekannt; Zug-, Gebots- und Wiederherstellungssperren bleiben erhalten.
+
+**English:** Portrait keeps team scores, leave and chat in one compact row.
+Mobile landscape pins navigation and scores to the left and places opposing
+players symmetrically across the table. Larger hand and trick cards use the
+available space. Opponent fans are about ten percent larger in portrait and
+twenty percent larger in landscape; every fan opens from its screen edge toward
+the table centre.
+
+Played cards form a more widely spaced pile that follows the player seats.
+The winning card receives a clear outline without moving or changing overlap
+order. Inspection uses only “Show strike” or “Show trump suit” beside the own
+hand. The optional Rechter reference appears only during play and stays clear of
+names in portrait. Partner advice uses the player’s actual name directly above
+hold, fold and counterbid.
+
+When Blödeln is agreed, the server automatically plays each original bottom
+card on its owner’s first turn in the first trick. No manual card choice is
+needed. Other players still learn the forced card only when it is played;
+turn, bid and recovery guards remain in place.
+
 ## 4.1.1 — 2026-10-22
 
 Mehr Platz auf dem Handy und klarere Abläufe vor und zwischen den Watten-Gaben.

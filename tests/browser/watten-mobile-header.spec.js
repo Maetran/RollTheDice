@@ -16,17 +16,19 @@ async function expectCompactTableHead(page, language) {
   await expect.poll(() => page.evaluate(() => {
     const failures = [], felt = document.querySelector('[data-wt-felt]').getBoundingClientRect();
     const portrait = innerWidth < innerHeight;
+    const leftRail = !portrait && innerHeight <= 519;
     for (const score of document.querySelectorAll('.wt-score')) {
       const rect = score.getBoundingClientRect();
       if (portrait && rect.width > 120.5) failures.push('score grows beyond compact content width');
-      if (rect.bottom > felt.top + 1) failures.push('score enters the table');
+      if (leftRail ? rect.right > felt.left + 1 : rect.bottom > felt.top + 1) failures.push('score enters the table');
     }
     const controls = [...document.querySelectorAll('[data-wt-score-open], [data-wt-tools] button, [data-watten-social-action=toggle], .wt-voice-details > summary')]
       .filter(node => node.getBoundingClientRect().width > 0 && node.getBoundingClientRect().height > 0);
     const boxes = controls.map(node => ({ node, rect: node.getBoundingClientRect() }));
     for (const { node, rect } of boxes) {
       if (rect.width < 44 || rect.height < 44) failures.push('header target smaller than 44px');
-      if (rect.bottom > felt.top + 1 || rect.left < 0 || rect.right > innerWidth) failures.push('action clipped or enters the table');
+      if ((leftRail ? rect.right > felt.left + 1 : rect.bottom > felt.top + 1)
+        || rect.left < 0 || rect.right > innerWidth || rect.top < 0 || rect.bottom > innerHeight) failures.push('action clipped or enters the table');
       if (!node.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2))) failures.push('header target covered');
     }
     for (const [index, a] of boxes.entries()) for (const b of boxes.slice(index + 1)) {
@@ -45,7 +47,7 @@ for (const language of ['de', 'en']) {
       for (let seat = 0; seat < 2; seat++) players.push(await player(mobile, baseURL, language));
       await create(players, { count: 2, target: 11, determination: 'normal' });
       await normalCall(players);
-      for (const viewport of [{ width: 320, height: 568 }, { width: 393, height: 852 }, { width: 568, height: 320 }]) {
+      for (const viewport of [{ width: 320, height: 568 }, { width: 393, height: 852 }, { width: 568, height: 320 }, { width: 852, height: 393 }]) {
         await players[0].page.setViewportSize(viewport);
         await expectCompactTableHead(players[0].page, language);
         await expectFixedTable(players[0].page, ['[data-wt-felt]', '[data-wt-hand-area]']);

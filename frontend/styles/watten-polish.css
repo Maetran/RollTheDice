@@ -1,6 +1,6 @@
 /* Mobile table first: the wood is the canvas, choices only occupy space while needed. */
-html[data-watten-active="true"] .wt-table { --wt-dock-h: 0px; grid-template-rows: 96px minmax(0, 1fr); }
-html[data-watten-active="true"] .wt-table::before { top: 94px; border-width: clamp(76px, 24vw, 130px); }
+html[data-watten-active="true"] .wt-table { --wt-dock-h: 0px; grid-template-rows: 52px minmax(0, 1fr); }
+html[data-watten-active="true"] .wt-table::before { top: 50px; border-width: clamp(76px, 24vw, 130px); }
 html[data-watten-active="true"] .wt-topbar { padding: 4px 10px; align-items: start; }
 html[data-watten-active="true"] .wt-scores { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 5px 7px; width: 100%; overflow: visible; }
 html[data-watten-active="true"] .wt-score { padding: 5px 9px; min-height: 40px; justify-content: space-between; border-radius: 8px; }
@@ -15,7 +15,7 @@ html[data-watten-active="true"] .wt-stake button span { font-size: .8rem; }
 html[data-watten-active="true"] .wt-stake button:not(:disabled) { border-color: #8e3929; box-shadow: 0 0 0 1px #8e392933; }
 html[data-watten-active="true"] .wt-topbar-actions { top: 48px; right: 98px; }
 html[data-watten-active="true"] [data-watten-social], html[data-watten-active="true"] [data-watten-decor] { top: 48px; }
-html[data-watten-active="true"] .wt-retour-tag { grid-column: 1 / -1; position: absolute; top: 100px; left: 50%; translate: -50% 0; z-index: 8; border-radius: 20px; background: #843225; color: #fff5e5; padding: 3px 12px; font-size: .8rem; }
+html[data-watten-active="true"] .wt-retour-tag { grid-column: 1 / -1; position: absolute; top: 56px; left: 50%; translate: -50% 0; z-index: 8; border-radius: 20px; background: #843225; color: #fff5e5; padding: 3px 12px; font-size: .8rem; }
 html[data-watten-active="true"] .wt-hand-area { left: 50%; bottom: max(12px, env(safe-area-inset-bottom)); width: calc(100% - 16px); padding-inline: 8px; }
 html[data-watten-active="true"] .wt-hand:empty { display: none; }
 html[data-watten-active="true"] .wt-seat--bottom { left: 3%; bottom: calc(var(--wt-hand-w) * 1.8 + 20px); }
@@ -491,8 +491,7 @@ html[data-watten-active="true"] .wt-table:not([data-phase="match_complete"][data
   }
 }
 
-/* Portrait has enough width for complete faces when the trick uses the free
-   space between hands. The measured layout leaves every real control clear. */
+/* A measured, overlapping pile keeps the direction of every played card. */
 @media (orientation: portrait) and (max-width: 760px) {
   html[data-watten-active="true"] .wt-centre[data-wt-portrait-trick] {
     left: var(--wt-portrait-x); top: var(--wt-portrait-y); translate: none;
@@ -502,8 +501,10 @@ html[data-watten-active="true"] .wt-table:not([data-phase="match_complete"][data
     width: 100%; height: var(--wt-portrait-row-height); margin-bottom: var(--wt-portrait-caption-height);
   }
   html[data-watten-active="true"] .wt-centre[data-wt-portrait-trick] > [data-wt-reference] { position: absolute; width: 0; height: 0; }
-  html[data-watten-active="true"] .wt-centre[data-wt-portrait-trick] .wt-reference {
-    position: fixed; left: var(--wt-portrait-reference-left); top: var(--wt-portrait-reference-top);
+  html[data-watten-active="true"] .wt-table[data-count="4"] .wt-centre:has(.wt-reference):not([data-wt-portrait-trick]) { translate: none; }
+  html[data-watten-active="true"] .wt-table[data-count="4"] .wt-centre .wt-reference {
+    position: fixed; left: auto; right: 14px;
+    top: calc(var(--wt-table-header-height, 52px) + 60px);
   }
   html[data-watten-active="true"] .wt-centre[data-wt-portrait-trick] .wt-trick-card {
     left: var(--wt-portrait-card-x); top: var(--wt-portrait-card-y); width: var(--wt-portrait-card-width); transform: none;
@@ -570,7 +571,7 @@ html[data-watten-active="true"] .wt-bloedeln-status { margin: 0; font-size: .8re
   }
   html[data-watten-active="true"] .wt-table .wt-end-sheet > .wt-history-box[data-wt-portrait-history] {
     position: fixed; inset: auto; left: var(--wt-portrait-history-x); top: var(--wt-portrait-history-y);
-    width: var(--wt-portrait-history-width); height: 44px; max-height: 44px; padding: 0 5px;
+    width: var(--wt-portrait-history-width); height: 44px; max-height: 44px; padding: 0 5px; overflow: hidden;
   }
   html[data-watten-active="true"] .wt-history-box[data-wt-portrait-history] > summary {
     justify-content: center; min-height: 44px; font-size: .7rem; line-height: 1.2; text-align: center;
@@ -581,24 +582,97 @@ html[data-watten-active="true"] .wt-bloedeln-status { margin: 0; font-size: .8re
    packets on their normal baseline instead of raising them into the trick. */
 @media (orientation: portrait) and (min-height: 701px) and (max-width: 760px) {
   html[data-watten-active="true"] .wt-table[data-count="4"][data-phase="play"]:not(:has([data-wt-history][open])):is(:has(> .wt-end-sheet > [data-wt-panel]:empty), :has(> .wt-end-sheet > [data-wt-panel] > .wt-prompt:only-child)) .wt-seat--bottom:has(.wt-seat-call-role) {
-    bottom: calc(var(--wt-hand-w) * 1.8 + 14px - .9rem);
+    bottom: calc(var(--wt-hand-w) * 1.8 + 22px - .9rem);
   }
 }
 
-/* One score group and one aligned action row keep the table header quiet. */
+/* Mark the completed winner without changing the seat or play-order overlap. */
+html[data-watten-active="true"] .wt-trick .is-winning-card {
+  outline-width: 4px; outline-offset: 2px;
+  box-shadow: 0 0 0 7px #fff5d2cf, 0 6px 20px #3c251880;
+}
+html[data-watten-active="true"] .wt-table .wt-panel .wt-bid > .wt-partner-advice {
+  display: block; position: static; grid-column: 1 / -1; margin: 0 0 8px; padding: 6px 8px;
+  font-size: .8rem; line-height: 1.35; white-space: normal; overflow-wrap: anywhere;
+}
+html[data-watten-active="true"] .wt-table .wt-panel .wt-bid > .wt-partner-advice::before { content: none; display: none; }
+
+/* Scores, leave and chat share one touch-height row. */
 html[data-watten-active="true"] .wt-leave-icon > svg { display: block; width: 22px; height: 22px; }
 @media (orientation: portrait) and (max-width: 760px) {
-  html[data-watten-active="true"] .wt-topbar { padding: 2px 10px; }
-  html[data-watten-active="true"] .wt-scores { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; width: auto; max-width: 100%; }
-  html[data-watten-active="true"] .wt-score { flex: 0 1 auto; min-width: 76px; max-width: 120px; min-height: 44px; }
-  html[data-watten-active="true"] .wt-topbar .wt-score-open { width: 100%; min-height: 44px; padding: 4px 7px; gap: 8px; }
+  html[data-watten-active="true"] .wt-topbar { padding: 2px 104px 2px 8px; align-items: center; }
+  html[data-watten-active="true"] .wt-table:has([data-watten-voice]:not([hidden])) .wt-topbar { padding-right: 152px; }
+  html[data-watten-active="true"] .wt-scores { display: flex; align-items: center; flex-wrap: nowrap; gap: 5px; width: auto; max-width: 100%; }
+  html[data-watten-active="true"] .wt-score { flex: 0 1 auto; min-width: 0; max-width: 120px; min-height: 44px; }
+  html[data-watten-active="true"] .wt-topbar .wt-score-open { width: 100%; min-height: 44px; padding: 4px 5px; gap: 5px; }
   html[data-watten-active="true"] .wt-score-name { max-width: 7ch; font-size: .82rem; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
   html[data-watten-active="true"] .wt-score-tricks { font-size: .65rem; }
   html[data-watten-active="true"] .wt-score-points { font-size: 1.35rem; }
   html[data-watten-active="true"] .wt-target { padding-inline: 3px; font-size: .72rem; }
   html[data-watten-active="true"] .wt-table[data-count="3"] .wt-scores { flex-wrap: nowrap; }
   html[data-watten-active="true"] .wt-table[data-count="3"] .wt-score { min-width: 0; }
+  html[data-watten-active="true"] .wt-table[data-count="3"] .wt-target { display: none; }
   html[data-watten-active="true"] .wt-topbar-actions,
   html[data-watten-active="true"] [data-watten-social],
-  html[data-watten-active="true"] [data-watten-voice] { top: 48px; }
+  html[data-watten-active="true"] [data-watten-voice] { top: 4px; }
+}
+@media (orientation: portrait) and (max-width: 350px) {
+  html[data-watten-active="true"] .wt-target { display: none; }
+  html[data-watten-active="true"] .wt-topbar .wt-score-open { padding-inline: 4px; gap: 3px; }
+  html[data-watten-active="true"] .wt-score-name { font-size: .75rem; }
+}
+
+/* The inspection starts with a single role button on the wood. */
+html[data-watten-active="true"] .wt-table:not([data-phase="match_complete"][data-round-stage="ready"]) .wt-end-sheet > .wt-panel:has(> .wt-announce:only-child [data-watten-action="show_ready"]) {
+  align-self: center; width: max-content; max-width: 100%; padding: 0;
+  border: 0; background: transparent; box-shadow: none;
+}
+
+/* Open review yields height to a live decision, keeping its fixed toolbar
+   and the table's leave/chat buttons reachable in a short landscape view. */
+@media (orientation: landscape) and (max-height: 519px) {
+  html[data-watten-active="true"] .wt-table:not([data-phase="match_complete"][data-round-stage="ready"]) .wt-end-sheet:has(.wt-bid) > .wt-history-box[open] {
+    min-height: 44px;
+  }
+}
+/* Each played card reaches further towards its seat without changing order. */
+html[data-watten-active="true"] .wt-trick-card[data-position="bottom"] { --y: -18%; }
+html[data-watten-active="true"] .wt-trick-card[data-position="top"] { --y: -82%; }
+html[data-watten-active="true"] .wt-trick-card[data-position="left"] { --x: -110%; }
+html[data-watten-active="true"] .wt-trick-card[data-position="right"] { --x: 10%; }
+
+/* The default landscape pile uses separate outer name edges and leaves the
+   winner caption below the bottom card, rather than behind its owner label. */
+html[data-watten-active="true"] .wt-trick { height: calc(var(--wt-trick-w) * 3 + 32px); }
+html[data-watten-active="true"] .wt-trick-card[data-position="top"] .wt-card-owner { top: -20px; bottom: auto; }
+html[data-watten-active="true"] .wt-trick-card[data-position="left"] .wt-card-owner {
+  left: 0; top: 56%; bottom: auto; translate: none; width: 60%; padding-inline: 3px; font-size: .7rem;
+}
+html[data-watten-active="true"] .wt-trick-card[data-position="right"] .wt-card-owner {
+  left: 40%; top: 56%; bottom: auto; translate: none; width: 60%; padding-inline: 3px; font-size: .7rem;
+}
+@media (orientation: landscape) and (max-height: 519px) {
+  html[data-watten-active="true"] .wt-table { --wt-trick-w: clamp(46px, 15dvh, 72px); }
+}
+
+@media (orientation: portrait) and (max-width: 760px) {
+  html[data-watten-active="true"] .wt-centre[data-wt-portrait-trick] .wt-trick-card .wt-card-owner {
+    left: var(--wt-portrait-owner-x); top: var(--wt-portrait-owner-y); bottom: auto; translate: none;
+    width: var(--wt-portrait-owner-width);
+  }
+}
+
+/* Long usernames retain their full accessible text while the answer itself
+   stays readable above the decision buttons on a narrow table. */
+html[data-watten-active="true"] .wt-advice-name {
+  display: inline-block; max-width: 10ch; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; vertical-align: bottom;
+}
+@media (orientation: landscape) and (max-height: 519px) {
+  html[data-watten-active="true"] .wt-table:not([data-phase="match_complete"][data-round-stage="ready"]) .wt-end-sheet { width: 42%; }
+  html[data-watten-active="true"] .wt-table .wt-panel .wt-bid > .wt-partner-advice { padding: 4px 6px; margin-bottom: 6px; }
+  html[data-watten-active="true"] .wt-advice-name { max-width: 8ch; }
+}
+@media (orientation: portrait) and (max-width: 350px) {
+  html[data-watten-active="true"] .wt-table .wt-panel .wt-bid > .wt-partner-advice { padding-block: 4px; margin-bottom: 6px; }
 }

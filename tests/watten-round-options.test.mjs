@@ -46,13 +46,17 @@ for (const language of ["de", "en"]) {
     assert.match(observer, /Toni/);
   });
 
-  test(`${language}: the short accepted/declined status yields the centre after the first card`, () => {
+  test(`${language}: only an accepted request shows a status, until the first card`, () => {
     const render = renderer(language).render;
     for (const status of ["accepted", "declined"]) {
       const engine = { phase: "play", current_trick: { cards: [] }, preplay: { pending: null, bloedeln_status: status } };
       const html = render(view({ actions: [], engine }));
+      if (status === "declined") {
+        assert.equal(html, "");
+        continue;
+      }
       assert.match(html, new RegExp(`data-watten-bloedeln-status="${status}"`));
-      assert.ok(html.includes(WATTEN_MESSAGES[language][status === "accepted" ? "roundOptions.bloedeln.enabled" : "roundOptions.bloedeln.disabled"]));
+      assert.ok(html.includes(WATTEN_MESSAGES[language]["roundOptions.bloedeln.enabled"]));
       assert.doesNotMatch(html, /<button|data-watten-preplay-pending/);
       engine.current_trick.cards.push({ seat: 0, card: "bells-7" });
       assert.equal(render(view({ actions: [], engine })), "");

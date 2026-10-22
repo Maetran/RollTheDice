@@ -356,10 +356,21 @@ function bidMarkup(vm) {
     : names(partyMembers(engine, pending.party).map(id => nameOf(vm, id)));
   const decider = nameOf(vm, pending.decider);
   const respond = RESPONSES.filter(([, action]) => vm.actions.includes(action));
+  const partner = partnerOf(vm);
+  const received = engine.feedback?.find(item => item.recipient === vm.playerId);
+  const adviceName = partner ? seatName(vm, partner.seat) : "";
+  const adviceText = partner ? t(received ? "feedback.advice" : "feedback.waiting", {
+    name: "{partner}", value: received ? t(`feedback.${received.value}`) : "",
+  }) : "";
+  const adviceContent = esc(adviceText).replace("{partner}",
+    `<span class="wt-advice-name" translate="no" title="${esc(adviceName)}">${esc(adviceName)}</span>`);
+  const advice = partner && respond.length ? `<p class="wt-feedback-received wt-partner-advice" data-watten-partner-advice
+    ${received ? `data-watten-feedback-received data-feedback-value="${esc(received.value)}"` : ""} role="status">${adviceContent}</p>` : "";
   return `<div class="wt-bid" data-watten-bid role="group" aria-labelledby="wattenBidTitle">
     <h3 id="wattenBidTitle">${esc(t("bid.pendingShort", { points: pending.points }))}</h3>
     <p class="wt-bid-speaker" title="${esc(bidders)}" translate="no">${esc(bidders)}</p>
     <p>${esc(respond.length ? t("bid.yourDecision") : t("bid.waitingFor", { name: decider }))}</p>
+    ${advice}
     ${respond.length ? `<div class="wt-choice-row">${respond.map(([value, action]) => button(t(value === "counter" ? "bid.counterTo" : value === "go" ? "bid.goStake" : "bid.hold", { points: value === "counter" ? pending.points + 1 : value === "go" ? engine.bid.accepted_stake : pending.points }),
       `data-watten-command="engine" data-kind="respond" data-value="${value}" data-watten-action="${action}"`,
       { disabled: vm.busy, className: value === "hold" ? "wt-primary" : "" })).join("")}</div>` : ""}
@@ -438,10 +449,10 @@ function panelMarkup(vm) {
   }
   if (phase === "show_ready") {
     if (actions.includes("show_ready")) {
-      return `<div class="wt-announce"><h3>${esc(t("phase.show"))}</h3><p>${esc(t("phase.showBody"))}</p>
-        ${button(t("phase.showButton"), `data-watten-command="engine" data-kind="show_ready" data-watten-action="show_ready"`, { disabled: vm.busy, className: "wt-primary" })}</div>`;
+      const role = engine.announcement_roles?.strike === vm.viewerSeat ? "strike" : "colour";
+      return `<div class="wt-announce">${button(t(`inspection.show.${role}`), `data-watten-command="engine" data-kind="show_ready" data-watten-action="show_ready"`, { disabled: vm.busy, className: "wt-primary" })}</div>`;
     }
-    return `<p class="wt-prompt">${esc(t("phase.showWait"))}</p>`;
+    return "";
   }
   if (phase === "inspection") return engine.inspection ? "" : `<p class="wt-prompt">${esc(t("phase.inspectionWait"))}</p>`;
   if (phase === "play") return "";
@@ -456,7 +467,6 @@ function privateMarkup(vm) {
   if (partner && engine.phase === "bid_response" && engine.bid.pending?.party !== engine.seats[vm.viewerSeat]?.party
       && (vm.actions.includes("partner_feedback") || engine.feedback?.length)) {
     const partnerName = seatName(vm, partner.seat);
-    const received = engine.feedback?.find(item => item.recipient === vm.playerId);
     const sent = engine.feedback?.find(item => item.sender === vm.playerId);
     if (!sent && vm.actions.includes("partner_feedback") && !vm.feedbackDismissed) {
       parts.push(`<dialog class="wt-feedback wt-feedback-dialog" data-watten-feedback-dialog aria-labelledby="wattenFeedbackTitle">
@@ -465,10 +475,6 @@ function privateMarkup(vm) {
         <div class="wt-choice-row">${FEEDBACK.map(value => `<button type="button" data-watten-command="feedback" data-value="${value}" data-watten-action="partner_feedback" aria-label="${esc(t(`feedback.${value}`))}" title="${esc(t(`feedback.${value}`))}" ${vm.busy ? "disabled" : ""}><span class="wt-feedback-symbol" aria-hidden="true">${{ good: "👍", bad: "👎", unsure: "?" }[value]}</span></button>`).join("")}</div>
         <p class="wt-note">${esc(t("feedback.privacy"))}</p>
       </dialog>`);
-    }
-    if (received) {
-      const message = t("feedback.received", { name: partnerName, value: t(`feedback.${received.value}`) });
-      parts.push(`<p class="wt-feedback-received" data-watten-feedback-received data-feedback-value="${esc(received.value)}" role="status" title="${esc(message)}" aria-label="${esc(message)}">${esc(message)}</p>`);
     }
   }
   if (engine.partner_hand?.cards?.length) {
@@ -495,7 +501,9 @@ function historyMarkup(vm, pinned) {
 
 function referenceMarkup(vm) {
   const reference = vm.engine.reference_card;
-  if (!reference) return "";
+  // The optional reference belongs to card play. A face-down placeholder
+  // before the call adds a stray card beside the unopened packets.
+  if (!reference || !["play", "bid_response", "deal_complete", "match_complete"].includes(vm.engine.phase)) return "";
   const face = reference.face === "card" && isCard(reference.card)
     ? cardFace(reference.card, { className: "wt-card--mini" })
     : cardBack({ className: "wt-card--mini", label: t("reference.hidden") });
@@ -618,11 +626,13 @@ export function createTableView(container, { onCard, accountId = null }) {
 
   function renderHand(vm) {
     const hand = vm.engine.hand ? sortHand(vm.engine.hand) : [];
-    const playable = vm.actions.includes("play_card") && !vm.busy;
     // Only the own private forced card is projected after Blödeln is agreed. Other
     // legality (trump, strike, bids) stays entirely with the engine.
     const forced = !vm.engine.last_trick
       ? vm.engine.preplay?.bloedeln_cards?.find(item => item.seat === vm.viewerSeat)?.card : null;
+    // The server plays the packet bottom as part of the turn transition.
+    // A stale/recovered projection must not turn it into a manual choice.
+    const playable = vm.actions.includes("play_card") && !vm.busy && !hand.some(item => item.card === forced);
     elements.handArea.hidden = !hand.some(item => isCard(item.card));
     const keys = hand.map((item, index) => isCard(item.card) ? item.card : `back-${index}`);
     let changed = false;
@@ -656,7 +666,7 @@ export function createTableView(container, { onCard, accountId = null }) {
       if (elements.hand.children[index] !== node) elements.hand.insertBefore(node, elements.hand.children[index] || null);
       node.style.setProperty("--i", String(index));
       if (node.tagName === "BUTTON") {
-        const enabled = playable && (!forced || card === forced);
+        const enabled = playable;
         node.disabled = !enabled;
         node.dataset.wattenPlayable = String(enabled);
       }

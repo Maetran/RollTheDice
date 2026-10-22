@@ -163,16 +163,25 @@ def test_bloedeln_needs_both_blind_partners_and_forces_their_private_bottoms_in_
             [{"seat": seat, "card": state.deal.bottom_cards[seat]}] if seat in (2, 3) else [])
     assert "round_summary" not in spectator_view(state)
     assert restored(state) == state
-    for _ in range(4):
-        player = state.play.current_player_id
-        cards = legal_cards(state.play, state.bid_state, player)
-        seat = state.recipe.seats.index(player)
-        if seat in (2, 3):
-            assert cards == (state.deal.bottom_cards[seat],)
-            wrong = next(card for card in state.play.hands[seat] if card not in cards)
-            with pytest.raises(WattenPlayError):
-                step(state, player, "play_card", wrong)
-        state = step(state, player, "play_card", cards[0])
+    first_card = legal_cards(state.play, state.bid_state, "B")[0]
+    first_command = command(state, "B", "play_card", first_card)
+    transition = apply_command(state, actor(state, "B"), first_command)
+    assert transition.ack.opportunity == state.opportunity + 1
+    state = transition.state
+    assert state.play.plays == (first_card, state.deal.bottom_cards[2], state.deal.bottom_cards[3])
+    assert state.play.current_player_id == "A"
+    assert apply_command(restored(state), actor(state, "B"), first_command).replayed
+    for player in ("C", "D"):
+        view = personal(state, player)
+        assert "play_card" not in view["actions"] and view["preplay"]["bloedeln_cards"] == []
+        assert len(view["hand"]) == 4
+    # Even a legacy intermediate turn never permits another selected card.
+    legacy = replace(state, play=replace(state.play, plays=(first_card,)))
+    assert legal_cards(legacy.play, legacy.bid_state, "C") == (state.deal.bottom_cards[2],)
+    wrong = next(card for card in legacy.play.hands[2] if card != state.deal.bottom_cards[2])
+    with pytest.raises(WattenPlayError):
+        step(legacy, "C", "play_card", wrong)
+    state = step(state, "A", "play_card", legal_cards(state.play, state.bid_state, "A")[0])
     assert len(state.play.tricks) == 1 and restored(state) == state
     # The persisted replay rejects replacing an obligated opening with another held card.
     raw = storage_payload(state)

@@ -203,7 +203,8 @@ Das Kreuz schliesst die Rückschau und löst ihre Anheftung; ungepinnt schliesst
 sie auch beim Antippen ausserhalb.
 Ansager sind am Spielernamen mit «Schlag» oder «Farbe» markiert. «Danke!» erscheint
 grösser und bleibt höchstens bis zum Abschluss des ersten Stichs sichtbar. Einsatz und Bieten stehen
-unten bei den eigenen Karten. Auf Desktop bleibt der eigene Fächer mittig;
+im Hochformat bei den eigenen Karten, im mobilen Querformat in der linken
+Leiste. Auf Desktop bleibt der eigene Fächer mittig;
 im Tablet-Querformat sitzt der Aktionsbereich darüber. Stichgewinne sind für die
 eigene Seite grün, für die andere rot markiert. Im blinden Vierer darf auch der
 blinde Partner am eigenen Kartenzug bieten. Der wissende Spieler, Geber oder
@@ -213,6 +214,19 @@ Bei einem gegnerischen Gebot kann nur der blinde Partner ihm
 einmal privat sein Gefühl mitteilen; die Auswahl schliesst den Dialog. Der
 wissende Entscheider sendet kein Gegensignal. In offenen Spielen bleibt die
 gegenseitige Abfrage.
+Die Meldung steht mit dem Namen des Partners direkt über Halten, Gehen und
+Aufbieten, zum Beispiel «Markus meint: Keine Ahnung»; bis dahin steht dort
+«Von Markus noch keine Auskunft». Beim ladinischen Einschauen genügt der einzelne
+Button «Schlag zeigen» beziehungsweise «Farbe zeigen» am eigenen Kartenplatz. Im Hochformat bleiben Punkte,
+Verlassen und Chat in einer Reihe. Im mobilen Querformat sitzen Kopfzeile und
+Spielstand links; gegenüberliegende Spieler und der mittige Stichstapel bilden
+einen symmetrischen Tisch. Grössere Hand- und Stichkarten nutzen im Querformat
+die freie Fläche zwischen den Spielern. Alle Handfächer öffnen sich zur
+Tischmitte; ihre gedachte Griffseite zeigt zum jeweiligen Bildschirmrand.
+Die optionale Rechter-Anzeige erscheint erst nach
+der Ansage beziehungsweise dem Einschauen, ohne zusätzliche verdeckte Karte
+während der Vorbereitung. Ausgespielte Karten liegen mit gut sichtbaren Kartenflächen als lockerer,
+überlappender Stapel in Richtung ihres Spielers; die Gewinnerkarte erhält einen klaren Rahmen und bleibt an ihrer Position und in derselben Überlappungsreihenfolge.
 Nach vollständiger Ansage oder abgeschlossenem Einschauen darf am eigenen
 Kartenzug schon vor der ersten Karte geboten werden. Ein nach Halten vereinbartes
 Schöneres bleibt bis zur ersten Karte möglich und setzt den Einsatz auf zwei zurück.
@@ -236,7 +250,8 @@ strike, trump suit and Rechter. Every player keeps their won trick
 packets beside their name. The close button also unpins the review; when
 unpinned, tapping outside closes it. Announcers are labelled beside their
 names; the larger “Thanks!” remains visible until the first trick is complete. The stake and
-raising control sit below, beside your cards. Your desktop hand stays centred;
+raising control sit beside your cards in portrait and in the left rail in mobile
+landscape. Your desktop hand stays centred;
 landscape tablets place the action area above it. Trick wins are green for your side
 and red for the other side. In blind four-player play, the blind partner may
 also bid on their own card turn. The informed teammate, the dealer or their
@@ -245,6 +260,16 @@ player handles hold, fold and counterbid responses. When receiving an
 opposing bid, only the blind partner may send them one private feeling signal;
 answering closes the prompt. The informed decision maker sends no signal back.
 Open games retain the mutual prompt.
+Partner advice sits directly above hold, fold and counterbid with the partner’s
+name, for example “Markus says: No idea”, or “No advice from Markus yet” before a signal arrives. Ladinisch inspection starts with a single “Show strike” or
+“Show trump suit” button beside your own hand. Portrait scores, leave and chat share one row. In mobile landscape, navigation
+and scores are pinned to the left; opposing players and the central trick pile
+form a symmetrical table. Larger hand and trick cards use the free space between
+the players in landscape. Every hand fan opens toward the table centre, with
+its imaginary grip pointing toward that player's screen edge.
+The optional Rechter reference appears after calling
+or inspection, without an extra face-down placeholder during preparation. Played cards
+form a looser overlapping pile toward their player's seat, exposing more of each face; the winning card is outlined in its original position and overlap order.
 Once calling or inspection is complete, the player on their card turn may bid
 before the first card. An agreed redeal after holding remains possible until
 the first card and resets the stake to two.
@@ -269,8 +294,10 @@ zuerst ein Menü zu öffnen. Fragt einer an, sieht der andere **XYZ will blödel
 mit Ja/Nein. Bis zur Antwort darf keine Karte gespielt und kein Gebot eröffnet
 werden; die Ansagenden können weiterhin zeigen und einschauen. Ohne Anfrage
 beginnt das Ausspielen nach dem Einschauen normal. Ein Nein verhindert Blödeln
-für dieses Blatt. Bei Ja müssen beide ihre ursprüngliche unterste Karte im
-ersten Stich spielen, auch wenn eine andere Farbe ausgespielt wurde. Jede
+für dieses Blatt; ein zusätzlicher Hinweis «Kein Blödeln» entfällt. Bei Ja wird
+bei beiden die ursprüngliche unterste Karte automatisch im ersten Stich
+ausgespielt, sobald sie am Zug sind, auch wenn eine andere Farbe ausgespielt wurde.
+Eine Kartenauswahl gibt es dabei nicht. Jede
 Pflichtkarte wird für die anderen erst beim tatsächlichen Ausspielen sichtbar.
 CPUs fragen und antworten pro Blatt stabil zufällig mit 50 % Wahrscheinlichkeit,
 unabhängig von ihren Karten; Warten ersetzt keine menschliche Antwort.
@@ -284,9 +311,10 @@ In blind four-player games, both non-lookers immediately see **Blödeln?**
 without opening a menu. When one asks, the other sees **XYZ wants to play
 Blödeln** with yes/no. Until they answer, no card may be played and no bid opened;
 callers may still show and inspect. With no request, card play starts normally
-after inspection. A no declines Blödeln for this hand. A yes requires both to
-play their original bottom card in the first trick, even when a different suit
-is led. Others see each forced card only when it is actually played.
+after inspection. A no declines Blödeln for this hand without an extra status
+message. A yes automatically plays each original bottom card on its owner's
+first turn, even when a different suit is led; there is no card choice.
+Others see each forced card only when it is actually played.
 CPUs make a stable random 50% request/response choice per deal, independent of
 their cards; waiting never replaces a human answer.
 

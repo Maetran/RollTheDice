@@ -15,8 +15,8 @@ function bloedelnMarkup(vm) {
     return `<div class="wt-bloedeln-start" data-watten-bloedeln-start>${commandButton(vm, "request_bloedeln", t("roundOptions.bloedeln.request"), true)}</div>`;
   }
   const status = vm.engine.preplay?.bloedeln_status;
-  if (!["accepted", "declined"].includes(status)) return "";
-  return `<p class="wt-bloedeln-status" data-watten-bloedeln-status="${status}" role="status">${esc(t(status === "accepted" ? "roundOptions.bloedeln.enabled" : "roundOptions.bloedeln.disabled"))}</p>`;
+  if (status !== "accepted") return "";
+  return `<p class="wt-bloedeln-status" data-watten-bloedeln-status="${status}" role="status">${esc(t("roundOptions.bloedeln.enabled"))}</p>`;
 }
 
 export function roundOptionsMarkup(vm) {
@@ -25,8 +25,11 @@ export function roundOptionsMarkup(vm) {
   const pending = vm.engine.preplay?.pending;
   if (pending && OPTIONS.includes(pending.kind)) {
     const canRespond = vm.actions.includes("preplay_accept") && vm.actions.includes("preplay_decline");
+    const requester = esc(playerName(vm, pending.requester));
+    const requestTitle = esc(t(`roundOptions.${pending.kind}.pending`, { name: "{requester}" }))
+      .replace("{requester}", `<span class="wt-advice-name" translate="no" title="${requester}">${requester}</span>`);
     return `${bloedeln}<section class="wt-preplay-pending" data-watten-preplay-pending="${pending.kind}" role="group" aria-labelledby="wattenPreplayTitle">
-      <h3 id="wattenPreplayTitle">${esc(t(`roundOptions.${pending.kind}.pending`, { name: playerName(vm, pending.requester) }))}</h3>
+      <h3 id="wattenPreplayTitle">${requestTitle}</h3>
       <p class="wt-note">${esc(t(`roundOptions.${pending.kind}.description`))}</p>
       ${canRespond ? `<div class="wt-choice-row">${commandButton(vm, "preplay_accept", t(`roundOptions.${pending.kind}.accept`), true)}${commandButton(vm, "preplay_decline", t(`roundOptions.${pending.kind}.decline`))}</div>`
         : `<p class="wt-note" role="status">${esc(t("roundOptions.waiting", { name: playerName(vm, pending.responder) }))}</p>`}
