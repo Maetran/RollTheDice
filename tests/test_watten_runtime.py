@@ -26,14 +26,17 @@ from app.game_ws_session import GameSocketSession
 from app.models import ActiveGame, CompletedGame, DeletedGame, GameParticipant, User, UserAchievement
 from app.security import utcnow
 from app.watten_bidding import DealResult, ScoreAccount, ScoreLedger, retourschneider_candidate
-from app.watten_play import legal_cards
+from app.watten_play import legal_cards, play_card
 from app.watten_recipe import WattenRecipe, recipe_to_payload
 from app.watten_rules import round_roles
 from app.watten_runtime import (
+    _apply_engine_command,
     admit_account,
     apply_runtime_action,
     persist_watten_game,
     restore_watten_json,
+    resume_account,
+    serialize_watten_game,
     snapshot_watten,
 )
 from app.watten_websocket import _handle_locked
@@ -237,6 +240,57 @@ def receive_opponent_bid(game_id, sessions, numbers, receiver_id):
         asyncio.run(_handle_locked(by_player[decider], command["action"], command))
     state = games[game_id]["_watten"].engine
     assert state.parties.party_of(receiver_id) != state.bid_state.pending.party
+
+
+@pytest.mark.parametrize("cpus", ((), (1, 2, 3)))
+@pytest.mark.parametrize("paused", (False, True))
+def test_legacy_bloedeln_turn_recovers_automatically_only_after_all_accounts_are_present(server, cpus, paused):
+    from app.watten_cpu_runtime import validate_stored_memories
+    from tests.test_watten_engine import actor, command
+
+    game_id, owners, _sessions = local_started(server, blind=True, cpus=cpus)
+    game = games[game_id]
+
+    def act(player, kind):
+        state = game["_watten"].engine
+        candidate, *_ = _apply_engine_command(game, actor(state, player), command(state, player, kind))
+        persist_watten_game(candidate)
+        game.update(candidate)
+
+    state = game["_watten"].engine
+    noncallers = [seat for seat in range(4) if seat not in state.inspectors]
+    act(state.recipe.seats[noncallers[0]], "request_bloedeln")
+    act(state.recipe.seats[noncallers[1]], "preplay_accept")
+    for kind in ("show_ready", "inspection_ack"):
+        for seat in sorted(state.inspectors):
+            act(state.recipe.seats[seat], kind)
+    state = game["_watten"].engine
+    leader = state.play.current_player_id
+    first_card = legal_cards(state.play, state.bid_state, leader)[0]
+    # Model the real old checkpoint after the leader's click, before either
+    # obligated seat sent its manual card command. Persist its CPU memories too.
+    legacy = replace(state, play=play_card(state.play, state.bid_state, leader, first_card),
+                     opportunity=state.opportunity + 1)
+    human = game["_watten"].room.members[0]
+    game["_watten"] = replace(game["_watten"], engine=legacy,
+                              absent=(human.participant_id,) if paused else ())
+    persist_watten_game(game)
+    checkpoint = json.dumps(serialize_watten_game(game))
+    restored = restore_watten_json(checkpoint)
+    if paused:
+        assert restored["_watten"].engine.play.plays == (first_card,)
+        resume_account(restored, owners[0][0].user_id, human.participant_id,
+                       lifecycle_revision=restored["_watten"].lifecycle_revision)
+    forced_seats = ((legacy.play.trick_leader + 1) % 4, (legacy.play.trick_leader + 2) % 4)
+    expected = (first_card, *(legacy.deal.bottom_cards[seat] for seat in forced_seats))
+    recovered = restored["_watten"].engine
+    assert recovered.play.plays == expected
+    assert recovered.play.current_seat == recovered.dealer_seat
+    assert recovered.opportunity == legacy.opportunity + 1
+    validate_stored_memories(restored["_watten"])
+    assert restore_watten_json(json.dumps(serialize_watten_game(restored)))["_watten"].engine == recovered
+    persist_watten_game(restored)
+    assert restore_watten_json(json.dumps(serialize_watten_game(restored)))["_watten"].engine == recovered
 
 
 def test_strict_local_gate_covers_generic_create_list_detail_websocket_and_host_confusion(server, monkeypatch):

@@ -6,6 +6,8 @@ test.use({ serviceWorkers: 'block' });
 
 const { player, create, action, answerPartnerFeedback, normalCall, playOne } = require('./helpers/watten-journey.cjs');
 const { expectTableHeaderReachable } = require('./helpers/watten-header.cjs');
+const { exportTableReview } = require('./helpers/watten-review.cjs');
+const { expectReachable } = require('./table-viewport');
 
 for (const language of ['de', 'en']) {
   test(`${language}: public lobby survives unavailable auth without reading games`, async ({ page }, testInfo) => {
@@ -111,8 +113,9 @@ test('two real human accounts bid, pause with an open bid, return and finish a d
   } finally { await Promise.allSettled(players.map(item => item.context.close())); }
 });
 
-test('three-player solo owns both normal calls and private partner advice stays with its partner', async ({ browser, baseURL }) => {
-  const players = await Promise.all([0, 1, 2].map(() => player(browser, baseURL)));
+for (const language of ['de', 'en']) {
+test(`${language}: three-player solo owns both normal calls and private partner advice stays above the receiving choices`, async ({ browser, baseURL }) => {
+  const players = await Promise.all([0, 1, 2].map(() => player(browser, baseURL, language)));
   try {
     await create(players, { partnerHand: true });
     const { striker, colourer } = await normalCall(players);
@@ -128,12 +131,42 @@ test('three-player solo owns both normal calls and private partner advice stays 
     await action([solo], 'respond_counter', 'counter');
     for (const receiver of pair) await expect(receiver.page.locator('[data-watten-feedback-dialog]')).toBeVisible();
     await expect(solo.page.locator('[data-watten-feedback-dialog]')).toHaveCount(0);
-    await pair[0].page.locator('[data-watten-command=feedback][data-value=good]').click();
-    await expect(pair[0].page.locator('[data-watten-feedback-dialog]')).toHaveCount(0);
-    await answerPartnerFeedback([pair[1]]);
-    await expect(pair[1].page.locator('[data-watten-feedback-received]')).toBeVisible();
+    const decider = pair.find(item => item.traffic.snapshot.engine.actions.includes('respond_hold'));
+    const adviser = pair.find(item => item !== decider);
+    const advice = decider.page.locator('[data-watten-bid] [data-watten-partner-advice]');
+    await expect(advice).toHaveText(language === 'de'
+      ? `Von ${adviser.user.username} noch keine Auskunft` : `No advice from ${adviser.user.username} yet`);
+    await expect(advice).not.toHaveAttribute('data-feedback-value');
+    await expect(decider.page.locator('[data-watten-bid] .wt-choice-row'))
+      .toHaveCount(1);
+    expect(await advice.evaluate(node => node.nextElementSibling.matches('.wt-choice-row'))).toBe(true);
+    await exportTableReview(decider, `bid-none-${language}`);
+    const feedbackValue = language === 'de' ? 'good' : 'bad';
+    const feedbackText = language === 'de' ? 'Fühl mich gut' : 'Feeling bad';
+    await adviser.page.locator(`[data-watten-command=feedback][data-value=${feedbackValue}]`).click();
+    await expect(adviser.page.locator('[data-watten-feedback-dialog]')).toHaveCount(0);
+    await answerPartnerFeedback([decider], 'good');
+    await expect(decider.page.locator('[data-watten-feedback-received]')).toBeVisible();
+    await expect(decider.page.locator('[data-watten-bid] [data-watten-feedback-received]'))
+      .toHaveText(language === 'de'
+        ? `${adviser.user.username} meint: ${feedbackText}` : `${adviser.user.username} says: ${feedbackText}`);
+    await exportTableReview(decider, `bid-${feedbackValue}-${language}`);
+    for (const viewport of [{ width: 320, height: 568 }, { width: 393, height: 852 }]) {
+      await decider.page.setViewportSize(viewport);
+      await expect.poll(() => advice.evaluate(node => {
+        const line = node.getBoundingClientRect(), choices = node.nextElementSibling.getBoundingClientRect();
+        const pseudo = getComputedStyle(node, '::before');
+        return { above: line.height > 0 && line.bottom <= choices.top + 1,
+          noPseudo: pseudo.display === 'none' || ['none', 'normal'].includes(pseudo.content),
+          textFits: node.scrollWidth <= node.clientWidth && node.scrollHeight <= node.clientHeight };
+      }), { message: 'full named advice stays above hold/go/counter without an overlaid symbol' })
+        .toEqual({ above: true, noPseudo: true, textFits: true });
+      for (const value of ['hold', 'go', 'counter']) {
+        await expectReachable(decider.page, `[data-watten-bid] [data-kind="respond"][data-value="${value}"]`);
+      }
+    }
     await expect(solo.page.locator('[data-watten-feedback-received]')).toHaveCount(0);
-    expect(pair[1].traffic.snapshot.engine.feedback.some(item => item.value === 'good')).toBe(true);
+    expect(decider.traffic.snapshot.engine.feedback.some(item => item.value === feedbackValue)).toBe(true);
     expect(solo.traffic.snapshot.engine.feedback).toEqual([]);
     const viewer = pair[0];
     await expect(viewer.page.locator('.wt-partner-hand')).toBeVisible();
@@ -151,6 +184,7 @@ test('three-player solo owns both normal calls and private partner advice stays 
     }
   } finally { await Promise.allSettled(players.map(item => item.context.close())); }
 });
+}
 
 test('account changes during card decoding bind the new mount before opening a socket', async ({ browser, baseURL }) => {
   const players = [await player(browser, baseURL), await player(browser, baseURL, 'en')];
@@ -331,9 +365,23 @@ test('four manually chosen seats preserve teams and blind inspection/reference r
     expect(players[0].traffic.snapshot.room.seats.map(seat => seat.team)).toEqual([0, 1, 0, 1]);
     const inspectors = players.filter(item => item.traffic.snapshot.engine.actions.includes('show_ready'));
     expect(inspectors).toHaveLength(2);
+    for (const item of players) {
+      await expect(item.page.locator('[data-watten-reference]')).toHaveCount(0);
+      const panel = item.page.locator('[data-wt-panel]');
+      if (inspectors.includes(item)) {
+        const role = item.traffic.snapshot.engine.announcement_roles.strike === item.traffic.snapshot.viewer.seat
+          ? 'Schlag' : 'Farbe';
+        await expect(panel.locator('[data-watten-action=show_ready]')).toHaveText(`${role} zeigen`);
+        await expect(panel).toHaveText(`${role} zeigen`);
+        await expect(panel.locator('h3, p')).toHaveCount(0);
+        await exportTableReview(item, role === 'Schlag' ? 'show-strike' : 'show-colour');
+      } else await expect(panel.locator('.wt-prompt')).toHaveCount(0);
+      await expect(item.page.locator('[data-watten-bloedeln-status=declined]')).toHaveCount(0);
+    }
     await action(players, 'show_ready');
     await action(players, 'show_ready');
     for (const item of players) {
+      await expect(item.page.locator('[data-watten-reference]')).toHaveCount(0);
       if (inspectors.includes(item)) await expect(item.page.locator('[data-watten-inspection]')).toBeVisible();
       else {
         await expect(item.page.locator('[data-watten-inspection]')).toHaveCount(0);
@@ -345,6 +393,7 @@ test('four manually chosen seats preserve teams and blind inspection/reference r
     await action(players, 'inspection_ack');
     for (const item of players) {
       await expect(item.page.locator('[data-watten-inspection]')).toHaveCount(0);
+      await expect(item.page.locator('[data-watten-bloedeln-status=declined]')).toHaveCount(0);
       const reference = item.page.locator('[data-watten-reference] .wt-card--back');
       await expect(reference).toHaveCount(inspectors.includes(item) ? 0 : 1);
       expect(item.traffic.snapshot.engine.hand.every(card => typeof card.card === 'string')).toBe(true);

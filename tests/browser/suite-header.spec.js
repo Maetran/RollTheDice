@@ -198,14 +198,17 @@ test("Watten keyboard skip link appears above the sticky header", async ({ brows
     const skip = page.locator(".wt-skip");
     await expect(skip).toBeFocused();
     await expect(skip).toBeVisible();
-    const layout = await skip.evaluate(link => {
-      const box = link.getBoundingClientRect();
-      return { top: box.top, bottom: box.bottom,
-        reachable: link.contains(document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)) };
-    });
-    expect(layout.top).toBeGreaterThanOrEqual(0);
-    expect(layout.bottom).toBeLessThanOrEqual(844);
-    expect(layout.reachable, "focused skip link is painted above the header").toBe(true);
+    await expect(async () => {
+      await expect(skip).toBeFocused();
+      const layout = await skip.evaluate(link => {
+        const box = link.getBoundingClientRect();
+        return { top: box.top, bottom: box.bottom,
+          reachable: link.contains(document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)) };
+      });
+      expect(layout.top).toBeGreaterThanOrEqual(0);
+      expect(layout.bottom).toBeLessThanOrEqual(844);
+      expect(layout.reachable, "focused skip link is painted above the header").toBe(true);
+    }).toPass({ timeout: 3000 });
     await page.keyboard.press("Enter");
     await expect(page.locator("#wattenApp")).toBeFocused();
   } finally {

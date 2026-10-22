@@ -1,0 +1,245 @@
+/* A landscape table has one quiet rail and a complete, symmetric playing area. */
+@media (orientation: landscape) and (max-height: 700px) {
+  html[data-game="watten"][data-watten-active="true"] {
+    --wt-rail-inset: env(safe-area-inset-left, 0px);
+    --wt-rail-width: calc(156px + var(--wt-rail-inset));
+    --wt-table-header-height: 0px;
+  }
+  html[data-game="watten"][data-watten-active="true"] body {
+    grid-template: minmax(0, 1fr) / var(--wt-rail-width) minmax(0, 1fr) env(safe-area-inset-right, 0px);
+    height: calc(var(--game-viewport-height, 100dvh) - env(safe-area-inset-bottom, 0px));
+  }
+  html[data-game="watten"][data-watten-active="true"] body::before {
+    content: ""; position: fixed; inset: 0 auto 0 0; width: var(--wt-rail-width);
+    background: #e8c59a; border-right: 1px solid #9a6b45; z-index: 10; pointer-events: none;
+  }
+  html[data-game="watten"][data-watten-active="true"] body .wt-header.suite-header.suite-header--table {
+    position: fixed; inset: 0 auto auto 0; z-index: 35; display: grid;
+    grid-template: 44px 44px / 44px 44px minmax(44px, 1fr);
+    width: var(--wt-rail-width); height: 100px; min-height: 0; margin: 0; padding: 4px 4px 4px calc(4px + var(--wt-rail-inset));
+    gap: 4px; border: 0; box-shadow: none; overflow: visible; background: #e8c59a;
+  }
+  html[data-game="watten"][data-watten-active="true"] body .wt-header .suite-header__brand {
+    grid-column: 1 / -1; grid-row: 1; width: 100%; height: 44px; min-height: 44px;
+    margin: 0; justify-content: center; font-size: 1rem;
+  }
+  html[data-game="watten"][data-watten-active="true"] body .wt-header .suite-header__tools { display: contents; }
+  html[data-game="watten"][data-watten-active="true"] body .wt-header .wt-language {
+    grid-column: 1; grid-row: 2; width: 44px; height: 44px;
+  }
+  html[data-game="watten"][data-watten-active="true"] body .wt-header .wt-language select { width: 44px; height: 44px; padding-inline: 2px; }
+  html[data-game="watten"][data-watten-active="true"] body .wt-header [data-game-picker] { grid-column: 2; grid-row: 2; width: 44px; height: 44px; }
+  html[data-game="watten"][data-watten-active="true"] body .wt-header .wt-nav {
+    grid-column: 3; grid-row: 2; display: flex; width: 100%; margin: 0; padding: 0;
+  }
+  html[data-game="watten"][data-watten-active="true"] body .wt-header .wt-nav a { width: 100%; height: 44px; min-height: 44px; padding-inline: 2px; font-size: .72rem; }
+  html[data-game="watten"][data-watten-active="true"] .wt-main { grid-column: 2; grid-row: 1; height: 100%; width: 100%; }
+  html[data-game="watten"][data-watten-active="true"] .wt-table:not([data-phase="match_complete"][data-round-stage="ready"]) {
+    --wt-hand-w: clamp(60px, calc(21.92dvh - 10.14px), 76px); --wt-back-w: clamp(33.6px, 8.4dvh, 43.2px);
+    --wt-trick-w: clamp(52px, calc(16.44dvh - .608px), 64px); --wt-taken-w: 26px;
+    grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table::before { inset: 0; border-width: 30px; }
+  html[data-game="watten"][data-watten-active="true"] .wt-felt { grid-row: 1; height: 100%; }
+  html[data-game="watten"][data-watten-active="true"] .wt-topbar {
+    position: fixed; left: var(--wt-rail-inset); top: 104px; z-index: 25; width: 156px; height: auto;
+    padding: 0 6px; display: block; background: transparent; border: 0;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-scores {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px;
+    width: 100%; max-width: 100%; padding: 0; overflow: visible;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="3"] .wt-scores { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  html[data-game="watten"][data-watten-active="true"] .wt-score { min-width: 0; min-height: 44px; padding: 0; }
+  html[data-game="watten"][data-watten-active="true"] .wt-score-open { min-width: 44px; min-height: 44px; padding: 3px; gap: 3px; }
+  html[data-game="watten"][data-watten-active="true"] .wt-score-caption { column-gap: 1px; }
+  html[data-game="watten"][data-watten-active="true"] .wt-score-name { max-width: 4ch; font-size: .65rem; }
+  html[data-game="watten"][data-watten-active="true"] .wt-score-tricks { font-size: .5rem; }
+  html[data-game="watten"][data-watten-active="true"] .wt-score-points { font-size: 1rem; }
+  html[data-game="watten"][data-watten-active="true"] .wt-nockerl-marks { display: none; }
+  html[data-game="watten"][data-watten-active="true"] .wt-target,
+  html[data-game="watten"][data-watten-active="true"] .wt-series-target { grid-column: 1 / -1; display: block; min-height: 16px; padding: 0; text-align: center; font-size: .65rem; }
+  html[data-game="watten"][data-watten-active="true"] .wt-topbar-actions {
+    position: fixed; inset: auto auto calc(6px + env(safe-area-inset-bottom, 0px)) calc(6px + var(--wt-rail-inset)); width: 44px; height: 44px;
+  }
+  html[data-game="watten"][data-watten-active="true"] [data-watten-social] { position: fixed; inset: auto auto calc(6px + env(safe-area-inset-bottom, 0px)) calc(58px + var(--wt-rail-inset)); z-index: 35; }
+  html[data-game="watten"][data-watten-active="true"] [data-watten-voice] { position: fixed; inset: auto auto calc(6px + env(safe-area-inset-bottom, 0px)) calc(110px + var(--wt-rail-inset)); z-index: 35; }
+  html[data-game="watten"][data-watten-active="true"] .wt-voice-notice { position: fixed; inset: auto auto calc(58px + env(safe-area-inset-bottom, 0px)) calc(var(--wt-rail-width) + 8px); width: min(310px, calc(100vw - var(--wt-rail-width) - env(safe-area-inset-right, 0px) - 16px)); }
+  html[data-game="watten"][data-watten-active="true"] .wt-voice-panel { top: 12px; right: calc(12px + env(safe-area-inset-right, 0px)); max-height: calc(100dvh - 24px); }
+  html[data-game="watten"][data-watten-active="true"] .wt-social-bubble { left: calc(var(--wt-rail-width) + 12px); top: 12px; translate: none; }
+
+  /* Avatar centres stay opposite; fans sit outside the central playing space. */
+  html[data-game="watten"][data-watten-active="true"] .wt-seat { gap: 3px; }
+  html[data-game="watten"][data-watten-active="true"] .wt-seat-badge {
+    display: grid; grid-template-columns: 24px minmax(0, 1fr); align-items: center; gap: 2px 3px;
+    width: 84px; max-width: 84px;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-avatar { width: 24px; height: 24px; font-size: .75rem; }
+  html[data-game="watten"][data-watten-active="true"] .wt-seat-name { max-width: 54px; padding: 2px 3px; font-size: .65rem; }
+  html[data-game="watten"][data-watten-active="true"] .wt-seat-call-role { grid-column: 1 / -1; padding: 1px 3px; font-size: .58rem; line-height: 1.15; }
+  html[data-game="watten"][data-watten-active="true"] .wt-seat--top {
+    display: grid; left: 50%; top: 8px; bottom: auto; width: 84px; translate: -50% 0;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-seat--bottom {
+    left: calc(50% - 42px); bottom: 8px; top: auto; width: 84px; height: 24px; translate: none;
+  }
+  html[data-game="watten"][data-watten-active="true"] :is(.wt-seat--top, .wt-seat--bottom) .wt-avatar {
+    position: absolute; left: 50%; top: 0; translate: -50% 0;
+  }
+  html[data-game="watten"][data-watten-active="true"] :is(.wt-seat--top, .wt-seat--bottom) .wt-seat-badge {
+    height: 24px; display: block; position: relative; width: 84px;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-seat--bottom .wt-seat-badge { width: 24px; }
+  html[data-game="watten"][data-watten-active="true"] :is(.wt-seat--top, .wt-seat--bottom) .wt-seat-name-row {
+    position: absolute; left: calc(50% + 16px); top: 2px; max-width: 72px; width: max-content;
+  }
+  html[data-game="watten"][data-watten-active="true"] :is(.wt-seat--top, .wt-seat--bottom) .wt-seat-call-role {
+    position: absolute; right: calc(50% + 16px); top: 3px; max-width: 110px; white-space: nowrap;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-seat--top .wt-backs {
+    position: relative; inset: auto; width: calc(var(--wt-back-w) * 2.8); height: calc(var(--wt-back-w) * 1.68); margin: 0 auto;
+  }
+  html[data-game="watten"][data-watten-active="true"] :is(.wt-seat--left, .wt-seat--right) {
+    top: 50%; bottom: auto; width: calc(var(--wt-back-w) * 2.8 + 58px); height: 24px; translate: 0 -12px;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-seat--left { left: 8px; right: auto; }
+  html[data-game="watten"][data-watten-active="true"] .wt-seat--right { right: 8px; left: auto; }
+  html[data-game="watten"][data-watten-active="true"] :is(.wt-seat--left, .wt-seat--right) .wt-seat-badge {
+    position: absolute; top: 0; width: 24px; max-width: 24px; height: 24px; grid-template-columns: 1fr; justify-items: center;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-seat--left .wt-seat-badge { left: 75px; }
+  html[data-game="watten"][data-watten-active="true"] .wt-seat--right .wt-seat-badge { right: 75px; grid-template-columns: 1fr; }
+  html[data-game="watten"][data-watten-active="true"] :is(.wt-seat--left, .wt-seat--right) .wt-avatar { position: absolute; left: 50%; top: 0; translate: -50% 0; }
+  html[data-game="watten"][data-watten-active="true"] .wt-seat--right .wt-avatar { grid-column: 1; grid-row: 1; }
+  html[data-game="watten"][data-watten-active="true"] .wt-seat--right .wt-seat-name-row { grid-column: 1; grid-row: 2; }
+  html[data-game="watten"][data-watten-active="true"] :is(.wt-seat--left, .wt-seat--right) .wt-seat-name { max-width: 45px; }
+  html[data-game="watten"][data-watten-active="true"] :is(.wt-seat--left, .wt-seat--right) .wt-backs {
+    position: absolute; top: 12px; width: calc(var(--wt-back-w) * 2.8); height: calc(var(--wt-back-w) * 2); margin: 0; translate: 0 -50%;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-seat--left .wt-backs { left: calc(31px - var(--wt-back-w) * 1.4); }
+  html[data-game="watten"][data-watten-active="true"] .wt-seat--right .wt-backs { right: calc(31px - var(--wt-back-w) * 1.4); }
+  html[data-game="watten"][data-watten-active="true"] .wt-seat .wt-taken {
+    --wt-taken-w: 26px; display: grid; grid-template-columns: repeat(3, var(--wt-taken-w));
+    grid-auto-rows: calc(var(--wt-taken-w) * 1.5833); width: max-content; height: auto; gap: 6px;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-seat .wt-taken[hidden] { display: none; }
+  html[data-game="watten"][data-watten-active="true"] .wt-seat .wt-taken[data-count="1"] { grid-template-columns: var(--wt-taken-w); }
+  html[data-game="watten"][data-watten-active="true"] .wt-seat .wt-taken[data-count="2"] { grid-template-columns: repeat(2, var(--wt-taken-w)); }
+  html[data-game="watten"][data-watten-active="true"] .wt-seat--left .wt-taken { left: -75px; right: auto; top: calc(var(--wt-back-w) + 20px); translate: none; }
+  html[data-game="watten"][data-watten-active="true"] .wt-seat--right .wt-taken { left: auto; right: -75px; top: calc(var(--wt-back-w) + 20px); translate: none; }
+  html[data-game="watten"][data-watten-active="true"] .wt-seat--top .wt-taken { left: auto; right: calc(100% + 72px); top: 0; translate: none; }
+  html[data-game="watten"][data-watten-active="true"] .wt-seat--bottom .wt-taken {
+    position: fixed; left: auto; right: calc(8px + env(safe-area-inset-right, 0px)); top: auto;
+    bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-hand-area { left: 50%; bottom: 34px; width: min(80%, calc(var(--wt-hand-w) * 4 + 24px)); padding-inline: 4px; }
+  html[data-game="watten"][data-watten-active="true"] .wt-hand { min-height: 0; padding-block: 0; }
+  html[data-game="watten"][data-watten-active="true"] .wt-centre { left: 50%; top: calc(40% + 6px); translate: none; gap: 0; width: 0; height: 0; display: block; }
+  html[data-game="watten"][data-watten-active="true"] .wt-trick { position: absolute; left: 0; top: 0; translate: -50% -50%; width: calc(var(--wt-trick-w) * 2.9); height: calc(var(--wt-trick-w) * 2.9); }
+  /* A broad pile exposes the larger faces without entering either hand. */
+  html[data-game="watten"][data-watten-active="true"] .wt-trick-card[data-position="top"] { --x: -90%; --y: -52%; }
+  html[data-game="watten"][data-watten-active="true"] .wt-trick-card[data-position="bottom"] { --x: -10%; --y: -48%; }
+  html[data-game="watten"][data-watten-active="true"] .wt-trick-card[data-position="left"] { --x: -175%; --y: -50%; --r: -4deg; }
+  html[data-game="watten"][data-watten-active="true"] .wt-trick-card[data-position="right"] { --x: 75%; --y: -50%; --r: 4deg; }
+  html[data-game="watten"][data-watten-active="true"] .wt-trick-card[data-position="top"] .wt-card-owner { top: 0; bottom: auto; }
+  html[data-game="watten"][data-watten-active="true"] .wt-trick-card[data-position="bottom"] .wt-card-owner { bottom: 0; }
+  html[data-game="watten"][data-watten-active="true"] .wt-trick-label {
+    position: fixed; inset: auto auto calc(6px + env(safe-area-inset-bottom, 0px)) calc(var(--wt-rail-width) + 8px);
+    width: clamp(60px, calc((100vw - var(--wt-rail-width) - env(safe-area-inset-right, 0px) - var(--wt-hand-w) * 4) / 2 - 16px), 132px); max-width: 132px; height: 22px;
+    margin: 0; padding: 2px 4px; font-size: .65rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-stock { left: 10px; top: 10px; width: 19px; height: 30px; }
+  html[data-game="watten"][data-watten-active="true"] .wt-reference {
+    position: fixed; left: calc(var(--wt-rail-width) + 44px); top: 8px; bottom: auto; margin: 0; width: 32px;
+  }
+
+  /* The rail keeps the two common actions; active choices and review share a
+     deliberate central sheet, rather than shifting players around the table. */
+  html[data-game="watten"][data-watten-active="true"] .wt-table:not([data-phase="match_complete"][data-round-stage="ready"]) .wt-end-sheet {
+    position: absolute; inset: 0; translate: none; width: 100%; max-height: none; padding: 0; margin: 0;
+    display: contents; pointer-events: none;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table:not([data-phase="match_complete"][data-round-stage="ready"]) .wt-end-sheet > .wt-stake {
+    position: fixed; inset: 172px auto auto calc(6px + var(--wt-rail-inset)); display: flex; width: 144px; max-width: none; height: 44px; margin: 0; z-index: 25;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-stake > button { min-width: 0; width: 100%; padding-inline: 4px; font-size: .75rem; }
+  html[data-game="watten"][data-watten-active="true"] .wt-stake .wt-stake-action { margin-left: 0; font-size: .65rem; }
+  html[data-game="watten"][data-watten-active="true"] .wt-table:not([data-phase="match_complete"][data-round-stage="ready"]) .wt-end-sheet > .wt-history-box:not([open]) {
+    position: fixed; inset: 220px auto auto calc(6px + var(--wt-rail-inset)); translate: none; width: 144px; max-width: none; min-height: 44px; height: 44px; padding: 0 6px; overflow: hidden; z-index: 25;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table:not([data-phase="match_complete"][data-round-stage="ready"]):has(details.wt-partner-hand) .wt-end-sheet > .wt-history-box:not([open]) { width: 96px; }
+  html[data-game="watten"][data-watten-active="true"] .wt-history-box:not([open]) > summary { display: flex; justify-content: center; min-height: 44px; font-size: .7rem; }
+  html[data-game="watten"][data-watten-active="true"] .wt-table:not([data-phase="match_complete"][data-round-stage="ready"]) .wt-end-sheet > .wt-private {
+    position: fixed; inset: auto auto calc(54px + env(safe-area-inset-bottom, 0px)) calc(110px + var(--wt-rail-inset)); width: 44px; height: auto; margin: 0; z-index: 35;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table:not([data-phase="match_complete"][data-round-stage="ready"]) details.wt-partner-hand { position: static; inset: auto; }
+  html[data-game="watten"][data-watten-active="true"] .wt-table:not([data-phase="match_complete"][data-round-stage="ready"]) .wt-partner-popover { top: 12px; left: calc(var(--wt-rail-width) + 8px); right: auto; bottom: auto; max-width: calc(100vw - var(--wt-rail-width) - env(safe-area-inset-right, 0px) - 16px); }
+  html[data-game="watten"][data-watten-active="true"] .wt-table:not([data-phase="match_complete"][data-round-stage="ready"]) .wt-end-sheet > .wt-panel:empty { display: none; }
+  html[data-game="watten"][data-watten-active="true"] .wt-table:not([data-phase="match_complete"][data-round-stage="ready"]) .wt-end-sheet > .wt-panel:not(:empty) {
+    position: fixed; inset: auto; left: calc(var(--wt-rail-width) + (100vw - var(--wt-rail-width) - env(safe-area-inset-right, 0px)) / 2); top: 50%; translate: -50% -50%;
+    width: min(340px, calc(100vw - var(--wt-rail-width) - env(safe-area-inset-right, 0px) - 24px)); height: auto; min-height: 0; max-height: calc(100dvh - 24px); margin: 0; padding: 10px; z-index: 26;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table:not([data-phase="match_complete"][data-round-stage="ready"]) .wt-panel:has(> .wt-prompt:only-child) { top: 92px; width: max-content; max-width: calc(100vw - var(--wt-rail-width) - env(safe-area-inset-right, 0px) - 24px); padding: 2px 6px; }
+  html[data-game="watten"][data-watten-active="true"] .wt-table:not([data-phase="match_complete"][data-round-stage="ready"]) .wt-end-sheet > .wt-panel:has(> .wt-announce:only-child [data-watten-action="show_ready"]) { width: max-content; padding: 0; background: transparent; }
+  html[data-game="watten"][data-watten-active="true"] .wt-table:not([data-phase="match_complete"][data-round-stage="ready"]) .wt-bid { display: block; }
+  html[data-game="watten"][data-watten-active="true"] .wt-table:not([data-phase="match_complete"][data-round-stage="ready"]) .wt-bid > .wt-bid-speaker,
+  html[data-game="watten"][data-watten-active="true"] .wt-table:not([data-phase="match_complete"][data-round-stage="ready"]) .wt-bid > p:not(.wt-partner-advice):not(.wt-note) { display: none; }
+  html[data-game="watten"][data-watten-active="true"] .wt-table:not([data-phase="match_complete"][data-round-stage="ready"]) .wt-bid:not(:has(.wt-choice-row)) > p:not(.wt-bid-speaker):not(.wt-note) { display: block; margin: 0; font-size: .75rem; }
+  html[data-game="watten"][data-watten-active="true"] .wt-table:not([data-phase="match_complete"][data-round-stage="ready"]) .wt-bid > h3 { margin-bottom: 6px; font-size: 1rem; }
+  html[data-game="watten"][data-watten-active="true"] .wt-table:not([data-phase="match_complete"][data-round-stage="ready"]) .wt-bid > .wt-note { display: none; }
+  html[data-game="watten"][data-watten-active="true"] .wt-table:not([data-phase="match_complete"][data-round-stage="ready"]) .wt-bid .wt-choice-row { display: flex; gap: 5px; }
+  html[data-game="watten"][data-watten-active="true"] .wt-table:not([data-phase="match_complete"][data-round-stage="ready"]) .wt-bid .wt-choice-row > button { flex: 1 1 0; min-height: 44px; padding: 5px; }
+  html[data-game="watten"][data-watten-active="true"] .wt-table:not([data-phase="match_complete"][data-round-stage="ready"]) .wt-end-sheet > .wt-history-box[open] {
+    position: fixed; inset: auto; left: calc(var(--wt-rail-width) + (100vw - var(--wt-rail-width) - env(safe-area-inset-right, 0px)) / 2); top: 50%; translate: -50% -50%;
+    width: min(340px, calc(100vw - var(--wt-rail-width) - env(safe-area-inset-right, 0px) - 168px));
+    top: calc(var(--wt-back-w) * 2 + 40px);
+    height: calc(100dvh - env(safe-area-inset-bottom, 0px) - var(--wt-back-w) * 2 - var(--wt-hand-w) * 1.8 - 88px);
+    min-height: 80px; max-height: none; translate: -50% 0; z-index: 28;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table:not([data-phase="match_complete"][data-round-stage="ready"]) .wt-history-box[open] ~ .wt-panel:not(:empty) { top: auto; bottom: 8px; translate: -50% 0; }
+  html[data-game="watten"][data-watten-active="true"] .wt-table:not([data-phase="match_complete"][data-round-stage="ready"]):has(.wt-bid) .wt-end-sheet > .wt-history-box[open] { top: 8px; height: calc(100dvh - 160px); min-height: 100px; translate: -50% 0; }
+  html[data-game="watten"][data-watten-active="true"] .wt-retour-tag { position: fixed; left: 6px; top: 150px; translate: none; max-width: 144px; font-size: .6rem; }
+  html[data-game="watten"][data-watten-active="true"] .wt-seat--left .wt-avatar { grid-column: 1; grid-row: 1; }
+  html[data-game="watten"][data-watten-active="true"] :is(.wt-seat--left, .wt-seat--right) .wt-seat-name-row {
+    position: static; inset: auto; grid-column: 1; grid-row: 2; translate: none;
+  }
+  html[data-game="watten"][data-watten-active="true"] :is(.wt-seat--left, .wt-seat--right) .wt-seat-name {
+    position: absolute; top: calc(var(--wt-back-w) * -1.4); width: max-content; translate: -50% 0;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-seat--left .wt-seat-name { left: calc(50% - 56px); }
+  html[data-game="watten"][data-watten-active="true"] .wt-seat--right .wt-seat-name { left: calc(50% + 56px); }
+  html[data-game="watten"][data-watten-active="true"] :is(.wt-seat--left, .wt-seat--right) .wt-bubble--thanks {
+    position: absolute; top: calc(var(--wt-back-w) * 1.8 + 12px); translate: -50% 0;
+    width: max-content; max-width: 80px; padding: 3px 6px; font-size: .75rem; line-height: 1.2;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-seat--left .wt-bubble--thanks { left: calc(50% - 56px); }
+  html[data-game="watten"][data-watten-active="true"] .wt-seat--right .wt-bubble--thanks { left: calc(50% + 56px); }
+  html[data-game="watten"][data-watten-active="true"] :is(.wt-seat--left, .wt-seat--right) .wt-seat-call-role {
+    position: absolute; top: calc(var(--wt-back-w) * -1.4 - 13px); width: max-content; max-width: 104px; white-space: nowrap;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-seat--left .wt-seat-call-role { right: 0; }
+  html[data-game="watten"][data-watten-active="true"] .wt-seat--right .wt-seat-call-role { left: 0; }
+  html[data-game="watten"][data-watten-active="true"] .wt-seat--bottom .wt-backs {
+    position: absolute; top: auto; bottom: 28px; left: 50%; translate: -50% 0;
+    width: calc(var(--wt-back-w) * 2.8); height: calc(var(--wt-back-w) * 2); margin: 0;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table:not([data-phase="match_complete"][data-round-stage="ready"]) .wt-end-sheet > .wt-panel:has(.wt-preplay-pending) {
+    display: contents; width: auto; padding: 0; border: 0; background: transparent; box-shadow: none;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-panel:has(.wt-preplay-pending) > .wt-preplay-pending {
+    position: fixed; left: calc(6px + var(--wt-rail-inset)); top: 172px; z-index: 27;
+    width: 144px; max-height: 92px; padding: 5px; overflow: auto;
+    border: 1px solid #ba9167; border-radius: 8px; background: #fff2dc;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-panel .wt-preplay-pending h3 { font-size: .75rem; line-height: 1.15; margin: 0 0 4px; }
+  html[data-game="watten"][data-watten-active="true"] .wt-panel .wt-preplay-pending .wt-advice-name { max-width: 8ch; }
+  html[data-game="watten"][data-watten-active="true"] .wt-panel .wt-preplay-pending > .wt-note { display: none; }
+  html[data-game="watten"][data-watten-active="true"] .wt-panel .wt-preplay-pending .wt-choice-row { display: flex; gap: 4px; }
+  html[data-game="watten"][data-watten-active="true"] .wt-panel .wt-preplay-pending button { flex: 1; min-height: 44px; padding: 3px; font-size: .7rem; }
+  html[data-game="watten"][data-watten-active="true"] .wt-panel:has(.wt-preplay-pending) > .wt-announce {
+    position: fixed; left: calc(var(--wt-rail-width) + (100vw - var(--wt-rail-width) - env(safe-area-inset-right, 0px)) / 2);
+    top: 50%; translate: -50% -50%; width: max-content; max-width: calc(100vw - var(--wt-rail-width) - 24px); z-index: 27;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-panel:has(.wt-preplay-pending) > .wt-prompt { display: none; }
+
+}

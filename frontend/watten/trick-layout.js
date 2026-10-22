@@ -1,5 +1,5 @@
 const RATIO = 570 / 360;
-const GAP = 8, CAPTION = 20, LABEL = 24;
+const CAPTION = 11, LABEL = 24;
 const intersects = (a, b) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
 const usable = rect => rect && rect.width > 0 && rect.height > 0;
 
@@ -19,53 +19,55 @@ export function fitPortraitPrompt(bounds, obstacles, { height = 20, widths = [18
   return null;
 }
 
-/** Fit a complete public trick between the real table's occupied regions. */
-export function fitPortraitTrick({ bounds, obstacles = [], count, desiredWidth = 104, minimumWidth = 64, labelHeight = LABEL, accept = null }) {
+/** Fit a public trick as one overlapping pile, preserving the players' seats. */
+export function fitPortraitTrick({ bounds, obstacles = [], count, positions = null, desiredWidth = 104, minimumWidth = 64, labelHeight = LABEL, accept = null }) {
   if (!usable(bounds) || ![2, 3, 4].includes(count)) return null;
   const padding = 5;
   const blocked = obstacles.filter(usable).map(rect => ({ left: rect.left - padding, right: rect.right + padding,
     top: rect.top - padding, bottom: rect.bottom + padding }));
-  // A fully visible row wins over a larger overlapping layout. Only when no
-  // readable row fits do we use a two-by-two group with 25% overlap.
-  for (const mode of ["row", "grid"]) {
-    if (mode === "grid" && count < 3) continue;
-    for (let cardWidth = Math.floor(desiredWidth); cardWidth >= minimumWidth; cardWidth--) {
-      const cardHeight = cardWidth * RATIO;
-      const width = mode === "row" ? cardWidth * count + GAP * (count - 1) : cardWidth * 1.75;
-      const rowHeight = mode === "row" ? cardHeight : cardHeight * 1.75;
-      const captionHeight = mode === "row" ? CAPTION : 36;
-      const height = rowHeight + captionHeight + labelHeight;
-      if (width > bounds.width || height > bounds.height) continue;
-      const positions = Array.from({ length: count }, (_, index) => {
-        if (mode === "row") return { x: index * (cardWidth + GAP), y: 0,
-          ownerX: 0, ownerY: cardHeight + 4, ownerWidth: cardWidth };
-        const column = index % 2, row = Math.floor(index / 2), x = column * cardWidth * .75, y = row * cardHeight * .75;
-        return { x, y, ownerX: column * width / 2 - x, ownerY: rowHeight + 4 + row * 16 - y, ownerWidth: width / 2 - 3 };
-      });
-      const preferredX = bounds.left + (bounds.width - width) / 2;
-      const preferredY = bounds.top + bounds.height * .56 - height / 2;
-      const clampX = x => Math.max(bounds.left, Math.min(bounds.right - width, x));
-      const clampY = y => Math.max(bounds.top, Math.min(bounds.bottom - height, y));
-      const xs = [...new Set([preferredX, bounds.left, bounds.right - width,
-        ...blocked.flatMap(rect => [rect.left - width, rect.right])].map(clampX))];
-      const ys = [...new Set([preferredY, bounds.top, bounds.bottom - height,
-        ...blocked.flatMap(rect => [rect.top - height, rect.bottom])].map(clampY))];
-      const candidates = xs.flatMap(left => ys.map(top => ({ left, top, right: left + width, bottom: top + height,
-        width, height, rowHeight, cardWidth, mode, captionHeight, positions })));
-      candidates.sort((a, b) => Math.abs(a.left - preferredX) + Math.abs(a.top - preferredY)
-        - Math.abs(b.left - preferredX) - Math.abs(b.top - preferredY));
-      const result = candidates.find(candidate => !blocked.some(obstacle => intersects(candidate, obstacle)) && (!accept || accept(candidate)));
-      if (result) return result;
-    }
+  const seats = positions || (count === 2 ? ["bottom", "top"] : count === 3 ? ["bottom", "left", "right"] : ["bottom", "left", "top", "right"]);
+  for (const spread of [.52, .44, .36]) for (let cardWidth = Math.floor(desiredWidth); cardWidth >= minimumWidth; cardWidth--) {
+    const cardHeight = cardWidth * RATIO;
+    // The side cards reach towards their owners; the top and bottom cards
+    // share a centre line. Captions stay outside the other card faces while
+    // the original play order determines which cards overlap in front.
+    const width = cardWidth * 2.5;
+    const rowHeight = cardHeight * (1 + spread) + CAPTION;
+    const captionHeight = CAPTION;
+    const height = rowHeight + captionHeight + labelHeight;
+    if (width > bounds.width || height > bounds.height) continue;
+    const anchors = {
+      top: { x: cardWidth * .75, y: CAPTION, ownerX: 0, ownerY: -CAPTION, ownerWidth: cardWidth },
+      bottom: { x: cardWidth * .75, y: CAPTION + cardHeight * spread, ownerX: 0, ownerY: cardHeight, ownerWidth: cardWidth },
+      left: { x: 0, y: CAPTION + cardHeight * spread / 2,
+        ownerX: 0, ownerY: cardHeight * .53, ownerWidth: cardWidth * .6 },
+      right: { x: cardWidth * 1.5, y: CAPTION + cardHeight * spread / 2,
+        ownerX: cardWidth * .4, ownerY: cardHeight * .53, ownerWidth: cardWidth * .6 },
+    };
+    const cardPositions = seats.map(seat => anchors[seat] || anchors.bottom);
+    const preferredX = bounds.left + (bounds.width - width) / 2;
+    const preferredY = bounds.top + bounds.height * .56 - height / 2;
+    const clampX = x => Math.max(bounds.left, Math.min(bounds.right - width, x));
+    const clampY = y => Math.max(bounds.top, Math.min(bounds.bottom - height, y));
+    const xs = [...new Set([preferredX, bounds.left, bounds.right - width,
+      ...blocked.flatMap(rect => [rect.left - width, rect.right])].map(clampX))];
+    const ys = [...new Set([preferredY, bounds.top, bounds.bottom - height,
+      ...blocked.flatMap(rect => [rect.top - height, rect.bottom])].map(clampY))];
+    const candidates = xs.flatMap(left => ys.map(top => ({ left, top, right: left + width, bottom: top + height,
+      width, height, rowHeight, cardWidth, mode: "stack", captionHeight, positions: cardPositions })));
+    candidates.sort((a, b) => Math.abs(a.left - preferredX) + Math.abs(a.top - preferredY)
+      - Math.abs(b.left - preferredX) - Math.abs(b.top - preferredY));
+    const result = candidates.find(candidate => !blocked.some(obstacle => intersects(candidate, obstacle)) && (!accept || accept(candidate)));
+    if (result) return result;
   }
   return null;
 }
 
 /** Fit the trick and its optional review/winner labels as one composition. */
-export function fitPortraitTrickView({ bounds, obstacles, count, minimumWidth, labelHeight = 0, history = false }) {
+export function fitPortraitTrickView({ bounds, obstacles, count, positions = null, minimumWidth, labelHeight = 0, history = false }) {
   for (const separateLabel of labelHeight ? [false, true] : [false]) {
     let extras;
-    const fit = fitPortraitTrick({ bounds, obstacles, count, minimumWidth, labelHeight: separateLabel ? 0 : labelHeight,
+    const fit = fitPortraitTrick({ bounds, obstacles, count, positions, minimumWidth, labelHeight: separateLabel ? 0 : labelHeight,
       accept: candidate => {
         const occupied = [...obstacles, candidate];
         let labelFit = null;
@@ -110,9 +112,24 @@ export function createTrickLayout(trick, { win = window } = {}) {
     }
   };
   const box = node => {
-    if (!node || node.hidden || win.getComputedStyle(node).display === "none") return null;
+    if (!node || node.hidden) return null;
+    const style = win.getComputedStyle(node);
+    if (style.display === "none" || style.visibility === "hidden" || style.visibility === "collapse" || style.opacity === "0") return null;
     const rect = node.getBoundingClientRect();
     return usable(rect) ? rect : null;
+  };
+  const counterBox = node => {
+    const frame = box(node);
+    if (!frame) return null;
+    const style = win.getComputedStyle(node, "::after");
+    if (style.content === "none" || style.content === "normal" || style.display === "none" || style.visibility === "hidden") return null;
+    const px = value => Number.parseFloat(value) || 0;
+    const borderBox = style.boxSizing === "border-box";
+    const width = px(style.width) + (borderBox ? 0 : px(style.paddingLeft) + px(style.paddingRight) + px(style.borderLeftWidth) + px(style.borderRightWidth));
+    const height = px(style.height) + (borderBox ? 0 : px(style.paddingTop) + px(style.paddingBottom) + px(style.borderTopWidth) + px(style.borderBottomWidth));
+    const right = frame.right - px(style.right), bottom = frame.bottom - px(style.bottom);
+    const result = { left: right - width, top: bottom - height, right, bottom, width, height };
+    return usable(result) ? result : null;
   };
   function layout() {
     queued = null;
@@ -126,7 +143,10 @@ export function createTrickLayout(trick, { win = window } = {}) {
     const reference = box(centre.querySelector(".wt-reference"));
     const panel = table.querySelector("[data-wt-panel]");
     const neutralPrompt = panel?.children.length === 1 && panel.firstElementChild.matches(".wt-prompt") ? panel : null;
-    const protectedNodes = [...table.querySelectorAll(".wt-seat-badge, .wt-backs > i:not([hidden]), .wt-taken[data-filled='true'], .wt-stock, "
+    // Names and roles can extend outside the small badge frames. Captured
+    // packets likewise paint rotated corners and a counter beyond their box.
+    const protectedNodes = [...table.querySelectorAll(".wt-seat-badge, .wt-avatar, .wt-seat-name, .wt-seat-call-role, .wt-seat-tags, .wt-seat-meta, .wt-bubble--thanks, "
+      + ".wt-backs > i:not([hidden]), .wt-taken[data-filled='true'], .wt-taken[data-filled='true'] i, .wt-stock, "
       + "[data-wt-hand-area], [data-wt-panel], [data-wt-private] button, [data-wt-stake], [data-wt-history]:not([open])")].filter(node => node !== neutralPrompt);
     const history = table.querySelector("[data-wt-history]:not([open])"), historyBox = box(history);
     const moveHistory = Boolean(historyBox && table.dataset.phase === "play" && (!panel?.children.length || neutralPrompt));
@@ -137,12 +157,16 @@ export function createTrickLayout(trick, { win = window } = {}) {
       for (const [key, value] of [["x", historyBox.left], ["y", historyBox.top], ["width", historyBox.width]]) history.style.setProperty(`--wt-portrait-history-${key}`, `${value}px`);
     }
     const obstacles = protectedNodes.filter(node => !moveHistory || node !== history).map(box).filter(Boolean);
+    obstacles.push(...[...table.querySelectorAll(".wt-taken[data-filled='true']")].map(counterBox).filter(Boolean));
     if (reference) obstacles.push(reference);
     const originalWidth = Number.parseFloat(win.getComputedStyle(trick.firstElementChild).width) || 0;
     const minimumWidth = Math.max(win.innerWidth >= 360 ? 76 : 64, Math.ceil(originalWidth));
-    const label = centre.querySelector(".wt-trick-label"), labelHeight = label?.textContent.trim() ? LABEL : 0;
+    // Reserve the eventual winner caption while the trick is still live, so
+    // completing it does not move the pile merely to make room for that label.
+    const label = centre.querySelector(".wt-trick-label"), labelHeight = LABEL;
     if (label) label.title = label.textContent.trim();
-    const resolve = occupied => fitPortraitTrickView({ bounds, obstacles: occupied, count, labelHeight, minimumWidth, history: moveHistory });
+    const positions = [...trick.children].map(card => card.dataset.position);
+    const resolve = occupied => fitPortraitTrickView({ bounds, obstacles: occupied, count, positions, labelHeight, minimumWidth, history: moveHistory });
     let { fit, labelFit, historyFit } = resolve(obstacles);
     if (!fit) { clear(); centre.dataset.wtPortraitTrickFallback = "space"; return; }
     const promptFit = neutralPrompt ? fitPortraitPrompt(bounds, [...obstacles, fit, labelFit, historyFit].filter(Boolean)) : null;

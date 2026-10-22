@@ -170,7 +170,9 @@ function createInspectionMotion(reveal, seatNodes) {
   const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)");
   const centre = rect => ({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
   const clamp = (value, min, max) => max < min ? (min + max) / 2 : Math.max(min, Math.min(value, max));
-  const overlaps = (a, b) => a.left < b.right + 4 && a.right > b.left - 4 && a.top < b.bottom + 4 && a.bottom > b.top - 4;
+  const clearance = 4;
+  const overlaps = (a, b) => a.left < b.right + clearance && a.right > b.left - clearance
+    && a.top < b.bottom + clearance && a.bottom > b.top - clearance;
   let key = "", playedKey = "", figures = [], observer = null, flights = [], geometry = "", frame = 0;
   let viewerSeat = null, lastHandOrigin = null;
   const settle = () => { flights.forEach(flight => flight.cancel()); flights = []; };
@@ -178,14 +180,16 @@ function createInspectionMotion(reveal, seatNodes) {
     settle(); observer?.disconnect(); observer = null;
     cancelAnimationFrame(frame); frame = 0;
     key = ""; figures = []; geometry = "";
+    reveal.closest(".wt-table")?.style.removeProperty("--wt-inspection-ack-height");
     delete reveal.dataset.wtInspectionPositioned;
   };
 
   function position() {
     if (!reveal.isConnected || figures.length !== 2 || !figures.every(figure => figure.isConnected)) { stop(); return; }
     const felt = reveal.parentElement, bounds = felt.getBoundingClientRect();
+    const table = felt.closest(".wt-table");
     if (!bounds.width || !bounds.height) return;
-    const ownHand = felt.closest(".wt-table")?.querySelector(".wt-hand-area:not([hidden]) .wt-hand");
+    const ownHand = table?.querySelector(".wt-hand-area:not([hidden]) .wt-hand");
     const handBounds = ownHand?.getBoundingClientRect();
     if (handBounds?.width && handBounds?.height) {
       const point = centre(handBounds);
@@ -207,24 +211,37 @@ function createInspectionMotion(reveal, seatNodes) {
     if (origins.some(origin => !origin)) return;
     const delta = { x: origins[1].x - origins[0].x, y: origins[1].y - origins[0].y };
     const distance = Math.hypot(delta.x, delta.y) || 1;
+    const actionPanel = table?.querySelector('.wt-end-sheet > .wt-panel');
+    const docked = window.innerWidth <= 760 && window.innerHeight >= window.innerWidth
+      && Boolean(actionPanel?.querySelector('.wt-preplay-pending, .wt-bloedeln-status'));
+    const shortPortrait = docked && window.innerWidth <= 350 && window.innerHeight <= 700;
     // In a short landscape viewport a flat horizontal pair leaves room for
     // the badges and ACK without reducing the actual faces to tiny thumbnails.
     const shortLandscape = bounds.height < 320 && bounds.width > bounds.height * 1.5;
-    const unit = shortLandscape
+    // A narrow portrait keeps the pair in the column between the side fans;
+    // the entry flights still begin at each actual source hand.
+    const unit = shortPortrait ? { x: 0, y: delta.y < 0 ? -1 : 1 } : shortLandscape
       ? { x: delta.x < 0 ? -1 : 1, y: 0 } : { x: delta.x / distance, y: delta.y / distance };
     const angle = Math.atan2(unit.y, unit.x) * 180 / Math.PI + 90;
     const cards = figures.map(figure => figure.querySelector(".wt-card"));
     const captions = figures.map(figure => figure.querySelector("figcaption"));
     const ack = reveal.querySelector('[data-kind="inspection_ack"]');
     if (!ack) return;
-    const hand = felt.closest(".wt-table")?.querySelector(".wt-hand-area:not([hidden])")?.getBoundingClientRect();
+    const hand = table?.querySelector(".wt-hand-area:not([hidden])")?.getBoundingClientRect();
     const region = { left: 10, top: 10, right: bounds.width - 10,
       bottom: Math.min(bounds.height - 10, hand?.height ? hand.top - bounds.top - 12 : bounds.height - 10) };
     cards.forEach(card => card.style.removeProperty("width"));
     const baseWidths = cards.map(card => card.offsetWidth);
     const labelSizes = captions.map(caption => ({ width: caption.offsetWidth, height: caption.offsetHeight }));
     const ackSize = { width: ack.offsetWidth, height: ack.offsetHeight };
-    const obstacles = [...felt.querySelectorAll('.wt-seat-badge, .wt-backs:not([hidden]), .wt-stock')]
+    if (docked) {
+      table.style.setProperty("--wt-inspection-ack-height", `${ackSize.height}px`);
+      region.bottom = Math.min(region.bottom, actionPanel.getBoundingClientRect().top - bounds.top - 12);
+    }
+    // An open Blödeln question or status can share this inspection. Keep the
+    // cards and their ACK clear of its painted action panel as well as seats.
+    const obstacles = [...felt.querySelectorAll('.wt-seat-badge, .wt-avatar, .wt-seat-name, .wt-seat-call-role, .wt-seat-tags, .wt-seat-meta, .wt-bubble--thanks, .wt-backs:not([hidden]) > i:not([hidden]), .wt-stock'),
+      ...(table?.querySelectorAll('.wt-end-sheet > .wt-panel:not(:empty)') || [])]
       .map(node => node.getBoundingClientRect()).filter(rect => rect.width && rect.height)
       .map(rect => ({ left: rect.left - bounds.left - 8, right: rect.right - bounds.left + 8,
         top: rect.top - bounds.top - 8, bottom: rect.bottom - bounds.top + 8 }));
@@ -238,10 +255,15 @@ function createInspectionMotion(reveal, seatNodes) {
         const extentY = (Math.abs(Math.sin(radians)) * width + Math.abs(Math.cos(radians)) * height) / 2;
         return { x, y, width, height, rotation, left: x - extentX, right: x + extentX, top: y - extentY, bottom: y + extentY };
       });
-      // Each upright badge meets its own long card edge. Opposite sides keep
-      // the labels distinct even when the two short top edges meet vertically.
+      // The smallest portrait uses the outer short edges for labels, leaving
+      // the side fans clear. Other screens keep the upright long-edge badges.
       const labels = poses.map((pose, index) => {
         const size = labelSizes[index], side = index ? -1 : 1;
+        if (shortPortrait) {
+          const x = pose.x, y = pose.y + unit.y * -side * pose.height / 2;
+          return { x, top: y - size.height / 2, left: x - size.width / 2,
+            right: x + size.width / 2, bottom: y + size.height / 2 };
+        }
         const normal = { x: -unit.y * side, y: unit.x * side };
         const offset = pose.width / 2 + (Math.abs(normal.x) * size.width + Math.abs(normal.y) * size.height) / 2 + 2;
         const x = pose.x + normal.x * offset, y = pose.y + normal.y * offset;
@@ -254,9 +276,11 @@ function createInspectionMotion(reveal, seatNodes) {
       // A side ACK preserves readable faces below the fans on short screens.
       const ackX = shortLandscape ? faceRight + 12 + ackSize.width / 2 : 0;
       const ackTop = shortLandscape ? (faceTop + faceBottom - ackSize.height) / 2 : faceBottom + 12;
-      const left = Math.min(...poses.map(pose => pose.left), ...labels.map(label => label.left), ackX - ackSize.width / 2);
-      const right = Math.max(faceRight, ackX + ackSize.width / 2);
-      const top = Math.min(faceTop, ackTop), bottom = Math.max(faceBottom, ackTop + ackSize.height);
+      const faceLeft = Math.min(...poses.map(pose => pose.left), ...labels.map(label => label.left));
+      const left = docked ? faceLeft : Math.min(faceLeft, ackX - ackSize.width / 2);
+      const right = docked ? faceRight : Math.max(faceRight, ackX + ackSize.width / 2);
+      const top = docked ? faceTop : Math.min(faceTop, ackTop);
+      const bottom = docked ? faceBottom : Math.max(faceBottom, ackTop + ackSize.height);
       return { poses, labels, ackX, ackTop, left, right, top, bottom, width: right - left, height: bottom - top };
     }
     function placement(value) {
@@ -265,14 +289,18 @@ function createInspectionMotion(reveal, seatNodes) {
       const yMin = region.top - value.top, yMax = region.bottom - value.bottom;
       const desired = { x: (region.left + region.right - value.left - value.right) / 2,
         y: (region.top + region.bottom - value.top - value.bottom) / 2 };
-      const xs = [desired.x, xMin, xMax, ...obstacles.flatMap(rect => [rect.left - value.right, rect.right - value.left])];
-      const ys = [desired.y, yMin, yMax, ...obstacles.flatMap(rect => [rect.top - value.bottom, rect.bottom - value.top])];
+      const parts = [...value.poses, ...value.labels, ...(docked ? [] : [
+        { left: value.ackX - ackSize.width / 2, right: value.ackX + ackSize.width / 2,
+          top: value.ackTop, bottom: value.ackTop + ackSize.height }])];
+      // A card edge or its role badge can fit beside a fan independently of
+      // the whole pair. Match the collision clearance at every candidate edge.
+      const xs = [...new Set([desired.x, xMin, xMax, ...obstacles.flatMap(rect => parts.flatMap(part =>
+        [rect.left - part.right - clearance, rect.right - part.left + clearance]))].map(x => clamp(x, xMin, xMax)))];
+      const ys = [...new Set([desired.y, yMin, yMax, ...obstacles.flatMap(rect => parts.flatMap(part =>
+        [rect.top - part.bottom - clearance, rect.bottom - part.top + clearance]))].map(y => clamp(y, yMin, yMax)))];
       let best = null, bestDistance = Infinity;
       for (const candidateX of xs) for (const candidateY of ys) {
         const x = clamp(candidateX, xMin, xMax), y = clamp(candidateY, yMin, yMax);
-        const parts = [...value.poses, ...value.labels,
-          { left: value.ackX - ackSize.width / 2, right: value.ackX + ackSize.width / 2,
-            top: value.ackTop, bottom: value.ackTop + ackSize.height }];
         if (parts.some(part => obstacles.some(obstacle => overlaps({ left: x + part.left, right: x + part.right,
           top: y + part.top, bottom: y + part.bottom }, obstacle)))) continue;
         const distance = ((x - desired.x) / bounds.width) ** 2 + ((y - desired.y) / bounds.height) ** 2;
@@ -282,12 +310,12 @@ function createInspectionMotion(reveal, seatNodes) {
     }
     let arranged = arrangement(1);
     let midpoint = placement(arranged);
-    if (!midpoint || (!shortLandscape && midpoint.distance > .04)) {
-      let low = .25, high = 1;
+    if (!midpoint || (!shortLandscape && !docked && midpoint.distance > .04)) {
+      let low = docked ? Math.min(1, 52 / Math.min(...baseWidths)) : .25, high = 1;
       for (let step = 0; step < 8; step += 1) {
         const middle = (low + high) / 2;
         const point = placement(arrangement(middle));
-        if (point && (shortLandscape || point.distance <= .04)) low = middle; else high = middle;
+        if (point && (shortLandscape || docked || point.distance <= .04)) low = middle; else high = middle;
       }
       arranged = arrangement(low);
       midpoint = placement(arranged);
@@ -302,7 +330,8 @@ function createInspectionMotion(reveal, seatNodes) {
       card.style.left = `${-pose.width / 2}px`; card.style.top = `${-pose.height / 2}px`; card.style.rotate = `${pose.rotation}deg`;
       caption.style.left = `${label.x - pose.x}px`; caption.style.top = `${label.top - pose.y}px`;
     });
-    ack.style.left = `${midpoint.x + arranged.ackX}px`; ack.style.top = `${midpoint.y + arranged.ackTop}px`;
+    ack.style.left = `${docked ? bounds.width / 2 : midpoint.x + arranged.ackX}px`;
+    if (docked) ack.style.removeProperty("top"); else ack.style.top = `${midpoint.y + arranged.ackTop}px`;
     reveal.dataset.wtInspectionPositioned = "true";
     geometry = [bounds.width, bounds.height].join(":");
     if (playedKey === key || document.hidden) return;
@@ -330,7 +359,7 @@ function createInspectionMotion(reveal, seatNodes) {
     const nextFigures = [...reveal.querySelectorAll("[data-wt-inspection-seat]")];
     if (!nextFigures.length) { stop(); return; }
     const nextKey = `${vm.engine.deal_id}:${vm.engine.deal_revision ?? 0}`;
-    if (key === nextKey && figures.every((figure, index) => figure === nextFigures[index])) return;
+    if (key === nextKey && figures.every((figure, index) => figure === nextFigures[index])) { schedule(); return; }
     settle(); observer?.disconnect();
     figures = nextFigures; key = nextKey;
     schedule();
@@ -356,10 +385,21 @@ function bidMarkup(vm) {
     : names(partyMembers(engine, pending.party).map(id => nameOf(vm, id)));
   const decider = nameOf(vm, pending.decider);
   const respond = RESPONSES.filter(([, action]) => vm.actions.includes(action));
+  const partner = partnerOf(vm);
+  const received = engine.feedback?.find(item => item.recipient === vm.playerId);
+  const adviceName = partner ? seatName(vm, partner.seat) : "";
+  const adviceText = partner ? t(received ? "feedback.advice" : "feedback.waiting", {
+    name: "{partner}", value: received ? t(`feedback.${received.value}`) : "",
+  }) : "";
+  const adviceContent = esc(adviceText).replace("{partner}",
+    `<span class="wt-advice-name" translate="no" title="${esc(adviceName)}">${esc(adviceName)}</span>`);
+  const advice = partner && respond.length ? `<p class="wt-feedback-received wt-partner-advice" data-watten-partner-advice
+    ${received ? `data-watten-feedback-received data-feedback-value="${esc(received.value)}"` : ""} role="status">${adviceContent}</p>` : "";
   return `<div class="wt-bid" data-watten-bid role="group" aria-labelledby="wattenBidTitle">
     <h3 id="wattenBidTitle">${esc(t("bid.pendingShort", { points: pending.points }))}</h3>
     <p class="wt-bid-speaker" title="${esc(bidders)}" translate="no">${esc(bidders)}</p>
     <p>${esc(respond.length ? t("bid.yourDecision") : t("bid.waitingFor", { name: decider }))}</p>
+    ${advice}
     ${respond.length ? `<div class="wt-choice-row">${respond.map(([value, action]) => button(t(value === "counter" ? "bid.counterTo" : value === "go" ? "bid.goStake" : "bid.hold", { points: value === "counter" ? pending.points + 1 : value === "go" ? engine.bid.accepted_stake : pending.points }),
       `data-watten-command="engine" data-kind="respond" data-value="${value}" data-watten-action="${action}"`,
       { disabled: vm.busy, className: value === "hold" ? "wt-primary" : "" })).join("")}</div>` : ""}
@@ -438,10 +478,10 @@ function panelMarkup(vm) {
   }
   if (phase === "show_ready") {
     if (actions.includes("show_ready")) {
-      return `<div class="wt-announce"><h3>${esc(t("phase.show"))}</h3><p>${esc(t("phase.showBody"))}</p>
-        ${button(t("phase.showButton"), `data-watten-command="engine" data-kind="show_ready" data-watten-action="show_ready"`, { disabled: vm.busy, className: "wt-primary" })}</div>`;
+      const role = engine.announcement_roles?.strike === vm.viewerSeat ? "strike" : "colour";
+      return `<div class="wt-announce">${button(t(`inspection.show.${role}`), `data-watten-command="engine" data-kind="show_ready" data-watten-action="show_ready"`, { disabled: vm.busy, className: "wt-primary" })}</div>`;
     }
-    return `<p class="wt-prompt">${esc(t("phase.showWait"))}</p>`;
+    return "";
   }
   if (phase === "inspection") return engine.inspection ? "" : `<p class="wt-prompt">${esc(t("phase.inspectionWait"))}</p>`;
   if (phase === "play") return "";
@@ -456,7 +496,6 @@ function privateMarkup(vm) {
   if (partner && engine.phase === "bid_response" && engine.bid.pending?.party !== engine.seats[vm.viewerSeat]?.party
       && (vm.actions.includes("partner_feedback") || engine.feedback?.length)) {
     const partnerName = seatName(vm, partner.seat);
-    const received = engine.feedback?.find(item => item.recipient === vm.playerId);
     const sent = engine.feedback?.find(item => item.sender === vm.playerId);
     if (!sent && vm.actions.includes("partner_feedback") && !vm.feedbackDismissed) {
       parts.push(`<dialog class="wt-feedback wt-feedback-dialog" data-watten-feedback-dialog aria-labelledby="wattenFeedbackTitle">
@@ -465,10 +504,6 @@ function privateMarkup(vm) {
         <div class="wt-choice-row">${FEEDBACK.map(value => `<button type="button" data-watten-command="feedback" data-value="${value}" data-watten-action="partner_feedback" aria-label="${esc(t(`feedback.${value}`))}" title="${esc(t(`feedback.${value}`))}" ${vm.busy ? "disabled" : ""}><span class="wt-feedback-symbol" aria-hidden="true">${{ good: "👍", bad: "👎", unsure: "?" }[value]}</span></button>`).join("")}</div>
         <p class="wt-note">${esc(t("feedback.privacy"))}</p>
       </dialog>`);
-    }
-    if (received) {
-      const message = t("feedback.received", { name: partnerName, value: t(`feedback.${received.value}`) });
-      parts.push(`<p class="wt-feedback-received" data-watten-feedback-received data-feedback-value="${esc(received.value)}" role="status" title="${esc(message)}" aria-label="${esc(message)}">${esc(message)}</p>`);
     }
   }
   if (engine.partner_hand?.cards?.length) {
@@ -495,7 +530,9 @@ function historyMarkup(vm, pinned) {
 
 function referenceMarkup(vm) {
   const reference = vm.engine.reference_card;
-  if (!reference) return "";
+  // The optional reference belongs to card play. A face-down placeholder
+  // before the call adds a stray card beside the unopened packets.
+  if (!reference || !["play", "bid_response", "deal_complete", "match_complete"].includes(vm.engine.phase)) return "";
   const face = reference.face === "card" && isCard(reference.card)
     ? cardFace(reference.card, { className: "wt-card--mini" })
     : cardBack({ className: "wt-card--mini", label: t("reference.hidden") });
@@ -618,11 +655,13 @@ export function createTableView(container, { onCard, accountId = null }) {
 
   function renderHand(vm) {
     const hand = vm.engine.hand ? sortHand(vm.engine.hand) : [];
-    const playable = vm.actions.includes("play_card") && !vm.busy;
     // Only the own private forced card is projected after Blödeln is agreed. Other
     // legality (trump, strike, bids) stays entirely with the engine.
     const forced = !vm.engine.last_trick
       ? vm.engine.preplay?.bloedeln_cards?.find(item => item.seat === vm.viewerSeat)?.card : null;
+    // The server plays the packet bottom as part of the turn transition.
+    // A stale/recovered projection must not turn it into a manual choice.
+    const playable = vm.actions.includes("play_card") && !vm.busy && !hand.some(item => item.card === forced);
     elements.handArea.hidden = !hand.some(item => isCard(item.card));
     const keys = hand.map((item, index) => isCard(item.card) ? item.card : `back-${index}`);
     let changed = false;
@@ -656,7 +695,7 @@ export function createTableView(container, { onCard, accountId = null }) {
       if (elements.hand.children[index] !== node) elements.hand.insertBefore(node, elements.hand.children[index] || null);
       node.style.setProperty("--i", String(index));
       if (node.tagName === "BUTTON") {
-        const enabled = playable && (!forced || card === forced);
+        const enabled = playable;
         node.disabled = !enabled;
         node.dataset.wattenPlayable = String(enabled);
       }

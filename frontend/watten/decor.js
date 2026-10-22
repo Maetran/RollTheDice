@@ -12,7 +12,8 @@ export const DECOR_ITEMS = Object.freeze({
   sweets: { sheet: "evening", cell: 1, food: true },
   dice: { sheet: "snacks", cell: 0 },
 });
-export const DECOR_PROTECTED = ".wt-seat, .wt-seat-slot, .wt-taken, .wt-hand-card, .wt-trick-card, "
+export const DECOR_PROTECTED = ".wt-seat, .wt-seat-slot, .wt-seat-badge, .wt-seat-name, .wt-seat-call-role, .wt-backs > i, "
+  + ".wt-taken, .wt-hand-card, .wt-trick-card, .wt-trick-label, .wt-reference, "
   + "[data-wt-reference], [data-wt-bubbles], [data-wt-panel], [data-wt-private], [data-wt-history], [data-wt-scores], [data-wt-stake], "
   + "[data-wt-tools], [data-watten-inspection], [data-watten-bid], [data-watten-paused], [data-watten-match-result], "
   + "[data-watten-deal-result], [data-watten-match-progress], [data-watten-rematch], [data-watten-social], "

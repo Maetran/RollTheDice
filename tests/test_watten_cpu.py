@@ -200,22 +200,24 @@ def test_cpu_declines_a_redeal_while_its_hand_is_hidden_instead_of_reading_engin
     assert turn(table, "B").kind == "preplay_decline"
 
 
-def test_cpu_bloedeln_plays_its_private_original_bottom_only_in_the_first_trick():
+def test_cpu_bloedeln_bottom_is_automatic_and_later_tricks_allow_policy_choices():
     table = Table(start_match(cpu_recipe(4, "ladinisch", True), "forced-bottom", blind_deal(), first_dealer="A"))
     table.ready(bloedeln=None)
     table.act("C", "request_bloedeln")
     table.act("D", "preplay_accept")
     forced = dict(table.state.play.forced_opening)
-    for _ in range(4):
+    while not table.state.play.tricks:
         player = table.state.play.current_player_id
         seat = table.state.play.current_seat
+        assert seat not in forced
         legal = own_legal_cards(table.view(player), table.memories[player])
         assert legal == legal_cards(table.state.play, table.state.bid_state, player)
         decision = card_choice(table, player)
-        if seat in forced:
-            assert legal == (forced[seat],) and decision.value == forced[seat]
         table.propose(player, decision)
     assert len(table.state.play.tricks) == 1
+    assert table.state.play.tricks[0].cards[1:3] == (forced[2], forced[3])
+    for memory in table.memories.values():
+        assert [card for _, _, seat, card in memory.plays if seat in forced] == [forced[2], forced[3]]
     for _ in range(4):
         player = table.state.play.current_player_id
         if player in {"C", "D"}:

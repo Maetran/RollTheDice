@@ -2,6 +2,7 @@ const { test, expect } = require('@playwright/test');
 const { player, create, action, answerPartnerFeedback, normalCall, playOne } = require('./helpers/watten-journey.cjs');
 const { expectFixedTable, expectReachable } = require('./table-viewport');
 const { expectTableHeaderReachable } = require('./helpers/watten-header.cjs');
+const { expectLandscapeTable } = require('./helpers/watten-landscape.cjs');
 
 // Each case checks four viewport sizes before and during a real bid; the
 // four-player case also admits one spectator for the neutral score labels.
@@ -88,33 +89,18 @@ async function expectStage(item, count) {
   await expect(page.locator('[data-watten-decor-action="toggle"]')).toHaveCount(0);
   await expect(page.locator('[data-wt-scores] .wt-stake')).toHaveCount(0);
   const viewport = page.viewportSize();
-  const compactBid = viewport.width > viewport.height && viewport.height < 520 && engine.phase === 'bid_response';
+  const landscapeRail = viewport.width > viewport.height && viewport.height < 520;
+  const compactBid = landscapeRail && engine.phase === 'bid_response';
   const stake = page.locator('.wt-end-sheet > [data-wt-stake]');
-  if (compactBid) {
-    await expect(stake).toBeHidden();
-    const inlineStake = page.locator('[data-watten-bid] > .wt-note');
-    await expect(inlineStake).toBeVisible();
-    await expect(inlineStake).toHaveText(language === 'en'
-      ? `Stake: ${engine.bid.accepted_stake} points` : `Einsatz: ${engine.bid.accepted_stake} Punkte`);
-    await expect.poll(() => inlineStake.evaluate(node => {
-      const rect = node.getBoundingClientRect();
-      const title = node.parentElement.querySelector('h3').getBoundingClientRect();
-      return {
-        besideTitle: rect.left >= title.right - 1
-          && Math.min(rect.bottom, title.bottom) > Math.max(rect.top, title.top),
-        inViewport: rect.left >= -1 && rect.top >= -1 && rect.right <= innerWidth + 1 && rect.bottom <= innerHeight + 1,
-      };
-    }), { message: 'accepted running stake remains beside the offer title in short landscape' })
-      .toEqual({ besideTitle: true, inViewport: true });
-  } else {
-    await expect(stake).toBeVisible();
-    await expect(stake).toHaveAttribute('data-points', String(engine.bid.pending?.points ?? engine.bid.accepted_stake));
-    await expect(stake.locator('button > strong')).toHaveText(String(engine.bid.pending?.points ?? engine.bid.accepted_stake));
-    await expectReachable(page, '.wt-end-sheet > [data-wt-stake] > button');
-    const stakeBox = await stake.locator('button').boundingBox();
-    expect(stakeBox.width).toBeGreaterThanOrEqual(44);
-    expect(stakeBox.height).toBeGreaterThanOrEqual(44);
-  }
+  await expect(stake).toBeVisible();
+  await expect(stake).toHaveAttribute('data-points', String(engine.bid.pending?.points ?? engine.bid.accepted_stake));
+  await expect(stake.locator('button > strong')).toHaveText(String(engine.bid.pending?.points ?? engine.bid.accepted_stake));
+  await expectReachable(page, '.wt-end-sheet > [data-wt-stake] > button');
+  const stakeBox = await stake.locator('button').boundingBox();
+  expect(stakeBox.width).toBeGreaterThanOrEqual(44);
+  expect(stakeBox.height).toBeGreaterThanOrEqual(44);
+  if (compactBid && engine.actions.includes('respond_go')) await expect(page.locator('[data-watten-action=respond_go]'))
+    .toContainText(String(engine.bid.accepted_stake));
   const ownSeat = engine.viewer.seat;
   const backCount = engine.seats.filter(seat => seat.seat !== ownSeat).reduce((sum, seat) => sum + seat.card_count, 0);
   await expect(page.locator('.wt-backs > i:not([hidden])')).toHaveCount(backCount);
@@ -158,7 +144,10 @@ async function expectStage(item, count) {
       const box = rect(name);
       if (box.left < -1 || box.right > innerWidth + 1) violations.push(`seat ${name.closest('[data-wt-seat]').dataset.wtSeat} name outside ${innerWidth}x${innerHeight}: ${box.left}–${box.right}`);
     }
-    const protectedAreas = [...document.querySelectorAll('[data-wt-hand-area], [data-wt-panel], [data-wt-stake], [data-wt-history]:not([open]), [data-wt-private] button, .wt-trick-card')].filter(shown);
+    const frozenBid = innerWidth > innerHeight && innerHeight < 520
+      && document.querySelector('[data-wt-table]').dataset.phase === 'bid_response';
+    const protectedAreas = [...document.querySelectorAll('[data-wt-hand-area], [data-wt-panel], [data-wt-stake], [data-wt-history]:not([open]), [data-wt-private] button, .wt-trick-card')]
+      .filter(shown).filter(area => !frozenBid || !area.matches('[data-wt-panel]'));
     for (const back of document.querySelectorAll('.wt-backs > i:not([hidden])')) {
       const box = rect(back);
       const overlaps = protectedAreas.filter(area => intersects(box, rect(area)));
@@ -186,7 +175,7 @@ async function expectStage(item, count) {
       .toHaveAttribute('data-wt-trick-team', winnerParty === ownParty ? 'own' : 'opponent');
     if (!await history.evaluate(node => node.open)) await history.locator('summary').click();
     await expectReachable(page, '[data-wt-history] > summary');
-    await expect.poll(() => history.evaluate(node => {
+    await expect.poll(() => history.evaluate((node, landscapeRail) => {
       const rect = node.getBoundingClientRect();
       const panel = node.parentElement.querySelector('[data-wt-panel]');
       const panelRect = panel.getBoundingClientRect();
@@ -194,26 +183,28 @@ async function expectStage(item, count) {
       const stakeRect = stake.getBoundingClientRect();
       const summaryRect = node.querySelector('summary').getBoundingClientRect();
       const hand = document.querySelector('[data-wt-hand-area]').getBoundingClientRect();
+      const felt = document.querySelector('[data-wt-felt]').getBoundingClientRect();
       const overlap = (a, b) => Math.min(a.right, b.right) - Math.max(a.left, b.left) > 2
         && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 2;
       return {
         abovePanel: !panelRect.height || rect.bottom <= panelRect.top + 1,
-        aboveStake: !stakeRect.height || rect.bottom <= stakeRect.top + 1,
-        stakeBelowPanel: !panelRect.height || !stakeRect.height || panelRect.bottom <= stakeRect.top + 1,
+        stakeSeparate: landscapeRail ? stakeRect.right <= felt.left + 1 && rect.left >= felt.left - 1
+          : (!stakeRect.height || rect.bottom <= stakeRect.top + 1)
+            && (!panelRect.height || !stakeRect.height || panelRect.bottom <= stakeRect.top + 1),
         beforePanel: Boolean(node.compareDocumentPosition(panel) & Node.DOCUMENT_POSITION_FOLLOWING),
         clearOfHand: !overlap(summaryRect, hand),
         controlsClearOfHistory: [...panel.querySelectorAll('button'), ...stake.querySelectorAll('button')]
           .every(button => !overlap(rect, button.getBoundingClientRect())),
       };
-    }), { message: 'history shares the lower dock above decisions, including when the panel is empty' })
-      .toEqual({ abovePanel: true, aboveStake: true, stakeBelowPanel: true, beforePanel: true,
+    }, landscapeRail), { message: 'review stays above decisions while the stake uses its own reachable area' })
+      .toEqual({ abovePanel: true, stakeSeparate: true, beforePanel: true,
         clearOfHand: true, controlsClearOfHistory: true });
     const miniWidth = await history.locator('.wt-card--mini').first().evaluate(node => Number.parseFloat(getComputedStyle(node).width));
     expect(miniWidth).toBeGreaterThanOrEqual(reviewWidth.minimum);
     expect(miniWidth).toBeLessThanOrEqual(reviewWidth.maximum);
     await expect(history.locator('.wt-history > li').first().locator('.wt-mini-cards > figure'))
       .toHaveCount(engine.last_trick.cards.length);
-    await expect.poll(() => history.evaluate((node, reviewWidth) => {
+    await expect.poll(() => history.evaluate((node, { reviewWidth, compactBid }) => {
       const failures = [];
       const scroller = node.querySelector(':scope > .wt-history');
       const bounds = scroller.getBoundingClientRect();
@@ -224,6 +215,7 @@ async function expectStage(item, count) {
         && rect.right <= area.right + 1 && rect.bottom <= area.bottom + 1;
       const viewport = { left: 0, top: 0, right: innerWidth, bottom: innerHeight };
       const figures = [...scroller.querySelectorAll(':scope > li:first-child > .wt-mini-cards > figure')];
+      if (compactBid && scroller.clientHeight <= 0) failures.push('compact bid review has no scrollable height');
       let rowTop = Infinity, rowBottom = -Infinity;
       for (const [index, figure] of figures.entries()) {
         const card = figure.querySelector('.wt-card--mini');
@@ -241,19 +233,37 @@ async function expectStage(item, count) {
             || (element.checkVisibility && !element.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true }))) {
             failures.push(`mini ${index} ${label}: not rendered`);
           }
-          if (!inside(rect, port)) failures.push(`mini ${index} ${label}: clipped by history scroller`);
-          if (!inside(rect, viewport)) failures.push(`mini ${index} ${label}: outside viewport`);
-          const hit = document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2);
-          if (!figure.contains(hit)) failures.push(`mini ${index} ${label}: center covered by ${hit?.tagName || 'nothing'}`);
+          if (compactBid) {
+            // A live decision has priority in short landscape. The review
+            // scrolls so both the face and its name remain inspectable.
+            if (!['auto', 'scroll'].includes(getComputedStyle(scroller).overflowY)) failures.push('compact bid review cannot scroll');
+            for (const edge of ['top', 'bottom']) {
+              const before = element.getBoundingClientRect();
+              const point = edge === 'top' ? before.top + 3 : before.bottom - 3;
+              scroller.scrollTop += point - (port.top + port.bottom) / 2;
+              const after = element.getBoundingClientRect();
+              const y = edge === 'top' ? after.top + 3 : after.bottom - 3;
+              const x = after.x + after.width / 2;
+              if (x < port.left || x > port.right || y < port.top || y > port.bottom
+                || x < 0 || x > innerWidth || y < 0 || y > innerHeight
+                || !figure.contains(document.elementFromPoint(x, y))) failures.push(`mini ${index} ${label}: ${edge} cannot be reached by scrolling`);
+            }
+          } else {
+            if (!inside(rect, port)) failures.push(`mini ${index} ${label}: clipped by history scroller`);
+            if (!inside(rect, viewport)) failures.push(`mini ${index} ${label}: outside viewport`);
+            const hit = document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2);
+            if (!figure.contains(hit)) failures.push(`mini ${index} ${label}: center covered by ${hit?.tagName || 'nothing'}`);
+          }
         }
       }
-      // The winner sentence can scroll. The cards and their player names must
-      // fit together without scrolling merely to understand this first trick.
-      if (!figures.length || scroller.clientHeight < rowBottom - rowTop - 1) {
+      // Ordinary review shows the complete card/name row together. A live
+      // bid on a short screen keeps its controls clear and allows review scrolling.
+      if (!figures.length || !compactBid && scroller.clientHeight < rowBottom - rowTop - 1) {
         failures.push(`history card/name row needs ${rowBottom - rowTop}px; scroller offers ${scroller.clientHeight}px`);
       }
+      if (compactBid) scroller.scrollTop = 0;
       return failures;
-    }, reviewWidth), { message: 'the first history trick shows complete mini-card SVGs and player names inside its scroller' }).toEqual([]);
+    }, { reviewWidth, compactBid }), { message: 'the first history trick keeps mini-card faces and names readable, with scrolling beside a short-screen bid' }).toEqual([]);
     if (['deal_complete', 'match_complete'].includes(engine.phase)) {
       await expect(history.locator('[data-wt-history-pin]')).toHaveCount(0);
       await expect(history).toHaveAttribute('data-pinned', 'false');
@@ -285,9 +295,11 @@ async function expectStage(item, count) {
   }
   for (const control of await page.locator('[data-wt-panel] button, [data-wt-private] button, [data-wt-tools] button, [data-wt-stake] button').all()) {
     if (!await control.isVisible()) continue;
-    const box = await control.boundingBox();
-    expect(box.width).toBeGreaterThanOrEqual(44);
-    expect(box.height).toBeGreaterThanOrEqual(44);
+    await expect.poll(() => control.evaluate(node => {
+      const box = node.getBoundingClientRect();
+      return { width: box.width >= 44, height: box.height >= 44 };
+    }), { message: 'current visible control settles at a complete 44px touch target after resize' })
+      .toEqual({ width: true, height: true });
     await expectReachable(page, await control.evaluate(node => {
       // Existing commands have stable public action identifiers, not test IDs.
       if (!node.hasAttribute('data-watten-action') && !node.hasAttribute('data-watten-command')) {
@@ -324,6 +336,10 @@ for (const language of ['de', 'en']) {
             await item.page.setViewportSize(viewport);
             await expect(item.page.locator('html')).toHaveAttribute('lang', language);
             await expectStage(item, count);
+          }
+          if (spectator && viewport.width > viewport.height && viewport.height < 520) {
+            await spectator.page.setViewportSize(viewport);
+            await expectLandscapeTable(spectator.page);
           }
         }
         for (let card = 0; card < count; card += 1) {

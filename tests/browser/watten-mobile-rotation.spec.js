@@ -125,7 +125,6 @@ for (const browserName of ['chromium', 'webkit']) {
         const responder = players.find(item => item.traffic.snapshot.engine.actions.includes('respond_hold'));
         expect(responder).toBeTruthy();
         const decisionPage = responder.page;
-        const language = await decisionPage.locator('html').getAttribute('lang');
         await decisionPage.bringToFront();
         for (const viewport of [{ width: 956, height: 440 }, portrait, { width: 956, height: 440 }, portrait]) {
           await decisionPage.setViewportSize(viewport);
@@ -139,20 +138,23 @@ for (const browserName of ['chromium', 'webkit']) {
           await expect(history).toHaveAttribute('open', '');
           await expectReachable(decisionPage, '[data-wt-history] > summary');
           const portraitReview = viewport.width < viewport.height && viewport.width <= 760;
+          const landscapeRail = viewport.width > viewport.height && viewport.height < 520;
           const reviewWidth = { minimum: portraitReview ? 60 : 44, maximum: portraitReview ? 72 : 56 };
-          await expect.poll(() => history.evaluate((node, reviewWidth) => {
+          await expect.poll(() => history.evaluate((node, { reviewWidth, landscapeRail }) => {
             const rect = node.getBoundingClientRect();
             const panel = node.parentElement.querySelector('[data-wt-panel]');
             const stake = node.parentElement.querySelector('[data-wt-stake]');
             const panelRect = panel.getBoundingClientRect(), stakeRect = stake.getBoundingClientRect();
             const summary = node.querySelector('summary').getBoundingClientRect();
             const hand = document.querySelector('[data-wt-hand-area]').getBoundingClientRect();
+            const felt = document.querySelector('[data-wt-felt]').getBoundingClientRect();
             const overlaps = (a, b) => Math.min(a.right, b.right) - Math.max(a.left, b.left) > 2
               && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 2;
             return {
               aboveDecision: rect.bottom <= panelRect.top + 1,
-              aboveStake: !stakeRect.height || rect.bottom <= stakeRect.top + 1,
-              stakeBelowDecision: !stakeRect.height || panelRect.bottom <= stakeRect.top + 1,
+              stakeSeparate: landscapeRail ? stakeRect.right <= felt.left + 1 && rect.left >= felt.left - 1
+                : (!stakeRect.height || rect.bottom <= stakeRect.top + 1)
+                  && (!stakeRect.height || panelRect.bottom <= stakeRect.top + 1),
               clearOfHand: !overlaps(summary, hand),
               controlsClearOfHistory: [...panel.querySelectorAll('button'), ...stake.querySelectorAll('button')]
                 .every(button => !overlaps(rect, button.getBoundingClientRect())),
@@ -161,38 +163,20 @@ for (const browserName of ['chromium', 'webkit']) {
                 return width >= reviewWidth.minimum && width <= reviewWidth.maximum;
               }),
             };
-          }, reviewWidth), { message: 'rotating keeps history above the bid, away from the hand and decision targets' })
-            .toEqual({ aboveDecision: true, aboveStake: true, stakeBelowDecision: true, clearOfHand: true,
+          }, { reviewWidth, landscapeRail }), { message: 'rotating keeps review, bid and stake in separate areas with reachable decision targets' })
+            .toEqual({ aboveDecision: true, stakeSeparate: true, clearOfHand: true,
               controlsClearOfHistory: true, compactReadableCards: true });
           const engine = responder.traffic.snapshot.engine;
-          const compactBid = viewport.width > viewport.height && viewport.height < 520 && engine.phase === 'bid_response';
           const stake = decisionPage.locator('.wt-end-sheet > [data-wt-stake]');
-          if (compactBid) {
-            await expect(stake).toBeHidden();
-            const inlineStake = decisionPage.locator('[data-watten-bid] > .wt-note');
-            await expect(inlineStake).toBeVisible();
-            await expect(inlineStake).toHaveText(language === 'en'
-              ? `Stake: ${engine.bid.accepted_stake} points` : `Einsatz: ${engine.bid.accepted_stake} Punkte`);
-            await expect.poll(() => inlineStake.evaluate(node => {
-              const rect = node.getBoundingClientRect();
-              const title = node.parentElement.querySelector('h3').getBoundingClientRect();
-              return {
-                besideTitle: rect.left >= title.right - 1
-                  && Math.min(rect.bottom, title.bottom) > Math.max(rect.top, title.top),
-                inViewport: rect.left >= -1 && rect.top >= -1 && rect.right <= innerWidth + 1 && rect.bottom <= innerHeight + 1,
-              };
-            }), { message: 'accepted running stake remains beside the offer title in short landscape' })
-              .toEqual({ besideTitle: true, inViewport: true });
-          } else {
-            await expect(stake).toBeVisible();
-            const displayedPoints = engine.bid.pending?.points ?? engine.bid.accepted_stake;
-            await expect(stake).toHaveAttribute('data-points', String(displayedPoints));
-            await expect(stake.locator('button > strong')).toHaveText(String(displayedPoints));
-            await expectReachable(decisionPage, '.wt-end-sheet > [data-wt-stake] > button');
-            const stakeBox = await stake.locator('button').boundingBox();
-            expect(stakeBox.width).toBeGreaterThanOrEqual(44);
-            expect(stakeBox.height).toBeGreaterThanOrEqual(44);
-          }
+          await expect(stake).toBeVisible();
+          const displayedPoints = engine.bid.pending?.points ?? engine.bid.accepted_stake;
+          await expect(stake).toHaveAttribute('data-points', String(displayedPoints));
+          await expect(stake.locator('button > strong')).toHaveText(String(displayedPoints));
+          await expectReachable(decisionPage, '.wt-end-sheet > [data-wt-stake] > button');
+          const stakeBox = await stake.locator('button').boundingBox();
+          expect(stakeBox.width).toBeGreaterThanOrEqual(44);
+          expect(stakeBox.height).toBeGreaterThanOrEqual(44);
+          await expect(decisionPage.locator('[data-watten-action=respond_go]')).toContainText(String(engine.bid.accepted_stake));
           for (const response of ['respond_hold', 'respond_go', 'respond_counter']) {
             const selector = `[data-watten-action="${response}"]`;
             const target = decisionPage.locator(selector);

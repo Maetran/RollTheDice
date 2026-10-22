@@ -12,6 +12,10 @@
 @import "./watten-scorepad.css";
 @import "./watten-decor.css";
 @import "./hausdepp-surprise-effects.css";
+@import "./watten-landscape.css";
+@import "./watten-hand-fans.css";
+@import "./watten-own-actions.css";
+@import "./watten-short-portrait.css";
 
 /* Watten: a bright wooden inn table, warm paper and dark red accents. */
 :root {

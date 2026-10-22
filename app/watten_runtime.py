@@ -32,6 +32,7 @@ from .watten_engine import (
     announcement_roles,
     apply_command,
     next_deal,
+    play_forced_openings,
     preplay_seats,
     restore_storage,
     start_match,
@@ -319,8 +320,27 @@ def resume_account(game: dict, account: int, player: str, *, lifecycle_revision:
     if type(account) is not int or not any(item.account_id == account and item.participant_id == player and item.seat is not None for item in runtime.room.members):
         raise ValueError("watten_actor_not_bound")
     if player in runtime.absent:
-        _sync(game, replace(runtime, absent=tuple(item for item in runtime.absent if item != player),
-                            lifecycle_revision=runtime.lifecycle_revision + 1), public=True)
+        runtime = replace(runtime, absent=tuple(item for item in runtime.absent if item != player),
+                          lifecycle_revision=runtime.lifecycle_revision + 1)
+        _sync(game, _resume_forced_openings(runtime), public=True)
+
+
+def _resume_forced_openings(runtime: WattenRuntime) -> WattenRuntime:
+    """Settle a legacy forced turn only while every human is present.
+
+    Current commands already settle these turns in their own transaction.
+    Recovery and an explicit return can encounter a checkpoint written by a
+    client that still required the obligated player to click their bottom.
+    """
+    if runtime.engine is None or runtime.absent:
+        return runtime
+    engine = play_forced_openings(runtime.engine)
+    if engine is runtime.engine:
+        return runtime
+    from .watten_cpu_runtime import observe_cpu_memories
+
+    return observe_cpu_memories(replace(runtime, engine=replace(
+        engine, opportunity=runtime.engine.opportunity + 1)))
 
 
 def _require_lifecycle(runtime: WattenRuntime, data: dict) -> None:
@@ -642,6 +662,9 @@ def restore_watten_game(raw: dict) -> dict:
     from .watten_cpu_runtime import validate_stored_memories
 
     validate_stored_memories(runtime, allow_empty_waiting=version == 1)
+    # Validate the stored memories against their actual old checkpoint before
+    # observing the newly public automatic cards in a recovered legacy turn.
+    runtime = _resume_forced_openings(runtime)
     if room.room_id != raw["_id"] or str(room.recipe.player_count) != raw["_mode"]:
         raise ValueError("watten_storage_context_mismatch")
     if type(raw["_name"]) is not str or not 1 <= len(raw["_name"].strip()) <= 80:

@@ -2,6 +2,7 @@
 
 import copy
 import json
+from dataclasses import replace
 
 import pytest
 
@@ -108,6 +109,41 @@ def test_accepting_before_inspection_exposes_no_bottom_to_any_view():
     assert spectator_view(state)["preplay"]["bloedeln_cards"] == []
     for player in "AB":
         assert personal(state, player)["preplay"]["bloedeln_cards"] == []
+
+
+@pytest.mark.parametrize("dealer", tuple("ABCD"))
+def test_consented_packet_bottoms_play_automatically_in_clockwise_order_for_every_dealer(dealer):
+    state = ready(start_match(recipe(4, "ladinisch", True), "automatic", dealt(), first_dealer=dealer),
+                  bloedeln=True)
+    leader = state.play.current_player_id
+    first_card = legal_cards(state.play, state.bid_state, leader)[0]
+    seat = state.play.current_seat
+    state = step(state, leader, "play_card", first_card)
+    expected_seats = ((seat + 1) % 4, (seat + 2) % 4)
+    assert state.play.plays == (first_card, *(state.deal.bottom_cards[owner] for owner in expected_seats))
+    assert state.play.current_seat == state.dealer_seat
+    assert restored(state) == state
+    assert spectator_view(state)["preplay"]["bloedeln_cards"] == []
+    for owner in expected_seats:
+        assert state.deal.bottom_cards[owner] not in state.play.hands[owner]
+        assert personal(state, state.recipe.seats[owner])["preplay"]["bloedeln_cards"] == []
+
+
+def test_legacy_obligated_turn_stays_frozen_during_a_bid_and_auto_plays_after_hold():
+    state = ready(start_match(recipe(4, "ladinisch", True), "bid-frozen", dealt(), first_dealer="A"),
+                  bloedeln=True)
+    first_card = legal_cards(state.play, state.bid_state, "B")[0]
+    state = step(state, "B", "play_card", first_card)
+    legacy = replace(state, play=replace(state.play, plays=(first_card,)))
+    pending = step(legacy, "C", "bid")
+    assert pending.phase == "bid_response" and pending.play.plays == (first_card,)
+    assert restored(pending).play.plays == (first_card,)
+    decider = pending.parties.decider(1 - pending.bid_state.pending.party)
+    continued = step(pending, decider, "respond", "hold")
+    assert continued.play.plays == (first_card, continued.deal.bottom_cards[2], continued.deal.bottom_cards[3])
+    assert continued.play.current_player_id == "A"
+    ended = step(pending, decider, "respond", "go")
+    assert ended.phase == "deal_complete" and ended.play.plays == (first_card,)
 
 
 def test_next_round_rotates_optional_requesters_and_drops_previous_decline():

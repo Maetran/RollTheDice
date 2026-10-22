@@ -11,6 +11,12 @@ async function startBlind(browser, baseURL, language, players) {
   const path = await create(players, { count: 4, target: 11 });
   await expect.poll(() => players.filter(peer => peer.traffic.snapshot?.engine?.actions.includes('request_bloedeln')).length).toBe(2);
   const nonCallers = players.filter(peer => peer.traffic.snapshot.engine.actions.includes('request_bloedeln'));
+  for (const caller of players.filter(peer => peer.traffic.snapshot.engine.actions.includes('show_ready'))) {
+    const role = caller.traffic.snapshot.engine.announcement_roles.strike === caller.traffic.snapshot.viewer.seat
+      ? (language === 'de' ? 'Schlag zeigen' : 'Show strike') : (language === 'de' ? 'Farbe zeigen' : 'Show trump suit');
+    await expect(caller.page.locator('[data-wt-panel]')).toHaveText(role);
+    await expect(caller.page.locator('[data-wt-panel] h3, [data-wt-panel] p')).toHaveCount(0);
+  }
   for (const peer of nonCallers) {
     await expectReachable(peer.page, '[data-watten-action=request_bloedeln]');
     await expect(peer.page.locator('[data-watten-action=request_bloedeln]')).toHaveText('Blödeln?');
@@ -22,6 +28,49 @@ async function startBlind(browser, baseURL, language, players) {
 
 async function inspect(players) {
   await action(players, 'show_ready'); await action(players, 'show_ready');
+  if (players.some(peer => peer.traffic.snapshot.engine.preplay.pending?.kind === 'bloedeln'
+      || peer.traffic.snapshot.engine.preplay.bloedeln_status === 'accepted')) {
+    const callers = players.filter(peer => peer.traffic.snapshot.engine.actions.includes('inspection_ack'));
+    expect(callers).toHaveLength(2);
+    for (const viewport of [{ width: 393, height: 852 }, { width: 320, height: 568 }]) {
+      for (const peer of players) await peer.page.setViewportSize(viewport);
+      for (const caller of callers) {
+        await expectReachable(caller.page, '[data-watten-action=inspection_ack]');
+        await expect.poll(() => caller.page.evaluate(() => {
+          const rect = node => node.getBoundingClientRect();
+          const shown = node => rect(node).width > 0 && rect(node).height > 0 && getComputedStyle(node).visibility !== 'hidden';
+          const overlap = (a, b) => Math.min(a.right, b.right) - Math.max(a.left, b.left) > 2
+            && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 2;
+          const obstacles = [...document.querySelectorAll('.wt-seat-badge, .wt-seat-name, .wt-seat-call-role, '
+            + '.wt-backs > i:not([hidden]), .wt-stock, [data-wt-panel]')].filter(shown);
+          const faces = [...document.querySelectorAll('[data-watten-inspection] .wt-card')];
+          const captions = [...document.querySelectorAll('[data-watten-inspection] figcaption')];
+          const failures = [];
+          if (faces.length !== 2) failures.push('inspection must show exactly two permitted faces');
+          for (const [index, face] of faces.entries()) {
+            const box = rect(face), width = Number.parseFloat(getComputedStyle(face).width);
+            if (width < 51.9) failures.push(`face ${index} too small: ${width}px`);
+            if (box.left < -1 || box.top < -1 || box.right > innerWidth + 1 || box.bottom > innerHeight + 1) failures.push(`face ${index} outside viewport`);
+          }
+          for (const [index, part] of [...faces, ...captions].entries()) {
+            const box = rect(part);
+            for (const obstacle of obstacles) if (overlap(box, rect(obstacle))) {
+              failures.push(`inspection part ${index} overlaps ${obstacle.className || 'back card'} at seat ${obstacle.closest('[data-wt-seat]')?.dataset.wtSeat || '-'}`);
+            }
+          }
+          const ack = document.querySelector('[data-watten-action=inspection_ack]'), ackBox = rect(ack);
+          if (ackBox.width < 44 || ackBox.height < 44 || ackBox.left < 0 || ackBox.top < 0
+            || ackBox.right > innerWidth || ackBox.bottom > innerHeight) failures.push('ACK lacks a complete 44px target');
+          if (overlap(ackBox, rect(document.querySelector('[data-wt-panel]')))) failures.push('ACK overlaps Blödeln panel');
+          if (!ack.contains(document.elementFromPoint(ackBox.x + ackBox.width / 2, ackBox.y + ackBox.height / 2))) failures.push('ACK is covered');
+          return [...new Set(failures)];
+        }), { message: `${viewport.width}px inspection keeps readable faces, role labels and ACK clear of the real Blödeln panel and painted hands` }).toEqual([]);
+      }
+      for (const peer of players) for (const kind of ['preplay_accept', 'preplay_decline']) {
+        if (await peer.page.locator(`[data-watten-action=${kind}]`).count()) await expectReachable(peer.page, `[data-watten-action=${kind}]`);
+      }
+    }
+  }
   await action(players, 'inspection_ack'); await action(players, 'inspection_ack');
   await expect.poll(() => players.every(peer => peer.traffic.snapshot.engine.phase === 'play')).toBe(true);
 }
@@ -74,7 +123,7 @@ for (const language of ['de', 'en']) {
       await expect.poll(() => players.every(peer => peer.traffic.snapshot.engine.preplay.bloedeln_status === 'declined'
         && peer.traffic.snapshot.engine.preplay.pending === null)).toBe(true);
       for (const peer of players) {
-        await expect(peer.page.locator('[data-watten-bloedeln-status=declined]')).toHaveText(language === 'de' ? 'Kein Blödeln' : 'No Blödeln');
+        await expect(peer.page.locator('[data-watten-bloedeln-status=declined]')).toHaveCount(0);
         expect(peer.traffic.snapshot.engine.preplay.bloedeln_cards).toEqual([]);
       }
       await expect.poll(() => players.some(peer => peer.traffic.snapshot.engine.actions.includes('play_card'))).toBe(true);
@@ -92,6 +141,7 @@ for (const language of ['de', 'en']) {
         expect(peer.traffic.snapshot.engine.preplay.pending).toBeNull();
         expect(peer.traffic.snapshot.engine.preplay.bloedeln_cards).toEqual([]);
         await expect(peer.page.locator('[data-watten-preplay-pending=bloedeln]')).toHaveCount(0);
+        await expect(peer.page.locator('[data-watten-bloedeln-status=declined]')).toHaveCount(0);
       }
       const actor = players.find(peer => peer.traffic.snapshot.engine.actions.includes('play_card'));
       await actor.page.locator(`[data-wt-hand] button[data-card="${actor.traffic.snapshot.engine.hand[0].card}"]`).press('Enter');
@@ -101,7 +151,7 @@ for (const language of ['de', 'en']) {
     } finally { await Promise.allSettled(players.map(peer => peer.context.close())); }
   });
 
-  test(`blind ${language}: agreement keeps both bottom cards private until each owner plays their forced card`, async ({ browser, baseURL }) => {
+  test(`blind ${language}: agreement automatically plays the original bottom cards on their owners' turns`, async ({ browser, baseURL }) => {
     const players = [];
     let spectator;
     try {
@@ -118,6 +168,7 @@ for (const language of ['de', 'en']) {
         const cards = peer.traffic.snapshot.engine.preplay.bloedeln_cards;
         expect(cards).toHaveLength(1);
         expect(cards[0].seat).toBe(peer.traffic.snapshot.viewer.seat);
+        expect(cards[0].card).toBe(peer.traffic.snapshot.engine.hand.at(-1).card);
         return { ...cards[0], owner: peer };
       });
       expect(new Set(forced.map(item => item.card)).size).toBe(2);
@@ -131,33 +182,23 @@ for (const language of ['de', 'en']) {
         await expect(peer.page.locator('[data-wt-trick] .wt-trick-card')).toHaveCount(0);
         await expect(peer.page.locator('[data-watten-bloedeln-cards]')).toHaveCount(0);
       }
-      // The leader is informed and may lead any card; the next two seats are
-      // precisely the two blind non-callers. Stop before the fourth informed
-      // player so this test need not reproduce trump-following rules.
-      const played = [];
-      for (let index = 0; index < 3; index++) {
-        const actor = players.find(peer => peer.traffic.snapshot.engine.actions.includes('play_card'));
-        const engine = actor.traffic.snapshot.engine;
-        const required = forced.find(item => item.owner === actor);
-        const card = required?.card || engine.hand[0].card;
-        if (required) {
-          await expect(actor.page.locator(`[data-wt-hand] button[data-card="${card}"]`)).toBeEnabled();
-          for (const other of engine.hand.filter(item => item.card !== card)) {
-            await expect(actor.page.locator(`[data-wt-hand] button[data-card="${other.card}"]`)).toBeDisabled();
-          }
-        }
-        await actor.page.locator(`[data-wt-hand] button[data-card="${card}"]`).press('Enter');
-        played.push({ seat: engine.viewer.seat, card });
-        await expect.poll(() => all.every(peer => peer.traffic.snapshot.engine.current_trick.cards.length === played.length)).toBe(true);
-        for (const peer of all) {
-          expect(peer.traffic.snapshot.engine.current_trick.cards).toEqual(played);
-          await expect(peer.page.locator(`[data-wt-trick] .wt-trick-card[data-card="${card}"]`)).toHaveCount(1);
-          if (peer === spectator) expect(peer.traffic.snapshot.engine.preplay.bloedeln_cards).toEqual([]);
-          for (const item of forced.filter(item => item.owner !== peer && !played.some(play => play.card === item.card))) {
-            await expect(peer.page.locator(`.wt-card[data-card="${item.card}"]`)).toHaveCount(0);
-          }
-        }
+      // One real human plays the informed leader. Both following non-callers
+      // then contribute their original bottom cards without another UI command.
+      const leader = players.find(peer => peer.traffic.snapshot.engine.actions.includes('play_card'));
+      expect(forced.some(item => item.owner === leader)).toBe(false);
+      for (const item of forced) await expect(item.owner.page.locator('[data-wt-hand] button:enabled')).toHaveCount(0);
+      const first = { seat: leader.traffic.snapshot.viewer.seat, card: leader.traffic.snapshot.engine.hand[0].card };
+      const played = [first, ...forced.toSorted((a, b) => ((a.seat - first.seat + 4) % 4)
+        - ((b.seat - first.seat + 4) % 4)).map(({ seat, card }) => ({ seat, card }))];
+      await leader.page.locator(`[data-wt-hand] button[data-card="${first.card}"]`).press('Enter');
+      await expect.poll(() => all.every(peer => peer.traffic.snapshot.engine.current_trick.cards.length === 3)).toBe(true);
+      for (const peer of all) {
+        expect(peer.traffic.snapshot.engine.current_trick.cards).toEqual(played);
+        for (const { card } of played) await expect(peer.page.locator(`[data-wt-trick] .wt-trick-card[data-card="${card}"]`)).toHaveCount(1);
+        if (peer === spectator) expect(peer.traffic.snapshot.engine.preplay.bloedeln_cards).toEqual([]);
       }
+      for (const item of forced) expect(item.owner.traffic.commands.filter(command => command.action === 'watten_command'
+        && command.kind === 'play_card')).toEqual([]);
       expect(forced.every(item => played.some(play => play.seat === item.seat && play.card === item.card))).toBe(true);
       for (const peer of all) await expect(peer.page.locator('[data-watten-bloedeln-status]')).toHaveCount(0);
       await expectClean(all);

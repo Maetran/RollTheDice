@@ -524,6 +524,23 @@ def _finish(state: EngineState, play: PlayState, bidding: BidState) -> EngineSta
                    phase="match_complete" if ledger.winners else "deal_complete")
 
 
+def play_forced_openings(state: EngineState) -> EngineState:
+    """Play consented original bottoms when their first-trick turns arrive.
+
+    This is a trusted consequence of the preceding transition, with no card
+    choice or extra actor command. The caller advances the public opportunity
+    and commits the resulting history together with that transition. Pending
+    preplay decisions and bids retain their ordinary freeze semantics.
+    """
+    if state.phase != "play" or state.preplay_request is not None or state.play.tricks:
+        return state
+    play = state.play
+    forced = dict(play.forced_opening)
+    while not play.tricks and (card := forced.get(play.current_seat)) is not None:
+        play = play_card(play, state.bid_state, play.current_player_id, card)
+    return state if play is state.play else replace(state, play=play)
+
+
 def _digest(command: EngineCommand) -> str:
     data = [command.deal_id, command.opportunity, command.phase, command.kind, command.value, command.private_opportunity]
     return hashlib.sha256(json.dumps(data, separators=(",", ":"), ensure_ascii=True).encode("ascii")).hexdigest()
@@ -678,6 +695,7 @@ def apply_command(state: EngineState, actor: EngineActor, command: EngineCommand
     else:
         raise WattenEngineError("watten_action_unavailable")
     if kind != "partner_feedback":
+        changed = play_forced_openings(changed)
         changed = replace(changed, opportunity=state.opportunity + 1)
     ack = CommandAck(command.command_id, state.deal_id, changed.opportunity)
     cached = CachedAck(actor.player_id, actor.account_id, digest, ack)

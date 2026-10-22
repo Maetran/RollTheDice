@@ -1,0 +1,19 @@
+/* Showing the bottom card belongs beside the hand that will be revealed. */
+html[data-game="watten"][data-watten-active="true"] .wt-table:not([data-phase="match_complete"][data-round-stage="ready"]) .wt-end-sheet > .wt-panel:has([data-watten-action="show_ready"]) {
+  translate: none;
+}
+html[data-game="watten"][data-watten-active="true"] .wt-table:not([data-phase="match_complete"][data-round-stage="ready"]) .wt-end-sheet > .wt-panel > .wt-announce:has(> [data-watten-action="show_ready"]) {
+  position: fixed; inset: auto;
+  right: max(12px, calc(50vw - var(--wt-hand-w) * 2.5 - 72px), env(safe-area-inset-right, 0px));
+  bottom: calc(var(--wt-hand-w) * .6 + max(12px, env(safe-area-inset-bottom, 0px)));
+  translate: none; width: max-content; max-width: 104px; margin: 0; z-index: 27;
+}
+html[data-game="watten"][data-watten-active="true"] .wt-table .wt-announce > [data-watten-action="show_ready"] {
+  min-width: 72px; min-height: 44px; padding: 8px 12px; margin: 0;
+}
+@media (orientation: landscape) and (max-height: 700px) {
+  html[data-game="watten"][data-watten-active="true"] .wt-table:not([data-phase="match_complete"][data-round-stage="ready"]) .wt-end-sheet > .wt-panel > .wt-announce:has(> [data-watten-action="show_ready"]) {
+    right: max(12px, calc((100vw - var(--wt-rail-width)) / 2 - var(--wt-hand-w) * 2.15 - 72px), env(safe-area-inset-right, 0px));
+    bottom: calc(var(--wt-hand-w) * .65 + 30px + env(safe-area-inset-bottom, 0px));
+  }
+}

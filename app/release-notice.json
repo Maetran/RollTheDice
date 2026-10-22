@@ -1,29 +1,31 @@
 {
   "kind": "usability",
-  "games": ["watten"],
-  "summary_de": "Watten: mehr Platz auf dem Handy, klarer Warteraum, bewusste Blödeln-Wahl und kurze Rundenrückschau.",
-  "summary_en": "Watten: more room on mobile, a clear waiting room, explicit Blödeln choices and a brief review between deals.",
+  "games": [
+    "watten"
+  ],
+  "summary_de": "Watten: größere Karten, übersichtliche Stichstapel und klarere Aktionen. Blödeln spielt die unterste Karte automatisch.",
+  "summary_en": "Watten: larger cards, clearer trick piles and actions. Blödeln automatically plays the bottom card.",
   "player_notes": {
     "de": {
-      "title": "WATTEN – Mehr Platz und klare Abläufe",
+      "title": "WATTEN – Klarer Tisch und größere Karten",
       "changes": [
-        "Der mobile Spielkopf zeigt kompakte Teamstände und übersichtliche Symbole. Verlassen bleibt mit Bestätigung erreichbar.",
-        "Im Warteraum entfällt der grosse Seitenkopf. Sprache, Regeln und Sprachchat bleiben direkt im Wartebereich erreichbar.",
-        "Ausgespielte Karten und die Stichrückschau sind im Hochformat grösser. Laufende Spielhinweise treten zurück; die Einführung bleibt erhalten.",
-        "Auch der blinde Partner darf am eigenen Kartenzug bieten. Halten, Gehen und Aufbieten als Antwort bleiben beim wissenden Spieler.",
-        "Beide Nichtansager können sofort «Blödeln?» anfragen. Erst eine offene Anfrage wartet auf Ja/Nein; ohne Anfrage geht es normal los. Pflichtkarten werden erst beim Ausspielen gezeigt.",
-        "Nach einer Gabe wird zuerst abgeräumt. Schlag, Farbe und der Rechte bleiben etwa drei Sekunden sichtbar; danach werden automatisch neue Karten gegeben. Auch das Endergebnis wartet auf das Abräumen."
+        "Im Hochformat teilen sich Punkte, Verlassen und Chat eine Reihe. Im mobilen Querformat sitzen die Bedienelemente links und die Spieler gegenüber.",
+        "Größere Handkarten und Fächer öffnen sich von jedem Bildschirmrand zur Tischmitte. Auch der Stich nutzt im Querformat mehr Platz.",
+        "Ausgespielte Karten liegen als versetzter Stapel nach ihren Spielerplätzen. Die Gewinnerkarte ist deutlich markiert und bleibt an ihrem Platz.",
+        "Beim Einschauen genügt Schlag zeigen oder Farbe zeigen neben der eigenen Hand. Die Rechter-Anzeige erscheint erst beim Spielen und verdeckt keine Namen.",
+        "Die Auskunft deines Partners steht mit seinem Namen direkt über Halten, Gehen und Aufbieten.",
+        "Bei vereinbartem Blödeln wird die ursprüngliche unterste Karte automatisch im ersten Stich gespielt, sobald ihr Besitzer am Zug ist."
       ]
     },
     "en": {
-      "title": "WATTEN – More room and clearer play",
+      "title": "WATTEN – A clearer table and larger cards",
       "changes": [
-        "The mobile table header has compact team scores and orderly icons. Leaving still asks for confirmation.",
-        "The large page header is hidden in the waiting room. Language, rules and voice chat stay directly available there.",
-        "Played cards and trick review are larger in portrait. Ongoing game hints are quieter; the introduction stays available.",
-        "The blind partner may also bid on their own card turn. Hold, fold and counterbid responses stay with the informed player.",
-        "Both non-callers can immediately request Blödeln. Only an open request waits for yes/no; without one, play starts normally. Forced cards are revealed only when played.",
-        "After a deal, cards are collected first. Strike, suit and the Rechter remain visible for about three seconds before new cards are dealt automatically. The match result also waits for collection."
+        "Portrait scores, leave and chat share one row. In mobile landscape the controls sit on the left and players face each other.",
+        "Larger hand cards and fans open from each screen edge toward the table centre. Landscape tricks use more space too.",
+        "Played cards form an offset pile that follows the player seats. The winning card is clearly marked and stays in its original position.",
+        "Inspection starts with Show strike or Show trump suit beside your own hand. The Rechter reference appears only during play and keeps names clear.",
+        "Your partner’s advice appears with their name directly above hold, fold and counterbid.",
+        "When Blödeln is agreed, each original bottom card is played automatically on its owner’s first turn in the first trick."
       ]
     }
   }
