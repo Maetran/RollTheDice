@@ -299,8 +299,11 @@ bei beiden die ursprüngliche unterste Karte automatisch im ersten Stich
 ausgespielt, sobald sie am Zug sind, auch wenn eine andere Farbe ausgespielt wurde.
 Eine Kartenauswahl gibt es dabei nicht. Jede
 Pflichtkarte wird für die anderen erst beim tatsächlichen Ausspielen sichtbar.
-CPUs fragen und antworten pro Blatt stabil zufällig mit 50 % Wahrscheinlichkeit,
-unabhängig von ihren Karten; Warten ersetzt keine menschliche Antwort.
+Sind beide Nicht-Einschauer CPUs, fragt ungefähr in jedem dritten Blatt eine
+nach Blödeln; jede CPU fragt mit rund 18 % Wahrscheinlichkeit und antwortet
+weiterhin mit 50 % mit Ja. Diese Wahl bleibt pro Blatt gleich und verwendet
+keine verdeckten Karten. Status und Anfrage nennen die tatsächlich Beteiligten;
+Warten ersetzt keine menschliche Antwort.
 “Allow a redeal” is a separate table option for two or four players, off by
 default. Until the first card is played, both callers may agree, including after
 inspection: their old hands are shuffled into the remaining stock, then each
@@ -315,8 +318,10 @@ after inspection. A no declines Blödeln for this hand without an extra status
 message. A yes automatically plays each original bottom card on its owner's
 first turn, even when a different suit is led; there is no card choice.
 Others see each forced card only when it is actually played.
-CPUs make a stable random 50% request/response choice per deal, independent of
-their cards; waiting never replaces a human answer.
+With two CPU non-lookers, roughly one in three deals gets a Blödeln request:
+each CPU asks about 18% of the time and still answers yes with a 50% chance.
+The choice stays stable for the deal and uses no hidden cards. Requests and
+status messages name the actual participants; waiting never replaces a human answer.
 
 Nach einer Gabe wird zuerst der letzte Stich abgeräumt. Schlag, Farbe und der
 Rechte werden anschliessend etwa drei Sekunden für alle aufgedeckt; danach

@@ -953,7 +953,11 @@ function preserveFocus(update) {
 function liveMessage(snapshot, engine, actions) {
   if (snapshot.paused) return t(snapshot.can_resume ? "pause.self" : "pause.title");
   if (session.callAnnouncement) return session.callAnnouncement;
-  if (engine.preplay?.bloedeln_consent?.pending) return t("roundOptions.bloedeln.waitBoth");
+  if (engine.preplay?.pending?.kind === "bloedeln" && !actions.includes("preplay_accept")) {
+    return t("roundOptions.bloedeln.waitingFor", {
+      name: snapshot.room.seats[engine.preplay.pending.responder]?.name || t("seat.unknown"),
+    });
+  }
   if (actions.includes("preplay_accept") && engine.preplay?.pending) {
     return t(`roundOptions.${engine.preplay.pending.kind}.pending`, { name: snapshot.room.seats[engine.preplay.pending.requester]?.name || t("seat.unknown") });
   }

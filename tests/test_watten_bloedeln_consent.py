@@ -202,7 +202,29 @@ def test_cpu_coin_is_stable_per_deal_and_never_reads_hand_strength_or_secret_cal
                 variants.append(_bloedeln_coin(snapshot, purpose))
             assert variants[0] == variants[1]
             coins.append(variants[0])
-        assert 40 < sum(coins) < 88
+        assert (10 < sum(coins) < 40) if purpose == "request" else (40 < sum(coins) < 88)
+
+
+def test_two_cpu_noncallers_request_in_about_one_third_of_deals_and_answers_stay_even():
+    state = start_match(cpu_recipe(4, "ladinisch", True), "frequency", dealt(), first_dealer="A")
+    snapshots = [read_personal_view(cpu_view(state, player_id=player), player_id=player) for player in "CD"]
+    requests = [0, 0]
+    answers = [0, 0]
+    combined = 0
+    count = 4096
+    for index in range(count):
+        choices = []
+        for seat, original in enumerate(snapshots):
+            snapshot = replace(original, deal_id=f"frequency-{index}")
+            choice = _bloedeln_coin(snapshot, "request")
+            assert _bloedeln_coin(replace(snapshot, opportunity=index + 10), "request") == choice
+            requests[seat] += choice
+            answers[seat] += _bloedeln_coin(snapshot, "answer")
+            choices.append(choice)
+        combined += any(choices)
+    assert all(.16 < value / count < .21 for value in requests)
+    assert .30 < combined / count < .36
+    assert all(.47 < value / count < .53 for value in answers)
 
 
 def test_cpu_may_request_or_answer_from_hidden_hand_but_never_bypasses_pending_guard(monkeypatch):

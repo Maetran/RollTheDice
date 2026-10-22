@@ -74,7 +74,8 @@ def baseline(view: dict, legal_options: tuple[str, ...]) -> CpuProposal | CpuWai
     """Fixed 7/Hearts call; first remaining legal card; never bid, always hold.
 
     The oracle supplies legality only. No card is ranked using hidden state.
-    Partner feedback is deliberately absent from this named simple baseline.
+    Optional preplay requests are declined. Partner feedback is deliberately
+    absent from this named simple baseline.
     """
     player = view["viewer"]["player_id"]
 
@@ -82,6 +83,8 @@ def baseline(view: dict, legal_options: tuple[str, ...]) -> CpuProposal | CpuWai
         return CpuProposal(player, view["deal_id"], view["opportunity"], view["phase"], kind, value)
 
     actions = view["actions"]
+    if "preplay_decline" in actions:
+        return proposal("preplay_decline")
     if "announce_strike" in actions:
         return proposal("announce_strike", "7")
     if "announce_colour" in actions:

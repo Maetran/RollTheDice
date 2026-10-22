@@ -184,6 +184,19 @@ test("stable table updates preserve nodes, servings and positions without a deco
   assert.doesNotMatch(f.container.markup, /wt-decor-toolbar|data-watten-decor-panel/);
 });
 
+test("automatic props leave the actual rest packet and its rotated card corners clear", () => {
+  const f = fixture();
+  const stock = new Node(f.dom, rect(89, 32, 24, 38));
+  const paintedCorner = new Node(f.dom, rect(84, 28, 34, 46));
+  const protectedNodes = f.root.querySelectorAll;
+  f.root.querySelectorAll = selector => [...protectedNodes(selector),
+    ...(selector.includes(".wt-stock") ? [stock] : []), ...(selector.includes(".wt-stock > i") ? [paintedCorner] : [])];
+  f.update("play");
+  const geometry = { regions: [{ ...rect(0, 0, 800, 260), name: "table" }], protectedRects: [stock.bounds, paintedCorner.bounds] };
+  assert.ok(f.props().some(node => !node.hidden));
+  for (const node of f.props().filter(node => !node.hidden)) assert.equal(fitsDecor(node.getBoundingClientRect(), geometry), true);
+});
+
 test("desktop props grow with their protected footprint and reposition safely on a phone resize", () => {
   const f = fixture({ width: 1280, height: 800 }); f.update("play");
   for (const [width, height, side] of [[1280, 800, 88], [320, 640, 56], [1280, 800, 88]]) {

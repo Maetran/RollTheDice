@@ -75,6 +75,7 @@ BAD_FEEDBACK: Final = 0.4
 # Match equity: each later deal is won evenly and usually worth two points.
 _STAKE_WEIGHTS: Final = ((2, 0.6), (3, 0.3), (4, 0.1))
 _EQUITY_LIMIT: Final = 48
+_BLOEDELN_REQUEST_CUTOFF: Final = int((1 - (2 / 3) ** 0.5) * (1 << 64))
 _CRITICAL_SCORE: Final = {"hearts-K": 12.0, WELI: 11.0, "acorns-7": 10.0}
 _KIND_SCORE: Final = {CardKind.RECHTER: 9.0, CardKind.STRIKE: 6.0}
 _NORMAL_SCORE: Final = {"A": 1.0, "K": 0.5}
@@ -601,13 +602,18 @@ def _choose_colour(ctx: _Context) -> str:
 
 
 def _bloedeln_coin(snapshot: SeatSnapshot, purpose: str) -> bool:
-    """One unbiased per-deal/seat choice, stable across snapshots and restarts.
+    """One per-deal/seat choice, stable across snapshots and restarts.
 
     The server's random deal ID supplies entropy. Neither hand strength nor
-    any secret call enters this optional request/answer coin.
+    any secret call enters this optional request/answer coin. Each CPU asks
+    with probability 1 - sqrt(2/3), so two eligible CPUs ask in about one
+    third of deals. Answers retain their independent 50% choice.
     """
     material = json.dumps(["watten-bloedeln-v1", snapshot.deal_id, snapshot.player_id, purpose], separators=(",", ":"))
-    return bool(hashlib.sha256(material.encode("utf-8")).digest()[0] & 1)
+    digest = hashlib.sha256(material.encode("utf-8")).digest()
+    if purpose == "request":
+        return int.from_bytes(digest[:8], "big") < _BLOEDELN_REQUEST_CUTOFF
+    return bool(digest[0] & 1)
 
 
 def _preplay_answer(ctx: _Context) -> str:

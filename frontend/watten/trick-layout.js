@@ -26,7 +26,10 @@ export function fitPortraitTrick({ bounds, obstacles = [], count, positions = nu
   const blocked = obstacles.filter(usable).map(rect => ({ left: rect.left - padding, right: rect.right + padding,
     top: rect.top - padding, bottom: rect.bottom + padding }));
   const seats = positions || (count === 2 ? ["bottom", "top"] : count === 3 ? ["bottom", "left", "right"] : ["bottom", "left", "top", "right"]);
-  for (const spread of [.52, .44, .36]) for (let cardWidth = Math.floor(desiredWidth); cardWidth >= minimumWidth; cardWidth--) {
+  // Keep the pile on the table's centre line even when a captured packet would
+  // permit a larger face only at a screen edge. Use that edge space only when
+  // no readable centred composition can fit at all.
+  for (const centred of [true, false]) for (const spread of [.52, .44, .36]) for (let cardWidth = Math.floor(desiredWidth); cardWidth >= minimumWidth; cardWidth--) {
     const cardHeight = cardWidth * RATIO;
     // The side cards reach towards their owners; the top and bottom cards
     // share a centre line. Captions stay outside the other card faces while
@@ -49,7 +52,7 @@ export function fitPortraitTrick({ bounds, obstacles = [], count, positions = nu
     const preferredY = bounds.top + bounds.height * .56 - height / 2;
     const clampX = x => Math.max(bounds.left, Math.min(bounds.right - width, x));
     const clampY = y => Math.max(bounds.top, Math.min(bounds.bottom - height, y));
-    const xs = [...new Set([preferredX, bounds.left, bounds.right - width,
+    const xs = centred ? [preferredX] : [...new Set([preferredX, bounds.left, bounds.right - width,
       ...blocked.flatMap(rect => [rect.left - width, rect.right])].map(clampX))];
     const ys = [...new Set([preferredY, bounds.top, bounds.bottom - height,
       ...blocked.flatMap(rect => [rect.top - height, rect.bottom])].map(clampY))];

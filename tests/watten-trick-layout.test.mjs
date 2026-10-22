@@ -92,6 +92,16 @@ test("a narrow free column retains a spatial pile instead of becoming a grid", (
   assert.ok(fit.width <= fit.cardWidth * 2.5);
 });
 
+test("a later portrait trick stays centred above captured packets instead of growing against the right screen edge", () => {
+  const bounds = rect(12, 112, 416, 832);
+  const obstacles = [rect(12, 112, 366, 270), rect(12, 650, 150, 150), rect(12, 800, 366, 130)];
+  const fit = fitPortraitTrick({ bounds, obstacles, count: 4, minimumWidth: 76 });
+  valid(fit, bounds, obstacles);
+  assert.equal(fit.left + fit.width / 2, bounds.left + bounds.width / 2);
+  assert.ok(fit.cardWidth >= 76);
+  assert.ok(fit.cardWidth < 104, "readable central faces take priority over maximum-sized off-centre faces");
+});
+
 test("the small noninteractive prompt uses spare wood without overlapping a trick or a control", () => {
   const bounds = rect(12, 156, 296, 390), cards = rect(30, 270, 260, 150), hand = rect(12, 450, 296, 96);
   const prompt = fitPortraitPrompt(bounds, [cards, hand]);

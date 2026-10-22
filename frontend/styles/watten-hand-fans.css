@@ -42,6 +42,10 @@ html[data-game="watten"][data-watten-active="true"] .wt-hand > .wt-hand-card {
     rotate(calc(var(--wt-fan-index) * 6deg));
   transform-origin: 50% 115%;
 }
+html[data-game="watten"][data-watten-active="true"] .wt-hand > .wt-hand-card--back {
+  background: #f3eadd var(--wt-back) center / 170% auto;
+  border: 3px solid #f3eadd;
+}
 
 /* Portrait opponents use the existing size breakpoints at ten percent more.
    Side hands reach in from the frame, leaving the centre for the trick. */

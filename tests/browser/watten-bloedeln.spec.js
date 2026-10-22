@@ -75,24 +75,57 @@ async function inspect(players) {
   await expect.poll(() => players.every(peer => peer.traffic.snapshot.engine.phase === 'play')).toBe(true);
 }
 
-async function request(players, nonCallers) {
+async function request(players, nonCallers, language, observers = []) {
   const requester = nonCallers[0];
   await requester.page.locator('[data-watten-action=request_bloedeln]').click();
-  await expect.poll(() => players.every(peer => peer.traffic.snapshot.engine.preplay.pending?.kind === 'bloedeln')).toBe(true);
+  const all = [...players, ...observers];
+  await expect.poll(() => all.every(peer => peer.traffic.snapshot?.engine?.preplay.pending?.kind === 'bloedeln')).toBe(true);
   const pending = requester.traffic.snapshot.engine.preplay.pending;
   const responder = nonCallers.find(peer => peer.traffic.snapshot.viewer.seat === pending.responder);
   expect(pending.requester).toBe(requester.traffic.snapshot.viewer.seat);
   expect(responder).toBeTruthy();
-  for (const peer of players) {
+  for (const peer of all) {
     const question = peer.page.locator('[data-watten-preplay-pending=bloedeln]');
     await expect(question).toBeVisible();
-    await expect(question.locator('h3')).toContainText(requester.user.username);
+    if (peer === requester) {
+      await expect(question.locator('h3')).toContainText(language === 'de' ? 'Du fragst' : 'You ask');
+      await expect(question.locator('h3')).toContainText(responder.user.username);
+    } else {
+      await expect(question.locator('h3')).toContainText(requester.user.username);
+      if (peer !== responder) await expect(question.locator('h3')).toContainText(responder.user.username);
+    }
+    const explanation = question.locator('p').filter({ hasText: language === 'de'
+      ? 'ursprüngliche unterste Karte' : 'original bottom cards' });
+    await expect(explanation).toHaveCount(nonCallers.includes(peer) ? 1 : 0);
     await expect(peer.page.locator('[data-watten-action=preplay_accept]')).toHaveCount(peer === responder ? 1 : 0);
     await expect(peer.page.locator('[data-watten-action=preplay_decline]')).toHaveCount(peer === responder ? 1 : 0);
-    expect(peer.traffic.snapshot.engine.actions).not.toContain('play_card');
-    expect(peer.traffic.snapshot.engine.actions).not.toContain('bid');
+    const actions = peer.traffic.snapshot.engine.actions || [];
+    expect(actions).not.toContain('play_card');
+    expect(actions).not.toContain('bid');
+    if (peer !== responder) await expect(peer.page.locator('[data-wt-live]')).toHaveText(language === 'de'
+      ? `${responder.user.username} entscheidet über Blödeln.` : `${responder.user.username} is deciding on Blödeln.`);
   }
   return { requester, responder };
+}
+
+async function expectNamedAgreement(peers, nonCallers, language) {
+  for (const peer of peers) {
+    const status = peer.page.locator('[data-watten-bloedeln-status=accepted]');
+    await expect(status).toBeVisible();
+    if (nonCallers.includes(peer)) {
+      const other = nonCallers.find(player => player !== peer);
+      await expect(status).toHaveText(language === 'de' ? `Du und ${other.user.username} blödelt.`
+        : `You and ${other.user.username} are playing Blödeln.`);
+    } else {
+      for (const player of nonCallers) await expect(status).toContainText(player.user.username);
+      await expect(status).not.toContainText(language === 'de' ? 'Du und' : 'You and');
+      for (const player of peers.filter(player => !nonCallers.includes(player))) {
+        await expect(status).not.toContainText(player.user.username);
+      }
+    }
+    await expect(status).not.toContainText('Ihr blödelt');
+    await expect(peer.page.locator('[data-watten-action=preplay_accept], [data-watten-action=preplay_decline]')).toHaveCount(0);
+  }
 }
 
 async function expectClean(players) {
@@ -108,7 +141,7 @@ for (const language of ['de', 'en']) {
     const players = [];
     try {
       const { nonCallers } = await startBlind(browser, baseURL, language, players);
-      const { responder } = await request(players, nonCallers);
+      const { responder } = await request(players, nonCallers, language);
       // The open request blocks card/bid actions, while both callers can still inspect.
       await inspect(players);
       for (const peer of players) {
@@ -156,14 +189,16 @@ for (const language of ['de', 'en']) {
     let spectator;
     try {
       const { path, nonCallers } = await startBlind(browser, baseURL, language, players);
-      const { responder } = await request(players, nonCallers);
-      await responder.page.locator('[data-watten-action=preplay_accept]').click();
-      await expect.poll(() => players.every(peer => peer.traffic.snapshot.engine.preplay.bloedeln_status === 'accepted')).toBe(true);
-      await inspect(players);
       spectator = await player(mobile(browser), baseURL, language);
       await spectator.page.goto(`${path}/zuschauen`);
       await expect(spectator.page.locator('[data-wt-table]')).toBeVisible();
       const all = [...players, spectator];
+      const { responder } = await request(players, nonCallers, language, [spectator]);
+      await responder.page.locator('[data-watten-action=preplay_accept]').click();
+      await expect.poll(() => all.every(peer => peer.traffic.snapshot.engine.preplay.bloedeln_status === 'accepted')).toBe(true);
+      await expectNamedAgreement(all, nonCallers, language);
+      await inspect(players);
+      await expectNamedAgreement(all, nonCallers, language);
       const forced = nonCallers.map(peer => {
         const cards = peer.traffic.snapshot.engine.preplay.bloedeln_cards;
         expect(cards).toHaveLength(1);

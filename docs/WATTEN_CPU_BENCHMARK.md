@@ -46,7 +46,9 @@ personal DTO. Advice proposals run before simultaneous primary proposals, which
 are then recomputed. No hidden engine object enters the policy interface.
 
 The named baseline announces Seven/Hearts, plays the **first remaining legal
-card**, never initiates a bid, always holds and sends no partner advice.
+card**, never initiates a bid, always holds, declines optional preplay requests
+and sends no partner advice. The explicit decline keeps current Blödeln consent
+from stalling the measurement; it does not add tactical card knowledge.
 `legal_cards()` supplies legality only; the baseline does not rank cards using
 the real call, foreign hands or stock. This baseline does not exercise policy
 responses to opposing bids. It is a deliberately simple comparator, not a
