@@ -141,6 +141,49 @@ test("closed review uses a clear 44px target and leaves a separate winner label 
   assert.equal(overlap(winner, history), false);
 });
 
+test("the actual 320x568 own-winner layout retains readable faces beside its captured packet", () => {
+  // Native completed-trick bounds from the 902518a35095 browser regression.
+  // These include the current inward fans and the real 96px own badge, not
+  // the older fixture's translated header/seat approximations.
+  const bounds = rect(12, 112, 296, 448);
+  const obstacles = [
+    rect(38.39062, 150.39062, 24, 38), // stock
+    rect(12, 416, 96, 24), // own badge
+    rect(6, 188, 84, 44), // left badge and four painted backs
+    rect(7.69865, 246.51146, 60.52187, 43.46815),
+    rect(10.29508, 258.32944, 57.46836, 38.05453),
+    rect(10.29508, 267.45978, 57.46836, 38.05453),
+    rect(7.69865, 273.86414, 60.52187, 43.46814),
+    rect(147.99219, 112, 24, 24), // top badge and four painted backs
+    rect(151.95006, 148.26215, 43.46817, 60.52188),
+    rect(145.54570, 150.85858, 38.05455, 57.46835),
+    rect(136.41537, 150.85858, 38.05455, 57.46835),
+    rect(124.59740, 148.26215, 43.46817, 60.52188),
+    rect(230, 188, 84, 44), // right badge and four painted backs
+    rect(251.79510, 273.87976, 60.52185, 43.46814),
+    rect(252.25218, 267.47540, 57.46837, 38.05453),
+    rect(252.25218, 258.34506, 57.46837, 38.05453),
+    rect(251.79510, 246.52708, 60.52185, 43.46815),
+    rect(150, 408, 158, 44), // actual enabled stake button
+    rect(8, 440, 304, 116), // own hand
+    // The packet frame is now at x12/y330. Protect the complete measured
+    // painted-card and counter envelope as well, beyond its 30px frame.
+    rect(3.4706, 324.9458, 47.0588, 59.5386),
+  ];
+  const result = fitPortraitTrickView({ bounds, obstacles, count: 4, minimumWidth: 64, labelHeight: 24, history: true });
+  assert.ok(result.fit, "an own-seat winner keeps the spatial pile instead of falling back to 52px faces");
+  assert.ok(result.fit.cardWidth >= 64);
+  assert.equal(result.fit.mode, "stack");
+  assert.ok(result.historyFit);
+  assert.equal(result.historyFit.height, 44);
+  const visible = [result.fit, result.historyFit, result.labelFit].filter(Boolean);
+  for (const [index, item] of visible.entries()) {
+    assert.ok(item.left >= bounds.left && item.right <= bounds.right && item.top >= bounds.top && item.bottom <= bounds.bottom);
+    for (const obstacle of obstacles) assert.equal(overlap(item, obstacle), false);
+    for (const other of visible.slice(index + 1)) assert.equal(overlap(item, other), false);
+  }
+});
+
 test("review toggle schedules layout immediately and its listener is cleaned up", () => {
   const callbacks = new Map(), history = { addEventListener: (type, callback) => callbacks.set(type, callback), removeEventListener: type => callbacks.delete(type) };
   const table = { querySelector: selector => selector === "[data-wt-history]" ? history : null };
