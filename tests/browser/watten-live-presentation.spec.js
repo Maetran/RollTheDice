@@ -1,11 +1,29 @@
 const { test, expect } = require('@playwright/test');
 const { player, create, normalCall, playOne } = require('./helpers/watten-journey.cjs');
+const { inspectTrickPile } = require('./helpers/watten-trick-pile.cjs');
 const { expectReachable } = require('./table-viewport');
 
 test.setTimeout(90_000);
 
+async function expectStablePrefix(peer, expected, previous, { paintedSelector, winner } = {}) {
+  const result = await inspectTrickPile(peer.page, { expected, anchorSeat: peer.traffic.snapshot.viewer.seat, paintedSelector, winner });
+  expect(result.errors, `${expected.length}-card prefix from viewer seat ${peer.traffic.snapshot.viewer.seat}`).toEqual([]);
+  for (const earlier of previous || []) {
+    const current = result.cards.find(card => card.card === earlier.card);
+    expect(current, `previous card ${earlier.card} remains in the pile`).toBeTruthy();
+    for (const key of ['left', 'top', 'width', 'height']) {
+      expect(Math.abs(current[key] - earlier[key]), `${earlier.card}: relative ${key} remains stable`).toBeLessThanOrEqual(1);
+    }
+    expect(current.z, `${earlier.card}: marking the winner never raises an earlier card`).toBe(earlier.z);
+    for (let index = 0; index < earlier.angle.length; index++) {
+      expect(Math.abs(current.angle[index] - earlier.angle[index]), `${earlier.card}: angle remains stable`).toBeLessThanOrEqual(.001);
+    }
+  }
+  return result.cards;
+}
+
 for (const viewport of [{ width: 440, height: 956 }, { width: 956, height: 440 }, { width: 568, height: 320 }]) {
-  test(`normal motion ${viewport.width}x${viewport.height}: a real trick keeps its labels, winner and card proportions during collection`, async ({ browser, baseURL }, info) => {
+  test(`normal motion ${viewport.width}x${viewport.height}: every sequential prefix stays one ordered pile through winner collection`, async ({ browser, baseURL }, info) => {
     const players = [];
     try {
       const wrapped = { newContext: options => browser.newContext({ ...options, viewport, serviceWorkers: 'block' }) };
@@ -16,9 +34,18 @@ for (const viewport of [{ width: 440, height: 956 }, { width: 956, height: 440 }
       }
       await create(players, { determination: 'normal', target: 15 });
       await normalCall(players);
-      for (let index = 0; index < 3; index++) await playOne(players);
-      const page = players[0].page;
-      await expect(page.locator('[data-wt-trick] > .wt-trick-card')).toHaveCount(3);
+      const geometry = players.map(() => null);
+      for (let count = 1; count <= 3; count++) {
+        await playOne(players);
+        await expect.poll(() => players.every(peer => peer.traffic.snapshot.engine.current_trick.cards.length === count)).toBe(true);
+        const expected = players[0].traffic.snapshot.engine.current_trick.cards;
+        for (const [index, peer] of players.entries()) {
+          expect(peer.traffic.snapshot.engine.current_trick.cards).toEqual(expected);
+          await expect(peer.page.locator('[data-wt-trick] > .wt-trick-card')).toHaveCount(count);
+          await expect(peer.page.locator('[data-wt-motion="arrive"]')).toHaveCount(0);
+          geometry[index] = await expectStablePrefix(peer, expected, geometry[index]);
+        }
+      }
       for (const item of players) await item.page.evaluate(() => {
         const animate = Element.prototype.animate;
         Element.prototype.animate = function (...args) {
@@ -28,8 +55,11 @@ for (const viewport of [{ width: 440, height: 956 }, { width: 956, height: 440 }
         };
       });
       await playOne(players);
+      await expect.poll(() => players.every(peer => peer.traffic.snapshot.engine.last_trick?.cards.length === 4)).toBe(true);
+      const acceptedTrick = players[0].traffic.snapshot.engine.last_trick;
       const winnerPositions = new Set();
       for (const [index, item] of players.entries()) {
+        expect(item.traffic.snapshot.engine.last_trick).toEqual(acceptedTrick);
         const group = item.page.locator('[data-wt-motion="collect"]');
         await expect(group).toHaveCount(1);
         const differences = await group.evaluate(node => {
@@ -58,6 +88,9 @@ for (const viewport of [{ width: 440, height: 956 }, { width: 956, height: 440 }
           return errors;
         });
         expect(differences).toEqual([]);
+        await expectStablePrefix(item, acceptedTrick.cards, geometry[index], {
+          paintedSelector: '[data-wt-motion="collect"]', winner: acceptedTrick.winner,
+        });
         winnerPositions.add(await group.locator('.is-winning-card').getAttribute('data-position'));
         if (index === 0) await item.page.screenshot({ path: info.outputPath(`live-collection-${viewport.width}x${viewport.height}.png`) });
         await group.evaluate(node => node.getAnimations()[0].finish());

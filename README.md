@@ -225,8 +225,11 @@ die freie Fläche zwischen den Spielern. Alle Handfächer öffnen sich zur
 Tischmitte; ihre gedachte Griffseite zeigt zum jeweiligen Bildschirmrand.
 Die optionale Rechter-Anzeige erscheint erst nach
 der Ansage beziehungsweise dem Einschauen, ohne zusätzliche verdeckte Karte
-während der Vorbereitung. Ausgespielte Karten liegen mit gut sichtbaren Kartenflächen als lockerer,
-überlappender Stapel in Richtung ihres Spielers; die Gewinnerkarte erhält einen klaren Rahmen und bleibt an ihrer Position und in derselben Überlappungsreihenfolge.
+während der Vorbereitung. Ausgespielte Karten bilden ab der zweiten Karte einen zusammenhängenden,
+überlappenden Stapel. Im Hochformat zeigen sie zu ihrem Spieler; im Querformat
+liegen sie von links nach rechts in Spielreihenfolge. Neue Karten liegen über früheren;
+die Zahl beim Spielernamen zeigt die Spielreihenfolge. Die Gewinnerkarte erhält
+einen klaren Rahmen und bleibt an ihrer Position und in derselben Überlappungsreihenfolge.
 Nach vollständiger Ansage oder abgeschlossenem Einschauen darf am eigenen
 Kartenzug schon vor der ersten Karte geboten werden. Ein nach Halten vereinbartes
 Schöneres bleibt bis zur ersten Karte möglich und setzt den Einsatz auf zwei zurück.
@@ -269,7 +272,10 @@ the players in landscape. Every hand fan opens toward the table centre, with
 its imaginary grip pointing toward that player's screen edge.
 The optional Rechter reference appears after calling
 or inspection, without an extra face-down placeholder during preparation. Played cards
-form a looser overlapping pile toward their player's seat, exposing more of each face; the winning card is outlined in its original position and overlap order.
+form one connected, overlapping pile from the second card onward. In portrait they
+point toward their player; in landscape they run from left to right in play order.
+New cards overlap earlier ones; the number beside each name shows the play order.
+The winning card is outlined in its original position and overlap order.
 Once calling or inspection is complete, the player on their card turn may bid
 before the first card. An agreed redeal after holding remains possible until
 the first card and resets the stake to two.

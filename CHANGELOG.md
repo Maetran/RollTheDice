@@ -46,6 +46,8 @@ throws remain intact; drawing does not shorten the last public card’s display.
 **Deutsch:** Echte Spielabläufe mit normalen Kartenanimationen wurden im mobilen
 Hoch- und Querformat geprüft. Kartenkopien behalten Namen, Siegerfarbe, Drehung
 und Proportionen. Der Stich bleibt auch mit mehreren gewonnenen Paketen mittig.
+Auch Teilstiche bilden einen zusammenhängenden Stapel in Spielreihenfolge;
+Zahlen neben den Namen machen die Reihenfolge klar, ohne die Gewinnerkarte zu verschieben.
 Die eigene verdeckte Hand ist vor dem Einschauen als Kartenrücken sichtbar;
 Schlag/Farbe zeigen bleibt bei der Hand erreichbar. Dekoration überdeckt das
 Restpaket nicht mehr.
@@ -57,7 +59,9 @@ Kartentaktik und Erfahrungsstufen bleiben nach den Vergleichssimulationen erhalt
 
 **English:** Real game flows with normal card animations were checked in mobile
 portrait and landscape. Card copies retain names, winner colour, rotation and
-proportions. Tricks stay centred even with several captured packets. Before
+proportions. Tricks stay centred even with several captured packets. Partial tricks
+also form one connected pile in play order; numbers beside names clarify that
+order without moving the winning card. Before
 inspection, your hidden hand remains visible as card backs, with Show strike or
 Show trump suit reachable beside it. Decoration no longer covers the stock.
 

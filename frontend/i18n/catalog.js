@@ -5216,7 +5216,7 @@ export const WATTEN_MESSAGES = {
   de: {
     "score.target": "Ziel {target}", "bid.tapOffer": "Einsatz {points} Punkte. Tippen zum Bieten.",
     "bid.running": "Einsatz", "bid.offered": "Geboten", "feedback.question": "Wie fühlst du dich?",
-    "history.last": "Letzten Stich ansehen", "trick.winner": "Stich gewonnen",
+    "history.last": "Letzten Stich ansehen", "trick.winner": "Stich gewonnen", "trick.playOrder": "{number}. Karte",
     "history.pin": "Dauerhaft anzeigen", "history.round": "Rundenverlauf ({count})", "history.close": "Stichrückschau schliessen",
     "series.marks": "{count} Nockerl", "series.target": "Turnier bis {count} Nockerl",
     "scorepad.open": "{name}: {points} Punkte – Bierblock öffnen", "scorepad.title": "Bierblock",
@@ -5423,7 +5423,7 @@ export const WATTEN_MESSAGES = {
   en: {
     "score.target": "Target {target}", "bid.tapOffer": "Stake {points} points. Tap to raise.",
     "bid.running": "Stake", "bid.offered": "Offered", "feedback.question": "How do you feel?",
-    "history.last": "Review last trick", "trick.winner": "Winning card",
+    "history.last": "Review last trick", "trick.winner": "Winning card", "trick.playOrder": "Card {number}",
     "history.pin": "Keep visible", "history.round": "Round history ({count})", "history.close": "Close trick review",
     "series.marks": "{count} Nockerl", "series.target": "Tournament to {count} loss marks",
     "scorepad.open": "{name}: {points} points – open score pad", "scorepad.title": "Score pad",

@@ -34,18 +34,22 @@ export function fitPortraitTrick({ bounds, obstacles = [], count, positions = nu
     // The side cards reach towards their owners; the top and bottom cards
     // share a centre line. Captions stay outside the other card faces while
     // the original play order determines which cards overlap in front.
-    const width = cardWidth * 2.5;
+    // Three seats have no upper player to join the two side cards. Their
+    // side faces must overlap directly, including a left→right opening.
+    const sideReach = cardWidth * (count === 3 ? .9 : 1.5);
+    const inset = count === 3 ? cardWidth * .15 : 0;
+    const width = cardWidth + sideReach + inset * 2;
     const rowHeight = cardHeight * (1 + spread) + CAPTION;
     const captionHeight = CAPTION;
     const height = rowHeight + captionHeight + labelHeight;
     if (width > bounds.width || height > bounds.height) continue;
     const anchors = {
-      top: { x: cardWidth * .75, y: CAPTION, ownerX: 0, ownerY: -CAPTION, ownerWidth: cardWidth },
-      bottom: { x: cardWidth * .75, y: CAPTION + cardHeight * spread, ownerX: 0, ownerY: cardHeight, ownerWidth: cardWidth },
-      left: { x: 0, y: CAPTION + cardHeight * spread / 2,
-        ownerX: 0, ownerY: cardHeight * .53, ownerWidth: cardWidth * .6 },
-      right: { x: cardWidth * 1.5, y: CAPTION + cardHeight * spread / 2,
-        ownerX: cardWidth * .4, ownerY: cardHeight * .53, ownerWidth: cardWidth * .6 },
+      top: { x: inset + sideReach / 2, y: CAPTION, ownerX: 0, ownerY: -CAPTION, ownerWidth: cardWidth },
+      bottom: { x: inset + sideReach / 2, y: CAPTION + cardHeight * spread, ownerX: 0, ownerY: cardHeight, ownerWidth: cardWidth },
+      left: { x: inset, y: CAPTION + cardHeight * spread / 2,
+        ownerX: -inset, ownerY: cardHeight * .53, ownerWidth: cardWidth * .6 },
+      right: { x: inset + sideReach, y: CAPTION + cardHeight * spread / 2,
+        ownerX: cardWidth * (count === 3 ? .55 : .4), ownerY: cardHeight * .53, ownerWidth: cardWidth * .6 },
     };
     const cardPositions = seats.map(seat => anchors[seat] || anchors.bottom);
     const preferredX = bounds.left + (bounds.width - width) / 2;

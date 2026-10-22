@@ -11,7 +11,7 @@
       "title": "Flüssiger spielen, Karten klar erkennen",
       "changes": [
         "Hausdepp: Computer füllen ihre Hand ohne unnötiges Warten auf Kartenanimationen oder andere Computer auf. Zwischenwerfen bleibt möglich.",
-        "Watten: Karten behalten beim Einsammeln ihre Namen, Siegerfarbe und Form. Der Stich bleibt auch mit mehreren gewonnenen Paketen mittig.",
+        "Watten: Gespielte Karten bilden in beiden Ausrichtungen einen zusammenhängenden Stapel. Zahlen neben den Namen zeigen die Spielreihenfolge; die Gewinnerkarte bleibt an ihrem Platz.",
         "Watten: Deine verdeckte Hand bleibt als Kartenrücken sichtbar; Schlag zeigen und Farbe zeigen bleiben erreichbar. Deko lässt das Restpaket frei.",
         "Blödeln nennt die tatsächlichen Beteiligten. Computer fragen deutlich seltener, ihre Zustimmung bleibt unverändert."
       ]
@@ -20,7 +20,7 @@
       "title": "Smoother play and clearer cards",
       "changes": [
         "Hausdepp: computers refill without unnecessary waits for card animations or other computers. Matching follow-up throws remain available.",
-        "Watten: cards retain their names, winner colour and shape during collection. The trick stays centred beside captured packets.",
+        "Watten: played cards form one connected pile in both orientations. Numbers beside player names show the play order; the winning card keeps its place.",
         "Watten: your hidden hand stays visible as card backs; Show strike and Show trump suit remain reachable. Decoration keeps the stock clear.",
         "Blödeln names the actual participants. Computers ask less often; their acceptance choice is unchanged."
       ]

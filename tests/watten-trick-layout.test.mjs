@@ -102,6 +102,32 @@ test("a later portrait trick stays centred above captured packets instead of gro
   assert.ok(fit.cardWidth < 104, "readable central faces take priority over maximum-sized off-centre faces");
 });
 
+for (const seats of [["bottom", "top"], ["bottom", "left", "right"], ["bottom", "left", "top", "right"]]) {
+  test(`${seats.length} portrait players: every clockwise prefix is connected and preserves the earlier card slots`, () => {
+    const options = { bounds: rect(12, 112, 416, 832), obstacles: [], count: seats.length, minimumWidth: 64 };
+    for (let leader = 0; leader < seats.length; leader++) {
+      const order = [...seats.slice(leader), ...seats.slice(0, leader)];
+      const complete = fitPortraitTrick({ ...options, positions: order });
+      for (let length = 1; length <= seats.length; length++) {
+        const prefix = fitPortraitTrick({ ...options, positions: order.slice(0, length) });
+        assert.ok(prefix);
+        assert.equal(prefix.left, complete.left); assert.equal(prefix.top, complete.top);
+        assert.deepEqual(prefix.positions, complete.positions.slice(0, length));
+        const faces = prefix.positions.map(position => rect(position.x, position.y, prefix.cardWidth, prefix.cardWidth * 570 / 360));
+        const connected = new Set([0]);
+        for (let step = 0; step < length; step++) for (let index = 0; index < length; index++) {
+          if ([...connected].some(other => overlap(faces[index], faces[other]))) connected.add(index);
+        }
+        assert.equal(connected.size, length, `${order.slice(0, length).join(" → ")} must form one pile`);
+        for (const [index, position] of prefix.positions.entries()) {
+          const caption = rect(position.x + position.ownerX, position.y + position.ownerY, position.ownerWidth, 15);
+          for (const face of faces.slice(index + 1)) assert.equal(overlap(caption, face), false, "a later face cannot cover an earlier owner's outward caption");
+        }
+      }
+    }
+  });
+}
+
 test("the small noninteractive prompt uses spare wood without overlapping a trick or a control", () => {
   const bounds = rect(12, 156, 296, 390), cards = rect(30, 270, 260, 150), hand = rect(12, 450, 296, 96);
   const prompt = fitPortraitPrompt(bounds, [cards, hand]);

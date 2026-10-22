@@ -135,14 +135,26 @@
   html[data-game="watten"][data-watten-active="true"] .wt-hand-area { left: 50%; bottom: 34px; width: min(80%, calc(var(--wt-hand-w) * 4 + 24px)); padding-inline: 4px; }
   html[data-game="watten"][data-watten-active="true"] .wt-hand { min-height: 0; padding-block: 0; }
   html[data-game="watten"][data-watten-active="true"] .wt-centre { left: 50%; top: calc(40% + 6px); translate: none; gap: 0; width: 0; height: 0; display: block; }
-  html[data-game="watten"][data-watten-active="true"] .wt-trick { position: absolute; left: 0; top: 0; translate: -50% -50%; width: calc(var(--wt-trick-w) * 2.9); height: calc(var(--wt-trick-w) * 2.9); }
-  /* A broad pile exposes the larger faces without entering either hand. */
-  html[data-game="watten"][data-watten-active="true"] .wt-trick-card[data-position="top"] { --x: -90%; --y: -52%; }
-  html[data-game="watten"][data-watten-active="true"] .wt-trick-card[data-position="bottom"] { --x: -10%; --y: -48%; }
-  html[data-game="watten"][data-watten-active="true"] .wt-trick-card[data-position="left"] { --x: -175%; --y: -50%; --r: -4deg; }
-  html[data-game="watten"][data-watten-active="true"] .wt-trick-card[data-position="right"] { --x: 75%; --y: -50%; --r: 4deg; }
-  html[data-game="watten"][data-watten-active="true"] .wt-trick-card[data-position="top"] .wt-card-owner { top: 0; bottom: auto; }
-  html[data-game="watten"][data-watten-active="true"] .wt-trick-card[data-position="bottom"] .wt-card-owner { bottom: 0; }
+  /* One shallow chronological pile: reserve all slots from the first play,
+     so adding another card never moves a card already on the table. Every
+     successive slot overlaps its predecessor, independent of the source seat. */
+  html[data-game="watten"][data-watten-active="true"] .wt-trick {
+    --wt-play-count: 4;
+    position: absolute; left: 0; top: 0; translate: -50% -50%;
+    width: calc(var(--wt-trick-w) * (1 + (var(--wt-play-count) - 1) * .6));
+    height: calc(var(--wt-trick-w) * 1.583333 + 20px);
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="2"] .wt-trick { --wt-play-count: 2; }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="3"] .wt-trick { --wt-play-count: 3; }
+  html[data-game="watten"][data-watten-active="true"] .wt-trick-card[data-position] {
+    --x: calc(-50% - (var(--wt-play-count) - 1) * 30% + var(--order, 0) * 60%);
+    --y: -50%; --r: 0deg;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-trick-card[data-position] .wt-card-owner {
+    left: 0; top: 100%; bottom: auto; translate: none;
+    width: 60%; max-width: none; padding: 1px; font-size: .58rem; line-height: 1;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-trick-card:last-child .wt-card-owner { width: 100%; }
   html[data-game="watten"][data-watten-active="true"] .wt-trick-label {
     position: fixed; inset: auto auto calc(6px + env(safe-area-inset-bottom, 0px)) calc(var(--wt-rail-width) + 8px);
     width: clamp(60px, calc((100vw - var(--wt-rail-width) - env(safe-area-inset-right, 0px) - var(--wt-hand-w) * 4) / 2 - 16px), 132px); max-width: 132px; height: 22px;
