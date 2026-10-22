@@ -854,13 +854,15 @@ test("private Zilch statistics and leaderboards render only server projections a
   await cpuRequest;
   await expect(category).toBeFocused();
   await expect(category).toHaveAttribute("aria-pressed", "true");
+  // A selected category updates before its request finishes. Measure only
+  // the rendered CPU projection, after it replaces the previous grid.
+  await expect(page.locator("#zilchLeaderboardStrategyFilter")).toBeVisible();
+  await expect(page.locator(".zilch-leaderboard-table thead")).toContainText("Gleichstände");
+  await expect(page.locator(".zilch-leaderboard-table thead")).toContainText("Beste Endpunktzahl");
   await expect(categoryGrid).toBeVisible();
   const refreshedMobileCategoryGrid = await categoryGrid.boundingBox();
   expect(refreshedMobileCategoryGrid).not.toBeNull();
   expect(refreshedMobileCategoryGrid.height).toBeCloseTo(mobileCategoryGrid?.height || 0, 3);
-  await expect(page.locator("#zilchLeaderboardStrategyFilter")).toBeVisible();
-  await expect(page.locator(".zilch-leaderboard-table thead")).toContainText("Gleichstände");
-  await expect(page.locator(".zilch-leaderboard-table thead")).toContainText("Beste Endpunktzahl");
 
   const aggressiveRequest = page.waitForRequest(request => {
     const url = new URL(request.url());
