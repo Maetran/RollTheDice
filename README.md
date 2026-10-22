@@ -848,7 +848,8 @@ dazu kurze Tipps in ihrer Zugzeile. Die Serverregeln
 schützen fremde Karten und den Nachziehstapel. Ein Tipp auf den verdeckten Stapel
 zockt vor dem Ablegen. Danach füllt das Spiel für alle automatisch alle
 fehlenden Karten bis auf drei auf, sobald die eigene Auffüllung an der Reihe
-ist; eine Einstellung dafür gibt es nicht mehr. Der nächste Spieler darf schon
+ist; eine Einstellung dafür gibt es nicht mehr. Computer füllen unabhängig von
+laufenden Kartenanimationen und anderen CPU-Wartezeiten auf. Der nächste Spieler darf schon
 Handkarten legen; ziehen oder zocken kann er erst, wenn ältere
 Auffüllpflichten erledigt sind. „Du musst ziehen“ mit sanft rotem Rahmen zeigt,
 wessen Auffüllung an der Reihe ist. Ein Tipp auf
@@ -994,11 +995,13 @@ your current account name, such as “Mani’s nightcap”; no name field is nee
 Two to five participants, six at most, play with 36 double-headed German cards.
 Computers are real participants with their own private hands. Server rules
 protect opposing cards and the draw pile. Tapping the face-down pile takes a
-chance before playing, or afterwards draws all missing cards up to three as a
-mandatory refill. The next player may already play hand cards; drawing or
+chance before playing. After playing, the game automatically draws all missing
+cards up to three for everyone as soon as their refill is due. Computers refill
+independently of card animations and other computers' reaction times.
+The next player may already play hand cards; drawing or
 gambling waits for earlier refill obligations. “You must draw” with a gentle
-red frame reminds the player responsible. Each account may turn on “Refill to
-three automatically”, at the table in the table help or in account settings.
+red frame shows whose refill is due. Refilling keeps any still-open opportunity
+to add matching cards and never reopens one that has already ended.
 Tapping a hand card plays it immediately; tapping the face-up pile takes it.
 A tap applies only to the card already playable when you touch it. If another
 card moves into its place or becomes playable during the tap, tap again.

@@ -1,31 +1,28 @@
 {
   "kind": "usability",
   "games": [
+    "hausdepp",
     "watten"
   ],
-  "summary_de": "Watten: größere Karten, übersichtliche Stichstapel und klarere Aktionen. Blödeln spielt die unterste Karte automatisch.",
-  "summary_en": "Watten: larger cards, clearer trick piles and actions. Blödeln automatically plays the bottom card.",
+  "summary_de": "Hausdepp zieht zügiger nach. Watten zeigt klare mobile Stichstapel, stabile Kartenanimationen und passend benanntes Blödeln.",
+  "summary_en": "Hausdepp refills promptly. Watten has clearer mobile trick piles, consistent card animations and correctly named Blödeln.",
   "player_notes": {
     "de": {
-      "title": "WATTEN – Klarer Tisch und größere Karten",
+      "title": "Flüssiger spielen, Karten klar erkennen",
       "changes": [
-        "Im Hochformat teilen sich Punkte, Verlassen und Chat eine Reihe. Im mobilen Querformat sitzen die Bedienelemente links und die Spieler gegenüber.",
-        "Größere Handkarten und Fächer öffnen sich von jedem Bildschirmrand zur Tischmitte. Auch der Stich nutzt im Querformat mehr Platz.",
-        "Ausgespielte Karten liegen als versetzter Stapel nach ihren Spielerplätzen. Die Gewinnerkarte ist deutlich markiert und bleibt an ihrem Platz.",
-        "Beim Einschauen genügt Schlag zeigen oder Farbe zeigen neben der eigenen Hand. Die Rechter-Anzeige erscheint erst beim Spielen und verdeckt keine Namen.",
-        "Die Auskunft deines Partners steht mit seinem Namen direkt über Halten, Gehen und Aufbieten.",
-        "Bei vereinbartem Blödeln wird die ursprüngliche unterste Karte automatisch im ersten Stich gespielt, sobald ihr Besitzer am Zug ist."
+        "Hausdepp: Computer füllen ihre Hand ohne unnötiges Warten auf Kartenanimationen oder andere Computer auf. Zwischenwerfen bleibt möglich.",
+        "Watten: Karten behalten beim Einsammeln ihre Namen, Siegerfarbe und Form. Der Stich bleibt auch mit mehreren gewonnenen Paketen mittig.",
+        "Watten: Deine verdeckte Hand bleibt als Kartenrücken sichtbar; Schlag zeigen und Farbe zeigen bleiben erreichbar. Deko lässt das Restpaket frei.",
+        "Blödeln nennt die tatsächlichen Beteiligten. Computer fragen deutlich seltener, ihre Zustimmung bleibt unverändert."
       ]
     },
     "en": {
-      "title": "WATTEN – A clearer table and larger cards",
+      "title": "Smoother play and clearer cards",
       "changes": [
-        "Portrait scores, leave and chat share one row. In mobile landscape the controls sit on the left and players face each other.",
-        "Larger hand cards and fans open from each screen edge toward the table centre. Landscape tricks use more space too.",
-        "Played cards form an offset pile that follows the player seats. The winning card is clearly marked and stays in its original position.",
-        "Inspection starts with Show strike or Show trump suit beside your own hand. The Rechter reference appears only during play and keeps names clear.",
-        "Your partner’s advice appears with their name directly above hold, fold and counterbid.",
-        "When Blödeln is agreed, each original bottom card is played automatically on its owner’s first turn in the first trick."
+        "Hausdepp: computers refill without unnecessary waits for card animations or other computers. Matching follow-up throws remain available.",
+        "Watten: cards retain their names, winner colour and shape during collection. The trick stays centred beside captured packets.",
+        "Watten: your hidden hand stays visible as card backs; Show strike and Show trump suit remain reachable. Decoration keeps the stock clear.",
+        "Blödeln names the actual participants. Computers ask less often; their acceptance choice is unchanged."
       ]
     }
   }

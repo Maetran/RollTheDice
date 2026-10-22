@@ -23,6 +23,50 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 4.1.3 — 2026-10-22
+
+### HAUSDEPP
+
+**Deutsch:** Computer füllen ihre Hand unter drei Karten zeitnah auf, solange
+Nachziehkarten übrig sind. Laufende Kartenanimationen und die Wartezeit eines
+anderen Computers verzögern das Auffüllen nicht mehr. Wird Nachziehen während
+einer CPU-Wartezeit frei, prüft der bestehende Ablauf es sofort neu. Die
+Ziehreihenfolge, bereits begonnene Reaktionen und das Zwischenwerfen bleiben
+erhalten; Nachziehen verkürzt die Sichtbarkeit des letzten Wurfs nicht.
+
+**English:** Computers promptly refill hands below three while draw cards
+remain. Card animations and another computer’s reaction time no longer delay
+refilling. A refill becoming available during a CPU wait is reconsidered
+immediately. Draw order, reactions already under way and matching follow-up
+throws remain intact; drawing does not shorten the last public card’s display.
+
+
+### WATTEN
+
+**Deutsch:** Echte Spielabläufe mit normalen Kartenanimationen wurden im mobilen
+Hoch- und Querformat geprüft. Kartenkopien behalten Namen, Siegerfarbe, Drehung
+und Proportionen. Der Stich bleibt auch mit mehreren gewonnenen Paketen mittig.
+Die eigene verdeckte Hand ist vor dem Einschauen als Kartenrücken sichtbar;
+Schlag/Farbe zeigen bleibt bei der Hand erreichbar. Dekoration überdeckt das
+Restpaket nicht mehr.
+
+Blödeln nennt die tatsächlich beteiligten Spieler und zeigt persönliche Hinweise
+nur den Betroffenen. Zwei anfragebereite CPUs bieten es zusammen ungefähr in
+einem Drittel der Blätter an; ihre Zustimmung bleibt unverändert. Die bestehende
+Kartentaktik und Erfahrungsstufen bleiben nach den Vergleichssimulationen erhalten.
+
+**English:** Real game flows with normal card animations were checked in mobile
+portrait and landscape. Card copies retain names, winner colour, rotation and
+proportions. Tricks stay centred even with several captured packets. Before
+inspection, your hidden hand remains visible as card backs, with Show strike or
+Show trump suit reachable beside it. Decoration no longer covers the stock.
+
+Blödeln names the actual participants and shows personal instructions only to
+those involved. Two willing CPU seats offer it in roughly one third of hands;
+their acceptance choice is unchanged. Comparative simulations did not justify
+changing the existing card tactics or experience tiers.
+
+
 ## 4.1.2 — 2026-10-22
 
 ### WATTEN
