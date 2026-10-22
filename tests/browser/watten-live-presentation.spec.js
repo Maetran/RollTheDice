@@ -5,8 +5,35 @@ const { expectReachable } = require('./table-viewport');
 
 test.setTimeout(90_000);
 
+test('three-player desktop: consecutive side players still form one unlabelled pile', async ({ browser, baseURL }) => {
+  const players = [];
+  try {
+    const wrapped = { newContext: options => browser.newContext({ ...options, viewport: { width: 1280, height: 800 }, serviceWorkers: 'block' }) };
+    for (let index = 0; index < 3; index++) players.push(await player(wrapped, baseURL));
+    await create(players, { determination: 'normal', target: 15 });
+    await normalCall(players);
+    for (let count = 1; count <= 3; count++) {
+      await playOne(players);
+      for (const peer of players) {
+        await expect(peer.page.locator('[data-wt-trick] > .wt-trick-card')).toHaveCount(count);
+        await expect(peer.page.locator('[data-wt-trick] .wt-card-owner')).toHaveCount(0);
+        expect(await peer.page.locator('[data-wt-trick] > .wt-trick-card').evaluateAll(nodes => {
+          const faces = nodes.map(node => node.getBoundingClientRect()), connected = new Set([0]);
+          const overlaps = (a, b) => Math.min(a.right, b.right) - Math.max(a.left, b.left) > 2
+            && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 2;
+          for (let step = 0; step < faces.length; step++) for (let index = 0; index < faces.length; index++) {
+            if ([...connected].some(other => overlaps(faces[index], faces[other]))) connected.add(index);
+          }
+          return connected.size === faces.length;
+        })).toBe(true);
+      }
+    }
+  } finally { await Promise.allSettled(players.map(peer => peer.context.close())); }
+});
+
 async function expectStablePrefix(peer, expected, previous, { paintedSelector, winner } = {}) {
-  const result = await inspectTrickPile(peer.page, { expected, anchorSeat: peer.traffic.snapshot.viewer.seat, paintedSelector, winner });
+  const result = await inspectTrickPile(peer.page, { expected, anchorSeat: peer.traffic.snapshot.viewer.seat,
+    ownerNames: peer.traffic.snapshot.room.seats.map(seat => seat.name), paintedSelector, winner });
   expect(result.errors, `${expected.length}-card prefix from viewer seat ${peer.traffic.snapshot.viewer.seat}`).toEqual([]);
   for (const earlier of previous || []) {
     const current = result.cards.find(card => card.card === earlier.card);
@@ -22,7 +49,7 @@ async function expectStablePrefix(peer, expected, previous, { paintedSelector, w
   return result.cards;
 }
 
-for (const viewport of [{ width: 440, height: 956 }, { width: 956, height: 440 }, { width: 568, height: 320 }]) {
+for (const viewport of [{ width: 440, height: 956 }, { width: 956, height: 440 }, { width: 852, height: 393 }, { width: 568, height: 320 }]) {
   test(`normal motion ${viewport.width}x${viewport.height}: every sequential prefix stays one ordered pile through winner collection`, async ({ browser, baseURL }, info) => {
     const players = [];
     try {
@@ -44,6 +71,15 @@ for (const viewport of [{ width: 440, height: 956 }, { width: 956, height: 440 }
           await expect(peer.page.locator('[data-wt-trick] > .wt-trick-card')).toHaveCount(count);
           await expect(peer.page.locator('[data-wt-motion="arrive"]')).toHaveCount(0);
           geometry[index] = await expectStablePrefix(peer, expected, geometry[index]);
+        }
+      }
+      if (viewport.width === 956) {
+        const expected = players[0].traffic.snapshot.engine.current_trick.cards;
+        for (const size of [{ width: 568, height: 320 }, viewport]) for (const [index, peer] of players.entries()) {
+          await peer.page.setViewportSize(size);
+          await expect.poll(() => peer.page.locator('[data-wt-trick] > .wt-trick-card').first()
+            .evaluate(node => Number.parseFloat(getComputedStyle(node).width))).toBe(size.width === 568 ? 48 : 64);
+          geometry[index] = await expectStablePrefix(peer, expected, null);
         }
       }
       for (const item of players) await item.page.evaluate(() => {
@@ -72,11 +108,8 @@ for (const viewport of [{ width: 440, height: 956 }, { width: 956, height: 440 }
           for (const copy of node.children) {
             const original = document.querySelector(`[data-wt-trick] > [data-key="${copy.dataset.key}"]`);
             if (!original) { errors.push('missing public original'); continue; }
-            for (const [name, first, second] of [['card', original, copy],
-              ['owner', original.querySelector('.wt-card-owner'), copy.querySelector('.wt-card-owner')]]) {
-              const a = box(first), b = box(second);
-              for (const key of Object.keys(a)) if (Math.abs(a[key] - b[key]) > 1) errors.push(`${name} ${copy.dataset.key} ${key}: ${a[key]} != ${b[key]}`);
-            }
+            const a = box(original), b = box(copy);
+            for (const key of Object.keys(a)) if (Math.abs(a[key] - b[key]) > 1) errors.push(`card ${copy.dataset.key} ${key}: ${a[key]} != ${b[key]}`);
             const first = getComputedStyle(original), second = getComputedStyle(copy);
             for (const property of ['width', 'height']) {
               if (Math.abs(Number.parseFloat(first[property]) - Number.parseFloat(second[property])) > .1) errors.push(`${copy.dataset.key} ${property}: ${first[property]} != ${second[property]}`);

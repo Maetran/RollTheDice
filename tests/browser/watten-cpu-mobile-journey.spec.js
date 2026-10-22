@@ -21,6 +21,11 @@ for (const viewport of [{ width: 440, height: 956 }, { width: 956, height: 440 }
           report.maxPackets = Math.max(report.maxPackets, ...[...document.querySelectorAll('.wt-taken[data-count]')].map(node => Number(node.dataset.count)));
           const felt = document.querySelector('[data-wt-felt]')?.getBoundingClientRect();
           if (!felt) return;
+          for (const card of document.querySelectorAll('[data-wt-trick] > .wt-trick-card')) {
+            if (card.querySelector('.wt-card-owner')) add('public trick has an unwanted visible owner/order label');
+            const name = document.querySelector(`.wt-seat--${card.dataset.position} .wt-seat-name`)?.textContent.trim();
+            if (!name || !card.getAttribute('aria-label')?.includes(` · ${name}`)) add('public trick lost its accessible owner');
+          }
           for (const group of document.querySelectorAll('[data-wt-motion="collect"]')) {
             const animation = group.getAnimations()[0];
             const time = animation?.currentTime;
@@ -40,29 +45,22 @@ for (const viewport of [{ width: 440, height: 956 }, { width: 956, height: 440 }
               if ([...connected].some(other => overlaps(face, faces[other]))) connected.add(index);
             }
             if (connected.size !== cards.length) add('resting cards do not form one connected pile');
-            if (innerWidth > innerHeight) for (let index = 1; index < faces.length; index++) {
-              if (Math.abs(faces[index].left - faces[index - 1].left - faces[index].width * .6) > 1
-                || Math.abs(faces[index].top - faces[index - 1].top) > 1) add('resting cards lost their chronological landscape slots');
+            const compass = Object.fromEntries(cards.map((card, index) => [card.dataset.position, faces[index]]));
+            const middle = rect => ({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
+            if (Object.keys(compass).length !== 4 || !compass.left || !compass.right || !compass.top || !compass.bottom) {
+              add('resting clover lost a source seat');
+            } else if (middle(compass.left).x >= middle(compass.right).x || middle(compass.top).y >= middle(compass.bottom).y) {
+              add('resting clover lost opposite source positions');
+            }
+            let previousZ = -Infinity;
+            for (const card of cards) {
+              if (card.querySelector('.wt-card-owner')) add('painted trick has an unwanted visible owner/order label');
+              const z = Number(getComputedStyle(card).zIndex);
+              if (!Number.isFinite(z) || z <= previousZ) add('painted trick lost its accepted overlap order');
+              previousZ = z;
             }
             const bounds = group.getBoundingClientRect();
             if (Math.abs(bounds.x + bounds.width / 2 - felt.x - felt.width / 2) > 12) add('completed trick moved away from the table centre');
-            const labels = cards.map(card => card.querySelector('.wt-card-owner'));
-            for (const [index, label] of labels.entries()) {
-              if (!label?.textContent.trim()) { add('public card lost its owner'); continue; }
-              const box = label.getBoundingClientRect();
-              if (box.left < -1 || box.right > innerWidth + 1 || box.top < -1 || box.bottom > innerHeight + 1) add('public owner label left the viewport');
-              if (labels.slice(index + 1).some(other => overlaps(box, other.getBoundingClientRect()))) {
-                add('public owner labels overlap');
-                report.labelOverlap ??= { time, delay: animation.effect.getTiming().delay,
-                  arrivals: group.getAnimations({ subtree: true }).slice(1).map(flight => ({ time: flight.currentTime, timing: flight.effect.getTiming() })),
-                  cards: cards.map(card => {
-                  const owner = card.querySelector('.wt-card-owner');
-                  return { card: card.dataset.key, name: owner?.textContent,
-                    cardBounds: card.getBoundingClientRect().toJSON(), ownerBounds: owner?.getBoundingClientRect().toJSON(),
-                    ownerWidth: getComputedStyle(owner).width, order: getComputedStyle(card).zIndex };
-                }) };
-              }
-            }
             const winner = cards.find(card => card.classList.contains('is-winning-card'));
             if (!winner || getComputedStyle(winner).outlineStyle !== 'solid') add('completed trick lost its winner highlight');
             if (!report.winners.includes(group.dataset.targetSeat)) report.winners.push(group.dataset.targetSeat);

@@ -226,9 +226,9 @@ Tischmitte; ihre gedachte Griffseite zeigt zum jeweiligen Bildschirmrand.
 Die optionale Rechter-Anzeige erscheint erst nach
 der Ansage beziehungsweise dem Einschauen, ohne zusätzliche verdeckte Karte
 während der Vorbereitung. Ausgespielte Karten bilden ab der zweiten Karte einen zusammenhängenden,
-überlappenden Stapel. Im Hochformat zeigen sie zu ihrem Spieler; im Querformat
-liegen sie von links nach rechts in Spielreihenfolge. Neue Karten liegen über früheren;
-die Zahl beim Spielernamen zeigt die Spielreihenfolge. Die Gewinnerkarte erhält
+überlappenden Stapel in Kleeblatt-Anordnung. Jede Karte liegt in Richtung
+ihres Spielers, ohne sichtbare Nummern oder Namensschilder. Neue Karten liegen
+über früheren und machen dadurch die Spielreihenfolge erkennbar. Die Gewinnerkarte erhält
 einen klaren Rahmen und bleibt an ihrer Position und in derselben Überlappungsreihenfolge.
 Nach vollständiger Ansage oder abgeschlossenem Einschauen darf am eigenen
 Kartenzug schon vor der ersten Karte geboten werden. Ein nach Halten vereinbartes
@@ -272,9 +272,9 @@ the players in landscape. Every hand fan opens toward the table centre, with
 its imaginary grip pointing toward that player's screen edge.
 The optional Rechter reference appears after calling
 or inspection, without an extra face-down placeholder during preparation. Played cards
-form one connected, overlapping pile from the second card onward. In portrait they
-point toward their player; in landscape they run from left to right in play order.
-New cards overlap earlier ones; the number beside each name shows the play order.
+form one connected, overlapping cloverleaf pile from the second card onward.
+Each card points toward its player, without visible numbers or name labels.
+New cards overlap earlier ones to preserve the play order.
 The winning card is outlined in its original position and overlap order.
 Once calling or inspection is complete, the player on their card turn may bid
 before the first card. An agreed redeal after holding remains possible until
@@ -305,10 +305,11 @@ bei beiden die ursprüngliche unterste Karte automatisch im ersten Stich
 ausgespielt, sobald sie am Zug sind, auch wenn eine andere Farbe ausgespielt wurde.
 Eine Kartenauswahl gibt es dabei nicht. Jede
 Pflichtkarte wird für die anderen erst beim tatsächlichen Ausspielen sichtbar.
-Sind beide Nicht-Einschauer CPUs, fragt ungefähr in jedem dritten Blatt eine
-nach Blödeln; jede CPU fragt mit rund 18 % Wahrscheinlichkeit und antwortet
-weiterhin mit 50 % mit Ja. Diese Wahl bleibt pro Blatt gleich und verwendet
-keine verdeckten Karten. Status und Anfrage nennen die tatsächlich Beteiligten;
+Sind beide Nicht-Einschauer CPUs, ist ungefähr in jedem dritten Blatt mindestens
+eine anfragebereit; jede CPU entscheidet sich mit rund 18 % dafür und antwortet
+weiterhin mit 50 % mit Ja. Die Anfrage muss vor dem ersten Ausspielen erfolgen;
+die sichtbare Quote kann deshalb niedriger liegen. Diese Wahl bleibt pro Blatt
+gleich und verwendet keine verdeckten Karten. Status und Anfrage nennen die tatsächlich Beteiligten;
 Warten ersetzt keine menschliche Antwort.
 “Allow a redeal” is a separate table option for two or four players, off by
 default. Until the first card is played, both callers may agree, including after
@@ -324,9 +325,10 @@ after inspection. A no declines Blödeln for this hand without an extra status
 message. A yes automatically plays each original bottom card on its owner's
 first turn, even when a different suit is led; there is no card choice.
 Others see each forced card only when it is actually played.
-With two CPU non-lookers, roughly one in three deals gets a Blödeln request:
-each CPU asks about 18% of the time and still answers yes with a 50% chance.
-The choice stays stable for the deal and uses no hidden cards. Requests and
+With two CPU non-lookers, at least one is willing to request Blödeln in roughly
+one in three deals: each CPU chooses to ask about 18% of the time and still
+answers yes with a 50% chance. The request must precede the first play, so the
+visible rate can be lower. The choice stays stable for the deal and uses no hidden cards. Requests and
 status messages name the actual participants; waiting never replaces a human answer.
 
 Nach einer Gabe wird zuerst der letzte Stich abgeräumt. Schlag, Farbe und der

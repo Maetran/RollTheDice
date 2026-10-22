@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const source = await readFile(new URL("../frontend/watten/trick-layout.js", import.meta.url), "utf8");
-const { fitPortraitTrick, fitPortraitPrompt, fitPortraitTrickView, createTrickLayout } = await import(`data:text/javascript;base64,${Buffer.from(source).toString("base64")}`);
+const { fitLandscapeTrick, fitPortraitTrick, fitPortraitPrompt, fitPortraitTrickView, createTrickLayout } = await import(`data:text/javascript;base64,${Buffer.from(source).toString("base64")}`);
 const rect = (left, top, width, height) => ({ left, top, width, height, right: left + width, bottom: top + height });
 const overlap = (a, b) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
 const valid = (result, bounds, obstacles) => {
@@ -15,6 +15,93 @@ const valid = (result, bounds, obstacles) => {
     assert.equal(overlap(result, rect(obstacle.left - 4, obstacle.top - 4, obstacle.width + 8, obstacle.height + 8)), false);
   }
 };
+
+for (const height of [320, 330, 360, 361, 393, 410, 440]) {
+  test(`${height}px landscape: the full clover and its winner contour fit between both five-card hands`, () => {
+    const ownWidth = Math.max(60, Math.min(76, height * .2192 - 10.14));
+    const backWidth = Math.max(33.6, Math.min(43.2, height * .084));
+    const top = 35 + backWidth * 1.633;
+    const bottom = height - 34 - ownWidth * (570 / 360 + .071);
+    const desiredWidth = height <= 330 ? Math.max(48, Math.min(52, height * .4 - 80))
+      : Math.max(52, Math.min(64, height * .1644 - 4.608));
+    const fit = fitLandscapeTrick({ top, bottom, desiredWidth });
+    assert.ok(fit, `a complete pile fits the ${bottom - top}px wood gap`);
+    const padding = fit.insetWinner ? 1 : 7;
+    assert.ok(fit.top >= top + padding && fit.bottom <= bottom - padding);
+    assert.equal(fit.y, (top + bottom) / 2);
+    assert.ok(fit.cardWidth >= 48 && fit.cardWidth <= desiredWidth);
+    assert.ok(fit.spread >= .24 && fit.spread <= .52);
+    if (height === 440) assert.equal(fit.cardWidth, 64);
+    if (height === 320) assert.equal(fit.cardWidth, 48);
+  });
+}
+
+test("landscape geometry rejects an unusable gap instead of painting beyond it", () => {
+  for (const options of [{ top: 100, bottom: 100, desiredWidth: 64 }, { top: 100, bottom: 150, desiredWidth: 64 },
+    { top: 100, bottom: 300, desiredWidth: 40 }, { top: NaN, bottom: 300, desiredWidth: 64 }]) {
+    assert.equal(fitLandscapeTrick(options), null);
+  }
+});
+
+test("landscape keeps its first public card footprint through later cards and winner marking, then refits the next trick", () => {
+  const style = () => ({ values: new Map(), setProperty(key, value) { this.values.set(key, value); },
+    removeProperty(key) { this.values.delete(key); } });
+  let woodTop = 90, woodBottom = 233;
+  const card = { dataset: { key: "bells-7" }, style: style() };
+  const topHand = { getBoundingClientRect: () => rect(400, 35, 60, woodTop - 35) };
+  const ownHand = { getBoundingClientRect: () => rect(360, woodBottom, 280, 120) };
+  const table = { querySelector: () => null, querySelectorAll: selector => selector.includes("--top") ? [topHand] : [ownHand] };
+  const felt = { closest: () => table, getBoundingClientRect: () => rect(156, 0, 696, 393) };
+  const centre = { parentElement: felt, dataset: {}, style: style() };
+  const trick = { parentElement: centre, children: [card], firstElementChild: card };
+  const win = { innerWidth: 852, innerHeight: 393, getComputedStyle: () => ({ width: "60px" }),
+    addEventListener() {}, removeEventListener() {}, requestAnimationFrame() {}, cancelAnimationFrame() {} };
+  const layout = createTrickLayout(trick, { win });
+  const vm = { count: 4, engine: { deal_id: "first-deal", deal_revision: 0 } };
+  layout.update(vm);
+  const first = [...centre.style.values];
+  woodTop -= 10; woodBottom += 20;
+  for (let prefix = 2; prefix <= 4; prefix++) {
+    trick.children.push({ style: style() });
+    layout.update(vm);
+    assert.deepEqual([...centre.style.values], first, "the same accepted trick keeps its complete reserved shape");
+  }
+  vm.engine.deal_id = "second-deal";
+  layout.update(vm);
+  assert.notDeepEqual([...centre.style.values], first, "a new deal refits even when its first public card is the same");
+  const second = [...centre.style.values];
+  woodTop += 5; woodBottom -= 10;
+  vm.engine.deal_revision++;
+  layout.update(vm);
+  assert.notDeepEqual([...centre.style.values], second, "a public redeal revision also invalidates the old footprint");
+  const redeal = [...centre.style.values];
+  woodTop -= 5; woodBottom += 10;
+  card.dataset.key = "hearts-8";
+  layout.update(vm);
+  assert.notDeepEqual([...centre.style.values], redeal, "a new public trick uses its newly available wood");
+  layout.destroy();
+  assert.equal(centre.dataset.wtLandscapeTrick, undefined);
+  assert.equal(centre.style.values.size, 0);
+});
+
+test("a landscape spectator fits above the bottom public fan even without an own hand", () => {
+  const values = new Map();
+  const style = { setProperty: (key, value) => values.set(key, value), removeProperty: key => values.delete(key) };
+  const card = { dataset: { key: "bells-7" }, style: { removeProperty() {} } };
+  const topHand = { getBoundingClientRect: () => rect(400, 35, 60, 60) };
+  const bottomHand = { getBoundingClientRect: () => rect(400, 275, 60, 80) };
+  const table = { querySelector: () => null, querySelectorAll: selector => selector.includes("--top") ? [topHand]
+    : selector.includes("--bottom") ? [bottomHand] : [] };
+  const felt = { closest: () => table, getBoundingClientRect: () => rect(156, 0, 696, 393) };
+  const centre = { parentElement: felt, dataset: {}, style };
+  const trick = { parentElement: centre, children: [card], firstElementChild: card };
+  const win = { innerWidth: 852, innerHeight: 393, getComputedStyle: () => ({ width: "60px" }),
+    addEventListener() {}, removeEventListener() {}, requestAnimationFrame() {}, cancelAnimationFrame() {} };
+  const layout = createTrickLayout(trick, { win });
+  layout.update({ count: 4, engine: { deal_id: "public-deal" } });
+  assert.equal(values.get("--wt-landscape-y"), "185px", "the public bottom fan bounds the wood instead of the empty own-hand area");
+  layout.destroy();
+});
 
 test("a 320px table keeps an overlapping pile with cards pointing towards their owners", () => {
   const bounds = rect(12, 112, 296, 434);
@@ -144,10 +231,12 @@ for (const viewport of [{ width: 1280, height: 800 }, { width: 568, height: 320 
       const values = new Map([["--wt-portrait-x", "12px"], ["--wt-portrait-card-x", "20px"]]);
       return { values, setProperty: (key, value) => values.set(key, value), removeProperty: key => values.delete(key) };
     };
-    const card = { style: style() }, table = { querySelector: () => null };
-    const felt = { closest: () => table }, centre = { parentElement: felt, dataset: { wtPortraitTrick: "true" }, style: style() };
-    const trick = { parentElement: centre, children: [card] }, listeners = new Map();
+    const card = { dataset: { key: "bells-7" }, style: style() }, table = { querySelector: () => null, querySelectorAll: () => [] };
+    const felt = { closest: () => table, getBoundingClientRect: () => rect(156, 0, viewport.width - 156, viewport.height) };
+    const centre = { parentElement: felt, dataset: { wtPortraitTrick: "true" }, style: style() };
+    const trick = { parentElement: centre, children: [card], firstElementChild: card }, listeners = new Map();
     const win = { innerWidth: viewport.width, innerHeight: viewport.height,
+      getComputedStyle: () => ({ width: "48px" }),
       addEventListener: (name, callback) => listeners.set(name, callback), removeEventListener: name => listeners.delete(name),
       requestAnimationFrame() {}, cancelAnimationFrame() {} };
     const layout = createTrickLayout(trick, { win });

@@ -643,6 +643,9 @@ html[data-watten-active="true"] .wt-trick-card[data-position="bottom"] { --y: -1
 html[data-watten-active="true"] .wt-trick-card[data-position="top"] { --y: -82%; }
 html[data-watten-active="true"] .wt-trick-card[data-position="left"] { --x: -110%; }
 html[data-watten-active="true"] .wt-trick-card[data-position="right"] { --x: 10%; }
+/* Three seats have no upper card to connect successive left/right plays. */
+html[data-watten-active="true"] .wt-table[data-count="3"] .wt-trick-card[data-position="left"] { --x: -95%; }
+html[data-watten-active="true"] .wt-table[data-count="3"] .wt-trick-card[data-position="right"] { --x: -5%; }
 
 /* The default landscape pile uses separate outer name edges and leaves the
    winner caption below the bottom card, rather than behind its owner label. */

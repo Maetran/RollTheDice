@@ -1,6 +1,6 @@
 /** Inspect only accepted public trick DOM and its currently painted copies. */
-async function inspectTrickPile(page, { expected, anchorSeat, paintedSelector = '[data-wt-trick]', winner = null }) {
-  return page.evaluate(({ expected, anchorSeat, paintedSelector, winner }) => {
+async function inspectTrickPile(page, { expected, anchorSeat, ownerNames, paintedSelector = '[data-wt-trick]', winner = null }) {
+  return page.evaluate(({ expected, anchorSeat, ownerNames, paintedSelector, winner }) => {
     const errors = [];
     const originals = [...document.querySelectorAll('[data-wt-trick] > .wt-trick-card')];
     const painted = [...document.querySelector(paintedSelector)?.children || []]
@@ -13,15 +13,17 @@ async function inspectTrickPile(page, { expected, anchorSeat, paintedSelector = 
     for (const [label, nodes] of [['DOM', originals], ['painted', painted]]) {
       let z = -Infinity;
       for (const [index, node] of nodes.entries()) {
-        if (!node.querySelector('.wt-card-owner')?.textContent.startsWith(`${index + 1} `)) {
-          errors.push(`${label}: card ${index} has no visible play-order label`);
-        }
+        if (node.querySelector('.wt-card-owner')) errors.push(`${label}: card ${index} has an unwanted visible owner/order label`);
         const next = Number(getComputedStyle(node).zIndex);
         if (!Number.isFinite(next) || next <= z) errors.push(`${label}: card ${index} does not sit above its predecessor`);
         z = next;
         if (!expected[index]) continue;
         const ownerPosition = positions[(expected[index].seat - anchorSeat + 4) % 4];
         if (node.dataset.position !== ownerPosition) errors.push(`${label}: card ${index} lost its owner position`);
+        if (label === 'DOM') {
+          const name = ownerNames[expected[index].seat];
+          if (!name || !node.getAttribute('aria-label')?.includes(` · ${name}`)) errors.push(`DOM: card ${index} lost its accessible public owner`);
+        }
       }
     }
     const visible = node => {
@@ -49,6 +51,9 @@ async function inspectTrickPile(page, { expected, anchorSeat, paintedSelector = 
       if ([...connected].some(other => overlaps(card, cards[other]))) connected.add(index);
     }
     if (connected.size !== cards.length) errors.push('painted cards do not form one connected pile');
+    const compass = Object.fromEntries(cards.map(card => [card.position, card]));
+    if (compass.left && compass.right && compass.left.left + compass.left.width / 2 >= compass.right.left + compass.right.width / 2) errors.push('left/right clover provenance is reversed');
+    if (compass.top && compass.bottom && compass.top.top + compass.top.height / 2 >= compass.bottom.top + compass.bottom.height / 2) errors.push('top/bottom clover provenance is reversed');
     const winning = originals.filter(node => node.classList.contains('is-winning-card')).map(node => node.dataset.key);
     const paintedWinning = painted.filter(node => node.classList.contains('is-winning-card')).map(node => node.dataset.key);
     const expectedWinner = winner === null ? [] : expected.filter(item => item.seat === winner).map(item => item.card);
@@ -56,7 +61,7 @@ async function inspectTrickPile(page, { expected, anchorSeat, paintedSelector = 
     if (JSON.stringify(paintedWinning) !== JSON.stringify(expectedWinner)) errors.push('painted winner marker changed the accepted owner');
     const first = cards[0];
     return { errors, cards: cards.map(card => ({ ...card, left: card.left - first.left, top: card.top - first.top })) };
-  }, { expected, anchorSeat, paintedSelector, winner });
+  }, { expected, anchorSeat, ownerNames, paintedSelector, winner });
 }
 
 module.exports = { inspectTrickPile };
