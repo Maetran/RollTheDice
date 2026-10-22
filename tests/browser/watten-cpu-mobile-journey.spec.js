@@ -13,7 +13,7 @@ for (const viewport of [{ width: 440, height: 956 }, { width: 956, height: 440 }
       await host.page.emulateMedia({ reducedMotion: 'no-preference' });
       await create([host], { count: 4, determination: 'normal', target: 21, cpuFill: true });
       await host.page.evaluate(() => {
-        const report = window.wattenMobileJourney = { samples: 0, errors: [], maxPackets: 0, winners: [] };
+        const report = window.wattenMobileJourney = { samples: 0, errors: [], maxPackets: 0, winners: [], piles: [] };
         const add = message => { if (!report.errors.includes(message)) report.errors.push(message); };
         const overlaps = (a, b) => Math.min(a.right, b.right) - Math.max(a.left, b.left) > 2
           && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 2;
@@ -32,6 +32,18 @@ for (const viewport of [{ width: 440, height: 956 }, { width: 956, height: 440 }
             const cards = [...group.children];
             if (cards.length !== 4) continue;
             report.samples++;
+            const keys = cards.map(card => card.dataset.key);
+            if (!report.piles.some(pile => JSON.stringify(pile) === JSON.stringify(keys))) report.piles.push(keys);
+            const faces = cards.map(card => card.getBoundingClientRect());
+            const connected = new Set([0]);
+            for (let pass = 0; pass < faces.length; pass++) for (const [index, face] of faces.entries()) {
+              if ([...connected].some(other => overlaps(face, faces[other]))) connected.add(index);
+            }
+            if (connected.size !== cards.length) add('resting cards do not form one connected pile');
+            if (innerWidth > innerHeight) for (let index = 1; index < faces.length; index++) {
+              if (Math.abs(faces[index].left - faces[index - 1].left - faces[index].width * .6) > 1
+                || Math.abs(faces[index].top - faces[index - 1].top) > 1) add('resting cards lost their chronological landscape slots');
+            }
             const bounds = group.getBoundingClientRect();
             if (Math.abs(bounds.x + bounds.width / 2 - felt.x - felt.width / 2) > 12) add('completed trick moved away from the table centre');
             const labels = cards.map(card => card.querySelector('.wt-card-owner'));
@@ -57,7 +69,7 @@ for (const viewport of [{ width: 440, height: 956 }, { width: 956, height: 440 }
           }
         }, 80);
       });
-      const completed = new Set(), tricks = new Set();
+      const completed = new Set(), tricks = new Set(), acceptedPiles = new Set();
       const progress = new Set(['announce_strike', 'announce_colour', 'play_card', 'respond_hold', 'preplay_decline', 'partner_feedback']);
       for (let turn = 0; turn < 100 && completed.size < 2; turn++) {
         await expect.poll(() => {
@@ -65,9 +77,19 @@ for (const viewport of [{ width: 440, height: 956 }, { width: 956, height: 440 }
           return engine && (engine.actions.some(kind => progress.has(kind)) || ['deal_complete', 'match_complete'].includes(engine.phase));
         }, { timeout: 20_000 }).toBeTruthy();
         const engine = host.traffic.snapshot.engine;
-        for (const [index] of (engine.trick_history || []).entries()) tricks.add(`${engine.deal_id}:${index}`);
+        for (const [index, trick] of (engine.trick_history || []).entries()) {
+          tricks.add(`${engine.deal_id}:${index}`);
+          acceptedPiles.add(JSON.stringify(trick.cards.map(item => item.card)));
+        }
         if (['deal_complete', 'match_complete'].includes(engine.phase)) {
           completed.add(engine.deal_id);
+          // Take the review image after the final card has landed, including
+          // any queued collection delay, rather than halfway through its flight.
+          await expect.poll(() => host.page.locator('[data-wt-motion="collect"]').evaluateAll(groups => groups.some(group => {
+            const animation = group.getAnimations()[0];
+            const active = animation.currentTime - animation.effect.getTiming().delay;
+            return active >= 300 && active <= 3100;
+          }))).toBe(true);
           await host.page.screenshot({ path: info.outputPath(`cpu-deal-${completed.size}-${viewport.width}x${viewport.height}.png`) });
           if (completed.size === 2 || engine.phase === 'match_complete') break;
           if (engine.retourschneider?.status === 'available' && engine.actions.includes('retourschneider')) {
@@ -105,6 +127,7 @@ for (const viewport of [{ width: 440, height: 956 }, { width: 956, height: 440 }
       expect(completed.size).toBe(2);
       expect(report.samples).toBeGreaterThan(0);
       expect(report.errors).toEqual([]);
+      for (const pile of report.piles) expect(acceptedPiles.has(JSON.stringify(pile)), 'painted pile retains the accepted server play order').toBe(true);
       expect(host.traffic.errors).toEqual([]);
     } finally { await host.context.close(); }
   });
