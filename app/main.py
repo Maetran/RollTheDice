@@ -356,9 +356,9 @@ async def _sweep_timeout_aborts() -> int:
     expired = sweep_timeouts()
     for game in expired:
         await _publish_timeout_abort(game)
-    from .watten_websocket import sweep_watten_waiting_games
+    from .watten_websocket import sweep_watten_games
 
-    return len(expired) + await sweep_watten_waiting_games()
+    return len(expired) + await sweep_watten_games()
 
 
 async def _run_timeout_sweeper(

@@ -90,7 +90,7 @@ def watch_game(game: dict) -> None:
     from .watten_cpu_runtime import _authority
 
     runtime = game["_watten"]
-    eligible = (games.get(game["_id"]) is game and runtime.engine is not None
+    eligible = (not game.get("_aborted") and games.get(game["_id"]) is game and runtime.engine is not None
                 and runtime.engine.phase == "deal_complete" and _blocked(runtime) is None)
     previous = _JOBS.get(game["_id"])
     if previous and eligible and previous.owner is game and previous.context == _context(game):

@@ -158,7 +158,7 @@ def _authority(game: dict) -> _Authority | None:
             if raw is None:
                 return None
             stored = restore_watten_json(raw, refresh_titles=False)
-            if (stored["_id"] != game["_id"]
+            if (stored.get("_aborted") or stored["_id"] != game["_id"]
                     or serialize_watten_game(stored) != serialize_watten_game(game)):
                 return None
             local = _local_preview_enabled()
@@ -304,14 +304,14 @@ def watch_game(game: dict) -> None:
     now = asyncio.get_running_loop().time()
     engine = runtime.engine
     completed = len(engine.play.tricks) if engine is not None and engine.play is not None else 0
-    if completed and engine.phase != "match_complete":
+    if not game.get("_aborted") and completed and engine.phase != "match_complete":
         previous_reveal = _TRICK_REVEALS.get(game["_id"])
         if (previous_reveal is None or previous_reveal[0] is not game
                 or previous_reveal[1:3] != (engine.deal_id, completed)):
             _TRICK_REVEALS[game["_id"]] = (game, engine.deal_id, completed, now + TRICK_REVEAL_SECONDS)
     else:
         _TRICK_REVEALS.pop(game["_id"], None)
-    active = (cpu_autoplay_enabled() and runtime.engine is not None and not runtime.absent
+    active = (not game.get("_aborted") and cpu_autoplay_enabled() and runtime.engine is not None and not runtime.absent
               and runtime.engine.phase != "match_complete")
     if active:
         active = _authority(game) is not None

@@ -716,14 +716,22 @@ function onError(data) {
 }
 
 function onClose(event) {
-  voice?.disconnected({ revoke: event.code === 1008 || Boolean(session.fatal) });
+  const terminal = session.snapshot?.aborted && session.snapshot.room?.status === "closed";
+  voice?.disconnected({ revoke: terminal || event.code === 1008 || Boolean(session.fatal) });
   motion.cancel();
   const wasBound = session.bound;
   session.socket = null;
   session.bound = false;
-  social?.disconnect(event.code === 1008 || Boolean(session.fatal));
+  social?.disconnect(terminal || event.code === 1008 || Boolean(session.fatal));
   clearInFlight();
   session.queued = null;
+  if (terminal) {
+    clearTimeout(session.reconnectTimer);
+    session.pendingDeparture = null;
+    setConnection("");
+    render();
+    return;
+  }
   if (session.pendingDeparture) { void reconcileDeparture(); return; }
   if (session.intent === "join" && !wasBound) {
     session.joining = false;
@@ -927,6 +935,11 @@ function adopt(snapshot, publicCalls) {
     session.callAnnouncement = "";
   }
   session.live = true;
+  if (snapshot.aborted && snapshot.room.status === "closed") {
+    session.pendingDeparture = null;
+    clearInFlight();
+    session.queued = null;
+  }
   if (session.pendingDeparture && !session.inFlight) return;
   setConnection("");
   if (!session.spectator) consumeCalls(snapshot);
@@ -984,7 +997,7 @@ function render(previous = null, live = false, accepted = false) {
     delete html.dataset.wattenActive;
     if (snapshot.room.status === "closed") {
       if (session.viewKind !== "closed" || !root.querySelector("[data-watten-rematch]")) {
-        showMessage(t("waiting.closedTitle"), t("waiting.closed"), `${lobbyLink()}<div data-watten-rematch hidden></div>`);
+        showMessage(t("waiting.closedTitle"), t(snapshot.abort_reason === "inactivity_timeout" ? "waiting.inactive" : "waiting.closed"), `${lobbyLink()}<div data-watten-rematch hidden></div>`);
         session.view = null;
         session.viewKind = "closed";
       }
