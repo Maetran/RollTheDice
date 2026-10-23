@@ -237,7 +237,8 @@ test("new DE/EN catalogs have identical complete keys and guarded integration ne
   }
   const table = await readFile(new URL("../frontend/watten/table.js", import.meta.url), "utf8");
   const game = await readFile(new URL("../frontend/watten/game.js", import.meta.url), "utf8");
-  assert.match(table, /data-wt-private[^]*?data-wt-history[^]*?data-wt-panel[^]*?data-wt-stake[^]*?<div data-watten-rematch hidden><\/div>/);
+  assert.match(table, /data-watten-match-result[^]*?<div data-watten-rematch hidden><\/div>[^]*?wt-final-call/);
+  assert.match(table, /data-wt-private[^]*?data-wt-history[^]*?data-wt-panel[^]*?data-wt-stake/);
   assert.match(game, /rematch\?\.update\(\{ container: root.querySelector\("\[data-watten-rematch\]"\)/);
   assert.match(game, /Closed rooms need no socket admission/);
 });

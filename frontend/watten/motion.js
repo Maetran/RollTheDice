@@ -50,7 +50,7 @@ export function createMotion({ win = window, doc = document } = {}) {
   let width = win.innerWidth, height = win.innerHeight;
   const now = () => win.performance?.now?.() ?? performance.now();
   const enabled = () => !destroyed && !reduced?.matches && !doc.hidden && doc.visibilityState !== "hidden"
-    && typeof doc.body?.animate === "function";
+    && !doc.querySelector?.("[data-wt-history][open]") && typeof doc.body?.animate === "function";
 
   function hide(node, property = "visibility") {
     if (!hidden.has(node)) hidden.set(node, { count: 0, property, value: node.style[property] });
@@ -106,6 +106,7 @@ export function createMotion({ win = window, doc = document } = {}) {
   win.visualViewport?.addEventListener("scroll", cancel, { passive: true });
   win.screen?.orientation?.addEventListener?.("change", cancel);
   doc.addEventListener("visibilitychange", visibilityChanged);
+  doc.addEventListener("watten:review-change", cancel);
   reduced?.addEventListener?.("change", cancel);
 
   function destroy() {
@@ -117,6 +118,7 @@ export function createMotion({ win = window, doc = document } = {}) {
     win.visualViewport?.removeEventListener("scroll", cancel);
     win.screen?.orientation?.removeEventListener?.("change", cancel);
     doc.removeEventListener("visibilitychange", visibilityChanged);
+    doc.removeEventListener("watten:review-change", cancel);
     reduced?.removeEventListener?.("change", cancel);
   }
 

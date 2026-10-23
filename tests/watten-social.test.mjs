@@ -6,7 +6,7 @@ const catalog = await readFile(new URL("../frontend/i18n/catalog.js", import.met
 const catalogUrl = `data:text/javascript;base64,${Buffer.from(catalog).toString("base64")}`;
 const source = (await readFile(new URL("../frontend/watten/social.js", import.meta.url), "utf8"))
   .replace('"../i18n/catalog.js"', JSON.stringify(catalogUrl));
-const { createSocial, createSocialLog, socialEvent, SOCIAL_EMOJIS } = await import(`data:text/javascript;base64,${Buffer.from(source).toString("base64")}`);
+const { createSocial, createSocialLog, socialEvent, SOCIAL_EMOJIS, resultReactionsMarkup } = await import(`data:text/javascript;base64,${Buffer.from(source).toString("base64")}`);
 const gameId = "0123456789abcdef";
 const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, char => ({
   "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
@@ -76,7 +76,7 @@ class Root extends Events {
 const clients = new Set();
 test.afterEach(() => { for (const client of clients) client.destroy(); clients.clear(); });
 function fixture({ language = "de", connected = true } = {}) {
-  const dom = { activeElement: null, createElement: () => new Node(dom) };
+  const dom = Object.assign(new Events(), { activeElement: null, createElement: () => new Node(dom) });
   const win = new Events(); win.innerHeight = 700; win.visualViewport = new Events(); win.visualViewport.height = 500;
   const root = new Root(dom), calls = [];
   let current = true, account = 1;
@@ -144,6 +144,26 @@ test("text send is independent from gameplay phase, captures nonce, waits ACK an
   f.client.receive(ack()); assert.equal(f.field("input").value, ""); assert.equal(f.field("input").disabled, false);
   f.root.click("emoji", "🔥"); assert.deepEqual(f.calls.at(-1), { action: "watten_send_emoji", channel_id: "own-channel", nonce: 2, emoji: "🔥" });
   assert.doesNotMatch(source, /engine\.actions|card_turn|gestrichen|partner_feedback|renderHand|createTableView/);
+});
+
+test("result reactions reuse the authenticated public channel and remain disabled offline or revoked", () => {
+  const f = fixture(), button = new Node(f.dom), status = new Node(f.dom);
+  button.dataset.wattenResultEmoji = "🎉";
+  f.dom.querySelectorAll = selector => selector === "[data-watten-result-emoji]" ? [button] : [status];
+  f.update(); assert.equal(button.disabled, false);
+  f.dom.emit("click", { target: { closest: () => button } });
+  assert.deepEqual(f.calls.at(-1), { action: "watten_send_emoji", channel_id: "own-channel", nonce: 1, emoji: "🎉" });
+  assert.equal(button.disabled, true);
+  f.client.receive(ack()); assert.equal(button.disabled, false);
+  f.client.disconnect(); assert.equal(button.disabled, true);
+  f.dom.emit("click", { target: { closest: () => button } });
+  assert.equal(f.calls.length, 2);
+  f.client.disconnect(true); f.update(); assert.equal(button.disabled, true);
+  for (const language of ["de", "en"]) {
+    const markup = resultReactionsMarkup(language, escapeHtml);
+    assert.equal((markup.match(/data-watten-result-emoji=/g) || []).length, 4);
+    assert.match(markup, language === "de" ? /Schnelle Reaktionen/ : /Quick reactions/);
+  }
 });
 
 test("stale nonce refreshes history with draft retained and no automatic resend", () => {

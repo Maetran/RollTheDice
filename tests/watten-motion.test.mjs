@@ -136,6 +136,32 @@ test("an opponent's newly public face starts at its fan; no opponent hand face i
   f.close();
 });
 
+test("opening review cancels ghosts and incoming throws stay current without catch-up playback", () => {
+  const f = fixture(), first = f.node("bells-9", rect(410, 300));
+  let reviewOpen = false;
+  f.doc.querySelector = selector => selector === "[data-wt-history][open]" && reviewOpen ? {} : null;
+  const firstResult = result({ nodes: [first], cards: [{ seat: 2, card: "bells-9" }], created: [{ node: first, seat: 2, card: "bells-9" }] });
+  f.present(engine(), engine(), firstResult);
+  assert.equal(f.ghosts().length, 1);
+  reviewOpen = true;
+  f.doc.emit("watten:review-change");
+  assert.equal(f.ghosts().length, 0);
+  assert.equal(first.style.visibility, "");
+  const second = f.node("hearts-7", rect(420, 310));
+  f.present(engine(), engine(), result({ nodes: [second], cards: [{ seat: 1, card: "hearts-7" }], created: [{ node: second, seat: 1, card: "hearts-7" }] }));
+  assert.equal(f.ghosts().length, 0);
+  assert.equal(second.style.visibility, "");
+  reviewOpen = false;
+  f.doc.emit("watten:review-change");
+  f.present(engine(), engine(), result({ nodes: [second], cards: [{ seat: 1, card: "hearts-7" }] }));
+  assert.equal(f.ghosts().length, 0, "accepted state resumes without replaying reviewed time");
+  const third = f.node("leaves-A", rect(430, 320));
+  f.present(engine(), engine(), result({ nodes: [third], cards: [{ seat: 3, card: "leaves-A" }], created: [{ node: third, seat: 3, card: "leaves-A" }] }));
+  assert.equal(f.ghosts().length, 1, "new live throws animate normally after close");
+  f.close();
+  assert.equal(f.doc.listenerCount, 0);
+});
+
 test("ghost artwork owns fresh SVG clip IDs, retaining its image after the source card disappears", () => {
   const f = fixture(), played = f.node("bells-9", rect(410, 300));
   const clip = f.node(undefined, rect(0, 0)); clip.setAttribute("id", "hd-card-paper-original");
@@ -370,7 +396,7 @@ function controller(f, acceptedResult) {
   const guideUpdates = [];
   const session = { snapshot: null, view: null, viewKind: "waiting", playerId: "p0", spectator: false, bound: true, bubbles: [] };
   const view = { ...f.view, motionSources: () => [...f.seats, f.deck], update: () => acceptedResult };
-  const context = { session, html, viewRoot: () => root, decor: null, voice: null, waitingChrome: null, account: { id: 1 }, sameHandVersion, setHeading() {}, createTableView: () => view,
+  const context = { session, html, viewRoot: () => root, decor: null, voice: null, waitingChrome: null, account: { id: 1 }, sameHandVersion, setHeading() {}, syncSocial() {}, createTableView: () => view,
     motion: f.motion, engineCommand() {}, liveMessage: () => "", preserveFocus: fn => fn(), matchProgress: null, rematch: null, openSeatNotifications: null,
     beginnerGuide: { update: state => guideUpdates.push(state) },
     roundReview: { update: () => ({ stage: "ready" }), afterMotion() {}, discard() {} },

@@ -7,6 +7,8 @@ for (const language of ['de', 'en']) {
     const own = players[0];
     try {
       const gamePath = await finish(players);
+      await expect(own.page.locator('[data-watten-match-progress-action=dismiss]')).toBeHidden();
+      await own.page.locator('.wt-final-call > summary').click();
       await expect(own.page.locator('[data-watten-match-progress-action=dismiss]')).toBeVisible();
       await expect(own.page.locator('.wt-seat-public-title')).toHaveCount(2);
       const account = await (await own.context.request.get('/api/watten/account')).json();
@@ -15,6 +17,7 @@ for (const language of ['de', 'en']) {
       expect(account.progress.pending.credits).toHaveLength(1);
       await own.page.locator('[data-watten-match-result] a[href="/watten/konto/fortschritt"]').click();
       await expect(own.page).toHaveURL(/\/watten\/konto\/fortschritt$/);
+      await expect(own.page.locator('#wattenProgress > h1')).toHaveText(language === 'de' ? 'Erfolge & Titel' : 'Achievements & titles');
       await expect(own.page.locator('html')).toHaveAttribute('lang', language);
       await expect(own.page.locator('.wt-progress-title h2')).toHaveText(account.progress.title.name[language]);
       await expect(own.page.locator('.wt-achievement-grid > li')).toHaveCount(48);
@@ -39,6 +42,7 @@ for (const language of ['de', 'en']) {
       await expect(own.page.locator('.wt-match-history')).toContainText(players[1].user.username);
       expect(await own.page.locator('[data-progress-match]').getAttribute('data-progress-match')).toBe(gamePath.split('/').pop());
       await own.page.locator('.wt-progress-tabs a[href="/watten/rangliste"]').click();
+      await expect(own.page.locator('.wt-progress-tabs a[href="/watten/konto/fortschritt"]')).toHaveText(language === 'de' ? 'Erfolge & Titel' : 'Achievements & titles');
       const form = own.page.locator('[data-progress-ranking]');
       await expect(form.locator('[name=players]')).toBeDisabled();
       await expect(own.page.locator('.wt-ranking .is-own')).toContainText(own.user.username);
@@ -127,8 +131,10 @@ test('a match reward dismissal survives reload and leaves a previous unseen matc
   const own = players[0];
   try {
     const older = await finish(players);
+    await own.page.locator('.wt-final-call > summary').click();
     await expect(own.page.locator('[data-watten-match-progress-action=dismiss]')).toBeVisible();
     const current = await finish(players);
+    await own.page.locator('.wt-final-call > summary').click();
     await own.page.locator('[data-watten-match-progress-action=dismiss]').click();
     await expect(own.page.locator('[data-watten-match-progress]')).toBeHidden();
     await own.page.reload();

@@ -185,7 +185,7 @@ test("foreign-game responses fail locally, and bilingual names are escaped", asy
   data.achievements[0].name.en = '<img src=x onerror="bad()">';
   const english = fixture({ language: "en", fetcher: async () => response(data) });
   english.update(); await until(() => english.container.innerHTML.includes("+30 XP"));
-  assert.match(english.container.innerHTML, /Your progress from this match/);
+  assert.match(english.container.innerHTML, /Achievements from this match/);
   assert.match(english.container.innerHTML, /&lt;img src=x onerror=&quot;bad\(\)&quot;&gt;/);
   assert.doesNotMatch(english.container.innerHTML, /<img/);
   english.client.destroy();

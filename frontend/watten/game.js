@@ -1045,6 +1045,7 @@ function render(previous = null, live = false, accepted = false) {
     playerId: session.playerId, spectator: session.spectator });
   if (vm.roundPresentation.stage === "ready") rematch?.update({ container: root.querySelector("[data-watten-rematch]"), snapshot,
     playerId: session.playerId, spectator: session.spectator, busy: Boolean(session.inFlight) || !session.bound });
+  syncSocial();
   syncDecor();
   if (accepted) motion.present({ previous: previous?.engine, engine, live, captured, result, view: session.view });
   roundReview.afterMotion();

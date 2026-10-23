@@ -2,7 +2,7 @@
 // legal cards, infers a hidden call or reads another participant's view.
 import { cardArt } from "../hausdepp/cards.js";
 import { escapeHtml as esc } from "../shared/auth.js";
-import { t, cardFace, cardBack, cardName, sortHand, suitName, strikeName, SUITS, STRIKES, isCard } from "./cards.js";
+import { t, lang, cardFace, cardBack, cardName, sortHand, suitName, strikeName, SUITS, STRIKES, isCard } from "./cards.js";
 import { teamName } from "./waiting-room.js";
 import { publicTitleMarkup } from "./match-progress.js";
 import { roundOptionsMarkup, bloedelnCardsMarkup } from "./round-options.js";
@@ -10,6 +10,7 @@ import { retourschneiderChoiceMarkup, createRetourAnnouncement } from "./retours
 import { seriesMarks, seriesTargetMarkup, seriesFinishedTitle } from "./series.js";
 import { createScorepad, nockerlMarksMarkup } from "./scorepad.js";
 import { createTrickLayout } from "./trick-layout.js";
+import { resultReactionsMarkup } from "./social.js";
 
 const POSITIONS = { 2: ["bottom", "top"], 3: ["bottom", "left", "right"], 4: ["bottom", "left", "top", "right"] };
 const FEEDBACK = ["good", "bad", "unsure"];
@@ -72,7 +73,8 @@ function reconcile(parent, next) {
     for (const attribute of incoming.attributes) {
       if (current.getAttribute(attribute.name) !== attribute.value) current.setAttribute(attribute.name, attribute.value);
     }
-    reconcile(current, incoming);
+    // These slots belong to their mounted controllers, including focused controls.
+    if (!incoming.matches("[data-watten-rematch], [data-watten-match-progress]")) reconcile(current, incoming);
   });
   while (parent.childNodes.length > next.childNodes.length) parent.lastChild.remove();
 }
@@ -436,14 +438,18 @@ function panelMarkup(vm) {
     return `<div class="wt-final" data-watten-match-result data-outcome="${vm.spectator ? "neutral" : mine ? "won" : "lost"}">
       <h3 class="wt-final-heading">${esc(seriesFinishedTitle(vm) || t(vm.spectator ? "match.over" : mine ? "match.youWon" : "match.youLost"))}</h3>
       <p class="wt-final-winner">${esc(t("match.wonBy", { names: names(winners) }))}</p>
-      ${(engine.nockerl || []).map(item => `<p class="wt-final-award" data-loss-kind="${esc(item.reason)}">
-        ${item.reason === "loss" ? "" : `<strong>${esc(t(`match.lossType.${item.reason}`))}</strong> · `}${esc(t("match.awarded", { count: item.count, names: names(item.members.map(id => nameOf(vm, id))) }))}
-      </p>`).join("")}
+      ${resultReactionsMarkup(lang(), esc)}
+      <div data-watten-rematch hidden></div>
+      <details class="wt-final-call"><summary>${esc(t("match.details"))}</summary>
+        ${(engine.nockerl || []).map(item => `<p class="wt-final-award" data-loss-kind="${esc(item.reason)}">
+          ${item.reason === "loss" ? "" : `<strong>${esc(t(`match.lossType.${item.reason}`))}</strong> · `}${esc(t("match.awarded", { count: item.count, names: names(item.members.map(id => nameOf(vm, id))) }))}
+        </p>`).join("")}
+        ${roundSummaryMarkup(vm)}
+        <div data-watten-match-progress hidden></div>
+        <a class="wt-button wt-button-secondary wt-final-progress" href="/watten/konto/fortschritt">${esc(t("nav.progress"))}</a>
+      </details>
       <p class="wt-visually-hidden" role="status">${esc(vm.snapshot.result_persisted ? t("match.saved") : t("match.saving"))}</p>
-      ${engine.round_summary ? `<details class="wt-final-call"><summary>${esc(t("round.call"))}</summary>${roundSummaryMarkup(vm)}</details>` : ""}
-      <div data-watten-match-progress hidden></div>
-      <div class="wt-final-actions"><a class="wt-button" href="/watten">${esc(t("match.toLobby"))}</a>
-        <a class="wt-button wt-button-secondary wt-final-progress" href="/watten/konto/fortschritt">${esc(t("nav.progress"))}</a></div>
+      <div class="wt-final-actions"><a class="wt-button wt-button-secondary" href="/watten">${esc(t("match.toLobby"))}</a></div>
     </div>`;
   }
   if (vm.paused) {
@@ -564,7 +570,6 @@ export function createTableView(container, { onCard, accountId = null }) {
       <details class="wt-history-box" data-wt-history hidden></details>
       <div class="wt-panel" data-wt-panel role="region" aria-label="${esc(t("panel.label"))}"></div>
       <div class="wt-stake" data-wt-stake></div>
-      <div data-watten-rematch hidden></div>
     </div>
     <div class="wt-hand-area" data-wt-hand-area>
       <div class="wt-hand" data-wt-hand role="group" aria-label="${esc(t("hand.label"))}"></div>
@@ -623,6 +628,8 @@ export function createTableView(container, { onCard, accountId = null }) {
   });
   elements.history.addEventListener("toggle", () => {
     if (elements.history.dataset.finished !== "true" && !elements.history.open && historyPinned) setHistoryPinned(false);
+    // State keeps updating during a review; motion discards its pending ghosts.
+    document.dispatchEvent(new CustomEvent("watten:review-change"));
   });
 
   // Only a press that started on this exact card in the current layout can
@@ -804,7 +811,8 @@ export function createTableView(container, { onCard, accountId = null }) {
     elements.history.dataset.finished = String(historyFinished);
     patch(elements.history, "history", history);
     elements.history.dataset.pinned = String(historyPinned && !historyFinished);
-    if (history && (historyFinished ? reviewReady && !historyWasFinished : historyPinned)) elements.history.open = true;
+    if (historyFinished && reviewReady && !historyWasFinished) elements.history.open = vm.engine.phase === "deal_complete";
+    else if (history && !historyFinished && historyPinned) elements.history.open = true;
     historyWasFinished = historyFinished && reviewReady;
     elements.handArea.hidden = vm.spectator;
     container.querySelector("[data-wt-table]").dataset.playable = String(vm.actions.includes("play_card"));

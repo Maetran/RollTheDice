@@ -101,6 +101,7 @@ async function expectStage(item, count) {
   expect(stakeBox.height).toBeGreaterThanOrEqual(44);
   if (compactBid && engine.actions.includes('respond_go')) await expect(page.locator('[data-watten-action=respond_go]'))
     .toContainText(String(engine.bid.accepted_stake));
+  const reviewing = await page.locator('[data-wt-history]').evaluate(node => node.open);
   const ownSeat = engine.viewer.seat;
   const backCount = engine.seats.filter(seat => seat.seat !== ownSeat).reduce((sum, seat) => sum + seat.card_count, 0);
   await expect(page.locator('.wt-backs > i:not([hidden])')).toHaveCount(backCount);
@@ -110,7 +111,8 @@ async function expectStage(item, count) {
     await expect(pile).toHaveAttribute('data-count', String(seat.tricks_won));
     await expect(pile.locator('.wt-taken-packet')).toHaveCount(seat.tricks_won);
     if (seat.tricks_won) {
-      await expect(pile).toBeVisible();
+      if (reviewing) await expect(pile).toBeHidden();
+      else await expect(pile).toBeVisible();
       await expect(pile).toHaveAttribute('aria-label', `${seat.tricks_won} ${language === 'en'
         ? (seat.tricks_won === 1 ? 'trick' : 'tricks') : (seat.tricks_won === 1 ? 'Stich' : 'Stiche')}`);
     } else await expect(pile).toBeHidden();
@@ -121,7 +123,7 @@ async function expectStage(item, count) {
     const rect = node => node.getBoundingClientRect();
     const intersects = (a, b) => Math.min(a.right, b.right) - Math.max(a.left, b.left) > 2
       && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 2;
-    const shown = node => rect(node).width > 0 && rect(node).height > 0;
+    const shown = node => rect(node).width > 0 && rect(node).height > 0 && getComputedStyle(node).visibility !== 'hidden';
     const label = node => node.matches('.wt-backs > i') ? `opponent card at seat ${node.closest('[data-wt-seat]').dataset.wtSeat}`
       : node.getAttribute('data-wt-card') || node.className;
     const cards = [...document.querySelectorAll('.wt-backs > i:not([hidden]), [data-wt-hand] button, .wt-trick-card, .wt-taken[data-filled="true"] i')].filter(shown);
@@ -148,7 +150,7 @@ async function expectStage(item, count) {
       && document.querySelector('[data-wt-table]').dataset.phase === 'bid_response';
     const protectedAreas = [...document.querySelectorAll('[data-wt-hand-area], [data-wt-panel], [data-wt-stake], [data-wt-history]:not([open]), [data-wt-private] button, .wt-trick-card')]
       .filter(shown).filter(area => !frozenBid || !area.matches('[data-wt-panel]'));
-    for (const back of document.querySelectorAll('.wt-backs > i:not([hidden])')) {
+    for (const back of [...document.querySelectorAll('.wt-backs > i:not([hidden])')].filter(shown)) {
       const box = rect(back);
       const overlaps = protectedAreas.filter(area => intersects(box, rect(area)));
       if (overlaps.length) violations.push(`${label(back)} overlaps ${overlaps.map(area => area.className || area.tagName).join(', ')} at ${innerWidth}x${innerHeight}`);
@@ -159,7 +161,8 @@ async function expectStage(item, count) {
     return [...new Set(violations)];
   }), { message: 'all five-card opponent fans and the own hand remain complete and clear' }).toEqual([]);
 
-  await expectReachable(page, '[data-wt-hand] button:first-child');
+  if (await page.locator('[data-wt-history]').evaluate(node => node.open)) await expect(page.locator('[data-wt-hand]')).toBeHidden();
+  else await expectReachable(page, '[data-wt-hand] button:first-child');
   // The score list includes intentional gaps; each score opens its own pad.
   for (let index = 0; index < scores.length; index += 1) {
     await expectReachable(page, `[data-wt-scores] > .wt-score:nth-child(${index + 1}) > [data-wt-score-open]`);

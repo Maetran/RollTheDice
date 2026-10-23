@@ -682,3 +682,47 @@ html[data-watten-active="true"] .wt-advice-name {
 @media (orientation: portrait) and (max-width: 350px) {
   html[data-watten-active="true"] .wt-table .wt-panel .wt-bid > .wt-partner-advice { padding-block: 4px; margin-bottom: 6px; }
 }
+
+/* A review owns the card surface while accepted live state keeps updating.
+   Body-level flight copies are hidden immediately, before the toggle event. */
+html[data-watten-active="true"] .wt-table[data-phase="match_complete"][data-round-stage="ready"] :is(.wt-felt *, .wt-hand-area, .wt-hand-area *),
+html[data-watten-active="true"] .wt-table:has([data-wt-history][open]) :is(.wt-felt *, .wt-hand-area, .wt-hand-area *),
+html[data-watten-active="true"]:has([data-wt-history][open]) [data-wt-motion] { visibility: hidden !important; }
+
+/* The final sheet starts with the outcome and one next-game action. */
+html[data-watten-active="true"] .wt-table[data-phase="match_complete"][data-round-stage="ready"] .wt-end-sheet {
+  width: min(480px, calc(100% - 24px)); padding: clamp(16px, 3vw, 24px); gap: 0;
+  background: #fff3df; border: 1px solid #b58850; box-shadow: 0 8px 28px #3a1e1440;
+}
+html[data-watten-active="true"] .wt-final-winner { margin-bottom: 14px; font-size: .9rem; overflow-wrap: anywhere; }
+html[data-watten-active="true"] .wt-final .wt-rematch { padding: 0; border: 0; }
+html[data-watten-active="true"] .wt-final .wt-rematch > h3 {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+  overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+}
+html[data-watten-active="true"] .wt-final .wt-rematch > button { width: 100%; min-height: 48px; margin: 0 0 10px; }
+html[data-watten-active="true"] .wt-final .wt-rematch .wt-error:empty { display: none; }
+html[data-watten-active="true"] .wt-final-call { border-top: 1px solid #bc8a4e44; }
+html[data-watten-active="true"] .wt-final-call[open] { padding-bottom: 12px; }
+html[data-watten-active="true"] .wt-final-award { margin: 6px 0; font-size: .85rem; }
+html[data-watten-active="true"] .wt-final-actions { margin: 4px 0; }
+html[data-watten-active="true"] .wt-final-actions > a { background: transparent; border-color: transparent; color: #6b4731; min-height: 44px; }
+html[data-watten-active="true"] .wt-table[data-phase="match_complete"][data-round-stage="ready"] .wt-history-box {
+  background: transparent; padding: 0; border: 0; border-top: 1px solid #bc8a4e44; border-radius: 0;
+}
+html[data-watten-active="true"] .wt-table[data-phase="match_complete"][data-round-stage="ready"] .wt-history-box > summary {
+  justify-content: center; color: #6b4731; font-weight: 400; font-size: .85rem;
+}
+html[data-watten-active="true"] .wt-table[data-phase="match_complete"][data-round-stage="ready"] .wt-history-box[open] > summary { background: #fff3df; }
+html[data-watten-active="true"] .wt-final-reactions { display: flex; justify-content: center; gap: 8px; margin: 0 0 12px; }
+html[data-watten-active="true"] .wt-final-reactions > button {
+  flex: 0 0 44px; min-width: 44px; min-height: 44px; padding: 0; font-size: 1.4rem;
+  border: 1px solid #bc8a4e66; background: #fff9ee; color: #6b4731; box-shadow: none;
+}
+html[data-watten-active="true"] .wt-final-reaction-status:empty { display: none; }
+html[data-watten-active="true"] .wt-final .wt-match-progress { border: 0; border-top: 1px solid #bc8a4e44; padding: 8px 0; margin: 10px 0; text-align: left; }
+html[data-watten-active="true"] .wt-final .wt-match-progress :is(h4, h5, p, li) { margin: 4px 0; font-size: .78rem; line-height: 1.4; }
+html[data-watten-active="true"] .wt-final .wt-match-progress ul { padding-left: 18px; margin: 4px 0; }
+html[data-watten-active="true"] .wt-final .wt-match-progress .wt-note { font-size: .7rem; color: #765c44; }
+html[data-watten-active="true"] .wt-final .wt-match-progress button { min-height: 44px; padding: 4px 10px; font-size: .78rem; background: #fff9ee; color: #6b4731; border-color: #bc8a4e66; }
+.wt-social-drawer { grid-template-rows: auto auto auto minmax(4rem, 1fr) auto auto auto; }

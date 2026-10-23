@@ -51,9 +51,9 @@ export function createMatchProgress({ gameId, apiFetch, loadAuth, escapeHtml,
       container.replaceChildren(); container.hidden = true; return;
     }
     container.hidden = false;
-    const body = value ? `<p><strong>${esc(t("xp", { xp: number((value.credit?.xp || 0)
+    const body = value ? `<p class="wt-match-progress-total"><strong>${esc(t("xp", { xp: number((value.credit?.xp || 0)
       + value.achievements.reduce((sum, item) => sum + item.xp, 0)) }))}</strong></p>
-      <p>${esc(t("title", { name: value.title.name[lang()], level: value.title.level }))}</p>
+      <p class="wt-match-progress-title">${esc(t("title", { name: value.title.name[lang()], level: value.title.level }))}</p>
       ${value.achievements.length ? `<h5>${esc(t("achievements"))}</h5><ul>${value.achievements.map(item =>
         `<li>${esc(item.name[lang()])} · ${esc(t("xp", { xp: number(item.xp) }))}</li>`).join("")}</ul>` : ""}` : "";
     const action = state === "error" ? `<p class="wt-error" role="alert">${esc(t(errorKey))}</p>
@@ -61,7 +61,7 @@ export function createMatchProgress({ gameId, apiFetch, loadAuth, escapeHtml,
       : state === "loading" ? `<p role="status">${esc(t("loading"))}</p>`
         : `<button type="button" data-watten-match-progress-action="dismiss"${state === "saving" ? " disabled" : ""}>
           ${esc(t(state === "saving" ? "saving" : "dismiss"))}</button>`;
-    container.innerHTML = `<section class="wt-card-panel wt-match-progress" aria-labelledby="wattenMatchProgressTitle">
+    container.innerHTML = `<section class="wt-match-progress" aria-labelledby="wattenMatchProgressTitle">
       <h4 id="wattenMatchProgressTitle">${esc(t("heading"))}</h4>
       <p class="wt-note">${esc(t("draft"))}</p>${body}${action}</section>`;
   }
