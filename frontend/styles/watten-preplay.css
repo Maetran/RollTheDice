@@ -1,0 +1,67 @@
+/* Pre-play decisions have their own dock. Status changes cannot reflow the
+   caller's show/continue action or the two inspection cards. */
+html[data-game="watten"][data-watten-active="true"] .wt-bloedeln-dock {
+  position: absolute; right: 12px; bottom: calc(var(--wt-hand-w) * 1.8 + 28px);
+  width: min(280px, calc(100% - 24px)); z-index: 27; pointer-events: auto;
+}
+html[data-game="watten"][data-watten-active="true"] .wt-bloedeln-dock:empty { display: none; }
+html[data-game="watten"][data-watten-active="true"] .wt-bloedeln-dock .wt-bloedeln-start { text-align: right; padding: 9px; }
+html[data-game="watten"][data-watten-active="true"] .wt-bloedeln-dock .wt-bloedeln-start > button { width: calc((100% - 6px) / 2); min-height: 44px; }
+html[data-game="watten"][data-watten-active="true"] .wt-bloedeln-dock .wt-preplay-pending {
+  margin: 0; padding: 8px; background: #fff2dc; border: 1px solid #ba9167; border-radius: 8px;
+}
+html[data-game="watten"][data-watten-active="true"] .wt-bloedeln-dock .wt-preplay-pending h3 {
+  margin: 0 0 6px; font-size: .85rem; line-height: 1.25;
+}
+html[data-game="watten"][data-watten-active="true"] .wt-bloedeln-dock .wt-preplay-pending > .wt-note:not([role="status"]) { display: none; }
+html[data-game="watten"][data-watten-active="true"] .wt-bloedeln-dock .wt-choice-row { display: flex; flex-direction: row-reverse; gap: 6px; }
+html[data-game="watten"][data-watten-active="true"] .wt-bloedeln-dock .wt-choice-row > button { flex: 1; min-height: 44px; }
+html[data-game="watten"][data-watten-active="true"] .wt-bloedeln-dock .wt-bloedeln-status {
+  padding: 3px 6px; margin: 0; border-radius: 5px; background: #fff0dbdb; font-size: .75rem; line-height: 1.25;
+}
+/* The caller's primary action keeps the same touch target through showing
+   and inspection. Passive Blödeln information has its own quiet baseline. */
+html[data-game="watten"][data-watten-active="true"] .wt-table:has([data-watten-action="inspection_ack"]) > .wt-bloedeln-dock,
+html[data-game="watten"][data-watten-active="true"] .wt-bloedeln-dock:has(> .wt-bloedeln-status) {
+  left: 12px; right: auto; bottom: calc(var(--wt-hand-w) * 1.8 + 82px); width: calc(100% - 24px);
+}
+html[data-game="watten"][data-watten-active="true"] .wt-bloedeln-dock:has(> .wt-bloedeln-status) { text-align: center; }
+html[data-game="watten"][data-watten-active="true"] .wt-inspection > button,
+html[data-game="watten"][data-watten-active="true"] .wt-table:not([data-phase="match_complete"][data-round-stage="ready"]) .wt-end-sheet > .wt-panel > .wt-announce:has(> [data-watten-action="show_ready"]) {
+  position: fixed; inset: auto 12px calc(var(--wt-hand-w) * 1.8 + max(20px, env(safe-area-inset-bottom, 0px))) auto;
+  width: 120px; max-width: 120px; translate: none;
+}
+html[data-game="watten"][data-watten-active="true"] .wt-inspection > button,
+html[data-game="watten"][data-watten-active="true"] .wt-table .wt-announce > [data-watten-action="show_ready"] {
+  width: 120px; height: 44px; min-height: 44px; font-size: .85rem; line-height: 1.1; padding: 6px;
+}
+@media (orientation: landscape) and (max-height: 700px) {
+  html[data-game="watten"][data-watten-active="true"] .wt-bloedeln-dock,
+  html[data-game="watten"][data-watten-active="true"] .wt-table:has([data-watten-action="inspection_ack"]) > .wt-bloedeln-dock,
+  html[data-game="watten"][data-watten-active="true"] .wt-bloedeln-dock:has(> .wt-bloedeln-status) {
+    position: fixed; left: calc(6px + var(--wt-rail-inset)); right: auto; top: auto; bottom: 62px;
+    width: 144px; max-height: calc(100dvh - 234px); overflow: auto; text-align: left;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-bloedeln-dock .wt-preplay-pending { padding: 5px; }
+  html[data-game="watten"][data-watten-active="true"] .wt-bloedeln-dock .wt-preplay-pending h3 { font-size: .7rem; }
+  html[data-game="watten"][data-watten-active="true"] .wt-bloedeln-dock .wt-advice-name { max-width: 8ch; }
+  html[data-game="watten"][data-watten-active="true"] .wt-bloedeln-dock .wt-note { display: none; }
+  html[data-game="watten"][data-watten-active="true"] .wt-bloedeln-dock .wt-choice-row { gap: 4px; }
+  html[data-game="watten"][data-watten-active="true"] .wt-bloedeln-dock button { min-height: 44px; padding: 4px; font-size: .75rem; }
+  html[data-game="watten"][data-watten-active="true"] .wt-bloedeln-dock .wt-bloedeln-start { padding: 6px; }
+  html[data-game="watten"][data-watten-active="true"] .wt-bloedeln-dock .wt-bloedeln-start > button { width: calc((100% - 4px) / 2); }
+  html[data-game="watten"][data-watten-active="true"] .wt-inspection > button,
+  html[data-game="watten"][data-watten-active="true"] .wt-table:not([data-phase="match_complete"][data-round-stage="ready"]) .wt-end-sheet > .wt-panel > .wt-announce:has(> [data-watten-action="show_ready"]) {
+    bottom: calc(34px + env(safe-area-inset-bottom, 0px)); width: 104px; max-width: 104px;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table .wt-announce > [data-watten-action="show_ready"] { width: 104px; }
+  html[data-game="watten"][data-watten-active="true"] .wt-inspection .wt-reveal-card .wt-card { width: clamp(64px, 19dvh, 112px); }
+  html[data-game="watten"][data-watten-active="true"] .wt-seat--bottom .wt-bubble--thanks {
+    position: absolute; left: 50%; top: auto; bottom: 34px; translate: -50% 0;
+    white-space: nowrap; font-size: .85rem; padding: 3px 6px;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-seat--top .wt-bubble--thanks {
+    position: absolute; left: calc(50% + 76px); top: 0; translate: none;
+    white-space: nowrap; font-size: .85rem; padding: 3px 6px;
+  }
+}

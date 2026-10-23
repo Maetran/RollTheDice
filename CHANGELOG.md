@@ -23,6 +23,24 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## Unveröffentlicht / Unreleased
+
+### WATTEN
+
+**Deutsch:** Lesbare Ansagekarten zwischen den Ansagenden, feste Blödeln-Bedienung
+und freie Danke-Hinweise. Die Stichansicht blendet laufende Karten und Animationen
+aus. Der ruhigere Abschluss zeigt schnelle Reaktionen oben und kompakte Details
+weiter unten; «Erfolge & Titel» bezeichnet die persönlichen Erfolge und Wirtshaustitel.
+Revanchen besetzen den bisherigen Platz und dasselbe Team automatisch beim Beitritt.
+Laufende und pausierte Spiele enden nach einer Stunde ohne Spielaktivität ohne Wertung.
+
+**English:** Readable inspection cards between the announcers, stable Blödeln
+controls and clear thanks bubbles. Last-trick review hides live cards and animations.
+The quieter result brings quick reactions first and compact details below;
+“Achievements & titles” names personal achievements and pub titles. Joining a
+rematch automatically restores the previous seat and team. Running and paused
+games end without scoring after an hour without game activity.
+
 ## 4.1.3 — 2026-10-22
 
 ### HAUSDEPP

@@ -480,19 +480,43 @@ seat wishes. Passwords are never saved. The fresh password entered when using a 
 determines whether the new table is protected; applying
 a favorite neither creates nor starts a match.
 
+**Ruhiger Tisch / calmer table:** Ansagekarten treffen sich zwischen den beiden
+Ansagenden und bleiben auch im Querformat lesbar. Auf kleinen Bildschirmen dürfen
+sie sich überlappen; beide Karten bleiben erkennbar. Blödeln hat einen festen
+Bedienplatz; Unbeteiligte sehen nur den kurzen Status. Beim Ansehen des letzten
+Stichs bleiben neue Würfe und Kartenanimationen verborgen. Am Spielende stehen
+Ergebnis, schnelle Reaktionen und Revanche oben; Tischverlauf und kompakte
+Erfolge & Titel findest du darunter bei den Details.
+Inspection cards meet between the two announcers and remain readable in
+landscape. On small screens they may overlap while both remain identifiable.
+Blödeln controls keep a stable dock, with only a short status for
+others. Reviewing the last trick hides live throws and card animations. At match
+end the result, quick reactions and rematch come first; table history and compact
+achievements and titles are available below in the details.
+
+**Verlassene Tische / abandoned tables:** Nach einer Stunde ohne Spielaktivität
+werden laufende oder pausierte Watten-Spiele ohne Wertung beendet. Spielaktionen
+und bewusstes Fortsetzen verlängern die Frist; Chat, Zuschauen und blosses
+Neuverbinden nicht. Bis dahin kannst du auf deinen bisherigen Platz zurückkehren.
+Running or paused Watten games end without scoring after one hour without game
+activity. Game actions and deliberate resume renew the deadline; chat, viewing
+and reconnecting alone do not. Until then you can return to your previous seat.
+
 **Revanche / rematch:** Nach dem Ende genügt «Revanche starten». Menschen,
 Sitze, Teams, CPUs, Modus und Einstellungen bleiben unverändert, eure Nockerl
 laufen weiter. Ein Passwort wird nicht erneut verlangt: Nur die ursprünglichen
-Konten dürfen ihre festen Plätze besetzen. Alle treten freiwillig bei, der
-Gastgeber startet ausdrücklich. Neue Teams oder Regeln legst du mit einem
-neuen Spiel über die Lobby fest. Erneutes Öffnen führt auch nach verlorener
+Konten dürfen ihre festen Plätze besetzen. Beim freiwilligen Beitritt wird der
+bisherige Platz automatisch besetzt; eine erneute Teamwahl entfällt. Der Gastgeber
+startet ausdrücklich. Neue Teams oder Regeln legst du mit einem neuen Spiel über
+die Lobby fest. Erneutes Öffnen führt auch nach verlorener
 Antwort oder Neustart zur selben Revanche, ohne frühere Ergebnisse oder XP
 zu verändern.
 
 After the match, one “Start rematch” click continues with the same people,
 seats, teams, CPUs, mode and settings, carrying loss marks. No new password is
 needed: only the original accounts may take their assigned seats. Joining is
-voluntary and the host starts explicitly. Use a new game in the lobby for new
+voluntary and automatically restores the previous seat and team, without another
+team choice. The host starts explicitly. Use a new game in the lobby for new
 teams or rules. Reopening returns to the same rematch after a lost response
 or restart, without changing earlier results or XP.
 

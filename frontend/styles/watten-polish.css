@@ -558,16 +558,16 @@ html[data-watten-active="true"] .wt-bloedeln-status { margin: 0; font-size: .8re
 @media (orientation: portrait) and (max-width: 350px) and (max-height: 700px) {
   html[data-watten-active="true"] .wt-history .wt-mini-cards { padding-block: 2px; }
   html[data-watten-active="true"] .wt-history figure { margin-block: 0; }
-  html[data-watten-active="true"] .wt-table[data-count="4"][data-phase="play"]:not(:has([data-wt-history][open])):is(:has(> .wt-end-sheet > [data-wt-panel]:empty), :has(> .wt-end-sheet > [data-wt-panel] > .wt-prompt:only-child)) :is(.wt-seat--left, .wt-seat--right) { top: calc(11% - 14px); }
-  html[data-watten-active="true"] .wt-table[data-count="4"][data-phase="play"]:not(:has([data-wt-history][open])):is(:has(> .wt-end-sheet > [data-wt-panel]:empty), :has(> .wt-end-sheet > [data-wt-panel] > .wt-prompt:only-child)) .wt-seat--bottom { bottom: calc(var(--wt-hand-w) * 1.8 + 6px); }
-  html[data-watten-active="true"] .wt-table[data-viewer="player"][data-phase="play"]:not(:has([data-wt-history][open])):has(> .wt-end-sheet > [data-wt-panel]:empty) > .wt-end-sheet,
-  html[data-watten-active="true"] .wt-table[data-viewer="player"][data-phase="play"]:not(:has([data-wt-history][open])):has(> .wt-end-sheet > [data-wt-panel] > .wt-prompt:only-child) > .wt-end-sheet {
+  html[data-watten-active="true"] .wt-table[data-count="4"][data-phase="play"]:not(:has([data-wt-history][open]:not([hidden]))):is(:has(> .wt-end-sheet > [data-wt-panel]:empty), :has(> .wt-end-sheet > [data-wt-panel] > .wt-prompt:only-child)) :is(.wt-seat--left, .wt-seat--right) { top: calc(11% - 14px); }
+  html[data-watten-active="true"] .wt-table[data-count="4"][data-phase="play"]:not(:has([data-wt-history][open]:not([hidden]))):is(:has(> .wt-end-sheet > [data-wt-panel]:empty), :has(> .wt-end-sheet > [data-wt-panel] > .wt-prompt:only-child)) .wt-seat--bottom { bottom: calc(var(--wt-hand-w) * 1.8 + 6px); }
+  html[data-watten-active="true"] .wt-table[data-viewer="player"][data-phase="play"]:not(:has([data-wt-history][open]:not([hidden]))):has(> .wt-end-sheet > [data-wt-panel]:empty) > .wt-end-sheet,
+  html[data-watten-active="true"] .wt-table[data-viewer="player"][data-phase="play"]:not(:has([data-wt-history][open]:not([hidden]))):has(> .wt-end-sheet > [data-wt-panel] > .wt-prompt:only-child) > .wt-end-sheet {
     bottom: calc(var(--wt-hand-w) * 1.8 + 8px);
   }
 }
 
 @media (orientation: portrait) and (max-width: 760px) {
-  html[data-watten-active="true"] .wt-table:has([data-wt-history][open]:not([hidden])) .wt-centre > .wt-trick-label { visibility: hidden; }
+  html[data-watten-active="true"] .wt-table:has([data-wt-history][open]:not([hidden]):not([hidden])) .wt-centre > .wt-trick-label { visibility: hidden; }
   html[data-watten-active="true"] .wt-centre[data-wt-portrait-label] > .wt-trick-label {
     position: fixed; left: var(--wt-portrait-label-x); top: var(--wt-portrait-label-y);
     width: var(--wt-portrait-label-width); max-width: none; height: 20px;
@@ -584,7 +584,7 @@ html[data-watten-active="true"] .wt-bloedeln-status { margin: 0; font-size: .8re
 /* A call role adds one row to the own badge. Keep its name and captured
    packets on their normal baseline instead of raising them into the trick. */
 @media (orientation: portrait) and (min-height: 701px) and (max-width: 760px) {
-  html[data-watten-active="true"] .wt-table[data-count="4"][data-phase="play"]:not(:has([data-wt-history][open])):is(:has(> .wt-end-sheet > [data-wt-panel]:empty), :has(> .wt-end-sheet > [data-wt-panel] > .wt-prompt:only-child)) .wt-seat--bottom:has(.wt-seat-call-role) {
+  html[data-watten-active="true"] .wt-table[data-count="4"][data-phase="play"]:not(:has([data-wt-history][open]:not([hidden]))):is(:has(> .wt-end-sheet > [data-wt-panel]:empty), :has(> .wt-end-sheet > [data-wt-panel] > .wt-prompt:only-child)) .wt-seat--bottom:has(.wt-seat-call-role) {
     bottom: calc(var(--wt-hand-w) * 1.8 + 22px - .9rem);
   }
 }
@@ -686,8 +686,8 @@ html[data-watten-active="true"] .wt-advice-name {
 /* A review owns the card surface while accepted live state keeps updating.
    Body-level flight copies are hidden immediately, before the toggle event. */
 html[data-watten-active="true"] .wt-table[data-phase="match_complete"][data-round-stage="ready"] :is(.wt-felt *, .wt-hand-area, .wt-hand-area *),
-html[data-watten-active="true"] .wt-table:has([data-wt-history][open]) :is(.wt-felt *, .wt-hand-area, .wt-hand-area *),
-html[data-watten-active="true"]:has([data-wt-history][open]) [data-wt-motion] { visibility: hidden !important; }
+html[data-watten-active="true"] .wt-table:has([data-wt-history][open]:not([hidden])) :is(.wt-felt *, .wt-hand-area, .wt-hand-area *),
+html[data-watten-active="true"]:has([data-wt-history][open]:not([hidden])) [data-wt-motion] { visibility: hidden !important; }
 
 /* The final sheet starts with the outcome and one next-game action. */
 html[data-watten-active="true"] .wt-table[data-phase="match_complete"][data-round-stage="ready"] .wt-end-sheet {

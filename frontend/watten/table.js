@@ -66,15 +66,17 @@ function reconcile(parent, next) {
     }
     if (incoming.nodeType === Node.TEXT_NODE) { current.textContent = incoming.textContent; return; }
     if (incoming.nodeType !== Node.ELEMENT_NODE) return;
+    const controllerSlot = incoming.hasAttribute("data-watten-rematch") || incoming.hasAttribute("data-watten-match-progress");
     for (const attribute of [...current.attributes]) {
-      if (attribute.name === "open" && ["DETAILS", "DIALOG"].includes(incoming.nodeName)) continue;
+      if (attribute.name === "open" && ["DETAILS", "DIALOG"].includes(incoming.nodeName) || controllerSlot && attribute.name === "hidden") continue;
       if (!incoming.hasAttribute(attribute.name)) current.removeAttribute(attribute.name);
     }
     for (const attribute of incoming.attributes) {
+      if (controllerSlot && attribute.name === "hidden") continue;
       if (current.getAttribute(attribute.name) !== attribute.value) current.setAttribute(attribute.name, attribute.value);
     }
     // These slots belong to their mounted controllers, including focused controls.
-    if (!incoming.matches("[data-watten-rematch], [data-watten-match-progress]")) reconcile(current, incoming);
+    if (!controllerSlot) reconcile(current, incoming);
   });
   while (parent.childNodes.length > next.childNodes.length) parent.lastChild.remove();
 }
@@ -163,7 +165,7 @@ function inspectionMarkup(vm) {
   const colourSeat = vm.engine.announcement_roles?.colour;
   return `<div class="wt-inspection" data-watten-inspection role="group" aria-labelledby="wattenInspectionTitle">
     <h3 id="wattenInspectionTitle" class="wt-visually-hidden">${esc(t("inspection.title"))}</h3>
-    <div class="wt-inspection-cards">${cards.map(item => `<figure class="wt-reveal-card wt-reveal-card--${item.role}" data-wt-inspection-seat="${item.role === "strike" ? strikeSeat : colourSeat}">${cardFace(item.card)}<figcaption>${esc(t(item.role === "strike" ? "inspection.strike" : "inspection.colour"))}</figcaption></figure>`).join("")}</div>
+    <div class="wt-inspection-cards">${cards.map(item => `<figure class="wt-reveal-card wt-reveal-card--${item.role}" data-wt-inspection-seat="${item.role === "strike" ? strikeSeat : colourSeat}">${cardFace(item.card)}<figcaption>${esc(t(item.role === "strike" ? "inspection.strike" : "inspection.colourShort"))}</figcaption></figure>`).join("")}</div>
     ${button(t("inspection.ack"), `data-watten-command="engine" data-kind="inspection_ack" data-watten-action="inspection_ack"`, { disabled: vm.busy, className: "wt-primary" })}
   </div>`;
 }
@@ -176,7 +178,6 @@ function createInspectionMotion(reveal, seatNodes) {
   const overlaps = (a, b) => a.left < b.right + clearance && a.right > b.left - clearance
     && a.top < b.bottom + clearance && a.bottom > b.top - clearance;
   let key = "", playedKey = "", figures = [], observer = null, flights = [], geometry = "", frame = 0;
-  let viewerSeat = null, lastHandOrigin = null;
   const settle = () => { flights.forEach(flight => flight.cancel()); flights = []; };
   const stop = () => {
     settle(); observer?.disconnect(); observer = null;
@@ -191,39 +192,24 @@ function createInspectionMotion(reveal, seatNodes) {
     const felt = reveal.parentElement, bounds = felt.getBoundingClientRect();
     const table = felt.closest(".wt-table");
     if (!bounds.width || !bounds.height) return;
-    const ownHand = table?.querySelector(".wt-hand-area:not([hidden]) .wt-hand");
-    const handBounds = ownHand?.getBoundingClientRect();
-    if (handBounds?.width && handBounds?.height) {
-      const point = centre(handBounds);
-      lastHandOrigin = { x: (point.x - bounds.left) / bounds.width, y: (point.y - bounds.top) / bounds.height };
-    }
     const origins = figures.map(figure => {
-      const seat = Number(figure.dataset.wtInspectionSeat), player = seatNodes.get(seat);
-      if (seat === viewerSeat) return {
-        x: clamp((lastHandOrigin?.x ?? .5) * bounds.width, 20, bounds.width - 20),
-        y: clamp((lastHandOrigin?.y ?? .9) * bounds.height, 20, bounds.height - 20),
-      };
-      const fan = player?.querySelector(".wt-backs:not([hidden])");
-      const fanBounds = fan?.getBoundingClientRect();
-      const source = fanBounds?.width && fanBounds?.height ? fanBounds : player?.querySelector(".wt-avatar")?.getBoundingClientRect();
+      const player = seatNodes.get(Number(figure.dataset.wtInspectionSeat));
+      const source = player?.querySelector(".wt-avatar")?.getBoundingClientRect();
       if (!source) return null;
       const point = centre(source);
+      const position = ["bottom", "left", "right", "top"].find(value => player.classList.contains(`wt-seat--${value}`));
+      // The own hand occupies the bottom centre even when its name badge
+      // sits at the edge.
+      if (position === "bottom") point.x = bounds.left + bounds.width / 2;
       return { x: point.x - bounds.left, y: point.y - bounds.top };
     });
     if (origins.some(origin => !origin)) return;
     const delta = { x: origins[1].x - origins[0].x, y: origins[1].y - origins[0].y };
     const distance = Math.hypot(delta.x, delta.y) || 1;
-    const actionPanel = table?.querySelector('.wt-end-sheet > .wt-panel');
-    const docked = window.innerWidth <= 760 && window.innerHeight >= window.innerWidth
-      && Boolean(actionPanel?.querySelector('.wt-preplay-pending, .wt-bloedeln-status'));
-    const shortPortrait = docked && window.innerWidth <= 350 && window.innerHeight <= 700;
-    // In a short landscape viewport a flat horizontal pair leaves room for
-    // the badges and ACK without reducing the actual faces to tiny thumbnails.
-    const shortLandscape = bounds.height < 320 && bounds.width > bounds.height * 1.5;
-    // A narrow portrait keeps the pair in the column between the side fans;
-    // the entry flights still begin at each actual source hand.
-    const unit = shortPortrait ? { x: 0, y: delta.y < 0 ? -1 : 1 } : shortLandscape
-      ? { x: delta.x < 0 ? -1 : 1, y: 0 } : { x: delta.x / distance, y: delta.y / distance };
+    // The meeting point belongs to the two announcing hands. Keep both
+    // cards on their connecting line in every orientation.
+    const shortPortrait = bounds.height > bounds.width;
+    const unit = { x: delta.x / distance, y: delta.y / distance };
     const angle = Math.atan2(unit.y, unit.x) * 180 / Math.PI + 90;
     const cards = figures.map(figure => figure.querySelector(".wt-card"));
     const captions = figures.map(figure => figure.querySelector("figcaption"));
@@ -235,24 +221,16 @@ function createInspectionMotion(reveal, seatNodes) {
     cards.forEach(card => card.style.removeProperty("width"));
     const baseWidths = cards.map(card => card.offsetWidth);
     const labelSizes = captions.map(caption => ({ width: caption.offsetWidth, height: caption.offsetHeight }));
-    const ackSize = { width: ack.offsetWidth, height: ack.offsetHeight };
-    if (docked) {
-      table.style.setProperty("--wt-inspection-ack-height", `${ackSize.height}px`);
-      region.bottom = Math.min(region.bottom, actionPanel.getBoundingClientRect().top - bounds.top - 12);
-    }
-    // An open Blödeln question or status can share this inspection. Keep the
-    // cards and their ACK clear of its painted action panel as well as seats.
-    const obstacles = [...felt.querySelectorAll('.wt-seat-badge, .wt-avatar, .wt-seat-name, .wt-seat-call-role, .wt-seat-tags, .wt-seat-meta, .wt-bubble--thanks, .wt-backs:not([hidden]) > i:not([hidden]), .wt-stock'),
-      ...(table?.querySelectorAll('.wt-end-sheet > .wt-panel:not(:empty)') || [])]
+    const obstacles = [...felt.querySelectorAll('.wt-avatar, .wt-seat-name, .wt-seat-call-role, .wt-seat-public-title, .wt-seat-tags, .wt-bubble--thanks, .wt-backs:not([hidden]) > i:not([hidden]), .wt-stock'), ...table.querySelectorAll('[data-wt-preplay]:not(:empty), [data-watten-action=inspection_ack]')]
       .map(node => node.getBoundingClientRect()).filter(rect => rect.width && rect.height)
-      .map(rect => ({ left: rect.left - bounds.left - 8, right: rect.right - bounds.left + 8,
-        top: rect.top - bounds.top - 8, bottom: rect.bottom - bounds.top + 8 }));
-    function arrangement(scale) {
+      .map(rect => ({ left: rect.left - bounds.left, right: rect.right - bounds.left,
+        top: rect.top - bounds.top, bottom: rect.bottom - bounds.top }));
+    function arrangement(scale, separation = .5) {
       cards.forEach((card, index) => { card.style.width = `${baseWidths[index] * scale}px`; });
       const poses = cards.map((card, index) => {
         const width = card.offsetWidth, height = card.offsetHeight, rotation = angle + index * 180;
         const radians = rotation * Math.PI / 180, direction = index ? 1 : -1;
-        const x = direction * unit.x * (height / 2 + 2), y = direction * unit.y * (height / 2 + 2);
+        const x = direction * unit.x * (height * separation + (separation === .5 ? 2 : 0)), y = direction * unit.y * (height * separation + (separation === .5 ? 2 : 0));
         const extentX = (Math.abs(Math.cos(radians)) * width + Math.abs(Math.sin(radians)) * height) / 2;
         const extentY = (Math.abs(Math.sin(radians)) * width + Math.abs(Math.cos(radians)) * height) / 2;
         return { x, y, width, height, rotation, left: x - extentX, right: x + extentX, top: y - extentY, bottom: y + extentY };
@@ -275,34 +253,27 @@ function createInspectionMotion(reveal, seatNodes) {
       const faceTop = Math.min(...poses.map(pose => pose.top), ...labels.map(label => label.top));
       const faceBottom = Math.max(...poses.map(pose => pose.bottom), ...labels.map(label => label.bottom));
       const faceRight = Math.max(...poses.map(pose => pose.right), ...labels.map(label => label.right));
-      // A side ACK preserves readable faces below the fans on short screens.
-      const ackX = shortLandscape ? faceRight + 12 + ackSize.width / 2 : 0;
-      const ackTop = shortLandscape ? (faceTop + faceBottom - ackSize.height) / 2 : faceBottom + 12;
       const faceLeft = Math.min(...poses.map(pose => pose.left), ...labels.map(label => label.left));
-      const left = docked ? faceLeft : Math.min(faceLeft, ackX - ackSize.width / 2);
-      const right = docked ? faceRight : Math.max(faceRight, ackX + ackSize.width / 2);
-      const top = docked ? faceTop : Math.min(faceTop, ackTop);
-      const bottom = docked ? faceBottom : Math.max(faceBottom, ackTop + ackSize.height);
-      return { poses, labels, ackX, ackTop, left, right, top, bottom, width: right - left, height: bottom - top };
+      return { poses, labels, left: faceLeft, right: faceRight, top: faceTop, bottom: faceBottom,
+        width: faceRight - faceLeft, height: faceBottom - faceTop };
     }
     function placement(value) {
       if (value.width > region.right - region.left || value.height > region.bottom - region.top) return null;
       const xMin = region.left - value.left, xMax = region.right - value.right;
       const yMin = region.top - value.top, yMax = region.bottom - value.bottom;
-      const desired = { x: (region.left + region.right - value.left - value.right) / 2,
-        y: (region.top + region.bottom - value.top - value.bottom) / 2 };
-      const parts = [...value.poses, ...value.labels, ...(docked ? [] : [
-        { left: value.ackX - ackSize.width / 2, right: value.ackX + ackSize.width / 2,
-          top: value.ackTop, bottom: value.ackTop + ackSize.height }])];
-      // A card edge or its role badge can fit beside a fan independently of
-      // the whole pair. Match the collision clearance at every candidate edge.
-      const xs = [...new Set([desired.x, xMin, xMax, ...obstacles.flatMap(rect => parts.flatMap(part =>
-        [rect.left - part.right - clearance, rect.right - part.left + clearance]))].map(x => clamp(x, xMin, xMax)))];
-      const ys = [...new Set([desired.y, yMin, yMax, ...obstacles.flatMap(rect => parts.flatMap(part =>
-        [rect.top - part.bottom - clearance, rect.bottom - part.top + clearance]))].map(y => clamp(y, yMin, yMax)))];
+      const desired = { x: (origins[0].x + origins[1].x) / 2,
+        y: (origins[0].y + origins[1].y) / 2 };
+      const parts = [...value.poses, ...value.labels];
+      // Prefer the exact midpoint. A small inward clearance may skirt a
+      // source packet, while the pair stays in its two announcers' sector.
+      const normal = { x: -unit.y, y: unit.x };
+      const towardCentre = (bounds.width / 2 - desired.x) * normal.x + (bounds.height / 2 - desired.y) * normal.y;
+      const direction = towardCentre < 0 ? -1 : 1;
       let best = null, bestDistance = Infinity;
-      for (const candidateX of xs) for (const candidateY of ys) {
-        const x = clamp(candidateX, xMin, xMax), y = clamp(candidateY, yMin, yMax);
+      for (let offset = 0; offset <= 64; offset += 4) for (const fraction of [.5, .45, .55, .4, .6, .35, .65]) {
+        const x = origins[0].x + delta.x * fraction + normal.x * offset * direction;
+        const y = origins[0].y + delta.y * fraction + normal.y * offset * direction;
+        if (x < xMin || x > xMax || y < yMin || y > yMax) continue;
         if (parts.some(part => obstacles.some(obstacle => overlaps({ left: x + part.left, right: x + part.right,
           top: y + part.top, bottom: y + part.bottom }, obstacle)))) continue;
         const distance = ((x - desired.x) / bounds.width) ** 2 + ((y - desired.y) / bounds.height) ** 2;
@@ -310,30 +281,36 @@ function createInspectionMotion(reveal, seatNodes) {
       }
       return best;
     }
-    let arranged = arrangement(1);
-    let midpoint = placement(arranged);
-    if (!midpoint || (!shortLandscape && !docked && midpoint.distance > .04)) {
-      let low = docked ? Math.min(1, 52 / Math.min(...baseWidths)) : .25, high = 1;
+    let arranged, midpoint;
+    // Keep the short edges together wherever space allows. On a small table
+    // the same two faces may overlap, preserving at least 52px printed width.
+    for (const separation of [.5, .35, .25, .2]) {
+      arranged = arrangement(1, separation);
+      midpoint = placement(arranged);
+      if (midpoint) break;
+      let low = Math.min(1, 52 / Math.min(...baseWidths)), high = 1;
+      arranged = arrangement(low, separation);
+      midpoint = placement(arranged);
+      if (!midpoint) continue;
       for (let step = 0; step < 8; step += 1) {
         const middle = (low + high) / 2;
-        const point = placement(arrangement(middle));
-        if (point && (shortLandscape || docked || point.distance <= .04)) low = middle; else high = middle;
+        const point = placement(arrangement(middle, separation));
+        if (point) low = middle; else high = middle;
       }
-      arranged = arrangement(low);
+      arranged = arrangement(low, separation);
       midpoint = placement(arranged);
+      break;
     }
     // Only a severely constrained viewport can exhaust the free region. Keep
     // the complete group inside the table rather than returning to source hands.
-    midpoint ??= { x: clamp(bounds.width / 2, region.left - arranged.left, region.right - arranged.right),
-      y: clamp(bounds.height / 2, region.top - arranged.top, region.bottom - arranged.bottom) };
+    midpoint ??= { x: (origins[0].x + origins[1].x) / 2,
+      y: (origins[0].y + origins[1].y) / 2 };
     arranged.poses.forEach((pose, index) => {
       const figure = figures[index], card = cards[index], caption = captions[index], label = arranged.labels[index];
       figure.style.left = `${midpoint.x + pose.x}px`; figure.style.top = `${midpoint.y + pose.y}px`;
       card.style.left = `${-pose.width / 2}px`; card.style.top = `${-pose.height / 2}px`; card.style.rotate = `${pose.rotation}deg`;
       caption.style.left = `${label.x - pose.x}px`; caption.style.top = `${label.top - pose.y}px`;
     });
-    ack.style.left = `${docked ? bounds.width / 2 : midpoint.x + arranged.ackX}px`;
-    if (docked) ack.style.removeProperty("top"); else ack.style.top = `${midpoint.y + arranged.ackTop}px`;
     reveal.dataset.wtInspectionPositioned = "true";
     geometry = [bounds.width, bounds.height].join(":");
     if (playedKey === key || document.hidden) return;
@@ -351,13 +328,6 @@ function createInspectionMotion(reveal, seatNodes) {
   reduced?.addEventListener?.("change", preferenceChanged);
 
   const update = vm => {
-    viewerSeat = vm.spectator ? null : vm.viewerSeat;
-    const feltBounds = reveal.parentElement.getBoundingClientRect();
-    const handBounds = reveal.closest(".wt-table")?.querySelector(".wt-hand-area:not([hidden]) .wt-hand")?.getBoundingClientRect();
-    if (feltBounds.width && feltBounds.height && handBounds?.width && handBounds?.height) {
-      const point = centre(handBounds);
-      lastHandOrigin = { x: (point.x - feltBounds.left) / feltBounds.width, y: (point.y - feltBounds.top) / feltBounds.height };
-    }
     const nextFigures = [...reveal.querySelectorAll("[data-wt-inspection-seat]")];
     if (!nextFigures.length) { stop(); return; }
     const nextKey = `${vm.engine.deal_id}:${vm.engine.deal_revision ?? 0}`;
@@ -571,6 +541,7 @@ export function createTableView(container, { onCard, accountId = null }) {
       <div class="wt-panel" data-wt-panel role="region" aria-label="${esc(t("panel.label"))}"></div>
       <div class="wt-stake" data-wt-stake></div>
     </div>
+    <div class="wt-bloedeln-dock" data-wt-preplay></div>
     <div class="wt-hand-area" data-wt-hand-area>
       <div class="wt-hand" data-wt-hand role="group" aria-label="${esc(t("hand.label"))}"></div>
     </div>
@@ -582,7 +553,7 @@ export function createTableView(container, { onCard, accountId = null }) {
   const elements = {
     reveal: $("[data-wt-reveal]"), title: $("[data-wt-title]"), scores: $("[data-wt-scores]"), tools: $("[data-wt-tools]"), seats: $("[data-wt-seats]"),
     reference: $("[data-wt-reference]"), bloedeln: $("[data-wt-bloedeln]"), trick: $("[data-wt-trick]"), trickLabel: $("[data-wt-trick-label]"),
-    bubbles: $("[data-wt-bubbles]"), panel: $("[data-wt-panel]"), private: $("[data-wt-private]"),
+    preplay: $("[data-wt-preplay]"), bubbles: $("[data-wt-bubbles]"), panel: $("[data-wt-panel]"), private: $("[data-wt-private]"),
     hand: $("[data-wt-hand]"), handArea: $("[data-wt-hand-area]"), history: $("[data-wt-history]"), live: $("[data-wt-live]"), stake: $("[data-wt-stake]"), retour: $("[data-wt-retour-announcement]"),
   };
   const handNodes = new Map();
@@ -652,7 +623,7 @@ export function createTableView(container, { onCard, accountId = null }) {
     signatures[key] = markup;
     // Card artwork has fresh SVG clip IDs on each render. Keep the history's
     // close/pin controls and scroll container in place during those repaints.
-    if (key === "panel" || key === "private" || key === "tools" || key === "history" || key.startsWith("badge-")) {
+    if (key === "preplay" || key === "panel" || key === "private" || key === "tools" || key === "history" || key.startsWith("badge-")) {
       const template = document.createElement("template");
       template.innerHTML = markup;
       reconcile(element, template.content);
@@ -798,7 +769,9 @@ export function createTableView(container, { onCard, accountId = null }) {
     patch(elements.reveal, "reveal", vm.engine.inspection && vm.actions.includes("inspection_ack") ? inspectionMarkup(vm) : "");
     const roundOptions = roundOptionsMarkup(vm);
     const exclusiveRequest = vm.engine.preplay?.pending && vm.engine.preplay.pending.kind !== "bloedeln";
-    patch(elements.panel, "panel", !vm.paused && exclusiveRequest ? roundOptions : panelMarkup(vm) + roundOptions);
+    const dockedBloedeln = /wt-bloedeln|data-watten-preplay-pending="bloedeln"/.test(roundOptions);
+    patch(elements.preplay, "preplay", dockedBloedeln ? roundOptions : "");
+    patch(elements.panel, "panel", !vm.paused && exclusiveRequest ? roundOptions : panelMarkup(vm) + (dockedBloedeln ? "" : roundOptions));
     patch(elements.private, "private", privateMarkup(vm));
     const feedbackDialog = elements.private.querySelector("[data-watten-feedback-dialog]");
     if (feedbackDialog && !feedbackDialog.open && typeof feedbackDialog.showModal === "function") feedbackDialog.showModal();
@@ -808,6 +781,7 @@ export function createTableView(container, { onCard, accountId = null }) {
     const historyFinished = ["deal_complete", "match_complete"].includes(vm.engine.phase);
     const reviewReady = !vm.roundPresentation || vm.roundPresentation.stage === "ready";
     elements.history.hidden = !history || historyFinished && !reviewReady;
+    if (elements.history.hidden) elements.history.open = false;
     elements.history.dataset.finished = String(historyFinished);
     patch(elements.history, "history", history);
     elements.history.dataset.pinned = String(historyPinned && !historyFinished);

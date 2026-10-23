@@ -50,7 +50,7 @@ export function createMotion({ win = window, doc = document } = {}) {
   let width = win.innerWidth, height = win.innerHeight;
   const now = () => win.performance?.now?.() ?? performance.now();
   const enabled = () => !destroyed && !reduced?.matches && !doc.hidden && doc.visibilityState !== "hidden"
-    && !doc.querySelector?.("[data-wt-history][open]") && typeof doc.body?.animate === "function";
+    && !doc.querySelector?.("[data-wt-history][open]:not([hidden])") && typeof doc.body?.animate === "function";
 
   function hide(node, property = "visibility") {
     if (!hidden.has(node)) hidden.set(node, { count: 0, property, value: node.style[property] });

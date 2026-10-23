@@ -49,6 +49,16 @@ for (const language of ['de', 'en']) {
       await details.locator('summary').click();
       await expect(host.page.locator('[data-watten-match-progress-action=dismiss]')).toBeHidden();
       await expect(host.page.locator('[data-watten-rematch-action=create]')).toBeEnabled();
+      if (language === 'de') {
+        const guest = players[1];
+        await guest.page.locator('.wt-final-call > summary').click();
+        await expect(guest.page.locator('[data-watten-match-progress-action=dismiss]')).toBeVisible();
+        await guest.page.locator('[data-watten-match-progress]').evaluate(node => { window.loadedMatchReceipt = node.firstElementChild; });
+        await host.page.locator('[data-watten-rematch-action=create]').click();
+        await expect(guest.page.locator('[data-watten-rematch-action=open]')).toBeVisible();
+        await expect(guest.page.locator('[data-watten-match-progress-action=dismiss]')).toBeVisible();
+        expect(await guest.page.locator('[data-watten-match-progress]').evaluate(node => node.firstElementChild === window.loadedMatchReceipt)).toBe(true);
+      }
       expect(players.flatMap(item => item.traffic.errors)).toEqual([]);
     } finally { await Promise.allSettled(players.map(item => item.context.close())); }
   });
@@ -91,3 +101,30 @@ for (const viewport of [{ width: 393, height: 852 }, { width: 852, height: 393 }
     } finally { await Promise.allSettled(players.map(item => item.context.close())); }
   });
 }
+
+test('a completed deal cannot leave the next deal hidden behind an old open review', async ({ browser, baseURL }) => {
+  const wrapped = { newContext: options => browser.newContext({ ...options, reducedMotion: 'no-preference' }) };
+  const players = await Promise.all([0, 1].map(() => player(wrapped, baseURL)));
+  try {
+    await create(players, { target: 15, determination: 'normal' });
+    await normalCall(players);
+    const firstDeal = players[0].traffic.snapshot.engine.deal_id;
+    for (let index = 0; index < 10 && players[0].traffic.snapshot.engine.phase === 'play'; index++) await playOne(players);
+    await expect.poll(() => players[0].traffic.snapshot.engine.deal_id, { timeout: 15000 }).not.toBe(firstDeal);
+    for (const item of players) {
+      await expect(item.page.locator('[data-wt-history]')).toBeHidden();
+      await expect(item.page.locator('[data-wt-history]')).not.toHaveAttribute('open', '');
+      await expect(item.page.locator('[data-wt-hand]')).toBeVisible();
+      // Even legacy retained DOM with hidden+open cannot suppress a new deal.
+      await item.page.locator('[data-wt-history]').evaluate(node => { node.hidden = true; node.open = true; });
+      await expect(item.page.locator('[data-wt-hand]')).toBeVisible();
+    }
+    await normalCall(players);
+    const next = players.find(item => item.traffic.snapshot.engine.actions.includes('play_card'));
+    const viewer = players.find(item => item !== next);
+    const arriving = viewer.page.waitForSelector('[data-wt-motion="arrive"]');
+    await playOne(players);
+    expect(await arriving).toBeTruthy();
+    expect(players.flatMap(item => item.traffic.errors)).toEqual([]);
+  } finally { await Promise.allSettled(players.map(item => item.context.close())); }
+});

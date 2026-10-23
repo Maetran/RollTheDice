@@ -139,7 +139,7 @@ test("an opponent's newly public face starts at its fan; no opponent hand face i
 test("opening review cancels ghosts and incoming throws stay current without catch-up playback", () => {
   const f = fixture(), first = f.node("bells-9", rect(410, 300));
   let reviewOpen = false;
-  f.doc.querySelector = selector => selector === "[data-wt-history][open]" && reviewOpen ? {} : null;
+  f.doc.querySelector = selector => selector === "[data-wt-history][open]:not([hidden])" && reviewOpen ? {} : null;
   const firstResult = result({ nodes: [first], cards: [{ seat: 2, card: "bells-9" }], created: [{ node: first, seat: 2, card: "bells-9" }] });
   f.present(engine(), engine(), firstResult);
   assert.equal(f.ghosts().length, 1);
@@ -160,6 +160,16 @@ test("opening review cancels ghosts and incoming throws stay current without cat
   assert.equal(f.ghosts().length, 1, "new live throws animate normally after close");
   f.close();
   assert.equal(f.doc.listenerCount, 0);
+});
+
+test("a hidden old open review never disables motion in the next deal", () => {
+  const f = fixture();
+  f.doc.querySelector = selector => selector === "[data-wt-history][open]" ? { hidden: true, open: true } : null;
+  assert.equal(f.motion.enabled(), true);
+  const hand = f.node("hearts-7", rect(360, 560, 70, 110));
+  f.present(engine(), engine(null, "next-deal"), result({ hand: [hand] }));
+  assert.equal(f.ghosts("deal").length, 1);
+  f.close();
 });
 
 test("ghost artwork owns fresh SVG clip IDs, retaining its image after the source card disappears", () => {
