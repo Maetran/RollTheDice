@@ -10,7 +10,7 @@
       "title": "Watten 4.1.4: Ruhiger spielen, gemeinsam weitermachen",
       "changes": [
         "Ansagekarten bleiben im Hoch- und Querformat lesbar zwischen den Ansagenden. Beim Blödeln bleiben die Aktionen am selben Platz; die anderen erhalten nur kurze Hinweise.",
-        "Der Endbildschirm zeigt das Ergebnis, schnelle Reaktionen und die Revanche. Erfolge und Spieldetails kannst du bei Bedarf öffnen; beim Stichrückblick bleiben neue Karten im Hintergrund.",
+        "Der Endbildschirm zeigt das Ergebnis, schnelle Reaktionen und die Revanche. Erfolge und Spieldetails kannst du bei Bedarf öffnen; beim Stichrückblick werden neue Karten und Animationen ausgeblendet.",
         "Bei der Revanche kehren alle auf ihre bisherigen Plätze und in ihre Teams zurück. Die Nockerl bleiben derselben Besetzung zugeordnet.",
         "Partien ohne Spielaktivität enden nach einer Stunde ohne Wertung. Wer vorher bewusst fortsetzt, kann mit denselben Karten weiterspielen."
       ]
@@ -19,7 +19,7 @@
       "title": "Watten 4.1.4: Calmer play, rematches with the same lineup",
       "changes": [
         "Call cards stay readable between the callers in portrait and landscape. Blödeln actions keep their position; everyone else gets only a brief notice.",
-        "The final screen shows the result, quick reactions and the rematch. Open achievements and match details when you want them; incoming cards stay out of the way while you review a trick.",
+        "The final screen shows the result, quick reactions and the rematch. Open achievements and match details when you want them; incoming cards and animations are hidden while you review a trick.",
         "Rematches return everyone to their previous seats and teams, keeping Nockerl loss marks tied to the same lineup.",
         "Matches without game activity end after one hour without a result. Resume before then to continue with the same cards."
       ]

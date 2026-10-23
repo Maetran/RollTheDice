@@ -23,7 +23,7 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
-## Unveröffentlicht / Unreleased
+## 4.1.4 — 2026-10-24
 
 ### WATTEN
 
