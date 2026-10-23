@@ -141,7 +141,11 @@ export function createTrickLayout(trick, { win = window } = {}) {
   const box = node => {
     if (!node || node.hidden) return null;
     const style = win.getComputedStyle(node);
-    if (style.display === "none" || style.visibility === "hidden" || style.visibility === "collapse" || style.opacity === "0") return null;
+    // Deal flights hide accepted opponent slots only while their copies fly.
+    // Their physical fan still occupies the same space when the flight ends.
+    const physicalBack = node.matches(".wt-backs > i");
+    if (style.display === "none" || (!physicalBack
+      && (style.visibility === "hidden" || style.visibility === "collapse" || style.opacity === "0"))) return null;
     const rect = node.getBoundingClientRect();
     return usable(rect) ? rect : null;
   };

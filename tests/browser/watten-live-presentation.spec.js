@@ -49,6 +49,67 @@ async function expectStablePrefix(peer, expected, previous, { paintedSelector, w
   return result.cards;
 }
 
+test('portrait dealing: completing paused deal flights cannot resize an already played prefix', async ({ browser, baseURL }) => {
+  const players = [];
+  try {
+    const wrapped = { newContext: options => browser.newContext({ ...options,
+      viewport: { width: 440, height: 956 }, serviceWorkers: 'block', reducedMotion: 'no-preference' }) };
+    for (let index = 0; index < 4; index++) {
+      const peer = await player(wrapped, baseURL);
+      await peer.page.addInitScript(() => {
+        const animate = Element.prototype.animate;
+        window.pausedWattenDeals = [];
+        Element.prototype.animate = function (...args) {
+          const animation = animate.apply(this, args);
+          if (this.matches('[data-wt-motion="deal"]')) {
+            animation.pause(); animation.currentTime = 0;
+            window.pausedWattenDeals.push(animation);
+          }
+          return animation;
+        };
+      });
+      players.push(peer);
+    }
+    await create(players, { determination: 'normal', target: 15 });
+    for (const peer of players) {
+      await expect.poll(() => peer.page.evaluate(() => window.pausedWattenDeals.length)).toBe(20);
+      // The own hand remains playable while all fifteen accepted opponent
+      // slots stay transparent behind their deliberately paused deal flights.
+      await peer.page.evaluate(() => window.pausedWattenDeals.forEach((animation, index) => {
+        if (index < 5) animation.finish();
+      }));
+      await expect(peer.page.locator('[data-wt-motion="deal"]')).toHaveCount(15);
+      await expect.poll(() => peer.page.locator('.wt-backs > i[style*="opacity: 0"]').count()).toBe(15);
+    }
+    await normalCall(players);
+    await playOne(players);
+    const geometry = [];
+    for (const peer of players) {
+      await expect(peer.page.locator('[data-wt-motion="arrive"]')).toHaveCount(0);
+      geometry.push(await expectStablePrefix(peer, peer.traffic.snapshot.engine.current_trick.cards));
+      await peer.page.evaluate(() => window.pausedWattenDeals.forEach(animation => {
+        if (animation.playState !== 'finished') animation.finish();
+      }));
+      await expect(peer.page.locator('[data-wt-motion="deal"]')).toHaveCount(0);
+    }
+    await playOne(players);
+    for (const [index, peer] of players.entries()) {
+      await expect(peer.page.locator('[data-wt-motion="arrive"]')).toHaveCount(0);
+      await expectStablePrefix(peer, peer.traffic.snapshot.engine.current_trick.cards, geometry[index]);
+      expect(await peer.page.evaluate(() => {
+        const cards = [...document.querySelectorAll('[data-wt-trick] > .wt-trick-card')];
+        const slots = [...document.querySelectorAll('.wt-seat .wt-backs > i:not([hidden])')];
+        return cards.flatMap(card => slots.filter(slot => {
+          const a = card.getBoundingClientRect(), b = slot.getBoundingClientRect();
+          return b.width > 0 && b.height > 0 && Math.min(a.right, b.right) - Math.max(a.left, b.left) > 2
+            && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 2;
+        }).map(() => card.dataset.key));
+      })).toEqual([]);
+    }
+    expect(players.flatMap(peer => peer.traffic.errors)).toEqual([]);
+  } finally { await Promise.allSettled(players.map(peer => peer.context.close())); }
+});
+
 for (const viewport of [{ width: 440, height: 956 }, { width: 956, height: 440 }, { width: 852, height: 393 }, { width: 568, height: 320 }]) {
   test(`normal motion ${viewport.width}x${viewport.height}: every sequential prefix stays one ordered pile through winner collection`, async ({ browser, baseURL }, info) => {
     const players = [];
