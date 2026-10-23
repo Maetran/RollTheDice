@@ -487,12 +487,15 @@ Bedienplatz; Unbeteiligte sehen nur den kurzen Status. Beim Ansehen des letzten
 Stichs bleiben neue Würfe und Kartenanimationen verborgen. Am Spielende stehen
 Ergebnis, schnelle Reaktionen und Revanche oben; Tischverlauf und kompakte
 Erfolge & Titel findest du darunter bei den Details.
+Auch während des Austeilens bleiben die Kartenplätze reserviert, damit bereits
+liegende Stichkarten ihre Größe behalten.
 Inspection cards meet between the two announcers and remain readable in
 landscape. On small screens they may overlap while both remain identifiable.
 Blödeln controls keep a stable dock, with only a short status for
 others. Reviewing the last trick hides live throws and card animations. At match
 end the result, quick reactions and rematch come first; table history and compact
 achievements and titles are available below in the details.
+Card slots remain reserved during dealing so played trick cards keep their size.
 
 **Verlassene Tische / abandoned tables:** Nach einer Stunde ohne Spielaktivität
 werden laufende oder pausierte Watten-Spiele ohne Wertung beendet. Spielaktionen
