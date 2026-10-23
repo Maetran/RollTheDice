@@ -34,8 +34,12 @@
   Volltest. Keine Hooks
   umgehen und keine Teilprüfung als Vollprüfung ausgeben. Alle Qualitäts-,
   Sicherheits-, Tool-, Backend-, Container- und Browserprüfungen sind enthalten.
-  Die Haupt-Browser-Suite läuft auf vier eigenen Servern mit getrennten
-  Datenverzeichnissen und je einem Worker; die drei Konto-Suiten folgen separat.
+  Die Haupt-Browser-Suite läuft auf 4, 6 oder 8 eigenen Servern mit getrennten
+  Datenverzeichnissen und je einem Worker; ohne lokale Kalibrierung sind es vier.
+  Die drei Konto-Suiten folgen separat. Eine höhere Anzahl erst auf der jeweiligen
+  Maschine bei freiem Testpool vergleichen; Laufzeit, Stabilität und Speicherlast
+  messen. Die lokale Git-Einstellung `rollthedice.browserShards` gilt für alle
+  Worktrees mit diesem Runner und ist Teil des Umgebungsnachweises.
   Vor einem vollen Lauf laufende fremde Testpools prüfen und abstimmen; keine
   zweite volle Testsuite parallel zu einem fremden Vollpool starten. Einzelheiten
   und Voraussetzungen stehen in [docs/LOCAL_CHECKS.md](docs/LOCAL_CHECKS.md).

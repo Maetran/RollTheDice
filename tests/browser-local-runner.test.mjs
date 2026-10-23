@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawn, execFileSync } from 'node:child_process';
-import { mkdtemp, readFile, writeFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, writeFile, rm, access } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -16,7 +16,7 @@ async function fixture(t) {
   t.after(() => rm(directory, { recursive: true, force: true }));
   const cli = path.join(directory, 'fake-playwright.mjs');
   await writeFile(cli, `
-import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
+import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 const env = process.env;
@@ -25,6 +25,14 @@ const record = type => appendFileSync(env.FAKE_EVENTS, JSON.stringify({ type, na
   port: env.ROLLTHEDICE_TEST_PORT, directory: env.PLAYWRIGHT_TEST_DIR, output: env.PLAYWRIGHT_OUTPUT_DIR,
   html: env.PLAYWRIGHT_HTML_OUTPUT_DIR, python: env.PLAYWRIGHT_PYTHON, args: process.argv.slice(2) }) + '\\n');
 record('start');
+if (name.startsWith('main-') && env.FAKE_MAIN_COUNT) {
+  const deadline = Date.now() + 5000;
+  while (readFileSync(env.FAKE_EVENTS, 'utf8').trim().split('\\n').map(line => JSON.parse(line))
+    .filter(event => event.type === 'start' && event.name.startsWith('main-')).length < Number(env.FAKE_MAIN_COUNT)) {
+    if (Date.now() >= deadline) process.exit(8);
+    await new Promise(resolve => setTimeout(resolve, 20));
+  }
+}
 console.log('kept stdout ' + name); console.error('kept stderr ' + name);
 writeFileSync(path.join(env.PLAYWRIGHT_TEST_DIR, 'accounts.sqlite3'), 'isolated test accounts');
 mkdirSync(env.PLAYWRIGHT_OUTPUT_DIR, { recursive: true });
@@ -41,15 +49,15 @@ if (env.FAKE_BLOCK === '1') {
 }
 
 function cleanEnvironment(extra = {}) {
-  const environment = { ...process.env, ...extra };
-  for (const key of ['PLAYWRIGHT_BASE_URL', 'PLAYWRIGHT_LOCAL_OUTPUT_DIR', 'PLAYWRIGHT_HTML_OUTPUT_DIR']) delete environment[key];
-  return environment;
+  const environment = { ...process.env };
+  for (const key of ['PLAYWRIGHT_BASE_URL', 'PLAYWRIGHT_LOCAL_OUTPUT_DIR', 'PLAYWRIGHT_HTML_OUTPUT_DIR', 'ROLLTHEDICE_BROWSER_SHARDS']) delete environment[key];
+  return { ...environment, ROLLTHEDICE_BROWSER_SHARDS: '4', ...extra };
 }
 
 test('the default plan covers four one-worker shards and every isolated account suite exactly once', () => {
   const plan = createSuitePlan({ root: '/repo', temporaryDirectory: '/tmp/owned', outputDirectory: '/reports/run',
     ports: [18100, 18101, 18102, 18103, 18104, 18105, 18106],
-    environment: { PLAYWRIGHT_PYTHON: '/python with spaces/bin/python', PLAYWRIGHT_OUTPUT_DIR: '/inherited' } });
+    environment: { PLAYWRIGHT_PYTHON: '/python with spaces/bin/python', PLAYWRIGHT_OUTPUT_DIR: '/inherited', ROLLTHEDICE_BROWSER_SHARDS: '8' } });
   assert.deepEqual(plan.map(item => item.name), names);
   for (const [index, suite] of plan.entries()) {
     assert.equal(suite.args.filter(arg => arg === '--workers=1').length, 1);
@@ -67,12 +75,24 @@ test('config filtering cannot override worker, shard, server or report isolation
   assert.deepEqual(parseArguments(['--config', 'playwright.passkeys.config.js', '--', 'passkeys.spec.js', '--grep', 'sign in']), {
     suites: ['passkeys'], filters: ['passkeys.spec.js', '--grep', 'sign in'], outputDirectory: undefined, portBase: undefined,
   });
-  for (const argument of ['--workers=8', '-j8', '--shard=2/2', '--config=x', '-cother.js', '--output=x', '--reporter=list', '--ui']) {
+  for (const argument of ['--workers=8', '-j8', '--shard=2/2', '--shards=8', '--config=x', '-cother.js', '--output=x', '--reporter=list', '--ui']) {
     assert.throws(() => parseArguments(['--', argument]), /owns isolation/);
   }
   assert.throws(() => parseArguments(['--suite', 'unknown']), /Unknown/);
   assert.throws(() => parseArguments(['--suite', 'main', '--config', 'playwright.config.js']), /Duplicate/);
   assert.throws(() => parseArguments(['--port-base', '0']), /port-base/);
+});
+
+test('shard counts accept only supported isolated plans and port parsing preserves the effective-plan check', () => {
+  for (const shards of [4, 6, 8]) assert.equal(parseArguments(['--shards', String(shards)]).shards, shards);
+  for (const value of ['0', '1', '5', '7', '9', '6.5', 'NaN', 'Infinity']) {
+    assert.throws(() => parseArguments(['--shards', value]), /shards must be 4, 6 or 8/);
+    assert.throws(() => createSuitePlan({ shards: Number(value) }), /shards must be 4, 6 or 8/);
+  }
+  assert.throws(() => parseArguments(['--shards']), /requires a value/);
+  assert.throws(() => parseArguments(['--shards', '--suite', 'main']), /requires a value/);
+  assert.equal(parseArguments(['--port-base', '65535', '--suite', 'username']).portBase, 65535);
+  assert.throws(() => parseArguments(['--port-base', '65536']), /port-base/);
 });
 
 test('full orchestration retains failures and reports while extras run only after all four shards', async t => {
@@ -81,6 +101,7 @@ test('full orchestration retains failures and reports while extras run only afte
   const summary = await runLocalBrowserTests({ outputDirectory: output }, { root, cliPath: f.cli, quiet: true,
     environment: cleanEnvironment({ FAKE_EVENTS: f.events, FAKE_FAIL: 'main-2', PLAYWRIGHT_PYTHON: '/chosen/python' }) });
   assert.equal(summary.fullRun, true);
+  assert.equal(summary.mainShards, 4);
   assert.equal(summary.exitCode, 1);
   assert.deepEqual(summary.results.map(item => item.name), names);
   assert.deepEqual(summary.results.map(item => item.exitCode), [0, 7, 0, 0, 0, 0, 0]);
@@ -105,6 +126,63 @@ test('full orchestration retains failures and reports while extras run only afte
   }
   for (const start of starts) await assert.rejects(readFile(path.join(start.directory, 'accounts.sqlite3')), { code: 'ENOENT' });
   assert.deepEqual(JSON.parse(await readFile(path.join(output, 'summary.json'), 'utf8')), summary);
+});
+
+for (const shards of [6, 8]) test(`${shards} isolated shards overlap before serial account suites and retain complete results`, async t => {
+  const f = await fixture(t);
+  const output = path.join(f.directory, 'scaled');
+  const options = { outputDirectory: output, ...(shards === 8 ? { shards } : {}) };
+  const failedSuite = shards === 6 ? 'main-6' : '';
+  const summary = await runLocalBrowserTests(options, { root, cliPath: f.cli, quiet: true,
+    environment: cleanEnvironment({ ROLLTHEDICE_BROWSER_SHARDS: '6', FAKE_MAIN_COUNT: String(shards),
+      FAKE_EVENTS: f.events, FAKE_FAIL: failedSuite }) });
+  const expectedNames = [...Array.from({ length: shards }, (_, index) => `main-${index + 1}`), ...names.slice(4)];
+  assert.equal(summary.mainShards, shards);
+  assert.equal(summary.fullRun, true);
+  assert.equal(summary.exitCode, failedSuite ? 1 : 0);
+  assert.deepEqual(summary.results.map(item => item.name), expectedNames);
+  assert.deepEqual(summary.results.map(item => item.exitCode), expectedNames.map(name => name === failedSuite ? 7 : 0));
+  const events = (await readFile(f.events, 'utf8')).trim().split('\n').map(line => JSON.parse(line));
+  const starts = events.filter(event => event.type === 'start');
+  assert.equal(starts.length, shards + 3);
+  for (const field of ['port', 'directory', 'output', 'html']) assert.equal(new Set(starts.map(item => item[field])).size, shards + 3);
+  for (const event of starts) {
+    assert.equal(event.args.filter(arg => arg === '--workers=1').length, 1);
+    if (event.name.startsWith('main-')) assert.ok(event.args.includes(`--shard=${event.name.slice(5)}/${shards}`));
+    else assert.ok(!event.args.some(arg => arg.startsWith('--shard=')));
+  }
+  const mainStarts = starts.filter(event => event.name.startsWith('main-'));
+  const mainEnds = events.filter(event => event.type === 'end' && event.name.startsWith('main-'));
+  assert.equal(mainEnds.length, shards);
+  assert.ok(Math.max(...mainStarts.map(item => item.time)) < Math.min(...mainEnds.map(item => item.time)), 'Every main shard overlaps');
+  let previousEnd = Math.max(...mainEnds.map(item => item.time));
+  for (const name of names.slice(4)) {
+    assert.ok(starts.find(item => item.name === name).time >= previousEnd, `${name} remains serial`);
+    previousEnd = events.find(item => item.type === 'end' && item.name === name).time;
+  }
+  for (const start of starts) {
+    await assert.rejects(access(start.directory), { code: 'ENOENT' });
+    assert.equal(await readFile(path.join(start.output, 'trace.zip'), 'utf8'), 'retained trace evidence');
+    assert.equal(await readFile(path.join(start.html, 'index.html'), 'utf8'), 'retained HTML report');
+  }
+  assert.deepEqual(JSON.parse(await readFile(path.join(output, 'summary.json'), 'utf8')), summary);
+});
+
+test('port validation accounts for every selected shard before creating output or starting processes', async t => {
+  const f = await fixture(t);
+  const deps = { root, cliPath: f.cli, quiet: true, environment: cleanEnvironment({ FAKE_EVENTS: f.events }) };
+  for (const shards of [4, 6, 8]) {
+    const outputDirectory = path.join(f.directory, `invalid-${shards}`);
+    const maximum = 65536 - shards - 3;
+    await assert.rejects(runLocalBrowserTests({ shards, portBase: maximum + 1, outputDirectory }, deps),
+      new RegExp(`from 1024 to ${maximum} for ${shards + 3} suites`));
+    await assert.rejects(access(outputDirectory), { code: 'ENOENT' });
+  }
+  await assert.rejects(access(f.events), { code: 'ENOENT' });
+  const plan = createSuitePlan({ shards: 8, temporaryDirectory: '/tmp/owned', outputDirectory: '/reports/run',
+    ports: Array.from({ length: 11 }, (_, index) => 65525 + index) });
+  assert.equal(plan.at(-1).port, 65535);
+  await assert.rejects(runLocalBrowserTests({ shards: 8, portBase: 65536, suites: ['username'] }, deps), /to 65535 for 1 suites/);
 });
 
 test('filtered success is explicitly partial, and occupied output/ports never reuse another run', async t => {

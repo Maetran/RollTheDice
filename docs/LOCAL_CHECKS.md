@@ -40,7 +40,7 @@ die passende Version bereitstellen, ohne den System-Node zu ersetzen.
 4. Produktionsimage für `linux/amd64` bauen (wie der Produktionsserver, auch auf
    einem ARM-Mac) und `tests/container_smoke.py` ohne Netzwerk,
    Zugangsdaten oder persistente Daten im Container ausführen.
-5. Vier Haupt-Browser-Shards gleichzeitig, danach Benutzername, Passkeys und
+5. 4, 6 oder 8 Haupt-Browser-Shards gleichzeitig, danach Benutzername, Passkeys und
    Hausdepp-Passkeys einzeln. Jeder Teil erhält seinen eigenen Server, freien
    Port, SQLite-Datei, Legacy-JSON-Daten und Artefakt-/HTML-Verzeichnisse.
 6. Diff, Commit, Basis und Umgebung erneut prüfen und einen Nachweis speichern.
@@ -91,10 +91,52 @@ npx playwright test tests/browser/hausdepp-flex-lobby.spec.js
 ```
 
 Gefilterte Läufe erhalten `fullRun=false` und geben keinen vollständigen
-Push-Nachweis. `--port-base 8100` reserviert bei Bedarf sieben aufeinanderfolgende
-Ports; ohne Angabe werden freie Ports vergeben. `--output-dir` verlangt ein
+Push-Nachweis. `--port-base 8100` reserviert bei Bedarf einen Port je ausgewähltem
+Shard und Konto-Suite (standardmässig sieben); ohne Angabe werden freie Ports
+vergeben. `--output-dir` verlangt ein
 neues oder leeres Verzeichnis. `PLAYWRIGHT_BASE_URL` ist im isolierten Runner
 unzulässig, damit kein fremder Server benutzt wird.
+
+## Lokale Browser-Parallelisierung / Local browser parallelism
+
+Ohne Kalibrierung bleiben es vier Haupt-Shards. Für einen Vergleich auf derselben
+Maschine bei freiem Testpool jeden Lauf separat mit identischen Quellen und
+vollständiger Hauptsuite ausführen:
+
+```bash
+npm run test:browser -- --shards 4 --suite main
+npm run test:browser -- --shards 6 --suite main
+npm run test:browser -- --shards 8 --suite main
+```
+
+Laufzeit, Fehler und Speicherdruck vergleichen und den Gewinner erneut prüfen.
+Jeder Shard behält einen Worker und seine eigene Datenbank. Die Konto-Suiten
+bleiben seriell. Eine höhere Anzahl nie allein anhand der CPU-Kernzahl wählen.
+Eine bestandene Hauptsuite ist weiterhin kein vollständiger Push-Nachweis.
+Die gemessene Anzahl lokal setzen, etwa:
+
+```bash
+git config --local rollthedice.browserShards 6
+# Zurück zum Standard / restore the default:
+git config --local --unset rollthedice.browserShards
+```
+
+Die Auswahl gilt für Worktrees dieses Repositories mit dem aktualisierten Runner.
+Reihenfolge: `--shards`, `ROLLTHEDICE_BROWSER_SHARDS`, lokale Git-Einstellung,
+Standard 4. Erlaubt sind 4, 6 und 8; ungültige Werte brechen sichtbar ab.
+Die effektive Anzahl und die vollständige Gruppe aller Haupt-Shards sowie aller
+drei Konto-Suiten werden im Vollnachweis geprüft. Eine Änderung der lokalen
+Anzahl macht vorhandene Nachweise wegen der geänderten Umgebung ungültig.
+
+The uncalibrated default stays four. Compare complete main-suite runs with
+`--shards 4`, `--shards 6` and `--shards 8` separately on the same idle machine
+and source tree, measuring elapsed time, failures and memory pressure; confirm
+the winner. Keep one worker and an independent server/database per shard, with
+account suites serial. Save the measured count using repository-local Git
+configuration as shown above; this affects updated worktrees on this machine.
+CLI takes precedence over the environment, local Git configuration and default.
+Every selected shard and all three account suites remain mandatory for a full
+receipt. Changing the effective count invalidates prior environment evidence.
 
 GitHub führt ausschliesslich **Quality result** aus: ein schlanker Check der
 Remote-Integration und des lokalen Owner-Nachweises. Der Status enthält
@@ -125,7 +167,7 @@ suite and a final source/base/environment comparison. Use Node 22,
 the development Python environment, Chromium, WebKit and a local
 Docker socket. Coordinate with any agent already running a full test pool.
 
-Four main browser shards run simultaneously on separate servers with independent
+4, 6 or 8 main browser shards run simultaneously on separate servers with independent
 ports, SQLite databases, legacy JSON data and reports. Username and both passkey
 suites follow serially even when an earlier suite failed. Cancellation stops only
 owned processes and removes disposable data. Logs remain in
