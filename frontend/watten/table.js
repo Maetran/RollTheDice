@@ -769,7 +769,7 @@ export function createTableView(container, { onCard, accountId = null }) {
     patch(elements.reveal, "reveal", vm.engine.inspection && vm.actions.includes("inspection_ack") ? inspectionMarkup(vm) : "");
     const roundOptions = roundOptionsMarkup(vm);
     const exclusiveRequest = vm.engine.preplay?.pending && vm.engine.preplay.pending.kind !== "bloedeln";
-    const dockedBloedeln = /wt-bloedeln|data-watten-preplay-pending="bloedeln"/.test(roundOptions);
+    const dockedBloedeln = !exclusiveRequest && /wt-bloedeln|data-watten-preplay-pending="bloedeln"/.test(roundOptions);
     patch(elements.preplay, "preplay", dockedBloedeln ? roundOptions : "");
     patch(elements.panel, "panel", !vm.paused && exclusiveRequest ? roundOptions : panelMarkup(vm) + (dockedBloedeln ? "" : roundOptions));
     patch(elements.private, "private", privateMarkup(vm));
