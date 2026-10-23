@@ -1,28 +1,27 @@
 {
   "kind": "usability",
   "games": [
-    "hausdepp",
     "watten"
   ],
-  "summary_de": "Hausdepp zieht zügiger nach. Watten zeigt klare mobile Stichstapel, stabile Kartenanimationen und passend benanntes Blödeln.",
-  "summary_en": "Hausdepp refills promptly. Watten has clearer mobile trick piles, consistent card animations and correctly named Blödeln.",
+  "summary_de": "Watten: lesbare Ansagekarten, ruhiges Blödeln, klare Ergebnisse mit Reaktionen, feste Revancheteams und Abbruch nach 1 h Inaktivität.",
+  "summary_en": "Watten: readable call cards, calmer Blödeln and results with reactions, fixed rematch teams; idle matches end after one hour.",
   "player_notes": {
     "de": {
-      "title": "Flüssiger spielen, Karten klar erkennen",
+      "title": "Watten 4.1.4: Ruhiger spielen, gemeinsam weitermachen",
       "changes": [
-        "Hausdepp: Computer füllen ihre Hand ohne unnötiges Warten auf Kartenanimationen oder andere Computer auf. Zwischenwerfen bleibt möglich.",
-        "Watten: Gespielte Karten bilden in beiden Ausrichtungen ein überlappendes Kleeblatt in Richtung der Spieler. Die Gewinnerkarte bleibt an ihrem Platz; Nummern und Namensschilder entfallen.",
-        "Watten: Deine verdeckte Hand bleibt als Kartenrücken sichtbar; Schlag zeigen und Farbe zeigen bleiben erreichbar. Deko lässt das Restpaket frei.",
-        "Blödeln nennt die tatsächlichen Beteiligten. Computer fragen deutlich seltener, ihre Zustimmung bleibt unverändert."
+        "Ansagekarten bleiben im Hoch- und Querformat lesbar zwischen den Ansagenden. Beim Blödeln bleiben die Aktionen am selben Platz; die anderen erhalten nur kurze Hinweise.",
+        "Der Endbildschirm zeigt das Ergebnis, schnelle Reaktionen und die Revanche. Erfolge und Spieldetails kannst du bei Bedarf öffnen; beim Stichrückblick bleiben neue Karten im Hintergrund.",
+        "Bei der Revanche kehren alle auf ihre bisherigen Plätze und in ihre Teams zurück. Die Nockerl bleiben derselben Besetzung zugeordnet.",
+        "Partien ohne Spielaktivität enden nach einer Stunde ohne Wertung. Wer vorher bewusst fortsetzt, kann mit denselben Karten weiterspielen."
       ]
     },
     "en": {
-      "title": "Smoother play and clearer cards",
+      "title": "Watten 4.1.4: Calmer play, rematches with the same lineup",
       "changes": [
-        "Hausdepp: computers refill without unnecessary waits for card animations or other computers. Matching follow-up throws remain available.",
-        "Watten: played cards form an overlapping cloverleaf toward the players in both orientations. The winning card keeps its place; cards have no added numbers or name labels.",
-        "Watten: your hidden hand stays visible as card backs; Show strike and Show trump suit remain reachable. Decoration keeps the stock clear.",
-        "Blödeln names the actual participants. Computers ask less often; their acceptance choice is unchanged."
+        "Call cards stay readable between the callers in portrait and landscape. Blödeln actions keep their position; everyone else gets only a brief notice.",
+        "The final screen shows the result, quick reactions and the rematch. Open achievements and match details when you want them; incoming cards stay out of the way while you review a trick.",
+        "Rematches return everyone to their previous seats and teams, keeping Nockerl loss marks tied to the same lineup.",
+        "Matches without game activity end after one hour without a result. Resume before then to continue with the same cards."
       ]
     }
   }
