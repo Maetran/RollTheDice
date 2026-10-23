@@ -296,3 +296,54 @@ for (const language of ['de', 'en']) {
     } finally { await Promise.allSettled([...players, spectator].filter(Boolean).map(peer => peer.context.close())); }
   });
 }
+
+test('landscape cutouts: showing and inspection actions remain inside the safe table', async ({ browser, browserName, baseURL }) => {
+  test.skip(browserName !== 'chromium', 'Safe-area override uses the Chromium protocol; geometry also runs in WebKit.');
+  const players = [], sessions = [];
+  const viewport = { width: 852, height: 393 };
+  const wrapped = { newContext: options => browser.newContext({ ...options, viewport, serviceWorkers: 'block' }) };
+  const setInsets = async insets => {
+    for (const session of sessions) await session.send('Emulation.setSafeAreaInsetsOverride', { insets: { top: 0, bottom: 21, ...insets } });
+  };
+  const expectSafe = async kind => {
+    for (const peer of players) {
+      const control = peer.page.locator(`[data-watten-action=${kind}]`);
+      if (!await control.count()) continue;
+      await expectReachable(peer.page, `[data-watten-action=${kind}]`);
+      await expect.poll(() => control.evaluate(node => {
+        const button = node.getBoundingClientRect(), felt = document.querySelector('[data-wt-felt]').getBoundingClientRect();
+        return button.left >= felt.left - 1 && button.right <= felt.right + 1
+          && button.top >= felt.top - 1 && button.bottom <= felt.bottom + 1;
+      }), { message: `${kind} stays clear of the device cutout on either side` }).toBe(true);
+    }
+  };
+  try {
+    for (let seat = 0; seat < 4; seat++) {
+      const peer = await player(wrapped, baseURL);
+      players.push(peer);
+      sessions.push(await peer.context.newCDPSession(peer.page));
+    }
+    await setInsets({ left: 0, right: 44 });
+    await create(players, { count: 4, target: 11 });
+    await expectSafe('show_ready');
+    const nonCallers = players.filter(peer => peer.traffic.snapshot.engine.actions.includes('request_bloedeln'));
+    for (const peer of nonCallers) {
+      await expectReachable(peer.page, '[data-watten-action=request_bloedeln]');
+      const clearFooter = await peer.page.locator('[data-wt-preplay]').evaluate(node => {
+        const dock = node.getBoundingClientRect(), footer = document.querySelector('.wt-topbar-actions').getBoundingClientRect();
+        return dock.bottom <= footer.top;
+      });
+      expect(clearFooter, 'Blödeln choices leave the safe-area footer clear').toBe(true);
+    }
+    await request(players, nonCallers, 'de');
+    for (const kind of ['preplay_accept', 'preplay_decline']) {
+      const responder = players.find(peer => peer.traffic.snapshot.engine.actions.includes(kind));
+      await expectReachable(responder.page, `[data-watten-action=${kind}]`);
+    }
+    await action(players, 'show_ready'); await action(players, 'show_ready');
+    await expectSafe('inspection_ack');
+    await setInsets({ left: 44, right: 0 });
+    await expectSafe('inspection_ack');
+    await expectClean(players);
+  } finally { await Promise.allSettled(players.map(peer => peer.context.close())); }
+});
