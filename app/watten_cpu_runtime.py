@@ -346,7 +346,7 @@ def watch_game(game: dict) -> None:
     for key, job in list(_JOBS.items()):
         if key[0] == game["_id"] and key not in wanted:
             _JOBS.pop(key, None)
-            if job.task is not None:
+            if job.task is not None and job.task is not asyncio.current_task():
                 job.task.cancel()
     for key, (owner, _context_value) in list(_BLOCKED.items()):
         if key[0] == game["_id"] and (owner is not game or key not in wanted):
@@ -356,7 +356,7 @@ def watch_game(game: dict) -> None:
 async def _run(game: dict, player: str, job: _Job) -> None:
     from .game_state import games
     from .watten_runtime import _apply_engine_command, game_lock, persist_watten_game
-    from .watten_websocket import broadcast_watten
+    from .watten_websocket import broadcast_watten, expire_watten_game
 
     key = game["_id"], player
     try:
@@ -366,6 +366,8 @@ async def _run(game: dict, player: str, job: _Job) -> None:
             if (games.get(game["_id"]) is not game or _JOBS.get(key) is not job or not cpu_autoplay_enabled()
                     or runtime.absent or runtime.engine is None
                     or not any(cpu.participant_id == player for cpu in runtime.room.cpus)):
+                return
+            if await expire_watten_game(game):
                 return
             authority = _authority(game)
             if authority is None:
@@ -377,6 +379,14 @@ async def _run(game: dict, player: str, job: _Job) -> None:
             events = _events(runtime, player)
             turn = await _decide_snapshot(view, memory, seed=job.seed, events=events,
                                           budget=CpuBudget(authority.skill.samples), skill=authority.skill)
+            if (games.get(game["_id"]) is not game or _JOBS.get(key) is not job
+                    or game["_watten"] is not runtime):
+                return
+            # A suspended event loop or queued policy calculation can cross
+            # the deadline while holding this table lock. Retire the original
+            # source before a public CPU transition could renew its clock.
+            if await expire_watten_game(game):
+                return
             # Account moderation and rollout capabilities may change while the
             # pure policy is awaiting a thread, despite our per-table lock.
             current = _authority(game)

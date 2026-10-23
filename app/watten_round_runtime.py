@@ -111,7 +111,7 @@ async def _run(game: dict, job: _Job) -> None:
     from .watten_cpu_runtime import _authority, _commit_guard
     from .watten_cpu_runtime import watch_game as watch_cpu
     from .watten_runtime import game_lock, persist_watten_game
-    from .watten_websocket import broadcast_watten
+    from .watten_websocket import broadcast_watten, expire_watten_game
 
     try:
         deadlines = review_deadlines(game)
@@ -119,6 +119,8 @@ async def _run(game: dict, job: _Job) -> None:
         async with game_lock(game):
             if (games.get(game["_id"]) is not game or _JOBS.get(game["_id"]) is not job
                     or game["_watten"].engine is None or _context(game) != job.context):
+                return
+            if await expire_watten_game(game):
                 return
             authority = _authority(game)
             if authority is None:

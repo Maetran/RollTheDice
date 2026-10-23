@@ -4,12 +4,15 @@ import asyncio
 import json
 from datetime import timedelta
 from itertools import count
+from types import SimpleNamespace
 
 import pytest
 from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
 
 from app import main, watten_runtime, watten_websocket
+from app import watten_cpu_runtime as cpu
+from app import watten_round_runtime as review
 from app.active_games import load_active_games
 from app.database import session_scope
 from app.game_state import GAME_TIMEOUT, games
@@ -24,6 +27,7 @@ from app.watten_runtime import (
     serialize_watten_game,
 )
 from app.watten_websocket import _handle_locked, sweep_watten_games
+from tests import test_watten_round_runtime as round_tests
 from tests import test_watten_runtime as native
 from tests.test_watten_match_evidence import NativeMatch
 
@@ -222,4 +226,84 @@ def test_stale_process_cannot_abort_newer_gameplay_or_remove_a_durable_timeout(s
     with pytest.raises(ValueError, match="stale_checkpoint"):
         persist_watten_game(stale)
     assert load_active_games()[game_id]["_aborted"]
+    assert_unscored()
+
+
+@pytest.mark.parametrize("timing", ("wakeup", "policy_wait", "newer_checkpoint"))
+def test_delayed_cpu_job_obeys_timeout_before_and_after_policy_without_self_cancel_or_stale_abort(server, monkeypatch, timing):
+    monkeypatch.setattr(watten_runtime, "_RANDOM", SimpleNamespace(randrange=lambda _count: 0, shuffle=lambda _deck: None))
+    game_id, _owners, sessions = native.local_started(server, count_players=2, cpus=(1,))
+    game = games[game_id]
+    runtime = game["_watten"]
+    player = runtime.room.cpus[0].participant_id
+    view = cpu._view(runtime, player)
+    assert cpu._may_decide(view)
+    deadline = game["_last_activity"] + GAME_TIMEOUT
+    now = deadline if timing == "wakeup" else deadline - timedelta(microseconds=1)
+    monkeypatch.setattr(watten_runtime, "utcnow", lambda: now)
+    calls = []
+
+    async def delayed_policy(*args, **kwargs):
+        nonlocal now
+        calls.append(True)
+        turn = cpu.decide(*args, **kwargs)
+        assert isinstance(turn.decision, cpu.CpuProposal)
+        await asyncio.sleep(0)
+        if timing == "newer_checkpoint":
+            # Another process committed an actual permitted turn while this
+            # policy awaited. Leave RAM stale so timeout must honor source CAS.
+            candidate, *_ = watten_runtime._apply_engine_command(
+                game, cpu.EngineActor(player, None), cpu.EngineCommand(**turn.decision.command_fields()))
+            persist_watten_game(candidate)
+        now = deadline
+        return turn
+
+    monkeypatch.setattr(cpu, "_decide_snapshot", delayed_policy)
+
+    async def scenario():
+        job = cpu._Job(game, cpu._context(runtime, view), asyncio.get_running_loop().time(), 1)
+        cpu._JOBS[(game_id, player)] = job
+        job.task = asyncio.create_task(cpu._run(game, player, job))
+        await asyncio.wait_for(job.task, timeout=5)
+        assert not job.task.cancelled() and (game_id, player) not in cpu._JOBS
+
+    asyncio.run(scenario())
+    assert calls == ([] if timing == "wakeup" else [True])
+    if timing == "newer_checkpoint":
+        durable = load_active_games()[game_id]
+        assert not game["_aborted"] and not durable["_aborted"]
+        assert durable["_watten"].engine.opportunity == runtime.engine.opportunity + 1
+        assert game["_watten"].engine == runtime.engine
+        assert sessions[0].websocket.messages == [] and sessions[0].websocket.closes == []
+    else:
+        assert game_id not in games and game_id not in load_active_games()
+        assert game["_aborted"] and game["_watten"].engine == runtime.engine
+        assert sessions[0].websocket.messages[-1]["scoreboard"]["abort_reason"] == "inactivity_timeout"
+        assert sessions[0].websocket.closes == [(1000, None)]
+    assert_unscored()
+
+
+def test_delayed_review_job_retires_expired_source_without_advancing_or_cancelling_itself(server, monkeypatch):
+    game, _owners, sessions = round_tests.completed_deal(server)
+    runtime = game["_watten"]
+    deadline = game["_last_activity"] + GAME_TIMEOUT
+    monkeypatch.setattr(watten_runtime, "utcnow", lambda: deadline)
+    monkeypatch.setattr(review, "utcnow", lambda: deadline)
+    # Exercise the actual watcher invoked during retirement, including its
+    # guard against cancelling the currently retiring review task.
+    monkeypatch.setattr(review, "watch_game", round_tests.REAL_WATCH)
+
+    async def scenario():
+        job = review._Job(game, review._context(game))
+        review._JOBS[game["_id"]] = job
+        job.task = asyncio.create_task(review._run(game, job))
+        await asyncio.wait_for(job.task, timeout=5)
+        assert not job.task.cancelled() and game["_id"] not in review._JOBS
+
+    asyncio.run(scenario())
+    assert game["_id"] not in games and game["_id"] not in load_active_games()
+    assert game["_aborted"] and game["_watten"].engine == runtime.engine
+    for session in sessions:
+        assert session.websocket.messages[-1]["scoreboard"]["abort_reason"] == "inactivity_timeout"
+        assert session.websocket.closes == [(1000, None)]
     assert_unscored()
