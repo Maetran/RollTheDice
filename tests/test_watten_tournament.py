@@ -84,7 +84,7 @@ def test_rematch_keeps_exact_human_teams_and_seats_across_new_participant_ids():
     with pytest.raises(WattenRoomError, match="roster_locked"):
         sit(target, HOST, 2)
     for account, seat in ((HOST, 0), (201, 1), (202, 2), (203, 3)):
-        target = sit(target, account, seat)
+        assert next(item for item in target.members if item.account_id == account).seat == seat
     started = start(target, revision=target.revision, account_id=HOST, now=NOW, first_dealer=0).room
     assert started.series.series_id == source.series.series_id and started.series.counts == source.series.counts
     assert started.series.bindings == source.series.bindings and started.series.completed_games == 1
@@ -112,8 +112,8 @@ def test_cpu_logical_seats_keep_their_marks_with_the_same_human_teams():
     source, _engine = completed(4, cpus=(1, 3))
     target = create_rematch(source, revision=source.revision, account_id=HOST, target_room_id="cpu-next", now=NOW,
                             wait_seconds=WAIT).room
-    target = sit(target, HOST, 0)
-    target = sit(join(target, 201), 201, 2)
+    target = join(target, 201)
+    assert [(item.account_id, item.seat) for item in target.members] == [(HOST, 0), (201, 2)]
     target = bind_room_series(target)
     assert target.series == replace(source.series, continuation_locked=True)
 
@@ -141,7 +141,7 @@ def test_tournament_reservations_never_expire_into_foreign_players_or_team_chang
     target = join(target, 201, now=later(31))
     with pytest.raises(WattenRoomError, match="tournament_roster_locked"):
         sit(target, 201, 2, now=later(31))
-    target = sit(target, 201, 1, now=later(31))
+    assert next(item for item in target.members if item.account_id == 201).seat == 1
     for operation, seat in ((place_cpu, 2), (remove_cpu, 3)):
         with pytest.raises(WattenRoomError, match="tournament_roster_locked"):
             operation(target, revision=target.revision, account_id=HOST, seat=seat, now=later(31))

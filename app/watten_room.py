@@ -3,10 +3,11 @@
 The technical decisions of this package come from Codex
 (docs/WATTEN_ROOM_HANDOFF.md), not from new house rules. Logical seats are
 fixed and ordered; account binding, participant ID, seat index and CPU
-occupancy stay distinct, and admission is a separate step from a deliberate
-seat choice. Four-player parties sit opposite each other (seats 0+2, 1+3)
-and a human confirms the chosen seat's team explicitly. Two players play
-alone; three keep fixed seats whose solo rotates per deal, without teams.
+occupancy stay distinct. New tables use a deliberate seat choice; rematches
+restore the previous seat when the account joins. Four-player parties sit
+opposite each other (seats 0+2, 1+3), with team confirmation on new tables.
+Two players play alone; three keep fixed seats whose solo rotates per deal,
+without teams.
 
 Each person's transition takes the expected room revision and the trusted,
 server-authenticated account; server transitions take the revision. A
@@ -370,6 +371,16 @@ def _next(room: WattenRoom, **changes: object) -> WattenRoom:
     return replace(room, revision=room.revision + 1, **changes)
 
 
+def _rematch_member(room: WattenRoom, member: Member) -> Member:
+    """Joining a continuation accepts its account-bound seat and existing team."""
+    if room.rematch_of is None or room.series is None or not room.series.roster_locked:
+        return member
+    seat = room.series.seat_for_account(member.account_id)
+    if seat is None:
+        raise WattenRoomError("watten_tournament_roster_locked")
+    return replace(member, seat=seat, team=seat_team(room.recipe.player_count, seat))
+
+
 def create_room(room_id: str, recipe: WattenRecipe, *, host_account: int, now: datetime,
                 wait_seconds: int) -> WattenRoom:
     """Admit the creating host as the first, still unseated member; CPUs take the recipe's seats."""
@@ -388,8 +399,9 @@ def admit(room: WattenRoom, *, revision: int, account_id: int, now: datetime,
 
     Account rejoin comes before every capacity and occupancy check and keeps
     the participant, seat and team; it renews nothing and never starts. A new
-    member does not get a seat. Valid reservations of other, not yet admitted
-    accounts keep their capacity. ``protection_verified`` is the server's own
+    member at a new table does not get a seat. Rematch members return to their
+    fixed seat and team as part of joining. Valid reservations of other, not
+    yet admitted accounts keep their capacity. ``protection_verified`` is the server's own
     result of checking a protected table's secret.
     """
     room = _current(room, revision)
@@ -403,6 +415,13 @@ def admit(room: WattenRoom, *, revision: int, account_id: int, now: datetime,
         raise WattenRoomError("watten_room_expired")
     existing = _member(room, account_id)
     if existing is not None:
+        # Older checkpoints may contain an admitted but still unseated rematch
+        # member. Its explicit return completes the same fixed-seat flow.
+        if room.status == "waiting" and existing.seat is None:
+            restored = _rematch_member(room, existing)
+            if restored != existing:
+                room = _next(room, members=tuple(restored if member == existing else member for member in room.members),
+                             reservations=tuple(item for item in room.reservations if item.account_id != account_id))
         return Admission(room, existing.participant_id, True)
     if room.status != "waiting":
         raise WattenRoomError(f"watten_room_{room.status}")
@@ -415,8 +434,11 @@ def admit(room: WattenRoom, *, revision: int, account_id: int, now: datetime,
     if len(room.members) + held >= room.recipe.player_count:
         raise WattenRoomError("watten_room_full")
     participant = f"p{room.participant_counter + 1}"
-    admitted = _next(room, members=(*room.members, Member(participant, account_id)),
-                     participant_counter=room.participant_counter + 1)
+    member = _rematch_member(room, Member(participant, account_id))
+    admitted = _next(room, members=(*room.members, member), participant_counter=room.participant_counter + 1,
+                     reservations=tuple(item for item in room.reservations if member.seat is None or item.account_id != account_id),
+                     wait_expires_at=max(room.wait_expires_at, now + timedelta(seconds=room.wait_seconds))
+                     if member.seat is not None else room.wait_expires_at)
     return Admission(admitted, participant, False)
 
 
@@ -579,10 +601,11 @@ def create_rematch(source: WattenRoom, *, revision: int, account_id: int, target
                    protection_verifier: str | None = None, password_required: bool | None = None) -> RematchCreated:
     """Create exactly one follow-up waiting room from the source's complete recipe.
 
-    The requesting player becomes the unseated host; nobody is moved
-    automatically. ``reservations`` maps former player accounts to private
-    seat suggestions that still need a deliberate join and seat choice. The
-    marked source refuses a second rematch. Results and points stay untouched.
+    The requesting player becomes host on their previous seat and team.
+    Other accounts keep their fixed seats and return there when they join;
+    the host still starts explicitly. ``reservations`` maps former player
+    accounts to private seat holds. The marked source refuses a second rematch.
+    Results and points stay untouched.
     """
     source = _current(source, revision)
     _account(account_id)
@@ -625,6 +648,9 @@ def create_rematch(source: WattenRoom, *, revision: int, account_id: int, target
     room = replace(room, rematch_of=source.room_id,
                    reservations=tuple(SeatReservation(key, seat, expires_at) for key, seat in pairs),
                    series=replace(series, continuation_locked=True))
+    host = _rematch_member(room, room.members[0])
+    room = replace(room, members=(host,),
+                   reservations=tuple(item for item in room.reservations if item.account_id != account_id))
     return RematchCreated(_next(source, rematch_room_id=target_room_id), room, protection_verifier)
 
 

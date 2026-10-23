@@ -306,7 +306,7 @@ def test_start_roster_drives_the_existing_card_engine_for_every_dealer(count):
         assert code_of(roster.deal_parties, dealer) == "watten_invalid_dealer"
 
 
-def test_rematch_creates_one_follow_up_from_the_complete_recipe_without_moving_people():
+def test_rematch_restores_the_host_seat_and_team_without_joining_other_people():
     source = finished(4, cpu_seats=(3,), password=True, show_rechter=True, trick_history=True)
     created = create_rematch(source, revision=source.revision, account_id=201, target_room_id="room-2", now=NOW,
                              wait_seconds=WAIT)
@@ -314,7 +314,7 @@ def test_rematch_creates_one_follow_up_from_the_complete_recipe_without_moving_p
     assert room.recipe == replace(source.recipe, password_required=False)
     assert room.series.roster_locked and room.series.bindings == source.series.bindings
     assert room.rematch_of == "room-1" and room.status == "waiting" and room.revision == 0
-    assert room.members == (Member("p1", 201),) and [cpu.seat for cpu in room.cpus] == [3]
+    assert room.members == (Member("p1", 201, 1, 1),) and [cpu.seat for cpu in room.cpus] == [3]
     assert created.protection_verifier is None
     marked = created.source
     assert marked.rematch_room_id == "room-2" and marked.revision == source.revision + 1
@@ -368,7 +368,7 @@ def test_rematch_reservations_remain_account_bound_after_declining_or_expiring()
     assert code_of(sit, room, 201, 2) == "watten_tournament_roster_locked"
     assert code_of(place_cpu, room, revision=room.revision, account_id=HOST, seat=2, now=NOW) == (
         "watten_tournament_roster_locked")
-    room = sit(room, 201, 1)
+    assert next(member for member in room.members if member.account_id == 201).seat == 1
     assert [(item.account_id, item.seat) for item in room.reservations] == [(202, 2)]
     declined = decline_reservation(room, revision=room.revision, account_id=202, now=NOW)
     assert declined.reservations == ()
@@ -376,10 +376,37 @@ def test_rematch_reservations_remain_account_bound_after_declining_or_expiring()
         "watten_tournament_roster_locked")
     assert code_of(decline_reservation, declined, revision=declined.revision, account_id=202, now=NOW) == (
         "watten_no_reservation")
-    expired = sit(join(room, 202, now=later(300)), 202, 2, now=later(300))
+    expired = join(room, 202, now=later(300))
     assert next(member for member in expired.members if member.account_id == 202).seat == 2
     assert code_of(admit, expired, revision=expired.revision, account_id=301, now=later(300)) == (
         "watten_tournament_roster_locked")
+
+
+@pytest.mark.parametrize("count,cpus", ((2, ()), (3, (2,)), (4, ()), (4, (1, 3))))
+def test_rematch_join_restores_seats_and_teams_without_a_second_choice(count, cpus):
+    source = finished(count, cpu_seats=cpus)
+    target = create_rematch(source, revision=source.revision, account_id=HOST, target_room_id="next-fixed",
+                            now=NOW, wait_seconds=WAIT).room
+    for member in reversed(source.members):
+        target = join(target, member.account_id)
+        returned = next(item for item in target.members if item.account_id == member.account_id)
+        assert (returned.seat, returned.team) == (member.seat, member.team)
+    assert target.status == "waiting" and target.first_dealer is None
+    assert len({item.seat for item in target.members} | {cpu.seat for cpu in target.cpus}) == count
+    assert room_from_json(room_to_json(target)) == target
+    started = start(target, revision=target.revision, account_id=HOST, now=NOW, first_dealer=0).room
+    assert start_roster(started).accounts == start_roster(source).accounts
+
+
+def test_return_to_legacy_unseated_rematch_restores_fixed_seat_once_without_renewing_deadline():
+    source = finished(4)
+    target = create_rematch(source, revision=source.revision, account_id=HOST, target_room_id="legacy-fixed",
+                            now=NOW, wait_seconds=WAIT).room
+    legacy = replace(target, members=(Member("p1", HOST),))
+    restored = join(room_from_json(room_to_json(legacy)), HOST, now=later(30))
+    assert restored.members == (Member("p1", HOST, 0, 0),)
+    assert restored.revision == legacy.revision + 1 and restored.wait_expires_at == legacy.wait_expires_at
+    assert join(restored, HOST, now=later(40)) == restored
 
 
 def test_rooms_are_frozen():

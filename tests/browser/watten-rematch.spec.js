@@ -1,7 +1,7 @@
 const { test, expect } = require('@playwright/test');
 const { player, finishOpenMatch } = require('./helpers/watten-journey.cjs');
 
-test('a tournament rematch keeps loss marks and offers only each player’s fixed seat', async ({ browser, baseURL }) => {
+test('a tournament rematch keeps loss marks and restores each player’s fixed seat on joining', async ({ browser, baseURL }) => {
   const players = await Promise.all([0, 1].map(() => player(browser, baseURL)));
   const host = players[0];
   try {
@@ -18,12 +18,10 @@ test('a tournament rematch keeps loss marks and offers only each player’s fixe
     for (let seat = 0; seat < players.length; seat += 1) {
       const item = players[seat];
       await expect(item.page.locator('.wt-tournament-locked')).toBeVisible();
-      await expect(item.page.locator('[data-watten-command=take-seat]')).toHaveCount(1);
-      await expect(item.page.locator('[data-watten-command=take-seat]')).toHaveAttribute('data-seat', String(seat));
+      await expect(item.page.locator('[data-watten-command=take-seat]')).toHaveCount(0);
       await expect(item.page.locator('[data-watten-command=decline-reservation]')).toHaveCount(0);
       await expect(item.page.locator('[data-watten-command=place-cpu], [data-watten-command=remove-cpu]')).toHaveCount(0);
       expect(item.traffic.snapshot.room.required_seat).toBe(seat);
-      await item.page.locator('[data-watten-command=take-seat]').click();
       await expect.poll(() => item.traffic.snapshot.viewer.seat).toBe(seat);
     }
     await host.page.locator('[data-watten-command=start]').click();
@@ -60,7 +58,7 @@ for (const language of ['de', 'en']) {
 }
 
 for (const language of ['de', 'en']) {
-  test(`${language}: a committed next table survives a lost response and keeps seats and start explicit`, async ({ browser, baseURL }, testInfo) => {
+  test(`${language}: a committed next table survives a lost response, restores seats and keeps start explicit`, async ({ browser, baseURL }, testInfo) => {
     const players = [await player(browser, baseURL, language), await player(browser, baseURL, language)];
     const host = players[0], guest = players[1];
     const requests = [];
@@ -95,7 +93,7 @@ for (const language of ['de', 'en']) {
       await expect(host.page).toHaveURL(new RegExp(`/watten/spiel/${createdTarget}$`));
       await expect.poll(() => host.traffic.snapshot?.id).toBe(createdTarget);
       expect(host.traffic.snapshot.started).toBe(false);
-      expect(host.traffic.snapshot.viewer.seat).toBeNull();
+      expect(host.traffic.snapshot.viewer.seat).toBe(0);
       expect(host.traffic.snapshot.room.recipe.password_required).toBe(false);
       expect(host.traffic.snapshot.room.recipe.schoeneres_enabled).toBe(true);
       await guest.page.locator('[data-watten-rematch-action=open]').click();
@@ -103,10 +101,10 @@ for (const language of ['de', 'en']) {
       await expect(guest.page.locator('[data-watten-join] [name=password]')).toHaveCount(0);
       await guest.page.locator('[data-watten-join] button[type=submit]').click();
       await expect.poll(() => guest.traffic.snapshot?.id).toBe(createdTarget);
-      expect(guest.traffic.snapshot.viewer.seat).toBeNull();
+      await expect.poll(() => guest.traffic.snapshot.viewer?.seat).toBe(1);
       await expect(guest.page.locator('[data-watten-rematch-reservation]')).toHaveCount(0);
       for (let seat = 0; seat < players.length; seat += 1) {
-        await players[seat].page.locator(`[data-watten-command=take-seat][data-seat="${seat}"]`).click();
+        await expect(players[seat].page.locator('[data-watten-command=take-seat]')).toHaveCount(0);
         await expect.poll(() => players[seat].traffic.snapshot.viewer.seat).toBe(seat);
       }
       expect(host.traffic.snapshot.started).toBe(false);
@@ -148,12 +146,10 @@ test('ordinary four-player rematches retain the original people, teams and loss 
       await expect(item.page.locator('[data-watten-command=decline-reservation]')).toHaveCount(0);
       await expect(item.page.locator('[data-watten-command=place-cpu], [data-watten-command=remove-cpu]')).toHaveCount(0);
       await expect(item.page.locator('[data-watten-rematch-reservation]')).toHaveCount(0);
-      expect(item.traffic.snapshot.viewer.seat).toBeNull();
+      await expect(item.page.locator('[data-watten-command=take-seat]')).toHaveCount(0);
     }
     for (const [index, seat] of [0, 1, 2, 3].entries()) {
       const item = players[index];
-      await expect(item.page.locator("[data-watten-command=take-seat]")).toHaveCount(1);
-      await item.page.locator(`[data-watten-command=take-seat][data-seat="${seat}"]`).click();
       await expect.poll(() => item.traffic.snapshot.viewer.seat).toBe(seat);
       await expect(item.page.locator('.wt-seat-slot.is-own')).toContainText(item.user.username);
     }

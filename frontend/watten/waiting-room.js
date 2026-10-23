@@ -65,7 +65,7 @@ function seatSlot(room, seat, { member, viewerSeat, busy, canManageCpus }) {
     : t("seat.take", { seat: seat + 1 });
   const free = !info.participant_id && !info.is_cpu;
   const locked = room.series?.teams_locked === true;
-  const button = member && free && room.status === "waiting" && (!locked || room.required_seat === seat)
+  const button = member && free && room.status === "waiting" && !locked
     ? `<button type="button" data-watten-command="take-seat" data-seat="${seat}" ${busy ? "disabled" : ""}>${esc(label)}</button>` : "";
   const cpuButton = !locked && canManageCpus && room.status === "waiting" && (info.is_cpu
     || (free && room.seats.filter(item => item.is_cpu).length < count - 1))

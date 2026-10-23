@@ -163,9 +163,7 @@ def test_retry_does_not_reactivate_an_evicted_running_target_without_its_coordin
     target = games[first["game_id"]]
     for seat, owner in enumerate(owners[:2]):
         target, player_id = admit_account(target, owner[0], target["_watten"].room.revision, None)
-        target, *_ = apply_runtime_action(target, owner[0].user_id, player_id,
-            {"action": "watten_take_seat", "command_id": f"seat-{seat}", "revision": target["_watten"].room.revision,
-             "lifecycle_revision": target["_watten"].lifecycle_revision, "seat": seat, "team": None})
+        assert next(item for item in target["_watten"].room.members if item.participant_id == player_id).seat == seat
     target, *_ = apply_runtime_action(target, owners[0][0].user_id, target["_watten"].room.host_participant_id,
         {"action": "watten_start", "command_id": "start-target", "revision": target["_watten"].room.revision,
          "lifecycle_revision": target["_watten"].lifecycle_revision})

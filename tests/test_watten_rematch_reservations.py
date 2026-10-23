@@ -1,9 +1,12 @@
-"""A reservation is an explicit owned choice, independent from seat and team."""
+"""Legacy reservation retries remain owned; new rematches restore fixed seats."""
+
+from dataclasses import replace
 
 import pytest
 
 from app.game_state import games
-from app.watten_runtime import restore_watten_json
+from app.watten_room import Member, SeatReservation
+from app.watten_runtime import persist_watten_game, restore_watten_json
 from tests import test_watten_runtime as native
 from tests.test_watten_rematch import checkpoints, command, post, source_for
 from tests.test_watten_social import attach, call, last
@@ -11,10 +14,17 @@ from tests.test_watten_social import attach, call, last
 server = native.server
 
 
-def test_decline_lost_ack_restart_and_later_join_do_not_restore_or_move_a_seat(server):
+def test_legacy_decline_lost_ack_restart_and_return_restore_only_the_fixed_seat(server):
     match, owners = source_for()
     target_id = post(server, match.game, owners[0], command(match.game)).json()["game_id"]
     target = games[target_id]
+    room = target["_watten"].room
+    host = room.members[0]
+    reservation = SeatReservation(host.account_id, 0, room.reservations[0].expires_at)
+    legacy = replace(room, members=(Member(host.participant_id, host.account_id),),
+                     reservations=(reservation, *room.reservations))
+    target["_watten"] = replace(target["_watten"], room=legacy)
+    persist_watten_game(target)
     sender = attach(target, owners[:1])[0]
     data = native.room_command(target_id, "watten_decline_reservation", 1)
     guest_reservation = next(item for item in target["_watten"].room.reservations if item.account_id == owners[1][0].user_id)
@@ -35,6 +45,7 @@ def test_decline_lost_ack_restart_and_later_join_do_not_restore_or_move_a_seat(s
     call(sender, {"action": "rejoin_game", "revision": restored["_watten"].room.revision,
                   "expected_account_id": owners[0][0].user_id})
     assert restored["_watten"].room.reservations == (guest_reservation,)
+    assert restored["_watten"].room.members[0].seat == 0 and not restored["_started"]
 
 
 def test_decline_never_accepts_another_account_or_stale_room_instruction(server):
