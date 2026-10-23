@@ -6,6 +6,46 @@ test.setTimeout(90_000);
 const mobile = browser => ({ newContext: options => browser.newContext({ ...options,
   viewport: { width: 393, height: 852 }, serviceWorkers: 'block' }) });
 
+async function settledPrimaryTarget(page, viewport, action) {
+  return page.evaluate(({ viewport, action }) => new Promise(resolve => {
+    const landscape = viewport.width > viewport.height && viewport.height <= 700;
+    const expectedWidth = landscape ? (viewport.width <= 720 ? 84 : 104) : 120;
+    let previous = '', stable = 0;
+    const frame = () => {
+      const target = document.querySelector(`[data-watten-action="${action}"]`);
+      const anchor = action === 'show_ready' ? target?.closest('.wt-announce') : target;
+      const rect = target?.getBoundingClientRect();
+      const ready = innerWidth === viewport.width && innerHeight === viewport.height
+        && matchMedia('(orientation: landscape)').matches === (viewport.width > viewport.height)
+        && rect?.width === expectedWidth && rect.height === 44
+        && anchor && getComputedStyle(anchor).position === 'fixed';
+      const current = ready ? JSON.stringify([rect.x, rect.y, rect.width, rect.height,
+        document.querySelector('[data-wt-felt]')?.getBoundingClientRect().toJSON()]) : '';
+      stable = current && current === previous ? stable + 1 : 0; previous = current;
+      if (stable >= 3) resolve({ x: rect.x, y: rect.y, width: rect.width, height: rect.height });
+      else requestAnimationFrame(frame);
+    };
+    requestAnimationFrame(frame);
+  }), { viewport, action });
+}
+
+test('primary target baseline waits for delayed landscape dock geometry after rotation', async ({ page }) => {
+  const viewport = { width: 956, height: 440 };
+  await page.setViewportSize(viewport);
+  await page.setContent('<div class="wt-announce" style="position:fixed;right:12px;bottom:34px"><button data-watten-action="show_ready" style="box-sizing:border-box;width:120px;height:44px">Show strike</button></div>');
+  await page.evaluate(() => {
+    window.dockFrames = 0;
+    const frame = () => {
+      window.dockFrames++;
+      if (window.dockFrames === 8) document.querySelector('button').style.width = '104px';
+      else requestAnimationFrame(frame);
+    };
+    requestAnimationFrame(frame);
+  });
+  expect(await settledPrimaryTarget(page, viewport, 'show_ready')).toEqual({ x: 840, y: 362, width: 104, height: 44 });
+  expect(await page.evaluate(() => window.dockFrames)).toBe(8);
+});
+
 async function startBlind(browser, baseURL, language, players) {
   for (let seat = 0; seat < 4; seat++) players.push(await player(mobile(browser), baseURL, language));
   const path = await create(players, { count: 4, target: 11 });
@@ -32,9 +72,9 @@ async function inspect(players) {
   const inspecting = players.filter(peer => peer.traffic.snapshot.engine.actions.includes('show_ready'));
   for (const viewport of viewports) for (const caller of inspecting) {
     await caller.page.setViewportSize(viewport);
-    await caller.page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    const target = await settledPrimaryTarget(caller.page, viewport, 'show_ready');
     await expectReachable(caller.page, '[data-watten-action=show_ready]');
-    primaryTargets.set(`${caller.user.id}:${viewport.width}`, await caller.page.locator('[data-watten-action=show_ready]').boundingBox());
+    primaryTargets.set(`${caller.user.id}:${viewport.width}`, target);
   }
   await action(players, 'show_ready'); await action(players, 'show_ready');
   if (players.some(peer => peer.traffic.snapshot.engine.preplay.pending?.kind === 'bloedeln'
@@ -44,6 +84,7 @@ async function inspect(players) {
     for (const viewport of viewports) {
       for (const peer of players) await peer.page.setViewportSize(viewport);
       for (const caller of callers) {
+        await settledPrimaryTarget(caller.page, viewport, 'inspection_ack');
         await expectReachable(caller.page, '[data-watten-action=inspection_ack]');
         const before = primaryTargets.get(`${caller.user.id}:${viewport.width}`);
         await expect.poll(async () => {
