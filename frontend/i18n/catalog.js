@@ -4205,6 +4205,7 @@ export const EN = {
     "Freier Wurf": "Free roll",
     "Freier Wurf!": "Free roll!",
     "Letzter Zilch-Wurf": "Last Zilch roll",
+    "Letzter Zilch-Wurf von {name}": "Last Zilch roll by {name}",
     "Betroffene Würfel": "Affected dice",
     "Wartesaal": "Waiting room",
     "Bereit für den Startwurf": "Ready for the opening roll",

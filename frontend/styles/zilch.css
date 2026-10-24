@@ -3438,6 +3438,16 @@ html[data-game="zilch"]:has(.zilch-shell--game) body {
   box-shadow: 0 -.3rem .9rem rgba(31, 14, 5, .32);
 }
 .zilch-shell--game .zilch-dice-dock .zilch-table::before { display: none; }
+.zilch-shell--game .zilch-dice-source {
+  margin: 0 0 .35rem;
+  color: inherit;
+  font-size: .8rem;
+  line-height: 1.25;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.zilch-shell--game .zilch-dice.is-zilch-retained .zilch-die { opacity: .58; }
+.zilch-shell--game .zilch-die--zilch-retained::after { opacity: .55; }
 .zilch-shell--game .zilch-dice {
   --zilch-room-die-size: 2.72rem;
   display: grid;

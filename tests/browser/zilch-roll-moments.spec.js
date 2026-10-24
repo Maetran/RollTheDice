@@ -170,12 +170,15 @@ for (const lastAction of ["bank", "zilch"]) {
         ? { type: "zilch", player_id: "p1", rolled_dice: [2, 3, 4, 6, 2, 3], held_dice_indices: [], penalty: 0 }
         : { type: "bank", player_id: "p1", points: 1000 };
       const terminal = { ...initial, _finished: true, _finalization_pending: true, _dice: [0, 0, 0, 0, 0, 0],
+        _zilch_last_zilch_dice: lastAction === "zilch" ? { player_id: "p1", turn_id: 17, dice: event.rolled_dice, held_dice_indices: [] } : null,
         _zilch_outcome: { winner_id: "p1", winner_ids: ["p1"], reason: "target_reached" },
         _zilch_last_event: event, _zilch_result: { game_id: gameId, result_url: resultRoute },
         _zilch_boards: { ...initial._zilch_boards, p1: { ...initial._zilch_boards.p1, rounds: [{ round: 1, event: lastAction, total_after: 10000 }], total_points: 10000 } },
       };
       await push(page, terminal);
       await expect(page.locator(".zilch-dice")).toBeVisible();
+      await expect(page.locator(".zilch-dice")).not.toHaveClass(/is-zilch-retained/);
+      await expect(page.locator(".zilch-dice-source, .zilch-recommendations--empty-guidance")).toHaveCount(0);
       expect(await faces(page)).toEqual(lastAction === "zilch" ? event.rolled_dice : initial._dice);
       await expect(page.locator(".zilch-result-summary")).toHaveCount(0);
       await page.clock.runFor(500);
@@ -193,3 +196,37 @@ for (const lastAction of ["bank", "zilch"]) {
     } finally { await context.close(); }
   });
 }
+
+test("phone next-step guidance waits for opening, pending and Zilch presentation moments", async ({ browser, baseURL }) => {
+  const initial = table({ opening: true });
+  const { context, page } = await openTable(browser, baseURL, { initial, mobile: true, theme: "lcars" });
+  try {
+    const guide = page.locator(".zilch-recommendations--empty-guidance");
+    await expect(guide).toHaveCount(0);
+    const ready = table();
+    await push(page, ready, { type: "start_roll_resolved", player_id: "p2", value: 3, attempt: 1 });
+    await expect(page.locator("[data-start-roll-result]")).toBeVisible();
+    await expect(guide).toHaveCount(0);
+    await page.clock.runFor(1250);
+    await expect(guide).toBeVisible();
+    await page.locator("[data-zilch-roll]").evaluate(button => button.click());
+    await expect(page.locator("[data-zilch-roll]")).toBeDisabled();
+    await expect(guide).toHaveCount(0);
+    await push(page, rolled(ready));
+    await expect(page.locator(".zilch-dice")).toHaveClass(/is-landing/);
+    await expect(guide).toHaveCount(0);
+    await page.clock.runFor(700);
+    const event = { type: "zilch", player_id: "p1", rolled_dice: [2, 3, 4, 6, 2, 3], held_dice_indices: [], penalty: 0 };
+    const next = { ...table({ actor: "p2" }), _zilch_last_event: event,
+      _zilch_last_zilch_dice: { player_id: "p1", turn_id: 17, dice: event.rolled_dice, held_dice_indices: [] } };
+    await push(page, next);
+    await expect(page.locator(".zilch-dice")).toHaveClass(/is-zilch-reveal/);
+    await expect(page.locator(".zilch-dice-source")).toHaveCount(0);
+    await expect(guide).toHaveCount(0);
+    await page.clock.runFor(2000);
+    await expect(page.locator(".zilch-dice-source")).toHaveText("Letzter Zilch-Wurf");
+    await expect(guide).toBeVisible();
+    await expect(guide).toContainText("Gleich rollen die Würfel wieder.");
+    await expect(page.locator("[data-zilch-roll]")).toBeDisabled();
+  } finally { await context.close(); }
+});

@@ -3875,3 +3875,113 @@ for (const language of ["de", "en"]) {
     } finally { await context.close(); }
   });
 }
+
+function screenshotRollSnapshots() {
+  // Projection of the user's valid 4,1,1,3,3,1 roll. Three ones require a
+  // confirmation roll; the same faces retained from an old turn are history.
+  const current = fixtureSnapshots().holdOptions;
+  current._dice = [4, 1, 1, 3, 3, 1];
+  current._zilch_final_round = null;
+  current._zilch_boards.p1 = board({ playerId: "p1", totalPoints: -500, roundPoints: 0, active: true,
+    rounds: [{ round: 1, event: "zilch", points: 0 }, { round: 2, event: "zilch", points: 0 }, { round: 3, event: "zilch", penalty: 500, total_after: -500 }] });
+  current._zilch_boards.p2 = board({ playerId: "p2", totalPoints: 0, roundPoints: 0 });
+  current._zilch_turn_state = { ...current._zilch_turn_state, round_points: 0, committed_holds: [],
+    confirmation_required: false, confirmation_reasons: [], rolls_used: 1 };
+  current._zilch_quick_holds = [[1, 2, 5], [1, 2], [1, 5], [2, 5], [1], [2], [5]].map(indices => ({
+    id: `screenshot-ones-${indices.join("-")}`, combination_type: indices.length === 3 ? "three_ones" : indices.length === 1 ? "single_one" : "combined",
+    dice_indices: indices, dice_values: indices.map(() => 1), points: indices.length === 3 ? 1000 : indices.length * 100,
+    label_key: `zilch.option.${indices.length === 3 ? "three_ones" : "single_one"}`, label_params: { count: indices.length },
+    roll_id: 8, requires_confirmation: indices.length === 3, hot_dice: false, free_roll: false,
+    all_available_dice: false, follow_up_actions: ["zilch_roll_dice"],
+  }));
+  const ready = structuredClone(current);
+  ready._dice = [0, 0, 0, 0, 0, 0]; ready._zilch_quick_holds = [];
+  ready._zilch_turn_state = { ...ready._zilch_turn_state, version: 0, roll_id: 0, phase: "ready_to_roll", rolls_used: 0, can_roll: true, can_select_hold: false };
+  ready._zilch_last_event = { type: "ready" };
+  const retained = structuredClone(ready);
+  retained._zilch_last_zilch_dice = { player_id: "p2", turn_id: 10, dice: [4, 1, 1, 3, 3, 1], held_dice_indices: [1, 2, 5] };
+  return { ready, current, retained };
+}
+
+for (const theme of ["lcars", "light"]) for (const language of ["de", "en"]) {
+  test(`${language} ${theme}: phones distinguish a valid current selection from the previous Zilch rack`, async ({ browser, baseURL }, info) => {
+    const context = await browser.newContext({ baseURL, serviceWorkers: "block", hasTouch: true, isMobile: true, reducedMotion: "reduce", viewport: { width: 440, height: 956 } });
+    const page = await context.newPage();
+    try {
+      await page.addInitScript(theme => localStorage.setItem("zilch_theme", theme), theme);
+      await signInAsPreviewMani(page);
+      await page.route("**/api/auth/tours", route => route.fulfill({ json: { enabled: false, games: {} } }));
+      const shellHtml = await (await page.goto("/zilch")).text();
+      const { ready, current, retained } = screenshotRollSnapshots();
+      const gameId = `phone-guidance-${language}-${theme}`;
+      await installGameScreenFixture(page, gameId, { initial: ready, holdOptions: current });
+      await page.route(`**/zilch/spiel/${gameId}`, route => route.fulfill({ contentType: "text/html", body: shellHtml }));
+      await page.goto(`/zilch/spiel/${gameId}`);
+      await expect(page.locator(".zilch-die")).toHaveCount(6);
+      await page.evaluate(language => window.ZDWA_I18N.setLanguage(language, { persist: false, reload: false }), language);
+      await page.clock.install();
+      const guide = page.locator(".zilch-tablet-guide");
+      const label = page.locator(".zilch-dice-source");
+      for (const viewport of [{ width: 320, height: 800 }, { width: 440, height: 956 }, { width: 956, height: 440 }]) {
+        await page.setViewportSize(viewport);
+        await page.evaluate(scoreboard => window.__zilchGameScreenFixturePush({ scoreboard }), retained);
+        await expect(label).toHaveText(language === "de" ? "Letzter Zilch-Wurf von PreviewFriend" : "Last Zilch roll by PreviewFriend");
+        await expect(guide).toBeVisible();
+        await expect(guide).toContainText(language === "de" ? "Würfle los" : "Roll the dice");
+        await expectTextContrast(guide.locator("h2"));
+        await expectTextContrast(guide.locator("p"));
+        await expect(page.locator(".zilch-dice button")).toHaveCount(0);
+        await expect(page.locator("[data-zilch-recommendation], .zilch-turn-score")).toHaveCount(0);
+        await expect(page.locator("[data-zilch-bank]")).toBeDisabled();
+        await expect(page.locator("[data-zilch-roll]")).toBeEnabled();
+        await expect(page.locator("[data-zilch-roll]")).toHaveText(language === "de" ? "Würfeln" : "Roll");
+        const geometry = await label.evaluate(node => {
+          const label = node.getBoundingClientRect(), dice = document.querySelector(".zilch-dice").getBoundingClientRect();
+          return { left: label.left, right: label.right, top: label.top, bottom: label.bottom, diceTop: dice.top,
+            opacity: Number(getComputedStyle(document.querySelector(".zilch-die")).opacity), width: innerWidth, scrollWidth: document.documentElement.scrollWidth };
+        });
+        expect(geometry.left).toBeGreaterThanOrEqual(0); expect(geometry.right).toBeLessThanOrEqual(geometry.width);
+        expect(geometry.top).toBeGreaterThanOrEqual(0); expect(geometry.bottom).toBeLessThanOrEqual(geometry.diceTop);
+        expect(geometry.opacity).toBeLessThan(0.8); expect(geometry.scrollWidth).toBeLessThanOrEqual(geometry.width);
+        if (viewport.width !== 956) await page.screenshot({ path: info.outputPath(`retained-${viewport.width}.png`) });
+
+        // Capture the real pending render before the fixture's asynchronous
+        // reply; no private state hook or altered production action is used.
+        const pending = await page.evaluate(() => {
+          document.querySelector("[data-zilch-roll]").click();
+          return { disabled: document.querySelector("[data-zilch-roll]").disabled,
+            guidance: Boolean(document.querySelector(".zilch-recommendations--empty-guidance")) };
+        });
+        expect(pending).toEqual({ disabled: true, guidance: false });
+        await expect(page.locator('[data-zilch-recommendation="screenshot-ones-1-2-5"]')).toBeVisible();
+        await page.locator("[data-zilch-combined-score]").tap();
+        await expect(label).toHaveCount(0); await expect(guide).toBeHidden();
+        await expect(page.locator(".zilch-die--selected")).toHaveCount(3);
+        await expect(page.locator('[data-zilch-recommendation="screenshot-ones-1-2-5"]')).toHaveAttribute("aria-pressed", "true");
+        await expect(page.locator(".zilch-turn-score")).toContainText(/1(?:'|,|’|\s)000/);
+        await expect(page.locator("[data-zilch-bank]")).toBeDisabled(); await expect(page.locator("[data-zilch-roll]")).toBeEnabled();
+        if (viewport.width !== 956) await page.screenshot({ path: info.outputPath(`current-${viewport.width}.png`) });
+        // Complete the 650ms production dice-motion window before the next
+        // independent viewport projection, without a real-time sleep.
+        await page.clock.runFor(700);
+      }
+      // The same retained faces identify an own old roll without a foreign
+      // name, and a waiting opponent gets observational next-step language.
+      retained._zilch_last_zilch_dice.player_id = "p1";
+      retained._turn.player_id = "p2";
+      await page.evaluate(scoreboard => window.__zilchGameScreenFixturePush({ scoreboard }), retained);
+      await expect(label).toHaveText(language === "de" ? "Letzter Zilch-Wurf" : "Last Zilch roll");
+      await expect(guide).toContainText(language === "de" ? "Gleich rollen" : "The next roll is coming up.");
+      await expect(page.locator("[data-zilch-roll]")).toBeDisabled();
+      for (const blocked of [{ _paused: true }, { _zilch_cpu_error: "unavailable" }]) {
+        await page.evaluate(scoreboard => window.__zilchGameScreenFixturePush({ scoreboard }), { ...retained, ...blocked });
+        await expect(guide).toBeHidden();
+      }
+      // Tablet guidance keeps its objective and current-selection explanation.
+      await page.setViewportSize({ width: 1180, height: 820 });
+      await page.evaluate(scoreboard => window.__zilchGameScreenFixturePush({ scoreboard }), current);
+      await expect(guide).toBeVisible(); await expect(guide.locator(".zilch-tablet-guide__objective")).toBeVisible();
+      await expect(guide).toContainText(language === "de" ? "Tippe Punktewürfel" : "Tap scoring dice");
+    } finally { await context.close(); }
+  });
+}

@@ -5,6 +5,17 @@
 .zilch-tablet-guide,
 html[data-game="zilch"] .zilch-shell.zilch-shell--game[data-zilch-root] .zilch-recommendations--tablet-only { display: none; }
 
+/* A phone's empty scoring rail can explain the next action without taking
+   space from a live roll's recommendations. The objective stays on tablets. */
+@media (max-width: 767px), (any-pointer: coarse) and (max-height: 599px) {
+  html[data-game="zilch"] .zilch-shell.zilch-shell--game[data-zilch-root] .zilch-recommendations--empty-guidance,
+  .zilch-recommendations--empty-guidance .zilch-tablet-guide { display: block; }
+  .zilch-recommendations--empty-guidance .zilch-tablet-guide { padding: .5rem; font-size: .85rem; line-height: 1.4; }
+  .zilch-recommendations--empty-guidance .zilch-tablet-guide__objective { display: none; }
+  .zilch-recommendations--empty-guidance .zilch-tablet-guide h2 { margin: 0 0 .4rem; color: inherit; font-size: .9rem; }
+  .zilch-recommendations--empty-guidance .zilch-tablet-guide p { margin: 0; }
+}
+
 @media (any-pointer: coarse) and (min-width: 768px) and (min-height: 600px) and (max-width: 1600px) {
   html[data-game="zilch"] .zilch-shell:not(.zilch-shell--game) .zilch-header {
     grid-template-columns: minmax(0, 1fr) auto;
