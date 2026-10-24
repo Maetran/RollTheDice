@@ -43,6 +43,22 @@ test("landscape geometry rejects an unusable gap instead of painting beyond it",
   }
 });
 
+test("a short-lived call uses the nearest free gap above the dock without changing prompt defaults", () => {
+  const bounds = rect(12, 112, 296, 148);
+  const sideCall = rect(180, 244, 128, 28);
+  const options = { height: 28, widths: [132] };
+  const prompt = fitPortraitPrompt(bounds, [sideCall], options);
+  const edge = fitPortraitPrompt(bounds, [sideCall], { ...options, bottomFirst: true });
+  const call = fitPortraitPrompt(bounds, [sideCall], { ...options, bottomFirst: true, centerFirst: true });
+  assert.equal(prompt.top, bounds.top, "existing prompts retain their top-first placement");
+  assert.equal(call.bottom, sideCall.top - 4, "the call clears the peer chip instead of using a fixed dock offset");
+  assert.equal(call.left, 94, "a free centre column keeps the own-seat meaning");
+  assert.equal(edge.left, bounds.left, "the unrestricted bottom-first search would prefer the edge");
+  assert.equal(overlap(call, sideCall), false);
+  assert.equal(fitPortraitPrompt(rect(12, 112, 296, 20), [], { ...options, bottomFirst: true }), null,
+    "an unusable gap is reported rather than accepted as free space");
+});
+
 test("landscape keeps its first public card footprint through later cards and winner marking, then refits the next trick", () => {
   const style = () => ({ values: new Map(), setProperty(key, value) { this.values.set(key, value); },
     removeProperty(key) { this.values.delete(key); } });
