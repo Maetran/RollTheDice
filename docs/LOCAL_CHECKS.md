@@ -31,6 +31,19 @@ ein vorhandener Versionsmanager oder beispielsweise
 `npm exec --yes --package=node@22 -- npm run push:checked -- <Argumente>`
 die passende Version bereitstellen, ohne den System-Node zu ersetzen.
 
+Direkte Playwright-Aufrufe ohne eigenen Ausgabepfad legen ihre Artefakte unter
+`test-results/direct/<Poolname>` ab; ausdrücklich konfigurierte Pfade bleiben
+erhalten. Playwright bereinigt nur den jeweiligen Ausgabeordner. Derselbe
+direkte Pool darf deshalb nicht gleichzeitig mehrfach laufen. Relative Pfade
+gelten ab dem Ordner der jeweiligen Konfigurationsdatei; der Vollprüfer verwendet
+weiterhin getrennte, ausdrücklich gesetzte Pfade für jeden Lauf und Pool.
+
+Direct Playwright calls without a configured output path keep artifacts in
+`test-results/direct/<pool-name>`; explicit paths remain unchanged. Playwright
+cleans that pool's output directory, so do not run the same direct pool twice
+concurrently. Relative paths resolve from the configuration file's directory.
+The full verifier continues to set separate output paths for each run and pool.
+
 `npm run verify:local` führt nacheinander aus:
 
 1. Frisches `origin/develop` abrufen, sauberen Commit und integrierte Basis prüfen.
