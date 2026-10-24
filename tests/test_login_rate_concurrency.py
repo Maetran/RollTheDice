@@ -25,6 +25,8 @@ from app.auth_protection import (
 from app.models import AuthRateEvent
 from app.security import utcnow
 
+pytestmark = pytest.mark.usefixtures("isolated_database")
+
 
 @pytest.fixture
 def isolated_database(tmp_path, monkeypatch):
@@ -41,7 +43,7 @@ def isolated_database(tmp_path, monkeypatch):
         database.get_engine().dispose()
 
 
-def test_two_attempts_cannot_verify_against_the_same_last_failure_slot(isolated_database, monkeypatch):
+def test_two_attempts_cannot_verify_against_the_same_last_failure_slot(monkeypatch):
     request = Request({"type": "http", "method": "POST", "scheme": "http", "path": "/api/auth/login",
                        "headers": [(b"host", b"testserver")], "query_string": b"",
                        "client": ("127.0.0.1", 1234), "server": ("testserver", 80)})
@@ -117,7 +119,7 @@ def rate_rows():
         return list(db.scalars(select(AuthRateEvent)))
 
 
-def test_independent_concurrent_db_sessions_cannot_overbook_empty_window(isolated_database):
+def test_independent_concurrent_db_sessions_cannot_overbook_empty_window():
     start = Event()
 
     def reserve(_index):
@@ -140,7 +142,7 @@ def test_independent_concurrent_db_sessions_cannot_overbook_empty_window(isolate
     assert rate_rows() == []
 
 
-def test_crashed_slots_persist_and_expire_at_the_existing_window(isolated_database, monkeypatch, tmp_path):
+def test_crashed_slots_persist_and_expire_at_the_existing_window(monkeypatch, tmp_path):
     clock = [utcnow()]
     monkeypatch.setattr(auth_protection, "utcnow", lambda: clock[0])
     for _ in range(5):
@@ -157,7 +159,7 @@ def test_crashed_slots_persist_and_expire_at_the_existing_window(isolated_databa
     release_login_attempt(receipt)
 
 
-def test_stale_receipt_cannot_finalize_or_delete_a_reused_sqlite_row(isolated_database, monkeypatch):
+def test_stale_receipt_cannot_finalize_or_delete_a_reused_sqlite_row(monkeypatch):
     clock = [utcnow()]
     monkeypatch.setattr(auth_protection, "utcnow", lambda: clock[0])
     stale = reserve_login_attempt(request_for_login(), "reuse")
@@ -171,7 +173,7 @@ def test_stale_receipt_cannot_finalize_or_delete_a_reused_sqlite_row(isolated_da
     release_login_attempt(current)
 
 
-def test_success_clears_its_own_slot_and_failures_but_preserves_foreign_pending(isolated_database, monkeypatch):
+def test_success_clears_its_own_slot_and_failures_but_preserves_foreign_pending(monkeypatch):
     request = request_for_login()
     auth.create_user("RateProof", secrets.token_urlsafe(24), must_change_password=False)
     key = enforce_login_rate_limit(request, "rateproof")
@@ -186,7 +188,7 @@ def test_success_clears_its_own_slot_and_failures_but_preserves_foreign_pending(
     assert [row.kind for row in rate_rows()] == ["login_failure"]
 
 
-def test_invalidated_password_proof_records_failure_without_leaving_pending(isolated_database, monkeypatch):
+def test_invalidated_password_proof_records_failure_without_leaving_pending(monkeypatch):
     auth.create_user("RateProof", secrets.token_urlsafe(24), must_change_password=False)
     monkeypatch.setattr(auth, "verify_password", lambda *_args: True)
     # Recovery can invalidate the stored password after its hash was checked.
@@ -198,7 +200,7 @@ def test_invalidated_password_proof_records_failure_without_leaving_pending(isol
 
 
 @pytest.mark.parametrize("failure", ["verify_password", "issue_session_for_user"])
-def test_unexpected_login_failure_releases_own_pending_without_erasing_failures(isolated_database, monkeypatch, failure):
+def test_unexpected_login_failure_releases_own_pending_without_erasing_failures(monkeypatch, failure):
     request = request_for_login()
     auth.create_user("RateProof", secrets.token_urlsafe(24), must_change_password=False)
     key = enforce_login_rate_limit(request, "rateproof")
