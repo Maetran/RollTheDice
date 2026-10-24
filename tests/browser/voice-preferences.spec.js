@@ -1,24 +1,10 @@
 const { test, expect } = require("@playwright/test");
-const { build } = require("esbuild");
-const path = require("node:path");
-const version = require("../../app/version.json").version;
 
 test.use({ serviceWorkers: "block" });
 const products = [
   { name: "hausdepp", page: "/hausdepp/konto/einstellungen", peer: "/watten/konto/einstellungen" },
   { name: "watten", page: "/watten/konto/einstellungen", peer: "/hausdepp/konto/einstellungen" },
 ];
-const bundles = {};
-test.beforeAll(async () => {
-  // Test current source without writing generated release assets. The real
-  // account document, shared auth and server persistence remain in the flow.
-  for (const [name, source] of [["hausdepp", "frontend/hausdepp/index.js"], ["watten-account", "frontend/watten/account.js"]]) {
-    const result = await build({ entryPoints: [path.resolve(source)], bundle: true, write: false,
-      format: "esm", platform: "browser", target: "es2020", external: ["/static/*"],
-      define: { __ROLLTHEDICE_PRODUCT_VERSION__: JSON.stringify(version) }, logLevel: "silent" });
-    bundles[name] = result.outputFiles[0].text;
-  }
-});
 
 async function createAccount(page, username, language) {
   const password = "voice-preference-fixture-password";
@@ -59,10 +45,6 @@ for (const product of products) for (const language of ["de", "en"]) {
   test(`${product.name} profile listening default is opt-in and shared across card games (${language})`, async ({ page }, testInfo) => {
     const errors = [];
     page.on("pageerror", error => errors.push(error.message));
-    await page.route(/\/static\/(hausdepp|watten-account)\.js(?:\?|$)/, route => {
-      const name = new URL(route.request().url()).pathname.split("/").pop().replace(".js", "");
-      return route.fulfill({ contentType: "application/javascript", body: bundles[name] });
-    });
     await page.addInitScript(() => {
       window.__voiceMicrophoneRequests = 0;
       if (navigator.mediaDevices) navigator.mediaDevices.getUserMedia = async () => {

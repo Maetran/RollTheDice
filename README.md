@@ -861,8 +861,12 @@ zuhören. Das Mikrofon wird separat eingeschaltet. Audio aus schaltet auch das
 Mikro stumm; Audio wieder ein startet ausschliesslich das Zuhören. Einzelne
 Mitspieler lassen sich nur für sich selbst stummschalten. Systemlautstärke und
 die Audiogeräte des Betriebssystems gelten. Turnierrunden, Zwischenstände und
-erneute Partien derselben Gruppe behalten die Sprachsitzung. Verlassen,
-Abmelden und Schliessen beenden sie; ein neuer Einstieg startet ausgeschaltet.
+erneute Partien derselben Gruppe behalten die Zuhörwahl. Für jede neue Partie
+wird das Mikrofon erneut bewusst eingeschaltet; der Start aus dem Warteraum
+derselben Partie ändert die Mikrofonwahl nicht. Verlassen, Abmelden und
+Schliessen beenden die Sprachsitzung. Beim Verlassen meldet ein Hinweis oben
+«Tisch verlassen – Voicechat inaktiv». Neue Tische verwenden die Kontovorgabe;
+ohne gespeicherte Aktivierung bleibt Zuhören aus.
 Gäste, Computer und Zuschauer nehmen nicht teil. Es gibt keine Aufzeichnung.
 Der Mikrofonzugriff funktioniert auf der Hausdepp-Subdomain und in bestehenden
 Suite-PWAs; die Gerätefreigabe bleibt erforderlich.
@@ -876,8 +880,12 @@ room and listen without granting microphone access. Enable the microphone
 separately. Switching audio off also mutes the microphone; switching audio back
 on starts listening only. Mute individual players for yourself. Use system
 volume and the operating system's audio devices. Tournament rounds, standings
-and rematches with the same group retain the voice session. Leaving, signing
-out or closing ends it; a fresh visit starts off. Guests, CPUs and spectators
+and rematches with the same group retain your listening choice. Enable the
+microphone explicitly for each new game; starting the same game from its waiting
+room keeps your microphone choice. Leaving, signing out or closing ends the
+voice session. Leaving shows “Table left – Voice chat inactive” at the top.
+New tables use your account default; listening stays off until you enable that
+default or turn it on at the table. Guests, CPUs and spectators
 cannot participate. No conversations are recorded. Microphone access works on
 the Hausdepp subdomain and in existing suite PWAs; device permission is still
 required. Voice controls are hidden

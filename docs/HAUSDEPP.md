@@ -172,11 +172,14 @@ gleichzeitig sprechen und hören. Es gibt weder Aufzeichnung noch Push-to-talk.
 
 Nur aktive Account-Mitspieler nehmen teil; Gäste, Zuschauer und CPUs sind
 ausgeschlossen. Bei Partien nur gegen CPUs sind die Sprachchat-Schalter nicht
-verfügbar. Der freiwillige Status vom Wartetisch bleibt beim Spielstart,
+verfügbar. Die freiwillige Zuhörwahl vom Wartetisch bleibt beim Spielstart,
 über Turnier-Zwischenstände und nächste Runden sowie beim erneuten Spielen mit
-derselben Gruppe bestehen. Ein Gruppenwechsel, Abmelden oder Schliessen beendet
-die Teilnahme. Ein neues Gerät übernimmt die Teilnahme erst nach erneuter
-Freigabe; das alte verliert seinen Medienzugang. Verbindungsprobleme werden
+derselben Gruppe bestehen. Für jede neue Partie wird das Mikrofon erneut
+bewusst eingeschaltet; der Start derselben Partie aus dem Warteraum lässt die
+Mikrofonwahl bestehen. Ein Gruppenwechsel, Abmelden oder Schliessen beendet
+die Teilnahme. Ein neuer Tisch übernimmt nur die gespeicherte Zuhörvorgabe,
+nie eine Mikrofonfreigabe. Das alte Gerät verliert seinen Medienzugang.
+Verbindungsprobleme werden
 angezeigt. Hintergrundbetrieb und Audiogerätewechsel sind geräteabhängig und
 brauchen echte Browser-/PWA-Tests; eine Installation garantiert kein dauerhaftes
 Mikrofon im Hintergrund.
@@ -209,10 +212,12 @@ activity. Use system volume and routing, with browser-supported echo/noise
 suppression. Everyone can speak and hear simultaneously. No recording or
 push-to-talk. Only active signed-in players may join; guests, spectators and
 CPUs are excluded. Voice controls are unavailable in games against CPUs only.
-Opt-in persists through waiting, play, tournament standings,
-further rounds and rematches with the same group. Changing groups, signing out
-or closing ends participation. A replacement device must opt in again and
-revokes the old device's media. Show connection problems. Background operation
+Listening persists through waiting, play, tournament standings,
+further rounds and rematches with the same group. Enable the microphone again
+for every new game; starting that same game from its waiting room keeps your
+microphone choice. Changing groups, signing out or closing ends participation.
+A new table follows the stored listening default and never inherits microphone
+capture. A replacement device revokes the old device's media. Show connection problems. Background operation
 and audio routing require actual browser/PWA device tests; installation alone
 does not guarantee background microphone operation.
 

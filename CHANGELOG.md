@@ -23,6 +23,33 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 4.4.0 — 2026-10-25
+
+### HAUSDEPP / WATTEN
+
+**Deutsch:** Eine gemeinsame Profilvorgabe bestimmt, ob du an neuen Tischen
+automatisch zuhörst. Sie ist für bestehende und neue Konten zunächst aus und
+speichert keine Mikrofonfreigabe. Deine aktuelle Zuhörwahl bleibt beim Start
+aus dem Warteraum und über Revanchen derselben Tischgruppe erhalten, auch wenn
+du Audio am Tisch bewusst ausgeschaltet hast. Jede neue Partie benötigt ein
+erneutes Einschalten des Mikrofons; der Start derselben Partie behält die
+gewählte Freigabe. Ein Hinweis oben meldet das Beenden des Voicechats beim
+Tischverlassen. Die Audiohilfe verweist auf die speicherbare Kontovorgabe.
+Watten erhält den autorisierten Sprachraum bei Revanchen; bestehende
+Berechtigungen werden nicht erweitert. Hausdepp-Einladungen liefern die
+zugehörige Ausgangspartie für eine sichere Übernahme der Tischwahl mit.
+
+**English:** A shared profile default controls whether you automatically listen
+at new tables. It starts off for existing and new accounts and never stores
+microphone permission. Your current listening choice carries from the waiting
+room into play and across rematches with the same group, including an explicit
+choice to switch table audio off. Each new game requires enabling the microphone
+again; starting that same game keeps the existing choice. A notice at the top
+confirms that leaving the table has ended voice chat. Audio help points to the
+saved account default. Watten retains its authorized voice room across
+rematches without broadening permissions. Hausdepp invitations include their
+source game so the listening choice can be carried only to a related table.
+
 ## 4.3.1 — 2026-10-24
 
 ### ZDWA / ZILCH / HAUSDEPP / WATTEN
