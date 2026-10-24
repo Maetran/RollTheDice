@@ -235,10 +235,6 @@ async def _receive_messages(
         if not isinstance(data, dict):
             await session.websocket.send_json({"error": "Ungültige Nachricht"})
             continue
-        # Closing a replaced connection does not discard frames already queued
-        # by its receive loop. They no longer belong to the live player seat.
-        if await _reject_replaced_player_socket(session):
-            return
         action_value = data.get("action")
         action = action_value if isinstance(action_value, str) else None
 
@@ -248,6 +244,10 @@ async def _receive_messages(
             await close_with_error(session.websocket,
                                    "Dein Konto ist für das Spielen gesperrt. Details findest du im Konto.",
                                    fatal=True, error_code="account_play_banned")
+            return
+        # Preserve the account-ban response, then revoke any queued commands
+        # from a connection that no longer owns the live player seat.
+        if await _reject_replaced_player_socket(session):
             return
         if session.is_admin_help_spectator:
             from .admin_help import has_active_help_claim
