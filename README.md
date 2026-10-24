@@ -2216,6 +2216,9 @@ is cancelled by navigation. Zilch sign-out owns one redirect to the correct
 lobby; a late account response cannot start another redirect.
 If sign-out fails, the account stays open with a visible error and an available
 retry. Its identity refresh resumes; a departed document cannot be revived.
+ZDWA and Zilch account views clear private content before leaving or replacing a
+changed identity. Returning from the back/forward cache loads a fresh document;
+late replies from the previous viewer cannot restore their account view.
 
 **Deutsch:** Alle vier Spiele nutzen ausserhalb des Spieltischs denselben
 zweizeiligen Header: oben Spielsymbol und -name, Sprache, vorhandener
@@ -2228,6 +2231,10 @@ zur passenden Lobby ab; eine verspätete Kontoantwort startet keine zweite.
 Scheitert das Abmelden, bleibt das Konto mit sichtbarer Fehlermeldung und
 erneut nutzbarem Button offen. Die Anmeldungsprüfung läuft wieder an; eine
 verlassene Seite wird dadurch nicht reaktiviert.
+Die Kontoansichten von ZDWA und Zilch entfernen private Inhalte vor dem Verlassen
+oder einem Kontowechsel. Bei einer Rückkehr aus dem Vor-/Zurück-Cache laden sie
+ein frisches Dokument; verspätete Antworten stellen die vorherige Ansicht nicht
+wieder her.
 
 Der mobile Zuschauerchat hält die Eingabe auch bei geöffneter Tastatur
 erreichbar und zeigt Zuschauer mit ihrem Profilbild. Tablet-Spielblöcke nutzen

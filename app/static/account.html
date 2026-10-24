@@ -240,8 +240,38 @@
     import { mountAvatarUpload } from '/static/avatar-upload.js?v=be63bb3df336';
     import { mountFriendActivitySettings } from '/static/friend-activity.js?v=be63bb3df336';
     import { mountTourSettings } from '/static/game-tours.js?v=be63bb3df336';
+    let viewerId = null;
+    let retired = false;
+    const clearPrivatePage = () => {
+      retired = true;
+      document.querySelector('main.profile-shell')?.replaceChildren();
+      document.getElementById('appDialogBackdrop')?.remove();
+    };
+    window.addEventListener('zdwa:auth-state', event => {
+      if (retired || viewerId === null || (event.detail?.authenticated && event.detail.user?.id === viewerId)) return;
+      clearPrivatePage();
+      window.ZDWA_APP_MODE?.prepareNavigation?.();
+      if (event.detail?.authenticated) location.reload();
+      else location.replace(window.ZDWA_ROUTE?.path('/') || '/');
+    });
+    window.addEventListener('pagehide', clearPrivatePage);
+    window.addEventListener('pageshow', event => {
+      if (!event.persisted) return;
+      clearPrivatePage();
+      window.ZDWA_APP_MODE?.prepareNavigation?.();
+      // Start fresh: shared auth promises can predate this BFCache entry.
+      location.reload();
+    });
+    async function initializeAccountPage() {
     const auth = await loadAuth();
-    if (!auth.authenticated) location.replace(window.ZDWA_ROUTE?.path('/') || '/');
+    if (retired) return;
+    if (!auth.authenticated) {
+      clearPrivatePage();
+      window.ZDWA_APP_MODE?.prepareNavigation?.();
+      location.replace(window.ZDWA_ROUTE?.path('/') || '/');
+      return;
+    }
+    viewerId = auth.user.id;
     const user = auth.user;
     document.getElementById('accountDashboardLink').hidden = !user?.can_view_analytics;
     mountPasskeyPrompt(document.querySelector('[data-passkey-prompt]'), {
@@ -250,6 +280,7 @@
     mountUsernameSettings(document.querySelector('[data-username-settings]'), {
       user,
       onChanged(data) {
+        if (retired) return;
         Object.assign(user, data.user);
         document.getElementById('accountName').innerHTML = playerNameMarkup(user, { name: user.username, avatarSize: 'large', adminProfile: true });
         document.getElementById('publicProfileLink').href = (window.ZDWA_ROUTE?.path || (path => path))(`/spieler/${encodeURIComponent(user.username)}`);
@@ -280,6 +311,7 @@
     };
     let achievementRefreshVersion = 0;
     function showAccountPanel(name, { updateHash = true } = {}) {
+      if (retired) return;
       const selected = ['statistics', 'achievements', 'settings'].includes(name) ? name : 'statistics';
       Object.entries(accountTabs).forEach(([key, tab]) => {
         const active = key === selected;
@@ -364,9 +396,10 @@
       return window.ZDWA_I18N?.t?.(value) || value;
     }
     function focusPushSettings(status) {
-      if (!focusRequestedPushSettings) return;
+      if (retired || !focusRequestedPushSettings) return;
       focusRequestedPushSettings = false;
       window.requestAnimationFrame(() => {
+        if (retired) return;
         showAccountPanel('settings');
         revealAccountSetting(document.getElementById('pushSettingsCard'), { scroll: true });
         const form = document.getElementById('pushPreferencesForm');
@@ -378,6 +411,7 @@
       let latestStatus = null;
       try {
         const status = await getGameInvitePushStatus();
+        if (retired) return;
         latestStatus = status;
         const enabled = status.enabled === true;
         syncPushPreferences(document.getElementById('pushPreferencesForm'), status);
@@ -442,6 +476,7 @@
             method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
           });
           const result = await response.json().catch(() => ({}));
+          if (retired) return;
           if (!response.ok) { message.textContent = translated(authError(result.detail)); return; }
           Object.assign(user.preferences, data);
           message.textContent = translated(success);
@@ -569,6 +604,7 @@
     }
 
     function renderAccountAchievements(player) {
+      if (retired) return;
       const achievements = player.achievements || {};
       const unlocked = Array.isArray(achievements.unlocked) ? achievements.unlocked : [];
       const locked = Array.isArray(achievements.locked) ? achievements.locked : [];
@@ -584,7 +620,7 @@
     }
 
     async function refreshAccountAchievements() {
-      if (accountTabs.achievements.panel.hidden) return;
+      if (retired || accountTabs.achievements.panel.hidden) return;
       const version = ++achievementRefreshVersion;
       try {
         // Reading the existing public projection does not count another
@@ -599,6 +635,7 @@
     window.addEventListener('zdwa:engagement-recorded', refreshAccountAchievements);
 
     function renderHistoryChart(payload) {
+      if (retired) return;
       const newestFirst = Array.isArray(payload.games) ? payload.games : [];
       const games = [...newestFirst].reverse();
       const selectedMode = payload.mode === 'hardcore' || payload.mode === 'all' ? payload.mode : 'normal';
@@ -705,7 +742,7 @@
     let historyLoaded = false;
     let historyRecorded = false;
     async function recordVisibleHistory() {
-      if (!historyLoaded || historyRecorded || accountTabs.statistics.panel.hidden) return;
+      if (retired || !historyLoaded || historyRecorded || accountTabs.statistics.panel.hidden) return;
       historyRecorded = true;
       try {
         const response = await apiFetch('/api/account/engagement/history', { method: 'POST' });
@@ -716,15 +753,19 @@
       } catch { historyRecorded = false; }
     }
     async function loadHistory() {
+      if (retired) return;
       const chart = document.getElementById('historyChart');
       chart.innerHTML = '<p class="muted">Laden…</p>';
       const params = new URLSearchParams({ mode: historyState.mode, limit: historyState.limit });
       const response = await fetch(`/api/users/me/game-history?${params}`, { cache: 'no-store' });
+      if (retired) return;
       if (!response.ok) {
         chart.innerHTML = '<p class="connection-error">Verlauf konnte nicht geladen werden.</p>';
         return;
       }
-      renderHistoryChart(await response.json());
+      const payload = await response.json();
+      if (retired) return;
+      renderHistoryChart(payload);
       historyLoaded = true;
       void recordVisibleHistory();
     }
@@ -753,12 +794,13 @@
     let statisticsLoaded = false;
     let statisticsLoading = false;
     async function loadAccountStatistics() {
-      if (statisticsLoaded || statisticsLoading || accountTabs.statistics.panel.hidden) return;
+      if (retired || statisticsLoaded || statisticsLoading || accountTabs.statistics.panel.hidden) return;
       statisticsLoading = true;
       try {
         const statsResponse = await fetch('/api/users/me/statistics', { cache: 'no-store' });
         if (!statsResponse.ok) return;
         const player = (await statsResponse.json()).player;
+        if (retired) return;
         const stats = player.statistics;
         document.getElementById('accountName').innerHTML = playerNameMarkup(player, { name: user.username, avatarSize: 'large', adminProfile: true });
         document.getElementById('statistics').innerHTML = bucket('Gesamt', stats.overall, { details: false })
@@ -792,14 +834,17 @@
           body: JSON.stringify({ ...proof, new_password: next }),
         });
         const data = await response.json().catch(() => ({}));
+        if (retired) return;
         if (!response.ok) { message.textContent = authError(data.detail); return; }
         passwordVerification.clear();
         message.textContent = 'Passwort geändert. Bitte erneut anmelden.';
-        setTimeout(() => location.replace(window.ZDWA_ROUTE?.path('/') || '/'), 1200);
+        setTimeout(() => { if (!retired) location.replace(window.ZDWA_ROUTE?.path('/') || '/'); }, 1200);
       } catch (error) {
         message.textContent = error instanceof TypeError ? 'Einstellungen konnten nicht gespeichert werden.' : error.message;
       } finally { button.disabled = false; }
     });
+    }
+    void initializeAccountPage();
   </script>
 </body>
 </html>

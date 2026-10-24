@@ -4,7 +4,7 @@ const { browserTestEnvironment } = require("./scripts/playwright-test-environmen
 const isolated = browserTestEnvironment({ name: "main", portVariable: "ROLLTHEDICE_TEST_PORT", defaultPort: 8010 });
 const { port } = isolated;
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || `http://127.0.0.1:${port}`;
-const previewAccounts = "hausdepp_chat_suite,adminhelp_zilch,previewfriend,settings_zilch_de,settings_zilch_en,forcedsettings_zilch,settings_savedchoices,pushsettings,zilchsigninready,emailsettings_zilch_de,emailsettings_zilch_en,passkeyprompt_zilch_de,passkeyprompt_zilch_en,passkeyguard_zilch,passkeydismiss_zilch,history_de_light,history_en_light,history_de_lcars,history_en_lcars,freshzilchawards,historystatsoffline,github_zdwa_issues,github_zdwa_changelog,github_zilch_issues,github_zilch_changelog";
+const previewAccounts = "privacy_zilch_a,privacy_zilch_b,privacy_lifecycle_zilch,privacy_initial_zilch,hausdepp_chat_suite,adminhelp_zilch,previewfriend,settings_zilch_de,settings_zilch_en,forcedsettings_zilch,settings_savedchoices,pushsettings,zilchsigninready,emailsettings_zilch_de,emailsettings_zilch_en,passkeyprompt_zilch_de,passkeyprompt_zilch_en,passkeyguard_zilch,passkeydismiss_zilch,history_de_light,history_en_light,history_de_lcars,history_en_lcars,freshzilchawards,historystatsoffline,github_zdwa_issues,github_zdwa_changelog,github_zilch_issues,github_zilch_changelog";
 
 module.exports = defineConfig({
   testDir: "tests/browser",

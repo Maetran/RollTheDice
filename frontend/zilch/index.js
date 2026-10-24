@@ -138,6 +138,86 @@ const state = {
 };
 
 let notebookResizeObserver = null;
+let accountLifecycle = null;
+
+function initializeZilchAccountLifecycle() {
+  let viewerId = null;
+  let retired = false;
+  let ownLogout = false;
+  let waitingForOwnLogout = false;
+  const guestDestination = () => `${zilchPath("/anmelden")}?return_to=${encodeURIComponent(zilchPath("/konto"))}`;
+  const clearPrivatePage = () => {
+    retired = true;
+    state.auth = null;
+    state.statistics = null;
+    state.achievements = null;
+    state.achievementRankLegend = null;
+    state.accountAchievementsRequestVersion += 1;
+    content.replaceChildren();
+    document.getElementById("zilchAccount")?.replaceChildren();
+    document.querySelector("[data-passkey-prompt]")?.remove();
+    document.getElementById("appDialogBackdrop")?.remove();
+  };
+  const leaveAccount = auth => {
+    if (retired) return;
+    clearPrivatePage();
+    // The own logout handler already suspended app-mode and owns its destination.
+    if (ownLogout && !auth?.authenticated) { waitingForOwnLogout = true; return; }
+    window.ZDWA_APP_MODE?.prepareNavigation?.();
+    if (auth?.authenticated) window.location.reload();
+    else window.location.replace(guestDestination());
+  };
+  window.addEventListener("zdwa:auth-state", event => {
+    if (retired && waitingForOwnLogout && event.detail?.authenticated) {
+      // A new sign-in supersedes the pending guest logout, even after clearing.
+      waitingForOwnLogout = false;
+      window.ZDWA_APP_MODE?.prepareNavigation?.();
+      window.location.reload();
+      return;
+    }
+    if (viewerId !== null && (!event.detail?.authenticated || event.detail.user?.id !== viewerId)) leaveAccount(event.detail);
+  });
+  window.addEventListener("pagehide", () => {
+    waitingForOwnLogout = false;
+    clearPrivatePage();
+  });
+  window.addEventListener("pageshow", event => {
+    if (!event.persisted) return;
+    clearPrivatePage();
+    window.ZDWA_APP_MODE?.prepareNavigation?.();
+    // A fresh document also discards shared auth promises from the old viewer.
+    window.location.reload();
+  });
+  return {
+    current: () => !retired,
+    acceptAuth(auth) {
+      if (retired) return false;
+      if (!auth?.authenticated) {
+        // The initial guest event precedes this callback. A private app-mode
+        // controller has already chosen the existing ZDWA entry destination.
+        if (window.ZDWA_APP_MODE?.canUseZilch?.() === false) {
+          clearPrivatePage();
+          window.ZDWA_APP_MODE.prepareNavigation();
+        } else leaveAccount(auth);
+        return false;
+      }
+      viewerId = auth.user.id;
+      return true;
+    },
+    beginLogout() { ownLogout = true; },
+    canFinishLogout: () => !retired || waitingForOwnLogout,
+    cancelLogout() {
+      ownLogout = false;
+      if (waitingForOwnLogout) {
+        // /me may confirm expiry while a separate logout request fails.
+        waitingForOwnLogout = false;
+        window.ZDWA_APP_MODE?.prepareNavigation?.();
+        window.location.replace(guestDestination());
+      }
+      return !retired;
+    },
+  };
+}
 
 function t(value) {
   return window.ZDWA_I18N?.t?.(value) || String(value || "");
@@ -511,6 +591,7 @@ function updateStatus(value, kind = "info") {
 }
 
 function renderShell() {
+  if (accountLifecycle && !accountLifecycle.current()) return;
   const username = state.auth?.user?.username || "";
   const account = username
     ? `<span class="zilch-account">${escapeHtml(username)}</span>`
@@ -1888,6 +1969,7 @@ function awardDialogMessage(award, index, total) {
 }
 
 async function presentZilchAward(award, index, total) {
+  if (accountLifecycle && !accountLifecycle.current()) return false;
   const title = localizedAchievementText(award, "title", "Zilch-Award");
   let seen = false;
   if (typeof window.ZDWA_UI?.dialog === "function") {
@@ -1906,7 +1988,7 @@ async function presentZilchAward(award, index, total) {
   } else {
     seen = window.confirm(`${t("Zilch-Award freigeschaltet!")}\n\n${title}\n\n${awardDialogMessage(award, index, total)}`);
   }
-  if (!seen) return false;
+  if (!seen || (accountLifecycle && !accountLifecycle.current())) return false;
   await acknowledgeZilchAward(award);
   return true;
 }
@@ -1946,6 +2028,7 @@ function zilchRankUpgradeMessage(value) {
 }
 
 async function presentZilchRankUpgrade(value) {
+  if (accountLifecycle && !accountLifecycle.current()) return false;
   const message = zilchRankUpgradeMessage(value);
   if (!message) return true;
   let seen = false;
@@ -1963,7 +2046,7 @@ async function presentZilchRankUpgrade(value) {
   } else {
     seen = window.confirm(`${t("RANGAUFSTIEG! ✨")}\n\n${message}`);
   }
-  if (!seen) return false;
+  if (!seen || (accountLifecycle && !accountLifecycle.current())) return false;
   await acknowledgeZilchRankUpgrade();
   return true;
 }
@@ -2079,6 +2162,7 @@ function renderAwardDependentGameState() {
 }
 
 function presentPendingZilchAwards({ scope = "page" } = {}) {
+  if (accountLifecycle && !accountLifecycle.current()) return Promise.resolve();
   if (!scope || state.awardPresentationCheckedScopes.has(scope)) return state.awardPresentationPromise || Promise.resolve();
   if (state.awardPresentationPromise) return state.awardPresentationPromise;
   state.awardPresentationActive = true;
@@ -2087,6 +2171,7 @@ function presentPendingZilchAwards({ scope = "page" } = {}) {
     let acknowledgementsCompleted = false;
     try {
       const pendingProjection = await fetchZilchPendingAwards();
+      if (accountLifecycle && !accountLifecycle.current()) return;
       const pendingAwards = awardQueue(pendingProjection.pending);
       const terminalGameId = terminalGameIdFromScope(scope);
       const awards = terminalGameId
@@ -2144,6 +2229,7 @@ function presentPendingZilchAwards({ scope = "page" } = {}) {
 }
 
 function renderAchievementsBody() {
+  if (accountLifecycle && !accountLifecycle.current()) return;
   const slot = document.getElementById("zilchAchievementsBody");
   if (!slot) return;
   const projection = state.achievements || {};
@@ -2319,6 +2405,7 @@ function zilchAccountSettingsMarkup(username) {
 }
 
 function showZilchAccountTab(name, { updateHash = false, focus = false } = {}) {
+  if (accountLifecycle && !accountLifecycle.current()) return;
   const fallback = state.auth?.user?.must_change_password ? "settings" : "statistics";
   const selected = normalizedZilchAccountTab(name, fallback);
   const tabs = [...document.querySelectorAll("[data-zilch-account-tab]")];
@@ -2347,6 +2434,7 @@ function showZilchAccountTab(name, { updateHash = false, focus = false } = {}) {
 }
 
 async function refreshZilchAccountAchievements() {
+  if (accountLifecycle && !accountLifecycle.current()) return;
   const requestVersion = ++state.accountAchievementsRequestVersion;
   try {
     const achievements = await fetchZilchAchievements();
@@ -2399,6 +2487,7 @@ function bindZilchAccountSettings() {
     user: state.auth.user,
     zilch: true,
     onChanged(data) {
+      if (accountLifecycle && !accountLifecycle.current()) return;
       state.auth = data;
       const username = data.user.username;
       document.querySelector(".zilch-account-head__identity h1").textContent = username;
@@ -2427,9 +2516,10 @@ function bindZilchAccountSettings() {
   }
   let focusRequestedPushSettings = !state.auth?.user?.must_change_password && new URLSearchParams(window.location.search).has("push");
   const focusPushSettings = status => {
-    if (!focusRequestedPushSettings) return;
+    if (!focusRequestedPushSettings || (accountLifecycle && !accountLifecycle.current())) return;
     focusRequestedPushSettings = false;
     window.requestAnimationFrame(() => {
+      if (accountLifecycle && !accountLifecycle.current()) return;
       showZilchAccountTab("settings", { updateHash: true });
       revealAccountSetting(document.getElementById("zilchPushSettingsCard"), { scroll: true });
       const form = document.getElementById("zilchPushPreferencesForm");
@@ -2453,6 +2543,7 @@ function bindZilchAccountSettings() {
           body: JSON.stringify({ preferred_language: selectedLanguage }),
         });
         const payload = await response.json().catch(() => ({}));
+        if (accountLifecycle && !accountLifecycle.current()) return;
         if (!response.ok) {
           messageSlot.textContent = t(authError(payload.detail));
           return;
@@ -2498,6 +2589,7 @@ function bindZilchAccountSettings() {
           }),
         });
         const payload = await response.json().catch(() => ({}));
+        if (accountLifecycle && !accountLifecycle.current()) return;
         if (!response.ok) {
           messageSlot.textContent = t(authError(payload.detail));
           return;
@@ -2528,6 +2620,7 @@ function bindZilchAccountSettings() {
       let latestStatus = null;
       try {
         const status = await getGameInvitePushStatus();
+        if (accountLifecycle && !accountLifecycle.current()) return;
         latestStatus = status;
         const enabled = status.enabled === true;
         syncPushPreferences(document.getElementById("zilchPushPreferencesForm"), status);
@@ -2611,13 +2704,16 @@ function bindZilchAccountSettings() {
           body: JSON.stringify({ ...proof, new_password: newPassword }),
         });
         const payload = await response.json().catch(() => ({}));
+        if (accountLifecycle && !accountLifecycle.current()) return;
         if (!response.ok) {
           messageSlot.textContent = t(authError(payload.detail));
           return;
         }
         passwordVerification.clear();
         messageSlot.textContent = t("Passwort geändert. Bitte erneut anmelden.");
-        window.setTimeout(() => window.location.replace(zilchPath("/anmelden")), 1_200);
+        window.setTimeout(() => {
+          if (!accountLifecycle || accountLifecycle.current()) window.location.replace(zilchPath("/anmelden"));
+        }, 1_200);
       } catch (error) {
         messageSlot.textContent = t(error instanceof TypeError ? "Einstellungen konnten nicht gespeichert werden." : error.message);
       } finally {
@@ -2628,7 +2724,7 @@ function bindZilchAccountSettings() {
 }
 
 async function renderAccount() {
-  if (!content) return;
+  if (!content || (accountLifecycle && !accountLifecycle.current())) return;
   const username = state.auth?.user?.username || t("Spieler");
   // A required password change is the first task, even when an older link
   // requested another tab. The account tabs remain available afterwards.
@@ -2650,6 +2746,7 @@ async function renderAccount() {
     fetchZilchStatistics(),
     Promise.all([fetchZilchAchievements(), fetchZilchAchievementRanks().catch(() => null)]),
   ]);
+  if (accountLifecycle && !accountLifecycle.current()) return;
   if (statisticsResult.status === "fulfilled") {
     state.statistics = statisticsResult.value;
     renderStatisticsBody();
@@ -5826,8 +5923,10 @@ async function renderGame() {
 
 async function initialize() {
   if (!root || !content) return;
+  if (accountRoute) accountLifecycle = initializeZilchAccountLifecycle();
   let appMode = spectatorRoute ? null : initializeAppMode({ mode: "zilch" });
   const authReady = loadAuth({ refresh: true }).then(async auth => {
+    if (accountLifecycle && !accountLifecycle.acceptAuth(auth)) return false;
     state.auth = auth;
     if (!appMode) {
       let scopedZilchSpectator = null;
@@ -5850,7 +5949,7 @@ async function initialize() {
     renderShell();
     lobbyReady = renderLobby({ authReady });
   }
-  if (!await authReady) return;
+  if (!await authReady || (accountLifecycle && !accountLifecycle.current())) return;
   renderShell();
   if (accountRoute || currentZilchRoute === "/") {
     mountPasskeyPrompt(document.querySelector('[data-passkey-prompt]'), {
@@ -5869,11 +5968,14 @@ async function initialize() {
     if (message) { message.hidden = true; message.textContent = ""; }
     const publicLobby = state.auth?.game_access?.zilch_public === true
       || state.auth?.user?.game_access?.zilch_public === true;
+    accountLifecycle?.beginLogout();
     const rollbackNavigation = appMode?.prepareNavigation?.();
     try {
       await logout();
+      if (accountLifecycle && !accountLifecycle.canFinishLogout()) return;
       window.location.replace(publicLobby ? zilchPath("/") : zdwaAppEntryUrl());
     } catch (_) {
+      if (accountLifecycle?.cancelLogout() === false) return;
       if (rollbackNavigation && !rollbackNavigation()) return;
       logoutButton.disabled = false;
       logoutButton.removeAttribute("aria-busy");
@@ -5890,6 +5992,7 @@ async function initialize() {
   else if (leaderboardsRoute) await renderLeaderboards();
   else if (rulesRoute) await renderRules();
   else await (lobbyReady || renderLobby());
+  if (accountLifecycle && !accountLifecycle.current()) return;
   // A terminal redirect may occur after an award dialog was dismissed or its
   // acknowledgement temporarily failed. On its own result page we can safely
   // resume only that game's pending presentation; unrelated historic reports
@@ -5899,6 +6002,7 @@ async function initialize() {
   } else if (authenticatedZilchPlayer() && !gameId && !playerAchievementsUsername) {
     await presentPendingZilchAwards({ scope: "page" });
   }
+  if (accountLifecycle && !accountLifecycle.current()) return;
   if (accountRoute || currentZilchRoute === "/") initializeReleaseNotes({ context: "zilch" });
   if (currentZilchRoute === "/") initializePushOptInPrompt({ context: "zilch" });
 }

@@ -235,6 +235,31 @@ class ZilchProductRoutesTestCase(TestCase):
                 self.assertEqual(authorized.status_code, 200)
                 self.assertNotIn(marker, authorized.text)
 
+    def test_guest_account_documents_redirect_before_any_private_shell_is_served(self) -> None:
+        async def request(host: str, path: str, accept: str) -> httpx.Response:
+            async with httpx.AsyncClient(
+                transport=httpx.ASGITransport(app=main.app), base_url=f"https://{host}",
+            ) as client:
+                return await client.get(path, headers={"Accept": accept}, follow_redirects=False)
+
+        for mode in ("preview", "public"):
+            with patch.dict(os.environ, {"ROLLTHEDICE_ZILCH_ACCESS_MODE": mode}):
+                for host, path, login_path in (
+                    ("testserver", "/zilch/konto", "/zilch/anmelden"),
+                    ("zilch.zockdiewandan.online", "/konto", "/anmelden"),
+                ):
+                    with self.subTest(mode=mode, host=host):
+                        html = asyncio.run(request(host, path, "text/html"))
+                        self.assertEqual(html.status_code, 303)
+                        redirect = urlsplit(html.headers["location"])
+                        self.assertEqual(redirect.path, login_path)
+                        self.assertEqual(parse_qs(redirect.query), {"return_to": [path]})
+                        self.assertNotIn("data-zilch-root", html.text)
+                        self.assertIn("no-store", html.headers["cache-control"])
+                        non_html = asyncio.run(request(host, path, "application/json"))
+                        self.assertEqual(non_html.status_code, 401)
+                        self.assertNotIn("data-zilch-root", non_html.text)
+
     def test_login_entry_is_public_but_the_private_shell_stays_protected(self) -> None:
         login_page = self._get("/zilch/anmelden?return_to=/zilch/statistiken")
         self.assertEqual(login_page.status_code, 200)

@@ -298,37 +298,60 @@ test("shared logout preserves ordinary public capabilities while dropping the pr
   assert.equal(events.at(-1).game_access.hausdepp_public, true); assert.equal(events.at(-1).game_access.zilch_public, true);
 });
 
+function mountAccountLifecycle(zilch, f, state) {
+  const start = zilch.indexOf("function initializeZilchAccountLifecycle()");
+  const lifecycleSource = zilch.slice(start, zilch.indexOf("\nfunction t(", start));
+  const lifecycle = runInNewContext(`${lifecycleSource}\ninitializeZilchAccountLifecycle()`, {
+    window: f.win, document: f.doc, state, content: { replaceChildren() {} },
+    zilchPath: path => routes.zilchPath(path), encodeURIComponent,
+  });
+  lifecycle.acceptAuth(state.auth);
+  return lifecycle;
+}
+
 test("Zilch logout owns one navigation despite its auth event and an outgoing identity failure", async () => {
   const zilch = await read("../frontend/zilch/index.js");
   const start = zilch.indexOf('  document.addEventListener("click", async (event) => {', zilch.indexOf("async function initialize()"));
   const handler = zilch.slice(start, zilch.indexOf("\n  if (resultId)", start));
   const shared = await read("../frontend/shared/auth.js");
   const cleaned = shared.replace(/^import[\s\S]*?from [^;]+;\n/gm, "").replace(/^export \{ mountPlayerSearch \} from [^;]+;\n/m, "");
-  for (const publicGame of [false, true]) {
+  for (const publicGame of [false, true]) for (const retirement of ["none", "pagehide", "switch", "guest-then-switch"]) for (const status of [200, 401, "preexpired"]) {
     const initial = auth(2, { zilch_public: publicGame, zilch_preview: true });
     initial.user.csrf_token = "csrf";
     const outgoing = deferred(), reply = deferred();
     const f = await fixture({ state: initial, mode: "zilch", publicDocument: false, loader: () => outgoing.promise });
     f.controller.applyAuth(initial);
     const pendingRead = f.controller.refresh(); await settle();
-    f.win[Symbol.for("rollthedice.auth-state")] = { cache: initial, request: null, epoch: 0 };
+    f.win[Symbol.for("rollthedice.auth-state")] = { cache: status === "preexpired" ? null : initial, request: null, epoch: 0 };
     globalThis.CustomEvent = class { constructor(type, data) { this.type = type; Object.assign(this, data); } };
     let requests = 0;
-    globalThis.fetch = async path => { assert.equal(path, "/api/auth/logout"); requests++; return reply.promise; };
+    globalThis.fetch = async path => {
+      if (path === "/api/auth/me") return { ok: true, json: async () => auth(null, { zilch_public: publicGame }) };
+      assert.equal(path, "/api/auth/logout"); requests++; return reply.promise;
+    };
     const module = await import(url(`const passkeysSupported=()=>false;\n${cleaned}\n// zilch logout ${++serial}`));
     const events = []; f.win.addEventListener("zdwa:auth-state", event => events.push(event.detail));
-    runInNewContext(handler, { document: f.doc, window: f.win, Element, state: { auth: initial }, appMode: f.controller,
+    f.win.location.reload = () => f.visits.push(["reload"]);
+    const accountState = { auth: initial, accountAchievementsRequestVersion: 0 };
+    const accountLifecycle = mountAccountLifecycle(zilch, f, accountState);
+    runInNewContext(handler, { document: f.doc, window: f.win, Element, state: accountState, appMode: f.controller, accountLifecycle,
       logout: module.logout, zilchPath: path => routes.zilchPath(path), zdwaAppEntryUrl: () => routes.zdwaAppEntryUrl() });
     const button = new Element(); button.closest = () => button;
     const pendingClick = f.doc.listeners.get("click").at(-1)({ target: button }); await settle();
     outgoing.reject(new Error("outgoing identity request was cancelled")); await pendingRead;
-    reply.resolve({ ok: true, status: 200 }); await pendingClick;
+    if (retirement === "pagehide") f.win.emit("pagehide");
+    if (retirement === "guest-then-switch") f.event(auth(null, { zilch_public: publicGame }));
+    if (retirement === "switch" || retirement === "guest-then-switch") f.event(auth(3, { zilch_public: publicGame, zilch_preview: true }));
+    reply.resolve({ ok: status === 200, status: status === "preexpired" ? 401 : status }); await pendingClick;
     f.event(auth(null, { zilch_public: publicGame })); await settle();
     assert.equal(requests, 1);
-    assert.equal(events[0].authenticated, false);
-    assert.equal(events[0].game_access.zilch_public, publicGame);
+    const guestEvents = events.filter(event => !event.authenticated);
+    assert.ok(guestEvents.length >= 1);
+    assert.ok(guestEvents.every(event => event.game_access.zilch_public === publicGame));
     assert.equal(button.disabled, true);
-    assert.deepEqual(f.visits, [["replace", publicGame ? "/zilch" : "/"]]);
+    assert.deepEqual(f.visits, retirement === "pagehide" ? []
+      : retirement === "switch" || retirement === "guest-then-switch" ? [["reload"]]
+      : [["replace", publicGame ? "/zilch" : "/"]]);
   }
 });
 
@@ -355,7 +378,9 @@ test("Zilch logout preserves the account on 503, 403 and network failure and per
     let requests = 0;
     globalThis.fetch = async path => { assert.equal(path, "/api/auth/logout"); return ++requests === 1 ? reply.promise : { ok: true, status: 200 }; };
     const module = await import(url(`const passkeysSupported=()=>false;\n${cleaned}\n// failed logout ${++serial}`));
-    runInNewContext(handler, { document: f.doc, window: f.win, Element, state: { auth: initial }, appMode: f.controller,
+    const accountState = { auth: initial, accountAchievementsRequestVersion: 0 };
+    const accountLifecycle = mountAccountLifecycle(zilch, f, accountState);
+    runInNewContext(handler, { document: f.doc, window: f.win, Element, state: accountState, appMode: f.controller, accountLifecycle,
       logout: module.logout, zilchPath: path => routes.zilchPath(path), zdwaAppEntryUrl: () => routes.zdwaAppEntryUrl(),
       t: key => language === "en" && key === "Abmelden fehlgeschlagen" ? "Sign-out failed" : key });
     const button = new Element(); button.closest = () => button;
