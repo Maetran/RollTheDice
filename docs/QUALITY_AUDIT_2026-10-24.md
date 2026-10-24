@@ -430,3 +430,27 @@ physical iPhone test.
   with no assertions removed. The failed full run provides no receipt; the
   finished new commit requires a fresh full gate. Existing root-handler
   configuration was not redesigned. See [Python logging configuration](https://docs.python.org/3.13/library/logging.config.html#logging.config.fileConfig).
+
+- **Konto-Test synchronisiert / Account test synchronized:** Der nächste volle
+  4.2.1-Lauf bestand alle 3388 Backendfälle, scheiterte aber an einem alten
+  Browser-Rennfall beim Avatar-Upload. Der Trace zeigt: Der Helfer liest das
+  geschlossene serverseitige `details`, die asynchrone Konto-Initialisierung
+  öffnet es für das temporäre Passwort, dann schließt der geplante native
+  Testklick es wieder. Ein isolierter Browsernachweis mit angehaltener echter
+  Identitätsanfrage reproduziert genau diese Reihenfolge. Der Helfer wartet
+  jetzt auf den vorhandenen Initialisierungsmarker und prüft anschließend den
+  offenen Zustand. Derselbe Probeablauf bestand danach 2/2; der echte
+  Avatar-Upload behält seinen Service-Worker-Pfad und sämtliche Assertions.
+  Keine Wartezeit, Wiederholung, erzwungener Klick oder Produktänderung wurde
+  hinzugefügt. Claude hat Ursache und Synchronisierung unabhängig geprüft.
+  Auch dieser fehlgeschlagene Vollversuch ist kein Liefernachweis.
+  / The next full 4.2.1 run passed all 3388 backend cases but exposed an old
+  avatar browser-test race. Its helper reads closed server-rendered details;
+  async account initialization opens them for the temporary-password prompt;
+  the scheduled native test click then closes them. An isolated browser probe
+  holding the real identity request reproduces that exact ordering. The helper
+  now waits for the existing initialization marker and asserts the open state.
+  The identical probe passed 2/2 afterwards. The real avatar upload retains its
+  service-worker path and every assertion. No sleep, retry, forced click or
+  product change was added. Claude independently reviewed the cause and
+  synchronization. This failed full attempt also provides no delivery receipt.

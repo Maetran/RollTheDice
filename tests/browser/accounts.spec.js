@@ -4,8 +4,12 @@ const { readFile } = require("node:fs/promises");
 const path = require("node:path");
 
 async function openAccountSection(page, section) {
+  // The initial password prompt can open an ancestor after the SSR DOM exists.
+  // Inspect native details only once account initialization has completed.
+  await expect(page.locator("html")).toHaveAttribute("data-account-tab-ready", "true");
   const details = page.locator(`details[data-account-section="${section}"]`);
   if (await details.getAttribute("open") === null) await details.locator(":scope > summary").click();
+  await expect(details).toHaveJSProperty("open", true);
 }
 
 async function ensureRegisteredSmoke(request) {
