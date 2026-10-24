@@ -56,7 +56,7 @@ for (const screen of screens) {
       await expect(host.page.locator('[data-watten-voice]')).toHaveCount(1);
       await expect.poll(() => host.page.evaluate(() => {
         const room = document.querySelector('.wt-waiting').getBoundingClientRect();
-        const nodes = [...document.querySelectorAll('.wt-waiting-back:not([hidden]), .wt-waiting-rules, .wt-waiting-tools .wt-language select, .wt-waiting-tools .wt-voice-details > summary')];
+        const nodes = [...document.querySelectorAll('.wt-waiting-back:not([hidden]), .wt-waiting-rules, .wt-waiting-tools .wt-language select, .wt-waiting-tools .wt-voice-details > summary, .wt-waiting-tools #wattenSound')];
         return nodes.every(node => {
           const rect = node.getBoundingClientRect();
           return rect.width >= 44 && rect.height >= 44 && rect.left >= room.left && rect.right <= room.right
@@ -71,6 +71,7 @@ for (const screen of screens) {
       expect(panel.x + panel.width).toBeLessThanOrEqual(screen.width);
       expect(panel.y).toBeGreaterThanOrEqual(0);
       expect(panel.y + panel.height).toBeLessThanOrEqual(screen.height);
+      await host.page.screenshot({ path: info.outputPath(`waiting-voice-open-${screen.width}x${screen.height}.png`) });
       await host.page.evaluate(() => {
         window.waitingControls = { voice: document.querySelector('[data-watten-voice]'), language: document.querySelector('[data-language-switcher]') };
       });
