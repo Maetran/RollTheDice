@@ -24,7 +24,7 @@ from .game_state import (
     multiplayer_pause_reason,
     touch,
 )
-from .game_types import HAUSDEPP_GAME_TYPE, ZILCH_GAME_TYPE, game_type_from_state
+from .game_types import DEFAULT_GAME_TYPE, HAUSDEPP_GAME_TYPE, ZILCH_GAME_TYPE, game_type_from_state
 from .moderation import user_play_banned
 from .zilch_state import (
     pause_zilch_solo_timer,
@@ -191,7 +191,7 @@ async def _join_game(session: GameSocketSession, data: dict[str, Any], *, finali
         return True
 
     await websocket.send_json({"player_id": player_id, "resume_token": player["resume_token"]})
-    if game_type_from_state(g) == HAUSDEPP_GAME_TYPE:
+    if game_type_from_state(g) in {DEFAULT_GAME_TYPE, HAUSDEPP_GAME_TYPE}:
         from .hausdepp_voice import refresh_voice_game
 
         await refresh_voice_game(g)
@@ -330,7 +330,7 @@ async def _rejoin_game(session: GameSocketSession, data: dict[str, Any], *, fina
     if identity:
         player["achievement_rank"] = identity.achievement_rank
     if old_websocket and old_websocket is not websocket:
-        if game_type_from_state(g) == HAUSDEPP_GAME_TYPE:
+        if game_type_from_state(g) in {DEFAULT_GAME_TYPE, HAUSDEPP_GAME_TYPE}:
             from .hausdepp_voice import voice_socket_disconnected
 
             await voice_socket_disconnected(GameSocketSession(old_websocket, g, identity), revoke=True)
@@ -404,7 +404,7 @@ async def _rejoin_game(session: GameSocketSession, data: dict[str, Any], *, fina
 async def disconnect_session(session: GameSocketSession) -> None:
     """Detach one player/spectator and publish resumable connection state."""
     g = session.game
-    if game_type_from_state(g) == HAUSDEPP_GAME_TYPE:
+    if game_type_from_state(g) in {DEFAULT_GAME_TYPE, HAUSDEPP_GAME_TYPE}:
         from .hausdepp_voice import voice_socket_disconnected
 
         await voice_socket_disconnected(session, revoke=bool(g.get("_aborted")))

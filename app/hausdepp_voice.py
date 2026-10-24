@@ -22,12 +22,13 @@ from urllib.error import HTTPError, URLError
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 from .auth import resolve_session
-from .game_types import HAUSDEPP_GAME_TYPE, WATTEN_GAME_TYPE, game_type_from_state
+from .game_types import DEFAULT_GAME_TYPE, HAUSDEPP_GAME_TYPE, WATTEN_GAME_TYPE, game_type_from_state
 from .moderation import user_play_banned
 from .security import utcnow
 from .voice_usage import UsageCounter, accept_usage, record_usage
 
 logger = logging.getLogger(__name__)
+VOICE_GAME_TYPES = frozenset({DEFAULT_GAME_TYPE, HAUSDEPP_GAME_TYPE, WATTEN_GAME_TYPE})
 HEARTBEAT_SECONDS = 30
 RECONNECT_SECONDS = 12
 MAX_SDP_BYTES = 65536
@@ -191,7 +192,10 @@ def _roster(game: dict) -> set[int]:
         return {member.account_id for member in runtime.room.members
                 if member.participant_id not in runtime.absent
                 and (runtime.engine is None or member.seat is not None)}
-    return {p["user_id"] for p in [*game.get("_players", []), *game.get("_participants", [])]
+    players = list(game.get("_players", []))
+    if game_type_from_state(game) == HAUSDEPP_GAME_TYPE:
+        players.extend(game.get("_participants", []))
+    return {p["user_id"] for p in players
             if type(p.get("user_id")) is int and p["user_id"] > 0
             and not p.get("is_cpu") and p.get("type") != "cpu"
             and p.get("id") not in game.get("_hausdepp_departures", {})}
@@ -200,7 +204,7 @@ def _roster(game: dict) -> set[int]:
 def _game_eligible(game: dict) -> bool:
     """Waiting friends may opt in; a played table needs two durable accounts."""
     game_type = game_type_from_state(game)
-    if game_type not in {HAUSDEPP_GAME_TYPE, WATTEN_GAME_TYPE} or game.get("_aborted"):
+    if game_type not in VOICE_GAME_TYPES or game.get("_aborted"):
         return False
     if game_type == WATTEN_GAME_TYPE:
         runtime = game.get("_watten")
@@ -214,12 +218,14 @@ def _game_eligible(game: dict) -> bool:
 
 
 def _voice_key(game: dict, suffix: str) -> str:
-    prefix = "watten" if game_type_from_state(game) == WATTEN_GAME_TYPE else "hausdepp"
+    game_type = game_type_from_state(game)
+    prefix = game_type if game_type in VOICE_GAME_TYPES else "hausdepp"
     return f"_{prefix}_voice_{suffix}"
 
 
 def _envelope(game: dict) -> str:
-    return "watten_voice" if game_type_from_state(game) == WATTEN_GAME_TYPE else "hausdepp_voice"
+    game_type = game_type_from_state(game)
+    return f"{game_type}_voice" if game_type in VOICE_GAME_TYPES else "hausdepp_voice"
 
 
 def _account_allowed(game: dict, websocket, identity) -> bool:
@@ -234,7 +240,8 @@ def _account_allowed(game: dict, websocket, identity) -> bool:
 
 def _authorized_member(game: dict, websocket, identity, player: dict) -> bool:
     if (not _account_allowed(game, websocket, identity) or player.get("user_id") != identity.user_id
-            or player.get("ws") is not websocket):
+            or player.get("ws") is not websocket or type(player.get("user_id")) is not int
+            or player["user_id"] <= 0 or player.get("is_cpu") or player.get("type") == "cpu"):
         return False
     if game_type_from_state(game) != WATTEN_GAME_TYPE:
         return player.get("id") not in game.get("_hausdepp_departures", {})
@@ -249,7 +256,7 @@ def _authorized_member(game: dict, websocket, identity, player: dict) -> bool:
 def carry_voice_room(source: dict, target: dict, user_ids: set[int]) -> None:
     """A server-created rematch may retain only its original account roster."""
     game_type = game_type_from_state(source)
-    if game_type not in {HAUSDEPP_GAME_TYPE, WATTEN_GAME_TYPE} or game_type != game_type_from_state(target):
+    if game_type not in VOICE_GAME_TYPES or game_type != game_type_from_state(target):
         return
     room_id = source.get(_voice_key(source, "room_id"))
     if isinstance(room_id, str) and _ID.fullmatch(room_id):
@@ -263,7 +270,7 @@ def carry_voice_room(source: dict, target: dict, user_ids: set[int]) -> None:
 def _actor(session, *, require_eligible: bool = True):
     identity = resolve_session(session.websocket)
     player = next((p for p in session.game.get("_players", []) if p.get("id") == session.player_id), None)
-    if (game_type_from_state(session.game) not in {HAUSDEPP_GAME_TYPE, WATTEN_GAME_TYPE} or session.is_spectator
+    if (game_type_from_state(session.game) not in VOICE_GAME_TYPES or session.is_spectator
             or not player or not _authorized_member(session.game, session.websocket, identity, player)
             or session.game.get("_aborted")):
         raise VoiceError("hausdepp_voice_forbidden")
@@ -570,7 +577,7 @@ async def voice_socket_disconnected(session, *, revoke: bool = False) -> None:
 
 
 async def refresh_voice_game(game: dict) -> None:
-    if game_type_from_state(game) not in {HAUSDEPP_GAME_TYPE, WATTEN_GAME_TYPE} or not game.get(_voice_key(game, "room_id")):
+    if game_type_from_state(game) not in VOICE_GAME_TYPES or not game.get(_voice_key(game, "room_id")):
         return
     room = await _room_for(game)
     async with room.lock:

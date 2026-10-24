@@ -514,6 +514,7 @@ def new_game(gid: str, name: str, mode) -> GameDict:
         "_name": name,
         "_mode": str(mode),
         "_hardcore": False,  # 1 Wurf, ❗ wie Freireihe, keine Korrektur
+        "_voice_enabled": True,
         "_expected": expected,
         "_started": False,
         "_finished": False,

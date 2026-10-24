@@ -243,6 +243,9 @@ async def _close_terminal_connections(game: GameDict) -> None:
     loop open would otherwise retain its session, connection reservation and a
     client-side reconnect loop after the game has left the registry.
     """
+    from .hausdepp_voice import refresh_voice_game
+
+    await refresh_voice_game(game)
     closed: set[int] = set()
     sockets: list[object] = []
     for participant in [*game.get("_players", []), *game.get("_spectators", [])]:
@@ -1976,6 +1979,7 @@ class CreateReq(BaseModel):
     waiting_mode: str = Field(default="fixed", pattern="^(fixed|open)$")
     manual_start: bool = Field(default=False, strict=True)
     voice_enabled: bool = Field(default=True, strict=True)
+    source_game_id: str | None = Field(default=None, min_length=1, max_length=64, pattern=r"^[A-Za-z0-9-]+$")
     watten_recipe: dict | None = None
 
     @field_validator("name")
@@ -2799,6 +2803,22 @@ async def api_games_create(req: CreateReq, request: Request):
 
     identity = resolve_session(request)
     ensure_play_allowed(identity)
+    voice_source = None
+    if req.source_game_id is not None:
+        if req.game_type != DEFAULT_GAME_TYPE:
+            raise HTTPException(status_code=400, detail="zdwa_voice_invalid_source")
+        identity = require_user(request)
+        require_csrf(request, identity)
+        voice_source = games.get(req.source_game_id)
+        if voice_source is None:
+            raise HTTPException(status_code=404, detail="zdwa_voice_source_not_found")
+        if (game_type_from_state(voice_source) != DEFAULT_GAME_TYPE or not voice_source.get("_finished")
+                or voice_source.get("_aborted")):
+            raise HTTPException(status_code=409, detail="zdwa_voice_source_unavailable")
+        if not any(type(player.get("user_id")) is int and player["user_id"] == identity.user_id
+                   and not player.get("is_cpu") and player.get("type") != "cpu"
+                   for player in voice_source.get("_players", [])):
+            raise HTTPException(status_code=403, detail="zdwa_voice_source_forbidden")
     if req.game_type == "watten":
         from .watten_access import require_watten_access
         from .watten_http import create_watten_http
@@ -2822,6 +2842,13 @@ async def api_games_create(req: CreateReq, request: Request):
             cpu_policy = ZILCH_CPU_CONTINUATION_POLICY
     gid = str(uuid.uuid4())[:8]
     g = create_game_state(gid, req.name, req.mode, req.game_type)
+    if req.game_type == DEFAULT_GAME_TYPE:
+        g["_voice_enabled"] = req.voice_enabled
+        if voice_source is not None:
+            from .hausdepp_voice import _roster, carry_voice_room
+
+            g["_voice_group_id"] = voice_source.get("_voice_group_id", voice_source["_id"])
+            carry_voice_room(voice_source, g, _roster(voice_source))
     if req.game_type == HAUSDEPP_GAME_TYPE:
         from .hausdepp_state import configure_hausdepp_game
 
@@ -2852,6 +2879,8 @@ async def api_games_create(req: CreateReq, request: Request):
     record_game_action(req.game_type, "game_created", mode=(req.play_mode if req.game_type == ZILCH_GAME_TYPE
                                                           else "hardcore" if g["_hardcore"] else req.mode))
     response: dict[str, str] = {"game_id": gid}
+    if voice_source is not None:
+        response.update(source_game_id=req.source_game_id, voice_group_id=g["_voice_group_id"])
     if guest_host_token:
         response["host_token"] = guest_host_token
     return response
