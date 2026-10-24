@@ -1075,7 +1075,7 @@ for (const [name, viewport, firstActor, firstType] of [
   ['tablet', { width: 768, height: 1024 }, 'opponent', 'play'],
   ['desktop', { width: 1440, height: 900 }, 'opponent', 'gamble'],
 ]) {
-  test(`labelled UI fixture: ${name} pile faces, counts and follow-ups hand over only at landing`, async ({ page }) => {
+  test(`labelled UI fixture: ${name} pile faces and counts land before pile actions while legal own afterthrows stay available`, async ({ page }) => {
     await page.setViewportSize(viewport);
     await page.emulateMedia({ reducedMotion: 'no-preference' });
     await ownerSession(page);
@@ -1125,7 +1125,8 @@ for (const [name, viewport, firstActor, firstType] of [
     mocked.sendSnapshot(fixture);
     await expect(page.locator('#hausdeppPile')).toHaveAttribute('data-card-count', '1');
     await expect(page.locator('#hausdeppPile .hd-pile-face')).toHaveCount(1);
-    await expect(page.locator('#hausdeppHand [data-card-id="bells-U"]')).toBeDisabled();
+    if (firstActor === 'own') await expect(page.locator('#hausdeppHand [data-card-id="bells-U"]')).toBeEnabled();
+    else await expect(page.locator('#hausdeppHand [data-card-id="bells-U"]')).toBeDisabled();
     await expect(page.locator('#hausdeppStock')).toBeDisabled();
     await page.locator('#hausdeppPile').press('Shift+Enter');
     await expect(page.locator('#hausdeppPileInspector [data-card-id]')).toHaveCount(1);
