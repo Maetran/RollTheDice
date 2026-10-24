@@ -2123,6 +2123,13 @@ Disabling email through its deployment flag restores legacy password sign-up.
 See the [email account plan](docs/EMAIL_ACCOUNTS_PLAN.md) and
 [account security review](docs/ACCOUNT_SECURITY_REVIEW_2026-09-12.md).
 
+Technical sign-out boundary: with a configured suite cookie domain, sign-out
+revokes the current server session, removes the current host's legacy cookie
+and retains an empty shared cookie for 30 days. Its presence prevents older
+host cookies from restoring a login; a new login replaces it normally. Unknown
+older bearer tokens may remain valid until their original absolute expiry.
+This browser safeguard does not sign out every other browser.
+
 **Deutsch:** Der Konto-Release aktiviert E-Mail-Registrierung und Wiederherstellung
 zusätzlich zu Passkeys und öffentlichen Fairplay-Zählern. Resend versendet von
 `noreply@zockdiewandan.online`; DNS, Versandprüfungen und Betriebsgrenzen stehen
@@ -2176,6 +2183,14 @@ Erfolgseintrag samt ursprünglichem Freischaltdatum und scheitern nicht an
 doppelten Vergabeversuchen.
 Bei deaktiviertem E-Mail-Feature ist die bisherige Registrierung mit
 Benutzername und Passwort wieder verfügbar.
+
+Technische Abmeldegrenze: Bei konfigurierter Suite-Cookie-Domain widerruft
+Abmelden die aktuelle Serversitzung, entfernt den bisherigen Cookie des
+aktuellen Hosts und behält 30 Tage einen leeren gemeinsamen Cookie. Dessen
+Präsenz verhindert eine erneute Anmeldung über ältere Host-Cookies; eine neue
+Anmeldung ersetzt ihn regulär. Unbekannte ältere Bearer-Tokens können bis zu
+ihrem ursprünglichen absoluten Ablauf gültig bleiben. Dieser Browserschutz
+meldet andere Browser nicht pauschal ab.
 
 Outside game tables, all four games share a two-row header: game icon and
 name, language, available design switch and game picker above; Lobby,

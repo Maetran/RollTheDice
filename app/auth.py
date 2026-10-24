@@ -362,14 +362,9 @@ def clear_session_cookie(response: Response) -> None:
         path="/",
     )
     if domain := _cookie_domain():
-        response.delete_cookie(
-            SHARED_SESSION_COOKIE,
-            httponly=True,
-            secure=_cookie_secure(),
-            samesite="lax",
-            path="/",
-            domain=domain,
-        )
+        # Presence prevents legacy-cookie fallback on every suite host. Keep
+        # the empty marker until all older absolute sessions have expired.
+        _set_cookie(response, SHARED_SESSION_COOKIE, "", domain=domain)
 
 
 def _origin_matches_host(origin: str, expected_host: str, expected_scheme: str) -> bool:
