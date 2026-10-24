@@ -133,6 +133,8 @@ class User(Base):
     mobile_row_quick_entry: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     haptic_feedback: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     keep_screen_awake: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # Listening only. Microphone permission/state always remains per visit.
+    voice_listening_default: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
     lobby_chat_popups: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     lobby_chat_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     lobby_chat_muted: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)

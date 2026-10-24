@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Literal
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, Response, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StrictBool
 from sqlalchemy import delete, func, select
 
 from .account_context import account_app_context
@@ -173,6 +173,12 @@ class LanguagePreferenceRequest(BaseModel):
 
 class HausdeppPreferenceRequest(BaseModel):
     hausdepp_auto_refill: bool
+
+
+class VoicePreferenceRequest(BaseModel):
+    model_config = {"extra": "forbid"}
+
+    voice_listening_default: StrictBool
 
 
 class LobbyChatPreferenceRequest(BaseModel):
@@ -576,6 +582,7 @@ def auth_update_preferences(payload: UserPreferencesRequest, request: Request):
                 "daily_reminder_push_enabled": user.daily_reminder_push_enabled,
                 "preferred_language": user.preferred_language,
                 "hausdepp_auto_refill": hausdepp_auto_refill(db, user.id),
+                "voice_listening_default": user.voice_listening_default,
             }
         }
     record_engagement_safely(identity.user_id, "settings_saved")
@@ -672,6 +679,23 @@ def auth_update_hausdepp_preference(payload: HausdeppPreferenceRequest, request:
         stored.auto_refill = payload.hausdepp_auto_refill
         db.flush()
         result = {"hausdepp_auto_refill": stored.auto_refill}
+    record_engagement_safely(identity.user_id, "settings_saved")
+    return result
+
+
+@router.put("/auth/preferences/voice")
+def auth_update_voice_preference(payload: VoicePreferenceRequest, request: Request, response: Response):
+    identity = require_user(request)
+    require_csrf(request, identity)
+    response.headers["Cache-Control"] = "no-store"
+    with session_scope() as db:
+        user = db.get(User, identity.user_id)
+        if not user:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="user_not_found")
+        user.voice_listening_default = payload.voice_listening_default
+        user.updated_at = utcnow()
+        db.flush()
+        result = {"voice_listening_default": user.voice_listening_default}
     record_engagement_safely(identity.user_id, "settings_saved")
     return result
 
