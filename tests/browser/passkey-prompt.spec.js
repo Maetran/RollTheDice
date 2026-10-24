@@ -28,7 +28,7 @@ async function account(page, username, language = 'de') {
   const signedIn = await page.request.post('/api/auth/login', { data: { username, password } });
   expect(signedIn.ok()).toBeTruthy();
   const user = (await signedIn.json()).user;
-  const state = { enabled: true, has_credentials: false, forced: false, claimed: false, claims: 0 };
+  const state = { enabled: true, has_credentials: false, forced: false, claimed: false, claims: 0, csrfToken: user.csrf_token };
   await page.route('**/api/auth/me', async route => {
     const response = await route.fetch();
     const auth = await response.json();
@@ -115,8 +115,23 @@ for (const game of ['zdwa', 'zilch']) {
     await page.addInitScript(() => Object.defineProperty(window, 'PublicKeyCredential', { value: undefined, configurable: true }));
     await page.reload();
     await expect(prompt).toBeHidden();
-    // Auth events from another bundle must also clear any displayed account hint.
-    await page.evaluate(() => window.dispatchEvent(new CustomEvent('zdwa:auth-state', { detail: { authenticated: false, user: null } })));
-    await expect(prompt).toBeEmpty();
+    // Model another bundle's successful logout, including its server session.
+    // A guest event alone would send the private account to login while its
+    // still-authenticated /me response immediately sends it back to the account.
+    const loggedOut = await page.request.post('/api/auth/logout', { headers: { 'X-CSRF-Token': state.csrfToken } });
+    expect(loggedOut.ok()).toBeTruthy();
+    const identity = await page.request.get('/api/auth/me');
+    expect(identity.ok()).toBeTruthy();
+    expect((await identity.json()).authenticated).toBe(false);
+    // Keep the original node: the private-page lifecycle also removes it and
+    // navigates, so a locator could otherwise inspect a later document instead.
+    const remainingHint = await page.evaluate(() => {
+      const hint = document.querySelector('[data-passkey-prompt]');
+      window.dispatchEvent(new CustomEvent('zdwa:auth-state', { detail: { authenticated: false, user: null } }));
+      return hint?.innerHTML;
+    });
+    expect(remainingHint).toBe('');
+    await expect(page).toHaveURL(game === 'zilch' ? /\/zilch\/anmelden\?return_to=%2Fzilch%2Fkonto$/ : /\/$/);
+    await expect(prompt).toBeHidden();
   });
 }
