@@ -72,6 +72,10 @@ async function mockedDashboard(page, language, options = {}) {
       data.available_games = ['zdwa', 'zilch', 'hausdepp'];
       data.voice_usage = ['all', 'hausdepp'].includes(game) ? state.voiceUsage : null;
     }
+    if (state.voiceActivity !== undefined) {
+      data.available_games = ['zdwa', 'zilch', 'hausdepp', 'watten'];
+      data.voice_activity = game === 'zilch' ? null : state.voiceActivity;
+    }
     data.overview.live_sessions = state.liveSessions;
     data.generated_at = new Date(Date.parse(data.generated_at) + (state.calls.length - 1) * 30000).toISOString();
     data.server.measurement_at = data.generated_at;
@@ -180,6 +184,53 @@ async function expectReadableNexusLabels(page) {
 }
 
 for (const language of ['de', 'en']) {
+  test(`${language}: private voice activity shows listening totals and clears names on filter and revocation`, async ({ page }) => {
+    const unsafeName = 'Listener<img src=x onerror="window.__voiceActivityUnsafe=true">';
+    const activity = {
+      source: 'server_authorized_listening_membership', retention_days: 400, observed_only: true,
+      first_observed_at: '2026-10-01T12:00:00Z', last_observed_at: '2026-10-07T14:30:00Z',
+      max_unconfirmed_seconds: 30, dropped_observations_since_restart: 2,
+      period: { activations: 7, games: 3, users: 2, connected_minutes: 12.5 },
+      by_game: [
+        { game_type: 'zdwa', activations: 3, games: 1, users: 1, connected_minutes: 2.5 },
+        { game_type: 'hausdepp', activations: 2, games: 1, users: 1, connected_minutes: 4 },
+        { game_type: 'watten', activations: 2, games: 1, users: 2, connected_minutes: 6 },
+      ],
+      top_users: [{ username: unsafeName, connected_minutes: 9.25 }, { username: 'ListenerTwo', connected_minutes: 3.25 }],
+      retained: { from: '2025-09-03', to: '2026-10-07T14:35:00Z', activations: 55, games: 18, users: 12, connected_minutes: 125.75 },
+    };
+    const state = await mockedDashboard(page, language, { voiceActivity: activity });
+    const panel = page.locator('#voiceActivityPanel');
+    const privateIds = ['voiceActivitySummary', 'voiceActivityGames', 'voiceActivityUsers', 'voiceActivityUpdated', 'voiceActivityRetained'];
+    await expect(panel).toBeVisible();
+    await expect(page.locator('#voiceActivityTitle')).toHaveText(language === 'en' ? 'Voice chat activity' : 'Sprachchat-Aktivität');
+    await expect(panel).toContainText(language === 'en' ? 'Listening time is not speaking time' : 'Zuhörzeit ist keine Sprechzeit');
+    await expect(page.locator('#voiceActivitySummary .request-metric strong')).toHaveText(['7', '3', '2', '12.5']);
+    const rows = page.locator('#voiceActivityGames tbody tr');
+    await expect(rows).toHaveCount(3);
+    await expect(rows.nth(0).locator('th, td')).toHaveText(['ZDWA', '3', '1', '1', '2.5']);
+    await expect(rows.nth(1).locator('th, td')).toHaveText(['Hausdepp', '2', '1', '1', '4']);
+    await expect(rows.nth(2).locator('th, td')).toHaveText(['Watten', '2', '1', '2', '6']);
+    await expect(page.locator('#voiceActivityUsers tbody tr').first().locator('th')).toHaveText(unsafeName);
+    await expect(page.locator('#voiceActivityUsers tbody td')).toHaveText(['9.25', '3.25']);
+    await expect(page.locator('#voiceActivityUsers img, #voiceActivityUsers script')).toHaveCount(0);
+    expect(await page.evaluate(() => window.__voiceActivityUnsafe)).toBeUndefined();
+    await expect(page.locator('#voiceActivityRetained')).toContainText(language === 'en' ? 'up to 400 days' : 'höchstens 400 Tage');
+    await expect(page.locator('#voiceActivityRetained')).toContainText('55');
+    await expect(page.locator('#voiceActivityRetained')).toContainText('125.75');
+    await expect(page.locator('#voiceActivityUpdated')).toContainText(language === 'en' ? 'Dropped observations since server start: 2' : 'Verworfene Beobachtungen seit Serverstart: 2');
+    await page.locator('#dashboardGame').selectOption('zilch');
+    await expect(panel).toBeHidden();
+    for (const id of privateIds) await expect(page.locator(`#${id}`)).toBeEmpty();
+    await page.locator('#dashboardGame').selectOption('all');
+    await expect(page.locator('#voiceActivityUsers tbody tr').first().locator('th')).toHaveText(unsafeName);
+    state.permitted = false;
+    await page.locator('#dashboardRefresh').click();
+    await expect(page.locator('#dashboardData')).toBeHidden();
+    await expect(panel).toBeHidden();
+    for (const id of privateIds) await expect(page.locator(`#${id}`)).toBeEmpty();
+  });
+
   for (const design of ['mission', 'lcars', 'nexus']) {
     test(`${language}: voice usage reports remain explicit and readable in ${design}`, async ({ page }, testInfo) => {
       const usage = {
