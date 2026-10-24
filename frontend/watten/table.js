@@ -536,7 +536,6 @@ export function createTableView(container, { onCard, accountId = null }) {
       </div>
     </div>
     <div class="wt-end-sheet">
-      <div class="wt-own-call" data-wt-own-call aria-hidden="true"></div>
       <div class="wt-private" data-wt-private></div>
       <details class="wt-history-box" data-wt-history hidden></details>
       <div class="wt-panel" data-wt-panel role="region" aria-label="${esc(t("panel.label"))}"></div>
@@ -554,7 +553,7 @@ export function createTableView(container, { onCard, accountId = null }) {
   const elements = {
     reveal: $("[data-wt-reveal]"), title: $("[data-wt-title]"), scores: $("[data-wt-scores]"), tools: $("[data-wt-tools]"), seats: $("[data-wt-seats]"),
     reference: $("[data-wt-reference]"), bloedeln: $("[data-wt-bloedeln]"), trick: $("[data-wt-trick]"), trickLabel: $("[data-wt-trick-label]"),
-    preplay: $("[data-wt-preplay]"), bubbles: $("[data-wt-bubbles]"), ownCall: $("[data-wt-own-call]"), panel: $("[data-wt-panel]"), private: $("[data-wt-private]"),
+    preplay: $("[data-wt-preplay]"), bubbles: $("[data-wt-bubbles]"), panel: $("[data-wt-panel]"), private: $("[data-wt-private]"),
     hand: $("[data-wt-hand]"), handArea: $("[data-wt-hand-area]"), history: $("[data-wt-history]"), live: $("[data-wt-live]"), stake: $("[data-wt-stake]"), retour: $("[data-wt-retour-announcement]"),
   };
   const handNodes = new Map();
@@ -776,11 +775,8 @@ export function createTableView(container, { onCard, accountId = null }) {
     patch(elements.private, "private", privateMarkup(vm));
     const feedbackDialog = elements.private.querySelector("[data-watten-feedback-dialog]");
     if (feedbackDialog && !feedbackDialog.open && typeof feedbackDialog.showModal === "function") feedbackDialog.showModal();
-    const callMarkup = bubble => `<span class="wt-bubble wt-bubble--${seatPosition(bubble.seat, vm.anchorSeat, vm.count)}" data-watten-call>${esc(bubble.text)}</span>`;
-    patch(elements.bubbles, "bubbles", vm.bubbles.map(callMarkup).join(""));
-    // Both layouts consume the same viewer-approved, short-lived deliveries.
-    // CSS selects one copy on rotation; the existing live region announces it.
-    patch(elements.ownCall, "own-call", vm.bubbles.filter(bubble => seatPosition(bubble.seat, vm.anchorSeat, vm.count) === "bottom").map(callMarkup).join(""));
+    patch(elements.bubbles, "bubbles", vm.bubbles.map(bubble =>
+      `<span class="wt-bubble wt-bubble--${seatPosition(bubble.seat, vm.anchorSeat, vm.count)}" data-watten-call>${esc(bubble.text)}</span>`).join(""));
     const history = historyMarkup(vm, historyPinned);
     const historyFinished = ["deal_complete", "match_complete"].includes(vm.engine.phase);
     const reviewReady = !vm.roundPresentation || vm.roundPresentation.stage === "ready";
