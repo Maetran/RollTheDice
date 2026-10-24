@@ -2214,6 +2214,8 @@ on phones, tablets and desktops. Game tables retain their compact controls.
 Quick page changes keep their chosen destination when an older sign-in check
 is cancelled by navigation. Zilch sign-out owns one redirect to the correct
 lobby; a late account response cannot start another redirect.
+If sign-out fails, the account stays open with a visible error and an available
+retry. Its identity refresh resumes; a departed document cannot be revived.
 
 **Deutsch:** Alle vier Spiele nutzen ausserhalb des Spieltischs denselben
 zweizeiligen Header: oben Spielsymbol und -name, Sprache, vorhandener
@@ -2223,6 +2225,9 @@ Spieltische behalten ihre kompakten Bedienelemente.
 Schnelle Seitenwechsel behalten ihr gewähltes Ziel, auch wenn dabei eine ältere
 Anmeldungsprüfung abgebrochen wird. Zilch meldet mit einer einzigen Weiterleitung
 zur passenden Lobby ab; eine verspätete Kontoantwort startet keine zweite.
+Scheitert das Abmelden, bleibt das Konto mit sichtbarer Fehlermeldung und
+erneut nutzbarem Button offen. Die Anmeldungsprüfung läuft wieder an; eine
+verlassene Seite wird dadurch nicht reaktiviert.
 
 Der mobile Zuschauerchat hält die Eingabe auch bei geöffneter Tastatur
 erreichbar und zeigt Zuschauer mit ihrem Profilbild. Tablet-Spielblöcke nutzen

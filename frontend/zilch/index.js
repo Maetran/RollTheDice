@@ -2312,7 +2312,8 @@ function zilchAccountSettingsMarkup(username) {
     </section></div></details>
   </div>
   <section class="zilch-card zilch-account-session" aria-label="${escapeHtml(`${t("Du spielst als")} ${username}`)}">
-    <div><p class="eyebrow">${escapeHtml(t("Du spielst als"))}</p><strong class="zilch-account-session__name">${escapeHtml(username)}</strong></div>
+    <div><p class="eyebrow">${escapeHtml(t("Du spielst als"))}</p><strong class="zilch-account-session__name">${escapeHtml(username)}</strong>
+      <p class="zilch-settings-message" data-zilch-logout-message role="alert" hidden></p></div>
     <button id="zilchAccountLogout" class="small ghost" type="button" data-zilch-logout>${escapeHtml(t("Abmelden"))}</button>
   </section>`;
 }
@@ -5864,11 +5865,19 @@ async function initialize() {
     if (!logoutButton || logoutButton.disabled) return;
     logoutButton.disabled = true;
     logoutButton.setAttribute("aria-busy", "true");
+    const message = document.querySelector("[data-zilch-logout-message]");
+    if (message) { message.hidden = true; message.textContent = ""; }
     const publicLobby = state.auth?.game_access?.zilch_public === true
       || state.auth?.user?.game_access?.zilch_public === true;
-    appMode?.prepareNavigation?.();
-    try { await logout(); } catch (_) {} finally {
+    const rollbackNavigation = appMode?.prepareNavigation?.();
+    try {
+      await logout();
       window.location.replace(publicLobby ? zilchPath("/") : zdwaAppEntryUrl());
+    } catch (_) {
+      if (rollbackNavigation && !rollbackNavigation()) return;
+      logoutButton.disabled = false;
+      logoutButton.removeAttribute("aria-busy");
+      if (message) { message.textContent = t("Abmelden fehlgeschlagen"); message.hidden = false; }
     }
   });
   if (resultId) await renderResult();
