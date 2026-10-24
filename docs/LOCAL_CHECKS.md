@@ -91,7 +91,10 @@ npx playwright test tests/browser/hausdepp-flex-lobby.spec.js
 ```
 
 Gefilterte Läufe erhalten `fullRun=false` und geben keinen vollständigen
-Push-Nachweis. `--port-base 8100` reserviert bei Bedarf sieben aufeinanderfolgende
+Push-Nachweis. Der Runner verbietet `test.only`/`describe.only` und erzwingt
+`--retries=0`, auch bei gesetztem `CI`. Ein Fehler im ersten Versuch bleibt
+damit ein Fehler; Filter dürfen diese Vorgaben nicht überschreiben.
+`--port-base 8100` reserviert bei Bedarf sieben aufeinanderfolgende
 Ports; ohne Angabe werden freie Ports vergeben. `--output-dir` verlangt ein
 neues oder leeres Verzeichnis. `PLAYWRIGHT_BASE_URL` ist im isolierten Runner
 unzulässig, damit kein fremder Server benutzt wird.
@@ -138,6 +141,9 @@ never authorize a push. Raw receipt files are not trusted by GitHub. The owner-i
 binds the verified tree, base and completion time. GitHub runs only a lightweight
 remote integration/evidence check, rejecting stale, untrusted or changed sources.
 It does not repeat the full local backend, browser, Docker, lint or tooling suites.
+The runner rejects `test.only`/`describe.only` and enforces `--retries=0`, even
+with `CI` set. A first-attempt failure remains a failure; filters cannot
+override these requirements.
 
 An unchanged two-parent PR merge at the current `origin/develop` tip may inherit
 its feature parent's complete receipt only when the merge tree exactly matches

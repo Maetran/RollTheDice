@@ -206,6 +206,22 @@ async def serve_game_websocket(
         release_connection(connection_address)
 
 
+async def _reject_replaced_player_socket(session: GameSocketSession) -> bool:
+    if session.game.get("_aborted") or not session.player_id or any(
+        player.get("id") == session.player_id and player.get("ws") is session.websocket
+        for player in session.game.get("_players", [])
+    ):
+        return False
+    await close_with_error(
+        session.websocket,
+        "Das Spiel wurde auf einem anderen Gerät fortgesetzt.",
+        fatal=True,
+        code=1000,
+        error_code="session_replaced",
+    )
+    return True
+
+
 async def _receive_messages(
     session: GameSocketSession,
     *,
@@ -228,6 +244,10 @@ async def _receive_messages(
             await close_with_error(session.websocket,
                                    "Dein Konto ist für das Spielen gesperrt. Details findest du im Konto.",
                                    fatal=True, error_code="account_play_banned")
+            return
+        # Preserve the account-ban response, then revoke any queued commands
+        # from a connection that no longer owns the live player seat.
+        if await _reject_replaced_player_socket(session):
             return
         if session.is_admin_help_spectator:
             from .admin_help import has_active_help_claim
@@ -332,6 +352,9 @@ async def _receive_messages(
             continue
         if allowed_superadmin_actions:
             await release_revoked_superadmin_locks(session.game)
+            # Lock cleanup can yield while another device takes over the seat.
+            if await _reject_replaced_player_socket(session):
+                return
         if allowed_superadmin_actions and action_blocked_by_superadmin(session.game, action):
             await session.websocket.send_json({"error": "Spielaktionen sind während Superadmin-Edit gesperrt"})
             continue

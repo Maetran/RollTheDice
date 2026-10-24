@@ -2476,5 +2476,12 @@
     "date": "2026-10-24",
     "bump": "patch",
     "summary": "Hausdepp: Geworfene Karten landen erst nach ihrem Flug auf dem Stapel; Folgeaktionen warten auf die Ankunft. / Hausdepp: Thrown cards appear on the pile when their flight lands; follow-up actions wait for arrival."
+  },
+  {
+    "version": "4.1.6",
+    "revision": "c0770705b95db83de5147556276cdaca88a13858",
+    "date": "2026-10-24",
+    "bump": "patch",
+    "summary": "Hausdepp: Passende Karten sofort nachwerfen, auch nach dem Auffüllen. Das Stapelbild folgt weiter der Landung. / Hausdepp: Throw matching cards immediately, including fresh refills. Pile cards still appear only on landing."
   }
 ]

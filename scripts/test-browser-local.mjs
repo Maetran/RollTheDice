@@ -43,10 +43,10 @@ export function parseArguments(argv) {
       options.suites.push(suite);
     }
   }
-  // These switches could silently bypass isolation, change the four shards or
-  // replace the durable report. Filters such as files, --grep and --project work.
+  // These switches could bypass isolation, change retries or the four shards,
+  // or replace the durable report. Files, --grep and --project filters work.
   for (const argument of options.filters) {
-    if (/^(--(?:config|shard|workers|output|reporter|ui|ui-host|ui-port)(?:=|$)|-c|-j)/.test(argument)) {
+    if (/^(--(?:config|shard|workers|retries|output|reporter|ui|ui-host|ui-port)(?:=|$)|-c|-j)/.test(argument)) {
       throw new Error(`The local runner owns isolation option ${argument}`);
     }
   }
@@ -82,7 +82,8 @@ export function createSuitePlan({ root = repositoryRoot, temporaryDirectory, out
       ROLLTHEDICE_HAUSDEPP_PASSKEY_TEST_PORT: String(port), PLAYWRIGHT_TEST_DIR: testDirectory,
       PLAYWRIGHT_OUTPUT_DIR: outputDir, PLAYWRIGHT_HTML_OUTPUT_DIR: htmlDir, TMPDIR: testDirectory };
     delete env.PLAYWRIGHT_BASE_URL;
-    const args = ['test', `--config=${path.join(root, CONFIGS[definition.suite])}`, '--workers=1'];
+    // Required and filtered pools must preserve failures and never shrink through .only.
+    const args = ['test', `--config=${path.join(root, CONFIGS[definition.suite])}`, '--workers=1', '--forbid-only', '--retries=0'];
     if (definition.shard) args.push(`--shard=${definition.shard}/4`);
     // A targeted file may belong to just one shard. A full run must never hide
     // an accidentally empty configuration with this option.

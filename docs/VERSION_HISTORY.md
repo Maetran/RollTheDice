@@ -1,6 +1,6 @@
 # Versionen / Versions
 
-Aktuelle gemeinsame Produktversion / Current shared product version: **4.1.6**.
+Aktuelle gemeinsame Produktversion / Current shared product version: **4.1.7**.
 
 Alle RollTheDice-Spiele werden gemeinsam versioniert. Major steht für einen großen
 Produktmeilenstein, Minor für neue Funktionen und Patch für Fehlerkorrekturen
@@ -30,6 +30,7 @@ Detailed player-facing descriptions are in the [changelog](../CHANGELOG.md).
 
 | Version | Datum / Date | Art / Type | Änderung / Change | Commit |
 | --- | --- | --- | --- | --- |
+| 4.1.6 | 2026-10-24 | patch | Hausdepp: Passende Karten sofort nachwerfen, auch nach dem Auffüllen. Das Stapelbild folgt weiter der Landung. / Hausdepp: Throw matching cards immediately, including fresh refills. Pile cards still appear only on landing. | [c077070](https://github.com/Maetran/RollTheDice/commit/c0770705b95db83de5147556276cdaca88a13858) |
 | 4.1.5 | 2026-10-24 | patch | Hausdepp: Geworfene Karten landen erst nach ihrem Flug auf dem Stapel; Folgeaktionen warten auf die Ankunft. / Hausdepp: Thrown cards appear on the pile when their flight lands; follow-up actions wait for arrival. | [4b7905e](https://github.com/Maetran/RollTheDice/commit/4b7905ec6ea0a822e589f34f69cdce91723cde92) |
 | 4.1.4 | 2026-10-24 | patch | Watten: lesbare Ansagekarten, ruhiges Blödeln, klare Ergebnisse mit Reaktionen, feste Revancheteams und Abbruch nach 1 h Inaktivität. / Watten: readable call cards, calmer Blödeln and results with reactions, fixed rematch teams; idle matches end after one hour. | [38740c8](https://github.com/Maetran/RollTheDice/commit/38740c8340d8a62958d628fb26acc825b687469d) |
 | 4.1.3 | 2026-10-22 | patch | Flüssigeres Hausdepp-Nachziehen und ein klarerer mobiler Watten-Tisch mit seltenerem Blödeln. / Smoother Hausdepp refills and a clearer mobile Watten table with less frequent Blödeln. | [125afc7](https://github.com/Maetran/RollTheDice/commit/125afc7a227f290ddf93bcdc68e3a7649ea52001) |

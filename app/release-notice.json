@@ -1,23 +1,24 @@
 {
   "kind": "usability",
   "games": [
-    "hausdepp"
+    "zdwa",
+    "zilch"
   ],
-  "summary_de": "Hausdepp: Passende Karten sofort nachwerfen, auch nach dem Auffüllen. Das Stapelbild folgt weiter der Landung.",
-  "summary_en": "Hausdepp: Throw matching cards immediately, including fresh refills. Pile cards still appear only on landing.",
+  "summary_de": "ZDWA und Zilch: Nach einem Gerätewechsel steuert nur das aktuelle Gerät die Partie.",
+  "summary_en": "ZDWA and Zilch: After switching devices, only the current device controls the game.",
   "player_notes": {
     "de": {
-      "title": "Hausdepp 4.1.6: Sofort nachwerfen",
+      "title": "4.1.7: Sicher auf einem anderen Gerät weiterspielen",
       "changes": [
-        "Passende Karten kannst du im offenen Nachwurffenster sofort antippen, auch direkt nach dem Auffüllen.",
-        "Die Kartenflüge laufen weiter. Jede Karte erscheint erst bei ihrer Landung auf dem Stapel."
+        "Nach dem Gerätewechsel können verspätete Eingaben des vorigen Geräts deine Partie nicht mehr verändern.",
+        "Bereits angenommene Spielabschlüsse werden weiterhin zuverlässig angezeigt."
       ]
     },
     "en": {
-      "title": "Hausdepp 4.1.6: Immediate follow-up throws",
+      "title": "4.1.7: Resume safely on another device",
       "changes": [
-        "Tap matching cards immediately while your follow-up window is open, including fresh refills.",
-        "Card flights continue. Each card joins the pile only when it lands."
+        "After switching devices, delayed input from the previous device can no longer change your game.",
+        "Already accepted game finishes continue to appear reliably."
       ]
     }
   }
