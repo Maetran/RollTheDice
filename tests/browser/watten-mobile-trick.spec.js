@@ -271,8 +271,8 @@ test(`four-player mobile landscape ${viewport.width}x${viewport.height}: left ra
     await expect(liveReview).toHaveAttribute('data-pinned', 'true');
     await expectLandscapeTable(nextPlayer.page);
     expect(await nextPlayer.page.locator('[data-wt-hand] button:enabled').count()).toBeGreaterThan(0);
-    for (const card of await nextPlayer.page.locator('[data-wt-hand] button:enabled').all()) await expectReachable(nextPlayer.page,
-      `[data-wt-hand] button[data-card="${await card.getAttribute('data-card')}"]`);
+    await expect(nextPlayer.page.locator('[data-wt-hand]')).toBeHidden();
+    await expect(nextPlayer.page.locator('[data-wt-trick]')).toBeHidden();
     await nextPlayer.page.screenshot({ path: info.outputPath(`watten-pinned-review-${viewport.width}x${viewport.height}.png`) });
     await liveReview.locator('[data-wt-history-close]').click();
     await action(players, 'bid');

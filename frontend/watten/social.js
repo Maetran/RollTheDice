@@ -1,6 +1,13 @@
 import { WATTEN_SOCIAL_MESSAGES } from "../i18n/catalog.js";
 
 export const SOCIAL_EMOJIS = Object.freeze(["👍", "😂", "😮", "💩", "🎉", "🤞", "🙏", "😜", "🙄", "🤦", "😭", "🔥"]);
+/** The result uses the same public reaction transport as the table chat. */
+export function resultReactionsMarkup(language, esc) {
+  const messages = WATTEN_SOCIAL_MESSAGES[language === "en" ? "en" : "de"];
+  return `<div class="wt-final-reactions" role="group" aria-label="${esc(messages.quick)}">${[0, 1, 4, 6].map(index =>
+    `<button type="button" data-watten-result-emoji="${SOCIAL_EMOJIS[index]}" aria-label="${esc(messages[`emoji${index}`])}" disabled>${SOCIAL_EMOJIS[index]}</button>`).join("")}</div>
+    <p class="wt-final-reaction-status wt-note" data-watten-result-status role="status"></p>`;
+}
 const object = value => value !== null && typeof value === "object" && !Array.isArray(value);
 const token = value => typeof value === "string" && value.length > 0 && value.length <= 160;
 const nonce = value => Number.isSafeInteger(value) && value >= 1;
@@ -55,6 +62,8 @@ export function createSocial({ gameId, getExpectedAccountId, isCurrent, send, es
   const writable = () => current() && authorized && bound && canSend && token(channel) && nonce(next) && !pending;
 
   function updateControls() {
+    for (const button of dom.querySelectorAll?.("[data-watten-result-emoji]") || []) button.disabled = !writable();
+    for (const node of dom.querySelectorAll?.("[data-watten-result-status]") || []) node.textContent = status ? t(status) : "";
     if (!ui) return;
     ui.input.disabled = !writable(); ui.submit.disabled = !writable();
     for (const button of ui.emojis) button.disabled = !writable();
@@ -130,9 +139,9 @@ export function createSocial({ gameId, getExpectedAccountId, isCurrent, send, es
       <section class="wt-social-drawer" id="wattenSocialDrawer" data-watten-social-drawer role="dialog" aria-modal="true" aria-labelledby="wattenSocialTitle" hidden>
         <header><h2 id="wattenSocialTitle">${esc(t("title"))}</h2><button type="button" data-watten-social-action="close">${esc(t("close"))}</button></header>
         <p class="wt-note">${esc(t("rule"))}</p>
-        <ol data-watten-social-log role="log" aria-live="polite" aria-relevant="additions"></ol>
         <div class="wt-social-emojis" role="group" aria-label="${esc(t("emojis"))}">${SOCIAL_EMOJIS.map((emoji, index) =>
           `<button type="button" data-watten-social-action="emoji" data-emoji="${emoji}" aria-label="${esc(t(`emoji${index}`))}">${emoji}</button>`).join("")}</div>
+        <ol data-watten-social-log role="log" aria-live="polite" aria-relevant="additions"></ol>
         <form data-watten-social-form><label for="wattenSocialInput" class="wt-visually-hidden">${esc(t("message"))}</label>
           <input id="wattenSocialInput" data-watten-social-input maxlength="400" autocomplete="off" placeholder="${esc(t("message"))}">
           <button type="submit" data-watten-social-action="send">${esc(t("send"))}</button></form>
@@ -224,6 +233,10 @@ export function createSocial({ gameId, getExpectedAccountId, isCurrent, send, es
     } else if (pending) status = "uncertain";
     updateControls();
   }
+  dom.addEventListener?.("click", event => {
+    const control = event.target.closest?.("[data-watten-result-emoji]");
+    if (control && !control.disabled) transmit(false, control.dataset.wattenResultEmoji);
+  }, { signal: lifecycle.signal });
   win.addEventListener("keydown", event => {
     if (!opened || !ui) return;
     if (event.key === "Enter" && event.isComposing && event.target === ui.input) { event.preventDefault(); return; }

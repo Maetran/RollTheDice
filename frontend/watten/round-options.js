@@ -54,6 +54,7 @@ export function roundOptionsMarkup(vm) {
       : bloedelnRequest && !involved
         ? namedMessage(vm, "roundOptions.bloedeln.pendingNamed", { first: pending.requester, second: pending.responder })
         : namedMessage(vm, `roundOptions.${pending.kind}.pending`, { name: pending.requester });
+    if (bloedelnRequest && !involved) return `<p class="wt-bloedeln-status" data-watten-preplay-pending="bloedeln" role="status">${requestTitle}</p>`;
     const description = !bloedelnRequest || involved
       ? `<p class="wt-note">${esc(t(`roundOptions.${pending.kind}.description`))}</p>` : "";
     return `${bloedeln}<section class="wt-preplay-pending" data-watten-preplay-pending="${pending.kind}" role="group" aria-labelledby="wattenPreplayTitle">

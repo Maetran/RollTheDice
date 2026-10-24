@@ -88,7 +88,7 @@ function fixture() {
   const vm = { spectator: false, viewerSeat: 0, engine: { phase: "play", seats: [{ party: 0 }, { party: 1 }],
     trick_history: [{ winner: 0, cards: [{ seat: 0, card: "hearts-A" }, { seat: 1, card: "bells-7" }] }] },
   room: { seats: [{ name: "Anna" }, { name: "Ben" }] } };
-  return { node, vm, render: (pinned = true) => functions.patch(node, "history", functions.historyMarkup(vm, pinned)) };
+  return { node, vm, patch: functions.patch, render: (pinned = true) => functions.patch(node, "history", functions.historyMarkup(vm, pinned)) };
 }
 
 function assertClipReferences(node) {
@@ -130,4 +130,16 @@ test("new public tricks and finished-round history update content while retainin
     assert.match(f.node.querySelector("summary").textContent, /history.round/);
     assert.equal(f.node.querySelectorAll("li").length, 2); assertClipReferences(f.node);
   }
+});
+
+test("later terminal renders preserve a mounted private receipt and its controller visibility", () => {
+  const f = fixture();
+  f.patch(f.node, "panel", '<div data-watten-match-progress hidden></div><p>first room</p>');
+  const slot = f.node.querySelector("[data-watten-match-progress]");
+  slot.removeAttribute("hidden");
+  const receipt = new DomNode("SECTION", {}, "loaded private XP"); slot.append(receipt);
+  f.patch(f.node, "panel", '<div data-watten-match-progress hidden></div><p>later rematch update</p>');
+  assert.equal(f.node.querySelector("[data-watten-match-progress]"), slot);
+  assert.equal(slot.hasAttribute("hidden"), false);
+  assert.equal(slot.childNodes[0], receipt);
 });

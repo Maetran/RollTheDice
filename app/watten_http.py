@@ -53,6 +53,8 @@ def create_watten_http(request, req) -> JSONResponse:
 
 
 async def list_watten_http(request) -> JSONResponse:
+    from .watten_websocket import expire_watten_game
+
     identity = _identity(request)
     entries = []
     for game in list(games.values()):
@@ -60,17 +62,23 @@ async def list_watten_http(request) -> JSONResponse:
             async with game_lock(game):
                 identity = _identity(request)
                 expire_waiting_game(game)
+                if await expire_watten_game(game):
+                    continue
                 if not game.get("_aborted") and not game.get("_completion_persisted"):
                     entries.append(lobby_entry(game, identity.user_id))
     return _response({"games": entries, "online_users": None})
 
 
 async def detail_watten_http(request, game: dict, passphrase, check: int) -> JSONResponse:
+    from .watten_websocket import expire_watten_game
+
     identity = _identity(request)
     async with game_lock(game):
         identity = _identity(request)
-        expire_waiting_game(game)
         try:
+            expire_waiting_game(game)
+            if await expire_watten_game(game):
+                return _response({"exists": False})
             return _detail_response(identity, game, passphrase, check)
         except (ValueError, SQLAlchemyError) as exc:
             raise HTTPException(status_code=503, detail="watten_storage_unavailable", headers=_HEADERS) from exc

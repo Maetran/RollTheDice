@@ -81,13 +81,17 @@ for (const viewport of [{ width: 440, height: 956 }, { width: 956, height: 440 }
         }
         if (['deal_complete', 'match_complete'].includes(engine.phase)) {
           completed.add(engine.deal_id);
-          // Take the review image after the final card has landed, including
-          // any queued collection delay, rather than halfway through its flight.
-          await expect.poll(() => host.page.locator('[data-wt-motion="collect"]').evaluateAll(groups => groups.some(group => {
-            const animation = group.getAnimations()[0];
-            const active = animation.currentTime - animation.effect.getTiming().delay;
-            return active >= 300 && active <= 3100;
-          }))).toBe(true);
+          const reason = engine.bid.result?.reason;
+          expect(['go', 'tricks']).toContain(reason);
+          // A played-out deal has a final collection window. Going can end
+          // after an earlier collected trick, without another card or flight.
+          if (reason === 'tricks') {
+            await expect.poll(() => host.page.locator('[data-wt-motion="collect"]').evaluateAll(groups => groups.some(group => {
+              const animation = group.getAnimations()[0];
+              const active = animation.currentTime - animation.effect.getTiming().delay;
+              return active >= 300 && active <= 3100;
+            }))).toBe(true);
+          }
           await host.page.screenshot({ path: info.outputPath(`cpu-deal-${completed.size}-${viewport.width}x${viewport.height}.png`) });
           if (completed.size === 2 || engine.phase === 'match_complete') break;
           if (engine.retourschneider?.status === 'available' && engine.actions.includes('retourschneider')) {

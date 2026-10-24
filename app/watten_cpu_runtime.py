@@ -158,7 +158,7 @@ def _authority(game: dict) -> _Authority | None:
             if raw is None:
                 return None
             stored = restore_watten_json(raw, refresh_titles=False)
-            if (stored["_id"] != game["_id"]
+            if (stored.get("_aborted") or stored["_id"] != game["_id"]
                     or serialize_watten_game(stored) != serialize_watten_game(game)):
                 return None
             local = _local_preview_enabled()
@@ -304,14 +304,14 @@ def watch_game(game: dict) -> None:
     now = asyncio.get_running_loop().time()
     engine = runtime.engine
     completed = len(engine.play.tricks) if engine is not None and engine.play is not None else 0
-    if completed and engine.phase != "match_complete":
+    if not game.get("_aborted") and completed and engine.phase != "match_complete":
         previous_reveal = _TRICK_REVEALS.get(game["_id"])
         if (previous_reveal is None or previous_reveal[0] is not game
                 or previous_reveal[1:3] != (engine.deal_id, completed)):
             _TRICK_REVEALS[game["_id"]] = (game, engine.deal_id, completed, now + TRICK_REVEAL_SECONDS)
     else:
         _TRICK_REVEALS.pop(game["_id"], None)
-    active = (cpu_autoplay_enabled() and runtime.engine is not None and not runtime.absent
+    active = (not game.get("_aborted") and cpu_autoplay_enabled() and runtime.engine is not None and not runtime.absent
               and runtime.engine.phase != "match_complete")
     if active:
         active = _authority(game) is not None
@@ -346,7 +346,7 @@ def watch_game(game: dict) -> None:
     for key, job in list(_JOBS.items()):
         if key[0] == game["_id"] and key not in wanted:
             _JOBS.pop(key, None)
-            if job.task is not None:
+            if job.task is not None and job.task is not asyncio.current_task():
                 job.task.cancel()
     for key, (owner, _context_value) in list(_BLOCKED.items()):
         if key[0] == game["_id"] and (owner is not game or key not in wanted):
@@ -356,7 +356,7 @@ def watch_game(game: dict) -> None:
 async def _run(game: dict, player: str, job: _Job) -> None:
     from .game_state import games
     from .watten_runtime import _apply_engine_command, game_lock, persist_watten_game
-    from .watten_websocket import broadcast_watten
+    from .watten_websocket import broadcast_watten, expire_watten_game
 
     key = game["_id"], player
     try:
@@ -366,6 +366,8 @@ async def _run(game: dict, player: str, job: _Job) -> None:
             if (games.get(game["_id"]) is not game or _JOBS.get(key) is not job or not cpu_autoplay_enabled()
                     or runtime.absent or runtime.engine is None
                     or not any(cpu.participant_id == player for cpu in runtime.room.cpus)):
+                return
+            if await expire_watten_game(game):
                 return
             authority = _authority(game)
             if authority is None:
@@ -377,6 +379,14 @@ async def _run(game: dict, player: str, job: _Job) -> None:
             events = _events(runtime, player)
             turn = await _decide_snapshot(view, memory, seed=job.seed, events=events,
                                           budget=CpuBudget(authority.skill.samples), skill=authority.skill)
+            if (games.get(game["_id"]) is not game or _JOBS.get(key) is not job
+                    or game["_watten"] is not runtime):
+                return
+            # A suspended event loop or queued policy calculation can cross
+            # the deadline while holding this table lock. Retire the original
+            # source before a public CPU transition could renew its clock.
+            if await expire_watten_game(game):
+                return
             # Account moderation and rollout capabilities may change while the
             # pure policy is awaiting a thread, despite our per-table lock.
             current = _authority(game)

@@ -6,6 +6,46 @@ test.setTimeout(90_000);
 const mobile = browser => ({ newContext: options => browser.newContext({ ...options,
   viewport: { width: 393, height: 852 }, serviceWorkers: 'block' }) });
 
+async function settledPrimaryTarget(page, viewport, action) {
+  return page.evaluate(({ viewport, action }) => new Promise(resolve => {
+    const landscape = viewport.width > viewport.height && viewport.height <= 700;
+    const expectedWidth = landscape ? (viewport.width <= 720 ? 84 : 104) : 120;
+    let previous = '', stable = 0;
+    const frame = () => {
+      const target = document.querySelector(`[data-watten-action="${action}"]`);
+      const anchor = action === 'show_ready' ? target?.closest('.wt-announce') : target;
+      const rect = target?.getBoundingClientRect();
+      const ready = innerWidth === viewport.width && innerHeight === viewport.height
+        && matchMedia('(orientation: landscape)').matches === (viewport.width > viewport.height)
+        && rect?.width === expectedWidth && rect.height === 44
+        && anchor && getComputedStyle(anchor).position === 'fixed';
+      const current = ready ? JSON.stringify([rect.x, rect.y, rect.width, rect.height,
+        document.querySelector('[data-wt-felt]')?.getBoundingClientRect().toJSON()]) : '';
+      stable = current && current === previous ? stable + 1 : 0; previous = current;
+      if (stable >= 3) resolve({ x: rect.x, y: rect.y, width: rect.width, height: rect.height });
+      else requestAnimationFrame(frame);
+    };
+    requestAnimationFrame(frame);
+  }), { viewport, action });
+}
+
+test('primary target baseline waits for delayed landscape dock geometry after rotation', async ({ page }) => {
+  const viewport = { width: 956, height: 440 };
+  await page.setViewportSize(viewport);
+  await page.setContent('<div class="wt-announce" style="position:fixed;right:12px;bottom:34px"><button data-watten-action="show_ready" style="box-sizing:border-box;width:120px;height:44px">Show strike</button></div>');
+  await page.evaluate(() => {
+    window.dockFrames = 0;
+    const frame = () => {
+      window.dockFrames++;
+      if (window.dockFrames === 8) document.querySelector('button').style.width = '104px';
+      else requestAnimationFrame(frame);
+    };
+    requestAnimationFrame(frame);
+  });
+  expect(await settledPrimaryTarget(page, viewport, 'show_ready')).toEqual({ x: 840, y: 362, width: 104, height: 44 });
+  expect(await page.evaluate(() => window.dockFrames)).toBe(8);
+});
+
 async function startBlind(browser, baseURL, language, players) {
   for (let seat = 0; seat < 4; seat++) players.push(await player(mobile(browser), baseURL, language));
   const path = await create(players, { count: 4, target: 11 });
@@ -27,21 +67,36 @@ async function startBlind(browser, baseURL, language, players) {
 }
 
 async function inspect(players) {
+  const viewports = [{ width: 393, height: 852 }, { width: 320, height: 568 }, { width: 956, height: 440 }, { width: 852, height: 393 }, { width: 568, height: 320 }];
+  const primaryTargets = new Map();
+  const inspecting = players.filter(peer => peer.traffic.snapshot.engine.actions.includes('show_ready'));
+  for (const viewport of viewports) for (const caller of inspecting) {
+    await caller.page.setViewportSize(viewport);
+    const target = await settledPrimaryTarget(caller.page, viewport, 'show_ready');
+    await expectReachable(caller.page, '[data-watten-action=show_ready]');
+    primaryTargets.set(`${caller.user.id}:${viewport.width}`, target);
+  }
   await action(players, 'show_ready'); await action(players, 'show_ready');
   if (players.some(peer => peer.traffic.snapshot.engine.preplay.pending?.kind === 'bloedeln'
       || peer.traffic.snapshot.engine.preplay.bloedeln_status === 'accepted')) {
     const callers = players.filter(peer => peer.traffic.snapshot.engine.actions.includes('inspection_ack'));
     expect(callers).toHaveLength(2);
-    for (const viewport of [{ width: 393, height: 852 }, { width: 320, height: 568 }]) {
+    for (const viewport of viewports) {
       for (const peer of players) await peer.page.setViewportSize(viewport);
       for (const caller of callers) {
+        await settledPrimaryTarget(caller.page, viewport, 'inspection_ack');
         await expectReachable(caller.page, '[data-watten-action=inspection_ack]');
+        const before = primaryTargets.get(`${caller.user.id}:${viewport.width}`);
+        await expect.poll(async () => {
+          const current = await caller.page.locator('[data-watten-action=inspection_ack]').boundingBox();
+          return ['x', 'y', 'width', 'height'].every(key => Math.abs(before[key] - current[key]) <= 1);
+        }, { message: 'showing and ACK keep one primary touch target through inspection' }).toBe(true);
         await expect.poll(() => caller.page.evaluate(() => {
           const rect = node => node.getBoundingClientRect();
           const shown = node => rect(node).width > 0 && rect(node).height > 0 && getComputedStyle(node).visibility !== 'hidden';
           const overlap = (a, b) => Math.min(a.right, b.right) - Math.max(a.left, b.left) > 2
             && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 2;
-          const obstacles = [...document.querySelectorAll('.wt-seat-badge, .wt-seat-name, .wt-seat-call-role, '
+          const obstacles = [...document.querySelectorAll('.wt-avatar, .wt-seat-name, .wt-seat-call-role, .wt-seat-public-title, '
             + '.wt-backs > i:not([hidden]), .wt-stock, [data-wt-panel]')].filter(shown);
           const faces = [...document.querySelectorAll('[data-watten-inspection] .wt-card')];
           const captions = [...document.querySelectorAll('[data-watten-inspection] figcaption')];
@@ -52,6 +107,37 @@ async function inspect(players) {
             if (width < 51.9) failures.push(`face ${index} too small: ${width}px`);
             if (box.left < -1 || box.top < -1 || box.right > innerWidth + 1 || box.bottom > innerHeight + 1) failures.push(`face ${index} outside viewport`);
           }
+          const pointerValues = faces.map(face => face.style.pointerEvents);
+          faces.forEach(face => { face.style.pointerEvents = 'auto'; });
+          try {
+            for (const [index, face] of faces.entries()) {
+              const box = rect(face), style = getComputedStyle(face), angle = (Number.parseFloat(style.rotate) || 0) * Math.PI / 180;
+              const width = Number.parseFloat(style.width), height = Number.parseFloat(style.height);
+              const exposed = (x, y) => {
+                const a = (x - .5) * width, b = (y - .5) * height;
+                return face.contains(document.elementFromPoint(box.x + box.width / 2 + a * Math.cos(angle) - b * Math.sin(angle),
+                  box.y + box.height / 2 + a * Math.sin(angle) + b * Math.cos(angle)));
+              };
+              let visible = 0;
+              for (let x = 0; x < 8; x++) for (let y = 0; y < 10; y++) if (exposed((x + .5) / 8, (y + .5) / 10)) visible++;
+              if (visible < 20) failures.push(`face ${index} exposes less than a quarter of its printed area`);
+              if (![[.1, .08], [.9, .08], [.1, .92], [.9, .92]].some(([x, y]) => exposed(x, y))) failures.push(`face ${index} has no exposed rank/suit corner`);
+            }
+          } finally { faces.forEach((face, index) => { face.style.pointerEvents = pointerValues[index]; }); }
+          const felt = rect(document.querySelector('[data-wt-felt]'));
+          const origins = faces.map(face => {
+            const seat = document.querySelector(`[data-wt-seat="${face.closest('[data-wt-inspection-seat]').dataset.wtInspectionSeat}"]`);
+            const box = rect(seat.querySelector('.wt-avatar'));
+            return { x: seat.classList.contains('wt-seat--bottom') ? felt.x + felt.width / 2 : box.x + box.width / 2,
+              y: box.y + box.height / 2 };
+          });
+          const centres = faces.map(face => { const box = rect(face); return { x: box.x + box.width / 2, y: box.y + box.height / 2 }; });
+          const delta = { x: origins[1].x - origins[0].x, y: origins[1].y - origins[0].y };
+          const length = Math.hypot(delta.x, delta.y), unit = { x: delta.x / length, y: delta.y / length };
+          const midpoint = { x: (centres[0].x + centres[1].x) / 2, y: (centres[0].y + centres[1].y) / 2 };
+          const along = ((midpoint.x - origins[0].x) * unit.x + (midpoint.y - origins[0].y) * unit.y) / length;
+          const offset = Math.abs((midpoint.x - origins[0].x) * -unit.y + (midpoint.y - origins[0].y) * unit.x);
+          if (along < .34 || along > .66 || offset > 65) failures.push('inspection left its two announcers source sector');
           for (const [index, part] of [...faces, ...captions].entries()) {
             const box = rect(part);
             for (const obstacle of obstacles) if (overlap(box, rect(obstacle))) {
@@ -65,6 +151,7 @@ async function inspect(players) {
           if (!ack.contains(document.elementFromPoint(ackBox.x + ackBox.width / 2, ackBox.y + ackBox.height / 2))) failures.push('ACK is covered');
           return [...new Set(failures)];
         }), { message: `${viewport.width}px inspection keeps readable faces, role labels and ACK clear of the real Blödeln panel and painted hands` }).toEqual([]);
+        await caller.page.screenshot({ path: test.info().outputPath(`inspection-${caller.traffic.snapshot.viewer.seat}-${viewport.width}x${viewport.height}.png`) });
       }
       for (const peer of players) for (const kind of ['preplay_accept', 'preplay_decline']) {
         if (await peer.page.locator(`[data-watten-action=${kind}]`).count()) await expectReachable(peer.page, `[data-watten-action=${kind}]`);
@@ -77,6 +164,8 @@ async function inspect(players) {
 
 async function request(players, nonCallers, language, observers = []) {
   const requester = nonCallers[0];
+  const primaryBefore = new Map(await Promise.all(nonCallers.map(async peer => [peer.user.id,
+    await peer.page.locator('[data-watten-action=request_bloedeln]').boundingBox()])));
   await requester.page.locator('[data-watten-action=request_bloedeln]').click();
   const all = [...players, ...observers];
   await expect.poll(() => all.every(peer => peer.traffic.snapshot?.engine?.preplay.pending?.kind === 'bloedeln')).toBe(true);
@@ -84,6 +173,11 @@ async function request(players, nonCallers, language, observers = []) {
   const responder = nonCallers.find(peer => peer.traffic.snapshot.viewer.seat === pending.responder);
   expect(pending.requester).toBe(requester.traffic.snapshot.viewer.seat);
   expect(responder).toBeTruthy();
+  await expect.poll(async () => {
+    const after = await responder.page.locator('[data-watten-action=preplay_accept]').boundingBox();
+    const before = primaryBefore.get(responder.user.id);
+    return ['x', 'y', 'width', 'height'].every(key => Math.abs(before[key] - after[key]) <= 1);
+  }, { message: 'the Blödeln request and its acceptance share one stable right-hand target' }).toBe(true);
   for (const peer of all) {
     const question = peer.page.locator('[data-watten-preplay-pending=bloedeln]');
     await expect(question).toBeVisible();
@@ -91,8 +185,11 @@ async function request(players, nonCallers, language, observers = []) {
       await expect(question.locator('h3')).toContainText(language === 'de' ? 'Du fragst' : 'You ask');
       await expect(question.locator('h3')).toContainText(responder.user.username);
     } else {
-      await expect(question.locator('h3')).toContainText(requester.user.username);
-      if (peer !== responder) await expect(question.locator('h3')).toContainText(responder.user.username);
+      await expect(question).toContainText(requester.user.username);
+      if (peer !== responder) {
+        await expect(question).toContainText(responder.user.username);
+        await expect(question.locator('h3, button')).toHaveCount(0);
+      }
     }
     const explanation = question.locator('p').filter({ hasText: language === 'de'
       ? 'ursprüngliche unterste Karte' : 'original bottom cards' });
@@ -240,3 +337,54 @@ for (const language of ['de', 'en']) {
     } finally { await Promise.allSettled([...players, spectator].filter(Boolean).map(peer => peer.context.close())); }
   });
 }
+
+test('landscape cutouts: showing and inspection actions remain inside the safe table', async ({ browser, browserName, baseURL }) => {
+  test.skip(browserName !== 'chromium', 'Safe-area override uses the Chromium protocol; geometry also runs in WebKit.');
+  const players = [], sessions = [];
+  const viewport = { width: 852, height: 393 };
+  const wrapped = { newContext: options => browser.newContext({ ...options, viewport, serviceWorkers: 'block' }) };
+  const setInsets = async insets => {
+    for (const session of sessions) await session.send('Emulation.setSafeAreaInsetsOverride', { insets: { top: 0, bottom: 21, ...insets } });
+  };
+  const expectSafe = async kind => {
+    for (const peer of players) {
+      const control = peer.page.locator(`[data-watten-action=${kind}]`);
+      if (!await control.count()) continue;
+      await expectReachable(peer.page, `[data-watten-action=${kind}]`);
+      await expect.poll(() => control.evaluate(node => {
+        const button = node.getBoundingClientRect(), felt = document.querySelector('[data-wt-felt]').getBoundingClientRect();
+        return button.left >= felt.left - 1 && button.right <= felt.right + 1
+          && button.top >= felt.top - 1 && button.bottom <= felt.bottom + 1;
+      }), { message: `${kind} stays clear of the device cutout on either side` }).toBe(true);
+    }
+  };
+  try {
+    for (let seat = 0; seat < 4; seat++) {
+      const peer = await player(wrapped, baseURL);
+      players.push(peer);
+      sessions.push(await peer.context.newCDPSession(peer.page));
+    }
+    await setInsets({ left: 0, right: 44 });
+    await create(players, { count: 4, target: 11 });
+    await expectSafe('show_ready');
+    const nonCallers = players.filter(peer => peer.traffic.snapshot.engine.actions.includes('request_bloedeln'));
+    for (const peer of nonCallers) {
+      await expectReachable(peer.page, '[data-watten-action=request_bloedeln]');
+      const clearFooter = await peer.page.locator('[data-wt-preplay]').evaluate(node => {
+        const dock = node.getBoundingClientRect(), footer = document.querySelector('.wt-topbar-actions').getBoundingClientRect();
+        return dock.bottom <= footer.top;
+      });
+      expect(clearFooter, 'Blödeln choices leave the safe-area footer clear').toBe(true);
+    }
+    await request(players, nonCallers, 'de');
+    for (const kind of ['preplay_accept', 'preplay_decline']) {
+      const responder = players.find(peer => peer.traffic.snapshot.engine.actions.includes(kind));
+      await expectReachable(responder.page, `[data-watten-action=${kind}]`);
+    }
+    await action(players, 'show_ready'); await action(players, 'show_ready');
+    await expectSafe('inspection_ack');
+    await setInsets({ left: 44, right: 0 });
+    await expectSafe('inspection_ack');
+    await expectClean(players);
+  } finally { await Promise.allSettled(players.map(peer => peer.context.close())); }
+});

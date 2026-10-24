@@ -922,25 +922,23 @@ def test_logout_and_new_account_login_blocks_outbound_secrets_before_old_socket_
     assert next(item for item in game["_players"] if item["id"] == victim.player_id)["ws"] is None
 
 
-def test_only_native_locked_waiting_deadline_expires_and_running_pause_has_no_timeout_or_abandonment(server, monkeypatch):
+def test_native_locked_waiting_deadline_expires_without_abandonment(server, monkeypatch):
     from app import watten_runtime
     from app.game_state import check_timeout_and_abort
     from app.models import AbandonedGame
-    from app.watten_websocket import sweep_watten_waiting_games
+    from app.watten_websocket import sweep_watten_games
 
     waiting_owner = account("RuntimeWaitingDeadline")
     waiting_id = create_game(server, waiting_owner)
-    running_id, _owners, sessions = local_started(server, count_players=2)
-    leave = room_command(running_id, "watten_leave", "paused-deadline")
-    asyncio.run(_handle_locked(sessions[0], leave["action"], leave))
-    frozen = games[running_id]["_watten"]
+    waiting = games[waiting_id]
     future = utcnow() + timedelta(days=30)
     monkeypatch.setattr(watten_runtime, "utcnow", lambda: future)
     assert not check_timeout_and_abort(games[waiting_id], now=future)
     assert games[waiting_id]["_watten"].room.status == "waiting"
-    assert asyncio.run(sweep_watten_waiting_games()) == 1
-    assert games[waiting_id]["_watten"].room.status == "closed"
-    assert games[running_id]["_watten"] == frozen
+    assert asyncio.run(sweep_watten_games()) == 1
+    assert waiting["_watten"].room.status == "closed"
+    assert games[waiting_id] is waiting
+    assert load_active_games()[waiting_id]["_watten"].room.status == "closed"
     with session_scope() as db:
         assert db.scalar(select(func.count(AbandonedGame.id))) == 0
         assert db.scalar(select(func.count(CompletedGame.id))) == 0

@@ -22,20 +22,6 @@ html[data-watten-active="true"] .wt-inspection .wt-reveal-card figcaption {
 html[data-watten-active="true"] .wt-inspection > button {
   position: absolute; translate: -50% 0; min-height: 44px; pointer-events: auto; margin: 0;
 }
-/* While inspecting, the private hand is hidden. Use that free lower wood for
-   the ACK and the real Blödeln state instead of squeezing the revealed faces. */
-@media (orientation: portrait) and (max-width: 760px) {
-  html[data-watten-active="true"] .wt-table[data-phase="inspection"]:has([data-watten-action="inspection_ack"]):has(.wt-preplay-pending, .wt-bloedeln-status) > .wt-end-sheet {
-    bottom: calc(max(12px, env(safe-area-inset-bottom, 0px)) + var(--wt-inspection-ack-height, 44px) + 12px);
-  }
-  html[data-watten-active="true"] .wt-table[data-phase="inspection"]:has(.wt-preplay-pending, .wt-bloedeln-status) .wt-inspection > button {
-    bottom: max(12px, env(safe-area-inset-bottom, 0px));
-  }
-  html[data-watten-active="true"] .wt-table[data-phase="inspection"]:has([data-watten-action="inspection_ack"]) .wt-preplay-pending > .wt-note:not([role="status"]) { display: none; }
-}
-@media (orientation: landscape) and (max-height: 519px) {
-  html[data-watten-active="true"] .wt-inspection .wt-reveal-card .wt-card { width: clamp(52px, 16dvh, 78px); }
-}
 @media (prefers-reduced-motion: reduce) {
   html[data-watten-active="true"] .wt-reveal .wt-card { animation: none; transition: none; }
 }

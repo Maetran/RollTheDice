@@ -43,6 +43,11 @@
   html[data-game="watten"][data-watten-active="true"] body .wt-table[data-count="4"][data-phase][data-viewer]:not([data-phase="match_complete"][data-round-stage="ready"]) .wt-felt .wt-seat.wt-seat--bottom {
     left: 12px; bottom: calc(var(--wt-hand-w) * 1.8 + 20px); width: 96px;
   }
+  /* The outer own card lifts into a fan; its upper corner needs eight more
+     pixels below the full badge frame during play. */
+  html[data-game="watten"][data-watten-active="true"] body .wt-table[data-count="4"][data-phase="play"][data-viewer]:not([data-phase="match_complete"][data-round-stage="ready"]) .wt-felt .wt-seat.wt-seat--bottom.is-own {
+    bottom: calc(var(--wt-hand-w) * 1.8 + 28px);
+  }
   html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"] .wt-seat--bottom .wt-seat-badge {
     position: relative; display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 3px; width: 96px; max-width: 96px;
   }

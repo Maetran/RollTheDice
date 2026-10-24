@@ -4,6 +4,7 @@ import logging
 import secrets
 
 from fastapi import WebSocketDisconnect
+from sqlalchemy import delete, select
 
 from .auth import resolve_session, websocket_origin_allowed
 from .database import session_scope
@@ -15,10 +16,13 @@ from .watten_runtime import (
     WATTEN_ACTIONS,
     admit_account,
     apply_runtime_action,
+    expire_inactive_game,
     expire_waiting_game,
     game_lock,
     persist_watten_game,
+    restore_watten_json,
     resume_account,
+    serialize_watten_game,
     snapshot_watten,
 )
 from .watten_social import SOCIAL_ACTIONS, handle_watten_social
@@ -26,19 +30,62 @@ from .watten_social import SOCIAL_ACTIONS, handle_watten_social
 logger = logging.getLogger(__name__)
 
 
-async def sweep_watten_waiting_games() -> int:
+async def expire_watten_game(game: dict) -> bool:
+    """Retire an inactive started match under its native table lock."""
+    expire_inactive_game(game)
+    runtime = game["_watten"]
+    if runtime.abort_reason is None:
+        return False
+    from .game_state import games
+    from .hausdepp_voice import refresh_voice_game
+    from .main import _close_terminal_connections
+    from .models import ActiveGame
+    from .watten_cpu_runtime import watch_game
+
+    # Stop sleeping CPU/review jobs before the first terminal frame. The
+    # durable terminal marker also blocks them after a process restart.
+    watch_game(game)
+    await refresh_voice_game(game)
+    if not game.get("_watten_timeout_published"):
+        await broadcast_watten(game)
+        game["_watten_timeout_published"] = True
+    await _close_terminal_connections(game)
+    # Let storage errors propagate: keep the terminal checkpoint and registry
+    # reference for a retry rather than hiding a failed durable retirement.
+    with session_scope() as db:
+        row = db.scalar(select(ActiveGame).where(ActiveGame.game_id == game["_id"]).with_for_update())
+        if row is not None:
+            if serialize_watten_game(restore_watten_json(row.state_json, refresh_titles=False)) != serialize_watten_game(game):
+                raise ValueError("watten_stale_checkpoint")
+            changed = db.execute(delete(ActiveGame).where(
+                ActiveGame.game_id == game["_id"], ActiveGame.state_json == row.state_json))
+            if changed.rowcount != 1:
+                raise ValueError("watten_stale_checkpoint")
+    if games.get(game["_id"]) is game:
+        games.pop(game["_id"])
+    return True
+
+
+async def sweep_watten_games() -> int:
     from .game_state import games
 
     expired = 0
     for game in list(games.values()):
         if game.get("_game_type") == "watten":
-            async with game_lock(game):
-                if expire_waiting_game(game):
-                    from .hausdepp_voice import refresh_voice_game
+            try:
+                async with game_lock(game):
+                    if expire_waiting_game(game):
+                        from .hausdepp_voice import refresh_voice_game
 
-                    await refresh_voice_game(game)
-                    expired += 1
-                    await broadcast_watten(game)
+                        await refresh_voice_game(game)
+                        await broadcast_watten(game)
+                        expired += 1
+                    if await expire_watten_game(game):
+                        expired += 1
+            except Exception:
+                # One retained checkpoint with a transient storage failure
+                # must not prevent every later table from reaching its deadline.
+                logger.exception("Could not expire Watten game %s", game.get("_id"))
     return expired
 
 
@@ -177,6 +224,8 @@ async def _handle_locked(session, action: str, data: dict) -> bool:
     session.auth_identity = identity
     if action not in SOCIAL_ACTIONS:
         expire_waiting_game(game)
+        if await expire_watten_game(game):
+            return True
     # A replaced socket cannot reclaim its seat with a queued join/rejoin.
     # Only an as-yet unbound new connection may establish account ownership.
     if session.player_id is not None or session.spectator_id is not None:

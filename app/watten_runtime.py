@@ -108,6 +108,7 @@ class WattenRuntime:
     cpu_memories: tuple[CpuMemory, ...] = ()
     bid_counters: tuple[PlayerBids, ...] | None = None
     round_review_started_at: str | None = None
+    abort_reason: str | None = None
 
     def __post_init__(self):
         if not isinstance(self.room, WattenRoom) or type(self.names) is not tuple:
@@ -125,6 +126,10 @@ class WattenRuntime:
             if (self.engine.recipe != _engine_recipe(roster) or self.room.status != (
                     "finished" if self.engine.phase == "match_complete" else "started")):
                 raise ValueError("watten_runtime_engine_mismatch")
+        if self.abort_reason is not None and (
+                self.abort_reason != "inactivity_timeout" or self.engine is None
+                or self.engine.phase == "match_complete" or self.absent):
+            raise ValueError("watten_invalid_abort")
         validate_bid_counters(self.bid_counters, self.engine)
         if self.round_review_started_at is not None and (
                 type(self.round_review_started_at) is not str
@@ -278,9 +283,11 @@ def _sync(game: dict, runtime: WattenRuntime, *, public: bool) -> None:
     elif not terminal and runtime.round_review_started_at is not None:
         runtime = replace(runtime, round_review_started_at=None)
     game["_watten"] = runtime
-    game["_started"] = runtime.engine is not None
-    game["_finished"] = bool(runtime.engine and runtime.engine.phase == "match_complete")
-    game["_aborted"] = runtime.room.status == "closed"
+    game["_started"] = runtime.engine is not None and runtime.abort_reason is None
+    game["_finished"] = bool(runtime.abort_reason or runtime.engine and runtime.engine.phase == "match_complete")
+    game["_aborted"] = runtime.room.status == "closed" or runtime.abort_reason is not None
+    if runtime.abort_reason is not None:
+        game["_abort_reason"] = runtime.abort_reason
     if public:
         now = utcnow()
         game["_updated_at"] = now.isoformat()
@@ -293,6 +300,8 @@ def _sync(game: dict, runtime: WattenRuntime, *, public: bool) -> None:
 
 def admit_account(game: dict, identity, revision: int, protection: object) -> tuple[dict, str]:
     candidate, runtime = copy_game(game), game["_watten"]
+    if runtime.abort_reason is not None:
+        raise ValueError("watten_room_closed")
     existing = next((member for member in runtime.room.members if member.account_id == identity.user_id), None)
     if existing is None and not account_protection_verified(game, identity.user_id, protection):
         raise ValueError("watten_wrong_passphrase")
@@ -316,6 +325,8 @@ def admit_account(game: dict, identity, revision: int, protection: object) -> tu
 def resume_account(game: dict, account: int, player: str, *, lifecycle_revision: object) -> None:
     """A fresh authenticated deliberate return restores only its own presence."""
     runtime = game["_watten"]
+    if runtime.abort_reason is not None:
+        raise ValueError("watten_room_closed")
     _require_lifecycle(runtime, {"lifecycle_revision": lifecycle_revision})
     if type(account) is not int or not any(item.account_id == account and item.participant_id == player and item.seat is not None for item in runtime.room.members):
         raise ValueError("watten_actor_not_bound")
@@ -332,7 +343,7 @@ def _resume_forced_openings(runtime: WattenRuntime) -> WattenRuntime:
     Recovery and an explicit return can encounter a checkpoint written by a
     client that still required the obligated player to click their bottom.
     """
-    if runtime.engine is None or runtime.absent:
+    if runtime.engine is None or runtime.absent or runtime.abort_reason is not None:
         return runtime
     engine = play_forced_openings(runtime.engine)
     if engine is runtime.engine:
@@ -368,6 +379,8 @@ def apply_runtime_action(game: dict, account: int, player: str, data: dict, *, e
     No socket, DB or public notification happens before the caller commits it.
     """
     runtime = game["_watten"]
+    if runtime.abort_reason is not None:
+        raise ValueError("watten_room_closed")
     if type(account) is not int or type(player) is not str:
         raise ValueError("watten_actor_not_bound")
     member = next((item for item in runtime.room.members if item.account_id == account and item.participant_id == player), None)
@@ -493,6 +506,8 @@ def _cpu_names(room: WattenRoom, names: dict[str, str]) -> dict[str, str]:
 
 def _apply_engine_command(game: dict, actor: EngineActor, command: EngineCommand) -> tuple[dict, dict, bool, set[str] | None]:
     runtime = game["_watten"]
+    if runtime.abort_reason is not None:
+        raise ValueError("watten_room_closed")
     candidate = copy_game(game)
     request = runtime.engine.preplay_request
     replacement = _redraw_callers(runtime.engine) if (
@@ -536,7 +551,7 @@ def snapshot_watten(game: dict, viewer_id: str | None = None, *, viewer_account_
     from .watten_tournament import public_score_history, public_series
 
     runtime = game["_watten"]
-    room, engine = runtime.room, runtime.engine
+    room, engine = runtime.room, None if runtime.abort_reason is not None else runtime.engine
     names = dict(runtime.names)
     member = next((item for item in room.members if item.participant_id == viewer_id), None)
     engine_view = None
@@ -558,7 +573,8 @@ def snapshot_watten(game: dict, viewer_id: str | None = None, *, viewer_account_
                       "is_cpu": any(cpu.seat == seat for cpu in room.cpus), "team": seat % 2 if room.recipe.player_count == 4 else None})
     return {"game_type": "watten", "id": game["_id"], "name": game["_name"], "started": game["_started"],
             "finished": game["_finished"], "aborted": game["_aborted"],
-            "room": {"revision": room.revision, "status": room.status, "recipe": recipe_to_payload(room.recipe),
+            **({"abort_reason": runtime.abort_reason} if runtime.abort_reason else {}),
+            "room": {"revision": room.revision, "status": "closed" if runtime.abort_reason else room.status, "recipe": recipe_to_payload(room.recipe),
                      "series": public_series(room),
                      "required_seat": room.series.seat_for_account(account) if (
                          room.series is not None and room.series.roster_locked and type(account) is int) else None,
@@ -573,7 +589,7 @@ def snapshot_watten(game: dict, viewer_id: str | None = None, *, viewer_account_
                      "wait_expires_at": room.wait_expires_at.isoformat() if room.status == "waiting" else None},
             "viewer": {"participant_id": member.participant_id, "seat": member.seat} if member else None,
             "engine": engine_view,
-            "round_review": review_projection(game),
+            "round_review": None if runtime.abort_reason else review_projection(game),
             "score_history": public_score_history(engine),
             "lifecycle_revision": runtime.lifecycle_revision, "paused": bool(runtime.absent),
             "awaited_participant_ids": list(runtime.absent), "can_resume": bool(member and member.participant_id in runtime.absent),
@@ -581,7 +597,7 @@ def snapshot_watten(game: dict, viewer_id: str | None = None, *, viewer_account_
                                      "kind": item.kind, "seat": item.seat, "value": item.value}
                                     for item in runtime.deliveries if member and item.participant_id == member.participant_id],
             "capabilities": {"cpu_autoplay": _cpu_capability()}, "result_persisted": game["_completion_persisted"],
-            "table_surprise_offer": surprise_offer(game, viewer_id)}
+            "table_surprise_offer": {"deal_id": None, "effect": None} if runtime.abort_reason else surprise_offer(game, viewer_id)}
 
 
 def lobby_entry(game: dict, account: int) -> dict:
@@ -611,7 +627,8 @@ def serialize_watten_game(game: dict) -> dict:
             "_updated_at": game["_updated_at"], "_last_activity": game["_last_activity"].isoformat(),
             "_passphrase": game["_passphrase"], "_completion_persisted": game["_completion_persisted"],
             "_watten_result": game["_watten_result"],
-            "_watten": {"schema_version": 4, "room": room_to_payload(runtime.room),
+            "_watten": {"schema_version": 5 if runtime.abort_reason else 4, "room": room_to_payload(runtime.room),
+                        **({"abort_reason": runtime.abort_reason} if runtime.abort_reason else {}),
                         "engine": storage_payload(runtime.engine) if runtime.engine else None,
                         "names": [list(item) for item in runtime.names],
                         "absent": list(runtime.absent), "lifecycle_revision": runtime.lifecycle_revision,
@@ -633,7 +650,7 @@ def restore_watten_game(raw: dict) -> dict:
         raise ValueError("watten_invalid_storage")
     data = raw["_watten"]
     version = data.get("schema_version") if type(data) is dict else None
-    if type(version) is not int or version not in {1, 2, 3, 4}:
+    if type(version) is not int or version not in {1, 2, 3, 4, 5}:
         raise ValueError("watten_invalid_storage")
     fields = {"schema_version", "room", "engine", "names", "deliveries", "acks", "absent", "lifecycle_revision"}
     if version >= 2:
@@ -642,6 +659,8 @@ def restore_watten_game(raw: dict) -> dict:
         fields.add("bid_counters")
     if version >= 4:
         fields.add("round_review_started_at")
+    if version >= 5:
+        fields.add("abort_reason")
     data = require_fields(data, frozenset(fields), ValueError, "watten_storage")
     if any(type(data[key]) is not list for key in ("names", "deliveries", "acks", "absent")):
         raise ValueError("watten_invalid_storage")
@@ -658,7 +677,10 @@ def restore_watten_game(raw: dict) -> dict:
     acks = tuple(RuntimeAck(**require_fields(item, frozenset({"account_id", "command_id", "digest", "room_revision", "deal_id", "opportunity"}), ValueError, "watten_ack")) for item in data["acks"])
     runtime = WattenRuntime(room, engine, tuple(tuple(item) if type(item) is list else item for item in data["names"]), deliveries, acks,
                             tuple(data["absent"]), data["lifecycle_revision"], memories, bid_counters,
-                            data["round_review_started_at"] if version >= 4 else None)
+                            data["round_review_started_at"] if version >= 4 else None,
+                            data["abort_reason"] if version >= 5 else None)
+    if version >= 5 and runtime.abort_reason is None:
+        raise ValueError("watten_invalid_abort")
     from .watten_cpu_runtime import validate_stored_memories
 
     validate_stored_memories(runtime, allow_empty_waiting=version == 1)
@@ -687,9 +709,9 @@ def restore_watten_game(raw: dict) -> dict:
     game["_players"] = [{"id": member.participant_id, "name": dict(runtime.names)[member.participant_id], "user_id": member.account_id, "ws": None}
                         for member in room.members]
     _sync(game, runtime, public=False)
-    if game["_completion_persisted"] and not game["_finished"]:
+    if game["_completion_persisted"] and (not game["_finished"] or game["_aborted"]):
         raise ValueError("watten_invalid_storage")
-    if (bool(game["_started_at"]) != game["_started"] or bool(game["_finished_at"]) != game["_finished"]):
+    if (bool(game["_started_at"]) != (runtime.engine is not None) or bool(game["_finished_at"]) != game["_finished"]):
         raise ValueError("watten_invalid_storage")
     if game["_completion_persisted"]:
         from .watten_results import result_payload
@@ -702,7 +724,7 @@ def restore_watten_game(raw: dict) -> dict:
 
 
 def _checkpoint_authority(raw: str, checkpoint: dict) -> None:
-    """A durable follow-up link is monotonic across every native writer."""
+    """Follow-up links and terminal aborts are monotonic across every writer."""
     prior = json.loads(raw)
     if type(prior) is not dict or prior.get("_game_type") != "watten":
         raise ValueError("watten_game_id_collision")
@@ -710,6 +732,8 @@ def _checkpoint_authority(raw: str, checkpoint: dict) -> None:
     room = native.get("room") if type(native) is dict else None
     if type(room) is not dict or "rematch_room_id" not in room:
         raise ValueError("watten_invalid_stored_checkpoint")
+    if native.get("abort_reason") is not None and native["abort_reason"] != checkpoint["_watten"].abort_reason:
+        raise ValueError("watten_stale_checkpoint")
     link = room["rematch_room_id"]
     if link is not None and (type(link) is not str or not link or checkpoint["_watten"].room.rematch_room_id != link):
         raise ValueError("watten_stale_checkpoint")
@@ -789,7 +813,7 @@ def persist_watten_game(game: dict, *, creating: bool = False,
                 raise ValueError("watten_stale_checkpoint")
         if commit_guard is not None:
             commit_guard(db, checkpoint)
-        if checkpoint["_finished"]:
+        if checkpoint["_finished"] and not checkpoint["_aborted"]:
             from .watten_completion import store_completion_progress
             from .watten_results import store_result_in_session
 
@@ -848,6 +872,38 @@ def expire_waiting_game(game: dict) -> bool:
     candidate = copy_game(game)
     _sync(candidate, replace(runtime, room=close_expired(runtime.room, revision=runtime.room.revision, now=utcnow())), public=True)
     persist_watten_game(candidate)
+    game.clear()
+    game.update(candidate)
+    return True
+
+
+def expire_inactive_game(game: dict) -> bool:
+    """Commit an unscored terminal checkpoint under the native table lock.
+
+    The existing activity clock advances for accepted public transitions,
+    including actual CPU play and an intentional return. Views, reconnects,
+    chat and private acknowledgements never renew this one-hour lifetime.
+    Keeping the engine only in the private checkpoint makes a failed terminal
+    publication/deletion recoverable without inventing a result or forfeit.
+    """
+    from .game_state import GAME_TIMEOUT
+
+    runtime = game["_watten"]
+    now = utcnow()
+    if (runtime.abort_reason is not None or runtime.engine is None
+            or runtime.engine.phase == "match_complete" or now - game["_last_activity"] < GAME_TIMEOUT):
+        return False
+    # A process-local clock must never retire a newer durable turn. Bind the
+    # abort to the actual source, including older supported checkpoint codecs.
+    with session_scope() as db:
+        source = db.scalar(select(ActiveGame.state_json).where(ActiveGame.game_id == game["_id"]))
+    if source is None or serialize_watten_game(restore_watten_json(source, refresh_titles=False)) != serialize_watten_game(game):
+        raise ValueError("watten_stale_checkpoint")
+    candidate = copy_game(game)
+    _sync(candidate, replace(runtime, abort_reason="inactivity_timeout", absent=(), deliveries=(),
+                             lifecycle_revision=runtime.lifecycle_revision + 1), public=False)
+    candidate["_finished_at"] = candidate["_updated_at"] = now.isoformat()
+    persist_watten_game(candidate, expected_source=source)
     game.clear()
     game.update(candidate)
     return True

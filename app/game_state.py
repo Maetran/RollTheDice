@@ -85,9 +85,9 @@ def check_timeout_and_abort(g, *, now: datetime | None = None) -> bool:
     - True, wenn das Spiel soeben als abgebrochen markiert wurde, sonst False.
     """
     if g.get("_game_type") == "watten":
-        # The native asynchronous coordinator applies waiting deadlines under
+        # The native asynchronous coordinator applies its deadlines under
         # the same table lock as socket mutations. Never race it from a sync
-        # HTTP sweep or invent a running forfeit/abandonment policy here.
+        # HTTP sweep. Its running/paused expiry also produces no forfeit.
         return False
     try:
         # ``now`` is an intentionally small test seam.  Production callers

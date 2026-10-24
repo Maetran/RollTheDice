@@ -101,7 +101,7 @@ def test_explicit_host_choice_previous_humans_only_and_acceptance_changes_no_gam
     assert get_detail(server, target, owners[1], check=1).status_code == 200
     detail = get_detail(server, target, owners[1]).json()
     assert detail["viewer"] is None and detail["engine"] is None
-    assert len(target["_watten"].room.members) == 1 and target["_watten"].room.members[0].seat is None
+    assert len(target["_watten"].room.members) == 1 and target["_watten"].room.members[0].seat == 0
     assert not target["_started"] and not target["_completion_persisted"] and checkpoints() == before
     with session_scope() as db:
         assert counts(db) == journal
@@ -173,7 +173,7 @@ def test_fixed_roster_http_and_websocket_access_needs_no_password_or_invitation_
         hello = socket.receive_json()
         socket.send_json({"action": "join_game", "revision": hello["room_revision"], "expected_account_id": owners[1][0].user_id})
         player = native.receive(socket, "player_id")["player_id"]
-        assert next(item for item in target["_watten"].room.members if item.participant_id == player).seat is None
+        assert next(item for item in target["_watten"].room.members if item.participant_id == player).seat == 1
     other = native.create_game(server, owners[0], password="another-target")
     assert get_detail(server, games[other], owners[1], check=1).status_code == 403
 
@@ -258,10 +258,7 @@ def test_foreign_capacity_cannot_replace_original_roster_and_pending_invite_expi
         admit_account(target, outsider[0], target["_watten"].room.revision, "private-target-only")
     candidate, _ = admit_account(target, owners[1][0], target["_watten"].room.revision, None)
     for seat, owner in enumerate(owners):
-        player = next(item.participant_id for item in candidate["_watten"].room.members if item.account_id == owner[0].user_id)
-        candidate, *_ = apply_runtime_action(candidate, owner[0].user_id, player,
-            {"action": "watten_take_seat", "command_id": f"fill-{seat}", "revision": candidate["_watten"].room.revision,
-             "lifecycle_revision": 0, "seat": seat, "team": None})
+        assert next(item for item in candidate["_watten"].room.members if item.account_id == owner[0].user_id).seat == seat
     candidate, *_ = apply_runtime_action(candidate, owners[0][0].user_id, "p1",
         {"action": "watten_start", "command_id": "filled-start", "revision": candidate["_watten"].room.revision, "lifecycle_revision": 0})
     persist_watten_game(candidate)
@@ -321,10 +318,7 @@ def test_invitation_access_ends_at_completion_but_original_roster_keeps_its_hist
         admit_account(target, outsider[0], target["_watten"].room.revision, None)
     candidate, _ = admit_account(target, owners[1][0], target["_watten"].room.revision, None)
     for seat, owner in enumerate(owners):
-        player = next(item.participant_id for item in candidate["_watten"].room.members if item.account_id == owner[0].user_id)
-        candidate, *_ = apply_runtime_action(candidate, owner[0].user_id, player,
-            {"action": "watten_take_seat", "command_id": f"manual-{seat}", "revision": candidate["_watten"].room.revision,
-             "lifecycle_revision": 0, "seat": seat, "team": None})
+        assert next(item for item in candidate["_watten"].room.members if item.account_id == owner[0].user_id).seat == seat
     candidate, *_ = apply_runtime_action(candidate, owners[0][0].user_id, "p1",
         {"action": "watten_start", "command_id": "manual-start", "revision": candidate["_watten"].room.revision, "lifecycle_revision": 0})
     persist_watten_game(candidate)

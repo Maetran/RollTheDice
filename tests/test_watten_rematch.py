@@ -66,7 +66,7 @@ def checkpoints():
 
 
 @pytest.mark.parametrize("players,cpus", ((2, ()), (3, (2,)), (4, (3,))))
-def test_real_host_follow_up_copies_canonical_recipe_without_moving_starting_or_revaluing(server, players, cpus, monkeypatch):
+def test_real_host_follow_up_restores_fixed_seat_without_joining_others_starting_or_revaluing(server, players, cpus, monkeypatch):
     match, owners = source_for(players=players, cpus=cpus)
     source, recipe = match.game, match.runtime.room.recipe
     from app import watten_completion
@@ -82,7 +82,7 @@ def test_real_host_follow_up_copies_canonical_recipe_without_moving_starting_or_
     room = target["_watten"].room
     assert follow["created"] and room.rematch_of == source["_id"] and room.status == "waiting"
     assert room.recipe == replace(recipe, password_required=False)
-    assert room.members[0].account_id == owners[0][0].user_id and room.members[0].seat is None and len(room.members) == 1
+    assert room.members[0].account_id == owners[0][0].user_id and room.members[0].seat == 0 and len(room.members) == 1
     assert tuple(cpu.seat for cpu in room.cpus) == cpus and target["_watten"].engine is None
     assert not target["_started"] and not target["_completion_persisted"] and target["_watten_result"] is None
     assert source["_watten"].room.rematch_room_id == target["_id"]

@@ -66,7 +66,7 @@ for (const language of ["de", "en"]) {
       assert.match(html, new RegExp(`data-watten-bloedeln-status="${status}"`));
       assert.match(html, /Hansl &lt;&amp;>/);
       assert.match(html, /Toni/);
-      assert.ok(html.includes(language === "de" ? "blödeln." : "are playing Blödeln."));
+      assert.ok(html.includes(language === "de" ? "blödeln." : "Blödeln:"));
       assert.ok(!html.includes(language === "de" ? "Du und" : "You and"));
       assert.doesNotMatch(html, /<button|data-watten-preplay-pending/);
       engine.current_trick.cards.push({ seat: 0, card: "bells-7" });
