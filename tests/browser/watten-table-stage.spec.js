@@ -293,8 +293,14 @@ async function expectStage(item, count) {
       .toBeGreaterThanOrEqual(desktop ? 56 : 28);
   }
   for (const pile of await page.locator('.wt-taken[data-filled="true"] .wt-taken-packet').all()) {
-    expect(await pile.evaluate(node => Number.parseFloat(getComputedStyle(node).width)))
-      .toBeGreaterThanOrEqual(desktop ? 44 : 26);
+    // Non-interactive top packets use the stock-to-fan corridor on four-seat
+    // tall tables. Other packets and every interactive control keep their limits.
+    const compactTop = count === 4 && viewport.width >= 761 && viewport.height >= 701
+      && await pile.evaluate(node => Boolean(node.closest('.wt-seat--top'))
+        && getComputedStyle(node.closest('.wt-table')).getPropertyValue('--wt-play-ratio').trim() !== '');
+    const width = await pile.evaluate(node => Number.parseFloat(getComputedStyle(node).width));
+    expect(width).toBeGreaterThanOrEqual(compactTop ? 26 : desktop ? 44 : 26);
+    if (compactTop) expect(width).toBeLessThanOrEqual(40);
   }
   for (const control of await page.locator('[data-wt-panel] button, [data-wt-private] button, [data-wt-tools] button, [data-wt-stake] button').all()) {
     if (!await control.isVisible()) continue;
