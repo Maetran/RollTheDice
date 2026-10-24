@@ -111,8 +111,10 @@ export function showVoiceTableLeft({ userId, gameType, t, storage = storageFor()
   const tableKey = `rollthedice.voice.table.${gameType}.${userId}`;
   const table = read(storage, tableKey);
   write(storage, key, null);
-  // Header/back navigation also ends participation. The lobby retires intent;
-  // a reload of the same table never takes this path.
-  write(storage, tableKey, null);
-  if (previous === userId || table) toast(t("voiceTableLeft"), { duration: 6000 });
+  // Header/back navigation stops this page's transport, but does not release
+  // the server-side seat. Retain its listening choice for a return to the table.
+  if (previous === userId) {
+    write(storage, tableKey, null);
+    toast(t("voiceTableLeft"), { duration: 6000 });
+  } else if (table?.listening === true) toast(t("voiceEnded"), { duration: 6000 });
 }

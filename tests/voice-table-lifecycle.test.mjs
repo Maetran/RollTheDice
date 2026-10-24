@@ -100,6 +100,38 @@ test("table leave clears the override and delivers one account-scoped target-pag
   showVoiceTableLeft(options); assert.equal(notices.length, 1);
 });
 
+test("header/back to the lobby preserves manual off when returning to the same resumable table", async () => {
+  const f = setup({ defaultListening: true }); f.lifecycle.enter({ gameId: "first" }); f.emit({ available: true });
+  await f.controller.setAudio(false); f.controller.destroy();
+  const notices = [], options = { storage: f.store, userId: 7, gameType: "watten", t: key => key,
+    toast: message => notices.push(message) };
+  showVoiceTableLeft(options);
+  assert.deepEqual(notices, []);
+  const returned = setup({ defaultListening: true, storage: f.store });
+  returned.lifecycle.enter({ gameId: "first" }); returned.emit({ available: true });
+  assert.equal(returned.controller.snapshot().audio, false);
+  assert.equal(returned.calls.some(([action, enabled]) => action === "audio" && enabled), false);
+  // Only a confirmed leave retires this choice and allows the profile default
+  // to apply to a later fresh visit, including a direct target-page flash.
+  queueVoiceTableLeft({ storage: f.store, userId: 7, gameType: "watten" });
+  showVoiceTableLeft(options); showVoiceTableLeft(options);
+  assert.deepEqual(notices, ["voiceTableLeft"]);
+  assert.equal(f.store.values.size, 0);
+});
+
+test("lobby navigation with retained listening reports transport end without claiming a seat departure", () => {
+  const f = setup({ defaultListening: true }); f.lifecycle.enter({ gameId: "first" }); f.emit({ available: true });
+  f.controller.destroy();
+  const notices = [];
+  showVoiceTableLeft({ storage: f.store, userId: 7, gameType: "watten", t: key => key,
+    toast: message => notices.push(message) });
+  assert.deepEqual(notices, ["voiceEnded"]);
+  const returned = setup({ defaultListening: false, storage: f.store });
+  returned.lifecycle.enter({ gameId: "first" }); returned.emit({ available: true });
+  assert.equal(returned.controller.snapshot().audio, true);
+  assert.equal(returned.controller.snapshot().microphone, false);
+});
+
 test("unavailable or malformed storage never enables a microphone or bypasses the profile default", () => {
   const broken = { getItem() { throw Error("denied"); }, setItem() { throw Error("denied"); }, removeItem() { throw Error("denied"); } };
   const f = setup({ storage: broken }); f.lifecycle.enter({ gameId: "first" }); f.emit({ available: true });

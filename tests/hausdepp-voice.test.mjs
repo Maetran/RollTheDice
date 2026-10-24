@@ -575,6 +575,10 @@ test("missing, failed or slow getStats never changes voice participation or fabr
 
 test("authorized room rotation keeps listening, retires capture and requires fresh microphone activation", async () => {
   const app = setup(); app.setState(state([publication()]));
+  const notices = [];
+  const life = createVoiceTableLifecycle({ controller: app.controller, userId: 1, gameType: "hausdepp",
+    storage: null, notify: key => notices.push(key) });
+  life.enter({ gameId: "first" });
   await app.controller.connected(); await app.controller.setAudio(true); await app.controller.setMicrophone(true);
   const track = app.peers[0].transceivers[0].sender.track;
   app.setState(state([], { room_id: "other-room" }));
@@ -584,11 +588,12 @@ test("authorized room rotation keeps listening, retires capture and requires fre
   assert.equal(app.peers[0].connectionState, "closed");
   assert.equal(app.calls.filter(call => call.operation === "join").length, 2);
   assert.equal(app.captures.length, 1);
+  assert.deepEqual(notices, []);
   await app.controller.setMicrophone(true);
   const nextTrack = app.peers[1].transceivers[0].sender.track;
   app.lifecycle.dispatchEvent(new Event("pagehide"));
   assert.equal(nextTrack.stopped, true);
-  app.controller.destroy(); app.controller.destroy();
+  life.controller.destroy(); life.controller.destroy();
   await turn();
   assert.equal(app.intervals.size, 0); assert.equal(app.timeouts.size, 0);
 });
