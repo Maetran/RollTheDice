@@ -275,22 +275,6 @@ def _cpu_partner_feedback_pending(runtime, view: dict, cpu_ids: set[str]) -> boo
     return partner in cpu_ids and "partner_feedback" in _view(runtime, partner)["actions"]
 
 
-def _cpu_decider_bid_pending(game: dict, runtime, view: dict, cpu_ids: set[str]) -> bool:
-    """A blind CPU partner considers its own bid/card after its CPU knower."""
-    if (not view["profile"]["blind"] or view["phase"] != "play"
-            or "play_card" not in view["actions"]):
-        return False
-    own = view["seats"][view["viewer"]["seat"]]
-    decider = runtime.engine.parties.decider(own["party"])
-    if decider not in cpu_ids or decider == own["player_id"]:
-        return False
-    decision_view = _view(runtime, decider)
-    if "bid" not in decision_view["actions"]:
-        return False
-    evaluated = _BLOCKED.get((game["_id"], decider))
-    return evaluated is None or evaluated[0] is not game or evaluated[1] != _context(runtime, decision_view)
-
-
 def watch_game(game: dict) -> None:
     """Called on the ASGI loop under its table lock, or during startup recovery."""
     from .game_state import games
@@ -320,8 +304,7 @@ def watch_game(game: dict) -> None:
         cpu_ids = {cpu.participant_id for cpu in runtime.room.cpus}
         for cpu in runtime.room.cpus:
             view = _view(runtime, cpu.participant_id)
-            if (not _may_decide(view) or _cpu_partner_feedback_pending(runtime, view, cpu_ids)
-                    or _cpu_decider_bid_pending(game, runtime, view, cpu_ids)):
+            if not _may_decide(view) or _cpu_partner_feedback_pending(runtime, view, cpu_ids):
                 continue
             key = game["_id"], cpu.participant_id
             wanted.add(key)

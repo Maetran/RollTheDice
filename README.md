@@ -206,10 +206,11 @@ grösser und bleibt höchstens bis zum Abschluss des ersten Stichs sichtbar. Ein
 im Hochformat bei den eigenen Karten, im mobilen Querformat in der linken
 Leiste. Auf Desktop bleibt der eigene Fächer mittig;
 im Tablet-Querformat sitzt der Aktionsbereich darüber. Stichgewinne sind für die
-eigene Seite grün, für die andere rot markiert. Im blinden Vierer darf auch der
-blinde Partner am eigenen Kartenzug bieten. Der wissende Spieler, Geber oder
-Gebernachbar, darf zusätzlich auf dem Kartenzug seines Partners bieten. Über
-Halten, Gehen und Aufbieten als Antwort entscheidet weiterhin nur der Wissende.
+eigene Seite grün, für die andere rot markiert. Im blinden Vierer darf jeder
+Spieler ein eigenes Drei und spätere eigene Erhöhungen ausschliesslich am eigenen
+Kartenzug bieten; das gilt auch für den wissenden Spieler und seinen blinden Partner. Über
+Halten, Gehen und Aufbieten als Antwort entscheidet weiterhin nur der Wissende,
+auch ausserhalb seines eigenen Kartenzugs.
 Bei einem gegnerischen Gebot kann nur der blinde Partner ihm
 einmal privat sein Gefühl mitteilen; die Auswahl schliesst den Dialog. Der
 wissende Entscheider sendet kein Gegensignal. In offenen Spielen bleibt die
@@ -256,10 +257,10 @@ names; the larger “Thanks!” remains visible until the first trick is complet
 raising control sit beside your cards in portrait and in the left rail in mobile
 landscape. Your desktop hand stays centred;
 landscape tablets place the action area above it. Trick wins are green for your side
-and red for the other side. In blind four-player play, the blind partner may
-also bid on their own card turn. The informed teammate, the dealer or their
-neighbour, may additionally bid on their partner's turn. Only the informed
-player handles hold, fold and counterbid responses. When receiving an
+and red for the other side. In blind four-player play, every player may open
+three or initiate a later raise only on their own card turn, including the
+informed player and their blind partner. Only the informed player handles hold, fold and counterbid
+responses, including outside their own card turn. When receiving an
 opposing bid, only the blind partner may send them one private feeling signal;
 answering closes the prompt. The informed decision maker sends no signal back.
 Open games retain the mutual prompt.

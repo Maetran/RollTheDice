@@ -1,10 +1,10 @@
 {
-  "version": "4.1.7",
+  "version": "4.1.8",
   "bump": "patch",
   "date": "2026-10-24",
-  "previous_revision": "c0770705b95db83de5147556276cdaca88a13858",
+  "previous_revision": "28d13393e794c70a4ff8c9e81655109a31f29bf6",
   "summary": {
-    "de": "ZDWA und Zilch: Nach einem Gerätewechsel steuert nur das aktuelle Gerät die Partie.",
-    "en": "ZDWA and Zilch: After switching devices, only the current device controls the game."
+    "de": "Watten: Eigene Gebote und spätere Erhöhungen nur im eigenen Kartenzug.",
+    "en": "Watten: Own bids and later raises are limited to your own card turn."
   }
 }

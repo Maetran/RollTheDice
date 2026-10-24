@@ -86,43 +86,54 @@ def test_no_off_turn_or_terminal_offer(progress, error):
 
 @pytest.mark.parametrize("dealer", tuple("ABCD"))
 @pytest.mark.parametrize("reverse", (False, True))
-def test_blind_current_player_and_informed_partner_can_bid_but_only_knower_answers(dealer, reverse):
+def test_blind_only_current_player_opens_three_but_only_knower_answers(dealer, reverse):
     context = roles(4, dealer, reverse)
     for party, members in enumerate(context.parties):
         decider = context.decider(party)
         blind_partner = next(member for member in members if member != decider)
         for card_player in members:
             initial = BidState("blind-offer", context)
-            state = bid(initial, decider, turn(card_player, 0), gestrichen=frozenset(), allow_partner_decider=True)
+            state = bid(initial, card_player, turn(card_player, 0), gestrichen=frozenset())
             assert state.pending == Offer(party, 3)
             if card_player == blind_partner:
-                own_offer = bid(initial, blind_partner, turn(card_player, 0), gestrichen=frozenset(), allow_partner_decider=True)
-                assert own_offer.pending == Offer(party, 3)
+                with pytest.raises(WattenBiddingError, match="card_turn_required"):
+                    bid(initial, decider, turn(card_player, 0), gestrichen=frozenset())
                 opponent = context.parties[1 - party]
                 blind_opponent = next(member for member in opponent if member != context.decider(1 - party))
                 with pytest.raises(WattenBiddingError, match="designated_decider"):
-                    respond(own_offer, blind_opponent, "hold", turn(card_player))
-                assert respond(own_offer, context.decider(1 - party), "hold", turn(card_player)).accepted_stake == 3
+                    respond(state, blind_opponent, "hold", turn(card_player))
+                assert respond(state, context.decider(1 - party), "hold", turn(card_player)).accepted_stake == 3
             else:
                 with pytest.raises(WattenBiddingError, match="card_turn_required"):
-                    bid(initial, blind_partner, turn(card_player), gestrichen=frozenset(), allow_partner_decider=True)
+                    bid(initial, blind_partner, turn(card_player), gestrichen=frozenset())
         for card_player in context.parties[1 - party]:
             with pytest.raises(WattenBiddingError, match="card_turn_required"):
                 bid(BidState("blind-offer", context), decider, turn(card_player),
-                    gestrichen=frozenset(), allow_partner_decider=True)
+                    gestrichen=frozenset())
         with pytest.raises(WattenBiddingError, match="gestrichen_cannot_open"):
-            bid(BidState("blind-offer", context), decider, turn(blind_partner),
-                gestrichen=frozenset(members), allow_partner_decider=True)
+            bid(BidState("blind-offer", context), decider, turn(decider),
+                gestrichen=frozenset(members))
 
 
-def test_blind_later_raises_stay_with_same_deciders_on_partner_card_turns():
-    initial = BidState("blind-raises", roles())
-    three = bid(initial, "A", turn("C"), gestrichen=frozenset(), allow_partner_decider=True)
-    held = respond(three, "B", "hold", turn("C"))
-    four = bid(held, "B", turn("D", 3), gestrichen=frozenset(), allow_partner_decider=True)
-    held = respond(four, "A", "hold", turn("D", 3))
-    five = bid(held, "A", turn("C", 6), gestrichen=frozenset(), allow_partner_decider=True)
-    assert five.pending == Offer(0, 5) and five.accepted_stake == 4
+@pytest.mark.parametrize("dealer", tuple("ABCD"))
+def test_blind_later_raises_require_own_turn_for_knower_and_blind_partner(dealer):
+    context = roles(4, dealer)
+    first, responder = context.decider(0), context.decider(1)
+    three = bid(BidState("blind-raises", context), first, turn(first), gestrichen=frozenset())
+    held_three = respond(three, responder, "hold", turn(first))
+    for raiser in context.parties[1]:
+        partner = next(player for player in context.parties[1] if player != raiser)
+        with pytest.raises(WattenBiddingError, match="card_turn_required"):
+            bid(held_three, raiser, turn(partner, 3), gestrichen=frozenset())
+        four = bid(held_three, raiser, turn(raiser, 3), gestrichen=frozenset())
+        assert four.pending == Offer(1, 4) and four.accepted_stake == 3
+        held_four = respond(four, first, "hold", turn(raiser, 3))
+        for next_raiser in context.parties[0]:
+            other = next(player for player in context.parties[0] if player != next_raiser)
+            with pytest.raises(WattenBiddingError, match="card_turn_required"):
+                bid(held_four, next_raiser, turn(other, 6), gestrichen=frozenset())
+            five = bid(held_four, next_raiser, turn(next_raiser, 6), gestrichen=frozenset())
+            assert five.pending == Offer(0, 5) and five.accepted_stake == 4
 
 
 @pytest.mark.parametrize("count", (2, 3, 4))

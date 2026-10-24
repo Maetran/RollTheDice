@@ -23,6 +23,23 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 4.1.8 — 2026-10-24
+
+### WATTEN
+
+**Deutsch:** Eigene Eröffnungsgebote und spätere eigene Erhöhungen sind nur
+im eigenen Kartenzug möglich, auch beim blinden Vierer. Der zuständige
+Entscheider darf ein offenes gegnerisches Gebot weiterhin sofort halten,
+gehen oder aufbieten. CPUs, Bedienung und Regeln folgen derselben Vorgabe.
+Die öffentliche deutsche und englische Watten-Navigation wird jetzt in einem
+eigenen verbindlichen Browserpool geprüft.
+
+**English:** Opening bids and later unsolicited raises are limited to your
+own card turn, including blind four-player games. The designated decider can
+still immediately hold, fold or counter an open opposing bid. CPUs, controls
+and rules follow the same contract. Public German and English Watten navigation
+is now checked in its own mandatory browser pool.
+
 ## 4.1.7 — 2026-10-24
 
 ### ZDWA / ZILCH

@@ -436,13 +436,10 @@ def read_personal_view(view: object, *, player_id: str) -> SeatSnapshot:
     if bloedeln_pending and set(actions) & {"play_card", "bid"}:
         _fail()
     if "bid" in actions:
-        own_turn = card_turn == seat
-        partner_turn = (profile.blind and seat in inspectors and card_turn is not None
-                        and parties[card_turn] == parties[seat])
         comeback = retour is not None and retour["status"] == "active" and player_id in retour["members"]
         points = next(points for members, points in scores if player_id in members)
         if (phase != "play" or pending is not None or raw_bid["result"] is not None or preplay_pending is not None
-                or not (own_turn or partner_turn) or (points >= target - 2 and not comeback)):
+                or card_turn != seat or (points >= target - 2 and not comeback)):
             _fail()
     if pending is not None:
         decider = players[dealer] if parties[dealer] != pending[0] else players[(dealer + 1) % count]

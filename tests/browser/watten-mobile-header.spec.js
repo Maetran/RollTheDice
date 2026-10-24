@@ -65,11 +65,12 @@ for (const language of ['de', 'en']) {
   });
 }
 
-test('a blind non-caller can bid after two cards while the informed opponent answers', async ({ browser, baseURL }, info) => {
+for (const language of ['de', 'en']) {
+test(`${language}: own-turn bidding excludes the informed partner and preserves all designated responses`, async ({ browser, baseURL }, info) => {
   const mobile = { newContext: options => browser.newContext({ ...options, viewport: { width: 393, height: 852 }, serviceWorkers: 'block' }) };
   const players = [];
   try {
-    for (let seat = 0; seat < 4; seat++) players.push(await player(mobile, baseURL));
+    for (let seat = 0; seat < 4; seat++) players.push(await player(mobile, baseURL, language));
     await create(players, { count: 4, target: 11 });
     await action(players, 'show_ready'); await action(players, 'show_ready');
     await action(players, 'inspection_ack'); await action(players, 'inspection_ack');
@@ -80,23 +81,41 @@ test('a blind non-caller can bid after two cards while the informed opponent ans
     expect(engine.profile.blind).toBe(true);
     expect([engine.announcement_roles.strike, engine.announcement_roles.colour]).not.toContain(engine.viewer.seat);
     expect(engine.actions).toContain('bid');
+    const party = engine.seats[engine.viewer.seat].party;
+    const partner = players.find(peer => peer !== actor
+      && peer.traffic.snapshot.engine.seats[peer.traffic.snapshot.engine.viewer.seat].party === party);
+    const partnerEngine = partner.traffic.snapshot.engine;
+    expect([partnerEngine.announcement_roles.strike, partnerEngine.announcement_roles.colour]).toContain(partnerEngine.viewer.seat);
+    expect(partnerEngine.card_turn).toBe(engine.viewer.seat);
+    expect(partnerEngine.actions).not.toContain('bid');
+    await expect(partner.page.locator('[data-wt-stake] > [data-watten-action=bid]')).toHaveCount(0);
+    await expect(partner.page.locator('[data-wt-stake] > button')).toBeDisabled();
     const bid = actor.page.locator('[data-wt-stake] > [data-watten-action=bid]');
     await expect(bid).toBeEnabled();
-    await expect(bid.locator('.wt-stake-action')).toHaveText('Bieten ＋');
-    await expectCompactTableHead(actor.page, 'de');
+    await expect(bid.locator('.wt-stake-action')).toHaveText(language === 'en' ? 'Raise ＋' : 'Bieten ＋');
+    await expectCompactTableHead(actor.page, language);
     await expectReachable(actor.page, '[data-wt-stake] > [data-watten-action=bid]');
     const bounds = await bid.boundingBox();
     expect(bounds.width).toBeGreaterThanOrEqual(44);
     expect(bounds.height).toBeGreaterThanOrEqual(44);
-    await actor.page.screenshot({ path: info.outputPath('watten-blind-bid-after-two-cards.png') });
+    await actor.page.screenshot({ path: info.outputPath(`watten-own-turn-bid-${language}.png`) });
     await bid.click();
     await expect.poll(() => players.every(peer => peer.traffic.snapshot.engine.phase === 'bid_response')).toBe(true);
     const pending = actor.traffic.snapshot.engine.bid.pending;
     const decider = players.find(peer => peer.traffic.snapshot.viewer.participant_id === pending.decider);
     const response = decider.traffic.snapshot.engine;
     expect([response.announcement_roles.strike, response.announcement_roles.colour]).toContain(response.viewer.seat);
-    expect(response.actions).toContain('respond_hold');
-    for (const peer of players.filter(peer => peer !== decider)) expect(peer.traffic.snapshot.engine.actions).not.toContain('respond_hold');
+    expect(response.viewer.seat).not.toBe(response.card_turn);
+    expect(response.actions).toEqual(['respond_hold', 'respond_go', 'respond_counter']);
+    for (const value of ['hold', 'go', 'counter']) {
+      const selector = `[data-watten-bid] [data-kind=respond][data-value=${value}]`;
+      await expect(decider.page.locator(selector)).toBeEnabled();
+      await expectReachable(decider.page, selector);
+    }
+    for (const peer of players.filter(peer => peer !== decider)) {
+      expect(peer.traffic.snapshot.engine.actions.filter(kind => kind.startsWith('respond_'))).toEqual([]);
+    }
     for (const peer of players) expect(peer.traffic.errors).toEqual([]);
   } finally { await Promise.allSettled(players.map(peer => peer.context.close())); }
 });
+}

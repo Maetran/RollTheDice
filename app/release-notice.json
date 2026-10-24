@@ -1,24 +1,25 @@
 {
   "kind": "usability",
   "games": [
-    "zdwa",
-    "zilch"
+    "watten"
   ],
-  "summary_de": "ZDWA und Zilch: Nach einem Gerätewechsel steuert nur das aktuelle Gerät die Partie.",
-  "summary_en": "ZDWA and Zilch: After switching devices, only the current device controls the game.",
+  "summary_de": "Watten: Eigene Gebote und spätere Erhöhungen nur im eigenen Kartenzug.",
+  "summary_en": "Watten: Own bids and later raises are limited to your own card turn.",
   "player_notes": {
     "de": {
-      "title": "4.1.7: Sicher auf einem anderen Gerät weiterspielen",
+      "title": "4.1.8: Watten-Gebote im eigenen Zug",
       "changes": [
-        "Nach dem Gerätewechsel können verspätete Eingaben des vorigen Geräts deine Partie nicht mehr verändern.",
-        "Bereits angenommene Spielabschlüsse werden weiterhin zuverlässig angezeigt."
+        "Ein eigenes Drei und spätere eigene Erhöhungen kannst du nur in deinem Kartenzug ansagen – auch im blinden Vierer.",
+        "Auf ein offenes gegnerisches Gebot kann der zuständige Entscheider weiterhin sofort mit Halten, Gehen oder Aufbieten antworten.",
+        "Die CPUs halten dieselben Gebotsregeln ein."
       ]
     },
     "en": {
-      "title": "4.1.7: Resume safely on another device",
+      "title": "4.1.8: Watten bids on your own turn",
       "changes": [
-        "After switching devices, delayed input from the previous device can no longer change your game.",
-        "Already accepted game finishes continue to appear reliably."
+        "You can open with Three or make a later unsolicited raise only on your own card turn, including blind four-player games.",
+        "The designated decider can still immediately hold, fold or counter an open opposing bid.",
+        "CPUs follow the same bidding rules."
       ]
     }
   }

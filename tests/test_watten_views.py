@@ -171,7 +171,7 @@ def test_hidden_call_changes_leave_blind_cpu_spectator_and_personal_views_identi
 
 
 @pytest.mark.parametrize("dealer", tuple("ABCD"))
-def test_blind_actions_keep_bid_and_response_with_knower_and_feedback_with_its_partner(dealer):
+def test_blind_actions_keep_opening_bid_on_own_turn_and_responses_with_knower(dealer):
     state = ready(start_match(recipe(4, "ladinisch", True), "blind-actions", dealt(), first_dealer=dealer))
     first = state.play.current_player_id
     state = step(state, first, "play_card", legal_cards(state.play, state.bid_state, first)[0])
@@ -179,10 +179,10 @@ def test_blind_actions_keep_bid_and_response_with_knower_and_feedback_with_its_p
     party = state.parties.party_of(card_player)
     bidder = state.parties.decider(party)
     assert personal(state, card_player)["actions"] == ["play_card", "bid"]
-    assert personal(state, bidder)["actions"] == ["bid"]
+    assert personal(state, bidder)["actions"] == []
     assert all("bid" not in personal(state, player)["actions"]
-               for player in state.recipe.seats if player not in {bidder, card_player})
-    state = step(state, bidder, "bid")
+               for player in state.recipe.seats if player != card_player)
+    state = step(state, card_player, "bid")
     decider = state.parties.decider(1 - party)
     partner = next(player for player in state.parties.parties[1 - party] if player != decider)
     assert personal(state, decider)["actions"] == ["respond_hold", "respond_go", "respond_counter"]
@@ -192,8 +192,8 @@ def test_blind_actions_keep_bid_and_response_with_knower_and_feedback_with_its_p
 
 @pytest.mark.parametrize("cpu_knower", (False, True))
 @pytest.mark.parametrize("cpu_blind", (False, True))
-@pytest.mark.parametrize("bidder", ("A", "C"))
-def test_second_trick_blind_player_or_informed_partner_can_offer_after_restore(cpu_knower, cpu_blind, bidder):
+@pytest.mark.parametrize("held_opening", (False, True))
+def test_second_trick_only_current_blind_player_can_bid_after_restore(cpu_knower, cpu_blind, held_opening):
     # Same visible situation as the reported mobile table: the blind player A
     # owns the card turn after C and D have played into the second trick. C is
     # A's partner and the colour-announcing dealer; D names the strike.
@@ -208,21 +208,25 @@ def test_second_trick_blind_player_or_informed_partner_can_offer_after_restore(c
     setup = replace(setup, bindings=tuple(SeatBinding(item.player_id, None if item.player_id in cpus else item.account_id)
                                          for item in setup.bindings))
     state = ready(start_match(setup, "second-trick-bid", deal, first_dealer="C"))
+    if held_opening:
+        state = step(state, "D", "bid")
+        state = step(state, "C", "respond", "hold")
     for player, card in (("D", "acorns-9"), ("A", "hearts-8"), ("B", "hearts-9"), ("C", "bells-A"),
                          ("C", "bells-U"), ("D", "bells-7")):
         state = step(state, player, "play_card", card)
     assert len(state.play.tricks) == 1 and state.play.current_player_id == "A"
-    assert state.bid_state.accepted_stake == 2
+    assert state.bid_state.accepted_stake == (3 if held_opening else 2)
     restored = restore_storage(json.loads(json.dumps(storage_payload(state))))
     for current in (state, restored):
         blind = cpu_view(current, player_id="A") if cpu_blind else personal(current, "A")
         assert blind["card_turn"] == 0 and blind["actions"] == ["play_card", "bid"]
         knower = cpu_view(current, player_id="C") if cpu_knower else personal(current, "C")
-        assert knower["actions"] == ["bid"]
-        with pytest.raises(WattenBiddingError, match="card_turn_required"):
-            step(current, "B", "bid")
-        offered = step(current, bidder, "bid")
-        assert offered.phase == "bid_response" and offered.bid_state.pending.points == 3
+        assert knower["actions"] == []
+        for other in ("B", "C", "D"):
+            with pytest.raises(WattenBiddingError, match="card_turn_required"):
+                step(current, other, "bid")
+        offered = step(current, "A", "bid")
+        assert offered.phase == "bid_response" and offered.bid_state.pending.points == (4 if held_opening else 3)
         assert offered.play == current.play
         blind = cpu_view(offered, player_id="A") if cpu_blind else personal(offered, "A")
         assert blind["actions"] == []
