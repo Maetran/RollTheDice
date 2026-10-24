@@ -51,6 +51,23 @@ export function createWattenVoice({ send, userId, isCurrent = () => true }) {
   const microphone = toolbar.querySelector("[data-voice-microphone]");
   const roster = toolbar.querySelector("[data-voice-roster]");
   const notice = toolbar.querySelector(".wt-voice-notice");
+  const details = toolbar.querySelector(".wt-voice-details");
+  const panel = toolbar.querySelector(".wt-voice-panel");
+  const fitNoticePanel = () => {
+    if (details.open && !notice.hidden) {
+      const available = Math.max(0, window.innerHeight - panel.getBoundingClientRect().top - 12);
+      panel.style.maxHeight = `${Math.min(440, available)}px`;
+    } else panel.style.removeProperty("max-height");
+  };
+  const positionNotice = () => {
+    // Keep the same status/retry node inside the scrollable open panel. Above
+    // a header-mounted toolbar it would otherwise sit outside the viewport.
+    if (details.open && notice.parentElement !== panel) panel.prepend(notice);
+    else if (!details.open && notice.parentElement !== toolbar) toolbar.insertBefore(notice, toolbar.querySelector("[data-voice-announcement]"));
+    fitNoticePanel();
+  };
+  details.addEventListener("toggle", positionNotice);
+  window.addEventListener("resize", fitNoticePanel);
   const safely = operation => { void Promise.resolve(operation).catch(() => {}); };
 
   output.addEventListener("click", () => safely(controller.setAudio(!controller.snapshot().audio)));
@@ -115,6 +132,7 @@ export function createWattenVoice({ send, userId, isCurrent = () => true }) {
       }).join("");
       if (focused) roster.querySelector(`[data-voice-mute="${focused}"]`)?.focus();
     }
+    fitNoticePanel();
   }
   const unsubscribe = controller.subscribe(render);
 
@@ -156,6 +174,8 @@ export function createWattenVoice({ send, userId, isCurrent = () => true }) {
       if (stopped) return;
       // Send leave while the authenticated transport is still available.
       controller.destroy(); stopped = true; signaling.reset(); unsubscribe();
+      details.removeEventListener("toggle", positionNotice);
+      window.removeEventListener("resize", fitNoticePanel);
       toolbar.remove(); host = null;
     },
   };

@@ -22,6 +22,9 @@
 .wt-voice-notice { display: flex; align-items: center; gap: .5rem; font-size: .8rem; }
 .wt-voice-notice button { flex: 0 0 auto; border-radius: 8px; font-size: .8rem; }
 .wt-voice-details[open] ~ .wt-voice-notice { inset-block-start: 0; transform: translateY(calc(-100% - .35rem)); }
+.wt-voice-panel > .wt-voice-notice { position: static; width: auto; flex-wrap: wrap; margin: 0 0 .65rem; transform: none; box-shadow: none; }
+.wt-voice-panel > .wt-voice-notice > span { flex: 1 1 8rem; }
+.wt-voice-panel:has(> .wt-voice-notice:not([hidden])) { overflow-y: auto; }
 
 [data-watten-voice] { position: absolute; top: 48px; right: 146px; z-index: 13; }
 .wt-voice-details > summary { width: 44px; min-width: 44px; max-width: none; height: 44px; display: grid; place-items: center; padding: 0; font: 700 24px Georgia, serif; }

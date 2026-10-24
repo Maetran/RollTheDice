@@ -133,3 +133,69 @@ test('waiting-room back commits departure, restores the lobby header, and a miss
     expect(host.traffic.errors).toEqual([]); expect(guest.traffic.errors).toEqual([]);
   } finally { await Promise.allSettled(players.map(item => item.context.close())); }
 });
+
+for (const screen of [{ width: 320, height: 568, language: 'de' }, { width: 393, height: 852, language: 'en' }]) {
+  test(`${screen.language}: waiting voice status stays inside the open panel and survives keyboard closing at ${screen.width}px`, async ({ browser, baseURL }, info) => {
+    const wrapped = { newContext: options => browser.newContext({ ...options, viewport: { width: screen.width, height: screen.height }, serviceWorkers: 'block' }) };
+    const host = await player(wrapped, baseURL, screen.language);
+    try {
+      const operations = await voiceAvailable(host.page);
+      await host.page.goto('/watten');
+      await create([host], { count: 2, start: false });
+      const details = host.page.locator('.wt-waiting .wt-voice-details');
+      await expect(details.locator('summary')).toBeVisible();
+      // A geometry fixture for the existing playback-blocked notice. No
+      // microphone, SFU connection or external audio session is started.
+      await host.page.evaluate(language => {
+        const notice = document.querySelector('.wt-voice-notice');
+        const label = document.createElement('span'), retry = document.createElement('button');
+        label.textContent = language === 'de' ? 'Der Browser hält die Wiedergabe an. Tippe auf Erneut verbinden.' : 'The browser paused playback. Tap Reconnect.';
+        retry.type = 'button'; retry.textContent = language === 'de' ? 'Erneut verbinden' : 'Reconnect';
+        notice.replaceChildren(label, retry); notice.hidden = false;
+        window.waitingVoiceStatus = { notice, retry };
+      }, screen.language);
+      await details.locator('summary').click();
+      const notice = details.locator('.wt-voice-panel > .wt-voice-notice');
+      await expect(notice).toBeVisible();
+      await expect.poll(() => details.locator('.wt-voice-panel').evaluate(node => node.getBoundingClientRect().bottom <= innerHeight)).toBe(true);
+      const geometry = await notice.evaluate(node => {
+        const box = node.getBoundingClientRect(), panel = node.closest('.wt-voice-panel').getBoundingClientRect();
+        const button = node.querySelector('button'), target = button.getBoundingClientRect();
+        return { x: box.x, y: box.y, right: box.right, bottom: box.bottom,
+          panel: { x: panel.x, y: panel.y, right: panel.right, bottom: panel.bottom },
+          panelStyle: { inline: node.closest('.wt-voice-panel').getAttribute('style'), maxHeight: getComputedStyle(node.closest('.wt-voice-panel')).maxHeight, minHeight: getComputedStyle(node.closest('.wt-voice-panel')).minHeight, boxSizing: getComputedStyle(node.closest('.wt-voice-panel')).boxSizing, viewportHeight: innerHeight },
+          retryReachable: button.contains(document.elementFromPoint(target.x + target.width / 2, target.y + target.height / 2)),
+          sameNode: node === window.waitingVoiceStatus.notice && button === window.waitingVoiceStatus.retry };
+      });
+      await info.attach('voice-status-geometry.json', { body: JSON.stringify(geometry, null, 2), contentType: 'application/json' });
+      expect(geometry.x).toBeGreaterThanOrEqual(0); expect(geometry.y).toBeGreaterThanOrEqual(0);
+      expect(geometry.right).toBeLessThanOrEqual(screen.width); expect(geometry.bottom).toBeLessThanOrEqual(screen.height);
+      expect(geometry.panel.y).toBeGreaterThanOrEqual(0); expect(geometry.panel.bottom).toBeLessThanOrEqual(screen.height);
+      expect(geometry.retryReachable).toBe(true); expect(geometry.sameNode).toBe(true);
+      await host.page.screenshot({ path: info.outputPath(`voice-status-open-${screen.width}.png`) });
+      await host.page.setViewportSize({ width: 568, height: 320 });
+      await expect.poll(() => notice.evaluate(node => {
+        const panel = node.closest('.wt-voice-panel').getBoundingClientRect(), button = node.querySelector('button'), box = button.getBoundingClientRect();
+        return panel.top >= 0 && panel.bottom <= innerHeight && box.bottom <= innerHeight
+          && button.contains(document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2));
+      })).toBe(true);
+      await host.page.setViewportSize({ width: screen.width, height: screen.height });
+      await details.locator('summary').focus();
+      await host.page.keyboard.press('Enter');
+      await expect(details).not.toHaveAttribute('open', '');
+      await expect(details.locator('summary')).toBeFocused();
+      await expect(host.page.locator('.wt-voice > .wt-voice-notice')).toBeVisible();
+      expect(await host.page.evaluate(() => {
+        const { notice, retry } = window.waitingVoiceStatus, box = retry.getBoundingClientRect();
+        return document.querySelector('.wt-voice > .wt-voice-notice') === notice && notice.querySelector('button') === retry
+          && box.x >= 0 && box.right <= innerWidth && box.y >= 0 && box.bottom <= innerHeight
+          && retry.contains(document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2));
+      })).toBe(true);
+      await host.page.screenshot({ path: info.outputPath(`voice-status-closed-${screen.width}.png`) });
+      await host.page.keyboard.press('Enter');
+      await expect(notice).toBeVisible();
+      expect(operations.some(operation => ['join', 'leave', 'publish'].includes(operation))).toBe(false);
+      expect(host.traffic.errors).toEqual([]);
+    } finally { await host.context.close(); }
+  });
+}
