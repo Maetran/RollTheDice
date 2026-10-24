@@ -95,6 +95,14 @@ The CPU does not treat customary partner play as proof of a hidden call. In
 particular, a low second-trick card never reveals its partner's actual hand or
 creates a private communication channel.
 
+A reviewed reconnect suspicion was rejected against real personal engine views:
+with live trick history disabled, fresh memory at trick four remembers the last
+winner and infers the preceding winner from that trick's leader. Two remembered
+winners already select the same later-trick preference as three continuously
+observed winners. Real trick-two, three and four regressions keep the cheap
+partner convention in the actual second trick. No policy or weight changed;
+forgotten older cards and private calls are not reconstructed.
+
 The [Tiroler Wattergemeinschaft's tips](https://www.tiroler-wattergemeinschaft.at/ladinisch-watten/)
 describe leaving the second trick to a partner acting last, avoiding duplicate
 ranks while uninformed, and using strong cards before it is too late.
@@ -145,3 +153,12 @@ gefährden, kann eine stärkere Deckung sinnvoll sein. Uninformierte CPUs mittel
 über mögliche Ansagen, informierte nutzen die wirklich bekannte Ansage. Die Taktiken werden durch gezielte Verhaltenstests geprüft; vor der Freigabe
 folgt zusätzlich der vollständige lokale Releaseablauf. Neue Messungen zur
 Spielstärke wurden nicht durchgeführt.
+
+Ein geprüfter Wiederverbindungsverdacht wurde mit echten persönlichen
+Engine-Ansichten widerlegt: Ohne offenen Stichverlauf kennt ein frisches
+Gedächtnis im vierten Stich den letzten Gewinner und erschliesst aus dessen
+Anspieler den vorherigen. Zwei gemerkte Gewinner wählen bereits dieselbe späte
+Taktik wie drei durchgehend beobachtete. Regressionen für den zweiten, dritten
+und vierten Stich halten den günstigen Partnerstich im tatsächlichen zweiten
+Stich. Politik und Gewichte bleiben unverändert; ältere Karten und private
+Ansagen werden nicht wiederhergestellt.
