@@ -1,4 +1,4 @@
-"""Small, bounded first-party telemetry with no account or network identifiers.
+"""Bounded anonymous telemetry and separately authorized private voice totals.
 
 Collection is best effort: request handlers only enqueue sanitized records; a
 single worker owns short SQLite writes. A tab session is an anonymous visit,
@@ -50,6 +50,9 @@ from sqlalchemy.orm import Mapped, Session, mapped_column
 from .database import get_engine, session_scope
 from .models import AbandonedGame, Base, CompletedGame, GameParticipant, User, WattenMatchEvidence
 from .security import as_utc, utcnow
+from .voice_activity import activity_stats as voice_activity_stats
+from .voice_activity import note_dropped as note_voice_activity_dropped
+from .voice_activity import persist_activity, prune_activity
 from .voice_usage import prune_usage
 from .voice_usage import usage_stats as voice_usage_stats
 from .zdwa_design import configured_zdwa_design_mode
@@ -388,6 +391,17 @@ def enqueue_batch(batch: dict) -> bool:
         return False
 
 
+def enqueue_voice_activity(rows: list[dict]) -> bool:
+    """Internal authorized membership hook; public beacons never use this path."""
+    if _queue is None:
+        return False
+    try:
+        _queue.put_nowait({"voice_activity": rows})
+        return True
+    except queue.Full:
+        return False
+
+
 def record_game_action(game_type: str, action: str, mode: str | None = None) -> bool:
     """Trusted gameplay hooks call this only after an accepted server action."""
     global _dropped
@@ -575,11 +589,15 @@ def persist_batches(batches: list[dict], *, now: datetime | None = None, sweep: 
         try:
             if sweep:
                 prune_usage(db, now)
+                prune_activity(db, now)
                 first_day = (now - timedelta(days=RETENTION_DAYS - 1)).date().isoformat()
                 db.execute(delete(AnalyticsRequestBucket).where(AnalyticsRequestBucket.day < first_day))
             request_rejected = _persist_request_counts(db, request_counts or {})
             design_counts: dict = {}
+            persist_activity(db, [row for batch in batches for row in batch.get("voice_activity", [])])
             for batch in batches:
+                if "voice_activity" in batch:
+                    continue
                 session = batch["session"]
                 if session:
                     existing = db.get(AnalyticsSession, session["id"])
@@ -653,7 +671,8 @@ async def _run_worker() -> None:
             try:
                 await asyncio.to_thread(persist_batches, batches, sweep=sweep, request_counts=request_counts)
             except (SQLAlchemyError, RuntimeError):
-                _dropped += sum(len(batch["events"]) for batch in batches)
+                _dropped += sum(len(batch.get("events", [])) for batch in batches)
+                note_voice_activity_dropped(sum(len(batch.get("voice_activity", [])) for batch in batches))
                 _request_dropped += sum(request_counts.values())
                 logger.warning("Anonymous analytics batch unavailable; gameplay continues", exc_info=False)
             if sweep:
@@ -1149,6 +1168,9 @@ def dashboard_stats(days: int = 7, game: str = "all", *, now: datetime | None = 
         # Network demand is sitewide, even when gameplay is filtered to one game.
         request_traffic = _request_traffic_stats(db, start, now)
         voice_usage = voice_usage_stats(db, start, now) if include_hausdepp and game in {"all", "hausdepp"} else None
+        voice_games = tuple(product for product in products
+                            if product in {"zdwa", "hausdepp", "watten"} and game in {"all", product})
+        voice_activity = voice_activity_stats(db, start, now, voice_games) if voice_games else None
         live = db.scalar(select(func.count(func.distinct(AnalyticsEvent.session_id))).where(
             *filters, AnalyticsEvent.received_at >= now - timedelta(seconds=LIVE_WINDOW_SECONDS))) or 0
         page_rows = db.execute(select(AnalyticsEvent.page, AnalyticsEvent.game, views,
@@ -1322,4 +1344,4 @@ def dashboard_stats(days: int = 7, game: str = "all", *, now: datetime | None = 
             "comparison": comparison,
             "daily": daily, "pages": pages, **dimensions, "actions": actions, "pwa": pwa, "games": games,
             "modes": modes, "hourly": hourly, "design_usage": design_usage, "server": server,
-            "voice_usage": voice_usage}
+            "voice_usage": voice_usage, "voice_activity": voice_activity}

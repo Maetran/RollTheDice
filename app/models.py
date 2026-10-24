@@ -55,6 +55,27 @@ class VoiceUsageBucket(Base):
     )
 
 
+class VoiceActivityBucket(Base):
+    """Private server-observed listening time, separate from anonymous payload."""
+
+    __tablename__ = "voice_activity_buckets"
+
+    day: Mapped[str] = mapped_column(String(10), primary_key=True)
+    game_type: Mapped[str] = mapped_column(String(16), primary_key=True)
+    game_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    activations: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0, server_default="0")
+    connected_ms: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0, server_default="0")
+    first_observed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    last_observed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    __table_args__ = (
+        CheckConstraint("game_type IN ('zdwa', 'hausdepp', 'watten')", name="ck_voice_activity_game_type"),
+        CheckConstraint("activations >= 0 AND connected_ms >= 0", name="ck_voice_activity_nonnegative"),
+        Index("ix_voice_activity_user_day", "user_id", "day"),
+    )
+
+
 class AccountOwnership(Base):
     """Ownership follows an immutable account ID, independently of display names."""
 
