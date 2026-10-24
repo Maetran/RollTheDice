@@ -290,9 +290,7 @@ test('the final result waits until the actual last card lands, then pauses witho
   const pause = await page.evaluate(() => performance.now() - window.__finalFlightLandedAt);
   expect(pause).toBeGreaterThanOrEqual(700);
   expect(pause).toBeLessThan(1500);
-  // The landed picture is deliberately paused before its rest/fade ends.
-  await expect(flight).toHaveCount(1);
-  await flight.evaluate(element => element.getAnimations().forEach(animation => animation.finish()));
+  // The real pile takes over at arrival, without a resting duplicate.
   await expect(flight).toHaveCount(0);
   // Hydrating the same completed table has no flight and needs no replay pause.
   await page.reload();

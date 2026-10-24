@@ -338,6 +338,14 @@ test.describe('own card flights and follow-up timing', () => {
 
   test('a tap launches exactly one card at once and the accepted state continues that same card', async ({ page }) => {
     const state = await fixture(page, 'de');
+    await page.evaluate(() => {
+      const animate = Element.prototype.animate;
+      Element.prototype.animate = function (...args) {
+        const animation = animate.apply(this, args);
+        if (this.matches('.hd-deal-card')) animation.pause();
+        return animation;
+      };
+    });
     await card(page, HAND[0]).click();
     // Before any server reply: one face is already flying and the slot is empty.
     await expect(page.locator('.hd-deal-card[data-motion-type="launch"]')).toHaveCount(1);
@@ -346,7 +354,8 @@ test.describe('own card flights and follow-up timing', () => {
     const command = state.commands.at(-1);
     const next = structuredClone(state.board), s = next._hausdepp;
     Object.assign(s, { version: s.version + 1, hand: HAND.slice(1), discard: [...s.discard, HAND[0]],
-      current_player_id: state.remote, available_actions: [], playable_cards: [],
+      current_player_id: state.remote, available_actions: ['afterthrow'], playable_cards: [HAND[1]],
+      afterthrow: { player_id: state.self, rank: 'U' },
       last_event: { type: 'play', player_id: state.self, cards: [HAND[0]] } });
     state.send(next);
     state.raw({ hausdepp_command: { command_id: command.command_id, accepted: true, version: s.version } });
@@ -354,8 +363,11 @@ test.describe('own card flights and follow-up timing', () => {
     // The flight is the very element launched at the tap, never a second copy.
     expect(await launched.evaluate(node => node.isConnected && node.dataset.motionType)).toBe('play');
     await expect(page.locator('.hd-deal-card[data-motion-type="play"], .hd-deal-card[data-motion-type="launch"]')).toHaveCount(1);
-    // The accepted packet is already visible while this same card keeps flying;
-    // an old-pile picture must never hide its new count or destination card.
+    // ACKs and same-version paints cannot expose the accepted paper early.
+    state.send(next);
+    await expect(card(page, HAND[1])).toBeDisabled();
+    await expect(page.locator('#hausdeppStock')).toBeDisabled();
+    await page.waitForTimeout(1000);
     const packet = await page.locator('#hausdeppPile').evaluate(node => ({
       count: Number(node.dataset.cardCount), opacity: Number(getComputedStyle(node).opacity),
       cards: [...node.querySelectorAll('[data-card-id]')].map(card => ({
@@ -364,11 +376,13 @@ test.describe('own card flights and follow-up timing', () => {
       })),
       oldPictures: document.querySelectorAll('.hd-deal-card[data-motion-type="pile-rest"]').length,
     }));
-    expect(packet).toMatchObject({ count: 2, opacity: 1, oldPictures: 0 });
-    expect(packet.cards.map(card => card.id)).toEqual(s.discard);
+    expect(packet).toMatchObject({ count: 1, opacity: 1, oldPictures: 0 });
+    expect(packet.cards.map(card => card.id)).toEqual(state.board._hausdepp.discard);
     expect(packet.cards.every(card => card.opacity === 1 && card.wrapperOpacity === 1)).toBe(true);
+    await page.locator('.hd-deal-card[data-motion-type="play"]').evaluate(node => node.getAnimations().forEach(animation => animation.play()));
     await expect(page.locator('.hd-deal-card')).toHaveCount(0, { timeout: 3000 });
     await expect(page.locator('#hausdeppPile [data-card-id]').last()).toHaveAttribute('data-card-id', HAND[0]);
+    await expect(card(page, HAND[1])).toBeEnabled();
   });
 
   test('a follow-up beaten by the next player\'s card flies back to the hand with a clear message', async ({ page }) => {
@@ -388,10 +402,11 @@ test.describe('own card flights and follow-up timing', () => {
     await expect(card(page, HAND[0])).toHaveCSS('visibility', 'visible');
   });
 
-  test('a same-rank tap queued behind an own card is dropped when another player acted in between', async ({ page }) => {
+  test('a same-rank tap cannot queue before landing or leak into a later turn', async ({ page }) => {
     const state = await fixture(page, 'de');
     await card(page, HAND[0]).click();
-    await card(page, HAND[1]).click();
+    await expect(card(page, HAND[1])).toBeDisabled();
+    await card(page, HAND[1]).dispatchEvent('click');
     expect(state.commands.map(command => command.action)).toEqual(['hausdepp_play']);
     const first = state.commands[0];
     const accepted = structuredClone(state.board), s = accepted._hausdepp;
@@ -407,6 +422,84 @@ test.describe('own card flights and follow-up timing', () => {
     expect(state.commands.map(command => command.action)).toEqual(['hausdepp_play']);
     await expect(card(page, HAND[1])).toBeEnabled();
   });
+
+  test('remote throws and a fast pickup keep actual arrival order beyond the old presentation timer', async ({ page }) => {
+    const state = await fixture(page, 'en');
+    await page.evaluate(() => {
+      const animate = Element.prototype.animate;
+      Element.prototype.animate = function (...args) {
+        const animation = animate.apply(this, args);
+        if (this.matches('.hd-deal-card')) animation.pause();
+        return animation;
+      };
+    });
+    const first = structuredClone(state.board), a = first._hausdepp;
+    Object.assign(a, { version: a.version + 1, discard: [...a.discard, 'acorns-U'],
+      last_event: { type: 'play', player_id: state.remote, cards: ['acorns-U'] } });
+    state.send(first);
+    const throwFlight = page.locator('.hd-deal-card[data-motion-type="play"]');
+    await expect(throwFlight).toHaveCount(1);
+    await page.waitForTimeout(1150);
+    const pickup = structuredClone(first), b = pickup._hausdepp;
+    Object.assign(b, { version: b.version + 1, discard: [],
+      last_event: { type: 'pickup', player_id: state.remote, picked_up_count: 2 } });
+    state.send(pickup);
+    const third = structuredClone(pickup), c = third._hausdepp;
+    Object.assign(c, { version: c.version + 1, discard: ['bells-9'],
+      last_event: { type: 'play', player_id: state.remote, cards: ['bells-9'] } });
+    state.send(third);
+    const nextThrow = page.locator('.hd-deal-card[data-motion-type="play"]').last();
+    await expect(page.locator('.hd-deal-card[data-motion-type="play"]')).toHaveCount(2);
+    await expect(nextThrow).toHaveCSS('visibility', 'hidden');
+    await expect(page.locator('#hausdeppPile [data-card-id="acorns-U"], #hausdeppPile [data-card-id="bells-9"]')).toHaveCount(0);
+    await expect(card(page, HAND[0])).toBeDisabled();
+    // The first throw lands while the following pickup is still paused.
+    await throwFlight.first().evaluate(node => node.getAnimations().forEach(animation => animation.play()));
+    await expect(page.locator('#hausdeppPile [data-card-id="acorns-U"]')).toHaveCount(1);
+    await expect(nextThrow).toHaveCSS('visibility', 'hidden');
+    const pickupFlights = page.locator('.hd-deal-card[data-motion-type="pickup"]');
+    await expect(pickupFlights.first()).toHaveCSS('visibility', 'visible');
+    await pickupFlights.evaluateAll(nodes => nodes.forEach(node => node.getAnimations().forEach(animation => animation.play())));
+    await expect(page.locator('.hd-deal-card[data-motion-type="pickup"]')).toHaveCount(0);
+    await expect(nextThrow).toHaveCSS('visibility', 'visible');
+    await expect(page.locator('#hausdeppPile [data-card-id]')).toHaveCount(0);
+    await nextThrow.evaluate(node => node.getAnimations().forEach(animation => animation.play()));
+    await expect(page.locator('#hausdeppPile [data-card-id]')).toHaveCount(1);
+    await expect(page.locator('#hausdeppPile [data-card-id]')).toHaveAttribute('data-card-id', 'bells-9');
+    await expect(card(page, HAND[0])).toBeEnabled();
+  });
+
+  for (const interrupted of ['resize', 'hidden', 'reduced-motion']) {
+    test(`${interrupted} settles a paused accepted flight without stale cards or disabled controls`, async ({ page }) => {
+      const state = await fixture(page, 'de');
+      await page.evaluate(() => {
+        const animate = Element.prototype.animate;
+        Element.prototype.animate = function (...args) {
+          const animation = animate.apply(this, args);
+          if (this.matches('.hd-deal-card')) animation.pause();
+          return animation;
+        };
+      });
+      const next = structuredClone(state.board), s = next._hausdepp;
+      Object.assign(s, { version: s.version + 1, discard: [...s.discard, 'acorns-U'],
+        last_event: { type: 'play', player_id: state.remote, cards: ['acorns-U'] } });
+      state.send(next);
+      await expect(card(page, HAND[0])).toBeDisabled();
+      if (interrupted === 'resize') await page.setViewportSize({ width: 568, height: 320 });
+      else if (interrupted === 'reduced-motion') await page.emulateMedia({ reducedMotion: 'reduce' });
+      else await page.evaluate(() => {
+        Object.defineProperty(document, 'hidden', { configurable: true, value: true });
+        document.dispatchEvent(new Event('visibilitychange'));
+      });
+      await expect(page.locator('.hd-deal-card')).toHaveCount(0);
+      await expect(page.locator('#hausdeppPile [data-card-id="acorns-U"]')).toHaveCount(1);
+      if (interrupted === 'hidden') await page.evaluate(() => {
+        Object.defineProperty(document, 'hidden', { configurable: true, value: false });
+        document.dispatchEvent(new Event('visibilitychange'));
+      });
+      await expect(card(page, HAND[0])).toBeEnabled();
+    });
+  }
 });
 
 for (const [width, height] of [[390, 844], [320, 568], [844, 390], [768, 1024], [1440, 900]]) {

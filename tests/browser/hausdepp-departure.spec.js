@@ -231,7 +231,10 @@ test('a real participant leaves two other players in the same playable table wit
     const actions = board().available_actions;
     if (actions.includes('gamble')) await page.locator('#hausdeppStock').click();
     else if (actions.includes('play')) await page.locator(`[data-card-id="${board().playable_cards[0]}"]`).click();
-    else await page.locator('#hausdeppPile').click();
+    else {
+      await expect(page.locator('#hausdeppPile')).toHaveAttribute('data-pickup-available', 'true');
+      await page.locator('#hausdeppPile').click();
+    }
     await expect.poll(() => app.received.filter(message => message.hausdepp_command?.accepted).length).toBeGreaterThan(acceptedBefore);
     await guest.goto('/hausdepp/konto#erfolge'); await guest.reload();
     const progress = await guest.request.get('/api/hausdepp/account');
