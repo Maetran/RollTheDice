@@ -259,3 +259,154 @@ blockers; “pending bid” clarifies the difference from open Watten.
   Migrationshistorie sind kein belegter toter Code. / No blanket deletions: the
   Watten config remains a documented manual path; legacy data imports and
   migration history are not proven dead code.
+
+## Fortsetzung: Audio und sichtbare Abläufe / Follow-up: audio and visible flows
+
+Der Audiorelease **4.2.0** ist über PR #83 als normaler Merge
+`a0f61483c13b0ab3941d64a38952cbc501ed7e0c` auf `develop` und `master`
+integriert und produktiv geprüft. Sein unveränderter Tree übernimmt den lokalen
+Vollnachweis des Source-Commits `77acdbd5`: 606 Node-, 3336 Backend- und
+1490 Browserfälle bestanden, neun ausdrücklich optionale Screenshot-Serien
+übersprungen, 85,66 Prozent Branch-Coverage. Alle sieben Pflichtgruppen und
+acht Browserpools bestanden; kein Retry. Öffentliche Health-/Versionsprüfungen
+aller vier Spiele sowie Bytevergleiche der sechs neuen Aufnahmen in beiden
+Kartenspielen bestanden. Keine subjektive Hörabnahme oder Prüfung auf einem
+physischen iPhone wird daraus abgeleitet.
+
+Audio **4.2.0** reached production through PR #83 and the normal merge above.
+The unchanged merge tree inherited the exact source proof: 606 Node, 3336
+backend and 1490 browser cases passed, nine explicitly optional screenshot
+series skipped, 85.66 percent branch coverage. All seven required groups and
+eight browser pools passed without retries. Public health/version and recording
+byte checks passed. This does not claim subjective listening approval or a
+physical iPhone test.
+
+- **Zilch-Bildmeldung / Zilch screenshot:** Die Kombination 4,1,1,3,3,1 ist als
+  aktueller Wurf wertend. Die Reproduktion zeigt korrekt 1000 Punkte bei drei
+  gewählten Einsern. Dieselbe sichtbare Anordnung kann nach einem Zilch aber
+  aus dem letzten Gesamtwurf stammen: Die Einser waren bereits gehalten,
+  nur die übrigen Würfel verloren den Zug. Aktuelle Würfel sind dann null;
+  alte Checks und ein leerer Empfehlungsbereich erklären die Verwechslung.
+  Das Foto allein beweist den damaligen Serverzustand nicht. Claude prüfte die
+  beiden tatsächlichen Bilder und den Quellpfad unabhängig. / As a current
+  roll, 4,1,1,3,3,1 scores; the reproduction correctly offers 1000 for three
+  selected ones. A retained rack can look identical after a bust of the other
+  dice, with previously held ones still checked and no current options. The
+  original photo alone does not prove its historical server state. Claude
+  independently reviewed both reproduced images and the source path.
+- **Hausdepp visuell / Hausdepp visual:** Echte lokale CPU-Tische mit drei,
+  fünf und sechs Sitzen wurden über vorhandene Browserabläufe aufgenommen;
+  Mobiltelefon ab 320 Pixeln, Querformat, Tablet und Desktop. Fünf gefilterte
+  Fälle bestanden, darunter DE/EN-Turnierabschluss und ausdrücklich synthetische
+  Resultatansichten. Root und Claude prüften sechs repräsentative Bilder.
+  Layout-/Deko-Geschmack wurde nicht als Fehler umgebaut. Vollständige Namen
+  stehen in den Sitz-ARIA-Labels, der entfernte Stapel besitzt Beschriftung und
+  Tooltip, aktive Austritte haben bereits eine bestätigte DE/EN-Abfrage.
+  Ein tatsächlich unter dem Resultat hervorschauender zweiter Austrittsknopf
+  wird ausgeblendet, sobald sein sichtbarer Ersatz im Resultat montiert ist;
+  Tastaturfokus und Rückkehr zur aktiven Runde werden geprüft. / Existing flows
+  captured real local CPU tables across phone, landscape, tablet and desktop.
+  Five filtered cases passed, including DE/EN tournament completion and
+  explicitly synthetic result views. Both reviewers inspected six images.
+  Cosmetic preferences were not treated as proven defects. The duplicate exit
+  behind the result sheet is hidden only after its visible replacement exists;
+  keyboard focus and return to play are covered.
+
+- **ZDWA visuell / ZDWA visual:** 16 repräsentative DE/EN-Aufnahmen aus
+  vorhandenen Rendering-/Navigationsfixtures decken 320/440/768/1440 Pixel,
+  Start, Entscheidung, Endstand und Dashboard ab. Vier visuelle Driverfälle
+  bestanden. Identische Ergebnisdaten belegen einen echten Übersetzungsfehler:
+  Whitespace-Normalisierung zog die englischen Rangzeilen zusammen. Nur der
+  Enddialog rendert seine übersetzten Ränge jetzt als sichere DOM-Blöcke;
+  keine globale Änderung am Übersetzer. Der bestehende DE/EN-Abstands- und
+  Navigationsflow wurde rot/grün um getrennte Rangzeilen ergänzt, 2/2 bestanden.
+  / Sixteen representative DE/EN captures cover phone, tablet, desktop,
+  opening, decisions, results and dashboard through existing fixtures. Four
+  visual driver cases passed. Identical payloads proved that English whitespace
+  normalization merged final ranks. Only this dialog now uses translated safe
+  DOM blocks. Its existing DE/EN spacing/navigation flow went red to green.
+- **Watten und Zilch / Watten and Zilch:** Der Sprachstatus bleibt derselbe
+  DOM-Knoten und liegt im geöffneten, auf die restliche Fensterhöhe begrenzten
+  Watten-Panel. Tastatur-Schließen, Wiederöffnen und Querformat-Resize sind
+  geprüft, ohne externe Gespräche oder Mikrofonfreigabe. Ein bereits vorher
+  vorhandener 320-Pixel-Würfelüberlauf in Zilch wurde durch identische
+  Vorher-/Nachher-Geometrie nachgewiesen und mit begrenzter Größenformel
+  korrigiert. Alle sechs Würfel bleiben mit mindestens 44 Pixeln erreichbar.
+  16 gezielte Fälle bestanden, einschließlich DE/EN, beiden Zilch-Themen,
+  gültiger/alter Würfe, Animationen und unveränderter Tablet-Hilfe. / The same
+  voice status node stays inside Watten's open panel, limited to remaining
+  viewport height. Keyboard closing, reopening and landscape resize are tested
+  without external calls or microphone permission. Identical baseline bounds
+  proved a pre-existing 320px Zilch dice overflow; bounded sizing now fits all
+  six dice with at least 44px targets. Sixteen focused cases passed across
+  languages, themes, valid/retained rolls, animation and tablet guidance.
+
+## Trackingvertrag / Tracking contract
+
+- ZDWA: eine dauerhafte Ergebniszeile pro vollständigem Scorecardabschluss.
+  Zilch: ein Terminalresultat; Solo-Abbrüche sind getrennt von regulären
+  Abschlüssen zu betrachten. Hausdepp: eine Runde, kein ganzes Turnier.
+  Watten: eine Zielpunktepartie, kein einzelner Deal. / Durable result rows mean
+  a completed scorecard for ZDWA, a terminal outcome for Zilch (including
+  separately classified solo abandonment), one round for Hausdepp and a full
+  points match for Watten.
+- Gespeicherte Teilnehmersitze enthalten CPUs und sind weder eindeutige Menschen
+  noch Spielstarts. Kontostatistiken beruhen auf verknüpften, berechtigten
+  menschlichen Sitzen; Gäste und zurückgezogene Sitze haben andere Grenzen.
+  Browser-Live-Sitzungen sind getrennt von autoritativen Live-Tischen. / Stored
+  seats include CPUs and are not unique people or starts. Account statistics
+  use linked eligible human seats. Browser live sessions and authoritative live
+  tables are separate metrics.
+- Hausdepp und Watten besitzen keinen Browsercollector. Hausdepp-Serveraktionen
+  haben keine Browser-Session-ID und keine aktive Besuchszeit. Ihre vorhandenen
+  Serverfakten bleiben erhalten; fehlende Besuchsmessung wird konsistent als
+  unbekannt statt als gemessene Null gekennzeichnet. / Neither card game has a
+  browser collector. Hausdepp server actions have no browser session ID or
+  active visit time. Existing server facts remain; absent browser measurement
+  is consistently unknown rather than a measured zero.
+- Ein vollständiger historischer Start-/Abschluss-Funnel fehlt. Raumerstellung
+  ist kein belegter Spielstart; vorhandene Abbruchquellen sind unvollständig
+  und dürfen nicht zu einer allgemeinen Abschlussquote kombiniert werden.
+  Keine zusätzliche Zugaufzeichnung oder automatische Analyse menschlicher
+  Entscheidungen wurde aktiviert. Ein solcher neuer Datenfluss benötigt einen
+  separaten Entwurf mit ausdrücklicher Zustimmung, begrenzten Daten und
+  Aufbewahrung sowie Abschaltung/Löschung. / A complete historical start/finish
+  funnel is absent. Room creation is not a proved game start, and incomplete
+  abandonment sources cannot establish an overall completion rate. No new move
+  recording or automated analysis of human decisions was enabled; that needs a
+  separate consent, minimization, retention and deletion design.
+
+## CPU-Median und Testpflege / CPU median and test maintenance
+
+- **CPU-Median:** Zuerst wird die bisherige, begrenzte Schwierigkeit jedes
+  sitzenden menschlichen Kontos berechnet, danach deren Median. Dadurch wird
+  etwa Hausdepp mit 0 und 1000 Runden zu 0,775 statt voller Stärke. Bei Watten
+  werden die beiden mittleren Profile gemittelt; Stichprobenbudget und alle
+  Parameter bleiben begrenzt. Einzelspieler verhalten sich unverändert.
+  55 gezielte Tests bestanden, einschließlich Stufengrenzen, Reihenfolge,
+  fehlender Erfahrung, aller Profilpaare, Monotonie und Datenbank-Lookup.
+  Claude prüfte Formel und tatsächlichen Diff unabhängig. Reale Watten-CPUs
+  sind separate `CpuOccupant`-Objekte ohne Konto und nicht in `room.members`.
+  / First compute each seated human account's existing bounded difficulty,
+  then its median. Hausdepp with 0 and 1000 rounds yields 0.775 rather than
+  full strength. Watten averages the middle profiles within existing bounds.
+  Single-human behavior is unchanged. Fifty-five focused tests passed; Claude
+  independently checked the formulas and actual patch. Real Watten CPU seats
+  are separate accountless occupants, not human room members.
+- **Warnungen / Warnings:** Der Audiovollnachweis meldete 78.380
+  SQLite-Datetime-Deprecations, 64 HTTPX-Cookie-Deprecations und 17 nicht
+  geschlossene SQLite-Verbindungen. Die Warnungen wurden nicht unterdrückt.
+  Ein strikter Python-3.13.3-Lauf mit Allokationsstapeln und ausdrücklich
+  erzwungener Garbage Collection belegte ungeschlossene Verbindungen in elf
+  Migrationstestdateien. 18 Kontexte verwenden nun `closing(connection)`
+  zusammen mit dem bisherigen Transaktionskontext: Commit/Rollback zuerst,
+  Schließen danach. Derselbe strikte Lauf bestand anschließend 11/11 Fälle
+  ohne Resource-/Unraisable-Warnung. Die Datetime-Deprecations bleiben sichtbar;
+  historische Migrationen und produktive Daten wurden nicht verändert.
+  / The audio proof reported 78,380 SQLite datetime deprecations, 64 HTTPX
+  cookie deprecations and 17 unclosed connection warnings. None were hidden.
+  Allocation traces with forced collection on Python 3.13.3 proved raw
+  connection leaks in eleven migration test files. Eighteen contexts now close
+  after their existing commit/rollback handling. The identical strict run then
+  passed 11/11 with no resource/unraisable warnings. Datetime deprecations remain
+  visible; historical migrations and production data were unchanged.

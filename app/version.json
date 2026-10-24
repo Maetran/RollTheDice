@@ -1,10 +1,10 @@
 {
-  "version": "4.2.0",
-  "bump": "minor",
+  "version": "4.2.1",
+  "bump": "patch",
   "date": "2026-10-24",
-  "previous_revision": "687a2c788ff07383f4de5ab3f7f31013aa23ad6a",
+  "previous_revision": "a0f61483c13b0ab3941d64a38952cbc501ed7e0c",
   "summary": {
-    "de": "Neue echte Wirtshausaufnahmen und abwechslungsreiche Hintergrundkulissen für Hausdepp und Watten.",
-    "en": "New real venue recordings and varied background ambience for Hausdepp and Watten."
+    "de": "Klarere Spielhinweise, ausgewogene CPU-Stärke am Tisch und verlässliche Tracking-Anzeigen.",
+    "en": "Clearer play guidance, balanced CPU difficulty at mixed tables and accurate tracking coverage."
   }
 }

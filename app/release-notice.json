@@ -1,28 +1,32 @@
 {
   "kind": "usability",
   "games": [
+    "zdwa",
+    "zilch",
     "hausdepp",
     "watten"
   ],
-  "summary_de": "Mehr echte Wirtshauskulissen für Hausdepp und Watten: zufällige Auswahl und sanfte Wechsel gegen Wiederholungen.",
-  "summary_en": "More real venue ambiences for Hausdepp and Watten, with random selection and gentle changes to reduce repetition.",
+  "summary_de": "Klarer weiter nach einem Zilch, ausgewogene CPU-Stärke am Tisch und sichtbare Sprachhinweise in Watten.",
+  "summary_en": "Clearer guidance after a Zilch, balanced CPU difficulty at mixed tables and visible Watten voice notices.",
   "player_notes": {
     "de": {
-      "title": "4.2.0: Mehr Leben am Wirtshaustisch",
+      "title": "4.2.1: Klarer weiter am Spieltisch",
       "changes": [
-        "HAUSDEPP und WATTEN: Neue Aufnahmen aus verschiedenen Lokalen ergänzen die bisherigen Kulissen.",
-        "Die Räume werden zufällig ohne direkte Wiederholung gewählt und wechseln während längerer Partien sanft.",
-        "WATTEN hat jetzt einen eigenen Schalter für Hintergrundgeräusche, auch am Wartetisch.",
-        "Die Kulisse ist anfangs aus, spielt nur für dich und bleibt unabhängig vom Sprachchat."
+        "ZDWA zeigt die englische Schlussrangliste wieder mit getrennten Rangzeilen.",
+        "ZILCH kennzeichnet den letzten verlorenen Wurf und zeigt bei leerer Wertung den nächsten Schritt.",
+        "HAUSDEPP und WATTEN richten die CPU-Stärke bei mehreren Menschen am mittleren Erfahrungsniveau aus.",
+        "HAUSDEPP zeigt den Austritt direkt im Rundenresultat; der Tastaturfokus bleibt erreichbar.",
+        "WATTEN hält Hinweise und erneutes Verbinden im geöffneten Sprachpanel sichtbar."
       ]
     },
     "en": {
-      "title": "4.2.0: More life around the tavern table",
+      "title": "4.2.1: Clearer next steps at the table",
       "changes": [
-        "HAUSDEPP and WATTEN: New recordings from different venues join the existing ambiences.",
-        "Rooms are chosen randomly without immediate repeats and change gently during longer sessions.",
-        "WATTEN now has its own background sound switch, including at the waiting table.",
-        "Ambience starts off, plays only for you and stays independent of voice chat."
+        "ZDWA keeps each final rank on its own line in English too.",
+        "ZILCH labels the previous lost roll and shows the next step when there is no scoring choice.",
+        "HAUSDEPP and WATTEN balance CPU difficulty around the humans’ median experience level.",
+        "HAUSDEPP keeps its exit on the round result and preserves reachable keyboard focus.",
+        "WATTEN keeps notices and reconnect controls visible inside the open voice panel."
       ]
     }
   }

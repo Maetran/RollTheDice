@@ -23,6 +23,40 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 4.2.1 — 2026-10-24
+
+### ZDWA / ZILCH / HAUSDEPP / WATTEN
+
+**Deutsch:** ZDWA zeigt auch im englischen Endstand jeden Rang auf einer
+eigenen Zeile. Zilch kennzeichnet die zuletzt verlorenen Würfel sichtbar und
+erklärt auf kleinen Bildschirmen den nächsten Schritt, wenn keine aktuelle
+Wertung zur Wahl steht. Gültige Würfe und Bestätigungsregeln bleiben gleich.
+Hausdepp zeigt am Rundenresultat nur einen erreichbaren Austritt; der
+Tastaturfokus folgt zwischen Tisch und Resultat. Hausdepp- und Watten-CPUs
+richten ihre bestehende Schwierigkeit bei mehreren Menschen am Median der
+individuellen Erfahrungsstufen aus. Persönliche Einsteigertipps bleiben
+persönlich. Erfahrung wird aus abgeschlossenen Spielen abgeleitet und ist
+keine Messung des Könnens; Watten berechnet den Tischwert weiterhin bei seinen
+Autoritätsprüfungen. Sprachhinweise im geöffneten Watten-Panel bleiben
+innerhalb des sichtbaren Bereichs. Fehlende Hausdepp-Besuchsmessung wird im
+Dashboard konsistent als nicht erfasst gekennzeichnet; vorhandene Serverdaten
+bleiben erhalten. Migrationstests schließen ihre SQLite-Verbindungen
+ausdrücklich, ohne Commit-/Rollback-Verhalten oder Warnungsfilter zu ändern.
+
+**English:** ZDWA keeps every rank on its own line in the English final
+standings too. Zilch visibly identifies the previous lost roll and explains the
+next step on small screens when there is no current scoring choice. Valid
+rolls and confirmation rules stay the same. Hausdepp shows one reachable exit
+on the round result, with keyboard focus following between table and result.
+Hausdepp and Watten CPUs use the median of the humans' existing experience
+levels at mixed tables. Personal beginner tips remain personal. Experience
+comes from completed games and is not measured ability; Watten still computes
+the table value during its authority checks. Voice notices stay within the
+visible open Watten panel. Missing Hausdepp visit measurement is consistently
+shown as unmeasured, retaining existing server facts. Migration tests explicitly
+close SQLite connections without changing transaction behavior or warning
+filters.
+
 ## 4.2.0 — 2026-10-24
 
 ### HAUSDEPP / WATTEN
