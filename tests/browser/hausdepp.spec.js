@@ -420,15 +420,36 @@ async function playLegalHandCard(page, traffic) {
     await completeRequiredDraw(page, traffic);
     const state = traffic.state;
     if (state.available_actions.includes('play')) {
-      const card = state.playable_cards[0];
+      const card = state.playable_cards[0], commandsBefore = traffic.commands.length;
       await clickExposedHandCard(page.locator(`#hausdeppHand [data-card-id="${card}"]`));
-      await expect.poll(() => traffic.state?.version || 0).toBeGreaterThan(state.version);
-      expect(traffic.commands.some(command => command.action === 'hausdepp_play'
-        && command.version === state.version && command.cards?.includes(card))).toBe(true);
-      expect(traffic.messages.some(message => message.scoreboard?._hausdepp?.last_event?.player_id === state.viewer_id
-        && message.scoreboard._hausdepp.last_event.cards?.includes(card))).toBe(true);
+      const sentPlay = () => traffic.commands.slice(commandsBefore).find(command =>
+        command.action === 'hausdepp_play' && command.cards?.includes(card));
+      await expect.poll(() => Boolean(sentPlay())).toBe(true);
+      const command = sentPlay();
+      // The native click may wait for earlier paper to land. A foreign private
+      // refill can advance the version meanwhile, so prove legality against
+      // the exact projection used by the actual command, not the cached turn.
+      const states = traffic.messages.slice(traffic.tableStart?.messages)
+        .map(message => message.scoreboard?._hausdepp).filter(Boolean);
+      const predecessor = states.find(value => value.version === command.version);
+      expect(predecessor).toBeTruthy();
+      expect(predecessor.current_player_id).toBe(state.viewer_id);
+      expect(predecessor.available_actions).toContain('play');
+      expect(predecessor.hand).toContain(card);
+      expect(predecessor.playable_cards).toContain(card);
+      const acknowledgement = () => traffic.messages.find(message =>
+        message.hausdepp_command?.command_id === command.command_id)?.hausdepp_command;
+      await expect.poll(() => acknowledgement()?.accepted).toBe(true);
+      // Foreign private draws may also be accepted between send and apply.
+      // The engine permits that harmless version gap; the own result is still
+      // bound to this command's exact acknowledgement and accepted board.
+      expect(acknowledgement().version).toBeGreaterThan(command.version);
+      const accepted = () => traffic.messages.map(message => message.scoreboard?._hausdepp)
+        .find(value => value?.version === acknowledgement().version);
+      await expect.poll(() => accepted()?.last_event).toMatchObject({ type: 'play', player_id: state.viewer_id });
+      expect(accepted().last_event.cards).toContain(card);
       await completeRequiredDraw(page, traffic);
-      return state;
+      return predecessor;
     }
     if (!state.available_actions.includes('gamble')) await expect(page.locator('#hausdeppPile')).toHaveAttribute('data-pickup-available', 'true');
     await page.locator(state.available_actions.includes('gamble') ? '#hausdeppStock' : '#hausdeppPile').click();
@@ -511,6 +532,49 @@ async function installUiFixture(page, room, initial, onCommand) {
     sendSnapshot: value => { fixture = value; activeSocket.send(JSON.stringify({ scoreboard: value })); },
   };
 }
+
+test('the journey driver validates the actual play version after a foreign refill while its click waits', async ({ page }) => {
+  const own = 'driver-self', remote = 'driver-cpu', card = 'hearts-9';
+  const state = { version: 3, viewer_id: own, current_player_id: own,
+    hand: [card, 'acorns-U', 'bells-8'], discard: ['acorns-8', 'leaves-8'],
+    available_actions: ['play', 'pickup'], playable_cards: [card, 'acorns-U', 'bells-8'],
+    pending_refill: null, pending_refills: [{ player_id: remote, remaining: 1 }],
+    last_event: { type: 'play', player_id: remote, cards: ['leaves-8'] } };
+  const traffic = { state, commands: [], messages: [{ scoreboard: { _hausdepp: state } }] };
+  const receive = next => { traffic.state = next; traffic.messages.push({ scoreboard: { _hausdepp: next } }); };
+  // Driver-only fixture: the real journey can reach the own turn before the
+  // preceding CPU paper lands. Its mandatory private refill may advance the
+  // authoritative version while Playwright waits for the hand to be enabled.
+  await page.setContent(`<div id="hausdeppHand"><button data-card-id="${card}" disabled
+    style="width:100px;height:160px">9</button></div>`);
+  await page.exposeFunction('journeyForeignRefill', () => receive({ ...traffic.state, version: 4,
+    pending_refills: [], available_actions: ['play', 'pickup', 'gamble'],
+    last_event: { type: 'draw', player_id: remote, drawn_count: 1 } }));
+  await page.exposeFunction('journeyAcceptedPlay', () => {
+    const command = { action: 'hausdepp_play', command_id: 'driver-play', version: traffic.state.version, cards: [card] };
+    traffic.commands.push(command);
+    receive({ ...traffic.state, version: command.version + 1, hand: traffic.state.hand.filter(value => value !== card),
+      discard: [...traffic.state.discard, card], current_player_id: remote, available_actions: [], playable_cards: [],
+      last_event: { type: 'play', player_id: own, cards: [card] } });
+    traffic.messages.push({ hausdepp_command: { command_id: command.command_id, accepted: true, version: command.version + 1 } });
+  });
+  await page.evaluate(() => {
+    const button = document.querySelector('#hausdeppHand button');
+    button.addEventListener('click', () => window.journeyAcceptedPlay());
+    const bounds = button.getBoundingClientRect.bind(button);
+    let refillScheduled = false;
+    button.getBoundingClientRect = () => {
+      if (!refillScheduled) {
+        refillScheduled = true;
+        requestAnimationFrame(async () => { await window.journeyForeignRefill(); button.disabled = false; });
+      }
+      return bounds();
+    };
+  });
+  const beforePlay = await playLegalHandCard(page, traffic);
+  expect(beforePlay.version).toBe(4);
+  expect(traffic.commands).toEqual([{ action: 'hausdepp_play', command_id: 'driver-play', version: 4, cards: [card] }]);
+});
 
 for (const language of ['de', 'en']) {
   test(`${language}: founder creates a real CPU table, plays, chats, reacts and reconnects to the same seat`, async ({ page }) => {
