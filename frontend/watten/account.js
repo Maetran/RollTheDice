@@ -12,6 +12,7 @@ import { initializeSuiteHeader } from '../shell/header.js';
 import { initializeAppMode } from '../multigame/app-mode.js';
 import { mountWattenPushSettings, pushSettingsMarkup } from './push-settings.js';
 import { mountTourSettings } from '../shared/game-tours.js';
+import { mountVoicePreferences, voicePreferenceText } from '../shared/voice-preferences.js';
 
 initializeWattenPwa();
 initializeSuiteHeader();
@@ -28,8 +29,10 @@ let navigating = false;
 let generation = 0;
 let friendSettings = null;
 let pushSettings = null;
+let voicePreferences = null;
 
 function clearPushSettings() { const previous = pushSettings; pushSettings = null; previous?.destroy(); }
+function clearVoicePreferences() { voicePreferences?.destroy(); voicePreferences = null; }
 
 function clearFriendSettings() {
   const previous = friendSettings;
@@ -42,6 +45,7 @@ function navigate(path) {
   navigating = true;
   clearFriendSettings();
   clearPushSettings();
+  clearVoicePreferences();
   root.replaceChildren();
   location.assign(path);
 }
@@ -116,6 +120,7 @@ function renderLogin() {
 
 function renderSettings(auth) {
   clearPushSettings();
+  clearVoicePreferences();
   const user = auth.user;
   const publicPush = (auth.game_access || user.game_access)?.watten_public === true;
   if ((auth.game_access || user.game_access)?.watten_preview === true || (auth.game_access || user.game_access)?.watten_public === true) initializeAppMode({ mode: 'watten' });
@@ -134,6 +139,7 @@ function renderSettings(auth) {
     <details><summary>${copy('Dein Profilbild')}</summary><div data-avatar-upload></div></details>
     <details><summary>${esc(friendSettingsText('settingsTitle'))}</summary><div data-watten-friend-settings></div></details>
     <details><summary>${copy('Sprache')}</summary><form data-language><label>${copy('Sprache')}<select name="language"><option value="de">Deutsch</option><option value="en">English</option></select></label><button type="submit">${copy('Sprache speichern')}</button><p role="status"></p></form></details>
+    <details id="sprachchat"><summary>${esc(voicePreferenceText('title'))}</summary><div data-voice-preference-settings></div></details>
     ${publicPush ? pushSettingsMarkup(copy) : ""}
     <details><summary>${copy('Einsteigertouren')}</summary><div data-game-tour-settings></div></details>
     <div class="actions"><a class="button-link ghost" href="/watten">${copy('Zurück')}</a><a class="button-link ghost" href="/watten/konto/fortschritt">${copy('Erfolge & Titel')}</a><button data-logout type="button">${copy('Abmelden')}</button></div><p data-account-message role="status"></p>`;
@@ -147,6 +153,8 @@ function renderSettings(auth) {
   mountAvatarUpload(root.querySelector('[data-avatar-upload]'));
   clearFriendSettings();
   const mountedGeneration = generation;
+  voicePreferences = mountVoicePreferences(root.querySelector('[data-voice-preference-settings]'), { user,
+    isCurrent: () => !navigating && generation === mountedGeneration && viewerId === user.id });
   friendSettings = mountFriendSettings({ container: root.querySelector('[data-watten-friend-settings]'), viewerId: user.id,
     isCurrent: () => !navigating && generation === mountedGeneration && viewerId === user.id,
     onAccountChanged: () => {
@@ -202,6 +210,7 @@ else if (page === 'settings') {
       generation += 1;
       clearFriendSettings();
       clearPushSettings();
+      clearVoicePreferences();
       root.replaceChildren();
       navigate(event.detail?.authenticated ? '/watten/anmelden?return_to=%2Fwatten%2Fkonto%2Feinstellungen' : '/watten');
     }
@@ -224,6 +233,7 @@ else if (page === 'settings') {
     viewerId = null;
     clearFriendSettings();
     clearPushSettings();
+    clearVoicePreferences();
     root.replaceChildren();
   };
   window.addEventListener('pagehide', clearPrivatePage);

@@ -457,6 +457,15 @@ one global room for admitted human players, with no team channels, spectators
 or CPUs. The existing SFU/TURN configuration is reused; provider audio has not
 been verified in this change.
 
+Unter Kontoeinstellungen → Sprachchat zuhören lässt sich eine gemeinsame
+Hörvorgabe für Hausdepp und Watten speichern. Sie ist für bestehende und neue
+Konten aus, bis du sie ausdrücklich einschaltest. Am Tisch bleibt die Auswahl
+änderbar. Das Mikrofon startet immer aus und wird nie als Kontovorgabe gespeichert.
+Under Account settings → Listen to voice chat, save one listening default for
+Hausdepp and Watten. It is off for existing and new accounts until you explicitly
+enable it. You can still change listening at the table. The microphone always
+starts off and is never stored as an account default.
+
 **PWA-Stand / PWA status:** Ein eigenes Spielsymbol und PNG-Icons in32/180/192/512
 Pixeln sind vorhanden. Die öffentliche Beta öffnet Manifest, Service Worker,
 Push-Empfang und sichere Benachrichtigungsziele. Push benötigt die bestehende

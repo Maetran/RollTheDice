@@ -1,3 +1,22 @@
+export const VOICE_PREFERENCE_MESSAGES = {
+  de: {
+    title: "Sprachchat zuhören", hint: "Deine Hörvorgabe für Hausdepp und Watten.",
+    help: "Wähle, ob du beim Einstieg in einen Sprachchat zuhören möchtest. Du kannst das am Tisch jederzeit ändern. Das Mikrofon bleibt aus und wird nie als Kontovorgabe gespeichert.",
+    label: "Beim Einstieg zuhören", on: "Ein", off: "Aus", save: "Hörvorgabe speichern",
+    saving: "Wird gespeichert …", saved: "Hörvorgabe gespeichert.",
+    failed: "Die Hörvorgabe konnte nicht gespeichert werden. Bitte versuche es erneut.",
+    changed: "Deine Anmeldung hat sich geändert. Bitte lade die Seite neu.",
+  },
+  en: {
+    title: "Listen to voice chat", hint: "Your listening default for Hausdepp and Watten.",
+    help: "Choose whether to listen when joining voice chat. You can change this at the table at any time. Your microphone stays off and is never saved as an account default.",
+    label: "Listen when joining", on: "On", off: "Off", save: "Save listening default",
+    saving: "Saving …", saved: "Listening default saved.",
+    failed: "Your listening default could not be saved. Please try again.",
+    changed: "Your sign-in has changed. Please reload the page.",
+  },
+};
+
 export const DEPLOYMENT_NOTICE_MESSAGES = {
   de: {
     title: "Gleich kommt ein Update",

@@ -5,17 +5,20 @@ import { mountAllowlistSettings } from '../shared/player-allowlist.js';
 import { renderAccountBans } from '../shared/admin-help.js';
 import { mountFriendActivitySettings } from '../shared/friend-activity.js';
 import { mountTourSettings } from '../shared/game-tours.js';
+import { mountVoicePreferences, voicePreferenceText } from '../shared/voice-preferences.js';
 import { bindPushPreferences, devicePushStatusMessage, disableGameInvitePush, enableGameInvitePush, getGameInvitePushStatus, syncPushPreferences, webPushErrorMessage } from '../shared/web-push.js';
 
 const t = text => window.ZDWA_I18N?.t?.(text) || text;
 const copy = text => esc(t(text));
 let hashListener;
+let voicePreferences;
 const chevron = '<svg class="hd-settings-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
 // Every setting is a collapsed row; a tap opens it in place.
 const item = (title, hint, body, attrs = '') => `<details class="hd-settings-item" ${attrs}><summary><span class="hd-settings-summary"><strong>${copy(title)}</strong><small>${copy(hint)}</small></span>${chevron}</summary><div class="hd-settings-body">${body}</div></details>`;
 const group = (id, title, items) => `<section id="${id}" class="hd-settings-group" aria-labelledby="${id}Title"><h2 id="${id}Title">${copy(title)}</h2>${items.join('')}</section>`;
 
 export function renderAccountSettings(root, auth, { onUserChanged } = {}) {
+  voicePreferences?.destroy();
   const user = auth.user;
   document.title = `Hausdepp · ${t('Kontoeinstellungen')}`;
   root.innerHTML = `<div class="hd-settings"><header class="hd-settings-heading">${avatarMarkup(user, { size: 'large', avatarKey: 'settings-self' })}<div><p>Hausdepp</p><h1>${copy('Kontoeinstellungen')}</h1><p>${copy('Ein Konto für alle unsere Spiele. Dein bestehender Passkey funktioniert hier ebenfalls.')}</p></div></header>
@@ -35,6 +38,7 @@ export function renderAccountSettings(root, auth, { onUserChanged } = {}) {
       item('Hilfe & Neuigkeiten', 'Einsteigertouren ansehen oder neu starten.', '<div data-game-tour-settings></div>', 'id="hilfe"'),
     ])}
     ${group('mitspieler', 'Mitspieler & Chat', [
+      item(voicePreferenceText('title'), voicePreferenceText('hint'), '<div data-voice-preference-settings></div>', 'id="sprachchat"'),
       item('Lobby-Chat', 'Chat in der Lobby ein- oder ausschalten.', `<form id="hausdeppChatForm" class="form-stack"><label><input name="enabled" type="checkbox"> ${copy('Lobby-Chat aktivieren')}</label><label><input name="popups" type="checkbox"> ${copy('Neue Nachrichten im Lobby-Chat oben einblenden')}</label><button class="primary" type="submit">${copy('Chat-Einstellung speichern')}</button><p data-message role="status"></p></form>`),
       item('Deine Spielerauswahl', 'Wer dich zu Runden rufen darf.', '<div data-allowlist-settings></div>', 'id="spielerauswahl"'),
       item('Startmeldungen deiner Spielerauswahl', 'Hinweis, wenn deine Leute ein Spiel starten.', '<div data-friend-activity-settings></div>'),
@@ -63,6 +67,7 @@ export function renderAccountSettings(root, auth, { onUserChanged } = {}) {
   mountAllowlistSettings(root.querySelector('[data-allowlist-settings]'), { context: 'hausdepp' });
   mountFriendActivitySettings(root.querySelector('[data-friend-activity-settings]'));
   void mountTourSettings(root.querySelector('[data-game-tour-settings]'));
+  voicePreferences = mountVoicePreferences(root.querySelector('[data-voice-preference-settings]'), { user });
   const passwordForm = root.querySelector('#hausdeppPasswordForm');
   const verification = mountAccountVerification(passwordForm.querySelector('[data-account-verification]'), { passwordId: 'hausdeppCurrentPassword' });
   if (user.must_change_password) verification.focus();

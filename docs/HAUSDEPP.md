@@ -157,7 +157,11 @@ Sources, processing and technical limits: [Shared audio assets](TAVERN_AUDIO_ASS
 
 Bei aktivierter Funktion gibt es am Tisch zwei dauernd erreichbare Schalter:
 Lautsprecher für Audioausgabe und Mikrofon für das eigene Sprechen. Ein neuer
-Einstieg beginnt mit beiden aus. Zuhören braucht keine Mikrofonfreigabe.
+Einstieg beginnt ohne aktivierte Kontovorgabe mit beiden aus. Unter
+Kontoeinstellungen → Sprachchat zuhören lässt sich das Zuhören für künftige
+Einstiege in Hausdepp und Watten ausdrücklich einschalten. Diese Vorgabe ist
+für bestehende und neue Konten aus; das Mikrofon bleibt immer aus und wird
+nie als Kontovorgabe gespeichert. Zuhören braucht keine Mikrofonfreigabe.
 Das Mikrofon lässt sich erst bei eingeschalteter Ausgabe aktivieren. Ausgabe
 aus schaltet sofort auch das Mikro aus; Ausgabe wieder ein lässt das Mikro aus.
 Einzelne Mitspieler stummschalten wirkt nur lokal und bleibt innerhalb derselben
@@ -193,7 +197,11 @@ Cloudflare-Abrechnung und kein Kosten-Cap.
 ### Optional voice chat (English)
 
 Two persistent controls switch audio output and your microphone on or off.
-A fresh visit starts with both off. Listening never requests microphone access.
+A fresh visit starts with both off unless the account's listening default is
+enabled. Under Account settings → Listen to voice chat, explicitly enable
+listening for future visits to Hausdepp and Watten. This default is off for
+existing and new accounts; the microphone always starts off and is never
+stored as an account default. Listening never requests microphone access.
 The microphone requires enabled output. Output off immediately disables the
 microphone; output on again keeps it muted. Individual muting is local and
 persists within the voice session. Show participants' voice state and speaking
