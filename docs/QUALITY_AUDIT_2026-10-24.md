@@ -139,6 +139,21 @@ partner's lack of rights and all three designated response buttons. Claude
 independently approved the rule core, views, CPU and adjusted tests. A duplicate
 assertion identified in review was removed; 4.1.8 release metadata is prepared.
 
+Der erste vollständige 4.1.8-Backendlauf deckte eine zusätzliche alte
+Partnerzug-Fixture in `test_watten_match_evidence.py` auf (ein Fehler,
+3’334 bestandene Fälle). Beide Bieter dieser Fixture werden nun direkt aus dem
+aktuellen Kartenzug gewählt. Replay-, Zähler-, Neustart-, Persistenz- und
+Evidence-Assertions bleiben vollständig erhalten. Alle 28 Tests der Datei
+bestehen; Claude hat die Anpassung separat ohne Blocker freigegeben. Dieser
+fehlgeschlagene Vollversuch ist kein Liefernachweis und wird vollständig ersetzt.
+
+The first complete 4.1.8 backend run found an additional obsolete partner-turn
+fixture in `test_watten_match_evidence.py` (one failure, 3,334 passes). Both bids
+now use the current card player. Replay, counters, restart, persistence and
+evidence assertions are all preserved. All 28 tests in the file pass; Claude
+separately approved the adjustment without blockers. The failed full attempt
+is not delivery evidence and requires a new complete run.
+
 ## Nachweise und Grenzen / Evidence and limits
 
 Der erste Vollnachweis für 4.1.7 bestand auf `05009ca5`: 582 Tooltests,
