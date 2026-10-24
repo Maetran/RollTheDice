@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
-import { spawn, execFileSync } from 'node:child_process';
+import { spawn, spawnSync, execFileSync } from 'node:child_process';
 import { mkdtemp, readFile, writeFile, rm } from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -8,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { CONFIGS, createSuitePlan, parseArguments, reservePort, runLocalBrowserTests } from '../scripts/test-browser-local.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const require = createRequire(import.meta.url);
 const delay = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
 const names = ['main-1', 'main-2', 'main-3', 'main-4', 'username', 'passkeys', 'hausdepp-passkeys'];
 
@@ -53,6 +55,8 @@ test('the default plan covers four one-worker shards and every isolated account 
   assert.deepEqual(plan.map(item => item.name), names);
   for (const [index, suite] of plan.entries()) {
     assert.equal(suite.args.filter(arg => arg === '--workers=1').length, 1);
+    assert.equal(suite.args.filter(arg => arg === '--forbid-only').length, 1);
+    assert.equal(suite.args.filter(arg => arg === '--retries=0').length, 1);
     assert.equal(suite.env.PLAYWRIGHT_PYTHON, '/python with spaces/bin/python');
     assert.equal(suite.env.ROLLTHEDICE_TEST_PORT, String(18100 + index));
     assert.equal(suite.env.PLAYWRIGHT_OUTPUT_DIR, suite.outputDir);
@@ -63,11 +67,57 @@ test('the default plan covers four one-worker shards and every isolated account 
   for (const field of ['testDirectory', 'outputDir', 'htmlDir', 'logPath']) assert.equal(new Set(plan.map(item => item[field])).size, 7);
 });
 
+test('the real Playwright CLI refuses focused tests in unfiltered and filtered runner plans before executing them', async t => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), 'browser-runner-focused-test-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const marker = path.join(directory, 'test-body-ran');
+  await writeFile(path.join(directory, CONFIGS.username), "module.exports = { testDir: __dirname, forbidOnly: false, reporter: 'list' };\n");
+  await writeFile(path.join(directory, 'focused.spec.js'), `
+const { test } = require(${JSON.stringify(require.resolve('@playwright/test'))});
+test.only('focused case', () => require('node:fs').writeFileSync(${JSON.stringify(marker)}, 'unexpected execution'));
+`);
+  for (const filters of [[], ['--grep', 'focused case']]) {
+    const [suite] = createSuitePlan({ root: directory, temporaryDirectory: directory, outputDirectory: directory,
+      suites: ['username'], ports: [18200], filters, environment: cleanEnvironment() });
+    const result = spawnSync(process.execPath, [require.resolve('@playwright/test/cli'), ...suite.args], {
+      cwd: directory, env: suite.env, encoding: 'utf8', timeout: 15000,
+    });
+    const output = result.stdout + result.stderr;
+    assert.equal(result.status, 1, output);
+    assert.match(output, /--forbid-only/);
+    assert.match(output, /focused\.spec\.js/);
+    await assert.rejects(readFile(marker), { code: 'ENOENT' });
+  }
+});
+
+test('the real Playwright CLI preserves a first-attempt failure with CI enabled instead of retrying it', async t => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), 'browser-runner-retry-test-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const attempts = path.join(directory, 'attempts.txt');
+  await writeFile(path.join(directory, CONFIGS.username), "module.exports = { testDir: __dirname, retries: 1, reporter: 'list' };\n");
+  await writeFile(path.join(directory, 'retry.spec.js'), `
+const { test } = require(${JSON.stringify(require.resolve('@playwright/test'))});
+test('passes only on retry', () => {
+  require('node:fs').appendFileSync(${JSON.stringify(attempts)}, 'attempt\\n');
+  if (test.info().retry === 0) throw new Error('first attempt failed');
+});
+`);
+  const [suite] = createSuitePlan({ root: directory, temporaryDirectory: directory, outputDirectory: directory,
+    suites: ['username'], ports: [18200], environment: cleanEnvironment({ CI: '1' }) });
+  const result = spawnSync(process.execPath, [require.resolve('@playwright/test/cli'), ...suite.args], {
+    cwd: directory, env: suite.env, encoding: 'utf8', timeout: 15000,
+  });
+  const output = result.stdout + result.stderr;
+  assert.equal(result.status, 1, output);
+  assert.match(output, /first attempt failed/);
+  assert.equal(await readFile(attempts, 'utf8'), 'attempt\n');
+});
+
 test('config filtering cannot override worker, shard, server or report isolation', () => {
   assert.deepEqual(parseArguments(['--config', 'playwright.passkeys.config.js', '--', 'passkeys.spec.js', '--grep', 'sign in']), {
     suites: ['passkeys'], filters: ['passkeys.spec.js', '--grep', 'sign in'], outputDirectory: undefined, portBase: undefined,
   });
-  for (const argument of ['--workers=8', '-j8', '--shard=2/2', '--config=x', '-cother.js', '--output=x', '--reporter=list', '--ui']) {
+  for (const argument of ['--workers=8', '-j8', '--shard=2/2', '--config=x', '-cother.js', '--output=x', '--reporter=list', '--ui', '--retries=1']) {
     assert.throws(() => parseArguments(['--', argument]), /owns isolation/);
   }
   assert.throws(() => parseArguments(['--suite', 'unknown']), /Unknown/);

@@ -12,11 +12,7 @@ module.exports = defineConfig({
   timeout: 30000,
   fullyParallel: false,
   workers: 1,
-  // A browser process can occasionally disappear before a test has received
-  // its first context (not an assertion or application failure). Retry once
-  // in CI so this infrastructure-only launch flake does not hide a real
-  // product regression; a repeated UI assertion still fails the run.
-  retries: process.env.CI ? 1 : 0,
+  retries: 0,
   reporter: isolated.reporter,
   outputDir: isolated.outputDir,
   use: {
@@ -25,8 +21,8 @@ module.exports = defineConfig({
     screenshot: "only-on-failure",
     trace: "retain-on-failure",
   },
-  // One shard creates close to 200 real tables within the hourly window (plus
-  // CI retries); the test-only creation limits leave headroom above that.
+  // One shard creates close to 200 real tables within the hourly window; the
+  // test-only creation limits leave headroom above that.
   webServer: process.env.PLAYWRIGHT_BASE_URL ? undefined : {
     command: `${isolated.python} -m uvicorn scripts.browser_test_app:create_application --factory --no-proxy-headers --host 127.0.0.1 --port ${port} --ws-max-size 65536`,
     env: {
