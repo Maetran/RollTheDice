@@ -33,7 +33,7 @@ class Node {
   matches(selector) {
     return selector === "[hidden]" ? this.hidden : selector === "label" || selector === "h2" ? this.tag === selector
       : selector === ".wt-waiting" ? this.className === "wt-waiting"
-        : selector === "[data-language-switcher]" ? this.language : selector === "[data-watten-voice]" && this.voice;
+        : selector === "[data-language-switcher]" ? this.language : selector === "[data-watten-voice]" ? this.voice : selector === "[data-watten-sound]" && this.sound;
   }
   closest(selector) { return this.matches(selector) ? this : this.parentNode?.closest(selector) || null; }
   querySelector(selector) { return this.children.find(node => node.matches(selector))
@@ -49,29 +49,32 @@ function fixture({ hidden = false } = {}) {
   language.append(select); header.append(language);
   const voice = new Node(dom), summary = new Node(dom, "summary"), room = new Node(dom), title = new Node(dom, "h2"), slot = new Node(dom);
   voice.voice = true; voice.controller = { audio: true, microphone: false }; voice.open = true; voice.append(summary);
-  room.className = "wt-waiting"; room.append(title, slot); root.append(room, voice); body.append(header, root);
+  const sound = new Node(dom), toggle = new Node(dom, "button");
+  sound.sound = true; sound.controller = { enabled: true }; sound.append(toggle);
+  room.className = "wt-waiting"; room.append(title, slot); root.append(room, voice, sound); body.append(header, root);
   const chrome = createWaitingRoomChrome({ root, header, dom });
   const config = { member: true, canLeave: true, busy: false, lobbyUrl: "/watten", rulesUrl: "/watten/regeln?lang=en",
     leaveLabel: "Leave waiting room", lobbyLabel: "Lobby", rulesLabel: "Rules" };
-  return { dom, body, header, root, room, title, slot, language, select, voice, summary, chrome, config,
+  return { dom, body, header, root, room, title, slot, language, select, voice, summary, sound, toggle, chrome, config,
     show() { chrome.show(slot, config); },
     rerender() { chrome.park(); slot.remove(); room.append(slot); chrome.show(slot, config); } };
 }
 
-test("waiting room owns one live language/voice instance and restores their original hosts", () => {
+test("waiting room owns one live language/voice/ambience instance and restores their original hosts", () => {
   const f = fixture(); f.show();
   assert.equal(f.header.hidden, true); assert.equal(f.dom.documentElement.dataset.wattenWaiting, "true");
-  assert.ok(f.slot.contains(f.language)); assert.ok(f.slot.contains(f.voice));
-  const tools = f.slot.children[0], voiceState = f.voice.controller;
+  assert.ok(f.slot.contains(f.language)); assert.ok(f.slot.contains(f.voice)); assert.ok(f.slot.contains(f.sound));
+  const tools = f.slot.children[0], voiceState = f.voice.controller, soundState = f.sound.controller;
   f.rerender();
   assert.equal(f.slot.children.length, 1); assert.equal(f.slot.children[0], tools);
   assert.equal(f.voice.controller, voiceState); assert.equal(f.voice.open, true);
+  assert.equal(f.sound.controller, soundState); assert.equal(f.sound.controller.enabled, true);
   assert.equal(f.select.changeHandler(), "still bound");
   assert.equal(tools.children[0].dataset.wattenCommand, "waiting-back");
   assert.equal(tools.children[0].hidden, false); assert.equal(tools.children[1].hidden, true);
   f.chrome.restore();
   assert.equal(f.header.hidden, false); assert.equal(f.language.parentNode, f.header);
-  assert.equal(f.voice.parentNode, f.root); assert.equal(f.slot.children.length, 0);
+  assert.equal(f.voice.parentNode, f.root); assert.equal(f.sound.parentNode, f.root); assert.equal(f.slot.children.length, 0);
   assert.equal(f.dom.documentElement.dataset.wattenWaiting, undefined);
 });
 
@@ -79,7 +82,8 @@ test("language and voice focus survive waiting snapshots and return to the activ
   const f = fixture(); f.show(); f.select.focus(); f.rerender();
   assert.equal(f.dom.activeElement, f.select); assert.equal(f.select.value, "en");
   f.summary.focus(); f.rerender(); assert.equal(f.dom.activeElement, f.summary);
-  f.chrome.restore(); assert.equal(f.dom.activeElement, f.summary);
+  f.toggle.focus(); f.rerender(); assert.equal(f.dom.activeElement, f.toggle);
+  f.chrome.restore(); assert.equal(f.dom.activeElement, f.toggle);
   f.select.focus(); f.chrome.restore();
   assert.equal(f.dom.activeElement, f.select, "unchanged active-table renders must not move or blur header controls");
 });

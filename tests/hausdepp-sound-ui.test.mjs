@@ -157,3 +157,29 @@ test("unsupported sound stays disabled and playback failure does not disable voi
   assert.deepEqual(app.cues, []);
   app.destroy();
 });
+
+const wattenSource = (await readFile(new URL('../frontend/watten/sound.js', import.meta.url), 'utf8')).replace(/^import .*;\n/gm, '');
+const { mountWattenSoundUI } = await import(dataURL(wattenSource));
+for (const language of ['de', 'en']) {
+  test(`${language}: labelled Watten ambience opt-in survives relocation and stays independent of voice`, async () => {
+    const app = setup(language), container = new Element(), waiting = new Element();
+    document.body.append(container, waiting);
+    const ui = mountWattenSoundUI({ controller: app.sound, container, t: key => HAUSDEPP_MESSAGES[language][key] });
+    const button = container.querySelector('#wattenSound');
+    assert.equal(button.getAttribute('aria-label'), HAUSDEPP_MESSAGES[language].soundOn);
+    assert.match(button.innerHTML, new RegExp(HAUSDEPP_MESSAGES[language].soundAmbienceLabel));
+    assert.equal(button.getAttribute('aria-pressed'), 'false');
+    const before = app.calls.length, voiceBefore = app.controller.snapshot();
+    waiting.append(container); button.click(); await settle();
+    assert.equal(button.getAttribute('aria-pressed'), 'true');
+    assert.equal(waiting.querySelector('#wattenSound'), button);
+    assert.deepEqual(app.calls.slice(before), ['unlock', true]);
+    assert.deepEqual(app.controller.snapshot(), voiceBefore, 'ambience must not change microphone or voice participation');
+    app.updateSound({ status: 'error', enabled: false, errorKey: 'soundUnavailable' });
+    assert.equal(button.dataset.error, 'true');
+    assert.equal(button.title, HAUSDEPP_MESSAGES[language].soundUnavailable);
+    app.updateSound({ supported: false }); assert.equal(button.disabled, true);
+    ui.destroy(); assert.equal(waiting.querySelector('#wattenSound'), null);
+    app.destroy();
+  });
+}

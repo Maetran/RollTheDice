@@ -1,0 +1,29 @@
+[data-watten-sound] { position: absolute; top: 4px; right: 152px; z-index: 14; }
+[data-watten-sound]:empty { display: none; }
+.wt-sound button {
+  display: flex; align-items: center; justify-content: center; gap: 4px; min-width: 64px; min-height: 44px;
+  padding: 3px 6px; border: 1px solid #bd976c88; border-radius: 8px; background: #fff1dc88;
+  color: #613b29; font-size: .7rem; line-height: 1.1; touch-action: manipulation;
+}
+.wt-sound button > :first-child { font-size: 20px; }
+.wt-sound button[aria-pressed="true"] { background: #5c4d31; border-color: #5c4d31; color: #fff5df; }
+.wt-sound button[data-error="true"] { border-color: var(--wt-red); }
+.wt-sound button:focus-visible { outline: 3px solid var(--wt-gold); outline-offset: 2px; }
+.wt-sound button:disabled { opacity: .5; }
+.wt-waiting-tools > [data-watten-sound] { position: static; inset: auto; z-index: auto; }
+@media (orientation: portrait) and (max-width: 760px) {
+  html[data-watten-active="true"] [data-watten-social] { right: 0; }
+  html[data-watten-active="true"] .wt-topbar-actions { right: 44px; }
+  html[data-watten-active="true"] [data-watten-voice] { right: 88px; }
+  html[data-watten-active="true"] [data-watten-sound] { top: 4px; right: 132px; }
+  html[data-watten-active="true"] .wt-table .wt-topbar { padding-inline: 0 176px; }
+  html[data-watten-active="true"] .wt-sound button { width: 44px; min-width: 44px; height: 44px; flex-direction: column; gap: 0; padding: 1px; font-size: .58rem; }
+  html[data-watten-active="true"] .wt-sound button > :first-child { font-size: 18px; }
+}
+@media (orientation: landscape) and (max-height: 700px) {
+  html[data-watten-active="true"] [data-watten-sound] {
+    position: fixed; inset: auto auto calc(58px + env(safe-area-inset-bottom, 0px)) calc(6px + var(--wt-rail-inset));
+    width: 144px; z-index: 35;
+  }
+  html[data-watten-active="true"] .wt-sound button { width: 100%; }
+}
