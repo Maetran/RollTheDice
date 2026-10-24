@@ -285,6 +285,14 @@
           message: lines.join("\n"),
           kind: "success",
           dismissible: false,
+          onOpen: ({ message }) => {
+            // Translate each rank separately: English text normalization folds newlines.
+            message.replaceChildren(...lines.map(line => {
+              const row = document.createElement("div");
+              row.textContent = window.ZDWA_I18N?.t?.(line) || line;
+              return row;
+            }));
+          },
           actions: [
             { id: "lobby", label: "Zur Lobby", className: "ghost" },
             { id: "new", label: "Neue Runde", className: "primary" },
