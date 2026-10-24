@@ -1,27 +1,25 @@
 {
   "kind": "usability",
   "games": [
-    "watten"
+    "hausdepp"
   ],
-  "summary_de": "Watten: lesbare Ansagekarten, ruhiges Blödeln, klare Ergebnisse mit Reaktionen, feste Revancheteams und Abbruch nach 1 h Inaktivität.",
-  "summary_en": "Watten: readable call cards, calmer Blödeln and results with reactions, fixed rematch teams; idle matches end after one hour.",
+  "summary_de": "Hausdepp: Geworfene Karten landen erst nach ihrem Flug auf dem Stapel; Folgeaktionen warten auf die Ankunft.",
+  "summary_en": "Hausdepp: Thrown cards appear on the pile when their flight lands; follow-up actions wait for arrival.",
   "player_notes": {
     "de": {
-      "title": "Watten 4.1.4: Ruhiger spielen, gemeinsam weitermachen",
+      "title": "Hausdepp 4.1.5: Erst landen, dann weiterspielen",
       "changes": [
-        "Ansagekarten bleiben im Hoch- und Querformat lesbar zwischen den Ansagenden. Beim Blödeln bleiben die Aktionen am selben Platz; die anderen erhalten nur kurze Hinweise.",
-        "Der Endbildschirm zeigt das Ergebnis, schnelle Reaktionen und die Revanche. Erfolge und Spieldetails kannst du bei Bedarf öffnen; beim Stichrückblick werden neue Karten und Animationen ausgeblendet.",
-        "Bei der Revanche kehren alle auf ihre bisherigen Plätze und in ihre Teams zurück. Die Nockerl bleiben derselben Besetzung zugeordnet.",
-        "Partien ohne Spielaktivität enden nach einer Stunde ohne Wertung. Wer vorher bewusst fortsetzt, kann mit denselben Karten weiterspielen."
+        "Geworfene Karten siehst du während des Flugs nur einmal. Erst bei der Landung erscheinen sie auf dem offenen Paket.",
+        "Nachwerfen, Aufnehmen und weitere Stapelaktionen werden nach der Ankunft freigegeben.",
+        "Mit reduzierter Bewegung entfällt die Flugwartezeit."
       ]
     },
     "en": {
-      "title": "Watten 4.1.4: Calmer play, rematches with the same lineup",
+      "title": "Hausdepp 4.1.5: Land first, then continue",
       "changes": [
-        "Call cards stay readable between the callers in portrait and landscape. Blödeln actions keep their position; everyone else gets only a brief notice.",
-        "The final screen shows the result, quick reactions and the rematch. Open achievements and match details when you want them; incoming cards and animations are hidden while you review a trick.",
-        "Rematches return everyone to their previous seats and teams, keeping Nockerl loss marks tied to the same lineup.",
-        "Matches without game activity end after one hour without a result. Resume before then to continue with the same cards."
+        "Thrown cards appear only once during their flight. They join the open pile when they land.",
+        "Follow-up plays, pickups and other pile actions become available after arrival.",
+        "Reduced motion skips the flight wait."
       ]
     }
   }
