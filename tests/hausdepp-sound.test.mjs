@@ -21,6 +21,14 @@ const deferred = () => {
 function setup({ fetchAsset, decode, resume, suspend, random = () => 0,
   families = [TAVERN_FAMILIES.find(family => family.id === "cambridge")], storage, failCurve } = {}) {
   const contexts = [], requests = [], timers = new Map(), lifecycle = new EventTarget(), states = [];
+  const handlers = new Map(), addListener = lifecycle.addEventListener.bind(lifecycle), removeListener = lifecycle.removeEventListener.bind(lifecycle);
+  lifecycle.addEventListener = (type, listener, options) => {
+    handlers.set(type, { listener, options }); addListener(type, listener, options);
+  };
+  lifecycle.removeEventListener = (type, listener, options) => {
+    if (handlers.get(type)?.listener === listener) handlers.delete(type);
+    removeListener(type, listener, options);
+  };
   let timerId = 0, wallTime = 0;
   const parameter = () => ({
     events: [],
@@ -101,7 +109,7 @@ function setup({ fetchAsset, decode, resume, suspend, random = () => 0,
   };
   const clips = () => contexts.flatMap(context => context.nodes.filter(node => node.kind === "clip" && node.active));
   const tones = () => contexts.flatMap(context => context.nodes.filter(node => node.kind === "tone" && node.active));
-  return { sound, contexts, requests, timers, lifecycle, states, tick, clips, tones };
+  return { sound, contexts, requests, timers, lifecycle, handlers, states, tick, clips, tones };
 }
 
 test("default-off sound never opens a context, fetches assets or schedules background work", async () => {
@@ -420,3 +428,64 @@ test('pagehide during an in-flight rotation aborts the request and cannot restar
   assert.equal(app.contexts[0].state, 'closed');
   assert.ok(app.contexts[0].nodes.filter(node => node.kind === 'clip').every(node => node.buffer === null));
 });
+
+test('enabled interrupted ambience resumes on the next gesture; default-off and teardown stay inactive', async () => {
+  const app = setup();
+  for (const type of ['pointerdown', 'keydown']) {
+    assert.deepEqual(app.handlers.get(type).options, { capture: true, passive: true });
+    app.lifecycle.dispatchEvent(new Event(type));
+  }
+  await turn();
+  assert.equal(app.contexts.length, 0); assert.equal(app.requests.length, 0);
+  await app.sound.setEnabled(true);
+  const context = app.contexts[0], room = roomsPlaying(app)[0], requests = app.requests.length;
+  for (const [type, state] of [['pointerdown', 'interrupted'], ['keydown', 'suspended']]) {
+    context.state = state;
+    const resumes = context.resumes;
+    app.lifecycle.dispatchEvent(new Event(type)); await turn();
+    assert.equal(context.resumes, resumes + 1);
+    assert.equal(context.state, 'running');
+    assert.deepEqual(roomsPlaying(app), [room]); assert.equal(app.requests.length, requests);
+    assert.equal(app.sound.snapshot().enabled, true);
+  }
+  await app.sound.setEnabled(false); app.tick(160); await turn();
+  const resumes = context.resumes;
+  app.lifecycle.dispatchEvent(new Event('pointerdown')); await turn();
+  assert.equal(context.resumes, resumes, 'disabled sound must not resume on unrelated table gestures');
+  app.sound.destroy();
+  assert.equal(app.handlers.size, 0, 'teardown removes pagehide and both capture handlers');
+  app.lifecycle.dispatchEvent(new Event('keydown')); await turn();
+  assert.equal(context.resumes, resumes); assert.equal(context.closes, 1);
+});
+
+for (const phase of ['request', 'curve']) {
+  test(`${phase} rotation failures during a detail retain exactly one detail chain`, async () => {
+    const cambridge = TAVERN_FAMILIES.find(family => family.id === 'cambridge');
+    const app = setup({ families: [{ ...cambridge, variants: cambridge.variants.slice(0, 1) }, distinctRooms[1]],
+      failCurve: () => phase === 'curve',
+      fetchAsset: request => ({ ok: phase !== 'request' || request.url !== '/b.mp3',
+        arrayBuffer: async () => { const data = new ArrayBuffer(8); data.asset = request.url; return data; } }),
+    });
+    await app.sound.setEnabled(true);
+    app.tick(180000); await turn();
+    const activeDetail = () => app.clips().filter(source => !source.loop);
+    const original = activeDetail()[0]; assert.ok(original);
+    for (let failure = 0; failure < 3; failure++) {
+      assert.deepEqual(activeDetail(), [original]);
+      assert.equal(app.timers.size, 1, 'a playing detail owns its chain; only the rotation retry may be pending');
+      app.tick(30000); await turn();
+    }
+    original.finish();
+    assert.equal(app.timers.size, 2, 'its own onended schedules one detail beside the rotation retry');
+    app.tick(25000); await turn();
+    assert.equal(activeDetail().length, 1); assert.equal(app.timers.size, 1);
+    app.tick(5000); await turn();
+    assert.equal(activeDetail().length, 1); assert.equal(app.timers.size, 1,
+      'another rotation failure must not append a second detail timer');
+    activeDetail()[0].finish();
+    assert.equal(app.timers.size, 2);
+    app.tick(25000); await turn();
+    assert.equal(activeDetail().length, 1); assert.equal(app.timers.size, 1);
+    app.sound.destroy(); assert.equal(app.timers.size, 0);
+  });
+}

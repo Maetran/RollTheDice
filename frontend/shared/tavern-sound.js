@@ -111,6 +111,12 @@ export function createTavernSound({
     if (!enabled || destroyed || !supported) return;
     try { quietly(resume()); } catch { /* setEnabled reports activation errors. */ }
   };
+  const gestureOptions = { capture: true, passive: true };
+  const resumeAfterGesture = () => {
+    // Calls, Siri and audio-session changes may interrupt an enabled context.
+    // A later table gesture can resume it without toggling sound off and on.
+    if (enabled && context?.state !== "running") unlock();
+  };
   const tone = kind => {
     if (!context || context.state !== "running" || !notes[kind]) return;
     for (const entry of [...nodes]) if (entry.cue) stop(entry);
@@ -174,12 +180,13 @@ export function createTavernSound({
     return entry;
   };
   const roomOffset = buffer => Math.max(0, Math.min(0.9999999999999999, Number(random()) || 0)) * (buffer.duration || 0);
+  const detailPlaying = () => [...nodes].some(entry => !entry.cue && !entry.room);
   const scheduleDetail = (attempt, first = false) => {
-    if (!current(attempt) || !room?.clip.details) return;
+    if (!current(attempt) || !room?.clip.details || detailTimer !== null || detailPlaying()) return;
     const owner = room;
     detailTimer = delay(() => {
       detailTimer = null;
-      if (!current(attempt) || room !== owner) return;
+      if (!current(attempt) || room !== owner || detailPlaying()) return;
       const roll = random(), clip = roll < 0.6 ? details.glasses : roll < 0.8 ? details.dishwasher : details.laughter;
       const entry = playClip(clip);
       if (!entry) { scheduleDetail(attempt); return; }
@@ -241,7 +248,7 @@ export function createTavernSound({
       outgoing.gain.gain.cancelScheduledValues(context.currentTime);
       outgoing.gain.gain.setValueAtTime(outgoing.clip.gain, context.currentTime);
       if (clip.id !== outgoing.clip.id) buffers.delete(clip.id);
-      if (detailTimer === null) scheduleDetail(attempt);
+      if (detailTimer === null && !detailPlaying()) scheduleDetail(attempt);
       scheduleRotation(attempt, 30);
     }
   }
@@ -293,8 +300,12 @@ export function createTavernSound({
     cancelSuspension(); cancelLoads(); stopNodes(); buffers.clear(); listeners.clear();
     try { quietly(context?.close()); } catch { /* Page teardown is best effort. */ }
     lifecycle?.removeEventListener("pagehide", destroy);
+    lifecycle?.removeEventListener("pointerdown", resumeAfterGesture, gestureOptions);
+    lifecycle?.removeEventListener("keydown", resumeAfterGesture, gestureOptions);
   }
   lifecycle?.addEventListener("pagehide", destroy);
+  lifecycle?.addEventListener("pointerdown", resumeAfterGesture, gestureOptions);
+  lifecycle?.addEventListener("keydown", resumeAfterGesture, gestureOptions);
   return { snapshot, unlock, cue, setEnabled, destroy, subscribe(listener) {
     listeners.add(listener); listener(snapshot());
     return () => listeners.delete(listener);
