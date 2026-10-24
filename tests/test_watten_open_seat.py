@@ -6,7 +6,7 @@ import io
 import json
 import sqlite3
 from concurrent.futures import ThreadPoolExecutor
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, closing
 from dataclasses import asdict, replace
 from datetime import timedelta
 from pathlib import Path
@@ -510,7 +510,7 @@ def test_additive_leaf_migration_preserves_existing_rows_and_refuses_lossy_downg
     config.set_main_option("script_location", str(BASE / "alembic"))
     config.set_main_option("sqlalchemy.url", f"sqlite:///{filename}")
     command.upgrade(config, "20261018_0073")
-    with sqlite3.connect(filename, isolation_level=None) as db:
+    with closing(sqlite3.connect(filename, isolation_level=None)) as db, db:
         db.execute("PRAGMA foreign_keys=ON")
         db.execute("INSERT INTO active_games(game_id,state_json,created_at,updated_at) "
                    "VALUES ('preserved','unchanged','2026-10-18','2026-10-18')")

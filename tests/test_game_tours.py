@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import sqlite3
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import closing
 from types import SimpleNamespace
 from unittest.mock import patch
 from uuid import uuid4
@@ -195,7 +196,7 @@ def test_migration_preserves_legacy_accounts_sessions_and_history(tmp_path):
     config.set_main_option("sqlalchemy.url", f"sqlite:///{path}")
     command.upgrade(config, "20261016_0059")
     legacy = migration_support.TypedCompletedResultsMigrationTest()
-    with sqlite3.connect(path) as connection:
+    with closing(sqlite3.connect(path)) as connection, connection:
         connection.execute("PRAGMA foreign_keys=ON")
         user_id = legacy._insert_user(connection)
         legacy._insert_completed_game(connection, game_id="pre-tour-history", game_type="zdwa")
@@ -207,7 +208,7 @@ def test_migration_preserves_legacy_accounts_sessions_and_history(tmp_path):
         tables = ("users", "sessions", "completed_games")
         before = {table: connection.execute(f"SELECT * FROM {table}").fetchall() for table in tables}
     command.upgrade(config, "head")
-    with sqlite3.connect(path) as connection:
+    with closing(sqlite3.connect(path)) as connection, connection:
         assert {table: connection.execute(f"SELECT * FROM {table}").fetchall() for table in tables} == before
         assert connection.execute("SELECT * FROM game_tour_preferences").fetchall() == []
         connection.execute("PRAGMA foreign_keys=ON")
@@ -217,6 +218,6 @@ def test_migration_preserves_legacy_accounts_sessions_and_history(tmp_path):
         ).fetchone() == (1, "unseen", "unseen", "unseen")
         assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
     command.downgrade(config, "20261016_0059")
-    with sqlite3.connect(path) as connection:
+    with closing(sqlite3.connect(path)) as connection, connection:
         assert {table: connection.execute(f"SELECT * FROM {table}").fetchall() for table in tables} == before
     command.upgrade(config, "head")

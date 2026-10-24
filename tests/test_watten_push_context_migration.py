@@ -3,6 +3,7 @@
 import importlib.util
 import io
 import sqlite3
+from contextlib import closing
 from pathlib import Path
 
 import pytest
@@ -23,7 +24,7 @@ def test_sqlite_leaf_upgrade_preserves_devices_audiences_tour_choices_and_refuse
     config.set_main_option("script_location", str(BASE / "alembic"))
     config.set_main_option("sqlalchemy.url", f"sqlite:///{filename}")
     command.upgrade(config, PREVIOUS)
-    with sqlite3.connect(filename, isolation_level=None) as db:
+    with closing(sqlite3.connect(filename, isolation_level=None)) as db, db:
         db.execute("PRAGMA foreign_keys=ON")
         account = db.execute(
             "INSERT INTO users(username,username_normalized,password_hash,role,is_active,must_change_password,created_at,updated_at) "

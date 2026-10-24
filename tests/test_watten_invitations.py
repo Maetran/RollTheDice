@@ -4,7 +4,7 @@ import importlib.util
 import io
 import json
 import sqlite3
-from contextlib import ExitStack
+from contextlib import ExitStack, closing
 from dataclasses import replace
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -482,7 +482,7 @@ def test_additive_sqlite_upgrade_retains_existing_rows_and_downgrade_refuses_inv
     path = tmp_path / "personal-invitations.sqlite3"
     config.set_main_option("sqlalchemy.url", f"sqlite:///{path}")
     command.upgrade(config, "20261018_0072")
-    with sqlite3.connect(path, isolation_level=None) as db:
+    with closing(sqlite3.connect(path, isolation_level=None)) as db, db:
         db.execute("PRAGMA foreign_keys=ON")
         own = user(db)
         db.execute("INSERT INTO active_games (game_id,state_json,created_at,updated_at) VALUES ('kept','{}',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)")

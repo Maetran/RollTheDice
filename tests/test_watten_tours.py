@@ -2,6 +2,7 @@
 
 import sqlite3
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import closing
 
 import pytest
 from alembic.config import Config
@@ -111,13 +112,13 @@ def test_migration_preserves_existing_choices_and_refuses_destructive_downgrade(
     config.set_main_option("script_location", str(main.BASE / "alembic"))
     config.set_main_option("sqlalchemy.url", f"sqlite:///{path}")
     command.upgrade(config, "20261018_0070")
-    with sqlite3.connect(path) as db:
+    with closing(sqlite3.connect(path)) as db, db:
         user = TypedCompletedResultsMigrationTest()._insert_user(db)
         db.execute("INSERT INTO game_tour_preferences (user_id,enabled,zdwa_state,zilch_state,hausdepp_state) "
                    "VALUES (?,0,'completed','started','dismissed')", (user,))
         users = db.execute("SELECT * FROM users").fetchall()
     command.upgrade(config, "head")
-    with sqlite3.connect(path) as db:
+    with closing(sqlite3.connect(path)) as db, db:
         assert db.execute("SELECT * FROM users").fetchall() == users
         assert db.execute("SELECT enabled,zdwa_state,zilch_state,hausdepp_state,watten_state FROM game_tour_preferences").fetchone() == (0, "completed", "started", "dismissed", "unseen")
         with pytest.raises(sqlite3.IntegrityError):
@@ -125,11 +126,11 @@ def test_migration_preserves_existing_choices_and_refuses_destructive_downgrade(
         db.execute("UPDATE game_tour_preferences SET watten_state='completed'")
     with pytest.raises(RuntimeError, match="Cannot discard"):
         command.downgrade(config, "20261018_0070")
-    with sqlite3.connect(path) as db:
+    with closing(sqlite3.connect(path)) as db, db:
         assert db.execute("SELECT watten_state FROM game_tour_preferences").fetchone() == ("completed",)
         db.execute("UPDATE game_tour_preferences SET watten_state='unseen'")
     command.downgrade(config, "20261018_0070")
-    with sqlite3.connect(path) as db:
+    with closing(sqlite3.connect(path)) as db, db:
         assert db.execute("SELECT enabled,zdwa_state,zilch_state,hausdepp_state FROM game_tour_preferences").fetchone() == (0, "completed", "started", "dismissed")
         assert db.execute("PRAGMA foreign_key_check").fetchall() == []
     command.upgrade(config, "head")

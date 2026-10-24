@@ -3,6 +3,7 @@
 import importlib.util
 import io
 import sqlite3
+from contextlib import closing
 from datetime import timedelta
 from pathlib import Path
 
@@ -309,7 +310,7 @@ def test_additive_sqlite_upgrade_preserves_existing_journal_and_enforces_own_cre
     path = tmp_path / "match-receipts.sqlite3"
     config.set_main_option("sqlalchemy.url", f"sqlite:///{path}")
     command.upgrade(config, "20261018_0067")
-    with sqlite3.connect(path, isolation_level=None) as connection:
+    with closing(sqlite3.connect(path, isolation_level=None)) as connection, connection:
         connection.execute("PRAGMA foreign_keys=ON")
         own = user(connection)
         connection.execute("INSERT INTO watten_match_evidence VALUES ('retained','{}','{}','{}',?)", (FINISHED.isoformat(),))
