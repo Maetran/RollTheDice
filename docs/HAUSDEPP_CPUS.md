@@ -4,14 +4,14 @@ Die Computer verwenden dieselben Befehle und denselben Regelprüfer wie Menschen
 Es gibt keine eigene CPU-Hausregel und keine zusätzliche Nachwurfsperre.
 Sie erhalten ausschliesslich ihre persönliche `project_state`-Ansicht: eigene
 Hand, offenes Paket, öffentliche Handgrössen und Anzahl der Nachziehkarten.
-Gegnerische Hände, Nachziehreihenfolge und interne Erfolgsnachweise beeinflussen
+Verborgene gegnerische Hände, Nachziehreihenfolge und interne Erfolgsnachweise beeinflussen
 keine Entscheidung. Auch erlaubte private Abhebeinformationen werden von dieser
 Strategie nicht zur Vorhersage des verdeckten Stapels verwendet.
 
 Computers use the same commands and authoritative validator as humans, without
 special rules or additional-card locks. They receive only their personal
 `project_state` view: their own hand, the open pile, public hand sizes and stock
-count. Opposing hands, draw order and internal achievement evidence never
+count. Hidden opposing hands, draw order and internal achievement evidence never
 influence a decision. This policy also does not use permissible private bottom
 inspection information to predict the face-down stock.
 
@@ -161,6 +161,56 @@ inspection information to predict the face-down stock.
   position. A repeated position prompts another legal plan. Memory survives human
   turns and resets on disconnect, a new round or restart. At most 128 tables retain
   this extra memory; it is neither persisted nor transmitted.
+
+## Öffentlich beobachtetes Endspiel / Publicly observed endgame
+
+Bei leerem Nachziehstapel merkt sich jeder CPU-Sitz zusätzlich Karten aus
+tatsächlich beobachteten öffentlichen Paketaufnahmen. Spielen und Nachwerfen
+entfernen genau die ausgespielten Karten aus diesem Wissen. Eine fremde Hand
+gilt erst als vollständig bekannt, wenn alle Karten durch diese Beobachtungen
+belegt sind; unbekannte Restkarten bleiben unbekannt. Die Beobachtung folgt
+jedem akzeptierten Kartenbefehl, auch zwischen zwei CPU-Zügen. Private
+Abhebeinformationen, fremde Hände und interne Erfolgsnachweise werden dafür
+nicht gelesen. Versionslücken, Rückzüge, Sitz-/Kontowechsel, neue Runden und
+Neustarts verwerfen das Wissen. Ein Beobachtungsfehler verwirft den Speicher
+dieses Tisches und wird protokolliert; der akzeptierte Spielzug bleibt gültig.
+
+Die zusätzliche Taktik gilt nur mit zwei aktiven Spielern, bei leerem Tisch und
+Nachziehstapel,
+mit genau drei eigenen verschiedenen gewöhnlichen Karten und einem vollständig
+bekannten gegnerischen Paar. Weitere Sitze müssen bereits fertig und leer sein;
+Rückzüge und ein offenes Nachwurffenster sind ausgeschlossen.
+Die Reihenfolge muss niedrig < Paar < Blockkarte <
+Reserve sein. Beispiel: eigene 6/K/Ass gegen bekannte 7/7. Die CPU legt K statt
+6, erzwingt die Paketaufnahme und behält das Ass für jede erlaubte Antwort.
+Alle 70 Rangmuster dieses engen Falls sind gegen die Engine belegt, einschliesslich
+Nachwerfen und Endduellen an Tischen mit drei, vier und sechs Plätzen. Frühere
+Aussteiger behalten ihre Platzierung. Die bestehende Schwierigkeitsstufe kann
+das Erkennen dieser Taktik
+wie andere Einschätzungen dämpfen. Sichere eigene Schlussketten bleiben vorrangig.
+Eine allgemeine Verbesserung der Gewinnrate wurde damit nicht gemessen.
+
+With the stock empty, each CPU seat additionally remembers cards from public
+packet pickups it actually observed. Plays and follow-up throws remove exactly
+the played cards from that knowledge. An opposing hand is complete only when
+all its cards are evidenced by those observations; unobserved cards stay unknown.
+Every accepted card command is observed, including between CPU turns. The observer
+does not read private peeks, opposing hands or internal achievement evidence.
+Version gaps, withdrawals, seat/account changes, new rounds and restarts discard
+knowledge. An observation failure discards this table's memory and is logged;
+the accepted move remains valid.
+
+The extra tactic applies only to two active players, with an empty table and stock,
+exactly three distinct ordinary own cards and a completely known opposing pair.
+Any other seats must have finished with empty hands; withdrawals and an open
+follow-up window are excluded.
+Their order must be low < pair < blocker < reserve. For example, with 6/K/ace
+against known 7/7, the CPU plays K instead of 6, forces a pickup and retains the
+ace for every legal reply. All 70 rank patterns of this narrow case are proved
+against the engine, including follow-up throws and final duels at tables with
+three, four and six seats. Earlier finishers retain their ranks. Existing
+difficulty can make the CPU miss this tactic like other judgements. Guaranteed own finishes retain
+priority. This does not measure a general increase in win rate.
 
 ## Tempo / Timing
 

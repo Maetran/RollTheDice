@@ -21,7 +21,7 @@ _TASKS: dict[str, asyncio.Task] = {}
 _SLEEPING: dict[asyncio.Task, int] = {}
 _WAKE_REQUESTS: set[asyncio.Task] = set()
 _RANDOM = SystemRandom()
-_MEMORIES: OrderedDict[str, tuple[int, int, dict]] = OrderedDict()
+_MEMORIES: OrderedDict[str, tuple[tuple, dict]] = OrderedDict()
 
 
 def _now() -> float:
@@ -33,18 +33,39 @@ def _memories_for(game: dict) -> dict:
 
     game_id = str(game["_id"])
     round_number = (game.get("_hausdepp_tournament") or {}).get("round_number", 1)
+    roster = tuple((person["id"], bool(person.get("is_cpu")), person.get("user_id"))
+                   for person in game.get("_participants", []))
+    context = (id(game), round_number, roster, tuple((game.get("_hausdepp") or {}).get("withdrawn_ids", [])))
     for stale in list(_MEMORIES):
         if stale not in games:
             _MEMORIES.pop(stale, None)
     previous = _MEMORIES.get(game_id)
-    if previous is None or previous[:2] != (id(game), round_number):
+    if previous is None or previous[0] != context:
         memories = {participant["id"]: CpuMemory() for participant in game.get("_participants", [])
                     if participant.get("is_cpu")}
-        _MEMORIES[game_id] = (id(game), round_number, memories)
+        _MEMORIES[game_id] = (context, memories)
     _MEMORIES.move_to_end(game_id)
     while len(_MEMORIES) > 128:
         _MEMORIES.popitem(last=False)
-    return _MEMORIES[game_id][2]
+    return _MEMORIES[game_id][1]
+
+
+def discard_cpu_memories(game_id: str) -> None:
+    """Discard this table's public knowledge and recent loop history together."""
+    _MEMORIES.pop(str(game_id), None)
+
+
+def observe_accepted_transition(game: dict, before: dict, after: dict) -> None:
+    """Trusted selector: every CPU observes its own DTO, including human-only turns."""
+    from .hausdepp_engine import project_state
+
+    if after["phase"] == "finished":
+        discard_cpu_memories(game["_id"])
+        return
+    if not any(person.get("is_cpu") for person in game.get("_participants", [])):
+        return
+    for actor, memory in _memories_for(game).items():
+        memory.public.observe(project_state(before, actor), project_state(after, actor))
 
 
 def cpu_action_is_due(game: dict) -> bool:
@@ -204,6 +225,7 @@ async def _run(game: dict, *, finalize_game=None) -> None:
 
     try:
         while cpu_action_is_due(game) and games.get(game_id) is game:
+            memories = _memories_for(game)
             update_tempo()
             choices = _cpu_choices(game, memories)
             eligible = {actor for actor, _, _ in choices}
@@ -257,6 +279,7 @@ async def _run(game: dict, *, finalize_game=None) -> None:
                 update_tempo()
                 # Compute after the presentation delay: a human afterthrow may
                 # have changed the table. Unrelated draws never restart a wait.
+                memories = _memories_for(game)
                 decision = next((choice for choice in _cpu_choices(game, memories) if choice[0] == actor_id), None)
                 if decision is None:
                     pending.pop(actor_id, None)
@@ -271,6 +294,8 @@ async def _run(game: dict, *, finalize_game=None) -> None:
                 if command["action"] != "draw":
                     presentation_until = max(presentation_until,
                                              clock() + paced_cpu_delay(game, _presentation_delay(game["_hausdepp"])))
+                # If observation just discarded the cache, this local history
+                # is orphaned; the next iteration reads the fresh cache again.
                 memories[actor_id].remember(projection, command)
                 pending.pop(actor_id, None)
                 previous_actor = actor_id

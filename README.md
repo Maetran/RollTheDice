@@ -1176,8 +1176,13 @@ Computer nutzen sichere Abräum- und Schlussketten, sparen weitere 10er und wäg
 Zocken gegen Aufnehmen ab. Ihr Tempo schwankt; nach einer Denkpause prüfen sie
 den aktuellen Zustand erneut. Die Stärke folgt dem Median der einzeln begrenzten
 Erfahrungsstufen der Menschen: 0 und 1000 Runden ergeben zusammen 0,775 statt
-1,0. Persönliche Einsteigertipps bleiben individuell. Sie kennen keine fremden
-Hände oder verdeckte Stapelreihenfolge. Der [reproduzierbare CPU-Vergleich](docs/HAUSDEPP_CPUS.md)
+1,0. Persönliche Einsteigertipps bleiben individuell. Bei leerem Nachziehstapel
+merken sie tatsächlich beobachtete öffentliche Paketaufnahmen. Im belegten
+Endduell mit zwei aktiven Spielern legen sie z. B. mit 6/K/Ass gegen vollständig
+bekannte 7/7 auf leerem Tisch K, erzwingen die Aufnahme und behalten das Ass.
+Verdeckte fremde Hände oder die Stapelreihenfolge werden nicht gelesen;
+Beobachtungslücken verwerfen das Wissen.
+Der [reproduzierbare CPU-Vergleich](docs/HAUSDEPP_CPUS.md)
 dokumentiert Stärken, Grenzen und Prüfungen. Hausdepp hat eigene Anmelde- und
 Kontoeinstellungsseiten unter `/hausdepp/anmelden` und
 `/hausdepp/konto/einstellungen`: Passkey zuerst, gemeinsame Konten und
@@ -1203,7 +1208,11 @@ Computers use safe clearances and finishing chains, retain extra tens and weigh
 gambling against pickup. Timing varies; decisions are checked against current
 state after each pause. Shared difficulty uses the median of the humans'
 individually capped experience levels: zero and 1,000 rounds yield 0.775, rather
-than 1.0. Beginner tips remain personal. They never know opposing hands or stock order. The
+than 1.0. Beginner tips remain personal. Once stock is empty, they remember
+public packet pickups they actually observed. In the proven final duel with two
+active players, for example with 6/K/ace against completely known 7/7, they play
+K onto an empty table, force a pickup and keep the ace. Hidden hands and stock order are never read;
+observation gaps discard knowledge. The
 [reproducible CPU comparison](docs/HAUSDEPP_CPUS.md) records strengths, limits
 and checks. Dedicated sign-in and settings at `/hausdepp/anmelden` and
 `/hausdepp/konto/einstellungen` use passkeys first, shared accounts and security,
