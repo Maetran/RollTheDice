@@ -154,6 +154,40 @@ evidence assertions are all preserved. All 28 tests in the file pass; Claude
 separately approved the adjustment without blockers. The failed full attempt
 is not delivery evidence and requires a new complete run.
 
+## Block 4: eine Weiterleitung beim Zilch-Abmelden / One Zilch sign-out redirect
+
+Ein Browserfehler beim Abmelden zeigte im Trace zwei Dokumentanfragen auf
+`/` mit zehn Millisekunden Abstand. Das synchrone Auth-Ereignis löste im
+App-Mode den Entzug der Vorschau samt Weiterleitung aus; danach leitete der
+Logout-Handler nochmals weiter. Die zweite Navigation brach die erste ab.
+Der Logout-Handler ruft jetzt vor dem Abmelden den vorhandenen
+`prepareNavigation()`-Schutz auf und behält damit die Navigation. Zielroute,
+Sitzungsbeendigung und öffentliche Zugriffsmöglichkeiten bleiben gleich.
+
+A sign-out browser failure showed two document requests to `/` ten milliseconds
+apart. The synchronous auth event revoked preview access and redirected;
+the logout handler then redirected again, aborting the first navigation.
+The handler now invokes existing `prepareNavigation()` before sign-out,
+retaining navigation ownership. Destination, session termination and public
+access remain unchanged.
+
+Die neue Regression war mit zwei statt einer Weiterleitung rot und besteht
+mit dem Fix. Sie führt den echten registrierten Zilch-Handler, das gemeinsame
+Logout und den echten App-Mode aus. Öffentlicher und geschützter Modus,
+abgebrochene pendente Identitätsanfrage und spätes Auth-Ereignis sind enthalten.
+Alle 21 Tests der bestehenden Harness-Datei und die Qualitäts-/Sicherheitsprüfung
+bestehen. Claude hat den Zwei-Dateien-Quelldiff unabhängig ohne Blocker
+freigegeben. Der bestehende fehlgeschlagene Browserflow wurde nicht abgeschwächt;
+für den geänderten Stand ist ein neuer Vollnachweis erforderlich.
+
+The new regression failed with two redirects and passes with the fix. It executes
+the actual registered Zilch handler, shared logout and real app-mode controller.
+It covers public and gated modes, a cancelled pending identity request and a
+late auth event. All 21 tests in the existing harness file and quality/security
+checks pass. Claude independently approved the two-file source diff without
+blockers. The failing browser flow was not weakened; new source requires a
+new complete proof.
+
 ## Nachweise und Grenzen / Evidence and limits
 
 Der erste Vollnachweis für 4.1.7 bestand auf `05009ca5`: 582 Tooltests,
@@ -187,6 +221,18 @@ Claude also approved the final DE/EN browser flow and release metadata without
 blockers; “pending bid” clarifies the difference from open Watten.
 
 ## Offene Punkte / Open items
+
+- **Abdeckung / Coverage:** Die globale Mindestabdeckung liegt bei 60 Prozent,
+  ohne Modulgrenzen. Auch bei 85,83 Prozent Gesamtabdeckung fehlen einzelne
+  Negativpfade, etwa widersprüchliche gespeicherte Watten-Abschlüsse in
+  `watten_runtime.py`. Optionale Screenshot-Capture-Serien sind keine visuelle
+  Abnahme im Standardlauf. Dies sind belegte Prüfgrenzen, keine behaupteten
+  Implementierungsfehler. / The global coverage floor is 60 percent with no
+  per-module minimum. At 85.83 percent overall coverage, some negative paths
+  remain unexecuted, such as contradictory stored Watten finishes. Optional
+  screenshot capture series are not visual acceptance in the standard run.
+  These are proven evidence limits, not claimed implementation defects.
+
 
 - **Watten-Versionshistorie / Watten release history:** Der History-Endpunkt
   erlaubt Watten derzeit nicht; eine Watten-Oberfläche oder ein vorhandener

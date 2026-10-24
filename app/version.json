@@ -4,7 +4,7 @@
   "date": "2026-10-24",
   "previous_revision": "28d13393e794c70a4ff8c9e81655109a31f29bf6",
   "summary": {
-    "de": "Watten: Eigene Gebote und spätere Erhöhungen nur im eigenen Kartenzug.",
-    "en": "Watten: Own bids and later raises are limited to your own card turn."
+    "de": "Watten-Gebote nur im eigenen Zug; Zilch meldet dich ohne doppelte Weiterleitung ab.",
+    "en": "Watten bids require your own turn; Zilch signs out without duplicate redirects."
   }
 }

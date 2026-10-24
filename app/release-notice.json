@@ -1,25 +1,28 @@
 {
   "kind": "usability",
   "games": [
-    "watten"
+    "watten",
+    "zilch"
   ],
-  "summary_de": "Watten: Eigene Gebote und spätere Erhöhungen nur im eigenen Kartenzug.",
-  "summary_en": "Watten: Own bids and later raises are limited to your own card turn.",
+  "summary_de": "Watten-Gebote nur im eigenen Zug; Zilch meldet dich ohne doppelte Weiterleitung ab.",
+  "summary_en": "Watten bids require your own turn; Zilch signs out without duplicate redirects.",
   "player_notes": {
     "de": {
-      "title": "4.1.8: Watten-Gebote im eigenen Zug",
+      "title": "4.1.8: Klare Gebotszüge und zuverlässiges Abmelden",
       "changes": [
-        "Ein eigenes Drei und spätere eigene Erhöhungen kannst du nur in deinem Kartenzug ansagen – auch im blinden Vierer.",
-        "Auf ein ausstehendes gegnerisches Gebot kann der zuständige Entscheider weiterhin sofort mit Halten, Gehen oder Aufbieten antworten.",
-        "Die CPUs halten dieselben Gebotsregeln ein."
+        "WATTEN: Ein eigenes Drei und spätere eigene Erhöhungen kannst du nur in deinem Kartenzug ansagen – auch im blinden Vierer.",
+        "WATTEN: Auf ein ausstehendes gegnerisches Gebot kann der zuständige Entscheider weiterhin sofort mit Halten, Gehen oder Aufbieten antworten.",
+        "WATTEN: Die CPUs halten dieselben Gebotsregeln ein.",
+        "ZILCH: Abmelden führt dich einmal zur passenden Lobby zurück, auch bei verspäteten Kontoantworten."
       ]
     },
     "en": {
-      "title": "4.1.8: Watten bids on your own turn",
+      "title": "4.1.8: Clear bidding turns and reliable sign-out",
       "changes": [
-        "You can open with Three or make a later unsolicited raise only on your own card turn, including blind four-player games.",
-        "The designated decider can still immediately hold, fold or counter an pending opposing bid.",
-        "CPUs follow the same bidding rules."
+        "WATTEN: You can open with Three or make a later unsolicited raise only on your own card turn, including blind four-player games.",
+        "WATTEN: The designated decider can still immediately hold, fold or counter a pending opposing bid.",
+        "WATTEN: CPUs follow the same bidding rules.",
+        "ZILCH: Signing out returns you to the correct lobby once, including when account responses arrive late."
       ]
     }
   }
