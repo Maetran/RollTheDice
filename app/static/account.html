@@ -137,6 +137,10 @@
         </form>
         <p id="designPreferencesMessage" class="muted small" role="status"></p>
       </section>
+<section class="account-settings-block" aria-labelledby="voicePreferencesTitle">
+        <h3 id="voicePreferencesTitle"></h3>
+        <div data-voice-settings></div>
+      </section>
 <section class="account-settings-block">
         <h3>ZDWA-Spieleinstellungen</h3>
         <p class="muted small">Die Spieleinstellungen gelten nur für ZDWA auf allen Geräten.</p>
@@ -240,6 +244,7 @@
     import { mountAvatarUpload } from '/static/avatar-upload.js?v=f1a9e4c8688e';
     import { mountFriendActivitySettings } from '/static/friend-activity.js?v=f1a9e4c8688e';
     import { mountTourSettings } from '/static/game-tours.js?v=f1a9e4c8688e';
+    import { mountVoicePreferences, voicePreferenceText } from '/static/voice-preferences.js?v=f1a9e4c8688e';
     let viewerId = null;
     let retired = false;
     const clearPrivatePage = () => {
@@ -292,6 +297,8 @@
     mountAllowlistSettings(document.querySelector('[data-allowlist-settings]'), { context: 'zdwa' });
     mountAvatarUpload(document.querySelector('[data-avatar-upload]'));
     mountFriendActivitySettings(document.querySelector('[data-friend-activity-settings]'));
+    document.getElementById('voicePreferencesTitle').textContent = voicePreferenceText('title');
+    mountVoicePreferences(document.querySelector('[data-voice-settings]'), { user, isCurrent: () => !retired });
     void mountTourSettings(document.querySelector('[data-game-tour-settings]'));
     document.getElementById('accountName').innerHTML = playerNameMarkup(user, { name: user.username, avatarSize: 'large', adminProfile: true });
     document.getElementById('publicProfileLink').href = `/spieler/${encodeURIComponent(user.username)}`;

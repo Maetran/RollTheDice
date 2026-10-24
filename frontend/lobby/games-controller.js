@@ -331,6 +331,7 @@ async function createGame() {
         mode,
         pass: dom.passInput.value,
         hardcore: Boolean(dom.hardcoreCheckbox.checked),
+        voice_enabled: document.getElementById("zdwaVoiceEnabled")?.checked !== false,
       }),
     });
     if (!response.ok) {

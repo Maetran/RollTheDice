@@ -25,6 +25,7 @@
     document._roomKeysBound = true;
 
     document.addEventListener("keydown", (e) => {
+      if (document.getElementById("roomAudioPanel")?.open) return;
       const key = e.key.toLowerCase();
       if (IS_SPECTATOR) return;
 

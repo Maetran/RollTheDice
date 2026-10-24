@@ -91,6 +91,7 @@
     let receivedScoreboard = false;
 
 	    ws.addEventListener("open", () => {
+	      roomAudio.socketOpen();
 	      reconnectAttempts = 0;
 	      setConnectionStatus("online", "Verbunden", { hideAfter: 1400 });
 	      initChat(ws, { meName: myName });
@@ -111,9 +112,11 @@
 
     ws.addEventListener("message", (ev) => {
       let msg; try { msg = JSON.parse(ev.data); } catch { return; }
+      if (roomAudio.receive(msg)) return;
 
       if (msg.auth) {
         authState = msg.auth;
+        roomAudio.updateAuth(authState);
         if (authState?.user?.username) myName = String(authState.user.username);
         syncOpenSeatPushControl();
         syncAdminHelpControl();
@@ -133,6 +136,7 @@
         localStorage.setItem(PID_KEY, myId);
         localStorage.setItem(PLAYER_NAME_KEY, myName);
         if (qs.pass) sessionStorage.setItem(PASS_KEY, qs.pass);
+        roomAudio.bound();
       }
       if (msg.resume_token) {
         localStorage.setItem(TOKEN_KEY, String(msg.resume_token));
@@ -141,6 +145,7 @@
         mySpectatorId = String(msg.spectator_id);
       }
       if (msg.paused) {
+        roomAudio.destroy();
         const label = msg.pause_remaining_label || pauseDurationLabel(sb);
         window._fatalWsClose = true;
         try { ws.close(1000); } catch {}
@@ -212,6 +217,7 @@
         celebrateSixtyScore(msg.score_event);
         const previousSnapshot = sb;
         sb = msg.scoreboard;
+        roomAudio.update(sb, myId);
         syncRollAnimationFromServer(previousSnapshot, sb, msg.roll_event, { hydrated: receivedScoreboard });
         syncOpenSeatPushControl(sb);
         syncAdminHelpControl();
@@ -234,6 +240,7 @@
         // Spielende
         if (sb && sb._finished) {
           if (sb._aborted) {
+            roomAudio.leave();
             if (window._abortAlerted) return;
             window._abortAlerted = true;
             window._fatalWsClose = true;
@@ -315,7 +322,8 @@
       }
     });
 
-    ws.addEventListener("close", () => {
+    ws.addEventListener("close", event => {
+      roomAudio.disconnected({ revoke: [1008, 4001].includes(event.code) });
       syncBeginnerTour(sb);
       clearPendingWrite();
       clearPendingRoll();

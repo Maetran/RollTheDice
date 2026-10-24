@@ -21,7 +21,7 @@
   function syncRoomHeaderBottom() {
     const root = document.documentElement;
     const header = document.querySelector(".room-page .room-header");
-    if (!header || root.dataset.design !== "2026") return;
+    if (!header || root.dataset.design !== "2026" && !document.getElementById("roomAudioButton")) return;
     const box = (header.lastElementChild || header).getBoundingClientRect();
     const values = {
       "--room-header-bottom": `${Math.max(0, Math.round(header.getBoundingClientRect().bottom))}px`,
@@ -31,6 +31,7 @@
       if (root.style.getPropertyValue(name) !== value) root.style.setProperty(name, value);
     }
   }
+  window.addEventListener("resize", syncRoomHeaderBottom);
 
   function turnPlayerName(snapshot) {
     const turnId = String(snapshot?._turn?.player_id || "");
@@ -301,19 +302,28 @@
       : "lobby";
     if (choice === "new") {
       try {
+        const carry = roomAudio.canCarry();
+        const expectedAccountId = authState.user?.id;
+        const fresh = carry ? await loadAuth({ refresh: true }) : null;
+        if (carry && (!fresh?.authenticated || fresh.user.id !== expectedAccountId || !roomAudio.canCarry())) {
+          throw new Error("account_changed");
+        }
         const response = await fetch("/api/games", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...(carry ? { "X-CSRF-Token": fresh.user.csrf_token } : {}) },
           body: JSON.stringify({
             name: String(snapshot?._name || "Neue Runde"),
             mode: String(snapshot?._mode || "1"),
             hardcore: !!snapshot?._hardcore,
             pass: qs.pass || null,
+            voice_enabled: snapshot?._voice_enabled !== false,
+            ...(carry ? { source_game_id: qs.game_id } : {}),
           }),
         });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const created = await response.json();
         if (!created?.game_id) throw new Error("missing_game_id");
+        if (carry && !roomAudio.handoff(created)) throw new Error("invalid_voice_continuation");
         if (qs.pass) sessionStorage.setItem(`wuerfler_pass_${created.game_id}`, qs.pass);
         const nextRoom = new URL(zdwaPath(`/spiel/${encodeURIComponent(created.game_id)}`), location.origin);
         localStorage.setItem(`wuerfler_player_name_${created.game_id}`, myName || "Gast");
@@ -329,6 +339,7 @@
       }
       return;
     }
+    roomAudio.leave();
     location.href = zdwaPath("/");
   }
 

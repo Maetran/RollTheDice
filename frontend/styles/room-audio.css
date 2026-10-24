@@ -1,0 +1,20 @@
+.room-page .room-header > #roomAudioButton { display: inline-grid; place-items: center; flex: 0 0 44px; box-sizing: border-box; width: 44px; min-width: 44px; height: 44px; min-height: 44px; padding: 0; font-size: .73rem; }
+.room-page:has(#roomAudioButton) > .connection-status { top: calc(var(--room-header-bottom, 2.85rem) + .4rem); right: var(--room-header-end, .5rem); left: auto; transform: none; pointer-events: none; }
+.room-audio-panel { position: fixed; inset: 0; box-sizing: border-box; width: min(440px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); margin: auto; padding: 16px; overflow-y: auto; overscroll-behavior: contain; border: 1px solid var(--border); border-radius: var(--radius, 12px); background: var(--surface); color: var(--text); box-shadow: 0 16px 50px #0004; }
+.room-audio-panel::backdrop { background: #0007; }
+.room-audio-panel .room-audio-head { display: flex; align-items: center; gap: 12px; }
+.room-audio-panel h2 { flex: 1; margin: 0; font-size: 1.2rem; }
+.room-audio-panel h3 { margin: 0 0 10px; font-size: 1rem; }
+.room-audio-panel section { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
+.room-audio-panel section[hidden] { display: none; }
+.room-audio-panel button { min-height: 44px; min-width: 44px; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+.room-audio-panel button[aria-pressed="true"] { border-color: var(--primary); background: var(--surface-2, var(--surface)); box-shadow: inset 0 0 0 2px var(--primary); }
+.room-audio-buttons { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.room-audio-roster { display: grid; gap: 8px; list-style: none; padding: 0; }
+.room-audio-roster li { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
+.room-audio-roster li > span { min-width: 0; overflow-wrap: anywhere; }
+.room-audio-roster small { display: block; color: var(--muted); }
+.room-audio-roster button { flex: 0 0 auto; font-size: .8rem; }
+.lobby-page .room-voice-choice { grid-column: 1 / -1; display: flex; align-items: flex-start; gap: .5rem; font-size: .85rem; }
+.room-voice-choice input { flex: 0 0 auto; margin-top: .2rem; }
+.room-voice-choice small { display: block; }
