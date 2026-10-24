@@ -1860,6 +1860,22 @@ together. Normal now starts from a 600-point bank goal and Aggressive from
 position still adjust these goals; mandatory confirmation rolls, final
 replies, randomness and scoring are unchanged.
 
+After ten completed Zilch games on your account, a new CPU match can use one
+verified continuation tactic: sometimes keeping only a scoring one leaves a
+better next roll than also keeping a five. The conservative, normal and
+aggressive personalities stay distinct. Abandoned Solo runs do not count;
+guests use the existing baseline. A match keeps its selected tactic when resumed.
+This improves the expected value of that particular turn, without a claim of
+a higher match win rate.
+
+**Deutsch:** Ab zehn abgeschlossenen Zilch-Partien deines Kontos kann eine neue
+CPU-Partie eine geprüfte Fortsetzungstaktik nutzen: Manchmal ist es günstiger,
+nur eine wertende Eins zu halten und die Fünf erneut zu würfeln. Konservativ,
+normal und aggressiv bleiben unterschiedliche Persönlichkeiten. Aufgegebene
+Solo-Läufe zählen nicht; Gäste spielen gegen die bisherige Basisstrategie.
+Beim Fortsetzen bleibt die gewählte Taktik erhalten. Der Vorteil betrifft den
+Erwartungswert dieses einzelnen Zuges, ohne eine höhere Match-Siegquote zu behaupten.
+
 Keyboard controls include 1–6 for dice, Space to roll, B to bank, and
 Q/W/E/R/T/Z/U/I for visible suggestions. Shortcuts are disabled while typing or
 using dialogs. See the [full Zilch rule contract](docs/ZILCH_RULES.md).

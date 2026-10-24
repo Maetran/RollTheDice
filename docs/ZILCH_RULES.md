@@ -338,6 +338,35 @@ und eine CPU würfelt in einem noch legalen Gegenzug weiter, wenn ein sonstiges
 Sichern sicher verlieren würde. Die genaue technische Heuristik steht in
 [MULTIGAME_FOUNDATION.md](MULTIGAME_FOUNDATION.md).
 
+Die drei Risikoprofile sind Persönlichkeiten, keine Schwierigkeitsstufen.
+Ab zehn verschiedenen validierten, abgeschlossenen Zilch-Partien des menschlichen
+Kontos kann eine neue CPU-Partie eine eng begrenzte Fortsetzungstaktik nutzen.
+Aufgegebene Solo-Läufe und Gäste erhöhen diese Erfahrung nicht. Die private
+Taktikversion wird vor Veröffentlichung des Tisches festgelegt und beim
+Wiederaufnehmen beibehalten; die genaue Zahl wird nicht im Tisch gespeichert.
+Im zweiten Wurf mit 200 gehaltenen Punkten und vier freien Würfeln, darunter
+genau eine Eins und eine Fünf ohne weitere Wertung, darf die CPU nur die Eins
+halten: konservativ bei jedem Punkteabstand, normal bei Führung oder weniger
+als 1.200 Punkten Rückstand und aggressiv nur bei mindestens 1.200 Punkten
+Führung. Bestätigung, Schlussrunde oder weniger als 1.800 Punkte bis zum Ziel
+schließen diese Taktik aus. Andere Zustände behalten die bisherige Strategie.
+Der Nachweis betrifft höheren erwarteten Bankertrag und weniger Zilchs in
+diesem Zug, keine höhere Match-Siegquote. Würfel und Spielregeln bleiben gleich.
+
+**English:** The three risk profiles are personalities, not difficulty levels.
+After ten distinct validated completed Zilch games on the human account, a new
+CPU match can use one narrow continuation tactic. Abandoned Solo runs and
+guests do not increase that experience. Its private tactic version is fixed
+before the table is published and preserved on resume; the exact count is
+not stored in the table. On roll two, with 200 committed points and four free
+dice containing exactly one one and one five and no other score, the CPU may
+keep only the one: Conservative at any score gap, Normal when ahead or less
+than 1,200 behind, and Aggressive only when at least 1,200 ahead. Confirmation,
+a final round, or fewer than 1,800 points to the target exclude this tactic.
+Other states retain the baseline. Evidence supports higher expected bank and
+less whole-turn bust risk in that turn, not a higher match win rate. Dice and
+house rules remain the same.
+
 Die Bedienung verbindet direkte Würfelauswahl mit serverseitig berechneten
 Wertungsoptionen. Ein Tipp auf einen wertenden, noch freien Würfel markiert ihn
 zunächst; nur dazu passende Wertungsoptionen bleiben wählbar. Ein Tipp auf die

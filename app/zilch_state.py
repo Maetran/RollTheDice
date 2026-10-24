@@ -12,8 +12,12 @@ from typing import Final, Literal
 from .active_games import save_active_game
 from .game_state import GameDict, games
 from .game_types import ZILCH_GAME_TYPE
+from .zilch_cpu_strategy import (
+    ZILCH_CPU_BASELINE_POLICY,
+    ZILCH_CPU_CONTINUATION_POLICY,
+    validate_zilch_cpu_strategy,
+)
 from .zilch_cpu_strategy import ZILCH_CPU_STRATEGIES as _CPU_STRATEGY_NAMES
-from .zilch_cpu_strategy import validate_zilch_cpu_strategy
 from .zilch_engine import (
     ZILCH_DICE_COUNT,
     ZILCH_RULESET_VERSION,
@@ -348,6 +352,7 @@ def configure_zilch_cpu_game(
     host_user_id: int | None = None,
     host_token: str | None = None,
     cpu_name: str = "CPU",
+    cpu_policy: str = ZILCH_CPU_BASELINE_POLICY,
 ) -> dict:
     """Configure a freshly created two-seat Zilch game for one human and CPU.
 
@@ -391,6 +396,9 @@ def configure_zilch_cpu_game(
     game["_expected"] = ZILCH_MAX_PLAYERS
     game["_expected_connections"] = 1
     game["_zilch_cpu_participant_id"] = cpu_id
+    # Private and fixed for the whole match; never recalculate on recovery.
+    game["_zilch_cpu_policy"] = (ZILCH_CPU_CONTINUATION_POLICY
+                                 if cpu_policy == ZILCH_CPU_CONTINUATION_POLICY else ZILCH_CPU_BASELINE_POLICY)
     game["_participants"] = [cpu]
     game.setdefault("_zilch_boards", {})[cpu_id] = new_zilch_board(cpu_id)
     game.setdefault("_round_points", {})[cpu_id] = 0

@@ -348,13 +348,18 @@ clamped to the confirmed 400-point bank floor and 1,800. It also treats a
 required confirmation roll as mandatory, banks a reachable win when allowed,
 and continues a final reply that would otherwise certainly lose. These are
 documented decision heuristics, not scoring rules, secret odds, or a different
-difficulty RNG. Quick Hold points remain the primary selection criterion;
+difficulty RNG. Quick Hold points remain the baseline selection criterion;
 strategy risk preference only resolves the presentation-equivalent choice.
+New matches against accounts with ten validated distinct completed Zilch games
+can use the private, restart-stable `mandatory-continuation-v1` policy. It
+retains only the one in the narrowly verified second-roll 200/4 state in six
+profile/gap cells; all other choices retain the baseline. See the bilingual
+[rule contract](ZILCH_RULES.md) for the precise scope and evidence limits.
 
 CPU and human dice both call the same injectable server-side fair RNG function.
 The runner has no separate random source, does not inspect future values, and
 does not retry an unfavorable result. Its delay is operational pacing only:
-`ROLLTHEDICE_ZILCH_CPU_DELAY_SECONDS` defaults to 0.9 seconds and is bounded
+`ROLLTHEDICE_ZILCH_CPU_DELAY_SECONDS` defaults to 1.25 seconds and is bounded
 to 0–5 seconds. The active JSON state persists the CPU participant, strategy,
 turn, boards, start roll, ruleset, and outcome, but never a task or timer. On
 startup/rejoin, the lifecycle derives whether one unpaused CPU turn is due and
