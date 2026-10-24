@@ -1,0 +1,206 @@
+/* Four-seat tall tables share axes in both orientations. Compact phone/rail layouts keep
+   their existing geometry. These anchors belong to the table, never to the
+   optional role/title rows or to the number of cards still held. */
+@media (min-width: 761px) and (min-height: 701px) {
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"] {
+    --wt-play-ratio: .47;
+    --wt-felt-height: calc(var(--game-viewport-height, 100dvh) - var(--wt-table-header-height) - var(--wt-tablet-topbar-height));
+    --wt-play-axis: calc(var(--wt-play-ratio) * var(--wt-felt-height));
+    --wt-tablet-topbar-height: 58px;
+    --wt-tablet-gap: 12px;
+    --wt-top-identity-width: 146px;
+    --wt-own-target-width: 120px;
+    --wt-own-hand-half: calc(var(--wt-hand-w) * 2);
+    --wt-own-row-inset: calc(50vw - var(--wt-own-hand-half));
+    --wt-own-row-bottom: calc(var(--wt-hand-w) * 1.8 + max(20px, env(safe-area-inset-bottom, 0px)));
+    --wt-trick-area-width: calc(var(--wt-trick-w) * 2.9);
+    --wt-trick-area-height: calc(var(--wt-trick-w) * 3 + 32px);
+    --wt-side-fan-outset: 0px;
+    --wt-side-packet-clearance: calc((var(--wt-taken-w) * 1.5833 * 2 + var(--wt-tablet-gap)) / 2);
+    grid-template-rows: var(--wt-tablet-topbar-height) minmax(0, 1fr);
+  }
+
+  /* The fan keeps its vertical footprint. Its identity is alongside it, so
+     centring it does not push cards into the upper trick face. */
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"] .wt-seat--top {
+    left: calc(50% + var(--wt-back-w) * 1.4 + 16px);
+    translate: none; width: var(--wt-top-identity-width); justify-items: start;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"] .wt-seat--top > .wt-backs {
+    left: auto; right: calc(100% + 16px); top: 0;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"] .wt-seat--top .wt-seat-badge {
+    position: relative; width: 100%;
+    grid-template-columns: 38px minmax(0, 1fr); gap: 2px 6px; align-items: center; justify-items: start;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"] .wt-seat--top .wt-avatar { grid-column: 1; grid-row: 1 / span 2; }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"] .wt-seat--top .wt-seat-name-row { grid-column: 2; grid-row: 1; position: static; }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"] .wt-seat--top .wt-seat-badge:not(:has(.wt-seat-call-role)) .wt-seat-name-row {
+    grid-row: 1 / span 2; align-self: center;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"] .wt-seat--top .wt-seat-call-role { grid-column: 2; grid-row: 2; max-width: 100%; }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"] .wt-seat--top .wt-seat-public-title { grid-column: 1 / -1; grid-row: 3; }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"] .wt-seat--top .wt-seat-tags { grid-column: 2; grid-row: 4; }
+  /* Outer packets wrap within the available viewport instead of extending
+     through the right edge when this seat has several captured tricks. */
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"] .wt-seat--top .wt-taken {
+    /* The stock owns 23% +32px; the centred top fan starts at half the
+       viewport minus 1.4 back-widths. This corridor keeps packets away from
+       the right identity and both side badges. Small packets retain the
+       existing compact26px minimum and the full numeric count. */
+    --wt-top-packet-room: calc(50vw - var(--wt-back-w) * 1.4 - (23vw + 32px) - var(--wt-tablet-gap) * 2);
+    --wt-taken-w: clamp(26px, calc((var(--wt-top-packet-room) - 12px) / 2), 40px);
+    left: auto; right: calc(100% + 16px + var(--wt-back-w) * 2.8 + var(--wt-tablet-gap));
+    top: 0; bottom: auto; translate: none;
+    height: auto; flex-wrap: wrap; align-content: start; max-width: var(--wt-top-packet-room);
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"] .wt-seat--top .wt-taken-packet {
+    height: calc(var(--wt-taken-w) * 1.5833);
+  }
+
+  /* Give the trick an explicit frame. Empty reference/call wrappers and the
+     winner caption cannot shift its centre away from the shared side axis. */
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"] .wt-centre {
+    top: var(--wt-play-axis); display: block;
+    width: var(--wt-trick-area-width); height: var(--wt-trick-area-height);
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"] .wt-centre > :is([data-wt-reference], [data-wt-bloedeln]) {
+    position: absolute; inset: 0;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"] .wt-centre > .wt-trick-label {
+    position: absolute; left: 50%; top: auto; bottom: 0; translate: -50% 0;
+    width: max-content; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  /* Half the quarter-turned wrapper height is 2.8 * back-width / 2.
+     Badge content grows upwards, independently of the fixed card centre. */
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"] :is(.wt-seat--left, .wt-seat--right) {
+    top: var(--wt-play-axis); height: 0; display: block;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"] :is(.wt-seat--left, .wt-seat--right) > .wt-seat-badge {
+    position: absolute; left: 0; bottom: calc(var(--wt-back-w) * 1.4 + var(--wt-tablet-gap));
+    translate: none; width: 100%; max-width: 100%;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"] :is(.wt-seat--left, .wt-seat--right) > .wt-backs {
+    position: absolute; left: 50%; top: 0; margin: 0;
+  }
+  /* Packets occupy the corridor between their rotated fan and the trick
+     frame. They are nested in a name row; fixed coordinates deliberately
+     bypass its optional metadata height, using the same measured felt axis.
+     Narrow portrait corridors take one column, wide corridors at most two. */
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"] :is(.wt-seat--left, .wt-seat--right) .wt-taken {
+    --wt-packet-inset: calc(2.5vw + var(--wt-back-w) * 2.4 - var(--wt-side-fan-outset) + var(--wt-tablet-gap));
+    position: fixed; top: calc(var(--game-viewport-top, 0px) + var(--wt-table-header-height) + var(--wt-tablet-topbar-height) + var(--wt-play-axis));
+    bottom: auto; translate: 0 -50%;
+    max-width: min(calc(var(--wt-taken-w) * 2 + 12px), calc(50vw - var(--wt-trick-w) * 1.45 - var(--wt-packet-inset) - var(--wt-tablet-gap)));
+    height: auto; flex-wrap: wrap;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"] .wt-seat--left .wt-taken {
+    left: var(--wt-packet-inset); right: auto;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"] .wt-seat--right .wt-taken {
+    left: auto; right: var(--wt-packet-inset);
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"] :is(.wt-seat--left, .wt-seat--right) .wt-taken-packet {
+    height: calc(var(--wt-taken-w) * 1.5833);
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"] .wt-seat--left > .wt-backs {
+    translate: calc(-50% - var(--wt-side-fan-outset)) -50%;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"] .wt-seat--right > .wt-backs {
+    translate: calc(-50% + var(--wt-side-fan-outset)) -50%;
+  }
+
+  /* The own identity and Show/Continue share a mirrored row ABOVE the hand.
+     Portrait flanks are too narrow for these controls at hand-centre height. */
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"] .wt-seat--bottom.is-own {
+    left: var(--wt-own-row-inset); bottom: var(--wt-own-row-bottom);
+    width: var(--wt-own-target-width);
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"] .wt-seat--bottom.is-own > .wt-seat-badge {
+    /* Avatar, name, role, title and tags each own a reserved row. */
+    width: 100%; grid-template-rows: 38px 1.5rem 1.25rem 1rem 1rem; gap: 2px;
+    align-items: center;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"] .wt-seat--bottom.is-own .wt-avatar { grid-row: 1; }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"] .wt-seat--bottom.is-own .wt-seat-name-row { grid-row: 2; }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"] .wt-seat--bottom.is-own .wt-seat-call-role { grid-row: 3; }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"] .wt-seat--bottom.is-own .wt-seat-public-title { grid-row: 4; }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"] .wt-seat--bottom.is-own .wt-seat-tags { grid-row: 5; }
+  /* Thanks has no semantic metadata row; it cannot steal an absent role cell. */
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"] .wt-seat .wt-bubble--thanks {
+    position: absolute; top: auto; bottom: calc(100% + 6px); left: 50%; translate: -50% 0;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"] .wt-seat--bottom.is-own .wt-taken {
+    left: auto; right: calc(100% + var(--wt-tablet-gap)); top: 50%; bottom: auto; translate: 0 -50%;
+    max-width: calc(var(--wt-own-row-inset) - 24px); height: auto; flex-wrap: wrap;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"] .wt-seat--bottom.is-own .wt-taken-packet {
+    height: calc(var(--wt-taken-w) * 1.5833);
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"] .wt-inspection > button,
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"]:not([data-phase="match_complete"][data-round-stage="ready"]) .wt-end-sheet > .wt-panel > .wt-announce:has(> [data-watten-action="show_ready"]) {
+    right: var(--wt-own-row-inset); bottom: var(--wt-own-row-bottom);
+    width: var(--wt-own-target-width); max-width: var(--wt-own-target-width);
+  }
+  /* Optional inspection controls occupy the same action column, above ACK;
+     their expanded choices still grow upwards into the available table. */
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"][data-phase="inspection"] .wt-preplay-options {
+    left: auto; right: var(--wt-own-row-inset); width: var(--wt-own-target-width);
+    bottom: calc(var(--wt-own-row-bottom) + 44px + var(--wt-tablet-gap));
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"][data-phase="inspection"] .wt-preplay-choices {
+    left: auto; right: 0; width: min(280px, calc(100vw - var(--wt-own-row-inset) - 24px));
+  }
+  /* The outer column starts below the complete quarter-turned side fan.
+     Its origin is the felt (table minus topbar), as for the common play axis.
+     Pending answers may extend beside the own hand; the column is outside it. */
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"] .wt-bloedeln-dock,
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"]:has([data-watten-action="inspection_ack"]) > .wt-bloedeln-dock,
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"] .wt-bloedeln-dock:has(> .wt-bloedeln-status) {
+    left: auto; right: 16px;
+    top: calc(var(--wt-tablet-topbar-height) + var(--wt-play-axis) + max(var(--wt-back-w) * 1.4, var(--wt-side-packet-clearance)) + var(--wt-tablet-gap));
+    bottom: auto;
+    width: clamp(150px, calc(50% - var(--wt-own-hand-half) - 30px), 310px);
+  }
+}
+@media (orientation: landscape) and (min-width: 761px) and (min-height: 701px) {
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"] {
+    /* The lower edge is the existing hand area, not a viewport percentage.
+       The upper edge reserves the complete top fan wrapper (2 back-widths,
+       its 2% seat offset and 3px margin). A rotated pile reaches at most
+       1.35 card-widths above its centre; the frame extends 1.5 widths +16px
+       below it, including its single-line winner caption. Budget that 2.85
+       spread between both edges; keep the established readable 90–140 range. */
+    --wt-play-floor: calc(var(--wt-felt-height) - 18px - var(--wt-hand-w) * 1.8 - var(--wt-tablet-gap));
+    --wt-top-fan-floor: calc(var(--wt-felt-height) * .02 + 3px + var(--wt-back-w) * 2);
+    --wt-trick-w: clamp(90px, calc((var(--wt-play-floor) - var(--wt-top-fan-floor) - var(--wt-tablet-gap) - 16px) / 2.85), 140px);
+    --wt-play-axis: calc(var(--wt-play-floor) - var(--wt-trick-w) * 1.5 - 16px);
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"] .wt-seat--bottom.is-own {
+    /* Five cards' rotated outer corners stay within two card widths of centre.
+       The identity occupies the left flank, centred on the existing hand area
+       (1.8 hand-widths high, 18px from the table bottom). */
+    left: auto; right: calc(50% + var(--wt-hand-w) * 2 + var(--wt-tablet-gap));
+    bottom: calc(18px + var(--wt-hand-w) * .9); translate: 0 50%;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"] .wt-seat--bottom.is-own .wt-taken {
+    max-width: calc(50vw - var(--wt-hand-w) * 2 - var(--wt-tablet-gap) - var(--wt-own-target-width) - 24px);
+  }
+}
+@media (orientation: portrait) and (min-width: 761px) and (min-height: 701px) {
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"] {
+    --wt-side-fan-outset: calc(var(--wt-back-w) * .38);
+    --wt-own-row-inset: calc(50vw - var(--wt-own-hand-half) + var(--wt-tablet-gap) * 2);
+    /* A narrow portrait packet corridor can hold four rows. Keep live
+       responses below that full public stack as well as below the fan. */
+    --wt-side-packet-clearance: calc(var(--wt-taken-w) * 1.5833 * 4 + var(--wt-tablet-gap) * 4 - var(--wt-back-w) * 1.4);
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"] .wt-seat--bottom.is-own .wt-taken {
+    top: calc(100% + var(--wt-tablet-gap) * 4); translate: none;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"] :is(.wt-seat--left, .wt-seat--right) .wt-taken {
+    top: calc(var(--game-viewport-top, 0px) + var(--wt-table-header-height) + var(--wt-tablet-topbar-height) + var(--wt-play-axis) - var(--wt-back-w) * 1.4 + var(--wt-tablet-gap));
+    translate: none;
+  }
+}

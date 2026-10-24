@@ -224,6 +224,12 @@ Spielstand links; gegenüberliegende Spieler und der mittige Stichstapel bilden
 einen symmetrischen Tisch. Grössere Hand- und Stichkarten nutzen im Querformat
 die freie Fläche zwischen den Spielern. Alle Handfächer öffnen sich zur
 Tischmitte; ihre gedachte Griffseite zeigt zum jeweiligen Bildschirmrand.
+Auf grossen Vierertischen im Hoch- und Querformat liegt der obere Kartenfächer
+auf der Tischmitte. Die seitlichen Hände behalten unabhängig von Rollen und
+Titeln dieselbe Höhe. Im Hochformat teilen sich eigener Name und Zeigen/Weiter
+die Zeile oberhalb der Hand; im Querformat steht der eigene Name an ihrer linken
+Flanke. Stichkarten passen in die freie Höhe oberhalb der Hand, ohne dass die
+Beschriftung hineinragt. Blödeln-Antworten bleiben daneben erreichbar.
 Die optionale Rechter-Anzeige erscheint erst nach
 der Ansage beziehungsweise dem Einschauen, ohne zusätzliche verdeckte Karte
 während der Vorbereitung. Ausgespielte Karten bilden ab der zweiten Karte einen zusammenhängenden,
@@ -256,8 +262,13 @@ unpinned, tapping outside closes it. Announcers are labelled beside their
 names; the larger “Thanks!” remains visible until the first trick is complete. The stake and
 raising control sit beside your cards in portrait and in the left rail in mobile
 landscape. Your desktop hand stays centred;
-landscape tablets place the action area above it. Trick wins are green for your side
-and red for the other side. In blind four-player play, every player may open
+landscape tablets place the action area above it.
+On large four-player tables in either orientation, the upper fan is centred on
+the table. Side hands share one height regardless of roles or titles. Your name
+and Show/Continue share a row above your hand in portrait; in landscape your
+name sits on its left flank. Trick cards fit the available height above your
+hand, with their caption kept clear. Blödeln responses stay reachable beside it. Trick wins are green for your side and red for the
+other side. In blind four-player play, every player may open
 three or initiate a later raise only on their own card turn, including the
 informed player and their blind partner. Only the informed player handles hold, fold and counterbid
 responses, including outside their own card turn. When receiving an
