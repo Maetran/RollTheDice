@@ -747,7 +747,7 @@ function renderTableShell() {
       if (card && handSelection.selection.select(card)) renderState();
       return;
     }
-    if (!card || pileMotionPending(gameId) || !s?.playable_cards?.includes(card) || queuedCards.some(item => item.card === card) || commandInFlight?.cards?.includes(card)) return;
+    if (!card || !s?.playable_cards?.includes(card) || queuedCards.some(item => item.card === card) || commandInFlight?.cards?.includes(card)) return;
     if (pending) {
       // A follow-up card may wait behind an automatic or manual refill tap.
       const behindDraw = commandInFlight?.action === "draw" && s.available_actions.includes("afterthrow");
@@ -920,10 +920,17 @@ function receiveReaction(reaction) {
   requestAnimationFrame(() => { if (!stopped) announcement.textContent = t("reactionAnnouncement", { name: reaction.from || "", emoji: reaction.emoji }); });
 }
 
+function motionBlocksAction(action) {
+  // Refills affect the hand; a legal afterthrow continues the open throw.
+  // Both may run while earlier cards fly, without acting on an unlanded pile.
+  const ownThrowOpen = snapshot?._hausdepp?.afterthrow?.player_id === playerId;
+  return pileMotionPending(gameId) && !(action === "afterthrow" || (action === "draw" && ownThrowOpen));
+}
+
 function command(action, cards) {
   const allowed = action === "next_round" ? snapshot?._hausdepp_tournament?.can_start_next_round
     : action === "speed_up_cpus" ? snapshot?._cpu_tempo?.can_speed_up : snapshot?._hausdepp?.available_actions?.includes(action);
-  if (pending || pileMotionPending(gameId) || tournamentEnding || !allowed) return;
+  if (pending || motionBlocksAction(action) || tournamentEnding || !allowed) return;
   handSelection?.selection.clear();
   cancelShuffle(gameId);
   pending = true;
@@ -949,22 +956,29 @@ function resetCommand({ returnToHand = false } = {}) {
 }
 
 function completeCommand() {
-  if (!commandInFlight || commandInFlight.acceptedVersion === null || snapshot?._hausdepp?.version < commandInFlight.acceptedVersion) return;
-  if (pileMotionPending(gameId)) return;
-  // Same-rank follow-ups continue only the player's own uninterrupted throw.
-  const uninterrupted = snapshot._hausdepp.version === commandInFlight.acceptedVersion;
-  pending = false;
-  commandInFlight = null;
-  clearTimeout(pendingTimer);
+  if (commandInFlight) {
+    if (commandInFlight.acceptedVersion === null || snapshot?._hausdepp?.version < commandInFlight.acceptedVersion) return;
+    // Acknowledgement releases the command, independently of its picture.
+    // A queued fresh play after own clearance stays tied to this exact state.
+    for (const item of queuedCards) item.acceptedVersion ??= commandInFlight.acceptedVersion;
+    pending = false;
+    commandInFlight = null;
+    clearTimeout(pendingTimer);
+  } else if (!queuedCards.length) return;
   const s = snapshot._hausdepp;
   while (queuedCards.length) {
-    const { card, behindDraw } = queuedCards.shift();
+    const item = queuedCards.shift();
+    const { card, behindDraw, acceptedVersion } = item;
     if (!s.hand.includes(card) || !s.playable_cards?.includes(card)) continue;
     // An afterthrow that is still open stays valid. A fresh play counts only
     // right after the player's own clearance, with nobody acting in between.
     const action = s.available_actions.includes("afterthrow") ? "afterthrow"
-      : !behindDraw && uninterrupted && s.available_actions.includes("play") ? "play" : null;
-    if (action) { command(action, [card]); return; }
+      : !behindDraw && s.version === acceptedVersion && s.available_actions.includes("play") ? "play" : null;
+    if (action) {
+      if (motionBlocksAction(action)) { queuedCards.unshift(item); return; }
+      command(action, [card]);
+      return;
+    }
     queuedCards.length = 0;
     break;
   }
@@ -1194,7 +1208,7 @@ function renderStateContent() {
   const roundKey = `${gameId}:${tournament?.round_number || 1}`;
   handSelection.update({
     key: `${roundKey}:${s.version}`, roundKey, version: s.version, phase: s.phase, action: selectionAction,
-    hand, playable: [...playable], pending: busy, viewer: playerId, event: s.last_event,
+    hand, playable: [...playable], pending: pending || (motionBusy && !actions.includes("afterthrow")), viewer: playerId, event: s.last_event,
     identity: JSON.stringify([s.phase, s.current_player_id, s.afterthrow, hand, [...actions].sort(), [...playable].sort(), s.discard]),
   });
   const selecting = handSelection.selection.enabled;
@@ -1203,7 +1217,13 @@ function renderStateContent() {
   const committed = new Set([...(commandInFlight?.cards || []), ...queuedCards.map(item => item.card)]);
   const launched = launchedCards(gameId);
   const pendingRank = commandInFlight?.cards?.[0]?.split("-")[1];
-  renderHand(`<div class="hd-hand-fan" data-count="${hand.length}" data-compact="${hand.length >= 8}" style="--hand-count:${Math.max(1, hand.length)}">${hand.map((card, index) => cardMarkup(card, { interactive: true, playable: !motionBusy && (selecting ? handSelection.selection.canSelect(card) : (actions.includes("play") || actions.includes("afterthrow")) && playable.has(card) && (!pending || card.split("-")[1] === pendingRank || (commandInFlight?.action === "draw" && actions.includes("afterthrow")))), committed: committed.has(card), launched: launched.has(card), selecting, selected: selected.has(card), sameRank: index > 0 && hand[index - 1].split("-")[1] === card.split("-")[1], index, count: hand.length })).join("")}</div>`);
+  const canThrow = card => {
+    const queuedFollowup = pending && (card.split("-")[1] === pendingRank
+      || (commandInFlight?.action === "draw" && actions.includes("afterthrow")));
+    return (actions.includes("play") || actions.includes("afterthrow")) && playable.has(card)
+      && (!pending || queuedFollowup) && (!motionBusy || actions.includes("afterthrow") || queuedFollowup);
+  };
+  renderHand(`<div class="hd-hand-fan" data-count="${hand.length}" data-compact="${hand.length >= 8}" style="--hand-count:${Math.max(1, hand.length)}">${hand.map((card, index) => cardMarkup(card, { interactive: true, playable: selecting ? handSelection.selection.canSelect(card) : canThrow(card), committed: committed.has(card), launched: launched.has(card), selecting, selected: selected.has(card), sameRank: index > 0 && hand[index - 1].split("-")[1] === card.split("-")[1], index, count: hand.length })).join("")}</div>`);
   if (oldFocus) $("hausdeppHand").querySelector(`[data-card-id="${CSS.escape(oldFocus)}"]`)?.focus({ preventScroll: true });
   $("hausdeppSelection").textContent = s.phase === "peeking" ? "" : counted("cardsInHand", hand.length);
   const mine = s.players.find(p => p.id === playerId);
@@ -1244,7 +1264,7 @@ function renderStateContent() {
   $("hausdeppStatus").classList.toggle("has-tip", Boolean(tip));
   if (tip) $("hausdeppStatus").textContent = t(tip.key, { rank: t(`rank${tip.rank}`) });
   const stockAction = actions.includes("peek") ? "peek" : actions.includes("draw") ? "draw" : "gamble";
-  $("hausdeppStock").disabled = busy || !actions.includes(stockAction);
+  $("hausdeppStock").disabled = pending || motionBlocksAction(stockAction) || !actions.includes(stockAction);
   $("hausdeppStock").dataset.action = actions.includes(stockAction) ? stockAction : "";
   const stockLabel = t(stockAction === "peek" && s.private_peek?.length ? "peekNext" : stockAction);
   $("hausdeppStock").setAttribute("aria-label", `${stockLabel}, ${t("stockCount", { count: s.deck_count })}`);
@@ -1264,9 +1284,9 @@ function renderStateContent() {
   if (knownBottom.length && !stockBlocker) $("hausdeppStock").setAttribute("aria-label", `${$("hausdeppStock").getAttribute("aria-label")}. ${t("knownBottomLabel", { cards: knownBottom.map(cardName).join(", ") })}`);
   // Refilling is mandatory, so the stock is tapped once for everyone as soon
   // as the own refill is due. A manual tap remains a harmless fallback.
-  if (!busy && !spectating && actions.includes("draw") && autoRefillVersion !== s.version) {
+  if (!pending && !motionBlocksAction("draw") && !spectating && actions.includes("draw") && autoRefillVersion !== s.version) {
     autoRefillVersion = s.version;
-    queueMicrotask(() => { if (!pending && !pileMotionPending(gameId) && snapshot?._hausdepp?.available_actions?.includes("draw")) command("draw"); });
+    queueMicrotask(() => { if (!pending && !motionBlocksAction("draw") && snapshot?._hausdepp?.available_actions?.includes("draw")) command("draw"); });
   }
   const e = s.last_event || {};
   const actor = s.players.find(p => p.id === e.player_id);
