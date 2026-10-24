@@ -188,6 +188,7 @@ async function completeActivePeek(page, traffic, { expectMotion } = {}) {
     // A successful cut is first shown to everyone (about 2.2 s), then dealt.
     const revealed = traffic.state.peek.success ? 2300 : 0;
     await expect(page.locator('.hd-deal-card[data-motion-type="deal"]')).toHaveCount(0, { timeout: 1700 + revealed });
+    await expect(page.locator('.hd-deal-card[data-motion-type="starter"]')).toHaveCount(0, { timeout: 1700 + revealed });
   }
 }
 
@@ -316,18 +317,19 @@ async function expectReachableFan(page, name) {
 }
 
 async function expectDescribedPile(page) {
-  // Read the label with the projection it was rendered from in one task; the
-  // Node-side copy can already hold the next CPU play.
-  const { discard, label, language } = await page.evaluate(() => {
-    if (!window.hausdeppObservedState) throw new Error('No observed Hausdepp projection for the pile label');
+  // The public packet may intentionally lag accepted CPU state during flight.
+  // Its accessible name must describe exactly the currently landed papers.
+  const { card, count, label, language } = await page.evaluate(() => {
+    const pile = document.getElementById('hausdeppPile');
     return {
-      discard: window.hausdeppObservedState.discard,
-      label: document.getElementById('hausdeppPile').getAttribute('aria-label'),
-      language: document.documentElement.lang,
+      card: pile.querySelector('.hd-pile-face:last-child [data-card-id]')?.dataset.cardId,
+      count: Number(pile.dataset.cardCount),
+      label: pile.getAttribute('aria-label'), language: document.documentElement.lang,
     };
   });
-  if (!discard.length) return;
-  const [suit, rank] = discard.at(-1).split('-');
+  if (!count) return;
+  expect(card).toBeTruthy();
+  const [suit, rank] = card.split('-');
   const suits = language === 'en'
     ? { hearts: 'Hearts', bells: 'Bells', leaves: 'Leaves', acorns: 'Acorns' }
     : { hearts: 'Herz', bells: 'Schellen', leaves: 'Laub', acorns: 'Eichel' };
@@ -335,7 +337,7 @@ async function expectDescribedPile(page) {
     : { U: 'Unter', O: 'Ober', K: 'König', A: 'Ass' };
   expect(label).toContain(suits[suit]);
   expect(label).toContain(ranks[rank] || rank);
-  expect(label).toContain(`, ${discard.length} `);
+  expect(label).toContain(`, ${count} `);
 }
 
 async function openTableChat(page) {
@@ -428,6 +430,7 @@ async function playLegalHandCard(page, traffic) {
       await completeRequiredDraw(page, traffic);
       return state;
     }
+    if (!state.available_actions.includes('gamble')) await expect(page.locator('#hausdeppPile')).toHaveAttribute('data-pickup-available', 'true');
     await page.locator(state.available_actions.includes('gamble') ? '#hausdeppStock' : '#hausdeppPile').click();
     await expect.poll(() => traffic.state?.version || 0).toBeGreaterThan(state.version);
     await completeRequiredDraw(page, traffic);
@@ -529,7 +532,10 @@ for (const language of ['de', 'en']) {
       message.scoreboard?._hausdepp?.last_event?.player_id?.startsWith('cpu-')); attempt += 1) {
       if (traffic.state.current_player_id === playerId) {
         const before = traffic.state.version;
-        if (traffic.state.available_actions.includes('pickup')) await page.locator('#hausdeppPile').click();
+        if (traffic.state.available_actions.includes('pickup')) {
+          await expect(page.locator('#hausdeppPile')).toHaveAttribute('data-pickup-available', 'true');
+          await page.locator('#hausdeppPile').click();
+        }
         else await playLegalHandCard(page, traffic);
         await expect.poll(() => traffic.state.version).toBeGreaterThan(before);
         await completeRequiredDraw(page, traffic);
@@ -1069,19 +1075,18 @@ for (const [name, viewport, firstActor, firstType] of [
   ['tablet', { width: 768, height: 1024 }, 'opponent', 'play'],
   ['desktop', { width: 1440, height: 900 }, 'opponent', 'gamble'],
 ]) {
-  test(`labelled UI fixture: ${name} accepted pile growth is visible in the first frame, including rapid afterthrows`, async ({ page }) => {
+  test(`labelled UI fixture: ${name} pile faces, counts and follow-ups hand over only at landing`, async ({ page }) => {
     await page.setViewportSize(viewport);
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
     await ownerSession(page);
     const traffic = watchGame(page);
     const room = await createCpuTable(page, traffic);
-    const fixture = labelledUiFixture(traffic.scoreboard, 'Paket ohne Wartezeit', firstActor === 'own'
+    const fixture = labelledUiFixture(traffic.scoreboard, 'Paket bei Landung', firstActor === 'own'
       ? ['hearts-U', 'bells-U', 'leaves-A'] : ['bells-U', 'leaves-A', 'acorns-A']);
     const own = fixture._hausdepp.viewer_id;
     const opponent = fixture._hausdepp.players.find(player => player.is_cpu).id;
-    // The tablet also exercises two matching cards accepted in one throw.
     fixture._hausdepp.discard = name === 'tablet' ? ['acorns-9'] : ['acorns-U'];
     fixture._hausdepp.players.find(player => player.id === opponent).hand_count = 3;
-    if (firstType === 'gamble') fixture._hausdepp.deck_count = 20;
     const advance = (current, actor, type, cards) => {
       const state = current._hausdepp;
       state.version += 1;
@@ -1100,81 +1105,50 @@ for (const [name, viewport, firstActor, firstType] of [
       } }));
     });
     await page.addInitScript(() => {
-      window.immediatePileFrames = [];
-      window.addEventListener('hausdepp:motion', event => {
-        if (!['play', 'afterthrow', 'gamble'].includes(event.detail.type)) return;
-        // Inspect after the synchronous render has installed ALL effects, before
-        // any paint. Freeze them so a slow CI assertion cannot hide a delay.
-        queueMicrotask(() => {
-          const pile = document.getElementById('hausdeppPile');
-          for (const animation of document.getAnimations()) {
-            const target = animation.effect?.target;
-            if (target === pile || pile.contains(target)
-              || target?.matches?.('.hd-deal-card[data-target="pile"], .hd-deal-card[data-source="pile"]')) {
-              animation.pause();
-              animation.currentTime = 0;
-            }
-          }
-          if (Number(pile.dataset.cardCount) === 0) {
-            window.frozenPileClear = true;
-            return;
-          }
-          const faces = [...pile.querySelectorAll('.hd-pile-face')];
-          window.immediatePileFrames.push({
-            type: event.detail.type, delay: event.detail.delay,
-            count: Number(pile.dataset.cardCount), run: Number(pile.dataset.run),
-            opacity: Number(getComputedStyle(pile).opacity),
-            faces: faces.map(face => ({ opacity: Number(getComputedStyle(face).opacity),
-              cardOpacity: Number(getComputedStyle(face.querySelector('.hausdepp-card')).opacity),
-              step: Number(face.dataset.runStep), translate: getComputedStyle(face).translate })),
-            oldCopies: document.querySelectorAll('.hd-deal-card[data-motion-type="pile-rest"]').length,
-          });
-        });
-      });
+      const animate = Element.prototype.animate;
+      Element.prototype.animate = function (...args) {
+        const animation = animate.apply(this, args);
+        if (this.matches('.hd-deal-card[data-target="pile"]')) animation.pause();
+        return animation;
+      };
     });
     await page.goto(room);
-    await expect(page.locator('#hausdeppRoomName')).toHaveText('UI-Test · Paket ohne Wartezeit');
-    if (name === 'tablet') {
-      // An earlier clear is still being presented when the new packet starts.
-      // Even that frozen mask must yield to the newly accepted pair immediately.
-      fixture._hausdepp.version += 1;
-      fixture._hausdepp.discard = [];
-      fixture._hausdepp.burned_count = 2;
-      fixture._hausdepp.last_event = { type: 'play', player_id: opponent, cards: ['hearts-10'],
-        burn_reason: 'ten', burned_count: 2 };
-      mocked.sendSnapshot(fixture);
-      await expect.poll(() => page.evaluate(() => window.frozenPileClear)).toBe(true);
-      await expect(page.locator('#hausdeppPile')).toHaveCSS('opacity', '0');
-    }
+    await expect(page.locator('#hausdeppRoomName')).toHaveText('UI-Test · Paket bei Landung');
+    const firstCards = name === 'tablet' ? ['hearts-U', 'leaves-U'] : ['hearts-U'];
     if (firstActor === 'own') await page.locator('#hausdeppHand [data-card-id="hearts-U"]').click();
     else {
-      advance(fixture, opponent, firstType, name === 'tablet' ? ['hearts-U', 'leaves-U'] : ['hearts-U']);
+      advance(fixture, opponent, firstType, firstCards);
       mocked.sendSnapshot(fixture);
     }
-    await expect.poll(() => page.evaluate(() => window.immediatePileFrames.length)).toBe(1);
-    // The first flight stays paused while another accepted card extends the fan.
-    await page.locator('#hausdeppHand [data-card-id="bells-U"]').click();
-    await expect.poll(() => page.evaluate(() => window.immediatePileFrames.length)).toBe(2);
-    const frames = await page.evaluate(() => window.immediatePileFrames);
-    for (const [index, frame] of frames.entries()) {
-      expect(frame).toMatchObject({ count: index + 2, run: index + 2, opacity: 1, delay: 0, oldCopies: 0 });
-      expect(frame.faces).toHaveLength(index + 2);
-      expect(frame.faces.every(face => face.opacity === 1 && face.cardOpacity === 1)).toBe(true);
-      expect(frame.faces[0].step).toBe(index + 1);
-      expect(frame.faces[0].translate).not.toBe('none');
-    }
-    // A same-version acknowledgement must not hide the already visible packet.
+    const flights = page.locator('.hd-deal-card[data-target="pile"]');
+    await expect(flights).toHaveCount(firstCards.length);
     mocked.sendSnapshot(fixture);
-    await expect(page.locator('#hausdeppPile')).toHaveCSS('opacity', '1');
-    expect(await page.locator('.hd-deal-card[data-motion-type="play"], .hd-deal-card[data-motion-type="gamble"]').count()).toBe(0);
-    await page.emulateMedia({ reducedMotion: 'reduce' });
-    await expect(page.locator('#hausdeppPile .hd-pile-face')).toHaveCount(3);
+    await expect(page.locator('#hausdeppPile')).toHaveAttribute('data-card-count', '1');
+    await expect(page.locator('#hausdeppPile .hd-pile-face')).toHaveCount(1);
+    await expect(page.locator('#hausdeppHand [data-card-id="bells-U"]')).toBeDisabled();
+    await expect(page.locator('#hausdeppStock')).toBeDisabled();
+    await page.locator('#hausdeppPile').press('Shift+Enter');
+    await expect(page.locator('#hausdeppPileInspector [data-card-id]')).toHaveCount(1);
+    await page.locator('[data-pile-inspector-close]').click();
+    await flights.evaluateAll(nodes => nodes.forEach(node => node.getAnimations().forEach(animation => animation.play())));
+    await expect(flights).toHaveCount(0);
+    await expect(page.locator('#hausdeppPile')).toHaveAttribute('data-card-count', String(1 + firstCards.length));
+    await expect(page.locator('#hausdeppHand [data-card-id="bells-U"]')).toBeEnabled();
+    await page.locator('#hausdeppHand [data-card-id="bells-U"]').click();
+    await expect(flights).toHaveCount(1);
+    expect(mocked.commands.at(-1)).toMatchObject({ action: 'hausdepp_afterthrow', cards: ['bells-U'] });
+    await expect(page.locator('#hausdeppPile')).toHaveAttribute('data-card-count', String(1 + firstCards.length));
+    await flights.evaluateAll(nodes => nodes.forEach(node => node.getAnimations().forEach(animation => animation.play())));
+    await expect(flights).toHaveCount(0);
+    await expect(page.locator('#hausdeppPile')).toHaveAttribute('data-card-count', String(2 + firstCards.length));
+    await expect(page.locator('#hausdeppPile')).toHaveAttribute('data-run', '3');
+    expect(await page.locator('#hausdeppPile .hausdepp-card').evaluateAll(cards => cards.every(card =>
+      getComputedStyle(card).opacity === '1' && getComputedStyle(card.parentElement).opacity === '1'))).toBe(true);
     if (name === 'phone') {
-      advance(fixture, opponent, 'play', ['acorns-A']);
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      advance(fixture, opponent, 'play', ['bells-K']);
       mocked.sendSnapshot(fixture);
-      await expect.poll(() => page.evaluate(() => window.immediatePileFrames.length)).toBe(3);
-      expect(await page.evaluate(() => window.immediatePileFrames[2]))
-        .toMatchObject({ count: 4, run: 1, opacity: 1, delay: 0, oldCopies: 0 });
+      await expect(page.locator('#hausdeppPile')).toHaveAttribute('data-card-count', '4');
       await expect(page.locator('.hd-deal-card')).toHaveCount(0);
     }
     expect(traffic.pageErrors).toEqual([]);

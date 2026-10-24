@@ -23,6 +23,19 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 4.1.5 — 2026-10-24
+
+### HAUSDEPP
+
+**Deutsch:** Geworfene Karten erscheinen erst nach ihrem Flug auf dem offenen
+Paket und sind während des Flugs nur einmal sichtbar. Nachwerfen, Aufnehmen
+und weitere Stapelaktionen warten auf die Landung. Reduzierte Bewegung lässt
+die Flugwartezeit entfallen.
+
+**English:** Thrown cards join the open pile after their flight and appear only
+once while travelling. Follow-up plays, pickups and other pile actions wait
+for landing. Reduced motion skips the flight wait.
+
 ## 4.1.4 — 2026-10-24
 
 ### WATTEN

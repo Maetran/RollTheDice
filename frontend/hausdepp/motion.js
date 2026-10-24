@@ -1,9 +1,12 @@
 import { cardArt } from "./cards.js";
+import { createPilePresentation } from "./pile-presentation.js";
 
 const rounds = new Map();
 const flights = new Map();
 const presentations = new Map();
 const launches = new Map();
+const pileStates = new Map();
+const notifyPile = gameId => window.dispatchEvent(new CustomEvent("hausdepp:pile-presentation", { detail: { gameId } }));
 const EASING = "cubic-bezier(.16,1,.3,1)";
 const MAX_PRESENTATION_WAIT = 2200;
 const PLAY_TRAVEL = 520;
@@ -171,7 +174,26 @@ function copyState(state) {
 
 /** Capture the old table before rendering an accepted state or a local UI update. */
 export function prepareCardMotion(state, { gameId, playerId }) {
-  return { previous: rounds.get(gameId), before: captureGeometry(playerId), version: state.version };
+  const previous = rounds.get(gameId);
+  const resetPresentation = Boolean(previous && state.phase === "peeking" && previous.phase !== "peeking");
+  if (!pileStates.has(gameId)) pileStates.set(gameId, createPilePresentation());
+  const pile = pileStates.get(gameId);
+  const quiet = !previous || resetPresentation || state.version > previous.version + 1 || document.hidden
+    || matchMedia("(prefers-reduced-motion: reduce)").matches || !document.body.animate;
+  let pileToken = null;
+  if (quiet) pile.quiet(state);
+  else if (state.version >= previous.version) pileToken = pile.accept(state,
+    state.version === previous.version + 1 && (["play", "afterthrow", "gamble", "pickup"].includes(state.last_event?.type)
+      || (previous.phase === "peeking" && state.phase === "playing" && state.deal?.version === state.version)));
+  return { previous, before: captureGeometry(playerId), version: state.version, pileToken, resetPresentation };
+}
+
+export function presentedPile(gameId, state) {
+  return pileStates.get(gameId)?.state || { discard: state.discard, burned_count: state.burned_count, pending: false };
+}
+
+export function pileMotionPending(gameId) {
+  return Boolean(pileStates.get(gameId)?.state.pending || launches.get(gameId)?.size);
 }
 
 /**
@@ -187,6 +209,7 @@ export function launchOwnPlay(gameId, playerId, cards) {
   const topCard = geometry.pile.cards.at(-1)?.pose;
   const pile = topCard || (geometry.pile.rect && { ...geometry.pile.rect, angle: 0 });
   if (!hand || !pile) return;
+  presentationFor(gameId);
   const own = launches.get(gameId) || new Map();
   cards.forEach((card, index) => {
     const pose = hand.cards.find(item => item.card === card)?.pose;
@@ -265,15 +288,19 @@ export function resetCardMotion(gameId) {
   cancelShuffle(gameId);
   rounds.delete(gameId);
   stopPresentation(gameId);
+  pileStates.delete(gameId);
 }
 
 function stopPresentation(gameId) {
   const presentation = presentations.get(gameId);
+  const changed = Boolean(presentation || flights.get(gameId)?.size || launches.get(gameId)?.size
+    || pileStates.get(gameId)?.state.pending);
   if (presentation) {
     presentation.mask?.cancel();
     window.removeEventListener("resize", presentation.stop);
     document.removeEventListener("visibilitychange", presentation.onVisibility);
     presentation.motion.removeEventListener("change", presentation.stop);
+    for (const cancel of presentation.trackers || []) cancel();
     presentations.delete(gameId);
   }
   for (const flight of flights.get(gameId) || []) {
@@ -284,6 +311,8 @@ function stopPresentation(gameId) {
   }
   flights.delete(gameId);
   cancelOwnPlay(gameId);
+  pileStates.get(gameId)?.settle();
+  if (changed) notifyPile(gameId);
 }
 
 function presentationFor(gameId) {
@@ -297,7 +326,7 @@ function presentationFor(gameId) {
     rounds.delete(gameId);
   };
   const motion = matchMedia("(prefers-reduced-motion: reduce)");
-  presentation = { until: 0, stop, onVisibility, motion };
+  presentation = { until: 0, stop, onVisibility, motion, trackers: new Set() };
   presentations.set(gameId, presentation);
   window.addEventListener("resize", stop);
   document.addEventListener("visibilitychange", onVisibility);
@@ -319,9 +348,12 @@ function atCpuTempo(group, fastCpu) {
   return paced;
 }
 
-function presentGroups(groups, options, previous) {
+function presentGroups(groups, options) {
   groups = groups.map(group => atCpuTempo(group, options.fastCpu));
-  if (!groups.length) return;
+  if (!groups.length) {
+    if (pileStates.get(options.gameId)?.finish(options.pileToken)) notifyPile(options.gameId);
+    return;
+  }
   if (options.reducedMotion || document.hidden) {
     stopPresentation(options.gameId);
     for (const group of groups) moveCards(group, options);
@@ -329,62 +361,67 @@ function presentGroups(groups, options, previous) {
   }
   const presentation = presentationFor(options.gameId);
   const now = performance.now();
-  if (options.instantPile) {
-    // The accepted packet is already rendered. Old pile pictures and queued
-    // transfers must never cover its new count or matching-rank fan, even when
-    // the next accepted throw arrives before the previous flight has finished.
-    presentation.mask?.cancel();
-    presentation.mask = null;
-    for (const flight of flights.get(options.gameId) || []) {
-      const { source, target } = flight.element.dataset;
-      if (source !== "pile" && target !== "pile") continue;
-      flight.animation.cancel();
-      flight.reveal?.cancel();
-      flight.cue?.cancel();
-      flight.element.remove();
-      flights.get(options.gameId)?.delete(flight);
-    }
-    presentation.until = now;
-  }
   // A fast CPU/human stream can outrun readable motion. Keep the action that
   // is already on the wood, discard only waiting pictures, then show the latest
   // accepted action. Never accumulate seconds of obsolete table history.
-  if (presentation.until - now > MAX_PRESENTATION_WAIT) {
-    let activeUntil = now;
-    for (const flight of flights.get(options.gameId) || []) {
-      if (flight.sequenceStart > now) {
-        flight.animation.cancel();
-        flight.reveal?.cancel();
-        flight.cue?.cancel();
-        flight.element.remove();
-        flights.get(options.gameId)?.delete(flight);
-      } else activeUntil = Math.max(activeUntil, flight.endAt);
-    }
-    presentation.until = activeUntil;
+  if (presentation.until - now > MAX_PRESENTATION_WAIT || pileStates.get(options.gameId)?.queued > 3) {
+    stopPresentation(options.gameId);
+    return;
   }
   // The player's own card already left the hand at the tap; it never queues.
   const wait = groups.some(group => group.adopt?.size) ? 0 : Math.max(0, presentation.until - now);
   const duration = Math.max(...groups.map(groupSpan));
   const scheduled = { ...options, wait, now };
-  const publicPlay = groups.some(group => ["play", "afterthrow", "gamble"].includes(group.type));
-  if (publicPlay && !options.instantPile) {
-    const burn = groups.find(group => group.type === "burn");
-    const pickup = groups.find(group => group.type === "pickup");
-    const rest = burn?.delay ?? pickup?.delay ?? duration;
-    // The authoritative pile has already changed. Its button stays live, but
-    // public card pictures explain this accepted transition until it catches up.
-    if (previous.discard.length) moveCards({ type: "pile-rest", source: "pile", target: "pile",
-      count: Math.min(3, previous.discard.length), cards: previous.discard.slice(-3), face: true,
-      duration: rest, stationary: true, emit: false, stagger: 0, fade: 80 }, scheduled);
-    const pile = options.after.pile.element;
-    if (pile?.animate) {
-      presentation.mask?.cancel();
-      const mask = pile.animate([{ opacity: 0 }, { opacity: 0 }], { duration: wait + duration, fill: "none" });
-      presentation.mask = mask;
-    }
-  }
-  for (const group of groups) moveCards(group, scheduled);
+  const related = groups.flatMap(group => moveCards(group, scheduled));
+  trackPileMotion(options.gameId, options.pileToken, related, presentation);
   presentation.until = now + wait + duration + 70;
+}
+
+function trackPileMotion(gameId, token, related, presentation) {
+  const pile = pileStates.get(gameId);
+  if (!pile?.has(token)) return;
+  let frame;
+  const waiting = !pile.isFirst(token);
+  const held = waiting ? [...new Set(related.flatMap(flight => [flight.animation, flight.reveal, flight.cue]).filter(Boolean))]
+    .map(animation => ({ animation, resume: animation.playState === "running" })) : [];
+  for (const { animation } of held) animation.pause();
+  for (const flight of related) if (waiting) flight.element.style.visibility = "hidden";
+  let released = !waiting;
+  const cancel = () => { cancelAnimationFrame(frame); presentation.trackers.delete(cancel); };
+  presentation.trackers.add(cancel);
+  const check = () => {
+    if (!pile.has(token)) { cancel(); return; }
+    if (!pile.isFirst(token)) { frame = requestAnimationFrame(check); return; }
+    if (!released) {
+      released = true;
+      for (const { animation, resume } of held) if (resume && animation.playState === "paused") animation.play();
+      for (const flight of related) flight.element.style.visibility = "";
+    }
+    let changed = false;
+    for (const flight of related) {
+      const { animation } = flight;
+      const finished = ["idle", "finished"].includes(animation.playState);
+      const time = typeof animation.currentTime === "number" ? animation.currentTime : -1;
+      if (!flight.departed && (finished || time >= flight.startTime)) {
+        flight.departed = true;
+        if (flight.source === "pile") changed = pile.depart(token, flight.cardId) || changed;
+      }
+      if (!flight.landed && (finished || time >= flight.arrivalTime)) {
+        flight.landed = true;
+        if (flight.target === "pile") {
+          changed = pile.arrive(token, flight.cardId) || changed;
+          // The real paper takes over at arrival, with no resting ghost copy.
+          flight.element.remove();
+        }
+      }
+    }
+    if (related.every(flight => flight.landed)) {
+      changed = pile.finish(token) || changed;
+      cancel();
+    } else frame = requestAnimationFrame(check);
+    if (changed) notifyPile(gameId);
+  };
+  check();
 }
 
 function position(geometry, label) {
@@ -404,12 +441,12 @@ function stationaryReceipt(element) {
   ], { duration: 240, easing: EASING });
 }
 
-function moveCards(group, { gameId, playerId, before, after, reducedMotion, instantPile = false, wait = 0, now = performance.now() }) {
+function moveCards(group, { gameId, playerId, before, after, reducedMotion, pileToken, wait = 0, now = performance.now() }) {
   const source = group.source === "stock"
     ? position(after, group.source) || position(before, group.source)
     : position(before, group.source) || position(after, group.source);
   const target = position(after, group.target) || position(before, group.target);
-  if (!source?.rect || !target?.rect || !group.count) return;
+  if (!source?.rect || !target?.rect || !group.count) return [];
   const duration = group.duration || 380;
   const delay = wait + (group.delay || 0);
   const stagger = Math.min(group.stagger ?? 40, (group.staggerBudget ?? 200) / Math.max(1, group.count - 1));
@@ -418,8 +455,9 @@ function moveCards(group, { gameId, playerId, before, after, reducedMotion, inst
     reducedMotion, from: source.rect, to: target.rect, delay, duration, stagger,
     travel: group.travel || duration * .9, rest: group.rest || 0,
   } }));
-  if (reducedMotion) { stationaryReceipt(target.element); return; }
-  if (!document.body.animate) return;
+  if (reducedMotion) { stationaryReceipt(target.element); return []; }
+  if (!document.body.animate) return [];
+  const created = [];
   const inHand = group.target.startsWith("hand:");
   const destinationId = inHand ? group.target.slice(5) : null;
   const cue = ["play", "afterthrow"].includes(group.type) ? source.element.animate?.([
@@ -493,9 +531,7 @@ function moveCards(group, { gameId, playerId, before, after, reducedMotion, inst
     const end = `translate(${toX - fromX}px,${toY - fromY}px) rotate(${destination.angle || 0}deg) scale(${destination.width / width},${destinationHeight / height})`;
     const arrival = Math.min(.9, (group.travel || duration * .9) / cardDuration);
     const fade = Math.max(arrival, 1 - (group.fade || PLAY_FADE) / cardDuration);
-    // A growing packet is visible immediately; its flight is only decorative.
-    // Other pile transfers hand over without flashing beneath their mask.
-    const last = group.target === "pile" && !instantPile ? 1 : 0;
+    const last = group.target === "pile" ? 1 : 0;
     const queued = Boolean(delay + index * stagger);
     const frames = group.stationary ? [
       { transform: end, opacity: queued ? 0 : 1, offset: 0 },
@@ -513,17 +549,18 @@ function moveCards(group, { gameId, playerId, before, after, reducedMotion, inst
       { duration: cardDuration, delay: delay + index * stagger, fill: "both", easing: "linear" });
     // The launch keeps painting until this flight has taken over its pose.
     if (adopted) adopted.animation.cancel();
-    // The real card is already interactive; the visual arrival alone follows the flight.
-    const revealed = targetCard || (group.target === "pile" && !group.stationary && !instantPile ? pileCard : null);
+    const revealed = targetCard || (group.target === "pile" && !group.stationary && !pileToken ? pileCard : null);
     const reveal = revealed?.element.animate?.(last ? [{ opacity: 0 }, { opacity: 0 }] : [
       { opacity: 0, offset: 0 }, { opacity: 0, offset: .88 }, { opacity: 1, offset: 1 },
     ], { duration: delay + index * stagger + cardDuration, fill: "none", easing: EASING });
     const flight = { animation, reveal, cue, element: ghost,
+      cardId, source: group.source, target: group.target, startTime: delay + index * stagger,
       arrivalTime: group.stationary ? null : delay + index * stagger + arrival * cardDuration,
       sequenceStart: now + wait,
       startAt: now + delay + index * stagger, endAt: now + delay + index * stagger + cardDuration };
     if (!flights.has(gameId)) flights.set(gameId, new Set());
     flights.get(gameId).add(flight);
+    created.push(flight);
     const remove = () => {
       ghost.remove();
       flights.get(gameId)?.delete(flight);
@@ -531,6 +568,7 @@ function moveCards(group, { gameId, playerId, before, after, reducedMotion, inst
     };
     animation.finished.then(remove, remove);
   }
+  return created;
 }
 
 const REVEAL_TRAVEL = 450;
@@ -687,18 +725,15 @@ function explainAcceptedState(state, { gameId, playerId, peekCaption, fastCpu = 
   const current = copyState(state);
   rounds.set(gameId, current);
   // First load, reload, skipped versions and UI-only renders are quiet by design.
-  if (!previous || state.version !== previous.version + 1 || document.hidden) {
-    if (!previous || state.version !== previous.version || document.hidden) stopPresentation(gameId);
+  if (!previous || prepared.resetPresentation || state.version !== previous.version + 1 || document.hidden) {
+    if (!previous || prepared.resetPresentation || state.version !== previous.version || document.hidden) stopPresentation(gameId);
     return;
   }
   const before = prepared.before;
   const after = captureGeometry(playerId);
   const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const event = state.last_event || {};
-  const instantPile = ["play", "afterthrow", "gamble"].includes(event.type)
-    && state.discard.length > previous.discard.length
-    && previous.discard.every((card, index) => state.discard[index] === card);
-  const options = { gameId, playerId, before, after, reducedMotion, instantPile, fastCpu };
+  const options = { gameId, playerId, before, after, reducedMotion, pileToken: prepared.pileToken, fastCpu };
   const actorId = event.player_id;
   const receivedState = { ...state, viewer_id: playerId };
   const groups = [];
@@ -720,9 +755,10 @@ function explainAcceptedState(state, { gameId, playerId, peekCaption, fastCpu = 
         handIndex: item.hand_index, receivedCards: item.player_id === playerId ? [ownDeal[ownIndex++]] : undefined,
         duration: 350, delay: baseDelay + index * stagger }, options);
     }
-    moveCards({ type: "starter", source: "stock", target: "pile", count: 1,
+    const starter = moveCards({ type: "starter", source: "stock", target: "pile", count: 1,
       cards: [state.deal.starter], face: true, duration: 340,
       delay: baseDelay + Math.max(0, sequence.length - 1) * stagger + 120 }, options);
+    if (!reducedMotion) trackPileMotion(gameId, prepared.pileToken, starter, presentationFor(gameId));
     return;
   }
 
@@ -759,5 +795,5 @@ function explainAcceptedState(state, { gameId, playerId, peekCaption, fastCpu = 
       cards: [...previous.discard, ...(event.cards || [])], face: true, duration: 480,
       delay: play ? groupSpan(play) : 0, stagger: 8, staggerBudget: 100 });
   }
-  presentGroups(groups, options, previous);
+  presentGroups(groups, options);
 }

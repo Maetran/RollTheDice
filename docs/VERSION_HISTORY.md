@@ -1,6 +1,6 @@
 # Versionen / Versions
 
-Aktuelle gemeinsame Produktversion / Current shared product version: **4.1.4**.
+Aktuelle gemeinsame Produktversion / Current shared product version: **4.1.5**.
 
 Alle RollTheDice-Spiele werden gemeinsam versioniert. Major steht für einen großen
 Produktmeilenstein, Minor für neue Funktionen und Patch für Fehlerkorrekturen
@@ -30,6 +30,7 @@ Detailed player-facing descriptions are in the [changelog](../CHANGELOG.md).
 
 | Version | Datum / Date | Art / Type | Änderung / Change | Commit |
 | --- | --- | --- | --- | --- |
+| 4.1.4 | 2026-10-24 | patch | Watten: lesbare Ansagekarten, ruhiges Blödeln, klare Ergebnisse mit Reaktionen, feste Revancheteams und Abbruch nach 1 h Inaktivität. / Watten: readable call cards, calmer Blödeln and results with reactions, fixed rematch teams; idle matches end after one hour. | [38740c8](https://github.com/Maetran/RollTheDice/commit/38740c8340d8a62958d628fb26acc825b687469d) |
 | 4.1.3 | 2026-10-22 | patch | Flüssigeres Hausdepp-Nachziehen und ein klarerer mobiler Watten-Tisch mit seltenerem Blödeln. / Smoother Hausdepp refills and a clearer mobile Watten table with less frequent Blödeln. | [125afc7](https://github.com/Maetran/RollTheDice/commit/125afc7a227f290ddf93bcdc68e3a7649ea52001) |
 | 4.1.2 | 2026-10-22 | patch | Watten-Tisch mit größeren Karten, klareren Stichstapeln und automatischer Blödeln-Karte korrigiert. / Improved the Watten table with larger cards, clearer trick piles and automatic Blödeln card play. | [7e41b6b](https://github.com/Maetran/RollTheDice/commit/7e41b6b4a9302386299cba571b104cb8ddaacfc7) |
 | 4.1.1 | 2026-10-22 | patch | Mobile Watten-Ansicht, Blödeln-Abfrage und Rundenübergänge korrigiert. / Corrected the mobile Watten layout, Blödeln choices and transitions between deals. | [e4705e8](https://github.com/Maetran/RollTheDice/commit/e4705e8fdd8f30b9cd73d1bb6ee9e6a060e9a24d) |

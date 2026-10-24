@@ -186,6 +186,7 @@ for (const reduced of [false, true]) {
       last_event: { type: 'play', player_id: fixture.self, cards: ['hearts-10'], burn_reason: 'ten', burned_count: 8 },
     });
     fixture.send(next);
+    if (!reduced) await expect(page.locator('.hd-deal-card[data-motion-type="burn"][data-target="burned"]')).toHaveCount(8);
     await expect(page.locator('#hausdeppBurnedCount')).toHaveText('8');
     await expect(page.locator('#hausdeppBurnedStack .hd-burned-card')).toHaveCount(6);
     await expect(page.locator('#hausdeppBurnedStack [data-card-id], #hausdeppBurnedStack svg')).toHaveCount(0);
@@ -197,7 +198,6 @@ for (const reduced of [false, true]) {
     expect(Math.abs(burn.to.x - (stack.x + stack.width / 2))).toBeLessThanOrEqual(1);
     expect(Math.abs(burn.to.y - (stack.y + stack.height / 2))).toBeLessThanOrEqual(1);
     if (reduced) await expect(page.locator('.hd-deal-card')).toHaveCount(0);
-    else await expect(page.locator('.hd-deal-card[data-motion-type="burn"][data-target="burned"]')).toHaveCount(8);
     await expect(page.locator('.hd-deal-card')).toHaveCount(0);
     for (const [width, height] of VIEWPORTS) {
       await page.setViewportSize({ width, height });

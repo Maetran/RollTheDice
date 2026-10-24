@@ -2462,5 +2462,12 @@
     "date": "2026-10-22",
     "bump": "patch",
     "summary": "Flüssigeres Hausdepp-Nachziehen und ein klarerer mobiler Watten-Tisch mit seltenerem Blödeln. / Smoother Hausdepp refills and a clearer mobile Watten table with less frequent Blödeln."
+  },
+  {
+    "version": "4.1.4",
+    "revision": "38740c8340d8a62958d628fb26acc825b687469d",
+    "date": "2026-10-24",
+    "bump": "patch",
+    "summary": "Watten: lesbare Ansagekarten, ruhiges Blödeln, klare Ergebnisse mit Reaktionen, feste Revancheteams und Abbruch nach 1 h Inaktivität. / Watten: readable call cards, calmer Blödeln and results with reactions, fixed rematch teams; idle matches end after one hour."
   }
 ]

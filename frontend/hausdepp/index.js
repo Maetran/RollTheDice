@@ -18,7 +18,7 @@ import { mountLobbyChat } from "../shared/lobby-chat.js";
 import { initChat, addChatMessage } from "../room/chat.js";
 import { HAUSDEPP_MESSAGES } from "../i18n/catalog.js";
 import { cardArt, prepareCardAssets } from "./cards.js";
-import { prepareCardMotion, animateCardMotion, cardMotionCompletion, resetCardMotion, presentShuffle, cancelShuffle, launchOwnPlay, launchedCards, cancelOwnPlay } from "./motion.js";
+import { prepareCardMotion, animateCardMotion, cardMotionCompletion, resetCardMotion, presentShuffle, cancelShuffle, launchOwnPlay, launchedCards, cancelOwnPlay, presentedPile, pileMotionPending } from "./motion.js";
 import { createGameTour } from "../shared/game-tours.js";
 import { mountPileInspector } from "./pile-inspector.js";
 import { mountPeekFeedback } from "./peek-feedback.js";
@@ -119,6 +119,9 @@ function renderStacks(state) {
   // Equal ranks on top fan out slightly, so their count reads at a glance.
   const run = topRun(state.discard);
   pile.dataset.run = String(run);
+  const signature = JSON.stringify([state.phase, state.discard]);
+  if (pile.dataset.renderSignature === signature) return;
+  pile.dataset.renderSignature = signature;
   pile.innerHTML = state.discard.length
     ? Array.from({ length: edges }, (_, index) => `<span class="hd-pile-edge" aria-hidden="true" style="--stack-layer:${state.discard.length - index - 1}"></span>`).join("") +
       state.discard.slice(-3).map((card, index, cards) => {
@@ -126,6 +129,24 @@ function renderStacks(state) {
         return `<span class="hd-pile-face"${run > 1 && depth < run ? ` data-run-step="${depth}"` : ""} style="--stack-layer:${depth};--run-step:${depth}">${cardMarkup(card)}</span>`;
       }).join("")
     : `<span class="hd-empty-pile">${t(state.phase === "peeking" ? "notDealt" : "tableClear")}</span>`;
+}
+
+function renderPileState(s, actions, busy, measureOnly = false) {
+  renderStacks(s);
+  const burnedStack = $("hausdeppBurnedStack");
+  const burnedCards = Math.min(6, Math.max(0, Number(s.burned_count) || 0));
+  if (burnedStack.childElementCount !== burnedCards) burnedStack.innerHTML = Array.from({ length: burnedCards }, (_, index) => `<i class="hd-burned-card" style="--burn-angle:${[-12, 8, -3, 15, -8, 3][index]}deg;--burn-x:${[-3, 4, 0, -4, 3, 1][index]}px;--burn-y:${[-1, -3, 1, -2, -4, 0][index]}px"></i>`).join("");
+  burnedStack.classList.toggle("is-empty", !burnedCards);
+  if (measureOnly) return;
+  $("hausdeppPileCount").textContent = s.phase === "peeking" ? "" : counted("cardsInHand", s.discard.length);
+  $("hausdeppPileAction").textContent = s.phase === "peeking" ? "" : t(!busy && actions.includes("pickup") && s.discard.length ? "pickup" : "pileTitle");
+  const sameOnTop = topRun(s.discard);
+  $("hausdeppPile").setAttribute("aria-label", s.discard.length ? `${t(!busy && actions.includes("pickup") ? "pileLabel" : "pileInspectLabel", { card: cardName(s.discard.at(-1)), count: s.discard.length })}${sameOnTop > 1 ? `. ${t("pileRun", { count: sameOnTop })}` : ""}` : t("tableClear"));
+  $("hausdeppBurnedCount").textContent = String(s.burned_count);
+  $("hausdeppBurnedUnit").textContent = t(Number(s.burned_count) === 1 ? "cardWordOne" : "cardWord");
+  pileInspector.update(s.discard);
+  $("hausdeppPile").disabled = !s.discard.length;
+  $("hausdeppPile").dataset.pickupAvailable = String(!busy && actions.includes("pickup"));
 }
 
 function seatIdentity(player, selfId = playerId) {
@@ -642,6 +663,18 @@ function renderTableShell() {
   toolsWide.addEventListener("change", placeTools);
   tableCleanups.push(() => toolsWide.removeEventListener("change", placeTools));
   pileInspector = mountPileInspector({ pile: $("hausdeppPile"), inspectButton: $("hausdeppInspectPile"), table: $("hausdeppTable"), t, cardMarkup });
+  let presentationRenderQueued = false;
+  window.addEventListener("hausdepp:pile-presentation", event => {
+    if (event.detail.gameId !== gameId || presentationRenderQueued) return;
+    presentationRenderQueued = true;
+    const lifetime = tableLifetime;
+    queueMicrotask(() => {
+      presentationRenderQueued = false;
+      if (stopped || lifetime.signal.aborted || lifetime !== tableLifetime) return;
+      completeCommand();
+      renderState();
+    });
+  }, { signal: tableLifetime.signal });
   handSelection = mountHandSelection({
     handRegion: document.querySelector(".hd-hand-region"), tools: document.querySelector(".hd-social-tools"), reactions: document.querySelector(".hd-reactions"), t,
     onChange: () => renderState(),
@@ -714,7 +747,7 @@ function renderTableShell() {
       if (card && handSelection.selection.select(card)) renderState();
       return;
     }
-    if (!card || !s?.playable_cards?.includes(card) || queuedCards.some(item => item.card === card) || commandInFlight?.cards?.includes(card)) return;
+    if (!card || pileMotionPending(gameId) || !s?.playable_cards?.includes(card) || queuedCards.some(item => item.card === card) || commandInFlight?.cards?.includes(card)) return;
     if (pending) {
       // A follow-up card may wait behind an automatic or manual refill tap.
       const behindDraw = commandInFlight?.action === "draw" && s.available_actions.includes("afterthrow");
@@ -890,7 +923,7 @@ function receiveReaction(reaction) {
 function command(action, cards) {
   const allowed = action === "next_round" ? snapshot?._hausdepp_tournament?.can_start_next_round
     : action === "speed_up_cpus" ? snapshot?._cpu_tempo?.can_speed_up : snapshot?._hausdepp?.available_actions?.includes(action);
-  if (pending || tournamentEnding || !allowed) return;
+  if (pending || pileMotionPending(gameId) || tournamentEnding || !allowed) return;
   handSelection?.selection.clear();
   cancelShuffle(gameId);
   pending = true;
@@ -917,6 +950,7 @@ function resetCommand({ returnToHand = false } = {}) {
 
 function completeCommand() {
   if (!commandInFlight || commandInFlight.acceptedVersion === null || snapshot?._hausdepp?.version < commandInFlight.acceptedVersion) return;
+  if (pileMotionPending(gameId)) return;
   // Same-rank follow-ups continue only the player's own uninterrupted throw.
   const uninterrupted = snapshot._hausdepp.version === commandInFlight.acceptedVersion;
   pending = false;
@@ -1153,13 +1187,14 @@ function renderStateContent() {
   document.title = `${snapshot._name || "Hausdepp"} · Hausdepp`;
   const connected = socket?.readyState === WebSocket.OPEN;
   const actions = connected && !snapshot._paused ? s.available_actions || [] : [];
+  const motionBusy = pileMotionPending(gameId), busy = pending || motionBusy;
   const playable = new Set(s.playable_cards || []);
   const hand = [...s.hand].sort((a,b) => ranks.indexOf(a.split("-")[1]) - ranks.indexOf(b.split("-")[1]) || a.localeCompare(b));
   const selectionAction = actions.includes("afterthrow") ? "afterthrow" : actions.includes("play") ? "play" : null;
   const roundKey = `${gameId}:${tournament?.round_number || 1}`;
   handSelection.update({
     key: `${roundKey}:${s.version}`, roundKey, version: s.version, phase: s.phase, action: selectionAction,
-    hand, playable: [...playable], pending, viewer: playerId, event: s.last_event,
+    hand, playable: [...playable], pending: busy, viewer: playerId, event: s.last_event,
     identity: JSON.stringify([s.phase, s.current_player_id, s.afterthrow, hand, [...actions].sort(), [...playable].sort(), s.discard]),
   });
   const selecting = handSelection.selection.enabled;
@@ -1168,7 +1203,7 @@ function renderStateContent() {
   const committed = new Set([...(commandInFlight?.cards || []), ...queuedCards.map(item => item.card)]);
   const launched = launchedCards(gameId);
   const pendingRank = commandInFlight?.cards?.[0]?.split("-")[1];
-  renderHand(`<div class="hd-hand-fan" data-count="${hand.length}" data-compact="${hand.length >= 8}" style="--hand-count:${Math.max(1, hand.length)}">${hand.map((card, index) => cardMarkup(card, { interactive: true, playable: selecting ? handSelection.selection.canSelect(card) : (actions.includes("play") || actions.includes("afterthrow")) && playable.has(card) && (!pending || card.split("-")[1] === pendingRank || (commandInFlight?.action === "draw" && actions.includes("afterthrow"))), committed: committed.has(card), launched: launched.has(card), selecting, selected: selected.has(card), sameRank: index > 0 && hand[index - 1].split("-")[1] === card.split("-")[1], index, count: hand.length })).join("")}</div>`);
+  renderHand(`<div class="hd-hand-fan" data-count="${hand.length}" data-compact="${hand.length >= 8}" style="--hand-count:${Math.max(1, hand.length)}">${hand.map((card, index) => cardMarkup(card, { interactive: true, playable: !motionBusy && (selecting ? handSelection.selection.canSelect(card) : (actions.includes("play") || actions.includes("afterthrow")) && playable.has(card) && (!pending || card.split("-")[1] === pendingRank || (commandInFlight?.action === "draw" && actions.includes("afterthrow")))), committed: committed.has(card), launched: launched.has(card), selecting, selected: selected.has(card), sameRank: index > 0 && hand[index - 1].split("-")[1] === card.split("-")[1], index, count: hand.length })).join("")}</div>`);
   if (oldFocus) $("hausdeppHand").querySelector(`[data-card-id="${CSS.escape(oldFocus)}"]`)?.focus({ preventScroll: true });
   $("hausdeppSelection").textContent = s.phase === "peeking" ? "" : counted("cardsInHand", hand.length);
   const mine = s.players.find(p => p.id === playerId);
@@ -1195,18 +1230,9 @@ function renderStateContent() {
   $("hausdeppStock").closest(".hd-stock-group").classList.toggle("needs-draw", Boolean(s.draw_required));
   $("hausdeppStock").closest(".hd-stock-group").classList.toggle("is-draw-blocker", urgentDraw);
   $("hausdeppDrawAlert").hidden = !urgentDraw;
-  renderStacks(s);
-  $("hausdeppPileCount").textContent = s.phase === "peeking" ? "" : counted("cardsInHand", s.discard.length);
-  $("hausdeppPileAction").textContent = s.phase === "peeking" ? "" : t(!pending && actions.includes("pickup") && s.discard.length ? "pickup" : "pileTitle");
-  const sameOnTop = topRun(s.discard);
-  $("hausdeppPile").setAttribute("aria-label", s.discard.length ? `${t(!pending && actions.includes("pickup") ? "pileLabel" : "pileInspectLabel", { card: cardName(s.discard.at(-1)), count: s.discard.length })}${sameOnTop > 1 ? `. ${t("pileRun", { count: sameOnTop })}` : ""}` : t("tableClear"));
-  $("hausdeppBurnedCount").textContent = String(s.burned_count);
-  $("hausdeppBurnedUnit").textContent = t(Number(s.burned_count) === 1 ? "cardWordOne" : "cardWord");
-  const burnedStack = $("hausdeppBurnedStack");
-  const burnedCards = Math.min(6, Math.max(0, Number(s.burned_count) || 0));
-  if (burnedStack.childElementCount !== burnedCards) burnedStack.innerHTML = Array.from({ length: burnedCards }, (_, index) => `<i class="hd-burned-card" style="--burn-angle:${[-12, 8, -3, 15, -8, 3][index]}deg;--burn-x:${[-3, 4, 0, -4, 3, 1][index]}px;--burn-y:${[-1, -3, 1, -2, -4, 0][index]}px"></i>`).join("");
-  burnedStack.classList.toggle("is-empty", !burnedCards);
-  pileInspector.update(s.discard);
+  // Measure the accepted paper pose, then restore the landed projection below
+  // before the browser paints. No accepted destination face is shown early.
+  renderPileState(s, actions, busy, true);
   const current = s.players.find(p => p.id === s.current_player_id);
   const peeker = s.players.find(p => p.id === s.peek?.player_id);
   const afterthrow = actions.includes("afterthrow");
@@ -1214,11 +1240,11 @@ function renderStateContent() {
   $("hausdeppStatus").classList.toggle("is-yours", actions.length > 0);
   // Newer players see a short tactical tip in their own turn line; the line
   // keeps its place and highlight, so nothing on the table moves or is covered.
-  const tip = !pending && !selecting && actions.includes("pickup") && !snapshot._paused ? s.table_tip : null;
+  const tip = !busy && !selecting && actions.includes("pickup") && !snapshot._paused ? s.table_tip : null;
   $("hausdeppStatus").classList.toggle("has-tip", Boolean(tip));
   if (tip) $("hausdeppStatus").textContent = t(tip.key, { rank: t(`rank${tip.rank}`) });
   const stockAction = actions.includes("peek") ? "peek" : actions.includes("draw") ? "draw" : "gamble";
-  $("hausdeppStock").disabled = pending || !actions.includes(stockAction);
+  $("hausdeppStock").disabled = busy || !actions.includes(stockAction);
   $("hausdeppStock").dataset.action = actions.includes(stockAction) ? stockAction : "";
   const stockLabel = t(stockAction === "peek" && s.private_peek?.length ? "peekNext" : stockAction);
   $("hausdeppStock").setAttribute("aria-label", `${stockLabel}, ${t("stockCount", { count: s.deck_count })}`);
@@ -1226,8 +1252,6 @@ function renderStateContent() {
   if (stockBlocker) $("hausdeppStock").setAttribute("aria-label", t("stockWaiting", { name: stockBlocker.name }));
   // Reading public cards stays available between turns; command() still
   // authoritatively gates the tap-to-pickup action and its pending state.
-  $("hausdeppPile").disabled = !s.discard.length;
-  $("hausdeppPile").dataset.pickupAvailable = String(!pending && actions.includes("pickup"));
   const knownBottom = s.phase === "playing" ? s.private_peek_in_stock || [] : [];
   $("hausdeppKnownBottom").hidden = !knownBottom.length;
   $("hausdeppKnownBottomCards").hidden = !knownBottom.length;
@@ -1240,9 +1264,9 @@ function renderStateContent() {
   if (knownBottom.length && !stockBlocker) $("hausdeppStock").setAttribute("aria-label", `${$("hausdeppStock").getAttribute("aria-label")}. ${t("knownBottomLabel", { cards: knownBottom.map(cardName).join(", ") })}`);
   // Refilling is mandatory, so the stock is tapped once for everyone as soon
   // as the own refill is due. A manual tap remains a harmless fallback.
-  if (!pending && !spectating && actions.includes("draw") && autoRefillVersion !== s.version) {
+  if (!busy && !spectating && actions.includes("draw") && autoRefillVersion !== s.version) {
     autoRefillVersion = s.version;
-    queueMicrotask(() => { if (!pending && snapshot?._hausdepp?.available_actions?.includes("draw")) command("draw"); });
+    queueMicrotask(() => { if (!pending && !pileMotionPending(gameId) && snapshot?._hausdepp?.available_actions?.includes("draw")) command("draw"); });
   }
   const e = s.last_event || {};
   const actor = s.players.find(p => p.id === e.player_id);
@@ -1254,11 +1278,12 @@ function renderStateContent() {
     return receiver === playerId ? t("peekRevealSelf", { cards: names })
       : t("peekRevealOther", { name: s.players.find(player => player.id === receiver)?.name || "…", cards: names });
   } }, motion);
+  renderPileState({ ...s, ...presentedPile(gameId, s) }, actions, pending || pileMotionPending(gameId));
   presentShuffle(connected && !pending ? s : null, { gameId, roundNumber: tournament?.round_number || 1 });
   hausdeppBeginnerTour.update({
     eligible: !spectating && !!playerId && !snapshot._aborted && s.phase === "playing" && !mine?.finished,
     canAct: connected && !snapshot._paused && actions.length > 0,
-    busy: pending,
+    busy,
     canPlay: actions.includes("play") || actions.includes("afterthrow"),
     canDraw: actions.includes("draw") || actions.includes("gamble"),
     canPickup: actions.includes("pickup"),
@@ -1412,6 +1437,7 @@ function tournamentScoreboard(tournament, players) {
 }
 
 function renderAbortedTable() {
+  resetCardMotion(gameId);
   hausdeppBeginnerTour.update({ eligible: false });
   pileInspector?.close();
   handSelection?.update({ phase: "finished", action: null, hand: [], playable: [], pending: false });
