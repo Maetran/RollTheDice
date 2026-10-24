@@ -6,8 +6,8 @@ import { runInNewContext } from "node:vm";
 const source = (await readFile(new URL("../frontend/shared/voice-preferences.js", import.meta.url), "utf8"))
   .replace(/^import .*;$/gm, "").replace(/^export /gm, "");
 const catalog = await readFile(new URL("../frontend/i18n/catalog.js", import.meta.url), "utf8");
-const messages = runInNewContext(catalog.slice(0, catalog.indexOf("export const DEPLOYMENT_NOTICE_MESSAGES"))
-  .replace("export ", "") + "\nVOICE_PREFERENCE_MESSAGES");
+const { VOICE_PREFERENCE_MESSAGES: messages } = await import(
+  `data:text/javascript;base64,${Buffer.from(catalog).toString("base64")}`);
 const deferred = () => { let resolve; const promise = new Promise(done => { resolve = done; }); return { promise, resolve }; };
 const settle = () => new Promise(resolve => setImmediate(resolve));
 const auth = (id = 1) => ({ authenticated: true, user: { id, csrf_token: `csrf-${id}` } });
