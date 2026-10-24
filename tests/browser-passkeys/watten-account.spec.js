@@ -110,19 +110,48 @@ for (const language of ['de', 'en']) {
       await page.locator('[data-login] button[type=submit]').click();
       await expect(page).toHaveURL(`${baseURL}/watten/konto/einstellungen`);
       expect((await (await page.request.get('/api/auth/me')).json()).user.id).toBe(initial.user.id);
-      await page.route('**/api/auth/logout', async route => {
-        const response = await route.fetch();
-        // A second bundle sees the invalidated session before logout returns.
-        // Its 401 clears the shared in-memory identity cache.
+      // Keep a real authenticated browser cache available to logout's own
+      // loadAuth calls before parking independent identity refreshes.
+      expect(await page.evaluate(async () => (await (await import('/static/auth.js')).loadAuth()).user.id)).toBe(initial.user.id);
+      let releaseIdentity;
+      const identityGate = new Promise(resolve => { releaseIdentity = resolve; });
+      let logoutIdentitySeen;
+      const identityObserved = new Promise(resolve => { logoutIdentitySeen = resolve; });
+      const holdIdentity = async route => {
+        logoutIdentitySeen();
+        await identityGate;
+        await route.continue();
+      };
+      let captureLogout;
+      const logoutObserved = new Promise(resolve => { captureLogout = resolve; });
+      let logoutRoute = null, logoutFulfilled = false;
+      const navigations = [];
+      page.on('framenavigated', frame => { if (frame === page.mainFrame()) navigations.push(frame.url()); });
+      await page.route('**/api/auth/me', holdIdentity);
+      await page.route('**/api/auth/logout', route => { logoutRoute = route; captureLogout(route); }, { times: 1 });
+      try {
+        await page.locator('[data-logout]').click();
+        const heldLogout = await logoutObserved;
+        const response = await heldLogout.fetch();
+        // Exercise the real account focus handler after the server ended the
+        // session. Keep identity reads parked for the probe.
+        await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+        await identityObserved;
+        // A second bundle's real 401 must clear the shared identity cache
+        // BEFORE the held logout response reaches the browser.
         expect(await page.evaluate(async () => {
           const auth = await import('/static/auth.js');
           return (await auth.apiFetch('/api/auth/email')).status;
         })).toBe(401);
-        await route.fulfill({ response });
-      });
-      const navigations = [];
-      page.on('framenavigated', frame => { if (frame === page.mainFrame()) navigations.push(frame.url()); });
-      await page.locator('[data-logout]').click();
+        await heldLogout.fulfill({ response });
+        logoutFulfilled = true;
+        releaseIdentity();
+        await page.waitForURL(`${baseURL}/watten`, { waitUntil: 'load' });
+      } finally {
+        releaseIdentity();
+        if (logoutRoute && !logoutFulfilled) await logoutRoute.abort();
+        await page.unrouteAll({ behavior: 'wait' });
+      }
       await expect(page).toHaveURL(`${baseURL}/watten`);
       expect(navigations).toEqual([`${baseURL}/watten`]);
       await page.goto('/watten/anmelden?return_to=%2Fwatten%2Fkonto%2Feinstellungen');

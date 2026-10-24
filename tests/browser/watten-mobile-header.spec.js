@@ -22,7 +22,7 @@ async function expectCompactTableHead(page, language) {
       if (portrait && rect.width > 120.5) failures.push('score grows beyond compact content width');
       if (leftRail ? rect.right > felt.left + 1 : rect.bottom > felt.top + 1) failures.push('score enters the table');
     }
-    const controls = [...document.querySelectorAll('[data-wt-score-open], [data-wt-tools] button, [data-watten-social-action=toggle], .wt-voice-details > summary')]
+    const controls = [...document.querySelectorAll('[data-wt-score-open], [data-wt-tools] button, [data-watten-social-action=toggle], .wt-voice-details > summary, #wattenSound')]
       .filter(node => node.getBoundingClientRect().width > 0 && node.getBoundingClientRect().height > 0);
     const boxes = controls.map(node => ({ node, rect: node.getBoundingClientRect() }));
     for (const { node, rect } of boxes) {

@@ -1,10 +1,10 @@
 {
-  "version": "4.1.8",
-  "bump": "patch",
+  "version": "4.2.0",
+  "bump": "minor",
   "date": "2026-10-24",
-  "previous_revision": "28d13393e794c70a4ff8c9e81655109a31f29bf6",
+  "previous_revision": "687a2c788ff07383f4de5ab3f7f31013aa23ad6a",
   "summary": {
-    "de": "Watten-Gebote nur im eigenen Zug; Zilch meldet dich ohne doppelte Weiterleitung ab.",
-    "en": "Watten bids require your own turn; Zilch signs out without duplicate redirects."
+    "de": "Neue echte Wirtshausaufnahmen und abwechslungsreiche Hintergrundkulissen für Hausdepp und Watten.",
+    "en": "New real venue recordings and varied background ambience for Hausdepp and Watten."
   }
 }

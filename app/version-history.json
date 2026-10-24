@@ -2490,5 +2490,12 @@
     "date": "2026-10-24",
     "bump": "patch",
     "summary": "ZDWA und Zilch: Nach einem Gerätewechsel steuert nur das aktuelle Gerät die Partie. / ZDWA and Zilch: After switching devices, only the current device controls the game."
+  },
+  {
+    "version": "4.1.8",
+    "revision": "687a2c788ff07383f4de5ab3f7f31013aa23ad6a",
+    "date": "2026-10-24",
+    "bump": "patch",
+    "summary": "Watten-Gebote nur im eigenen Zug; Zilch meldet dich ohne doppelte Weiterleitung ab. / Watten bids require your own turn; Zilch signs out without duplicate redirects."
   }
 ]

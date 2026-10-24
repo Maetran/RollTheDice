@@ -788,28 +788,37 @@ Card movement adapts; decisions and scoring stay the same. The next round
 returns to normal speed. The control is unavailable with other humans at the
 table.
 
-**Lokale Wirtshauskulisse / Local tavern ambience:** Der Notenschalter startet
-freiwillig eine sehr leise Kulisse aus Stimmengewirr, Gläsern, Geschirr und
-gelegentlichem Lachen, auch bei CPU-Partien. Bei jedem Einschalten wird eine
-von zehn Raumkulissen zufällig gewählt. Nur diese Aufnahme und drei gemeinsame
-Detaildateien werden geladen, zusammen höchstens etwa 1.62 MiB. Der normale
-HTTP-Cache wird wiederverwendet; im Arbeitsspeicher bleibt höchstens eine
-decodierte Raumaufnahme. Die Wiedergabe bleibt lokal, ohne Cloudflare Realtime.
-Kurze Töne bestätigen Sound-/Sprachchat-/Mikrofonschalter nur bei aktiviertem
-Sound; beim Ausschalten erklingt ein letzter Abschaltton. Systemlautstärke und
-Audiogeräte gelten. Turniere und Neu erstellen auf derselben Seite behalten
-die Einstellung; Verlassen, Abmelden oder Schliessen beendet sie.
-[Aufnahmen, CC0-Lizenzen und Bearbeitung](docs/HAUSDEPP_AUDIO_ASSETS.md).
+**Lokale Wirtshauskulisse / Local tavern ambience:** Hausdepp und Watten bieten
+freiwillige, sehr leise Hintergrundgeräusche. Neue echte Aufnahmen aus
+verschiedenen Lokalen ergänzen die zehn bisherigen Cambridge-Mischungen.
+Zuerst wird eine Raumfamilie gewählt, dann eine ihrer Varianten. Ein gemischter
+Vorrat verhindert direkte Wiederholungen; die Auswahlhistorie bleibt je
+Browser-Origin erhalten. Die Kulisse wechselt während längerer Partien sanft.
+Hausdepp und Watten laufen auf getrennten Origins und teilen keine gespeicherte
+Auswahlhistorie. Beide nutzen denselben Player und Katalog.
 
-The music-note switch opts into very quiet pub ambience, including CPU games.
-Each time it is switched on, one of ten ambience mixes is chosen at random.
-Only that room loop and three shared detail clips load, at most about 1.62 MiB
-in total. They reuse the normal HTTP cache; memory retains at most one decoded
-room recording. Playback stays local without Cloudflare Realtime. Short tones
-confirm sound, voice and microphone changes only while sound is enabled;
-switching sound off plays one final acknowledgement. Use system volume and
-audio devices. Tournaments and Create again on the same page retain the
-setting; leaving, signing out or closing ends it.
+Nur der gewählte Raum wird geladen, beim Wechsel kurzzeitig ein zweiter.
+Audiodateien werden nicht vorab in der PWA gespeichert; der normale HTTP-Cache
+wird wiederverwendet. Die Wiedergabe bleibt lokal und vom Sprachchat getrennt.
+Die bisherigen Gläser-, Geschirr- und Lachdetails gehören nur zur
+Cambridge-Familie. Ton ist anfangs aus; Verlassen, Abmelden oder Schliessen
+beendet die Wiedergabe. Systemlautstärke und Audiogeräte gelten.
+[Aufnahmen, CC0-Lizenzen und Bearbeitung](docs/TAVERN_AUDIO_ASSETS.md).
+
+Hausdepp and Watten offer optional, very quiet background ambience. New real
+recordings from different venues join the ten existing Cambridge mixes. A
+shuffled bag chooses a room family first, then one of its variants, and prevents
+immediate repeats. Longer sessions change rooms gently. Selection history is
+stored per browser origin; the two games use separate origins and share the
+player and catalogue, without synchronising stored history.
+
+Only the selected room loads, with a second room briefly present during a
+change. The PWA does not precache audio; the normal HTTP cache is reused.
+Playback stays local and separate from voice chat. The legacy glasses, dishes
+and laughter details belong only to the Cambridge family. Sound starts off;
+leaving, signing out or closing ends playback. Use system volume and audio
+devices. Short sound and voice confirmation tones remain available in Hausdepp
+only while its local sound is on.
 
 **Sprachchat / Voice chat:** Bei aktivierter Sprachfunktion können angemeldete
 Mitspieler am Wartetisch freiwillig Audio einschalten und ohne Mikrofonfreigabe

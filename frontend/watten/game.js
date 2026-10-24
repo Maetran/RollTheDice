@@ -20,6 +20,7 @@ import { createSocial } from "./social.js";
 import { mountWattenLobbyChat } from "./lobby-chat.js";
 import { createDecor } from "./decor.js";
 import { createWattenVoice } from "./voice.js";
+import { createWattenSound } from "./sound.js";
 import { createFriendActivity } from "./friend-activity.js";
 import { initializeAppMode } from "../multigame/app-mode.js";
 import { initializeSuiteHeader } from "../shell/header.js";
@@ -70,6 +71,7 @@ let openSeatNotifications = null;
 let social = null;
 let decor = null;
 let voice = null;
+let sound = null;
 let waitingChrome = null;
 const cleanups = new Set();
 const beginnerGuide = createGameTour("watten");
@@ -104,6 +106,7 @@ function teardown() {
   roundReview.discard();
   beginnerGuide.discard();
   voice?.destroy(); voice = null;
+  sound?.destroy(); sound = null;
   generation += 1;
   delete html.dataset.wattenActive;
   for (const cleanup of cleanups) cleanup();
@@ -488,6 +491,7 @@ function shellMarkup() {
     <div data-watten-social hidden></div>
     <div data-watten-decor hidden></div>
     <div data-watten-voice></div>
+    <div data-watten-sound></div>
     <dialog class="wt-dialog" data-watten-leave-dialog aria-labelledby="wattenLeaveTitle">
       <h2 id="wattenLeaveTitle">${esc(t("leave.title"))}</h2>
       <p>${esc(t("leave.body"))}</p>
@@ -1206,6 +1210,9 @@ async function mountTable() {
     isCurrent: () => gen === generation && !navigating && latestUserId === account?.id });
   cleanups.add(() => { decor?.destroy(); decor = null; });
   if (page !== "spectator") {
+    sound?.destroy();
+    sound = createWattenSound({ container: app.querySelector("[data-watten-sound]") });
+    cleanups.add(() => { sound?.destroy(); sound = null; });
     voice?.destroy();
     voice = createWattenVoice({ send: sendRaw, userId: account.id,
       isCurrent: () => gen === generation && latestUserId === account?.id && !navigating });

@@ -1,11 +1,16 @@
 """Opt-in ambience is a bounded, public HTTP asset rather than voice traffic."""
 
+import hashlib
+import json
 import unittest
+from pathlib import Path
 
 import httpx
 
 from app import main
 from scripts.sync_static_versions import content_version
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
 class HausdeppAudioDeliveryTestCase(unittest.IsolatedAsyncioTestCase):
@@ -40,3 +45,29 @@ class HausdeppAudioDeliveryTestCase(unittest.IsolatedAsyncioTestCase):
             # browser never needs all ten room recordings at the same time.
             self.assertGreater(asset_bytes[name], 500_000)
             self.assertLess(asset_bytes[name] + detail_bytes, 1_800_000)
+
+    async def test_new_recordings_match_provenance_and_are_public_lazy_assets(self):
+        manifest = json.loads((ROOT / "docs/references/tavern-recordings.json").read_text())
+        sources = manifest["sources"]
+        assets = manifest["assets"]
+        self.assertGreaterEqual(len(sources), 4)
+        self.assertEqual(len(sources), len(assets))
+        self.assertEqual(len({source["page"] for source in sources}), len(sources))
+        self.assertEqual(len({asset["sha256"] for asset in assets}), len(assets))
+        version = content_version()
+        transport = httpx.ASGITransport(app=main.app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+            for source, asset in zip(sources, assets, strict=True):
+                self.assertEqual(source["license"], "CC0 1.0 Universal")
+                self.assertEqual(source["file"], asset["file"])
+                response = await client.get(f"/{asset['file'].removeprefix('app/')}?v={version}")
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.headers["content-type"], "audio/mpeg")
+                self.assertEqual(response.headers["cache-control"], "public, max-age=31536000, immutable")
+                self.assertEqual(len(response.content), asset["size_bytes"])
+                self.assertEqual(hashlib.sha256(response.content).hexdigest(), asset["sha256"])
+                self.assertLess(asset["size_bytes"], 1_850_000)
+                self.assertGreaterEqual(asset["duration_seconds"], 60)
+                partial = await client.get(f"/{asset['file'].removeprefix('app/')}", headers={"Range": "bytes=0-31"})
+                self.assertEqual(partial.status_code, 206)
+                self.assertEqual(partial.content, response.content[:32])

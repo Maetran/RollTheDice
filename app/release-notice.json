@@ -1,28 +1,28 @@
 {
   "kind": "usability",
   "games": [
-    "watten",
-    "zilch"
+    "hausdepp",
+    "watten"
   ],
-  "summary_de": "Watten-Gebote nur im eigenen Zug; Zilch meldet dich ohne doppelte Weiterleitung ab.",
-  "summary_en": "Watten bids require your own turn; Zilch signs out without duplicate redirects.",
+  "summary_de": "Mehr echte Wirtshauskulissen für Hausdepp und Watten: zufällige Auswahl und sanfte Wechsel gegen Wiederholungen.",
+  "summary_en": "More real venue ambiences for Hausdepp and Watten, with random selection and gentle changes to reduce repetition.",
   "player_notes": {
     "de": {
-      "title": "4.1.8: Klare Gebotszüge und zuverlässiges Abmelden",
+      "title": "4.2.0: Mehr Leben am Wirtshaustisch",
       "changes": [
-        "WATTEN: Ein eigenes Drei und spätere eigene Erhöhungen kannst du nur in deinem Kartenzug ansagen – auch im blinden Vierer.",
-        "WATTEN: Auf ein ausstehendes gegnerisches Gebot kann der zuständige Entscheider weiterhin sofort mit Halten, Gehen oder Aufbieten antworten.",
-        "WATTEN: Die CPUs halten dieselben Gebotsregeln ein.",
-        "ZILCH: Abmelden führt dich einmal zur passenden Lobby zurück, auch bei verspäteten Kontoantworten."
+        "HAUSDEPP und WATTEN: Neue Aufnahmen aus verschiedenen Lokalen ergänzen die bisherigen Kulissen.",
+        "Die Räume werden zufällig ohne direkte Wiederholung gewählt und wechseln während längerer Partien sanft.",
+        "WATTEN hat jetzt einen eigenen Schalter für Hintergrundgeräusche, auch am Wartetisch.",
+        "Die Kulisse ist anfangs aus, spielt nur für dich und bleibt unabhängig vom Sprachchat."
       ]
     },
     "en": {
-      "title": "4.1.8: Clear bidding turns and reliable sign-out",
+      "title": "4.2.0: More life around the tavern table",
       "changes": [
-        "WATTEN: You can open with Three or make a later unsolicited raise only on your own card turn, including blind four-player games.",
-        "WATTEN: The designated decider can still immediately hold, fold or counter a pending opposing bid.",
-        "WATTEN: CPUs follow the same bidding rules.",
-        "ZILCH: Signing out returns you to the correct lobby once, including when account responses arrive late."
+        "HAUSDEPP and WATTEN: New recordings from different venues join the existing ambiences.",
+        "Rooms are chosen randomly without immediate repeats and change gently during longer sessions.",
+        "WATTEN now has its own background sound switch, including at the waiting table.",
+        "Ambience starts off, plays only for you and stays independent of voice chat."
       ]
     }
   }

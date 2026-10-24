@@ -1,5 +1,13 @@
 # Hausdepp: Wirtshauskulisse
 
+> Historische Dokumentation der Cambridge-Familie und ihrer drei Details.
+> Seit 4.2.0 teilen Hausdepp und Watten einen erweiterten Katalog mit zusätzlichen
+> Originalaufnahmen und sanfter Rotation. Der aktuelle Stand steht in
+> [TAVERN_AUDIO_ASSETS.md](TAVERN_AUDIO_ASSETS.md).
+> Historical documentation of the Cambridge family and its three detail clips.
+> The linked shared catalogue documents the additional recordings and rotation
+> introduced in 4.2.0 for Hausdepp and Watten.
+
 Die Kulisse besteht aus echten Raum- und Objektaufnahmen. Die bisherige
 Raumkulisse bleibt unverändert; neun neue Mischungen ergänzen sie auf zehn.
 Zusammen mit drei gemeinsamen Geräuschdetails werden 13 Dateien lokal mit der

@@ -115,16 +115,17 @@ cannot activate it.
 
 ### Lokale Wirtshauskulisse / Local tavern ambience
 
-Der separate Notenschalter aktiviert eine sehr leise Wirtshauskulisse mit
-Stimmengewirr, Gläsern, Geschirr und gelegentlichem Lachen. Standardmässig ist
-sie aus, auch am CPU-Tisch ist sie verfügbar. Bei jedem Einschalten wird eine
-von zehn Kulissen aus echten CC0-Aufnahmen zufällig gewählt. Nur diese und die drei gemeinsamen
-Details werden geladen, zusammen höchstens etwa 1.62 MiB. Die Aufnahme bleibt
-bei Turnierrunden und Neu erstellen auf derselben Seite erhalten, solange der
-Sound eingeschaltet bleibt. Der normale HTTP-Cache wird wiederverwendet;
-höchstens ein decodierter Raum bleibt im Speicher. Alles wird ausschliesslich
-lokal wiedergegeben und dem
-Mikrofonsignal und dem Sprachchat nicht zugemischt und gehören nicht zu dessen Verbrauchsmessung.
+Der separate Notenschalter aktiviert eine sehr leise Wirtshauskulisse.
+Standardmässig ist sie aus, auch am CPU-Tisch ist sie verfügbar. Sechs neue
+CC0-Aufnahmen aus Cafés, Restaurants und Bars ergänzen die zehn bisherigen
+Cambridge-Varianten. Zufällig gewählt wird zuerst eine von sieben Raumfamilien,
+dann eine Variante; ein lokaler Auswahlverlauf verhindert direkte Wiederholungen.
+Nach drei bis fünf Minuten aktiver Audiozeit wechselt der Raum mit einer
+20-sekündigen Überblendung. Nur Cambridge erhält die drei bisherigen Zusatzclips.
+Dateien laden bei Bedarf über den normalen HTTP-Cache. Beim Wechsel bleiben
+höchstens zwei decodierte Räume gleichzeitig im Speicher; bei einem Ladefehler
+spielt der bisherige Raum weiter. Alles wird ausschliesslich lokal wiedergegeben,
+dem Mikrofonsignal und dem Sprachchat nicht zugemischt und nicht zu dessen Verbrauchsmessung gezählt.
 Systemlautstärke und System-Audiogeräte gelten. Bei aktiviertem Sound bestätigen
 kurze Töne die manuellen Sound-, Sprachchat- und Mikrofonschalter. Sound aus
 stoppt die Kulisse sofort und spielt noch einen letzten Abschaltton; danach
@@ -132,22 +133,25 @@ bleiben auch Mikrofon- und Sprachchatbestätigungen still. Automatische
 Verbindungs-/Statusänderungen erzeugen keine Töne. Turniere und Neu erstellen
 auf derselben Seite behalten die Einstellung; Verlassen, Abmelden und Schliessen
 beenden sie. Browser/PWA-Gerätetests bleiben für die akustische Mischung nötig.
-Quellen und Bearbeitung: [Audio assets](HAUSDEPP_AUDIO_ASSETS.md).
+Quellen, Bearbeitung und technische Grenzen: [Gemeinsame Audio-Assets](TAVERN_AUDIO_ASSETS.md).
 
-The separate music-note switch opts into very quiet pub ambience with room
-chatter, glasses, dishes and occasional laughter, including CPU tables. It
-starts off. Each activation randomly chooses one of ten mixes of real CC0 recordings.
-Only that room loop and three shared detail clips load, at most about 1.62 MiB
-in total. Keeping sound enabled through tournament rounds or Create again
-retains the selection. Clips reuse the normal HTTP cache; memory retains at
-most one decoded room. Playback stays local, without microphone/voice transmission or
-voice usage telemetry. Use system volume and audio devices. Short tones confirm
+The separate music-note switch opts into very quiet pub ambience, including
+CPU tables. It starts off. Six new CC0 café, restaurant and bar recordings join
+the ten existing Cambridge variants. Selection randomly chooses one of seven
+room families, then a variant; a local selection history prevents immediate
+repeats. After three to five minutes of active audio time, the room changes with
+a 20-second crossfade. Only Cambridge uses the three existing detail clips.
+Files load on demand through the normal HTTP cache. A change retains at most
+two decoded rooms simultaneously; a failed load keeps the previous room playing.
+Playback stays local, without microphone/voice transmission or voice usage
+telemetry. Use system volume and audio devices. Short tones confirm
 manual sound, voice and microphone changes while sound is enabled. Sound off
 stops ambience immediately, plays one final acknowledgement, then keeps further
 voice/microphone confirmations silent. Automatic status changes stay silent.
 Tournaments and Create again on the same page retain the setting; leaving,
 signing out or closing ends it. Acoustic mixing still needs real device/PWA
 acceptance.
+Sources, processing and technical limits: [Shared audio assets](TAVERN_AUDIO_ASSETS.md).
 
 ### Freiwilliger Sprachchat
 

@@ -179,17 +179,22 @@ checkout and worktrees that are active, pinned, shared or owned by others.
 Archive managed Codex worktrees for recovery; ignored files are not included in
 their snapshots. Never force removal or delete branches as a blanket cleanup.
 
-## Hausdepp-Sprachchat / Voice chat
+## Hintergrundkulisse und Sprachchat / Ambience and voice chat
 
 Die optionale Wirtshauskulisse wird unabhängig vom Sprachdienst als lokale,
 versionierte MP3-Dateien ausgeliefert. Sie braucht keine weiteren Cloudflare-
-Zugangsdaten. Erst der freiwillige Notenschalter lädt die rund 1.62 MiB; der
-Browser verwendet den normalen öffentlichen HTTP-Cache. Die Dateien werden
+Zugangsdaten. Erst der freiwillige Soundschalter lädt den gewählten Raum;
+spätere Wechsel laden weitere Räume bei Bedarf über den normalen HTTP-Cache.
+Die neuen Räume sind jeweils kleiner als 1.85 MB; nur die bisherige Cambridge-
+Familie lädt zusätzliche Detailclips. Quellen und Dateibudgets stehen in
+[TAVERN_AUDIO_ASSETS.md](TAVERN_AUDIO_ASSETS.md). Die Dateien werden
 nicht dem Mikrofonsignal zugemischt und erscheinen nicht in der Realtime-
 Verbrauchsmessung. / Optional tavern ambience ships independently as local,
-versioned MP3 assets without additional Cloudflare credentials. Only opting in
-with the music-note switch loads about 1.62 MiB, reusing the normal public HTTP
-cache. Clips are not mixed into microphone audio or included in Realtime usage.
+versioned MP3 assets without additional Cloudflare credentials. Opting in loads
+the selected room; later changes load further rooms on demand through the normal
+HTTP cache. Each new room is below 1.85 MB; only the original Cambridge family
+loads extra detail clips. See the shared audio asset documentation for sources
+and byte budgets. Clips are not mixed into microphone audio or included in Realtime usage.
 
 Der Sprachchat verwendet den vorhandenen authentifizierten Spiel-WebSocket für
 Steuerung und Status. Audio fliesst per WebRTC über Cloudflare Realtime SFU;
