@@ -2,7 +2,7 @@
   "version": "4.1.6",
   "bump": "patch",
   "date": "2026-10-24",
-  "previous_revision": "63aa5c36e2aad32f5385fddec68854cff058693e",
+  "previous_revision": "4b7905ec6ea0a822e589f34f69cdce91723cde92",
   "summary": {
     "de": "Hausdepp: Passende Karten sofort nachwerfen, auch nach dem Auffüllen. Das Stapelbild folgt weiter der Landung.",
     "en": "Hausdepp: Throw matching cards immediately, including fresh refills. Pile cards still appear only on landing."
