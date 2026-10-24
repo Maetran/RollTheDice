@@ -109,7 +109,8 @@ def _cpu_choices(game: dict, memories: dict | None = None) -> list[tuple[str, di
             skill = max(0.45, min(1.0, base_skill + _personality(game, actor_id)))
             # Seeded by table, seat and state: repeated evaluations while the
             # computer waits keep the same judgement instead of flip-flopping.
-            rng = Random(f"{game.get('_id')}:{actor_id}:{state.get('version')}")  # nosec B311 - game judgement, not security
+            # Deterministic game judgement; never dice, tokens or credentials.
+            rng = Random(f"{game.get('_id')}:{actor_id}:{state.get('version')}")  # nosec B311
             decision = choose_cpu_action(projection, memory=memories.get(actor_id) if memories else None,
                                          skill=skill, rng=rng)
             if decision:

@@ -92,7 +92,8 @@ def opening_game(seed: int) -> dict:
         "_target_score": 10_000,
     }
     start_zilch_game(game)
-    rng = random.Random(f"zilch-heldout:{seed}:opening")
+    # Reproducible offline comparison only; never live dice or credentials.
+    rng = random.Random(f"zilch-heldout:{seed}:opening")  # nosec B311
     while game["_zilch_start_roll"]["phase"] != "resolved":
         for seat in ("p0", "p1"):
             record_zilch_start_roll(game, seat, rng.randint(1, 6))
@@ -189,7 +190,8 @@ def match(seed: int, profiles: tuple[str, str], candidate: str, upgraded: bool,
         elif decision.action == "roll":
             # New independent stream for each seat/own turn/roll. Consuming an
             # extra die cannot shift another seat, later turn, or later roll.
-            rng = random.Random(f"zilch-heldout:{seed}:{actor}:{own_turns[actor]}:{turn.rolls_used + 1}")
+            # Reproducible offline comparison only; never live dice or credentials.
+            rng = random.Random(f"zilch-heldout:{seed}:{actor}:{own_turns[actor]}:{turn.rolls_used + 1}")  # nosec B311
             transition = apply_zilch_roll_dice(game, actor, **command, randint_fn=rng.randint)
             counts["rolls"] += 1
         else:
