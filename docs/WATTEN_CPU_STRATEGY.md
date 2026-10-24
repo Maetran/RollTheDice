@@ -43,9 +43,11 @@ There is no scripted opening-round bidding ladder and no automatic bid merely
 because the action is legal. Feedback is assessed only while receiving a bid;
 an authorized partner may state good, bad or unsure once for that offer. In blind
 four-player play only the blind teammate sends feedback to the informed
-decision maker. The informed CPU may initiate a bid on either teammate's card
-turn; a blind CPU teammate may also initiate a bid on its own card turn.
-The informed player remains responsible for hold, fold and counterbid responses.
+decision maker. Both informed and blind CPUs may open three or initiate later
+raises only on their own card turn; an off-turn informed CPU never delays its
+partner's bidding or card decision.
+The informed player remains responsible for hold, fold and counterbid responses,
+including outside their own card turn.
 
 Blödeln is a separate optional request between the two non-callers. Requesting
 and answering use stable random 50% choices per deal and CPU seat, independent

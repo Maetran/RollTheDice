@@ -116,7 +116,7 @@ test('the public status uses the exact compact ISO-second contract and allows on
 });
 
 test('missing or invalid full receipts never reach even the mocked GitHub API', async t => {
-  for (const kind of ['missing', 'corrupt', 'wrong-head', 'failed-check', 'partial-browser', 'expired']) await t.test(kind, child => {
+  for (const kind of ['missing', 'corrupt', 'wrong-head', 'failed-check', 'partial-browser', 'legacy-browser-pools', 'failed-public-browser', 'expired']) await t.test(kind, child => {
     const f = fixture(child, { save: false });
     if (kind === 'corrupt') {
       mkdirSync(dirname(receiptPath(f.context)), { recursive: true });
@@ -126,6 +126,8 @@ test('missing or invalid full receipts never reach even the mocked GitHub API', 
       if (kind === 'wrong-head') receipt.head = 'a'.repeat(40);
       if (kind === 'failed-check') receipt.checks[0].exitCode = 1;
       if (kind === 'partial-browser') receipt.browser.fullRun = false;
+      if (kind === 'legacy-browser-pools') receipt.browser.results = receipt.browser.results.filter(item => item.name !== 'watten-public');
+      if (kind === 'failed-public-browser') receipt.browser.results.find(item => item.name === 'watten-public').exitCode = 1;
       if (kind === 'expired') receipt.finishedAt = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
       saveReceipt(f.context, receipt);
     }

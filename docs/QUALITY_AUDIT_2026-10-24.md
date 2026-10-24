@@ -19,7 +19,7 @@ before every push. This audit does not authorize new features or rule decisions.
 | Zilch | Schlussrunde ab 10.000 Punkten, Gleichstand, menschliche/CPU-Akteure, Gerätewechsel. / Final round from 10,000 points, ties, human/CPU actors and device takeover. |
 | Hausdepp | FIFO-Nachziehen, Nachwerfen und verspätete Ziehpflicht; Socketprüfung unter Spiel-Lock. / FIFO draws, follow-up throws, deferred draw obligations and socket checks under the game lock. |
 | Watten | Gebots-/Antwortrechte gegen Owner-Ledger; öffentliche Sprachstrecke und Previewgrenzen. / Bidding/responding rights against the owner ledger; public language navigation and preview boundaries. |
-| Tests und Lieferweg / Tests and delivery | Pytest-Collection, sechs `loadfile`-Worker, Branch-Coverage; vier Mainshards und drei Kontopools; Ownerstatus bindet Commit, Tree, Basis, Umgebung und Alter. / Pytest collection, six loadfile workers, branch coverage; four main shards and three account pools; owner status binds commit, tree, base, environment and age. |
+| Tests und Lieferweg / Tests and delivery | Pytest-Collection, sechs `loadfile`-Worker, Branch-Coverage; vier Mainshards und drei Kontopools, in Block 2 um einen öffentlichen Watten-Pool ergänzt; Ownerstatus bindet Commit, Tree, Basis, Umgebung und Alter. / Pytest collection, six loadfile workers, branch coverage; four main shards and three account pools, with a public Watten pool added in block 2; owner status binds commit, tree, base, environment and age. |
 
 Dies ist eine risikobasierte Quellenprüfung, kein Beweis für die Korrektheit
 jeder einzelnen Assertion. Die gesamte Testsuite bleibt ein zusätzlicher,
@@ -62,24 +62,190 @@ more precise error assertions for the socket fix. Both are implemented. Local
 review reports reside in this worktree's `test-results/quality-audit/`; complete
 verification reports live under `test-results/local-checks/` and shared Git metadata.
 
+## Block 2: öffentlicher Watten-Browserpool / Public Watten browser pool
+
+**Implementiert, von Claude geprüft und gezielt getestet:** Die beiden bisher im Previewpool
+übersprungenen Sprachfälle erhalten mit `playwright.watten-public.config.js`
+einen eigenen lokalen Pool: öffentliche Beta an, Preview-Freigaben aus,
+eigener Server, Port und Datenbestand. Der unveränderte Flow prüft
+Lobby → Regeln → Anmeldung → Zurück und den expliziten Sprachwechsel bei
+widersprechender gespeicherter Sprache. Fehlende öffentliche SSR-Marker werden
+zu Fehlern. Die beiden Preview-Konfigurationen sammeln diese Datei nicht mehr.
+
+**Implemented, independently reviewed by Claude and checked with focused tests:** The two previously skipped language cases gain their
+own local pool with public beta enabled, preview access disabled and an isolated
+server, port and data. The existing flow checks lobby → rules → sign-in → back
+and explicit language switching against a conflicting saved language. Missing
+public SSR markers fail; both preview configurations exclude this file.
+
+Der Vollnachweis verlangt nun acht Browserteilgruppen, während die sieben
+vollständigen Prüfgruppen unverändert bleiben. Regressionen sind vorbereitet
+für Collection, isolierte Konfiguration, Reihenfolge, Portgrenzen sowie die
+Ablehnung fehlender oder fehlgeschlagener öffentlicher Pools beim Push,
+Status-Publishing und bei der Übernahme durch einen unveränderten Merge.
+Alte Sieben-Pool-Belege werden nicht erweitert oder als neuer Nachweis ausgegeben.
+Die vier betroffenen Node-Testdateien bestanden mit **90/90 Tests**, ohne Skips.
+Der öffentliche Browserpool bestand mit **2/2 DE/EN-Fällen**; der Bericht unter
+`test-results/local/run-5gT5gq/summary.json` weist korrekt `fullRun=false` aus.
+Die gezielten Prüfungen liefen erst nach Ende des ersten Vollpools und nach
+Freigabe durch die Testkoordination. Claude hat den Pool und die Nachweisprüfungen unabhängig freigegeben.
+Der vollständige Nachweis des integrierten Stands bleibt vor dem Push verbindlich.
+
+Complete evidence now requires eight browser pools while the seven complete
+check groups stay unchanged. Regressions are prepared for collection, isolated
+configuration, ordering, port bounds and rejecting missing or failed public
+pools during push validation, status publication and unchanged-merge inheritance.
+Old seven-pool receipts are not extended or presented as new evidence. The four
+affected Node test files passed **90/90 tests** without skips. The public browser
+pool passed **2/2 DE/EN cases**; `test-results/local/run-5gT5gq/summary.json`
+correctly records `fullRun=false`. These focused checks ran after the first full
+pool ended and the test coordinator authorized them. Claude independently approved the pool and receipt checks. Complete
+verification of the integrated tree remains mandatory before pushing.
+
+## Block 3: bestätigter Watten-Regelvertrag / Confirmed Watten bidding contract
+
+Der Owner hat am 24.10.2026 ausdrücklich bestätigt: Eigene Eröffnungsgebote
+und spätere eigene Erhöhungen sind nur im eigenen Kartenzug erlaubt. Die
+direkte Antwort auf ein offenes gegnerisches Gebot bleibt beim zuständigen
+Entscheider und darf ausserhalb seines Kartenzugs erfolgen. Engine, persönliche
+Views, CPU-Validierung und Regeln bilden denselben Vertrag ab. Die überholte
+Partnerzug-Ausnahme und ihre zusätzliche CPU-Wartelogik sind entfernt; das
+private Partnergefühl bleibt erhalten. Speicherformat und Wertung ändern sich
+nicht.
+
+On 24 October 2026 the owner explicitly confirmed that opening bids and later
+unsolicited raises require the initiator's own card turn. The designated decider
+can still immediately respond to an open opposing bid outside their card turn.
+Engine, personal views, CPU validation and rules now agree. The obsolete
+partner-turn exception and its CPU wait logic are removed; private partner
+feedback is preserved. Storage format and scoring remain unchanged.
+
+Die Regressionen waren vor der Korrektur rot. Die gezielten Backendprüfungen
+bestanden mit 336 Fällen plus drei CPU-Schedulerfällen. Vier Geberpositionen,
+Eröffnung und spätere Vier/Fünf, falsche Akteure, Ablehnung ohne Zustandsänderung
+und weiterhin erlaubte direkte Antworten werden geprüft. Der echte mobile
+Viererflow in Deutsch und Englisch bestand mit 2/2 Browserfällen und prüft
+eigene Gebotsrechte, fehlende Rechte beim wissenden Partner und alle drei
+Antwortbuttons beim zuständigen Entscheider. Claude hat den Regelkern, Views,
+CPU und Testanpassungen unabhängig geprüft und freigegeben. Die von ihm bemängelte doppelte
+Assertion wurde bereinigt; die Releasepflichten für 4.1.8 sind umgesetzt.
+
+The regressions failed before the fix. Focused backend verification passed
+336 cases plus three CPU scheduler cases. Tests cover four dealer positions,
+opening and later Four/Five bids, wrong actors, rejection without mutation and
+preserved immediate responses. The real mobile four-player flow passed both
+German and English browser cases, checking own bidding rights, the informed
+partner's lack of rights and all three designated response buttons. Claude
+independently approved the rule core, views, CPU and adjusted tests. A duplicate
+assertion identified in review was removed; 4.1.8 release metadata is prepared.
+
+Der erste vollständige 4.1.8-Backendlauf deckte eine zusätzliche alte
+Partnerzug-Fixture in `test_watten_match_evidence.py` auf (ein Fehler,
+3’334 bestandene Fälle). Beide Bieter dieser Fixture werden nun direkt aus dem
+aktuellen Kartenzug gewählt. Replay-, Zähler-, Neustart-, Persistenz- und
+Evidence-Assertions bleiben vollständig erhalten. Alle 28 Tests der Datei
+bestehen; Claude hat die Anpassung separat ohne Blocker freigegeben. Dieser
+fehlgeschlagene Vollversuch ist kein Liefernachweis und wird vollständig ersetzt.
+
+The first complete 4.1.8 backend run found an additional obsolete partner-turn
+fixture in `test_watten_match_evidence.py` (one failure, 3,334 passes). Both bids
+now use the current card player. Replay, counters, restart, persistence and
+evidence assertions are all preserved. All 28 tests in the file pass; Claude
+separately approved the adjustment without blockers. The failed full attempt
+is not delivery evidence and requires a new complete run.
+
+## Block 4: eine Weiterleitung beim Zilch-Abmelden / One Zilch sign-out redirect
+
+Ein Browserfehler beim Abmelden zeigte im Trace zwei Dokumentanfragen auf
+`/` mit zehn Millisekunden Abstand. Das synchrone Auth-Ereignis löste im
+App-Mode den Entzug der Vorschau samt Weiterleitung aus; danach leitete der
+Logout-Handler nochmals weiter. Die zweite Navigation brach die erste ab.
+Der Logout-Handler ruft jetzt vor dem Abmelden den vorhandenen
+`prepareNavigation()`-Schutz auf und behält damit die Navigation. Zielroute,
+Sitzungsbeendigung und öffentliche Zugriffsmöglichkeiten bleiben gleich.
+
+A sign-out browser failure showed two document requests to `/` ten milliseconds
+apart. The synchronous auth event revoked preview access and redirected;
+the logout handler then redirected again, aborting the first navigation.
+The handler now invokes existing `prepareNavigation()` before sign-out,
+retaining navigation ownership. Destination, session termination and public
+access remain unchanged.
+
+Die neue Regression war mit zwei statt einer Weiterleitung rot und besteht
+mit dem Fix. Sie führt den echten registrierten Zilch-Handler, das gemeinsame
+Logout und den echten App-Mode aus. Öffentlicher und geschützter Modus,
+abgebrochene pendente Identitätsanfrage und spätes Auth-Ereignis sind enthalten.
+Alle 21 Tests der bestehenden Harness-Datei und die Qualitäts-/Sicherheitsprüfung
+bestehen. Claude hat den Zwei-Dateien-Quelldiff unabhängig ohne Blocker
+freigegeben. Der bestehende fehlgeschlagene Browserflow wurde nicht abgeschwächt;
+für den geänderten Stand ist ein neuer Vollnachweis erforderlich.
+
+The new regression failed with two redirects and passes with the fix. It executes
+the actual registered Zilch handler, shared logout and real app-mode controller.
+It covers public and gated modes, a cancelled pending identity request and a
+late auth event. All 21 tests in the existing harness file and quality/security
+checks pass. Claude independently approved the two-file source diff without
+blockers. The failing browser flow was not weakened; new source requires a
+new complete proof.
+
+## Nachweise und Grenzen / Evidence and limits
+
+Der erste Vollnachweis für 4.1.7 bestand auf `05009ca5`: 582 Tooltests,
+3’321 Backendtests mit 85,84 Prozent Branch-Coverage, Produktionsimage und
+1’482 Browserfälle (11 konfigurierte Skips). Der unveränderte Merge `28d13393`
+wurde nach grüner CI über master ausgerollt; alle vier Hosts meldeten Version
+4.1.7 und gesunde Datenbanken. Zwei dieser Browser-Skips werden durch Block 2
+zu verbindlichen öffentlichen Tests. Neue Quellen benötigen einen neuen
+vollständigen Nachweis; dieser wird beim nächsten Push automatisch erzwungen.
+
+The first complete 4.1.7 proof on `05009ca5` passed 582 tool tests, 3,321 backend
+tests with 85.84 percent branch coverage, the production image and 1,482 browser
+cases (11 configured skips). Unchanged merge `28d13393` passed CI and was deployed
+from master; all four hosts reported 4.1.7 and healthy databases. Block 2 makes
+two of those skipped cases mandatory public tests. New source needs a new full
+proof, automatically enforced on the next push.
+
+Bestehende SQLite-Datetime-DeprecationWarnings und einzelne ResourceWarnings
+bleiben sichtbar. Ihre Ursachen sind in diesem Block nicht vollständig verfolgt;
+es wurden weder Warnungen unterdrückt noch Grenzwerte gelockert.
+
+Existing SQLite datetime deprecation warnings and some resource warnings remain
+visible. Their causes were not fully traced in this block; warnings were neither
+suppressed nor thresholds relaxed.
+
+Claude hat im Abschlussreview zusätzlich den DE/EN-Browserflow und die
+Release-Metadaten ohne Blocker freigegeben; die Formulierung «ausstehendes
+Gebot / pending bid» wurde zur Abgrenzung von offenem Watten präzisiert.
+
+Claude also approved the final DE/EN browser flow and release metadata without
+blockers; “pending bid” clarifies the difference from open Watten.
+
 ## Offene Punkte / Open items
 
-- **Öffentliche Watten-Sprache / Public Watten language:** Die beiden
-  `watten-public-language.spec.js`-Fälle werden gesammelt, im Previewpool aber
-  bedingt übersprungen. Backend-SSR und Node-Sprachtests bestehen bereits;
-  Lobby → Regeln → Anmeldung → Zurück bei widersprechender gespeicherter Sprache
-  braucht einen echten öffentlichen Browserpool. Separater nächster Testblock,
-  ohne die bestehenden Preview-Zugangsprüfungen global umzuschalten. / Both
-  language cases are collected but conditionally skipped in preview mode.
-  Backend SSR and Node language tests exist; the real navigation flow needs a
-  public browser pool in a separate block, preserving preview access tests.
-- **Watten-Regelvertrag / Watten rule contract:** Das Owner-Ledger bindet das
-  eigene Eröffnungsgebot an den eigenen Kartenzug; Engine und mehrere Tests
-  erlauben dem wissenden Entscheider im blinden Vierer ein Gebot im Partnerzug.
-  Kein automatischer Fix: zuerst Owner-Entscheidung, dann Vertrag, Code und Tests
-  gemeinsam abgleichen. / The ledger limits opening bids to the player's own
-  card turn; engine and several tests allow the informed decider to bid during
-  their partner's turn in blind four-player games. This needs an owner decision.
+- **Abdeckung / Coverage:** Die globale Mindestabdeckung liegt bei 60 Prozent,
+  ohne Modulgrenzen. Auch bei 85,83 Prozent Gesamtabdeckung fehlen einzelne
+  Negativpfade, etwa widersprüchliche gespeicherte Watten-Abschlüsse in
+  `watten_runtime.py`. Optionale Screenshot-Capture-Serien sind keine visuelle
+  Abnahme im Standardlauf. Dies sind belegte Prüfgrenzen, keine behaupteten
+  Implementierungsfehler. / The global coverage floor is 60 percent with no
+  per-module minimum. At 85.83 percent overall coverage, some negative paths
+  remain unexecuted, such as contradictory stored Watten finishes. Optional
+  screenshot capture series are not visual acceptance in the standard run.
+  These are proven evidence limits, not claimed implementation defects.
+
+
+- **Watten-Versionshistorie / Watten release history:** Der History-Endpunkt
+  erlaubt Watten derzeit nicht; eine Watten-Oberfläche oder ein vorhandener
+  Aufrufer dafür ist nicht angebunden. Versions-Push ist separat unterstützt.
+  Daher kein belegter kaputter Bedienpfad und keine neue Historienfunktion in
+  diesem Qualitätsblock. Bei späterer Erweiterung muss ein HTTP-Routertest die
+  Parameterfreigabe prüfen; direkte Pythonaufrufe erkennen die Literal-Grenze
+  nicht. / The history endpoint currently excludes Watten; no Watten history UI
+  or existing caller is wired up. Release push is supported separately. This is
+  not a demonstrated broken user flow, so no history feature is added here.
+  Future coverage must exercise the HTTP router, as direct Python calls cannot
+  detect the query parameter's Literal boundary.
+
 - **Auth-Randfälle / Auth edge cases:** Der vermutete Selbst-Deadlock in
   `loadAuth` wurde nach Prüfung aller Epochenänderungen verworfen. Ein älterer
   erfolgreicher Lookup kann einen bereits laufenden neueren Lookup übernehmen;

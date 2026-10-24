@@ -20,7 +20,7 @@ Quellenregeln entscheiden keine hier noch offenen Fälle.
 | Bieten | Owner-Nachtrag vom 20.10.2026 ersetzt die frühere Erstkarten-Sperre: Sobald die vollständige Ansage beziehungsweise das Einschauen abgeschlossen und Kartenspiel freigegeben ist, darf der Spieler am eigenen Kartenzug schon vor der ersten ausgespielten Karte bieten. Erstes Gebot Drei, jedes Gegengebot genau um eins höher. Ein Gebot hält das Spiel an; bis Halten, Gehen oder Aufbieten keine weitere Spielaktion. |
 | Halten / Gehen | A bietet Drei, B geht: A erhält zwei Punkte. B hält: Sieger erhält drei Punkte. B darf direkt Vier gegenbieten. A bietet Drei, B direkt Vier, A geht: B erhält **drei** Punkte. Weitere Stufen folgen dem bestätigten Einer-Schritt; deren vorheriger Einsatz bleibt ausdrücklich im Zustand erhalten. |
 | Gestrichen | Kein eigenes Eröffnungsgebot. Auf ein gegnerisches Gebot sind Halten, Gehen **und Aufbieten** ausdrücklich auch gestrichen erlaubt. Dieser Nachtrag präzisiert das frühere pauschale Bietverbot. |
-| Eigene Gebotsberechtigung | Einsatzbieten: Jeder Spieler darf ein eigenes Drei eröffnen, wenn er gerade eine Karte spielen dürfte, ausdrücklich auch vor der ersten ausgespielten Karte nach abgeschlossener Ansage. Zuständiger Entscheider darf Halten/Gehen/Aufbieten als Antwort sofort ausserhalb seines Kartenzugs. Schlag-/Farbansagerrollen werden durch das Bieten nicht neu verteilt. Ein vereinbartes Schöneres bleibt nach Halten bis zum ersten Ausspielen möglich; es beginnt die Ansage neu und setzt den Einsatz auf zwei zurück. Tatsächlich angenommene Bietaktionen bleiben im Beweisjournal gezählt. |
+| Eigene Gebotsberechtigung | Einsatzbieten: Jeder Spieler darf ein eigenes Drei eröffnen, wenn er gerade eine Karte spielen dürfte, ausdrücklich auch vor der ersten ausgespielten Karte nach abgeschlossener Ansage. Owner-Präzisierung vom 24.10.2026: Eigene Gebote und spätere eigene Erhöhungen sind ausschliesslich am eigenen Kartenzug erlaubt. Auch der Wissende im blinden Vierer darf nicht am Kartenzug seines Partners bieten. Zuständiger Entscheider darf Halten/Gehen/Aufbieten als Antwort sofort ausserhalb seines Kartenzugs. Schlag-/Farbansagerrollen werden durch das Bieten nicht neu verteilt. Ein vereinbartes Schöneres bleibt nach Halten bis zum ersten Ausspielen möglich; es beginnt die Ansage neu und setzt den Einsatz auf zwei zurück. Tatsächlich angenommene Bietaktionen bleiben im Beweisjournal gezählt. |
 | Dreierpunkte | Verliert das Solo eine Gabe ohne Gebot, bekommen beide Gegenpartner je zwei Punkte. Erreichen dadurch beide elf, gewinnen beide. Gebotserhöhungen müssen dieselbe individuelle Zurechnung bewahren. |
 | Dreier-Entscheider | Geber A, Solist B, Gegenpartner C: B bietet, A entscheidet für A+C über Halten/Gehen/Aufbieten. Kein Rennen, bei dem C eine andere Antwort durchsetzt. |
 | Dreier und gestrichener Partner | Geber A mit neun Punkten, Partner C mit vier, Solo B mit sechs: C darf auf eigenem Kartenzug Drei eröffnen. As gestrichener Stand sperrt C nicht. Die eigene Eröffnungsberechtigung richtet sich nach dem bietenden Spieler. |
@@ -113,7 +113,11 @@ The critical order is heart king, Weli, acorn seven, all above the main strike;
 with critical cards off, Weli is the smallest trump. The owner's explicit
 20 October 2026 revision allows bidding on one's own card turn as soon as the
 call or inspection is complete, including before the first card. Bids start
-at three, counterbids rise by one, and play pauses for the response. An agreed
+at three, counterbids rise by one, and play pauses for the response. The owner's
+24 October clarification requires one's own card turn for opening three and
+initiating later raises, also for the informed player in blind four-player play.
+Hold, fold and counterbid responses
+remain available to the designated decision maker outside their card turn. An agreed
 redeal after a held opening bid remains possible until the first card: calling
 starts again with a stake of two, while accepted bid actions remain recorded.
 An initiating player's own score determines whether they are gestrichen;

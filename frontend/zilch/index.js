@@ -5857,6 +5857,7 @@ async function initialize() {
     logoutButton.setAttribute("aria-busy", "true");
     const publicLobby = state.auth?.game_access?.zilch_public === true
       || state.auth?.user?.game_access?.zilch_public === true;
+    appMode?.prepareNavigation?.();
     try { await logout(); } catch (_) {} finally {
       window.location.replace(publicLobby ? zilchPath("/") : zdwaAppEntryUrl());
     }

@@ -206,10 +206,11 @@ grösser und bleibt höchstens bis zum Abschluss des ersten Stichs sichtbar. Ein
 im Hochformat bei den eigenen Karten, im mobilen Querformat in der linken
 Leiste. Auf Desktop bleibt der eigene Fächer mittig;
 im Tablet-Querformat sitzt der Aktionsbereich darüber. Stichgewinne sind für die
-eigene Seite grün, für die andere rot markiert. Im blinden Vierer darf auch der
-blinde Partner am eigenen Kartenzug bieten. Der wissende Spieler, Geber oder
-Gebernachbar, darf zusätzlich auf dem Kartenzug seines Partners bieten. Über
-Halten, Gehen und Aufbieten als Antwort entscheidet weiterhin nur der Wissende.
+eigene Seite grün, für die andere rot markiert. Im blinden Vierer darf jeder
+Spieler ein eigenes Drei und spätere eigene Erhöhungen ausschliesslich am eigenen
+Kartenzug bieten; das gilt auch für den wissenden Spieler und seinen blinden Partner. Über
+Halten, Gehen und Aufbieten als Antwort entscheidet weiterhin nur der Wissende,
+auch ausserhalb seines eigenen Kartenzugs.
 Bei einem gegnerischen Gebot kann nur der blinde Partner ihm
 einmal privat sein Gefühl mitteilen; die Auswahl schliesst den Dialog. Der
 wissende Entscheider sendet kein Gegensignal. In offenen Spielen bleibt die
@@ -256,10 +257,10 @@ names; the larger “Thanks!” remains visible until the first trick is complet
 raising control sit beside your cards in portrait and in the left rail in mobile
 landscape. Your desktop hand stays centred;
 landscape tablets place the action area above it. Trick wins are green for your side
-and red for the other side. In blind four-player play, the blind partner may
-also bid on their own card turn. The informed teammate, the dealer or their
-neighbour, may additionally bid on their partner's turn. Only the informed
-player handles hold, fold and counterbid responses. When receiving an
+and red for the other side. In blind four-player play, every player may open
+three or initiate a later raise only on their own card turn, including the
+informed player and their blind partner. Only the informed player handles hold, fold and counterbid
+responses, including outside their own card turn. When receiving an
 opposing bid, only the blind partner may send them one private feeling signal;
 answering closes the prompt. The informed decision maker sends no signal back.
 Open games retain the mutual prompt.
@@ -2139,7 +2140,8 @@ name, language, available design switch and game picker above; Lobby,
 Players & Ranking, Rules and Account below. It stays at the top while scrolling,
 on phones, tablets and desktops. Game tables retain their compact controls.
 Quick page changes keep their chosen destination when an older sign-in check
-is cancelled by navigation.
+is cancelled by navigation. Zilch sign-out owns one redirect to the correct
+lobby; a late account response cannot start another redirect.
 
 **Deutsch:** Alle vier Spiele nutzen ausserhalb des Spieltischs denselben
 zweizeiligen Header: oben Spielsymbol und -name, Sprache, vorhandener
@@ -2147,7 +2149,8 @@ Darstellungswechsel und Spielauswahl; darunter Lobby, Spieler & Ranking, Regeln
 und Konto. Er bleibt auf Handy, Tablet und Desktop beim Scrollen oben sichtbar.
 Spieltische behalten ihre kompakten Bedienelemente.
 Schnelle Seitenwechsel behalten ihr gewähltes Ziel, auch wenn dabei eine ältere
-Anmeldungsprüfung abgebrochen wird.
+Anmeldungsprüfung abgebrochen wird. Zilch meldet mit einer einzigen Weiterleitung
+zur passenden Lobby ab; eine verspätete Kontoantwort startet keine zweite.
 
 Der mobile Zuschauerchat hält die Eingabe auch bei geöffneter Tastatur
 erreichbar und zeigt Zuschauer mit ihrem Profilbild. Tablet-Spielblöcke nutzen
@@ -2822,9 +2825,13 @@ logs. Check for another agent's full test pool before starting one.
 
 `npm run test:browser` runs the main suite on four parallel, isolated servers,
 each with its own free port, SQLite database, legacy JSON data and report files.
-Each server keeps one worker. Username changes in public Zilch mode
+Each server keeps one worker. Public Watten language navigation
+(`playwright.watten-public.config.js`), username changes in public Zilch mode
 (`playwright.username.config.js`), passkeys and Hausdepp passkeys then run
-separately, even if an earlier suite failed. Servers are never reused; interruption
+separately, even if an earlier suite failed. All eight browser pools are required
+for verification; the public Watten cases run against real public SSR documents
+and fail if that mode is missing. Use `npm run test:browser -- --suite watten-public`
+for those cases alone. Servers are never reused; interruption
 cleans up only this run's processes and temporary data. Filtered runs are marked
 incomplete and cannot authorize a push. `npm run check:quality` includes lint,
 dependency consistency, Bandit and the dependency vulnerability audit, matching
@@ -2859,7 +2866,11 @@ den Git-Metadaten. Enthalten sind Lint, Sicherheit, Node-Tooltests,
 Backend-Abdeckung, lokaler Produktionscontainer samt Offline-Prüfung und alle
 Browser-Suiten. Die Hauptsuite läuft gleichzeitig auf vier eigenen Servern mit
 je einem Worker, freiem Port, SQLite-Datenbank, JSON-Daten und eigenen Berichten.
-Die drei Konto-Suiten folgen einzeln. Teilprüfungen berechtigen nie zum Push;
+Danach folgen der öffentliche Watten-Sprachpool und die drei Konto-Suiten
+einzeln. Alle acht Browserteilgruppen sind verbindlich; fehlende öffentliche
+SSR-Dokumente sind im Watten-Sprachpool ein Fehler. Gezielter Aufruf:
+`npm run test:browser -- --suite watten-public`. Die sieben vollständigen
+Prüfgruppen bleiben unverändert. Teilprüfungen berechtigen nie zum Push;
 Abbruch beendet nur eigene Prozesse. Chromium, WebKit und ein lokaler Docker-Daemon
 müssen bereitstehen. Bei einem fremden vollen Testpool zuerst abstimmen.
 Details und Teilbefehle stehen in [Lokale Prüfungen](docs/LOCAL_CHECKS.md).

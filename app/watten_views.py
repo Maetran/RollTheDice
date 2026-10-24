@@ -149,11 +149,7 @@ def _actions(state: EngineState, seat: int) -> list[str]:
         if player == state.play.current_player_id:
             actions.append("play_card")
         party = state.parties.party_of(player)
-        bid_turn = player == state.play.current_player_id
-        if state.recipe.profile.blind:
-            bid_turn = bid_turn or (player == state.parties.decider(party)
-                                   and party == state.parties.party_of(state.play.current_player_id))
-        if (bid_turn and player not in gestrichen_players(state)
+        if (player == state.play.current_player_id and player not in gestrichen_players(state)
                 and party != state.bid_state.last_offering_party):
             actions.append("bid")
     if state.phase == "bid_response" and player == state.parties.decider(1 - state.bid_state.pending.party):

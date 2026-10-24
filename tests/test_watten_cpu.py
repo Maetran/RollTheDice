@@ -533,24 +533,23 @@ def test_blind_cpu_partner_advises_knower_and_knower_responds_without_reverse_si
 
 
 @pytest.mark.parametrize("raise_bid", (False, True))
-def test_blind_cpu_knower_can_bid_while_its_partner_owns_card_turn(monkeypatch, raise_bid):
+@pytest.mark.parametrize("held_opening", (False, True))
+def test_blind_cpu_knower_waits_while_partner_can_bid_on_own_card_turn(monkeypatch, raise_bid, held_opening):
     table = Table(start_match(cpu_recipe(4, "ladinisch", True), "blind-bid", shuffled_deal(4, 9), first_dealer="A"))
     table.ready()
+    if held_opening:
+        table.act("B", "bid")
+        table.act("A", "respond", "hold")
     table.play("B")
     assert table.state.play.current_player_id == "C"
-    assert table.view("A")["actions"] == ["bid"]
+    assert table.view("A")["actions"] == []
     assert table.view("C")["actions"] == ["play_card", "bid"]
     monkeypatch.setattr(cpu_policy, "_should_bid", lambda *_args: raise_bid)
     assert turn(table, "C").kind == ("bid" if raise_bid else "play_card")
     decision = turn(table, "A")
-    if raise_bid:
-        assert decision.kind == "bid"
-        table.propose("A", decision)
-        assert table.state.bid_state.pending.party == table.state.parties.party_of("A")
-        assert table.state.play.current_player_id == "C"
-    else:
-        assert isinstance(decision, CpuWait)
-        assert table.state.phase == "play"
+    assert isinstance(decision, CpuWait)
+    assert table.state.phase == "play"
+    assert table.state.play.current_player_id == "C"
 
 
 def test_blind_cpu_can_offer_on_own_turn_without_learning_the_hidden_call_and_cannot_answer(monkeypatch):

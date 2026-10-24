@@ -613,8 +613,8 @@ def test_cpu_partner_advises_privately_before_its_real_designated_bid_response(s
 
 
 @pytest.mark.parametrize("cpu_knower,raise_bid", ((True, False), (True, True), (False, True)))
-def test_blind_cpu_card_turn_waits_for_cpu_knower_bid_decision_but_never_for_human(server, ready, monkeypatch,
-                                                                               cpu_knower, raise_bid):
+def test_blind_cpu_opening_card_turn_never_waits_for_offturn_knower(server, ready, monkeypatch,
+                                                                cpu_knower, raise_bid):
     deterministic_dealer(monkeypatch)
     cpus = (1, 2, 3) if cpu_knower else (2, 3)
     game_id, _owners, _sessions = local_started(server, count_players=4, cpus=cpus, blind=True)
@@ -641,21 +641,13 @@ def test_blind_cpu_card_turn_waits_for_cpu_knower_bid_decision_but_never_for_hum
     async def scenario():
         try:
             runner.watch_game(game)
-            assert ((game_id, card_player) not in runner._JOBS) is cpu_knower
-            if cpu_knower:
-                assert (game_id, knower) in runner._JOBS
+            assert (game_id, card_player) in runner._JOBS
+            assert (game_id, knower) not in runner._JOBS
             await until(lambda: game["_watten"].engine.opportunity > start_opportunity)
-            if cpu_knower:
-                assert captured[0][0] == knower
-                if raise_bid:
-                    assert captured[0][1].kind == "bid"
-                    assert game["_watten"].engine.phase == "bid_response"
-                    assert game["_watten"].engine.play.current_player_id == card_player
-                else:
-                    assert isinstance(captured[0][1], runner.CpuWait)
-                    assert captured[1][0] == card_player and captured[1][1].kind == "play_card"
-            else:
-                assert captured[0][0] == card_player and captured[0][1].kind == ("bid" if raise_bid else "play_card")
+            assert captured[0][0] == card_player and captured[0][1].kind == ("bid" if raise_bid else "play_card")
+            if raise_bid:
+                assert game["_watten"].engine.phase == "bid_response"
+                assert game["_watten"].engine.play.current_player_id == card_player
         finally:
             await runner.stop_cpu_runners()
 

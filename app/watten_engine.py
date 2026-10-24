@@ -663,7 +663,7 @@ def apply_command(state: EngineState, actor: EngineActor, command: EngineCommand
         if bloedeln_pending(state):
             raise WattenEngineError("watten_bloedeln_decision_pending")
         bidding = bid(state.bid_state, actor.player_id, deal_progress(state.play),
-                      gestrichen=gestrichen_players(state), allow_partner_decider=state.recipe.profile.blind)
+                      gestrichen=gestrichen_players(state))
         changed = replace(state, bid_state=bidding, phase="bid_response", feedback=())
     elif kind == "respond" and state.phase == "bid_response":
         bidding = respond(state.bid_state, actor.player_id, value, deal_progress(state.play))

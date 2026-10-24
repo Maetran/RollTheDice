@@ -180,11 +180,19 @@ def test_blind_cpu_view_rejects_knower_sending_a_reverse_partner_signal():
     assert read_personal_view(table.view("C"), player_id="C").own_feedback == "good"
 
 
-def test_blind_offer_and_answer_actions_cannot_be_forged_for_other_seats():
+@pytest.mark.parametrize("held_opening", (False, True))
+def test_blind_offer_and_answer_actions_cannot_be_forged_for_other_seats(held_opening):
     table = Table(start_match(cpu_recipe(4, "ladinisch", True), "bid-rights", blind_deal(), first_dealer="A"))
     table.ready()
+    if held_opening:
+        table.act("B", "bid")
+        table.act("A", "respond", "hold")
     table.play("B", "hearts-O")
     assert read_personal_view(table.view("C"), player_id="C").actions == ("play_card", "bid")
+    wrong_knower_turn = copy.deepcopy(table.view("A"))
+    wrong_knower_turn["actions"].append("bid")
+    with pytest.raises(WattenCpuMemoryError):
+        read_personal_view(wrong_knower_turn, player_id="A")
     wrong_turn = copy.deepcopy(table.view("D"))
     wrong_turn["actions"].append("bid")
     with pytest.raises(WattenCpuMemoryError):

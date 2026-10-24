@@ -301,7 +301,7 @@ def test_storage_roundtrips_each_inspection_and_pending_response_boundary_and_re
         state = step(state, player, kind)
         stages.append(state)
     state = step(state, "B", "play_card", legal_cards(state.play, state.bid_state, "B")[0])
-    state = step(state, "A", "bid")
+    state = step(state, "C", "bid")
     stages.append(step(state, "D", "partner_feedback", "good"))
     for stage in stages:
         raw = json.loads(json.dumps(storage_payload(stage)))
@@ -327,21 +327,47 @@ def test_storage_roundtrips_each_inspection_and_pending_response_boundary_and_re
 
 
 @pytest.mark.parametrize("dealer", tuple("ABCD"))
+@pytest.mark.parametrize("held_opening", (False, True))
+def test_blind_knower_cannot_open_or_raise_on_their_partners_card_turn(dealer, held_opening):
+    state = ready(start_match(recipe(4, "ladinisch", True), "blind-own-turn", dealt(), first_dealer=dealer))
+    current = state.play.current_player_id
+    if held_opening:
+        state = step(state, current, "bid")
+        decider = state.parties.decider(1 - state.bid_state.pending.party)
+        assert decider != current
+        state = step(state, decider, "respond", "hold")
+    state = step(state, current, "play_card", legal_cards(state.play, state.bid_state, current)[0])
+    blind_player = state.play.current_player_id
+    knower = state.parties.decider(state.parties.party_of(blind_player))
+    assert knower != blind_player
+    before = storage_payload(state)
+
+    with pytest.raises(WattenBiddingError, match="card_turn_required"):
+        step(state, knower, "bid")
+
+    assert storage_payload(state) == before
+    offered = step(state, blind_player, "bid")
+    assert offered.bid_state.pending.points == (4 if held_opening else 3)
+    assert offered.play == state.play
+
+
+@pytest.mark.parametrize("dealer", tuple("ABCD"))
 @pytest.mark.parametrize("response", ("hold", "go", "counter"))
 @pytest.mark.parametrize("initiator", ("knower", "blind"))
-def test_blind_current_player_or_knower_bids_and_only_opposing_knower_responds(dealer, response, initiator):
+def test_blind_only_current_player_opens_and_only_opposing_knower_responds(dealer, response, initiator):
     state = ready(start_match(recipe(4, "ladinisch", True), "blind-deciders", dealt(), first_dealer=dealer))
-    current = state.play.current_player_id
-    state = step(state, current, "play_card", legal_cards(state.play, state.bid_state, current)[0])
-    blind_bidder = state.play.current_player_id
-    party = state.parties.party_of(blind_bidder)
+    if initiator == "blind":
+        current = state.play.current_player_id
+        state = step(state, current, "play_card", legal_cards(state.play, state.bid_state, current)[0])
+    card_player = state.play.current_player_id
+    party = state.parties.party_of(card_player)
     bidder = state.parties.decider(party)
-    assert blind_bidder != bidder
+    assert (card_player != bidder) is (initiator == "blind")
     other_blind = next(player for seat, player in enumerate(state.recipe.seats)
-                       if seat not in state.inspectors and player != blind_bidder)
+                       if seat not in state.inspectors and player != card_player)
     with pytest.raises(WattenBiddingError, match="card_turn_required"):
         step(state, other_blind, "bid")
-    state = step(state, blind_bidder if initiator == "blind" else bidder, "bid")
+    state = step(state, card_player, "bid")
     responding_party = 1 - party
     decider = state.parties.decider(responding_party)
     partner = next(player for player in state.parties.parties[responding_party] if player != decider)

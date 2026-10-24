@@ -167,26 +167,20 @@ def _active_progress(state: BidState, progress: DealProgress) -> None:
         state.roles.party_of(progress.current_player_id)
 
 
-def bid(state: BidState, player_id: str, progress: DealProgress, *, gestrichen: frozenset[str],
-        allow_partner_decider: bool = False) -> BidState:
+def bid(state: BidState, player_id: str, progress: DealProgress, *, gestrichen: frozenset[str]) -> BidState:
     """Offer three initially, or the next single point after a held offer.
 
-    Opening and later unsolicited raising require this player's current card
+    Opening and later unsolicited raising require the initiator's own card
     opportunity, including the opening turn before any card is played once
-    calling has completed. Gestrichen is checked for the initiating individual; a clear
-    three-player partner may offer even if the other partner is gestrichen.
-    In blind partnership play the engine sets allow_partner_decider: the
-    informed decider may also offer on their partner's card turn. The blind
-    partner can offer on their own card turn. Pending response counters use
-    respond() instead and stay with the informed decider.
+    calling has completed, also in blind partnership play. Gestrichen is checked
+    for the initiating individual; a clear three-player partner may offer even
+    if the other partner is gestrichen. Pending response counters use respond()
+    instead and stay with the informed decider.
     """
     require_gameplay_allowed(state)
     _active_progress(state, progress)
     party = state.roles.party_of(player_id)
-    partner_turn = (allow_partner_decider and player_id == state.roles.decider(party)
-                    and progress.current_player_id is not None
-                    and state.roles.party_of(progress.current_player_id) == party)
-    if progress.current_player_id != player_id and not partner_turn:
+    if progress.current_player_id != player_id:
         raise WattenBiddingError("watten_card_turn_required")
     if type(gestrichen) is not frozenset or not gestrichen <= set(state.roles.seats):
         raise WattenBiddingError("watten_invalid_gestrichen")
