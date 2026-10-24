@@ -2469,5 +2469,12 @@
     "date": "2026-10-24",
     "bump": "patch",
     "summary": "Watten: lesbare Ansagekarten, ruhiges Blödeln, klare Ergebnisse mit Reaktionen, feste Revancheteams und Abbruch nach 1 h Inaktivität. / Watten: readable call cards, calmer Blödeln and results with reactions, fixed rematch teams; idle matches end after one hour."
+  },
+  {
+    "version": "4.1.5",
+    "revision": "63aa5c36e2aad32f5385fddec68854cff058693e",
+    "date": "2026-10-24",
+    "bump": "patch",
+    "summary": "Hausdepp: Geworfene Karten landen erst nach ihrem Flug auf dem Stapel; Folgeaktionen warten auf die Ankunft. / Hausdepp: Thrown cards appear on the pile when their flight lands; follow-up actions wait for arrival."
   }
 ]

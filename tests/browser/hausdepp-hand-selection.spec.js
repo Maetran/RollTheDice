@@ -363,9 +363,10 @@ test.describe('own card flights and follow-up timing', () => {
     // The flight is the very element launched at the tap, never a second copy.
     expect(await launched.evaluate(node => node.isConnected && node.dataset.motionType)).toBe('play');
     await expect(page.locator('.hd-deal-card[data-motion-type="play"], .hd-deal-card[data-motion-type="launch"]')).toHaveCount(1);
-    // ACKs and same-version paints cannot expose the accepted paper early.
+    // ACKs and same-version paints keep paper on landing, while a legal own
+    // follow-up is already tappable during that same physical flight.
     state.send(next);
-    await expect(card(page, HAND[1])).toBeDisabled();
+    await expect(card(page, HAND[1])).toBeEnabled();
     await expect(page.locator('#hausdeppStock')).toBeDisabled();
     await page.waitForTimeout(1000);
     const packet = await page.locator('#hausdeppPile').evaluate(node => ({
@@ -385,6 +386,157 @@ test.describe('own card flights and follow-up timing', () => {
     await expect(card(page, HAND[1])).toBeEnabled();
   });
 
+  for (const replyOrder of ['ack-first', 'snapshot-first']) {
+    test(`${replyOrder}: a matching tap queued before acceptance flies before the preceding card lands`, async ({ page }) => {
+      const state = await fixture(page, 'de');
+      await page.evaluate(() => {
+        const animate = Element.prototype.animate;
+        Element.prototype.animate = function (...args) {
+          const animation = animate.apply(this, args);
+          if (this.matches('.hd-deal-card')) animation.pause();
+          return animation;
+        };
+      });
+      await card(page, HAND[0]).click();
+      const first = state.commands[0];
+      await expect(card(page, HAND[1])).toBeEnabled();
+      await card(page, HAND[1]).click();
+      expect(state.commands).toHaveLength(1);
+      const next = structuredClone(state.board), s = next._hausdepp;
+      Object.assign(s, { version: s.version + 1, hand: HAND.slice(1), discard: [...s.discard, HAND[0]],
+        current_player_id: state.remote, available_actions: ['afterthrow'], playable_cards: [HAND[1]],
+        afterthrow: { player_id: state.self, rank: 'U' },
+        last_event: { type: 'play', player_id: state.self, cards: [HAND[0]] } });
+      const acknowledge = () => state.raw({ hausdepp_command: {
+        command_id: first.command_id, accepted: true, version: s.version,
+      } });
+      if (replyOrder === 'ack-first') acknowledge();
+      state.send(next);
+      if (replyOrder === 'snapshot-first') acknowledge();
+      await expect.poll(() => state.commands.length).toBe(2);
+      expect(state.commands[1]).toMatchObject({ action: 'hausdepp_afterthrow', cards: [HAND[1]], version: s.version });
+      await expect(page.locator('.hd-deal-card[data-motion-type="play"]')).toHaveCount(1);
+      await expect(page.locator('.hd-deal-card[data-motion-type="launch"]')).toHaveCount(1);
+      await expect(page.locator('.hd-deal-card[data-motion-type="launch"]')).toHaveCSS('visibility', 'visible');
+      await expect(card(page, HAND[1])).toHaveCSS('visibility', 'hidden');
+      // Neither a timer nor a second accepted append may paint either face on
+      // the pile before arrival, or hide the second flight behind the first.
+      const second = state.commands[1];
+      Object.assign(s, { version: s.version + 1, hand: [HAND[2]], discard: [...s.discard, HAND[1]],
+        playable_cards: [], last_event: { type: 'afterthrow', player_id: state.self, cards: [HAND[1]] } });
+      state.send(next);
+      state.raw({ hausdepp_command: { command_id: second.command_id, accepted: true, version: s.version } });
+      const followFlight = page.locator('.hd-deal-card[data-motion-type="afterthrow"]');
+      await expect(followFlight).toHaveCount(1);
+      await expect(followFlight).toHaveCSS('visibility', 'visible');
+      await expect(followFlight).toHaveCSS('opacity', '1');
+      await page.waitForTimeout(1100);
+      await expect(page.locator('#hausdeppPile')).toHaveAttribute('data-card-count', '1');
+      await expect(page.locator('#hausdeppPile [data-card-id]')).toHaveAttribute('data-card-id', 'leaves-6');
+      if (replyOrder === 'snapshot-first') {
+        // A later own card may physically arrive first. Keep its single face
+        // at the true destination until the preceding paper can hand over.
+        await followFlight.evaluate(node => node.getAnimations().forEach(animation => animation.finish()));
+        await expect(followFlight).toHaveCount(1);
+        const endpoint = await followFlight.evaluate(node => {
+          const rect = node.getBoundingClientRect();
+          return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2,
+            targetX: Number(node.dataset.targetX), targetY: Number(node.dataset.targetY) };
+        });
+        expect(Math.abs(endpoint.x - endpoint.targetX)).toBeLessThan(.6);
+        expect(Math.abs(endpoint.y - endpoint.targetY)).toBeLessThan(.6);
+        await expect(page.locator('#hausdeppPile')).toHaveAttribute('data-card-count', '1');
+      }
+      await page.locator('.hd-deal-card[data-motion-type="play"]').evaluate(node => node.getAnimations().forEach(animation => animation.play()));
+      if (replyOrder === 'ack-first') {
+        // Resume the first only. The second stays a single paused visible face.
+        await expect(page.locator('#hausdeppPile')).toHaveAttribute('data-card-count', '2');
+        await expect(page.locator('#hausdeppPile [data-card-id="bells-U"]')).toHaveCount(0);
+        await expect(followFlight).toHaveCount(1);
+        await followFlight.evaluate(node => node.getAnimations().forEach(animation => animation.play()));
+      }
+      await expect(page.locator('#hausdeppPile')).toHaveAttribute('data-card-count', '3');
+      await expect(page.locator('.hd-deal-card')).toHaveCount(0);
+      expect(state.commands).toHaveLength(2);
+    });
+  }
+
+  test('a late decision can afterthrow an overlooked matching card during a paused own flight', async ({ page }) => {
+    const state = await fixture(page, 'en');
+    await page.evaluate(() => {
+      const animate = Element.prototype.animate;
+      Element.prototype.animate = function (...args) {
+        const animation = animate.apply(this, args);
+        if (this.matches('.hd-deal-card')) animation.pause();
+        return animation;
+      };
+    });
+    await card(page, HAND[0]).click();
+    const first = state.commands[0];
+    const next = structuredClone(state.board), s = next._hausdepp;
+    Object.assign(s, { version: s.version + 1, hand: HAND.slice(1), discard: [...s.discard, HAND[0]],
+      current_player_id: state.remote, available_actions: ['afterthrow'], playable_cards: [HAND[1]],
+      afterthrow: { player_id: state.self, rank: 'U' },
+      last_event: { type: 'play', player_id: state.self, cards: [HAND[0]] } });
+    state.send(next);
+    state.raw({ hausdepp_command: { command_id: first.command_id, accepted: true, version: s.version } });
+    await page.waitForTimeout(1100);
+    await expect(page.locator('#hausdeppPile')).toHaveAttribute('data-card-count', '1');
+    await expect(card(page, HAND[1])).toBeEnabled();
+    await expect(card(page, HAND[2])).toBeDisabled();
+    await card(page, HAND[1]).click();
+    await expect.poll(() => state.commands.length).toBe(2);
+    expect(state.commands[1]).toMatchObject({ action: 'hausdepp_afterthrow', cards: [HAND[1]], version: s.version });
+    await expect(page.locator('.hd-deal-card[data-motion-type="play"], .hd-deal-card[data-motion-type="launch"]')).toHaveCount(2);
+    await expect(page.locator('.hd-deal-card[data-motion-type="launch"]')).toHaveCSS('visibility', 'visible');
+    await expect(page.locator('#hausdeppPile [data-card-id="hearts-U"], #hausdeppPile [data-card-id="bells-U"]')).toHaveCount(0);
+  });
+
+  test('an automatically refilled matching nine can be afterthrown before the own nine lands', async ({ page }) => {
+    const state = await fixture(page, 'de');
+    const next = structuredClone(state.board), s = next._hausdepp;
+    Object.assign(s, { version: s.version + 1, hand: ['hearts-9', 'bells-A', 'leaves-A'],
+      playable_cards: ['hearts-9', 'bells-A', 'leaves-A'] });
+    state.send(next);
+    await expect(card(page, 'hearts-9')).toBeEnabled();
+    await page.evaluate(() => {
+      const animate = Element.prototype.animate;
+      Element.prototype.animate = function (...args) {
+        const animation = animate.apply(this, args);
+        if (this.matches('.hd-deal-card[data-motion-type="launch"], .hd-deal-card[data-target="pile"]')) animation.pause();
+        return animation;
+      };
+    });
+    await card(page, 'hearts-9').click();
+    const first = state.commands[0];
+    const debt = { player_id: state.self, remaining: 1, rank: '9', continuation: 'advance' };
+    Object.assign(s, { version: s.version + 1, hand: ['bells-A', 'leaves-A'], discard: [...s.discard, 'hearts-9'],
+      current_player_id: state.remote, available_actions: ['draw', 'afterthrow'], playable_cards: [],
+      afterthrow: { player_id: state.self, rank: '9' }, pending_refill: debt, pending_refills: [debt],
+      draw_required: true, last_event: { type: 'play', player_id: state.self, cards: ['hearts-9'] } });
+    state.send(next);
+    state.raw({ hausdepp_command: { command_id: first.command_id, accepted: true, version: s.version } });
+    await expect.poll(() => state.commands.length).toBe(2);
+    const draw = state.commands[1];
+    expect(draw).toMatchObject({ action: 'hausdepp_draw', version: s.version });
+    await expect(page.locator('.hd-deal-card[data-motion-type="play"]')).toHaveCount(1);
+    await expect(page.locator('#hausdeppPile')).toHaveAttribute('data-card-count', '1');
+    Object.assign(s, { version: s.version + 1, hand: ['bells-A', 'leaves-A', 'bells-9'],
+      available_actions: ['afterthrow'], playable_cards: ['bells-9'], pending_refill: null, pending_refills: [],
+      draw_required: false, last_event: { type: 'draw', player_id: state.self, drawn_count: 1 } });
+    state.send(next);
+    state.raw({ hausdepp_command: { command_id: draw.command_id, accepted: true, version: s.version } });
+    await expect(card(page, 'bells-9')).toBeEnabled();
+    await card(page, 'bells-9').click();
+    await expect.poll(() => state.commands.length).toBe(3);
+    expect(state.commands[2]).toMatchObject({ action: 'hausdepp_afterthrow', cards: ['bells-9'], version: s.version });
+    await expect(page.locator('.hd-deal-card[data-motion-type="play"], .hd-deal-card[data-motion-type="launch"]')).toHaveCount(2);
+    await expect(page.locator('.hd-deal-card[data-motion-type="launch"]')).toHaveCSS('visibility', 'visible');
+    await expect(page.locator('#hausdeppPile [data-card-id="hearts-9"], #hausdeppPile [data-card-id="bells-9"]')).toHaveCount(0);
+    await expect(page.locator('#hausdeppStock')).toBeDisabled();
+    expect(state.commands.filter(command => command.action === 'hausdepp_draw')).toHaveLength(1);
+  });
+
   test('a follow-up beaten by the next player\'s card flies back to the hand with a clear message', async ({ page }) => {
     const state = await fixture(page, 'de');
     const open = structuredClone(state.board), s = open._hausdepp;
@@ -402,11 +554,57 @@ test.describe('own card flights and follow-up timing', () => {
     await expect(card(page, HAND[0])).toHaveCSS('visibility', 'visible');
   });
 
-  test('a same-rank tap cannot queue before landing or leak into a later turn', async ({ page }) => {
+  test('three queued tens retain their own clearance chain and wait for each burn arrival', async ({ page }) => {
+    const state = await fixture(page, 'de');
+    const tens = ['hearts-10', 'bells-10', 'leaves-10'];
+    const next = structuredClone(state.board), s = next._hausdepp;
+    Object.assign(s, { version: s.version + 1, hand: [...tens, 'leaves-A'], deck_count: 0,
+      available_actions: ['play'], playable_cards: [...tens, 'leaves-A'] });
+    state.send(next);
+    await expect(card(page, tens[0])).toBeEnabled();
+    await page.evaluate(() => {
+      const animate = Element.prototype.animate;
+      Element.prototype.animate = function (...args) {
+        const animation = animate.apply(this, args);
+        if (this.matches('.hd-deal-card')) animation.pause();
+        return animation;
+      };
+    });
+    for (const ten of tens) await card(page, ten).click();
+    expect(state.commands).toHaveLength(1);
+    for (let index = 0; index < tens.length; index += 1) {
+      await expect.poll(() => state.commands.length).toBe(index + 1);
+      const command = state.commands[index];
+      expect(command).toMatchObject({ action: 'hausdepp_play', cards: [tens[index]], version: s.version });
+      const burnCount = s.discard.length + 1;
+      Object.assign(s, { version: s.version + 1, hand: s.hand.filter(card => card !== tens[index]), discard: [],
+        burned_count: s.burned_count + burnCount, current_player_id: state.self, afterthrow: null,
+        available_actions: ['play'], last_event: { type: 'play', player_id: state.self,
+          cards: [tens[index]], burn_reason: 'ten', burned_count: burnCount } });
+      s.playable_cards = [...s.hand];
+      state.send(next);
+      state.raw({ hausdepp_command: { command_id: command.command_id, accepted: true, version: s.version } });
+      await expect(page.locator('.hd-deal-card[data-motion-type="play"]')).toHaveCount(1);
+      await expect(page.locator('.hd-deal-card[data-motion-type="burn"]')).toHaveCount(burnCount);
+      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      // These are fresh plays after a clearance, rather than an open same-rank
+      // afterthrow. The queued action must wait for that burn's physical end.
+      expect(state.commands).toHaveLength(index + 1);
+      await expect(card(page, 'leaves-A')).toBeDisabled();
+      await page.locator('.hd-deal-card').evaluateAll(nodes => nodes.forEach(node =>
+        node.getAnimations().forEach(animation => animation.finish())));
+    }
+    await expect(page.locator('.hd-deal-card')).toHaveCount(0);
+    await expect(card(page, 'leaves-A')).toBeEnabled();
+    expect(state.commands.map(command => command.cards)).toEqual(tens.map(ten => [ten]));
+    await expect(page.locator('#hausdeppBurnedCount')).toHaveText('4');
+  });
+
+  test('a same-rank tap queued before acceptance never leaks into a later turn', async ({ page }) => {
     const state = await fixture(page, 'de');
     await card(page, HAND[0]).click();
-    await expect(card(page, HAND[1])).toBeDisabled();
-    await card(page, HAND[1]).dispatchEvent('click');
+    await expect(card(page, HAND[1])).toBeEnabled();
+    await card(page, HAND[1]).click();
     expect(state.commands.map(command => command.action)).toEqual(['hausdepp_play']);
     const first = state.commands[0];
     const accepted = structuredClone(state.board), s = accepted._hausdepp;
@@ -440,6 +638,13 @@ test.describe('own card flights and follow-up timing', () => {
     const throwFlight = page.locator('.hd-deal-card[data-motion-type="play"]');
     await expect(throwFlight).toHaveCount(1);
     await page.waitForTimeout(1150);
+    // The exception belongs to the own uninterrupted same-rank throw. Even
+    // server-legal pile pickup and stock gambling still wait for remote paper.
+    await expect(page.locator('#hausdeppPile')).toHaveAttribute('data-pickup-available', 'false');
+    await expect(page.locator('#hausdeppStock')).toBeDisabled();
+    await page.locator('#hausdeppPile').dispatchEvent('click');
+    await page.locator('#hausdeppStock').dispatchEvent('click');
+    expect(state.commands).toEqual([]);
     const pickup = structuredClone(first), b = pickup._hausdepp;
     Object.assign(b, { version: b.version + 1, discard: [],
       last_event: { type: 'pickup', player_id: state.remote, picked_up_count: 2 } });
@@ -467,6 +672,9 @@ test.describe('own card flights and follow-up timing', () => {
     await expect(page.locator('#hausdeppPile [data-card-id]')).toHaveCount(1);
     await expect(page.locator('#hausdeppPile [data-card-id]')).toHaveAttribute('data-card-id', 'bells-9');
     await expect(card(page, HAND[0])).toBeEnabled();
+    await expect(page.locator('#hausdeppPile')).toHaveAttribute('data-pickup-available', 'true');
+    await expect(page.locator('#hausdeppStock')).toBeEnabled();
+    expect(state.commands).toEqual([]);
   });
 
   for (const interrupted of ['resize', 'hidden', 'reduced-motion']) {

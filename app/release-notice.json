@@ -3,23 +3,21 @@
   "games": [
     "hausdepp"
   ],
-  "summary_de": "Hausdepp: Geworfene Karten landen erst nach ihrem Flug auf dem Stapel; Folgeaktionen warten auf die Ankunft.",
-  "summary_en": "Hausdepp: Thrown cards appear on the pile when their flight lands; follow-up actions wait for arrival.",
+  "summary_de": "Hausdepp: Passende Karten sofort nachwerfen, auch nach dem Auffüllen. Das Stapelbild folgt weiter der Landung.",
+  "summary_en": "Hausdepp: Throw matching cards immediately, including fresh refills. Pile cards still appear only on landing.",
   "player_notes": {
     "de": {
-      "title": "Hausdepp 4.1.5: Erst landen, dann weiterspielen",
+      "title": "Hausdepp 4.1.6: Sofort nachwerfen",
       "changes": [
-        "Geworfene Karten siehst du während des Flugs nur einmal. Erst bei der Landung erscheinen sie auf dem offenen Paket.",
-        "Nachwerfen, Aufnehmen und weitere Stapelaktionen werden nach der Ankunft freigegeben.",
-        "Mit reduzierter Bewegung entfällt die Flugwartezeit."
+        "Passende Karten kannst du im offenen Nachwurffenster sofort antippen, auch direkt nach dem Auffüllen.",
+        "Die Kartenflüge laufen weiter. Jede Karte erscheint erst bei ihrer Landung auf dem Stapel."
       ]
     },
     "en": {
-      "title": "Hausdepp 4.1.5: Land first, then continue",
+      "title": "Hausdepp 4.1.6: Immediate follow-up throws",
       "changes": [
-        "Thrown cards appear only once during their flight. They join the open pile when they land.",
-        "Follow-up plays, pickups and other pile actions become available after arrival.",
-        "Reduced motion skips the flight wait."
+        "Tap matching cards immediately while your follow-up window is open, including fresh refills.",
+        "Card flights continue. Each card joins the pile only when it lands."
       ]
     }
   }

@@ -361,31 +361,36 @@ function presentGroups(groups, options) {
   }
   const presentation = presentationFor(options.gameId);
   const now = performance.now();
+  const ownLaunch = groups.some(group => group.adopt?.size);
+  const ownFlying = ownLaunch || [...(flights.get(options.gameId) || [])].some(flight => flight.ownLaunch && !flight.landed);
   // A fast CPU/human stream can outrun readable motion. Keep the action that
   // is already on the wood, discard only waiting pictures, then show the latest
   // accepted action. Never accumulate seconds of obsolete table history.
-  if (presentation.until - now > MAX_PRESENTATION_WAIT || pileStates.get(options.gameId)?.queued > 3) {
+  if (!ownFlying && (presentation.until - now > MAX_PRESENTATION_WAIT || pileStates.get(options.gameId)?.queued > 3)) {
     stopPresentation(options.gameId);
     return;
   }
   // The player's own card already left the hand at the tap; it never queues.
-  const wait = groups.some(group => group.adopt?.size) ? 0 : Math.max(0, presentation.until - now);
+  const wait = ownLaunch ? 0 : Math.max(0, presentation.until - now);
   const duration = Math.max(...groups.map(groupSpan));
   const scheduled = { ...options, wait, now };
   const related = groups.flatMap(group => moveCards(group, scheduled));
-  trackPileMotion(options.gameId, options.pileToken, related, presentation);
+  trackPileMotion(options.gameId, options.pileToken, related, presentation, ownLaunch);
   presentation.until = now + wait + duration + 70;
 }
 
-function trackPileMotion(gameId, token, related, presentation) {
+function trackPileMotion(gameId, token, related, presentation, ownLaunch = false) {
   const pile = pileStates.get(gameId);
   if (!pile?.has(token)) return;
   let frame;
   const waiting = !pile.isFirst(token);
-  const held = waiting ? [...new Set(related.flatMap(flight => [flight.animation, flight.reveal, flight.cue]).filter(Boolean))]
-    .map(animation => ({ animation, resume: animation.playState === "running" })) : [];
+  // Own afterthrows keep flying immediately. Pile mutations still commit in
+  // accepted order; a following burn/pickup must wait for its predecessor.
+  const heldFlights = waiting ? related.filter(flight => !ownLaunch || flight.target !== "pile") : [];
+  const held = [...new Set(heldFlights.flatMap(flight => [flight.animation, flight.reveal, flight.cue]).filter(Boolean))]
+    .map(animation => ({ animation, resume: animation.playState === "running" }));
   for (const { animation } of held) animation.pause();
-  for (const flight of related) if (waiting) flight.element.style.visibility = "hidden";
+  for (const flight of heldFlights) flight.element.style.visibility = "hidden";
   let released = !waiting;
   const cancel = () => { cancelAnimationFrame(frame); presentation.trackers.delete(cancel); };
   presentation.trackers.add(cancel);
@@ -395,7 +400,7 @@ function trackPileMotion(gameId, token, related, presentation) {
     if (!released) {
       released = true;
       for (const { animation, resume } of held) if (resume && animation.playState === "paused") animation.play();
-      for (const flight of related) flight.element.style.visibility = "";
+      for (const flight of heldFlights) flight.element.style.visibility = "";
     }
     let changed = false;
     for (const flight of related) {
@@ -411,7 +416,8 @@ function trackPileMotion(gameId, token, related, presentation) {
         if (flight.target === "pile") {
           changed = pile.arrive(token, flight.cardId) || changed;
           // The real paper takes over at arrival, with no resting ghost copy.
-          flight.element.remove();
+          flight.keepUntilLanded = false;
+          flight.remove();
         }
       }
     }
@@ -555,6 +561,7 @@ function moveCards(group, { gameId, playerId, before, after, reducedMotion, pile
     ], { duration: delay + index * stagger + cardDuration, fill: "none", easing: EASING });
     const flight = { animation, reveal, cue, element: ghost,
       cardId, source: group.source, target: group.target, startTime: delay + index * stagger,
+      ownLaunch: Boolean(adopted), keepUntilLanded: Boolean(pileToken && group.target === "pile"),
       arrivalTime: group.stationary ? null : delay + index * stagger + arrival * cardDuration,
       sequenceStart: now + wait,
       startAt: now + delay + index * stagger, endAt: now + delay + index * stagger + cardDuration };
@@ -566,7 +573,10 @@ function moveCards(group, { gameId, playerId, before, after, reducedMotion, pile
       flights.get(gameId)?.delete(flight);
       if (!flights.get(gameId)?.size) flights.delete(gameId);
     };
-    animation.finished.then(remove, remove);
+    flight.remove = remove;
+    // A concurrent afterthrow may reach the wood before a paused predecessor.
+    // Keep its single picture there until ordered pile handover can take over.
+    animation.finished.then(() => { if (!flight.keepUntilLanded) remove(); }, remove);
   }
   return created;
 }
