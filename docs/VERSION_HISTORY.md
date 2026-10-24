@@ -1,6 +1,6 @@
 # Versionen / Versions
 
-Aktuelle gemeinsame Produktversion / Current shared product version: **4.3.0**.
+Aktuelle gemeinsame Produktversion / Current shared product version: **4.3.1**.
 
 Alle RollTheDice-Spiele werden gemeinsam versioniert. Major steht für einen großen
 Produktmeilenstein, Minor für neue Funktionen und Patch für Fehlerkorrekturen
@@ -30,6 +30,7 @@ Detailed player-facing descriptions are in the [changelog](../CHANGELOG.md).
 
 | Version | Datum / Date | Art / Type | Änderung / Change | Commit |
 | --- | --- | --- | --- | --- |
+| 4.3.0 | 2026-10-24 | minor | Öffentlich beobachtete Hausdepp-Endspiele und gezielte Zilch-CPU-Fortsetzung nach Erfahrung. / Publicly observed Hausdepp endgames and focused Zilch CPU continuation based on experience. | [fd1e005](https://github.com/Maetran/RollTheDice/commit/fd1e005cac9121cd4bd3ee60520fb5b6ea059550) |
 | 4.2.1 | 2026-10-24 | patch | Klarere Spielhinweise, ausgewogene CPU-Stärke am Tisch und verlässliche Tracking-Anzeigen. / Clearer play guidance, balanced CPU difficulty at mixed tables and accurate tracking coverage. | [800e157](https://github.com/Maetran/RollTheDice/commit/800e157de41b257f3f503fe26bc4d5417b9ff891) |
 | 4.2.0 | 2026-10-24 | minor | Neue echte Wirtshausaufnahmen und abwechslungsreiche Hintergrundkulissen für Hausdepp und Watten. / New real venue recordings and varied background ambience for Hausdepp and Watten. | [a0f6148](https://github.com/Maetran/RollTheDice/commit/a0f61483c13b0ab3941d64a38952cbc501ed7e0c) |
 | 4.1.8 | 2026-10-24 | patch | Watten-Gebote nur im eigenen Zug; Zilch meldet dich ohne doppelte Weiterleitung ab. / Watten bids require your own turn; Zilch signs out without duplicate redirects. | [687a2c7](https://github.com/Maetran/RollTheDice/commit/687a2c788ff07383f4de5ab3f7f31013aa23ad6a) |

@@ -1,0 +1,97 @@
+.wt-own-call { display: none; transition: none; }
+.wt-bubble[data-watten-call] { transition: none; }
+.wt-role-call { display: none; pointer-events: none; }
+
+/* The lower call belongs above the actual dock, which grows upward for a bid
+   and partner advice. It never contributes a row or gap to that dock. */
+@media (orientation: portrait) and (max-width: 760px) {
+  /* Stable deck origins follow the seat map: three seats have no upper
+     player, while two/four seats leave the upper-left corner free. */
+  html[data-game="watten"][data-watten-active="true"] .wt-table:is([data-count="2"], [data-count="3"], [data-count="4"]) .wt-stock {
+    left: 8px;
+    top: 12px;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="3"] .wt-stock { left: 50%; translate: -50% 0; }
+  html[data-game="watten"][data-watten-active="true"] .wt-role-call { display: block; }
+  html[data-game="watten"][data-watten-active="true"] :is(.wt-seat--top, .wt-seat--left, .wt-seat--right) .wt-seat-call-role { min-height: calc(var(--wt-role-lines, 1) * 1.2em + 4px); }
+  html[data-game="watten"][data-watten-active="true"] :is(.wt-seat--top, .wt-seat--left, .wt-seat--right) .wt-role-name { display: block; }
+  html[data-game="watten"][data-watten-active="true"] :is(.wt-seat--top, .wt-seat--left, .wt-seat--right) .wt-role-separator { display: none; }
+  html[data-game="watten"][data-watten-active="true"] .wt-seat-call-role:has(> .wt-role-call) > .wt-role-static {
+    position: absolute !important;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count] .wt-seat .wt-seat-call-role:has(> .wt-role-call) {
+    width: max-content;
+    max-width: none;
+    white-space: nowrap;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count] .wt-seat--left .wt-seat-call-role:has(> .wt-role-call) { justify-self: start; }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count] .wt-seat--right .wt-seat-call-role:has(> .wt-role-call) { justify-self: end; }
+  html[data-game="watten"][data-watten-active="true"] .wt-table:not([data-phase="match_complete"][data-round-stage="ready"]) .wt-end-sheet > .wt-own-call:not(:empty) {
+    position: absolute;
+    bottom: var(--wt-own-call-bottom, calc(100% + 6px));
+    left: var(--wt-own-call-left, 50%);
+    translate: -50% 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    width: max-content;
+    max-width: 100%;
+    pointer-events: none;
+  }
+
+  html[data-game="watten"][data-watten-active="true"] .wt-own-call > .wt-bubble {
+    position: static;
+    translate: none;
+    max-width: 100%;
+    pointer-events: none;
+  }
+
+  html[data-game="watten"][data-watten-active="true"] .wt-bubbles > [data-watten-call] {
+    display: none;
+  }
+
+  /* The own badge keeps its bottom anchor. Separate its
+     identity from the role instead of squeezing all three into one row. */
+  html[data-game="watten"][data-watten-active="true"] .wt-table .wt-seat--bottom .wt-seat-badge {
+    display: grid;
+    grid-template-columns: max-content minmax(40px, 1fr);
+    gap: 2px 3px;
+    width: 96px;
+    max-width: 96px;
+    justify-self: start;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table .wt-seat--bottom .wt-avatar { grid-row: 1; grid-column: 1; }
+  html[data-game="watten"][data-watten-active="true"] .wt-table .wt-seat--bottom .wt-seat-name-row { grid-row: 1; grid-column: 2; }
+  html[data-game="watten"][data-watten-active="true"] .wt-table .wt-seat--bottom .wt-seat-call-role { grid-row: 2; grid-column: 1 / -1; }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="3"] .wt-seat--bottom .wt-role-name { display: block; }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="3"] .wt-seat--bottom .wt-role-separator { display: none; }
+}
+
+/* Short portrait badges need the same separate role row as the narrowest
+   phone. Keep it before, during and after the transient call. */
+@media (orientation: portrait) and (max-width: 760px) and (max-height: 700px) {
+  html[data-game="watten"][data-watten-active="true"] :is(.wt-seat--top, .wt-seat--left, .wt-seat--right) .wt-seat-badge:has(.wt-seat-call-role) {
+    display: grid;
+    grid-template-columns: 24px minmax(0, 1fr);
+    gap: 2px 3px;
+  }
+  html[data-game="watten"][data-watten-active="true"] :is(.wt-seat--top, .wt-seat--left, .wt-seat--right) .wt-seat-call-role {
+    grid-row: 2;
+    grid-column: 1 / -1;
+  }
+  html[data-game="watten"][data-watten-active="true"] :is(.wt-seat--top, .wt-seat--left, .wt-seat--right) .wt-avatar { grid-row: 1; grid-column: 1; }
+  html[data-game="watten"][data-watten-active="true"] :is(.wt-seat--top, .wt-seat--left, .wt-seat--right) .wt-seat-name-row { grid-row: 1; grid-column: 2; }
+  html[data-game="watten"][data-watten-active="true"] .wt-seat--right .wt-seat-badge:has(.wt-seat-call-role) { grid-template-columns: minmax(0, 1fr) 24px; }
+  html[data-game="watten"][data-watten-active="true"] .wt-seat--right .wt-avatar { grid-column: 2; }
+  html[data-game="watten"][data-watten-active="true"] .wt-seat--right .wt-seat-name-row { grid-column: 1; }
+}
+
+@media (orientation: portrait) and (max-width: 350px) {
+  html[data-game="watten"][data-watten-active="true"] .wt-own-call > .wt-bubble { font: 700 .75rem/1.2 system-ui, sans-serif; }
+}

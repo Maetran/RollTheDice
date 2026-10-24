@@ -1,24 +1,26 @@
 {
   "kind": "usability",
   "games": [
+    "zdwa",
     "zilch",
-    "hausdepp"
+    "hausdepp",
+    "watten"
   ],
-  "summary_de": "Hausdepp nutzt öffentlich gesehene Karten gezielter. Zilch berücksichtigt Erfahrung bei wenigen geprüften CPU-Entscheidungen.",
-  "summary_en": "Hausdepp makes better use of publicly seen cards. Zilch considers experience in a few verified CPU decisions.",
+  "summary_de": "Watten bleibt auf Handy und Tablet besser lesbar. Kontowechsel und Abmelden reagieren zuverlässiger.",
+  "summary_en": "Watten stays clearer on phones and tablets. Account switching and sign-out respond more reliably.",
   "player_notes": {
     "de": {
-      "title": "4.3.0: Gezielt gegen den Computer spielen",
+      "title": "4.3.1: Klarer spielen und Konten wechseln",
       "changes": [
-        "HAUSDEPP nutzt öffentlich gesehene Karten für gezielte Endspielzüge, ohne fremde Hände einzusehen.",
-        "ZILCH berücksichtigt bei neuen CPU-Partien deine abgeschlossenen Spiele und wählt in wenigen geprüften Situationen gezielter."
+        "WATTEN ordnet Ansagen, Spielernamen und Karten auf Handy und Tablet übersichtlicher an.",
+        "Kontowechsel entfernt alte private Ansichten. Fehlgeschlagenes Abmelden lässt sich direkt wiederholen."
       ]
     },
     "en": {
-      "title": "4.3.0: More deliberate computer play",
+      "title": "4.3.1: Clearer tables and account changes",
       "changes": [
-        "HAUSDEPP uses publicly seen cards for deliberate endgame moves without looking at other hands.",
-        "ZILCH considers your completed games in new CPU matches and makes a more deliberate choice in a few verified situations."
+        "WATTEN arranges calls, player names and cards more clearly on phones and tablets.",
+        "Account switching clears old private views. Failed sign-out can be retried directly."
       ]
     }
   }

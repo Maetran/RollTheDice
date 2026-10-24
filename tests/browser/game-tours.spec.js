@@ -593,7 +593,16 @@ test("queued tour saves from account A cannot overwrite account B after logout a
     }
     await route.fulfill({ json: preferences[owner] });
   });
-  await openSettings(page);
+  // Exercise queued writes in one live controller across identity changes.
+  // Private account pages retire on logout; the F4 account flows cover that.
+  // Expose the existing lobby-mounted controller only in this fixture, so
+  // both queued A mutations must still pass its real viewer-epoch checks.
+  await page.goto("/");
+  await expect(page.locator("#authBadge")).toContainText("Anna");
+  await page.locator("[data-guest-tour-settings]").evaluate(details => {
+    details.hidden = false; details.open = true;
+  });
+  await expect(page.locator(SETTING)).toBeVisible();
   await page.locator("[data-tour-enabled]").uncheck();
   await expect.poll(() => writes.length).toBe(1);
   await page.locator("[data-tour-enabled]").check();

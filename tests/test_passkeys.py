@@ -480,6 +480,28 @@ class PasskeyTestCase(TestCase):
         repeated_count = self.authenticator.authentication(options, count=5)
         self.assertEqual(self.client.post("/api/auth/passkeys/authentication/verify", json={"credential": repeated_count}).status_code, 400)
 
+    def test_zero_counter_accepts_fresh_signed_challenges_but_never_replays_a_consumed_one(self):
+        self._register()
+        self.client.cookies.clear()
+        previous_challenge = None
+        for _attempt in range(2):
+            options = self._authentication_options()
+            self.assertNotEqual(options["challenge"], previous_challenge)
+            previous_challenge = options["challenge"]
+            ceremony_cookie = self.client.cookies.get(CEREMONY_COOKIE_NAME)
+            credential = self.authenticator.authentication(options, count=0)
+            response = self.client.post("/api/auth/passkeys/authentication/verify", json={"credential": credential})
+            self.assertEqual(response.status_code, 200, response.text)
+            self.assertEqual(response.json()["user"]["id"], self.user.id)
+            with session_scope() as db:
+                self.assertEqual(db.scalar(select(PasskeyCredential)).sign_count, 0)
+                session_count = len(list(db.scalars(select(LoginSession.id))))
+            replay = self.client.post("/api/auth/passkeys/authentication/verify", json={"credential": credential},
+                                      headers={"Cookie": f"{CEREMONY_COOKIE_NAME}={ceremony_cookie}"})
+            self.assertEqual(replay.status_code, 400)
+            with session_scope() as db:
+                self.assertEqual(len(list(db.scalars(select(LoginSession.id)))), session_count)
+
     def test_invalid_cookie_expiry_and_disabled_account_are_rejected(self):
         self._register()
         options = self._authentication_options()

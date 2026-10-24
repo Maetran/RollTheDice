@@ -56,7 +56,7 @@
   html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"] .wt-seat--bottom .wt-taken {
     left: calc(50% - 61.5px); right: auto; top: calc(50% - 98px); bottom: auto; translate: none;
   }
-  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"] .wt-seat--bottom .wt-seat-call-role { position: absolute; left: 0; top: -21px; white-space: nowrap; }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"] .wt-seat--bottom .wt-seat-call-role { position: absolute; grid-row: auto; grid-column: auto; left: 0; top: -21px; white-space: nowrap; }
   html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"] .wt-seat--bottom .wt-bubble--thanks { position: absolute; left: 0; top: -43px; }
   html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"] .wt-avatar { flex: 0 0 24px; min-width: 24px; }
   /* A live answer fits in the clear column between both side hands. */

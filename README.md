@@ -179,6 +179,17 @@ Karten noch geladen werden oder die Seite aus dem Browser-Zwischenspeicher kommt
 Switching accounts reloads the Watten table for the new account, including while
 cards load or when the browser restores a cached page.
 
+Im schmalen Hochformat stehen angesagte Werte direkt bei der Rolle des
+jeweiligen Spielers. Deine eigene Ansage bleibt über Bieten und Partnerantworten
+lesbar, auch wenn sich dieser Bereich öffnet. Im Dreier bleiben beide Werte
+des allein Ansagenden sichtbar. Wer welche Ansage sehen darf und wie lange
+sie erscheint, bleibt unverändert.
+
+In narrow portrait layouts, called values appear beside the corresponding
+player’s role. Your own call stays readable above bidding and partner responses,
+including when that area expands. In three-player games, both values called by
+the solo caller remain visible. Call visibility and display duration are unchanged.
+
 **Spieltisch / game table:** Mobile zuerst: die helle Tiroler Schnitzstube bleibt
 mit grösseren Schnitzecken sichtbar. Vor dem Aufdecken erscheint kein leerer
 Handkartenfächer. Bei der ladinischen Ansage werden die beiden zulässigen Karten
@@ -224,6 +235,12 @@ Spielstand links; gegenüberliegende Spieler und der mittige Stichstapel bilden
 einen symmetrischen Tisch. Grössere Hand- und Stichkarten nutzen im Querformat
 die freie Fläche zwischen den Spielern. Alle Handfächer öffnen sich zur
 Tischmitte; ihre gedachte Griffseite zeigt zum jeweiligen Bildschirmrand.
+Auf grossen Vierertischen im Hoch- und Querformat liegt der obere Kartenfächer
+auf der Tischmitte. Die seitlichen Hände behalten unabhängig von Rollen und
+Titeln dieselbe Höhe. Im Hochformat teilen sich eigener Name und Zeigen/Weiter
+die Zeile oberhalb der Hand; im Querformat steht der eigene Name an ihrer linken
+Flanke. Stichkarten passen in die freie Höhe oberhalb der Hand, ohne dass die
+Beschriftung hineinragt. Blödeln-Antworten bleiben daneben erreichbar.
 Die optionale Rechter-Anzeige erscheint erst nach
 der Ansage beziehungsweise dem Einschauen, ohne zusätzliche verdeckte Karte
 während der Vorbereitung. Ausgespielte Karten bilden ab der zweiten Karte einen zusammenhängenden,
@@ -256,8 +273,13 @@ unpinned, tapping outside closes it. Announcers are labelled beside their
 names; the larger “Thanks!” remains visible until the first trick is complete. The stake and
 raising control sit beside your cards in portrait and in the left rail in mobile
 landscape. Your desktop hand stays centred;
-landscape tablets place the action area above it. Trick wins are green for your side
-and red for the other side. In blind four-player play, every player may open
+landscape tablets place the action area above it.
+On large four-player tables in either orientation, the upper fan is centred on
+the table. Side hands share one height regardless of roles or titles. Your name
+and Show/Continue share a row above your hand in portrait; in landscape your
+name sits on its left flank. Trick cards fit the available height above your
+hand, with their caption kept clear. Blödeln responses stay reachable beside it. Trick wins are green for your side and red for the
+other side. In blind four-player play, every player may open
 three or initiate a later raise only on their own card turn, including the
 informed player and their blind partner. Only the informed player handles hold, fold and counterbid
 responses, including outside their own card turn. When receiving an
@@ -2117,11 +2139,25 @@ first passkey once with their current password. Choosing a new password during i
 registration or recovery and administrator-issued temporary passwords remain
 bootstrap/recovery flows; room passwords are game access codes, not account
 reauthentication. See the [password-flow audit](docs/PASSKEY_FLOW_AUDIT.md).
+Password login reserves a persisted attempt before checking the password. Each
+IP address and normalized supplied identifier shares five failed or in-flight
+attempts within 15 minutes, including across workers and restarts. Success clears
+its own reservation and prior failures while preserving other in-flight attempts;
+abandoned reservations stop counting after 15 minutes. Account-change password
+confirmation keeps its existing separate limits; username and email remain
+separate supplied identifiers.
 Simultaneous profile and account-statistics visits preserve one achievement
 record and its original unlock time instead of failing on duplicate awards.
 Disabling email through its deployment flag restores legacy password sign-up.
 See the [email account plan](docs/EMAIL_ACCOUNTS_PLAN.md) and
 [account security review](docs/ACCOUNT_SECURITY_REVIEW_2026-09-12.md).
+
+Technical sign-out boundary: with a configured suite cookie domain, sign-out
+revokes the current server session, removes the current host's legacy cookie
+and retains an empty shared cookie for 30 days. Its presence prevents older
+host cookies from restoring a login; a new login replaces it normally. Unknown
+older bearer tokens may remain valid until their original absolute expiry.
+This browser safeguard does not sign out every other browser.
 
 **Deutsch:** Der Konto-Release aktiviert E-Mail-Registrierung und Wiederherstellung
 zusätzlich zu Passkeys und öffentlichen Fairplay-Zählern. Resend versendet von
@@ -2171,11 +2207,27 @@ bestätigen ihren ersten Passkey einmalig mit ihrem aktuellen Passwort.
 Die erste Passwortwahl, Wiederherstellung und temporäre
 Admin-Passwörter bleiben Einrichtungs-/Wiederherstellungswege; Spielraum-Passwörter
 sind Zugangscodes. Details stehen im [Passwort-Flow-Audit](docs/PASSKEY_FLOW_AUDIT.md).
+Die Passwortanmeldung reserviert vor der Passwortprüfung einen dauerhaften
+Versuch. Pro IP-Adresse und normalisierter eingegebener Kennung zählen innerhalb
+von 15 Minuten höchstens fünf fehlgeschlagene oder laufende Versuche, auch über
+Worker und Neustarts hinweg. Eine erfolgreiche Anmeldung entfernt ihre eigene
+Reservierung und bisherige Fehlversuche; andere laufende Versuche bleiben erhalten.
+Verwaiste Reservierungen zählen nach 15 Minuten nicht mehr. Passwortbestätigungen
+für Kontoänderungen behalten ihre bisherigen separaten Grenzen; Benutzername und
+E-Mail bleiben unterschiedliche eingegebene Kennungen.
 Gleichzeitige Profil- und Statistikaufrufe behalten einen gemeinsamen
 Erfolgseintrag samt ursprünglichem Freischaltdatum und scheitern nicht an
 doppelten Vergabeversuchen.
 Bei deaktiviertem E-Mail-Feature ist die bisherige Registrierung mit
 Benutzername und Passwort wieder verfügbar.
+
+Technische Abmeldegrenze: Bei konfigurierter Suite-Cookie-Domain widerruft
+Abmelden die aktuelle Serversitzung, entfernt den bisherigen Cookie des
+aktuellen Hosts und behält 30 Tage einen leeren gemeinsamen Cookie. Dessen
+Präsenz verhindert eine erneute Anmeldung über ältere Host-Cookies; eine neue
+Anmeldung ersetzt ihn regulär. Unbekannte ältere Bearer-Tokens können bis zu
+ihrem ursprünglichen absoluten Ablauf gültig bleiben. Dieser Browserschutz
+meldet andere Browser nicht pauschal ab.
 
 Outside game tables, all four games share a two-row header: game icon and
 name, language, available design switch and game picker above; Lobby,
@@ -2184,6 +2236,11 @@ on phones, tablets and desktops. Game tables retain their compact controls.
 Quick page changes keep their chosen destination when an older sign-in check
 is cancelled by navigation. Zilch sign-out owns one redirect to the correct
 lobby; a late account response cannot start another redirect.
+If sign-out fails, the account stays open with a visible error and an available
+retry. Its identity refresh resumes; a departed document cannot be revived.
+ZDWA and Zilch account views clear private content before leaving or replacing a
+changed identity. Returning from the back/forward cache loads a fresh document;
+late replies from the previous viewer cannot restore their account view.
 
 **Deutsch:** Alle vier Spiele nutzen ausserhalb des Spieltischs denselben
 zweizeiligen Header: oben Spielsymbol und -name, Sprache, vorhandener
@@ -2193,6 +2250,13 @@ Spieltische behalten ihre kompakten Bedienelemente.
 Schnelle Seitenwechsel behalten ihr gewähltes Ziel, auch wenn dabei eine ältere
 Anmeldungsprüfung abgebrochen wird. Zilch meldet mit einer einzigen Weiterleitung
 zur passenden Lobby ab; eine verspätete Kontoantwort startet keine zweite.
+Scheitert das Abmelden, bleibt das Konto mit sichtbarer Fehlermeldung und
+erneut nutzbarem Button offen. Die Anmeldungsprüfung läuft wieder an; eine
+verlassene Seite wird dadurch nicht reaktiviert.
+Die Kontoansichten von ZDWA und Zilch entfernen private Inhalte vor dem Verlassen
+oder einem Kontowechsel. Bei einer Rückkehr aus dem Vor-/Zurück-Cache laden sie
+ein frisches Dokument; verspätete Antworten stellen die vorherige Ansicht nicht
+wieder her.
 
 Der mobile Zuschauerchat hält die Eingabe auch bei geöffneter Tastatur
 erreichbar und zeigt Zuschauer mit ihrem Profilbild. Tablet-Spielblöcke nutzen

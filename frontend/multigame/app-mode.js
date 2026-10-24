@@ -290,7 +290,20 @@ export function initializeAppMode({
     dropPrivate();
     for (const picker of pickers.values()) picker.close();
   };
-  const prepareNavigation = () => { navigatingAway = true; suspend(); };
+  const prepareNavigation = () => {
+    navigatingAway = true;
+    suspend();
+    const revision = refreshRevision;
+    // A failed server action can keep its document. Only that attempt may
+    // restore refreshes; pagehide/beforeunload retire its revision permanently.
+    return () => {
+      if (!navigatingAway || refreshRevision !== revision) return false;
+      navigatingAway = false;
+      suspended = document.visibilityState === "hidden";
+      if (!suspended) void refresh();
+      return true;
+    };
+  };
   // WebKit can cancel the old document's identity read before pagehide.
   // Retire that refresh before its rejection can replace the chosen page.
   window.addEventListener("beforeunload", suspend);
@@ -299,7 +312,7 @@ export function initializeAppMode({
   window.addEventListener("focus", () => { if (!navigatingAway) { suspended = false; void refresh(); } });
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") { if (!navigatingAway) { suspended = false; void refresh(); } }
-    else suspend();
+    else if (!navigatingAway) suspend();
   });
 
   const controller = {

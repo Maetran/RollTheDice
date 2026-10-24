@@ -463,7 +463,7 @@ class AccountDatabaseTestCase(GameStateTestCase):
             "CookiePriority",
         )
 
-    def test_logout_revokes_the_shared_session_and_expires_both_cookie_scopes(self):
+    def test_logout_revokes_the_shared_session_and_marks_the_browser_signed_out(self):
         create_user("SharedLogout", "shared-logout-password", must_change_password=False)
         identity, raw_token = login(request_for(), "SharedLogout", "shared-logout-password")
         response = Response()
@@ -495,12 +495,14 @@ class AccountDatabaseTestCase(GameStateTestCase):
         self.assertEqual(len(set_cookies), 2)
         legacy = next(value for value in set_cookies if value.startswith(f'{LEGACY_SESSION_COOKIE}=""'))
         shared = next(value for value in set_cookies if value.startswith(f'{SHARED_SESSION_COOKIE}=""'))
-        for expired in (legacy, shared):
-            self.assertIn("Max-Age=0", expired)
-            self.assertIn("Path=/", expired)
-            self.assertIn("SameSite=lax", expired)
-            self.assertIn("HttpOnly", expired)
-            self.assertIn("Secure", expired)
+        self.assertIn("Max-Age=0", legacy)
+        self.assertIn("Max-Age=2592000", shared)
+        self.assertNotIn("Max-Age=0", shared)
+        for cookie in (legacy, shared):
+            self.assertIn("Path=/", cookie)
+            self.assertIn("SameSite=lax", cookie)
+            self.assertIn("HttpOnly", cookie)
+            self.assertIn("Secure", cookie)
         self.assertNotIn("Domain=", legacy)
         self.assertIn("Domain=zockdiewandan.online", shared)
         self.assertIsNone(resolve_session(request_for(cookie=f"{LEGACY_SESSION_COOKIE}={raw_token}")))

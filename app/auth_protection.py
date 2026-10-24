@@ -3,14 +3,15 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-from datetime import timedelta
+from dataclasses import dataclass
+from datetime import datetime, timedelta
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request as UrlRequest
 from urllib.request import urlopen
 
 from fastapi import HTTPException, Request, status
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, update
 
 from .database import session_scope
 from .models import AuthRateEvent
@@ -169,6 +170,63 @@ def enforce_login_rate_limit(request: Request, normalized_username: str) -> str:
             headers={"Retry-After": str(int(LOGIN_WINDOW.total_seconds()))},
         )
     return key
+
+
+@dataclass(frozen=True, slots=True, repr=False)
+class LoginAttempt:
+    """One private, persisted password-login slot; never a bearer credential."""
+
+    event_id: int
+    client_key: str
+    occurred_at: datetime
+
+
+def reserve_login_attempt(request: Request, normalized_username: str) -> LoginAttempt:
+    """Commit a short SQLite writer transaction before any password hashing.
+
+    Only password login uses reservations. Reauthentication retains its
+    existing separate limits. Abandoned slots stop counting after LOGIN_WINDOW.
+    """
+    now, key = utcnow(), _login_key(request, normalized_username)
+    with session_scope() as db:
+        pending = AuthRateEvent(kind="login_pending", client_key=key, occurred_at=now)
+        db.add(pending)
+        db.flush()  # acquire the SQLite writer before counting, including an empty table
+        db.execute(delete(AuthRateEvent).where(AuthRateEvent.occurred_at < now - EVENT_RETENTION))
+        count = int(db.scalar(select(func.count()).select_from(AuthRateEvent).where(
+            AuthRateEvent.kind.in_(("login_failure", "login_pending")),
+            AuthRateEvent.client_key == key, AuthRateEvent.occurred_at >= now - LOGIN_WINDOW,
+        )) or 0)
+        limited = count > LOGIN_MAX_FAILURES
+        receipt = LoginAttempt(pending.id, key, now)
+        if limited:
+            db.delete(pending)
+    if limited:
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                            detail="login_temporarily_blocked",
+                            headers={"Retry-After": str(int(LOGIN_WINDOW.total_seconds()))})
+    return receipt
+
+
+def _pending_attempt(receipt: LoginAttempt) -> tuple:
+    return (AuthRateEvent.id == receipt.event_id, AuthRateEvent.kind == "login_pending",
+            AuthRateEvent.client_key == receipt.client_key, AuthRateEvent.occurred_at == receipt.occurred_at)
+
+
+def record_login_attempt_failure(receipt: LoginAttempt) -> None:
+    """Finalize only this receipt, retaining the existing failure-time window."""
+    with session_scope() as db:
+        db.execute(update(AuthRateEvent).where(*_pending_attempt(receipt)).values(
+            kind="login_failure", occurred_at=utcnow()))
+
+
+def release_login_attempt(receipt: LoginAttempt, *, db=None) -> None:
+    """Release only this pending receipt; optionally join session issuance."""
+    if db is None:
+        with session_scope() as db:
+            release_login_attempt(receipt, db=db)
+    else:
+        db.execute(delete(AuthRateEvent).where(*_pending_attempt(receipt)))
 
 
 def enforce_email_request_rate_limit(request: Request, purpose: str, normalized_email: str) -> None:

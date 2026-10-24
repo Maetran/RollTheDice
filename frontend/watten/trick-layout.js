@@ -19,14 +19,14 @@ export function fitLandscapeTrick({ top, bottom, desiredWidth, minimumWidth = 48
   return null;
 }
 
-export function fitPortraitPrompt(bounds, obstacles, { height = 20, widths = [180, 140, 100, 80], accept = null } = {}) {
+export function fitPortraitPrompt(bounds, obstacles, { height = 20, widths = [180, 140, 100, 80], accept = null, bottomFirst = false, centerFirst = false } = {}) {
   const blocked = obstacles.filter(usable).map(rect => ({ left: rect.left - 4, right: rect.right + 4, top: rect.top - 4, bottom: rect.bottom + 4 }));
   for (const width of widths.filter(width => width <= bounds.width)) {
     const xs = [...new Set([bounds.left + (bounds.width - width) / 2, bounds.left, bounds.right - width,
       ...blocked.flatMap(rect => [rect.left - width, rect.right])])];
     const ys = [...new Set([bounds.top, bounds.bottom - height,
-      ...blocked.flatMap(rect => [rect.top - height, rect.bottom])])].sort((a, b) => a - b);
-    for (const top of ys) for (const left of xs) {
+      ...blocked.flatMap(rect => [rect.top - height, rect.bottom])])].sort((a, b) => bottomFirst ? b - a : a - b);
+    for (const centred of centerFirst ? [true, false] : [false]) for (const top of ys) for (const left of centred ? xs.slice(0, 1) : xs) {
       const result = { left, top, right: left + width, bottom: top + height, width, height };
       if (left >= bounds.left && top >= bounds.top && result.right <= bounds.right && result.bottom <= bounds.bottom
           && !blocked.some(obstacle => intersects(result, obstacle)) && (!accept || accept(result))) return result;
@@ -113,11 +113,15 @@ export function fitPortraitTrickView({ bounds, obstacles, count, positions = nul
 /** Presentation only: public faces already present in the trick DOM. */
 export function createTrickLayout(trick, { win = window } = {}) {
   const centre = trick.parentElement, felt = centre.parentElement, table = felt.closest("[data-wt-table]");
+  const ownCall = table.querySelector("[data-wt-own-call]");
   const variables = ["--wt-landscape-x", "--wt-landscape-y", "--wt-landscape-card-width", "--wt-landscape-height", "--wt-landscape-reach",
     "--wt-portrait-x", "--wt-portrait-y", "--wt-portrait-width", "--wt-portrait-card-width", "--wt-portrait-row-height", "--wt-portrait-caption-height",
     "--wt-portrait-reference-left", "--wt-portrait-reference-top", "--wt-portrait-label-x", "--wt-portrait-label-y", "--wt-portrait-label-width"];
   let count = 0, queued = null, destroyed = false, landscape = null, deal = "";
   const clear = () => {
+    ownCall?.style.removeProperty("--wt-own-call-left");
+    ownCall?.style.removeProperty("--wt-own-call-bottom");
+    if (ownCall) delete ownCall.dataset.wtCallFallback;
     delete centre.dataset.wtLandscapeTrick;
     delete centre.dataset.wtLandscapeCompact;
     delete centre.dataset.wtLandscapeInsetWinner;
@@ -162,10 +166,43 @@ export function createTrickLayout(trick, { win = window } = {}) {
     const result = { left: right - width, top: bottom - height, right, bottom, width, height };
     return usable(result) ? result : null;
   };
+  function positionCalls() {
+    if (!ownCall?.children.length || !win.matchMedia("(orientation: portrait) and (max-width: 760px)").matches) return;
+    const sheet = ownCall.parentElement, sheetBox = sheet.getBoundingClientRect(), area = felt.getBoundingClientRect();
+    const visibleBox = node => node.checkVisibility?.() === false ? null : box(node);
+    const dockChildren = [...sheet.children].filter(node => node !== ownCall);
+    // Flex children can extend above a max-height dock. Use their painted
+    // edges, excluding pinned content which is an obstacle, not the floor.
+    const inFlow = node => !["absolute", "fixed"].includes(win.getComputedStyle(node).position);
+    const dock = dockChildren.filter(inFlow).map(visibleBox).filter(Boolean);
+    const bottom = Math.min(sheetBox.top, ...dock.map(rect => rect.top)) - 6;
+    const left = Math.max(12, area.left + 8), right = Math.min(win.innerWidth - 12, area.right - 8);
+    const top = Math.max(8, area.top + 8);
+    const bounds = { left, top, right, bottom, width: right - left, height: bottom - top };
+    const obstacles = [...table.querySelectorAll(".wt-seat-badge, .wt-avatar, .wt-seat-name, .wt-seat-call-role, .wt-seat-tags, .wt-seat-meta, "
+      + ".wt-bubble--thanks, .wt-backs > i:not([hidden]), .wt-stock, .wt-reference, [data-wt-preplay], [data-wt-bloedeln]:not(:empty), .wt-trick-label:not(:empty), .wt-prompt, .wt-partner-popover, .wt-retour-tag"),
+    ...dockChildren.filter(node => !inFlow(node))].map(visibleBox).filter(Boolean);
+    const middle = (bounds.left + bounds.right) / 2;
+    let ownFit = null;
+    if (ownCall.children.length && box(ownCall)) {
+      const size = ownCall.getBoundingClientRect(), left = middle - size.width / 2;
+      const column = { ...bounds, left, right: left + size.width, width: size.width };
+      ownFit = fitPortraitPrompt(column, obstacles, { height: size.height, widths: [size.width], bottomFirst: true });
+      if (!ownFit) ownCall.dataset.wtCallFallback = "space";
+      else {
+        ownCall.style.setProperty("--wt-own-call-left", `${middle - sheetBox.left}px`);
+        ownCall.style.setProperty("--wt-own-call-bottom", `${sheetBox.bottom - ownFit.bottom}px`);
+        obstacles.push(ownFit);
+      }
+    }
+
+  }
   function layout() {
     queued = null;
     if (destroyed) return;
     clear();
+    // Calls precede every trick card, so fit them before the empty-trick return.
+    positionCalls();
     if (trick.hidden || !trick.children.length) { landscape = null; return; }
     if (win.innerWidth >= win.innerHeight && win.innerHeight <= 700) {
       const area = felt.getBoundingClientRect();
@@ -277,6 +314,10 @@ export function createTrickLayout(trick, { win = window } = {}) {
   const schedule = () => { if (!destroyed && queued === null) queued = win.requestAnimationFrame(layout); };
   const observer = typeof win.ResizeObserver === "function" ? new win.ResizeObserver(schedule) : null;
   observer?.observe(felt);
+  if (ownCall) {
+    observer?.observe(ownCall);
+    observer?.observe(ownCall.parentElement);
+  }
   const hand = table.querySelector("[data-wt-hand-area]");
   if (hand) observer?.observe(hand);
   const history = table.querySelector("[data-wt-history]");
@@ -289,6 +330,9 @@ export function createTrickLayout(trick, { win = window } = {}) {
       deal = `${vm.engine?.deal_id ?? ""}:${vm.engine?.deal_revision ?? 0}`;
       if (queued !== null) win.cancelAnimationFrame(queued);
       layout();
+      // A compact dock can move after its DOM/CSS update without resizing.
+      // Recheck calls once on the next frame; the size observer cannot see it.
+      if (ownCall?.children.length && win.matchMedia("(orientation: portrait) and (max-width: 760px)").matches) schedule();
     },
     destroy() {
       destroyed = true;

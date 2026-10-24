@@ -757,6 +757,27 @@ Local Storage lassen sich dagegen nicht sicher zwischen Origins kopieren;
 deshalb darf die Apex-Origin während laufender Partien nicht erzwungen auf eine
 Subdomain umgeleitet werden.
 
+Beim Abmelden bleibt der gemeinsame Cookie mit leerem Wert für 30 Tage als
+Abmeldemarker bestehen (`Secure`, `HttpOnly`, `SameSite=Lax`, gleiche Domain
+und gleicher Pfad). Die bereits vorhandene Präsenzprüfung verhindert dadurch
+den Rückfall auf ältere Host-Cookies auf allen vier Origins. Die aktuelle
+Serversitzung wird weiterhin widerrufen, der aktuelle Host-Cookie gelöscht;
+eine neue Anmeldung überschreibt den Marker. Die 30 Tage decken die absolute
+Restlaufzeit aller vor dem Abmelden erzeugten Sitzungen ab. Unbekannte ältere
+Bearer-Tokens werden dadurch nicht serverseitig widerrufen und können bis zu
+ihrem ursprünglichen Ablauf gültig bleiben. Andere Browser bleiben angemeldet.
+Der Rollbackstand 4.2.1 besitzt dieselbe Präsenzprüfung bereits.
+
+**English:** Sign-out retains an empty shared cookie for 30 days with the same
+Secure, HttpOnly, SameSite=Lax, domain and path attributes. The existing
+presence check suppresses older host-cookie fallback across all four origins.
+The current server session is still revoked and the current host cookie
+deleted; a new login replaces the marker. Thirty days covers the absolute
+remaining lifetime of every session created before sign-out. Unknown older
+bearer tokens are not revoked by this marker and may remain valid until their
+original expiry. Other browsers remain signed in. The 4.2.1 rollback version
+already uses the same presence check.
+
 Ein reiner `nginx reload` ist graceful und lässt bestehende Worker und
 Verbindungen auslaufen. Das vorausgehende App-Deployment ersetzt dagegen den
 einzelnen Uvicorn-Container kurz: WebSockets verbinden sich neu, persistierte
