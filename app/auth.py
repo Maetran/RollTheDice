@@ -16,7 +16,10 @@ from .auth_proofs import CONFIRMATION_FAILURES, PasskeyProof
 from .auth_protection import (
     clear_login_failures,
     enforce_login_rate_limit,
+    record_login_attempt_failure,
     record_login_failure,
+    release_login_attempt,
+    reserve_login_attempt,
 )
 from .database import session_scope
 from .game_access import (
@@ -432,25 +435,33 @@ def login(request: Request, username: str, password: str) -> tuple[AuthIdentity,
         normalized_email = None
     # Normalize the supplied identifier consistently for case-insensitive
     # username and confirmed-address login.
-    key = enforce_login_rate_limit(request, normalized_email or normalized_username)
+    attempt = reserve_login_attempt(request, normalized_email or normalized_username)
+    finalized = False
+    try:
+        with session_scope() as db:
+            predicates = [User.username_normalized == normalized_username]
+            if normalized_email:
+                predicates.append((User.email_normalized == normalized_email) & User.email_confirmed_at.is_not(None))
+            user = db.scalar(select(User).where(or_(*predicates)))
+            # Unknown and passkey-only accounts still spend the same password work.
+            password_available = bool(user and has_password(user.password_hash))
+            password_valid = verify_password(password, user.password_hash if password_available else _UNKNOWN_USER_PASSWORD_HASH)
+            password_valid = password_valid and password_available
+            if not user or not user.is_active or not password_valid or not lock_verified_password(db, user):
+                db.rollback()
+                record_login_attempt_failure(attempt)
+                finalized = True
+                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid_credentials")
 
-    with session_scope() as db:
-        predicates = [User.username_normalized == normalized_username]
-        if normalized_email:
-            predicates.append((User.email_normalized == normalized_email) & User.email_confirmed_at.is_not(None))
-        user = db.scalar(select(User).where(or_(*predicates)))
-        # Passkey-only accounts spend the same password-verification work as an
-        # unknown account, while the explicit marker can never grant access.
-        password_available = bool(user and has_password(user.password_hash))
-        password_valid = verify_password(password, user.password_hash if password_available else _UNKNOWN_USER_PASSWORD_HASH)
-        password_valid = password_valid and password_available
-        if not user or not user.is_active or not password_valid or not lock_verified_password(db, user):
-            db.rollback()
-            record_login_failure(key)
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid_credentials")
-
-        db.execute(delete(AuthRateEvent).where(AuthRateEvent.kind == "login_failure", AuthRateEvent.client_key == key))
-        return issue_session_for_user(db, user)
+            release_login_attempt(attempt, db=db)
+            db.execute(delete(AuthRateEvent).where(AuthRateEvent.kind == "login_failure",
+                                                  AuthRateEvent.client_key == attempt.client_key))
+            result = issue_session_for_user(db, user)
+        finalized = True
+        return result
+    finally:
+        if not finalized:
+            release_login_attempt(attempt)
 
 
 def resolve_session(connection: Request | WebSocket) -> AuthIdentity | None:

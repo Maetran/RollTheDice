@@ -2117,6 +2117,13 @@ first passkey once with their current password. Choosing a new password during i
 registration or recovery and administrator-issued temporary passwords remain
 bootstrap/recovery flows; room passwords are game access codes, not account
 reauthentication. See the [password-flow audit](docs/PASSKEY_FLOW_AUDIT.md).
+Password login reserves a persisted attempt before checking the password. Each
+IP address and normalized supplied identifier shares five failed or in-flight
+attempts within 15 minutes, including across workers and restarts. Success clears
+its own reservation and prior failures while preserving other in-flight attempts;
+abandoned reservations stop counting after 15 minutes. Account-change password
+confirmation keeps its existing separate limits; username and email remain
+separate supplied identifiers.
 Simultaneous profile and account-statistics visits preserve one achievement
 record and its original unlock time instead of failing on duplicate awards.
 Disabling email through its deployment flag restores legacy password sign-up.
@@ -2178,6 +2185,14 @@ bestätigen ihren ersten Passkey einmalig mit ihrem aktuellen Passwort.
 Die erste Passwortwahl, Wiederherstellung und temporäre
 Admin-Passwörter bleiben Einrichtungs-/Wiederherstellungswege; Spielraum-Passwörter
 sind Zugangscodes. Details stehen im [Passwort-Flow-Audit](docs/PASSKEY_FLOW_AUDIT.md).
+Die Passwortanmeldung reserviert vor der Passwortprüfung einen dauerhaften
+Versuch. Pro IP-Adresse und normalisierter eingegebener Kennung zählen innerhalb
+von 15 Minuten höchstens fünf fehlgeschlagene oder laufende Versuche, auch über
+Worker und Neustarts hinweg. Eine erfolgreiche Anmeldung entfernt ihre eigene
+Reservierung und bisherige Fehlversuche; andere laufende Versuche bleiben erhalten.
+Verwaiste Reservierungen zählen nach 15 Minuten nicht mehr. Passwortbestätigungen
+für Kontoänderungen behalten ihre bisherigen separaten Grenzen; Benutzername und
+E-Mail bleiben unterschiedliche eingegebene Kennungen.
 Gleichzeitige Profil- und Statistikaufrufe behalten einen gemeinsamen
 Erfolgseintrag samt ursprünglichem Freischaltdatum und scheitern nicht an
 doppelten Vergabeversuchen.
