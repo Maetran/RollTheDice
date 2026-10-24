@@ -127,7 +127,7 @@ und weiterhin erlaubte direkte Antworten werden geprüft. Der echte mobile
 Viererflow in Deutsch und Englisch bestand mit 2/2 Browserfällen und prüft
 eigene Gebotsrechte, fehlende Rechte beim wissenden Partner und alle drei
 Antwortbuttons beim zuständigen Entscheider. Claude hat den Regelkern, Views,
-CPU und Testanpassungen unabhängig geprüft und freigegeben. Seine doppelte
+CPU und Testanpassungen unabhängig geprüft und freigegeben. Die von ihm bemängelte doppelte
 Assertion wurde bereinigt; die Releasepflichten für 4.1.8 sind umgesetzt.
 
 The regressions failed before the fix. Focused backend verification passed
@@ -164,7 +164,26 @@ Existing SQLite datetime deprecation warnings and some resource warnings remain
 visible. Their causes were not fully traced in this block; warnings were neither
 suppressed nor thresholds relaxed.
 
+Claude hat im Abschlussreview zusätzlich den DE/EN-Browserflow und die
+Release-Metadaten ohne Blocker freigegeben; die Formulierung «ausstehendes
+Gebot / pending bid» wurde zur Abgrenzung von offenem Watten präzisiert.
+
+Claude also approved the final DE/EN browser flow and release metadata without
+blockers; “pending bid” clarifies the difference from open Watten.
+
 ## Offene Punkte / Open items
+
+- **Watten-Versionshistorie / Watten release history:** Der History-Endpunkt
+  erlaubt Watten derzeit nicht; eine Watten-Oberfläche oder ein vorhandener
+  Aufrufer dafür ist nicht angebunden. Versions-Push ist separat unterstützt.
+  Daher kein belegter kaputter Bedienpfad und keine neue Historienfunktion in
+  diesem Qualitätsblock. Bei späterer Erweiterung muss ein HTTP-Routertest die
+  Parameterfreigabe prüfen; direkte Pythonaufrufe erkennen die Literal-Grenze
+  nicht. / The history endpoint currently excludes Watten; no Watten history UI
+  or existing caller is wired up. Release push is supported separately. This is
+  not a demonstrated broken user flow, so no history feature is added here.
+  Future coverage must exercise the HTTP router, as direct Python calls cannot
+  detect the query parameter's Literal boundary.
 
 - **Auth-Randfälle / Auth edge cases:** Der vermutete Selbst-Deadlock in
   `loadAuth` wurde nach Prüfung aller Epochenänderungen verworfen. Ein älterer

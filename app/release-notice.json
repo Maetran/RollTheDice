@@ -10,7 +10,7 @@
       "title": "4.1.8: Watten-Gebote im eigenen Zug",
       "changes": [
         "Ein eigenes Drei und spätere eigene Erhöhungen kannst du nur in deinem Kartenzug ansagen – auch im blinden Vierer.",
-        "Auf ein offenes gegnerisches Gebot kann der zuständige Entscheider weiterhin sofort mit Halten, Gehen oder Aufbieten antworten.",
+        "Auf ein ausstehendes gegnerisches Gebot kann der zuständige Entscheider weiterhin sofort mit Halten, Gehen oder Aufbieten antworten.",
         "Die CPUs halten dieselben Gebotsregeln ein."
       ]
     },
@@ -18,7 +18,7 @@
       "title": "4.1.8: Watten bids on your own turn",
       "changes": [
         "You can open with Three or make a later unsolicited raise only on your own card turn, including blind four-player games.",
-        "The designated decider can still immediately hold, fold or counter an open opposing bid.",
+        "The designated decider can still immediately hold, fold or counter an pending opposing bid.",
         "CPUs follow the same bidding rules."
       ]
     }
