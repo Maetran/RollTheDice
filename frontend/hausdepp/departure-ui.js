@@ -144,6 +144,13 @@ export function mountHausdeppDepartureUI({
       const account = result.querySelector('a[href="/hausdepp/konto#erfolge"]');
       result.insertBefore(resultButton, account);
     }
+    // The result sheet has its own exit. Hide the duplicate behind it only
+    // after the replacement is mounted and visible, including for spectators.
+    if (resultButton.isConnected && resultButton.getClientRects().length) {
+      const restoreFocus = document.activeElement === tableButton;
+      tableButton.hidden = true;
+      if (restoreFocus) resultButton.focus({ preventScroll: true });
+    }
   }
   render();
   return { render,
