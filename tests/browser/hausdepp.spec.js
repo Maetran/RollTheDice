@@ -1125,8 +1125,9 @@ for (const [name, viewport, firstActor, firstType] of [
     mocked.sendSnapshot(fixture);
     await expect(page.locator('#hausdeppPile')).toHaveAttribute('data-card-count', '1');
     await expect(page.locator('#hausdeppPile .hd-pile-face')).toHaveCount(1);
-    if (firstActor === 'own') await expect(page.locator('#hausdeppHand [data-card-id="bells-U"]')).toBeEnabled();
-    else await expect(page.locator('#hausdeppHand [data-card-id="bells-U"]')).toBeDisabled();
+    // This renderer fixture grants the viewer an authoritative afterthrow in
+    // every format. That hand action stays usable while pile paper is moving.
+    await expect(page.locator('#hausdeppHand [data-card-id="bells-U"]')).toBeEnabled();
     await expect(page.locator('#hausdeppStock')).toBeDisabled();
     await page.locator('#hausdeppPile').press('Shift+Enter');
     await expect(page.locator('#hausdeppPileInspector [data-card-id]')).toHaveCount(1);
