@@ -23,6 +23,27 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 4.2.0 — 2026-10-24
+
+### HAUSDEPP / WATTEN
+
+**Deutsch:** Neue, unabhängig aufgenommene Lokalgeräusche erweitern die
+Wirtshauskulisse beider Kartenspiele. Die zehn bisherigen Cambridge-Mischungen
+bleiben erhalten und zählen bei der zufälligen Auswahl als eine Raumfamilie.
+Ein gemischter Vorrat verhindert direkte Wiederholungen; nach einigen Minuten
+wechselt die Kulisse mit sanfter Überblendung. Watten erhält einen eigenen,
+freiwilligen Schalter, auch im Warteraum. Audio wird erst beim Einschalten
+lokal geladen und nicht über den Sprachchat übertragen. Herkunft, CC0-Lizenzen
+und technische Bearbeitung der neuen Aufnahmen sind dokumentiert.
+
+**English:** New, independently recorded venue sounds broaden the tavern
+ambience in both card games. The ten existing Cambridge mixes remain available
+and count as one room family in the random selection. A shuffled bag prevents
+immediate repeats; after a few minutes the ambience changes with a gentle
+crossfade. Watten gains a separate opt-in switch, including in the waiting
+room. Audio loads locally only after activation and is not sent through voice
+chat. Sources, CC0 licences and technical processing are documented.
+
 ## 4.1.8 — 2026-10-24
 
 ### WATTEN / ZILCH
