@@ -116,10 +116,13 @@ def test_migration_preserves_existing_choices_and_refuses_destructive_downgrade(
         user = TypedCompletedResultsMigrationTest()._insert_user(db)
         db.execute("INSERT INTO game_tour_preferences (user_id,enabled,zdwa_state,zilch_state,hausdepp_state) "
                    "VALUES (?,0,'completed','started','dismissed')", (user,))
+        # Preserve every old account field while allowing additive head columns.
+        user_columns = ",".join(row[1] for row in db.execute("PRAGMA table_info(users)"))
         users = db.execute("SELECT * FROM users").fetchall()
     command.upgrade(config, "head")
     with closing(sqlite3.connect(path)) as db, db:
-        assert db.execute("SELECT * FROM users").fetchall() == users
+        assert db.execute(f"SELECT {user_columns} FROM users").fetchall() == users
+        assert db.execute("SELECT voice_listening_default FROM users").fetchall() == [(0,)]
         assert db.execute("SELECT enabled,zdwa_state,zilch_state,hausdepp_state,watten_state FROM game_tour_preferences").fetchone() == (0, "completed", "started", "dismissed", "unseen")
         with pytest.raises(sqlite3.IntegrityError):
             db.execute("UPDATE game_tour_preferences SET watten_state='forged'")
@@ -131,6 +134,7 @@ def test_migration_preserves_existing_choices_and_refuses_destructive_downgrade(
         db.execute("UPDATE game_tour_preferences SET watten_state='unseen'")
     command.downgrade(config, "20261018_0070")
     with closing(sqlite3.connect(path)) as db, db:
+        assert db.execute("SELECT * FROM users").fetchall() == users
         assert db.execute("SELECT enabled,zdwa_state,zilch_state,hausdepp_state FROM game_tour_preferences").fetchone() == (0, "completed", "started", "dismissed")
         assert db.execute("PRAGMA foreign_key_check").fetchall() == []
     command.upgrade(config, "head")

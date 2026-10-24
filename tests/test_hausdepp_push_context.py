@@ -314,7 +314,8 @@ def migration_config(url):
 
 def test_upgrade_preserves_existing_devices_frozen_release_receipts_and_account_progress(device_store):
     config = migration_config(device_store.url)
-    command.downgrade(config, "20261016_0058")
+    # Current API/model writes require the current schema. Seed first, then
+    # exercise the actual historical schema and all of its persisted columns.
     payload = push_fixtures.WebPushTestCase.subscription()
     save_web_push_subscription(user_id=device_store.user.id, payload=payload, product_context="zdwa")
     with session_scope() as db:
@@ -326,13 +327,17 @@ def test_upgrade_preserves_existing_devices_frozen_release_receipts_and_account_
                                    subscription_snapshot_json=f'[{{"id":{device_id},"identity":"kept"}}]'))
         db.add(HausdeppPresentationReceipt(user_id=device_store.user.id, acknowledged_points=20,
                                           acknowledged_score_points=12, presentation_scores_json='{"20":12}'))
+    command.downgrade(config, "20261016_0058")
     tables = ("users", "sessions", "web_push_subscriptions", "push_releases", "push_release_recipients",
               "hausdepp_presentation_receipts")
     with get_engine().connect() as connection:
+        columns = {table: ",".join(row[1] for row in connection.exec_driver_sql(f"PRAGMA table_info({table})"))
+                   for table in tables}
         before = {table: connection.execute(text(f"SELECT * FROM {table}")).fetchall() for table in tables}
     command.upgrade(config, "head")
     with get_engine().connect() as connection:
-        after = {table: connection.execute(text(f"SELECT * FROM {table}")).fetchall() for table in tables}
+        after = {table: connection.execute(text(f"SELECT {columns[table]} FROM {table}")).fetchall() for table in tables}
+        assert connection.exec_driver_sql("SELECT voice_listening_default FROM users").fetchall() == [(0,)]
         assert connection.exec_driver_sql("PRAGMA foreign_key_check").fetchall() == []
     assert before == after
     save_web_push_subscription(user_id=device_store.user.id, payload=payload, product_context="hausdepp")
