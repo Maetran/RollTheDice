@@ -250,7 +250,14 @@ export function createTavernSound({
       outgoing.source.onended = () => forget(outgoing);
       outgoing.gain.gain.cancelScheduledValues(context.currentTime);
       outgoing.gain.gain.setValueAtTime(outgoing.clip.gain, context.currentTime);
-      if (clip.id !== outgoing.clip.id) buffers.delete(clip.id);
+      if (clip.id !== outgoing.clip.id) {
+        // Promise.all can reject a detail before its room decode finishes.
+        // Retire that job first so its late result cannot repopulate the cache.
+        const pending = loading.get(clip.id);
+        loading.delete(clip.id);
+        pending?.abort.abort();
+        buffers.delete(clip.id);
+      }
       if (detailTimer === null && !detailPlaying()) scheduleDetail(attempt);
       scheduleRotation(attempt, 30);
     }

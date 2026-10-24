@@ -489,3 +489,37 @@ for (const phase of ['request', 'curve']) {
     app.sound.destroy(); assert.equal(app.timers.size, 0);
   });
 }
+
+test('failed Cambridge details retire the pending room decode before it can become an orphan buffer', async t => {
+  const pendingRoom = deferred(), failedDetail = deferred();
+  let roomDecodes = 0, detailFetches = 0;
+  const families = ['a', 'b', 'c'].map(id => ({ id, details: id === 'b',
+    variants: [{ id, url: `/${id}.mp3`, gain: .065 }] }));
+  const app = setup({ families,
+    decode: data => data.asset === '/b.mp3' && ++roomDecodes === 1 ? pendingRoom.promise
+      : Promise.resolve({ data, duration: 4 }),
+    fetchAsset: request => {
+      if (request.url.includes('/glasses.mp3') && ++detailFetches === 1) return failedDetail.promise;
+      return { ok: true, arrayBuffer: async () => { const data = new ArrayBuffer(8); data.asset = request.url; return data; } };
+    },
+  });
+  t.after(() => app.sound.destroy());
+  await app.sound.setEnabled(true);
+  const original = roomsPlaying(app)[0];
+  app.tick(180000); await turn();
+  assert.equal(roomDecodes, 1, 'the next room is decoding while its detail fetch is still pending');
+  failedDetail.reject(new Error('detail unavailable')); await turn();
+  assert.deepEqual(roomsPlaying(app), [original]);
+  const aborted = app.requests.find(request => request.url === '/b.mp3').options.signal.aborted;
+  pendingRoom.resolve({ data: { asset: '/b.mp3' }, duration: 4, retired: true }); await turn();
+  assert.equal(aborted, true, 'a failed detail must invalidate and abort its still-decoding room job');
+  app.tick(30000); await turn(); // C loads after the retired B decode has completed.
+  assert.equal(roomsPlaying(app).length, 2);
+  app.tick(20000); await turn();
+  app.tick(180000); await turn(); // A in the next family bag.
+  app.tick(20000); await turn();
+  app.tick(180000); await turn(); // B must fetch/decode again, rather than reuse its retired result.
+  assert.equal(app.requests.filter(request => request.url === '/b.mp3').length, 2);
+  assert.equal(roomDecodes, 2);
+  assert.ok(roomsPlaying(app).every(source => !source.buffer.retired));
+});
