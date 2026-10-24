@@ -1,6 +1,7 @@
 """Only an explicit guide acknowledgement suppresses the new card-game guide."""
 
 import sqlite3
+from contextlib import closing
 
 import pytest
 from alembic.config import Config
@@ -56,18 +57,18 @@ def test_migration_preserves_old_tour_choices_and_does_not_erase_acknowledgement
     config.set_main_option("script_location", str(main.BASE / "alembic"))
     config.set_main_option("sqlalchemy.url", f"sqlite:///{path}")
     command.upgrade(config, "20261020_0077")
-    with sqlite3.connect(path) as db:
+    with closing(sqlite3.connect(path)) as db, db:
         user = legacy.migration_support.TypedCompletedResultsMigrationTest()._insert_user(db)
         db.execute("INSERT INTO game_tour_preferences (user_id,enabled,zdwa_state,zilch_state,hausdepp_state,watten_state) "
                    "VALUES (?,0,'completed','started','dismissed','completed')", (user,))
     command.upgrade(config, "head")
-    with sqlite3.connect(path) as db:
+    with closing(sqlite3.connect(path)) as db, db:
         assert db.execute("SELECT enabled,zdwa_state,zilch_state,hausdepp_state,watten_state,hausdepp_guide_revision,watten_guide_revision "
                           "FROM game_tour_preferences").fetchone() == (0, "completed", "started", "dismissed", "completed", 0, 0)
         db.execute("UPDATE game_tour_preferences SET hausdepp_guide_revision=1")
     with pytest.raises(RuntimeError, match="Cannot discard"):
         command.downgrade(config, "20261020_0077")
-    with sqlite3.connect(path) as db:
+    with closing(sqlite3.connect(path)) as db, db:
         assert db.execute("SELECT hausdepp_guide_revision FROM game_tour_preferences").fetchone() == (1,)
         db.execute("UPDATE game_tour_preferences SET hausdepp_guide_revision=0")
     command.downgrade(config, "20261020_0077")

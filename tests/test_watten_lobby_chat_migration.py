@@ -3,6 +3,7 @@
 import importlib.util
 import io
 import sqlite3
+from contextlib import closing
 from pathlib import Path
 
 import pytest
@@ -23,7 +24,7 @@ def test_upgrade_downgrade_retains_all_old_messages_and_frozen_audience_with_liv
     filename = tmp_path / "watten-chat.sqlite3"
     config.set_main_option("sqlalchemy.url", f"sqlite:///{filename}")
     command.upgrade(config, PREVIOUS)
-    with sqlite3.connect(filename, isolation_level=None) as connection:
+    with closing(sqlite3.connect(filename, isolation_level=None)) as connection, connection:
         connection.execute("PRAGMA foreign_keys=ON")
         users = [connection.execute(
             "INSERT INTO users(username,username_normalized,password_hash,role,is_active,must_change_password,created_at,updated_at) "

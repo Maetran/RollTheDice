@@ -4,6 +4,7 @@ import importlib.util
 import io
 import json
 import sqlite3
+from contextlib import closing
 from copy import deepcopy
 from dataclasses import replace
 from datetime import timedelta
@@ -370,7 +371,7 @@ def test_additive_sqlite_migration_preserves_old_rows_and_downgrade_refuses_exis
     path = tmp_path / "migration.sqlite3"
     config.set_main_option("sqlalchemy.url", f"sqlite:///{path}")
     command.upgrade(config, "20261018_0066")
-    with sqlite3.connect(path, isolation_level=None) as connection:
+    with closing(sqlite3.connect(path, isolation_level=None)) as connection, connection:
         connection.execute("PRAGMA foreign_keys=ON")
         account = user(connection)
         for kind in ("zdwa", "zilch", "hausdepp", "watten"):

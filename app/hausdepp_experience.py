@@ -8,6 +8,7 @@ when a table starts; nothing is stored beyond the running table.
 from __future__ import annotations
 
 import logging
+from statistics import median
 from typing import Iterable
 
 from sqlalchemy import func, select
@@ -36,7 +37,7 @@ def completed_rounds(user_ids: Iterable[object]) -> dict[int, int]:
                 .group_by(GameParticipant.user_id)
             ).all()
     except SQLAlchemyError:
-        logger.exception("Hausdepp experience lookup failed; computers play at full strength")
+        logger.exception("Hausdepp experience lookup failed; seated accounts default to zero completed rounds")
         return {}
     return {int(user_id): int(count) for user_id, count in rows}
 
@@ -50,12 +51,17 @@ def record_table_experience(game: dict) -> None:
 
 
 def table_skill(game: dict) -> float:
-    """1.0 is full strength; the newest person at the table sets the pace."""
+    """Median of each human account's capped level; 1.0 is full strength."""
     experience = game.get("_hausdepp_experience") or {}
+    if "_participants" in game:
+        # The roster stays fixed after starting. Keep the per-seat counts for
+        # personal tips, but let each human account contribute at most once.
+        experience = {person["user_id"]: experience[person["id"]] for person in game["_participants"]
+                      if not person.get("is_cpu") and person.get("user_id") and person["id"] in experience}
     if not experience:
         return 1.0
-    newest = min(experience.values())
-    return 0.55 + 0.45 * min(newest, GENTLE_ROUNDS) / GENTLE_ROUNDS
+    return float(median(0.55 + 0.45 * min(rounds, GENTLE_ROUNDS) / GENTLE_ROUNDS
+                        for rounds in experience.values()))
 
 
 def wants_tips(game: dict, player_id: str | None) -> bool:

@@ -11,8 +11,15 @@ partner feedback remain the sources of its card knowledge.
 Completed Watten games of the actual human participants determine the bounded
 calculation budget. The runtime reads only aggregate counts from existing
 `CompletedGame` and `GameParticipant` records after authorizing the current
-table. Imported legacy games do not count. In a mixed table, the least
-experienced human determines the shared level.
+table. Imported legacy games do not count. Each seated human account first maps
+to its existing difficulty profile. The table uses the median profile; an even
+number averages each parameter of the two middle profiles. Sample counts remain
+bounded integers. CPUs, spectators and duplicate accounts do not add votes.
+For example, zero and 1,000 completed matches yield 40 samples, confidence 0.84,
+close-choice window 0.046, partnership 0.0265 and bid minimum 0.67, rather than
+the highest tier. The runtime still reads current counts when authorizing a CPU
+decision; this change adds no frozen per-deal level. Counts indicate experience,
+not measured human ability.
 
 | Completed Watten games | Hypothetical deals per decision | Confidence weight | Close-choice window |
 | --- | ---: | ---: | ---: |
@@ -107,10 +114,17 @@ tiers or prove a strength increase against people.
 
 ## Deutsche Kurzfassung
 
-Die CPUs berücksichtigen nur ihre eigenen erlaubten Informationen. Mit mehr
-abgeschlossenen Watten-Spielen der Menschen am Tisch rechnen sie mit 16, 24,
-40 oder 64 möglichen Kartenverteilungen; bei gemischter Erfahrung zählt der
-unerfahrenste Mitspieler. Die Stufen beginnen bei 0, 10, 30 und 75 Spielen.
+Die CPUs berücksichtigen nur ihre eigenen erlaubten Informationen. Für jeden
+sitzenden Menschen gilt je nach abgeschlossenen Watten-Spielen zunächst ein
+Profil mit 16, 24, 40 oder 64 möglichen Kartenverteilungen. Die Stufen beginnen
+bei 0, 10, 30 und 75 Spielen. Der Tisch verwendet den Median der Profile; bei
+gerader Personenzahl wird jeder Parameter der beiden mittleren Profile gemittelt.
+Die Stichprobenzahl bleibt ganzzahlig und begrenzt. 0 und 1000 Spiele ergeben
+40 Stichproben, Sicherheit 0,84, Auswahlfenster 0,046, Partnergewicht 0,0265 und
+Gebotsschwelle 0,67 statt der höchsten Stufe. Konten zählen einmal; CPUs und
+Zuschauer stimmen nicht mit. Die Runtime liest weiterhin aktuelle Zähler vor
+CPU-Entscheidungen, ohne neue feste Stufe pro Gabe. Abgeschlossene Spiele sind
+ein Erfahrungswert, keine Messung menschlichen Könnens.
 Die Anzahl kommt aus den bestehenden abgeschlossenen Spielen und bleibt über
 Neustarts erhalten. Das ist eine feste Anpassung der Spielstärke, kein
 maschinelles Lernen.

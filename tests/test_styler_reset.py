@@ -6,6 +6,7 @@ import json
 import os
 import sqlite3
 import tempfile
+from contextlib import closing
 from datetime import timedelta
 from pathlib import Path
 from unittest.mock import patch
@@ -112,7 +113,7 @@ class StylerResetTestCase(GameStateTestCase):
         self.assertEqual(self.ranking(boundary)["achievement_rank"]["key"], "rookie")
 
         def unchanged_rows():
-            with sqlite3.connect(self.database_path) as connection:
+            with closing(sqlite3.connect(self.database_path)) as connection, connection:
                 return {
                     table: connection.execute(f"SELECT * FROM {table} ORDER BY id").fetchall()
                     for table in ("completed_games", "game_participants", "zilch_achievement_unlocks")

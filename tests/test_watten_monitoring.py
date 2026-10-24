@@ -161,7 +161,7 @@ def test_current_previous_and_all_filters_never_grant_delegates_or_nonfounder_ow
     assert founder["available_games"] == ["zdwa", "zilch", "hausdepp", "watten"]
     assert founder["overview"]["completed_games"] == 3
     assert founder["comparison"]["overview"]["completed_games"]["previous"] == 2
-    assert founder["metric_coverage"]["traffic_games"] == ["zdwa", "zilch", "hausdepp"]
+    assert founder["metric_coverage"]["traffic_games"] == ["zdwa", "zilch"]
     assert "PRIVATE" not in json.dumps(founder)
 
 

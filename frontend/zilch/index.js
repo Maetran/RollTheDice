@@ -4334,29 +4334,30 @@ function rollActionLabel(turnState) {
         : t("Würfeln");
 }
 
-function diceRack(snapshot, turnState, quickHolds, isMyTurn, canInteract) {
+function diceDisplay(snapshot) {
+  if (Array.isArray(state.terminalRollMoment?.dice)) return { source: "terminal", ...state.terminalRollMoment };
   const revealMoment = state.zilchMoment?.phase === "reveal" ? state.zilchMoment : null;
+  if (Array.isArray(revealMoment?.rolledDice)) return { source: "reveal", dice: revealMoment.rolledDice, heldDiceIndices: revealMoment.heldDiceIndices };
   const currentDice = Array.isArray(snapshot._dice) ? snapshot._dice.slice(0, 6) : [0, 0, 0, 0, 0, 0];
   const retainedRack = snapshot?._zilch_last_zilch_dice;
   const retainedDice = Array.isArray(retainedRack?.dice) ? retainedRack.dice.map(Number) : [];
-  const hasRetainedZilchRack = Boolean(
-    !revealMoment
-    && currentDice.every(value => !Number(value))
+  if (currentDice.every(value => !Number(value))
     && retainedDice.length === 6
-    && retainedDice.every(value => Number.isInteger(value) && value >= 1 && value <= 6),
-  );
-  const dice = state.terminalRollMoment
-    ? state.terminalRollMoment.dice.slice()
-    : Array.isArray(revealMoment?.rolledDice)
-    ? revealMoment.rolledDice.slice(0, 6)
-    : hasRetainedZilchRack ? retainedDice : currentDice;
+    && retainedDice.every(value => Number.isInteger(value) && value >= 1 && value <= 6)) {
+    return { source: "retained", dice: retainedDice, heldDiceIndices: normalizedIndices(retainedRack.held_dice_indices), playerId: retainedRack.player_id };
+  }
+  return { source: "current", dice: currentDice };
+}
+
+function diceRack(snapshot, turnState, quickHolds, isMyTurn, canInteract, display) {
+  const revealMoment = display.source === "reveal";
+  const hasRetainedZilchRack = display.source === "retained";
+  const dice = display.dice.slice(0, 6);
   while (dice.length < 6) dice.push(0);
-  const displayTurnState = state.terminalRollMoment
-    ? { ...turnState, phase: "awaiting_hold", held_dice_indices: state.terminalRollMoment.heldDiceIndices }
-    : revealMoment
-    ? { ...turnState, phase: "awaiting_hold", held_dice_indices: revealMoment.heldDiceIndices }
+  const displayTurnState = display.source === "terminal" || revealMoment
+    ? { ...turnState, phase: "awaiting_hold", held_dice_indices: display.heldDiceIndices }
     : hasRetainedZilchRack
-      ? { ...turnState, phase: "zilch_reveal", held_dice_indices: normalizedIndices(retainedRack?.held_dice_indices) }
+      ? { ...turnState, phase: "zilch_reveal", held_dice_indices: display.heldDiceIndices }
     : turnState;
   const displayQuickHolds = revealMoment || hasRetainedZilchRack ? [] : quickHolds;
   const displayDraft = revealMoment || hasRetainedZilchRack
@@ -4840,7 +4841,8 @@ async function createNewZilchRound(snapshot, button) {
 function nextStepText(snapshot, turnState, quickHolds, isMyTurn) {
   // This is a prompt for the current decision, not another event log. In
   // particular, a previous "roll completed" message cannot hide the action.
-  if (snapshot._paused || snapshot._finished || snapshot._zilch_cpu_error || state.zilchMoment) return "";
+  if (snapshot._paused || snapshot._finished || snapshot._zilch_cpu_error || state.zilchMoment
+    || state.startRollMoment || state.terminalRollMoment) return "";
   if (!turnState) return "";
   const draft = visibleDraftHoldIndices(snapshot, turnState, isMyTurn);
   const selected = exactOptionForDraft(quickHolds, draft);
@@ -5212,6 +5214,7 @@ function renderGameState({ followNotebookLatest = false } = {}) {
   const notebookAdvanced = notebookProgressKey !== state.notebookProgressKey;
   const isMyTurn = !spectatorRoute && localPlayerIs(snapshot, currentPlayerId);
   const canInteract = Boolean(isMyTurn && !state.zilchMoment && !state.startRollMoment);
+  const display = diceDisplay(snapshot);
   syncZilchLeaveControl();
   syncSoloAbandonControl(snapshot, turnState, canInteract);
   syncZilchShareControl(snapshot);
@@ -5243,6 +5246,7 @@ function renderGameState({ followNotebookLatest = false } = {}) {
   // beside both histories. This guide is hidden on phones and mouse layouts;
   // the authoritative actions and their server-derived choices stay shared.
   const nextStep = nextStepText(snapshot, turnState, quickHolds, isMyTurn);
+  const showEmptyGuidance = Boolean(nextStep && !state.pendingAction && !activeDiceMotion());
   const tabletGuide = !finished ? `<section class="zilch-tablet-guide" aria-label="${escapeHtml(t("Nächster Schritt"))}">
     <div class="zilch-tablet-guide__objective"><span>${escapeHtml(t("Ziel der Partie"))}</span><strong>${escapeHtml(solo ? soloObjectiveTitle(snapshot) : `${number(target)} ${t("Punkte")}`)}</strong></div>
     ${nextStep ? `<h2>${escapeHtml(t("Nächster Schritt"))}</h2><p>${escapeHtml(nextStep)}</p>` : ""}
@@ -5253,7 +5257,11 @@ function renderGameState({ followNotebookLatest = false } = {}) {
       ? `<aside class="zilch-start-roll-rail">${waitingPanel}</aside>`
     : hasChoices
       ? `<aside class="zilch-recommendations" aria-label="${escapeHtml(finished ? t("Spielergebnis") : t("Mögliche Wertungen"))}">${tabletGuide}${recommendations}${resultMarkup}</aside>`
-      : `<aside class="zilch-recommendations zilch-recommendations--tablet-only">${tabletGuide}</aside>`;
+      : `<aside class="zilch-recommendations zilch-recommendations--tablet-only${showEmptyGuidance ? " zilch-recommendations--empty-guidance" : ""}">${tabletGuide}</aside>`;
+  const retainedOwner = display.source === "retained" ? playerForId(snapshot, display.playerId) : null;
+  const retainedLabel = display.source !== "retained" ? "" : retainedOwner?.name && !localPlayerIs(snapshot, display.playerId)
+    ? interpolated("Letzter Zilch-Wurf von {name}", { name: retainedOwner.name })
+    : t("Letzter Zilch-Wurf");
   // The current roll and its all-at-once hold sit directly under their
   // respective columns: score sheet on the left, choice rail on the right.
   // This keeps every recommendation slot free while making the full scoring
@@ -5286,7 +5294,8 @@ function renderGameState({ followNotebookLatest = false } = {}) {
     <section class="zilch-dice-dock">
       <section class="zilch-table" aria-labelledby="zilchDiceTitle">
         <h2 id="zilchDiceTitle" class="visually-hidden">${escapeHtml(t("Sechs Würfel"))}</h2>
-        ${diceRack(snapshot, turnState, quickHolds, isMyTurn, canInteract)}
+        ${retainedLabel ? `<p class="zilch-dice-source">${escapeHtml(retainedLabel)}</p>` : ""}
+        ${diceRack(snapshot, turnState, quickHolds, isMyTurn, canInteract, display)}
         ${actionCards(snapshot, turnState, quickHolds, canInteract)}
       </section>
     </section>`);

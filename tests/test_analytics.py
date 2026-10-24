@@ -66,6 +66,53 @@ class AnalyticsTests(unittest.TestCase):
         configure_database(main.DATA_DIR)
         self.temp.cleanup()
 
+    def test_hausdepp_unmeasured_browser_traffic_preserves_trusted_server_facts(self):
+        persist_batches([normalize_batch(batch(), now=self.now)])
+        before = dashboard_stats(1, now=self.now + timedelta(seconds=1), include_hausdepp=True)
+        pending = queue.Queue()
+        with patch.object(analytics, "_queue", pending):
+            self.assertTrue(analytics.record_game_action("hausdepp", "game_created", "multiplayer"))
+            self.assertTrue(analytics.record_hausdepp_abort({
+                "_id": "private-abort", "_game_type": "hausdepp", "_aborted": True,
+                "_abort_reason": "manual", "_started_at": (self.now - timedelta(seconds=60)).isoformat(),
+                "_finished_at": self.now.isoformat(), "_play_mode": "multiplayer",
+            }))
+        trusted = [pending.get_nowait() for _ in range(pending.qsize())]
+        self.assertTrue(all(event["session_id"] is None for item in trusted for event in item["events"]))
+        persist_batches(trusted)
+        with session_scope() as db:
+            db.add(CompletedGame(game_id="private-round", game_type="hausdepp", game_name="Private",
+                                 finished_at=self.now, mode="2", hardcore=False,
+                                 snapshot_json='{"duration_seconds":60}', imported_from_legacy=False,
+                                 created_at=self.now))
+        after = dashboard_stats(1, now=self.now + timedelta(seconds=1), include_hausdepp=True)
+        for key in ("sessions", "page_views", "active_seconds", "live_sessions"):
+            self.assertEqual(after["overview"][key], before["overview"][key])
+        for key in ("geography", "countries", "referrers"):
+            self.assertEqual(after[key], before[key])
+        self.assertEqual(after["overview"]["game_clicks"], before["overview"]["game_clicks"] + 2)
+        self.assertEqual(after["overview"]["completed_games"], 1)
+        self.assertEqual(after["metric_coverage"]["traffic_games"], ["zdwa", "zilch"])
+        self.assertNotIn("hausdepp", dashboard_stats(1, now=self.now)["available_games"])
+        self.assertEqual(normalize_batch(batch(game="hausdepp"), now=self.now)["events"], [])
+        value = dashboard_stats(1, "hausdepp", now=self.now + timedelta(seconds=1), include_hausdepp=True)
+        self.assertEqual(value["overview"]["completed_games"], 1)
+        for key in ("sessions", "page_views", "active_seconds", "avg_active_seconds", "live_sessions", "game_clicks"):
+            self.assertIsNone(value["overview"][key])
+        for key in ("sessions", "page_views", "active_seconds", "avg_active_seconds", "game_clicks"):
+            self.assertIsNone(value["comparison"]["overview"][key]["previous"])
+        self.assertEqual(value["metric_coverage"]["traffic"], "not_instrumented")
+        self.assertEqual(value["metric_coverage"]["traffic_games"], [])
+        self.assertEqual(value["metric_coverage"]["duration"], "available_server_samples")
+        self.assertEqual(value["comparison"]["previous_data_coverage"], "not_instrumented")
+        self.assertIsNone(value["geography_summary"]["sessions"])
+        self.assertIsNone(value["pwa"]["confirmed_installations"])
+        self.assertIsNone(value["journeys"]["sample"]["total_page_views"])
+        self.assertEqual({item["action"] for item in value["actions"]}, {"game_created", "game_aborted"})
+        self.assertEqual(value["games"][0]["completed_games"], 1)
+        self.assertEqual(value["games"][0]["abandoned_games"], 1)
+        self.assertEqual(value["games"][0]["live"], after["games"][2]["live"])
+
     def test_sanitization_never_persists_identifiers_urls_or_private_paths(self):
         raw = batch()
         raw.update(username="SecretName", ip="192.0.2.9", email="private@example.com")

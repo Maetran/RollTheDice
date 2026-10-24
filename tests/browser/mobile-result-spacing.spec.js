@@ -61,6 +61,12 @@ for (const [language, theme, action] of [["de", "light", "lobby"], ["en", "class
       await page.goto("/spiel/mobile-result-fixture?name=Anna");
       await expect(page.locator("#appDialog")).toHaveAttribute("data-kind", "success");
       await expect(page.locator("#appDialog")).toContainText("Anna");
+      const pointLabel = language === "en" ? "points" : "Punkte";
+      await expect.poll(async () => (await page.locator("#appDialogMessage").innerText()).split("\n"))
+        .toEqual([
+          expect.stringMatching(new RegExp(`^1\\. Anna [–—] 1234 ${pointLabel}$`)),
+          expect.stringMatching(new RegExp(`^2\\. Ben [–—] 999 ${pointLabel}$`)),
+        ]);
       for (const inset of [0, 34]) {
         await page.evaluate(value => document.body.style.setProperty("--room-safe-bottom", `${value}px`), inset);
         await expectDialogSpacing(page, inset);

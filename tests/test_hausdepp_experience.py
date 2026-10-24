@@ -9,6 +9,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
+from sqlalchemy.exc import SQLAlchemyError
+
 from app import main
 from app.auth import create_user
 from app.database import configure_database, upgrade_database
@@ -26,12 +29,62 @@ from app.hausdepp_snapshot import snapshot_hausdepp
 from tests.test_hausdepp_engine import scenario
 
 
-def test_the_newest_person_sets_a_gentle_but_not_beginner_pace():
+def test_empty_tables_keep_full_strength():
     assert table_skill({}) == 1.0
-    assert table_skill({"_hausdepp_experience": {"p0": 0}}) == 0.55
-    assert table_skill({"_hausdepp_experience": {"p0": 25, "p1": 400}}) == 0.775
-    assert table_skill({"_hausdepp_experience": {"p0": GENTLE_ROUNDS}}) == 1.0
-    assert table_skill({"_hausdepp_experience": {"p0": 900}}) == 1.0
+
+
+@pytest.mark.parametrize("rounds", [0, 1, 49, 50, 51, 1_000_000])
+def test_single_person_keeps_the_existing_capped_level(rounds):
+    assert table_skill({"_hausdepp_experience": {"p0": rounds}}) == 0.55 + 0.45 * min(rounds, 50) / 50
+
+
+@pytest.mark.parametrize("rounds, expected", [
+    ([0, 1000], 0.775), ([0, 25, 1000], 0.775), ([0, 0, 1000], 0.55),
+    ([25, 400], 0.8875), ([0, 0, 1000, 1000], 0.775),
+])
+def test_median_uses_individually_capped_levels_and_not_raw_counts(rounds, expected):
+    for ordered in (rounds, list(reversed(rounds))):
+        assert table_skill({"_hausdepp_experience": dict(enumerate(ordered))}) == pytest.approx(expected)
+
+
+def test_more_experience_never_lowers_the_shared_level():
+    levels = [table_skill({"_hausdepp_experience": {"a": rounds, "b": 20, "c": 50}})
+              for rounds in range(101)]
+    assert levels == sorted(levels)
+
+
+def test_only_distinct_seated_human_accounts_contribute_and_tips_stay_personal():
+    game = {"_participants": [
+        {"id": "new", "user_id": 1}, {"id": "same-account", "user_id": 1},
+        {"id": "veteran", "user_id": 2}, {"id": "cpu", "user_id": 3, "is_cpu": True},
+    ], "_hausdepp_experience": {"new": 0, "same-account": 0, "veteran": 1000, "cpu": 0, "spectator": 0}}
+    assert table_skill(game) == pytest.approx(0.775)
+    assert wants_tips(game, "new") and wants_tips(game, "same-account")
+    assert not wants_tips(game, "veteran")
+
+
+def test_lookup_failure_keeps_zero_round_defaults_and_reports_them(caplog):
+    game = {"_participants": [{"id": "new", "user_id": 1}, {"id": "veteran", "user_id": 2}]}
+    with patch("app.hausdepp_experience.database_schema_ready", return_value=True), \
+            patch("app.hausdepp_experience.session_scope", side_effect=SQLAlchemyError("isolated lookup failure")):
+        record_table_experience(game)
+    assert game["_hausdepp_experience"] == {"new": 0, "veteran": 0}
+    assert table_skill(game) == 0.55
+    assert "default to zero completed rounds" in caplog.text
+    assert "full strength" not in caplog.text
+
+
+def test_counts_are_recorded_once_and_ignore_computers_and_spectators():
+    game = {"_participants": [{"id": "a", "user_id": 1}, {"id": "b", "user_id": 2},
+                              {"id": "cpu", "user_id": 3, "is_cpu": True}],
+            "_spectators": [{"id": "spectator", "user_id": 4}]}
+    with patch("app.hausdepp_experience.completed_rounds", return_value={2: 1000}) as lookup:
+        record_table_experience(game)
+        assert set(lookup.call_args.args[0]) == {1, 2}
+        assert table_skill(game) == pytest.approx(0.775)
+        assert table_skill(game) == pytest.approx(0.775)
+        lookup.assert_called_once()
+    assert game["_hausdepp_experience"] == {"a": 0, "b": 1000}
 
 
 def test_tips_are_for_seated_newer_people_only():
@@ -103,4 +156,4 @@ class CompletedRoundCountTests(unittest.TestCase):
                                   {"id": "c", "is_cpu": True, "user_id": None}]}
         record_table_experience(game)
         self.assertEqual(game["_hausdepp_experience"], {"a": 1, "b": 4})
-        self.assertAlmostEqual(table_skill(game), 0.559)
+        self.assertAlmostEqual(table_skill(game), 0.5725)

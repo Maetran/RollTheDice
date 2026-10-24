@@ -117,6 +117,8 @@ async function finishedRenderer(page, fixture, { spectator = false, tournament =
   if (spectator) await page.goto(`/hausdepp/spiel/${id}/zuschauen`);
   else await page.reload();
   await expect(page.locator('#hausdeppResult')).toBeVisible();
+  await expect(page.locator('#hausdeppLeaveGame')).toBeHidden();
+  await expect(page.locator('#hausdeppLeaveGameResult')).toBeVisible();
   return { id, board, self, loser, sent,
     publish(extra = {}) { for (const socket of simulatedSockets) socket.send(JSON.stringify({ scoreboard: board, ...extra })); },
   };
@@ -136,6 +138,8 @@ for (const language of ['de', 'en']) {
     }));
     board._cpu_tempo = { fast: false, can_speed_up: true };
     live.publish();
+    await expect(page.locator('#hausdeppLeaveGame')).toBeVisible();
+    await expect(page.locator('#hausdeppLeaveGameResult')).toBeHidden();
     const button = page.getByRole('button', { name: language === 'de' ? 'CPUs schneller' : 'Speed up CPUs', exact: true });
     for (const width of [320, 1280]) {
       await page.setViewportSize({ width, height: 844 });
@@ -407,6 +411,26 @@ for (const language of ['de', 'en']) {
     await expect.poll(() => source.sent.some(message => message.action === 'hausdepp_next_round')).toBe(true);
   });
 }
+
+test('keyboard focus follows the table exit into the finished result sheet', async ({ page }) => {
+  const fixture = await setup(page);
+  const live = await finishedRenderer(page, fixture);
+  live.board._finished = false;
+  live.board._hausdepp.phase = 'playing';
+  live.publish();
+  const tableExit = page.locator('#hausdeppLeaveGame');
+  await expect(tableExit).toBeVisible();
+  await tableExit.focus();
+  live.board._finished = true;
+  live.board._hausdepp.phase = 'finished';
+  live.publish();
+  await expect(tableExit).toBeHidden();
+  await expect(page.locator('#hausdeppLeaveGameResult')).toBeFocused();
+  live.board._finished = false;
+  live.board._hausdepp.phase = 'playing';
+  live.publish();
+  await expect(tableExit).toBeFocused();
+});
 
 test('spectators see the public round result without requesting private account progress', async ({ page }) => {
   const fixture = await setup(page);

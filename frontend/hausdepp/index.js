@@ -1134,10 +1134,15 @@ function connect() {
 }
 
 function renderState() {
+  const resultExitFocused = document.activeElement?.id === "hausdeppLeaveGameResult";
   renderStateContent();
   voiceUI?.render();
   soundUI?.render();
   departureUI?.render();
+  const tableExit = $("hausdeppLeaveGame");
+  if (resultExitFocused && tableExit?.getClientRects().length) {
+    tableExit.focus({ preventScroll: true });
+  }
 }
 
 function leaveTableForLobby() {

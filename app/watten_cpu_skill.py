@@ -1,12 +1,14 @@
 """Small, deterministic CPU progression; no accounts, cards, storage or training.
 
-The coordinator supplies only the smallest completed-Watten count among the
-humans at this table. The policy receives the resulting parameters, never IDs
-or historical matches. More experience buys a larger hypothetical sample and
-more precise decisions, without changing card information or legal actions.
+The coordinator supplies only completed-Watten counts of the humans at this
+table. Their existing difficulty profiles determine the median parameters.
+The policy receives no IDs or historical matches. More experience buys a larger
+hypothetical sample and more precise decisions, without changing card information
+or legal actions.
 """
 
 from dataclasses import dataclass
+from typing import Iterable
 
 
 @dataclass(frozen=True, slots=True)
@@ -41,3 +43,26 @@ def skill_for_completed_games(completed: int) -> CpuSkill:
     if completed < 75:
         return CpuSkill(40, 0.90, 0.025, 0.03, 0.65)
     return CpuSkill(64, 0.96, 0.012, 0.035, 0.64)
+
+
+def skill_for_table(completed_games: Iterable[int]) -> CpuSkill:
+    """Median of configured difficulty, not of uncapped experience counts.
+
+    All profile parameters are monotonic across tiers. An odd table keeps its
+    middle profile; an even table averages the two middle profiles. The sample
+    budget remains an integer within CpuSkill's existing bounds.
+    """
+    profiles = sorted((skill_for_completed_games(count) for count in completed_games), key=lambda item: item.samples)
+    if not profiles:
+        return skill_for_completed_games(0)
+    middle = len(profiles) // 2
+    if len(profiles) % 2:
+        return profiles[middle]
+    lower, upper = profiles[middle - 1:middle + 1]
+    return CpuSkill(
+        samples=(lower.samples + upper.samples) // 2,
+        confidence=(lower.confidence + upper.confidence) / 2,
+        near_best=(lower.near_best + upper.near_best) / 2,
+        partnership=(lower.partnership + upper.partnership) / 2,
+        bid_minimum=(lower.bid_minimum + upper.bid_minimum) / 2,
+    )

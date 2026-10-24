@@ -2497,5 +2497,12 @@
     "date": "2026-10-24",
     "bump": "patch",
     "summary": "Watten-Gebote nur im eigenen Zug; Zilch meldet dich ohne doppelte Weiterleitung ab. / Watten bids require your own turn; Zilch signs out without duplicate redirects."
+  },
+  {
+    "version": "4.2.0",
+    "revision": "a0f61483c13b0ab3941d64a38952cbc501ed7e0c",
+    "date": "2026-10-24",
+    "bump": "minor",
+    "summary": "Neue echte Wirtshausaufnahmen und abwechslungsreiche Hintergrundkulissen für Hausdepp und Watten. / New real venue recordings and varied background ambience for Hausdepp and Watten."
   }
 ]

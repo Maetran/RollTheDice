@@ -4,6 +4,7 @@ import importlib.util
 import io
 import json
 import sqlite3
+from contextlib import closing
 from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
@@ -253,7 +254,7 @@ def test_additive_migration_preserves_existing_rows_and_enforces_account_fk(tmp_
     path = tmp_path / "favorite-migration.sqlite3"
     config.set_main_option("sqlalchemy.url", f"sqlite:///{path}")
     command.upgrade(config, "20261018_0068")
-    with sqlite3.connect(path, isolation_level=None) as db:
+    with closing(sqlite3.connect(path, isolation_level=None)) as db, db:
         db.execute("PRAGMA foreign_keys=ON")
         owner = user(db)
         db.execute("INSERT INTO hausdepp_preferences(user_id,auto_refill,favourite_preset_json) VALUES (?,1,'{}')", (owner,))
