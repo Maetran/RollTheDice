@@ -771,3 +771,70 @@ ohne blockierende Befunde. Das war keine Freigabe des integrierten Vollnachweise
 Claude independently read the final tablet source and actual portrait/landscape
 screenshots and reported no blockers within that scope. His review did not
 claim integrated-build or full-gate approval.
+
+
+### Befunde im integrierten Volltest / findings in the integrated full run
+
+Der erste vollständige 4.3.1-Kandidat `8ad560ef` bestand 625 Tool- und 3541
+Backend-Tests mit 85,30 Prozent Branch-Abdeckung sowie Produktionsimage und
+Offline-Smoke-Test. Alle acht Browser-Pools liefen zu Ende; fünf Fehler
+verhinderten den Nachweis und jeden Push dieses Kandidaten. Die Belege bleiben
+erhalten. Davon war ein echter Layoutfehler in zwei Sprachfällen enthalten:
+Bei 1280×800 kollidierte der obere gegnerische Fächer mit einer Stichkarte.
+Die Höhenberechnung begrenzt nun zuerst die eigene Hand und danach verdeckte
+Fächer innerhalb ihrer bisherigen Größenwünsche; Stichkarten bleiben mindestens
+90 Pixel und gegnerische Karten mindestens 56 Pixel breit. Die harte Prüfung
+vergleicht ausgespielte Karten jetzt auch mit allen gegnerischen Karten,
+einschließlich null bis fünf Restkarten an den beiden belegten Engstellen.
+
+Drei weitere Fehler betrafen Testverträge: Ein weiterhin gültiges Nachwurfrecht
+des vorherigen Spielers ist kein laufender CPU-Übergang; der Austrittstest wartet
+weiter auf Menschenzug und geschlossene Nachziehschulden, ohne das Nachwurfrecht
+zu verbieten. `_cpu_thinking` wurde ausdrücklich nicht als Idle-Garantie benutzt.
+Der Tour-Queue-Test verwendet den bereits eingebauten echten Lobby-Controller,
+weil private Kontodokumente beim Abmelden korrekt beendet werden. Beim
+Dreier-Watten wartet die Rückschauprüfung vor dem kontrollierten RAF-Schritt
+auf das tatsächliche native `toggle`-Ereignis. Versions-, Annahme-, Queue-,
+Identitäts-, Kollisions- und Austrittsprüfungen bleiben erhalten. Die vier
+gezielten Wiederholungsfälle bestanden am integrierten Stand ohne Retry.
+Ein neuer vollständiger Nachweis bleibt vor dem Push zwingend.
+
+The first complete 4.3.1 candidate `8ad560ef` passed 625 tool tests, 3541 backend
+tests with 85.30 percent branch coverage, the production image and offline
+smoke test. All eight browser pools completed; five failures prevented its
+receipt and push, and their evidence was retained. Two language cases exposed
+one real layout defect: at 1280×800 the upper opponent fan overlapped a played
+card. Height budgeting now caps the own hand first and the backs next within
+their existing preferred sizes, retaining a 90-pixel trick minimum and 56-pixel
+opponent-card minimum. Hard checks now compare every played card with every
+opponent card, including zero to five remaining cards at the two known tight
+viewports.
+
+The other three failures concerned test contracts. A prior player's continuing
+afterthrow right is not an ongoing CPU transition: the departure test still
+waits for the human turn and closed refill debts without forbidding that right.
+`_cpu_thinking` is explicitly not treated as an idle guarantee. The tour-queue
+test uses the already mounted real lobby controller because private account
+documents correctly retire after sign-out. Three-player Watten history now
+waits for the actual native `toggle` event before advancing its controlled RAF.
+Version, acceptance, queue, identity, collision and departure assertions remain.
+All four focused repetitions passed on the integrated tree without retries.
+Fresh complete verification is still mandatory before pushing.
+
+
+Der fertig gebaute integrierte Stand `d94e3f4d4e4c` bestand danach sechs gezielte
+WebKit-Fälle: die beiden echten DE/EN-Vierertische, das echte Einschauen,
+90 Anzeige-Fixtures mit gegnerischen Restkartenzahlen, den Scope-Guard sowie
+die Dreier-Rückschau mit nativem Toggle. Die tatsächlichen Bilder wurden
+betrachtet. Claude meldete nach Quellenreview der Höhenberechnung und sämtlicher
+drei Testkorrekturen keine Blocker. Der regulär geöffnete Stichverlauf blendet
+die Tischkarten absichtlich aus (`watten-polish.css`); leere Tischflächen in
+diesen Rückschau-Bildern sind kein belegter Rasterfehler.
+
+The rebuilt integrated bundle `d94e3f4d4e4c` then passed six focused WebKit cases:
+both real DE/EN four-player tables, real inspection, 90 display fixtures with
+remaining opponent-card counts, the scope guard and native-toggle three-player
+history. Actual images were inspected. Claude reported no blockers after
+reviewing the height-budget source and all three test corrections. Opening
+trick history intentionally hides table cards (`watten-polish.css`); empty
+surfaces in those review images are not evidence of a raster defect.
