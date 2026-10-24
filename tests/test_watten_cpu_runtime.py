@@ -17,6 +17,7 @@ from app import watten_cpu_runtime as runner
 from app import watten_runtime as runtime_module
 from app.active_games import load_active_games, serializable_game_state
 from app.database import session_scope
+from app.game_history import persist_completed_game_result
 from app.game_state import games
 from app.game_ws_session import GameSocketSession
 from app.models import ActiveGame, CompletedGame, GameParticipant, User, UserBan
@@ -47,6 +48,42 @@ from tests.test_watten_runtime import (  # noqa: F401
 )
 
 server = runtime_tests.server
+
+
+def test_table_skill_counts_only_distinct_seated_humans_and_still_reads_live_counts(server):
+    newcomer, _ = account("MedianNew")
+    veteran, _ = account("MedianVeteran")
+    spectator, _ = account("MedianWatcher")
+
+    def store(number, users, *, game_type="watten"):
+        persist_completed_game_result(
+            game_id=f"median-{number}", game_name="Median", game_type=game_type, mode="2", hardcore=False,
+            finished_at=utcnow(), snapshot={"game_type": game_type},
+            participants=[{"player_key": f"p{index}", "display_name": f"P{index}", "user_id": user}
+                          for index, user in enumerate(users)])
+
+    for number in range(9):
+        store(number, [veteran.user_id, spectator.user_id])
+    store("watcher", [spectator.user_id])
+    store("other-game", [veteran.user_id], game_type="zilch")
+    store("legacy", [veteran.user_id])
+    with session_scope() as db:
+        db.scalar(select(CompletedGame).where(CompletedGame.game_id == "median-legacy")).imported_from_legacy = True
+    runtime = SimpleNamespace(room=SimpleNamespace(
+        members=(SimpleNamespace(account_id=newcomer.user_id, seat=0),
+                 SimpleNamespace(account_id=newcomer.user_id, seat=2),
+                 SimpleNamespace(account_id=veteran.user_id, seat=1),
+                 SimpleNamespace(account_id=spectator.user_id, seat=None)),
+        cpus=(SimpleNamespace(seat=3),)))
+    with session_scope() as db:
+        assert runner._table_skill(db, runtime).samples == 16
+    store("tenth", [veteran.user_id])
+    with session_scope() as db:
+        # The missing newcomer row contributes the beginner profile once;
+        # the spectator's ten games and CPU seat contribute no profile.
+        result = runner._table_skill(db, runtime)
+        assert result.samples == 20 and result.confidence == pytest.approx(0.77)
+    assert runner._table_skill(object(), SimpleNamespace(room=SimpleNamespace(members=()))).samples == 16
 
 
 def test_public_cpu_authority_uses_all_active_humans_and_honors_bans_and_rollbacks(server, monkeypatch):

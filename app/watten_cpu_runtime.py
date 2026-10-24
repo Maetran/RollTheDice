@@ -29,7 +29,7 @@ from .product_hosts import site_origin
 from .watten_access import _local, watten_founder_account_id, watten_founder_deployment_enabled
 from .watten_cpu import CpuBudget, CpuProposal, CpuWait, decide
 from .watten_cpu_memory import CpuMemory, new_memory, observe
-from .watten_cpu_skill import CpuSkill, skill_for_completed_games
+from .watten_cpu_skill import CpuSkill, skill_for_table
 from .watten_engine import EngineActor, EngineCommand
 from .watten_readiness import watten_public_beta_enabled
 from .watten_views import cpu_view
@@ -98,19 +98,19 @@ class _Authority:
 def _table_skill(db, runtime) -> CpuSkill:
     """Only aggregate finished Watten counts of the table's actual humans.
 
-    Use the least experienced participant in a mixed table. Counts come from
+    Use the median configured difficulty in a mixed table. Counts come from
     existing durable results, so progression survives restarts without any
     new history store, private hand access, or per-opponent profile.
     """
-    accounts = tuple(sorted(member.account_id for member in runtime.room.members if member.seat is not None))
+    accounts = tuple(sorted({member.account_id for member in runtime.room.members if member.seat is not None}))
     if not accounts:
-        return skill_for_completed_games(0)
+        return skill_for_table(())
     counts = dict(db.execute(select(GameParticipant.user_id, func.count(func.distinct(CompletedGame.id)))
         .join(CompletedGame, CompletedGame.id == GameParticipant.game_id)
         .where(GameParticipant.user_id.in_(accounts), CompletedGame.game_type == "watten",
                CompletedGame.imported_from_legacy.is_(False))
         .group_by(GameParticipant.user_id)).all())
-    return skill_for_completed_games(min(counts.get(account, 0) for account in accounts))
+    return skill_for_table(counts.get(account, 0) for account in accounts)
 
 
 def _founder_room(runtime, founder_id: int) -> bool:

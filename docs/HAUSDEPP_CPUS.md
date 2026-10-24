@@ -106,10 +106,14 @@ inspection information to predict the face-down stock.
   and command under “Reproducible checks”). In the preceding exploratory heads-up
   simulation, these did worse: aces only, all but one card, also Unters or lower
   ranks, holding back only while stock remains.
-- **Wechselnde Stärke und sanfter Einstieg:** Die Stärke eines Tisches richtet
-  sich nach dem neuesten Menschen daran, also dem Konto mit den wenigsten
-  abgeschlossenen Hausdepp-Runden (einmal beim Tischstart gezählt). Bei 0 Runden
-  spielen Computer auf Stufe 0,55, bis 50 Runden steigt sie gleichmässig auf 1,0.
+- **Wechselnde Stärke und sanfter Einstieg:** Für jedes menschliche Konto am
+  Tisch wird aus seinen abgeschlossenen Hausdepp-Runden zuerst eine gekappte
+  Stufe berechnet: 0 Runden entsprechen 0,55, bis 50 Runden steigt sie
+  gleichmässig auf 1,0. Der Tisch verwendet den Median dieser Stufen; bei gerader
+  Anzahl werden die beiden mittleren gemittelt. 0 und 1000 Runden ergeben also
+  0,775, nicht 1,0. Konten zählen einmal, CPUs und Zuschauer nicht. Die Zählung
+  bleibt einmalig beim Tischstart; persönliche Einsteigertipps bleiben individuell.
+  Abgeschlossene Runden sind ein Erfahrungswert, keine Messung des Könnens.
   Jeder Computer erhält zusätzlich eine stabile Eigenheit von ±0,08. Daraus folgt
   eine Ausrutscherquote von 5 % (volle Stärke) bis rund 30 % (sanftester Start):
   eine etwas höhere Karte als nötig, eine übersehene Kaufgelegenheit oder ein
@@ -121,10 +125,14 @@ inspection information to predict the face-down stock.
   Denkpause nicht hin- und herspringen. Gegen die vorherige Strategie verlor
   volle Stärke 441 von 2000 gepaarten Partien (fair 500), Stufe 0,8 484 und der
   sanfteste Start 558. /
-  **Varying strength and a gentle start:** a table's strength follows its newest
-  person, the account with the fewest completed Hausdepp rounds (counted once at
-  table start). At 0 rounds computers play at level 0.55, rising evenly to 1.0 at
-  50 rounds. Each computer also has a stable ±0.08 personality. This yields a
+  **Varying strength and a gentle start:** each human account's completed rounds
+  first determine a capped level: 0.55 at zero rounds, rising evenly to 1.0 at
+  50 rounds. The table uses the median of these levels, averaging the middle two
+  for an even number of people. Zero and 1,000 rounds therefore yield 0.775,
+  rather than 1.0. Each account counts once; CPUs and spectators do not count.
+  Counts are still read once at table start; beginner tips remain personal.
+  Completed rounds indicate experience, not measured ability.
+  Each computer also has a stable ±0.08 personality. This yields a
   misjudgement rate from 5 % (full strength) to about 30 % (gentlest start): a
   slightly higher card than needed, a missed bargain or follow-up, a gamble instead
   of a pickup. From level 0.9, a good purchase is missed at only 30 % of that rate

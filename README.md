@@ -360,13 +360,17 @@ connected human players at the time of the event.
 **CPU-Taktik / CPU tactics:** Computer bieten bei subjektiv guten Chancen und
 berücksichtigen den Spielstand. Mit mehr abgeschlossenen Watten-Spielen der
 menschlichen Mitspieler werden ihre Entscheidungen genauer; bei gemischter
-Erfahrung zählt der unerfahrenste aktive Mensch. «Zweiter Stich ist Partnerstich»
+Erfahrung zählt der Median der individuellen, begrenzten Schwierigkeitsprofile.
+Bei gerader Personenzahl werden die beiden mittleren Profile gemittelt. Die
+Spielzahl beschreibt Erfahrung, kein gemessenes Können. «Zweiter Stich ist Partnerstich»
 bleibt im blinden Ladinisch eine abwägbare Hilfe. Im ersten blinden Stich bevorzugt sie neue sichtbare Werte und Farben. Die CPU kennt nur ihre eigene
 erlaubte Sicht. Die [Strategiedokumentation](docs/WATTEN_CPU_STRATEGY.md) nennt
 Stufen, Quellen und Grenzen; eine neue Stärkeprüfung steht noch aus.
 CPUs bid on subjectively strong chances and account for the score. More completed
 Watten games by the human participants sharpen their decisions; mixed tables use
-the least experienced active human. Leaving the second trick to the partner
+the median of the humans' individual bounded difficulty profiles, averaging
+the middle two for an even number. Match counts describe experience, not
+measured ability. Leaving the second trick to the partner
 remains a soft tactic in blind Ladinisch. The blind opening prefers new visible ranks and suits. The CPU only knows its own permitted
 view. The [strategy notes](docs/WATTEN_CPU_STRATEGY.md) document tiers, sources and
 limits; the new strength has not been benchmarked.
@@ -1170,8 +1174,10 @@ Erfolg und Zeitpunkt; Runden, Karten und Fortschritt anderer bleiben privat.
 
 Computer nutzen sichere Abräum- und Schlussketten, sparen weitere 10er und wägen
 Zocken gegen Aufnehmen ab. Ihr Tempo schwankt; nach einer Denkpause prüfen sie
-den aktuellen Zustand erneut. Sie kennen keine fremden Hände oder verdeckte
-Stapelreihenfolge. Der [reproduzierbare CPU-Vergleich](docs/HAUSDEPP_CPUS.md)
+den aktuellen Zustand erneut. Die Stärke folgt dem Median der einzeln begrenzten
+Erfahrungsstufen der Menschen: 0 und 1000 Runden ergeben zusammen 0,775 statt
+1,0. Persönliche Einsteigertipps bleiben individuell. Sie kennen keine fremden
+Hände oder verdeckte Stapelreihenfolge. Der [reproduzierbare CPU-Vergleich](docs/HAUSDEPP_CPUS.md)
 dokumentiert Stärken, Grenzen und Prüfungen. Hausdepp hat eigene Anmelde- und
 Kontoeinstellungsseiten unter `/hausdepp/anmelden` und
 `/hausdepp/konto/einstellungen`: Passkey zuerst, gemeinsame Konten und
@@ -1195,7 +1201,9 @@ derived from the same weighted ledger as the account without revealing unlock de
 
 Computers use safe clearances and finishing chains, retain extra tens and weigh
 gambling against pickup. Timing varies; decisions are checked against current
-state after each pause. They never know opposing hands or stock order. The
+state after each pause. Shared difficulty uses the median of the humans'
+individually capped experience levels: zero and 1,000 rounds yield 0.775, rather
+than 1.0. Beginner tips remain personal. They never know opposing hands or stock order. The
 [reproducible CPU comparison](docs/HAUSDEPP_CPUS.md) records strengths, limits
 and checks. Dedicated sign-in and settings at `/hausdepp/anmelden` and
 `/hausdepp/konto/einstellungen` use passkeys first, shared accounts and security,
