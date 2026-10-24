@@ -23,6 +23,23 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 4.1.7 — 2026-10-24
+
+### ZDWA / ZILCH
+
+**Deutsch:** Nach der Wiederaufnahme auf einem anderen Gerät werden verspätete
+Spielbefehle der vorigen Verbindung verworfen. Bereits angenommene Abschlüsse
+erreichen weiterhin beide Geräte. Spielregeln und Wertung bleiben unverändert.
+Der lokale Browserprüfer lehnt fokussierte Tests ab und erzwingt einen einzigen
+Versuch, damit ausgelassene Tests oder erfolgreiche Wiederholungen keinen
+vollständigen Prüfnachweis erzeugen.
+
+**English:** Resuming on another device rejects delayed game commands from
+the previous connection. Already accepted finishes still reach both devices.
+Rules and scoring are unchanged. The local browser runner rejects focused
+tests and enforces one attempt, so omitted tests or successful retries cannot
+produce a complete verification receipt.
+
 ## 4.1.6 — 2026-10-24
 
 ### HAUSDEPP

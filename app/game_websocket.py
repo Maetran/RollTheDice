@@ -206,6 +206,22 @@ async def serve_game_websocket(
         release_connection(connection_address)
 
 
+async def _reject_replaced_player_socket(session: GameSocketSession) -> bool:
+    if session.game.get("_aborted") or not session.player_id or any(
+        player.get("id") == session.player_id and player.get("ws") is session.websocket
+        for player in session.game.get("_players", [])
+    ):
+        return False
+    await close_with_error(
+        session.websocket,
+        "Das Spiel wurde auf einem anderen Gerät fortgesetzt.",
+        fatal=True,
+        code=1000,
+        error_code="session_replaced",
+    )
+    return True
+
+
 async def _receive_messages(
     session: GameSocketSession,
     *,
@@ -219,6 +235,10 @@ async def _receive_messages(
         if not isinstance(data, dict):
             await session.websocket.send_json({"error": "Ungültige Nachricht"})
             continue
+        # Closing a replaced connection does not discard frames already queued
+        # by its receive loop. They no longer belong to the live player seat.
+        if await _reject_replaced_player_socket(session):
+            return
         action_value = data.get("action")
         action = action_value if isinstance(action_value, str) else None
 
@@ -332,6 +352,9 @@ async def _receive_messages(
             continue
         if allowed_superadmin_actions:
             await release_revoked_superadmin_locks(session.game)
+            # Lock cleanup can yield while another device takes over the seat.
+            if await _reject_replaced_player_socket(session):
+                return
         if allowed_superadmin_actions and action_blocked_by_superadmin(session.game, action):
             await session.websocket.send_json({"error": "Spielaktionen sind während Superadmin-Edit gesperrt"})
             continue

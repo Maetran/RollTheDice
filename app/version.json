@@ -1,10 +1,10 @@
 {
-  "version": "4.1.6",
+  "version": "4.1.7",
   "bump": "patch",
   "date": "2026-10-24",
-  "previous_revision": "4b7905ec6ea0a822e589f34f69cdce91723cde92",
+  "previous_revision": "c0770705b95db83de5147556276cdaca88a13858",
   "summary": {
-    "de": "Hausdepp: Passende Karten sofort nachwerfen, auch nach dem Auffüllen. Das Stapelbild folgt weiter der Landung.",
-    "en": "Hausdepp: Throw matching cards immediately, including fresh refills. Pile cards still appear only on landing."
+    "de": "ZDWA und Zilch: Nach einem Gerätewechsel steuert nur das aktuelle Gerät die Partie.",
+    "en": "ZDWA and Zilch: After switching devices, only the current device controls the game."
   }
 }
