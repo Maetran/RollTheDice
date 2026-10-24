@@ -42,6 +42,8 @@ innerhalb des sichtbaren Bereichs. Fehlende Hausdepp-Besuchsmessung wird im
 Dashboard konsistent als nicht erfasst gekennzeichnet; vorhandene Serverdaten
 bleiben erhalten. Migrationstests schließen ihre SQLite-Verbindungen
 ausdrücklich, ohne Commit-/Rollback-Verhalten oder Warnungsfilter zu ändern.
+Beim Datenbankstart bleiben bereits geladene Anwendungslogger aktiv, damit
+Fehler nach einer Migration weiter im Serverlog ankommen.
 
 **English:** ZDWA keeps every rank on its own line in the English final
 standings too. Zilch visibly identifies the previous lost roll and explains the
@@ -56,6 +58,8 @@ visible open Watten panel. Missing Hausdepp visit measurement is consistently
 shown as unmeasured, retaining existing server facts. Migration tests explicitly
 close SQLite connections without changing transaction behavior or warning
 filters.
+Database startup keeps already imported application loggers enabled, so errors
+continue to reach the server log after migration.
 
 ## 4.2.0 — 2026-10-24
 

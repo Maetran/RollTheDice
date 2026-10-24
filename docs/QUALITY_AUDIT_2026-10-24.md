@@ -410,3 +410,23 @@ physical iPhone test.
   after their existing commit/rollback handling. The identical strict run then
   passed 11/11 with no resource/unraisable warnings. Datetime deprecations remain
   visible; historical migrations and production data were unchanged.
+- **Beim Volltest gefunden / Found by the full gate:** Der erste vorbereitete
+  4.2.1-Stand bestand 3386 Backendfälle; ein neuer Lognachweis scheiterte nur im
+  Gesamtlauf. Ursache war ein produktiver Konfigurationsfehler:
+  `fileConfig` in `alembic/env.py` deaktivierte beim Datenbankstart bereits
+  importierte Anwendungslogger. Ein echter Upgrade-Subprozess auf leerer
+  Tempdatenbank reproduzierte den Fehler. `disable_existing_loggers=False`
+  erhält die Logger; derselbe Subprozess prüft nun zusätzlich einen tatsächlich
+  ausgegebenen Fehlermarker. Zusammen mit den Erfahrungstests bestanden danach
+  21 Fälle. Keine Assertion wurde entfernt. Der fehlgeschlagene Vollablauf
+  liefert keinen Nachweis; der fertige neue Commit braucht einen neuen Volltest.
+  Die bestehende Root-Handler-Konfiguration wurde nicht umgestaltet.
+  / The first prepared 4.2.1 source passed 3386 backend cases but failed a new
+  logging assertion only in the full run. Alembic's default `fileConfig`
+  disabled already imported application loggers at database startup. A real
+  upgrade subprocess on a temporary database reproduced the product defect.
+  Explicitly keeping existing loggers enabled fixes it; the same subprocess
+  also checks an emitted error marker. Twenty-one focused cases then passed,
+  with no assertions removed. The failed full run provides no receipt; the
+  finished new commit requires a fresh full gate. Existing root-handler
+  configuration was not redesigned. See [Python logging configuration](https://docs.python.org/3.13/library/logging.config.html#logging.config.fileConfig).
