@@ -211,7 +211,8 @@ def _creation_response(db, rematch, user_id: int, created: bool) -> dict:
         raise RematchError("hausdepp_rematch_closed")
     invitation = db.scalar(select(HausdeppRematchInvitation).where(
         HausdeppRematchInvitation.rematch_id == rematch.id, HausdeppRematchInvitation.user_id == user_id))
-    return {"game_id": rematch.game_id, "url": f"/hausdepp/spiel/{rematch.game_id}", "created": created,
+    return {"game_id": rematch.game_id, "source_game_id": rematch.source_game_id,
+            "url": f"/hausdepp/spiel/{rematch.game_id}", "created": created,
             "requires_acceptance": bool(invitation and invitation.status != "accepted" and user_id not in _seated_ids(game)),
             "invitation_id": invitation.id if invitation else None}
 
@@ -324,7 +325,8 @@ def _invitation_payload(db, invitation, rematch, game: dict) -> dict | None:
     expires_at = as_utc(rematch.expires_at)
     if invitation.status == "accepted":
         expires_at = as_utc(datetime.fromisoformat(game["_hausdepp_waiting_last_join_at"])) + GAME_TIMEOUT
-    return {"id": invitation.id, "game_id": rematch.game_id, "url": f"/hausdepp/spiel/{rematch.game_id}",
+    return {"id": invitation.id, "game_id": rematch.game_id, "source_game_id": rematch.source_game_id,
+            "url": f"/hausdepp/spiel/{rematch.game_id}",
             "status": invitation.status,
             "sender": {"id": sender.id, "username": sender.username}, "name": game["_name"],
             "players": int(game["_mode"]), "cpu_count": game["_hausdepp_cpu_count"],
@@ -378,7 +380,8 @@ def respond_to_invitation(invitation_id: str, user_id: int, *, accept: bool) -> 
             invitation.responded_at = utcnow()
             return {"ok": True}
         if invitation.status == "accepted" and user_id in _seated_ids(game):
-            return {"game_id": rematch.game_id, "url": f"/hausdepp/spiel/{rematch.game_id}"}
+            return {"game_id": rematch.game_id, "source_game_id": rematch.source_game_id,
+                    "url": f"/hausdepp/spiel/{rematch.game_id}"}
         if not _waiting(game) or (invitation.status != "accepted" and utcnow() >= as_utc(rematch.expires_at)):
             raise RematchError("hausdepp_invitation_expired")
         reserved = _reservations(db, rematch, game) - {user_id}
@@ -388,7 +391,8 @@ def respond_to_invitation(invitation_id: str, user_id: int, *, accept: bool) -> 
             raise RematchError("hausdepp_rematch_full")
         invitation.status = "accepted"
         invitation.responded_at = utcnow()
-        return {"game_id": rematch.game_id, "url": f"/hausdepp/spiel/{rematch.game_id}"}
+        return {"game_id": rematch.game_id, "source_game_id": rematch.source_game_id,
+                "url": f"/hausdepp/spiel/{rematch.game_id}"}
 
 
 async def deliver_rematch_invitations(source_id: str) -> None:

@@ -113,6 +113,7 @@ class HausdeppRematchTests(unittest.TestCase):
     def test_same_settings_private_password_and_cpu_count_without_implicit_human_seats_or_rewards(self):
         response, game = self.create(tournament=True)
         self.assertTrue(response["created"])
+        self.assertEqual(response["source_game_id"], "rematch-source")
         self.assertFalse(response["requires_acceptance"])
         self.assertIsInstance(response["invitation_id"], str)
         self.assertEqual((game["_name"], game["_mode"], game["_hausdepp_cpu_count"],
@@ -125,6 +126,7 @@ class HausdeppRematchTests(unittest.TestCase):
         self.assertIsNone(game["_hausdepp"])
         self.assertIn("_hausdepp_waiting_last_join_at", game)
         invitation = self.invite()
+        self.assertEqual(invitation["source_game_id"], "rematch-source")
         self.assertEqual(invitation["sender"], {"id": self.accounts[0].id, "username": "RematchHost"})
         self.assertEqual((invitation["players"], invitation["cpu_count"], invitation["tournament"], invitation["locked"]),
                          (3, 1, True, True))
@@ -157,6 +159,7 @@ class HausdeppRematchTests(unittest.TestCase):
             responses = list(executor.map(lambda _: create_rematch("rematch-source", self.accounts[0].id,
                                                                   before_create=callback), range(4)))
         self.assertEqual(len({item["game_id"] for item in responses}), 1)
+        self.assertEqual({item["source_game_id"] for item in responses}, {"rematch-source"})
         self.assertEqual(sum(item["created"] for item in responses), 1)
         callback.assert_called_once()
         game_id = responses[0]["game_id"]
@@ -168,15 +171,18 @@ class HausdeppRematchTests(unittest.TestCase):
         # Neither duplicate creation nor a recovered invitation relies on a source socket.
         games.pop("rematch-source")
         recovered = create_rematch("rematch-source", self.accounts[0].id)
+        self.assertEqual(recovered["source_game_id"], "rematch-source")
         self.assertEqual((recovered["game_id"], recovered["created"]), (game_id, False))
         self.assertEqual(games[game_id]["_players"], [])
         self.assertEqual(self.invite()["game_id"], game_id)
+        self.assertEqual(self.invite()["source_game_id"], "rematch-source")
 
     def test_original_participant_recreate_click_returns_exact_own_invitation_for_explicit_acceptance(self):
         response, game = self.create()
         invitation = self.invite()
         repeated = create_rematch("rematch-source", self.accounts[1].id)
-        self.assertEqual(repeated, {"game_id": response["game_id"], "url": response["url"], "created": False,
+        self.assertEqual(repeated, {"game_id": response["game_id"], "source_game_id": "rematch-source",
+                                    "url": response["url"], "created": False,
                                     "requires_acceptance": True, "invitation_id": invitation["id"]})
         self.assertEqual(game["_players"], [])
         accepted = respond_to_invitation(repeated["invitation_id"], self.accounts[1].id, accept=True)
@@ -184,16 +190,22 @@ class HausdeppRematchTests(unittest.TestCase):
         self.assertFalse(create_rematch("rematch-source", self.accounts[1].id)["requires_acceptance"])
 
     def test_committed_accept_with_lost_response_remains_resumable_until_actual_join(self):
-        _, game = self.create()
+        response, game = self.create()
         invitation = self.invite()
-        self.accept()
+        expected = {"game_id": response["game_id"], "source_game_id": "rematch-source", "url": response["url"]}
+        self.assertEqual(self.accept(), expected)
         self.assertEqual(game["_players"], [])
         self.assertEqual(self.invite()["id"], invitation["id"])
         self.assertEqual(self.invite()["status"], "accepted")
         self.assertEqual(pending_invitations(self.accounts[0].id), {"invitations": []})
-        respond_to_invitation(invitation["id"], self.accounts[1].id, accept=True)
+        self.assertEqual(respond_to_invitation(invitation["id"], self.accounts[1].id, accept=True), expected)
         join_hausdepp_player(game, self.player(1))
         self.assertEqual(pending_invitations(self.accounts[1].id), {"invitations": []})
+        # Seated retries use the idempotent success branch, also after starting.
+        self.assertEqual(respond_to_invitation(invitation["id"], self.accounts[1].id, accept=True), expected)
+        join_hausdepp_player(game, self.player(0))
+        start_hausdepp_game(game)
+        self.assertEqual(respond_to_invitation(invitation["id"], self.accounts[1].id, accept=True), expected)
 
     def test_source_and_invitation_are_account_bound_even_after_renaming(self):
         self.source()
@@ -406,7 +418,9 @@ class HausdeppRematchTests(unittest.TestCase):
             self.assertEqual(error.exception.status_code, status)
         with patch("app.main.enforce_game_creation_rate_limit"):
             response = asyncio.run(main.api_hausdepp_rematch("rematch-source", self.request()))
+        self.assertEqual(response["source_game_id"], "rematch-source")
         invitation = main.api_hausdepp_invitations(self.request(1))["invitations"][0]
+        self.assertEqual(invitation["source_game_id"], "rematch-source")
         with TestClient(main.app) as client:
             client.cookies.set("rollthedice_session", self.identities[2][1])
             foreign = client.post(f"/api/hausdepp/invitations/{invitation['id']}/accept",
@@ -419,7 +433,8 @@ class HausdeppRematchTests(unittest.TestCase):
             accepted = client.post(f"/api/hausdepp/invitations/{invitation['id']}/accept",
                                    headers={"X-CSRF-Token": self.identities[1][0].csrf_token})
             self.assertEqual(accepted.status_code, 200)
-            self.assertEqual(accepted.json(), {"game_id": response["game_id"], "url": response["url"]})
+            self.assertEqual(accepted.json(), {"game_id": response["game_id"], "source_game_id": "rematch-source",
+                                               "url": response["url"]})
             self.assertIn("no-store", accepted.headers["cache-control"])
 
     def test_socket_hint_is_only_own_fresh_original_seat_and_transport_failure_is_best_effort(self):
@@ -435,6 +450,7 @@ class HausdeppRematchTests(unittest.TestCase):
         self.assertEqual(host.messages, [])
         self.assertEqual(spectator.messages, [])
         self.assertEqual(friend.messages, [{"hausdepp_invitation": self.invite()}])
+        self.assertEqual(friend.messages[0]["hausdepp_invitation"]["source_game_id"], source["_id"])
         friend.messages.clear()
         with patch("app.auth.resolve_session", return_value=self.identities[2][0]):
             asyncio.run(deliver_rematch_invitations(source["_id"]))
