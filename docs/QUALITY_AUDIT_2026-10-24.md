@@ -19,7 +19,7 @@ before every push. This audit does not authorize new features or rule decisions.
 | Zilch | Schlussrunde ab 10.000 Punkten, Gleichstand, menschliche/CPU-Akteure, Gerätewechsel. / Final round from 10,000 points, ties, human/CPU actors and device takeover. |
 | Hausdepp | FIFO-Nachziehen, Nachwerfen und verspätete Ziehpflicht; Socketprüfung unter Spiel-Lock. / FIFO draws, follow-up throws, deferred draw obligations and socket checks under the game lock. |
 | Watten | Gebots-/Antwortrechte gegen Owner-Ledger; öffentliche Sprachstrecke und Previewgrenzen. / Bidding/responding rights against the owner ledger; public language navigation and preview boundaries. |
-| Tests und Lieferweg / Tests and delivery | Pytest-Collection, sechs `loadfile`-Worker, Branch-Coverage; vier Mainshards und drei Kontopools; Ownerstatus bindet Commit, Tree, Basis, Umgebung und Alter. / Pytest collection, six loadfile workers, branch coverage; four main shards and three account pools; owner status binds commit, tree, base, environment and age. |
+| Tests und Lieferweg / Tests and delivery | Pytest-Collection, sechs `loadfile`-Worker, Branch-Coverage; vier Mainshards und drei Kontopools, in Block 2 um einen öffentlichen Watten-Pool ergänzt; Ownerstatus bindet Commit, Tree, Basis, Umgebung und Alter. / Pytest collection, six loadfile workers, branch coverage; four main shards and three account pools, with a public Watten pool added in block 2; owner status binds commit, tree, base, environment and age. |
 
 Dies ist eine risikobasierte Quellenprüfung, kein Beweis für die Korrektheit
 jeder einzelnen Assertion. Die gesamte Testsuite bleibt ein zusätzlicher,
@@ -62,17 +62,48 @@ more precise error assertions for the socket fix. Both are implemented. Local
 review reports reside in this worktree's `test-results/quality-audit/`; complete
 verification reports live under `test-results/local-checks/` and shared Git metadata.
 
+## Block 2: öffentlicher Watten-Browserpool / Public Watten browser pool
+
+**Implementiert und gezielt geprüft; Vollnachweis ausstehend:** Die beiden bisher im Previewpool
+übersprungenen Sprachfälle erhalten mit `playwright.watten-public.config.js`
+einen eigenen lokalen Pool: öffentliche Beta an, Preview-Freigaben aus,
+eigener Server, Port und Datenbestand. Der unveränderte Flow prüft
+Lobby → Regeln → Anmeldung → Zurück und den expliziten Sprachwechsel bei
+widersprechender gespeicherter Sprache. Fehlende öffentliche SSR-Marker werden
+zu Fehlern. Die beiden Preview-Konfigurationen sammeln diese Datei nicht mehr.
+
+**Implemented and checked with focused tests; full verification pending:** The two previously skipped language cases gain their
+own local pool with public beta enabled, preview access disabled and an isolated
+server, port and data. The existing flow checks lobby → rules → sign-in → back
+and explicit language switching against a conflicting saved language. Missing
+public SSR markers fail; both preview configurations exclude this file.
+
+Der Vollnachweis verlangt nun acht Browserteilgruppen, während die sieben
+vollständigen Prüfgruppen unverändert bleiben. Regressionen sind vorbereitet
+für Collection, isolierte Konfiguration, Reihenfolge, Portgrenzen sowie die
+Ablehnung fehlender oder fehlgeschlagener öffentlicher Pools beim Push,
+Status-Publishing und bei der Übernahme durch einen unveränderten Merge.
+Alte Sieben-Pool-Belege werden nicht erweitert oder als neuer Nachweis ausgegeben.
+Die vier betroffenen Node-Testdateien bestanden mit **90/90 Tests**, ohne Skips.
+Der öffentliche Browserpool bestand mit **2/2 DE/EN-Fällen**; der Bericht unter
+`test-results/local/run-5gT5gq/summary.json` weist korrekt `fullRun=false` aus.
+Die gezielten Prüfungen liefen erst nach Ende des ersten Vollpools und nach
+Freigabe durch die Testkoordination. Unabhängiges Review und vollständiger
+Nachweis für diesen Block stehen noch aus.
+
+Complete evidence now requires eight browser pools while the seven complete
+check groups stay unchanged. Regressions are prepared for collection, isolated
+configuration, ordering, port bounds and rejecting missing or failed public
+pools during push validation, status publication and unchanged-merge inheritance.
+Old seven-pool receipts are not extended or presented as new evidence. The four
+affected Node test files passed **90/90 tests** without skips. The public browser
+pool passed **2/2 DE/EN cases**; `test-results/local/run-5gT5gq/summary.json`
+correctly records `fullRun=false`. These focused checks ran after the first full
+pool ended and the test coordinator authorized them. Independent review and
+complete verification for this block remain pending.
+
 ## Offene Punkte / Open items
 
-- **Öffentliche Watten-Sprache / Public Watten language:** Die beiden
-  `watten-public-language.spec.js`-Fälle werden gesammelt, im Previewpool aber
-  bedingt übersprungen. Backend-SSR und Node-Sprachtests bestehen bereits;
-  Lobby → Regeln → Anmeldung → Zurück bei widersprechender gespeicherter Sprache
-  braucht einen echten öffentlichen Browserpool. Separater nächster Testblock,
-  ohne die bestehenden Preview-Zugangsprüfungen global umzuschalten. / Both
-  language cases are collected but conditionally skipped in preview mode.
-  Backend SSR and Node language tests exist; the real navigation flow needs a
-  public browser pool in a separate block, preserving preview access tests.
 - **Watten-Regelvertrag / Watten rule contract:** Das Owner-Ledger bindet das
   eigene Eröffnungsgebot an den eigenen Kartenzug; Engine und mehrere Tests
   erlauben dem wissenden Entscheider im blinden Vierer ein Gebot im Partnerzug.

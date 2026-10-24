@@ -4,7 +4,7 @@ import { createWriteStream, existsSync, mkdirSync, readFileSync, writeFileSync, 
 import { dirname, join, resolve } from 'node:path';
 
 export const REQUIRED_CHECKS = ['quality', 'tools', 'backend', 'image-build', 'production-image', 'browser', 'diff'];
-export const BROWSER_SUITES = ['main-1', 'main-2', 'main-3', 'main-4', 'username', 'passkeys', 'hausdepp-passkeys'];
+export const BROWSER_SUITES = ['main-1', 'main-2', 'main-3', 'main-4', 'watten-public', 'username', 'passkeys', 'hausdepp-passkeys'];
 export const RECEIPT_LIFETIME_MS = 24 * 60 * 60 * 1000;
 
 export function git(args, cwd = process.cwd()) {
@@ -51,7 +51,7 @@ export function assertFullBrowserResult(summary) {
     || summary.results.length !== BROWSER_SUITES.length
     || new Set(summary.results.map(item => item.name)).size !== BROWSER_SUITES.length
     || BROWSER_SUITES.some(name => !summary.results.some(item => item.name === name && item.exitCode === 0))) {
-    throw new Error('Browser verification requires all four main shards and all three account suites, unfiltered and successful.');
+    throw new Error('Browser verification requires all four main shards, public Watten and all three account suites, unfiltered and successful.');
   }
 }
 

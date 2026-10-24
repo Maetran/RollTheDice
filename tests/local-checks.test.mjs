@@ -34,6 +34,8 @@ function repository(t) {
 }
 
 test('the push receipt binds every completed group, exact commit, base and environment', async t => {
+  assert.equal(REQUIRED_CHECKS.length, 7, 'Full check groups stay unchanged when adding a browser pool');
+  assert.equal(BROWSER_SUITES.length, 8);
   assert.equal(receiptError(receipt(), context, 'installed-dependencies', now), null);
   const cases = [
     ['no receipt', null],
@@ -49,7 +51,14 @@ test('the push receipt binds every completed group, exact commit, base and envir
     ['one failed stage', { ...receipt(), checks: receipt().checks.map((check, i) => ({ ...check, exitCode: i ? 0 : 1 })) }],
     ['duplicate success hiding failure', { ...receipt(), checks: [...receipt().checks, { name: 'backend', exitCode: 1 }] }],
     ['only a focused browser run', { ...receipt(), browser: { ...receipt().browser, fullRun: false } }],
-    ['missing account suite', { ...receipt(), browser: { fullRun: true, results: receipt().browser.results.slice(0, 6) } }],
+    ['missing account suite', { ...receipt(), browser: { fullRun: true,
+      results: receipt().browser.results.filter(item => item.name !== 'passkeys') } }],
+    ['legacy seven-pool proof without public Watten', { ...receipt(), browser: { fullRun: true,
+      results: receipt().browser.results.filter(item => item.name !== 'watten-public') } }],
+    ['failed public Watten pool', { ...receipt(), browser: { fullRun: true,
+      results: receipt().browser.results.map(item => ({ ...item, exitCode: item.name === 'watten-public' ? 1 : 0 })) } }],
+    ['duplicate pool replacing public Watten', { ...receipt(), browser: { fullRun: true,
+      results: receipt().browser.results.map(item => item.name === 'watten-public' ? { name: 'username', exitCode: 0 } : item) } }],
     ['one browser shard failed', { ...receipt(), browser: { fullRun: true,
       results: receipt().browser.results.map((item, i) => ({ ...item, exitCode: i === 3 ? 1 : 0 })) } }],
     ['duplicate browser shard', { ...receipt(), browser: { fullRun: true,

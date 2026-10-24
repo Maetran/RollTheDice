@@ -144,7 +144,7 @@ test('matching tree bytes cannot substitute for first-parent ancestry in the sou
 });
 
 test('missing, malformed, stale or incomplete source proofs all require a new full verification', async t => {
-  for (const kind of ['missing', 'corrupt', 'wrong-base', 'wrong-head', 'old', 'environment', 'failed-group', 'partial-browser', 'malformed-group']) {
+  for (const kind of ['missing', 'corrupt', 'wrong-base', 'wrong-head', 'old', 'environment', 'failed-group', 'partial-browser', 'legacy-browser-pools', 'failed-public-browser', 'malformed-group']) {
     await t.test(kind, child => {
       const f = integration(child), source = structuredClone(f.sourceReceipt);
       if (kind === 'missing') rmSync(receiptPath(f.sourceContext));
@@ -156,6 +156,8 @@ test('missing, malformed, stale or incomplete source proofs all require a new fu
         if (kind === 'environment') source.environment = 'different installed environment';
         if (kind === 'failed-group') source.checks[0].exitCode = 1;
         if (kind === 'partial-browser') source.browser.fullRun = false;
+        if (kind === 'legacy-browser-pools') source.browser.results = source.browser.results.filter(item => item.name !== 'watten-public');
+        if (kind === 'failed-public-browser') source.browser.results.find(item => item.name === 'watten-public').exitCode = 1;
         if (kind === 'malformed-group') source.checks[0] = null;
         saveReceipt(f.sourceContext, source);
       }

@@ -2,8 +2,8 @@ const { test, expect } = require('@playwright/test');
 
 test.use({ serviceWorkers: 'block' });
 
-// Run against the explicit public-beta rollout. Preview-only pools deliberately
-// have no public SSR documents; the language engine and SSR also have unit tests.
+// The dedicated public pool must serve real localized SSR documents. Preview
+// pools exclude this file instead of silently skipping its navigation contract.
 for (const language of ['de', 'en']) {
   test(`${language}: a guest keeps the public language through rules, login and an explicit language link`, async ({ page }) => {
     const other = language === 'en' ? 'de' : 'en';
@@ -15,7 +15,8 @@ for (const language of ['de', 'en']) {
     }, other);
     const query = language === 'en' ? '?lang=en' : '';
     await page.goto(`/watten${query}`);
-    test.skip(await page.locator('html').getAttribute('data-watten-seo-language') === null, 'Requires the explicit public-beta SSR rollout');
+    await expect(page.locator('html')).toHaveAttribute('data-watten-public-beta', 'true');
+    await expect(page.locator('html')).toHaveAttribute('data-watten-seo-language', language);
     await expect(page.locator('html')).toHaveAttribute('lang', language);
     await expect.poll(() => page.evaluate(() => localStorage.getItem('zdwa_language'))).toBe(language);
     const guide = page.locator('[data-watten-lobby-guide]');

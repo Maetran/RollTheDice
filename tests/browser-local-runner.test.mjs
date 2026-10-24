@@ -11,7 +11,7 @@ import { CONFIGS, createSuitePlan, parseArguments, reservePort, runLocalBrowserT
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const require = createRequire(import.meta.url);
 const delay = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
-const names = ['main-1', 'main-2', 'main-3', 'main-4', 'username', 'passkeys', 'hausdepp-passkeys'];
+const names = ['main-1', 'main-2', 'main-3', 'main-4', 'watten-public', 'username', 'passkeys', 'hausdepp-passkeys'];
 
 async function fixture(t) {
   const directory = await mkdtemp(path.join(os.tmpdir(), 'browser-runner-node-test-'));
@@ -48,9 +48,9 @@ function cleanEnvironment(extra = {}) {
   return environment;
 }
 
-test('the default plan covers four one-worker shards and every isolated account suite exactly once', () => {
+test('the default plan covers four one-worker shards, public Watten and every isolated account suite exactly once', () => {
   const plan = createSuitePlan({ root: '/repo', temporaryDirectory: '/tmp/owned', outputDirectory: '/reports/run',
-    ports: [18100, 18101, 18102, 18103, 18104, 18105, 18106],
+    ports: [18100, 18101, 18102, 18103, 18104, 18105, 18106, 18107],
     environment: { PLAYWRIGHT_PYTHON: '/python with spaces/bin/python', PLAYWRIGHT_OUTPUT_DIR: '/inherited' } });
   assert.deepEqual(plan.map(item => item.name), names);
   for (const [index, suite] of plan.entries()) {
@@ -59,12 +59,13 @@ test('the default plan covers four one-worker shards and every isolated account 
     assert.equal(suite.args.filter(arg => arg === '--retries=0').length, 1);
     assert.equal(suite.env.PLAYWRIGHT_PYTHON, '/python with spaces/bin/python');
     assert.equal(suite.env.ROLLTHEDICE_TEST_PORT, String(18100 + index));
+    assert.equal(suite.env.ROLLTHEDICE_WATTEN_PUBLIC_TEST_PORT, String(18100 + index));
     assert.equal(suite.env.PLAYWRIGHT_OUTPUT_DIR, suite.outputDir);
     assert.equal(suite.env.PLAYWRIGHT_BASE_URL, undefined);
     if (index < 4) assert.ok(suite.args.includes('--shard=' + (index + 1) + '/4'));
     else assert.ok(!suite.args.some(arg => arg.startsWith('--shard=')));
   }
-  for (const field of ['testDirectory', 'outputDir', 'htmlDir', 'logPath']) assert.equal(new Set(plan.map(item => item[field])).size, 7);
+  for (const field of ['testDirectory', 'outputDir', 'htmlDir', 'logPath']) assert.equal(new Set(plan.map(item => item[field])).size, 8);
 });
 
 test('the real Playwright CLI refuses focused tests in unfiltered and filtered runner plans before executing them', async t => {
@@ -123,6 +124,11 @@ test('config filtering cannot override worker, shard, server or report isolation
   assert.throws(() => parseArguments(['--suite', 'unknown']), /Unknown/);
   assert.throws(() => parseArguments(['--suite', 'main', '--config', 'playwright.config.js']), /Duplicate/);
   assert.throws(() => parseArguments(['--port-base', '0']), /port-base/);
+  assert.equal(parseArguments(['--port-base', '65528']).portBase, 65528);
+  assert.throws(() => parseArguments(['--port-base', '65529']), /port-base/);
+  const plan = createSuitePlan({ root: '/repo', temporaryDirectory: '/tmp/owned', outputDirectory: '/reports/run',
+    ports: Array.from({ length: 8 }, (_, index) => 65528 + index), environment: {} });
+  assert.equal(plan.at(-1).port, 65535);
 });
 
 test('full orchestration retains failures and reports while extras run only after all four shards', async t => {
@@ -133,12 +139,12 @@ test('full orchestration retains failures and reports while extras run only afte
   assert.equal(summary.fullRun, true);
   assert.equal(summary.exitCode, 1);
   assert.deepEqual(summary.results.map(item => item.name), names);
-  assert.deepEqual(summary.results.map(item => item.exitCode), [0, 7, 0, 0, 0, 0, 0]);
+  assert.deepEqual(summary.results.map(item => item.exitCode), [0, 7, 0, 0, 0, 0, 0, 0]);
   const events = (await readFile(f.events, 'utf8')).trim().split('\n').map(line => JSON.parse(line));
   const starts = events.filter(event => event.type === 'start');
-  assert.equal(starts.length, 7);
-  assert.equal(new Set(starts.map(item => item.port)).size, 7);
-  assert.equal(new Set(starts.map(item => item.directory)).size, 7);
+  assert.equal(starts.length, 8);
+  assert.equal(new Set(starts.map(item => item.port)).size, 8);
+  assert.equal(new Set(starts.map(item => item.directory)).size, 8);
   const mainEnds = events.filter(event => event.type === 'end' && event.name.startsWith('main-'));
   assert.ok(Math.max(...starts.slice(0, 4).map(item => item.time)) < Math.min(...mainEnds.map(item => item.time)), 'Four main shards really overlap');
   let previousEnd = Math.max(...mainEnds.map(item => item.time));
@@ -178,13 +184,14 @@ test('filtered success is explicitly partial, and occupied output/ports never re
   }), /PLAYWRIGHT_BASE_URL/);
 });
 
-test('all four configs preserve Python/output overrides and use distinct test databases without server reuse', async t => {
+test('all five configs preserve Python/output overrides and use distinct test databases without server reuse', async t => {
   const f = await fixture(t);
   for (const [index, config] of Object.values(CONFIGS).entries()) {
     const directory = path.join(f.directory, `config-${index}`);
     const environment = cleanEnvironment({ PLAYWRIGHT_TEST_DIR: directory, PLAYWRIGHT_PYTHON: "/chosen python's/bin/python",
       PLAYWRIGHT_OUTPUT_DIR: path.join(directory, 'artifacts'), PLAYWRIGHT_HTML_OUTPUT_DIR: path.join(directory, 'html'),
-      ROLLTHEDICE_TEST_PORT: '18200', ROLLTHEDICE_PASSKEY_TEST_PORT: '18201', ROLLTHEDICE_HAUSDEPP_PASSKEY_TEST_PORT: '18202' });
+      ROLLTHEDICE_TEST_PORT: '18200', ROLLTHEDICE_PASSKEY_TEST_PORT: '18201', ROLLTHEDICE_HAUSDEPP_PASSKEY_TEST_PORT: '18202',
+      ROLLTHEDICE_WATTEN_PUBLIC_TEST_PORT: '18203' });
     // cleanEnvironment removes inherited HTML settings; this test supplies one explicitly.
     environment.PLAYWRIGHT_HTML_OUTPUT_DIR = path.join(directory, 'html');
     const loaded = JSON.parse(execFileSync(process.execPath, ['-e', `console.log(JSON.stringify(require(${JSON.stringify(path.join(root, config))})))`], { cwd: root, env: environment, encoding: 'utf8' }));
@@ -197,6 +204,35 @@ test('all four configs preserve Python/output overrides and use distinct test da
     assert.equal(loaded.outputDir, path.join(directory, 'artifacts'));
     assert.deepEqual(loaded.reporter.at(-1), ['html', { open: 'never', outputFolder: path.join(directory, 'html') }]);
     if (config.includes('username')) assert.equal(loaded.webServer.env.ROLLTHEDICE_ZILCH_ACCESS_MODE, 'public');
+    if (config === CONFIGS['watten-public']) {
+      assert.equal(loaded.testMatch, '**/watten-public-language.spec.js');
+      assert.equal(loaded.use.baseURL, 'http://127.0.0.1:18203');
+      assert.equal(loaded.webServer.env.ROLLTHEDICE_SITE_ORIGIN, loaded.use.baseURL);
+      assert.equal(loaded.webServer.env.ROLLTHEDICE_WATTEN_PUBLIC_BETA, '1');
+      for (const flag of ['ACCOUNT', 'GAME', 'FOUNDER']) {
+        assert.equal(loaded.webServer.env[`ROLLTHEDICE_WATTEN_${flag}_PREVIEW`], '0');
+      }
+      assert.equal(loaded.use.serviceWorkers, 'block');
+      assert.equal(loaded.retries, 0);
+    }
+  }
+});
+
+test('public language cases collect only in the public config and never in either preview config', async t => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), 'browser-public-collection-test-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  for (const config of [CONFIGS.main, CONFIGS['watten-public'], 'playwright.watten.config.js']) {
+    const environment = cleanEnvironment({ PLAYWRIGHT_TEST_DIR: path.join(directory, config),
+      PLAYWRIGHT_OUTPUT_DIR: path.join(directory, config, 'artifacts'), ROLLTHEDICE_WATTEN_PUBLIC_TEST_PORT: '18203' });
+    environment.PLAYWRIGHT_HTML_OUTPUT_DIR = path.join(directory, config, 'html');
+    const result = spawnSync(process.execPath, [require.resolve('@playwright/test/cli'), 'test',
+      `--config=${path.join(root, config)}`, '--list', 'watten-public-language.spec.js'], {
+      cwd: root, env: environment, encoding: 'utf8', timeout: 15000,
+    });
+    const output = result.stdout + result.stderr;
+    const publicPool = config === CONFIGS['watten-public'];
+    assert.equal(result.status, publicPool ? 0 : 1, output);
+    assert.match(output, publicPool ? /Total: 2 tests in 1 file/ : /No tests found/);
   }
 });
 

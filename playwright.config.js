@@ -8,7 +8,7 @@ const previewAccounts = "hausdepp_chat_suite,adminhelp_zilch,previewfriend,setti
 
 module.exports = defineConfig({
   testDir: "tests/browser",
-  testIgnore: "**/username-change.spec.js",
+  testIgnore: ["**/username-change.spec.js", "**/watten-public-language.spec.js"],
   timeout: 30000,
   fullyParallel: false,
   workers: 1,
@@ -30,6 +30,7 @@ module.exports = defineConfig({
       ROLLTHEDICE_DATA_DIR: isolated.directory,
       ROLLTHEDICE_SITE_ORIGIN: `http://127.0.0.1:${port}`,
       ROLLTHEDICE_EMAIL_ENABLED: "0", ROLLTHEDICE_PASSKEYS_ENABLED: "0",
+      ROLLTHEDICE_WATTEN_PUBLIC_BETA: "0",
       ROLLTHEDICE_WATTEN_ACCOUNT_PREVIEW: "1", ROLLTHEDICE_WATTEN_GAME_PREVIEW: "1",
       ROLLTHEDICE_DATABASE_URL: isolated.databaseURL,
       ROLLTHEDICE_ADMIN_USERNAME: "Admin", ROLLTHEDICE_FOUNDER_USER_ID: "1",
