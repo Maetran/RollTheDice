@@ -457,6 +457,29 @@ physical iPhone test.
 
 ## Fortsetzung 4.3: CPU, mit getrennter Layoutprüfung / CPU with separate layout review
 
+Der erste vollständige 4.3.0-Lauf auf `d7914a2c` bestand 607 Tooltests,
+3525 Backendfälle, Image und Smoke-Test. Sieben Browserpools bestanden;
+ein Hausdepp-Ausstiegstest bestätigte noch während des echten CPU-Abhebens.
+Der Server lehnte den veralteten Stand korrekt ab. Der Test wartet nun vor
+seiner letzten Bestätigung auf das tatsächliche menschliche Entscheidungsfenster
+ohne offene Nachwurf-/Nachziehpflicht und auf den aktivierten Button. Er prüft
+die genaue gesendete Version; alle bisherigen Ausstiegs-, Audio- und
+Erfolgsassertions bleiben erhalten. Die beiden echten DE/EN-Fälle und alle
+43 bestehenden UI-Vertragstests bestanden. Claude prüfte die Synchronisierung
+unabhängig. Der fehlgeschlagene Vollversuch liefert keinen Nachweis und wird
+durch einen frischen vollständigen Lauf auf dem neuen Commit ersetzt.
+
+The first complete 4.3.0 attempt on `d7914a2c` passed 607 tool tests,
+3525 backend cases, the image and smoke test. Seven browser pools passed;
+one Hausdepp departure test confirmed while a real CPU was still lifting
+the stock. The server correctly rejected the stale state. Before its final
+confirmation the test now waits for the real human decision window without
+an outstanding follow-up throw or refill and for the enabled button. It asserts
+the exact sent version and retains all departure, audio and achievement checks.
+Both real DE/EN cases and all 43 existing UI contract tests passed. Claude
+independently reviewed the synchronization. This failed full attempt provides
+no receipt and requires a fresh complete run on the new commit.
+
 Der fertige 4.2.1-Stand `b8b8760a` bestand anschließend den vollständigen
 lokalen Nachweis: 606 Node-, 3388 Backend- und 1498 Browserfälle, neun
 optionale Capture-Serien, 85,71 Prozent Branch-Coverage, alle acht Browserpools
