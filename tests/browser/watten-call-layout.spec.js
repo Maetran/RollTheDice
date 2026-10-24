@@ -4,6 +4,15 @@ const { player, create, action, answerPartnerFeedback, playOne } = require('./he
 
 const PORTRAITS = [{ width: 320, height: 568 }, { width: 375, height: 667 }, { width: 390, height: 844 }];
 
+async function pauseClock(page) {
+  // Freeze wall time while pauseAt crosses the browser transport. Restore
+  // advancing virtual dates once paused, so later runFor still moves time.
+  const time = await page.evaluate(() => Date.now());
+  await page.clock.setFixedTime(time);
+  await page.clock.pauseAt(time);
+  await page.clock.setSystemTime(time);
+}
+
 async function settleCalls(page) {
   await page.clock.runFor(100);
   // The fake clock controls the 5200ms product deadline, not CSS animation
@@ -24,7 +33,7 @@ async function resize(page, viewport) {
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   await expect.poll(() => page.locator('[data-wt-felt]').evaluate((node, height) =>
     Math.abs(node.getBoundingClientRect().bottom - height) < 1, viewport.height)).toBe(true);
-  await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 10);
+  await pauseClock(page);
   await settleCalls(page);
 }
 
@@ -280,7 +289,7 @@ for (const language of ['de', 'en']) for (const { count, reference = false } of 
       await create(players, { determination: 'normal', target: 15, reference });
       for (const { page } of players) {
         await page.evaluate(() => document.fonts.ready);
-        await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 10);
+        await pauseClock(page);
       }
       if (reference) for (const { page } of players) {
         await resize(page, { width: 600, height: 600 });
@@ -465,7 +474,7 @@ test('de: three-seat solo announcements retain both values at the same peer seat
         expect(Math.abs(origin.y - (origin.deck.top + origin.deck.height / 2))).toBeLessThanOrEqual(1);
       }
       await expect(page.locator('[data-wt-motion="deal"]')).toHaveCount(0);
-      await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 10);
+      await pauseClock(page);
     }
     for (const { page } of players) {
       await expectVisibleBadges(page, measurements);
