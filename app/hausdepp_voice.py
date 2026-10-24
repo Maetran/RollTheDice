@@ -25,6 +25,7 @@ from .auth import resolve_session
 from .game_types import DEFAULT_GAME_TYPE, HAUSDEPP_GAME_TYPE, WATTEN_GAME_TYPE, game_type_from_state
 from .moderation import user_play_banned
 from .security import utcnow
+from .voice_activity import ActivityCounter, observe_activity
 from .voice_usage import UsageCounter, accept_usage, record_usage
 
 logger = logging.getLogger(__name__)
@@ -157,6 +158,7 @@ class VoiceMember:
     track_name: str | None = None
     publication_ready: bool = False
     usage: UsageCounter = field(default_factory=UsageCounter)
+    activity: ActivityCounter = field(default_factory=ActivityCounter)
     mids: set[str] = field(default_factory=set)
     subscriptions: dict[int, tuple[str, str, str]] = field(default_factory=dict)
     ice_servers: list[dict] = field(default_factory=list)
@@ -182,6 +184,13 @@ class VoiceRoom:
     members: dict[int, VoiceMember] = field(default_factory=dict)
     lock: asyncio.Lock = field(default_factory=asyncio.Lock)
     last_used: float = field(default_factory=time.monotonic)
+
+
+def _observe_member(member: VoiceMember, *, connected: bool = True, ended: bool = False) -> None:
+    # Only server-created membership supplies these fields. The bounded writer
+    # handles persistence separately from voice locks and provider requests.
+    observe_activity(member.activity, user_id=member.user_id, game_type=game_type_from_state(member.game),
+                     game_id=str(member.game["_id"]), connected=connected, ended=ended)
 
 
 def _roster(game: dict) -> set[int]:
@@ -487,6 +496,7 @@ async def _cleanup_member(member: VoiceMember | VoiceCleanup) -> bool:
 async def _remove_member(room: VoiceRoom, member: VoiceMember) -> None:
     if room.members.get(member.user_id) is not member:
         return
+    _observe_member(member, connected=False, ended=True)
     room.members.pop(member.user_id, None)
     member.microphone = member.speaking = False
     member.publication_ready = False
@@ -571,6 +581,7 @@ async def voice_socket_disconnected(session, *, revoke: bool = False) -> None:
                             await _remove_member(room, member)
                         changed = True
                     else:
+                        _observe_member(member, connected=False)
                         member.disconnected_at = time.monotonic()
         if changed:
             await _broadcast(room)
@@ -655,6 +666,8 @@ async def handle_voice_action(session, data: dict) -> None:
             # Broadcasting can yield to logout or takeover too. Revalidate
             # immediately before releasing any correlated provider response.
             _actor(session, require_eligible=operation != "state")
+            if operation not in {"state", "leave"}:
+                _observe_member(member)
     except (VoiceError, TypeError, OverflowError) as exc:
         if (isinstance(exc, VoiceError) and str(exc) in {
                 "hausdepp_voice_provider_failed", "hausdepp_voice_forbidden", "hausdepp_voice_unavailable",

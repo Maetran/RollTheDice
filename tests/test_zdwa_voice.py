@@ -2,6 +2,7 @@
 
 import json
 import unittest
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
@@ -10,7 +11,7 @@ from fastapi import FastAPI, WebSocketDisconnect
 from starlette.testclient import TestClient
 
 from app import hausdepp_voice as voice
-from app import main
+from app import main, voice_activity
 from app.active_games import load_active_games
 from app.game_registry import start_game_if_ready
 from app.game_snapshot import snapshot
@@ -233,6 +234,50 @@ class ZdwaVoiceTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(any("zdwa_voice" in message.get("error", "") for message in socket.messages))
         self.assertFalse(any("zdwa_voice" in message for message in socket.messages))
         self.assertEqual(self.fake.ice_calls, 0)
+
+    async def test_tracking_counts_only_authorized_join_and_pauses_disconnect_and_handoff_gaps(self):
+        clock, rows = [0], []
+        wall = datetime(2026, 10, 25, tzinfo=timezone.utc)
+
+        def observe(counter, **kwargs):
+            return voice_activity.observe_activity(counter, **kwargs, now=clock[0],
+                                                   wall_time=wall + timedelta(seconds=clock[0]))
+
+        def enqueue(values):
+            rows.extend(values)
+            return True
+
+        with patch.object(voice, "observe_activity", side_effect=observe), \
+                patch("app.analytics.enqueue_voice_activity", side_effect=enqueue):
+            await self.command(self.sessions[0], "state")
+            with patch.object(self.fake, "ice_servers", side_effect=voice.VoiceError("hausdepp_voice_provider_failed")):
+                self.assertFalse((await self.command(self.sessions[0], "join"))["ok"])
+            self.assertEqual(rows, [])
+            token = await self.join()
+            clock[0] = 10
+            await self.command(self.sessions[0], "heartbeat", member_token=token)
+            clock[0] = 15
+            await voice.voice_socket_disconnected(self.sessions[0])
+            clock[0] = 100
+            await self.command(self.sessions[0], "resume", member_token=token)
+            clock[0] = 110
+            await self.command(self.sessions[0], "heartbeat", member_token=token)
+            target, sessions = self.table("tracked-next-game", [1, 2])
+            voice.carry_voice_room(self.game, target, {1, 2, 3})
+            clock[0] = 120
+            self.assertTrue((await self.command(sessions[0], "resume", member_token=token))["ok"])
+            clock[0] = 125
+            self.assertTrue((await self.command(sessions[0], "leave", member_token=token))["ok"])
+            self.assertEqual(sum(row["activations"] for row in rows), 1)
+            self.assertEqual(sum(row["connected_ms"] for row in rows), 30000)
+            self.assertEqual({row["game_id"] for row in rows}, {self.game["_id"], target["_id"]})
+            count = len(rows)
+            self.assertFalse((await self.command(sessions[0], "heartbeat", member_token=token))["ok"])
+            self.assertEqual(len(rows), count)
+            # A fresh explicitly confirmed join after revocation is a new activation.
+            clock[0] = 130
+            self.assertTrue((await self.command(sessions[0], "join"))["ok"])
+            self.assertEqual(sum(row["activations"] for row in rows), 2)
 
 
 @pytest.fixture
