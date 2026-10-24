@@ -35,7 +35,10 @@ export function createVoiceTableLifecycle({ controller, userId, gameType, defaul
   function enter({ gameId: next, groupId = next }) {
     if (stopped || !valid(next) || !valid(groupId)) return;
     if (next === gameId) {
-      if (record.groupId !== groupId) { record.groupId = groupId; persist(); }
+      const changed = record.groupId !== groupId || record.lobbyNoticeShown === true;
+      record.groupId = groupId;
+      delete record.lobbyNoticeShown;
+      if (changed) persist();
       return;
     }
     const sameGroup = record && (record.groupId === groupId || record.games.includes(next));
@@ -52,6 +55,7 @@ export function createVoiceTableLifecycle({ controller, userId, gameType, defaul
       record.groupId = groupId;
       record.games = [...new Set([...record.games, next])].slice(-64);
     }
+    delete record.lobbyNoticeShown;
     gameId = next; ready = true; attempted = controller.snapshot().audio;
     persist(); suppress = false;
     // Discovery may have completed before the game snapshot supplied its group.
@@ -116,5 +120,9 @@ export function showVoiceTableLeft({ userId, gameType, t, storage = storageFor()
   if (previous === userId) {
     write(storage, tableKey, null);
     toast(t("voiceTableLeft"), { duration: 6000 });
-  } else if (table?.listening === true) toast(t("voiceEnded"), { duration: 6000 });
+  } else if (table?.listening === true && table.lobbyNoticeShown !== true) {
+    table.lobbyNoticeShown = true;
+    write(storage, tableKey, table);
+    toast(t("voiceEnded"), { duration: 6000 });
+  }
 }

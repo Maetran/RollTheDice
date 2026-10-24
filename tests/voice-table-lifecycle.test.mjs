@@ -119,17 +119,25 @@ test("header/back to the lobby preserves manual off when returning to the same r
   assert.equal(f.store.values.size, 0);
 });
 
-test("lobby navigation with retained listening reports transport end without claiming a seat departure", () => {
+test("retained listening reports transport end once per table-to-lobby visit and remains receive-only on return", () => {
   const f = setup({ defaultListening: true }); f.lifecycle.enter({ gameId: "first" }); f.emit({ available: true });
   f.controller.destroy();
   const notices = [];
-  showVoiceTableLeft({ storage: f.store, userId: 7, gameType: "watten", t: key => key,
-    toast: message => notices.push(message) });
+  const options = { storage: f.store, userId: 7, gameType: "watten", t: key => key,
+    toast: message => notices.push(message) };
+  showVoiceTableLeft(options); showVoiceTableLeft(options);
   assert.deepEqual(notices, ["voiceEnded"]);
   const returned = setup({ defaultListening: false, storage: f.store });
   returned.lifecycle.enter({ gameId: "first" }); returned.emit({ available: true });
   assert.equal(returned.controller.snapshot().audio, true);
   assert.equal(returned.controller.snapshot().microphone, false);
+  returned.controller.destroy();
+  showVoiceTableLeft(options); showVoiceTableLeft(options);
+  assert.deepEqual(notices, ["voiceEnded", "voiceEnded"]);
+  const stored = JSON.parse(f.store.getItem("rollthedice.voice.table.watten.7"));
+  assert.equal(stored.listening, true);
+  assert.equal(stored.lobbyNoticeShown, true);
+  assert.doesNotMatch(JSON.stringify(stored), /microphone|capture|token/);
 });
 
 test("unavailable or malformed storage never enables a microphone or bypasses the profile default", () => {
