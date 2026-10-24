@@ -9,6 +9,20 @@ const families = [
 ];
 const memory = () => { let value = null; return { getItem: () => value, setItem(key, next) { value = next; } }; };
 
+test('the shipped catalogue makes every documented new recording reachable in both shared players', async () => {
+  const catalogue = await readFile(new URL('../frontend/shared/tavern-catalog.js', import.meta.url), 'utf8');
+  const { TAVERN_FAMILIES } = await import(`data:text/javascript;base64,${Buffer.from(catalogue).toString('base64')}`);
+  const provenance = JSON.parse(await readFile(new URL('../docs/references/tavern-recordings.json', import.meta.url), 'utf8'));
+  assert.equal(TAVERN_FAMILIES.find(family => family.id === 'cambridge').variants.length, 10);
+  assert.equal(TAVERN_FAMILIES.length, provenance.sources.length + 1);
+  for (const source of provenance.sources) {
+    const family = TAVERN_FAMILIES.find(item => item.id === source.id);
+    assert.ok(family, `recording is missing from the playable catalogue: ${source.id}`);
+    assert.equal(family.details, false, 'new recordings must not inherit Cambridge overlays');
+    assert.deepEqual(family.variants.map(clip => clip.url.split('?')[0]), [`/${source.file.slice(4)}`]);
+  }
+});
+
 test('original recordings have equal bag weight even when Cambridge has ten variants', () => {
   const shuffle = createTavernShuffle({ families, random: () => .99, storage: memory() });
   const draws = Array.from({ length: 80 }, () => shuffle.next());
