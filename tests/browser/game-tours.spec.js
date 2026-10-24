@@ -141,6 +141,13 @@ async function harness(page, { language = "de", authenticated = true, enabled = 
       const action = JSON.parse(String(raw));
       if (game === "hausdepp" && handleDisabledHausdeppVoice(connection, action)) return;
       actions.push(action);
+      if (action.action === "zdwa_voice" && action.operation === "state") {
+        // Discovery is read-only. Keep voice available so the tour must still
+        // respect the account's missing/off opt-in rather than an unavailable SFU.
+        connection.send(JSON.stringify({ zdwa_voice: { request_id: action.request_id, ok: true,
+          state: { event: "state", available: true, room_id: "tour-voice-room", members: [], publications: [] } } }));
+        return;
+      }
       if (["join_game", "rejoin_game", "spectate_game"].includes(action.action)) {
         connection.send(JSON.stringify(spectator ? { spectator_id: "s1", auth } : {
           player_id: "p1", resume_token: "tour-fixture-resume", auth,
@@ -169,7 +176,10 @@ async function harness(page, { language = "de", authenticated = true, enabled = 
 }
 
 function gameActions(room) {
-  return room.actions.filter(action => !["join_game", "rejoin_game", "spectate_game", "ping", "heartbeat"].includes(action.action));
+  // Ignore only passive discovery; voice join/publish/microphone and every
+  // other operation remain observable mutations in the no-action assertions.
+  return room.actions.filter(action => !(action.action === "zdwa_voice" && action.operation === "state")
+    && !["join_game", "rejoin_game", "spectate_game", "ping", "heartbeat"].includes(action.action));
 }
 
 async function startOfferedTour(page) {
@@ -228,6 +238,9 @@ for (const exit of ["end", "close", "escape"]) {
     const room = await harness(page);
     await room.open();
     await startOfferedTour(page);
+    expect(room.actions.filter(action => action.action === "zdwa_voice" && action.operation !== "state")).toEqual([]);
+    await expect(page.locator("[data-room-listening]")).toHaveAttribute("aria-pressed", "false");
+    await expect(page.locator("[data-room-microphone]")).toHaveAttribute("aria-pressed", "false");
     await expect(page.locator(TOUR)).toHaveAttribute("data-tour-step", "welcome");
     await page.locator("[data-tour-next]").click();
     await expect(page.locator(TOUR)).toHaveAttribute("data-tour-step", "hold");
