@@ -332,8 +332,10 @@ for (const count of [2, 3, 4]) {
           const isStrike = card => strike === 'weli' ? card === 'bells-6' : card.endsWith(`-${strike}`);
           const isTrump = card => card === 'bells-6' || card.startsWith(`${suit}-`);
           const lead = engine.current_trick.cards[0]?.card;
-          const duty = knows && lead && isTrump(lead) && cards.some(card => isTrump(card) && !isStrike(card));
-          const card = (duty ? cards.filter(card => isTrump(card) || isStrike(card)) : cards)[0];
+          const ordinaryTrump = cards.find(card => isTrump(card) && !isStrike(card));
+          // A losing strike cannot replace a trump. Prefer the ordinary trump
+          // rather than duplicating the complete trick ranking in this driver.
+          const card = knows && lead && isTrump(lead) && ordinaryTrump ? ordinaryTrump : cards[0];
           await host.page.locator(`[data-wt-hand] button[data-card="${card}"]`).press('Enter');
           observedPlay = true;
         }
