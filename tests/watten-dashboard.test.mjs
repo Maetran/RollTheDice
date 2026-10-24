@@ -58,7 +58,7 @@ function native(overrides = {}) {
 function legacy(game = "all", overrides = {}) {
   return {
     generated_at: "2026-10-18T12:00:00Z", available_games: ["zdwa", "zilch", "hausdepp"], period: { game, days: 7 },
-    metric_coverage: { traffic: "observed_events_only", traffic_games: ["zdwa", "zilch", "hausdepp"], request_traffic: "sitewide", duration: "available_server_samples" },
+    metric_coverage: { traffic: "observed_events_only", traffic_games: ["zdwa", "zilch"], request_traffic: "sitewide", duration: "available_server_samples" },
     overview: { completed_games: 5, sessions: 4, page_views: 9, active_seconds: 60, avg_active_seconds: 15, live_sessions: 0 },
     daily: [{ date: "2026-10-17", sessions: 1, page_views: 2, active_seconds: 10, completed_games: 1 }, { date: "2026-10-18", sessions: 3, page_views: 7, active_seconds: 50, completed_games: 4 }],
     heatmap: [{ weekday: 0, hour: 18, sessions: 0, page_views: 0, active_seconds: 0 }, { weekday: 2, hour: 9, sessions: 2, page_views: 5, active_seconds: 40 }],
@@ -284,17 +284,17 @@ for (const language of ["de", "en"]) {
     assert.equal($("trafficControls").hidden, false);
   });
 
-  test(`${language}: the all-games filter counts Watten results but claims no Watten browser traffic`, () => {
+  test(`${language}: the all-games filter separates card-game results from measured browser traffic`, () => {
     const f = fmt(language);
     const all = native({ period: { game: "all", days: 7 },
-      metric_coverage: { traffic: "observed_events_only", traffic_games: ["zdwa", "zilch", "hausdepp"], request_traffic: "sitewide" },
+      metric_coverage: { traffic: "observed_events_only", traffic_games: ["zdwa", "zilch"], request_traffic: "sitewide" },
       overview: { completed_games: 9, sessions: 4, page_views: 9, active_seconds: 60, avg_active_seconds: 15, live_sessions: 0 } });
     assert.equal(watten.trafficMeasured(all), true);
-    assert.equal(watten.overviewCoverage(all).unknown, false, "the three measured products keep their visit metrics");
+    assert.equal(watten.overviewCoverage(all).unknown, false, "the two measured products keep their visit metrics");
     const sources = watten.trafficSourceNote(all, f);
     assert.equal(sources, language === "en"
-      ? "Visit metrics only from: ZDWA + Zilch + Hausdepp. Completed games also include: Watten."
-      : "Besuchskennzahlen nur aus: ZDWA + Zilch + Hausdepp. Beendete Partien enthalten zusätzlich: Watten.");
+      ? "Visit metrics only from: ZDWA + Zilch. Completed games also include: Hausdepp + Watten."
+      : "Besuchskennzahlen nur aus: ZDWA + Zilch. Beendete Partien enthalten zusätzlich: Hausdepp + Watten.");
     const note = watten.wattenMonitoringNote(all, f);
     assert.ok(note.includes(sources));
     assert.ok(note.includes(language === "en" ? "cover the whole website" : "gelten für die ganze Website"), "HTTP stays sitewide");
@@ -723,7 +723,8 @@ test("existing products, labels and all three dashboard designs keep their measu
     { unknown: true, hint: "Browserbesuche bisher nicht erfasst", completedLabel: "Runden beendet" });
   assert.equal(watten.overviewCoverage(legacy("zdwa")).unknown, false);
   assert.equal(watten.overviewCoverage({}).unknown, false);
-  assert.equal(watten.trafficSourceNote(legacy("all"), fmt("de")), "");
+  assert.equal(watten.trafficSourceNote(legacy("all"), fmt("de")),
+    "Besuchskennzahlen nur aus: ZDWA + Zilch. Beendete Partien enthalten zusätzlich: Hausdepp.");
   assert.equal(watten.wattenMonitoringNote(legacy("all"), fmt("de")), "");
   assert.equal(watten.unmeasuredCopy(legacy("hausdepp")), null);
   assert.equal(watten.wattenModeLabel("four"), "4 Plätze");

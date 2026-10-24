@@ -63,6 +63,7 @@ MAX_QUEUE_BATCHES = 300
 MAX_PENDING_REQUEST_BUCKETS = 4096
 MAX_STORED_REQUEST_BUCKETS = 50_000
 LIVE_WINDOW_SECONDS = 120
+BROWSER_TRAFFIC_GAMES = ("zdwa", "zilch")
 JOURNEY_SAMPLE_LIMIT = 10_000
 JOURNEY_GAP_SECONDS = 30 * 60
 SESSION_RE = re.compile(r"^[a-f0-9]{32,64}$")
@@ -949,7 +950,7 @@ def _previous_overview(db: Session, start: datetime, days: int, game: str, produ
     overview = {"sessions": sessions, "page_views": int(page_views or 0), "active_seconds": round((active_ms or 0) / 1000, 1),
                 "avg_active_seconds": round((active_ms or 0) / 1000 / max(sessions, 1), 1),
                 "completed_games": completed, "game_clicks": int(clicks or 0)}
-    if game == "watten":
+    if game in {"hausdepp", "watten"}:
         overview.update({key: None for key in overview if key != "completed_games"})
     return overview
 
@@ -1124,6 +1125,9 @@ def dashboard_stats(days: int = 7, game: str = "all", *, now: datetime | None = 
     # Native Watten has no browser telemetry collector. Never read arbitrary
     # Watten event JSON as an approximation for its authoritative room/results.
     traffic_products = tuple(product for product in products if product != "watten")
+    # Browser visits are separate from anonymous, trusted Hausdepp server actions.
+    browser_products = tuple(product for product in products if product in BROWSER_TRAFFIC_GAMES)
+    unmeasured_traffic = game in {"hausdepp", "watten"}
     if days not in {1, 7, 30, 90} or game not in {"all", *products}:
         raise ValueError("analytics_invalid_filter")
     now = as_utc(now or utcnow())
@@ -1285,7 +1289,7 @@ def dashboard_stats(days: int = 7, game: str = "all", *, now: datetime | None = 
                 "avg_active_seconds": round((active_ms or 0) / 1000 / max(count, 1), 1),
                 "live_sessions": live, "completed_games": completed,
                 "game_clicks": sum(row["count"] for row in actions if row["game"] in products)}
-    if game == "watten":
+    if unmeasured_traffic:
         overview.update({key: None for key in overview if key != "completed_games"})
         for row in (*daily, *hourly, *heatmap):
             row.update({key: None for key in ("sessions", "page_views", "active_seconds") if key in row})
@@ -1294,12 +1298,12 @@ def dashboard_stats(days: int = 7, game: str = "all", *, now: datetime | None = 
         journeys["sample"].update(page_views=None, matching_page_views=None, total_page_views=None,
                                   truncated=None, method="not_instrumented", **{"from": None, "to": None})
     comparison = _comparison_stats(overview, previous_overview, start, now, days,
-                                   None if game == "watten" else first_client)
-    if game == "watten":
+                                   None if unmeasured_traffic else first_client)
+    if unmeasured_traffic:
         comparison.update(previous_data_coverage="not_instrumented", coverage_basis="not_instrumented")
     return {"generated_at": now.isoformat(), "available_games": list(products),
-            "metric_coverage": {"traffic": "not_instrumented" if game == "watten" else "observed_events_only",
-                                "traffic_games": [product for product in traffic_products if game in {"all", product}],
+            "metric_coverage": {"traffic": "not_instrumented" if unmeasured_traffic else "observed_events_only",
+                                "traffic_games": [product for product in browser_products if game in {"all", product}],
                                 "native_live_humans": "distinct_authenticated_accounts",
                                 "request_traffic": "sitewide",
                                 "duration": "validated_frozen_public_evidence" if game == "watten" else "available_server_samples"},
