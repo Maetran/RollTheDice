@@ -9,6 +9,8 @@
   :root[data-game="zdwa"][data-design="2026"] .room-page .room-header:has(> #roomAudioButton) .room-player-tiles:has(> .room-player-tile:nth-child(4)) > .room-player-tile { min-width: var(--header-control-size); padding-inline: .125rem; }
   :root[data-game="zdwa"][data-design="2026"] .room-page .room-header:has(> #roomAudioButton) .room-player-tiles:has(> .room-player-tile:nth-child(4)) .room-player-tile-body { margin-right: 0; }
   :root[data-game="zdwa"][data-design="2026"] .room-page .room-header:has(> #roomAudioButton) .room-player-tiles:has(> .room-player-tile:nth-child(4)) :is(.room-player-tile-name, .room-player-tile-score) { padding-left: 0; }
+  /* Four tabular digits also need to fit the 38px inner width of a 44px tile. */
+  :root[data-game="zdwa"][data-design="2026"] .room-page .room-header:has(> #roomAudioButton) .room-player-tiles:has(> .room-player-tile:nth-child(4)) .room-player-tile-total { font-size: .875rem; }
 }
 .room-page:has(#roomAudioButton) > .connection-status { top: calc(var(--room-header-bottom, 2.85rem) + .4rem); right: var(--room-header-end, .5rem); left: auto; transform: none; pointer-events: none; }
 /* The menu belongs to the header's 1000 layer; the status is normally 2100. */

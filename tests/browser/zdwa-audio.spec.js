@@ -78,7 +78,10 @@ for (const [language, design, defaultListening] of [['de', 'old', false], ['en',
       for (const [width, height] of [[320, 740], [390, 844], [844, 390], [768, 1024], [1440, 900]]) {
         await owner.page.setViewportSize({ width, height });
         await owner.page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-        const audio = await painted(owner.page, '#roomAudioButton');
+        // Header controls share a 44px touch edge and a 36px mouse edge.
+        // Dialog controls below keep painted()'s unconditional 44px minimum.
+        const headerMinimum = await owner.page.evaluate(() => matchMedia('(any-pointer: coarse)').matches || innerWidth <= 760 ? 44 : 36);
+        const audio = await painted(owner.page, '#roomAudioButton', headerMinimum);
         const menu = await painted(owner.page, '#roomHeaderMenuToggle', 28);
         const leave = await painted(owner.page, '#backToLobbyBtn', 28);
         expect(audio.right).toBeLessThanOrEqual(menu.x); expect(menu.right).toBeLessThanOrEqual(leave.x);
