@@ -63,7 +63,9 @@ test('tablet layout fixtures: shared axes, long identities, 1–4 packets and pa
     for (const viewport of TABLETS) {
       await settleViewport(page, viewport);
       for (const count of [1, 2, 3, 4]) for (const kind of count === 4
-        ? ['trick', 'passive', 'active', 'active-inspection', 'accepted', 'thanks-role', 'thanks-no-role'] : ['passive']) {
+        ? ['trick', ...(viewport.width > viewport.height && [1024, 1280].includes(viewport.width)
+          ? Array.from({ length: 5 }, (_, cards) => `trick-${cards}cards`) : []),
+        'passive', 'active', 'active-inspection', 'accepted', 'thanks-role', 'thanks-no-role'] : ['passive']) {
         await page.evaluate(({ count, kind }) => {
           const { view, snapshot } = window.tabletLayoutFixture;
           // DISPLAY FIXTURES, not engine states: public packet counts include
@@ -72,6 +74,8 @@ test('tablet layout fixtures: shared axes, long identities, 1–4 packets and pa
           const copy = structuredClone(snapshot), engine = copy.engine;
           const observedTrick = structuredClone(engine.last_trick);
           const own = engine.viewer.seat;
+          const fanCards = /^trick-(\d)cards$/.exec(kind);
+          const opponentCardCount = fanCards ? Number(fanCards[1]) : 5;
           const title = copy.room.seats.find(seat => seat.public_title)?.public_title;
           if (!title) throw new Error('The real DTO must supply a public title');
           for (const seat of copy.room.seats) {
@@ -82,13 +86,13 @@ test('tablet layout fixtures: shared axes, long identities, 1–4 packets and pa
           engine.phase = 'show_ready'; engine.current_trick = { ...engine.current_trick, cards: [] };
           engine.last_trick = null; engine.trick_history = [];
           engine.announcement_roles = { ...engine.announcement_roles, strike: 1, colour: own };
-          engine.seats.forEach(seat => { seat.tricks_won = count; seat.card_count = 5; });
+          engine.seats.forEach(seat => { seat.tricks_won = count; seat.card_count = opponentCardCount; });
           const active = kind.startsWith('active');
           const responder = active ? own : 3;
           engine.preplay = { ...engine.preplay, pending: kind === 'accepted' ? null
             : { kind: 'bloedeln', requester: 1, responder }, bloedeln_status: kind === 'accepted' ? 'accepted' : 'pending' };
           let actions = active ? ['preplay_accept', 'preplay_decline'] : ['show_ready'];
-          if (kind === 'trick') {
+          if (kind.startsWith('trick')) {
             engine.phase = 'play'; engine.last_trick = observedTrick;
             engine.preplay.pending = null; actions = [];
           }
@@ -109,6 +113,7 @@ test('tablet layout fixtures: shared axes, long identities, 1–4 packets and pa
             actions, busy: false, paused: false, awaited: [], canResume: false,
             isHost: true, canLeave: true, bubbles: [], freshTrickEnd: false,
             feedbackDismissed: true, liveMessage: '' };
+          window.tabletLayoutFixture.opponentCardCount = opponentCardCount;
           view.update(vm);
         }, { count, kind });
         await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
@@ -139,9 +144,9 @@ test('tablet layout fixtures: shared axes, long identities, 1–4 packets and pa
           const trick = box(root.querySelector('[data-wt-trick]'));
           const table = box(root.querySelector('[data-wt-table]'));
           if (Math.abs(felt.top - table.top - 58) > 1) errors.push('felt/table topbar contract changed');
-          if (Math.abs(top.x - felt.left - felt.width / 2) > 1) errors.push('top fan off axis');
-          if (Math.abs(left.y - right.y) > 1) errors.push('side fans at different heights');
-          if (Math.abs(left.y - trick.top - trick.height / 2) > 1) errors.push('side fan and trick axes differ');
+          if (top && Math.abs(top.x - felt.left - felt.width / 2) > 1) errors.push('top fan off axis');
+          if (left && right && Math.abs(left.y - right.y) > 1) errors.push('side fans at different heights');
+          if (left && Math.abs(left.y - trick.top - trick.height / 2) > 1) errors.push('side fan and trick axes differ');
           const overlaps = (a, b) => Math.min(a.right, b.right) - Math.max(a.left, b.left) > 1
             && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 1;
           const obstacles = [...root.querySelectorAll('.wt-backs > i:not([hidden]), [data-wt-hand] > *, .wt-seat-badge, .wt-taken i, .wt-inspection .wt-card')]
@@ -172,6 +177,11 @@ test('tablet layout fixtures: shared axes, long identities, 1–4 packets and pa
           const ownHand = [...root.querySelectorAll('[data-wt-hand] > *')].filter(visible).map(box);
           const played = [...root.querySelectorAll('.wt-trick-card, .wt-trick-label')].filter(visible);
           const badges = [...root.querySelectorAll('.wt-seat-badge')].filter(visible);
+          const opponentCards = [...root.querySelectorAll('.wt-backs > i:not([hidden])')].filter(visible);
+          if (opponentCards.length !== window.tabletLayoutFixture.opponentCardCount * 3) errors.push('opponent fan card count changed');
+          for (const card of played.filter(node => node.matches('.wt-trick-card'))) {
+            if (opponentCards.some(back => overlaps(box(card), box(back)))) errors.push('played card overlaps an opponent fan');
+          }
           for (const packet of packets) if (badges.some(badge => overlaps(box(packet), box(badge)))) errors.push('captured packet overlaps an identity');
           for (const packet of packets) if (played.filter(node => node.matches('.wt-trick-card'))
             .some(card => overlaps(box(packet), box(card)))) errors.push('captured packet overlaps a trick card');
@@ -198,6 +208,9 @@ test('tablet layout fixtures: shared axes, long identities, 1–4 packets and pa
               hiddenAncestor: node.closest('[hidden]')?.className, inlineStyle: node.getAttribute('style'),
               revealPositioned: node.closest('.wt-reveal').dataset.wtInspectionPositioned })),
             trickWidth: trick.width / 2.9,
+            handWidth: getComputedStyle(root.querySelector('[data-wt-hand] > *')).width,
+            backWidth: getComputedStyle(root.querySelector('.wt-backs > i')).width,
+            opponentCards: opponentCards.map(node => ({ seat: node.closest('[data-wt-seat]').dataset.wtSeat, bounds: box(node).toJSON() })),
             played: played.map(node => ({ className: node.className, bounds: box(node).toJSON() })),
             badges: badges.map(node => ({ seat: node.closest('[data-wt-seat]').dataset.wtSeat, bounds: box(node).toJSON() })),
             packets: packets.map(node => ({ seat: node.closest('[data-wt-seat]').dataset.wtSeat, bounds: box(node).toJSON() })),

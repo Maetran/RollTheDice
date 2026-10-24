@@ -172,9 +172,17 @@
        1.35 card-widths above its centre; the frame extends 1.5 widths +16px
        below it, including its single-line winner caption. Budget that 2.85
        spread between both edges; keep the established readable 90–140 range. */
+    --wt-min-trick-width: 90px;
+    --wt-min-back-width: 56px;
+    /* Reserve a readable trick and the smallest desktop backs first. Only
+       the hand's excess height can yield when that minimum space is tight.
+       The existing preferred hand/back sizes remain their upper bounds. */
+    --wt-min-play-space: calc(var(--wt-felt-height) * .02 + 3px + var(--wt-tablet-gap) + var(--wt-min-trick-width) * 2.85 + 16px + var(--wt-min-back-width) * 2);
+    --wt-hand-w: clamp(82px, min(12vw, 22dvh, calc((var(--wt-felt-height) - 18px - var(--wt-tablet-gap) - var(--wt-min-play-space)) / 1.8)), 132px);
     --wt-play-floor: calc(var(--wt-felt-height) - 18px - var(--wt-hand-w) * 1.8 - var(--wt-tablet-gap));
+    --wt-back-w: clamp(var(--wt-min-back-width), min(6vw, 10dvh, calc((var(--wt-play-floor) - var(--wt-felt-height) * .02 - 3px - var(--wt-tablet-gap) - 16px - var(--wt-min-trick-width) * 2.85) / 2)), 82px);
     --wt-top-fan-floor: calc(var(--wt-felt-height) * .02 + 3px + var(--wt-back-w) * 2);
-    --wt-trick-w: clamp(90px, calc((var(--wt-play-floor) - var(--wt-top-fan-floor) - var(--wt-tablet-gap) - 16px) / 2.85), 140px);
+    --wt-trick-w: clamp(var(--wt-min-trick-width), calc((var(--wt-play-floor) - var(--wt-top-fan-floor) - var(--wt-tablet-gap) - 16px) / 2.85), 140px);
     --wt-play-axis: calc(var(--wt-play-floor) - var(--wt-trick-w) * 1.5 - 16px);
   }
   html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"] .wt-seat--bottom.is-own {
