@@ -114,14 +114,15 @@ for (const language of ['de', 'en']) {
       expect(app.sent.some(message => message.action === 'hausdepp_leave_game')).toBe(false);
     }
     expect(systemDialogs).toEqual([]);
-    // The real CPUs may still be lifting the stock while the cancelled dialogs
-    // are checked. Confirm only after the human owns a stable decision window;
-    // a departure sent during a CPU transition is correctly rejected as stale.
+    // Wait for the human decision window and completed stock refills. A prior
+    // CPU's afterthrow can remain open even when that CPU has no move; it is
+    // not an idle marker. A later actual CPU action can still change version,
+    // so keep the exact sent-version and server-acceptance assertions below.
     const board = () => app.received.findLast(message => message.scoreboard?._hausdepp)?.scoreboard?._hausdepp;
     await expect.poll(() => {
       const current = board();
       return Boolean(current && current.current_player_id === current.viewer_id
-        && current.available_actions.length && !current.afterthrow
+        && current.available_actions.length
         && !current.pending_refill && current.pending_refills.length === 0);
     }).toBe(true);
     await expect(leave).toBeEnabled();
