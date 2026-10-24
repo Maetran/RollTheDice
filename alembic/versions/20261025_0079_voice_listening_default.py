@@ -15,5 +15,6 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    with op.batch_alter_table("users") as batch:
-        batch.drop_column("voice_listening_default")
+    # Native DROP COLUMN keeps the users table, cross-table ownership triggers
+    # and referencing event rows intact; a SQLite batch rebuild cannot do so.
+    op.drop_column("users", "voice_listening_default")

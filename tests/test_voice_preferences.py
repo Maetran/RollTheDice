@@ -104,3 +104,45 @@ def test_migration_backfills_existing_accounts_preserves_fields_and_defaults_new
     command.upgrade(config, "head")
     with closing(sqlite3.connect(path)) as db:
         assert db.execute("SELECT voice_listening_default FROM users WHERE id=?", (user,)).fetchone() == (1,)
+
+
+@pytest.mark.parametrize("has_owner", [False, True])
+def test_migration_roundtrip_preserves_ownership_guards_and_durable_events(tmp_path, has_owner):
+    path = tmp_path / "voice-ownership-roundtrip.sqlite3"
+    config = Config(str(main.BASE / "alembic.ini"))
+    config.set_main_option("script_location", str(main.BASE / "alembic"))
+    config.set_main_option("sqlalchemy.url", f"sqlite:///{path}")
+    command.upgrade(config, "20261021_0078")
+    with closing(sqlite3.connect(path)) as db, db:
+        db.execute("PRAGMA foreign_keys=ON")
+        user = legacy.migration_support.TypedCompletedResultsMigrationTest()._insert_user(db)
+        if has_owner:
+            db.execute("INSERT INTO account_ownerships(user_id,is_founder,created_at) VALUES (?,1,'2026-10-25')", (user,))
+        action = "founder_bound" if has_owner else "revoked"
+        db.execute("INSERT INTO ownership_audit(user_id,action,created_at) VALUES (?,?,'2026-10-25')", (user, action))
+        db.execute("INSERT INTO user_engagement_events(user_id,event_key,first_seen_at,last_seen_at,count) "
+                   "VALUES (?,'settings_saved','2026-10-25','2026-10-25',3)", (user,))
+        tables = ("account_ownerships", "ownership_audit", "user_engagement_events")
+        rows = {table: db.execute(f"SELECT * FROM {table} ORDER BY 1").fetchall() for table in tables}
+        account_fields = "id,username,password_hash,role,is_active,preferred_language"
+        accounts = db.execute(f"SELECT {account_fields} FROM users ORDER BY id").fetchall()
+        triggers = db.execute("SELECT name,sql FROM sqlite_master WHERE type='trigger' AND name LIKE 'ownership_%' ORDER BY name").fetchall()
+        assert any(name == "ownership_eligible" and "FROM users" in sql for name, sql in triggers)
+    command.upgrade(config, "head")
+    command.downgrade(config, "20261021_0078")
+    with closing(sqlite3.connect(path)) as db:
+        assert "voice_listening_default" not in {row[1] for row in db.execute("PRAGMA table_info(users)")}
+    command.upgrade(config, "head")
+    with closing(sqlite3.connect(path)) as db, db:
+        db.execute("PRAGMA foreign_keys=ON")
+        assert db.execute(f"SELECT {account_fields} FROM users ORDER BY id").fetchall() == accounts
+        assert {table: db.execute(f"SELECT * FROM {table} ORDER BY 1").fetchall() for table in tables} == rows
+        assert db.execute("SELECT name,sql FROM sqlite_master WHERE type='trigger' AND name LIKE 'ownership_%' ORDER BY name").fetchall() == triggers
+        assert db.execute("SELECT voice_listening_default FROM users WHERE id=?", (user,)).fetchone() == (0,)
+        if has_owner:
+            with pytest.raises(sqlite3.IntegrityError, match="owner_protected"):
+                db.execute("UPDATE users SET role='user' WHERE id=?", (user,))
+        with pytest.raises(sqlite3.IntegrityError, match="ownership_requires_eligible_admin"):
+            db.execute("INSERT INTO account_ownerships(user_id,is_founder,created_at) VALUES (999999,0,'2026-10-25')")
+        with pytest.raises(sqlite3.IntegrityError, match="ownership_audit_immutable"):
+            db.execute("UPDATE ownership_audit SET action='revoked' WHERE user_id=?", (user,))
