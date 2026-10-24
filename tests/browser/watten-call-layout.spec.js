@@ -519,14 +519,19 @@ test('de: three-seat solo announcements retain both values at the same peer seat
     for (const [index, { page }] of players.entries()) {
       await page.screenshot({ path: info.outputPath(`solo-trick-${index}.png`) });
       const history = page.locator('[data-wt-history]');
+      await history.evaluate(node => {
+        node.addEventListener('toggle', () => { node.dataset.testNativeToggle = node.open ? 'open' : 'closed'; });
+      });
       await history.locator('summary').click();
       await expect(history).toHaveAttribute('open');
-      // The native toggle schedules the existing layout RAF. Drive that
-      // frame before using the expanded review's close target.
+      // Native toggle is a separate task. Observe it before advancing the
+      // paused RAF clock; the synchronous open attribute is not that event.
+      await expect(history).toHaveAttribute('data-test-native-toggle', 'open');
       await page.clock.runFor(20);
       await expect(history).not.toHaveAttribute('data-wt-portrait-history');
       await history.locator('[data-wt-history-close]').click();
       await expect(history).not.toHaveAttribute('open');
+      await expect(history).toHaveAttribute('data-test-native-toggle', 'closed');
       await page.clock.runFor(20);
       await expectThreeSeatTrick(page, measurements, true);
     }
