@@ -33,6 +33,7 @@ import { mountHausdeppVoiceUI } from "./voice-ui.js";
 import { createHausdeppSound } from "./sound.js";
 import { mountHausdeppSoundUI } from "./sound-ui.js";
 import { mountHausdeppDepartureUI } from "./departure-ui.js";
+import { createVoiceTableLifecycle, queueVoiceTableLeft, showVoiceTableLeft } from "../shared/voice-table-lifecycle.js";
 
 const root = document.getElementById("hausdeppApp");
 const page = root?.dataset.page || "lobby";
@@ -61,7 +62,7 @@ const queuedCards = [];
 const seenChat = new Set();
 const seenReactions = new Set(), visibleReactions = new Map();
 let reactionObserver, reactionControls;
-let voice, voiceUI;
+let voice, voiceUI, voiceLifecycle;
 let sound, soundUI;
 let departureUI;
 const voiceSignaling = createVoiceSignaling({ send: data => send(data) });
@@ -784,11 +785,16 @@ function renderTableShell() {
       soundUI = mountHausdeppSoundUI({ controller: sound, t });
     }
     if (!voice) {
-      voice = createHausdeppVoice({ send: (operation, payload) => voiceSignaling.request(operation, payload), t, userId: auth.user.id });
+      const controller = createHausdeppVoice({ send: (operation, payload) => voiceSignaling.request(operation, payload), t, userId: auth.user.id });
+      voiceLifecycle = createVoiceTableLifecycle({ controller, userId: auth.user.id, gameType: "hausdepp",
+        defaultListening: auth.user.preferences?.voice_listening_default === true,
+        notify: key => window.ZDWA_UI?.toast?.(t(key), { duration: 6000 }) });
+      voice = voiceLifecycle.controller;
       voiceUI = mountHausdeppVoiceUI({ controller: voice, t, userId: auth.user.id, sound,
         getPlayers: () => (snapshot?._participants || snapshot?._hausdepp?.players || snapshot?._players || []).map(player => seatIdentity(player)),
       });
     }
+    voiceLifecycle.enter({ gameId });
     voiceUI.attach();
     soundUI.attach();
   } else {
@@ -844,7 +850,7 @@ function disposeTable() {
   document.documentElement.classList.remove("chat-open");
 }
 
-function switchTable(path, { historyMode = "push" } = {}) {
+function switchTable(path, { historyMode = "push", sourceGameId } = {}) {
   let target, id;
   try {
     target = new URL(path, location.href);
@@ -858,6 +864,8 @@ function switchTable(path, { historyMode = "push" } = {}) {
   const watching = target.pathname.endsWith("/zuschauen");
   if (gameId === id && spectating === watching) return;
   const previousGameId = gameId;
+  if (sourceGameId === previousGameId) voiceLifecycle?.handoff(id);
+  voiceLifecycle?.enter({ gameId: id });
   disposeTable();
   gameId = id;
   spectating = watching;
@@ -1112,6 +1120,7 @@ function connect() {
     voiceSignaling.reset();
     departureUI?.disconnected();
     if ([1008, 4001].includes(event.code)) {
+      voiceLifecycle?.revoke();
       voice?.destroy(); voiceUI?.destroy(); voice = null; voiceUI = null;
       sound?.destroy(); soundUI?.destroy(); sound = null; soundUI = null;
     }
@@ -1149,6 +1158,8 @@ function leaveTableForLobby() {
   stopped = true;
   pending = waitingLeaving = false;
   departureUI?.destroy();
+  voiceLifecycle?.leave();
+  queueVoiceTableLeft({ userId: auth.user?.id, gameType: "hausdepp" });
   voice?.destroy(); voiceUI?.destroy(); voiceSignaling.reset();
   sound?.destroy(); soundUI?.destroy();
   socket?.close();
@@ -1511,7 +1522,10 @@ function appendRematchAction() {
     const lifetime = tableLifetime;
     try {
       const target = await createRematch(gameId, { signal: lifetime.signal });
-      if (!stopped && tableLifetime === lifetime) switchTable(target);
+      if (!stopped && tableLifetime === lifetime) {
+        voiceLifecycle?.handoff(decodeURIComponent(target.split("/").at(-1)));
+        switchTable(target);
+      }
     } catch (error) {
       if (!stopped && tableLifetime === lifetime) output.textContent = rematchError(error, t);
     } finally {
@@ -1641,6 +1655,7 @@ async function start() {
     if (page === "rules") renderRules(); else if (page === "settings") renderAccountSettings(root, auth, { onUserChanged: data => { auth = data; header(); } }); else if (page === "account") renderAccount(); else if (page === "leaderboard") renderLeaderboard(); else if (page === "table") renderTableShell(); else renderLobby();
     if (page === "lobby" || page === "table") invitations = mountInvitations(root, t);
     document.body.classList.remove("hd-loading");
+    if (page === "lobby") showVoiceTableLeft({ userId: auth.user?.id, gameType: "hausdepp", t });
     if (page === "lobby") initializePushOptInPrompt({ context: "hausdepp" });
     if (auth.authenticated && !spectating) {
       progressNotices = mountProgressNotices({
@@ -1675,6 +1690,7 @@ window.addEventListener("zdwa:auth-state", event => {
   // Public discovery must not leave the preceding account's private table or
   // progress mounted after sign-out or an account change in another tab.
   stopped = true;
+  voiceLifecycle?.revoke();
   voice?.destroy(); voiceUI?.destroy(); voiceSignaling.reset();
   sound?.destroy(); soundUI?.destroy();
   departureUI?.destroy();

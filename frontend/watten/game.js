@@ -20,6 +20,8 @@ import { createSocial } from "./social.js";
 import { mountWattenLobbyChat } from "./lobby-chat.js";
 import { createDecor } from "./decor.js";
 import { createWattenVoice } from "./voice.js";
+import { showVoiceTableLeft } from "../shared/voice-table-lifecycle.js";
+import { HAUSDEPP_MESSAGES } from "../i18n/catalog.js";
 import { createWattenSound } from "./sound.js";
 import { createFriendActivity } from "./friend-activity.js";
 import { initializeAppMode } from "../multigame/app-mode.js";
@@ -138,7 +140,7 @@ window.addEventListener("zdwa:auth-state", event => {
   latestUserId = id;
   if (navigating) return;
   if (page === "rules") { renderNav(detail); return; }
-  if ((account && id !== account.id) || (anonymousMount && id)) reloadFresh();
+  if ((account && id !== account.id) || (anonymousMount && id)) { voice?.revoke(); reloadFresh(); }
 });
 
 const refreshAuth = () => {
@@ -439,6 +441,8 @@ async function mountLobby() {
     return;
   }
   account = { id: auth.user.id, username: auth.user.username };
+  showVoiceTableLeft({ userId: account.id, gameType: "watten",
+    t: key => HAUSDEPP_MESSAGES[document.documentElement.lang === "en" ? "en" : "de"][key] });
   latestUserId = account.id;
   initializeAppMode({ mode: "watten" });
   app.innerHTML = `${lobbyIntro({ signedIn: true })}<div class="wt-friend-activity-host" data-watten-friend-activity aria-live="polite" hidden></div>
@@ -834,6 +838,7 @@ function onAck(ack) {
   if (!done || ack.command_id !== done.id) return;
   clearInFlight();
   if (done.action === "watten_leave" || done.action === "leave_waiting_game") {
+    voice?.leave();
     voice?.destroy(); voice = null;
     session.pendingDeparture = null;
     // Only an accepted leave returns to the lobby.
@@ -872,7 +877,7 @@ async function reconcileDeparture() {
     const response = await fetch(`/api/games/${gameId}`, { cache: "no-store" });
     const data = response.ok ? await response.json() : null;
     if (gen !== generation || !session.pendingDeparture) return;
-    if (data?.exists && (!data.viewer?.participant_id || data.can_resume)) { navigate("/watten"); return; }
+    if (data?.exists && (!data.viewer?.participant_id || data.can_resume)) { voice?.leave(); navigate("/watten"); return; }
   } catch { /* Keep the unresolved leave intent; never admit the account again automatically. */ }
   if (gen === generation && !navigating) showMessage(t("leave.uncertain"), t("leave.uncertainBody"),
     `${lobbyLink()}<button type="button" data-watten-command="reconnect">${esc(t("connection.here"))}</button>`);
@@ -1174,7 +1179,7 @@ async function mountTable() {
     showMessage(t("auth.signedOutTitle"), t("auth.signedOut"), `<a class="wt-button" href="${esc(signInUrl())}">${esc(t("nav.signIn"))}</a>`);
     return;
   }
-  account = { id: auth.user.id, username: auth.user.username };
+  account = { id: auth.user.id, username: auth.user.username, preferences: auth.user.preferences };
   latestUserId = account.id;
   initializeAppMode({ mode: "watten" });
   matchProgress?.destroy();
@@ -1186,6 +1191,7 @@ async function mountTable() {
   rematch?.destroy();
   rematch = createRematch({ gameId, fetcher: (url, options) => fetch(url, options), loadAuth, escapeHtml: esc,
     makeCommandId: commandId, navigate,
+    onNavigate: id => voice?.handoff(id),
     getExpectedAccountId: () => account?.id,
     isCurrent: () => gen === generation && !navigating && latestUserId === account?.id,
     onAccountChanged: reloadFresh });
@@ -1215,6 +1221,7 @@ async function mountTable() {
     cleanups.add(() => { sound?.destroy(); sound = null; });
     voice?.destroy();
     voice = createWattenVoice({ send: sendRaw, userId: account.id,
+      defaultListening: account.preferences?.voice_listening_default === true,
       isCurrent: () => gen === generation && latestUserId === account?.id && !navigating });
     voice.attach(app.querySelector("[data-watten-voice]"));
     cleanups.add(() => { voice?.destroy(); voice = null; });

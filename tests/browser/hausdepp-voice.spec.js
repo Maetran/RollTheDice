@@ -1,6 +1,7 @@
 const { test, expect } = require('@playwright/test');
 const { mkdir } = require('node:fs/promises');
 const path = require('node:path');
+const { installMedia } = require('./voice-media-fixture.js');
 
 test.use({ serviceWorkers: 'block' });
 test.beforeAll(({ baseURL }) => expect(['8000', '8001']).not.toContain(new URL(baseURL).port));
@@ -8,69 +9,6 @@ test.beforeAll(({ baseURL }) => expect(['8000', '8001']).not.toContain(new URL(b
 // Accounts, tables, gameplay, rematch creation and socket authorization remain
 // real. Only the external SFU signalling actions and browser media devices are
 // simulated; these tests cannot establish actual acoustic/device quality.
-async function installMedia(page, language) {
-  await page.addInitScript(value => {
-    localStorage.setItem('zdwa_language', value);
-    const NativeContext = window.AudioContext || window.webkitAudioContext;
-    const harness = window.__voiceHarness = { captures: 0, tracks: [], peers: [], playbackBlocked: false, microphoneDenied: false };
-    const mediaContext = new NativeContext();
-    const audioTrack = () => mediaContext.createMediaStreamDestination().stream.getAudioTracks()[0];
-    const nativePlay = HTMLMediaElement.prototype.play;
-    HTMLMediaElement.prototype.play = function () {
-      if (this.srcObject) return harness.playbackBlocked ? Promise.reject(new DOMException('Blocked', 'NotAllowedError')) : Promise.resolve();
-      return nativePlay.call(this);
-    };
-    Object.defineProperty(navigator.mediaDevices, 'getUserMedia', { configurable: true, value: async () => {
-      harness.captures++;
-      if (harness.microphoneDenied) throw new DOMException('Microphone denied', 'NotAllowedError');
-      const track = audioTrack(); harness.tracks.push(track);
-      return new MediaStream([track]);
-    } });
-    window.RTCPeerConnection = class extends EventTarget {
-      constructor(configuration) {
-        super(); this.configuration = configuration; this.iceGatheringState = 'complete';
-        this.connectionState = 'new'; this.signalingState = 'stable'; this.transceivers = [];
-        harness.peers.push(this);
-      }
-      addTransceiver(track, options) {
-        const item = { mid: '0', direction: options.direction, sender: { track,
-          async replaceTrack(next) { this.track = next; } } };
-        this.transceivers.push(item); return item;
-      }
-      async createOffer() { return { type: 'offer', sdp: 'test-local-offer' }; }
-      async createAnswer() { return { type: 'answer', sdp: 'test-local-answer' }; }
-      async setLocalDescription(description) {
-        this.localDescription = description;
-        this.signalingState = description.type === 'offer' ? 'have-local-offer' : 'stable';
-      }
-      async setRemoteDescription(description) {
-        this.remoteDescription = description;
-        this.signalingState = description.type === 'offer' ? 'have-remote-offer' : 'stable';
-        if (description.type === 'offer') for (const mid of JSON.parse(description.sdp)) {
-          const event = new Event('track'); event.track = audioTrack(); event.transceiver = { mid };
-          this.dispatchEvent(event);
-        }
-        if (description.type === 'answer') {
-          this.connectionState = 'connected';
-          this.dispatchEvent(new Event('connectionstatechange'));
-        }
-      }
-      async getStats() { return new Map(); }
-      close() { this.connectionState = 'closed'; this.dispatchEvent(new Event('connectionstatechange')); }
-    };
-    const NativeWebSocket = window.WebSocket;
-    window.WebSocket = class extends NativeWebSocket {
-      constructor(url, protocols) {
-        super(url, protocols);
-        if (/\/ws\/[a-f0-9]{8}$/.test(new URL(url, location.href).pathname)) window.__voiceGameSocket = this;
-      }
-    };
-  }, language);
-  await page.route('**/api/releases**', route => route.fulfill({ json: { releases: [], can_prompt: false } }));
-  await page.route('**/api/auth/game-guides', route => route.fulfill({ json: { enabled: false, acknowledged: {} } }));
-  await page.route('**/api/auth/tours/offer', route => route.fulfill({ json: { show: false, enabled: false, games: {} } }));
-  await page.route('**/api/hausdepp/progress-notices', route => route.fulfill({ json: { notices: [], revision: 0 } }));
-}
 
 async function fixture(page, browser, baseURL, language = 'de', { mockVoice = true } = {}) {
   const login = await page.request.post('/api/auth/login', { data: { username: 'Admin', password: 'temporary-password-123' } });
@@ -258,9 +196,11 @@ for (const language of ['de', 'en']) {
         }
       }
       await mic.click(); await expect(mic).toHaveAttribute('aria-pressed', 'true');
+      const joinsBeforeRotation = app.operations.filter(operation => operation.operation === 'join').length;
       app.changeRoom();
-      await expect(output).toHaveAttribute('aria-pressed', 'false');
+      await expect(output).toHaveAttribute('aria-pressed', 'true');
       await expect(mic).toHaveAttribute('aria-pressed', 'false');
+      await expect.poll(() => app.operations.filter(operation => operation.operation === 'join').length).toBe(joinsBeforeRotation + 1);
       expect(await page.evaluate(() => window.__voiceHarness.tracks.at(-1).readyState)).toBe('ended');
       await expect(sound).toHaveAttribute('aria-pressed', 'true');
       await sound.click(); await expect(sound).toHaveAttribute('aria-pressed', 'false');
@@ -315,7 +255,7 @@ test('real backend without configured voice service hides the voice toolbar', as
   } finally { await app.cleanup(); }
 });
 
-test('actual end-game and create-again preserve the in-document voice controller and microphone', async ({ page, browser, baseURL }) => {
+test('actual end-game and create-again keep listening but require a fresh microphone activation', async ({ page, browser, baseURL }) => {
   const app = await fixture(page, browser, baseURL);
   try {
     await app.start(); await page.locator('#hausdeppVoiceAudio').click();
@@ -331,13 +271,18 @@ test('actual end-game and create-again preserve the in-document voice controller
     await page.locator('#hausdeppRecreate').click();
     await expect(page).toHaveURL(url => url.pathname.startsWith('/hausdepp/spiel/') && url.pathname !== app.room);
     await expect(page.locator('#hausdeppWaiting')).toBeVisible();
-    await expect(page.locator('#hausdeppVoiceMicrophone')).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('#hausdeppVoiceAudio')).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('#hausdeppVoiceMicrophone')).toHaveAttribute('aria-pressed', 'false');
     expect(await page.evaluate(() => window.__voiceDocumentToken)).toBe(token);
     await expect(page.locator('#hausdeppSound')).toHaveAttribute('aria-pressed', 'true');
     expect(await page.evaluate(() => window.__voiceHarness.peers.length)).toBe(1);
-    expect(await page.evaluate(() => window.__voiceHarness.tracks[0].readyState)).toBe('live');
+    expect(await page.evaluate(() => window.__voiceHarness.tracks[0].readyState)).toBe('ended');
+    expect(await page.evaluate(() => window.__voiceHarness.captures)).toBe(1);
     expect(app.operations.filter(operation => operation.operation === 'join')).toHaveLength(1);
     expect(app.operations.some(operation => operation.operation === 'resume')).toBe(true);
+    await page.locator('#hausdeppVoiceMicrophone').click();
+    await expect(page.locator('#hausdeppVoiceMicrophone')).toHaveAttribute('aria-pressed', 'true');
+    expect(await page.evaluate(() => window.__voiceHarness.captures)).toBe(2);
   } finally { await app.cleanup(); }
 });
 

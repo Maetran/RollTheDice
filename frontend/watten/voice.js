@@ -3,6 +3,7 @@ import { createVoiceSignaling } from "../hausdepp/voice-signaling.js";
 import { HAUSDEPP_MESSAGES } from "../i18n/catalog.js";
 import { escapeHtml as esc } from "../shared/auth.js";
 import { lang } from "./cards.js";
+import { createVoiceTableLifecycle, queueVoiceTableLeft, showVoiceStatus } from "../shared/voice-table-lifecycle.js";
 
 const messages = {
   de: {
@@ -31,15 +32,18 @@ const unavailable = { event: "state", available: false, room_id: null, members: 
  * The owner forwards only its authenticated socket, and destroys this service
  * on account changes, deliberate departure, fatal disconnect or page teardown.
  */
-export function createWattenVoice({ send, userId, isCurrent = () => true }) {
+export function createWattenVoice({ send, userId, defaultListening = false, isCurrent = () => true }) {
   let stopped = false, snapshot = null, host = null, bound = false, online = false;
   let noticeSignature = "", rosterSignature = "";
   const signaling = createVoiceSignaling({ action: "watten_voice", send: data => {
     if (stopped || !bound || !online || !isCurrent()) return false;
     return send(data);
   } });
-  const controller = createHausdeppVoice({ userId, t: text,
+  const transport = createHausdeppVoice({ userId, t: text,
     send: (operation, payload) => signaling.request(operation, payload) });
+  const lifecycle = createVoiceTableLifecycle({ controller: transport, userId, gameType: "watten", defaultListening,
+    notify: key => showVoiceStatus(text(key)) });
+  const controller = lifecycle.controller;
   const toolbar = document.createElement("div");
   toolbar.className = "wt-voice";
   toolbar.hidden = true;
@@ -92,7 +96,7 @@ export function createWattenVoice({ send, userId, isCurrent = () => true }) {
     toolbar.querySelector("summary").title = text("voiceTitle");
     toolbar.querySelector("[data-voice-everyone]").textContent = text("everyone");
     toolbar.querySelector("[data-voice-privacy]").textContent = text("privacy");
-    toolbar.querySelector("[data-voice-hint]").textContent = `${text("microphoneHint")} ${text("voiceDeviceHint")}`;
+    toolbar.querySelector("[data-voice-hint]").textContent = `${text("microphoneHint")} ${text("voiceProfileHint")} ${text("voiceDeviceHint")}`;
     toggle(output, "speaker", state.audio, text(state.audio ? "voiceAudioOff" : "voiceAudioOn"));
     toggle(microphone, "microphone", state.microphone, text(state.microphone ? "voiceMicOff" : "voiceMicOn"));
     output.disabled = !state.supported || !online;
@@ -149,6 +153,7 @@ export function createWattenVoice({ send, userId, isCurrent = () => true }) {
       const active = own && (!snapshot.engine || Number.isInteger(snapshot.viewer.seat))
         && snapshot.room?.status !== "closed" && !(snapshot.awaited_participant_ids || []).includes(own)
         && snapshot.room?.recipe?.voice_enabled !== false && !snapshot.aborted;
+      if (active) lifecycle.enter({ gameId: snapshot.id, groupId: snapshot.room?.series?.id || snapshot.id });
       if (!active) safely(controller.receive(unavailable));
       render();
     },
@@ -167,9 +172,15 @@ export function createWattenVoice({ send, userId, isCurrent = () => true }) {
     disconnected({ revoke = false } = {}) {
       if (stopped) return;
       online = false; bound = false; signaling.reset(); controller.disconnected();
-      if (revoke) safely(controller.receive(unavailable));
+      if (revoke) { lifecycle.revoke(); safely(controller.receive(unavailable)); }
       render();
     },
+    handoff(gameId) { lifecycle.handoff(gameId); },
+    leave() {
+      lifecycle.leave();
+      queueVoiceTableLeft({ userId, gameType: "watten" });
+    },
+    revoke() { lifecycle.revoke(); },
     destroy() {
       if (stopped) return;
       // Send leave while the authenticated transport is still available.

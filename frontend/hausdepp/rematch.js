@@ -88,7 +88,9 @@ export function mountRematchInvitations({ userId, t, canPresent = () => true, na
         const data = await request(`/api/hausdepp/invitations/${encodeURIComponent(invitation.id)}/${type}`, { method: "POST", signal: controller.signal });
         acted = true;
         pending = pending.filter(item => item.id !== invitation.id);
-        if (type === "accept" && !destroyed) navigate(room(data));
+        if (type === "accept" && !destroyed) navigate(room(data), {
+          sourceGameId: data.source_game_id || invitation.source_game_id,
+        });
       } catch (error) {
         if (errorElement?.isConnected) { errorElement.textContent = rematchError(error, t); errorElement.hidden = false; }
         options.dismissible = true;

@@ -54,11 +54,12 @@ class Container {
 }
 
 function fixture({ fetcher, auth, language = "de" } = {}) {
-  const calls = [], navigations = [], container = new Container();
+  const calls = [], navigations = [], handoffs = [], container = new Container();
   let current = true, identity = 1, changed = 0, authReads = 0, commandIds = 0;
   const client = createRematch({ gameId, escapeHtml, language: () => language,
     makeCommandId: () => `rematch-${++commandIds}`,
     getExpectedAccountId: () => 1, isCurrent: () => current,
+    onNavigate: id => { assert.equal(navigations.length, 0); handoffs.push(id); },
     navigate: path => { navigations.push(path); current = false; client.destroy(); },
     onAccountChanged: () => { changed += 1; },
     loadAuth: async options => {
@@ -69,7 +70,7 @@ function fixture({ fetcher, auth, language = "de" } = {}) {
       calls.push({ url, options }); return fetcher ? fetcher(url, options, calls.length) : response();
     } });
   const update = (extra = {}) => client.update({ container, snapshot: snapshot(), playerId: "p1", spectator: false, ...extra });
-  return { client, calls, navigations, container, update, changed: () => changed,
+  return { client, calls, navigations, handoffs, container, update, changed: () => changed,
     setIdentity: value => { identity = value; }, invalidate: () => { current = false; } };
 }
 
@@ -92,6 +93,7 @@ test("one click continues even a protected match without password or settings in
   assert.equal(f.container.fields.size, 0);
   f.container.click("create");
   await until(() => f.navigations.length === 1);
+  assert.deepEqual(f.handoffs, [targetId]);
   assert.deepEqual(JSON.parse(f.calls[0].options.body), { command_id: "rematch-1", revision: 8 });
   assert.equal(f.calls[0].options.headers["X-Watten-Expected-Account-Id"], "1");
   assert.equal(f.calls[0].options.headers["X-CSRF-Token"], "csrf-1");
@@ -133,6 +135,7 @@ test("snapshot's existing target is an explicit navigation with no POST or passw
   assert.deepEqual(f.navigations, []); f.container.click("open");
   await until(() => f.navigations.length === 1);
   assert.equal(f.calls.length, 0); assert.deepEqual(f.navigations, [`/watten/spiel/${targetId}`]);
+  assert.deepEqual(f.handoffs, [targetId]);
 });
 
 test("closed host uses the same continuation without emitting seat or CPU commands", async () => {

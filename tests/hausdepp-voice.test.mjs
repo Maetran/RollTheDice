@@ -7,6 +7,8 @@ const usageURL = `data:text/javascript;base64,${Buffer.from(usageSource).toStrin
 const source = (await readFile(new URL("../frontend/hausdepp/voice.js", import.meta.url), "utf8"))
   .replace('"./voice-usage.js"', JSON.stringify(usageURL));
 const { createHausdeppVoice } = await import(`data:text/javascript;base64,${Buffer.from(source).toString("base64")}`);
+const lifecycleSource = await readFile(new URL("../frontend/shared/voice-table-lifecycle.js", import.meta.url), "utf8");
+const { createVoiceTableLifecycle } = await import(`data:text/javascript;base64,${Buffer.from(lifecycleSource).toString("base64")}`);
 const deferred = () => {
   let resolve, reject;
   const promise = new Promise((yes, no) => { resolve = yes; reject = no; });
@@ -571,20 +573,56 @@ test("missing, failed or slow getStats never changes voice participation or fabr
   app.controller.destroy();
 });
 
-test("room changes and page close immediately release all media; teardown is idempotent", async () => {
+test("authorized room rotation keeps listening, retires capture and requires fresh microphone activation", async () => {
   const app = setup(); app.setState(state([publication()]));
   await app.controller.connected(); await app.controller.setAudio(true); await app.controller.setMicrophone(true);
   const track = app.peers[0].transceivers[0].sender.track;
-  await app.controller.receive(state([], { room_id: "other-room" }));
-  assert.equal(track.stopped, true); assert.equal(app.controller.snapshot().audio, false);
   app.setState(state([], { room_id: "other-room" }));
-  await app.controller.setAudio(true); await app.controller.setMicrophone(true);
+  await app.controller.receive(state([], { room_id: "other-room" }));
+  assert.equal(track.stopped, true); assert.equal(app.controller.snapshot().audio, true);
+  assert.equal(app.controller.snapshot().microphone, false);
+  assert.equal(app.peers[0].connectionState, "closed");
+  assert.equal(app.calls.filter(call => call.operation === "join").length, 2);
+  assert.equal(app.captures.length, 1);
+  await app.controller.setMicrophone(true);
   const nextTrack = app.peers[1].transceivers[0].sender.track;
   app.lifecycle.dispatchEvent(new Event("pagehide"));
   assert.equal(nextTrack.stopped, true);
   app.controller.destroy(); app.controller.destroy();
   await turn();
   assert.equal(app.intervals.size, 0); assert.equal(app.timeouts.size, 0);
+});
+
+test("new-game handoff cancels a pending device permission without disabling listening", async () => {
+  const capture = deferred(), app = setup({ getUserMedia: () => capture.promise });
+  const life = createVoiceTableLifecycle({ controller: app.controller, userId: 1, gameType: "hausdepp", storage: null });
+  life.enter({ gameId: "first" }); await app.controller.connected(); await life.controller.setAudio(true);
+  const enabling = life.controller.setMicrophone(true); await turn();
+  life.handoff("second"); life.enter({ gameId: "second" });
+  const stream = new Stream(); capture.resolve(stream); await enabling; await turn();
+  assert.equal(stream.getTracks()[0].stopped, true);
+  assert.equal(app.controller.snapshot().audio, true);
+  assert.equal(app.controller.snapshot().microphone, false);
+  assert.equal(app.calls.some(call => call.operation === "publish"), false);
+  life.controller.destroy();
+});
+
+test("unrelated table opt-in waits for its new authenticated discovery instead of the preceding socket", async () => {
+  const app = setup();
+  const life = createVoiceTableLifecycle({ controller: app.controller, userId: 1, gameType: "hausdepp",
+    defaultListening: true, storage: null });
+  life.enter({ gameId: "first" }); await app.controller.connected(); await turn();
+  assert.equal(app.calls.filter(call => call.operation === "join").length, 1);
+  life.enter({ gameId: "unrelated" }); app.controller.disconnected(); await turn();
+  assert.equal(app.controller.snapshot().audio, false);
+  assert.equal(app.controller.snapshot().available, false);
+  assert.equal(app.calls.filter(call => call.operation === "join").length, 1);
+  app.setState(state([], { room_id: "other-table" }));
+  await app.controller.connected(); await turn();
+  assert.equal(app.controller.snapshot().audio, true);
+  assert.equal(app.controller.snapshot().microphone, false);
+  assert.equal(app.calls.filter(call => call.operation === "join").length, 2);
+  life.controller.destroy();
 });
 
 test("unknown subscription result retires the connection rather than repeating an uncertain allocation", async () => {
