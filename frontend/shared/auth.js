@@ -511,7 +511,7 @@ export async function logout() {
   const guestGameAccess = gameAccess
     ? Object.fromEntries(Object.entries(gameAccess).filter(([key]) => key !== "watten_preview")) : null;
   const response = await apiFetch('/api/auth/logout', { method: 'POST' });
-  if (!response.ok) throw new Error('Abmelden fehlgeschlagen');
+  if (!response.ok && response.status !== 401) throw new Error('Abmelden fehlgeschlagen');
   authState.epoch += 1;
   authState.cache = null;
   authState.request = null;
