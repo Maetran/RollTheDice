@@ -203,6 +203,9 @@ for (const language of ['de', 'en']) {
     const panel = page.locator('#voiceActivityPanel');
     const privateIds = ['voiceActivitySummary', 'voiceActivityGames', 'voiceActivityUsers', 'voiceActivityUpdated', 'voiceActivityRetained'];
     await expect(panel).toBeVisible();
+    await page.locator('#dashboardDesign').selectOption('nexus');
+    await panel.locator('[data-favorite-toggle="panel-voice-activity"]').click();
+    await expect(page.locator('#dashboardFavoritesGrid > #voiceActivityPanel')).toBeVisible();
     await expect(page.locator('#voiceActivityTitle')).toHaveText(language === 'en' ? 'Voice chat activity' : 'Sprachchat-Aktivität');
     await expect(panel).toContainText(language === 'en' ? 'Listening time is not speaking time' : 'Zuhörzeit ist keine Sprechzeit');
     await expect(page.locator('#voiceActivitySummary .request-metric strong')).toHaveText(['7', '3', '2', '12.5']);
@@ -777,6 +780,7 @@ for (const language of ['de', 'en']) {
     await expect(page.locator('#dashboardFavorites')).toBeVisible();
     await expect(page.locator('#dashboardFavoritesGrid > [data-favorite-id]')).toHaveCount(0);
     const favoriteItems = await page.locator('[data-favorite-id]').count();
+    await expect(page.locator('#voiceActivityPanel')).toHaveAttribute('data-favorite-id', 'panel-voice-activity');
     expect(favoriteItems).toBe(await page.locator('article.panel, .metric-card').count());
     await expect(page.locator('[data-favorite-toggle]')).toHaveCount(favoriteItems);
     await expect(star(liveId)).toHaveAccessibleName(language === 'en' ? /favorite.*active visits/i : /Favorit.*Aktive Besuche/);
