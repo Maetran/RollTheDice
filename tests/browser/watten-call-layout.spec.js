@@ -35,7 +35,7 @@ async function geometry(page) {
     const own = document.querySelector('[data-wt-own-call] .wt-bubble');
     const dock = [...document.querySelectorAll('.wt-end-sheet > :not(.wt-own-call)')].filter(visible);
     const obstacles = [...new Set([...dock, ...document.querySelectorAll('[data-watten-call], .wt-seat-badge, .wt-avatar, .wt-seat-name, .wt-seat-call-role, .wt-seat-tags, .wt-seat-meta, '
-      + '.wt-bubble--thanks, .wt-backs > i:not([hidden]), .wt-stock, .wt-reference, [data-wt-preplay], .wt-prompt, .wt-partner-popover, .wt-retour-tag')].filter(visible))];
+      + '.wt-bubble--thanks, .wt-backs > i:not([hidden]), .wt-stock, .wt-reference, [data-wt-preplay], [data-wt-bloedeln]:not(:empty), .wt-trick-label:not(:empty), .wt-prompt, .wt-partner-popover, .wt-retour-tag')].filter(visible))];
     const overlap = (a, b) => Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left))
       * Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
     const ownBox = box(own);
@@ -46,6 +46,7 @@ async function geometry(page) {
       visibleOwn: [...document.querySelectorAll('.wt-bubble--bottom[data-watten-call]')].filter(visible).length,
       overlaps: obstacles.filter(node => node !== own).map(node => ({ class: node.className, box: box(node), area: overlap(ownBox, box(node)) })).filter(item => item.area > 0),
       calls: calls.map(node => ({ text: node.textContent, box: box(node), own: node === own,
+        seat: ['bottom', 'left', 'right', 'top'].find(seat => node.classList.contains(`wt-bubble--${seat}`)),
         positioned: node.hasAttribute('data-wt-portrait-call') ? {
           actualLeft: node.offsetLeft, actualTop: node.offsetTop,
           expectedLeft: Number.parseFloat(node.style.getPropertyValue('--wt-call-left')),
@@ -71,6 +72,15 @@ async function expectOwnCall(page, measurements) {
   expect(result.visibleOwn).toBe(1);
   expect(result.overlaps).toEqual([]);
   expect(result.calls.flatMap(call => call.covered)).toEqual([]);
+  const middle = result.table.left + result.table.width / 2;
+  expect(Math.abs(result.own.left + result.own.width / 2 - middle)).toBeLessThanOrEqual(1);
+  for (const call of result.calls.filter(call => !call.own)) {
+    expect(call.box.bottom, 'own call stays nearest the own controls').toBeLessThanOrEqual(result.own.bottom + 1);
+    const centre = call.box.left + call.box.width / 2;
+    if (call.seat === 'left') expect(centre).toBeLessThan(middle);
+    if (call.seat === 'right') expect(centre).toBeGreaterThan(middle);
+    if (call.seat === 'top') expect(call.box.bottom).toBeLessThanOrEqual(result.own.top);
+  }
   for (const call of result.calls.filter(call => call.positioned)) {
     expect(Math.abs(call.positioned.actualLeft - call.positioned.expectedLeft)).toBeLessThanOrEqual(1);
     expect(Math.abs(call.positioned.actualTop - call.positioned.expectedTop)).toBeLessThanOrEqual(1);
@@ -93,6 +103,28 @@ async function controlRects(page) {
   return page.locator('[data-wt-stake] button, [data-wt-panel] button, [data-wt-hand] button').evaluateAll(nodes => nodes
     .filter(node => node.checkVisibility())
     .map(node => ({ action: node.dataset.wattenAction || node.dataset.card || 'stake', rect: node.getBoundingClientRect().toJSON() })));
+}
+
+async function badgeBaseline(page) {
+  return page.evaluate(() => {
+    const slot = document.querySelector('[data-wt-own-call]'), parent = slot.parentElement, next = slot.nextSibling;
+    const sample = () => {
+      const badge = document.querySelector('.wt-seat--bottom .wt-seat-badge');
+      const avatar = badge.querySelector('.wt-avatar').getBoundingClientRect();
+      const panel = document.querySelector('[data-wt-panel]').getBoundingClientRect();
+      const left = Math.max(avatar.left, panel.left), top = Math.max(avatar.top, panel.top);
+      const right = Math.min(avatar.right, panel.right), bottom = Math.min(avatar.bottom, panel.bottom);
+      return { badge: badge.getBoundingClientRect().toJSON(), avatar: avatar.toJSON(), panel: panel.toJSON(),
+        avatarOverlap: Math.max(0, right - left) * Math.max(0, bottom - top),
+        badgeActions: badge.querySelectorAll('button, a, input, [data-watten-command]').length,
+        coveredBy: right > left && bottom > top ? document.elementFromPoint((left + right) / 2, (top + bottom) / 2)?.className : null };
+    };
+    const before = sample();
+    slot.remove();
+    const withoutCallSlot = sample();
+    parent.insertBefore(slot, next);
+    return { before, withoutCallSlot };
+  });
 }
 
 for (const language of ['de', 'en']) for (const { count, reference = false } of [{ count: 2 }, { count: 4 }, { count: 4, reference: true }]) {
@@ -152,7 +184,10 @@ for (const language of ['de', 'en']) for (const { count, reference = false } of 
       for (const { page } of callers) {
         await resize(page, PORTRAITS[0]);
       }
-      await action(players, 'bid');
+      // Cover the opposite caller as bidder too: a right-seat peer must fit
+      // while the own seat receives the bid and partner advice.
+      const bidders = reference ? [colourer, ...players.filter(item => item !== colourer)] : players;
+      await action(bidders, 'bid');
       await expect.poll(() => players.every(item => item.traffic.snapshot.engine.phase === 'bid_response')).toBe(true);
       if (count === 4) {
         await answerPartnerFeedback(players, 'good');
@@ -174,6 +209,11 @@ for (const language of ['de', 'en']) for (const { count, reference = false } of 
       for (const viewport of portraits) for (const { page } of callers) {
         await resize(page, viewport);
         await expectOwnCall(page, measurements);
+        if (language === 'en' && count === 2 && viewport.width === 390) {
+          const baseline = await badgeBaseline(page);
+          measurements.push({ badgeBaseline: baseline });
+          expect(baseline.withoutCallSlot).toEqual(baseline.before);
+        }
         if (viewport.width === 320) await page.screenshot({ path: info.outputPath(`bid-${language}-${count}-320-${page === callers[0].page ? 'first' : 'second'}.png`) });
       }
       await callers[0].page.screenshot({ path: info.outputPath(`bid-${language}-${count}-390.png`) });
