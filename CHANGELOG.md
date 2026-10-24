@@ -23,6 +23,36 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 4.3.1 — 2026-10-24
+
+### ZDWA / ZILCH / HAUSDEPP / WATTEN
+
+**Deutsch:** Watten ordnet im schmalen Hochformat Ansagen bei der jeweiligen
+Spielerrolle und eigene Ansagen über den Aktionen an. Namen bleiben lesbar,
+auch beim Solisten mit zwei Ansagen. Vierertische auf Tablets zentrieren den
+oberen Fächer und richten die seitlichen Karten auf einer gemeinsamen Achse aus.
+Eigener Name, Zeigen und Bestätigen bleiben bei der Hand; Stichkarten,
+gewonnene Pakete und Blödeln-Aktionen erhalten getrennte Bereiche.
+Gemeinsames Abmelden verhindert den Rückfall auf ältere Browser-Cookies anderer
+Spielhosts. Die Passwort-Anmeldung zählt gleichzeitig laufende Versuche mit,
+ohne ihr bestehendes Limit zu erhöhen. Zilch zeigt fehlgeschlagenes Abmelden
+mit einer Wiederholmöglichkeit. Private Kontoseiten entfernen nach Abmelden
+oder Kontowechsel alte Inhalte und verwerfen verspätete Antworten.
+Neue Regressionen prüfen reale Cookies, parallele Datenbankzugriffe, signierte
+Passkey-Anfragen sowie mobile Layouts und Kontofluss-Rennen.
+
+**English:** In narrow portrait, Watten places calls beside the relevant player
+role and own calls above the actions. Names remain readable, including the solo
+player's two calls. Four-seat tablet tables centre the top fan and align side
+cards on a shared axis. Own identity, Show and Continue stay beside the hand;
+trick cards, captured packets and Blödeln actions receive separate space.
+Shared sign-out prevents fallback to older browser cookies from other game
+hosts. Password sign-in counts concurrent attempts without increasing the
+existing limit. Zilch shows failed sign-out with a retry. Private account pages
+clear old content after sign-out or an account switch and discard late responses.
+New regressions cover real cookies, concurrent database access, signed passkey
+assertions, mobile layouts and account-flow races.
+
 ## 4.3.0 — 2026-10-24
 
 ### ZILCH / HAUSDEPP

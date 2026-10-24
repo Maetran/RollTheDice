@@ -179,6 +179,17 @@ Karten noch geladen werden oder die Seite aus dem Browser-Zwischenspeicher kommt
 Switching accounts reloads the Watten table for the new account, including while
 cards load or when the browser restores a cached page.
 
+Im schmalen Hochformat stehen angesagte Werte direkt bei der Rolle des
+jeweiligen Spielers. Deine eigene Ansage bleibt über Bieten und Partnerantworten
+lesbar, auch wenn sich dieser Bereich öffnet. Im Dreier bleiben beide Werte
+des allein Ansagenden sichtbar. Wer welche Ansage sehen darf und wie lange
+sie erscheint, bleibt unverändert.
+
+In narrow portrait layouts, called values appear beside the corresponding
+player’s role. Your own call stays readable above bidding and partner responses,
+including when that area expands. In three-player games, both values called by
+the solo caller remain visible. Call visibility and display duration are unchanged.
+
 **Spieltisch / game table:** Mobile zuerst: die helle Tiroler Schnitzstube bleibt
 mit grösseren Schnitzecken sichtbar. Vor dem Aufdecken erscheint kein leerer
 Handkartenfächer. Bei der ladinischen Ansage werden die beiden zulässigen Karten

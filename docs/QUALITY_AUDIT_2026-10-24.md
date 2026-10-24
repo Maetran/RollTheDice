@@ -343,11 +343,12 @@ physical iPhone test.
 
 ## Trackingvertrag / Tracking contract
 
-- ZDWA: eine dauerhafte Ergebniszeile pro vollständigem Scorecardabschluss.
+- ZDWA: eine dauerhafte Ergebniszeile pro vollständig abgeschlossener Partie;
+  mehrere individuelle oder Teamtafeln zählen dabei nicht als weitere Partien.
   Zilch: ein Terminalresultat; Solo-Abbrüche sind getrennt von regulären
   Abschlüssen zu betrachten. Hausdepp: eine Runde, kein ganzes Turnier.
   Watten: eine Zielpunktepartie, kein einzelner Deal. / Durable result rows mean
-  a completed scorecard for ZDWA, a terminal outcome for Zilch (including
+  one completed ZDWA match (possibly with several individual/team boards), a terminal outcome for Zilch (including
   separately classified solo abandonment), one round for Hausdepp and a full
   points match for Watten.
 - Gespeicherte Teilnehmersitze enthalten CPUs und sind weder eindeutige Menschen
@@ -625,3 +626,148 @@ ein erfolgreicher Funktionstest ist keine Sicherheitsfreigabe.
 New sources require fresh complete local verification before pushing. The
 final login security audit follows this block; passing functional tests is
 not a security clearance.
+
+### Anmeldesicherheit und private Kontoansichten / Sign-in security and private account views
+
+**Deutsch**
+Die Prüfung blieb auf die belegten Sitzungs-, Anmelde- und Kontoansichtspfade begrenzt.
+Produktionskonfiguration, Secure-Cookies und Cookie-Domain, Passkey-Einstellungen,
+HTTP-Header sowie die Bindung an `127.0.0.1` wurden ausschließlich lesend geprüft.
+Im geprüften Umfang wurde kein Anmelde-Bypass belegt.
+
+- **F1:** Erfolgreiches Abmelden setzt den gemeinsamen Browser-Cookie für 30 Tage
+  auf einen leeren, geschützten Wert. Dadurch können ältere Host-Cookies keine
+  Browsersitzung wiederherstellen; die aktuelle Serversitzung wird weiterhin widerrufen.
+  Unbekannte ältere Datenbank-Bearer bleiben bis zu ihrem absoluten Ablauf gültig.
+  Dies ist keine pauschale Abmeldung anderer Browser oder aller Geräte.
+- **F2:** Atomare Reservierungen laufender Passwortprüfungen schützen die bestehende
+  Grenze von fünf Versuchen in 15 Minuten anhand IP und Anmeldekennung auch bei
+  Konkurrenz. Andere Anmeldeverfahren bleiben unverändert.
+- **F3:** Ein fehlgeschlagenes Zilch-Abmelden zeigt einen Fehler und erlaubt einen
+  erneuten Versuch. HTTP 401 bedeutet bereits abgemeldet; 403, 503 und Netzwerkfehler
+  bleiben Fehler. Der erfolgreiche Vorgang besitzt genau eine Weiterleitung.
+- **F4:** ZDWA und Zilch entfernen private Konto-Inhalte und persönliche Kopfzeilen
+  vor Navigation und bei `pagehide`. Ein erkannter Kontowechsel lädt ein frisches
+  Dokument; verspätete Antworten dürfen die vorherige Ansicht nicht wiederherstellen.
+
+Gezielt bestanden: 35 Node-Tests, fünf Browserfälle und ein HTTP-Test mit vier
+Modus-/Host-Unterfällen. Die Fremdtab-Fälle nutzen echte lokale Abmeldungen und
+Kontowechsel sowie den ausdrücklich ausgelösten bestehenden `focus`-Handler.
+Die Restore-Prüfung verwendet synthetische `pagehide`-/`pageshow.persisted`-Ereignisse;
+sie belegt keinen tatsächlichen BFCache-Treffer und keine native Fokuszustellung.
+Claude meldete im unabhängigen Review für den abschließenden Quelldiff **NO BLOCKERS**; dies war
+Quellenreview. Ein neues globales `must_change_password`-Gate oder eine Änderung der
+Kontorichtlinien wurde nicht eingeführt. Vollnachweis und Auslieferung werden separat
+belegt; die begrenzte Prüfung ist keine umfassende Sicherheitsgarantie.
+
+**English**
+The review was limited to the evidenced session, sign-in and account-view paths.
+Production configuration, secure cookies and their domain, passkey settings,
+HTTP headers and the `127.0.0.1` binding were inspected read-only.
+No sign-in bypass was established within the reviewed scope.
+
+- **F1:** Successful sign-out retains an empty protected shared browser cookie for
+  30 days, suppressing older host-cookie fallback while revoking the current session.
+  Unknown older database bearer tokens remain valid until their absolute expiry;
+  this does not sign out every browser or device.
+- **F2:** Atomic reservations for pending password checks preserve the existing
+  five-attempt/15-minute limit using IP and sign-in identifier under concurrency.
+  Other sign-in methods are unchanged.
+- **F3:** Failed Zilch sign-out displays an error and permits retry. HTTP 401 means
+  already signed out; 403, 503 and network failures remain errors. Success owns one redirect.
+- **F4:** ZDWA and Zilch clear private account content and personal headers before
+  navigation and on `pagehide`; a detected identity change loads a fresh document.
+  Late replies cannot restore the previous viewer's account view.
+
+Focused evidence: 35 Node tests, five browser cases and one HTTP test with four
+mode/host subcases passed. Cross-tab cases use real local sign-outs/account switches
+and explicitly dispatch the existing `focus` handler. Restore coverage uses synthetic
+`pagehide`/`pageshow.persisted` events, not a proven real BFCache hit or native focus delivery.
+Claude independently reported **NO BLOCKERS** for the final source diff in a source-only review.
+No new global `must_change_password` gate or account-policy change was introduced.
+Integrated verification and delivery are recorded separately; this bounded review
+is not a comprehensive security guarantee.
+
+
+### 4.3.1: gemeinsame Integration / combined integration
+
+Die neuen Kontopfade bestanden auch fünf gezielte WebKit-Browserfälle. Die
+Login-Datenbankfixture wird über eine explizite Modulmarkierung je Testfall
+aktiviert; acht Fälle bleiben mit unverändertem Setup, Teardown und Assertions
+grün. Damit passieren auch die strikten Prüfungen auf unbenutzte Parameter.
+
+Five focused WebKit browser cases also passed for the account paths. An explicit
+module marker activates the isolated login database fixture per test case;
+all eight cases retain their setup, teardown and assertions. This also satisfies
+the strict unused-parameter check.
+
+
+Watten-Ansagen bestanden sieben reale DE/EN-Browserfälle sowohl mit Chromium
+als auch WebKit: zwei/vier Sitze, Referenzkarte, Nichtansager, Gegenbieten und
+beide Ansagen des Dreier-Solisten. 166 Ansage-/Stapelproben und 633 Proben innerhalb
+der Namensfelder fanden keine Überdeckungen oder Fallbacks. 45 Austeilursprünge
+und zwölf Dreier-Stichlayouts wurden zusätzlich gemessen. Claude prüfte die
+letzte Quellkorrektur und den tatsächlichen Solo-Screenshot ohne Blocker.
+Die drei anfänglichen WebKit-Abbrüche waren eine belegte Test-RPC-Race bei
+`Date.now()+10` vor `pauseAt`; der Test friert die Zeit nun ausschließlich mit
+öffentlichen Clock-APIs ein. Keine Assertion oder Kollisionstoleranz wurde gelockert.
+
+Watten calls passed seven real DE/EN browser cases in both Chromium and WebKit:
+two/four seats, a reference card, non-callers, counterbids and both solo-caller
+values in three-player games. All 166 call/deck samples and 633 intra-badge
+samples had zero overlaps or fallbacks. Forty-five dealing origins and twelve
+three-seat trick layouts were also measured. Claude approved the final source
+correction and actual solo screenshot without blockers. Three initial WebKit
+aborts proved a test RPC race between `Date.now()+10` and `pauseAt`; the test
+now pins time using only public Clock APIs. Assertions and collision tolerances
+were not weakened.
+
+Der Tablet-Block richtet ausschließlich Vierertische ab 761×701 CSS-Pixeln neu
+aus. Zwei gezielte Chromium-Tests bestanden 80 Anzeige-Fixtures über acht Größen,
+einschließlich 768×1024, 1024×768 und 1280×800 sowie den Ausschluss kleiner
+Telefone und Zwei-/Dreiertische. Lange Namen, Titel, Danke, eins bis vier
+Stichpakete, vier ausgespielte Karten und passive/aktive Blödeln-Anzeigen wurden
+visuell und geometrisch geprüft. Die absichtlich kombinierten Anzeige-Fixtures
+sind keine Behauptung legaler Spielzustände. Ein separat gebündelter Testrenderer
+brauchte explizite SVG-Sichtbarkeit, um die Kartenbilder zu malen; die genaue
+Browserursache dieser Harness-Abweichung ist nicht vollständig isoliert.
+Die Produktdarstellung wurde daraus nicht geändert. Ein separater echter
+Viererspiel-Ablauf am unveränderten Bundle prüft deshalb das Einschauen.
+
+The tablet block only rearranges four-seat tables at 761×701 CSS pixels and
+above. Two focused Chromium tests passed 80 display fixtures across eight sizes,
+including 768×1024, 1024×768 and 1280×800, and checked exclusion of compact phones
+and two/three-seat tables. Long names, titles, Thanks, one to four captured
+packets, four played cards and passive/active Blödeln panels received visual and
+geometric checks. Deliberately combined display fixtures are not assertions of
+legal engine states. A separately bundled test renderer needed explicit SVG
+visibility to paint its artwork; the exact browser cause of that harness
+variation has not been fully isolated. This did not change product artwork.
+A separate real four-player flow against the unmodified bundle therefore checks
+inspection.
+
+
+Am integrierten Bundle `b8b564037f40` bestanden die beiden Tablet-Tests auch in
+WebKit. Der zusätzliche echte blinde Viererablauf bestand mit zwei Ansagenden,
+beiden Ausrichtungen, vollständig gedruckten Karten und tatsächlichen
+Bestätigungen bis zum Kartenspiel. Vier native Screenshots wurden betrachtet.
+Der erste erweiterte WebKit-Lauf fand außerdem den alten pauschalen 44-Pixel-
+Vertrag für dekorative Stichpakete. Ausschließlich die neue obere Tablet-
+Paketspalte nutzt bewusst 26–40 Pixel, damit Namen und Karten frei bleiben;
+ihre eigene Größenprüfung ersetzt dort den alten Vertrag. Andere Pakete und
+alle 44-Pixel-Bedienelemente behalten ihre bisherigen Grenzwerte.
+
+Against integrated bundle `b8b564037f40`, both tablet tests also passed in WebKit.
+The additional real blind four-player flow passed with two callers, both
+orientations, fully printed cards and real acknowledgements through to card
+play. Four native screenshots were inspected. The first expanded WebKit run
+also found the old blanket 44-pixel contract for decorative captured packets.
+Only the new upper tablet packet column deliberately uses 26–40 pixels to keep
+names and cards clear; its specific size check replaces that old contract.
+Other packets and all 44-pixel controls retain their existing bounds.
+Claude prüfte die endgültige Tablet-Quelle und tatsächliche Hoch-/Querformatbilder
+ohne blockierende Befunde. Das war keine Freigabe des integrierten Vollnachweises.
+
+Claude independently read the final tablet source and actual portrait/landscape
+screenshots and reported no blockers within that scope. His review did not
+claim integrated-build or full-gate approval.

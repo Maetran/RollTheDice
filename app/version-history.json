@@ -2511,5 +2511,12 @@
     "date": "2026-10-24",
     "bump": "patch",
     "summary": "Klarere Spielhinweise, ausgewogene CPU-Stärke am Tisch und verlässliche Tracking-Anzeigen. / Clearer play guidance, balanced CPU difficulty at mixed tables and accurate tracking coverage."
+  },
+  {
+    "version": "4.3.0",
+    "revision": "fd1e005cac9121cd4bd3ee60520fb5b6ea059550",
+    "date": "2026-10-24",
+    "bump": "minor",
+    "summary": "Öffentlich beobachtete Hausdepp-Endspiele und gezielte Zilch-CPU-Fortsetzung nach Erfahrung. / Publicly observed Hausdepp endgames and focused Zilch CPU continuation based on experience."
   }
 ]
