@@ -13,9 +13,9 @@
   }
   html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="3"] .wt-stock { left: 50%; translate: -50% 0; }
   html[data-game="watten"][data-watten-active="true"] .wt-role-call { display: block; }
-  html[data-game="watten"][data-watten-active="true"] .wt-seat-call-role { min-height: calc(var(--wt-role-lines, 1) * 1.2em + 4px); }
-  html[data-game="watten"][data-watten-active="true"] .wt-role-name { display: block; }
-  html[data-game="watten"][data-watten-active="true"] .wt-role-separator { display: none; }
+  html[data-game="watten"][data-watten-active="true"] :is(.wt-seat--top, .wt-seat--left, .wt-seat--right) .wt-seat-call-role { min-height: calc(var(--wt-role-lines, 1) * 1.2em + 4px); }
+  html[data-game="watten"][data-watten-active="true"] :is(.wt-seat--top, .wt-seat--left, .wt-seat--right) .wt-role-name { display: block; }
+  html[data-game="watten"][data-watten-active="true"] :is(.wt-seat--top, .wt-seat--left, .wt-seat--right) .wt-role-separator { display: none; }
   html[data-game="watten"][data-watten-active="true"] .wt-seat-call-role:has(> .wt-role-call) > .wt-role-static {
     position: absolute !important;
     width: 1px;
@@ -55,6 +55,22 @@
   html[data-game="watten"][data-watten-active="true"] .wt-bubbles > [data-watten-call] {
     display: none;
   }
+
+  /* The own badge keeps its bottom anchor. Separate its
+     identity from the role instead of squeezing all three into one row. */
+  html[data-game="watten"][data-watten-active="true"] .wt-table .wt-seat--bottom .wt-seat-badge {
+    display: grid;
+    grid-template-columns: max-content minmax(40px, 1fr);
+    gap: 2px 3px;
+    width: 96px;
+    max-width: 96px;
+    justify-self: start;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table .wt-seat--bottom .wt-avatar { grid-row: 1; grid-column: 1; }
+  html[data-game="watten"][data-watten-active="true"] .wt-table .wt-seat--bottom .wt-seat-name-row { grid-row: 1; grid-column: 2; }
+  html[data-game="watten"][data-watten-active="true"] .wt-table .wt-seat--bottom .wt-seat-call-role { grid-row: 2; grid-column: 1 / -1; }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="3"] .wt-seat--bottom .wt-role-name { display: block; }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="3"] .wt-seat--bottom .wt-role-separator { display: none; }
 }
 
 /* Short portrait badges need the same separate role row as the narrowest

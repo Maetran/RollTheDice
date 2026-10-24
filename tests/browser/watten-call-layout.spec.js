@@ -28,6 +28,35 @@ async function resize(page, viewport) {
   await settleCalls(page);
 }
 
+async function expectVisibleBadges(page, measurements) {
+  const badges = await page.locator('.wt-seat-badge').evaluateAll(nodes => {
+    const visible = node => node.checkVisibility() && node.getBoundingClientRect().width > 0 && node.getBoundingClientRect().height > 0;
+    const box = node => node.getBoundingClientRect().toJSON();
+    const overlap = (a, b) => Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left))
+      * Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
+    return nodes.filter(visible).map(badge => {
+      const parts = [...badge.querySelectorAll('.wt-avatar, .wt-seat-name, .wt-seat-call-role, .wt-tag')].filter(visible)
+        .map(node => ({ class: node.className, text: node.textContent, box: box(node) }));
+      return { seat: badge.closest('[data-wt-seat]').dataset.wtSeat,
+        bottom: badge.closest('.wt-seat').classList.contains('wt-seat--bottom'),
+        count: Number(badge.closest('[data-count]').dataset.count), parts,
+        overlaps: parts.flatMap((part, index) => parts.slice(index + 1)
+          .map(other => ({ first: part.class, second: other.class, area: overlap(part.box, other.box) }))
+          .filter(pair => pair.area > 0)) };
+    });
+  });
+  measurements.push({ badgeContents: badges, viewport: page.viewportSize() });
+  expect(badges.length).toBeGreaterThan(0);
+  for (const badge of badges) {
+    expect(badge.parts.some(part => part.class === 'wt-avatar')).toBe(true);
+    expect(badge.parts.some(part => part.class === 'wt-seat-name')).toBe(true);
+    expect(badge.overlaps, `painted content inside seat ${badge.seat}`).toEqual([]);
+    if (badge.bottom && badge.count < 4) {
+      expect(badge.parts.find(part => part.class === 'wt-seat-name').box.width).toBeGreaterThanOrEqual(40);
+    }
+  }
+}
+
 async function geometry(page) {
   return page.evaluate(() => {
     const visible = node => node.checkVisibility() && node.getBoundingClientRect().width > 0 && node.getBoundingClientRect().height > 0;
@@ -87,6 +116,7 @@ async function geometry(page) {
       slot: !own ? null : (() => {
         const node = own.parentElement, actual = box(node), sheet = box(node.parentElement);
         return { actual, sheet, transition: getComputedStyle(node).transitionProperty,
+          left: node.style.getPropertyValue('--wt-own-call-left'), bottom: node.style.getPropertyValue('--wt-own-call-bottom'),
           expected: { left: sheet.left + Number.parseFloat(node.style.getPropertyValue('--wt-own-call-left')) - actual.width / 2,
             bottom: sheet.bottom - Number.parseFloat(node.style.getPropertyValue('--wt-own-call-bottom')) } };
       })(),
@@ -97,6 +127,7 @@ async function geometry(page) {
 }
 
 async function expectOwnCall(page, measurements) {
+  await expectVisibleBadges(page, measurements);
   const result = await geometry(page);
   measurements.push({ viewport: page.viewportSize(), ...result });
   expect(result.visibleOwn).toBe(1);
@@ -120,6 +151,7 @@ async function expectOwnCall(page, measurements) {
   expect(result.own.y).toBeGreaterThanOrEqual(0);
   expect(result.own.y).toBeGreaterThanOrEqual(result.table.top);
   await expect(page.locator('[data-wt-own-call]')).toHaveAttribute('aria-hidden', 'true');
+  return result;
 }
 
 function expectCallBindings(result) {
@@ -152,6 +184,7 @@ function expectCallBindings(result) {
 }
 
 async function expectPeerCalls(page, measurements) {
+  await expectVisibleBadges(page, measurements);
   const result = await geometry(page);
   measurements.push({ noncaller: true, viewport: page.viewportSize(), ...result });
   expect(result.visibleOwn).toBe(0);
@@ -177,6 +210,7 @@ async function roleRows(page) {
 }
 
 async function expectThreeSeatTrick(page, measurements, historyExpected) {
+  await expectVisibleBadges(page, measurements);
   const result = await page.evaluate(() => {
     const visible = node => node.checkVisibility() && node.getBoundingClientRect().width > 0 && node.getBoundingClientRect().height > 0;
     const box = node => node.getBoundingClientRect().toJSON();
@@ -265,7 +299,9 @@ for (const language of ['de', 'en']) for (const { count, reference = false } of 
       expect(await firstCall.evaluate(node => node.isConnected)).toBe(true);
       const originalOverlaps = [];
       for (const { page } of callers) {
-        await expectOwnCall(page, measurements);
+        const settled = await expectOwnCall(page, measurements);
+        await page.clock.runFor(20);
+        expect((await expectOwnCall(page, measurements)).slot).toEqual(settled.slot);
         if (reference) {
           await page.evaluate(() => {
             for (const node of document.querySelectorAll('.wt-bubbles [data-watten-call]')) for (const animation of node.getAnimations()) animation.currentTime = 0;
@@ -431,13 +467,20 @@ test('de: three-seat solo announcements retain both values at the same peer seat
       await expect(page.locator('[data-wt-motion="deal"]')).toHaveCount(0);
       await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 10);
     }
-    for (const { page } of players) measurements.push({ beforeCall: true, viewport: page.viewportSize(), ...await geometry(page) });
+    for (const { page } of players) {
+      await expectVisibleBadges(page, measurements);
+      measurements.push({ beforeCall: true, viewport: page.viewportSize(), ...await geometry(page) });
+    }
     const solo = await action(players, 'announce_strike', '7');
     const caller = await action(players, 'announce_colour', 'bells');
     expect(caller).toBe(solo);
     for (const { page } of players) await settleCalls(page);
     await expect(solo.page.locator('[data-wt-own-call] > [data-watten-call]:visible')).toHaveCount(2);
     await expect(solo.page.locator('[data-wt-own-call]')).not.toHaveAttribute('data-wt-call-fallback');
+    await expectVisibleBadges(solo.page, measurements);
+    const ownRoles = await solo.page.locator('.wt-seat--bottom .wt-role-name').evaluateAll(nodes => nodes.map(node => node.getBoundingClientRect().toJSON()));
+    expect(ownRoles).toHaveLength(2);
+    expect(ownRoles[0].bottom).toBeLessThanOrEqual(ownRoles[1].top);
     await solo.page.screenshot({ path: info.outputPath('solo-own-320.png') });
     for (const item of players.filter(item => item !== solo)) {
       const labels = item.page.locator(`[data-wt-seat="${solo.traffic.snapshot.viewer.seat}"] [data-watten-role-call]`);
@@ -452,6 +495,7 @@ test('de: three-seat solo announcements retain both values at the same peer seat
     for (const { page } of players) await page.clock.runFor(5300);
     for (const { page, traffic } of players) {
       await expect(page.locator('[data-watten-call], [data-watten-role-call]')).toHaveCount(0);
+      await expectVisibleBadges(page, measurements);
       expect(traffic.errors).toEqual([]);
     }
     for (const { page } of players) await resize(page, PORTRAITS[0]);

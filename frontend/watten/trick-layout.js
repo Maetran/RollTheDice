@@ -330,6 +330,9 @@ export function createTrickLayout(trick, { win = window } = {}) {
       deal = `${vm.engine?.deal_id ?? ""}:${vm.engine?.deal_revision ?? 0}`;
       if (queued !== null) win.cancelAnimationFrame(queued);
       layout();
+      // A compact dock can move after its DOM/CSS update without resizing.
+      // Recheck calls once on the next frame; the size observer cannot see it.
+      if (ownCall?.children.length && win.matchMedia("(orientation: portrait) and (max-width: 760px)").matches) schedule();
     },
     destroy() {
       destroyed = true;
