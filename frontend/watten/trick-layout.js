@@ -186,7 +186,7 @@ export function createTrickLayout(trick, { win = window } = {}) {
     const top = Math.max(8, area.top + 8);
     const bounds = { left, top, right, bottom, width: right - left, height: bottom - top };
     const obstacles = [...table.querySelectorAll(".wt-seat-badge, .wt-avatar, .wt-seat-name, .wt-seat-call-role, .wt-seat-tags, .wt-seat-meta, "
-      + ".wt-bubble--thanks, .wt-backs > i:not([hidden]), .wt-stock, .wt-reference, [data-wt-preplay], .wt-prompt, .wt-partner-popover, .wt-retour-tag"),
+      + ".wt-bubble--thanks, .wt-backs > i:not([hidden]), .wt-stock, .wt-reference, [data-wt-preplay], [data-wt-bloedeln]:not(:empty), .wt-trick-label:not(:empty), .wt-prompt, .wt-partner-popover, .wt-retour-tag"),
     ...dockChildren.filter(node => !inFlow(node))].map(visibleBox).filter(Boolean);
     const fullCallBox = node => {
       const rect = node.getBoundingClientRect(), width = node.offsetWidth, height = node.offsetHeight;
@@ -194,19 +194,41 @@ export function createTrickLayout(trick, { win = window } = {}) {
       const left = (rect.left + rect.right - width) / 2, top = (rect.top + rect.bottom - height) / 2;
       return { left, top, width, height, right: left + width, bottom: top + height };
     };
-    // A reference card can move the original centre and put a peer call under
-    // the dock. Correct only obstructed peers, preserving their column first.
     const peers = [...centre.querySelectorAll("[data-watten-call]:not(.wt-bubble--bottom)")]
       .map(node => ({ node, rect: fullCallBox(node) })).filter(item => item.rect);
     const dockBoxes = dockChildren.map(visibleBox).filter(Boolean);
+    const middle = (bounds.left + bounds.right) / 2;
+    let ownFit = null;
+    if (ownCall.children.length && box(ownCall)) {
+      const size = ownCall.getBoundingClientRect(), left = middle - size.width / 2;
+      const column = { ...bounds, left, right: left + size.width, width: size.width };
+      ownFit = fitPortraitPrompt(column, obstacles, { height: size.height, widths: [size.width], bottomFirst: true });
+      if (!ownFit) ownCall.dataset.wtCallFallback = "space";
+      else {
+        ownCall.style.setProperty("--wt-own-call-left", `${middle - sheetBox.left}px`);
+        ownCall.style.setProperty("--wt-own-call-bottom", `${sheetBox.bottom - ownFit.bottom}px`);
+        obstacles.push(ownFit);
+      }
+    }
+    // Own seat keeps the lowest centre slot. A peer may move up within its
+    // original column, then within its own side, but never into that slot.
     for (const peer of peers) {
       const occupied = [...obstacles, ...dockBoxes, ...peers.filter(other => other !== peer).map(other => other.rect)];
-      if (!occupied.some(rect => intersects(peer.rect, rect))) continue;
       const { width, height } = peer.rect;
-      const left = Math.max(bounds.left, Math.min(bounds.right - width, peer.rect.left));
-      const column = { ...bounds, left, right: left + width, width };
+      const leftPeer = peer.node.classList.contains("wt-bubble--left"), rightPeer = peer.node.classList.contains("wt-bubble--right");
+      // Seat identity follows the chip's centre; its text may cross the
+      // middle line while the anchor stays strictly on the owner's side.
+      const side = { ...bounds, left: rightPeer ? middle - width / 2 + 1 : bounds.left,
+        right: leftPeer ? middle + width / 2 - 1 : bounds.right,
+        bottom: ownFit ? Math.min(bounds.bottom, ownFit.top - 4) : bounds.bottom };
+      side.width = side.right - side.left;
+      side.height = side.bottom - side.top;
+      const inSector = peer.rect.left >= side.left && peer.rect.right <= side.right && peer.rect.bottom <= side.bottom;
+      if (inSector && !occupied.some(rect => intersects(peer.rect, rect))) continue;
+      const left = Math.max(side.left, Math.min(side.right - width, peer.rect.left));
+      const column = { ...side, left, right: left + width, width };
       const options = { height, widths: [width], bottomFirst: true };
-      const fit = fitPortraitPrompt(column, occupied, options) || fitPortraitPrompt(bounds, occupied, options);
+      const fit = fitPortraitPrompt(column, occupied, options) || fitPortraitPrompt(side, occupied, options);
       if (!fit) { peer.node.dataset.wtCallFallback = "space"; continue; }
       const parent = peer.node.parentElement.getBoundingClientRect();
       peer.node.dataset.wtPortraitCall = "true";
@@ -214,20 +236,6 @@ export function createTrickLayout(trick, { win = window } = {}) {
       peer.node.style.setProperty("--wt-call-top", `${fit.top - parent.top}px`);
       peer.rect = fit;
     }
-    // Reserve complete peer chips even during their entry scale/fade.
-    obstacles.push(...peers.map(peer => peer.rect));
-    if (!ownCall.children.length || !box(ownCall)) return;
-    const size = ownCall.getBoundingClientRect();
-    const fit = fitPortraitPrompt(bounds, obstacles, { height: size.height, widths: [size.width], bottomFirst: true, centerFirst: true });
-    if (!fit) {
-      // Keep the dock anchor as the visible fallback; expose a failed fit so
-      // a crowded layout cannot be mistaken for a verified free rectangle.
-      ownCall.dataset.wtCallFallback = "space";
-      return;
-    }
-    ownCall.style.setProperty("--wt-own-call-left", `${fit.left + fit.width / 2 - sheetBox.left}px`);
-    // Convert the fitted viewport rectangle into measured dock offsets.
-    ownCall.style.setProperty("--wt-own-call-bottom", `${sheetBox.bottom - fit.bottom}px`);
   }
   function layout() {
     queued = null;
