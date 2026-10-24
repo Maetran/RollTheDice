@@ -172,6 +172,16 @@ def create_follow_up(source_id: str, identity, data: dict, *, before_create=None
 
 
 def _install(result):
+    from .hausdepp_voice import carry_voice_room
+
+    original_accounts = {member.account_id for member in result.source["_watten"].room.members}
+    live_source = games.get(result.source["_id"], {})
+    # Capture once before replacing either dict: private checkpoints have no
+    # transport state, and iteration order must never become its authority.
+    live_voice = {key: list(value) if isinstance(value, list) else value
+                  for key in ("_watten_voice_room_id", "_watten_voice_allowed_user_ids")
+                  if (value := live_source.get(key)) is not None}
+    voice_source = {"_game_type": "watten", **live_voice}
     for restored in (result.source, result.target):
         current = games.get(restored["_id"])
         if current is None:
@@ -180,10 +190,15 @@ def _install(result):
                 # target. Running recovery belongs to normal process startup,
                 # which also restores its CPU coordinator, not this retry.
                 continue
+            if restored is result.target:
+                carry_voice_room(voice_source, restored, original_accounts)
             games[restored["_id"]] = restored
         elif current.get("_game_type") != "watten":
             raise WattenRematchError("watten_game_id_collision")
         elif restored is result.source:
+            # The checkpoint intentionally excludes live SFU state. Preserve
+            # this process's authenticated room when replacing its source view.
+            restored.update(live_voice)
             sockets = {(item["id"], item.get("user_id")): item.get("ws") for item in current["_players"]}
             for item in restored["_players"]:
                 item["ws"] = sockets.get((item["id"], item.get("user_id")))

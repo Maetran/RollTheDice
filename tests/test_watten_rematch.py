@@ -117,6 +117,60 @@ def test_real_host_follow_up_restores_fixed_seat_without_joining_others_starting
     assert not candidate["_started"]
 
 
+@pytest.mark.parametrize("players,cpus", ((2, ()), (3, (2,)), (4, (3,))))
+def test_follow_up_retains_live_voice_room_for_original_accounts_and_retries(server, players, cpus):
+    match, owners = source_for(players=players, cpus=cpus)
+    source = match.game
+    accounts = sorted(member.account_id for member in source["_watten"].room.members)
+    assert len(accounts) == players - len(cpus) and all(type(account) is int and account > 0 for account in accounts)
+    source["_watten_voice_room_id"] = "live-voice-room"
+    source["_watten_voice_allowed_user_ids"] = accounts
+    # Checkpoints intentionally contain no live SFU state. The install must
+    # carry it from this process's actual source, not the decoded DB copy.
+    assert "live-voice-room" not in checkpoints()[source["_id"]]
+    data = command(source)
+    response = post(server, source, owners[0], data)
+    assert response.status_code == 200, response.text
+    target = games[response.json()["game_id"]]
+    for game in (source, target):
+        assert game["_watten_voice_room_id"] == "live-voice-room"
+        assert game["_watten_voice_allowed_user_ids"] == accounts
+    assert target["_watten"].room.rematch_of == source["_id"]
+    public = json.dumps([snapshot_watten(source), snapshot_watten(target), response.json(), checkpoints()[target["_id"]]])
+    assert "live-voice-room" not in public and "voice_allowed_user_ids" not in public
+    # Retrying the source request must not overwrite an already-installed
+    # target's independently renewed transport.
+    target["_watten_voice_room_id"] = "renewed-target-room"
+    retry = post(server, source, owners[0], data)
+    assert retry.status_code == 200 and not retry.json()["created"]
+    assert games[target["_id"]]["_watten_voice_room_id"] == "renewed-target-room"
+    assert source["_watten_voice_room_id"] == "live-voice-room"
+
+
+def test_voice_lineage_preserves_a_restricted_source_and_never_widens_target(server):
+    match, owners = source_for()
+    source = match.game
+    allowed = [owners[0][0].user_id]
+    source["_watten_voice_room_id"] = "restricted-room"
+    source["_watten_voice_allowed_user_ids"] = allowed
+    response = post(server, source, owners[0], command(source))
+    assert response.status_code == 200, response.text
+    target = games[response.json()["game_id"]]
+    assert source["_watten_voice_allowed_user_ids"] == allowed
+    assert target["_watten_voice_allowed_user_ids"] == allowed
+    assert target["_watten_voice_allowed_user_ids"] is not allowed
+
+
+@pytest.mark.parametrize("source_type,target_type", (("hausdepp", "watten"), (None, None), ("zdwa", "zdwa")))
+def test_voice_lineage_never_carries_between_different_or_unsupported_game_types(source_type, target_type):
+    from app.hausdepp_voice import carry_voice_room
+
+    source = {"_game_type": source_type, "_hausdepp_voice_room_id": "private-room"}
+    target = {"_game_type": target_type}
+    carry_voice_room(source, target, {1, 2})
+    assert target == {"_game_type": target_type}
+
+
 def test_lost_ack_restart_and_different_command_id_reuse_exact_same_persisted_target(server, monkeypatch):
     match, owners = source_for()
     source, calls = match.game, []

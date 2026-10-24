@@ -248,10 +248,16 @@ def _authorized_member(game: dict, websocket, identity, player: dict) -> bool:
 
 def carry_voice_room(source: dict, target: dict, user_ids: set[int]) -> None:
     """A server-created rematch may retain only its original account roster."""
-    room_id = source.get("_hausdepp_voice_room_id")
+    game_type = game_type_from_state(source)
+    if game_type not in {HAUSDEPP_GAME_TYPE, WATTEN_GAME_TYPE} or game_type != game_type_from_state(target):
+        return
+    room_id = source.get(_voice_key(source, "room_id"))
     if isinstance(room_id, str) and _ID.fullmatch(room_id):
-        target["_hausdepp_voice_room_id"] = room_id
-        target["_hausdepp_voice_allowed_user_ids"] = sorted(user_ids)
+        allowed = source.get(_voice_key(source, "allowed_user_ids"))
+        if isinstance(allowed, list):
+            user_ids = user_ids.intersection(value for value in allowed if type(value) is int and value > 0)
+        target[_voice_key(target, "room_id")] = room_id
+        target[_voice_key(target, "allowed_user_ids")] = sorted(user_ids)
 
 
 def _actor(session, *, require_eligible: bool = True):
@@ -626,6 +632,8 @@ async def handle_voice_action(session, data: dict) -> None:
                     if not member or not isinstance(token, str) or not hmac.compare_digest(member.token, token):
                         raise VoiceError("hausdepp_voice_membership_required")
                     if operation == "resume":
+                        if member.game.get("_id") != session.game.get("_id"):
+                            member.microphone = member.speaking = False
                         member.game, member.player_id, member.websocket = session.game, player["id"], session.websocket
                         member.disconnected_at = None
                     elif member.websocket is not session.websocket:
