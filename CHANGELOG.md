@@ -25,6 +25,29 @@ not asserted deployment dates. See the [complete version history](docs/VERSION_H
 
 ## 4.4.0 — 2026-10-25
 
+### ZDWA / AUDIO-NUTZUNG / VOICE ACTIVITY
+
+**Deutsch:** ZDWA erhält Sprachchat und dieselben sieben zufällig wechselnden
+Raumkulissen wie Hausdepp und Watten. Ein eigener Audio-Knopf neben den drei
+Punkten öffnet die gemeinsame, mobil nutzbare Steuerung für Zuhören, Mikrofon
+und Ambiente. Die gemeinsame Zuhörvorgabe ist auch in den ZDWA-Einstellungen
+verfügbar. Der Sprachchat prüft eigene angemeldete Sitze, Geräteübernahme,
+Abbruch und bestätigte Folgepartien serverseitig; Gäste, Zuschauer und CPUs
+bleiben ausgeschlossen. Das geschützte Dashboard zeigt neue Audiochat-
+Aktivierungen, Partien, Konten und aktive Zuhörminuten gesamthaft und pro Spiel
+sowie die aktivsten Audio-Konten. Die Messung beginnt mit dieser Version,
+zeichnet keine Inhalte auf und ergänzt die unveränderten anonymen Datenmengen.
+
+**English:** ZDWA adds voice chat and the same seven randomly changing venue
+ambiences as Hausdepp and Watten. A dedicated audio button beside the three-dot
+menu opens mobile controls for listening, microphone and ambience. The shared
+listening default is also available in ZDWA settings. The server checks owned
+signed-in seats, device takeover, abort and confirmed follow-up games; guests,
+spectators and CPUs stay excluded. The protected dashboard shows new voice
+activations, games, accounts and active listening minutes overall and by game,
+plus the most active voice accounts. Measurement starts with this version,
+records no content and complements unchanged anonymous payload totals.
+
 ### HAUSDEPP / WATTEN
 
 **Deutsch:** Eine gemeinsame Profilvorgabe bestimmt, ob du an neuen Tischen

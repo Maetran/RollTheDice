@@ -177,7 +177,7 @@ export function createRoomAudio({ gameId, send, spectator = false }) {
       render();
     },
     canCarry: () => Boolean(controller && canCarryVoice(board, playerId, auth?.user?.id, controller.snapshot(), spectator)),
-    accountId: () => auth?.authenticated ? auth.user?.id : null,
+    accountId: () => !stopped && auth?.authenticated ? auth.user?.id : null,
     handoff(value) {
       const next = continuationGameId(value, { sourceId: gameId, groupId: board?._voice_group_id || gameId });
       if (!next || !controller) return false;

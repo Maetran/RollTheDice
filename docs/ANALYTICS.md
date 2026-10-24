@@ -387,3 +387,53 @@ player results. To remove analytics storage, use the migration downgrade only
 after stopping the application and taking a fresh backup; it deletes analytics
 and its access grants, while retaining game/account tables. Remove the new
 read-only `/proc` counter mounts when returning to the old Compose file.
+
+## Audiochat-Aktivität / Voice activity
+
+**Deutsch:** Zusätzlich zu den unverändert anonymen Audio-Datenmengen erfasst
+Mission Control ab 4.4.0 neue, serverseitig beobachtete Sprachchat-Nutzung in
+ZDWA, Hausdepp und Watten. Ein erfolgreich autorisierter Audio-Beitritt zählt
+als Aktivierung. Heartbeats und Wiederaufnahme derselben Mitgliedschaft sind
+keine neuen Aktivierungen. Gezählt werden Aktivierungen, Partien mit Audio,
+eindeutige Konten und Minuten mit aktivierter Zuhörverbindung. «Partien mit Audio»
+zählt unterschiedliche Tisch-/Partie-IDs einschliesslich der Wartephase, nicht
+nur abgeschlossene Spiele. Diese Minuten
+sind weder Sprechzeit noch ein Nachweis hörbarer Sprache oder eine Abrechnung.
+
+Die separate Tabelle enthält UTC-Tag, Spielart, Partie-ID, Konto-ID,
+Aktivierungen, aktive Zeit und erste/letzte Beobachtung. Tagessummen bleiben
+höchstens 400 Tage erhalten; Kontolöschung entfernt ihre zugehörigen Werte.
+Das bestehende geschützte Dashboard zeigt zusätzlich die zehn aktivsten Konten
+mit aktuellem Benutzernamen. Jede Abfrage prüft die bestehende Dashboard- und
+Produktberechtigung erneut. Es gibt keinen öffentlichen Audio-Rang und keine
+Aufzeichnung, Transkription oder Inhaltsauswertung.
+
+Zeit entsteht aus begrenzten serverseitigen Intervallen bestätigter
+Mitgliedschaft. Verbindungsverlust pausiert die Messung; verspätetes Aufräumen
+verlängert sie nicht beliebig. Wiederholte Nachrichten, Geräteübernahme und
+Spielübergaben zählen keine Zeit doppelt. Begrenzte Hintergrundschreibvorgänge
+beeinträchtigen das Spiel bei Ausfällen nicht; fehlende Daten bleiben eine
+Messlücke. Frühere Spiele und anonyme Datenmengen werden nicht nachgetragen
+oder nachträglich Konten zugeordnet.
+
+**English:** Alongside unchanged anonymous payload totals, Mission Control
+records newly observed server-side voice use in ZDWA, Hausdepp and Watten from
+4.4.0. A successfully authorized audio membership counts as an activation;
+heartbeats and resuming the same membership do not. Metrics show activations,
+games with audio, distinct accounts and minutes with listening enabled. Games
+with audio counts distinct table/game IDs including waiting rooms, not only
+completed games. Minutes
+are neither speaking time, proof of audible conversation nor billing evidence.
+
+A separate table contains UTC day, game type, game ID, account ID, activations,
+active time and first/last observation. Daily totals expire after at most
+400 days and are removed with account deletion. The existing protected
+dashboard shows the ten most active accounts using their current usernames.
+Every request rechecks dashboard and product access. There is no public voice
+ranking, recording, transcription or conversation analysis.
+
+Time uses bounded server-observed membership intervals. Disconnect pauses it;
+delayed cleanup cannot extend it indefinitely. Replayed messages, device takeover
+and game handoffs cannot duplicate time. Bounded background writes never block
+gameplay on failure; missing observations remain a measurement gap. Historical
+games and anonymous byte totals are not backfilled or assigned to accounts.

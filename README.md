@@ -445,26 +445,51 @@ totals, including Retourschneider erasure. Tap a team score to open it; the
 close button, Escape or an outside tap closes it. Gestrichen starts two points
 before the match target, crossing out the team label and every number on the pad. [Details](docs/WATTEN_TOURNAMENT.md).
 
-**Audiochat / voice chat:** Hausdepp und Watten bieten beim Erstellen einen
+**Audiochat / voice chat:** ZDWA, Hausdepp und Watten bieten beim Erstellen einen
 standardmässig aktiven Audiochat-Schalter. Er erlaubt Audio für den Tisch;
 Zuhören und Mikrofon bleiben freiwillige getrennte Entscheidungen. Watten nutzt
 nur einen gemeinsamen Raum für zugelassene menschliche Mitspieler, ohne
 Teamkanäle und ohne Zuschauer oder CPUs. Die bestehende SFU-/TURN-Konfiguration
 wird wiederverwendet; echtes Audio über den Anbieter wurde hier noch nicht geprüft.
-Both creators offer an audio-chat checkbox, on by default. It allows audio for
+All three creators offer an audio-chat checkbox, on by default. It allows audio for
 the table; listening and microphone are separate voluntary choices. Watten has
 one global room for admitted human players, with no team channels, spectators
 or CPUs. The existing SFU/TURN configuration is reused; provider audio has not
 been verified in this change.
 
 Unter Kontoeinstellungen → Sprachchat zuhören lässt sich eine gemeinsame
-Hörvorgabe für Hausdepp und Watten speichern. Sie ist für bestehende und neue
+Hörvorgabe für ZDWA, Hausdepp und Watten speichern. Sie ist für bestehende und neue
 Konten aus, bis du sie ausdrücklich einschaltest. Am Tisch bleibt die Auswahl
 änderbar. Das Mikrofon startet immer aus und wird nie als Kontovorgabe gespeichert.
 Under Account settings → Listen to voice chat, save one listening default for
-Hausdepp and Watten. It is off for existing and new accounts until you explicitly
+ZDWA, Hausdepp and Watten. It is off for existing and new accounts until you explicitly
 enable it. You can still change listening at the table. The microphone always
 starts off and is never stored as an account default.
+
+**ZDWA Audio:** Neben den drei Punkten öffnet ein eigener Audio-Knopf die
+zentrale Steuerung für Zuhören, Mikrofon und Hintergrundkulisse. Die Kulisse
+verwendet denselben lokalen Katalog mit sieben Raumfamilien wie Hausdepp und
+Watten, wechselt zufällig ohne direkte Wiederholung und bleibt unabhängig vom
+Sprachchat. Gäste, Zuschauer und reine CPU-Partien können die lokale Kulisse
+nutzen; Voice benötigt einen eigenen angemeldeten menschlichen Sitz und eine
+berechtigte Tischgruppe. Die Profilvorgabe für Zuhören gilt für alle drei Spiele
+und bleibt ohne Aktivierung aus. Ein neuer Spielstart aus demselben Warteraum
+behält die Auswahl; für jede neue Partie muss das Mikro erneut aktiviert werden.
+Ist der fertige Ausgangstisch nach einem Neustart nicht mehr verfügbar, erstellt
+«Neue Runde» weiterhin einen frischen Tisch mit der Profilvorgabe fürs Zuhören.
+Berechtigungs- und Anmeldefehler umgehen diese Prüfung nicht.
+
+Beside the three-dot menu, ZDWA has one audio button for listening, microphone
+and local ambience. It shares the same seven venue families as Hausdepp and
+Watten, randomly changes rooms without immediate repeats and works independently
+of voice chat. Guests, spectators and CPU-only games can use local ambience;
+voice requires a signed-in human player's own seat and an authorized table group.
+The profile listening default applies to all three games and starts off until
+enabled. Starting the same waiting game keeps the choice; each new game requires
+explicitly enabling the microphone again. If the finished source table is no
+longer available after a restart, Create again still creates a fresh table using
+the profile listening default. Permission and sign-in errors do not bypass the
+source check.
 
 **PWA-Stand / PWA status:** Ein eigenes Spielsymbol und PNG-Icons in32/180/192/512
 Pixeln sind vorhanden. Die öffentliche Beta öffnet Manifest, Service Worker,
@@ -908,6 +933,26 @@ Only anonymous daily totals are retained for 400 days, without audio content,
 account or room identifiers. Missing reports and network overhead are not
 estimated. These measurements are not Cloudflare billing or a spending cap;
 TURN is not counted twice.
+
+Zusätzlich zeigt das geschützte Dashboard neue, serverseitig beobachtete
+Audiochat-Aktivierungen, Partien mit Audio, aktive Konten und Zuhörminuten –
+gesamthaft, pro Spiel und mit den aktivsten Konten nach Minuten. Diese separate
+Messung speichert Konto- und Partiezuordnung als UTC-Tagessummen höchstens
+400 Tage; sie wird bei Kontolöschung mit entfernt. Sie beginnt mit dieser
+Version, enthält keine Gesprächsinhalte und misst weder Sprechzeit noch
+Abrechnungsminuten. Unterbrochene Verbindungen und fehlende Messungen werden
+nicht als fortlaufende Nutzung geschätzt. Die anonymen Datenmengen oben bleiben
+separat und werden nachträglich keinem Konto oder Spiel zugeordnet.
+
+The protected dashboard also shows newly observed server-side voice activations,
+games with audio, active accounts and listening minutes: overall, by game and
+ranked by the most active accounts. This separate measurement retains account
+and game relations as UTC daily totals for at most 400 days and removes them
+with account deletion. Measurement begins with this version, stores no
+conversation content and measures neither speaking time nor billed minutes.
+Disconnected intervals and missing observations are not estimated as continued
+use. The anonymous byte totals above remain separate and are never assigned
+retrospectively to accounts or games.
 
 **Deutsch:** Mit V3 ergänzt Hausdepp die Suite als öffentliches drittes Spiel.
 Die Lobby unter `/hausdepp` und die vollständigen Hausregeln unter

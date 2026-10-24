@@ -1,12 +1,12 @@
-# Hintergrundgeräusche für Hausdepp und Watten / Tavern ambience
+# Hintergrundgeräusche für ZDWA, Hausdepp und Watten / Tavern ambience
 
-Hausdepp und Watten nutzen denselben lokalen Audioplayer und Katalog.
+ZDWA, Hausdepp und Watten nutzen denselben lokalen Audioplayer und Katalog.
 Die bisherigen zehn Mischungen bleiben bytegenau erhalten; sie gehören zu
 **einer** Cambridge-Familie. Zusätzliche Familien verwenden jeweils eine
 andere echte Raumaufnahme. Es werden keine Stimmen synthetisiert und keine
 fremden Webdienste während des Spiels aufgerufen.
 
-Hausdepp and Watten share a local audio player and catalogue. The ten existing
+ZDWA, Hausdepp and Watten share a local audio player and catalogue. The ten existing
 mixes remain byte-for-byte unchanged and form **one** Cambridge family.
 Additional families each use a different real venue recording. No voices are
 synthesised and gameplay makes no requests to third-party audio services.

@@ -75,6 +75,15 @@ test("a changed account or retired page prevents the independent retry", async (
   await assert.rejects(f.run(), /account_changed/); assert.equal(f.calls.length, 1);
 });
 
+test("a retired page cannot hand off a successful response that arrived after navigation", async () => {
+  let current = true;
+  const late = response(200, next);
+  late.json = async () => { current = false; return next; };
+  const f = creation({ replies: [late], current: () => current });
+  await assert.rejects(f.run(), /account_changed/);
+  assert.equal(f.calls.length, 1); assert.deepEqual(f.handoffs, []);
+});
+
 test("valid continuity still hands off the confirmed target exactly once", async () => {
   const f = creation({ replies: [response(200, next)] });
   assert.deepEqual(await f.run(), next); assert.equal(f.calls.length, 1); assert.equal(f.reads(), 1);

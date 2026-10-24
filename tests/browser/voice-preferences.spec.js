@@ -2,6 +2,7 @@ const { test, expect } = require("@playwright/test");
 
 test.use({ serviceWorkers: "block" });
 const products = [
+  { name: "zdwa", page: "/konto#settings", peer: "/hausdepp/konto/einstellungen" },
   { name: "hausdepp", page: "/hausdepp/konto/einstellungen", peer: "/watten/konto/einstellungen" },
   { name: "watten", page: "/watten/konto/einstellungen", peer: "/hausdepp/konto/einstellungen" },
 ];
@@ -33,8 +34,11 @@ async function openVoice(page, destination, language, enabled) {
   const form = page.locator("[data-voice-preferences]");
   await expect(form).toHaveCount(1);
   const details = form.locator("xpath=ancestor::details[1]");
-  await expect(details).not.toHaveAttribute("open", "");
-  await details.locator(":scope > summary").click();
+  if (await details.count()) {
+    await expect(details).not.toHaveAttribute("open", "");
+    await details.locator(":scope > summary").click();
+  }
+  await expect(form).toBeVisible();
   await expect(form.locator("select")).toHaveValue(String(enabled));
   await expect(form.locator("option")).toHaveText(language === "de" ? ["Ein", "Aus"] : ["On", "Off"]);
   await expect(form).toContainText(language === "de" ? "Mikrofon bleibt aus" : "microphone stays off");
@@ -42,7 +46,7 @@ async function openVoice(page, destination, language, enabled) {
 }
 
 for (const product of products) for (const language of ["de", "en"]) {
-  test(`${product.name} profile listening default is opt-in and shared across card games (${language})`, async ({ page }, testInfo) => {
+  test(`${product.name} profile listening default is opt-in and shared across supported games (${language})`, async ({ page }, testInfo) => {
     const errors = [];
     page.on("pageerror", error => errors.push(error.message));
     await page.addInitScript(() => {
