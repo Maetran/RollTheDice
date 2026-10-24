@@ -4430,7 +4430,7 @@ html[data-game="zilch"] body {
    320px viewport. Narrower dock gutters turn the reclaimed pixels into useful
    touch target instead of empty chrome. */
 .zilch-shell--game .zilch-dice {
-  --zilch-room-die-size: clamp(3rem, calc((100vw - .85rem) / 6), 4rem);
+  --zilch-room-die-size: clamp(2.75rem, calc((100vw - 3rem) / 6), 4rem);
   gap: clamp(.04rem, .24vw, .1rem);
 }
 

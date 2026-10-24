@@ -3922,6 +3922,16 @@ for (const theme of ["lcars", "light"]) for (const language of ["de", "en"]) {
       await page.clock.install();
       const guide = page.locator(".zilch-tablet-guide");
       const label = page.locator(".zilch-dice-source");
+      const expectDiceInsideDock = async () => {
+        const bounds = await page.locator(".zilch-dice").evaluate(rack => ({
+          table: rack.closest(".zilch-table").getBoundingClientRect().toJSON(),
+          dice: [...rack.children].map(die => die.getBoundingClientRect().toJSON()),
+        }));
+        for (const die of bounds.dice) {
+          expect(die.left).toBeGreaterThanOrEqual(bounds.table.left);
+          expect(die.right).toBeLessThanOrEqual(bounds.table.right);
+        }
+      };
       for (const viewport of [{ width: 320, height: 800 }, { width: 440, height: 956 }, { width: 956, height: 440 }]) {
         await page.setViewportSize(viewport);
         await page.evaluate(scoreboard => window.__zilchGameScreenFixturePush({ scoreboard }), retained);
@@ -3943,6 +3953,7 @@ for (const theme of ["lcars", "light"]) for (const language of ["de", "en"]) {
         expect(geometry.left).toBeGreaterThanOrEqual(0); expect(geometry.right).toBeLessThanOrEqual(geometry.width);
         expect(geometry.top).toBeGreaterThanOrEqual(0); expect(geometry.bottom).toBeLessThanOrEqual(geometry.diceTop);
         expect(geometry.opacity).toBeLessThan(0.8); expect(geometry.scrollWidth).toBeLessThanOrEqual(geometry.width);
+        await expectDiceInsideDock();
         if (viewport.width !== 956) await page.screenshot({ path: info.outputPath(`retained-${viewport.width}.png`) });
 
         // Capture the real pending render before the fixture's asynchronous
@@ -3960,6 +3971,7 @@ for (const theme of ["lcars", "light"]) for (const language of ["de", "en"]) {
         await expect(page.locator('[data-zilch-recommendation="screenshot-ones-1-2-5"]')).toHaveAttribute("aria-pressed", "true");
         await expect(page.locator(".zilch-turn-score")).toContainText(/1(?:'|,|’|\s)000/);
         await expect(page.locator("[data-zilch-bank]")).toBeDisabled(); await expect(page.locator("[data-zilch-roll]")).toBeEnabled();
+        await expectDiceInsideDock();
         if (viewport.width !== 956) await page.screenshot({ path: info.outputPath(`current-${viewport.width}.png`) });
         // Complete the 650ms production dice-motion window before the next
         // independent viewport projection, without a real-time sleep.
@@ -3979,7 +3991,13 @@ for (const theme of ["lcars", "light"]) for (const language of ["de", "en"]) {
       }
       // Tablet guidance keeps its objective and current-selection explanation.
       await page.setViewportSize({ width: 1180, height: 820 });
-      await page.evaluate(scoreboard => window.__zilchGameScreenFixturePush({ scoreboard }), current);
+      const newRoll = structuredClone(current);
+      newRoll._zilch_turn_state.roll_id += 1;
+      newRoll._zilch_turn_state.version += 1;
+      newRoll._zilch_quick_holds.forEach(option => { option.roll_id = newRoll._zilch_turn_state.roll_id; });
+      await page.evaluate(scoreboard => window.__zilchGameScreenFixturePush({ scoreboard }), newRoll);
+      // No extra server frame or interaction restores the tablet's text.
+      await page.clock.runFor(700);
       await expect(guide).toBeVisible(); await expect(guide.locator(".zilch-tablet-guide__objective")).toBeVisible();
       await expect(guide).toContainText(language === "de" ? "Tippe Punktewürfel" : "Tap scoring dice");
     } finally { await context.close(); }
