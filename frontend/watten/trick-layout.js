@@ -122,12 +122,6 @@ export function createTrickLayout(trick, { win = window } = {}) {
     ownCall?.style.removeProperty("--wt-own-call-left");
     ownCall?.style.removeProperty("--wt-own-call-bottom");
     if (ownCall) delete ownCall.dataset.wtCallFallback;
-    if (ownCall) for (const node of centre.querySelectorAll("[data-wt-portrait-call], [data-wt-call-fallback]")) {
-      delete node.dataset.wtPortraitCall;
-      delete node.dataset.wtCallFallback;
-      node.style.removeProperty("--wt-call-left");
-      node.style.removeProperty("--wt-call-top");
-    }
     delete centre.dataset.wtLandscapeTrick;
     delete centre.dataset.wtLandscapeCompact;
     delete centre.dataset.wtLandscapeInsetWinner;
@@ -173,7 +167,7 @@ export function createTrickLayout(trick, { win = window } = {}) {
     return usable(result) ? result : null;
   };
   function positionCalls() {
-    if (!ownCall || !win.matchMedia("(orientation: portrait) and (max-width: 760px)").matches) return;
+    if (!ownCall?.children.length || !win.matchMedia("(orientation: portrait) and (max-width: 760px)").matches) return;
     const sheet = ownCall.parentElement, sheetBox = sheet.getBoundingClientRect(), area = felt.getBoundingClientRect();
     const visibleBox = node => node.checkVisibility?.() === false ? null : box(node);
     const dockChildren = [...sheet.children].filter(node => node !== ownCall);
@@ -188,15 +182,6 @@ export function createTrickLayout(trick, { win = window } = {}) {
     const obstacles = [...table.querySelectorAll(".wt-seat-badge, .wt-avatar, .wt-seat-name, .wt-seat-call-role, .wt-seat-tags, .wt-seat-meta, "
       + ".wt-bubble--thanks, .wt-backs > i:not([hidden]), .wt-stock, .wt-reference, [data-wt-preplay], [data-wt-bloedeln]:not(:empty), .wt-trick-label:not(:empty), .wt-prompt, .wt-partner-popover, .wt-retour-tag"),
     ...dockChildren.filter(node => !inFlow(node))].map(visibleBox).filter(Boolean);
-    const fullCallBox = node => {
-      const rect = node.getBoundingClientRect(), width = node.offsetWidth, height = node.offsetHeight;
-      if (win.getComputedStyle(node).display === "none" || !width || !height) return null;
-      const left = (rect.left + rect.right - width) / 2, top = (rect.top + rect.bottom - height) / 2;
-      return { left, top, width, height, right: left + width, bottom: top + height };
-    };
-    const peers = [...centre.querySelectorAll("[data-watten-call]:not(.wt-bubble--bottom)")]
-      .map(node => ({ node, rect: fullCallBox(node) })).filter(item => item.rect);
-    const dockBoxes = dockChildren.map(visibleBox).filter(Boolean);
     const middle = (bounds.left + bounds.right) / 2;
     let ownFit = null;
     if (ownCall.children.length && box(ownCall)) {
@@ -210,32 +195,7 @@ export function createTrickLayout(trick, { win = window } = {}) {
         obstacles.push(ownFit);
       }
     }
-    // Own seat keeps the lowest centre slot. A peer may move up within its
-    // original column, then within its own side, but never into that slot.
-    for (const peer of peers) {
-      const occupied = [...obstacles, ...dockBoxes, ...peers.filter(other => other !== peer).map(other => other.rect)];
-      const { width, height } = peer.rect;
-      const leftPeer = peer.node.classList.contains("wt-bubble--left"), rightPeer = peer.node.classList.contains("wt-bubble--right");
-      // Seat identity follows the chip's centre; its text may cross the
-      // middle line while the anchor stays strictly on the owner's side.
-      const side = { ...bounds, left: rightPeer ? middle - width / 2 + 1 : bounds.left,
-        right: leftPeer ? middle + width / 2 - 1 : bounds.right,
-        bottom: ownFit ? Math.min(bounds.bottom, ownFit.top - 4) : bounds.bottom };
-      side.width = side.right - side.left;
-      side.height = side.bottom - side.top;
-      const inSector = peer.rect.left >= side.left && peer.rect.right <= side.right && peer.rect.bottom <= side.bottom;
-      if (inSector && !occupied.some(rect => intersects(peer.rect, rect))) continue;
-      const left = Math.max(side.left, Math.min(side.right - width, peer.rect.left));
-      const column = { ...side, left, right: left + width, width };
-      const options = { height, widths: [width], bottomFirst: true };
-      const fit = fitPortraitPrompt(column, occupied, options) || fitPortraitPrompt(side, occupied, options);
-      if (!fit) { peer.node.dataset.wtCallFallback = "space"; continue; }
-      const parent = peer.node.parentElement.getBoundingClientRect();
-      peer.node.dataset.wtPortraitCall = "true";
-      peer.node.style.setProperty("--wt-call-left", `${fit.left - parent.left}px`);
-      peer.node.style.setProperty("--wt-call-top", `${fit.top - parent.top}px`);
-      peer.rect = fit;
-    }
+
   }
   function layout() {
     queued = null;

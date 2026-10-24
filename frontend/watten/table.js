@@ -129,6 +129,7 @@ function seatBadge(vm, seat) {
   const awaited = vm.awaited.includes(info.player_id);
   const strikeSeat = engine.announcement_roles?.strike;
   const colourSeat = engine.announcement_roles?.colour;
+  const calls = position !== "bottom" ? vm.bubbles.filter(bubble => bubble.seat === seat) : [];
   const roles = [seat === strikeSeat ? t("inspection.strike") : "", seat === colourSeat ? t("inspection.colour") : ""].filter(Boolean);
   const tags = [
     own ? t("seat.you") : "",
@@ -148,7 +149,7 @@ function seatBadge(vm, seat) {
     badge: `<span class="wt-avatar" aria-hidden="true">${esc(initial.toLocaleUpperCase())}</span>
     <span class="wt-seat-name-row"><span class="wt-seat-name" translate="no" title="${esc(name)}">${esc(name)}</span>
       <span class="wt-taken" data-wt-catch="${seat}" data-count="${tricks}" data-filled="${tricks > 0}" role="img" aria-label="${esc(trickLabel)}" title="${esc(trickLabel)}" ${tricks ? "" : "hidden"}>${Array.from({ length: tricks }, () => '<span class="wt-taken-packet" aria-hidden="true"><i></i><i></i><i></i></span>').join("")}</span></span>
-    ${roles.length ? `<span class="wt-seat-call-role">${roles.map(esc).join(" · ")}</span>` : ""}
+    ${roles.length ? `<span class="wt-seat-call-role" style="--wt-role-lines:${roles.length}"><span class="wt-role-static">${roles.map(role => `<span class="wt-role-name">${esc(role)}</span>`).join('<span class="wt-role-separator" aria-hidden="true"> · </span>')}</span>${calls.map(call => `<span class="wt-role-call" data-watten-role-call="${seat}" aria-hidden="true">${esc(call.text)}</span>`).join("")}</span>` : ""}
     ${publicTitleMarkup(vm.room.seats[seat]?.public_title, {
       language: window.ZDWA_I18N?.getLanguage?.(), escapeHtml: esc,
     })}

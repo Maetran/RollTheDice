@@ -32,36 +32,66 @@ async function geometry(page) {
   return page.evaluate(() => {
     const visible = node => node.checkVisibility() && node.getBoundingClientRect().width > 0 && node.getBoundingClientRect().height > 0;
     const box = node => node.getBoundingClientRect().toJSON();
+    const transparent = color => ['transparent', 'rgba(0, 0, 0, 0)'].includes(color);
+    const unpaintedBadge = node => {
+      if (!node.matches('.wt-seat-badge')) return false;
+      const style = getComputedStyle(node);
+      return transparent(style.backgroundColor) && style.backgroundImage === 'none' && style.boxShadow === 'none'
+        && (style.outlineStyle === 'none' || Number.parseFloat(style.outlineWidth) === 0)
+        && ['Top', 'Right', 'Bottom', 'Left'].every(side => Number.parseFloat(style[`border${side}Width`]) === 0 || transparent(style[`border${side}Color`]))
+        && !node.matches('button, a[href], input, select, textarea, [role="button"], [tabindex], [data-watten-command], [data-watten-action]')
+        && !node.querySelector('button, a[href], input, select, textarea, [role="button"], [tabindex], [data-watten-command], [data-watten-action]');
+    };
     const own = document.querySelector('[data-wt-own-call] .wt-bubble');
     const dock = [...document.querySelectorAll('.wt-end-sheet > :not(.wt-own-call)')].filter(visible);
-    const obstacles = [...new Set([...dock, ...document.querySelectorAll('[data-watten-call], .wt-seat-badge, .wt-avatar, .wt-seat-name, .wt-seat-call-role, .wt-seat-tags, .wt-seat-meta, '
-      + '.wt-bubble--thanks, .wt-backs > i:not([hidden]), .wt-stock, .wt-reference, [data-wt-preplay], [data-wt-bloedeln]:not(:empty), .wt-trick-label:not(:empty), .wt-prompt, .wt-partner-popover, .wt-retour-tag')].filter(visible))];
+    const obstacles = [...new Set([...dock, ...document.querySelectorAll('[data-watten-call], [data-watten-role-call], .wt-seat-badge, .wt-avatar, .wt-seat-name, .wt-seat-call-role, .wt-seat-tags, .wt-seat-meta, .wt-seat-public-title, '
+      + '.wt-bubble--thanks, .wt-backs > i:not([hidden]), .wt-taken[data-filled="true"], .wt-taken[data-filled="true"] i, .wt-stock, .wt-stock > i, .wt-reference, [data-wt-preplay], [data-wt-bloedeln]:not(:empty), .wt-trick-label:not(:empty), .wt-prompt, .wt-partner-popover, .wt-retour-tag')].filter(visible))];
     const overlap = (a, b) => Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left))
       * Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
-    const ownBox = box(own);
-    const calls = [...document.querySelectorAll('[data-watten-call]')].filter(visible);
+    const ownBox = own ? box(own) : null;
+    const calls = [...document.querySelectorAll('[data-watten-call], [data-watten-role-call]')].filter(visible);
+    const callBox = node => box(node.hasAttribute('data-watten-role-call') ? node.parentElement : node);
+    const seatOf = node => ['bottom', 'left', 'right', 'top'].find(seat => node.classList.contains(`wt-bubble--${seat}`)
+      || node.closest(`[data-wt-seat].wt-seat--${seat}`));
+    // Only CSS-placed labels/deck may cross a transparent, non-interactive
+    // wrapper gap. Own-call/trick/prompt guarantees retain the whole badge.
+    const cssWrapperExempt = (node, other) => node.matches('[data-watten-role-call], .wt-stock, .wt-stock > i') && unpaintedBadge(other);
+    const deck = document.querySelector('[data-wt-deck]');
+    const deckNodes = [deck, ...deck.children];
+    const deckBoxes = deckNodes.map(box);
+    const upperRole = document.querySelector('.wt-seat--top .wt-seat-call-role');
+    const upperBox = upperRole && visible(upperRole) ? box(upperRole) : null;
     return {
       own: ownBox,
+      phase: document.querySelector('[data-wt-table]').dataset.phase,
+      obstacles: obstacles.map(node => ({ class: node.className, box: box(node) })),
+      deck: { box: box(deck), children: deckBoxes.slice(1), ariaHidden: deck.getAttribute('aria-hidden'), pointer: getComputedStyle(deck).pointerEvents,
+        covered: deckNodes.flatMap(node => obstacles.filter(other => !deckNodes.includes(other) && !cssWrapperExempt(node, other))
+          .map(other => ({ class: other.className, area: overlap(box(node), box(other)) })).filter(item => item.area > 0)),
+        upperRoleGap: upperBox ? Math.min(...deckBoxes.map(rect => Math.max(upperBox.left - rect.right, rect.left - upperBox.right,
+          upperBox.top - rect.bottom, rect.top - upperBox.bottom))) : null },
       table: document.querySelector('[data-wt-felt]').getBoundingClientRect().toJSON(),
       visibleOwn: [...document.querySelectorAll('.wt-bubble--bottom[data-watten-call]')].filter(visible).length,
-      overlaps: obstacles.filter(node => node !== own).map(node => ({ class: node.className, box: box(node), area: overlap(ownBox, box(node)) })).filter(item => item.area > 0),
-      calls: calls.map(node => ({ text: node.textContent, box: box(node), own: node === own,
-        seat: ['bottom', 'left', 'right', 'top'].find(seat => node.classList.contains(`wt-bubble--${seat}`)),
-        positioned: node.hasAttribute('data-wt-portrait-call') ? {
-          actualLeft: node.offsetLeft, actualTop: node.offsetTop,
-          expectedLeft: Number.parseFloat(node.style.getPropertyValue('--wt-call-left')),
-          expectedTop: Number.parseFloat(node.style.getPropertyValue('--wt-call-top')) } : null,
-        covered: obstacles.filter(other => other !== node).map(other => ({ class: other.className, area: overlap(box(node), box(other)) })).filter(item => item.area > 0) })),
-      fallback: own.parentElement.dataset.wtCallFallback ?? null,
+      overlaps: own ? obstacles.filter(node => node !== own).map(node => ({ class: node.className, box: box(node), area: overlap(ownBox, box(node)) })).filter(item => item.area > 0) : [],
+      calls: calls.map(node => ({ text: node.textContent, box: callBox(node), own: node === own,
+        seat: seatOf(node), inline: node.hasAttribute('data-watten-role-call'),
+        roleSeat: node.dataset.wattenRoleCall, ownerSeat: node.closest('[data-wt-seat]')?.dataset.wtSeat,
+        textBox: box(node),
+        covered: obstacles.filter(other => other !== node && !other.contains(node) && !cssWrapperExempt(node, other)
+          && !(node.hasAttribute('data-watten-role-call') && other.parentElement === node.parentElement))
+          .map(other => ({ class: other.className, area: overlap(callBox(node), box(other)) })).filter(item => item.area > 0) })),
+      expectedCalls: [...document.querySelectorAll('.wt-bubbles > [data-watten-call]')].map(node => ({ text: node.textContent, seat: seatOf(node) })),
+      visibleFloating: [...document.querySelectorAll('.wt-bubbles > [data-watten-call]')].filter(visible).length,
+      fallback: own?.parentElement.dataset.wtCallFallback ?? null,
       fallbacks: [...document.querySelectorAll('[data-wt-call-fallback]')].map(node => node.dataset.wtCallFallback),
-      slot: (() => {
+      slot: !own ? null : (() => {
         const node = own.parentElement, actual = box(node), sheet = box(node.parentElement);
         return { actual, sheet, transition: getComputedStyle(node).transitionProperty,
           expected: { left: sheet.left + Number.parseFloat(node.style.getPropertyValue('--wt-own-call-left')) - actual.width / 2,
             bottom: sheet.bottom - Number.parseFloat(node.style.getPropertyValue('--wt-own-call-bottom')) } };
       })(),
-      pointer: [getComputedStyle(own.parentElement).pointerEvents, getComputedStyle(own).pointerEvents],
-      capturesPointer: Boolean(document.elementFromPoint(ownBox.x + ownBox.width / 2, ownBox.y + ownBox.height / 2)?.closest('[data-wt-own-call]')),
+      pointer: own ? [getComputedStyle(own.parentElement).pointerEvents, getComputedStyle(own).pointerEvents] : [],
+      capturesPointer: own ? Boolean(document.elementFromPoint(ownBox.x + ownBox.width / 2, ownBox.y + ownBox.height / 2)?.closest('[data-wt-own-call]')) : false,
     };
   });
 }
@@ -76,15 +106,8 @@ async function expectOwnCall(page, measurements) {
   expect(Math.abs(result.own.left + result.own.width / 2 - middle)).toBeLessThanOrEqual(1);
   for (const call of result.calls.filter(call => !call.own)) {
     expect(call.box.bottom, 'own call stays nearest the own controls').toBeLessThanOrEqual(result.own.bottom + 1);
-    const centre = call.box.left + call.box.width / 2;
-    if (call.seat === 'left') expect(centre).toBeLessThan(middle);
-    if (call.seat === 'right') expect(centre).toBeGreaterThan(middle);
-    if (call.seat === 'top') expect(call.box.bottom).toBeLessThanOrEqual(result.own.top);
   }
-  for (const call of result.calls.filter(call => call.positioned)) {
-    expect(Math.abs(call.positioned.actualLeft - call.positioned.expectedLeft)).toBeLessThanOrEqual(1);
-    expect(Math.abs(call.positioned.actualTop - call.positioned.expectedTop)).toBeLessThanOrEqual(1);
-  }
+  expectCallBindings(result);
   expect(result.fallback).toBeNull();
   expect(result.fallbacks).toEqual([]);
   expect(result.slot.transition).toBe('none');
@@ -99,10 +122,91 @@ async function expectOwnCall(page, measurements) {
   await expect(page.locator('[data-wt-own-call]')).toHaveAttribute('aria-hidden', 'true');
 }
 
+function expectCallBindings(result) {
+  expect(result.deck.covered).toEqual([]);
+  expect(result.deck.ariaHidden).toBe('true');
+  expect(result.deck.pointer).toBe('none');
+  for (const rect of result.deck.children) {
+    expect(rect.left).toBeGreaterThanOrEqual(result.table.left);
+    expect(rect.right).toBeLessThanOrEqual(result.table.right);
+    expect(rect.top).toBeGreaterThanOrEqual(result.table.top);
+    expect(rect.bottom).toBeLessThanOrEqual(result.table.bottom);
+  }
+  if (result.deck.upperRoleGap !== null) expect(result.deck.upperRoleGap).toBeGreaterThanOrEqual(2);
+  expect(result.visibleFloating).toBe(0);
+  expect(result.calls).toHaveLength(result.expectedCalls.length);
+  for (const expected of result.expectedCalls) {
+    const shown = result.calls.filter(call => call.seat === expected.seat && call.text === expected.text);
+    expect(shown).toHaveLength(1);
+    const call = shown[0];
+    expect(call.inline).toBe(expected.seat !== 'bottom');
+    if (call.inline) expect(call.roleSeat).toBe(call.ownerSeat);
+    expect(call.box.left).toBeGreaterThanOrEqual(0);
+    expect(call.box.right).toBeLessThanOrEqual(result.table.right);
+    expect(call.box.top).toBeGreaterThanOrEqual(result.table.top);
+    expect(call.textBox.left).toBeGreaterThanOrEqual(call.box.left);
+    expect(call.textBox.right).toBeLessThanOrEqual(call.box.right);
+    expect(call.textBox.top).toBeGreaterThanOrEqual(call.box.top);
+    expect(call.textBox.bottom).toBeLessThanOrEqual(call.box.bottom);
+  }
+}
+
+async function expectPeerCalls(page, measurements) {
+  const result = await geometry(page);
+  measurements.push({ noncaller: true, viewport: page.viewportSize(), ...result });
+  expect(result.visibleOwn).toBe(0);
+  expect(result.own).toBeNull();
+  expect(result.calls).toHaveLength(2);
+  expect(result.calls.flatMap(call => call.covered)).toEqual([]);
+  expect(result.fallbacks).toEqual([]);
+  expectCallBindings(result);
+}
+
 async function controlRects(page) {
   return page.locator('[data-wt-stake] button, [data-wt-panel] button, [data-wt-hand] button').evaluateAll(nodes => nodes
     .filter(node => node.checkVisibility())
     .map(node => ({ action: node.dataset.wattenAction || node.dataset.card || 'stake', rect: node.getBoundingClientRect().toJSON() })));
+}
+
+async function roleRows(page) {
+  return page.locator('.wt-seat:not(.is-own) .wt-seat-call-role').evaluateAll(nodes => nodes.map(node => {
+    const role = node.getBoundingClientRect(), badge = node.closest('.wt-seat-badge').getBoundingClientRect();
+    return { seat: node.closest('[data-wt-seat]').dataset.wtSeat, roleHeight: role.height,
+      badgeHeight: badge.height, rowTop: role.top - badge.top };
+  }));
+}
+
+async function expectThreeSeatTrick(page, measurements, historyExpected) {
+  const result = await page.evaluate(() => {
+    const visible = node => node.checkVisibility() && node.getBoundingClientRect().width > 0 && node.getBoundingClientRect().height > 0;
+    const box = node => node.getBoundingClientRect().toJSON();
+    const overlap = (a, b) => Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left))
+      * Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
+    const centre = document.querySelector('.wt-centre');
+    const protectedNodes = [...document.querySelectorAll('.wt-seat-badge, .wt-avatar, .wt-seat-name, .wt-seat-call-role, .wt-seat-tags, .wt-seat-meta, .wt-seat-public-title, '
+      + '.wt-backs > i:not([hidden]), .wt-taken[data-filled="true"], .wt-taken[data-filled="true"] i, .wt-stock, .wt-stock > i, .wt-reference, [data-wt-hand-area], [data-wt-stake]')].filter(visible);
+    const cards = [...document.querySelectorAll('[data-wt-trick] > .wt-trick-card')].filter(visible);
+    const extras = [...document.querySelectorAll('[data-wt-panel]:has(> .wt-prompt:only-child), [data-wt-history]:not([hidden])')].filter(visible);
+    return { table: box(document.querySelector('[data-wt-felt]')), centre: box(centre), fallback: centre.dataset.wtPortraitTrickFallback ?? null,
+      cards: cards.map(node => ({ box: box(node), covered: protectedNodes.map(other => ({ class: other.className, area: overlap(box(node), box(other)) })).filter(item => item.area > 0) })),
+      extras: extras.map(node => ({ class: node.className, box: box(node), history: node.matches('[data-wt-history]'),
+        covered: [...protectedNodes, ...cards, ...document.querySelectorAll('.wt-card-owner, .wt-trick-label:not(:empty)'), ...extras]
+          .filter(other => other !== node && !other.contains(node) && !node.contains(other) && visible(other))
+          .map(other => ({ class: other.className, area: overlap(box(node), box(other)) })).filter(item => item.area > 0) })) };
+  });
+  measurements.push({ threeSeatTrick: result });
+  expect(result.fallback).toBeNull();
+  expect(Math.abs(result.centre.left + result.centre.width / 2 - (result.table.left + result.table.width / 2))).toBeLessThanOrEqual(1);
+  expect(result.cards.length).toBeGreaterThan(0);
+  expect(result.cards.flatMap(card => card.covered)).toEqual([]);
+  expect(result.extras.flatMap(extra => extra.covered)).toEqual([]);
+  expect(result.extras.some(extra => extra.history)).toBe(historyExpected);
+  for (const item of [...result.cards, ...result.extras]) {
+    expect(item.box.left).toBeGreaterThanOrEqual(result.table.left);
+    expect(item.box.right).toBeLessThanOrEqual(result.table.right);
+    expect(item.box.top).toBeGreaterThanOrEqual(result.table.top);
+    expect(item.box.bottom).toBeLessThanOrEqual(result.table.bottom);
+  }
 }
 
 async function badgeBaseline(page) {
@@ -132,6 +236,7 @@ for (const language of ['de', 'en']) for (const { count, reference = false } of 
     const wrapped = { newContext: options => browser.newContext({ ...options, reducedMotion: reference ? 'no-preference' : options.reducedMotion, viewport: PORTRAITS[0], serviceWorkers: 'block' }) };
     const players = [];
     const measurements = [];
+    const squareRows = [];
     try {
       for (let index = 0; index < count; index += 1) {
         const item = await player(wrapped, baseURL, language);
@@ -143,6 +248,12 @@ for (const language of ['de', 'en']) for (const { count, reference = false } of 
         await page.evaluate(() => document.fonts.ready);
         await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 10);
       }
+      if (reference) for (const { page } of players) {
+        await resize(page, { width: 600, height: 600 });
+        squareRows.push(await roleRows(page));
+        await resize(page, PORTRAITS[0]);
+      }
+      for (const { page } of players) measurements.push({ beforeCall: true, viewport: page.viewportSize(), ...await geometry(page) });
       const striker = await action(players, 'announce_strike', '7');
       await settleCalls(striker.page);
       await expectOwnCall(striker.page, measurements);
@@ -184,12 +295,25 @@ for (const language of ['de', 'en']) for (const { count, reference = false } of 
       for (const { page } of callers) {
         await resize(page, PORTRAITS[0]);
       }
-      // Cover the opposite caller as bidder too: a right-seat peer must fit
-      // while the own seat receives the bid and partner advice.
-      const bidders = reference ? [colourer, ...players.filter(item => item !== colourer)] : players;
-      await action(bidders, 'bid');
+      await action(players, 'bid');
       await expect.poll(() => players.every(item => item.traffic.snapshot.engine.phase === 'bid_response')).toBe(true);
       if (count === 4) {
+        await answerPartnerFeedback(players, 'good');
+        await expect(players.find(item => item.traffic.snapshot.engine.actions.includes('respond_hold')).page.locator('[data-watten-feedback-received]')).toBeVisible();
+      }
+      const noncallers = players.filter(item => !callers.includes(item));
+      for (const { page } of noncallers) {
+        await settleCalls(page);
+        await expectPeerCalls(page, measurements);
+      }
+      if (reference) {
+        // Preserve the original own-trump/partner-decision view, then exercise
+        // the opposite offer through the real counterbid without a new table.
+        for (const [index, { page }] of callers.entries()) {
+          await expectOwnCall(page, measurements);
+          await page.screenshot({ path: info.outputPath(`first-bid-${language}-${count}-320-${index}.png`) });
+        }
+        await action(players, 'respond_counter', 'counter');
         await answerPartnerFeedback(players, 'good');
         await expect(players.find(item => item.traffic.snapshot.engine.actions.includes('respond_hold')).page.locator('[data-watten-feedback-received]')).toBeVisible();
       }
@@ -216,11 +340,18 @@ for (const language of ['de', 'en']) for (const { count, reference = false } of 
         }
         if (viewport.width === 320) await page.screenshot({ path: info.outputPath(`bid-${language}-${count}-320-${page === callers[0].page ? 'first' : 'second'}.png`) });
       }
+      for (const viewport of portraits) for (const [index, { page }] of noncallers.entries()) {
+        await resize(page, viewport);
+        await expectPeerCalls(page, measurements);
+        if (viewport.width === 320) await page.screenshot({ path: info.outputPath(`noncaller-${language}-${count}-320-${index}.png`) });
+      }
       await callers[0].page.screenshot({ path: info.outputPath(`bid-${language}-${count}-390.png`) });
-      for (const viewport of [{ width: 568, height: 320 }, { width: 1280, height: 800 }]) for (const { page } of callers) {
+      for (const viewport of [{ width: 568, height: 320 }, { width: 1280, height: 800 }]) for (const item of players) {
+        const { page } = item;
         await resize(page, viewport);
         await expect(page.locator('[data-wt-own-call]')).toBeHidden();
-        await expect(page.locator('.wt-bubbles .wt-bubble--bottom')).toBeVisible();
+        await expect(page.locator('.wt-bubbles > [data-watten-call]:visible')).toHaveCount(2);
+        await expect(page.locator('[data-watten-role-call]:visible')).toHaveCount(0);
         expect(await page.locator('[data-wt-own-call]').evaluate(node => node.style.cssText)).toBe('');
         await expect(page.locator('[data-wt-own-call]')).not.toHaveAttribute('data-wt-call-fallback');
       }
@@ -228,19 +359,31 @@ for (const language of ['de', 'en']) for (const { count, reference = false } of 
         await resize(page, PORTRAITS[0]);
         await expectOwnCall(page, measurements);
       }
-      await resize(callers[0].page, { width: 600, height: 600 });
-      await expectOwnCall(callers[0].page, measurements);
+      for (const item of players) {
+        await resize(item.page, { width: 600, height: 600 });
+        if (callers.includes(item)) await expectOwnCall(item.page, measurements);
+        else await expectPeerCalls(item.page, measurements);
+        if (reference) expect(await roleRows(item.page)).toEqual(squareRows[players.indexOf(item)]);
+      }
       if (language === 'de') {
+        for (const { page } of players) await resize(page, PORTRAITS[0]);
         await action(players, 'respond_hold', 'hold');
         await playOne(players);
+        for (const { page } of players) {
+          await page.clock.runFor(1000);
+          await expect(page.locator('[data-wt-trick] > .wt-trick-card')).toHaveCount(1);
+          await expect(page.locator('.wt-centre')).not.toHaveAttribute('data-wt-portrait-trick-fallback');
+        }
       } else {
         const controls = await Promise.all(callers.map(item => controlRects(item.page)));
         for (const { page } of players) await page.clock.runFor(5300);
         for (const [index, { page }] of callers.entries()) await expect.poll(() => controlRects(page)).toEqual(controls[index]);
       }
       for (const { page, traffic } of players) {
-        await expect(page.locator('[data-watten-call]')).toHaveCount(0);
+        await expect(page.locator('[data-watten-call], [data-watten-role-call]')).toHaveCount(0);
+        expect(await page.locator('.wt-role-static').evaluateAll(nodes => nodes.every(node => node.getBoundingClientRect().width > 1))).toBe(true);
         expect(traffic.errors).toEqual([]);
+        if (reference && language === 'en') expect(await roleRows(page)).toEqual(squareRows[players.findIndex(item => item.page === page)]);
       }
     } finally {
       const geometryPath = info.outputPath('geometry.json');
@@ -250,3 +393,92 @@ for (const language of ['de', 'en']) for (const { count, reference = false } of 
     }
   });
 }
+
+test('de: three-seat solo announcements retain both values at the same peer seat', async ({ browser, baseURL }, info) => {
+  const wrapped = { newContext: options => browser.newContext({ ...options, reducedMotion: 'no-preference', viewport: PORTRAITS[0], serviceWorkers: 'block' }) };
+  const players = [], measurements = [];
+  try {
+    for (let index = 0; index < 3; index += 1) {
+      const item = await player(wrapped, baseURL);
+      await item.page.clock.install();
+      await item.page.addInitScript(() => {
+        const animate = Element.prototype.animate;
+        window.__wattenDealOrigins = [];
+        Element.prototype.animate = function (frames, options) {
+          if (this.dataset.wtMotion === 'deal') {
+            const deck = document.querySelector('[data-wt-deck]').getBoundingClientRect();
+            const target = this.getBoundingClientRect();
+            const [x, y] = frames[0].translate.split(' ').map(Number.parseFloat);
+            window.__wattenDealOrigins.push({ deck: deck.toJSON(),
+              x: target.left + target.width / 2 + x, y: target.top + target.height / 2 + y });
+          }
+          return animate.call(this, frames, options);
+        };
+      });
+      players.push(item);
+    }
+    await create(players, { determination: 'normal', target: 15 });
+    for (const { page } of players) {
+      await page.evaluate(() => document.fonts.ready);
+      const origins = await page.evaluate(() => window.__wattenDealOrigins);
+      measurements.push({ dealOrigins: origins });
+      expect(origins.length).toBeGreaterThan(0);
+      for (const origin of origins) {
+        expect(Math.abs(origin.deck.left + origin.deck.width / 2 - PORTRAITS[0].width / 2)).toBeLessThanOrEqual(1);
+        expect(Math.abs(origin.x - (origin.deck.left + origin.deck.width / 2))).toBeLessThanOrEqual(1);
+        expect(Math.abs(origin.y - (origin.deck.top + origin.deck.height / 2))).toBeLessThanOrEqual(1);
+      }
+      await expect(page.locator('[data-wt-motion="deal"]')).toHaveCount(0);
+      await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 10);
+    }
+    for (const { page } of players) measurements.push({ beforeCall: true, viewport: page.viewportSize(), ...await geometry(page) });
+    const solo = await action(players, 'announce_strike', '7');
+    const caller = await action(players, 'announce_colour', 'bells');
+    expect(caller).toBe(solo);
+    for (const { page } of players) await settleCalls(page);
+    await expect(solo.page.locator('[data-wt-own-call] > [data-watten-call]:visible')).toHaveCount(2);
+    await expect(solo.page.locator('[data-wt-own-call]')).not.toHaveAttribute('data-wt-call-fallback');
+    await solo.page.screenshot({ path: info.outputPath('solo-own-320.png') });
+    for (const item of players.filter(item => item !== solo)) {
+      const labels = item.page.locator(`[data-wt-seat="${solo.traffic.snapshot.viewer.seat}"] [data-watten-role-call]`);
+      await expect(labels).toHaveText(['Schlag: Sieben', 'Farbe: Schellen']);
+      for (const viewport of [PORTRAITS[0], PORTRAITS[2]]) {
+        await resize(item.page, viewport);
+        await expectPeerCalls(item.page, measurements);
+        if (viewport.width === 320) await item.page.screenshot({ path: info.outputPath(`solo-peer-${players.indexOf(item)}-320.png`) });
+      }
+      await item.page.screenshot({ path: info.outputPath(`solo-peer-${players.indexOf(item)}.png`) });
+    }
+    for (const { page } of players) await page.clock.runFor(5300);
+    for (const { page, traffic } of players) {
+      await expect(page.locator('[data-watten-call], [data-watten-role-call]')).toHaveCount(0);
+      expect(traffic.errors).toEqual([]);
+    }
+    for (const { page } of players) await resize(page, PORTRAITS[0]);
+    for (let index = 0; index < 3; index += 1) {
+      await playOne(players);
+      for (const { page } of players) {
+        await page.clock.runFor(4000);
+        await expect(page.locator('[data-wt-motion]')).toHaveCount(0);
+        await expectThreeSeatTrick(page, measurements, index === 2);
+      }
+    }
+    for (const [index, { page }] of players.entries()) {
+      await page.screenshot({ path: info.outputPath(`solo-trick-${index}.png`) });
+      const history = page.locator('[data-wt-history]');
+      await history.locator('summary').click();
+      await expect(history).toHaveAttribute('open');
+      // The native toggle schedules the existing layout RAF. Drive that
+      // frame before using the expanded review's close target.
+      await page.clock.runFor(20);
+      await expect(history).not.toHaveAttribute('data-wt-portrait-history');
+      await history.locator('[data-wt-history-close]').click();
+      await expect(history).not.toHaveAttribute('open');
+      await page.clock.runFor(20);
+      await expectThreeSeatTrick(page, measurements, true);
+    }
+  } finally {
+    await writeFile(info.outputPath('geometry.json'), JSON.stringify(measurements, null, 2));
+    await Promise.allSettled(players.map(item => item.context.close()));
+  }
+});
