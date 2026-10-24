@@ -585,6 +585,8 @@ test.describe('own card flights and follow-up timing', () => {
       state.send(next);
       state.raw({ hausdepp_command: { command_id: command.command_id, accepted: true, version: s.version } });
       await expect(page.locator('.hd-deal-card[data-motion-type="play"]')).toHaveCount(1);
+      await expect(page.locator('.hd-deal-card[data-motion-type="burn"]')).toHaveCount(burnCount);
+      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
       // These are fresh plays after a clearance, rather than an open same-rank
       // afterthrow. The queued action must wait for that burn's physical end.
       expect(state.commands).toHaveLength(index + 1);
