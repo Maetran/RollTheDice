@@ -21,7 +21,7 @@ from app.watten_cpu import (
     decide,
     own_legal_cards,
 )
-from app.watten_cpu_memory import WattenCpuMemoryError, memory_from_storage, memory_to_storage
+from app.watten_cpu_memory import WattenCpuMemoryError, memory_from_storage, memory_to_storage, new_memory
 from app.watten_cpu_skill import CpuSkill
 from app.watten_engine import EngineCommand, apply_command, restore_storage, start_match, storage_payload
 from app.watten_play import legal_cards
@@ -292,6 +292,61 @@ def test_informed_blind_announcer_also_offers_new_opening_combinations(monkeypat
         table.play(player, card)
     monkeypatch.setattr(cpu_policy, "_rollout", lambda _ctx, _world, _card: 0.5)
     assert card_choice(table, "A").value == "bells-A"
+
+
+@pytest.mark.parametrize("history", [False, True])
+@pytest.mark.parametrize("completed", [1, 2, 3])
+def test_trick_preferences_survive_fresh_memory_with_or_without_live_history(history, completed, monkeypatch):
+    deal = explicit_deal(
+        ("hearts-A", "hearts-8", "leaves-8", "acorns-8", "bells-8"),
+        ("bells-A", "hearts-K", "bells-K", "leaves-O", "hearts-7"),
+        ("leaves-A", "hearts-9", "acorns-9", "hearts-10", "bells-9"),
+        ("acorns-A", "hearts-U", "acorns-10", "leaves-K", "acorns-K"),
+    )
+    table = Table(start_match(cpu_recipe(4, "ladinisch", True, trick_history=history),
+                              "late-trick-count", deal, first_dealer="A"))
+    table.ready()
+    trace = (
+        ("B", "bells-A"), ("C", "leaves-A"), ("D", "acorns-A"), ("A", "bells-8"),
+        ("B", "hearts-K"), ("C", "hearts-9"), ("D", "hearts-U"), ("A", "hearts-A"),
+        ("A", "acorns-8"), ("B", "bells-K"), ("C", "acorns-9"), ("D", "acorns-10"),
+        ("B", "leaves-O"),
+    )
+    for player, card in trace[:{1: 5, 2: 10, 3: 13}[completed]]:
+        table.play(player, card)
+    view, continuous, fresh = table.view("C"), table.memories["C"], new_memory("C")
+    current, reconnected = [cpu_policy._prepare(view, memory, ()) for memory in (continuous, fresh)]
+    assert view["party_tricks"] == {1: [0, 1], 2: [1, 1], 3: [1, 2]}[completed]
+    # The remembered last trick's leader also proves its predecessor's winner.
+    assert len(current.winners) == completed
+    assert len(reconnected.winners) == (completed if history else min(completed, 2))
+    assert current.snap.partner_seat == reconnected.snap.partner_seat == 0
+    assert ((reconnected.leader + reconnected.count - 1) % reconnected.count == 0) == (completed != 2)
+    # Use the same permitted hypotheses to isolate the trick-number preference;
+    # a reconnect may legitimately forget other cards or narrow the call less.
+    hypotheses = call_hypotheses(view, continuous)
+    assert set(hypotheses) <= set(call_hypotheses(view, fresh))
+    models = [reconnected.model(*call) for call in hypotheses]
+    assert {card: cpu_policy._tactical_preference(reconnected, card, models, CpuSkill())
+            for card in reconnected.hand} == {
+        card: cpu_policy._tactical_preference(current, card, models, CpuSkill()) for card in current.hand}
+    # This is one explicitly permitted hypothesis, never a private engine call.
+    # Only the real second trick prefers the cheap card for a partner acting last.
+    assert ("7", "bells") in hypotheses
+    hypothesis = [reconnected.model("7", "bells")]
+    cheap = cpu_policy._tactical_preference(reconnected, "hearts-10", hypothesis, CpuSkill())
+    strong = cpu_policy._tactical_preference(reconnected, "bells-9", hypothesis, CpuSkill())
+    assert (cheap > strong) == (completed == 1)
+    monkeypatch.setattr(cpu_policy, "_rollout", lambda _ctx, _world, _card: 0.5)
+    monkeypatch.setattr(cpu_policy, "_partner_cover_preference", lambda *_args: 0.0)
+    decisions = [decide(view, memory, seed=7, budget=FAST).decision for memory in (continuous, fresh)]
+    assert [decision.kind for decision in decisions] == ["play_card", "play_card"]
+    if completed == 3:
+        assert [decision.value for decision in decisions] == ["bells-9", "bells-9"]
+    for decision in decisions:
+        accepted = apply_command(table.state, actor(table.state, "C"), EngineCommand(**decision.command_fields()))
+        assert accepted.ack.command_id == decision.command_id
+        assert accepted.state.opportunity == table.state.opportunity + 1
 
 
 def test_rechter_lead_excludes_a_nonwinning_strike_in_cpu_and_engine_legality():

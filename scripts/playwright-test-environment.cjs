@@ -4,7 +4,7 @@ const path = require("node:path");
 
 const shellQuote = value => `'${String(value).replaceAll("'", "'\\''")}'`;
 
-function browserTestEnvironment({ name, portVariable, defaultPort, defaultOutputDir = "test-results" }) {
+function browserTestEnvironment({ name, portVariable, defaultPort, defaultOutputDir = path.join("test-results", "direct", name) }) {
   const port = Number(process.env[portVariable] || defaultPort);
   if (!Number.isInteger(port) || port < 1024 || port > 65535) throw new Error(`Invalid ${name} test port`);
   const directory = process.env.PLAYWRIGHT_TEST_DIR

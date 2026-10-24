@@ -114,12 +114,24 @@ for (const language of ['de', 'en']) {
       expect(app.sent.some(message => message.action === 'hausdepp_leave_game')).toBe(false);
     }
     expect(systemDialogs).toEqual([]);
+    // The real CPUs may still be lifting the stock while the cancelled dialogs
+    // are checked. Confirm only after the human owns a stable decision window;
+    // a departure sent during a CPU transition is correctly rejected as stale.
+    const board = () => app.received.findLast(message => message.scoreboard?._hausdepp)?.scoreboard?._hausdepp;
+    await expect.poll(() => {
+      const current = board();
+      return Boolean(current && current.current_player_id === current.viewer_id
+        && current.available_actions.length && !current.afterthrow
+        && !current.pending_refill && current.pending_refills.length === 0);
+    }).toBe(true);
+    await expect(leave).toBeEnabled();
+    const confirmedVersion = board().version;
     await leave.click();
     await expect(dialog).toBeVisible();
     await confirm.click();
     await expect(page).toHaveURL(url => url.pathname === '/hausdepp');
     const departure = app.sent.filter(message => message.action === 'hausdepp_leave_game');
-    expect(departure).toHaveLength(1); expect(Number.isSafeInteger(departure[0].version)).toBe(true);
+    expect(departure).toHaveLength(1); expect(departure[0].version).toBe(confirmedVersion);
     expect(app.sent.some(message => message.action === 'end_game')).toBe(false);
     expect(app.received.some(message => message.left_hausdepp_game === true)).toBe(true);
     await expect.poll(() => closedContexts).toBeGreaterThanOrEqual(1);

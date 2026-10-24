@@ -20,6 +20,7 @@ from .game_snapshot import snapshot
 from .game_state import multiplayer_pause_reason, touch
 from .game_types import ZILCH_GAME_TYPE, game_type_from_state
 from .zilch_cpu_strategy import (
+    ZILCH_CPU_BASELINE_POLICY,
     CpuQuickHoldOption,
     CpuStrategyContext,
     ZilchCpuStrategyError,
@@ -113,6 +114,8 @@ def _cpu_strategy_context(game: dict[str, Any], cpu: dict) -> CpuStrategyContext
             all_available_dice=option.all_available_dice,
             hot_dice=option.hot_dice,
             free_roll=option.free_roll,
+            requires_confirmation=option.requires_confirmation,
+            dice_values=option.dice_values,
         )
         for option in options_for_turn(turn)
     )
@@ -144,6 +147,9 @@ def _cpu_strategy_context(game: dict[str, Any], cpu: dict) -> CpuStrategyContext
         quick_holds=options,
         can_roll=turn.phase in {"ready_to_roll", "confirmation_roll_required"},
         can_bank=can_bank,
+        policy=game.get("_zilch_cpu_policy", ZILCH_CPU_BASELINE_POLICY),
+        rolls_used=turn.rolls_used,
+        available_dice=tuple((index, turn.dice[index]) for index in turn.available_indices),
     )
 
 

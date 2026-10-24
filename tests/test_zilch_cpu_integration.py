@@ -30,6 +30,8 @@ from app.game_state import games
 from app.game_ws_session import GameSocketSession, handle_session_action
 from app.models import ActiveGame
 from app.zilch_cpu_runner import cpu_action_is_due, maybe_schedule_cpu_turn, stop_cpu_runners
+from app.zilch_cpu_strategy import ZILCH_CPU_BASELINE_POLICY, ZILCH_CPU_CONTINUATION_POLICY
+from app.zilch_snapshot import snapshot_zilch
 from app.zilch_state import (
     ZILCH_CPU_MODE,
     configure_zilch_cpu_game,
@@ -215,6 +217,57 @@ class ZilchCpuHttpAndSocketTestCase(TestCase):
         with patch("app.zilch_state.secrets.choice", side_effect=AssertionError("Recovery must preserve the strategy")):
             restored = load_active_games()
         self.assertEqual([restored[game_id]["_participants"][0]["cpu_strategy"] for game_id in created], expected)
+
+    def test_policy_is_resolved_before_publication_private_and_fixed_after_recovery(self) -> None:
+        user_id, token = self._identity("Mani", role="admin")
+        request = main.CreateReq.model_validate({"name": "Adaptive CPU", "mode": "2", "game_type": "zilch",
+                                               "play_mode": "cpu", "cpu_policy": ZILCH_CPU_CONTINUATION_POLICY})
+        original_factory = main.create_game_state
+        expected = {}
+        for completions, policy in ((9, ZILCH_CPU_BASELINE_POLICY), (10, ZILCH_CPU_CONTINUATION_POLICY)):
+            order = []
+            before = set(games)
+
+            def lookup(account):
+                self.assertEqual(account, user_id)
+                self.assertEqual(set(games), before)
+                order.append("lookup")
+                return completions
+
+            def factory(*args):
+                order.append("factory")
+                return original_factory(*args)
+
+            with patch("app.main.enforce_game_creation_rate_limit"), \
+                    patch("app.main.zilch_cpu_completed_experience", side_effect=lookup) as source, \
+                    patch("app.main.create_game_state", side_effect=factory):
+                created = asyncio.run(main.api_games_create(request, request_for(cookie=f"rollthedice_session={token}")))
+            game_id = created["game_id"]
+            self.game_ids.append(game_id)
+            expected[game_id] = policy
+            self.assertEqual(order, ["lookup", "factory"])
+            source.assert_called_once_with(user_id)
+            self.assertEqual(games[game_id]["_zilch_cpu_policy"], policy)
+            self.assertNotIn("cpu_policy", main.CreateReq.model_fields)
+            self.assertNotIn("_zilch_cpu_policy", snapshot_zilch(games[game_id]))
+        for game_id in expected:
+            games.pop(game_id)
+        with patch("app.main.zilch_cpu_completed_experience", side_effect=AssertionError("No recovery lookup")):
+            restored = load_active_games()
+            for game_id, policy in expected.items():
+                self.assertEqual(restored[game_id]["_zilch_cpu_policy"], policy)
+                self.assertNotIn("_zilch_cpu_policy", snapshot_zilch(restored[game_id]))
+
+    def test_guest_creation_uses_baseline_without_an_experience_lookup(self) -> None:
+        request = main.CreateReq(name="Guest CPU", mode="2", game_type="zilch", play_mode="cpu")
+        with patch("app.main.resolve_session", return_value=None), \
+                patch("app.main._require_zilch_access", return_value=None), \
+                patch("app.main.enforce_game_creation_rate_limit"), \
+                patch("app.main.zilch_cpu_completed_experience", side_effect=AssertionError("Guest has no account")):
+            created = asyncio.run(main.api_games_create(request, request_for()))
+        self.game_ids.append(created["game_id"])
+        self.assertEqual(games[created["game_id"]]["_zilch_cpu_policy"], ZILCH_CPU_BASELINE_POLICY)
+        self.assertTrue(created["host_token"])
 
     def test_private_cpu_api_creation_persists_a_domain_cpu_not_a_transport_player(self) -> None:
         mani_id, mani_token = self._identity("Mani", role="admin")

@@ -18,6 +18,7 @@ from app.zilch_cpu_runner import (
     stop_cpu_runner,
     stop_cpu_runners,
 )
+from app.zilch_cpu_strategy import ZILCH_CPU_BASELINE_POLICY, ZILCH_CPU_CONTINUATION_POLICY
 from app.zilch_gameplay import (
     apply_zilch_roll_dice,
     apply_zilch_start_roll,
@@ -140,6 +141,29 @@ class ZilchCpuRunnerTestCase(TestCase):
         self.assertTrue(any(event.get("type") == "roll" and event.get("actor_participant_id") == cpu_id for event in events))
         self.assertTrue(any(event.get("type") == "hold" and event.get("actor_participant_id") == cpu_id for event in events))
         self.assertTrue(any(event.get("type") == "bank" and event.get("actor_participant_id") == cpu_id for event in events))
+
+    def test_adaptive_marker_changes_only_the_proven_hold_through_actual_runner(self) -> None:
+        for policy, second_hold in ((ZILCH_CPU_CONTINUATION_POLICY, 100), (ZILCH_CPU_BASELINE_POLICY, 150),
+                                    ("unknown-future-policy", 150), (None, 150)):
+            game, socket, human_id, cpu_id = self._cpu_game(strategy="normal")
+            if policy is None:
+                game.pop("_zilch_cpu_policy", None)
+            else:
+                game["_zilch_cpu_policy"] = policy
+
+            async def scenario():
+                apply_zilch_start_roll(game, human_id, start_roll_version=0, randint_fn=sequence_rng([2]))
+                task = maybe_schedule_cpu_turn(game, delay_seconds=0,
+                    randint_fn=sequence_rng([6, 1, 1, 2, 3, 4, 6, 1, 5, 2, 3, 2, 3, 4]))
+                self.assertIsNotNone(task)
+                await task
+
+            with patch("app.main.zilch_cpu_completed_experience", side_effect=AssertionError("No per-turn lookup")):
+                asyncio.run(scenario())
+            holds = [message["zilch_event"]["option"]["points"] for message in socket.messages
+                     if message.get("zilch_event", {}).get("type") == "hold"]
+            self.assertEqual(holds, [200, second_hold])
+            self.assertEqual(game["_turn"]["player_id"], human_id)
 
     def test_cpu_default_pacing_is_one_and_a_quarter_seconds(self) -> None:
         with patch.dict(os.environ, {}, clear=True):

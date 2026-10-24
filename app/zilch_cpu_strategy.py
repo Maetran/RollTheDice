@@ -30,7 +30,10 @@ it (+100).  The result is clamped to the house-rule bank minimum (400) and
 option validity, RNG, or the confirmed rules.
 
 Quick Holds are selected from the server-provided current options only.  Their
-point value dominates selection.  Equal-value choices are then ordered by the
+point value normally dominates selection. The versioned continuation policy
+may retain only the 1 in the narrowly verified second-roll 200/4 state. Its
+six profile/gap cells have higher expected bank and lower whole-turn bust risk;
+there is no claim about match win rate. Equal-value choices are ordered by the
 strategy's risk preference and finally by ``option_id``.  Therefore the policy
 does not invent combinations or use random tie breaking.
 """
@@ -48,6 +51,14 @@ CpuDecisionAction = Literal["select_hold", "roll", "bank"]
 ZILCH_CPU_STRATEGIES: Final[frozenset[str]] = frozenset(
     {"conservative", "normal", "aggressive"}
 )
+ZILCH_CPU_BASELINE_POLICY: Final = "baseline-v1"
+ZILCH_CPU_CONTINUATION_POLICY: Final = "mandatory-continuation-v1"
+ZILCH_CPU_EXPERIENCE_THRESHOLD: Final = 10
+# Proven offline against the unchanged baseline, not calculated in live play.
+_CONTINUATION_CELLS: Final = frozenset({
+    ("conservative", "leading"), ("conservative", "level"), ("conservative", "trailing"),
+    ("normal", "leading"), ("normal", "level"), ("aggressive", "leading"),
+})
 
 _BANK_GOALS: Final[dict[str, int]] = {
     "conservative": 500,
@@ -94,6 +105,8 @@ class CpuQuickHoldOption:
     all_available_dice: bool
     hot_dice: bool
     free_roll: bool
+    requires_confirmation: bool = False
+    dice_values: tuple[int, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -118,6 +131,9 @@ class CpuStrategyContext:
     quick_holds: tuple[CpuQuickHoldOption, ...]
     can_roll: bool
     can_bank: bool
+    policy: str = ZILCH_CPU_BASELINE_POLICY
+    rolls_used: int = 0
+    available_dice: tuple[tuple[int, int], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -238,12 +254,65 @@ def _choose_hold(
     context: CpuStrategyContext,
     strategy: ZilchCpuStrategy,
 ) -> CpuQuickHoldOption:
+    continuation = _continuation_hold(options, context=context, strategy=strategy)
+    if continuation is not None:
+        return continuation
     # Sorting explicitly by option ID resolves otherwise identical options in
     # a stable manner across processes and recovery attempts.
     return sorted(
         options,
         key=lambda option: (-_hold_priority(option, context=context, strategy=strategy), option.option_id),
     )[0]
+
+
+def _continuation_hold(
+    options: tuple[CpuQuickHoldOption, ...], *, context: CpuStrategyContext, strategy: ZilchCpuStrategy,
+) -> CpuQuickHoldOption | None:
+    """Recognize one verified real roll; unsupported or mismatched facts fall back."""
+    if (context.policy != ZILCH_CPU_CONTINUATION_POLICY
+            or type(context.rolls_used) is not int or context.rolls_used != 2
+            or context.round_points != 200 or context.available_dice_count != 4
+            or context.confirmation_required or context.hot_dice or context.final_round
+            or context.needed_to_beat is not None or context.can_roll or context.can_bank
+            or context.target_score - context.own_total < 1_800
+            or len(options) != 3 or len(context.quick_holds) != 3
+            or not isinstance(context.available_dice, tuple) or len(context.available_dice) != 4):
+        return None
+    dice = {}
+    for entry in context.available_dice:
+        if (not isinstance(entry, tuple) or len(entry) != 2
+                or not all(type(value) is int for value in entry)
+                or not 0 <= entry[0] <= 5 or not 1 <= entry[1] <= 6 or entry[0] in dice):
+            return None
+        dice[entry[0]] = entry[1]
+    values = list(dice.values())
+    if values.count(1) != 1 or values.count(5) != 1:
+        return None
+    gap = _score_gap(context)
+    position = "trailing" if gap >= _MATERIAL_SCORE_GAP else "leading" if gap <= -_MATERIAL_SCORE_GAP else "level"
+    if (strategy, position) not in _CONTINUATION_CELLS:
+        return None
+    one = next(index for index, value in dice.items() if value == 1)
+    five = next(index for index, value in dice.items() if value == 5)
+    expected = {
+        (100, (one,), "single_one"),
+        (50, (five,), "single_five"),
+        (150, tuple(sorted((one, five))), "combined"),
+    }
+    if any(not isinstance(option.dice_indices, tuple) or not isinstance(option.dice_values, tuple)
+           or any(type(value) is not int for value in option.dice_values)
+           for option in options):
+        return None
+    if {(option.points, option.dice_indices, option.combination_type) for option in options} != expected:
+        return None
+    if len({option.option_id for option in options}) != 3:
+        return None
+    for option in options:
+        if (option.all_available_dice or option.hot_dice or option.free_roll
+                or option.requires_confirmation is not False
+                or option.dice_values != tuple(dice[index] for index in option.dice_indices)):
+            return None
+    return next(option for option in options if option.points == 100)
 
 
 def _bank_goal(context: CpuStrategyContext, strategy: ZilchCpuStrategy) -> int:

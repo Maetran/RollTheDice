@@ -1,8 +1,8 @@
 """Tactical Hausdepp decisions from the same limited view as a human seat.
 
 The policy considers its hand, the visible pile, public hand sizes and stock
-count. Gamble odds are estimates over unaccounted-for ranks, never stock order,
-opponents' cards, private inspection information or achievement evidence.
+count. After stock depletion it can remember observed public packet purchases.
+Unknown hands, stock order, private peeks and achievement evidence are never used.
 """
 
 from __future__ import annotations
@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from functools import lru_cache
 from typing import Any, Mapping
 
+from .hausdepp_cpu_knowledge import PublicKnowledge
 from .hausdepp_engine import HAUSDEPP_RANKS, card_rank
 
 _VALUES = {rank: index for index, rank in enumerate(HAUSDEPP_RANKS)}
@@ -30,13 +31,15 @@ def _command_key(command: Mapping[str, Any]) -> tuple:
 
 @dataclass
 class CpuMemory:
-    """At most 48 of this seat's accepted, player-visible decisions.
+    """Bounded own decisions and public empty-stock packet observations.
 
     Recognising a failed repeating plan requires no knowledge of opposing
-    hands. This transient memory resets on disconnect, a new round or restart.
+    hands. Public knowledge comes only from this seat's personal DTOs. This
+    transient memory resets on disconnect, a new round or restart.
     """
 
     _recent: deque = field(default_factory=lambda: deque(maxlen=48))
+    public: PublicKnowledge = field(default_factory=PublicKnowledge)
 
     def visits(self, projection: Mapping[str, Any], command: Mapping[str, Any] | None = None) -> int:
         position = _position(projection)
@@ -241,6 +244,36 @@ def slip_chance(skill: float) -> float:
     return 0.05 + (1 - max(0.0, min(1.0, skill))) * 0.55
 
 
+def _known_pair_block(projection: Mapping[str, Any], memory: CpuMemory | None) -> str | None:
+    """Only the proven three-card versus known-pair pattern, with an empty table.
+
+    low < pair < block < reserve forces a pickup and then finishes over every
+    legal reply. Giving away a blocker without the higher reserve is unsafe.
+    """
+    players = projection.get("players", [])
+    active = [player for player in players if not player.get("finished") and not player.get("withdrawn")]
+    hand = list(projection.get("hand", []))
+    viewer = projection.get("viewer_id")
+    if (memory is None or projection.get("phase") != "playing" or projection.get("deck_count") != 0
+            or projection.get("discard") or projection.get("afterthrow") or projection.get("withdrawn_ids")
+            or projection.get("current_player_id") != viewer or "play" not in projection.get("available_actions", [])
+            or len(active) != 2 or any(player.get("withdrawn") for player in players)
+            or any(player.get("finished") and player.get("hand_count") != 0 for player in players)
+            or len(hand) != 3 or len({card_rank(card) for card in hand}) != 3
+            or any(card_rank(card) == "10" for card in hand)):
+        return None
+    opponent = next((player["id"] for player in active if player["id"] != viewer), None)
+    known = memory.public.exact_hand(projection, opponent)
+    if (known is None or len(known) != 2 or card_rank(known[0]) != card_rank(known[1])
+            or card_rank(known[0]) == "10"):
+        return None
+    low, block, reserve = sorted(hand, key=lambda card: _VALUES[card_rank(card)])
+    if (_VALUES[card_rank(low)] < _VALUES[card_rank(known[0])] < _VALUES[card_rank(block)]
+            < _VALUES[card_rank(reserve)] and block in projection.get("playable_cards", [])):
+        return block
+    return None
+
+
 def choose_cpu_action(projection: Mapping[str, Any], *, memory: CpuMemory | None = None,
                       skill: float = 1.0, rng: Any = None) -> dict[str, Any] | None:
     """Choose a legal command; only the authoritative engine applies it.
@@ -293,6 +326,10 @@ def choose_cpu_action(projection: Mapping[str, Any], *, memory: CpuMemory | None
         finish = _finish_move(hand, discard)
         if finish is not None and finish in groups:
             return {**move, "action": "play", "cards": sorted(groups[finish])}
+
+    block = _known_pair_block(projection, memory)
+    if block is not None and not slipped():
+        return {**move, "action": "play", "cards": [block]}
 
     counts = Counter(card_rank(card) for card in hand)
 

@@ -17,7 +17,14 @@ from app.auth import create_user
 from app.database import configure_database, session_scope, upgrade_database
 from app.game_history import delete_completed_game, persist_completed_game_result
 from app.game_types import DEFAULT_GAME_TYPE, ZILCH_GAME_TYPE
-from app.models import AbandonedGame, CompletedGame, User, ZilchAchievementUnlock, ZilchCommunityParticipant
+from app.models import (
+    AbandonedGame,
+    CompletedGame,
+    GameParticipant,
+    User,
+    ZilchAchievementUnlock,
+    ZilchCommunityParticipant,
+)
 from app.zilch_achievements import (
     ZILCH_ACHIEVEMENT_DEFINITION_VERSION,
     ZILCH_ACHIEVEMENT_POINTS_POSSIBLE,
@@ -48,6 +55,7 @@ from app.zilch_statistics import (
     get_zilch_personal_statistics,
     list_zilch_leaderboard_categories,
     validate_zilch_leaderboard_query,
+    zilch_cpu_completed_experience,
 )
 
 
@@ -333,6 +341,31 @@ class ZilchStatisticsTestCase(TestCase):
 
         self.assertEqual(statistics["overview"]["completed_records"], 2)
         self.assertEqual(statistics["multiplayer"]["games"], 2)
+
+    def test_cpu_experience_counts_valid_distinct_human_completions_across_modes(self) -> None:
+        alice = self._user("CpuExperienceAlice")
+        bob = self._user("CpuExperienceBob")
+        self._persist_competitive(human_one=alice, human_two=alice)  # two seats, one completion
+        self._persist_competitive(human_one=alice, human_two=bob)
+        self._persist_competitive(human_one=alice, cpu_strategy="normal")
+        self._persist_solo(user=alice, turns=2, rolls=2)
+        self._persist_solo(user=alice, turns=1, rolls=1, outcome="abandoned")
+        broken = self._persist_competitive(human_one=alice, human_two=bob)
+        cpu_only = self._persist_competitive(human_one=bob, cpu_strategy="normal")
+        with session_scope() as db:
+            malformed = db.scalar(select(CompletedGame).where(CompletedGame.game_id == broken))
+            malformed.snapshot_json = "{damaged"
+            cpu_game = db.scalar(select(CompletedGame).where(CompletedGame.game_id == cpu_only))
+            cpu_seat = db.scalar(select(GameParticipant).where(
+                GameParticipant.game_id == cpu_game.id, GameParticipant.player_key.like("cpu-%")))
+            cpu_seat.user_id = alice.id  # a forged DB link cannot turn a CPU into a human
+        with patch("app.zilch_statistics.ZILCH_STATISTICS_SOURCE_PAGE_SIZE", 1):
+            self.assertEqual(zilch_cpu_completed_experience(alice.id), 4)
+        for _index in range(5):
+            self._persist_competitive(human_one=alice, cpu_strategy="normal")
+        self.assertEqual(zilch_cpu_completed_experience(alice.id), 9)
+        self._persist_competitive(human_one=alice, cpu_strategy="normal")
+        self.assertEqual(zilch_cpu_completed_experience(alice.id), 10)
 
     def test_unwritten_solo_abort_does_not_count_but_written_zero_does(self) -> None:
         alice = self._user("FirstWrittenSolo")

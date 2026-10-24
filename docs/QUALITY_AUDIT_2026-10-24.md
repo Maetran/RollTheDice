@@ -454,3 +454,174 @@ physical iPhone test.
   service-worker path and every assertion. No sleep, retry, forced click or
   product change was added. Claude independently reviewed the cause and
   synchronization. This failed full attempt also provides no delivery receipt.
+
+## Fortsetzung 4.3: CPU, mit getrennter Layoutprüfung / CPU with separate layout review
+
+Der erste vollständige 4.3.0-Lauf auf `d7914a2c` bestand 607 Tooltests,
+3525 Backendfälle, Image und Smoke-Test. Sieben Browserpools bestanden;
+ein Hausdepp-Ausstiegstest bestätigte noch während des echten CPU-Abhebens.
+Der Server lehnte den veralteten Stand korrekt ab. Der Test wartet nun vor
+seiner letzten Bestätigung auf das tatsächliche menschliche Entscheidungsfenster
+ohne offene Nachwurf-/Nachziehpflicht und auf den aktivierten Button. Er prüft
+die genaue gesendete Version; alle bisherigen Ausstiegs-, Audio- und
+Erfolgsassertions bleiben erhalten. Die beiden echten DE/EN-Fälle und alle
+43 bestehenden UI-Vertragstests bestanden. Claude prüfte die Synchronisierung
+unabhängig. Der fehlgeschlagene Vollversuch liefert keinen Nachweis und wird
+durch einen frischen vollständigen Lauf auf dem neuen Commit ersetzt.
+
+The first complete 4.3.0 attempt on `d7914a2c` passed 607 tool tests,
+3525 backend cases, the image and smoke test. Seven browser pools passed;
+one Hausdepp departure test confirmed while a real CPU was still lifting
+the stock. The server correctly rejected the stale state. Before its final
+confirmation the test now waits for the real human decision window without
+an outstanding follow-up throw or refill and for the enabled button. It asserts
+the exact sent version and retains all departure, audio and achievement checks.
+Both real DE/EN cases and all 43 existing UI contract tests passed. Claude
+independently reviewed the synchronization. This failed full attempt provides
+no receipt and requires a fresh complete run on the new commit.
+
+Der fertige 4.2.1-Stand `b8b8760a` bestand anschließend den vollständigen
+lokalen Nachweis: 606 Node-, 3388 Backend- und 1498 Browserfälle, neun
+optionale Capture-Serien, 85,71 Prozent Branch-Coverage, alle acht Browserpools
+ohne Retry sowie Produktionsimage und Smoke-Test. Der unveränderte normale
+Merge `800e157d` wurde über `develop → master` ausgeliefert; alle vier Hosts
+und zehn öffentliche Asset-Bytevergleiche wurden geprüft. Der Nachweis und
+die unabhängigen Reviews sind zusätzlich außerhalb von Playwrights
+bereinigbaren Ausgabeordnern gesichert.
+
+The finished 4.2.1 source `b8b8760a` subsequently passed complete local
+verification: 606 Node, 3388 backend and 1498 browser cases, nine optional
+capture series, 85.71 percent branch coverage, all eight browser pools without
+retries, plus the production image and smoke test. Its unchanged normal merge
+`800e157d` reached production through develop and master. Public checks covered
+all four hosts and ten exact asset comparisons. Proof and independent reviews
+are also backed up outside Playwright's cleaned output directories.
+
+- **Hausdepp:** Eine begrenzte, flüchtige CPU-Erinnerung verarbeitet nur
+  aufeinanderfolgende persönliche Views mit öffentlich beobachteten Aktionen.
+  Sie liest keine fremde Hand; bei Beobachtungslücken, Runden-/Besetzungswechsel
+  oder Fehlern wird sie verworfen. Nur eine vollständig öffentlich bekannte
+  gegnerische Hand erlaubt die neue Endduell-Ausnahme: Eine höhere Einzelkarte
+  kann ein bekanntes Paar zum Aufnehmen zwingen, wenn die restlichen eigenen
+  Karten danach nachweisbar ausreichen. Priorität für einen bereits sicheren
+  direkten Abschluss und bisherige Schwierigkeit bleiben erhalten. 1470
+  akzeptierte Engine-Sequenzen mit zwei aktiven Spielern und verschiedenen
+  bereits fertigen Sitzen prüfen Kartenbestand und Abschluss. Vier echte
+  asynchrone CPU-Läufe prüfen den Weg von öffentlichem Aufnehmen bis zur
+  späteren Blockkarte. / A bounded transient memory observes consecutive
+  personal views and public actions only. It never reads an opponent's hand
+  and resets on gaps, round/roster changes or errors. A completely public known
+  opponent hand enables one narrow end-duel exception: a higher single card
+  can force a known pair to pick up when the remaining cards prove the finish.
+  An already guaranteed direct finish and existing difficulty keep priority.
+  Tests cover 1470 accepted engine sequences and four real asynchronous CPU
+  runs from public pickup to the later blocking play.
+- **Zilch:** Erfahrung ist weiterhin ein Näherungswert aus abgeschlossenen
+  Spielen, keine Könnensmessung. Neue angemeldete CPU-Partien ab zehn gültigen
+  eigenen Abschlüssen speichern eine private Strategieversion. Gastpartien,
+  alte Spielstände und unbekannte Versionen behalten die bisherige Strategie.
+  Die Ausnahme gilt nur für den exakt validierten zweiten Wurf mit 200 Punkten,
+  vier freien Würfeln, einer Eins und einer Fünf sowie ausreichendem Abstand zum
+  Ziel: In sechs von neun Stil-/Rückstandszellen bleibt nur die Eins liegen.
+  Exakte Ganzzug-Rechnung belegt dort höheren erwarteten Bankwert und weniger
+  Zugverluste. 9000 echte Roll-/Hold-/Bank-Fälle stimmen mit dem Rechenkern
+  überein; 180 vollständige Vergleichspaare enthalten nur 19 tatsächliche
+  Abweichungen und keinen veränderten Matchscore. Das belegt keine höhere
+  Match-Siegquote. Die gepagte historische Validierung schließt früh nach zehn
+  Treffern, hat aber kein hartes Gesamtlimit bei vielen ungültigen Datensätzen.
+  / Experience remains a completed-game proxy, not measured skill. New signed-in
+  CPU games with ten valid owned completions persist a private policy version.
+  Guests, old states and unknown versions keep the baseline. The exception
+  requires the exact validated second-roll 200-point/four-free-dice state with
+  one one, one five and enough distance from the target. In six of nine
+  style/score-gap cells the CPU retains only the one. Exact whole-turn analysis
+  proves higher expected bank and lower turn-loss risk there. Nine thousand
+  real roll/hold/bank cases match the analysis; 180 complete paired matches
+  contain only 19 actual overrides and no changed match score. No match-win-rate
+  improvement is claimed. Paged history validation closes after ten valid
+  results but has no hard total scan cap for unusually dirty histories.
+- **Watten-CPU, widerlegter Verdacht / Rejected suspicion:** Frische öffentliche
+  Erinnerung ohne Stichhistorie zählt beim vierten Stich zwei statt drei
+  vorangegangene Gewinner. Die vorhandene Taktik unterscheidet aber nur null,
+  eins und mindestens zwei. Sechs echte Engine-Fälle mit/ohne Historie für
+  Stich zwei bis vier belegen gleiches taktisches Verhalten und akzeptierte
+  Entscheidungen. Das Stichprobenbudget war bereits korrekt mit der
+  Erfahrungsstufe verbunden; direkte Gegenangebote bleiben beim bezeichneten
+  Entscheider erlaubt. Keine Produktkorrektur aus diesen Verdachtsfällen.
+  Ein separater Lauf mit allen vier Stufen bestand 608 tatsächliche
+  Eröffnungsdeals und 11.250 akzeptierte Befehle ohne Fehler oder Schrittlimit.
+  Der einfache Vergleichsgegner belegt keine monotone Spielstärke und keine
+  menschliche Siegquote. / Fresh public memory without trick history remembers
+  two rather than three previous winners at trick four. Existing tactics only
+  distinguish zero, one and at least two. Six real engine cases prove equivalent
+  choices with/without history at tricks two through four. Sample budgets were
+  already wired to experience, and designated immediate counteroffers are legal.
+  These suspicions require no product fix. All four tiers completed 608 real
+  opening deals and 11,250 accepted commands without error or step exhaustion.
+  The simple baseline opponent proves neither monotonic strength nor human
+  win rate.
+- **Dauerhafter CPU-Vertrag / Persistent CPU evidence:** Ein zusätzlicher
+  deterministischer Test berechnet alle neun Zilch-Zellen gegen die tatsächliche
+  Baseline neu und vergleicht die belegte Freigabemenge mit den sechs Runtime-
+  Zellen sowie echten Entscheidungen aus legal aufgebauten Würfen. Damit wird
+  eine spätere Änderung der Baseline nicht still mit alter Taktikbegründung
+  kombiniert. Der integrierte gezielte CPU-Lauf bestand 170 Fälle in elf
+  Sekunden. / An additional deterministic test recomputes all nine Zilch cells
+  against the actual baseline and compares the justified set with the six
+  runtime cells and real decisions from legally constructed rolls. A future
+  baseline change cannot silently retain stale tactical evidence. The integrated
+  focused CPU run passed 170 cases in eleven seconds.
+- **Watten-Ansagen, separater Folgeschritt / Watten calls, separate follow-up:**
+  **Nicht in 4.3.0 enthalten / Not included in 4.3.0.** Die unabhängige visuelle
+  Prüfung dieses Blocks läuft weiter; der CPU-Release übernimmt keine noch
+  ungeprüfte Zwischenlösung. / Independent visual review continues; the CPU
+  release does not include an unverified intermediate layout.
+   Der eigene untere Hinweis lag auf kleinen
+  Hochkantansichten unter dem Gebotsstand; mit Referenzkarte konnte auch die
+  Ansage eines Mitspielers verdeckt werden. Die vorhandene Layoutberechnung
+  sucht für die eigene Ansage freien Platz oberhalb des tatsächlich gewachsenen
+  Bedienbereichs. Andere Ansagen ersetzen vorübergehend den Text ihrer bereits
+  vorhandenen Rollenreihe am zugehörigen Platz; sie brauchen keinen zusätzlichen
+  schwebenden Bereich zwischen Fächer und Gebot.
+  Feed, Sichtrechte, 5,2-Sekunden-Lebensdauer und Quittierung bleiben unverändert.
+  Tatsächliche DE/EN-Screenshots und sechs Browserfälle prüfen zwei/vier Sitze,
+  Referenzkarte, Gebote, Partnerhinweis, Rotation und Ausscheiden der Ansagen.
+  Auch Nichtansager und echtes Gegenbieten mit Partnerentscheidung sind Teil
+  der Prüfung. Ein früherer grüner Own-only-Test wurde nach visueller
+  Entdeckung des Peerfehlers ausdrücklich verschärft. / Own calls could sit below the stake
+  on small portrait screens; the reference card could also obscure a peer's
+  call. Existing layout fitting now finds room for the own call above the
+  measured controls. Peer calls temporarily replace their existing seat-role
+  text rather than seeking more floating space between fans and bidding.
+  Delivery, privacy, 5.2-second lifetime and acknowledgements stay unchanged.
+  Actual DE/EN screenshots and six browser cases cover two/four seats, reference,
+  bidding, partner advice, rotation and retirement, including non-callers and
+  real counterbids with partner response. An earlier green own-only check was
+  strengthened after actual visual inspection exposed the peer case.
+  Claudes anschließende Bildprüfung fand zusätzlich eine falsche räumliche
+  Zuordnung trotz überdeckungsfreier Rechtecke. Die eigene Ansage erhält nun
+  zuerst den niedrigsten mittigen Platz. Für die übrigen Ansagen ersetzt die
+  feste Rollenreihe die räumlich missverständliche Verschiebung. Reale enge
+  Gegenbieten-Zustände widerlegten auch die Zwischenlösung mit Seitenoffset.
+  Die Fälle wurden nicht ausgeklammert und keine Kollisionstoleranz erhöht.
+  / Claude's subsequent image review also found misleading seat placement
+  despite non-overlapping rectangles. The own call now gets the lowest centred
+  slot first; peer role rows replace misleading floating shifts. Real crowded
+  counterbid states also disproved the intermediate side-offset approach.
+  Those cases were retained without increasing collision tolerances.
+- **Prüfartefakte / Test artifacts:** Direkte Playwright-Aufrufe erhalten pro
+  Pool einen eigenen Standard-Ausgabeordner. Ein echter CLI-Test belegt, dass
+  Playwright den eigenen alten Inhalt entfernt, aber fremde Pool- und
+  Vollnachweise erhält. Explizite Pfade und der verbindliche Vollrunner bleiben
+  unverändert. / Direct Playwright calls default to separate per-pool output
+  directories. A real CLI test proves that cleanup removes its own stale
+  artifacts while preserving another pool and full-verification evidence.
+  Explicit output paths and the required full runner are unchanged.
+
+Für die neuen Quellen ist ein neuer vollständiger Nachweis vor dem Push
+verbindlich. Das abschließende Login-Sicherheitsaudit folgt auf diesen Block;
+ein erfolgreicher Funktionstest ist keine Sicherheitsfreigabe.
+
+New sources require fresh complete local verification before pushing. The
+final login security audit follows this block; passing functional tests is
+not a security clearance.

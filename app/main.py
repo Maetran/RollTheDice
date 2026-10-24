@@ -186,7 +186,13 @@ from .zilch_achievements import (
     sync_zilch_cross_game_achievements_for_users,
     zilch_achievement_rank_legend_payload,
 )
-from .zilch_cpu_strategy import ZilchCpuStrategyError, validate_zilch_cpu_strategy
+from .zilch_cpu_strategy import (
+    ZILCH_CPU_BASELINE_POLICY,
+    ZILCH_CPU_CONTINUATION_POLICY,
+    ZILCH_CPU_EXPERIENCE_THRESHOLD,
+    ZilchCpuStrategyError,
+    validate_zilch_cpu_strategy,
+)
 from .zilch_engine import (
     ZILCH_BANK_MINIMUM,
     ZILCH_CONFIRMATION_MINIMUM,
@@ -220,6 +226,7 @@ from .zilch_statistics import (
     get_zilch_leaderboard,
     get_zilch_personal_statistics,
     list_zilch_leaderboard_categories,
+    zilch_cpu_completed_experience,
 )
 
 # Retained as a small backwards-compatible module export for existing focused
@@ -2806,6 +2813,13 @@ async def api_games_create(req: CreateReq, request: Request):
         identity = _require_hausdepp_access(request)
         require_csrf(request, identity)
     enforce_game_creation_rate_limit(request)
+    cpu_policy = ZILCH_CPU_BASELINE_POLICY
+    if req.game_type == ZILCH_GAME_TYPE and req.play_mode == ZILCH_CPU_MODE and identity is not None:
+        # Finish the read before the factory publishes a room in the live
+        # registry. The newly created game is never exposed half-configured.
+        completed = await run_in_threadpool(zilch_cpu_completed_experience, identity.user_id)
+        if completed >= ZILCH_CPU_EXPERIENCE_THRESHOLD:
+            cpu_policy = ZILCH_CPU_CONTINUATION_POLICY
     gid = str(uuid.uuid4())[:8]
     g = create_game_state(gid, req.name, req.mode, req.game_type)
     if req.game_type == HAUSDEPP_GAME_TYPE:
@@ -2821,6 +2835,7 @@ async def api_games_create(req: CreateReq, request: Request):
             guest_host_token = secrets.token_urlsafe(32)
         configure_zilch_cpu_game(
             g,
+            cpu_policy=cpu_policy,
             **({"host_user_id": identity.user_id} if identity else {"host_token": guest_host_token}),
         )
     elif req.game_type == ZILCH_GAME_TYPE and req.play_mode == ZILCH_SOLO_MODE:

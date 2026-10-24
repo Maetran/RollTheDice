@@ -23,6 +23,43 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 4.3.0 — 2026-10-24
+
+### ZILCH / HAUSDEPP
+
+**Deutsch:** Hausdepp merkt sich ausschließlich öffentlich beobachtete Karten
+während einer lückenlos verfolgten Runde. Im belegten Endduell kann eine höhere
+Einzelkarte ein bekanntes gegnerisches Paar zum Aufnehmen zwingen; sichere
+direkte Abschlüsse und die bisherige Schwierigkeit haben weiter Vorrang.
+Erinnerungslücken und Neustarts fallen auf das bisherige Verhalten zurück.
+Zilch speichert bei neuen angemeldeten CPU-Partien ab zehn gültigen eigenen
+Abschlüssen eine eng begrenzte Fortsetzungstaktik. Nur sechs exakt geprüfte
+Stil-/Rückstandssituationen im zweiten Wurf ändern die bisherige Auswahl;
+Gäste, alte Partien und andere Situationen bleiben bei der bisherigen Strategie.
+Abschlüsse sind ein Erfahrungswert, keine Messung des Könnens. Die Rechnung
+belegt einen besseren erwarteten Einzelzug, keine höhere Match-Siegquote.
+Regeln und Würfelzufall bleiben gleich.
+Zusätzliche reale Engine-Regressionen prüfen diese Grenzen;
+ein widerlegter Watten-CPU-Verdacht erhält Tests statt einer Produktänderung.
+Direkte Playwright-Aufrufe bereinigen künftig nur ihren eigenen Poolordner.
+Die Architekturdokumentation korrigiert den bereits bestehenden Zilch-CPU-
+Pausenstandard auf 1,25 Sekunden; das Laufzeitverhalten ändert sich dadurch nicht.
+
+**English:** Hausdepp remembers only publicly observed cards during a
+continuously observed round. In a proven end-duel, a higher single card can
+force a known opposing pair to pick up; guaranteed direct finishes and existing
+difficulty retain priority. Observation gaps and restarts return to baseline.
+New signed-in Zilch CPU games with ten valid owned completions persist one narrow
+continuation tactic. Only six exactly verified second-roll style/score-gap
+situations change the baseline selection. Guests, old games and other situations
+keep the existing policy. Completions proxy experience, not ability. The proof
+shows better expected turn value, not improved match win rate. Rules and dice
+randomness stay unchanged. New real-engine regressions cover these boundaries; a
+rejected Watten CPU suspicion adds tests without changing gameplay. Direct
+Playwright calls clean only their own pool directory. Architecture documentation
+corrects the already existing Zilch CPU delay default to 1.25 seconds, without
+changing runtime behavior.
+
 ## 4.2.1 — 2026-10-24
 
 ### ZDWA / ZILCH / HAUSDEPP / WATTEN

@@ -1176,8 +1176,13 @@ Computer nutzen sichere Abräum- und Schlussketten, sparen weitere 10er und wäg
 Zocken gegen Aufnehmen ab. Ihr Tempo schwankt; nach einer Denkpause prüfen sie
 den aktuellen Zustand erneut. Die Stärke folgt dem Median der einzeln begrenzten
 Erfahrungsstufen der Menschen: 0 und 1000 Runden ergeben zusammen 0,775 statt
-1,0. Persönliche Einsteigertipps bleiben individuell. Sie kennen keine fremden
-Hände oder verdeckte Stapelreihenfolge. Der [reproduzierbare CPU-Vergleich](docs/HAUSDEPP_CPUS.md)
+1,0. Persönliche Einsteigertipps bleiben individuell. Bei leerem Nachziehstapel
+merken sie tatsächlich beobachtete öffentliche Paketaufnahmen. Im belegten
+Endduell mit zwei aktiven Spielern legen sie z. B. mit 6/K/Ass gegen vollständig
+bekannte 7/7 auf leerem Tisch K, erzwingen die Aufnahme und behalten das Ass.
+Verdeckte fremde Hände oder die Stapelreihenfolge werden nicht gelesen;
+Beobachtungslücken verwerfen das Wissen.
+Der [reproduzierbare CPU-Vergleich](docs/HAUSDEPP_CPUS.md)
 dokumentiert Stärken, Grenzen und Prüfungen. Hausdepp hat eigene Anmelde- und
 Kontoeinstellungsseiten unter `/hausdepp/anmelden` und
 `/hausdepp/konto/einstellungen`: Passkey zuerst, gemeinsame Konten und
@@ -1203,7 +1208,11 @@ Computers use safe clearances and finishing chains, retain extra tens and weigh
 gambling against pickup. Timing varies; decisions are checked against current
 state after each pause. Shared difficulty uses the median of the humans'
 individually capped experience levels: zero and 1,000 rounds yield 0.775, rather
-than 1.0. Beginner tips remain personal. They never know opposing hands or stock order. The
+than 1.0. Beginner tips remain personal. Once stock is empty, they remember
+public packet pickups they actually observed. In the proven final duel with two
+active players, for example with 6/K/ace against completely known 7/7, they play
+K onto an empty table, force a pickup and keep the ace. Hidden hands and stock order are never read;
+observation gaps discard knowledge. The
 [reproducible CPU comparison](docs/HAUSDEPP_CPUS.md) records strengths, limits
 and checks. Dedicated sign-in and settings at `/hausdepp/anmelden` and
 `/hausdepp/konto/einstellungen` use passkeys first, shared accounts and security,
@@ -1850,6 +1859,22 @@ together. Normal now starts from a 600-point bank goal and Aggressive from
 700 points, with Conservative unchanged at 500. Remaining dice and match
 position still adjust these goals; mandatory confirmation rolls, final
 replies, randomness and scoring are unchanged.
+
+After ten completed Zilch games on your account, a new CPU match can use one
+verified continuation tactic: sometimes keeping only a scoring one leaves a
+better next roll than also keeping a five. The conservative, normal and
+aggressive personalities stay distinct. Abandoned Solo runs do not count;
+guests use the existing baseline. A match keeps its selected tactic when resumed.
+This improves the expected value of that particular turn, without a claim of
+a higher match win rate.
+
+**Deutsch:** Ab zehn abgeschlossenen Zilch-Partien deines Kontos kann eine neue
+CPU-Partie eine geprüfte Fortsetzungstaktik nutzen: Manchmal ist es günstiger,
+nur eine wertende Eins zu halten und die Fünf erneut zu würfeln. Konservativ,
+normal und aggressiv bleiben unterschiedliche Persönlichkeiten. Aufgegebene
+Solo-Läufe zählen nicht; Gäste spielen gegen die bisherige Basisstrategie.
+Beim Fortsetzen bleibt die gewählte Taktik erhalten. Der Vorteil betrifft den
+Erwartungswert dieses einzelnen Zuges, ohne eine höhere Match-Siegquote zu behaupten.
 
 Keyboard controls include 1–6 for dice, Space to roll, B to bank, and
 Q/W/E/R/T/Z/U/I for visible suggestions. Shortcuts are disabled while typing or

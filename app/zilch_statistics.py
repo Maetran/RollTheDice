@@ -20,11 +20,13 @@ from __future__ import annotations
 import json
 import logging
 from collections import defaultdict
+from contextlib import closing
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Final, Iterable
+from typing import Any, Final, Iterable, Iterator
 
 from sqlalchemy import and_, func, or_, select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import selectinload
 
 from .database import database_schema_ready, session_scope
@@ -43,7 +45,7 @@ from .zilch_achievements import (
     zilch_achievement_points_for_keys,
     zilch_achievement_rank_for_points,
 )
-from .zilch_cpu_strategy import ZILCH_CPU_STRATEGIES
+from .zilch_cpu_strategy import ZILCH_CPU_EXPERIENCE_THRESHOLD, ZILCH_CPU_STRATEGIES
 from .zilch_results import validate_stored_zilch_result_payload
 from .zilch_solo_objective import (
     ZILCH_SOLO_SPRINT_OBJECTIVE_ID,
@@ -228,13 +230,12 @@ def _human_player_results(rows: Iterable[CompletedGame]) -> list[_PlayerResult]:
     return output
 
 
-def _load_player_results(*, user_id: int | None = None) -> list[_PlayerResult]:
-    """Load private typed Zilch history, filtering in SQL before JSON work."""
+def _iter_player_results(*, user_id: int | None = None) -> Iterator[_PlayerResult]:
+    """Stream validated human records from bounded, SQL-filtered pages."""
     if not database_schema_ready():
-        return []
+        return
     last_finished_at: datetime | None = None
     last_row_id = 0
-    projected: list[_PlayerResult] = []
     with session_scope() as db:
         while True:
             page_cursor = ()
@@ -271,18 +272,42 @@ def _load_player_results(*, user_id: int | None = None) -> list[_PlayerResult]:
                 break
             # Relationships are eagerly loaded above; copying makes accidental
             # later session/lazy-load coupling impossible for these projections.
-            projected.extend(_human_player_results(rows))
+            for record in _human_player_results(rows):
+                # SQL selects the game, not the caller's individual seat.
+                if user_id is None or record.user_id == user_id:
+                    yield record
             last_finished_at = rows[-1].finished_at
             last_row_id = int(rows[-1].id)
-    # The SQL membership filter above chooses games that include this account,
-    # while the
-    # eager participant projection intentionally retains every seat for the
-    # general leaderboard loader.  Keep a personal query scoped to the caller
-    # after that shared projection so an opponent can never appear in their
-    # private totals.
-    if user_id is not None:
-        return [record for record in projected if record.user_id == user_id]
-    return projected
+
+
+def _load_player_results(*, user_id: int | None = None) -> list[_PlayerResult]:
+    with closing(_iter_player_results(user_id=user_id)) as records:
+        return list(records)
+
+
+def zilch_cpu_completed_experience(user_id: int | None) -> int:
+    """Count only validated distinct completions, stopping at the CPU threshold.
+
+    This is a pre-match experience proxy, not a performance measure. Guests
+    have no account history; a failed read explicitly falls back to baseline.
+    """
+    if type(user_id) is not int or user_id < 1:
+        return 0
+    if not database_schema_ready():
+        logger.warning("Zilch CPU experience history unavailable; using baseline policy")
+        return 0
+    completed: set[str] = set()
+    try:
+        with closing(_iter_player_results(user_id=user_id)) as records:
+            for record in records:
+                if record.user_is_active and record.payload.get("outcome", {}).get("status") == "completed":
+                    completed.add(record.game_id)
+                    if len(completed) >= ZILCH_CPU_EXPERIENCE_THRESHOLD:
+                        break
+    except SQLAlchemyError:
+        logger.warning("Zilch CPU experience lookup failed; using baseline policy", exc_info=True)
+        return 0
+    return len(completed)
 
 
 def _banked_round_values(record: _PlayerResult) -> list[int]:

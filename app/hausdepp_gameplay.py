@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import inspect
+import logging
 from datetime import datetime, timezone
 from weakref import WeakValueDictionary
 
@@ -13,6 +14,20 @@ from .game_state import multiplayer_pause_reason, touch
 
 HAUSDEPP_GAMEPLAY_ACTIONS = frozenset({"hausdepp_play", "hausdepp_pickup", "hausdepp_gamble", "hausdepp_afterthrow", "hausdepp_draw", "hausdepp_peek", "hausdepp_next_round", "hausdepp_add_cpu", "hausdepp_remove_cpu", "hausdepp_start_game", "hausdepp_speed_up_cpus"})
 _LOCKS: WeakValueDictionary[str, asyncio.Lock] = WeakValueDictionary()
+logger = logging.getLogger(__name__)
+
+
+def _observe_cpu_transition(game: dict, before: dict, after: dict) -> None:
+    """Optional memory cannot fail an already accepted authoritative command."""
+    cpu_runner = None
+    try:
+        from . import hausdepp_cpu_runner as cpu_runner
+
+        cpu_runner.observe_accepted_transition(game, before, after)
+    except Exception:
+        if cpu_runner is not None:
+            cpu_runner.discard_cpu_memories(game["_id"])
+        logger.warning("Hausdepp CPU observation discarded for %s", game["_id"], exc_info=True)
 
 
 def game_lock(game: dict) -> asyncio.Lock:
@@ -59,9 +74,11 @@ def apply_hausdepp_command(game: dict, player_id: str, command: dict, *, trusted
     version = command.get("version")
     if type(version) is not int:
         raise HausdeppRuleError("hausdepp_version_required")
-    game["_hausdepp"] = apply_action(game["_hausdepp"], player_id, command["action"],
+    before = game["_hausdepp"]
+    game["_hausdepp"] = apply_action(before, player_id, command["action"],
                                       cards=command.get("cards"), version=version)
     state = game["_hausdepp"]
+    _observe_cpu_transition(game, before, state)
     if not trusted_cpu:
         from .hausdepp_cpu_runner import note_human_presentation
 

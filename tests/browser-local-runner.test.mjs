@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawn, spawnSync, execFileSync } from 'node:child_process';
-import { mkdtemp, readFile, writeFile, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, writeFile, rm } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
@@ -215,6 +215,37 @@ test('all five configs preserve Python/output overrides and use distinct test da
       assert.equal(loaded.use.serviceWorkers, 'block');
       assert.equal(loaded.retries, 0);
     }
+  }
+});
+
+test('direct Playwright defaults clean only their own pool and preserve sibling verification evidence', async t => {
+  const f = await fixture(t);
+  const evidence = path.join(f.directory, 'test-results', 'local-checks', 'proof.json');
+  const peer = path.join(f.directory, 'test-results', 'direct', 'foreign', 'trace.zip');
+  for (const file of [evidence, peer]) {
+    await mkdir(path.dirname(file), { recursive: true });
+    await writeFile(file, 'preserved evidence');
+  }
+  const spec = path.join(f.directory, 'minimal.spec.cjs');
+  await writeFile(spec, `const { test, expect } = require(${JSON.stringify(require.resolve('@playwright/test'))});
+test('browser-free evidence check', () => expect(1).toBe(1));`);
+  for (const name of ['main', 'hausdepp-passkeys']) {
+    const stale = path.join(f.directory, 'test-results', 'direct', name, 'stale.txt');
+    await mkdir(path.dirname(stale), { recursive: true });
+    await writeFile(stale, 'old output from this pool');
+    const config = path.join(f.directory, `playwright-${name}.config.cjs`);
+    await writeFile(config, `const { browserTestEnvironment } = require(${JSON.stringify(path.join(root, 'scripts/playwright-test-environment.cjs'))});
+const isolated = browserTestEnvironment({ name: ${JSON.stringify(name)}, portVariable: 'TEST_EVIDENCE_PORT', defaultPort: 18210 });
+module.exports = { testDir: __dirname, testMatch: 'minimal.spec.cjs', workers: 1, retries: 0, reporter: 'line', outputDir: isolated.outputDir };`);
+    const environment = cleanEnvironment({ PLAYWRIGHT_TEST_DIR: path.join(f.directory, `data-${name}`) });
+    delete environment.PLAYWRIGHT_OUTPUT_DIR;
+    const result = spawnSync(process.execPath, [require.resolve('@playwright/test/cli'), 'test', `--config=${config}`], {
+      cwd: f.directory, env: environment, encoding: 'utf8', timeout: 15000,
+    });
+    assert.equal(result.status, 0, result.stdout + result.stderr);
+    assert.equal(await readFile(evidence, 'utf8'), 'preserved evidence');
+    assert.equal(await readFile(peer, 'utf8'), 'preserved evidence');
+    await assert.rejects(readFile(stale), { code: 'ENOENT' });
   }
 });
 
