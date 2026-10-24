@@ -29,9 +29,10 @@ export function createRoomAudio({ gameId, send, spectator = false }) {
   panel.setAttribute("aria-labelledby", "roomAudioTitle");
   panel.innerHTML = `<div class="room-audio-head"><h2 id="roomAudioTitle"></h2><button type="button" data-audio-close>×</button></div>
     <section data-room-voice hidden><h3 data-audio-voice-heading></h3><div class="room-audio-buttons"><button type="button" data-room-listening></button><button type="button" data-room-microphone></button></div>
-      <p class="small" data-room-voice-status role="status"></p><ul class="room-audio-roster" data-room-voice-roster></ul><p class="small" data-room-voice-privacy></p></section>
-    <section><h3 data-audio-ambient-heading></h3><button type="button" data-room-ambience></button><p class="small" data-room-sound-status role="status"></p><p class="small" data-room-sound-description></p></section>
-    <p class="small" data-room-profile-hint></p><a class="small" data-room-profile-link></a>`;
+      <p class="small" data-room-voice-status role="status"></p></section>
+    <section><h3 data-audio-ambient-heading></h3><button type="button" data-room-ambience></button><p class="small" data-room-sound-status role="status"></p></section>
+    <p class="small" data-room-profile-hint></p><a class="small" data-room-profile-link></a>
+    <details class="room-audio-information"><summary data-room-information-label></summary><div data-room-voice-info hidden><ul class="room-audio-roster" data-room-voice-roster></ul><p class="small" data-room-voice-privacy></p></div><p class="small" data-room-sound-description></p><p class="small" data-room-profile-details></p></details>`;
   document.body.append(panel);
   document.querySelector(".room-header-overflow")?.before(toggle);
   const find = selector => panel.querySelector(selector);
@@ -42,7 +43,7 @@ export function createRoomAudio({ gameId, send, spectator = false }) {
   toggle.addEventListener("click", () => {
     document.getElementById("roomHeaderMenuToggle")?.getAttribute("aria-expanded") === "true"
       && document.getElementById("roomHeaderMenuToggle").click();
-    if (!panel.open) panel.showModal();
+    if (!panel.open) { panel.showModal(); panel.scrollTop = 0; }
     toggle.setAttribute("aria-expanded", "true");
   }, { signal: lifetime.signal });
   find("[data-audio-close]").addEventListener("click", close, { signal: lifetime.signal });
@@ -52,7 +53,7 @@ export function createRoomAudio({ gameId, send, spectator = false }) {
   }, { signal: lifetime.signal });
   panel.addEventListener("keydown", event => {
     if (event.key !== "Tab") return;
-    const controls = [...panel.querySelectorAll('button:not(:disabled), a[href]')].filter(element => element.getClientRects().length);
+    const controls = [...panel.querySelectorAll('button:not(:disabled), a[href], summary')].filter(element => element.getClientRects().length);
     const first = controls[0], last = controls.at(-1);
     if (!first) return;
     if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
@@ -76,7 +77,8 @@ export function createRoomAudio({ gameId, send, spectator = false }) {
     toggle.setAttribute("aria-label", roomAudioText("title"));
     text("#roomAudioTitle", "title"); text("[data-audio-close]", "close");
     text("[data-audio-voice-heading]", "voiceTitle"); text("[data-audio-ambient-heading]", "soundAmbienceLabel");
-    text("[data-room-sound-description]", "soundDescription"); text("[data-room-profile-hint]", "voiceProfileHint");
+    text("[data-room-sound-description]", "soundDescription"); text("[data-room-profile-hint]", "profileHint");
+    text("[data-room-information-label]", "information"); text("[data-room-profile-details]", "voiceProfileHint");
     text("[data-room-profile-link]", "profile"); find("[data-room-profile-link]").href = zdwaPath("/konto#settings");
     find("[data-room-profile-link]").hidden = !auth?.authenticated;
     const soundState = sound.snapshot();
@@ -85,6 +87,7 @@ export function createRoomAudio({ gameId, send, spectator = false }) {
     text("[data-room-sound-status]", soundState.errorKey || (soundState.status === "loading" ? "soundLoading"
       : !soundState.supported ? "soundUnsupported" : soundState.enabled ? "soundEnabled" : "soundDisabled"));
     find("[data-room-voice]").hidden = !controller;
+    find("[data-room-voice-info]").hidden = !controller;
     if (!controller) return;
     const state = controller.snapshot();
     listening.textContent = roomAudioText(state.audio ? "voiceAudioOff" : "voiceAudioOn");

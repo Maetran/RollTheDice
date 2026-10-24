@@ -91,6 +91,10 @@ for (const [language, design, defaultListening] of [['de', 'old', false], ['en',
         const box = await owner.page.locator('#roomAudioPanel').boundingBox();
         expect(box.x).toBeGreaterThanOrEqual(0); expect(box.y).toBeGreaterThanOrEqual(0);
         expect(box.x + box.width).toBeLessThanOrEqual(width); expect(box.y + box.height).toBeLessThanOrEqual(height);
+        await painted(owner.page, '[data-room-ambience]');
+        const ambientStatus = await owner.page.locator('[data-room-sound-status]').boundingBox();
+        expect(ambientStatus.y + ambientStatus.height).toBeLessThanOrEqual(box.y + box.height);
+        await expect(owner.page.locator('.room-audio-information')).not.toHaveAttribute('open', '');
         await owner.page.screenshot({ path: info.outputPath(`audio-${width}x${height}.png`) });
         const before = owner.traffic.commands.filter(command => command.action === 'roll_dice').length;
         await owner.page.keyboard.press('r');
@@ -103,6 +107,9 @@ for (const [language, design, defaultListening] of [['de', 'old', false], ['en',
         await expect(owner.page.locator('#roomAudioButton')).toBeFocused();
       }
       await owner.page.locator('#roomAudioButton').click();
+      await owner.page.locator('.room-audio-information > summary').click();
+      await expect(owner.page.locator('[data-room-voice-privacy]')).toContainText('400');
+      await owner.page.locator('.room-audio-information > summary').click();
       await expect(output).toHaveAttribute('aria-pressed', String(defaultListening));
       expect(await owner.page.evaluate(() => window.__voiceHarness.captures)).toBe(0);
       if (!defaultListening) await output.click();

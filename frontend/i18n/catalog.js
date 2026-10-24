@@ -4,6 +4,8 @@ export const ZDWA_AUDIO_MESSAGES = {
     "title": "Audio am Tisch",
     "close": "Schliessen",
     "profile": "Hörvorgabe im Profil ändern",
+    "profileHint": "Zuhören nach deiner Profilvorgabe; Mikro für jede neue Partie selbst einschalten.",
+    "information": "Teilnehmer und Hinweise",
     "privacy": "Ein Sprachchat für alle angemeldeten Mitspieler am Tisch, ohne Teamkanäle. Keine Aufzeichnung. Neue Aktivierungen und aktive Zuhörminuten werden für das geschützte Nutzungsdashboard bis zu 400 Tage gespeichert und mit dem Konto gelöscht. Minuten messen keine Sprechzeit.",
     "tableVoice": "Sprachchat am Tisch erlauben",
     "tableVoiceHelp": "Zuhören und Mikro bleiben freiwillig. Deine Profilvorgabe bestimmt, ob du beim Einstieg zuhörst."
@@ -13,6 +15,8 @@ export const ZDWA_AUDIO_MESSAGES = {
     "title": "Audio at the table",
     "close": "Close",
     "profile": "Change listening default in your profile",
+    "profileHint": "Listening follows your profile default; enable the microphone for each new game.",
+    "information": "Participants and information",
     "privacy": "One voice chat for all signed-in players at the table, with no team channels. No recording. New activations and active listening minutes are retained for the protected usage dashboard for up to 400 days and removed with the account. Minutes do not measure speaking time.",
     "tableVoice": "Allow voice chat at the table",
     "tableVoiceHelp": "Listening and microphone stay optional. Your profile default decides whether you listen when joining."
