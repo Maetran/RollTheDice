@@ -230,7 +230,7 @@ test('a real participant leaves two other players in the same playable table wit
       && board().available_actions.some(action => ['play', 'pickup', 'gamble'].includes(action))).toBe(true);
     const actions = board().available_actions;
     if (actions.includes('gamble')) await page.locator('#hausdeppStock').click();
-    else if (actions.includes('play')) await page.locator(`[data-card-id="${board().playable_cards[0]}"]`).click();
+    else if (actions.includes('play')) await page.locator(`#hausdeppHand button[data-card-id="${board().playable_cards[0]}"]`).click();
     else {
       await expect(page.locator('#hausdeppPile')).toHaveAttribute('data-pickup-available', 'true');
       await page.locator('#hausdeppPile').click();
