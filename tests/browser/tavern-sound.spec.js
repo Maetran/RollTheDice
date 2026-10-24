@@ -11,14 +11,18 @@ const nativeEngine = dataURL(shared('tavern-sound.js')
   .replace('"./tavern-catalog.js"', JSON.stringify(dataURL(shared('tavern-catalog.js'))))
   .replace('"./tavern-shuffle.js"', JSON.stringify(dataURL(shared('tavern-shuffle.js')))));
 
-test('real Web Audio accepts the production 20-second fade and releases both sources on off', async ({ page }) => {
+test('real touch Web Audio resumes after interruption, fades for 20 seconds and releases both sources on off', async ({ browser }) => {
+  const context = await browser.newContext({ isMobile: true, hasTouch: true });
+  const page = await context.newPage();
+  try {
   test.setTimeout(45_000);
-  await page.setContent('<button id="start">Start local ambience</button>');
+  await page.setContent('<button id="start">Start local ambience</button><button id="resume">Unrelated table gesture</button>');
   await page.evaluate(async engine => {
     const { createTavernSound } = await import(engine);
     const timers = new Map(), sources = [], curves = [];
     let clockBump = 0, timerId = 0;
     class Context extends AudioContext {
+      constructor(...args) { super(...args); window.__nativeAudioContext = this; }
       get currentTime() { return super.currentTime + clockBump; }
       createBufferSource() { const source = super.createBufferSource(); sources.push(source); return source; }
       createGain() {
@@ -54,17 +58,22 @@ test('real Web Audio accepts the production 20-second fade and releases both sou
     } };
     document.querySelector('#start').onclick = () => controller.setEnabled(true);
   }, nativeEngine);
-  await page.locator('#start').click();
+  await page.locator('#start').tap();
   await expect.poll(() => page.evaluate(() => window.__nativeAmbience.controller.snapshot().status)).toBe('playing');
   await page.evaluate(() => window.__nativeAmbience.rotate());
   await expect.poll(() => page.evaluate(() => window.__nativeAmbience.sources.filter(source => source.buffer).length)).toBe(2);
   expect(await page.evaluate(() => window.__nativeAmbience.curves.map(curve => curve.duration))).toEqual([20, 20]);
   await expect.poll(() => page.evaluate(() => window.__nativeAmbience.sources[0].buffer === null), { timeout: 25_000 }).toBe(true);
   expect(await page.evaluate(() => window.__nativeAmbience.sources.filter(source => source.buffer).length)).toBe(1);
+  await page.evaluate(() => window.__nativeAudioContext.suspend());
+  expect(await page.evaluate(() => window.__nativeAudioContext.state)).toBe('suspended');
+  await page.locator('#resume').tap();
+  await expect.poll(() => page.evaluate(() => window.__nativeAudioContext.state)).toBe('running');
   await page.evaluate(() => window.__nativeAmbience.controller.setEnabled(false));
   expect(await page.evaluate(() => window.__nativeAmbience.sources.every(source => source.buffer === null))).toBe(true);
   await page.evaluate(() => window.__nativeAmbience.controller.destroy());
   expect(await page.evaluate(() => window.__nativeAmbience.timers.size)).toBe(0);
+  } finally { await context.close(); }
 });
 
 for (const language of ['de', 'en']) {

@@ -12,6 +12,9 @@ const notes = {
   "mic-on": [960, 1200], "mic-off": [800, 540],
 };
 const FADE_SECONDS = 20;
+// Touch/pen activation begins at pointerup/touchend, mouse activation at
+// pointerdown: https://html.spec.whatwg.org/multipage/interaction.html#activation-triggering-input-event
+const GESTURES = ["pointerdown", "pointerup", "touchend", "keydown"];
 
 // decodeAudioData cannot be aborted. Even a retired context's decode must finish
 // before the next begins, so a rapid off/on cannot create a third room buffer.
@@ -300,12 +303,10 @@ export function createTavernSound({
     cancelSuspension(); cancelLoads(); stopNodes(); buffers.clear(); listeners.clear();
     try { quietly(context?.close()); } catch { /* Page teardown is best effort. */ }
     lifecycle?.removeEventListener("pagehide", destroy);
-    lifecycle?.removeEventListener("pointerdown", resumeAfterGesture, gestureOptions);
-    lifecycle?.removeEventListener("keydown", resumeAfterGesture, gestureOptions);
+    for (const type of GESTURES) lifecycle?.removeEventListener(type, resumeAfterGesture, gestureOptions);
   }
   lifecycle?.addEventListener("pagehide", destroy);
-  lifecycle?.addEventListener("pointerdown", resumeAfterGesture, gestureOptions);
-  lifecycle?.addEventListener("keydown", resumeAfterGesture, gestureOptions);
+  for (const type of GESTURES) lifecycle?.addEventListener(type, resumeAfterGesture, gestureOptions);
   return { snapshot, unlock, cue, setEnabled, destroy, subscribe(listener) {
     listeners.add(listener); listener(snapshot());
     return () => listeners.delete(listener);

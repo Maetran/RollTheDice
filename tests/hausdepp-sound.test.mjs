@@ -431,7 +431,7 @@ test('pagehide during an in-flight rotation aborts the request and cannot restar
 
 test('enabled interrupted ambience resumes on the next gesture; default-off and teardown stay inactive', async () => {
   const app = setup();
-  for (const type of ['pointerdown', 'keydown']) {
+  for (const type of ['pointerdown', 'pointerup', 'touchend', 'keydown']) {
     assert.deepEqual(app.handlers.get(type).options, { capture: true, passive: true });
     app.lifecycle.dispatchEvent(new Event(type));
   }
@@ -439,7 +439,7 @@ test('enabled interrupted ambience resumes on the next gesture; default-off and 
   assert.equal(app.contexts.length, 0); assert.equal(app.requests.length, 0);
   await app.sound.setEnabled(true);
   const context = app.contexts[0], room = roomsPlaying(app)[0], requests = app.requests.length;
-  for (const [type, state] of [['pointerdown', 'interrupted'], ['keydown', 'suspended']]) {
+  for (const [type, state] of [['pointerdown', 'interrupted'], ['pointerup', 'suspended'], ['touchend', 'interrupted'], ['keydown', 'suspended']]) {
     context.state = state;
     const resumes = context.resumes;
     app.lifecycle.dispatchEvent(new Event(type)); await turn();
@@ -453,7 +453,7 @@ test('enabled interrupted ambience resumes on the next gesture; default-off and 
   app.lifecycle.dispatchEvent(new Event('pointerdown')); await turn();
   assert.equal(context.resumes, resumes, 'disabled sound must not resume on unrelated table gestures');
   app.sound.destroy();
-  assert.equal(app.handlers.size, 0, 'teardown removes pagehide and both capture handlers');
+  assert.equal(app.handlers.size, 0, 'teardown removes pagehide and all capture handlers');
   app.lifecycle.dispatchEvent(new Event('keydown')); await turn();
   assert.equal(context.resumes, resumes); assert.equal(context.closes, 1);
 });
