@@ -426,6 +426,10 @@ test('keyboard focus follows the table exit into the finished result sheet', asy
   live.publish();
   await expect(tableExit).toBeHidden();
   await expect(page.locator('#hausdeppLeaveGameResult')).toBeFocused();
+  live.board._finished = false;
+  live.board._hausdepp.phase = 'playing';
+  live.publish();
+  await expect(tableExit).toBeFocused();
 });
 
 test('spectators see the public round result without requesting private account progress', async ({ page }) => {
