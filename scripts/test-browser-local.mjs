@@ -14,6 +14,7 @@ const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url))
 const require = createRequire(import.meta.url);
 export const CONFIGS = Object.freeze({
   main: 'playwright.config.js',
+  'watten-public': 'playwright.watten-public.config.js',
   username: 'playwright.username.config.js',
   passkeys: 'playwright.passkeys.config.js',
   'hausdepp-passkeys': 'playwright.hausdepp-passkeys.config.js',
@@ -33,8 +34,8 @@ export function parseArguments(argv) {
     if (argument === '--output-dir') options.outputDirectory = value;
     else if (argument === '--port-base') {
       options.portBase = Number(value);
-      if (!Number.isInteger(options.portBase) || options.portBase < 1024 || options.portBase > 65529) {
-        throw new Error('--port-base must be an integer from 1024 to 65529');
+      if (!Number.isInteger(options.portBase) || options.portBase < 1024 || options.portBase > 65528) {
+        throw new Error('--port-base must be an integer from 1024 to 65528');
       }
     } else {
       const suite = argument === '--suite' ? value : Object.keys(CONFIGS).find(name => CONFIGS[name] === path.basename(value));
@@ -79,7 +80,8 @@ export function createSuitePlan({ root = repositoryRoot, temporaryDirectory, out
     const testDirectory = path.join(temporaryDirectory, definition.name);
     const port = ports[index];
     const env = { ...environment, ROLLTHEDICE_TEST_PORT: String(port), ROLLTHEDICE_PASSKEY_TEST_PORT: String(port),
-      ROLLTHEDICE_HAUSDEPP_PASSKEY_TEST_PORT: String(port), PLAYWRIGHT_TEST_DIR: testDirectory,
+      ROLLTHEDICE_HAUSDEPP_PASSKEY_TEST_PORT: String(port), ROLLTHEDICE_WATTEN_PUBLIC_TEST_PORT: String(port),
+      PLAYWRIGHT_TEST_DIR: testDirectory,
       PLAYWRIGHT_OUTPUT_DIR: outputDir, PLAYWRIGHT_HTML_OUTPUT_DIR: htmlDir, TMPDIR: testDirectory };
     delete env.PLAYWRIGHT_BASE_URL;
     // Required and filtered pools must preserve failures and never shrink through .only.
@@ -261,7 +263,7 @@ export async function runLocalBrowserTests(options = {}, dependencies = {}) {
     if (failedRunner) throw failedRunner.reason;
     for (const suite of plan.filter(suite => suite.suite !== 'main')) await runSuite(suite);
     summary.fullRun = !interruption && !(options.suites?.length) && !summary.filters.length
-      && summary.results.length === 7 && summary.results.every(result => ['passed', 'failed'].includes(result.status));
+      && summary.results.length === 8 && summary.results.every(result => ['passed', 'failed'].includes(result.status));
   } catch (error) {
     summary.error = error.message;
     await Promise.all([...active].map(stopProcess));
@@ -284,7 +286,7 @@ async function main() {
   const options = parseArguments(process.argv.slice(2));
   if (options.help) {
     console.log('Usage: node scripts/test-browser-local.mjs [--output-dir NEW_DIR] [--port-base PORT] [--suite NAME | --config FILE] [-- PLAYWRIGHT_FILTERS]\n'
-      + 'Default: four isolated main shards (one worker each), then username, passkeys and hausdepp-passkeys serially.\n'
+      + 'Default: four isolated main shards (one worker each), then watten-public, username, passkeys and hausdepp-passkeys serially.\n'
       + 'PLAYWRIGHT_PYTHON is preserved. PLAYWRIGHT_LOCAL_OUTPUT_DIR selects the run output; logs, HTML and traces are retained.');
     return;
   }

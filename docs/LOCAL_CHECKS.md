@@ -40,9 +40,10 @@ die passende Version bereitstellen, ohne den System-Node zu ersetzen.
 4. Produktionsimage für `linux/amd64` bauen (wie der Produktionsserver, auch auf
    einem ARM-Mac) und `tests/container_smoke.py` ohne Netzwerk,
    Zugangsdaten oder persistente Daten im Container ausführen.
-5. Vier Haupt-Browser-Shards gleichzeitig, danach Benutzername, Passkeys und
-   Hausdepp-Passkeys einzeln. Jeder Teil erhält seinen eigenen Server, freien
-   Port, SQLite-Datei, Legacy-JSON-Daten und Artefakt-/HTML-Verzeichnisse.
+5. Vier Haupt-Browser-Shards gleichzeitig, danach öffentliches Watten,
+   Benutzername, Passkeys und Hausdepp-Passkeys einzeln. Jeder Teil erhält seinen
+   eigenen Server, freien Port, SQLite-Datei, Legacy-JSON-Daten und
+   Artefakt-/HTML-Verzeichnisse.
 6. Diff, Commit, Basis und Umgebung erneut prüfen und einen Nachweis speichern.
 
 Die Ergebnisse liegen unter `test-results/local-checks/<Lauf>/`; Browserberichte
@@ -51,6 +52,15 @@ in eigenen System-Tempverzeichnissen und werden beim Abschluss entfernt.
 Fehler oder Abbruch erzeugen keinen gültigen Nachweis. Alle Browserteile laufen
 auch nach einem Fehler weiter, damit ein Lauf die übrigen Fehler sichtbar macht.
 Bei Abbruch werden nur die eigenen Testprozesse beendet.
+
+Der Browsernachweis verlangt acht Teilgruppen: `main-1` bis `main-4`,
+`watten-public`, `username`, `passkeys` und `hausdepp-passkeys`. Der öffentliche
+Watten-Pool prüft die echte DE/EN-Navigation bei eingeschalteter öffentlicher Beta
+und ausgeschalteten Preview-Freigaben. Die beiden Sprachfälle sind aus den
+Preview-Konfigurationen ausgeschlossen; ein fehlender öffentlicher SSR-Marker
+ist im öffentlichen Pool ein Fehler. Ein früherer Nachweis ohne diesen Pool
+reicht weder zum Push noch zur Übernahme durch einen unveränderten Merge.
+Die sieben vollständigen Prüfgruppen bleiben unverändert.
 
 Der Nachweis liegt unter dem gemeinsamen Git-Verzeichnis in
 `local-checks/receipts/<Commit>.json`. Er gilt 24 Stunden für exakt denselben
@@ -86,6 +96,7 @@ npm run check:quality
 npm run test:tools
 .venv/bin/python -m pytest -n 0 tests/test_ci_workflow.py
 npm run test:browser -- --suite main -- hausdepp-flex-lobby.spec.js
+npm run test:browser -- --suite watten-public
 npm run test:browser -- --suite passkeys
 npx playwright test tests/browser/hausdepp-flex-lobby.spec.js
 ```
@@ -94,8 +105,9 @@ Gefilterte Läufe erhalten `fullRun=false` und geben keinen vollständigen
 Push-Nachweis. Der Runner verbietet `test.only`/`describe.only` und erzwingt
 `--retries=0`, auch bei gesetztem `CI`. Ein Fehler im ersten Versuch bleibt
 damit ein Fehler; Filter dürfen diese Vorgaben nicht überschreiben.
-`--port-base 8100` reserviert bei Bedarf sieben aufeinanderfolgende
-Ports; ohne Angabe werden freie Ports vergeben. `--output-dir` verlangt ein
+`--port-base 8100` reserviert bei Bedarf acht aufeinanderfolgende
+Ports; zulässig sind Basiswerte von 1024 bis 65528. Ohne Angabe werden freie
+Ports vergeben. `--output-dir` verlangt ein
 neues oder leeres Verzeichnis. `PLAYWRIGHT_BASE_URL` ist im isolierten Runner
 unzulässig, damit kein fremder Server benutzt wird.
 
@@ -129,10 +141,19 @@ the development Python environment, Chromium, WebKit and a local
 Docker socket. Coordinate with any agent already running a full test pool.
 
 Four main browser shards run simultaneously on separate servers with independent
-ports, SQLite databases, legacy JSON data and reports. Username and both passkey
-suites follow serially even when an earlier suite failed. Cancellation stops only
-owned processes and removes disposable data. Logs remain in
+ports, SQLite databases, legacy JSON data and reports. Public Watten, username and
+both passkey suites follow serially even when an earlier suite failed.
+Cancellation stops only owned processes and removes disposable data. Logs remain in
 `test-results/local-checks/<run>/`, including browser summaries and HTML reports.
+
+Browser evidence requires eight pools: `main-1` through `main-4`, `watten-public`,
+`username`, `passkeys` and `hausdepp-passkeys`. The public Watten pool checks real
+DE/EN navigation with public beta enabled and preview access disabled. Preview
+configs exclude those two cases; a missing public SSR marker fails the public
+pool. Older evidence without this pool cannot authorize a push or be inherited
+by an unchanged merge. The seven complete check groups remain unchanged.
+Use `npm run test:browser -- --suite watten-public` for a focused run.
+`--port-base` reserves eight consecutive ports; its range is 1024 through 65528.
 
 A receipt in shared Git metadata authorizes only the exact clean commit, current
 `origin/develop` base and installed environment for at most 24 hours. A source,

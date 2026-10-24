@@ -2822,9 +2822,13 @@ logs. Check for another agent's full test pool before starting one.
 
 `npm run test:browser` runs the main suite on four parallel, isolated servers,
 each with its own free port, SQLite database, legacy JSON data and report files.
-Each server keeps one worker. Username changes in public Zilch mode
+Each server keeps one worker. Public Watten language navigation
+(`playwright.watten-public.config.js`), username changes in public Zilch mode
 (`playwright.username.config.js`), passkeys and Hausdepp passkeys then run
-separately, even if an earlier suite failed. Servers are never reused; interruption
+separately, even if an earlier suite failed. All eight browser pools are required
+for verification; the public Watten cases run against real public SSR documents
+and fail if that mode is missing. Use `npm run test:browser -- --suite watten-public`
+for those cases alone. Servers are never reused; interruption
 cleans up only this run's processes and temporary data. Filtered runs are marked
 incomplete and cannot authorize a push. `npm run check:quality` includes lint,
 dependency consistency, Bandit and the dependency vulnerability audit, matching
@@ -2859,7 +2863,11 @@ den Git-Metadaten. Enthalten sind Lint, Sicherheit, Node-Tooltests,
 Backend-Abdeckung, lokaler Produktionscontainer samt Offline-Prüfung und alle
 Browser-Suiten. Die Hauptsuite läuft gleichzeitig auf vier eigenen Servern mit
 je einem Worker, freiem Port, SQLite-Datenbank, JSON-Daten und eigenen Berichten.
-Die drei Konto-Suiten folgen einzeln. Teilprüfungen berechtigen nie zum Push;
+Danach folgen der öffentliche Watten-Sprachpool und die drei Konto-Suiten
+einzeln. Alle acht Browserteilgruppen sind verbindlich; fehlende öffentliche
+SSR-Dokumente sind im Watten-Sprachpool ein Fehler. Gezielter Aufruf:
+`npm run test:browser -- --suite watten-public`. Die sieben vollständigen
+Prüfgruppen bleiben unverändert. Teilprüfungen berechtigen nie zum Push;
 Abbruch beendet nur eigene Prozesse. Chromium, WebKit und ein lokaler Docker-Daemon
 müssen bereitstehen. Bei einem fremden vollen Testpool zuerst abstimmen.
 Details und Teilbefehle stehen in [Lokale Prüfungen](docs/LOCAL_CHECKS.md).

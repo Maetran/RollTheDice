@@ -7,6 +7,7 @@ const baseURL = `http://127.0.0.1:${isolated.port}`;
 
 module.exports = defineConfig({
   testDir: 'tests/browser', testMatch: 'watten-*.spec.js',
+  testIgnore: '**/watten-public-language.spec.js',
   fullyParallel: false, workers: 1, timeout: 45000,
   reporter: isolated.reporter, outputDir: isolated.outputDir,
   use: { baseURL, browserName: 'chromium', serviceWorkers: 'block',
@@ -18,6 +19,7 @@ module.exports = defineConfig({
       ROLLTHEDICE_DATA_DIR: isolated.directory, ROLLTHEDICE_DATABASE_URL: isolated.databaseURL,
       ROLLTHEDICE_SITE_ORIGIN: baseURL, ROLLTHEDICE_COOKIE_SECURE: '0',
       ROLLTHEDICE_EMAIL_ENABLED: '0', ROLLTHEDICE_PASSKEYS_ENABLED: '0',
+      ROLLTHEDICE_WATTEN_PUBLIC_BETA: '0',
       ROLLTHEDICE_WATTEN_ACCOUNT_PREVIEW: '1', ROLLTHEDICE_WATTEN_GAME_PREVIEW: '1',
       ROLLTHEDICE_ADMIN_USERNAME: 'Admin', ROLLTHEDICE_FOUNDER_USER_ID: '1',
       ROLLTHEDICE_ADMIN_PASSWORD: 'temporary-password-123',
