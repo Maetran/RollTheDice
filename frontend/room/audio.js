@@ -5,7 +5,7 @@ import { createTavernSound } from "../shared/tavern-sound.js";
 import { escapeHtml as esc } from "../shared/auth.js";
 import { HAUSDEPP_MESSAGES, ZDWA_AUDIO_MESSAGES } from "../i18n/catalog.js";
 import { zdwaPath } from "../multigame/routes.js";
-import { continuationGameId, voiceAccountSeat } from "./audio-contract.js";
+import { canCarryVoice, continuationGameId, voiceAccountSeat } from "./audio-contract.js";
 
 export const roomAudioText = key => {
   const language = window.ZDWA_I18N?.getLanguage?.() === "en" ? "en" : "de";
@@ -176,8 +176,8 @@ export function createRoomAudio({ gameId, send, spectator = false }) {
       if (revoke) retireVoice(true); else controller?.disconnected();
       render();
     },
-    canCarry: () => Boolean(controller && board?._finished && !board?._aborted
-      && voiceAccountSeat(board, playerId, auth?.user?.id, spectator)),
+    canCarry: () => Boolean(controller && canCarryVoice(board, playerId, auth?.user?.id, controller.snapshot(), spectator)),
+    accountId: () => auth?.authenticated ? auth.user?.id : null,
     handoff(value) {
       const next = continuationGameId(value, { sourceId: gameId, groupId: board?._voice_group_id || gameId });
       if (!next || !controller) return false;
