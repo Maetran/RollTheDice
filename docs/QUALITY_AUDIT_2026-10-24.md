@@ -64,7 +64,7 @@ verification reports live under `test-results/local-checks/` and shared Git meta
 
 ## Block 2: öffentlicher Watten-Browserpool / Public Watten browser pool
 
-**Implementiert und gezielt geprüft; Vollnachweis ausstehend:** Die beiden bisher im Previewpool
+**Implementiert, von Claude geprüft und gezielt getestet:** Die beiden bisher im Previewpool
 übersprungenen Sprachfälle erhalten mit `playwright.watten-public.config.js`
 einen eigenen lokalen Pool: öffentliche Beta an, Preview-Freigaben aus,
 eigener Server, Port und Datenbestand. Der unveränderte Flow prüft
@@ -72,7 +72,7 @@ Lobby → Regeln → Anmeldung → Zurück und den expliziten Sprachwechsel bei
 widersprechender gespeicherter Sprache. Fehlende öffentliche SSR-Marker werden
 zu Fehlern. Die beiden Preview-Konfigurationen sammeln diese Datei nicht mehr.
 
-**Implemented and checked with focused tests; full verification pending:** The two previously skipped language cases gain their
+**Implemented, independently reviewed by Claude and checked with focused tests:** The two previously skipped language cases gain their
 own local pool with public beta enabled, preview access disabled and an isolated
 server, port and data. The existing flow checks lobby → rules → sign-in → back
 and explicit language switching against a conflicting saved language. Missing
@@ -88,8 +88,8 @@ Die vier betroffenen Node-Testdateien bestanden mit **90/90 Tests**, ohne Skips.
 Der öffentliche Browserpool bestand mit **2/2 DE/EN-Fällen**; der Bericht unter
 `test-results/local/run-5gT5gq/summary.json` weist korrekt `fullRun=false` aus.
 Die gezielten Prüfungen liefen erst nach Ende des ersten Vollpools und nach
-Freigabe durch die Testkoordination. Unabhängiges Review und vollständiger
-Nachweis für diesen Block stehen noch aus.
+Freigabe durch die Testkoordination. Claude hat den Pool und die Nachweisprüfungen unabhängig freigegeben.
+Der vollständige Nachweis des integrierten Stands bleibt vor dem Push verbindlich.
 
 Complete evidence now requires eight browser pools while the seven complete
 check groups stay unchanged. Regressions are prepared for collection, isolated
@@ -99,18 +99,73 @@ Old seven-pool receipts are not extended or presented as new evidence. The four
 affected Node test files passed **90/90 tests** without skips. The public browser
 pool passed **2/2 DE/EN cases**; `test-results/local/run-5gT5gq/summary.json`
 correctly records `fullRun=false`. These focused checks ran after the first full
-pool ended and the test coordinator authorized them. Independent review and
-complete verification for this block remain pending.
+pool ended and the test coordinator authorized them. Claude independently approved the pool and receipt checks. Complete
+verification of the integrated tree remains mandatory before pushing.
+
+## Block 3: bestätigter Watten-Regelvertrag / Confirmed Watten bidding contract
+
+Der Owner hat am 24.10.2026 ausdrücklich bestätigt: Eigene Eröffnungsgebote
+und spätere eigene Erhöhungen sind nur im eigenen Kartenzug erlaubt. Die
+direkte Antwort auf ein offenes gegnerisches Gebot bleibt beim zuständigen
+Entscheider und darf ausserhalb seines Kartenzugs erfolgen. Engine, persönliche
+Views, CPU-Validierung und Regeln bilden denselben Vertrag ab. Die überholte
+Partnerzug-Ausnahme und ihre zusätzliche CPU-Wartelogik sind entfernt; das
+private Partnergefühl bleibt erhalten. Speicherformat und Wertung ändern sich
+nicht.
+
+On 24 October 2026 the owner explicitly confirmed that opening bids and later
+unsolicited raises require the initiator's own card turn. The designated decider
+can still immediately respond to an open opposing bid outside their card turn.
+Engine, personal views, CPU validation and rules now agree. The obsolete
+partner-turn exception and its CPU wait logic are removed; private partner
+feedback is preserved. Storage format and scoring remain unchanged.
+
+Die Regressionen waren vor der Korrektur rot. Die gezielten Backendprüfungen
+bestanden mit 336 Fällen plus drei CPU-Schedulerfällen. Vier Geberpositionen,
+Eröffnung und spätere Vier/Fünf, falsche Akteure, Ablehnung ohne Zustandsänderung
+und weiterhin erlaubte direkte Antworten werden geprüft. Der echte mobile
+Viererflow in Deutsch und Englisch bestand mit 2/2 Browserfällen und prüft
+eigene Gebotsrechte, fehlende Rechte beim wissenden Partner und alle drei
+Antwortbuttons beim zuständigen Entscheider. Claude hat den Regelkern, Views,
+CPU und Testanpassungen unabhängig geprüft und freigegeben. Seine doppelte
+Assertion wurde bereinigt; die Releasepflichten für 4.1.8 sind umgesetzt.
+
+The regressions failed before the fix. Focused backend verification passed
+336 cases plus three CPU scheduler cases. Tests cover four dealer positions,
+opening and later Four/Five bids, wrong actors, rejection without mutation and
+preserved immediate responses. The real mobile four-player flow passed both
+German and English browser cases, checking own bidding rights, the informed
+partner's lack of rights and all three designated response buttons. Claude
+independently approved the rule core, views, CPU and adjusted tests. A duplicate
+assertion identified in review was removed; 4.1.8 release metadata is prepared.
+
+## Nachweise und Grenzen / Evidence and limits
+
+Der erste Vollnachweis für 4.1.7 bestand auf `05009ca5`: 582 Tooltests,
+3’321 Backendtests mit 85,84 Prozent Branch-Coverage, Produktionsimage und
+1’482 Browserfälle (11 konfigurierte Skips). Der unveränderte Merge `28d13393`
+wurde nach grüner CI über master ausgerollt; alle vier Hosts meldeten Version
+4.1.7 und gesunde Datenbanken. Zwei dieser Browser-Skips werden durch Block 2
+zu verbindlichen öffentlichen Tests. Neue Quellen benötigen einen neuen
+vollständigen Nachweis; dieser wird beim nächsten Push automatisch erzwungen.
+
+The first complete 4.1.7 proof on `05009ca5` passed 582 tool tests, 3,321 backend
+tests with 85.84 percent branch coverage, the production image and 1,482 browser
+cases (11 configured skips). Unchanged merge `28d13393` passed CI and was deployed
+from master; all four hosts reported 4.1.7 and healthy databases. Block 2 makes
+two of those skipped cases mandatory public tests. New source needs a new full
+proof, automatically enforced on the next push.
+
+Bestehende SQLite-Datetime-DeprecationWarnings und einzelne ResourceWarnings
+bleiben sichtbar. Ihre Ursachen sind in diesem Block nicht vollständig verfolgt;
+es wurden weder Warnungen unterdrückt noch Grenzwerte gelockert.
+
+Existing SQLite datetime deprecation warnings and some resource warnings remain
+visible. Their causes were not fully traced in this block; warnings were neither
+suppressed nor thresholds relaxed.
 
 ## Offene Punkte / Open items
 
-- **Watten-Regelvertrag / Watten rule contract:** Das Owner-Ledger bindet das
-  eigene Eröffnungsgebot an den eigenen Kartenzug; Engine und mehrere Tests
-  erlauben dem wissenden Entscheider im blinden Vierer ein Gebot im Partnerzug.
-  Kein automatischer Fix: zuerst Owner-Entscheidung, dann Vertrag, Code und Tests
-  gemeinsam abgleichen. / The ledger limits opening bids to the player's own
-  card turn; engine and several tests allow the informed decider to bid during
-  their partner's turn in blind four-player games. This needs an owner decision.
 - **Auth-Randfälle / Auth edge cases:** Der vermutete Selbst-Deadlock in
   `loadAuth` wurde nach Prüfung aller Epochenänderungen verworfen. Ein älterer
   erfolgreicher Lookup kann einen bereits laufenden neueren Lookup übernehmen;
