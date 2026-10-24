@@ -1,4 +1,15 @@
-.room-page .room-header > #roomAudioButton { display: inline-grid; place-items: center; flex: 0 0 44px; box-sizing: border-box; width: 44px; min-width: 44px; height: 44px; min-height: 44px; padding: 0; font-size: .73rem; }
+/* Share the header's responsive edge: 44px on touch, 36px on desktop.
+   A fixed 44px control steals height from the desktop score sheets. */
+.room-page .room-header > #roomAudioButton { display: inline-grid; place-items: center; flex: 0 0 var(--header-control-size); box-sizing: border-box; width: var(--header-control-size); min-width: var(--header-control-size); height: var(--header-control-size); min-height: var(--header-control-size); padding: 0; font-size: .73rem; }
+@media (max-width: 560px) {
+  /* Audio adds one header control. Four 44px tiles + three 6px gaps +
+     8px scroller padding fit the remaining 202px on a 360px phone.
+     These tiles have no avatars: remove their old reserved inset so four
+     score digits stay visible. At 320px the existing scroll/fade remains. */
+  :root[data-game="zdwa"][data-design="2026"] .room-page .room-header:has(> #roomAudioButton) .room-player-tiles:has(> .room-player-tile:nth-child(4)) > .room-player-tile { min-width: var(--header-control-size); padding-inline: .125rem; }
+  :root[data-game="zdwa"][data-design="2026"] .room-page .room-header:has(> #roomAudioButton) .room-player-tiles:has(> .room-player-tile:nth-child(4)) .room-player-tile-body { margin-right: 0; }
+  :root[data-game="zdwa"][data-design="2026"] .room-page .room-header:has(> #roomAudioButton) .room-player-tiles:has(> .room-player-tile:nth-child(4)) :is(.room-player-tile-name, .room-player-tile-score) { padding-left: 0; }
+}
 .room-page:has(#roomAudioButton) > .connection-status { top: calc(var(--room-header-bottom, 2.85rem) + .4rem); right: var(--room-header-end, .5rem); left: auto; transform: none; pointer-events: none; }
 /* The menu belongs to the header's 1000 layer; the status is normally 2100. */
 body.room-page:has(#roomHeaderMenuPanel:not([hidden])) > #connectionStatus { z-index: 900; }
