@@ -21,9 +21,15 @@
   html[data-watten-active="true"] .wt-sound button > :first-child { font-size: 18px; }
 }
 @media (orientation: landscape) and (max-height: 700px) {
-  html[data-watten-active="true"] [data-watten-sound] {
-    position: fixed; inset: auto auto calc(58px + env(safe-area-inset-bottom, 0px)) calc(6px + var(--wt-rail-inset));
-    width: 144px; z-index: 35;
+  html[data-game="watten"][data-watten-active="true"]:has([data-watten-sound] .wt-sound) body .wt-header .suite-header__brand {
+    grid-column: 1 / span 2;
   }
-  html[data-watten-active="true"] .wt-sound button { width: 100%; }
+  html[data-watten-active="true"] [data-watten-sound] {
+    position: fixed; inset: 4px auto auto calc(106px + var(--wt-rail-inset));
+    width: 44px; z-index: 35;
+  }
+  html[data-watten-active="true"] .wt-sound button {
+    width: 44px; min-width: 44px; height: 44px; flex-direction: column; gap: 0; padding: 1px; font-size: .58rem;
+  }
+  html[data-watten-active="true"] .wt-sound button > :first-child { font-size: 18px; }
 }
