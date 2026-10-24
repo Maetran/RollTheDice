@@ -23,6 +23,21 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 4.1.6 — 2026-10-24
+
+### HAUSDEPP
+
+**Deutsch:** Passende Karten lassen sich im offenen Nachwurffenster sofort
+nachwerfen, auch direkt nach dem Auffüllen oder nach einer späteren Entscheidung.
+Der vorige Kartenflug blockiert den Nachwurf nicht mehr. Jede Karte erscheint
+weiterhin erst bei ihrer Landung auf dem Stapel; Aufnehmen und Zocken warten
+darauf.
+
+**English:** Matching cards can be thrown immediately while the follow-up
+window is open, including fresh refills and later decisions. The previous
+card flight no longer blocks a follow-up throw. Each card still joins the
+pile only when it lands; pickups and gambles wait for arrival.
+
 ## 4.1.5 — 2026-10-24
 
 ### HAUSDEPP

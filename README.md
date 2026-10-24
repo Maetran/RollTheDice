@@ -919,7 +919,7 @@ Desktop werden unterstützt, mit Mobilgeräten als Ausgangspunkt.
 **Deutsch – Karten besser verfolgen:** Gespielte Karten kommen sichtbar an und
 bleiben kurz liegen, bevor eine 10 oder vier Gleiche das Paket abräumen.
 Computer lassen zwischen diesen sichtbaren Aktionen Zeit zum Mitverfolgen;
-weitere Stapelaktionen werden nach der Landung freigegeben. Kartenlagen machen die
+Aufnehmen und Zocken werden nach der Landung freigegeben. Kartenlagen machen die
 tatsächliche Grösse des Nachziehstapels und offenen Pakets erkennbar. Tablet und
 Desktop nutzen grössere Karten, auf dem Handy rücken grosse Hände und besonders
 gleiche Werte enger zusammen. Der Fächer bleibt horizontal verschiebbar; mit der
@@ -928,20 +928,22 @@ dem offenen Paket behalten während eines Zugs dieselbe zur Ansicht passende
 Grösse; die Animation geht ohne Grössensprung in den Stapel über. Während des
 Flugs siehst du die geworfene Karte nur einmal. Erst bei der Landung erscheint
 sie mit aktualisierter Kartenzahl und passendem Fächer im offenen Paket.
-Nachwerfen, Aufnehmen und weitere Stapelaktionen warten auf diese Ankunft.
+Passende Karten kannst du im offenen Nachwurffenster sofort nachwerfen, auch
+nach dem Auffüllen. Aufnehmen, Zocken und neue Stapelaktionen warten auf die Ankunft.
 Bei reduzierter Bewegung entfällt die Flugwartezeit.
 
 **English – follow the cards:** Played cards visibly arrive and rest briefly
 before a ten or four matching ranks clear the pile. Computers leave time to
-follow these visible actions; further pile actions become available after landing.
+follow these visible actions; pickups and gambles become available after landing.
 Layered cards convey the actual stock and open-pile sizes. Tablets and desktops
 use larger cards, while large phone hands pack more tightly, especially matching
 ranks. The fan still scrolls horizontally; keyboard-focused cards move to the
 front for reading and selection. Open-pile cards keep the same size throughout
 a play, matching the viewport; the animation joins the pile without a size jump.
 A thrown card is visible only once during its flight. It joins the open pile
-with its updated count and matching-rank fan when it lands. Follow-up plays,
-pickups and other pile actions wait for arrival. Reduced motion skips the
+with its updated count and matching-rank fan when it lands. Matching cards can
+be thrown immediately in the open follow-up window, including fresh refills.
+Pickups, gambles and new pile actions wait for arrival. Reduced motion skips the
 flight wait.
 
 **Deutsch – Tisch lesen:** Verdeckter Stapel und offenes Paket bleiben auch

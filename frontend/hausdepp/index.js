@@ -960,7 +960,7 @@ function completeCommand() {
     if (commandInFlight.acceptedVersion === null || snapshot?._hausdepp?.version < commandInFlight.acceptedVersion) return;
     // Acknowledgement releases the command, independently of its picture.
     // A queued fresh play after own clearance stays tied to this exact state.
-    for (const item of queuedCards) item.acceptedVersion ??= commandInFlight.acceptedVersion;
+    for (const item of queuedCards) item.acceptedVersion = commandInFlight.acceptedVersion;
     pending = false;
     commandInFlight = null;
     clearTimeout(pendingTimer);
