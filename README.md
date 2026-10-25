@@ -364,17 +364,41 @@ are then revealed to everyone for about three seconds before the next deal
 starts automatically. A pause or pending Retourschneider decision stops that
 transition. A completed match's result likewise waits for collection and review.
 
-**Tischdeko / table decorations:** Getränke, Snacks und Dekowürfel liegen frei
-auf dem Tisch. Antippen benutzt sie, Ziehen oder Pfeiltasten verschieben sie.
-Desktop-Deko ist grösser. Deko-Ecke, Stern und Kontextmenüs entfallen vollständig;
-die Gegenstände werden direkt bedient, Spielbereiche bleiben frei.
+**Tischdeko / table decorations:** Eine kleine Auswahl aus den 23 gewöhnlichen
+Hausdepp-Gegenständen liegt zufällig auf dem Tisch: ein Bier und bis zu zwei
+weitere Gegenstände, soweit Platz bleibt. Gläser werden Schluck für Schluck leer;
+ein weiterer ruhiger Tipp schenkt nach. Schnelle Tipps verschütten den Rest und
+kippen das Glas. Nach einer Pause lässt es sich wieder aufstellen und nachfüllen.
+Den Putzlumpen kannst du über die Pfütze ziehen oder mehrfach antippen.
+Snacks verschwinden portionsweise; Schalen und Bretter bleiben verschiebbar.
+Münzen und Würfel zeigen ein Ergebnis, Bierdeckel zählen Striche, der Bleistift
+schreibt mit. Das Windlicht lässt sich auspusten und anzünden; kräftiges
+Hin-und-her-Schütteln löscht es kurz, dann zündet es sich wieder an.
+Mehrfaches Antippen öffnet die Dose, heftiges Schütteln lässt sie platzen.
+Verschobene volle Gläser hinterlassen kurz einen Ring, Bier verliert mit der
+Zeit seinen Schaum. Ziehen oder Pfeiltasten verschieben, Entf entfernt.
+Desktop-Deko ist grösser; Spielbereiche bleiben frei. Die gewöhnlichen
+Gegenstände und ihre Benutzung bleiben auf deinem Gerät und verändern weder
+Karten, Zugrecht noch Punkte. Reduzierte Bewegung erhält die direkte Bedienung
+ohne animierte Spielereien. Deko-Ecke und Kontextmenüs entfallen.
 Acht seltene Überraschungen können gemeinsam auftreten. Auslösung und Miterleben
 werden serverseitig einmal je Runde belegt und erst mit dem gültig abgeschlossenen
 Spiel als Erfolge verbucht; mindestens zwei Menschen müssen verbunden mitspielen.
-Drinks, snacks and decoration dice scatter over the table. Tap to use, drag or
-use arrow keys to move. Desktop props are larger. The decoration corner, star
-and item context menus are removed; props are controlled directly and play areas
-stay clear. Eight rare surprises can occur together at the table.
+A small selection from Hausdepp's 23 ordinary props scatters over the table:
+one beer and up to two other items where space permits. Drinks empty sip by sip;
+a further calm tap tops them up. Rapid taps spill the rest and topple the glass.
+After a pause, stand it up and refill it. Drag the cloth across a spill or tap
+it several times to wipe up. Snacks disappear in portions; bowls and boards
+stay movable. Coins and dice show results, beer mats count tally marks and the
+pencil adds marks. Blow out or relight the lantern; vigorous back-and-forth
+shaking puts it out briefly before it relights itself. Repeated taps open the
+can; vigorous shaking bursts it. Moving a full glass leaves a temporary ring,
+and beer slowly loses its foam. Drag or use arrow keys to move; Delete removes
+an item. Desktop props are larger and play areas stay clear. Ordinary props
+and their use stay on your device and never change cards, turns or points.
+Reduced motion keeps direct use available without animated gestures. There is
+no decoration corner or context menu. Eight rare surprises can occur together
+at the table.
 Server evidence records activation and connected witnesses once per round;
 achievements are granted only after a valid completed match with at least two
 connected human players at the time of the event.
@@ -632,14 +656,18 @@ enabling again never adds missed messages. The public table chat is independent.
 The game picker marks only public availability as “[BETA]” and labels the closed
 preview as private.
 
-**Deko-Bedienung / decoration controls:** Acht lokale Gegenstände können
-zufällig am Tisch erscheinen. Antippen isst, trinkt oder würfelt, Ziehen oder
-Pfeiltasten verschieben. Deko-Ecke, Stern und Kontextmenü sind entfernt.
-Spielbereiche bleiben frei. Auch mit reduzierter Bewegung bleibt
-die Bedienung verfügbar.
-Eight local items can appear randomly at the table. Tap to eat, drink or roll;
-drag or use arrow keys to move. The decoration corner, star and context menus
-are removed. Play areas remain clear, and controls work with reduced motion.
+**Deko-Bedienung / decoration controls:** Bis zu drei lokale Gegenstände aus
+Hausdepps vollständiger gewöhnlicher Auswahl erscheinen zufällig am Tisch.
+Gläser lassen sich leeren, nachfüllen, verschütten und wieder aufstellen;
+Pfützen wischst du selbst mit dem Lumpen auf. Snacks, Dose, Windlicht,
+Münze, Würfel und Strichlisten unterstützen die gleichen direkten Spielereien.
+Ziehen oder Pfeiltasten verschieben, Entf entfernt. Spielbereiche bleiben frei;
+auch mit reduzierter Bewegung bleibt die direkte Bedienung verfügbar.
+Up to three local props from Hausdepp's complete ordinary selection appear
+randomly on the table. Empty, refill, spill and stand up glasses; use the cloth
+to wipe up yourself. Snacks, the can, lantern, coin, dice and tally marks support
+the same direct interactions. Drag or use arrow keys to move; Delete removes.
+Play areas stay clear, and direct use remains available with reduced motion.
 
 **Deutsch:** Watten ist als nächstes Spiel vorgemerkt: üblicherweise 4er
 ladinisch bis 11 Punkte («8+3 isch zmittag»), mit blindem Einschauen durch den
