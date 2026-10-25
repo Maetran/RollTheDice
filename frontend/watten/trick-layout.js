@@ -200,7 +200,9 @@ export function createTrickLayout(trick, { win = window } = {}) {
   function positionReference() {
     if (win.innerWidth > 760 || win.innerWidth > win.innerHeight) return;
     const reference = centre.querySelector(".wt-reference"), original = box(reference);
-    if (!original) return;
+    // Two/three-seat references can still be centre-relative. This corner
+    // adjustment uses viewport coordinates and only owns fixed references.
+    if (!original || win.getComputedStyle(reference).position !== "fixed") return;
     const area = felt.getBoundingClientRect();
     const bounds = { left: Math.max(12, area.left + 8), top: area.top,
       right: Math.min(win.innerWidth - 12, area.right - 8), bottom: area.bottom - 8 };
@@ -208,9 +210,11 @@ export function createTrickLayout(trick, { win = window } = {}) {
     const obstacles = [...table.querySelectorAll(".wt-seat-badge, .wt-avatar, .wt-seat-name, .wt-seat-call-role, .wt-seat-tags, .wt-seat-public-title, "
       + ".wt-backs > i:not([hidden]), .wt-taken[data-filled='true'], .wt-stock, .wt-stock > i, [data-wt-hand-area], [data-wt-panel], [data-wt-stake]")]
       .map(box).filter(Boolean);
-    const fit = fitPortraitPrompt({ left: original.left, top: original.top, right: original.right, bottom: original.bottom,
-      width: original.width, height: original.height }, obstacles, { widths: [original.width], height: original.height })
-      || fitPortraitPrompt(bounds, obstacles, { widths: [original.width], height: original.height, rightFirst: true });
+    // A small existing gap is safe. Requiring an extra four pixels here can
+    // displace a clear corner card into the own announcement's free strip.
+    if (original.left >= bounds.left && original.right <= bounds.right && original.top >= bounds.top
+        && original.bottom <= bounds.bottom && !obstacles.some(other => intersects(original, other))) return;
+    const fit = fitPortraitPrompt(bounds, obstacles, { widths: [original.width], height: original.height, rightFirst: true });
     if (!fit || fit.left === original.left && fit.top === original.top) return;
     reference.style.left = `${fit.left}px`; reference.style.right = "auto"; reference.style.top = `${fit.top}px`;
   }

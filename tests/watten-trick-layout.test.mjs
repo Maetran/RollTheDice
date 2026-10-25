@@ -112,6 +112,37 @@ test("the readable reference can move inward from its corner instead of covering
   assert.ok(fit.left >= topFan.right + 4);
 });
 
+test("reference adjustment preserves centre-relative cards and a clear corner with only a three-pixel gap", () => {
+  const run = ({ position, width, referenceBox, badgeBox }) => {
+    const style = () => ({ removeProperty(key) { delete this[key]; } });
+    const node = value => ({ matches: () => false, getBoundingClientRect: () => value });
+    const reference = { ...node(referenceBox), style: style() }, badge = node(badgeBox);
+    const table = { querySelector: selector => selector === ".wt-reference" ? reference : null,
+      querySelectorAll: () => [badge] };
+    const felt = { closest: () => table, getBoundingClientRect: () => rect(0, 104, width, 464) };
+    const centre = { parentElement: felt, dataset: {}, style: style(), querySelector: () => reference };
+    const trick = { parentElement: centre, hidden: true, children: [] };
+    const win = { innerWidth: width, innerHeight: 600,
+      getComputedStyle: node => ({ position: node === reference ? position : "relative", display: "block", visibility: "visible", opacity: "1" }),
+      addEventListener() {}, removeEventListener() {}, requestAnimationFrame() {}, cancelAnimationFrame() {} };
+    const controller = createTrickLayout(trick, { win });
+    controller.update({ count: 4, engine: { deal_id: "reference" } });
+    const result = { left: reference.style.left, top: reference.style.top };
+    controller.destroy();
+    return result;
+  };
+  assert.deepEqual(run({ position: "absolute", width: 600, referenceBox: rect(528, 104, 58, 106.3125),
+    badgeBox: rect(496.984, 173.438, 87.625, 44.391) }), { left: undefined, top: undefined },
+  "viewport coordinates never overwrite a centre-relative card");
+  assert.deepEqual(run({ position: "fixed", width: 320, referenceBox: rect(264, 104, 42, 80.984375),
+    badgeBox: rect(230, 188, 84, 44) }), { left: undefined, top: undefined },
+  "a clear corner stays clear of the own announcement strip");
+  const moved = run({ position: "fixed", width: 600, referenceBox: rect(528, 104, 58, 106.3125),
+    badgeBox: rect(496.984, 173.438, 87.625, 44.391) });
+  assert.ok(Number.parseFloat(moved.left) + 58 <= 496.984 - 4);
+  assert.equal(moved.top, "104px", "a genuine collision still moves the full-size card inward");
+});
+
 test("landscape keeps its first public card footprint through later cards and winner marking, then refits the next trick", () => {
   const style = () => ({ values: new Map(), setProperty(key, value) { this.values.set(key, value); },
     removeProperty(key) { this.values.delete(key); } });
