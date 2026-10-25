@@ -70,10 +70,13 @@ for (const language of ['de', 'en']) test(`${language}: queued table geometry ke
     await page.emulateMedia({ reducedMotion: 'no-preference' });
     await page.evaluate(async ({ code, snapshot, initial }) => {
       const module = await import(`data:text/javascript;base64,${btoa(unescape(encodeURIComponent(code)))}`);
-      const root = document.createElement('section'), original = document.querySelector('[data-wt-table]');
+      const original = document.querySelector('[data-wt-table]'), root = original.parentElement;
       root.dataset.layoutFollowup = 'true';
-      root.style.cssText = `position:fixed;inset:${original.getBoundingClientRect().top}px 0 0;z-index:1000`;
-      original.remove(); document.body.append(root);
+      // Keep the actual .wt-main/view ancestors. A body-level fixed fixture
+      // would freeze the portrait header inset across a landscape rotation,
+      // removing real rail height and inventing an impossible hand gap.
+      if (!root.closest('.wt-main')) throw new Error('Missing native table mount');
+      original.remove();
       window.followup = { root, view: module.createTableView(root, { onCard() {} }), snapshot, initial,
         boxesHit: module.boxesHit, paintedBox: module.paintedBox, rectOf: module.rectOf, revision: 0 };
     }, { code: bundle.outputFiles[0].text, snapshot, initial });
