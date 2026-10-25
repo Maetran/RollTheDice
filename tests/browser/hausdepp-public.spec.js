@@ -84,7 +84,7 @@ for (const preferred of ['de', 'en']) {
     await expect(page).toHaveURL(/\/hausdepp\/regeln$/);
     await expect(page.locator('.hd-rulebook')).toBeVisible();
     expect(await page.locator('#schnellstart').evaluate(core => ['einsteigertouren', 'tisch-eroeffnen', 'sprachchat', 'wirtshauskulisse', 'aussteigen'].every(id => Boolean(core.compareDocumentPosition(document.getElementById(id)) & Node.DOCUMENT_POSITION_FOLLOWING)))).toBe(true);
-    await expect(page.locator('#punkte-erfolge')).toContainText('136');
+    await expect(page.locator('#punkte-erfolge')).toContainText('138');
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', 'https://hausdepp.zockdiewandan.online/hausdepp/regeln');
     await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'index, follow');
     expect(privateReads).toEqual([]);
@@ -146,7 +146,7 @@ for (const preferred of ['de', 'en']) {
     }
     await page.goto('/hausdepp/konto');
     await expect(page.locator('.hd-account-identity')).toContainText(account.username);
-    await expect(page.locator('#hausdeppAchievementCount')).toContainText('136');
+    await expect(page.locator('#hausdeppAchievementCount')).toContainText('138');
     await page.locator('.hd-account-settings a').click();
     await expect(page.locator('.hd-settings')).toBeVisible();
     await expect(page).toHaveURL(/\/hausdepp\/konto\/einstellungen$/);
@@ -227,7 +227,7 @@ test('anonymous no-JavaScript pages retain bilingual gameplay descriptions and r
       expect(response.status()).toBe(200);
       await expect(page.locator('main [lang="de"]')).toContainText('Hausdepp');
       await expect(page.locator('main [lang="en"]')).toContainText('Hausdepp');
-      await expect(page.locator('main')).toContainText('136');
+      await expect(page.locator('main')).toContainText('138');
       await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'index, follow');
     }
   } finally { await context.close(); }
