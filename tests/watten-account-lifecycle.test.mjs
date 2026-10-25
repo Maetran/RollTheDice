@@ -7,6 +7,8 @@ const source = await readFile(new URL('../frontend/watten/account.js', import.me
 const account = source.slice(source.indexOf("const root = document.getElementById('wattenAccount');"));
 const navigation = (await readFile(new URL('../frontend/shared/account-navigation.js', import.meta.url), 'utf8'))
   .replace(/^import .*;$/gm, '').replace(/export function /g, 'function ');
+const appMode = (await readFile(new URL('../frontend/multigame/app-mode.js', import.meta.url), 'utf8'))
+  .replace(/^import .*;$/gm, '').replace(/^export /gm, '');
 const settle = async () => { for (let i = 0; i < 12; i += 1) await Promise.resolve(); };
 const deferred = () => { let resolve; const promise = new Promise(yes => { resolve = yes; }); return { promise, resolve }; };
 const auth = { authenticated: true, user: { id: 1, username: 'Viewer', preferences: { preferred_language: 'en' } },
@@ -27,24 +29,27 @@ class Node extends Events {
   }
   replaceChildren() { this.innerHTML = ''; }
 }
-function fixture(loader) {
+function fixture(loader, { actualAppMode = false } = {}) {
   const window = new Events(), document = new Events(), root = new Node(), mounts = [], current = [], destroyed = [], visits = [];
   let reads = 0;
   const location = { hash: '', search: '', assign: path => visits.push(path), reload: () => visits.push('reload') };
   window.location = location; window.ZDWA_I18N = { t: value => value };
   document.documentElement = { lang: 'en', dataset: { accountPage: 'settings' } };
-  document.visibilityState = 'visible'; document.querySelector = () => null;
+  document.visibilityState = 'visible'; document.querySelector = () => null; document.querySelectorAll = () => [];
   document.getElementById = id => { assert.equal(id, 'wattenAccount'); return root; };
   const mount = (name, options) => {
     mounts.push(name);
     if (options?.isCurrent) current.push(options.isCurrent);
     return { destroy() { destroyed.push(name); } };
   };
-  runInNewContext(`${navigation}\n${account}`, {
+  runInNewContext(`${navigation}\n${actualAppMode ? appMode : ''}\n${account}`, {
     window, document, location, URLSearchParams, encodeURIComponent,
     escapeHtml: value => String(value), esc: value => String(value), wattenAccountReturnPath: () => null,
     loadAuth: () => { reads += 1; return loader(); }, initializeAvatarFallbacks() {},
-    initializeAppMode: () => mount('app-mode'), friendSettingsText: value => value, voicePreferenceText: value => value,
+    ...(!actualAppMode ? { initializeAppMode: () => mount('app-mode') } : {}),
+    zdwaAppEntryUrl: () => '/', wattenAppEntryUrl: () => '/watten',
+    hausdeppAppEntryUrl: () => '/hausdepp', zilchAppEntryUrl: () => '/zilch',
+    friendSettingsText: value => value, voicePreferenceText: value => value,
     mountUsernameSettings: () => mount('username'), mountTourSettings: () => mount('tours'),
     mountPasskeySettings: () => mount('passkeys'), mountEmailSettings: () => mount('email'),
     mountAvatarUpload: () => mount('avatar'), mountAccountVerification: () => ({}),
@@ -97,4 +102,22 @@ test('Watten actual mounted account retires child proofs before pagehide and onl
   const next = fixture(() => Promise.resolve(auth)); await settle();
   assert.ok(next.mounts.includes('friends'));
   assert.ok(next.current.every(isCurrent => isCurrent()));
+});
+
+test('actual Watten account and app-mode retire together before focus, visibility and persisted pageshow listeners', async () => {
+  for (const retirement of ['beforeunload', 'pagehide']) {
+    const f = fixture(() => Promise.resolve(auth), { actualAppMode: true });
+    await settle();
+    // The account read and both private-mode confirmation reads still run.
+    assert.equal(f.reads(), 3);
+    assert.equal(f.window.ZDWA_APP_MODE.initialized, true);
+    f.window.emit(retirement);
+    f.window.emit('focus'); f.document.emit('visibilitychange'); await settle();
+    assert.equal(f.reads(), 3, retirement);
+    assert.deepEqual(f.visits, []);
+    f.window.emit('pageshow', { persisted: true }); await settle();
+    assert.deepEqual(f.visits, ['reload']);
+    assert.equal(f.reads(), 3, 'the later app-mode pageshow listener must not restart the outgoing document');
+    assert.equal(f.root.innerHTML, '');
+  }
 });

@@ -250,6 +250,7 @@ else if (page === 'settings') {
   };
   const clearPrivatePage = () => {
     navigating = true;
+    window.ZDWA_APP_MODE?.prepareNavigation?.();
     generation += 1;
     viewerId = null;
     clearFriendSettings();
