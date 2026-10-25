@@ -239,6 +239,11 @@ def store_draft_match(db, row: CompletedGame, evidence: MatchEvidence,
         old_grants = {item.achievement_id for item in db.scalars(
             select(WattenAchievementGrant).where(WattenAchievementGrant.user_id == state.user_id,
                                                 WattenAchievementGrant.generation == state.generation))}
+        from .watten_merge import effective_awards, is_merged
+        merged = is_merged(db, state.user_id)
+        if merged:
+            db.flush()
+            old_grants.update(effective_awards(db, state.user_id))
         new_ids = []
         for grant in proposal.achievements:
             if grant.achievement_id in old_grants:
@@ -250,6 +255,9 @@ def store_draft_match(db, row: CompletedGame, evidence: MatchEvidence,
                                          policy_version=grant.policy_version, grant_sequence=state.grant_sequence))
             new_ids.append(grant.achievement_id)
         db.flush()
+        if merged:
+            from .watten_merge import grant_combined
+            grant_combined(db, state.user_id, reached_at=evidence.finished_at)
         results.append(_status(db, state, new_credit=existing is None, new_ids=new_ids))
     return tuple(results)
 

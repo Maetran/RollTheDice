@@ -57,7 +57,11 @@ def match_presentation_in_session(db, account, *, user_id, game_id):
                 CompletedGame.game_id == game_id, CompletedGame.game_type == "watten",
                 GameParticipant.user_id == user_id).limit(1))
         if owned is None:
-            raise ValueError("watten_presentation_not_found")
+            from .watten_merge import is_merged, selected_matches
+            inherited = is_merged(db, user_id) and any(
+                item.match.evidence.game_id == game_id for item in selected_matches(db, user_id))
+            if not inherited:
+                raise ValueError("watten_presentation_not_found")
     boundary = boundaries.get(game_id, 0)
     credit = next((item for item in progress["pending"]["credits"]
                    if item["game_id"] == game_id and item["sequence"] > boundary), None)

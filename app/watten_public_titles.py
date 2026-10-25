@@ -38,6 +38,7 @@ class CachedTitle:
     generation: int | None
     sequence: int | None
     title: PublicTitle
+    merge_revision: tuple = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -67,6 +68,14 @@ def _read_titles(db, game):
     rows = {row.id: row for row in db.execute(select(User.id, User.is_active, WattenProgressState.generation,
         WattenProgressState.grant_sequence, WattenProgressState.acknowledged_sequence, has_journal.label("has_journal")).outerjoin(
             WattenProgressState, WattenProgressState.user_id == User.id).where(User.id.in_(accounts)))}
+    from .models import AccountProgressOrigin
+    revisions = {}
+    for origin, owner, operation, generation, sequence in db.execute(select(AccountProgressOrigin.origin_user_id,
+            AccountProgressOrigin.owner_user_id, AccountProgressOrigin.operation_id,
+            WattenProgressState.generation, WattenProgressState.grant_sequence).outerjoin(
+                WattenProgressState, WattenProgressState.user_id == AccountProgressOrigin.origin_user_id).where(
+                AccountProgressOrigin.owner_user_id.in_(accounts))):
+        revisions.setdefault(owner, []).append((origin, operation, generation, sequence))
     previous = game.get(CACHE_KEY)
     old = {item.participant_id: item for item in previous.entries} if type(previous) is PublicTitles else {}
     entries, existing = [], None
@@ -81,9 +90,10 @@ def _read_titles(db, game):
         elif not (type(generation) is int and generation >= 1 and type(sequence) is int
                   and type(ack) is int and 0 <= ack <= sequence):
             continue
+        revision = tuple(sorted(revisions.get(member.account_id, ())))
         cached = old.get(member.participant_id)
         if (cached is not None and cached.account_id == member.account_id
-                and (cached.generation, cached.sequence) == (generation, sequence)):
+                and (cached.generation, cached.sequence, cached.merge_revision) == (generation, sequence, revision)):
             entries.append(cached)
             continue
         try:
@@ -91,9 +101,12 @@ def _read_titles(db, game):
                 existing = set(db.scalars(select(User.id)))
             matches = list(_owned_matches(db, member.account_id, existing))
             progress, _credits = _progress(db, member.account_id, matches)
+            if revision:
+                from .watten_merge import project_progress
+                progress, _credits = project_progress(db, member.account_id, progress)
             title = progress["title"]
             entries.append(CachedTitle(member.participant_id, member.account_id, generation, sequence,
-                PublicTitle(title["level"], title["name"]["de"], title["name"]["en"], title["threshold"])))
+                PublicTitle(title["level"], title["name"]["de"], title["name"]["en"], title["threshold"]), revision))
         except (ValueError, TypeError, KeyError, OverflowError):
             # No stale/default title after corruption; absence is retried later.
             continue

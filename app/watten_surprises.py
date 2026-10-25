@@ -176,8 +176,10 @@ def store_surprise_achievements(db, evidence, bindings) -> None:
                           .with_for_update().execution_options(populate_existing=True))
         if state is None or db.get(WattenMatchCredit, (user_id, state.generation, evidence.game_id)) is None:
             continue
+        from .watten_merge import effective_awards, is_merged
+        inherited = effective_awards(db, user_id) if is_merged(db, user_id) else {}
         for key in qualifying_surprises(db, evidence, bindings, user_id):
-            if db.get(WattenAchievementGrant, (user_id, state.generation, key)) is not None:
+            if key in inherited or db.get(WattenAchievementGrant, (user_id, state.generation, key)) is not None:
                 continue
             state.grant_sequence += 1
             db.add(WattenAchievementGrant(user_id=user_id, generation=state.generation, achievement_id=key,

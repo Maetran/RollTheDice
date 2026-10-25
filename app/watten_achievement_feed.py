@@ -54,6 +54,39 @@ def build_watten_achievement_feed(viewer_user_id: int, *, page=1, limit=12) -> d
             exists(select(WattenAchievementGrant.user_id).where(WattenAchievementGrant.user_id == User.id)),
             ~exists(select(WattenProgressState.user_id).where(WattenProgressState.user_id == User.id))).limit(1)
         _require(db.scalar(orphan) is None, "watten_feed_invalid_source")
+        from .account_progress import owned_origin_ids
+        from .models import AccountProgressOrigin
+        if db.scalar(select(AccountProgressOrigin.origin_user_id).limit(1)) is not None:
+            from .watten_merge import effective_awards, project_progress
+            names = dict(db.execute(select(User.id, User.username).where(User.is_active.is_(True))).all())
+            candidates = []
+            for owner in names:
+                identities = owned_origin_ids(db, owner)
+                raw = {}
+                for origin in identities:
+                    state = db.get(WattenProgressState, origin)
+                    raw[origin] = ([], {"generation": state.generation if state else 1}, [])
+                for key, award in effective_awards(db, owner, journals=raw).items():
+                    candidates.append((award["unlocked_at"], owner, key, award))
+            candidates.sort(key=lambda item: (item[0], item[1], item[2]), reverse=True)
+            total, offset = len(candidates), (page - 1) * limit
+            entries, validated = [], {}
+            from types import SimpleNamespace
+            for at, owner, key, award in candidates[offset:offset + limit]:
+                if owner not in validated:
+                    matches = list(_owned_matches(db, owner, existing))
+                    progress, _credits = _progress(db, owner, matches)
+                    if len(owned_origin_ids(db, owner)) > 1:
+                        progress, _credits = project_progress(db, owner, progress)
+                    validated[owner] = progress
+                grant = SimpleNamespace(achievement_id=key, catalog_version=award["catalog_version"], xp=award["xp"])
+                entries.append({"reached_at": as_utc(at).isoformat(),
+                    "player": {"display_name": names[owner], "is_self": owner == viewer_user_id,
+                               "title": validated[owner]["title"]}, "achievement": _achievement(grant)})
+            return {"schema_version": 1, "game_type": "watten", "status": "draft", "coverage": {"complete": True},
+                    "entries": entries, "pagination": {"page": page, "limit": limit, "total_entries": total,
+                        "total_pages": max(1, (total + limit - 1) // limit), "has_next": offset + limit < total,
+                        "has_previous": page > 1}}
         criteria = (User.is_active.is_(True), WattenAchievementGrant.generation == WattenProgressState.generation)
         base = select(WattenAchievementGrant, User.username).join(
             User, User.id == WattenAchievementGrant.user_id).join(
