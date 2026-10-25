@@ -26,6 +26,7 @@ from .watten_access import require_watten_access
 from .watten_http import _response
 from .watten_public_titles import refresh_public_titles
 from .watten_recipe import loads_strict_json, require_fields
+from .watten_rematch_eligibility import ORIGINAL_ROSTER_UNAVAILABLE, original_roster_available
 from .watten_room import create_rematch
 from .watten_runtime import (
     WattenRuntime,
@@ -117,6 +118,8 @@ def _attempt(source_id, identity, revision, before_create):
                 runtime = replace(runtime, room=room)
             if before_create is not None:
                 before_create()
+            if not original_roster_available(db, room, lock=True):
+                raise WattenRematchError(ORIGINAL_ROSTER_UNAVAILABLE)
             active = set(db.scalars(select(User.id).where(User.is_active.is_(True))))
             suggestions = {item.account_id: item.seat for item in room.members
                            if item.seat is not None and item.account_id in active}

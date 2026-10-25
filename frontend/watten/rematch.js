@@ -31,16 +31,27 @@ export function createRematch({ gameId, fetcher, loadAuth, escapeHtml: esc,
   const t = (key, values) => message(language(), key, values);
   const target = () => id(snapshot?.room?.rematch?.game_id) && snapshot.room.rematch.game_id !== gameId
     ? snapshot.room.rematch.game_id : null;
+  const refusal = () => {
+    if (target()) return null;
+    const reason = snapshot?.room?.rematch?.unavailable_reason;
+    if (reason === "watten_rematch_original_roster_unavailable") return "rosterUnavailable";
+    if (reason === "watten_storage_unavailable") return "availabilityUnavailable";
+    return error === "rosterUnavailable" ? error : null;
+  };
 
   function render() {
     if (!container) return;
     if (!current(serial)) { container.replaceChildren(); container.hidden = true; markup = null; return; }
     const existing = target(), disabled = busy || blocked;
+    const unavailable = refusal();
     const action = existing ? "open" : envelope ? error === "stale" ? "reload" : "retry" : "create";
     const content = `<section class="wt-card-panel wt-rematch" aria-labelledby="wattenRematchTitle">
       <h3 id="wattenRematchTitle">${esc(t("heading"))}</h3>
-      <button type="button" class="wt-primary" data-watten-rematch-action="${action}"${disabled ? " disabled" : ""}>${esc(t(busy ? "busy" : action))}</button>
-      <p class="wt-error" role="alert" data-watten-rematch-error>${esc(error ? t(error) : "")}</p></section>`;
+      ${unavailable ? `<p role="status" data-watten-rematch-unavailable>${esc(t(unavailable))}</p>
+        ${unavailable === "rosterUnavailable" ? `<a class="wt-button" href="/watten${lang(language()) === "en" ? "?lang=en" : ""}">${esc(t("newTable"))}</a>`
+          : `<button type="button" data-watten-rematch-action="reload"${disabled ? " disabled" : ""}>${esc(t("reload"))}</button>`}`
+        : `<button type="button" class="wt-primary" data-watten-rematch-action="${action}"${disabled ? " disabled" : ""}>${esc(t(busy ? "busy" : action))}</button>
+      <p class="wt-error" role="alert" data-watten-rematch-error>${esc(error ? t(error) : "")}</p>`}</section>`;
     container.hidden = false;
     if (content !== markup) { container.innerHTML = content; markup = content; }
   }
@@ -58,7 +69,7 @@ export function createRematch({ gameId, fetcher, loadAuth, escapeHtml: esc,
   }
 
   async function send() {
-    if (!current(serial) || busy || blocked || target()) return;
+    if (!current(serial) || busy || blocked || target() || refusal() || snapshot?.room?.rematch?.can_create !== true) return;
     const revision = snapshot.room.revision;
     const token = ++serial;
     busy = true; error = ""; render();
@@ -86,7 +97,11 @@ export function createRematch({ gameId, fetcher, loadAuth, escapeHtml: esc,
       }
       if (!await verify(token, true)) return;
       if (!response.ok) {
-        error = response.status === 409 || response.status === 403 && result?.detail === "csrf_rejected" ? "stale" : "unavailable";
+        if (response.status === 409 && result?.detail === "watten_rematch_original_roster_unavailable") {
+          error = "rosterUnavailable"; envelope = null;
+        } else {
+          error = response.status === 409 || response.status === 403 && result?.detail === "csrf_rejected" ? "stale" : "unavailable";
+        }
         throw new Error("rematch unavailable");
       }
       if (!object(result) || result.schema_version !== 1 || result.game_type !== "watten"
@@ -147,7 +162,8 @@ export function createRematch({ gameId, fetcher, loadAuth, escapeHtml: esc,
       && latest?.id === gameId && latest.game_type === "watten" && integer(latest.room?.revision)
       && ["finished", "closed"].includes(latest.room?.status) && !spectator && typeof playerId === "string"
       && latest.viewer?.participant_id === playerId && object(latest.room.rematch)
-      && (latest.room.rematch.can_create === true || target()));
+      && (latest.room.rematch.can_create === true || target()
+        || refusal() && latest.room.host_participant_id === playerId));
     if (!active) { serial += 1; controller?.abort(); envelope = null; busy = false; }
     if (target()) envelope = null;
     render();

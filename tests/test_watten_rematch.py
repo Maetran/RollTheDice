@@ -241,18 +241,32 @@ def test_failed_target_write_rolls_back_source_link_and_no_live_state_is_install
 
 
 def test_independent_stale_session_losing_source_cas_reloads_winning_target_without_duplicate(server, monkeypatch):
+    from app import watten_rematch_eligibility as eligibility
+
     match, owners = source_for()
     data, real, winning = command(match.game), rematch._write_checkpoint, []
+    original_lock, cas_results = eligibility.lock_account_rows, []
 
-    def interleave(db, checkpoint, **kwargs):
-        if kwargs.get("expected_json") is not None and not winning:
+    def interleave_before_write_fence(db, accounts):
+        # The contender must win after the stale source read, before this
+        # transaction takes its first SQLite User write lock. A writer cannot
+        # commit inside another writer's already-held exact-account fence.
+        if not winning:
             winning.append("in-progress")
             winner = rematch.create_follow_up(match.game["_id"], owners[0][0], data)
             winning[0] = winner.target["_id"]
-        return real(db, checkpoint, **kwargs)
+        return original_lock(db, accounts)
 
-    monkeypatch.setattr(rematch, "_write_checkpoint", interleave)
+    def observe_cas(db, checkpoint, **kwargs):
+        accepted = real(db, checkpoint, **kwargs)
+        if kwargs.get("expected_json") is not None:
+            cas_results.append(accepted)
+        return accepted
+
+    monkeypatch.setattr(eligibility, "lock_account_rows", interleave_before_write_fence)
+    monkeypatch.setattr(rematch, "_write_checkpoint", observe_cas)
     result = rematch.create_follow_up(match.game["_id"], owners[0][0], data)
+    assert cas_results == [True, False]
     assert result.target["_id"] == winning[0] and not result.created
     assert set(checkpoints()) == {match.game["_id"], winning[0]}
     assert restore_watten_json(checkpoints()[match.game["_id"]])["_watten"].room.rematch_room_id == winning[0]

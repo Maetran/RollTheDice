@@ -72,6 +72,7 @@ export function mountAdminAccountMerge(panel = document.getElementById('accountM
   const checkLabel = node('label', undefined, 'merge-confirmation');
   const check = node('input'); check.type = 'checkbox'; check.required = true;
   checkLabel.append(check, node('span', t('Ich habe Quelle und Ziel geprüft. Das Quellkonto wird stillgelegt; seine alten Zugangsdaten werden verworfen.')));
+  const continuationHint = node('p', t('Noch offene Watten-Turnierserien können mit dem stillgelegten Konto danach nicht fortgesetzt werden.'), 'muted small');
   const methodLabel = node('label', t('Bestätigung für dein Owner-Konto'));
   const method = node('select'); method.id = 'accountMergeMethod';
   for (const [value, label] of [['password', 'Aktuelles Passwort'], ['passkey', 'Passkey']]) {
@@ -85,7 +86,7 @@ export function mountAdminAccountMerge(panel = document.getElementById('accountM
   const proofHint = node('p', '', 'muted small');
   const applyButton = button('Konten jetzt zusammenführen', 'primary'); applyButton.type = 'submit';
   const actions = node('div', undefined, 'merge-actions'); actions.append(applyButton);
-  confirmation.append(checkLabel, methodLabel, passwordLabel, proofHint, actions);
+  confirmation.append(checkLabel, continuationHint, methodLabel, passwordLabel, proofHint, actions);
 
   function current(token) { return allowed && !suspended && token === epoch && panel.isConnected; }
   function message(value, { error = false, focus = false } = {}) {

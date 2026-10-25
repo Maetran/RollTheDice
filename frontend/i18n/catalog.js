@@ -161,12 +161,16 @@ export const WATTEN_REMATCH_MESSAGES = {
     retry: "Nochmals versuchen", unavailable: "Das Öffnen wurde noch nicht bestätigt. Versuch es noch einmal.",
     stale: "Der Tisch wurde gerade geändert. Lade ihn neu und versuch es nochmals.", reload: "Tisch neu laden",
     reservation: "Platz {seat} ist bis {expires} Schweizer Zeit für dich reserviert.", declineReservation: "Platz freigeben",
+    rosterUnavailable: "Mit dieser Besetzung ist keine Revanche mehr möglich, weil ein ursprüngliches Konto nicht mehr verfügbar ist.",
+    availabilityUnavailable: "Die Revanche kann gerade nicht geprüft werden. Lade den Tisch neu.", newTable: "Neuen Tisch öffnen",
   },
   en: {
     heading: "Another game?", create: "Start rematch", busy: "Preparing your rematch …", open: "Go to rematch",
     retry: "Try again", unavailable: "Opening has not been confirmed yet. Please try again.",
     stale: "The table just changed. Reload it and try again.", reload: "Reload table",
     reservation: "Seat {seat} is reserved for you until {expires}, Swiss time.", declineReservation: "Release my seat",
+    rosterUnavailable: "A rematch with this line-up is no longer available because an original account is unavailable.",
+    availabilityUnavailable: "Rematch availability could not be checked. Reload the table.", newTable: "Open a new table",
   },
 };
 
@@ -1676,6 +1680,7 @@ export const EN = {
   "Die Anfrage konnte nicht abgeschlossen werden. Bitte prüfe die Auswahl und versuche es erneut.": "The request could not be completed. Check your selection and try again.",
   "Eines dieser Konten wurde bereits zusammengeführt. Suche die Konten erneut.": "One of these accounts has already been merged. Search for the accounts again.",
   "Ein beteiligtes Konto ist noch an ein laufendes Spiel oder einen wartenden Folgetisch gebunden. Beendet das Spiel oder schliesst den wartenden Tisch zuerst.": "One of these accounts is still bound to an ongoing game or a waiting follow-up table. Finish the game or close the waiting table first.",
+  "Noch offene Watten-Turnierserien können mit dem stillgelegten Konto danach nicht fortgesetzt werden.": "Any unfinished Watten tournament series can no longer continue with the retired account after the merge.",
   "Es gibt noch eine offene Revanche oder Einladung. Klärt diese zuerst.": "A rematch or invitation is still pending. Resolve it first.",
   "Ein gespeicherter Tisch konnte nicht sicher geprüft werden. Die Zusammenführung wurde nicht gestartet.": "A saved table could not be verified safely. The merge was not started.",
   "Die Kontodaten haben sich geändert. Erstelle eine neue Vorschau.": "The account data has changed. Create a new preview.",

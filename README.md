@@ -54,7 +54,11 @@ und das neuere Konto als Ziel auswählen. Eine Vorschau zeigt den Fortschritt je
 Spiel; die Ausführung erfordert eine ausdrückliche Bestätigung mit dem eigenen
 Passwort oder Passkey. Anmeldung und persönliche Einstellungen des Zielkontos
 bleiben erhalten. Alte Zugangsdaten und Sitzungen werden widerrufen. Offene
-Partien oder Einladungen müssen vorher geklärt werden. Gemeinsame abgeschlossene
+Partien oder Einladungen müssen vorher geklärt werden. Bereits beendete
+Watten-Partien dürfen zusammengeführt werden, auch wenn ihre Turnierserie noch
+offen ist; diese kann mit dem stillgelegten Konto danach nicht fortgesetzt werden.
+Wartende oder laufende Folgetische bleiben bis zu ihrem Abschluss oder Schliessen
+geschützt. Gemeinsame abgeschlossene
 Partien zählen einmal mit dem besseren belegten Ergebnis. Erfolge werden ohne
 doppelte Belohnung mit dem frühesten gültigen Datum zusammengeführt. Originale
 Spielergebnisse bleiben erhalten. Das Zielkonto erhält eine eigene Mitteilung;
@@ -64,7 +68,10 @@ bestehende ungelesene Spielbelohnungen werden dadurch nicht bestätigt.
 newer account as the target in Administration. A preview shows progress per game;
 applying it requires explicit confirmation with the owner's password or passkey.
 The target keeps its sign-in details and preferences. Old credentials and sessions
-are revoked. Pending games or invitations must be resolved first. A shared
+are revoked. Pending games or invitations must be resolved first. Completed
+Watten matches may be merged even if their tournament series is unfinished;
+that series can no longer continue with the retired account. Waiting or ongoing
+follow-up tables stay protected until they finish or close. A shared
 completed game counts once using the better documented result. Achievements keep
 their earliest valid date without duplicate rewards. Original results remain
 intact. The target receives a separate notice; this does not acknowledge existing
