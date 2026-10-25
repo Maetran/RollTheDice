@@ -9,17 +9,19 @@ for (const language of ['de', 'en']) {
     const players = [await player(browser, baseURL, language), await player(browser, baseURL, language)];
     const host = players[0];
     try {
-      if (language === 'en') await host.page.emulateMedia({ reducedMotion: 'no-preference' });
+      await host.page.emulateMedia({ reducedMotion: 'reduce' });
       await create(players); await normalCall(players);
       await expect(control(host, 'toggle')).toHaveCount(0);
       await prop(host, 'beer').click({ button: 'right' });
       await host.page.keyboard.press('Escape');
       await expect(host.page.locator('[data-watten-decor-panel], [data-watten-decor-corner], [data-watten-decor-add]')).toHaveCount(0);
       for (let sip = 0; sip < 4; sip += 1) await prop(host, 'beer').click();
+      await expect(prop(host, 'beer')).toHaveAttribute('data-level', '0');
       await expect(prop(host, 'beer').locator('.wt-decor-badge')).not.toBeEmpty();
-      await prop(host, 'nuts').click();
-      await expect(host.page.locator('[data-watten-decor-status]')).toHaveText(language === 'de' ? 'Ein Bissen – nur zum Spass.' : 'A bite, just for fun.');
-      await prop(host, 'nuts').press('ArrowDown');
+      await prop(host, 'beer').click();
+      await expect(prop(host, 'beer')).toHaveAttribute('data-level', '4');
+      await expect(prop(host, 'beer').locator('.wt-decor-badge')).toBeEmpty();
+      await prop(host, 'beer').press('ArrowDown');
       for (const viewport of [{ width: 320, height: 568 }, { width: 568, height: 320 }]) {
         await host.page.setViewportSize(viewport);
         await expect(host.page.locator('[data-watten-decor-panel]')).toHaveCount(0);

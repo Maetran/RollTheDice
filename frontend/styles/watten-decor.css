@@ -1,6 +1,10 @@
+@import "./hausdepp-decor.css";
+
 /* Smaller props leave room for cards on a portrait phone. */
 .wt-decor-layer { --wt-decor-side: 56px; }
-.wt-decor-layer .wt-decor-prop { width: var(--wt-decor-side); height: var(--wt-decor-side); min-width: var(--wt-decor-side); min-height: var(--wt-decor-side); }
+.wt-decor-layer .wt-decor-prop { width: var(--wt-decor-side); height: var(--wt-decor-side); min-width: var(--wt-decor-side); min-height: var(--wt-decor-side); --prop-angle: 0deg; animation: none; }
+.wt-decor-layer .wt-decor-art { pointer-events: none; }
+.wt-decor-layer .hd-prop-caption { bottom: 0; max-width: 100%; padding-inline: 2px; overflow: hidden; text-overflow: ellipsis; font-size: 10px; }
 @media (min-width: 900px) and (min-height: 520px) {
   .wt-decor-layer { --wt-decor-side: 88px; }
 }

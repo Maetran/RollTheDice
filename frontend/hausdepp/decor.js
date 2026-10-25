@@ -47,6 +47,8 @@ const upright = ["beer", "tea", "lemonade", "can", "lantern"];
 const duplicates = { lemonade: ["opener", "cap"], dice: ["die"], sweets: ["praline-gold", "praline-red"],
   chips: ["loose-chips"], flips: ["loose-flips"], nuts: ["loose-nuts"] };
 const layouts = new WeakMap();
+const localProps = new WeakMap();
+export const TABLE_PROP_ITEMS = Object.freeze(catalog);
 const gap = 12;
 const protectedAreas = ".hd-seat, .hd-room-heading, .hd-stock-group, .hd-pile-group, .hd-burned, .hd-hand-heading, "
   + "#hausdeppHand button, #hausdeppStatus, #hausdeppEvent, .hd-action-guide, #hausdeppPeek:not([hidden]), #hausdeppResult:not([hidden]), "
@@ -56,6 +58,8 @@ const copy = value => window.ZDWA_I18N?.t?.(value) || value;
 // Cards, piles, names and controls. Other table objects may overlap a pushed
 // or nudged object, just as a nut can roll against a glass.
 function controlRects(table) {
+  const local = layouts.get(table)?.protectedRects;
+  if (local) return local();
   return [...table.querySelectorAll(protectedAreas)]
     .filter(element => !element.closest(".hd-table-decor") && element.getClientRects().length)
     .map(element => element.getBoundingClientRect());
@@ -77,6 +81,8 @@ function handReserve(table) {
 }
 
 function fits(table, box, others, spacing = gap, inside = true) {
+  const local = layouts.get(table)?.fits;
+  if (local) return local(box, spacing, inside);
   const bounds = table.getBoundingClientRect();
   if (inside && (box.left < bounds.left || box.top < bounds.top || box.right > bounds.right || box.bottom > bounds.bottom)) return false;
   return !others.some(other => intersects(box, other, spacing));
@@ -152,7 +158,8 @@ function moveProp(table, state, sprite, automatic = false) {
       sprite.classList.remove("is-flaring");
       void sprite.offsetWidth;
       sprite.classList.add("is-flaring");
-      setTimeout(() => sprite.classList.remove("is-flaring"), 1400);
+      schedulePropEffect(state, () => sprite.classList.remove("is-flaring"), 1400,
+        () => sprite.classList.remove("is-flaring"));
     }
   } else if (prop === "pretzel") {
     const next = turn + direction * 24;
@@ -220,8 +227,9 @@ function moveProp(table, state, sprite, automatic = false) {
 const coinArt = '<svg viewBox="0 0 64 64" aria-hidden="true"><defs><radialGradient id="hdCoinGold" cx="38%" cy="32%" r="70%"><stop offset="0" stop-color="#fff2b3"/><stop offset=".45" stop-color="#e8b84a"/><stop offset="1" stop-color="#9a6a17"/></radialGradient></defs><circle cx="32" cy="32" r="30" fill="url(#hdCoinGold)" stroke="#7d5410" stroke-width="2"/><circle cx="32" cy="32" r="23" fill="none" stroke="#a87719" stroke-width="1.5" stroke-dasharray="2 2"/><g class="hd-coin-heads" fill="#8a5d12"><path d="M19 39h26l3-15-8 7-8-11-8 11-8-7z"/><rect x="19" y="41" width="26" height="4" rx="1"/></g><g class="hd-coin-tails"><text x="32" y="44" text-anchor="middle" font-family="Georgia, serif" font-size="30" font-weight="700" fill="#8a5d12">1</text></g></svg>';
 
 function caption(sprite, text) {
-  const state = layouts.get(sprite.closest(".hd-table"));
+  const state = localProps.get(sprite) || layouts.get(sprite.closest(".hd-table"));
   if (!sprite.isConnected || !state || state.reduced.matches || document.hidden
+    || (state.current && !state.current())
     || ["waiting", "finished"].includes(state.phase)) return;
   sprite.querySelector(".hd-prop-caption")?.remove();
   const label = document.createElement("span");
@@ -240,9 +248,9 @@ function announce(sprite, label) {
 }
 
 function puddle(sprite, color, size) {
-  const table = sprite.closest(".hd-table");
-  const state = layouts.get(table);
-  wipeSpill(table, state, sprite, color, size, box => fits(table, box, controlRects(table), 2));
+  const state = localProps.get(sprite) || layouts.get(sprite.closest(".hd-table"));
+  const table = state.table;
+  wipeSpill(state.effectSurface || table, state, sprite, color, size, box => fits(table, box, controlRects(table), 2));
 }
 
 function foamCan(state, sprite) {
@@ -283,6 +291,7 @@ function shakeProp(table, state, sprite) {
     sprite._cancelRelight = schedulePropEffect(state, () => {
       cancel();
       if (layouts.get(table) !== state || !sprite.isConnected || state.phase !== "playing"
+        || (state.current && !state.current())
         || state.reduced.matches || document.hidden) return;
       sprite.dataset.lit = "true";
       sprite.dataset.lastMotion = "candle-relight";
@@ -376,7 +385,7 @@ function playWithProp(table, state, sprite) {
       { transform: `${rest} translateY(-46px) scaleY(1)`, offset: .45 }, { transform: `${rest} translateY(-30px) scaleY(-1)`, offset: .65 },
       { transform: `${rest} translateY(0) scaleY(1)`, offset: .88 }, { transform: `${rest} translateY(-3px) scaleY(1)`, offset: .94 },
       { transform: `${rest} translateY(0) scaleY(1)` }], 1100, "coin-toss");
-    setTimeout(() => caption(sprite, copy(heads ? "Kopf" : "Zahl")), 1000);
+    schedulePropEffect(state, () => caption(sprite, copy(heads ? "Kopf" : "Zahl")), 1000);
     announce(sprite, `${copy(item.label)} – ${copy(heads ? "Kopf" : "Zahl")}`);
     return true;
   }
@@ -389,7 +398,7 @@ function playWithProp(table, state, sprite) {
     run([{ transform: rest }, { transform: `translate(${direction * 6}px,-14px) rotate(${next - direction * 110}deg)`, offset: .35 },
       { transform: `translate(${direction * 10}px,0) rotate(${next - direction * 30}deg)`, offset: .7 },
       { transform: `translateX(${Number(art.dataset.restX || 0)}px) rotate(${next}deg)` }], 900, "dice-throw");
-    setTimeout(() => caption(sprite, String(value)), 820);
+    schedulePropEffect(state, () => caption(sprite, String(value)), 820);
     announce(sprite, `${copy(item.label)} – ${value}`);
     return true;
   }
@@ -1074,4 +1083,87 @@ export function cancelTableSurprises(table) {
     state.surprisePending = false;
     for (const [prop, node] of state.nodes) if (catalog[prop].rare) node.disabled = state.reduced.matches;
   }
+}
+
+/** Ordinary Watten props remain local; share the Hausdepp gestures and artwork. */
+export function createLocalTablePropInteractions(table, { layer, reduced, canUse, protectedRects, fits: safeArea }) {
+  const state = { table, layer, effectSurface: layer, reduced, protectedRects, fits: safeArea, current: canUse,
+    phase: "playing", nodes: new Map(), gone: new Set(), random: Math.random, idleSince: Date.now() };
+  layouts.set(table, state);
+  const usable = sprite => canUse() && !document.hidden && !sprite.hidden && !state.gone.has(sprite.dataset.prop);
+  function mount(sprite, prop) {
+    const item = catalog[prop], art = sprite.firstElementChild;
+    sprite.dataset.prop = prop;
+    sprite.classList.add("hd-table-prop", `hd-table-prop--${prop}`);
+    art.classList.add("hd-prop-art"); art.dataset.sheet = item.sheet;
+    localProps.set(sprite, state); state.nodes.set(prop, sprite);
+    if (item.sheet === "svg") { art.innerHTML = coinArt; sprite.dataset.face = "heads"; }
+    if (item.drink) { sprite.dataset.level = "4"; if (item.foam) sprite.dataset.foam = "fresh"; }
+    if (prop === "can") { sprite.dataset.canState = "sealed"; sprite.dataset.foaming = "false"; mountCanDetails(art); }
+    if (prop === "lantern") { sprite.dataset.lit = "true"; sprite.dataset.relighting = "false"; }
+    if (prop === "coaster") markCoaster(sprite, { value: 0, animate: false });
+  }
+  function tap(sprite) {
+    if (!usable(sprite)) return;
+    if (reduced.matches) {
+      // Keep intentional direct use accessible without animated gestures.
+      const prop = sprite.dataset.prop, item = catalog[prop], art = sprite.firstElementChild;
+      if (item.drink) {
+        const level = Number(sprite.dataset.level ?? 4);
+        sprite.dataset.level = String(level ? level - 1 : 4); sprite.dataset.fallen = "false";
+        updateDrink(art, Number(sprite.dataset.level));
+        announce(sprite, copy(Number(sprite.dataset.level) ? item.label : "Nachschenken"));
+      } else if (item.bites && sprite.dataset.empty !== "true") {
+        const remaining = Math.max(0, Number(sprite.dataset.bites ?? sprite.dataset.totalBites) - 1);
+        sprite.dataset.bites = String(remaining); eatPiece(art, remaining);
+        if (!remaining) {
+          sprite.dataset.empty = "true"; announce(sprite, copy("Aufgegessen – weiter verschiebbar"));
+          if (sprite.dataset.keepsContainer !== "true") state.gone.add(prop);
+        }
+      } else if (item.roll) {
+        sprite.dataset.value = String(1 + Math.floor(Math.random() * 6)); announce(sprite, `${copy(item.label)} – ${sprite.dataset.value}`);
+      } else if (item.toss) {
+        sprite.dataset.face = Math.random() < .5 ? "heads" : "tails";
+        announce(sprite, `${copy(item.label)} – ${copy(sprite.dataset.face === "heads" ? "Kopf" : "Zahl")}`);
+      } else if (prop === "coaster" || prop === "pencil") {
+        const coaster = prop === "coaster" ? sprite : state.nodes.get("coaster");
+        if (coaster && !coaster.hidden) markCoaster(coaster, { animate: false });
+      } else if (prop === "lantern") {
+        sprite.dataset.lit = String(sprite.dataset.lit === "false");
+        announce(sprite, copy(sprite.dataset.lit === "true" ? "Windlicht auspusten" : "Windlicht anzünden"));
+      } else if (prop === "can" && sprite.dataset.canState === "sealed") {
+        sprite.dataset.canState = "open"; announce(sprite, copy("Offene Dose schütteln"));
+      }
+      return;
+    }
+    if (!playWithProp(table, state, sprite)) moveProp(table, state, sprite);
+    if (catalog[sprite.dataset.prop].roll) {
+      const label = sprite.getAttribute("aria-label");
+      sprite.dataset.value = label.match(/([1-6])$/)?.[1] || "";
+    }
+  }
+  function clear() {
+    clearTableEffects(state);
+    for (const crumb of layer.querySelectorAll(".hd-prop-leftover")) crumb.remove();
+    for (const sprite of state.nodes.values()) {
+      for (const animation of sprite.getAnimations({ subtree: true })) animation.cancel();
+      sprite.dataset.moving = "false"; sprite._taps = []; sprite._canTaps = [];
+      if (reduced.matches) {
+        sprite.dataset.fallen = "false"; sprite.dataset.compactFall = "false";
+        sprite.firstElementChild.style.setProperty("--prop-rest-angle", "0deg");
+      }
+    }
+  }
+  return { mount, tap, clear,
+    isGone: sprite => state.gone.has(sprite.dataset.prop),
+    shake: sprite => usable(sprite) && shakeProp(table, state, sprite),
+    moved(sprite) {
+      if (usable(sprite) && catalog[sprite.dataset.prop].liquid) {
+        leaveGlassRing(layer, state, sprite, area => safeArea(area, 2, true));
+      }
+    },
+    settle: () => { if (canUse()) settleFoam(state); },
+    remove(sprite) { state.nodes.delete(sprite.dataset.prop); localProps.delete(sprite); },
+    destroy() { clear(); for (const sprite of state.nodes.values()) localProps.delete(sprite); state.nodes.clear(); layouts.delete(table); },
+  };
 }
