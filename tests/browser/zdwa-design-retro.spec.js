@@ -169,7 +169,8 @@ test("Retro draws the 2026 lobby and table in Classic paper, ink, felt and ivory
   const firstDie = page.locator("#diceBar .die").first();
   await firstDie.click();
   await expect(firstDie).toHaveClass(/held/);
-  expect(await firstDie.evaluate(die => getComputedStyle(die).boxShadow)).toContain("rgb(227, 181, 82)");
+  // The server-confirmed hold rebuilds the optimistic die; resolve its live CSS.
+  await expect(firstDie).toHaveCSS("box-shadow", /rgb\(227, 181, 82\)/);
   expectReadableDockFocus(await dockFocus(page, "#diceBar .die >> nth=1"));
   expectReadableDockFocus(await dockFocus(page, "#rollBtnInline"));
 
