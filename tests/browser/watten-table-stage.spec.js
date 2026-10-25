@@ -161,8 +161,15 @@ async function expectStage(item, count) {
     return [...new Set(violations)];
   }), { message: 'all five-card opponent fans and the own hand remain complete and clear' }).toEqual([]);
 
-  if (await page.locator('[data-wt-history]').evaluate(node => node.open)) await expect(page.locator('[data-wt-hand]')).toBeHidden();
-  else await expectReachable(page, '[data-wt-hand] button:first-child');
+  if (await page.locator('[data-wt-history]').evaluate(node => node.open)) {
+    await expect(page.locator('[data-wt-hand]')).toBeHidden();
+    if (viewport.width < viewport.height && viewport.width <= 760) {
+      await expect.poll(() => page.evaluate(() => document.querySelector('[data-wt-history]').getBoundingClientRect().top
+        - document.querySelector('.wt-topbar').getBoundingClientRect().bottom), {
+        message: 'the open review reuses hidden-hand space and clears the score row after resize or pinned reload',
+      }).toBeGreaterThanOrEqual(4);
+    }
+  } else await expectReachable(page, '[data-wt-hand] button:first-child');
   // The score list includes intentional gaps; each score opens its own pad.
   for (let index = 0; index < scores.length; index += 1) {
     await expectReachable(page, `[data-wt-scores] > .wt-score:nth-child(${index + 1}) > [data-wt-score-open]`);

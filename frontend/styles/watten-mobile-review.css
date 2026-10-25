@@ -2,6 +2,11 @@
    complete card faces and captions. Grow only that sheet to the left while
    retaining its flex position above the stake and the own identity row. */
 @media (orientation: portrait) and (max-width: 760px) {
+  /* An open review already hides the hands. Reuse that lower space instead
+     of pushing its toolbar over the always-visible score row after reload. */
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"]:not([data-phase="match_complete"][data-round-stage="ready"]) > .wt-end-sheet:has(> [data-wt-history][open]:not([hidden])) {
+    bottom: 12px; max-height: calc(100% - 72px);
+  }
   html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"]:not([data-phase="match_complete"][data-round-stage="ready"]) > .wt-end-sheet > .wt-history-box[open] {
     width: calc(100vw - 24px); max-width: calc(100vw - 24px); align-self: flex-end;
   }
