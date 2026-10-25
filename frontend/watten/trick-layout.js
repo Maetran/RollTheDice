@@ -285,11 +285,13 @@ export function createTrickLayout(trick, { win = window } = {}) {
     const bounds = { left: Math.max(12, area.left + 8), top: area.top + 8,
       right: Math.min(win.innerWidth - 12, area.right - 8), bottom: Math.min(win.innerHeight - 8, area.bottom - 8) };
     bounds.width = bounds.right - bounds.left; bounds.height = bounds.bottom - bounds.top;
+    // Removing the offer from flex flow moves the history/private rows.
+    // Measure their final positions, never the slots above the former panel.
+    panel.dataset.wtPortraitRetour = "true";
     const obstacles = [...table.querySelectorAll(".wt-seat-badge, .wt-avatar, .wt-seat-name, .wt-seat-call-role, .wt-seat-tags, .wt-seat-public-title, "
       + ".wt-backs > i:not([hidden]), .wt-taken[data-filled='true'], .wt-taken[data-filled='true'] i, .wt-stock, .wt-reference, "
       + "[data-wt-hand-area], [data-wt-hand] > *, [data-wt-stake], [data-wt-private] button, [data-wt-history]:not([hidden]) > summary")]
       .map(box).filter(Boolean);
-    panel.dataset.wtPortraitRetour = "true";
     let selected = null;
     for (const ruleHeight of [112, 88, 64, 44]) {
       panel.style.setProperty("--wt-retour-rules-height", `${ruleHeight}px`);

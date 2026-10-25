@@ -229,7 +229,12 @@ test("a short portrait Retour uses a clear measured slot with its complete rule 
     } };
   const table = { dataset: { phase: "deal_complete", wtRetourOffer: "true" },
     querySelector: selector => selector === "[data-wt-panel]" || selector === "[data-wt-portrait-retour]" && panel.dataset.wtPortraitRetour ? panel : null,
-    querySelectorAll: () => obstacles.map(bounds => ({ hidden: false, matches: () => false, getBoundingClientRect: () => bounds })) };
+    querySelectorAll: () => obstacles.map(bounds => ({ hidden: false, matches: () => false, getBoundingClientRect() {
+      // History/private rows move when the panel leaves their flex column.
+      // Any earlier rectangle is stale, even if the offer itself fits it.
+      assert.equal(panel.dataset.wtPortraitRetour, "true", "measure obstacles after the offer leaves flex flow");
+      return bounds;
+    } })) };
   const felt = { closest: () => table, getBoundingClientRect: () => rect(0, 104, 320, 464) };
   const centre = { parentElement: felt, dataset: {}, style: style(), querySelector: () => null };
   const trick = { parentElement: centre, children: [], hidden: true };
