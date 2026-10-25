@@ -94,14 +94,16 @@ def build_hausdepp_account_for_user_in_session(
     user's membership. The caller provides a ready schema and owns rollback.
     """
     boundary = _account_boundary(user_id, before, limit)
-    response = _empty_account(synchronize_hausdepp_progress_in_session(db, user_id))
+    # Explicit request-local handoff; never cached across transactions/writes.
+    projection_context = {}
+    response = _empty_account(synchronize_hausdepp_progress_in_session(db, user_id, projection_context=projection_context))
     statistics = response["statistics"]
     history = response["history"]["rounds"]
     next_cursor = None
     page_end = None
-    from .hausdepp_merge import is_merged, selected_rounds
+    from .hausdepp_merge import is_merged
     if is_merged(db, user_id):
-        selected = sorted(selected_rounds(db, user_id),
+        selected = sorted(projection_context["inputs"].rounds,
                           key=lambda item: (as_utc(item.row.finished_at), item.row.id), reverse=True)
         for item in selected:
             record = item.record

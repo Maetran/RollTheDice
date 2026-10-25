@@ -102,8 +102,11 @@ def _read_titles(db, game):
             matches = list(_owned_matches(db, member.account_id, existing))
             progress, _credits = _progress(db, member.account_id, matches)
             if revision:
-                from .watten_merge import project_progress
-                progress, _credits = project_progress(db, member.account_id, progress)
+                from .account_progress import owned_origin_ids
+                from .watten_merge import _journals, project_progress
+                journals = _journals(db, owned_origin_ids(db, member.account_id),
+                    seed={member.account_id: (matches, progress, _credits)}, existing=existing)
+                progress, _credits = project_progress(db, member.account_id, progress, journals=journals)
             title = progress["title"]
             entries.append(CachedTitle(member.participant_id, member.account_id, generation, sequence,
                 PublicTitle(title["level"], title["name"]["de"], title["name"]["en"], title["threshold"]), revision))

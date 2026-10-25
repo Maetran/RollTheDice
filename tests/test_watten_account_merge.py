@@ -287,3 +287,104 @@ def test_real_new_target_surprise_keeps_native_grant_and_match_delivery_after_me
     account = build_watten_account(target)
     assert any(item["id"] == key and item["source_game_id"] == game_id
                for item in account["progress"]["pending"]["achievements"])
+
+
+def test_max_price_and_catalogue_metadata_stay_on_the_same_frozen_support(server):
+    from app.watten_progression import DRAFT_CATALOG_VERSION
+
+    source_owner, target_owner = runtime_tests.account("FuturePrice"), runtime_tests.account("KnownPrice")
+    source, target = source_owner[0].user_id, target_owner[0].user_id
+    with session_scope() as db:
+        for index, owner in enumerate((source_owner, target_owner)):
+            game = game_for([owner], game_id=f"price-catalog-{index}", cpus=(1,))
+            game["_finished_at"] = (FINISHED + timedelta(days=index)).isoformat()
+            row, evidence, bindings = written(db, game)
+            store_draft_match(db, row, evidence, bindings)
+        future = db.get(WattenAchievementGrant, (source, 1, "watten_matches_1"))
+        future.xp, future.catalog_version = 73, DRAFT_CATALOG_VERSION + 1
+        merge(db, source, target)
+    account = build_watten_account(target)
+    known = next(item for item in account["progress"]["achievements"] if item["id"] == "watten_matches_1")
+    assert not known["unlocked"] and known["granted_xp"] == 0
+    archived = next(item for item in account["progress"]["archived_achievements"] if item["id"] == "watten_matches_1")
+    assert archived["granted_xp"] == 73 and archived["catalog_version"] == DRAFT_CATALOG_VERSION + 1
+    assert archived["earned_at"] == FINISHED.isoformat()  # earliest actual date stays independent
+    feed = build_watten_achievement_feed(target, limit=30)
+    assert any(item["achievement"]["archived"] and item["achievement"]["actual_xp"] == 73
+               and item["achievement"]["catalog_version"] == DRAFT_CATALOG_VERSION + 1 for item in feed["entries"])
+
+
+def test_future_epoch_isolation_does_not_resurrect_old_generation_through_backing(server):
+    from app.models import WattenProgressState
+
+    source_owner, target_owner = runtime_tests.account("EpochDonor"), runtime_tests.account("EpochTarget")
+    source, target = source_owner[0].user_id, target_owner[0].user_id
+    with session_scope() as db:
+        for index in range(5):
+            owner = source_owner if index < 3 else target_owner
+            row, evidence, bindings = written(db, game_for([owner], game_id=f"epoch-match-{index}", cpus=(1,)))
+            store_draft_match(db, row, evidence, bindings)
+        merge(db, source, target)
+    before = build_watten_account(target)
+    assert any(item["id"] == "watten_matches_5" and item["unlocked"] for item in before["progress"]["achievements"])
+    with session_scope() as db:
+        # Same intentional future-epoch fixture used by native receipt/store
+        # tests. There is no product reset API or migration that increments it.
+        state = db.get(WattenProgressState, source)
+        state.generation, state.grant_sequence, state.acknowledged_sequence = 2, 0, 0
+    after = build_watten_account(target)
+    goal = next(item for item in after["progress"]["achievements"] if item["id"] == "watten_matches_5")
+    assert not goal["unlocked"] and after["progress"]["match_xp"] == 20
+    assert after["progress"]["pending"] == before["progress"]["pending"]
+    assert after["progress"]["generation"] == before["progress"]["generation"] == 1
+
+
+def test_feed_replays_only_selected_owner_and_sql_count_does_not_grow_with_unrelated_users(server, monkeypatch):
+    from collections import Counter
+
+    from sqlalchemy import event
+
+    from app import watten_account as account_module
+    from app import watten_achievement_feed as feed_module
+    from app.database import get_engine
+
+    owners = [runtime_tests.account(f"FeedCost{index}") for index in range(5)]
+    with session_scope() as db:
+        for index, owner in enumerate(owners):
+            for repetition in range(3 if index == 0 else 2 if index == 1 else 1):
+                game = game_for([owner], game_id=f"feed-cost-{index}-{repetition}", cpus=(1,))
+                game["_finished_at"] = (FINISHED + timedelta(days=5 if index < 2 else 0)).isoformat()
+                row, evidence, bindings = written(db, game)
+                store_draft_match(db, row, evidence, bindings)
+        merge(db, owners[0][0].user_id, owners[1][0].user_id)
+        assert db.scalar(select(MergedAwardBacking.id).where(MergedAwardBacking.owner_user_id == owners[1][0].user_id,
+            MergedAwardBacking.achievement_key == "watten_matches_5")) is not None
+    real, replays = account_module._progress, []
+    def observed(db, origin, matches):
+        replays.append(origin)
+        return real(db, origin, matches)
+    monkeypatch.setattr(account_module, "_progress", observed)
+    monkeypatch.setattr(feed_module, "_progress", observed)
+    statements = []
+    def sql(_conn, _cursor, statement, _parameters, _context, _many):
+        statements.append(statement)
+    def read():
+        statements.clear()
+        replays.clear()
+        event.listen(get_engine(), "before_cursor_execute", sql)
+        try:
+            result = build_watten_achievement_feed(owners[1][0].user_id, limit=1)
+        finally:
+            event.remove(get_engine(), "before_cursor_execute", sql)
+        assert Counter(replays) == {owners[0][0].user_id: 1, owners[1][0].user_id: 1}
+        return result, len(statements)
+    first, count = read()
+    additional = [runtime_tests.account(f"FeedCost{index}") for index in range(5, 10)]
+    with session_scope() as db:
+        for index, owner in enumerate(additional, 5):
+            row, evidence, bindings = written(db, game_for([owner], game_id=f"feed-cost-{index}", cpus=(1,)))
+            store_draft_match(db, row, evidence, bindings)
+    second, larger_count = read()
+    assert second["entries"] == first["entries"]
+    assert second["pagination"]["total_entries"] > first["pagination"]["total_entries"]
+    assert larger_count == count  # relational candidate batching, not a per-user replay/query loop

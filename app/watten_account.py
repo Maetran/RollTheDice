@@ -295,10 +295,12 @@ def build_watten_account_in_session(db, user_id: int, *, before=None, limit=12) 
     _require(user is not None and user.is_active, "watten_account_invalid_user")
     matches = list(_owned_matches(db, user_id, existing))
     progress, credits = _progress(db, user_id, matches)
-    from .watten_merge import is_merged, project_progress, selected_matches
+    from .account_progress import owned_origin_ids
+    from .watten_merge import _journals, is_merged, project_progress, selected_matches
     if is_merged(db, user_id):
-        progress, credits = project_progress(db, user_id, progress)
-        seats = selected_matches(db, user_id)
+        journals = _journals(db, owned_origin_ids(db, user_id), seed={user_id: (matches, progress, credits)}, existing=existing)
+        progress, credits = project_progress(db, user_id, progress, journals=journals)
+        seats = selected_matches(db, user_id, journals=journals)
         eligible = [item for item in seats if boundary is None or
                     (as_utc(item.match.row.finished_at), item.match.row.id) < boundary]
         page = eligible[:limit]

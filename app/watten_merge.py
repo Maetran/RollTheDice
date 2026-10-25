@@ -12,12 +12,19 @@ from copy import deepcopy
 from dataclasses import dataclass, fields
 from types import SimpleNamespace
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from .account_merge_backings import award_backings, copy_active_backings, record_award_support
 from .account_progress import owned_origin_ids
 from .hausdepp_merge import is_merged
-from .models import AccountMergeOperation, User, WattenAchievementGrant
+from .models import (
+    AccountMergeOperation,
+    AccountProgressOrigin,
+    MergedAwardBacking,
+    User,
+    WattenAchievementGrant,
+    WattenProgressState,
+)
 from .security import as_utc
 from .watten_evidence import validate_membership
 from .watten_progression import (
@@ -56,11 +63,13 @@ class MatchSeat:
                 "source_fingerprint": hashlib.sha256(json.dumps(raw, separators=(",", ":")).encode()).hexdigest()}
 
 
-def _journals(db, identities):
+def _journals(db, identities, *, seed=None, existing=None):
     from .watten_account import _owned_matches, _progress
-    existing = set(db.scalars(select(User.id)))
-    result = {}
+    existing = existing if existing is not None else set(db.scalars(select(User.id)))
+    result = dict(seed or {})
     for origin in identities:
+        if origin in result:
+            continue
         matches = list(_owned_matches(db, origin, existing))
         progress, credits = _progress(db, origin, matches)
         result[origin] = (matches, progress, credits)
@@ -78,20 +87,71 @@ def selected_matches(db, owner_id, *, origins=None, journals=None):
                   key=lambda item: (item.match.evidence.finished_at, item.match.row.id), reverse=True)
 
 
+def _combine_candidates(candidates):
+    result = {}
+    for key, rows in candidates.items():
+        # Price and catalogue metadata belong to ONE immutable witness. Only
+        # the first actual date is deliberately shared across valid witnesses.
+        selected = min(rows, key=lambda item: (-item[1], item[3], item[4]))
+        result[key] = {"unlocked_at": min(item[0] for item in rows), "xp": selected[1],
+                       "catalog_version": selected[2]}
+    return result
+
+
+def feed_award_candidates(db, owner_ids):
+    """Relational candidate metadata only; selected-page proofs are read later.
+
+    This has the same fail-closed page-validation boundary as the native feed.
+    It never replays every active account's private history before pagination.
+    """
+    owner_ids = tuple(owner_ids)
+    if not owner_ids:
+        return {}
+    owner = func.coalesce(AccountProgressOrigin.owner_user_id, WattenAchievementGrant.user_id)
+    rows = list(db.execute(select(WattenAchievementGrant, owner).join(WattenProgressState,
+        (WattenProgressState.user_id == WattenAchievementGrant.user_id)
+        & (WattenProgressState.generation == WattenAchievementGrant.generation)).outerjoin(
+            AccountProgressOrigin, AccountProgressOrigin.origin_user_id == WattenAchievementGrant.user_id).where(owner.in_(owner_ids))))
+    grouped = defaultdict(lambda: defaultdict(list))
+    native = {}
+    for grant, beneficiary in rows:
+        witness = f"native:{grant.user_id}:{grant.generation}:{grant.achievement_id}"
+        native[(grant.user_id, grant.generation, grant.achievement_id)] = grant.source_game_id
+        grouped[beneficiary][grant.achievement_id].append((as_utc(grant.reached_at), grant.xp,
+                                                         grant.catalog_version, witness, 1))
+    backings = list(db.scalars(select(MergedAwardBacking).where(MergedAwardBacking.owner_user_id.in_(owner_ids),
+        MergedAwardBacking.game_type == "watten", MergedAwardBacking.invalidated_at.is_(None))))
+    generations = dict(db.execute(select(WattenProgressState.user_id, WattenProgressState.generation)).all())
+    for backing in backings:
+        context = json.loads(backing.context_json)
+        if backing.kind == "original":
+            if native.get((backing.origin_user_id, context["generation"], backing.achievement_key)) != context["game_id"]:
+                continue
+        elif any(generations.get(int(origin), 1) != generation for origin, generation in context["generations"].items()):
+            continue
+        grouped[backing.owner_user_id][backing.achievement_key].append((
+            min(as_utc(backing.original_unlocked_at), as_utc(backing.continuity_date)), backing.credited_amount,
+            context["catalog_version"], backing.support_key, 0))
+    return {owner_id: _combine_candidates(candidates) for owner_id, candidates in grouped.items()}
+
+
 def effective_awards(db, owner_id, *, origins=None, journals=None):
     identities = tuple(origins or owned_origin_ids(db, owner_id))
     journals = journals or _journals(db, identities)
     candidates = defaultdict(list)
+    native = {}
     for origin, (_matches, progress, _credits) in journals.items():
         for item in db.scalars(select(WattenAchievementGrant).where(WattenAchievementGrant.user_id == origin,
                 WattenAchievementGrant.generation == progress["generation"])):
-            candidates[item.achievement_id].append((as_utc(item.reached_at), item.xp, item.catalog_version))
+            native[(origin, item.generation, item.achievement_id)] = item
+            candidates[item.achievement_id].append((as_utc(item.reached_at), item.xp, item.catalog_version,
+                f"native:{origin}:{item.generation}:{item.achievement_id}", 1))
     contexts = {}
     for item in award_backings(db, owner_id, "watten"):
         if item.invalidated_at is None:
             context = json.loads(item.context_json)
             if item.kind == "original":
-                original = db.get(WattenAchievementGrant, (item.origin_user_id, context["generation"], item.achievement_key))
+                original = native.get((item.origin_user_id, context["generation"], item.achievement_key))
                 if (original is None or original.source_game_id != context["game_id"]
                         or journals[item.origin_user_id][1]["generation"] != context["generation"]):
                     continue
@@ -99,7 +159,7 @@ def effective_awards(db, owner_id, *, origins=None, journals=None):
                 from datetime import datetime
                 selector = json.dumps({key: context[key] for key in ("origins", "through", "generations")}, sort_keys=True)
                 if selector not in contexts:
-                    sealed = _journals(db, context["origins"])
+                    sealed = {origin: journals[origin] for origin in context["origins"]}
                     if any(progress["generation"] != context["generations"][str(origin)]
                            for origin, (_matches, progress, _credits) in sealed.items()):
                         continue
@@ -116,9 +176,8 @@ def effective_awards(db, owner_id, *, origins=None, journals=None):
                 if current < context["target"]:
                     continue
             candidates[item.achievement_key].append((min(as_utc(item.original_unlocked_at), as_utc(item.continuity_date)),
-                                                     item.credited_amount, context["catalog_version"]))
-    return {key: {"unlocked_at": min(item[0] for item in rows), "xp": max(item[1] for item in rows),
-                  "catalog_version": min(item[2] for item in rows)} for key, rows in candidates.items()}
+                                                     item.credited_amount, context["catalog_version"], item.support_key, 0))
+    return _combine_candidates(candidates)
 
 
 def _union_facts(db, identities, journals):
@@ -157,13 +216,13 @@ def _selected_credits(seats, journals):
             for chosen in (min(candidates, key=lambda item: item.order()),)]
 
 
-def project_progress(db, owner_id, native, *, journals=None):
+def project_progress(db, owner_id, native, *, journals=None, awards=None):
     from .watten_account import _title
     identities = owned_origin_ids(db, owner_id)
     journals = journals or _journals(db, identities)
     result = deepcopy(native)
     counters, rare = _union_facts(db, identities, journals)
-    awards = effective_awards(db, owner_id, journals=journals)
+    awards = effective_awards(db, owner_id, journals=journals) if awards is None else awards
     known_ids = {goal.achievement_id for goal in (*DRAFT_ACHIEVEMENTS, *SURPRISE_ACHIEVEMENTS)}
     for item in result["achievements"]:
         award = awards.get(item["id"])
@@ -193,12 +252,12 @@ def _latest_operation(db, owner_id):
                      .order_by(AccountMergeOperation.created_at.desc(), AccountMergeOperation.id.desc()).limit(1))
 
 
-def grant_combined(db, owner_id, *, operation=None, reached_at=None, include_surprises=True):
+def grant_combined(db, owner_id, *, operation=None, reached_at=None, include_surprises=True, journals=None):
     operation = operation or _latest_operation(db, owner_id)
     if operation is None:
         return
     identities = owned_origin_ids(db, owner_id)
-    journals = _journals(db, identities)
+    journals = journals or _journals(db, identities)
     counters, rare = _union_facts(db, identities, journals)
     existing = effective_awards(db, owner_id, journals=journals)
     through = {str(origin): max((as_utc(item.finished_at) for item in credits), default=as_utc(operation.created_at)).isoformat()
@@ -245,24 +304,26 @@ def prepare_watten_merge_in_session(db, context):
 
 
 def consolidate_watten_merge_in_session(db, context, prepared):
-    previous = effective_awards(db, context.source_user_id, origins=context.source_origin_ids)
+    journals = _journals(db, context.origin_ids)
+    previous = effective_awards(db, context.source_user_id, origins=context.source_origin_ids,
+                               journals={origin: journals[origin] for origin in context.source_origin_ids})
     copy_active_backings(db, source_owner_id=context.source_user_id, target_owner_id=context.target_user_id,
         game_type="watten", operation_id=context.operation_id,
         continuity_dates={key: value["unlocked_at"] for key, value in previous.items()})
-    grant_combined(db, context.target_user_id, operation=db.get(AccountMergeOperation, context.operation_id))
-    from .watten_account import build_watten_account_in_session
-    after = build_watten_account_in_session(db, context.target_user_id)["progress"]
+    grant_combined(db, context.target_user_id, operation=db.get(AccountMergeOperation, context.operation_id), journals=journals)
+    after, _credits = project_progress(db, context.target_user_id, journals[context.target_user_id][1], journals=journals)
+    seats = selected_matches(db, context.target_user_id, journals=journals)
     from .watten_progression import DRAFT_TITLES
-    awards = effective_awards(db, context.target_user_id)
+    awards = effective_awards(db, context.target_user_id, journals=journals)
     before_rank = DRAFT_TITLES[prepared["rank_level"] - 1]
     public = {"before_points": prepared["points"], "after_points": after["total_xp"],
               "before_rank": {"de": before_rank.name.de, "en": before_rank.name.en}, "after_rank": after["title"]["name"],
               "achievement_count": len(awards),
               "inherited_achievement_count": len(set(previous) - set(prepared["achievement_ids"])),
               "new_achievement_count": len(set(awards) - set(previous) - set(prepared["achievement_ids"])),
-              "games_played": len(selected_matches(db, context.target_user_id))}
+              "games_played": len(seats)}
     return {"public": public, "normal_generation": after["generation"], "normal_sequence": after["grant_sequence"],
-            "resolutions": [item.metadata() for item in selected_matches(db, context.target_user_id)]}
+            "resolutions": [item.metadata() for item in seats]}
 
 
 def public_grants(db, owner_id):

@@ -477,10 +477,9 @@ def public_hausdepp_ranks(db, user_ids: list[int]) -> dict[int, dict]:
         unlocks[unlock.user_id].append(unlock)
     result = {}
     for user_id in ids:
-        from .hausdepp_merge import is_merged, project_progress
+        from .hausdepp_merge import is_merged, public_score_points
         if is_merged(db, user_id):
-            native = _projection(credits[user_id], unlocks[user_id], _new_aggregate(), 0)
-            rank = project_progress(db, user_id, native)["rank"]
+            rank = _rank(public_score_points(db, user_id))
         else:
             rank = _rank(_score_points(credits[user_id], unlocks[user_id]))
         result[user_id] = {key: rank[key] for key in ("id", "name", "level")}
@@ -497,7 +496,7 @@ def synchronize_hausdepp_progress(user_id: int) -> dict:
         return synchronize_hausdepp_progress_in_session(db, user_id)
 
 
-def synchronize_hausdepp_progress_in_session(db, user_id: int) -> dict:
+def synchronize_hausdepp_progress_in_session(db, user_id: int, *, projection_context=None) -> dict:
     """Recover/project one original account within the caller's transaction.
 
     The caller provides a ready schema and owns commit/rollback. No normal
@@ -560,8 +559,11 @@ def synchronize_hausdepp_progress_in_session(db, user_id: int) -> dict:
     unlocked_ids = {unlock.achievement_id for unlock in unlocks}
     from .hausdepp_merge import effective_awards, is_merged
     merged = is_merged(db, user_id)
+    inputs = None
     if merged:
-        unlocked_ids.update(effective_awards(db, user_id))
+        from .hausdepp_merge import read_projection_inputs
+        inputs = read_projection_inputs(db, user_id)
+        unlocked_ids.update(effective_awards(db, user_id, inputs=inputs))
     aggregate = _new_aggregate()
     for credit in credits:
         facts = json.loads(credit.facts_json)
@@ -605,9 +607,11 @@ def synchronize_hausdepp_progress_in_session(db, user_id: int) -> dict:
     owner_id = progress_owner_id(db, user_id)
     if merged or owner_id != user_id:
         from .hausdepp_merge import grant_combined, project_progress
-        grant_combined(db, owner_id, reached_at=max((as_utc(item.finished_at) for item in credits), default=None))
+        grant_combined(db, owner_id, reached_at=max((as_utc(item.finished_at) for item in credits), default=None), inputs=inputs)
         if merged:
-            return project_progress(db, user_id, result)
+            if projection_context is not None:
+                projection_context["inputs"] = inputs
+            return project_progress(db, user_id, result, inputs=inputs)
     return result
 
 

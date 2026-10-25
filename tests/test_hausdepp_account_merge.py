@@ -182,3 +182,31 @@ def test_trusted_retired_origin_recovery_updates_owner_union_without_target_read
         assert award is not None and award.kind == "native_observed"
         assert award.original_unlocked_at.replace(tzinfo=timezone.utc) == AT + timedelta(hours=2)
         assert db.get(HausdeppAchievementUnlock, (hd.other.id, "hausdepp_09")) is None
+
+
+def test_one_account_request_reuses_validated_history_and_credits(hd, monkeypatch):
+    from collections import Counter
+
+    from app import hausdepp_merge as adapter
+
+    for index in range(2):
+        hd.store(hd.payload(f"bounded-donor-{index}"))
+    hd.store(hd.payload("bounded-target"), account=hd.other.id)
+    with session_scope() as db:
+        merge(db, hd.user.id, hd.other.id)
+    calls = Counter()
+    for name in ("selected_rounds", "_credits"):
+        original = getattr(adapter, name)
+        def observed(*args, _name=name, _original=original, **kwargs):
+            calls[_name] += 1
+            return _original(*args, **kwargs)
+        monkeypatch.setattr(adapter, name, observed)
+    account = build_hausdepp_account_for_user(hd.other.id)
+    assert account["statistics"]["rounds_played"] == 3
+    assert calls == {"selected_rounds": 1, "_credits": 1}
+    calls.clear()
+    from app.hausdepp_achievements import public_hausdepp_ranks
+    with session_scope() as db:
+        title = public_hausdepp_ranks(db, [hd.other.id])[hd.other.id]
+    assert title["level"] == account["rank"]["level"]
+    assert calls == {"_credits": 1}  # public title never scans full result snapshots

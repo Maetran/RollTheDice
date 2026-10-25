@@ -93,7 +93,7 @@ def _native_unlocks(db, identities):
         HausdeppAchievementUnlock.user_id.in_(identities), _unlock_source_allowed())))
 
 
-def effective_awards(db, owner_id, *, origins=None):
+def effective_awards(db, owner_id, *, origins=None, inputs=None):
     """One actual reward and earliest continuous date, never delivery revisions."""
     from .hausdepp_achievements import _ACHIEVEMENTS_BY_ID
     identities = tuple(origins or owned_origin_ids(db, owner_id))
@@ -107,7 +107,7 @@ def effective_awards(db, owner_id, *, origins=None):
         support = frozen.get(f"native:{item.user_id}:{item.achievement_id}")
         candidates[item.achievement_id].append((as_utc(item.unlocked_at),
                                                 support.credited_amount if support else definition["points"]))
-    contexts = {}
+    contexts = inputs.contexts if inputs is not None else {}
     for item in backings:
         # Native-source withdrawals keep the same exclusion as original HD.
         context = json.loads(item.context_json)
@@ -120,8 +120,9 @@ def effective_awards(db, owner_id, *, origins=None):
             selector = json.dumps({key: context[key] for key in ("origins", "through", "owners")}, sort_keys=True)
             if selector not in contexts:
                 from datetime import datetime
-                rows = [credit for credit in _credits(db, context["origins"])
-                        if as_utc(credit.finished_at) <= as_utc(datetime.fromisoformat(context["through"][str(credit.user_id)]))]
+                source_credits = inputs.credits if inputs is not None else _credits(db, context["origins"])
+                rows = [credit for credit in source_credits if credit.user_id in context["origins"]
+                        and as_utc(credit.finished_at) <= as_utc(datetime.fromisoformat(context["through"][str(credit.user_id)]))]
                 contexts[selector] = _progress_values(db, context["origins"], rows,
                     frozen_owners={int(key): value for key, value in context["owners"].items()})
             current, _target = contexts[selector][item.achievement_key]
@@ -180,8 +181,9 @@ def _progress_values(db, identities, credits, *, frozen_owners=None):
     return result
 
 
-def _selected_credits(db, owner_id, identities, credits):
-    selected = {item.row.game_id: item.origin_id for item in selected_rounds(db, owner_id, origins=identities)}
+def _selected_credits(db, owner_id, identities, credits, *, rounds=None):
+    selected = {item.row.game_id: item.origin_id for item in (
+        rounds if rounds is not None else selected_rounds(db, owner_id, origins=identities))}
     grouped = defaultdict(list)
     for credit in credits:
         grouped[credit.game_id].append(credit)
@@ -190,16 +192,32 @@ def _selected_credits(db, owner_id, identities, credits):
             for rows in grouped.values()]
 
 
-def project_progress(db, owner_id, native):
-    from .hausdepp_achievements import _new_aggregate, _projection, _rank
+@dataclass
+class ProjectionInputs:
+    identities: tuple
+    credits: list
+    rounds: tuple
+    values: dict
+    contexts: dict
+
+
+def read_projection_inputs(db, owner_id):
     identities = owned_origin_ids(db, owner_id)
     credits = _credits(db, identities)
-    selected = _selected_credits(db, owner_id, identities, credits)
-    awards = effective_awards(db, owner_id)
+    return ProjectionInputs(identities, credits, tuple(selected_rounds(db, owner_id, origins=identities)),
+                            _progress_values(db, identities, credits), {})
+
+
+def project_progress(db, owner_id, native, *, inputs=None):
+    from .hausdepp_achievements import _new_aggregate, _projection, _rank
+    inputs = inputs or read_projection_inputs(db, owner_id)
+    credits = inputs.credits
+    selected = _selected_credits(db, owner_id, inputs.identities, credits, rounds=inputs.rounds)
+    awards = effective_awards(db, owner_id, inputs=inputs)
     unlocks = [SimpleNamespace(achievement_id=key, unlocked_at=value["unlocked_at"], awarded_points=0)
                for key, value in awards.items()]
     result = _projection(selected, unlocks, _new_aggregate(), 0)
-    values = _progress_values(db, identities, credits)
+    values = inputs.values
     for item in result["achievements"]["items"]:
         current, target = values[item["id"]]
         item["progress"] = {"current": target if item["unlocked"] else current, "target": target}
@@ -221,20 +239,39 @@ def project_progress(db, owner_id, native):
     return result
 
 
+def public_score_points(db, owner_id):
+    """Titles need the immutable narrow ledger, never full result histories."""
+    from .hausdepp_achievements import _round_points
+    identities = owned_origin_ids(db, owner_id)
+    credits = _credits(db, identities)
+    grouped = defaultdict(list)
+    for credit in credits:
+        grouped[credit.game_id].append(credit)
+    selected = []
+    for rows in grouped.values():
+        metadata = {tuple(json.loads(row.facts_json)[key] for key in ("participant_count", "cpu_count", "human_count"))
+                    for row in rows}
+        if len(metadata) != 1:
+            raise ValueError("hausdepp_invalid_merged_credit")
+        # Participation XP is identical for every eligible seat of one round.
+        selected.append(min(rows, key=lambda row: row.user_id))
+    inputs = ProjectionInputs(identities, credits, (), {}, {})
+    return _round_points(selected) + sum(item["xp"] for item in effective_awards(db, owner_id, inputs=inputs).values())
+
+
 def _latest_operation(db, owner_id):
     return db.scalar(select(AccountMergeOperation).where(AccountMergeOperation.target_user_id == owner_id)
                      .order_by(AccountMergeOperation.created_at.desc(), AccountMergeOperation.id.desc()).limit(1))
 
 
-def grant_combined(db, owner_id, *, operation=None, reached_at=None):
+def grant_combined(db, owner_id, *, operation=None, reached_at=None, inputs=None):
     from .hausdepp_achievements import ACHIEVEMENTS
     operation = operation or _latest_operation(db, owner_id)
     if operation is None:
         return
-    identities = owned_origin_ids(db, owner_id)
-    credits = _credits(db, identities)
-    values = _progress_values(db, identities, credits)
-    existing = effective_awards(db, owner_id)
+    inputs = inputs or read_projection_inputs(db, owner_id)
+    identities, credits, values = inputs.identities, inputs.credits, inputs.values
+    existing = effective_awards(db, owner_id, inputs=inputs)
     through = {str(origin): max((as_utc(item.finished_at) for item in credits if item.user_id == origin),
                                   default=as_utc(operation.created_at)).isoformat() for origin in identities}
     opponents = {other for item in credits for other in json.loads(item.facts_json)["opponents"]}
@@ -258,19 +295,18 @@ def grant_combined(db, owner_id, *, operation=None, reached_at=None):
 def prepare_hausdepp_merge_in_session(db, context):
     from .hausdepp_achievements import _ACHIEVEMENTS_BY_ID, synchronize_hausdepp_progress_in_session
     for origin in context.origin_ids:
-        synchronize_hausdepp_progress_in_session(db, origin)
-    before = project_progress(db, context.target_user_id,
-        synchronize_hausdepp_progress_in_session(db, context.target_user_id)) if is_merged(db, context.target_user_id) else (
-            synchronize_hausdepp_progress_in_session(db, context.target_user_id))
+        if origin != context.target_user_id:
+            synchronize_hausdepp_progress_in_session(db, origin)
+    before = synchronize_hausdepp_progress_in_session(db, context.target_user_id)
     for owner, origins in ((context.source_user_id, context.source_origin_ids),
                            (context.target_user_id, context.target_origin_ids)):
+        existing = {item.support_key for item in award_backings(db, owner, "hausdepp")}
         for unlock in _native_unlocks(db, origins):
             definition = _ACHIEVEMENTS_BY_ID.get(unlock.achievement_id)
             if definition is None:
                 continue
             # Original HD has no frozen price column: capture the actual current
             # published award once, never reinterpret awarded_points (revision).
-            existing = {item.support_key for item in award_backings(db, owner, "hausdepp")}
             key = f"native:{unlock.user_id}:{unlock.achievement_id}"
             if key not in existing:
                 record_award_support(db, owner_id=owner, game_type="hausdepp", achievement_key=unlock.achievement_id,
@@ -278,7 +314,8 @@ def prepare_hausdepp_merge_in_session(db, context):
                     unlocked_at=unlock.unlocked_at, credited_amount=definition["points"],
                     context={"v": 1, "game_id": unlock.source_game_id})
     return {"points": before["scoring"]["points"], "rank_level": before["rank"]["level"],
-            "achievement_ids": sorted(item["id"] for item in before["achievements"]["items"] if item["unlocked"])}
+            "achievement_ids": sorted(item["id"] for item in before["achievements"]["items"] if item["unlocked"]),
+            "normal_presentation": before["presentation"]}
 
 
 def consolidate_hausdepp_merge_in_session(db, context, prepared):
@@ -287,9 +324,10 @@ def consolidate_hausdepp_merge_in_session(db, context, prepared):
         game_type="hausdepp", operation_id=context.operation_id,
         continuity_dates={key: value["unlocked_at"] for key, value in previous.items()})
     operation = db.get(AccountMergeOperation, context.operation_id)
-    grant_combined(db, context.target_user_id, operation=operation)
-    from .hausdepp_achievements import synchronize_hausdepp_progress_in_session
-    after = synchronize_hausdepp_progress_in_session(db, context.target_user_id)
+    inputs = read_projection_inputs(db, context.target_user_id)
+    grant_combined(db, context.target_user_id, operation=operation, inputs=inputs)
+    after = project_progress(db, context.target_user_id,
+                             {"presentation": prepared["normal_presentation"]}, inputs=inputs)
     from .hausdepp_achievements import RANKS
     awards = effective_awards(db, context.target_user_id)
     inherited = set(previous) - set(prepared["achievement_ids"])
@@ -297,6 +335,6 @@ def consolidate_hausdepp_merge_in_session(db, context, prepared):
               "before_rank": RANKS[prepared["rank_level"] - 1]["name"], "after_rank": after["rank"]["name"],
               "achievement_count": len(awards), "inherited_achievement_count": len(inherited),
               "new_achievement_count": len(set(awards) - set(previous) - set(prepared["achievement_ids"])),
-              "games_played": len(list(selected_rounds(db, context.target_user_id)))}
+              "games_played": len(inputs.rounds)}
     return {"public": public, "normal_presentation": after["presentation"],
-            "resolutions": [item.metadata() for item in selected_rounds(db, context.target_user_id)]}
+            "resolutions": [item.metadata() for item in inputs.rounds]}
