@@ -79,7 +79,7 @@ async function expectCompactCardsClear(page, { history = false, expanded = false
     const overlap = (a, b) => Math.min(a.right, b.right) - Math.max(a.left, b.left) > 1
       && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 1;
     const cards = [...document.querySelectorAll('.wt-backs:not([hidden]) > i:not([hidden]), [data-wt-hand] > .wt-hand-card')].filter(shown);
-    const surfaces = [...document.querySelectorAll('.wt-topbar, [data-wt-stake]:not([hidden]), [data-wt-history]:not([hidden]):not([open]), .wt-reference')].filter(shown);
+    const surfaces = [...document.querySelectorAll('.wt-topbar, [data-wt-stake]:not([hidden]), [data-wt-history]:not([hidden]):not([open]), .wt-reference, .wt-table[data-phase=play] .wt-bloedeln-start')].filter(shown);
     const failures = [];
     for (const surface of surfaces) for (const card of cards) {
       if (overlap(surface.getBoundingClientRect(), card.getBoundingClientRect())) {
@@ -92,8 +92,9 @@ async function expectCompactCardsClear(page, { history = false, expanded = false
       : Math.abs(reference.right - (innerWidth - 12)) > 1 || Math.abs(reference.top - 8) > 1) || face.width < 44) failures.push('reference lost its clear 44px corner beside the menu');
     if (overlap(reference, document.querySelector('.wt-topbar').getBoundingClientRect())) failures.push('floating points cover the reference');
     const stake = document.querySelector('[data-wt-stake] > button'), box = stake.getBoundingClientRect();
+    const request = document.querySelector('.wt-table[data-phase=play] .wt-bloedeln-start > button');
     if (Math.abs(box.left - 6) > 1 || Math.abs(box.bottom - (innerHeight - 62)) > 1
-        || Math.abs(box.width - (history ? 68 : 144)) > 1 || box.height < 44) failures.push('stake lost its lower 44px target');
+        || Math.abs(box.width - (history || request ? 68 : 144)) > 1 || box.height < 44) failures.push('stake lost its lower 44px target');
     for (const label of stake.children) {
       const text = document.createRange(); text.selectNodeContents(label);
       const textBox = text.getBoundingClientRect();
@@ -105,11 +106,40 @@ async function expectCompactCardsClear(page, { history = false, expanded = false
       if (Math.abs(container.left - 80) > 1 || Math.abs(container.bottom - (innerHeight - 62)) > 1 || review.width < 44 || review.height < 44
           || overlap(box, container)) failures.push('closed review does not share the lower row beside the stake');
     }
+    if (request) {
+      const target = request.getBoundingClientRect();
+      if (Math.abs(target.left - 80) > 1 || Math.abs(target.bottom - (innerHeight - 62)) > 1 || target.width < 68 || target.height < 44
+          || overlap(box, target) || !request.contains(document.elementFromPoint(target.x + target.width / 2, target.y + target.height / 2))) failures.push('Blödeln does not share the lower row beside the stake');
+    }
     return failures;
   }, { history, expanded }), { message: 'compact points, reference and stake/review clear every painted hand and keep their complete text' }).toEqual([]);
 }
 
 for (const language of ['de', 'en']) {
+  test(`${language}: compact stake and legal Blödeln request share the row before the first card`, async ({ browser, baseURL }) => {
+    const wrapped = { newContext: options => browser.newContext({ ...options,
+      viewport: { width: 568, height: 320 }, serviceWorkers: 'block' }) };
+    const players = [];
+    try {
+      for (let seat = 0; seat < 4; seat++) players.push(await player(wrapped, baseURL, language));
+      await create(players, { count: 4, target: 11, reference: true });
+      await action(players, 'show_ready'); await action(players, 'show_ready');
+      await action(players, 'inspection_ack'); await action(players, 'inspection_ack');
+      await expect.poll(() => players.every(peer => peer.traffic.snapshot.engine.phase === 'play')).toBe(true);
+      const eligible = players.filter(peer => peer.traffic.snapshot.engine.actions.includes('request_bloedeln'));
+      expect(eligible).toHaveLength(2);
+      for (const peer of players) for (const viewport of [{ width: 568, height: 320 }, { width: 720, height: 360 }]) {
+        await peer.page.setViewportSize(viewport);
+        await expectCompactCardsClear(peer.page);
+        if (eligible.includes(peer)) await expectReachable(peer.page, '[data-watten-action=request_bloedeln]');
+      }
+      await action(players, 'request_bloedeln');
+      await expect.poll(() => players.every(peer => peer.traffic.snapshot.engine.preplay.pending?.kind === 'bloedeln')).toBe(true);
+      await action(players, 'preplay_decline');
+      for (const peer of players) expect(peer.traffic.errors).toEqual([]);
+    } finally { await Promise.allSettled(players.map(peer => peer.context.close())); }
+  });
+
   test(`${language}: compact landscape menu preserves table geometry, floating scores and portrait controls`, async ({ browser, baseURL }, info) => {
     const mobile = { newContext: options => browser.newContext({ ...options,
       viewport: { width: 393, height: 852 }, serviceWorkers: 'block' }) };
