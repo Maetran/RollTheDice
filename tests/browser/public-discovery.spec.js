@@ -21,6 +21,7 @@ for (const width of [320, 768]) {
         await expect(rows.nth(index)).toHaveAttribute('data-rank-minimum', String(rank.minimum_points));
       }
       await expect(page.locator('#rankLegendSummary')).toContainText(String(catalogue.points_possible));
+      expect(await rows.locator('.rank-legend-minimum').evaluateAll(labels => labels.every(label => label.scrollWidth <= label.clientWidth + 1))).toBe(true);
       await page.screenshot({ path: testInfo.outputPath(`initial-ranks-${width}.png`), fullPage: true });
       await page.goto('/spieler');
       const guide = page.locator('[data-public-ranking-guide]');

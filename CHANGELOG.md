@@ -65,6 +65,15 @@ turn and gambling in the initial HTML. Language information, search metadata
 and the four games stay consistent. Private accounts and tables remain excluded
 from indexing.
 
+**Deutsch:** Die Hausdepp-Lobby lädt für ihre Kartendemo eine eigene kleinere
+Tafel mit allen 36 unveränderten Motiven und spart rund 1,3 MB Bilddaten. Am
+Spieltisch bleiben die vollständigen Kartenbilder erhalten. Die sichtbaren
+Auswahlnamen und zugänglichen Bezeichnungen in ZDWA und Zilch stimmen überein.
+
+**English:** Hausdepp's lobby uses a smaller demo atlas with the same 36 motifs,
+saving about 1.3 MB of image data. Tables retain the full-resolution artwork.
+Visible choices and accessible names stay consistent in ZDWA and Zilch.
+
 ## 4.4.0 — 2026-10-25
 
 ### ZDWA / AUDIO-NUTZUNG / VOICE ACTIVITY
