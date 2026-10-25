@@ -1,0 +1,13 @@
+/* The live action dock owns the right column; an open review needs four
+   complete card faces and captions. Grow only that sheet to the left while
+   retaining its flex position above the stake and the own identity row. */
+@media (orientation: portrait) and (max-width: 760px) {
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"]:not([data-phase="match_complete"][data-round-stage="ready"]) > .wt-end-sheet > .wt-history-box[open] {
+    width: calc(100vw - 24px); max-width: calc(100vw - 24px); align-self: flex-end;
+  }
+  /* Preserve the same 44px row and 8px separation when a completed deal has
+     no stake. The review must not borrow the own badge's reserved space. */
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"]:not([data-phase="match_complete"][data-round-stage="ready"]) > .wt-end-sheet:not(:has(> .wt-stake:not([hidden]))) > .wt-history-box[open] {
+    margin-bottom: 52px;
+  }
+}
