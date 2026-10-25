@@ -2532,5 +2532,12 @@
     "date": "2026-10-25",
     "bump": "minor",
     "summary": "Audiochat und Ambiente für ZDWA, gemeinsame Zuhörvorgabe und präzisere Audio-Nutzungsstatistik. / ZDWA voice and ambience, a shared listening default and clearer voice activity statistics."
+  },
+  {
+    "version": "4.5.0",
+    "revision": "a0844b90730221fe9a4f2feeaf305bc66d36b11f",
+    "date": "2026-10-25",
+    "bump": "minor",
+    "summary": "Klarere mobile Spieltische, verlässliche Retourschneider-Entscheide und besser auffindbare Regeln für alle vier Spiele. / Clearer mobile tables, reliable Retourschneider decisions and easier-to-find rules across all four games."
   }
 ]
