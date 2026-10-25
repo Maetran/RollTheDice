@@ -90,6 +90,15 @@ for (const language of ['de', 'en']) {
       const callers = players.filter(peer => peer.traffic.snapshot.engine.actions.includes('inspection_ack'));
       expect(callers).toHaveLength(2);
       for (const caller of callers) await caller.page.locator('[data-watten-preplay-options] > summary').click();
+      for (const caller of callers) {
+        await caller.page.setViewportSize({ width: 320, height: 568 });
+        // Accepted Blödeln can put the option menu inside its status dock.
+        // A translated dock creates the wrong fixed-position containing block.
+        await expect.poll(() => caller.page.locator('[data-wt-preplay]').evaluate(dock => {
+          const style = getComputedStyle(dock);
+          return { translate: style.translate, transform: style.transform };
+        })).toEqual({ translate: 'none', transform: 'none' });
+      }
       await expectSeparateControls(callers, 'inspection-open', info);
       const requester = players.find(peer => peer.traffic.snapshot.engine.actions.includes('request_schoeneres'));
       await requester.page.locator('[data-watten-action=request_schoeneres]').click();
