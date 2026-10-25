@@ -30,7 +30,7 @@ const vm = (status, { deal = "offer-deal", match = "match-1", player = "p1" } = 
 
 test("compact Retour choices keep the full conditions and accessible decision names, including the saved-yes waiting state", () => {
   const messages = {
-    "retour.title": "Retourschneider?", "retour.offer": "Erase the score; every remaining round must be won. A loss costs two marks.",
+    "retour.title": "Play a Retourschneider?", "retour.titleShort": "Retourschneider?", "retour.offer": "Erase the score; every remaining round must be won. A loss costs two marks.",
     "retour.accept": "Yes, Retourschneider", "retour.decline": "No, keep our score", "retour.acceptShort": "Yes", "retour.declineShort": "No",
     "retour.details": "Retourschneider conditions", "retour.partnerWaiting": "Your yes is saved. {names} still needs to agree.",
   };
@@ -41,6 +41,8 @@ test("compact Retour choices keep the full conditions and accessible decision na
   const initial = markup(model);
   assert.match(initial, /class="wt-retour-rules" role="region" tabindex="0" aria-label="Retourschneider conditions"/);
   assert.ok(initial.includes(messages["retour.offer"]), "the complete consequences remain in the keyboard-reachable rule body");
+  assert.match(initial, /<h3 aria-label="Play a Retourschneider\?">/);
+  assert.match(initial, /class="wt-retour-title-short" aria-hidden="true">Retourschneider\?</);
   assert.match(initial, /aria-label="Yes, Retourschneider"/);
   assert.match(initial, /aria-label="No, keep our score"/);
   assert.match(initial, /class="wt-retour-choice-short" aria-hidden="true">Yes</);

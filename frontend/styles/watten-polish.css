@@ -312,7 +312,7 @@ html[data-watten-active="true"] .wt-deal-result:has(.wt-retour) .wt-round-call .
 html[data-watten-active="true"] .wt-deal-result:has(.wt-retour) .wt-round-call dd { font-size: .95rem; }
 html[data-watten-active="true"] .wt-retour .wt-choice-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin: 0; }
 html[data-watten-active="true"] .wt-retour .wt-choice-row > button { min-height: 44px; min-width: 0; padding: 5px; font-size: .8rem; line-height: 1.2; }
-html[data-watten-active="true"] .wt-retour-choice-short { display: none; }
+html[data-watten-active="true"] :is(.wt-retour-title-short, .wt-retour-choice-short) { display: none; }
 
 /* Decisions remain small and direct, with the table visible around them. */
 html[data-watten-active="true"] .wt-preplay-options { border-top: 1px solid #bd976c55; margin-top: 5px; }

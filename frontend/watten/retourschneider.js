@@ -14,7 +14,7 @@ export function retourschneiderChoiceMarkup(vm) {
     <button type="button" aria-label="${esc(t("retour.decline"))}" data-watten-command="engine" data-kind="retourschneider" data-watten-action="retourschneider" data-value="decline" ${vm.busy ? "disabled" : ""}><span class="wt-retour-choice-full">${esc(t("retour.decline"))}</span><span class="wt-retour-choice-short" aria-hidden="true">${esc(t("retour.declineShort"))}</span></button></div>`
     : `<p class="wt-note" role="status">${esc(t(ownAccepted ? "retour.partnerWaiting" : "retour.teamWaiting", { names: waiting }))}</p>`;
   return `<section class="wt-retour" data-watten-retourschneider-choice>
-    <h3>${esc(t("retour.title"))}</h3><p class="wt-retour-rules" role="region" tabindex="0" aria-label="${esc(t("retour.details"))}">${esc(t("retour.offer"))}</p>${actions}
+    <h3 aria-label="${esc(t("retour.title"))}"><span class="wt-retour-title-full">${esc(t("retour.title"))}</span><span class="wt-retour-title-short" aria-hidden="true">${esc(t("retour.titleShort"))}</span></h3><p class="wt-retour-rules" role="region" tabindex="0" aria-label="${esc(t("retour.details"))}">${esc(t("retour.offer"))}</p>${actions}
   </section>`;
 }
 

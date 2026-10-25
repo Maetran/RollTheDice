@@ -21,8 +21,8 @@ html[data-game="watten"][data-watten-active="true"] .wt-bloedeln-dock :is(.wt-pr
     max-height: var(--wt-retour-rules-height, 44px); min-height: 44px; overflow: auto; overscroll-behavior: contain;
     margin-block: 4px; font-size: .75rem; line-height: 1.3;
   }
-  html[data-game="watten"][data-watten-active="true"] [data-wt-portrait-retour] .wt-retour-choice-full { display: none; }
-  html[data-game="watten"][data-watten-active="true"] [data-wt-portrait-retour] .wt-retour-choice-short { display: inline; }
+  html[data-game="watten"][data-watten-active="true"] [data-wt-portrait-retour] :is(.wt-retour-title-full, .wt-retour-choice-full) { display: none; }
+  html[data-game="watten"][data-watten-active="true"] [data-wt-portrait-retour] :is(.wt-retour-title-short, .wt-retour-choice-short) { display: inline; }
   html[data-game="watten"][data-watten-active="true"] [data-wt-portrait-retour] .wt-choice-row > button { min-width: 44px; min-height: 44px; overflow-wrap: normal; word-break: normal; }
   html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"][data-viewer="player"][data-phase="bid_response"]:not(:has([data-wt-history][open]:not([hidden]))) > .wt-end-sheet > .wt-panel:has(.wt-bid .wt-choice-row) {
     left: calc(50vw - 120px); translate: -50% 0; align-self: flex-start;
