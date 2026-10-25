@@ -16,3 +16,18 @@
     margin-bottom: 52px;
   }
 }
+
+/* Compact landscape scores float across the upper wood, including a target
+   row below their buttons. Start review below that complete surface and keep
+   its existing bottom clearance for the live bid; cards and names can scroll. */
+@media (orientation: landscape) and (max-width: 720px) and (max-height: 360px) {
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] .wt-table {
+    --wt-review-top: 72px;
+  }
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"][data-wt-header-open="true"] .wt-table {
+    --wt-review-top: 108px;
+  }
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] .wt-table:not([data-phase="match_complete"][data-round-stage="ready"]):has(.wt-bid) > .wt-end-sheet > .wt-history-box[open] {
+    top: var(--wt-review-top); height: calc(100dvh - 152px - var(--wt-review-top)); min-height: 52px;
+  }
+}

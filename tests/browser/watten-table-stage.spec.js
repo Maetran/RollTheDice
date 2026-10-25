@@ -226,10 +226,13 @@ async function expectStage(item, count) {
         clearOfHand: !overlap(summaryRect, hand),
         controlsClearOfHistory: [...panel.querySelectorAll('button'), ...stake.querySelectorAll('button')]
           .every(button => !overlap(rect, button.getBoundingClientRect())),
+        toolbarClearsScores: [node.querySelector('summary'), node.querySelector('.wt-history-pin'),
+          node.querySelector('[data-wt-history-close]')].filter(Boolean)
+          .every(control => !overlap(control.getBoundingClientRect(), document.querySelector('.wt-topbar').getBoundingClientRect())),
       };
     }, landscapeRail), { message: 'review stays above decisions while the stake uses its own reachable area' })
       .toEqual({ abovePanel: true, stakeSeparate: true, beforePanel: true,
-        clearOfHand: true, controlsClearOfHistory: true });
+        clearOfHand: true, controlsClearOfHistory: true, toolbarClearsScores: true });
     const miniWidth = await history.locator('.wt-card--mini').first().evaluate(node => Number.parseFloat(getComputedStyle(node).width));
     expect(miniWidth).toBeGreaterThanOrEqual(reviewWidth.minimum);
     expect(miniWidth).toBeLessThanOrEqual(reviewWidth.maximum);
@@ -277,7 +280,13 @@ async function expectStage(item, count) {
               const x = after.x + after.width / 2;
               if (x < port.left || x > port.right || y < port.top || y > port.bottom
                 || x < 0 || x > innerWidth || y < 0 || y > innerHeight
-                || !figure.contains(document.elementFromPoint(x, y))) failures.push(`mini ${index} ${label}: ${edge} cannot be reached by scrolling`);
+                || !figure.contains(document.elementFromPoint(x, y))) {
+                failures.push(`mini ${index} ${label}: ${edge} cannot be reached by scrolling ${JSON.stringify({
+                  x, y, port, box: after.toJSON(), scrollTop: scroller.scrollTop,
+                  scrollHeight: scroller.scrollHeight, clientHeight: scroller.clientHeight,
+                  hit: document.elementFromPoint(x, y)?.outerHTML.slice(0, 120),
+                })}`);
+              }
             }
           } else {
             if (!inside(rect, port)) failures.push(`mini ${index} ${label}: clipped by history scroller`);
