@@ -88,11 +88,14 @@ async function expectInspectionActionByHand(page) {
     const button = node.getBoundingClientRect();
     const felt = document.querySelector('[data-wt-felt]').getBoundingClientRect();
     const own = document.querySelector('.wt-seat--bottom .wt-avatar').getBoundingClientRect();
+    const mirrored = document.documentElement.dataset.wtCompactHeader === 'true'
+      && document.querySelector('[data-wt-table]').dataset.wtCallerAxis === 'bottom-right';
+    const buttonCentre = button.x + button.width / 2, ownCentre = own.x + own.width / 2;
     return button.left >= felt.left && button.right <= felt.right && button.bottom <= felt.bottom
       && button.top >= felt.top + felt.height * .55
-      && button.x + button.width / 2 > own.x + own.width / 2 + 20
+      && (mirrored ? buttonCentre < ownCentre - 20 : buttonCentre > ownCentre + 20)
       && button.width >= 44 && button.height >= 44;
-  }), { message: 'Schlag/Farbe stays next to the future own hand, to the right of its player, in the lower table' }).toBe(true);
+  }), { message: 'Schlag/Farbe stays beside the future own hand on the intended side of the caller axis, in the lower table' }).toBe(true);
 }
 
 async function recordLayout(page, info, stage) {
