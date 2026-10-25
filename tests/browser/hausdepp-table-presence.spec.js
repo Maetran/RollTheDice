@@ -308,15 +308,44 @@ for (const browserName of ['chromium', 'webkit']) {
 for (const language of ['de', 'en']) {
   test(`${language}: navigation buttons keep real destinations and opaque touch surfaces`, async ({ page }) => {
     test.setTimeout(60000);
-    const { user } = await owner(page, language);
-    expect(typeof user.must_change_password).toBe('boolean');
+    // Use a fully initialized normal account so /konto always reaches the
+    // statistics surface. The owner's required-password route has its own test.
+    const adminLogin = await page.request.post('/api/auth/login', {
+      data: { username: 'Admin', password: 'temporary-password-123' },
+    });
+    expect(adminLogin.ok()).toBe(true);
+    const admin = (await adminLogin.json()).user;
+    const username = `NavGeometry_${language}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+    const temporaryPassword = 'navigation-geometry-password';
+    const created = await page.request.post('/api/admin/users', {
+      headers: { 'X-CSRF-Token': admin.csrf_token },
+      data: { username, temporary_password: temporaryPassword, role: 'user' },
+    });
+    expect(created.status()).toBe(201);
+    const temporaryLogin = await page.request.post('/api/auth/login', { data: { username, password: temporaryPassword } });
+    expect(temporaryLogin.ok()).toBe(true);
+    const temporaryUser = (await temporaryLogin.json()).user;
+    expect(temporaryUser.must_change_password).toBe(true);
+    const passwordChanged = await page.request.post('/api/auth/change-password', {
+      headers: { 'X-CSRF-Token': temporaryUser.csrf_token },
+      data: { current_password: temporaryPassword, new_password: `${temporaryPassword}-final` },
+    });
+    expect(passwordChanged.ok()).toBe(true);
+    const login = await page.request.post('/api/auth/login', { data: { username, password: `${temporaryPassword}-final` } });
+    expect(login.ok()).toBe(true);
+    const user = (await login.json()).user;
+    expect(user).toMatchObject({ role: 'user', is_owner: false, is_admin: false, must_change_password: false });
+    expect((await page.request.put('/api/auth/preferences/language', {
+      headers: { 'X-CSRF-Token': user.csrf_token }, data: { preferred_language: language },
+    })).ok()).toBe(true);
+    await page.addInitScript(value => localStorage.setItem('zdwa_language', value), language);
+    await page.route('**/api/releases**', route => route.fulfill({ json: { releases: [], can_prompt: false } }));
     for (const [name, width, height] of VIEWPORTS) {
       await page.setViewportSize({ width, height });
       for (const path of ['/hausdepp', '/hausdepp/konto', '/hausdepp/regeln', '/hausdepp/rangliste']) {
         await page.goto(path);
-        const accountPasswordRequired = path === '/hausdepp/konto' && user.must_change_password;
-        await expect(page).toHaveURL(new URL(accountPasswordRequired ? '/hausdepp/konto/einstellungen#passwort' : path, page.url()).href);
-        if (path === '/hausdepp/konto') await expect(page.locator(accountPasswordRequired ? '#hausdeppPasswordForm' : '#hausdeppAccountStats')).toBeVisible();
+        await expect(page).toHaveURL(new URL(path, page.url()).href);
+        if (path === '/hausdepp/konto') await expect(page.locator('#hausdeppAccountStats')).toBeVisible();
         await expect(page.locator('.hd-nav a')).toHaveCount(4);
         await page.evaluate(() => document.fonts.ready);
         const controls = await page.locator('.hd-nav a').evaluateAll(elements => elements.map(element => {
@@ -359,7 +388,7 @@ for (const language of ['de', 'en']) {
               textFits: element.scrollWidth <= element.clientWidth + 1 };
           }));
           expect(destinations.map(link => link.href)).toEqual(['/hausdepp/konto#statistics', '/hausdepp/konto#erfolge', '/hausdepp/konto/einstellungen']);
-          await expect(accountNavigation.locator('[aria-current="page"]')).toHaveAttribute('data-account-destination', accountPasswordRequired ? 'settings' : 'statistics');
+          await expect(accountNavigation.locator('[aria-current="page"]')).toHaveAttribute('data-account-destination', 'statistics');
           expect(new Set(destinations.map(link => link.top)).size, `${language} ${name}: all three account sections share one row`).toBe(1);
           // Narrow translated labels share one full row by their content width;
           // the existing shared account CSS uses equal columns above 360px.
