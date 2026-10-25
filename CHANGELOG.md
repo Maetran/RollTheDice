@@ -34,6 +34,8 @@ und eine erreichbare Versionshistorie; Watten berücksichtigt dabei die gewählt
 Kontosprache. Die jeweilige Spielgestaltung und bestehende Kontofunktionen bleiben
 erhalten. Die Einsteigertouren aktualisieren sich nach dem Laden des Kontos mit
 den vorhandenen Spielzugängen.
+Beim Sprachwechsel beenden sich alte Kontodokumente rechtzeitig, damit dort
+keine weiteren privaten Abfragen gestartet werden.
 
 **English:** All four games organize accounts consistently: Statistics,
 Achievements and Settings, with Profile & sign-in, Language & play, Players &
@@ -41,6 +43,8 @@ notifications, and Help & updates. Hausdepp and Watten show shared release notes
 and accessible version history; Watten respects the account language. Each game
 keeps its visual style and existing account features. Beginner tours update with
 the account's existing game access after sign-in details have loaded.
+Old account documents retire promptly during language changes so they do not
+start further private requests while being replaced.
 
 **Deutsch:** Owner können zwei Spielerkonten nach Vorschau und erneuter
 Authentifizierung zusammenführen. Das Ziel behält Anmeldung und Einstellungen;

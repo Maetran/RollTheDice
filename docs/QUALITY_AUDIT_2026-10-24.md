@@ -898,3 +898,63 @@ preserve every witness and cut the measured six-game SELECT counts from
 separate scaling concern. Current Zilch definition version 1 is supported;
 future definition changes require a validated backing migration or versioned
 evaluator rather than silently weakening immutable evidence.
+
+**Abschlussprüfung / Final verification:** Die späteren Vollläufe prüften auch
+die bisherigen Konto- und Navigationsszenarien. Veraltete Testpfade wurden auf
+echte, vollständig eingerichtete Spielerkonten und die nativen Kontobereiche
+umgestellt; der separate Owner-Fall prüft weiterhin die erzwungene
+Passwortänderung. Ein Claude-Gegenreview verhinderte dabei, dass die Statistik-
+Geometrie durch eine bedingte Assertion unbemerkt entfällt. Ein weiterer
+Watten-Test wartet jetzt auf denselben bestätigten Einschauen-Zustand bei allen
+vier echten Teilnehmern; acht unabhängige Chromium-Wiederholungen und der
+WebKit-Ablauf bestanden ohne Retry.
+
+Die zusätzliche WebKit-Prüfung fand beim ersten englischen Sprachabgleich
+Folgeanfragen aus bereits ablösenden Zilch- und Watten-Kontodokumenten. Trace-
+Zeitpunkte und Initiatoren unterscheiden diesen Befund von abgebrochenen,
+bereits laufenden Anfragen. Gezielte Lifecycle-Korrekturen erhalten die privaten
+Identitätsprüfungen und die unveränderte Browser-Fehlerassertion. Ein vollständiger
+sauberer Nachweis des abschliessenden Commits bleibt Voraussetzung für den Push.
+
+Later full runs also exercised existing account/navigation scenarios. Obsolete
+test paths now use genuinely initialized regular accounts and native account
+sections; the separate owner case still checks mandatory password setup.
+Claude's counterreview caught a conditional assertion that would have silently
+removed statistics geometry coverage. Another Watten test now waits for the
+same acknowledged inspection state on all four real peers; eight independent
+Chromium repetitions and the WebKit flow passed without retries.
+
+Additional WebKit checks found follow-up requests from outgoing Zilch and Watten
+account documents during the first English language synchronization. Trace
+timing and initiators distinguish these from requests already in flight before
+cancellation. Narrow lifecycle fixes retain private identity checks and the
+unchanged browser error assertion. A complete clean receipt for the final
+commit remains mandatory before pushing.
+
+Die acht regulären Browser-Pools verwenden Chromium. Die separate WebKit-
+Prüfung ergänzt die Konto-/Versionsabläufe aller vier Spiele sowie Watten-
+Geometrie und Einschauen. Neun standardmässig übersprungene Fälle sind optionale
+Screenshot-/Capture-Matrizen; ihre zusätzlichen Prüfungen gelten nicht als
+ausgeführt. / The eight standard browser pools use Chromium. Separate WebKit
+checks supplement all-four-game account/release flows and Watten geometry and
+inspection. Nine normally skipped cases are optional screenshot/capture
+matrices; their additional assertions are not claimed as executed.
+
+Der abschliessende gezielte Kontolauf bestand danach zweimal sämtliche
+15 WebKit-Szenarien (30 erfolgreiche Fälle), mit unveränderter Fehlerassertion.
+65 integrierte Lifecycle-/Kontotests und Lint bestanden ebenfalls. Entfernte
+Spielerauswahl-/Startmeldungs-Widgets starten bei einem späten Anmeldeereignis
+keine weiteren Abfragen; verbundene öffentliche Profile und reguläre
+Kontowechsel bleiben aktiv. Ein gemeinsamer Modultest prüft die tatsächliche
+Listenerreihenfolge von Watten-Konto und Spielwechsler bei Fokus und
+persistierter Browser-Rückkehr. Diese gezielten Ergebnisse ersetzen weiterhin
+keinen vollständigen Commitnachweis.
+
+The final focused account run then passed all 15 WebKit scenarios twice
+(30 successful cases), retaining the unchanged error assertion. The integrated
+65 lifecycle/account tests and lint also passed. Detached player-selection and
+start-notice widgets no longer start requests on a late auth event; connected
+public profiles and normal account changes stay active. A combined module test
+checks the actual Watten account/app-mode listener order on focus and persisted
+browser restoration. These focused results still do not replace a complete
+exact-commit receipt.
