@@ -1000,10 +1000,10 @@ function render(previous = null, live = false, accepted = false) {
   const snapshot = session.snapshot;
   const root = viewRoot();
   if (!snapshot || !root) return;
-  decor?.suspend();
   voice?.update(snapshot);
   setHeading(snapshot.name);
   if (!snapshot.engine) {
+    decor?.suspend();
     roundReview.discard();
     beginnerGuide.update({ eligible: false });
     motion.cancel();
@@ -1036,6 +1036,7 @@ function render(previous = null, live = false, accepted = false) {
   }
   waitingChrome?.restore();
   if (session.viewKind !== "table" || !session.view) {
+    decor?.suspend();
     motion.cancel();
     session.view?.destroy?.();
     session.viewKind = "table";

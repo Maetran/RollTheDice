@@ -1,4 +1,6 @@
 const { test, expect } = require('@playwright/test');
+const { build } = require('esbuild');
+const path = require('node:path');
 const { player, create, normalCall } = require('./helpers/watten-journey.cjs');
 
 const control = (host, name) => host.page.locator(`[data-watten-decor-action=${name}]`);
@@ -63,3 +65,61 @@ for (const language of ['de', 'en']) {
     } finally { await Promise.allSettled(players.map(item => item.context.close())); }
   });
 }
+
+test('tablet decorations remain reachable and draggable through harmless table repaints in both orientations', async ({ browser, baseURL }, info) => {
+  test.setTimeout(60_000);
+  const players = [];
+  try {
+    for (let seat = 0; seat < 4; seat++) players.push(await player(browser, baseURL));
+    await create(players, { count: 4, target: 15, determination: 'normal' }); await normalCall(players);
+    const page = players[0].page, props = page.locator('[data-watten-decor-item]');
+    const bundle = await build({ entryPoints: [path.resolve('frontend/watten/decor.js')], bundle: true,
+      write: false, format: 'esm', platform: 'browser', target: 'es2020', logLevel: 'silent' });
+    await page.evaluate(async code => {
+      const module = await import(`data:text/javascript;base64,${btoa(unescape(encodeURIComponent(code)))}`);
+      window.decorGeometry = { protectedSelector: module.DECOR_PROTECTED, fits: module.fitsDecor };
+    }, bundle.outputFiles[0].text);
+    await expect(props).toHaveCount(3);
+    for (const viewport of [{ width: 820, height: 1180 }, { width: 1180, height: 820 }]) {
+      await page.setViewportSize(viewport);
+      await expect.poll(() => page.locator('[data-wt-felt]').evaluate(node => Math.abs(node.getBoundingClientRect().bottom - innerHeight))).toBeLessThan(1);
+      for (let index = 0; index < 3; index++) {
+        const item = props.nth(index);
+        await expect(item).toBeVisible();
+        await item.click({ trial: true });
+        const target = await item.evaluate(node => {
+          const source = node.getBoundingClientRect(), felt = document.querySelector('[data-wt-felt]').getBoundingClientRect();
+          const { protectedSelector, fits } = window.decorGeometry;
+          const protectedRects = [...document.querySelector('#wattenApp').querySelectorAll(protectedSelector)]
+            .filter(other => !other.closest('[data-watten-decor-layer], [hidden]'))
+            .map(other => other.getBoundingClientRect()).filter(box => box.width > 0 && box.height > 0);
+          const occupied = [...document.querySelectorAll('[data-watten-decor-item]')]
+            .filter(other => other !== node && !other.hidden).map(other => other.getBoundingClientRect());
+          const candidates = [];
+          for (let y = felt.top + 16; y + source.height < felt.bottom - 16; y += 24) {
+            for (let x = felt.left + 16; x + source.width < felt.right - 16; x += 24) {
+              if (!fits({ left: x, right: x + source.width, top: y, bottom: y + source.height },
+                { regions: [felt], protectedRects }, occupied)) continue;
+              const distance = Math.hypot(x - source.left, y - source.top);
+              if (distance >= 32) candidates.push({ x, y, distance });
+            }
+          }
+          return candidates.sort((a, b) => a.distance - b.distance)[0] || null;
+        });
+        expect(target).toBeTruthy();
+        const source = await item.boundingBox();
+        await page.mouse.move(source.x + source.width / 2, source.y + source.height / 2); await page.mouse.down();
+        await page.evaluate(() => { const back = document.querySelector('.wt-backs > i'); back.hidden = back.hidden; });
+        await page.mouse.move(target.x + source.width / 2, target.y + source.height / 2, { steps: 5 });
+        const held = await item.evaluate(node => ({ capture: node.hasPointerCapture(1), dragging: node.dataset.dragging,
+          kind: node.dataset.wattenDecorKind, bounds: node.getBoundingClientRect().toJSON() }));
+        expect(held.capture, JSON.stringify({ viewport, source, target, held })).toBe(true);
+        await page.mouse.up();
+        const moved = await item.boundingBox();
+        expect(Math.hypot(moved.x - source.x, moved.y - source.y), JSON.stringify({ viewport, source, target, held })).toBeGreaterThan(20);
+      }
+      await page.screenshot({ path: info.outputPath(`tablet-drag-${viewport.width}x${viewport.height}.png`) });
+    }
+    expect(players.flatMap(peer => peer.traffic.errors)).toEqual([]);
+  } finally { await Promise.allSettled(players.map(peer => peer.context.close())); }
+});
