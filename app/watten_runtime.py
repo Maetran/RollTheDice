@@ -743,23 +743,33 @@ def _write_checkpoint(db, checkpoint: dict, *, creating=False, expected_json=Non
     """Caller-owned transaction; every existing source write uses exact JSON CAS."""
     payload = dumps_canonical_json(serialize_watten_game(checkpoint))
     now = utcnow()
+    previous_json = expected_json
     if expected_json is not None:
         _checkpoint_authority(expected_json, checkpoint)
         changed = db.execute(update(ActiveGame).where(ActiveGame.game_id == checkpoint["_id"],
             ActiveGame.state_json == expected_json).values(state_json=payload, updated_at=now))
-        return changed.rowcount == 1
-    row = db.scalar(select(ActiveGame).where(ActiveGame.game_id == checkpoint["_id"]).with_for_update())
-    if row is None:
-        db.add(ActiveGame(game_id=checkpoint["_id"], state_json=payload, created_at=now, updated_at=now))
-    elif creating:
-        raise ValueError("watten_game_id_collision")
-    else:
-        expected = row.state_json
-        _checkpoint_authority(expected, checkpoint)
-        changed = db.execute(update(ActiveGame).where(ActiveGame.game_id == checkpoint["_id"],
-            ActiveGame.state_json == expected).values(state_json=payload, updated_at=now))
         if changed.rowcount != 1:
-            raise ValueError("watten_stale_checkpoint")
+            return False
+    else:
+        row = db.scalar(select(ActiveGame).where(ActiveGame.game_id == checkpoint["_id"]).with_for_update())
+        if row is None:
+            if not creating:
+                raise ValueError("watten_checkpoint_missing")
+            db.add(ActiveGame(game_id=checkpoint["_id"], state_json=payload, created_at=now, updated_at=now))
+            db.flush()
+        elif creating:
+            raise ValueError("watten_game_id_collision")
+        else:
+            previous_json = row.state_json
+            _checkpoint_authority(previous_json, checkpoint)
+            changed = db.execute(update(ActiveGame).where(ActiveGame.game_id == checkpoint["_id"],
+                ActiveGame.state_json == previous_json).values(state_json=payload, updated_at=now))
+            if changed.rowcount != 1:
+                raise ValueError("watten_stale_checkpoint")
+    from .watten_admissions import sync_checkpoint_memberships
+
+    previous_room = room_from_payload(json.loads(previous_json)["_watten"]["room"]) if previous_json is not None else None
+    sync_checkpoint_memberships(db, checkpoint, previous_room, now=now)
     return True
 
 

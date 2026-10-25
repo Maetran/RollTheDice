@@ -87,20 +87,29 @@ def _lock_operation_accounts(db, actor_id: int, source_id: int, target_id: int):
     return users, source_origins, target_origins
 
 
-def _active_checkpoint_accounts(raw: str) -> set[int]:
+def _active_checkpoint_accounts(db, game_id: str, raw: str) -> set[int] | None:
     try:
         state = json.loads(raw)
         if not isinstance(state, dict):
             raise ValueError("invalid_checkpoint")
         result = set()
         if state.get("_game_type") == "watten" or "_watten" in state:
-            room = state["_watten"]["room"]
-            values = [*room["members"], *room["reservations"]]
-            for value in values:
-                account = value.get("account_id")
-                if type(account) is not int or account < 1:
-                    raise ValueError("invalid_checkpoint_account")
-                result.add(account)
+            from .watten_admissions import pending_native_room
+            from .watten_runtime import restore_watten_json
+
+            native = restore_watten_json(raw, refresh_titles=False)
+            if native["_id"] != game_id:
+                raise ValueError("invalid_checkpoint_id")
+            if not pending_native_room(native):
+                if native.get("_completion_persisted"):
+                    completed = db.scalar(select(CompletedGame).where(CompletedGame.game_id == game_id))
+                    if (completed is None or completed.game_type != "watten"
+                            or json.loads(completed.snapshot_json) != native["_watten_result"]):
+                        raise ValueError("missing_terminal_result")
+                return None
+            room = native["_watten"].room
+            result.update(member.account_id for member in room.members)
+            result.update(item.account_id for item in room.reservations if item.valid_at(utcnow()))
         else:
             for name in ("_players", "_participants"):
                 values = state.get(name, [])
@@ -124,10 +133,10 @@ def _active_checkpoint_accounts(raw: str) -> set[int]:
 
 def ensure_no_pending_games(db, origin_ids: tuple[int, ...]) -> None:
     wanted = set(origin_ids)
-    if db.scalar(select(GameAccountMembership.game_id).where(GameAccountMembership.user_id.in_(wanted)).limit(1)):
-        raise ProgressIdentityError("merge_account_at_table")
-    for raw in db.scalars(select(ActiveGame.state_json)):
-        if wanted & _active_checkpoint_accounts(raw):
+    memberships = set(db.scalars(select(GameAccountMembership.game_id).where(GameAccountMembership.user_id.in_(wanted))))
+    for game_id, raw in db.execute(select(ActiveGame.game_id, ActiveGame.state_json)):
+        accounts = _active_checkpoint_accounts(db, game_id, raw)
+        if accounts is not None and (wanted & accounts or game_id in memberships):
             raise ProgressIdentityError("merge_account_at_table")
     pending_hd = select(HausdeppRematchInvitation.id).join(
         HausdeppRematch, HausdeppRematch.id == HausdeppRematchInvitation.rematch_id,
