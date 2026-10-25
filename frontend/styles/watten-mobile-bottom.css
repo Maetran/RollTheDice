@@ -5,7 +5,7 @@
 @media (orientation: portrait) and (max-width: 760px) {
   html[data-game="watten"][data-watten-active="true"] .wt-table {
     --wt-own-avatar-size: 30px;
-    --wt-own-hand-clearance: calc(var(--wt-hand-w) * 1.9 + max(12px, env(safe-area-inset-bottom, 0px)) + 12px);
+    --wt-own-hand-clearance: calc(var(--wt-hand-w) * 1.9 + max(12px, env(safe-area-inset-bottom, 0px)) + 20px);
     --wt-own-action-width: calc(100% - 132px);
   }
   html[data-game="watten"][data-watten-active="true"] body .wt-table[data-count][data-phase][data-viewer]:not([data-phase="match_complete"][data-round-stage="ready"]) .wt-felt .wt-seat.wt-seat--bottom.is-own {
@@ -28,6 +28,12 @@
   html[data-game="watten"][data-watten-active="true"] .wt-table[data-count] .wt-seat--bottom.is-own .wt-seat-call-role {
     position: static; inset: auto; translate: none; grid-column: 1 / -1; grid-row: 2;
     justify-self: start; min-height: 18px; max-width: 100%; margin: 0; font-size: .7rem;
+  }
+  /* Thanks is transient feedback, not another identity row. Keeping it out
+     of grid flow prevents the avatar/name rising into passive status text. */
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count] .wt-seat--bottom.is-own .wt-bubble--thanks {
+    position: absolute; left: 0; right: auto; top: auto; bottom: calc(100% + 6px); translate: none;
+    padding: 3px 6px; font-size: .85rem; white-space: nowrap;
   }
   /* The left identity owns 96px and a 12px gap. Live bid answers can grow
      upward in the remaining column without covering its name or role. */
@@ -53,7 +59,8 @@
      An involved recipient retains the same right-hand request/answer target. */
   html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"]:has([data-watten-action="inspection_ack"]) > .wt-bloedeln-dock,
   html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"] > .wt-bloedeln-dock:has(> .wt-bloedeln-status) {
-    left: 12px; right: 12px; bottom: calc(var(--wt-own-hand-clearance) + 64px); width: auto;
+    left: auto; right: 12px; bottom: calc(var(--wt-own-hand-clearance) + 64px);
+    width: var(--wt-own-action-width); text-align: left;
   }
   html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"]:has(.wt-preplay-options) > .wt-bloedeln-dock {
     bottom: calc(var(--wt-own-hand-clearance) + 120px);

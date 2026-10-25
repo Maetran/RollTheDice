@@ -561,7 +561,7 @@ html[data-watten-active="true"] .wt-bloedeln-status { margin: 0; font-size: .8re
   html[data-watten-active="true"] .wt-table[data-count="4"][data-phase="play"]:not(:has([data-wt-history][open]:not([hidden]))):is(:has(> .wt-end-sheet > [data-wt-panel]:empty), :has(> .wt-end-sheet > [data-wt-panel] > .wt-prompt:only-child)) .wt-seat--bottom { bottom: calc(var(--wt-hand-w) * 1.8 + 6px); }
   html[data-watten-active="true"] .wt-table[data-viewer="player"][data-phase="play"]:not(:has([data-wt-history][open]:not([hidden]))):has(> .wt-end-sheet > [data-wt-panel]:empty) > .wt-end-sheet,
   html[data-watten-active="true"] .wt-table[data-viewer="player"][data-phase="play"]:not(:has([data-wt-history][open]:not([hidden]))):has(> .wt-end-sheet > [data-wt-panel] > .wt-prompt:only-child) > .wt-end-sheet {
-    bottom: calc(var(--wt-hand-w) * 1.8 + 8px);
+    bottom: var(--wt-own-hand-clearance, calc(var(--wt-hand-w) * 1.8 + 8px));
   }
 }
 
