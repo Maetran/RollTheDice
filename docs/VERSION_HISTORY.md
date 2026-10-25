@@ -1,6 +1,6 @@
 # Versionen / Versions
 
-Aktuelle gemeinsame Produktversion / Current shared product version: **4.4.0**.
+Aktuelle gemeinsame Produktversion / Current shared product version: **4.5.0**.
 
 Alle RollTheDice-Spiele werden gemeinsam versioniert. Major steht für einen großen
 Produktmeilenstein, Minor für neue Funktionen und Patch für Fehlerkorrekturen
@@ -30,6 +30,7 @@ Detailed player-facing descriptions are in the [changelog](../CHANGELOG.md).
 
 | Version | Datum / Date | Art / Type | Änderung / Change | Commit |
 | --- | --- | --- | --- | --- |
+| 4.4.0 | 2026-10-25 | minor | Audiochat und Ambiente für ZDWA, gemeinsame Zuhörvorgabe und präzisere Audio-Nutzungsstatistik. / ZDWA voice and ambience, a shared listening default and clearer voice activity statistics. | [26eee2e](https://github.com/Maetran/RollTheDice/commit/26eee2e91a662e594bf535df1290a6171177a726) |
 | 4.3.1 | 2026-10-24 | patch | Klarere Watten-Ansagen und Tablet-Tische sowie zuverlässigeres An- und Abmelden. / Clearer Watten calls and tablet tables, with more reliable sign-in and sign-out. | [5962aa6](https://github.com/Maetran/RollTheDice/commit/5962aa635a1068f90703009ec744ef5af6dedb3d) |
 | 4.3.0 | 2026-10-24 | minor | Öffentlich beobachtete Hausdepp-Endspiele und gezielte Zilch-CPU-Fortsetzung nach Erfahrung. / Publicly observed Hausdepp endgames and focused Zilch CPU continuation based on experience. | [fd1e005](https://github.com/Maetran/RollTheDice/commit/fd1e005cac9121cd4bd3ee60520fb5b6ea059550) |
 | 4.2.1 | 2026-10-24 | patch | Klarere Spielhinweise, ausgewogene CPU-Stärke am Tisch und verlässliche Tracking-Anzeigen. / Clearer play guidance, balanced CPU difficulty at mixed tables and accurate tracking coverage. | [800e157](https://github.com/Maetran/RollTheDice/commit/800e157de41b257f3f503fe26bc4d5417b9ff891) |
