@@ -122,12 +122,24 @@ test("Zilch account's actual pending renderer cannot restore either private proj
   for (const retire of ["pagehide", "identity"]) {
     const f = fixture(), projection = deferred();
     const { context, state, lifecycle } = mountZilch(f);
+    const noticeContainer = {};
+    let noticeIsCurrent;
+    f.content.querySelector = selector => {
+      assert.equal(selector, '[data-account-merge-notice]');
+      return noticeContainer;
+    };
     const renderer = between(zilch, "async function renderAccount()", "\nasync function fetchZilchPlayerAchievements");
     const render = runInNewContext(`${renderer}\nrenderAccount`, { ...context, accountLifecycle: lifecycle,
       normalizedZilchAccountTab: () => "statistics", t: key => key, escapeHtml: value => value,
       avatarMarkup: () => "", adminProfileMarkup: () => "", zilchAccountTabsMarkup: () => "",
       zilchAccountStatisticsLoadingMarkup: () => "", zilchAccountAchievementsLoadingMarkup: () => "",
       zilchAccountSettingsMarkup: () => "", bindZilchAccountTabs() {}, bindZilchAccountSettings() {},
+      mountAccountMergeNotice(container, options) {
+        assert.equal(container, noticeContainer);
+        assert.equal(options.userId, 1);
+        assert.equal(options.isCurrent(), true);
+        noticeIsCurrent = options.isCurrent;
+      },
       fetchZilchStatistics: () => projection.promise, fetchZilchAchievements: () => projection.promise,
       fetchZilchAchievementRanks: async () => null,
       renderStatisticsBody() { assert.fail("retired account statistics rendered"); },
@@ -144,6 +156,7 @@ test("Zilch account's actual pending renderer cannot restore either private proj
     assert.equal(state.auth, null);
     assert.equal(state.statistics, null);
     assert.equal(state.achievements, null);
+    assert.equal(noticeIsCurrent(), false);
   }
 });
 
