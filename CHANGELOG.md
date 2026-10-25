@@ -32,13 +32,15 @@ Einstellungen mit Profil & Zugang, Sprache & Spiel, Mitspieler & Hinweise sowie
 Hilfe & Neuigkeiten. Hausdepp und Watten zeigen die gemeinsamen Versionshinweise
 und eine erreichbare Versionshistorie; Watten berücksichtigt dabei die gewählte
 Kontosprache. Die jeweilige Spielgestaltung und bestehende Kontofunktionen bleiben
-erhalten.
+erhalten. Die Einsteigertouren aktualisieren sich nach dem Laden des Kontos mit
+den vorhandenen Spielzugängen.
 
 **English:** All four games organize accounts consistently: Statistics,
 Achievements and Settings, with Profile & sign-in, Language & play, Players &
 notifications, and Help & updates. Hausdepp and Watten show shared release notes
 and accessible version history; Watten respects the account language. Each game
-keeps its visual style and existing account features.
+keeps its visual style and existing account features. Beginner tours update with
+the account's existing game access after sign-in details have loaded.
 
 **Deutsch:** Owner können zwei Spielerkonten nach Vorschau und erneuter
 Authentifizierung zusammenführen. Das Ziel behält Anmeldung und Einstellungen;
@@ -61,12 +63,16 @@ historical assignment changes are serialized with consolidation.
 Zeigen und Einschauen vor der verdeckten Blödeln-Anzeige und behält den Tisch beim
 Retourschneider-Angebot sichtbar. Dekoration lässt sich auf Tablets auch bei
 harmlosen Tischaktualisierungen weiterziehen; neue Hindernisse und echte
-Phasenwechsel brechen das Ziehen weiterhin ab.
+Phasenwechsel brechen das Ziehen weiterhin ab. Auf kleinen Bildschirmen bleiben
+die Retourschneider-Entscheidungen sichtbar; die vollständigen Bedingungen sind
+mit Touch und Tastatur scrollbar.
 
 **English:** Watten reserves the own hand area during trick collection,
 prioritizes showing and inspection over the face-down Blödeln display, and keeps
 the table visible during a Retourschneider offer. Tablet decoration drags survive
 harmless table updates; new obstacles and actual phase changes still cancel them.
+On small screens, Retourschneider decisions stay visible while the full conditions
+remain scrollable by touch and keyboard.
 
 ## 4.6.0 — 2026-10-25
 

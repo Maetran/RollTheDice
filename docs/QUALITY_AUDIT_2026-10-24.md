@@ -838,3 +838,63 @@ history. Actual images were inspected. Claude reported no blockers after
 reviewing the height-budget source and all three test corrections. Opening
 trick history intentionally hides table cards (`watten-polish.css`); empty
 surfaces in those review images are not evidence of a raster defect.
+
+## Konto und Zusammenführung, Kandidat 4.7.0 / Account and consolidation candidate 4.7.0
+
+**Deutsch:** Dieser Abschnitt beschreibt einen lokalen Kandidaten, keinen
+Produktionsrollout. Referenz für den ausgelieferten Vorgänger ist `v4.6.0`
+(`8ec61ebb`). Tatsächliche Claude-Code-Durchgänge prüften getrennt Kerntransaktion
+und Identitätsgrenzen, Erfolgsadapter, Admin-/Spieloberflächen sowie die vier
+Kontostrukturen und Versionshinweise. Codex prüfte die Befunde gegen Quellen,
+gezielte native Abläufe und echte lokale HTTP-Aufrufe; Quellenreviews wurden
+nicht als ausgeführte Tests ausgegeben.
+
+Behobene, reproduzierte Randfälle umfassen ungültige frühere Erfolgsdaten nach
+fehlgeschlagener Lösch-Nachbereinigung, eine konkurrierend gelöschte Gast-Zuordnung
+(409 statt 500), feste Watten-Folgetische nach Reservierungsablauf und eine klare
+Revanche-Ablehnung bei dauerhaft stillgelegten Originalkonten. Der Owner erlaubt
+den Merge nach einer abgeschlossenen Watten-Partie auch bei noch offener
+Turnierserie; diese Serie kann mit dem stillgelegten Konto nicht weiterlaufen.
+Offene Warte- und Spieltische bleiben geschützt. Originalsitze und vorhandene
+Spielbestätigungen bleiben unabhängig vom Merge-Protokoll.
+
+Die ersten vollständigen Kandidaten lieferten ausdrücklich keinen Pushnachweis:
+ein alter Renderer-Test kannte das neue importierte Mitteilungsmodul nicht;
+später deckten alle acht Browser-Pools elf veraltete Navigations-/Details-
+Testpfade auf. Korrekturen erhalten die fachlichen Assertions und verwenden
+sichtbare native Bedienelemente. Neue Visualtests berücksichtigen tatsächliche
+Animationsabschlüsse, leere Hände und Rotation; Anzeige-Fixtures verwenden den
+nativen Tabellencontainer. Ein neuer vollständiger Nachweis auf dem finalen,
+sauberen Commit ist vor jedem Push weiterhin zwingend.
+
+**English:** This section describes a local candidate, not a production rollout.
+The deployed predecessor is `v4.6.0` (`8ec61ebb`). Actual Claude Code passes
+separately reviewed transaction/identity boundaries, award adapters, admin/game
+interfaces, all four account structures and release recaps. Codex challenged
+findings against source, native local flows and real HTTP calls; source review
+was never presented as test execution.
+
+Reproduced fixes include stale early award dates after failed deletion cleanup,
+a concurrently deleted guest assignment (409 instead of 500), fixed Watten
+continuations after reservation expiry, and an explicit rematch refusal when an
+original account has been retired. The owner allows merging after a finished
+Watten match even if its tournament remains unfinished; that series cannot
+continue with the retired account. Live waiting/playing tables remain protected.
+Original seats and existing game acknowledgements remain separate from merge
+receipts.
+
+Initial complete candidates explicitly earned no push receipt: an old renderer
+harness lacked the new imported notice module, then all eight browser pools
+exposed eleven obsolete navigation/nested-details test paths. Repairs preserve
+functional assertions and use visible native controls. New visual tests cover
+actual animation completion, empty hands and rotation in the native table
+container. A fresh complete gate on the final clean commit remains mandatory.
+
+**Grenzen / Limits:** Browser viewport and display-fixture evidence is not a
+physical iPad, installed-PWA or two-device acoustic acceptance. Real process
+races were executed on SQLite WAL, not PostgreSQL. Batched award-backing reads
+preserve every witness and cut the measured six-game SELECT counts from
+569 to 253 (ZDWA) and 708 to 484 (Zilch); full prefix/history replay remains a
+separate scaling concern. Current Zilch definition version 1 is supported;
+future definition changes require a validated backing migration or versioned
+evaluator rather than silently weakening immutable evidence.
