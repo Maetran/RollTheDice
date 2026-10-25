@@ -43,7 +43,7 @@ document.addEventListener("visibilitychange", () => {
 });
 
 function navigation() {
-  if (page !== 'leaderboard') return accountNavigationMarkup({ statistics: '/watten/konto/fortschritt#statistics', achievements: '/watten/konto/fortschritt#achievements', settings: '/watten/konto/einstellungen', current: location.hash === '#achievements' ? 'achievements' : 'statistics' })
+  if (page !== 'leaderboard') return accountNavigationMarkup({ statistics: '/watten/konto/fortschritt#statistics', achievements: '/watten/konto/fortschritt#achievements', settings: '/watten/konto/einstellungen', current: page === 'progress' ? (location.hash === '#achievements' ? 'achievements' : 'statistics') : null })
     + `<nav class="wt-progress-tabs" aria-label="${esc(t("navigation"))}"><a href="/watten/konto/verlauf"${page === 'history' ? ' aria-current="page"' : ''}>${esc(t('history'))}</a><a href="/watten/rangliste">${esc(t('leaderboard'))}</a></nav>`;
   return `<nav class="wt-progress-tabs" aria-label="${esc(t("navigation"))}">${[
     ["progress", "/watten/konto/fortschritt"], ["history", "/watten/konto/verlauf"], ["leaderboard", "/watten/rangliste"],

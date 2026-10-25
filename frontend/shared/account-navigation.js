@@ -6,7 +6,7 @@ const labels = { statistics: 'Statistik', achievements: 'Erfolge', settings: 'Ei
 // These are document links, not ARIA tabs: existing private routes and deep links
 // keep their native navigation, history and authentication lifecycles.
 export function accountNavigationMarkup({ statistics, achievements, settings, current }) {
-  return `<nav class="account-navigation" data-account-navigation aria-label="${text('Kontobereiche')}">${Object.entries({ statistics, achievements, settings }).map(([key, href]) =>
+  return `<nav class="account-navigation" data-account-navigation aria-label="${text('Kontobereiche')}">${Object.entries({ statistics, achievements, settings }).filter(([, href]) => href).map(([key, href]) =>
     `<a href="${escapeHtml(href)}" data-account-destination="${key}"${key === current ? ' aria-current="page"' : ''}>${text(labels[key])}</a>`).join('')}</nav>`;
 }
 

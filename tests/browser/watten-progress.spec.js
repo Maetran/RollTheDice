@@ -118,6 +118,9 @@ for (const language of ['de', 'en']) {
       expect((await (await players[1].context.request.get('/api/watten/account')).json()).progress.pending.credits).toHaveLength(1);
       await own.page.locator('.wt-progress-tabs a[href="/watten/konto/verlauf"]').click();
       await expect(own.page.locator('.wt-match-history > li')).toHaveCount(1);
+      await expect(own.page.locator('#wattenProgress [aria-current="page"]')).toHaveCount(1);
+      await expect(own.page.locator('#wattenProgress [aria-current="page"]')).toHaveAttribute('href', '/watten/konto/verlauf');
+      await expect(own.page.locator('[data-account-navigation] a')).toHaveCount(3);
       await expect(own.page.locator('.wt-match-history')).toContainText(players[1].user.username);
       expect(await own.page.locator('[data-progress-match]').getAttribute('data-progress-match')).toBe(gamePath.split('/').pop());
       await own.page.locator('.wt-progress-tabs a[href="/watten/rangliste"]').click();

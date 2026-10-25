@@ -125,13 +125,15 @@ function renderSettings(auth) {
   clearPushSettings();
   clearVoicePreferences();
   const user = auth.user;
-  const publicPush = (auth.game_access || user.game_access)?.watten_public === true;
-  if ((auth.game_access || user.game_access)?.watten_preview === true || (auth.game_access || user.game_access)?.watten_public === true) initializeAppMode({ mode: 'watten' });
+  const access = auth.game_access || user.game_access;
+  const publicPush = access?.watten_public === true;
+  const canPlay = access?.watten_preview === true || publicPush;
+  if (canPlay) initializeAppMode({ mode: 'watten' });
   viewerId = user.id;
   document.title = `Watten · ${t('Kontoeinstellungen')}`;
   root.innerHTML = `<h1>${copy('Kontoeinstellungen')}</h1><p>${copy('Ein Konto für alle unsere Spiele. Dein bestehender Passkey funktioniert hier ebenfalls.')}</p>
     <p data-account-name translate="no">${esc(user.username)}</p>
-    ${accountNavigationMarkup({ statistics: "/watten/konto/fortschritt#statistics", achievements: "/watten/konto/fortschritt#achievements", settings: "/watten/konto/einstellungen", current: "settings" })}
+    ${accountNavigationMarkup({ statistics: canPlay ? "/watten/konto/fortschritt#statistics" : null, achievements: canPlay ? "/watten/konto/fortschritt#achievements" : null, settings: "/watten/konto/einstellungen", current: "settings" })}
     <div data-account-merge-notice hidden></div>
     <div class="account-settings-panel">
     ${accountSectionMarkup('access', 'Profil & Zugang', 'Passkeys, Profil und Passwort', `    <details data-passkey-section hidden><summary>${copy('Passkeys')}</summary><div data-passkey-settings></div></details>
@@ -150,7 +152,7 @@ function renderSettings(auth) {
     ${accountSectionMarkup('help', 'Hilfe & Neuigkeiten', 'Versionshistorie und Unterstützung', `    <details><summary>${copy('Einsteigertouren')}</summary><div data-game-tour-settings></div></details>
     <details><summary>${copy('Neuigkeiten & Versionen')}</summary><p>${copy('Die letzten zehn Releases kannst du jederzeit im Konto nachlesen.')}</p><div data-release-history></div></details>`, { id: 'hilfe' })}
     </div>
-    <div class="actions"><a class="button-link ghost" href="/watten">${copy('Zurück')}</a><a class="button-link ghost" href="/watten/konto/fortschritt">${copy('Erfolge & Titel')}</a><button data-logout type="button">${copy('Abmelden')}</button></div><p data-account-message role="status"></p>`;
+    <div class="actions"><a class="button-link ghost" href="/watten">${copy('Zurück')}</a>${canPlay ? `<a class="button-link ghost" href="/watten/konto/fortschritt">${copy('Erfolge & Titel')}</a>` : ''}<button data-logout type="button">${copy('Abmelden')}</button></div><p data-account-message role="status"></p>`;
   openAccountSettingTarget(root);
   mountUsernameSettings(root.querySelector('[data-username-settings]'), { user, onChanged: changed => {
     const name = root.querySelector('[data-account-name]');

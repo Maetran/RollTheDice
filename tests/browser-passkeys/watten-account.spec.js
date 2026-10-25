@@ -67,6 +67,10 @@ for (const language of ['de', 'en']) {
       await expect(page.locator('h1')).toHaveText(language === 'de' ? 'Kontoeinstellungen' : 'Account settings');
       await expect(page.locator('[data-passkey-list] li')).toHaveCount(1);
       await expectInertGamePicker(page);
+      await expect(page.locator('#wattenAccount a[href^="/watten/konto/fortschritt"]')).toHaveCount(0);
+      await expect(page.locator('[data-account-navigation] a')).toHaveCount(1);
+      await expect(page.locator('[data-account-navigation] [aria-current="page"]')).toHaveText(language === 'de' ? 'Einstellungen' : 'Settings');
+      await expect(page.locator('[data-account-section]')).toHaveCount(4);
       // Friend settings can still refresh the old document's identity while
       // reload starts. Keep auth unavailable until the new page shows its
       // error, rather than consuming a one-shot failure on that old request.
