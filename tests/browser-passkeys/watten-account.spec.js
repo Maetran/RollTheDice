@@ -7,8 +7,12 @@ const path = require('node:path');
 test.use({ serviceWorkers: 'block' });
 
 async function openSection(page, selector) {
-  const row = page.locator('details').filter({ has: page.locator(selector) });
-  if (!await row.evaluate(node => node.open)) await row.locator('summary').click();
+  const group = page.locator('details[data-account-section]').filter({ has: page.locator(selector) });
+  await expect(group).toHaveCount(1);
+  if (await group.getAttribute('open') === null) await group.locator(':scope > summary').click();
+  const row = group.locator('details:not([data-account-section])').filter({ has: page.locator(selector) });
+  await expect(row).toHaveCount(1);
+  if (await row.getAttribute('open') === null) await row.locator(':scope > summary').click();
 }
 
 async function expectInertGamePicker(page) {
