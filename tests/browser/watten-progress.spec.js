@@ -94,6 +94,17 @@ for (const language of ['de', 'en']) {
           scrollTo(0, node.getBoundingClientRect().top + scrollY - headerHeight - 16);
         });
         await own.page.screenshot({ path: testInfo.outputPath(`collection-${viewport.width}x${viewport.height}.png`) });
+        if (viewport.width === 320) {
+          await ladder.locator('summary').click();
+          await expect(ladder.locator('li')).toHaveCount(22);
+          expect(await own.page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
+          expect(await ladder.locator('li').evaluateAll(nodes => nodes.every(node => {
+            const bounds = node.getBoundingClientRect();
+            return bounds.left >= 0 && bounds.right <= innerWidth;
+          }))).toBe(true);
+          await ladder.screenshot({ path: testInfo.outputPath('titles-expanded-320.png') });
+          await ladder.locator('summary').click();
+        }
       }
       await own.page.locator('[data-progress-action=acknowledge]').click();
       expect(acknowledgements).toEqual([{ generation: account.progress.generation, through_sequence: account.progress.grant_sequence }]);
