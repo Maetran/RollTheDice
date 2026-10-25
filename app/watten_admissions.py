@@ -7,6 +7,22 @@ from .account_progress import lock_account_rows, require_exact_active_account
 from .models import ActiveGame, GameAccountMembership
 
 
+def continuation_accounts(room) -> frozenset[int]:
+    """Original seats still needed by this series' current table.
+
+    Completed matches are history. Once a fixed-roster follow-up is waiting
+    or running, reservation expiry cannot replace its original humans.
+    Explicit closure releases that obligation. The checkpoint's validated
+    abort flag is handled by pending_native_room.
+    """
+    series = room.series
+    if series is None or series.finished or room.status == "closed":
+        return frozenset()
+    if room.status not in {"waiting", "started"} or not series.roster_locked:
+        return frozenset()
+    return frozenset(int(token[2:]) for token in series.bindings if token.startswith("h:"))
+
+
 def _bindings(room, now):
     result = {}
     for member in room.members:
@@ -14,6 +30,8 @@ def _bindings(room, now):
     for reservation in room.reservations:
         if reservation.valid_at(now):
             result.setdefault(reservation.account_id, []).append(("reservation", reservation.seat, reservation.expires_at))
+    for account in sorted(continuation_accounts(room)):
+        result.setdefault(account, []).append(("series", room.series.series_id, room.series.seat_for_account(account)))
     return {key: tuple(values) for key, values in result.items()}
 
 

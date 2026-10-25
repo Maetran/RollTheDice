@@ -94,7 +94,7 @@ def _active_checkpoint_accounts(db, game_id: str, raw: str) -> tuple[set[int], b
             raise ValueError("invalid_checkpoint")
         result = set()
         if state.get("_game_type") == "watten" or "_watten" in state:
-            from .watten_admissions import pending_native_room
+            from .watten_admissions import continuation_accounts, pending_native_room
             from .watten_runtime import restore_watten_json
 
             native = restore_watten_json(raw, refresh_titles=False)
@@ -110,6 +110,7 @@ def _active_checkpoint_accounts(db, game_id: str, raw: str) -> tuple[set[int], b
             room = native["_watten"].room
             result.update(member.account_id for member in room.members)
             result.update(item.account_id for item in room.reservations if item.valid_at(utcnow()))
+            result.update(continuation_accounts(room))
             return result, True
         else:
             for name in ("_players", "_participants"):
@@ -141,7 +142,8 @@ def ensure_no_pending_games(db, origin_ids: tuple[int, ...]) -> None:
             continue
         accounts, native_authority = pending
         # Native room decoding validates current membership and reservation
-        # expiry. Its old ledger can still contain a now-expired suggestion.
+        # expiry and fixed series bindings. Its old ledger can still contain
+        # a now-expired suggestion for a table with no fixed continuation.
         # Legacy JSON remains a conservative fallback beside its ledger.
         if wanted & accounts or (not native_authority and game_id in memberships):
             raise ProgressIdentityError("merge_account_at_table")

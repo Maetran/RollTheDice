@@ -1675,7 +1675,7 @@ export const EN = {
   "Die Anmeldung oder Berechtigung hat sich geändert. Lade den Adminbereich neu.": "Your sign-in or permissions have changed. Reload the admin area.",
   "Die Anfrage konnte nicht abgeschlossen werden. Bitte prüfe die Auswahl und versuche es erneut.": "The request could not be completed. Check your selection and try again.",
   "Eines dieser Konten wurde bereits zusammengeführt. Suche die Konten erneut.": "One of these accounts has already been merged. Search for the accounts again.",
-  "Ein beteiligtes Konto sitzt noch an einem Tisch. Beendet oder verlasst zuerst die Runde.": "One of these accounts is still at a table. Finish or leave the game first.",
+  "Ein beteiligtes Konto ist noch an ein laufendes Spiel oder einen wartenden Folgetisch gebunden. Beendet das Spiel oder schliesst den wartenden Tisch zuerst.": "One of these accounts is still bound to an ongoing game or a waiting follow-up table. Finish the game or close the waiting table first.",
   "Es gibt noch eine offene Revanche oder Einladung. Klärt diese zuerst.": "A rematch or invitation is still pending. Resolve it first.",
   "Ein gespeicherter Tisch konnte nicht sicher geprüft werden. Die Zusammenführung wurde nicht gestartet.": "A saved table could not be verified safely. The merge was not started.",
   "Die Kontodaten haben sich geändert. Erstelle eine neue Vorschau.": "The account data has changed. Create a new preview.",

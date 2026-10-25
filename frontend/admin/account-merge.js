@@ -15,7 +15,7 @@ const errors = {
   merge_account_already_retired: 'Eines dieser Konten wurde bereits zusammengeführt. Suche die Konten erneut.',
   merge_target_inactive: 'Das Zielkonto muss aktiv sein.',
   merge_source_staff_protected: 'Admin- und Owner-Konten können nicht als Quelle verwendet werden.',
-  merge_account_at_table: 'Ein beteiligtes Konto sitzt noch an einem Tisch. Beendet oder verlasst zuerst die Runde.',
+  merge_account_at_table: 'Ein beteiligtes Konto ist noch an ein laufendes Spiel oder einen wartenden Folgetisch gebunden. Beendet das Spiel oder schliesst den wartenden Tisch zuerst.',
   merge_pending_invitation: 'Es gibt noch eine offene Revanche oder Einladung. Klärt diese zuerst.',
   merge_recovery_state_unknown: 'Ein gespeicherter Tisch konnte nicht sicher geprüft werden. Die Zusammenführung wurde nicht gestartet.',
   merge_preview_stale: 'Die Kontodaten haben sich geändert. Erstelle eine neue Vorschau.',
