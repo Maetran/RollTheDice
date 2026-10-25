@@ -80,6 +80,7 @@ class TypedCompletedResultsMigrationTest(unittest.TestCase):
             "mobile_row_quick_entry": 0,
             "haptic_feedback": 0,
             "keep_screen_awake": 0,
+            "voice_listening_default": 0,
             "preferred_language": "de",
             "statistics_views": 0,
             "lobby_chat_popups": 1,

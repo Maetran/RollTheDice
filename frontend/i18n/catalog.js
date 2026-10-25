@@ -1,3 +1,47 @@
+export const ZDWA_AUDIO_MESSAGES = {
+  "de": {
+    "button": "Audio",
+    "title": "Audio am Tisch",
+    "close": "Schliessen",
+    "profile": "Hörvorgabe im Profil ändern",
+    "profileHint": "Zuhören nach deiner Profilvorgabe; Mikro für jede neue Partie selbst einschalten.",
+    "information": "Teilnehmer und Hinweise",
+    "privacy": "Ein Sprachchat für alle angemeldeten Mitspieler am Tisch, ohne Teamkanäle. Keine Aufzeichnung. Neue Aktivierungen und aktive Zuhörminuten werden für das geschützte Nutzungsdashboard bis zu 400 Tage gespeichert und mit dem Konto gelöscht. Minuten messen keine Sprechzeit.",
+    "tableVoice": "Sprachchat am Tisch erlauben",
+    "tableVoiceHelp": "Zuhören und Mikro bleiben freiwillig. Deine Profilvorgabe bestimmt, ob du beim Einstieg zuhörst."
+  },
+  "en": {
+    "button": "Audio",
+    "title": "Audio at the table",
+    "close": "Close",
+    "profile": "Change listening default in your profile",
+    "profileHint": "Listening follows your profile default; enable the microphone for each new game.",
+    "information": "Participants and information",
+    "privacy": "One voice chat for all signed-in players at the table, with no team channels. No recording. New activations and active listening minutes are retained for the protected usage dashboard for up to 400 days and removed with the account. Minutes do not measure speaking time.",
+    "tableVoice": "Allow voice chat at the table",
+    "tableVoiceHelp": "Listening and microphone stay optional. Your profile default decides whether you listen when joining."
+  }
+};
+
+export const VOICE_PREFERENCE_MESSAGES = {
+  de: {
+    title: "Sprachchat zuhören", hint: "Deine Hörvorgabe für ZDWA, Hausdepp und Watten.",
+    help: "Wähle, ob du beim Einstieg in einen Sprachchat zuhören möchtest. Du kannst das am Tisch jederzeit ändern. Das Mikrofon bleibt aus und wird nie als Kontovorgabe gespeichert.",
+    label: "Beim Einstieg zuhören", on: "Ein", off: "Aus", save: "Hörvorgabe speichern",
+    saving: "Wird gespeichert …", saved: "Hörvorgabe gespeichert.",
+    failed: "Die Hörvorgabe konnte nicht gespeichert werden. Bitte versuche es erneut.",
+    changed: "Deine Anmeldung hat sich geändert. Bitte lade die Seite neu.",
+  },
+  en: {
+    title: "Listen to voice chat", hint: "Your listening default for ZDWA, Hausdepp and Watten.",
+    help: "Choose whether to listen when joining voice chat. You can change this at the table at any time. Your microphone stays off and is never saved as an account default.",
+    label: "Listen when joining", on: "On", off: "Off", save: "Save listening default",
+    saving: "Saving …", saved: "Listening default saved.",
+    failed: "Your listening default could not be saved. Please try again.",
+    changed: "Your sign-in has changed. Please reload the page.",
+  },
+};
+
 export const DEPLOYMENT_NOTICE_MESSAGES = {
   de: {
     title: "Gleich kommt ein Update",
@@ -471,12 +515,15 @@ export const HAUSDEPP_MESSAGES = {
     "voiceOff": "Audio aus",
     "voicePrivacy": "Nur angemeldete Mitspieler hören mit. Keine Aufzeichnung.",
     "voiceDeviceHint": "Lautstärke und Audiogeräte regelst du über dein System. PWA empfohlen.",
+    "voiceProfileHint": "Automatisches Zuhören an neuen Tischen aktivierst du im Profil. Deine Wahl am Tisch gilt auch für Revanchen; das Mikrofon aktivierst du für jedes neue Spiel separat.",
+    "voiceEnded": "Voicechat inaktiv.",
+    "voiceTableLeft": "Tisch verlassen – Voicechat inaktiv",
     "voiceMute": "Für mich stummschalten",
     "voiceLocallyMuted": "Für mich stumm",
     "voiceMutePerson": "{name} für mich stummschalten",
     "voiceUnmutePerson": "{name} wieder hören",
     "voiceRulesHeading": "Gemeinsam sprechen",
-    "voiceRulesBody": "Bei aktivierter Sprachfunktion schaltest du mit dem Lautsprecher freiwillig Audio ein und hörst ohne Mikrofonfreigabe zu. Das Mikrofon aktivierst du separat. Audio aus schaltet auch das Mikro aus; Audio wieder ein lässt es stumm. Einzelne Mitspieler schaltest du in der Tischhilfe nur für dich stumm. Anmeldung und ein eigener Platz am Tisch sind erforderlich; Zuschauer und Computer nehmen nicht teil. Turnierrunden, Zwischenstände und Neu erstellen mit derselben Gruppe behalten den Status. Verlassen, Abmelden und Schliessen beenden die Teilnahme. Keine Aufzeichnung, keine Sprechtaste. Nutze Systemlautstärke und System-Audiogeräte. PWA empfohlen; Hintergrundbetrieb und Geräteschaltung hängen von Browser und Gerät ab. Für den Betrieb werden gemeldete Datenmengen als anonyme Tagessummen gespeichert, keine Gesprächsinhalte.",
+    "voiceRulesBody": "Bei aktivierter Sprachfunktion schaltest du mit dem Lautsprecher freiwillig Audio ein und hörst ohne Mikrofonfreigabe zu. Das Mikrofon aktivierst du separat. Audio aus schaltet auch das Mikro aus; Audio wieder ein lässt es stumm. Einzelne Mitspieler schaltest du in der Tischhilfe nur für dich stumm. Anmeldung und ein eigener Platz am Tisch sind erforderlich; Zuschauer und Computer nehmen nicht teil. Zuhören bleibt beim Spielstart und bei Revanchen derselben Tischgruppe erhalten. Das Mikrofon aktivierst du für jedes neue Spiel frisch. Automatisches Zuhören an neuen Tischen aktivierst du im Profil. Verlassen, Abmelden und Schliessen beenden die Teilnahme. Keine Aufzeichnung, keine Sprechtaste. Nutze Systemlautstärke und System-Audiogeräte. PWA empfohlen; Hintergrundbetrieb und Geräteschaltung hängen von Browser und Gerät ab. Für den Betrieb werden gemeldete Datenmengen als anonyme Tagessummen gespeichert. Neue Aktivierungen und aktive Zuhörminuten pro Konto, Partie und Spiel stehen bis zu 400 Tage im geschützten Nutzungsdashboard und werden mit dem Konto gelöscht. Minuten messen keine Sprechzeit. Keine Aufzeichnung, Transkription oder Auswertung von Gesprächsinhalten.",
     "setupHeading": "Eine Runde eröffnen",
     "setupBody": "Öffne deinen Favoriten oder definiere eine Runde: feste Spielerzahl oder offen bis sechs, Schnellspiel oder Turnier und optional ein Passwort. Im Warteraum fügt der Gastgeber CPUs hinzu, entfernt sie und startet selbst. Offene Runden brauchen mindestens zwei Teilnehmer; feste Runden alle gewählten Plätze. Menschen ersetzen bei einem vollen Wartetisch einen CPU. Speichere die Besetzung als Favorit für dein Konto; ein Passwort wird dabei nicht gespeichert. Spieler rufen, Teilen und Kopieren bleiben verfügbar. Vier häufige Reaktionen stehen direkt bereit; der Pfeil öffnet weitere Symbole.",
 
@@ -1044,12 +1091,15 @@ export const HAUSDEPP_MESSAGES = {
     "voiceOff": "Audio off",
     "voicePrivacy": "Only signed-in players can listen. No recording.",
     "voiceDeviceHint": "Use system volume and audio devices. PWA recommended.",
+    "voiceProfileHint": "Enable automatic listening at new tables in your profile. Your table choice carries over to rematches; enable the microphone separately for each new game.",
+    "voiceEnded": "Voice chat inactive.",
+    "voiceTableLeft": "Table left – voice chat inactive",
     "voiceMute": "Mute for me",
     "voiceLocallyMuted": "Muted for me",
     "voiceMutePerson": "Mute {name} for me",
     "voiceUnmutePerson": "Unmute {name}",
     "voiceRulesHeading": "Talk together",
-    "voiceRulesBody": "When voice is enabled, use the speaker to opt into listening without microphone permission. Enable your microphone separately. Audio off also mutes the microphone; audio on again keeps it muted. In table tools, mute individual players only for yourself. Sign-in and your own seat are required; spectators and CPUs cannot join. Tournament rounds, standings and Create again with the same group retain your state. Leaving, signing out or closing ends participation. No recording or push-to-talk. Use system volume and audio devices. PWA recommended; background operation and routing depend on browser and device. For operations, reported data volumes are stored as anonymous daily totals, never conversation content.",
+    "voiceRulesBody": "When voice is enabled, use the speaker to opt into listening without microphone permission. Enable your microphone separately. Audio off also mutes the microphone; audio on again keeps it muted. In table tools, mute individual players only for yourself. Sign-in and your own seat are required; spectators and CPUs cannot join. Listening carries over from the waiting room and across rematches with the same table group. Enable the microphone afresh for each new game. Enable automatic listening at new tables in your profile. Leaving, signing out or closing ends participation. No recording or push-to-talk. Use system volume and audio devices. PWA recommended; background operation and routing depend on browser and device. For operations, reported data volumes are stored as anonymous daily totals. New activations and active listening minutes by account, table and game appear in the protected usage dashboard for up to 400 days and are removed with the account. Minutes do not measure speaking time. Conversations are never recorded, transcribed or analysed.",
     "setupHeading": "Create a game",
     "setupBody": "Open your favourite or define a game: fixed players or open up to six, quick game or tournament, with an optional password. In the waiting room, the host adds/removes CPUs and starts explicitly. Open rooms need at least two participants; fixed rooms need every selected seat filled. People replace a CPU at a full waiting table. Save the setup as an account-wide favourite; the password is never saved with it. Player calls, sharing and copying remain available. Four frequent reactions stay visible; the arrow opens more choices.",
 
@@ -1566,6 +1616,31 @@ export const HAUSDEPP_MESSAGES = {
 };
 
 export const EN = {
+  "Noch keine bestätigte Audio-Aktivität": "No confirmed audio activity yet",
+  "Die Messung beginnt mit autorisiertem aktivem Zuhören. Frühere Nutzung wird nicht nachgetragen.": "Measurement starts with authorized active listening. Earlier use is not backfilled.",
+  "Audiochat aktiviert": "Audio chat activated",
+  "Partien mit Audio": "Games with audio",
+  "Eindeutige Konten": "Distinct accounts",
+  "Minuten mit aktivem Zuhören": "Active listening minutes",
+  "Audio-Aktivität je Spiel im Zeitraum": "Audio activity by game in the selected period",
+  "Aktivierungen": "Activations",
+  "Minuten": "Minutes",
+  "Aktivste Audiochat-Konten nach Zuhörminuten": "Most active audio chat accounts by listening minutes",
+  "Erste aufbewahrte Beobachtung": "First retained observation",
+  "Letzte Beobachtung": "Last observation",
+  "Verworfene Beobachtungen seit Serverstart": "Dropped observations since server start",
+  "Aufbewahrter Gesamtzeitraum (höchstens 400 Tage)": "Retained total period (up to 400 days)",
+  "Sprachchat-Aktivität": "Voice chat activity",
+  "Serverseitig bestätigtes aktives Zuhören": "Server-confirmed active listening",
+  "Server-Beobachtung": "Server observation",
+  "Zuhörzeit ist keine Sprechzeit und kein Nachweis für übertragenen Ton. Gezählt werden bestätigte Audio-Mitgliedschaften; Heartbeats und Wiederverbinden sind keine neuen Aktivierungen.": "Listening time is not speaking time or proof of transmitted audio. Confirmed audio memberships are counted; heartbeats and reconnection are not new activations.",
+  "Nur beobachtete Zeit, mit möglichen Messlücken. Getrennte Verbindungen zählen nicht weiter; fehlende Bestätigungen sind auf 30 Sekunden begrenzt. Kontobezogene Tagessummen bleiben höchstens 400 Tage gespeichert und werden beim Löschen des Kontos entfernt. Keine Audioinhalte.": "Observed time only, with possible measurement gaps. Disconnected connections stop counting; missing confirmations are capped at 30 seconds. Daily account totals are retained for up to 400 days and removed when the account is deleted. No audio content.",
+  "Audio-Datenverbrauch": "Audio data usage",
+  "Diese anonymen Nutzdaten sind keinem Spiel oder Konto zugeordnet und bleiben von der persönlichen Audio-Aktivität getrennt.": "These anonymous payload totals are not attributed to a game or account and remain separate from personal audio activity.",
+  "Audio am Spieltisch": "Audio at the table",
+  "Über Audio neben den drei Punkten öffnest du Zuhören, Mikrofon und die Hintergrundkulisse. Die sieben Raumkulissen wechseln zufällig ohne direkte Wiederholung. Sie spielen nur bei dir und bleiben unabhängig vom Sprachchat. Auch Gäste, Zuschauer und reine CPU-Partien können die Kulisse nutzen.": "Open Audio beside the three-dot menu for listening, microphone and ambience. Seven venue ambiences change randomly without immediate repeats. They play only for you and work independently of voice chat. Guests, spectators and CPU-only games can also use ambience.",
+  "Für Sprachchat brauchst du ein angemeldetes Konto und deinen eigenen Platz am Tisch. Zuhören und Mikrofon schaltest du getrennt ein; Audio aus schaltet auch das Mikro aus. Unter Konto → Einstellungen kannst du Zuhören als gemeinsame Vorgabe für ZDWA, Hausdepp und Watten speichern. Ohne deine Aktivierung bleibt es aus. Der Start derselben Partie aus dem Warteraum behält die Auswahl. Für jede neue Partie aktivierst du das Mikro erneut. Beim Tischverlassen erscheint ein Hinweis zum beendeten Voicechat.": "Voice chat requires a signed-in account and your own seat. Enable listening and microphone separately; audio off also mutes the microphone. Under Account → Settings, save one listening default for ZDWA, Hausdepp and Watten. It stays off until you enable it. Starting the same waiting game keeps your choice. Enable the microphone again for each new game. Leaving the table shows a notice that voice chat has ended.",
+  "Für das geschützte Nutzungsdashboard werden neue Audiochat-Aktivierungen und aktive Zuhörminuten pro Konto, Partie und Spiel bis zu 400 Tage gespeichert und mit dem Konto gelöscht. Die Minuten messen keine Sprechzeit. Es gibt keine Aufzeichnung, Transkription oder Auswertung von Gesprächsinhalten.": "The protected usage dashboard retains new voice activations and active listening minutes by account, table and game for up to 400 days and removes them with the account. Minutes do not measure speaking time. Conversations are never recorded, transcribed or analysed.",
   "Konto und Navigation": "Account and navigation",
   "Weiterführende Aktionen nutzen das Button-Design des jeweiligen Spiels. Die Kategorien der Kontoeinstellungen sind zunächst geschlossen; tippe auf eine Kategorie, um sie zu öffnen. In Hausdepp führt Konto direkt zu den Einstellungen. Spielverlauf und Fortschritt bleiben separat erreichbar.": "Navigation actions use each game's button style. Account settings categories start collapsed; tap a category to open it. In Hausdepp, Account leads directly to settings. Match history and progress remain separately accessible.",
     "Lokale Kontovorschau: Das Watten-Spiel ist noch nicht verfügbar.": "Local account preview: the Watten game is not available yet.",

@@ -613,6 +613,27 @@ class HausdeppVoiceTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(resumed["room_id"], self.game["_hausdepp_voice_room_id"])
         self.assertEqual(len([call for call in self.fake.calls if call[1] == "sessions/new"]), 1)
 
+    async def test_source_cleanup_keeps_follow_up_voice_alive_with_microphone_off(self):
+        token = await self.join()
+        await self.publish(0, token)
+        enabled = await self.command(self.sessions[0], "microphone", member_token=token, enabled=True)
+        self.assertTrue(enabled["ok"])
+        rematch, sessions = self.table("follow-up", [1])
+        voice.carry_voice_room(self.game, rematch, {1, 2, 3})
+        resumed = await self.command(sessions[0], "resume", member_token=token)
+        self.assertTrue(resumed["ok"], resumed)
+        own = next(member for member in resumed["state"]["members"] if member["user_id"] == 1)
+        self.assertTrue(own["audio"])
+        self.assertFalse(own["microphone"])
+        self.game["_aborted"] = True
+        await voice.refresh_voice_game(self.game)
+        await voice.voice_socket_disconnected(self.sessions[0], revoke=True)
+        active = await self.command(sessions[0], "heartbeat", member_token=token)
+        self.assertTrue(active["ok"], active)
+        self.assertEqual(active["session_id"], "s1")
+        self.assertTrue(self.fake.sessions["s1"])
+        self.assertEqual(len([call for call in self.fake.calls if call[1] == "sessions/new"]), 1)
+
     async def test_new_group_resets_audio_and_old_token_cannot_resume(self):
         token = await self.join()
         await self.publish(0, token)

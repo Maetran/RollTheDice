@@ -16,6 +16,7 @@ const normalizedBundle = bytes => Buffer.from(bytes).toString("utf8").replace(as
 const targets = [
   { source: "frontend/styles/suite-header.css", output: "app/static/suite-header.css" },
   { source: "frontend/shared/auth.js", output: "app/static/auth.js", format: "esm" },
+  { source: "frontend/shared/voice-preferences.js", output: "app/static/voice-preferences.js", format: "esm" },
   { source: "frontend/shared/game-tours.js", output: "app/static/game-tours.js", format: "esm" },
   { source: "frontend/email-action.js", output: "app/static/email-action.js", format: "esm" },
   { source: "frontend/watten/account.js", output: "app/static/watten-account.js", format: "esm" },

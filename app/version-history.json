@@ -2518,5 +2518,12 @@
     "date": "2026-10-24",
     "bump": "minor",
     "summary": "Öffentlich beobachtete Hausdepp-Endspiele und gezielte Zilch-CPU-Fortsetzung nach Erfahrung. / Publicly observed Hausdepp endgames and focused Zilch CPU continuation based on experience."
+  },
+  {
+    "version": "4.3.1",
+    "revision": "5962aa635a1068f90703009ec744ef5af6dedb3d",
+    "date": "2026-10-24",
+    "bump": "patch",
+    "summary": "Klarere Watten-Ansagen und Tablet-Tische sowie zuverlässigeres An- und Abmelden. / Clearer Watten calls and tablet tables, with more reliable sign-in and sign-out."
   }
 ]

@@ -22,12 +22,14 @@ from urllib.error import HTTPError, URLError
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 from .auth import resolve_session
-from .game_types import HAUSDEPP_GAME_TYPE, WATTEN_GAME_TYPE, game_type_from_state
+from .game_types import DEFAULT_GAME_TYPE, HAUSDEPP_GAME_TYPE, WATTEN_GAME_TYPE, game_type_from_state
 from .moderation import user_play_banned
 from .security import utcnow
+from .voice_activity import ActivityCounter, observe_activity
 from .voice_usage import UsageCounter, accept_usage, record_usage
 
 logger = logging.getLogger(__name__)
+VOICE_GAME_TYPES = frozenset({DEFAULT_GAME_TYPE, HAUSDEPP_GAME_TYPE, WATTEN_GAME_TYPE})
 HEARTBEAT_SECONDS = 30
 RECONNECT_SECONDS = 12
 MAX_SDP_BYTES = 65536
@@ -156,6 +158,7 @@ class VoiceMember:
     track_name: str | None = None
     publication_ready: bool = False
     usage: UsageCounter = field(default_factory=UsageCounter)
+    activity: ActivityCounter = field(default_factory=ActivityCounter)
     mids: set[str] = field(default_factory=set)
     subscriptions: dict[int, tuple[str, str, str]] = field(default_factory=dict)
     ice_servers: list[dict] = field(default_factory=list)
@@ -183,6 +186,13 @@ class VoiceRoom:
     last_used: float = field(default_factory=time.monotonic)
 
 
+def _observe_member(member: VoiceMember, *, connected: bool = True, ended: bool = False) -> None:
+    # Only server-created membership supplies these fields. The bounded writer
+    # handles persistence separately from voice locks and provider requests.
+    observe_activity(member.activity, user_id=member.user_id, game_type=game_type_from_state(member.game),
+                     game_id=str(member.game["_id"]), connected=connected, ended=ended)
+
+
 def _roster(game: dict) -> set[int]:
     if game_type_from_state(game) == WATTEN_GAME_TYPE:
         runtime = game.get("_watten")
@@ -191,7 +201,10 @@ def _roster(game: dict) -> set[int]:
         return {member.account_id for member in runtime.room.members
                 if member.participant_id not in runtime.absent
                 and (runtime.engine is None or member.seat is not None)}
-    return {p["user_id"] for p in [*game.get("_players", []), *game.get("_participants", [])]
+    players = list(game.get("_players", []))
+    if game_type_from_state(game) == HAUSDEPP_GAME_TYPE:
+        players.extend(game.get("_participants", []))
+    return {p["user_id"] for p in players
             if type(p.get("user_id")) is int and p["user_id"] > 0
             and not p.get("is_cpu") and p.get("type") != "cpu"
             and p.get("id") not in game.get("_hausdepp_departures", {})}
@@ -200,7 +213,7 @@ def _roster(game: dict) -> set[int]:
 def _game_eligible(game: dict) -> bool:
     """Waiting friends may opt in; a played table needs two durable accounts."""
     game_type = game_type_from_state(game)
-    if game_type not in {HAUSDEPP_GAME_TYPE, WATTEN_GAME_TYPE} or game.get("_aborted"):
+    if game_type not in VOICE_GAME_TYPES or game.get("_aborted"):
         return False
     if game_type == WATTEN_GAME_TYPE:
         runtime = game.get("_watten")
@@ -214,12 +227,14 @@ def _game_eligible(game: dict) -> bool:
 
 
 def _voice_key(game: dict, suffix: str) -> str:
-    prefix = "watten" if game_type_from_state(game) == WATTEN_GAME_TYPE else "hausdepp"
+    game_type = game_type_from_state(game)
+    prefix = game_type if game_type in VOICE_GAME_TYPES else "hausdepp"
     return f"_{prefix}_voice_{suffix}"
 
 
 def _envelope(game: dict) -> str:
-    return "watten_voice" if game_type_from_state(game) == WATTEN_GAME_TYPE else "hausdepp_voice"
+    game_type = game_type_from_state(game)
+    return f"{game_type}_voice" if game_type in VOICE_GAME_TYPES else "hausdepp_voice"
 
 
 def _account_allowed(game: dict, websocket, identity) -> bool:
@@ -234,7 +249,8 @@ def _account_allowed(game: dict, websocket, identity) -> bool:
 
 def _authorized_member(game: dict, websocket, identity, player: dict) -> bool:
     if (not _account_allowed(game, websocket, identity) or player.get("user_id") != identity.user_id
-            or player.get("ws") is not websocket):
+            or player.get("ws") is not websocket or type(player.get("user_id")) is not int
+            or player["user_id"] <= 0 or player.get("is_cpu") or player.get("type") == "cpu"):
         return False
     if game_type_from_state(game) != WATTEN_GAME_TYPE:
         return player.get("id") not in game.get("_hausdepp_departures", {})
@@ -248,16 +264,22 @@ def _authorized_member(game: dict, websocket, identity, player: dict) -> bool:
 
 def carry_voice_room(source: dict, target: dict, user_ids: set[int]) -> None:
     """A server-created rematch may retain only its original account roster."""
-    room_id = source.get("_hausdepp_voice_room_id")
+    game_type = game_type_from_state(source)
+    if game_type not in VOICE_GAME_TYPES or game_type != game_type_from_state(target):
+        return
+    room_id = source.get(_voice_key(source, "room_id"))
     if isinstance(room_id, str) and _ID.fullmatch(room_id):
-        target["_hausdepp_voice_room_id"] = room_id
-        target["_hausdepp_voice_allowed_user_ids"] = sorted(user_ids)
+        allowed = source.get(_voice_key(source, "allowed_user_ids"))
+        if isinstance(allowed, list):
+            user_ids = user_ids.intersection(value for value in allowed if type(value) is int and value > 0)
+        target[_voice_key(target, "room_id")] = room_id
+        target[_voice_key(target, "allowed_user_ids")] = sorted(user_ids)
 
 
 def _actor(session, *, require_eligible: bool = True):
     identity = resolve_session(session.websocket)
     player = next((p for p in session.game.get("_players", []) if p.get("id") == session.player_id), None)
-    if (game_type_from_state(session.game) not in {HAUSDEPP_GAME_TYPE, WATTEN_GAME_TYPE} or session.is_spectator
+    if (game_type_from_state(session.game) not in VOICE_GAME_TYPES or session.is_spectator
             or not player or not _authorized_member(session.game, session.websocket, identity, player)
             or session.game.get("_aborted")):
         raise VoiceError("hausdepp_voice_forbidden")
@@ -474,6 +496,7 @@ async def _cleanup_member(member: VoiceMember | VoiceCleanup) -> bool:
 async def _remove_member(room: VoiceRoom, member: VoiceMember) -> None:
     if room.members.get(member.user_id) is not member:
         return
+    _observe_member(member, connected=False, ended=True)
     room.members.pop(member.user_id, None)
     member.microphone = member.speaking = False
     member.publication_ready = False
@@ -558,13 +581,14 @@ async def voice_socket_disconnected(session, *, revoke: bool = False) -> None:
                             await _remove_member(room, member)
                         changed = True
                     else:
+                        _observe_member(member, connected=False)
                         member.disconnected_at = time.monotonic()
         if changed:
             await _broadcast(room)
 
 
 async def refresh_voice_game(game: dict) -> None:
-    if game_type_from_state(game) not in {HAUSDEPP_GAME_TYPE, WATTEN_GAME_TYPE} or not game.get(_voice_key(game, "room_id")):
+    if game_type_from_state(game) not in VOICE_GAME_TYPES or not game.get(_voice_key(game, "room_id")):
         return
     room = await _room_for(game)
     async with room.lock:
@@ -626,6 +650,8 @@ async def handle_voice_action(session, data: dict) -> None:
                     if not member or not isinstance(token, str) or not hmac.compare_digest(member.token, token):
                         raise VoiceError("hausdepp_voice_membership_required")
                     if operation == "resume":
+                        if member.game.get("_id") != session.game.get("_id"):
+                            member.microphone = member.speaking = False
                         member.game, member.player_id, member.websocket = session.game, player["id"], session.websocket
                         member.disconnected_at = None
                     elif member.websocket is not session.websocket:
@@ -640,6 +666,8 @@ async def handle_voice_action(session, data: dict) -> None:
             # Broadcasting can yield to logout or takeover too. Revalidate
             # immediately before releasing any correlated provider response.
             _actor(session, require_eligible=operation != "state")
+            if operation not in {"state", "leave"}:
+                _observe_member(member)
     except (VoiceError, TypeError, OverflowError) as exc:
         if (isinstance(exc, VoiceError) and str(exc) in {
                 "hausdepp_voice_provider_failed", "hausdepp_voice_forbidden", "hausdepp_voice_unavailable",

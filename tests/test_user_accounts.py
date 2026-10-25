@@ -561,6 +561,7 @@ class AccountDatabaseTestCase(GameStateTestCase):
                 "daily_reminder_push_enabled": False,
                 "preferred_language": "en",
                 "hausdepp_auto_refill": False,
+                "voice_listening_default": False,
             },
         )
         account = auth_me(request_for(cookie=f"rollthedice_session={raw_token}"), Response())

@@ -206,10 +206,15 @@ def test_migration_preserves_legacy_accounts_sessions_and_history(tmp_path):
             (user_id, "a" * 64, "b" * 64, "2026-10-16", "2026-10-16", "2027-10-16"),
         )
         tables = ("users", "sessions", "completed_games")
+        # Compare every historical field by name; later additive preferences
+        # extend users without changing the data this migration must preserve.
+        columns = {table: ",".join(row[1] for row in connection.execute(f"PRAGMA table_info({table})"))
+                   for table in tables}
         before = {table: connection.execute(f"SELECT * FROM {table}").fetchall() for table in tables}
     command.upgrade(config, "head")
     with closing(sqlite3.connect(path)) as connection, connection:
-        assert {table: connection.execute(f"SELECT * FROM {table}").fetchall() for table in tables} == before
+        assert {table: connection.execute(f"SELECT {columns[table]} FROM {table}").fetchall() for table in tables} == before
+        assert connection.execute("SELECT voice_listening_default FROM users").fetchall() == [(0,)]
         assert connection.execute("SELECT * FROM game_tour_preferences").fetchall() == []
         connection.execute("PRAGMA foreign_keys=ON")
         connection.execute("INSERT INTO game_tour_preferences (user_id) VALUES (?)", (user_id,))

@@ -53,6 +53,10 @@
   // UI-State für die Ansage-Auswahl per Button oder Hotkey.
   let announcePickMode = false;
   let authState = { authenticated: false, user: null };
+  const roomAudio = createRoomAudio({ gameId: qs.game_id, spectator: IS_SPECTATOR, send: value => {
+    if (ws?.readyState !== WebSocket.OPEN) return false;
+    ws.send(JSON.stringify(value)); return true;
+  } });
   const beginnerTour = createGameTour("zdwa");
   function syncBeginnerTour(snapshot = sb) {
     const eligible = !!snapshot?._started && !IS_SPECTATOR && !!myId && !snapshot._finished && !snapshot._aborted;

@@ -25,7 +25,7 @@ from .game_state import (
     games,
     multiplayer_pause_reason,
 )
-from .game_types import HAUSDEPP_GAME_TYPE, ZILCH_GAME_TYPE, game_type_from_state
+from .game_types import DEFAULT_GAME_TYPE, HAUSDEPP_GAME_TYPE, ZILCH_GAME_TYPE, game_type_from_state
 from .game_ws_admin import SUPERADMIN_ACTIONS, handle_superadmin_action, release_revoked_superadmin_locks
 from .game_ws_gameplay import GAMEPLAY_ACTIONS
 from .game_ws_session import (
@@ -47,7 +47,7 @@ logger = logging.getLogger(__name__)
 # Kept as the complete public action vocabulary for compatibility with tests
 # and diagnostics. Runtime validation below deliberately narrows it per game.
 KNOWN_ACTIONS = SESSION_ACTIONS | GAMEPLAY_ACTIONS | ZILCH_GAMEPLAY_ACTIONS | HAUSDEPP_GAMEPLAY_ACTIONS | HAUSDEPP_TABLE_ACTIONS | SUPERADMIN_ACTIONS | SOCIAL_ACTIONS
-KNOWN_ACTIONS = KNOWN_ACTIONS | {"hausdepp_voice"} | HAUSDEPP_PROP_ACTIONS
+KNOWN_ACTIONS = KNOWN_ACTIONS | {"hausdepp_voice", "zdwa_voice"} | HAUSDEPP_PROP_ACTIONS
 
 ReserveConnection = Callable[[WebSocket], str | None]
 ReleaseConnection = Callable[[str | None], None]
@@ -297,7 +297,8 @@ async def _receive_messages(
         # the lobby and therefore produces no scored Zilch result.
         allowed_social_actions = SOCIAL_ACTIONS
         allowed_table_actions = (HAUSDEPP_TABLE_ACTIONS | HAUSDEPP_PROP_ACTIONS) if game_type_from_state(session.game) == HAUSDEPP_GAME_TYPE else frozenset()
-        allowed_voice_actions = {"hausdepp_voice"} if game_type_from_state(session.game) == HAUSDEPP_GAME_TYPE else set()
+        voice_action = {HAUSDEPP_GAME_TYPE: "hausdepp_voice", DEFAULT_GAME_TYPE: "zdwa_voice"}.get(game_type_from_state(session.game))
+        allowed_voice_actions = {voice_action} if voice_action else set()
         allowed_actions = SESSION_ACTIONS | allowed_gameplay_actions | allowed_superadmin_actions | allowed_social_actions | allowed_table_actions | allowed_voice_actions
         if action not in allowed_actions:
             await session.websocket.send_json({"error": f"Unbekannte Aktion: {action_value}",

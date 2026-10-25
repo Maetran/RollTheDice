@@ -1,4 +1,5 @@
 import { dom, storageKeys } from "./context.js";
+import { ZDWA_AUDIO_MESSAGES } from "../i18n/catalog.js";
 
 function syncChoices() {
   const selectedMode = dom.modeSelect.value || "1";
@@ -48,6 +49,13 @@ function wireChoices(buttons, activate) {
 }
 
 export function initializeGameSetup() {
+  const language = window.ZDWA_I18N?.getLanguage?.() === "en" ? "en" : "de";
+  const text = ZDWA_AUDIO_MESSAGES[language];
+  const choice = document.createElement("label"); choice.className = "room-voice-choice";
+  const input = document.createElement("input"); input.type = "checkbox"; input.id = "zdwaVoiceEnabled"; input.checked = true;
+  const label = document.createElement("span"); label.textContent = text.tableVoice;
+  const hint = document.createElement("small"); hint.textContent = text.tableVoiceHelp; label.append(hint);
+  choice.append(input, label); dom.createButton.before(choice);
   wireChoices(dom.modeButtons, (button) => {
     dom.modeSelect.value = button.dataset.gameMode;
     dom.modeSelect.dispatchEvent(new Event("change", { bubbles: true }));

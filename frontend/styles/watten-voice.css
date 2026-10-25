@@ -1,4 +1,5 @@
 .wt-voice { position: relative; display: flex; align-items: center; justify-content: end; gap: .35rem; color: var(--wt-ink); }
+.wt-voice-exit-notice { position: fixed; z-index: 2300; top: max(12px, env(safe-area-inset-top, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); width: min(384px, calc(100vw - 24px)); box-sizing: border-box; margin: 0; padding: .9rem; border: 1px solid var(--wt-paper-edge); border-radius: 12px; background: var(--wt-paper); color: var(--wt-ink); box-shadow: 0 7px 24px #25180c40; font-size: .9rem; overflow-wrap: anywhere; pointer-events: none; }
 .wt-voice[hidden], .wt-voice [hidden] { display: none; }
 .wt-voice-buttons { display: flex; align-items: center; gap: .25rem; }
 .wt-voice button { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; padding: .55rem; border: 1px solid var(--wt-paper-edge); border-radius: 50%; color: var(--wt-ink); background: var(--wt-paper-2); touch-action: manipulation; }

@@ -203,6 +203,9 @@ def snapshot_zdwa(g: GameDict) -> dict:
             "_game_type": "zdwa",
             "_name": g["_name"],
             "_hardcore": bool(g.get("_hardcore", False)),
+            "_voice_enabled": g.get("_voice_enabled", True) is True,
+            # Public lineage is a game ID, never an SFU room/member identifier.
+            "_voice_group_id": g.get("_voice_group_id", g.get("_id")),
             "_players": [
                 public_player_payload(p, connected=_player_connected(p))
                 for p in public_players

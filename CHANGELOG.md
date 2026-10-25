@@ -23,6 +23,56 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 4.4.0 — 2026-10-25
+
+### ZDWA / AUDIO-NUTZUNG / VOICE ACTIVITY
+
+**Deutsch:** ZDWA erhält Sprachchat und dieselben sieben zufällig wechselnden
+Raumkulissen wie Hausdepp und Watten. Ein eigener Audio-Knopf neben den drei
+Punkten öffnet die gemeinsame, mobil nutzbare Steuerung für Zuhören, Mikrofon
+und Ambiente. Die gemeinsame Zuhörvorgabe ist auch in den ZDWA-Einstellungen
+verfügbar. Der Sprachchat prüft eigene angemeldete Sitze, Geräteübernahme,
+Abbruch und bestätigte Folgepartien serverseitig; Gäste, Zuschauer und CPUs
+bleiben ausgeschlossen. Das geschützte Dashboard zeigt neue Audiochat-
+Aktivierungen, Partien, Konten und aktive Zuhörminuten gesamthaft und pro Spiel
+sowie die aktivsten Audio-Konten. Die Messung beginnt mit dieser Version,
+zeichnet keine Inhalte auf und ergänzt die unveränderten anonymen Datenmengen.
+
+**English:** ZDWA adds voice chat and the same seven randomly changing venue
+ambiences as Hausdepp and Watten. A dedicated audio button beside the three-dot
+menu opens mobile controls for listening, microphone and ambience. The shared
+listening default is also available in ZDWA settings. The server checks owned
+signed-in seats, device takeover, abort and confirmed follow-up games; guests,
+spectators and CPUs stay excluded. The protected dashboard shows new voice
+activations, games, accounts and active listening minutes overall and by game,
+plus the most active voice accounts. Measurement starts with this version,
+records no content and complements unchanged anonymous payload totals.
+
+### HAUSDEPP / WATTEN
+
+**Deutsch:** Eine gemeinsame Profilvorgabe bestimmt, ob du an neuen Tischen
+automatisch zuhörst. Sie ist für bestehende und neue Konten zunächst aus und
+speichert keine Mikrofonfreigabe. Deine aktuelle Zuhörwahl bleibt beim Start
+aus dem Warteraum und über Revanchen derselben Tischgruppe erhalten, auch wenn
+du Audio am Tisch bewusst ausgeschaltet hast. Jede neue Partie benötigt ein
+erneutes Einschalten des Mikrofons; der Start derselben Partie behält die
+gewählte Freigabe. Ein Hinweis oben meldet das Beenden des Voicechats beim
+Tischverlassen. Die Audiohilfe verweist auf die speicherbare Kontovorgabe.
+Watten erhält den autorisierten Sprachraum bei Revanchen; bestehende
+Berechtigungen werden nicht erweitert. Hausdepp-Einladungen liefern die
+zugehörige Ausgangspartie für eine sichere Übernahme der Tischwahl mit.
+
+**English:** A shared profile default controls whether you automatically listen
+at new tables. It starts off for existing and new accounts and never stores
+microphone permission. Your current listening choice carries from the waiting
+room into play and across rematches with the same group, including an explicit
+choice to switch table audio off. Each new game requires enabling the microphone
+again; starting that same game keeps the existing choice. A notice at the top
+confirms that leaving the table has ended voice chat. Audio help points to the
+saved account default. Watten retains its authorized voice room across
+rematches without broadening permissions. Hausdepp invitations include their
+source game so the listening choice can be carried only to a related table.
+
 ## 4.3.1 — 2026-10-24
 
 ### ZDWA / ZILCH / HAUSDEPP / WATTEN

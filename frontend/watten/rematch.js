@@ -21,7 +21,7 @@ export function reservationMarkup(reservation, { language, escapeHtml: esc, canD
 
 /** Explicit new-room intent; no automatic join, seat, team confirmation or start. */
 export function createRematch({ gameId, fetcher, loadAuth, escapeHtml: esc,
-  getExpectedAccountId, isCurrent, onAccountChanged, navigate, makeCommandId,
+  getExpectedAccountId, isCurrent, onAccountChanged, navigate, makeCommandId, onNavigate = () => {},
   language = () => globalThis.window?.ZDWA_I18N?.getLanguage?.() === "en" ? "en" : "de" }) {
   const accountId = getExpectedAccountId();
   let container = null, snapshot = null, active = false, destroyed = false, serial = 0, controller = null;
@@ -95,6 +95,7 @@ export function createRematch({ gameId, fetcher, loadAuth, escapeHtml: esc,
         throw new Error("invalid rematch response");
       }
       envelope = null;
+      onNavigate(result.game_id);
       navigate(`/watten/spiel/${result.game_id}`);
     } catch (failure) {
       if (!current(token) || failure.name === "AbortError") return;
@@ -109,7 +110,10 @@ export function createRematch({ gameId, fetcher, loadAuth, escapeHtml: esc,
     const token = ++serial, destination = target();
     busy = true; error = ""; render();
     try {
-      if (await verify(token) && target() === destination) navigate(`/watten/spiel/${destination}`);
+      if (await verify(token) && target() === destination) {
+        onNavigate(destination);
+        navigate(`/watten/spiel/${destination}`);
+      }
     } catch { if (current(token)) error = "unavailable"; }
     finally { if (current(token)) { busy = false; render(); } }
   }

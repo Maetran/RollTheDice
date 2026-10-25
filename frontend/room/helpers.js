@@ -23,6 +23,9 @@ import { zdwaPath, zdwaRoutePath } from "../multigame/routes.js";
 import { initializeGameViewport } from "../shared/game-viewport.js";
 import { replaceChildrenPreservingAvatars } from "../shared/avatar.js";
 import { createGameTour } from "../shared/game-tours.js";
+import { createRoomAudio } from "./audio.js";
+import { loadAuth } from "../shared/auth.js";
+import { createAudioGame } from "./audio-contract.js";
 
 initializeGameViewport();
 

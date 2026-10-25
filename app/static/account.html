@@ -6,15 +6,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Verwalte dein ZDWA Konto, deine persönlichen Spieleinstellungen und Statistiken.">
   <meta name="robots" content="noindex, follow">
-  <link rel="manifest" href="/manifest.webmanifest?v=d94e3f4d4e4c">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=d94e3f4d4e4c" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=d94e3f4d4e4c" sizes="180x180">
+  <link rel="manifest" href="/manifest.webmanifest?v=c1cfd5fb2395">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=c1cfd5fb2395" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=c1cfd5fb2395" sizes="180x180">
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"||t==="classic"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d==="dark"?"dark":"light";const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=d==="dark"?"#0b1120":d==="classic"?"#31583a":"#f4f6f8"}catch(_){}</script>
-  <link rel="stylesheet" href="/static/style.css?v=d94e3f4d4e4c">
-  <link rel="stylesheet" href="/static/zdwa-design-2026.css?v=d94e3f4d4e4c">
+  <link rel="stylesheet" href="/static/style.css?v=c1cfd5fb2395">
+  <link rel="stylesheet" href="/static/zdwa-design-2026.css?v=c1cfd5fb2395">
   <script>{const r=document.documentElement,g=k=>{try{return localStorage.getItem(k)}catch(_){return null}},q=new URLSearchParams(location.search).get("design");if(q!=="classic"&&g("zdwa_design")!=="old"&&g("zdwa_design_off")!=="1"&&(q==="2026"||g("zdwa_design_override")!=="old"))r.dataset.design="2026"}</script>
-  <script src="/static/shell.js?v=d94e3f4d4e4c" defer></script>
-  <link rel="stylesheet" href="/static/suite-header.css?v=d94e3f4d4e4c">
+  <script src="/static/shell.js?v=c1cfd5fb2395" defer></script>
+  <link rel="stylesheet" href="/static/suite-header.css?v=c1cfd5fb2395">
 </head>
 <body class="lobby-page">
   <main class="wrap profile-shell">
@@ -137,6 +137,10 @@
         </form>
         <p id="designPreferencesMessage" class="muted small" role="status"></p>
       </section>
+<section class="account-settings-block" aria-labelledby="voicePreferencesTitle">
+        <h3 id="voicePreferencesTitle"></h3>
+        <div data-voice-settings></div>
+      </section>
 <section class="account-settings-block">
         <h3>ZDWA-Spieleinstellungen</h3>
         <p class="muted small">Die Spieleinstellungen gelten nur für ZDWA auf allen Geräten.</p>
@@ -233,13 +237,14 @@
     </section>
   </main>
   <script type="module">
-    import { apiFetch, authError, escapeHtml, formatNumber, loadAuth, mountAccountVerification, revealAccountSetting, mountEmailSettings, mountPasskeySettings, mountPasskeyPrompt, mountUsernameSettings, playerNameMarkup, playerRankBadge } from '/static/auth.js?v=d94e3f4d4e4c';
-    import { bindPushPreferences, devicePushStatusMessage, disableGameInvitePush, enableGameInvitePush, getGameInvitePushStatus, syncPushPreferences, webPushErrorMessage } from '/static/web-push.js?v=d94e3f4d4e4c';
-    import { initializeReleaseNotes } from '/static/release-notes.js?v=d94e3f4d4e4c';
-    import { mountAllowlistSettings } from '/static/player-allowlist.js?v=d94e3f4d4e4c';
-    import { mountAvatarUpload } from '/static/avatar-upload.js?v=d94e3f4d4e4c';
-    import { mountFriendActivitySettings } from '/static/friend-activity.js?v=d94e3f4d4e4c';
-    import { mountTourSettings } from '/static/game-tours.js?v=d94e3f4d4e4c';
+    import { apiFetch, authError, escapeHtml, formatNumber, loadAuth, mountAccountVerification, revealAccountSetting, mountEmailSettings, mountPasskeySettings, mountPasskeyPrompt, mountUsernameSettings, playerNameMarkup, playerRankBadge } from '/static/auth.js?v=c1cfd5fb2395';
+    import { bindPushPreferences, devicePushStatusMessage, disableGameInvitePush, enableGameInvitePush, getGameInvitePushStatus, syncPushPreferences, webPushErrorMessage } from '/static/web-push.js?v=c1cfd5fb2395';
+    import { initializeReleaseNotes } from '/static/release-notes.js?v=c1cfd5fb2395';
+    import { mountAllowlistSettings } from '/static/player-allowlist.js?v=c1cfd5fb2395';
+    import { mountAvatarUpload } from '/static/avatar-upload.js?v=c1cfd5fb2395';
+    import { mountFriendActivitySettings } from '/static/friend-activity.js?v=c1cfd5fb2395';
+    import { mountTourSettings } from '/static/game-tours.js?v=c1cfd5fb2395';
+    import { mountVoicePreferences, voicePreferenceText } from '/static/voice-preferences.js?v=c1cfd5fb2395';
     let viewerId = null;
     let retired = false;
     const clearPrivatePage = () => {
@@ -292,6 +297,8 @@
     mountAllowlistSettings(document.querySelector('[data-allowlist-settings]'), { context: 'zdwa' });
     mountAvatarUpload(document.querySelector('[data-avatar-upload]'));
     mountFriendActivitySettings(document.querySelector('[data-friend-activity-settings]'));
+    document.getElementById('voicePreferencesTitle').textContent = voicePreferenceText('title');
+    mountVoicePreferences(document.querySelector('[data-voice-settings]'), { user, isCurrent: () => !retired });
     void mountTourSettings(document.querySelector('[data-game-tour-settings]'));
     document.getElementById('accountName').innerHTML = playerNameMarkup(user, { name: user.username, avatarSize: 'large', adminProfile: true });
     document.getElementById('publicProfileLink').href = `/spieler/${encodeURIComponent(user.username)}`;

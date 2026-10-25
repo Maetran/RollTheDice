@@ -1,0 +1,40 @@
+/* Share the header's responsive edge: 44px on touch, 36px on desktop.
+   A fixed 44px control steals height from the desktop score sheets. */
+.room-page .room-header > #roomAudioButton { display: inline-grid; place-items: center; flex: 0 0 var(--header-control-size); box-sizing: border-box; width: var(--header-control-size); min-width: var(--header-control-size); height: var(--header-control-size); min-height: var(--header-control-size); padding: 0; font-size: .73rem; }
+@media (max-width: 560px) {
+  /* Audio adds one header control. Four 44px tiles + three 6px gaps +
+     8px scroller padding fit the remaining 202px on a 360px phone.
+     These tiles have no avatars: remove their old reserved inset so four
+     score digits stay visible. At 320px the existing scroll/fade remains. */
+  :root[data-game="zdwa"][data-design="2026"] .room-page .room-header:has(> #roomAudioButton) .room-player-tiles:has(> .room-player-tile:nth-child(4)) > .room-player-tile { min-width: var(--header-control-size); padding-inline: .125rem; }
+  :root[data-game="zdwa"][data-design="2026"] .room-page .room-header:has(> #roomAudioButton) .room-player-tiles:has(> .room-player-tile:nth-child(4)) .room-player-tile-body { margin-right: 0; }
+  :root[data-game="zdwa"][data-design="2026"] .room-page .room-header:has(> #roomAudioButton) .room-player-tiles:has(> .room-player-tile:nth-child(4)) :is(.room-player-tile-name, .room-player-tile-score) { padding-left: 0; }
+  /* Four tabular digits also need to fit the 38px inner width of a 44px tile. */
+  :root[data-game="zdwa"][data-design="2026"] .room-page .room-header:has(> #roomAudioButton) .room-player-tiles:has(> .room-player-tile:nth-child(4)) .room-player-tile-total { font-size: .875rem; }
+}
+.room-page:has(#roomAudioButton) > .connection-status { top: calc(var(--room-header-bottom, 2.85rem) + .4rem); right: var(--room-header-end, .5rem); left: auto; transform: none; pointer-events: none; }
+/* The menu belongs to the header's 1000 layer; the status is normally 2100. */
+body.room-page:has(#roomHeaderMenuPanel:not([hidden])) > #connectionStatus { z-index: 900; }
+.room-audio-panel { position: fixed; inset: 0; box-sizing: border-box; width: min(440px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); margin: auto; padding: 16px; overflow-y: auto; overscroll-behavior: contain; border: 1px solid var(--border); border-radius: var(--radius, 12px); background: var(--surface); color: var(--text); box-shadow: 0 16px 50px #0004; }
+.room-audio-panel::backdrop { background: #0007; }
+.room-audio-panel .room-audio-head { display: flex; align-items: center; gap: 12px; }
+.room-audio-panel h2 { flex: 1; margin: 0; font-size: 1.2rem; }
+.room-audio-panel h3 { margin: 0 0 10px; font-size: 1rem; }
+.room-audio-panel section { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+.room-audio-panel [role="status"] { margin: 8px 0 0; font-size: .85rem; line-height: 1.3; }
+.room-audio-information { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 8px; }
+.room-audio-information summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; font-size: .85rem; }
+.room-audio-information summary::after { content: "⌄"; margin-inline-start: auto; padding-inline-start: 8px; }
+.room-audio-information[open] > summary::after { transform: rotate(180deg); }
+.room-audio-panel section[hidden] { display: none; }
+.room-audio-panel button { min-height: 44px; min-width: 44px; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+.room-audio-panel button[aria-pressed="true"] { border-color: var(--primary); background: var(--surface-2, var(--surface)); box-shadow: inset 0 0 0 2px var(--primary); }
+.room-audio-buttons { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.room-audio-roster { display: grid; gap: 8px; list-style: none; padding: 0; }
+.room-audio-roster li { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
+.room-audio-roster li > span { min-width: 0; overflow-wrap: anywhere; }
+.room-audio-roster small { display: block; color: var(--muted); }
+.room-audio-roster button { flex: 0 0 auto; font-size: .8rem; }
+.lobby-page .room-voice-choice { grid-column: 1 / -1; display: flex; align-items: flex-start; gap: .5rem; font-size: .85rem; }
+.room-voice-choice input { flex: 0 0 auto; margin-top: .2rem; }
+.room-voice-choice small { display: block; }

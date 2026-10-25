@@ -247,6 +247,7 @@ export function createHausdeppVoice({
   };
   const updateState = state => {
     if (!state || state.event !== "state") return;
+    const rotated = Boolean(roomId && state.room_id && roomId !== state.room_id && audio && state.available === true);
     if (roomId && state.room_id && roomId !== state.room_id && audio) {
       audio = false;
       leave(closeSession());
@@ -270,7 +271,10 @@ export function createHausdeppVoice({
       if (element) { element.muted = true; element.pause(); element.srcObject = null; element.remove?.(); }
       media.delete(mid); receiving.delete(mid);
     }
-    emit();
+    // An authorized waiting-room roster change rotates the SFU room. Preserve
+    // listening, but retire capture and join the replacement receive-only.
+    if (rotated) void setAudio(true);
+    else emit();
   };
   const reconcile = async () => {
     const attempt = epoch, connection = pc, token = memberToken;

@@ -2,25 +2,28 @@
   "kind": "usability",
   "games": [
     "zdwa",
-    "zilch",
     "hausdepp",
     "watten"
   ],
-  "summary_de": "Watten bleibt auf Handy und Tablet besser lesbar. Kontowechsel und Abmelden reagieren zuverlässiger.",
-  "summary_en": "Watten stays clearer on phones and tablets. Account switching and sign-out respond more reliably.",
+  "summary_de": "ZDWA erhält Audiochat und Ambiente. Zuhören im Profil speichern und bei Revanchen beibehalten.",
+  "summary_en": "ZDWA now has voice chat and ambience. Save listening in your profile and keep it across rematches.",
   "player_notes": {
     "de": {
-      "title": "4.3.1: Klarer spielen und Konten wechseln",
+      "title": "4.4.0: Gemeinsam spielen und zuhören",
       "changes": [
-        "WATTEN ordnet Ansagen, Spielernamen und Karten auf Handy und Tablet übersichtlicher an.",
-        "Kontowechsel entfernt alte private Ansichten. Fehlgeschlagenes Abmelden lässt sich direkt wiederholen."
+        "ZDWA: Der Audio-Knopf neben den drei Punkten bündelt Sprachchat und wechselnde Hintergrundkulissen.",
+        "Für ZDWA, Hausdepp und Watten kannst du im Profil festlegen, ob neue Tische mit Zuhören starten. Ohne Aktivierung bleibt es aus.",
+        "Deine Zuhörwahl bleibt vom Warteraum ins Spiel und über Revanchen derselben Gruppe erhalten. Für jede neue Partie schaltest du das Mikro erneut ein.",
+        "Beim Tischverlassen zeigt ein Hinweis, dass dein Voicechat beendet ist."
       ]
     },
     "en": {
-      "title": "4.3.1: Clearer tables and account changes",
+      "title": "4.4.0: Play and listen together",
       "changes": [
-        "WATTEN arranges calls, player names and cards more clearly on phones and tablets.",
-        "Account switching clears old private views. Failed sign-out can be retried directly."
+        "ZDWA: The audio button beside the three-dot menu combines voice chat and changing background ambience.",
+        "Choose in your profile whether new ZDWA, Hausdepp and Watten tables start with listening enabled. It stays off until you opt in.",
+        "Your listening choice carries from the waiting room into play and across rematches with the same group. Enable the microphone again for each new game.",
+        "Leaving the table shows a notice that your voice chat has ended."
       ]
     }
   }

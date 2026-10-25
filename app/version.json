@@ -1,10 +1,10 @@
 {
-  "version": "4.3.1",
-  "bump": "patch",
-  "date": "2026-10-24",
-  "previous_revision": "fd1e005cac9121cd4bd3ee60520fb5b6ea059550",
+  "version": "4.4.0",
+  "bump": "minor",
+  "date": "2026-10-25",
+  "previous_revision": "5962aa635a1068f90703009ec744ef5af6dedb3d",
   "summary": {
-    "de": "Klarere Watten-Ansagen und Tablet-Tische sowie zuverlässigeres An- und Abmelden.",
-    "en": "Clearer Watten calls and tablet tables, with more reliable sign-in and sign-out."
+    "de": "Audiochat und Ambiente für ZDWA, gemeinsame Zuhörvorgabe und präzisere Audio-Nutzungsstatistik.",
+    "en": "ZDWA voice and ambience, a shared listening default and clearer voice activity statistics."
   }
 }

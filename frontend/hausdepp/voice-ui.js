@@ -128,7 +128,7 @@ export function mountHausdeppVoiceUI({ controller, t, userId, getPlayers, sound 
         const mic = audio && Boolean(player.voice?.microphone);
         const status = t(mic ? "voiceTalking" : audio ? "voiceListening" : "voiceOff");
         return `<li data-voice-user="${player.user_id}" class="${player.voice?.speaking ? "is-speaking" : ""}"><span class="hd-voice-person"><strong>${esc(player.name)}</strong><small>${esc(status)}</small></span><span class="hd-voice-person-icons" aria-label="${esc(status)}">${symbol("speaker", audio)}${symbol("microphone", mic)}</span>${player.user_id !== userId ? `<button type="button" data-voice-mute="${player.user_id}" aria-pressed="${player.muted}" aria-label="${esc(t(player.muted ? "voiceUnmutePerson" : "voiceMutePerson", { name: player.name }))}" title="${esc(t(player.muted ? "voiceUnmutePerson" : "voiceMutePerson", { name: player.name }))}">${symbol("speaker", !player.muted)}<span class="hd-sr">${esc(t(player.muted ? "voiceLocallyMuted" : "voiceMute"))}</span></button>` : ""}</li>`;
-      }).join("")}</ul><p>${esc(t("voiceDeviceHint"))}</p>`;
+      }).join("")}</ul><p>${esc(t("voiceProfileHint"))}</p><p>${esc(t("voiceDeviceHint"))}</p>`;
       if (focused) panel.querySelector(`[data-voice-mute="${focused}"]`)?.focus();
     }
     for (const seat of document.querySelectorAll("[data-player-id]")) {

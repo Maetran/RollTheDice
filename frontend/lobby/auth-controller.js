@@ -1,6 +1,8 @@
 import { loadAuth, login, loginWithPasskey, logout, mountPasskeyPrompt, passkeysSupported, playerNameMarkup, register, registerWithPasskey } from "../shared/auth.js";
 import { zdwaPath } from "../multigame/routes.js";
 import { dom, storageKeys } from "./context.js";
+import { showVoiceTableLeft } from "../shared/voice-table-lifecycle.js";
+import { HAUSDEPP_MESSAGES } from "../i18n/catalog.js";
 
 const turnstileState = {
   enabled: false,
@@ -146,6 +148,8 @@ async function refreshAuthUi(refresh = false) {
   try {
     const auth = await loadAuth({ refresh });
     const user = auth?.user;
+    if (user) showVoiceTableLeft({ userId: user.id, gameType: "zdwa",
+      t: key => HAUSDEPP_MESSAGES[window.ZDWA_I18N?.getLanguage?.() === "en" ? "en" : "de"][key] });
     const passkeyAvailable = auth?.passkeys?.enabled && passkeysSupported();
     dom.passkeyLogin.hidden = Boolean(user) || !passkeyAvailable;
     dom.passkeyUnavailable.hidden = Boolean(user) || passkeyAvailable;
