@@ -502,6 +502,19 @@ test("an unpainted inspection slot does not become a phantom drag blocker", () =
   assert.equal(node.captured, null);
 });
 
+test("a reveal mounted after the decoration controller still protects its asynchronously placed cards", () => {
+  const f = fixture(); f.update("play");
+  const node = f.props()[0], area = node.getBoundingClientRect(), reveal = new Node(f.dom, area);
+  const originalQuery = f.root.querySelectorAll;
+  f.root.querySelectorAll = selector => selector === "[data-wt-reveal], [data-wt-bloedeln]" ? [reveal] : originalQuery(selector);
+  f.update("play");
+  assert.ok(f.observers[1].observations.some(item => item.target === reveal));
+  node.emit("pointerdown", { button: 0, pointerId: 6, clientX: area.left, clientY: area.top });
+  f.protectedAreas.push(reveal);
+  f.attributeChanged(reveal, "style");
+  assert.equal(node.captured, null, "freshly positioned showing still wins over the captured prop");
+});
+
 test("destroy/account switch/pagehide end captures and remove every item, effect and listener", () => {
   for (const finish of [f => f.client.destroy(), f => { f.changeAccount(); f.update("play"); }, f => f.win.emit("pagehide")]) {
     const f = fixture(); f.update("play");

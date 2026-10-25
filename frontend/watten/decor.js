@@ -65,6 +65,7 @@ export function createDecor({ container, root, getExpectedAccountId, isCurrent, 
   language = () => window.ZDWA_I18N?.getLanguage?.() === "en" ? "en" : "de",
   dom = document, win = window, consumables = { mount: mountConsumable, drink: updateDrink, eat: eatPiece } }) {
   const accountId = getExpectedAccountId(), lifecycle = new AbortController(), items = new Map();
+  const observedReveals = new WeakSet();
   const reduced = win.matchMedia("(prefers-reduced-motion: reduce)");
   let destroyed = false, phase = "preview", selected = null, serial = 0, drag = null, ignoreClick = null;
   let geometry = { regions: [], protectedRects: [] }, notice = "", hidden = false, autoPlaced = false, propSide = SIDE;
@@ -135,6 +136,13 @@ export function createDecor({ container, root, getExpectedAccountId, isCurrent, 
       if (ACTIVE_PHASES.has(phase) && visible(table) && visible(felt)) regions.push(region(felt, "table"));
     }
     geometry = { regions, protectedRects };
+    for (const reveal of root.querySelectorAll("[data-wt-reveal], [data-wt-bloedeln]")) {
+      if (observedReveals.has(reveal)) continue;
+      // The real table mounts after this controller. Observe new reveal slots
+      // when they first exist, including their later actor-axis placement.
+      mutation?.observe(reveal, { attributes: true, subtree: true, attributeFilter: ["style", "data-wt-inspection-positioned"] });
+      observedReveals.add(reveal);
+    }
   }
   function layout() {
     if (!current()) { destroy(); return; }
@@ -347,11 +355,6 @@ export function createDecor({ container, root, getExpectedAccountId, isCurrent, 
   const mutation = win.MutationObserver ? new win.MutationObserver(repainted) : null;
   const view = root.querySelector("[data-watten-view]");
   if (view) mutation?.observe(view, { childList: true, subtree: true, attributes: true, attributeFilter: ["open", "hidden"] });
-  for (const reveal of root.querySelectorAll("[data-wt-reveal], [data-wt-bloedeln]")) {
-    // Their actor-axis placement settles on the next frame, after the snapshot
-    // markup. Props must yield to those newly measured public cards as well.
-    mutation?.observe(reveal, { attributes: true, subtree: true, attributeFilter: ["style", "data-wt-inspection-positioned"] });
-  }
   for (const selector of ["[data-watten-social]", "[data-watten-leave-dialog]"]) {
     const node = root.querySelector(selector);
     if (node) mutation?.observe(node, { attributes: true, subtree: true, attributeFilter: ["hidden", "open"] });
