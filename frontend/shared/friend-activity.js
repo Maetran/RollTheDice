@@ -134,10 +134,11 @@ export function initializeFriendActivity() {
 }
 
 export function mountFriendActivitySettings(mount) {
-  if (!mount || mount.dataset.friendActivityBound) return;
+  if (!mount?.isConnected || mount.dataset.friendActivityBound) return;
   mount.dataset.friendActivityBound = "true";
   let current = null;
   let busy = false;
+  let epoch = 0, retired = false;
   const form = document.createElement("form");
   form.className = "friend-activity-settings";
   const label = document.createElement("label");
@@ -157,31 +158,49 @@ export function mountFriendActivitySettings(mount) {
   message.setAttribute("role", "status");
   form.append(label, hint, button, message);
   mount.replaceChildren(form);
+  const connected = () => {
+    if (!mount.isConnected && !retired) {
+      retired = true; epoch += 1; current = null;
+      delete mount.dataset.friendActivityBound;
+      window.removeEventListener("zdwa:auth-state", onAuth);
+      form.removeEventListener("submit", onSubmit);
+    }
+    return !retired;
+  };
   const controls = () => { checkbox.disabled = busy || !current; button.disabled = busy || !current; };
   async function refresh() {
+    if (!connected()) return;
+    const token = ++epoch;
     busy = true; current = null; controls(); message.textContent = t("Startmeldungen werden geladen …");
     try {
-      current = await request();
+      const result = await request();
+      if (!connected() || token !== epoch) return;
+      current = result;
       checkbox.checked = current.enabled === true;
       message.textContent = "";
-    } catch (error) { message.textContent = errorText(error); }
-    finally { busy = false; controls(); }
+    } catch (error) { if (connected() && token === epoch) message.textContent = errorText(error); }
+    finally { if (connected() && token === epoch) { busy = false; controls(); } }
   }
-  form.addEventListener("submit", async event => {
+  async function onSubmit(event) {
     event.preventDefault();
-    if (!current || busy) return;
+    if (!connected() || !current || busy) return;
+    const token = epoch, viewerId = current.viewer_id;
     busy = true; controls(); message.textContent = t("Startmeldungen werden gespeichert …");
     try {
-      const result = await request({ method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ viewer_id: current.viewer_id, enabled: checkbox.checked }) });
-      if (result.viewer_id !== current.viewer_id) throw new Error("friend_activity_viewer_changed");
+      const result = await request({ method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ viewer_id: viewerId, enabled: checkbox.checked }) });
+      if (!connected() || token !== epoch) return;
+      if (result.viewer_id !== viewerId) throw new Error("friend_activity_viewer_changed");
       current = result;
       window.dispatchEvent(new CustomEvent("zdwa:friend-activity-preference", { detail: { enabled: result.enabled } }));
       message.textContent = t("Startmeldungen gespeichert.");
-    } catch (error) { message.textContent = errorText(error); }
-    finally { busy = false; controls(); }
-  });
-  window.addEventListener("zdwa:auth-state", event => {
+    } catch (error) { if (connected() && token === epoch) message.textContent = errorText(error); }
+    finally { if (connected() && token === epoch) { busy = false; controls(); } }
+  }
+  form.addEventListener("submit", onSubmit);
+  function onAuth(event) {
+    if (!connected()) return;
     if (!event.detail?.authenticated || event.detail.user?.id !== current?.viewer_id) void refresh();
-  });
+  }
+  window.addEventListener("zdwa:auth-state", onAuth);
   void refresh();
 }
