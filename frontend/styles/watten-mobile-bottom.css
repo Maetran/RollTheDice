@@ -72,7 +72,7 @@ html[data-game="watten"][data-watten-active="true"] .wt-bloedeln-dock :is(.wt-pr
   html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"]:not([data-phase="match_complete"][data-round-stage="ready"]) .wt-end-sheet > .wt-panel > .wt-announce:has(> [data-watten-action="show_ready"]) {
     bottom: var(--wt-own-hand-clearance);
   }
-  html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"][data-phase="inspection"] .wt-preplay-options {
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"]:is([data-phase="show_ready"], [data-phase="inspection"]) .wt-preplay-options {
     left: auto; right: 12px; bottom: calc(var(--wt-own-hand-clearance) + 56px);
     width: var(--wt-own-action-width);
   }
@@ -123,11 +123,11 @@ html[data-game="watten"][data-watten-active="true"] .wt-bloedeln-dock :is(.wt-pr
   html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"][data-wt-caller-axis^="bottom-"]:is([data-phase="show_ready"], [data-phase="inspection"]):has(.wt-preplay-options) > .wt-bloedeln-dock {
     bottom: calc(var(--wt-own-hand-clearance) + 120px);
   }
-  html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"][data-wt-caller-axis^="bottom-"][data-phase="inspection"] .wt-preplay-options {
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"][data-wt-caller-axis^="bottom-"]:is([data-phase="show_ready"], [data-phase="inspection"]) .wt-preplay-options {
     left: var(--wt-caller-control-left); right: var(--wt-caller-control-right);
     width: var(--wt-caller-target-width); bottom: calc(var(--wt-own-hand-clearance) + 56px);
   }
-  html[data-game="watten"][data-watten-active="true"] .wt-table[data-wt-caller-axis^="bottom-"][data-phase="inspection"] .wt-preplay-choices {
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-wt-caller-axis^="bottom-"]:is([data-phase="show_ready"], [data-phase="inspection"]) .wt-preplay-choices {
     position: fixed; bottom: calc(var(--wt-own-hand-clearance) + 108px);
     left: var(--wt-caller-control-left); right: var(--wt-caller-control-right);
     width: var(--wt-caller-column-width); overflow-wrap: anywhere;
@@ -338,7 +338,7 @@ html[data-game="watten"][data-watten-active="true"] .wt-bloedeln-dock :is(.wt-pr
      pending request or the optional menu instead uses the opposite upper
      gap, between the top fan and own packet. Accepted status keeps its dock. */
   html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] .wt-table[data-wt-caller-axis="bottom-left"] > .wt-bloedeln-dock:has(> .wt-bloedeln-status[data-watten-preplay-pending="bloedeln"]),
-  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] .wt-table[data-wt-caller-axis="bottom-left"][data-phase="inspection"] .wt-preplay-options {
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] .wt-table[data-wt-caller-axis="bottom-left"]:is([data-phase="show_ready"], [data-phase="inspection"]) .wt-preplay-options {
     position: fixed; left: calc(var(--wt-rail-width) + (100vw - var(--wt-rail-width) - env(safe-area-inset-right, 0px)) / 2);
     right: auto; top: 104px; bottom: auto; width: 156px; max-height: none; overflow: visible;
   }

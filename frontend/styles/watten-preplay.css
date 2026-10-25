@@ -80,31 +80,32 @@ html[data-game="watten"][data-watten-active="true"] .wt-table .wt-announce > [da
   }
 }
 
-/* Optional redraw/swap controls use the other side of the inspection action
-   row. Their expanded menu grows away from the fixed continuation target. */
-html[data-game="watten"][data-watten-active="true"] .wt-table[data-phase="inspection"] .wt-panel:has(> .wt-preplay-options) { display: contents; }
-html[data-game="watten"][data-watten-active="true"] .wt-table[data-phase="inspection"] .wt-preplay-options {
+/* Optional redraw/swap controls keep the same detached row before showing
+   and during inspection. Otherwise their in-flow summary sits underneath
+   the fixed Show action. Expanded menus grow away from that primary target. */
+html[data-game="watten"][data-watten-active="true"] .wt-table:is([data-phase="show_ready"], [data-phase="inspection"]) .wt-panel:has(> .wt-preplay-options) { display: contents; }
+html[data-game="watten"][data-watten-active="true"] .wt-table:is([data-phase="show_ready"], [data-phase="inspection"]) .wt-preplay-options {
   position: fixed; z-index: 27; left: max(12px, env(safe-area-inset-left, 0px));
   right: calc(max(12px, env(safe-area-inset-right, 0px)) + 132px);
   bottom: calc(var(--wt-hand-w) * 1.8 + max(20px, env(safe-area-inset-bottom, 0px)));
   margin: 0; padding: 0; border: 0; overflow: visible;
 }
-html[data-game="watten"][data-watten-active="true"] .wt-table[data-phase="inspection"] .wt-preplay-options > summary {
+html[data-game="watten"][data-watten-active="true"] .wt-table:is([data-phase="show_ready"], [data-phase="inspection"]) .wt-preplay-options > summary {
   min-height: 44px; padding: 5px 8px; border: 1px solid #ba9167; border-radius: 8px; background: #fff2dc;
 }
-html[data-game="watten"][data-watten-active="true"] .wt-table[data-phase="inspection"] .wt-preplay-choices {
+html[data-game="watten"][data-watten-active="true"] .wt-table:is([data-phase="show_ready"], [data-phase="inspection"]) .wt-preplay-choices {
   position: absolute; left: 0; right: 0; bottom: calc(100% + 8px);
   max-height: min(320px, calc(100dvh - var(--wt-table-header-height) - var(--wt-hand-w) * 1.8 - max(20px, env(safe-area-inset-bottom, 0px)) - 76px));
   overflow: auto; overscroll-behavior: contain; padding: 8px;
   border: 1px solid #ba9167; border-radius: 8px; background: #fff2dc; box-shadow: 0 4px 16px #532d1c33;
 }
 @media (orientation: landscape) and (max-height: 700px) {
-  html[data-game="watten"][data-watten-active="true"] .wt-table[data-phase="inspection"] .wt-preplay-options {
+  html[data-game="watten"][data-watten-active="true"] .wt-table:is([data-phase="show_ready"], [data-phase="inspection"]) .wt-preplay-options {
     left: calc(6px + var(--wt-rail-inset)); right: auto; width: 144px;
     bottom: calc(62px + env(safe-area-inset-bottom, 0px));
   }
-  html[data-game="watten"][data-watten-active="true"] .wt-table[data-phase="inspection"] .wt-preplay-options > summary { font-size: .75rem; }
-  html[data-game="watten"][data-watten-active="true"] .wt-table[data-phase="inspection"] .wt-preplay-choices {
+  html[data-game="watten"][data-watten-active="true"] .wt-table:is([data-phase="show_ready"], [data-phase="inspection"]) .wt-preplay-options > summary { font-size: .75rem; }
+  html[data-game="watten"][data-watten-active="true"] .wt-table:is([data-phase="show_ready"], [data-phase="inspection"]) .wt-preplay-choices {
     position: fixed; left: calc(var(--wt-rail-width) + 8px); right: auto;
     bottom: calc(86px + env(safe-area-inset-bottom, 0px));
     width: min(260px, calc(100vw - var(--wt-rail-width) - env(safe-area-inset-right, 0px) - 24px));
