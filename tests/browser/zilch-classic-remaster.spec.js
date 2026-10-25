@@ -87,6 +87,8 @@ for (const language of ['de', 'en']) {
       });
       expect(focus.outline).toBeGreaterThan(0);
       expect(focus.style).not.toBe('none');
+      await expect(page.locator('.zilch-brand')).toHaveAccessibleName('Zilch');
+      await expect(page.locator('.zilch-lobby-grid')).toHaveAttribute('role', 'group');
       await expectNoOverflow(page);
       await page.screenshot({ path: testInfo.outputPath(`classic-lobby-${language}-${width}.png`), fullPage: true });
     });

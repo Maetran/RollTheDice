@@ -1255,7 +1255,7 @@ async function renderLobby({ authReady = null } = {}) {
     </section>
     <section id="zilchGamesHub" class="zilch-card zilch-games-hub" aria-labelledby="zilchGamesHubTitle">
       <div class="zilch-section-heading"><h2 id="zilchGamesHubTitle">${escapeHtml(t("Spiele"))}</h2><button id="zilchRefresh" class="small ghost" type="button">${escapeHtml(t("Aktualisieren"))}</button></div>
-      <div class="zilch-lobby-grid" aria-label="${escapeHtml(t("Zilch-Lobby"))}">
+      <div class="zilch-lobby-grid" role="group" aria-label="${escapeHtml(t("Zilch-Lobby"))}">
         <section class="zilch-lobby-section zilch-lobby-section--running" aria-labelledby="zilchRunningTitle">
           <h3 id="zilchRunningTitle">${escapeHtml(t("Laufende Spiele"))}</h3>
           <div id="zilchRunningGames" class="zilch-game-list" aria-live="polite">${escapeHtml(t("Zilch-Partien werden geladen …"))}</div>
