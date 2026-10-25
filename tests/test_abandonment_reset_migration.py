@@ -190,7 +190,12 @@ class AbandonmentResetMigrationTest(unittest.TestCase):
             ).fetchall(), [(TIMESTAMP, TIMESTAMP)])
 
     def test_later_upgrades_keep_new_abandonments_and_downgrade_never_restores_old_counts(self) -> None:
+        tables = ("abandoned_games", "abandoned_game_participants", "user_achievements", "active_games")
         with self._connection() as connection:
+            # Compare every column present at the downgrade destination. Later
+            # revisions may add columns which their own downgrade removes.
+            original_columns = {table: ", ".join(row[1] for row in connection.execute(f"PRAGMA table_info({table})"))
+                                for table in tables}
             self._insert_abandonment(connection, "zdwa", "pre-reset")
         self._upgrade()
         with self._connection() as connection:
@@ -201,8 +206,8 @@ class AbandonmentResetMigrationTest(unittest.TestCase):
                 (self.user_id, FAIRPLAY_KEYS[0], TIMESTAMP),
             )
             self._insert_active(connection, "new-terminal", '{"_aborted":true}')
-            tables = ("abandoned_games", "abandoned_game_participants", "user_achievements", "active_games")
-            before = {table: connection.execute(f"SELECT * FROM {table} ORDER BY id").fetchall() for table in tables}
+            before = {table: connection.execute(f"SELECT {original_columns[table]} FROM {table} ORDER BY id").fetchall()
+                      for table in tables}
 
         self._upgrade()
 
@@ -210,11 +215,11 @@ class AbandonmentResetMigrationTest(unittest.TestCase):
             self.assertEqual(connection.execute("SELECT version_num FROM alembic_version").fetchone(),
                              (ScriptDirectory.from_config(self._config()).get_current_head(),))
             for table, original in before.items():
-                self.assertEqual(connection.execute(f"SELECT * FROM {table} ORDER BY id").fetchall(), original)
+                self.assertEqual(connection.execute(f"SELECT {original_columns[table]} FROM {table} ORDER BY id").fetchall(), original)
         command.downgrade(self._config(), PRE_RESET_REVISION)
         with self._connection() as connection:
             for table, original in before.items():
-                self.assertEqual(connection.execute(f"SELECT * FROM {table} ORDER BY id").fetchall(), original)
+                self.assertEqual(connection.execute(f"SELECT {original_columns[table]} FROM {table} ORDER BY id").fetchall(), original)
 
 
 if __name__ == "__main__":

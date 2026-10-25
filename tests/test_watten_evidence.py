@@ -326,10 +326,13 @@ def test_actual_completed_writer_row_and_deleted_human_keep_the_original_result_
         candidate, *_ = apply_runtime_action(game, accounts[player], player, command)
         game.update(candidate)
     assert game["_watten"].engine.phase == "match_complete"
+    # A live admitted account cannot be physically deleted. Commit the native
+    # terminal result first, which releases its pending-table memberships.
+    persist_watten_game(game)
+    original = deepcopy(game["_watten_result"])
     with session_scope() as db:
         db.delete(db.get(User, owners[1][0].user_id))
     persist_watten_game(game)
-    original = deepcopy(game["_watten_result"])
     with session_scope() as db:
         row = db.scalar(select(CompletedGame).where(CompletedGame.game_id == game_id))
         evidence = adapt_result_v1(json.loads(row.snapshot_json), finished_at=row.finished_at.replace(tzinfo=timezone.utc))
