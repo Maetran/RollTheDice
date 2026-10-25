@@ -189,7 +189,7 @@ test("cold empty-hand collection and rotation respect the physical hand band des
     removeProperty(key) { this.values.delete(key); } });
   let handTop = 260;
   const card = { dataset: { key: "bells-7" }, style: style() };
-  const frame = { hidden: false, getBoundingClientRect: () => rect(120, handTop, 280, 100) };
+  const frame = { hidden: true, getBoundingClientRect: () => rect(120, handTop, 280, 100) };
   const topHand = { getBoundingClientRect: () => rect(220, 35, 60, 55) };
   const table = { dataset: { phase: "deal_complete", roundStage: "collect", viewer: "player" },
     querySelector: () => null,

@@ -659,7 +659,9 @@ export function createTableView(container, { onCard, accountId = null }) {
     const playable = vm.actions.includes("play_card") && !vm.busy && !hand.some(item => item.card === forced);
     // A blind packet still occupies the owner's hand, also during inspection:
     // the own shown face leaves beyond its outermost card. No face is inferred.
-    elements.handArea.hidden = !hand.length;
+    const collecting = ["deal_complete", "match_complete"].includes(vm.engine.phase)
+      && vm.roundPresentation?.stage === "collect";
+    elements.handArea.hidden = !hand.length && !collecting;
     const keys = hand.map((item, index) => isCard(item.card) ? item.card : `back-${index}`);
     let changed = false;
     const created = [];

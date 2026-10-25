@@ -15,7 +15,7 @@ async function collectionGeometry(page) {
       .filter(rect => rect.width > 0 && rect.height > 0);
     return { count: cards.length, bottom: Math.max(...cards.map(card => card.bottom)),
       reserveTop: Math.min(...slots.map(rect => rect.top)), handHeight: area.height,
-      hidden: getComputedStyle(frame).visibility === 'hidden' };
+      hidden: getComputedStyle(frame).visibility === 'hidden', removed: frame.hidden };
   });
 }
 
@@ -122,13 +122,13 @@ for (const language of ['de', 'en']) test(`${language}: queued table geometry ke
           await expect(page.locator('[data-layout-followup] .wt-trick-card').first()).toBeVisible();
           const geometry = await collectionGeometry(page);
           expect(geometry.count).toBe(4);
-          expect(geometry.hidden).toBe(true); expect(geometry.handHeight).toBeGreaterThan(0);
+          expect(geometry.hidden).toBe(true); expect(geometry.removed).toBe(false); expect(geometry.handHeight).toBeGreaterThan(0);
           expect(geometry.bottom).toBeLessThanOrEqual(geometry.reserveTop + 1);
           const rotated = { width: viewport.height, height: viewport.width };
           await page.setViewportSize(rotated);
           await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
           const afterRotation = await collectionGeometry(page);
-          expect(afterRotation.hidden).toBe(true); expect(afterRotation.handHeight).toBeGreaterThan(0);
+          expect(afterRotation.hidden).toBe(true); expect(afterRotation.removed).toBe(false); expect(afterRotation.handHeight).toBeGreaterThan(0);
           expect(afterRotation.bottom).toBeLessThanOrEqual(afterRotation.reserveTop + 1);
           await page.screenshot({ path: info.outputPath(`${scene}-rotated-${rotated.width}x${rotated.height}.png`) });
           await page.setViewportSize(viewport);

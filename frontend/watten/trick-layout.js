@@ -293,7 +293,7 @@ export function createTrickLayout(trick, { win = window } = {}) {
     const collecting = ["deal_complete", "match_complete"].includes(table.dataset?.phase)
       && table.dataset.roundStage === "collect" && table.dataset.viewer === "player";
     const collectionFrames = collecting ? [...table.querySelectorAll("[data-wt-hand-area], [data-wt-hand] > *")]
-      .filter(node => !node.hidden).map(node => node.getBoundingClientRect()).filter(usable) : [];
+      .map(node => node.getBoundingClientRect()).filter(usable) : [];
     const collectionHandTop = collectionFrames.length ? Math.min(...collectionFrames.map(rect => rect.top)) : Infinity;
     if (win.innerWidth >= win.innerHeight && win.innerHeight <= 700) {
       portrait = null;
