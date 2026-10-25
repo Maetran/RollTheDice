@@ -36,11 +36,15 @@ for (const width of [320, 768]) {
   });
 }
 
-test('public suite links survive real lobby hydration and stay outside the game root', async ({ page }) => {
+test('public suite links survive real lobby hydration and stay outside the game root', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 320, height: 720 });
   for (const path of ['/', '/hausdepp']) {
     await page.goto(path);
     const footer = page.locator('[data-public-suite-links]');
     await expect(footer).toBeVisible();
+    await footer.scrollIntoViewIfNeeded();
+    expect(await footer.evaluate(element => element.getBoundingClientRect().right <= innerWidth + 1)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath(path === '/' ? 'suite-links-zdwa-320.png' : 'suite-links-hausdepp-320.png') });
     await expect(footer.getByRole('link', { name: 'ZDWA', exact: true })).toHaveAttribute('href', 'https://zockdiewandan.online/');
     await expect(footer.getByRole('link', { name: 'Hausdepp', exact: true })).toHaveAttribute('href', 'https://hausdepp.zockdiewandan.online/hausdepp');
     if (path === '/hausdepp') {
