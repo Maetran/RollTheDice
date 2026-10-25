@@ -407,3 +407,21 @@ or round XP, including after signing in again. The Zonk unlocks once per account
 awards no XP and never changes the rank. Leaving after finishing your hand
 normally retains normal round credit and does not unlock a departure Zonk.
 Disconnects do not count.
+
+
+## 4.6.0: Zwei seltene Kartenkonstellationen / Two rare card constellations
+
+Der Katalog enthält **138 Erfolge mit 5’705 Erfolgs-EP**; die 24 absoluten
+Rangschwellen und alle bisherigen IDs, Werte und Freischaltdaten bleiben erhalten.
+Die beiden Ziele benötigen passende erfasste Kartenereignisse einer regulär
+abgeschlossenen Runde. Ältere fehlende Aktionen werden nicht rekonstruiert.
+
+The catalogue contains **138 achievements worth 5,705 achievement XP**. All
+24 absolute rank thresholds and previous IDs, values and unlock dates stay
+intact. Both goals require suitable recorded card events from a normally
+completed round; missing older actions are not reconstructed.
+
+| ID | Bedingung / Condition | EP / XP |
+| --- | --- | ---: |
+| 137 | Eigene Abräumserie mit Zehn und Viererpaket, in beliebiger Reihenfolge, ohne fremden Karten- oder Aufnahmezug dazwischen. / Own clear chain with a ten and a quartet, in either order, without another player playing or picking up in between. | 50 |
+| 138 | Bei leerem Nachziehstapel mit einer einzigen letzten Handkarte ein Viererpaket mit bekanntem fremdem Beitrag vervollständigen und dadurch fertig werden. / With the stock empty, finish with a single last hand card completing a quartet with a known contribution from another player. | 50 |

@@ -1,16 +1,51 @@
 # RollTheDice
 
-Three games. One account. A table for your next game night. / Drei Spiele, ein Konto, dein nächster Spieleabend.
+Four games. One account. A table for your next game night. / Vier Spiele, ein Konto, dein nächster Spieleabend.
 
 - [Play ZDWA — Zock die Wand an](https://zockdiewandan.online/)
 - [Play Zilch — Zilch die Wand an](https://zilch.zockdiewandan.online/)
 - [Play Hausdepp](https://hausdepp.zockdiewandan.online/hausdepp)
+- [Play Watten — public beta](https://watten.zockdiewandan.online/watten)
 
 RollTheDice is a self-hostable, real-time game platform with German and English
 interfaces. Play in your browser or install a game as a Progressive Web App.
-Guests can play ZDWA and Zilch. Hausdepp has a public lobby and rules; playing
+Guests can play ZDWA and Zilch. Hausdepp and Watten have public lobbies and rules; playing
 requires an active account. One account provides history, statistics, achievements
 and community features across the suite.
+
+## Neue Herausforderungen / new challenges — 4.6.0
+
+**Deutsch:** Jedes Spiel erhält zwei seltene Konstellationen. ZDWA belohnt alle
+vier vollständig geschriebenen unteren Bereiche sowie vier gleiche obere
+Summen mit jeweiligem Bonus, jeweils innerhalb derselben Partie. Zilch belohnt
+einen Sieg gegen einen Menschen mit mindestens fünf Sicherungen, alle ab 500
+Punkten, sowie zweimal Hot Dice innerhalb eines anschliessend gesicherten Zuges.
+Hausdepp ergänzt eine eigene Abräumserie mit Zehn und Viererpaket sowie das
+Fertigwerden mit einer einzigen letzten Handkarte, die ein fremd vorbereitetes
+Viererpaket vervollständigt. Watten ergänzt einen Sieg bis elf nach mindestens
+sieben Punkten Rückstand sowie einen Sieg mit mindestens drei gewonnenen,
+ausnahmslos erhöhten Runden und einer eigenen Gebotsentscheidung.
+
+Die Watten-Sammlung zeigt erreichte und offene Ziele, Kategorien, tatsächlich
+gewährte EP und alle 22 Titelstufen. Filtern bestätigt keine ungelesenen
+Belohnungen. Bestehende Erfolgs-IDs, Belohnungen, Freischaltdaten und absolute
+Rangschwellen bleiben erhalten. Unvollständige historische Nachweise werden
+nicht durch vermutete Kartenaktionen ergänzt.
+
+**English:** Each game gains two rare constellations. ZDWA rewards four fully
+written lower sections and four equal upper totals with their bonuses, each
+within one game. Zilch rewards a human-duel win with at least five banks, all
+worth at least 500 points, and two Hot Dice events within one successfully
+banked turn. Hausdepp adds an own clear chain containing a ten and a quartet,
+and finishing with one last hand card that completes a quartet another player
+helped build. Watten adds a win to eleven after trailing by at least seven,
+and a win with at least three won deals, every one above the base stake, plus
+an own bidding decision.
+
+Watten's collection shows earned and open goals, categories, actual granted
+XP and all 22 title levels. Filtering never acknowledges unread rewards.
+Existing achievement IDs, rewards, unlock dates and absolute rank thresholds
+remain intact. Missing historical proof is never replaced with guessed actions.
 
 ## Navigation und Konto / navigation and account
 
@@ -543,21 +578,20 @@ New versions can also be loaded at an active Watten table with “Update Watten�
 Visible online windows check every minute; only the explicit action activates
 the new version and reloads the page.
 
-**Lokaler Kontofortschritt / local account progress:** Die lokale Watten-Vorschau
-verbucht neue abgeschlossene Partien zusammen mit Ergebnis und Fortschritt in
+**Kontofortschritt / account progress:** Watten verbucht neue abgeschlossene Partien zusammen mit Ergebnis und Fortschritt in
 einer Transaktion. `/watten/konto/fortschritt`, `/watten/konto/verlauf` und
 `/watten/rangliste` zeigen ausschliesslich verbuchte XP, die eigenen Ergebnisse,
 belegte Erfolge und erklärbare Ranglisten. XP, Titelstufen und Erfolgswerte sind
 vorerst als Entwurf gekennzeichnet. Ältere Resultate bleiben sichtbar und
-erhalten beim Lesen keine nachträglichen XP. Für lokale Tests sind beide lokalen
-Vorschauflags erforderlich; die öffentliche Watten-Domain bleibt geschlossen.
+erhalten beim Lesen keine nachträglichen XP. Für lokale Vorschautests sind beide lokalen
+Vorschauflags erforderlich; die öffentliche Beta nutzt die freigegebene Watten-Domain.
 
-New locally completed Watten matches atomically store results and progress.
+Newly completed Watten matches atomically store results and progress.
 The native progress, history and leaderboard pages show stored XP, owned
 results, evidenced achievements and explicit ranking definitions. XP, title
 levels and award values remain labelled as a proposal. Reading older results
-never retrospectively grants XP. Local tests require both local preview flags; the
-public Watten domain remains closed.
+never retrospectively grants XP. Local preview tests require both local preview flags; the
+public beta uses the released Watten domain.
 
 **Spieltag / play day:** Akzeptierte menschliche Ansagen, Karten und Gebots-
 entscheidungen zählen im lokalen Watten für die kontoweite Tagesaktivität.
@@ -1116,7 +1150,7 @@ Der private Kontobereich zeigt eigene abgeschlossene Runden, Runden als Hausdepp
 und Runden mit leerer Hand sowie einen nachladbaren Verlauf tatsächlicher
 Ergebnisse; allgemeine Einstellungen sind direkt unter
 `/hausdepp/konto/einstellungen` erreichbar und gelten für das gemeinsame Konto.
-Das Konto enthält **136 Erfolge und 24 Ränge**, mit Suche, Filtern und der ganzen
+Das Konto enthält **138 Erfolge und 24 Ränge**, mit Suche, Filtern und der ganzen
 Rangleiter. Innerhalb jeder Gruppe stehen erreichte Erfolge vor den noch offenen.
 Häufige Kartenaktionen benötigen mehrere passende abgeschlossene Runden;
 jede Runde zählt je Ziel höchstens einmal. Seltene Kunststücke bleiben direkt
@@ -1215,7 +1249,7 @@ Tell pattern and lightning back. The rules page adds a quick start, anchors,
 examples and terminology. Round outcomes are stored separately. The private
 account area shows your completed rounds, rounds as the Hausdepp and rounds
 finished with an empty hand, plus a loadable history of actual results. General
-settings at `/hausdepp/konto/einstellungen` manage the shared account. The account includes **136 achievements
+settings at `/hausdepp/konto/einstellungen` manage the shared account. The account includes **138 achievements
 and 24 ranks**, with search, filters and the complete rank ladder. Each group
 shows earned achievements before locked ones. Common card actions require
 several qualifying completed rounds, with each round counting at most once per
