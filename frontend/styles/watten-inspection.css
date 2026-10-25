@@ -1,9 +1,13 @@
-/* Permitted faces slide flat until their short top edges meet. JS measures
-   unrotated sizes; edge badges travel with their card and remain upright. */
+/* Permitted faces slide out of their two callers' painted hands along the
+   straight line between them; their short top edges face each other and may
+   overlap in the middle. JS measures unrotated card sizes; edge badges travel
+   with their card and remain upright. */
 html[data-watten-active="true"] .wt-reveal {
   position: absolute; inset: 0; width: auto; max-width: none; translate: none; pointer-events: none;
 }
-html[data-watten-active="true"] .wt-reveal:not([data-wt-inspection-positioned]) .wt-inspection { visibility: hidden; }
+/* Unplaced or unfit faces are never painted at a stale position. ACK is
+   placed by CSS alone and stays reachable. */
+html[data-watten-active="true"] .wt-reveal:not([data-wt-inspection-positioned]) .wt-inspection-cards { visibility: hidden; }
 html[data-watten-active="true"] .wt-inspection {
   position: absolute; inset: 0; display: block; margin: 0; pointer-events: none;
 }
@@ -19,8 +23,10 @@ html[data-watten-active="true"] .wt-inspection .wt-reveal-card figcaption {
   position: absolute; width: max-content; max-width: 140px; translate: -50% 0; rotate: none;
   margin: 0; white-space: nowrap; z-index: 1; font-size: clamp(.8rem, 2.5vw, 1rem); pointer-events: none;
 }
+/* The action row (watten-preplay/-tablet) places ACK. This base keeps it in
+   the lower right corner, never at the felt origin, if no row rule applies. */
 html[data-watten-active="true"] .wt-inspection > button {
-  position: absolute; translate: -50% 0; min-height: 44px; pointer-events: auto; margin: 0;
+  position: absolute; inset: auto 12px 12px auto; translate: none; min-height: 44px; pointer-events: auto; margin: 0;
 }
 @media (prefers-reduced-motion: reduce) {
   html[data-watten-active="true"] .wt-reveal .wt-card { animation: none; transition: none; }

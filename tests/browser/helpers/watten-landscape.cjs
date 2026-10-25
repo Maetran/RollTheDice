@@ -40,7 +40,37 @@ async function expectLandscapeTable(page, { completedPile = false, inspection = 
     const played = inspection ? [...document.querySelectorAll('[data-watten-inspection] .wt-card')].filter(visible) : cards;
     const intersects = (a, b) => Math.min(a.right, b.right) - Math.max(a.left, b.left) > 2
       && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 2;
-    for (const card of played) {
+    if (inspection) {
+      const reveal = document.querySelector('[data-wt-reveal]');
+      if (reveal?.dataset.wtInspectionFit === 'unfit') errors.push(`inspection did not fit: ${reveal.dataset.wtInspectionReason}`);
+      if (played.length !== 2) errors.push('inspection must paint exactly two faces');
+      // Rotated faces on the callers' line: test their real outline against
+      // painted cards and identities. A caller's own fan may only be brushed.
+      const callers = played.map(card => document.querySelector(`[data-wt-seat="${card.closest('[data-wt-inspection-seat]').dataset.wtInspectionSeat}"]`));
+      const outline = card => {
+        const style = getComputedStyle(card), angle = (Number.parseFloat(style.rotate) || 0) * Math.PI / 180;
+        return { ...center(rect(card)), hw: Number.parseFloat(style.width) / 2, hh: Number.parseFloat(style.height) / 2,
+          u: { x: Math.sin(angle), y: -Math.cos(angle) }, n: { x: Math.cos(angle), y: Math.sin(angle) } };
+      };
+      const hits = (face, box) => [{ x: 1, y: 0 }, { x: 0, y: 1 }, face.u, face.n].every(axis => {
+        const a = face.x * axis.x + face.y * axis.y, ra = face.hw * Math.abs(face.n.x * axis.x + face.n.y * axis.y) + face.hh * Math.abs(face.u.x * axis.x + face.u.y * axis.y);
+        const c = center(box), b = c.x * axis.x + c.y * axis.y, rb = box.width / 2 * Math.abs(axis.x) + box.height / 2 * Math.abs(axis.y);
+        return Math.abs(a - b) < ra + rb - 2;
+      });
+      const inside = (face, point) => Math.abs((point.x - face.x) * face.u.x + (point.y - face.y) * face.u.y) < face.hh
+        && Math.abs((point.x - face.x) * face.n.x + (point.y - face.y) * face.n.y) < face.hw;
+      const guarded = [...document.querySelectorAll('.wt-avatar, .wt-seat-name, .wt-seat-call-role, .wt-backs > i:not([hidden]), [data-wt-hand] > *, '
+        + '[data-wt-panel] > *, [data-wt-stake], .wt-stock, [data-watten-reference], [data-watten-action=inspection_ack]')].filter(visible);
+      for (const card of played) {
+        const box = rect(card), face = outline(card);
+        if (box.left < felt.left - 1 || box.right > felt.right + 1 || box.top < felt.top - 1 || box.bottom > felt.bottom + 1) errors.push('public card escapes the right table');
+        const collisions = guarded.filter(node => {
+          const callerBack = node.matches('.wt-backs > i') && callers.includes(node.closest('[data-wt-seat]'));
+          return callerBack ? inside(face, center(rect(node))) : hits(face, rect(node));
+        });
+        if (collisions.length) errors.push(`inspection card ${card.dataset.card} overlaps ${collisions.map(node => node.className).join(', ')}`);
+      }
+    } else for (const card of played) {
       const box = rect(card);
       if (box.left < felt.left - 1 || box.right > felt.right + 1 || box.top < felt.top - 1 || box.bottom > felt.bottom + 1) errors.push('public card escapes the right table');
       const collisions = protectedNodes.filter(node => (!bidding || !node.matches('[data-wt-panel], [data-wt-stake]'))
