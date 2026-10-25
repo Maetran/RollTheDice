@@ -1860,20 +1860,20 @@ def _banked_turn_hot_dice_proof(rounds: list) -> int | None:
         holds = entry.get("committed_holds")
         if (type(turn_id) is not int or turn_id < 1 or type(rolls) is not int or rolls < 1
                 or type(entry.get("points")) is not int or entry["points"] < 1
-                or not isinstance(holds, list) or not holds):
+                or not isinstance(holds, list) or len(holds) != rolls):
             return None
-        seen_rolls: set[int] = set()
         hot_dice = points = 0
-        for hold in holds:
+        # Every successful roll commits exactly one hold before another roll
+        # or bank. A skipped/reordered record cannot prove a complete turn.
+        for expected_roll, hold in enumerate(holds, start=1):
             if not isinstance(hold, Mapping):
                 return None
             roll_id, held_points = hold.get("roll_id"), hold.get("points")
             if (type(hold.get("hot_dice")) is not bool
                     or type(hold.get("turn_id")) is not int or hold["turn_id"] != turn_id
-                    or type(roll_id) is not int or not 1 <= roll_id <= rolls or roll_id in seen_rolls
+                    or type(roll_id) is not int or roll_id != expected_roll
                     or type(held_points) is not int or held_points < 1):
                 return None
-            seen_rolls.add(roll_id)
             points += held_points
             hot_dice += hold["hot_dice"]
         # Hot Dice needs a subsequent scoring confirmation before banking.

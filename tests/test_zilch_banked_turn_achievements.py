@@ -23,6 +23,7 @@ from app.zilch_achievements import (
     _criterion_is_satisfied,
     _facts_from_evidence,
     _progress_for_definition,
+    _round_facts,
     acknowledge_zilch_award,
     get_zilch_achievement_profile,
     recover_deleted_zilch_achievement_sources,
@@ -219,6 +220,29 @@ class BankedTurnAchievementTests(TestCase):
                 self.assertFalse(_criterion_is_satisfied(ZILCH_ACHIEVEMENT_BY_KEY[HOT], [read]))
                 self.assertIsNone(_progress_for_definition(ZILCH_ACHIEVEMENT_BY_KEY[HOT], [read]))
                 self.assertTrue(_criterion_is_satisfied(ZILCH_ACHIEVEMENT_BY_KEY["zilch.banked_round_500"], [read]))
+
+    def test_bank_proof_requires_every_roll_in_order_even_when_the_points_match(self):
+        game, _one, _two = self.legal_game("double")
+        original = build_zilch_result_payload(game)
+        board = original["boards"]["p1"]
+        self.assertEqual(_banked_turn_hot_dice_proof(board["rounds"]), 2)
+        self.assertEqual([hold["roll_id"] for hold in board["rounds"][0]["committed_holds"]], [1, 2, 3])
+        old_facts = _round_facts(board)
+        for roll_ids, rolls_used in (([1, 3, 4], 4), ([2, 1, 3], 3)):
+            with self.subTest(roll_ids=roll_ids):
+                changed = deepcopy(original)
+                changed_board = changed["boards"]["p1"]
+                bank = changed_board["rounds"][0]
+                bank["rolls_used"] = rolls_used
+                for hold, roll_id in zip(bank["committed_holds"], roll_ids):
+                    hold["roll_id"] = roll_id
+                self.assertEqual(sum(hold["points"] for hold in bank["committed_holds"]), bank["points"])
+                self.assertIsNotNone(validate_stored_zilch_result_payload(changed, expected_game_id=game["_id"]))
+                facts = _round_facts(changed_board)
+                self.assertIsNone(facts[PROOF])
+                self.assertEqual(facts["banked_rounds"], old_facts["banked_rounds"])
+                self.assertEqual(facts["hot_dice_events"], old_facts["hot_dice_events"])
+                self.assertFalse(_criterion_is_satisfied(ZILCH_ACHIEVEMENT_BY_KEY[HOT], [facts]))
 
     def rewind_catalog(self):
         with session_scope() as db:
