@@ -223,3 +223,56 @@ html[data-game="watten"][data-watten-active="true"] .wt-bloedeln-dock :is(.wt-pr
     width: clamp(178px, calc(50% - var(--wt-hand-w) * 1.85 - 42px), 298px);
   }
 }
+/* A very small landscape keeps a 52px table rail, even while its menu is
+   open. Header controls expand as an overlay; points and common table
+   actions remain visible without resizing the callers' measured table. */
+@media (orientation: landscape) and (max-width: 720px) and (max-height: 360px) {
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] {
+    --wt-rail-width: calc(52px + var(--wt-rail-inset));
+  }
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] body::before { width: var(--wt-rail-width); }
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"][data-wt-header-open="true"] body::before { width: calc(156px + var(--wt-rail-inset)); }
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] body .wt-header.suite-header.suite-header--table {
+    display: block; width: var(--wt-rail-width); height: 52px; padding: 4px;
+    z-index: 60; background: #e8c59a;
+  }
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] .wt-header :is(.suite-header__brand, .suite-header__tools, .wt-nav) { display: none; }
+  .wt-compact-header-toggle { display: none; }
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] .wt-compact-header-toggle {
+    display: grid; place-items: center; position: fixed; left: calc(4px + var(--wt-rail-inset)); top: 4px;
+    width: 44px; min-width: 44px; height: 44px; padding: 0; font-size: 24px;
+    color: #53301e; background: #fff1dc; border: 1px solid #bd976c; z-index: 61;
+  }
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"][data-wt-header-open="true"] body .wt-header.suite-header.suite-header--table {
+    display: grid; grid-template: 44px 44px / 44px 44px minmax(44px, 1fr);
+    width: calc(156px + var(--wt-rail-inset)); height: 100px;
+    padding: 4px 4px 4px calc(4px + var(--wt-rail-inset)); gap: 4px;
+    box-shadow: 4px 4px 12px #55301e33;
+  }
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"][data-wt-header-open="true"] body .wt-header .suite-header__brand {
+    display: inline-flex; grid-column: 2 / -1; grid-row: 1; gap: 4px;
+    width: 100%; min-width: 0; height: 44px; font-size: 1rem;
+  }
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] .wt-header .suite-header__icon { width: 20px; height: 20px; }
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"][data-wt-header-open="true"] .wt-header .suite-header__tools { display: contents; }
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"][data-wt-header-open="true"] .wt-header .wt-nav { display: flex; }
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] .wt-topbar {
+    position: fixed; left: calc(56px + var(--wt-rail-inset)); right: auto; top: 4px;
+    width: 156px; height: auto; padding: 0 6px; z-index: 62;
+  }
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"][data-wt-header-open="true"] .wt-topbar {
+    left: auto; right: max(12px, env(safe-area-inset-right, 0px));
+  }
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] [data-watten-sound] { left: calc(4px + var(--wt-rail-inset)); top: 56px; }
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"][data-wt-header-open="true"] [data-watten-sound] { top: 104px; }
+  /* The wider wood leaves a slot between the opposite fan, its passive
+     status and the own hand. Keep the caller line and footer buttons clear. */
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] .wt-table[data-wt-caller-axis="bottom-right"] .wt-inspection > button,
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] .wt-table[data-wt-caller-axis="bottom-right"] .wt-end-sheet > .wt-panel > .wt-announce:has(> [data-watten-action="show_ready"]) {
+    left: calc(var(--wt-rail-width) + 88px); right: auto;
+    bottom: calc(58px + env(safe-area-inset-bottom, 0px));
+  }
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] .wt-table[data-wt-caller-axis^="bottom-"] > .wt-bloedeln-dock:has(> .wt-bloedeln-status) {
+    width: 124px;
+  }
+}
