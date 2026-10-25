@@ -290,6 +290,11 @@ export function createTrickLayout(trick, { win = window } = {}) {
     // Calls precede every trick card, so fit them before the empty-trick return.
     positionOverlays();
     if (trick.hidden || !trick.children.length) { landscape = null; portrait = null; return; }
+    const collecting = ["deal_complete", "match_complete"].includes(table.dataset?.phase)
+      && table.dataset.roundStage === "collect" && table.dataset.viewer === "player";
+    const collectionFrames = collecting ? [...table.querySelectorAll("[data-wt-hand-area], [data-wt-hand] > *")]
+      .filter(node => !node.hidden).map(node => node.getBoundingClientRect()).filter(usable) : [];
+    const collectionHandTop = collectionFrames.length ? Math.min(...collectionFrames.map(rect => rect.top)) : Infinity;
     if (win.innerWidth >= win.innerHeight && win.innerHeight <= 700) {
       portrait = null;
       const area = felt.getBoundingClientRect();
@@ -304,7 +309,7 @@ export function createTrickLayout(trick, { win = window } = {}) {
         const topHand = frames(".wt-seat--top .wt-backs > i:not([hidden])");
         const ownHand = frames("[data-wt-hand-area]:not([hidden]) [data-wt-hand] > *, .wt-seat--bottom .wt-backs > i:not([hidden])");
         const top = topHand.length ? Math.max(...topHand.map(rect => rect.bottom)) : area.top + 40;
-        const bottom = ownHand.length ? Math.min(...ownHand.map(rect => rect.top)) : area.bottom - 40;
+        const bottom = Math.min(collectionHandTop, ownHand.length ? Math.min(...ownHand.map(rect => rect.top)) : area.bottom - 40);
         const desiredWidth = Number.parseFloat(win.getComputedStyle(trick.firstElementChild).width);
         landscape = { key, fit: fitLandscapeTrick({ top, bottom, desiredWidth,
           minimumWidth: win.innerHeight <= 360 ? 48 : 52 }) };
@@ -326,17 +331,10 @@ export function createTrickLayout(trick, { win = window } = {}) {
     const left = Math.max(12, area.left + 8), top = Math.max(8, area.top + 8);
     const right = Math.min(win.innerWidth - 12, area.right - 8);
     let bottom = Math.min(win.innerHeight - 8, area.bottom - 8);
-    if (table.dataset.phase === "deal_complete" && table.dataset.roundStage === "collect"
-        && table.dataset.viewer === "player") {
-      // The deal closes before the collection flight. CSS hides the remaining
-      // hand immediately, but that must not move its last public trick into
-      // the owner's card band while the winner is being collected.
-      const hand = table.querySelector("[data-wt-hand]");
-      const card = hand?.firstElementChild;
-      const cardWidth = card ? Number.parseFloat(win.getComputedStyle(card).width)
-        : Number.parseFloat(win.getComputedStyle(hand).minHeight) / 1.583;
-      if (cardWidth > 0) bottom = Math.min(bottom, area.bottom - cardWidth * 1.8 - 20);
-    }
+    // Collection retains a real invisible hand frame, including an empty
+    // last hand. Its used geometry works in both orientations without
+    // reversing a CSS min-height formula or introducing a probe card.
+    bottom = Math.min(bottom, collectionHandTop - 4);
     const bounds = { left, top, right, bottom, width: right - left, height: bottom - top };
     const reference = box(centre.querySelector(".wt-reference"));
     const panel = table.querySelector("[data-wt-panel]");

@@ -184,6 +184,35 @@ test("landscape keeps its first public card footprint through later cards and wi
   assert.equal(centre.style.values.size, 0);
 });
 
+test("cold empty-hand collection and rotation respect the physical hand band despite zero CSS min-height", () => {
+  const style = () => ({ values: new Map(), setProperty(key, value) { this.values.set(key, value); },
+    removeProperty(key) { this.values.delete(key); } });
+  let handTop = 260;
+  const card = { dataset: { key: "bells-7" }, style: style() };
+  const frame = { hidden: false, getBoundingClientRect: () => rect(120, handTop, 280, 100) };
+  const topHand = { getBoundingClientRect: () => rect(220, 35, 60, 55) };
+  const table = { dataset: { phase: "deal_complete", roundStage: "collect", viewer: "player" },
+    querySelector: () => null,
+    querySelectorAll: selector => selector === "[data-wt-hand-area], [data-wt-hand] > *" ? [frame]
+      : selector.includes("--top") ? [topHand] : [] };
+  const win = { innerWidth: 852, innerHeight: 393,
+    getComputedStyle: () => ({ width: win.innerHeight <= 360 ? "48px" : "60px", minHeight: "0px" }),
+    addEventListener() {}, removeEventListener() {}, requestAnimationFrame() {}, cancelAnimationFrame() {} };
+  const felt = { closest: () => table, getBoundingClientRect: () => rect(0, 0, win.innerWidth, win.innerHeight) };
+  const centre = { parentElement: felt, dataset: {}, style: style() };
+  const trick = { parentElement: centre, children: [card], firstElementChild: card };
+  const layout = createTrickLayout(trick, { win });
+  for (const viewport of [{ width: 852, height: 393, top: 260 }, { width: 568, height: 320, top: 187 }]) {
+    win.innerWidth = viewport.width; win.innerHeight = viewport.height; handTop = viewport.top;
+    layout.update({ count: 4, engine: { deal_id: "empty-final-hand" } });
+    assert.equal(centre.dataset.wtLandscapeTrick, "true");
+    const y = parseFloat(centre.style.values.get("--wt-landscape-y"));
+    const height = parseFloat(centre.style.values.get("--wt-landscape-height"));
+    assert.ok(y + height / 2 <= handTop, "the full last trick stays above the invisible physical slot");
+  }
+  layout.destroy();
+});
+
 test("a landscape spectator fits above the bottom public fan even without an own hand", () => {
   const values = new Map();
   const style = { setProperty: (key, value) => values.set(key, value), removeProperty: key => values.delete(key) };

@@ -10,7 +10,7 @@ import { retourschneiderChoiceMarkup, createRetourAnnouncement } from "./retours
 import { seriesMarks, seriesTargetMarkup, seriesFinishedTitle } from "./series.js";
 import { createScorepad, nockerlMarksMarkup } from "./scorepad.js";
 import { createTrickLayout } from "./trick-layout.js";
-import { fitInspectionAxis, outermostCard, paintedBox, rectOf, unionOf } from "./inspection-geometry.js";
+import { cardBounds, fitInspectionAxis, inspectionFootprint, outermostCard, paintedBox, rectOf, unionOf } from "./inspection-geometry.js";
 import { resultReactionsMarkup } from "./social.js";
 
 const POSITIONS = { 2: ["bottom", "top"], 3: ["bottom", "left", "right"], 4: ["bottom", "left", "top", "right"] };
@@ -172,16 +172,29 @@ function inspectionMarkup(vm) {
   </div>`;
 }
 
-function createInspectionMotion(reveal, seatNodes, { preparation = false } = {}) {
+function createInspectionMotion(reveal, seatNodes, { preparation = false, protectedGeometry = () => [], onPlacement = () => {} } = {}) {
   const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)");
   const centre = rect => ({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
   const SIDES = ["bottom", "left", "right", "top"];
   let key = "", playedKey = "", figures = [], observer = null, flights = [], geometry = "", frame = 0, memo = { key: "", fit: null };
+  let footprint = [], footprintKey = "";
+  const publish = (fit, bounds) => {
+    const next = inspectionFootprint(fit), nextKey = JSON.stringify(next);
+    footprint = next;
+    // Decoration uses the same final public footprints rather than the
+    // translated mid-flight DOM boxes. Never include card identities.
+    reveal.wtInspectionFootprint = bounds ? next.map(item => {
+      const rect = cardBounds(item);
+      return rectOf(rect.left + bounds.left, rect.top + bounds.top, rect.right - rect.left, rect.bottom - rect.top);
+    }) : [];
+    if (nextKey !== footprintKey) { footprintKey = nextKey; onPlacement(); }
+  };
   const settle = () => { flights.forEach(flight => flight.cancel()); flights = []; };
   const stop = () => {
     settle(); observer?.disconnect(); observer = null;
     cancelAnimationFrame(frame); frame = 0;
     key = ""; figures = []; geometry = ""; memo = { key: "", fit: null };
+    publish(null);
     reveal.closest(".wt-table")?.style.removeProperty("--wt-inspection-ack-height");
     delete reveal.dataset.wtInspectionPositioned;
     delete reveal.dataset.wtInspectionAxis;
@@ -256,25 +269,25 @@ function createInspectionMotion(reveal, seatNodes, { preparation = false } = {})
     const sizes = cards.map(card => ({ width: card.offsetWidth, height: card.offsetHeight }));
     const labelSizes = captions.map(caption => ({ width: caption.offsetWidth, height: caption.offsetHeight }));
     const actorSeats = new Set(players);
-    const controls = [...painted(table.querySelectorAll('[data-watten-action="inspection_ack"], [data-watten-action="show_ready"], [data-wt-preplay] :is(button, h3, p), '
+    const controls = [...protectedGeometry(), ...painted(table.querySelectorAll('[data-watten-action="inspection_ack"], [data-watten-action="show_ready"], [data-wt-preplay] :is(button, h3, p), '
       + '.wt-preplay-options > summary, [data-wt-private] button, [data-wt-history]:not([hidden]) > summary, '
       + '.wt-seat--bottom.is-own .wt-seat-badge, .wt-seat--bottom.is-own .wt-bubble--thanks')), ...hand];
     const obstacles = [...painted(felt.querySelectorAll(".wt-avatar, .wt-seat-name, .wt-seat-call-role, .wt-seat-public-title, "
       + ".wt-seat-tags, .wt-bubble--thanks, .wt-taken:not([hidden]) .wt-taken-packet, .wt-stock, [data-wt-reference] .wt-card")),
-    ...(preparation ? painted(felt.querySelectorAll('[data-wt-reveal][data-wt-inspection-positioned] .wt-card')) : []),
     ...outlines([...felt.querySelectorAll(".wt-seat")].filter(seat => !actorSeats.has(seat))
       .flatMap(seat => [...seat.querySelectorAll(".wt-backs:not([hidden]) > i:not([hidden])")]))];
     const input = { region: rectOf(6, 6, bounds.width - 12, bounds.height - 12),
-      actors, cards: sizes, captions: labelSizes, controls, obstacles };
+      actors, cards: sizes, captions: labelSizes, controls, obstacles, minimumWidth: preparation ? 36 : 52 };
     // Snapshot updates re-run this; refit only when a measurement changed.
     const inputKey = JSON.stringify(input, (_, value) => typeof value === "number" ? Math.round(value * 10) / 10 : value);
-    if (inputKey !== memo.key) memo = { key: inputKey, fit: fitInspectionAxis(input) };
+    if (inputKey !== memo.key) { settle(); memo = { key: inputKey, fit: fitInspectionAxis(input) }; }
     const { fit } = memo;
     geometry = signature();
     if (fit.status !== "fit") {
       // Never keep an earlier, now invalid placement. The faces stay hidden
       // (ACK remains usable) and the measured reason is exposed for diagnosis.
       settle();
+      publish(null);
       delete reveal.dataset.wtInspectionPositioned;
       reveal.dataset.wtInspectionFit = "unfit";
       reveal.dataset.wtInspectionReason = fit.reason;
@@ -291,6 +304,7 @@ function createInspectionMotion(reveal, seatNodes, { preparation = false } = {})
       card.style.left = `${-pose.width / 2}px`; card.style.top = `${-pose.height / 2}px`; card.style.rotate = `${pose.rotation}deg`;
       caption.style.left = `${label.x - pose.x}px`; caption.style.top = `${label.top - pose.y}px`;
     });
+    publish(fit, bounds);
     reveal.dataset.wtInspectionFit = fit.constrained ? "constrained" : fit.relaxed ? "relaxed" : fit.overlap > 0 ? "overlap" : "clear";
     reveal.dataset.wtInspectionPositioned = "true";
     if (playedKey === key || document.hidden) return;
@@ -325,6 +339,7 @@ function createInspectionMotion(reveal, seatNodes, { preparation = false } = {})
     delete reveal.dataset.wtInspectionReason;
     delete reveal.dataset.wtInspectionDetail;
     memo = { key: "", fit: null };
+    publish(null);
     figures = nextFigures; key = nextKey;
     schedule();
     if (typeof ResizeObserver !== "function") return;
@@ -341,6 +356,8 @@ function createInspectionMotion(reveal, seatNodes, { preparation = false } = {})
     document.removeEventListener("visibilitychange", visibilityChanged);
     reduced?.removeEventListener?.("change", preferenceChanged);
   };
+  update.footprint = () => footprint;
+  update.schedule = schedule;
   return update;
 }
 
@@ -553,8 +570,13 @@ export function createTableView(container, { onCard, accountId = null }) {
   const handNodes = new Map();
   const trickNodes = new Map();
   const seatNodes = new Map();
-  const positionInspection = createInspectionMotion(elements.reveal, seatNodes);
-  const positionBloedeln = createInspectionMotion(elements.bloedeln, seatNodes, { preparation: true });
+  let positionBloedeln;
+  const positionInspection = createInspectionMotion(elements.reveal, seatNodes, {
+    onPlacement: () => positionBloedeln?.schedule(),
+  });
+  positionBloedeln = createInspectionMotion(elements.bloedeln, seatNodes, {
+    preparation: true, protectedGeometry: positionInspection.footprint,
+  });
   const positionTrick = createTrickLayout(elements.trick);
   const retourAnnouncement = createRetourAnnouncement(elements.retour, { accountId, liveNode: $("[data-wt-retour-live]") });
   const scorepad = createScorepad(elements.scores);

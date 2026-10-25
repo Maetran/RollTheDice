@@ -125,8 +125,16 @@ export function createDecor({ container, root, getExpectedAccountId, isCurrent, 
     propSide = Number.isFinite(renderedSide) && renderedSide >= 44 ? renderedSide : SIDE;
     const blocked = root.querySelector('[data-watten-social-drawer]:not([hidden]), dialog[open]');
     const table = root.querySelector("[data-wt-table]"), felt = root.querySelector("[data-wt-felt]");
+    const reveals = [...root.querySelectorAll("[data-wt-reveal], [data-wt-bloedeln]")];
+    const placed = reveals.filter(reveal => reveal.dataset.wtInspectionPositioned
+      && Array.isArray(reveal.wtInspectionFootprint) && reveal.wtInspectionFootprint.length);
+    const control = node => ["button", "a", "input", "select", "textarea"].includes(String(node.tagName).toLowerCase())
+      || ["button", "dialog"].includes(node.getAttribute("role"));
     const protectedRects = [...root.querySelectorAll(DECOR_PROTECTED)]
-      .filter(node => !node.closest("[data-watten-decor-layer]") && visible(node)).map(node => node.getBoundingClientRect());
+      .filter(node => !node.closest("[data-watten-decor-layer]")
+        && (!placed.some(reveal => reveal.contains(node)) || control(node)) && visible(node))
+      .map(node => node.getBoundingClientRect());
+    protectedRects.push(...placed.flatMap(reveal => reveal.wtInspectionFootprint.filter(finite)));
     const regions = [];
     const region = (node, name) => {
       const rect = node.getBoundingClientRect();
@@ -136,7 +144,7 @@ export function createDecor({ container, root, getExpectedAccountId, isCurrent, 
       if (ACTIVE_PHASES.has(phase) && visible(table) && visible(felt)) regions.push(region(felt, "table"));
     }
     geometry = { regions, protectedRects };
-    for (const reveal of root.querySelectorAll("[data-wt-reveal], [data-wt-bloedeln]")) {
+    for (const reveal of reveals) {
       if (observedReveals.has(reveal)) continue;
       // The real table mounts after this controller. Observe new reveal slots
       // when they first exist, including their later actor-axis placement.

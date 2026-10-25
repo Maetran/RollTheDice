@@ -31,6 +31,10 @@ html[data-watten-active="true"] .wt-panel > .wt-prompt {
 }
 html[data-watten-active="true"] .wt-panel:has(.wt-deal-result) { bottom: 20px; }
 html[data-watten-active="true"] .wt-table[data-phase="deal_complete"]:not([data-wt-retour-offer="true"]) .wt-hand-area { display: none; }
+/* Collection hides faces, while their physical band still belongs to the
+   owner. Keep it measurable through cold loads and orientation changes. */
+html[data-watten-active="true"] .wt-table:is([data-phase="deal_complete"], [data-phase="match_complete"])[data-round-stage="collect"] .wt-hand-area { display: block; visibility: hidden; pointer-events: none; }
+html[data-watten-active="true"] .wt-table:is([data-phase="deal_complete"], [data-phase="match_complete"])[data-round-stage="collect"] .wt-hand:empty { display: flex; min-height: calc(var(--wt-hand-w) * 570 / 360); }
 html[data-watten-active="true"] .wt-private { bottom: calc(var(--wt-hand-w) * 1.8 + 10px); left: 50%; right: auto; translate: -50% 0; width: min(330px, calc(100% - 24px)); }
 html[data-watten-active="true"] .wt-feedback-dialog { position: fixed; inset: 0; margin: auto; translate: none; width: min(340px, calc(100vw - 28px)); max-width: none; max-height: calc(100dvh - 32px); padding: 20px; color: var(--wt-ink); background: #fff0da; border: 1px solid #bd976c; border-radius: 16px; box-shadow: 0 12px 44px #3f201755; }
 html[data-watten-active="true"] .wt-feedback-dialog::backdrop { background: #3f201738; }

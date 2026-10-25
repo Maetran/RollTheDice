@@ -515,6 +515,26 @@ test("a reveal mounted after the decoration controller still protects its asynch
   assert.equal(node.captured, null, "freshly positioned showing still wins over the captured prop");
 });
 
+test("a flying reveal protects its stable landing footprint without reading the translated card", () => {
+  const f = fixture(); f.update("play");
+  const prop = f.props()[0], landing = prop.getBoundingClientRect(), reveal = new Node(f.dom, rect(0, 0, 320, 568));
+  const flying = new Node(f.dom, rect(280, 10, 36, 57)); reveal.append(flying);
+  reveal.dataset.wtInspectionPositioned = "true";
+  reveal.wtInspectionFootprint = [landing];
+  let reads = 0;
+  flying.getBoundingClientRect = () => { reads += 1; return rect(280, 10, 36, 57); };
+  const originalQuery = f.root.querySelectorAll;
+  f.root.querySelectorAll = selector => selector === "[data-wt-reveal], [data-wt-bloedeln]" ? [reveal] : originalQuery(selector);
+  f.protectedAreas.push(flying);
+  prop.emit("pointerdown", { button: 0, pointerId: 5, clientX: landing.left, clientY: landing.top });
+  f.update("play");
+  assert.equal(prop.captured, null, "the primary landing wins immediately, before its flight finishes");
+  assert.equal(reads, 0, "the current animation offset never becomes the decoration authority");
+  const moved = prop.getBoundingClientRect();
+  assert.ok(prop.hidden || moved.right <= landing.left || moved.left >= landing.right
+    || moved.bottom <= landing.top || moved.top >= landing.bottom);
+});
+
 test("destroy/account switch/pagehide end captures and remove every item, effect and listener", () => {
   for (const finish of [f => f.client.destroy(), f => { f.changeAccount(); f.update("play"); }, f => f.win.emit("pagehide")]) {
     const f = fixture(); f.update("play");
