@@ -52,7 +52,7 @@ html[data-game="watten"][data-watten-active="true"] .wt-bloedeln-dock :is(.wt-pr
     min-width: 0; width: 100%; padding-inline: 6px;
   }
   html[data-game="watten"][data-watten-active="true"] .wt-table[data-count][data-phase="bid_response"] > .wt-end-sheet > .wt-panel:has(.wt-bid .wt-choice-row) {
-    width: 100%; max-width: 100%;
+    width: 100%; max-width: 100%; padding-block: 6px;
   }
   /* The received advice belongs beside the decisions. Bound only its name
      chip and trim decorative spacing so complete advice never raises the
@@ -61,10 +61,10 @@ html[data-game="watten"][data-watten-active="true"] .wt-bloedeln-dock :is(.wt-pr
     border-left: 0; padding-left: 0;
   }
   html[data-game="watten"][data-watten-active="true"] .wt-table[data-phase="bid_response"] .wt-bid:has(> .wt-choice-row) > h3 {
-    margin: 0 0 4px;
+    margin: 0 0 2px;
   }
   html[data-game="watten"][data-watten-active="true"] .wt-table[data-phase="bid_response"] .wt-bid > .wt-partner-advice {
-    margin: 0 0 4px; padding: 3px 6px; line-height: 1.25;
+    margin: 0 0 2px; padding: 2px 6px; line-height: 1.25;
   }
   html[data-game="watten"][data-watten-active="true"] .wt-table[data-phase="bid_response"] .wt-advice-name { max-width: 7ch; }
   html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"] > .wt-bloedeln-dock {
