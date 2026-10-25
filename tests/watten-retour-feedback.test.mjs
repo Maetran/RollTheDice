@@ -28,6 +28,30 @@ function fixture({ storage = new Map(), accountId = 1 } = {}) {
 const vm = (status, { deal = "offer-deal", match = "match-1", player = "p1" } = {}) => ({ snapshot: { id: match }, playerId: player,
   engine: { deal_id: deal, retourschneider: { status, after_deal_id: "offer-deal", members: ["p1", "p3"] } } });
 
+test("compact Retour choices keep the full conditions and accessible decision names, including the saved-yes waiting state", () => {
+  const messages = {
+    "retour.title": "Retourschneider?", "retour.offer": "Erase the score; every remaining round must be won. A loss costs two marks.",
+    "retour.accept": "Yes, Retourschneider", "retour.decline": "No, keep our score", "retour.acceptShort": "Yes", "retour.declineShort": "No",
+    "retour.details": "Retourschneider conditions", "retour.partnerWaiting": "Your yes is saved. {names} still needs to agree.",
+  };
+  const markup = runInNewContext(`${source};retourschneiderChoiceMarkup`, { esc: text => text,
+    t: (key, values = {}) => (messages[key] || key).replace("{names}", values.names || "") });
+  const model = { ...vm("available"), actions: ["retourschneider"], room: { seats: [
+    { participant_id: "p1", name: "Own" }, { participant_id: "p3", name: "Partner" }] } };
+  const initial = markup(model);
+  assert.match(initial, /class="wt-retour-rules" role="region" tabindex="0" aria-label="Retourschneider conditions"/);
+  assert.ok(initial.includes(messages["retour.offer"]), "the complete consequences remain in the keyboard-reachable rule body");
+  assert.match(initial, /aria-label="Yes, Retourschneider"/);
+  assert.match(initial, /aria-label="No, keep our score"/);
+  assert.match(initial, /class="wt-retour-choice-short" aria-hidden="true">Yes</);
+  assert.equal((initial.match(/data-watten-action="retourschneider"/g) || []).length, 2);
+  model.engine.retourschneider.accepted_by = ["p1"];
+  const accepted = markup(model);
+  assert.match(accepted, /Your yes is saved. Partner still needs to agree./);
+  assert.ok(accepted.includes(messages["retour.offer"]));
+  assert.doesNotMatch(accepted, /data-watten-action="retourschneider"/);
+});
+
 test("a declined joint choice explains the preserved score and survives the immediate next deal until dismissed", () => {
   const f = fixture(); f.controller.update(vm("available"));
   f.controller.update(vm("declined"));

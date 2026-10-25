@@ -172,6 +172,12 @@ export function createTrickLayout(trick, { win = window } = {}) {
       delete prompt.dataset.wtPortraitPrompt;
       for (const variable of ["--wt-portrait-prompt-x", "--wt-portrait-prompt-y", "--wt-portrait-prompt-width"]) prompt.style.removeProperty(variable);
     }
+    const retour = table.querySelector("[data-wt-portrait-retour]");
+    if (retour) {
+      delete retour.dataset.wtPortraitRetour;
+      delete retour.dataset.wtRetourFit;
+      for (const key of ["x", "y", "width", "rules-height"]) retour.style.removeProperty(`--wt-retour-${key}`);
+    }
   };
   const box = node => {
     if (!node || node.hidden) return null;
@@ -270,7 +276,43 @@ export function createTrickLayout(trick, { win = window } = {}) {
       history.style.setProperty(`--wt-portrait-history-${key}`, `${value}px`);
     }
   }
+  function positionRetourOffer() {
+    if (count !== 4 || win.innerWidth > 350 || win.innerWidth >= win.innerHeight || win.innerHeight > 700
+      || table.dataset?.phase !== "deal_complete" || table.dataset.wtRetourOffer !== "true") return;
+    const panel = table.querySelector("[data-wt-panel]");
+    if (!panel?.querySelector(".wt-retour") || table.querySelector("[data-wt-history][open]:not([hidden])")) return;
+    const area = felt.getBoundingClientRect();
+    const bounds = { left: Math.max(12, area.left + 8), top: area.top + 8,
+      right: Math.min(win.innerWidth - 12, area.right - 8), bottom: Math.min(win.innerHeight - 8, area.bottom - 8) };
+    bounds.width = bounds.right - bounds.left; bounds.height = bounds.bottom - bounds.top;
+    const obstacles = [...table.querySelectorAll(".wt-seat-badge, .wt-avatar, .wt-seat-name, .wt-seat-call-role, .wt-seat-tags, .wt-seat-public-title, "
+      + ".wt-backs > i:not([hidden]), .wt-taken[data-filled='true'], .wt-taken[data-filled='true'] i, .wt-stock, .wt-reference, "
+      + "[data-wt-hand-area], [data-wt-hand] > *, [data-wt-stake], [data-wt-private] button, [data-wt-history]:not([hidden]) > summary")]
+      .map(box).filter(Boolean);
+    panel.dataset.wtPortraitRetour = "true";
+    let selected = null;
+    for (const ruleHeight of [112, 88, 64, 44]) {
+      panel.style.setProperty("--wt-retour-rules-height", `${ruleHeight}px`);
+      for (const width of [240, 220, 200, 180, 160, 144, 132, 120, 112].filter(width => width <= bounds.width)) {
+        panel.style.setProperty("--wt-retour-width", `${width}px`);
+        const size = panel.getBoundingClientRect();
+        const fit = fitPortraitPrompt(bounds, obstacles, { height: size.height, widths: [size.width], bottomFirst: true, centerFirst: true });
+        if (fit) { selected = fit; break; }
+      }
+      if (selected) break;
+    }
+    // An extremely constrained table still retains the smallest scrollable
+    // offer and both decisions; never hide a pending human choice.
+    panel.dataset.wtRetourFit = selected ? "clear" : "fallback";
+    selected ??= { left: bounds.left + (bounds.width - 112) / 2,
+      top: Math.max(bounds.top, bounds.bottom - panel.getBoundingClientRect().height), width: 112 };
+    const frame = panel.parentElement.getBoundingClientRect();
+    for (const [key, value] of [["x", selected.left - frame.left], ["y", selected.top - frame.top], ["width", selected.width]]) {
+      panel.style.setProperty(`--wt-retour-${key}`, `${value}px`);
+    }
+  }
   function positionOverlays() {
+    positionRetourOffer();
     positionReference();
     positionCalls();
     positionClosedHistory();

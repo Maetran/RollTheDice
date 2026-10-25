@@ -213,6 +213,41 @@ test("cold empty-hand collection and rotation respect the physical hand band des
   layout.destroy();
 });
 
+test("a short portrait Retour uses a clear measured slot with its complete rule body and fixed native decisions", () => {
+  const style = () => ({ values: new Map(), setProperty(key, value) { this.values.set(key, value); },
+    removeProperty(key) { this.values.delete(key); } });
+  const obstacles = [rect(6, 188, 84, 44), rect(230, 188, 84, 44), rect(160, 118, 70, 20),
+    rect(10, 250, 70, 80), rect(240, 250, 70, 80), rect(12, 379, 96, 44),
+    rect(8, 440, 304, 116), rect(160, 400, 148, 44)];
+  const frame = rect(120, 400, 188, 44);
+  const panel = { dataset: {}, style: style(), querySelector: () => ({}),
+    parentElement: { getBoundingClientRect: () => frame },
+    getBoundingClientRect() {
+      const width = parseFloat(this.style.values.get("--wt-retour-width")) || 186;
+      const body = parseFloat(this.style.values.get("--wt-retour-rules-height")) || 180;
+      return rect(0, 0, width, 72 + Math.min(180, body));
+    } };
+  const table = { dataset: { phase: "deal_complete", wtRetourOffer: "true" },
+    querySelector: selector => selector === "[data-wt-panel]" || selector === "[data-wt-portrait-retour]" && panel.dataset.wtPortraitRetour ? panel : null,
+    querySelectorAll: () => obstacles.map(bounds => ({ hidden: false, matches: () => false, getBoundingClientRect: () => bounds })) };
+  const felt = { closest: () => table, getBoundingClientRect: () => rect(0, 104, 320, 464) };
+  const centre = { parentElement: felt, dataset: {}, style: style(), querySelector: () => null };
+  const trick = { parentElement: centre, children: [], hidden: true };
+  const win = { innerWidth: 320, innerHeight: 568,
+    getComputedStyle: () => ({ display: "block", visibility: "visible", opacity: "1" }),
+    addEventListener() {}, removeEventListener() {}, requestAnimationFrame() {}, cancelAnimationFrame() {} };
+  const layout = createTrickLayout(trick, { win });
+  layout.update({ count: 4 });
+  assert.equal(panel.dataset.wtRetourFit, "clear");
+  const fitted = rect(frame.left + parseFloat(panel.style.values.get("--wt-retour-x")),
+    frame.top + parseFloat(panel.style.values.get("--wt-retour-y")),
+    parseFloat(panel.style.values.get("--wt-retour-width")), panel.getBoundingClientRect().height);
+  for (const obstacle of obstacles) assert.equal(overlap(fitted, obstacle), false);
+  assert.ok(parseFloat(panel.style.values.get("--wt-retour-rules-height")) >= 44);
+  assert.ok(fitted.top >= 112 && fitted.bottom <= 560 && fitted.left >= 12 && fitted.right <= 308);
+  layout.destroy();
+});
+
 test("a landscape spectator fits above the bottom public fan even without an own hand", () => {
   const values = new Map();
   const style = { setProperty: (key, value) => values.set(key, value), removeProperty: key => values.delete(key) };

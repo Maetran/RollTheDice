@@ -139,7 +139,7 @@ for (const language of ['de', 'en']) test(`${language}: queued table geometry ke
         if (scene === 'retour') {
           await expect(page.locator('[data-layout-followup] [data-watten-retourschneider-choice]')).toBeVisible();
           await expect(page.locator('[data-layout-followup] [data-wt-history]')).not.toHaveAttribute('open', '');
-          await expect(page.locator('[data-layout-followup] .wt-seat-name').first()).toBeVisible();
+          for (const name of await page.locator('[data-layout-followup] .wt-seat-name').all()) await expect(name).toBeVisible();
           await expect(page.locator('[data-layout-followup] [data-wt-hand] > *').first()).toBeVisible();
           const choices = page.locator('[data-layout-followup] [data-watten-retourschneider-choice] button');
           for (const choice of await choices.all()) {
@@ -149,6 +149,33 @@ for (const language of ['de', 'en']) test(`${language}: queued table geometry ke
           }
           await choices.first().focus();
           await page.keyboard.press('Tab'); await expect(choices.last()).toBeFocused();
+          if (viewport.width <= 350 && viewport.width < viewport.height) {
+            await expect(page.locator('[data-layout-followup] [data-wt-panel]')).toHaveAttribute('data-wt-retour-fit', 'clear');
+            const errors = await page.evaluate(() => {
+              const root = window.followup.root, panel = root.querySelector('[data-wt-panel]'), area = panel.getBoundingClientRect();
+              const overlaps = [...root.querySelectorAll('.wt-seat-name, .wt-seat-badge, .wt-seat-call-role, .wt-backs > i:not([hidden]), [data-wt-hand-area], [data-wt-hand] > *')]
+                .filter(node => getComputedStyle(node).visibility !== 'hidden').filter(node => {
+                  const rect = node.getBoundingClientRect();
+                  return rect.width > 0 && rect.height > 0 && Math.min(rect.right, area.right) > Math.max(rect.left, area.left)
+                    && Math.min(rect.bottom, area.bottom) > Math.max(rect.top, area.top);
+                }).map(node => node.className);
+              const title = panel.querySelector('.wt-retour > h3'), text = title.firstChild;
+              const index = text.textContent.indexOf('Retourschneider'), range = document.createRange();
+              range.setStart(text, index); range.setEnd(text, index + 'Retourschneider'.length);
+              if (range.getClientRects().length !== 1) overlaps.push('broken Retourschneider word');
+              if (panel.scrollWidth > panel.clientWidth + 1) overlaps.push('horizontal overflow');
+              return overlaps;
+            });
+            expect(errors).toEqual([]);
+            const rules = page.locator('[data-layout-followup] .wt-retour-rules');
+            await rules.focus(); await expect(rules).toBeFocused();
+            const scrollable = await rules.evaluate(node => node.scrollHeight > node.clientHeight + 1);
+            if (scrollable) {
+              await page.keyboard.press('End');
+              expect(await rules.evaluate(node => node.scrollTop)).toBeGreaterThan(0);
+              await page.keyboard.press('Home');
+            }
+          }
         }
         if (scene.startsWith('bloedeln')) {
           await expect(page.locator('[data-layout-followup] [data-watten-bloedeln-status]')).toHaveCount(0);
