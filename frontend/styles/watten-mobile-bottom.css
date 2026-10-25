@@ -311,6 +311,9 @@ html[data-game="watten"][data-watten-active="true"] .wt-bloedeln-dock :is(.wt-pr
     inset: auto auto calc(62px + env(safe-area-inset-bottom, 0px)) calc(80px + var(--wt-rail-inset));
     width: 68px; max-width: 68px; height: 44px; padding-inline: 4px;
   }
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] .wt-history-box:not([open]) > summary {
+    line-height: 1.05; padding-block: 2px;
+  }
   /* Before the first card, the legal Blödeln request uses the future review
      slot beside the stake. It disappears as soon as any card is played. */
   html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] .wt-table[data-phase="play"] > .wt-bloedeln-dock:has(> .wt-bloedeln-start) {

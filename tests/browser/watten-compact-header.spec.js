@@ -123,6 +123,10 @@ async function expectCompactCardsClear(page, { history = false, expanded = false
       const review = document.querySelector('[data-wt-history] > summary').getBoundingClientRect();
       if (Math.abs(container.left - 80) > 1 || Math.abs(container.bottom - (innerHeight - 62)) > 1 || review.width < 44 || review.height < 44
           || overlap(box, container)) failures.push('closed review does not share the lower row beside the stake');
+      const text = document.createRange(); text.selectNodeContents(document.querySelector('[data-wt-history] > summary'));
+      for (const line of text.getClientRects()) {
+        if (line.left < container.left - 1 || line.right > container.right + 1 || line.top < container.top - 1 || line.bottom > container.bottom + 1) failures.push('closed review clips its label');
+      }
     }
     if (request) {
       const target = request.getBoundingClientRect();
