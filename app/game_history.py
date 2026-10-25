@@ -349,6 +349,25 @@ def delete_completed_game(*, game_id: str, admin_user_id: int, reason: str) -> d
             # Its terminal checkpoint still owns retry/call-delivery receipts.
             # Generic deletion cannot retire that native state atomically.
             raise ValueError("watten_result_delete_unsupported")
+        # History maintenance and merge must serialize through the same
+        # original/owner User rows. No reverse game-row lock is acquired.
+        from .account_progress import lock_account_rows, owned_origin_ids, progress_owner_ids
+
+        seats = tuple(db.execute(select(GameParticipant.id, GameParticipant.user_id).where(
+            GameParticipant.game_id == game.id).order_by(GameParticipant.id)))
+        originals = {account for _seat, account in seats if account is not None}
+        owners = progress_owner_ids(db, originals)
+        origins = {owner: owned_origin_ids(db, owner) for owner in set(owners.values())}
+        lock_ids = {admin_user_id, *originals, *owners.values()}
+        for ids in origins.values():
+            lock_ids.update(ids)
+        lock_account_rows(db, lock_ids)
+        fresh_seats = tuple(db.execute(select(GameParticipant.id, GameParticipant.user_id).where(
+            GameParticipant.game_id == game.id).order_by(GameParticipant.id)))
+        if (fresh_seats != seats or progress_owner_ids(db, originals) != owners
+                or any(owned_origin_ids(db, owner) != ids for owner, ids in origins.items())):
+            raise ValueError("game_history_changed")
+        db.refresh(game)
         participants = list(game.participants)
         winner_points = max((int(participant.points) for participant in participants), default=0)
         affected_user_ids = sorted(
