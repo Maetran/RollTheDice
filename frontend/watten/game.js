@@ -101,7 +101,7 @@ function renderNav(auth) {
   nav.innerHTML = `<a href="${publicPageUrl("/watten")}"${page === "lobby" ? " aria-current=\"page\"" : ""}>${esc(t("nav.lobby"))}</a>
     <a href="/watten/rangliste">${label("Spieler & Ranking")}</a>
     <a class="wt-button wt-button--ghost" href="${publicPageUrl("/watten/regeln")}"${page === "rules" ? " aria-current=\"page\"" : ""}>${esc(t("nav.rules"))}</a>
-    ${user ? `<a href="/watten/konto/einstellungen" aria-label="${esc(t("nav.accountOf", { name: user.username }))}">${label("Konto")}</a>`
+    ${user ? `<a href="/watten/konto/fortschritt" aria-label="${esc(t("nav.accountOf", { name: user.username }))}">${label("Konto")}</a>`
       : `<a href="${esc(signInUrl())}">${label("Konto")}</a>`}`;
 }
 

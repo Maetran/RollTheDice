@@ -68,7 +68,7 @@ for (const preferred of ['de', 'en']) {
       await page.evaluate(() => document.fonts.ready);
       expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
       await expect(page.locator('.hd-profile-button')).toBeHidden();
-      for (const selector of ['#hausdeppSignIn', '#hausdeppRegister', '#hausdeppHeader .hd-nav a[href="/hausdepp/konto/einstellungen"]']) {
+      for (const selector of ['#hausdeppSignIn', '#hausdeppRegister', '#hausdeppHeader .hd-nav a[href="/hausdepp/konto"]']) {
         const control = page.locator(selector);
         await expect(control).toBeVisible();
         const rect = await control.boundingBox();

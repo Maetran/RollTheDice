@@ -13,7 +13,7 @@ initializeWattenPwa({ registerWorker: document.documentElement.dataset.wattenPub
 initializeSuiteHeader();
 const root = document.getElementById("wattenProgress");
 const page = document.documentElement.dataset.wattenProgressPage;
-document.querySelector('[data-watten-progress-nav] a[href="/watten/rangliste"]')?.setAttribute("aria-current", "page");
+document.querySelector(`[data-watten-progress-nav] a[href="${page === 'leaderboard' ? '/watten/rangliste' : '/watten/konto/fortschritt'}"]`)?.setAttribute("aria-current", "page");
 const language = () => window.ZDWA_I18N.getLanguage() === "en" ? "en" : "de";
 const t = (key, values = {}) => String(WATTEN_PROGRESS_MESSAGES[language()][key] ?? key)
   .replace(/\{(\w+)\}/g, (_, name) => String(values[name] ?? ""));

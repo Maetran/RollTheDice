@@ -73,8 +73,8 @@ unread game rewards.
 ## Navigation und Konto / navigation and account
 
 **Deutsch:** Weiterführende Aktionen und Regelübersichten verwenden das
-Button-Design des jeweiligen Spiels. «Konto» öffnet in Hausdepp direkt die
-Kontoeinstellungen; Spielverlauf und Fortschritt bleiben separat erreichbar.
+Button-Design des jeweiligen Spiels. «Konto» öffnet in allen vier Spielen die
+Statistik. Profilbild- und Anmeldungsaktionen führen gezielt in die Einstellungen.
 Die Kategorien der Kontoeinstellungen starten geschlossen und lassen sich einzeln
 öffnen. Eine erforderliche Passwortänderung öffnet den passenden Bereich direkt.
 Alle vier Kontobereiche bieten Statistik, Erfolge und Einstellungen in derselben
@@ -88,8 +88,8 @@ Anmeldung; Gäste erhalten diese Inhalte bereits ohne JavaScript auf Deutsch
 oder Englisch.
 
 **English:** Navigation actions and rule contents use each game's button style.
-In Hausdepp, “Account” opens account settings directly; match history and progress
-remain separately accessible. Account settings categories start collapsed and
+“Account” opens Statistics in all four games; profile-image and sign-in actions
+link directly to Settings. Account settings categories start collapsed and
 open individually. A required password change opens the relevant section directly.
 All four account areas use the same order: Statistics, Achievements and Settings.
 Settings are grouped into Profile & sign-in, Language & play, Players & notifications,

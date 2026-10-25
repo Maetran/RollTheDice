@@ -22,7 +22,7 @@ initializeSuiteHeader();
 
 const root = document.getElementById('wattenAccount');
 const page = document.documentElement.dataset.accountPage;
-document.querySelector(`[data-watten-nav] a[href="${page === 'home' ? '/watten' : '/watten/konto/einstellungen'}"]`)
+document.querySelector(page === 'home' ? '[data-watten-nav] a[href="/watten"]' : '[data-watten-nav] [data-watten-account-link]')
   ?.setAttribute('aria-current', 'page');
 const t = value => window.ZDWA_I18N.t(value);
 const copy = value => esc(t(value));

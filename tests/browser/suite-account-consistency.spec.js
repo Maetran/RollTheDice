@@ -2,17 +2,17 @@ const { test, expect } = require('@playwright/test');
 
 test.use({ serviceWorkers: 'block' });
 const products = [
-  { game: 'zdwa', path: '/konto#settings', tab: true, statistics: '#statistics', achievements: '#unlockedAchievements' },
-  { game: 'zilch', path: '/zilch/konto#settings', tab: true, statistics: '#zilchAccountPanel-statistics', achievements: '#zilchAccountPanel-achievements' },
-  { game: 'hausdepp', path: '/hausdepp/konto/einstellungen', statistics: '#hausdeppAccountStats', achievements: '#hausdeppAchievements' },
-  { game: 'watten', path: '/watten/konto/einstellungen', statistics: '.wt-progress-title', achievements: '.wt-achievement-collection' },
+  { game: 'zdwa', lobby: '/', entry: '/konto', tab: true, statistics: '#statistics', achievements: '#unlockedAchievements' },
+  { game: 'zilch', lobby: '/zilch', entry: '/zilch/konto', tab: true, statistics: '#zilchAccountPanel-statistics', achievements: '#zilchAccountPanel-achievements' },
+  { game: 'hausdepp', lobby: '/hausdepp', entry: '/hausdepp/konto', statistics: '#hausdeppAccountStats', achievements: '#hausdeppAchievements' },
+  { game: 'watten', lobby: '/watten', entry: '/watten/konto/fortschritt', statistics: '.wt-progress-title', achievements: '.wt-achievement-collection' },
 ];
 const names = {
   de: ['Profil & Zugang', 'Sprache & Spiel', 'Mitspieler & Hinweise', 'Hilfe & Neuigkeiten'],
   en: ['Profile & sign-in', 'Language & play', 'Players & notifications', 'Help & updates'],
 };
 
-async function createAccount(page, username, language = 'de') {
+async function createAccount(page, username, language = 'de', product = null) {
   const password = 'suite-account-fixture-password';
   const admin = await page.request.post('/api/auth/login', { data: { username: 'Admin', password: 'temporary-password-123' } });
   expect(admin.ok()).toBe(true);
@@ -25,6 +25,14 @@ async function createAccount(page, username, language = 'de') {
   const user = (await login.json()).user;
   const headers = { 'X-CSRF-Token': user.csrf_token };
   expect((await page.request.put('/api/auth/preferences/language', { headers, data: { preferred_language: language } })).ok()).toBe(true);
+  if (product) {
+    await noNotices(page, user);
+    await page.goto(product.entry);
+    await expect(page.locator('html')).toHaveAttribute('lang', language);
+    const passwordForm = { zdwa: '#passwordForm', zilch: '#zilchPasswordForm', hausdepp: '#hausdeppPasswordForm', watten: 'form[data-password]' }[product.game];
+    await expect(page.locator(passwordForm)).toBeVisible();
+    if (!product.tab) await expect(page).toHaveURL(new URL(`/${product.game}/konto/einstellungen#passwort`, page.url()).href);
+  }
   expect((await page.request.post('/api/auth/change-password', { headers, data: { current_password: password, new_password: `${password}-final` } })).ok()).toBe(true);
   const again = await page.request.post('/api/auth/login', { data: { username, password: `${password}-final` } });
   expect(again.ok()).toBe(true);
@@ -44,14 +52,20 @@ async function destination(page, product, name) {
 for (const product of products) for (const language of ['de', 'en']) {
   test(`${product.game} account uses the same settings order and native three-part flow (${language})`, async ({ page }, testInfo) => {
     const errors = []; page.on('pageerror', error => errors.push(error.message));
-    const user = await createAccount(page, `suiteaccount_${product.game}_${language}`, language);
+    const user = await createAccount(page, `suiteaccount_${product.game}_${language}`, language, product);
     await noNotices(page, user);
-    await page.goto(product.path);
+    await page.goto(product.lobby);
+    const entry = page.locator(`.suite-header__nav a[href="${product.entry}"]`);
+    await expect(entry).toHaveText(language === 'de' ? 'Konto' : 'Account');
+    await entry.click();
+    await expect(page).toHaveURL(new URL(product.entry, page.url()).href);
+    await expect(page.locator(product.statistics)).toBeVisible();
+    const labels = language === 'de' ? ['Statistik', 'Erfolge', 'Einstellungen'] : ['Statistics', 'Achievements', 'Settings'];
+    await (await destination(page, product, labels[2])).click();
     await expect(page.locator('html')).toHaveAttribute('lang', language);
     const groups = page.locator('[data-account-section]');
     await expect(groups).toHaveCount(4);
     expect(await groups.evaluateAll(nodes => nodes.map(node => node.dataset.accountSection))).toEqual(['access', 'play', 'social', 'help']);
-    const labels = language === 'de' ? ['Statistik', 'Erfolge', 'Einstellungen'] : ['Statistics', 'Achievements', 'Settings'];
     const navigation = product.tab ? page.getByRole('tablist', { name: /Kontobereiche|Account sections/ }) : page.locator('[data-account-navigation]');
     expect(await navigation.locator(product.tab ? '[role=tab]' : 'a').allTextContents()).toEqual(labels);
     for (let index = 0; index < 4; index += 1) {

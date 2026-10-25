@@ -1157,7 +1157,7 @@ def achievement_rank_legend_page(request: Request):
 @app.get("/konto", include_in_schema=False)
 def account_page(request: Request):
     if is_hausdepp_host(request):
-        return RedirectResponse("/hausdepp/konto/einstellungen", status_code=308,
+        return RedirectResponse("/hausdepp/konto", status_code=308,
                                 headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"})
     if is_zilch_host(request):
         return _serve_zilch_account_shell(request)
@@ -1243,7 +1243,10 @@ def _serve_hausdepp_page(request: Request, filename: str, *, public: bool = Fals
         return RedirectResponse(f"{login_base}?{urlencode({'return_to': destination})}", status_code=303,
                                 headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"})
     if not public:
-        _require_hausdepp_access(request)
+        identity = _require_hausdepp_access(request)
+        if filename == "hausdepp-account.html" and identity.must_change_password:
+            return RedirectResponse("/hausdepp/konto/einstellungen#passwort", status_code=303,
+                                    headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"})
     else:
         content = (STATIC_DIR / filename).read_text(encoding="utf-8")
         return Response(public_suite_markup(content, request), media_type="text/html",
