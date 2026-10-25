@@ -307,7 +307,10 @@ def _reconcile(db, owner_id, game_type, *, now=None, context=None, prepared=None
 
 
 def _consolidate(db, context, prepared, game_type):
-    dates = {key: datetime.fromisoformat(value) for key, value in prepared["target_dates"].items()}
+    # A stale native unlock can survive failed post-delete cleanup. Only a
+    # currently validated target witness may carry its earlier date forward.
+    dates = {key: datetime.fromisoformat(value) for key, value in prepared["target_dates"].items()
+             if key in prepared["target_supported_keys"]}
     source_keys = {row.achievement_key for row in award_backings(db, context.source_user_id, game_type)
                    if row.invalidated_at is None}
     copied = copy_active_backings(db, source_owner_id=context.source_user_id,
