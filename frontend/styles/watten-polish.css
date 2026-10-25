@@ -30,7 +30,7 @@ html[data-watten-active="true"] .wt-panel > .wt-prompt {
   margin: 0; color: var(--wt-ink); font-size: .8rem; font-weight: 400; line-height: 1.35;
 }
 html[data-watten-active="true"] .wt-panel:has(.wt-deal-result) { bottom: 20px; }
-html[data-watten-active="true"] .wt-table[data-phase="deal_complete"] .wt-hand-area { display: none; }
+html[data-watten-active="true"] .wt-table[data-phase="deal_complete"]:not([data-wt-retour-offer="true"]) .wt-hand-area { display: none; }
 html[data-watten-active="true"] .wt-private { bottom: calc(var(--wt-hand-w) * 1.8 + 10px); left: 50%; right: auto; translate: -50% 0; width: min(330px, calc(100% - 24px)); }
 html[data-watten-active="true"] .wt-feedback-dialog { position: fixed; inset: 0; margin: auto; translate: none; width: min(340px, calc(100vw - 28px)); max-width: none; max-height: calc(100dvh - 32px); padding: 20px; color: var(--wt-ink); background: #fff0da; border: 1px solid #bd976c; border-radius: 16px; box-shadow: 0 12px 44px #3f201755; }
 html[data-watten-active="true"] .wt-feedback-dialog::backdrop { background: #3f201738; }

@@ -197,7 +197,7 @@ test('tablet layout fixtures: shared axes, long identities, 1–4 packets and pa
               .filter(visible).some(other => overlaps(box(bubble), box(other)))) errors.push('Thanks covers identity metadata');
           }
           return { errors: [...new Set(errors)], top, left, right, own: own.toJSON(), activeButtons,
-            inspectionFaces: [...root.querySelectorAll('.wt-inspection .wt-card')].map(node => ({
+            inspectionFaces: [...root.querySelectorAll('[data-wt-reveal] .wt-inspection .wt-card')].map(node => ({
               card: node.dataset.card, image: node.querySelector('image')?.getAttribute('href'),
               clipId: node.querySelector('clipPath')?.id,
               clipDuplicates: document.querySelectorAll(`[id="${node.querySelector('clipPath')?.id}"]`).length,
@@ -217,7 +217,12 @@ test('tablet layout fixtures: shared axes, long identities, 1–4 packets and pa
             controls: controls.map(node => ({ className: node.className, bounds: box(node).toJSON() })) };
         });
         report.push({ viewport, count, kind, ...measured });
-        if (['passive', 'active', 'active-inspection', 'accepted'].includes(kind) && !measured.controls.length) measured.errors.push('forced Blödeln state is missing');
+        if (['passive', 'active', 'active-inspection'].includes(kind) && !measured.controls.length) measured.errors.push('forced Blödeln state is missing');
+        if (kind === 'accepted') {
+          await expect(page.locator('[data-tablet-fixture] [data-wt-bloedeln] .wt-card--back')).toHaveCount(2);
+          await expect(page.locator('[data-tablet-fixture] [data-wt-bloedeln] [data-card]')).toHaveCount(0);
+          await expect(page.locator('[data-tablet-fixture] [data-watten-bloedeln-status]')).toHaveCount(0);
+        }
         if (kind === 'active-inspection' && measured.inspectionFaces.filter(face => face.visible && face.bounds.width >= 44 && face.bounds.height >= 44).length !== 2) measured.errors.push('two painted inspection faces are missing');
         if (kind.startsWith('active') && measured.activeButtons !== 2) measured.errors.push('forced active Blödeln answer pair is missing');
         if (count === 4 || viewport.width === 1366) await page.screenshot({

@@ -1,7 +1,7 @@
 // Pre-play choices use only the accepted public request and own legal actions.
 // Blödeln never exposes a future card in the shared preparation area.
 import { escapeHtml as esc } from "../shared/auth.js";
-import { t } from "./cards.js";
+import { t, cardBack } from "./cards.js";
 
 const OPTIONS = ["schoeneres", "schlagwechsel", "bloedeln"];
 const playerName = (vm, seat) => vm.room.seats[seat]?.name || t("seat.unknown");
@@ -29,8 +29,10 @@ function bloedelnMarkup(vm) {
   if (vm.actions.includes("request_bloedeln")) {
     return `<div class="wt-bloedeln-start" data-watten-bloedeln-start>${commandButton(vm, "request_bloedeln", t("roundOptions.bloedeln.request"), true)}</div>`;
   }
-  const status = vm.engine.preplay?.bloedeln_status;
-  if (status !== "accepted") return "";
+  return "";
+}
+
+function bloedelnMessage(vm) {
   const participants = bloedelnParticipants(vm);
   const own = participants.includes(vm.viewerSeat);
   const message = participants.length === 2
@@ -38,7 +40,7 @@ function bloedelnMarkup(vm) {
       ? { name: participants.find(seat => seat !== vm.viewerSeat) }
       : { first: participants[0], second: participants[1] })
     : esc(t("roundOptions.bloedeln.enabled"));
-  return `<p class="wt-bloedeln-status" data-watten-bloedeln-status="${status}" role="status">${message}</p>`;
+  return message;
 }
 
 export function roundOptionsMarkup(vm) {
@@ -74,8 +76,16 @@ export function roundOptionsMarkup(vm) {
   </details>`;
 }
 
-export function bloedelnCardsMarkup() {
-  // Only the own hand may identify its private forced card. Other players
-  // learn it when its owner actually plays it into the public trick.
-  return "";
+export function bloedelnCardsMarkup(vm) {
+  if (vm.paused || vm.engine.preplay?.bloedeln_status !== "accepted" || vm.engine.last_trick
+      || vm.engine.current_trick?.cards?.length || !["show_ready", "inspection", "play"].includes(vm.engine.phase)) return "";
+  const participants = bloedelnParticipants(vm);
+  if (participants.length !== 2) return "";
+  // Public agreement identifies the two seats, never the private forced cards.
+  // The same measured actor-axis placement as showing keeps their backs away
+  // from the primary show/continue controls and the own hand.
+  return `<div class="wt-inspection wt-bloedeln-preparation">
+    <p class="wt-visually-hidden" role="status">${bloedelnMessage(vm)}</p>
+    <div class="wt-inspection-cards">${participants.map(seat => `<figure class="wt-reveal-card" data-wt-bloedeln-seat="${seat}">${cardBack()}<figcaption class="wt-visually-hidden">${esc(playerName(vm, seat))}</figcaption></figure>`).join("")}</div>
+  </div>`;
 }

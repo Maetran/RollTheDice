@@ -23,6 +23,12 @@ html[data-watten-active="true"] .wt-inspection .wt-reveal-card figcaption {
   position: absolute; width: max-content; max-width: 140px; translate: -50% 0; rotate: none;
   margin: 0; white-space: nowrap; z-index: 1; font-size: clamp(.8rem, 2.5vw, 1rem); pointer-events: none;
 }
+/* Agreed Blödeln uses only two anonymous backs between its public actors.
+   Showing is measured first and keeps priority over this secondary scene. */
+html[data-watten-active="true"] .wt-bloedeln-reveal { z-index: 9; }
+html[data-watten-active="true"] .wt-bloedeln-reveal .wt-bloedeln-preparation { inset: 0; width: auto; max-width: none; translate: none; padding: 0; background: none; border: 0; box-shadow: none; }
+html[data-watten-active="true"] .wt-bloedeln-reveal .wt-card { width: clamp(52px, min(14vw, 10dvh), 80px); }
+html[data-watten-active="true"] .wt-bloedeln-reveal figcaption { width: 1px; max-width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); }
 /* The action row (watten-preplay/-tablet) places ACK. This base keeps it in
    the lower right corner, never at the felt origin, if no row rule applies. */
 html[data-watten-active="true"] .wt-inspection > button {

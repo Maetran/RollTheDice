@@ -324,7 +324,19 @@ export function createTrickLayout(trick, { win = window } = {}) {
     if (win.innerWidth > 760 || win.innerWidth >= win.innerHeight) { portrait = null; return; }
     const area = felt.getBoundingClientRect();
     const left = Math.max(12, area.left + 8), top = Math.max(8, area.top + 8);
-    const right = Math.min(win.innerWidth - 12, area.right - 8), bottom = Math.min(win.innerHeight - 8, area.bottom - 8);
+    const right = Math.min(win.innerWidth - 12, area.right - 8);
+    let bottom = Math.min(win.innerHeight - 8, area.bottom - 8);
+    if (table.dataset.phase === "deal_complete" && table.dataset.roundStage === "collect"
+        && table.dataset.viewer === "player") {
+      // The deal closes before the collection flight. CSS hides the remaining
+      // hand immediately, but that must not move its last public trick into
+      // the owner's card band while the winner is being collected.
+      const hand = table.querySelector("[data-wt-hand]");
+      const card = hand?.firstElementChild;
+      const cardWidth = card ? Number.parseFloat(win.getComputedStyle(card).width)
+        : Number.parseFloat(win.getComputedStyle(hand).minHeight) / 1.583;
+      if (cardWidth > 0) bottom = Math.min(bottom, area.bottom - cardWidth * 1.8 - 20);
+    }
     const bounds = { left, top, right, bottom, width: right - left, height: bottom - top };
     const reference = box(centre.querySelector(".wt-reference"));
     const panel = table.querySelector("[data-wt-panel]");
@@ -333,7 +345,7 @@ export function createTrickLayout(trick, { win = window } = {}) {
     // packets likewise paint rotated corners and a counter beyond their box.
     const protectedNodes = [...table.querySelectorAll(".wt-seat-badge, .wt-avatar, .wt-seat-name, .wt-seat-call-role, .wt-seat-tags, .wt-seat-meta, .wt-bubble--thanks, "
       + ".wt-backs > i:not([hidden]), .wt-taken[data-filled='true'], .wt-taken[data-filled='true'] i, .wt-stock, "
-      + "[data-wt-hand-area], [data-wt-panel], [data-wt-private] button, [data-wt-stake], [data-wt-history]:not([open])")].filter(node => node !== neutralPrompt);
+      + "[data-wt-hand-area], [data-wt-hand] > *, [data-wt-panel], [data-wt-private] button, [data-wt-stake], [data-wt-history]:not([open])")].filter(node => node !== neutralPrompt);
     const history = table.querySelector("[data-wt-history]:not([open])"), historyBox = box(history);
     const moveHistory = Boolean(historyBox && table.dataset.phase === "play" && (!panel?.children.length || neutralPrompt));
     // Remove the extra dock row before measuring. Its final 44px position is

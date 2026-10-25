@@ -172,7 +172,7 @@ function inspectionMarkup(vm) {
   </div>`;
 }
 
-function createInspectionMotion(reveal, seatNodes) {
+function createInspectionMotion(reveal, seatNodes, { preparation = false } = {}) {
   const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)");
   const centre = rect => ({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
   const SIDES = ["bottom", "left", "right", "top"];
@@ -189,16 +189,17 @@ function createInspectionMotion(reveal, seatNodes) {
     delete reveal.dataset.wtInspectionReason;
     delete reveal.dataset.wtInspectionDetail;
   };
-  const playerOf = figure => seatNodes.get(Number(figure.dataset.wtInspectionSeat));
+  const playerOf = figure => seatNodes.get(Number(preparation ? figure.dataset.wtBloedelnSeat : figure.dataset.wtInspectionSeat));
+  const feltOf = () => reveal.closest(".wt-felt");
   const handArea = () => reveal.closest(".wt-table")?.querySelector("[data-wt-hand-area]");
   const signature = () => {
-    const felt = reveal.parentElement.getBoundingClientRect(), hand = handArea()?.getBoundingClientRect();
+    const felt = feltOf().getBoundingClientRect(), hand = handArea()?.getBoundingClientRect();
     return [felt.width, felt.height, hand?.width || 0, hand?.height || 0].join(":");
   };
 
   function position() {
     if (!reveal.isConnected || figures.length !== 2 || !figures.every(figure => figure.isConnected)) { stop(); return; }
-    const felt = reveal.parentElement, bounds = felt.getBoundingClientRect();
+    const felt = feltOf(), bounds = felt.getBoundingClientRect();
     const table = felt.closest(".wt-table");
     if (!bounds.width || !bounds.height || !table) return;
     const local = rect => rectOf(rect.left - bounds.left, rect.top - bounds.top, rect.width, rect.height);
@@ -255,11 +256,12 @@ function createInspectionMotion(reveal, seatNodes) {
     const sizes = cards.map(card => ({ width: card.offsetWidth, height: card.offsetHeight }));
     const labelSizes = captions.map(caption => ({ width: caption.offsetWidth, height: caption.offsetHeight }));
     const actorSeats = new Set(players);
-    const controls = painted(table.querySelectorAll('[data-watten-action="inspection_ack"], [data-wt-preplay] :is(button, h3, p), '
+    const controls = [...painted(table.querySelectorAll('[data-watten-action="inspection_ack"], [data-watten-action="show_ready"], [data-wt-preplay] :is(button, h3, p), '
       + '.wt-preplay-options > summary, [data-wt-private] button, [data-wt-history]:not([hidden]) > summary, '
-      + '.wt-seat--bottom.is-own .wt-seat-badge, .wt-seat--bottom.is-own .wt-bubble--thanks'));
+      + '.wt-seat--bottom.is-own .wt-seat-badge, .wt-seat--bottom.is-own .wt-bubble--thanks')), ...hand];
     const obstacles = [...painted(felt.querySelectorAll(".wt-avatar, .wt-seat-name, .wt-seat-call-role, .wt-seat-public-title, "
-      + ".wt-seat-tags, .wt-bubble--thanks, .wt-taken:not([hidden]) .wt-taken-packet, .wt-stock, [data-wt-reference] .wt-card, [data-wt-bloedeln] .wt-card")),
+      + ".wt-seat-tags, .wt-bubble--thanks, .wt-taken:not([hidden]) .wt-taken-packet, .wt-stock, [data-wt-reference] .wt-card")),
+    ...(preparation ? painted(felt.querySelectorAll('[data-wt-reveal][data-wt-inspection-positioned] .wt-card')) : []),
     ...outlines([...felt.querySelectorAll(".wt-seat")].filter(seat => !actorSeats.has(seat))
       .flatMap(seat => [...seat.querySelectorAll(".wt-backs:not([hidden]) > i:not([hidden])")]))];
     const input = { region: rectOf(6, 6, bounds.width - 12, bounds.height - 12),
@@ -307,7 +309,7 @@ function createInspectionMotion(reveal, seatNodes) {
   reduced?.addEventListener?.("change", preferenceChanged);
 
   const update = vm => {
-    const nextFigures = [...reveal.querySelectorAll("[data-wt-inspection-seat]")];
+    const nextFigures = [...reveal.querySelectorAll(preparation ? "[data-wt-bloedeln-seat]" : "[data-wt-inspection-seat]")];
     if (!nextFigures.length) { stop(); return; }
     // Public seat sides of the two callers, e.g. "bottom-right", so the
     // action row can keep its controls off their connecting line.
@@ -330,7 +332,7 @@ function createInspectionMotion(reveal, seatNodes) {
       if (!reveal.isConnected) { stop(); return; }
       if (geometry !== signature()) { settle(); schedule(); }
     });
-    observer.observe(reveal.parentElement);
+    observer.observe(feltOf());
     const area = handArea();
     if (area) observer.observe(area);
   };
@@ -516,11 +518,11 @@ export function createTableView(container, { onCard, accountId = null }) {
     </div>
     <div class="wt-felt" data-wt-felt>
       <div class="wt-reveal" data-wt-reveal></div>
+      <div class="wt-reveal wt-bloedeln-reveal" data-wt-bloedeln></div>
       <div class="wt-stock" data-wt-deck data-key="deck" aria-hidden="true"><i></i><i></i><i></i></div>
       <div class="wt-seats" data-wt-seats></div>
       <div class="wt-centre">
         <div data-wt-reference></div>
-        <div data-wt-bloedeln></div>
         <div class="wt-trick" data-wt-trick role="group" aria-label="${esc(t("trick.current"))}"></div>
         <p class="wt-trick-label" data-wt-trick-label></p>
         <div class="wt-bubbles" data-wt-bubbles></div>
@@ -552,6 +554,7 @@ export function createTableView(container, { onCard, accountId = null }) {
   const trickNodes = new Map();
   const seatNodes = new Map();
   const positionInspection = createInspectionMotion(elements.reveal, seatNodes);
+  const positionBloedeln = createInspectionMotion(elements.bloedeln, seatNodes, { preparation: true });
   const positionTrick = createTrickLayout(elements.trick);
   const retourAnnouncement = createRetourAnnouncement(elements.retour, { accountId, liveNode: $("[data-wt-retour-live]") });
   const scorepad = createScorepad(elements.scores);
@@ -741,6 +744,7 @@ export function createTableView(container, { onCard, accountId = null }) {
     container.querySelector("[data-wt-table]").dataset.count = String(vm.count);
     container.querySelector("[data-wt-table]").dataset.phase = vm.engine.phase;
     container.querySelector("[data-wt-table]").dataset.roundStage = vm.roundPresentation?.stage || "ready";
+    container.querySelector("[data-wt-table]").dataset.wtRetourOffer = String(vm.engine.retourschneider?.status === "available");
     container.querySelector("[data-wt-table]").dataset.viewer = vm.spectator ? "spectator" : "player";
     // Public seat sides of both callers through showing and inspection, e.g.
     // "bottom-right": one phase-stable hook if the action row must mirror.
@@ -788,13 +792,15 @@ export function createTableView(container, { onCard, accountId = null }) {
     elements.history.dataset.finished = String(historyFinished);
     patch(elements.history, "history", history);
     elements.history.dataset.pinned = String(historyPinned && !historyFinished);
-    if (historyFinished && reviewReady && !historyWasFinished) elements.history.open = vm.engine.phase === "deal_complete";
+    if (historyFinished && reviewReady && !historyWasFinished) elements.history.open = vm.engine.phase === "deal_complete"
+      && vm.engine.retourschneider?.status !== "available";
     else if (history && !historyFinished && historyPinned) elements.history.open = true;
     historyWasFinished = historyFinished && reviewReady;
     elements.handArea.hidden = vm.spectator;
     container.querySelector("[data-wt-table]").dataset.playable = String(vm.actions.includes("play_card"));
     const hand = vm.spectator ? { created: [], nodes: [] } : renderHand(vm);
     positionInspection(vm);
+    positionBloedeln(vm);
     const trick = renderTrick(vm);
     const reviewing = ["deal_complete", "match_complete"].includes(vm.engine.phase)
       && vm.roundPresentation && vm.roundPresentation.stage !== "collect";
@@ -817,7 +823,7 @@ export function createTableView(container, { onCard, accountId = null }) {
     return elements.seats.querySelector(`[data-wt-seat="${seat}"]`);
   }
 
-  return { update, destroy() { document.removeEventListener("pointerdown", outsideHistory); positionInspection.destroy(); positionTrick.destroy(); retourAnnouncement.destroy(); scorepad.destroy(); }, motionSources, seatNode, trickNode: () => elements.trick,
+  return { update, destroy() { document.removeEventListener("pointerdown", outsideHistory); positionInspection.destroy(); positionBloedeln.destroy(); positionTrick.destroy(); retourAnnouncement.destroy(); scorepad.destroy(); }, motionSources, seatNode, trickNode: () => elements.trick,
     deckNode: () => $("[data-wt-deck]"), collectionNode: seat => elements.seats.querySelector(`[data-wt-catch="${seat}"]`),
     backNodes: () => [...elements.seats.querySelectorAll(".wt-backs:not([hidden]) > i:not([hidden])")] };
 }
