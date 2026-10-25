@@ -44,13 +44,17 @@ for (const language of ['de', 'en']) {
               .map(node => node.getBoundingClientRect()).filter(box => box.width && box.height);
             const labelsClear = labels.every(box => Math.min(status.right, box.right) - Math.max(status.left, box.left) <= 1
               || Math.min(status.bottom, box.bottom) - Math.max(status.top, box.top) <= 1);
+            const statusCentre = status.y + status.height / 2;
+            const rowOverlap = Math.min(status.bottom, target.bottom) - Math.max(status.top, target.top);
             return { insidePoints: status.left >= points.left && status.right <= points.right
               && status.top >= points.top && status.bottom <= points.bottom,
-            sameTargetRow: Math.abs(status.y + status.height / 2 - target.y - target.height / 2) <= 1,
-            compactHeight: points.height <= 64.1, labelsClear,
+            // Borders may make the score buttons taller than their 44px
+            // minimum. Compare the actual metadata row, not that minimum.
+            sameTargetRow: statusCentre >= target.top && statusCentre <= target.bottom && rowOverlap >= status.height * .75,
+            noExtraRow: Math.abs(points.bottom - target.bottom) <= 1, labelsClear,
             chatClear: !overlap, fullText: document.querySelector('[data-wt-tools] > .wt-tag').scrollWidth <= status.width + 1 };
           }), { message: 'the complete spectator label shares the existing target row without covering chat or player labels' })
-            .toEqual({ insidePoints: true, sameTargetRow: true, compactHeight: true, labelsClear: true, chatClear: true, fullText: true });
+            .toEqual({ insidePoints: true, sameTargetRow: true, noExtraRow: true, labelsClear: true, chatClear: true, fullText: true });
         }
         const chat = page.locator('[data-watten-social-action=toggle]');
         await chat.click();
