@@ -601,10 +601,13 @@ def synchronize_hausdepp_progress_in_session(db, user_id: int) -> dict:
                   [-PRESENTATION_SNAPSHOT_LIMIT:])
     receipt.presentation_scores_json = json.dumps(scores, separators=(",", ":"))
     db.flush()
-    if merged:
+    from .account_progress import progress_owner_id
+    owner_id = progress_owner_id(db, user_id)
+    if merged or owner_id != user_id:
         from .hausdepp_merge import grant_combined, project_progress
-        grant_combined(db, user_id, reached_at=max((as_utc(item.finished_at) for item in credits), default=None))
-        return project_progress(db, user_id, result)
+        grant_combined(db, owner_id, reached_at=max((as_utc(item.finished_at) for item in credits), default=None))
+        if merged:
+            return project_progress(db, user_id, result)
     return result
 
 

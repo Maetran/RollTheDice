@@ -216,3 +216,74 @@ def test_chained_merge_keeps_earliest_date_max_price_and_no_donor_pending(server
     assert after["progress"]["grant_sequence"] == 0 and after["progress"]["acknowledged_sequence"] == 0
     assert after["progress"]["pending"] == {"credits": [], "achievements": []}
     assert build_watten_leaderboard(final)["entries"][0]["value"] == after["progress"]["total_xp"]
+
+
+def test_trusted_retired_origin_native_credit_observes_owner_threshold_and_invalidates_warm_cache(server):
+    source_owner, target_owner = runtime_tests.account("RetiredNative"), runtime_tests.account("RetiredTarget")
+    source, target = source_owner[0].user_id, target_owner[0].user_id
+    with session_scope() as db:
+        for index in range(4):
+            owner = source_owner if index < 3 else target_owner
+            row, evidence, bindings = written(db, game_for([owner], game_id=f"retired-before-{index}", cpus=(1,)))
+            store_draft_match(db, row, evidence, bindings)
+        merge(db, source, target)
+    before = build_watten_account(target)
+    table = {"_watten": SimpleNamespace(room=SimpleNamespace(members=(
+        SimpleNamespace(seat=0, account_id=target, participant_id="seat"),)))}
+    with session_scope() as db:
+        table[titles.CACHE_KEY] = titles._read_titles(db, table)
+        old_revision = table[titles.CACHE_KEY].entries[0].merge_revision
+        game = game_for([source_owner], game_id="trusted-retired-proof", cpus=(1,))
+        game["_finished_at"] = (AT + timedelta(hours=1)).isoformat()
+        row, evidence, bindings = written(db, game)
+        store_draft_match(db, row, evidence, bindings)
+        award = db.scalar(select(MergedAwardBacking).where(MergedAwardBacking.owner_user_id == target,
+            MergedAwardBacking.achievement_key == "watten_matches_5"))
+        assert award is not None and award.kind == "native_observed"
+        assert award.original_unlocked_at.replace(tzinfo=timezone.utc) == AT + timedelta(hours=1)
+        assert titles._read_titles(db, table).entries[0].merge_revision != old_revision
+    after = build_watten_account(target)
+    assert after["progress"]["pending"] == before["progress"]["pending"]
+    assert after["progress"]["grant_sequence"] == before["progress"]["grant_sequence"]
+
+
+def test_real_new_target_surprise_keeps_native_grant_and_match_delivery_after_merge(server):
+    import json
+    from dataclasses import replace
+
+    from app.models import WattenTableSurpriseClaim, WattenTableSurpriseWitness
+    from app.watten_surprises import eligible_effect, store_surprise_achievements
+    from tests.test_watten_evidence import public_evidence
+
+    donor, target_owner, other = [runtime_tests.account(f"NewSurprise{index}") for index in range(3)]
+    target = target_owner[0].user_id
+    with session_scope() as db:
+        row, evidence, bindings = written(db, game_for([donor], game_id="surprise-donor", cpus=(1,)))
+        store_draft_match(db, row, evidence, bindings)
+        merge(db, donor[0].user_id, target)
+        game = game_for([target_owner, other])
+        deal_id = game["_watten"].engine.ledger.applied_results[0].deal_id
+        game_id = next(f"rare-native-{index}" for index in range(5000) if eligible_effect(f"rare-native-{index}", deal_id))
+        effect = eligible_effect(game_id, deal_id)
+        game["_id"], game["_finished_at"] = game_id, (AT + timedelta(hours=1)).isoformat()
+        row, _legacy, bindings = written(db, game)
+        proof = replace(public_evidence(json.loads(row.snapshot_json)), finished_at=AT + timedelta(hours=1),
+                        started_at=AT + timedelta(minutes=50))
+        db.add(WattenTableSurpriseClaim(game_id=game_id, deal_id=deal_id, effect=effect, event_id="d" * 32,
+                                       claimed_at=AT + timedelta(minutes=55), human_count=2))
+        db.flush()
+        for binding in bindings:
+            db.add(WattenTableSurpriseWitness(game_id=game_id, deal_id=deal_id, user_id=binding.user_id,
+                player_id=binding.player_id, initiated=binding.user_id == target))
+        db.flush()
+        key = f"watten_surprise_{effect}_trigger"
+        store_draft_match(db, row, proof, bindings)
+        assert db.get(WattenAchievementGrant, (target, 1, key)) is None
+        assert db.scalar(select(MergedAwardBacking.id).where(MergedAwardBacking.owner_user_id == target,
+            MergedAwardBacking.achievement_key == key)) is None
+        store_surprise_achievements(db, proof, bindings)
+        native = db.get(WattenAchievementGrant, (target, 1, key))
+        assert native is not None and native.source_game_id == game_id
+    account = build_watten_account(target)
+    assert any(item["id"] == key and item["source_game_id"] == game_id
+               for item in account["progress"]["pending"]["achievements"])

@@ -165,3 +165,20 @@ def test_chained_merge_keeps_first_date_score_and_does_not_create_a_normal_notic
     after_delete = build_hausdepp_account_for_user(final.id)
     assert after_delete["statistics"]["rounds_played"] == 1
     assert after_delete["scoring"] == after["scoring"]
+
+
+def test_trusted_retired_origin_recovery_updates_owner_union_without_target_read_or_ack(hd):
+    for index in range(2):
+        hd.store(hd.payload(f"recovery-before-{index}"))
+    hd.store(hd.payload("recovery-target"), account=hd.other.id)
+    with session_scope() as db:
+        merge(db, hd.user.id, hd.other.id)
+    for index in range(2):
+        hd.store(hd.payload(f"retired-recovery-{index}", at=AT + timedelta(hours=index + 1)))
+        synchronize_hausdepp_progress(hd.user.id)  # trusted original proof recovery, no login alias
+    with session_scope() as db:
+        award = db.scalar(select(MergedAwardBacking).where(MergedAwardBacking.owner_user_id == hd.other.id,
+            MergedAwardBacking.achievement_key == "hausdepp_09"))
+        assert award is not None and award.kind == "native_observed"
+        assert award.original_unlocked_at.replace(tzinfo=timezone.utc) == AT + timedelta(hours=2)
+        assert db.get(HausdeppAchievementUnlock, (hd.other.id, "hausdepp_09")) is None

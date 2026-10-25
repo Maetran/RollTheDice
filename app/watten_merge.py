@@ -92,13 +92,17 @@ def effective_awards(db, owner_id, *, origins=None, journals=None):
             context = json.loads(item.context_json)
             if item.kind == "original":
                 original = db.get(WattenAchievementGrant, (item.origin_user_id, context["generation"], item.achievement_key))
-                if original is None or original.source_game_id != context["game_id"]:
+                if (original is None or original.source_game_id != context["game_id"]
+                        or journals[item.origin_user_id][1]["generation"] != context["generation"]):
                     continue
             else:
                 from datetime import datetime
-                selector = json.dumps({key: context[key] for key in ("origins", "through")}, sort_keys=True)
+                selector = json.dumps({key: context[key] for key in ("origins", "through", "generations")}, sort_keys=True)
                 if selector not in contexts:
                     sealed = _journals(db, context["origins"])
+                    if any(progress["generation"] != context["generations"][str(origin)]
+                           for origin, (_matches, progress, _credits) in sealed.items()):
+                        continue
                     filtered = {origin: (matches, progress, [credit for credit in credits
                                 if as_utc(credit.finished_at) <= as_utc(datetime.fromisoformat(context["through"][str(origin)]))])
                                 for origin, (matches, progress, credits) in sealed.items()}
@@ -189,7 +193,7 @@ def _latest_operation(db, owner_id):
                      .order_by(AccountMergeOperation.created_at.desc(), AccountMergeOperation.id.desc()).limit(1))
 
 
-def grant_combined(db, owner_id, *, operation=None, reached_at=None):
+def grant_combined(db, owner_id, *, operation=None, reached_at=None, include_surprises=True):
     operation = operation or _latest_operation(db, owner_id)
     if operation is None:
         return
@@ -199,17 +203,22 @@ def grant_combined(db, owner_id, *, operation=None, reached_at=None):
     existing = effective_awards(db, owner_id, journals=journals)
     through = {str(origin): max((as_utc(item.finished_at) for item in credits), default=as_utc(operation.created_at)).isoformat()
                for origin, (_matches, _progress, credits) in journals.items()}
-    for goal in (*DRAFT_ACHIEVEMENTS, *SURPRISE_ACHIEVEMENTS):
+    goals = (*DRAFT_ACHIEVEMENTS, *SURPRISE_ACHIEVEMENTS) if include_surprises else DRAFT_ACHIEVEMENTS
+    for goal in goals:
         current = counters[goal.counter] if bool(goal.counter) else int(goal.achievement_id in rare)
         target = goal.target if bool(goal.counter) else 1
         if goal.achievement_id in existing or current < target:
             continue
+        context = {"v": 1, "origins": list(identities), "through": through,
+                   "generations": {str(origin): progress["generation"] for origin, (_matches, progress, _credits) in journals.items()},
+                   "criterion": goal.achievement_id, "target": target, "catalog_version": DRAFT_CATALOG_VERSION}
+        witness = hashlib.sha256(json.dumps(context, sort_keys=True).encode()).hexdigest()[:16]
         record_award_support(db, owner_id=owner_id, game_type="watten", achievement_key=goal.achievement_id,
-            support_key=f"threshold:{operation.id}:{goal.achievement_id}", origin_user_id=owner_id,
-            operation_id=operation.id, unlocked_at=reached_at or operation.created_at, credited_amount=goal.xp,
+            support_key=f"threshold:{operation.id}:{goal.achievement_id}:{witness}", origin_user_id=owner_id,
+            operation_id=operation.id, unlocked_at=max(as_utc(operation.created_at), as_utc(reached_at)) if reached_at else operation.created_at,
+            credited_amount=goal.xp,
             kind="native_observed" if reached_at is not None else "merge_threshold",
-            context={"v": 1, "origins": list(identities), "through": through, "criterion": goal.achievement_id,
-                     "target": target, "catalog_version": DRAFT_CATALOG_VERSION})
+            context=context)
 
 
 def prepare_watten_merge_in_session(db, context):

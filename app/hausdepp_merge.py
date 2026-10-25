@@ -244,12 +244,15 @@ def grant_combined(db, owner_id, *, operation=None, reached_at=None):
         current, target = values[goal["id"]]
         if goal["id"] in existing or current < target:
             continue
+        context = {"v": 1, "origins": list(identities), "through": through, "owners": sealed_owners,
+                   "criterion": goal["id"], "target": target}
+        witness = hashlib.sha256(json.dumps(context, sort_keys=True).encode()).hexdigest()[:16]
         record_award_support(db, owner_id=owner_id, game_type="hausdepp", achievement_key=goal["id"],
-            support_key=f"threshold:{operation.id}:{goal['id']}", origin_user_id=owner_id,
-            operation_id=operation.id, unlocked_at=reached_at or operation.created_at, credited_amount=goal["points"],
+            support_key=f"threshold:{operation.id}:{goal['id']}:{witness}", origin_user_id=owner_id,
+            operation_id=operation.id, unlocked_at=max(as_utc(operation.created_at), as_utc(reached_at)) if reached_at else operation.created_at,
+            credited_amount=goal["points"],
             kind="native_observed" if reached_at is not None else "merge_threshold",
-            context={"v": 1, "origins": list(identities), "through": through, "owners": sealed_owners,
-                     "criterion": goal["id"], "target": target})
+            context=context)
 
 
 def prepare_hausdepp_merge_in_session(db, context):
