@@ -20,6 +20,7 @@
 @import "./watten-tablet.css";
 @import "./watten-sound.css";
 @import "./watten-call.css";
+@import "./watten-mobile-bottom.css";
 
 /* Watten: a bright wooden inn table, warm paper and dark red accents. */
 :root {

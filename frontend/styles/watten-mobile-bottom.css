@@ -1,0 +1,94 @@
+/* Phone identities, choices and passive instructions share the same hand
+   clearance. The rotated outer cards paint above the hand's 1.8-width box;
+   optional role rows must never borrow that painted space. Tablet axes remain
+   owned by watten-tablet.css. */
+@media (orientation: portrait) and (max-width: 760px) {
+  html[data-game="watten"][data-watten-active="true"] .wt-table {
+    --wt-own-avatar-size: 30px;
+    --wt-own-hand-clearance: calc(var(--wt-hand-w) * 1.9 + max(12px, env(safe-area-inset-bottom, 0px)) + 12px);
+    --wt-own-action-width: calc(100% - 132px);
+  }
+  html[data-game="watten"][data-watten-active="true"] body .wt-table[data-count][data-phase][data-viewer]:not([data-phase="match_complete"][data-round-stage="ready"]) .wt-felt .wt-seat.wt-seat--bottom.is-own {
+    left: 12px; right: auto; top: auto; bottom: var(--wt-own-hand-clearance);
+    width: 96px; height: auto; translate: none;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count] .wt-seat--bottom.is-own > .wt-seat-badge {
+    display: grid; position: relative; width: 96px; max-width: 96px;
+    grid-template-columns: var(--wt-own-avatar-size) minmax(0, 1fr);
+    grid-template-rows: var(--wt-own-avatar-size) minmax(18px, max-content);
+    align-items: center; gap: 3px;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count] .wt-seat--bottom.is-own .wt-avatar {
+    position: static; grid-column: 1; grid-row: 1; translate: none;
+    width: var(--wt-own-avatar-size); min-width: var(--wt-own-avatar-size); height: var(--wt-own-avatar-size);
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count] .wt-seat--bottom.is-own .wt-seat-name-row {
+    position: relative; inset: auto; grid-column: 2; grid-row: 1; width: 100%; max-width: 100%;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count] .wt-seat--bottom.is-own .wt-seat-call-role {
+    position: static; inset: auto; translate: none; grid-column: 1 / -1; grid-row: 2;
+    justify-self: start; min-height: 18px; max-width: 100%; margin: 0; font-size: .7rem;
+  }
+  /* The left identity owns 96px and a 12px gap. Live bid answers can grow
+     upward in the remaining column without covering its name or role. */
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"]:not([data-phase="match_complete"][data-round-stage="ready"]) > .wt-end-sheet {
+    left: auto; right: 12px; bottom: var(--wt-own-hand-clearance);
+    width: var(--wt-own-action-width);
+    max-height: calc(100% - var(--wt-own-hand-clearance) - 80px);
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"] > .wt-end-sheet > .wt-stake {
+    width: 100%; align-self: stretch;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"] .wt-stake > button {
+    min-width: 0; width: 100%; padding-inline: 6px;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count][data-phase="bid_response"] > .wt-end-sheet > .wt-panel:has(.wt-bid .wt-choice-row) {
+    width: 100%; max-width: 100%;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"] > .wt-bloedeln-dock {
+    left: auto; right: 12px; bottom: var(--wt-own-hand-clearance);
+    width: var(--wt-own-action-width);
+  }
+  /* A caller's passive Blödeln status is above the fixed Show/Continue row.
+     An involved recipient retains the same right-hand request/answer target. */
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"]:has([data-watten-action="inspection_ack"]) > .wt-bloedeln-dock,
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"] > .wt-bloedeln-dock:has(> .wt-bloedeln-status) {
+    left: 12px; right: 12px; bottom: calc(var(--wt-own-hand-clearance) + 64px); width: auto;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"]:has(.wt-preplay-options) > .wt-bloedeln-dock {
+    bottom: calc(var(--wt-own-hand-clearance) + 120px);
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"] .wt-inspection > button,
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"]:not([data-phase="match_complete"][data-round-stage="ready"]) .wt-end-sheet > .wt-panel > .wt-announce:has(> [data-watten-action="show_ready"]) {
+    bottom: var(--wt-own-hand-clearance);
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"][data-phase="inspection"] .wt-preplay-options {
+    left: auto; right: 12px; bottom: calc(var(--wt-own-hand-clearance) + 56px);
+    width: var(--wt-own-action-width);
+  }
+  /* Waiting for the two callers is a separate, full-width information band.
+     It clears the complete identity and the tallest two-choice Blödeln dock. */
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"]:is([data-phase="show_ready"], [data-phase="inspection"]) > .wt-end-sheet > .wt-panel:has(> .wt-prompt:only-child) {
+    position: fixed; inset: auto 12px calc(var(--wt-own-hand-clearance) + 120px);
+    width: auto; max-width: none; max-height: none; padding: 3px 6px;
+    text-align: center; background: #fff0d9bb; border: 0; box-shadow: none;
+  }
+  /* The reference has its own top corner, with a visible face at phone scale.
+     Starting at the felt edge also leaves the short phone's side badge clear. */
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count] .wt-centre .wt-reference {
+    top: calc(var(--wt-table-header-height, 52px) + 52px); right: 14px; left: auto;
+    font-size: .65rem; line-height: 1.2;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-reference > .wt-card--mini {
+    width: clamp(42px, 13vw, 58px);
+  }
+}
+@media (orientation: portrait) and (max-width: 760px) and (max-height: 700px) {
+  html[data-game="watten"][data-watten-active="true"] .wt-table { --wt-own-avatar-size: 24px; }
+}
+@media (orientation: landscape) and (max-height: 700px) {
+  html[data-game="watten"][data-watten-active="true"] .wt-table .wt-reference {
+    width: 44px; font-size: .65rem; line-height: 1.2;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-reference > .wt-card--mini { width: 44px; }
+}
