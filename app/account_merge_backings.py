@@ -6,7 +6,7 @@ proof, scans game history, changes an original journal, or creates deliveries.
 from __future__ import annotations
 
 import json
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -123,13 +123,18 @@ def copy_active_backings(db, *, source_owner_id: int, target_owner_id: int, game
 
 
 def revalidate_backings(db, *, owner_id: int, game_type: str, achievement_key: str,
-                        now: datetime, validate: Callable[[MergedAwardBacking], bool]) -> list[MergedAwardBacking]:
+                        now: datetime, validate: Callable[[MergedAwardBacking], bool],
+                        supports: Iterable[MergedAwardBacking] | None = None) -> list[MergedAwardBacking]:
     """Validate each active witness independently under its sealed context.
 
     Invalidations are permanent and caller-transactional. Only game-specific
     adapters can validate proof; canonical award presence is never sufficient.
+    Callers may pass rows loaded in this transaction and include newly captured
+    witnesses, avoiding another journal read for each catalog key.
     """
-    active = [row for row in award_backings(db, owner_id, game_type, achievement_key) if row.invalidated_at is None]
+    rows = award_backings(db, owner_id, game_type, achievement_key) if supports is None else supports
+    active = [row for row in rows if row.owner_user_id == owner_id and row.game_type == game_type
+              and row.achievement_key == achievement_key and row.invalidated_at is None]
     previous_date = min((min(as_utc(row.original_unlocked_at), as_utc(row.continuity_date)) for row in active), default=None)
     valid = []
     for row in active:
@@ -144,9 +149,10 @@ def revalidate_backings(db, *, owner_id: int, game_type: str, achievement_key: s
 
 
 def reconcile_award_backings(db, *, owner_id: int, game_type: str, achievement_key: str,
-                             now: datetime, validate: Callable[[MergedAwardBacking], bool]) -> AwardProjection | None:
+                             now: datetime, validate: Callable[[MergedAwardBacking], bool],
+                             supports: Iterable[MergedAwardBacking] | None = None) -> AwardProjection | None:
     valid = revalidate_backings(db, owner_id=owner_id, game_type=game_type, achievement_key=achievement_key,
-                                now=now, validate=validate)
+                                now=now, validate=validate, supports=supports)
     if not valid:
         return None
     return AwardProjection(

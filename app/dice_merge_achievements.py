@@ -212,6 +212,9 @@ def _reconcile(db, owner_id, game_type, *, now=None, context=None, prepared=None
     ids = origin_ids_for_progress(db, owner_id)
     proof = _proof_context(db, ids, ids)
     known = award_backings(db, owner_id, game_type)
+    supports_by_key = {}
+    for backing in known:
+        supports_by_key.setdefault(backing.achievement_key, []).append(backing)
     operation_id = context.operation_id if context is not None else (known[-1].operation_id if known else None)
     if operation_id is None:
         # An owned origin always has an operation even if neither account has an award yet.
@@ -234,12 +237,12 @@ def _reconcile(db, owner_id, game_type, *, now=None, context=None, prepared=None
     for definition in _definitions(game_type):
         if only_keys is not None and definition.key not in only_keys:
             continue
+        existing_supports = supports_by_key.setdefault(definition.key, [])
         projection = reconcile_award_backings(
             db, owner_id=owner_id, game_type=game_type, achievement_key=definition.key,
-            now=now, validate=lambda row: _validate(db, row, cache=cache),
+            now=now, validate=lambda row: _validate(db, row, cache=cache), supports=existing_supports,
         )
         row = existing.get(definition.key)
-        existing_supports = award_backings(db, owner_id, game_type, definition.key)
         if projection is None and row is not None and existing_supports and definition.key not in (continuity_dates or {}):
             # A closed cycle cannot keep its delivery identity or recover its old first date.
             db.delete(row)
@@ -276,12 +279,12 @@ def _reconcile(db, owner_id, game_type, *, now=None, context=None, prepared=None
                        f"{kind}:{owner_id}:{definition.key}:{now.isoformat()}:{json.dumps(criterion, sort_keys=True)}")
             support_key = f"{game_type}:{hashlib.sha256(witness.encode()).hexdigest()}"
             if not any(backing.support_key == support_key for backing in existing_supports):
-                _capture(db, owner_id=owner_id, game_type=game_type, definition=definition,
+                existing_supports.append(_capture(db, owner_id=owner_id, game_type=game_type, definition=definition,
                          operation_id=operation_id, context=criterion, unlocked_at=genuine_date, kind=kind,
-                         continuity_date=continuity, witness=witness)
+                         continuity_date=continuity, witness=witness))
             projection = reconcile_award_backings(
                 db, owner_id=owner_id, game_type=game_type, achievement_key=definition.key,
-                now=now, validate=lambda backing: _validate(db, backing, cache=cache),
+                now=now, validate=lambda backing: _validate(db, backing, cache=cache), supports=existing_supports,
             )
         if projection is None:
             if row is not None:
