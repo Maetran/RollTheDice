@@ -3,11 +3,20 @@ const { expect } = require('@playwright/test');
 async function expectTableHeaderReachable(page) {
   const language = await page.locator('html').getAttribute('lang');
   const rulesPath = language === 'en' ? '/watten/regeln?lang=en' : '/watten/regeln';
-  await expect(page.locator('.wt-header [data-language-switcher]')).toBeVisible();
-  await expect(page.locator('.wt-header [data-game-picker]')).toBeVisible();
-  await expect(page.locator(`.wt-header a[href="${rulesPath}"]`)).toBeVisible();
+  const compact = await page.locator('html').getAttribute('data-wt-compact-header') === 'true';
+  const expanded = await page.locator('html').getAttribute('data-wt-header-open') === 'true';
+  for (const selector of ['.wt-header [data-language-switcher]', '.wt-header [data-game-picker]', `.wt-header a[href="${rulesPath}"]`]) {
+    if (compact && !expanded) await expect(page.locator(selector)).toBeHidden();
+    else await expect(page.locator(selector)).toBeVisible();
+  }
+  if (compact) {
+    await expect(page.locator('[data-watten-header-toggle]')).toBeVisible();
+    await expect(page.locator('[data-watten-header-toggle]')).toHaveAttribute('aria-expanded', String(expanded));
+  }
   await expect.poll(() => page.evaluate(() => {
     const header = document.querySelector('.wt-header');
+    const compact = document.documentElement.dataset.wtCompactHeader === 'true';
+    const expanded = document.documentElement.dataset.wtHeaderOpen === 'true';
     const controls = [...header.querySelectorAll('a, select, button'),
       ...document.querySelectorAll('details.wt-partner-hand > summary')];
     const failures = [];
@@ -17,14 +26,25 @@ async function expectTableHeaderReachable(page) {
       const felt = document.querySelector('[data-wt-felt]').getBoundingClientRect();
       const railControls = [...controls, ...document.querySelectorAll('[data-wt-score-open], [data-wt-tools] button, [data-watten-social-action="toggle"], [data-wt-stake] > button, [data-wt-history]:not([open]) > summary')]
         .filter(control => control.getBoundingClientRect().width > 0 && control.getBoundingClientRect().height > 0);
-      if (rail.left < -1 || rail.right >= innerWidth / 2 || felt.left < rail.right - 1 || felt.top > 1
+      const inset = Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--wt-rail-inset')) || 0;
+      if (rail.left < -1 || rail.right >= innerWidth / 2 || (!compact && felt.left < rail.right - 1) || felt.top > 1
         || felt.right > innerWidth + 1 || felt.bottom > innerHeight + 1) failures.push('landscape table does not fill the space right of the left header rail');
+      if (compact) {
+        if (Math.abs(felt.left - inset - 52) > 1 || Math.abs(rail.width - inset - (expanded ? 156 : 52)) > 1) {
+          failures.push('compact header changes the reserved 52px table rail');
+        }
+        const scores = topbar.getBoundingClientRect();
+        if (Math.abs(scores.left - (expanded ? innerWidth - 168 : inset + 56)) > 1 || Math.abs(scores.width - 156) > 1
+          || scores.top < -1 || scores.top > 8) failures.push('compact scores do not float beside the header');
+      }
       for (const control of railControls) {
         const box = control.getBoundingClientRect();
         const label = control.getAttribute('aria-label') || control.getAttribute('title') || control.textContent.trim();
         const hit = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
-        if (box.left < rail.left - 1 || box.right > rail.right + 1) failures.push(`${label}: escapes left rail at ${box.left},${box.top},${box.width},${box.height}`);
-        if (box.top < -1 || box.bottom > innerHeight + 1 || box.width < 44 || box.height < 44
+        if ((!compact || header.contains(control)) && (box.left < rail.left - 1 || box.right > rail.right + 1)) {
+          failures.push(`${label}: escapes left rail at ${box.left},${box.top},${box.width},${box.height}`);
+        }
+        if (box.left < -1 || box.right > innerWidth + 1 || box.top < -1 || box.bottom > innerHeight + 1 || box.width < 44 || box.height < 44
           || !control.contains(hit)) failures.push(`${label}: rail target clipped, too small or covered by ${hit?.className}`);
       }
     }
