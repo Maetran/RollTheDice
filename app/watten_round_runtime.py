@@ -15,7 +15,7 @@ from datetime import datetime, timedelta
 from math import ceil
 
 from .security import utcnow
-from .watten_bidding import retourschneider_candidate
+from .watten_engine import retourschneider_offer
 
 logger = logging.getLogger(__name__)
 COLLECT_SECONDS = 3.6
@@ -34,7 +34,7 @@ def review_deadlines(game: dict):
 def _blocked(runtime) -> str | None:
     if runtime.absent:
         return "paused"
-    if retourschneider_candidate(runtime.engine.ledger) is not None:
+    if retourschneider_offer(runtime.engine) is not None:
         return "retourschneider"
     return None
 

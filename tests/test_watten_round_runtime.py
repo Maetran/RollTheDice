@@ -65,11 +65,11 @@ def test_trusted_advance_rotates_dealer_preserves_score_and_honors_pause_or_reto
     with pytest.raises(ValueError, match="review_pending"):
         review.advance_reviewed_deal(game)
     game["_watten"] = old
-    monkeypatch.setattr(review, "retourschneider_candidate", lambda _ledger: ("waiting-human",))
+    monkeypatch.setattr(review, "retourschneider_offer", lambda _state: ("waiting-human",))
     assert not review.review_projection(game)["auto_advance"]
     with pytest.raises(ValueError, match="review_pending"):
         review.advance_reviewed_deal(game)
-    monkeypatch.setattr(review, "retourschneider_candidate", lambda _ledger: None)
+    monkeypatch.setattr(review, "retourschneider_offer", lambda _state: None)
     candidate = review.advance_reviewed_deal(game)
     new = candidate["_watten"]
     assert new.engine.deal_id != old.engine.deal_id

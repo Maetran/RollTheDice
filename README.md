@@ -409,6 +409,9 @@ kurzer bildschirmfüllender Auftritt den Retourschneider an, ohne die Bedienung
 zu sperren. Er erscheint je Einstieg einmal, auch nach erneutem Laden nicht nochmals.
 Bei einem Nein bleibt für das betroffene Team ein schliessbarer Hinweis stehen,
 auch wenn inzwischen die nächste Gabe beginnt: Die Anschrift bleibt erhalten.
+Bei Mensch und CPU im selben Team entscheidet allein der Mensch. Der
+CPU-Partner folgt seiner Wahl sofort und kann den Retourschneider nicht ablehnen.
+Ein Team aus zwei CPUs erhält kein Angebot und spielt normal weiter.
 A round ends with three tricks or a fold, the match at its target. Losers receive
 one Nockerl, or two without scoring (Schneider). With four players, the trailing
 team may erase its score when the other team first becomes gestrichen. Winning
@@ -420,6 +423,9 @@ the Retourschneider without blocking controls. Each entry is announced once,
 including across reloads.
 After a refusal, the affected team sees a dismissible explanation that their
 score is kept, even if the next deal has already started.
+In a human-and-CPU team, the human alone decides. The CPU teammate immediately
+follows that choice and cannot veto the Retourschneider.
+A team of two CPUs receives no offer and continues normal play.
 
 **8+3-Erfolge / milestones:** «8+3 isch Mittag» gibt es nach zehn normalen
 Spielsiegen bis elf, bei denen die letzte Drei-Punkte-Runde genau von acht

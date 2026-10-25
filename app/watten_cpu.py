@@ -735,9 +735,9 @@ def _choose(ctx: _Context, seed: int, budget: CpuBudget, skill: CpuSkill) -> Cpu
     if snap.preplay_pending is not None and not snap.bloedeln_pending:
         return CpuWait(snap.deal_id, snap.opportunity, snap.phase, "watten_cpu_preplay_waiting")
     if "retourschneider" in actions:
-        # The optional all-or-nothing challenge is deliberately conservative
-        # until a separate comeback strategy is designed.
-        return propose("retourschneider", "decline")
+        # Older saved mixed teams may already contain their human's yes. The
+        # authoritative engine exposes this CPU action only to mirror it.
+        return propose("retourschneider", "accept")
     if snap.finished:
         return CpuWait(snap.deal_id, snap.opportunity, snap.phase, "watten_cpu_deal_finished")
     if "announce_strike" in actions:
