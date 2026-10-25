@@ -380,7 +380,7 @@ class ZilchAchievementPersistenceTestCase(TestCase):
         # catalog version advances when server-side definitions grow.
         self.assertEqual(catalog["version"], 2)
         self.assertNotIn("player", catalog)
-        self.assertEqual(len(catalog["definitions"]), 110)
+        self.assertEqual(len(catalog["definitions"]), 112)
         self.assertEqual({item["key"] for item in catalog["definitions"]}, set(ZILCH_ACHIEVEMENT_BY_KEY))
         self.assertEqual(catalog["points_possible"], ZILCH_ACHIEVEMENT_POINTS_POSSIBLE)
         self.assertEqual(
@@ -436,7 +436,7 @@ class ZilchAchievementPersistenceTestCase(TestCase):
             "play_mode": "multiplayer",
             "outcome": "win",
             "history_complete": True,
-            "banked_rounds": [6_000, 3_000, 2_000],
+            "banked_rounds": [6_000, 3_000, 2_000, 2_000, 2_000],
             "highest_banked_round": 6_000,
             "final_score": 15_000,
             "combination_types": [
@@ -451,6 +451,7 @@ class ZilchAchievementPersistenceTestCase(TestCase):
                 "six_of_a_kind",
             ],
             "hot_dice_events": 5,
+            "banked_turn_hot_dice_v1": 2,
             "zilch_count": 20,
             "zilch_penalty_points": 1_000,
             "max_discarded_points": 2_000,
