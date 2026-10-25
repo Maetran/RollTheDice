@@ -15,6 +15,7 @@
   <script>{const r=document.documentElement,g=k=>{try{return localStorage.getItem(k)}catch(_){return null}},q=new URLSearchParams(location.search).get("design");if(q!=="classic"&&g("zdwa_design")!=="old"&&g("zdwa_design_off")!=="1"&&(q==="2026"||g("zdwa_design_override")!=="old"))r.dataset.design="2026"}</script>
   <script src="/static/shell.js?v=1c4d43150c24" defer></script>
   <link rel="stylesheet" href="/static/suite-header.css?v=1c4d43150c24">
+  <link rel="stylesheet" href="/static/admin-account-merge.css?v=1c4d43150c24">
 </head>
 <body class="lobby-page">
   <main class="wrap admin-shell">
@@ -43,6 +44,11 @@
         <button class="admin-module-tile" type="button" data-admin-panel="assignmentsPanel" aria-controls="assignmentsPanel" aria-expanded="false">
           <span class="admin-module-icon" aria-hidden="true">🎯</span>
           <span class="admin-module-copy"><strong>Spielzuordnung</strong><small>Gastspiele mit Benutzern verknüpfen</small></span>
+          <span class="admin-module-chevron" aria-hidden="true">⌄</span>
+        </button>
+        <button id="accountMergeTile" class="admin-module-tile" type="button" data-admin-panel="accountMergePanel" aria-controls="accountMergePanel" aria-expanded="false" hidden>
+          <span class="admin-module-icon" aria-hidden="true">⇢</span>
+          <span class="admin-module-copy"><strong>Konten zusammenführen</strong><small>Spielverlauf und Erfolge in einem Konto behalten</small></span>
           <span class="admin-module-chevron" aria-hidden="true">⌄</span>
         </button>
         <button class="admin-module-tile admin-module-tile-danger" type="button" data-admin-panel="completedGamesPanel" aria-controls="completedGamesPanel" aria-expanded="false">
@@ -88,6 +94,15 @@
       <div class="section-title-row"><div><p class="eyebrow">Historische Daten</p><h2>Spiele zuordnen</h2></div><button id="reloadAssignments" class="small secondary">Aktualisieren</button></div>
       <p class="muted">Hier erscheinen nicht zugeordnete Teilnehmer aus importierten Bestenlisten und neuen Gastspielen.</p>
       <div id="assignmentList" class="assignment-list"></div>
+    </section>
+
+    <section id="accountMergePanel" class="card admin-panel admin-account-merge" aria-labelledby="accountMergeHeading" hidden>
+      <p class="eyebrow">Owner-Verwaltung</p>
+      <h2 id="accountMergeHeading">Konten zusammenführen</h2>
+      <p>Wähle das alte Konto als Quelle und das neue Konto als Ziel. Anmeldung und Einstellungen des Zielkontos bleiben erhalten. Die alten Zugangsdaten werden verworfen.</p>
+      <p class="muted small">Spiele und Erfolge werden zusammengeführt. Doppelte Erfolge zählen einmal; das früheste erreichte Datum bleibt erhalten.</p>
+      <div data-account-merge-controls hidden></div>
+      <p data-account-merge-status role="status" aria-live="polite" tabindex="-1"></p>
     </section>
 
     <section id="completedGamesPanel" class="card admin-panel danger-zone" hidden>
@@ -666,5 +681,6 @@
     await loadUsers();
     await Promise.all([loadAssignments(), loadCompletedGames(), loadDeletedGames()]);
   </script>
+  <script type="module" src="/static/admin-account-merge.js?v=1c4d43150c24"></script>
 </body>
 </html>

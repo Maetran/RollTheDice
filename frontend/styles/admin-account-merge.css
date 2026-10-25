@@ -1,0 +1,37 @@
+/* Scoped owner workflow; the existing admin shell controls panel visibility. */
+#accountMergePanel { overflow-wrap: anywhere; }
+#accountMergePanel :is(form, fieldset, label, input, select, button, section, div) { min-width: 0; }
+#accountMergePanel :is(input:not([type="checkbox"]), select) { width: 100%; max-width: none; box-sizing: border-box; }
+#accountMergePanel button { min-height: 44px; white-space: normal; overflow-wrap: anywhere; }
+#accountMergePanel .merge-selectors { display: grid; gap: 1rem; }
+#accountMergePanel .merge-selector { padding: .9rem; border: 1px solid var(--border); border-radius: var(--radius-card); }
+#accountMergePanel .merge-selector h3 { margin-top: 0; }
+#accountMergePanel .merge-search-form { display: grid; gap: .6rem; align-items: end; }
+#accountMergePanel label { display: grid; gap: .4rem; }
+#accountMergePanel .merge-selected { padding: .65rem; margin: .75rem 0; background: var(--surface-soft); border-radius: var(--radius-sm); }
+#accountMergePanel .merge-selected strong { display: block; }
+#accountMergePanel .merge-results { display: grid; gap: .45rem; margin-top: .65rem; }
+#accountMergePanel .merge-result { text-align: left; width: 100%; padding: .65rem; }
+#accountMergePanel .merge-result :is(strong, small) { display: block; }
+#accountMergePanel .merge-result small { font-weight: 400; }
+#accountMergePanel .merge-result:disabled { opacity: .7; }
+#accountMergePanel .merge-preview-button { margin-top: 1rem; }
+#accountMergePanel .merge-summary { margin-top: 1rem; }
+#accountMergePanel .merge-direction { font-weight: 700; padding: .8rem; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); }
+#accountMergePanel .merge-game-grid { display: grid; gap: .75rem; }
+#accountMergePanel .merge-game { padding: .85rem; border: 1px solid var(--border); border-radius: var(--radius-card); }
+#accountMergePanel .merge-game h4 { margin: 0 0 .5rem; font-size: 1rem; }
+#accountMergePanel .merge-game dl { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: .4rem .65rem; margin: 0; }
+#accountMergePanel .merge-game :is(dt, dd) { margin: 0; }
+#accountMergePanel .merge-game dd { text-align: right; font-weight: 600; }
+#accountMergePanel .merge-confirm-form { display: grid; gap: .85rem; margin-top: 1rem; }
+#accountMergePanel .merge-confirmation { min-height: 44px; display: flex; align-items: flex-start; gap: .6rem; }
+#accountMergePanel .merge-confirmation input { flex: 0 0 auto; width: 1.25rem; height: 1.25rem; margin: .15rem 0 0; }
+#accountMergePanel .merge-actions { display: flex; flex-wrap: wrap; gap: .6rem; }
+#accountMergePanel [data-account-merge-status]:not(:empty) { margin-top: 1rem; padding: .75rem; background: var(--info-soft); border: 1px solid var(--info-border); border-radius: var(--radius-sm); }
+#accountMergePanel [data-account-merge-status][data-error="true"] { background: var(--warning-soft); border-color: var(--warning-border); }
+#accountMergePanel .merge-success { border-left: 4px solid var(--success); padding-left: .8rem; }
+@media (min-width: 720px) {
+  #accountMergePanel .merge-selectors, #accountMergePanel .merge-game-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #accountMergePanel .merge-search-form { grid-template-columns: minmax(0, 1fr) auto; }
+}
