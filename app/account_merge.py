@@ -87,7 +87,7 @@ def _lock_operation_accounts(db, actor_id: int, source_id: int, target_id: int):
     return users, source_origins, target_origins
 
 
-def _active_checkpoint_accounts(db, game_id: str, raw: str) -> set[int] | None:
+def _active_checkpoint_accounts(db, game_id: str, raw: str) -> tuple[set[int], bool] | None:
     try:
         state = json.loads(raw)
         if not isinstance(state, dict):
@@ -110,6 +110,7 @@ def _active_checkpoint_accounts(db, game_id: str, raw: str) -> set[int] | None:
             room = native["_watten"].room
             result.update(member.account_id for member in room.members)
             result.update(item.account_id for item in room.reservations if item.valid_at(utcnow()))
+            return result, True
         else:
             for name in ("_players", "_participants"):
                 values = state.get(name, [])
@@ -124,7 +125,7 @@ def _active_checkpoint_accounts(db, game_id: str, raw: str) -> set[int] | None:
             for name in ("_hausdepp_host_user_id", "_zilch_cpu_host_user_id", "_zilch_solo_host_user_id"):
                 if type(state.get(name)) is int and state[name] > 0:
                     result.add(state[name])
-        return result
+        return result, False
     except (ValueError, KeyError, TypeError, AttributeError) as exc:
         # Unknown recovery state must not silently authorize a merge. This is
         # the legacy backfill boundary as well as a corruption safety check.
@@ -135,8 +136,14 @@ def ensure_no_pending_games(db, origin_ids: tuple[int, ...]) -> None:
     wanted = set(origin_ids)
     memberships = set(db.scalars(select(GameAccountMembership.game_id).where(GameAccountMembership.user_id.in_(wanted))))
     for game_id, raw in db.execute(select(ActiveGame.game_id, ActiveGame.state_json)):
-        accounts = _active_checkpoint_accounts(db, game_id, raw)
-        if accounts is not None and (wanted & accounts or game_id in memberships):
+        pending = _active_checkpoint_accounts(db, game_id, raw)
+        if pending is None:
+            continue
+        accounts, native_authority = pending
+        # Native room decoding validates current membership and reservation
+        # expiry. Its old ledger can still contain a now-expired suggestion.
+        # Legacy JSON remains a conservative fallback beside its ledger.
+        if wanted & accounts or (not native_authority and game_id in memberships):
             raise ProgressIdentityError("merge_account_at_table")
     pending_hd = select(HausdeppRematchInvitation.id).join(
         HausdeppRematch, HausdeppRematch.id == HausdeppRematchInvitation.rematch_id,

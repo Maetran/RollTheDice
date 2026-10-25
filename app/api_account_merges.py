@@ -61,6 +61,7 @@ def _require_mounted_account(request: Request, user_id: int, *, required: bool):
 def preview(payload: MergePreviewRequest, request: Request, response: Response):
     response.headers.update(_PRIVATE)
     identity = require_admin(request)
+    _require_mounted_account(request, identity.user_id, required=True)
     require_csrf(request, identity)
     try:
         with session_scope() as db:
@@ -74,6 +75,7 @@ def preview(payload: MergePreviewRequest, request: Request, response: Response):
 async def apply(payload: MergeApplyRequest, request: Request, response: Response):
     response.headers.update(_PRIVATE)
     identity = require_admin(request)
+    _require_mounted_account(request, identity.user_id, required=True)
     require_csrf(request, identity)
     try:
         # History evaluation can take time. Keep the event loop available for

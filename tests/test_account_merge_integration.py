@@ -89,7 +89,8 @@ def test_real_four_game_preview_apply_replay_preserves_results_and_native_receip
     assert build_watten_account(2)["progress"]["pending"] == watten_pending
 
 
-def test_late_fourth_adapter_failure_rolls_back_every_prior_adapter_and_identity(actor):
+@pytest.mark.parametrize("stage", ["preview", "apply"])
+def test_late_fourth_adapter_failure_rolls_back_every_prior_adapter_and_identity(actor, stage):
     seed_history()
     originals = original_results()
     hooks = list(REAL_HOOKS())
@@ -100,9 +101,16 @@ def test_late_fourth_adapter_failure_rolls_back_every_prior_adapter_and_identity
         raise RuntimeError("failure after the final real game adapter")
 
     hooks[-1] = game, prepare, fail_after_watten
+    with patch.object(coordinator, "_game_hooks", new=REAL_HOOKS), session_scope() as db:
+        preview = coordinator.preview_merge_in_session(db, actor_id=4, source_id=3, target_id=2)
     with patch.object(coordinator, "_game_hooks", return_value=tuple(hooks)):
         with pytest.raises(RuntimeError, match="final real game adapter"), session_scope() as db:
-            coordinator.preview_merge_in_session(db, actor_id=4, source_id=3, target_id=2)
+            if stage == "preview":
+                coordinator.preview_merge_in_session(db, actor_id=4, source_id=3, target_id=2)
+            else:
+                coordinator.apply_merge_in_session(db, identity=actor[0], request=request_for(), source_id=3, target_id=2,
+                    fingerprint=preview["fingerprint"], idempotency_key="all-four-rollback",
+                    current_password="ValidOwnerPassword9")
     assert original_results() == originals
     with session_scope() as db:
         assert db.get(User, 3).is_active

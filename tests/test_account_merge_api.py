@@ -29,6 +29,7 @@ def client(actor):
             TestClient(app, base_url=ORIGIN, headers={"Origin": ORIGIN}) as client:
         client.cookies.set("rollthedice_session", actor[2])
         client.headers["X-CSRF-Token"] = actor[0].csrf_token
+        client.headers["X-Account-Expected-Id"] = str(actor[0].user_id)
         yield client
 
 
@@ -81,6 +82,7 @@ def test_http_apply_commit_precedes_voice_cleanup_and_exact_operation_ack(client
         identity, token = issue_session_for_user(db, db.get(User, 2))
     client.cookies.set("rollthedice_session", token)
     client.headers["X-CSRF-Token"] = identity.csrf_token
+    client.headers["X-Account-Expected-Id"] = "2"
     pending = client.get("/api/account/merges/pending")
     assert pending.status_code == 200
     assert pending.json()["viewer_id"] == 2
@@ -98,6 +100,9 @@ def test_http_apply_commit_precedes_voice_cleanup_and_exact_operation_ack(client
     [("X-Account-Expected-Id", "4"), ("X-Account-Expected-Id", "4")],
 ])
 def test_http_receipt_requires_one_exact_mounted_account_before_ack(client, headers):
+    # This case explicitly supplies the mounted receipt identity, including
+    # absence. Do not inherit the owner-page header from the fixture.
+    client.headers.pop("X-Account-Expected-Id", None)
     result = client.post(f"/api/account/merges/{'a' * 32}/acknowledge", headers=headers)
     assert result.status_code == 409, result.text
     assert result.json()["detail"] == "account_changed"
@@ -134,3 +139,20 @@ def test_http_self_target_real_passkey_after_preview_and_idempotent_retry(client
         assert replay.status_code == 200, replay.text
         assert replay.json()["operation_id"] == applied.json()["operation_id"]
         assert replay.json()["replayed"] is True
+
+
+@pytest.mark.parametrize("action", ["preview", "apply"])
+@pytest.mark.parametrize("headers", [{}, {"X-Account-Expected-Id": "3"},
+                                   [("X-Account-Expected-Id", "4"), ("X-Account-Expected-Id", "4")]])
+def test_owner_merge_posts_reject_missing_switched_or_ambiguous_mounted_identity(client, action, headers):
+    client.headers.pop("X-Account-Expected-Id", None)
+    body = {"source_user_id": 3, "target_user_id": 2}
+    if action == "apply":
+        body.update(fingerprint="a" * 64, idempotency_key="mounted-admin-fixture", confirmed=True,
+                    current_password="ValidOwnerPassword9")
+    response = client.post(f"/api/admin/account-merges/{action}", headers=headers, json=body)
+    assert response.status_code == 409, response.text
+    assert response.json()["detail"] == "account_changed"
+    with session_scope() as db:
+        assert db.get(User, 3).is_active
+        assert db.get(AccountProgressOrigin, 3) is None
