@@ -134,7 +134,20 @@ for (const browserName of ['chromium', 'webkit']) {
           await expectFixedTable(decisionPage, ['[data-wt-felt]', '[data-wt-scores]', '[data-wt-hand-area]']);
           // The scroll probe also taps outside the review, which dismisses an
           // unpinned history. Reopen it before measuring its visible contents.
-          if (!await history.evaluate(node => node.open)) await history.locator('summary').click();
+          if (!await history.evaluate(node => node.open)) {
+            const summary = history.locator('summary');
+            await expectReachable(decisionPage, '[data-wt-history] > summary');
+            await expect.poll(() => summary.evaluate(node => {
+              const bounds = node.getBoundingClientRect();
+              const range = document.createRange(); range.selectNodeContents(node);
+              const text = range.getBoundingClientRect();
+              return { touchTarget: bounds.width >= 44 && bounds.height >= 44,
+                completeText: text.left >= bounds.left - 1 && text.right <= bounds.right + 1
+                  && text.top >= bounds.top - 1 && text.bottom <= bounds.bottom + 1 };
+            }), { message: 'the closed review keeps its full label inside a readable touch target' })
+              .toEqual({ touchTarget: true, completeText: true });
+            await summary.tap();
+          }
           await expect(history).toHaveAttribute('open', '');
           await expectReachable(decisionPage, '[data-wt-history] > summary');
           const portraitReview = viewport.width < viewport.height && viewport.width <= 760;
