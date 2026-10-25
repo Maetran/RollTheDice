@@ -5,6 +5,19 @@ const VIEWPORTS = [{ width: 440, height: 956 }, { width: 568, height: 320 }];
 
 async function installWorkerProbe(page) {
   await page.addInitScript(() => {
+    // Keep the network-served localhost document and its address space. A
+    // fulfilled replacement HTML document would make Chromium reject the real
+    // local table WebSocket under its local-network access checks.
+    if (/^\/watten\/spiel\/[0-9a-f]{16}$/.test(location.pathname)) {
+      const markTable = () => {
+        if (!document.documentElement) return;
+        document.documentElement.dataset.wattenPublicBeta = 'true';
+        observer.disconnect();
+      };
+      const observer = new MutationObserver(markTable);
+      observer.observe(document, { childList: true });
+      markTable();
+    }
     const events = new EventTarget();
     const registration = new EventTarget();
     const worker = new EventTarget();
@@ -38,17 +51,6 @@ async function installWorkerProbe(page) {
     });
     Object.defineProperty(navigator, 'serviceWorker', { configurable: true, value: events });
     window.__wattenWorkerProbe = probe;
-  });
-  // The main suite keeps production rollout gates off. Exercise the public
-  // table bootstrap locally with a worker double, retaining real accounts,
-  // table creation, socket ownership and rendering throughout this journey.
-  await page.route(/\/watten\/spiel\/[0-9a-f]{16}(?:\?.*)?$/, async route => {
-    if (route.request().resourceType() !== 'document') return route.continue();
-    const response = await route.fetch();
-    const html = await response.text();
-    const body = html.includes('data-watten-public-beta="true"') ? html
-      : html.replace(/<html\b/, '<html data-watten-public-beta="true"');
-    await route.fulfill({ response, body });
   });
 }
 
