@@ -85,11 +85,29 @@ def test_http_apply_commit_precedes_voice_cleanup_and_exact_operation_ack(client
     assert pending.status_code == 200
     assert pending.json()["viewer_id"] == 2
     assert {item["operation_id"] for item in pending.json()["operations"]} == {"a" * 32, operation_id}
-    ack = client.post(f"/api/account/merges/{operation_id}/acknowledge")
+    ack = client.post(f"/api/account/merges/{operation_id}/acknowledge", headers={"X-Account-Expected-Id": "2"})
     assert ack.status_code == 200, ack.text
     with session_scope() as db:
         assert db.get(AccountMergeOperation, "a" * 32).acknowledged_at is None
         assert db.get(AccountMergeOperation, operation_id).acknowledged_at is not None
+
+
+@pytest.mark.parametrize("headers", [
+    {}, {"X-Account-Expected-Id": "3"}, {"X-Account-Expected-Id": "04"},
+    {"X-Account-Expected-Id": "invalid"},
+    [("X-Account-Expected-Id", "4"), ("X-Account-Expected-Id", "4")],
+])
+def test_http_receipt_requires_one_exact_mounted_account_before_ack(client, headers):
+    result = client.post(f"/api/account/merges/{'a' * 32}/acknowledge", headers=headers)
+    assert result.status_code == 409, result.text
+    assert result.json()["detail"] == "account_changed"
+    assert result.headers["cache-control"] == "no-store"
+    with session_scope() as db:
+        assert db.get(AccountMergeOperation, "a" * 32).acknowledged_at is None
+    if headers:
+        pending = client.get("/api/account/merges/pending", headers=headers)
+        assert pending.status_code == 409
+        assert pending.json()["detail"] == "account_changed"
 
 
 def test_http_self_target_real_passkey_after_preview_and_idempotent_retry(client, actor):

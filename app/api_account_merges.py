@@ -48,6 +48,15 @@ def _failure(exc):
     return HTTPException(status_code=503, detail="merge_temporarily_unavailable")
 
 
+def _require_mounted_account(request: Request, user_id: int, *, required: bool):
+    """Reject a receipt from a page mounted for a different signed-in account."""
+    values = request.headers.getlist("x-account-expected-id")
+    if not values and not required:
+        return
+    if len(values) != 1 or values[0] != str(user_id):
+        raise HTTPException(status_code=409, detail="account_changed", headers=_PRIVATE)
+
+
 @router.post("/admin/account-merges/preview")
 def preview(payload: MergePreviewRequest, request: Request, response: Response):
     response.headers.update(_PRIVATE)
@@ -98,6 +107,7 @@ def _apply_request(payload, identity, request):
 def pending(request: Request, response: Response):
     response.headers.update(_PRIVATE)
     identity = require_user(request)
+    _require_mounted_account(request, identity.user_id, required=False)
     with session_scope() as db:
         rows = db.scalars(select(AccountMergeOperation).where(
             AccountMergeOperation.target_user_id == identity.user_id,
@@ -110,6 +120,7 @@ def pending(request: Request, response: Response):
 def acknowledge(operation_id: str, request: Request, response: Response):
     response.headers.update(_PRIVATE)
     identity = require_user(request)
+    _require_mounted_account(request, identity.user_id, required=True)
     require_csrf(request, identity)
     with session_scope() as db:
         return acknowledge_merge_in_session(db, identity=identity, operation_id=operation_id)
