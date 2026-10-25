@@ -29,7 +29,10 @@ async function expectBottomZones(page, viewport, phase) {
     for (const node of [...identities, ...controls, ...hints]) {
       const box = rect(node);
       if (box.left < -1 || box.top < -1 || box.right > innerWidth + 1 || box.bottom > innerHeight + 1) failures.push(`${node.className} leaves viewport`);
-      if (hand.some(card => overlap(box, rect(card)))) failures.push(`${node.className} overlaps painted own hand`);
+      for (const card of hand.filter(card => overlap(box, rect(card)))) {
+        failures.push(`${node.className} overlaps painted own hand ${card.dataset.card || card.dataset.key}: `
+          + JSON.stringify({ element: box.toJSON(), card: rect(card).toJSON() }));
+      }
     }
     for (const identity of identities) for (const control of [...controls, ...hints]) {
       if (overlap(rect(identity), rect(control))) failures.push(`${identity.className} overlaps ${control.className}`);

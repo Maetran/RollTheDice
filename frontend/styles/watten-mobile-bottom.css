@@ -87,6 +87,10 @@
   html[data-game="watten"][data-watten-active="true"] .wt-table { --wt-own-avatar-size: 24px; }
 }
 @media (orientation: landscape) and (max-height: 700px) {
+  /* The rail layout keeps the own identity in its 24px footer. A rotated
+     five-card fan extends below its nominal lower edge, so leave a complete
+     footer and a visible gap before that painted corner can reach the name. */
+  html[data-game="watten"][data-watten-active="true"] .wt-table .wt-hand-area { bottom: 48px; }
   html[data-game="watten"][data-watten-active="true"] .wt-table .wt-reference {
     width: 44px; font-size: .65rem; line-height: 1.2;
   }
