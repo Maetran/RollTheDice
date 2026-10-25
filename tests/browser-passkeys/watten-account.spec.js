@@ -34,9 +34,11 @@ for (const language of ['de', 'en']) {
     const foreign = [];
     const sockets = [];
     const gameReads = [];
+    const releaseReads = [];
     page.on('request', request => {
       const pathname = new URL(request.url()).pathname;
       if (pathname === '/api/game-activity' || /^\/api\/games(?:\/|$)/.test(pathname)) gameReads.push(pathname);
+      if (/^\/api\/releases(?:\/|$)/.test(pathname)) releaseReads.push(pathname);
     });
     await context.route('**/*', route => {
       const url = new URL(route.request().url());
@@ -71,6 +73,17 @@ for (const language of ['de', 'en']) {
       await expect(page.locator('[data-account-navigation] a')).toHaveCount(1);
       await expect(page.locator('[data-account-navigation] [aria-current="page"]')).toHaveText(language === 'de' ? 'Einstellungen' : 'Settings');
       await expect(page.locator('[data-account-section]')).toHaveCount(4);
+      await expect(page.locator('[data-release-history]')).toHaveCount(0);
+      await expect(page.getByText(language === 'de' ? 'Neuigkeiten sind gerade nicht erreichbar.' : 'Release notes are currently unavailable.', { exact: true })).toHaveCount(0);
+      expect(releaseReads).toEqual([]);
+      const help = page.locator('[data-account-section="help"]');
+      await help.locator(':scope > summary').click();
+      await help.locator('details').filter({ has: page.locator('[data-game-tour-settings]') }).locator(':scope > summary').click();
+      await expect(help.locator('[data-game-tour-settings]')).toBeVisible();
+      await help.locator('.release-notes-support > summary').click();
+      await expect(help.locator('a[href="/go/github/issues"]')).toBeVisible();
+      await expect(help.locator('a[href="/go/github/changelog"]')).toBeVisible();
+      await help.locator(':scope > summary').click();
       // Friend settings can still refresh the old document's identity while
       // reload starts. Keep auth unavailable until the new page shows its
       // error, rather than consuming a one-shot failure on that old request.
@@ -169,6 +182,7 @@ for (const language of ['de', 'en']) {
       expect(sockets).toEqual([]);
       expect(foreign).toEqual([]);
       expect(gameReads).toEqual([]);
+      expect(releaseReads).toEqual([]);
       expect(await page.evaluate(() => navigator.serviceWorker.getRegistrations().then(items => items.map(item => new URL(item.scope).pathname)))).toEqual([]);
       for (const viewport of [{ width: 320, height: 844 }, { width: 568, height: 320 }]) {
         await page.setViewportSize(viewport);

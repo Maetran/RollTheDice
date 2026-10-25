@@ -77,10 +77,10 @@ for (const product of products) for (const language of ['de', 'en']) {
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
       const layout = await navigation.locator(product.tab ? '[role=tab]' : 'a').evaluateAll(nodes => nodes.map(element => {
         const range = document.createRange(); range.selectNodeContents(element);
-        return { top: Math.round(element.getBoundingClientRect().top), lines: range.getClientRects().length, height: element.getBoundingClientRect().height };
+        return { top: Math.round(element.getBoundingClientRect().top), lines: range.getClientRects().length, height: element.getBoundingClientRect().height, fits: element.scrollWidth <= element.clientWidth };
       }));
       expect(new Set(layout.map(item => item.top)).size).toBe(1);
-      expect(layout.every(item => item.lines === 1 && item.height >= 44)).toBe(true);
+      expect(layout.every(item => item.lines === 1 && item.height >= 44 && item.fits)).toBe(true);
       expect(await page.locator('h1').evaluateAll(nodes => nodes.every(element => element.scrollWidth <= element.clientWidth + 1))).toBe(true);
       expect(await groups.evaluateAll(nodes => nodes.every(element => getComputedStyle(element).backgroundColor !== 'rgba(0, 0, 0, 0)'))).toBe(true);
       if (language === 'de') await page.screenshot({ path: testInfo.outputPath(`${product.game}-${size}.png`), fullPage: true });
@@ -95,7 +95,30 @@ for (const product of products) for (const language of ['de', 'en']) {
     await (await destination(page, product, labels[1])).click();
     await expect(page.locator(product.achievements)).toBeVisible();
     await (await destination(page, product, labels[2])).click();
-    await expect(page.locator('[data-account-section="help"]')).toBeVisible();
+    const help = page.locator('[data-account-section="help"]');
+    await expect(help).toBeVisible();
+    await help.locator(':scope > summary').click();
+    const support = help.locator('.release-notes-support');
+    await support.locator(':scope > summary').click();
+    await expect(support.locator('a')).toHaveText(language === 'de'
+      ? ['Problem auf GitHub melden', 'Ausführliche Versionshistorie auf GitHub']
+      : ['Report a problem on GitHub', 'Detailed version history on GitHub']);
+    for (const destination of ['issues', 'changelog']) {
+      await expect(support.locator(`a[href="/go/github/${destination}"]`)).toBeVisible();
+      await expect(support.locator(`a[href="/go/github/${destination}"]`)).toHaveAttribute('rel', 'noopener noreferrer');
+    }
+    for (const selector of ['[data-game-tour-settings]', '[data-release-history]']) {
+      for (const details of await help.locator(selector).locator('xpath=ancestor::details').all()) {
+        if (await details.getAttribute('open') === null) await details.locator(':scope > summary').click();
+      }
+      await expect(help.locator(selector)).toBeVisible();
+    }
+    if (language === 'de') {
+      await page.setViewportSize({ width: 320, height: 844 });
+      await help.scrollIntoViewIfNeeded();
+      await page.screenshot({ path: testInfo.outputPath(`${product.game}-help-mobile.png`), fullPage: true });
+    }
+    await help.locator(':scope > summary').click();
     await page.unroute('**/api/account/merges/pending');
     await page.route('**/api/account/merges/pending', route => route.fulfill({ json: { viewer_id: user.id, operations: [operation('visible-merge', user.id)] } }));
     await page.reload();
@@ -243,7 +266,7 @@ for (const game of ['hausdepp', 'watten']) for (const language of ['de', 'en']) 
         changes: [language === 'de' ? 'Der Kontobereich ist übersichtlich geordnet.' : 'Your account settings are clearly organized.'],
       }] } });
     });
-    await page.goto(`/${game}`);
+    await page.goto(`/${game}?pwa=${game}`);
     const dialog = page.locator('.release-notes-dialog');
     await expect(dialog).toHaveAttribute('data-revision', revision);
     await expect(dialog).toBeVisible();
@@ -251,6 +274,12 @@ for (const game of ['hausdepp', 'watten']) for (const language of ['de', 'en']) 
     await expect(dialog).toHaveCount(0);
     expect(writes).toEqual([`/api/releases/${revision}/acknowledge`]);
     revision = '2'.repeat(40); acknowledged = false;
+    const accountPath = game === 'hausdepp' ? '/hausdepp/konto' : '/watten/konto/fortschritt';
+    await page.locator(`.suite-header__nav a[href="${accountPath}"]`).click();
+    await expect(page).toHaveURL(new URL(accountPath, page.url()).href);
+    await expect(dialog).toHaveAttribute('data-revision', revision);
+    await dialog.getByRole('button', { name: language === 'de' ? 'Verstanden' : 'Got it', exact: true }).click();
+    revision = '3'.repeat(40); acknowledged = false;
     await page.goto(`/${game}/konto/einstellungen`);
     await expect(dialog).toHaveAttribute('data-revision', revision);
     await dialog.getByRole('button', { name: language === 'de' ? 'Verstanden' : 'Got it', exact: true }).click();
@@ -258,6 +287,6 @@ for (const game of ['hausdepp', 'watten']) for (const language of ['de', 'en']) 
       if (await details.getAttribute('open') === null) await details.locator(':scope > summary').click();
     }
     await expect(page.locator('[data-release-history]')).toContainText(language === 'de' ? 'Neuigkeiten am Tisch' : 'Updates at the table');
-    expect(reads.length).toBeGreaterThanOrEqual(2);
+    expect(reads.length).toBeGreaterThanOrEqual(3);
   });
 }

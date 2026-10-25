@@ -150,7 +150,11 @@ function renderSettings(auth) {
     ${accountSectionMarkup('social', 'Mitspieler & Hinweise', 'Chat, Spielerauswahl und Benachrichtigungen', `    <details><summary>${esc(friendSettingsText('settingsTitle'))}</summary><div data-watten-friend-settings></div></details>
     ${publicPush ? pushSettingsMarkup(copy) : ""}`, { id: 'mitspieler' })}
     ${accountSectionMarkup('help', 'Hilfe & Neuigkeiten', 'Versionshistorie und Unterstützung', `    <details><summary>${copy('Einsteigertouren')}</summary><div data-game-tour-settings></div></details>
-    <details><summary>${copy('Neuigkeiten & Versionen')}</summary><p>${copy('Die letzten zehn Releases kannst du jederzeit im Konto nachlesen.')}</p><div data-release-history></div></details>`, { id: 'hilfe' })}
+    ${canPlay ? `<details><summary>${copy('Neuigkeiten & Versionen')}</summary><p>${copy('Die letzten zehn Releases kannst du jederzeit im Konto nachlesen.')}</p><div data-release-history></div></details>` : ''}
+    <details class="release-notes-support"><summary>${copy('Hilfe & weitere Details')}</summary>
+      <p>${copy('Du hast einen Fehler entdeckt? Beschreibe auf GitHub kurz, was passiert ist, in welchem Spiel und auf welchem Gerät. Teile keine Passwörter oder privaten Spielraum-Codes. Zum Melden brauchst du ein GitHub-Konto.')}</p>
+      <div class="account-settings-links"><a class="button-link ghost" href="/go/github/issues" target="_blank" rel="noopener noreferrer">${copy('Problem auf GitHub melden')}</a>
+      <a class="button-link ghost" href="/go/github/changelog" target="_blank" rel="noopener noreferrer">${copy('Ausführliche Versionshistorie auf GitHub')}</a></div></details>`, { id: 'hilfe' })}
     </div>
     <div class="actions"><a class="button-link ghost" href="/watten">${copy('Zurück')}</a>${canPlay ? `<a class="button-link ghost" href="/watten/konto/fortschritt">${copy('Erfolge & Titel')}</a>` : ''}<button data-logout type="button">${copy('Abmelden')}</button></div><p data-account-message role="status"></p>`;
   openAccountSettingTarget(root);
@@ -209,7 +213,7 @@ function renderSettings(auth) {
     try { await logout(); }
     catch (error) { message(error.message, 'error'); }
   });
-  initializeReleaseNotes({ context: 'watten' });
+  if (canPlay) initializeReleaseNotes({ context: 'watten' });
 }
 
 if (page === 'home') {
