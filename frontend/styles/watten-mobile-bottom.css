@@ -262,10 +262,17 @@ html[data-game="watten"][data-watten-active="true"] .wt-bloedeln-dock :is(.wt-pr
     position: fixed; left: calc(56px + var(--wt-rail-inset)); right: auto; top: 4px;
     width: 156px; height: auto; padding: 0 6px; z-index: 62;
   }
-  /* A spectator has a status pill in place of the leave icon. Keep its text
-     with the points rather than overflowing the footer's 44px icon slot. */
+  /* A spectator has a status pill in place of the leave icon. Share the
+     existing target row: an extra row would cover the left caller's role. */
   html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] .wt-table[data-viewer="spectator"] .wt-topbar-actions {
-    position: static; inset: auto; display: flex; width: auto; height: auto; justify-content: center; margin-top: 4px;
+    position: absolute; inset: 48px 6px auto auto; display: flex; align-items: center;
+    width: max-content; height: 16px; margin: 0;
+  }
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] .wt-table[data-viewer="spectator"] .wt-topbar-actions > .wt-tag {
+    height: 16px; padding: 0 4px; font-size: .65rem; line-height: 14px;
+  }
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] .wt-table[data-viewer="spectator"] .wt-target {
+    padding-inline: 4px 76px; text-align: left;
   }
   html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"][data-wt-header-open="true"] .wt-topbar {
     left: auto; right: max(12px, env(safe-area-inset-right, 0px));
