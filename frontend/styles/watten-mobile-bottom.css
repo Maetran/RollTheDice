@@ -5,6 +5,15 @@
 html[data-game="watten"][data-watten-active="true"] .wt-bloedeln-dock :is(.wt-preplay-pending p, .wt-bloedeln-status) {
   overflow-wrap: anywhere;
 }
+/* The short four-seat table keeps both side hands beside the live answer.
+   Its original central lane must survive the right-hand action dock: that
+   dock starts 120px from the left (96px identity plus the two 12px gaps). */
+@media (orientation: portrait) and (max-width: 350px) and (max-height: 700px) {
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"][data-viewer="player"][data-phase="bid_response"]:not(:has([data-wt-history][open]:not([hidden]))) > .wt-end-sheet > .wt-panel:has(.wt-bid .wt-choice-row) {
+    left: calc(50vw - 120px); translate: -50% 0; align-self: flex-start;
+    width: min(180px, calc(100vw - 152px)); max-width: none;
+  }
+}
 @media (orientation: portrait) and (max-width: 760px) {
   html[data-game="watten"][data-watten-active="true"] .wt-table {
     --wt-own-avatar-size: 30px;
