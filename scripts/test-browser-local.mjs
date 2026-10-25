@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { spawn, execFile } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { mkdir, mkdtemp, open, readdir, rename, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, open, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises';
 import { createWriteStream } from 'node:fs';
 import net from 'node:net';
 import os from 'node:os';
@@ -108,6 +108,41 @@ export async function reservePort(preferredPort = 0) {
   }) };
 }
 
+function selectedTestCount(report) {
+  const invalid = () => { throw new Error('Invalid Playwright selection JSON report'); };
+  const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
+  if (!object(report) || !object(report.config) || !Array.isArray(report.errors)
+      || report.errors.length || !Array.isArray(report.suites)) invalid();
+  const visit = suite => {
+    if (!object(suite) || !Array.isArray(suite.specs)
+        || (suite.suites !== undefined && !Array.isArray(suite.suites))) invalid();
+    let count = 0;
+    for (const spec of suite.specs) {
+      if (!object(spec) || typeof spec.title !== 'string' || !Array.isArray(spec.tests) || !spec.tests.length
+          || spec.tests.some(item => !object(item) || typeof item.projectId !== 'string'
+            || !Array.isArray(item.results))) invalid();
+      count += spec.tests.length;
+    }
+    return count + (suite.suites || []).reduce((sum, child) => sum + visit(child), 0);
+  };
+  return report.suites.reduce((sum, suite) => sum + visit(suite), 0);
+}
+
+export async function collectFilteredTests(plan, cli, root, signal) {
+  const results = await Promise.allSettled(plan.map(async suite => {
+    const reportPath = path.join(path.dirname(suite.logPath), 'selection.json');
+    await rm(reportPath, { force: true });
+    await execFileAsync(process.execPath, [cli, ...suite.args, '--list', '--reporter=json'], {
+      cwd: root, env: { ...suite.env, PLAYWRIGHT_JSON_OUTPUT_FILE: reportPath }, signal,
+      timeout: 30000, maxBuffer: 1024 * 1024,
+    });
+    return selectedTestCount(JSON.parse(await readFile(reportPath, 'utf8')));
+  }));
+  const failure = results.find(result => result.status === 'rejected');
+  if (failure) throw failure.reason;
+  return results.map(result => result.value);
+}
+
 const delay = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
 
 async function processTable() {
@@ -186,6 +221,7 @@ export async function runLocalBrowserTests(options = {}, dependencies = {}) {
   const temporaryDirectory = await mkdtemp(path.join(os.tmpdir(), 'rollthedice-local-browser-'));
   const reservations = [];
   const active = new Set();
+  const collectionAbort = new AbortController();
   const summary = { fullRun: false, startedAt: new Date().toISOString(), outputDirectory, filters: options.filters || [],
     results: definitions.map((suite, index) => ({ name: suite.name, exitCode: 1, port: options.portBase ? options.portBase + index : 0,
       outputDir: path.join(outputDirectory, suite.name, 'artifacts'), logPath: path.join(outputDirectory, suite.name, 'runner.log'),
@@ -202,6 +238,7 @@ export async function runLocalBrowserTests(options = {}, dependencies = {}) {
   };
   const onSignal = signal => {
     interruption ||= signal;
+    collectionAbort.abort();
     for (const record of active) void stopProcess(record).catch(error => { summary.cleanupError = error.message; });
   };
   const onInterrupt = () => onSignal('SIGINT');
@@ -223,6 +260,13 @@ export async function runLocalBrowserTests(options = {}, dependencies = {}) {
     }
     await save();
     const cli = dependencies.cliPath || require.resolve('@playwright/test/cli');
+    if (summary.filters.length) {
+      const counts = await collectFilteredTests(plan, cli, root, collectionAbort.signal);
+      counts.forEach((count, index) => { summary.results[index].selectedTests = count; });
+      summary.selectedTests = counts.reduce((sum, count) => sum + count, 0);
+      if (!summary.selectedTests) throw new Error('Filtered browser run selected no tests across all suites/shards');
+      await save();
+    }
     const runSuite = async suite => {
       const result = summary.results.find(item => item.name === suite.name);
       if (interruption) { result.status = 'interrupted'; result.exitCode = interruption === 'SIGINT' ? 130 : 143; return; }

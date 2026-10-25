@@ -174,6 +174,23 @@ class BidEvidence:
 def _validate_scoring(roster: tuple[Participant, ...], target: int, scores: tuple[Score, ...],
                       winners: tuple[tuple[str, ...], ...], deals: tuple[Deal, ...],
                       retourschneider: Retourschneider | None = None) -> None:
+    _replay_scoring(roster, target, scores, winners, deals, retourschneider)
+
+
+def replay_score_accounts(evidence: MatchEvidence) -> tuple[tuple[Score, ...], ...]:
+    """Every account's score after each deal, from the same validated replay.
+
+    Each snapshot follows that deal's Retourschneider choice, if any. The full
+    replay still re-proves final scores and winners before anything is returned.
+    """
+    return _replay_scoring(evidence.roster, evidence.target_points, evidence.scores, evidence.winners,
+                           evidence.deals, evidence.retourschneider)
+
+
+def _replay_scoring(roster: tuple[Participant, ...], target: int, scores: tuple[Score, ...],
+                    winners: tuple[tuple[str, ...], ...], deals: tuple[Deal, ...],
+                    retourschneider: Retourschneider | None) -> tuple[tuple[Score, ...], ...]:
+    snapshots = []
     seats = tuple(player.player_id for player in roster)
     count = len(seats)
     accounts = tuple(ScoreAccount(item.members, 0) for item in scores)
@@ -208,10 +225,12 @@ def _validate_scoring(roster: tuple[Participant, ...], target: int, scores: tupl
         if retourschneider is not None and item.deal_id == retourschneider.after_deal_id:
             ledger = choose_retourschneider(ledger, retourschneider.members, accept=retourschneider.accepted)
             _require(ledger.retourschneider == retourschneider)
+        snapshots.append(tuple(Score(account.members, account.points) for account in ledger.accounts))
     _require(ledger.retourschneider == retourschneider)
     _require(tuple((item.members, item.points) for item in ledger.accounts)
              == tuple((item.members, item.points) for item in scores))
     _require(bool(ledger.winners) and winners == ledger.winners)
+    return tuple(snapshots)
 
 
 @dataclass(frozen=True, slots=True)

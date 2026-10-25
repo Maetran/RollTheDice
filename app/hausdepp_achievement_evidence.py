@@ -63,6 +63,9 @@ def _record_finishes(evidence: dict[str, Any], before: Mapping[str, Any], after:
                 _award(facts, 79)
             if terminal.get("multi_ten"):
                 _award(facts, 81)
+            # Terminals saved before this marker existed stay unknown/False.
+            if terminal["single"] and terminal.get("quartet_finish"):
+                _award(facts, 138)
         if evidence["complete"] and not facts["tens"]:
             _award(facts, 62)
         if facts["max_hand"] >= 12:
@@ -259,8 +262,13 @@ def _record_placement(
         chain.get("ten_only_finish") if chain else
         len(old_player["hand"]) >= 2 and all(_rank(card) == "10" for card in old_player["hand"])
     ))
+    quartet_finish = False
     if reason:
         count = min(3, chain["count"] + 1) if chain else 1
+        # The chain belongs to this actor: any other player's accepted card
+        # action or pickup has already reset it (refill draws do not).
+        if chain and chain["player_id"] == actor_id and (chain["last_reason"] == "ten") != (reason == "ten"):
+            _award(facts, 137)
         if count >= 2:
             _award(facts, 47)
         if count >= 3:
@@ -288,6 +296,9 @@ def _record_placement(
                 _award(facts, 35)
             if None not in origins and len(set(origins)) == 4:
                 _award(facts, 36)
+            # Unknown legacy provenance (None) never counts as another player.
+            quartet_finish = not before["deck"] and any(
+                origin is not None and origin != actor_id for origin in origins[:3])
             if rank == "6":
                 _award(facts, 37)
             if rank == "A":
@@ -316,4 +327,5 @@ def _record_placement(
             "after_ten": bool(chain and chain["empty_stock_ten"]),
             "four_kings": bool(window.get("four_kings") and window["count"] == 4),
             "multi_ten": ten_only_finish,
+            "quartet_finish": quartet_finish,
         }

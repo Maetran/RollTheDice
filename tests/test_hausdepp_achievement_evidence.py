@@ -8,6 +8,7 @@ from copy import deepcopy
 import pytest
 
 from app.hausdepp_engine import HausdeppRuleError, apply_action, make_deck, new_round, project_state
+from app.hausdepp_results import validate_hausdepp_evidence
 
 
 def scene(hands, *, deck=(), discard=(), current="p0"):
@@ -374,6 +375,123 @@ def test_new_no_pickup_achievement_requires_complete_pickup_tracking():
     result = act(state, "p0", "play", ["hearts-6"])
     assert 62 in flags(result)
     assert 84 not in flags(result)
+
+
+NINES = [f"{suit}-9" for suit in ("hearts", "bells", "leaves", "acorns")]
+
+
+@pytest.mark.parametrize("order", [(["hearts-10"], NINES), (NINES, ["hearts-10"])])
+def test_mixed_ten_and_quartet_clear_chain_in_either_order(order):
+    state = scene([["hearts-10", *NINES, "hearts-A"], ["bells-7"]])
+    state = act(state, "p0", "play", order[0])
+    assert 137 not in flags(state)
+    state = act(state, "p0", "play", order[1])
+    assert {47, 82, 137} <= flags(state)
+    stored = validate_hausdepp_evidence(json.loads(json.dumps(state["achievement_evidence"])), {"p0", "p1"})
+    assert "hausdepp_137" in stored["players"]["p0"]["flags"]
+
+
+def test_two_ten_clears_in_a_row_are_not_the_mixed_chain():
+    state = scene([["hearts-10", "bells-10", "hearts-A"], ["bells-7"]])
+    state = act(state, "p0", "play", ["hearts-10"])
+    state = act(state, "p0", "play", ["bells-10"])
+    assert {31, 47} <= flags(state)
+    assert 137 not in flags(state)
+
+
+def test_other_players_accepted_play_breaks_mixed_chain_but_not_round_combination():
+    state = scene([["hearts-10", "hearts-6", "leaves-6", "acorns-6"], ["bells-6", "hearts-7"]])
+    state = act(state, "p0", "play", ["hearts-10"])
+    state = act(state, "p0", "play", ["hearts-6"])
+    state = act(state, "p1", "play", ["bells-6"])
+    state = act(state, "p0", "play", ["leaves-6", "acorns-6"])
+    assert 82 in flags(state)
+    # Two final cards are not a single last card, although p1 helped build the four.
+    assert not {137, 138} & flags(state)
+
+
+def test_other_players_refill_does_not_break_mixed_chain():
+    state = scene([["hearts-10", *NINES, "hearts-A"], ["hearts-7"]], deck=["leaves-8", "acorns-8"])
+    state["pending_refills"] = {"p1": {"player_id": "p1", "remaining": 2, "continuation": "advance", "rank": "7"}}
+    state = act(state, "p0", "play", ["hearts-10"])
+    state = act(state, "p1", "draw")
+    state = act(state, "p0", "play", NINES)
+    assert 137 in flags(state)
+
+
+def test_own_non_clearing_play_then_own_afterthrow_quartet_keeps_chain_like_47():
+    # Same uninterrupted-chain semantics as #47: no other player acted in between.
+    state = scene([["hearts-10", *NINES, "hearts-A"], ["bells-7"]])
+    state = act(state, "p0", "play", ["hearts-10"])
+    state = act(state, "p0", "play", NINES[:3])
+    state = act(state, "p0", "afterthrow", NINES[3:])
+    assert {33, 47, 137} <= flags(state)
+
+
+def four_seat_nines(last_hand, *, deck=()):
+    hands = [["hearts-9", "hearts-A"], ["bells-9", "bells-A"], ["leaves-9", "leaves-A"], last_hand]
+    state = scene(hands, deck=deck)
+    for index, card in enumerate(("hearts-9", "bells-9", "leaves-9")):
+        state = act(state, f"p{index}", "play", [card])
+    return state
+
+
+def test_single_last_hand_card_completes_others_quartet_and_finishes():
+    state = act(four_seat_nines(["acorns-9"]), "p3", "play", ["acorns-9"])
+    assert state["players"][3]["finished"]
+    assert {33, 35, 36, 138} <= flags(state, "p3")
+    # The accepted engine evidence passes the stored-result validator, which
+    # keeps the award and strips the private terminal marker.
+    stored = validate_hausdepp_evidence(json.loads(json.dumps(state["achievement_evidence"])),
+                                        {"p0", "p1", "p2", "p3"})
+    assert "hausdepp_138" in stored["players"]["p3"]["flags"]
+    assert "quartet_finish" not in json.dumps(stored) and "terminal" not in json.dumps(stored)
+
+
+def test_quartet_with_last_card_while_stock_remains_is_not_the_empty_stock_finish():
+    state = act(four_seat_nines(["acorns-9"], deck=["hearts-6"]), "p3", "play", ["acorns-9"])
+    assert 33 in flags(state, "p3")
+    assert 138 not in flags(state, "p3")
+
+
+def test_all_own_quartet_finish_is_not_the_shared_quartet_finish():
+    state = scene([NINES, ["bells-7"]])
+    state = act(state, "p0", "play", NINES[:3])
+    state = act(state, "p0", "afterthrow", NINES[3:])
+    assert state["players"][0]["finished"]
+    assert 34 in flags(state)
+    assert 138 not in flags(state)
+
+
+def test_unknown_pile_origins_never_count_as_another_player():
+    state = scene([["acorns-9"], ["hearts-A"]], discard=NINES[:3])
+    state = act(state, "p0", "play", ["acorns-9"])
+    assert state["players"][0]["finished"]
+    assert 33 in flags(state)
+    assert 138 not in flags(state)
+
+
+def test_two_last_cards_completing_others_quartet_is_not_single():
+    state = scene([["hearts-9", "hearts-A"], ["bells-9", "bells-A"], ["leaves-9", "acorns-9"]])
+    state = act(state, "p0", "play", ["hearts-9"])
+    state = act(state, "p1", "play", ["bells-9"])
+    state = act(state, "p2", "play", ["leaves-9", "acorns-9"])
+    assert state["players"][2]["finished"]
+    assert 35 not in flags(state, "p2")
+    assert 138 not in flags(state, "p2")
+
+
+def test_saved_terminal_without_new_marker_stays_unknown_false():
+    state = scene([["bells-6"], ["hearts-6", "hearts-A"]], deck=["leaves-8"], current="p1")
+    state = act(state, "p1", "play", ["hearts-6"])
+    state = act(state, "p0", "play", ["bells-6"])
+    assert not state["players"][0]["finished"]
+    state = json.loads(json.dumps(state))
+    del state["achievement_evidence"]["players"]["p0"]["terminal"]["quartet_finish"]
+    state = act(state, "p1", "draw")
+    assert state["players"][0]["finished"]
+    assert 58 in flags(state)
+    assert 138 not in flags(state)
 
 
 def test_ten_only_finish_chain_must_already_start_with_only_tens():

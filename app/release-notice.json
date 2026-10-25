@@ -6,25 +6,25 @@
     "hausdepp",
     "watten"
   ],
-  "summary_de": "Klarere mobile Watten-Tische, bessere Ansagen und direkt auffindbare Regeln für alle vier Spiele.",
-  "summary_en": "Clearer mobile Watten tables, better calls and easier-to-find rules for all four games.",
+  "summary_de": "Neue knifflige Erfolge in allen vier Spielen und eine übersichtlichere Watten-Sammlung.",
+  "summary_en": "New challenging achievements in all four games and a clearer Watten collection.",
   "player_notes": {
     "de": {
-      "title": "4.5.0: Mehr Platz am Tisch",
+      "title": "4.6.0: Neue Herausforderungen",
       "changes": [
-        "Watten: Handkarten, Ansagen, Bieten und Blödeln bleiben auf kleinen Bildschirmen besser erreichbar.",
-        "Beim Einschauen bewegen sich beide Karten zwischen den beteiligten Spielern.",
-        "Bei Retourschneider entscheidet der Mensch im Team; Computer folgen seiner Wahl.",
-        "Regeln und öffentliche Ranginformationen lassen sich leichter finden und lesen."
+        "Je zwei neue Erfolge für besondere Konstellationen in ZDWA, Zilch, Hausdepp und Watten.",
+        "Watten zeigt deinen nächsten Titel, erreichte und offene Ziele sowie alle Titelstufen übersichtlich.",
+        "Die Sammlung lässt sich filtern; Bedingungen, erstes Datum und tatsächlich verdiente EP stehen bei den Details.",
+        "Deine bisherigen Erfolge, Belohnungen und Rangschwellen bleiben erhalten."
       ]
     },
     "en": {
-      "title": "4.5.0: More room at the table",
+      "title": "4.6.0: New challenges",
       "changes": [
-        "Watten: Cards, calls, bidding and Blödeln remain easier to reach on small screens.",
-        "Inspection cards move between the two calling players.",
-        "The human teammate decides on Retourschneider; computers follow that choice.",
-        "Rules and public rank information are easier to find and read."
+        "Two new achievements each for special situations in ZDWA, Zilch, Hausdepp and Watten.",
+        "Watten clearly shows your next title, earned and open goals, and every title level.",
+        "Filter the collection and open details for conditions, first unlock dates and actual earned XP.",
+        "Your existing achievements, rewards and rank thresholds are preserved."
       ]
     }
   }

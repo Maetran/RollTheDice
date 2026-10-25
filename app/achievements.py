@@ -822,6 +822,21 @@ _ACHIEVEMENT_CATALOG: tuple[Achievement, ...] = tuple(
         ),
         Achievement("account_created", "Konto eröffnet", "Ein ZDWA-Konto erstellt.", "account", "account_created"),
         *_fairplay_achievements(),
+        Achievement(
+            "lower_clean_sheet",
+            "Unten kein Strich",
+            "Ein Spiel beenden, in dem in allen vier Reihen jeder Kenter, jedes Full, jeder Poker und jeder 60er "
+            "geschrieben und keiner gestrichen wurde.",
+            "kenter",
+            "lower_clean_sheet",
+        ),
+        Achievement(
+            "top_equal_with_bonuses",
+            "Vierfach im Gleichgewicht",
+            "In einem Spiel in allen vier Reihen dieselbe obere Summe und jeweils den oberen Bonus erreichen.",
+            "bonus",
+            "top_equal_with_bonuses",
+        ),
     ]
 )
 
@@ -838,6 +853,8 @@ _TIER_POINTS: dict[str, dict[int, int]] = {
 }
 _EXACT_SCORE_POINTS = {555: 4, 666: 4, 777: 4, 888: 4, 999: 5, 1_111: 5, 1_222: 6, 1_333: 7, 1_444: 8, 1_555: 10}
 _KEY_POINTS: dict[str, int] = {
+    "lower_clean_sheet": 7,
+    "top_equal_with_bonuses": 9,
     "account_created": 1,
     "statistics_views": 1,
     "normal_under_700": 3,
@@ -1178,6 +1195,7 @@ def achievement_sort_key(achievement: Achievement) -> tuple[int, int, int, str]:
         "top_totals_equal",
         "no_top_bonus",
         "all_top_bonuses",
+        "top_equal_with_bonuses",
     }:
         return (
             30,
@@ -1189,6 +1207,7 @@ def achievement_sort_key(achievement: Achievement) -> tuple[int, int, int, str]:
                 "top_totals_equal": 12,
                 "no_top_bonus": 13,
                 "all_top_bonuses": 14,
+                "top_equal_with_bonuses": 15,
             }[kind],
             achievement.target,
             achievement.key,
@@ -1219,6 +1238,7 @@ def achievement_sort_key(achievement: Achievement) -> tuple[int, int, int, str]:
     if kind in {
         "lower_strikes", "sixty_once", "sixty_all_written", "sixty_all_struck", "full_perfect",
         "full_minimal", "poker_perfect", "poker_minimal", "styler_full_count", "kenter_struck", "kenter_all_written",
+        "lower_clean_sheet",
     }:
         return (
             50,
@@ -1234,6 +1254,7 @@ def achievement_sort_key(achievement: Achievement) -> tuple[int, int, int, str]:
                 "sixty_once": 8,
                 "sixty_all_written": 9,
                 "sixty_all_struck": 10,
+                "lower_clean_sheet": 11,
             }[kind],
             achievement.target,
             achievement.key,
@@ -1297,7 +1318,9 @@ def achievement_sort_key(achievement: Achievement) -> tuple[int, int, int, str]:
     raise RuntimeError(f"Achievement {achievement.key} has no display order.")
 
 
-def _snapshot_rows(snapshot_json: str, participant: GameParticipant, mode: str) -> list[dict[str, int]]:
+def _snapshot_rows(
+    snapshot_json: str, participant: GameParticipant, mode: str, *, complete_rows: bool = False,
+) -> list[dict[str, int]]:
     try:
         snapshot = json.loads(snapshot_json)
     except (TypeError, json.JSONDecodeError):
@@ -1305,12 +1328,24 @@ def _snapshot_rows(snapshot_json: str, participant: GameParticipant, mode: str) 
     scoreboards = snapshot.get("scoreboards") if isinstance(snapshot, dict) else None
     if not isinstance(scoreboards, dict):
         return []
+    if complete_rows and str(mode).lower() == "2v2" and not participant.team:
+        return []
     board_key = participant.team if str(mode).lower() == "2v2" and participant.team else participant.player_key
     board = scoreboards.get(str(board_key))
     if not isinstance(board, dict):
         return []
+    raw_rows = board.get("reihen", [])
+    if complete_rows:
+        # New conjunction goals require four distinct, complete source rows.
+        # Preserve the permissive historic reader for all existing criteria.
+        if (not isinstance(raw_rows, list) or len(raw_rows) != 4
+                or any(not isinstance(item, dict) or type(item.get("index")) is not int
+                       or not isinstance(item.get("rows"), dict) for item in raw_rows)
+                or {item["index"] for item in raw_rows} != {1, 2, 3, 4}
+                or any(type(value) is not int or value < 0 for item in raw_rows for value in item["rows"].values())):
+            return []
     result: list[dict[str, int]] = []
-    for item in board.get("reihen", []):
+    for item in raw_rows:
         if not isinstance(item, dict) or not isinstance(item.get("rows"), dict):
             continue
         result.append({str(key): int(value) for key, value in item["rows"].items() if isinstance(value, (int, float))})
@@ -1423,6 +1458,7 @@ def _multiplayer_metrics(game: CompletedGame, participant: GameParticipant) -> d
 
 def _game_metrics(game: CompletedGame, participant: GameParticipant) -> dict[str, int | bool]:
     rows = _snapshot_rows(game.snapshot_json, participant, game.mode)
+    complete_rows = _snapshot_rows(game.snapshot_json, participant, game.mode, complete_rows=True)
     subtotals = [compute_row_subtotals(row, hardcore=bool(game.hardcore)) for row in rows]
     top_totals = [subtotal["sum_top"] for subtotal in subtotals]
     differences = [
@@ -1445,6 +1481,12 @@ def _game_metrics(game: CompletedGame, participant: GameParticipant) -> dict[str
     minimums = [row["min"] for row in rows if "min" in row]
     local_finished = as_utc(game.finished_at).astimezone(ZURICH)
     return {
+        "lower_clean_sheet": len(complete_rows) == 4 and all(
+            all(field in row and row[field] > 0 for field in (*LOWER_FIELDS, "60")) for row in complete_rows
+        ),
+        "top_equal_with_bonuses": len(complete_rows) == 4
+        and all(all(field in row for field in TOP_FIELDS) for row in complete_rows)
+        and len(set(top_totals)) == 1 and all(subtotal["bonus_top"] > 0 for subtotal in subtotals),
         "top_max": top_max,
         "top_section_exact_60": any(total == 60 for total in top_totals),
         "top_section_all_exact_60": len(top_totals) == 4 and all(total == 60 for total in top_totals),
@@ -1597,6 +1639,10 @@ def _progress_for_user(
             (int(metrics["lower_strikes"]) for _game, _participant, metrics in gameplay_games), default=0
         ),
         "sixty_once": any(bool(metrics["sixty_once"]) for _game, _participant, metrics in gameplay_games),
+        "lower_clean_sheet": any(bool(metrics["lower_clean_sheet"]) for _game, _participant, metrics in gameplay_games),
+        "top_equal_with_bonuses": any(
+            bool(metrics["top_equal_with_bonuses"]) for _game, _participant, metrics in gameplay_games
+        ),
         "sixty_all_written": max(
             (int(metrics["sixty_written_count"]) for _game, _participant, metrics in gameplay_games), default=0
         ),

@@ -6,7 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { CONFIGS, createSuitePlan, parseArguments, reservePort, runLocalBrowserTests } from '../scripts/test-browser-local.mjs';
+import { CONFIGS, collectFilteredTests, createSuitePlan, parseArguments, reservePort, runLocalBrowserTests } from '../scripts/test-browser-local.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const require = createRequire(import.meta.url);
@@ -26,6 +26,15 @@ const name = path.basename(env.PLAYWRIGHT_TEST_DIR);
 const record = type => appendFileSync(env.FAKE_EVENTS, JSON.stringify({ type, name, time: Date.now(),
   port: env.ROLLTHEDICE_TEST_PORT, directory: env.PLAYWRIGHT_TEST_DIR, output: env.PLAYWRIGHT_OUTPUT_DIR,
   html: env.PLAYWRIGHT_HTML_OUTPUT_DIR, python: env.PLAYWRIGHT_PYTHON, args: process.argv.slice(2) }) + '\\n');
+if (process.argv.includes('--list')) {
+  record('list');
+  if (env.FAKE_NO_REPORT === '1') process.exit(0);
+  const count = env.FAKE_SELECTION ? (JSON.parse(env.FAKE_SELECTION)[name] || 0) : 1;
+  const report = { config: {}, errors: [], suites: count ? [{ specs: [{ title: 'selected case',
+    tests: Array.from({ length: count }, () => ({ projectId: '', results: [] })) }] }] : [] };
+  writeFileSync(env.PLAYWRIGHT_JSON_OUTPUT_FILE, env.FAKE_LIST_DATA || JSON.stringify(report));
+  process.exit(0);
+}
 record('start');
 console.log('kept stdout ' + name); console.error('kept stderr ' + name);
 writeFileSync(path.join(env.PLAYWRIGHT_TEST_DIR, 'accounts.sqlite3'), 'isolated test accounts');
@@ -182,6 +191,106 @@ test('filtered success is explicitly partial, and occupied output/ports never re
   await assert.rejects(runLocalBrowserTests({ outputDirectory: path.join(f.directory, 'external') }, {
     ...deps, environment: { PLAYWRIGHT_BASE_URL: 'http://127.0.0.1:8000' },
   }), /PLAYWRIGHT_BASE_URL/);
+});
+
+test('a filtered total of zero is refused before running any otherwise successful empty shard', async t => {
+  const f = await fixture(t);
+  const summary = await runLocalBrowserTests({ outputDirectory: path.join(f.directory, 'zero'),
+    suites: ['main'], filters: ['--grep', 'mistyped title'] }, { root, cliPath: f.cli, quiet: true,
+    environment: cleanEnvironment({ FAKE_EVENTS: f.events, FAKE_SELECTION: '{}' }) });
+  assert.equal(summary.exitCode, 1);
+  assert.equal(summary.selectedTests, 0);
+  assert.equal(summary.fullRun, false);
+  assert.match(summary.error, /selected no tests/);
+  assert.ok(summary.results.every(item => item.status === 'not-started'));
+  const events = (await readFile(f.events, 'utf8')).trim().split('\n').map(line => JSON.parse(line));
+  assert.equal(events.length, 4);
+  assert.ok(events.every(event => event.type === 'list'));
+});
+
+for (const selected of [1, 3]) test(`filtered ${selected}-test selection on one shard permits the three empty shards`, async t => {
+  const f = await fixture(t);
+  const summary = await runLocalBrowserTests({ outputDirectory: path.join(f.directory, 'selected'),
+    suites: ['main'], filters: ['one.spec.js', '--grep', 'one case'] }, { root, cliPath: f.cli, quiet: true,
+    environment: cleanEnvironment({ FAKE_EVENTS: f.events, FAKE_SELECTION: JSON.stringify({ 'main-2': selected }) }) });
+  assert.equal(summary.exitCode, 0);
+  assert.equal(summary.selectedTests, selected);
+  assert.equal(summary.fullRun, false);
+  assert.deepEqual(summary.results.map(item => item.selectedTests), [0, selected, 0, 0]);
+  const events = (await readFile(f.events, 'utf8')).trim().split('\n').map(line => JSON.parse(line));
+  const listed = events.filter(event => event.type === 'list'), started = events.filter(event => event.type === 'start');
+  assert.equal(listed.length, 4); assert.equal(started.length, 4);
+  for (const listing of listed) {
+    const execution = started.find(item => item.name === listing.name);
+    assert.deepEqual(listing.args, [...execution.args, '--list', '--reporter=json']);
+    assert.equal(listing.directory, execution.directory);
+    assert.equal(listing.port, execution.port);
+    assert.ok(execution.args.includes('--pass-with-no-tests'));
+  }
+});
+
+test('a malformed or structurally invalid selection report fails closed', async t => {
+  const f = await fixture(t);
+  const invalid = ['not JSON', '{}', JSON.stringify({ config: {}, errors: ['collection failed'], suites: [] }),
+    JSON.stringify({ config: {}, errors: [], suites: [{ specs: [{ title: 'case', tests: [{}] }] }] })];
+  for (const [index, report] of invalid.entries()) {
+    const summary = await runLocalBrowserTests({ outputDirectory: path.join(f.directory, `invalid-${index}`),
+      suites: ['username'], filters: ['--grep', 'case'] }, { root, cliPath: f.cli, quiet: true,
+      environment: cleanEnvironment({ FAKE_EVENTS: f.events, FAKE_LIST_DATA: report }) });
+    assert.equal(summary.exitCode, 1);
+    assert.ok(summary.error);
+    assert.ok(summary.results.every(item => item.status === 'not-started'));
+  }
+  const events = (await readFile(f.events, 'utf8')).trim().split('\n').map(line => JSON.parse(line));
+  assert.ok(events.every(event => event.type === 'list'));
+});
+
+test('a successful collection without a new report cannot reuse a valid previous selection', async t => {
+  const f = await fixture(t);
+  const directory = path.join(f.directory, 'stale');
+  const environment = cleanEnvironment({ FAKE_EVENTS: f.events, FAKE_NO_REPORT: '1' });
+  const plan = createSuitePlan({ root, temporaryDirectory: directory, outputDirectory: directory,
+    ports: [18200], suites: ['username'], filters: ['--grep', 'case'], environment });
+  for (const suite of plan) {
+    await mkdir(suite.testDirectory, { recursive: true });
+    await mkdir(path.dirname(suite.logPath), { recursive: true });
+  }
+  const reportPath = path.join(path.dirname(plan[0].logPath), 'selection.json');
+  await writeFile(reportPath, JSON.stringify({ config: {}, errors: [], suites: [{ specs: [{ title: 'old case',
+    tests: [{ projectId: '', results: [] }] }] }] }));
+  await assert.rejects(collectFilteredTests(plan, f.cli, root), { code: 'ENOENT' });
+  await assert.rejects(readFile(reportPath), { code: 'ENOENT' });
+  const summary = await runLocalBrowserTests({ outputDirectory: path.join(f.directory, 'missing'),
+    suites: ['username'], filters: ['--grep', 'case'] }, { root, cliPath: f.cli, quiet: true, environment });
+  assert.equal(summary.exitCode, 1);
+  assert.equal(summary.results[0].status, 'not-started');
+  const events = (await readFile(f.events, 'utf8')).trim().split('\n').map(line => JSON.parse(line));
+  assert.equal(events.length, 2);
+  assert.ok(events.every(event => event.type === 'list'));
+});
+
+test('real Playwright JSON collection selects zero, one or multiple tests without executing bodies', async t => {
+  const f = await fixture(t);
+  const marker = path.join(f.directory, 'body-ran');
+  await writeFile(path.join(f.directory, CONFIGS.main), "module.exports = { testDir: __dirname, fullyParallel: false };\n");
+  await writeFile(path.join(f.directory, 'selection.spec.js'), `
+const { test } = require(${JSON.stringify(require.resolve('@playwright/test'))});
+for (const title of ['chosen one', 'chosen two']) test(title, () => require('node:fs').writeFileSync(${JSON.stringify(marker)}, title));
+`);
+  for (const [index, [filter, expected]] of [['mistyped', 0], ['chosen one', 1], ['chosen', 2]].entries()) {
+    const directory = path.join(f.directory, `real-${index}`);
+    const plan = createSuitePlan({ root: f.directory, temporaryDirectory: directory, outputDirectory: directory,
+      ports: [18200, 18201, 18202, 18203], suites: ['main'], filters: ['selection.spec.js', '--grep', filter],
+      environment: cleanEnvironment({ PLAYWRIGHT_JSON_OUTPUT_NAME: 'inherited-report.json' }) });
+    for (const suite of plan) {
+      await mkdir(suite.testDirectory, { recursive: true });
+      await mkdir(path.dirname(suite.logPath), { recursive: true });
+    }
+    const counts = await collectFilteredTests(plan, require.resolve('@playwright/test/cli'), f.directory);
+    assert.equal(counts.reduce((sum, count) => sum + count, 0), expected);
+    assert.equal(counts.filter(count => count > 0).length, expected ? 1 : 0);
+    await assert.rejects(readFile(marker), { code: 'ENOENT' });
+  }
 });
 
 test('all five configs preserve Python/output overrides and use distinct test databases without server reuse', async t => {

@@ -1,4 +1,4 @@
-"""Private Hausdepp XP, 136 one-time achievements and the 24-step ironic ladder.
+"""Private Hausdepp XP, 138 one-time achievements and the 24-step ironic ladder.
 
 Only validated, completed round membership can mint a credit. Database uniqueness
 makes retries and simultaneous account tabs harmless. This service never writes
@@ -20,7 +20,7 @@ from sqlalchemy.orm import selectinload
 from .database import database_schema_ready, session_scope
 from .game_types import HAUSDEPP_GAME_TYPE
 from .hausdepp_departure_store import source_not_withdrawn
-from .hausdepp_results import validated_hausdepp_membership
+from .hausdepp_results import TOURNAMENT_EVENT_ACHIEVEMENTS, validated_hausdepp_membership
 from .hausdepp_surprise_collection import SURPRISE_EFFECTS
 from .models import (
     CompletedGame,
@@ -249,6 +249,8 @@ _ACHIEVEMENT_DATA = (
     (134, "Kurioser Stammgast", "Regular at the unusual", "Vier verschiedene seltene Tischüberraschungen als verbundener Mitspieler miterleben und die jeweiligen Runden abschliessen; beim Auslösen müssen jeweils mindestens zwei Menschen verbunden mitspielen.", "Witness four different rare table surprises as a connected player and complete each round; at least two humans must be connected and playing when each surprise is triggered.", 50),
     (135, "Jetzt hab ich alles gesehen", "Now I’ve seen everything", "Alle acht seltenen Tischüberraschungen als verbundener Mitspieler miterleben und die jeweiligen Runden abschliessen; beim Auslösen müssen jeweils mindestens zwei Menschen verbunden mitspielen.", "Witness all eight rare table surprises as a connected player and complete each round; at least two humans must be connected and playing when each surprise is triggered.", 250),
     (136, "Zonk: Ich bin dann mal weg", "Zonk: I'm off", "Eine laufende Runde ausdrücklich verlassen, bevor du deine Karten regulär losgeworden bist. Dieser Zonk bringt 0 EP.", "Explicitly leave a running round before finishing your cards normally. This Zonk grants 0 XP.", 0),
+    (137, "Doppelt aufgeräumt", "Two kinds of clean", "Direkt nacheinander mit einer 10 und mit vier Gleichen abräumen, in beliebiger Reihenfolge, ohne dass ein anderer Spieler dazwischen eine Karte spielt oder das Paket aufnimmt.", "Clear with a ten and with four of a kind back to back, in either order, without another player playing a card or taking the pile in between.", 50),
+    (138, "Den Vierer vollendet, tschüss", "Completed the four, goodbye", "Bei leerem Nachziehstapel mit deiner einzigen letzten Handkarte ein Viererpaket vervollständigen, zu dem ein Mitspieler beigetragen hat, und damit fertig werden.", "With the stock empty, complete a four of a kind that another player helped build with your single last hand card, and finish.", 50),
 )
 _SURPRISE_ACHIEVEMENTS = {
     **{116 + index: ("activated", effect) for index, effect in enumerate(SURPRISE_EFFECTS)},
@@ -327,7 +329,12 @@ def _description(number: int, de: str, en: str) -> dict[str, str]:
     return {"de": de, "en": en}
 
 
+_APPENDED_CATEGORIES = {137: "tempo", 138: "endgame"}
+
+
 def _category(number: int) -> str:
+    if number in _APPENDED_CATEGORIES:
+        return _APPENDED_CATEGORIES[number]
     if number == 136:
         return "zonk"
     if number >= 116:
@@ -373,7 +380,7 @@ def _accumulate(aggregate: dict, facts: dict, finished_at: datetime | None = Non
     tournament_id = facts.get("completed_tournament_id")
     first_tournament_credit = bool(tournament_id and tournament_id not in aggregate["tournaments"])
     aggregate["flags"].update(flag for flag in set(facts["flags"])
-                              if int(flag.rsplit("_", 1)[1]) < 85 or first_tournament_credit)
+                              if flag not in TOURNAMENT_EVENT_ACHIEVEMENTS or first_tournament_credit)
     aggregate["ten_clears"] += facts["ten_clears"]
     aggregate["with_cpu"] += facts["cpu_count"] > 0
     aggregate["humans_three"] += facts["cpu_count"] == 0 and facts["human_count"] >= 3
@@ -440,7 +447,7 @@ def _progress(aggregate: dict, achievement_id: str) -> tuple[int, int]:
         current = int(aggregate["finished"])
     elif number in (86, 87):
         current = len(aggregate["tournaments"])
-    elif number > 100:
+    elif 101 <= number <= 115:
         current = {101: aggregate["office"], 102: aggregate["office"], 103: aggregate["office"],
                    104: aggregate["office"], 105: aggregate["lunch"], 106: aggregate["evening"],
                    107: aggregate["night"], 108: aggregate["early"], 109: aggregate["weekend"],

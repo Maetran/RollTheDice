@@ -90,7 +90,7 @@ class HausdeppAchievementTests(unittest.TestCase):
         return result
 
     def test_catalog_has_exact_approved_ids_points_thresholds_and_original_bilingual_flavours(self):
-        self.assertEqual([item["id"] for item in ACHIEVEMENTS], [f"hausdepp_{n:02}" for n in range(1, 137)])
+        self.assertEqual([item["id"] for item in ACHIEVEMENTS], [f"hausdepp_{n:02}" for n in range(1, 139)])
         self.assertEqual([item["points"] for item in ACHIEVEMENTS[:64]], [
             10, 25, 10, 10, 10, 10, 25, 50, 10, 25, 50, 25, 50, 25, 50, 100,
             25, 50, 100, 25, 25, 50, 10, 50, 10, 25, 25, 50, 25, 25, 50, 100,
@@ -104,9 +104,21 @@ class HausdeppAchievementTests(unittest.TestCase):
             # When and how often: office hours, breaks, night, weekends, streaks, totals.
             10, 25, 50, 100, 10, 25, 25, 25, 25, 10, 25, 50, 100, 100, 100,
         ])
-        self.assertEqual([item["points"] for item in ACHIEVEMENTS[115:]],
+        self.assertEqual([item["points"] for item in ACHIEVEMENTS[115:136]],
                          [*([50] * 8), 100, 500, *([25] * 8), 50, 250, 0])
-        self.assertEqual(sum(item["points"] for item in ACHIEVEMENTS), 5605)
+        # The 136 original awards keep their exact total; 137/138 are appended.
+        self.assertEqual(sum(item["points"] for item in ACHIEVEMENTS[:136]), 5605)
+        self.assertEqual([item["points"] for item in ACHIEVEMENTS[136:]], [50, 50])
+        self.assertEqual(sum(item["points"] for item in ACHIEVEMENTS), 5705)
+        # Literal category baseline for 1..136, written out independently of _category.
+        old_categories = [
+            *["participation"] * 8, *["community"] * 8, *["cut_gamble"] * 8, *["tens"] * 8,
+            *["four"] * 8, *["tempo"] * 8, *["mishaps"] * 8, *["endgame"] * 8,
+            *["comebacks"] * 12, *["style"] * 8, *["tournament"] * 16, *["habits"] * 15,
+            *["surprises_activated"] * 10, *["surprises_witnessed"] * 10, "zonk",
+        ]
+        self.assertEqual([item["category"] for item in ACHIEVEMENTS[:136]], old_categories)
+        self.assertEqual([item["category"] for item in ACHIEVEMENTS[136:]], ["tempo", "endgame"])
         self.assertEqual([rank["threshold"] for rank in RANKS], [
             0, 25, 50, 100, 150, 225, 300, 400, 500, 650, 800, 1000,
             # Above 2300 the ladder stretches so the last ranks take real time.
@@ -127,7 +139,7 @@ class HausdeppAchievementTests(unittest.TestCase):
                                              "cpu_round_reward": 2, "cpu_reduction_percent": 75})
         self.assertEqual(account["rank"]["name"]["de"], "Einstein")
         self.assertEqual(account["rank"]["progress"], {"current": 0, "target": 25, "percent": 0})
-        self.assertEqual((len(account["ranks"]), len(account["achievements"]["items"])), (24, 136))
+        self.assertEqual((len(account["ranks"]), len(account["achievements"]["items"])), (24, 138))
         self.assertEqual(account["achievements"]["unlocked_count"], 0)
         self.assertIsNone(account["presentation"]["pending"])
 
@@ -393,6 +405,41 @@ class HausdeppAchievementTests(unittest.TestCase):
         after = synchronize_hausdepp_progress(self.user.id)
         after_items = {item["id"]: item for item in after["achievements"]["items"]}
         self.assertEqual(after_items["hausdepp_87"]["progress"], {"current": 10, "target": 10})
+
+    def test_appended_mixed_chain_and_quartet_finish_are_ordinary_round_events(self):
+        new = ("hausdepp_137", "hausdepp_138")
+        self.store(self.payload("ordinary", flags=new))
+        first = {item["id"]: item for item in synchronize_hausdepp_progress(self.user.id)["achievements"]["items"]}
+        for key, category in zip(new, ("tempo", "endgame")):
+            self.assertTrue(first[key]["unlocked"])
+            self.assertEqual((first[key]["points"], first[key]["category"]), (50, category))
+            self.assertEqual(first[key]["progress"], {"current": 1, "target": 1})
+        # Neither an unfinished nor a finished tournament round rejects them,
+        # and they are credited without needing a first completed tournament.
+        unfinished = self.payload("open-tourney", schema=3, flags=new, at=self.at + timedelta(minutes=1))
+        unfinished["tournament"] = {"schema_version": 1, "id": "open-tourney", "round_number": 1,
+                                    "losses": {"self": 0, "other": 1}, "round_losers": ["other"],
+                                    "completed": False, "tages_hausdepp_id": None}
+        self.assertEqual(validate_hausdepp_result(unfinished)["achievement_evidence"]["players"]["self"]["flags"],
+                         list(new))
+        finished = self.payload("done-tourney-r08", schema=3, flags=(*new, "hausdepp_85"),
+                                at=self.at + timedelta(minutes=2))
+        finished["tournament"] = {"schema_version": 1, "id": "done-tourney", "round_number": 8,
+                                  "losses": {"self": 0, "other": 8}, "round_losers": ["other"] * 8,
+                                  "completed": True, "tages_hausdepp_id": "other"}
+        validate_hausdepp_result(finished)
+        for payload in (unfinished, finished):
+            self.store(payload)
+        again = {item["id"]: item for item in synchronize_hausdepp_progress(self.user.id)["achievements"]["items"]}
+        # Repeated qualifying rounds keep the first unlock date and the one-time 50 XP.
+        for key in new:
+            self.assertEqual(again[key]["unlocked_at"], first[key]["unlocked_at"])
+            self.assertEqual(again[key]["points"], 50)
+        with session_scope() as db:
+            self.assertEqual(db.scalar(select(func.count()).select_from(HausdeppAchievementUnlock)
+                                       .where(HausdeppAchievementUnlock.achievement_id.in_(new))), 2)
+        # Re-delivering the same stored results is a stable no-op.
+        self.assertEqual(synchronize_hausdepp_progress(self.user.id), synchronize_hausdepp_progress(self.user.id))
 
     def test_concurrent_old_and_new_receipts_never_regress_or_hide_unseen_round_points(self):
         self.store(self.payload())

@@ -23,6 +23,47 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 4.6.0 — 2026-10-25
+
+### NEUE ERFOLGE UND WATTEN-FORTSCHRITT / NEW ACHIEVEMENTS AND WATTEN PROGRESS
+
+**Deutsch:** Zwei neue Konstellationen je Spiel: ZDWA verbindet vollständige
+untere Bereiche beziehungsweise gleiche obere Summen mit Bonus in derselben
+Partie. Zilch belohnt einen Menschenduell-Sieg ohne kleine Sicherungen und zwei
+Hot Dice innerhalb eines gesicherten Zuges. Hausdepp belohnt eine eigene Serie
+aus Zehn- und Vierer-Abräumen sowie eine einzelne letzte Handkarte, die ein
+mit fremder Hilfe vorbereitetes Viererpaket vervollständigt. Watten ergänzt den
+Sieg bis elf nach mindestens sieben Punkten Rückstand und einen Sieg, bei dem
+alle mindestens drei selbst gewonnenen Runden erhöht waren und man selbst
+geboten, gekontert oder gehalten hat. Angenommene Retourschneider zählen beim
+Comeback-Ziel nicht; zu dritt muss der Endstand mindestens gleichauf mit allen
+anderen liegen.
+
+**English:** Two new constellations per game: ZDWA combines complete lower
+sections or equal upper totals with bonuses within the same game. Zilch rewards
+a human-duel win without small banks and two Hot Dice events within a banked
+turn. Hausdepp rewards an own chain of ten and quartet clears, and a single last
+hand card completing a quartet another player helped build. Watten adds a win
+to eleven after trailing by at least seven, and a win where all of at least
+three own won deals were raised and the player initiated, countered or held.
+Accepted Retourschneider games do not qualify for the comeback; with three
+players the final score must be level with or ahead of every other player.
+
+**Deutsch:** Die Watten-Fortschrittsansicht trennt Partie- und Erfolgs-EP, zeigt
+die aktuelle und nächste Titelstufe und bietet eine kompakte Sammlung mit
+Status- und Kategoriefiltern sowie einer aufklappbaren vollständigen Titelleiter.
+Erreichte Ziele zeigen die tatsächlich gewährten EP und das erste Datum.
+Filter bestätigen keine Belohnungen. Bestehende Werte und Rangschwellen bleiben
+erhalten. Neue Ziele nutzen ausschliesslich passende vollständige Nachweise;
+fehlende historische Aktionen werden nicht erfunden.
+
+**English:** Watten progress separates match and achievement XP, shows the
+current and next title, and offers a compact collection with status/category
+filters and an expandable complete title ladder. Earned goals show their actual
+granted XP and first unlock date. Filters never acknowledge rewards. Existing
+values and rank thresholds stay intact. New goals require suitable complete
+proof; missing historical actions are never inferred.
+
 ## 4.5.0 — 2026-10-25
 
 ### MOBILE SPIELTISCHE / MOBILE TABLES

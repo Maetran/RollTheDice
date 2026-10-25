@@ -119,7 +119,9 @@ def test_achievement_points_are_visible_catalog_data_and_logically_ordered():
 
 
 def test_achievement_rank_tiers_follow_the_public_point_distribution():
-    assert ACHIEVEMENT_POINTS_POSSIBLE == 726
+    # The two append-only constellation goals add 7 and 9 points to 4.5's
+    # published 726; every absolute rank threshold below remains frozen.
+    assert ACHIEVEMENT_POINTS_POSSIBLE == 742 == 726 + 7 + 9
     assert achievement_rank_for_points(0)["title"] == "Newbie"
     assert achievement_rank_for_points(13)["title"] == "Rookie"
     assert achievement_rank_for_points(43)["title"] == "Spieler"

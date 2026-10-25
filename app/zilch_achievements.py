@@ -57,7 +57,7 @@ ZILCH_ACHIEVEMENT_RESPONSE_VERSION: Final = 2
 # Version 7 adds explicit account-interaction goals. Existing Zilch evidence
 # remains the only source for normal game definitions; cross-game facts have
 # their own rollout marker.
-ZILCH_ACHIEVEMENT_CATALOG_VERSION: Final = 7
+ZILCH_ACHIEVEMENT_CATALOG_VERSION: Final = 8
 ZILCH_ACHIEVEMENT_NAMESPACE: Final = "zilch."
 ZILCH_ACHIEVEMENT_DEFINITION_VERSION: Final = 1
 ZILCH_ACHIEVEMENT_RECOVERY_DEFAULT_LIMIT: Final = 50
@@ -1512,6 +1512,27 @@ ZILCH_ACHIEVEMENTS: Final[tuple[ZilchAchievementDefinition, ...]] = (
     _definition("game_switcher_used", category="exploration", icon_key="switch", title_de="Spielwechsler", title_en="Game Switcher", description_de="Zwischen ZDWA und Zilch gewechselt.", description_en="Switch between ZDWA and Zilch.", criterion="engagement_event", eligible_modes=_KNOWN_PLAY_MODES, result_schema_versions=_KNOWN_RESULT_SCHEMAS, points=2, target=1),
     _definition("push_settings_viewed", category="exploration", icon_key="push", title_de="Immer informiert", title_en="Stay Informed", description_de="Die Push-Einstellungen geöffnet.", description_en="Open push settings.", criterion="engagement_event", eligible_modes=_KNOWN_PLAY_MODES, result_schema_versions=_KNOWN_RESULT_SCHEMAS, points=1, target=1),
     _definition("chat_settings_saved", category="exploration", icon_key="chat", title_de="Gesprächig", title_en="Chatty", description_de="Die Chat-Einstellungen gespeichert.", description_en="Save chat settings.", criterion="engagement_event", eligible_modes=_KNOWN_PLAY_MODES, result_schema_versions=_KNOWN_RESULT_SCHEMAS, points=2, target=1),
+    # New contracts are appended; old definitions keep their prices and versions.
+    _definition(
+        "no_small_change",
+        category="multiplayer", icon_key="paper",
+        title_de="Kein Kleingeld", title_en="No Small Change",
+        description_de="Ein Duell gegen einen Menschen gewinnen, mindestens fünfmal sichern und dabei nie "
+        "weniger als 500 Punkte sichern.",
+        description_en="Win a human duel, bank at least five times, and never bank less than 500 points.",
+        criterion="no_small_change", eligible_modes={"multiplayer"}, result_schema_versions={1},
+        points=6, target=5,
+    ),
+    _definition(
+        "double_hot_dice_turn",
+        category="risk", icon_key="flame",
+        title_de="Zweimal heiss gesichert", title_en="Double Heat, Banked",
+        description_de="In einem Spiel mindestens zweimal Hot Dice innerhalb desselben Zuges erreichen "
+        "und diesen Zug anschliessend sichern.",
+        description_en="Reach Hot Dice at least twice within one turn and then bank that turn.",
+        criterion="banked_turn_hot_dice", eligible_modes=_KNOWN_PLAY_MODES,
+        result_schema_versions=_KNOWN_RESULT_SCHEMAS, points=5, target=2,
+    ),
 )
 
 ZILCH_ACHIEVEMENT_BY_KEY: Final[dict[str, ZilchAchievementDefinition]] = {
@@ -1823,6 +1844,56 @@ def _payload_from_completed_game(game: CompletedGame) -> dict[str, Any]:
     return payload
 
 
+def _banked_turn_hot_dice_proof(rounds: list) -> int | None:
+    """Prove a bank-local maximum without tightening historic result contracts.
+
+    Partial bank history stays unknown. Loss history is irrelevant here; its
+    existing whole-game Hot Dice/combinations contract remains unchanged.
+    """
+    maximum = 0
+    for entry in rounds:
+        if not isinstance(entry, Mapping):
+            return None
+        if entry.get("event") != "bank":
+            continue
+        turn_id, rolls = entry.get("turn_id"), entry.get("rolls_used")
+        holds = entry.get("committed_holds")
+        if (type(turn_id) is not int or turn_id < 1 or type(rolls) is not int or rolls < 1
+                or type(entry.get("points")) is not int or entry["points"] < 1
+                or not isinstance(holds, list) or len(holds) != rolls):
+            return None
+        hot_dice = points = 0
+        # Every successful roll commits exactly one hold before another roll
+        # or bank. A skipped/reordered record cannot prove a complete turn.
+        for expected_roll, hold in enumerate(holds, start=1):
+            if not isinstance(hold, Mapping):
+                return None
+            roll_id, held_points = hold.get("roll_id"), hold.get("points")
+            if (type(hold.get("hot_dice")) is not bool
+                    or type(hold.get("turn_id")) is not int or hold["turn_id"] != turn_id
+                    or type(roll_id) is not int or roll_id != expected_roll
+                    or type(held_points) is not int or held_points < 1):
+                return None
+            points += held_points
+            hot_dice += hold["hot_dice"]
+        # Hot Dice needs a subsequent scoring confirmation before banking.
+        if (points != entry.get("points") or holds[-1].get("requires_confirmation") is not False
+                or holds[-1]["hot_dice"]):
+            return None
+        maximum = max(maximum, hot_dice)
+    return maximum
+
+
+def _banked_turn_hot_dice_count(facts: Mapping[str, Any]) -> int | None:
+    """A damaged optional v1 proof must not invalidate unrelated old facts.
+
+    Keep the raw value in the envelope: catalogue enrichment still compares
+    it verbatim, including a sealed None, and rolls back contradictions.
+    """
+    value = facts.get("banked_turn_hot_dice_v1")
+    return value if type(value) is int and value >= 0 else None
+
+
 def _round_facts(board: object) -> dict[str, Any]:
     """Return normalized server-stored round facts; missing holds stay unknown."""
 
@@ -1887,6 +1958,7 @@ def _round_facts(board: object) -> dict[str, Any]:
         "zilch_penalty_points": penalties,
         "history_complete": history_complete,
         "hot_dice_events": hot_dice,
+        "banked_turn_hot_dice_v1": _banked_turn_hot_dice_proof(rounds),
         "combination_types": sorted(combinations),
         "max_discarded_points": max_discarded_points,
         "turn_count": len(rounds),
@@ -2268,6 +2340,16 @@ def _criterion_is_satisfied(definition: ZilchAchievementDefinition, facts: list[
         )
     if criterion == "three_four_digit_banks":
         return any(sum(int(points) >= 1_000 for points in item["banked_rounds"]) >= 3 for item in applicable)
+    if criterion == "no_small_change":
+        return any(
+            item.get("outcome") == "win" and len(item["banked_rounds"]) >= int(definition.target or 0)
+            and all(points >= 500 for points in item["banked_rounds"]) for item in applicable
+        )
+    if criterion == "banked_turn_hot_dice":
+        return any(
+            (count := _banked_turn_hot_dice_count(item)) is not None and count >= int(definition.target or 0)
+            for item in applicable
+        )
     if criterion == "win_without_zilch":
         return any(item.get("outcome") == "win" and int(item["zilch_count"]) == 0 for item in applicable)
     if criterion == "win_after_zilchs":
@@ -2446,6 +2528,14 @@ def _progress_for_definition(
             default=0,
         )
         return {"current": current, "target": 3}
+    elif definition.criterion == "no_small_change":
+        current = max(
+            (len(item["banked_rounds"]) for item in applicable if item.get("outcome") == "win"
+             and all(points >= 500 for points in item["banked_rounds"])), default=0,
+        )
+    elif definition.criterion == "banked_turn_hot_dice":
+        counts = [count for item in applicable if (count := _banked_turn_hot_dice_count(item)) is not None]
+        current = max(counts) if counts else None
     elif definition.criterion == "zilchs_in_game":
         current = max((int(item["zilch_count"]) for item in applicable), default=0)
     elif definition.criterion == "win_after_penalty_points":

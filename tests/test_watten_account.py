@@ -10,7 +10,7 @@ from sqlalchemy import func, select
 from app.database import session_scope
 from app.models import CompletedGame, GameParticipant, User, WattenAchievementGrant, WattenMatchEvidence
 from app.watten_account import WattenAccountError, build_watten_account
-from app.watten_progression import DRAFT_ACHIEVEMENTS, DRAFT_CATALOG_VERSION
+from app.watten_progression import DRAFT_ACHIEVEMENTS, DRAFT_CATALOG_VERSION, DRAFT_TITLES
 from app.watten_progression_store import acknowledge_draft_progress, store_draft_match
 from app.watten_surprises import SURPRISE_ACHIEVEMENTS
 from tests import test_watten_runtime as runtime_tests
@@ -27,6 +27,18 @@ def test_empty_and_uncredited_account_reads_never_synchronize_or_award(server):
     assert empty["statistics"]["all_matches"] == empty["statistics"]["credited_matches"] == 0
     assert empty["progress"]["total_xp"] == 0
     assert len(empty["progress"]["achievements"]) == len(DRAFT_ACHIEVEMENTS) + len(SURPRISE_ACHIEVEMENTS)
+    assert empty["progress"]["titles"] == [
+        {"level": title.level, "threshold": title.xp, "name": {"de": title.name.de, "en": title.name.en}}
+        for title in DRAFT_TITLES]
+    goals = {item["id"]: item for item in empty["progress"]["achievements"]}
+    assert empty["progress"]["achievement_categories"] == ["persistence", "tables", "variants", "bidding", "wins", "surprises"]
+    assert set(item["category"] for item in goals.values()) == set(empty["progress"]["achievement_categories"])
+    assert goals["watten_matches_1"]["category"] == "persistence"
+    assert goals["watten_team_first"]["category"] == "tables"
+    assert goals["watten_blind"]["category"] == "variants"
+    assert goals["watten_counter"]["category"] == "bidding"
+    assert goals["watten_schneider_win"]["category"] == "wins"
+    assert goals["watten_surprise_star_trigger"]["category"] == "surprises"
     with session_scope() as db:
         written(db, game_for([owner], cpus=(1,)))
         before = counts(db)

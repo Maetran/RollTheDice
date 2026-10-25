@@ -1,0 +1,70 @@
+/* Private progress only; table geometry and public standings stay separate. */
+html[data-watten-progress-page="progress"] #wattenProgress :is(button, select, summary) { min-height: 44px; }
+html[data-watten-progress-page="progress"] #wattenProgress :is(button, select, summary):focus-visible { outline: 3px solid #823a2b; outline-offset: 3px; }
+html[data-watten-progress-page="progress"] #wattenProgress [hidden] { display: none; }
+html[data-watten-progress-page="progress"] .wt-progress-heading { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 12px; }
+html[data-watten-progress-page="progress"] .wt-progress-heading :is(h2, p) { margin: 0; }
+html[data-watten-progress-page="progress"] .wt-progress-heading h2 { margin-block: 4px; overflow-wrap: anywhere; font-size: clamp(1.35rem, 5vw, 1.85rem); }
+html[data-watten-progress-page="progress"] .wt-progress-total { display: grid; justify-items: end; gap: 3px; max-width: 9rem; text-align: right; }
+html[data-watten-progress-page="progress"] .wt-progress-total strong { font: 700 clamp(1.65rem, 6vw, 2.4rem)/1.1 Georgia, serif; font-variant-numeric: tabular-nums; }
+html[data-watten-progress-page="progress"] .wt-progress-total span { font-size: .78rem; color: var(--wt-muted); }
+html[data-watten-progress-page="progress"] .wt-progress-next { margin-block: 16px 12px; }
+html[data-watten-progress-page="progress"] .wt-progress-next p { margin-block: 5px; }
+html[data-watten-progress-page="progress"] .wt-progress-xp { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+html[data-watten-progress-page="progress"] .wt-progress-xp > div { min-width: 0; padding: 10px; border: 1px solid #ba936666; border-radius: 8px; background: #fff9eb80; }
+html[data-watten-progress-page="progress"] .wt-progress-xp dt { font-size: .78rem; }
+html[data-watten-progress-page="progress"] .wt-progress-xp dd { margin-top: 4px; font-size: 1.35rem; }
+html[data-watten-progress-page="progress"] .wt-progress-match-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 16px; }
+html[data-watten-progress-page="progress"] .wt-progress-match-stats dt { font-size: .72rem; line-height: 1.3; }
+html[data-watten-progress-page="progress"] .wt-progress-match-stats dd { margin-top: 3px; font-size: 1.15rem; }
+html[data-watten-progress-page="progress"] .wt-title-ladder { border-block: 1px solid #ba936666; }
+html[data-watten-progress-page="progress"] .wt-title-ladder > summary { display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 700; }
+html[data-watten-progress-page="progress"] .wt-title-ladder ol { list-style: none; margin: 0 0 12px; padding: 0; }
+html[data-watten-progress-page="progress"] .wt-title-ladder li { display: grid; grid-template-columns: 30px minmax(0, 1fr); align-items: center; gap: 10px; padding: 10px 6px; border-top: 1px solid #ba936640; }
+html[data-watten-progress-page="progress"] .wt-title-ladder li.is-current { border-radius: 8px; color: #63301f; background: #e6c994; box-shadow: inset 3px 0 #823a2b; }
+html[data-watten-progress-page="progress"] .wt-title-ladder li.is-reached .wt-title-step { background: #dcc7a2; }
+html[data-watten-progress-page="progress"] .wt-title-ladder li > div { display: grid; gap: 3px; }
+html[data-watten-progress-page="progress"] .wt-title-ladder li > div > span { font-size: .78rem; }
+html[data-watten-progress-page="progress"] .wt-title-step { display: grid; place-items: center; width: 28px; height: 28px; border: 1px solid #ad8059; border-radius: 50%; font-size: .75rem; }
+html[data-watten-progress-page="progress"] .wt-title-ladder > summary::before,
+html[data-watten-progress-page="progress"] .wt-achievement-detail > summary::after { content: "+"; flex: 0 0 auto; font-weight: 700; }
+html[data-watten-progress-page="progress"] .wt-title-ladder[open] > summary::before,
+html[data-watten-progress-page="progress"] .wt-achievement-detail[open] > summary::after { content: "−"; }
+html[data-watten-progress-page="progress"] :is(.wt-title-ladder, .wt-achievement-detail) > summary::-webkit-details-marker { display: none; }
+html[data-watten-progress-page="progress"] .wt-progress-pending { padding: 14px 16px; border-color: #b38350; }
+html[data-watten-progress-page="progress"] .wt-progress-pending h2 { margin-top: 0; font-size: 1.05rem; }
+html[data-watten-progress-page="progress"] .wt-progress-pending.is-empty { padding: 10px 0; border: 0; border-bottom: 1px solid #b8947070; border-radius: 0; background: transparent; box-shadow: none; }
+html[data-watten-progress-page="progress"] .wt-progress-pending.is-empty :is(h2, p) { margin-block: 3px; font-size: .85rem; }
+html[data-watten-progress-page="progress"] .wt-progress-section-heading { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 6px 12px; }
+html[data-watten-progress-page="progress"] .wt-progress-section-heading h2 { margin: 0; }
+html[data-watten-progress-page="progress"] .wt-collection-total { color: #743c28; font-size: .85rem; font-weight: 700; }
+html[data-watten-progress-page="progress"] .wt-collection-controls { display: flex; align-items: end; flex-wrap: wrap; gap: 10px; }
+html[data-watten-progress-page="progress"] .wt-collection-status { display: flex; flex: 1 1 100%; gap: 5px; }
+html[data-watten-progress-page="progress"] .wt-collection-status button { flex: 1 1 0; min-width: 0; padding: 8px 6px; border: 1px solid #ad8059; border-radius: 8px; color: #633a28; background: #fff4df; font-size: .85rem; font-weight: 700; }
+html[data-watten-progress-page="progress"] .wt-collection-status [aria-pressed="true"] { color: #fff5df; background: #823a2b; }
+html[data-watten-progress-page="progress"] .wt-collection-category { display: grid; flex: 1 1 12rem; gap: 4px; min-width: 0; font-size: .8rem; }
+html[data-watten-progress-page="progress"] .wt-collection-category select { width: 100%; max-width: 100%; font-size: .9rem; }
+html[data-watten-progress-page="progress"] .wt-collection-reset { padding: 8px 10px; font-size: .8rem; }
+html[data-watten-progress-page="progress"] .wt-collection-results { margin-block: 10px; color: var(--wt-muted); font-size: .8rem; }
+html[data-watten-progress-page="progress"] .wt-achievement-grid { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+html[data-watten-progress-page="progress"] #wattenProgress .wt-achievement-grid > .wt-card-panel { margin: 0; padding: 0; border-radius: 10px; }
+html[data-watten-progress-page="progress"] .wt-achievement-detail > summary { display: flex; align-items: center; gap: 10px; padding: 12px; list-style: none; cursor: pointer; }
+html[data-watten-progress-page="progress"] .wt-achievement-copy { display: grid; flex: 1 1 0; min-width: 0; gap: 6px; }
+html[data-watten-progress-page="progress"] .wt-achievement-copy > strong { font: 700 1.02rem/1.25 Georgia, serif; }
+html[data-watten-progress-page="progress"] .wt-achievement-state { font-size: .75rem; color: var(--wt-muted); }
+html[data-watten-progress-page="progress"] .wt-achievement-points { flex: 0 0 9ch; font-size: .75rem; line-height: 1.3; font-weight: 700; text-align: right; overflow-wrap: normal; }
+html[data-watten-progress-page="progress"] .wt-achievement-body { padding: 0 12px 12px; border-top: 1px solid #ba936640; font-size: .85rem; }
+html[data-watten-progress-page="progress"] .wt-achievement-body > p { margin-block: 10px; }
+html[data-watten-progress-page="progress"] .wt-achievement-earned { color: #63301f; font-weight: 700; }
+html[data-watten-progress-page="progress"] .wt-achievement-collection { margin-block: 24px; }
+@media (max-width: 420px) {
+  html[data-watten-progress-page="progress"] .wt-progress-heading { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  html[data-watten-progress-page="progress"] .wt-progress-total { display: flex; align-items: baseline; justify-items: start; gap: 8px; max-width: none; text-align: left; }
+}
+@media (min-width: 700px) {
+  html[data-watten-progress-page="progress"] .wt-collection-status { flex: 0 1 20rem; }
+  html[data-watten-progress-page="progress"] .wt-achievement-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 1050px) {
+  html[data-watten-progress-page="progress"] .wt-achievement-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
