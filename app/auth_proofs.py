@@ -4,7 +4,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, model_validator
 
-AccountAction = Literal["change_username", "change_email", "change_password", "add_passkey", "delete_passkey"]
+AccountAction = Literal["change_username", "change_email", "change_password", "add_passkey", "delete_passkey",
+                        "merge_accounts"]
 CONFIRMATION_FAILURES = {"current_password_invalid", "passkey_ceremony_invalid", "passkey_verification_failed"}
 
 

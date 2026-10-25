@@ -11,6 +11,7 @@ from fastapi import HTTPException, Request, Response, WebSocket, status
 from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 
+from .account_progress import is_retired_merge_origin
 from .achievements import achievement_rank_for_keys
 from .auth_proofs import CONFIRMATION_FAILURES, PasskeyProof
 from .auth_protection import (
@@ -215,6 +216,9 @@ def issue_session_for_user(db, user: User) -> tuple[AuthIdentity, str]:
     state and their first session atomically.  Keeping this small helper here
     gives all login variants identical session and CSRF semantics.
     """
+    if user in db.new:
+        db.flush([user])
+    _lock_active_session_user(db, user)
     now = utcnow()
     raw_token = new_session_token()
     login_session = LoginSession(
@@ -230,6 +234,21 @@ def issue_session_for_user(db, user: User) -> tuple[AuthIdentity, str]:
     return _identity_for_user(db, user, login_session), raw_token
 
 
+def _lock_active_session_user(db, user: User | None) -> None:
+    """Keep exact authority current without discarding intentional ORM edits."""
+    if user is None or not user.id:
+        raise HTTPException(status_code=401, detail="authentication_required")
+    with db.no_autoflush:
+        result = db.execute(update(User).where(User.id == user.id, User.is_active.is_(True))
+                            .values(updated_at=User.updated_at).execution_options(synchronize_session=False))
+        if result.rowcount != 1 or is_retired_merge_origin(db, user.id):
+            raise HTTPException(status_code=401, detail="authentication_required")
+    # The account lock is held before pending credentials/session work flushes.
+    # Refresh afterwards so new signup/password/handle changes survive intact.
+    db.flush()
+    db.refresh(user)
+
+
 def lock_verified_password(db, user: User) -> bool:
     """Keep a verified password current until the sensitive write commits.
 
@@ -237,17 +256,19 @@ def lock_verified_password(db, user: User) -> bool:
     recovery either removes this session afterwards, or invalidates the proof
     before a new session/email change can be created.
     """
-    result = db.execute(
-        update(User).where(
-            User.id == user.id, User.password_hash == user.password_hash,
-            User.is_active.is_(True),
-        ).values(updated_at=User.updated_at).execution_options(synchronize_session=False)
-    )
-    return result.rowcount == 1
+    with db.no_autoflush:
+        result = db.execute(
+            update(User).where(
+                User.id == user.id, User.password_hash == user.password_hash,
+                User.is_active.is_(True),
+            ).values(updated_at=User.updated_at).execution_options(synchronize_session=False)
+        )
+        return result.rowcount == 1 and not is_retired_merge_origin(db, user.id)
 
 
 def lock_current_account_session(db, identity: AuthIdentity) -> None:
     """Recheck the exact session under the mutation's write lock, not a stale ORM row."""
+    _lock_active_session_user(db, db.get(User, identity.user_id))
     result = db.execute(
         update(LoginSession).where(
             LoginSession.id == identity.session_id,
@@ -268,7 +289,7 @@ def require_account_reauthentication(
     from .passkeys import PasskeyError, complete_reauthentication_ceremony
 
     user = db.get(User, identity.user_id)
-    if user is None or not user.is_active:
+    if user is None or not user.is_active or is_retired_merge_origin(db, user.id):
         raise HTTPException(status_code=401, detail="authentication_required")
     if passkey is not None:
         if current_password is not None or request is None:
@@ -479,7 +500,7 @@ def resolve_session(connection: Request | WebSocket) -> AuthIdentity | None:
                 db.delete(login_session)
             return None
         user = db.get(User, login_session.user_id)
-        if not user or not user.is_active:
+        if not user or not user.is_active or is_retired_merge_origin(db, user.id):
             db.delete(login_session)
             return None
         if now - as_utc(login_session.last_seen_at) > timedelta(minutes=5):

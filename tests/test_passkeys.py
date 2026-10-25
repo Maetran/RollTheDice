@@ -17,20 +17,23 @@ from unittest.mock import patch
 import cbor2
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 from sqlalchemy import delete, select, update
+from starlette.requests import Request
 
 from app import main
 from app import passkeys as passkey_service
 from app.api_auth import router as auth_router
 from app.api_passkeys import router
-from app.auth import create_user, issue_session_for_user, reset_password
+from app.auth import create_user, issue_session_for_user, require_account_reauthentication, reset_password
+from app.auth_proofs import PasskeyProof
 from app.database import configure_database, get_engine, session_scope
 from app.models import AccountEmailToken, Base, PasskeyCredential, PasskeySignupCeremony, User, WebAuthnCeremony
 from app.models import Session as LoginSession
 from app.passkeys import CEREMONY_COOKIE_NAME, passkey_config
 from app.security import PASSWORDLESS_HASH, hash_password, hash_session_token, utcnow, verify_password
+from tests import test_account_merge_identity as merge_fixtures
 
 ORIGIN = "https://example.test"
 RP_ID = "example.test"
@@ -629,6 +632,54 @@ class PasskeyTestCase(TestCase):
             replacement = db.get(PasskeyCredential, registered["id"])
             self.assertEqual(replacement.credential_id, replacement_id)
             self.assertIsNone(replacement.last_used_at)
+
+    def test_verified_passkey_login_cannot_outlive_committed_account_retirement(self):
+        self._register()
+        target = create_user("NewerPasskeyOwner", PASSWORD, must_change_password=False)
+        self.client.cookies.clear()
+        credential = self.authenticator.authentication(self._authentication_options())
+        library = passkey_service._webauthn()
+        verify = library["verify_authentication_response"]
+
+        def verified_then_merged(**kwargs):
+            result = verify(**kwargs)
+            with session_scope() as db:
+                source, destination = merge_fixtures.mapped(db, self.user.id, target.id)
+                merge_fixtures.invoke(db, source, destination)
+            return result
+
+        with patch("app.passkeys._webauthn", return_value={**library, "verify_authentication_response": verified_then_merged}):
+            response = self.client.post("/api/auth/passkeys/authentication/verify", json={"credential": credential})
+        self.assertEqual(response.status_code, 400, response.text)
+        self.assertEqual(response.json()["detail"], "passkey_verification_failed")
+        with session_scope() as db:
+            self.assertFalse(db.get(User, self.user.id).is_active)
+            self.assertEqual(list(db.scalars(select(LoginSession).where(LoginSession.user_id == self.user.id))), [])
+            self.assertEqual(list(db.scalars(select(PasskeyCredential).where(PasskeyCredential.user_id == self.user.id))), [])
+            self.assertTrue(verify_password(PASSWORD, db.get(User, target.id).password_hash))
+
+    def test_verified_passkey_enrollment_cannot_recreate_credentials_after_retirement(self):
+        target = create_user("NewerEnrollmentOwner", PASSWORD, must_change_password=False)
+        response = self.client.post("/api/auth/passkeys/registration/options", json={"current_password": PASSWORD}, headers=self.csrf)
+        credential = self.authenticator.registration(response.json()["options"])
+        library = passkey_service._webauthn()
+        verify = library["verify_registration_response"]
+
+        def verified_then_merged(**kwargs):
+            result = verify(**kwargs)
+            with session_scope() as db:
+                source, destination = merge_fixtures.mapped(db, self.user.id, target.id)
+                merge_fixtures.invoke(db, source, destination)
+            return result
+
+        with patch("app.passkeys._webauthn", return_value={**library, "verify_registration_response": verified_then_merged}):
+            response = self.client.post("/api/auth/passkeys/registration/verify", json={"credential": credential}, headers=self.csrf)
+        self.assertEqual(response.status_code, 400, response.text)
+        self.assertEqual(response.json()["detail"], "authentication_required")
+        with session_scope() as db:
+            self.assertFalse(db.get(User, self.user.id).is_active)
+            self.assertEqual(list(db.scalars(select(PasskeyCredential))), [])
+            self.assertIsNone(db.get(User, self.user.id).webauthn_user_handle)
             self.assertEqual(list(db.scalars(select(LoginSession))), [])
 
     def test_in_flight_registration_rejects_a_reused_ceremony_row_after_recovery(self):
@@ -782,6 +833,29 @@ class PasskeyTestCase(TestCase):
             self.assertEqual(db.get(User, self.user.id).username, "Passkey_User")
             self.assertTrue(verify_password(PASSWORD, db.get(User, self.user.id).password_hash))
         self.assertEqual(self._rename_with(proof).status_code, 200)
+
+    def test_merge_confirmation_binds_both_accounts_and_the_exact_preview(self):
+        self._register()
+        target = f"100:{self.user.id}:{'a' * 64}"
+        proof = PasskeyProof(**self._reauthentication("merge_accounts", target))
+        request = Request({"type": "http", "headers": [(b"origin", ORIGIN.encode())]})
+        for changed in (f"101:{self.user.id}:{'a' * 64}", f"100:{self.user.id}:{'b' * 64}",
+                        f"{self.user.id}:100:{'a' * 64}"):
+            with self.assertRaises(HTTPException) as denied:
+                with session_scope() as db:
+                    require_account_reauthentication(db, self.identity, None, passkey=proof, request=request,
+                                                     action="merge_accounts", target=changed)
+            self.assertEqual(denied.exception.detail, "passkey_ceremony_invalid")
+        with session_scope() as db:
+            user = require_account_reauthentication(db, self.identity, None, passkey=proof, request=request,
+                                                   action="merge_accounts", target=target)
+            user.preferred_language = "en"
+        with session_scope() as db:
+            self.assertEqual(db.get(User, self.user.id).preferred_language, "en")
+        with self.assertRaises(HTTPException):
+            with session_scope() as db:
+                require_account_reauthentication(db, self.identity, None, passkey=proof, request=request,
+                                                 action="merge_accounts", target=target)
 
     def test_reauthentication_requires_csrf_origin_and_known_action(self):
         self._register()

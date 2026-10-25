@@ -3,6 +3,7 @@
 from fastapi import HTTPException
 from sqlalchemy import delete, select, update
 
+from .account_progress import ProgressIdentityError, is_retired_merge_origin, lock_account_rows
 from .models import AccountOwnership, OwnershipAudit, User
 from .security import utcnow
 
@@ -16,11 +17,20 @@ def _actor(db, user_id: int) -> User:
     # Serialize policy checks with account/ownership writes, including on SQLite.
     locked = db.execute(update(User).where(User.id == user_id, User.role == "admin", User.is_active.is_(True))
                         .values(updated_at=User.updated_at).returning(User.id)).scalar_one_or_none()
-    if locked is None:
+    if locked is None or is_retired_merge_origin(db, user_id):
         raise HTTPException(status_code=403, detail="admin_required")
     actor = db.get(User, user_id)
     db.refresh(actor)
     return actor
+
+
+def _lock_subjects(db, actor_id: int | None, target_id: int) -> None:
+    try:
+        lock_account_rows(db, [target_id, *([actor_id] if actor_id is not None else [])])
+    except ProgressIdentityError as exc:
+        raise HTTPException(status_code=404, detail="user_not_found") from exc
+    if is_retired_merge_origin(db, target_id):
+        raise HTTPException(status_code=409, detail="account_merged")
 
 
 def require_owner(db, actor_user_id: int, *, founder: bool = False) -> User:
@@ -33,6 +43,7 @@ def require_owner(db, actor_user_id: int, *, founder: bool = False) -> User:
 
 def ensure_can_moderate(db, actor_user_id: int, target: User) -> None:
     """Owners must be revoked first; ordinary admins cannot moderate staff."""
+    _lock_subjects(db, actor_user_id, target.id)
     _actor(db, actor_user_id)
     db.refresh(target)
     if ownership_flags(db, target.id)["is_owner"]:
@@ -54,6 +65,7 @@ def ensure_can_create_user(db, actor_user_id: int, role: str) -> None:
 
 
 def ensure_can_reset_password(db, actor_user_id: int | None, target: User) -> None:
+    _lock_subjects(db, actor_user_id, target.id)
     if actor_user_id is not None:
         _actor(db, actor_user_id)
         db.refresh(target)
@@ -76,6 +88,7 @@ def _eligible(db, user: User) -> bool:
 
 
 def _ownership_target(db, user_id: int) -> User:
+    _lock_subjects(db, None, user_id)
     db.execute(update(User).where(User.id == user_id).values(updated_at=User.updated_at))
     user = db.get(User, user_id)
     if user is None:
@@ -102,6 +115,7 @@ def bind_founder(db, user_id: int) -> AccountOwnership:
 
 
 def grant_ownership(db, user_id: int, actor_user_id: int) -> AccountOwnership:
+    _lock_subjects(db, actor_user_id, user_id)
     require_owner(db, actor_user_id, founder=True)
     user = _ownership_target(db, user_id)
     membership = db.get(AccountOwnership, user_id)
@@ -117,6 +131,7 @@ def grant_ownership(db, user_id: int, actor_user_id: int) -> AccountOwnership:
 
 
 def revoke_ownership(db, user_id: int, actor_user_id: int) -> None:
+    _lock_subjects(db, actor_user_id, user_id)
     require_owner(db, actor_user_id, founder=True)
     _ownership_target(db, user_id)
     membership = db.get(AccountOwnership, user_id)
@@ -131,16 +146,17 @@ def revoke_ownership(db, user_id: int, actor_user_id: int) -> None:
 
 def administration_capabilities(db, actor_user_id: int, target: User) -> dict:
     actor = db.get(User, actor_user_id)
-    valid = bool(actor and actor.is_active and actor.role == "admin")
+    retired = is_retired_merge_origin(db, target.id)
+    valid = bool(actor and actor.is_active and actor.role == "admin" and not is_retired_merge_origin(db, actor.id))
     actor_flags = ownership_flags(db, actor_user_id)
     target_flags = ownership_flags(db, target.id)
-    mutable = valid and not target_flags["is_owner"] and (target.role != "admin" or actor_flags["is_owner"])
+    mutable = valid and not retired and not target_flags["is_owner"] and (target.role != "admin" or actor_flags["is_owner"])
     return {
         "can_change_role": bool(mutable and actor_flags["is_owner"]),
-        "can_reset_password": bool(valid and not target_flags["is_founder"] and (
+        "can_reset_password": bool(valid and not retired and not target_flags["is_founder"] and (
             actor_flags["is_founder"] if target_flags["is_owner"] else target.role != "admin" or actor_flags["is_owner"])),
         "can_toggle_active": bool(mutable), "can_moderate_chat": bool(mutable),
         "can_set_ban": bool(mutable and target.role != "admin"), "can_revoke_ban": bool(mutable),
-        "can_grant_owner": bool(valid and actor_flags["is_founder"] and not target_flags["is_owner"] and _eligible(db, target)),
-        "can_revoke_owner": bool(valid and actor_flags["is_founder"] and target_flags["is_owner"] and not target_flags["is_founder"]),
+        "can_grant_owner": bool(valid and not retired and actor_flags["is_founder"] and not target_flags["is_owner"] and _eligible(db, target)),
+        "can_revoke_owner": bool(valid and not retired and actor_flags["is_founder"] and target_flags["is_owner"] and not target_flags["is_founder"]),
     }

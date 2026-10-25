@@ -11,6 +11,7 @@ from sqlalchemy import delete, select, update
 from sqlalchemy.exc import IntegrityError
 
 from .account_context import account_action_url
+from .account_progress import ProgressIdentityError, is_retired_merge_origin, require_exact_active_account
 from .auth import (
     AuthIdentity,
     create_user_in_session,
@@ -55,6 +56,15 @@ def _active_token(token, *, now) -> bool:
 def _consume_token(db, *, raw_token: str, purpose: str, now, error: str) -> AccountEmailToken:
     """Claim the token with a conditional write, including concurrent callers."""
     token_hash = hash_session_token(raw_token)
+    user_id = db.scalar(select(AccountEmailToken.user_id).where(
+        AccountEmailToken.token_hash == token_hash, AccountEmailToken.purpose == purpose,
+    ))
+    if user_id is None:
+        raise ValueError(error)
+    try:
+        require_exact_active_account(db, user_id)
+    except ProgressIdentityError as exc:
+        raise ValueError(error) from exc
     claimed = db.execute(
         update(AccountEmailToken).where(
             AccountEmailToken.token_hash == token_hash,
@@ -293,7 +303,7 @@ def inspect_account_email_token(*, raw_token: str, purpose: str) -> dict:
         )
         user = db.get(User, token.user_id) if token else None
         valid = bool(
-            _active_token(token, now=now) and user and user.is_active
+            _active_token(token, now=now) and user and user.is_active and not is_retired_merge_origin(db, user.id)
             and (purpose != "password_reset" or (user.email_confirmed_at and user.email_normalized == token.email_normalized))
         )
         return {"valid": valid}
@@ -348,6 +358,10 @@ def begin_password_reset(*, email: str, preferred_language: str, account_app: st
             )
         )
         if not user:
+            return {"accepted": True}
+        try:
+            user = require_exact_active_account(db, user.id)
+        except ProgressIdentityError:
             return {"accepted": True}
         language = user.preferred_language
         _purge_expired(db, now)

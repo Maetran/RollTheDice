@@ -16,6 +16,7 @@ from fastapi import Request
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session as DatabaseSession
 
+from .account_progress import is_retired_merge_origin
 from .models import PasskeyCredential, PasskeySignupCeremony, User, WebAuthnCeremony
 from .models import Session as LoginSession
 from .product_hosts import HAUSDEPP_ORIGIN, WATTEN_ORIGIN, site_origin, zilch_origin
@@ -42,7 +43,7 @@ USER_HANDLE_BYTES = 32
 MAX_PASSKEY_LABEL_LENGTH = 64
 MAX_CREDENTIAL_RESPONSE_BYTES = 64 * 1024
 MAX_PASSKEYS_PER_USER = 20
-ACCOUNT_ACTIONS = {"change_username", "change_email", "change_password", "add_passkey", "delete_passkey"}
+ACCOUNT_ACTIONS = {"change_username", "change_email", "change_password", "add_passkey", "delete_passkey", "merge_accounts"}
 
 
 class PasskeyError(ValueError):
@@ -363,6 +364,17 @@ def _current_login_session(db: DatabaseSession, *, user_id: int, session_id: int
     return current
 
 
+def _active_account(db: DatabaseSession, user_id: int, *, error: str = "authentication_required") -> User:
+    # Keep the pre-crypto password snapshot: the caller's later conditional
+    # password check must still detect recovery performed during verification.
+    with db.no_autoflush:
+        locked = db.execute(update(User).where(User.id == user_id, User.is_active.is_(True))
+                            .values(updated_at=User.updated_at).execution_options(synchronize_session=False))
+        if locked.rowcount != 1 or is_retired_merge_origin(db, user_id):
+            raise PasskeyError(error)
+        return db.get(User, user_id)
+
+
 def begin_registration_ceremony(
     db: DatabaseSession,
     *,
@@ -373,8 +385,7 @@ def begin_registration_ceremony(
     """Create discoverable, user-verified passkey options for a signed-in user."""
     config = _require_enabled()
     library = _webauthn()
-    if not user.id or not user.is_active:
-        raise PasskeyError("authentication_required")
+    user = _active_account(db, user.id)
     _current_login_session(db, user_id=user.id, session_id=session_id)
     handle = ensure_webauthn_user_handle(db, user)
     credentials = list(
@@ -510,7 +521,7 @@ def complete_signup_ceremony(
 def _action_target_hash(action: str, target: str) -> str:
     if action not in ACCOUNT_ACTIONS or not isinstance(target, str) or len(target) > 254:
         raise PasskeyError("passkey_ceremony_invalid")
-    needs_target = action in {"change_username", "change_email", "delete_passkey"}
+    needs_target = action in {"change_username", "change_email", "delete_passkey", "merge_accounts"}
     if bool(target) != needs_target:
         raise PasskeyError("passkey_ceremony_invalid")
     return hashlib.sha256(target.encode("utf-8")).hexdigest()
@@ -522,9 +533,8 @@ def begin_reauthentication_ceremony(
     """Prepare one account action; this never creates or switches a login session."""
     config = _require_enabled()
     _expected_origin(config, request_origin)
+    user = _active_account(db, user.id)
     _current_login_session(db, user_id=user.id, session_id=session_id)
-    if not user.is_active:
-        raise PasskeyError("authentication_required")
     target_hash = _action_target_hash(action, target)
     credentials = list_passkey_credentials(db, user_id=user.id)
     if not credentials:
@@ -670,7 +680,7 @@ def complete_registration_ceremony(
     """Verify and persist a new passkey in the caller's transaction."""
     config = _require_enabled()
     library = _webauthn()
-    if not user.id or not user.is_active:
+    if not user.id or not user.is_active or is_retired_merge_origin(db, user.id):
         raise PasskeyError("authentication_required")
     _current_login_session(db, user_id=user.id, session_id=session_id)
     ceremony = _valid_ceremony(
@@ -682,6 +692,7 @@ def complete_registration_ceremony(
     )
     verified = _verify_registration(library, config, ceremony, credential, request_origin)
     credential_id = bytes(verified.credential_id)
+    user = _active_account(db, user.id)
     # The claim obtains the write lock before counting, so simultaneous
     # enrollments cannot each claim the final available credential slot.
     _claim_ceremony(db, ceremony)
@@ -752,7 +763,7 @@ def _complete_assertion(
     # continues to require a matching handle.
     handle_required = ceremony.purpose == "authentication" or supplied_handle not in (None, "")
     if (
-        user is None or not user.is_active
+        user is None or not user.is_active or is_retired_merge_origin(db, user.id)
         or (ceremony.user_id is not None and record.user_id != ceremony.user_id)
         or (handle_required and not _user_handle_matches(library, payload, user))
     ):
@@ -771,6 +782,7 @@ def _complete_assertion(
         raise _verification_error(exc) from exc
     if not secrets.compare_digest(bytes(verified.credential_id), record.credential_id):
         raise PasskeyError("passkey_verification_failed")
+    user = _active_account(db, user.id, error="passkey_verification_failed")
     _claim_ceremony(db, ceremony)
     previous_sign_count = record.sign_count
     now = utcnow()
@@ -815,7 +827,7 @@ def remove_passkey_credential(db: DatabaseSession, *, user_id: int, credential_i
     ))
     if owned is None:
         return False
-    user = db.get(User, user_id)
+    user = _active_account(db, user_id)
     count = int(db.scalar(select(func.count()).select_from(PasskeyCredential).where(
         PasskeyCredential.user_id == user_id,
     )) or 0)
