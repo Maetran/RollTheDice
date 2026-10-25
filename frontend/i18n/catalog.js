@@ -1616,6 +1616,12 @@ export const HAUSDEPP_MESSAGES = {
 };
 
 export const EN = {
+    "Weitere Spiele": "More games",
+    "Spiele der Suite": "Games in this suite",
+    "So liest du das ZDWA-Ranking": "How to read the ZDWA rankings",
+    "Normal und Hardcore haben eigene Ranglisten. Vergleiche abgeschlossene Spiele, Gesamtpunkte, Durchschnitt und höchste Punktzahl; die Sortierung wählst du selbst.": "Normal and Hardcore have separate rankings. Compare completed games, total points, average and highest score, and choose how to sort them.",
+    "Der Trend vergleicht den Durchschnitt der letzten drei abgeschlossenen Spiele mit dem Gesamtdurchschnitt. Bei weniger als drei Spielen gibt es noch keinen Trend.": "The trend compares the average of the last three completed games with the overall average. There is no trend until three games have been completed.",
+    "Ehrenberg-Marken stammen aus freigeschalteten Erfolgen und bestimmen dein Rangabzeichen. Sie sind von den Punkten auf dem Spielblatt getrennt. Die veröffentlichten Rangschwellen stehen in der Rangübersicht.": "Ehrenberg Marks come from unlocked achievements and determine your rank insignia. They are separate from scorecard points. Published rank thresholds are listed in the rank guide.",
   "Noch keine bestätigte Audio-Aktivität": "No confirmed audio activity yet",
   "Die Messung beginnt mit autorisiertem aktivem Zuhören. Frühere Nutzung wird nicht nachgetragen.": "Measurement starts with authorized active listening. Earlier use is not backfilled.",
   "Audiochat aktiviert": "Audio chat activated",
