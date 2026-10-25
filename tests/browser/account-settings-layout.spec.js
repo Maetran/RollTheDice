@@ -144,15 +144,22 @@ for (const product of products) {
 }
 
 for (const language of ["de", "en"]) {
-  test(`Hausdepp Konto opens its native settings with every category collapsed (${language})`, async ({ page }) => {
+  test(`Hausdepp Konto reaches statistics and native settings with every category collapsed (${language})`, async ({ page }) => {
     await createAccount(page, `Navigation_hausdepp_${language}`, language);
     await page.setViewportSize({ width: 320, height: 844 });
     await page.goto("/hausdepp");
     const accountLink = page.locator('.hd-nav a').filter({ hasText: language === "de" ? /^Konto$/ : /^Account$/ });
-    await expect(accountLink).toHaveAttribute("href", "/hausdepp/konto/einstellungen");
+    await expect(accountLink).toHaveAttribute("href", "/hausdepp/konto");
     await accountLink.click();
+    await expect(page).toHaveURL(/\/hausdepp\/konto$/);
+    await expect(page.locator('main[data-page="account"]')).toBeVisible();
+    await expect(page.locator('#hausdeppAccountStats')).toBeVisible();
+    const settingsLink = page.locator('[data-account-navigation]').getByRole('link', { name: language === 'de' ? 'Einstellungen' : 'Settings', exact: true });
+    await expect(settingsLink).toHaveAttribute('href', '/hausdepp/konto/einstellungen');
+    await settingsLink.click();
     await expect(page).toHaveURL(/\/hausdepp\/konto\/einstellungen$/);
     await expect(page.locator(".hd-settings")).toBeVisible();
+    await expect(page.locator('details[data-account-section][open]')).toHaveCount(0);
     await expect(page.locator(".hd-settings-item[open]")).toHaveCount(0);
     await openSection(page, 'access');
     const first = page.locator(".hd-settings-item").filter({ has: page.locator("[data-username-settings]") });
