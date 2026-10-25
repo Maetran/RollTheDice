@@ -27,7 +27,7 @@ html[data-watten-active="true"] .wt-inspection .wt-reveal-card figcaption {
    Showing is measured first and keeps priority over this secondary scene. */
 html[data-watten-active="true"] .wt-bloedeln-reveal { z-index: 9; }
 html[data-watten-active="true"] .wt-bloedeln-reveal .wt-bloedeln-preparation { inset: 0; width: auto; max-width: none; translate: none; padding: 0; background: none; border: 0; box-shadow: none; }
-html[data-watten-active="true"] .wt-bloedeln-reveal .wt-card { width: clamp(36px, min(10vw, 8dvh), 48px); }
+html[data-watten-active="true"] .wt-bloedeln-reveal .wt-inspection .wt-reveal-card .wt-card { width: clamp(36px, min(10vw, 8dvh), 48px); }
 html[data-watten-active="true"] .wt-bloedeln-reveal figcaption { width: 1px; max-width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); }
 /* The action row (watten-preplay/-tablet) places ACK. This base keeps it in
    the lower right corner, never at the felt origin, if no row rule applies. */
