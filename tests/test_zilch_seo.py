@@ -122,7 +122,8 @@ class ZilchSeoTestCase(unittest.IsolatedAsyncioTestCase):
                     else:
                         self.assertIn("data-zilch-rules-summary", response.text)
                         self.assertIn("Zilch-Serie", response.text)
-                        self.assertIn("Freier Wurf und Bestätigungswurf", response.text)
+                        self.assertIn("Freier Wurf (Hot Dice) und Bestätigungswurf", response.text)
+                        self.assertLess(response.text.index("Ziel der Partie"), response.text.index("Einsteigertouren"))
 
     async def test_public_query_variants_keep_the_clean_canonical_and_discovery_policy(self):
         async with self.client() as client:

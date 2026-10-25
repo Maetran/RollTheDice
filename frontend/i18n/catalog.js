@@ -4546,6 +4546,7 @@ export const EN = {
     "Bei einem Spezialwurf nennt Alle Punktewürfel den Wurf und zeigt den Stempel „Freier Wurf“.": "For a special roll, All Scoring Dice names the roll and shows the “Free Roll” stamp.",
     "Sechs gleiche Würfel zählen achtmal so viel wie der passende Drilling und eröffnen einen freien Wurf.": "Six matching dice score eight times the matching set of three and open a free roll.",
     "Freier Wurf und Bestätigungswurf": "Free roll and confirmation roll",
+    "Freier Wurf (Hot Dice) und Bestätigungswurf": "Free roll (Hot Dice) and confirmation roll",
     "Wenn alle sechs Würfel Punkte bringen, werden sie wieder frei: ein freier Wurf. Die Rundenpunkte bleiben stehen.": "When all six dice score, they are free again: a free roll. Your round points stay put.",
     "Alle Punktewürfel hält alle Würfel, die gerade Punkte bringen. Ein möglicher Freier Wurf erscheint als Stempel; erst Weiterwürfeln übernimmt die Auswahl.": "All Scoring Dice selects every die currently scoring points. A possible Free Roll appears as a stamp; the choice is committed only when you roll again.",
     "Nach drei Einsen oder einem vollen Wurf mit allen sechs Würfeln muss ein weiterer Punktewurf von mindestens 50 Punkten bestätigt werden, bevor du sichern darfst.": "After three ones or a full six-die roll, another scoring roll of at least 50 points must be confirmed before you may bank.",
