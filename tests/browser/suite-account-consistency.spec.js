@@ -87,6 +87,7 @@ for (const product of products) for (const language of ['de', 'en']) {
     await page.reload();
     await expect(page.locator('[data-account-merge-operation="visible-merge"]')).toBeVisible();
     await expect(page.locator('.account-merge-notice__games dt')).toHaveText(['ZDWA', 'Zilch', 'Hausdepp', 'Watten']);
+    await expect(page.locator('.account-merge-notice__games dd span').filter({ hasText: language === 'de' ? 'Anfänger → Profi' : 'Beginner → Pro' })).toHaveCount(4);
     if (language === 'de') await page.screenshot({ path: testInfo.outputPath(`${product.game}-merge-mobile.png`), fullPage: true });
     expect(errors).toEqual([]);
   });
@@ -95,7 +96,9 @@ for (const product of products) for (const language of ['de', 'en']) {
 function operation(id, userId) {
   return { operation_id: id, target_user_id: userId, acknowledged: false, created_at: '2026-10-25T12:00:00Z', games:
     Object.fromEntries(['zdwa', 'zilch', 'hausdepp', 'watten'].map(game => [game, {
-      before_points: 10, after_points: 25, before_rank: 'Newbie', after_rank: 'Pro', achievement_count: 6,
+      before_points: 10, after_points: 25,
+      before_rank: { ...(game === 'zdwa' ? { key: 'novice' } : {}), de: 'Anfänger', en: 'Beginner' },
+      after_rank: { de: 'Profi', en: 'Pro' }, achievement_count: 6,
       inherited_achievement_count: 2, new_achievement_count: 1, games_played: 12,
     }])),
   };

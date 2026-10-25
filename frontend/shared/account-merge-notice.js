@@ -7,8 +7,8 @@ const language = () => window.ZDWA_I18N?.getLanguage?.() === 'en' ? 'en' : 'de';
 const text = key => ACCOUNT_MERGE_MESSAGES[language()][key];
 const number = value => new Intl.NumberFormat(language() === 'en' ? 'en-GB' : 'de-CH').format(Math.max(0, Number(value) || 0));
 const rank = value => {
-  const label = typeof value === 'string' ? value : value?.title || value?.name || value?.key;
-  return typeof label === 'string' ? label : label?.[language()] || '—';
+  const label = typeof value === 'string' ? value : value?.title || value?.name || value;
+  return typeof label === 'string' ? label : label?.[language()] || value?.key || '—';
 };
 function node(tag, value, className) {
   const element = document.createElement(tag);
