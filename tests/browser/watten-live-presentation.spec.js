@@ -110,7 +110,7 @@ test('portrait dealing: completing paused deal flights cannot resize an already 
   } finally { await Promise.allSettled(players.map(peer => peer.context.close())); }
 });
 
-for (const viewport of [{ width: 440, height: 956 }, { width: 956, height: 440 }, { width: 852, height: 393 }, { width: 568, height: 320 }]) {
+for (const viewport of [{ width: 320, height: 568 }, { width: 440, height: 956 }, { width: 956, height: 440 }, { width: 852, height: 393 }, { width: 568, height: 320 }]) {
   test(`normal motion ${viewport.width}x${viewport.height}: every sequential prefix stays one ordered pile through winner collection`, async ({ browser, baseURL }, info) => {
     const players = [];
     try {
