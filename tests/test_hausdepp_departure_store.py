@@ -208,6 +208,12 @@ def test_remaining_player_gets_round_xp_without_fake_finish_win_or_hausdepp(owne
     payload["achievement_evidence"]["players"]["friend"]["flags"] = ["hausdepp_62"]
     with pytest.raises(ValueError, match="invalid_evidence"):
         validate_hausdepp_result(payload)
+    # The new last-card quartet finish is a finishing feat; the mixed clear chain is not.
+    payload["achievement_evidence"]["players"]["friend"]["flags"] = ["hausdepp_138"]
+    with pytest.raises(ValueError, match="invalid_evidence"):
+        validate_hausdepp_result(payload)
+    payload["achievement_evidence"]["players"]["friend"]["flags"] = ["hausdepp_137"]
+    assert validate_hausdepp_result(payload)["achievement_evidence"]["players"]["friend"]["flags"] == ["hausdepp_137"]
 
 
 def test_zero_xp_unlock_advances_existing_revision_and_stale_ack_cannot_hide_it(owners):

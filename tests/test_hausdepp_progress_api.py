@@ -101,7 +101,7 @@ class HausdeppProgressApiTests(unittest.TestCase):
             self.assertEqual(data["rank"]["name"]["de"], "Newton")
             self.assertEqual(data["rank"]["quote"]["de"], "Ab jetzt geht’s bergab. Ganz nach den Naturgesetzen.")
             self.assertEqual(len(data["ranks"]), 24)
-            self.assertEqual(len(data["achievements"]["items"]), 136)
+            self.assertEqual(len(data["achievements"]["items"]), 138)
             self.assertEqual({item["id"] for item in data["achievements"]["items"] if item["unlocked"]},
                              {"hausdepp_01", "hausdepp_03", "hausdepp_09", "hausdepp_57", "hausdepp_110"})
             self.assertEqual(data["presentation"]["pending"]["to_rank"]["name"]["de"], "Newton")

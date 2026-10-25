@@ -19,8 +19,13 @@ from .security import as_utc
 
 logger = logging.getLogger(__name__)
 _EVENT_ACHIEVEMENTS = {f"hausdepp_{number:02}" for number in (
-    *range(17, 29), *range(30, 56), *range(58, 86), *range(88, 101),
+    *range(17, 29), *range(30, 56), *range(58, 86), *range(88, 101), 137, 138,
 )}
+# Event flags that only a completed tournament may carry. 86/87 are lifetime
+# tournament counters, never event flags; later ordinary IDs are not included.
+TOURNAMENT_EVENT_ACHIEVEMENTS = frozenset(f"hausdepp_{number:02}" for number in (85, *range(88, 101)))
+# Finishing feats can never belong to the player left holding cards.
+_FINISHING_ACHIEVEMENTS = frozenset(f"hausdepp_{number:02}" for number in (*range(58, 77), 79, 81, 84, 138))
 
 
 def _round_timing(started_at: object, finished_at: str) -> dict:
@@ -154,8 +159,8 @@ def validate_hausdepp_result(payload: object) -> dict:
         result["achievement_evidence"] = validate_hausdepp_evidence(payload.get("achievement_evidence"), participant_ids)
         _validate_surprise_membership(result["achievement_evidence"], participants)
         remaining_id = result.get("remaining_player_id")
-        if remaining_id and set(result["achievement_evidence"]["players"][remaining_id]["flags"]).intersection(
-                {f"hausdepp_{number:02}" for number in (*range(58, 77), 79, 81, 84)}):
+        if remaining_id and _FINISHING_ACHIEVEMENTS.intersection(
+                result["achievement_evidence"]["players"][remaining_id]["flags"]):
             raise ValueError("hausdepp_result_invalid_evidence")
     if payload["schema_version"] == 3 or (payload["schema_version"] == 4 and "tournament" in payload):
         from .hausdepp_tournament import round_result_id, validate_tournament
@@ -173,12 +178,13 @@ def validate_hausdepp_result(payload: object) -> dict:
                 or tournament["round_losers"][-1] != loser):
             raise ValueError("hausdepp_result_invalid_tournament")
         result["tournament"] = tournament
-    elif any(int(flag.rsplit("_", 1)[1]) >= 85 for facts in result.get("achievement_evidence", {}).get("players", {}).values()
-             for flag in facts["flags"]):
+    elif any(flag in TOURNAMENT_EVENT_ACHIEVEMENTS
+             for facts in result.get("achievement_evidence", {}).get("players", {}).values() for flag in facts["flags"]):
         raise ValueError("hausdepp_result_invalid_tournament")
     if "tournament" in result and (not result["tournament"]["completed"]
                                   or result["tournament"].get("end_reason") not in {None, "eight_losses"}) and any(
-        int(flag.rsplit("_", 1)[1]) >= 85 for facts in result["achievement_evidence"]["players"].values() for flag in facts["flags"]
+        flag in TOURNAMENT_EVENT_ACHIEVEMENTS
+        for facts in result["achievement_evidence"]["players"].values() for flag in facts["flags"]
     ):
         raise ValueError("hausdepp_result_invalid_tournament")
     return result
