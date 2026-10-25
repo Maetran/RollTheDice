@@ -131,6 +131,7 @@ function selectedTestCount(report) {
 export async function collectFilteredTests(plan, cli, root, signal) {
   const results = await Promise.allSettled(plan.map(async suite => {
     const reportPath = path.join(path.dirname(suite.logPath), 'selection.json');
+    await rm(reportPath, { force: true });
     await execFileAsync(process.execPath, [cli, ...suite.args, '--list', '--reporter=json'], {
       cwd: root, env: { ...suite.env, PLAYWRIGHT_JSON_OUTPUT_FILE: reportPath }, signal,
       timeout: 30000, maxBuffer: 1024 * 1024,

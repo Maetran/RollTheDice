@@ -28,6 +28,7 @@ const record = type => appendFileSync(env.FAKE_EVENTS, JSON.stringify({ type, na
   html: env.PLAYWRIGHT_HTML_OUTPUT_DIR, python: env.PLAYWRIGHT_PYTHON, args: process.argv.slice(2) }) + '\\n');
 if (process.argv.includes('--list')) {
   record('list');
+  if (env.FAKE_NO_REPORT === '1') process.exit(0);
   const count = env.FAKE_SELECTION ? (JSON.parse(env.FAKE_SELECTION)[name] || 0) : 1;
   const report = { config: {}, errors: [], suites: count ? [{ specs: [{ title: 'selected case',
     tests: Array.from({ length: count }, () => ({ projectId: '', results: [] })) }] }] : [] };
@@ -241,6 +242,30 @@ test('a malformed or structurally invalid selection report fails closed', async 
     assert.ok(summary.results.every(item => item.status === 'not-started'));
   }
   const events = (await readFile(f.events, 'utf8')).trim().split('\n').map(line => JSON.parse(line));
+  assert.ok(events.every(event => event.type === 'list'));
+});
+
+test('a successful collection without a new report cannot reuse a valid previous selection', async t => {
+  const f = await fixture(t);
+  const directory = path.join(f.directory, 'stale');
+  const environment = cleanEnvironment({ FAKE_EVENTS: f.events, FAKE_NO_REPORT: '1' });
+  const plan = createSuitePlan({ root, temporaryDirectory: directory, outputDirectory: directory,
+    ports: [18200], suites: ['username'], filters: ['--grep', 'case'], environment });
+  for (const suite of plan) {
+    await mkdir(suite.testDirectory, { recursive: true });
+    await mkdir(path.dirname(suite.logPath), { recursive: true });
+  }
+  const reportPath = path.join(path.dirname(plan[0].logPath), 'selection.json');
+  await writeFile(reportPath, JSON.stringify({ config: {}, errors: [], suites: [{ specs: [{ title: 'old case',
+    tests: [{ projectId: '', results: [] }] }] }] }));
+  await assert.rejects(collectFilteredTests(plan, f.cli, root), { code: 'ENOENT' });
+  await assert.rejects(readFile(reportPath), { code: 'ENOENT' });
+  const summary = await runLocalBrowserTests({ outputDirectory: path.join(f.directory, 'missing'),
+    suites: ['username'], filters: ['--grep', 'case'] }, { root, cliPath: f.cli, quiet: true, environment });
+  assert.equal(summary.exitCode, 1);
+  assert.equal(summary.results[0].status, 'not-started');
+  const events = (await readFile(f.events, 'utf8')).trim().split('\n').map(line => JSON.parse(line));
+  assert.equal(events.length, 2);
   assert.ok(events.every(event => event.type === 'list'));
 });
 
