@@ -656,14 +656,29 @@ for (const language of ['de', 'en']) {
     await expect(menu.getByRole('link', { name: 'Hausdepp', exact: true })).toBeVisible();
     await expect(menu.getByRole('link', { name: 'ZDWA', exact: true })).toBeVisible();
     const currentAuth = await (await page.request.get('/api/auth/me')).json();
+    expect(currentAuth.user).toMatchObject({ id: 1, is_owner: true, is_founder: true });
+    expect(typeof currentAuth.user.must_change_password).toBe('boolean');
     const access = currentAuth.game_access || currentAuth.user?.game_access || {};
     const hasZilch = access.zilch_preview || access.zilch_public;
     await expect(menu.getByRole('link', { name: 'Zilch', exact: true })).toHaveCount(hasZilch ? 1 : 0);
     if (hasZilch) await expect(menu.getByRole('link', { name: 'Zilch', exact: true })).toBeVisible();
     await page.goto('/hausdepp/konto');
-    await expect(page).toHaveURL(/\/hausdepp\/konto$/);
-    await expect(page.locator('#hausdeppAccountStats')).toBeVisible();
-    await expect(page.locator('#hausdeppHistory')).toBeVisible();
+    if (currentAuth.user.must_change_password) {
+      // The native owner keeps the same required-password boundary as every
+      // account. Do not mutate the pool's shared bootstrap credentials here.
+      await expect(page).toHaveURL(/\/hausdepp\/konto\/einstellungen#passwort$/);
+      const password = page.locator('#hausdeppPasswordForm');
+      await expect(page.locator('#passwort')).toHaveAttribute('open', '');
+      await expect(password).toBeVisible();
+      await expect(password.locator('#hausdeppCurrentPassword')).toBeVisible();
+      await expect(password.locator('[name="password"]')).toBeVisible();
+      await expect(password.locator('[name="confirmation"]')).toBeVisible();
+      await expect(password.locator('button[type="submit"]')).toBeEnabled();
+    } else {
+      await expect(page).toHaveURL(/\/hausdepp\/konto$/);
+      await expect(page.locator('#hausdeppAccountStats')).toBeVisible();
+      await expect(page.locator('#hausdeppHistory')).toBeVisible();
+    }
   });
 }
 
