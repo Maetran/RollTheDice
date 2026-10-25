@@ -115,7 +115,10 @@ npx playwright test tests/browser/hausdepp-flex-lobby.spec.js
 ```
 
 Gefilterte Läufe erhalten `fullRun=false` und geben keinen vollständigen
-Push-Nachweis. Der Runner verbietet `test.only`/`describe.only` und erzwingt
+Push-Nachweis. Vor ihrem Start prüft der Runner die Auswahl mit Playwrights
+JSON-Testliste: Insgesamt null ausgewählte Tests oder ein ungültiger Bericht
+lassen den Lauf fehlschlagen; einzelne leere Shards bleiben erlaubt.
+Der Runner verbietet `test.only`/`describe.only` und erzwingt
 `--retries=0`, auch bei gesetztem `CI`. Ein Fehler im ersten Versuch bleibt
 damit ein Fehler; Filter dürfen diese Vorgaben nicht überschreiben.
 `--port-base 8100` reserviert bei Bedarf acht aufeinanderfolgende
@@ -178,6 +181,9 @@ It does not repeat the full local backend, browser, Docker, lint or tooling suit
 The runner rejects `test.only`/`describe.only` and enforces `--retries=0`, even
 with `CI` set. A first-attempt failure remains a failure; filters cannot
 override these requirements.
+Filtered runs first collect Playwright JSON test lists. Zero tests across the
+whole selection or an invalid report fails the run; individual empty shards
+remain allowed.
 
 An unchanged two-parent PR merge at the current `origin/develop` tip may inherit
 its feature parent's complete receipt only when the merge tree exactly matches
