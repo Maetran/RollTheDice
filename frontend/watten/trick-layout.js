@@ -19,11 +19,12 @@ export function fitLandscapeTrick({ top, bottom, desiredWidth, minimumWidth = 52
   return null;
 }
 
-export function fitPortraitPrompt(bounds, obstacles, { height = 20, widths = [180, 140, 100, 80], accept = null, bottomFirst = false, centerFirst = false } = {}) {
+export function fitPortraitPrompt(bounds, obstacles, { height = 20, widths = [180, 140, 100, 80], accept = null, bottomFirst = false, centerFirst = false, rightFirst = false } = {}) {
   const blocked = obstacles.filter(usable).map(rect => ({ left: rect.left - 4, right: rect.right + 4, top: rect.top - 4, bottom: rect.bottom + 4 }));
   for (const width of widths.filter(width => width <= bounds.width)) {
     const xs = [...new Set([bounds.left + (bounds.width - width) / 2, bounds.left, bounds.right - width,
       ...blocked.flatMap(rect => [rect.left - width, rect.right])])];
+    if (rightFirst) xs.sort((a, b) => b - a);
     const ys = [...new Set([bounds.top, bounds.bottom - height,
       ...blocked.flatMap(rect => [rect.top - height, rect.bottom])])].sort((a, b) => bottomFirst ? b - a : a - b);
     for (const centred of centerFirst ? [true, false] : [false]) for (const top of ys) for (const left of centred ? xs.slice(0, 1) : xs) {
@@ -157,6 +158,8 @@ export function createTrickLayout(trick, { win = window } = {}) {
       delete history.dataset.wtPortraitHistory;
       for (const variable of ["--wt-portrait-history-x", "--wt-portrait-history-y", "--wt-portrait-history-width"]) history.style.removeProperty(variable);
     }
+    const reference = table.querySelector(".wt-reference");
+    if (reference) for (const name of ["left", "right", "top"]) reference.style.removeProperty(name);
     const prompt = table.querySelector("[data-wt-portrait-prompt]");
     if (prompt) {
       delete prompt.dataset.wtPortraitPrompt;
@@ -187,6 +190,23 @@ export function createTrickLayout(trick, { win = window } = {}) {
     const result = { left: right - width, top: bottom - height, right, bottom, width, height };
     return usable(result) ? result : null;
   };
+  function positionReference() {
+    if (win.innerWidth > 760 || win.innerWidth > win.innerHeight) return;
+    const reference = centre.querySelector(".wt-reference"), original = box(reference);
+    if (!original) return;
+    const area = felt.getBoundingClientRect();
+    const bounds = { left: Math.max(12, area.left + 8), top: area.top,
+      right: Math.min(win.innerWidth - 12, area.right - 8), bottom: area.bottom - 8 };
+    bounds.width = bounds.right - bounds.left; bounds.height = bounds.bottom - bounds.top;
+    const obstacles = [...table.querySelectorAll(".wt-seat-badge, .wt-avatar, .wt-seat-name, .wt-seat-call-role, .wt-seat-tags, .wt-seat-public-title, "
+      + ".wt-backs > i:not([hidden]), .wt-taken[data-filled='true'], .wt-stock, .wt-stock > i, [data-wt-hand-area], [data-wt-panel], [data-wt-stake]")]
+      .map(box).filter(Boolean);
+    const fit = fitPortraitPrompt({ left: original.left, top: original.top, right: original.right, bottom: original.bottom,
+      width: original.width, height: original.height }, obstacles, { widths: [original.width], height: original.height })
+      || fitPortraitPrompt(bounds, obstacles, { widths: [original.width], height: original.height, rightFirst: true });
+    if (!fit || fit.left === original.left && fit.top === original.top) return;
+    reference.style.left = `${fit.left}px`; reference.style.right = "auto"; reference.style.top = `${fit.top}px`;
+  }
   function positionCalls() {
     if (!ownCall?.children.length || !win.matchMedia("(orientation: portrait) and (max-width: 760px)").matches) return;
     const sheet = ownCall.parentElement, sheetBox = sheet.getBoundingClientRect(), area = felt.getBoundingClientRect();
@@ -203,15 +223,13 @@ export function createTrickLayout(trick, { win = window } = {}) {
     const obstacles = [...table.querySelectorAll(".wt-seat-badge, .wt-avatar, .wt-seat-name, .wt-seat-call-role, .wt-seat-tags, .wt-seat-meta, "
       + ".wt-bubble--thanks, .wt-backs > i:not([hidden]), .wt-stock, .wt-reference, [data-wt-preplay], [data-wt-bloedeln]:not(:empty), .wt-trick-label:not(:empty), .wt-prompt, .wt-partner-popover, .wt-retour-tag"),
     ...dockChildren.filter(node => !inFlow(node))].map(visibleBox).filter(Boolean);
-    const middle = (bounds.left + bounds.right) / 2;
     let ownFit = null;
     if (ownCall.children.length && box(ownCall)) {
-      const size = ownCall.getBoundingClientRect(), left = middle - size.width / 2;
-      const column = { ...bounds, left, right: left + size.width, width: size.width };
-      ownFit = fitPortraitPrompt(column, obstacles, { height: size.height, widths: [size.width], bottomFirst: true });
+      const size = ownCall.getBoundingClientRect();
+      ownFit = fitPortraitPrompt(bounds, obstacles, { height: size.height, widths: [size.width], bottomFirst: true, centerFirst: true });
       if (!ownFit) ownCall.dataset.wtCallFallback = "space";
       else {
-        ownCall.style.setProperty("--wt-own-call-left", `${middle - sheetBox.left}px`);
+        ownCall.style.setProperty("--wt-own-call-left", `${ownFit.left + ownFit.width / 2 - sheetBox.left}px`);
         ownCall.style.setProperty("--wt-own-call-bottom", `${sheetBox.bottom - ownFit.bottom}px`);
         obstacles.push(ownFit);
       }
@@ -222,6 +240,7 @@ export function createTrickLayout(trick, { win = window } = {}) {
     queued = null;
     if (destroyed) return;
     clear();
+    positionReference();
     // Calls precede every trick card, so fit them before the empty-trick return.
     positionCalls();
     if (trick.hidden || !trick.children.length) { landscape = null; return; }

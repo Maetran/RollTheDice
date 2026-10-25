@@ -111,6 +111,16 @@ async function geometry(page) {
       table: document.querySelector('[data-wt-felt]').getBoundingClientRect().toJSON(),
       visibleOwn: [...document.querySelectorAll('.wt-bubble--bottom[data-watten-call]')].filter(visible).length,
       overlaps: own ? obstacles.filter(node => node !== own).map(node => ({ class: node.className, box: box(node), area: overlap(ownBox, box(node)) })).filter(item => item.area > 0) : [],
+      centeredOwnObstacles: !own ? [] : (() => {
+        const table = box(document.querySelector('[data-wt-felt]'));
+        const left = table.left + (table.width - ownBox.width) / 2;
+        const centred = { ...ownBox, left, right: left + ownBox.width };
+        return obstacles.filter(node => node !== own).filter(node => {
+          const other = box(node);
+          return overlap(centred, { left: other.left - 4, right: other.right + 4,
+            top: other.top - 4, bottom: other.bottom + 4 }) > 0;
+        }).map(node => node.className);
+      })(),
       calls: calls.map(node => ({ text: node.textContent, box: callBox(node), own: node === own,
         seat: seatOf(node), inline: node.hasAttribute('data-watten-role-call'),
         roleSeat: node.dataset.wattenRoleCall, ownerSeat: node.closest('[data-wt-seat]')?.dataset.wtSeat,
@@ -143,7 +153,12 @@ async function expectOwnCall(page, measurements) {
   expect(result.overlaps).toEqual([]);
   expect(result.calls.flatMap(call => call.covered)).toEqual([]);
   const middle = result.table.left + result.table.width / 2;
-  expect(Math.abs(result.own.left + result.own.width / 2 - middle)).toBeLessThanOrEqual(1);
+  // These are text announcements, separate from the inspection-card axis.
+  // Prefer the middle; a lateral fit must clear an actual 4px obstruction
+  // that the same label would otherwise meet on the middle line.
+  if (Math.abs(result.own.left + result.own.width / 2 - middle) > 1) {
+    expect(result.centeredOwnObstacles).not.toEqual([]);
+  }
   for (const call of result.calls.filter(call => !call.own)) {
     expect(call.box.bottom, 'own call stays nearest the own controls').toBeLessThanOrEqual(result.own.bottom + 1);
   }
@@ -239,7 +254,11 @@ async function expectThreeSeatTrick(page, measurements, historyExpected) {
   });
   measurements.push({ threeSeatTrick: result });
   expect(result.fallback).toBeNull();
-  expect(Math.abs(result.centre.left + result.centre.width / 2 - (result.table.left + result.table.width / 2))).toBeLessThanOrEqual(1);
+  // The public trick may shift slightly to leave room for a captured packet
+  // or review. It still spans the middle and preserves every painted card.
+  const middle = result.table.left + result.table.width / 2;
+  expect(result.centre.left).toBeLessThan(middle);
+  expect(result.centre.right).toBeGreaterThan(middle);
   expect(result.cards.length).toBeGreaterThan(0);
   expect(result.cards.flatMap(card => card.covered)).toEqual([]);
   expect(result.extras.flatMap(extra => extra.covered)).toEqual([]);

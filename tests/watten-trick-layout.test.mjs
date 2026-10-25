@@ -87,6 +87,31 @@ test("a short-lived call uses the nearest free gap above the dock without changi
     "an unusable gap is reported rather than accepted as free space");
 });
 
+test("a compact own announcement keeps clearance from both role rows when the centre has no room", () => {
+  const bounds = rect(12, 112, 296, 133.9375);
+  const leftRole = rect(6, 213.8125, 101.703125, 18.390625);
+  const topFan = rect(118.795, 146.687, 82.426, 62.043);
+  const rightBadge = rect(230, 188, 84, 44);
+  const topIdentity = rect(148, 112, 85, 24);
+  const fit = fitPortraitPrompt(bounds, [leftRole, topFan, rightBadge, topIdentity],
+    { height: 20.765625, widths: [103.825], bottomFirst: true, centerFirst: true });
+  assert.ok(fit, "the compact label fits without a blind dock-relative fallback");
+  assert.ok(fit.left >= leftRole.right + 4);
+  assert.ok(fit.right <= rightBadge.left - 4);
+  assert.ok(fit.bottom <= bounds.bottom);
+});
+
+test("the readable reference can move inward from its corner instead of covering a live role row", () => {
+  const rightBadge = rect(496.984, 173.438, 87.625, 44.391);
+  const topFan = rect(240, 150, 120, 100);
+  const fit = fitPortraitPrompt(rect(12, 104, 576, 488), [rightBadge, topFan],
+    { height: 106.3125, widths: [58], rightFirst: true });
+  assert.equal(fit.width, 58, "the card is not shrunk to make it fit");
+  assert.equal(fit.top, 104);
+  assert.ok(fit.right <= rightBadge.left - 4);
+  assert.ok(fit.left >= topFan.right + 4);
+});
+
 test("landscape keeps its first public card footprint through later cards and winner marking, then refits the next trick", () => {
   const style = () => ({ values: new Map(), setProperty(key, value) { this.values.set(key, value); },
     removeProperty(key) { this.values.delete(key); } });
