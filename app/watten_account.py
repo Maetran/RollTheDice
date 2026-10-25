@@ -31,12 +31,32 @@ from .watten_evidence import (
     evidence_to_payload,
     validate_membership,
 )
-from .watten_progression import DRAFT_ACHIEVEMENTS, DRAFT_CATALOG_VERSION, MatchInput, evaluate_draft, title_for_xp
+from .watten_progression import (
+    DRAFT_ACHIEVEMENTS,
+    DRAFT_CATALOG_VERSION,
+    DRAFT_TITLES,
+    MatchInput,
+    evaluate_draft,
+    title_for_xp,
+)
 from .watten_progression_store import _bindings, _cohort, _json
 from .watten_recipe import dumps_canonical_json
 from .watten_surprises import SURPRISE_ACHIEVEMENTS, qualifying_surprises, surprise_facts
 
 SOURCE_PAGE_SIZE = 250
+
+# Presentation metadata follows the catalogue's semantic counters. It never
+# contributes to qualification, journal prices or rank thresholds.
+_CATEGORY_COUNTERS = {
+    "persistence": ("completed", "days"),
+    "tables": ("two", "three", "four", "variety", "team_wins", "cpu_matches"),
+    "variants": ("normal", "ladinisch", "blind", "critical"),
+    "bidding": ("bid_matches", "counter_matches", "quiet_wins"),
+    "wins": ("schneider_wins", "retourschneider_wins", "eight_plus_three_wins",
+             "retourschneider_eight_plus_three_wins", "comeback_wins", "raised_wins"),
+}
+_CATEGORY_BY_COUNTER = {counter: category for category, counters in _CATEGORY_COUNTERS.items() for counter in counters}
+_CATEGORY_ORDER = (*_CATEGORY_COUNTERS, "surprises", "other")
 
 
 class WattenAccountError(ValueError):
@@ -209,7 +229,8 @@ def _progress(db, user_id, matches):
     catalog = []
     for goal in DRAFT_ACHIEVEMENTS:
         grant = grants_by_id.get(goal.achievement_id)
-        catalog.append({"id": goal.achievement_id, "name": {"de": goal.name.de, "en": goal.name.en},
+        catalog.append({"id": goal.achievement_id, "category": _CATEGORY_BY_COUNTER.get(goal.counter, "other"),
+                        "name": {"de": goal.name.de, "en": goal.name.en},
                         "description": {"de": goal.condition.de, "en": goal.condition.en}, "target": goal.target,
                         "progress": min(goal.target, getattr(proposal.counters, goal.counter)), "draft_xp": goal.xp,
                         "granted_xp": grant.xp if grant else 0, "earned_at": as_utc(grant.reached_at).isoformat() if grant else None,
@@ -219,7 +240,7 @@ def _progress(db, user_id, matches):
         rare_progress.update(qualifying_surprises(db, match_input.evidence, match_input.bindings, user_id, facts=rare_facts))
     for goal in SURPRISE_ACHIEVEMENTS:
         grant = grants_by_id.get(goal.achievement_id)
-        catalog.append({"id": goal.achievement_id, "name": {"de": goal.name.de, "en": goal.name.en},
+        catalog.append({"id": goal.achievement_id, "category": "surprises", "name": {"de": goal.name.de, "en": goal.name.en},
                         "description": {"de": goal.condition.de, "en": goal.condition.en}, "target": 1,
                         "progress": int(goal.achievement_id in rare_progress), "draft_xp": goal.xp,
                         "granted_xp": grant.xp if grant else 0, "earned_at": as_utc(grant.reached_at).isoformat() if grant else None,
@@ -236,6 +257,8 @@ def _progress(db, user_id, matches):
             "catalog_version": DRAFT_CATALOG_VERSION, "match_xp": match_xp, "achievement_xp": achievement_xp,
             "total_xp": match_xp + achievement_xp, "title": _title(title.current),
             "next_title": _title(title.next_title) if title.next_title else None, "xp_to_next": title.xp_to_next,
+            "titles": [_title(item) for item in DRAFT_TITLES],
+            "achievement_categories": [category for category in _CATEGORY_ORDER if any(item["category"] == category for item in catalog)],
             "counters": counters, "achievements": catalog, "archived_achievements": archived,
             "pending": {
                 "credits": [{"game_id": item.game_id, "sequence": item.grant_sequence, "xp": item.xp,
