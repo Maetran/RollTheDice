@@ -77,10 +77,16 @@ for (const product of products) for (const language of ['de', 'en']) {
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
       const layout = await navigation.locator(product.tab ? '[role=tab]' : 'a').evaluateAll(nodes => nodes.map(element => {
         const range = document.createRange(); range.selectNodeContents(element);
-        return { top: Math.round(element.getBoundingClientRect().top), lines: range.getClientRects().length, height: element.getBoundingClientRect().height, fits: element.scrollWidth <= element.clientWidth };
+        const bounds = element.getBoundingClientRect(), textBounds = range.getBoundingClientRect(), style = getComputedStyle(element);
+        return { label: element.textContent.trim(), top: Math.round(bounds.top), lines: range.getClientRects().length,
+          height: bounds.height, fits: element.scrollWidth <= element.clientWidth,
+          clientWidth: element.clientWidth, scrollWidth: element.scrollWidth,
+          bounds: { left: bounds.left, right: bounds.right, width: bounds.width },
+          textBounds: { left: textBounds.left, right: textBounds.right, width: textBounds.width },
+          font: style.font, padding: [style.paddingLeft, style.paddingRight] };
       }));
       expect(new Set(layout.map(item => item.top)).size).toBe(1);
-      expect(layout.every(item => item.lines === 1 && item.height >= 44 && item.fits)).toBe(true);
+      expect(layout.every(item => item.lines === 1 && item.height >= 44 && item.fits), `${product.game}/${language} ${viewport.width}x${viewport.height}: ${JSON.stringify(layout)}`).toBe(true);
       expect(await page.locator('h1').evaluateAll(nodes => nodes.every(element => element.scrollWidth <= element.clientWidth + 1))).toBe(true);
       expect(await groups.evaluateAll(nodes => nodes.every(element => getComputedStyle(element).backgroundColor !== 'rgba(0, 0, 0, 0)'))).toBe(true);
       if (language === 'de') await page.screenshot({ path: testInfo.outputPath(`${product.game}-${size}.png`), fullPage: true });
