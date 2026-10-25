@@ -44,7 +44,8 @@ def new_hausdepp_game(game_id: str, name: str, mode: object, *, register: bool =
     }
     if register:
         games[game_id] = game
-        save_active_game(game)
+        # The genuine new-room factory: the only Hausdepp save that INSERTs.
+        save_active_game(game, creating=True)
     return game
 
 

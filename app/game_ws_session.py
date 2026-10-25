@@ -12,8 +12,8 @@ from fastapi import WebSocket
 from .admin_help_navigation import clear_admin_away_on_rejoin
 from .auth import AuthIdentity, resolve_session, username_is_registered
 from .friend_activity import publish_friend_game_start
+from .game_lifecycle import AdmissionError, admit_player, room_lock, verify_exact_account
 from .game_realtime import broadcast, send_game_message
-from .game_registry import join_player_to_game, start_game_if_ready
 from .game_snapshot import snapshot
 from .game_state import (
     GameDict,
@@ -37,6 +37,14 @@ from .zilch_state import (
 logger = logging.getLogger(__name__)
 
 SESSION_ACTIONS = frozenset({"join_game", "spectate_game", "rejoin_game", "leave_waiting_game", "hausdepp_leave_game"})
+# Stable codes let the client localize; block reasons keep their own text.
+_ADMISSION_MESSAGES = {
+    "account_retired_or_inactive": "Dieses Konto ist nicht mehr aktiv.",
+    "admission_storage_unavailable": "Der Beitritt konnte nicht gespeichert werden. Bitte erneut versuchen.",
+    "admission_room_changed": "Die Partie ist nicht mehr verfügbar.",
+    "admission_room_missing": "Die Partie ist nicht mehr verfügbar.",
+    "admission_room_unbound": "Die Partie ist nicht mehr verfügbar.",
+}
 
 
 @dataclass
@@ -174,28 +182,33 @@ async def _join_game(session: GameSocketSession, data: dict[str, Any], *, finali
         player["_zilch_host_token"] = data.get("host_token")
     if identity:
         player["achievement_rank"] = identity.achievement_rank
-    session.player_id = player_id
-    session.spectator_id = None
-    session.is_spectator = False
     # Player identity, lifecycle and connection handling stay common.  The
     # adapter owns only the game-specific board shape and start metadata.
+    # The native join/start runs on a staged candidate; only after its strict
+    # commit (checkpoint + exact-account membership) is it installed into this
+    # same room object. Nothing is awaited inside that synchronous fence.
+    was_started = bool(g.get("_started"))
     try:
-        was_started = bool(g.get("_started"))
-        join_player_to_game(g, player)
-        start_game_if_ready(g)
+        admit_player(g, player)
+    except AdmissionError as exc:
+        await close_with_error(websocket, _ADMISSION_MESSAGES.get(exc.code, exc.code),
+                               fatal=True, error_code=exc.code if exc.code in _ADMISSION_MESSAGES else None)
+        return True
     except ValueError as exc:
         # A Zilch CPU seat is a durable participant, not a shared transport
         # player.  Keep a race or direct adapter call from becoming an
         # unhandled WebSocket exception.
         await close_with_error(websocket, str(exc), fatal=True)
         return True
+    session.player_id = player_id
+    session.spectator_id = None
+    session.is_spectator = False
 
     await websocket.send_json({"player_id": player_id, "resume_token": player["resume_token"]})
     if game_type_from_state(g) in {DEFAULT_GAME_TYPE, HAUSDEPP_GAME_TYPE}:
         from .hausdepp_voice import refresh_voice_game
 
         await refresh_voice_game(g)
-    touch(g)
     await broadcast(g, {"scoreboard": snapshot(g)})
     if not was_started and g.get("_started"):
         await publish_friend_game_start(g)
@@ -314,21 +327,32 @@ async def _rejoin_game(session: GameSocketSession, data: dict[str, Any], *, fina
         )
         return True
 
-    old_websocket = player.get("ws")
-    if session.spectator_id:
-        spectator_id = session.spectator_id
-        g["_spectators"] = [
-            spectator
-            for spectator in g.get("_spectators", [])
-            if not (str(spectator.get("id")) == str(spectator_id) and spectator.get("ws") is websocket)
-        ]
+    # The seat's exact account (never a historical progress owner) must still
+    # be active; the check and the seat binding share the room fence.
+    try:
+        with room_lock(g):
+            if g.get("_aborted") or not any(seat is player for seat in g.get("_players", [])):
+                raise AdmissionError("admission_room_changed")
+            verify_exact_account(g, player.get("user_id"))
+            old_websocket = player.get("ws")
+            if session.spectator_id:
+                spectator_id = session.spectator_id
+                g["_spectators"] = [
+                    spectator
+                    for spectator in g.get("_spectators", [])
+                    if not (str(spectator.get("id")) == str(spectator_id) and spectator.get("ws") is websocket)
+                ]
+            player["ws"] = websocket
+            clear_admin_away_on_rejoin(g, player.get("user_id"))
+            if identity:
+                player["achievement_rank"] = identity.achievement_rank
+    except AdmissionError as exc:
+        await close_with_error(websocket, _ADMISSION_MESSAGES.get(exc.code, exc.code), fatal=True,
+                               error_code=exc.code)
+        return True
     session.player_id = requested_id
     session.spectator_id = None
     session.is_spectator = False
-    player["ws"] = websocket
-    clear_admin_away_on_rejoin(g, player.get("user_id"))
-    if identity:
-        player["achievement_rank"] = identity.achievement_rank
     if old_websocket and old_websocket is not websocket:
         if game_type_from_state(g) in {DEFAULT_GAME_TYPE, HAUSDEPP_GAME_TYPE}:
             from .hausdepp_voice import voice_socket_disconnected

@@ -98,6 +98,10 @@ def _target(db, rematch) -> dict:
             game["_last_activity"] = as_utc(datetime.fromisoformat(game["_last_activity"]))
             if (game.get("_hausdepp_rematch_id") != rematch.id or game_type_from_state(game) != HAUSDEPP_GAME_TYPE):
                 raise RematchError("hausdepp_rematch_closed")
+            from .game_lifecycle import bind_room
+
+            game["_id"] = rematch.game_id
+            bind_room(game, rematch.game_id, stored.admission_revision)
             games[rematch.game_id] = game
     if game is None:
         raise RematchError("hausdepp_rematch_closed")
@@ -233,14 +237,20 @@ def create_rematch(source_id: str, user_id: int, *, before_create: Callable | No
                     ids = set(json.loads(recipe.original_user_ids_json))
                     source = {**json.loads(recipe.settings_json), "_finished": True, "_game_type": HAUSDEPP_GAME_TYPE}
                 else:
-                    pending = db.scalar(select(ActiveGame.state_json).where(ActiveGame.game_id == source_id))
+                    pending = db.execute(select(ActiveGame.state_json, ActiveGame.admission_revision)
+                                         .where(ActiveGame.game_id == source_id)).first()
             if source is None:
                 # A failed recipe write retains its old terminal ActiveGame.
                 # Release the read transaction before retrying a writer.
-                recovered = json.loads(pending) if pending else None
+                recovered = json.loads(pending[0]) if pending else None
                 if (not isinstance(recovered, dict) or game_type_from_state(recovered) != HAUSDEPP_GAME_TYPE
                         or not recovered.get("_hausdepp_rematch_source_pending")):
                     raise RematchError("game_not_found", 404)
+                from .game_lifecycle import bind_room
+
+                # Only this exact stored revision may be updated or retired.
+                recovered["_id"] = source_id
+                bind_room(recovered, source_id, pending[1])
                 ids = {person["user_id"] for person in recovered.get("_participants", [])
                        if not person.get("is_cpu") and type(person.get("user_id")) is int and person["user_id"] > 0
                        and person.get("id") not in recovered.get("_hausdepp_departures", {})}
@@ -313,6 +323,10 @@ def create_rematch(source_id: str, user_id: int, *, before_create: Callable | No
         if not inserted:
             with session_scope() as db:
                 return _creation_response(db, db.get(HausdeppRematch, rematch_id), user_id, False)
+        from .game_lifecycle import bind_room
+
+        # The row above was strictly inserted with the default revision 0.
+        bind_room(game, game_id, 0)
         games[game_id] = game
         with session_scope() as db:
             return _creation_response(db, db.get(HausdeppRematch, rematch_id), user_id, True)

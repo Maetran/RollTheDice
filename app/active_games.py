@@ -5,7 +5,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import delete, select, update
 from sqlalchemy.exc import SQLAlchemyError
 
 from .database import database_schema_ready, session_scope
@@ -24,7 +24,7 @@ def _json_safe(value: Any) -> Any:
         return {
             str(key): _json_safe(item)
             for key, item in value.items()
-            if key not in {"ws", "_roll_cooldown", "_live_sockets"}
+            if key not in {"ws", "_roll_cooldown", "_live_sockets", "_active_row"}
         }
     if isinstance(value, (list, tuple)):
         return [_json_safe(item) for item in value]
@@ -58,7 +58,7 @@ def serializable_game_state(game: dict) -> dict:
     return state
 
 
-def save_active_game(game: dict) -> None:
+def save_active_game(game: dict, *, creating: bool = False) -> None:
     """Upsert a live game, retaining terminal state until durable accounting.
 
     A terminal board is itself recovery data: the completed-result finalizer
@@ -67,6 +67,11 @@ def save_active_game(game: dict) -> None:
     similarly remains until its separate abandonment aggregate is written (or
     safely found inapplicable for an unstarted/guest-only room). This applies
     to both supported game types; their payload construction remains separate.
+
+    A room bound to its row only UPDATEs the admission revision it holds; a
+    zero-row result (deleted, retired or newer admission) is refused and never
+    becomes an INSERT. An unbound object (for example a JSON copy) is refused;
+    only a genuine new-room factory passes ``creating=True`` to INSERT strictly.
     """
     if game_type_from_state(game) == "watten":
         from .watten_runtime import persist_watten_game
@@ -78,6 +83,18 @@ def save_active_game(game: dict) -> None:
     game_id = str(game.get("_id") or "").strip()
     if not game_id:
         return
+    from .game_lifecycle import is_candidate, room_lock
+
+    if is_candidate(game):
+        # A staged admission persists only through its strict commit.
+        return
+    with room_lock(game):
+        _save_active_game_locked(game, game_id, creating=creating)
+
+
+def _save_active_game_locked(game: dict, game_id: str, *, creating: bool) -> None:
+    from .game_lifecycle import bind_room, bound_revision
+
     # Resolve/validate the marker before serializing an active state.  Missing
     # historical markers still default to ZDWA through the shared contract.
     game_type_from_state(game)
@@ -95,32 +112,76 @@ def save_active_game(game: dict) -> None:
     if not game.get("_hausdepp_rematch_source_pending") and (game.get("_completion_persisted") and not tournament_is_pending(game) or (
         game.get("_aborted") and game.get("_abandonment_accounted")
     )):
-        delete_active_game(game_id)
+        if bound_revision(game) is not None:
+            _delete_row(game_id, bound_revision(game))
+        else:
+            logger.warning("Refusing terminal delete from unbound game object %s", game_id)
         return
     now = utcnow()
     payload = json.dumps(serializable_game_state(game), ensure_ascii=False, separators=(",", ":"))
+    revision = bound_revision(game)
     try:
         with session_scope() as db:
-            stored = db.scalar(select(ActiveGame).where(ActiveGame.game_id == game_id))
-            if stored is None:
-                db.add(ActiveGame(game_id=game_id, state_json=payload, created_at=now, updated_at=now))
-            else:
-                stored.state_json = payload
-                stored.updated_at = now
+            if revision is not None:
+                changed = db.execute(update(ActiveGame).where(
+                    ActiveGame.game_id == game_id, ActiveGame.admission_revision == revision,
+                ).values(state_json=payload, updated_at=now).execution_options(synchronize_session=False))
+                if changed.rowcount != 1:
+                    logger.warning("Refusing stale or retired checkpoint for game %s (revision %s)",
+                                   game_id, revision)
+                return
+            if not creating:
+                # A JSON copy or restored dict never gains write authority, and
+                # a missing row never means "new". (A discarded/retired room
+                # keeps its binding and is refused by the UPDATE above.)
+                logger.error("Refusing unbound checkpoint for game %s", game_id)
+                return
+            if db.scalar(select(ActiveGame.id).where(ActiveGame.game_id == game_id)) is not None:
+                logger.error("Refusing to create already stored game %s", game_id)
+                return
+            db.add(ActiveGame(game_id=game_id, state_json=payload, created_at=now, updated_at=now,
+                              admission_revision=0))
+        bind_room(game, game_id, 0)
     except SQLAlchemyError:
         logger.exception("Could not persist active game %s", game_id)
 
 
-def delete_active_game(game_id: str) -> None:
-    if not database_schema_ready():
-        return
+def _delete_row(game_id: str, revision: int | None) -> None:
+    """Delete one row, fenced to ``revision`` when the caller knows it."""
+    conditions = [ActiveGame.game_id == str(game_id)]
+    if revision is not None:
+        conditions.append(ActiveGame.admission_revision == revision)
     try:
         with session_scope() as db:
-            stored = db.scalar(select(ActiveGame).where(ActiveGame.game_id == str(game_id)))
-            if stored is not None:
-                db.delete(stored)
+            # Memberships follow through their database-level CASCADE.
+            if db.execute(delete(ActiveGame).where(*conditions)).rowcount != 1 and revision is not None:
+                logger.warning("Terminal delete for game %s did not match revision %s", game_id, revision)
     except SQLAlchemyError:
         logger.exception("Could not delete active game %s", game_id)
+
+
+def delete_active_game(game_id: str, *, expected_revision: int | None = None) -> None:
+    """Retire a stored room, fenced to a captured revision.
+
+    Callers pass the revision they captured (startup uses the row it read;
+    runtime callers capture it before removing the room from the registry).
+    Without one, the live registry object's binding is used. A runtime delete
+    with neither is refused rather than deleting by id.
+    """
+    if not database_schema_ready():
+        return
+    from .game_lifecycle import bound_revision, room_lock
+    from .game_state import games
+
+    game_id = str(game_id)
+    live = games.get(game_id)
+    with room_lock(live if live is not None else {"_id": game_id}):
+        if expected_revision is None and live is not None:
+            expected_revision = bound_revision(live)
+        if expected_revision is None:
+            logger.error("Refusing unfenced delete of active game %s", game_id)
+            return
+        _delete_row(game_id, expected_revision)
 
 
 def _parse_activity(value: Any) -> datetime:
@@ -144,12 +205,17 @@ def load_active_games() -> dict[str, dict]:
             # Materialize plain values and release the read transaction before
             # any recovery writer opens its own session. Otherwise a pending
             # delete can lock SQLite and starve all following recovery writes.
-            rows = list(db.execute(select(ActiveGame.game_id, ActiveGame.state_json)).all())
+            rows = list(db.execute(select(
+                ActiveGame.game_id, ActiveGame.state_json, ActiveGame.admission_revision,
+            )).all())
     except SQLAlchemyError:
         logger.exception("Could not load active games")
         return restored
-    for game_id, state_json in rows:
+    from .game_lifecycle import bind_room
+
+    for game_id, state_json, revision in rows:
         game: dict | None = None
+        # Startup cleanup below is fenced to the exact row revision it read.
         try:
             game = json.loads(state_json)
             # A native payload signature still requires its strict decoder
@@ -164,10 +230,12 @@ def load_active_games() -> dict[str, dict]:
                 restored[game_id] = game
                 continue
             if not isinstance(game, dict):
-                delete_active_game(game_id)
+                delete_active_game(game_id, expected_revision=revision)
                 continue
             game["_id"] = game_id
             game["_game_type"] = game_type_from_state(game)
+            # The row, not the JSON, carries the authoritative revision.
+            bind_room(game, game_id, revision)
             from .hausdepp_tournament import tournament_is_pending, validate_tournament
 
             if game.get("_hausdepp_tournament") is not None:
@@ -192,14 +260,14 @@ def load_active_games() -> dict[str, dict]:
             if game.get("_completion_persisted") and not tournament_is_pending(game) or (
                 game.get("_aborted") and game.get("_abandonment_accounted")
             ):
-                delete_active_game(game_id)
+                delete_active_game(game_id, expected_revision=revision)
                 continue
             if game.get("_aborted"):
                 from .abandoned_games import persist_abandoned_game
 
                 result = persist_abandoned_game(game)
                 if result.succeeded or result.status == "skipped":
-                    delete_active_game(game_id)
+                    delete_active_game(game_id, expected_revision=revision)
                 else:
                     logger.error(
                         "Retaining abandoned active game %s until accounting succeeds: %s",
@@ -234,5 +302,5 @@ def load_active_games() -> dict[str, dict]:
                 logger.exception("Retaining unrouteable terminal active game %s", game_id)
                 continue
             logger.exception("Could not restore active game %s", game_id)
-            delete_active_game(game_id)
+            delete_active_game(game_id, expected_revision=revision)
     return restored

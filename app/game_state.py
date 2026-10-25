@@ -89,6 +89,20 @@ def check_timeout_and_abort(g, *, now: datetime | None = None) -> bool:
         # the same table lock as socket mutations. Never race it from a sync
         # HTTP sweep. Its running/paused expiry also produces no forfeit.
         return False
+    from .game_lifecycle import room_lock
+
+    # Deadline observation, terminal decision, mutation and save form one
+    # fenced step: a concurrent admission either completes first (and renews
+    # the clock this reads) or observes the terminal room and is rejected.
+    with room_lock(g):
+        return _check_timeout_and_abort_locked(g, now=now)
+
+
+# Test seam: called inside the room lock after the deadline clock was read.
+_after_timeout_observation = None
+
+
+def _check_timeout_and_abort_locked(g, *, now: datetime | None) -> bool:
     try:
         # ``now`` is an intentionally small test seam.  Production callers
         # always use the authoritative server clock; tests can prove that the
@@ -107,6 +121,8 @@ def check_timeout_and_abort(g, *, now: datetime | None = None) -> bool:
                 g["_hausdepp_waiting_last_join_at"] = last_join.isoformat()
                 save_active_game(g)
             raw_last = last_join
+        if _after_timeout_observation is not None:
+            _after_timeout_observation(g)
         if not raw_last:
             g["_last_activity"] = now
             g["_updated_at"] = now.isoformat()
@@ -553,5 +569,5 @@ def new_game(gid: str, name: str, mode) -> GameDict:
         "_manual_pause_at": None,
     }
     games[gid] = g
-    save_active_game(g)
+    save_active_game(g, creating=True)
     return g

@@ -404,6 +404,9 @@ def persist_runtime_game_result(
             DEFAULT_GAME_TYPE,
             reason="wrong_game_type",
         )
+    if game.get("_aborted"):
+        logger.warning("Refusing to persist aborted game %s in completed history", game.get("_id"))
+        return CompletedGameWriteResult("failed", game_id, DEFAULT_GAME_TYPE, reason="aborted_game")
     mode = str(game.get("_mode") or "")
     is_team = mode.lower() == "2v2"
     participants = []
