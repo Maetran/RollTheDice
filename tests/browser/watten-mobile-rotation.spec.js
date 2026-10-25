@@ -165,7 +165,8 @@ for (const browserName of ['chromium', 'webkit']) {
               && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 2;
             return {
               aboveDecision: rect.bottom <= panelRect.top + 1,
-              stakeSeparate: landscapeRail ? stakeRect.right <= felt.left + 1 && rect.left >= felt.left - 1
+              stakeSeparate: landscapeRail ? !overlaps(rect, stakeRect) && stakeRect.left >= -1
+                && stakeRect.right <= innerWidth + 1 && rect.left >= felt.left - 1
                 : (!stakeRect.height || rect.bottom <= stakeRect.top + 1)
                   && (!stakeRect.height || panelRect.bottom <= stakeRect.top + 1),
               clearOfHand: !overlaps(summary, hand),

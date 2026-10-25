@@ -191,7 +191,10 @@ async function expectStage(item, count) {
         && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 2;
       return {
         abovePanel: !panelRect.height || rect.bottom <= panelRect.top + 1,
-        stakeSeparate: landscapeRail ? stakeRect.right <= felt.left + 1 && rect.left >= felt.left - 1
+        // The 52px compact rail deliberately allows its 68px stake tab to
+        // extend onto the wood. Protect real targets rather than the old rail edge.
+        stakeSeparate: landscapeRail ? !overlap(rect, stakeRect) && stakeRect.left >= -1
+          && stakeRect.right <= innerWidth + 1 && rect.left >= felt.left - 1
           : (!stakeRect.height || rect.bottom <= stakeRect.top + 1)
             && (!panelRect.height || !stakeRect.height || panelRect.bottom <= stakeRect.top + 1),
         beforePanel: Boolean(node.compareDocumentPosition(panel) & Node.DOCUMENT_POSITION_FOLLOWING),

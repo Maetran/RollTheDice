@@ -83,3 +83,42 @@ for (const change of ["match", "deal", "viewport", "prefix"]) {
     table.layout.destroy();
   });
 }
+
+test("a portrait bid moves its closed review off a complete fan even before trick faces render", () => {
+  const properties = new Map();
+  const history = { hidden: false, dataset: {}, matches: () => false, addEventListener() {}, removeEventListener() {},
+    style: { setProperty(key, value) { properties.set(key, value); }, removeProperty(key) { properties.delete(key); } },
+    getBoundingClientRect() {
+      return this.dataset.wtPortraitHistory ? rect(Number.parseFloat(properties.get("--wt-portrait-history-x")),
+        Number.parseFloat(properties.get("--wt-portrait-history-y")), Number.parseFloat(properties.get("--wt-portrait-history-width")), 44)
+        : rect(184, 412, 128, 44);
+    } };
+  const protectedBoxes = [rect(280, 340, 100, 100), rect(120, 466, 258, 136),
+    rect(120, 612, 258, 44), rect(8, 690, 374, 142), rect(110, 330, 160, 130)];
+  const protectedNodes = protectedBoxes.map(bounds => ({ hidden: false, matches: () => false, getBoundingClientRect: () => bounds }));
+  const table = { dataset: { phase: "bid_response" }, querySelector(selector) {
+    if (selector === "[data-wt-history]" || selector === "[data-wt-history]:not([open])") return history;
+    if (selector === "[data-wt-portrait-history]" && history.dataset.wtPortraitHistory) return history;
+    return null;
+  }, querySelectorAll: selector => selector.startsWith(".wt-seat-badge") ? protectedNodes : [] };
+  const felt = { closest: () => table, getBoundingClientRect: () => rect(0, 104, 390, 740) };
+  const centre = { parentElement: felt, querySelector: () => null, dataset: {}, style: { removeProperty() {} } };
+  const trick = { parentElement: centre, children: [] };
+  const win = { innerWidth: 390, innerHeight: 844, matchMedia: () => ({ matches: true }),
+    getComputedStyle: () => ({ display: "block", visibility: "visible", opacity: "1" }),
+    addEventListener() {}, removeEventListener() {}, requestAnimationFrame() {}, cancelAnimationFrame() {} };
+  const layout = createTrickLayout(trick, { win });
+  assert.equal(overlaps(history.getBoundingClientRect(), protectedBoxes[0]), true, "the old dock tab covers the opposing fan");
+  layout.update({ count: 4 });
+  const fitted = history.getBoundingClientRect();
+  assert.equal(history.dataset.wtPortraitHistory, "true");
+  assert.equal(fitted.height, 44);
+  assert.ok(fitted.width >= 64);
+  assert.ok(fitted.left >= 12 && fitted.right <= 378 && fitted.top >= 112 && fitted.bottom <= 836);
+  for (const obstacle of protectedBoxes) assert.equal(overlaps(fitted, obstacle), false,
+    "the review clears every complete fan, decision, stake, own hand and existing trick");
+  assert.ok(fitted.bottom <= protectedBoxes[1].top, "the review remains above the live decision");
+  layout.destroy();
+  assert.equal(history.dataset.wtPortraitHistory, undefined);
+  assert.equal(properties.size, 0);
+});

@@ -247,6 +247,29 @@ export function createTrickLayout(trick, { win = window } = {}) {
     }
 
   }
+  function positionClosedHistory() {
+    if (table.dataset?.phase !== "bid_response"
+      || !win.matchMedia("(orientation: portrait) and (max-width: 760px)").matches) return;
+    const history = table.querySelector("[data-wt-history]:not([open])");
+    if (!box(history)) return;
+    const area = felt.getBoundingClientRect();
+    const bounds = { left: Math.max(12, area.left + 8), top: Math.max(8, area.top + 8),
+      right: Math.min(win.innerWidth - 12, area.right - 8), bottom: Math.min(win.innerHeight - 8, area.bottom - 8) };
+    bounds.width = bounds.right - bounds.left; bounds.height = bounds.bottom - bounds.top;
+    // The action column can place its closed tab over the right fan while a
+    // bid is waiting. Give the tab a measured wood slot, preserving every
+    // complete hand and each live decision/stake target.
+    const obstacles = [...table.querySelectorAll(".wt-seat-badge, .wt-avatar, .wt-seat-name, .wt-seat-call-role, .wt-seat-tags, .wt-seat-meta, "
+      + ".wt-bubble, .wt-trick-label, .wt-backs > i:not([hidden]), .wt-taken[data-filled='true'], .wt-taken[data-filled='true'] i, .wt-stock, .wt-reference, "
+      + "[data-wt-hand-area], [data-wt-panel], [data-wt-stake], [data-wt-private] button, .wt-trick-card")].map(box).filter(Boolean);
+    obstacles.push(...[...table.querySelectorAll(".wt-taken[data-filled='true']")].map(counterBox).filter(Boolean));
+    const fit = fitPortraitPrompt(bounds, obstacles, { height: 44, widths: [136, 128, 112, 96, 80, 64] });
+    if (!fit) return;
+    history.dataset.wtPortraitHistory = "true";
+    for (const [key, value] of [["x", fit.left], ["y", fit.top], ["width", fit.width]]) {
+      history.style.setProperty(`--wt-portrait-history-${key}`, `${value}px`);
+    }
+  }
   function layout() {
     queued = null;
     if (destroyed) return;
@@ -254,6 +277,7 @@ export function createTrickLayout(trick, { win = window } = {}) {
     positionReference();
     // Calls precede every trick card, so fit them before the empty-trick return.
     positionCalls();
+    positionClosedHistory();
     if (trick.hidden || !trick.children.length) { landscape = null; portrait = null; return; }
     if (win.innerWidth >= win.innerHeight && win.innerHeight <= 700) {
       portrait = null;
