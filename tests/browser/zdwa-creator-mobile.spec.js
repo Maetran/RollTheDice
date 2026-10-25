@@ -44,10 +44,15 @@ for (const language of ['de', 'en']) {
               width: bounds.width, height: bounds.height };
           };
           const selectors = { row: '.create-row', passphrase: '.passphrase-field', input: '#passInput',
-            voice: '.room-voice-choice', hint: '.room-voice-choice small', start: '#createBtn',
+            voice: '.room-voice-choice', checkbox: '#zdwaVoiceEnabled', voiceText: '.room-voice-choice > span',
+            hint: '.room-voice-choice small', start: '#createBtn',
             offline: 'a[href="/offline-spielen"]' };
+          const title = document.createRange();
+          title.selectNodeContents([...element.querySelector('.room-voice-choice > span').childNodes]
+            .find(node => node.nodeType === Node.TEXT_NODE && node.textContent.trim()));
           return { card: rect(element), boxes: Object.fromEntries(Object.entries(selectors)
             .map(([key, selector]) => [key, rect(element.querySelector(selector))])),
+          voiceTitle: rect(title),
           overflow: [...element.querySelectorAll('.room-voice-choice > span, .room-voice-choice small, #createBtn')]
             .map(node => node.scrollWidth - node.clientWidth),
           pageOverflow: document.documentElement.scrollWidth - innerWidth };
@@ -59,9 +64,12 @@ for (const language of ['de', 'en']) {
           expect(box.top, `${name} top at ${width}px`).toBeGreaterThanOrEqual(layout.card.top - 1);
           expect(box.bottom, `${name} bottom at ${width}px`).toBeLessThanOrEqual(layout.card.bottom + 1);
         }
-        const { row, passphrase, input, voice: choice, hint, start, offline } = layout.boxes;
+        const { row, passphrase, input, voice: choice, checkbox, voiceText, hint, start, offline } = layout.boxes;
         for (const box of [passphrase, input, choice, start]) expect(box.width).toBeGreaterThanOrEqual(row.width - 2);
         expect(passphrase.bottom).toBeLessThanOrEqual(choice.top);
+        expect(voiceText.left - checkbox.right, `checkbox gap at ${width}px`).toBeGreaterThanOrEqual(6);
+        expect(hint.left).toBeGreaterThanOrEqual(voiceText.left - 1);
+        expect(hint.top, `voice help begins below its label at ${width}px`).toBeGreaterThanOrEqual(layout.voiceTitle.bottom);
         expect(hint.bottom).toBeLessThanOrEqual(choice.bottom + 1);
         expect(choice.bottom).toBeLessThanOrEqual(start.top);
         expect(start.bottom).toBeLessThanOrEqual(offline.top);

@@ -35,6 +35,3 @@ body.room-page:has(#roomHeaderMenuPanel:not([hidden])) > #connectionStatus { z-i
 .room-audio-roster li > span { min-width: 0; overflow-wrap: anywhere; }
 .room-audio-roster small { display: block; color: var(--muted); }
 .room-audio-roster button { flex: 0 0 auto; font-size: .8rem; }
-.lobby-page .room-voice-choice { grid-column: 1 / -1; display: flex; align-items: flex-start; gap: .5rem; font-size: .85rem; }
-.room-voice-choice input { flex: 0 0 auto; margin-top: .2rem; }
-.room-voice-choice small { display: block; }

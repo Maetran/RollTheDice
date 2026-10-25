@@ -853,8 +853,10 @@
 .lobby-page .create-fieldset legend{ margin-bottom:.24rem; font-size:.78rem; }
 .lobby-page .choice-button{ padding:.35rem .4rem; }
 .lobby-page .passphrase-field{ grid-column:1 / -1; min-width:0; font-size:.78rem; gap:.24rem; }
-.lobby-page .create-game-card .room-voice-choice{ grid-column:1 / -1; min-width:0; }
+.lobby-page .create-game-card .room-voice-choice{ grid-column:1 / -1; display:flex; align-items:flex-start; gap:.5rem; min-width:0; font-size:.85rem; }
+.lobby-page .create-game-card .room-voice-choice input{ flex:0 0 auto; margin-top:.2rem; }
 .lobby-page .create-game-card .room-voice-choice > span{ min-width:0; overflow-wrap:anywhere; }
+.lobby-page .create-game-card .room-voice-choice small{ display:block; }
 .lobby-page .create-game-card #createBtn{ grid-column:1 / -1; align-self:end; min-height:44px; }
 .lobby-page #createErr:empty{ display:none; }
 .lobby-page .player-setup-card.authenticated .auth-actions{ display:flex; flex-wrap:wrap; gap:.35rem; align-items:center; }
