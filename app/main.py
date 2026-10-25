@@ -129,6 +129,7 @@ from .product_hosts import (
     zilch_origin,
     zilch_url,
 )
+from .public_discovery import public_rank_guide, public_suite_markup
 from .public_roles import active_admin_user_ids, hydrate_admin_status
 from .push_reminders import run_daily_reminder_scheduler
 from .release_push import run_release_push_scheduler
@@ -921,7 +922,13 @@ def sitemap_xml(request: Request) -> Response:
     return Response(content=sitemap_document(origin=site_origin()), media_type="application/xml")
 
 
-def _page(filename: str) -> FileResponse:
+def _page(filename: str, request: Request | None = None) -> Response:
+    if request is not None:
+        content = (STATIC_DIR / filename).read_text(encoding="utf-8")
+        if filename == "ranks.html":
+            content = public_rank_guide(content)
+        return Response(public_suite_markup(content, request), media_type="text/html",
+                        headers={"Cache-Control": "no-cache, must-revalidate"})
     return FileResponse(
         str(STATIC_DIR / filename),
         headers={"Cache-Control": "no-cache, must-revalidate"},
@@ -1006,6 +1013,8 @@ def _embedded_zdwa_pwa_page(filename: str, *, product: str = "zilch") -> Respons
     attempting to register the Apex worker on the wrong host.
     """
     content = (STATIC_DIR / filename).read_text(encoding="utf-8")
+    if filename == "ranks.html":
+        content = public_rank_guide(content)
     content = content.replace(
         "<html ",
         '<html data-zdwa-pwa-bridge="true" ',
@@ -1115,7 +1124,7 @@ def rules_page(request: Request):
     if is_zilch_host(request):
         return _serve_zilch_shell(request, engagement_event="rules_viewed")
     record_request_engagement(request, "rules_viewed")
-    return _page("rules.html")
+    return _page("rules.html", request)
 
 
 @app.get("/spieler", include_in_schema=False)
@@ -1123,7 +1132,7 @@ def players_page(request: Request):
     if is_zilch_host(request):
         return zilch_player_search_page(request)
     record_request_engagement(request, "leaderboard_viewed")
-    return _page("players.html")
+    return _page("players.html", request)
 
 
 @app.get("/spieler/{username}", include_in_schema=False)
@@ -1138,7 +1147,7 @@ def achievement_rank_legend_page(request: Request):
     """Serve the public explanation of achievement rank badges."""
     if is_zilch_host(request):
         return RedirectResponse("/konto#achievements", status_code=308)
-    return _page("ranks.html")
+    return _page("ranks.html", request)
 
 
 @app.get("/konto", include_in_schema=False)
@@ -1231,6 +1240,10 @@ def _serve_hausdepp_page(request: Request, filename: str, *, public: bool = Fals
                                 headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"})
     if not public:
         _require_hausdepp_access(request)
+    else:
+        content = (STATIC_DIR / filename).read_text(encoding="utf-8")
+        return Response(public_suite_markup(content, request), media_type="text/html",
+                        headers={"Cache-Control": "no-store"})
     return FileResponse(str(STATIC_DIR / filename), media_type="text/html",
                         headers={"Cache-Control": "no-store", **({} if public else {"X-Robots-Tag": "noindex, nofollow"})})
 
@@ -1349,11 +1362,11 @@ def _serve_zilch_shell(request: Request, *, engagement_event: str | None = None)
             public_intro = public_intro.replace('href="/regeln"', 'href="/zilch/regeln"')
             html = html.replace("<h1>Zilch wird geladen …</h1>", public_intro, 1)
         return Response(
-            html,
+            public_suite_markup(html, request) if filename != "zilch.html" else html,
             media_type="text/html",
             headers={"Cache-Control": "no-cache, must-revalidate"},
         )
-    return _page(filename)
+    return _page(filename, request if filename != "zilch.html" else None)
 
 
 def _zilch_account_login_redirect(request: Request) -> RedirectResponse | None:
@@ -1960,10 +1973,7 @@ def root(request: Request):
     redirect = _consume_game_switch_marker(request, target="zdwa")
     if redirect:
         return redirect
-    return FileResponse(
-        str(STATIC_DIR / "index.html"),
-        headers={"Cache-Control": "no-cache, must-revalidate"},
-    )
+    return _page("index.html", request)
 
 
 class CreateReq(BaseModel):

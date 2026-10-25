@@ -9,6 +9,7 @@ from fastapi.responses import RedirectResponse, Response
 
 from .auth import resolve_session
 from .product_hosts import is_watten_host
+from .public_discovery import public_suite_markup
 from .site_seo import PUBLIC_WATTEN_DOCUMENTS
 from .watten_access import require_watten_access, watten_game_preview_enabled, watten_request_enabled
 from .watten_pwa import account_pwa_head
@@ -49,7 +50,8 @@ def _page(request: Request, filename: str, page: str, *, game_id: str = "") -> R
             rules = (_STATIC / "watten-rules.html").read_text(encoding="utf-8")
             article = re.search(r'<article lang="' + language + r'".*?</article>', rules, re.DOTALL)
             content = content.replace("{watten_rules_content}", article.group(0) if article else "")
-        content, canonical = public_watten_metadata(content, page=page, language=language)
+        content, canonical = public_watten_metadata(content, page=page, language=language, request=request)
+        content = public_suite_markup(content, request, language=language)
         headers.update({"Content-Language": language, "Link": f'<{canonical}>; rel="canonical"'})
         if is_watten_host(request):
             del headers["X-Robots-Tag"]
