@@ -36,6 +36,7 @@ self.addEventListener('fetch', event => {
   // second fetch/cache boundary. It also reuses the ordinary HTTP image cache.
   if (request.method === 'GET' && [
     '/static/hausdepp/cards-atlas.webp',
+    '/static/hausdepp/cards-lobby-atlas.webp',
     '/static/hausdepp/card-back.webp',
   ].includes(url.pathname)) return;
   // A worker registered for /hausdepp must never supply another game's

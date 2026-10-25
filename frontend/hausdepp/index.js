@@ -17,7 +17,7 @@ import { initializePushOptInPrompt } from "../shared/push-optin-prompt.js";
 import { mountLobbyChat } from "../shared/lobby-chat.js";
 import { initChat, addChatMessage } from "../room/chat.js";
 import { HAUSDEPP_MESSAGES } from "../i18n/catalog.js";
-import { cardArt, prepareCardAssets } from "./cards.js";
+import { cardArt, LOBBY_CARD_ASSET_URL, prepareCardAssets } from "./cards.js";
 import { prepareCardMotion, animateCardMotion, cardMotionCompletion, resetCardMotion, presentShuffle, cancelShuffle, launchOwnPlay, launchedCards, cancelOwnPlay, presentedPile, pileMotionPending } from "./motion.js";
 import { createGameTour } from "../shared/game-tours.js";
 import { mountPileInspector } from "./pile-inspector.js";
@@ -87,8 +87,8 @@ function cardName(card) {
   return `${t(suit)} ${t(`rank${rank}`)}`;
 }
 
-function cardMarkup(card, { interactive = false, playable = false, committed = false, launched = false, selecting = false, selected = false, sameRank = false, index = 0, count = 1 } = {}) {
-  const art = cardArt(card);
+function cardMarkup(card, { interactive = false, playable = false, committed = false, launched = false, selecting = false, selected = false, sameRank = false, index = 0, count = 1, atlasUrl } = {}) {
+  const art = cardArt(card, atlasUrl);
   const offset = index - (count - 1) / 2;
   const angle = count > 1 ? offset / Math.max((count - 1) / 2, 1) * Math.min(14, count * 3.5) : 0;
   const drop = Math.pow(Math.abs(angle) / 14, 2) * 17;
@@ -279,11 +279,12 @@ async function json(url, options) {
 
 function renderLobby() {
   gameCreator?.destroy();
+  const renderCard = card => cardMarkup(card, { atlasUrl: LOBBY_CARD_ASSET_URL });
   document.title = t("lobbyTitle");
-  root.innerHTML = `<div class="hd-lobby-layout"><section class="hd-welcome"><h1>Hausdepp</h1><p class="hd-motto">${t("motto")}</p><p class="hd-intro">${t("intro")}</p><div class="hd-lobby-cards" aria-hidden="true">${["hearts-U", "acorns-A", "hearts-10"].map(card => cardMarkup(card)).join("")}</div><a class="hd-rules-link" href="/hausdepp/regeln">${t("learnRules")} ${icon("arrow")}</a></section>
+  root.innerHTML = `<div class="hd-lobby-layout"><section class="hd-welcome"><h1>Hausdepp</h1><p class="hd-motto">${t("motto")}</p><p class="hd-intro">${t("intro")}</p><div class="hd-lobby-cards" aria-hidden="true">${["hearts-U", "acorns-A", "hearts-10"].map(renderCard).join("")}</div><a class="hd-rules-link" href="/hausdepp/regeln">${t("learnRules")} ${icon("arrow")}</a></section>
     <section class="hd-create" aria-labelledby="hausdeppStartTitle"></section></div>
     <section class="hd-rounds" aria-labelledby="hausdeppTablesTitle"><div class="hd-section-heading"><h2 id="hausdeppTablesTitle">${t("yourTables")}</h2><button id="hausdeppRefresh" class="hd-text-button" type="button">${t("refresh")}</button></div><p id="hausdeppTablesError" class="hd-table-error" role="alert" hidden></p><div id="hausdeppRounds" aria-live="polite"><p>${t("loadingTables")}</p></div><a class="hd-history-link" href="/hausdepp/konto#runden">${t("openHistory")} ${icon("arrow")}</a></section><div id="hausdeppLobbyChat" class="hd-lobby-chat"></div>${footer()}`;
-  stopLobbyDemo = mountLobbyDemo(root.querySelector(".hd-lobby-cards"), card => cardMarkup(card));
+  stopLobbyDemo = mountLobbyDemo(root.querySelector(".hd-lobby-cards"), renderCard);
   if (!auth.authenticated) {
     root.querySelector(".hd-create").innerHTML = `<h2 id="hausdeppStartTitle">${t("publicJoinTitle")}</h2><p>${t("publicJoinBody")}</p><div class="hd-onboarding-actions"><a id="hausdeppSignIn" class="hd-primary" href="${signInUrl()}">${t("signIn")} ${icon("arrow")}</a><a id="hausdeppRegister" class="hd-secondary" href="${signInUrl({ register: true })}">${t("createAccount")}</a></div><p class="hd-fine">${t("sharedAccountHint")}</p>${authUnavailable ? `<p class="hd-error" role="status">${t("authUnavailable")}</p>` : ""}`;
     root.querySelector(".hd-rounds").remove();
@@ -1651,7 +1652,6 @@ async function start() {
     if (page === "table") {
       try { await prepareCardAssets(); } catch { throw new Error(t("cardsLoadFailed")); }
     }
-    else if (page === "lobby") void prepareCardAssets().catch(() => {});
     if (page === "rules") renderRules(); else if (page === "settings") renderAccountSettings(root, auth, { onUserChanged: data => { auth = data; header(); } }); else if (page === "account") renderAccount(); else if (page === "leaderboard") renderLeaderboard(); else if (page === "table") renderTableShell(); else renderLobby();
     if (page === "lobby" || page === "table") invitations = mountInvitations(root, t);
     document.body.classList.remove("hd-loading");
