@@ -204,8 +204,8 @@ function pendingMarkup(progress) {
   const matchXP = pending.credits.reduce((sum, item) => sum + item.xp, 0);
   const awardXP = pending.achievements.reduce((sum, item) => sum + item.xp, 0);
   const names = new Map(progress.achievements.filter(item => item.unlocked).map(item => [item.id, localText(item.name)]));
-  return `<p>${esc(t("pendingMatches", { count: pending.credits.length, xp: number(matchXP) }))}</p>
-    <p>${esc(t("pendingAwards", { count: pending.achievements.length, xp: number(awardXP) }))}</p>
+  return `<p>${esc(t(pending.credits.length === 1 ? "pendingMatch" : "pendingMatches", { count: pending.credits.length, xp: number(matchXP) }))}</p>
+    <p>${esc(t(pending.achievements.length === 1 ? "pendingAward" : "pendingAwards", { count: pending.achievements.length, xp: number(awardXP) }))}</p>
     ${pending.achievements.length ? `<ul>${pending.achievements.map(item => `<li>${esc(names.get(item.id) || t("archivedAchievement"))} · ${esc(number(item.xp))} XP</li>`).join("")}</ul>` : ""}
     <button type="button" data-progress-action="acknowledge">${esc(t("acknowledge"))}</button>`;
 }
