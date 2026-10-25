@@ -2823,6 +2823,23 @@ ist eine Spracheinstellung, keine eigene indexierte Sprachadresse.
 
 Details: [Zilch SEO review](docs/ZILCH_SEO_REVIEW_2026-09-12.md).
 
+**Suite discovery / Auffindbarkeit:** Public pages link directly to the games
+whose public access is enabled. The shared structured data follows the same
+availability flags. ZDWA's rank guide renders the published catalogue thresholds
+on the server; the player page explains rankings without publishing additional
+personal data. Core rules precede optional app help. These changes do not open
+private APIs, accounts or tables to crawlers. Watten retains real DE/EN URLs;
+the other games keep their existing language-selection model.
+
+Öffentliche Seiten verlinken direkt auf die freigegebenen Spiele; strukturierte
+Daten berücksichtigen dieselben Freigaben. ZDWA liefert die veröffentlichten
+Rangschwellen bereits serverseitig, und die Spielerseite erklärt das Ranking,
+ohne zusätzliche persönliche Daten zu veröffentlichen. Kernregeln stehen vor
+optionaler Bedienungshilfe. Private APIs, Konten und Tische bleiben geschützt.
+Watten behält seine echten DE/EN-Adressen, die anderen Spiele ihre bestehende
+Sprachwahl. Inhalte werden nach hilfreichen Antworten geprüft, nicht nach einer
+künstlichen Mindestwortzahl.
+
 ### Zilch recommendation tiles
 
 Quick-hold tiles have 56px minimum touch targets (about 27% larger), clearer

@@ -23,6 +23,48 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 4.5.0 — 2026-10-25
+
+### MOBILE SPIELTISCHE / MOBILE TABLES
+
+**Deutsch:** Watten hält Spielstand, Handkarten, Ansagen und Antworten auf
+kleinen Bildschirmen klar auseinander. Im schmalen Querformat lässt sich der
+Kopfbereich öffnen, während Punkte und Ziel sichtbar bleiben. Beim Einschauen
+liegen beide Karten auf der Verbindung zwischen den beteiligten Spielern;
+die eigene Karte startet an der passenden Aussenkante des Blatts. Der Rechte
+bleibt lesbar. Eine abgelehnte Retourschneider-Anfrage verschwindet nicht mehr
+ohne Rückmeldung. Computer folgen dabei dem menschlichen Teamentscheid;
+reine Computerteams erhalten kein Angebot. Die Tischdekoration bietet dieselben
+Interaktionen wie Hausdepp. ZDWA stellt die Sprachchat-Auswahl beim Erstellen
+eines Spiels mobil übersichtlich dar. Watten zeigt verfügbare Updates auch am
+Spieltisch an.
+
+**English:** Watten keeps scores, cards, calls and responses clear on small
+screens. A compact landscape header expands while scores and the target remain
+visible. During inspection, both cards follow the line between the calling
+players; your card starts at the appropriate outer edge of your hand. The
+Rechter stays readable. Declined Retourschneider requests retain clear feedback.
+Computers follow their human teammate's decision; CPU-only teams receive no
+offer. Table decorations provide the same interactions as Hausdepp. ZDWA keeps
+the voice-chat choice tidy when creating a game on mobile. Watten also shows
+available updates at the table.
+
+### REGELN UND AUFFINDBARKEIT / RULES AND DISCOVERY
+
+**Deutsch:** Die öffentlichen Spielseiten verknüpfen die freigegebenen Spiele
+direkt. Rangschwellen und die Erklärung des ZDWA-Rankings bleiben bereits ohne
+JavaScript lesbar. Spielregeln stehen vor optionaler Bedienungshilfe; Hausdepp
+erklärt Austeilen, Start und Zocken schon im ursprünglichen HTML. Sprachangaben,
+Suchmetadaten und die vier Spiele bleiben aufeinander abgestimmt. Private
+Konten und Tische bleiben von der Indexierung ausgeschlossen.
+
+**English:** Public pages link directly to the publicly available games. Rank
+thresholds and the ZDWA ranking explanation are readable before JavaScript runs.
+Core rules precede optional interface help; Hausdepp explains dealing, the first
+turn and gambling in the initial HTML. Language information, search metadata
+and the four games stay consistent. Private accounts and tables remain excluded
+from indexing.
+
 ## 4.4.0 — 2026-10-25
 
 ### ZDWA / AUDIO-NUTZUNG / VOICE ACTIVITY
