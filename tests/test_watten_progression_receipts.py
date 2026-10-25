@@ -27,6 +27,13 @@ from app.models import (
     WattenMatchPresentationAck,
     WattenProgressState,
 )
+from app.watten_account import build_watten_account, build_watten_account_in_session
+from app.watten_progress_presentations import (
+    apply_match_receipts,
+    apply_match_receipts_in_session,
+    match_presentation,
+    match_presentation_in_session,
+)
 from app.watten_progression import DRAFT_CATALOG_VERSION
 from app.watten_progression_store import acknowledge_draft_progress, store_draft_match
 from tests import test_watten_runtime as runtime_tests
@@ -64,6 +71,48 @@ def two_matches(server):
 
 def journal_snapshot(db):
     return tuple(tuple(db.execute(select(model.__table__))) for model in JOURNAL_MODELS)
+
+
+def test_caller_session_account_and_presentations_observe_only_explicit_local_receipt(two_matches, monkeypatch):
+    own, _foreign, old, new = two_matches
+    account = build_watten_account(own)
+    expected = apply_match_receipts(account, user_id=own)
+    match = match_presentation(account, user_id=own, game_id="receipt-new")
+    with session_scope() as db:
+        before = journal_snapshot(db)
+        before_receipts = tuple(db.execute(select(WattenMatchPresentationAck.__table__)))
+    with pytest.raises(RuntimeError, match="rollback outer transaction"), session_scope() as db:
+        def no_nested_session():
+            raise AssertionError("nested account/presentation transaction")
+        with monkeypatch.context() as patches:
+            patches.setattr("app.watten_account.session_scope", no_nested_session)
+            patches.setattr("app.watten_progress_presentations.session_scope", no_nested_session)
+            projected = build_watten_account_in_session(db, own)
+            assert projected == account
+            assert apply_match_receipts_in_session(db, projected, user_id=own) == expected
+            assert match_presentation_in_session(db, projected, user_id=own, game_id="receipt-new") == match
+            assert journal_snapshot(db) == before
+            assert tuple(db.execute(select(WattenMatchPresentationAck.__table__))) == before_receipts
+            with pytest.raises(ValueError, match="not_found"):
+                match_presentation_in_session(db, projected, user_id=own, game_id="receipt-foreign")
+            # A caller's still-uncommitted explicit ACK is visible to these reads,
+            # while the account/global revision and the other match stay unseen.
+            receipts.acknowledge_match_presentation(db, user_id=own, generation=1,
+                                                  game_id="receipt-new", through_sequence=max(new))
+            filtered = apply_match_receipts_in_session(db, projected, user_id=own)
+            assert filtered["progress"]["grant_sequence"] == account["progress"]["grant_sequence"]
+            assert {item["game_id"] for item in filtered["progress"]["pending"]["credits"]} == {"receipt-old"}
+            assert match_presentation_in_session(db, projected, user_id=own,
+                                                 game_id="receipt-new")["through_sequence"] == 0
+            assert match_presentation_in_session(db, projected, user_id=own,
+                                                 game_id="receipt-old")["through_sequence"] == max(old)
+            assert projected == account  # filtering owns a copy, never the source projection
+            assert journal_snapshot(db) == before
+            raise RuntimeError("rollback outer transaction")
+    with session_scope() as db:
+        assert journal_snapshot(db) == before
+        assert tuple(db.execute(select(WattenMatchPresentationAck.__table__))) == before_receipts
+    assert apply_match_receipts(account, user_id=own) == expected
 
 
 def test_new_match_ack_never_hides_older_unshown_events_or_changes_global_cursor(two_matches):
