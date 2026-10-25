@@ -175,15 +175,31 @@ html[data-game="watten"][data-watten-active="true"] .wt-bloedeln-dock :is(.wt-pr
     left: calc(var(--wt-rail-width) + 12px); right: auto;
   }
 }
-/* A passive bid sentence and an active answer have different heights. On a
-   short rail table both grow upwards from the same painted-hand clearance;
-   centring either at half the viewport sends the taller answer into cards. */
-@media (orientation: landscape) and (max-height: 360px) and (max-width: 720px) {
+/* A passive bid sentence and an active answer have different heights. Both
+   grow upwards from the painted-hand clearance. Active answers share one
+   header row, leaving a complete 44px choice row between the two hands. */
+@media (orientation: landscape) and (max-height: 700px) {
   html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"][data-phase="bid_response"] > .wt-end-sheet > .wt-panel:has(> .wt-bid) {
-    --wt-bid-hand-clearance: calc(56px + var(--wt-hand-w) * 1.7 + env(safe-area-inset-bottom, 0px));
+    --wt-bid-hand-clearance: calc(48px + var(--wt-hand-w) * 1.7 + env(safe-area-inset-bottom, 0px));
     top: auto; bottom: var(--wt-bid-hand-clearance); translate: -50% 0;
     max-height: calc(var(--game-viewport-height, 100dvh) - var(--wt-bid-hand-clearance) - 8px);
-    overflow: auto;
+    padding: 4px 10px 8px; overflow: auto;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"][data-phase="bid_response"] .wt-bid:has(> .wt-choice-row) {
+    display: grid; grid-template-columns: max-content minmax(0, 1fr); align-items: center; gap: 4px 6px;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"][data-phase="bid_response"] .wt-bid:has(> .wt-choice-row) > h3 {
+    grid-column: 1; grid-row: 1; margin: 0; font-size: .85rem; line-height: 1.2;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"][data-phase="bid_response"] .wt-bid:has(> .wt-choice-row) > .wt-partner-advice {
+    grid-column: 2; grid-row: 1; min-width: 0; margin: 0; padding: 1px 4px;
+    font-size: .75rem; line-height: 1.2;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"][data-phase="bid_response"] .wt-bid > .wt-choice-row {
+    grid-column: 1 / -1; grid-row: 2; margin: 0;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"][data-phase="bid_response"] .wt-bid > .wt-choice-row > button {
+    min-height: 44px;
   }
 }
 /* On narrow portrait tablets, the outer card paints five pixels into the
