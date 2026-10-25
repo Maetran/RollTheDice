@@ -289,6 +289,7 @@ def test_state_and_idempotency_journal_remain_bounded_after_long_use(room):
 
 def test_reconnect_and_restart_keep_shared_state_and_deduplicate_previous_delivery(room):
     game = make_room(room, wanted="nuts")
+    save_active_game(game, creating=True)  # Explicit new durable fixture, before cosmetic actions.
     key, _ = food(game)
     use(seated(game), key, action_id="before-restart")
     before = deepcopy(props.table_props_projection(game))
@@ -379,6 +380,7 @@ def test_spill_is_shared_and_another_player_can_complete_one_wipe(room):
 
 def test_lantern_relights_from_server_deadline_after_restart_without_new_card_actions(room):
     game = make_room(room, wanted="lantern")
+    save_active_game(game, creating=True)
     before = deepcopy(game["_hausdepp"])
     use(seated(game), "lantern", operation="shake")
     shaken = props.table_props_projection(game)["objects"]["lantern"]

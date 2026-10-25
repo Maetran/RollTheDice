@@ -216,7 +216,8 @@ class ZdwaVoiceTests(unittest.IsolatedAsyncioTestCase):
         socket = self.sessions[0].websocket
         socket.frames = [{"action": "hausdepp_voice", "request_id": "wrong", "operation": "join"},
                          {"action": "zdwa_voice", "request_id": "right", "operation": "state"}]
-        with patch("app.game_websocket.user_play_banned", return_value=False):
+        with patch("app.game_websocket.user_play_banned", return_value=False), \
+                patch("app.game_websocket.resolve_session", side_effect=lambda connection: connection.identity):
             with self.assertRaises(WebSocketDisconnect):
                 await _receive_messages(self.sessions[0], limiter=MessageRateLimiter(), finalize_game=lambda _game: None)
         self.assertTrue(any(message.get("zdwa_voice", {}).get("request_id") == "right" for message in socket.messages))
