@@ -16,14 +16,15 @@ export function createCompactHeader({ header = document.querySelector(".wt-heade
   if (!previousId) header.id = "wattenCompactHeader";
   button.setAttribute("aria-controls", header.id);
   header.prepend(button);
-  const content = [...header.children].filter(node => node !== button);
-  const originals = content.map(node => ({ node, inert: node.inert, hidden: node.getAttribute("aria-hidden") }));
+  const content = () => [...header.children].filter(node => node.matches(".suite-header__brand, .suite-header__tools, .wt-nav"));
+  const managed = new Map();
   let open = false, compact = false, suspended = false, destroyed = false;
   const listeners = new AbortController();
 
   function sync() {
     if (destroyed) return;
     const wasCompact = compact;
+    const nodes = content(), hadContentFocus = nodes.some(node => node.contains(dom.activeElement));
     compact = !suspended && media.matches && html.dataset.wattenActive === "true";
     if (!compact) open = false;
     button.hidden = !compact;
@@ -38,15 +39,23 @@ export function createCompactHeader({ header = document.querySelector(".wt-heade
       delete html.dataset.wtCompactHeader;
       delete html.dataset.wtHeaderOpen;
     }
-    for (const { node, inert, hidden } of originals) {
-      node.inert = compact && !open || inert;
-      if (compact && !open) node.setAttribute("aria-hidden", "true");
-      else if (hidden === null) node.removeAttribute("aria-hidden");
-      else node.setAttribute("aria-hidden", hidden);
+    if (compact && !open) {
+      for (const node of nodes) {
+        if (!managed.has(node)) managed.set(node, { inert: node.inert, hidden: node.getAttribute("aria-hidden") });
+        node.inert = true;
+        node.setAttribute("aria-hidden", "true");
+      }
+    } else {
+      for (const [node, { inert, hidden }] of managed) {
+        node.inert = inert;
+        if (hidden === null) node.removeAttribute("aria-hidden");
+        else node.setAttribute("aria-hidden", hidden);
+      }
+      managed.clear();
     }
     // Rotation must not leave keyboard focus inside newly collapsed controls
     // or on a toggle that has just disappeared into the normal header.
-    if (compact && !open && content.some(node => node.contains(dom.activeElement))) button.focus({ preventScroll: true });
+    if (compact && !open && hadContentFocus) button.focus({ preventScroll: true });
     else if (wasCompact && !compact && dom.activeElement === button && !suspended) {
       header.querySelector(".suite-header__brand")?.focus({ preventScroll: true });
     }

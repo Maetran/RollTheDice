@@ -255,7 +255,9 @@ html[data-game="watten"][data-watten-active="true"] .wt-bloedeln-dock :is(.wt-pr
   }
   html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] .wt-header .suite-header__icon { width: 20px; height: 20px; }
   html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"][data-wt-header-open="true"] .wt-header .suite-header__tools { display: contents; }
-  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"][data-wt-header-open="true"] .wt-header .wt-nav { display: flex; }
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"][data-wt-header-open="true"] .wt-header .wt-language { grid-column: 1; grid-row: 2; }
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"][data-wt-header-open="true"] .wt-header [data-game-picker] { grid-column: 2; grid-row: 2; }
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"][data-wt-header-open="true"] .wt-header .wt-nav { display: flex; grid-column: 3; grid-row: 2; }
   html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] .wt-topbar {
     position: fixed; left: calc(56px + var(--wt-rail-inset)); right: auto; top: 4px;
     width: 156px; height: auto; padding: 0 6px; z-index: 62;
@@ -265,10 +267,34 @@ html[data-game="watten"][data-watten-active="true"] .wt-bloedeln-dock :is(.wt-pr
   }
   html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] [data-watten-sound] { left: calc(4px + var(--wt-rail-inset)); top: 56px; }
   html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"][data-wt-header-open="true"] [data-watten-sound] { top: 104px; }
+  /* The collapsed points occupy the upper left wood. Give the reference its
+     own opposite corner, and keep the stake/review row below both side fans. */
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] .wt-table .wt-reference {
+    left: auto; right: max(12px, env(safe-area-inset-right, 0px)); top: 8px;
+  }
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] .wt-table:not([data-phase="match_complete"][data-round-stage="ready"]) .wt-end-sheet > .wt-stake {
+    inset: auto auto calc(62px + env(safe-area-inset-bottom, 0px)) calc(6px + var(--wt-rail-inset));
+    width: 144px; max-width: none; height: 44px;
+  }
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] .wt-table:not([data-phase="match_complete"][data-round-stage="ready"]):has(> .wt-end-sheet > [data-wt-history]:not([hidden]):not([open])) .wt-end-sheet > .wt-stake {
+    width: 68px;
+  }
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] .wt-table:has(> .wt-end-sheet > [data-wt-history]:not([hidden]):not([open])) .wt-stake > button {
+    display: grid; grid-template-columns: auto auto; gap: 0 2px; padding: 3px 4px;
+  }
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] .wt-table:has(> .wt-end-sheet > [data-wt-history]:not([hidden]):not([open])) .wt-stake > button > strong { font-size: 1.1rem; }
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] .wt-table:has(> .wt-end-sheet > [data-wt-history]:not([hidden]):not([open])) .wt-stake > button > span { font-size: .65rem; }
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] .wt-table:has(> .wt-end-sheet > [data-wt-history]:not([hidden]):not([open])) .wt-stake > button > .wt-stake-action {
+    grid-column: 1 / -1; margin-left: 0;
+  }
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] .wt-table:not([data-phase="match_complete"][data-round-stage="ready"]) .wt-end-sheet > .wt-history-box:not([open]) {
+    inset: auto auto calc(62px + env(safe-area-inset-bottom, 0px)) calc(80px + var(--wt-rail-inset));
+    width: 68px; max-width: 68px; height: 44px; padding-inline: 4px;
+  }
   /* The wider wood leaves a slot between the opposite fan, its passive
      status and the own hand. Keep the caller line and footer buttons clear. */
-  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] .wt-table[data-wt-caller-axis="bottom-right"] .wt-inspection > button,
-  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] .wt-table[data-wt-caller-axis="bottom-right"] .wt-end-sheet > .wt-panel > .wt-announce:has(> [data-watten-action="show_ready"]) {
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] .wt-table[data-wt-caller-axis="bottom-right"]:not([data-phase="match_complete"][data-round-stage="ready"]) .wt-inspection > button,
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] .wt-table[data-wt-caller-axis="bottom-right"]:not([data-phase="match_complete"][data-round-stage="ready"]) .wt-end-sheet > .wt-panel > .wt-announce:has(> [data-watten-action="show_ready"]) {
     left: calc(var(--wt-rail-width) + 88px); right: auto;
     bottom: calc(58px + env(safe-area-inset-bottom, 0px));
   }
