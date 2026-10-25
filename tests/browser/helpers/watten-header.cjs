@@ -1,6 +1,14 @@
 const { expect } = require('@playwright/test');
 
 async function expectTableHeaderReachable(page) {
+  // matchMedia changes and its disclosure callback arrive asynchronously on
+  // rotation. Read visibility expectations only after that transition settles.
+  await expect.poll(() => page.evaluate(() => {
+    const html = document.documentElement;
+    const expected = html.dataset.wattenActive === 'true'
+      && matchMedia('(orientation: landscape) and (max-width: 720px) and (max-height: 360px)').matches;
+    return (html.dataset.wtCompactHeader === 'true') === expected;
+  })).toBe(true);
   const language = await page.locator('html').getAttribute('lang');
   const rulesPath = language === 'en' ? '/watten/regeln?lang=en' : '/watten/regeln';
   const compact = await page.locator('html').getAttribute('data-wt-compact-header') === 'true';
