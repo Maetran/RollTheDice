@@ -506,7 +506,9 @@ function historyMarkup(vm, pinned) {
     : vm.engine.last_trick ? [vm.engine.last_trick] : []).slice(-5);
   const finished = ["deal_complete", "match_complete"].includes(vm.engine.phase);
   if (!history.length && !finished) return "";
-  return `<summary>${esc(t(finished ? "history.round" : Array.isArray(vm.engine.trick_history) ? "history.title" : "history.last", { count: history.length }))}</summary>
+  const label = t(finished ? "history.round" : Array.isArray(vm.engine.trick_history) ? "history.title" : "history.last", { count: history.length });
+  const shortLabel = finished || Array.isArray(vm.engine.trick_history) ? t("history.short", { count: history.length }) : label;
+  return `<summary aria-label="${esc(label)}"><span class="wt-history-label-full">${esc(label)}</span><span class="wt-history-label-short" aria-hidden="true">${esc(shortLabel)}</span></summary>
     <button type="button" class="wt-history-close" data-wt-history-close aria-label="${esc(t("history.close"))}" title="${esc(t("history.close"))}"><span aria-hidden="true">×</span></button>
     ${finished ? "" : `<label class="wt-history-pin" title="${esc(t("history.pin"))}"><input type="checkbox" data-wt-history-pin aria-label="${esc(t("history.pin"))}" ${pinned ? "checked" : ""}><span class="wt-history-pin-symbol" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M7 4h10v16l-5-3-5 3z"/></svg></span><span class="wt-history-pin-copy">${esc(t("history.pin"))}</span></label>`}
     ${history.length ? `<ol class="wt-history">${history.map(trick => `

@@ -210,6 +210,25 @@ for (const language of ['de', 'en']) for (const viewport of VIEWPORTS) test(`${l
         await choices.first().focus();
         await page.keyboard.press('Tab'); await expect(choices.last()).toBeFocused();
         if (viewport.width <= 350 && viewport.width < viewport.height) {
+          const historySummary = page.locator('[data-layout-followup] [data-wt-history] > summary');
+          const compactHistory = historySummary.locator('.wt-history-label-short');
+          await expect(compactHistory).toBeVisible();
+          await expect(compactHistory).toHaveText(language === 'de' ? 'Verlauf (1)' : 'History (1)');
+          await expect(historySummary).toHaveAccessibleName(language === 'de' ? 'Rundenverlauf (1)' : 'Round history (1)');
+          const historyTextFit = await compactHistory.evaluate(label => {
+            const summary = label.closest('summary'), history = summary.parentElement;
+            const bounds = summary.getBoundingClientRect(), clip = history.getBoundingClientRect();
+            const range = document.createRange(); range.selectNodeContents(label);
+            const rects = [...range.getClientRects()];
+            return { width: bounds.width, height: bounds.height,
+              textFits: rects.length > 0 && rects.every(rect => rect.left >= Math.max(bounds.left, clip.left) - 1
+                && rect.right <= Math.min(bounds.right, clip.right) + 1
+                && rect.top >= Math.max(bounds.top, clip.top) - 1
+                && rect.bottom <= Math.min(bounds.bottom, clip.bottom) + 1) };
+          });
+          expect(historyTextFit.width).toBeGreaterThanOrEqual(44);
+          expect(historyTextFit.height).toBeGreaterThanOrEqual(44);
+          expect(historyTextFit.textFits).toBe(true);
           await expect(page.locator('[data-layout-followup] [data-wt-panel]')).toHaveAttribute('data-wt-retour-fit', 'clear');
           const errors = await page.evaluate(() => {
             const root = window.followup.root, panel = root.querySelector('[data-wt-panel]'), area = panel.getBoundingClientRect();

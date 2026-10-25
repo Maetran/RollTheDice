@@ -288,6 +288,12 @@ Anheftschalter; Schlag, Farbe und der Rechte bleiben für alle aufgedeckt.
 Gewonnene Stichpakete bleiben pro Spieler direkt neben seinem Namen sichtbar.
 Das Kreuz schliesst die Rückschau und löst ihre Anheftung; ungepinnt schliesst
 sie auch beim Antippen ausserhalb.
+
+Auf sehr kleinen Hochformat-Handys heisst der geschlossene Vierer-Verlauf kurz «Verlauf»
+mit Stichzahl; der vollständige Name bleibt für Vorlesehilfen erhalten.
+**English:** On very small portrait phones, the closed four-player review uses “History”
+with its trick count, while assistive technology retains the full name.
+
 Ansager sind am Spielernamen mit «Schlag» oder «Farbe» markiert. «Danke!» erscheint
 grösser und bleibt höchstens bis zum Abschluss des ersten Stichs sichtbar. Einsatz und Bieten stehen
 im Hochformat bei den eigenen Karten, im mobilen Querformat in der linken

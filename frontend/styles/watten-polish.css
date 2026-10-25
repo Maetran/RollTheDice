@@ -158,6 +158,7 @@ html[data-watten-active="true"] .wt-table:not([data-phase="match_complete"][data
   background: #fff1dfe8; padding: 0 12px;
 }
 html[data-watten-active="true"] .wt-history-box summary { min-height: 44px; font-size: .9rem; }
+html[data-watten-active="true"] .wt-history-label-short { display: none; }
 html[data-watten-active="true"] .wt-table:not([data-phase="match_complete"][data-round-stage="ready"]) .wt-history-box[open] {
   width: 100%; height: min(40dvh, 320px); min-height: 152px; overflow: hidden; background: #fff3e1;
 }

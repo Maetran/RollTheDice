@@ -9,6 +9,10 @@ html[data-game="watten"][data-watten-active="true"] .wt-bloedeln-dock :is(.wt-pr
    Its original central lane must survive the right-hand action dock: that
    dock starts 120px from the left (96px identity plus the two 12px gaps). */
 @media (orientation: portrait) and (max-width: 350px) and (max-height: 700px) {
+  /* Keep the complete label inside the existing narrow review slot. The
+     expanded review and accessible name retain the full description. */
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"] .wt-history-box:not([open]) > summary .wt-history-label-full { display: none; }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"] .wt-history-box:not([open]) > summary .wt-history-label-short { display: inline; }
   /* A pending Retour owns a measured wood slot. The complete conditions can
      scroll independently while its native 44px decisions stay in view. */
   html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"] > .wt-end-sheet > .wt-panel[data-wt-portrait-retour] {
