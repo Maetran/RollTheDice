@@ -4,8 +4,8 @@ const { test, expect } = require('@playwright/test');
 test.use({ serviceWorkers: 'block', viewport: { width: 390, height: 844 } });
 test.beforeAll(({ baseURL }) => expect(['8000', '8001']).not.toContain(new URL(baseURL).port));
 
-async function setup(page, language = 'de') {
-  const login = await page.request.post('/api/auth/login', { data: { username: 'Admin', password: 'temporary-password-123' } });
+async function setup(page, language = 'de', credentials = { username: 'Admin', password: 'temporary-password-123' }) {
+  const login = await page.request.post('/api/auth/login', { data: credentials });
   expect(login.ok()).toBeTruthy();
   const user = (await login.json()).user;
   const headers = { 'X-CSRF-Token': user.csrf_token };
@@ -36,6 +36,26 @@ async function setup(page, language = 'de') {
     return (await response.json()).game_id;
   }
   return { user, create, actions, connections, queue(value) { queue = value; }, fail(value) { failures = value; } };
+}
+
+async function receiptAccount(page, language) {
+  const admin = await page.request.post('/api/auth/login', { data: { username: 'Admin', password: 'temporary-password-123' } });
+  expect(admin.ok()).toBeTruthy();
+  const username = `RematchReceipt_${language}`, temporary = 'rematch-receipt-temporary-123', password = 'rematch-receipt-final-123';
+  const created = await page.request.post('/api/admin/users', {
+    headers: { 'X-CSRF-Token': (await admin.json()).user.csrf_token },
+    data: { username, temporary_password: temporary, role: 'user' },
+  });
+  expect(created.status()).toBe(201);
+  const login = await page.request.post('/api/auth/login', { data: { username, password: temporary } });
+  expect(login.ok()).toBeTruthy();
+  const user = (await login.json()).user;
+  expect(user.must_change_password).toBe(true);
+  const changed = await page.request.post('/api/auth/change-password', {
+    headers: { 'X-CSRF-Token': user.csrf_token }, data: { current_password: temporary, new_password: password },
+  });
+  expect(changed.status()).toBe(200);
+  return { username, password };
 }
 
 const invitation = id => ({ id: 'a'.repeat(32), game_id: id, url: 'https://external.invalid/',
@@ -431,7 +451,8 @@ test('a new round cancels a pending final result instead of covering the live ta
 
 for (const language of ['de', 'en']) {
   test(`${language}: round progress needs no extra button, stays visible and silently retries on the next visit`, async ({ page }) => {
-    const fixture = await setup(page, language);
+    const fixture = await setup(page, language, await receiptAccount(page, language));
+    expect(fixture.user.must_change_password).toBe(false);
     const account = await (await page.request.get('/api/hausdepp/account')).json();
     const revision = 9001;
     account.history = { rounds: [{ game_id: 'visible-round-receipt' }] };
