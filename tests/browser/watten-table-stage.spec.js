@@ -106,6 +106,24 @@ async function expectStage(item, count) {
   const backCount = engine.seats.filter(seat => seat.seat !== ownSeat).reduce((sum, seat) => sum + seat.card_count, 0);
   await expect(page.locator('.wt-backs > i:not([hidden])')).toHaveCount(backCount);
   await expect(page.locator('[data-wt-hand] button')).toHaveCount(engine.hand.length);
+  const advice = page.locator('[data-watten-partner-advice]');
+  if (await advice.count()) {
+    await expect(advice).toBeVisible();
+    await expect.poll(() => advice.evaluate(node => {
+      const bounds = node.getBoundingClientRect();
+      const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
+      const failures = [];
+      for (let text = walker.nextNode(); text; text = walker.nextNode()) {
+        // A long name has its full accessible title and an intentional
+        // ellipsis. The advice itself must remain completely readable.
+        if (!text.textContent.trim() || text.parentElement.closest('.wt-advice-name')) continue;
+        const range = document.createRange(); range.selectNodeContents(text);
+        for (const box of range.getClientRects()) if (box.left < bounds.left - 1 || box.right > bounds.right + 1
+          || box.top < bounds.top - 1 || box.bottom > bounds.bottom + 1) failures.push('partner advice is clipped');
+      }
+      return failures;
+    }), { message: 'the complete partner advice remains readable beside all three full-size decisions' }).toEqual([]);
+  }
   for (const seat of engine.seats) {
     const pile = page.locator(`[data-wt-catch="${seat.seat}"]`);
     await expect(pile).toHaveAttribute('data-count', String(seat.tricks_won));

@@ -54,6 +54,19 @@ html[data-game="watten"][data-watten-active="true"] .wt-bloedeln-dock :is(.wt-pr
   html[data-game="watten"][data-watten-active="true"] .wt-table[data-count][data-phase="bid_response"] > .wt-end-sheet > .wt-panel:has(.wt-bid .wt-choice-row) {
     width: 100%; max-width: 100%;
   }
+  /* The received advice belongs beside the decisions. Bound only its name
+     chip and trim decorative spacing so complete advice never raises the
+     three 44px choices into the neighbouring opponent fan. */
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-phase="bid_response"] .wt-bid:has(> .wt-choice-row) {
+    border-left: 0; padding-left: 0;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-phase="bid_response"] .wt-bid:has(> .wt-choice-row) > h3 {
+    margin: 0 0 4px;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-phase="bid_response"] .wt-bid > .wt-partner-advice {
+    margin: 0 0 4px; padding: 3px 6px; line-height: 1.25;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-phase="bid_response"] .wt-advice-name { max-width: 7ch; }
   html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"] > .wt-bloedeln-dock {
     left: auto; right: 12px; bottom: var(--wt-own-hand-clearance);
     width: var(--wt-own-action-width);
