@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
 
+from .dice_progress import origin_users
 from .game_types import DEFAULT_GAME_TYPE, ZILCH_GAME_TYPE
 from .models import CompletedGame, GameParticipant, User
 from .security import as_utc, utcnow
@@ -38,6 +39,10 @@ def cross_game_activity_for_user(
     user: User,
     *,
     excluded_completed_game_id: int | None = None,
+    origin_ids=None,
+    game_ceiling=None,
+    marker_overrides=None,
+    recorded_through=None,
 ) -> CrossGameActivity:
     """Return the current same-day ZDWA/Zilch progress for ``user``.
 
@@ -46,23 +51,33 @@ def cross_game_activity_for_user(
     of the established ZDWA achievement synchronizer.
     """
 
-    started_at = as_utc(user.achievement_cross_game_started_at or utcnow())
+    users = origin_users(db, user.id, origin_ids=origin_ids)
     statement = (
-        select(CompletedGame)
+        select(CompletedGame, GameParticipant.user_id)
         .join(GameParticipant, GameParticipant.game_id == CompletedGame.id)
         .where(
-            GameParticipant.user_id == user.id,
+            GameParticipant.user_id.in_(tuple(users)),
             CompletedGame.game_type.in_(_GAME_TYPES),
             CompletedGame.imported_from_legacy.is_(False),
-            CompletedGame.finished_at >= started_at,
         )
         .order_by(CompletedGame.finished_at, CompletedGame.id)
     )
     if excluded_completed_game_id is not None:
         statement = statement.where(CompletedGame.id != int(excluded_completed_game_id))
+    if game_ceiling is not None:
+        statement = statement.where(CompletedGame.id <= game_ceiling)
+    if recorded_through is not None:
+        statement = statement.where(CompletedGame.created_at <= recorded_through,
+                                    (GameParticipant.assigned_at.is_(None)) | (GameParticipant.assigned_at <= recorded_through))
 
     games_by_day: dict[date, dict[str, CompletedGame]] = {}
-    for game in db.scalars(statement):
+    for game, original_id in db.execute(statement):
+        marker = (marker_overrides or {}).get(str(original_id), {}).get(
+            "achievement_cross_game_started_at", users[original_id].achievement_cross_game_started_at,
+        )
+        cutoff = datetime.fromisoformat(marker) if isinstance(marker, str) else marker or utcnow()
+        if as_utc(game.finished_at) < as_utc(cutoff):
+            continue
         local_day = as_utc(game.finished_at).astimezone(ZURICH).date()
         games_for_day = games_by_day.setdefault(local_day, {})
         previous = games_for_day.get(str(game.game_type))

@@ -17,6 +17,7 @@ from sqlalchemy import select
 
 from .active_games import delete_active_game
 from .database import database_schema_ready, session_scope
+from .dice_progress import origin_ids_for_progress
 from .game_history import CompletedGameWriteResult, persist_completed_game_result
 from .game_types import ZILCH_GAME_TYPE, game_type_from_state
 from .models import CompletedGame, GameParticipant
@@ -1293,11 +1294,10 @@ def load_zilch_result_for_user_in_session(db, game_id: str, user_id: int) -> dic
     """
     row = db.scalar(
         select(CompletedGame)
-        .join(GameParticipant, GameParticipant.game_id == CompletedGame.id)
         .where(
             CompletedGame.game_id == str(game_id),
             CompletedGame.game_type == ZILCH_GAME_TYPE,
-            GameParticipant.user_id == int(user_id),
+            CompletedGame.participants.any(GameParticipant.user_id.in_(origin_ids_for_progress(db, int(user_id)))),
         )
     )
     payload = _stored_payload(row) if row is not None else None
@@ -1322,10 +1322,9 @@ def list_zilch_results_for_user_in_session(db, user_id: int, *, limit: int = 30)
     clean_limit = max(1, min(int(limit), 100))
     rows = db.scalars(
         select(CompletedGame)
-        .join(GameParticipant, GameParticipant.game_id == CompletedGame.id)
         .where(
             CompletedGame.game_type == ZILCH_GAME_TYPE,
-            GameParticipant.user_id == int(user_id),
+            CompletedGame.participants.any(GameParticipant.user_id.in_(origin_ids_for_progress(db, int(user_id)))),
         )
         .order_by(CompletedGame.finished_at.desc(), CompletedGame.id.desc())
         .limit(clean_limit)

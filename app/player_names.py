@@ -5,6 +5,7 @@ from __future__ import annotations
 from sqlalchemy import select
 
 from .database import database_schema_ready, session_scope
+from .dice_progress import owners_for_progress
 from .models import CompletedGame, GameParticipant, User
 
 
@@ -19,8 +20,12 @@ def completed_player_identities_in_session(db, game_ids: set[str], *, game_type:
         .where(CompletedGame.game_type == game_type, CompletedGame.game_id.in_(game_ids))
         .order_by(GameParticipant.position)
     ).all()
+    owners = owners_for_progress(db, {user.id for _game, _imported, _seat, user in rows if user is not None})
+    active_names = {user.id: user for user in db.scalars(select(User).where(User.id.in_(set(owners.values()))))}
     result: dict[str, list[dict]] = {}
     for game_id, imported, seat, user in rows:
+        if user is not None:
+            user = active_names.get(owners[user.id], user)
         result.setdefault(game_id, []).append({
             "player_key": seat.player_key,
             "position": seat.position,
