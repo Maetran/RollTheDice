@@ -25,6 +25,20 @@ async function expectNativeMount(page) {
   expect(measured.sharedIds).toEqual([]);
 }
 
+async function scrollRulesWithKey(page, rules, key) {
+  // Keyboard scrolling is native and animated. Install the completion listener
+  // before the key, so the assertion observes the settled scroll, not keyup.
+  await rules.evaluate(node => {
+    window.followup.ruleScroll = new Promise(resolve => {
+      node.addEventListener('scrollend', () => resolve({ top: node.scrollTop, height: node.clientHeight, total: node.scrollHeight }), { once: true });
+    });
+  });
+  await page.keyboard.press(key);
+  const position = await page.evaluate(() => window.followup.ruleScroll);
+  await page.evaluate(() => { delete window.followup.ruleScroll; });
+  return position;
+}
+
 async function collectionGeometry(page) {
   return page.evaluate(() => {
     const table = document.querySelector('[data-layout-followup] [data-wt-table]');
@@ -71,7 +85,7 @@ async function finishInspectionFlights(page) {
   });
 }
 
-for (const language of ['de', 'en']) test(`${language}: queued table geometry keeps collection, showing and Retour on the table`, async ({ browser, baseURL }, info) => {
+for (const language of ['de', 'en']) for (const viewport of VIEWPORTS) test(`${language}: queued table geometry keeps collection, showing and Retour on the table [${viewport.width}x${viewport.height}]`, async ({ browser, baseURL }, info) => {
   test.setTimeout(90_000);
   const players = [];
   try {
@@ -124,139 +138,139 @@ for (const language of ['de', 'en']) test(`${language}: queued table geometry ke
       return { initialDelta: Math.max(...['left', 'top', 'width', 'height'].map(key => Math.abs(before[key] - after[key]))) };
     }, { snapshot, initial });
     expect(mounted.initialDelta).toBeLessThanOrEqual(1);
-    for (const viewport of VIEWPORTS) {
-      await page.setViewportSize(viewport);
-      for (const scene of ['collect', 'collect-empty', 'retour', 'bloedeln', 'bloedeln-inspection']) {
-        await page.evaluate(scene => {
-          const { view, snapshot, initial } = window.followup;
-          // These are explicitly display fixtures. Preplay starts with the
-          // untouched five-card state, never already captured packets.
-          const copy = structuredClone(scene.startsWith('bloedeln') ? initial : snapshot), engine = copy.engine, own = copy.viewer.seat;
-          engine.deal_revision = ++window.followup.revision;
-          engine.actions = [];
-          engine.phase = scene.startsWith('bloedeln') ? 'show_ready' : 'deal_complete';
-          engine.current_trick.cards = [];
-          engine.hand = scene === 'collect-empty' ? [] : scene === 'collect' ? snapshot.engine.hand.slice(0, 1) : structuredClone(initial.engine.hand);
-          if (scene.startsWith('collect')) {
-            // Legal end-of-deal public shape from the owner screenshot:
-            // four tricks played, the own side wins 3:1, one card remains.
-            engine.seats.forEach(seat => { seat.tricks_won = seat.seat === own ? 2
-              : [((own + 1) % 4), ((own + 2) % 4)].includes(seat.seat) ? 1 : 0; });
-            engine.last_trick.winner = own;
+    await page.setViewportSize(viewport);
+    for (const scene of ['collect', 'collect-empty', 'retour', 'bloedeln', 'bloedeln-inspection']) {
+      await page.evaluate(scene => {
+        const { view, snapshot, initial } = window.followup;
+        // These are explicitly display fixtures. Preplay starts with the
+        // untouched five-card state, never already captured packets.
+        const copy = structuredClone(scene.startsWith('bloedeln') ? initial : snapshot), engine = copy.engine, own = copy.viewer.seat;
+        engine.deal_revision = ++window.followup.revision;
+        engine.actions = [];
+        engine.phase = scene.startsWith('bloedeln') ? 'show_ready' : 'deal_complete';
+        engine.current_trick.cards = [];
+        engine.hand = scene === 'collect-empty' ? [] : scene === 'collect' ? snapshot.engine.hand.slice(0, 1) : structuredClone(initial.engine.hand);
+        if (scene.startsWith('collect')) {
+          // Legal end-of-deal public shape from the owner screenshot:
+          // four tricks played, the own side wins 3:1, one card remains.
+          engine.seats.forEach(seat => { seat.tricks_won = seat.seat === own ? 2
+            : [((own + 1) % 4), ((own + 2) % 4)].includes(seat.seat) ? 1 : 0; });
+          engine.last_trick.winner = own;
+        }
+        engine.retourschneider = scene === 'retour' ? { status: 'available', after_deal_id: engine.deal_id,
+          members: [copy.room.seats[own].participant_id, copy.room.seats[(own + 2) % 4].participant_id], accepted_by: [] } : null;
+        let actions = scene === 'retour' ? ['retourschneider'] : [];
+        if (scene.startsWith('bloedeln')) {
+          engine.last_trick = null; engine.trick_history = [];
+          engine.dealer_seat = own;
+          engine.announcement_roles = { strike: own, colour: (own + 1) % 4 };
+          engine.preplay = { ...engine.preplay, pending: null, bloedeln_status: 'accepted' };
+          actions = ['show_ready'];
+          if (scene === 'bloedeln-inspection') {
+            engine.phase = 'inspection'; actions = ['inspection_ack'];
+            engine.inspection = { cards: snapshot.engine.last_trick.cards.slice(0, 2).map((item, index) => ({
+              card: item.card, role: index ? 'colour' : 'strike' })) };
           }
-          engine.retourschneider = scene === 'retour' ? { status: 'available', after_deal_id: engine.deal_id,
-            members: [copy.room.seats[own].participant_id, copy.room.seats[(own + 2) % 4].participant_id], accepted_by: [] } : null;
-          let actions = scene === 'retour' ? ['retourschneider'] : [];
-          if (scene.startsWith('bloedeln')) {
-            engine.last_trick = null; engine.trick_history = [];
-            engine.dealer_seat = own;
-            engine.announcement_roles = { strike: own, colour: (own + 1) % 4 };
-            engine.preplay = { ...engine.preplay, pending: null, bloedeln_status: 'accepted' };
-            actions = ['show_ready'];
-            if (scene === 'bloedeln-inspection') {
-              engine.phase = 'inspection'; actions = ['inspection_ack'];
-              engine.inspection = { cards: snapshot.engine.last_trick.cards.slice(0, 2).map((item, index) => ({
-                card: item.card, role: index ? 'colour' : 'strike' })) };
-            }
-          }
-          view.update({ snapshot: copy, engine, room: copy.room, count: 4, viewerSeat: own, anchorSeat: own,
-            playerId: copy.viewer.participant_id, spectator: false, actions, busy: false, paused: false,
-            awaited: [], canResume: false, canLeave: true, bubbles: [], freshTrickEnd: false,
-            feedbackDismissed: true, liveMessage: '', roundPresentation: { stage: scene.startsWith('collect') ? 'collect' : 'ready' } });
-        }, scene);
+        }
+        view.update({ snapshot: copy, engine, room: copy.room, count: 4, viewerSeat: own, anchorSeat: own,
+          playerId: copy.viewer.participant_id, spectator: false, actions, busy: false, paused: false,
+          awaited: [], canResume: false, canLeave: true, bubbles: [], freshTrickEnd: false,
+          feedbackDismissed: true, liveMessage: '', roundPresentation: { stage: scene.startsWith('collect') ? 'collect' : 'ready' } });
+      }, scene);
+      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      await expectNativeMount(page);
+      if (scene.startsWith('collect')) {
+        await expect(page.locator('[data-layout-followup] .wt-trick-card').first()).toBeVisible();
+        const geometry = await collectionGeometry(page);
+        expect(geometry.count).toBe(4); expect(geometry.phase).toBe('deal_complete'); expect(geometry.stage).toBe('collect');
+        expect(geometry.hidden).toBe(true); expect(geometry.removed).toBe(false); expect(geometry.handHeight).toBeGreaterThan(0);
+        expect(geometry.bottom).toBeLessThanOrEqual(geometry.reserveTop + 1);
+        const rotated = { width: viewport.height, height: viewport.width };
+        await page.setViewportSize(rotated);
         await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
         await expectNativeMount(page);
-        if (scene.startsWith('collect')) {
-          await expect(page.locator('[data-layout-followup] .wt-trick-card').first()).toBeVisible();
-          const geometry = await collectionGeometry(page);
-          expect(geometry.count).toBe(4); expect(geometry.phase).toBe('deal_complete'); expect(geometry.stage).toBe('collect');
-          expect(geometry.hidden).toBe(true); expect(geometry.removed).toBe(false); expect(geometry.handHeight).toBeGreaterThan(0);
-          expect(geometry.bottom).toBeLessThanOrEqual(geometry.reserveTop + 1);
-          const rotated = { width: viewport.height, height: viewport.width };
-          await page.setViewportSize(rotated);
-          await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-          await expectNativeMount(page);
-          const afterRotation = await collectionGeometry(page);
-          expect(afterRotation.phase).toBe('deal_complete'); expect(afterRotation.stage).toBe('collect');
-          expect(afterRotation.hidden).toBe(true); expect(afterRotation.removed).toBe(false); expect(afterRotation.handHeight).toBeGreaterThan(0);
-          expect(afterRotation.bottom).toBeLessThanOrEqual(afterRotation.reserveTop + 1);
-          await page.screenshot({ path: info.outputPath(`${scene}-rotated-${rotated.width}x${rotated.height}.png`) });
-          await page.setViewportSize(viewport);
-        }
-        if (scene === 'retour') {
-          await expect(page.locator('[data-layout-followup] [data-watten-retourschneider-choice]')).toBeVisible();
-          await expect(page.locator('[data-layout-followup] [data-wt-history]')).not.toHaveAttribute('open', '');
-          for (const name of await page.locator('[data-layout-followup] .wt-seat-name').all()) await expect(name).toBeVisible();
-          await expect(page.locator('[data-layout-followup] [data-wt-hand] > *').first()).toBeVisible();
-          const choices = page.locator('[data-layout-followup] [data-watten-retourschneider-choice] button');
-          for (const choice of await choices.all()) {
-            await choice.click({ trial: true });
-            const target = await choice.boundingBox();
-            expect(target.width).toBeGreaterThanOrEqual(44); expect(target.height).toBeGreaterThanOrEqual(44);
-          }
-          await choices.first().focus();
-          await page.keyboard.press('Tab'); await expect(choices.last()).toBeFocused();
-          if (viewport.width <= 350 && viewport.width < viewport.height) {
-            await expect(page.locator('[data-layout-followup] [data-wt-panel]')).toHaveAttribute('data-wt-retour-fit', 'clear');
-            const errors = await page.evaluate(() => {
-              const root = window.followup.root, panel = root.querySelector('[data-wt-panel]'), area = panel.getBoundingClientRect();
-              const overlaps = [...root.querySelectorAll('.wt-seat-name, .wt-seat-badge, .wt-seat-call-role, .wt-backs > i:not([hidden]), [data-wt-hand-area], [data-wt-hand] > *')]
-                .filter(node => getComputedStyle(node).visibility !== 'hidden').filter(node => {
-                  const rect = node.getBoundingClientRect();
-                  return rect.width > 0 && rect.height > 0 && Math.min(rect.right, area.right) > Math.max(rect.left, area.left)
-                    && Math.min(rect.bottom, area.bottom) > Math.max(rect.top, area.top);
-                }).map(node => node.className);
-              const title = panel.querySelector('.wt-retour > h3'), text = title.firstChild;
-              const index = text.textContent.indexOf('Retourschneider'), range = document.createRange();
-              range.setStart(text, index); range.setEnd(text, index + 'Retourschneider'.length);
-              if (range.getClientRects().length !== 1) overlaps.push('broken Retourschneider word');
-              if (panel.scrollWidth > panel.clientWidth + 1) overlaps.push('horizontal overflow');
-              return overlaps;
-            });
-            expect(errors).toEqual([]);
-            const rules = page.locator('[data-layout-followup] .wt-retour-rules');
-            await rules.focus(); await expect(rules).toBeFocused();
-            const scrollable = await rules.evaluate(node => node.scrollHeight > node.clientHeight + 1);
-            if (scrollable) {
-              await page.keyboard.press('End');
-              expect(await rules.evaluate(node => node.scrollTop)).toBeGreaterThan(0);
-              await page.keyboard.press('Home');
-            }
-          }
-        }
-        if (scene.startsWith('bloedeln')) {
-          await expect(page.locator('[data-layout-followup] [data-watten-bloedeln-status]')).toHaveCount(0);
-          await expect(page.locator('[data-layout-followup] [data-wt-bloedeln] .wt-card--back')).toHaveCount(2);
-          await expect(page.locator('[data-layout-followup] [data-wt-bloedeln] [data-card]')).toHaveCount(0);
-          const primary = scene === 'bloedeln' ? 'show_ready' : 'inspection_ack';
-          await expect(page.locator(`[data-layout-followup] [data-watten-action="${primary}"]`)).toBeVisible();
-          if (scene === 'bloedeln-inspection') {
-            await expect(page.locator('[data-layout-followup] [data-wt-reveal]')).toHaveAttribute('data-wt-inspection-positioned', 'true');
-            for (const card of await page.locator('[data-layout-followup] [data-wt-reveal] .wt-card').all()) await expect(card).toBeVisible();
-          }
-          {
-            await expect(page.locator('[data-layout-followup] [data-wt-bloedeln]')).toHaveAttribute('data-wt-inspection-positioned', 'true');
-            for (const card of await page.locator('[data-layout-followup] [data-wt-bloedeln] .wt-card').all()) await expect(card).toBeVisible();
-            const flying = await page.evaluate(() => [...window.followup.root.querySelectorAll('.wt-reveal-card')]
-              .flatMap(node => node.getAnimations()).filter(animation => animation.playState === 'running').length);
-            expect(flying).toBeGreaterThan(0);
-            expect(await inspectionClearance(page, primary)).toEqual([]);
-            await page.screenshot({ path: info.outputPath(`${scene}-in-flight-${viewport.width}x${viewport.height}.png`) });
-            await finishInspectionFlights(page);
-            expect(await inspectionClearance(page, primary)).toEqual([]);
-            if (scene === 'bloedeln-inspection') {
-              await page.setViewportSize({ width: viewport.height, height: viewport.width });
-              await finishInspectionFlights(page);
-              await expectNativeMount(page);
-              expect(await inspectionClearance(page, primary)).toEqual([]);
-              await page.screenshot({ path: info.outputPath(`${scene}-rotated-${viewport.height}x${viewport.width}.png`) });
-              await page.setViewportSize(viewport); await finishInspectionFlights(page);
-              expect(await inspectionClearance(page, primary)).toEqual([]);
-            }
-          }
-        }
-        await page.screenshot({ path: info.outputPath(`${scene}-${viewport.width}x${viewport.height}.png`) });
+        const afterRotation = await collectionGeometry(page);
+        expect(afterRotation.phase).toBe('deal_complete'); expect(afterRotation.stage).toBe('collect');
+        expect(afterRotation.hidden).toBe(true); expect(afterRotation.removed).toBe(false); expect(afterRotation.handHeight).toBeGreaterThan(0);
+        expect(afterRotation.bottom).toBeLessThanOrEqual(afterRotation.reserveTop + 1);
+        await page.screenshot({ path: info.outputPath(`${scene}-rotated-${rotated.width}x${rotated.height}.png`) });
+        await page.setViewportSize(viewport);
       }
+      if (scene === 'retour') {
+        await expect(page.locator('[data-layout-followup] [data-watten-retourschneider-choice]')).toBeVisible();
+        await expect(page.locator('[data-layout-followup] [data-wt-history]')).not.toHaveAttribute('open', '');
+        for (const name of await page.locator('[data-layout-followup] .wt-seat-name').all()) await expect(name).toBeVisible();
+        await expect(page.locator('[data-layout-followup] [data-wt-hand] > *').first()).toBeVisible();
+        const choices = page.locator('[data-layout-followup] [data-watten-retourschneider-choice] button');
+        for (const choice of await choices.all()) {
+          await choice.click({ trial: true });
+          const target = await choice.boundingBox();
+          expect(target.width).toBeGreaterThanOrEqual(44); expect(target.height).toBeGreaterThanOrEqual(44);
+        }
+        await choices.first().focus();
+        await page.keyboard.press('Tab'); await expect(choices.last()).toBeFocused();
+        if (viewport.width <= 350 && viewport.width < viewport.height) {
+          await expect(page.locator('[data-layout-followup] [data-wt-panel]')).toHaveAttribute('data-wt-retour-fit', 'clear');
+          const errors = await page.evaluate(() => {
+            const root = window.followup.root, panel = root.querySelector('[data-wt-panel]'), area = panel.getBoundingClientRect();
+            const overlaps = [...root.querySelectorAll('.wt-seat-name, .wt-seat-badge, .wt-seat-call-role, .wt-backs > i:not([hidden]), [data-wt-hand-area], [data-wt-hand] > *')]
+              .filter(node => getComputedStyle(node).visibility !== 'hidden').filter(node => {
+                const rect = node.getBoundingClientRect();
+                return rect.width > 0 && rect.height > 0 && Math.min(rect.right, area.right) > Math.max(rect.left, area.left)
+                  && Math.min(rect.bottom, area.bottom) > Math.max(rect.top, area.top);
+              }).map(node => node.className);
+            const title = panel.querySelector('.wt-retour > h3'), text = title.querySelector('.wt-retour-title-short').firstChild;
+            const index = text.textContent.indexOf('Retourschneider'), range = document.createRange();
+            range.setStart(text, index); range.setEnd(text, index + 'Retourschneider'.length);
+            if (range.getClientRects().length !== 1) overlaps.push('broken Retourschneider word');
+            if (panel.scrollWidth > panel.clientWidth + 1) overlaps.push('horizontal overflow');
+            return overlaps;
+          });
+          expect(errors).toEqual([]);
+          const rules = page.locator('[data-layout-followup] .wt-retour-rules');
+          await rules.focus(); await expect(rules).toBeFocused();
+          const scrollable = await rules.evaluate(node => node.scrollHeight > node.clientHeight + 1);
+          if (scrollable) {
+            const end = await scrollRulesWithKey(page, rules, 'End');
+            expect(end.top).toBeGreaterThan(0);
+            expect(end.top + end.height).toBeGreaterThanOrEqual(end.total - 1);
+            const home = await scrollRulesWithKey(page, rules, 'Home');
+            expect(home.top).toBe(0);
+          }
+        }
+      }
+      if (scene.startsWith('bloedeln')) {
+        await expect(page.locator('[data-layout-followup] [data-watten-bloedeln-status]')).toHaveCount(0);
+        await expect(page.locator('[data-layout-followup] [data-wt-bloedeln] .wt-card--back')).toHaveCount(2);
+        await expect(page.locator('[data-layout-followup] [data-wt-bloedeln] [data-card]')).toHaveCount(0);
+        const primary = scene === 'bloedeln' ? 'show_ready' : 'inspection_ack';
+        await expect(page.locator(`[data-layout-followup] [data-watten-action="${primary}"]`)).toBeVisible();
+        if (scene === 'bloedeln-inspection') {
+          await expect(page.locator('[data-layout-followup] [data-wt-reveal]')).toHaveAttribute('data-wt-inspection-positioned', 'true');
+          for (const card of await page.locator('[data-layout-followup] [data-wt-reveal] .wt-card').all()) await expect(card).toBeVisible();
+        }
+        {
+          await expect(page.locator('[data-layout-followup] [data-wt-bloedeln]')).toHaveAttribute('data-wt-inspection-positioned', 'true');
+          for (const card of await page.locator('[data-layout-followup] [data-wt-bloedeln] .wt-card').all()) await expect(card).toBeVisible();
+          const flying = await page.evaluate(() => [...window.followup.root.querySelectorAll('.wt-reveal-card')]
+            .flatMap(node => node.getAnimations()).filter(animation => animation.playState === 'running').length);
+          expect(flying).toBeGreaterThan(0);
+          expect(await inspectionClearance(page, primary)).toEqual([]);
+          await page.screenshot({ path: info.outputPath(`${scene}-in-flight-${viewport.width}x${viewport.height}.png`) });
+          await finishInspectionFlights(page);
+          expect(await inspectionClearance(page, primary)).toEqual([]);
+          if (scene === 'bloedeln-inspection') {
+            await page.setViewportSize({ width: viewport.height, height: viewport.width });
+            await finishInspectionFlights(page);
+            await expectNativeMount(page);
+            expect(await inspectionClearance(page, primary)).toEqual([]);
+            await page.screenshot({ path: info.outputPath(`${scene}-rotated-${viewport.height}x${viewport.width}.png`) });
+            await page.setViewportSize(viewport); await finishInspectionFlights(page);
+            expect(await inspectionClearance(page, primary)).toEqual([]);
+          }
+        }
+      }
+      await page.screenshot({ path: info.outputPath(`${scene}-${viewport.width}x${viewport.height}.png`) });
     }
   } finally { await Promise.allSettled(players.map(item => item.context.close())); }
 });
