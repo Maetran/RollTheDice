@@ -35,6 +35,7 @@ from .analytics import (
     start_analytics,
     stop_analytics,
 )
+from .api_account_merges import router as account_merges_router
 from .api_admin_help import router as admin_help_router
 from .api_allowlist import router as allowlist_router
 from .api_analytics import require_analytics, trusted_country
@@ -569,6 +570,7 @@ app.include_router(auth_router)
 app.include_router(passkeys_router)
 app.include_router(passkey_reminders_router)
 app.include_router(releases_router)
+app.include_router(account_merges_router)
 app.include_router(allowlist_router)
 app.include_router(avatars_router)
 app.include_router(engagement_router)
@@ -2956,7 +2958,7 @@ def admin_delete_completed_game(game_id: str, payload: DeleteCompletedGameReq, r
         raise HTTPException(status_code=404, detail="game_not_found") from exc
     except ValueError as exc:
         detail = str(exc)
-        status_code = 409 if detail == "game_already_deleted" else 400
+        status_code = 409 if detail in {"game_already_deleted", "game_history_changed"} else 400
         raise HTTPException(status_code=status_code, detail=detail) from exc
     if deleted["game_type"] == DEFAULT_GAME_TYPE:
         _remove_deleted_game_from_files(deleted)
