@@ -625,8 +625,10 @@ def assign_game_participant(participant_id: int, payload: AssignmentRequest, req
             actor = require_exact_active_account(db, identity.user_id)
             if actor.role != "admin":
                 raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="admin_required")
-            db.refresh(participant)
-            if (participant.user_id != previous_user_id or owners_for_progress(db, original_ids) != expected_owners
+            participant = db.scalar(select(GameParticipant).where(GameParticipant.id == participant_id)
+                                    .execution_options(populate_existing=True))
+            if (participant is None or participant.user_id != previous_user_id
+                    or owners_for_progress(db, original_ids) != expected_owners
                     or any(origin_ids_for_progress(db, owner) != ids for owner, ids in expected_origins.items())):
                 raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="participant_assignment_changed")
         except ProgressIdentityError as exc:
