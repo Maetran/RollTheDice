@@ -21,8 +21,13 @@ const date = value => new Intl.DateTimeFormat(language() === "de" ? "de-CH" : "e
 const number = value => new Intl.NumberFormat(language() === "de" ? "de-CH" : "en-GB").format(value);
 let accountId = null, epoch = 0, rankingSerial = 0, feedSerial = 0, feedPage = 1, data = null, history = [], navigating = false;
 const controllers = new Set();
+let achievementStatus = "all", achievementCategory = "all";
 
-function clear() { epoch += 1; for (const controller of controllers) controller.abort(); controllers.clear(); root.replaceChildren(); }
+function clear() {
+  epoch += 1; for (const controller of controllers) controller.abort(); controllers.clear();
+  data = null; history = []; achievementStatus = "all"; achievementCategory = "all";
+  root.replaceChildren();
+}
 function refresh() { if (navigating) return; navigating = true; clear(); location.reload(); }
 window.addEventListener("zdwa:auth-state", event => {
   if (accountId !== null && (!event.detail?.authenticated || event.detail.user.id !== accountId)) refresh();
@@ -90,31 +95,104 @@ function statistic(label, value) {
   return `<div><dt>${esc(t(label))}</dt><dd>${esc(number(value))}</dd></div>`;
 }
 
+function achievementItems(progress) {
+  return progress.achievements.filter(item =>
+    (achievementStatus === "all" || Boolean(item.unlocked) === (achievementStatus === "earned"))
+    && (achievementCategory === "all" || item.category === achievementCategory));
+}
+
+function achievementMarkup(item, open = false) {
+  const earned = Boolean(item.unlocked);
+  return `<li id="${esc(item.id)}" class="wt-card-panel${earned ? " is-earned" : ""}">
+    <details class="wt-achievement-detail"${open ? " open" : ""}>
+      <summary><span class="wt-achievement-copy"><strong>${esc(localText(item.name))}</strong>
+        <span class="wt-achievement-state"><span aria-hidden="true">${earned ? "✓" : "○"}</span> ${esc(t(earned ? "achievementEarned" : "achievementOpen"))}</span></span>
+        <span class="wt-achievement-points">${esc(t(earned ? "creditedXP" : "rewardXP", { xp: number(earned ? item.granted_xp : item.draft_xp) }))}</span></summary>
+      <div class="wt-achievement-body"><p>${esc(localText(item.description))}</p>
+        <p class="wt-note">${esc(t(`category_${item.category || "other"}`))}</p>
+        <progress value="${Math.min(item.progress, item.target)}" max="${item.target}" aria-label="${esc(localText(item.name))}"></progress>
+        <p>${esc(t("achievementProgress", { current: number(item.progress), target: number(item.target) }))}</p>
+        ${earned && item.earned_at ? `<p class="wt-achievement-earned"><time datetime="${esc(item.earned_at)}">${esc(t("earned", { date: date(item.earned_at), xp: number(item.granted_xp) }))}</time></p>` : ""}
+      </div>
+    </details></li>`;
+}
+
+function collectionMarkup(progress) {
+  const earned = progress.achievements.filter(item => item.unlocked).length;
+  const items = achievementItems(progress);
+  return `<section class="wt-achievement-collection" aria-labelledby="wattenAchievements">
+    <div class="wt-progress-section-heading"><h2 id="wattenAchievements">${esc(t("achievements"))}</h2>
+      <span class="wt-collection-total">${esc(t("collectionTotal", { earned: number(earned), total: number(progress.achievements.length) }))}</span></div>
+    <p class="wt-note">${esc(t("achievementsHelp"))}</p>
+    <div class="wt-collection-controls"><div class="wt-collection-status" role="group" aria-label="${esc(t("collectionStatus"))}">
+      ${["all", "earned", "open"].map(status => `<button type="button" data-achievement-status="${status}" aria-pressed="${achievementStatus === status}">${esc(t(`filter_${status}`))}</button>`).join("")}</div>
+      <label class="wt-collection-category">${esc(t("collectionCategory"))}<select data-achievement-category aria-controls="wattenAchievementList">
+        <option value="all">${esc(t("allCategories"))}</option>${progress.achievement_categories.map(category =>
+          `<option value="${esc(category)}"${achievementCategory === category ? " selected" : ""}>${esc(t(`category_${category}`))}</option>`).join("")}</select></label>
+      <button type="button" class="wt-collection-reset" data-achievement-reset${achievementStatus === "all" && achievementCategory === "all" ? " hidden" : ""}>${esc(t("resetFilters"))}</button></div>
+    <p class="wt-collection-results" role="status" data-achievement-count>${esc(t("collectionResults", { count: number(items.length), total: number(progress.achievements.length) }))}</p>
+    <ul id="wattenAchievementList" class="wt-achievement-grid" data-achievement-list>${items.map(item => achievementMarkup(item)).join("")}</ul>
+    <p class="wt-collection-empty" data-achievement-empty${items.length ? " hidden" : ""}>${esc(t("emptyCollection"))}</p>
+  </section>`;
+}
+
+function updateCollection() {
+  if (navigating || page !== "progress" || !data) return;
+  const list = root.querySelector("[data-achievement-list]"); if (!list) return;
+  const resetFocused = document.activeElement === root.querySelector("[data-achievement-reset]");
+  const open = new Set([...list.querySelectorAll("details[open]")].map(item => item.parentElement.id));
+  const items = achievementItems(data.progress);
+  list.innerHTML = items.map(item => achievementMarkup(item, open.has(item.id))).join("");
+  root.querySelector("[data-achievement-count]").textContent = t("collectionResults", { count: number(items.length), total: number(data.progress.achievements.length) });
+  root.querySelector("[data-achievement-empty]").hidden = items.length !== 0;
+  root.querySelector("[data-achievement-reset]").hidden = achievementStatus === "all" && achievementCategory === "all";
+  root.querySelectorAll("[data-achievement-status]").forEach(button => button.setAttribute("aria-pressed", String(button.dataset.achievementStatus === achievementStatus)));
+  root.querySelector("[data-achievement-category]").value = achievementCategory;
+  if (resetFocused && achievementStatus === "all" && achievementCategory === "all") root.querySelector('[data-achievement-status="all"]').focus();
+}
+
+function revealProgressAnchor() {
+  if (navigating || page !== "progress" || !data) return;
+  let id;
+  try { id = decodeURIComponent(location.hash.slice(1)); } catch { return; }
+  if (!id) return;
+  if (data.progress.achievements.some(item => item.id === id)) {
+    achievementStatus = "all"; achievementCategory = "all"; updateCollection();
+  }
+  const target = document.getElementById(id);
+  if (!target || !root.contains(target)) return;
+  const detail = target.querySelector(".wt-achievement-detail");
+  if (detail) { detail.open = true; detail.querySelector("summary").focus({ preventScroll: true }); }
+  target.scrollIntoView({ block: "center", behavior: "auto" });
+}
+window.addEventListener("hashchange", revealProgressAnchor);
+
 function progressMarkup(account) {
   const value = account.progress, stats = account.statistics;
   const title = value.title, next = value.next_title;
+  const pending = value.pending.credits.length || value.pending.achievements.length;
   return `<section class="wt-card-panel wt-progress-title" aria-labelledby="wattenCurrentTitle">
-    <p class="wt-kicker">${esc(t("title"))}</p><h2 id="wattenCurrentTitle">${esc(localText(title.name))}</h2>
-    <p><strong>${esc(number(value.total_xp))} XP</strong> · ${esc(t("level", { level: title.level }))}</p>
-    ${next ? `<progress aria-label="${esc(t("nextTitle", { name: localText(next.name) }))}"
-      max="${Math.max(1, next.threshold - title.threshold)}" value="${Math.max(0, value.total_xp - title.threshold)}"></progress>
-      <p>${esc(t("remaining", { xp: number(value.xp_to_next), name: localText(next.name) }))}</p>` : `<p>${esc(t("highest"))}</p>`}
+    <div class="wt-progress-heading"><div><p class="wt-kicker">${esc(t("title"))}</p><h2 id="wattenCurrentTitle">${esc(localText(title.name))}</h2>
+      <p class="wt-note">${esc(t("titleLevel", { level: number(title.level), total: number(value.titles.length) }))}</p></div>
+      <p class="wt-progress-total"><strong>${esc(number(value.total_xp))}</strong><span>${esc(t("totalXP"))}</span></p></div>
+    <div class="wt-progress-next">${next ? `<p><strong>${esc(t("nextTitle", { name: localText(next.name) }))}</strong></p>
+      <progress aria-label="${esc(t("nextTitle", { name: localText(next.name) }))}"
+        max="${Math.max(1, next.threshold - title.threshold)}" value="${Math.max(0, value.total_xp - title.threshold)}"></progress>
+      <p>${esc(t("remaining", { xp: number(value.xp_to_next), name: localText(next.name) }))}</p>` : `<p>${esc(t("highest"))}</p>`}</div>
+    <dl class="wt-progress-stats wt-progress-xp">${statistic("matchXP", value.match_xp)}${statistic("achievementXP", value.achievement_xp)}</dl>
     <p class="wt-note">${esc(t("xpMeaning"))}</p>
-    <dl class="wt-progress-stats">${statistic("matchXP", value.match_xp)}${statistic("achievementXP", value.achievement_xp)}
-      ${statistic("allMatches", stats.all_matches)}${statistic("creditedMatches", stats.credited_matches)}${statistic("wins", stats.all_wins)}</dl>
+    <details class="wt-title-ladder"><summary>${esc(t("allTitles", { count: number(value.titles.length) }))}</summary>
+      <ol>${value.titles.map(item => `<li${item.level === title.level ? ' class="is-current" aria-current="step"' : item.level < title.level ? ' class="is-reached"' : ""}>
+        <span class="wt-title-step" aria-hidden="true">${esc(number(item.level))}</span><div><strong>${esc(localText(item.name))}</strong>
+          <span>${esc(t("titleThreshold", { xp: number(item.threshold) }))}${item.level === title.level ? ` · ${esc(t("currentTitle"))}` : ""}</span></div></li>`).join("")}</ol>
+    </details>
+    <dl class="wt-progress-stats wt-progress-match-stats">${statistic("allMatches", stats.all_matches)}${statistic("creditedMatches", stats.credited_matches)}${statistic("wins", stats.all_wins)}</dl>
     ${stats.uncredited_matches ? `<p class="wt-note">${esc(t("uncredited", { count: stats.uncredited_matches }))}</p>` : ""}
   </section>
-  <section class="wt-card-panel wt-progress-pending" data-progress-pending>
+  <section class="wt-card-panel wt-progress-pending${pending ? "" : " is-empty"}" data-progress-pending>
     <h2>${esc(t("newMoments"))}</h2>${pendingMarkup(value)}
   </section>
-  <section aria-labelledby="wattenAchievements"><h2 id="wattenAchievements">${esc(t("achievements"))}</h2>
-    <p>${esc(t("achievementsHelp"))}</p><ul class="wt-achievement-grid">${value.achievements.map(item => `
-      <li class="wt-card-panel${item.earned_at ? " is-earned" : ""}">
-        <h3>${esc(localText(item.name))}</h3><p>${esc(localText(item.description))}</p>
-        <progress value="${Math.min(item.progress, item.target)}" max="${item.target}" aria-label="${esc(localText(item.name))}"></progress>
-        <p>${esc(t("achievementProgress", { current: number(item.progress), target: number(item.target) }))} · ${esc(number(item.draft_xp))} XP</p>
-        ${item.earned_at ? `<p class="wt-note">${esc(t("earned", { date: date(item.earned_at), xp: number(item.granted_xp) }))}</p>` : ""}
-      </li>`).join("")}</ul></section>
+  ${collectionMarkup(value)}
     ${value.archived_achievements.length ? `<section class="wt-card-panel"><h2>${esc(t("archived"))}</h2><ul>${value.archived_achievements.map(item =>
       `<li>${esc(localText(item.name))} · ${esc(t("earned", { date: date(item.earned_at), xp: number(item.granted_xp) }))}</li>`).join("")}</ul></section>` : ""}
     <section class="wt-card-panel" data-progress-feed aria-labelledby="wattenFeedTitle"><h2 id="wattenFeedTitle">${esc(t("feed"))}</h2><div data-progress-feed-entries></div></section>`;
@@ -202,9 +280,18 @@ root.addEventListener("submit", event => {
   event.preventDefault(); void ranking(event.target).catch(error => failure(error.message));
 });
 root.addEventListener("change", event => {
+  if (event.target.matches("[data-achievement-category]")) {
+    achievementCategory = event.target.value; updateCollection(); return;
+  }
   if (event.target.name === "metric") void ranking(event.target.form).catch(error => failure(error.message));
 });
 root.addEventListener("click", async event => {
+  const filter = event.target.closest("[data-achievement-status], [data-achievement-reset]");
+  if (filter) {
+    achievementStatus = filter.dataset.achievementStatus || "all";
+    if (filter.hasAttribute("data-achievement-reset")) achievementCategory = "all";
+    updateCollection(); return;
+  }
   const control = event.target.closest("[data-progress-action]");
   if (!control || control.disabled) return;
   if (control.dataset.progressAction === "retry") { refresh(); return; }
@@ -236,7 +323,7 @@ async function accountView() {
   if (!result) return;
   validateAccount(result); data = result; history = result.history.matches;
   shell(page === "history" ? historyMarkup() : progressMarkup(result));
-  if (page === "progress") await feed();
+  if (page === "progress") { revealProgressAnchor(); await feed(); }
 }
 async function mount() {
   const current = epoch;
