@@ -13,6 +13,7 @@ const defaults = () => ({ enabled: true, games: { zdwa: "unseen", zilch: "unseen
 const read = (storage, name, fallback = null) => { try { return JSON.parse(storage.getItem(name)) ?? fallback; } catch { return fallback; } };
 const write = (storage, name, value) => { try { storage.setItem(name, JSON.stringify(value)); } catch { /* The current page still works. */ } };
 let identity, preferences, preferenceRequest;
+let identityRevision = 0;
 let mutations = Promise.resolve();
 let viewerEpoch = 0, preferenceRevision = 0;
 const settings = new Set();
@@ -38,6 +39,11 @@ function fetchForViewer(path, options = {}, epoch = viewerEpoch) {
 function adoptIdentity(next) {
   const changed = identity !== undefined && viewerId(identity) !== viewerId(next);
   identity = next;
+  identityRevision++;
+  for (const container of settings) {
+    if (container.isConnected) syncTourSettingsGames(container);
+    else settings.delete(container);
+  }
   if (!changed) return;
   viewerEpoch++;
   preferences = undefined;
@@ -70,9 +76,11 @@ async function loadPreferences() {
   if (preferenceRequest) return preferenceRequest;
   const request = (async () => {
     const beforeAuth = viewerEpoch;
+    const beforeIdentity = identityRevision;
     const auth = await loadAuth();
     if (!sameViewer(beforeAuth)) throw new Error("tour_viewer_changed");
-    adoptIdentity(auth);
+    // A newer auth event may already have changed this viewer's access flags.
+    if (identityRevision === beforeIdentity) adoptIdentity(auth);
     const epoch = viewerEpoch, viewer = viewerId(), storageKey = cacheKey(viewer);
     const local = read(localStorage, storageKey);
     if (!identity.authenticated) return preferences = normalized(local);
@@ -139,7 +147,27 @@ function savePreferences(patch) {
   return mutations;
 }
 
+function tourGameAvailable(game) {
+  return game !== "watten" || document.documentElement.dataset.game === "watten"
+    || identity?.game_access?.watten_public || identity?.game_access?.watten_preview;
+}
+
+function syncTourSettingsGames(container) {
+  const list = container.querySelector("[data-tour-settings-games]");
+  if (!list) return;
+  for (const game of availableGames) {
+    const existing = list.querySelector(`[data-tour-settings-game="${game}"]`);
+    if (!tourGameAvailable(game)) { existing?.remove(); continue; }
+    if (existing) continue;
+    const row = document.createElement("div");
+    row.dataset.tourSettingsGame = game;
+    row.innerHTML = `<strong>${esc(games[game])}</strong><div><button type="button" data-tour-action="start" data-tour-game="${game}">${esc(t("start"))}</button><button type="button" data-tour-action="view" data-tour-game="${game}">${esc(t("view"))}</button></div>`;
+    list.append(row);
+  }
+}
+
 async function refreshTourSettings(container) {
+  syncTourSettingsGames(container);
   const epoch = viewerEpoch;
   const toggle = container.querySelector("[data-tour-enabled]");
   const status = container.querySelector("[data-tour-settings-status]");
@@ -149,6 +177,7 @@ async function refreshTourSettings(container) {
   try {
     const data = await loadPreferences();
     if (!sameViewer(epoch) || !container.isConnected) return;
+    syncTourSettingsGames(container);
     toggle.checked = data.enabled;
     toggle.disabled = false;
   } catch {
@@ -475,7 +504,8 @@ export async function mountTourSettings(container) {
   if (!container) return;
   if (settings.has(container)) return refreshTourSettings(container);
   settings.add(container);
-  container.innerHTML = `<h3>${esc(t("title"))}</h3><p>${esc(t("settingsBody"))}</p><p data-tour-settings-status role="status"></p><label class="game-tour-toggle"><input type="checkbox" data-tour-enabled checked> ${esc(t("auto"))}</label><div class="game-tour-settings-games">${availableGames.filter(game => game !== "watten" || document.documentElement.dataset.game === "watten" || identity?.game_access?.watten_public || identity?.game_access?.watten_preview).map(game => `<div><strong>${esc(games[game])}</strong><div><button type="button" data-tour-action="start" data-tour-game="${game}">${esc(t("start"))}</button><button type="button" data-tour-action="view" data-tour-game="${game}">${esc(t("view"))}</button></div></div>`).join("")}</div>`;
+  container.innerHTML = `<h3>${esc(t("title"))}</h3><p>${esc(t("settingsBody"))}</p><p data-tour-settings-status role="status"></p><label class="game-tour-toggle"><input type="checkbox" data-tour-enabled checked> ${esc(t("auto"))}</label><div class="game-tour-settings-games" data-tour-settings-games></div>`;
+  syncTourSettingsGames(container);
   const toggle = container.querySelector("[data-tour-enabled]");
   // Visible guide actions must already work while the initial account read is
   // pending. Only the preference toggle depends on that read and stays disabled.
@@ -492,6 +522,7 @@ export async function mountTourSettings(container) {
     const button = event.target.closest("[data-tour-action]");
     if (!button) return;
     const game = button.dataset.tourGame;
+    if (!availableGames.includes(game) || !tourGameAvailable(game)) return;
     if (button.dataset.tourAction === "view") {
       if (!previews.has(game)) previews.set(game, createGameTour(game));
       previews.get(game).view();

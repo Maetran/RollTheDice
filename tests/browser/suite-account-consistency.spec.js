@@ -119,6 +119,14 @@ for (const product of products) for (const language of ['de', 'en']) {
       }
       await expect(help.locator(selector)).toBeVisible();
     }
+    const tours = help.locator('[data-game-tour-settings]');
+    await expect(tours.locator('[data-tour-enabled]')).toBeEnabled();
+    const currentAuth = await (await page.request.get('/api/auth/me')).json();
+    const wattenTourAvailable = product.game === 'watten' || currentAuth.game_access?.watten_public || currentAuth.game_access?.watten_preview;
+    const expectedTourGames = ['zdwa', 'zilch', 'hausdepp', ...(wattenTourAvailable ? ['watten'] : [])];
+    await expect(tours.locator('[data-tour-action="start"]')).toHaveCount(expectedTourGames.length);
+    expect(await tours.locator('[data-tour-action="start"]').evaluateAll(buttons => buttons.map(button => button.dataset.tourGame))).toEqual(expectedTourGames);
+    expect(await tours.locator('[data-tour-action="view"]').evaluateAll(buttons => buttons.map(button => button.dataset.tourGame))).toEqual(expectedTourGames);
     if (language === 'de') {
       await page.setViewportSize({ width: 320, height: 844 });
       await help.scrollIntoViewIfNeeded();
@@ -250,7 +258,7 @@ test('merge notice resumes after page restoration while old ACK identity verific
 });
 
 for (const game of ['hausdepp', 'watten']) for (const language of ['de', 'en']) {
-  test(`${game} release notes open from lobby and remain readable in account settings (${language})`, async ({ page }) => {
+  test(`${game} release notes open from lobby and remain readable in account settings (${language})`, async ({ page }, testInfo) => {
     const user = await createAccount(page, `suiteaccount_release_${game}_${language}`, language);
     let revision = '1'.repeat(40), acknowledged = false;
     const reads = [], writes = [];
@@ -293,6 +301,9 @@ for (const game of ['hausdepp', 'watten']) for (const language of ['de', 'en']) 
       if (await details.getAttribute('open') === null) await details.locator(':scope > summary').click();
     }
     await expect(page.locator('[data-release-history]')).toContainText(language === 'de' ? 'Neuigkeiten am Tisch' : 'Updates at the table');
+    await page.setViewportSize({ width: 320, height: 844 });
+    await page.locator('[data-account-section="help"]').scrollIntoViewIfNeeded();
+    await page.screenshot({ path: testInfo.outputPath(`${game}-release-help-${language}.png`), fullPage: true });
     expect(reads.length).toBeGreaterThanOrEqual(3);
   });
 }
