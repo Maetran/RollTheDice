@@ -13,6 +13,15 @@ html[data-game="watten"][data-watten-active="true"] .wt-bloedeln-dock :is(.wt-pr
     left: calc(50vw - 120px); translate: -50% 0; align-self: flex-start;
     width: min(180px, calc(100vw - 152px)); max-width: none;
   }
+  /* Keep complete words and a single heading line inside that lane. The
+     desktop-sized type otherwise wraps each choice into four short lines,
+     lifting the answer across the neighbouring live announcement. */
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"][data-phase="bid_response"] .wt-bid > h3 {
+    font-size: .9rem; line-height: 1.2;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"][data-phase="bid_response"] .wt-bid > .wt-choice-row > button {
+    font-size: .8rem; padding-inline: 2px; overflow-wrap: normal; word-break: normal;
+  }
 }
 @media (orientation: portrait) and (max-width: 760px) {
   html[data-game="watten"][data-watten-active="true"] .wt-table {
