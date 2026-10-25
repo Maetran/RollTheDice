@@ -22,10 +22,9 @@ from app.game_state import games
 from app.game_ws_session import GameSocketSession
 from app.models import ActiveGame, CompletedGame, GameParticipant, User, UserBan
 from app.security import utcnow
-from app.watten_bidding import retourschneider_candidate
 from app.watten_cpu import CpuBudget
 from app.watten_cpu_memory import memory_to_storage
-from app.watten_engine import EngineActor, EngineCommand
+from app.watten_engine import EngineActor, EngineCommand, retourschneider_offer
 from app.watten_play import legal_cards
 from app.watten_runtime import (
     _apply_engine_command,
@@ -778,7 +777,7 @@ def test_actual_short_mixed_match_uses_only_personal_policy_inputs_and_one_resul
                 if state.phase == "match_complete":
                     break
                 if state.phase == "deal_complete":
-                    if retourschneider_candidate(state.ledger) is not None:
+                    if retourschneider_offer(state) is not None:
                         view = snapshot_watten(game, human.player_id)["engine"]
                         if "retourschneider" in view["actions"]:
                             data = engine_command(game_id, "retourschneider", next(numbers), "decline")

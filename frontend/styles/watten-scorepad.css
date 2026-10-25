@@ -5,8 +5,11 @@ html[data-watten-active="true"] .wt-score-open {
   width: 100%; min-height: 44px; padding: 5px 9px; border: 0; border-radius: inherit;
   color: inherit; background: transparent; font: inherit; text-align: left;
 }
-html[data-watten-active="true"] .wt-score-caption { grid-template-columns: auto auto; align-items: center; column-gap: 5px; }
-html[data-watten-active="true"] .wt-score-tricks { grid-column: 1 / -1; grid-row: 2; }
+/* A narrow three-player tile may shrink its caption, never its score. The
+   caption's grid must shrink with it instead of painting over the number. */
+html[data-watten-active="true"] .wt-score-caption { grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 5px; overflow: hidden; }
+html[data-watten-active="true"] .wt-score-tricks { grid-column: 1 / -1; grid-row: 2; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+html[data-watten-active="true"] .wt-score-points { flex: 0 0 auto; }
 html[data-watten-active="true"] .wt-score.is-gestrichen .wt-score-name { text-decoration: line-through; text-decoration-thickness: 2px; }
 html[data-watten-active="true"] .wt-nockerl-marks {
   display: inline-flex; align-items: center; gap: 0; color: #304b6b;

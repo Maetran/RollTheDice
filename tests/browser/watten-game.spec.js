@@ -283,16 +283,11 @@ for (const count of [2, 3, 4]) {
         if (engine.phase === 'deal_complete') {
           if (engine.retourschneider?.status === 'available') {
             const choice = engine.retourschneider;
-            const cpuCanChoose = choice.members.some(id => !choice.accepted_by.includes(id)
-              && host.traffic.snapshot.room.seats.some(seat => seat.participant_id === id && seat.is_cpu));
-            if (cpuCanChoose) {
-              // A CPU candidate declines autonomously; avoid racing its button removal.
-              await expect.poll(() => host.traffic.snapshot.engine.retourschneider?.status,
-                { timeout: 20000 }).not.toBe('available');
-            } else {
-              expect(engine.actions).toContain('retourschneider');
-              await action([host], 'retourschneider', 'decline');
-            }
+            // This host is the only human: only its mixed team can receive an
+            // offer. Its CPU partner waits and follows the human's choice.
+            expect(choice.members).toContain(host.traffic.snapshot.viewer.participant_id);
+            expect(engine.actions).toContain('retourschneider');
+            await action([host], 'retourschneider', 'decline');
             continue;
           }
           const previousDeal = engine.deal_id;

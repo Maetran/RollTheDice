@@ -106,6 +106,24 @@ async function expectStage(item, count) {
   const backCount = engine.seats.filter(seat => seat.seat !== ownSeat).reduce((sum, seat) => sum + seat.card_count, 0);
   await expect(page.locator('.wt-backs > i:not([hidden])')).toHaveCount(backCount);
   await expect(page.locator('[data-wt-hand] button')).toHaveCount(engine.hand.length);
+  const advice = page.locator('[data-watten-partner-advice]');
+  if (await advice.count()) {
+    await expect(advice).toBeVisible();
+    await expect.poll(() => advice.evaluate(node => {
+      const bounds = node.getBoundingClientRect();
+      const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
+      const failures = [];
+      for (let text = walker.nextNode(); text; text = walker.nextNode()) {
+        // A long name has its full accessible title and an intentional
+        // ellipsis. The advice itself must remain completely readable.
+        if (!text.textContent.trim() || text.parentElement.closest('.wt-advice-name')) continue;
+        const range = document.createRange(); range.selectNodeContents(text);
+        for (const box of range.getClientRects()) if (box.left < bounds.left - 1 || box.right > bounds.right + 1
+          || box.top < bounds.top - 1 || box.bottom > bounds.bottom + 1) failures.push('partner advice is clipped');
+      }
+      return failures;
+    }), { message: 'the complete partner advice remains readable beside all three full-size decisions' }).toEqual([]);
+  }
   for (const seat of engine.seats) {
     const pile = page.locator(`[data-wt-catch="${seat.seat}"]`);
     await expect(pile).toHaveAttribute('data-count', String(seat.tricks_won));
@@ -161,8 +179,15 @@ async function expectStage(item, count) {
     return [...new Set(violations)];
   }), { message: 'all five-card opponent fans and the own hand remain complete and clear' }).toEqual([]);
 
-  if (await page.locator('[data-wt-history]').evaluate(node => node.open)) await expect(page.locator('[data-wt-hand]')).toBeHidden();
-  else await expectReachable(page, '[data-wt-hand] button:first-child');
+  if (await page.locator('[data-wt-history]').evaluate(node => node.open)) {
+    await expect(page.locator('[data-wt-hand]')).toBeHidden();
+    if (viewport.width < viewport.height && viewport.width <= 760) {
+      await expect.poll(() => page.evaluate(() => document.querySelector('[data-wt-history]').getBoundingClientRect().top
+        - document.querySelector('.wt-topbar').getBoundingClientRect().bottom), {
+        message: 'the open review reuses hidden-hand space and clears the score row after resize or pinned reload',
+      }).toBeGreaterThanOrEqual(4);
+    }
+  } else await expectReachable(page, '[data-wt-hand] button:first-child');
   // The score list includes intentional gaps; each score opens its own pad.
   for (let index = 0; index < scores.length; index += 1) {
     await expectReachable(page, `[data-wt-scores] > .wt-score:nth-child(${index + 1}) > [data-wt-score-open]`);
@@ -191,17 +216,23 @@ async function expectStage(item, count) {
         && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 2;
       return {
         abovePanel: !panelRect.height || rect.bottom <= panelRect.top + 1,
-        stakeSeparate: landscapeRail ? stakeRect.right <= felt.left + 1 && rect.left >= felt.left - 1
+        // The 52px compact rail deliberately allows its 68px stake tab to
+        // extend onto the wood. Protect real targets rather than the old rail edge.
+        stakeSeparate: landscapeRail ? !overlap(rect, stakeRect) && stakeRect.left >= -1
+          && stakeRect.right <= innerWidth + 1 && rect.left >= felt.left - 1
           : (!stakeRect.height || rect.bottom <= stakeRect.top + 1)
             && (!panelRect.height || !stakeRect.height || panelRect.bottom <= stakeRect.top + 1),
         beforePanel: Boolean(node.compareDocumentPosition(panel) & Node.DOCUMENT_POSITION_FOLLOWING),
         clearOfHand: !overlap(summaryRect, hand),
         controlsClearOfHistory: [...panel.querySelectorAll('button'), ...stake.querySelectorAll('button')]
           .every(button => !overlap(rect, button.getBoundingClientRect())),
+        toolbarClearsScores: [node.querySelector('summary'), node.querySelector('.wt-history-pin'),
+          node.querySelector('[data-wt-history-close]')].filter(Boolean)
+          .every(control => !overlap(control.getBoundingClientRect(), document.querySelector('.wt-topbar').getBoundingClientRect())),
       };
     }, landscapeRail), { message: 'review stays above decisions while the stake uses its own reachable area' })
       .toEqual({ abovePanel: true, stakeSeparate: true, beforePanel: true,
-        clearOfHand: true, controlsClearOfHistory: true });
+        clearOfHand: true, controlsClearOfHistory: true, toolbarClearsScores: true });
     const miniWidth = await history.locator('.wt-card--mini').first().evaluate(node => Number.parseFloat(getComputedStyle(node).width));
     expect(miniWidth).toBeGreaterThanOrEqual(reviewWidth.minimum);
     expect(miniWidth).toBeLessThanOrEqual(reviewWidth.maximum);
@@ -249,7 +280,13 @@ async function expectStage(item, count) {
               const x = after.x + after.width / 2;
               if (x < port.left || x > port.right || y < port.top || y > port.bottom
                 || x < 0 || x > innerWidth || y < 0 || y > innerHeight
-                || !figure.contains(document.elementFromPoint(x, y))) failures.push(`mini ${index} ${label}: ${edge} cannot be reached by scrolling`);
+                || !figure.contains(document.elementFromPoint(x, y))) {
+                failures.push(`mini ${index} ${label}: ${edge} cannot be reached by scrolling ${JSON.stringify({
+                  x, y, port, box: after.toJSON(), scrollTop: scroller.scrollTop,
+                  scrollHeight: scroller.scrollHeight, clientHeight: scroller.clientHeight,
+                  hit: document.elementFromPoint(x, y)?.outerHTML.slice(0, 120),
+                })}`);
+              }
             }
           } else {
             if (!inside(rect, port)) failures.push(`mini ${index} ${label}: clipped by history scroller`);

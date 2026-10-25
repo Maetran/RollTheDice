@@ -1,10 +1,10 @@
 {
-  "version": "4.4.0",
+  "version": "4.5.0",
   "bump": "minor",
   "date": "2026-10-25",
-  "previous_revision": "5962aa635a1068f90703009ec744ef5af6dedb3d",
+  "previous_revision": "26eee2e91a662e594bf535df1290a6171177a726",
   "summary": {
-    "de": "Audiochat und Ambiente für ZDWA, gemeinsame Zuhörvorgabe und präzisere Audio-Nutzungsstatistik.",
-    "en": "ZDWA voice and ambience, a shared listening default and clearer voice activity statistics."
+    "de": "Klarere mobile Spieltische, verlässliche Retourschneider-Entscheide und besser auffindbare Regeln für alle vier Spiele.",
+    "en": "Clearer mobile tables, reliable Retourschneider decisions and easier-to-find rules across all four games."
   }
 }

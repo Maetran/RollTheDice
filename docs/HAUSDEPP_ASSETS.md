@@ -92,6 +92,29 @@ perspective rectification, white balance and sharpening. The atlas is offered
 under **CC BY 3.0** (faces photograph); the ten-of-leaves cell, as an adaptation
 of its source, remains under **CC BY-SA 4.0**.
 
+### Kleine öffentliche Lobby-Tafel / Small public lobby atlas
+
+**DE:** `scripts/build_hausdepp_lobby_cards.py` verkleinert die fertige
+Spieltisch-Tafel reproduzierbar mit Lanczos auf 9 × 4 Zellen zu 288 × 456 Pixeln
+und speichert `app/static/hausdepp/cards-lobby-atlas.webp` mit derselben WebP-Qualität 80.
+Alle 36 Motive, Zellpositionen, Ausschnitte und Quellenangaben bleiben erhalten;
+es wird nichts neu gezeichnet. Die Lobby braucht keine Kartenrückseite. Ihr
+separater Decoder lädt nur diese kleinere Vorderseitentafel. Am Spieltisch
+bleiben die volle Tafel und die Rückseite unverändert. Nach einer Änderung an
+der Spieltisch-Tafel das Skript erneut ausführen; `--check` prüft die Ableitung.
+Die oben genannten Lizenzen gelten weiterhin: CC BY 3.0 für die Vorderseiten,
+CC BY-SA 4.0 für die Laub-Zehn.
+
+**EN:** `scripts/build_hausdepp_lobby_cards.py` reproducibly downsizes the finished
+table atlas with Lanczos to 9 × 4 cells of 288 × 456 pixels and saves
+`app/static/hausdepp/cards-lobby-atlas.webp` with the same WebP quality of 80.
+All 36 motifs, cell positions, crops and source credits are retained; nothing
+is redrawn. The lobby needs no card back. Its separate decoder loads only this
+smaller face atlas. The full atlas and back remain unchanged at the playing
+table. Re-run the script after changing the full atlas; `--check` verifies the
+derivative. The licences above continue to apply: CC BY 3.0 for the faces and
+CC BY-SA 4.0 for the ten of leaves.
+
 ### Blendfreie Laub-Zehn / Glare-free ten of leaves
 
 - Datei / File: `app/static/hausdepp/tell-leaves-reference-v1.jpg`.

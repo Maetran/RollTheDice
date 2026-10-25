@@ -15,18 +15,18 @@
   <meta name="twitter:card" content="summary">
   <meta name="theme-color" content="#f4f6f8">
   <meta name="color-scheme" content="light dark">
-  <link rel="manifest" href="/manifest.webmanifest?v=c1cfd5fb2395">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=c1cfd5fb2395" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=c1cfd5fb2395" sizes="180x180">
+  <link rel="manifest" href="/manifest.webmanifest?v=9885de12893a">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=9885de12893a" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=9885de12893a" sizes="180x180">
   <!--
     rules.html - Spielanleitung
     ---------------------------
     Referenz fuer Spielablauf, Wertung, Modi sowie Desktop-/Mobilsteuerung.
   -->
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"||t==="classic"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d==="dark"?"dark":"light";const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=d==="dark"?"#0b1120":d==="classic"?"#31583a":"#f4f6f8"}catch(_){}</script>
-  <script src="/static/shell.js?v=c1cfd5fb2395" defer></script>
-  <link rel="stylesheet" href="/static/style.css?v=c1cfd5fb2395" />
-  <link rel="stylesheet" href="/static/zdwa-design-2026.css?v=c1cfd5fb2395">
+  <script src="/static/shell.js?v=9885de12893a" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=9885de12893a" />
+  <link rel="stylesheet" href="/static/zdwa-design-2026.css?v=9885de12893a">
   <script>{const r=document.documentElement,g=k=>{try{return localStorage.getItem(k)}catch(_){return null}},q=new URLSearchParams(location.search).get("design");if(q!=="classic"&&g("zdwa_design")!=="old"&&g("zdwa_design_off")!=="1"&&(q==="2026"||g("zdwa_design_override")!=="old"))r.dataset.design="2026"}</script>
   <style>
     /* Schlanke Dokumentationsstyles; die App-Komponenten kommen aus style.css. */
@@ -61,7 +61,7 @@
   <script type="application/ld+json" data-suite-discovery>
     {"@context":"https://schema.org","@type":"WebPage","@id":"https://zockdiewandan.online/regeln#page","url":"https://zockdiewandan.online/regeln","name":"Zock die Wand an: Spielregeln & Anleitung","description":"Die Spielregeln für Zock die Wand an: Rundenablauf, Punkte, Spalten, Ansage, Normal- und Hardcore-Modus sowie Erfolge verständlich erklärt.","inLanguage":["de","en"],"about":{"@id":"https://zockdiewandan.online/#game"}}
   </script>
-  <link rel="stylesheet" href="/static/suite-header.css?v=c1cfd5fb2395">
+  <link rel="stylesheet" href="/static/suite-header.css?v=9885de12893a">
 </head>
 <body class="rules-page">
   <!-- Dokumentations-Container -->
@@ -82,22 +82,6 @@
       Normalerweise hast du pro Zug bis zu drei Würfe; im letzten freien Feld sind es fünf.
       Im Hardcore-Modus gibt es pro Zug genau einen automatischen Wurf.
     </p>
-
-    <details>
-      <summary>Spielauswahl</summary>
-      <p>Die Spielauswahl im Kopfbereich zeigt freigeschaltete Spiele mit Symbol und Namen. Das aktuelle Spiel ist markiert. Alt+Shift+Z öffnet die Auswahl ausserhalb von Eingabefeldern. Wähle ein Spiel, um seine Lobby zu öffnen.</p>
-    </details>
-
-    <details>
-      <summary>Einsteigertouren</summary>
-      <p>Beim ersten eigenen Spiel wird dir eine freiwillige kurze Tour angeboten. Sie erklärt passende Aktionen direkt am Spieltisch und lässt sich jederzeit mit Tour beenden, × oder Escape schliessen. Deine Partie läuft weiter.</p>
-      <p>Unter Konto → Einstellungen → Hilfe &amp; Neuigkeiten → Einsteigertouren kannst du die Tour erneut starten, als Beispiel anschauen oder automatische Angebote ausschalten. Als Gast findest du Einsteigertouren unter Einstellungen in der Lobby; deine Wahl bleibt in diesem Browser.</p>
-    </details>
-
-    <details>
-      <summary>Konto und Navigation</summary>
-      <p>Weiterführende Aktionen nutzen das Button-Design des jeweiligen Spiels. Die Kategorien der Kontoeinstellungen sind zunächst geschlossen; tippe auf eine Kategorie, um sie zu öffnen. In Hausdepp führt Konto direkt zu den Einstellungen. Spielverlauf und Fortschritt bleiben separat erreichbar.</p>
-    </details>
 
     <!-- Rundenablauf -->
     <h2>Rundenablauf</h2>
@@ -166,6 +150,22 @@
       <li><strong>Server-Neustart:</strong> Wartende und laufende Partien bleiben erhalten. Nach dem Neustart werden Spieler als offline angezeigt und können die Partie mit ihrem gespeicherten Zugang wieder aufnehmen.</li>
       <li><strong>Auto-Timeout:</strong> Bleibt ein wartender, laufender oder pausierter Tisch eine Stunde ohne angenommene Raumaktion, wird die Partie abgebrochen. Verbundene Spieler und Zuschauer sehen den Abschluss-Hinweis mit Rückweg zur Lobby.</li>
     </ul>
+
+    <details>
+      <summary>Spielauswahl</summary>
+      <p>Die Spielauswahl im Kopfbereich zeigt freigeschaltete Spiele mit Symbol und Namen. Das aktuelle Spiel ist markiert. Alt+Shift+Z öffnet die Auswahl ausserhalb von Eingabefeldern. Wähle ein Spiel, um seine Lobby zu öffnen.</p>
+    </details>
+
+    <details>
+      <summary>Einsteigertouren</summary>
+      <p>Beim ersten eigenen Spiel wird dir eine freiwillige kurze Tour angeboten. Sie erklärt passende Aktionen direkt am Spieltisch und lässt sich jederzeit mit Tour beenden, × oder Escape schliessen. Deine Partie läuft weiter.</p>
+      <p>Unter Konto → Einstellungen → Hilfe &amp; Neuigkeiten → Einsteigertouren kannst du die Tour erneut starten, als Beispiel anschauen oder automatische Angebote ausschalten. Als Gast findest du Einsteigertouren unter Einstellungen in der Lobby; deine Wahl bleibt in diesem Browser.</p>
+    </details>
+
+    <details>
+      <summary>Konto und Navigation</summary>
+      <p>Weiterführende Aktionen nutzen das Button-Design des jeweiligen Spiels. Die Kategorien der Kontoeinstellungen sind zunächst geschlossen; tippe auf eine Kategorie, um sie zu öffnen. In Hausdepp führt Konto direkt zu den Einstellungen. Spielverlauf und Fortschritt bleiben separat erreichbar.</p>
+    </details>
 
     <h2>Selbst abgebrochene Partien</h2>
     <p>Ein selbst ausgelöster Abbruch zählt erst, wenn mindestens ein Feld auf einem der Spielzettel ausgefüllt ist. Auch ein Eintrag mit 0 zählt. Nur das ausdrücklich abbrechende Konto erhält den öffentlichen Abbruchzähler im Profil. Timeouts, Verbindungsabbrüche, abgesagte Warteräume und Abbrüche durch Mitspieler zählen nicht. Die Ergebniswertung bleibt unverändert.</p>

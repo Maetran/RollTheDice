@@ -146,7 +146,10 @@ async function create(players, { count = players.length, target = 3, reference =
   }
   if (start) {
     await host.page.locator('[data-watten-command=start]').click();
-    await expect.poll(() => host.traffic.snapshot?.id === gameId && host.traffic.snapshot.started).toBe(true);
+    // Start broadcasts reach each peer separately, just like room mutations.
+    // A ready host must not let callers read another peer's waiting-room engine.
+    await expect.poll(() => players.every(item => item.traffic.snapshot?.id === gameId
+      && item.traffic.snapshot.started && item.traffic.snapshot.engine)).toBe(true);
   }
   return path;
 }

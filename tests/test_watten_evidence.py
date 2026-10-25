@@ -13,8 +13,7 @@ from sqlalchemy import select
 from app.database import session_scope
 from app.game_state import games
 from app.models import CompletedGame, User
-from app.watten_bidding import retourschneider_candidate
-from app.watten_engine import SeatBinding, next_deal, start_match
+from app.watten_engine import SeatBinding, next_deal, retourschneider_decider, retourschneider_offer, start_match
 from app.watten_evidence import (
     UNKNOWN,
     BidEvidence,
@@ -49,9 +48,9 @@ def native_result(count_players=2, *, cpus=(), target=3):
         state = finish(ready(state))
         if state.phase == "match_complete":
             break
-        candidate = retourschneider_candidate(state.ledger)
+        candidate = retourschneider_offer(state)
         if candidate is not None:
-            state = step(state, candidate[0], "retourschneider", "decline")
+            state = step(state, retourschneider_decider(state, candidate), "retourschneider", "decline")
         state = next_deal(state, f"deal-{number + 1}", dealt(count_players))
     assert state.phase == "match_complete"
     return state, result_for(state)
@@ -79,7 +78,7 @@ def bindings_for(evidence):
     return tuple(result)
 
 
-@pytest.mark.parametrize("count_players,cpus", ((2, ()), (3, (1,)), (4, (1, 3))))
+@pytest.mark.parametrize("count_players,cpus", ((2, ()), (3, (1,)), (4, (1,)), (4, (3,)), (4, (1, 3))))
 def test_actual_engine_writer_v1_stays_exact_and_missing_evidence_is_unknown(count_players, cpus):
     state, payload = native_result(count_players, cpus=cpus)
     original = deepcopy(payload)

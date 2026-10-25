@@ -63,6 +63,14 @@ showing and inspection continue. No request means normal play. A CPU receives
 only its own forced bottom card; another player's forced card is learned only
 when it is actually played.
 
+Retourschneider is owned by human consent. A CPU waits for its human teammate,
+and the server applies that human's yes or no to the whole mixed team in one
+transition. Two human teammates still decide separately. A team containing only
+CPUs receives no offer and continues the ordinary deal flow. Older saved mixed
+choices with an already-recorded human yes may finish one server-authorized
+mirror-yes; the CPU can never veto that consent. Older saved all-CPU offers do
+not block the next deal or create a policy job.
+
 ## Soft playing preferences
 
 For blind Ladinisch, the second trick may be left to a partner who still acts

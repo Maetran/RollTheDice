@@ -27,6 +27,7 @@ import { createFriendActivity } from "./friend-activity.js";
 import { initializeAppMode } from "../multigame/app-mode.js";
 import { initializeSuiteHeader } from "../shell/header.js";
 import { createGameTour } from "../shared/game-tours.js";
+import { createCompactHeader } from "./compact-header.js";
 
 // Public lobby launches own the install flow; active tables only register.
 const publicBetaDocument = document.documentElement.dataset.wattenPublicBeta === "true";
@@ -41,6 +42,7 @@ const publicLandingMarkup = publicBetaDocument && page === "lobby" ? app.innerHT
 const nav = document.querySelector("[data-watten-nav]");
 document.querySelector(".suite-header")?.classList.toggle("suite-header--table", page === "table" || page === "spectator");
 initializeSuiteHeader();
+const compactHeader = createCompactHeader();
 const GAME_PATH = /^[0-9a-f]{16}$/;
 const STALE = new Set(["watten_stale_room_revision", "watten_stale_revision", "watten_stale_lifecycle", "watten_stale_opportunity"]);
 const ERRORS = new Set([
@@ -111,6 +113,7 @@ function teardown() {
   sound?.destroy(); sound = null;
   generation += 1;
   delete html.dataset.wattenActive;
+  compactHeader.reset();
   for (const cleanup of cleanups) cleanup();
   cleanups.clear();
   closeSocket();

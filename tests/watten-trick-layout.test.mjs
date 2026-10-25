@@ -24,17 +24,45 @@ for (const height of [320, 330, 360, 361, 393, 410, 440]) {
     const bottom = height - 34 - ownWidth * (570 / 360 + .071);
     const desiredWidth = height <= 330 ? Math.max(48, Math.min(52, height * .4 - 80))
       : Math.max(52, Math.min(64, height * .1644 - 4.608));
-    const fit = fitLandscapeTrick({ top, bottom, desiredWidth });
+    const minimumWidth = height <= 360 ? 48 : 52;
+    const fit = fitLandscapeTrick({ top, bottom, desiredWidth, minimumWidth });
     assert.ok(fit, `a complete pile fits the ${bottom - top}px wood gap`);
     const padding = fit.insetWinner ? 1 : 7;
     assert.ok(fit.top >= top + padding && fit.bottom <= bottom - padding);
     assert.equal(fit.y, (top + bottom) / 2);
-    assert.ok(fit.cardWidth >= 48 && fit.cardWidth <= desiredWidth);
+    assert.ok(fit.cardWidth >= minimumWidth && fit.cardWidth <= desiredWidth);
     assert.ok(fit.spread >= .24 && fit.spread <= .52);
     if (height === 440) assert.equal(fit.cardWidth, 64);
     if (height === 320) assert.equal(fit.cardWidth, 48);
   });
 }
+
+test("the recorded 568px wood gap preserves the existing 48px clover without touching the physical hand", () => {
+  const top = 89.90129852294922, bottom = 186.87196350097656;
+  const fit = fitLandscapeTrick({ top, bottom, desiredWidth: 48, minimumWidth: 48 });
+  assert.ok(fit);
+  assert.equal(fit.cardWidth, 48);
+  assert.equal(fit.spread, .24);
+  assert.equal(fit.compact, true);
+  assert.ok(fit.top >= top + 1 && fit.bottom <= bottom - 1);
+  const cardHeight = fit.cardWidth * 570 / 360;
+  const faces = [rect(-24, fit.y - cardHeight / 2 - cardHeight * fit.spread / 2, 48, cardHeight),
+    rect(-24, fit.y - cardHeight / 2 + cardHeight * fit.spread / 2, 48, cardHeight),
+    rect(-45.6, fit.y - cardHeight / 2, 48, cardHeight), rect(-2.4, fit.y - cardHeight / 2, 48, cardHeight)];
+  for (const face of faces) {
+    assert.ok(face.top >= top + 1 && face.bottom <= bottom - 1);
+    assert.ok(faces.some(other => other !== face && overlap(face, other)), "source petals remain one connected clover");
+  }
+  assert.ok(faces[1].top - faces[0].top >= 18, "top and bottom provenance retains its established visible offset");
+  assert.equal(fitLandscapeTrick({ top, bottom: top + 90, desiredWidth: 48, minimumWidth: 48 }), null,
+    "a smaller gap never shrinks the public faces below their existing 48px contract");
+});
+
+test("larger landscape tables preserve their 52px minimum instead of accepting a premature 49px fit", () => {
+  const fit = fitLandscapeTrick({ top: 89.90129852294922, bottom: 219.44300842285156, desiredWidth: 60 });
+  assert.ok(fit);
+  assert.equal(fit.cardWidth, 52);
+});
 
 test("landscape geometry rejects an unusable gap instead of painting beyond it", () => {
   for (const options of [{ top: 100, bottom: 100, desiredWidth: 64 }, { top: 100, bottom: 150, desiredWidth: 64 },
@@ -57,6 +85,62 @@ test("a short-lived call uses the nearest free gap above the dock without changi
   assert.equal(overlap(call, sideCall), false);
   assert.equal(fitPortraitPrompt(rect(12, 112, 296, 20), [], { ...options, bottomFirst: true }), null,
     "an unusable gap is reported rather than accepted as free space");
+});
+
+test("a compact own announcement keeps clearance from both role rows when the centre has no room", () => {
+  const bounds = rect(12, 112, 296, 133.9375);
+  const leftRole = rect(6, 213.8125, 101.703125, 18.390625);
+  const topFan = rect(118.795, 146.687, 82.426, 62.043);
+  const rightBadge = rect(230, 188, 84, 44);
+  const topIdentity = rect(148, 112, 85, 24);
+  const fit = fitPortraitPrompt(bounds, [leftRole, topFan, rightBadge, topIdentity],
+    { height: 20.765625, widths: [103.825], bottomFirst: true, centerFirst: true });
+  assert.ok(fit, "the compact label fits without a blind dock-relative fallback");
+  assert.ok(fit.left >= leftRole.right + 4);
+  assert.ok(fit.right <= rightBadge.left - 4);
+  assert.ok(fit.bottom <= bounds.bottom);
+});
+
+test("the readable reference can move inward from its corner instead of covering a live role row", () => {
+  const rightBadge = rect(496.984, 173.438, 87.625, 44.391);
+  const topFan = rect(240, 150, 120, 100);
+  const fit = fitPortraitPrompt(rect(12, 104, 576, 488), [rightBadge, topFan],
+    { height: 106.3125, widths: [58], rightFirst: true });
+  assert.equal(fit.width, 58, "the card is not shrunk to make it fit");
+  assert.equal(fit.top, 104);
+  assert.ok(fit.right <= rightBadge.left - 4);
+  assert.ok(fit.left >= topFan.right + 4);
+});
+
+test("reference adjustment preserves centre-relative cards and a clear corner with only a three-pixel gap", () => {
+  const run = ({ position, width, referenceBox, badgeBox }) => {
+    const style = () => ({ removeProperty(key) { delete this[key]; } });
+    const node = value => ({ matches: () => false, getBoundingClientRect: () => value });
+    const reference = { ...node(referenceBox), style: style() }, badge = node(badgeBox);
+    const table = { querySelector: selector => selector === ".wt-reference" ? reference : null,
+      querySelectorAll: () => [badge] };
+    const felt = { closest: () => table, getBoundingClientRect: () => rect(0, 104, width, 464) };
+    const centre = { parentElement: felt, dataset: {}, style: style(), querySelector: () => reference };
+    const trick = { parentElement: centre, hidden: true, children: [] };
+    const win = { innerWidth: width, innerHeight: 600,
+      getComputedStyle: node => ({ position: node === reference ? position : "relative", display: "block", visibility: "visible", opacity: "1" }),
+      addEventListener() {}, removeEventListener() {}, requestAnimationFrame() {}, cancelAnimationFrame() {} };
+    const controller = createTrickLayout(trick, { win });
+    controller.update({ count: 4, engine: { deal_id: "reference" } });
+    const result = { left: reference.style.left, top: reference.style.top };
+    controller.destroy();
+    return result;
+  };
+  assert.deepEqual(run({ position: "absolute", width: 600, referenceBox: rect(528, 104, 58, 106.3125),
+    badgeBox: rect(496.984, 173.438, 87.625, 44.391) }), { left: undefined, top: undefined },
+  "viewport coordinates never overwrite a centre-relative card");
+  assert.deepEqual(run({ position: "fixed", width: 320, referenceBox: rect(264, 104, 42, 80.984375),
+    badgeBox: rect(230, 188, 84, 44) }), { left: undefined, top: undefined },
+  "a clear corner stays clear of the own announcement strip");
+  const moved = run({ position: "fixed", width: 600, referenceBox: rect(528, 104, 58, 106.3125),
+    badgeBox: rect(496.984, 173.438, 87.625, 44.391) });
+  assert.ok(Number.parseFloat(moved.left) + 58 <= 496.984 - 4);
+  assert.equal(moved.top, "104px", "a genuine collision still moves the full-size card inward");
 });
 
 test("landscape keeps its first public card footprint through later cards and winner marking, then refits the next trick", () => {
@@ -345,6 +429,49 @@ test("review toggle schedules layout immediately and its listener is cleaned up"
   layout.destroy();
   assert.equal(cancelled, 1);
   assert.equal(callbacks.size, 0);
+});
+
+test("measured 320x568 raised identity leaves readable public faces in the clover's clear shape", async () => {
+  const recorded = JSON.parse(await readFile(new URL("./fixtures/watten-portrait-live-mobile-bottom.json", import.meta.url), "utf8"));
+  const bounds = rect(...recorded.bounds), obstacles = recorded.obstacles.map(([, ...box]) => rect(...box));
+  const options = { bounds, obstacles, count: 4, minimumWidth: 64, labelHeight: 24 };
+  // This was a real fallback to 52px cards. A rectangular group has no room;
+  // the side badges meet only its empty upper corners, not any painted face.
+  assert.equal(fitPortraitTrick(options), null);
+  assert.equal(fitPortraitTrick({ ...options, labelHeight: 0 }), null, "moving only the winner label cannot fix the old rectangle");
+  const orders = [["bottom", "left", "top", "right"], ["left", "top", "right", "bottom"],
+    ["top", "right", "bottom", "left"], ["right", "bottom", "left", "top"]];
+  for (const order of orders) {
+    let previous = null;
+    for (let length = 1; length <= 4; length++) {
+      const result = fitPortraitTrickView({ ...options, positions: order.slice(0, length), history: length === 4 });
+      assert.ok(result.fit, `${order.slice(0, length).join(" → ")} keeps its measured clover`);
+      assert.ok(result.fit.cardWidth >= 64, "never substitute smaller public faces");
+      assert.equal(result.fit.left + result.fit.width / 2, 160, "the clover keeps its central table axis");
+      assert.equal(result.fit.painted.length, 4, "reserve every eventual face from the first throw");
+      assert.equal(result.fit.positions.length, length, "show only the accepted public prefix");
+      if (previous) {
+        for (const key of ["left", "top", "width", "height", "cardWidth"]) assert.equal(result.fit[key], previous[key]);
+        assert.deepEqual(result.fit.positions.slice(0, length - 1), previous.positions);
+      }
+      for (const face of result.fit.painted) {
+        assert.ok(face.left >= bounds.left && face.right <= bounds.right && face.top >= bounds.top && face.bottom <= bounds.bottom);
+        for (const obstacle of obstacles) {
+          const protectedBox = rect(obstacle.left - 5, obstacle.top - 5, obstacle.width + 10, obstacle.height + 10);
+          assert.equal(overlap(face, protectedBox), false, "each entire painted face clears the own role, stake, names and all hands by 5px");
+        }
+      }
+      const labels = [result.labelFit, result.historyFit].filter(Boolean);
+      assert.ok(result.labelFit, "the future winner keeps its own clear label even during the live trick");
+      if (length === 4) { assert.ok(result.historyFit); assert.equal(result.historyFit.height, 44); }
+      for (const [index, label] of labels.entries()) {
+        for (const obstacle of obstacles) assert.equal(overlap(label, obstacle), false);
+        for (const face of result.fit.painted) assert.equal(overlap(label, face), false);
+        for (const other of labels.slice(index + 1)) assert.equal(overlap(label, other), false);
+      }
+      previous = result.fit;
+    }
+  }
 });
 
 const portraitFixtures = JSON.parse(await readFile(new URL("./fixtures/watten-portrait-tricks.json", import.meta.url), "utf8"));

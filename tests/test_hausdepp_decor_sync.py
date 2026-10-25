@@ -491,7 +491,8 @@ def test_server_manifest_matches_actual_browser_selection_across_rounds_and_view
     script = r"""
 const fs = require('node:fs'), vm = require('node:vm');
 const source = fs.readFileSync(process.argv[1], 'utf8')
-  .replace(/^import .*;\n/gm, '').replace(/export function /g, 'function ');
+  .replace(/^import .*;\n/gm, '')
+  .replace(/^export (?=(?:function|const|let|var|class)\b)/gm, '');
 const start = source.indexOf('const random = randomFor(key);');
 const construction = source.slice(start, source.indexOf('state.onMotionPreference =', start));
 const selectStart = source.indexOf('const phone = innerWidth < 768;');

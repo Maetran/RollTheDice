@@ -6,6 +6,7 @@ from html import escape, unescape
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from .product_hosts import WATTEN_ORIGIN
+from .public_discovery import public_game_suite
 
 _COPY = {
     "de": {
@@ -69,7 +70,7 @@ def _localized_public_links(content: str, language: str) -> str:
     return re.sub(r"<a\b[^>]*>", anchor, content, flags=re.IGNORECASE)
 
 
-def public_watten_metadata(content: str, *, page: str, language: str) -> tuple[str, str]:
+def public_watten_metadata(content: str, *, page: str, language: str, request=None) -> tuple[str, str]:
     language = "en" if language == "en" else "de"
     text = _COPY[language]
     path = "/watten/regeln" if page == "rules" else "/watten"
@@ -99,9 +100,24 @@ def public_watten_metadata(content: str, *, page: str, language: str) -> tuple[s
                   "about": {"@type": "Game", "name": "Watten", "numberOfPlayers": {
                       "@type": "QuantitativeValue", "minValue": 2, "maxValue": 4}}}
     metadata += '<script type="application/ld+json">' + json.dumps(structured, ensure_ascii=False) + '</script>'
+    game = {"@context": "https://schema.org", "@type": "VideoGame", "@id": f"{WATTEN_ORIGIN}/watten#game",
+            "name": "Watten", "url": f"{WATTEN_ORIGIN}/watten", "inLanguage": ["de", "en"],
+            "gamePlatform": "Web browser", "numberOfPlayers": structured["about"]["numberOfPlayers"],
+            "playMode": ["https://schema.org/MultiPlayer"], "isAccessibleForFree": True,
+            "isPartOf": public_game_suite(request)}
+    metadata += '<script type="application/ld+json" data-suite-discovery>' + json.dumps(game, ensure_ascii=False) + '</script>'
     content = content.replace("</head>", metadata + "</head>", 1)
     content = content.replace('{watten_public_heading}', escape(title))
     for key in ("intro", "detail", "beta", "play", "rules", "language", "guide_title", "guide_play_title", "guide_play",
                 "guide_variants_title", "guide_variants", "guide_friends_title", "guide_friends"):
         content = content.replace('{watten_public_' + key + '}', escape(text[key]))
+    if language == "en":
+        # Translate the initial navigation too; JavaScript must not be needed
+        # to turn an English discovery document into an English interface.
+        for german, english in (("Spieler &amp; Ranking", "Players &amp; rankings"),
+                                ("Regeln", "Rules"), ("Konto", "Account")):
+            content = content.replace(f'>{german}</a>', f'>{english}</a>')
+        content = content.replace('aria-label="Spiele / Games"', 'aria-label="Games"')
+        content = content.replace('Sprache / Language', 'Language')
+        content = content.replace('<option value="en">', '<option value="en" selected>')
     return _localized_public_links(content, language), canonical

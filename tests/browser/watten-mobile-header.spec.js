@@ -17,17 +17,18 @@ async function expectCompactTableHead(page, language) {
     const failures = [], felt = document.querySelector('[data-wt-felt]').getBoundingClientRect();
     const portrait = innerWidth < innerHeight;
     const leftRail = !portrait && innerHeight <= 519;
+    const compact = document.documentElement.dataset.wtCompactHeader === 'true';
     for (const score of document.querySelectorAll('.wt-score')) {
       const rect = score.getBoundingClientRect();
       if (portrait && rect.width > 120.5) failures.push('score grows beyond compact content width');
-      if (leftRail ? rect.right > felt.left + 1 : rect.bottom > felt.top + 1) failures.push('score enters the table');
+      if (!compact && (leftRail ? rect.right > felt.left + 1 : rect.bottom > felt.top + 1)) failures.push('score enters the table');
     }
-    const controls = [...document.querySelectorAll('[data-wt-score-open], [data-wt-tools] button, [data-watten-social-action=toggle], .wt-voice-details > summary, #wattenSound')]
+    const controls = [...document.querySelectorAll('[data-wt-score-open], [data-wt-tools] button, [data-watten-social-action=toggle], .wt-voice-details > summary, #wattenSound, [data-watten-header-toggle]')]
       .filter(node => node.getBoundingClientRect().width > 0 && node.getBoundingClientRect().height > 0);
     const boxes = controls.map(node => ({ node, rect: node.getBoundingClientRect() }));
     for (const { node, rect } of boxes) {
       if (rect.width < 44 || rect.height < 44) failures.push('header target smaller than 44px');
-      if ((leftRail ? rect.right > felt.left + 1 : rect.bottom > felt.top + 1)
+      if ((!compact && (leftRail ? rect.right > felt.left + 1 : rect.bottom > felt.top + 1))
         || rect.left < 0 || rect.right > innerWidth || rect.top < 0 || rect.bottom > innerHeight) failures.push('action clipped or enters the table');
       if (!node.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2))) failures.push('header target covered');
     }

@@ -11,9 +11,8 @@ from types import SimpleNamespace
 import pytest
 
 from app import watten_runtime as runtime_module
-from app.watten_bidding import retourschneider_candidate
 from app.watten_cpu_runtime import observe_cpu_memories
-from app.watten_engine import EngineActor, EngineCommand
+from app.watten_engine import EngineActor, EngineCommand, retourschneider_decider, retourschneider_offer
 from app.watten_evidence import BidEvidence, evidence_from_payload, evidence_to_payload
 from app.watten_match_evidence import terminal_evidence
 from app.watten_play import legal_cards
@@ -135,9 +134,9 @@ class NativeMatch:
             if self.engine.phase == "match_complete":
                 return
             if self.engine.phase == "deal_complete":
-                candidate = retourschneider_candidate(self.engine.ledger)
+                candidate = retourschneider_offer(self.engine)
                 if candidate is not None:
-                    self.act(candidate[0], "retourschneider", "decline")
+                    self.act(retourschneider_decider(self.engine, candidate), "retourschneider", "decline")
                 self.next_deal()
                 self.ready()
             self.card()

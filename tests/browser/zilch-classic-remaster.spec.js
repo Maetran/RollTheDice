@@ -87,6 +87,8 @@ for (const language of ['de', 'en']) {
       });
       expect(focus.outline).toBeGreaterThan(0);
       expect(focus.style).not.toBe('none');
+      await expect(page.locator('.zilch-brand')).toHaveAccessibleName('Zilch');
+      await expect(page.locator('.zilch-lobby-grid')).toHaveAttribute('role', 'group');
       await expectNoOverflow(page);
       await page.screenshot({ path: testInfo.outputPath(`classic-lobby-${language}-${width}.png`), fullPage: true });
     });
@@ -103,7 +105,7 @@ test('public core rules remain useful with JavaScript disabled', async ({ browse
     const summary = page.locator('[data-zilch-rules-summary]');
     await expect(summary.getByRole('heading', { level: 1 })).toHaveText('Zilch-Regeln');
     await expect(summary.locator('.zilch-rule-table tbody tr')).toHaveCount(12);
-    for (const title of ['Was Punkte bringt', 'Würfeln oder sichern', 'Freier Wurf und Bestätigungswurf', 'Zilch-Serie', '10’000-Punkte-Sprint']) {
+    for (const title of ['Was Punkte bringt', 'Würfeln oder sichern', 'Freier Wurf (Hot Dice) und Bestätigungswurf', 'Zilch-Serie', '10’000-Punkte-Sprint']) {
       await expect(summary.getByRole('heading', { name: title, exact: true })).toBeVisible();
     }
     await expect(page.locator('meta[name="robots"][content*="noindex"]')).toHaveCount(0);
@@ -127,6 +129,9 @@ for (const language of ['de', 'en']) {
     await expect(summary.getByRole('heading', { level: 1 })).toHaveText(language === 'en' ? 'Zilch rules' : 'Zilch-Regeln');
     await expect(summary.locator('.zilch-rule-table tbody tr')).toHaveCount(12);
     await expectReadable(summary.locator('#zilchScoringTitle'));
+    const tours = summary.getByRole('heading', { name: language === 'en' ? 'Beginner tours' : 'Einsteigertouren', exact: true });
+    await expect(tours).toHaveCount(1);
+    expect(await summary.locator('#zilchScoringTitle').evaluate((heading, help) => Boolean(heading.compareDocumentPosition(help) & Node.DOCUMENT_POSITION_FOLLOWING), await tours.elementHandle())).toBe(true);
     await expectNoOverflow(page);
   });
 }

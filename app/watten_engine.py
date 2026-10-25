@@ -492,6 +492,24 @@ def retourschneider_decider(state: EngineState, members: tuple[str, ...]) -> str
     return humans[0] if len(humans) == 1 else state.parties.decider(state.parties.party_of(members[0]))
 
 
+def retourschneider_actors(state: EngineState, members: tuple[str, ...]) -> tuple[str, ...]:
+    """A mixed team follows its human; older saved yes-votes may finish mirroring."""
+    humans = tuple(binding.player_id for binding in state.recipe.bindings
+                   if binding.player_id in members and binding.account_id is not None)
+    if len(humans) != 1:
+        return members
+    if humans[0] in state.retour_accepted_by:
+        return tuple(member for member in members if member not in humans)
+    return humans
+
+
+def retourschneider_offer(state: EngineState) -> tuple[str, ...] | None:
+    """Only a team with a bound human may receive the optional challenge."""
+    members = retourschneider_candidate(state.ledger)
+    return members if members is not None and any(
+        binding.player_id in members and binding.account_id is not None for binding in state.recipe.bindings) else None
+
+
 def start_match(recipe: EngineRecipe, deal_id: str, deal: DealtCards, *, first_dealer: str) -> EngineState:
     """First dealer is a trusted server draw result; this module never draws it."""
     parties = _parties(recipe, first_dealer)
@@ -505,7 +523,7 @@ def next_deal(state: EngineState, deal_id: str, deal: DealtCards) -> EngineState
     """Trusted server transition after a scored deal; no new teams or shuffle."""
     if state.phase != "deal_complete":
         raise WattenEngineError("watten_next_deal_unavailable")
-    if retourschneider_candidate(state.ledger) is not None:
+    if retourschneider_offer(state) is not None:
         raise WattenEngineError("watten_retourschneider_decision_pending")
     if deal_id == state.deal_id or any(result.deal_id == deal_id for result in state.ledger.applied_results):
         raise WattenEngineError("watten_deal_id_reused")
@@ -671,11 +689,19 @@ def apply_command(state: EngineState, actor: EngineActor, command: EngineCommand
         changed = _finish(cleared, state.play, bidding) if bidding.result else replace(
             cleared, bid_state=bidding, phase="bid_response" if bidding.pending else "play")
     elif kind == "retourschneider" and state.phase == "deal_complete":
-        members = retourschneider_candidate(state.ledger)
+        members = retourschneider_offer(state)
         if (members is None or value not in {"accept", "decline"}
-                or actor.player_id not in members or actor.player_id in state.retour_accepted_by):
+                or actor.player_id not in retourschneider_actors(state, members)
+                or actor.player_id in state.retour_accepted_by):
+            raise WattenEngineError("watten_retourschneider_unavailable")
+        humans = tuple(binding.player_id for binding in state.recipe.bindings
+                       if binding.player_id in members and binding.account_id is not None)
+        mixed = len(humans) == 1
+        if mixed and actor.account_id is None and value != "accept":
             raise WattenEngineError("watten_retourschneider_unavailable")
         votes = (*state.retour_accepted_by, actor.player_id) if value == "accept" else ()
+        if mixed and value == "accept":
+            votes = members
         if value == "decline" or set(votes) == set(members):
             changed = replace(state, ledger=choose_retourschneider(state.ledger, members, accept=value == "accept"),
                               retour_accepted_by=())

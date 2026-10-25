@@ -1,4 +1,4 @@
-import { prepareCardAssets } from "./cards.js";
+import { prepareLobbyCardAssets } from "./cards.js";
 
 // A decorative, local hand: it never sends a game action or touches a room.
 export function mountLobbyDemo(container, renderCard) {
@@ -177,7 +177,7 @@ export function mountLobbyDemo(container, renderCard) {
     preparing = true;
     clearTimeout(assetTimer);
     try {
-      await prepareCardAssets();
+      await prepareLobbyCardAssets();
       if (stopped || !container.isConnected) return;
       assetsReady = true;
       container.dataset.cardAssets = "ready";

@@ -364,17 +364,41 @@ are then revealed to everyone for about three seconds before the next deal
 starts automatically. A pause or pending Retourschneider decision stops that
 transition. A completed match's result likewise waits for collection and review.
 
-**Tischdeko / table decorations:** Getränke, Snacks und Dekowürfel liegen frei
-auf dem Tisch. Antippen benutzt sie, Ziehen oder Pfeiltasten verschieben sie.
-Desktop-Deko ist grösser. Deko-Ecke, Stern und Kontextmenüs entfallen vollständig;
-die Gegenstände werden direkt bedient, Spielbereiche bleiben frei.
+**Tischdeko / table decorations:** Eine kleine Auswahl aus den 23 gewöhnlichen
+Hausdepp-Gegenständen liegt zufällig auf dem Tisch: ein Bier und bis zu zwei
+weitere Gegenstände, soweit Platz bleibt. Gläser werden Schluck für Schluck leer;
+ein weiterer ruhiger Tipp schenkt nach. Schnelle Tipps verschütten den Rest und
+kippen das Glas. Nach einer Pause lässt es sich wieder aufstellen und nachfüllen.
+Den Putzlumpen kannst du über die Pfütze ziehen oder mehrfach antippen.
+Snacks verschwinden portionsweise; Schalen und Bretter bleiben verschiebbar.
+Münzen und Würfel zeigen ein Ergebnis, Bierdeckel zählen Striche, der Bleistift
+schreibt mit. Das Windlicht lässt sich auspusten und anzünden; kräftiges
+Hin-und-her-Schütteln löscht es kurz, dann zündet es sich wieder an.
+Mehrfaches Antippen öffnet die Dose, heftiges Schütteln lässt sie platzen.
+Verschobene volle Gläser hinterlassen kurz einen Ring, Bier verliert mit der
+Zeit seinen Schaum. Ziehen oder Pfeiltasten verschieben, Entf entfernt.
+Desktop-Deko ist grösser; Spielbereiche bleiben frei. Die gewöhnlichen
+Gegenstände und ihre Benutzung bleiben auf deinem Gerät und verändern weder
+Karten, Zugrecht noch Punkte. Reduzierte Bewegung erhält die direkte Bedienung
+ohne animierte Spielereien. Deko-Ecke und Kontextmenüs entfallen.
 Acht seltene Überraschungen können gemeinsam auftreten. Auslösung und Miterleben
 werden serverseitig einmal je Runde belegt und erst mit dem gültig abgeschlossenen
 Spiel als Erfolge verbucht; mindestens zwei Menschen müssen verbunden mitspielen.
-Drinks, snacks and decoration dice scatter over the table. Tap to use, drag or
-use arrow keys to move. Desktop props are larger. The decoration corner, star
-and item context menus are removed; props are controlled directly and play areas
-stay clear. Eight rare surprises can occur together at the table.
+A small selection from Hausdepp's 23 ordinary props scatters over the table:
+one beer and up to two other items where space permits. Drinks empty sip by sip;
+a further calm tap tops them up. Rapid taps spill the rest and topple the glass.
+After a pause, stand it up and refill it. Drag the cloth across a spill or tap
+it several times to wipe up. Snacks disappear in portions; bowls and boards
+stay movable. Coins and dice show results, beer mats count tally marks and the
+pencil adds marks. Blow out or relight the lantern; vigorous back-and-forth
+shaking puts it out briefly before it relights itself. Repeated taps open the
+can; vigorous shaking bursts it. Moving a full glass leaves a temporary ring,
+and beer slowly loses its foam. Drag or use arrow keys to move; Delete removes
+an item. Desktop props are larger and play areas stay clear. Ordinary props
+and their use stay on your device and never change cards, turns or points.
+Reduced motion keeps direct use available without animated gestures. There is
+no decoration corner or context menu. Eight rare surprises can occur together
+at the table.
 Server evidence records activation and connected witnesses once per round;
 achievements are granted only after a valid completed match with at least two
 connected human players at the time of the event.
@@ -407,6 +431,11 @@ müssen getrennt zustimmen; ein Nein behält die Anschrift. Nach dem eigenen Ja
 zeigt der Tisch, auf wen noch gewartet wird. Erst nach beiden Ja kündigt ein
 kurzer bildschirmfüllender Auftritt den Retourschneider an, ohne die Bedienung
 zu sperren. Er erscheint je Einstieg einmal, auch nach erneutem Laden nicht nochmals.
+Bei einem Nein bleibt für das betroffene Team ein schliessbarer Hinweis stehen,
+auch wenn inzwischen die nächste Gabe beginnt: Die Anschrift bleibt erhalten.
+Bei Mensch und CPU im selben Team entscheidet allein der Mensch. Der
+CPU-Partner folgt seiner Wahl sofort und kann den Retourschneider nicht ablehnen.
+Ein Team aus zwei CPUs erhält kein Angebot und spielt normal weiter.
 A round ends with three tricks or a fold, the match at its target. Losers receive
 one Nockerl, or two without scoring (Schneider). With four players, the trailing
 team may erase its score when the other team first becomes gestrichen. Winning
@@ -416,6 +445,11 @@ separately; one refusal keeps their score. After your yes, the table shows whose
 answer is pending. Once both agree, a brief full-screen announcement introduces
 the Retourschneider without blocking controls. Each entry is announced once,
 including across reloads.
+After a refusal, the affected team sees a dismissible explanation that their
+score is kept, even if the next deal has already started.
+In a human-and-CPU team, the human alone decides. The CPU teammate immediately
+follows that choice and cannot veto the Retourschneider.
+A team of two CPUs receives no offer and continues normal play.
 
 **8+3-Erfolge / milestones:** «8+3 isch Mittag» gibt es nach zehn normalen
 Spielsiegen bis elf, bei denen die letzte Drei-Punkte-Runde genau von acht
@@ -502,6 +536,12 @@ enables its manifest, worker, push reception and safe notification targets.
 Push needs the existing VAPID configuration and explicit account consent.
 Open-seat calls validate the stored public waiting room and both durable
 cooldowns before sending. Backend tests do not prove real provider delivery.
+Neue Versionen lassen sich auch am laufenden Watten-Tisch ausdrücklich mit
+«Watten aktualisieren» laden. Sichtbare, verbundene Fenster prüfen minütlich auf
+Updates; erst der Klick aktiviert die neue Version und lädt die Seite neu.
+New versions can also be loaded at an active Watten table with “Update Watten”.
+Visible online windows check every minute; only the explicit action activates
+the new version and reloads the page.
 
 **Lokaler Kontofortschritt / local account progress:** Die lokale Watten-Vorschau
 verbucht neue abgeschlossene Partien zusammen mit Ergebnis und Fortschritt in
@@ -542,7 +582,9 @@ determines whether the new table is protected; applying
 a favorite neither creates nor starts a match.
 
 **Ruhiger Tisch / calmer table:** Ansagekarten treffen sich zwischen den beiden
-Ansagenden und bleiben auch im Querformat lesbar. Auf kleinen Bildschirmen dürfen
+Ansagenden auf der Verbindungslinie ihrer Hände und bleiben auch im Querformat lesbar.
+Die eigene Ansage kommt rechts neben der fünften oder links neben der ersten Karte hervor.
+Auf kleinen Bildschirmen dürfen
 sie sich überlappen; beide Karten bleiben erkennbar. Blödeln hat einen festen
 Bedienplatz; Unbeteiligte sehen nur den kurzen Status. Beim Ansehen des letzten
 Stichs bleiben neue Würfe und Kartenanimationen verborgen. Am Spielende stehen
@@ -550,13 +592,18 @@ Ergebnis, schnelle Reaktionen und Revanche oben; Tischverlauf und kompakte
 Erfolge & Titel findest du darunter bei den Details.
 Auch während des Austeilens bleiben die Kartenplätze reserviert, damit bereits
 liegende Stichkarten ihre Größe behalten.
-Inspection cards meet between the two announcers and remain readable in
-landscape. On small screens they may overlap while both remain identifiable.
+Auf sehr kleinen Handys im Querformat öffnet der Menüknopf die Kopfzeile.
+Punkte und Ziel bleiben sichtbar; Verlassen, Chat und Audio bleiben direkt erreichbar.
+Inspection cards meet on the line connecting the two announcers' hands and remain readable in
+landscape. Your shown card leaves beyond the fifth card towards the right or beyond the first towards the left.
+On small screens they may overlap while both remain identifiable.
 Blödeln controls keep a stable dock, with only a short status for
 others. Reviewing the last trick hides live throws and card animations. At match
 end the result, quick reactions and rematch come first; table history and compact
 achievements and titles are available below in the details.
 Card slots remain reserved during dealing so played trick cards keep their size.
+On very small phones in landscape, the menu button opens the header.
+Scores and target stay visible; leave, chat and audio remain directly accessible.
 
 **Verlassene Tische / abandoned tables:** Nach einer Stunde ohne Spielaktivität
 werden laufende oder pausierte Watten-Spiele ohne Wertung beendet. Spielaktionen
@@ -616,14 +663,18 @@ enabling again never adds missed messages. The public table chat is independent.
 The game picker marks only public availability as “[BETA]” and labels the closed
 preview as private.
 
-**Deko-Bedienung / decoration controls:** Acht lokale Gegenstände können
-zufällig am Tisch erscheinen. Antippen isst, trinkt oder würfelt, Ziehen oder
-Pfeiltasten verschieben. Deko-Ecke, Stern und Kontextmenü sind entfernt.
-Spielbereiche bleiben frei. Auch mit reduzierter Bewegung bleibt
-die Bedienung verfügbar.
-Eight local items can appear randomly at the table. Tap to eat, drink or roll;
-drag or use arrow keys to move. The decoration corner, star and context menus
-are removed. Play areas remain clear, and controls work with reduced motion.
+**Deko-Bedienung / decoration controls:** Bis zu drei lokale Gegenstände aus
+Hausdepps vollständiger gewöhnlicher Auswahl erscheinen zufällig am Tisch.
+Gläser lassen sich leeren, nachfüllen, verschütten und wieder aufstellen;
+Pfützen wischst du selbst mit dem Lumpen auf. Snacks, Dose, Windlicht,
+Münze, Würfel und Strichlisten unterstützen die gleichen direkten Spielereien.
+Ziehen oder Pfeiltasten verschieben, Entf entfernt. Spielbereiche bleiben frei;
+auch mit reduzierter Bewegung bleibt die direkte Bedienung verfügbar.
+Up to three local props from Hausdepp's complete ordinary selection appear
+randomly on the table. Empty, refill, spill and stand up glasses; use the cloth
+to wipe up yourself. Snacks, the can, lantern, coin, dice and tally marks support
+the same direct interactions. Drag or use arrow keys to move; Delete removes.
+Play areas stay clear, and direct use remains available with reduced motion.
 
 **Deutsch:** Watten ist als nächstes Spiel vorgemerkt: üblicherweise 4er
 ladinisch bis 11 Punkte («8+3 isch zmittag»), mit blindem Einschauen durch den
@@ -2771,6 +2822,23 @@ Pro Route gibt es eine kanonische deutsche Seite. Die englische Oberfläche
 ist eine Spracheinstellung, keine eigene indexierte Sprachadresse.
 
 Details: [Zilch SEO review](docs/ZILCH_SEO_REVIEW_2026-09-12.md).
+
+**Suite discovery / Auffindbarkeit:** Public pages link directly to the games
+whose public access is enabled. The shared structured data follows the same
+availability flags. ZDWA's rank guide renders the published catalogue thresholds
+on the server; the player page explains rankings without publishing additional
+personal data. Core rules precede optional app help. These changes do not open
+private APIs, accounts or tables to crawlers. Watten retains real DE/EN URLs;
+the other games keep their existing language-selection model.
+
+Öffentliche Seiten verlinken direkt auf die freigegebenen Spiele; strukturierte
+Daten berücksichtigen dieselben Freigaben. ZDWA liefert die veröffentlichten
+Rangschwellen bereits serverseitig, und die Spielerseite erklärt das Ranking,
+ohne zusätzliche persönliche Daten zu veröffentlichen. Kernregeln stehen vor
+optionaler Bedienungshilfe. Private APIs, Konten und Tische bleiben geschützt.
+Watten behält seine echten DE/EN-Adressen, die anderen Spiele ihre bestehende
+Sprachwahl. Inhalte werden nach hilfreichen Antworten geprüft, nicht nach einer
+künstlichen Mindestwortzahl.
 
 ### Zilch recommendation tiles
 

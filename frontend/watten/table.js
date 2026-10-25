@@ -10,6 +10,7 @@ import { retourschneiderChoiceMarkup, createRetourAnnouncement } from "./retours
 import { seriesMarks, seriesTargetMarkup, seriesFinishedTitle } from "./series.js";
 import { createScorepad, nockerlMarksMarkup } from "./scorepad.js";
 import { createTrickLayout } from "./trick-layout.js";
+import { fitInspectionAxis, outermostCard, paintedBox, rectOf, unionOf } from "./inspection-geometry.js";
 import { resultReactionsMarkup } from "./social.js";
 
 const POSITIONS = { 2: ["bottom", "top"], 3: ["bottom", "left", "right"], 4: ["bottom", "left", "top", "right"] };
@@ -174,151 +175,128 @@ function inspectionMarkup(vm) {
 function createInspectionMotion(reveal, seatNodes) {
   const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)");
   const centre = rect => ({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
-  const clamp = (value, min, max) => max < min ? (min + max) / 2 : Math.max(min, Math.min(value, max));
-  const clearance = 4;
-  const overlaps = (a, b) => a.left < b.right + clearance && a.right > b.left - clearance
-    && a.top < b.bottom + clearance && a.bottom > b.top - clearance;
-  let key = "", playedKey = "", figures = [], observer = null, flights = [], geometry = "", frame = 0;
+  const SIDES = ["bottom", "left", "right", "top"];
+  let key = "", playedKey = "", figures = [], observer = null, flights = [], geometry = "", frame = 0, memo = { key: "", fit: null };
   const settle = () => { flights.forEach(flight => flight.cancel()); flights = []; };
   const stop = () => {
     settle(); observer?.disconnect(); observer = null;
     cancelAnimationFrame(frame); frame = 0;
-    key = ""; figures = []; geometry = "";
+    key = ""; figures = []; geometry = ""; memo = { key: "", fit: null };
     reveal.closest(".wt-table")?.style.removeProperty("--wt-inspection-ack-height");
     delete reveal.dataset.wtInspectionPositioned;
+    delete reveal.dataset.wtInspectionAxis;
+    delete reveal.dataset.wtInspectionFit;
+    delete reveal.dataset.wtInspectionReason;
+    delete reveal.dataset.wtInspectionDetail;
+  };
+  const playerOf = figure => seatNodes.get(Number(figure.dataset.wtInspectionSeat));
+  const handArea = () => reveal.closest(".wt-table")?.querySelector("[data-wt-hand-area]");
+  const signature = () => {
+    const felt = reveal.parentElement.getBoundingClientRect(), hand = handArea()?.getBoundingClientRect();
+    return [felt.width, felt.height, hand?.width || 0, hand?.height || 0].join(":");
   };
 
   function position() {
     if (!reveal.isConnected || figures.length !== 2 || !figures.every(figure => figure.isConnected)) { stop(); return; }
     const felt = reveal.parentElement, bounds = felt.getBoundingClientRect();
     const table = felt.closest(".wt-table");
-    if (!bounds.width || !bounds.height) return;
-    const origins = figures.map(figure => {
-      const player = seatNodes.get(Number(figure.dataset.wtInspectionSeat));
-      const source = player?.querySelector(".wt-avatar")?.getBoundingClientRect();
-      if (!source) return null;
-      const point = centre(source);
-      const position = ["bottom", "left", "right", "top"].find(value => player.classList.contains(`wt-seat--${value}`));
-      // The own hand occupies the bottom centre even when its name badge
-      // sits at the edge.
-      if (position === "bottom") point.x = bounds.left + bounds.width / 2;
-      return { x: point.x - bounds.left, y: point.y - bounds.top };
+    if (!bounds.width || !bounds.height || !table) return;
+    const local = rect => rectOf(rect.left - bounds.left, rect.top - bounds.top, rect.width, rect.height);
+    const painted = nodes => [...nodes].map(node => node.getBoundingClientRect())
+      .filter(rect => rect.width && rect.height).map(local);
+    // Fanned cards: their true rotated outline, not the upright bounds that
+    // add empty corners. Rotation accumulates up to the felt.
+    const turn = value => {
+      const match = /(-?[\d.]+)(deg|rad|grad|turn)\s*$/.exec(value || "");
+      if (!match) return 0;
+      const amount = Number(match[1]);
+      return match[2] === "deg" ? amount * Math.PI / 180 : match[2] === "turn" ? amount * 2 * Math.PI : match[2] === "grad" ? amount * Math.PI / 200 : amount;
+    };
+    const angleOf = node => {
+      let angle = 0;
+      for (let item = node; item && item !== felt; item = item.parentElement) {
+        const style = getComputedStyle(item);
+        if (style.transform && style.transform !== "none") {
+          const matrix = new DOMMatrixReadOnly(style.transform);
+          angle += Math.atan2(matrix.b, matrix.a);
+        }
+        if (style.rotate && style.rotate !== "none") angle += turn(style.rotate);
+      }
+      return angle;
+    };
+    const outlines = nodes => [...nodes].map(node => ({ node, rect: node.getBoundingClientRect() }))
+      .filter(item => item.rect.width && item.rect.height)
+      .map(({ node, rect }) => paintedBox(local(rect), { width: node.offsetWidth, height: node.offsetHeight }, angleOf(node)));
+    const players = figures.map(playerOf);
+    if (players.some(player => !player)) return;
+    // Sources are the painted cards themselves: the own hand while its area
+    // is shown, otherwise that caller's visible backs. Wrappers are ignored.
+    const area = handArea();
+    const hand = area && !area.hidden ? outlines(area.querySelectorAll("[data-wt-hand] > *")) : [];
+    const fans = players.map(player => player.classList.contains("is-own") ? hand
+      : outlines(player.querySelectorAll(".wt-backs:not([hidden]) > i:not([hidden])")));
+    const avatar = player => painted([player.querySelector(".wt-avatar")].filter(Boolean))[0];
+    const rough = fans.map((fan, index) => {
+      const source = fan.length ? unionOf(fan) : avatar(players[index]);
+      return source ? centre(source) : null;
     });
-    if (origins.some(origin => !origin)) return;
-    const delta = { x: origins[1].x - origins[0].x, y: origins[1].y - origins[0].y };
-    const distance = Math.hypot(delta.x, delta.y) || 1;
-    // The meeting point belongs to the two announcing hands. Keep both
-    // cards on their connecting line in every orientation.
-    const shortPortrait = bounds.height > bounds.width;
-    const unit = { x: delta.x / distance, y: delta.y / distance };
-    const angle = Math.atan2(unit.y, unit.x) * 180 / Math.PI + 90;
+    if (rough.some(point => !point)) return;
+    // The own card leaves from the hand's outermost card towards the other
+    // caller: beyond the rightmost card when pointing right, the first otherwise.
+    const actors = players.map((player, index) => {
+      const own = player.classList.contains("is-own"), fan = fans[index];
+      const outer = own && fan.length ? outermostCard(fan, rough[1 - index]) : null;
+      return { anchor: outer ? centre(outer) : rough[index], protect: own ? fan : [], fan: own ? [] : fan };
+    });
     const cards = figures.map(figure => figure.querySelector(".wt-card"));
     const captions = figures.map(figure => figure.querySelector("figcaption"));
-    const ack = reveal.querySelector('[data-kind="inspection_ack"]');
-    if (!ack) return;
-    const hand = table?.querySelector(".wt-hand-area:not([hidden])")?.getBoundingClientRect();
-    const region = { left: 10, top: 10, right: bounds.width - 10,
-      bottom: Math.min(bounds.height - 10, hand?.height ? hand.top - bounds.top - 12 : bounds.height - 10) };
+    if (cards.some(card => !card) || captions.some(caption => !caption)) return;
     cards.forEach(card => card.style.removeProperty("width"));
-    const baseWidths = cards.map(card => card.offsetWidth);
+    const sizes = cards.map(card => ({ width: card.offsetWidth, height: card.offsetHeight }));
     const labelSizes = captions.map(caption => ({ width: caption.offsetWidth, height: caption.offsetHeight }));
-    const obstacles = [...felt.querySelectorAll('.wt-avatar, .wt-seat-name, .wt-seat-call-role, .wt-seat-public-title, .wt-seat-tags, .wt-bubble--thanks, .wt-backs:not([hidden]) > i:not([hidden]), .wt-stock'), ...table.querySelectorAll('[data-wt-preplay]:not(:empty), [data-watten-action=inspection_ack]')]
-      .map(node => node.getBoundingClientRect()).filter(rect => rect.width && rect.height)
-      .map(rect => ({ left: rect.left - bounds.left, right: rect.right - bounds.left,
-        top: rect.top - bounds.top, bottom: rect.bottom - bounds.top }));
-    function arrangement(scale, separation = .5) {
-      cards.forEach((card, index) => { card.style.width = `${baseWidths[index] * scale}px`; });
-      const poses = cards.map((card, index) => {
-        const width = card.offsetWidth, height = card.offsetHeight, rotation = angle + index * 180;
-        const radians = rotation * Math.PI / 180, direction = index ? 1 : -1;
-        const x = direction * unit.x * (height * separation + (separation === .5 ? 2 : 0)), y = direction * unit.y * (height * separation + (separation === .5 ? 2 : 0));
-        const extentX = (Math.abs(Math.cos(radians)) * width + Math.abs(Math.sin(radians)) * height) / 2;
-        const extentY = (Math.abs(Math.sin(radians)) * width + Math.abs(Math.cos(radians)) * height) / 2;
-        return { x, y, width, height, rotation, left: x - extentX, right: x + extentX, top: y - extentY, bottom: y + extentY };
-      });
-      // The smallest portrait uses the outer short edges for labels, leaving
-      // the side fans clear. Other screens keep the upright long-edge badges.
-      const labels = poses.map((pose, index) => {
-        const size = labelSizes[index], side = index ? -1 : 1;
-        if (shortPortrait) {
-          const x = pose.x, y = pose.y + unit.y * -side * pose.height / 2;
-          return { x, top: y - size.height / 2, left: x - size.width / 2,
-            right: x + size.width / 2, bottom: y + size.height / 2 };
-        }
-        const normal = { x: -unit.y * side, y: unit.x * side };
-        const offset = pose.width / 2 + (Math.abs(normal.x) * size.width + Math.abs(normal.y) * size.height) / 2 + 2;
-        const x = pose.x + normal.x * offset, y = pose.y + normal.y * offset;
-        return { x, top: y - size.height / 2, left: x - size.width / 2,
-          right: x + size.width / 2, bottom: y + size.height / 2 };
-      });
-      const faceTop = Math.min(...poses.map(pose => pose.top), ...labels.map(label => label.top));
-      const faceBottom = Math.max(...poses.map(pose => pose.bottom), ...labels.map(label => label.bottom));
-      const faceRight = Math.max(...poses.map(pose => pose.right), ...labels.map(label => label.right));
-      const faceLeft = Math.min(...poses.map(pose => pose.left), ...labels.map(label => label.left));
-      return { poses, labels, left: faceLeft, right: faceRight, top: faceTop, bottom: faceBottom,
-        width: faceRight - faceLeft, height: faceBottom - faceTop };
+    const actorSeats = new Set(players);
+    const controls = painted(table.querySelectorAll('[data-watten-action="inspection_ack"], [data-wt-preplay] :is(button, h3, p), '
+      + '.wt-preplay-options > summary, [data-wt-private] button, [data-wt-history]:not([hidden]) > summary, '
+      + '.wt-seat--bottom.is-own .wt-seat-badge, .wt-seat--bottom.is-own .wt-bubble--thanks'));
+    const obstacles = [...painted(felt.querySelectorAll(".wt-avatar, .wt-seat-name, .wt-seat-call-role, .wt-seat-public-title, "
+      + ".wt-seat-tags, .wt-bubble--thanks, .wt-taken:not([hidden]) .wt-taken-packet, .wt-stock, [data-wt-reference] .wt-card, [data-wt-bloedeln] .wt-card")),
+    ...outlines([...felt.querySelectorAll(".wt-seat")].filter(seat => !actorSeats.has(seat))
+      .flatMap(seat => [...seat.querySelectorAll(".wt-backs:not([hidden]) > i:not([hidden])")]))];
+    const input = { region: rectOf(6, 6, bounds.width - 12, bounds.height - 12),
+      actors, cards: sizes, captions: labelSizes, controls, obstacles };
+    // Snapshot updates re-run this; refit only when a measurement changed.
+    const inputKey = JSON.stringify(input, (_, value) => typeof value === "number" ? Math.round(value * 10) / 10 : value);
+    if (inputKey !== memo.key) memo = { key: inputKey, fit: fitInspectionAxis(input) };
+    const { fit } = memo;
+    geometry = signature();
+    if (fit.status !== "fit") {
+      // Never keep an earlier, now invalid placement. The faces stay hidden
+      // (ACK remains usable) and the measured reason is exposed for diagnosis.
+      settle();
+      delete reveal.dataset.wtInspectionPositioned;
+      reveal.dataset.wtInspectionFit = "unfit";
+      reveal.dataset.wtInspectionReason = fit.reason;
+      reveal.dataset.wtInspectionDetail = JSON.stringify({ length: fit.axis?.length, clear: fit.clear, required: fit.required });
+      return;
     }
-    function placement(value) {
-      if (value.width > region.right - region.left || value.height > region.bottom - region.top) return null;
-      const xMin = region.left - value.left, xMax = region.right - value.right;
-      const yMin = region.top - value.top, yMax = region.bottom - value.bottom;
-      const desired = { x: (origins[0].x + origins[1].x) / 2,
-        y: (origins[0].y + origins[1].y) / 2 };
-      const parts = [...value.poses, ...value.labels];
-      // Prefer the exact midpoint. A small inward clearance may skirt a
-      // source packet, while the pair stays in its two announcers' sector.
-      const normal = { x: -unit.y, y: unit.x };
-      const towardCentre = (bounds.width / 2 - desired.x) * normal.x + (bounds.height / 2 - desired.y) * normal.y;
-      const direction = towardCentre < 0 ? -1 : 1;
-      let best = null, bestDistance = Infinity;
-      for (let offset = 0; offset <= 64; offset += 4) for (const fraction of [.5, .45, .55, .4, .6, .35, .65]) {
-        const x = origins[0].x + delta.x * fraction + normal.x * offset * direction;
-        const y = origins[0].y + delta.y * fraction + normal.y * offset * direction;
-        if (x < xMin || x > xMax || y < yMin || y > yMax) continue;
-        if (parts.some(part => obstacles.some(obstacle => overlaps({ left: x + part.left, right: x + part.right,
-          top: y + part.top, bottom: y + part.bottom }, obstacle)))) continue;
-        const distance = ((x - desired.x) / bounds.width) ** 2 + ((y - desired.y) / bounds.height) ** 2;
-        if (distance < bestDistance) { best = { x, y, distance }; bestDistance = distance; }
-      }
-      return best;
-    }
-    let arranged, midpoint;
-    // Keep the short edges together wherever space allows. On a small table
-    // the same two faces may overlap, preserving at least 52px printed width.
-    for (const separation of [.5, .35, .25, .2]) {
-      arranged = arrangement(1, separation);
-      midpoint = placement(arranged);
-      if (midpoint) break;
-      let low = Math.min(1, 52 / Math.min(...baseWidths)), high = 1;
-      arranged = arrangement(low, separation);
-      midpoint = placement(arranged);
-      if (!midpoint) continue;
-      for (let step = 0; step < 8; step += 1) {
-        const middle = (low + high) / 2;
-        const point = placement(arrangement(middle, separation));
-        if (point) low = middle; else high = middle;
-      }
-      arranged = arrangement(low, separation);
-      midpoint = placement(arranged);
-      break;
-    }
-    // Only a severely constrained viewport can exhaust the free region. Keep
-    // the complete group inside the table rather than returning to source hands.
-    midpoint ??= { x: (origins[0].x + origins[1].x) / 2,
-      y: (origins[0].y + origins[1].y) / 2 };
-    arranged.poses.forEach((pose, index) => {
-      const figure = figures[index], card = cards[index], caption = captions[index], label = arranged.labels[index];
-      figure.style.left = `${midpoint.x + pose.x}px`; figure.style.top = `${midpoint.y + pose.y}px`;
+    delete reveal.dataset.wtInspectionReason;
+    reveal.dataset.wtInspectionDetail = JSON.stringify({ length: fit.axis.length, width: fit.poses[0].width, turned: fit.turned,
+      fans: fit.fans, overlap: Number(fit.overlap.toFixed(3)), constrained: fit.constrained });
+    fit.poses.forEach((pose, index) => {
+      const figure = figures[index], card = cards[index], caption = captions[index], label = fit.labels[index];
+      card.style.width = `${pose.width}px`;
+      figure.style.left = `${pose.x}px`; figure.style.top = `${pose.y}px`;
       card.style.left = `${-pose.width / 2}px`; card.style.top = `${-pose.height / 2}px`; card.style.rotate = `${pose.rotation}deg`;
       caption.style.left = `${label.x - pose.x}px`; caption.style.top = `${label.top - pose.y}px`;
     });
+    reveal.dataset.wtInspectionFit = fit.constrained ? "constrained" : fit.relaxed ? "relaxed" : fit.overlap > 0 ? "overlap" : "clear";
     reveal.dataset.wtInspectionPositioned = "true";
-    geometry = [bounds.width, bounds.height].join(":");
     if (playedKey === key || document.hidden) return;
     if (reduced?.matches || cards.some(card => typeof card.animate !== "function")) { playedKey = key; return; }
     playedKey = key;
+    // Each face slides out of its own source along the same line.
     flights = figures.map((figure, index) => figure.animate([
-      { translate: `${origins[index].x - midpoint.x - arranged.poses[index].x}px ${origins[index].y - midpoint.y - arranged.poses[index].y}px` },
+      { translate: `${actors[index].anchor.x - fit.poses[index].x}px ${actors[index].anchor.y - fit.poses[index].y}px` },
       { translate: "0 0" },
     ], { duration: 1500, easing: "cubic-bezier(.22,.65,.25,1)", fill: "backwards" }));
   }
@@ -331,18 +309,30 @@ function createInspectionMotion(reveal, seatNodes) {
   const update = vm => {
     const nextFigures = [...reveal.querySelectorAll("[data-wt-inspection-seat]")];
     if (!nextFigures.length) { stop(); return; }
+    // Public seat sides of the two callers, e.g. "bottom-right", so the
+    // action row can keep its controls off their connecting line.
+    const sides = nextFigures.map(figure => SIDES.find(side => playerOf(figure)?.classList.contains(`wt-seat--${side}`)));
+    if (sides.every(Boolean)) reveal.dataset.wtInspectionAxis = sides.sort((a, b) => SIDES.indexOf(a) - SIDES.indexOf(b)).join("-");
+    else delete reveal.dataset.wtInspectionAxis;
     const nextKey = `${vm.engine.deal_id}:${vm.engine.deal_revision ?? 0}`;
     if (key === nextKey && figures.every((figure, index) => figure === nextFigures[index])) { schedule(); return; }
     settle(); observer?.disconnect();
+    // New faces are unplaced until their own measurement succeeds.
+    delete reveal.dataset.wtInspectionPositioned;
+    delete reveal.dataset.wtInspectionFit;
+    delete reveal.dataset.wtInspectionReason;
+    delete reveal.dataset.wtInspectionDetail;
+    memo = { key: "", fit: null };
     figures = nextFigures; key = nextKey;
     schedule();
     if (typeof ResizeObserver !== "function") return;
     observer = new ResizeObserver(() => {
       if (!reveal.isConnected) { stop(); return; }
-      const bounds = reveal.parentElement.getBoundingClientRect();
-      if (geometry !== [bounds.width, bounds.height].join(":")) { settle(); schedule(); }
+      if (geometry !== signature()) { settle(); schedule(); }
     });
     observer.observe(reveal.parentElement);
+    const area = handArea();
+    if (area) observer.observe(area);
   };
   update.destroy = () => {
     stop(); playedKey = "";
@@ -642,9 +632,9 @@ export function createTableView(container, { onCard, accountId = null }) {
     // The server plays the packet bottom as part of the turn transition.
     // A stale/recovered projection must not turn it into a manual choice.
     const playable = vm.actions.includes("play_card") && !vm.busy && !hand.some(item => item.card === forced);
-    // A blind packet still occupies the owner's hand. Only the active two-card
-    // inspection uses this area for its reveal/ACK; no hidden face is inferred.
-    elements.handArea.hidden = !hand.length || Boolean(vm.engine.inspection && vm.actions.includes("inspection_ack"));
+    // A blind packet still occupies the owner's hand, also during inspection:
+    // the own shown face leaves beyond its outermost card. No face is inferred.
+    elements.handArea.hidden = !hand.length;
     const keys = hand.map((item, index) => isCard(item.card) ? item.card : `back-${index}`);
     let changed = false;
     const created = [];
@@ -752,6 +742,14 @@ export function createTableView(container, { onCard, accountId = null }) {
     container.querySelector("[data-wt-table]").dataset.phase = vm.engine.phase;
     container.querySelector("[data-wt-table]").dataset.roundStage = vm.roundPresentation?.stage || "ready";
     container.querySelector("[data-wt-table]").dataset.viewer = vm.spectator ? "spectator" : "player";
+    // Public seat sides of both callers through showing and inspection, e.g.
+    // "bottom-right": one phase-stable hook if the action row must mirror.
+    const callerSides = [vm.engine.announcement_roles?.strike, vm.engine.announcement_roles?.colour]
+      .filter(Number.isInteger).map(seat => seatPosition(seat, vm.anchorSeat, vm.count));
+    if (callerSides.length === 2 && callerSides[0] !== callerSides[1] && ["show_ready", "inspection"].includes(vm.engine.phase)) {
+      container.querySelector("[data-wt-table]").dataset.wtCallerAxis = callerSides
+        .sort((a, b) => ["bottom", "left", "right", "top"].indexOf(a) - ["bottom", "left", "right", "top"].indexOf(b)).join("-");
+    } else delete container.querySelector("[data-wt-table]").dataset.wtCallerAxis;
     const canBid = vm.actions.includes("bid");
     const stake = vm.engine.bid.pending?.points ?? vm.engine.bid.accepted_stake;
     patch(elements.scores, "scores", scoreMarkup(vm) + `<li class="wt-target">${esc(t("score.target", { target: vm.engine.target_points }))}</li>${seriesTargetMarkup(vm.room)}

@@ -9,7 +9,7 @@ const mobile = browser => ({ newContext: options => browser.newContext({ ...opti
 async function settledPrimaryTarget(page, viewport, action) {
   return page.evaluate(({ viewport, action }) => new Promise(resolve => {
     const landscape = viewport.width > viewport.height && viewport.height <= 700;
-    const expectedWidth = landscape ? (viewport.width <= 720 ? 84 : 104) : 120;
+    const expectedWidth = landscape ? (viewport.width <= 720 ? 84 : 104) : viewport.width <= 360 ? 96 : 120;
     let previous = '', stable = 0;
     const frame = () => {
       const target = document.querySelector(`[data-watten-action="${action}"]`);
@@ -102,6 +102,8 @@ async function inspect(players) {
           const captions = [...document.querySelectorAll('[data-watten-inspection] figcaption')];
           const failures = [];
           if (faces.length !== 2) failures.push('inspection must show exactly two permitted faces');
+          const reveal = document.querySelector('[data-wt-reveal]');
+          if (reveal?.dataset.wtInspectionFit === 'unfit') failures.push(`supported viewport did not fit: ${reveal.dataset.wtInspectionReason}`);
           for (const [index, face] of faces.entries()) {
             const box = rect(face), width = Number.parseFloat(getComputedStyle(face).width);
             if (width < 51.9) failures.push(`face ${index} too small: ${width}px`);
@@ -124,24 +126,100 @@ async function inspect(players) {
               if (![[.1, .08], [.9, .08], [.1, .92], [.9, .92]].some(([x, y]) => exposed(x, y))) failures.push(`face ${index} has no exposed rank/suit corner`);
             }
           } finally { faces.forEach((face, index) => { face.style.pointerEvents = pointerValues[index]; }); }
-          const felt = rect(document.querySelector('[data-wt-felt]'));
-          const origins = faces.map(face => {
-            const seat = document.querySelector(`[data-wt-seat="${face.closest('[data-wt-inspection-seat]').dataset.wtInspectionSeat}"]`);
-            const box = rect(seat.querySelector('.wt-avatar'));
-            return { x: seat.classList.contains('wt-seat--bottom') ? felt.x + felt.width / 2 : box.x + box.width / 2,
-              y: box.y + box.height / 2 };
-          });
-          const centres = faces.map(face => { const box = rect(face); return { x: box.x + box.width / 2, y: box.y + box.height / 2 }; });
-          const delta = { x: origins[1].x - origins[0].x, y: origins[1].y - origins[0].y };
-          const length = Math.hypot(delta.x, delta.y), unit = { x: delta.x / length, y: delta.y / length };
-          const midpoint = { x: (centres[0].x + centres[1].x) / 2, y: (centres[0].y + centres[1].y) / 2 };
-          const along = ((midpoint.x - origins[0].x) * unit.x + (midpoint.y - origins[0].y) * unit.y) / length;
-          const offset = Math.abs((midpoint.x - origins[0].x) * -unit.y + (midpoint.y - origins[0].y) * unit.x);
-          if (along < .34 || along > .66 || offset > 65) failures.push('inspection left its two announcers source sector');
-          for (const [index, part] of [...faces, ...captions].entries()) {
-            const box = rect(part);
-            for (const obstacle of obstacles) if (overlap(box, rect(obstacle))) {
-              failures.push(`inspection part ${index} overlaps ${obstacle.className || 'back card'} at seat ${obstacle.closest('[data-wt-seat]')?.dataset.wtSeat || '-'}`);
+          // Owner contract: both faces lie on the straight line between the two
+          // callers' painted hands. The own face leaves beyond the outermost own
+          // card towards the other caller; overlap of the two faces is allowed.
+          const middle = box => ({ x: box.left + box.width / 2, y: box.top + box.height / 2 });
+          const union = boxes => middle({ left: Math.min(...boxes.map(b => b.left)), top: Math.min(...boxes.map(b => b.top)),
+            width: Math.max(...boxes.map(b => b.right)) - Math.min(...boxes.map(b => b.left)),
+            height: Math.max(...boxes.map(b => b.bottom)) - Math.min(...boxes.map(b => b.top)) });
+          const handCards = [...document.querySelectorAll('[data-wt-hand-area]:not([hidden]) [data-wt-hand] > *')].filter(shown).map(rect);
+          const seats = faces.map(face => document.querySelector(`[data-wt-seat="${face.closest('[data-wt-inspection-seat]').dataset.wtInspectionSeat}"]`));
+          const fans = seats.map(seat => seat.classList.contains('is-own') ? handCards
+            : [...seat.querySelectorAll('.wt-backs:not([hidden]) > i:not([hidden])')].filter(shown).map(rect));
+          if (faces.length !== 2 || fans.some(fan => !fan.length)) failures.push('a caller has no painted hand');
+          else {
+            const rough = fans.map(union);
+            // Owner rule, stated directly: other caller right of the own hand →
+            // rightmost card; left → leftmost; straight across → topmost.
+            const origins = fans.map((fan, index) => {
+              if (!seats[index].classList.contains('is-own')) return rough[index];
+              const dx = rough[1 - index].x - rough[index].x;
+              const xs = fan.map(card => middle(card).x), ys = fan.map(card => middle(card).y);
+              const aligned = Math.max(2, (Math.max(...fan.map(card => card.right)) - Math.min(...fan.map(card => card.left))) * .01);
+              const pick = Math.abs(dx) <= aligned ? ys.indexOf(Math.min(...ys)) : xs.indexOf(dx > 0 ? Math.max(...xs) : Math.min(...xs));
+              return middle(fan[pick]);
+            });
+            const delta = { x: origins[1].x - origins[0].x, y: origins[1].y - origins[0].y };
+            const length = Math.hypot(delta.x, delta.y), unit = { x: delta.x / length, y: delta.y / length };
+            const oriented = faces.map(face => {
+              const style = getComputedStyle(face), angle = (Number.parseFloat(style.rotate) || 0) * Math.PI / 180;
+              return { ...middle(rect(face)), hw: Number.parseFloat(style.width) / 2, hh: Number.parseFloat(style.height) / 2,
+                u: { x: Math.sin(angle), y: -Math.cos(angle) }, n: { x: Math.cos(angle), y: Math.sin(angle) } };
+            });
+            const along = oriented.map(face => ((face.x - origins[0].x) * unit.x + (face.y - origins[0].y) * unit.y) / length);
+            oriented.forEach((face, index) => {
+              const offset = Math.abs((face.x - origins[0].x) * -unit.y + (face.y - origins[0].y) * unit.x);
+              if (offset > 2) failures.push(`face ${index} is ${offset.toFixed(1)}px off the callers' line`);
+            });
+            if (!(along[0] >= 0 && along[0] < along[1] && along[1] <= 1)) failures.push('faces left their own sides of the callers line');
+            // Separating-axis test of a rotated face against an upright box.
+            const hits = (face, box, margin = 0) => [{ x: 1, y: 0 }, { x: 0, y: 1 }, face.u, face.n].every(axis => {
+              const a = face.x * axis.x + face.y * axis.y, ra = face.hw * Math.abs(face.n.x * axis.x + face.n.y * axis.y) + face.hh * Math.abs(face.u.x * axis.x + face.u.y * axis.y);
+              const c = middle(box), b = c.x * axis.x + c.y * axis.y, rb = box.width / 2 * Math.abs(axis.x) + box.height / 2 * Math.abs(axis.y);
+              return Math.abs(a - b) < ra + rb + margin;
+            });
+            const inside = (face, point) => Math.abs((point.x - face.x) * face.u.x + (point.y - face.y) * face.u.y) < face.hh
+              && Math.abs((point.x - face.x) * face.n.x + (point.y - face.y) * face.n.y) < face.hw;
+            // Own hand cards as painted: layout size rotated by the accumulated
+            // CSS rotation, checked against the measured bounds.
+            const angleOf = node => {
+              let angle = 0;
+              for (let item = node; item; item = item.parentElement) {
+                const style = getComputedStyle(item);
+                if (style.transform !== 'none') { const m = new DOMMatrixReadOnly(style.transform); angle += Math.atan2(m.b, m.a); }
+                const turn = /(-?[\d.]+)deg\s*$/.exec(style.rotate || '');
+                if (turn) angle += Number(turn[1]) * Math.PI / 180;
+              }
+              return angle;
+            };
+            const handOutlines = [...document.querySelectorAll('[data-wt-hand-area]:not([hidden]) [data-wt-hand] > *')].filter(shown).map(node => {
+              const box = rect(node), angle = angleOf(node), c = Math.abs(Math.cos(angle)), s = Math.abs(Math.sin(angle));
+              const scale = box.width / (node.offsetWidth * c + node.offsetHeight * s);
+              const upright = { ...middle(box), hw: box.width / 2, hh: box.height / 2, u: { x: 0, y: 1 }, n: { x: 1, y: 0 } };
+              if (!(scale > 0) || Math.abs(scale * (node.offsetWidth * s + node.offsetHeight * c) - box.height) > 1.5 + box.height * .02) return upright;
+              return { ...middle(box), hw: node.offsetWidth * scale / 2, hh: node.offsetHeight * scale / 2,
+                u: { x: Math.sin(angle), y: -Math.cos(angle) }, n: { x: Math.cos(angle), y: Math.sin(angle) } };
+            });
+            const boxesHit = (a, b, margin = 0) => [a.u, a.n, b.u, b.n].every(axis => {
+              const r = box => box.hw * Math.abs(box.n.x * axis.x + box.n.y * axis.y) + box.hh * Math.abs(box.u.x * axis.x + box.u.y * axis.y);
+              return Math.abs((b.x - a.x) * axis.x + (b.y - a.y) * axis.y) < r(a) + r(b) + margin;
+            });
+            for (const [index, face] of oriented.entries()) {
+              if (handOutlines.some(card => boxesHit(face, card, -1))) failures.push(`face ${index} covers the painted own hand`);
+              // Owner: minimal fan overlap only; never the fan middle, never more
+              // than half of its back centres.
+              for (const [source, fan] of fans.entries()) if (!seats[source].classList.contains('is-own')
+                && (inside(face, rough[source]) || fan.filter(back => inside(face, middle(back))).length > Math.floor(fan.length / 2))) {
+                failures.push(`face ${index} hides too much of an opponent fan`);
+              }
+              for (const obstacle of obstacles) if (!seats.includes(obstacle.closest('[data-wt-seat]')) || !obstacle.matches('.wt-backs > i')) {
+                if (hits(face, rect(obstacle), -2)) failures.push(`face ${index} overlaps ${obstacle.className || 'back card'} at seat ${obstacle.closest('[data-wt-seat]')?.dataset.wtSeat || '-'}`);
+              }
+            }
+            // Extent along the line covers faces along it and quarter-turned ones.
+            // Up to half overlap keeps each double-headed face's full outer half.
+            const reach = face => face.hw * Math.abs(face.n.x * unit.x + face.n.y * unit.y) + face.hh * Math.abs(face.u.x * unit.x + face.u.y * unit.y);
+            if ((along[1] - along[0]) * length < (reach(oriented[0]) + reach(oriented[1])) / 2 * 2 * .5 - 1) failures.push('the two faces overlap by more than half');
+          }
+          for (const [index, caption] of captions.entries()) {
+            const box = rect(caption);
+            for (const obstacle of obstacles) {
+              const callerBack = seats.includes(obstacle.closest('[data-wt-seat]')) && obstacle.matches('.wt-backs > i');
+              const point = { x: rect(obstacle).x + rect(obstacle).width / 2, y: rect(obstacle).y + rect(obstacle).height / 2 };
+              if (callerBack ? point.x > box.left && point.x < box.right && point.y > box.top && point.y < box.bottom : overlap(box, rect(obstacle))) {
+                failures.push(`caption ${index} overlaps ${obstacle.className || 'back card'} at seat ${obstacle.closest('[data-wt-seat]')?.dataset.wtSeat || '-'}`);
+              }
             }
           }
           const ack = document.querySelector('[data-watten-action=inspection_ack]'), ackBox = rect(ack);

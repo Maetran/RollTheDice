@@ -165,6 +165,11 @@
   }
 }
 @media (orientation: landscape) and (min-width: 761px) and (min-height: 701px) {
+  /* Passive preparation text keeps its current dock and padding, with paper
+     behind it so the carved lower table edge cannot compete with the words. */
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"]:is([data-phase="show_ready"], [data-phase="inspection"]) > .wt-end-sheet > .wt-panel:has(> .wt-prompt:only-child) {
+    background: #fff0d9ee; padding: 2px 8px; border-radius: 6px;
+  }
   html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"] {
     /* The lower edge is the existing hand area, not a viewport percentage.
        The upper edge reserves the complete top fan wrapper (2 back-widths,

@@ -1,3 +1,17 @@
+/* Persistent public discovery stays outside client-rendered game roots. */
+[data-public-suite-links] {
+  box-sizing: border-box;
+  width: min(1120px, calc(100% - 32px));
+  margin: 24px auto calc(24px + env(safe-area-inset-bottom, 0px));
+  padding: 16px;
+  border-top: 1px solid var(--border, #9b8a70);
+  color: var(--text, inherit);
+  font: 15px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+[data-public-suite-links] p { margin: 0 0 8px; }
+[data-public-suite-links] ul { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 0; padding: 0; list-style: none; }
+[data-public-suite-links] a { display: inline-flex; align-items: center; min-height: 44px; color: inherit; text-underline-offset: .2em; }
+
 /* Shared layout and controls; each selected design supplies its palette. */
 :root { --suite-header-height: 118px; }
 html:has(.suite-header:not(.suite-header--table)) { overflow-x: clip; scroll-padding-top: calc(var(--suite-header-height) + 12px); }

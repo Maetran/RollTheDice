@@ -88,11 +88,14 @@ async function expectInspectionActionByHand(page) {
     const button = node.getBoundingClientRect();
     const felt = document.querySelector('[data-wt-felt]').getBoundingClientRect();
     const own = document.querySelector('.wt-seat--bottom .wt-avatar').getBoundingClientRect();
+    const mirrored = document.documentElement.dataset.wtCompactHeader === 'true'
+      && document.querySelector('[data-wt-table]').dataset.wtCallerAxis === 'bottom-right';
+    const buttonCentre = button.x + button.width / 2, ownCentre = own.x + own.width / 2;
     return button.left >= felt.left && button.right <= felt.right && button.bottom <= felt.bottom
       && button.top >= felt.top + felt.height * .55
-      && button.x + button.width / 2 > own.x + own.width / 2 + 20
+      && (mirrored ? buttonCentre < ownCentre - 20 : buttonCentre > ownCentre + 20)
       && button.width >= 44 && button.height >= 44;
-  }), { message: 'Schlag/Farbe stays next to the future own hand, to the right of its player, in the lower table' }).toBe(true);
+  }), { message: 'Schlag/Farbe stays beside the future own hand on the intended side of the caller axis, in the lower table' }).toBe(true);
 }
 
 async function recordLayout(page, info, stage) {
@@ -112,12 +115,12 @@ async function recordLayout(page, info, stage) {
   await info.attach(`${stage}-portrait-layout`, { path, contentType: 'application/json' });
 }
 
-for (const viewport of [{ width: 320, height: 568 }, { width: 393, height: 852 }]) {
-  test(`four-player portrait ${viewport.width}x${viewport.height}: spatial trick stack, clear winner and readable review`, async ({ browser, baseURL }, info) => {
+for (const language of ['de', 'en']) for (const viewport of [{ width: 320, height: 568 }, { width: 393, height: 852 }]) {
+  test(`${language}: four-player portrait ${viewport.width}x${viewport.height}: spatial trick stack, clear winner and readable review`, async ({ browser, baseURL }, info) => {
     const players = [];
     try {
       const wrapped = { newContext: options => browser.newContext({ ...options, viewport, serviceWorkers: 'block' }) };
-      for (let index = 0; index < 4; index++) players.push(await player(wrapped, baseURL));
+      for (let index = 0; index < 4; index++) players.push(await player(wrapped, baseURL, language));
       await create(players, { determination: 'normal', target: 15 });
       await normalCall(players);
       await expectLargerBackCards(players[0].page);
@@ -201,13 +204,34 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 393, height: 852 }
         players[0].traffic.snapshot.engine.last_trick.cards.map(item => players[0].traffic.snapshot.room.seats[item.seat].name));
       await expect.poll(() => history.locator('.wt-card--mini').first().evaluate(node => Number.parseFloat(getComputedStyle(node).width))).toBeGreaterThanOrEqual(60);
       await expect.poll(() => history.evaluate(node => {
+        const errors = [], sheet = node.getBoundingClientRect(), list = node.querySelector('.wt-history');
+        const port = list.getBoundingClientRect();
         const cards = [...node.querySelectorAll('.wt-history > li:last-child .wt-mini-cards > figure')];
-        return cards.every(figure => {
-          const rect = figure.getBoundingClientRect(), port = node.querySelector('.wt-history').getBoundingClientRect();
-          return rect.left >= port.left - 1 && rect.right <= port.right + 1 && rect.top >= port.top - 1 && rect.bottom <= port.bottom + 1
-            && figure.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2));
-        });
-      }), { message: 'all four larger review cards and their names fit together without scrolling' }).toBe(true);
+        if (list.scrollWidth - list.clientWidth > 1) errors.push('review has horizontal overflow');
+        const inside = rect => rect.left >= port.left - 1 && rect.right <= port.right + 1
+          && rect.top >= port.top - 1 && rect.bottom <= port.bottom + 1;
+        for (const [index, figure] of cards.entries()) {
+          for (const part of [figure, figure.querySelector('.wt-card--mini'), figure.querySelector('figcaption')]) {
+            const rect = part.getBoundingClientRect();
+            if (!inside(rect)) errors.push(`review card ${index} ${part.tagName} is clipped`);
+            if (!part.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2))) {
+              errors.push(`review card ${index} ${part.tagName} is covered`);
+            }
+          }
+        }
+        const intersects = (a, b) => Math.min(a.right, b.right) - Math.max(a.left, b.left) > 2
+          && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 2;
+        // Review deliberately hides the card surface. Still protect the real
+        // geometry of the own identity and hand slots while it is open.
+        const protectedNodes = [...document.querySelectorAll('.wt-seat--bottom.is-own .wt-seat-badge, .wt-seat--bottom.is-own .wt-seat-name, .wt-seat--bottom.is-own .wt-seat-call-role, [data-wt-hand-area], .wt-end-sheet > .wt-stake:not([hidden]), .wt-end-sheet > .wt-panel, .wt-end-sheet > .wt-private button')];
+        for (const protectedNode of protectedNodes) {
+          const rect = protectedNode.getBoundingClientRect();
+          if (rect.width && rect.height && intersects(sheet, rect)) errors.push(`review overlaps ${protectedNode.className}`);
+        }
+        if (sheet.left < 0 || sheet.right > innerWidth || sheet.top < 0 || sheet.bottom > innerHeight) errors.push('review leaves viewport');
+        return errors;
+      }), { message: 'all four larger review cards and their names fit without scrolling and clear the own identity, hand and actions' }).toEqual([]);
+      await expectReachable(page, '[data-wt-history-close]');
       await page.screenshot({ path: info.outputPath(`watten-review-${viewport.width}x${viewport.height}.png`) });
     } finally { await Promise.allSettled(players.map(item => item.context.close())); }
   });

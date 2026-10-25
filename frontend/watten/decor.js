@@ -1,23 +1,17 @@
 import { mountConsumable, updateDrink, eatPiece } from "../hausdepp/decor-consumables.js";
 import { WATTEN_DECOR_MESSAGES } from "../i18n/catalog.js";
 import { tableSurpriseArt, playTableSurprise } from "../hausdepp/surprise-effects.js";
+import { TABLE_PROP_ITEMS, createLocalTablePropInteractions } from "../hausdepp/decor.js";
 
-export const DECOR_ITEMS = Object.freeze({
-  beer: { sheet: "base", cell: 0, drink: "#d99a2b" },
-  tea: { sheet: "snacks", cell: 1, drink: "#9a5a2a" },
-  lemonade: { sheet: "evening", cell: 3, drink: "#f2d04a" },
-  nuts: { sheet: "base", cell: 2, food: true },
-  chips: { sheet: "snacks", cell: 2, food: true },
-  pretzel: { sheet: "evening", cell: 0, food: true },
-  sweets: { sheet: "evening", cell: 1, food: true },
-  dice: { sheet: "snacks", cell: 0 },
-});
+export const DECOR_ITEMS = Object.freeze(Object.fromEntries(Object.entries(TABLE_PROP_ITEMS)
+  .filter(([, item]) => !item.rare).map(([kind, item]) => [kind, { ...item, food: Boolean(item.bites) }])));
 export const DECOR_PROTECTED = ".wt-seat, .wt-seat-slot, .wt-seat-badge, .wt-seat-name, .wt-seat-call-role, .wt-backs > i, "
   + ".wt-taken, .wt-stock, .wt-stock > i, .wt-hand-card, .wt-trick-card, .wt-trick-label, .wt-reference, "
   + "[data-wt-reference], [data-wt-bubbles], [data-wt-panel], [data-wt-private], [data-wt-history], [data-wt-scores], [data-wt-stake], "
   + "[data-wt-tools], [data-watten-inspection], [data-watten-bid], [data-watten-paused], [data-watten-match-result], "
   + "[data-watten-deal-result], [data-watten-match-progress], [data-watten-rematch], [data-watten-social], "
   + ".wt-bubble, .wt-call-announcement, .wt-status-bar, "
+  + "[data-wt-hand-area], .wt-own-name, .wt-own-hint, .wt-own-actions, [data-wt-preplay], "
   + "button, a[href], input, select, textarea, [role='button'], [role='dialog'], dialog[open]";
 const SIDE = 56, LIMIT = 8, GAP = 8;
 const ACTIVE_PHASES = new Set(["strike", "colour", "show_ready", "inspection", "play", "bid_response", "deal_complete", "match_complete"]);
@@ -67,9 +61,10 @@ export function findDecorPosition(geometry, occupied = [], side = SIDE) {
 /** Local presentation only. The caller supplies a public phase and DOM, no game view. */
 export function createDecor({ container, root, getExpectedAccountId, isCurrent, escapeHtml: esc,
   onSurprise = () => false,
+  initialKinds = null,
   language = () => window.ZDWA_I18N?.getLanguage?.() === "en" ? "en" : "de",
   dom = document, win = window, consumables = { mount: mountConsumable, drink: updateDrink, eat: eatPiece } }) {
-  const accountId = getExpectedAccountId(), lifecycle = new AbortController(), items = new Map(), animations = new Set();
+  const accountId = getExpectedAccountId(), lifecycle = new AbortController(), items = new Map();
   const reduced = win.matchMedia("(prefers-reduced-motion: reduce)");
   let destroyed = false, phase = "preview", selected = null, serial = 0, drag = null, ignoreClick = null;
   let geometry = { regions: [], protectedRects: [] }, notice = "", hidden = false, autoPlaced = false, propSide = SIDE;
@@ -84,6 +79,12 @@ export function createDecor({ container, root, getExpectedAccountId, isCurrent, 
   container.hidden = false;
   const $ = selector => container.querySelector(selector);
   const ui = { status: $("[data-watten-decor-status]"), layer: $("[data-watten-decor-layer]") };
+  const interactions = createLocalTablePropInteractions(root, { layer: ui.layer, reduced,
+    canUse: () => current() && !hidden && ACTIVE_PHASES.has(phase) && geometry.regions.length > 0,
+    protectedRects: () => geometry.protectedRects,
+    fits: rect => fitsDecor(rect, geometry) });
+  const name = kind => WATTEN_DECOR_MESSAGES[language() === "en" ? "en" : "de"][kind]
+    || win.ZDWA_I18N?.t?.(DECOR_ITEMS[kind].label) || DECOR_ITEMS[kind].label;
   const listen = (node, name, callback) => node?.addEventListener(name, callback, { signal: lifecycle.signal });
   function visible(node) { return node && node.getClientRects().length && !node.closest("[hidden]"); }
   function rectFor(item) {
@@ -102,16 +103,15 @@ export function createDecor({ container, root, getExpectedAccountId, isCurrent, 
   }
   function stopEffects() {
     cancelDrag();
-    for (const animation of animations) animation.cancel();
-    animations.clear();
+    interactions.clear();
   }
   function controls() {
     const item = items.get(selected);
-    ui.status.textContent = notice || (item ? t("selected", { name: t(item.kind) }) : t("choose"));
+    ui.status.textContent = notice || (item ? t("selected", { name: name(item.kind) }) : t("choose"));
     for (const entry of items.values()) {
       entry.node.setAttribute("aria-pressed", String(entry.id === selected));
-      entry.node.title = t("itemHelp", { name: t(entry.kind) });
-      entry.node.setAttribute("aria-label", t("itemHelp", { name: t(entry.kind) }));
+      if (!entry.node.getAttribute("aria-label")) entry.node.setAttribute("aria-label", t("itemHelp", { name: name(entry.kind) }));
+      entry.node.title = entry.node.getAttribute("aria-label");
     }
   }
   function measure() {
@@ -137,6 +137,7 @@ export function createDecor({ container, root, getExpectedAccountId, isCurrent, 
     measure();
     const used = [];
     for (const item of items.values()) {
+      if (interactions.isGone(item.node)) { item.node.hidden = true; continue; }
       let rect = rectFor(item);
       if (!fitsDecor(rect, geometry, used)) {
         const replacement = geometry.regions.some(region => region.name === item.position?.region)
@@ -164,16 +165,20 @@ export function createDecor({ container, root, getExpectedAccountId, isCurrent, 
     node.type = "button"; node.className = "wt-decor-prop"; node.dataset.wattenDecorItem = String(++serial);
     node.dataset.wattenDecorKind = kind;
     art.className = "wt-decor-art"; art.setAttribute("aria-hidden", "true");
-    art.style.backgroundImage = `url("/static/hausdepp-table-props${suffix}-v1.webp")`;
-    art.style.backgroundSize = "200% 200%";
-    art.style.backgroundPosition = `${config.cell % 2 * 100}% ${Math.floor(config.cell / 2) * 100}%`;
+    if (config.sheet !== "svg") {
+      const columns = config.sheet === "scatter" ? 4 : 2, rows = config.sheet === "scatter" ? 3 : 2;
+      art.style.backgroundImage = `url("/static/hausdepp-table-props${suffix}-v1.webp")`;
+      art.style.backgroundSize = `${columns * 100}% ${rows * 100}%`;
+      art.style.backgroundPosition = `${config.cell % columns / (columns - 1) * 100}% ${Math.floor(config.cell / columns) / (rows - 1) * 100}%`;
+    }
     badge.className = "wt-decor-badge"; badge.setAttribute("aria-hidden", "true");
     node.append(art, badge); ui.layer.append(node);
     const serving = consumables.mount(art, kind);
     const turn = Math.floor(Math.random() * 17) - 8;
-    art.style.rotate = `${turn}deg`;
-    const item = { id: String(serial), kind, node, art, badge, position, turn, level: 4,
-      total: serving?.portions || 0, remaining: serving?.portions || 0, events: new AbortController() };
+    art.dataset.turn = String(turn); art.style.setProperty("--prop-rest-angle", `${turn}deg`);
+    const item = { id: String(serial), kind, node, art, badge, position, events: new AbortController() };
+    node.dataset.totalBites = String(serving?.portions || 0); node.dataset.keepsContainer = String(serving?.keepsContainer ?? true);
+    interactions.mount(node, kind);
     const listenItem = (name, callback) => node.addEventListener(name, callback, { signal: item.events.signal });
     if (config.drink) consumables.drink(art, 4);
     items.set(item.id, item); selected = item.id; notice = "";
@@ -183,7 +188,8 @@ export function createDecor({ container, root, getExpectedAccountId, isCurrent, 
       ignoreClick = null;
       selected = item.id; notice = "";
       drag = { item, pointer: event.pointerId, startX: event.clientX, startY: event.clientY,
-        origin: { ...item.position }, rect: rectFor(item), moved: false };
+        origin: { ...item.position }, rect: rectFor(item), moved: false, time: Date.now(), distance: 0,
+        lastX: event.clientX, lastY: event.clientY, reversals: 0, direction: 0, shaken: false };
       node.setPointerCapture?.(event.pointerId); controls();
     });
     listenItem("pointermove", event => {
@@ -192,11 +198,28 @@ export function createDecor({ container, root, getExpectedAccountId, isCurrent, 
       const dx = event.clientX - drag.startX, dy = event.clientY - drag.startY;
       if (!drag.moved && Math.hypot(dx, dy) < 7) return;
       drag.moved = true; node.dataset.dragging = "true";
+      if (["can", "lantern"].includes(kind) && !drag.shaken && Date.now() - drag.time < 1800) {
+        drag.axis ||= Math.abs(dx) >= Math.abs(dy) ? "x" : "y";
+        const point = drag.axis === "x" ? event.clientX : event.clientY;
+        const first = drag.axis === "x" ? drag.startX : drag.startY, leg = Math.max(14, Math.min(26, propSide * .16));
+        drag.distance += Math.hypot(event.clientX - drag.lastX, event.clientY - drag.lastY);
+        if (!drag.direction && Math.abs(point - first) >= leg) { drag.direction = Math.sign(point - first); drag.peak = point; }
+        else if (drag.direction) {
+          if ((point - drag.peak) * drag.direction >= 0) drag.peak = point;
+          else if (Math.abs(point - drag.peak) >= leg) { drag.direction *= -1; drag.peak = point; drag.reversals += 1; }
+        }
+        drag.lastX = event.clientX; drag.lastY = event.clientY;
+        if (drag.reversals >= 3 && drag.distance >= Math.max(120, propSide * 1.4)) drag.shaken = interactions.shake(node);
+      }
       move(item, box(drag.rect.left + dx, drag.rect.top + dy, propSide, propSide));
     });
     listenItem("pointerup", event => {
       if (!drag || event.pointerId !== drag.pointer) return;
-      if (drag.moved) ignoreClick = { id: item.id, until: Date.now() + 500 };
+      if (drag.moved) {
+        ignoreClick = { id: item.id, until: Date.now() + 500 };
+        if (Math.hypot(item.node.getBoundingClientRect().left - drag.rect.left,
+          item.node.getBoundingClientRect().top - drag.rect.top) > propSide * .25) interactions.moved(node);
+      }
       cancelDrag(false); layout();
     });
     for (const name of ["pointercancel", "lostpointercapture"]) listenItem(name, () => { cancelDrag(); layout(); });
@@ -225,23 +248,19 @@ export function createDecor({ container, root, getExpectedAccountId, isCurrent, 
       y: (rect.top - region.top) / Math.max(1, region.bottom - region.top - propSide) };
     item.node.style.left = `${rect.left}px`; item.node.style.top = `${rect.top}px`; return true;
   }
-  function animate(item) {
-    if (reduced.matches || !item.art.animate) return;
-    const animation = item.art.animate([{ scale: 1 }, { scale: .9 }, { scale: 1 }], { duration: 180 });
-    animations.add(animation); animation.finished.catch(() => {}).finally(() => animations.delete(animation));
-  }
   function act(action) {
     if (!current()) { destroy(); return; }
     const item = items.get(selected), config = item && DECOR_ITEMS[item.kind];
     if (!item) return;
     if (action === "remove") {
-      stopEffects(); item.events.abort(); item.node.remove(); items.delete(item.id); selected = null; notice = "";
+      stopEffects(); interactions.remove(item.node); item.events.abort(); item.node.remove(); items.delete(item.id); selected = null; notice = "";
     } else if (action === "use") {
-      if (config.drink && item.level) { item.level -= 1; consumables.drink(item.art, item.level); notice = t("drink"); }
-      else if (config.food && item.remaining) { item.remaining -= 1; consumables.eat(item.art, item.remaining); notice = t("eat"); }
-      else if (item.kind === "dice") { const value = 1 + Math.floor(Math.random() * 6); item.badge.textContent = String(value); notice = t("rolled", { value }); }
-      if (config.drink && !item.level || config.food && !item.remaining) item.badge.textContent = t("empty");
-      animate(item);
+      interactions.tap(item.node);
+      if (config.drink) notice = t("drink");
+      else if (config.food) notice = t("eat");
+      else if (config.roll) notice = t("rolled", { value: item.node.dataset.value });
+      item.badge.textContent = config.drink && item.node.dataset.level === "0" || config.food && item.node.dataset.empty === "true"
+        ? t("empty") : config.roll ? item.node.dataset.value || "" : "";
     }
     layout();
   }
@@ -294,11 +313,17 @@ export function createDecor({ container, root, getExpectedAccountId, isCurrent, 
     phase = publicPhase; updateRare(surpriseOffer); layout();
     if (!autoPlaced && ACTIVE_PHASES.has(phase) && geometry.regions.some(region => region.name === "table")) {
       autoPlaced = true;
-      for (const kind of ["beer", "nuts", "dice"]) add(kind);
+      const pool = Object.keys(DECOR_ITEMS).filter(kind => kind !== "beer");
+      for (let index = pool.length - 1; index > 0; index--) {
+        const next = Math.floor(Math.random() * (index + 1)); [pool[index], pool[next]] = [pool[next], pool[index]];
+      }
+      const kinds = initialKinds || ["beer", ...pool.slice(0, 2)];
+      for (const kind of kinds) add(kind);
       selected = null; notice = ""; controls();
     }
   }
   function resized() { stopEffects(); layout(); }
+  const foamTimer = win.setInterval(() => { if (current() && !hidden) interactions.settle(); }, 30000);
   listen(win, "resize", resized); listen(win, "orientationchange", resized); listen(win, "scroll", resized);
   listen(win.visualViewport, "resize", resized); listen(win.visualViewport, "scroll", resized);
   listen(reduced, "change", resized);
@@ -315,7 +340,7 @@ export function createDecor({ container, root, getExpectedAccountId, isCurrent, 
   }
   function destroy() {
     if (destroyed) return;
-    stopEffects(); surpriseCleanup?.(); destroyed = true; lifecycle.abort(); observer?.disconnect(); mutation?.disconnect();
+    stopEffects(); interactions.destroy(); win.clearInterval(foamTimer); surpriseCleanup?.(); destroyed = true; lifecycle.abort(); observer?.disconnect(); mutation?.disconnect();
     for (const item of items.values()) item.events.abort();
     items.clear(); selected = null; container.replaceChildren(); container.hidden = true;
   }

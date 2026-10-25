@@ -4,12 +4,17 @@ import test from "node:test";
 
 const catalog = await readFile(new URL("../frontend/i18n/catalog.js", import.meta.url), "utf8");
 const url = source => `data:text/javascript;base64,${Buffer.from(source).toString("base64")}`;
-const unused = url("export const mountConsumable=()=>null, updateDrink=()=>{}, eatPiece=()=>{}, clearTableEffects=()=>{}, wipeSpill=()=>null;");
+const translations = await import(url(catalog));
+const unused = url("export const mountConsumable=()=>null, updateDrink=(art, level)=>art.onDrink?.(level), eatPiece=(art, remaining)=>art.onEat?.(remaining);");
 const surprise = url('export const tableSurpriseArt=()=>"", playTableSurprise=()=>()=>{};');
+const play = await readFile(new URL("../frontend/hausdepp/decor-play.js", import.meta.url), "utf8");
+const shared = await readFile(new URL("../frontend/hausdepp/decor.js", import.meta.url), "utf8");
+const sharedUrl = url(shared.replace('"./decor-consumables.js"', JSON.stringify(unused))
+  .replace('"./decor-play.js"', JSON.stringify(url(play))).replace('"./surprise-effects.js"', JSON.stringify(surprise)));
 const original = await readFile(new URL("../frontend/watten/decor.js", import.meta.url), "utf8");
 const source = original.replace('"../hausdepp/decor-consumables.js"', JSON.stringify(unused))
   .replace('"../hausdepp/decor-play.js"', JSON.stringify(unused)).replace('"../i18n/catalog.js"', JSON.stringify(url(catalog)))
-  .replace('"../hausdepp/surprise-effects.js"', JSON.stringify(surprise));
+  .replace('"../hausdepp/surprise-effects.js"', JSON.stringify(surprise)).replace('"../hausdepp/decor.js"', JSON.stringify(sharedUrl));
 const { createDecor, fitsDecor, findDecorPosition, fiveCardReserve, DECOR_ITEMS, DECOR_PROTECTED } = await import(url(source));
 const rect = (left, top, width, height) => ({ left, top, right: left + width, bottom: top + height, width, height });
 const escapeHtml = value => String(value).replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
@@ -29,8 +34,34 @@ class Node extends Events {
   get isConnected() { return this.connected && (!this.parent || this.parent.isConnected); }
   set isConnected(value) { this.connected = value; }
   className = ""; style = { setProperty(key, value) { this[key] = value; } }; captured = null;
+  get classList() { return { contains: value => this.className.split(" ").includes(value),
+    add: (...values) => { this.className = [...new Set([...this.className.split(" "), ...values])].join(" "); },
+    remove: value => { this.className = this.className.split(" ").filter(name => name !== value).join(" "); } }; }
+  get firstElementChild() { return this.children[0]; }
+  get lastElementChild() { return this.children.at(-1); }
+  get childElementCount() { return this.children.length; }
+  get offsetWidth() { return this.getBoundingClientRect().width; }
+  get offsetHeight() { return this.getBoundingClientRect().height; }
+  get offsetLeft() { return this.getBoundingClientRect().left; }
+  get offsetTop() { return this.getBoundingClientRect().top; }
+  get parentElement() { return this.parent; }
+  getAttribute(key) { return this.attributes[key] ?? null; }
   setAttribute(key, value) { this.attributes[key] = value; }
+  removeAttribute(key) { delete this.attributes[key]; }
+  toggleAttribute(key, force) { if (force) this.setAttribute(key, ""); else this.removeAttribute(key); }
+  set innerHTML(value) {
+    this.children = []; const stack = [this];
+    for (const match of value.matchAll(/<(\/)?([\w-]+)([^>]*?)(\/?)>/g)) {
+      if (match[1]) { if (stack.length > 1) stack.pop(); continue; }
+      const node = new Node(this.dom); node.tagName = match[2];
+      for (const attr of match[3].matchAll(/([\w-]+)="([^"]*)"/g)) {
+        node.setAttribute(attr[1], attr[2]); if (attr[1] === "class") node.className = attr[2];
+      }
+      stack.at(-1).append(node); if (!match[4]) stack.push(node);
+    }
+  }
   append(...nodes) { for (const node of nodes) { node.parent = this; node.isConnected = true; this.children.push(node); } }
+  prepend(node) { node.parent = this; node.isConnected = true; this.children.unshift(node); }
   after(node) { this.parent.append(node); }
   remove() { this.isConnected = false; if (this.parent) this.parent.children = this.parent.children.filter(node => node !== this); }
   replaceChildren() { for (const node of this.children) node.isConnected = false; this.children = []; }
@@ -53,13 +84,23 @@ class Node extends Events {
     const side = this.className.split(" ").includes("wt-decor-prop") ? this.dom.propSide : null;
     return Object.create(Object.fromEntries(Object.entries(rect(left, top, side || this.bounds.width, side || this.bounds.height))));
   }
-  querySelector(selector) { return this.children.find(node => matches(node, selector)) || this.children.map(node => node.querySelector(selector)).find(Boolean) || null; }
+  querySelector(selector) { return this.querySelectorAll(selector)[0] || null; }
+  querySelectorAll(selector) { return this.children.flatMap(node => [...(matches(node, selector) ? [node] : []), ...node.querySelectorAll(selector)]); }
   setPointerCapture(pointer) { this.captured = pointer; }
   hasPointerCapture(pointer) { return this.captured === pointer; }
   releasePointerCapture() { this.captured = null; this.emit("lostpointercapture"); }
-  getAnimations() { return []; }
+  animations = [];
+  getAnimations({ subtree = false } = {}) { return [...this.animations, ...(subtree ? this.children.flatMap(node => node.getAnimations({ subtree })) : [])]; }
+  animate() {
+    let resolve;
+    const animation = { finished: new Promise(done => { resolve = done; }), cancel() { resolve(); }, finish() { resolve(); } };
+    this.animations.push(animation); return animation;
+  }
 }
 function matches(node, selector) {
+  if (selector.includes(",")) return selector.split(",").some(part => matches(node, part.trim()));
+  if (selector.startsWith(".")) return node.className.split(" ").includes(selector.slice(1).split(":")[0]);
+  if (/^[a-z]+$/.test(selector)) return node.tagName === selector;
   const action = selector.match(/data-watten-decor-action="([^"]+)"/);
   return action ? node.dataset.wattenDecorAction === action[1]
     : selector.includes("data-watten-decor-layer") ? Boolean(node.dataset.wattenDecorLayer) : false;
@@ -88,15 +129,21 @@ class Container extends Node {
 }
 const clients = new Set();
 test.afterEach(() => { for (const client of clients) client.destroy(); clients.clear(); });
-function fixture({ width = 800, height = 700, reducedMotion = false, language = "de" } = {}) {
+function fixture({ width = 800, height = 700, reducedMotion = false, language = "de", initialKinds = ["beer", "nuts", "dice"] } = {}) {
   const dom = new Events(); dom.hidden = false; dom.activeElement = null;
   dom.corner = rect(8, 500, width - 16, 248); dom.viewport = rect(0, 0, width, height);
-  dom.createElement = () => new Node(dom);
+  dom.createElement = tag => { const node = new Node(dom); node.tagName = tag; return node; };
+  dom.createElementNS = (_namespace, tag) => dom.createElement(tag);
+  dom.querySelector = () => null;
   const win = new Events(), reduced = new Events(); reduced.matches = reducedMotion;
   win.innerWidth = width; win.innerHeight = height;
   dom.propSide = width >= 900 && height >= 520 ? 88 : 56;
   win.getComputedStyle = () => ({ getPropertyValue: () => String(dom.propSide) });
   win.matchMedia = () => reduced; win.visualViewport = new Events();
+  win.intervals = new Set(); win.setInterval = callback => { win.intervals.add(callback); return callback; };
+  win.clearInterval = callback => win.intervals.delete(callback);
+  win.ZDWA_I18N = { t: value => language === "en" ? translations.EN[value] || value : value };
+  globalThis.document = dom; globalThis.window = win; globalThis.matchMedia = win.matchMedia;
   const observers = [];
   win.ResizeObserver = win.MutationObserver = class {
     constructor(callback) { this.callback = callback; observers.push(this); }
@@ -114,21 +161,17 @@ function fixture({ width = 800, height = 700, reducedMotion = false, language = 
       "[data-watten-view]": view, "[data-watten-social]": social, "[data-watten-leave-dialog]": leave })[selector] || null;
   root.querySelectorAll = () => protectedAreas;
   let current = true, account = 1;
-  const servingCalls = [], spillCalls = [];
-  const client = createDecor({ container, root, dom, win, escapeHtml, language: () => language,
+  const servingCalls = [];
+  const client = createDecor({ container, root, dom, win, initialKinds, escapeHtml, language: () => language,
     getExpectedAccountId: () => account, isCurrent: () => current,
-    consumables: { mount: (_art, kind) => ({ portions: DECOR_ITEMS[kind].food ? 3 : 0 }),
-      drink: (art, level) => servingCalls.push({ art, level }), eat: (art, remaining) => servingCalls.push({ art, remaining }) },
-    spills: { clear: state => { for (const effect of [...state.effects]) effect._finish(); },
-      create: (_table, state, node, color, amount, fits) => {
-        const area = node.getBoundingClientRect(), footprint = rect(area.left, area.top, 44, 44);
-        spillCalls.push({ color, amount, fits }); if (!fits(footprint)) return null;
-        const effect = new Node(dom, footprint); effect._finish = () => { effect.remove(); state.effects.delete(effect); };
-        state.layer.append(effect); state.effects.add(effect); return effect;
-      } } });
+    consumables: { mount: (art, kind) => {
+      art.onDrink = level => servingCalls.push({ art, level }); art.onEat = remaining => servingCalls.push({ art, remaining });
+      return { portions: DECOR_ITEMS[kind].food ? 3 : 0, keepsContainer: !kind.startsWith("loose-") && !kind.startsWith("praline-") };
+    },
+      drink: (art, level) => servingCalls.push({ art, level }), eat: (art, remaining) => servingCalls.push({ art, remaining }) } });
   clients.add(client);
   const props = () => container.querySelector("[data-watten-decor-layer]").children.filter(node => node.dataset.wattenDecorItem);
-  return { client, root, container, view, win, dom, reduced, observers, protectedAreas, modal, servingCalls, spillCalls,
+  return { client, root, container, view, win, dom, reduced, observers, protectedAreas, modal, servingCalls,
     update: publicPhase => client.update({ publicPhase }),
     props,
     resize(nextWidth, nextHeight) {
@@ -261,12 +304,122 @@ test("a fresh intentional tap is not swallowed when a previous drag produced no 
 
 
 
-test("reduced motion keeps direct object use and bounded servings", () => {
+test("reduced motion keeps direct object use and refills an empty glass", () => {
   const f = fixture({ reducedMotion: true }); f.update("play");
   const node = f.props().find(node => node.dataset.wattenDecorKind === "beer");
   for (let i = 0; i < 8; i += 1) node.emit("click");
-  assert.equal(f.servingCalls.at(-1).level, 0);
+  assert.equal(f.servingCalls.at(-1).level, 1);
   assert.equal(f.field("layer").children.length, 3);
+});
+
+test("all ordinary Hausdepp props are available while automatic tables keep three stable items", () => {
+  const expected = ["beer", "can", "nuts", "marend", "dice", "tea", "chips", "flips", "pretzel", "sweets", "lantern", "lemonade",
+    "cap", "opener", "praline-gold", "praline-red", "die", "loose-nuts", "loose-chips", "loose-flips", "coin", "coaster", "pencil"];
+  assert.deepEqual(Object.keys(DECOR_ITEMS).sort(), expected.sort());
+  const f = fixture({ initialKinds: null }); f.update("play");
+  assert.equal(f.props().length, 3); assert.equal(f.props()[0].dataset.wattenDecorKind, "beer");
+  const kinds = f.props().map(node => node.dataset.wattenDecorKind);
+  f.update("strike"); f.update("play"); assert.deepEqual(f.props().map(node => node.dataset.wattenDecorKind), kinds);
+});
+
+test("calm sips empty and refill the same glass; rapid taps spill, tip and deliberately stand it up", async () => {
+  const originalNow = Date.now; let now = 5000; Date.now = () => now;
+  const finish = async node => {
+    for (const animation of node.getAnimations({ subtree: true })) animation.finish();
+    await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+  };
+  try {
+    const f = fixture(); f.update("play"); const beer = f.props()[0];
+    for (let sip = 0; sip < 4; sip++) { beer.emit("click"); await finish(beer); now += 3000; }
+    assert.equal(beer.dataset.level, "0"); assert.equal(beer.getAttribute("aria-label"), "Nachschenken");
+    beer.emit("click"); assert.equal(beer.dataset.level, "4"); assert.equal(beer.dataset.lastMotion, "glass-refill"); await finish(beer);
+    now += 3000;
+    for (let tap = 0; tap < 6; tap++) { beer.emit("click"); now += 30; }
+    assert.equal(beer.dataset.level, "0"); assert.equal(beer.dataset.fallen, "true"); assert.equal(beer.dataset.lastMotion, "glass-fall");
+    const spill = f.field("layer").querySelector(".hd-prop-spill"); assert.ok(spill);
+    const cloth = spill.querySelector("button");
+    for (let wipe = 0; wipe < 4; wipe++) cloth.emit("click", { preventDefault() {}, stopPropagation() {} });
+    assert.equal(spill.isConnected, false);
+    await finish(beer); now += 1500; beer.emit("click");
+    assert.equal(beer.dataset.fallen, "false"); assert.equal(beer.dataset.level, "0"); assert.equal(beer.dataset.lastMotion, "glass-stand");
+    await finish(beer); now += 3000; beer.emit("click"); assert.equal(beer.dataset.level, "4");
+  } finally { Date.now = originalNow; }
+});
+
+test("can taps open it, deliberate shaking bursts it, and lantern shaking relights only while current", () => {
+  const f = fixture({ initialKinds: ["beer", "can", "lantern"] }); f.update("play");
+  const can = f.props()[1], lantern = f.props()[2];
+  for (let tap = 0; tap < 3; tap++) can.emit("click");
+  assert.equal(can.dataset.canState, "open"); assert.equal(can.dataset.foaming, "true");
+  const shake = node => {
+    const area = node.getBoundingClientRect();
+    node.emit("pointerdown", { button: 0, pointerId: 1, clientX: area.left, clientY: area.top });
+    for (const delta of [35, -35, 35, -35, 35]) node.emit("pointermove", { pointerId: 1, clientX: area.left + delta, clientY: area.top });
+    node.emit("pointerup", { pointerId: 1 });
+  };
+  shake(can); assert.equal(can.dataset.canState, "burst"); assert.equal(can.dataset.lastGesture, "shake");
+  lantern.emit("click"); assert.equal(lantern.dataset.lit, "false");
+  f.win.emit("resize"); lantern.emit("click"); assert.equal(lantern.dataset.lit, "true");
+  shake(lantern); assert.equal(lantern.dataset.lit, "false"); assert.equal(lantern.dataset.relighting, "true");
+  f.changeAccount(); f.update("play"); assert.equal(lantern.dataset.relighting, "false"); assert.equal(lantern.isConnected, false);
+});
+
+test("coin/die results and coaster/pencil tallies use the same local prop interactions", () => {
+  const f = fixture({ initialKinds: ["coin", "die", "coaster", "pencil"], reducedMotion: true }); f.update("play");
+  const [coin, die, coaster, pencil] = f.props();
+  coin.emit("click"); assert.ok(["heads", "tails"].includes(coin.dataset.face));
+  die.emit("click"); assert.match(die.dataset.value, /^[1-6]$/);
+  coaster.emit("click"); pencil.emit("click"); assert.equal(coaster.dataset.tally, "2");
+  for (let mark = 0; mark < 19; mark++) coaster.emit("click");
+  assert.equal(coaster.dataset.tally, "0");
+});
+
+test("a shaken lantern relights while active and cancels its relight on suspension", () => {
+  const originalTimeout = globalThis.setTimeout, originalClear = globalThis.clearTimeout;
+  const timers = new Map(); let serial = 0;
+  globalThis.setTimeout = (callback, delay) => { const id = ++serial; timers.set(id, { callback, delay }); return id; };
+  globalThis.clearTimeout = id => timers.delete(id);
+  try {
+    const f = fixture({ initialKinds: ["lantern"] }); f.update("play"); const lantern = f.props()[0];
+    const shake = () => {
+      const area = lantern.getBoundingClientRect();
+      lantern.emit("pointerdown", { button: 0, pointerId: 3, clientX: area.left, clientY: area.top });
+      for (const delta of [35, -35, 35, -35, 35]) lantern.emit("pointermove", { pointerId: 3, clientX: area.left + delta, clientY: area.top });
+      lantern.emit("pointerup", { pointerId: 3 });
+    };
+    shake(); assert.equal(lantern.dataset.lit, "false");
+    const [relightId, relight] = [...timers].find(([, timer]) => timer.delay === 2800); assert.ok(relight);
+    timers.delete(relightId); relight.callback();
+    assert.equal(lantern.dataset.lit, "true"); assert.equal(lantern.dataset.lastMotion, "candle-relight");
+    shake(); assert.equal(lantern.dataset.lit, "false"); f.client.suspend();
+    assert.equal(lantern.dataset.relighting, "false");
+    assert.equal([...timers.values()].filter(timer => timer.delay === 2800).length, 0);
+    f.client.destroy();
+  } finally { globalThis.setTimeout = originalTimeout; globalThis.clearTimeout = originalClear; }
+});
+
+test("beer foam settles without changing its serving and dragging leaves a bounded local glass ring", () => {
+  const originalNow = Date.now; let now = 5000; Date.now = () => now;
+  try {
+    const f = fixture(); f.update("play"); const beer = f.props()[0];
+    now += 151000; for (const callback of f.win.intervals) callback();
+    assert.equal(beer.dataset.foam, "flat"); assert.equal(beer.dataset.level, "4");
+    const area = beer.getBoundingClientRect();
+    beer.emit("pointerdown", { button: 0, pointerId: 4, clientX: area.left, clientY: area.top });
+    beer.emit("pointermove", { pointerId: 4, clientX: area.left + 20, clientY: area.top });
+    beer.emit("pointerup", { pointerId: 4 });
+    assert.ok(f.field("layer").querySelector(".hd-prop-glass-ring"));
+    f.client.destroy(); assert.equal(f.win.intervals.size, 0);
+  } finally { Date.now = originalNow; }
+});
+
+test("eaten loose snacks disappear; empty dishes remain draggable without resetting on update", () => {
+  const f = fixture({ initialKinds: ["nuts", "loose-chips"], reducedMotion: true }); f.update("play");
+  const [bowl, loose] = f.props();
+  for (let bite = 0; bite < 3; bite++) { bowl.emit("click"); loose.emit("click"); }
+  assert.equal(bowl.dataset.empty, "true"); assert.equal(bowl.hidden, false); assert.equal(loose.hidden, true);
+  f.update("colour"); assert.equal(bowl.dataset.empty, "true"); assert.equal(loose.hidden, true);
+  const before = bowl.style.left; bowl.emit("keydown", { key: "ArrowRight", preventDefault() {} }); assert.notEqual(bowl.style.left, before);
 });
 
 test("Escape ends capture directly without focusing a hidden menu control", () => {
@@ -316,14 +469,16 @@ test("destroy/account switch/pagehide end captures and remove every item, effect
   }
 });
 
-test("bilingual catalog, protected stable shell and existing serving assets are wired without touching Hausdepp", async () => {
+test("bilingual catalog, protected stable shell and shared Hausdepp serving/interaction assets are wired", async () => {
   const values = await import(url(catalog));
   assert.deepEqual(Object.keys(values.WATTEN_DECOR_MESSAGES.de).sort(), Object.keys(values.WATTEN_DECOR_MESSAGES.en).sort());
+  for (const item of Object.values(DECOR_ITEMS)) assert.ok(values.EN[item.label], `Missing English prop action: ${item.label}`);
   const game = await readFile(new URL("../frontend/watten/game.js", import.meta.url), "utf8");
   assert.match(game, /data-watten-view><\/div>\s*<div data-watten-social hidden><\/div>\s*<div data-watten-decor hidden>/);
   assert.match(game, /decor\?\.update\(\{ publicPhase:/); assert.match(game, /decor\?\.suspend\(\)/);
   const css = await readFile(new URL("../frontend/styles/watten-game.css", import.meta.url), "utf8");
   assert.match(css, /hausdepp-decor-consumables\.css/); assert.match(css, /hausdepp-decor-play\.css/);
   assert.match(css, /prefers-reduced-motion/); assert.match(css, /wt-decor-layer[^}]*pointer-events: none/);
-  assert.match(original, /hausdepp-table-props/); assert.match(original, /mountConsumable/); assert.doesNotMatch(original, /wipeSpill|data-watten-decor-panel/);
+  assert.match(original, /hausdepp-table-props/); assert.match(original, /mountConsumable/);
+  assert.match(original, /createLocalTablePropInteractions/); assert.doesNotMatch(original, /data-watten-decor-panel/);
 });

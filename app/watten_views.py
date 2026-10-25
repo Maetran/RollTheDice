@@ -7,7 +7,7 @@ CPU views use the same personal projection as their own authorized seat.
 
 from __future__ import annotations
 
-from .watten_bidding import nockerl, retourschneider_candidate
+from .watten_bidding import nockerl
 from .watten_cards import WELI
 from .watten_engine import (
     EngineActor,
@@ -23,7 +23,9 @@ from .watten_engine import (
     preplay_available,
     preplay_seats,
     require_actor,
+    retourschneider_actors,
     retourschneider_decider,
+    retourschneider_offer,
 )
 from .watten_play import official_knower_seats
 from .watten_rules import WELI_STRIKE, CardKind, ComparisonRules, card_kind
@@ -39,7 +41,7 @@ def _trick(leader: int, cards: tuple[str, ...], count: int, winner: int | None =
 def _retourschneider(state: EngineState) -> dict | None:
     choice = state.ledger.retourschneider
     members = choice.members if choice is not None else (
-        retourschneider_candidate(state.ledger) if state.phase == "deal_complete" else None)
+        retourschneider_offer(state) if state.phase == "deal_complete" else None)
     if members is None:
         return None
     opponents = next(account.members for account in state.ledger.accounts if account.members != members)
@@ -141,9 +143,9 @@ def _actions(state: EngineState, seat: int) -> list[str]:
     if state.phase == "inspection":
         return requests + (["inspection_ack"] if seat in state.inspectors and seat not in state.acknowledged else [])
     actions = requests
-    members = retourschneider_candidate(state.ledger)
+    members = retourschneider_offer(state)
     if (state.phase == "deal_complete" and members is not None
-            and player in members and player not in state.retour_accepted_by):
+            and player in retourschneider_actors(state, members) and player not in state.retour_accepted_by):
         actions.append("retourschneider")
     if state.phase == "play" and not bloedeln_pending(state):
         if player == state.play.current_player_id:

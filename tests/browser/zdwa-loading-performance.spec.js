@@ -67,7 +67,7 @@ test("anonymous lobby, guest controls and ordinary login focus do not request CA
   await expectPasswordLoginClosed(page);
   await expect(page.locator("#registrationChallenge")).toBeHidden();
   await page.fill("#playerName", "GuestPerformance");
-  await page.getByRole("radio", { name: "1 Spieler, Solo" }).click();
+  await page.getByRole("radio", { name: "1 Solo" }).click();
   await openPasswordLogin(page);
   await page.fill("#loginUsername", "LocalOnly");
   await page.fill("#loginPassword", "local-password-123");

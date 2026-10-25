@@ -8,11 +8,24 @@ async function expectSeparateControls(players, phase, info) {
   for (const viewport of viewports) for (const peer of players) {
     const page = peer.page;
     await page.setViewportSize(viewport);
+    await expect.poll(() => page.evaluate(() => (document.documentElement.dataset.wtCompactHeader === 'true')
+      === matchMedia('(orientation: landscape) and (max-width: 720px) and (max-height: 360px)').matches)).toBe(true);
+    if (await page.locator('html').getAttribute('data-wt-compact-header') === 'true') {
+      const toggle = page.locator('[data-watten-header-toggle]');
+      if (await toggle.getAttribute('aria-expanded') === 'true') await toggle.click();
+      // The approved compact header keeps ambience available while its brand
+      // is collapsed. Open the real disclosure before checking that brand.
+      await expectReachable(page, '#wattenSound');
+      await expectReachable(page, '[data-watten-header-toggle]');
+      await toggle.click();
+    }
     await expectReachable(page, '#wattenSound');
     await expectReachable(page, '.wt-header .suite-header__brand');
     await expect.poll(() => page.evaluate(() => {
       const selectors = ['#wattenSound', '.wt-header .suite-header__brand',
+        '[data-watten-header-toggle]',
         '[data-watten-preplay-options] > summary', '.wt-bloedeln-dock button',
+        '[data-watten-preplay-options][open] .wt-preplay-choices button',
         '[data-watten-action=show_ready]', '[data-watten-action=inspection_ack]'];
       const nodes = selectors.flatMap(selector => [...document.querySelectorAll(selector)]).filter(node => {
         const details = node.closest('details');
@@ -25,6 +38,9 @@ async function expectSeparateControls(players, phase, info) {
       for (const node of nodes) {
         const rect = node.getBoundingClientRect();
         if (rect.width < 43.9 || rect.height < 43.9) failures.push(`${node.id || node.dataset.wattenAction || node.tagName}: small target`);
+        if (rect.left < -1 || rect.top < -1 || rect.right > innerWidth + 1 || rect.bottom > innerHeight + 1) {
+          failures.push(`${node.id || node.dataset.wattenAction || node.tagName}: outside viewport`);
+        }
         if (!node.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2))) {
           failures.push(`${node.id || node.dataset.wattenAction || node.tagName}: covered`);
         }
@@ -34,7 +50,7 @@ async function expectSeparateControls(players, phase, info) {
       if (Math.min(sound.right, brand.right) - Math.max(sound.left, brand.left) > 1
         && Math.min(sound.bottom, brand.bottom) - Math.max(sound.top, brand.top) > 1) failures.push('brand and ambience overlap');
       return failures;
-    }), { message: `${phase}: ambience, brand and real pre-play actions accept independent taps` }).toEqual([]);
+    }), { message: `${phase}, ${viewport.width}x${viewport.height}, seat ${peer.traffic.snapshot.viewer.seat}: ambience, brand and real pre-play actions accept independent taps` }).toEqual([]);
     if (peer === players[0] && viewport.width === 568) {
       await page.screenshot({ path: info.outputPath(`ambience-${phase}-568x320.png`) });
     }
@@ -51,6 +67,20 @@ for (const language of ['de', 'en']) {
       for (let seat = 0; seat < 4; seat++) players.push(await player(mobile, baseURL, language));
       await create(players, { count: 4, target: 15, schoeneres: true });
       await expectSeparateControls(players, 'show-and-request', info);
+      // Redraw is already offered before either card is shown. Its real menu
+      // must not sit underneath the independently fixed primary Show target.
+      const beforeShow = players.filter(peer => peer.traffic.snapshot.engine.actions.includes('show_ready'));
+      expect(beforeShow).toHaveLength(2);
+      for (const caller of beforeShow) await caller.page.locator('[data-watten-preplay-options] > summary').click();
+      await expectSeparateControls(beforeShow, 'show-options-open', info);
+      for (const caller of beforeShow) {
+        const page = caller.page;
+        await expect(page.locator('[data-watten-preplay-options]')).toHaveAttribute('open', '');
+        await expectReachable(page, '[data-watten-action=request_schoeneres]');
+        await page.locator('[data-watten-action=request_schoeneres]').click({ trial: true });
+        await page.locator('[data-watten-action=show_ready]').click({ trial: true });
+        await page.locator('[data-watten-preplay-options] > summary').click();
+      }
       await action(players, 'request_bloedeln');
       await expectSeparateControls(players, 'bloedeln-pending', info);
       await action(players, 'preplay_accept');
@@ -60,6 +90,15 @@ for (const language of ['de', 'en']) {
       const callers = players.filter(peer => peer.traffic.snapshot.engine.actions.includes('inspection_ack'));
       expect(callers).toHaveLength(2);
       for (const caller of callers) await caller.page.locator('[data-watten-preplay-options] > summary').click();
+      for (const caller of callers) {
+        await caller.page.setViewportSize({ width: 320, height: 568 });
+        // Accepted Blödeln can put the option menu inside its status dock.
+        // A translated dock creates the wrong fixed-position containing block.
+        await expect.poll(() => caller.page.locator('[data-wt-preplay]').evaluate(dock => {
+          const style = getComputedStyle(dock);
+          return { translate: style.translate, transform: style.transform };
+        })).toEqual({ translate: 'none', transform: 'none' });
+      }
       await expectSeparateControls(callers, 'inspection-open', info);
       const requester = players.find(peer => peer.traffic.snapshot.engine.actions.includes('request_schoeneres'));
       await requester.page.locator('[data-watten-action=request_schoeneres]').click();

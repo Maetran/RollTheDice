@@ -83,6 +83,7 @@ for (const preferred of ['de', 'en']) {
     await page.locator('.hd-welcome .hd-rules-link').click();
     await expect(page).toHaveURL(/\/hausdepp\/regeln$/);
     await expect(page.locator('.hd-rulebook')).toBeVisible();
+    expect(await page.locator('#schnellstart').evaluate(core => ['einsteigertouren', 'tisch-eroeffnen', 'sprachchat', 'wirtshauskulisse', 'aussteigen'].every(id => Boolean(core.compareDocumentPosition(document.getElementById(id)) & Node.DOCUMENT_POSITION_FOLLOWING)))).toBe(true);
     await expect(page.locator('#punkte-erfolge')).toContainText('136');
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', 'https://hausdepp.zockdiewandan.online/hausdepp/regeln');
     await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'index, follow');

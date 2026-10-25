@@ -495,6 +495,6 @@ body.rank-legend-open{ overflow:hidden; }
 @media (max-width:560px){
   .rank-legend-summary{ grid-template-columns:1fr; gap:.45rem; }
   .rank-legend-row{ grid-template-columns:auto minmax(0,1fr); gap:.55rem; }
-  .rank-legend-minimum{ grid-column:2; text-align:left; }
+  .rank-legend-minimum{ grid-column:2; min-width:0; text-align:left; white-space:normal; overflow-wrap:anywhere; }
 }
 .warn-line{ color:#7a3e00 !important; font-weight:650; }

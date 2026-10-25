@@ -267,8 +267,26 @@ export const CARD_ASSET_URLS = Object.freeze([
   "/static/hausdepp/cards-atlas.webp?v=ASSET_VERSION",
   "/static/hausdepp/card-back.webp?v=ASSET_VERSION",
 ]);
+export const LOBBY_CARD_ASSET_URL = "/static/hausdepp/cards-lobby-atlas.webp?v=ASSET_VERSION";
 const preparedImages = new Map();
 let preparation;
+let lobbyImage, lobbyPreparation;
+
+// The decorative lobby needs faces only, at its much smaller display size.
+// Its decode/retry lifetime is separate from the full, private-table deck.
+export function prepareLobbyCardAssets() {
+  if (lobbyPreparation) return lobbyPreparation;
+  lobbyImage = new Image();
+  lobbyImage.decoding = "sync";
+  lobbyImage.fetchPriority = "high";
+  lobbyImage.src = LOBBY_CARD_ASSET_URL;
+  lobbyPreparation = lobbyImage.decode().catch(error => {
+    lobbyPreparation = null;
+    lobbyImage = null;
+    throw error;
+  });
+  return lobbyPreparation;
+}
 
 export function prepareCardAssets() {
   if (preparation) return preparation;
@@ -341,10 +359,10 @@ let artSequence = 0;
 const ATLAS_COLUMNS = 9;
 const CARD_ORDER = Object.keys(CARD_CORNERS);
 
-export function cardArt(card) {
+export function cardArt(card, atlasUrl = CARD_ASSET_URLS[0]) {
   const index = CARD_ORDER.indexOf(card);
   if (index < 0) return "";
   const x = (index % ATLAS_COLUMNS) * 360, y = Math.floor(index / ATLAS_COLUMNS) * 570;
   const clip = `hd-card-paper-${++artSequence}`;
-  return `<svg class="hd-card-art" viewBox="0 0 360 570" aria-hidden="true" focusable="false"><defs><clipPath id="${clip}"><rect x="3" y="3" width="354" height="564" rx="22"/></clipPath></defs><rect width="360" height="570" rx="24" fill="#f7f4eb"/><g clip-path="url(#${clip})"><image decoding="sync" href="${CARD_ASSET_URLS[0]}" width="${ATLAS_COLUMNS * 360}" height="${Math.ceil(CARD_ORDER.length / ATLAS_COLUMNS) * 570}" x="${-x}" y="${-y}"/></g><rect x="1" y="1" width="358" height="568" rx="23" fill="none" stroke="#e6dfd1" stroke-width="2"/></svg>`;
+  return `<svg class="hd-card-art" viewBox="0 0 360 570" aria-hidden="true" focusable="false"><defs><clipPath id="${clip}"><rect x="3" y="3" width="354" height="564" rx="22"/></clipPath></defs><rect width="360" height="570" rx="24" fill="#f7f4eb"/><g clip-path="url(#${clip})"><image decoding="sync" href="${atlasUrl}" width="${ATLAS_COLUMNS * 360}" height="${Math.ceil(CARD_ORDER.length / ATLAS_COLUMNS) * 570}" x="${-x}" y="${-y}"/></g><rect x="1" y="1" width="358" height="568" rx="23" fill="none" stroke="#e6dfd1" stroke-width="2"/></svg>`;
 }

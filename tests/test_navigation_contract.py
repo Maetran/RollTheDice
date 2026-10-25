@@ -43,11 +43,16 @@ DOCUMENT_ROUTES = (
                   ("tests/browser/passkey-signup.spec.js", "tests/browser/game-picker.spec.js",
                    "tests/browser/game-tours.spec.js")),
     RouteCoverage(
-        ("/regeln", "/spieler/{username}", "/rangabzeichen",
+        ("/regeln", "/spieler/{username}",
          "/ergebnis/{game_id}", "/offline"),
         "tests/test_http_shell.py", "test_clean_page_routes_and_legacy_redirects",
         ("tests/browser/account-settings-layout.spec.js", "tests/browser/game-picker.spec.js",
          "tests/browser/suite-link-styling.spec.js"),
+    ),
+    RouteCoverage(
+        ("/rangabzeichen",), "tests/test_suite_search_discovery.py",
+        "test_rank_guide_contains_the_real_catalogue_without_api_or_account_reads",
+        ("tests/browser/public-discovery.spec.js", "tests/browser/accounts.spec.js"),
     ),
     RouteCoverage(
         ("/konto",), "tests/test_http_shell.py", "test_clean_page_routes_and_legacy_redirects",
@@ -67,8 +72,11 @@ DOCUMENT_ROUTES = (
                   browser_tests=("tests/browser/watten-dashboard.spec.js",)),
     RouteCoverage(("/ergebnis",), "tests/browser/navigation-destinations.spec.js"),
     RouteCoverage(
-        ("/spieler", "/zilch/bestenlisten"), "tests/browser/achievement-feed.spec.js",
+        ("/spieler",), "tests/test_suite_search_discovery.py",
+        "test_player_directory_explains_rankings_without_adding_personal_rows",
+        ("tests/browser/achievement-feed.spec.js", "tests/browser/public-discovery.spec.js"),
     ),
+    RouteCoverage(("/zilch/bestenlisten",), "tests/browser/achievement-feed.spec.js"),
     RouteCoverage(
         ("/offline-spielen", "/zilch/offline-spielen"), "tests/test_offline_routes.py",
         "test_offline_entries_are_anonymous_noindex_and_keep_the_correct_game_and_home",

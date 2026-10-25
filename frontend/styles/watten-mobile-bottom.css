@@ -1,0 +1,378 @@
+/* Phone identities, choices and passive instructions share the same hand
+   clearance. The rotated outer cards paint above the hand's 1.8-width box;
+   optional role rows must never borrow that painted space. Tablet axes remain
+   owned by watten-tablet.css. */
+html[data-game="watten"][data-watten-active="true"] .wt-bloedeln-dock :is(.wt-preplay-pending p, .wt-bloedeln-status) {
+  overflow-wrap: anywhere;
+}
+/* The short four-seat table keeps both side hands beside the live answer.
+   Its original central lane must survive the right-hand action dock: that
+   dock starts 120px from the left (96px identity plus the two 12px gaps). */
+@media (orientation: portrait) and (max-width: 350px) and (max-height: 700px) {
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"][data-viewer="player"][data-phase="bid_response"]:not(:has([data-wt-history][open]:not([hidden]))) > .wt-end-sheet > .wt-panel:has(.wt-bid .wt-choice-row) {
+    left: calc(50vw - 120px); translate: -50% 0; align-self: flex-start;
+    width: min(180px, calc(100vw - 152px)); max-width: none;
+  }
+  /* Keep complete words and a single heading line inside that lane. The
+     desktop-sized type otherwise wraps each choice into four short lines,
+     lifting the answer across the neighbouring live announcement. */
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"][data-phase="bid_response"] .wt-bid > h3 {
+    font-size: .9rem; line-height: 1.2;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"][data-phase="bid_response"] .wt-bid > .wt-choice-row > button {
+    font-size: .8rem; padding-inline: 2px; overflow-wrap: normal; word-break: normal;
+  }
+}
+@media (orientation: portrait) and (max-width: 760px) {
+  html[data-game="watten"][data-watten-active="true"] .wt-table {
+    --wt-own-avatar-size: 30px;
+    --wt-own-hand-clearance: calc(var(--wt-hand-w) * 1.9 + max(12px, env(safe-area-inset-bottom, 0px)) + 20px);
+    --wt-own-action-width: calc(100% - 132px);
+  }
+  html[data-game="watten"][data-watten-active="true"] body .wt-table[data-count][data-phase][data-viewer]:not([data-phase="match_complete"][data-round-stage="ready"]) .wt-felt .wt-seat.wt-seat--bottom.is-own {
+    left: 12px; right: auto; top: auto; bottom: var(--wt-own-hand-clearance);
+    width: 96px; height: auto; translate: none;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count] .wt-seat--bottom.is-own > .wt-seat-badge {
+    display: grid; position: relative; width: 96px; max-width: 96px;
+    grid-template-columns: var(--wt-own-avatar-size) minmax(0, 1fr);
+    grid-template-rows: var(--wt-own-avatar-size) minmax(18px, max-content);
+    align-items: center; gap: 3px;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count] .wt-seat--bottom.is-own .wt-avatar {
+    position: static; grid-column: 1; grid-row: 1; translate: none;
+    width: var(--wt-own-avatar-size); min-width: var(--wt-own-avatar-size); height: var(--wt-own-avatar-size);
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count] .wt-seat--bottom.is-own .wt-seat-name-row {
+    position: relative; inset: auto; grid-column: 2; grid-row: 1; width: 100%; max-width: 100%;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count] .wt-seat--bottom.is-own .wt-seat-call-role {
+    position: static; inset: auto; translate: none; grid-column: 1 / -1; grid-row: 2;
+    justify-self: start; min-height: 18px; max-width: 100%; margin: 0; font-size: .7rem;
+  }
+  /* Thanks is transient feedback, not another identity row. Keeping it out
+     of grid flow prevents the avatar/name rising into passive status text. */
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count] .wt-seat--bottom.is-own .wt-bubble--thanks {
+    position: absolute; left: 0; right: auto; top: auto; bottom: calc(100% + 6px); translate: none;
+    padding: 3px 6px; font-size: .85rem; white-space: nowrap;
+  }
+  /* The left identity owns 96px and a 12px gap. Live bid answers can grow
+     upward in the remaining column without covering its name or role. */
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"]:not([data-phase="match_complete"][data-round-stage="ready"]) > .wt-end-sheet {
+    left: auto; right: 12px; bottom: var(--wt-own-hand-clearance);
+    width: var(--wt-own-action-width);
+    max-height: calc(100% - var(--wt-own-hand-clearance) - 80px);
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"] > .wt-end-sheet > .wt-stake {
+    width: 100%; align-self: stretch;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"] .wt-stake > button {
+    min-width: 0; width: 100%; padding-inline: 6px;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count][data-phase="bid_response"] > .wt-end-sheet > .wt-panel:has(.wt-bid .wt-choice-row) {
+    width: 100%; max-width: 100%; padding-block: 6px;
+  }
+  /* The received advice belongs beside the decisions. Bound only its name
+     chip and trim decorative spacing so complete advice never raises the
+     three 44px choices into the neighbouring opponent fan. */
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-phase="bid_response"] .wt-bid:has(> .wt-choice-row) {
+    border-left: 0; padding-left: 0;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-phase="bid_response"] .wt-bid:has(> .wt-choice-row) > h3 {
+    margin: 0 0 2px;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-phase="bid_response"] .wt-bid > .wt-partner-advice {
+    margin: 0 0 2px; padding: 2px 6px; line-height: 1.25;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-phase="bid_response"] .wt-advice-name { max-width: 7ch; }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"] > .wt-bloedeln-dock {
+    left: auto; right: 12px; bottom: var(--wt-own-hand-clearance);
+    width: var(--wt-own-action-width);
+  }
+  /* A caller's passive Blödeln status is above the fixed Show/Continue row.
+     An involved recipient retains the same right-hand request/answer target. */
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"]:has([data-watten-action="inspection_ack"]) > .wt-bloedeln-dock,
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"] > .wt-bloedeln-dock:has(> .wt-bloedeln-status) {
+    left: auto; right: 12px; bottom: calc(var(--wt-own-hand-clearance) + 64px);
+    width: var(--wt-own-action-width); text-align: left;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"]:has(.wt-preplay-options) > .wt-bloedeln-dock {
+    bottom: calc(var(--wt-own-hand-clearance) + 120px);
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"] .wt-inspection > button,
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"]:not([data-phase="match_complete"][data-round-stage="ready"]) .wt-end-sheet > .wt-panel > .wt-announce:has(> [data-watten-action="show_ready"]) {
+    bottom: var(--wt-own-hand-clearance);
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"]:is([data-phase="show_ready"], [data-phase="inspection"]) .wt-preplay-options {
+    left: auto; right: 12px; bottom: calc(var(--wt-own-hand-clearance) + 56px);
+    width: var(--wt-own-action-width);
+  }
+  /* Waiting for the two callers is a separate, full-width information band.
+     It clears the complete identity and the tallest two-choice Blödeln dock. */
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"]:is([data-phase="show_ready"], [data-phase="inspection"]) > .wt-end-sheet > .wt-panel:has(> .wt-prompt:only-child) {
+    position: fixed; inset: auto 12px calc(var(--wt-own-hand-clearance) + 120px);
+    width: auto; max-width: none; max-height: none; padding: 3px 6px;
+    text-align: center; background: #fff0d9bb; border: 0; box-shadow: none;
+  }
+  /* The reference has its own top corner, with a visible face at phone scale.
+     Starting at the felt edge also leaves the short phone's side badge clear. */
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count] .wt-centre .wt-reference {
+    top: calc(var(--wt-table-header-height, 52px) + 52px); right: 14px; left: auto;
+    font-size: .65rem; line-height: 1.2;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-reference > .wt-card--mini {
+    width: clamp(42px, 13vw, 58px);
+  }
+  /* Both callers know their public seat axis before Show. Keep the complete
+     identity in the middle slot and Show/Continue in the opposite outer slot,
+     so neither phase puts a control across the two cards' source line. */
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-wt-caller-axis^="bottom-"] {
+    --wt-caller-target-width: 120px;
+    --wt-caller-column-width: calc(50vw - 20px);
+    --wt-caller-control-left: auto;
+    --wt-caller-control-right: 12px;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-wt-caller-axis="bottom-right"] {
+    --wt-caller-control-left: 12px;
+    --wt-caller-control-right: auto;
+  }
+  html[data-game="watten"][data-watten-active="true"] body .wt-table[data-count][data-phase][data-viewer][data-wt-caller-axis^="bottom-"]:is([data-phase="show_ready"], [data-phase="inspection"]):not([data-phase="match_complete"][data-round-stage="ready"]) .wt-felt .wt-seat.wt-seat--bottom.is-own {
+    left: calc(50% - 48px); right: auto;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"][data-wt-caller-axis^="bottom-"]:is([data-phase="show_ready"], [data-phase="inspection"]) .wt-inspection > button,
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"][data-wt-caller-axis^="bottom-"]:is([data-phase="show_ready"], [data-phase="inspection"]) .wt-end-sheet > .wt-panel > .wt-announce:has(> [data-watten-action="show_ready"]) {
+    left: var(--wt-caller-control-left); right: var(--wt-caller-control-right);
+    bottom: var(--wt-own-hand-clearance); width: var(--wt-caller-target-width); max-width: var(--wt-caller-target-width);
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-wt-caller-axis^="bottom-"] .wt-announce > [data-watten-action="show_ready"] {
+    width: var(--wt-caller-target-width); max-width: var(--wt-caller-target-width);
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"][data-wt-caller-axis^="bottom-"]:is([data-phase="show_ready"], [data-phase="inspection"]) > .wt-bloedeln-dock {
+    left: var(--wt-caller-control-left); right: var(--wt-caller-control-right);
+    width: var(--wt-caller-column-width); bottom: calc(var(--wt-own-hand-clearance) + 88px);
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"][data-wt-caller-axis^="bottom-"]:is([data-phase="show_ready"], [data-phase="inspection"]):has(.wt-preplay-options) > .wt-bloedeln-dock {
+    bottom: calc(var(--wt-own-hand-clearance) + 120px);
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"][data-wt-caller-axis^="bottom-"]:is([data-phase="show_ready"], [data-phase="inspection"]) .wt-preplay-options {
+    left: var(--wt-caller-control-left); right: var(--wt-caller-control-right);
+    width: var(--wt-caller-target-width); bottom: calc(var(--wt-own-hand-clearance) + 56px);
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-wt-caller-axis^="bottom-"]:is([data-phase="show_ready"], [data-phase="inspection"]) .wt-preplay-choices {
+    position: fixed; bottom: calc(var(--wt-own-hand-clearance) + 108px);
+    left: var(--wt-caller-control-left); right: var(--wt-caller-control-right);
+    width: var(--wt-caller-column-width); overflow-wrap: anywhere;
+  }
+}
+@media (orientation: portrait) and (max-width: 360px) {
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-wt-caller-axis^="bottom-"] { --wt-caller-target-width: 96px; }
+}
+@media (orientation: portrait) and (max-width: 760px) and (max-height: 700px) {
+  html[data-game="watten"][data-watten-active="true"] .wt-table { --wt-own-avatar-size: 24px; }
+}
+/* The short portrait's two side fans leave an 84px inset on either side.
+   Quiet status uses that middle corridor below the top fan, rather than
+   covering the opposite fan in an outer column. Interactive answers retain
+   their own complete action dock. */
+@media (orientation: portrait) and (max-width: 350px) and (max-height: 700px) {
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"][data-wt-caller-axis^="bottom-"]:is([data-phase="show_ready"], [data-phase="inspection"]) > .wt-bloedeln-dock:has(> .wt-bloedeln-status) {
+    /* The same 84px side corridor, without a translated ancestor: optional
+       fixed menus can share this dock and must retain viewport coordinates. */
+    position: fixed; left: 84px; right: 84px;
+    top: calc(var(--wt-table-header-height, 52px) + 176px); bottom: auto;
+    width: auto; translate: none;
+  }
+}
+@media (orientation: landscape) and (max-height: 700px) {
+  /* The outer fan corners pass beside the footer name. Keep the ordinary
+     hand low enough to reserve wood for the complete public trick. */
+  html[data-game="watten"][data-watten-active="true"] .wt-table .wt-hand-area { bottom: 34px; }
+  html[data-game="watten"][data-watten-active="true"] .wt-table .wt-reference {
+    width: 44px; font-size: .65rem; line-height: 1.2;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-reference > .wt-card--mini { width: 44px; }
+}
+/* Only preparation on the shortest rail tables needs a smaller own packet.
+   It frees the measured caller axis; inspection faces keep their own 52px
+   minimum and ordinary card play retains the established hand size. */
+@media (orientation: landscape) and (max-height: 360px) {
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"]:is([data-phase="show_ready"], [data-phase="inspection"]) { --wt-hand-w: 48px; }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"]:is([data-phase="show_ready"], [data-phase="inspection"]) .wt-hand-area { bottom: 48px; }
+  /* At 568x320 the former inner-side avatars sit directly on the measured
+     caller line. Stack them above their fans, followed by the existing names. */
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"]:is([data-phase="show_ready"], [data-phase="inspection"]) :is(.wt-seat--left, .wt-seat--right) .wt-avatar { top: -72px; }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"]:is([data-phase="show_ready"], [data-phase="inspection"]) .wt-seat--left .wt-avatar { left: calc(50% - 54px); }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"]:is([data-phase="show_ready"], [data-phase="inspection"]) .wt-seat--right .wt-avatar { left: calc(50% + 54px); }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-wt-caller-axis="bottom-right"] .wt-inspection > button,
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-wt-caller-axis="bottom-right"]:not([data-phase="match_complete"][data-round-stage="ready"]) .wt-end-sheet > .wt-panel > .wt-announce:has(> [data-watten-action="show_ready"]) {
+    left: calc(var(--wt-rail-width) + 12px); right: auto;
+  }
+}
+/* A passive bid sentence and an active answer have different heights. Both
+   grow upwards from the painted-hand clearance. Active answers share one
+   header row, leaving a complete 44px choice row between the two hands. */
+@media (orientation: landscape) and (max-height: 700px) {
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"][data-phase="bid_response"] > .wt-end-sheet > .wt-panel:has(> .wt-bid) {
+    --wt-bid-hand-clearance: calc(48px + var(--wt-hand-w) * 1.7 + env(safe-area-inset-bottom, 0px));
+    top: auto; bottom: var(--wt-bid-hand-clearance); translate: -50% 0;
+    max-height: calc(var(--game-viewport-height, 100dvh) - var(--wt-bid-hand-clearance) - 8px);
+    padding: 4px 10px 8px; overflow: auto;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"][data-phase="bid_response"] .wt-bid:has(> .wt-choice-row) {
+    display: grid; grid-template-columns: max-content minmax(0, 1fr); align-items: center; gap: 4px 6px;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"][data-phase="bid_response"] .wt-bid:has(> .wt-choice-row) > h3 {
+    grid-column: 1; grid-row: 1; margin: 0; font-size: .85rem; line-height: 1.2;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"][data-phase="bid_response"] .wt-bid:has(> .wt-choice-row) > .wt-partner-advice {
+    grid-column: 2; grid-row: 1; min-width: 0; margin: 0; padding: 1px 4px;
+    font-size: .75rem; line-height: 1.2;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"][data-phase="bid_response"] .wt-bid > .wt-choice-row {
+    grid-column: 1 / -1; grid-row: 2; margin: 0;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"][data-phase="bid_response"] .wt-bid > .wt-choice-row > button {
+    min-height: 44px;
+  }
+}
+/* On narrow portrait tablets, the outer card paints five pixels into the
+   former 190px action column. Keep that column beside the complete fan.
+   A non-caller's waiting sentence owns the empty middle table space instead
+   of sharing the outer column with a live Blödeln answer. */
+@media (orientation: portrait) and (min-width: 761px) and (max-width: 900px) and (min-height: 701px) {
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"]:is([data-phase="play"], [data-phase="bid_response"]) > .wt-end-sheet {
+    width: 180px; max-width: 180px;
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-count="4"][data-viewer="player"]:is([data-phase="show_ready"], [data-phase="inspection"]) > .wt-end-sheet > .wt-panel:has(> .wt-prompt:only-child) {
+    position: fixed; inset: auto;
+    left: 50%; top: calc(var(--game-viewport-top, 0px) + var(--wt-table-header-height, 52px) + var(--wt-tablet-topbar-height) + var(--wt-play-axis) - 18px);
+    translate: -50% 0; width: min(320px, calc(100vw - var(--wt-back-w) * 4.8 - 64px));
+    max-width: none; max-height: none; padding: 3px 6px; text-align: center;
+    background: #fff0d9bb; border: 0; box-shadow: none;
+  }
+}
+@media (orientation: landscape) and (min-width: 761px) and (min-height: 701px) {
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"]:is([data-phase="play"], [data-phase="bid_response"]) > .wt-end-sheet {
+    width: clamp(178px, calc(50% - var(--wt-hand-w) * 1.85 - 42px), 298px);
+  }
+}
+/* A very small landscape keeps a 52px table rail, even while its menu is
+   open. Header controls expand as an overlay; points and common table
+   actions remain visible without resizing the callers' measured table. */
+@media (orientation: landscape) and (max-width: 720px) and (max-height: 360px) {
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] {
+    --wt-rail-width: calc(52px + var(--wt-rail-inset));
+  }
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] body::before { width: var(--wt-rail-width); }
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] body .wt-header.suite-header.suite-header--table {
+    display: block; width: var(--wt-rail-width); height: 52px; padding: 4px;
+    z-index: 60; background: #e8c59a;
+  }
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] .wt-header :is(.suite-header__brand, .suite-header__tools, .wt-nav) { display: none; }
+  .wt-compact-header-toggle { display: none; }
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] .wt-compact-header-toggle {
+    display: grid; place-items: center; position: fixed; left: calc(4px + var(--wt-rail-inset)); top: 4px;
+    width: 44px; min-width: 44px; height: 44px; padding: 0; font-size: 24px;
+    color: #53301e; background: #fff1dc; border: 1px solid #bd976c; z-index: 61;
+  }
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"][data-wt-header-open="true"] body .wt-header.suite-header.suite-header--table {
+    display: grid; grid-template: 44px 44px / 44px 44px minmax(44px, 1fr);
+    width: calc(156px + var(--wt-rail-inset)); height: 100px;
+    padding: 4px 4px 4px calc(4px + var(--wt-rail-inset)); gap: 4px;
+    box-shadow: 4px 4px 12px #55301e33;
+  }
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"][data-wt-header-open="true"] body .wt-header .suite-header__brand {
+    display: inline-flex; grid-column: 2 / -1; grid-row: 1; gap: 4px;
+    width: 100%; min-width: 0; height: 44px; font-size: 1rem;
+  }
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] .wt-header .suite-header__icon { width: 20px; height: 20px; }
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"][data-wt-header-open="true"] .wt-header .suite-header__tools { display: contents; }
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"][data-wt-header-open="true"] .wt-header .wt-language { grid-column: 1; grid-row: 2; }
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"][data-wt-header-open="true"] .wt-header [data-game-picker] { grid-column: 2; grid-row: 2; }
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"][data-wt-header-open="true"] .wt-header .wt-nav { display: flex; grid-column: 3; grid-row: 2; }
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] .wt-topbar {
+    position: fixed; left: calc(56px + var(--wt-rail-inset)); right: auto; top: 4px;
+    width: 156px; height: auto; padding: 0 6px; z-index: 62;
+  }
+  /* A spectator has a status pill in place of the leave icon. Share the
+     existing target row: an extra row would cover the left caller's role. */
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] .wt-table[data-viewer="spectator"] .wt-topbar-actions {
+    position: absolute; inset: 48px 6px auto auto; display: flex; align-items: center;
+    width: max-content; height: 16px; margin: 0;
+  }
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] .wt-table[data-viewer="spectator"] .wt-topbar-actions > .wt-tag {
+    height: 16px; padding: 0 4px; font-size: .65rem; line-height: 14px;
+  }
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] .wt-table[data-viewer="spectator"] .wt-target {
+    padding-inline: 4px 76px; text-align: left;
+  }
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"][data-wt-header-open="true"] .wt-topbar {
+    left: auto; right: max(12px, env(safe-area-inset-right, 0px));
+  }
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] [data-watten-sound] { left: calc(4px + var(--wt-rail-inset)); top: 56px; }
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"][data-wt-header-open="true"] [data-watten-sound] { top: 104px; }
+  /* The collapsed points occupy the upper left wood. Give the reference its
+     own opposite corner, and keep the stake/review row below both side fans. */
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] .wt-table .wt-reference {
+    left: auto; right: max(12px, env(safe-area-inset-right, 0px)); top: 8px;
+  }
+  /* The footer belongs to chat/voice and the own captured packets. The
+     upper inner-right wood clears both side identities and their fans. */
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] .wt-table .wt-trick-label {
+    inset: 108px auto auto min(calc(var(--wt-rail-width) + (100vw - var(--wt-rail-width) - env(safe-area-inset-right, 0px)) / 2 + 82px), calc(100vw - env(safe-area-inset-right, 0px) - 112px));
+    width: 100px; max-width: 100px;
+  }
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"][data-wt-header-open="true"] .wt-table .wt-reference {
+    left: calc(164px + var(--wt-rail-inset)); right: auto; top: 56px;
+  }
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] .wt-table:not([data-phase="match_complete"][data-round-stage="ready"]) .wt-end-sheet > .wt-stake {
+    inset: auto auto calc(62px + env(safe-area-inset-bottom, 0px)) calc(6px + var(--wt-rail-inset));
+    width: 144px; max-width: none; height: 44px;
+  }
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] .wt-table:not([data-phase="match_complete"][data-round-stage="ready"]):has(> .wt-end-sheet > [data-wt-history]:not([hidden]):not([open]), > .wt-bloedeln-dock > .wt-bloedeln-start) .wt-end-sheet > .wt-stake {
+    width: 68px;
+  }
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] .wt-table:has(> .wt-end-sheet > [data-wt-history]:not([hidden]):not([open]), > .wt-bloedeln-dock > .wt-bloedeln-start) .wt-stake > button {
+    display: grid; grid-template-columns: auto auto; gap: 0 2px; padding: 3px 4px;
+  }
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] .wt-table:has(> .wt-end-sheet > [data-wt-history]:not([hidden]):not([open]), > .wt-bloedeln-dock > .wt-bloedeln-start) .wt-stake > button > strong { font-size: 1.1rem; }
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] .wt-table:has(> .wt-end-sheet > [data-wt-history]:not([hidden]):not([open]), > .wt-bloedeln-dock > .wt-bloedeln-start) .wt-stake > button > span { font-size: .65rem; }
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] .wt-table:has(> .wt-end-sheet > [data-wt-history]:not([hidden]):not([open]), > .wt-bloedeln-dock > .wt-bloedeln-start) .wt-stake > button > .wt-stake-action {
+    grid-column: 1 / -1; margin-left: 0;
+  }
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] .wt-table:not([data-phase="match_complete"][data-round-stage="ready"]) .wt-end-sheet > .wt-history-box:not([open]) {
+    inset: auto auto calc(62px + env(safe-area-inset-bottom, 0px)) calc(80px + var(--wt-rail-inset));
+    width: 68px; max-width: 68px; height: 44px; padding-inline: 4px;
+  }
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] .wt-history-box:not([open]) > summary {
+    line-height: 1.05; padding-block: 2px;
+  }
+  /* Before the first card, the legal Blödeln request uses the future review
+     slot beside the stake. It disappears as soon as any card is played. */
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] .wt-table[data-phase="play"] > .wt-bloedeln-dock:has(> .wt-bloedeln-start) {
+    left: calc(80px + var(--wt-rail-inset)); right: auto;
+    bottom: calc(62px + env(safe-area-inset-bottom, 0px)); width: 68px;
+  }
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] .wt-table[data-phase="play"] .wt-bloedeln-start { padding: 0; }
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] .wt-table[data-phase="play"] .wt-bloedeln-start > button {
+    width: 68px; min-width: 68px; min-height: 44px; padding: 4px; font-size: .7rem;
+  }
+  /* The wider wood leaves a slot between the opposite fan, its passive
+     status and the own hand. Keep the caller line and footer buttons clear. */
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] .wt-table[data-wt-caller-axis="bottom-right"]:not([data-phase="match_complete"][data-round-stage="ready"]) .wt-inspection > button,
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] .wt-table[data-wt-caller-axis="bottom-right"]:not([data-phase="match_complete"][data-round-stage="ready"]) .wt-end-sheet > .wt-panel > .wt-announce:has(> [data-watten-action="show_ready"]) {
+    left: calc(var(--wt-rail-width) + 88px); right: auto;
+    bottom: calc(58px + env(safe-area-inset-bottom, 0px));
+  }
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] .wt-table[data-wt-caller-axis^="bottom-"] > .wt-bloedeln-dock:has(> .wt-bloedeln-status) {
+    width: 124px;
+  }
+  /* A left caller needs the wood below the left fan for both faces. A long
+     pending request or the optional menu instead uses the opposite upper
+     gap, between the top fan and own packet. Accepted status keeps its dock. */
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] .wt-table[data-wt-caller-axis="bottom-left"] > .wt-bloedeln-dock:has(> .wt-bloedeln-status[data-watten-preplay-pending="bloedeln"]),
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] .wt-table[data-wt-caller-axis="bottom-left"]:is([data-phase="show_ready"], [data-phase="inspection"]) .wt-preplay-options {
+    position: fixed; left: calc(var(--wt-rail-width) + (100vw - var(--wt-rail-width) - env(safe-area-inset-right, 0px)) / 2);
+    right: auto; top: 104px; bottom: auto; width: 156px; max-height: none; overflow: visible;
+  }
+}

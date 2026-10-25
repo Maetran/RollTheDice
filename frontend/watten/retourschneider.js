@@ -23,6 +23,17 @@ export function createRetourAnnouncement(node, { accountId = null, liveNode = nu
   // decorative banner cover the suite header and public chat as well.
   document.body.append(node);
   const shown = new Set();
+  const offered = new Set();
+  const declined = document.createElement("section");
+  declined.className = "wt-retour-declined";
+  declined.dataset.wattenRetourDeclined = "";
+  declined.hidden = true;
+  document.body.append(declined);
+  let declinedKey = null;
+  const dismissDeclined = () => { declined.hidden = true; declined.replaceChildren(); };
+  declined.addEventListener("click", event => {
+    if (event.target.closest("[data-watten-retour-dismiss]")) dismissDeclined();
+  });
   let timer = 0, liveTimer = 0;
   const hide = () => {
     clearTimeout(timer); clearTimeout(liveTimer);
@@ -31,8 +42,31 @@ export function createRetourAnnouncement(node, { accountId = null, liveNode = nu
   };
   function update(vm) {
     const choice = vm.engine.retourschneider;
+    const key = choice && `watten:retour-announced:${accountId ?? "spectator"}:${vm.snapshot.id}:${choice.after_deal_id}`;
+    if (choice?.status === "available" && choice.members?.includes(vm.playerId)) offered.add(key);
+    if (choice?.status === "declined" && choice.members?.includes(vm.playerId)) {
+      hide();
+      const outcomeKey = `${key}:declined`;
+      // A late snapshot or immediate automatic deal must not erase the
+      // explanation. Re-entering a later deal must not replay an old choice.
+      if (declinedKey === outcomeKey) return;
+      dismissDeclined();
+      if ((!offered.has(key) && choice.after_deal_id !== vm.engine.deal_id) || shown.has(outcomeKey)) return;
+      shown.add(outcomeKey);
+      try {
+        if (sessionStorage.getItem(outcomeKey) === "true") return;
+        sessionStorage.setItem(outcomeKey, "true");
+      } catch { /* The mounted table still prevents repeats. */ }
+      declinedKey = outcomeKey;
+      declined.innerHTML = `<div role="status"><strong>${esc(t("retour.declinedTitle"))}</strong>
+        <p>${esc(t("retour.declined"))}</p></div>
+        <button type="button" data-watten-retour-dismiss>${esc(t("retour.dismiss"))}</button>`;
+      declined.hidden = false;
+      return;
+    }
+    dismissDeclined();
+    declinedKey = null;
     if (choice?.status !== "active") { hide(); return; }
-    const key = `watten:retour-announced:${accountId ?? "spectator"}:${vm.snapshot.id}:${choice.after_deal_id}`;
     if (shown.has(key)) return;
     shown.add(key);
     try {
@@ -51,5 +85,5 @@ export function createRetourAnnouncement(node, { accountId = null, liveNode = nu
     }, 0);
     timer = setTimeout(hide, 2500);
   }
-  return { update, destroy() { hide(); node.remove(); } };
+  return { update, destroy() { hide(); dismissDeclined(); declined.remove(); node.remove(); } };
 }

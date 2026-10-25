@@ -26,6 +26,7 @@ function normalizeHeader(header) {
   if (brand.classList.contains("zilch-brand")) {
     const name = brand.querySelector("span:last-child");
     if (name && name.textContent !== "Zilch") name.textContent = "Zilch";
+    brand.removeAttribute("aria-label");
   }
   nav.classList.add("suite-header__nav");
   if (!tools) {
