@@ -12,10 +12,10 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 from datetime import datetime
 
-from .watten_evidence import UNKNOWN, MatchEvidence, ProjectedBinding, validate_membership
+from .watten_evidence import UNKNOWN, MatchEvidence, ProjectedBinding, replay_score_accounts, validate_membership
 
 DRAFT_POLICY_VERSION = 1
-DRAFT_CATALOG_VERSION = 2
+DRAFT_CATALOG_VERSION = 3
 DRAFT_MATCH_XP = 10
 MAX_ONETIME_XP_BUDGET = 3500
 
@@ -158,6 +158,15 @@ DRAFT_ACHIEVEMENTS = (
           "Gewinne mit deinem Team zehn angenommene Retourschneider bis elf mit der letzten Runde von genau acht auf elf Punkte. Die letzte Runde muss drei Punkte bringen.",
           "Win ten accepted Retourschneider matches played to eleven with your team, moving from exactly eight to eleven points in the final three-point round.",
           "retourschneider_eight_plus_three_wins", 10, 200),
+    # Catalogue version 3 appends these two goals; earlier IDs and prices stay unchanged.
+    _goal("comeback_seven", "Vom Rand zurück", "Back from the edge",
+          "Gewinne ein vollständig belegtes Spiel bis elf, nachdem du zwischenzeitlich mindestens sieben Punkte hinter der stärksten Gegenseite lagst. Zu dritt musst du am Ende mindestens so viele Punkte haben wie alle anderen. Ein angenommener Retourschneider zählt nicht.",
+          "Win a fully recorded match to eleven after trailing the strongest opponent by at least seven points. In a three-player match you must finish with at least as many points as everyone else. An accepted Retourschneider does not count.",
+          "comeback_wins", 1, 80),
+    _goal("raised_every_win", "Nur mit Aufschlag", "Never at the base stake",
+          "Gewinne ein Spiel mit vollständig belegten Geboten, in dem deine Seite mindestens drei Runden gewinnt und jede davon mehr als zwei Punkte bringt. Du selbst musst dabei mindestens einmal bieten, kontern oder halten.",
+          "Win a match with complete bid records in which your side wins at least three rounds, each worth more than two points. You must bid, counter or hold at least once yourself.",
+          "raised_wins", 1, 60),
 )
 MAX_DRAFT_ACHIEVEMENT_XP = sum(item.xp for item in DRAFT_ACHIEVEMENTS)
 
@@ -214,6 +223,8 @@ class Counters:
     retourschneider_wins: int = 0
     eight_plus_three_wins: int = 0
     retourschneider_eight_plus_three_wins: int = 0
+    comeback_wins: int = 0
+    raised_wins: int = 0
 
 
 @dataclass(frozen=True, slots=True)
@@ -263,6 +274,12 @@ def _advance(current: Counters, evidence: MatchEvidence, own, days: set[str]) ->
         values["bid_matches"] = current.bid_matches + (bids.initiated > 0)
         values["counter_matches"] = current.counter_matches + (bids.countered > 0)
         values["quiet_wins"] = current.quiet_wins + (own.won and bids.initiated == bids.countered == 0)
+        # Membership is checked per deal: three-player solo/pair sides change every deal.
+        # Deals won before an accepted Retourschneider still count (stricter).
+        won_deals = [deal for deal in evidence.deals if own.player_id in deal.parties[deal.winning_party]]
+        values["raised_wins"] = current.raised_wins + (
+            own.won and len(won_deals) >= 3 and all(deal.points >= 3 for deal in won_deals)
+            and bids.initiated + bids.countered + bids.held >= 1)
     if own.won and evidence.source == "public_match_v1":
         # Native completed evidence has already replayed every score and the
         # accepted erasure. Legacy unknown data cannot invent a comeback.
@@ -281,6 +298,14 @@ def _advance(current: Counters, evidence: MatchEvidence, own, days: set[str]) ->
             values["schneider_wins"] = current.schneider_wins + 1
         if retour is None or not retour.accepted:
             values["eight_plus_three_wins"] = current.eight_plus_three_wins + eight_plus_three
+        if (evidence.target_points == 11 and (retour is None or not retour.accepted)
+                and (evidence.player_count != 3 or all(own_score.points >= score.points for score in evidence.scores))):
+            # The validated replay (including a declined Retourschneider) gives each
+            # deal's scores; the final deal is excluded, the deficit must come before it.
+            deficits = [max(score.points for score in snapshot if own.player_id not in score.members)
+                        - next(score.points for score in snapshot if own.player_id in score.members)
+                        for snapshot in replay_score_accounts(evidence)[:-1]]
+            values["comeback_wins"] = current.comeback_wins + (max(deficits, default=0) >= 7)
     result = replace(current, **values)
     return replace(result, variety=sum(getattr(result, key) > 0 for key in ("two", "three", "four")))
 

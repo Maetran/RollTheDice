@@ -121,6 +121,73 @@ def test_real_writer_same_transaction_rollback_then_retry_and_new_session_are_ex
         assert tuple(tuple(db.execute(select(model.__table__))) for model in unrelated_models) == unrelated_before
 
 
+def test_catalog_three_goal_from_an_older_stored_match_arrives_with_the_next_match_only(server, monkeypatch):
+    from app.watten_account import build_watten_account
+    from app.watten_progression import evaluate_draft
+    from tests.test_watten_evidence import scored_go
+
+    new_goals = {"watten_comeback_seven", "watten_raised_every_win"}
+    owners = [runtime_tests.account("UpgradeA"), runtime_tests.account("UpgradeB")]
+    # The same real 0:7 -> 11:7 comeback journey, stored through the actual result writer.
+    state = start_match(replace(recipe(2, target_points=11), bindings=tuple(
+        SeatBinding(player, owner[0].user_id) for player, owner in zip("AB", owners))), "upgrade-0", dealt(2),
+        first_dealer="A")
+    state = scored_go(state, state.parties.party_of("B"), 7)
+    candidate = retourschneider_candidate(state.ledger)
+    if candidate is not None:
+        state = step(state, candidate[0], "retourschneider", "decline")
+    state = next_deal(state, "upgrade-1", dealt(2))
+    state = scored_go(state, state.parties.party_of("A"), 11)
+    assert state.phase == "match_complete"
+    old_game = {"_id": "upgrade-old", "_name": "Before catalogue 3", "_mode": "2", "_finished_at": FINISHED.isoformat(),
+                "_watten": SimpleNamespace(engine=state, names=tuple((p, o[0].username) for p, o in zip("AB", owners)))}
+
+    def catalog_two(inputs, *, viewer_user_id):
+        proposal = evaluate_draft(inputs, viewer_user_id=viewer_user_id)
+        return replace(proposal, achievements=tuple(replace(item, catalog_version=2) for item in proposal.achievements
+                                                    if item.achievement_id not in new_goals))
+
+    with monkeypatch.context() as patched:
+        patched.setattr(journal, "evaluate_draft", catalog_two)
+        with session_scope() as db:
+            row, _legacy, bindings = written(db, old_game)
+            journal.store_draft_match(db, row, public_evidence(json.loads(row.snapshot_json)), bindings)
+    owner_id = owners[0][0].user_id
+    with session_scope() as db:
+        before = {grant.achievement_id: (grant.reached_at, grant.xp, grant.catalog_version, grant.grant_sequence)
+                  for grant in db.scalars(select(WattenAchievementGrant).where(WattenAchievementGrant.user_id == owner_id))}
+    assert before and not new_goals & set(before) and {item[2] for item in before.values()} == {2}
+    # Reading the account is read-only: progress is visible, no grant is materialized.
+    items = {item["id"]: item for item in build_watten_account(owner_id)["progress"]["achievements"]}
+    assert items["watten_comeback_seven"]["progress"] == 1 and not items["watten_comeback_seven"]["unlocked"]
+    with session_scope() as db:
+        assert db.scalar(select(func.count()).select_from(WattenAchievementGrant).where(
+            WattenAchievementGrant.achievement_id.in_(new_goals))) == 0
+    later = game_for(owners, game_id="upgrade-later")
+    later["_finished_at"] = (FINISHED + timedelta(days=1)).isoformat()
+    with session_scope() as db:
+        row, evidence, bindings = written(db, later)
+        journal.store_draft_match(db, row, evidence, bindings)
+        again = journal.store_draft_match(db, row, evidence, bindings)
+        assert all(not status.new_credit and not status.new_achievement_ids for status in again)
+    with session_scope() as db:
+        grants = {grant.achievement_id: grant for grant in db.scalars(
+            select(WattenAchievementGrant).where(WattenAchievementGrant.user_id == owner_id))}
+        for key, (reached_at, xp, catalog, sequence) in before.items():
+            assert (grants[key].reached_at, grants[key].xp, grants[key].catalog_version, grants[key].grant_sequence) == (
+                reached_at, xp, catalog, sequence)
+        comeback_grant = grants["watten_comeback_seven"]
+        assert (comeback_grant.source_game_id, as_utc(comeback_grant.reached_at), comeback_grant.xp,
+                comeback_grant.catalog_version) == ("upgrade-old", FINISHED, 80, DRAFT_CATALOG_VERSION)
+        assert "watten_raised_every_win" not in grants  # legacy-visible bids stay incomplete here
+        assert not db.scalar(select(func.count()).select_from(WattenAchievementGrant).where(
+            WattenAchievementGrant.user_id == owners[1][0].user_id,
+            WattenAchievementGrant.achievement_id.in_(new_goals)))
+    # The upgraded journal still validates; the stored grant is now shown as unlocked.
+    items = {item["id"]: item for item in build_watten_account(owner_id)["progress"]["achievements"]}
+    assert items["watten_comeback_seven"]["unlocked"] and items["watten_comeback_seven"]["granted_xp"] == 80
+
+
 @pytest.mark.parametrize("fail", (False, True))
 def test_native_retourschneider_unlocks_only_successful_team_once_in_its_result_transaction(server, fail):
     from tests.test_watten_progression import retourschneider_state
@@ -139,7 +206,8 @@ def test_native_retourschneider_unlocks_only_successful_team_once_in_its_result_
         grants = tuple(db.scalars(select(WattenAchievementGrant).where(
             WattenAchievementGrant.achievement_id == "watten_retourschneider_win")))
         assert {grant.user_id for grant in grants} == (set() if fail else {owners[1][0].user_id, owners[3][0].user_id})
-        assert all(grant.xp == 120 and grant.catalog_version == 2 and grant.source_game_id == game["_id"] for grant in grants)
+        assert all(grant.xp == 120 and grant.catalog_version == DRAFT_CATALOG_VERSION and grant.source_game_id == game["_id"]
+                   for grant in grants)
         assert db.scalar(select(func.count()).select_from(WattenAchievementGrant).where(
             WattenAchievementGrant.achievement_id == "watten_schneider_win")) == 0
         repeated = journal.store_draft_match(db, row, evidence, bindings)
