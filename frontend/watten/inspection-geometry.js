@@ -1,12 +1,37 @@
 // Pure placement for the two permitted inspection faces. Inputs are measured
-// felt-local rectangles; nothing here knows which cards are shown or who may
+// felt-local geometry; nothing here knows which cards are shown or who may
 // see them. Both faces stay on the straight line between their two sources.
 
-const X = { x: 1, y: 0 }, Y = { x: 0, y: 1 };
 const dot = (a, b) => a.x * b.x + a.y * b.y;
 const centreOf = rect => ({ x: (rect.left + rect.right) / 2, y: (rect.top + rect.bottom) / 2 });
+const UPRIGHT = { u: { x: 0, y: 1 }, n: { x: 1, y: 0 } };
 
 export const rectOf = (left, top, width, height) => ({ left, top, width, height, right: left + width, bottom: top + height });
+
+// Rectangles and rotated boxes share one shape: centre x/y, unit long axis u,
+// unit short axis n and half extents hh (along u) / hw (along n). Boxes keep
+// their upright bounds so source selection can still use left/right.
+export function boxOf(item) {
+  if (item.u) return item;
+  return { ...item, ...UPRIGHT, x: (item.left + item.right) / 2, y: (item.top + item.bottom) / 2,
+    hw: (item.right - item.left) / 2, hh: (item.bottom - item.top) / 2 };
+}
+
+// A painted card is a rotated rectangle. Its measured upright bounds, its
+// layout size and its accumulated rotation give the true outline; the bounds
+// alone would add empty corner triangles (tens of px on fanned cards). An
+// inconsistent measurement falls back to the conservative bounds.
+export function paintedBox(bounds, size, angle) {
+  const rect = rectOf(bounds.left, bounds.top, bounds.width, bounds.height);
+  const cos = Math.abs(Math.cos(angle)), sin = Math.abs(Math.sin(angle));
+  const width = size?.width * cos + size?.height * sin, height = size?.width * sin + size?.height * cos;
+  if (!(width > 0 && height > 0 && Number.isFinite(angle))) return boxOf(rect);
+  const scale = rect.width / width;
+  if (Math.abs(scale * height - rect.height) > 1.5 + rect.height * .02) return boxOf(rect);
+  return { ...rect, x: rect.left + rect.width / 2, y: rect.top + rect.height / 2,
+    u: { x: Math.sin(angle), y: -Math.cos(angle) }, n: { x: Math.cos(angle), y: Math.sin(angle) },
+    hw: size.width * scale / 2, hh: size.height * scale / 2 };
+}
 
 // The own hand card the shown face leaves from. Owner rule: a caller to the
 // right, however far above, means the fifth/rightmost card; to the left the
@@ -32,44 +57,36 @@ export function unionOf(rects) {
   return rectOf(left, top, Math.max(...rects.map(rect => rect.right)) - left, Math.max(...rects.map(rect => rect.bottom)) - top);
 }
 
-function projectBox(box, axis) {
-  const middle = box.x * axis.x + box.y * axis.y;
-  const radius = box.hw * Math.abs(dot(box.n, axis)) + box.hh * Math.abs(dot(box.u, axis));
-  return [middle - radius, middle + radius];
-}
+const radius = (box, axis) => box.hw * Math.abs(dot(box.n, axis)) + box.hh * Math.abs(dot(box.u, axis));
 
-function projectRect(rect, axis) {
-  const middle = dot(centreOf(rect), axis);
-  const radius = (rect.right - rect.left) / 2 * Math.abs(axis.x) + (rect.bottom - rect.top) / 2 * Math.abs(axis.y);
-  return [middle - radius, middle + radius];
-}
-
-// Separating-axis test of a rotated card against an upright rectangle; a
-// positive margin demands at least that much free wood between both.
-export function cardHitsRect(box, rect, margin = 0) {
-  for (const axis of [X, Y, box.u, box.n]) {
-    const [a0, a1] = projectBox(box, axis), [b0, b1] = projectRect(rect, axis);
-    if (a1 + margin <= b0 || b1 + margin <= a0) return false;
+// Separating-axis test of two rotated rectangles; a positive margin demands
+// at least that much free wood between both, a negative one tolerates contact.
+export function boxesHit(a, b, margin = 0) {
+  const one = boxOf(a), two = boxOf(b), d = { x: two.x - one.x, y: two.y - one.y };
+  for (const axis of [one.u, one.n, two.u, two.n]) {
+    if (Math.abs(dot(d, axis)) >= radius(one, axis) + radius(two, axis) + margin) return false;
   }
   return true;
 }
+export const cardHitsRect = boxesHit;
+
+export const covers = (box, point) => Math.abs(dot({ x: point.x - box.x, y: point.y - box.y }, box.u)) < box.hh
+  && Math.abs(dot({ x: point.x - box.x, y: point.y - box.y }, box.n)) < box.hw;
 
 export function cardBounds(box) {
-  const ex = box.hw * Math.abs(box.n.x) + box.hh * Math.abs(box.u.x);
-  const ey = box.hw * Math.abs(box.n.y) + box.hh * Math.abs(box.u.y);
+  const ex = radius(box, { x: 1, y: 0 }), ey = radius(box, { x: 0, y: 1 });
   return { left: box.x - ex, right: box.x + ex, top: box.y - ey, bottom: box.y + ey };
 }
 
-const rectsHit = (a, b, margin = 0) => a.left < b.right + margin && a.right > b.left - margin
-  && a.top < b.bottom + margin && a.bottom > b.top - margin;
-const inset = (rect, amount) => amount <= 0 ? rect : rectOf(rect.left + Math.min(amount, rect.width / 2 - .5),
-  rect.top + Math.min(amount, rect.height / 2 - .5), Math.max(1, rect.width - 2 * amount), Math.max(1, rect.height - 2 * amount));
+const shrink = (box, amount) => amount > 0 ? { ...box, hw: Math.max(.5, box.hw - amount), hh: Math.max(.5, box.hh - amount) } : box;
 
-// actors: [{ anchor, protect: hard rects (own painted hand), fan: soft rects
-// (an opponent's painted backs) }]; card i belongs to actors[i]. The region,
-// controls and own hand are hard in every attempt; identities (obstacles)
-// yield only in the "constrained" attempts, an opponent fan only at its edge.
-// Without a valid placement the result is { status: "unfit" } and has no poses.
+// actors: [{ anchor, protect: hard outlines (own painted hand), fan: soft
+// outlines (an opponent's painted backs) }]; card i belongs to actors[i].
+// Hard in every attempt: the region, controls and the own hand. Identities
+// (obstacles) yield only in "constrained" attempts. An opponent fan is clear,
+// then brushed at its edge, and at most loses half of its back centres but
+// never its middle. Without a valid placement the result is { status:
+// "unfit" } and has no poses.
 export function fitInspectionAxis({ region, actors, cards, captions, controls = [], obstacles = [],
   minimumWidth = 52, clearance = 4, maxOverlap = .45 }) {
   const [a, b] = actors.map(actor => actor.anchor);
@@ -79,53 +96,81 @@ export function fitInspectionAxis({ region, actors, cards, captions, controls = 
   const rotation = Math.atan2(u.y, u.x) * 180 / Math.PI + 90;
   const towardCentre = dot({ x: (region.left + region.right) / 2 - (a.x + b.x) / 2,
     y: (region.top + region.bottom) / 2 - (a.y + b.y) / 2 }, n) < 0 ? -1 : 1;
-  const protect = actors.flatMap(actor => actor.protect || []);
-  const fans = actors.flatMap(actor => actor.fan || []);
-  const fanSize = Math.min(...fans.map(rect => Math.min(rect.width, rect.height)), Infinity);
-  const step = Math.max(2, length / 240);
+  const hard = [...controls, ...actors.flatMap(actor => actor.protect || [])].map(boxOf);
+  const soft = obstacles.map(boxOf);
+  const groups = actors.map(actor => (actor.fan || []).map(boxOf)).filter(group => group.length)
+    .map(backs => ({ backs, middle: centreOf(unionOf(backs.map(back => cardBounds(back)))) }));
+  const fans = groups.flatMap(group => group.backs);
+  const fanSize = Math.min(...fans.map(back => 2 * Math.min(back.hw, back.hh)), Infinity);
+  const tolerance = Number.isFinite(fanSize) ? fanSize * .25 : 0;
+  const step = Math.max(1, length / 480);
 
-  const box = (t, width, height) => ({ x: a.x + u.x * t, y: a.y + u.y * t, u, n, hw: width / 2, hh: height / 2, t });
-  const within = rect => rect.left >= region.left && rect.right <= region.right && rect.top >= region.top && rect.bottom <= region.bottom;
-  // Upright captions sit beside the long edge, nudged towards their owner.
-  function label(index, card, side) {
-    const size = captions[index], outward = index ? 1 : -1;
-    const lateral = card.hw + (size.width * Math.abs(n.x) + size.height * Math.abs(n.y)) / 2 + 2;
-    const x = card.x + n.x * side * lateral + u.x * outward * card.hh * .2;
-    const y = card.y + n.y * side * lateral + u.y * outward * card.hh * .2;
-    return { ...rectOf(x - size.width / 2, y - size.height / 2, size.width, size.height), x, side };
+  // turned: the long edge lies across the line, so each face needs only its
+  // width along it. Both orientations keep the centre on the line.
+  const box = (t, width, height, turned) => ({ x: a.x + u.x * t, y: a.y + u.y * t, t, turned,
+    u: turned ? n : u, n: turned ? u : n, hw: width / 2, hh: height / 2 });
+  const within = rect => rect.left >= region.left - .01 && rect.right <= region.right + .01
+    && rect.top >= region.top - .01 && rect.bottom <= region.bottom + .01;
+  // Upright captions sit beside the face, at several heights along it.
+  function labels(index, card) {
+    const size = captions[index], outward = index ? 1 : -1, along = radius(card, u);
+    const lateral = radius(card, n) + (size.width * Math.abs(n.x) + size.height * Math.abs(n.y)) / 2 + 2;
+    return [towardCentre, -towardCentre].flatMap(side => [.2, .4, 0, -.2].map(shift => {
+      const x = card.x + n.x * side * lateral + u.x * outward * along * shift;
+      const y = card.y + n.y * side * lateral + u.y * outward * along * shift;
+      return { ...boxOf(rectOf(x - size.width / 2, y - size.height / 2, size.width, size.height)), side };
+    }));
   }
+  function fanClear(item, mode) {
+    if (mode === "strict") return !fans.some(back => boxesHit(item, back, clearance));
+    if (mode === "partial") return groups.every(group => !covers(item, group.middle)
+      && group.backs.filter(back => covers(item, back)).length <= Math.floor(group.backs.length / 2));
+    return !fans.some(back => boxesHit(item, shrink(back, mode), 0));
+  }
+  // Clear face positions, nearest to the face's own source first. Caption
+  // slots are evaluated lazily, only for positions the pairing visits.
   function candidates(index, scale, options) {
     const width = cards[index].width * scale, height = cards[index].height * scale;
-    const fanRects = options.fans ? fans.map(rect => inset(rect, options.tolerance)) : [];
-    const blocked = [...controls, ...protect, ...(options.obstacles ? obstacles : [])];
+    const blocked = options.obstacles ? [...hard, ...soft] : hard;
+    const captionFans = options.fans === "partial" ? tolerance * 2 : options.fans;
     const found = [];
     for (let i = 0; i <= Math.ceil(length / step); i++) {
       const t = index ? length - Math.min(length, i * step) : Math.min(length, i * step);
-      const card = box(t, width, height);
-      if (!within(cardBounds(card))) continue;
-      if (blocked.some(rect => cardHitsRect(card, rect, clearance))) continue;
-      if (fanRects.some(rect => cardHitsRect(card, rect, options.tolerance ? 0 : clearance))) continue;
-      const labels = [towardCentre, -towardCentre].map(side => label(index, card, side)).filter(rect => within(rect)
-        && ![...blocked, ...fanRects].some(other => rectsHit(rect, other, 2)));
-      if (labels.length) found.push({ card, labels });
+      const card = box(t, width, height, options.turned);
+      if (!within(cardBounds(card)) || blocked.some(other => boxesHit(card, other, clearance)) || !fanClear(card, options.fans)) continue;
+      let free = null;
+      found.push({ card, get labels() {
+        free ??= labels(index, card).filter(label => within(label)
+          && !blocked.some(other => boxesHit(label, other, 2)) && fanClear(label, captionFans));
+        return free;
+      } });
     }
     return found;
   }
-  function attempt(scale, options) {
+  const extent = (scale, turned) => (turned ? cards[0].width + cards[1].width : cards[0].height + cards[1].height) * scale / 2;
+  function attempt(options) {
+    const { scale } = options;
     const near = candidates(0, scale, options), far = candidates(1, scale, options);
-    const minimum = (cards[0].height + cards[1].height) * scale / 2 * (1 - options.overlap);
-    // The first card stays as close to its source as possible, the second
+    const spacing = extent(scale, options.turned), minimum = spacing * (1 - options.overlap);
+    // The first face stays as close to its source as possible, the second
     // likewise; any overlap happens in their shared middle.
-    for (const first of near.slice(0, 40)) for (const second of far) {
-      if (second.card.t - first.card.t < minimum) break;
-      for (const one of first.labels) for (const two of second.labels) {
-        if (rectsHit(one, two, 2) || cardHitsRect(second.card, one, 1) || cardHitsRect(first.card, two, 1)) continue;
-        const spacing = (cards[0].height + cards[1].height) * scale / 2;
-        return { status: "fit", scale, rotation, axis: { from: a, to: b, unit: u, length }, constrained: Boolean(options.constrained),
-          relaxed: Boolean(options.tolerance), overlap: Math.max(0, 1 - (second.card.t - first.card.t) / spacing),
-          poses: [first.card, second.card].map((card, index) => ({ x: card.x, y: card.y, t: card.t,
-            width: cards[index].width * scale, height: cards[index].height * scale, rotation: rotation + index * 180 })),
-          labels: [one, two] };
+    let tried = 0;
+    for (const first of near) {
+      if (!first.labels.length) continue;
+      if (++tried > 80) break;
+      for (const second of far) {
+        if (second.card.t - first.card.t < minimum) break;
+        for (const one of first.labels) for (const two of second.labels) {
+          if (boxesHit(one, two, 2) || boxesHit(second.card, one, 1) || boxesHit(first.card, two, 1)) continue;
+          const turn = options.turned ? 90 : 0;
+          return { status: "fit", scale, rotation: rotation + turn, turned: Boolean(options.turned), axis: { from: a, to: b, unit: u, length },
+            constrained: Boolean(options.constrained), relaxed: options.fans !== "strict",
+            fans: options.fans === "partial" ? "partial" : options.fans === "strict" ? "clear" : "edge",
+            overlap: Math.max(0, 1 - (second.card.t - first.card.t) / spacing),
+            poses: [first.card, second.card].map((card, index) => ({ x: card.x, y: card.y, t: card.t,
+              width: cards[index].width * scale, height: cards[index].height * scale, rotation: rotation + turn + index * 180 })),
+            labels: [one, two] };
+        }
       }
     }
     return null;
@@ -135,26 +180,31 @@ export function fitInspectionAxis({ region, actors, cards, captions, controls = 
   const scales = [1];
   while (scales.at(-1) * .92 > smallest) scales.push(scales.at(-1) * .92);
   if (scales.at(-1) > smallest) scales.push(smallest);
-  const tolerance = Number.isFinite(fanSize) ? fanSize * .25 : 0;
-  const strict = { fans: true, obstacles: true, tolerance: 0 };
-  const plan = [{ scale: 1, ...strict, overlap: 0 },
-    ...scales.filter(scale => scale >= .8).map(scale => ({ scale, ...strict, overlap: maxOverlap })),
-    ...scales.map(scale => ({ scale, ...strict, tolerance, overlap: maxOverlap })),
-    // Severely constrained screens: keep controls and the own hand clear,
-    // then let the faces brush identities before covering a source fan.
-    { scale: smallest, fans: true, obstacles: false, tolerance, overlap: maxOverlap, constrained: true },
-    { scale: smallest, fans: true, obstacles: false, tolerance: tolerance * 2, overlap: maxOverlap, constrained: true }];
+  // Double-headed faces stay identifiable at up to half overlap: the upper
+  // face leaves the lower one's complete outer half, a full mirrored image.
+  const half = Math.max(maxOverlap, .5);
+  const plan = [{ scale: 1, fans: "strict", obstacles: true, overlap: 0 },
+    ...scales.filter(scale => scale >= .8).map(scale => ({ scale, fans: "strict", obstacles: true, overlap: maxOverlap })),
+    ...scales.map(scale => ({ scale, fans: tolerance, obstacles: true, overlap: maxOverlap })),
+    // Tight wood: the same line with quarter-turned faces needs only their
+    // width along it; a caught corner index stays visible at 45% overlap.
+    ...scales.map(scale => ({ scale, fans: tolerance, obstacles: true, overlap: maxOverlap, turned: true })),
+    // Severely constrained: controls and the own hand remain hard.
+    ...[false, true].flatMap(turned => [
+      { scale: smallest, fans: tolerance * 2, obstacles: true, overlap: turned ? maxOverlap : half, turned, constrained: true },
+      { scale: smallest, fans: "partial", obstacles: true, overlap: turned ? maxOverlap : half, turned, constrained: true },
+      { scale: smallest, fans: "partial", obstacles: false, overlap: turned ? maxOverlap : half, turned, constrained: true }])];
   for (const options of plan) {
-    const fit = attempt(options.scale, options);
+    const fit = attempt(options);
     if (fit) return fit;
   }
   // No placement satisfies the hard constraints. Report why instead of
   // painting over a control, the own hand or the viewport edge.
-  const loosest = plan.at(-1);
+  const loosest = plan.at(-4); // partial fan, no identities, faces along the line
   const clear = [candidates(0, smallest, loosest), candidates(1, smallest, loosest)];
   const range = list => list.length ? [Math.min(...list.map(item => item.card.t)), Math.max(...list.map(item => item.card.t))] : null;
   return { status: "unfit", reason: clear.some(list => !list.length) ? "no-clear-position" : "no-separation",
     axis: { from: a, to: b, unit: u, length }, scale: smallest,
     // Clear along-axis positions per face and the centre distance they need.
-    clear: clear.map(range), required: (cards[0].height + cards[1].height) * smallest / 2 * (1 - maxOverlap) };
+    clear: clear.map(range), required: extent(smallest, false) * (1 - half) };
 }

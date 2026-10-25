@@ -171,15 +171,46 @@ async function inspect(players) {
             });
             const inside = (face, point) => Math.abs((point.x - face.x) * face.u.x + (point.y - face.y) * face.u.y) < face.hh
               && Math.abs((point.x - face.x) * face.n.x + (point.y - face.y) * face.n.y) < face.hw;
+            // Own hand cards as painted: layout size rotated by the accumulated
+            // CSS rotation, checked against the measured bounds.
+            const angleOf = node => {
+              let angle = 0;
+              for (let item = node; item; item = item.parentElement) {
+                const style = getComputedStyle(item);
+                if (style.transform !== 'none') { const m = new DOMMatrixReadOnly(style.transform); angle += Math.atan2(m.b, m.a); }
+                const turn = /(-?[\d.]+)deg\s*$/.exec(style.rotate || '');
+                if (turn) angle += Number(turn[1]) * Math.PI / 180;
+              }
+              return angle;
+            };
+            const handOutlines = [...document.querySelectorAll('[data-wt-hand-area]:not([hidden]) [data-wt-hand] > *')].filter(shown).map(node => {
+              const box = rect(node), angle = angleOf(node), c = Math.abs(Math.cos(angle)), s = Math.abs(Math.sin(angle));
+              const scale = box.width / (node.offsetWidth * c + node.offsetHeight * s);
+              const upright = { ...middle(box), hw: box.width / 2, hh: box.height / 2, u: { x: 0, y: 1 }, n: { x: 1, y: 0 } };
+              if (!(scale > 0) || Math.abs(scale * (node.offsetWidth * s + node.offsetHeight * c) - box.height) > 1.5 + box.height * .02) return upright;
+              return { ...middle(box), hw: node.offsetWidth * scale / 2, hh: node.offsetHeight * scale / 2,
+                u: { x: Math.sin(angle), y: -Math.cos(angle) }, n: { x: Math.cos(angle), y: Math.sin(angle) } };
+            });
+            const boxesHit = (a, b, margin = 0) => [a.u, a.n, b.u, b.n].every(axis => {
+              const r = box => box.hw * Math.abs(box.n.x * axis.x + box.n.y * axis.y) + box.hh * Math.abs(box.u.x * axis.x + box.u.y * axis.y);
+              return Math.abs((b.x - a.x) * axis.x + (b.y - a.y) * axis.y) < r(a) + r(b) + margin;
+            });
             for (const [index, face] of oriented.entries()) {
-              if (handCards.some(card => hits(face, card, -1))) failures.push(`face ${index} covers the painted own hand`);
+              if (handOutlines.some(card => boxesHit(face, card, -1))) failures.push(`face ${index} covers the painted own hand`);
+              // Owner: minimal fan overlap only; never the fan middle, never more
+              // than half of its back centres.
               for (const [source, fan] of fans.entries()) if (!seats[source].classList.contains('is-own')
-                && fan.some(back => inside(face, middle(back)))) failures.push(`face ${index} hides an opponent back`);
+                && (inside(face, rough[source]) || fan.filter(back => inside(face, middle(back))).length > Math.floor(fan.length / 2))) {
+                failures.push(`face ${index} hides too much of an opponent fan`);
+              }
               for (const obstacle of obstacles) if (!seats.includes(obstacle.closest('[data-wt-seat]')) || !obstacle.matches('.wt-backs > i')) {
                 if (hits(face, rect(obstacle), -2)) failures.push(`face ${index} overlaps ${obstacle.className || 'back card'} at seat ${obstacle.closest('[data-wt-seat]')?.dataset.wtSeat || '-'}`);
               }
             }
-            if ((along[1] - along[0]) * length < Math.min(...oriented.map(face => face.hh * 2)) * .55 - 1) failures.push('the two faces overlap by more than 45%');
+            // Extent along the line covers faces along it and quarter-turned ones.
+            // Up to half overlap keeps each double-headed face's full outer half.
+            const reach = face => face.hw * Math.abs(face.n.x * unit.x + face.n.y * unit.y) + face.hh * Math.abs(face.u.x * unit.x + face.u.y * unit.y);
+            if ((along[1] - along[0]) * length < (reach(oriented[0]) + reach(oriented[1])) / 2 * 2 * .5 - 1) failures.push('the two faces overlap by more than half');
           }
           for (const [index, caption] of captions.entries()) {
             const box = rect(caption);

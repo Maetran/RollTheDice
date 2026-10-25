@@ -10,7 +10,7 @@ import { retourschneiderChoiceMarkup, createRetourAnnouncement } from "./retours
 import { seriesMarks, seriesTargetMarkup, seriesFinishedTitle } from "./series.js";
 import { createScorepad, nockerlMarksMarkup } from "./scorepad.js";
 import { createTrickLayout } from "./trick-layout.js";
-import { fitInspectionAxis, outermostCard, rectOf, unionOf } from "./inspection-geometry.js";
+import { fitInspectionAxis, outermostCard, paintedBox, rectOf, unionOf } from "./inspection-geometry.js";
 import { resultReactionsMarkup } from "./social.js";
 
 const POSITIONS = { 2: ["bottom", "top"], 3: ["bottom", "left", "right"], 4: ["bottom", "left", "top", "right"] };
@@ -176,17 +176,18 @@ function createInspectionMotion(reveal, seatNodes) {
   const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)");
   const centre = rect => ({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
   const SIDES = ["bottom", "left", "right", "top"];
-  let key = "", playedKey = "", figures = [], observer = null, flights = [], geometry = "", frame = 0;
+  let key = "", playedKey = "", figures = [], observer = null, flights = [], geometry = "", frame = 0, memo = { key: "", fit: null };
   const settle = () => { flights.forEach(flight => flight.cancel()); flights = []; };
   const stop = () => {
     settle(); observer?.disconnect(); observer = null;
     cancelAnimationFrame(frame); frame = 0;
-    key = ""; figures = []; geometry = "";
+    key = ""; figures = []; geometry = ""; memo = { key: "", fit: null };
     reveal.closest(".wt-table")?.style.removeProperty("--wt-inspection-ack-height");
     delete reveal.dataset.wtInspectionPositioned;
     delete reveal.dataset.wtInspectionAxis;
     delete reveal.dataset.wtInspectionFit;
     delete reveal.dataset.wtInspectionReason;
+    delete reveal.dataset.wtInspectionDetail;
   };
   const playerOf = figure => seatNodes.get(Number(figure.dataset.wtInspectionSeat));
   const handArea = () => reveal.closest(".wt-table")?.querySelector("[data-wt-hand-area]");
@@ -203,14 +204,37 @@ function createInspectionMotion(reveal, seatNodes) {
     const local = rect => rectOf(rect.left - bounds.left, rect.top - bounds.top, rect.width, rect.height);
     const painted = nodes => [...nodes].map(node => node.getBoundingClientRect())
       .filter(rect => rect.width && rect.height).map(local);
+    // Fanned cards: their true rotated outline, not the upright bounds that
+    // add empty corners. Rotation accumulates up to the felt.
+    const turn = value => {
+      const match = /(-?[\d.]+)(deg|rad|grad|turn)\s*$/.exec(value || "");
+      if (!match) return 0;
+      const amount = Number(match[1]);
+      return match[2] === "deg" ? amount * Math.PI / 180 : match[2] === "turn" ? amount * 2 * Math.PI : match[2] === "grad" ? amount * Math.PI / 200 : amount;
+    };
+    const angleOf = node => {
+      let angle = 0;
+      for (let item = node; item && item !== felt; item = item.parentElement) {
+        const style = getComputedStyle(item);
+        if (style.transform && style.transform !== "none") {
+          const matrix = new DOMMatrixReadOnly(style.transform);
+          angle += Math.atan2(matrix.b, matrix.a);
+        }
+        if (style.rotate && style.rotate !== "none") angle += turn(style.rotate);
+      }
+      return angle;
+    };
+    const outlines = nodes => [...nodes].map(node => ({ node, rect: node.getBoundingClientRect() }))
+      .filter(item => item.rect.width && item.rect.height)
+      .map(({ node, rect }) => paintedBox(local(rect), { width: node.offsetWidth, height: node.offsetHeight }, angleOf(node)));
     const players = figures.map(playerOf);
     if (players.some(player => !player)) return;
     // Sources are the painted cards themselves: the own hand while its area
     // is shown, otherwise that caller's visible backs. Wrappers are ignored.
     const area = handArea();
-    const hand = area && !area.hidden ? painted(area.querySelectorAll("[data-wt-hand] > *")) : [];
+    const hand = area && !area.hidden ? outlines(area.querySelectorAll("[data-wt-hand] > *")) : [];
     const fans = players.map(player => player.classList.contains("is-own") ? hand
-      : painted(player.querySelectorAll(".wt-backs:not([hidden]) > i:not([hidden])")));
+      : outlines(player.querySelectorAll(".wt-backs:not([hidden]) > i:not([hidden])")));
     const avatar = player => painted([player.querySelector(".wt-avatar")].filter(Boolean))[0];
     const rough = fans.map((fan, index) => {
       const source = fan.length ? unionOf(fan) : avatar(players[index]);
@@ -233,12 +257,16 @@ function createInspectionMotion(reveal, seatNodes) {
     const actorSeats = new Set(players);
     const controls = painted(table.querySelectorAll('[data-watten-action="inspection_ack"], [data-wt-preplay] :is(button, h3, p), '
       + '.wt-preplay-options > summary, [data-wt-private] button, [data-wt-history]:not([hidden]) > summary'));
-    const obstacles = painted([...felt.querySelectorAll(".wt-avatar, .wt-seat-name, .wt-seat-call-role, .wt-seat-public-title, "
-      + ".wt-seat-tags, .wt-bubble--thanks, .wt-taken:not([hidden]) .wt-taken-packet, .wt-stock, [data-wt-reference] .wt-card, [data-wt-bloedeln] .wt-card"),
-    ...[...felt.querySelectorAll(".wt-seat")].filter(seat => !actorSeats.has(seat))
-      .flatMap(seat => [...seat.querySelectorAll(".wt-backs:not([hidden]) > i:not([hidden])")])]);
-    const fit = fitInspectionAxis({ region: rectOf(6, 6, bounds.width - 12, bounds.height - 12),
-      actors, cards: sizes, captions: labelSizes, controls, obstacles });
+    const obstacles = [...painted(felt.querySelectorAll(".wt-avatar, .wt-seat-name, .wt-seat-call-role, .wt-seat-public-title, "
+      + ".wt-seat-tags, .wt-bubble--thanks, .wt-taken:not([hidden]) .wt-taken-packet, .wt-stock, [data-wt-reference] .wt-card, [data-wt-bloedeln] .wt-card")),
+    ...outlines([...felt.querySelectorAll(".wt-seat")].filter(seat => !actorSeats.has(seat))
+      .flatMap(seat => [...seat.querySelectorAll(".wt-backs:not([hidden]) > i:not([hidden])")]))];
+    const input = { region: rectOf(6, 6, bounds.width - 12, bounds.height - 12),
+      actors, cards: sizes, captions: labelSizes, controls, obstacles };
+    // Snapshot updates re-run this; refit only when a measurement changed.
+    const inputKey = JSON.stringify(input, (_, value) => typeof value === "number" ? Math.round(value * 10) / 10 : value);
+    if (inputKey !== memo.key) memo = { key: inputKey, fit: fitInspectionAxis(input) };
+    const { fit } = memo;
     geometry = signature();
     if (fit.status !== "fit") {
       // Never keep an earlier, now invalid placement. The faces stay hidden
@@ -247,9 +275,12 @@ function createInspectionMotion(reveal, seatNodes) {
       delete reveal.dataset.wtInspectionPositioned;
       reveal.dataset.wtInspectionFit = "unfit";
       reveal.dataset.wtInspectionReason = fit.reason;
+      reveal.dataset.wtInspectionDetail = JSON.stringify({ length: fit.axis?.length, clear: fit.clear, required: fit.required });
       return;
     }
     delete reveal.dataset.wtInspectionReason;
+    reveal.dataset.wtInspectionDetail = JSON.stringify({ length: fit.axis.length, width: fit.poses[0].width, turned: fit.turned,
+      fans: fit.fans, overlap: Number(fit.overlap.toFixed(3)), constrained: fit.constrained });
     fit.poses.forEach((pose, index) => {
       const figure = figures[index], card = cards[index], caption = captions[index], label = fit.labels[index];
       card.style.width = `${pose.width}px`;
@@ -289,6 +320,8 @@ function createInspectionMotion(reveal, seatNodes) {
     delete reveal.dataset.wtInspectionPositioned;
     delete reveal.dataset.wtInspectionFit;
     delete reveal.dataset.wtInspectionReason;
+    delete reveal.dataset.wtInspectionDetail;
+    memo = { key: "", fit: null };
     figures = nextFigures; key = nextKey;
     schedule();
     if (typeof ResizeObserver !== "function") return;
@@ -708,6 +741,14 @@ export function createTableView(container, { onCard, accountId = null }) {
     container.querySelector("[data-wt-table]").dataset.phase = vm.engine.phase;
     container.querySelector("[data-wt-table]").dataset.roundStage = vm.roundPresentation?.stage || "ready";
     container.querySelector("[data-wt-table]").dataset.viewer = vm.spectator ? "spectator" : "player";
+    // Public seat sides of both callers through showing and inspection, e.g.
+    // "bottom-right": one phase-stable hook if the action row must mirror.
+    const callerSides = [vm.engine.announcement_roles?.strike, vm.engine.announcement_roles?.colour]
+      .filter(Number.isInteger).map(seat => seatPosition(seat, vm.anchorSeat, vm.count));
+    if (callerSides.length === 2 && callerSides[0] !== callerSides[1] && ["show_ready", "inspection"].includes(vm.engine.phase)) {
+      container.querySelector("[data-wt-table]").dataset.wtCallerAxis = callerSides
+        .sort((a, b) => ["bottom", "left", "right", "top"].indexOf(a) - ["bottom", "left", "right", "top"].indexOf(b)).join("-");
+    } else delete container.querySelector("[data-wt-table]").dataset.wtCallerAxis;
     const canBid = vm.actions.includes("bid");
     const stake = vm.engine.bid.pending?.points ?? vm.engine.bid.accepted_stake;
     patch(elements.scores, "scores", scoreMarkup(vm) + `<li class="wt-target">${esc(t("score.target", { target: vm.engine.target_points }))}</li>${seriesTargetMarkup(vm.room)}

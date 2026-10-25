@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const source = await readFile(new URL("../frontend/watten/inspection-geometry.js", import.meta.url), "utf8");
-const { fitInspectionAxis, outermostCard, unionOf, cardHitsRect, cardBounds, rectOf: rect } =
+const { fitInspectionAxis, outermostCard, unionOf, cardHitsRect, cardBounds, paintedBox, boxesHit, covers, rectOf: rect } =
   await import(`data:text/javascript;base64,${Buffer.from(source).toString("base64")}`);
 const centre = box => ({ x: (box.left + box.right) / 2, y: (box.top + box.bottom) / 2 });
 const overlap = (a, b) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
@@ -26,8 +26,12 @@ const portrait = {
 
 function own(hand, target) { return { anchor: centre(outermostCard(hand, target)), protect: hand, fan: [] }; }
 function opponent(fan) { return { anchor: centre(unionOf(fan)), protect: [], fan }; }
-const boxOf = (fit, index) => ({ x: fit.poses[index].x, y: fit.poses[index].y, u: fit.axis.unit,
-  n: { x: -fit.axis.unit.y, y: fit.axis.unit.x }, hw: fit.poses[index].width / 2, hh: fit.poses[index].height / 2 });
+// The painted face outline from its CSS rotation, independent of the solver.
+const boxOf = (fit, index) => {
+  const pose = fit.poses[index], angle = pose.rotation * Math.PI / 180;
+  return { x: pose.x, y: pose.y, u: { x: Math.sin(angle), y: -Math.cos(angle) }, n: { x: Math.cos(angle), y: Math.sin(angle) },
+    hw: pose.width / 2, hh: pose.height / 2 };
+};
 const inside = (box, point) => {
   const dx = point.x - box.x, dy = point.y - box.y;
   return Math.abs(dx * box.u.x + dy * box.u.y) < box.hh && Math.abs(dx * box.n.x + dy * box.n.y) < box.hw;
@@ -152,18 +156,42 @@ test("degenerate sources and impossible tables are reported unfit without any po
   assert.equal(tiny.poses, undefined);
 });
 
-test("a control spanning the callers' line is never covered: the result is unfit, not a midpoint", () => {
+test("a control spanning the callers' line is never covered, even by the last constrained fit", () => {
   const actors = [own(portrait.hand, centre(unionOf(portrait.right))), opponent(portrait.right)];
   // A full-width band between the own hand and the right fan, like a
   // left/right-inset Blödeln status row during inspection.
   const band = rect(12, 420, 416, 120);
+  const controls = [band, portrait.ack];
   const fit = fitInspectionAxis({ region: portrait.region, actors, cards: portrait.cards, captions: portrait.captions,
-    controls: [band, portrait.ack], obstacles: portrait.identities });
+    controls, obstacles: portrait.identities });
+  // Only the wood between the band and the right fan remains: quarter-turned
+  // faces there, brushing at most half of that fan's backs.
+  assert.equal(fit.status, "fit");
+  assert.equal(fit.constrained, true);
+  assert.equal(fit.fans, "partial");
+  const middle = centre(unionOf(portrait.right));
+  for (const index of [0, 1]) {
+    const face = boxOf(fit, index), bounds = cardBounds(face);
+    assert.ok(bounds.left >= portrait.region.left && bounds.right <= portrait.region.right && bounds.top >= portrait.region.top && bounds.bottom <= portrait.region.bottom);
+    for (const control of controls) assert.equal(boxesHit(face, control), false);
+    for (const card of portrait.hand) assert.equal(boxesHit(face, card, 3.9), false);
+    assert.equal(covers(face, middle), false);
+    assert.ok(portrait.right.filter(back => covers(face, centre(back))).length <= 2);
+    assert.ok(fit.poses[index].width >= 51.9);
+  }
+  assert.ok(fit.poses[0].t < fit.poses[1].t);
+  for (const label of fit.labels) for (const control of controls) assert.equal(overlap(label, control), false);
+});
+
+test("unfit diagnostics are consistent: the clear ranges really are too short", () => {
+  const actors = [own(portrait.hand, centre(unionOf(portrait.right))), opponent(portrait.right)];
+  // A band reaching up into the right fan leaves no wood on the line at all.
+  const controls = [rect(12, 300, 416, 240), portrait.ack];
+  const fit = fitInspectionAxis({ region: portrait.region, actors, cards: portrait.cards, captions: portrait.captions, controls });
   assert.equal(fit.status, "unfit");
   assert.equal(fit.poses, undefined);
-  assert.equal(fit.reason, "no-clear-position");
-  assert.deepEqual(fit.clear, [null, null], "neither face has a clear spot between the band, the ACK, the hand and the fan");
-  assert.ok(fit.required > 0);
+  if (fit.clear.every(Boolean)) assert.ok(fit.clear[1][1] - fit.clear[0][0] < fit.required);
+  else assert.equal(fit.reason, "no-clear-position");
 });
 
 test("a thin control between both sources is respected and the faces sit on either side of it", () => {
@@ -173,6 +201,59 @@ test("a thin control between both sources is respected and the faces sit on eith
     controls: [band], obstacles: portrait.identities });
   verify(fit, { actors, region: portrait.region, controls: [band], ownIndex: 0 });
   assert.ok(fit.poses[0].y > band.bottom && fit.poses[1].y < band.top);
+});
+
+test("a fanned card's empty bounding-box corner is free wood, not an obstacle", () => {
+  // 60x100 card rotated 30°: upright bounds 102x116.6 around the centre.
+  const bounds = rect(-51, -58.3, 102, 116.6), angle = Math.PI / 6;
+  const outline = paintedBox(bounds, { width: 60, height: 100 }, angle);
+  assert.ok(Math.abs(outline.hw - 30) < .2 && Math.abs(outline.hh - 50) < .2, "the layout size is recovered");
+  const corner = { x: -40, y: -45, u: { x: 0, y: 1 }, n: { x: 1, y: 0 }, hw: 5, hh: 5 };
+  assert.equal(boxesHit(corner, bounds), true, "the upright bounds falsely claim the corner");
+  assert.equal(boxesHit(corner, outline), false, "the painted outline leaves it free");
+  assert.equal(boxesHit({ ...corner, x: 0, y: 0 }, outline), true);
+  // An inconsistent size/angle pair keeps the conservative bounds.
+  const fallback = paintedBox(bounds, { width: 60, height: 60 }, angle);
+  assert.equal(fallback.hw, 51);
+  assert.equal(boxesHit(corner, fallback), true);
+});
+
+test("wood too short for faces along the line uses quarter-turned faces on the same line", () => {
+  const actors = [{ anchor: { x: 200, y: 300 }, protect: [], fan: [] }, { anchor: { x: 200, y: 200 }, protect: [], fan: [] }];
+  const controls = [rect(0, 296, 400, 20), rect(0, 184, 400, 20)];
+  const card = { width: 52, height: 52 * 570 / 360 };
+  const fit = fitInspectionAxis({ region: rect(0, 0, 400, 500), actors, cards: [card, card],
+    captions: [{ width: 60, height: 26 }, { width: 56, height: 26 }], controls });
+  assert.equal(fit.status, "fit");
+  assert.equal(fit.turned, true);
+  assert.equal(fit.constrained, false);
+  for (const [index, pose] of fit.poses.entries()) {
+    assert.ok(Math.abs(pose.x - 200) < 1e-6, "the centre stays on the callers' line");
+    assert.ok(pose.width >= 51.9);
+    for (const control of controls) assert.equal(boxesHit(boxOf(fit, index), control), false);
+  }
+  assert.ok(fit.poses[0].y - fit.poses[1].y >= card.width * .55 - 1e-6, "more than half of each width stays visible");
+  assert.ok(fit.overlap <= .45 + 1e-9);
+});
+
+test("a cramped opponent fan may lose at most half of its back centres, never its middle", () => {
+  const backs = Array.from({ length: 5 }, (_, index) => rect(170, 100 + index * 28, 60, 40));
+  const actors = [{ anchor: { x: 200, y: 400 }, protect: [], fan: [] }, opponent(backs)];
+  const controls = [rect(0, 350, 400, 20)];
+  const card = { width: 52, height: 52 * 570 / 360 };
+  const fit = fitInspectionAxis({ region: rect(170, 0, 80, 500), actors, cards: [card, card],
+    captions: [{ width: 20, height: 10 }, { width: 20, height: 10 }], controls });
+  assert.equal(fit.status, "fit");
+  assert.equal(fit.fans, "partial");
+  assert.equal(fit.constrained, true);
+  const middle = centre(unionOf(backs));
+  for (const index of [0, 1]) {
+    const face = boxOf(fit, index);
+    assert.equal(covers(face, middle), false, "the fan middle stays visible");
+    assert.ok(backs.filter(back => covers(face, centre(back))).length <= 2);
+    for (const control of controls) assert.equal(boxesHit(face, control), false);
+  }
+  assert.ok(fit.overlap <= .5 + 1e-9, "each double-headed face keeps its complete outer half");
 });
 
 test("the own hand is hard even when nothing else fits", () => {

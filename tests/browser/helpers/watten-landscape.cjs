@@ -64,10 +64,18 @@ async function expectLandscapeTable(page, { completedPile = false, inspection = 
       for (const card of played) {
         const box = rect(card), face = outline(card);
         if (box.left < felt.left - 1 || box.right > felt.right + 1 || box.top < felt.top - 1 || box.bottom > felt.bottom + 1) errors.push('public card escapes the right table');
-        const collisions = guarded.filter(node => {
-          const callerBack = node.matches('.wt-backs > i') && callers.includes(node.closest('[data-wt-seat]'));
-          return callerBack ? inside(face, center(rect(node))) : hits(face, rect(node));
-        });
+        const collisions = guarded.filter(node => !(node.matches('.wt-backs > i') && callers.includes(node.closest('[data-wt-seat]')))
+          && hits(face, rect(node)));
+        // A caller's fan may be brushed: never its middle, at most half its backs.
+        for (const seat of callers) {
+          const backs = [...seat.querySelectorAll('.wt-backs > i:not([hidden])')].filter(visible).map(rect);
+          if (!backs.length) continue;
+          const middle = { x: (Math.min(...backs.map(b => b.left)) + Math.max(...backs.map(b => b.right))) / 2,
+            y: (Math.min(...backs.map(b => b.top)) + Math.max(...backs.map(b => b.bottom))) / 2 };
+          if (inside(face, middle) || backs.filter(back => inside(face, center(back))).length > Math.floor(backs.length / 2)) {
+            errors.push(`inspection card ${card.dataset.card} hides too much of seat ${seat.dataset.wtSeat}'s fan`);
+          }
+        }
         if (collisions.length) errors.push(`inspection card ${card.dataset.card} overlaps ${collisions.map(node => node.className).join(', ')}`);
       }
     } else for (const card of played) {
