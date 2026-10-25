@@ -1,10 +1,29 @@
 const { test, expect } = require('@playwright/test');
 const { build } = require('esbuild');
 const path = require('node:path');
+const { readFile } = require('node:fs/promises');
 const { player, create, normalCall, playOne } = require('./helpers/watten-journey.cjs');
 
 const VIEWPORTS = [{ width: 320, height: 568 }, { width: 440, height: 956 }, { width: 568, height: 320 },
   { width: 820, height: 1180 }, { width: 1180, height: 820 }];
+
+async function expectNativeMount(page) {
+  const measured = await page.evaluate(() => {
+    const { root, nativeRoot, nativeTable } = window.followup;
+    const delta = (left, right) => Math.max(...['left', 'top', 'width', 'height'].map(key => Math.abs(left[key] - right[key])));
+    const nativeIds = new Set([...nativeRoot.querySelectorAll('[id]')].map(node => node.id));
+    return { sameParent: root.parentElement === nativeRoot.parentElement,
+      sameMain: root.closest('.wt-main') === nativeRoot.closest('.wt-main'), nativeConnected: nativeTable.isConnected,
+      nativeOwnsTable: nativeRoot.querySelector('[data-wt-table]') === nativeTable,
+      rootDelta: delta(root.getBoundingClientRect(), nativeRoot.getBoundingClientRect()),
+      tableDelta: delta(root.querySelector('[data-wt-table]').getBoundingClientRect(), nativeTable.getBoundingClientRect()),
+      sharedIds: [...root.querySelectorAll('[id]')].map(node => node.id).filter(id => nativeIds.has(id)) };
+  });
+  expect(measured.sameParent).toBe(true); expect(measured.sameMain).toBe(true);
+  expect(measured.nativeConnected).toBe(true); expect(measured.nativeOwnsTable).toBe(true);
+  expect(measured.rootDelta).toBeLessThanOrEqual(1); expect(measured.tableDelta).toBeLessThanOrEqual(1);
+  expect(measured.sharedIds).toEqual([]);
+}
 
 async function collectionGeometry(page) {
   return page.evaluate(() => {
@@ -13,7 +32,7 @@ async function collectionGeometry(page) {
     const frame = table.querySelector('[data-wt-hand-area]'), area = frame.getBoundingClientRect();
     const slots = [area, ...[...frame.querySelectorAll('[data-wt-hand] > *')].map(card => card.getBoundingClientRect())]
       .filter(rect => rect.width > 0 && rect.height > 0);
-    return { count: cards.length, bottom: Math.max(...cards.map(card => card.bottom)),
+    return { phase: table.dataset.phase, stage: table.dataset.roundStage, count: cards.length, bottom: Math.max(...cards.map(card => card.bottom)),
       reserveTop: Math.min(...slots.map(rect => rect.top)), handHeight: area.height,
       hidden: getComputedStyle(frame).visibility === 'hidden', removed: frame.hidden };
   });
@@ -65,21 +84,46 @@ for (const language of ['de', 'en']) test(`${language}: queued table geometry ke
     expect(snapshot.engine.last_trick.cards).toHaveLength(4);
     const bundle = await build({ stdin: { resolveDir: path.resolve('.'), contents:
       'export { createTableView } from "./frontend/watten/table.js"; export { boxesHit, paintedBox, rectOf } from "./frontend/watten/inspection-geometry.js";' },
-      bundle: true, write: false, format: 'esm', platform: 'browser', target: 'es2020', logLevel: 'silent' });
+      bundle: true, write: false, format: 'iife', globalName: 'WattenLayoutFixture', platform: 'browser', target: 'es2020', logLevel: 'silent',
+      plugins: [{ name: 'followup-fixture-id-namespace', setup(builder) {
+        // This independent renderer must not reuse the live controller's
+        // document-wide SVG/ARIA IDs. Only identifiers differ, never geometry.
+        builder.onLoad({ filter: /frontend\/(hausdepp\/cards|watten\/(table|round-options|scorepad))\.js$/ }, async ({ path: file }) => {
+          let contents = await readFile(file, 'utf8');
+          for (const id of ['wattenTableTitle', 'wattenInspectionTitle', 'wattenPreplayTitle', 'wattenBidTitle', 'wattenFeedbackTitle', 'wattenScorepadTitle']) {
+            contents = contents.replaceAll(id, `followup-${id}`);
+          }
+          contents = contents.replace('`hd-card-paper-${++artSequence}`', '`followup-card-paper-${++artSequence}`');
+          return { contents, loader: 'js' };
+        });
+      } }] });
     const page = players[0].page;
     await page.emulateMedia({ reducedMotion: 'no-preference' });
-    await page.evaluate(async ({ code, snapshot, initial }) => {
-      const module = await import(`data:text/javascript;base64,${btoa(unescape(encodeURIComponent(code)))}`);
-      const original = document.querySelector('[data-wt-table]'), root = original.parentElement;
+    // A synchronous IIFE has no transient dynamic-import Promise to be
+    // collected while the fixture constructor has already changed the DOM.
+    await page.evaluate(bundle.outputFiles[0].text);
+    const mounted = await page.evaluate(({ snapshot, initial }) => {
+      const module = window.WattenLayoutFixture;
+      const nativeTable = document.querySelector('[data-wt-table]'), nativeRoot = nativeTable.parentElement;
+      if (!nativeRoot.closest('.wt-main')) throw new Error('Missing native table mount');
+      const before = nativeRoot.getBoundingClientRect();
+      const root = document.createElement(nativeRoot.tagName);
+      root.className = nativeRoot.className;
       root.dataset.layoutFollowup = 'true';
-      // Keep the actual .wt-main/view ancestors. A body-level fixed fixture
-      // would freeze the portrait header inset across a landscape rotation,
-      // removing real rail height and inventing an impossible hand gap.
-      if (!root.closest('.wt-main')) throw new Error('Missing native table mount');
-      original.remove();
-      window.followup = { root, view: module.createTableView(root, { onCard() {} }), snapshot, initial,
+      // Both .wt-view mounts occupy the real second main-grid row. They follow
+      // the native header/landscape rail on rotation; no body/fixed inset exists.
+      // Preserve the live controller's original target so later snapshots cannot
+      // overwrite the display fixture's phase through container.querySelector.
+      nativeRoot.style.gridArea = root.style.gridArea = '2 / 1';
+      nativeRoot.style.visibility = 'hidden'; nativeRoot.inert = true;
+      nativeRoot.setAttribute('aria-hidden', 'true');
+      nativeRoot.after(root);
+      window.followup = { root, nativeRoot, nativeTable, view: module.createTableView(root, { onCard() {} }), snapshot, initial,
         boxesHit: module.boxesHit, paintedBox: module.paintedBox, rectOf: module.rectOf, revision: 0 };
-    }, { code: bundle.outputFiles[0].text, snapshot, initial });
+      const after = root.getBoundingClientRect();
+      return { initialDelta: Math.max(...['left', 'top', 'width', 'height'].map(key => Math.abs(before[key] - after[key]))) };
+    }, { snapshot, initial });
+    expect(mounted.initialDelta).toBeLessThanOrEqual(1);
     for (const viewport of VIEWPORTS) {
       await page.setViewportSize(viewport);
       for (const scene of ['collect', 'collect-empty', 'retour', 'bloedeln', 'bloedeln-inspection']) {
@@ -121,16 +165,19 @@ for (const language of ['de', 'en']) test(`${language}: queued table geometry ke
             feedbackDismissed: true, liveMessage: '', roundPresentation: { stage: scene.startsWith('collect') ? 'collect' : 'ready' } });
         }, scene);
         await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+        await expectNativeMount(page);
         if (scene.startsWith('collect')) {
           await expect(page.locator('[data-layout-followup] .wt-trick-card').first()).toBeVisible();
           const geometry = await collectionGeometry(page);
-          expect(geometry.count).toBe(4);
+          expect(geometry.count).toBe(4); expect(geometry.phase).toBe('deal_complete'); expect(geometry.stage).toBe('collect');
           expect(geometry.hidden).toBe(true); expect(geometry.removed).toBe(false); expect(geometry.handHeight).toBeGreaterThan(0);
           expect(geometry.bottom).toBeLessThanOrEqual(geometry.reserveTop + 1);
           const rotated = { width: viewport.height, height: viewport.width };
           await page.setViewportSize(rotated);
           await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+          await expectNativeMount(page);
           const afterRotation = await collectionGeometry(page);
+          expect(afterRotation.phase).toBe('deal_complete'); expect(afterRotation.stage).toBe('collect');
           expect(afterRotation.hidden).toBe(true); expect(afterRotation.removed).toBe(false); expect(afterRotation.handHeight).toBeGreaterThan(0);
           expect(afterRotation.bottom).toBeLessThanOrEqual(afterRotation.reserveTop + 1);
           await page.screenshot({ path: info.outputPath(`${scene}-rotated-${rotated.width}x${rotated.height}.png`) });
@@ -200,6 +247,7 @@ for (const language of ['de', 'en']) test(`${language}: queued table geometry ke
             if (scene === 'bloedeln-inspection') {
               await page.setViewportSize({ width: viewport.height, height: viewport.width });
               await finishInspectionFlights(page);
+              await expectNativeMount(page);
               expect(await inspectionClearance(page, primary)).toEqual([]);
               await page.screenshot({ path: info.outputPath(`${scene}-rotated-${viewport.height}x${viewport.width}.png`) });
               await page.setViewportSize(viewport); await finishInspectionFlights(page);
