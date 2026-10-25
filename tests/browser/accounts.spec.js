@@ -334,7 +334,7 @@ test("achievement titles follow an account player through lobby, stats, and the 
   await expect(page.locator("#statistics .player-rank")).toHaveText(/☆\s*Newbie/);
 
   await page.goto("/");
-  await page.getByRole("radio", { name: "1 Spieler, Solo" }).click();
+  await page.getByRole("radio", { name: "1 Solo" }).click();
   await Promise.all([
     page.waitForURL(/\/spiel\/[^/?]+/),
     page.click("#createBtn"),
@@ -365,7 +365,7 @@ test("rank badges open the public legend and the live-game overlay", async ({ pa
   await expect(page.locator("#rankLegendCurrent")).toContainText("Ehrenberg-Marken");
 
   await page.goto("/");
-  await page.getByRole("radio", { name: "1 Spieler, Solo" }).click();
+  await page.getByRole("radio", { name: "1 Solo" }).click();
   await Promise.all([
     page.waitForURL(/\/spiel\/[^/?]+/),
     page.click("#createBtn"),
@@ -741,7 +741,7 @@ test("lobby game choices stay synchronized with the existing creation form", asy
 
   await expect(page.getByRole("heading", { name: "Schnell spielen" })).toBeVisible();
   await expect(page.getByText("Du kannst ohne Konto spielen.")).toBeVisible();
-  await expect(page.getByRole("radio", { name: "1 Spieler, Solo" })).toBeChecked();
+  await expect(page.getByRole("radio", { name: "1 Solo" })).toBeChecked();
   await expect(page.locator("#gameMode")).toHaveValue("1");
   await expect(page.getByRole("radio", { name: "Normal" })).toBeChecked();
   await expect(page.locator("#hardcoreChk")).not.toBeChecked();
@@ -753,7 +753,7 @@ test("lobby game choices stay synchronized with the existing creation form", asy
 
   await page.getByRole("radio", { name: "3 Spieler" }).press("ArrowRight");
   await expect(page.locator("#gameMode")).toHaveValue("2v2");
-  await expect(page.getByRole("radio", { name: "2 gegen 2" })).toBeFocused();
+  await expect(page.getByRole("radio", { name: "2 vs 2" })).toBeFocused();
 
   await page.getByRole("radio", { name: "Hardcore" }).click();
   await expect(page.locator("#hardcoreChk")).toBeChecked();

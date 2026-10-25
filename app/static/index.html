@@ -80,6 +80,7 @@
       </div>
     </header>
 
+    <main class="lobby-shell" aria-labelledby="lobbyTitle">
     <section class="lobby-intro" aria-labelledby="lobbyTitle">
       <p class="eyebrow">Online würfeln</p>
       <h1 id="lobbyTitle">Zock die Wand an – Würfelspiel online</h1>
@@ -182,10 +183,10 @@
               <option value="2v2">2 vs 2</option>
             </select>
             <div class="segmented-choice player-count-choice" role="radiogroup" aria-label="Spieleranzahl">
-              <button type="button" class="choice-button" role="radio" aria-label="1 Spieler, Solo" aria-checked="true" data-game-mode="1"><span class="choice-check" aria-hidden="true">✓</span>1 <small>Solo</small></button>
+              <button type="button" class="choice-button" role="radio" aria-checked="true" data-game-mode="1"><span class="choice-check" aria-hidden="true">✓</span>1 <small>Solo</small></button>
               <button type="button" class="choice-button" role="radio" aria-label="2 Spieler" aria-checked="false" data-game-mode="2"><span class="choice-check" aria-hidden="true">✓</span>2</button>
               <button type="button" class="choice-button" role="radio" aria-label="3 Spieler" aria-checked="false" data-game-mode="3"><span class="choice-check" aria-hidden="true">✓</span>3</button>
-              <button type="button" class="choice-button" role="radio" aria-label="2 gegen 2" aria-checked="false" data-game-mode="2v2"><span class="choice-check" aria-hidden="true">✓</span>2 vs 2</button>
+              <button type="button" class="choice-button" role="radio" aria-checked="false" data-game-mode="2v2"><span class="choice-check" aria-hidden="true">✓</span>2 vs 2</button>
             </div>
           </fieldset>
           <fieldset class="create-fieldset game-type-fieldset">
@@ -315,6 +316,7 @@
       <summary>Einstellungen</summary>
       <div class="account-settings-group__body" data-game-tour-settings></div>
     </details>
+    </main>
   </div>
 
   <!-- Lobby-Controller: eigenständiges ES-Modul. -->

@@ -29,6 +29,13 @@ for (const language of ['de', 'en']) {
       else await expect(page.locator('html')).not.toHaveAttribute('data-design', '2026');
 
       const card = page.locator('#createGameCard'), voice = page.locator('#zdwaVoiceEnabled');
+      await expect(page.getByRole('main')).toHaveCount(1);
+      await expect(page.getByRole('main').locator('#createGameCard')).toHaveCount(1);
+      await expect(page.getByRole('main').locator('header')).toHaveCount(0);
+      // Speech input must match the labels players can see and speak.
+      // Deriving the two short names from their labels keeps DE/EN in sync.
+      await expect(page.locator('[data-game-mode="1"]')).toHaveAccessibleName('1 Solo');
+      await expect(page.locator('[data-game-mode="2v2"]')).toHaveAccessibleName('2 vs 2');
       await expect(voice).toBeChecked();
       await expect(card.locator('.room-voice-choice small')).toHaveText(hints[language]);
       await page.locator('#passInput').fill('mobile-table');
