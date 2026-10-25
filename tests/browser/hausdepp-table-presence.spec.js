@@ -308,11 +308,15 @@ for (const browserName of ['chromium', 'webkit']) {
 for (const language of ['de', 'en']) {
   test(`${language}: navigation buttons keep real destinations and opaque touch surfaces`, async ({ page }) => {
     test.setTimeout(60000);
-    await owner(page, language);
+    const { user } = await owner(page, language);
+    expect(typeof user.must_change_password).toBe('boolean');
     for (const [name, width, height] of VIEWPORTS) {
       await page.setViewportSize({ width, height });
       for (const path of ['/hausdepp', '/hausdepp/konto', '/hausdepp/regeln', '/hausdepp/rangliste']) {
         await page.goto(path);
+        const accountPasswordRequired = path === '/hausdepp/konto' && user.must_change_password;
+        await expect(page).toHaveURL(new URL(accountPasswordRequired ? '/hausdepp/konto/einstellungen#passwort' : path, page.url()).href);
+        if (path === '/hausdepp/konto') await expect(page.locator(accountPasswordRequired ? '#hausdeppPasswordForm' : '#hausdeppAccountStats')).toBeVisible();
         await expect(page.locator('.hd-nav a')).toHaveCount(4);
         await page.evaluate(() => document.fonts.ready);
         const controls = await page.locator('.hd-nav a').evaluateAll(elements => elements.map(element => {
@@ -355,8 +359,16 @@ for (const language of ['de', 'en']) {
               textFits: element.scrollWidth <= element.clientWidth + 1 };
           }));
           expect(destinations.map(link => link.href)).toEqual(['/hausdepp/konto#statistics', '/hausdepp/konto#erfolge', '/hausdepp/konto/einstellungen']);
+          await expect(accountNavigation.locator('[aria-current="page"]')).toHaveAttribute('data-account-destination', accountPasswordRequired ? 'settings' : 'statistics');
           expect(new Set(destinations.map(link => link.top)).size, `${language} ${name}: all three account sections share one row`).toBe(1);
-          expect(Math.max(...destinations.map(link => link.width)) - Math.min(...destinations.map(link => link.width))).toBeLessThanOrEqual(1);
+          // Narrow translated labels share one full row by their content width;
+          // the existing shared account CSS uses equal columns above 360px.
+          const navigationSurface = await accountNavigation.evaluate(element => ({
+            width: element.clientWidth, gap: parseFloat(getComputedStyle(element).columnGap),
+          }));
+          expect(Math.abs(destinations.reduce((total, link) => total + link.width, 0)
+            + navigationSurface.gap * 2 - navigationSurface.width), `${language} ${name}: account touch surfaces fill the grid row`).toBeLessThanOrEqual(1);
+          if (width > 360) expect(Math.max(...destinations.map(link => link.width)) - Math.min(...destinations.map(link => link.width))).toBeLessThanOrEqual(1);
           expect(Math.max(...destinations.map(link => link.height)) - Math.min(...destinations.map(link => link.height))).toBeLessThanOrEqual(1);
           for (const link of destinations) {
             expect(link.height).toBeGreaterThanOrEqual(44);
