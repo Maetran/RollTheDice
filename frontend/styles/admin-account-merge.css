@@ -1,7 +1,7 @@
 /* Scoped owner workflow; the existing admin shell controls panel visibility. */
 #accountMergePanel { overflow-wrap: anywhere; }
 #accountMergePanel :is(form, fieldset, label, input, select, button, section, div) { min-width: 0; }
-#accountMergePanel :is(input:not([type="checkbox"]), select) { width: 100%; max-width: none; box-sizing: border-box; }
+#accountMergePanel :is(input:not([type="checkbox"]), select) { width: 100%; max-width: none; min-height: 44px; box-sizing: border-box; }
 #accountMergePanel button { min-height: 44px; white-space: normal; overflow-wrap: anywhere; }
 #accountMergePanel .merge-selectors { display: grid; gap: 1rem; }
 #accountMergePanel .merge-selector { padding: .9rem; border: 1px solid var(--border); border-radius: var(--radius-card); }

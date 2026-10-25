@@ -156,6 +156,56 @@ test('the standalone merge notice aborts a delayed private read on account chang
   } finally { release(); }
 });
 
+test('merge notice resumes after page restoration while old ACK identity verification is delayed', async ({ page }) => {
+  const user = await createAccount(page, 'suiteaccount_restored_notice');
+  await noNotices(page, user);
+  await page.unroute('**/api/account/merges/pending');
+  let reads = 0, writes = 0, release, verificationReached;
+  const gate = new Promise(resolve => { release = resolve; });
+  const verifiedRequest = new Promise(resolve => { verificationReached = resolve; });
+  await page.route('**/api/account/merges/**', route => {
+    if (route.request().method() === 'POST') { writes += 1; return route.fulfill({ json: { ok: true } }); }
+    reads += 1;
+    return route.fulfill({ json: { viewer_id: user.id, operations: [operation('restored', user.id)] } });
+  });
+  await page.route('**/suite-restored-notice-harness', route => route.fulfill({ contentType: 'text/html',
+    body: '<!doctype html><html lang="de"><body><main><div id="notice" hidden></div></main></body></html>' }));
+  try {
+    await page.goto('/suite-restored-notice-harness');
+    await page.evaluate(async userId => {
+      const { mountAccountMergeNotice } = await import('/static/account-merge-notice.js');
+      mountAccountMergeNotice(document.getElementById('notice'), { userId });
+    }, user.id);
+    const card = page.locator('[data-account-merge-operation="restored"]');
+    await expect(card).toBeVisible();
+    let held = false;
+    await page.route('**/api/auth/me', async route => {
+      const response = await route.fetch();
+      if (!held) { held = true; verificationReached(); await gate; }
+      await route.fulfill({ response });
+    });
+    await card.getByRole('button', { name: 'Gesehen' }).click();
+    await verifiedRequest;
+    // Controlled lifecycle events test the real module without claiming that
+    // this harness was physically stored in the browser's BFCache.
+    await page.evaluate(() => {
+      dispatchEvent(new PageTransitionEvent('pagehide', { persisted: true }));
+      dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }));
+    });
+    await expect(card).toHaveCount(0);
+    release();
+    await expect(card).toBeVisible();
+    expect(reads).toBe(2);
+    expect(writes).toBe(0);
+    await card.getByRole('button', { name: 'Gesehen' }).click();
+    await expect(card).toHaveCount(0);
+    expect(writes).toBe(1);
+  } finally {
+    release();
+    await page.unrouteAll({ behavior: 'wait' });
+  }
+});
+
 for (const game of ['hausdepp', 'watten']) for (const language of ['de', 'en']) {
   test(`${game} release notes open from lobby and remain readable in account settings (${language})`, async ({ page }) => {
     const user = await createAccount(page, `suiteaccount_release_${game}_${language}`, language);

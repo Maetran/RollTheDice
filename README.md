@@ -47,6 +47,29 @@ XP and all 22 title levels. Filtering never acknowledges unread rewards.
 Existing achievement IDs, rewards, unlock dates and absolute rank thresholds
 remain intact. Missing historical proof is never replaced with guessed actions.
 
+## Konten zusammenführen / merge accounts
+
+**Deutsch:** Owner können in der Administration ein altes Spielerkonto als Quelle
+und das neuere Konto als Ziel auswählen. Eine Vorschau zeigt den Fortschritt je
+Spiel; die Ausführung erfordert eine ausdrückliche Bestätigung mit dem eigenen
+Passwort oder Passkey. Anmeldung und persönliche Einstellungen des Zielkontos
+bleiben erhalten. Alte Zugangsdaten und Sitzungen werden widerrufen. Offene
+Partien oder Einladungen müssen vorher geklärt werden. Gemeinsame abgeschlossene
+Partien zählen einmal mit dem besseren belegten Ergebnis. Erfolge werden ohne
+doppelte Belohnung mit dem frühesten gültigen Datum zusammengeführt. Originale
+Spielergebnisse bleiben erhalten. Das Zielkonto erhält eine eigene Mitteilung;
+bestehende ungelesene Spielbelohnungen werden dadurch nicht bestätigt.
+
+**English:** Owners can select an older player account as the source and the
+newer account as the target in Administration. A preview shows progress per game;
+applying it requires explicit confirmation with the owner's password or passkey.
+The target keeps its sign-in details and preferences. Old credentials and sessions
+are revoked. Pending games or invitations must be resolved first. A shared
+completed game counts once using the better documented result. Achievements keep
+their earliest valid date without duplicate rewards. Original results remain
+intact. The target receives a separate notice; this does not acknowledge existing
+unread game rewards.
+
 ## Navigation und Konto / navigation and account
 
 **Deutsch:** Weiterführende Aktionen und Regelübersichten verwenden das
@@ -378,8 +401,10 @@ Sind beide Nicht-Einschauer CPUs, ist ungefähr in jedem dritten Blatt mindesten
 eine anfragebereit; jede CPU entscheidet sich mit rund 18 % dafür und antwortet
 weiterhin mit 50 % mit Ja. Die Anfrage muss vor dem ersten Ausspielen erfolgen;
 die sichtbare Quote kann deshalb niedriger liegen. Diese Wahl bleibt pro Blatt
-gleich und verwendet keine verdeckten Karten. Status und Anfrage nennen die tatsächlich Beteiligten;
-Warten ersetzt keine menschliche Antwort.
+gleich und verwendet keine verdeckten Karten. Die Anfrage nennt die tatsächlich
+Beteiligten; nach der Zustimmung markieren bei ausreichendem Platz zwei verdeckte
+Karten ihre Verbindung. Zeigen und Einschauen bleiben vorrangig. Warten ersetzt
+keine menschliche Antwort.
 “Allow a redeal” is a separate table option for two or four players, off by
 default. Until the first card is played, both callers may agree, including after
 inspection: their old hands are shuffled into the remaining stock, then each
@@ -397,8 +422,10 @@ Others see each forced card only when it is actually played.
 With two CPU non-lookers, at least one is willing to request Blödeln in roughly
 one in three deals: each CPU chooses to ask about 18% of the time and still
 answers yes with a 50% chance. The request must precede the first play, so the
-visible rate can be lower. The choice stays stable for the deal and uses no hidden cards. Requests and
-status messages name the actual participants; waiting never replaces a human answer.
+visible rate can be lower. The choice stays stable for the deal and uses no hidden
+cards. Requests name the actual participants; after agreement, two card backs
+mark their connection when space allows. Showing and inspection retain priority.
+Waiting never replaces a human answer.
 
 Nach einer Gabe wird zuerst der letzte Stich abgeräumt. Schlag, Farbe und der
 Rechte werden anschliessend etwa drei Sekunden für alle aufgedeckt; danach

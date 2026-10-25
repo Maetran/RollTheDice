@@ -6,25 +6,25 @@
     "hausdepp",
     "watten"
   ],
-  "summary_de": "Neue knifflige Erfolge in allen vier Spielen und eine übersichtlichere Watten-Sammlung.",
-  "summary_en": "New challenging achievements in all four games and a clearer Watten collection.",
+  "summary_de": "Gleich geordnete Kontobereiche für alle Spiele und verlässliche Neuigkeiten in Hausdepp und Watten.",
+  "summary_en": "Consistent account sections across all games and reliable release notes in Hausdepp and Watten.",
   "player_notes": {
     "de": {
-      "title": "4.6.0: Neue Herausforderungen",
+      "title": "4.7.0: Dein Konto, klar geordnet",
       "changes": [
-        "Je zwei neue Erfolge für besondere Konstellationen in ZDWA, Zilch, Hausdepp und Watten.",
-        "Watten zeigt deinen nächsten Titel, erreichte und offene Ziele sowie alle Titelstufen übersichtlich.",
-        "Die Sammlung lässt sich filtern; Bedingungen, erstes Datum und tatsächlich verdiente EP stehen bei den Details.",
-        "Deine bisherigen Erfolge, Belohnungen und Rangschwellen bleiben erhalten."
+        "Statistik, Erfolge und Einstellungen findest du in allen vier Spielen in derselben Reihenfolge.",
+        "Profil, Spielbedienung, Mitspieler und Hilfe sind übersichtlich gruppiert.",
+        "Hausdepp und Watten zeigen Neuigkeiten; die Versionshistorie bleibt in den Einstellungen erreichbar.",
+        "Nach einer durch einen Owner bestätigten Kontenzusammenführung siehst du den übernommenen Fortschritt in einer eigenen Mitteilung."
       ]
     },
     "en": {
-      "title": "4.6.0: New challenges",
+      "title": "4.7.0: Your account, clearly organized",
       "changes": [
-        "Two new achievements each for special situations in ZDWA, Zilch, Hausdepp and Watten.",
-        "Watten clearly shows your next title, earned and open goals, and every title level.",
-        "Filter the collection and open details for conditions, first unlock dates and actual earned XP.",
-        "Your existing achievements, rewards and rank thresholds are preserved."
+        "Find Statistics, Achievements and Settings in the same order across all four games.",
+        "Profile, game controls, players and help are clearly grouped.",
+        "Hausdepp and Watten show release notes; version history remains available in Settings.",
+        "After an owner confirms an account merge, a separate notice shows your combined progress."
       ]
     }
   }

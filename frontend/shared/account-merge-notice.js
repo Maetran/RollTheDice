@@ -24,7 +24,7 @@ export function mountAccountMergeNotice(container, { userId, isCurrent = () => t
   let epoch = 0, retired = false, suspended = false, inFlight = false, saving = false;
   let controller = new AbortController();
   const current = token => !retired && !suspended && token === epoch && isCurrent() && container.isConnected;
-  function clear() { epoch += 1; inFlight = false; controller.abort(); controller = new AbortController(); container.replaceChildren(); container.hidden = true; }
+  function clear() { epoch += 1; inFlight = false; saving = false; controller.abort(); controller = new AbortController(); container.replaceChildren(); container.hidden = true; }
   function destroy() {
     if (retired) return;
     retired = true; clear();
@@ -46,7 +46,7 @@ export function mountAccountMergeNotice(container, { userId, isCurrent = () => t
     // cannot restore the acknowledged operation after this request completes.
     epoch += 1; inFlight = false; controller.abort(); controller = new AbortController();
     const token = epoch;
-    saving = true; status.textContent = '';
+    saving = token; status.textContent = '';
     for (const control of container.querySelectorAll('button')) control.disabled = true;
     try {
       const auth = await verify(token);
@@ -63,7 +63,14 @@ export function mountAccountMergeNotice(container, { userId, isCurrent = () => t
       if (!response.ok) throw new Error('acknowledge');
       card.remove(); container.hidden = container.childElementCount === 0;
     } catch (error) { if (current(token) && error.name !== 'AbortError') status.textContent = text('failed'); }
-    finally { saving = false; if (current(token)) for (const control of container.querySelectorAll('button')) control.disabled = false; }
+    finally {
+      // An older verification may finish after BFCache restoration and a new
+      // ACK. It must not release that newer request's busy state.
+      if (saving === token) {
+        saving = false;
+        if (current(token)) for (const control of container.querySelectorAll('button')) control.disabled = false;
+      }
+    }
   }
   function render(operations) {
     container.replaceChildren();

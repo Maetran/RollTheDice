@@ -2539,5 +2539,12 @@
     "date": "2026-10-25",
     "bump": "minor",
     "summary": "Klarere mobile Spieltische, verlässliche Retourschneider-Entscheide und besser auffindbare Regeln für alle vier Spiele. / Clearer mobile tables, reliable Retourschneider decisions and easier-to-find rules across all four games."
+  },
+  {
+    "version": "4.6.0",
+    "revision": "8ec61ebb834d3af7eb1532f09d290414b5099779",
+    "date": "2026-10-25",
+    "bump": "minor",
+    "summary": "Neue knifflige Erfolge in allen vier Spielen und eine übersichtlichere Watten-Fortschrittsansicht. / New challenging achievements in all four games and a clearer Watten progress view."
   }
 ]

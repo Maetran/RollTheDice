@@ -1,6 +1,6 @@
 # Versionen / Versions
 
-Aktuelle gemeinsame Produktversion / Current shared product version: **4.6.0**.
+Aktuelle gemeinsame Produktversion / Current shared product version: **4.7.0**.
 
 Alle RollTheDice-Spiele werden gemeinsam versioniert. Major steht für einen großen
 Produktmeilenstein, Minor für neue Funktionen und Patch für Fehlerkorrekturen
@@ -30,6 +30,7 @@ Detailed player-facing descriptions are in the [changelog](../CHANGELOG.md).
 
 | Version | Datum / Date | Art / Type | Änderung / Change | Commit |
 | --- | --- | --- | --- | --- |
+| 4.6.0 | 2026-10-25 | minor | Neue knifflige Erfolge in allen vier Spielen und eine übersichtlichere Watten-Fortschrittsansicht. / New challenging achievements in all four games and a clearer Watten progress view. | [8ec61eb](https://github.com/Maetran/RollTheDice/commit/8ec61ebb834d3af7eb1532f09d290414b5099779) |
 | 4.5.0 | 2026-10-25 | minor | Klarere mobile Spieltische, verlässliche Retourschneider-Entscheide und besser auffindbare Regeln für alle vier Spiele. / Clearer mobile tables, reliable Retourschneider decisions and easier-to-find rules across all four games. | [a0844b9](https://github.com/Maetran/RollTheDice/commit/a0844b90730221fe9a4f2feeaf305bc66d36b11f) |
 | 4.4.0 | 2026-10-25 | minor | Audiochat und Ambiente für ZDWA, gemeinsame Zuhörvorgabe und präzisere Audio-Nutzungsstatistik. / ZDWA voice and ambience, a shared listening default and clearer voice activity statistics. | [26eee2e](https://github.com/Maetran/RollTheDice/commit/26eee2e91a662e594bf535df1290a6171177a726) |
 | 4.3.1 | 2026-10-24 | patch | Klarere Watten-Ansagen und Tablet-Tische sowie zuverlässigeres An- und Abmelden. / Clearer Watten calls and tablet tables, with more reliable sign-in and sign-out. | [5962aa6](https://github.com/Maetran/RollTheDice/commit/5962aa635a1068f90703009ec744ef5af6dedb3d) |

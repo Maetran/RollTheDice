@@ -186,7 +186,7 @@ export function mountAdminAccountMerge(panel = document.getElementById('accountM
     selectedLabel(kind); section.append(form, selection, hint, results); columns.append(section);
     input.addEventListener('input', () => {
       if (uncertain || busy) return;
-      invalidate(); selected[kind] = null; selectedLabel(kind); results.replaceChildren(); hint.textContent = ''; message('');
+      selected[kind] = null; invalidate(); selectedLabel(kind); results.replaceChildren(); hint.textContent = ''; message('');
     });
     form.addEventListener('submit', async event => {
       event.preventDefault(); if (busy || uncertain || !allowed || suspended) return;
@@ -237,7 +237,7 @@ export function mountAdminAccountMerge(panel = document.getElementById('accountM
         ['Rang', `${rank(value.before_rank)} → ${rank(value.after_rank)}`],
         ['Erfolge nachher', number(value.achievement_count)],
         ['Übernommene Erfolge', number(value.inherited_achievement_count)],
-        ['Neu durch Zusammenführung', number(value.new_achievement_count)],
+        ['Neue Erfolge', number(value.new_achievement_count)],
         ['Spiele nachher', number(value.games_played)],
       ];
       for (const [label, amount] of pairs) list.append(node('dt', t(label)), node('dd', amount));
