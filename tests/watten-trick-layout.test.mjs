@@ -347,6 +347,49 @@ test("review toggle schedules layout immediately and its listener is cleaned up"
   assert.equal(callbacks.size, 0);
 });
 
+test("measured 320x568 raised identity leaves readable public faces in the clover's clear shape", async () => {
+  const recorded = JSON.parse(await readFile(new URL("./fixtures/watten-portrait-live-mobile-bottom.json", import.meta.url), "utf8"));
+  const bounds = rect(...recorded.bounds), obstacles = recorded.obstacles.map(([, ...box]) => rect(...box));
+  const options = { bounds, obstacles, count: 4, minimumWidth: 64, labelHeight: 24 };
+  // This was a real fallback to 52px cards. A rectangular group has no room;
+  // the side badges meet only its empty upper corners, not any painted face.
+  assert.equal(fitPortraitTrick(options), null);
+  assert.equal(fitPortraitTrick({ ...options, labelHeight: 0 }), null, "moving only the winner label cannot fix the old rectangle");
+  const orders = [["bottom", "left", "top", "right"], ["left", "top", "right", "bottom"],
+    ["top", "right", "bottom", "left"], ["right", "bottom", "left", "top"]];
+  for (const order of orders) {
+    let previous = null;
+    for (let length = 1; length <= 4; length++) {
+      const result = fitPortraitTrickView({ ...options, positions: order.slice(0, length), history: length === 4 });
+      assert.ok(result.fit, `${order.slice(0, length).join(" → ")} keeps its measured clover`);
+      assert.ok(result.fit.cardWidth >= 64, "never substitute smaller public faces");
+      assert.equal(result.fit.left + result.fit.width / 2, 160, "the clover keeps its central table axis");
+      assert.equal(result.fit.painted.length, 4, "reserve every eventual face from the first throw");
+      assert.equal(result.fit.positions.length, length, "show only the accepted public prefix");
+      if (previous) {
+        for (const key of ["left", "top", "width", "height", "cardWidth"]) assert.equal(result.fit[key], previous[key]);
+        assert.deepEqual(result.fit.positions.slice(0, length - 1), previous.positions);
+      }
+      for (const face of result.fit.painted) {
+        assert.ok(face.left >= bounds.left && face.right <= bounds.right && face.top >= bounds.top && face.bottom <= bounds.bottom);
+        for (const obstacle of obstacles) {
+          const protectedBox = rect(obstacle.left - 5, obstacle.top - 5, obstacle.width + 10, obstacle.height + 10);
+          assert.equal(overlap(face, protectedBox), false, "each entire painted face clears the own role, stake, names and all hands by 5px");
+        }
+      }
+      const labels = [result.labelFit, result.historyFit].filter(Boolean);
+      assert.ok(result.labelFit, "the future winner keeps its own clear label even during the live trick");
+      if (length === 4) { assert.ok(result.historyFit); assert.equal(result.historyFit.height, 44); }
+      for (const [index, label] of labels.entries()) {
+        for (const obstacle of obstacles) assert.equal(overlap(label, obstacle), false);
+        for (const face of result.fit.painted) assert.equal(overlap(label, face), false);
+        for (const other of labels.slice(index + 1)) assert.equal(overlap(label, other), false);
+      }
+      previous = result.fit;
+    }
+  }
+});
+
 const portraitFixtures = JSON.parse(await readFile(new URL("./fixtures/watten-portrait-tricks.json", import.meta.url), "utf8"));
 for (const fixture of portraitFixtures) for (const [seatIndex, seat] of ["bottom", "left", "top", "right"].entries()) for (const packets of [1, 3]) {
   test(`${fixture.name}: completed trick stays readable with ${packets} captured packet(s) at ${seat}`, () => {

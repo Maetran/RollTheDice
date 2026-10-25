@@ -36,7 +36,7 @@ export function fitPortraitPrompt(bounds, obstacles, { height = 20, widths = [18
 }
 
 /** Fit a public trick as one overlapping pile, preserving the players' seats. */
-export function fitPortraitTrick({ bounds, obstacles = [], count, positions = null, desiredWidth = 104, minimumWidth = 64, labelHeight = LABEL, accept = null }) {
+export function fitPortraitTrick({ bounds, obstacles = [], count, positions = null, desiredWidth = 104, minimumWidth = 64, labelHeight = LABEL, accept = null, measureFaces = false }) {
   if (!usable(bounds) || ![2, 3, 4].includes(count)) return null;
   const padding = 5;
   const blocked = obstacles.filter(usable).map(rect => ({ left: rect.left - padding, right: rect.right + padding,
@@ -45,6 +45,10 @@ export function fitPortraitTrick({ bounds, obstacles = [], count, positions = nu
   // Keep the pile on the table's centre line even when a captured packet would
   // permit a larger face only at a screen edge. Use that edge space only when
   // no readable centred composition can fit at all.
+  // Prefer the existing rectangular clearance. On a tight phone, the empty
+  // upper corners of that rectangle may meet a side badge while every card
+  // face stays clear. Only then measure the complete eventual card shape.
+  const painted = measureFaces;
   for (const centred of [true, false]) for (const spread of [.52, .44, .36]) for (let cardWidth = Math.floor(desiredWidth); cardWidth >= minimumWidth; cardWidth--) {
     const cardHeight = cardWidth * RATIO;
     // The side cards reach towards their owners; the top and bottom cards
@@ -68,19 +72,36 @@ export function fitPortraitTrick({ bounds, obstacles = [], count, positions = nu
         ownerX: cardWidth * (count === 3 ? .55 : .4), ownerY: cardHeight * .53, ownerWidth: cardWidth * .6 },
     };
     const cardPositions = seats.map(seat => anchors[seat] || anchors.bottom);
+    // Reserve all seats from the first throw. Fitting only the currently
+    // painted prefix would move earlier cards when another player follows.
+    const reservedSeats = count === 2 ? ["bottom", "top"] : count === 3 ? ["bottom", "left", "right"] : ["bottom", "left", "top", "right"];
+    const footprints = painted ? reservedSeats.map(seat => ({ left: anchors[seat].x, top: anchors[seat].y,
+      right: anchors[seat].x + cardWidth, bottom: anchors[seat].y + cardHeight, width: cardWidth, height: cardHeight }))
+      : [{ left: 0, top: 0, right: width, bottom: height, width, height }];
+    if (painted && labelHeight) footprints.push({ left: 0, top: rowHeight + captionHeight,
+      right: width, bottom: height, width, height: labelHeight });
     const preferredX = bounds.left + (bounds.width - width) / 2;
     const preferredY = bounds.top + bounds.height * .56 - height / 2;
     const clampX = x => Math.max(bounds.left, Math.min(bounds.right - width, x));
     const clampY = y => Math.max(bounds.top, Math.min(bounds.bottom - height, y));
     const xs = centred ? [preferredX] : [...new Set([preferredX, bounds.left, bounds.right - width,
-      ...blocked.flatMap(rect => [rect.left - width, rect.right])].map(clampX))];
+      ...blocked.flatMap(rect => footprints.flatMap(face => [rect.left - face.right, rect.right - face.left]))].map(clampX))];
     const ys = [...new Set([preferredY, bounds.top, bounds.bottom - height,
-      ...blocked.flatMap(rect => [rect.top - height, rect.bottom])].map(clampY))];
-    const candidates = xs.flatMap(left => ys.map(top => ({ left, top, right: left + width, bottom: top + height,
-      width, height, rowHeight, cardWidth, mode: "stack", captionHeight, positions: cardPositions })));
+      ...blocked.flatMap(rect => footprints.flatMap(face => [rect.top - face.bottom, rect.bottom - face.top]))].map(clampY))];
+    const candidates = [];
+    for (const left of xs) for (const top of ys) {
+      // Reject occupied origins before allocating/sorting complete shapes.
+      // Most edge candidates are blocked by a hand on a small phone.
+      if (footprints.some(face => blocked.some(obstacle => left + face.left < obstacle.right && left + face.right > obstacle.left
+        && top + face.top < obstacle.bottom && top + face.bottom > obstacle.top))) continue;
+      candidates.push({ left, top, right: left + width, bottom: top + height,
+        width, height, rowHeight, cardWidth, mode: "stack", captionHeight, positions: cardPositions,
+        ...(painted ? { painted: footprints.map(face => ({ ...face, left: left + face.left, right: left + face.right,
+          top: top + face.top, bottom: top + face.bottom })) } : {}) });
+    }
     candidates.sort((a, b) => Math.abs(a.left - preferredX) + Math.abs(a.top - preferredY)
       - Math.abs(b.left - preferredX) - Math.abs(b.top - preferredY));
-    const result = candidates.find(candidate => !blocked.some(obstacle => intersects(candidate, obstacle)) && (!accept || accept(candidate)));
+    const result = candidates.find(candidate => !accept || accept(candidate));
     if (result) return result;
   }
   return null;
@@ -88,11 +109,11 @@ export function fitPortraitTrick({ bounds, obstacles = [], count, positions = nu
 
 /** Fit the trick and its optional review/winner labels as one composition. */
 export function fitPortraitTrickView({ bounds, obstacles, count, positions = null, minimumWidth, labelHeight = 0, history = false }) {
-  for (const separateLabel of labelHeight ? [false, true] : [false]) {
+  for (const measureFaces of [false, true]) for (const separateLabel of labelHeight ? measureFaces ? [true, false] : [false, true] : [false]) {
     let extras;
-    const fit = fitPortraitTrick({ bounds, obstacles, count, positions, minimumWidth, labelHeight: separateLabel ? 0 : labelHeight,
+    const fit = fitPortraitTrick({ bounds, obstacles, count, positions, minimumWidth, measureFaces, labelHeight: separateLabel ? 0 : labelHeight,
       accept: candidate => {
-        const occupied = [...obstacles, candidate];
+        const occupied = [...obstacles, ...(candidate.painted || [candidate])];
         let labelFit = null;
         const acceptHistory = historyFit => {
           labelFit = separateLabel ? fitPortraitPrompt(bounds, historyFit ? [...occupied, historyFit] : occupied,
@@ -267,7 +288,7 @@ export function createTrickLayout(trick, { win = window } = {}) {
     const resolve = occupied => fitPortraitTrickView({ bounds, obstacles: occupied, count, positions, labelHeight, minimumWidth, history: moveHistory });
     let { fit, labelFit, historyFit } = resolve(obstacles);
     if (!fit) { clear(); centre.dataset.wtPortraitTrickFallback = "space"; return; }
-    const promptFit = neutralPrompt ? fitPortraitPrompt(bounds, [...obstacles, fit, labelFit, historyFit].filter(Boolean)) : null;
+    const promptFit = neutralPrompt ? fitPortraitPrompt(bounds, [...obstacles, ...(fit.painted || [fit]), labelFit, historyFit].filter(Boolean)) : null;
     if (neutralPrompt && !promptFit) {
       const promptBox = box(neutralPrompt);
       ({ fit, labelFit, historyFit } = resolve(promptBox ? [...obstacles, promptBox] : obstacles));
