@@ -1,0 +1,21 @@
+.wt-retour-declined[hidden] { display: none; }
+.wt-retour-declined {
+  position: fixed;
+  z-index: 90;
+  inset-block-start: calc(env(safe-area-inset-top, 0px) + 58px);
+  inset-inline-start: 50%;
+  translate: -50% 0;
+  width: min(350px, calc(100% - 24px));
+  padding: 10px 12px;
+  border: 1px solid #b99461;
+  border-radius: 8px;
+  background: #fff4dd;
+  color: #38251b;
+  box-shadow: 0 4px 16px #26140640;
+  font-size: .8rem;
+  line-height: 1.35;
+  pointer-events: none;
+}
+.wt-retour-declined strong { display: block; }
+.wt-retour-declined p { margin: 4px 0 8px; }
+.wt-retour-declined button { min-height: 44px; padding: 5px 12px; pointer-events: auto; }

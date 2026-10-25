@@ -1,0 +1,17 @@
+.watten-install[data-update-available="true"] {
+  position: fixed;
+  z-index: 95;
+  inset-block-start: calc(env(safe-area-inset-top, 0px) + 8px);
+  inset-inline-start: 50%;
+  translate: -50% 0;
+  width: min(420px, calc(100% - 24px));
+  margin: 0;
+  padding: 8px 12px;
+  border: 1px solid #b99461;
+  border-radius: 8px;
+  background: #fff4dd;
+  color: #38251b;
+  box-shadow: 0 4px 16px #26140640;
+  font-size: .85rem;
+}
+.watten-install[data-update-available="true"] p { margin: 0 0 6px; }

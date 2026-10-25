@@ -46,7 +46,7 @@ function metadata(product) {
 }
 
 /** Keep the installed product owner while Watten adds its own network-only worker. */
-export function initializeWattenPwa({ registerWorker = true, installControls = true } = {}) {
+export function initializeWattenPwa({ registerWorker = true, installControls = true, updateControls = true } = {}) {
   const publicBeta = document.documentElement.dataset.wattenPublicBeta === 'true';
   if (!publicBeta && (document.documentElement.dataset.wattenPwaPreview !== 'true' || !localPwaHostname(location.hostname))) return;
   const standalone = navigator.standalone === true || matchMedia('(display-mode: standalone)').matches;
@@ -73,13 +73,23 @@ export function initializeWattenPwa({ registerWorker = true, installControls = t
   let updateRequested = false;
   let install;
   let update;
+  let updateMessage;
   let aside;
-  const syncControls = () => { if (aside) aside.hidden = Boolean(install?.hidden && update?.hidden); };
-  if (installControls) {
+  const syncControls = () => {
+    if (!aside) return;
+    const available = Boolean(update && !update.hidden);
+    aside.hidden = !available && (!install || install.hidden);
+    aside.dataset.updateAvailable = String(available);
+    if (updateMessage) updateMessage.hidden = !available;
+  };
+  if (installControls || updateControls) {
     aside = document.createElement('aside');
     aside.hidden = true;
     aside.className = 'watten-install';
     aside.dataset.wattenInstall = '';
+    document.body.append(aside);
+  }
+  if (installControls) {
     install = document.createElement('button');
     install.type = 'button';
     install.textContent = t('Watten installieren');
@@ -91,16 +101,7 @@ export function initializeWattenPwa({ registerWorker = true, installControls = t
       syncControls();
       if (current) await current.prompt();
     });
-    update = document.createElement('button');
-    update.type = 'button';
-    update.textContent = t('Watten aktualisieren');
-    update.hidden = true;
-    update.addEventListener('click', () => {
-      updateRequested = true;
-      waiting?.postMessage({ type: 'SKIP_WAITING' });
-    });
-    aside.append(install, update);
-    document.body.append(aside);
+    aside.append(install);
     window.addEventListener('beforeinstallprompt', event => {
       if (standalone) return;
       event.preventDefault();
@@ -109,6 +110,23 @@ export function initializeWattenPwa({ registerWorker = true, installControls = t
       syncControls();
     });
     window.addEventListener('appinstalled', () => { prompt = null; install.hidden = true; syncControls(); });
+  }
+  if (updateControls) {
+    updateMessage = document.createElement('p');
+    updateMessage.textContent = t('Eine neue Version ist verfügbar.');
+    updateMessage.setAttribute('role', 'status');
+    updateMessage.hidden = true;
+    update = document.createElement('button');
+    update.type = 'button';
+    update.dataset.wattenUpdate = '';
+    update.textContent = t('Watten aktualisieren');
+    update.hidden = true;
+    update.addEventListener('click', () => {
+      if (updateRequested || !waiting || waiting.state === 'redundant') return;
+      updateRequested = true;
+      waiting.postMessage({ type: 'SKIP_WAITING' });
+    });
+    aside.append(updateMessage, update);
   }
   navigator.serviceWorker.addEventListener('controllerchange', () => {
     if (!updateRequested) return;
@@ -122,9 +140,36 @@ export function initializeWattenPwa({ registerWorker = true, installControls = t
   };
   const ready = navigator.serviceWorker.register('/watten-sw.js', { scope: location.hostname === 'watten.zockdiewandan.online' ? '/' : '/watten', updateViaCache: 'none' }).then(registration => {
     observeWaiting(registration);
-    registration.addEventListener('updatefound', () => {
-      registration.installing?.addEventListener('statechange', () => observeWaiting(registration));
-    });
+    const observeInstalling = () => registration.installing?.addEventListener('statechange', () => observeWaiting(registration));
+    observeInstalling();
+    registration.addEventListener('updatefound', observeInstalling);
+    // Installed windows can stay open across a deployment. Registration alone
+    // checks on navigation; check while visible too without activating a worker.
+    let checking = false;
+    // register() already performed the initial update check.
+    let lastCheck = Date.now();
+    let timer = 0;
+    let paused = false;
+    const clear = () => { clearTimeout(timer); timer = 0; };
+    const check = async () => {
+      clear();
+      if (paused || document.visibilityState === 'hidden' || navigator.onLine === false) return;
+      observeWaiting(registration);
+      if (checking) return;
+      if (Date.now() - lastCheck >= 60000) {
+        checking = true;
+        lastCheck = Date.now();
+        try { await registration.update(); } catch (_) { /* Retry after reconnecting. */ }
+        finally { checking = false; observeWaiting(registration); }
+      }
+      if (!paused && document.visibilityState !== 'hidden' && navigator.onLine !== false) timer = setTimeout(check, 60000);
+    };
+    document.addEventListener('visibilitychange', check);
+    window.addEventListener('focus', check);
+    window.addEventListener('online', check);
+    window.addEventListener('pagehide', () => { paused = true; clear(); });
+    window.addEventListener('pageshow', () => { paused = false; void check(); });
+    timer = setTimeout(check, 60000);
     return registration;
   }).catch(() => null);
   window.WATTEN_PWA = { ready, product: entry || 'watten' };

@@ -407,6 +407,8 @@ müssen getrennt zustimmen; ein Nein behält die Anschrift. Nach dem eigenen Ja
 zeigt der Tisch, auf wen noch gewartet wird. Erst nach beiden Ja kündigt ein
 kurzer bildschirmfüllender Auftritt den Retourschneider an, ohne die Bedienung
 zu sperren. Er erscheint je Einstieg einmal, auch nach erneutem Laden nicht nochmals.
+Bei einem Nein bleibt für das betroffene Team ein schliessbarer Hinweis stehen,
+auch wenn inzwischen die nächste Gabe beginnt: Die Anschrift bleibt erhalten.
 A round ends with three tricks or a fold, the match at its target. Losers receive
 one Nockerl, or two without scoring (Schneider). With four players, the trailing
 team may erase its score when the other team first becomes gestrichen. Winning
@@ -416,6 +418,8 @@ separately; one refusal keeps their score. After your yes, the table shows whose
 answer is pending. Once both agree, a brief full-screen announcement introduces
 the Retourschneider without blocking controls. Each entry is announced once,
 including across reloads.
+After a refusal, the affected team sees a dismissible explanation that their
+score is kept, even if the next deal has already started.
 
 **8+3-Erfolge / milestones:** «8+3 isch Mittag» gibt es nach zehn normalen
 Spielsiegen bis elf, bei denen die letzte Drei-Punkte-Runde genau von acht
@@ -502,6 +506,12 @@ enables its manifest, worker, push reception and safe notification targets.
 Push needs the existing VAPID configuration and explicit account consent.
 Open-seat calls validate the stored public waiting room and both durable
 cooldowns before sending. Backend tests do not prove real provider delivery.
+Neue Versionen lassen sich auch am laufenden Watten-Tisch ausdrücklich mit
+«Watten aktualisieren» laden. Sichtbare, verbundene Fenster prüfen minütlich auf
+Updates; erst der Klick aktiviert die neue Version und lädt die Seite neu.
+New versions can also be loaded at an active Watten table with “Update Watten”.
+Visible online windows check every minute; only the explicit action activates
+the new version and reloads the page.
 
 **Lokaler Kontofortschritt / local account progress:** Die lokale Watten-Vorschau
 verbucht neue abgeschlossene Partien zusammen mit Ergebnis und Fortschritt in
