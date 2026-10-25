@@ -115,7 +115,7 @@ export function fitInspectionAxis({ region, actors, cards, captions, controls = 
   function labels(index, card) {
     const size = captions[index], outward = index ? 1 : -1, along = radius(card, u);
     const lateral = radius(card, n) + (size.width * Math.abs(n.x) + size.height * Math.abs(n.y)) / 2 + 2;
-    return [towardCentre, -towardCentre].flatMap(side => [.2, .4, 0, -.2].map(shift => {
+    return [towardCentre, -towardCentre].flatMap(side => [.2, .4, 0, -.2, .8, 1, 1.2, -.8, -1, -1.2].map(shift => {
       const x = card.x + n.x * side * lateral + u.x * outward * along * shift;
       const y = card.y + n.y * side * lateral + u.y * outward * along * shift;
       return { ...boxOf(rectOf(x - size.width / 2, y - size.height / 2, size.width, size.height)), side };

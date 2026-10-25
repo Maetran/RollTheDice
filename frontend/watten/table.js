@@ -256,7 +256,8 @@ function createInspectionMotion(reveal, seatNodes) {
     const labelSizes = captions.map(caption => ({ width: caption.offsetWidth, height: caption.offsetHeight }));
     const actorSeats = new Set(players);
     const controls = painted(table.querySelectorAll('[data-watten-action="inspection_ack"], [data-wt-preplay] :is(button, h3, p), '
-      + '.wt-preplay-options > summary, [data-wt-private] button, [data-wt-history]:not([hidden]) > summary'));
+      + '.wt-preplay-options > summary, [data-wt-private] button, [data-wt-history]:not([hidden]) > summary, '
+      + '.wt-seat--bottom.is-own .wt-seat-badge, .wt-seat--bottom.is-own .wt-bubble--thanks'));
     const obstacles = [...painted(felt.querySelectorAll(".wt-avatar, .wt-seat-name, .wt-seat-call-role, .wt-seat-public-title, "
       + ".wt-seat-tags, .wt-bubble--thanks, .wt-taken:not([hidden]) .wt-taken-packet, .wt-stock, [data-wt-reference] .wt-card, [data-wt-bloedeln] .wt-card")),
     ...outlines([...felt.querySelectorAll(".wt-seat")].filter(seat => !actorSeats.has(seat))

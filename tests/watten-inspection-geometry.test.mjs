@@ -8,6 +8,21 @@ const { fitInspectionAxis, outermostCard, unionOf, cardHitsRect, cardBounds, pai
 const centre = box => ({ x: (box.left + box.right) / 2, y: (box.top + box.bottom) / 2 });
 const overlap = (a, b) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
 
+test("measured 320px caller layout fits captions beside the face ends without covering any identity", async () => {
+  // Real Chromium rectangles/outlines from the four-human blind journey,
+  // including the centred own badge, Thanks, mirrored ACK and pending status.
+  const input = JSON.parse(await readFile(new URL("./fixtures/watten-inspection-mobile-320.json", import.meta.url), "utf8"));
+  const fit = fitInspectionAxis(input);
+  verify(fit, { ...input, ownIndex: 0 });
+  assert.equal(fit.constrained, false, "no player identity needs to yield");
+  for (const [index] of fit.poses.entries()) for (const obstacle of input.obstacles) {
+    assert.equal(boxesHit(boxOf(fit, index), obstacle), false, "printed faces clear every player identity");
+  }
+  for (const label of fit.labels) for (const obstacle of [...input.obstacles, ...input.actors[0].protect]) {
+    assert.equal(boxesHit(label, obstacle), false, "role captions clear identities and the actual hand outline");
+  }
+});
+
 // Felt-local painted geometry ESTIMATED by eye from the owner's 440x956
 // portrait screenshots (felt below a ~165px header), cards at
 // clamp(64, 20vw, 112). Not browser measurements; the browser specs measure.

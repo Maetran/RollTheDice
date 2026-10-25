@@ -164,7 +164,16 @@ html[data-game="watten"][data-watten-active="true"] .wt-bloedeln-dock :is(.wt-pr
    It frees the measured caller axis; inspection faces keep their own 52px
    minimum and ordinary card play retains the established hand size. */
 @media (orientation: landscape) and (max-height: 360px) {
-  html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"]:is([data-phase="show_ready"], [data-phase="inspection"]) { --wt-hand-w: 52px; }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"]:is([data-phase="show_ready"], [data-phase="inspection"]) { --wt-hand-w: 48px; }
+  /* At 568x320 the former inner-side avatars sit directly on the measured
+     caller line. Stack them above their fans, followed by the existing names. */
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"]:is([data-phase="show_ready"], [data-phase="inspection"]) :is(.wt-seat--left, .wt-seat--right) .wt-avatar { top: -72px; }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"]:is([data-phase="show_ready"], [data-phase="inspection"]) .wt-seat--left .wt-avatar { left: calc(50% - 54px); }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"]:is([data-phase="show_ready"], [data-phase="inspection"]) .wt-seat--right .wt-avatar { left: calc(50% + 54px); }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-wt-caller-axis="bottom-right"] .wt-inspection > button,
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-wt-caller-axis="bottom-right"]:not([data-phase="match_complete"][data-round-stage="ready"]) .wt-end-sheet > .wt-panel > .wt-announce:has(> [data-watten-action="show_ready"]) {
+    left: calc(var(--wt-rail-width) + 12px); right: auto;
+  }
 }
 /* A passive bid sentence and an active answer have different heights. On a
    short rail table both grow upwards from the same painted-hand clearance;
