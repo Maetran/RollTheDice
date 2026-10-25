@@ -37,7 +37,7 @@ export function fitPortraitPrompt(bounds, obstacles, { height = 20, widths = [18
 }
 
 /** Fit a public trick as one overlapping pile, preserving the players' seats. */
-export function fitPortraitTrick({ bounds, obstacles = [], count, positions = null, desiredWidth = 104, minimumWidth = 64, labelHeight = LABEL, accept = null, measureFaces = false }) {
+export function fitPortraitTrick({ bounds, obstacles = [], count, positions = null, desiredWidth = 104, minimumWidth = 64, labelHeight = LABEL, accept = null, measureFaces = false, spreads = [.52, .44, .36] }) {
   if (!usable(bounds) || ![2, 3, 4].includes(count)) return null;
   const padding = 5;
   const blocked = obstacles.filter(usable).map(rect => ({ left: rect.left - padding, right: rect.right + padding,
@@ -50,7 +50,7 @@ export function fitPortraitTrick({ bounds, obstacles = [], count, positions = nu
   // upper corners of that rectangle may meet a side badge while every card
   // face stays clear. Only then measure the complete eventual card shape.
   const painted = measureFaces;
-  for (const centred of [true, false]) for (const spread of [.52, .44, .36]) for (let cardWidth = Math.floor(desiredWidth); cardWidth >= minimumWidth; cardWidth--) {
+  for (const centred of [true, false]) for (const spread of spreads) for (let cardWidth = Math.floor(desiredWidth); cardWidth >= minimumWidth; cardWidth--) {
     const cardHeight = cardWidth * RATIO;
     // The side cards reach towards their owners; the top and bottom cards
     // share a centre line. Captions stay outside the other card faces while
@@ -96,7 +96,7 @@ export function fitPortraitTrick({ bounds, obstacles = [], count, positions = nu
       if (footprints.some(face => blocked.some(obstacle => left + face.left < obstacle.right && left + face.right > obstacle.left
         && top + face.top < obstacle.bottom && top + face.bottom > obstacle.top))) continue;
       candidates.push({ left, top, right: left + width, bottom: top + height,
-        width, height, rowHeight, cardWidth, mode: "stack", captionHeight, positions: cardPositions,
+        width, height, rowHeight, cardWidth, spread, mode: "stack", captionHeight, positions: cardPositions,
         ...(painted ? { painted: footprints.map(face => ({ ...face, left: left + face.left, right: left + face.right,
           top: top + face.top, bottom: top + face.bottom })) } : {}) });
     }
@@ -109,10 +109,17 @@ export function fitPortraitTrick({ bounds, obstacles = [], count, positions = nu
 }
 
 /** Fit the trick and its optional review/winner labels as one composition. */
-export function fitPortraitTrickView({ bounds, obstacles, count, positions = null, minimumWidth, labelHeight = 0, history = false }) {
-  for (const measureFaces of [false, true]) for (const separateLabel of labelHeight ? measureFaces ? [true, false] : [false, true] : [false]) {
+export function fitPortraitTrickView({ bounds, obstacles, count, positions = null, minimumWidth, labelHeight = 0, history = false, preferred = null }) {
+  // A newly captured packet or review tab can make the rectangular clearance
+  // smaller while the accepted faces still fit at their existing size. Prove
+  // that exact composition against every current obstacle and label first;
+  // positions are always measured again, never replayed from a stale frame.
+  const preserve = Number.isInteger(preferred?.cardWidth) && preferred.cardWidth >= (minimumWidth ?? 64)
+    && [.52, .44, .36].includes(preferred.spread);
+  const sizes = preserve ? [{ desiredWidth: preferred.cardWidth, minimumWidth: preferred.cardWidth, spreads: [preferred.spread] }, {}] : [{}];
+  for (const size of sizes) for (const measureFaces of [false, true]) for (const separateLabel of labelHeight ? measureFaces ? [true, false] : [false, true] : [false]) {
     let extras;
-    const fit = fitPortraitTrick({ bounds, obstacles, count, positions, minimumWidth, measureFaces, labelHeight: separateLabel ? 0 : labelHeight,
+    const fit = fitPortraitTrick({ bounds, obstacles, count, positions, minimumWidth, ...size, measureFaces, labelHeight: separateLabel ? 0 : labelHeight,
       accept: candidate => {
         const occupied = [...obstacles, ...(candidate.painted || [candidate])];
         let labelFit = null;
@@ -139,7 +146,7 @@ export function createTrickLayout(trick, { win = window } = {}) {
   const variables = ["--wt-landscape-x", "--wt-landscape-y", "--wt-landscape-card-width", "--wt-landscape-height", "--wt-landscape-reach",
     "--wt-portrait-x", "--wt-portrait-y", "--wt-portrait-width", "--wt-portrait-card-width", "--wt-portrait-row-height", "--wt-portrait-caption-height",
     "--wt-portrait-reference-left", "--wt-portrait-reference-top", "--wt-portrait-label-x", "--wt-portrait-label-y", "--wt-portrait-label-width"];
-  let count = 0, queued = null, destroyed = false, landscape = null, deal = "";
+  let count = 0, queued = null, destroyed = false, landscape = null, portrait = null, deal = "", match = "";
   const clear = () => {
     ownCall?.style.removeProperty("--wt-own-call-left");
     ownCall?.style.removeProperty("--wt-own-call-bottom");
@@ -243,8 +250,9 @@ export function createTrickLayout(trick, { win = window } = {}) {
     positionReference();
     // Calls precede every trick card, so fit them before the empty-trick return.
     positionCalls();
-    if (trick.hidden || !trick.children.length) { landscape = null; return; }
+    if (trick.hidden || !trick.children.length) { landscape = null; portrait = null; return; }
     if (win.innerWidth >= win.innerHeight && win.innerHeight <= 700) {
+      portrait = null;
       const area = felt.getBoundingClientRect();
       const key = [deal, trick.firstElementChild.dataset.key, count, win.innerWidth, win.innerHeight,
         area.left, area.top, area.width, area.height].join(":");
@@ -274,7 +282,7 @@ export function createTrickLayout(trick, { win = window } = {}) {
       return;
     }
     landscape = null;
-    if (win.innerWidth > 760 || win.innerWidth >= win.innerHeight) return;
+    if (win.innerWidth > 760 || win.innerWidth >= win.innerHeight) { portrait = null; return; }
     const area = felt.getBoundingClientRect();
     const left = Math.max(12, area.left + 8), top = Math.max(8, area.top + 8);
     const right = Math.min(win.innerWidth - 12, area.right - 8), bottom = Math.min(win.innerHeight - 8, area.bottom - 8);
@@ -300,20 +308,29 @@ export function createTrickLayout(trick, { win = window } = {}) {
     if (reference) obstacles.push(reference);
     const originalWidth = Number.parseFloat(win.getComputedStyle(trick.firstElementChild).width) || 0;
     const minimumWidth = Math.max(win.innerWidth >= 360 ? 76 : 64, Math.ceil(originalWidth));
+    const handFrame = table.querySelector("[data-wt-hand-area]")?.getBoundingClientRect();
+    const prefix = [...trick.children].map(card => card.dataset.key);
+    const portraitKey = [match, deal, count, table.dataset?.phase, prefix[0], win.innerWidth, win.innerHeight,
+      win.devicePixelRatio || 1, win.visualViewport?.scale || 1, originalWidth,
+      area.left, area.top, area.width, area.height,
+      handFrame?.left, handFrame?.top, handFrame?.width, handFrame?.height].join(":");
+    const preferred = portrait?.key === portraitKey && portrait.prefix.every((card, index) => prefix[index] === card)
+      ? portrait.fit : null;
     // Reserve the eventual winner caption while the trick is still live, so
     // completing it does not move the pile merely to make room for that label.
     const label = centre.querySelector(".wt-trick-label"), labelHeight = LABEL;
     if (label) label.title = label.textContent.trim();
     const positions = [...trick.children].map(card => card.dataset.position);
-    const resolve = occupied => fitPortraitTrickView({ bounds, obstacles: occupied, count, positions, labelHeight, minimumWidth, history: moveHistory });
+    const resolve = occupied => fitPortraitTrickView({ bounds, obstacles: occupied, count, positions, labelHeight, minimumWidth, history: moveHistory, preferred });
     let { fit, labelFit, historyFit } = resolve(obstacles);
-    if (!fit) { clear(); centre.dataset.wtPortraitTrickFallback = "space"; return; }
+    if (!fit) { portrait = null; clear(); centre.dataset.wtPortraitTrickFallback = "space"; return; }
     const promptFit = neutralPrompt ? fitPortraitPrompt(bounds, [...obstacles, ...(fit.painted || [fit]), labelFit, historyFit].filter(Boolean)) : null;
     if (neutralPrompt && !promptFit) {
       const promptBox = box(neutralPrompt);
       ({ fit, labelFit, historyFit } = resolve(promptBox ? [...obstacles, promptBox] : obstacles));
-      if (!fit) { clear(); centre.dataset.wtPortraitTrickFallback = "prompt"; return; }
+      if (!fit) { portrait = null; clear(); centre.dataset.wtPortraitTrickFallback = "prompt"; return; }
     }
+    portrait = { key: portraitKey, prefix, fit: { cardWidth: fit.cardWidth, spread: fit.spread } };
     if (historyFit) for (const [key, value] of [["x", historyFit.left], ["y", historyFit.top], ["width", historyFit.width]]) history.style.setProperty(`--wt-portrait-history-${key}`, `${value}px`);
     const set = (name, value) => {
       const next = `${Math.round(value * 100) / 100}px`;
@@ -369,6 +386,7 @@ export function createTrickLayout(trick, { win = window } = {}) {
     update(vm) {
       count = vm.count;
       deal = `${vm.engine?.deal_id ?? ""}:${vm.engine?.deal_revision ?? 0}`;
+      match = `${vm.snapshot?.id ?? ""}:${vm.anchorSeat ?? ""}`;
       if (queued !== null) win.cancelAnimationFrame(queued);
       layout();
       // A compact dock can move after its DOM/CSS update without resizing.
@@ -377,6 +395,7 @@ export function createTrickLayout(trick, { win = window } = {}) {
     },
     destroy() {
       destroyed = true;
+      portrait = null;
       if (queued !== null) win.cancelAnimationFrame(queued);
       observer?.disconnect();
       history?.removeEventListener("toggle", schedule);
