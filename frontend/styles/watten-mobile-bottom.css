@@ -231,7 +231,6 @@ html[data-game="watten"][data-watten-active="true"] .wt-bloedeln-dock :is(.wt-pr
     --wt-rail-width: calc(52px + var(--wt-rail-inset));
   }
   html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] body::before { width: var(--wt-rail-width); }
-  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"][data-wt-header-open="true"] body::before { width: calc(156px + var(--wt-rail-inset)); }
   html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] body .wt-header.suite-header.suite-header--table {
     display: block; width: var(--wt-rail-width); height: 52px; padding: 4px;
     z-index: 60; background: #e8c59a;
@@ -283,6 +282,12 @@ html[data-game="watten"][data-watten-active="true"] .wt-bloedeln-dock :is(.wt-pr
      own opposite corner, and keep the stake/review row below both side fans. */
   html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] .wt-table .wt-reference {
     left: auto; right: max(12px, env(safe-area-inset-right, 0px)); top: 8px;
+  }
+  /* The footer belongs to chat/voice and the own captured packets. The
+     upper inner-right wood clears both side identities and their fans. */
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] .wt-table .wt-trick-label {
+    inset: 108px auto auto min(calc(var(--wt-rail-width) + (100vw - var(--wt-rail-width) - env(safe-area-inset-right, 0px)) / 2 + 82px), calc(100vw - env(safe-area-inset-right, 0px) - 112px));
+    width: 100px; max-width: 100px;
   }
   html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"][data-wt-header-open="true"] .wt-table .wt-reference {
     left: calc(164px + var(--wt-rail-inset)); right: auto; top: 56px;

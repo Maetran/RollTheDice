@@ -65,6 +65,9 @@ async function expectCompactHeader(page, language, expanded) {
     const box = document.querySelector('.wt-topbar').getBoundingClientRect();
     return { left: Math.round(box.left), width: Math.round(box.width), top: Math.round(box.top) };
   })).toEqual({ left: expanded ? page.viewportSize().width - 168 : 56, width: 156, top: 4 });
+  await expect.poll(() => page.evaluate(() => Math.round(Number.parseFloat(getComputedStyle(document.body, '::before').width))), {
+    message: 'opening the short header leaves the full-height rail at its collapsed width',
+  }).toBe(52);
 }
 
 async function expectCompactCardsClear(page, { history = false, expanded = false } = {}) {
@@ -84,6 +87,21 @@ async function expectCompactCardsClear(page, { history = false, expanded = false
     for (const surface of surfaces) for (const card of cards) {
       if (overlap(surface.getBoundingClientRect(), card.getBoundingClientRect())) {
         failures.push(`${surface.className} covers a painted ${card.className}`);
+      }
+    }
+    const caption = document.querySelector('.wt-trick-label');
+    if (caption && caption.textContent.trim() && shown(caption)) {
+      const bounds = caption.getBoundingClientRect();
+      if (bounds.width < 100 || bounds.left < 0 || bounds.right > innerWidth || bounds.top < 0 || bounds.bottom > innerHeight) {
+        failures.push('winner caption lacks a readable slot inside the viewport');
+      }
+      const protectedNodes = [...cards, ...document.querySelectorAll('.wt-trick-card, .wt-seat .wt-avatar, .wt-seat-name, .wt-seat-call-role, .wt-taken:not([hidden]) i, [data-wt-tools], [data-watten-social-action=toggle], .wt-voice-details > summary, [data-wt-stake] > button, [data-wt-history]:not([open]) > summary')].filter(shown);
+      for (const node of protectedNodes) if (overlap(bounds, node.getBoundingClientRect())) {
+        failures.push(`winner caption covers ${node.className}`);
+      }
+      for (let column = 0; column < 6; column++) for (let row = 0; row < 2; row++) {
+        if (!caption.contains(document.elementFromPoint(bounds.left + bounds.width * (column + .5) / 6,
+          bounds.top + bounds.height * (row + .5) / 2))) failures.push('winner caption is painted beneath another surface');
       }
     }
     const reference = document.querySelector('.wt-reference').getBoundingClientRect();

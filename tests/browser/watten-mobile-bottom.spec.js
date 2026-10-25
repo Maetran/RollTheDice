@@ -70,6 +70,22 @@ async function expectBottomZones(page, viewport, phase) {
     for (const hint of hints) for (const control of controls) {
       if (overlap(rect(hint), rect(control))) failures.push(`waiting hint overlaps ${control.className}`);
     }
+    if (innerWidth > 760 && innerWidth > innerHeight && innerHeight >= 701
+      && ['show_ready', 'inspection'].includes(document.querySelector('[data-wt-table]').dataset.phase)) {
+      for (const hint of hints) {
+        const panel = hint.parentElement, style = getComputedStyle(panel), background = style.backgroundColor;
+        const alpha = background.startsWith('rgba') ? Number(background.match(/[\d.]+/g).at(-1))
+          : background === 'transparent' ? 0 : 1;
+        if (alpha < .85 || Number.parseFloat(style.paddingTop) < 2 || Number.parseFloat(style.paddingLeft) < 6) {
+          failures.push('tablet waiting text lacks padded paper over the carved table edge');
+        }
+        const text = document.createRange(); text.selectNodeContents(hint);
+        const words = text.getBoundingClientRect(), paper = rect(panel);
+        if (words.left < paper.left || words.right > paper.right || words.top < paper.top || words.bottom > paper.bottom) {
+          failures.push('tablet waiting text escapes its paper');
+        }
+      }
+    }
     for (const status of document.querySelectorAll('.wt-bloedeln-status')) if (shown(status)) {
       for (const back of document.querySelectorAll('.wt-backs:not([hidden]) > i:not([hidden])')) {
         if (shown(back) && paintedOverlap(status, back)) failures.push('passive Blödeln status covers an opponent hand');
