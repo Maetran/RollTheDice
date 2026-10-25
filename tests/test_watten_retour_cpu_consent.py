@@ -27,7 +27,7 @@ from tests.test_watten_engine import actor, command, dealt, finish, ready, step
 from tests.test_watten_preplay import restored, retour_choice
 
 server = native.server
-cpu_ready = cpu_tests.ready
+_cpu_ready = cpu_tests.ready
 REAL_ROUND_WATCH = review.watch_game
 
 
@@ -139,7 +139,7 @@ def runtime_choice(server, *, cpu_only=False):
 
 @pytest.mark.parametrize("value", ("accept", "decline"))
 def test_repeated_runtime_snapshots_do_not_schedule_cpu_while_human_is_pending_and_choice_unblocks_normal_advance(
-        server, cpu_ready, monkeypatch, value):
+        server, _cpu_ready, monkeypatch, value):
     game, human, _cpu = runtime_choice(server)
     before = game["_watten"].engine
     monkeypatch.setattr(runner, "decide", lambda *_args, **_kwargs: pytest.fail("pending mixed choice scheduled CPU policy"))
@@ -175,7 +175,7 @@ def test_repeated_runtime_snapshots_do_not_schedule_cpu_while_human_is_pending_a
 
 @pytest.mark.parametrize("saved_vote", (False, True))
 def test_scheduler_does_not_offer_or_decide_for_all_cpu_team_and_automatically_advances_old_checkpoints(
-        server, cpu_ready, monkeypatch, saved_vote):
+        server, _cpu_ready, monkeypatch, saved_vote):
     game, host, cpu = runtime_choice(server, cpu_only=True)
     before = game["_watten"].engine
     members = retourschneider_candidate(before.ledger)
@@ -210,7 +210,7 @@ def test_scheduler_does_not_offer_or_decide_for_all_cpu_team_and_automatically_a
     asyncio.run(scenario())
 
 
-def test_scheduler_mirrors_an_already_saved_human_yes_once_after_restart(server, cpu_ready):
+def test_scheduler_mirrors_an_already_saved_human_yes_once_after_restart(server, _cpu_ready):
     game, human, cpu = runtime_choice(server)
     game["_watten"] = replace(game["_watten"], engine=replace(game["_watten"].engine, retour_accepted_by=(human.player_id,)))
     persist_watten_game(game)

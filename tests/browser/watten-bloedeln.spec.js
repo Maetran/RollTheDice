@@ -9,7 +9,7 @@ const mobile = browser => ({ newContext: options => browser.newContext({ ...opti
 async function settledPrimaryTarget(page, viewport, action) {
   return page.evaluate(({ viewport, action }) => new Promise(resolve => {
     const landscape = viewport.width > viewport.height && viewport.height <= 700;
-    const expectedWidth = landscape ? (viewport.width <= 720 ? 84 : 104) : 120;
+    const expectedWidth = landscape ? (viewport.width <= 720 ? 84 : 104) : viewport.width <= 360 ? 96 : 120;
     let previous = '', stable = 0;
     const frame = () => {
       const target = document.querySelector(`[data-watten-action="${action}"]`);

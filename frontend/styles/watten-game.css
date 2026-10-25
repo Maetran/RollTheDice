@@ -21,6 +21,9 @@
 @import "./watten-sound.css";
 @import "./watten-call.css";
 @import "./watten-mobile-bottom.css";
+@import "./watten-mobile-review.css";
+@import "./retourschneider-status.css";
+@import "./watten-update-notice.css";
 
 /* Watten: a bright wooden inn table, warm paper and dark red accents. */
 :root {

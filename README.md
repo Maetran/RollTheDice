@@ -582,7 +582,9 @@ determines whether the new table is protected; applying
 a favorite neither creates nor starts a match.
 
 **Ruhiger Tisch / calmer table:** Ansagekarten treffen sich zwischen den beiden
-Ansagenden und bleiben auch im Querformat lesbar. Auf kleinen Bildschirmen dürfen
+Ansagenden auf der Verbindungslinie ihrer Hände und bleiben auch im Querformat lesbar.
+Die eigene Ansage kommt rechts neben der fünften oder links neben der ersten Karte hervor.
+Auf kleinen Bildschirmen dürfen
 sie sich überlappen; beide Karten bleiben erkennbar. Blödeln hat einen festen
 Bedienplatz; Unbeteiligte sehen nur den kurzen Status. Beim Ansehen des letzten
 Stichs bleiben neue Würfe und Kartenanimationen verborgen. Am Spielende stehen
@@ -590,13 +592,18 @@ Ergebnis, schnelle Reaktionen und Revanche oben; Tischverlauf und kompakte
 Erfolge & Titel findest du darunter bei den Details.
 Auch während des Austeilens bleiben die Kartenplätze reserviert, damit bereits
 liegende Stichkarten ihre Größe behalten.
-Inspection cards meet between the two announcers and remain readable in
-landscape. On small screens they may overlap while both remain identifiable.
+Auf sehr kleinen Handys im Querformat öffnet der Menüknopf die Kopfzeile.
+Punkte und Ziel bleiben sichtbar; Verlassen, Chat und Audio bleiben direkt erreichbar.
+Inspection cards meet on the line connecting the two announcers' hands and remain readable in
+landscape. Your shown card leaves beyond the fifth card towards the right or beyond the first towards the left.
+On small screens they may overlap while both remain identifiable.
 Blödeln controls keep a stable dock, with only a short status for
 others. Reviewing the last trick hides live throws and card animations. At match
 end the result, quick reactions and rematch come first; table history and compact
 achievements and titles are available below in the details.
 Card slots remain reserved during dealing so played trick cards keep their size.
+On very small phones in landscape, the menu button opens the header.
+Scores and target stay visible; leave, chat and audio remain directly accessible.
 
 **Verlassene Tische / abandoned tables:** Nach einer Stunde ohne Spielaktivität
 werden laufende oder pausierte Watten-Spiele ohne Wertung beendet. Spielaktionen

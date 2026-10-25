@@ -40,6 +40,11 @@ async function expectBottomZones(page, viewport, phase) {
     for (const hint of hints) for (const control of controls) {
       if (overlap(rect(hint), rect(control))) failures.push(`waiting hint overlaps ${control.className}`);
     }
+    for (const status of document.querySelectorAll('.wt-bloedeln-status')) if (shown(status)) {
+      for (const back of document.querySelectorAll('.wt-backs:not([hidden]) > i:not([hidden])')) {
+        if (shown(back) && overlap(rect(status), rect(back))) failures.push('passive Blödeln status covers an opponent hand');
+      }
+    }
     const buttons = [...document.querySelectorAll('.wt-bloedeln-dock button, [data-watten-action=show_ready], '
       + '[data-watten-action=inspection_ack], [data-wt-panel] .wt-bid button, [data-wt-stake] > button')].filter(shown);
     for (const button of buttons) {
@@ -61,12 +66,19 @@ async function expectBottomZones(page, viewport, phase) {
   }), { message: `${viewport.width}×${viewport.height} ${phase}: identities, choices and waiting text clear the painted hand` }).toEqual([]);
 }
 
-async function allViewports(players, phase) {
-  for (const viewport of VIEWPORTS) for (const peer of players) await expectBottomZones(peer.page, viewport, phase);
+async function allViewports(players, phase, info) {
+  for (const viewport of VIEWPORTS) for (const [seat, peer] of players.entries()) {
+    await expectBottomZones(peer.page, viewport, phase);
+    const caller = peer.traffic.snapshot.engine.actions.includes('inspection_ack');
+    if ([440, 568, 768, 1024].includes(viewport.width) && (seat === 0 || phase.startsWith('bid response') || (caller && phase.startsWith('inspection')))) {
+      const label = phase.replace(/[^a-zA-Z0-9]+/g, '-');
+      await peer.page.screenshot({ path: info.outputPath(`${label}-seat${seat}-${viewport.width}x${viewport.height}.png`) });
+    }
+  }
 }
 
 for (const language of ['de', 'en']) {
-  test(`${language}: blind mobile bottom zones stay clear through request, inspection and normal bidding`, async ({ browser, baseURL }) => {
+  test(`${language}: blind mobile bottom zones stay clear through request, inspection and normal bidding`, async ({ browser, baseURL }, info) => {
     test.setTimeout(180_000);
     const players = [];
     try {
@@ -74,25 +86,25 @@ for (const language of ['de', 'en']) {
         viewport: VIEWPORTS[3], serviceWorkers: 'block' }) };
       for (let seat = 0; seat < 4; seat++) players.push(await player(wrapped, baseURL, language));
       await create(players, { count: 4, target: 11, reference: true });
-      await allViewports(players, 'show-ready');
+      await allViewports(players, 'show-ready', info);
       const requester = await action(players, 'request_bloedeln');
       await expect.poll(() => players.every(peer => peer.traffic.snapshot.engine.preplay.pending?.kind === 'bloedeln')).toBe(true);
-      await allViewports(players, 'Blödeln request');
+      await allViewports(players, 'Blödeln request', info);
       await action(players, 'show_ready'); await action(players, 'show_ready');
       await expect.poll(() => players.every(peer => peer.traffic.snapshot.engine.phase === 'inspection')).toBe(true);
       // The non-callers retain their real painted blind hand, name and the
       // waiting sentence while one has the active two-choice request.
-      await allViewports(players, 'inspection with pending Blödeln');
+      await allViewports(players, 'inspection with pending Blödeln', info);
       await action(players, 'preplay_decline');
       await action(players, 'inspection_ack'); await action(players, 'inspection_ack');
       await expect.poll(() => players.every(peer => peer.traffic.snapshot.engine.phase === 'play')).toBe(true);
-      await allViewports(players, 'play with role and reference');
+      await allViewports(players, 'play with role and reference', info);
       expect(requester.traffic.errors).toEqual([]);
       for (const peer of players) expect(peer.traffic.errors).toEqual([]);
     } finally { await Promise.allSettled(players.map(peer => peer.context.close())); }
   });
 
-  test(`${language}: open mobile bid controls leave own name and role above all five cards`, async ({ browser, baseURL }) => {
+  test(`${language}: open mobile bid controls leave own name and role above all five cards`, async ({ browser, baseURL }, info) => {
     test.setTimeout(180_000);
     const players = [];
     try {
@@ -100,13 +112,13 @@ for (const language of ['de', 'en']) {
         viewport: VIEWPORTS[3], serviceWorkers: 'block' }) };
       for (let seat = 0; seat < 4; seat++) players.push(await player(wrapped, baseURL, language));
       await create(players, { count: 4, target: 15, determination: 'normal', reference: true });
-      await allViewports(players, 'announce strike');
+      await allViewports(players, 'announce strike', info);
       await normalCall(players);
-      await allViewports(players, 'ordinary stake');
+      await allViewports(players, 'ordinary stake', info);
       await action(players, 'bid');
       await expect.poll(() => players.every(peer => peer.traffic.snapshot.engine.phase === 'bid_response')).toBe(true);
       await answerPartnerFeedback(players, 'good');
-      await allViewports(players, 'bid response with partner advice');
+      await allViewports(players, 'bid response with partner advice', info);
       for (const peer of players) expect(peer.traffic.errors).toEqual([]);
     } finally { await Promise.allSettled(players.map(peer => peer.context.close())); }
   });
