@@ -477,7 +477,12 @@ def public_hausdepp_ranks(db, user_ids: list[int]) -> dict[int, dict]:
         unlocks[unlock.user_id].append(unlock)
     result = {}
     for user_id in ids:
-        rank = _rank(_score_points(credits[user_id], unlocks[user_id]))
+        from .hausdepp_merge import is_merged, project_progress
+        if is_merged(db, user_id):
+            native = _projection(credits[user_id], unlocks[user_id], _new_aggregate(), 0)
+            rank = project_progress(db, user_id, native)["rank"]
+        else:
+            rank = _rank(_score_points(credits[user_id], unlocks[user_id]))
         result[user_id] = {key: rank[key] for key in ("id", "name", "level")}
     return result
 
@@ -553,9 +558,18 @@ def synchronize_hausdepp_progress_in_session(db, user_id: int) -> dict:
                          .where(source_not_withdrawn(HausdeppRoundCredit.user_id, HausdeppRoundCredit.game_id))
                          .order_by(HausdeppRoundCredit.finished_at, HausdeppRoundCredit.game_id)).all()
     unlocked_ids = {unlock.achievement_id for unlock in unlocks}
+    from .hausdepp_merge import effective_awards, is_merged
+    merged = is_merged(db, user_id)
+    if merged:
+        unlocked_ids.update(effective_awards(db, user_id))
     aggregate = _new_aggregate()
     for credit in credits:
-        _accumulate(aggregate, json.loads(credit.facts_json), credit.finished_at)
+        facts = json.loads(credit.facts_json)
+        if merged:
+            from .account_progress import progress_owner_ids
+            owners = progress_owner_ids(db, facts["opponents"])
+            facts["opponents"] = sorted({owners.get(value, value) for value in facts["opponents"]} - {user_id})
+        _accumulate(aggregate, facts, credit.finished_at)
         for item in ACHIEVEMENTS:
             current, target = _progress(aggregate, item["id"])
             if item["id"] not in unlocked_ids and current >= target:
@@ -587,6 +601,10 @@ def synchronize_hausdepp_progress_in_session(db, user_id: int) -> dict:
                   [-PRESENTATION_SNAPSHOT_LIMIT:])
     receipt.presentation_scores_json = json.dumps(scores, separators=(",", ":"))
     db.flush()
+    if merged:
+        from .hausdepp_merge import grant_combined, project_progress
+        grant_combined(db, user_id, reached_at=max((as_utc(item.finished_at) for item in credits), default=None))
+        return project_progress(db, user_id, result)
     return result
 
 

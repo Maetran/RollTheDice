@@ -350,13 +350,19 @@ def list_hausdepp_results_for_user(user_id: int) -> list[dict]:
     if not database_schema_ready():
         return []
     with session_scope() as db:
-        rows = db.scalars(select(CompletedGame).where(
-            CompletedGame.game_type == HAUSDEPP_GAME_TYPE,
-            CompletedGame.participants.any(GameParticipant.user_id == user_id),
-        ).order_by(CompletedGame.finished_at.desc(), CompletedGame.id.desc()).limit(30)).all()
+        from .hausdepp_merge import is_merged, selected_rounds
+        if is_merged(db, user_id):
+            selected = sorted(selected_rounds(db, user_id),
+                              key=lambda item: (as_utc(item.row.finished_at), item.row.id), reverse=True)[:30]
+            rows = [item.row for item in selected]
+        else:
+            rows = db.scalars(select(CompletedGame).where(
+                CompletedGame.game_type == HAUSDEPP_GAME_TYPE,
+                CompletedGame.participants.any(GameParticipant.user_id == user_id),
+            ).order_by(CompletedGame.finished_at.desc(), CompletedGame.id.desc()).limit(30)).all()
         results = []
         for row in rows:
-            if validated_hausdepp_membership(row, user_id, db=db) is None:
+            if not is_merged(db, user_id) and validated_hausdepp_membership(row, user_id, db=db) is None:
                 continue
             payload = stored_hausdepp_result(row)
             payload.pop("achievement_evidence", None)

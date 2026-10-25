@@ -99,6 +99,22 @@ def build_hausdepp_account_for_user_in_session(
     history = response["history"]["rounds"]
     next_cursor = None
     page_end = None
+    from .hausdepp_merge import is_merged, selected_rounds
+    if is_merged(db, user_id):
+        selected = sorted(selected_rounds(db, user_id),
+                          key=lambda item: (as_utc(item.row.finished_at), item.row.id), reverse=True)
+        for item in selected:
+            record = item.record
+            statistics["rounds_played"] += 1
+            if record["outcome"] in {"finished", "hausdepp"}:
+                statistics[f"{record['outcome']}_rounds"] += 1
+            if statistics["last_finished_at"] is None:
+                statistics["last_finished_at"] = record["finished_at"]
+        eligible = [item for item in selected if boundary is None or (as_utc(item.row.finished_at), item.row.id) < boundary]
+        page = eligible[:limit]
+        history.extend(item.record for item in page)
+        response["history"]["next_cursor"] = _cursor(page[-1].row) if len(eligible) > limit else None
+        return response
     scan_boundary = None
     while True:
         statement = select(CompletedGame).options(selectinload(CompletedGame.participants)).where(

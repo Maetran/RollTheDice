@@ -58,6 +58,18 @@ def build_hausdepp_leaderboard(user_id: int, *, players: int | None = None, limi
                     totals[account_id]["rounds_played"] += 1
                     totals[account_id]["wins"] += int(record["outcome"] == "finished")
             last_id = rows[-1].id
+        from .account_progress import owned_origin_ids
+        from .hausdepp_merge import selected_rounds
+        from .models import AccountProgressOrigin
+        merged_owners = set(db.scalars(select(AccountProgressOrigin.owner_user_id)))
+        for owner in merged_owners:
+            for origin in owned_origin_ids(db, owner):
+                totals.pop(origin, None)
+            chosen = [item for item in selected_rounds(db, owner)
+                      if players is None or item.record["participant_count"] == players]
+            if chosen:
+                totals[owner] = {"rounds_played": len(chosen),
+                                 "wins": sum(item.record["outcome"] == "finished" for item in chosen)}
         # Resolve current names once. Historical labels never merge two accounts.
         names = dict(db.execute(select(User.id, User.username).where(
             User.id.in_(totals), User.is_active.is_(True),
