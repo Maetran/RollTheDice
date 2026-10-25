@@ -1,6 +1,7 @@
 const { test, expect } = require('@playwright/test');
 const { writeFile } = require('node:fs/promises');
 const { player, create, action, answerPartnerFeedback, playOne } = require('./helpers/watten-journey.cjs');
+const { expectTableHeaderReachable } = require('./helpers/watten-header.cjs');
 
 const PORTRAITS = [{ width: 320, height: 568 }, { width: 375, height: 667 }, { width: 390, height: 844 }];
 
@@ -496,6 +497,7 @@ test('de: three-seat solo announcements retain both values at the same peer seat
       await pauseClock(page);
     }
     for (const { page } of players) {
+      await expectTableHeaderReachable(page);
       await expectVisibleBadges(page, measurements);
       measurements.push({ beforeCall: true, viewport: page.viewportSize(), ...await geometry(page) });
     }
@@ -515,6 +517,7 @@ test('de: three-seat solo announcements retain both values at the same peer seat
       await expect(labels).toHaveText(['Schlag: Sieben', 'Farbe: Schellen']);
       for (const viewport of [PORTRAITS[0], PORTRAITS[2]]) {
         await resize(item.page, viewport);
+        await expectTableHeaderReachable(item.page);
         await expectPeerCalls(item.page, measurements);
         if (viewport.width === 320) await item.page.screenshot({ path: info.outputPath(`solo-peer-${players.indexOf(item)}-320.png`) });
       }

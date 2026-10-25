@@ -29,6 +29,37 @@ async function expectTableHeaderReachable(page) {
       ...document.querySelectorAll('details.wt-partner-hand > summary')];
     const failures = [];
     const topbar = document.querySelector('.wt-topbar');
+    // A visible tile can still paint its nowrap caption across the number.
+    // Check the actual clipped content, including the three-player 320px row.
+    const clippedBox = node => {
+      const result = node.getBoundingClientRect().toJSON();
+      for (let parent = node.parentElement; parent; parent = parent.parentElement) {
+        const style = getComputedStyle(parent), box = parent.getBoundingClientRect();
+        if (['hidden', 'clip', 'auto', 'scroll'].includes(style.overflowX)) {
+          result.left = Math.max(result.left, box.left); result.right = Math.min(result.right, box.right);
+        }
+        if (['hidden', 'clip', 'auto', 'scroll'].includes(style.overflowY)) {
+          result.top = Math.max(result.top, box.top); result.bottom = Math.min(result.bottom, box.bottom);
+        }
+      }
+      return result;
+    };
+    for (const button of document.querySelectorAll('[data-wt-score-open]')) {
+      const points = button.querySelector('.wt-score-points');
+      const number = points.getBoundingClientRect(), box = button.getBoundingClientRect();
+      if (!box.width || !box.height) continue;
+      if (number.left < box.left || number.right > box.right || number.top < box.top || number.bottom > box.bottom
+        || points.scrollWidth > points.clientWidth) failures.push('Score number is clipped inside its tile');
+      for (const part of button.querySelectorAll('.wt-score-name, .wt-score-tricks, .wt-nockerl-marks')) {
+        const visible = clippedBox(part);
+        if (Math.min(visible.right, number.right) - Math.max(visible.left, number.left) > .5
+          && Math.min(visible.bottom, number.bottom) - Math.max(visible.top, number.top) > .5) {
+          failures.push(`${part.className}: paints over the score number`);
+        }
+      }
+      const name = button.querySelector('.wt-score-name').textContent.trim();
+      if (!button.getAttribute('aria-label')?.includes(name)) failures.push('Score tile lost its complete accessible name');
+    }
     if (topbar && innerWidth > innerHeight && innerHeight <= 519) {
       const rail = header.getBoundingClientRect();
       const felt = document.querySelector('[data-wt-felt]').getBoundingClientRect();
