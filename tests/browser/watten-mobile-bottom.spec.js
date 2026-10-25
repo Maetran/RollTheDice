@@ -19,6 +19,36 @@ async function expectBottomZones(page, viewport, phase) {
       && getComputedStyle(node).visibility !== 'hidden';
     const overlap = (a, b) => Math.min(a.right, b.right) - Math.max(a.left, b.left) > 1
       && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 1;
+    const outline = node => {
+      const box = rect(node), style = getComputedStyle(node);
+      let angle = 0;
+      for (let item = node; item && item !== document.querySelector('[data-wt-felt]'); item = item.parentElement) {
+        const css = getComputedStyle(item);
+        if (css.transform !== 'none') { const matrix = new DOMMatrix(css.transform); angle += Math.atan2(matrix.b, matrix.a); }
+        if (css.rotate !== 'none') angle += Number.parseFloat(css.rotate) * Math.PI / 180;
+      }
+      const width = Number.parseFloat(style.width), height = Number.parseFloat(style.height);
+      const cos = Math.cos(angle), sin = Math.sin(angle), expectedWidth = Math.abs(cos) * width + Math.abs(sin) * height;
+      const scale = box.width / expectedWidth, expectedHeight = scale * (Math.abs(sin) * width + Math.abs(cos) * height);
+      if (!Number.isFinite(scale) || Math.abs(expectedHeight - box.height) > 1.5 + box.height * .02) {
+        return [{ x: box.left, y: box.top }, { x: box.right, y: box.top }, { x: box.right, y: box.bottom }, { x: box.left, y: box.bottom }];
+      }
+      return [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([x, y]) => ({
+        x: box.x + box.width / 2 + scale * (x * width / 2 * cos - y * height / 2 * sin),
+        y: box.y + box.height / 2 + scale * (x * width / 2 * sin + y * height / 2 * cos),
+      }));
+    };
+    // Test the rotated painted outlines, independently of the product fitter.
+    const paintedOverlap = (a, b) => {
+      const one = outline(a), two = outline(b);
+      return [...one, ...two].every((_, index) => {
+        const polygon = index < 4 ? one : two, start = polygon[index % 4], end = polygon[(index + 1) % 4];
+        const dx = end.x - start.x, dy = end.y - start.y, length = Math.hypot(dx, dy);
+        const project = point => (-dy * point.x + dx * point.y) / length;
+        const first = one.map(project), second = two.map(project);
+        return Math.min(...first) < Math.max(...second) - 1 && Math.max(...first) > Math.min(...second) + 1;
+      });
+    };
     const identities = [...document.querySelectorAll('.wt-seat--bottom.is-own .wt-avatar, '
       + '.wt-seat--bottom.is-own .wt-seat-name, .wt-seat--bottom.is-own .wt-seat-call-role')].filter(shown);
     const hand = [...document.querySelectorAll('[data-wt-hand] > .wt-hand-card')].filter(shown);
@@ -29,7 +59,7 @@ async function expectBottomZones(page, viewport, phase) {
     for (const node of [...identities, ...controls, ...hints]) {
       const box = rect(node);
       if (box.left < -1 || box.top < -1 || box.right > innerWidth + 1 || box.bottom > innerHeight + 1) failures.push(`${node.className} leaves viewport`);
-      for (const card of hand.filter(card => overlap(box, rect(card)))) {
+      for (const card of hand.filter(card => paintedOverlap(node, card))) {
         failures.push(`${node.className} overlaps painted own hand ${card.dataset.card || card.dataset.key}: `
           + JSON.stringify({ element: box.toJSON(), card: rect(card).toJSON() }));
       }
@@ -42,7 +72,17 @@ async function expectBottomZones(page, viewport, phase) {
     }
     for (const status of document.querySelectorAll('.wt-bloedeln-status')) if (shown(status)) {
       for (const back of document.querySelectorAll('.wt-backs:not([hidden]) > i:not([hidden])')) {
-        if (shown(back) && overlap(rect(status), rect(back))) failures.push('passive Blödeln status covers an opponent hand');
+        if (shown(back) && paintedOverlap(status, back)) failures.push('passive Blödeln status covers an opponent hand');
+      }
+    }
+    if (document.documentElement.dataset.wtCompactHeader === 'true') {
+      const score = document.querySelector('.wt-topbar'), reference = document.querySelector('.wt-reference');
+      if (document.documentElement.dataset.wtHeaderOpen !== 'true' && score && reference && shown(score) && shown(reference)
+        && paintedOverlap(score, reference)) failures.push('floating scores cover the reference card or its caption');
+      const railControls = [...document.querySelectorAll('[data-wt-stake] > button, [data-wt-history]:not([open]) > summary')].filter(shown);
+      const opponentBacks = [...document.querySelectorAll('.wt-backs:not([hidden]) > i:not([hidden])')].filter(shown);
+      for (const control of railControls) for (const back of opponentBacks) {
+        if (paintedOverlap(control, back)) failures.push(`${control.matches('summary') ? 'closed history' : 'stake'} covers the physical opponent hand at seat ${back.closest('[data-wt-seat]').dataset.wtSeat}`);
       }
     }
     const buttons = [...document.querySelectorAll('.wt-bloedeln-dock button, [data-watten-action=show_ready], '

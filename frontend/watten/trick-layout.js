@@ -4,7 +4,7 @@ const intersects = (a, b) => a.left < b.right && a.right > b.left && a.top < b.b
 const usable = rect => rect && rect.width > 0 && rect.height > 0;
 
 /** Fit the complete public clover between the two inward-facing hands. */
-export function fitLandscapeTrick({ top, bottom, desiredWidth, minimumWidth = 48 }) {
+export function fitLandscapeTrick({ top, bottom, desiredWidth, minimumWidth = 52 }) {
   if (![top, bottom, desiredWidth, minimumWidth].every(Number.isFinite) || bottom <= top || desiredWidth < minimumWidth) return null;
   for (const padding of [7, 1]) for (const spread of [.52, .44, .36, .24]) {
     const compact = spread === .24;
@@ -240,7 +240,8 @@ export function createTrickLayout(trick, { win = window } = {}) {
         const top = topHand.length ? Math.max(...topHand.map(rect => rect.bottom)) : area.top + 40;
         const bottom = ownHand.length ? Math.min(...ownHand.map(rect => rect.top)) : area.bottom - 40;
         const desiredWidth = Number.parseFloat(win.getComputedStyle(trick.firstElementChild).width);
-        landscape = { key, fit: fitLandscapeTrick({ top, bottom, desiredWidth }) };
+        landscape = { key, fit: fitLandscapeTrick({ top, bottom, desiredWidth,
+          minimumWidth: win.innerHeight <= 360 ? 48 : 52 }) };
       }
       if (landscape.fit) {
         const fit = landscape.fit;

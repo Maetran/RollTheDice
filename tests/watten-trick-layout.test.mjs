@@ -24,17 +24,45 @@ for (const height of [320, 330, 360, 361, 393, 410, 440]) {
     const bottom = height - 34 - ownWidth * (570 / 360 + .071);
     const desiredWidth = height <= 330 ? Math.max(48, Math.min(52, height * .4 - 80))
       : Math.max(52, Math.min(64, height * .1644 - 4.608));
-    const fit = fitLandscapeTrick({ top, bottom, desiredWidth });
+    const minimumWidth = height <= 360 ? 48 : 52;
+    const fit = fitLandscapeTrick({ top, bottom, desiredWidth, minimumWidth });
     assert.ok(fit, `a complete pile fits the ${bottom - top}px wood gap`);
     const padding = fit.insetWinner ? 1 : 7;
     assert.ok(fit.top >= top + padding && fit.bottom <= bottom - padding);
     assert.equal(fit.y, (top + bottom) / 2);
-    assert.ok(fit.cardWidth >= 48 && fit.cardWidth <= desiredWidth);
+    assert.ok(fit.cardWidth >= minimumWidth && fit.cardWidth <= desiredWidth);
     assert.ok(fit.spread >= .24 && fit.spread <= .52);
     if (height === 440) assert.equal(fit.cardWidth, 64);
     if (height === 320) assert.equal(fit.cardWidth, 48);
   });
 }
+
+test("the recorded 568px wood gap preserves the existing 48px clover without touching the physical hand", () => {
+  const top = 89.90129852294922, bottom = 186.87196350097656;
+  const fit = fitLandscapeTrick({ top, bottom, desiredWidth: 48, minimumWidth: 48 });
+  assert.ok(fit);
+  assert.equal(fit.cardWidth, 48);
+  assert.equal(fit.spread, .24);
+  assert.equal(fit.compact, true);
+  assert.ok(fit.top >= top + 1 && fit.bottom <= bottom - 1);
+  const cardHeight = fit.cardWidth * 570 / 360;
+  const faces = [rect(-24, fit.y - cardHeight / 2 - cardHeight * fit.spread / 2, 48, cardHeight),
+    rect(-24, fit.y - cardHeight / 2 + cardHeight * fit.spread / 2, 48, cardHeight),
+    rect(-45.6, fit.y - cardHeight / 2, 48, cardHeight), rect(-2.4, fit.y - cardHeight / 2, 48, cardHeight)];
+  for (const face of faces) {
+    assert.ok(face.top >= top + 1 && face.bottom <= bottom - 1);
+    assert.ok(faces.some(other => other !== face && overlap(face, other)), "source petals remain one connected clover");
+  }
+  assert.ok(faces[1].top - faces[0].top >= 18, "top and bottom provenance retains its established visible offset");
+  assert.equal(fitLandscapeTrick({ top, bottom: top + 90, desiredWidth: 48, minimumWidth: 48 }), null,
+    "a smaller gap never shrinks the public faces below their existing 48px contract");
+});
+
+test("larger landscape tables preserve their 52px minimum instead of accepting a premature 49px fit", () => {
+  const fit = fitLandscapeTrick({ top: 89.90129852294922, bottom: 219.44300842285156, desiredWidth: 60 });
+  assert.ok(fit);
+  assert.equal(fit.cardWidth, 52);
+});
 
 test("landscape geometry rejects an unusable gap instead of painting beyond it", () => {
   for (const options of [{ top: 100, bottom: 100, desiredWidth: 64 }, { top: 100, bottom: 150, desiredWidth: 64 },

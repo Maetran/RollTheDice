@@ -151,10 +151,9 @@ html[data-game="watten"][data-watten-active="true"] .wt-bloedeln-dock :is(.wt-pr
   }
 }
 @media (orientation: landscape) and (max-height: 700px) {
-  /* The rail layout keeps the own identity in its 24px footer. A rotated
-     five-card fan extends below its nominal lower edge, so leave a complete
-     footer and a visible gap before that painted corner can reach the name. */
-  html[data-game="watten"][data-watten-active="true"] .wt-table .wt-hand-area { bottom: 48px; }
+  /* The outer fan corners pass beside the footer name. Keep the ordinary
+     hand low enough to reserve wood for the complete public trick. */
+  html[data-game="watten"][data-watten-active="true"] .wt-table .wt-hand-area { bottom: 34px; }
   html[data-game="watten"][data-watten-active="true"] .wt-table .wt-reference {
     width: 44px; font-size: .65rem; line-height: 1.2;
   }
@@ -165,6 +164,7 @@ html[data-game="watten"][data-watten-active="true"] .wt-bloedeln-dock :is(.wt-pr
    minimum and ordinary card play retains the established hand size. */
 @media (orientation: landscape) and (max-height: 360px) {
   html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"]:is([data-phase="show_ready"], [data-phase="inspection"]) { --wt-hand-w: 48px; }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"]:is([data-phase="show_ready"], [data-phase="inspection"]) .wt-hand-area { bottom: 48px; }
   /* At 568x320 the former inner-side avatars sit directly on the measured
      caller line. Stack them above their fans, followed by the existing names. */
   html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"]:is([data-phase="show_ready"], [data-phase="inspection"]) :is(.wt-seat--left, .wt-seat--right) .wt-avatar { top: -72px; }
