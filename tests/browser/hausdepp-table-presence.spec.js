@@ -334,7 +334,7 @@ for (const language of ['de', 'en']) {
             reachable: element.contains(document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)),
             border: parseFloat(css.borderTopWidth) };
         }));
-        expect(controls.map(control => control.href)).toEqual(['/hausdepp', '/hausdepp/rangliste', '/hausdepp/regeln', '/hausdepp/konto/einstellungen']);
+        expect(controls.map(control => control.href)).toEqual(['/hausdepp', '/hausdepp/rangliste', '/hausdepp/regeln', '/hausdepp/konto']);
         for (const control of controls) {
           expect(control.tag).toBe('A');
           expect(control.height, `${language} ${name} ${path} ${control.href}`).toBeGreaterThanOrEqual(44);
@@ -344,23 +344,21 @@ for (const language of ['de', 'en']) {
           expect(control.contained, `${control.href}: opaque header backs the whole touch surface`).toBe(true);
           expect(control.reachable, `${control.href}: touch surface stays reachable`).toBe(true);
         }
-        const activeDestination = path === "/hausdepp/konto" ? "/hausdepp/konto/einstellungen" : path;
-        await expect(page.locator(`.hd-nav a[href="${activeDestination}"]`)).toHaveAttribute('aria-current', 'page');
+        await expect(page.locator(`.hd-nav a[href="${path}"]`)).toHaveAttribute('aria-current', 'page');
         if (path === '/hausdepp/konto') {
-          const shortcuts = await page.locator('.hd-account-shortcuts a').evaluateAll(elements => elements.map(element => {
+          const accountNavigation = page.getByRole('navigation', { name: language === 'de' ? 'Kontobereiche' : 'Account sections', exact: true });
+          await expect(accountNavigation.getByRole('link')).toHaveText(language === 'de'
+            ? ['Statistik', 'Erfolge', 'Einstellungen'] : ['Statistics', 'Achievements', 'Settings']);
+          const destinations = await accountNavigation.getByRole('link').evaluateAll(elements => elements.map(element => {
             const rect = element.getBoundingClientRect();
             return { href: element.getAttribute('href'), top: Math.round(rect.top), width: rect.width, height: rect.height,
               textFits: element.scrollWidth <= element.clientWidth + 1 };
           }));
-          expect(shortcuts.map(link => link.href)).toEqual(['#fortschritt', '#erfolge', '#runden', '/hausdepp/rangliste']);
-          const rows = Object.values(shortcuts.reduce((result, link) => {
-            result[link.top] = (result[link.top] || 0) + 1;
-            return result;
-          }, {}));
-          expect(rows, `${language} ${name}: account shortcuts form balanced rows`).toEqual(width <= 900 ? [2, 2] : [4]);
-          expect(Math.max(...shortcuts.map(link => link.width)) - Math.min(...shortcuts.map(link => link.width))).toBeLessThanOrEqual(1);
-          expect(Math.max(...shortcuts.map(link => link.height)) - Math.min(...shortcuts.map(link => link.height))).toBeLessThanOrEqual(1);
-          for (const link of shortcuts) {
+          expect(destinations.map(link => link.href)).toEqual(['/hausdepp/konto#statistics', '/hausdepp/konto#erfolge', '/hausdepp/konto/einstellungen']);
+          expect(new Set(destinations.map(link => link.top)).size, `${language} ${name}: all three account sections share one row`).toBe(1);
+          expect(Math.max(...destinations.map(link => link.width)) - Math.min(...destinations.map(link => link.width))).toBeLessThanOrEqual(1);
+          expect(Math.max(...destinations.map(link => link.height)) - Math.min(...destinations.map(link => link.height))).toBeLessThanOrEqual(1);
+          for (const link of destinations) {
             expect(link.height).toBeGreaterThanOrEqual(44);
             expect(link.textFits, `${link.href} fits its touch surface`).toBe(true);
           }

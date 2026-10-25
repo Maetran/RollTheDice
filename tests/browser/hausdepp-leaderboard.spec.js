@@ -47,9 +47,16 @@ for (const language of ['de', 'en']) {
     expect(response.status()).toBe(200);
     expect(response.headers()['cache-control']).toBe('no-store');
     expect((await response.json()).ranking).toBe('finished_rounds');
-    await page.locator('a[href="/hausdepp/konto"]').last().click();
-    await page.locator('.hd-account-shortcuts a[href="/hausdepp/rangliste"]').click();
+    await page.locator('.hd-leaderboard-links a[href="/hausdepp/konto"]').click();
+    await expect(page).toHaveURL(/\/hausdepp\/konto$/);
+    const accountNavigation = page.getByRole('navigation', { name: language === 'de' ? 'Kontobereiche' : 'Account sections', exact: true });
+    await expect(accountNavigation.getByRole('link')).toHaveText(language === 'de'
+      ? ['Statistik', 'Erfolge', 'Einstellungen'] : ['Statistics', 'Achievements', 'Settings']);
+    const ranking = page.locator('#hausdeppHeader').getByRole('link', { name: language === 'de' ? 'Spieler & Ranking' : 'Players & Ranking', exact: true });
+    await expect(ranking).toHaveAttribute('href', '/hausdepp/rangliste');
+    await ranking.click();
     await expect(page).toHaveURL(/\/hausdepp\/rangliste$/);
+    await expect(page.locator('main[data-page="leaderboard"]')).toBeVisible();
   });
 
   test(`${language}: labelled leaderboard preserves shared places, escaped names and table-size filters`, async ({ page }) => {
