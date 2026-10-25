@@ -284,3 +284,96 @@ test('passkey confirmation carries the real action target and exactly one proof 
   } });
   expect(await page.evaluate(() => window.mergePasskeyChallenge)).toEqual(Array(32).fill(9));
 });
+
+test('real owner HTTP flow retires only the source credentials and delivers the saved merge notice', async ({ browser }, testInfo) => {
+  const contexts = [];
+  try {
+    for (let index = 0; index < 4; index += 1) {
+      contexts.push(await browser.newContext({ baseURL: testInfo.project.use.baseURL, serviceWorkers: 'block' }));
+    }
+    const [ownerPage, sourcePage, targetPage, loginCheck] = await Promise.all(contexts.map(context => context.newPage()));
+    const ownerPassword = 'temporary-password-123';
+    const ownerLogin = await ownerPage.request.post('/api/auth/login', {
+      data: { username: 'Admin', password: ownerPassword },
+    });
+    expect(ownerLogin.status()).toBe(200);
+    const ownerIdentity = (await ownerLogin.json()).user;
+    expect(ownerIdentity).toMatchObject({ is_admin: true, is_owner: true, is_founder: true });
+    const people = [];
+    for (const [kind, accountPage] of [['Source', sourcePage], ['Target', targetPage]]) {
+      const username = `MergeUI_${kind}`;
+      const temporary = `merge-ui-${kind.toLowerCase()}-temporary-password`;
+      const password = `merge-ui-${kind.toLowerCase()}-final-password`;
+      const created = await ownerPage.request.post('/api/admin/users', {
+        headers: { 'X-CSRF-Token': ownerIdentity.csrf_token },
+        data: { username, temporary_password: temporary, role: 'user' },
+      });
+      expect(created.status()).toBe(201);
+      const account = (await created.json()).user;
+      const firstLogin = await accountPage.request.post('/api/auth/login', { data: { username, password: temporary } });
+      expect(firstLogin.status()).toBe(200);
+      const first = (await firstLogin.json()).user;
+      expect((await accountPage.request.post('/api/auth/change-password', {
+        headers: { 'X-CSRF-Token': first.csrf_token }, data: { current_password: temporary, new_password: password },
+      })).status()).toBe(200);
+      const signedIn = await accountPage.request.post('/api/auth/login', { data: { username, password } });
+      expect(signedIn.status()).toBe(200);
+      const identity = (await signedIn.json()).user;
+      expect((await accountPage.request.put('/api/auth/preferences/language', {
+        headers: { 'X-CSRF-Token': identity.csrf_token },
+        data: { preferred_language: kind === 'Source' ? 'en' : 'de' },
+      })).status()).toBe(200);
+      people.push({ ...account, password, identity });
+    }
+    const [source, target] = people;
+    await ownerPage.setViewportSize({ width: 320, height: 844 });
+    await ownerPage.goto('/admin');
+    await ownerPage.locator('#accountMergeTile').click();
+    await pick(ownerPage, 'Source', source); await pick(ownerPage, 'Target', target);
+    const previewResponse = ownerPage.waitForResponse(response => new URL(response.url()).pathname === '/api/admin/account-merges/preview');
+    await ownerPage.locator('.merge-preview-button').click();
+    const previewReply = await previewResponse;
+    expect(previewReply.status()).toBe(200);
+    expect(previewReply.request().headers()['x-account-expected-id']).toBe(String(ownerIdentity.id));
+    const projected = await previewReply.json();
+    expect(projected.source.id).toBe(source.id); expect(projected.target.id).toBe(target.id);
+    expect(Object.keys(projected.games).sort()).toEqual(['hausdepp', 'watten', 'zdwa', 'zilch']);
+    await expect(ownerPage.locator('.merge-game')).toHaveCount(4);
+    await ownerPage.locator('.merge-confirmation input').check();
+    await ownerPage.locator('#accountMergePassword').fill(ownerPassword);
+    const appliedResponse = ownerPage.waitForResponse(response => new URL(response.url()).pathname === '/api/admin/account-merges/apply');
+    await ownerPage.locator('.merge-confirm-form button[type=submit]').click();
+    const appliedReply = await appliedResponse;
+    expect(appliedReply.status()).toBe(200);
+    const operation = await appliedReply.json();
+    expect(operation.target_user_id).toBe(target.id); expect(operation.replayed).toBe(false);
+    await expect(ownerPage.locator('.merge-success')).toBeVisible();
+    await expect(ownerPage.locator('#accountMergePassword')).toHaveValue('');
+    await ownerPage.screenshot({ path: testInfo.outputPath('real-owner-merge-success-mobile.png'), fullPage: true });
+
+    const oldSession = await (await sourcePage.request.get('/api/auth/me')).json();
+    expect(oldSession.authenticated).toBe(false); expect(oldSession.user).toBeNull();
+    expect((await sourcePage.request.post('/api/auth/login', {
+      data: { username: source.username, password: source.password },
+    })).status()).toBe(401);
+    const surviving = (await (await targetPage.request.get('/api/auth/me')).json()).user;
+    expect(surviving).toMatchObject({ id: target.id, username: target.username,
+      csrf_token: target.identity.csrf_token, preferences: { preferred_language: 'de' } });
+    expect((await loginCheck.request.post('/api/auth/login', {
+      data: { username: target.username, password: target.password },
+    })).status()).toBe(200);
+    const pending = await targetPage.request.get('/api/account/merges/pending', {
+      headers: { 'X-Account-Expected-Id': String(target.id) },
+    });
+    expect(pending.status()).toBe(200);
+    expect((await pending.json()).operations.map(value => value.operation_id)).toEqual([operation.operation_id]);
+    await targetPage.setViewportSize({ width: 320, height: 844 });
+    await targetPage.goto('/konto#settings');
+    const notice = targetPage.locator(`[data-account-merge-operation="${operation.operation_id}"]`);
+    await expect(notice).toBeVisible();
+    await expect(notice.locator('.account-merge-notice__games dt')).toHaveText(['ZDWA', 'Zilch', 'Hausdepp', 'Watten']);
+    await targetPage.screenshot({ path: testInfo.outputPath('real-target-merge-notice-mobile.png'), fullPage: true });
+  } finally {
+    await Promise.all(contexts.map(context => context.close()));
+  }
+});
