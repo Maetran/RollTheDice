@@ -84,7 +84,7 @@ for (const change of ["match", "deal", "viewport", "prefix"]) {
   });
 }
 
-test("a portrait bid moves its closed review off a complete fan even before trick faces render", () => {
+for (const trickPresent of [false, true]) test(`a portrait bid keeps its closed review clear ${trickPresent ? "when the public trick cannot fit" : "before trick faces render"}`, () => {
   const properties = new Map();
   const history = { hidden: false, dataset: {}, matches: () => false, addEventListener() {}, removeEventListener() {},
     style: { setProperty(key, value) { properties.set(key, value); }, removeProperty(key) { properties.delete(key); } },
@@ -95,6 +95,7 @@ test("a portrait bid moves its closed review off a complete fan even before tric
     } };
   const protectedBoxes = [rect(280, 340, 100, 100), rect(120, 466, 258, 136),
     rect(120, 612, 258, 44), rect(8, 690, 374, 142), rect(110, 330, 160, 130)];
+  if (trickPresent) protectedBoxes.push(rect(12, 220, 366, 616));
   const protectedNodes = protectedBoxes.map(bounds => ({ hidden: false, matches: () => false, getBoundingClientRect: () => bounds }));
   const table = { dataset: { phase: "bid_response" }, querySelector(selector) {
     if (selector === "[data-wt-history]" || selector === "[data-wt-history]:not([open])") return history;
@@ -103,9 +104,10 @@ test("a portrait bid moves its closed review off a complete fan even before tric
   }, querySelectorAll: selector => selector.startsWith(".wt-seat-badge") ? protectedNodes : [] };
   const felt = { closest: () => table, getBoundingClientRect: () => rect(0, 104, 390, 740) };
   const centre = { parentElement: felt, querySelector: () => null, dataset: {}, style: { removeProperty() {} } };
-  const trick = { parentElement: centre, children: [] };
+  const card = { dataset: { key: "leaves-8", position: "top" }, style: { removeProperty() {} } };
+  const trick = { parentElement: centre, children: trickPresent ? [card] : [], firstElementChild: card };
   const win = { innerWidth: 390, innerHeight: 844, matchMedia: () => ({ matches: true }),
-    getComputedStyle: () => ({ display: "block", visibility: "visible", opacity: "1" }),
+    getComputedStyle: () => ({ width: "76px", display: "block", visibility: "visible", opacity: "1" }),
     addEventListener() {}, removeEventListener() {}, requestAnimationFrame() {}, cancelAnimationFrame() {} };
   const layout = createTrickLayout(trick, { win });
   assert.equal(overlaps(history.getBoundingClientRect(), protectedBoxes[0]), true, "the old dock tab covers the opposing fan");
@@ -118,6 +120,8 @@ test("a portrait bid moves its closed review off a complete fan even before tric
   for (const obstacle of protectedBoxes) assert.equal(overlaps(fitted, obstacle), false,
     "the review clears every complete fan, decision, stake, own hand and existing trick");
   assert.ok(fitted.bottom <= protectedBoxes[1].top, "the review remains above the live decision");
+  if (trickPresent) assert.equal(centre.dataset.wtPortraitTrickFallback, "space",
+    "the independent history slot survives the public trick's fresh collision failure");
   layout.destroy();
   assert.equal(history.dataset.wtPortraitHistory, undefined);
   assert.equal(properties.size, 0);

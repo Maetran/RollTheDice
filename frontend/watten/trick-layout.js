@@ -270,14 +270,25 @@ export function createTrickLayout(trick, { win = window } = {}) {
       history.style.setProperty(`--wt-portrait-history-${key}`, `${value}px`);
     }
   }
+  function positionOverlays() {
+    positionReference();
+    positionCalls();
+    positionClosedHistory();
+  }
+  function fallback(reason) {
+    portrait = null;
+    clear();
+    // A tight bid may leave no readable public clover. Its fallback must not
+    // discard independently valid history, call and reference placements.
+    positionOverlays();
+    centre.dataset.wtPortraitTrickFallback = reason;
+  }
   function layout() {
     queued = null;
     if (destroyed) return;
     clear();
-    positionReference();
     // Calls precede every trick card, so fit them before the empty-trick return.
-    positionCalls();
-    positionClosedHistory();
+    positionOverlays();
     if (trick.hidden || !trick.children.length) { landscape = null; portrait = null; return; }
     if (win.innerWidth >= win.innerHeight && win.innerHeight <= 700) {
       portrait = null;
@@ -351,12 +362,12 @@ export function createTrickLayout(trick, { win = window } = {}) {
     const positions = [...trick.children].map(card => card.dataset.position);
     const resolve = occupied => fitPortraitTrickView({ bounds, obstacles: occupied, count, positions, labelHeight, minimumWidth, history: moveHistory, preferred });
     let { fit, labelFit, historyFit } = resolve(obstacles);
-    if (!fit) { portrait = null; clear(); centre.dataset.wtPortraitTrickFallback = "space"; return; }
+    if (!fit) { fallback("space"); return; }
     const promptFit = neutralPrompt ? fitPortraitPrompt(bounds, [...obstacles, ...(fit.painted || [fit]), labelFit, historyFit].filter(Boolean)) : null;
     if (neutralPrompt && !promptFit) {
       const promptBox = box(neutralPrompt);
       ({ fit, labelFit, historyFit } = resolve(promptBox ? [...obstacles, promptBox] : obstacles));
-      if (!fit) { portrait = null; clear(); centre.dataset.wtPortraitTrickFallback = "prompt"; return; }
+      if (!fit) { fallback("prompt"); return; }
     }
     portrait = { key: portraitKey, prefix, fit: { cardWidth: fit.cardWidth, spread: fit.spread } };
     if (historyFit) for (const [key, value] of [["x", historyFit.left], ["y", historyFit.top], ["width", historyFit.width]]) history.style.setProperty(`--wt-portrait-history-${key}`, `${value}px`);
