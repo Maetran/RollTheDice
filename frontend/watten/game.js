@@ -28,6 +28,7 @@ import { initializeAppMode } from "../multigame/app-mode.js";
 import { initializeSuiteHeader } from "../shell/header.js";
 import { createGameTour } from "../shared/game-tours.js";
 import { createCompactHeader } from "./compact-header.js";
+import { initializeReleaseNotes } from "../shared/release-notes.js";
 
 // Public lobby launches own the install flow; active tables only register.
 const publicBetaDocument = document.documentElement.dataset.wattenPublicBeta === "true";
@@ -1346,5 +1347,6 @@ if (page === "rules") {
   initializeGameViewport();
   void mountTable();
 } else {
+  initializeReleaseNotes({ context: "watten" });
   void mountLobby();
 }

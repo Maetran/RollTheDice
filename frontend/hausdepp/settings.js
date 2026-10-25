@@ -35,7 +35,7 @@ export function renderAccountSettings(root, auth, { onUserChanged } = {}) {
       item('Sprache', 'Deutsch oder Englisch, auf allen Geräten.', `<p>${copy('Diese Einstellung gilt für alle unsere Spiele auf allen Geräten.')}</p><form id="hausdeppLanguageForm" class="form-stack"><label>${copy('Sprache')}<select name="language"><option value="de">Deutsch</option><option value="en">English</option></select></label><button class="primary" type="submit">${copy('Sprache speichern')}</button><p data-message role="status"></p></form>`),
     ])}
     ${group('spiel', 'Spiel', [
-      item('Hilfe & Neuigkeiten', 'Einsteigertouren ansehen oder neu starten.', '<div data-game-tour-settings></div>', 'id="hilfe"'),
+      item('Hilfe & Neuigkeiten', 'Einsteigertouren ansehen oder neu starten.', `<div data-game-tour-settings></div><h3>${copy('Neuigkeiten & Versionen')}</h3><p>${copy('Die letzten zehn Releases kannst du jederzeit im Konto nachlesen.')}</p><div data-release-history></div>`, 'id="hilfe"'),
     ])}
     ${group('mitspieler', 'Mitspieler & Chat', [
       item(voicePreferenceText('title'), voicePreferenceText('hint'), '<div data-voice-preference-settings></div>', 'id="sprachchat"'),

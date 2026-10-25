@@ -40,3 +40,14 @@
 .release-notes-support a { display: inline-block; margin: .3rem 0; color: var(--accent); }
 html[data-game="zilch"] .release-notes-dialog { background: var(--zilch-paper); color: var(--zilch-ink); }
 html[data-game="zilch"] .release-notes-dialog :is(.release-notes-date, .release-notes-muted) { color: var(--zilch-muted); }
+html[data-game="hausdepp"] .release-notes-dialog,
+html[data-game="watten"] .release-notes-dialog {
+  --surface: var(--hd-paper, var(--wt-paper, #fbf0dc));
+  --text: var(--hd-ink, var(--wt-ink, #38251b));
+  --border: var(--hd-edge, var(--wt-paper-edge, #bd9c74));
+  --muted: var(--hd-muted, var(--wt-muted, #70533f));
+  --accent: var(--hd-green, var(--wt-green, #823a2b));
+  --danger: var(--hd-red, var(--wt-red, #973f29));
+}
+html[data-game="hausdepp"] .release-notes-actions button,
+html[data-game="watten"] .release-notes-actions button { border: 1px solid var(--accent); border-radius: 5px; padding: .55rem 1rem; background: var(--accent); color: var(--surface); font: inherit; cursor: pointer; }

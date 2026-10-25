@@ -13,6 +13,7 @@ import { initializeAppMode } from '../multigame/app-mode.js';
 import { mountWattenPushSettings, pushSettingsMarkup } from './push-settings.js';
 import { mountTourSettings } from '../shared/game-tours.js';
 import { mountVoicePreferences, voicePreferenceText } from '../shared/voice-preferences.js';
+import { initializeReleaseNotes } from '../shared/release-notes.js';
 
 initializeWattenPwa();
 initializeSuiteHeader();
@@ -142,6 +143,7 @@ function renderSettings(auth) {
     <details id="sprachchat"><summary>${esc(voicePreferenceText('title'))}</summary><div data-voice-preference-settings></div></details>
     ${publicPush ? pushSettingsMarkup(copy) : ""}
     <details><summary>${copy('Einsteigertouren')}</summary><div data-game-tour-settings></div></details>
+    <details><summary>${copy('Neuigkeiten & Versionen')}</summary><p>${copy('Die letzten zehn Releases kannst du jederzeit im Konto nachlesen.')}</p><div data-release-history></div></details>
     <div class="actions"><a class="button-link ghost" href="/watten">${copy('Zurück')}</a><a class="button-link ghost" href="/watten/konto/fortschritt">${copy('Erfolge & Titel')}</a><button data-logout type="button">${copy('Abmelden')}</button></div><p data-account-message role="status"></p>`;
   mountUsernameSettings(root.querySelector('[data-username-settings]'), { user, onChanged: changed => {
     const name = root.querySelector('[data-account-name]');
@@ -196,6 +198,7 @@ function renderSettings(auth) {
     try { await logout(); }
     catch (error) { message(error.message, 'error'); }
   });
+  initializeReleaseNotes({ context: 'watten' });
 }
 
 if (page === 'home') {

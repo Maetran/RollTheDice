@@ -14,6 +14,7 @@ import { zdwaAppEntryUrl, hausdeppSignInUrl } from "../multigame/routes.js";
 import { initializeAppMode } from "../multigame/app-mode.js";
 import { initializeSuiteHeader } from "../shell/header.js";
 import { initializePushOptInPrompt } from "../shared/push-optin-prompt.js";
+import { initializeReleaseNotes } from "../shared/release-notes.js";
 import { mountLobbyChat } from "../shared/lobby-chat.js";
 import { initChat, addChatMessage } from "../room/chat.js";
 import { HAUSDEPP_MESSAGES } from "../i18n/catalog.js";
@@ -1656,6 +1657,7 @@ async function start() {
     if (page === "lobby" || page === "table") invitations = mountInvitations(root, t);
     document.body.classList.remove("hd-loading");
     if (page === "lobby") showVoiceTableLeft({ userId: auth.user?.id, gameType: "hausdepp", t });
+    if (["lobby", "account", "settings"].includes(page)) initializeReleaseNotes({ context: "hausdepp" });
     if (page === "lobby") initializePushOptInPrompt({ context: "hausdepp" });
     if (auth.authenticated && !spectating) {
       progressNotices = mountProgressNotices({
