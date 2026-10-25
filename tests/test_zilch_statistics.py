@@ -50,6 +50,7 @@ from app.zilch_state import (
 from app.zilch_statistics import (
     ZILCH_LEADERBOARD_MAX_LIMIT,
     ZilchStatisticsInputError,
+    _iter_player_results_in_session,
     _load_player_results,
     get_zilch_leaderboard,
     get_zilch_personal_statistics,
@@ -61,6 +62,34 @@ from app.zilch_statistics import (
 
 class ZilchStatisticsTestCase(TestCase):
     """Statistics may consume only valid, durable, typed Zilch records."""
+
+    def test_caller_session_iterator_keeps_paging_validation_and_rollback_on_early_close(self) -> None:
+        user = self._user("AtomicStatistics")
+        other = self._user("AtomicStatisticsOther")
+        game_ids = [self._persist_competitive(human_one=user, human_two=other) for _ in range(3)]
+        before = _load_player_results(user_id=user.id)
+        with self.assertRaisesRegex(RuntimeError, "caller rollback"):
+            with session_scope() as db:
+                self.assertEqual(list(_iter_player_results_in_session(db, user_id=user.id)), before)
+                db.get(User, user.id).username = "UncommittedStatistics"
+                broken = db.scalar(select(CompletedGame).where(CompletedGame.game_id == game_ids[1]))
+                broken.snapshot_json = "{}"
+                with (
+                    patch("app.zilch_statistics.ZILCH_STATISTICS_SOURCE_PAGE_SIZE", 1),
+                    patch("app.zilch_statistics.session_scope", side_effect=AssertionError("independent session")),
+                ):
+                    records = _iter_player_results_in_session(db, user_id=user.id)
+                    try:
+                        first, last = next(records), next(records)
+                    finally:
+                        records.close()
+                self.assertEqual([first.game_id, last.game_id], [game_ids[0], game_ids[2]])
+                self.assertEqual(first.display_name, "UncommittedStatistics")
+                self.assertEqual(last.display_name, "UncommittedStatistics")
+                self.assertEqual(db.get(User, user.id).username, "UncommittedStatistics")
+                self.assertTrue(db.in_transaction())
+                raise RuntimeError("caller rollback")
+        self.assertEqual(_load_player_results(user_id=user.id), before)
 
     def setUp(self) -> None:
         self.temporary_directory = tempfile.TemporaryDirectory()

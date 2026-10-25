@@ -230,54 +230,59 @@ def _human_player_results(rows: Iterable[CompletedGame]) -> list[_PlayerResult]:
     return output
 
 
+def _iter_player_results_in_session(db, *, user_id: int | None = None) -> Iterator[_PlayerResult]:
+    """Stream validated records using the caller's session; never close or commit it."""
+    last_finished_at: datetime | None = None
+    last_row_id = 0
+    while True:
+        page_cursor = ()
+        if last_finished_at is not None:
+            page_cursor = (
+                or_(
+                    CompletedGame.finished_at > last_finished_at,
+                    and_(
+                        CompletedGame.finished_at == last_finished_at,
+                        CompletedGame.id > last_row_id,
+                    ),
+                ),
+            )
+        statement = (
+            select(CompletedGame)
+            .options(selectinload(CompletedGame.participants).selectinload(GameParticipant.user))
+            .where(
+                CompletedGame.game_type == ZILCH_GAME_TYPE,
+                *page_cursor,
+            )
+            .order_by(CompletedGame.finished_at.asc(), CompletedGame.id.asc())
+            .limit(ZILCH_STATISTICS_SOURCE_PAGE_SIZE)
+        )
+        if user_id is not None:
+            # EXISTS keeps exactly one durable game row before LIMIT even
+            # if a historic game happens to contain the same account in
+            # two human seats.  A join would make ``unique()`` shrink a
+            # full page and could skip later results at the cursor.
+            statement = statement.where(
+                CompletedGame.participants.any(GameParticipant.user_id == user_id)
+            )
+        rows = list(db.scalars(statement).all())
+        if not rows:
+            break
+        # Relationships are eagerly loaded above; copying makes accidental
+        # later session/lazy-load coupling impossible for these projections.
+        for record in _human_player_results(rows):
+            # SQL selects the game, not the caller's individual seat.
+            if user_id is None or record.user_id == user_id:
+                yield record
+        last_finished_at = rows[-1].finished_at
+        last_row_id = int(rows[-1].id)
+
+
 def _iter_player_results(*, user_id: int | None = None) -> Iterator[_PlayerResult]:
     """Stream validated human records from bounded, SQL-filtered pages."""
     if not database_schema_ready():
         return
-    last_finished_at: datetime | None = None
-    last_row_id = 0
     with session_scope() as db:
-        while True:
-            page_cursor = ()
-            if last_finished_at is not None:
-                page_cursor = (
-                    or_(
-                        CompletedGame.finished_at > last_finished_at,
-                        and_(
-                            CompletedGame.finished_at == last_finished_at,
-                            CompletedGame.id > last_row_id,
-                        ),
-                    ),
-                )
-            statement = (
-                select(CompletedGame)
-                .options(selectinload(CompletedGame.participants).selectinload(GameParticipant.user))
-                .where(
-                    CompletedGame.game_type == ZILCH_GAME_TYPE,
-                    *page_cursor,
-                )
-                .order_by(CompletedGame.finished_at.asc(), CompletedGame.id.asc())
-                .limit(ZILCH_STATISTICS_SOURCE_PAGE_SIZE)
-            )
-            if user_id is not None:
-                # EXISTS keeps exactly one durable game row before LIMIT even
-                # if a historic game happens to contain the same account in
-                # two human seats.  A join would make ``unique()`` shrink a
-                # full page and could skip later results at the cursor.
-                statement = statement.where(
-                    CompletedGame.participants.any(GameParticipant.user_id == user_id)
-                )
-            rows = list(db.scalars(statement).all())
-            if not rows:
-                break
-            # Relationships are eagerly loaded above; copying makes accidental
-            # later session/lazy-load coupling impossible for these projections.
-            for record in _human_player_results(rows):
-                # SQL selects the game, not the caller's individual seat.
-                if user_id is None or record.user_id == user_id:
-                    yield record
-            last_finished_at = rows[-1].finished_at
-            last_row_id = int(rows[-1].id)
+        yield from _iter_player_results_in_session(db, user_id=user_id)
 
 
 def _load_player_results(*, user_id: int | None = None) -> list[_PlayerResult]:

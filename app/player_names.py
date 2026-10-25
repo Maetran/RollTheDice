@@ -8,31 +8,38 @@ from .database import database_schema_ready, session_scope
 from .models import CompletedGame, GameParticipant, User
 
 
+def completed_player_identities_in_session(db, game_ids: set[str], *, game_type: str) -> dict[str, list[dict]]:
+    """Resolve original completed seats within the caller's transaction."""
+    if not game_ids:
+        return {}
+    rows = db.execute(
+        select(CompletedGame.game_id, CompletedGame.imported_from_legacy, GameParticipant, User)
+        .join(GameParticipant, GameParticipant.game_id == CompletedGame.id)
+        .outerjoin(User, User.id == GameParticipant.user_id)
+        .where(CompletedGame.game_type == game_type, CompletedGame.game_id.in_(game_ids))
+        .order_by(GameParticipant.position)
+    ).all()
+    result: dict[str, list[dict]] = {}
+    for game_id, imported, seat, user in rows:
+        result.setdefault(game_id, []).append({
+            "player_key": seat.player_key,
+            "position": seat.position,
+            "team": seat.team,
+            "points": seat.points,
+            "display_name": seat.display_name,
+            "user_id": user.id if user else None,
+            "username": user.username if user else None,
+            "is_active": bool(user and user.is_active),
+            "imported_from_legacy": imported,
+        })
+    return result
+
+
 def completed_player_identities(game_ids: set[str], *, game_type: str) -> dict[str, list[dict]]:
     if not game_ids or not database_schema_ready():
         return {}
     with session_scope() as db:
-        rows = db.execute(
-            select(CompletedGame.game_id, CompletedGame.imported_from_legacy, GameParticipant, User)
-            .join(GameParticipant, GameParticipant.game_id == CompletedGame.id)
-            .outerjoin(User, User.id == GameParticipant.user_id)
-            .where(CompletedGame.game_type == game_type, CompletedGame.game_id.in_(game_ids))
-            .order_by(GameParticipant.position)
-        ).all()
-        result: dict[str, list[dict]] = {}
-        for game_id, imported, seat, user in rows:
-            result.setdefault(game_id, []).append({
-                "player_key": seat.player_key,
-                "position": seat.position,
-                "team": seat.team,
-                "points": seat.points,
-                "display_name": seat.display_name,
-                "user_id": user.id if user else None,
-                "username": user.username if user else None,
-                "is_active": bool(user and user.is_active),
-                "imported_from_legacy": imported,
-            })
-        return result
+        return completed_player_identities_in_session(db, game_ids, game_type=game_type)
 
 
 def current_account_names(user_ids) -> dict[int, str]:

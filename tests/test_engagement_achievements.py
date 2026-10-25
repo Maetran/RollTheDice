@@ -15,6 +15,7 @@ from sqlalchemy import select
 
 from alembic import command
 from app import main
+from app.achievements import sync_engagement_achievements_for_users_in_session
 from app.api_auth import (
     LanguagePreferenceRequest,
     UserPreferencesRequest,
@@ -73,6 +74,27 @@ class EngagementAchievementTestCase(TestCase):
     @staticmethod
     def _keys(rows) -> set[str]:
         return {str(row.achievement_key) for row in rows}
+
+    def test_caller_session_engagement_sees_uncommitted_event_and_rolls_back_award(self) -> None:
+        user = create_user("AtomicEngagement", "a-secure-password-123", must_change_password=False)
+        now = datetime.now(timezone.utc)
+        with self.assertRaisesRegex(RuntimeError, "caller rollback"):
+            with session_scope() as db:
+                db.add(UserEngagementEvent(
+                    user_id=user.id, event_key="settings_saved", count=1,
+                    first_seen_at=now, last_seen_at=now,
+                ))
+                with patch("app.database.session_scope", side_effect=AssertionError("independent session")):
+                    sync_engagement_achievements_for_users_in_session(db, {user.id})
+                awards = self._keys(db.scalars(select(UserAchievement).where(UserAchievement.user_id == user.id)))
+                self.assertIn("settings_saved", awards)
+                self.assertNotIn("history_viewed", awards)
+                raise RuntimeError("caller rollback")
+        with session_scope() as db:
+            self.assertIsNone(db.scalar(select(UserEngagementEvent).where(UserEngagementEvent.user_id == user.id)))
+            self.assertNotIn("settings_saved", self._keys(db.scalars(
+                select(UserAchievement).where(UserAchievement.user_id == user.id),
+            )))
 
     def test_successful_settings_save_unlocks_both_collections(self) -> None:
         user = create_user("SettingsAward", "a-secure-password-123", must_change_password=False)

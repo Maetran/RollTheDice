@@ -2877,7 +2877,8 @@ def _result_moment_rank_payload(rank_key: object, points: object) -> dict[str, A
     }
 
 
-def zilch_result_moments_for_user_ids(
+def zilch_result_moments_for_user_ids_in_session(
+    db,
     game_id: object,
     participant_user_ids: Iterable[object],
 ) -> dict[str, Any]:
@@ -2902,64 +2903,59 @@ def zilch_result_moments_for_user_ids(
             continue
         if user_id > 0:
             user_ids.add(user_id)
-    if not user_ids or not database_schema_ready():
+    if not user_ids:
         return {"status": "unavailable", "by_user": {}}
-    try:
-        with session_scope() as db:
-            evaluation = db.scalar(
-                select(ZilchAchievementEvaluation).where(
-                    ZilchAchievementEvaluation.game_id == normalized_game_id
-                )
-            )
-            if evaluation is None:
-                return {"status": "unavailable", "by_user": {}}
-            if evaluation.status != "completed":
-                return {"status": "pending", "by_user": {}}
+    evaluation = db.scalar(
+        select(ZilchAchievementEvaluation).where(
+            ZilchAchievementEvaluation.game_id == normalized_game_id
+        )
+    )
+    if evaluation is None:
+        return {"status": "unavailable", "by_user": {}}
+    if evaluation.status != "completed":
+        return {"status": "pending", "by_user": {}}
 
-            # Pre-redesign unlock rows do not yet have a presentation link.
-            # Their direct evidence source remains a safe backwards-compatible
-            # fallback. Community awards are associated only when a recipient
-            # really sat at the trigger table.
-            community_recipient_ids = select(ZilchCommunityRecipient.id).join(
-                ZilchCommunityMilestone,
-                ZilchCommunityMilestone.id == ZilchCommunityRecipient.milestone_id,
-            ).where(ZilchCommunityMilestone.trigger_game_id == normalized_game_id)
-            award_rows = list(
-                db.scalars(
-                    select(ZilchAchievementUnlock)
-                    .where(
-                        ZilchAchievementUnlock.user_id.in_(user_ids),
-                        or_(
-                            ZilchAchievementUnlock.presentation_game_id == normalized_game_id,
-                            and_(
-                                ZilchAchievementUnlock.presentation_game_id.is_(None),
-                                ZilchAchievementUnlock.source_game_id == normalized_game_id,
-                            ),
-                            ZilchAchievementUnlock.source_community_recipient_id.in_(community_recipient_ids),
-                        ),
-                    )
-                    .order_by(
-                        ZilchAchievementUnlock.unlocked_at,
-                        ZilchAchievementUnlock.id,
-                    )
-                )
+    # Pre-redesign unlock rows do not yet have a presentation link.
+    # Their direct evidence source remains a safe backwards-compatible
+    # fallback. Community awards are associated only when a recipient
+    # really sat at the trigger table.
+    community_recipient_ids = select(ZilchCommunityRecipient.id).join(
+        ZilchCommunityMilestone,
+        ZilchCommunityMilestone.id == ZilchCommunityRecipient.milestone_id,
+    ).where(ZilchCommunityMilestone.trigger_game_id == normalized_game_id)
+    award_rows = list(
+        db.scalars(
+            select(ZilchAchievementUnlock)
+            .where(
+                ZilchAchievementUnlock.user_id.in_(user_ids),
+                or_(
+                    ZilchAchievementUnlock.presentation_game_id == normalized_game_id,
+                    and_(
+                        ZilchAchievementUnlock.presentation_game_id.is_(None),
+                        ZilchAchievementUnlock.source_game_id == normalized_game_id,
+                    ),
+                    ZilchAchievementUnlock.source_community_recipient_id.in_(community_recipient_ids),
+                ),
             )
-            rank_rows = list(
-                db.scalars(
-                    select(ZilchAchievementRankMoment)
-                    .where(
-                        ZilchAchievementRankMoment.game_id == normalized_game_id,
-                        ZilchAchievementRankMoment.user_id.in_(user_ids),
-                    )
-                    .order_by(
-                        ZilchAchievementRankMoment.recorded_at,
-                        ZilchAchievementRankMoment.id,
-                    )
-                )
+            .order_by(
+                ZilchAchievementUnlock.unlocked_at,
+                ZilchAchievementUnlock.id,
             )
-    except SQLAlchemyError:
-        logger.exception("Could not project Zilch result moments for %s", normalized_game_id)
-        return {"status": "unavailable", "by_user": {}}
+        )
+    )
+    rank_rows = list(
+        db.scalars(
+            select(ZilchAchievementRankMoment)
+            .where(
+                ZilchAchievementRankMoment.game_id == normalized_game_id,
+                ZilchAchievementRankMoment.user_id.in_(user_ids),
+            )
+            .order_by(
+                ZilchAchievementRankMoment.recorded_at,
+                ZilchAchievementRankMoment.id,
+            )
+        )
+    )
 
     by_user: dict[int, dict[str, list[dict[str, Any]]]] = {}
     for unlock in award_rows:
@@ -2981,6 +2977,21 @@ def zilch_result_moments_for_user_ids(
             }
         )
     return {"status": "ready", "by_user": by_user}
+
+
+def zilch_result_moments_for_user_ids(
+    game_id: object,
+    participant_user_ids: Iterable[object],
+) -> dict[str, Any]:
+    """Project a finished table's participant-safe moments in a managed session."""
+    if not database_schema_ready():
+        return {"status": "unavailable", "by_user": {}}
+    try:
+        with session_scope() as db:
+            return zilch_result_moments_for_user_ids_in_session(db, game_id, participant_user_ids)
+    except SQLAlchemyError:
+        logger.exception("Could not project Zilch result moments for %s", game_id)
+        return {"status": "unavailable", "by_user": {}}
 
 
 def _json_facts(facts: Mapping[str, Any]) -> str:

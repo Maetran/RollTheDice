@@ -1900,6 +1900,33 @@ def sync_user_achievements(
     }
 
 
+def sync_achievements_for_users_in_session(
+    db,
+    user_ids: set[int],
+    *,
+    source_completed_game_id: int | None = None,
+) -> dict[int, list[dict]]:
+    """Re-evaluate affected users within the caller's transaction; never commit."""
+    newly_unlocked: dict[int, list[dict]] = {}
+    for user_id in user_ids:
+        user = db.get(User, user_id)
+        if user:
+            existing_keys = {row.achievement_key for row in user.achievements}
+            payload = sync_user_achievements(
+                db,
+                user,
+                source_completed_game_id=source_completed_game_id,
+            )
+            unlocked_now = [
+                achievement
+                for achievement in payload["unlocked"]
+                if achievement["key"] not in existing_keys and achievement["key"] != "account_created"
+            ]
+            if unlocked_now:
+                newly_unlocked[user_id] = unlocked_now
+    return newly_unlocked
+
+
 def sync_achievements_for_users(
     user_ids: set[int],
     *,
@@ -1910,25 +1937,31 @@ def sync_achievements_for_users(
 
     if not user_ids or not database_schema_ready():
         return {}
-    newly_unlocked: dict[int, list[dict]] = {}
     with session_scope() as db:
-        for user_id in user_ids:
-            user = db.get(User, user_id)
-            if user:
-                existing_keys = {row.achievement_key for row in user.achievements}
-                payload = sync_user_achievements(
-                    db,
-                    user,
-                    source_completed_game_id=source_completed_game_id,
-                )
-                unlocked_now = [
-                    achievement
-                    for achievement in payload["unlocked"]
-                    if achievement["key"] not in existing_keys and achievement["key"] != "account_created"
-                ]
-                if unlocked_now:
-                    newly_unlocked[user_id] = unlocked_now
-        return newly_unlocked
+        return sync_achievements_for_users_in_session(
+            db, user_ids, source_completed_game_id=source_completed_game_id,
+        )
+
+
+def sync_engagement_achievements_for_users_in_session(db, user_ids: set[int]) -> None:
+    """Materialize interaction awards in the caller's transaction; never commit."""
+    for user_id in user_ids:
+        user = db.get(User, user_id)
+        if user is None or not user.is_active:
+            continue
+        counts = {row.event_key: int(row.count) for row in db.scalars(
+            select(UserEngagementEvent).where(UserEngagementEvent.user_id == user_id)
+        )}
+        existing = {row.achievement_key for row in user.achievements}
+        for achievement in ACHIEVEMENTS:
+            if achievement.kind != "engagement_event" or achievement.key in existing:
+                continue
+            if counts.get(achievement.key, 0) >= achievement.target:
+                db.execute(insert(UserAchievement).values(
+                    user_id=user_id, achievement_key=achievement.key,
+                    source_completed_game_id=None, unlocked_at=utcnow(),
+                ).on_conflict_do_nothing(index_elements=["user_id", "achievement_key"]))
+        db.flush()
 
 
 def sync_engagement_achievements_for_users(user_ids: Iterable[object]) -> None:
@@ -1939,20 +1972,4 @@ def sync_engagement_achievements_for_users(user_ids: Iterable[object]) -> None:
     if not normalized or not database_schema_ready():
         return
     with session_scope() as db:
-        for user_id in normalized:
-            user = db.get(User, user_id)
-            if user is None or not user.is_active:
-                continue
-            counts = {row.event_key: int(row.count) for row in db.scalars(
-                select(UserEngagementEvent).where(UserEngagementEvent.user_id == user_id)
-            )}
-            existing = {row.achievement_key for row in user.achievements}
-            for achievement in ACHIEVEMENTS:
-                if achievement.kind != "engagement_event" or achievement.key in existing:
-                    continue
-                if counts.get(achievement.key, 0) >= achievement.target:
-                    db.execute(insert(UserAchievement).values(
-                        user_id=user_id, achievement_key=achievement.key,
-                        source_completed_game_id=None, unlocked_at=utcnow(),
-                    ).on_conflict_do_nothing(index_elements=["user_id", "achievement_key"]))
-            db.flush()
+        sync_engagement_achievements_for_users_in_session(db, normalized)
