@@ -24,7 +24,18 @@ for (const language of ['de', 'en']) {
     try {
       for (let seat = 0; seat < 4; seat++) players.push(await player(configured, baseURL, language));
       await create(players, { count: 4, target: 15, reference: true, schoeneres: true });
+      const { id: gameId, engine: { deal_id: dealId } } = players[0].traffic.snapshot;
       await action(players, 'show_ready'); await action(players, 'show_ready');
+      // Each recipient receives the accepted show separately. The actor's
+      // opportunity alone cannot establish the other callers' inspection DTOs.
+      await expect.poll(() => {
+        const current = players[0].traffic.snapshot?.engine;
+        return players.map(peer => {
+          const snapshot = peer.traffic.snapshot, engine = snapshot?.engine;
+          return { game: snapshot?.id, deal: engine?.deal_id, phase: engine?.phase,
+            synchronized: engine?.deal_revision === current?.deal_revision && engine?.opportunity === current?.opportunity };
+        });
+      }).toEqual(players.map(() => ({ game: gameId, deal: dealId, phase: 'inspection', synchronized: true })));
       const callers = players.filter(peer => peer.traffic.snapshot.engine.actions.includes('inspection_ack'));
       expect(callers).toHaveLength(2);
       for (const viewport of [{ width: 393, height: 852 }, { width: 320, height: 568 }, { width: 852, height: 393 }, { width: 568, height: 320 }]) {
