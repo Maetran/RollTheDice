@@ -33,8 +33,7 @@ async function openVoice(page, destination, language, enabled) {
   await expect(page.locator("html")).toHaveAttribute("lang", language);
   const form = page.locator("[data-voice-preferences]");
   await expect(form).toHaveCount(1);
-  const details = form.locator("xpath=ancestor::details[1]");
-  if (await details.count()) {
+  for (const details of await form.locator("xpath=ancestor::details").all()) {
     await expect(details).not.toHaveAttribute("open", "");
     await details.locator(":scope > summary").click();
   }

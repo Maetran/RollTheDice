@@ -54,6 +54,12 @@ Button-Design des jeweiligen Spiels. «Konto» öffnet in Hausdepp direkt die
 Kontoeinstellungen; Spielverlauf und Fortschritt bleiben separat erreichbar.
 Die Kategorien der Kontoeinstellungen starten geschlossen und lassen sich einzeln
 öffnen. Eine erforderliche Passwortänderung öffnet den passenden Bereich direkt.
+Alle vier Kontobereiche bieten Statistik, Erfolge und Einstellungen in derselben
+Reihenfolge. Die Einstellungen gliedern sich in Profil & Zugang, Sprache & Spiel,
+Mitspieler & Hinweise sowie Hilfe & Neuigkeiten. Dort bleibt die Versionshistorie
+auch nach dem Schliessen des Neuigkeiten-Dialogs erreichbar. Nach einem
+Kontenmerge zeigt eine eigene Kontomitteilung den übernommenen Fortschritt;
+ihre Bestätigung verändert keine Spiel- oder Erfolgsbestätigungen.
 Die Watten-Lobby erklärt Besetzung, Varianten und Spielziel auch nach der
 Anmeldung; Gäste erhalten diese Inhalte bereits ohne JavaScript auf Deutsch
 oder Englisch.
@@ -62,6 +68,11 @@ oder Englisch.
 In Hausdepp, “Account” opens account settings directly; match history and progress
 remain separately accessible. Account settings categories start collapsed and
 open individually. A required password change opens the relevant section directly.
+All four account areas use the same order: Statistics, Achievements and Settings.
+Settings are grouped into Profile & sign-in, Language & play, Players & notifications,
+and Help & updates. Release history remains available there after dismissing an
+update dialog. A separate account notice shows combined progress after an account
+merge; acknowledging it does not acknowledge game results or achievements.
 The Watten lobby explains players, variants and the aim of the game after sign-in
 as well; guests receive the same guide in German or English without JavaScript.
 

@@ -15,7 +15,8 @@ async function json(item, path) {
 
 async function openSettings(item) {
   await item.page.goto('/watten/konto/einstellungen');
-  await item.page.locator('details:has([data-watten-friend-settings]) > summary').click();
+  await item.page.locator('[data-account-section="social"] > summary').click();
+  await item.page.locator('.account-settings-group__body > details:has([data-watten-friend-settings]) > summary').click();
   await expect(friendAction(item, 'consent-toggle')).toBeEnabled();
   await expect(settingsRoot(item).locator('[data-friend-audience]')).toBeEnabled();
 }

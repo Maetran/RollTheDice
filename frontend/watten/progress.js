@@ -5,6 +5,9 @@ import { initializeWattenPwa } from "./pwa.js";
 import { WATTEN_PROGRESS_MESSAGES } from "../i18n/catalog.js";
 import { initializeSuiteHeader } from "../shell/header.js";
 import { initializeAppMode } from "../multigame/app-mode.js";
+import { accountNavigationMarkup } from "../shared/account-navigation.js";
+import { mountAccountMergeNotice } from "../shared/account-merge-notice.js";
+import { initializeReleaseNotes } from "../shared/release-notes.js";
 
 initializeWattenPwa({ registerWorker: document.documentElement.dataset.wattenPublicBeta === "true", installControls: false });
 initializeSuiteHeader();
@@ -40,6 +43,8 @@ document.addEventListener("visibilitychange", () => {
 });
 
 function navigation() {
+  if (page !== 'leaderboard') return accountNavigationMarkup({ statistics: '/watten/konto/fortschritt#statistics', achievements: '/watten/konto/fortschritt#achievements', settings: '/watten/konto/einstellungen', current: location.hash === '#achievements' ? 'achievements' : 'statistics' })
+    + `<nav class="wt-progress-tabs" aria-label="${esc(t("navigation"))}"><a href="/watten/konto/verlauf"${page === 'history' ? ' aria-current="page"' : ''}>${esc(t('history'))}</a><a href="/watten/rangliste">${esc(t('leaderboard'))}</a></nav>`;
   return `<nav class="wt-progress-tabs" aria-label="${esc(t("navigation"))}">${[
     ["progress", "/watten/konto/fortschritt"], ["history", "/watten/konto/verlauf"], ["leaderboard", "/watten/rangliste"],
   ].map(([key, url]) => `<a href="${url}"${page === key ? ' aria-current="page"' : ""}>${esc(t(key))}</a>`).join("")}</nav>`;
@@ -47,8 +52,12 @@ function navigation() {
 
 function shell(content) {
   root.innerHTML = `<h1>${esc(t(page))}</h1>${navigation()}
+    ${page === 'leaderboard' ? '' : '<div data-account-merge-notice hidden></div>'}
     ${document.documentElement.dataset.wattenPublicBeta === "true" ? "" : `<p class="wt-draft-note">${esc(t("draft"))}</p>`}
     <p class="wt-error" data-progress-error role="alert"></p>${content}`;
+  if (accountId !== null && page !== 'leaderboard') mountAccountMergeNotice(root.querySelector('[data-account-merge-notice]'), {
+    userId: accountId, isCurrent: () => !navigating,
+  });
 }
 
 function failure(message = t("unavailable")) {
@@ -152,6 +161,7 @@ function updateCollection() {
 }
 
 function revealProgressAnchor() {
+  syncAccountPanel();
   if (navigating || page !== "progress" || !data) return;
   let id;
   try { id = decodeURIComponent(location.hash.slice(1)); } catch { return; }
@@ -166,6 +176,21 @@ function revealProgressAnchor() {
   target.scrollIntoView({ block: "center", behavior: "auto" });
 }
 window.addEventListener("hashchange", revealProgressAnchor);
+
+function syncAccountPanel() {
+  if (page !== 'progress') return;
+  const id = location.hash.slice(1);
+  const achievementTarget = data?.progress.achievements.some(item => item.id === id);
+  const achievements = id === 'achievements' || Boolean(achievementTarget);
+  for (const section of root.querySelectorAll(':scope > section')) {
+    const collection = section.matches('.wt-achievement-collection, [data-progress-feed], [data-account-archived-achievements]');
+    section.hidden = !section.matches('.wt-progress-title, .wt-progress-pending') && (achievements ? !collection : collection);
+  }
+  for (const link of root.querySelectorAll('[data-account-destination]')) {
+    if (link.dataset.accountDestination === (achievements ? 'achievements' : 'statistics')) link.setAttribute('aria-current', 'page');
+    else link.removeAttribute('aria-current');
+  }
+}
 
 function progressMarkup(account) {
   const value = account.progress, stats = account.statistics;
@@ -193,7 +218,7 @@ function progressMarkup(account) {
     <h2>${esc(t("newMoments"))}</h2>${pendingMarkup(value)}
   </section>
   ${collectionMarkup(value)}
-    ${value.archived_achievements.length ? `<section class="wt-card-panel"><h2>${esc(t("archived"))}</h2><ul>${value.archived_achievements.map(item =>
+    ${value.archived_achievements.length ? `<section class="wt-card-panel" data-account-archived-achievements><h2>${esc(t("archived"))}</h2><ul>${value.archived_achievements.map(item =>
       `<li>${esc(localText(item.name))} · ${esc(t("earned", { date: date(item.earned_at), xp: number(item.granted_xp) }))}</li>`).join("")}</ul></section>` : ""}
     <section class="wt-card-panel" data-progress-feed aria-labelledby="wattenFeedTitle"><h2 id="wattenFeedTitle">${esc(t("feed"))}</h2><div data-progress-feed-entries></div></section>`;
 }
@@ -339,6 +364,7 @@ async function mount() {
       return;
     }
     accountId = auth.user.id;
+    if (page !== 'leaderboard') initializeReleaseNotes({ context: 'watten' });
     if ((auth.game_access || auth.user.game_access)?.watten_preview === true || (auth.game_access || auth.user.game_access)?.watten_public === true) initializeAppMode({ mode: "watten" });
     if (page === "leaderboard") { shell(`<section class="wt-card-panel">${leaderboardForm()}</section>`); await ranking(root.querySelector("form")); }
     else await accountView();

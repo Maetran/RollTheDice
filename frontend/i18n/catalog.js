@@ -1,3 +1,16 @@
+export const ACCOUNT_MERGE_MESSAGES = {
+  de: {
+    title: 'Konten zusammengeführt', intro: 'Dein zusammengeführter Fortschritt ist in diesem Konto angekommen. Anmeldung und persönliche Einstellungen bleiben bei diesem Konto.',
+    points: 'Punkte', counts: '{achievements} Erfolge · {inherited} übernommen · {new} neu · {games} Spiele',
+    acknowledge: 'Gesehen', failed: 'Die Bestätigung konnte nicht gespeichert werden. Bitte erneut versuchen.',
+  },
+  en: {
+    title: 'Accounts merged', intro: 'Your combined progress is now available in this account. This account keeps its sign-in details and personal settings.',
+    points: 'points', counts: '{achievements} achievements · {inherited} inherited · {new} new · {games} games',
+    acknowledge: 'Seen', failed: 'Your acknowledgement could not be saved. Please try again.',
+  },
+};
+
 export const ZDWA_AUDIO_MESSAGES = {
   "de": {
     "button": "Audio",
@@ -1616,6 +1629,9 @@ export const HAUSDEPP_MESSAGES = {
 };
 
 export const EN = {
+    "Dieses Konto ist nicht mehr aktiv.": "This account is no longer active.",
+    "Der Beitritt konnte nicht gespeichert werden. Bitte erneut versuchen.": "Your join could not be saved. Please try again.",
+    "Die Partie ist nicht mehr verfügbar.": "This game is no longer available.",
     "Weitere Spiele": "More games",
     "Spiele der Suite": "Games in this suite",
     "So liest du das ZDWA-Ranking": "How to read the ZDWA rankings",

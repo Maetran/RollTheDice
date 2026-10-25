@@ -4,6 +4,7 @@ import { mountLobbyChat } from "../shared/lobby-chat.js";
 import { mountRegistrationForm, registrationFormMarkup } from "../shared/registration.js";
 import { initializeGameViewport } from "../shared/game-viewport.js";
 import { initializeReleaseNotes } from "../shared/release-notes.js";
+import { mountAccountMergeNotice } from "../shared/account-merge-notice.js";
 import { initializePushOptInPrompt } from "../shared/push-optin-prompt.js";
 import { mountAllowlistSettings, mountProfileAllowlist } from "../shared/player-allowlist.js";
 import { mountPlayerSearch } from "../shared/player-search.js";
@@ -2269,7 +2270,7 @@ function normalizedZilchAccountTab(value, fallback = "statistics") {
 function zilchAccountTabLabel(name) {
   if (name === "achievements") return t("Erfolge");
   if (name === "settings") return t("Einstellungen");
-  return t("Statistiken");
+  return t("Statistik");
 }
 
 function zilchAccountTabsMarkup() {
@@ -2736,11 +2737,14 @@ async function renderAccount() {
     </section>
     <div data-account-bans role="note" hidden></div>
     ${zilchAccountTabsMarkup()}
+    <div data-account-merge-notice hidden></div>
     <section id="zilchAccountPanel-statistics" class="zilch-account-panel" data-zilch-account-panel="statistics" role="tabpanel" aria-labelledby="zilchAccountTab-statistics"${state.accountTab === "statistics" ? "" : " hidden"}>${zilchAccountStatisticsLoadingMarkup()}</section>
     <section id="zilchAccountPanel-achievements" class="zilch-account-panel" data-zilch-account-panel="achievements" role="tabpanel" aria-labelledby="zilchAccountTab-achievements"${state.accountTab === "achievements" ? "" : " hidden"}>${zilchAccountAchievementsLoadingMarkup()}</section>
     <section id="zilchAccountPanel-settings" class="zilch-account-panel" data-zilch-account-panel="settings" role="tabpanel" aria-labelledby="zilchAccountTab-settings"${state.accountTab === "settings" ? "" : " hidden"}>${zilchAccountSettingsMarkup(username)}</section>`;
   bindZilchAccountTabs();
   bindZilchAccountSettings();
+  mountAccountMergeNotice(content.querySelector('[data-account-merge-notice]'), { userId: state.auth.user.id,
+    isCurrent: () => !accountLifecycle || accountLifecycle.current() });
   const achievementRequestVersion = ++state.accountAchievementsRequestVersion;
   const [statisticsResult, achievementsResult] = await Promise.allSettled([
     fetchZilchStatistics(),

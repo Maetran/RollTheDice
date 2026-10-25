@@ -39,6 +39,7 @@
       <button id="achievementsTab" class="account-tab" type="button" role="tab" aria-selected="false" aria-controls="achievementsPanel">Erfolge</button>
       <button id="settingsTab" class="account-tab" type="button" role="tab" aria-selected="false" aria-controls="settingsPanel">Einstellungen</button>
     </nav>
+    <div data-account-merge-notice hidden></div>
     <section id="statisticsPanel" class="card account-panel" role="tabpanel" aria-labelledby="statisticsTab">
       <h2>Statistiken</h2>
       <div id="statistics" class="statistics-grid"></div>
@@ -245,6 +246,7 @@
     import { mountFriendActivitySettings } from '/static/friend-activity.js?v=1c4d43150c24';
     import { mountTourSettings } from '/static/game-tours.js?v=1c4d43150c24';
     import { mountVoicePreferences, voicePreferenceText } from '/static/voice-preferences.js?v=1c4d43150c24';
+    import { mountAccountMergeNotice } from '/static/account-merge-notice.js?v=1c4d43150c24';
     let viewerId = null;
     let retired = false;
     const clearPrivatePage = () => {
@@ -278,6 +280,8 @@
     }
     viewerId = auth.user.id;
     const user = auth.user;
+    mountAccountMergeNotice(document.querySelector('[data-account-merge-notice]'), { userId: user.id,
+      isCurrent: () => !retired && viewerId === user.id });
     document.getElementById('accountDashboardLink').hidden = !user?.can_view_analytics;
     mountPasskeyPrompt(document.querySelector('[data-passkey-prompt]'), {
       auth, accountUrl: (window.ZDWA_ROUTE?.path || (path => path))('/konto?passkey=1#settings'),

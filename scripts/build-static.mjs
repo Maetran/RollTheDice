@@ -28,6 +28,7 @@ const targets = [
   { source: "frontend/styles/dashboard.css", output: "app/static/dashboard.css" },
   { source: "frontend/shared/web-push.js", output: "app/static/web-push.js", format: "esm" },
   { source: "frontend/shared/release-notes.js", output: "app/static/release-notes.js", format: "esm" },
+  { source: "frontend/shared/account-merge-notice.js", output: "app/static/account-merge-notice.js", format: "esm" },
   { source: "frontend/shared/player-allowlist.js", output: "app/static/player-allowlist.js", format: "esm" },
   { source: "frontend/shared/avatar.js", output: "app/static/avatar.js", format: "esm" },
   { source: "frontend/shared/achievement-feed.js", output: "app/static/achievement-feed.js", format: "esm" },

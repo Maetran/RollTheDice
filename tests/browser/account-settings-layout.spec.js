@@ -154,6 +154,7 @@ for (const language of ["de", "en"]) {
     await expect(page).toHaveURL(/\/hausdepp\/konto\/einstellungen$/);
     await expect(page.locator(".hd-settings")).toBeVisible();
     await expect(page.locator(".hd-settings-item[open]")).toHaveCount(0);
+    await openSection(page, 'access');
     const first = page.locator(".hd-settings-item").filter({ has: page.locator("[data-username-settings]") });
     await first.locator(":scope > summary").focus();
     await page.keyboard.press("Enter");
@@ -183,7 +184,8 @@ for (const language of ["de", "en"]) {
     await page.goto("/watten/konto/einstellungen");
     await expect(page.locator("#wattenAccount [data-account-name]")).toHaveText(`Navigation_watten_${language}`);
     await expect(page.locator("#wattenAccount details[open]")).toHaveCount(0);
-    const languageSection = page.locator("#wattenAccount details").filter({ has: page.locator("[data-language]") });
+    await openSection(page, 'play');
+    const languageSection = page.locator("#wattenAccount .account-settings-group__body > details").filter({ has: page.locator("[data-language]") });
     await languageSection.locator(":scope > summary").focus();
     await page.keyboard.press("Enter");
     await expect(page.locator("[data-language] select")).toBeVisible();

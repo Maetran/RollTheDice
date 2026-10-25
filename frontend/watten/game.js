@@ -438,6 +438,7 @@ async function mountLobby() {
   }
   if (gen !== generation) return;
   renderNav(auth);
+  initializeReleaseNotes({ context: "watten" });
   if (!auth.authenticated) {
     anonymousMount = true;
     app.innerHTML = publicLandingMarkup || lobbyIntro() + lobbyGuide();
@@ -1347,6 +1348,5 @@ if (page === "rules") {
   initializeGameViewport();
   void mountTable();
 } else {
-  initializeReleaseNotes({ context: "watten" });
   void mountLobby();
 }

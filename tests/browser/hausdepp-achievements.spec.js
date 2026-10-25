@@ -101,7 +101,7 @@ for (const language of ['de', 'en']) {
     expect(data.ranks.at(-1).threshold).toBe(9000);
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
-    await page.goto('/hausdepp/konto');
+    await page.goto('/hausdepp/konto#erfolge');
     await expect(page.locator('#hausdeppAchievementCount')).toContainText('/ 138');
     await expect(page.locator('.hd-achievement-card')).toHaveCount(138);
     await expect(page.locator('.hd-achievement-group')).toHaveCount(15);
@@ -142,7 +142,7 @@ for (const language of ['de', 'en']) {
       pending = false;
       await route.fulfill({ json: { acknowledged: true } });
     });
-    await page.goto('/hausdepp/konto');
+    await page.goto('/hausdepp/konto#erfolge');
     const notice = page.locator('#hausdeppProgressNotice');
     await expect(notice).toBeVisible();
     await expect(notice).toContainText('Newton');
@@ -180,7 +180,7 @@ for (const language of ['de', 'en']) {
     data.achievements.unlocked_count = unlocked.size;
     data.presentation.pending = null;
     await page.route('**/api/hausdepp/account?**', route => route.fulfill({ json: data }));
-    await page.goto('/hausdepp/konto');
+    await page.goto('/hausdepp/konto#erfolge');
     const group = category => page.locator(`.hd-achievement-group[data-category="${category}"]`);
     const order = category => group(category).locator('.hd-achievement-card').evaluateAll(cards => cards.map(card => card.dataset.achievementId));
     const ids = numbers => numbers.map(number => `hausdepp_${String(number).padStart(2, '0')}`);
@@ -238,7 +238,7 @@ for (const language of ['de', 'en']) {
       receipts.push(route.request().postDataJSON());
       return route.fulfill({ json: { ok: true } });
     });
-    await page.goto('/hausdepp/konto');
+    await page.goto('/hausdepp/konto#erfolge');
     const suffix = language === 'de' ? 'EP' : 'XP';
     await expect(page.locator('.hd-xp-total strong')).toHaveText('77');
     await expect(page.locator('.hd-xp-breakdown dd').first()).toHaveText(`2 ${suffix}`);
@@ -268,7 +268,7 @@ test('labelled acknowledgement failure keeps the summary and offers the same act
     attempts += 1;
     return route.fulfill({ status: attempts === 1 ? 503 : 200, json: { acknowledged: attempts > 1 } });
   });
-  await page.goto('/hausdepp/konto');
+  await page.goto('/hausdepp/konto#erfolge');
   const notice = page.locator('#hausdeppProgressNotice');
   await notice.locator('[data-progress-ack]').click();
   await expect(notice.locator('.hd-notice-error')).toBeVisible();
@@ -288,7 +288,7 @@ test('labelled final rank remains meaningful and achievement text is escaped', a
   data.achievements.items[0].name = { de: '<img src=x onerror=alert(1)>', en: '<img src=x onerror=alert(1)>' };
   data.achievements.items[0].description = { de: '<script>Keine fremden Karten</script>', en: '<script>No private cards</script>' };
   await page.route('**/api/hausdepp/account?**', route => route.fulfill({ json: data }));
-  await page.goto('/hausdepp/konto');
+  await page.goto('/hausdepp/konto#erfolge');
   await expect(page.locator('#hausdeppRankTitle')).toHaveText('Hausdepp');
   await expect(page.locator('.hd-rank-progress')).toContainText('Mehr Hausdepp geht nicht.');
   await expect(page.locator('.hd-rank-progress progress')).toHaveAttribute('value', '100');
@@ -299,7 +299,7 @@ test('labelled final rank remains meaningful and achievement text is escaped', a
 test('narrow account displays complete status and long category names', async ({ page }) => {
   await owner(page);
   await page.setViewportSize({ width: 320, height: 568 });
-  await page.goto('/hausdepp/konto');
+  await page.goto('/hausdepp/konto#erfolge');
   await expect(page.locator('.hd-achievement-card')).toHaveCount(138);
   await page.locator('#hausdeppAchievementCategory').selectOption('tournament');
   await expect(page.locator('.hd-achievement-card')).toHaveCount(16);
@@ -319,7 +319,7 @@ for (const language of ['de', 'en']) {
     await page.setViewportSize({ width: 320, height: 568 });
     await page.route('**/api/hausdepp/account?**', route => route.fulfill({ json: data }));
     await page.route('**/api/hausdepp/progress-notices', route => route.fulfill({ json: { notices: [], revision: 9501, points: data.scoring.points } }));
-    await page.goto('/hausdepp/konto');
+    await page.goto('/hausdepp/konto#erfolge');
     await expect(page.locator('.hd-achievement-card')).toHaveCount(138);
     for (const [track, start, label] of [
       ['activated', 116, language === 'de' ? 'Funde ausgelöst' : 'Finds you triggered'],
@@ -376,7 +376,7 @@ for (const language of ['de', 'en']) {
       return route.fulfill({ json: { acknowledged: true } });
     });
     await page.route('**/api/hausdepp/progress-notices', route => route.fulfill({ json: { notices: [], revision: 9501, points: data.scoring.points } }));
-    await page.goto('/hausdepp/konto');
+    await page.goto('/hausdepp/konto#erfolge');
     const notice = page.locator('#hausdeppProgressNotice');
     await expect(notice).toBeVisible();
     await notice.locator('summary').click();
@@ -411,7 +411,7 @@ for (const language of ['de', 'en']) {
     await expectNarrowContent(page, '.hd-feed-item, .hd-feed-copy, .hd-surprise-badge');
     await feed.scrollIntoViewIfNeeded();
     await page.screenshot({ path: testInfo.outputPath(`surprise-feed-${language}-320.png`) });
-    await page.goto('/hausdepp/konto');
+    await page.goto('/hausdepp/konto#erfolge');
     await expect(page.locator('#hausdeppProgressNotice')).toBeHidden();
     await expect(page.locator('#appDialogBackdrop')).toBeHidden();
     expect(acknowledgements).toEqual([{ revision: 9501 }]);
@@ -444,7 +444,7 @@ for (const language of ['de', 'en']) {
       summaries.push(route.request().postDataJSON()); pending = false;
       return route.fulfill({ json: { acknowledged: true } });
     });
-    await page.goto('/hausdepp/konto');
+    await page.goto('/hausdepp/konto#erfolge');
     const dialog = page.locator('#appDialog');
     for (const item of awards) {
       await expect(dialog).toHaveAttribute('data-kind', 'hausdepp-achievement');
@@ -481,7 +481,7 @@ test('capture labelled rank-up and real account across portrait and landscape', 
     await page.setViewportSize({ width, height });
     for (const [scenario, data] of [['real-account', real], ['labelled-rank-up', labelled]]) {
       await page.route('**/api/hausdepp/account?**', route => route.fulfill({ json: data }));
-      await page.goto('/hausdepp/konto');
+      await page.goto('/hausdepp/konto#erfolge');
       await expect(page.locator('.hd-achievement-card')).toHaveCount(138);
       await page.evaluate(() => document.fonts.ready);
       expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), `${name} ${scenario} overflow`).toBe(false);

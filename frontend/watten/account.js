@@ -14,6 +14,8 @@ import { mountWattenPushSettings, pushSettingsMarkup } from './push-settings.js'
 import { mountTourSettings } from '../shared/game-tours.js';
 import { mountVoicePreferences, voicePreferenceText } from '../shared/voice-preferences.js';
 import { initializeReleaseNotes } from '../shared/release-notes.js';
+import { accountNavigationMarkup, accountSectionMarkup, openAccountSettingTarget } from '../shared/account-navigation.js';
+import { mountAccountMergeNotice } from '../shared/account-merge-notice.js';
 
 initializeWattenPwa();
 initializeSuiteHeader();
@@ -129,22 +131,27 @@ function renderSettings(auth) {
   document.title = `Watten · ${t('Kontoeinstellungen')}`;
   root.innerHTML = `<h1>${copy('Kontoeinstellungen')}</h1><p>${copy('Ein Konto für alle unsere Spiele. Dein bestehender Passkey funktioniert hier ebenfalls.')}</p>
     <p data-account-name translate="no">${esc(user.username)}</p>
-    <details><summary>${copy('Passkeys')}</summary><div data-passkey-settings></div></details>
-    <details${user.must_change_password ? ' open' : ''}><summary>${copy('Passwort ändern')}</summary>
+    ${accountNavigationMarkup({ statistics: "/watten/konto/fortschritt#statistics", achievements: "/watten/konto/fortschritt#achievements", settings: "/watten/konto/einstellungen", current: "settings" })}
+    <div data-account-merge-notice hidden></div>
+    <div class="account-settings-panel">
+    ${accountSectionMarkup('access', 'Profil & Zugang', 'Passkeys, Profil und Passwort', `    <details data-passkey-section hidden><summary>${copy('Passkeys')}</summary><div data-passkey-settings></div></details>
+    <details data-email-section hidden><summary>${copy('E-Mail-Adresse')}</summary><div data-email-settings></div></details>
+    <details><summary>${copy('Benutzername ändern')}</summary><div data-username-settings></div></details>
+    <details id="profilbild"><summary>${copy('Dein Profilbild')}</summary><div data-avatar-upload></div></details>
+    <details id="passwort" data-account-action="password"${user.must_change_password ? ' open' : ''}><summary>${copy('Passwort ändern')}</summary>
       <form data-password><div data-account-verification></div>
         <label>${copy('Neues Passwort')}<input name="password" type="password" autocomplete="new-password" minlength="8" maxlength="256" required></label>
         <label>${copy('Neues Passwort wiederholen')}<input name="confirmation" type="password" autocomplete="new-password" minlength="8" maxlength="256" required></label>
-        <button type="submit">${copy('Passwort speichern')}</button><p role="status"></p></form></details>
-    <details><summary>${copy('E-Mail-Adresse')}</summary><div data-email-settings></div></details>
-    <details><summary>${copy('Benutzername ändern')}</summary><div data-username-settings></div></details>
-    <details><summary>${copy('Dein Profilbild')}</summary><div data-avatar-upload></div></details>
-    <details><summary>${esc(friendSettingsText('settingsTitle'))}</summary><div data-watten-friend-settings></div></details>
-    <details><summary>${copy('Sprache')}</summary><form data-language><label>${copy('Sprache')}<select name="language"><option value="de">Deutsch</option><option value="en">English</option></select></label><button type="submit">${copy('Sprache speichern')}</button><p role="status"></p></form></details>
-    <details id="sprachchat"><summary>${esc(voicePreferenceText('title'))}</summary><div data-voice-preference-settings></div></details>
-    ${publicPush ? pushSettingsMarkup(copy) : ""}
-    <details><summary>${copy('Einsteigertouren')}</summary><div data-game-tour-settings></div></details>
-    <details><summary>${copy('Neuigkeiten & Versionen')}</summary><p>${copy('Die letzten zehn Releases kannst du jederzeit im Konto nachlesen.')}</p><div data-release-history></div></details>
+        <button type="submit">${copy('Passwort speichern')}</button><p role="status"></p></form></details>`, { id: 'zugang', open: user.must_change_password })}
+    ${accountSectionMarkup('play', 'Sprache & Spiel', 'Sprache und persönliche Spielbedienung', `    <details><summary>${copy('Sprache')}</summary><form data-language><label>${copy('Sprache')}<select name="language"><option value="de">Deutsch</option><option value="en">English</option></select></label><button type="submit">${copy('Sprache speichern')}</button><p role="status"></p></form></details>
+    <details id="sprachchat"><summary>${esc(voicePreferenceText('title'))}</summary><div data-voice-preference-settings></div></details>`, { id: 'spiel' })}
+    ${accountSectionMarkup('social', 'Mitspieler & Hinweise', 'Chat, Spielerauswahl und Benachrichtigungen', `    <details><summary>${esc(friendSettingsText('settingsTitle'))}</summary><div data-watten-friend-settings></div></details>
+    ${publicPush ? pushSettingsMarkup(copy) : ""}`, { id: 'mitspieler' })}
+    ${accountSectionMarkup('help', 'Hilfe & Neuigkeiten', 'Versionshistorie und Unterstützung', `    <details><summary>${copy('Einsteigertouren')}</summary><div data-game-tour-settings></div></details>
+    <details><summary>${copy('Neuigkeiten & Versionen')}</summary><p>${copy('Die letzten zehn Releases kannst du jederzeit im Konto nachlesen.')}</p><div data-release-history></div></details>`, { id: 'hilfe' })}
+    </div>
     <div class="actions"><a class="button-link ghost" href="/watten">${copy('Zurück')}</a><a class="button-link ghost" href="/watten/konto/fortschritt">${copy('Erfolge & Titel')}</a><button data-logout type="button">${copy('Abmelden')}</button></div><p data-account-message role="status"></p>`;
+  openAccountSettingTarget(root);
   mountUsernameSettings(root.querySelector('[data-username-settings]'), { user, onChanged: changed => {
     const name = root.querySelector('[data-account-name]');
     if (name && changed.user.id === viewerId) name.textContent = changed.user.username;
@@ -155,6 +162,8 @@ function renderSettings(auth) {
   mountAvatarUpload(root.querySelector('[data-avatar-upload]'));
   clearFriendSettings();
   const mountedGeneration = generation;
+  mountAccountMergeNotice(root.querySelector('[data-account-merge-notice]'), { userId: user.id,
+    isCurrent: () => !navigating && generation === mountedGeneration && viewerId === user.id });
   voicePreferences = mountVoicePreferences(root.querySelector('[data-voice-preference-settings]'), { user,
     isCurrent: () => !navigating && generation === mountedGeneration && viewerId === user.id });
   friendSettings = mountFriendSettings({ container: root.querySelector('[data-watten-friend-settings]'), viewerId: user.id,
@@ -206,6 +215,7 @@ if (page === 'home') {
     <div class="actions"><a class="button-link" href="/watten/anmelden">${copy('Anmelden')}</a><a class="button-link ghost" href="/watten/konto/einstellungen">${copy('Kontoeinstellungen')}</a></div>`;
 } else if (page === 'login') renderLogin();
 else if (page === 'settings') {
+  window.addEventListener('hashchange', () => openAccountSettingTarget(root));
   initializeAvatarFallbacks();
   window.addEventListener('zdwa:auth-state', event => {
     if (viewerId !== null && (!event.detail?.authenticated || event.detail.user?.id !== viewerId)) {

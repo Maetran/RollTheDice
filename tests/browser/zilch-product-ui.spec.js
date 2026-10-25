@@ -106,7 +106,7 @@ test("Zilch has its own sign-in entry and safely returns preview accounts to the
     page.waitForURL(/\/zilch\/konto#statistics$/),
     page.locator("#zilchLoginForm button[type=submit]").click(),
   ]);
-  await expect(page.getByRole("tab", { name: "Statistiken" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("tab", { name: "Statistik" })).toHaveAttribute("aria-selected", "true");
   await expect(page.locator("#zilchAccountPanel-statistics")).toBeVisible();
   const authenticated = (await (await page.request.get("/api/auth/me")).json()).user;
   expect(authenticated.id).toBe(identity.id);
@@ -238,10 +238,10 @@ test("private Zilch rules, history, and product navigation use the protected noi
   await expect(page.getByRole("tab", { name: "Einstellungen" })).toHaveAttribute("aria-selected", "true");
   await expect(page.locator("#zilchAccountPanel-settings")).toBeVisible();
   await expect(page.locator("#zilchPasswordHint")).toBeVisible();
-  await page.getByRole("tab", { name: "Statistiken" }).click();
+  await page.getByRole("tab", { name: "Statistik" }).click();
   await expect(page.locator("#zilchAccountPanel-statistics")).toBeVisible();
   await expect(page.locator("#zilchAchievementsBody")).toBeHidden();
-  await page.getByRole("tab", { name: "Statistiken" }).focus();
+  await page.getByRole("tab", { name: "Statistik" }).focus();
   await page.keyboard.press("ArrowRight");
   await expect(page.getByRole("tab", { name: "Erfolge" })).toBeFocused();
   await expect(page.locator("#zilchAccountPanel-achievements")).toBeVisible();
@@ -340,7 +340,7 @@ test("Zilch account keeps the player rank and statistic modes compact on mobile"
 
   await expectTextContrast(page.locator(".zilch-account-head h1"));
   await expect(page.locator("#zilchAccountRank .zilch-rank-badge")).toBeVisible();
-  await page.getByRole("tab", { name: "Statistiken" }).click();
+  await page.getByRole("tab", { name: "Statistik" }).click();
   await page.setViewportSize({ width: 375, height: 844 });
 
   const statisticsTabRows = await page.locator("[data-zilch-stats-mode]").evaluateAll(tabs => (
@@ -765,7 +765,7 @@ test("private Zilch statistics and leaderboards render only server projections a
   await page.goto("/zilch/statistiken");
   await expect(page).toHaveURL(/\/zilch\/konto#statistics$/);
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
-  await expect(page.getByRole("tab", { name: "Statistiken" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("tab", { name: "Statistik" })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByText("Partien nach Spielart")).toBeVisible();
   await expect(page.getByText("Gesicherte Gesamtpunkte")).toHaveCount(0);
 
