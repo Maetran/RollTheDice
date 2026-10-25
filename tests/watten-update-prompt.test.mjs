@@ -71,6 +71,79 @@ test("first installations never offer a refresh without a previous controlling w
   assert.equal(f.button().hidden, true);
 });
 
+function replacement(f, state = "installed") {
+  const worker = new Target(), messages = [];
+  Object.assign(worker, { state, postMessage: message => messages.push(message) });
+  f.registration.waiting = worker;
+  f.registration.installing = worker;
+  f.registration.emit("updatefound"); worker.emit("statechange");
+  return { worker, messages };
+}
+
+test("a requested worker becoming redundant hides its button, cancels reload intent and permits a later update", async () => {
+  for (const cleared of [false, true]) {
+    const f = fixture(); await f.ready;
+    f.button().emit("click"); assert.equal(f.messages.length, 1);
+    if (cleared) f.registration.waiting = null;
+    f.worker.state = "redundant"; f.worker.emit("statechange");
+    assert.equal(f.button().hidden, true);
+    f.serviceWorker.emit("controllerchange"); assert.equal(f.reloads(), 0);
+    const next = replacement(f);
+    assert.equal(f.button().hidden, false); assert.equal(next.messages.length, 0);
+    f.button().emit("click"); f.button().emit("click");
+    assert.equal(next.messages.length, 1); assert.equal(next.messages[0].type, "SKIP_WAITING");
+  }
+});
+
+test("a new non-null waiting worker replaces a pending request and requires its own explicit click", async () => {
+  for (const cleared of [false, true]) {
+    const f = fixture(); await f.ready;
+    f.button().emit("click");
+    if (cleared) { f.registration.waiting = null; f.worker.state = "activating"; f.worker.emit("statechange"); }
+    const next = replacement(f);
+    assert.notEqual(f.worker.state, "redundant", "replacement need not first announce redundancy");
+    assert.equal(next.messages.length, 0); assert.equal(f.reloads(), 0);
+    f.button().emit("click"); f.button().emit("click");
+    assert.equal(f.messages.length, 1); assert.equal(next.messages.length, 1);
+    f.serviceWorker.emit("controllerchange"); assert.equal(f.reloads(), 1);
+  }
+});
+
+test("normal activation clears waiting before controllerchange without losing the explicit reload intent", async () => {
+  const f = fixture(); await f.ready;
+  f.button().emit("click"); f.button().emit("click");
+  f.registration.waiting = null;
+  f.worker.state = "activating"; f.worker.emit("statechange");
+  assert.equal(f.button().hidden, true); assert.equal(f.messages.length, 1); assert.equal(f.reloads(), 0);
+  f.serviceWorker.emit("controllerchange"); f.serviceWorker.emit("controllerchange");
+  assert.equal(f.reloads(), 1);
+});
+
+test("a postMessage race re-arms a still-valid worker for retry without automatically reloading", async () => {
+  const f = fixture(); await f.ready;
+  let attempts = 0;
+  f.worker.postMessage = message => {
+    attempts += 1;
+    if (attempts === 1) throw new Error("worker changed during activation request");
+    f.messages.push(message);
+  };
+  assert.doesNotThrow(() => f.button().emit("click"));
+  assert.equal(f.button().hidden, false); assert.equal(f.messages.length, 0);
+  f.serviceWorker.emit("controllerchange"); assert.equal(f.reloads(), 0);
+  f.button().emit("click"); f.button().emit("click");
+  assert.equal(attempts, 2); assert.equal(f.messages.length, 1);
+  f.registration.waiting = null; f.serviceWorker.emit("controllerchange");
+  assert.equal(f.reloads(), 1);
+});
+
+test("only installed waiting workers expose an update action", async () => {
+  for (const state of ["installing", "activating", "activated", "redundant"]) {
+    const f = fixture(); f.worker.state = state; await f.ready;
+    assert.equal(f.button().hidden, true, state);
+    f.button().emit("click"); assert.equal(f.messages.length, 0);
+  }
+});
+
 test("open visible documents check for updates once per minute, pause hidden/offline and resume on foreground", async () => {
   const f = fixture({ waiting: false }); await f.ready;
   assert.equal(f.updates(), 0);

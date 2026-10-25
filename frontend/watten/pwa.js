@@ -70,7 +70,9 @@ export function initializeWattenPwa({ registerWorker = true, installControls = t
   const t = value => window.ZDWA_I18N?.t?.(value) || value;
   let prompt = null;
   let waiting = null;
-  let updateRequested = false;
+  let requestedWorker = null;
+  let currentRegistration = null;
+  const observedWaitingWorkers = new WeakSet();
   let install;
   let update;
   let updateMessage;
@@ -122,23 +124,40 @@ export function initializeWattenPwa({ registerWorker = true, installControls = t
     update.textContent = t('Watten aktualisieren');
     update.hidden = true;
     update.addEventListener('click', () => {
-      if (updateRequested || !waiting || waiting.state === 'redundant') return;
-      updateRequested = true;
-      waiting.postMessage({ type: 'SKIP_WAITING' });
+      if (currentRegistration) observeWaiting(currentRegistration);
+      if (requestedWorker || !waiting) return;
+      requestedWorker = waiting;
+      try { waiting.postMessage({ type: 'SKIP_WAITING' }); }
+      catch (_) {
+        // The worker can disappear between the click and postMessage. Keep a
+        // valid offer actionable and wait for another explicit click.
+        requestedWorker = null;
+        if (currentRegistration) observeWaiting(currentRegistration);
+      }
     });
     aside.append(updateMessage, update);
   }
   navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (!updateRequested) return;
-    updateRequested = false;
+    if (currentRegistration) observeWaiting(currentRegistration);
+    if (!requestedWorker) return;
+    requestedWorker = null;
     location.reload();
   });
   const observeWaiting = registration => {
-    waiting = registration.waiting;
+    const next = registration.waiting;
+    if (next && !observedWaitingWorkers.has(next)) {
+      observedWaitingWorkers.add(next);
+      next.addEventListener('statechange', () => observeWaiting(registration));
+    }
+    if (requestedWorker && (requestedWorker.state === 'redundant' || (next && next !== requestedWorker))) requestedWorker = null;
+    // Normal activation clears waiting before controllerchange. Preserve that
+    // request unless its worker is retired or replaced by another waiting one.
+    waiting = next?.state === 'installed' ? next : null;
     if (update) update.hidden = !waiting || !navigator.serviceWorker.controller;
     syncControls();
   };
   const ready = navigator.serviceWorker.register('/watten-sw.js', { scope: location.hostname === 'watten.zockdiewandan.online' ? '/' : '/watten', updateViaCache: 'none' }).then(registration => {
+    currentRegistration = registration;
     observeWaiting(registration);
     const observeInstalling = () => registration.installing?.addEventListener('statechange', () => observeWaiting(registration));
     observeInstalling();
