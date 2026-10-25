@@ -119,7 +119,7 @@ test("ZDWA statistics JSON completing after pagehide cannot restore names or sta
 });
 
 test("Zilch account's actual pending renderer cannot restore either private projection after retirement", async () => {
-  for (const retire of ["pagehide", "identity"]) {
+  for (const retire of ["beforeunload", "pagehide", "identity"]) {
     const f = fixture(), projection = deferred();
     const { context, state, lifecycle } = mountZilch(f);
     const noticeContainer = {};
@@ -147,7 +147,7 @@ test("Zilch account's actual pending renderer cannot restore either private proj
       renderAchievementsBody() { assert.fail("retired account achievements rendered"); },
     });
     const pending = render();
-    if (retire === "pagehide") f.window.emit("pagehide");
+    if (retire === "beforeunload" || retire === "pagehide") f.window.emit(retire);
     else f.window.emit("zdwa:auth-state", { detail: auth(2) });
     projection.resolve({ private: "A" });
     await pending;
@@ -158,6 +158,55 @@ test("Zilch account's actual pending renderer cannot restore either private proj
     assert.equal(state.achievements, null);
     assert.equal(noticeIsCurrent(), false);
   }
+});
+
+test("Zilch's actual initializer cannot start pending awards or releases after navigation cancels its account reads before pagehide", async () => {
+  const f = fixture(), calls = [], requests = [];
+  const state = { auth: null, accountAchievementsRequestVersion: 0 };
+  f.document.addEventListener = () => {};
+  f.content.querySelector = () => ({});
+  const read = name => () => {
+    let reject;
+    const promise = new Promise((_, no) => { reject = no; });
+    requests.push({ name, reject });
+    return promise;
+  };
+  const renderer = between(zilch, "async function renderAccount()", "\nasync function fetchZilchPlayerAchievements");
+  const initializer = between(zilch, "async function initialize()", '\nwindow.addEventListener("beforeunload"');
+  const pending = runInNewContext(`let accountLifecycle = null;\n${zilchLifecycle}\n${renderer}\n${initializer}\ninitialize()`, {
+    ...f, state, root: {}, spectatorRoute: false, gameId: null, resultId: null,
+    accountRoute: true, currentZilchRoute: "/konto", playerAchievementsUsername: null,
+    zilchPath: path => `/zilch${path}`, encodeURIComponent,
+    loadAuth: async () => auth(1), initializeAppMode: () => ({ applyAuth: () => true }),
+    renderShell() {}, mountPasskeyPrompt() {},
+    normalizedZilchAccountTab: () => "settings", t: key => key, escapeHtml: value => value,
+    avatarMarkup: () => "", adminProfileMarkup: () => "", zilchAccountTabsMarkup: () => "",
+    zilchAccountStatisticsLoadingMarkup: () => "", zilchAccountAchievementsLoadingMarkup: () => "",
+    zilchAccountSettingsMarkup: () => "", bindZilchAccountTabs() {}, bindZilchAccountSettings() {}, mountAccountMergeNotice() {},
+    fetchZilchStatistics: read("statistics"), fetchZilchAchievements: read("achievements"),
+    fetchZilchAchievementRanks: read("ranks"),
+    authenticatedZilchPlayer: () => true,
+    async presentPendingZilchAwards() { calls.push("pending awards"); },
+    initializeReleaseNotes() { calls.push("release notes"); },
+  });
+  await settle();
+  assert.deepEqual(requests.map(request => request.name), ["statistics", "achievements", "ranks"]);
+  // WebKit rejects these old-document reads during a language reload before
+  // pagehide. allSettled must not advance that initializer into more fetches.
+  f.window.emit("beforeunload");
+  for (const request of requests) request.reject(new Error("navigation cancelled the old document's read"));
+  await pending;
+  assert.deepEqual(calls, []);
+  assert.equal(f.main.innerHTML, "");
+  assert.equal(state.auth, null);
+  assert.deepEqual(f.visits, []);
+  f.window.emit("zdwa:auth-state", { detail: auth(1) });
+  f.window.emit("pageshow", { persisted: false });
+  assert.equal(f.main.innerHTML, "");
+  assert.deepEqual(f.visits, []);
+  f.window.emit("pagehide", { persisted: true });
+  f.window.emit("pageshow", { persisted: true });
+  assert.deepEqual(f.visits, ["reload"]);
 });
 
 test("Zilch own logout owns one destination, while pagehide or another identity retires its completion", () => {

@@ -178,10 +178,14 @@ function initializeZilchAccountLifecycle() {
     }
     if (viewerId !== null && (!event.detail?.authenticated || event.detail.user?.id !== viewerId)) leaveAccount(event.detail);
   });
-  window.addEventListener("pagehide", () => {
+  const retirePage = () => {
     waitingForOwnLogout = false;
     clearPrivatePage();
-  });
+  };
+  // WebKit can reject old-document reads during navigation before pagehide.
+  // Stop their initializer before allSettled advances into another fetch.
+  window.addEventListener("beforeunload", retirePage);
+  window.addEventListener("pagehide", retirePage);
   window.addEventListener("pageshow", event => {
     if (!event.persisted) return;
     clearPrivatePage();
