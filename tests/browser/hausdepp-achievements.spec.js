@@ -154,7 +154,7 @@ for (const language of ['de', 'en']) {
     await page.locator('#hausdeppAchievementStatus').selectOption('unlocked');
     await expect(page.locator('.hd-achievement-card')).toHaveCount(2);
     await page.locator('#hausdeppAchievementStatus').selectOption('locked');
-    await expect(page.locator('.hd-achievement-card')).toHaveCount(134);
+    await expect(page.locator('.hd-achievement-card')).toHaveCount(data.achievements.items.filter(item => !item.unlocked).length);
     await notice.locator('[data-progress-ack]').click();
     await expect(notice).toBeHidden();
     expect(acknowledged).toEqual({ revision: data.presentation.pending.revision });
