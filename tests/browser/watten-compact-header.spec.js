@@ -67,11 +67,11 @@ async function expectCompactHeader(page, language, expanded) {
   })).toEqual({ left: expanded ? page.viewportSize().width - 168 : 56, width: 156, top: 4 });
 }
 
-async function expectCompactCardsClear(page, { history = false } = {}) {
+async function expectCompactCardsClear(page, { history = false, expanded = false } = {}) {
   await expect(page.locator('.wt-reference > .wt-card')).toBeVisible();
   await expectReachable(page, '[data-wt-stake] > button');
   if (history) await expectReachable(page, '[data-wt-history]:not([open]) > summary');
-  await expect.poll(() => page.evaluate(history => {
+  await expect.poll(() => page.evaluate(({ history, expanded }) => {
     const shown = node => {
       const box = node.getBoundingClientRect();
       return box.width > 0 && box.height > 0 && getComputedStyle(node).visibility !== 'hidden';
@@ -88,7 +88,8 @@ async function expectCompactCardsClear(page, { history = false } = {}) {
     }
     const reference = document.querySelector('.wt-reference').getBoundingClientRect();
     const face = document.querySelector('.wt-reference > .wt-card').getBoundingClientRect();
-    if (Math.abs(reference.right - (innerWidth - 12)) > 1 || Math.abs(reference.top - 8) > 1 || face.width < 44) failures.push('reference lost its clear 44px top-right corner');
+    if ((expanded ? Math.abs(reference.left - 164) > 1 || Math.abs(reference.top - 56) > 1
+      : Math.abs(reference.right - (innerWidth - 12)) > 1 || Math.abs(reference.top - 8) > 1) || face.width < 44) failures.push('reference lost its clear 44px corner beside the menu');
     if (overlap(reference, document.querySelector('.wt-topbar').getBoundingClientRect())) failures.push('floating points cover the reference');
     const stake = document.querySelector('[data-wt-stake] > button'), box = stake.getBoundingClientRect();
     if (Math.abs(box.left - 6) > 1 || Math.abs(box.bottom - (innerHeight - 62)) > 1
@@ -105,7 +106,7 @@ async function expectCompactCardsClear(page, { history = false } = {}) {
           || overlap(box, container)) failures.push('closed review does not share the lower row beside the stake');
     }
     return failures;
-  }, history), { message: 'compact points, reference and stake/review clear every painted hand and keep their complete text' }).toEqual([]);
+  }, { history, expanded }), { message: 'compact points, reference and stake/review clear every painted hand and keep their complete text' }).toEqual([]);
 }
 
 for (const language of ['de', 'en']) {
@@ -127,6 +128,7 @@ for (const language of ['de', 'en']) {
         const before = await tableGeometry(page), opportunity = host.traffic.snapshot.engine.opportunity;
         await toggle.click();
         await expectCompactHeader(page, language, true);
+        await expectCompactCardsClear(page, { expanded: true });
         expect(await tableGeometry(page)).toEqual(before);
         const rules = page.locator(`.wt-header a[href="/watten/regeln${language === 'en' ? '?lang=en' : ''}"]`);
         await rules.focus();
@@ -197,7 +199,7 @@ for (const language of ['de', 'en']) {
         await voiceAvailable(peer.page);
         players.push(peer);
       }
-      await create(players, { count: 4, target: 11, reference: true });
+      await create(players, { count: 4, target: 11, reference: true, schoeneres: true });
       await action(players, 'request_bloedeln');
       await expect.poll(() => players.every(peer => peer.traffic.snapshot.engine.preplay.pending?.kind === 'bloedeln')).toBe(true);
       const callers = players.filter(peer => peer.traffic.snapshot.engine.actions.includes('show_ready'));
@@ -208,6 +210,9 @@ for (const language of ['de', 'en']) {
         await page.setViewportSize(viewport);
         await expectCompactHeader(page, language, false);
         await expect(page.locator('.wt-bloedeln-dock > .wt-bloedeln-status')).toBeVisible();
+        if (await page.locator('[data-wt-table]').getAttribute('data-wt-caller-axis') === 'bottom-left') {
+          await expect.poll(() => page.locator('.wt-bloedeln-dock').boundingBox()).toMatchObject({ x: 52 + (viewport.width - 52) / 2, y: 104, width: 156 });
+        }
         await expectReachable(page, '[data-watten-action=show_ready]');
         await tableGeometry(page);
         const target = await page.locator('[data-watten-action=show_ready]').boundingBox();
@@ -228,6 +233,8 @@ for (const language of ['de', 'en']) {
         await page.setViewportSize(viewport);
         await expectCompactHeader(page, language, false);
         await expectReachable(page, '[data-watten-action=inspection_ack]');
+        await expect(page.locator('[data-wt-inspection-positioned]')).toHaveCount(1);
+        expect(await page.locator('[data-watten-inspection] .wt-card').evaluateAll(nodes => Math.min(...nodes.map(node => Number.parseFloat(getComputedStyle(node).width))))).toBeGreaterThanOrEqual(52);
         const target = baseline.get(`${caller.user.id}:${viewport.width}`);
         await expect.poll(() => page.locator('[data-watten-action=inspection_ack]').boundingBox(),
           { message: 'both caller axes keep exactly the Show target for OK' }).toEqual(target);
@@ -239,6 +246,26 @@ for (const language of ['de', 'en']) {
         await page.keyboard.press('Escape');
       }
       await action(players, 'preplay_decline');
+      for (const caller of callers) for (const viewport of viewports) {
+        const { page } = caller;
+        await page.setViewportSize(viewport);
+        const menu = page.locator('[data-watten-preplay-options]');
+        await expect(menu).toBeVisible();
+        await expectReachable(page, '[data-watten-preplay-options] > summary');
+        await expect(page.locator('[data-wt-inspection-positioned]')).toHaveCount(1);
+        if (await page.locator('[data-wt-table]').getAttribute('data-wt-caller-axis') === 'bottom-left') {
+          await expect.poll(() => menu.boundingBox()).toMatchObject({ x: 52 + (viewport.width - 52) / 2, y: 104, width: 156 });
+        }
+        const ack = await page.locator('[data-watten-action=inspection_ack]').boundingBox();
+        const widths = await page.locator('[data-watten-inspection] .wt-card').evaluateAll(nodes => nodes.map(node => Number.parseFloat(getComputedStyle(node).width)));
+        expect(Math.min(...widths)).toBeGreaterThanOrEqual(52);
+        await menu.locator('summary').click();
+        await expectReachable(page, '[data-watten-action=request_schoeneres]');
+        await expectReachable(page, '[data-watten-action=inspection_ack]');
+        expect(await page.locator('[data-watten-action=inspection_ack]').boundingBox()).toEqual(ack);
+        expect(await page.locator('[data-watten-inspection] .wt-card').evaluateAll(nodes => nodes.map(node => Number.parseFloat(getComputedStyle(node).width)))).toEqual(widths);
+        await menu.locator('summary').click();
+      }
       await action(players, 'inspection_ack'); await action(players, 'inspection_ack');
       await expect.poll(() => players.every(peer => peer.traffic.snapshot.engine.phase === 'play')).toBe(true);
       for (const peer of players) for (const viewport of viewports) {

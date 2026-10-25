@@ -277,6 +277,9 @@ html[data-game="watten"][data-watten-active="true"] .wt-bloedeln-dock :is(.wt-pr
   html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] .wt-table .wt-reference {
     left: auto; right: max(12px, env(safe-area-inset-right, 0px)); top: 8px;
   }
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"][data-wt-header-open="true"] .wt-table .wt-reference {
+    left: calc(164px + var(--wt-rail-inset)); right: auto; top: 56px;
+  }
   html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] .wt-table:not([data-phase="match_complete"][data-round-stage="ready"]) .wt-end-sheet > .wt-stake {
     inset: auto auto calc(62px + env(safe-area-inset-bottom, 0px)) calc(6px + var(--wt-rail-inset));
     width: 144px; max-width: none; height: 44px;
@@ -305,5 +308,13 @@ html[data-game="watten"][data-watten-active="true"] .wt-bloedeln-dock :is(.wt-pr
   }
   html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] .wt-table[data-wt-caller-axis^="bottom-"] > .wt-bloedeln-dock:has(> .wt-bloedeln-status) {
     width: 124px;
+  }
+  /* A left caller needs the wood below the left fan for both faces. A long
+     pending request or the optional menu instead uses the opposite upper
+     gap, between the top fan and own packet. Accepted status keeps its dock. */
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] .wt-table[data-wt-caller-axis="bottom-left"] > .wt-bloedeln-dock:has(> .wt-bloedeln-status[data-watten-preplay-pending="bloedeln"]),
+  html[data-game="watten"][data-watten-active="true"][data-wt-compact-header="true"] .wt-table[data-wt-caller-axis="bottom-left"][data-phase="inspection"] .wt-preplay-options {
+    position: fixed; left: calc(var(--wt-rail-width) + (100vw - var(--wt-rail-width) - env(safe-area-inset-right, 0px)) / 2);
+    right: auto; top: 104px; bottom: auto; width: 156px; max-height: none; overflow: visible;
   }
 }
