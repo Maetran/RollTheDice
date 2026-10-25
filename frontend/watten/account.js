@@ -235,6 +235,7 @@ else if (page === 'settings') {
     }
   });
   const refresh = () => {
+    if (navigating) return Promise.resolve();
     const expectedGeneration = generation;
     return loadAuth({ refresh: true }).then(auth => {
       if (expectedGeneration !== generation || navigating) return;
@@ -248,6 +249,7 @@ else if (page === 'settings') {
     });
   };
   const clearPrivatePage = () => {
+    navigating = true;
     generation += 1;
     viewerId = null;
     clearFriendSettings();
@@ -255,6 +257,8 @@ else if (page === 'settings') {
     clearVoicePreferences();
     root.replaceChildren();
   };
+  // Retire child verification before WebKit resumes old-document reads.
+  window.addEventListener('beforeunload', clearPrivatePage);
   window.addEventListener('pagehide', clearPrivatePage);
   window.addEventListener('pageshow', event => {
     if (!event.persisted) return;

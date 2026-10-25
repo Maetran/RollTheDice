@@ -205,7 +205,9 @@ export function initializeAppMode({
     const revision = ++refreshRevision;
     const operation = Promise.resolve().then(async () => {
       try {
+        if (revision !== refreshRevision || suspended || document.visibilityState === "hidden") return false;
         let auth = await loadAuth({ refresh: true });
+        if (revision !== refreshRevision || suspended || document.visibilityState === "hidden") return false;
         // Shared /me reads coalesce. Finish an older in-flight identity first,
         // then obtain one request begun after it before showing a private game.
         if (canDiscoverWatten(auth) && (auth?.game_access || auth?.user?.game_access)?.watten_public !== true) auth = await loadAuth({ refresh: true });
