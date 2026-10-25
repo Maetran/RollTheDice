@@ -166,6 +166,17 @@ html[data-game="watten"][data-watten-active="true"] .wt-bloedeln-dock :is(.wt-pr
 @media (orientation: landscape) and (max-height: 360px) {
   html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"]:is([data-phase="show_ready"], [data-phase="inspection"]) { --wt-hand-w: 52px; }
 }
+/* A passive bid sentence and an active answer have different heights. On a
+   short rail table both grow upwards from the same painted-hand clearance;
+   centring either at half the viewport sends the taller answer into cards. */
+@media (orientation: landscape) and (max-height: 360px) and (max-width: 720px) {
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"][data-phase="bid_response"] > .wt-end-sheet > .wt-panel:has(> .wt-bid) {
+    --wt-bid-hand-clearance: calc(56px + var(--wt-hand-w) * 1.7 + env(safe-area-inset-bottom, 0px));
+    top: auto; bottom: var(--wt-bid-hand-clearance); translate: -50% 0;
+    max-height: calc(var(--game-viewport-height, 100dvh) - var(--wt-bid-hand-clearance) - 8px);
+    overflow: auto;
+  }
+}
 /* On narrow portrait tablets, the outer card paints five pixels into the
    former 190px action column. Keep that column beside the complete fan.
    A non-caller's waiting sentence owns the empty middle table space instead
