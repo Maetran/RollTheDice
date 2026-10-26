@@ -30,7 +30,8 @@ html[data-watten-active="true"] .wt-panel > .wt-prompt {
   margin: 0; color: var(--wt-ink); font-size: .8rem; font-weight: 400; line-height: 1.35;
 }
 html[data-watten-active="true"] .wt-panel:has(.wt-deal-result) { bottom: 20px; }
-html[data-watten-active="true"] .wt-table[data-phase="deal_complete"]:not([data-wt-retour-offer="true"]) .wt-hand-area { display: none; }
+/* Keep the owner's remaining cards beside the revealed call during review. */
+html[data-watten-active="true"] .wt-table[data-phase="deal_complete"][data-round-stage="ready"]:not([data-wt-retour-offer="true"]) .wt-hand-area { display: none; }
 /* Collection hides faces, while their physical band still belongs to the
    owner. Keep it measurable through cold loads and orientation changes. */
 html[data-watten-active="true"] .wt-table:is([data-phase="deal_complete"], [data-phase="match_complete"])[data-round-stage="collect"] .wt-hand-area { display: block; visibility: hidden; pointer-events: none; }
@@ -266,6 +267,12 @@ html[data-watten-active="true"] .wt-round-call dt { font-size: .75rem; color: #7
 html[data-watten-active="true"] .wt-round-call dd { font: 700 1.05rem Georgia, serif; margin: 3px 0 0; }
 html[data-watten-active="true"] .wt-round-call figure { display: grid; justify-items: center; gap: 3px; margin: 0; font-size: .7rem; }
 html[data-watten-active="true"] .wt-round-call .wt-card { width: 48px; }
+/* The short review prioritizes the call above long player names, so the
+   Rechter and its labels stay visible beside the owner's hand on phones. */
+html[data-watten-active="true"] .wt-table[data-round-stage="review"] .wt-deal-result { display: flex; flex-direction: column; }
+html[data-watten-active="true"] .wt-table[data-round-stage="review"] .wt-deal-result > .wt-round-call { order: -1; flex-shrink: 0; margin: 0 0 6px; }
+html[data-watten-active="true"] .wt-table[data-round-stage="review"] .wt-deal-result > h3 { font-size: .9rem; margin: 0; }
+html[data-watten-active="true"] .wt-table[data-round-stage="review"] .wt-deal-result > .wt-result-line { font-size: .75rem; line-height: 1.3; margin: 4px 0 0; }
 html[data-watten-active="true"] .wt-table[data-phase="deal_complete"] .wt-end-sheet { max-height: calc(100% - 110px); }
 html[data-watten-active="true"] .wt-table[data-phase="match_complete"][data-round-stage="ready"] .wt-end-sheet { display: flex; flex-direction: column; gap: 12px; }
 html[data-watten-active="true"] .wt-table[data-phase="match_complete"][data-round-stage="ready"] .wt-history-box { display: block; position: relative; inset: auto; flex: 0 0 auto; width: auto; max-width: 100%; max-height: none; overflow: visible; }

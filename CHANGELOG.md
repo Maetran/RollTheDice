@@ -23,6 +23,19 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 4.9.0 — 2026-10-26
+
+### WATTEN: DAS EIGENE BLATT NOCHMALS SEHEN / REVIEW YOUR OWN HAND
+
+**Deutsch:** Nach drei Stichen oder wenn ein Team geht, bleiben deine übrigen
+Handkarten während der etwa dreisekündigen Rückschau auf Schlag, Farbe und den
+Rechten für dich sichtbar. Danach folgt wie bisher die nächste Gabe oder das
+Spielergebnis.
+
+**English:** After three tricks or when a team folds, your remaining cards stay
+visible to you during the roughly three-second review of strike, suit and the
+Rechter. The next deal or match result follows as before.
+
 ## 4.8.1 — 2026-10-26
 
 ### VERÖFFENTLICHUNGSPRÜFUNG / RELEASE CHECKS

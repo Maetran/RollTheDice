@@ -217,6 +217,12 @@
     position: fixed; inset: auto; left: calc(var(--wt-rail-width) + (100vw - var(--wt-rail-width) - env(safe-area-inset-right, 0px)) / 2); top: 50%; translate: -50% -50%;
     width: min(340px, calc(100vw - var(--wt-rail-width) - env(safe-area-inset-right, 0px) - 24px)); height: auto; min-height: 0; max-height: calc(100dvh - 24px); margin: 0; padding: 10px; z-index: 26;
   }
+  /* The call and remaining hand share the short review. Fit the call between
+     the two hands; the full outcome and optional Retour follow at readiness. */
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-phase][data-round-stage="review"] .wt-end-sheet > .wt-panel:has(.wt-round-call) { top: calc(50% - 40px); padding: 6px 10px; }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-round-stage="review"] .wt-deal-result > :not(.wt-round-call) { display: none; }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-round-stage="review"] .wt-round-call { margin: 0; padding: 0; border: 0; background: none; }
+  html[data-game="watten"][data-watten-active="true"] .wt-table[data-round-stage="review"] .wt-round-call .wt-card { width: 34px; }
   html[data-game="watten"][data-watten-active="true"] .wt-table:not([data-phase="match_complete"][data-round-stage="ready"]) .wt-panel:has(> .wt-prompt:only-child) { top: 92px; width: max-content; max-width: calc(100vw - var(--wt-rail-width) - env(safe-area-inset-right, 0px) - 24px); padding: 2px 6px; }
   html[data-game="watten"][data-watten-active="true"] .wt-table:not([data-phase="match_complete"][data-round-stage="ready"]) .wt-end-sheet > .wt-panel:has(> .wt-announce:only-child [data-watten-action="show_ready"]) { width: max-content; padding: 0; background: transparent; }
   html[data-game="watten"][data-watten-active="true"] .wt-table:not([data-phase="match_complete"][data-round-stage="ready"]) .wt-bid { display: block; }

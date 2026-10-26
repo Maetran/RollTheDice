@@ -1,32 +1,23 @@
 {
   "kind": "usability",
   "games": [
-    "zdwa",
-    "zilch",
-    "hausdepp",
     "watten"
   ],
-  "summary_de": "Spieloptionen gezielt testen und veröffentlichen; Beta-Abzeichen kennzeichnen Funktionen und Spiele.",
-  "summary_en": "Test and publish game options selectively; beta badges identify features and games.",
+  "summary_de": "Watten: Dein übriges Blatt bleibt beim kurzen Rückblick mit dem Rechten sichtbar – auch wenn ein Team geht.",
+  "summary_en": "Watten: Your remaining hand stays visible during the short Rechter review, including when a team folds.",
   "player_notes": {
     "de": {
-      "title": "4.8.0: Spieloptionen gezielt testen",
+      "title": "4.9.0: Noch ein Blick aufs eigene Blatt",
       "changes": [
-        "Einige Watten-Zusatzoptionen werden zunächst gemeinsam mit mitspielenden Ownern und Admins getestet.",
-        "Alle Mitspieler können die am Tisch aktivierten Testfunktionen nutzen. Laufende Partien behalten ihre Regeln.",
-        "Veröffentlichte Funktionen und ganze Spiele können ein Beta-Abzeichen tragen.",
-        "Owner verwalten Freigaben im neu geordneten Adminbereich; Änderungen bleiben nachvollziehbar.",
-        "Zilch-Würfel bleiben auch auf kleinen Handys groß und gut antippbar."
+        "Nach drei Stichen oder wenn ein Team geht, siehst du deine übrigen Karten zusammen mit Schlag, Farbe und dem Rechten.",
+        "Die Rückschau dauert wie bisher etwa drei Sekunden. Danach folgen automatisch neue Karten oder das Spielergebnis."
       ]
     },
     "en": {
-      "title": "4.8.0: Test game options selectively",
+      "title": "4.9.0: One more look at your hand",
       "changes": [
-        "Some additional Watten options are initially tested with owners and admins taking part.",
-        "Everyone at the table can use its enabled test features. Games in progress keep their rules.",
-        "Published features and entire games can carry a beta badge.",
-        "Owners manage availability in the reorganized admin area, with a history of changes.",
-        "Zilch dice stay large and easy to tap on small phones."
+        "After three tricks or when a team folds, your remaining cards appear alongside strike, suit and the Rechter.",
+        "The review still lasts about three seconds, followed automatically by the next deal or match result."
       ]
     }
   }
