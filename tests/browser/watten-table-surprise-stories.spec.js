@@ -53,6 +53,23 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 820, height: 1180 
         const art = layer.locator(`.hd-art[data-art="${effect}"] img`);
         await expect(art).toHaveCount(effect === 'portal' ? 2 : 1);
         expect(await art.evaluateAll(nodes => nodes.every(img => img.complete && img.naturalWidth > 0))).toBe(true);
+        if (effect === 'star') {
+          // The optical stage must paint above Watten's sibling prop layer;
+          // otherwise abduction/occlusion would leave the live prop visible.
+          const stacking = await layer.evaluate(node => {
+            const prop = node.closest('#wattenApp').querySelector('[data-watten-decor-layer] .wt-decor-prop:not(.wt-decor-prop--rare)');
+            const bounds = prop.getBoundingClientRect(), style = node.style.cssText, inert = node.inert;
+            try {
+              // No input is dispatched. Hit testing provides the native paint
+              // order; restore the inert, pointer-transparent stage immediately.
+              node.inert = false;
+              node.style.setProperty('pointer-events', 'auto', 'important');
+              const hit = document.elementFromPoint(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
+              return { above: hit === node, hit: hit?.className };
+            } finally { node.style.cssText = style; node.inert = inert; }
+          });
+          expect(stacking.above, `the optical stage must cover the real sibling prop, found ${stacking.hit}`).toBe(true);
+        }
         const cards = await page.locator('[data-wt-hand] .wt-hand-card').evaluateAll(nodes => nodes.map(node => node.outerHTML));
         await page.evaluate(effect => {
           const layer = document.querySelector('.hd-surprise-layer');
@@ -85,6 +102,31 @@ for (const viewport of [{ width: 320, height: 568 }, { width: 820, height: 1180 
         expect(Number(geometry.opacity), `${effect}: the character is opaque at the capture peak`).toBeGreaterThan(.5);
         expect(geometry.visible, `${effect}: the character's centre lies outside protected-control cutouts`).toBe(true);
         await page.screenshot({ path: info.outputPath(`${effect}-${viewport.width}x${viewport.height}.png`) });
+        if (effect === 'star') {
+          // The SFU is external to this layout check; expose its native opt-in
+          // toolbar without joining or capturing a microphone.
+          peer.inject({ watten_voice: { event: 'state', available: true,
+            room_id: 'native-rare-layout', members: [], publications: [] } });
+          for (const [toggle, panel] of [
+            ['[data-watten-social-action="toggle"]', '[data-watten-social-drawer]'],
+            ['.wt-voice-details > summary', '.wt-voice-panel'],
+          ]) {
+            await page.locator(toggle).click();
+            await expect(page.locator(panel)).toBeVisible();
+            const above = await page.locator(panel).evaluate(panel => {
+              const node = document.querySelector('.hd-surprise-layer');
+              const bounds = panel.getBoundingClientRect(), style = node.style.cssText, inert = node.inert;
+              try {
+                node.inert = false;
+                node.style.setProperty('pointer-events', 'auto', 'important');
+                return panel.contains(document.elementFromPoint(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2));
+              } finally { node.style.cssText = style; node.inert = inert; }
+            });
+            expect(above, `${panel} paints above an already running optical stage`).toBe(true);
+            if (panel.includes('social')) await page.locator('[data-watten-social-action="close"]').click();
+            else await page.locator(toggle).click();
+          }
+        }
         await layer.evaluate(node => node.getAnimations({ subtree: true }).forEach(animation => animation.finish()));
         await expect(layer).toHaveCount(0);
       }

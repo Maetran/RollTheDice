@@ -4,6 +4,9 @@
 .hd-art { position: absolute; inset: 0; z-index: 0; display: block; isolation: isolate; pointer-events: none; user-select: none; }
 .hd-art-img { position: absolute; inset: 0; z-index: 1; display: block; width: 100%; height: 100%; max-width: none; object-fit: contain; pointer-events: none; user-select: none; -webkit-user-drag: none; }
 .wt-decor-prop--rare > .hd-art { inset: 4px; }
+/* Watten's props live in a sibling context at 12. Paint their optical doubles
+   above it, while status messages (15) and result sheets (19) stay above us. */
+.wt-table > .hd-surprise-layer { z-index: 13; }
 
 /* Watch hands sit on the raster dial; root tunes the dial box to the final
    clock.webp (square canvas, dial centre and diameter in percent). */
