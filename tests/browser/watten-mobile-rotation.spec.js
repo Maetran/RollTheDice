@@ -201,7 +201,29 @@ for (const browserName of ['chromium', 'webkit']) {
             await expectReachable(decisionPage, selector);
           }
         }
-        await action(players, 'respond_hold', 'hold');
+        // Keep the real press held while checking the unpinned review. An
+        // outside-pointerdown dismissal must not move this decision away from
+        // its original hit target before pointerup can deliver the click.
+        const history = decisionPage.locator('.wt-end-sheet > [data-wt-history]');
+        const hold = decisionPage.locator('[data-watten-action="respond_hold"][data-value="hold"]');
+        await expect(history).toHaveAttribute('open', '');
+        await expect(hold).toBeEnabled();
+        await expectReachable(decisionPage, '[data-watten-action="respond_hold"][data-value="hold"]');
+        const holdBox = await hold.boundingBox(), decision = responder.traffic.snapshot.engine;
+        const commandStart = responder.traffic.commands.length;
+        const decisionCommands = () => responder.traffic.commands.slice(commandStart).filter(command => command.action === 'watten_command');
+        await decisionPage.mouse.move(holdBox.x + holdBox.width / 2, holdBox.y + holdBox.height / 2);
+        await decisionPage.mouse.down();
+        try {
+          await expect(history).toHaveAttribute('open', '');
+          expect(await hold.boundingBox()).toEqual(holdBox);
+          expect(decisionCommands()).toEqual([]);
+        } finally { await decisionPage.mouse.up(); }
+        await expect.poll(decisionCommands).toEqual([expect.objectContaining({
+          action: 'watten_command', kind: 'respond', value: 'hold', deal_id: decision.deal_id,
+          opportunity: decision.opportunity, phase: 'bid_response',
+        })]);
+        await expect.poll(() => responder.traffic.snapshot.engine.opportunity).not.toBe(decision.opportunity);
         await expect.poll(() => players.every(item => item.traffic.snapshot.engine.phase === 'play')).toBe(true);
         expect(players.flatMap(item => item.traffic.errors)).toEqual([]);
         // Locking is confined to an active game. The compact lobby opens a
