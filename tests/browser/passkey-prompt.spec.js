@@ -28,10 +28,13 @@ async function account(page, username, language = 'de') {
   const signedIn = await page.request.post('/api/auth/login', { data: { username, password } });
   expect(signedIn.ok()).toBeTruthy();
   const user = (await signedIn.json()).user;
-  const state = { enabled: true, has_credentials: false, forced: false, claimed: false, claims: 0, csrfToken: user.csrf_token };
+  const state = { enabled: true, has_credentials: false, forced: false, claimed: false, claims: 0,
+    csrfToken: user.csrf_token, guestAuthDelivery: null };
   await page.route('**/api/auth/me', async route => {
     const response = await route.fetch();
     const auth = await response.json();
+    const guestDelivery = !auth.authenticated ? state.guestAuthDelivery : null;
+    if (guestDelivery) await guestDelivery;
     await route.fulfill({ response, json: { ...auth, user: auth.user ? { ...auth.user, must_change_password: state.forced } : null,
       passkeys: { enabled: state.enabled, has_credentials: state.has_credentials } } });
   });
@@ -118,19 +121,28 @@ for (const game of ['zdwa', 'zilch']) {
     // Model another bundle's successful logout, including its server session.
     // A guest event alone would send the private account to login while its
     // still-authenticated /me response immediately sends it back to the account.
-    const loggedOut = await page.request.post('/api/auth/logout', { headers: { 'X-CSRF-Token': state.csrfToken } });
-    expect(loggedOut.ok()).toBeTruthy();
-    const identity = await page.request.get('/api/auth/me');
-    expect(identity.ok()).toBeTruthy();
-    expect((await identity.json()).authenticated).toBe(false);
-    // Keep the original node: the private-page lifecycle also removes it and
-    // navigates, so a locator could otherwise inspect a later document instead.
-    const remainingHint = await page.evaluate(() => {
-      const hint = document.querySelector('[data-passkey-prompt]');
-      window.dispatchEvent(new CustomEvent('zdwa:auth-state', { detail: { authenticated: false, user: null } }));
-      return hint?.innerHTML;
-    });
-    expect(remainingHint).toBe('');
+    // Hold only native browser guest deliveries until this explicit event has
+    // inspected the old node. Direct API reads still verify the real logout.
+    let releaseGuestAuth;
+    state.guestAuthDelivery = new Promise(resolve => { releaseGuestAuth = resolve; });
+    try {
+      const loggedOut = await page.request.post('/api/auth/logout', { headers: { 'X-CSRF-Token': state.csrfToken } });
+      expect(loggedOut.ok()).toBeTruthy();
+      const identity = await page.request.get('/api/auth/me');
+      expect(identity.ok()).toBeTruthy();
+      expect((await identity.json()).authenticated).toBe(false);
+      // Keep the original node: the private-page lifecycle also removes it and
+      // navigates, so a locator could otherwise inspect a later document instead.
+      const remainingHint = await page.evaluate(() => {
+        const hint = document.querySelector('[data-passkey-prompt]');
+        window.dispatchEvent(new CustomEvent('zdwa:auth-state', { detail: { authenticated: false, user: null } }));
+        return hint?.innerHTML;
+      });
+      expect(remainingHint).toBe('');
+    } finally {
+      state.guestAuthDelivery = null;
+      releaseGuestAuth();
+    }
     await expect(page).toHaveURL(game === 'zilch' ? /\/zilch\/anmelden\?return_to=%2Fzilch%2Fkonto$/ : /\/$/);
     await expect(prompt).toBeHidden();
   });

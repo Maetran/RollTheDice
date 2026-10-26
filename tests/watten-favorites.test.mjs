@@ -17,13 +17,13 @@ async function until(condition) {
 const recipe = () => ({ kind: "watten_recipe", schema_version: 1, ruleset_id: "watten-house", ruleset_version: 1,
   player_count: 4, determination: "ladinisch", blind: true, critical: true, target_points: 13, cpu_seats: [1, 2, 3],
   show_rechter: false, trick_history: true, partner_hand: false, password_required: true,
-  voice_enabled: false, schoeneres_enabled: true, tournament_nockerl_target: null });
+  voice_enabled: false, schoeneres_enabled: true, schlagwechsel_enabled: false, tournament_nockerl_target: null });
 const response = (value, status = 200) => ({ ok: status >= 200 && status < 300, status, json: async () => value });
 const payload = value => ({ schema_version: 1, game_type: "watten", recipe: value });
 const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, letter => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[letter]);
 
 function creator() {
-  const flags = Object.fromEntries(["blind", "critical", "show_rechter", "trick_history", "partner_hand", "voice_enabled", "schoeneres_enabled", "cpu_fill"]
+  const flags = Object.fromEntries(["blind", "critical", "show_rechter", "trick_history", "partner_hand", "voice_enabled", "schoeneres_enabled", "schlagwechsel_enabled", "cpu_fill"]
     .map(key => [key, { checked: false }]));
   const advanced = { open: false }, passwordNote = { textContent: "" };
   const elements = { ...flags, name: { value: "My chosen table" }, count: { value: "4" },
@@ -104,9 +104,10 @@ test("favorite apply preserves CPU wishes and arbitrary valid target options wit
 
 test("older favorites default Schöneres off and audio on while malformed or three-player requests are rejected", () => {
   const form = creator(), legacy = recipe();
-  delete legacy.schoeneres_enabled; delete legacy.voice_enabled; delete legacy.tournament_nockerl_target;
+  delete legacy.schoeneres_enabled; delete legacy.schlagwechsel_enabled; delete legacy.voice_enabled; delete legacy.tournament_nockerl_target;
   applyFavoriteToCreator(form, legacy);
   assert.equal(form.elements.schoeneres_enabled.checked, false);
+  assert.equal(form.elements.schlagwechsel_enabled.checked, false);
   assert.equal(form.elements.voice_enabled.checked, true);
   assert.equal(readCreatorRecipe(form).recipe.tournament_nockerl_target, null);
   for (const value of [null, "true", 1]) {
@@ -116,6 +117,15 @@ test("older favorites default Schöneres off and audio on while malformed or thr
   assert.throws(() => applyFavoriteToCreator(form, solo));
   applyFavoriteToCreator(form, { ...solo, schoeneres_enabled: false });
   assert.equal(readCreatorRecipe(form).recipe.schoeneres_enabled, false);
+});
+
+test("strike swap favorites are explicit and historical inert three-player preferences still decode", () => {
+  const form = creator();
+  applyFavoriteToCreator(form, { ...recipe(), schlagwechsel_enabled: true });
+  assert.equal(readCreatorRecipe(form).recipe.schlagwechsel_enabled, true);
+  applyFavoriteToCreator(form, { ...recipe(), player_count: 3, determination: "normal",
+    blind: false, cpu_seats: [1, 2], schoeneres_enabled: false, schlagwechsel_enabled: true });
+  assert.equal(form.elements.schlagwechsel_enabled.checked, true);
 });
 
 test("tournament presets and custom positive integer targets survive favorite apply without starting a match", () => {

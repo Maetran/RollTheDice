@@ -44,10 +44,20 @@ def _identity(request):
 def create_watten_http(request, req) -> JSONResponse:
     identity = _identity(request)
     require_csrf(request, identity)
-    recipe = recipe_from_payload(req.watten_recipe)
+    payload = req.watten_recipe
+    if type(payload) is dict and "schlagwechsel_enabled" not in payload:
+        payload = {**payload, "schlagwechsel_enabled": False}
+    recipe = recipe_from_payload(payload)
     game = new_watten_game(secrets.token_hex(8), req.name, req.mode)
-    configure_watten_game(game, recipe, identity, req.passphrase)
-    persist_watten_game(game, creating=True)
+    try:
+        configure_watten_game(game, recipe, identity, req.passphrase)
+        persist_watten_game(game, creating=True)
+    except ValueError as exc:
+        code = str(exc)
+        raise HTTPException(status_code=403 if code.startswith("watten_feature_") else 422,
+                            detail=code, headers=_HEADERS) from exc
+    except SQLAlchemyError as exc:
+        raise HTTPException(status_code=503, detail="watten_storage_unavailable", headers=_HEADERS) from exc
     games[game["_id"]] = game
     return _response({"game_id": game["_id"]})
 

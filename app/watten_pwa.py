@@ -5,6 +5,7 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import FileResponse
 
+from .game_presentation import game_manifest_response
 from .http_cache import read_static_asset_version
 from .watten_readiness import watten_account_preview_enabled, watten_public_beta_enabled
 
@@ -23,7 +24,7 @@ def _require_local_preview(request: Request) -> None:
 def watten_manifest(request: Request):
     _require_local_preview(request)
     filename = "watten-manifest-en.webmanifest" if request.url.path.endswith("-en.webmanifest") else "watten-manifest.webmanifest"
-    return FileResponse(_STATIC / filename, media_type="application/manifest+json", headers=_HEADERS)
+    return game_manifest_response(_STATIC / filename, "watten", headers=_HEADERS)
 
 
 @router.api_route("/watten-sw.js", methods=["GET", "HEAD"], include_in_schema=False)

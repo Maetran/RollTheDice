@@ -5,9 +5,9 @@ const currentLanguage = () => globalThis.window?.ZDWA_I18N?.getLanguage?.() === 
 const integer = (value, minimum = 0) => Number.isSafeInteger(value) && value >= minimum;
 const object = value => value !== null && typeof value === "object" && !Array.isArray(value);
 const recipeKeys = new Set(["kind", "schema_version", "ruleset_id", "ruleset_version", "player_count", "determination", "blind",
-  "critical", "target_points", "cpu_seats", "show_rechter", "trick_history", "partner_hand", "password_required", "voice_enabled", "schoeneres_enabled", "tournament_nockerl_target"]);
+  "critical", "target_points", "cpu_seats", "show_rechter", "trick_history", "partner_hand", "password_required", "voice_enabled", "schoeneres_enabled", "schlagwechsel_enabled", "tournament_nockerl_target"]);
 const tournamentPresets = [3, 5, 8, 10, 15, 20];
-const flags = ["blind", "critical", "show_rechter", "trick_history", "partner_hand", "password_required", "voice_enabled", "schoeneres_enabled"];
+const flags = ["blind", "critical", "show_rechter", "trick_history", "partner_hand", "password_required", "voice_enabled", "schoeneres_enabled", "schlagwechsel_enabled"];
 
 export function favoriteText(key, values = {}, language = currentLanguage()) {
   return WATTEN_FAVORITE_MESSAGES[language === "en" ? "en" : "de"][key]
@@ -31,7 +31,7 @@ function validRecipe(recipe) {
 function normalizedRecipe(value) {
   if (!object(value)) return null;
   // Existing favorites predate the optional audio and redeal preferences.
-  const recipe = { voice_enabled: true, schoeneres_enabled: false, tournament_nockerl_target: null, ...value };
+  const recipe = { voice_enabled: true, schoeneres_enabled: false, schlagwechsel_enabled: false, tournament_nockerl_target: null, ...value };
   return validRecipe(recipe) ? recipe : null;
 }
 
@@ -57,6 +57,7 @@ export function readCreatorRecipe(form, { language = currentLanguage() } = {}) {
     partner_hand: form.elements.partner_hand.checked, password_required: protectedTable,
     voice_enabled: form.elements.voice_enabled.checked,
     schoeneres_enabled: form.elements.schoeneres_enabled.checked,
+    schlagwechsel_enabled: form.elements.schlagwechsel_enabled.checked,
     tournament_nockerl_target: tournament ? Number(tournament === "custom" ? form.elements.tournament_custom.value : tournament) : null,
   };
   if (recipe.cpu_seats.length >= recipe.player_count) throw new Error(favoriteText("allCpu", {}, language));
@@ -89,7 +90,7 @@ export function applyFavoriteToCreator(form, recipe) {
   const passwordNote = form.querySelector("[data-watten-password-note]");
   if (passwordNote) passwordNote.textContent = lobbyText(recipe.password_required ? "savedPassword" : "passwordHelp");
   const advanced = form.querySelector("[data-watten-advanced]");
-  if (advanced && (recipe.password_required || recipe.cpu_seats.length || recipe.schoeneres_enabled)) advanced.open = true;
+  if (advanced && (recipe.password_required || recipe.cpu_seats.length || recipe.schoeneres_enabled || recipe.schlagwechsel_enabled)) advanced.open = true;
 }
 
 /** Account-bound private favorite controls; no automatic apply/create/start. */

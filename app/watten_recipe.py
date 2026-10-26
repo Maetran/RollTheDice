@@ -29,7 +29,7 @@ _KNOWN_RULESETS: Final = frozenset({(WATTEN_RULESET_ID, WATTEN_RULESET_VERSION)}
 _RECIPE_KEYS: Final = frozenset({
     "kind", "schema_version", "ruleset_id", "ruleset_version", "player_count", "determination", "blind",
     "critical", "target_points", "cpu_seats", "show_rechter", "trick_history", "partner_hand",
-    "password_required", "voice_enabled", "schoeneres_enabled", "tournament_nockerl_target",
+    "password_required", "voice_enabled", "schoeneres_enabled", "schlagwechsel_enabled", "tournament_nockerl_target",
 })
 
 
@@ -67,6 +67,7 @@ class WattenRecipe:
     tournament_nockerl_target: int | None = None
     ruleset_id: str = WATTEN_RULESET_ID
     ruleset_version: int = WATTEN_RULESET_VERSION
+    schlagwechsel_enabled: bool = False
 
     def __post_init__(self) -> None:
         try:
@@ -80,7 +81,7 @@ class WattenRecipe:
             raise WattenRecipeError("watten_invalid_target_points")
         if any(type(option) is not bool for option in (
                 self.show_rechter, self.trick_history, self.partner_hand, self.password_required, self.voice_enabled,
-                self.schoeneres_enabled)):
+                self.schoeneres_enabled, self.schlagwechsel_enabled)):
             raise WattenRecipeError("watten_invalid_recipe_option")
         if self.schoeneres_enabled and self.player_count == 3:
             raise WattenRecipeError("watten_schoeneres_requires_two_callers")
@@ -124,6 +125,7 @@ def recipe_to_payload(recipe: WattenRecipe) -> dict:
         "password_required": recipe.password_required,
         "voice_enabled": recipe.voice_enabled,
         "schoeneres_enabled": recipe.schoeneres_enabled,
+        "schlagwechsel_enabled": recipe.schlagwechsel_enabled,
         "tournament_nockerl_target": recipe.tournament_nockerl_target,
     }
 
@@ -148,6 +150,10 @@ def recipe_from_payload(payload: object) -> WattenRecipe:
         payload = {**payload, "schoeneres_enabled": False}
     if type(payload) is dict and "tournament_nockerl_target" not in payload:
         payload = {**payload, "tournament_nockerl_target": None}
+    # Historical recipes predate a selectable Schlagwechsel option and retain
+    # the rule they were played with. New table creation supplies False explicitly.
+    if type(payload) is dict and "schlagwechsel_enabled" not in payload:
+        payload = {**payload, "schlagwechsel_enabled": True}
     fields = require_fields(payload, _RECIPE_KEYS, WattenRecipeError, "watten_recipe")
     if fields["kind"] != _RECIPE_KIND:
         raise WattenRecipeError("watten_recipe_invalid_payload")
@@ -168,6 +174,7 @@ def recipe_from_payload(payload: object) -> WattenRecipe:
         password_required=fields["password_required"],
         voice_enabled=fields["voice_enabled"],
         schoeneres_enabled=fields["schoeneres_enabled"],
+        schlagwechsel_enabled=fields["schlagwechsel_enabled"],
         tournament_nockerl_target=fields["tournament_nockerl_target"],
         ruleset_id=fields["ruleset_id"],
         ruleset_version=fields["ruleset_version"],

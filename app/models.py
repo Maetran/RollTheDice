@@ -38,6 +38,73 @@ class Base(DeclarativeBase):
     pass
 
 
+class FeaturePolicyLock(Base):
+    """One transactional guard for policy changes and game-start snapshots."""
+
+    __tablename__ = "feature_policy_lock"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+
+    __table_args__ = (CheckConstraint("id = 1", name="ck_feature_policy_lock_singleton"),)
+
+
+class FeatureFlag(Base):
+    """Versioned release policy for one code-owned capability."""
+
+    __tablename__ = "feature_flags"
+
+    key: Mapped[str] = mapped_column(String(80), primary_key=True)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    beta: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
+    __table_args__ = (
+        CheckConstraint("status IN ('off', 'internal', 'public')", name="ck_feature_flags_status"),
+        CheckConstraint("beta IN (true, false) AND (status = 'public' OR beta = false)", name="ck_feature_flags_beta"),
+        CheckConstraint("version > 0", name="ck_feature_flags_version"),
+    )
+
+
+class GamePresentation(Base):
+    """Game-wide beta label; deliberately contains no game-access switch."""
+
+    __tablename__ = "game_presentations"
+
+    game: Mapped[str] = mapped_column(String(16), primary_key=True)
+    beta: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
+    __table_args__ = (
+        CheckConstraint("game IN ('zdwa', 'zilch', 'hausdepp', 'watten')", name="ck_game_presentations_game"),
+        CheckConstraint("beta IN (true, false)", name="ck_game_presentations_beta"),
+        CheckConstraint("version > 0", name="ck_game_presentations_version"),
+    )
+
+
+class FeatureFlagAudit(Base):
+    """Append-only change history survives later account deletion or renaming."""
+
+    __tablename__ = "feature_flag_audit"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    target_type: Mapped[str] = mapped_column(String(16), nullable=False)
+    target_key: Mapped[str] = mapped_column(String(80), nullable=False)
+    actor_user_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    actor_username: Mapped[str] = mapped_column(String(32), nullable=False)
+    before_json: Mapped[str] = mapped_column(Text, nullable=False)
+    after_json: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    __table_args__ = (
+        CheckConstraint("target_type IN ('feature', 'game')", name="ck_feature_flag_audit_target"),
+        Index("ix_feature_flag_audit_created_at", "created_at"),
+    )
+
+
 class VoiceUsageBucket(Base):
     """Anonymous browser-reported WebRTC payload totals, one UTC row per day."""
 

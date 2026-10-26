@@ -3,7 +3,7 @@ const { player, openCreator } = require('./helpers/watten-journey.cjs');
 
 for (const language of ['de', 'en']) {
   test(`${language}: a protected favorite keeps CPU, voice and Schöneres settings without restoring a password or creating automatically`, async ({ browser, baseURL }) => {
-    const own = await player(browser, baseURL, language);
+    const own = await player(browser, baseURL, language, { role: 'admin' });
     const stranger = await player(browser, baseURL, language);
     const creates = [];
     own.page.on('request', request => {

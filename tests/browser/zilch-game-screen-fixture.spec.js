@@ -3390,7 +3390,7 @@ test("the mobile Zilch chat keeps a focused draft while a filled history receive
   }
 });
 
-test("a controlled server snapshot drives both boards, dice, Quick Holds, and high-risk Zilch states", async ({ browser, baseURL }) => {
+test("a controlled server snapshot drives both boards, dice, Quick Holds, and high-risk Zilch states", async ({ browser, baseURL }, testInfo) => {
   // The client fixture intercepts only a private game's detail request and
   // WebSocket frames. It uses the real protected shell and never adds a test
   // endpoint or a client-side scoring path to production.
@@ -3543,6 +3543,11 @@ test("a controlled server snapshot drives both boards, dice, Quick Holds, and hi
     await expect(page.locator(".zilch-die--non-scoring")).toHaveCount(2);
     await expect(page.locator("[data-zilch-roll]")).toContainText(/Weiterwürfeln|roll again/i);
 
+    // Measure settled tap targets after the shipped landing animation finishes.
+    await expect.poll(() => page.locator(".zilch-dice").evaluate(rack => (
+      rack.getAnimations({ subtree: true }).every(animation => animation.playState === "finished")
+    ))).toBe(true);
+
     for (const viewport of [
       { name: "narrow-phone", width: 320, height: 800, minimumDie: 50 },
       { name: "phone", width: 390, height: 827, minimumDie: 62 },
@@ -3554,13 +3559,22 @@ test("a controlled server snapshot drives both boards, dice, Quick Holds, and hi
           requestAnimationFrame(() => requestAnimationFrame(() => {
             const notebook = document.querySelector(".zilch-play-layout__notebook").getBoundingClientRect();
             const choices = document.querySelector(".zilch-recommendations").getBoundingClientRect();
-            const die = document.querySelector(".zilch-die").getBoundingClientRect();
+            const dice = document.querySelectorAll(".zilch-dice .zilch-die");
+            const die = dice[0].getBoundingClientRect();
+            const lastDie = dice[dice.length - 1].getBoundingClientRect();
+            const table = document.querySelector(".zilch-dice-dock .zilch-table");
+            const tableBox = table.getBoundingClientRect();
+            const tableStyle = getComputedStyle(table);
             resolve({
               notebookWidth: notebook.width,
               notebookX: notebook.x,
               choicesX: choices.x,
               dieWidth: die.width,
               dieHeight: die.height,
+              firstDieLeft: die.left,
+              lastDieRight: lastDie.right,
+              tableClipLeft: tableBox.left + parseFloat(tableStyle.borderLeftWidth),
+              tableClipRight: tableBox.right - parseFloat(tableStyle.borderRightWidth),
               documentWidth: document.documentElement.scrollWidth,
               viewportWidth: window.innerWidth,
             });
@@ -3573,7 +3587,10 @@ test("a controlled server snapshot drives both boards, dice, Quick Holds, and hi
         expect(geometry.choicesX, `${viewport.name}: choices remain to the right`).toBeGreaterThan(geometry.notebookX);
         expect(Math.abs(geometry.dieWidth - geometry.dieHeight), `${viewport.name}: die stays square`).toBeLessThanOrEqual(1);
         expect(geometry.dieWidth, `${viewport.name}: dice remain comfortably tappable`).toBeGreaterThanOrEqual(viewport.minimumDie);
+        expect(geometry.firstDieLeft, `${viewport.name}: first die stays inside the table clip box`).toBeGreaterThanOrEqual(geometry.tableClipLeft);
+        expect(geometry.lastDieRight, `${viewport.name}: last die stays inside the table clip box`).toBeLessThanOrEqual(geometry.tableClipRight);
         expect(geometry.documentWidth, `${viewport.name}: no horizontal overflow`).toBeLessThanOrEqual(geometry.viewportWidth);
+        await page.screenshot({ path: testInfo.outputPath(`settled-dice-${viewport.name}.png`), fullPage: true });
       });
     }
 

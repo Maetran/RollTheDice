@@ -141,7 +141,8 @@ def _attempt(source_id, identity, revision, before_create):
             names = _cpu_names(result.room, {result.room.host_participant_id: identity.username})
             from .watten_cpu_runtime import observe_cpu_memories
 
-            target["_watten"] = observe_cpu_memories(WattenRuntime(result.room, None, tuple(names.items())))
+            target["_watten"] = observe_cpu_memories(WattenRuntime(result.room, None, tuple(names.items()),
+                feature_activators=runtime.feature_activators))
             target["_passphrase"] = result.protection_verifier
             target["_players"] = [{"id": result.room.host_participant_id, "name": identity.username,
                                    "user_id": identity.user_id, "ws": None}]

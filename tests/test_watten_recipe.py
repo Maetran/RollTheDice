@@ -23,7 +23,7 @@ SHAPES = ((2, "normal", False), (2, "ladinisch", False), (3, "normal", False),
 ALLOWED_KEYS = {
     "kind", "schema_version", "ruleset_id", "ruleset_version", "player_count", "determination", "blind",
     "critical", "target_points", "cpu_seats", "show_rechter", "trick_history", "partner_hand", "password_required",
-    "voice_enabled", "schoeneres_enabled", "tournament_nockerl_target",
+    "voice_enabled", "schoeneres_enabled", "schlagwechsel_enabled", "tournament_nockerl_target",
 }
 
 
@@ -95,7 +95,7 @@ def test_at_least_one_seat_stays_human(count):
                    cpu_seats=tuple(range(count))) == "watten_cpu_seats_need_a_human"
 
 
-@pytest.mark.parametrize("option", ("show_rechter", "trick_history", "partner_hand", "password_required", "voice_enabled", "schoeneres_enabled"))
+@pytest.mark.parametrize("option", ("show_rechter", "trick_history", "partner_hand", "password_required", "voice_enabled", "schoeneres_enabled", "schlagwechsel_enabled"))
 def test_options_are_true_booleans(option):
     assert code_of(WattenRecipe, 4, "normal", False, False, **{option: 1}) == "watten_invalid_recipe_option"
 
@@ -123,7 +123,7 @@ def test_secrets_identities_and_unknown_fields_never_enter_a_recipe(secret):
     assert code_of(recipe_from_payload, payload(**{secret: "x"})) == "watten_recipe_unknown_field"
 
 
-@pytest.mark.parametrize("key", sorted(ALLOWED_KEYS - {"voice_enabled", "schoeneres_enabled", "tournament_nockerl_target"}))
+@pytest.mark.parametrize("key", sorted(ALLOWED_KEYS - {"voice_enabled", "schoeneres_enabled", "schlagwechsel_enabled", "tournament_nockerl_target"}))
 def test_every_field_is_required(key):
     data = payload()
     del data[key]

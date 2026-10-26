@@ -64,7 +64,7 @@ for (const language of ['de', 'en']) {
       viewport: { width: 393, height: 852 }, serviceWorkers: 'block' }) };
     const players = [];
     try {
-      for (let seat = 0; seat < 4; seat++) players.push(await player(mobile, baseURL, language));
+      for (let seat = 0; seat < 4; seat++) players.push(await player(mobile, baseURL, language, { role: seat === 0 ? 'admin' : 'user' }));
       await create(players, { count: 4, target: 15, schoeneres: true });
       await expectSeparateControls(players, 'show-and-request', info);
       // Redraw is already offered before either card is shown. Its real menu

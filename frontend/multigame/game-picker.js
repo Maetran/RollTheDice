@@ -12,10 +12,12 @@ const escapeMarkup = value => String(value ?? "").replace(/[&<>"']/g, character 
   "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
 }[character]));
 const publicWatten = game => game.id === "watten" && game.publicBeta === true;
-const gameName = game => `${game.name}${publicWatten(game) ? " [BETA]" : ""}`;
-const betaBadge = game => publicWatten(game) ? ' <small class="suite-game-beta">[BETA]</small>' : "";
-const description = game => game.description || message(game.id === "watten" && !publicWatten(game)
-  ? "wattenPrivateDescription" : `${game.id}Description`);
+const beta = game => game.beta === true || (game.beta === undefined && publicWatten(game));
+const gameName = game => `${game.name}${beta(game) ? " [BETA]" : ""}`;
+const betaBadge = game => beta(game) ? ' <small class="suite-game-beta">[BETA]</small>' : "";
+const description = game => game.description || message(game.id === "watten"
+  ? !publicWatten(game) ? "wattenPrivateDescription" : !beta(game) ? "wattenReleasedDescription" : "wattenDescription"
+  : `${game.id}Description`);
 
 /** Small authored marks remain legible beside each game's full name. */
 export function gameIcon(id) {

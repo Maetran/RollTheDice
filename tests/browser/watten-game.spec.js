@@ -117,7 +117,7 @@ test('two real human accounts bid, pause with an open bid, return and finish a d
 
 for (const language of ['de', 'en']) {
 test(`${language}: three-player solo owns both normal calls and private partner advice stays above the receiving choices`, async ({ browser, baseURL }) => {
-  const players = await Promise.all([0, 1, 2].map(() => player(browser, baseURL, language)));
+  const players = await Promise.all([0, 1, 2].map(index => player(browser, baseURL, language, { role: index === 0 ? 'admin' : 'user' })));
   try {
     await create(players, { partnerHand: true });
     const { striker, colourer } = await normalCall(players);
@@ -252,7 +252,7 @@ test('page lifecycle handlers clear private state synchronously and restore thro
 for (const count of [2, 3, 4]) {
   test(`${count}-player host fills CPU seats in creation, adjusts them and starts autonomous play manually`, async ({ browser, baseURL }) => {
     test.setTimeout(90000);
-    const host = await player(browser, baseURL, count === 3 ? 'en' : 'de');
+    const host = await player(browser, baseURL, count === 3 ? 'en' : 'de', { role: 'admin' });
     if (count === 4) await host.page.emulateMedia({ reducedMotion: 'no-preference' });
     try {
       await create([host], { count, reference: true, start: false, cpuFill: true });
@@ -357,7 +357,7 @@ for (const count of [2, 3, 4]) {
 
 test('four manually chosen seats preserve teams and blind inspection/reference roles', async ({ browser, baseURL }, testInfo) => {
   const players = [];
-  for (let index = 0; index < 4; index += 1) players.push(await player(browser, baseURL));
+  for (let index = 0; index < 4; index += 1) players.push(await player(browser, baseURL, 'de', { role: index === 0 ? 'admin' : 'user' }));
   try {
     await create(players, { reference: true });
     await expect.poll(() => players.every(item => item.traffic.snapshot?.engine?.phase === 'show_ready')).toBe(true);

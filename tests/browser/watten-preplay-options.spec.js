@@ -22,7 +22,7 @@ for (const language of ['de', 'en']) {
       viewport: { width: 393, height: 852 }, serviceWorkers: 'block' }) };
     const players = [];
     try {
-      for (let seat = 0; seat < 4; seat++) players.push(await player(configured, baseURL, language));
+      for (let seat = 0; seat < 4; seat++) players.push(await player(configured, baseURL, language, { role: seat === 0 ? 'admin' : 'user' }));
       await create(players, { count: 4, target: 15, reference: true, schoeneres: true });
       const { id: gameId, engine: { deal_id: dealId } } = players[0].traffic.snapshot;
       await action(players, 'show_ready'); await action(players, 'show_ready');
@@ -88,8 +88,8 @@ for (const language of ['de', 'en']) {
       viewport: { width: 393, height: 852 }, serviceWorkers: 'block' }) };
     const players = [];
     try {
-      for (let seat = 0; seat < 4; seat++) players.push(await player(configured, baseURL, language));
-      await create(players, { count: 4, target: 15, determination: 'normal', schoeneres: true });
+      for (let seat = 0; seat < 4; seat++) players.push(await player(configured, baseURL, language, { role: seat === 0 ? 'admin' : 'user' }));
+      await create(players, { count: 4, target: 15, determination: 'normal', schoeneres: true, schlagwechsel: true });
       const callers = players.filter(peer => peer.traffic.snapshot.engine.actions.includes('request_schlagwechsel'));
       expect(callers).toHaveLength(2);
       for (const viewport of [{ width: 393, height: 852 }, { width: 320, height: 568 }, { width: 852, height: 393 }, { width: 568, height: 320 }]) {
@@ -124,7 +124,7 @@ test('an exclusive redraw after accepted Blödeln renders one request and one re
     viewport: { width: 393, height: 852 }, serviceWorkers: 'block' }) };
   const players = [];
   try {
-    for (let seat = 0; seat < 4; seat++) players.push(await player(configured, baseURL));
+    for (let seat = 0; seat < 4; seat++) players.push(await player(configured, baseURL, 'de', { role: seat === 0 ? 'admin' : 'user' }));
     await create(players, { count: 4, target: 15, schoeneres: true });
     await action(players, 'request_bloedeln'); await action(players, 'preplay_accept');
     await action(players, 'show_ready'); await action(players, 'show_ready');

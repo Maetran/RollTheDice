@@ -140,7 +140,7 @@ for (const language of ['de', 'en']) {
     try {
       const wrapped = { newContext: options => browser.newContext({ ...options,
         viewport: VIEWPORTS[3], serviceWorkers: 'block' }) };
-      for (let seat = 0; seat < 4; seat++) players.push(await player(wrapped, baseURL, language));
+      for (let seat = 0; seat < 4; seat++) players.push(await player(wrapped, baseURL, language, { role: seat === 0 ? 'admin' : 'user' }));
       await create(players, { count: 4, target: 11, reference: true });
       await allViewports(players, 'show-ready', info);
       const requester = await action(players, 'request_bloedeln');
@@ -166,7 +166,7 @@ for (const language of ['de', 'en']) {
     try {
       const wrapped = { newContext: options => browser.newContext({ ...options,
         viewport: VIEWPORTS[3], serviceWorkers: 'block' }) };
-      for (let seat = 0; seat < 4; seat++) players.push(await player(wrapped, baseURL, language));
+      for (let seat = 0; seat < 4; seat++) players.push(await player(wrapped, baseURL, language, { role: seat === 0 ? 'admin' : 'user' }));
       await create(players, { count: 4, target: 15, determination: 'normal', reference: true });
       await allViewports(players, 'announce strike', info);
       await normalCall(players);

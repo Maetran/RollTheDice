@@ -163,7 +163,10 @@ def _achievement_rank_for_user(db, user_id: int) -> dict:
 def auth_response_payload(identity: AuthIdentity, *, connection=None) -> dict:
     """One request-scoped capability decision shared by both response positions."""
     user = auth_identity_payload(identity, include_csrf=True, connection=connection)
-    return {"authenticated": True, "user": user, "game_access": user["game_access"]}
+    from .game_presentation import game_presentation_payload
+
+    return {"authenticated": True, "user": user, "game_access": user["game_access"],
+            "game_presentation": game_presentation_payload()}
 
 
 def hausdepp_auto_refill(db, user_id: int) -> bool:

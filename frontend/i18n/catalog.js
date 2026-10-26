@@ -1,3 +1,34 @@
+export const ADMIN_FEATURE_MESSAGES = {
+  de: {
+    ownerHint: "Du kannst als Owner Freigaben und Beta-Kennzeichnungen ändern.",
+    adminHint: "Du kannst die Freigaben ansehen. Änderungen sind ausschliesslich Ownern vorbehalten.",
+    availability: "Verfügbarkeit", off: "Deaktiviert", internal: "Intern · Owner & Admins", public: "Veröffentlicht · alle Spieler",
+    gameBeta: "Ganzes Spiel als Beta kennzeichnen", featureBeta: "Als Beta kennzeichnen", beta: "Beta",
+    on: "Ein", offLabel: "Aus", save: "Speichern", updated: "Letzte Änderung", notChanged: "Noch nicht geändert",
+    noFeatures: "Für dieses Spiel sind noch keine einzelnen Funktionen erfasst.", actor: "Geändert durch",
+    noHistory: "Noch keine Freigaben geändert.", loading: "Freigaben werden geladen …", saving: "Wird gespeichert …",
+    saved: "Gespeichert. Laufende Partien behalten ihre Regeln.",
+    loadFailed: "Die Freigaben konnten nicht geladen werden. Bitte erneut aktualisieren.",
+    saveFailed: "Die Änderung konnte nicht bestätigt werden. Bitte aktualisieren und den gespeicherten Stand prüfen.",
+    conflict: "Ein anderer Owner hat diese Einstellung geändert. Bitte aktualisieren und erneut entscheiden.",
+    accessLost: "Deine Berechtigung hat sich geändert. Bitte lade die Seite neu.",
+  },
+  en: {
+    ownerHint: "As an owner, you can change availability and beta labels.",
+    adminHint: "You can view availability. Only owners can change these settings.",
+    availability: "Availability", off: "Disabled", internal: "Internal · owners & admins", public: "Published · all players",
+    gameBeta: "Label the entire game as beta", featureBeta: "Label as beta", beta: "Beta",
+    on: "On", offLabel: "Off", save: "Save", updated: "Last changed", notChanged: "Not changed yet",
+    noFeatures: "No individual features have been registered for this game yet.", actor: "Changed by",
+    noHistory: "No availability changes yet.", loading: "Loading availability …", saving: "Saving …",
+    saved: "Saved. Games in progress keep their rules.",
+    loadFailed: "Availability could not be loaded. Please refresh again.",
+    saveFailed: "The change could not be confirmed. Please refresh and check the saved settings.",
+    conflict: "Another owner changed this setting. Please refresh and review it again.",
+    accessLost: "Your permission has changed. Please reload the page.",
+  },
+};
+
 export const ACCOUNT_MERGE_MESSAGES = {
   de: {
     title: 'Konten zusammengeführt', intro: 'Dein zusammengeführter Fortschritt ist in diesem Konto angekommen. Anmeldung und persönliche Einstellungen bleiben bei diesem Konto.',
@@ -457,6 +488,7 @@ export const GAME_PICKER_MESSAGES = {
     zilchDescription: "Weiterwürfeln oder Punkte sichern.",
     hausdeppDescription: "Karten loswerden. Nicht als Letzter bleiben.",
     wattenDescription: "Öffentliche Beta · Blind oder offen watten, mit Freunden oder CPUs.",
+    wattenReleasedDescription: "Blind oder offen watten, mit Freunden oder CPUs.",
     wattenPrivateDescription: "Private Vorschau · Blind oder offen watten, mit Freunden oder CPUs.",
   },
   en: {
@@ -473,6 +505,7 @@ export const GAME_PICKER_MESSAGES = {
     zilchDescription: "Roll again or bank your points.",
     hausdeppDescription: "Shed your cards. Avoid being last.",
     wattenDescription: "Public beta · Play blind or open Watten with friends or CPUs.",
+    wattenReleasedDescription: "Play blind or open Watten with friends or CPUs.",
     wattenPrivateDescription: "Private preview · Play blind or open Watten with friends or CPUs.",
   },
 };
@@ -1633,6 +1666,29 @@ export const HAUSDEPP_MESSAGES = {
 };
 
 export const EN = {
+  "Übersicht": "Overview",
+  "Spiele & Funktionen": "Games & features",
+  "Freigaben, Testbetrieb und Beta-Kennzeichnung": "Availability, internal testing and beta labels",
+  "Nutzer & Rechte": "Users & permissions",
+  "Betrieb": "Operations",
+  "Änderungsprotokoll": "Change history",
+  "Feature-Protokoll": "Feature history",
+  "Wer hat welche Freigabe geändert?": "Who changed availability?",
+  "Game-Backend": "Game administration",
+  "Interne Funktionen können mitspielende Owner und Admins am Tisch einschalten. Alle Mitspieler können sie dann nutzen. Neue Freigaben gelten ab der nächsten Partie.": "Owners and admins taking part can enable internal features at the table. All players can then use them. Availability changes apply to the next game.",
+  "Die Beta-Kennzeichnung eines Spiels ist ein Hinweis. Sie ändert weder den Spielzugang noch die Tischregeln.": "A game's beta label is informational. It changes neither access nor table rules.",
+  "Die letzten 100 Änderungen an Freigaben und Beta-Kennzeichnungen.": "The latest 100 changes to availability and beta labels.",
+  "Schlagwechsel erlauben": "Allow a strike swap",
+  "Schlagwechsel ist nur beim offenen Normalwatten zu zweit oder zu viert möglich.": "Strike swap is only available in open normal play with two or four players.",
+  "Schlagwechsel": "Strike swap",
+  "Spielfunktionen": "Game features",
+  "Interne Funktionen können mit allen Mitspielern getestet werden. Ein Owner oder Admin muss dafür mitspielen.": "Internal features can be tested with all players. An owner or admin must take part.",
+  "Intern": "Internal",
+  "Feature-Freigaben werden geladen.": "Loading feature availability.",
+  "Feature-Freigaben konnten nicht geladen werden. Erweiterte Funktionen bleiben ausgeschaltet.": "Feature availability could not be loaded. Advanced features remain off.",
+  "Erneut laden": "Try again",
+  "Nicht verfügbare Funktionen wurden aus dieser Vorlage entfernt.": "Unavailable features were removed from this preset.",
+  "Diese Funktion ist für diesen Tisch nicht freigegeben. Ein mitspielender Owner oder Admin kann interne Funktionen vor dem Spielstart auswählen.": "This feature is not available for this table. An owner or admin taking part can select internal features before the game starts.",
   "Neue Erfolge": "New achievements",
   "Konten zusammenführen": "Merge accounts",
   "Spielverlauf und Erfolge in einem Konto behalten": "Keep game history and achievements in one account",

@@ -1,30 +1,32 @@
 {
   "kind": "usability",
   "games": [
+    "zdwa",
+    "zilch",
     "hausdepp",
     "watten"
   ],
-  "summary_de": "Neue seltene Tischeffekte laufen nach einem Tipp durch; jede Karte behält ihre eigenen Brandspuren auch im Flug.",
-  "summary_en": "New rare table effects play through after one tap; cards keep their individual singed patterns in flight.",
+  "summary_de": "Spieloptionen gezielt testen und veröffentlichen; Beta-Abzeichen kennzeichnen Funktionen und Spiele.",
+  "summary_en": "Test and publish game options selectively; beta badges identify features and games.",
   "player_notes": {
     "de": {
-      "title": "4.7.1: Seltene Funde, schöner am Tisch",
+      "title": "4.8.0: Spieloptionen gezielt testen",
       "changes": [
-        "Acht detailreiche Motive erscheinen auf dem echten Hausdepp- und Watten-Tisch.",
-        "Mehrfaches Tippen bricht eine begonnene Szene nicht mehr ab.",
-        "Karten tragen unterschiedliche Brandspuren, die beim Werfen und Einsammeln erhalten bleiben.",
-        "Ein geöffneter Watten-Stichverlauf verschiebt die Gebotsantwort beim Antippen nicht mehr.",
-        "Alles bleibt eine optische Spielerei: Kartenwerte und Regeln bleiben gleich."
+        "Einige Watten-Zusatzoptionen werden zunächst gemeinsam mit mitspielenden Ownern und Admins getestet.",
+        "Alle Mitspieler können die am Tisch aktivierten Testfunktionen nutzen. Laufende Partien behalten ihre Regeln.",
+        "Veröffentlichte Funktionen und ganze Spiele können ein Beta-Abzeichen tragen.",
+        "Owner verwalten Freigaben im neu geordneten Adminbereich; Änderungen bleiben nachvollziehbar.",
+        "Zilch-Würfel bleiben auch auf kleinen Handys groß und gut antippbar."
       ]
     },
     "en": {
-      "title": "4.7.1: Better rare finds at your table",
+      "title": "4.8.0: Test game options selectively",
       "changes": [
-        "Eight detailed subjects appear on the real Hausdepp and Watten tables.",
-        "Repeated taps no longer interrupt an activated scene.",
-        "Cards have individual singed patterns that stay with them during throws and collection.",
-        "An open Watten trick review no longer moves bid responses while you tap them.",
-        "These are visual effects: card values and rules stay the same."
+        "Some additional Watten options are initially tested with owners and admins taking part.",
+        "Everyone at the table can use its enabled test features. Games in progress keep their rules.",
+        "Published features and entire games can carry a beta badge.",
+        "Owners manage availability in the reorganized admin area, with a history of changes.",
+        "Zilch dice stay large and easy to tap on small phones."
       ]
     }
   }

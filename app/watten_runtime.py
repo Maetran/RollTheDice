@@ -68,7 +68,7 @@ from .watten_views import member_view, spectator_view
 _LOCKS: WeakValueDictionary[str, asyncio.Lock] = WeakValueDictionary()
 _RANDOM = secrets.SystemRandom()
 _CALL_KINDS = frozenset({"strike_announced", "colour_announced"})
-ROOM_ACTIONS = frozenset({"watten_take_seat", "watten_decline_reservation", "watten_place_cpu", "watten_remove_cpu", "watten_start", "watten_next_deal", "watten_delivery_ack", "watten_leave", "leave_waiting_game"})
+ROOM_ACTIONS = frozenset({"watten_take_seat", "watten_decline_reservation", "watten_place_cpu", "watten_remove_cpu", "watten_start", "watten_next_deal", "watten_delivery_ack", "watten_leave", "leave_waiting_game", "watten_set_feature"})
 WATTEN_ACTIONS = ROOM_ACTIONS | {"watten_command"}
 
 
@@ -109,10 +109,16 @@ class WattenRuntime:
     bid_counters: tuple[PlayerBids, ...] | None = None
     round_review_started_at: str | None = None
     abort_reason: str | None = None
+    feature_activators: tuple[tuple[str, int], ...] = ()
+    feature_presentation: tuple[tuple[str, bool], ...] = ()
 
     def __post_init__(self):
+        from .watten_features import validate_activators, validate_feature_presentation
+
+        validate_activators(self.feature_activators)
         if not isinstance(self.room, WattenRoom) or type(self.names) is not tuple:
             raise ValueError("watten_invalid_runtime")
+        validate_feature_presentation(self.feature_presentation, self.room.recipe)
         participants = {item.participant_id for item in (*self.room.members, *self.room.cpus)}
         if (any(type(item) is not tuple or len(item) != 2 or type(item[0]) is not str
                 or type(item[1]) is not str or not 1 <= len(item[1]) <= 64 for item in self.names)
@@ -200,7 +206,7 @@ def _engine_recipe(roster) -> EngineRecipe:
     return EngineRecipe(roster.profile, tuple(SeatBinding(player, account) for player, account in zip(roster.seats, roster.accounts)),
                         roster.deal_parties(roster.first_dealer).parties if recipe.player_count == 4 else None,
                         recipe.target_points, recipe.show_rechter, recipe.partner_hand, recipe.trick_history,
-                        recipe.schoeneres_enabled)
+                        recipe.schoeneres_enabled, recipe.schlagwechsel_enabled)
 
 
 def cryptographic_deal(count: int, dealer: int):
@@ -250,7 +256,10 @@ def configure_watten_game(game: dict, recipe: WattenRecipe, identity, passphrase
 
     pool = iter(available_cpu_names((identity.username,)))
     names = (("p1", identity.username), *tuple((cpu.participant_id, next(pool)) for cpu in room.cpus))
-    game["_watten"] = WattenRuntime(room, None, names)
+    from .watten_features import creation_activators
+
+    game["_watten"] = WattenRuntime(room, None, names,
+                                    feature_activators=creation_activators(recipe, identity.user_id))
     game["_passphrase"] = hash_password(passphrase) if passphrase else None
     game["_players"] = [{"id": "p1", "name": identity.username, "user_id": identity.user_id, "ws": None}]
 
@@ -410,11 +419,20 @@ def apply_runtime_action(game: dict, account: int, player: str, data: dict, *, e
     now = utcnow()
     common = {"action", "command_id", "revision", "lifecycle_revision"}
     allowed = common | ({"seat", "team"} if action == "watten_take_seat" else {"seat"} if action in {"watten_place_cpu", "watten_remove_cpu"}
+                        else {"feature", "enabled"} if action == "watten_set_feature"
                         else {"delivery_ids"} if action == "watten_delivery_ack" else {"deal_id", "opportunity"} if action == "watten_next_deal" else set())
     require_fields(data, frozenset(allowed), ValueError, "watten_command")
     room, engine, deliveries = runtime.room, runtime.engine, runtime.deliveries
     bid_counters = runtime.bid_counters
-    if action == "watten_take_seat":
+    feature_activators = runtime.feature_activators
+    if action == "watten_set_feature":
+        from .watten_features import change_feature
+
+        room, feature_activators = change_feature(runtime, account=account, feature=data["feature"], enabled=data["enabled"])
+        # One-commit authority, created from this bound server actor. It never
+        # enters the durable codec and is cleared only after a successful TX.
+        candidate["_watten_feature_action"] = (account, data["feature"], data["enabled"])
+    elif action == "watten_take_seat":
         room = take_seat(room, revision=revision, account_id=account, seat=data["seat"], team=data["team"], now=now)
     elif action == "watten_decline_reservation":
         room = decline_reservation(room, revision=revision, account_id=account, now=now)
@@ -476,7 +494,8 @@ def apply_runtime_action(game: dict, account: int, player: str, data: dict, *, e
     memories = tuple(item for item in runtime.cpu_memories if item.player_id in ids)
     runtime = WattenRuntime(room, engine, tuple(names.items()), deliveries, acks, runtime.absent, runtime.lifecycle_revision, memories, bid_counters,
                             runtime.round_review_started_at if engine is not None and runtime.engine is not None
-                            and engine.deal_id == runtime.engine.deal_id else None)
+                            and engine.deal_id == runtime.engine.deal_id else None,
+                            feature_activators=feature_activators, feature_presentation=runtime.feature_presentation)
     # A waiting leave removes its own actor; it has no seat or durable retry
     # authority afterwards, so do not retain an ACK tied to a departed member.
     ack = RuntimeAck(account, data["command_id"], digest, room.revision,
@@ -572,6 +591,9 @@ def snapshot_watten(game: dict, viewer_id: str | None = None, *, viewer_account_
 
         rematch_unavailable_reason = read_rematch_unavailable_reason(room)
         can_create_rematch = rematch_unavailable_reason is None
+    from .watten_features import feature_controls
+
+    controls = feature_controls(room, account, presentation=runtime.feature_presentation)
     seats = []
     for seat in range(room.recipe.player_count):
         occupant = next((item for item in (*room.members, *room.cpus) if item.seat == seat), None)
@@ -584,7 +606,7 @@ def snapshot_watten(game: dict, viewer_id: str | None = None, *, viewer_account_
             "finished": game["_finished"], "aborted": game["_aborted"],
             **({"abort_reason": runtime.abort_reason} if runtime.abort_reason else {}),
             "room": {"revision": room.revision, "status": "closed" if runtime.abort_reason else room.status, "recipe": recipe_to_payload(room.recipe),
-                     "series": public_series(room),
+                     "series": public_series(room), "feature_controls": controls,
                      "required_seat": room.series.seat_for_account(account) if (
                          room.series is not None and room.series.roster_locked and type(account) is int) else None,
                      "host_participant_id": room.host_participant_id, "seats": seats,
@@ -644,6 +666,10 @@ def serialize_watten_game(game: dict) -> dict:
                         "cpu_memories": [memory_to_storage(item) for item in runtime.cpu_memories],
                         "bid_counters": counters_to_storage(runtime.bid_counters),
                         "round_review_started_at": runtime.round_review_started_at,
+                        **({"feature_activators": [list(item) for item in runtime.feature_activators]}
+                           if runtime.feature_activators else {}),
+                        **({"feature_presentation": [list(item) for item in runtime.feature_presentation]}
+                           if runtime.feature_presentation else {}),
                         "deliveries": [{"delivery_id": item.delivery_id, "participant_id": item.participant_id,
                                         "deal_id": item.deal_id, "kind": item.kind, "seat": item.seat, "value": item.value}
                                        for item in runtime.deliveries],
@@ -670,6 +696,9 @@ def restore_watten_game(raw: dict) -> dict:
         fields.add("round_review_started_at")
     if version >= 5:
         fields.add("abort_reason")
+    for field in ("feature_activators", "feature_presentation"):
+        if field in data:
+            fields.add(field)
     data = require_fields(data, frozenset(fields), ValueError, "watten_storage")
     if any(type(data[key]) is not list for key in ("names", "deliveries", "acks", "absent")):
         raise ValueError("watten_invalid_storage")
@@ -684,10 +713,18 @@ def restore_watten_game(raw: dict) -> dict:
     bid_counters = counters_from_storage(data["bid_counters"]) if version >= 3 else None
     deliveries = tuple(CallDelivery(**require_fields(item, frozenset({"delivery_id", "participant_id", "deal_id", "kind", "seat", "value"}), ValueError, "watten_delivery")) for item in data["deliveries"])
     acks = tuple(RuntimeAck(**require_fields(item, frozenset({"account_id", "command_id", "digest", "room_revision", "deal_id", "opportunity"}), ValueError, "watten_ack")) for item in data["acks"])
+    activators = data.get("feature_activators", [])
+    if type(activators) is not list:
+        raise ValueError("watten_invalid_feature_activators")
+    presentation = data.get("feature_presentation", [])
+    if type(presentation) is not list:
+        raise ValueError("watten_invalid_feature_presentation")
     runtime = WattenRuntime(room, engine, tuple(tuple(item) if type(item) is list else item for item in data["names"]), deliveries, acks,
                             tuple(data["absent"]), data["lifecycle_revision"], memories, bid_counters,
                             data["round_review_started_at"] if version >= 4 else None,
-                            data["abort_reason"] if version >= 5 else None)
+                            data["abort_reason"] if version >= 5 else None,
+                            tuple(tuple(item) if type(item) is list else item for item in activators),
+                            tuple(tuple(item) if type(item) is list else item for item in presentation))
     if version >= 5 and runtime.abort_reason is None:
         raise ValueError("watten_invalid_abort")
     from .watten_cpu_runtime import validate_stored_memories
@@ -830,6 +867,9 @@ def persist_watten_game(game: dict, *, creating: bool = False,
                 ActiveGame.game_id == checkpoint["_id"]).with_for_update())
             if current != expected_source:
                 raise ValueError("watten_stale_checkpoint")
+        from .watten_features import validate_checkpoint_features
+
+        validate_checkpoint_features(db, checkpoint, creating=creating)
         if commit_guard is not None:
             commit_guard(db, checkpoint)
         if checkpoint["_finished"] and not checkpoint["_aborted"]:
@@ -856,6 +896,7 @@ def persist_watten_game(game: dict, *, creating: bool = False,
     game["_finished_at"] = checkpoint["_finished_at"]
     game["_watten"] = checkpoint["_watten"]
     game["_watten_public_titles"] = titles
+    game.pop("_watten_feature_action", None)
 
 
 def restore_watten_json(text: str, *, refresh_titles: bool = True) -> dict:

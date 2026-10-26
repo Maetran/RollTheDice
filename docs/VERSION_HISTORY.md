@@ -1,6 +1,6 @@
 # Versionen / Versions
 
-Aktuelle gemeinsame Produktversion / Current shared product version: **4.7.1**.
+Aktuelle gemeinsame Produktversion / Current shared product version: **4.8.0**.
 
 Alle RollTheDice-Spiele werden gemeinsam versioniert. Major steht für einen großen
 Produktmeilenstein, Minor für neue Funktionen und Patch für Fehlerkorrekturen
@@ -30,6 +30,7 @@ Detailed player-facing descriptions are in the [changelog](../CHANGELOG.md).
 
 | Version | Datum / Date | Art / Type | Änderung / Change | Commit |
 | --- | --- | --- | --- | --- |
+| 4.7.1 | 2026-10-26 | patch | Hochwertige seltene Tischeffekte und durchgängige individuelle Brandspuren. / Premium rare table effects and continuous individual singed card patterns. | [a9add7e](https://github.com/Maetran/RollTheDice/commit/a9add7e8d962f86a49cbf52dd55353fed846e4f3) |
 | 4.7.0 | 2026-10-26 | minor | Einheitliche Kontobereiche und geprüfte Kontenzusammenführung. / Consistent account areas and verified account consolidation. | [4af6e15](https://github.com/Maetran/RollTheDice/commit/4af6e15ca3b53b95caa123652ef39ed306ee5c66) |
 | 4.6.0 | 2026-10-25 | minor | Neue knifflige Erfolge in allen vier Spielen und eine übersichtlichere Watten-Fortschrittsansicht. / New challenging achievements in all four games and a clearer Watten progress view. | [8ec61eb](https://github.com/Maetran/RollTheDice/commit/8ec61ebb834d3af7eb1532f09d290414b5099779) |
 | 4.5.0 | 2026-10-25 | minor | Klarere mobile Spieltische, verlässliche Retourschneider-Entscheide und besser auffindbare Regeln für alle vier Spiele. / Clearer mobile tables, reliable Retourschneider decisions and easier-to-find rules across all four games. | [a0844b9](https://github.com/Maetran/RollTheDice/commit/a0844b90730221fe9a4f2feeaf305bc66d36b11f) |

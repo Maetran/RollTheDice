@@ -60,6 +60,7 @@ from .email_delivery import (
 )
 from .engagement import record_engagement_safely
 from .game_access import public_game_access_payload
+from .game_presentation import game_presentation_payload
 from .game_tours import (
     GameGuideAcknowledgement,
     TourOfferRequest,
@@ -249,7 +250,8 @@ def auth_me(request: Request, response: Response):
     response.headers["Cache-Control"] = "no-store"
     response.headers["X-Robots-Tag"] = "noindex, nofollow"
     authenticated = auth_response_payload(identity, connection=request) if identity else {
-        "authenticated": False, "user": None, "game_access": public_game_access_payload(None, request)}
+        "authenticated": False, "user": None, "game_access": public_game_access_payload(None, request),
+        "game_presentation": game_presentation_payload()}
     return {
         **authenticated,
         # Guests choose the ZDWA design in their browser; this only says

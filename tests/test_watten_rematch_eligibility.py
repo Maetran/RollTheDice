@@ -114,9 +114,23 @@ def test_display_check_is_readonly_bounded_and_absent_from_live_nonhost_and_publ
                         lambda _room: pytest.fail("hot/public/nonhost views must not read roster authority"))
     live = NativeMatch(2, target=3, game_id="ongoing-no-rematch-query")
     live.ready()
-    assert not snapshot_watten(live.game, "p1")["room"]["rematch"]["can_create"]
-    for viewer in (None, "p2"):
-        assert not snapshot_watten(match.game, viewer)["room"]["rematch"]["can_create"]
+    waiting = NativeMatch(2, start=False, game_id="waiting-no-public-feature-query")
+    # Each independently loaded table has its own one-time cosmetic hydration.
+    for game in (live.game, waiting.game):
+        assert table_effects_projection(game) == {"scorched_cards": False}
+    statements.clear()
+    event.listen(get_engine(), "before_cursor_execute", record)
+    try:
+        assert not snapshot_watten(live.game, "p1")["room"]["rematch"]["can_create"]
+        assert snapshot_watten(live.game, "p1")["room"]["feature_controls"] == {}
+        for viewer in (None, "p2"):
+            public = snapshot_watten(match.game, viewer)["room"]
+            assert not public["rematch"]["can_create"] and public["feature_controls"] == {}
+        for outsider in (None, 999):
+            assert snapshot_watten(waiting.game, viewer_account_id=outsider)["room"]["feature_controls"] == {}
+        assert not statements
+    finally:
+        event.remove(get_engine(), "before_cursor_execute", record)
 
 
 def test_failed_display_read_is_not_a_stale_positive_permission(server, monkeypatch):

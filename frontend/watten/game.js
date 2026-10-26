@@ -30,6 +30,7 @@ import { initializeSuiteHeader } from "../shell/header.js";
 import { createGameTour } from "../shared/game-tours.js";
 import { createCompactHeader } from "./compact-header.js";
 import { initializeReleaseNotes } from "../shared/release-notes.js";
+import { createCreatorFeaturePolicy, restrictCreatorFeatures, WATTEN_FEATURE_FIELDS } from "./feature-controls.js";
 
 // Public lobby launches own the install flow; active tables only register.
 const publicBetaDocument = document.documentElement.dataset.wattenPublicBeta === "true";
@@ -84,6 +85,10 @@ const beginnerGuide = createGameTour("watten");
 
 function errorText(code) {
   if (STALE.has(code)) return t("error.stale");
+  if (["watten_feature_disabled", "watten_feature_staff_required", "watten_feature_staff_must_be_seated",
+    "watten_feature_activation_required", "watten_feature_waiting_required", "watten_feature_incompatible", "watten_invalid_feature"].includes(code)) {
+    return window.ZDWA_I18N.t("Diese Funktion ist für diesen Tisch nicht freigegeben. Ein mitspielender Owner oder Admin kann interne Funktionen vor dem Spielstart auswählen.");
+  }
   return ERRORS.has(code) ? t(`error.${code}`) : t("error.generic");
 }
 
@@ -224,12 +229,15 @@ function creatorMarkup() {
       <label class="wt-check"><input type="checkbox" name="blind" checked><span>${esc(t("create.blind"))}<small>${esc(t("create.blindHelp"))}</small></span></label>
       <label class="wt-check"><input type="checkbox" name="cpu_fill"><span>${esc(lt("cpuFill"))}<small>${esc(lt("cpuHelp"))}</small></span></label>
       <label class="wt-check"><input type="checkbox" name="voice_enabled" checked><span>${esc(lt("audio"))}<small>${esc(lt("audioHelp"))}</small></span></label>
+      <div data-watten-feature-availability hidden><p class="wt-note" data-watten-feature-status role="status"></p>
+        <button type="button" class="wt-button--ghost" data-watten-features-retry hidden>${esc(window.ZDWA_I18N.t("Erneut laden"))}</button></div>
       <details class="wt-more" data-watten-advanced><summary>${esc(t("create.more"))}</summary>
-        <label class="wt-check"><input type="checkbox" name="critical"><span>${esc(t("create.critical"))}<small>${esc(t("create.criticalHelp"))}</small></span></label>
-        <label class="wt-check"><input type="checkbox" name="schoeneres_enabled"><span>${esc(lt("schoeneres"))}<small data-watten-schoeneres-help>${esc(lt("schoeneresHelp"))}</small></span></label>
-        <label class="wt-check"><input type="checkbox" name="show_rechter"><span>${esc(t("create.showRechter"))}<small>${esc(t("create.showRechterHelp"))}</small></span></label>
-        <label class="wt-check"><input type="checkbox" name="trick_history"><span>${esc(t("create.trickHistory"))}<small>${esc(t("create.trickHistoryHelp"))}</small></span></label>
-        <label class="wt-check"><input type="checkbox" name="partner_hand"><span>${esc(t("create.partnerHand"))}<small data-watten-partner-help>${esc(t("create.partnerHandHelp"))}</small></span></label>
+        <label class="wt-check" data-watten-create-feature="watten.critical" hidden><input type="checkbox" name="critical" disabled><span>${esc(t("create.critical"))} <span class="wt-tag" data-watten-feature-beta="watten.critical" hidden>Beta</span><small>${esc(t("create.criticalHelp"))}</small></span></label>
+        <label class="wt-check" data-watten-create-feature="watten.schoeneres" hidden><input type="checkbox" name="schoeneres_enabled" disabled><span>${esc(lt("schoeneres"))} <span class="wt-tag" data-watten-feature-beta="watten.schoeneres" hidden>Beta</span><small data-watten-schoeneres-help>${esc(lt("schoeneresHelp"))}</small></span></label>
+        <label class="wt-check" data-watten-create-feature="watten.schlagwechsel" hidden><input type="checkbox" name="schlagwechsel_enabled" disabled><span>${esc(window.ZDWA_I18N.t("Schlagwechsel erlauben"))} <span class="wt-tag" data-watten-feature-beta="watten.schlagwechsel" hidden>Beta</span><small data-watten-schlagwechsel-help>${esc(t("roundOptions.schlagwechsel.description"))}</small></span></label>
+        <label class="wt-check" data-watten-create-feature="watten.show_rechter" hidden><input type="checkbox" name="show_rechter" disabled><span>${esc(t("create.showRechter"))} <span class="wt-tag" data-watten-feature-beta="watten.show_rechter" hidden>Beta</span><small>${esc(t("create.showRechterHelp"))}</small></span></label>
+        <label class="wt-check" data-watten-create-feature="watten.trick_history" hidden><input type="checkbox" name="trick_history" disabled><span>${esc(t("create.trickHistory"))} <span class="wt-tag" data-watten-feature-beta="watten.trick_history" hidden>Beta</span><small>${esc(t("create.trickHistoryHelp"))}</small></span></label>
+        <label class="wt-check" data-watten-create-feature="watten.open_partner_hand" hidden><input type="checkbox" name="partner_hand" disabled><span>${esc(t("create.partnerHand"))} <span class="wt-tag" data-watten-feature-beta="watten.open_partner_hand" hidden>Beta</span><small data-watten-partner-help>${esc(t("create.partnerHandHelp"))}</small></span></label>
       </details>
       <label>${esc(lt("password"))}<input name="password" type="password" autocomplete="new-password" maxlength="100" data-watten-password><small data-watten-password-note>${esc(lt("passwordHelp"))}</small></label>
       <details class="wt-more wt-create-favorite"><summary>☆ ${esc(lt("favoriteSettings"))}</summary><section data-watten-favorite></section></details>
@@ -242,6 +250,7 @@ function creatorMarkup() {
 }
 
 function syncCreator(form, countChanged) {
+  for (const key of ["critical", "schoeneres_enabled", "schlagwechsel_enabled", "show_rechter", "trick_history", "partner_hand"]) form.elements[key].disabled = false;
   const count = Number(form.elements.count.value);
   const [normal, ladinisch] = form.querySelectorAll("input[name=determination]");
   if (countChanged) {
@@ -260,6 +269,12 @@ function syncCreator(form, countChanged) {
   const schoeneresAllowed = count !== 3;
   form.elements.schoeneres_enabled.disabled = !schoeneresAllowed;
   if (!schoeneresAllowed) form.elements.schoeneres_enabled.checked = false;
+  const schlagwechselAllowed = schoeneresAllowed && normal.checked && !form.elements.blind.checked;
+  form.elements.schlagwechsel_enabled.disabled = !schlagwechselAllowed;
+  if (!schlagwechselAllowed) form.elements.schlagwechsel_enabled.checked = false;
+  form.querySelector("[data-watten-schlagwechsel-help]").textContent = schlagwechselAllowed
+    ? t("roundOptions.schlagwechsel.description")
+    : window.ZDWA_I18N.t("Schlagwechsel ist nur beim offenen Normalwatten zu zweit oder zu viert möglich.");
   form.querySelector("[data-watten-schoeneres-help]").textContent = lt(schoeneresAllowed ? "schoeneresHelp" : "schoeneresUnavailable");
   const tournament = form.elements.tournament_target;
   tournament.disabled = count === 3;
@@ -294,24 +309,57 @@ function mountCreator(gen) {
   const favoriteButton = dialog.querySelector("[data-watten-create-favourite]");
   const defineButton = dialog.querySelector("[data-watten-create-define]");
   const closeButton = dialog.querySelector("[data-watten-create-close]");
+  const featureStatus = form.querySelector("[data-watten-feature-status]");
+  const featureRetry = form.querySelector("[data-watten-features-retry]");
   let busy = false;
+  let favoriteAvailable = false, favoriteLoading = true;
   const current = () => gen === generation && !navigating && latestUserId === account?.id;
+  let featureState = { loading: false, failed: false, features: null };
+  let pendingFeatureChoices = null;
+  function syncAvailableFeatures(countChanged = false) {
+    syncCreator(form, countChanged);
+    const removed = restrictCreatorFeatures(form, featureState.features);
+    submit.disabled = busy || featureState.loading;
+    favoriteButton.disabled = featureState.loading || favoriteLoading || !favoriteAvailable;
+    return removed;
+  }
+  const featurePolicy = createCreatorFeaturePolicy({ accountId: account.id, fetcher: fetch, loadAuth,
+    isCurrent: current, onAccountChanged: reloadFresh, onChange: state => {
+      if (state.loading && !featureState.loading) {
+        pendingFeatureChoices = Object.fromEntries(Object.values(WATTEN_FEATURE_FIELDS).map(field => [field, form.elements[field].checked]));
+      } else if (!state.loading) {
+        if (state.features && pendingFeatureChoices) {
+          for (const [field, checked] of Object.entries(pendingFeatureChoices)) form.elements[field].checked = checked;
+        }
+        pendingFeatureChoices = null;
+      }
+      featureState = state;
+      form.querySelector("[data-watten-feature-availability]").hidden = !state.loading && !state.failed;
+      featureStatus.textContent = window.ZDWA_I18N.t(state.loading ? "Feature-Freigaben werden geladen."
+        : "Feature-Freigaben konnten nicht geladen werden. Erweiterte Funktionen bleiben ausgeschaltet.");
+      featureRetry.hidden = !state.failed;
+      syncAvailableFeatures();
+    } });
   function screen(showForm) {
     form.hidden = !showForm; choice.hidden = showForm;
     title.textContent = lt(showForm ? "setup" : "choose");
     if (dialog.open) (showForm ? form.querySelector("input[name=count]:checked") : defineButton)?.focus();
   }
   function close() { if (!busy) dialog.close(); }
-  syncCreator(form, true);
+  syncAvailableFeatures(true);
   const favorites = createFavorites({ container: form.querySelector("[data-watten-favorite]"), apiFetch, loadAuth, escapeHtml: esc,
     getRecipe: () => readCreatorRecipe(form).recipe,
     applyRecipe: recipe => {
-      applyFavoriteToCreator(form, recipe); syncCreator(form, false); error.textContent = ""; screen(true);
+      applyFavoriteToCreator(form, recipe);
+      const removed = syncAvailableFeatures();
+      error.textContent = removed.length ? window.ZDWA_I18N.t("Nicht verfügbare Funktionen wurden aus dieser Vorlage entfernt.") : "";
+      screen(true);
       if (recipe.password_required) form.elements.password.focus();
     },
     getExpectedAccountId: () => account?.id, isCurrent: current, onAccountChanged: reloadFresh,
     onState: ({ favorite, busy: favoriteBusy, failed, message }) => {
-      favoriteButton.disabled = favoriteBusy || !favorite;
+      favoriteAvailable = Boolean(favorite); favoriteLoading = favoriteBusy;
+      favoriteButton.disabled = featureState.loading || favoriteBusy || !favorite;
       dialog.querySelector("[data-watten-favourite-summary]").textContent = favorite
         ? favoriteText("summary", { players: favorite.player_count, target: favorite.target_points, cpus: favorite.cpu_seats.length })
           + (favorite.tournament_nockerl_target ? ` · ${lt("tournamentTarget", { count: favorite.tournament_nockerl_target })}` : "")
@@ -319,12 +367,14 @@ function mountCreator(gen) {
       dialog.querySelector("[data-watten-favourite-error]").textContent = failed ? favoriteText(message) : "";
     } });
   const controller = new AbortController();
-  cleanups.add(() => { controller.abort(); favorites.destroy(); form.elements.password.value = ""; dialog.close(); });
+  cleanups.add(() => { controller.abort(); favorites.destroy(); featurePolicy.destroy(); form.elements.password.value = ""; dialog.close(); });
   const listen = (element, type, handler) => element.addEventListener(type, handler, { signal: controller.signal });
   listen(app.querySelector("[data-watten-create-open]"), "click", () => {
     if (!current()) return;
     screen(false); dialog.showModal(); defineButton.focus();
+    void featurePolicy.refresh();
   });
+  listen(featureRetry, "click", () => { if (!busy) void featurePolicy.refresh(); });
   listen(defineButton, "click", () => screen(true));
   listen(favoriteButton, "click", () => favorites.applyStored());
   listen(closeButton, "click", close);
@@ -336,10 +386,11 @@ function mountCreator(gen) {
   });
   listen(dialog, "close", () => { form.elements.password.value = ""; });
   listen(form.querySelector("[data-watten-create-back]"), "click", () => { if (!busy) { form.elements.password.value = ""; screen(false); } });
-  listen(form, "change", event => syncCreator(form, event.target.name === "count"));
+  listen(form, "change", event => syncAvailableFeatures(event.target.name === "count"));
   listen(form, "submit", async event => {
     event.preventDefault();
-    if (busy || !current()) return;
+    if (busy || featureState.loading || !current()) return;
+    syncAvailableFeatures();
     let recipe, password;
     try { ({ recipe, password } = recipeFromForm(form)); }
     catch (failure) { error.textContent = failure.message; return; }
@@ -371,7 +422,7 @@ function mountCreator(gen) {
       busy = false;
       if (current()) {
         controls.forEach((control, index) => { if ("disabled" in control) control.disabled = previouslyDisabled[index]; });
-        submit.disabled = false; closeButton.disabled = false; dialog.removeAttribute("aria-busy");
+        syncAvailableFeatures(); closeButton.disabled = false; dialog.removeAttribute("aria-busy");
       }
     }
   });
@@ -970,7 +1021,7 @@ function adopt(snapshot, publicCalls) {
 function preserveFocus(update) {
   const active = document.activeElement;
   const key = active?.closest?.("[data-watten-command]") && app.contains(active)
-    ? [active.dataset.wattenCommand, active.dataset.seat, active.dataset.value, active.dataset.kind] : null;
+    ? [active.dataset.wattenCommand, active.dataset.seat, active.dataset.value, active.dataset.kind, active.dataset.feature] : null;
   update();
   if (document.activeElement !== document.body) return;
   if (active?.isConnected && app.contains(active) && !active.closest("[hidden]")) {
@@ -978,7 +1029,7 @@ function preserveFocus(update) {
   }
   if (!key) return;
   const match = [...app.querySelectorAll("[data-watten-command]")].find(node =>
-    [node.dataset.wattenCommand, node.dataset.seat, node.dataset.value, node.dataset.kind].join("|") === key.join("|"));
+    [node.dataset.wattenCommand, node.dataset.seat, node.dataset.value, node.dataset.kind, node.dataset.feature].join("|") === key.join("|"));
   match?.focus({ preventScroll: true });
 }
 
@@ -1028,11 +1079,14 @@ function render(previous = null, live = false, accepted = false) {
     session.view = null;
     session.viewKind = "waiting";
     preserveFocus(() => {
+      const featureControlsOpen = root.querySelector("[data-watten-table-features]")?.open === true;
       waitingChrome?.park();
       root.innerHTML = waitingRoomMarkup(snapshot, {
         mode: session.spectator ? "spectator" : "member", viewerId: session.playerId,
         busy: Boolean(session.inFlight) || !session.bound,
       });
+      const featureControls = root.querySelector("[data-watten-table-features]");
+      if (featureControls) featureControls.open = featureControlsOpen;
       showWaitingChrome(snapshot, session.spectator ? "spectator" : "member");
     });
     openSeatNotifications?.update();
@@ -1299,6 +1353,7 @@ app.addEventListener("click", event => {
       break;
     }
     case "start": roomCommand("watten_start"); break;
+    case "set-feature": roomCommand("watten_set_feature", { feature: control.dataset.feature, enabled: control.dataset.enabled === "true" }); break;
     case "place-cpu": roomCommand("watten_place_cpu", { seat: Number(control.dataset.seat) }); break;
     case "remove-cpu": roomCommand("watten_remove_cpu", { seat: Number(control.dataset.seat) }); break;
     case "waiting-back":

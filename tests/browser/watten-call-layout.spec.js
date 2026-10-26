@@ -316,7 +316,7 @@ for (const language of ['de', 'en']) for (const { count, reference = false } of 
     };
     try {
       for (let index = 0; index < count; index += 1) {
-        const item = await player(wrapped, baseURL, language);
+        const item = await player(wrapped, baseURL, language, { role: reference && index === 0 ? 'admin' : 'user' });
         if (reference) {
           // Playwright reports proxied server frames before socket.send delivers
           // them to the native client. Give this driver the same delivery gate:
