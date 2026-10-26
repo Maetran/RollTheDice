@@ -89,7 +89,13 @@ def test_existing_linked_target_retry_is_not_reclassified_after_original_becomes
 
 
 def test_display_check_is_readonly_bounded_and_absent_from_live_nonhost_and_public_snapshots(server, monkeypatch):
+    from app.watten_surprises import table_effects_projection
+
     match, _owners = source_for()
+    # Measure fresh roster authority reads after the table's one-time cosmetic
+    # hydration. Its cold read and cache lifetime have their own SQL guard in
+    # test_watten_table_appearance; the rematch must still read exactly twice.
+    assert table_effects_projection(match.game) == {"scorched_cards": False}
     statements = []
 
     def record(_connection, _cursor, statement, _parameters, _context, _many):
