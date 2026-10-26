@@ -479,13 +479,15 @@ mark their connection when space allows. Showing and inspection retain priority.
 Waiting never replaces a human answer.
 
 Nach einer Gabe wird zuerst der letzte Stich abgeräumt. Schlag, Farbe und der
-Rechte werden anschliessend etwa drei Sekunden für alle aufgedeckt; danach
-startet die nächste Gabe automatisch. Eine Pause oder offene Retourschneider-
+Rechte werden anschliessend etwa drei Sekunden für alle aufgedeckt. Gleichzeitig
+siehst du deine übrigen Handkarten nochmals – auch wenn ein Team gegangen ist.
+Danach startet die nächste Gabe automatisch. Eine Pause oder offene Retourschneider-
 Entscheidung hält den Wechsel an. Auch das Endergebnis eines ganzen Spiels
 erscheint erst nach dem Abräumen und der kurzen Rückschau.
 After a deal, the final trick is collected first. Strike, suit and the Rechter
-are then revealed to everyone for about three seconds before the next deal
-starts automatically. A pause or pending Retourschneider decision stops that
+are then revealed to everyone for about three seconds, alongside your own
+remaining cards, including when a team has folded. The next deal then starts
+automatically. A pause or pending Retourschneider decision stops that
 transition. A completed match's result likewise waits for collection and review.
 
 **Tischdeko / table decorations:** Eine kleine Auswahl aus den 23 gewöhnlichen

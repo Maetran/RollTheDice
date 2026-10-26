@@ -2567,5 +2567,12 @@
     "date": "2026-10-26",
     "bump": "minor",
     "summary": "Spiele und Funktionen mit internem Testbetrieb und steuerbaren Beta-Kennzeichnungen verwalten. / Manage games and features with internal testing and configurable beta labels."
+  },
+  {
+    "version": "4.8.1",
+    "revision": "d68e05ad13dba5f80609c2c13fcf196eb32dede2",
+    "date": "2026-10-26",
+    "bump": "patch",
+    "summary": "Zuverlässige Veröffentlichungsprüfung mit ein- und ausgeschalteter Watten-Beta-Kennzeichnung. / Reliable release checks with the Watten beta label enabled or disabled."
   }
 ]
