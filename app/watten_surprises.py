@@ -53,6 +53,22 @@ def eligible_effect(game_id: str, deal_id: str) -> str | None:
     return EFFECTS[int.from_bytes(variant, "big") % len(EFFECTS)]
 
 
+def table_effects_projection(game: dict) -> dict:
+    """The accepted durable claim paints this whole table, including rejoining
+    viewers and later deals. A new table has no such claim and starts clean.
+
+    The primary key begins with game_id; this bounded lookup neither loads
+    witnesses nor changes the versioned engine/checkpoint schema.
+    """
+    if not database_schema_ready():
+        return {"scorched_cards": False}
+    with session_scope() as db:
+        scorched = db.scalar(select(WattenTableSurpriseClaim.event_id).where(
+            WattenTableSurpriseClaim.game_id == game["_id"],
+            WattenTableSurpriseClaim.effect == "dragon").limit(1)) is not None
+    return {"scorched_cards": scorched}
+
+
 def _connected(game: dict, identity_for_socket=None) -> tuple:
     runtime = game["_watten"]
     humans = []
@@ -127,6 +143,7 @@ async def handle_surprise(session, data: dict, identity_for_socket) -> None:
     # The completed transaction, never a speculative client tap, authorizes
     # this live event. Reconnect snapshots expose no event or witness history.
     event = {"id": event_id, "effect": data["effect"], "deal_id": engine.deal_id, "game_id": game["_id"]}
+    appearance = table_effects_projection(game)
     for recipient in [*game["_players"], *game["_spectators"]]:
         websocket = recipient.get("ws")
         if websocket is None:
@@ -134,7 +151,7 @@ async def handle_surprise(session, data: dict, identity_for_socket) -> None:
         identity = identity_for_socket(websocket)
         if identity is not None and identity.user_id == recipient.get("user_id"):
             try:
-                await websocket.send_json({"watten_table_surprise": event})
+                await websocket.send_json({"watten_table_surprise": event, "watten_table_effects": appearance})
             except (WebSocketDisconnect, RuntimeError, OSError):
                 pass
 

@@ -1,6 +1,7 @@
 // Table rendering from the accepted own projection only. Nothing here filters
 // legal cards, infers a hidden call or reads another participant's view.
 import { cardArt } from "../hausdepp/cards.js";
+import { cardScorchStyle } from "../hausdepp/card-scorch.js";
 import { escapeHtml as esc } from "../shared/auth.js";
 import { t, lang, cardFace, cardBack, cardName, sortHand, suitName, strikeName, SUITS, STRIKES, isCard } from "./cards.js";
 import { teamName } from "./waiting-room.js";
@@ -680,6 +681,7 @@ export function createTableView(container, { onCard, accountId = null }) {
           node.className = "wt-hand-card";
           node.dataset.wtCard = "";
           node.dataset.card = card;
+          node.style.cssText += cardScorchStyle(card);
           node.setAttribute("aria-label", cardName(card));
           node.innerHTML = cardArt(card);
         } else {

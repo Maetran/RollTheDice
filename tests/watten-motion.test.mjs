@@ -2,9 +2,13 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { runInNewContext } from "node:vm";
+import { build } from "esbuild";
 
-const source = await readFile(new URL("../frontend/watten/motion.js", import.meta.url), "utf8");
-const { createMotion, motionTransition, sameHandVersion, cardCopyPose } = await import(`data:text/javascript;base64,${Buffer.from(source).toString("base64")}`);
+const bundled = await build({ entryPoints: [new URL("../frontend/watten/motion.js", import.meta.url).pathname], bundle: true,
+  write: false, format: "esm", platform: "browser", target: "es2020", logLevel: "silent" });
+const { createMotion, motionTransition, sameHandVersion, cardCopyPose } = await import(`data:text/javascript;base64,${Buffer.from(bundled.outputFiles[0].text).toString("base64")}`);
+const appearanceSource = await readFile(new URL("../frontend/hausdepp/surprise-state.js", import.meta.url), "utf8");
+const { renderTableAppearance } = await import(`data:text/javascript;base64,${Buffer.from(appearanceSource).toString("base64")}`);
 const rect = (left, top, width = 50, height = 80) => ({ left, top, width, height });
 const centre = value => ({ x: value.left + value.width / 2, y: value.top + value.height / 2 });
 const tick = () => new Promise(resolve => setImmediate(resolve));
@@ -22,7 +26,9 @@ class Events {
 class Node {
   constructor(dom, bounds = rect(0, 0), key, face) {
     this.dom = dom; this.bounds = bounds; this.dataset = key ? { key } : {};
-    this.face = face; this.style = { visibility: "", opacity: "" }; this.children = []; this.attributes = {};
+    this.face = face; this.style = { visibility: "", opacity: "", cssText: "",
+      setProperty(name, value) { this[name] = value; }, getPropertyValue(name) { return this[name] || ""; } };
+    this.children = []; this.attributes = {};
     this.connected = true; this.animations = []; this.parent = null;
   }
   get isConnected() { return this.connected && (!this.parent || this.parent.isConnected); }
@@ -408,7 +414,7 @@ function controller(f, acceptedResult) {
   const view = { ...f.view, motionSources: () => [...f.seats, f.deck], update: () => acceptedResult };
   const context = { session, html, viewRoot: () => root, decor: null, voice: null, waitingChrome: null, account: { id: 1 }, sameHandVersion, setHeading() {}, syncSocial() {}, createTableView: () => view,
     motion: f.motion, engineCommand() {}, liveMessage: () => "", preserveFocus: fn => fn(), matchProgress: null, rematch: null, openSeatNotifications: null,
-    beginnerGuide: { update: state => guideUpdates.push(state) },
+    beginnerGuide: { update: state => guideUpdates.push(state) }, renderTableAppearance,
     roundReview: { update: () => ({ stage: "ready" }), afterMotion() {}, discard() {} },
     syncDecor() {}, waitingRoomMarkup: () => "", showMessage() {}, t: key => key, lobbyLink: () => "" };
   const renderSource = controllerSource.slice(controllerSource.indexOf("function render(previous ="), controllerSource.indexOf("function renderJoinPrompt()"));

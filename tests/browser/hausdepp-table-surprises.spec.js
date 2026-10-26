@@ -475,6 +475,62 @@ test('dragon scorch persists through the same table round and rejoin while real 
   await expect(table).not.toHaveClass(/hd-cards-scorched/);
 });
 
+test('distinct scorched cards keep their own paper through a native launch, queued afterthrow and accepted pile handover', async ({ page }, info) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const fixture = await roomFixture(page, 'star', { scorched: true });
+  const board = fixture.first.board, hand = ['hearts-6', 'bells-6', 'acorns-10'];
+  Object.assign(board._hausdepp, { version: board._hausdepp.version + 1, hand, playable_cards: hand });
+  fixture.send(fixture.first, { scoreboard: board });
+  await expect(page.locator('#hausdeppHand [data-card-id="bells-6"]')).toBeEnabled();
+  const patterns = await page.locator('#hausdeppHand [data-card-id]').evaluateAll(nodes => Object.fromEntries(nodes.map(node =>
+    [node.dataset.cardId, getComputedStyle(node, '::before').backgroundImage])));
+  expect(new Set(Object.values(patterns)).size).toBe(3);
+  await page.evaluate(() => {
+    const animate = Element.prototype.animate;
+    Element.prototype.animate = function (...args) {
+      const animation = animate.apply(this, args);
+      if (this.classList.contains('hd-deal-card')) animation.pause();
+      return animation;
+    };
+  });
+  await page.locator('#hausdeppHand [data-card-id="hearts-6"]').click();
+  await expect.poll(() => fixture.first.commands.filter(item => item.action === 'hausdepp_play').length).toBe(1);
+  const first = fixture.first.commands.find(item => item.action === 'hausdepp_play');
+  const launch = page.locator('.hd-deal-card[data-motion-type="launch"]');
+  await expect(launch).toHaveCount(1);
+  expect(await launch.evaluate(node => getComputedStyle(node, '::before').backgroundImage)).toBe(patterns['hearts-6']);
+  await page.locator('#hausdeppHand [data-card-id="bells-6"]').click();
+  expect(fixture.first.commands.filter(item => item.action === 'hausdepp_afterthrow')).toEqual([]);
+  const accept = (command, card, actions) => {
+    const state = board._hausdepp;
+    Object.assign(state, { version: state.version + 1, hand: state.hand.filter(item => item !== card),
+      discard: [...state.discard, card], playable_cards: state.hand.filter(item => item !== card),
+      available_actions: actions, afterthrow: { player_id: fixture.self, rank: '6' },
+      last_event: { type: command.action === 'hausdepp_play' ? 'play' : 'afterthrow', player_id: fixture.self, cards: [card] } });
+    fixture.send(fixture.first, { scoreboard: board,
+      hausdepp_command: { command_id: command.command_id, accepted: true, version: state.version } });
+  };
+  accept(first, 'hearts-6', ['afterthrow', 'draw']);
+  await expect.poll(() => fixture.first.commands.filter(item => item.action === 'hausdepp_afterthrow').length).toBe(1);
+  const followup = fixture.first.commands.find(item => item.action === 'hausdepp_afterthrow');
+  expect(followup.version).toBe(board._hausdepp.version);
+  await expect(page.locator('.hd-deal-card[data-motion-type="play"]')).toHaveCount(1);
+  expect(await page.locator('.hd-deal-card[data-motion-type="play"]').evaluate(node =>
+    getComputedStyle(node, '::before').backgroundImage)).toBe(patterns['hearts-6']);
+  expect(await page.locator('.hd-deal-card[data-motion-type="launch"]').evaluate(node =>
+    getComputedStyle(node, '::before').backgroundImage)).toBe(patterns['bells-6']);
+  accept(followup, 'bells-6', ['draw']);
+  await expect(page.locator('.hd-deal-card[data-motion-type="afterthrow"]')).toHaveCount(1);
+  expect(await page.locator('.hd-deal-card[data-motion-type="afterthrow"]').evaluate(node =>
+    getComputedStyle(node, '::before').backgroundImage)).toBe(patterns['bells-6']);
+  await page.screenshot({ path: info.outputPath('scorched-flight.png') });
+  await page.locator('.hd-deal-card').evaluateAll(nodes => nodes.forEach(node => node.getAnimations().forEach(animation => animation.finish())));
+  await expect(page.locator('#hausdeppPile [data-card-id="bells-6"]')).toBeVisible();
+  for (const card of ['hearts-6', 'bells-6']) expect(await page.locator(`#hausdeppPile [data-card-id="${card}"]`).evaluate(node =>
+    getComputedStyle(node, '::before').backgroundImage)).toBe(patterns[card]);
+  await page.screenshot({ path: info.outputPath('scorched-pile.png') });
+});
+
 test('a remote intermediate score update lets the clock story finish but local card input restores the live table', async ({ page }) => {
   const fixture = await roomFixture(page, 'clock');
   await pauseSurpriseForCapture(page);

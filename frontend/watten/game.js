@@ -19,6 +19,7 @@ import { loadWattenDetail } from "./api.js";
 import { createSocial } from "./social.js";
 import { mountWattenLobbyChat } from "./lobby-chat.js";
 import { createDecor } from "./decor.js";
+import { renderTableAppearance } from "../hausdepp/surprise-state.js";
 import { createWattenVoice } from "./voice.js";
 import { showVoiceTableLeft } from "../shared/voice-table-lifecycle.js";
 import { HAUSDEPP_MESSAGES } from "../i18n/catalog.js";
@@ -636,6 +637,10 @@ function scheduleReconnect() {
 }
 
 function onMessage(data) {
+  if (data.watten_table_effects && data.watten_table_surprise?.game_id === gameId && session.snapshot) {
+    session.snapshot.table_effects = data.watten_table_effects;
+    renderTableAppearance(viewRoot()?.querySelector("[data-wt-table]"), data.watten_table_effects);
+  }
   if (voice?.receive(data) || decor?.receive(data)) return;
   // Public social frames update their own bounded log, never the card view.
   if (social?.receive(data)) return;
@@ -1069,6 +1074,7 @@ function render(previous = null, live = false, accepted = false) {
   const captured = accepted ? motion.capture(session.view.motionSources()) : null;
   let result;
   preserveFocus(() => { result = session.view.update(vm); });
+  renderTableAppearance(root.querySelector("[data-wt-table]"), snapshot.table_effects);
   if (vm.roundPresentation.stage === "ready") matchProgress?.update({ container: root.querySelector("[data-watten-match-progress]"), snapshot,
     playerId: session.playerId, spectator: session.spectator });
   if (vm.roundPresentation.stage === "ready") rematch?.update({ container: root.querySelector("[data-watten-rematch]"), snapshot,

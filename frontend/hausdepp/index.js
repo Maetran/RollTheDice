@@ -7,6 +7,7 @@ import { createRematch, mountRematchInvitations, rematchError } from "./rematch.
 import { renderTableDecor, presentTableProp, presentTableSurprise, cancelTableSurprises } from "./decor.js";
 import { preserveNewerTableProps } from "./decor-sync.js";
 import { renderTableAppearance } from "./surprise-state.js";
+import { cardScorchStyle } from "./card-scorch.js";
 import { mountLobbyDemo } from "./lobby-demo.js";
 import { invitationMarkup, mountInvitations } from "./invitations.js";
 import { initializeGameViewport } from "../shared/game-viewport.js";
@@ -97,8 +98,8 @@ function cardMarkup(card, { interactive = false, playable = false, committed = f
   const drop = Math.pow(Math.abs(angle) / 14, 2) * 17;
   const attrs = `class="hausdepp-card ${playable ? "is-playable" : ""} ${committed ? "is-committed" : ""} ${launched ? "is-launched" : ""} ${selected ? "is-selected" : ""}" data-card-id="${esc(card)}" aria-label="${esc(cardName(card))}"${selecting ? ` aria-pressed="${selected}" aria-describedby="hausdeppMultiHint"` : ""}`;
   return interactive
-    ? `<button type="button" ${attrs} data-same-rank="${sameRank}" style="--card-index:${index};--fan-offset:${offset};--fan-angle:${angle}deg;--fan-drop:${drop}px" ${!playable || committed ? "disabled" : ""}>${art}</button>`
-    : `<span ${attrs} role="img">${art}</span>`;
+    ? `<button type="button" ${attrs} data-same-rank="${sameRank}" style="${cardScorchStyle(card)}--card-index:${index};--fan-offset:${offset};--fan-angle:${angle}deg;--fan-drop:${drop}px" ${!playable || committed ? "disabled" : ""}>${art}</button>`
+    : `<span ${attrs} role="img" style="${cardScorchStyle(card)}">${art}</span>`;
 }
 
 // A real paper edge per remaining card makes the height change with the count.
