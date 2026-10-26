@@ -43,6 +43,7 @@ SURPRISE_ACHIEVEMENTS = tuple(
     for effect, (de, en) in zip(EFFECTS, _NAMES) for role in ("trigger", "witness")
 )
 _GOALS = {goal.achievement_id: goal for goal in SURPRISE_ACHIEVEMENTS}
+_APPEARANCE_CACHE = "_watten_table_appearance"
 
 
 def eligible_effect(game_id: str, deal_id: str) -> str | None:
@@ -57,15 +58,26 @@ def table_effects_projection(game: dict) -> dict:
     """The accepted durable claim paints this whole table, including rejoining
     viewers and later deals. A new table has no such claim and starts clean.
 
-    The primary key begins with game_id; this bounded lookup neither loads
-    witnesses nor changes the versioned engine/checkpoint schema.
+    Hydrate once per native loaded game, not once per recipient or lobby read.
+    Native copies retain this bounded immutable pair; strict checkpoint restore
+    creates a fresh dict and reads the durable claim again. It is deliberately
+    not a global game-ID cache or part of the versioned engine/checkpoint.
+
+    This follows native in-process game/transport ownership. Independent live
+    owners in multiple processes would also need native event invalidation;
+    takeover through restore rehydrates instead of inheriting another cache.
     """
+    cached = game.get(_APPEARANCE_CACHE)
+    if (type(cached) is tuple and len(cached) == 2 and cached[0] == game["_id"]
+            and type(cached[1]) is bool):
+        return {"scorched_cards": cached[1]}
     if not database_schema_ready():
         return {"scorched_cards": False}
     with session_scope() as db:
         scorched = db.scalar(select(WattenTableSurpriseClaim.event_id).where(
             WattenTableSurpriseClaim.game_id == game["_id"],
             WattenTableSurpriseClaim.effect == "dragon").limit(1)) is not None
+    game[_APPEARANCE_CACHE] = (game["_id"], scorched)
     return {"scorched_cards": scorched}
 
 
@@ -142,6 +154,8 @@ async def handle_surprise(session, data: dict, identity_for_socket) -> None:
                                              player_id=member.participant_id, initiated=member.participant_id == session.player_id))
     # The completed transaction, never a speculative client tap, authorizes
     # this live event. Reconnect snapshots expose no event or witness history.
+    if data["effect"] == "dragon":
+        game[_APPEARANCE_CACHE] = (game["_id"], True)
     event = {"id": event_id, "effect": data["effect"], "deal_id": engine.deal_id, "game_id": game["_id"]}
     appearance = table_effects_projection(game)
     for recipient in [*game["_players"], *game["_spectators"]]:
