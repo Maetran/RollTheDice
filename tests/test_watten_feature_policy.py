@@ -6,10 +6,10 @@ from datetime import timedelta
 from itertools import count
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import event, select
 
 from app import watten_admissions, watten_features
-from app.database import session_scope
+from app.database import get_engine, session_scope
 from app.game_state import games
 from app.models import ActiveGame, FeatureFlag, User
 from app.security import utcnow
@@ -378,3 +378,76 @@ def test_normal_rematch_host_can_start_after_reserved_enabling_admin_joins(serve
     assert game["_watten"].engine.recipe.schoeneres_enabled
     assert not host[0].is_admin
     assert dict(game["_watten"].feature_activators)["watten.schoeneres"] == staff[0].user_id
+
+
+def test_running_beta_presentation_is_frozen_private_checkpoint_metadata_with_zero_projection_sql(server):
+    host, guest = account("beta-host"), account("beta-guest")
+    feature = "watten.schoeneres"
+    _policy(feature, "public")
+    with session_scope() as db:
+        db.get(FeatureFlag, feature).beta = True
+    game = _game(host, recipe=WattenRecipe(2, "normal", False, False, schoeneres_enabled=True))
+    _seat(game, host, 0)
+    _seat(game, guest, 1)
+    _apply(game, host, "watten_start")
+    frozen = ((feature, True),)
+    assert game["_watten"].feature_presentation == frozen
+    _policy(feature, "off")
+    _apply(game, host, "watten_delivery_ack", delivery_ids=[])
+    assert game["_watten"].feature_presentation == frozen
+    raw = serialize_watten_game(game)
+    assert raw["_watten"]["feature_presentation"] == [[feature, True]]
+    restored = restore_watten_json(json.dumps(raw), refresh_titles=False)
+    assert restored["_watten"].feature_presentation == frozen
+    statements = []
+
+    def record(_connection, _cursor, statement, _parameters, _context, _many):
+        statements.append(statement)
+
+    event.listen(get_engine(), "before_cursor_execute", record)
+    try:
+        for viewer in ("p1", "p2", None):
+            controls = snapshot_watten(restored, viewer)["room"]["feature_controls"]
+            assert controls == {feature: {"enabled": True, "can_select": False, "can_enable": False,
+                                          "status": "public", "beta": True}}
+        completed = replace(restored["_watten"].room, status="finished")
+        assert watten_features.feature_controls(completed, None, presentation=frozen)[feature]["beta"]
+        assert not statements
+    finally:
+        event.remove(get_engine(), "before_cursor_execute", record)
+    for invalid in ([[feature, 1]], [[feature, True], [feature, True]], [["watten.unknown", True]],
+                    [["watten.critical", True]]):
+        malformed = {**raw, "_watten": {**raw["_watten"], "feature_presentation": invalid}}
+        with pytest.raises(ValueError, match="watten_invalid_feature_presentation"):
+            restore_watten_json(json.dumps(malformed), refresh_titles=False)
+    raw["_watten"].pop("feature_presentation")
+    legacy = restore_watten_json(json.dumps(raw), refresh_titles=False)
+    assert legacy["_watten"].feature_presentation == ()
+    assert snapshot_watten(legacy, "p1")["room"]["feature_controls"] == {}
+    assert legacy["_watten"].engine.recipe == restored["_watten"].engine.recipe
+
+
+def test_rematch_clears_beta_presentation_and_captures_current_beta_at_next_start(server):
+    host, guest = account("beta-rematch-host"), account("beta-rematch-guest")
+    feature = "watten.schoeneres"
+    _policy(feature, "public")
+    with session_scope() as db:
+        db.get(FeatureFlag, feature).beta = True
+    match = NativeMatch(target=3, schoeneres=True, game_id=f"beta-rematch-{next(_IDS)}")
+    match.ready()
+    match.finish()
+    runtime = match.runtime
+    persist_watten_game(match.game, creating=True)
+    games[match.game["_id"]] = match.game
+    assert match.runtime.feature_presentation == ((feature, True),)
+    result = create_follow_up(match.game["_id"], host[0], {"command_id": "beta-follow-up",
+        "revision": runtime.room.revision, "protection": {"mode": "disabled"}})
+    game = result.target
+    games[game["_id"]] = game
+    assert game["_watten"].feature_presentation == ()
+    _policy(feature, "public")  # The next game is released without a Beta label.
+    _seat(game, guest, 1)
+    _apply(game, host, "watten_start")
+    assert game["_watten"].engine.recipe.schoeneres_enabled
+    assert game["_watten"].feature_presentation == ()
+    assert match.runtime.feature_presentation == ((feature, True),)

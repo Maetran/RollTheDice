@@ -14,7 +14,13 @@ from sqlalchemy import select
 
 from .account_progress import lock_account_rows, require_exact_active_account
 from .database import database_schema_ready, session_scope
-from .feature_flags import account_can_activate_feature, feature_catalog, feature_status, lock_feature_policies
+from .feature_flags import (
+    account_can_activate_feature,
+    feature_catalog,
+    feature_settings,
+    feature_status,
+    lock_feature_policies,
+)
 from .models import ActiveGame
 from .security import utcnow
 from .watten_admissions import checkpoint_accounts
@@ -39,6 +45,14 @@ def validate_activators(value):
             or type(item[0]) is not str or item[0] not in FEATURE_FIELDS or type(item[1]) is not int or item[1] < 1 for item in value)
             or len(dict(value)) != len(value)):
         raise ValueError("watten_invalid_feature_activators")
+
+
+def validate_feature_presentation(value, recipe):
+    if (type(value) is not tuple or any(type(item) is not tuple or len(item) != 2
+            or type(item[0]) is not str or item[0] not in FEATURE_FIELDS or type(item[1]) is not bool for item in value)
+            or len(dict(value)) != len(value)
+            or not set(dict(value)) <= selected_features(recipe)):
+        raise ValueError("watten_invalid_feature_presentation")
 
 
 def creation_activators(recipe, account):
@@ -90,8 +104,16 @@ def change_feature(runtime, *, account, feature, enabled):
     return replace(runtime.room, recipe=recipe, revision=runtime.room.revision + 1), tuple(sorted(activators.items()))
 
 
-def feature_controls(room, account):
-    """Recipient-specific controls; account IDs never enter the public DTO."""
+def feature_controls(room, account, *, presentation=()):
+    """Recipient-specific waiting controls, absent from hot/public snapshots."""
+    if room.status != "waiting":
+        # Frozen public labels carry no current selection authority. Every
+        # participant and spectator sees the same active-match Beta markers.
+        return {key: {"enabled": True, "can_select": False, "can_enable": False,
+                      "status": "public", "beta": beta} for key, beta in presentation}
+    member = next((item for item in room.members if item.account_id == account), None)
+    if member is None:
+        return {}
     if database_schema_ready():
         with session_scope() as db:
             from .feature_flags import is_feature_staff
@@ -103,9 +125,8 @@ def feature_controls(room, account):
         catalog = {key: {"status": "internal", "beta": False, "can_select": False}
                    for key in FEATURE_FIELDS}
         staff = False
-    member = next((item for item in room.members if item.account_id == account), None)
-    seated = member is not None and member.seat is not None
-    host = member is not None and member.participant_id == room.host_participant_id
+    seated = member.seat is not None
+    host = member.participant_id == room.host_participant_id
     result = {}
     for key, field in FEATURE_FIELDS.items():
         setting = catalog[key]
@@ -205,13 +226,17 @@ def validate_checkpoint_features(db, checkpoint, *, creating=False):
     # removed must not be rejected as though it were newly activated.
     changed = changed & selected
     activators = dict(runtime.feature_activators)
+    presentation = []
     for feature in sorted(changed):
         if (previous is not None or runtime.engine is None) and not feature_recipe_supported(runtime.room.recipe, feature):
             raise ValueError("watten_feature_incompatible")
-        status = feature_status(db, feature)
+        settings = feature_settings(db, feature)
+        status = settings["status"]
         if status == "off":
             raise ValueError("watten_feature_disabled")
         if status == "public":
+            if settings["beta"]:
+                presentation.append((feature, True))
             continue
         account = activators.get(feature)
         if account is None:
@@ -223,3 +248,6 @@ def validate_checkpoint_features(db, checkpoint, *, creating=False):
         if (starting or previous is not None) and not any(
                 member.account_id == account and member.seat is not None for member in runtime.room.members):
             raise ValueError("watten_feature_staff_must_be_seated")
+
+    if starting:
+        checkpoint["_watten"] = replace(runtime, feature_presentation=tuple(presentation))

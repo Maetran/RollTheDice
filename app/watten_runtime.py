@@ -110,13 +110,15 @@ class WattenRuntime:
     round_review_started_at: str | None = None
     abort_reason: str | None = None
     feature_activators: tuple[tuple[str, int], ...] = ()
+    feature_presentation: tuple[tuple[str, bool], ...] = ()
 
     def __post_init__(self):
-        from .watten_features import validate_activators
+        from .watten_features import validate_activators, validate_feature_presentation
 
         validate_activators(self.feature_activators)
         if not isinstance(self.room, WattenRoom) or type(self.names) is not tuple:
             raise ValueError("watten_invalid_runtime")
+        validate_feature_presentation(self.feature_presentation, self.room.recipe)
         participants = {item.participant_id for item in (*self.room.members, *self.room.cpus)}
         if (any(type(item) is not tuple or len(item) != 2 or type(item[0]) is not str
                 or type(item[1]) is not str or not 1 <= len(item[1]) <= 64 for item in self.names)
@@ -493,7 +495,7 @@ def apply_runtime_action(game: dict, account: int, player: str, data: dict, *, e
     runtime = WattenRuntime(room, engine, tuple(names.items()), deliveries, acks, runtime.absent, runtime.lifecycle_revision, memories, bid_counters,
                             runtime.round_review_started_at if engine is not None and runtime.engine is not None
                             and engine.deal_id == runtime.engine.deal_id else None,
-                            feature_activators=feature_activators)
+                            feature_activators=feature_activators, feature_presentation=runtime.feature_presentation)
     # A waiting leave removes its own actor; it has no seat or durable retry
     # authority afterwards, so do not retain an ACK tied to a departed member.
     ack = RuntimeAck(account, data["command_id"], digest, room.revision,
@@ -591,7 +593,7 @@ def snapshot_watten(game: dict, viewer_id: str | None = None, *, viewer_account_
         can_create_rematch = rematch_unavailable_reason is None
     from .watten_features import feature_controls
 
-    controls = feature_controls(room, account)
+    controls = feature_controls(room, account, presentation=runtime.feature_presentation)
     seats = []
     for seat in range(room.recipe.player_count):
         occupant = next((item for item in (*room.members, *room.cpus) if item.seat == seat), None)
@@ -665,6 +667,8 @@ def serialize_watten_game(game: dict) -> dict:
                         "round_review_started_at": runtime.round_review_started_at,
                         **({"feature_activators": [list(item) for item in runtime.feature_activators]}
                            if runtime.feature_activators else {}),
+                        **({"feature_presentation": [list(item) for item in runtime.feature_presentation]}
+                           if runtime.feature_presentation else {}),
                         "deliveries": [{"delivery_id": item.delivery_id, "participant_id": item.participant_id,
                                         "deal_id": item.deal_id, "kind": item.kind, "seat": item.seat, "value": item.value}
                                        for item in runtime.deliveries],
@@ -691,8 +695,9 @@ def restore_watten_game(raw: dict) -> dict:
         fields.add("round_review_started_at")
     if version >= 5:
         fields.add("abort_reason")
-    if "feature_activators" in data:
-        fields.add("feature_activators")
+    for field in ("feature_activators", "feature_presentation"):
+        if field in data:
+            fields.add(field)
     data = require_fields(data, frozenset(fields), ValueError, "watten_storage")
     if any(type(data[key]) is not list for key in ("names", "deliveries", "acks", "absent")):
         raise ValueError("watten_invalid_storage")
@@ -710,11 +715,15 @@ def restore_watten_game(raw: dict) -> dict:
     activators = data.get("feature_activators", [])
     if type(activators) is not list:
         raise ValueError("watten_invalid_feature_activators")
+    presentation = data.get("feature_presentation", [])
+    if type(presentation) is not list:
+        raise ValueError("watten_invalid_feature_presentation")
     runtime = WattenRuntime(room, engine, tuple(tuple(item) if type(item) is list else item for item in data["names"]), deliveries, acks,
                             tuple(data["absent"]), data["lifecycle_revision"], memories, bid_counters,
                             data["round_review_started_at"] if version >= 4 else None,
                             data["abort_reason"] if version >= 5 else None,
-                            tuple(tuple(item) if type(item) is list else item for item in activators))
+                            tuple(tuple(item) if type(item) is list else item for item in activators),
+                            tuple(tuple(item) if type(item) is list else item for item in presentation))
     if version >= 5 and runtime.abort_reason is None:
         raise ValueError("watten_invalid_abort")
     from .watten_cpu_runtime import validate_stored_memories

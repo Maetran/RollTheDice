@@ -13,9 +13,18 @@ from app import watten_runtime as runtime
 from app.active_games import load_active_games
 from app.database import session_scope
 from app.game_state import games
-from app.models import ActiveGame, CompletedGame, User, WattenAchievementGrant, WattenMatchCredit, WattenMatchEvidence
+from app.models import (
+    ActiveGame,
+    CompletedGame,
+    FeatureFlag,
+    User,
+    WattenAchievementGrant,
+    WattenMatchCredit,
+    WattenMatchEvidence,
+)
 from app.ownership import bind_founder
 from app.product_hosts import DEFAULT_SITE_ORIGIN
+from app.security import utcnow
 from app.watten_engine import EngineActor, EngineCommand
 from app.watten_room import SeatReservation
 from app.watten_views import cpu_view
@@ -106,7 +115,13 @@ def test_real_nonfirst_founder_and_explicit_cpus_can_progress_without_a_manufact
 def test_all_twelve_local_profiles_keep_unprivileged_human_cpu_execution(server, ready, monkeypatch,
                                                                        count, determination, blind, critical):
     prior.deterministic_dealer(monkeypatch)  # CPU seat 1 has the first normal announcement.
-    native.account("LocalHumanWithoutOwnership")
+    human, _cookie = native.account("LocalHumanWithoutOwnership")
+    assert not human.is_admin and not human.is_owner
+    if critical:
+        # This CPU profile matrix exercises a released critical-card ruleset
+        # with an ordinary human; it must not manufacture internal authority.
+        with session_scope() as db:
+            db.add(FeatureFlag(key="watten.critical", status="public", beta=False, version=1, updated_at=utcnow()))
     monkeypatch.setenv("ROLLTHEDICE_WATTEN_FOUNDER_PREVIEW", "0")
     match = NativeMatch(count, determination=determination, blind=blind, cpus=tuple(range(1, count)),
                         start=False, game_id="0123456789abcdef")
@@ -200,8 +215,6 @@ def test_foreign_reservation_is_not_an_owner_room_grant(server, monkeypatch):
     game = games[native.create_game(server, founder, count=3, cpus=(2,))]
     with session_scope() as db:
         bind_founder(db, founder[0].user_id)
-    from app.security import utcnow
-
     state = game["_watten"]
     reservation = SeatReservation(foreign[0].user_id, 1, state.room.wait_expires_at)
     game["_watten"] = replace(state, room=replace(state.room, reservations=(reservation,)))
