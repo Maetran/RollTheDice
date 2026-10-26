@@ -2560,5 +2560,12 @@
     "date": "2026-10-26",
     "bump": "patch",
     "summary": "Hochwertige seltene Tischeffekte und durchgängige individuelle Brandspuren. / Premium rare table effects and continuous individual singed card patterns."
+  },
+  {
+    "version": "4.8.0",
+    "revision": "986952eca9a45d7fe54f524eac40dfd1720c8d1e",
+    "date": "2026-10-26",
+    "bump": "minor",
+    "summary": "Spiele und Funktionen mit internem Testbetrieb und steuerbaren Beta-Kennzeichnungen verwalten. / Manage games and features with internal testing and configurable beta labels."
   }
 ]

@@ -170,7 +170,7 @@ def verify_release() -> None:
     _, headers = fetch(f"{HAUSDEPP}/hausdepp-sw.js")
     if headers.get("service-worker-allowed") != "/hausdepp":
         raise ValueError("Hausdepp service worker must remain scoped to /hausdepp")
-    # A release with the beta flag disabled retains its closed reservation.
+    # Public rollout controls access independently of the game's beta label.
     auth_body, _ = fetch(f"{APEX}/api/auth/me")
     if json.loads(auth_body).get("game_access", {}).get("watten_public") is True:
         verify_watten(checkout)
@@ -185,8 +185,16 @@ def verify_watten(checkout: Path) -> None:
     if json.loads(body).get("status") != "ok" or any(not headers.get(key) for key in SECURITY_HEADERS):
         raise ValueError("Watten health, TLS or security headers are incomplete")
     body, _ = fetch(f"{WATTEN}/api/auth/me")
-    if json.loads(body).get("game_access", {}).get("watten_public") is not True:
-        raise ValueError("Watten beta is not publicly discoverable")
+    auth = json.loads(body)
+    access = auth.get("game_access") if isinstance(auth, dict) else None
+    if not isinstance(access, dict) or access.get("watten_public") is not True:
+        raise ValueError("Watten is not publicly discoverable")
+    presentation = auth.get("game_presentation")
+    watten = presentation.get("watten") if isinstance(presentation, dict) else None
+    beta = watten.get("beta") if isinstance(watten, dict) else None
+    if type(beta) is not bool:
+        raise ValueError("Watten beta presentation is missing or invalid")
+    expected_name = "Watten [BETA]" if beta else "Watten"
     fetch(f"{WATTEN}/", final_url=f"{WATTEN}/watten")
     for path in ("/watten", "/watten/regeln"):
         for suffix in ("", "?lang=en"):
@@ -209,7 +217,7 @@ def verify_watten(checkout: Path) -> None:
     for suffix in (".webmanifest", "-en.webmanifest"):
         body, _ = fetch(f"{WATTEN}/watten-manifest{suffix}")
         manifest = json.loads(body)
-        if manifest.get("start_url") != "/watten?pwa=watten" or manifest.get("scope") != "/" or "BETA" not in manifest.get("name", ""):
+        if manifest.get("start_url") != "/watten?pwa=watten" or manifest.get("scope") != "/" or manifest.get("name") != expected_name:
             raise ValueError("Watten install metadata is incomplete")
         for icon in manifest.get("icons", []):
             icon_path = urlsplit(icon["src"]).path
@@ -218,7 +226,7 @@ def verify_watten(checkout: Path) -> None:
     _, headers = fetch(f"{WATTEN}/watten-sw.js")
     if headers.get("service-worker-allowed") != "/":
         raise ValueError("The dedicated Watten PWA must keep its suite navigation within its own origin")
-    print("Watten [BETA]: canonical DE/EN pages, sitemap, robots, PWA and icons ready")
+    print("Watten: canonical DE/EN pages, sitemap, robots, PWA and icons ready")
 
 def main() -> int:
     try:

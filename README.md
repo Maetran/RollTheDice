@@ -120,6 +120,8 @@ optional als Beta kennzeichnen und die Beta-Kennzeichnung eines ganzen Spiels
 unabhängig ein- oder ausschalten. Das ändert keinen Spielzugang und ersetzt
 keine bestehenden Rollout-Grenzen. Änderungen werden mit Akteur, Zeitpunkt,
 vorherigem und neuem Zustand dauerhaft protokolliert.
+Die Veröffentlichungsprüfung akzeptiert beide Beta-Zustände und prüft die
+Installationsnamen gegen die aktuelle Kennzeichnung.
 
 Schöneres, Schlagwechsel, Kritische, Rechter-Anzeige, Stichverlauf und offenes
 Partnerblatt beginnen in Watten im internen Testbetrieb. Neue Partien verwenden
@@ -135,6 +137,8 @@ until the end, even if the admin later leaves. Owners can optionally label
 published features as beta and independently toggle the beta label for an entire
 game. Labels do not grant access or replace existing rollout boundaries. Changes
 are durably logged with actor, time, previous and new settings.
+Release checks accept either beta state and verify install names against the
+current label.
 
 Watten's Schöneres, strike swap, critical cards, Rechter indicator, trick history
 and open partner hand initially use internal testing. New games allow strike
