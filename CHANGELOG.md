@@ -37,6 +37,8 @@ Karte behält ihr eigenes kosmetisches Brandmuster auch im Flug und auf dem Stap
 Watten speichert den Drachenzustand anhand bestätigter Funde; Wiederbeitritt und
 weitere Gaben am selben Tisch behalten ihn, ein neuer Tisch beginnt sauber.
 Kartenwerte, Spielregeln und Erfolgsbedingungen ändern sich nicht.
+Ein geöffneter Watten-Stichverlauf verschiebt die Gebotsantwort nicht mehr
+zwischen Drücken und Loslassen.
 
 **English:** Hausdepp and Watten show eight premium cut-out subjects on their
 actual tables. Repeated taps no longer cut an activated scene short. Playing
@@ -46,6 +48,8 @@ a scene through a bid response. Each known card retains its individual cosmetic
 singed pattern in flight and on the pile. Watten restores dragon wear from
 accepted finds across rejoin and later deals at the same table; new tables start
 clean. Card values, rules and achievement conditions remain unchanged.
+An open Watten trick review no longer moves a bid response between pressing
+and releasing it.
 
 ## 4.7.0 — 2026-10-25
 
