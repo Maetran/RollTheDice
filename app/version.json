@@ -1,10 +1,10 @@
 {
-  "version": "4.7.0",
-  "bump": "minor",
-  "date": "2026-10-25",
-  "previous_revision": "8ec61ebb834d3af7eb1532f09d290414b5099779",
+  "version": "4.7.1",
+  "bump": "patch",
+  "date": "2026-10-26",
+  "previous_revision": "4af6e15ca3b53b95caa123652ef39ed306ee5c66",
   "summary": {
-    "de": "Einheitliche Kontobereiche und geprüfte Kontenzusammenführung.",
-    "en": "Consistent account areas and verified account consolidation."
+    "de": "Hochwertige seltene Tischeffekte und durchgängige individuelle Brandspuren.",
+    "en": "Premium rare table effects and continuous individual singed card patterns."
   }
 }

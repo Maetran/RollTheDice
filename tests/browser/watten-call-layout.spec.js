@@ -300,9 +300,47 @@ for (const language of ['de', 'en']) for (const { count, reference = false } of 
     const players = [];
     const measurements = [];
     const squareRows = [];
+    let counterDelivery = null;
+    const heldCounterFrame = (peer, engine) => counterDelivery && peer !== counterDelivery.actor
+      && engine?.deal_id === counterDelivery.dealId && Number.isSafeInteger(engine.opportunity)
+      && engine.opportunity !== counterDelivery.previousOpportunity;
+    const releaseCounterDelivery = () => {
+      const held = counterDelivery?.held || [];
+      counterDelivery = null;
+      // Attempt every queued native delivery, including during failed-test
+      // cleanup; a closed peer must not retain another peer's gate.
+      return Promise.allSettled(held.map(entry => {
+        try { entry.forward(); return Promise.resolve(); }
+        catch (error) { return Promise.reject(error); }
+      }));
+    };
     try {
       for (let index = 0; index < count; index += 1) {
         const item = await player(wrapped, baseURL, language);
+        if (reference) {
+          // Playwright reports proxied server frames before socket.send delivers
+          // them to the native client. Give this driver the same delivery gate:
+          // retain its previous real projection until the original frame forwards.
+          let deliveredSnapshot = item.traffic.snapshot;
+          Object.defineProperty(item.traffic, 'snapshot', { configurable: true, enumerable: true,
+            get: () => deliveredSnapshot,
+            set: snapshot => { if (!heldCounterFrame(item, snapshot?.engine)) deliveredSnapshot = snapshot; },
+          });
+        }
+        if (reference) await item.page.routeWebSocket('**/ws/*', socket => {
+          const server = socket.connectToServer();
+          server.onMessage(raw => {
+            let scoreboard;
+            try { scoreboard = JSON.parse(String(raw)).scoreboard; } catch { /* Forward non-scoreboard frames unchanged. */ }
+            const engine = scoreboard?.engine;
+            if (heldCounterFrame(item, engine)) {
+              counterDelivery.held.push({ peer: item, deal_id: engine.deal_id, opportunity: engine.opportunity,
+                forward: () => { socket.send(raw); item.traffic.snapshot = scoreboard; } });
+              return;
+            }
+            socket.send(raw);
+          });
+        });
         await item.page.clock.install();
         players.push(item);
       }
@@ -364,6 +402,7 @@ for (const language of ['de', 'en']) for (const { count, reference = false } of 
       await expect.poll(() => players.every(item => item.traffic.snapshot.engine.phase === 'bid_response')).toBe(true);
       if (count === 4) {
         await answerPartnerFeedback(players, 'good');
+        await expect.poll(() => players.filter(item => item.traffic.snapshot.engine.actions.includes('respond_hold')).length).toBe(1);
         await expect(players.find(item => item.traffic.snapshot.engine.actions.includes('respond_hold')).page.locator('[data-watten-feedback-received]')).toBeVisible();
       }
       const noncallers = players.filter(item => !callers.includes(item));
@@ -378,8 +417,33 @@ for (const language of ['de', 'en']) for (const { count, reference = false } of 
           await expectOwnCall(page, measurements);
           await page.screenshot({ path: info.outputPath(`first-bid-${language}-${count}-320-${index}.png`) });
         }
-        await action(players, 'respond_counter', 'counter');
+        const previous = players.find(item => item.traffic.snapshot.engine.actions.includes('respond_counter'));
+        const previousOpportunity = previous.traffic.snapshot.engine.opportunity;
+        counterDelivery = { actor: previous, dealId: previous.traffic.snapshot.engine.deal_id, previousOpportunity, held: [] };
+        const countering = await action(players, 'respond_counter', 'counter');
+        expect(countering).toBe(previous);
+        const { deal_id, opportunity } = countering.traffic.snapshot.engine;
+        const otherPeers = players.filter(item => item !== countering);
+        const deliveries = () => counterDelivery.held.map(entry => ({ peer: players.indexOf(entry.peer),
+          deal_id: entry.deal_id, opportunity: entry.opportunity })).sort((a, b) => a.peer - b.peer);
+        await expect.poll(deliveries).toEqual(otherPeers.map(item => ({ peer: players.indexOf(item), deal_id, opportunity })));
+        expect(otherPeers.map(item => item.traffic.snapshot.engine.opportunity)).toEqual(otherPeers.map(() => previousOpportunity));
+        // The accepted sender has advanced, but every new feedback capability
+        // is still held behind an actual server-to-client delivery boundary.
+        expect(players.some(item => item.traffic.snapshot.engine.actions.includes('partner_feedback'))).toBe(false);
+        expect(players.some(item => item.traffic.snapshot.engine.actions.includes('respond_hold'))).toBe(false);
+        measurements.push({ counterDelivery: { accepted: { deal_id, opportunity }, held: deliveries(), previousOpportunity } });
+        const released = releaseCounterDelivery();
+        expect((await released).every(result => result.status === 'fulfilled')).toBe(true);
+        // The public counteroffer keeps bid_response but changes the deciding
+        // team. Wait for that accepted opportunity at every peer before the
+        // feedback driver chooses its new senders from private capabilities.
+        await expect.poll(() => players.map(item => ({
+          deal_id: item.traffic.snapshot.engine.deal_id,
+          opportunity: item.traffic.snapshot.engine.opportunity,
+        }))).toEqual(players.map(() => ({ deal_id, opportunity })));
         await answerPartnerFeedback(players, 'good');
+        await expect.poll(() => players.filter(item => item.traffic.snapshot.engine.actions.includes('respond_hold')).length).toBe(1);
         await expect(players.find(item => item.traffic.snapshot.engine.actions.includes('respond_hold')).page.locator('[data-watten-feedback-received]')).toBeVisible();
       }
       for (const { page } of callers) {
@@ -451,6 +515,7 @@ for (const language of ['de', 'en']) for (const { count, reference = false } of 
         if (reference && language === 'en') expect(await roleRows(page)).toEqual(squareRows[players.findIndex(item => item.page === page)]);
       }
     } finally {
+      await releaseCounterDelivery();
       const geometryPath = info.outputPath('geometry.json');
       await writeFile(geometryPath, JSON.stringify(measurements, null, 2));
       await info.attach('call-layout-geometry', { path: geometryPath, contentType: 'application/json' });

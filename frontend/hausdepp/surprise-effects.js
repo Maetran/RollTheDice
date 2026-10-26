@@ -1,5 +1,5 @@
 import { snapshotTargets, drawSnapshot, woodenStage, protectControls, paintTableWood, handTransferCluster } from "./surprise-snapshots.js";
-import { magicalMouseArt } from "./surprise-mouse.js";
+import { premiumSurpriseArt, premiumMouseArt, premiumTentacleArt, warmSurpriseArt } from "./surprise-art.js";
 // Rare table surprises use inert visual doubles; live cards, controls and
 // game state keep their real geometry and continue to accept normal input.
 const active = new WeakMap();
@@ -8,131 +8,22 @@ let serial = 0;
 // Cards, piles, names and controls stay clear of a surprise where possible.
 const guarded = ".hd-seat, .hd-room-heading, .hd-stock-group, .hd-pile-group, .hd-burned, .hd-hand-heading, "
   + "#hausdeppHand, #hausdeppStatus, #hausdeppEvent, .hd-action-guide, #hausdeppPeek:not([hidden]), #hausdeppResult:not([hidden]), "
+  + ".wt-seat-badge, .wt-seat-name, .wt-scorebar, .wt-panel, .wt-status, [data-wt-hand], .wt-backs, "
   + ":is(button, a[href], input, select, textarea, [role='button']):not(.hd-table-prop)";
 const middle = [[.5, .5], [.5, .4], [.38, .46], [.62, .46], [.5, .32], [.3, .38], [.7, .38], [.42, .6], [.58, .6], [.22, .5], [.78, .5],
   [.16, .34], [.84, .34], [.16, .66], [.84, .66]];
 const upper = [[.5, .3], [.36, .3], [.64, .3], [.24, .34], [.76, .34], [.5, .42], [.36, .44], [.64, .44], [.5, .55]];
-const polar = (angle, radius, cx = 50, cy = 50) => [(cx + Math.sin(angle) * radius).toFixed(1), (cy - Math.cos(angle) * radius).toFixed(1)];
-const point = (...args) => polar(...args).join(" ");
 const svg = (body, view = "0 0 100 100") => `<svg viewBox="${view}" aria-hidden="true" focusable="false">${body}</svg>`;
-const brass = id => `<linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff0b8"/><stop offset=".45" stop-color="#d9a83f"/><stop offset="1" stop-color="#8a5a1c"/></linearGradient>`;
 const uid = () => `hd-surprise-${++serial}-`;
-
-const arts = {
-  star(id) {
-    // Faceted compass star: each ray has a lit and a shaded half.
-    let lit = "", shade = "";
-    for (let ray = 0; ray < 8; ray++) {
-      const angle = ray * Math.PI / 4, tip = ray % 2 ? 33 : 48, side = Math.PI / 8;
-      lit += `M50 50L${point(angle, tip)}L${point(angle - side, 17)}Z`;
-      shade += `M50 50L${point(angle, tip)}L${point(angle + side, 17)}Z`;
-    }
-    return svg(`<defs>${brass(`${id}b`)}<linearGradient id="${id}d" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#d49b3e"/><stop offset="1" stop-color="#74491a"/></linearGradient>`
-      + `<radialGradient id="${id}h"><stop offset="0" stop-color="#ffe9a8" stop-opacity=".5"/><stop offset=".55" stop-color="#9b7be0" stop-opacity=".16"/><stop offset="1" stop-color="#9b7be0" stop-opacity="0"/></radialGradient>`
-      + `<radialGradient id="${id}c" cx=".42" cy=".38" r=".7"><stop offset="0" stop-color="#fff4cf"/><stop offset=".16" stop-color="#c7a6ff"/><stop offset=".48" stop-color="#5a2f9e"/><stop offset=".82" stop-color="#1d1238"/><stop offset="1" stop-color="#0b0a18"/></radialGradient></defs>`
-      + `<circle cx="50" cy="50" r="49" fill="url(#${id}h)"/><path d="${lit}" fill="url(#${id}b)"/><path d="${shade}" fill="url(#${id}d)"/>`
-      + `<path d="${lit}${shade}" fill="none" stroke="#5a3a12" stroke-width=".7" stroke-linejoin="round"/>`
-      + `<circle cx="50" cy="50" r="13" fill="url(#${id}c)" stroke="url(#${id}b)" stroke-width="2.4"/>`
-      + `<path d="M43 53c1-7 9-10 14-5-4-1-9 0-10 5" fill="none" stroke="#e2cfff" stroke-width="1" stroke-linecap="round" opacity=".75"/>`
-      + `<g fill="#fff6dc"><circle cx="45" cy="45" r=".9"/><circle cx="56" cy="55" r=".7"/><circle cx="54.5" cy="44.5" r=".5"/></g>`);
-  },
-  hammer(id) {
-    // Short-hafted hammer with flared iron head, brass bands and inlaid runes.
-    return svg(`<defs>${brass(`${id}b`)}<linearGradient id="${id}s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c4ccd0"/><stop offset=".45" stop-color="#7a8489"/><stop offset="1" stop-color="#363d41"/></linearGradient>`
-      + `<linearGradient id="${id}w" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#9a6633"/><stop offset=".5" stop-color="#6e4220"/><stop offset="1" stop-color="#4a2a12"/></linearGradient></defs>`
-      + `<g transform="rotate(-28 50 50)"><rect x="45.5" y="38" width="9" height="46" rx="3" fill="url(#${id}w)" stroke="#2e1a0b" stroke-width=".8"/>`
-      + `<path d="M46 63l8-4m-8 10 8-4m-8 10 8-4m-8 10 8-4" stroke="#2b190c" stroke-width="2" opacity=".75"/>`
-      + `<rect x="43" y="40" width="14" height="5" rx="1.5" fill="url(#${id}b)" stroke="#5a3a12" stroke-width=".6"/>`
-      + `<path d="M20 14 39 18h22l19-4v30l-19-4H39l-19 4z" fill="url(#${id}s)" stroke="#1f2427" stroke-width="1.2" stroke-linejoin="round"/>`
-      + `<path d="M22 16.5 39 20h22l17-3.5" fill="none" stroke="#eef3f4" stroke-width="1" opacity=".55"/>`
-      + `<path d="M36 18h4v22h-4zm24 0h4v22h-4z" fill="url(#${id}b)"/>`
-      + `<path d="M46 23v12m0-12 5 3-5 3 5 6m3-12v12l-3-4M26 22l4 7-4 7m48-14-4 7 4 7" fill="none" stroke="#f0cf6e" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>`
-      + `<circle cx="50" cy="88" r="5" fill="url(#${id}b)" stroke="#5a3a12" stroke-width=".8"/><circle cx="50" cy="88" r="1.8" fill="#2b190c"/></g>`);
-  },
-  ufo(id) {
-    // Fifties saucer: brushed hull, brass trim, green glass dome, warm rim lights.
-    return svg(`<defs>${brass(`${id}b`)}<radialGradient id="${id}g" cx=".4" cy=".3" r=".75"><stop offset="0" stop-color="#eafff0"/><stop offset=".35" stop-color="#9fe8b9"/><stop offset=".75" stop-color="#3f9a6e"/><stop offset="1" stop-color="#1d5a40"/></radialGradient>`
-      + `<linearGradient id="${id}m" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#eef1ee"/><stop offset=".5" stop-color="#a9b2ae"/><stop offset="1" stop-color="#5b6561"/></linearGradient></defs>`
-      + `<path d="M50 23v-9" stroke="#8d969a" stroke-width="1.6"/><circle cx="50" cy="13" r="2.6" fill="#ffd36b" stroke="#a5702a" stroke-width=".6"/>`
-      + `<path d="M31 52c0-18 8-29 19-29s19 11 19 29z" fill="url(#${id}g)" fill-opacity=".92" stroke="#2c6b4c" stroke-width="1"/>`
-      + `<path d="M38 45c0-10 4-16 10-18" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" opacity=".55"/>`
-      + `<ellipse cx="50" cy="61" rx="46" ry="13" fill="url(#${id}m)" stroke="#3d4542" stroke-width="1.2"/>`
-      + `<path d="M13 57c10-6 23-8 37-8s27 2 37 8" fill="none" stroke="url(#${id}b)" stroke-width="3"/>`
-      + `<ellipse cx="50" cy="69" rx="25" ry="5.5" fill="#4a524f"/><ellipse cx="50" cy="73" rx="9" ry="3" fill="#8ff0b8" opacity=".85"/>`
-      + `<g fill="#ffd36b" stroke="#a5702a" stroke-width=".6"><circle cx="18" cy="62" r="2.4"/><circle cx="34" cy="66" r="2.4"/><circle cx="50" cy="67.5" r="2.4"/><circle cx="66" cy="66" r="2.4"/><circle cx="82" cy="62" r="2.4"/></g>`);
-  },
-  portal(id) {
-    // Brass-rimmed gate with a teal-to-violet swirl.
-    let studs = "";
-    for (let stud = 0; stud < 8; stud++) {
-      const [cx, cy] = polar(stud * Math.PI / 4 + Math.PI / 8, 44);
-      studs += `<circle cx="${cx}" cy="${cy}" r="1.7"/>`;
-    }
-    return svg(`<defs>${brass(`${id}b`)}<radialGradient id="${id}p"><stop offset="0" stop-color="#f4fffb"/><stop offset=".2" stop-color="#7ff3e1"/><stop offset=".48" stop-color="#3a9fc9"/><stop offset=".78" stop-color="#4b2d8f"/><stop offset="1" stop-color="#160d33"/></radialGradient></defs>`
-      + `<circle cx="50" cy="50" r="44" fill="url(#${id}p)"/>`
-      + `<g fill="none" stroke="#d6fff6" stroke-linecap="round"><path d="M50 50c0-8 9-12 15-6s3 19-8 22-25-4-26-17 11-27 25-27" stroke-width="2" opacity=".75"/><path d="M50 50c0 8-9 12-15 6s-3-19 8-22 25 4 26 17-11 27-25 27" stroke-width="1.4" opacity=".5"/></g>`
-      + `<circle cx="50" cy="50" r="44" fill="none" stroke="url(#${id}b)" stroke-width="6"/><circle cx="50" cy="50" r="47.3" fill="none" stroke="#5a3a12" stroke-width="1"/>`
-      + `<circle cx="50" cy="50" r="40.7" fill="none" stroke="#5a3a12" stroke-width=".8"/><g fill="#fff0b8" stroke="#8a5a1c" stroke-width=".5">${studs}</g>`);
-  },
-  dragon(id) {
-    // Legless brass wyrm with membrane wings and an emerald eye.
-    const body = "M32 82c12-2 22-8 22-20s-12-16-6-26 16-10 22-8";
-    return svg(`<defs>${brass(`${id}b`)}<linearGradient id="${id}m" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e2a24a" stop-opacity=".92"/><stop offset="1" stop-color="#6e3a14" stop-opacity=".88"/></linearGradient></defs>`
-      + `<g class="hd-wing-b" opacity=".85"><path d="M58 44 66 18 78 4Q76 18 80 20Q72 24 84 30Q70 30 70 40Z" fill="url(#${id}m)" stroke="#5a3a12" stroke-linejoin="round"/><path d="M66 18 80 20M66 18l18 12M66 18l4 22" fill="none" stroke="#5a3a12" stroke-width=".8"/></g>`
-      + `<g class="hd-wing-a"><path d="M54 46 40 22 24 10Q30 24 26 26Q34 30 22 34Q36 38 36 44Z" fill="url(#${id}m)" stroke="#5a3a12" stroke-linejoin="round"/><path d="M40 22 26 26M40 22 22 34M40 22l-4 22" fill="none" stroke="#5a3a12" stroke-width=".8"/></g>`
-      + `<path d="M32 82c-8 1-16-2-18-8" fill="none" stroke="url(#${id}b)" stroke-width="5" stroke-linecap="round"/><path d="M15 75l-8-3 4 8z" fill="url(#${id}b)" stroke="#5a3a12" stroke-width=".8" stroke-linejoin="round"/>`
-      + `<path d="${body}" fill="none" stroke="#5a3a12" stroke-width="11" stroke-linecap="round"/><path d="${body}" fill="none" stroke="url(#${id}b)" stroke-width="9" stroke-linecap="round"/>`
-      + `<path d="${body}" fill="none" stroke="#fff4c8" stroke-width="2.4" stroke-dasharray="2 3.5" opacity=".55"/>`
-      + `<path d="M66 30C66 22 72 17 80 17L92 21L84 25L89 28L78 31Z" fill="url(#${id}b)" stroke="#5a3a12" stroke-linejoin="round"/>`
-      + `<path d="M71 19 66 8l9 8zm5-1.5 1-10.5 3 10z" fill="#c8923a" stroke="#5a3a12" stroke-width=".8" stroke-linejoin="round"/>`
-      + `<circle cx="77" cy="22.5" r="1.9" fill="#5fe0a8"/><path d="M77 21v3" stroke="#10241b" stroke-width=".9"/>`);
-  },
-  kraken(id) {
-    // Deep-sea kraken with brass goggle rims.
-    return svg(`<defs>${brass(`${id}b`)}<radialGradient id="${id}k" cx=".4" cy=".3" r=".8"><stop offset="0" stop-color="#9fd8d0"/><stop offset=".45" stop-color="#3f7f86"/><stop offset="1" stop-color="#1d2f4a"/></radialGradient>`
-      + `<linearGradient id="${id}t" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3f7f86"/><stop offset="1" stop-color="#22385a"/></linearGradient></defs>`
-      + `<g fill="none" stroke="url(#${id}t)" stroke-width="6" stroke-linecap="round"><path d="M38 58c-8 10-20 8-22 20s10 12 12 4"/><path d="M44 62c-4 12-12 18-8 28s12 2 8-4"/>`
-      + `<path d="M50 63c0 12 2 20 8 26s10-4 4-8"/><path d="M56 62c6 10 14 14 18 22s-6 10-8 2"/><path d="M62 58c10 6 20 2 24 12s-6 12-10 6"/></g>`
-      + `<g fill="#e9d6bd" opacity=".85"><circle cx="20" cy="74" r="1.3"/><circle cx="38" cy="80" r="1.3"/><circle cx="55" cy="80" r="1.3"/><circle cx="70" cy="78" r="1.3"/><circle cx="84" cy="68" r="1.3"/></g>`
-      + `<path d="M30 50c0-22 9-36 20-36s20 14 20 36c0 8-9 14-20 14s-20-6-20-14z" fill="url(#${id}k)" stroke="#13233a" stroke-width="1.2"/>`
-      + `<path d="M38 26c3-6 8-9 13-9" fill="none" stroke="#d8fff6" stroke-width="2" stroke-linecap="round" opacity=".5"/>`
-      + `<g fill="#10202e" stroke="url(#${id}b)" stroke-width="2.4"><circle cx="42" cy="46" r="5"/><circle cx="58" cy="46" r="5"/></g><path d="M47 46h6" stroke="url(#${id}b)" stroke-width="1.6"/>`
-      + `<g fill="#f4e7a1"><rect x="39.5" y="45" width="5" height="2" rx="1"/><rect x="55.5" y="45" width="5" height="2" rx="1"/></g>`
-      + `<g fill="#6fb7b0" opacity=".6"><circle cx="50" cy="30" r="1.6"/><circle cx="44" cy="36" r="1.1"/><circle cx="57" cy="34" r="1.2"/></g>`);
-  },
-  clock(id, live = false) {
-    // Brass hunter watch; the effect version closes its lid and moves its hands.
-    let marks = "";
-    for (let hour = 0; hour < 12; hour++) marks += `M${point(hour * Math.PI / 6, hour % 3 ? 28.5 : 26, 50, 58)}L${point(hour * Math.PI / 6, 31, 50, 58)}`;
-    const hand = (name, angle, d) => live ? `<path class="hd-hand ${name}" d="${d}"/>` : `<path d="${d}" transform="rotate(${angle} 50 58)"/>`;
-    return svg(`<defs>${brass(`${id}b`)}<radialGradient id="${id}f" cx=".45" cy=".4"><stop offset="0" stop-color="#fffaf0"/><stop offset="1" stop-color="#eadcbc"/></radialGradient></defs>`
-      + (live ? "" : `<ellipse cx="17" cy="58" rx="11" ry="35" fill="url(#${id}b)" stroke="#5a3a12"/>`)
-      + `<circle cx="50" cy="12" r="6" fill="none" stroke="url(#${id}b)" stroke-width="3"/><rect x="45" y="16" width="10" height="7" rx="2" fill="url(#${id}b)" stroke="#5a3a12" stroke-width=".8"/>`
-      + `<circle cx="50" cy="58" r="37" fill="url(#${id}b)" stroke="#5a3a12" stroke-width="1.2"/><circle cx="50" cy="58" r="33" fill="url(#${id}f)" stroke="#8a5a1c" stroke-width="1.2"/>`
-      + `<path d="${marks}" stroke="#3a2a18" stroke-width="1.4" stroke-linecap="round"/><circle cx="50" cy="71" r="5.5" fill="none" stroke="#8a5a1c" stroke-width=".8"/>`
-      + `<g fill="#2a1d10">${hand("hd-hand-h", -60, "M48.6 58 50 39l1.4 19z")}${hand("hd-hand-m", 60, "M49.2 58 50 31l.8 27z")}</g>`
-      + `<circle cx="50" cy="58" r="2.4" fill="url(#${id}b)" stroke="#5a3a12" stroke-width=".6"/>`
-      + (live ? `<g class="hd-lid"><circle cx="50" cy="58" r="37" fill="url(#${id}b)" stroke="#5a3a12" stroke-width="1.2"/><circle cx="50" cy="58" r="27" fill="none" stroke="#8a5a1c"/>`
-        + `<path d="M50 40v36M32 58h36M37 45l26 26M63 45 37 71" stroke="#8a5a1c" stroke-width=".8" opacity=".7"/></g>` : ""));
-  },
-  blackhole(id) {
-    // Compact black hole: photon ring, lensed arc and a tilted accretion disc.
-    return svg(`<defs><radialGradient id="${id}g"><stop offset="0" stop-color="#000"/><stop offset=".34" stop-color="#000"/><stop offset=".4" stop-color="#ffd890"/><stop offset=".55" stop-color="#c8682a" stop-opacity=".55"/><stop offset=".8" stop-color="#6a2fa0" stop-opacity=".2"/><stop offset="1" stop-color="#6a2fa0" stop-opacity="0"/></radialGradient>`
-      + `<linearGradient id="${id}d" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#6a2fa0"/><stop offset=".3" stop-color="#ffcf73"/><stop offset=".5" stop-color="#fff3cf"/><stop offset=".72" stop-color="#e0782e"/><stop offset="1" stop-color="#4a1e70"/></linearGradient></defs>`
-      + `<circle cx="50" cy="50" r="48" fill="url(#${id}g)"/><path d="M8 52a42 12 0 0 1 84 0" fill="none" stroke="url(#${id}d)" stroke-width="5" opacity=".75"/>`
-      + `<path d="M27 44a24 20 0 0 1 46 0" fill="none" stroke="#ffe3a3" stroke-width="2" opacity=".75"/>`
-      + `<circle cx="50" cy="50" r="17" fill="#050308"/><circle cx="50" cy="50" r="18" fill="none" stroke="#ffd78a" stroke-width="1.4" opacity=".9"/>`
-      + `<path d="M8 52a42 12 0 0 0 84 0" fill="none" stroke="url(#${id}d)" stroke-width="6.5"/>`
-      + `<g fill="#fff4dc"><circle cx="16" cy="22" r=".9"/><circle cx="84" cy="28" r=".7"/><circle cx="78" cy="80" r=".8"/><circle cx="22" cy="78" r=".6"/></g>`);
-  },
-};
+const effectArt = effect => premiumSurpriseArt(effect, { live: true });
 
 // Separately drawn pieces for the effects; real table objects are never used.
 const cracks = "l-9-4-6-9-10-2M50 50l8-6 4-10 10-5M50 50l11 3 7 7 11 1M50 50l-3 11-8 6-2 10M50 50l-12 5-8 9";
 const crack = svg(`<g fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M50 50${cracks}" stroke="#1d1009" stroke-width="2.4" opacity=".8"/>`
   + `<path d="M50 50${cracks}" stroke="#f0d6a0" stroke-width=".8" opacity=".45" transform="translate(1 1)"/></g>`);
 export function tableSurpriseArt(effect) {
-  return arts[effect]?.(uid()) || "";
+  warmSurpriseArt(effect);
+  return premiumSurpriseArt(effect);
 }
 
 // Covered area of a table-relative box. Table objects lie above the surprise,
@@ -240,7 +131,7 @@ function star(fx) {
     play(ring, [{ transform: `${place} scale(.1)`, opacity: 0 }, { opacity: .85, offset: .13 },
       { transform: `${place} scale(3.3)`, opacity: 0 }], { duration: 1650, delay: 350 + index * 210, easing: 'ease-out' });
   }
-  const size = unit * 2.1, body = add('star', size, size, tableSurpriseArt('star')), place = at(x, y, size);
+  const size = unit * 2.1, body = add('star', size, size, effectArt('star')), place = at(x, y, size);
   play(body, smooth([{ transform: `${at(x - unit * 2.7, y - unit * 2, size)} scale(.12) rotate(-180deg)`, opacity: 0 },
     { transform: `${place} scale(1.15) rotate(0deg)`, opacity: 1, offset: .25 },
     { transform: `${place} scale(.95) rotate(24deg)`, opacity: 1, offset: .52 },
@@ -281,9 +172,9 @@ function hammer(fx) {
   const crater = add('crack', unit * 3.2, unit * 3.2, crack), craterAt = at(x, y, unit * 3.2);
   play(crater, [{ transform: `${craterAt} scale(.4)`, opacity: 0 }, { transform: `${craterAt} scale(1)`, opacity: .95, offset: .12 },
     { transform: `${craterAt} scale(1.1)`, opacity: .8, offset: .75 }, { opacity: 0 }], { duration: 2300, delay: hit });
-  const size = unit * 2.7, tool = add('hammer', size, size, tableSurpriseArt('hammer'));
-  tool.style.transformOrigin = '68% 84%';
-  const base = `translate(${x - size * .4}px,${y - size * .31}px)`;
+  const size = unit * 2.7, tool = add('hammer', size, size, effectArt('hammer'));
+  tool.style.transformOrigin = '55% 72%';
+  const base = `translate(${x - size * .55}px,${y - size * .72}px)`;
   play(tool, smooth([{ transform: `${base} translate(${unit * .5}px,${-unit}px) rotate(62deg) scale(1.3)`, opacity: 0 },
     { transform: `${base} translate(${unit * .5}px,${-unit}px) rotate(62deg) scale(1.3)`, opacity: 1, offset: .13, easing: 'cubic-bezier(.8,0,1,.6)' },
     { transform: `${base} rotate(0deg) scale(1)`, opacity: 1, offset: hit / duration },
@@ -302,7 +193,7 @@ function hammer(fx) {
 function ufo(fx) {
   const { add, play, unit, box, spot } = fx, duration = 3600;
   const targets = chooseTargets(fx, fx.random() < .5 ? 2 : 3), size = unit * 2;
-  const hover = spot(size * 1.5, upper), saucer = add('ufo', size, size, tableSurpriseArt('ufo'));
+  const hover = spot(size * 1.5, upper), saucer = add('ufo', size, size, effectArt('ufo'));
   const from = at(-size, hover.y - unit, size), place = at(hover.x, hover.y, size), leave = at(box.width + size, hover.y - unit, size);
   play(saucer, smooth([{ transform: `${from} rotate(-15deg)`, opacity: 0 }, { transform: place, opacity: 1, offset: .18 },
     { transform: `${place} translateY(-5px)`, opacity: 1, offset: .38 }, { transform: place, opacity: 1, offset: .72 },
@@ -332,12 +223,12 @@ function portal(fx) {
   const from = spot(size * 1.45, [[.24, .47], [.3, .55], [.24, .7]]), to = spot(size * 1.45, [[.76, .47], [.7, .55], [.76, .7]], size * 1.45,
     [{ left: from.x - size, right: from.x + size, top: from.y - size, bottom: from.y + size }]);
   for (const [index, point] of [from, to].entries()) {
-    const gate = add('portal', size, size, tableSurpriseArt('portal')), place = at(point.x, point.y, size);
+    const gate = add('portal', size, size, effectArt('portal')), place = at(point.x, point.y, size);
     gate.dataset.portalSide = index ? 'exit' : 'entry';
-    play(gate, smooth([{ transform: `${place} scale(.02) rotate(0deg)`, opacity: 0 }, { transform: `${place} scale(1.2,.65) rotate(-80deg)`, opacity: 1, offset: .15 },
-      { transform: `${place} scale(1,.58) rotate(-300deg)`, opacity: 1, offset: .4 },
-      { transform: `${place} scale(1.1,.65) rotate(-650deg)`, opacity: 1, offset: .82 },
-      { transform: `${place} scale(.01) rotate(-780deg)`, opacity: 0 }]), { duration: duration - index * 80, delay: index * 80 });
+    play(gate, smooth([{ transform: `${place} scale(.02) rotate(0deg)`, opacity: 0 }, { transform: `${place} scale(1.2,.65) rotate(-15deg)`, opacity: 1, offset: .15 },
+      { transform: `${place} scale(1,.58) rotate(-45deg)`, opacity: 1, offset: .4 },
+      { transform: `${place} scale(1.1,.65) rotate(-80deg)`, opacity: 1, offset: .82 },
+      { transform: `${place} scale(.01) rotate(-100deg)`, opacity: 0 }]), { duration: duration - index * 80, delay: index * 80 });
   }
   const bridge = add('bridge', box.width, box.height);
   const curve = `M${from.x} ${from.y}Q${box.width / 2} ${Math.max(15, Math.min(from.y, to.y) - unit * 1.6)} ${to.x} ${to.y}`;
@@ -363,17 +254,11 @@ const flameArt = id => svg(`<defs><linearGradient id="${id}f" x1="0" y1="1" x2="
 function dragon(fx) {
   const { add, play, unit, spot, box } = fx, duration = 3500;
   const anchor = spot(unit * 2, [[.16, .26], [.84, .26], [.16, .48], [.84, .48]]), direction = anchor.x < box.width / 2 ? 1 : -1;
-  const size = unit * 2.2, wyrm = add('dragon', size, size, tableSurpriseArt('dragon')), place = at(anchor.x, anchor.y, size);
+  const size = unit * 2.2, wyrm = add('dragon', size, size, effectArt('dragon')), place = at(anchor.x, anchor.y, size);
   const pose = (scale, angle = 0) => `${place} rotate(${direction * angle}deg) scale(${direction * scale},${scale})`;
   play(wyrm, smooth([{ transform: `${pose(.2)} translateY(${-unit}px)`, opacity: 0 }, { transform: pose(1.12), opacity: 1, offset: .16 },
     { transform: pose(1, -12), opacity: 1, offset: .26 }, { transform: pose(1.08, 8), opacity: 1, offset: .37 },
     { transform: pose(1, 4), opacity: 1, offset: .78 }, { transform: `${pose(.65, -18)} translateY(${-unit}px)`, opacity: 0 }]), { duration });
-  for (const [selector, sign] of [['.hd-wing-a', 1], ['.hd-wing-b', -1]]) {
-    const wing = wyrm.querySelector(selector);
-    if (wing) play(wing, smooth([{ transform: `rotate(${sign * 28}deg) scale(.3)` }, { transform: 'rotate(0deg) scale(1.1)', offset: .2 },
-      { transform: `rotate(${sign * 18}deg) scale(.8)`, offset: .36 }, { transform: 'rotate(0deg) scale(1.12)', offset: .5 },
-      { transform: `rotate(${sign * 15}deg) scale(.82)`, offset: .68 }, { transform: 'rotate(0deg) scale(1)', offset: .82 }, { transform: 'scale(.3)' }]), { duration });
-  }
   const targets = snapshotTargets(fx.table, { groupHand: false, only: target => target.kind === 'card' || target.kind === 'burned' });
   const mouth = { x: anchor.x + direction * size * .36, y: anchor.y - size * .24 };
   // A curling stream reaches every visible card, then individual edges flare.
@@ -403,38 +288,37 @@ function kraken(fx) {
   const targets = (burned.length ? burned : expendable).slice(0, 3);
   const anchor = targets[0] || { x: box.width * .85, y: box.height * .62 };
   const edge = anchor.x < box.width / 2 ? -unit * .2 : box.width + unit * .2, inward = edge < 0 ? 1 : -1;
-  const size = unit * 1.8, monster = add('kraken', size, size, tableSurpriseArt('kraken'));
+  const size = unit * 2.6, monster = add('kraken', size, size, effectArt('kraken'));
   // The discarded pile can sit inside the lower caption cut-outs. The kraken
   // lives on free upper wood and reaches down, keeping its face in plain sight.
   const berth = spot(size * 1.35, [[.68, .22], [.32, .22], [.5, .28], [.8, .3], [.2, .3]], size * 1.35);
   const monsterAt = at(berth.x, berth.y, size);
-  play(monster, smooth([{ transform: `${monsterAt} translateX(${-inward * unit * 2}px)`, opacity: 0 },
+  play(monster, smooth([{ transform: `${monsterAt} translateY(${unit * .25}px) scale(.15)`, opacity: 0 },
     { transform: monsterAt, opacity: 1, offset: .2 }, { transform: `${monsterAt} rotate(${inward * 8}deg)`, opacity: 1, offset: .65 },
-    { transform: `${monsterAt} translateX(${-inward * unit * 2}px)`, opacity: 0 }]), { duration });
+    { transform: `${monsterAt} translateY(${unit * .25}px) scale(.15)`, opacity: 0 }]), { duration });
   const reaching = targets.length ? targets : [anchor];
   reaching.forEach((target, index) => {
     const start = { x: berth.x + (index - 1) * size * .1, y: berth.y + size * .18 }, end = { x: target.x, y: target.y };
-    const arm = add('tentacle', box.width, box.height);
-    const curve = `M${start.x} ${start.y}Q${(start.x + end.x) / 2} ${end.y - unit * 1.2} ${end.x} ${end.y}`;
-    arm.innerHTML = svg(`<path d="${curve}" fill="none" stroke="#173844" stroke-width="20" stroke-linecap="round"/><path d="${curve}" fill="none" stroke="#65a9a3" stroke-width="13" stroke-linecap="round"/><path d="${curve}" fill="none" stroke="#efdcc3" stroke-width="4" stroke-dasharray="1 13" stroke-linecap="round"/>`, `0 0 ${box.width} ${box.height}`);
-    const paths = [...arm.querySelectorAll('path')];
-    paths.forEach((path, pathIndex) => { const length = path.getTotalLength();
-      if (pathIndex === 2) {
-        play(path, [{ opacity: 0 }, { opacity: 0, offset: .25 }, { opacity: 1, offset: .38 }, { opacity: 1, offset: .6 }, { opacity: 0 }], { duration: 2500, delay: index * 100 });
-        return;
-      }
-      path.style.strokeDasharray = `${length}`;
-      play(path, [{ strokeDashoffset: length, opacity: 0 }, { strokeDashoffset: 0, opacity: 1, offset: .38 },
-        { strokeDashoffset: 0, opacity: 1, offset: .6 }, { strokeDashoffset: length, opacity: 0 }], { duration: 2500, delay: index * 100 }); });
+    const dx = end.x - start.x, dy = end.y - start.y;
+    const reach = Math.max(unit, Math.hypot(dx, dy)), height = Math.max(unit * .45, Math.min(reach / 3, unit * 1.6));
+    const arm = add('tentacle', reach, height, premiumTentacleArt());
+    arm.style.transformOrigin = '0 50%';
+    const underside = dx < 0 ? ' scaleY(-1)' : '';
+    const armAt = `translate(${start.x}px,${start.y - height / 2}px) rotate(${Math.atan2(dy, dx) * 180 / Math.PI}deg)${underside}`;
+    play(arm, smooth([{ transform: `${armAt} scaleX(.02)`, opacity: 0 },
+      { transform: `${armAt} scaleX(.15)`, opacity: 1, offset: .18 },
+      { transform: `${armAt} scaleX(1)`, opacity: 1, offset: .38 },
+      { transform: `${armAt} scaleX(1)`, opacity: 1, offset: .6 },
+      { transform: `${armAt} scaleX(.02)`, opacity: 0 }]), { duration: 2500, delay: index * 100 });
     if (target.node) {
       occlude(fx, target, duration, 900, 2900);
       const copy = drawSnapshot(fx, target); copy.host.dataset.taken = 'true';
       play(copy.host, smooth([{ transform: copy.place, opacity: 0 }, { transform: copy.place, opacity: 0, offset: .25 },
         { transform: copy.place, opacity: 1, offset: .3 }, { transform: `${copy.place} rotate(${-inward * 16}deg) scale(1.05)`, opacity: 1, offset: .46 },
-        { transform: `translate(${edge - target.width / 2}px,${target.top + unit * .3}px) rotate(${inward * 95}deg) scale(.2)`, opacity: 0, offset: .8 }, { opacity: 0 }]), { duration });
+        { transform: `translate(${berth.x - target.width / 2}px,${berth.y - target.height / 2}px) rotate(${inward * 95}deg) scale(.2)`, opacity: 0, offset: .8 }, { opacity: 0 }]), { duration });
     }
   });
-  const inkSize = unit * 1.7, ink = add('ink', inkSize), inkAt = at(Math.max(inkSize / 2, Math.min(box.width - inkSize / 2, edge + inward * unit)), anchor.y, inkSize);
+  const inkSize = unit * 2.5, ink = add('ink', inkSize), inkAt = at(berth.x, berth.y, inkSize);
   play(ink, [{ transform: `${inkAt} scale(.1)`, opacity: 0 }, { transform: `${inkAt} scale(1)`, opacity: .85, offset: .2 },
     { transform: `${inkAt} scale(1.3)`, opacity: .65, offset: .6 }, { transform: `${inkAt} scale(1.6)`, opacity: 0 }], { duration: 1300, delay: 1900 });
 }
@@ -450,28 +334,22 @@ function clock(fx) {
   });
   const cold = add('time-glass', box.width, box.height);
   play(cold, [{ opacity: 0 }, { opacity: .5, offset: 120 / duration }, { opacity: .5, offset: 2120 / duration }, { opacity: 0, offset: 2420 / duration }, { opacity: 0 }], { duration });
-  const { x, y } = spot(unit * 1.8, middle), size = unit * 1.8, watch = add('clock', size, size, arts.clock(uid(), true)), place = at(x, y, size);
+  const { x, y } = spot(unit * 2.4, middle), size = unit * 2.4, watch = add('clock', size, size, effectArt('clock')), place = at(x, y, size);
   const exit = { x: box.width + size, y: Math.min(box.height - unit * .7, y + unit * .6) };
   play(watch, smooth([{ transform: `${place} scale(.15) rotate(-20deg)`, opacity: 0 }, { transform: place, opacity: 1, offset: .12 },
     { transform: place, opacity: 1, offset: .66 }, { transform: `${place} translateY(${-unit * .25}px) scale(.7) rotate(25deg)`, opacity: 1, offset: .74 },
     { transform: `${at(exit.x, exit.y - unit * .3, size)} scale(.65) rotate(35deg)`, opacity: 0 }]), { duration });
-  const lid = watch.querySelector('.hd-lid');
-  if (lid) play(lid, [{ transform: 'scaleX(1)' }, { transform: 'scaleX(-.4)', offset: .12 }, { transform: 'scaleX(-.4)', offset: .72 }, { transform: 'scaleX(.2)' }], { duration });
   // Hands really hold still for the two-second visual time stop.
-  for (const [selector, angle] of [['.hd-hand-m', 60], ['.hd-hand-h', -60]]) {
+  for (const [selector, angle] of [['.hd-hand-m', 30], ['.hd-hand-h', -90]]) {
     const hand = watch.querySelector(selector);
     if (hand) play(hand, [{ transform: `rotate(${angle}deg)` }, { transform: `rotate(${angle}deg)`, offset: 2120 / duration }, { transform: `rotate(${angle + 1080}deg)` }], { duration });
   }
-  const mouseSize = unit * 1.6, mouse = add('mouse', mouseSize, mouseSize, magicalMouseArt(uid()));
+  const mouseSize = unit * 1.6, mouse = add('mouse', mouseSize, mouseSize, premiumMouseArt());
   mouse.dataset.arrivesAt = '2100';
   const mouseY = Math.min(box.height - mouseSize / 2, y + size * .45), start = at(-mouseSize, mouseY, mouseSize), near = at(x - size * .4, mouseY, mouseSize);
   play(mouse, smooth([{ transform: start, opacity: 0 }, { transform: start, opacity: 0, offset: 2100 / duration },
     { transform: `${near} rotate(-7deg)`, opacity: 1, offset: .68 }, { transform: `${near} rotate(5deg)`, opacity: 1, offset: .76 },
     { transform: `${at(exit.x, exit.y, mouseSize)} rotate(-5deg)`, opacity: 0 }]), { duration });
-  for (const [selector, sign] of [['.hd-mouse-leg-a', 1], ['.hd-mouse-leg-b', -1]]) {
-    const leg = mouse.querySelector(selector);
-    if (leg) play(leg, [{ transform: `rotate(${sign * 16}deg)` }, { transform: `rotate(${-sign * 16}deg)`, offset: .5 }, { transform: `rotate(${sign * 16}deg)` }], { duration: 160, iterations: 10, delay: 2100 });
-  }
   burst(fx, x, y, { count: 20, size: unit * .065, colors: ['#fff2bc', '#c7b2ff', '#aedbe2'], reach: unit * 2, delay: 2200, duration: 1250, stagger: 7, drop: -unit * .4 });
 }
 
@@ -498,7 +376,7 @@ function blackhole(fx) {
       { transform: into, opacity: 0, offset: 1400 / duration }, { transform: into, opacity: 0, offset: 2400 / duration },
       { transform: into, opacity: 1, offset: 2500 / duration }, { transform: copy.place, opacity: 1, offset: .93 }, { transform: copy.place, opacity: 0 }]), { duration });
   });
-  const size = unit * 3.2, hole = add('hole', size, size, tableSurpriseArt('blackhole')), place = at(x, y, size);
+  const size = unit * 3.2, hole = add('hole', size, size, effectArt('blackhole')), place = at(x, y, size);
   play(hole, smooth([{ transform: `${place} scale(.05) rotate(-30deg)`, opacity: 0 }, { transform: `${place} scale(1.2) rotate(30deg)`, opacity: 1, offset: .22 },
     { transform: `${place} scale(.05) rotate(150deg)`, opacity: 0, offset: 1400 / duration },
     { transform: `${place} scale(.05) rotate(150deg)`, opacity: 0, offset: 2400 / duration },
@@ -509,7 +387,7 @@ function blackhole(fx) {
 // Reduced motion: the symbol only fades in and out where it would have played.
 function quiet({ add, play, unit, spot }, effect) {
   const { x, y } = spot(unit * 1.2, middle);
-  const symbol = add("quiet", unit, unit, tableSurpriseArt(effect));
+  const symbol = add("quiet", unit, unit, effectArt(effect));
   symbol.style.transform = at(x, y, unit);
   play(symbol, [{ opacity: 0 }, { opacity: .9, offset: .25 }, { opacity: .9, offset: .7 }, { opacity: 0 }], { duration: 1000 });
 }
@@ -572,6 +450,8 @@ function revealActivation(event, table) {
 export function playTableSurprise(table, effect, { local = false, seed = effect, activePhase = "playing" } = {}) {
   active.get(table)?.();
   if (!table?.isConnected || !effects[effect] || document.hidden) return noop;
+  const allowedPhases = new Set(Array.isArray(activePhase) ? activePhase : [activePhase]);
+  if (table.dataset.phase && !allowedPhases.has(table.dataset.phase)) return noop;
   const layer = document.createElement("div");
   layer.className = "hd-surprise-layer";
   layer.dataset.effect = effect;
@@ -584,17 +464,27 @@ export function playTableSurprise(table, effect, { local = false, seed = effect,
   screen.className = "hd-surprise-screen";
   layer.append(screen);
   const own = [], timers = [], reduced = matchMedia("(prefers-reduced-motion: reduce)");
-  let done = false, observer = null, resize = null, blackoutAnimation = null;
+  let done = false, observer = null, resize = null;
   const onVisibility = () => { if (document.hidden) cleanup(); };
+  // A deliberate game action reveals the live objects without cutting off the
+  // rare subject's story. Repeated taps on empty wood/props do neither.
+  const revealScene = () => {
+    layer.dataset.liveRevealed = "true";
+    for (const node of layer.querySelectorAll("[data-source-kind], [data-stage='occlusion'], [data-stage='wood-stage'], [data-stage='freeze'], [data-stage='void'], [data-stage='blackout'], [data-stage='time-glass']")) {
+      node.hidden = true;
+      node.style.display = "none";
+    }
+  };
   const onInput = event => {
     if (event.type === "keydown" && !["Enter", " "].includes(event.key)) return;
     const target = event.target;
-    if (target.closest?.(".hd-table-prop,.hd-surprise-layer")) return;
-    if (!target.closest?.("#hausdeppHand,button,a[href],input,select,textarea,[role='button'],summary")) return;
-    const time = Number(blackoutAnimation?.currentTime ?? -1);
-    const gameplay = target.closest?.("#hausdeppHand .hausdepp-card,#hausdeppStock,#hausdeppPile,.hd-stock-group>.hd-card-back,.hd-pile-group>.hausdepp-card");
-    if (gameplay && time >= 1400 && time < 2400) revealActivation(event, table);
-    cleanup();
+    if (target.closest?.(".hd-table-prop,.wt-decor-prop,.hd-surprise-layer")) return;
+    if (!target.closest?.("#hausdeppHand,[data-wt-hand],button,a[href],input,select,textarea,[role='button'],summary")) return;
+    const blackout = layer.querySelector("[data-stage='blackout']");
+    const obscured = blackout && Number(getComputedStyle(blackout).opacity) > .2;
+    const gameplay = target.closest?.("#hausdeppHand .hausdepp-card,#hausdeppStock,#hausdeppPile,.hd-stock-group>.hd-card-back,.hd-pile-group>.hausdepp-card,[data-wt-hand] .wt-hand-card,[data-watten-command],[data-watten-action]");
+    if (gameplay && !layer.dataset.liveRevealed && obscured) revealActivation(event, table);
+    revealScene();
   };
   const cleanup = () => {
     if (done) return;
@@ -628,16 +518,10 @@ export function playTableSurprise(table, effect, { local = false, seed = effect,
     if (!node) return;
     const animation = node.animate(frames, { fill: "both", ...options });
     own.push(animation);
-    if (node.dataset.stage === "blackout") blackoutAnimation = animation;
     return animation;
   };
   const unit = Math.round(Math.max(40, Math.min(76, Math.min(box.width, box.height) * .14)));
   const fx = { table, box, add, play, unit, local, timers, random: randomFor(`${effect}:${seed}`), rich: box.width >= 700, spot: (...args) => freeSpot(table, box, ...args) };
-  if (reduced.matches) quiet(fx, effect);
-  else {
-    protectControls(screen, table, box);
-    effects[effect](fx);
-  }
   document.addEventListener("visibilitychange", onVisibility);
   window.addEventListener("pagehide", cleanup);
   window.addEventListener("resize", cleanup);
@@ -645,10 +529,10 @@ export function playTableSurprise(table, effect, { local = false, seed = effect,
   table.addEventListener("keydown", onInput, true);
   reduced.addEventListener("change", cleanup);
   // Remote turns keep running beneath this short theatre. They must not cut
-  // off the mouse's late entrance. Local input always reveals the live scene.
+  // off the mouse's late entrance. Local input only reveals the live scene.
   // The round owner also invokes cleanup when its round key changes.
   observer = new MutationObserver(() => {
-    if (!table.isConnected || (table.dataset.phase && table.dataset.phase !== activePhase)) cleanup();
+    if (!table.isConnected || (table.dataset.phase && !allowedPhases.has(table.dataset.phase))) cleanup();
   });
   observer.observe(document.documentElement, { subtree: true, childList: true, attributes: true, attributeFilter: ["data-phase"] });
   resize = new ResizeObserver(() => {
@@ -656,6 +540,18 @@ export function playTableSurprise(table, effect, { local = false, seed = effect,
     if (Math.abs(next.width - tableSize.width) > 1 || Math.abs(next.height - tableSize.height) > 1) cleanup();
   });
   resize.observe(table);
-  Promise.all(own.map(animation => animation.finished)).then(cleanup, cleanup);
+  // Decode only this subject before the first frame. A late image never
+  // restarts an abandoned table or a story already retired by lifecycle.
+  warmSurpriseArt(effect).then(ready => {
+    if (!ready) { cleanup(); return; }
+    if (done || !table.isConnected || document.hidden) return;
+    if (reduced.matches) quiet(fx, effect);
+    else {
+      protectControls(screen, table, box);
+      effects[effect](fx);
+    }
+    if (layer.dataset.liveRevealed) revealScene();
+    Promise.all(own.map(animation => animation.finished)).then(cleanup, cleanup);
+  }).catch(cleanup);
   return cleanup;
 }

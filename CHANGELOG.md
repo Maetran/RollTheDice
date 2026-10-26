@@ -23,6 +23,34 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 4.7.1 — 2026-10-26
+
+### SELTENE TISCHEFFEKTE / RARE TABLE EFFECTS
+
+**Deutsch:** Hausdepp und Watten zeigen acht hochwertige freigestellte Motive
+auf ihrem echten Tisch. Wiederholtes Tippen kürzt eine gestartete Szene nicht
+mehr ab. Beim Weiterspielen werden optische Kartenkopien sofort ausgeblendet,
+während das Motiv ausklingt; das Schwarze Loch fängt blinde Eingaben auch beim
+Abblenden ab. Watten bezieht seine eigenen Fächer, Stiche und Tischgegenstände
+ein und lässt eine Szene während einer Gebotsantwort weiterlaufen. Jede bekannte
+Karte behält ihr eigenes kosmetisches Brandmuster auch im Flug und auf dem Stapel.
+Watten speichert den Drachenzustand anhand bestätigter Funde; Wiederbeitritt und
+weitere Gaben am selben Tisch behalten ihn, ein neuer Tisch beginnt sauber.
+Kartenwerte, Spielregeln und Erfolgsbedingungen ändern sich nicht.
+Ein geöffneter Watten-Stichverlauf verschiebt die Gebotsantwort nicht mehr
+zwischen Drücken und Loslassen.
+
+**English:** Hausdepp and Watten show eight premium cut-out subjects on their
+actual tables. Repeated taps no longer cut an activated scene short. Playing
+immediately reveals live cards while the subject finishes; black-hole protection
+also covers its fades. Watten includes its own hands, tricks and props and keeps
+a scene through a bid response. Each known card retains its individual cosmetic
+singed pattern in flight and on the pile. Watten restores dragon wear from
+accepted finds across rejoin and later deals at the same table; new tables start
+clean. Card values, rules and achievement conditions remain unchanged.
+An open Watten trick review no longer moves a bid response between pressing
+and releasing it.
+
 ## 4.7.0 — 2026-10-25
 
 ### KONTO UND FORTSCHRITT / ACCOUNT AND PROGRESS

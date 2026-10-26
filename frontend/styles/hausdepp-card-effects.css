@@ -1,20 +1,34 @@
-/* Static ash and char stay around the artwork, with card values and selection clear. */
-.hd-cards-scorched :is(.hausdepp-card, .hd-card-back, .hd-opponent-card, .hd-burned-card)::before {
+/* Stable paper wear travels with the card. Face seeds use only visible card
+   IDs; anonymous backs vary by their public fan slot, never a hidden identity. */
+:is(.hd-cards-scorched :is(.hausdepp-card, .hd-card-back, .hd-opponent-card, .hd-burned-card, .wt-card, .wt-hand-card, .wt-backs > i, .wt-stock > i, .wt-taken-packet > i), .hd-card-scorched)::before {
   content: ""; position: absolute; inset: var(--hd-scorch-outset, 0); z-index: 1; border-radius: inherit; pointer-events: none;
   background:
-    radial-gradient(ellipse 11% 5% at 2% 41%, #120e0df5 35%, #492a1be6 53%, #aa713e7a 73%, transparent),
-    radial-gradient(ellipse 14% 7% at 99% 66%, #100d0cf5 36%, #4a2c1de6 55%, #a16b3f85 75%, transparent),
-    radial-gradient(ellipse 18% 5% at 32% 100%, #17100ef5 38%, #52301de6 58%, #ac774c80 77%, transparent),
-    radial-gradient(ellipse 13% 4% at 71% 0, #18110ff2 35%, #5c3622d9 58%, #aa6b3a80 78%, transparent),
-    radial-gradient(ellipse 3.5% 1.8% at 79% 87%, #171310e0 32%, #5a3c29b3 58%, #a876494d 78%, transparent),
-    radial-gradient(ellipse 2% 1% at 19% 70%, #261b15cc 28%, #78543788 57%, transparent),
-    radial-gradient(ellipse 6% 2.2% at 90% 33%, #38281b99 14%, #7c56376b 48%, transparent),
-    linear-gradient(90deg, #16110ff2, #38251ed9 2%, #74492d9e 4%, #ab75454d 7%, transparent 12% 88%, #ab75454d 93%, #74492d9e 96%, #38251ed9 98%, #16110ff2),
-    linear-gradient(#1c130ff5, #4a2c1cdb 2%, #80502f91 4%, #bb87543d 7%, transparent 11% 89%, #aa704a52 93%, #6c402aab 96%, #342019ed 98%, #17100ff5),
-    radial-gradient(ellipse at 43% 47%, #75634d0d 28%, #98734224 69%, #3e302b4d);
-  box-shadow: inset 0 0 3px 1px #160f0ee6;
+    radial-gradient(ellipse var(--hd-scorch-left-size, 12%) 4.2% at 0 var(--hd-scorch-left-y, 38%), #120e0dfa 31%, #492a1be8 49%, #a471448c 68%, #d1ac6952 78%, transparent),
+    radial-gradient(ellipse var(--hd-scorch-right-size, 10%) 5.8% at 100% var(--hd-scorch-right-y, 67%), #130d0bf5 33%, #4b2b1de8 52%, #a9744580 72%, transparent),
+    radial-gradient(ellipse var(--hd-scorch-top-size, 14%) 3.2% at var(--hd-scorch-top-x, 70%) 0, #1b120ef5 35%, #58361ee0 52%, #bd8a4c75 74%, transparent),
+    radial-gradient(ellipse var(--hd-scorch-bottom-size, 17%) 3.8% at var(--hd-scorch-bottom-x, 31%) 100%, #17100efa 35%, #52301de6 55%, #b6824780 74%, transparent),
+    radial-gradient(ellipse 1.5% .9% at var(--hd-scorch-fleck-x, 78%) var(--hd-scorch-fleck-y, 73%), #30251bd9 26%, #7e5c3a75 55%, transparent),
+    radial-gradient(ellipse 4.1% 1.8% at 97% calc(var(--hd-scorch-right-y, 67%) - 11%), #2c1d14ce 20%, #aa7d485e 64%, transparent),
+    radial-gradient(ellipse 2.8% 1.3% at 3% calc(var(--hd-scorch-left-y, 38%) + 14%), #22170fc9 22%, #aa7b4552 65%, transparent),
+    linear-gradient(90deg, #1a110edb, hsl(var(--hd-scorch-tone, 28) 36% 23% / .66) .8%, #aa76453d var(--hd-scorch-edge, 3%), transparent 6% 94%, #aa76453d calc(100% - var(--hd-scorch-edge, 3%)), #3a281db0 99.2%, #18100fda),
+    linear-gradient(#20140fcf, #6c47297a 1%, #aa784b29 3%, transparent 5% 95%, #aa784b29 97%, #5737208c 99%, #18100fd9);
+  box-shadow: inset 0 0 1.5px .5px #21150db3;
 }
-/* Back borders are paper too; char covers them without changing card geometry. */
+/* Public slots give backs a different shape without encoding their faces. */
+:is(.hd-opponent-card, .hd-burned-card, .wt-backs > i, .wt-stock > i, .wt-taken-packet > i, .wt-hand-card--back):nth-child(4n + 1) {
+  --hd-scorch-left-y: 28%; --hd-scorch-right-y: 72%; --hd-scorch-top-x: 63%; --hd-scorch-bottom-x: 24%; --hd-scorch-left-size: 11%; --hd-scorch-edge: 2%;
+}
+:is(.hd-opponent-card, .hd-burned-card, .wt-backs > i, .wt-stock > i, .wt-taken-packet > i, .wt-hand-card--back):nth-child(4n + 2) {
+  --hd-scorch-left-y: 65%; --hd-scorch-right-y: 31%; --hd-scorch-top-x: 27%; --hd-scorch-bottom-x: 76%; --hd-scorch-right-size: 16%; --hd-scorch-edge: 4%;
+}
+:is(.hd-opponent-card, .hd-burned-card, .wt-backs > i, .wt-stock > i, .wt-taken-packet > i, .wt-hand-card--back):nth-child(4n + 3) {
+  --hd-scorch-left-y: 46%; --hd-scorch-right-y: 57%; --hd-scorch-top-x: 78%; --hd-scorch-bottom-x: 52%; --hd-scorch-top-size: 20%; --hd-scorch-edge: 3%;
+}
+:is(.hd-opponent-card, .hd-burned-card, .wt-backs > i, .wt-stock > i, .wt-taken-packet > i, .wt-hand-card--back):nth-child(4n) {
+  --hd-scorch-left-y: 76%; --hd-scorch-right-y: 24%; --hd-scorch-top-x: 42%; --hd-scorch-bottom-x: 67%; --hd-scorch-bottom-size: 10%; --hd-scorch-edge: 5%;
+}
+/* Back borders are paper too. These overlays do not change card hit boxes. */
 .hd-cards-scorched .hd-card-back { --hd-scorch-outset: -5px; }
 .hd-cards-scorched :is(.hd-opponent-card, .hd-burned-card) { --hd-scorch-outset: -2px; }
 .hd-cards-scorched .hausdepp-card.is-selected::after { z-index: 2; }
+.wt-card { position: relative; }

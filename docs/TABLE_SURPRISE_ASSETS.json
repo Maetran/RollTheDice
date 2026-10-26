@@ -1,0 +1,88 @@
+{
+  "generator": "built-in image_gen",
+  "purpose": "Approved rare table surprise subjects for Hausdepp and Watten only",
+  "encoding": "WebP quality 0.92, native dimensions and alpha preserved; no resizing",
+  "lazy_loading": "Only offered/played subject; clock also mouse; kraken also tentacle",
+  "assets": [
+    {
+      "key": "hammer",
+      "path": "app/static/table-surprises/hammer.webp",
+      "bytes": 366560,
+      "sha256": "d44ca82507b8fe1eddfe905e91f6e485675d20cb5a31ac15eaaaf6ee8ff542b5",
+      "generated_source_sha256": "14844fc18d668597b162751ac9eb1074fed6827e84e3f096c75e18f259620c17",
+      "prompt": "Use case: background-extraction. Production game VFX sprite asset extracted/recreated from approved reference. Reference image is ONLY subject/material reference; REMOVE the entire game screenshot and everything except the requested subject. the exact heavy rune hammer only: forged dark iron chunky bevelled head, ancient subtle glowing icy-blue engravings, worn bronze collars and short dark leather-wrapped handle. Head central bottom and handle toward upper-left; believable top/side surfaces, premium film VFX materials. No ground cracks, no shock ring, no flying splinters, no environment. Center the entire subject with 8% transparent padding, approximately square 1024px canvas. Preserve the approved mature premium physically based realistic style, crisp material microtexture and lighting. Fully isolated RGBA CUTOUT with truly transparent alpha background, not white/black/checkerboard, no opaque shadow rectangle, no ground surface. No text/title/UI/playing cards/human faces or watermark. No toy/plastic/cute cartoon look. Keep fine edge alpha, no dramatic bright colored rim outside object. The game adds contact shadow and effect light itself."
+    },
+    {
+      "key": "ufo",
+      "path": "app/static/table-surprises/ufo.webp",
+      "bytes": 329132,
+      "sha256": "7c78975f1db837401944668e357b09ad75e69cc5894effd44fa4a0aec92b9ae9",
+      "generated_source_sha256": "dafa69c3a567490e0101afc7d7369c165a87437b580db885a1227c33e970560b",
+      "prompt": "Use case: background-extraction. Production game VFX sprite asset extracted/recreated from approved reference. Reference image is ONLY subject/material reference; REMOVE the entire game screenshot and everything except the requested subject. the exact premium dark brushed titanium/nickel saucer ONLY, top visible, smoked glass canopy, precisely layered metal hull, tiny pale-mint rim lights. Realistically oblique top-down view, compact mechanically engineered silhouette. No beam, no beer, no objects below, no reflection plane. Center the entire subject with 8% transparent padding, approximately square 1024px canvas. Preserve the approved mature premium physically based realistic style, crisp material microtexture and lighting. Fully isolated RGBA CUTOUT with truly transparent alpha background, not white/black/checkerboard, no opaque shadow rectangle, no ground surface. No text/title/UI/playing cards/human faces or watermark. No toy/plastic/cute cartoon look. Keep fine edge alpha, no dramatic bright colored rim outside object. The game adds contact shadow and effect light itself."
+    },
+    {
+      "key": "kraken",
+      "path": "app/static/table-surprises/kraken.webp",
+      "bytes": 569308,
+      "sha256": "c70466f1c17faf4921587c01e576d34e1db4cdb8440f15645257d6092fcac373",
+      "generated_source_sha256": "823a5e3dbf2dc60d516a666359c697cf8d312592f05ca61a37dece0562cf8b2b",
+      "prompt": "Use case: background-extraction. Production game VFX sprite asset extracted/recreated from approved reference. Reference image is ONLY subject/material reference; REMOVE the entire game screenshot and everything except the requested subject. the exact realistic dark blue-black octopus ONLY, wet detailed natural skin, ivory-grey suckers, amber natural eye, several curled weighty tentacles. Full creature silhouette without any pool, no beer mug, no cards or props, no splashes, no black plate; all negative spaces between arms transparent. No goggles or smile. Center the entire subject with 8% transparent padding, approximately square 1024px canvas. Preserve the approved mature premium physically based realistic style, crisp material microtexture and lighting. Fully isolated RGBA CUTOUT with truly transparent alpha background, not white/black/checkerboard, no opaque shadow rectangle, no ground surface. No text/title/UI/playing cards/human faces or watermark. No toy/plastic/cute cartoon look. Keep fine edge alpha, no dramatic bright colored rim outside object. The game adds contact shadow and effect light itself."
+    },
+    {
+      "key": "portal",
+      "path": "app/static/table-surprises/portal.webp",
+      "bytes": 610438,
+      "sha256": "96e83a3e887ef74377d16ead278e7e96601679bf5378d438121932bb5c856b1c",
+      "generated_source_sha256": "75da128e9a7068b20d738fa16f1fca491e1715b4155d4dbe575413b3e2840ef1",
+      "prompt": "Use case: background-extraction. Production game VFX sprite asset extracted/recreated from approved reference. Reference image is ONLY subject/material reference; REMOVE the entire game screenshot and everything except the requested subject. ONE circular finely engraved bronze magic portal ring, frontal top-down circular view (not oval). Deep violet/amber magical opening, narrow gold light rim and delicate restrained inner glow; actual center is magical translucent violet depth with no scene. Outer background transparent. No pencils or other props, no second portal, no wood. Center the entire subject with 8% transparent padding, approximately square 1024px canvas. Preserve the approved mature premium physically based realistic style, crisp material microtexture and lighting. Fully isolated RGBA CUTOUT with truly transparent alpha background, not white/black/checkerboard, no opaque shadow rectangle, no ground surface. No text/title/UI/playing cards/human faces or watermark. No toy/plastic/cute cartoon look. Keep fine edge alpha, no dramatic bright colored rim outside object. The game adds contact shadow and effect light itself."
+    },
+    {
+      "key": "star",
+      "path": "app/static/table-surprises/star.webp",
+      "bytes": 303512,
+      "sha256": "aeb343431e2279b3d8d232715ad2a8300843b97374a96af0834391f95ccc1bc4",
+      "generated_source_sha256": "3c1906a1e5cf47d0fe4caa02edb5edfd8838d7f74d482f5a70ddbba82dad4f7d",
+      "prompt": "Use case: background-extraction. Production game VFX sprite asset extracted/recreated from approved reference. Reference image is ONLY subject/material reference; REMOVE the entire game screenshot and everything except the requested subject. the exact exquisite eight-point bronze-and-silver compass star ONLY, engraved bevelled metal facets, small warm golden center jewel, elegant antique astronomical craftsmanship. Nearly top-down view, radial full silhouette. No surrounding constellation wires, no tiny extra stars, no table or disc backdrop. Center the entire subject with 8% transparent padding, approximately square 1024px canvas. Preserve the approved mature premium physically based realistic style, crisp material microtexture and lighting. Fully isolated RGBA CUTOUT with truly transparent alpha background, not white/black/checkerboard, no opaque shadow rectangle, no ground surface. No text/title/UI/playing cards/human faces or watermark. No toy/plastic/cute cartoon look. Keep fine edge alpha, no dramatic bright colored rim outside object. The game adds contact shadow and effect light itself."
+    },
+    {
+      "key": "dragon",
+      "path": "app/static/table-surprises/dragon.webp",
+      "bytes": 380094,
+      "sha256": "117b4571d96e6cb582249cef6abae2479c5d49194b8a34e34df82111d4fb97ae",
+      "generated_source_sha256": "9dc00550b96efa31e19a05cdf3497b3f7045f3f73c6c6c65fdeb12674e0037ca",
+      "prompt": "Use case: background-extraction. Production game VFX sprite asset extracted/recreated from approved reference. Reference image is ONLY subject/material reference; REMOVE the entire game screenshot and everything except the requested subject. the exact slender realistic dark-bronze fantasy dragon ONLY, anatomically convincing full body, overlapping scales, tail, translucent smoky wings spread, head to the lower right so fire can be animated separately. Top-down view with believable depth, mature cinematic materials. No fire breath, no embers, no ground. Center the entire subject with 8% transparent padding, approximately square 1024px canvas. Preserve the approved mature premium physically based realistic style, crisp material microtexture and lighting. Fully isolated RGBA CUTOUT with truly transparent alpha background, not white/black/checkerboard, no opaque shadow rectangle, no ground surface. No text/title/UI/playing cards/human faces or watermark. No toy/plastic/cute cartoon look. Keep fine edge alpha, no dramatic bright colored rim outside object. The game adds contact shadow and effect light itself."
+    },
+    {
+      "key": "clock",
+      "path": "app/static/table-surprises/clock.webp",
+      "bytes": 410116,
+      "sha256": "9905b0c49448299b0dd4aa42e5c01d852ae889952a2c83d3301c1db18db7d4e5",
+      "generated_source_sha256": "0748a443a901576ebd93159810b728247e296cadce801174180277aaf64127b0",
+      "prompt": "Use case: background-extraction. Production game VFX sprite asset extracted/recreated from approved reference. Reference image is ONLY subject/material reference; REMOVE the entire game screenshot and everything except the requested subject. the exact exquisite antique engraved brass pocket watch ONLY, open engraved lid to upper-left, round main dial positioned at normalized center x50%,y58% and radius33% inside square composition, fine visible mechanical details. IMPORTANT dial has NO CLOCK HANDS, those are a separate animation layer. Face normal clock hour markings okay, no other lettering. No chain beyond a tiny ring, no mouse, no blue time ripple, no table. Center the entire subject with 8% transparent padding, approximately square 1024px canvas. Preserve the approved mature premium physically based realistic style, crisp material microtexture and lighting. Fully isolated RGBA CUTOUT with truly transparent alpha background, not white/black/checkerboard, no opaque shadow rectangle, no ground surface. No text/title/UI/playing cards/human faces or watermark. No toy/plastic/cute cartoon look. Keep fine edge alpha, no dramatic bright colored rim outside object. The game adds contact shadow and effect light itself."
+    },
+    {
+      "key": "blackhole",
+      "path": "app/static/table-surprises/blackhole.webp",
+      "bytes": 576156,
+      "sha256": "32b2f708bc1c94f3613648acc1e119ff960ae3872ef92a07e5539fa2f62dab2a",
+      "generated_source_sha256": "3a732dd3778ab5d1fb924d692196558d7dd22da810d2e0c5cb16deeab39e23ce",
+      "prompt": "Use case: background-extraction. Production game VFX sprite asset extracted/recreated from approved reference. Reference image is ONLY subject/material reference; REMOVE the entire game screenshot and everything except the requested subject. the premium compact gravitational singularity ONLY, absolutely pitch-black circular core, thin tilted amber-white accretion ring and delicate violet edge lensing. Sparse fine hot particles and refracted halo very close to rim, no galaxy wallpaper, no wooden surface or playing cards in the vortex, no ground. Outside ring is genuinely transparent. Center the entire subject with 8% transparent padding, approximately square 1024px canvas. Preserve the approved mature premium physically based realistic style, crisp material microtexture and lighting. Fully isolated RGBA CUTOUT with truly transparent alpha background, not white/black/checkerboard, no opaque shadow rectangle, no ground surface. No text/title/UI/playing cards/human faces or watermark. No toy/plastic/cute cartoon look. Keep fine edge alpha, no dramatic bright colored rim outside object. The game adds contact shadow and effect light itself."
+    },
+    {
+      "key": "mouse",
+      "path": "app/static/table-surprises/mouse.webp",
+      "bytes": 326636,
+      "sha256": "69f16fc4c3e462b5eb3184777be9ec787f34f358b39c31cc7e97df9ef4882cfa",
+      "generated_source_sha256": "e68d3ca7176d99000e0994b5776dfeb73190973a0bbf4c4c005a1fc50a0b7f29",
+      "prompt": "Use case: background-extraction. Production game VFX sprite asset extracted/recreated from approved reference. Reference image is ONLY subject/material reference; REMOVE the entire game screenshot and everything except the requested subject. ONLY the small realistic brown field mouse with tiny worn dark top hat from the reference, natural small dark eyes, lifelike fur and anatomy, little paws out for walking animation, tail curved elegantly. Facing right in near top-down three-quarter view, mature charming material not cartoon mascot. No watch, chain, wood or other props. Center the entire subject with 8% transparent padding, approximately square 1024px canvas. Preserve the approved mature premium physically based realistic style, crisp material microtexture and lighting. Fully isolated RGBA CUTOUT with truly transparent alpha background, not white/black/checkerboard, no opaque shadow rectangle, no ground surface. No text/title/UI/playing cards/human faces or watermark. No toy/plastic/cute cartoon look. Keep fine edge alpha, no dramatic bright colored rim outside object. The game adds contact shadow and effect light itself."
+    },
+    {
+      "key": "tentacle",
+      "path": "app/static/table-surprises/tentacle.webp",
+      "bytes": 412098,
+      "sha256": "e03f962c0e145c2d989cc3d315479af98dfa865bea594f936996904f39417205",
+      "generated_source_sha256": "9a46a157a081ac1676311bbcc454162280d1927a16f5105833a647f59e5bfe4b",
+      "prompt": "Use case: stylized-concept. Production game VFX transparent RGBA cutout matching the realistic dark blue-black kraken in reference. Draw ONE single isolated octopus tentacle extending horizontally LEFT TO RIGHT. Broad cut base at left, tapering to a small elegant upward curl at right. Very shallow gently curving silhouette fits a WIDE 3:1 frame, full arm inside with transparent margin. Realistic wet charcoal/navy textured skin, subtle warm bronze and blue reflections, convincing ivory-grey suction cups along underside, cinematic mature physically based finish, no toy or cartoon. ONLY ONE ARM, no head/eye/body, no beer/wood/cards/ink pool/splash or background. Genuine alpha background outside all silhouette; no opaque shadow rectangle, no text. Need a clean horizontal reach sprite for scaleX unrolling animation, anatomically continuous with reference."
+    }
+  ]
+}

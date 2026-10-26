@@ -203,25 +203,26 @@ async function motionFixture(page, prop, reduced = false) {
   await page.setViewportSize({ width: 1600, height: 1100 });
   await page.goto('/hausdepp/regeln');
   await expect(page.locator('#hausdeppHeader .hd-header-tools')).toBeVisible();
-  const [source, consumables, play, surprises, snapshots, mouse, css, consumableCss, playCss, surpriseCss] = await Promise.all([
+  const [source, consumables, play, surprises, snapshots, art, css, consumableCss, playCss, surpriseCss, premiumCss] = await Promise.all([
     readFile('frontend/hausdepp/decor.js', 'utf8'),
     readFile('frontend/hausdepp/decor-consumables.js', 'utf8'),
     readFile('frontend/hausdepp/decor-play.js', 'utf8'),
     readFile('frontend/hausdepp/surprise-effects.js', 'utf8'),
     readFile('frontend/hausdepp/surprise-snapshots.js', 'utf8'),
-    readFile('frontend/hausdepp/surprise-mouse.js', 'utf8'),
+    readFile('frontend/hausdepp/surprise-art.js', 'utf8'),
     readFile('frontend/styles/hausdepp-decor.css', 'utf8'),
     readFile('frontend/styles/hausdepp-decor-consumables.css', 'utf8'),
     readFile('frontend/styles/hausdepp-decor-play.css', 'utf8'),
     readFile('frontend/styles/hausdepp-surprise-effects.css', 'utf8'),
+    readFile('frontend/styles/table-surprise-art.css', 'utf8'),
   ]);
   await page.route('**/__test__/decor.mjs', route => route.fulfill({ body: source, contentType: 'text/javascript' }));
   await page.route('**/__test__/decor-consumables.js', route => route.fulfill({ body: consumables, contentType: 'text/javascript' }));
   await page.route('**/__test__/decor-play.js', route => route.fulfill({ body: play, contentType: 'text/javascript' }));
   await page.route('**/__test__/surprise-effects.js', route => route.fulfill({ body: surprises, contentType: 'text/javascript' }));
   await page.route('**/__test__/surprise-snapshots.js', route => route.fulfill({ body: snapshots, contentType: 'text/javascript' }));
-  await page.route('**/__test__/surprise-mouse.js', route => route.fulfill({ body: mouse, contentType: 'text/javascript' }));
-  await page.setContent(`<style>${css}${consumableCss}${playCss}${surpriseCss}html,body{margin:0}#fixture{position:relative;width:1400px;height:900px;background:#492c1d}</style><section id="fixture" class="hd-table" aria-label="Labelled prop renderer"></section>`);
+  await page.route('**/__test__/surprise-art.js', route => route.fulfill({ body: art, contentType: 'text/javascript' }));
+  await page.setContent(`<style>${css}${consumableCss}${playCss}${surpriseCss}${premiumCss}html,body{margin:0}#fixture{position:relative;width:1400px;height:900px;background:#492c1d}</style><section id="fixture" class="hd-table" aria-label="Labelled prop renderer"></section>`);
   await page.evaluate(async ({ moduleUrl, prop }) => {
     const module = await import(moduleUrl);
     const table = document.getElementById('fixture');

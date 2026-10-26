@@ -94,8 +94,11 @@ def _identity(websocket):
     return identity if can_access_watten(identity, websocket) and not user_play_banned(identity.user_id) else None
 
 
-async def _error(websocket, code: str, *, fatal=False):
-    await websocket.send_json({"error": code, "error_code": code, "fatal": fatal})
+async def _error(websocket, code: str, *, fatal=False, action: str | None = None):
+    payload = {"error": code, "error_code": code, "fatal": fatal}
+    if action is not None:
+        payload["action"] = action
+    await websocket.send_json(payload)
     if fatal:
         await websocket.close(code=1008)
 
@@ -354,12 +357,13 @@ async def serve_watten_websocket(websocket, game: dict, *, reserve_connection, r
                         return
             except (ValueError, TypeError, KeyError) as exc:
                 code = getattr(exc, "code", None) or (str(exc) if isinstance(exc, ValueError) else "watten_invalid_command")
-                await _error(websocket, code)
+                await _error(websocket, code, **({"action": action} if action == "watten_table_surprise" else {}))
             except Exception:
                 # Failed commits retain the previous in-memory state and emit
                 # no success ACK or speculative private/public projection.
                 logger.exception("Watten checkpoint rejected for game %s", game["_id"])
-                await _error(websocket, "watten_storage_unavailable")
+                await _error(websocket, "watten_storage_unavailable",
+                             **({"action": action} if action == "watten_table_surprise" else {}))
     except (WebSocketDisconnect, RuntimeError, OSError):
         pass
     finally:

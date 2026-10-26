@@ -2,6 +2,19 @@
 const painted = ['display', 'box-sizing', 'overflow', 'border-radius', 'border', 'box-shadow', 'background', 'background-image', 'background-size', 'background-position', 'background-repeat', 'color', 'font', 'font-size', 'font-weight', 'font-family', 'line-height', 'letter-spacing', 'text-align', 'text-shadow', 'padding', 'margin', 'opacity', 'filter', 'clip-path', 'mask-image', 'mask-size', 'mask-position', 'mix-blend-mode', 'object-fit', 'object-position', 'fill', 'fill-opacity', 'stroke', 'stroke-width', 'stroke-linecap', 'stroke-linejoin', 'stroke-opacity', 'visibility'];
 const layout = ['position', 'left', 'right', 'top', 'bottom', 'inset', 'width', 'height', 'min-width', 'max-width', 'min-height', 'max-height', 'aspect-ratio', 'transform', 'transform-origin', 'translate', 'rotate', 'scale', 'z-index', 'flex', 'flex-direction', 'align-items', 'justify-content', 'gap', 'grid-template-columns', 'grid-template-rows'];
 let serial = 0;
+const handSelector = '#hausdeppHand,[data-wt-hand]';
+const cardSelector = '.hausdepp-card,.wt-hand-card';
+const rareEffects = new Set(['star', 'hammer', 'ufo', 'portal', 'dragon', 'kraken', 'clock', 'blackhole']);
+const hausdeppTargets = '#hausdeppHand .hausdepp-card, .hd-pile-group .hd-pile-face, .hd-pile-group > .hausdepp-card, .hd-stock-group > .hd-card-back, .hd-opponent-hand, #hausdeppBurnedStack:not(.is-empty), .hd-table-prop:not([hidden])';
+const wattenTargets = '[data-wt-hand] > .wt-hand-card,.wt-trick-card,.wt-backs,.wt-stock,.wt-taken-packet,[data-wt-reference] .wt-card';
+const isWatten = table => table.matches('[data-wt-table]');
+const opticalBox = table => (table.querySelector('.hd-surprise-layer') || table).getBoundingClientRect();
+const handClip = (hand, box) => {
+  if (!hand) return box;
+  if (!hand.matches('[data-wt-hand]')) return hand.getBoundingClientRect();
+  const style = getComputedStyle(hand);
+  return [style.overflowX, style.overflowY].some(value => value !== 'visible') ? hand.getBoundingClientRect() : box;
+};
 const visible = node => {
   // Fixed descendants of a closed details can still expose layout bounds.
   // Only its summary is painted; their controls must not punch phantom holes.
@@ -11,27 +24,34 @@ const visible = node => {
       if (!summary?.contains(node)) return false;
     }
   }
+  if (node.closest('[hidden]')) return false;
   const box = node.getBoundingClientRect(), style = getComputedStyle(node);
   return box.width > 2 && box.height > 2 && style.display !== 'none' && style.visibility !== 'hidden';
 };
 
 export function snapshotTargets(table, { limit = 24, only = null, groupHand = true } = {}) {
-  const box = (table.querySelector(".hd-surprise-layer") || table).getBoundingClientRect();
-  const hand = table.querySelector('#hausdeppHand'), handCards = hand?.querySelectorAll('.hausdepp-card').length || 0;
-  let nodes = [...table.querySelectorAll('#hausdeppHand .hausdepp-card, .hd-pile-group .hd-pile-face, .hd-pile-group > .hausdepp-card, .hd-stock-group > .hd-card-back, .hd-opponent-hand, #hausdeppBurnedStack:not(.is-empty), .hd-table-prop:not([hidden])')]
-    .filter(node => !node.closest('.hd-surprise-layer') && !node.matches('.hd-table-prop--small:has([data-sheet="surprise"]), [data-prop="star"], [data-prop="hammer"], [data-prop="ufo"], [data-prop="portal"], [data-prop="dragon"], [data-prop="kraken"], [data-prop="clock"], [data-prop="blackhole"]') && visible(node));
+  const box = opticalBox(table), hand = table.querySelector(handSelector);
+  const handCards = hand?.querySelectorAll(cardSelector).length || 0;
+  let nodes = [...table.querySelectorAll(isWatten(table) ? wattenTargets : hausdeppTargets)];
+  // Watten's local props live in a sibling fixed layer. Never search the whole
+  // document: another mounted preview or table must not leak into this scene.
+  if (isWatten(table)) nodes.push(...(table.closest('#wattenApp')?.querySelectorAll('[data-watten-decor-layer] > .wt-decor-prop:not(.wt-decor-prop--rare)') || []));
+  nodes = nodes.filter(node => !node.closest('.hd-surprise-layer')
+    && !node.matches('.hd-table-prop--small:has([data-sheet="surprise"])')
+    && !rareEffects.has(node.dataset.prop || node.dataset.wattenDecorKind) && visible(node));
   if (groupHand && handCards > 7) nodes = nodes.filter(node => !hand.contains(node)).concat(hand);
   nodes = nodes.filter(node => {
     if (node.matches('.hd-opponent-hand') && !node.querySelector('.hd-opponent-card')) return false;
     if (node.matches('.hd-card-back.is-empty')) return false;
-    const rect = node.getBoundingClientRect(), clip = node !== hand && hand?.contains(node) ? hand.getBoundingClientRect() : box;
+    if (node.matches('.wt-backs') && ![...node.children].some(child => visible(child))) return false;
+    const rect = node.getBoundingClientRect(), clip = node !== hand && hand?.contains(node) ? handClip(hand, box) : box;
     return Math.min(rect.right, clip.right, box.right) - Math.max(rect.left, clip.left, box.left) > 2
       && Math.min(rect.bottom, clip.bottom, box.bottom) - Math.max(rect.top, clip.top, box.top) > 2;
   });
   return nodes.map(node => {
     const rect = node.getBoundingClientRect();
-    const kind = node.id === 'hausdeppBurnedStack' ? 'burned' : node.classList.contains('hd-table-prop') ? 'prop' : 'card';
-    return { node, kind, prop: node.dataset.prop || '', left: rect.left - box.left, top: rect.top - box.top, width: rect.width, height: rect.height,
+    const kind = node.id === 'hausdeppBurnedStack' ? 'burned' : node.matches('.hd-table-prop,.wt-decor-prop') ? 'prop' : 'card';
+    return { node, kind, prop: node.dataset.prop || node.dataset.wattenDecorKind || '', left: rect.left - box.left, top: rect.top - box.top, width: rect.width, height: rect.height,
       x: rect.left - box.left + rect.width / 2, y: rect.top - box.top + rect.height / 2 };
   }).filter(target => !only || only(target)).slice(0, limit);
 }
@@ -40,14 +60,14 @@ export function snapshotTargets(table, { limit = 24, only = null, groupHand = tr
 // Reconstruct the visible hand once, preserving layout while its chosen cards
 // travel. Only this optical copy omits them; the live hand is never touched.
 export function handTransferCluster(table, targets) {
-  const hand = table.querySelector('#hausdeppHand');
+  const hand = table.querySelector(handSelector);
   if (!hand) return null;
   const movingNodes = targets.filter(target => target.node !== hand && hand.contains(target.node)).map(target => target.node);
   if (!movingNodes.length) return null;
-  const box = (table.querySelector('.hd-surprise-layer') || table).getBoundingClientRect(), viewport = hand.getBoundingClientRect();
-  const cards = [...hand.querySelectorAll('.hausdepp-card')].map(node => node.getBoundingClientRect())
-    .map(rect => ({ left: Math.max(rect.left, viewport.left, box.left), right: Math.min(rect.right, viewport.right, box.right),
-      top: Math.max(rect.top, viewport.top, box.top), bottom: Math.min(rect.bottom, viewport.bottom, box.bottom) }))
+  const box = opticalBox(table), viewport = hand.getBoundingClientRect(), clip = handClip(hand, box);
+  const cards = [...hand.querySelectorAll(cardSelector)].map(node => node.getBoundingClientRect())
+    .map(rect => ({ left: Math.max(rect.left, clip.left, box.left), right: Math.min(rect.right, clip.right, box.right),
+      top: Math.max(rect.top, clip.top, box.top), bottom: Math.min(rect.bottom, clip.bottom, box.bottom) }))
     .filter(rect => rect.right > rect.left && rect.bottom > rect.top);
   if (!cards.length) return null;
   const left = Math.max(box.left, Math.min(...cards.map(rect => rect.left)) - 6) - box.left;
@@ -62,7 +82,7 @@ export function handTransferCluster(table, targets) {
 export function drawSnapshot(fx, target, { omitNodes = [] } = {}) {
   const host = fx.add('snapshot', target.width, target.height);
   host.dataset.sourceKind = target.kind;
-  if (target.node.id === 'hausdeppHand' || target.node.closest('#hausdeppHand')) host.dataset.fromHand = 'true';
+  if (target.node.matches(handSelector) || target.node.closest(handSelector)) host.dataset.fromHand = 'true';
   host.inert = true;
   host.style.transform = `translate(${target.left}px,${target.top}px)`;
   // Closed shadow scopes keep SVG paint-server identifiers private and prevent
@@ -109,7 +129,17 @@ export function drawSnapshot(fx, target, { omitNodes = [] } = {}) {
   copy.style.margin = '0';
   copy.style.width = style.width; copy.style.height = style.height; copy.style.minWidth = '0'; copy.style.maxWidth = 'none'; copy.style.minHeight = '0'; copy.style.maxHeight = 'none';
   copy.style.translate = 'none'; copy.style.rotate = 'none'; copy.style.scale = 'none'; copy.style.transformOrigin = '50% 50%';
-  copy.style.transform = `translate(-50%,-50%) ${style.transform === 'none' ? '' : style.transform}`;
+  if (isWatten(fx.table)) {
+    // Separate rotate is used by the opponent fans; own cards rotate around a
+    // pivot below their edge. The measured rectangle already includes that
+    // displacement. Preserve its linear pose, centred on the painted bounds,
+    // without applying the original CSS translation a second time.
+    const scale = style.scale === 'none' ? [1, 1] : style.scale.split(' ').map(Number);
+    const pose = new DOMMatrix().rotate(Number.parseFloat(style.rotate) || 0)
+      .scale(scale[0], scale[1] ?? scale[0]).multiply(new DOMMatrix(style.transform === 'none' ? undefined : style.transform));
+    pose.e = 0; pose.f = 0;
+    copy.style.transform = `translate(-50%,-50%) ${pose.toString()}`;
+  } else copy.style.transform = `translate(-50%,-50%) ${style.transform === 'none' ? '' : style.transform}`;
   for (const node of omitNodes) {
     const index = originals.indexOf(node);
     if (index >= 0) copies[index].style.setProperty('opacity', '0', 'important');
@@ -120,19 +150,31 @@ export function drawSnapshot(fx, target, { omitNodes = [] } = {}) {
 }
 
 export function paintTableWood(fx, node, left = 0, top = 0) {
-  let source = fx.table;
-  while (source.parentElement && getComputedStyle(source).backgroundImage === 'none') source = source.parentElement;
-  const style = getComputedStyle(source), rect = source.getBoundingClientRect();
   const paint = document.createElement('span');
   paint.className = 'hd-surprise-wood-paint';
   paint.setAttribute('aria-hidden', 'true');
-  Object.assign(paint.style, {
-    position: 'absolute', pointerEvents: 'none',
-    left: `${rect.left - fx.box.left - left}px`, top: `${rect.top - fx.box.top - top}px`,
-    width: `${rect.width}px`, height: `${rect.height}px`,
-    background: style.backgroundImage === 'none'
-      ? '#35271f url("/static/zilch-wood-table-v1.jpg") center / 1024px' : style.background,
-  });
+  Object.assign(paint.style, { position: 'absolute', pointerEvents: 'none' });
+  const carving = isWatten(fx.table) ? getComputedStyle(fx.table, '::before') : null;
+  if (carving && carving.borderImageSource !== 'none') {
+    // The real Watten surface is a nine-slice, filled border-image on the
+    // table's pseudo-element. Repaint that exact viewport-sized surface and
+    // crop it, so optical gaps keep the same grain and carved frame.
+    const table = fx.table.getBoundingClientRect();
+    for (const name of ['box-sizing', 'width', 'height', 'border', 'border-image', 'background', 'border-radius'])
+      paint.style.setProperty(name, carving.getPropertyValue(name));
+    paint.style.left = `${table.left - fx.box.left - left + (Number.parseFloat(carving.left) || 0)}px`;
+    paint.style.top = `${table.top - fx.box.top - top + (Number.parseFloat(carving.top) || 0)}px`;
+  } else {
+    let source = fx.table;
+    while (source.parentElement && getComputedStyle(source).backgroundImage === 'none') source = source.parentElement;
+    const style = getComputedStyle(source), rect = source.getBoundingClientRect();
+    Object.assign(paint.style, {
+      left: `${rect.left - fx.box.left - left}px`, top: `${rect.top - fx.box.top - top}px`,
+      width: `${rect.width}px`, height: `${rect.height}px`,
+      background: style.backgroundImage === 'none'
+        ? '#35271f url("/static/zilch-wood-table-v1.jpg") center / 1024px' : style.background,
+    });
+  }
   // Preserve the ancestor's full background geometry, including lighting
   // gradients. Cropping a fresh centred tile would expose a rectangular seam.
   node.style.overflow = 'hidden';
@@ -149,8 +191,11 @@ export function woodenStage(fx) {
 }
 
 export function protectControls(layer, table, box) {
-  const selectors = '.hd-room-heading,.hd-seat-plate,.hd-seat-avatar,.hd-hand-heading,#hausdeppStatus,#hausdeppEvent,.hd-actions,.hd-hand-actions,#hausdeppPeek:not([hidden]),#hausdeppResult:not([hidden]),.hd-action-error:not(:empty),button:not(.hausdepp-card):not(.hd-table-prop):not(#hausdeppStock):not(#hausdeppPile),a[href],input,select,textarea';
-  const holes = [...table.querySelectorAll(selectors)].filter(node => !node.closest('.hd-surprise-layer,.hd-table-decor') && visible(node)).map(node => {
+  const selectors = '.hd-room-heading,.hd-seat-plate,.hd-seat-avatar,.hd-hand-heading,#hausdeppStatus,#hausdeppEvent,.hd-actions,.hd-hand-actions,#hausdeppPeek:not([hidden]),#hausdeppResult:not([hidden]),.hd-action-error:not(:empty),button:not(.hausdepp-card):not(.wt-hand-card):not(.hd-table-prop):not(.wt-decor-prop):not(#hausdeppStock):not(#hausdeppPile),a[href],input,select,textarea,summary';
+  // Watten's bubble host spans the complete centre even when empty. Protect
+  // its painted .wt-bubble children, never that transparent layout container.
+  const wattenControls = '.wt-topbar,.wt-seat-badge,.wt-seat-name,.wt-avatar,.wt-seat-call-role,.wt-seat-public-title,.wt-seat-tags,.wt-bubble,.wt-trick-label,.wt-reference figcaption,[data-wt-private],[data-wt-panel],[data-wt-stake],[data-wt-preplay],[data-wt-own-call],[data-wt-retour-announcement]';
+  const holes = [...table.querySelectorAll(isWatten(table) ? `${selectors},${wattenControls}` : selectors)].filter(node => !node.closest('.hd-surprise-layer,.hd-table-decor,[data-watten-decor-layer]') && visible(node)).map(node => {
     const r = node.getBoundingClientRect();
     return { left: Math.max(0, r.left - box.left - 2), top: Math.max(0, r.top - box.top - 2), right: Math.min(box.width, r.right - box.left + 2), bottom: Math.min(box.height, r.bottom - box.top + 2) };
   }).filter(r => r.right > r.left && r.bottom > r.top);

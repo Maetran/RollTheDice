@@ -1,6 +1,7 @@
 // Table rendering from the accepted own projection only. Nothing here filters
 // legal cards, infers a hidden call or reads another participant's view.
 import { cardArt } from "../hausdepp/cards.js";
+import { cardScorchStyle } from "../hausdepp/card-scorch.js";
 import { escapeHtml as esc } from "../shared/auth.js";
 import { t, lang, cardFace, cardBack, cardName, sortHand, suitName, strikeName, SUITS, STRIKES, isCard } from "./cards.js";
 import { teamName } from "./waiting-room.js";
@@ -602,7 +603,9 @@ export function createTableView(container, { onCard, accountId = null }) {
     if (elements.history.dataset.finished !== "true" && elements.history.open && !historyPinned
         && !elements.history.contains(event.target)) elements.history.open = false;
   };
-  document.addEventListener("pointerdown", outsideHistory, { passive: true });
+  // A decision click bubbles here after the table's native action handlers.
+  // Collapsing on pointerdown could move that button before pointerup.
+  document.addEventListener("click", outsideHistory, { passive: true });
   elements.history.addEventListener("click", event => {
     if (event.target.closest("[data-wt-history-close]")) closeHistory();
   });
@@ -680,6 +683,7 @@ export function createTableView(container, { onCard, accountId = null }) {
           node.className = "wt-hand-card";
           node.dataset.wtCard = "";
           node.dataset.card = card;
+          node.style.cssText += cardScorchStyle(card);
           node.setAttribute("aria-label", cardName(card));
           node.innerHTML = cardArt(card);
         } else {
@@ -849,7 +853,7 @@ export function createTableView(container, { onCard, accountId = null }) {
     return elements.seats.querySelector(`[data-wt-seat="${seat}"]`);
   }
 
-  return { update, destroy() { document.removeEventListener("pointerdown", outsideHistory); positionInspection.destroy(); positionBloedeln.destroy(); positionTrick.destroy(); retourAnnouncement.destroy(); scorepad.destroy(); }, motionSources, seatNode, trickNode: () => elements.trick,
+  return { update, destroy() { document.removeEventListener("click", outsideHistory); positionInspection.destroy(); positionBloedeln.destroy(); positionTrick.destroy(); retourAnnouncement.destroy(); scorepad.destroy(); }, motionSources, seatNode, trickNode: () => elements.trick,
     deckNode: () => $("[data-wt-deck]"), collectionNode: seat => elements.seats.querySelector(`[data-wt-catch="${seat}"]`),
     backNodes: () => [...elements.seats.querySelectorAll(".wt-backs:not([hidden]) > i:not([hidden])")] };
 }

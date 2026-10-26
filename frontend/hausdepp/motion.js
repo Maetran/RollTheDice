@@ -1,4 +1,5 @@
 import { cardArt } from "./cards.js";
+import { copyCardScorch } from "./card-scorch.js";
 import { createPilePresentation } from "./pile-presentation.js";
 
 const rounds = new Map();
@@ -222,6 +223,7 @@ export function launchOwnPlay(gameId, playerId, cards) {
     element.setAttribute("aria-hidden", "true");
     element.dataset.motionType = "launch";
     element.innerHTML = cardArt(card);
+    copyCardScorch(element, { source: hand.cards.find(item => item.card === card)?.element, card });
     Object.assign(element.style, { left: `${left}px`, top: `${top}px`, width: `${width}px`, height: `${height}px` });
     document.body.append(element);
     const end = `translate(${pile.x + spread - pose.x}px,${pile.y - pose.y}px) rotate(${pile.angle || 0}deg) scale(${pile.width / width},${pile.height / height})`;
@@ -513,6 +515,8 @@ function moveCards(group, { gameId, playerId, before, after, reducedMotion, pile
     ghost.className = `hd-deal-card${face ? " has-face" : ""}`;
     ghost.setAttribute("aria-hidden", "true");
     if (!adopted) ghost.innerHTML = face;
+    copyCardScorch(ghost, { source: fromCard?.element || source.element, card: group.face ? cardId : null,
+      table: document.getElementById("hausdeppTable") });
     Object.assign(ghost.dataset, {
       motionType: group.type, source: group.source, target: group.target,
       count: String(group.count), index: String(index),
@@ -644,6 +648,7 @@ function revealPeek(state, { gameId, playerId, before, after, reducedMotion, pee
       face.setAttribute("aria-hidden", "true");
       Object.assign(face.dataset, { motionType: "peek-reveal", target: `hand:${receiver}` });
       face.innerHTML = cardArt(card);
+      copyCardScorch(face, { card, table: document.getElementById("hausdeppTable") });
       Object.assign(face.style, { left: `${left + index * (faceWidth + gap)}px`, top: `${top}px`,
         width: `${faceWidth}px`, height: `${faceHeight}px` });
       document.body.append(face);
@@ -663,6 +668,7 @@ function revealPeek(state, { gameId, playerId, before, after, reducedMotion, pee
     ghost.setAttribute("aria-hidden", "true");
     Object.assign(ghost.dataset, { motionType: "peek-reveal", target: `hand:${receiver}` });
     ghost.innerHTML = cardArt(card);
+    copyCardScorch(ghost, { card, table: document.getElementById("hausdeppTable") });
     Object.assign(ghost.style, { left: `${origin.x - width / 2}px`, top: `${origin.y - height / 2}px`,
       width: `${width}px`, height: `${height}px` });
     document.body.append(ghost);
