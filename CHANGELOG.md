@@ -23,6 +23,19 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 4.8.1 — 2026-10-26
+
+### VERÖFFENTLICHUNGSPRÜFUNG / RELEASE CHECKS
+
+**Deutsch:** Die öffentliche Veröffentlichungsprüfung gleicht Wattens deutsche
+und englische Installationsnamen mit der aktuellen Beta-Kennzeichnung ab.
+Ein ausgeschaltetes Beta-Label blockiert dadurch keine spätere Veröffentlichung;
+die Prüfung des öffentlichen Spielzugangs bleibt unabhängig davon bestehen.
+
+**English:** Public release checks compare Watten's German and English install
+names with its current beta label. Turning the label off no longer blocks a
+later release; public game access is still checked independently.
+
 ## 4.8.0 — 2026-10-26
 
 ### SPIELE UND FUNKTIONEN / GAMES AND FEATURES

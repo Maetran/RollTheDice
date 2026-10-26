@@ -566,6 +566,16 @@ verwendet dieselbe letzte erfolgreiche Vergleichsbasis. Es ist kein stiller
 Zwischenrelease erforderlich. Spätere normale Deploys benötigen das
 Aktivierungsflag nicht mehr; der öffentliche Gate bleibt aktiv.
 
+Bei öffentlich freigegebenem Watten prüft das Gate beide Installationsmanifeste
+gegen `game_presentation.watten.beta` aus der anonymen Identitätsantwort. Sowohl
+`Watten` als auch `Watten [BETA]` sind bei passender Kennzeichnung gültig;
+`game_access.watten_public` bleibt die unabhängige Zugangsvoraussetzung.
+
+For publicly released Watten, the gate checks both install manifests against
+`game_presentation.watten.beta` from the anonymous identity response. Both
+`Watten` and `Watten [BETA]` are valid when they match the current label;
+`game_access.watten_public` remains the independent access requirement.
+
 Der Helfer kann separat auf dem Origin geprüft werden:
 
 ```bash

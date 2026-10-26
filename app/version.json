@@ -1,10 +1,10 @@
 {
-  "version": "4.8.0",
-  "bump": "minor",
+  "version": "4.8.1",
+  "bump": "patch",
   "date": "2026-10-26",
-  "previous_revision": "a9add7e8d962f86a49cbf52dd55353fed846e4f3",
+  "previous_revision": "986952eca9a45d7fe54f524eac40dfd1720c8d1e",
   "summary": {
-    "de": "Spiele und Funktionen mit internem Testbetrieb und steuerbaren Beta-Kennzeichnungen verwalten.",
-    "en": "Manage games and features with internal testing and configurable beta labels."
+    "de": "Zuverlässige Veröffentlichungsprüfung mit ein- und ausgeschalteter Watten-Beta-Kennzeichnung.",
+    "en": "Reliable release checks with the Watten beta label enabled or disabled."
   }
 }

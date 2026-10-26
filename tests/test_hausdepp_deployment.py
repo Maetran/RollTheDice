@@ -322,6 +322,34 @@ class PublicReleaseSmokeTestCase(unittest.TestCase):
             return (BASE / "app/static/hausdepp-lobby.html").read_text(), headers
         return f'<link rel="canonical" href="{final_url or url}">', headers
 
+    def watten_response(self, url, *, beta, final_url=None):
+        body, headers = self.response(url, final_url=final_url)
+        if url.endswith("/api/auth/me"):
+            auth = json.loads(body)
+            auth["game_access"]["watten_public"] = True
+            auth["game_presentation"] = {"watten": {"beta": beta}}
+            return json.dumps(auth), headers
+        if not url.startswith(public_smoke.WATTEN + "/"):
+            return body, headers
+        if url.endswith("/sitemap.xml"):
+            locations = (f"{public_smoke.WATTEN}{path}{suffix}"
+                         for path in ("/watten", "/watten/regeln") for suffix in ("", "?lang=en"))
+            return "<urlset>" + "".join(f"<url><loc>{value}</loc></url>" for value in locations) + "</urlset>", headers
+        if url.endswith("/robots.txt"):
+            return f"Sitemap: {public_smoke.WATTEN}/sitemap.xml", headers
+        if url.endswith(".webmanifest"):
+            manifest = json.loads((BASE / "app/static" / url.rsplit("/", 1)[1]).read_text())
+            manifest["name"] = "Watten [BETA]" if beta else "Watten"
+            return json.dumps(manifest), headers
+        if url.endswith("/watten-sw.js"):
+            return "/* worker */", {"service-worker-allowed": "/"}
+        for path, filename in (("/watten", "watten-game.html"), ("/watten/regeln", "watten-rules.html")):
+            if url in (public_smoke.WATTEN + path, public_smoke.WATTEN + path + "?lang=en"):
+                page = (BASE / "app/static" / filename).read_text().replace(
+                    '<meta name="robots" content="noindex, nofollow">', '<meta name="robots" content="index, follow">')
+                return f'<link rel="canonical" href="{url}">' + page, headers
+        return body, headers
+
     def test_all_public_products_and_house_search_and_pwa_surface_pass(self):
         with patch.object(public_smoke, "fetch", side_effect=self.response) as fetch:
             with patch("sys.stdout", new=io.StringIO()):
@@ -332,6 +360,79 @@ class PublicReleaseSmokeTestCase(unittest.TestCase):
         self.assertIn(f"{public_smoke.WWW}/api/health", urls)
         self.assertIn(f"{public_smoke.HAUSDEPP}/api/auth/me", urls)
         self.assertIn(f"{public_smoke.HAUSDEPP}/hausdepp/konto", urls)
+
+    def test_public_watten_accepts_both_live_beta_labels_in_both_languages(self):
+        for beta in (True, False):
+            def response(url, *, final_url=None):
+                return self.watten_response(url, beta=beta, final_url=final_url)
+            with self.subTest(beta=beta), patch.object(public_smoke, "fetch", side_effect=response) as fetch:
+                with patch("sys.stdout", new=io.StringIO()):
+                    public_smoke.verify_release()
+                urls = [call.args[0] for call in fetch.call_args_list]
+                for suffix in (".webmanifest", "-en.webmanifest"):
+                    self.assertIn(f"{public_smoke.WATTEN}/watten-manifest{suffix}", urls)
+
+    def test_watten_rejects_stale_beta_labels_in_either_language(self):
+        for beta in (True, False):
+            for suffix in (".webmanifest", "-en.webmanifest"):
+                def response(url, *, final_url=None):
+                    body, headers = self.watten_response(url, beta=beta, final_url=final_url)
+                    if url == f"{public_smoke.WATTEN}/watten-manifest{suffix}":
+                        manifest = json.loads(body)
+                        manifest["name"] = "Watten" if beta else "Watten [BETA]"
+                        body = json.dumps(manifest)
+                    return body, headers
+                with self.subTest(beta=beta, language=suffix), patch.object(public_smoke, "fetch", side_effect=response):
+                    with patch("sys.stdout", new=io.StringIO()), self.assertRaisesRegex(ValueError, "install metadata"):
+                        public_smoke.verify_release()
+
+    def test_watten_requires_a_present_strict_boolean_beta_presentation(self):
+        invalid = ({}, {"game_presentation": None}, {"game_presentation": []},
+                   {"game_presentation": {"watten": None}}, {"game_presentation": {"watten": {}}},
+                   *({"game_presentation": {"watten": {"beta": value}}}
+                     for value in (None, 0, 1, "true", "false", [], {})))
+        for presentation in invalid:
+            def response(url, *, final_url=None):
+                body, headers = self.watten_response(url, beta=False, final_url=final_url)
+                if url == public_smoke.WATTEN + "/api/auth/me":
+                    auth = json.loads(body)
+                    auth.pop("game_presentation")
+                    auth.update(presentation)
+                    body = json.dumps(auth)
+                return body, headers
+            with self.subTest(presentation=presentation), patch.object(public_smoke, "fetch", side_effect=response):
+                with patch("sys.stdout", new=io.StringIO()), self.assertRaisesRegex(ValueError, "beta presentation"):
+                    public_smoke.verify_release()
+
+    def test_watten_public_access_guard_is_required_for_either_beta_label(self):
+        for beta in (True, False):
+            def response(url, *, final_url=None):
+                body, headers = self.watten_response(url, beta=beta, final_url=final_url)
+                if url == public_smoke.WATTEN + "/api/auth/me":
+                    auth = json.loads(body)
+                    auth["game_access"]["watten_public"] = False
+                    body = json.dumps(auth)
+                return body, headers
+            with self.subTest(beta=beta), patch.object(public_smoke, "fetch", side_effect=response):
+                with patch("sys.stdout", new=io.StringIO()), self.assertRaisesRegex(ValueError, "not publicly discoverable"):
+                    public_smoke.verify_release()
+
+    def test_watten_manifest_url_scope_and_icon_guards_remain_required_without_beta(self):
+        for failure in ("start_url", "scope", "icon"):
+            def response(url, *, final_url=None):
+                body, headers = self.watten_response(url, beta=False, final_url=final_url)
+                if url == public_smoke.WATTEN + "/watten-manifest-en.webmanifest":
+                    manifest = json.loads(body)
+                    if failure == "icon":
+                        manifest["icons"][0]["src"] = "/static/foreign-icon.png"
+                    else:
+                        manifest[failure] = "/foreign-product"
+                    body = json.dumps(manifest)
+                return body, headers
+            with self.subTest(failure=failure), patch.object(public_smoke, "fetch", side_effect=response):
+                with patch("sys.stdout", new=io.StringIO()), self.assertRaisesRegex(
+                        ValueError, "icon" if failure == "icon" else "install metadata"):
+                    public_smoke.verify_release()
 
     def test_globally_disabled_passkeys_are_allowed_when_apex_and_house_agree(self):
         def disabled(url, *, final_url=None):
