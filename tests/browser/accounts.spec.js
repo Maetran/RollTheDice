@@ -906,16 +906,18 @@ test("admin can log in, create a user and open the public profile", async ({ pag
     page.click("#adminLink"),
   ]);
   await expect(page.getByRole("heading", { name: "Adminbereich" })).toBeVisible();
-  await expect(page.locator(".admin-module-tile")).toHaveCount(5);
+  await expect(page.locator(".admin-module-tile")).toHaveCount(7);
   const dashboard = page.locator("#analyticsDashboardLink");
   await expect(dashboard).toBeVisible();
   await expect(dashboard).toContainText("Mission Control");
   await expect(dashboard).toHaveAttribute("href", "/admin/dashboard");
   for (const [panel, label] of [
+    ["featuresPanel", "Spiele & Funktionen"],
     ["usersPanel", "Benutzerverwaltung"],
     ["assignmentsPanel", "Spielzuordnung"],
     ["accountMergePanel", "Konten zusammenführen"],
     ["completedGamesPanel", "Spiele löschen"],
+    ["featureAuditPanel", "Feature-Protokoll"],
   ]) {
     const tile = page.locator(`[data-admin-panel="${panel}"]`);
     await expect(tile).toBeVisible();
@@ -923,9 +925,11 @@ test("admin can log in, create a user and open the public profile", async ({ pag
     await expect(tile).toHaveAttribute("aria-controls", panel);
     await expect(tile).toHaveAttribute("aria-expanded", "false");
   }
+  await expect(page.locator("#featuresPanel")).toBeHidden();
   await expect(page.locator("#usersPanel")).toBeHidden();
   await expect(page.locator("#accountMergePanel")).toBeHidden();
   await expect(page.locator("#completedGamesPanel")).toBeHidden();
+  await expect(page.locator("#featureAuditPanel")).toBeHidden();
 
   await page.locator('[data-admin-panel="usersPanel"]').click();
   await expect(page.getByRole("heading", { name: "Benutzerverwaltung" })).toBeVisible();

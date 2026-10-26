@@ -7,7 +7,7 @@ test('Watten optical effects copy the native cards and sibling props while prese
   test.setTimeout(90_000);
   const players = [];
   try {
-    for (let seat = 0; seat < 4; seat++) players.push(await player(browser, baseURL));
+    for (let seat = 0; seat < 4; seat++) players.push(await player(browser, baseURL, 'de', { role: seat === 0 ? 'admin' : 'user' }));
     await create(players, { count: 4, target: 15, reference: true, determination: 'normal' });
     await normalCall(players);
     // A genuine completed trick supplies captured packets, rather than a DOM
