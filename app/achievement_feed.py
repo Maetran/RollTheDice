@@ -5,12 +5,12 @@ from __future__ import annotations
 from typing import Final, Literal
 from urllib.parse import quote
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, func, or_, select
 
 from .achievements import ACHIEVEMENTS, Achievement
 from .database import session_scope
 from .game_types import DEFAULT_GAME_TYPE
-from .models import CompletedGame, GameParticipant, User, UserAchievement, ZilchAchievementUnlock
+from .models import AccountProgressOrigin, CompletedGame, GameParticipant, User, UserAchievement, ZilchAchievementUnlock
 from .security import as_utc
 from .zilch_achievements import ZILCH_ACHIEVEMENTS, ZilchAchievementDefinition
 
@@ -161,7 +161,10 @@ def list_zdwa_achievement_feed(
         select(GameParticipant.id)
         .where(
             GameParticipant.game_id == CompletedGame.id,
-            GameParticipant.user_id == UserAchievement.user_id,
+            or_(GameParticipant.user_id == UserAchievement.user_id,
+                GameParticipant.user_id.in_(select(AccountProgressOrigin.origin_user_id).where(
+                    AccountProgressOrigin.owner_user_id == UserAchievement.user_id,
+                ).correlate(UserAchievement))),
         )
         .correlate(CompletedGame, UserAchievement)
         .exists()

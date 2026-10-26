@@ -10,9 +10,12 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import patch
 
-from fastapi import HTTPException, Response
+from fastapi import FastAPI, HTTPException, Response
+from fastapi.testclient import TestClient
+from starlette.requests import Request
 
 from app.api_releases import AcknowledgeReleaseRequest, acknowledge_release, release_history
+from app.api_releases import router as release_router
 from app.auth import create_user, login
 from app.database import configure_database, session_scope
 from app.models import PushRelease, PushReleaseRecipient, ReleaseAcknowledgement, User
@@ -127,6 +130,45 @@ class PlayerReleaseNotesTestCase(unittest.TestCase):
         item = self.history()["releases"][0]
         self.assertFalse(item["can_announce"])
         self.assertEqual(item["changes"], [NOTES["summary_de"]])
+
+    def test_watten_history_uses_public_product_access_and_exact_account_acknowledgement(self):
+        notice = self.publish(games=["watten"])
+        application = FastAPI()
+        application.include_router(release_router)
+        with patch.dict(os.environ, {"ROLLTHEDICE_WATTEN_PUBLIC_BETA": "1", "ROLLTHEDICE_SITE_ORIGIN": "http://testserver"}), TestClient(application) as client:
+            guest = client.get("/api/releases?game_type=watten&language=en")
+            self.assertEqual(guest.status_code, 200)
+            self.assertEqual(guest.headers["Cache-Control"], "no-store")
+            self.assertEqual(guest.json()["releases"][0]["title"], NOTES["player_notes"]["en"]["title"])
+            self.assertIsNone(guest.json()["viewer_id"])
+            path = f"/api/releases/{notice.revision}/acknowledge?game_type=watten"
+            self.assertEqual(client.post(path, json={"viewer_id": self.player.id}).status_code, 401)
+            client.cookies.set("rollthedice_session", self.request.cookies["rollthedice_session"])
+            self.assertEqual(client.post(path, json={"viewer_id": self.player.id}).status_code, 403)
+            headers = {"X-CSRF-Token": self.identity.csrf_token}
+            self.assertEqual(client.post(path, headers=headers, json={"viewer_id": self.player.id + 1}).status_code, 409)
+            self.assertEqual(client.post(path, headers=headers, json={"viewer_id": self.player.id}).status_code, 200)
+            self.assertTrue(client.get("/api/releases?game_type=watten").json()["releases"][0]["acknowledged"])
+            self.assertEqual(client.get("/api/releases?game_type=zdwa").json()["releases"], [])
+            self.assertEqual(client.get("/api/releases?game_type=watten", headers={"host": "unrelated.invalid"}).status_code, 404)
+
+    def test_watten_history_does_not_open_private_or_disabled_product_to_guests(self):
+        self.publish(games=["watten"])
+        disabled = {"ROLLTHEDICE_WATTEN_PUBLIC_BETA": "0", "ROLLTHEDICE_WATTEN_GAME_PREVIEW": "0", "ROLLTHEDICE_WATTEN_FOUNDER_PREVIEW": "0"}
+        with patch.dict(os.environ, disabled):
+            for request in (self.request, self.guest):
+                with self.assertRaises(HTTPException) as denied:
+                    self.history(request, context="watten")
+                self.assertEqual(denied.exception.status_code, 404)
+        local = {**disabled, "ROLLTHEDICE_WATTEN_GAME_PREVIEW": "1", "ROLLTHEDICE_SITE_ORIGIN": "http://localhost"}
+        def local_request(request):
+            return Request({**request.scope, "headers": [(name, b"localhost" if name == b"host" else value)
+                                                       for name, value in request.scope["headers"]]})
+        with patch.dict(os.environ, local):
+            self.assertEqual(len(self.history(local_request(self.request), context="watten")["releases"]), 1)
+            with self.assertRaises(HTTPException) as denied:
+                self.history(local_request(self.guest), context="watten")
+            self.assertEqual(denied.exception.status_code, 404)
 
     def test_required_password_change_takes_priority_and_invalidated_login_cannot_ack(self):
         notice = self.publish()

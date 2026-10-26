@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from sqlalchemy import and_, func, select
 from sqlalchemy.orm import selectinload
 
+from .account_progress import ProgressIdentityError, lock_account_rows, require_exact_active_account
 from .achievement_feed import AchievementDifficulty, list_zdwa_achievement_feed
 from .achievements import (
     achievement_rank_legend_payload,
@@ -19,9 +20,12 @@ from .achievements import (
 )
 from .auth import require_admin, require_csrf, require_user, resolve_session
 from .database import session_scope
+from .dice_progress import origin_ids_for_progress, owners_for_progress, selected_zdwa_seats
 from .game_types import DEFAULT_GAME_TYPE
 from .models import (
     AbandonedGame,
+    AccountMergeGameResolution,
+    AccountProgressOrigin,
     AssignmentAudit,
     CompletedGame,
     DeletedGame,
@@ -31,7 +35,7 @@ from .models import (
 )
 from .player_names import completed_player_identities
 from .product_hosts import is_zilch_host
-from .security import normalize_username, utcnow
+from .security import as_utc, normalize_username, utcnow
 from .trends import recent_points_trend
 from .zilch_achievements import sync_zilch_cross_game_achievements_for_users
 
@@ -75,6 +79,20 @@ def _empty_bucket() -> dict:
 
 
 def _statistics_for_user(db, user_id: int) -> dict:
+    if len(origin_ids_for_progress(db, user_id)) > 1:
+        selected = selected_zdwa_seats(db, user_id)
+        buckets = {"normal": _empty_bucket(), "hardcore": _empty_bucket()}
+        for mode, hardcore in (("normal", False), ("hardcore", True)):
+            scores = [int(seat.points) for game, seat in sorted(
+                selected, key=lambda pair: (as_utc(pair[0].finished_at), pair[0].id), reverse=True,
+            ) if bool(game.hardcore) == hardcore]
+            if scores:
+                buckets[mode].update(games_played=len(scores), points_total=sum(scores), max_points=max(scores),
+                                     min_points=min(scores), average_points=round(sum(scores) / len(scores), 1),
+                                     median_points=round(float(median(scores)), 1))
+                buckets[mode].update(recent_points_trend(scores, games_played=len(scores), points_total=sum(scores)))
+        return {"overall": {"games_played": len(selected), "points_total": sum(int(seat.points) for _game, seat in selected)},
+                **buckets}
     rows = db.execute(
         select(
             CompletedGame.hardcore,
@@ -138,7 +156,7 @@ def abandonment_statistics_for_user(db, user_id: int) -> dict:
     counts = {"zdwa": 0, "zilch": 0}
     for game_type, count in db.execute(
         select(AbandonedGame.game_type, func.count(AbandonedGame.id))
-        .where(AbandonedGame.aborted_by_user_id == user_id, AbandonedGame.reason == "manual")
+        .where(AbandonedGame.aborted_by_user_id.in_(origin_ids_for_progress(db, user_id)), AbandonedGame.reason == "manual")
         .group_by(AbandonedGame.game_type)
     ):
         counts[game_type] = int(count)
@@ -152,6 +170,15 @@ def _recent_games_for_user(
     limit: int = 10,
     mode: Literal["normal", "hardcore", "all"] = "all",
 ) -> list[dict]:
+    if len(origin_ids_for_progress(db, user_id)) > 1:
+        rows = [(game, seat) for game, seat in selected_zdwa_seats(db, user_id)
+                if mode == "all" or bool(game.hardcore) == (mode == "hardcore")]
+        rows.sort(key=lambda pair: (as_utc(pair[0].finished_at), pair[0].id), reverse=True)
+        if limit > 0:
+            rows = rows[:limit]
+        return [{"game_id": game.game_id, "game_name": game.game_name, "finished_at": game.finished_at,
+                 "mode": game.mode, "hardcore": bool(game.hardcore), "points": int(seat.points), "team": seat.team}
+                for game, seat in rows]
     stmt = (
         select(CompletedGame, GameParticipant.points, GameParticipant.team)
         .join(GameParticipant, GameParticipant.game_id == CompletedGame.id)
@@ -264,6 +291,20 @@ def player_ranking(
                 .group_by(User.id)
             )
         rows = db.execute(statement).all()
+        merged_owners = set(db.scalars(select(AccountProgressOrigin.owner_user_id).distinct()))
+        if merged_owners:
+            by_user = {row[0].id: tuple(row) for row in rows}
+            for user in db.scalars(select(User).where(User.id.in_(merged_owners), User.is_active.is_(True))):
+                seats = [(game, seat) for game, seat in selected_zdwa_seats(db, user.id)
+                         if mode == "achievements" or bool(game.hardcore) == (mode == "hardcore")]
+                points = [int(seat.points) for _game, seat in seats]
+                if points or mode == "achievements":
+                    by_user[user.id] = (user, len(points), sum(points), sum(points) / len(points) if points else None,
+                                        max(points) if points else None)
+                else:
+                    by_user.pop(user.id, None)
+            rows = list(by_user.values())
+
         achievement_ranks = achievement_rank_payloads_for_user_ids(db, {user.id for user, *_values in rows})
         achievement_points = {user_id: rank["points"] for user_id, rank in achievement_ranks.items()}
 
@@ -300,6 +341,9 @@ def player_ranking(
                 recent = recent_by_user[int(user_id)]
                 if len(recent) < 3:
                     recent.append(int(score))
+        for user_id in set(user_ids) & merged_owners:
+            history = _recent_games_for_user(db, user_id, 3, "all" if mode == "achievements" else mode)
+            recent_by_user[user_id] = [row["points"] for row in history]
         return {
             "players": [
                 {
@@ -569,13 +613,40 @@ def assign_game_participant(participant_id: int, payload: AssignmentRequest, req
             # Existing assignment tooling belongs to public ZDWA histories;
             # never expose or alter a private Zilch participant through it.
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="participant_not_found")
+        previous_user_id = participant.user_id
+        original_ids = {value for value in (previous_user_id, payload.user_id, identity.user_id) if value is not None}
+        expected_owners = owners_for_progress(db, original_ids)
+        expected_origins = {owner: origin_ids_for_progress(db, owner) for owner in set(expected_owners.values())}
+        lock_ids = original_ids | set(expected_owners.values())
+        for ids in expected_origins.values():
+            lock_ids.update(ids)
+        try:
+            lock_account_rows(db, lock_ids)
+            actor = require_exact_active_account(db, identity.user_id)
+            if actor.role != "admin":
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="admin_required")
+            participant = db.scalar(select(GameParticipant).where(GameParticipant.id == participant_id)
+                                    .execution_options(populate_existing=True))
+            if (participant is None or participant.user_id != previous_user_id
+                    or owners_for_progress(db, original_ids) != expected_owners
+                    or any(origin_ids_for_progress(db, owner) != ids for owner, ids in expected_origins.items())):
+                raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="participant_assignment_changed")
+        except ProgressIdentityError as exc:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="participant_assignment_changed") from exc
         if payload.user_id is not None:
-            target = db.get(User, payload.user_id)
-            if not target or not target.is_active:
-                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="user_not_found")
+            try:
+                require_exact_active_account(db, payload.user_id)
+            except ProgressIdentityError as exc:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="user_not_found") from exc
         previous_user_id = participant.user_id
         if previous_user_id == payload.user_id:
             return {"ok": True, "changed": False}
+        previous_owner = expected_owners.get(previous_user_id)
+        same_owner = previous_owner is not None and previous_owner == expected_owners.get(payload.user_id)
+        continuity_dates = {}
+        if same_owner:
+            before = sync_user_achievements(db, db.get(User, previous_owner))
+            continuity_dates = {item["key"]: item["unlocked_at"] for item in before["unlocked"]}
         source_completed_game_id = int(participant.game_id)
         participant.user_id = payload.user_id
         participant.assigned_by_user_id = identity.user_id
@@ -590,7 +661,17 @@ def assign_game_participant(participant_id: int, payload: AssignmentRequest, req
             )
         )
         affected_user_ids = {user_id for user_id in (previous_user_id, payload.user_id) if user_id is not None}
+        for resolution in db.scalars(select(AccountMergeGameResolution).where(
+            AccountMergeGameResolution.game_type == DEFAULT_GAME_TYPE,
+            AccountMergeGameResolution.game_id == participant.game.game_id,
+        )):
+            db.delete(resolution)
+        affected_user_ids = set(owners_for_progress(db, affected_user_ids).values())
         db.flush()
+        if same_owner:
+            from .dice_merge_achievements import _reconcile, merge_projection_enabled
+            if merge_projection_enabled(db, previous_owner, DEFAULT_GAME_TYPE):
+                _reconcile(db, previous_owner, DEFAULT_GAME_TYPE, continuity_dates=continuity_dates)
         if previous_user_id is not None:
             previous_user_still_participates = db.scalar(
                 select(GameParticipant.id)

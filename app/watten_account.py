@@ -269,26 +269,59 @@ def _progress(db, user_id, matches):
                                  for item in sorted(grants, key=lambda item: item.grant_sequence) if item.grant_sequence > ack]}}, credits
 
 
-def build_watten_account(user_id: int, *, before=None, limit=12) -> dict:
+def _account_boundary(user_id, before, limit):
     boundary = _decode_cursor(before)
     _require(type(user_id) is int and user_id > 0, "watten_account_invalid_user")
     _require(type(limit) is int and 1 <= limit <= 30, "watten_account_invalid_limit")
+    return boundary
+
+
+def build_watten_account(user_id: int, *, before=None, limit=12) -> dict:
+    _account_boundary(user_id, before, limit)
     _require(database_schema_ready(), "watten_account_unavailable")
     with session_scope() as db:
-        existing = set(db.scalars(select(User.id)))
-        user = db.get(User, user_id)
-        _require(user is not None and user.is_active, "watten_account_invalid_user")
-        matches = list(_owned_matches(db, user_id, existing))
-        progress, credits = _progress(db, user_id, matches)
-        eligible = [item for item in matches if boundary is None or (as_utc(item.row.finished_at), item.row.id) < boundary]
-        selected = eligible[:limit]
-        history = [_record(item, user_id) for item in selected]
-        wins = sum(_record(item, user_id)["outcome"] == "won" for item in matches)
+        return build_watten_account_in_session(db, user_id, before=before, limit=limit)
+
+
+def build_watten_account_in_session(db, user_id: int, *, before=None, limit=12) -> dict:
+    """Project the exact active account using only the caller's transaction.
+
+    The caller provides a ready schema. This read never creates journal rows or
+    advances either global or match-specific presentation acknowledgements.
+    """
+    boundary = _account_boundary(user_id, before, limit)
+    existing = set(db.scalars(select(User.id)))
+    user = db.get(User, user_id)
+    _require(user is not None and user.is_active, "watten_account_invalid_user")
+    matches = list(_owned_matches(db, user_id, existing))
+    progress, credits = _progress(db, user_id, matches)
+    from .account_progress import owned_origin_ids
+    from .watten_merge import _journals, is_merged, project_progress, selected_matches
+    if is_merged(db, user_id):
+        journals = _journals(db, owned_origin_ids(db, user_id), seed={user_id: (matches, progress, credits)}, existing=existing)
+        progress, credits = project_progress(db, user_id, progress, journals=journals)
+        seats = selected_matches(db, user_id, journals=journals)
+        eligible = [item for item in seats if boundary is None or
+                    (as_utc(item.match.row.finished_at), item.match.row.id) < boundary]
+        page = eligible[:limit]
         credited_ids = {item.game_id for item in credits}
         return {"schema_version": 1, "game_type": "watten", "status": "draft", "coverage": {"complete": True},
-                "statistics": {"all_matches": len(matches), "all_wins": wins, "credited_matches": len(credits),
-                               "credited_wins": sum(item.won for item in credits),
-                               "uncredited_matches": sum(item.evidence.game_id not in credited_ids for item in matches),
-                               "last_finished_at": matches[0].evidence.finished_at.isoformat() if matches else None},
-                "history": {"matches": history, "next_cursor": _cursor(selected[-1].row) if len(eligible) > limit else None},
+                "statistics": {"all_matches": len(seats), "all_wins": sum(item.own.won for item in seats),
+                               "credited_matches": len(credits), "credited_wins": sum(item.won for item in credits),
+                               "uncredited_matches": sum(item.match.evidence.game_id not in credited_ids for item in seats),
+                               "last_finished_at": seats[0].match.evidence.finished_at.isoformat() if seats else None},
+                "history": {"matches": [_record(item.match, item.origin_id) for item in page],
+                            "next_cursor": _cursor(page[-1].match.row) if len(eligible) > limit else None},
                 "progress": progress}
+    eligible = [item for item in matches if boundary is None or (as_utc(item.row.finished_at), item.row.id) < boundary]
+    selected = eligible[:limit]
+    history = [_record(item, user_id) for item in selected]
+    wins = sum(_record(item, user_id)["outcome"] == "won" for item in matches)
+    credited_ids = {item.game_id for item in credits}
+    return {"schema_version": 1, "game_type": "watten", "status": "draft", "coverage": {"complete": True},
+            "statistics": {"all_matches": len(matches), "all_wins": wins, "credited_matches": len(credits),
+                           "credited_wins": sum(item.won for item in credits),
+                           "uncredited_matches": sum(item.evidence.game_id not in credited_ids for item in matches),
+                           "last_finished_at": matches[0].evidence.finished_at.isoformat() if matches else None},
+            "history": {"matches": history, "next_cursor": _cursor(selected[-1].row) if len(eligible) > limit else None},
+            "progress": progress}

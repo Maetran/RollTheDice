@@ -82,6 +82,10 @@
 .account-tab { min-width: 0; min-height: 44px; padding-inline: .35rem; font-size: clamp(.8rem, 3.6vw, 1rem); border-color: transparent; background: transparent; color: var(--muted); box-shadow: none; }
 .account-tab:hover { transform: none; border-color: color-mix(in srgb, var(--accent) 35%, transparent); }
 .account-tab.active { color: #fff; background: var(--accent); border-color: var(--accent); }
+@media (max-width: 360px) {
+  /* Share spare width after the full labels, including English Achievements. */
+  .account-tabs { grid-template-columns: repeat(3, auto); }
+}
 .account-panel[hidden] { display: none; }
 .account-settings-panel { display: grid; gap: 1rem; }
 #pushPreferencesForm :is(select, textarea) { width: 100%; min-width: 0; box-sizing: border-box; }

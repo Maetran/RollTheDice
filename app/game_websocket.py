@@ -271,6 +271,21 @@ async def _receive_messages(
                     code=1008,
                 )
                 return
+        elif session.auth_identity is not None:
+            # ZDWA caches the socket identity; refresh it for every action so a
+            # deactivated or retired account cannot keep acting on its cached
+            # session, and is closed rather than silently continuing as a guest.
+            current_identity = resolve_session(session.websocket)
+            if current_identity is None or current_identity.user_id != session.auth_identity.user_id:
+                await close_with_error(
+                    session.websocket,
+                    "Dieses Konto ist nicht mehr aktiv.",
+                    fatal=True,
+                    code=1008,
+                    error_code="account_retired_or_inactive",
+                )
+                return
+            session.auth_identity = current_identity
 
         rate_limit = limiter.check(action)
         if rate_limit == "close":

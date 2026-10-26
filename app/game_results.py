@@ -10,6 +10,7 @@ from .active_games import delete_active_game
 from .game_achievement_evidence import styler_full_snapshot_evidence
 from .game_engine import _compute_final_totals, _rows_from_scoreboard
 from .game_history import persist_runtime_game_result, stable_game_id
+from .game_lifecycle import bound_revision
 from .game_state import CHAT_HISTORY_LIMIT, GameDict, is_team_mode
 from .game_types import DEFAULT_GAME_TYPE, game_type_from_state
 from .leaderboard_service import (
@@ -273,6 +274,11 @@ def finalize_and_log_results(files: LeaderboardFiles, g: GameDict):
     if game_type_from_state(g) != DEFAULT_GAME_TYPE:
         logger.warning("Skipping ZDWA finalization for non-ZDWA game %s", g.get("_id"))
         return {"achievement_unlocks": {}, "achievement_rank_ups": {}}
+    # An aborted room never earns a completed result, statistic or achievement,
+    # independent of whichever caller reached this finalizer.
+    if g.get("_aborted"):
+        logger.warning("Skipping ZDWA finalization for aborted game %s", g.get("_id"))
+        return {"achievement_unlocks": {}, "achievement_rank_ups": {}}
 
     totals = _compute_final_totals(g)
     mode = str(g["_mode"]).lower()
@@ -333,7 +339,7 @@ def finalize_and_log_results(files: LeaderboardFiles, g: GameDict):
             ranks_after,
         )
         g["_completion_persisted"] = True
-        delete_active_game(str(g.get("_id") or ""))
+        delete_active_game(str(g.get("_id") or ""), expected_revision=bound_revision(g))
         return {
             "achievement_unlocks": {
                 str(player["id"]): achievement_unlocks.get(int(player["user_id"]), [])
@@ -561,7 +567,7 @@ def finalize_and_log_results(files: LeaderboardFiles, g: GameDict):
     # during the final socket broadcast.
     if write_result.succeeded:
         g["_completion_persisted"] = True
-        delete_active_game(str(g.get("_id") or ""))
+        delete_active_game(str(g.get("_id") or ""), expected_revision=bound_revision(g))
     return {
         "achievement_unlocks": {
             str(player["id"]): achievement_unlocks.get(int(player["user_id"]), [])

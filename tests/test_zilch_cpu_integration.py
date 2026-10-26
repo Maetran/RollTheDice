@@ -26,6 +26,7 @@ from app import main
 from app.active_games import load_active_games, save_active_game
 from app.auth import create_user, login
 from app.database import configure_database, session_scope, upgrade_database
+from app.game_lifecycle import bound_revision, commit_room_binding
 from app.game_state import games
 from app.game_ws_session import GameSocketSession, handle_session_action
 from app.models import ActiveGame
@@ -64,9 +65,13 @@ class RecordingSocket:
 
     def __init__(self) -> None:
         self.messages: list[dict] = []
+        self.closed: list[int] = []
 
     async def send_json(self, message: dict) -> None:
         self.messages.append(message)
+
+    async def close(self, code: int = 1000) -> None:
+        self.closed.append(code)
 
 
 class ZilchCpuHttpAndSocketTestCase(TestCase):
@@ -126,19 +131,19 @@ class ZilchCpuHttpAndSocketTestCase(TestCase):
         self.game_ids.append(game_id)
         return game_id
 
-    def _started_cpu_turn(self, *, strategy: str = "conservative") -> tuple[dict, str, str]:
+    def _started_cpu_turn(self, *, strategy: str = "conservative", host_user_id: int = 42) -> tuple[dict, str, str]:
         """Build one started CPU turn through the durable state adapter."""
         game_id = f"zilch-cpu-recovery-{len(self.game_ids)}"
         self.game_ids.append(game_id)
         game = new_zilch_game(game_id, "CPU recovery", 2)
-        cpu = configure_zilch_cpu_game(game, host_user_id=42, cpu_strategy=strategy)
+        cpu = configure_zilch_cpu_game(game, host_user_id=host_user_id, cpu_strategy=strategy)
         human_id = "human-1"
         join_zilch_player(
             game,
             {
                 "id": human_id,
                 "name": "Mani",
-                "user_id": 42,
+                "user_id": host_user_id,
                 "ws": RecordingSocket(),
                 "resume_token": "human-resume",
             },
@@ -420,9 +425,13 @@ class ZilchCpuHttpAndSocketTestCase(TestCase):
 
     def test_recovered_cpu_turn_waits_for_human_rejoin_then_reuses_one_runner(self) -> None:
         """Recovery keeps a real human pause, then starts exactly one CPU task."""
-        game, human_id, cpu_id = self._started_cpu_turn()
+        host_user_id, _token = self._identity("previewfriend")
+        game, human_id, cpu_id = self._started_cpu_turn(host_user_id=host_user_id)
+        commit_room_binding(game, [host_user_id])
+        self.assertEqual(bound_revision(game), 1)
         save_active_game(game)
         restored = load_active_games()[str(game["_id"])]
+        self.assertEqual(bound_revision(restored), bound_revision(game))
         games[str(game["_id"])] = restored
 
         self.assertTrue(restored["_resume_required"])
@@ -449,6 +458,7 @@ class ZilchCpuHttpAndSocketTestCase(TestCase):
                 await first
 
         asyncio.run(scenario())
+        self.assertEqual(socket.closed, [])
         cpu_board = restored["_zilch_boards"][cpu_id]
         self.assertEqual(cpu_board["total_points"], 500)
         self.assertEqual([round_entry["event"] for round_entry in cpu_board["rounds"]], ["bank"])

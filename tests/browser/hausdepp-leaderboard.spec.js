@@ -11,6 +11,7 @@ async function owner(page, language = 'de') {
   page.hausdeppLeaderboardOwner = { headers, language: user.preferences?.preferred_language || 'de' };
   await page.request.put('/api/auth/preferences/language', { headers, data: { preferred_language: language } });
   await page.addInitScript(value => localStorage.setItem('zdwa_language', value), language);
+  return user;
 }
 
 test.afterEach(async ({ page }) => {
@@ -35,7 +36,7 @@ const labelledLeaderboard = {
 
 for (const language of ['de', 'en']) {
   test(`${language}: real private leaderboard is linked from the lobby and account`, async ({ page }) => {
-    await owner(page, language);
+    const user = await owner(page, language);
     await page.goto('/hausdepp');
     await page.locator('.hd-nav a[href="/hausdepp/rangliste"]').click();
     await expect(page).toHaveURL(/\/hausdepp\/rangliste$/);
@@ -47,9 +48,23 @@ for (const language of ['de', 'en']) {
     expect(response.status()).toBe(200);
     expect(response.headers()['cache-control']).toBe('no-store');
     expect((await response.json()).ranking).toBe('finished_rounds');
-    await page.locator('a[href="/hausdepp/konto"]').last().click();
-    await page.locator('.hd-account-shortcuts a[href="/hausdepp/rangliste"]').click();
+    await page.locator('.hd-leaderboard-links a[href="/hausdepp/konto"]').click();
+    expect(typeof user.must_change_password).toBe('boolean');
+    const accountPath = user.must_change_password ? '/hausdepp/konto/einstellungen#passwort' : '/hausdepp/konto';
+    await expect(page).toHaveURL(new URL(accountPath, page.url()).href);
+    if (user.must_change_password) await expect(page.locator('#hausdeppPasswordForm')).toBeVisible();
+    else await expect(page.locator('#hausdeppAccountStats')).toBeVisible();
+    const accountNavigation = page.getByRole('navigation', { name: language === 'de' ? 'Kontobereiche' : 'Account sections', exact: true });
+    await expect(accountNavigation.getByRole('link')).toHaveText(language === 'de'
+      ? ['Statistik', 'Erfolge', 'Einstellungen'] : ['Statistics', 'Achievements', 'Settings']);
+    expect(await accountNavigation.getByRole('link').evaluateAll(links => links.map(link => link.getAttribute('href'))))
+      .toEqual(['/hausdepp/konto#statistics', '/hausdepp/konto#erfolge', '/hausdepp/konto/einstellungen']);
+    await expect(accountNavigation.locator('[aria-current="page"]')).toHaveAttribute('data-account-destination', user.must_change_password ? 'settings' : 'statistics');
+    const ranking = page.locator('#hausdeppHeader').getByRole('link', { name: language === 'de' ? 'Spieler & Ranking' : 'Players & Ranking', exact: true });
+    await expect(ranking).toHaveAttribute('href', '/hausdepp/rangliste');
+    await ranking.click();
     await expect(page).toHaveURL(/\/hausdepp\/rangliste$/);
+    await expect(page.locator('main[data-page="leaderboard"]')).toBeVisible();
   });
 
   test(`${language}: labelled leaderboard preserves shared places, escaped names and table-size filters`, async ({ page }) => {

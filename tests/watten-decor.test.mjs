@@ -138,7 +138,8 @@ function fixture({ width = 800, height = 700, reducedMotion = false, language = 
   const win = new Events(), reduced = new Events(); reduced.matches = reducedMotion;
   win.innerWidth = width; win.innerHeight = height;
   dom.propSide = width >= 900 && height >= 520 ? 88 : 56;
-  win.getComputedStyle = () => ({ getPropertyValue: () => String(dom.propSide) });
+  win.getComputedStyle = node => ({ getPropertyValue: () => String(dom.propSide),
+    visibility: node?.style.visibility || "visible", display: node?.style.display || "block" });
   win.matchMedia = () => reduced; win.visualViewport = new Events();
   win.intervals = new Set(); win.setInterval = callback => { win.intervals.add(callback); return callback; };
   win.clearInterval = callback => win.intervals.delete(callback);
@@ -456,6 +457,82 @@ test("opening last-trick details reflows phone props outside the expanded histor
   for (const node of f.props().filter(item => !item.hidden)) assert.ok(fitsDecor(node.getBoundingClientRect(), geometry));
   history.hidden = true; f.attributeChanged(history, "hidden");
   assert.ok(f.props().some(node => !node.hidden));
+});
+
+test("a harmless accepted table repaint keeps a valid decoration drag captured", () => {
+  const f = fixture({ width: 1180, height: 820 }); f.update("play");
+  const node = f.props()[0], area = node.getBoundingClientRect();
+  node.emit("pointerdown", { button: 0, pointerId: 7, clientX: area.left, clientY: area.top });
+  assert.equal(node.captured, 7);
+  const back = new Node(f.dom); f.view.append(back);
+  // renderSeats reassigns hidden on the accepted backs, including unchanged
+  // values. Such a mutation is not an orientation change or lost pointer.
+  f.attributeChanged(back, "hidden");
+  assert.equal(node.captured, 7, "unrelated native repaint must not release pointer capture");
+  f.update("play");
+  assert.equal(node.captured, 7, "same-phase accepted snapshots preserve a valid drag too");
+  f.modal.hidden = false; f.observers[1].callback();
+  assert.equal(node.captured, null, "a real blocking surface still cancels capture immediately");
+  assert.equal(node.hidden, true);
+});
+
+test("a same-phase accepted obstacle releases capture and reflows the prop away from the new control", () => {
+  const f = fixture({ width: 1180, height: 820 }); f.update("play");
+  const node = f.props()[0], area = node.getBoundingClientRect();
+  node.emit("pointerdown", { button: 0, pointerId: 9, clientX: area.left, clientY: area.top });
+  f.protectedAreas.push(new Node(f.dom, area));
+  f.update("play");
+  assert.equal(node.captured, null);
+  const moved = node.getBoundingClientRect();
+  assert.ok(node.hidden || moved.right <= area.left || moved.left >= area.right
+    || moved.bottom <= area.top || moved.top >= area.bottom);
+});
+
+test("an unpainted inspection slot does not become a phantom drag blocker", () => {
+  const f = fixture(); f.update("play");
+  const node = f.props()[0], area = node.getBoundingClientRect();
+  const unplaced = new Node(f.dom, area); unplaced.style.visibility = "hidden";
+  f.protectedAreas.push(unplaced);
+  node.emit("pointerdown", { button: 0, pointerId: 3, clientX: area.left, clientY: area.top });
+  f.update("play");
+  assert.equal(node.captured, 3);
+  unplaced.style.visibility = "visible";
+  f.attributeChanged(unplaced, "hidden");
+  f.update("play");
+  assert.equal(node.captured, null);
+});
+
+test("a reveal mounted after the decoration controller still protects its asynchronously placed cards", () => {
+  const f = fixture(); f.update("play");
+  const node = f.props()[0], area = node.getBoundingClientRect(), reveal = new Node(f.dom, area);
+  const originalQuery = f.root.querySelectorAll;
+  f.root.querySelectorAll = selector => selector === "[data-wt-reveal], [data-wt-bloedeln]" ? [reveal] : originalQuery(selector);
+  f.update("play");
+  assert.ok(f.observers[1].observations.some(item => item.target === reveal));
+  node.emit("pointerdown", { button: 0, pointerId: 6, clientX: area.left, clientY: area.top });
+  f.protectedAreas.push(reveal);
+  f.attributeChanged(reveal, "style");
+  assert.equal(node.captured, null, "freshly positioned showing still wins over the captured prop");
+});
+
+test("a flying reveal protects its stable landing footprint without reading the translated card", () => {
+  const f = fixture(); f.update("play");
+  const prop = f.props()[0], landing = prop.getBoundingClientRect(), reveal = new Node(f.dom, rect(0, 0, 320, 568));
+  const flying = new Node(f.dom, rect(280, 10, 36, 57)); reveal.append(flying);
+  reveal.dataset.wtInspectionPositioned = "true";
+  reveal.wtInspectionFootprint = [landing];
+  let reads = 0;
+  flying.getBoundingClientRect = () => { reads += 1; return rect(280, 10, 36, 57); };
+  const originalQuery = f.root.querySelectorAll;
+  f.root.querySelectorAll = selector => selector === "[data-wt-reveal], [data-wt-bloedeln]" ? [reveal] : originalQuery(selector);
+  f.protectedAreas.push(flying);
+  prop.emit("pointerdown", { button: 0, pointerId: 5, clientX: landing.left, clientY: landing.top });
+  f.update("play");
+  assert.equal(prop.captured, null, "the primary landing wins immediately, before its flight finishes");
+  assert.equal(reads, 0, "the current animation offset never becomes the decoration authority");
+  const moved = prop.getBoundingClientRect();
+  assert.ok(prop.hidden || moved.right <= landing.left || moved.left >= landing.right
+    || moved.bottom <= landing.top || moved.top >= landing.bottom);
 });
 
 test("destroy/account switch/pagehide end captures and remove every item, effect and listener", () => {

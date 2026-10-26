@@ -12,15 +12,22 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import patch
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app import main
 from app.auth import create_user
 from app.database import configure_database, session_scope, upgrade_database
 from app.game_history import persist_completed_game_result
-from app.hausdepp_account import build_hausdepp_account_for_user
+from app.hausdepp_account import build_hausdepp_account_for_user, build_hausdepp_account_for_user_in_session
+from app.hausdepp_achievements import synchronize_hausdepp_progress_in_session
 from app.hausdepp_results import finalize_hausdepp_result, list_hausdepp_results_for_user, validate_hausdepp_result
-from app.models import CompletedGame, GameParticipant
+from app.models import (
+    CompletedGame,
+    GameParticipant,
+    HausdeppAchievementUnlock,
+    HausdeppPresentationReceipt,
+    HausdeppRoundCredit,
+)
 
 
 class HausdeppAccountTests(unittest.TestCase):
@@ -60,6 +67,37 @@ class HausdeppAccountTests(unittest.TestCase):
         )
         self.assertTrue(result.succeeded)
         return result
+
+    def test_caller_session_recovery_rolls_back_all_derived_rows_without_acknowledging(self):
+        self.store(self.payload("outer-one", loser="other"))
+        self.store(self.payload("outer-two", at=self.at + timedelta(minutes=1)))
+        derived = (HausdeppRoundCredit, HausdeppAchievementUnlock, HausdeppPresentationReceipt)
+        with session_scope() as db:
+            sources = tuple(tuple(db.execute(select(model.__table__))) for model in (CompletedGame, GameParticipant))
+        with self.assertRaisesRegex(RuntimeError, "rollback outer transaction"):
+            with session_scope() as db:
+                with patch("app.hausdepp_account.session_scope", side_effect=AssertionError("nested account session")), \
+                        patch("app.hausdepp_achievements.session_scope", side_effect=AssertionError("nested recovery session")), \
+                        patch("app.hausdepp_results.session_scope", side_effect=AssertionError("nested membership session")):
+                    account = build_hausdepp_account_for_user_in_session(db, self.user.id, limit=1)
+                    self.assertEqual(account["statistics"]["rounds_played"], 2)
+                    self.assertIsNotNone(account["history"]["next_cursor"])
+                    self.assertEqual(account["presentation"],
+                                     synchronize_hausdepp_progress_in_session(db, self.user.id)["presentation"])
+                    self.assertIsNotNone(account["presentation"]["pending"])
+                    receipt = db.get(HausdeppPresentationReceipt, self.user.id)
+                    self.assertEqual(receipt.acknowledged_points, 0)
+                    self.assertIn(str(account["presentation"]["revision"]), json.loads(receipt.presentation_scores_json))
+                    self.assertTrue(all(db.scalar(select(func.count()).select_from(model)) > 0 for model in derived))
+                    self.assertEqual(tuple(tuple(db.execute(select(model.__table__)))
+                                           for model in (CompletedGame, GameParticipant)), sources)
+                    raise RuntimeError("rollback outer transaction")
+        with session_scope() as db:
+            self.assertEqual(tuple(db.scalar(select(func.count()).select_from(model)) for model in derived), (0, 0, 0))
+            self.assertEqual(tuple(tuple(db.execute(select(model.__table__)))
+                                   for model in (CompletedGame, GameParticipant)), sources)
+        # The ordinary entry point retains exactly the same response and unseen boundary.
+        self.assertEqual(build_hausdepp_account_for_user(self.user.id, limit=1), account)
 
     def test_all_time_totals_exceed_both_history_and_source_page_limits(self):
         # More than the former 30-result cap and the bounded 250-row source page.

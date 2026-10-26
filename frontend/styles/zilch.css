@@ -391,6 +391,7 @@ html[data-hausdepp-login="true"] .zilch-login-card :is(button, input, select, su
   flex-wrap: wrap;
   gap: .25rem .6rem;
 }
+.zilch-account-head__identity h1 { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
 .zilch-account-head__rank .zilch-rank-badge {
   margin: .15rem 0 .55rem;
   padding: .24rem .5rem;
@@ -849,15 +850,17 @@ html[data-game="zilch"] .zilch-cpu-strategy { grid-column: 1 / -1; }
 }
 
 .zilch-account-tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: .45rem;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .25rem;
   margin: 0 0 var(--zilch-space-4);
 }
 
 .zilch-account-tab {
-  min-height: 2.65rem;
-  padding: .55rem .8rem;
+  min-width: 0;
+  min-height: 44px;
+  padding: .55rem .2rem;
+  font-size: clamp(12px, 3.4vw, 1rem);
   border: 1px solid rgba(255, 235, 181, .42);
   border-radius: var(--zilch-radius-sm);
   color: #fff8e8;

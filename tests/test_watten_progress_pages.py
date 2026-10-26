@@ -6,7 +6,7 @@ import pytest
 from sqlalchemy import func, select
 
 from app.database import session_scope
-from app.models import WattenAchievementGrant, WattenMatchCredit, WattenMatchPresentationAck, WattenProgressState
+from app.models import User, WattenAchievementGrant, WattenMatchCredit, WattenMatchPresentationAck, WattenProgressState
 from app.watten_runtime import persist_watten_game
 from tests import test_watten_runtime as native
 from tests.test_watten_match_evidence import NativeMatch
@@ -44,6 +44,21 @@ def test_native_progress_pages_protect_identity_and_keep_canonical_return_path(s
         response = server.get(path, headers={"Cookie": cookie})
         assert response.status_code == 404
         assert 'data-watten-progress-page=' not in response.text
+
+
+def test_required_password_opens_existing_settings_anchor_only_for_account_pages(server):
+    identity, cookie = native.account("ProgressRequiredPassword")
+    with session_scope() as db:
+        db.get(User, identity.user_id).must_change_password = True
+    for path in ("/watten/konto", *PAGES[:2]):
+        response = server.get(path, headers={"Cookie": cookie}, follow_redirects=False)
+        assert response.status_code == 303
+        assert response.headers["location"] == "/watten/konto/einstellungen#passwort"
+        assert_private(response)
+    assert server.get("/watten/konto/einstellungen", headers={"Cookie": cookie}).status_code == 200
+    ranking = server.get("/watten/rangliste", headers={"Cookie": cookie}, follow_redirects=False)
+    assert ranking.status_code == 200
+    assert 'data-watten-progress-page="leaderboard"' in ranking.text
 
 
 @pytest.mark.parametrize("flag", ("ROLLTHEDICE_WATTEN_ACCOUNT_PREVIEW", "ROLLTHEDICE_WATTEN_GAME_PREVIEW"))

@@ -15,10 +15,10 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import patch
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 
 from app import database
-from app.achievements import _game_metrics, sync_achievements_for_users
+from app.achievements import _game_metrics, sync_achievements_for_users, sync_achievements_for_users_in_session
 from app.auth import create_user
 from app.database import configure_database, session_scope, upgrade_database
 from app.game_engine import _compute_final_totals
@@ -250,6 +250,28 @@ class ZDWAConjunctionCompletionTestCase(GameStateTestCase):
                 row.achievement_key: (row.id, row.unlocked_at, row.source_completed_game_id)
                 for row in db.scalars(select(UserAchievement).where(UserAchievement.user_id == user_id))
             }
+
+    def test_caller_session_batch_recovers_sources_without_committing_outer_changes(self):
+        user = self.account("AtomicBatch")
+        _game, completed_id = self.solo(user)
+        before = self.awards(user.id)
+        with self.assertRaisesRegex(RuntimeError, "caller rollback"):
+            with session_scope() as db:
+                db.execute(delete(UserAchievement).where(
+                    UserAchievement.user_id == user.id, UserAchievement.achievement_key.in_(NEW_KEYS),
+                ))
+                with patch("app.database.session_scope", side_effect=AssertionError("independent session")):
+                    recovered = sync_achievements_for_users_in_session(
+                        db, {user.id}, source_completed_game_id=completed_id,
+                    )
+                self.assertEqual({award["key"] for award in recovered[user.id]}, NEW_KEYS)
+                repaired = list(db.scalars(select(UserAchievement).where(
+                    UserAchievement.user_id == user.id, UserAchievement.achievement_key.in_(NEW_KEYS),
+                )))
+                self.assertEqual(len(repaired), 2)
+                self.assertTrue(all(row.source_completed_game_id == completed_id for row in repaired))
+                raise RuntimeError("caller rollback")
+        self.assertEqual(self.awards(user.id), before)
 
     def test_final_write_persists_real_totals_links_awards_and_retains_first_date(self):
         user = self.account("Terminal")

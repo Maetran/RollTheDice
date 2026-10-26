@@ -59,6 +59,14 @@ class HausdeppAuthFlowTests(unittest.TestCase):
         return target, parse_qs(target.fragment)['token'][0]
 
     def test_house_auth_pages_keep_product_identity_and_protected_settings(self):
+        alias = self.client.get('/konto', follow_redirects=False)
+        self.assertEqual(alias.status_code, 308)
+        self.assertEqual(alias.headers['location'], '/hausdepp/konto')
+        self.assertEqual(alias.headers['cache-control'], 'no-store')
+        self.assertIn('noindex', alias.headers['x-robots-tag'])
+        account = self.client.get('/hausdepp/konto', follow_redirects=False)
+        self.assertEqual(account.status_code, 303)
+        self.assertEqual(parse_qs(urlsplit(account.headers['location']).query)['return_to'], ['/hausdepp/konto'])
         for path in ('/hausdepp/anmelden', '/zilch/anmelden', '/passwort-vergessen?app=hausdepp',
                      '/registrierung/bestaetigen', '/passwort-zuruecksetzen', '/email-bestaetigen'):
             response = self.client.get(path)
@@ -86,9 +94,22 @@ class HausdeppAuthFlowTests(unittest.TestCase):
         user = create_user('HouseSettings', 'test-password-123', must_change_password=False)
         _identity, token = login(request_for(), user.username, 'test-password-123')
         self.client.cookies.set('rollthedice_session', token)
+        self.assertEqual(self.client.get('/hausdepp/konto').status_code, 200)
         self.assertEqual(self.client.get('/hausdepp/konto/einstellungen').status_code, 200)
         for file in ('hausdepp-login.html', 'hausdepp-settings.html', 'hausdepp-email-action.html'):
             self.assertEqual(self.client.get(f'/static/{file}').status_code, 404)
+
+    def test_required_password_keeps_account_entry_on_settings_without_redirecting_ranking(self):
+        user = create_user('HouseRequiredPassword', 'test-password-123', must_change_password=True)
+        _identity, token = login(request_for(), user.username, 'test-password-123')
+        self.client.cookies.set('rollthedice_session', token)
+        response = self.client.get('/hausdepp/konto', follow_redirects=False)
+        self.assertEqual(response.status_code, 303)
+        self.assertEqual(response.headers['location'], '/hausdepp/konto/einstellungen#passwort')
+        self.assertEqual(response.headers['cache-control'], 'no-store')
+        self.assertIn('noindex', response.headers['x-robots-tag'])
+        self.assertEqual(self.client.get('/hausdepp/konto/einstellungen').status_code, 200)
+        self.assertEqual(self.client.get('/hausdepp/rangliste').status_code, 200)
 
     def test_registration_email_completion_and_reset_retain_shared_identity_and_house_context(self):
         response = self.post('/api/auth/register', {'username': 'HouseEmail', 'email': 'house@example.test',

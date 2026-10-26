@@ -170,14 +170,16 @@ def qualifying_surprises(db, evidence, bindings, user_id: int, *, facts=None) ->
 
 def store_surprise_achievements(db, evidence, bindings) -> None:
     """Extend the existing grant sequence only after the native credit is stored."""
+    from .watten_merge import effective_awards, is_merged
     db.flush()
     for user_id in sorted(binding.user_id for binding in bindings if binding.user_id is not None):
         state = db.scalar(select(WattenProgressState).where(WattenProgressState.user_id == user_id)
                           .with_for_update().execution_options(populate_existing=True))
         if state is None or db.get(WattenMatchCredit, (user_id, state.generation, evidence.game_id)) is None:
             continue
+        inherited = effective_awards(db, user_id) if is_merged(db, user_id) else {}
         for key in qualifying_surprises(db, evidence, bindings, user_id):
-            if db.get(WattenAchievementGrant, (user_id, state.generation, key)) is not None:
+            if key in inherited or db.get(WattenAchievementGrant, (user_id, state.generation, key)) is not None:
                 continue
             state.grant_sequence += 1
             db.add(WattenAchievementGrant(user_id=user_id, generation=state.generation, achievement_id=key,
@@ -185,3 +187,10 @@ def store_surprise_achievements(db, evidence, bindings) -> None:
                                          reached_at=evidence.finished_at, xp=_GOALS[key].xp,
                                          policy_version=DRAFT_POLICY_VERSION, grant_sequence=state.grant_sequence))
             db.flush()
+
+    from .account_progress import progress_owner_ids
+    from .watten_merge import grant_combined
+    identities = [binding.user_id for binding in bindings if binding.user_id is not None]
+    for owner_id in sorted(set(progress_owner_ids(db, identities).values())):
+        if is_merged(db, owner_id):
+            grant_combined(db, owner_id, reached_at=evidence.finished_at)

@@ -176,7 +176,7 @@ test('a regularly finished hand can leave between tournament rounds without a fo
 });
 
 test('history keeps remaining and withdrawn outcomes distinct from regular finishes', async ({ page }) => {
-  await setup(page);
+  await setup(page, 'de', { freshActor: true });
   const response = await page.request.get('/api/hausdepp/account');
   expect(response.ok()).toBeTruthy();
   const account = await response.json();
@@ -186,6 +186,8 @@ test('history keeps remaining and withdrawn outcomes distinct from regular finis
       { id: 'other', name: 'Labelled former player', outcome: 'withdrawn', finished_position: null, is_cpu: false }] }] };
   await page.route('**/api/hausdepp/account?*', route => route.fulfill({ json: account }));
   await page.goto('/hausdepp/konto#runden');
+  await expect(page).toHaveURL(/\/hausdepp\/konto#runden$/);
+  await expect(page.locator('#hausdeppHistory')).toBeVisible();
   const row = page.locator('[data-round-id="labelled-remaining-round"]');
   await expect(row.locator('.hd-outcome')).toHaveText('Verblieben');
   await row.locator('summary').click();

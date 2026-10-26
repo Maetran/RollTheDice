@@ -28,6 +28,7 @@ import { initializeAppMode } from "../multigame/app-mode.js";
 import { initializeSuiteHeader } from "../shell/header.js";
 import { createGameTour } from "../shared/game-tours.js";
 import { createCompactHeader } from "./compact-header.js";
+import { initializeReleaseNotes } from "../shared/release-notes.js";
 
 // Public lobby launches own the install flow; active tables only register.
 const publicBetaDocument = document.documentElement.dataset.wattenPublicBeta === "true";
@@ -100,7 +101,7 @@ function renderNav(auth) {
   nav.innerHTML = `<a href="${publicPageUrl("/watten")}"${page === "lobby" ? " aria-current=\"page\"" : ""}>${esc(t("nav.lobby"))}</a>
     <a href="/watten/rangliste">${label("Spieler & Ranking")}</a>
     <a class="wt-button wt-button--ghost" href="${publicPageUrl("/watten/regeln")}"${page === "rules" ? " aria-current=\"page\"" : ""}>${esc(t("nav.rules"))}</a>
-    ${user ? `<a href="/watten/konto/einstellungen" aria-label="${esc(t("nav.accountOf", { name: user.username }))}">${label("Konto")}</a>`
+    ${user ? `<a href="/watten/konto/fortschritt" aria-label="${esc(t("nav.accountOf", { name: user.username }))}">${label("Konto")}</a>`
       : `<a href="${esc(signInUrl())}">${label("Konto")}</a>`}`;
 }
 
@@ -437,6 +438,7 @@ async function mountLobby() {
   }
   if (gen !== generation) return;
   renderNav(auth);
+  initializeReleaseNotes({ context: "watten" });
   if (!auth.authenticated) {
     anonymousMount = true;
     app.innerHTML = publicLandingMarkup || lobbyIntro() + lobbyGuide();
@@ -998,10 +1000,10 @@ function render(previous = null, live = false, accepted = false) {
   const snapshot = session.snapshot;
   const root = viewRoot();
   if (!snapshot || !root) return;
-  decor?.suspend();
   voice?.update(snapshot);
   setHeading(snapshot.name);
   if (!snapshot.engine) {
+    decor?.suspend();
     roundReview.discard();
     beginnerGuide.update({ eligible: false });
     motion.cancel();
@@ -1034,6 +1036,7 @@ function render(previous = null, live = false, accepted = false) {
   }
   waitingChrome?.restore();
   if (session.viewKind !== "table" || !session.view) {
+    decor?.suspend();
     motion.cancel();
     session.view?.destroy?.();
     session.viewKind = "table";

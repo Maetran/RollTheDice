@@ -17,10 +17,11 @@ from sqlalchemy import select
 
 from .active_games import delete_active_game
 from .database import database_schema_ready, session_scope
+from .dice_progress import origin_ids_for_progress
 from .game_history import CompletedGameWriteResult, persist_completed_game_result
 from .game_types import ZILCH_GAME_TYPE, game_type_from_state
 from .models import CompletedGame, GameParticipant
-from .player_names import completed_player_identities, project_completed_players
+from .player_names import completed_player_identities_in_session, project_completed_players
 from .zilch_cpu_strategy import ZilchCpuStrategyError, validate_zilch_cpu_strategy
 from .zilch_engine import ZILCH_RULESET_VERSION, ZILCH_TARGET_SCORE
 from .zilch_solo_objective import (
@@ -1228,7 +1229,7 @@ def _browser_result_payload(payload: dict, identities: list[dict]) -> dict:
     }
 
 
-def _browser_result_moments(payload: dict) -> dict:
+def _browser_result_moments_in_session(db, payload: dict) -> dict:
     """Attach the small, participant-safe story of awards at this table."""
 
     participants = payload.get("participants")
@@ -1248,9 +1249,10 @@ def _browser_result_moments(payload: dict) -> dict:
         # Keep the result reader independent from the achievement writer at
         # import time. The latter already imports this module to validate its
         # explicitly registered source payloads.
-        from .zilch_achievements import zilch_result_moments_for_user_ids
+        from .zilch_achievements import zilch_result_moments_for_user_ids_in_session
 
-        projection = zilch_result_moments_for_user_ids(
+        projection = zilch_result_moments_for_user_ids_in_session(
+            db,
             payload.get("game_id"),
             participant_user_ids,
         )
@@ -1283,53 +1285,54 @@ def _browser_result_moments(payload: dict) -> dict:
     return {"status": status, "participants": moments}
 
 
-def load_zilch_result_for_user(game_id: str, user_id: int) -> dict | None:
+def load_zilch_result_for_user_in_session(db, game_id: str, user_id: int) -> dict | None:
     """Load one result only when the requesting account participated in it.
 
     Public-beta access grants use of Zilch, not access to another account's
     full roll history. The relational participant row is the authorization
     source; a guessed ID and an orphaned legacy row therefore remain opaque.
     """
-    if not database_schema_ready():
-        return None
-    with session_scope() as db:
-        row = db.scalar(
-            select(CompletedGame)
-            .join(GameParticipant, GameParticipant.game_id == CompletedGame.id)
-            .where(
-                CompletedGame.game_id == str(game_id),
-                CompletedGame.game_type == ZILCH_GAME_TYPE,
-                GameParticipant.user_id == int(user_id),
-            )
+    row = db.scalar(
+        select(CompletedGame)
+        .where(
+            CompletedGame.game_id == str(game_id),
+            CompletedGame.game_type == ZILCH_GAME_TYPE,
+            CompletedGame.participants.any(GameParticipant.user_id.in_(origin_ids_for_progress(db, int(user_id)))),
         )
-        payload = _stored_payload(row) if row is not None else None
+    )
+    payload = _stored_payload(row) if row is not None else None
     if payload is None:
         return None
-    identities = completed_player_identities({game_id}, game_type=ZILCH_GAME_TYPE).get(game_id, [])
+    identities = completed_player_identities_in_session(db, {game_id}, game_type=ZILCH_GAME_TYPE).get(game_id, [])
     browser_payload = _browser_result_payload(payload, identities)
-    browser_payload["moments"] = _browser_result_moments(payload)
+    browser_payload["moments"] = _browser_result_moments_in_session(db, payload)
     return browser_payload
 
 
-def list_zilch_results_for_user(user_id: int, *, limit: int = 30) -> list[dict]:
-    """List only an account's own Zilch records, newest first."""
+def load_zilch_result_for_user(game_id: str, user_id: int) -> dict | None:
+    """Load only a participant's private result in a managed read transaction."""
     if not database_schema_ready():
-        return []
-    clean_limit = max(1, min(int(limit), 100))
+        return None
     with session_scope() as db:
-        rows = db.scalars(
-            select(CompletedGame)
-            .join(GameParticipant, GameParticipant.game_id == CompletedGame.id)
-            .where(
-                CompletedGame.game_type == ZILCH_GAME_TYPE,
-                GameParticipant.user_id == int(user_id),
-            )
-            .order_by(CompletedGame.finished_at.desc(), CompletedGame.id.desc())
-            .limit(clean_limit)
-        ).all()
-        payloads = [_stored_payload(row) for row in rows]
+        return load_zilch_result_for_user_in_session(db, game_id, user_id)
+
+
+def list_zilch_results_for_user_in_session(db, user_id: int, *, limit: int = 30) -> list[dict]:
+    """List only an account's own Zilch records, newest first."""
+    clean_limit = max(1, min(int(limit), 100))
+    rows = db.scalars(
+        select(CompletedGame)
+        .where(
+            CompletedGame.game_type == ZILCH_GAME_TYPE,
+            CompletedGame.participants.any(GameParticipant.user_id.in_(origin_ids_for_progress(db, int(user_id)))),
+        )
+        .order_by(CompletedGame.finished_at.desc(), CompletedGame.id.desc())
+        .limit(clean_limit)
+    ).all()
+    payloads = [_stored_payload(row) for row in rows]
     summaries: list[dict] = []
-    identities = completed_player_identities(
+    identities = completed_player_identities_in_session(
+        db,
         {payload["game_id"] for payload in payloads if payload is not None}, game_type=ZILCH_GAME_TYPE,
     )
     for payload in payloads:
@@ -1352,3 +1355,11 @@ def list_zilch_results_for_user(user_id: int, *, limit: int = 30) -> list[dict]:
             summary["metrics"] = payload["metrics"]
         summaries.append(summary)
     return summaries
+
+
+def list_zilch_results_for_user(user_id: int, *, limit: int = 30) -> list[dict]:
+    """List only an account's own Zilch records in a managed read transaction."""
+    if not database_schema_ready():
+        return []
+    with session_scope() as db:
+        return list_zilch_results_for_user_in_session(db, user_id, limit=limit)

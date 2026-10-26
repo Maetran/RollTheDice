@@ -47,21 +47,62 @@ XP and all 22 title levels. Filtering never acknowledges unread rewards.
 Existing achievement IDs, rewards, unlock dates and absolute rank thresholds
 remain intact. Missing historical proof is never replaced with guessed actions.
 
+## Konten zusammenführen / merge accounts
+
+**Deutsch:** Owner können in der Administration ein altes Spielerkonto als Quelle
+und das neuere Konto als Ziel auswählen. Eine Vorschau zeigt den Fortschritt je
+Spiel; die Ausführung erfordert eine ausdrückliche Bestätigung mit dem eigenen
+Passwort oder Passkey. Anmeldung und persönliche Einstellungen des Zielkontos
+bleiben erhalten. Alte Zugangsdaten und Sitzungen werden widerrufen. Offene
+Partien oder Einladungen müssen vorher geklärt werden. Bereits beendete
+Watten-Partien dürfen zusammengeführt werden, auch wenn ihre Turnierserie noch
+offen ist; diese kann mit dem stillgelegten Konto danach nicht fortgesetzt werden.
+Wartende oder laufende Folgetische bleiben bis zu ihrem Abschluss oder Schliessen
+geschützt. Gemeinsame abgeschlossene
+Partien zählen einmal mit dem besseren belegten Ergebnis. Erfolge werden ohne
+doppelte Belohnung mit dem frühesten gültigen Datum zusammengeführt. Originale
+Spielergebnisse bleiben erhalten. Das Zielkonto erhält eine eigene Mitteilung;
+bestehende ungelesene Spielbelohnungen werden dadurch nicht bestätigt.
+
+**English:** Owners can select an older player account as the source and the
+newer account as the target in Administration. A preview shows progress per game;
+applying it requires explicit confirmation with the owner's password or passkey.
+The target keeps its sign-in details and preferences. Old credentials and sessions
+are revoked. Pending games or invitations must be resolved first. Completed
+Watten matches may be merged even if their tournament series is unfinished;
+that series can no longer continue with the retired account. Waiting or ongoing
+follow-up tables stay protected until they finish or close. A shared
+completed game counts once using the better documented result. Achievements keep
+their earliest valid date without duplicate rewards. Original results remain
+intact. The target receives a separate notice; this does not acknowledge existing
+unread game rewards.
+
 ## Navigation und Konto / navigation and account
 
 **Deutsch:** Weiterführende Aktionen und Regelübersichten verwenden das
-Button-Design des jeweiligen Spiels. «Konto» öffnet in Hausdepp direkt die
-Kontoeinstellungen; Spielverlauf und Fortschritt bleiben separat erreichbar.
+Button-Design des jeweiligen Spiels. «Konto» öffnet in allen vier Spielen die
+Statistik. Profilbild- und Anmeldungsaktionen führen gezielt in die Einstellungen.
 Die Kategorien der Kontoeinstellungen starten geschlossen und lassen sich einzeln
 öffnen. Eine erforderliche Passwortänderung öffnet den passenden Bereich direkt.
+Alle vier Kontobereiche bieten Statistik, Erfolge und Einstellungen in derselben
+Reihenfolge. Die Einstellungen gliedern sich in Profil & Zugang, Sprache & Spiel,
+Mitspieler & Hinweise sowie Hilfe & Neuigkeiten. Dort bleibt die Versionshistorie
+auch nach dem Schliessen des Neuigkeiten-Dialogs erreichbar. Nach einem
+Kontenmerge zeigt eine eigene Kontomitteilung den übernommenen Fortschritt;
+ihre Bestätigung verändert keine Spiel- oder Erfolgsbestätigungen.
 Die Watten-Lobby erklärt Besetzung, Varianten und Spielziel auch nach der
 Anmeldung; Gäste erhalten diese Inhalte bereits ohne JavaScript auf Deutsch
 oder Englisch.
 
 **English:** Navigation actions and rule contents use each game's button style.
-In Hausdepp, “Account” opens account settings directly; match history and progress
-remain separately accessible. Account settings categories start collapsed and
+“Account” opens Statistics in all four games; profile-image and sign-in actions
+link directly to Settings. Account settings categories start collapsed and
 open individually. A required password change opens the relevant section directly.
+All four account areas use the same order: Statistics, Achievements and Settings.
+Settings are grouped into Profile & sign-in, Language & play, Players & notifications,
+and Help & updates. Release history remains available there after dismissing an
+update dialog. A separate account notice shows combined progress after an account
+merge; acknowledging it does not acknowledge game results or achievements.
 The Watten lobby explains players, variants and the aim of the game after sign-in
 as well; guests receive the same guide in German or English without JavaScript.
 
@@ -247,6 +288,12 @@ Anheftschalter; Schlag, Farbe und der Rechte bleiben für alle aufgedeckt.
 Gewonnene Stichpakete bleiben pro Spieler direkt neben seinem Namen sichtbar.
 Das Kreuz schliesst die Rückschau und löst ihre Anheftung; ungepinnt schliesst
 sie auch beim Antippen ausserhalb.
+
+Auf sehr kleinen Hochformat-Handys heisst der geschlossene Vierer-Verlauf kurz «Verlauf»
+mit Stichzahl; der vollständige Name bleibt für Vorlesehilfen erhalten.
+**English:** On very small portrait phones, the closed four-player review uses “History”
+with its trick count, while assistive technology retains the full name.
+
 Ansager sind am Spielernamen mit «Schlag» oder «Farbe» markiert. «Danke!» erscheint
 grösser und bleibt höchstens bis zum Abschluss des ersten Stichs sichtbar. Einsatz und Bieten stehen
 im Hochformat bei den eigenen Karten, im mobilen Querformat in der linken
@@ -367,8 +414,10 @@ Sind beide Nicht-Einschauer CPUs, ist ungefähr in jedem dritten Blatt mindesten
 eine anfragebereit; jede CPU entscheidet sich mit rund 18 % dafür und antwortet
 weiterhin mit 50 % mit Ja. Die Anfrage muss vor dem ersten Ausspielen erfolgen;
 die sichtbare Quote kann deshalb niedriger liegen. Diese Wahl bleibt pro Blatt
-gleich und verwendet keine verdeckten Karten. Status und Anfrage nennen die tatsächlich Beteiligten;
-Warten ersetzt keine menschliche Antwort.
+gleich und verwendet keine verdeckten Karten. Die Anfrage nennt die tatsächlich
+Beteiligten; nach der Zustimmung markieren bei ausreichendem Platz zwei verdeckte
+Karten ihre Verbindung. Zeigen und Einschauen bleiben vorrangig. Warten ersetzt
+keine menschliche Antwort.
 “Allow a redeal” is a separate table option for two or four players, off by
 default. Until the first card is played, both callers may agree, including after
 inspection: their old hands are shuffled into the remaining stock, then each
@@ -386,8 +435,10 @@ Others see each forced card only when it is actually played.
 With two CPU non-lookers, at least one is willing to request Blödeln in roughly
 one in three deals: each CPU chooses to ask about 18% of the time and still
 answers yes with a 50% chance. The request must precede the first play, so the
-visible rate can be lower. The choice stays stable for the deal and uses no hidden cards. Requests and
-status messages name the actual participants; waiting never replaces a human answer.
+visible rate can be lower. The choice stays stable for the deal and uses no hidden
+cards. Requests name the actual participants; after agreement, two card backs
+mark their connection when space allows. Showing and inspection retain priority.
+Waiting never replaces a human answer.
 
 Nach einer Gabe wird zuerst der letzte Stich abgeräumt. Schlag, Farbe und der
 Rechte werden anschliessend etwa drei Sekunden für alle aufgedeckt; danach

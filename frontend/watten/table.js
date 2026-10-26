@@ -10,7 +10,7 @@ import { retourschneiderChoiceMarkup, createRetourAnnouncement } from "./retours
 import { seriesMarks, seriesTargetMarkup, seriesFinishedTitle } from "./series.js";
 import { createScorepad, nockerlMarksMarkup } from "./scorepad.js";
 import { createTrickLayout } from "./trick-layout.js";
-import { fitInspectionAxis, outermostCard, paintedBox, rectOf, unionOf } from "./inspection-geometry.js";
+import { cardBounds, fitInspectionAxis, inspectionFootprint, outermostCard, paintedBox, rectOf, unionOf } from "./inspection-geometry.js";
 import { resultReactionsMarkup } from "./social.js";
 
 const POSITIONS = { 2: ["bottom", "top"], 3: ["bottom", "left", "right"], 4: ["bottom", "left", "top", "right"] };
@@ -172,16 +172,29 @@ function inspectionMarkup(vm) {
   </div>`;
 }
 
-function createInspectionMotion(reveal, seatNodes) {
+function createInspectionMotion(reveal, seatNodes, { preparation = false, protectedGeometry = () => [], onPlacement = () => {} } = {}) {
   const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)");
   const centre = rect => ({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
   const SIDES = ["bottom", "left", "right", "top"];
   let key = "", playedKey = "", figures = [], observer = null, flights = [], geometry = "", frame = 0, memo = { key: "", fit: null };
+  let footprint = [], footprintKey = "";
+  const publish = (fit, bounds) => {
+    const next = inspectionFootprint(fit), nextKey = JSON.stringify(next);
+    footprint = next;
+    // Decoration uses the same final public footprints rather than the
+    // translated mid-flight DOM boxes. Never include card identities.
+    reveal.wtInspectionFootprint = bounds ? next.map(item => {
+      const rect = cardBounds(item);
+      return rectOf(rect.left + bounds.left, rect.top + bounds.top, rect.right - rect.left, rect.bottom - rect.top);
+    }) : [];
+    if (nextKey !== footprintKey) { footprintKey = nextKey; onPlacement(); }
+  };
   const settle = () => { flights.forEach(flight => flight.cancel()); flights = []; };
   const stop = () => {
     settle(); observer?.disconnect(); observer = null;
     cancelAnimationFrame(frame); frame = 0;
     key = ""; figures = []; geometry = ""; memo = { key: "", fit: null };
+    publish(null);
     reveal.closest(".wt-table")?.style.removeProperty("--wt-inspection-ack-height");
     delete reveal.dataset.wtInspectionPositioned;
     delete reveal.dataset.wtInspectionAxis;
@@ -189,16 +202,17 @@ function createInspectionMotion(reveal, seatNodes) {
     delete reveal.dataset.wtInspectionReason;
     delete reveal.dataset.wtInspectionDetail;
   };
-  const playerOf = figure => seatNodes.get(Number(figure.dataset.wtInspectionSeat));
+  const playerOf = figure => seatNodes.get(Number(preparation ? figure.dataset.wtBloedelnSeat : figure.dataset.wtInspectionSeat));
+  const feltOf = () => reveal.closest(".wt-felt");
   const handArea = () => reveal.closest(".wt-table")?.querySelector("[data-wt-hand-area]");
   const signature = () => {
-    const felt = reveal.parentElement.getBoundingClientRect(), hand = handArea()?.getBoundingClientRect();
+    const felt = feltOf().getBoundingClientRect(), hand = handArea()?.getBoundingClientRect();
     return [felt.width, felt.height, hand?.width || 0, hand?.height || 0].join(":");
   };
 
   function position() {
     if (!reveal.isConnected || figures.length !== 2 || !figures.every(figure => figure.isConnected)) { stop(); return; }
-    const felt = reveal.parentElement, bounds = felt.getBoundingClientRect();
+    const felt = feltOf(), bounds = felt.getBoundingClientRect();
     const table = felt.closest(".wt-table");
     if (!bounds.width || !bounds.height || !table) return;
     const local = rect => rectOf(rect.left - bounds.left, rect.top - bounds.top, rect.width, rect.height);
@@ -255,24 +269,25 @@ function createInspectionMotion(reveal, seatNodes) {
     const sizes = cards.map(card => ({ width: card.offsetWidth, height: card.offsetHeight }));
     const labelSizes = captions.map(caption => ({ width: caption.offsetWidth, height: caption.offsetHeight }));
     const actorSeats = new Set(players);
-    const controls = painted(table.querySelectorAll('[data-watten-action="inspection_ack"], [data-wt-preplay] :is(button, h3, p), '
+    const controls = [...protectedGeometry(), ...painted(table.querySelectorAll('[data-watten-action="inspection_ack"], [data-watten-action="show_ready"], [data-wt-preplay] :is(button, h3, p), '
       + '.wt-preplay-options > summary, [data-wt-private] button, [data-wt-history]:not([hidden]) > summary, '
-      + '.wt-seat--bottom.is-own .wt-seat-badge, .wt-seat--bottom.is-own .wt-bubble--thanks'));
+      + '.wt-seat--bottom.is-own .wt-seat-badge, .wt-seat--bottom.is-own .wt-bubble--thanks')), ...hand];
     const obstacles = [...painted(felt.querySelectorAll(".wt-avatar, .wt-seat-name, .wt-seat-call-role, .wt-seat-public-title, "
-      + ".wt-seat-tags, .wt-bubble--thanks, .wt-taken:not([hidden]) .wt-taken-packet, .wt-stock, [data-wt-reference] .wt-card, [data-wt-bloedeln] .wt-card")),
+      + ".wt-seat-tags, .wt-bubble--thanks, .wt-taken:not([hidden]) .wt-taken-packet, .wt-stock, [data-wt-reference] .wt-card")),
     ...outlines([...felt.querySelectorAll(".wt-seat")].filter(seat => !actorSeats.has(seat))
       .flatMap(seat => [...seat.querySelectorAll(".wt-backs:not([hidden]) > i:not([hidden])")]))];
     const input = { region: rectOf(6, 6, bounds.width - 12, bounds.height - 12),
-      actors, cards: sizes, captions: labelSizes, controls, obstacles };
+      actors, cards: sizes, captions: labelSizes, controls, obstacles, minimumWidth: preparation ? 36 : 52 };
     // Snapshot updates re-run this; refit only when a measurement changed.
     const inputKey = JSON.stringify(input, (_, value) => typeof value === "number" ? Math.round(value * 10) / 10 : value);
-    if (inputKey !== memo.key) memo = { key: inputKey, fit: fitInspectionAxis(input) };
+    if (inputKey !== memo.key) { settle(); memo = { key: inputKey, fit: fitInspectionAxis(input) }; }
     const { fit } = memo;
     geometry = signature();
     if (fit.status !== "fit") {
       // Never keep an earlier, now invalid placement. The faces stay hidden
       // (ACK remains usable) and the measured reason is exposed for diagnosis.
       settle();
+      publish(null);
       delete reveal.dataset.wtInspectionPositioned;
       reveal.dataset.wtInspectionFit = "unfit";
       reveal.dataset.wtInspectionReason = fit.reason;
@@ -289,6 +304,7 @@ function createInspectionMotion(reveal, seatNodes) {
       card.style.left = `${-pose.width / 2}px`; card.style.top = `${-pose.height / 2}px`; card.style.rotate = `${pose.rotation}deg`;
       caption.style.left = `${label.x - pose.x}px`; caption.style.top = `${label.top - pose.y}px`;
     });
+    publish(fit, bounds);
     reveal.dataset.wtInspectionFit = fit.constrained ? "constrained" : fit.relaxed ? "relaxed" : fit.overlap > 0 ? "overlap" : "clear";
     reveal.dataset.wtInspectionPositioned = "true";
     if (playedKey === key || document.hidden) return;
@@ -307,7 +323,7 @@ function createInspectionMotion(reveal, seatNodes) {
   reduced?.addEventListener?.("change", preferenceChanged);
 
   const update = vm => {
-    const nextFigures = [...reveal.querySelectorAll("[data-wt-inspection-seat]")];
+    const nextFigures = [...reveal.querySelectorAll(preparation ? "[data-wt-bloedeln-seat]" : "[data-wt-inspection-seat]")];
     if (!nextFigures.length) { stop(); return; }
     // Public seat sides of the two callers, e.g. "bottom-right", so the
     // action row can keep its controls off their connecting line.
@@ -323,6 +339,7 @@ function createInspectionMotion(reveal, seatNodes) {
     delete reveal.dataset.wtInspectionReason;
     delete reveal.dataset.wtInspectionDetail;
     memo = { key: "", fit: null };
+    publish(null);
     figures = nextFigures; key = nextKey;
     schedule();
     if (typeof ResizeObserver !== "function") return;
@@ -330,7 +347,7 @@ function createInspectionMotion(reveal, seatNodes) {
       if (!reveal.isConnected) { stop(); return; }
       if (geometry !== signature()) { settle(); schedule(); }
     });
-    observer.observe(reveal.parentElement);
+    observer.observe(feltOf());
     const area = handArea();
     if (area) observer.observe(area);
   };
@@ -339,6 +356,8 @@ function createInspectionMotion(reveal, seatNodes) {
     document.removeEventListener("visibilitychange", visibilityChanged);
     reduced?.removeEventListener?.("change", preferenceChanged);
   };
+  update.footprint = () => footprint;
+  update.schedule = schedule;
   return update;
 }
 
@@ -487,7 +506,9 @@ function historyMarkup(vm, pinned) {
     : vm.engine.last_trick ? [vm.engine.last_trick] : []).slice(-5);
   const finished = ["deal_complete", "match_complete"].includes(vm.engine.phase);
   if (!history.length && !finished) return "";
-  return `<summary>${esc(t(finished ? "history.round" : Array.isArray(vm.engine.trick_history) ? "history.title" : "history.last", { count: history.length }))}</summary>
+  const label = t(finished ? "history.round" : Array.isArray(vm.engine.trick_history) ? "history.title" : "history.last", { count: history.length });
+  const shortLabel = finished || Array.isArray(vm.engine.trick_history) ? t("history.short", { count: history.length }) : label;
+  return `<summary aria-label="${esc(label)}"><span class="wt-history-label-full">${esc(label)}</span><span class="wt-history-label-short" aria-hidden="true">${esc(shortLabel)}</span></summary>
     <button type="button" class="wt-history-close" data-wt-history-close aria-label="${esc(t("history.close"))}" title="${esc(t("history.close"))}"><span aria-hidden="true">×</span></button>
     ${finished ? "" : `<label class="wt-history-pin" title="${esc(t("history.pin"))}"><input type="checkbox" data-wt-history-pin aria-label="${esc(t("history.pin"))}" ${pinned ? "checked" : ""}><span class="wt-history-pin-symbol" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M7 4h10v16l-5-3-5 3z"/></svg></span><span class="wt-history-pin-copy">${esc(t("history.pin"))}</span></label>`}
     ${history.length ? `<ol class="wt-history">${history.map(trick => `
@@ -516,11 +537,11 @@ export function createTableView(container, { onCard, accountId = null }) {
     </div>
     <div class="wt-felt" data-wt-felt>
       <div class="wt-reveal" data-wt-reveal></div>
+      <div class="wt-reveal wt-bloedeln-reveal" data-wt-bloedeln></div>
       <div class="wt-stock" data-wt-deck data-key="deck" aria-hidden="true"><i></i><i></i><i></i></div>
       <div class="wt-seats" data-wt-seats></div>
       <div class="wt-centre">
         <div data-wt-reference></div>
-        <div data-wt-bloedeln></div>
         <div class="wt-trick" data-wt-trick role="group" aria-label="${esc(t("trick.current"))}"></div>
         <p class="wt-trick-label" data-wt-trick-label></p>
         <div class="wt-bubbles" data-wt-bubbles></div>
@@ -551,7 +572,13 @@ export function createTableView(container, { onCard, accountId = null }) {
   const handNodes = new Map();
   const trickNodes = new Map();
   const seatNodes = new Map();
-  const positionInspection = createInspectionMotion(elements.reveal, seatNodes);
+  let positionBloedeln;
+  const positionInspection = createInspectionMotion(elements.reveal, seatNodes, {
+    onPlacement: () => positionBloedeln?.schedule(),
+  });
+  positionBloedeln = createInspectionMotion(elements.bloedeln, seatNodes, {
+    preparation: true, protectedGeometry: positionInspection.footprint,
+  });
   const positionTrick = createTrickLayout(elements.trick);
   const retourAnnouncement = createRetourAnnouncement(elements.retour, { accountId, liveNode: $("[data-wt-retour-live]") });
   const scorepad = createScorepad(elements.scores);
@@ -634,7 +661,9 @@ export function createTableView(container, { onCard, accountId = null }) {
     const playable = vm.actions.includes("play_card") && !vm.busy && !hand.some(item => item.card === forced);
     // A blind packet still occupies the owner's hand, also during inspection:
     // the own shown face leaves beyond its outermost card. No face is inferred.
-    elements.handArea.hidden = !hand.length;
+    const collecting = ["deal_complete", "match_complete"].includes(vm.engine.phase)
+      && vm.roundPresentation?.stage === "collect";
+    elements.handArea.hidden = !hand.length && !collecting;
     const keys = hand.map((item, index) => isCard(item.card) ? item.card : `back-${index}`);
     let changed = false;
     const created = [];
@@ -741,6 +770,7 @@ export function createTableView(container, { onCard, accountId = null }) {
     container.querySelector("[data-wt-table]").dataset.count = String(vm.count);
     container.querySelector("[data-wt-table]").dataset.phase = vm.engine.phase;
     container.querySelector("[data-wt-table]").dataset.roundStage = vm.roundPresentation?.stage || "ready";
+    container.querySelector("[data-wt-table]").dataset.wtRetourOffer = String(vm.engine.retourschneider?.status === "available");
     container.querySelector("[data-wt-table]").dataset.viewer = vm.spectator ? "spectator" : "player";
     // Public seat sides of both callers through showing and inspection, e.g.
     // "bottom-right": one phase-stable hook if the action row must mirror.
@@ -788,13 +818,15 @@ export function createTableView(container, { onCard, accountId = null }) {
     elements.history.dataset.finished = String(historyFinished);
     patch(elements.history, "history", history);
     elements.history.dataset.pinned = String(historyPinned && !historyFinished);
-    if (historyFinished && reviewReady && !historyWasFinished) elements.history.open = vm.engine.phase === "deal_complete";
+    if (historyFinished && reviewReady && !historyWasFinished) elements.history.open = vm.engine.phase === "deal_complete"
+      && vm.engine.retourschneider?.status !== "available";
     else if (history && !historyFinished && historyPinned) elements.history.open = true;
     historyWasFinished = historyFinished && reviewReady;
     elements.handArea.hidden = vm.spectator;
     container.querySelector("[data-wt-table]").dataset.playable = String(vm.actions.includes("play_card"));
     const hand = vm.spectator ? { created: [], nodes: [] } : renderHand(vm);
     positionInspection(vm);
+    positionBloedeln(vm);
     const trick = renderTrick(vm);
     const reviewing = ["deal_complete", "match_complete"].includes(vm.engine.phase)
       && vm.roundPresentation && vm.roundPresentation.stage !== "collect";
@@ -817,7 +849,7 @@ export function createTableView(container, { onCard, accountId = null }) {
     return elements.seats.querySelector(`[data-wt-seat="${seat}"]`);
   }
 
-  return { update, destroy() { document.removeEventListener("pointerdown", outsideHistory); positionInspection.destroy(); positionTrick.destroy(); retourAnnouncement.destroy(); scorepad.destroy(); }, motionSources, seatNode, trickNode: () => elements.trick,
+  return { update, destroy() { document.removeEventListener("pointerdown", outsideHistory); positionInspection.destroy(); positionBloedeln.destroy(); positionTrick.destroy(); retourAnnouncement.destroy(); scorepad.destroy(); }, motionSources, seatNode, trickNode: () => elements.trick,
     deckNode: () => $("[data-wt-deck]"), collectionNode: seat => elements.seats.querySelector(`[data-wt-catch="${seat}"]`),
     backNodes: () => [...elements.seats.querySelectorAll(".wt-backs:not([hidden]) > i:not([hidden])")] };
 }

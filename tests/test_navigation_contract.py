@@ -57,7 +57,7 @@ DOCUMENT_ROUTES = (
     RouteCoverage(
         ("/konto",), "tests/test_http_shell.py", "test_clean_page_routes_and_legacy_redirects",
         ("tests/browser/account-settings-layout.spec.js", "tests/browser/game-picker.spec.js",
-         "tests/browser/game-tours.spec.js"),
+         "tests/browser/game-tours.spec.js", "tests/browser/suite-account-consistency.spec.js"),
     ),
     RouteCoverage(
         ("/spiel/{game_id}",), "tests/browser/zdwa-device-switch.spec.js",
@@ -156,7 +156,8 @@ DOCUMENT_ROUTES = (
         "test_founder_product_pages_and_game_type_routes",
         ("tests/browser/hausdepp-product.spec.js", "tests/browser/game-picker.spec.js",
          "tests/browser/hausdepp-achievements.spec.js", "tests/browser/hausdepp-rematch.spec.js",
-         "tests/browser/account-settings-layout.spec.js"),
+         "tests/browser/account-settings-layout.spec.js", "tests/browser/suite-account-consistency.spec.js",
+         "tests/browser/hausdepp-leaderboard.spec.js", "tests/browser/hausdepp-table-presence.spec.js"),
     ),
     RouteCoverage(
         ("/hausdepp/rangliste",), "tests/test_hausdepp_progress_api.py",
@@ -164,16 +165,21 @@ DOCUMENT_ROUTES = (
         ("tests/browser/hausdepp-leaderboard.spec.js",),
     ),
     RouteCoverage(
-        ("/watten", "/watten/anmelden", "/watten/konto", "/watten/konto/einstellungen"),
+        ("/watten", "/watten/anmelden", "/watten/konto/einstellungen"),
         "tests/test_watten_accounts.py", "test_native_routes_protect_settings_and_keep_static_templates_private",
         ("tests/browser-passkeys/watten-account.spec.js", "tests/browser/watten-lobby-chat.spec.js",
          "tests/browser/watten-founder-picker.spec.js", "tests/browser/watten-game.spec.js",
          "tests/browser/watten-public-language.spec.js", "tests/browser/account-settings-layout.spec.js"),
     ),
     RouteCoverage(
+        ("/watten/konto",), "tests/test_watten_accounts.py",
+        "test_generic_account_entry_opens_statistics_only_when_game_surface_is_enabled",
+        ("tests/browser/suite-account-consistency.spec.js",),
+    ),
+    RouteCoverage(
         ("/watten/konto/fortschritt", "/watten/konto/verlauf", "/watten/rangliste"),
         "tests/test_watten_progress_pages.py", "test_native_progress_pages_protect_identity_and_keep_canonical_return_path",
-        ("tests/browser/watten-progress.spec.js",),
+        ("tests/browser/watten-progress.spec.js", "tests/browser/suite-account-consistency.spec.js"),
     ),
     RouteCoverage(
         ("/watten/regeln",), "tests/test_watten_pages.py",
@@ -205,8 +211,15 @@ DOCUMENT_ROUTES = (
     ),
 )
 
-# Rollback retains the reserved-host boundary when the explicit public flag is off.
+# Host-specific aliases and the reserved boundary when the public flag is off.
 RESERVED_HOST_DOCUMENT_ROUTES = {
+    HAUSDEPP_ORIGIN: (
+        RouteCoverage(
+            ("/konto", "/hausdepp/konto", "/hausdepp/konto/einstellungen"),
+            "tests/test_hausdepp_auth_flow.py", "test_house_auth_pages_keep_product_identity_and_protected_settings",
+            ("tests/browser/suite-account-consistency.spec.js", "tests/browser-hausdepp-passkeys/account-flow.spec.js"),
+        ),
+    ),
     WATTEN_ORIGIN: (
         RouteCoverage(
             ("/", "/watten", "/watten/regeln", "/konto", "/hausdepp", "/zilch/anmelden",

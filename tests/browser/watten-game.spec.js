@@ -90,8 +90,10 @@ test('two real human accounts bid, pause with an open bid, return and finish a d
       await expect(roundCall.locator('figure [data-card]')).toHaveAttribute('data-card', 'bells-7');
       const history = item.page.locator('[data-wt-history]');
       await expect(history).toBeVisible();
-      await expect(history.locator('summary')).toHaveText(language === 'en'
-        ? `Round history (${engine.trick_history.length})` : `Rundenverlauf (${engine.trick_history.length})`);
+      const historyLabel = language === 'en'
+        ? `Round history (${engine.trick_history.length})` : `Rundenverlauf (${engine.trick_history.length})`;
+      await expect(history.locator('summary')).toHaveText(historyLabel, { useInnerText: true });
+      await expect(history.locator('summary')).toHaveAccessibleName(historyLabel);
       if (!await history.evaluate(node => node.open)) await history.locator('summary').click();
       await expect(history.locator('.wt-history > li')).toHaveCount(engine.trick_history.length);
       expect(await history.locator('.wt-history [data-card]').evaluateAll(nodes => nodes.map(node => node.dataset.card)))
@@ -212,7 +214,7 @@ test('account changes during card decoding bind the new mount before opening a s
     await original.context.clearCookies();
     await original.context.addCookies(await players[1].context.cookies());
     await original.page.evaluate(() => window.releaseWattenDecode());
-    await expect(original.page.locator('[data-watten-nav] a[href="/watten/konto/einstellungen"]'))
+    await expect(original.page.locator('[data-watten-nav] a[href="/watten/konto/fortschritt"]'))
       .toHaveAttribute('aria-label', new RegExp(`${players[1].user.username}$`));
     await expect(original.page.locator('.wt-seat-slot.is-own')).toContainText(players[1].user.username);
     await expect(original.page).toHaveURL(new RegExp(`${tablePath}$`));

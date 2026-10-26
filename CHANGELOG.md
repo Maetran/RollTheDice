@@ -23,6 +23,61 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 4.7.0 — 2026-10-25
+
+### KONTO UND FORTSCHRITT / ACCOUNT AND PROGRESS
+
+**Deutsch:** Alle vier Spiele gliedern das Konto gleich: Statistik, Erfolge und
+Einstellungen mit Profil & Zugang, Sprache & Spiel, Mitspieler & Hinweise sowie
+Hilfe & Neuigkeiten. Hausdepp und Watten zeigen die gemeinsamen Versionshinweise
+und eine erreichbare Versionshistorie; Watten berücksichtigt dabei die gewählte
+Kontosprache. Die jeweilige Spielgestaltung und bestehende Kontofunktionen bleiben
+erhalten. Die Einsteigertouren aktualisieren sich nach dem Laden des Kontos mit
+den vorhandenen Spielzugängen.
+Beim Sprachwechsel beenden sich alte Kontodokumente rechtzeitig, damit dort
+keine weiteren privaten Abfragen gestartet werden.
+
+**English:** All four games organize accounts consistently: Statistics,
+Achievements and Settings, with Profile & sign-in, Language & play, Players &
+notifications, and Help & updates. Hausdepp and Watten show shared release notes
+and accessible version history; Watten respects the account language. Each game
+keeps its visual style and existing account features. Beginner tours update with
+the account's existing game access after sign-in details have loaded.
+Old account documents retire promptly during language changes so they do not
+start further private requests while being replaced.
+
+**Deutsch:** Owner können zwei Spielerkonten nach Vorschau und erneuter
+Authentifizierung zusammenführen. Das Ziel behält Anmeldung und Einstellungen;
+alte Zugangsdaten werden dauerhaft stillgelegt. Historische Originalsitze bleiben
+erhalten, gemeinsame Partien zählen mit dem besseren belegten Ergebnis einmal.
+Erfolge behalten das früheste gültige Datum und doppelte Belohnungen werden nicht
+addiert. Bestehende ungelesene Spielmeldungen bleiben unabhängig von der eigenen
+Merge-Mitteilung. Gleichzeitig eintreffende Tischbeitritte und historische
+Zuordnungsänderungen sind mit der Zusammenführung abgestimmt.
+
+**English:** Owners can merge two player accounts after preview and fresh
+authentication. The target keeps its sign-in details and preferences; old
+credentials are permanently retired. Original historical seats remain intact;
+shared games count once using the better documented result. Achievements keep
+their earliest valid date without adding duplicate rewards. Existing unread game
+notices remain separate from the merge notice. Concurrent table admissions and
+historical assignment changes are serialized with consolidation.
+
+**Deutsch:** Watten hält den eigenen Handbereich beim Abräumen frei, priorisiert
+Zeigen und Einschauen vor der verdeckten Blödeln-Anzeige und behält den Tisch beim
+Retourschneider-Angebot sichtbar. Dekoration lässt sich auf Tablets auch bei
+harmlosen Tischaktualisierungen weiterziehen; neue Hindernisse und echte
+Phasenwechsel brechen das Ziehen weiterhin ab. Auf kleinen Bildschirmen bleiben
+die Retourschneider-Entscheidungen sichtbar; die vollständigen Bedingungen sind
+mit Touch und Tastatur scrollbar.
+
+**English:** Watten reserves the own hand area during trick collection,
+prioritizes showing and inspection over the face-down Blödeln display, and keeps
+the table visible during a Retourschneider offer. Tablet decoration drags survive
+harmless table updates; new obstacles and actual phase changes still cancel them.
+On small screens, Retourschneider decisions stay visible while the full conditions
+remain scrollable by touch and keyboard.
+
 ## 4.6.0 — 2026-10-25
 
 ### NEUE ERFOLGE UND WATTEN-FORTSCHRITT / NEW ACHIEVEMENTS AND WATTEN PROGRESS

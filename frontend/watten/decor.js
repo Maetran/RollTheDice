@@ -7,7 +7,7 @@ export const DECOR_ITEMS = Object.freeze(Object.fromEntries(Object.entries(TABLE
   .filter(([, item]) => !item.rare).map(([kind, item]) => [kind, { ...item, food: Boolean(item.bites) }])));
 export const DECOR_PROTECTED = ".wt-seat, .wt-seat-slot, .wt-seat-badge, .wt-seat-name, .wt-seat-call-role, .wt-backs > i, "
   + ".wt-taken, .wt-stock, .wt-stock > i, .wt-hand-card, .wt-trick-card, .wt-trick-label, .wt-reference, "
-  + "[data-wt-reference], [data-wt-bubbles], [data-wt-panel], [data-wt-private], [data-wt-history], [data-wt-scores], [data-wt-stake], "
+  + "[data-wt-reference], [data-wt-bloedeln] .wt-card, [data-wt-bubbles], [data-wt-panel], [data-wt-private], [data-wt-history], [data-wt-scores], [data-wt-stake], "
   + "[data-wt-tools], [data-watten-inspection], [data-watten-bid], [data-watten-paused], [data-watten-match-result], "
   + "[data-watten-deal-result], [data-watten-match-progress], [data-watten-rematch], [data-watten-social], "
   + ".wt-bubble, .wt-call-announcement, .wt-status-bar, "
@@ -65,6 +65,7 @@ export function createDecor({ container, root, getExpectedAccountId, isCurrent, 
   language = () => window.ZDWA_I18N?.getLanguage?.() === "en" ? "en" : "de",
   dom = document, win = window, consumables = { mount: mountConsumable, drink: updateDrink, eat: eatPiece } }) {
   const accountId = getExpectedAccountId(), lifecycle = new AbortController(), items = new Map();
+  const observedReveals = new WeakSet();
   const reduced = win.matchMedia("(prefers-reduced-motion: reduce)");
   let destroyed = false, phase = "preview", selected = null, serial = 0, drag = null, ignoreClick = null;
   let geometry = { regions: [], protectedRects: [] }, notice = "", hidden = false, autoPlaced = false, propSide = SIDE;
@@ -86,7 +87,11 @@ export function createDecor({ container, root, getExpectedAccountId, isCurrent, 
   const name = kind => WATTEN_DECOR_MESSAGES[language() === "en" ? "en" : "de"][kind]
     || win.ZDWA_I18N?.t?.(DECOR_ITEMS[kind].label) || DECOR_ITEMS[kind].label;
   const listen = (node, name, callback) => node?.addEventListener(name, callback, { signal: lifecycle.signal });
-  function visible(node) { return node && node.getClientRects().length && !node.closest("[hidden]"); }
+  function visible(node) {
+    if (!node || !node.getClientRects().length || node.closest("[hidden]")) return false;
+    const style = win.getComputedStyle?.(node);
+    return style?.display !== "none" && style?.visibility !== "hidden";
+  }
   function rectFor(item) {
     const region = geometry.regions.find(area => area.name === item.position?.region);
     return region ? box(region.left + item.position.x * (region.right - region.left - propSide),
@@ -120,8 +125,16 @@ export function createDecor({ container, root, getExpectedAccountId, isCurrent, 
     propSide = Number.isFinite(renderedSide) && renderedSide >= 44 ? renderedSide : SIDE;
     const blocked = root.querySelector('[data-watten-social-drawer]:not([hidden]), dialog[open]');
     const table = root.querySelector("[data-wt-table]"), felt = root.querySelector("[data-wt-felt]");
+    const reveals = [...root.querySelectorAll("[data-wt-reveal], [data-wt-bloedeln]")];
+    const placed = reveals.filter(reveal => reveal.dataset.wtInspectionPositioned
+      && Array.isArray(reveal.wtInspectionFootprint) && reveal.wtInspectionFootprint.length);
+    const control = node => ["button", "a", "input", "select", "textarea"].includes(String(node.tagName).toLowerCase())
+      || ["button", "dialog"].includes(node.getAttribute("role"));
     const protectedRects = [...root.querySelectorAll(DECOR_PROTECTED)]
-      .filter(node => !node.closest("[data-watten-decor-layer]") && visible(node)).map(node => node.getBoundingClientRect());
+      .filter(node => !node.closest("[data-watten-decor-layer]")
+        && (!placed.some(reveal => reveal.contains(node)) || control(node)) && visible(node))
+      .map(node => node.getBoundingClientRect());
+    protectedRects.push(...placed.flatMap(reveal => reveal.wtInspectionFootprint.filter(finite)));
     const regions = [];
     const region = (node, name) => {
       const rect = node.getBoundingClientRect();
@@ -131,6 +144,13 @@ export function createDecor({ container, root, getExpectedAccountId, isCurrent, 
       if (ACTIVE_PHASES.has(phase) && visible(table) && visible(felt)) regions.push(region(felt, "table"));
     }
     geometry = { regions, protectedRects };
+    for (const reveal of reveals) {
+      if (observedReveals.has(reveal)) continue;
+      // The real table mounts after this controller. Observe new reveal slots
+      // when they first exist, including their later actor-axis placement.
+      mutation?.observe(reveal, { attributes: true, subtree: true, attributeFilter: ["style", "data-wt-inspection-positioned"] });
+      observedReveals.add(reveal);
+    }
   }
   function layout() {
     if (!current()) { destroy(); return; }
@@ -310,7 +330,7 @@ export function createDecor({ container, root, getExpectedAccountId, isCurrent, 
     if (!current()) { destroy(); return; }
     if (!PHASES.has(publicPhase)) { phase = "offline"; suspend(); return; }
     if (phase !== publicPhase) stopEffects();
-    phase = publicPhase; updateRare(surpriseOffer); layout();
+    phase = publicPhase; updateRare(surpriseOffer); repainted();
     if (!autoPlaced && ACTIVE_PHASES.has(phase) && geometry.regions.some(region => region.name === "table")) {
       autoPlaced = true;
       const pool = Object.keys(DECOR_ITEMS).filter(kind => kind !== "beer");
@@ -323,6 +343,15 @@ export function createDecor({ container, root, getExpectedAccountId, isCurrent, 
     }
   }
   function resized() { stopEffects(); layout(); }
+  function repainted() {
+    if (!current()) { destroy(); return; }
+    measure();
+    // Accepted snapshots reassign back.hidden even when its value is unchanged.
+    // Keep an ongoing valid drag through that repaint; only a real new blocker
+    // may release capture. Resize/orientation and phase transitions still cancel.
+    if (drag && !fitsDecor(rectFor(drag.item), geometry, occupied(drag.item))) stopEffects();
+    layout();
+  }
   const foamTimer = win.setInterval(() => { if (current() && !hidden) interactions.settle(); }, 30000);
   listen(win, "resize", resized); listen(win, "orientationchange", resized); listen(win, "scroll", resized);
   listen(win.visualViewport, "resize", resized); listen(win.visualViewport, "scroll", resized);
@@ -331,7 +360,7 @@ export function createDecor({ container, root, getExpectedAccountId, isCurrent, 
   listen(win, "pagehide", () => destroy());
   const observer = win.ResizeObserver ? new win.ResizeObserver(resized) : null;
   observer?.observe(root);
-  const mutation = win.MutationObserver ? new win.MutationObserver(resized) : null;
+  const mutation = win.MutationObserver ? new win.MutationObserver(repainted) : null;
   const view = root.querySelector("[data-watten-view]");
   if (view) mutation?.observe(view, { childList: true, subtree: true, attributes: true, attributeFilter: ["open", "hidden"] });
   for (const selector of ["[data-watten-social]", "[data-watten-leave-dialog]"]) {

@@ -906,7 +906,7 @@ test("admin can log in, create a user and open the public profile", async ({ pag
     page.click("#adminLink"),
   ]);
   await expect(page.getByRole("heading", { name: "Adminbereich" })).toBeVisible();
-  await expect(page.locator(".admin-module-tile")).toHaveCount(4);
+  await expect(page.locator(".admin-module-tile")).toHaveCount(5);
   const dashboard = page.locator("#analyticsDashboardLink");
   await expect(dashboard).toBeVisible();
   await expect(dashboard).toContainText("Mission Control");
@@ -914,6 +914,7 @@ test("admin can log in, create a user and open the public profile", async ({ pag
   for (const [panel, label] of [
     ["usersPanel", "Benutzerverwaltung"],
     ["assignmentsPanel", "Spielzuordnung"],
+    ["accountMergePanel", "Konten zusammenführen"],
     ["completedGamesPanel", "Spiele löschen"],
   ]) {
     const tile = page.locator(`[data-admin-panel="${panel}"]`);
@@ -923,11 +924,17 @@ test("admin can log in, create a user and open the public profile", async ({ pag
     await expect(tile).toHaveAttribute("aria-expanded", "false");
   }
   await expect(page.locator("#usersPanel")).toBeHidden();
+  await expect(page.locator("#accountMergePanel")).toBeHidden();
   await expect(page.locator("#completedGamesPanel")).toBeHidden();
 
   await page.locator('[data-admin-panel="usersPanel"]').click();
   await expect(page.getByRole("heading", { name: "Benutzerverwaltung" })).toBeVisible();
+  await page.locator('[data-admin-panel="accountMergePanel"]').click();
+  await expect(page.getByRole("heading", { name: "Konten zusammenführen", exact: true })).toBeVisible();
+  await expect(page.locator("#accountMergeSourceSearch")).toBeVisible();
+  await expect(page.locator("#usersPanel")).toBeHidden();
   await page.locator('[data-admin-panel="completedGamesPanel"]').click();
+  await expect(page.locator("#accountMergePanel")).toBeHidden();
   await expect(page.getByRole("heading", { name: "Abgeschlossene Spiele löschen" })).toBeVisible();
   await expect(page.locator("#usersPanel")).toBeHidden();
   await page.locator('[data-admin-panel="usersPanel"]').click();

@@ -4,15 +4,21 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, replace
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Iterable
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import func, inspect, select
 from sqlalchemy.dialects.sqlite import insert
-from sqlalchemy.orm import selectinload
 
 from .cross_game_activity import cross_game_activity_for_user
+from .dice_progress import (
+    engagement_counts_for_origins,
+    origin_users,
+    owners_for_progress,
+    selected_zdwa_seats,
+    zdwa_seat_candidates,
+)
 from .game_types import DEFAULT_GAME_TYPE
 from .models import AbandonedGame, CompletedGame, GameParticipant, User, UserAchievement, UserEngagementEvent
 from .rules import compute_row_subtotals
@@ -1137,6 +1143,18 @@ def earned_achievement_payloads_for_game(game_id: object) -> dict[str, list[dict
             )
             .order_by(GameParticipant.position, UserAchievement.unlocked_at, UserAchievement.id)
         ).all()
+        from .account_merge_backings import is_canonical_mirror
+        from .dice_merge_achievements import historical_award_supports_in_session
+        seats = list(db.scalars(select(GameParticipant).join(CompletedGame).where(
+            CompletedGame.game_type == DEFAULT_GAME_TYPE, CompletedGame.game_id == normalized_game_id,
+        )))
+        by_origin = {seat.user_id: seat.player_key for seat in seats if seat.user_id is not None}
+        rows = [(player_key, row) for player_key, row in rows
+                if not is_canonical_mirror(db, row.user_id, DEFAULT_GAME_TYPE, row.achievement_key)]
+        rows.extend((by_origin[row.user_id], row) for row in historical_award_supports_in_session(
+            db, DEFAULT_GAME_TYPE, normalized_game_id, by_origin,
+        ))
+
     result: dict[str, list[dict]] = {}
     for player_key, row in rows:
         achievement = ACHIEVEMENT_BY_KEY.get(str(row.achievement_key))
@@ -1456,6 +1474,28 @@ def _multiplayer_metrics(game: CompletedGame, participant: GameParticipant) -> d
     return metrics
 
 
+def _owner_multiplayer_metrics(game, participant, excluded_opponent_ids):
+    original = _multiplayer_metrics(game, participant)
+    empty = {key: False if isinstance(value, bool) else 0 for key, value in original.items()}
+    if not any(original.values()):
+        return empty
+    mode = str(game.mode or "").lower()
+    opponents = [seat for seat in game.participants if seat.id != participant.id
+                 and seat.user_id not in excluded_opponent_ids]
+    if mode == "2v2":
+        return original if any(seat.team != participant.team for seat in opponents) else empty
+    if not opponents:
+        return empty
+    runner_margin = int(participant.points) - max(int(seat.points) for seat in opponents)
+    original.update(multiplayer_close_win=runner_margin <= 10,
+                    multiplayer_one_point_win=runner_margin == 1,
+                    multiplayer_blowout=runner_margin > 500)
+    if mode == "3":
+        original["multiplayer_margin_3p_runner_up"] = runner_margin
+        original["multiplayer_margin_3p_last"] = int(participant.points) - min(int(seat.points) for seat in opponents)
+    return original
+
+
 def _game_metrics(game: CompletedGame, participant: GameParticipant) -> dict[str, int | bool]:
     rows = _snapshot_rows(game.snapshot_json, participant, game.mode)
     complete_rows = _snapshot_rows(game.snapshot_json, participant, game.mode, complete_rows=True)
@@ -1558,50 +1598,59 @@ def _progress_for_user(
     user: User,
     *,
     excluded_completed_game_id: int | None = None,
+    origin_ids=None,
+    excluded_opponent_ids=None,
+    game_ceiling=None,
+    marker_overrides=None,
+    recorded_through=None,
 ) -> dict[str, int | bool]:
-    statement = (
-        select(CompletedGame, GameParticipant)
-        .join(GameParticipant, GameParticipant.game_id == CompletedGame.id)
-        .options(selectinload(CompletedGame.participants))
-        .where(GameParticipant.user_id == user.id, CompletedGame.game_type == DEFAULT_GAME_TYPE)
-    )
-    if excluded_completed_game_id is not None:
-        statement = statement.where(CompletedGame.id != int(excluded_completed_game_id))
-    rows = db.execute(statement.order_by(CompletedGame.finished_at, CompletedGame.id)).all()
-    games = [(game, participant, _game_metrics(game, participant)) for game, participant in rows]
-    gameplay_started_at = as_utc(user.achievement_gameplay_started_at or utcnow())
-    gameplay_games = [entry for entry in games if as_utc(entry[0].finished_at) >= gameplay_started_at]
-    extra_started_at = as_utc(user.achievement_extra_started_at or utcnow())
-    extra_games = [entry for entry in games if as_utc(entry[0].finished_at) >= extra_started_at]
-    styler_started_at = as_utc(user.achievement_styler_started_at or utcnow())
-    styler_games = [
-        entry for entry in extra_games
-        if as_utc(entry[0].finished_at) >= styler_started_at
-        and as_utc(entry[0].created_at) >= styler_started_at
-    ]
-    expansion_started_at = as_utc(user.achievement_expansion_started_at or utcnow())
-    expansion_games = [entry for entry in games if as_utc(entry[0].finished_at) >= expansion_started_at]
-    office_hours_started_at = as_utc(user.achievement_office_hours_started_at or utcnow())
-    office_hours_games = [entry for entry in games if as_utc(entry[0].finished_at) >= office_hours_started_at]
-    multiplayer_started_at = as_utc(user.achievement_multiplayer_started_at or utcnow())
-    multiplayer_games = [entry for entry in games if as_utc(entry[0].finished_at) >= multiplayer_started_at]
-    # The historic multiplayer metrics intentionally receive every post-marker
-    # result and decide whether they apply from their own row data.  Counting
-    # a new participation series is stricter: Solo tables must never advance
-    # a "Stammtisch" or team achievement.
-    actual_multiplayer_games = [
-        entry
-        for entry in multiplayer_games
-        if str(entry[0].mode or "").lower() in {"2", "3", "2v2"}
-    ]
-    top_section_started_at = as_utc(user.achievement_top_section_started_at or utcnow())
-    top_section_games = [entry for entry in games if as_utc(entry[0].finished_at) >= top_section_started_at]
+    users = origin_users(db, user.id, origin_ids=origin_ids)
+    ids = tuple(users)
+    rows = zdwa_seat_candidates(db, user.id, origin_ids=ids,
+                               excluded_completed_game_id=excluded_completed_game_id, game_ceiling=game_ceiling, recorded_through=recorded_through)
+    exclusions = set(ids if excluded_opponent_ids is None else excluded_opponent_ids)
+    games = []
+    for game, participant in rows:
+        metrics = _game_metrics(game, participant)
+        if exclusions:
+            metrics.update(_owner_multiplayer_metrics(game, participant, exclusions))
+        games.append((game, participant, metrics))
+
+    def eligible(entry, marker):
+        original = users[entry[1].user_id]
+        value = (marker_overrides or {}).get(str(original.id), {}).get(marker, getattr(original, marker))
+        cutoff = as_utc(datetime.fromisoformat(value) if isinstance(value, str) else value or utcnow())
+        return as_utc(entry[0].finished_at) >= cutoff
+
+    gameplay_games = [entry for entry in games if eligible(entry, "achievement_gameplay_started_at")]
+    extra_games = [entry for entry in games if eligible(entry, "achievement_extra_started_at")]
+    styler_games = [entry for entry in extra_games if eligible(entry, "achievement_styler_started_at")
+                    and as_utc(entry[0].created_at) >= as_utc(
+                        datetime.fromisoformat(marker_overrides[str(entry[1].user_id)]["achievement_styler_started_at"])
+                        if marker_overrides and marker_overrides[str(entry[1].user_id)]["achievement_styler_started_at"]
+                        else users[entry[1].user_id].achievement_styler_started_at or utcnow())]
+    expansion_games = [entry for entry in games if eligible(entry, "achievement_expansion_started_at")]
+    office_hours_games = [entry for entry in games if eligible(entry, "achievement_office_hours_started_at")]
+    multiplayer_games = [entry for entry in games if eligible(entry, "achievement_multiplayer_started_at")]
+    actual_multiplayer_games = [entry for entry in multiplayer_games if str(entry[0].mode or "").lower() in {"2", "3", "2v2"}]
+    top_section_games = [entry for entry in games if eligible(entry, "achievement_top_section_started_at")]
     hardcore_games = [entry for entry in games if bool(entry[0].hardcore)]
     extra_hardcore_games = [entry for entry in extra_games if bool(entry[0].hardcore)]
+    statistical = selected_zdwa_seats(db, user.id, origin_ids=ids,
+                                    excluded_completed_game_id=excluded_completed_game_id, game_ceiling=game_ceiling, recorded_through=recorded_through)
+
+    def counted(entries, metric=None):
+        contributions = {}
+        for game, _participant, metrics in entries:
+            value = int(metrics[metric]) if metric else 1
+            contributions[game.id] = max(contributions.get(game.id, 0), value)
+        return sum(contributions.values())
+
     cross_game_activity = cross_game_activity_for_user(
         db,
         user,
         excluded_completed_game_id=excluded_completed_game_id,
+        origin_ids=ids, game_ceiling=game_ceiling, marker_overrides=marker_overrides, recorded_through=recorded_through,
     )
     scores = {int(participant.points) for _game, participant, _metrics in games}
     manual_solo_aborts, manual_multiplayer_aborts = 0, 0
@@ -1613,7 +1662,7 @@ def _progress_for_user(
             .where(
                 AbandonedGame.game_type == DEFAULT_GAME_TYPE,
                 AbandonedGame.reason == "manual",
-                AbandonedGame.aborted_by_user_id == user.id,
+                AbandonedGame.aborted_by_user_id.in_(ids),
             )
             .group_by(AbandonedGame.mode)
         ):
@@ -1624,8 +1673,8 @@ def _progress_for_user(
     progress: dict[str, int | bool] = {
         "manual_solo_aborts": manual_solo_aborts,
         "manual_multiplayer_aborts": manual_multiplayer_aborts,
-        "career_points": sum(int(participant.points) for _game, participant, _metrics in games),
-        "games_played": len(games),
+        "career_points": sum(int(participant.points) for _game, participant in statistical),
+        "games_played": len(statistical),
         "single_game_score": max((int(participant.points) for _game, participant, _metrics in games), default=0),
         "top_section_exact_60": any(
             bool(metrics["top_section_exact_60"]) for _game, _participant, metrics in top_section_games
@@ -1692,23 +1741,19 @@ def _progress_for_user(
         "diff_exact_125": any(bool(metrics["diff_exact_125"]) for _game, _participant, metrics in extra_games),
         "max_thirty": any(bool(metrics["max_thirty"]) for _game, _participant, metrics in extra_games),
         "six_thirty": any(bool(metrics["six_thirty"]) for _game, _participant, metrics in extra_games),
-        "styler_full_count": sum(
-            int(metrics["styler_full_count"]) for _game, _participant, metrics in styler_games
-        ),
+        "styler_full_count": counted(styler_games, "styler_full_count"),
         "daily_streak": _longest_daily_streak(extra_games),
         "cross_game_days": cross_game_activity.paired_days,
         "cross_game_streak": cross_game_activity.longest_streak,
         # Diese zwei Hardcore-Reihen sind ausdrücklich rückwirkend: alle
         # gespeicherten Hardcore-Partien zählen, unabhängig vom Rolloutmarker.
-        "hardcore_games": len(hardcore_games),
+        "hardcore_games": counted(hardcore_games),
         "hardcore_score": max(
             (int(participant.points) for _game, participant, _metrics in hardcore_games), default=0
         ),
         "hardcore_streak": _longest_daily_streak(extra_hardcore_games),
         "office_hours": any(bool(metrics["office_hours"]) for _game, _participant, metrics in gameplay_games),
-        "office_hours_count": sum(
-            1 for _game, _participant, metrics in office_hours_games if bool(metrics["office_hours"])
-        ),
+        "office_hours_count": counted(office_hours_games, "office_hours"),
         "multiplayer_margin_2p": max(
             (int(metrics["multiplayer_margin_2p"]) for _game, _participant, metrics in multiplayer_games), default=0
         ),
@@ -1734,16 +1779,12 @@ def _progress_for_user(
         "multiplayer_blowout": any(
             bool(metrics["multiplayer_blowout"]) for _game, _participant, metrics in multiplayer_games
         ),
-        "multiplayer_games": len(actual_multiplayer_games),
-        "team_games": sum(
-            1
-            for game, _participant, _metrics in actual_multiplayer_games
-            if str(game.mode or "").lower() == "2v2"
-        ),
+        "multiplayer_games": counted(actual_multiplayer_games),
+        "team_games": counted([entry for entry in actual_multiplayer_games if str(entry[0].mode or "").lower() == "2v2"]),
         "night_owl": any(bool(metrics["night_owl"]) for _game, _participant, metrics in gameplay_games),
-        "weekend_games": sum(1 for _game, _participant, metrics in gameplay_games if metrics["weekend"]),
-        "early_bird_games": sum(1 for _game, _participant, metrics in gameplay_games if metrics["early_bird"]),
-        "statistics_views": int(user.statistics_views),
+        "weekend_games": counted(gameplay_games, "weekend"),
+        "early_bird_games": counted(gameplay_games, "early_bird"),
+        "statistics_views": sum(int(original.statistics_views) for original in users.values()),
         "account_created": True,
     }
     progress.update(
@@ -1752,10 +1793,7 @@ def _progress_for_user(
             for score in EXACT_GAME_SCORE_TARGETS
         }
     )
-    engagement_rows = db.scalars(
-        select(UserEngagementEvent).where(UserEngagementEvent.user_id == user.id)
-    )
-    progress.update({row.event_key: int(row.count) for row in engagement_rows})
+    progress.update(engagement_counts_for_origins(db, ids))
     for event_key in (
         "avatar_set", "avatar_changed", "settings_viewed", "settings_saved",
         "statistics_viewed", "achievements_viewed", "rules_viewed", "history_viewed",
@@ -1804,7 +1842,7 @@ def sync_user_achievements(
                 .where(
                     CompletedGame.id == candidate_id,
                     CompletedGame.game_type == DEFAULT_GAME_TYPE,
-                    GameParticipant.user_id == user.id,
+                    GameParticipant.user_id.in_(tuple(origin_users(db, user.id))),
                 )
                 .limit(1)
             )
@@ -1817,48 +1855,53 @@ def sync_user_achievements(
                     excluded_completed_game_id=proven_source_id,
                 )
     existing = {row.achievement_key: row for row in user.achievements}
-    for achievement in ACHIEVEMENTS:
-        unlocked = _is_unlocked(achievement, progress)
-        row = existing.get(achievement.key)
-        source_id = (
-            proven_source_id
-            if progress_without_source is not None
-            and not _is_unlocked(achievement, progress_without_source)
-            else None
-        )
-        if unlocked and row is None:
-            unlocked_at = user.created_at if achievement.kind == "account_created" else utcnow()
-            # A profile read and a visible account-tab action can materialize
-            # the same award concurrently. Let the unique key choose the first
-            # unlock without failing either request or replacing its timestamp.
-            db.execute(
-                insert(UserAchievement).values(
-                    user_id=user.id,
-                    achievement_key=achievement.key,
-                    source_completed_game_id=source_id,
-                    unlocked_at=unlocked_at,
-                ).on_conflict_do_nothing(index_elements=["user_id", "achievement_key"])
+    from .dice_merge_achievements import _reconcile, merge_projection_enabled
+
+    if merge_projection_enabled(db, user.id, "zdwa"):
+        _reconcile(db, user.id, "zdwa", source_completed_game_id=proven_source_id)
+    else:
+        for achievement in ACHIEVEMENTS:
+            unlocked = _is_unlocked(achievement, progress)
+            row = existing.get(achievement.key)
+            source_id = (
+                proven_source_id
+                if progress_without_source is not None
+                and not _is_unlocked(achievement, progress_without_source)
+                else None
             )
-            if source_id is not None:
-                # If a concurrent profile won the insert, still apply the
-                # existing proven-source repair rules below.
-                row = db.scalar(select(UserAchievement).where(
-                    UserAchievement.user_id == user.id, UserAchievement.achievement_key == achievement.key,
-                ))
-        if (
-            unlocked
-            and row is not None
-            and row.source_completed_game_id is None
-            and source_id is not None
-            and proven_source_finished_at is not None
-            and as_utc(row.unlocked_at) >= proven_source_finished_at
-        ):
-            # A profile read can race between the completed-game commit and
-            # its source-aware finalizer sync. Repair only such chronologically
-            # possible NULL links; pre-migration history remains untouched.
-            row.source_completed_game_id = source_id
-        elif not unlocked and row is not None:
-            db.delete(row)
+            if unlocked and row is None:
+                unlocked_at = user.created_at if achievement.kind == "account_created" else utcnow()
+                # A profile read and a visible account-tab action can materialize
+                # the same award concurrently. Let the unique key choose the first
+                # unlock without failing either request or replacing its timestamp.
+                db.execute(
+                    insert(UserAchievement).values(
+                        user_id=user.id,
+                        achievement_key=achievement.key,
+                        source_completed_game_id=source_id,
+                        unlocked_at=unlocked_at,
+                    ).on_conflict_do_nothing(index_elements=["user_id", "achievement_key"])
+                )
+                if source_id is not None:
+                    # If a concurrent profile won the insert, still apply the
+                    # existing proven-source repair rules below.
+                    row = db.scalar(select(UserAchievement).where(
+                        UserAchievement.user_id == user.id, UserAchievement.achievement_key == achievement.key,
+                    ))
+            if (
+                unlocked
+                and row is not None
+                and row.source_completed_game_id is None
+                and source_id is not None
+                and proven_source_finished_at is not None
+                and as_utc(row.unlocked_at) >= proven_source_finished_at
+            ):
+                # A profile read can race between the completed-game commit and
+                # its source-aware finalizer sync. Repair only such chronologically
+                # possible NULL links; pre-migration history remains untouched.
+                row.source_completed_game_id = source_id
+            elif not unlocked and row is not None:
+                db.delete(row)
     db.flush()
     unlocked_rows = {
         row.achievement_key: row
@@ -1900,6 +1943,33 @@ def sync_user_achievements(
     }
 
 
+def sync_achievements_for_users_in_session(
+    db,
+    user_ids: set[int],
+    *,
+    source_completed_game_id: int | None = None,
+) -> dict[int, list[dict]]:
+    """Re-evaluate affected users within the caller's transaction; never commit."""
+    newly_unlocked: dict[int, list[dict]] = {}
+    for user_id in set(owners_for_progress(db, user_ids).values()):
+        user = db.get(User, user_id)
+        if user:
+            existing_keys = {row.achievement_key for row in user.achievements}
+            payload = sync_user_achievements(
+                db,
+                user,
+                source_completed_game_id=source_completed_game_id,
+            )
+            unlocked_now = [
+                achievement
+                for achievement in payload["unlocked"]
+                if achievement["key"] not in existing_keys and achievement["key"] != "account_created"
+            ]
+            if unlocked_now:
+                newly_unlocked[user_id] = unlocked_now
+    return newly_unlocked
+
+
 def sync_achievements_for_users(
     user_ids: set[int],
     *,
@@ -1910,25 +1980,35 @@ def sync_achievements_for_users(
 
     if not user_ids or not database_schema_ready():
         return {}
-    newly_unlocked: dict[int, list[dict]] = {}
     with session_scope() as db:
-        for user_id in user_ids:
-            user = db.get(User, user_id)
-            if user:
-                existing_keys = {row.achievement_key for row in user.achievements}
-                payload = sync_user_achievements(
-                    db,
-                    user,
-                    source_completed_game_id=source_completed_game_id,
-                )
-                unlocked_now = [
-                    achievement
-                    for achievement in payload["unlocked"]
-                    if achievement["key"] not in existing_keys and achievement["key"] != "account_created"
-                ]
-                if unlocked_now:
-                    newly_unlocked[user_id] = unlocked_now
-        return newly_unlocked
+        return sync_achievements_for_users_in_session(
+            db, user_ids, source_completed_game_id=source_completed_game_id,
+        )
+
+
+def sync_engagement_achievements_for_users_in_session(db, user_ids: set[int]) -> None:
+    """Materialize interaction awards in the caller's transaction; never commit."""
+    for user_id in set(owners_for_progress(db, user_ids).values()):
+        user = db.get(User, user_id)
+        if user is None or not user.is_active:
+            continue
+        from .dice_merge_achievements import _reconcile, merge_projection_enabled
+        if merge_projection_enabled(db, user_id, "zdwa"):
+            _reconcile(db, user_id, "zdwa", only_keys={item.key for item in ACHIEVEMENTS if item.kind == "engagement_event"})
+            continue
+        counts = {row.event_key: int(row.count) for row in db.scalars(
+            select(UserEngagementEvent).where(UserEngagementEvent.user_id == user_id)
+        )}
+        existing = {row.achievement_key for row in user.achievements}
+        for achievement in ACHIEVEMENTS:
+            if achievement.kind != "engagement_event" or achievement.key in existing:
+                continue
+            if counts.get(achievement.key, 0) >= achievement.target:
+                db.execute(insert(UserAchievement).values(
+                    user_id=user_id, achievement_key=achievement.key,
+                    source_completed_game_id=None, unlocked_at=utcnow(),
+                ).on_conflict_do_nothing(index_elements=["user_id", "achievement_key"]))
+        db.flush()
 
 
 def sync_engagement_achievements_for_users(user_ids: Iterable[object]) -> None:
@@ -1939,20 +2019,4 @@ def sync_engagement_achievements_for_users(user_ids: Iterable[object]) -> None:
     if not normalized or not database_schema_ready():
         return
     with session_scope() as db:
-        for user_id in normalized:
-            user = db.get(User, user_id)
-            if user is None or not user.is_active:
-                continue
-            counts = {row.event_key: int(row.count) for row in db.scalars(
-                select(UserEngagementEvent).where(UserEngagementEvent.user_id == user_id)
-            )}
-            existing = {row.achievement_key for row in user.achievements}
-            for achievement in ACHIEVEMENTS:
-                if achievement.kind != "engagement_event" or achievement.key in existing:
-                    continue
-                if counts.get(achievement.key, 0) >= achievement.target:
-                    db.execute(insert(UserAchievement).values(
-                        user_id=user_id, achievement_key=achievement.key,
-                        source_completed_game_id=None, unlocked_at=utcnow(),
-                    ).on_conflict_do_nothing(index_elements=["user_id", "achievement_key"]))
-            db.flush()
+        sync_engagement_achievements_for_users_in_session(db, normalized)

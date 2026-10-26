@@ -21,7 +21,7 @@ import json
 import logging
 from collections import defaultdict
 from contextlib import closing
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from typing import Any, Final, Iterable, Iterator
 
@@ -30,9 +30,11 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import selectinload
 
 from .database import database_schema_ready, session_scope
+from .dice_progress import origin_ids_for_progress, owners_for_progress, resolution_metadata
 from .game_types import ZILCH_GAME_TYPE
 from .models import (
     AbandonedGame,
+    AccountProgressOrigin,
     CompletedGame,
     GameParticipant,
     User,
@@ -100,6 +102,9 @@ class _PlayerResult:
     user_id: int
     display_name: str
     user_is_active: bool
+    origin_user_id: int | None = None
+    original_participant_id: int | None = None
+    original_position: int = 0
 
     @property
     def play_mode(self) -> str:
@@ -225,59 +230,82 @@ def _human_player_results(rows: Iterable[CompletedGame]) -> list[_PlayerResult]:
                     user_id=int(linked_participant.user_id),
                     display_name=display_name[:64],
                     user_is_active=bool(user is not None and user.is_active),
+                    origin_user_id=int(linked_participant.user_id),
+                    original_participant_id=int(linked_participant.id),
+                    original_position=int(linked_participant.position),
                 )
             )
     return output
+
+
+def _iter_player_results_in_session(db, *, user_id: int | None = None) -> Iterator[_PlayerResult]:
+    """Stream validated records using the caller's session; never close or commit it."""
+    ids = origin_ids_for_progress(db, user_id) if user_id is not None else None
+    last_finished_at: datetime | None = None
+    last_row_id = 0
+    while True:
+        page_cursor = ()
+        if last_finished_at is not None:
+            page_cursor = (
+                or_(
+                    CompletedGame.finished_at > last_finished_at,
+                    and_(
+                        CompletedGame.finished_at == last_finished_at,
+                        CompletedGame.id > last_row_id,
+                    ),
+                ),
+            )
+        statement = (
+            select(CompletedGame)
+            .options(selectinload(CompletedGame.participants).selectinload(GameParticipant.user))
+            .where(
+                CompletedGame.game_type == ZILCH_GAME_TYPE,
+                *page_cursor,
+            )
+            .order_by(CompletedGame.finished_at.asc(), CompletedGame.id.asc())
+            .limit(ZILCH_STATISTICS_SOURCE_PAGE_SIZE)
+        )
+        if user_id is not None:
+            # EXISTS keeps exactly one durable game row before LIMIT even
+            # if a historic game happens to contain the same account in
+            # two human seats.  A join would make ``unique()`` shrink a
+            # full page and could skip later results at the cursor.
+            statement = statement.where(
+                CompletedGame.participants.any(GameParticipant.user_id.in_(ids))
+            )
+        rows = list(db.scalars(statement).all())
+        if not rows:
+            break
+        # Relationships are eagerly loaded above; copying makes accidental
+        # later session/lazy-load coupling impossible for these projections.
+        records = _human_player_results(rows)
+        owners = owners_for_progress(db, {record.user_id for record in records})
+        users = {user.id: user for user in db.scalars(select(User).where(User.id.in_(set(owners.values()))))}
+        grouped = {}
+        for record in records:
+            owner_id = owners[record.user_id]
+            if user_id is not None and owner_id != user_id:
+                continue
+            user = users.get(owner_id)
+            projected = replace(record, user_id=owner_id, display_name=str(user.username)[:64] if user else record.display_name,
+                                user_is_active=bool(user and user.is_active))
+            priority = (-{"win": 2, "tie": 1}.get(_match_outcome(record), 0), -record.final_score,
+                        record.original_position, record.participant_id, record.origin_user_id)
+            group_key = (record.game_id, owner_id)
+            if group_key not in grouped or priority < grouped[group_key][0]:
+                grouped[group_key] = (priority, projected)
+        for _priority, record in grouped.values():
+            yield record
+        last_finished_at = rows[-1].finished_at
+        last_row_id = int(rows[-1].id)
 
 
 def _iter_player_results(*, user_id: int | None = None) -> Iterator[_PlayerResult]:
     """Stream validated human records from bounded, SQL-filtered pages."""
     if not database_schema_ready():
         return
-    last_finished_at: datetime | None = None
-    last_row_id = 0
     with session_scope() as db:
-        while True:
-            page_cursor = ()
-            if last_finished_at is not None:
-                page_cursor = (
-                    or_(
-                        CompletedGame.finished_at > last_finished_at,
-                        and_(
-                            CompletedGame.finished_at == last_finished_at,
-                            CompletedGame.id > last_row_id,
-                        ),
-                    ),
-                )
-            statement = (
-                select(CompletedGame)
-                .options(selectinload(CompletedGame.participants).selectinload(GameParticipant.user))
-                .where(
-                    CompletedGame.game_type == ZILCH_GAME_TYPE,
-                    *page_cursor,
-                )
-                .order_by(CompletedGame.finished_at.asc(), CompletedGame.id.asc())
-                .limit(ZILCH_STATISTICS_SOURCE_PAGE_SIZE)
-            )
-            if user_id is not None:
-                # EXISTS keeps exactly one durable game row before LIMIT even
-                # if a historic game happens to contain the same account in
-                # two human seats.  A join would make ``unique()`` shrink a
-                # full page and could skip later results at the cursor.
-                statement = statement.where(
-                    CompletedGame.participants.any(GameParticipant.user_id == user_id)
-                )
-            rows = list(db.scalars(statement).all())
-            if not rows:
-                break
-            # Relationships are eagerly loaded above; copying makes accidental
-            # later session/lazy-load coupling impossible for these projections.
-            for record in _human_player_results(rows):
-                # SQL selects the game, not the caller's individual seat.
-                if user_id is None or record.user_id == user_id:
-                    yield record
-            last_finished_at = rows[-1].finished_at
-            last_row_id = int(rows[-1].id)
+        yield from _iter_player_results_in_session(db, user_id=user_id)
 
 
 def _load_player_results(*, user_id: int | None = None) -> list[_PlayerResult]:
@@ -528,7 +556,7 @@ def _counted_solo_abandonments(user_id: int) -> frozenset[str]:
                 AbandonedGame.game_type == ZILCH_GAME_TYPE,
                 AbandonedGame.mode == "1",
                 AbandonedGame.reason == "manual",
-                AbandonedGame.aborted_by_user_id == user_id,
+                AbandonedGame.aborted_by_user_id.in_(origin_ids_for_progress(db, user_id)),
             ).execution_options(yield_per=ZILCH_STATISTICS_SOURCE_PAGE_SIZE)
         ))
 
@@ -946,7 +974,12 @@ def _leaderboard_achievement_points() -> list[tuple[tuple[Any, ...], tuple[Any, 
                     User.username,
                     func.count(func.distinct(ZilchCommunityParticipant.game_id)),
                 )
-                .join(ZilchCommunityParticipant, ZilchCommunityParticipant.user_id == User.id)
+                .join(ZilchCommunityParticipant, or_(
+                    ZilchCommunityParticipant.user_id == User.id,
+                    ZilchCommunityParticipant.user_id.in_(select(AccountProgressOrigin.origin_user_id).where(
+                        AccountProgressOrigin.owner_user_id == User.id,
+                    ).correlate(User)),
+                ))
                 .where(
                     User.is_active.is_(True),
                     User.id > last_user_id,
@@ -1091,3 +1124,14 @@ def get_zilch_leaderboard(
     if objective is not None:
         response["objective"] = objective
     return response
+
+
+def zilch_resolution_metadata_in_session(db, user_id):
+    result = []
+    for record in _iter_player_results_in_session(db, user_id=user_id):
+        game = db.scalar(select(CompletedGame).options(selectinload(CompletedGame.participants)).where(
+            CompletedGame.game_type == ZILCH_GAME_TYPE, CompletedGame.game_id == record.game_id,
+        ))
+        seat = db.get(GameParticipant, record.original_participant_id)
+        result.append(resolution_metadata(game, seat))
+    return result

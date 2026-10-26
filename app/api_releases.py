@@ -16,6 +16,8 @@ from .game_access import can_access_zilch_preview
 from .models import PushRelease, ReleaseAcknowledgement
 from .security import as_utc, utcnow
 from .versioning import current_version, version_for_revision
+from .watten_access import can_access_watten
+from .watten_readiness import watten_public_beta_enabled
 
 router = APIRouter(prefix="/api/releases", tags=["release notes"])
 HISTORY_LIMIT = 10
@@ -27,15 +29,17 @@ class AcknowledgeReleaseRequest(BaseModel):
     viewer_id: int
 
 
-def _require_product(identity, game_type: str) -> None:
+def _require_product(identity, game_type: str, request: Request) -> None:
     if game_type == "zilch" and not can_access_zilch_preview(identity):
         raise HTTPException(status_code=403, detail="game_access_denied")
+    if game_type == "watten" and not (watten_public_beta_enabled(request) or can_access_watten(identity, request)):
+        raise HTTPException(status_code=404, detail="game_not_found", headers={"Cache-Control": "no-store"})
 
 
 @router.get("")
-def release_history(request: Request, response: Response, game_type: Literal["zdwa", "zilch", "hausdepp"] = "zdwa", language: Literal["de", "en"] = "de"):
+def release_history(request: Request, response: Response, game_type: Literal["zdwa", "zilch", "hausdepp", "watten"] = "zdwa", language: Literal["de", "en"] = "de"):
     identity = resolve_session(request)
-    _require_product(identity, game_type)
+    _require_product(identity, game_type, request)
     response.headers["Cache-Control"] = "no-store"
     user_id = identity.user_id if identity else None
     with session_scope() as db:
@@ -68,10 +72,10 @@ def release_history(request: Request, response: Response, game_type: Literal["zd
 
 @router.post("/{revision}/acknowledge")
 def acknowledge_release(revision: str, payload: AcknowledgeReleaseRequest, request: Request, response: Response,
-                        game_type: Literal["zdwa", "zilch", "hausdepp"] = "zdwa"):
+                        game_type: Literal["zdwa", "zilch", "hausdepp", "watten"] = "zdwa"):
     identity = require_user(request)
     require_csrf(request, identity)
-    _require_product(identity, game_type)
+    _require_product(identity, game_type, request)
     if payload.viewer_id != identity.user_id:
         raise HTTPException(status_code=409, detail="release_viewer_changed")
     response.headers["Cache-Control"] = "no-store"

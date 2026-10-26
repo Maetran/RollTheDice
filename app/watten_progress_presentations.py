@@ -11,6 +11,14 @@ from .watten_progression_receipts import read_match_presentation_boundaries
 
 def apply_match_receipts(account, *, user_id):
     """Hide only already presented own-match items, retaining the global cursor."""
+    if not account["progress"]["pending"]["credits"] and not account["progress"]["pending"]["achievements"]:
+        return deepcopy(account)
+    with session_scope() as db:
+        return apply_match_receipts_in_session(db, account, user_id=user_id)
+
+
+def apply_match_receipts_in_session(db, account, *, user_id):
+    """Read match boundaries in the caller's transaction, never acknowledge."""
     result = deepcopy(account)
     progress = result["progress"]
     pending = progress["pending"]
@@ -18,9 +26,8 @@ def apply_match_receipts(account, *, user_id):
     ids.update(item["source_game_id"] for item in pending["achievements"])
     if not ids:
         return result
-    with session_scope() as db:
-        boundaries = read_match_presentation_boundaries(
-            db, user_id=user_id, generation=progress["generation"], game_ids=ids)
+    boundaries = read_match_presentation_boundaries(
+        db, user_id=user_id, generation=progress["generation"], game_ids=ids)
     if set(boundaries) != ids:
         raise ValueError("watten_presentation_invalid_matches")
     pending["credits"] = [item for item in pending["credits"]
@@ -32,19 +39,28 @@ def apply_match_receipts(account, *, user_id):
 
 def match_presentation(account, *, user_id, game_id):
     """Only this match's unacknowledged credit/awards, never another match."""
+    with session_scope() as db:
+        return match_presentation_in_session(db, account, user_id=user_id, game_id=game_id)
+
+
+def match_presentation_in_session(db, account, *, user_id, game_id):
+    """Project this exact original match in the caller's transaction."""
     progress = account["progress"]
     # Check membership even when a global acknowledgement hid all pending items.
-    with session_scope() as db:
-        boundaries = read_match_presentation_boundaries(
-            db, user_id=user_id, generation=progress["generation"], game_ids=(game_id,)) if progress["grant_sequence"] else {}
-        if game_id not in boundaries:
-            # The account reader already validated all owned result sources.
-            # Older legitimate results intentionally have no retrospective XP.
-            owned = db.scalar(select(CompletedGame.id).join(GameParticipant,
-                GameParticipant.game_id == CompletedGame.id).where(
-                    CompletedGame.game_id == game_id, CompletedGame.game_type == "watten",
-                    GameParticipant.user_id == user_id).limit(1))
-            if owned is None:
+    boundaries = read_match_presentation_boundaries(
+        db, user_id=user_id, generation=progress["generation"], game_ids=(game_id,)) if progress["grant_sequence"] else {}
+    if game_id not in boundaries:
+        # The account reader already validated all owned result sources.
+        # Older legitimate results intentionally have no retrospective XP.
+        owned = db.scalar(select(CompletedGame.id).join(GameParticipant,
+            GameParticipant.game_id == CompletedGame.id).where(
+                CompletedGame.game_id == game_id, CompletedGame.game_type == "watten",
+                GameParticipant.user_id == user_id).limit(1))
+        if owned is None:
+            from .watten_merge import is_merged, selected_matches
+            inherited = is_merged(db, user_id) and any(
+                item.match.evidence.game_id == game_id for item in selected_matches(db, user_id))
+            if not inherited:
                 raise ValueError("watten_presentation_not_found")
     boundary = boundaries.get(game_id, 0)
     credit = next((item for item in progress["pending"]["credits"]

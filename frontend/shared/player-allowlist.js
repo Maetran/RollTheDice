@@ -39,9 +39,18 @@ async function request(path = "", options = {}) {
 }
 
 function mountController(mount, render, context) {
+  if (!mount.isConnected) return;
   let data = null;
   let epoch = 0;
   let busy = false;
+  let retired = false;
+  const connected = () => {
+    if (!mount.isConnected && !retired) {
+      retired = true; epoch += 1; data = null;
+      window.removeEventListener("zdwa:auth-state", onAuth);
+    }
+    return !retired;
+  };
   const message = element("p", "", "player-allowlist-message");
   message.setAttribute("role", "status");
   const controls = element("div", "", "player-allowlist-controls");
@@ -49,15 +58,16 @@ function mountController(mount, render, context) {
   mount.replaceChildren(controls, message);
 
   async function refresh() {
+    if (!connected()) return;
     const expectedEpoch = ++epoch;
     try {
       const result = await request();
-      if (expectedEpoch !== epoch || !mount.isConnected) return;
+      if (expectedEpoch !== epoch || !connected()) return;
       data = result;
       message.textContent = "";
       render(controls, data, mutate);
     } catch (error) {
-      if (expectedEpoch !== epoch || !mount.isConnected) return;
+      if (expectedEpoch !== epoch || !connected()) return;
       data = null;
       mount.hidden = false;
       controls.replaceChildren();
@@ -79,7 +89,7 @@ function mountController(mount, render, context) {
   }
 
   async function mutate(path, method, extra = {}) {
-    if (busy || !data) return;
+    if (!connected() || busy || !data) return;
     busy = true;
     const expectedViewer = data.viewer_id;
     const expectedEpoch = ++epoch;
@@ -87,13 +97,13 @@ function mountController(mount, render, context) {
     message.textContent = t("Spielerauswahl wird gespeichert …");
     try {
       const result = await request(path, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ viewer_id: expectedViewer, ...extra }) });
-      if (epoch !== expectedEpoch || !mount.isConnected) return;
+      if (epoch !== expectedEpoch || !connected()) return;
       if (result.viewer_id !== expectedViewer) throw new Error("allowlist_viewer_changed");
       data = result;
       render(controls, data, mutate);
       message.textContent = t("Spielerauswahl gespeichert.");
     } catch (error) {
-      if (epoch === expectedEpoch && mount.isConnected) {
+      if (epoch === expectedEpoch && connected()) {
         message.textContent = errorText(error);
         controls.querySelectorAll("button, select").forEach(node => { node.disabled = false; });
       }
@@ -101,14 +111,16 @@ function mountController(mount, render, context) {
   }
 
   // An old profile/settings screen must never act on another account's list.
-  window.addEventListener("zdwa:auth-state", event => {
+  function onAuth(event) {
+    if (!connected()) return;
     const viewer = event.detail?.authenticated ? event.detail.user?.id : null;
     if (data?.viewer_id === viewer) return;
     data = null;
     mount.hidden = false;
     controls.replaceChildren();
     void refresh();
-  });
+  }
+  window.addEventListener("zdwa:auth-state", onAuth);
   message.textContent = t("Spielerauswahl wird geladen …");
   void refresh();
 }

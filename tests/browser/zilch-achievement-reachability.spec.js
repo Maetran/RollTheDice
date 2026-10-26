@@ -44,7 +44,7 @@ for (const [language, theme] of [["de", "light"], ["en", "light"], ["de", "lcars
 
     await page.goto("/zilch");
     await page.locator("#zilchNavigation a[href='/zilch/konto']").click();
-    const statisticsTab = page.getByRole("tab", { name: language === "en" ? "Statistics" : "Statistiken", exact: true });
+    const statisticsTab = page.getByRole("tab", { name: language === "en" ? "Statistics" : "Statistik", exact: true });
     await statisticsTab.click();
     const history = page.getByRole("button", { name: language === "en" ? "Your history" : "Deine Historie", exact: true });
     await expect(history).toBeVisible();
@@ -103,7 +103,7 @@ test("history remains accessible when statistics are temporarily unavailable", a
   await createAccount(page, "HistoryStatsOffline");
   await page.route("**/api/zilch/statistics", route => route.fulfill({ status: 503, json: { detail: "unavailable" } }));
   await page.goto("/zilch/konto");
-  await page.getByRole("tab", { name: "Statistiken", exact: true }).click();
+  await page.getByRole("tab", { name: "Statistik", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Zilch-Statistiken nicht verfügbar", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Deine Historie", exact: true }).click();
   await expect(page.locator("#zilchAllResultsHistory")).toContainText("Noch keine abgeschlossenen Zilch-Partien");

@@ -288,3 +288,59 @@ test("same-account session rotation offers source reload after the captured CSRF
 assert.equal(f.container.innerHTML, "");
   assert.equal(f.calls.length, 2);
 });
+
+test("DE/EN unavailable original rosters explain the fixed line-up and link to a new table without posting", async () => {
+  for (const language of ["de", "en"]) {
+    const f = fixture({ language });
+    f.update({ snapshot: { ...snapshot(), room: { ...snapshot().room, rematch: {
+      can_create: false, game_id: null, unavailable_reason: "watten_rematch_original_roster_unavailable",
+    } } } });
+    assert.match(f.container.innerHTML, /data-watten-rematch-unavailable/);
+    assert.match(f.container.innerHTML, language === "de" ? /ursprüngliches Konto/ : /original account/);
+    assert.match(f.container.innerHTML, language === "de" ? /href="\/watten"/ : /href="\/watten\?lang=en"/);
+    assert.doesNotMatch(f.container.innerHTML, /data-watten-rematch-action="(?:create|retry|reload)"/);
+    f.container.click("create"); f.container.click("retry"); await tick();
+    assert.equal(f.calls.length, 0); assert.deepEqual(f.navigations, []);
+    f.client.destroy();
+  }
+});
+
+test("a precise roster refusal after a valid snapshot is terminal for that envelope, not a stale-revision retry", async () => {
+  for (const language of ["de", "en"]) {
+    const f = fixture({ language, fetcher: async () => response({ detail: "watten_rematch_original_roster_unavailable" }, 409) });
+    f.update(); f.container.click("create");
+    await until(() => f.container.innerHTML.includes("data-watten-rematch-unavailable"));
+    assert.equal(f.calls.length, 1);
+    assert.doesNotMatch(f.container.innerHTML, /data-watten-rematch-action="(?:create|retry|reload)"/);
+    assert.match(f.container.innerHTML, language === "de" ? /Neuen Tisch öffnen/ : /Open a new table/);
+    f.container.click("create"); f.container.click("retry"); await tick();
+    assert.equal(f.calls.length, 1); assert.deepEqual(f.navigations, []);
+    f.client.destroy();
+  }
+});
+
+test("unavailable reasons are allowlisted and host-only; existing targets still open explicitly", async () => {
+  const f = fixture();
+  const unavailable = { can_create: false, game_id: null, unavailable_reason: "watten_rematch_original_roster_unavailable" };
+  f.update({ snapshot: { ...snapshot(), room: { ...snapshot().room, host_participant_id: "p2", rematch: unavailable } } });
+  assert.equal(f.container.innerHTML, "");
+  for (const reason of ["<private-account-42>", "toString", "__proto__", "constructor"]) {
+    f.update({ snapshot: { ...snapshot(), room: { ...snapshot().room, rematch: { ...unavailable, unavailable_reason: reason } } } });
+    assert.equal(f.container.innerHTML, "");
+  }
+  f.update({ snapshot: { ...snapshot(), room: { ...snapshot().room, rematch: { ...unavailable, game_id: targetId } } } });
+  assert.match(f.container.innerHTML, /Zur Revanche/); assert.doesNotMatch(f.container.innerHTML, /data-watten-rematch-unavailable/);
+  f.container.click("open"); await until(() => f.navigations.length === 1);
+  assert.equal(f.calls.length, 0);
+});
+
+test("a bounded storage refusal offers a deliberate reload without creating a new table", async () => {
+  const f = fixture({ language: "en" });
+  f.update({ snapshot: { ...snapshot(), room: { ...snapshot().room, rematch: {
+    can_create: false, game_id: null, unavailable_reason: "watten_storage_unavailable",
+  } } } });
+  assert.match(f.container.innerHTML, /availability could not be checked/);
+  f.container.click("create"); await tick(); assert.equal(f.calls.length, 0);
+  f.container.click("reload"); await until(() => f.navigations.length === 1);
+  assert.deepEqual(f.navigations, [`/watten/spiel/${gameId}`]);
+});

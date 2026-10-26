@@ -28,6 +28,7 @@ from app import main
 from app.active_games import load_active_games, save_active_game
 from app.auth import create_user, login
 from app.database import configure_database, session_scope, upgrade_database
+from app.game_lifecycle import bound_revision, commit_room_binding
 from app.game_state import games, new_game
 from app.game_types import DEFAULT_GAME_TYPE
 from app.game_ws_session import GameSocketSession, disconnect_session, handle_session_action
@@ -350,7 +351,10 @@ class ZilchSoloIntegrationTestCase(TestCase):
         self.assertEqual(self._error_code(socket), "zilch_game_finished")
 
     def test_solo_rejoin_and_restart_pause_time_without_creating_a_cpu_runner(self) -> None:
-        game, player_id, socket = self._started_solo_game()
+        host_user_id, _token = self._identity("previewfriend")
+        game, player_id, socket = self._started_solo_game(host_user_id=host_user_id)
+        commit_room_binding(game, [host_user_id])
+        self.assertEqual(bound_revision(game), 1)
         base = datetime(2030, 1, 1, tzinfo=timezone.utc)
         game["_zilch_solo_active_since"] = base.isoformat()
         session = GameSocketSession(websocket=socket, game=game, auth_identity=None, player_id=player_id)
@@ -396,6 +400,9 @@ class ZilchSoloIntegrationTestCase(TestCase):
                 )
             )
         self.assertFalse(should_close)
+        self.assertEqual(resumed_socket.closed, [])
+        self.assertEqual(recovered_socket.closed, [])
+        self.assertEqual(bound_revision(restored), bound_revision(game))
         self.assertEqual(restored["_zilch_solo_objective"]["progress"]["active_duration_seconds"], 20)
         self.assertEqual(restored["_zilch_solo_active_since"], (base + timedelta(seconds=600)).isoformat())
 

@@ -24,6 +24,7 @@ from urllib.parse import quote, urlsplit
 from pydantic import BaseModel, Field
 from sqlalchemy import and_, delete, or_, select, update
 
+from .account_progress import ProgressIdentityError, require_exact_active_account
 from .database import session_scope
 from .game_access import can_account_access_zilch
 from .game_activity import PLAY_DAY_TIMEZONE
@@ -268,6 +269,14 @@ def check_web_push_subscription(*, user_id: int, payload: WebPushSubscriptionReq
     return {**web_push_subscription_status(user_id), "device_subscribed": subscribed}
 
 
+def _active_push_account(db, user_id: int) -> User:
+    """Recheck the actual actor while holding its write lock until commit."""
+    try:
+        return require_exact_active_account(db, user_id)
+    except ProgressIdentityError as exc:
+        raise LookupError("user_not_found") from exc
+
+
 def save_web_push_subscription(
     *,
     user_id: int,
@@ -286,11 +295,7 @@ def save_web_push_subscription(
     context = product_context
     now = utcnow()
     with session_scope() as db:
-        user = db.get(User, user_id)
-        if user is None:
-            raise LookupError("user_not_found")
-        if context == WATTEN_GAME_TYPE and not user.is_active:
-            raise LookupError("user_not_found")
+        user = _active_push_account(db, user_id)
         if (context == WATTEN_GAME_TYPE and not watten_public_beta_enabled(connection) and not watten_game_preview_enabled(connection)
                 and watten_founder_account_id(db) != user_id):
             raise ValueError("web_push_context_unavailable")
@@ -341,9 +346,7 @@ def save_web_push_subscription(
 
 def update_web_push_preferences(user_id: int, payload: WebPushPreferencesRequest) -> dict[str, object]:
     with session_scope() as db:
-        user = db.get(User, user_id)
-        if user is None:
-            raise LookupError("user_not_found")
+        user = _active_push_account(db, user_id)
         if payload.admin_help_enabled is not None and user.role != "admin":
             raise ValueError("admin_required")
         enabling = (
@@ -385,9 +388,7 @@ def update_web_push_preferences(user_id: int, payload: WebPushPreferencesRequest
 
 def remove_web_push_subscriptions(user_id: int) -> dict[str, object]:
     with session_scope() as db:
-        user = db.get(User, user_id)
-        if user is None:
-            raise LookupError("user_not_found")
+        user = _active_push_account(db, user_id)
         db.execute(delete(WebPushSubscription).where(WebPushSubscription.user_id == user.id))
         user.game_invite_push_enabled = False
         user.daily_reminder_push_enabled = False
@@ -422,6 +423,14 @@ def claim_web_push_opt_in_prompt(user_id: int, *, device_missing: bool = False) 
     has_registered_device = select(WebPushSubscription.id).where(WebPushSubscription.user_id == user_id).exists()
     no_effective_push = or_(disabled_categories, ~has_registered_device)
     with session_scope() as db:
+        try:
+            _active_push_account(db, user_id)
+        except LookupError:
+            if db.get(User, user_id) is None:
+                raise
+            # This optional reminder already suppresses inactive accounts.
+            # Keep that response while denying any retired-account write.
+            return {"show": False, "interval_days": PUSH_OPT_IN_PROMPT_INTERVAL.days}
         claimed = db.execute(
             update(User)
             .where(
@@ -433,8 +442,6 @@ def claim_web_push_opt_in_prompt(user_id: int, *, device_missing: bool = False) 
             .values(push_opt_in_prompted_at=now, updated_at=now)
             .returning(User.id)
         ).scalar_one_or_none()
-        if claimed is None and db.get(User, user_id) is None:
-            raise LookupError("user_not_found")
     return {"show": claimed is not None, "interval_days": PUSH_OPT_IN_PROMPT_INTERVAL.days}
 
 

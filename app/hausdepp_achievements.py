@@ -477,7 +477,11 @@ def public_hausdepp_ranks(db, user_ids: list[int]) -> dict[int, dict]:
         unlocks[unlock.user_id].append(unlock)
     result = {}
     for user_id in ids:
-        rank = _rank(_score_points(credits[user_id], unlocks[user_id]))
+        from .hausdepp_merge import is_merged, public_score_points
+        if is_merged(db, user_id):
+            rank = _rank(public_score_points(db, user_id))
+        else:
+            rank = _rank(_score_points(credits[user_id], unlocks[user_id]))
         result[user_id] = {key: rank[key] for key in ("id", "name", "level")}
     return result
 
@@ -489,93 +493,126 @@ def synchronize_hausdepp_progress(user_id: int) -> dict:
     if not database_schema_ready():
         return _projection([], [], _new_aggregate(), 0)
     with session_scope() as db:
-        # Take the per-account write lock before source reads. PostgreSQL locks
-        # this account's row; SQLite obtains its write reservation without the
-        # read-to-write snapshot race between simultaneous account tabs.
-        _insert_once(db, HausdeppPresentationReceipt, {"user_id": user_id, "acknowledged_points": 0})
-        db.execute(update(HausdeppPresentationReceipt).where(
-            HausdeppPresentationReceipt.user_id == user_id,
-        ).values(acknowledged_points=HausdeppPresentationReceipt.acknowledged_points))
-        unlocks = db.scalars(select(HausdeppAchievementUnlock)
-                             .where(HausdeppAchievementUnlock.user_id == user_id, _unlock_source_allowed())).all()
-        existing_credits = db.scalars(select(HausdeppRoundCredit).where(HausdeppRoundCredit.user_id == user_id,
-            source_not_withdrawn(HausdeppRoundCredit.user_id, HausdeppRoundCredit.game_id))).all()
-        awarded_points = len(existing_credits) * ROUND_POINTS + sum(
-            _revision_points(_ACHIEVEMENTS_BY_ID[unlock.achievement_id]["points"]) for unlock in unlocks
-            if unlock.achievement_id in _ACHIEVEMENTS_BY_ID)
-        receipt = db.get(HausdeppPresentationReceipt, user_id)
-        if receipt.acknowledged_score_points is None and receipt.acknowledged_points == awarded_points:
-            # All already-credited progress was seen before this read. Derive
-            # its weighted snapshot before recovering any newly finished rows.
-            receipt.acknowledged_score_points = _score_points(existing_credits, unlocks)
-        # A relational NOT EXISTS avoids repeatedly decoding old histories. Only
-        # human membership grants a source query; cursors carry no authority.
-        statement = select(CompletedGame).options(selectinload(CompletedGame.participants)).where(
-            CompletedGame.game_type == HAUSDEPP_GAME_TYPE,
-            CompletedGame.participants.any(GameParticipant.user_id == user_id),
-            ~select(HausdeppRoundCredit.game_id).where(
-                HausdeppRoundCredit.user_id == user_id,
-                HausdeppRoundCredit.game_id == CompletedGame.game_id,
-            ).exists(),
-        ).order_by(CompletedGame.finished_at, CompletedGame.id)
-        # Source results are read in bounded pages. Credits are immutable narrow
-        # facts and never contain hands, names or another account's event flags.
-        last_id = None
-        while True:
-            query = statement if last_id is None else statement.where(CompletedGame.id > last_id)
-            rows = db.scalars(query.order_by(None).order_by(CompletedGame.id).limit(250)).all()
-            if not rows:
-                break
-            for row in rows:
-                validated = validated_hausdepp_membership(row, user_id, db=db)
-                if validated is None:
-                    continue
-                _record, facts = validated
-                inserted = _insert_once(db, HausdeppRoundCredit, {
-                    "user_id": user_id, "game_id": row.game_id, "finished_at": row.finished_at,
-                    "facts_json": json.dumps(facts, separators=(",", ":")),
-                })
-                if inserted:
-                    awarded_points += ROUND_POINTS
-            last_id = rows[-1].id
-        credits = db.scalars(select(HausdeppRoundCredit).where(HausdeppRoundCredit.user_id == user_id)
-                             .where(source_not_withdrawn(HausdeppRoundCredit.user_id, HausdeppRoundCredit.game_id))
-                             .order_by(HausdeppRoundCredit.finished_at, HausdeppRoundCredit.game_id)).all()
-        unlocked_ids = {unlock.achievement_id for unlock in unlocks}
-        aggregate = _new_aggregate()
-        for credit in credits:
-            _accumulate(aggregate, json.loads(credit.facts_json), credit.finished_at)
-            for item in ACHIEVEMENTS:
-                current, target = _progress(aggregate, item["id"])
-                if item["id"] not in unlocked_ids and current >= target:
-                    awarded_points += _revision_points(item["points"])
-                    _insert_once(db, HausdeppAchievementUnlock, {
-                        "user_id": user_id, "achievement_id": item["id"], "unlocked_at": credit.finished_at,
-                        "source_game_id": credit.game_id, "awarded_points": awarded_points,
-                    })
-                    unlocked_ids.add(item["id"])
-        withdrawals = db.scalars(select(HausdeppWithdrawal).where(HausdeppWithdrawal.user_id == user_id)
-                                 .order_by(HausdeppWithdrawal.departed_at, HausdeppWithdrawal.result_id)).all()
-        aggregate["withdrawals"] = len(withdrawals)
-        if withdrawals and WITHDRAWAL_ACHIEVEMENT_ID not in unlocked_ids:
-            awarded_points += 1
-            first = withdrawals[0]
-            _insert_once(db, HausdeppAchievementUnlock, {
-                "user_id": user_id, "achievement_id": WITHDRAWAL_ACHIEVEMENT_ID, "unlocked_at": first.departed_at,
-                "source_game_id": first.result_id, "awarded_points": awarded_points,
+        return synchronize_hausdepp_progress_in_session(db, user_id)
+
+
+def synchronize_hausdepp_progress_in_session(db, user_id: int, *, projection_context=None) -> dict:
+    """Recover/project one original account within the caller's transaction.
+
+    The caller provides a ready schema and owns commit/rollback. No normal
+    presentation boundary is acknowledged by this recovery operation.
+    """
+    if type(user_id) is not int or user_id < 1:
+        raise ValueError("hausdepp_invalid_user")
+    # Take the per-account write lock before source reads. PostgreSQL locks
+    # this account's row; SQLite obtains its write reservation without the
+    # read-to-write snapshot race between simultaneous account tabs.
+    _insert_once(db, HausdeppPresentationReceipt, {"user_id": user_id, "acknowledged_points": 0})
+    db.execute(update(HausdeppPresentationReceipt).where(
+        HausdeppPresentationReceipt.user_id == user_id,
+    ).values(acknowledged_points=HausdeppPresentationReceipt.acknowledged_points))
+    unlocks = db.scalars(select(HausdeppAchievementUnlock)
+                         .where(HausdeppAchievementUnlock.user_id == user_id, _unlock_source_allowed())).all()
+    existing_credits = db.scalars(select(HausdeppRoundCredit).where(HausdeppRoundCredit.user_id == user_id,
+        source_not_withdrawn(HausdeppRoundCredit.user_id, HausdeppRoundCredit.game_id))).all()
+    awarded_points = len(existing_credits) * ROUND_POINTS + sum(
+        _revision_points(_ACHIEVEMENTS_BY_ID[unlock.achievement_id]["points"]) for unlock in unlocks
+        if unlock.achievement_id in _ACHIEVEMENTS_BY_ID)
+    receipt = db.get(HausdeppPresentationReceipt, user_id)
+    if receipt.acknowledged_score_points is None and receipt.acknowledged_points == awarded_points:
+        # All already-credited progress was seen before this read. Derive
+        # its weighted snapshot before recovering any newly finished rows.
+        receipt.acknowledged_score_points = _score_points(existing_credits, unlocks)
+    # A relational NOT EXISTS avoids repeatedly decoding old histories. Only
+    # human membership grants a source query; cursors carry no authority.
+    statement = select(CompletedGame).options(selectinload(CompletedGame.participants)).where(
+        CompletedGame.game_type == HAUSDEPP_GAME_TYPE,
+        CompletedGame.participants.any(GameParticipant.user_id == user_id),
+        ~select(HausdeppRoundCredit.game_id).where(
+            HausdeppRoundCredit.user_id == user_id,
+            HausdeppRoundCredit.game_id == CompletedGame.game_id,
+        ).exists(),
+    ).order_by(CompletedGame.finished_at, CompletedGame.id)
+    # Source results are read in bounded pages. Credits are immutable narrow
+    # facts and never contain hands, names or another account's event flags.
+    last_id = None
+    while True:
+        query = statement if last_id is None else statement.where(CompletedGame.id > last_id)
+        rows = db.scalars(query.order_by(None).order_by(CompletedGame.id).limit(250)).all()
+        if not rows:
+            break
+        for row in rows:
+            validated = validated_hausdepp_membership(row, user_id, db=db)
+            if validated is None:
+                continue
+            _record, facts = validated
+            inserted = _insert_once(db, HausdeppRoundCredit, {
+                "user_id": user_id, "game_id": row.game_id, "finished_at": row.finished_at,
+                "facts_json": json.dumps(facts, separators=(",", ":")),
             })
-        unlocks = db.scalars(select(HausdeppAchievementUnlock)
-                             .where(HausdeppAchievementUnlock.user_id == user_id, _unlock_source_allowed())).all()
-        result = _projection(credits, unlocks, aggregate, receipt.acknowledged_points,
-                             receipt.acknowledged_score_points)
-        scores = _presentation_scores(receipt)
-        revision = result["presentation"]["revision"]
-        scores.setdefault(str(revision), _score_points(credits, unlocks))
-        scores = dict(sorted(((key, value) for key, value in scores.items()
-                              if int(key) >= receipt.acknowledged_points), key=lambda item: int(item[0]))
-                      [-PRESENTATION_SNAPSHOT_LIMIT:])
-        receipt.presentation_scores_json = json.dumps(scores, separators=(",", ":"))
-        return result
+            if inserted:
+                awarded_points += ROUND_POINTS
+        last_id = rows[-1].id
+    credits = db.scalars(select(HausdeppRoundCredit).where(HausdeppRoundCredit.user_id == user_id)
+                         .where(source_not_withdrawn(HausdeppRoundCredit.user_id, HausdeppRoundCredit.game_id))
+                         .order_by(HausdeppRoundCredit.finished_at, HausdeppRoundCredit.game_id)).all()
+    unlocked_ids = {unlock.achievement_id for unlock in unlocks}
+    from .hausdepp_merge import effective_awards, is_merged
+    merged = is_merged(db, user_id)
+    inputs = None
+    if merged:
+        from .hausdepp_merge import read_projection_inputs
+        inputs = read_projection_inputs(db, user_id)
+        unlocked_ids.update(effective_awards(db, user_id, inputs=inputs))
+    aggregate = _new_aggregate()
+    for credit in credits:
+        facts = json.loads(credit.facts_json)
+        if merged:
+            from .account_progress import progress_owner_ids
+            owners = progress_owner_ids(db, facts["opponents"])
+            facts["opponents"] = sorted({owners.get(value, value) for value in facts["opponents"]} - {user_id})
+        _accumulate(aggregate, facts, credit.finished_at)
+        for item in ACHIEVEMENTS:
+            current, target = _progress(aggregate, item["id"])
+            if item["id"] not in unlocked_ids and current >= target:
+                awarded_points += _revision_points(item["points"])
+                _insert_once(db, HausdeppAchievementUnlock, {
+                    "user_id": user_id, "achievement_id": item["id"], "unlocked_at": credit.finished_at,
+                    "source_game_id": credit.game_id, "awarded_points": awarded_points,
+                })
+                unlocked_ids.add(item["id"])
+    withdrawals = db.scalars(select(HausdeppWithdrawal).where(HausdeppWithdrawal.user_id == user_id)
+                             .order_by(HausdeppWithdrawal.departed_at, HausdeppWithdrawal.result_id)).all()
+    aggregate["withdrawals"] = len(withdrawals)
+    if withdrawals and WITHDRAWAL_ACHIEVEMENT_ID not in unlocked_ids:
+        awarded_points += 1
+        first = withdrawals[0]
+        _insert_once(db, HausdeppAchievementUnlock, {
+            "user_id": user_id, "achievement_id": WITHDRAWAL_ACHIEVEMENT_ID, "unlocked_at": first.departed_at,
+            "source_game_id": first.result_id, "awarded_points": awarded_points,
+        })
+    unlocks = db.scalars(select(HausdeppAchievementUnlock)
+                         .where(HausdeppAchievementUnlock.user_id == user_id, _unlock_source_allowed())).all()
+    result = _projection(credits, unlocks, aggregate, receipt.acknowledged_points,
+                         receipt.acknowledged_score_points)
+    scores = _presentation_scores(receipt)
+    revision = result["presentation"]["revision"]
+    scores.setdefault(str(revision), _score_points(credits, unlocks))
+    scores = dict(sorted(((key, value) for key, value in scores.items()
+                          if int(key) >= receipt.acknowledged_points), key=lambda item: int(item[0]))
+                  [-PRESENTATION_SNAPSHOT_LIMIT:])
+    receipt.presentation_scores_json = json.dumps(scores, separators=(",", ":"))
+    db.flush()
+    from .account_progress import progress_owner_id
+    owner_id = progress_owner_id(db, user_id)
+    if merged or owner_id != user_id:
+        from .hausdepp_merge import grant_combined, project_progress
+        grant_combined(db, owner_id, reached_at=max((as_utc(item.finished_at) for item in credits), default=None), inputs=inputs)
+        if merged:
+            if projection_context is not None:
+                projection_context["inputs"] = inputs
+            return project_progress(db, user_id, result, inputs=inputs)
+    return result
 
 
 def _projection(credits: list, unlocks: list, aggregate: dict, acknowledged: int,

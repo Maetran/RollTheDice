@@ -110,6 +110,10 @@ def _table_skill(db, runtime) -> CpuSkill:
         .where(GameParticipant.user_id.in_(accounts), CompletedGame.game_type == "watten",
                CompletedGame.imported_from_legacy.is_(False))
         .group_by(GameParticipant.user_id)).all())
+    from .watten_merge import is_merged, selected_matches
+    for account in accounts:
+        if is_merged(db, account):
+            counts[account] = sum(not item.match.row.imported_from_legacy for item in selected_matches(db, account))
     return skill_for_table(counts.get(account, 0) for account in accounts)
 
 

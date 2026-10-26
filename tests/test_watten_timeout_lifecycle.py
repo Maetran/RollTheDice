@@ -176,7 +176,7 @@ def test_completed_match_is_never_converted_to_timeout(server, monkeypatch):
     match.ready()
     match.finish()
     game, game_id = match.game, match.game["_id"]
-    persist_watten_game(game)
+    persist_watten_game(game, creating=True)
     games[game_id] = game
     result = game["_watten_result"]
     monkeypatch.setattr(watten_runtime, "utcnow", lambda: game["_last_activity"] + timedelta(days=30))

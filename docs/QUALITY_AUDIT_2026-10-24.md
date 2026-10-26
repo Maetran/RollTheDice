@@ -838,3 +838,123 @@ history. Actual images were inspected. Claude reported no blockers after
 reviewing the height-budget source and all three test corrections. Opening
 trick history intentionally hides table cards (`watten-polish.css`); empty
 surfaces in those review images are not evidence of a raster defect.
+
+## Konto und Zusammenführung, Kandidat 4.7.0 / Account and consolidation candidate 4.7.0
+
+**Deutsch:** Dieser Abschnitt beschreibt einen lokalen Kandidaten, keinen
+Produktionsrollout. Referenz für den ausgelieferten Vorgänger ist `v4.6.0`
+(`8ec61ebb`). Tatsächliche Claude-Code-Durchgänge prüften getrennt Kerntransaktion
+und Identitätsgrenzen, Erfolgsadapter, Admin-/Spieloberflächen sowie die vier
+Kontostrukturen und Versionshinweise. Codex prüfte die Befunde gegen Quellen,
+gezielte native Abläufe und echte lokale HTTP-Aufrufe; Quellenreviews wurden
+nicht als ausgeführte Tests ausgegeben.
+
+Behobene, reproduzierte Randfälle umfassen ungültige frühere Erfolgsdaten nach
+fehlgeschlagener Lösch-Nachbereinigung, eine konkurrierend gelöschte Gast-Zuordnung
+(409 statt 500), feste Watten-Folgetische nach Reservierungsablauf und eine klare
+Revanche-Ablehnung bei dauerhaft stillgelegten Originalkonten. Der Owner erlaubt
+den Merge nach einer abgeschlossenen Watten-Partie auch bei noch offener
+Turnierserie; diese Serie kann mit dem stillgelegten Konto nicht weiterlaufen.
+Offene Warte- und Spieltische bleiben geschützt. Originalsitze und vorhandene
+Spielbestätigungen bleiben unabhängig vom Merge-Protokoll.
+
+Die ersten vollständigen Kandidaten lieferten ausdrücklich keinen Pushnachweis:
+ein alter Renderer-Test kannte das neue importierte Mitteilungsmodul nicht;
+später deckten alle acht Browser-Pools elf veraltete Navigations-/Details-
+Testpfade auf. Korrekturen erhalten die fachlichen Assertions und verwenden
+sichtbare native Bedienelemente. Neue Visualtests berücksichtigen tatsächliche
+Animationsabschlüsse, leere Hände und Rotation; Anzeige-Fixtures verwenden den
+nativen Tabellencontainer. Ein neuer vollständiger Nachweis auf dem finalen,
+sauberen Commit ist vor jedem Push weiterhin zwingend.
+
+**English:** This section describes a local candidate, not a production rollout.
+The deployed predecessor is `v4.6.0` (`8ec61ebb`). Actual Claude Code passes
+separately reviewed transaction/identity boundaries, award adapters, admin/game
+interfaces, all four account structures and release recaps. Codex challenged
+findings against source, native local flows and real HTTP calls; source review
+was never presented as test execution.
+
+Reproduced fixes include stale early award dates after failed deletion cleanup,
+a concurrently deleted guest assignment (409 instead of 500), fixed Watten
+continuations after reservation expiry, and an explicit rematch refusal when an
+original account has been retired. The owner allows merging after a finished
+Watten match even if its tournament remains unfinished; that series cannot
+continue with the retired account. Live waiting/playing tables remain protected.
+Original seats and existing game acknowledgements remain separate from merge
+receipts.
+
+Initial complete candidates explicitly earned no push receipt: an old renderer
+harness lacked the new imported notice module, then all eight browser pools
+exposed eleven obsolete navigation/nested-details test paths. Repairs preserve
+functional assertions and use visible native controls. New visual tests cover
+actual animation completion, empty hands and rotation in the native table
+container. A fresh complete gate on the final clean commit remains mandatory.
+
+**Grenzen / Limits:** Browser viewport and display-fixture evidence is not a
+physical iPad, installed-PWA or two-device acoustic acceptance. Real process
+races were executed on SQLite WAL, not PostgreSQL. Batched award-backing reads
+preserve every witness and cut the measured six-game SELECT counts from
+569 to 253 (ZDWA) and 708 to 484 (Zilch); full prefix/history replay remains a
+separate scaling concern. Current Zilch definition version 1 is supported;
+future definition changes require a validated backing migration or versioned
+evaluator rather than silently weakening immutable evidence.
+
+**Abschlussprüfung / Final verification:** Die späteren Vollläufe prüften auch
+die bisherigen Konto- und Navigationsszenarien. Veraltete Testpfade wurden auf
+echte, vollständig eingerichtete Spielerkonten und die nativen Kontobereiche
+umgestellt; der separate Owner-Fall prüft weiterhin die erzwungene
+Passwortänderung. Ein Claude-Gegenreview verhinderte dabei, dass die Statistik-
+Geometrie durch eine bedingte Assertion unbemerkt entfällt. Ein weiterer
+Watten-Test wartet jetzt auf denselben bestätigten Einschauen-Zustand bei allen
+vier echten Teilnehmern; acht unabhängige Chromium-Wiederholungen und der
+WebKit-Ablauf bestanden ohne Retry.
+
+Die zusätzliche WebKit-Prüfung fand beim ersten englischen Sprachabgleich
+Folgeanfragen aus bereits ablösenden Zilch- und Watten-Kontodokumenten. Trace-
+Zeitpunkte und Initiatoren unterscheiden diesen Befund von abgebrochenen,
+bereits laufenden Anfragen. Gezielte Lifecycle-Korrekturen erhalten die privaten
+Identitätsprüfungen und die unveränderte Browser-Fehlerassertion. Ein vollständiger
+sauberer Nachweis des abschliessenden Commits bleibt Voraussetzung für den Push.
+
+Later full runs also exercised existing account/navigation scenarios. Obsolete
+test paths now use genuinely initialized regular accounts and native account
+sections; the separate owner case still checks mandatory password setup.
+Claude's counterreview caught a conditional assertion that would have silently
+removed statistics geometry coverage. Another Watten test now waits for the
+same acknowledged inspection state on all four real peers; eight independent
+Chromium repetitions and the WebKit flow passed without retries.
+
+Additional WebKit checks found follow-up requests from outgoing Zilch and Watten
+account documents during the first English language synchronization. Trace
+timing and initiators distinguish these from requests already in flight before
+cancellation. Narrow lifecycle fixes retain private identity checks and the
+unchanged browser error assertion. A complete clean receipt for the final
+commit remains mandatory before pushing.
+
+Die acht regulären Browser-Pools verwenden Chromium. Die separate WebKit-
+Prüfung ergänzt die Konto-/Versionsabläufe aller vier Spiele sowie Watten-
+Geometrie und Einschauen. Neun standardmässig übersprungene Fälle sind optionale
+Screenshot-/Capture-Matrizen; ihre zusätzlichen Prüfungen gelten nicht als
+ausgeführt. / The eight standard browser pools use Chromium. Separate WebKit
+checks supplement all-four-game account/release flows and Watten geometry and
+inspection. Nine normally skipped cases are optional screenshot/capture
+matrices; their additional assertions are not claimed as executed.
+
+Der abschliessende gezielte Kontolauf bestand danach zweimal sämtliche
+15 WebKit-Szenarien (30 erfolgreiche Fälle), mit unveränderter Fehlerassertion.
+65 integrierte Lifecycle-/Kontotests und Lint bestanden ebenfalls. Entfernte
+Spielerauswahl-/Startmeldungs-Widgets starten bei einem späten Anmeldeereignis
+keine weiteren Abfragen; verbundene öffentliche Profile und reguläre
+Kontowechsel bleiben aktiv. Ein gemeinsamer Modultest prüft die tatsächliche
+Listenerreihenfolge von Watten-Konto und Spielwechsler bei Fokus und
+persistierter Browser-Rückkehr. Diese gezielten Ergebnisse ersetzen weiterhin
+keinen vollständigen Commitnachweis.
+
+The final focused account run then passed all 15 WebKit scenarios twice
+(30 successful cases), retaining the unchanged error assertion. The integrated
+65 lifecycle/account tests and lint also passed. Detached player-selection and
+start-notice widgets no longer start requests on a late auth event; connected
+public profiles and normal account changes stay active. A combined module test
+checks the actual Watten account/app-mode listener order on focus and persisted
+browser restoration. These focused results still do not replace a complete
+exact-commit receipt.

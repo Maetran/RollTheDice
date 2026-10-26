@@ -31,6 +31,8 @@ from app.models import (
     ActiveGame,
     CompletedGame,
     GameParticipant,
+    User,
+    ZilchAchievementEvaluation,
     ZilchAchievementRankMoment,
     ZilchAchievementUnlock,
 )
@@ -41,8 +43,10 @@ from app.zilch_results import (
     build_zilch_result_payload,
     finalize_zilch_result,
     list_zilch_results_for_user,
+    list_zilch_results_for_user_in_session,
     load_zilch_result,
     load_zilch_result_for_user,
+    load_zilch_result_for_user_in_session,
 )
 from app.zilch_state import (
     configure_zilch_cpu_game,
@@ -73,6 +77,39 @@ def request_for(*, cookie: str = "") -> Request:
 
 class ZilchResultsTestCase(TestCase):
     """Result payload, idempotency, recovery and access contracts."""
+
+    def test_caller_session_readers_share_names_moments_and_private_access_without_commit(self):
+        user_id, _ = self._identity("AtomicReader")
+        outsider_id, _ = self._identity("AtomicOutsider")
+        game = self._terminal_game(player_one=("AtomicReader", user_id))
+        self.assertTrue(finalize_zilch_result(game)["result_persisted"])
+        before = load_zilch_result_for_user(game["_id"], user_id)
+        history = list_zilch_results_for_user(user_id)
+        with self.assertRaisesRegex(RuntimeError, "caller rollback"):
+            with session_scope() as db:
+                self.assertEqual(load_zilch_result_for_user_in_session(db, game["_id"], user_id), before)
+                self.assertEqual(list_zilch_results_for_user_in_session(db, user_id), history)
+                db.get(User, user_id).username = "UncommittedReader"
+                evaluation = db.scalar(select(ZilchAchievementEvaluation).where(
+                    ZilchAchievementEvaluation.game_id == game["_id"],
+                ))
+                evaluation.status = "pending"
+                with (
+                    patch("app.zilch_results.session_scope", side_effect=AssertionError("independent result session")),
+                    patch("app.player_names.session_scope", side_effect=AssertionError("independent name session")),
+                    patch("app.zilch_achievements.session_scope", side_effect=AssertionError("independent moment session")),
+                ):
+                    detail = load_zilch_result_for_user_in_session(db, game["_id"], user_id)
+                    summaries = list_zilch_results_for_user_in_session(db, user_id)
+                    self.assertIsNone(load_zilch_result_for_user_in_session(db, game["_id"], outsider_id))
+                    self.assertEqual(list_zilch_results_for_user_in_session(db, outsider_id), [])
+                self.assertEqual(detail["moments"], {"status": "pending", "participants": []})
+                for participants in (detail["participants"], summaries[0]["participants"]):
+                    self.assertEqual(participants[0]["display_name"], "UncommittedReader")
+                    self.assertTrue(all("user_id" not in item for item in participants))
+                raise RuntimeError("caller rollback")
+        self.assertEqual(load_zilch_result_for_user(game["_id"], user_id), before)
+        self.assertEqual(list_zilch_results_for_user(user_id), history)
 
     def test_history_and_results_use_current_names_without_transferring_old_games(self):
         user_id, _ = self._identity("FormerName")

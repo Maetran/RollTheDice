@@ -36,10 +36,15 @@ def completed_rounds(user_ids: Iterable[object]) -> dict[int, int]:
                 .where(CompletedGame.game_type == HAUSDEPP_GAME_TYPE, GameParticipant.user_id.in_(ids))
                 .group_by(GameParticipant.user_id)
             ).all()
+            counts = {int(user_id): int(count) for user_id, count in rows}
+            from .hausdepp_merge import is_merged, selected_rounds
+            for user_id in ids:
+                if is_merged(db, user_id):
+                    counts[user_id] = sum(1 for _item in selected_rounds(db, user_id))
     except SQLAlchemyError:
         logger.exception("Hausdepp experience lookup failed; seated accounts default to zero completed rounds")
         return {}
-    return {int(user_id): int(count) for user_id, count in rows}
+    return counts
 
 
 def record_table_experience(game: dict) -> None:

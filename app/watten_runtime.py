@@ -563,6 +563,15 @@ def snapshot_watten(game: dict, viewer_id: str | None = None, *, viewer_account_
     reservation = next((item for item in room.reservations if type(account) is int
                         and item.account_id == account and item.valid_at(utcnow())), None)
     host = next((item for item in room.members if item.participant_id == room.host_participant_id), None)
+    can_create_rematch = bool(host and type(account) is int and host.account_id == account
+        and room.status == "finished" and room.rematch_room_id is None
+        and not (room.series and room.series.finished))
+    rematch_unavailable_reason = None
+    if can_create_rematch:
+        from .watten_rematch_eligibility import read_rematch_unavailable_reason
+
+        rematch_unavailable_reason = read_rematch_unavailable_reason(room)
+        can_create_rematch = rematch_unavailable_reason is None
     seats = []
     for seat in range(room.recipe.player_count):
         occupant = next((item for item in (*room.members, *room.cpus) if item.seat == seat), None)
@@ -580,9 +589,8 @@ def snapshot_watten(game: dict, viewer_id: str | None = None, *, viewer_account_
                          room.series is not None and room.series.roster_locked and type(account) is int) else None,
                      "host_participant_id": room.host_participant_id, "seats": seats,
                      "rematch": {"source_game_id": room.rematch_of, "game_id": room.rematch_room_id,
-                                 "can_create": bool(host and type(account) is int and host.account_id == account
-                                     and room.status == "finished" and room.rematch_room_id is None
-                                     and not (room.series and room.series.finished))},
+                                 "can_create": can_create_rematch,
+                                 **({"unavailable_reason": rematch_unavailable_reason} if rematch_unavailable_reason else {})},
                      "reservation": {"seat": reservation.seat, "expires_at": reservation.expires_at.isoformat()} if reservation else None,
                      "members": [{"participant_id": item.participant_id, "name": names[item.participant_id],
                                   "seat": item.seat, "team": item.team} for item in room.members],
@@ -743,23 +751,33 @@ def _write_checkpoint(db, checkpoint: dict, *, creating=False, expected_json=Non
     """Caller-owned transaction; every existing source write uses exact JSON CAS."""
     payload = dumps_canonical_json(serialize_watten_game(checkpoint))
     now = utcnow()
+    previous_json = expected_json
     if expected_json is not None:
         _checkpoint_authority(expected_json, checkpoint)
         changed = db.execute(update(ActiveGame).where(ActiveGame.game_id == checkpoint["_id"],
             ActiveGame.state_json == expected_json).values(state_json=payload, updated_at=now))
-        return changed.rowcount == 1
-    row = db.scalar(select(ActiveGame).where(ActiveGame.game_id == checkpoint["_id"]).with_for_update())
-    if row is None:
-        db.add(ActiveGame(game_id=checkpoint["_id"], state_json=payload, created_at=now, updated_at=now))
-    elif creating:
-        raise ValueError("watten_game_id_collision")
-    else:
-        expected = row.state_json
-        _checkpoint_authority(expected, checkpoint)
-        changed = db.execute(update(ActiveGame).where(ActiveGame.game_id == checkpoint["_id"],
-            ActiveGame.state_json == expected).values(state_json=payload, updated_at=now))
         if changed.rowcount != 1:
-            raise ValueError("watten_stale_checkpoint")
+            return False
+    else:
+        row = db.scalar(select(ActiveGame).where(ActiveGame.game_id == checkpoint["_id"]).with_for_update())
+        if row is None:
+            if not creating:
+                raise ValueError("watten_checkpoint_missing")
+            db.add(ActiveGame(game_id=checkpoint["_id"], state_json=payload, created_at=now, updated_at=now))
+            db.flush()
+        elif creating:
+            raise ValueError("watten_game_id_collision")
+        else:
+            previous_json = row.state_json
+            _checkpoint_authority(previous_json, checkpoint)
+            changed = db.execute(update(ActiveGame).where(ActiveGame.game_id == checkpoint["_id"],
+                ActiveGame.state_json == previous_json).values(state_json=payload, updated_at=now))
+            if changed.rowcount != 1:
+                raise ValueError("watten_stale_checkpoint")
+    from .watten_admissions import sync_checkpoint_memberships
+
+    previous_room = room_from_payload(json.loads(previous_json)["_watten"]["room"]) if previous_json is not None else None
+    sync_checkpoint_memberships(db, checkpoint, previous_room, now=now)
     return True
 
 

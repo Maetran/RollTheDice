@@ -1024,8 +1024,112 @@ class ActiveGame(Base):
     state_json: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    admission_revision: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
 
     __table_args__ = (Index("ix_active_games_updated_at", "updated_at"),)
+
+
+class AccountMergeOperation(Base):
+    """Private atomic operation receipt; it never contains login secrets."""
+
+    __tablename__ = "account_merge_operations"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    actor_user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
+    source_user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
+    target_user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
+    idempotency_key: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    preview_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    policy_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    summary_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+    acknowledged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        CheckConstraint("source_user_id != target_user_id", name="ck_account_merge_distinct_accounts"),
+        Index("ix_account_merge_target_created", "target_user_id", "created_at"),
+    )
+
+
+class AccountProgressOrigin(Base):
+    """Flat historical ownership only. Authentication must not follow this map."""
+
+    __tablename__ = "account_progress_origins"
+
+    origin_user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"), primary_key=True)
+    owner_user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
+    operation_id: Mapped[str] = mapped_column(ForeignKey("account_merge_operations.id", ondelete="RESTRICT"), nullable=False)
+
+    __table_args__ = (
+        CheckConstraint("origin_user_id != owner_user_id", name="ck_progress_origin_distinct_owner"),
+        Index("ix_progress_origins_owner", "owner_user_id"),
+    )
+
+
+class GameAccountMembership(Base):
+    """Durable exact-account admission, independent of JSON checkpoints."""
+
+    __tablename__ = "game_account_memberships"
+
+    game_id: Mapped[str] = mapped_column(ForeignKey("active_games.game_id", ondelete="CASCADE"), primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"), primary_key=True)
+    admission_revision: Mapped[int] = mapped_column(Integer, nullable=False)
+    admitted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    __table_args__ = (Index("ix_game_account_membership_user", "user_id"),)
+
+
+class AccountMergeGameResolution(Base):
+    """One whole original statistical result; source rows remain untouched."""
+
+    __tablename__ = "account_merge_game_resolutions"
+
+    owner_user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"), primary_key=True)
+    game_type: Mapped[str] = mapped_column(String(16), primary_key=True)
+    game_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    origin_user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
+    # Provenance, not a restrictive FK: source deletion must remain possible.
+    participant_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    player_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    source_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    policy_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    operation_id: Mapped[str] = mapped_column(ForeignKey("account_merge_operations.id", ondelete="RESTRICT"), nullable=False)
+
+    __table_args__ = (
+        CheckConstraint("game_type IN ('zdwa', 'zilch', 'hausdepp', 'watten')", name="ck_merge_resolution_game_type"),
+    )
+
+
+class MergedAwardBacking(Base):
+    """Independent support for a canonical award, including closed cycles.
+
+    An invalidated backing is terminal. Continuity affects the displayed first
+    date only; criterion evaluation always uses original proof and context.
+    """
+
+    __tablename__ = "merged_award_backings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    owner_user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
+    game_type: Mapped[str] = mapped_column(String(16), nullable=False)
+    achievement_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    support_key: Mapped[str] = mapped_column(String(128), nullable=False)
+    origin_user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
+    kind: Mapped[str] = mapped_column(String(24), nullable=False)
+    original_unlocked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    continuity_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    credited_amount: Mapped[int] = mapped_column(Integer, nullable=False)
+    context_json: Mapped[str] = mapped_column(Text, nullable=False)
+    operation_id: Mapped[str] = mapped_column(ForeignKey("account_merge_operations.id", ondelete="RESTRICT"), nullable=False)
+    invalidated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint("owner_user_id", "game_type", "achievement_key", "support_key", name="uq_merged_award_support"),
+        CheckConstraint("game_type IN ('zdwa', 'zilch', 'hausdepp', 'watten')", name="ck_merged_award_game_type"),
+        CheckConstraint("kind IN ('original', 'native_observed', 'merge_threshold')", name="ck_merged_award_kind"),
+        CheckConstraint("credited_amount >= 0", name="ck_merged_award_nonnegative"),
+        Index("ix_merged_award_owner_key", "owner_user_id", "game_type", "achievement_key"),
+    )
 
 
 class DeletedGame(Base):

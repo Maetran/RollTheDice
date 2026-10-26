@@ -88,7 +88,12 @@ class WattenAccountsTests(unittest.TestCase):
             self.assertEqual(response.status_code, 303)
             self.assertEqual(response.headers["location"], "/watten/anmelden?return_to=%2Fwatten%2Fkonto%2Feinstellungen")
         self.signup()
-        self.assertEqual(self.client.get("/watten/konto/einstellungen").status_code, 200)
+        settings = self.client.get("/watten/konto/einstellungen")
+        self.assertEqual(settings.status_code, 200)
+        self.assertIn('href="/watten/konto/einstellungen" data-watten-account-link', settings.text)
+        action = self.client.get("/email-bestaetigen?app=watten&return_to=%2Fwatten%2Fkonto%2Feinstellungen")
+        self.assertEqual(action.status_code, 200)
+        self.assertIn('href="/watten/konto/einstellungen" data-watten-account-link', action.text)
         self.assertEqual(self.client.get("/watten/konto").headers["location"], "/watten/konto/einstellungen")
         for path in ("/static/watten-account.html", "/static/watten-email-action.html", "/static//watten-account.html"):
             self.assertEqual(self.client.get(path).status_code, 404)
@@ -98,6 +103,27 @@ class WattenAccountsTests(unittest.TestCase):
             with self.client.websocket_connect(LOCAL.replace("http:", "ws:") + "/watten/konto"):
                 self.fail("The local account preview has no WebSockets")
         self.assertEqual(rejected.exception.code, 1008)
+
+    def test_generic_account_entry_opens_statistics_only_when_game_surface_is_enabled(self):
+        self.signup()
+        for game_preview, public_beta in (("1", "0"), ("0", "1")):
+            with self.subTest(game_preview=game_preview, public_beta=public_beta), patch.dict(os.environ, {
+                "ROLLTHEDICE_WATTEN_GAME_PREVIEW": game_preview,
+                "ROLLTHEDICE_WATTEN_PUBLIC_BETA": public_beta,
+            }):
+                alias = self.client.get("/watten/konto")
+                self.assertEqual(alias.status_code, 308)
+                self.assertEqual(alias.headers["location"], "/watten/konto/fortschritt")
+                self.assertEqual(alias.headers["cache-control"], "no-store")
+                self.assertIn("noindex", alias.headers["x-robots-tag"])
+                self.assertEqual(self.client.get(alias.headers["location"]).status_code, 200)
+                settings = self.client.get("/watten/konto/einstellungen")
+                self.assertEqual(settings.status_code, 200)
+                self.assertIn('data-account-page="settings"', settings.text)
+                self.assertIn('href="/watten/konto/fortschritt" data-watten-account-link', settings.text)
+                guest = self.client.get("/watten/konto", headers={"Cookie": ""})
+                self.assertEqual(guest.status_code, 303)
+                self.assertEqual(guest.headers["location"], "/watten/anmelden?return_to=%2Fwatten%2Fkonto%2Ffortschritt")
 
     def test_opt_in_is_local_only_for_both_configuration_and_request_host(self):
         for origin in ("http://localhost:8057", "http://a.localhost:8057", "http://127.0.0.1:8057", "http://[::1]:8057"):

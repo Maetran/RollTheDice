@@ -37,10 +37,14 @@ async function expectAppleIcon(page) {
   expect(decoded).toEqual([180, 180]);
 }
 
-// Account settings are collapsed rows; open the row that holds a control first.
+// Follow the visible group summary before opening its specific settings row.
 async function openSettingsRow(page, selector) {
-  const row = page.locator('details.hd-settings-item').filter({ has: page.locator(selector) });
-  if (!(await row.evaluate(element => element.open))) await row.locator('> summary').click();
+  const group = page.locator('details[data-account-section]').filter({ has: page.locator(selector) });
+  await expect(group).toHaveCount(1);
+  if (await group.getAttribute('open') === null) await group.locator(':scope > summary').click();
+  const row = group.locator('details.hd-settings-item').filter({ has: page.locator(selector) });
+  await expect(row).toHaveCount(1);
+  if (await row.getAttribute('open') === null) await row.locator(':scope > summary').click();
 }
 
 for (const language of ['de', 'en']) {

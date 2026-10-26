@@ -35,6 +35,7 @@ from .analytics import (
     start_analytics,
     stop_analytics,
 )
+from .api_account_merges import router as account_merges_router
 from .api_admin_help import router as admin_help_router
 from .api_allowlist import router as allowlist_router
 from .api_analytics import require_analytics, trusted_country
@@ -72,6 +73,7 @@ from .game_history import (
     delete_completed_game,
     import_legacy_leaderboards,
 )
+from .game_lifecycle import bound_revision
 from .game_realtime import broadcast
 from .game_registry import create_game_state, finalize_completed_game, project_game_progress
 from .game_results import remove_deleted_game_from_files
@@ -322,7 +324,8 @@ async def _retire_manual_abort(game: GameDict) -> None:
     finally:
         await _close_terminal_connections(game)
         if accounted and not game.get("_hausdepp_rematch_source_pending"):
-            delete_active_game(game_id)
+            # Fenced to this retired object's own row revision.
+            delete_active_game(game_id, expected_revision=bound_revision(game))
         if game_id and games.get(game_id) is game:
             games.pop(game_id, None)
 
@@ -353,7 +356,7 @@ async def _publish_timeout_abort(game: GameDict) -> None:
     finally:
         await _close_terminal_connections(game)
         if not game.get("_hausdepp_rematch_source_pending"):
-            delete_active_game(game_id)
+            delete_active_game(game_id, expected_revision=bound_revision(game))
         # Existing sockets retain their object long enough to render the final
         # frame, then their normal disconnect cleanup releases transport
         # state. New joins must not revive a room whose one-hour lifetime has
@@ -567,6 +570,7 @@ app.include_router(auth_router)
 app.include_router(passkeys_router)
 app.include_router(passkey_reminders_router)
 app.include_router(releases_router)
+app.include_router(account_merges_router)
 app.include_router(allowlist_router)
 app.include_router(avatars_router)
 app.include_router(engagement_router)
@@ -1153,7 +1157,7 @@ def achievement_rank_legend_page(request: Request):
 @app.get("/konto", include_in_schema=False)
 def account_page(request: Request):
     if is_hausdepp_host(request):
-        return RedirectResponse("/hausdepp/konto/einstellungen", status_code=308,
+        return RedirectResponse("/hausdepp/konto", status_code=308,
                                 headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"})
     if is_zilch_host(request):
         return _serve_zilch_account_shell(request)
@@ -1239,7 +1243,10 @@ def _serve_hausdepp_page(request: Request, filename: str, *, public: bool = Fals
         return RedirectResponse(f"{login_base}?{urlencode({'return_to': destination})}", status_code=303,
                                 headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"})
     if not public:
-        _require_hausdepp_access(request)
+        identity = _require_hausdepp_access(request)
+        if filename == "hausdepp-account.html" and identity.must_change_password:
+            return RedirectResponse("/hausdepp/konto/einstellungen#passwort", status_code=303,
+                                    headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"})
     else:
         content = (STATIC_DIR / filename).read_text(encoding="utf-8")
         return Response(public_suite_markup(content, request), media_type="text/html",
@@ -2851,7 +2858,13 @@ async def api_games_create(req: CreateReq, request: Request):
         if completed >= ZILCH_CPU_EXPERIENCE_THRESHOLD:
             cpu_policy = ZILCH_CPU_CONTINUATION_POLICY
     gid = str(uuid.uuid4())[:8]
-    g = create_game_state(gid, req.name, req.mode, req.game_type)
+    if req.game_type == HAUSDEPP_GAME_TYPE:
+        from .hausdepp_state import new_hausdepp_game
+
+        # Registered only after its strict host binding below.
+        g = new_hausdepp_game(gid, req.name, req.mode, register=False)
+    else:
+        g = create_game_state(gid, req.name, req.mode, req.game_type)
     if req.game_type == DEFAULT_GAME_TYPE:
         g["_voice_enabled"] = req.voice_enabled
         if voice_source is not None:
@@ -2885,7 +2898,21 @@ async def api_games_create(req: CreateReq, request: Request):
             configure_zilch_solo_game(g, host_token=guest_host_token)
     g["_passphrase"] = req.passphrase or None
     g["_hardcore"] = bool(req.hardcore or False)
-    save_active_game(g)
+    if req.game_type == HAUSDEPP_GAME_TYPE or (
+            req.game_type == ZILCH_GAME_TYPE and req.play_mode in {ZILCH_CPU_MODE, ZILCH_SOLO_MODE}):
+        from .game_lifecycle import AdmissionError, commit_room_binding, discard_new_room
+
+        # A host-bound room and its exact account membership commit together
+        # before anyone can reach it; failure leaves no registry entry or row.
+        try:
+            commit_room_binding(g, [identity.user_id] if identity else [])
+        except AdmissionError as exc:
+            discard_new_room(g)
+            raise HTTPException(status_code=403 if exc.code == "account_retired_or_inactive" else 503,
+                                detail=exc.code) from exc
+        games[gid] = g
+    else:
+        save_active_game(g)
     record_game_action(req.game_type, "game_created", mode=(req.play_mode if req.game_type == ZILCH_GAME_TYPE
                                                           else "hardcore" if g["_hardcore"] else req.mode))
     response: dict[str, str] = {"game_id": gid}
@@ -2934,7 +2961,7 @@ def admin_delete_completed_game(game_id: str, payload: DeleteCompletedGameReq, r
         raise HTTPException(status_code=404, detail="game_not_found") from exc
     except ValueError as exc:
         detail = str(exc)
-        status_code = 409 if detail == "game_already_deleted" else 400
+        status_code = 409 if detail in {"game_already_deleted", "game_history_changed"} else 400
         raise HTTPException(status_code=status_code, detail=detail) from exc
     if deleted["game_type"] == DEFAULT_GAME_TYPE:
         _remove_deleted_game_from_files(deleted)

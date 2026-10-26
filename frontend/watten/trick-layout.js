@@ -172,6 +172,12 @@ export function createTrickLayout(trick, { win = window } = {}) {
       delete prompt.dataset.wtPortraitPrompt;
       for (const variable of ["--wt-portrait-prompt-x", "--wt-portrait-prompt-y", "--wt-portrait-prompt-width"]) prompt.style.removeProperty(variable);
     }
+    const retour = table.querySelector("[data-wt-portrait-retour]");
+    if (retour) {
+      delete retour.dataset.wtPortraitRetour;
+      delete retour.dataset.wtRetourFit;
+      for (const key of ["x", "y", "width", "rules-height"]) retour.style.removeProperty(`--wt-retour-${key}`);
+    }
   };
   const box = node => {
     if (!node || node.hidden) return null;
@@ -270,7 +276,45 @@ export function createTrickLayout(trick, { win = window } = {}) {
       history.style.setProperty(`--wt-portrait-history-${key}`, `${value}px`);
     }
   }
+  function positionRetourOffer() {
+    if (count !== 4 || win.innerWidth > 350 || win.innerWidth >= win.innerHeight || win.innerHeight > 700
+      || table.dataset?.phase !== "deal_complete" || table.dataset.wtRetourOffer !== "true") return;
+    const panel = table.querySelector("[data-wt-panel]");
+    if (!panel?.querySelector(".wt-retour") || table.querySelector("[data-wt-history][open]:not([hidden])")) return;
+    const area = felt.getBoundingClientRect();
+    const bounds = { left: Math.max(12, area.left + 8), top: area.top + 8,
+      right: Math.min(win.innerWidth - 12, area.right - 8), bottom: Math.min(win.innerHeight - 8, area.bottom - 8) };
+    bounds.width = bounds.right - bounds.left; bounds.height = bounds.bottom - bounds.top;
+    // Removing the offer from flex flow moves the history/private rows.
+    // Measure their final positions, never the slots above the former panel.
+    panel.dataset.wtPortraitRetour = "true";
+    const obstacles = [...table.querySelectorAll(".wt-seat-badge, .wt-avatar, .wt-seat-name, .wt-seat-call-role, .wt-seat-tags, .wt-seat-public-title, "
+      + ".wt-backs > i:not([hidden]), .wt-taken[data-filled='true'], .wt-taken[data-filled='true'] i, .wt-stock, .wt-reference, "
+      + "[data-wt-hand-area], [data-wt-hand] > *, [data-wt-stake], [data-wt-private] button, [data-wt-history]:not([hidden]) > summary")]
+      .map(box).filter(Boolean);
+    let selected = null;
+    for (const ruleHeight of [112, 88, 64, 44]) {
+      panel.style.setProperty("--wt-retour-rules-height", `${ruleHeight}px`);
+      for (const width of [240, 220, 200, 180, 160, 144, 132, 120, 112].filter(width => width <= bounds.width)) {
+        panel.style.setProperty("--wt-retour-width", `${width}px`);
+        const size = panel.getBoundingClientRect();
+        const fit = fitPortraitPrompt(bounds, obstacles, { height: size.height, widths: [size.width], bottomFirst: true, centerFirst: true });
+        if (fit) { selected = fit; break; }
+      }
+      if (selected) break;
+    }
+    // An extremely constrained table still retains the smallest scrollable
+    // offer and both decisions; never hide a pending human choice.
+    panel.dataset.wtRetourFit = selected ? "clear" : "fallback";
+    selected ??= { left: bounds.left + (bounds.width - 112) / 2,
+      top: Math.max(bounds.top, bounds.bottom - panel.getBoundingClientRect().height), width: 112 };
+    const frame = panel.parentElement.getBoundingClientRect();
+    for (const [key, value] of [["x", selected.left - frame.left], ["y", selected.top - frame.top], ["width", selected.width]]) {
+      panel.style.setProperty(`--wt-retour-${key}`, `${value}px`);
+    }
+  }
   function positionOverlays() {
+    positionRetourOffer();
     positionReference();
     positionCalls();
     positionClosedHistory();
@@ -290,6 +334,11 @@ export function createTrickLayout(trick, { win = window } = {}) {
     // Calls precede every trick card, so fit them before the empty-trick return.
     positionOverlays();
     if (trick.hidden || !trick.children.length) { landscape = null; portrait = null; return; }
+    const collecting = ["deal_complete", "match_complete"].includes(table.dataset?.phase)
+      && table.dataset.roundStage === "collect" && table.dataset.viewer === "player";
+    const collectionFrames = collecting ? [...table.querySelectorAll("[data-wt-hand-area], [data-wt-hand] > *")]
+      .map(node => node.getBoundingClientRect()).filter(usable) : [];
+    const collectionHandTop = collectionFrames.length ? Math.min(...collectionFrames.map(rect => rect.top)) : Infinity;
     if (win.innerWidth >= win.innerHeight && win.innerHeight <= 700) {
       portrait = null;
       const area = felt.getBoundingClientRect();
@@ -304,7 +353,7 @@ export function createTrickLayout(trick, { win = window } = {}) {
         const topHand = frames(".wt-seat--top .wt-backs > i:not([hidden])");
         const ownHand = frames("[data-wt-hand-area]:not([hidden]) [data-wt-hand] > *, .wt-seat--bottom .wt-backs > i:not([hidden])");
         const top = topHand.length ? Math.max(...topHand.map(rect => rect.bottom)) : area.top + 40;
-        const bottom = ownHand.length ? Math.min(...ownHand.map(rect => rect.top)) : area.bottom - 40;
+        const bottom = Math.min(collectionHandTop, ownHand.length ? Math.min(...ownHand.map(rect => rect.top)) : area.bottom - 40);
         const desiredWidth = Number.parseFloat(win.getComputedStyle(trick.firstElementChild).width);
         landscape = { key, fit: fitLandscapeTrick({ top, bottom, desiredWidth,
           minimumWidth: win.innerHeight <= 360 ? 48 : 52 }) };
@@ -324,7 +373,12 @@ export function createTrickLayout(trick, { win = window } = {}) {
     if (win.innerWidth > 760 || win.innerWidth >= win.innerHeight) { portrait = null; return; }
     const area = felt.getBoundingClientRect();
     const left = Math.max(12, area.left + 8), top = Math.max(8, area.top + 8);
-    const right = Math.min(win.innerWidth - 12, area.right - 8), bottom = Math.min(win.innerHeight - 8, area.bottom - 8);
+    const right = Math.min(win.innerWidth - 12, area.right - 8);
+    let bottom = Math.min(win.innerHeight - 8, area.bottom - 8);
+    // Collection retains a real invisible hand frame, including an empty
+    // last hand. Its used geometry works in both orientations without
+    // reversing a CSS min-height formula or introducing a probe card.
+    bottom = Math.min(bottom, collectionHandTop - 4);
     const bounds = { left, top, right, bottom, width: right - left, height: bottom - top };
     const reference = box(centre.querySelector(".wt-reference"));
     const panel = table.querySelector("[data-wt-panel]");
@@ -333,7 +387,7 @@ export function createTrickLayout(trick, { win = window } = {}) {
     // packets likewise paint rotated corners and a counter beyond their box.
     const protectedNodes = [...table.querySelectorAll(".wt-seat-badge, .wt-avatar, .wt-seat-name, .wt-seat-call-role, .wt-seat-tags, .wt-seat-meta, .wt-bubble--thanks, "
       + ".wt-backs > i:not([hidden]), .wt-taken[data-filled='true'], .wt-taken[data-filled='true'] i, .wt-stock, "
-      + "[data-wt-hand-area], [data-wt-panel], [data-wt-private] button, [data-wt-stake], [data-wt-history]:not([open])")].filter(node => node !== neutralPrompt);
+      + "[data-wt-hand-area], [data-wt-hand] > *, [data-wt-panel], [data-wt-private] button, [data-wt-stake], [data-wt-history]:not([open])")].filter(node => node !== neutralPrompt);
     const history = table.querySelector("[data-wt-history]:not([open])"), historyBox = box(history);
     const moveHistory = Boolean(historyBox && table.dataset.phase === "play" && (!panel?.children.length || neutralPrompt));
     // Remove the extra dock row before measuring. Its final 44px position is

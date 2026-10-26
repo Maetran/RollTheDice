@@ -40,9 +40,9 @@ class QueuedSocket:
 def game_factory(monkeypatch):
     # Exercise real dispatch, rules and fan-out without touching a database.
     monkeypatch.setenv("ROLLTHEDICE_ZILCH_ACCESS_MODE", "public")
-    monkeypatch.setattr("app.game_state.save_active_game", lambda _game: None)
-    monkeypatch.setattr("app.zilch_state.save_active_game", lambda _game: None)
-    monkeypatch.setattr("app.game_realtime.save_active_game", lambda _game: None)
+    monkeypatch.setattr("app.game_state.save_active_game", lambda _game, *, creating=False: None)
+    monkeypatch.setattr("app.zilch_state.save_active_game", lambda _game, *, creating=False: None)
+    monkeypatch.setattr("app.game_realtime.save_active_game", lambda _game, *, creating=False: None)
     monkeypatch.setattr("app.game_engine.random.randint", lambda _low, _high: 1)
     monkeypatch.setattr("app.zilch_gameplay.fair_zilch_randint", lambda _low, _high: 1)
     created = []

@@ -111,16 +111,26 @@ def test_unknown_inactive_and_deleted_accounts_never_receive_a_false_title(serve
 
     owner = owners_for(1)[0]
     match = NativeMatch()
-    persist_watten_game(match.game, creating=True)
+    # Decoration tolerates unknown historical identities; live admission must
+    # not persist the fixture's nonexistent second account.
+    match.game[titles.CACHE_KEY] = titles.restored_public_titles(match.game)
     assert seat_titles(match.game)[0]["level"] == 1 and seat_titles(match.game)[1] is None
+    match = NativeMatch(cpus=(1,))
+    persist_watten_game(match.game, creating=True)
     with session_scope() as db:
         db.get(User, owner[0].user_id).is_active = False
     persist_watten_game(match.game)
     assert seat_titles(match.game) == [None, None]
     with session_scope() as db:
+        # Retire the table before deleting its exact account. A retained stale
+        # snapshot can still ask for decoration but may not recreate the table.
+        db.delete(db.scalar(select(ActiveGame).where(ActiveGame.game_id == match.game["_id"])))
+        db.flush()
         db.delete(db.get(User, owner[0].user_id))
-    persist_watten_game(match.game)
+    match.game[titles.CACHE_KEY] = titles.restored_public_titles(match.game)
     assert seat_titles(match.game) == [None, None]
+    with pytest.raises(ValueError, match="watten_checkpoint_missing"):
+        persist_watten_game(match.game)
 
 
 def test_corrupt_journal_or_missing_state_is_null_not_a_successful_default(server):

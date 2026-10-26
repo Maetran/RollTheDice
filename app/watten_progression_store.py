@@ -239,6 +239,11 @@ def store_draft_match(db, row: CompletedGame, evidence: MatchEvidence,
         old_grants = {item.achievement_id for item in db.scalars(
             select(WattenAchievementGrant).where(WattenAchievementGrant.user_id == state.user_id,
                                                 WattenAchievementGrant.generation == state.generation))}
+        from .watten_merge import effective_awards, is_merged
+        merged = is_merged(db, state.user_id)
+        if merged:
+            db.flush()
+            old_grants.update(effective_awards(db, state.user_id))
         new_ids = []
         for grant in proposal.achievements:
             if grant.achievement_id in old_grants:
@@ -251,6 +256,13 @@ def store_draft_match(db, row: CompletedGame, evidence: MatchEvidence,
             new_ids.append(grant.achievement_id)
         db.flush()
         results.append(_status(db, state, new_credit=existing is None, new_ids=new_ids))
+    # A trusted historical correction can concern a retired original identity.
+    # Its journal stays original; only beneficial union observation is routed.
+    from .account_progress import progress_owner_ids
+    from .watten_merge import grant_combined
+    for owner_id in sorted(set(progress_owner_ids(db, account_ids).values())):
+        if is_merged(db, owner_id):
+            grant_combined(db, owner_id, reached_at=evidence.finished_at, include_surprises=False)
     return tuple(results)
 
 

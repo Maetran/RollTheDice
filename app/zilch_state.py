@@ -789,7 +789,8 @@ def new_zilch_game(gid: str, name: str, mode: object) -> GameDict:
         "_correction": {"active": False},
     }
     games[gid] = game
-    save_active_game(game)
+    # The genuine new-room factory: the only Zilch path that INSERTs a row.
+    save_active_game(game, creating=True)
     return game
 
 

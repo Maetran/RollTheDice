@@ -78,6 +78,17 @@ export function cardBounds(box) {
   return { left: box.x - ex, right: box.x + ex, top: box.y - ey, bottom: box.y + ey };
 }
 
+/** Final painted faces and upright labels, independent of a running flight. */
+export function inspectionFootprint(fit) {
+  if (fit?.status !== "fit") return [];
+  return [...fit.poses.map(pose => {
+    const angle = pose.rotation * Math.PI / 180;
+    const width = Math.abs(Math.cos(angle)) * pose.width + Math.abs(Math.sin(angle)) * pose.height;
+    const height = Math.abs(Math.sin(angle)) * pose.width + Math.abs(Math.cos(angle)) * pose.height;
+    return paintedBox(rectOf(pose.x - width / 2, pose.y - height / 2, width, height), pose, angle);
+  }), ...fit.labels];
+}
+
 const shrink = (box, amount) => amount > 0 ? { ...box, hw: Math.max(.5, box.hw - amount), hh: Math.max(.5, box.hh - amount) } : box;
 
 // actors: [{ anchor, protect: hard outlines (own painted hand), fan: soft

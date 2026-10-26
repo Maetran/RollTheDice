@@ -10,7 +10,7 @@ from itertools import count
 from unittest.mock import patch
 
 import pytest
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.exc import SQLAlchemyError
 from starlette.responses import Response
 from starlette.testclient import TestClient
@@ -23,7 +23,15 @@ from app.database import configure_database, session_scope, upgrade_database
 from app.game_registry import adapter_for_game_type
 from app.game_state import games
 from app.game_ws_session import GameSocketSession
-from app.models import ActiveGame, CompletedGame, DeletedGame, GameParticipant, User, UserAchievement
+from app.models import (
+    ActiveGame,
+    CompletedGame,
+    DeletedGame,
+    GameAccountMembership,
+    GameParticipant,
+    User,
+    UserAchievement,
+)
 from app.security import utcnow
 from app.watten_bidding import DealResult, ScoreAccount, ScoreLedger, retourschneider_candidate
 from app.watten_play import legal_cards, play_card
@@ -721,6 +729,10 @@ def test_result_writer_never_invents_account_binding_for_a_deleted_participant(s
     assert game["_finished"]
     deleted_account = owners[1][0].user_id
     with session_scope() as db:
+        # Reproduce an old checkpoint whose account was physically deleted
+        # before durable admissions existed. New live memberships deliberately
+        # prevent physical deletion of an admitted identity.
+        db.execute(delete(GameAccountMembership).where(GameAccountMembership.user_id == deleted_account))
         db.delete(db.get(User, deleted_account))
     persist_watten_game(game)
     with session_scope() as db:

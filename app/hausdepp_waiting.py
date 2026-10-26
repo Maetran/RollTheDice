@@ -106,8 +106,12 @@ async def leave_waiting_session(session) -> bool:
         game["_hausdepp_host_user_id"] = game["_players"][0]["user_id"]
     if closed:
         game.update(_aborted=True, _abort_reason="waiting_empty", _finished=True, _abandonment_accounted=True)
+        from .game_lifecycle import bound_revision
+
+        # Capture the exact row revision before leaving the registry.
+        revision = bound_revision(game)
         games.pop(str(game["_id"]), None)
-        delete_active_game(str(game["_id"]))
+        delete_active_game(str(game["_id"]), expected_revision=revision)
     touch(game)
     session.player_id = None
     save_active_game(game)

@@ -16,6 +16,7 @@ from .hausdepp_achievements import (
     _insert_once,
     _new_aggregate,
     _progress,
+    _score_points,
     _unlock_source_allowed,
     synchronize_hausdepp_progress,
 )
@@ -71,6 +72,9 @@ def pending_hausdepp_notices(user_id: int) -> dict:
         credits = db.scalars(select(HausdeppRoundCredit).where(HausdeppRoundCredit.user_id == user_id)
                              .where(source_not_withdrawn(HausdeppRoundCredit.user_id, HausdeppRoundCredit.game_id))
                              .order_by(HausdeppRoundCredit.finished_at, HausdeppRoundCredit.game_id)).all()
+        # Merge-only score/rank changes have the independent operation notice.
+        # The normal queue and its global reconciliation retain target-native XP.
+        result["points"] = _score_points(credits, unlocks)
         catalog = {item["id"]: item for item in ACHIEVEMENTS}
         withdrawals = {row.result_id: row for row in db.scalars(select(HausdeppWithdrawal)
                        .where(HausdeppWithdrawal.user_id == user_id))}

@@ -144,6 +144,27 @@ def build_watten_leaderboard(user_id: int, *, metric="xp", players=None, opponen
         names = {identifier: name for identifier, name, active in users if active}
         _require(user_id in names)
         totals = _stored_xp(db) if metric == "xp" else _outcomes(db, names, existing, players=players, opponents=opponents)
+        from .account_progress import owned_origin_ids
+        from .models import AccountProgressOrigin
+        from .watten_account import build_watten_account_in_session
+        from .watten_merge import selected_matches
+        for owner in set(db.scalars(select(AccountProgressOrigin.owner_user_id))):
+            for origin in owned_origin_ids(db, owner):
+                totals.pop(origin, None)
+            if owner not in names:
+                continue
+            if metric == "xp":
+                account = build_watten_account_in_session(db, owner)
+                totals[owner] = {"xp": account["progress"]["total_xp"],
+                                 "matches": account["statistics"]["credited_matches"],
+                                 "wins": account["statistics"]["credited_wins"]}
+            else:
+                selected = [item for item in selected_matches(db, owner)
+                            if (players is None or item.match.evidence.player_count == players)
+                            and (opponents == "all" or (any(player.is_cpu for player in item.match.evidence.roster)
+                                                        == (opponents == "cpu")))]
+                if selected:
+                    totals[owner] = {"matches": len(selected), "wins": sum(item.own.won for item in selected)}
     minimum = MIN_RATE_MATCHES if metric == "win_rate" else 0
 
     def value(identifier):

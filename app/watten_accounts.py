@@ -21,9 +21,20 @@ def _require_local_preview(request: Request) -> None:
         raise HTTPException(status_code=503, detail="watten_not_available", headers=_HEADERS)
 
 
+def _account_entry_link(content: str, request: Request) -> str:
+    from .watten_access import watten_request_enabled
+
+    if not watten_request_enabled(request):
+        # An account-only preview must not link into the closed game surface.
+        content = content.replace('href="/watten/konto/fortschritt" data-watten-account-link',
+                                  'href="/watten/konto/einstellungen" data-watten-account-link')
+    return content
+
+
 def _page(request: Request, page: str) -> Response:
     _require_local_preview(request)
-    content = (_STATIC / "watten-account.html").read_text(encoding="utf-8").replace("{page}", page)
+    content = _account_entry_link(
+        (_STATIC / "watten-account.html").read_text(encoding="utf-8").replace("{page}", page), request)
     if page == "home":
         # Explain the closed game and keep account links useful without JS or
         # a working identity request. The small client then localizes the page.
@@ -69,11 +80,19 @@ def watten_account_settings(request: Request):
         # Its production account emails never receive a local Watten context.
         return RedirectResponse("/konto", status_code=303, headers=_HEADERS)
     _require_local_preview(request)
-    if not resolve_session(request):
-        return RedirectResponse("/watten/anmelden?" + urlencode({"return_to": "/watten/konto/einstellungen"}),
+    from .watten_access import watten_request_enabled
+
+    destination = "/watten/konto/einstellungen"
+    if request.url.path == "/watten/konto" and watten_request_enabled(request):
+        destination = "/watten/konto/fortschritt"
+    identity = resolve_session(request)
+    if not identity:
+        return RedirectResponse("/watten/anmelden?" + urlencode({"return_to": destination}),
                                 status_code=303, headers=_HEADERS)
     if request.url.path == "/watten/konto":
-        return RedirectResponse("/watten/konto/einstellungen", status_code=308, headers=_HEADERS)
+        if identity.must_change_password:
+            return RedirectResponse("/watten/konto/einstellungen#passwort", status_code=303, headers=_HEADERS)
+        return RedirectResponse(destination, status_code=308, headers=_HEADERS)
     return _page(request, "settings")
 
 
@@ -82,5 +101,5 @@ def watten_account_action_page(request: Request, action: str) -> Response:
     if request.query_params.getlist("app") != ["watten"] or len(request.query_params.getlist("return_to")) > 1:
         raise HTTPException(status_code=400, detail="invalid_account_context", headers=_HEADERS)
     content = (_STATIC / "watten-email-action.html").read_text(encoding="utf-8").replace("{action}", action)
-    return Response(account_pwa_head(content), media_type="text/html",
+    return Response(account_pwa_head(_account_entry_link(content, request)), media_type="text/html",
                     headers={**_HEADERS, "Referrer-Policy": "no-referrer"})

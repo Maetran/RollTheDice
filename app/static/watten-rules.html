@@ -8,13 +8,13 @@
   <meta name="referrer" content="same-origin">
   <meta name="color-scheme" content="light">
   <title>Watten – Spielregeln / Rules</title>
-  <link rel="stylesheet" href="/static/watten-game.css?v=1c4d43150c24">
-  <link rel="stylesheet" href="/static/suite-header.css?v=1c4d43150c24">
+  <link rel="stylesheet" href="/static/watten-game.css?v=168d52318753">
+  <link rel="stylesheet" href="/static/suite-header.css?v=168d52318753">
 </head>
 <body class="wt-body">
   <a class="wt-skip" href="#wattenApp">Zum Inhalt / Skip to content</a>
   <header class="wt-header suite-header">
-    <a class="wt-brand suite-header__brand" href="/watten" translate="no"><img class="suite-header__icon" src="/static/watten/icons/watten-icon-32.png?v=1c4d43150c24" width="32" height="32" alt=""><span>Watten</span></a>
+    <a class="wt-brand suite-header__brand" href="/watten" translate="no"><img class="suite-header__icon" src="/static/watten/icons/watten-icon-32.png?v=168d52318753" width="32" height="32" alt=""><span>Watten</span></a>
     <div class="suite-header__tools">
       <label class="wt-language"><span class="wt-visually-hidden">Sprache / Language</span><select data-language-switcher aria-label="Sprache / Language"><option value="de">Deutsch</option><option value="en">English</option></select></label>
       <button id="wattenSuitePicker" type="button" class="game-switch" data-game-switch hidden disabled aria-label="Spiele / Games"></button>
@@ -23,7 +23,7 @@
       <a href="/watten">Lobby</a>
       <a href="/watten/rangliste">Spieler &amp; Ranking</a>
       <a href="/watten/regeln" aria-current="page">Regeln</a>
-      <a href="/watten/konto/einstellungen">Konto</a>
+      <a href="/watten/konto/fortschritt" data-watten-account-link>Konto</a>
     </nav>
   </header>
   <main id="wattenApp" class="wt-main wt-rules" tabindex="-1">
@@ -57,7 +57,7 @@
       <section id="vor-dem-ausspielen"><h2>Vor dem Ausspielen</h2>
         <p><strong>Schöneres:</strong> Wenn «Schöneres erlauben» bei der Tisch-Erstellung eingeschaltet ist, können die beiden Ansagenden zu zweit oder zu viert bis zur ersten ausgespielten Karte gemeinsam fünf neue Karten verlangen – auch nach dem Einschauen. Eine Person fragt an, die andere stimmt ausdrücklich zu. Dann werden ihre bisherigen Blätter mit dem Reststapel gemischt und beide erhalten je fünf neue Karten. Alle anderen behalten ihr Blatt. Danach beginnt die Ansage neu. Mit erneuter beidseitiger Zustimmung könnt ihr das wiederholen; nach der ersten ausgespielten Karte ist es vorbei.</p>
         <p><strong>Schlagwechsel:</strong> Bei normaler offener Ansage zu zweit oder zu viert können die beiden Ansagenden vor der ersten Ansage ihre Rollen tauschen. Eine Person fragt, die andere stimmt zu: Wer Schlag angesagt hätte, sagt nun Farbe an und umgekehrt. Die Blätter bleiben gleich. Vorhand, also wer die erste Karte ausspielt, bleibt unverändert.</p>
-        <p><strong>Blödeln:</strong> Im blinden Vierer haben die beiden Nicht-Einschauer sofort «Blödeln?» zur Verfügung. Fragt einer an, sieht der andere «XYZ will blödeln» und muss mit Ja oder Nein antworten. Bis zur Antwort sind Ausspielen und Bieten gesperrt; Zeigen und Einschauen gehen weiter. Ohne Anfrage beginnt das Spiel nach dem Einschauen normal. Ein Nein verhindert Blödeln für dieses Blatt. Bei Ja wird die ursprüngliche unterste Karte bei beiden automatisch im ersten Stich ausgespielt, sobald sie am Zug sind – ohne Kartenauswahl, auch wenn eine andere Farbe ausgespielt wurde. Die anderen sehen die Pflichtkarte erst beim tatsächlichen Ausspielen, niemals vorab. Sind beide Nicht-Einschauer CPUs, kommt ungefähr in jedem dritten Blatt eine Blödeln-Anfrage. Pro CPU sind es rund 18 %; eine Anfrage beantworten sie weiterhin mit 50 % Wahrscheinlichkeit mit Ja. Die Wahl bleibt für dieses Blatt gleich und nutzt keine verdeckten Karten. Der Status nennt die beiden tatsächlich beteiligten Spieler. Schlag und Farbe bleiben unverändert.</p>
+        <p><strong>Blödeln:</strong> Im blinden Vierer haben die beiden Nicht-Einschauer sofort «Blödeln?» zur Verfügung. Fragt einer an, sieht der andere «XYZ will blödeln» und muss mit Ja oder Nein antworten. Bis zur Antwort sind Ausspielen und Bieten gesperrt; Zeigen und Einschauen gehen weiter. Ohne Anfrage beginnt das Spiel nach dem Einschauen normal. Ein Nein verhindert Blödeln für dieses Blatt. Bei Ja wird die ursprüngliche unterste Karte bei beiden automatisch im ersten Stich ausgespielt, sobald sie am Zug sind – ohne Kartenauswahl, auch wenn eine andere Farbe ausgespielt wurde. Die anderen sehen die Pflichtkarte erst beim tatsächlichen Ausspielen, niemals vorab. Sind beide Nicht-Einschauer CPUs, kommt ungefähr in jedem dritten Blatt eine Blödeln-Anfrage. Pro CPU sind es rund 18 %; eine Anfrage beantworten sie weiterhin mit 50 % Wahrscheinlichkeit mit Ja. Die Wahl bleibt für dieses Blatt gleich und nutzt keine verdeckten Karten. Nach der Zustimmung markieren bei ausreichendem Platz zwei verdeckte Karten die beteiligten Spieler. Zeigen und Einschauen bleiben vorrangig; die Pflichtkarten werden nicht vorab aufgedeckt. Schlag und Farbe bleiben unverändert.</p>
       </section>
       <section id="rangfolge"><h2>Rangfolge</h2>
         <ol>
@@ -178,7 +178,7 @@
       <section id="before-play"><h2>Before the first card</h2>
         <p><strong>Schöneres:</strong> when “Allow a redeal” is enabled during table creation, both callers in a two- or four-player game may agree to request five new cards until the first card is played, including after inspection. One asks and the other explicitly agrees. Their old hands are then shuffled into the remaining stock and each receives five new cards. Everyone else keeps their hand. Calling starts again. They may repeat this by agreeing again; the option ends once the first card is played.</p>
         <p><strong>Strike swap:</strong> in normal open two- or four-player play, both callers can agree to exchange their roles before the first announcement. The person who would have called strike now calls suit, and vice versa. Every hand stays the same. The opening player remains unchanged.</p>
-        <p><strong>Blödeln:</strong> in blind four-player play, both non-lookers immediately have a “Blödeln?” button. When one asks, the other sees “XYZ wants to play Blödeln” and must answer yes or no. Card play and bidding wait for that response; showing and inspection may continue. Without a request, play starts normally after inspection. A no declines Blödeln for this hand. A yes automatically plays each original bottom card on its owner's first turn, without a card choice, even when a different suit is led. Others see the forced card only when it is actually played, never in advance. With two CPU non-lookers, a Blödeln request occurs in roughly one third of hands. Each CPU asks about 18% of the time and still answers yes with a 50% chance. The choice stays the same for the hand and uses no hidden cards. The status names the two actual participants. Strike and trump suit stay unchanged.</p>
+        <p><strong>Blödeln:</strong> in blind four-player play, both non-lookers immediately have a “Blödeln?” button. When one asks, the other sees “XYZ wants to play Blödeln” and must answer yes or no. Card play and bidding wait for that response; showing and inspection may continue. Without a request, play starts normally after inspection. A no declines Blödeln for this hand. A yes automatically plays each original bottom card on its owner's first turn, without a card choice, even when a different suit is led. Others see the forced card only when it is actually played, never in advance. With two CPU non-lookers, a Blödeln request occurs in roughly one third of hands. Each CPU asks about 18% of the time and still answers yes with a 50% chance. The choice stays the same for the hand and uses no hidden cards. After agreement, two card backs mark the participants when space allows. Showing and inspection retain priority; forced cards are never revealed in advance. Strike and trump suit stay unchanged.</p>
       </section>
       <section id="ranking"><h2>Card ranking</h2>
         <ol>
@@ -271,6 +271,6 @@
       <p><a class="wt-button" href="/watten">To the lobby</a></p>
     </article>
   </main>
-  <script type="module" src="/static/watten-game.js?v=1c4d43150c24"></script>
+  <script type="module" src="/static/watten-game.js?v=168d52318753"></script>
 </body>
 </html>

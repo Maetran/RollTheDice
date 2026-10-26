@@ -20,19 +20,19 @@ import logging
 from dataclasses import dataclass
 from typing import Any, Final, Iterable, Mapping
 
-from sqlalchemy import and_, or_, select, update
+from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from .cross_game_activity import CrossGameActivity, cross_game_activity_for_user
 from .database import database_schema_ready, session_scope
+from .dice_progress import engagement_counts_for_origins, origin_ids_for_progress, owners_for_progress
 from .game_types import ZILCH_GAME_TYPE
 from .models import (
     CompletedGame,
     DeletedGame,
     GameParticipant,
     User,
-    UserEngagementEvent,
     ZilchAchievementDelivery,
     ZilchAchievementEvaluation,
     ZilchAchievementEvidence,
@@ -2265,6 +2265,28 @@ def _is_qualified_completion(facts: Mapping[str, Any]) -> bool:
     }
 
 
+def _definition_fact_contributions(definition, facts):
+    """Keep whole original proofs, deduplicating only aggregate contributions."""
+    criterion = definition.criterion
+    requires_win = criterion.startswith("hvh_") or criterion in {
+        "first_hvh_win", "competitive_wins", "no_small_change", "win_without_zilch", "win_after_zilchs",
+        "win_after_zilch_penalty", "win_after_penalty_points", "competitive_min_game_turns",
+    }
+    applicable = [item for item in facts if _definition_applies(definition, item) and _is_qualified_completion(item)
+                  and not (requires_win and item.get("_self_opponent"))]
+    if criterion not in {"games_played", "multiplayer_games", "career_banked_points", "competitive_wins"}:
+        return applicable
+    grouped = {}
+    for index, item in enumerate(applicable):
+        game_id = item.get("_source_game_id", ("unbound", index))
+        score = (sum(item["banked_rounds"]) if criterion == "career_banked_points"
+                 else int(item.get("outcome") == "win") if criterion == "competitive_wins" else 1)
+        priority = (score, -int(item.get("_evidence_id", index)))
+        if game_id not in grouped or priority > grouped[game_id][0]:
+            grouped[game_id] = (priority, item)
+    return [item for _priority, item in grouped.values()]
+
+
 def _criterion_is_satisfied(definition: ZilchAchievementDefinition, facts: list[dict[str, Any]]) -> bool:
     """Evaluate immutable definitions against all explicitly registered evidence."""
 
@@ -2281,11 +2303,7 @@ def _criterion_is_satisfied(definition: ZilchAchievementDefinition, facts: list[
         # Account interactions are measured in their own durable event ledger,
         # never inferred from a Zilch result payload.
         return False
-    applicable = [
-        item
-        for item in facts
-        if _definition_applies(definition, item) and _is_qualified_completion(item)
-    ]
+    applicable = _definition_fact_contributions(definition, facts)
     if not applicable:
         return False
     criterion = definition.criterion
@@ -2450,9 +2468,7 @@ def _criterion_is_satisfied(definition: ZilchAchievementDefinition, facts: list[
 
 
 def _engagement_counts(db, user_id: int) -> dict[str, int]:
-    return {str(row.event_key): int(row.count) for row in db.scalars(
-        select(UserEngagementEvent).where(UserEngagementEvent.user_id == user_id)
-    )}
+    return engagement_counts_for_origins(db, origin_ids_for_progress(db, user_id))
 
 
 def _first_supporting_evidence(
@@ -2500,11 +2516,7 @@ def _progress_for_definition(
     if definition.criterion == "engagement_event":
         key = definition.key.removeprefix("zilch.")
         return {"current": int((engagement_counts or {}).get(key, 0)), "target": 1}
-    applicable = [
-        item
-        for item in facts
-        if _definition_applies(definition, item) and _is_qualified_completion(item)
-    ]
+    applicable = _definition_fact_contributions(definition, facts)
     if definition.criterion in {"games_played", "multiplayer_games"}:
         current = len(applicable)
     elif definition.criterion == "career_banked_points":
@@ -2625,7 +2637,7 @@ def _unlock_payload(
             # completion crossed the threshold, while its immutable recipient
             # remains independent of that game's later deletion.
             "presentation_game_id": projected_presentation_game_id,
-            "source_kind": "community" if unlock.source_community_recipient_id is not None else "game",
+            "source_kind": "community" if definition.criterion == "community_games" else "game",
             "unlocked_at": as_utc(unlock.unlocked_at).isoformat(),
         }
     )
@@ -2768,6 +2780,10 @@ def _ensure_zilch_rank_upgrade_delivery_in_session(
 ) -> tuple[ZilchAchievementRankDelivery, ZilchAchievementUnlock] | None:
     """Return the current latest delivery, creating/replacing it if needed."""
 
+    from .dice_merge_achievements import merge_projection_enabled
+
+    if merge_projection_enabled(db, user_id, "zilch"):
+        return _merged_rank_delivery_in_session(db, user_id)
     latest = _latest_zilch_rank_upgrade_in_session(db, user_id)
     delivery = db.scalar(
         select(ZilchAchievementRankDelivery).where(ZilchAchievementRankDelivery.user_id == user_id)
@@ -2808,6 +2824,38 @@ def _ensure_zilch_rank_upgrade_delivery_in_session(
             delivery.queued_at = as_utc(unlock.unlocked_at)
             delivery.acknowledged_at = None
     return delivery, unlock
+
+
+def _merged_rank_delivery_in_session(db, user_id):
+    """A merge summary never replaces a target's ordinary pending rank receipt."""
+    from .models import AccountMergeOperation, MergedAwardBacking
+
+    delivery = db.scalar(select(ZilchAchievementRankDelivery).where(ZilchAchievementRankDelivery.user_id == user_id))
+    latest_merge = db.scalar(select(func.max(AccountMergeOperation.created_at)).join(
+        MergedAwardBacking, MergedAwardBacking.operation_id == AccountMergeOperation.id,
+    ).where(MergedAwardBacking.owner_user_id == user_id))
+    moment = db.scalar(select(ZilchAchievementRankMoment).where(
+        ZilchAchievementRankMoment.user_id == user_id,
+        ZilchAchievementRankMoment.recorded_at > latest_merge,
+    ).order_by(ZilchAchievementRankMoment.recorded_at.desc(), ZilchAchievementRankMoment.id.desc()).limit(1))
+    if moment is not None and (delivery is None or as_utc(delivery.queued_at) < as_utc(moment.recorded_at)):
+        source = db.scalar(select(ZilchAchievementUnlock).where(
+            ZilchAchievementUnlock.user_id == user_id,
+            ZilchAchievementUnlock.presentation_game_id == moment.game_id,
+        ).order_by(ZilchAchievementUnlock.unlocked_at.desc(), ZilchAchievementUnlock.id.desc()).limit(1))
+        if source is not None:
+            if delivery is None:
+                delivery = ZilchAchievementRankDelivery(user_id=user_id)
+                db.add(delivery)
+            delivery.source_unlock_id = source.id
+            delivery.previous_rank_key, delivery.rank_key = moment.previous_rank_key, moment.rank_key
+            delivery.previous_points, delivery.points = moment.previous_points, moment.points
+            delivery.queued_at, delivery.acknowledged_at = moment.recorded_at, None
+            db.flush()
+    if delivery is None or delivery.source_unlock_id is None:
+        return None
+    source = db.get(ZilchAchievementUnlock, delivery.source_unlock_id)
+    return (delivery, source) if source is not None else None
 
 
 def _zilch_rank_upgrade_delivery_payload(
@@ -2855,7 +2903,7 @@ def _result_moment_award_payload(
         "description_key": definition.description_key,
         "points": definition.points,
         "unlocked_at": as_utc(unlock.unlocked_at).isoformat(),
-        "source_kind": "community" if unlock.source_community_recipient_id is not None else "game",
+        "source_kind": "community" if definition.criterion == "community_games" else "game",
     }
 
 
@@ -2877,7 +2925,8 @@ def _result_moment_rank_payload(rank_key: object, points: object) -> dict[str, A
     }
 
 
-def zilch_result_moments_for_user_ids(
+def zilch_result_moments_for_user_ids_in_session(
+    db,
     game_id: object,
     participant_user_ids: Iterable[object],
 ) -> dict[str, Any]:
@@ -2902,64 +2951,63 @@ def zilch_result_moments_for_user_ids(
             continue
         if user_id > 0:
             user_ids.add(user_id)
-    if not user_ids or not database_schema_ready():
+    if not user_ids:
         return {"status": "unavailable", "by_user": {}}
-    try:
-        with session_scope() as db:
-            evaluation = db.scalar(
-                select(ZilchAchievementEvaluation).where(
-                    ZilchAchievementEvaluation.game_id == normalized_game_id
-                )
-            )
-            if evaluation is None:
-                return {"status": "unavailable", "by_user": {}}
-            if evaluation.status != "completed":
-                return {"status": "pending", "by_user": {}}
+    evaluation = db.scalar(
+        select(ZilchAchievementEvaluation).where(
+            ZilchAchievementEvaluation.game_id == normalized_game_id
+        )
+    )
+    if evaluation is None:
+        return {"status": "unavailable", "by_user": {}}
+    if evaluation.status != "completed":
+        return {"status": "pending", "by_user": {}}
 
-            # Pre-redesign unlock rows do not yet have a presentation link.
-            # Their direct evidence source remains a safe backwards-compatible
-            # fallback. Community awards are associated only when a recipient
-            # really sat at the trigger table.
-            community_recipient_ids = select(ZilchCommunityRecipient.id).join(
-                ZilchCommunityMilestone,
-                ZilchCommunityMilestone.id == ZilchCommunityRecipient.milestone_id,
-            ).where(ZilchCommunityMilestone.trigger_game_id == normalized_game_id)
-            award_rows = list(
-                db.scalars(
-                    select(ZilchAchievementUnlock)
-                    .where(
-                        ZilchAchievementUnlock.user_id.in_(user_ids),
-                        or_(
-                            ZilchAchievementUnlock.presentation_game_id == normalized_game_id,
-                            and_(
-                                ZilchAchievementUnlock.presentation_game_id.is_(None),
-                                ZilchAchievementUnlock.source_game_id == normalized_game_id,
-                            ),
-                            ZilchAchievementUnlock.source_community_recipient_id.in_(community_recipient_ids),
-                        ),
-                    )
-                    .order_by(
-                        ZilchAchievementUnlock.unlocked_at,
-                        ZilchAchievementUnlock.id,
-                    )
-                )
+    # Pre-redesign unlock rows do not yet have a presentation link.
+    # Their direct evidence source remains a safe backwards-compatible
+    # fallback. Community awards are associated only when a recipient
+    # really sat at the trigger table.
+    community_recipient_ids = select(ZilchCommunityRecipient.id).join(
+        ZilchCommunityMilestone,
+        ZilchCommunityMilestone.id == ZilchCommunityRecipient.milestone_id,
+    ).where(ZilchCommunityMilestone.trigger_game_id == normalized_game_id)
+    award_rows = list(
+        db.scalars(
+            select(ZilchAchievementUnlock)
+            .where(
+                ZilchAchievementUnlock.user_id.in_(user_ids),
+                or_(
+                    ZilchAchievementUnlock.presentation_game_id == normalized_game_id,
+                    and_(
+                        ZilchAchievementUnlock.presentation_game_id.is_(None),
+                        ZilchAchievementUnlock.source_game_id == normalized_game_id,
+                    ),
+                    ZilchAchievementUnlock.source_community_recipient_id.in_(community_recipient_ids),
+                ),
             )
-            rank_rows = list(
-                db.scalars(
-                    select(ZilchAchievementRankMoment)
-                    .where(
-                        ZilchAchievementRankMoment.game_id == normalized_game_id,
-                        ZilchAchievementRankMoment.user_id.in_(user_ids),
-                    )
-                    .order_by(
-                        ZilchAchievementRankMoment.recorded_at,
-                        ZilchAchievementRankMoment.id,
-                    )
-                )
+            .order_by(
+                ZilchAchievementUnlock.unlocked_at,
+                ZilchAchievementUnlock.id,
             )
-    except SQLAlchemyError:
-        logger.exception("Could not project Zilch result moments for %s", normalized_game_id)
-        return {"status": "unavailable", "by_user": {}}
+        )
+    )
+    from .account_merge_backings import is_canonical_mirror
+    from .dice_merge_achievements import historical_award_supports_in_session
+    award_rows = [row for row in award_rows if not is_canonical_mirror(db, row.user_id, "zilch", row.achievement_key)]
+    award_rows.extend(historical_award_supports_in_session(db, "zilch", normalized_game_id, user_ids))
+    rank_rows = list(
+        db.scalars(
+            select(ZilchAchievementRankMoment)
+            .where(
+                ZilchAchievementRankMoment.game_id == normalized_game_id,
+                ZilchAchievementRankMoment.user_id.in_(user_ids),
+            )
+            .order_by(
+                ZilchAchievementRankMoment.recorded_at,
+                ZilchAchievementRankMoment.id,
+            )
+        )
+    )
 
     by_user: dict[int, dict[str, list[dict[str, Any]]]] = {}
     for unlock in award_rows:
@@ -2981,6 +3029,21 @@ def zilch_result_moments_for_user_ids(
             }
         )
     return {"status": "ready", "by_user": by_user}
+
+
+def zilch_result_moments_for_user_ids(
+    game_id: object,
+    participant_user_ids: Iterable[object],
+) -> dict[str, Any]:
+    """Project a finished table's participant-safe moments in a managed session."""
+    if not database_schema_ready():
+        return {"status": "unavailable", "by_user": {}}
+    try:
+        with session_scope() as db:
+            return zilch_result_moments_for_user_ids_in_session(db, game_id, participant_user_ids)
+    except SQLAlchemyError:
+        logger.exception("Could not project Zilch result moments for %s", game_id)
+        return {"status": "unavailable", "by_user": {}}
 
 
 def _json_facts(facts: Mapping[str, Any]) -> str:
@@ -3058,7 +3121,9 @@ def _register_evaluation(game_id: str) -> str:
         raise ZilchAchievementSyncError() from exc
 
 
-def _evidence_for_user(db, user_id: int) -> list[tuple[ZilchAchievementEvidence, dict[str, Any]]]:
+def _evidence_for_user(db, user_id: int, *, origin_ids=None, excluded_opponent_ids=None, evidence_ceiling=None, recorded_through=None) -> list[tuple[ZilchAchievementEvidence, dict[str, Any]]]:
+    ids = origin_ids_for_progress(db, user_id, origin_ids=origin_ids)
+    exclusions = set(ids if excluded_opponent_ids is None else excluded_opponent_ids)
     rows = list(
         db.scalars(
             select(ZilchAchievementEvidence)
@@ -3067,7 +3132,9 @@ def _evidence_for_user(db, user_id: int) -> list[tuple[ZilchAchievementEvidence,
                 ZilchAchievementEvaluation.id == ZilchAchievementEvidence.evaluation_id,
             )
             .where(
-                ZilchAchievementEvidence.user_id == user_id,
+                ZilchAchievementEvidence.user_id.in_(ids),
+                ZilchAchievementEvidence.id <= evidence_ceiling if evidence_ceiling is not None else True,
+                ZilchAchievementEvidence.recorded_at <= recorded_through if recorded_through is not None else True,
                 ZilchAchievementEvaluation.status == "completed",
                 ZilchAchievementEvidence.source_game_id == ZilchAchievementEvaluation.game_id,
                 ~ZilchAchievementEvidence.source_game_id.in_(
@@ -3077,10 +3144,22 @@ def _evidence_for_user(db, user_id: int) -> list[tuple[ZilchAchievementEvidence,
             .order_by(ZilchAchievementEvidence.recorded_at, ZilchAchievementEvidence.id)
         )
     )
+    seats_by_game = {}
+    if exclusions and rows:
+        for game_id, seat in db.execute(select(CompletedGame.game_id, GameParticipant).join(
+            GameParticipant, GameParticipant.game_id == CompletedGame.id,
+        ).where(CompletedGame.game_type == ZILCH_GAME_TYPE,
+                CompletedGame.game_id.in_({row.source_game_id for row in rows}))):
+            seats_by_game.setdefault(game_id, []).append(seat)
     result: list[tuple[ZilchAchievementEvidence, dict[str, Any]]] = []
     for row in rows:
         facts = _facts_from_evidence(row)
         if facts is not None:
+            facts = {**facts, "_source_game_id": row.source_game_id, "_evidence_id": int(row.id)}
+            if facts.get("play_mode") == "multiplayer" and exclusions:
+                opponents = [seat for seat in seats_by_game.get(row.source_game_id, [])
+                             if str(seat.player_key) != str(facts["participant_id"])]
+                facts["_self_opponent"] = not opponents or not any(seat.user_id not in exclusions for seat in opponents)
             result.append((row, facts))
     return result
 
@@ -3223,7 +3302,7 @@ def _ensure_community_unlocks_for_user_in_session(
             ZilchCommunityMilestone,
             ZilchCommunityMilestone.id == ZilchCommunityRecipient.milestone_id,
         )
-        .where(ZilchCommunityRecipient.user_id == user_id)
+        .where(ZilchCommunityRecipient.user_id.in_(origin_ids_for_progress(db, user_id)))
         .order_by(ZilchCommunityMilestone.reached_at, ZilchCommunityMilestone.id)
     ).all()
     recipients_by_key = {
@@ -3322,26 +3401,11 @@ def _record_community_participants_in_session(db, *, game_id: str) -> None:
 
 
 def _community_eligible_user_ids_in_session(db, *, through_ordinal: int) -> list[int]:
-    """Freeze active accounts with a durable seat at or before a threshold."""
-
-    return sorted(
-        {
-            int(user_id)
-            for user_id in db.scalars(
-                select(ZilchCommunityParticipant.user_id)
-                .join(
-                    ZilchCommunityGame,
-                    ZilchCommunityGame.game_id == ZilchCommunityParticipant.game_id,
-                )
-                .join(User, User.id == ZilchCommunityParticipant.user_id)
-                .where(
-                    User.is_active.is_(True),
-                    ZilchCommunityGame.ordinal <= through_ordinal,
-                )
-                .distinct()
-            )
-        }
-    )
+    original_ids = set(db.scalars(select(ZilchCommunityParticipant.user_id).join(
+        ZilchCommunityGame, ZilchCommunityGame.game_id == ZilchCommunityParticipant.game_id,
+    ).where(ZilchCommunityGame.ordinal <= through_ordinal).distinct()))
+    owners = set(owners_for_progress(db, original_ids).values())
+    return sorted(db.scalars(select(User.id).where(User.id.in_(owners), User.is_active.is_(True))))
 
 
 def _register_community_game_in_session(
@@ -3447,6 +3511,12 @@ def _sync_cross_game_achievements_in_session(
 ) -> tuple[list[dict[str, Any]], list[str]]:
     """Materialize the rollout-safe ZDWA/Zilch awards for one account."""
 
+    from .dice_merge_achievements import merge_projection_enabled
+    if merge_projection_enabled(db, user.id, "zilch"):
+        return _sync_merged_zilch_in_session(
+            db, user.id, presentation_game_id=presentation_game_id,
+            only_keys={item.key for item in ZILCH_ACHIEVEMENTS if item.criterion in _CROSS_GAME_CRITERIA},
+        )
     activity = cross_game_activity_for_user(db, user)
     now = utcnow()
     newly_unlocked: list[dict[str, Any]] = []
@@ -3504,6 +3574,41 @@ def _sync_cross_game_achievements_in_session(
     return newly_unlocked, revoked
 
 
+def _sync_merged_zilch_in_session(db, user_id, *, presentation_game_id=None, only_keys=None):
+    from .dice_merge_achievements import _reconcile
+
+    user = db.get(User, user_id)
+    if user is None or not user.is_active:
+        return [], []
+    result = _reconcile(db, user_id, "zilch", only_keys=only_keys, presentation_game_id=presentation_game_id)
+    rows = _known_unlock_rows(db, user_id)
+    pairs = _evidence_for_user(db, user_id)
+    facts = [fact for _row, fact in pairs]
+    newly = []
+    activity = cross_game_activity_for_user(db, user)
+    engagement_counts = _engagement_counts(db, user_id)
+    for key in result["new_keys"]:
+        definition, unlock = ZILCH_ACHIEVEMENT_BY_KEY[key], rows[key]
+        delivery = None
+        if definition.criterion in _CROSS_GAME_CRITERIA and unlock.source_game_id:
+            delivery = ZilchAchievementDelivery(unlock_id=unlock.id, queued_at=unlock.unlocked_at)
+            db.add(delivery)
+        elif presentation_game_id and definition.criterion not in {"engagement_event", "community_games"}:
+            without_source = [fact for evidence, fact in pairs if evidence.source_game_id != presentation_game_id]
+            if _criterion_is_satisfied(definition, facts) and not _criterion_is_satisfied(definition, without_source):
+                source = _first_supporting_evidence(definition, pairs)
+                unlock.source_evidence_id = source.id if source else None
+                unlock.source_game_id = source.source_game_id if source else None
+                unlock.presentation_game_id = presentation_game_id
+                delivery = ZilchAchievementDelivery(unlock_id=unlock.id, queued_at=unlock.unlocked_at)
+                db.add(delivery)
+        newly.append(_unlock_payload(unlock, definition, delivery=delivery,
+                                     progress=_progress_for_definition(
+                                         definition, facts, cross_game_activity=activity, engagement_counts=engagement_counts,
+                                     )))
+    return newly, result["revoked_keys"]
+
+
 def _sync_user_achievements_in_session(
     db,
     user_id: int,
@@ -3512,6 +3617,10 @@ def _sync_user_achievements_in_session(
 ) -> tuple[list[dict[str, Any]], list[str]]:
     """Materialize/revoke one user's isolated Zilch awards atomically."""
 
+    user_id = owners_for_progress(db, {user_id})[user_id]
+    from .dice_merge_achievements import merge_projection_enabled
+    if merge_projection_enabled(db, user_id, "zilch"):
+        return _sync_merged_zilch_in_session(db, user_id, presentation_game_id=presentation_game_id)
     user = db.get(User, user_id)
     existing = _known_unlock_rows(db, user_id)
     if user is None or not user.is_active:
@@ -3631,7 +3740,7 @@ def sync_zilch_cross_game_achievements_for_users(
     try:
         with session_scope() as db:
             newly_unlocked: dict[int, list[dict[str, Any]]] = {}
-            for user_id in sorted(normalized_user_ids):
+            for user_id in sorted(set(owners_for_progress(db, normalized_user_ids).values())):
                 user = db.get(User, user_id)
                 if user is None or not user.is_active:
                     continue
@@ -3661,11 +3770,19 @@ def sync_zilch_engagement_achievements_for_users(
         return {}
     with session_scope() as db:
         result: dict[int, list[dict[str, Any]]] = {}
-        for user_id in sorted(normalized):
+        for user_id in sorted(set(owners_for_progress(db, normalized).values())):
             user = db.get(User, user_id)
             if user is None or not user.is_active:
                 continue
             existing = _known_unlock_rows(db, user_id)
+            from .dice_merge_achievements import merge_projection_enabled
+            if merge_projection_enabled(db, user_id, "zilch"):
+                unlocked, _revoked = _sync_merged_zilch_in_session(
+                    db, user_id, only_keys={item.key for item in ZILCH_ACHIEVEMENTS if item.criterion == "engagement_event"},
+                )
+                if unlocked:
+                    result[user_id] = unlocked
+                continue
             counts = _engagement_counts(db, user_id)
             unlocked: list[dict[str, Any]] = []
             for definition in ZILCH_ACHIEVEMENTS:
@@ -3793,7 +3910,7 @@ def _process_registered_evaluation(game_id: str) -> ZilchAchievementRegistration
             )
             if claim.rowcount != 1:
                 return ZilchAchievementRegistration(game_id, "already_evaluated", {}, pending=False)
-            affected = {int(row.user_id) for row in evidence}
+            affected = set(owners_for_progress(db, {int(row.user_id) for row in evidence}).values())
             ranks_before_by_user = zilch_achievement_rank_payloads_for_user_ids(db, affected)
             new_unlocks: dict[int, list[dict[str, Any]]] = {}
             for user_id in sorted(affected):
@@ -3950,7 +4067,7 @@ def remove_zilch_result_from_achievements(
             affected = set(supplied_users)
             _remove_evaluation_in_session(db, normalized_game_id, user_ids=affected)
             revoked_by_user: dict[int, list[str]] = {}
-            for user_id in sorted(affected):
+            for user_id in sorted(set(owners_for_progress(db, affected).values())):
                 _newly_unlocked, revoked = _sync_user_achievements_in_session(db, user_id)
                 if revoked:
                     revoked_by_user[user_id] = revoked
@@ -4093,7 +4210,7 @@ def resync_zilch_achievement_catalog() -> dict[str, int | str]:
             )
             unlocked_count = 0
             revoked_count = 0
-            for user_id in sorted(user_ids):
+            for user_id in sorted(set(owners_for_progress(db, user_ids).values())):
                 unlocked, revoked = _sync_user_achievements_in_session(db, user_id)
                 unlocked_count += len(unlocked)
                 revoked_count += len(revoked)
@@ -4139,7 +4256,7 @@ def _profile_in_session(db, user_id: int) -> dict[str, Any]:
                 ZilchCommunityRecipient,
                 ZilchCommunityRecipient.milestone_id == ZilchCommunityMilestone.id,
             )
-            .where(ZilchCommunityRecipient.user_id == user_id)
+            .where(ZilchCommunityRecipient.user_id.in_(origin_ids_for_progress(db, user_id)))
         )
     }
     unlocked: list[dict[str, Any]] = []

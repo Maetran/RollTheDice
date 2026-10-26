@@ -284,9 +284,20 @@ async function request(players, nonCallers, language, observers = []) {
 }
 
 async function expectNamedAgreement(peers, nonCallers, language) {
+  const participantSeats = nonCallers.map(peer => peer.traffic.snapshot.viewer.seat).toSorted();
   for (const peer of peers) {
-    const status = peer.page.locator('[data-watten-bloedeln-status=accepted]');
-    await expect(status).toBeVisible();
+    const preparation = peer.page.locator('.wt-bloedeln-preparation');
+    await expect(preparation).toBeVisible();
+    const cards = preparation.locator('[data-wt-bloedeln-seat]');
+    await expect(cards).toHaveCount(2);
+    expect(await cards.evaluateAll(nodes => nodes.map(node => Number(node.dataset.wtBloedelnSeat)).toSorted()))
+      .toEqual(participantSeats);
+    for (const seat of participantSeats) {
+      await expect(preparation.locator(`[data-wt-bloedeln-seat="${seat}"] .wt-card--back`)).toBeVisible();
+    }
+    await expect(preparation.locator('[data-card]')).toHaveCount(0);
+    const status = preparation.locator('[role=status]');
+    await expect(status).toHaveClass(/\bwt-visually-hidden\b/);
     if (nonCallers.includes(peer)) {
       const other = nonCallers.find(player => player !== peer);
       await expect(status).toHaveText(language === 'de' ? `Du und ${other.user.username} blödelt.`
@@ -410,7 +421,7 @@ for (const language of ['de', 'en']) {
       for (const item of forced) expect(item.owner.traffic.commands.filter(command => command.action === 'watten_command'
         && command.kind === 'play_card')).toEqual([]);
       expect(forced.every(item => played.some(play => play.seat === item.seat && play.card === item.card))).toBe(true);
-      for (const peer of all) await expect(peer.page.locator('[data-watten-bloedeln-status]')).toHaveCount(0);
+      for (const peer of all) await expect(peer.page.locator('.wt-bloedeln-preparation')).toHaveCount(0);
       await expectClean(all);
     } finally { await Promise.allSettled([...players, spectator].filter(Boolean).map(peer => peer.context.close())); }
   });

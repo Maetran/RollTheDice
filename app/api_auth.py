@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field, StrictBool
 from sqlalchemy import delete, func, select
 
 from .account_context import account_app_context
+from .account_progress import is_retired_merge_origin
 from .achievements import achievement_rank_payloads_for_user_ids, public_achievement_ranks
 from .auth import (
     auth_response_payload,
@@ -214,6 +215,7 @@ def _user_payload(user: User, *, achievement_rank: dict | None = None, viewer_id
         "username": user.username,
         "role": user.role,
         "is_active": user.is_active,
+        "is_merged": is_retired_merge_origin(db, user.id),
         "must_change_password": user.must_change_password,
         "lobby_chat_muted": user.lobby_chat_muted,
         "lobby_chat_excluded": user.lobby_chat_excluded,

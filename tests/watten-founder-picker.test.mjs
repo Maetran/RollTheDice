@@ -198,6 +198,34 @@ test("unloading a private page invalidates a cancelled identity read before it c
   assert.equal(f.games().some(game => game.id === "watten"), true);
 });
 
+test("a queued app-mode refresh starts no identity read after retirement or an intervening account change", async () => {
+  for (const retirement of ["beforeunload", "pagehide", "identity"]) {
+    const f = await fixture();
+    f.controller.applyAuth(founder());
+    const pending = f.controller.refresh();
+    if (retirement === "identity") f.event(auth(2));
+    else f.win.emit(retirement);
+    assert.equal(await pending, false);
+    assert.equal(f.reads(), 0, retirement);
+    assert.deepEqual(f.visits, []);
+  }
+});
+
+test("a successful first private identity read cannot start its second confirmation after navigation retirement", async () => {
+  for (const retirement of ["beforeunload", "pagehide"]) {
+    const reply = deferred();
+    const f = await fixture({ loader: () => reply.promise });
+    const pending = f.controller.refresh();
+    await settle();
+    assert.equal(f.reads(), 1);
+    f.win.emit(retirement);
+    reply.resolve(founder());
+    assert.equal(await pending, false);
+    assert.equal(f.reads(), 1, retirement);
+    assert.deepEqual(f.visits, []);
+  }
+});
+
 test("an identity error on a live private page still clears its content and redirects", async () => {
   let fail = false;
   const f = await fixture({ mode: "watten", publicDocument: false,

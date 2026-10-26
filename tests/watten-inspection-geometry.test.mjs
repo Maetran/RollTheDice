@@ -3,10 +3,34 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const source = await readFile(new URL("../frontend/watten/inspection-geometry.js", import.meta.url), "utf8");
-const { fitInspectionAxis, outermostCard, unionOf, cardHitsRect, cardBounds, paintedBox, boxesHit, covers, rectOf: rect } =
+const { fitInspectionAxis, inspectionFootprint, outermostCard, unionOf, cardHitsRect, cardBounds, paintedBox, boxesHit, covers, rectOf: rect } =
   await import(`data:text/javascript;base64,${Buffer.from(source).toString("base64")}`);
 const centre = box => ({ x: (box.left + box.right) / 2, y: (box.top + box.bottom) / 2 });
 const overlap = (a, b) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+
+test("final inspection footprints protect both rotated faces and labels from a secondary fit", () => {
+  const fit = { status: "fit", poses: [{ x: 90, y: 100, width: 52, height: 82, rotation: -35 },
+    { x: 150, y: 190, width: 52, height: 82, rotation: 145 }],
+  labels: [rect(10, 80, 40, 22), rect(190, 190, 40, 22)] };
+  const footprint = inspectionFootprint(fit);
+  assert.equal(footprint.length, 4);
+  for (let index = 0; index < 2; index++) {
+    assert.equal(footprint[index].x, fit.poses[index].x);
+    assert.equal(footprint[index].y, fit.poses[index].y);
+    assert.equal(footprint[index].hw, 26);
+    assert.equal(footprint[index].hh, 41);
+  }
+  assert.deepEqual(footprint.slice(2), fit.labels);
+  assert.deepEqual(inspectionFootprint({ status: "unfit" }), []);
+  const secondary = fitInspectionAxis({ region: rect(0, 0, 260, 300),
+    actors: [{ anchor: { x: 15, y: 275 } }, { anchor: { x: 245, y: 275 } }],
+    cards: [{ width: 36, height: 57 }, { width: 36, height: 57 }],
+    captions: [{ width: 1, height: 1 }, { width: 1, height: 1 }], controls: footprint, minimumWidth: 36 });
+  assert.equal(secondary.status, "fit");
+  for (const item of inspectionFootprint(secondary)) for (const primary of footprint) {
+    assert.equal(boxesHit(item, primary), false, "a constrained secondary fit never yields the primary faces or captions");
+  }
+});
 
 test("measured 320px caller layout fits captions beside the face ends without covering any identity", async () => {
   // Real Chromium rectangles/outlines from the four-human blind journey,

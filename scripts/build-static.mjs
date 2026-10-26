@@ -16,6 +16,8 @@ const normalizedBundle = bytes => Buffer.from(bytes).toString("utf8").replace(as
 const targets = [
   { source: "frontend/styles/suite-header.css", output: "app/static/suite-header.css" },
   { source: "frontend/shared/auth.js", output: "app/static/auth.js", format: "esm" },
+  { source: "frontend/admin/account-merge.js", output: "app/static/admin-account-merge.js", format: "esm" },
+  { source: "frontend/styles/admin-account-merge.css", output: "app/static/admin-account-merge.css" },
   { source: "frontend/shared/voice-preferences.js", output: "app/static/voice-preferences.js", format: "esm" },
   { source: "frontend/shared/game-tours.js", output: "app/static/game-tours.js", format: "esm" },
   { source: "frontend/email-action.js", output: "app/static/email-action.js", format: "esm" },
@@ -28,6 +30,7 @@ const targets = [
   { source: "frontend/styles/dashboard.css", output: "app/static/dashboard.css" },
   { source: "frontend/shared/web-push.js", output: "app/static/web-push.js", format: "esm" },
   { source: "frontend/shared/release-notes.js", output: "app/static/release-notes.js", format: "esm" },
+  { source: "frontend/shared/account-merge-notice.js", output: "app/static/account-merge-notice.js", format: "esm" },
   { source: "frontend/shared/player-allowlist.js", output: "app/static/player-allowlist.js", format: "esm" },
   { source: "frontend/shared/avatar.js", output: "app/static/avatar.js", format: "esm" },
   { source: "frontend/shared/achievement-feed.js", output: "app/static/achievement-feed.js", format: "esm" },

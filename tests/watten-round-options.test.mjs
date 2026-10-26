@@ -9,7 +9,8 @@ const catalogSource = await readFile(new URL("../frontend/i18n/catalog.js", impo
 const { WATTEN_MESSAGES } = await import(`data:text/javascript;base64,${Buffer.from(catalogSource).toString("base64")}`);
 const esc = text => String(text).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll('"', "&quot;");
 function renderer(language = "de") {
-  const context = { esc, t: (key, values = {}) => WATTEN_MESSAGES[language][key].replace(/\{(\w+)\}/g, (_, name) => values[name] ?? "") };
+  const context = { esc, cardBack: () => '<span class="wt-card wt-card--back"></span>',
+    t: (key, values = {}) => WATTEN_MESSAGES[language][key].replace(/\{(\w+)\}/g, (_, name) => values[name] ?? "") };
   runInNewContext(source.replace(/^import .*;\n/gm, "").replaceAll("export function ", "function ")
     + "\nthis.render = roundOptionsMarkup; this.cards = bloedelnCardsMarkup;", context);
   return context;
@@ -54,8 +55,8 @@ for (const language of ["de", "en"]) {
     assert.equal(render(view({ viewerSeat: null, actions: [], engine: pending })), observer);
   });
 
-  test(`${language}: only an accepted request shows a status, until the first card`, () => {
-    const render = renderer(language).render;
+  test(`${language}: only accepted Blödeln shows anonymous public backs, until the first card`, () => {
+    const render = renderer(language).cards;
     for (const status of ["accepted", "declined"]) {
       const engine = { phase: "play", dealer_seat: 0, current_trick: { cards: [] }, preplay: { pending: null, bloedeln_status: status } };
       const html = render(view({ viewerSeat: 0, actions: [], engine }));
@@ -63,7 +64,8 @@ for (const language of ["de", "en"]) {
         assert.equal(html, "");
         continue;
       }
-      assert.match(html, new RegExp(`data-watten-bloedeln-status="${status}"`));
+      assert.match(html, /wt-bloedeln-preparation/);
+      assert.equal((html.match(/wt-card--back/g) || []).length, 2);
       assert.match(html, /Hansl &lt;&amp;>/);
       assert.match(html, /Toni/);
       assert.ok(html.includes(language === "de" ? "blödeln." : "Blödeln:"));
@@ -75,7 +77,7 @@ for (const language of ["de", "en"]) {
   });
 
   test(`${language}: agreed Blödeln names the actual non-callers for every dealer and viewer role`, () => {
-    const render = renderer(language).render;
+    const render = renderer(language).cards;
     for (const dealer of [0, 1, 2, 3]) {
       const participants = [(dealer + 2) % 4, (dealer + 3) % 4];
       const engine = { phase: "show_ready", dealer_seat: dealer, current_trick: { cards: [] },
@@ -91,7 +93,9 @@ for (const language of ["de", "en"]) {
         for (const seat of [dealer, (dealer + 1) % 4]) {
           assert.ok(!html.includes(esc(vm.room.seats[seat].name)), "an inspector is never named as a Blödeln participant");
         }
-        assert.doesNotMatch(html, /<button|data-card=|wt-card/);
+        assert.doesNotMatch(html, /<button|data-card=/);
+        assert.equal((html.match(/wt-card--back/g) || []).length, 2);
+        assert.equal(renderer(language).render(vm), "", "passive preparation never consumes the primary action dock");
         assert.ok(!html.includes("Ihr blödelt"));
       }
     }
@@ -129,8 +133,11 @@ test("busy request answers are disabled and paused/completed rounds offer no sta
 test("the preparation area never reveals a future forced card, including an own private projection", () => {
   const render = renderer();
   for (const status of ["available", "pending", "accepted", "declined"]) {
-    const vm = view({ engine: { phase: "play", preplay: { bloedeln_status: status,
+    const vm = view({ engine: { phase: "play", dealer_seat: 0, preplay: { bloedeln_status: status,
       bloedeln_cards: [{ seat: 2, card: "hearts-A" }, { seat: 3, card: "bells-7" }] } } });
-    assert.equal(render.cards(vm), "");
+    const html = render.cards(vm);
+    if (status === "accepted") assert.equal((html.match(/wt-card--back/g) || []).length, 2);
+    else assert.equal(html, "");
+    assert.doesNotMatch(html, /data-card=|hearts-A|bells-7/);
   }
 });

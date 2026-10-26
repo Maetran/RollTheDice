@@ -56,6 +56,24 @@ def list_hausdepp_achievement_feed(
                  if difficulty is None or value == difficulty)
     if not database_schema_ready():
         return _feed_envelope(items=[], page=page, total=0, difficulty=difficulty)
+    with session_scope() as db:
+        from .models import AccountProgressOrigin
+        if db.scalar(select(AccountProgressOrigin.origin_user_id).limit(1)) is not None:
+            from .hausdepp_merge import effective_awards
+            users = dict(db.execute(select(User.id, User.username).where(User.is_active.is_(True))).all())
+            rows = [(value["unlocked_at"], owner, key, value["xp"]) for owner in users
+                    for key, value in effective_awards(db, owner).items() if key in keys]
+            rows.sort(reverse=True)
+            offset = (page - 1) * ACHIEVEMENT_FEED_PAGE_SIZE
+            items = []
+            for at, owner, key, xp in rows[offset:offset + ACHIEVEMENT_FEED_PAGE_SIZE]:
+                definition = HAUSDEPP_FEED_DEFINITIONS[key]
+                items.append({"unlocked_at": as_utc(at).isoformat(),
+                    "player": {"display_name": users[owner], "is_self": owner == viewer_id},
+                    "achievement": {"id": key, "name": dict(definition["name"]),
+                        "description": dict(definition["description"]), "category": definition["category"],
+                        "points": xp, "difficulty": HAUSDEPP_ACHIEVEMENT_DIFFICULTIES[key]}})
+            return _feed_envelope(items=items, page=page, total=len(rows), difficulty=difficulty)
     offset = (page - 1) * ACHIEVEMENT_FEED_PAGE_SIZE
     criteria = (User.is_active.is_(True), HausdeppAchievementUnlock.achievement_id.in_(keys), _unlock_source_allowed())
     with session_scope() as db:

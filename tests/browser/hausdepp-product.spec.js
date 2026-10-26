@@ -4,25 +4,39 @@ const { mkdir } = require('node:fs/promises');
 
 test.use({ serviceWorkers: 'block' });
 
-async function owner(page, language = 'de') {
-  const response = await page.request.post('/api/auth/login', {
+async function productAccount(page, language = 'de') {
+  // Private account pages require a completed native password setup. Never
+  // change the shared bootstrap Admin password used by the other test files.
+  const bootstrap = await page.request.post('/api/auth/login', {
     data: { username: 'Admin', password: 'temporary-password-123' },
   });
-  expect(response.ok()).toBeTruthy();
-  const user = (await response.json()).user;
+  expect(bootstrap.ok()).toBeTruthy();
+  const administrator = (await bootstrap.json()).user;
+  const username = `HouseProduct${Date.now()}${Math.random().toString(36).slice(2, 6)}`;
+  const temporary = 'house-product-temporary-123', password = 'house-product-final-123';
+  const created = await page.request.post('/api/admin/users', {
+    headers: { 'X-CSRF-Token': administrator.csrf_token }, data: { username, temporary_password: temporary, role: 'user' },
+  });
+  expect(created.status()).toBe(201);
+  const initial = await page.request.post('/api/auth/login', { data: { username, password: temporary } });
+  expect(initial.ok()).toBeTruthy();
+  const firstUser = (await initial.json()).user;
+  expect(firstUser.must_change_password).toBe(true);
+  expect((await page.request.post('/api/auth/change-password', {
+    headers: { 'X-CSRF-Token': firstUser.csrf_token }, data: { current_password: temporary, new_password: password },
+  })).ok()).toBeTruthy();
+  const signedIn = await page.request.post('/api/auth/login', { data: { username, password } });
+  expect(signedIn.ok()).toBeTruthy();
+  const user = (await signedIn.json()).user;
+  expect(user.must_change_password).toBe(false);
+  expect(user.is_owner).toBe(false); expect(user.is_admin).toBe(false);
   const headers = { 'X-CSRF-Token': user.csrf_token };
-  page.hausdeppProductOwner = { headers, language: user.preferences?.preferred_language || 'de' };
-  await page.request.put('/api/auth/preferences/language', { headers, data: { preferred_language: language } });
+  expect((await page.request.put('/api/auth/preferences/language', {
+    headers, data: { preferred_language: language },
+  })).ok()).toBeTruthy();
   await page.addInitScript(value => localStorage.setItem('zdwa_language', value), language);
   return headers;
 }
-
-test.afterEach(async ({ page }) => {
-  const saved = page.hausdeppProductOwner;
-  if (saved) await page.request.put('/api/auth/preferences/language', {
-    headers: saved.headers, data: { preferred_language: saved.language },
-  });
-});
 
 function accountFixture(language) {
   const makeRound = (index, outcome) => ({
@@ -45,7 +59,7 @@ function accountFixture(language) {
 
 for (const language of ['de', 'en']) {
   test(`${language}: dedicated account keeps private results and common settings reachable`, async ({ page }) => {
-    await owner(page, language);
+    await productAccount(page, language);
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
     await page.goto('/hausdepp/konto');
@@ -53,7 +67,7 @@ for (const language of ['de', 'en']) {
     await expect(page.locator('#hausdeppAccountStats')).toBeVisible();
     await expect(page.locator('#hausdeppHistory')).toBeVisible();
     await expect(page.locator('html')).toHaveAttribute('lang', language);
-    await expect(page.locator('.hd-nav a[href="/hausdepp/konto/einstellungen"][aria-current="page"]')).toBeVisible();
+    await expect(page.locator('.hd-nav a[href="/hausdepp/konto"][aria-current="page"]')).toBeVisible();
     const account = await page.request.get('/api/hausdepp/account');
     expect(account.status()).toBe(200);
     expect(account.headers()['cache-control']).toBe('no-store');
@@ -66,7 +80,7 @@ for (const language of ['de', 'en']) {
   });
 
   test(`${language}: labelled legacy history paginates without inventing points or links`, async ({ page }) => {
-    await owner(page, language);
+    await productAccount(page, language);
     const fixture = accountFixture(language);
     await page.route('**/api/hausdepp/account?**', async route => {
       const next = new URL(route.request().url()).searchParams.has('before');
@@ -87,7 +101,7 @@ for (const language of ['de', 'en']) {
   });
 
   test(`${language}: rules explain timing and connect every section anchor`, async ({ page }) => {
-    await owner(page, language);
+    await productAccount(page, language);
     await page.goto('/hausdepp/regeln');
     await expect(page.locator('h1')).toContainText('Hausdepp');
     await expect(page.locator('html')).toHaveAttribute('lang', language);
@@ -103,7 +117,7 @@ for (const language of ['de', 'en']) {
 }
 
 test('account load failure recovers through its visible retry action', async ({ page }) => {
-  await owner(page);
+  await productAccount(page);
   let failed = false;
   await page.route('**/api/hausdepp/account?**', async route => {
     if (!failed) { failed = true; await route.fulfill({ status: 503, json: { detail: 'labelled_test_failure' } }); }
@@ -116,7 +130,7 @@ test('account load failure recovers through its visible retry action', async ({ 
 });
 
 test('suite switch reaches ZDWA and returns to the public Hausdepp lobby', async ({ page }) => {
-  await owner(page);
+  await productAccount(page);
   await page.goto('/hausdepp/konto');
   await page.locator('[data-game-switch]').click();
   await page.locator('#suiteGameMenu').getByRole('link', { name: 'ZDWA', exact: true }).click();
@@ -128,7 +142,7 @@ test('suite switch reaches ZDWA and returns to the public Hausdepp lobby', async
 });
 
 test('suite switch is visibly disabled while the second auth refresh is pending', async ({ page }) => {
-  await owner(page);
+  await productAccount(page);
   let authRequests = 0;
   let refreshHeld = false;
   let releaseRefresh;
@@ -159,7 +173,7 @@ test('suite switch is visibly disabled while the second auth refresh is pending'
 });
 
 test('waiting table retains real seats and the lobby resumes the same account seat', async ({ page }) => {
-  const headers = await owner(page);
+  const headers = await productAccount(page);
   const created = await page.request.post('/api/games', {
     headers, data: { name: 'Waiting product test', mode: '3', game_type: 'hausdepp', play_mode: 'cpu', cpu_count: 1 },
   });
@@ -189,7 +203,7 @@ test('waiting table retains real seats and the lobby resumes the same account se
 });
 
 test('explicit spectator route sends a read-only action and receives no private hand', async ({ page }) => {
-  const headers = await owner(page);
+  const headers = await productAccount(page);
   const created = await page.request.post('/api/games', {
     headers, data: { name: 'Spectator product test', mode: '2', game_type: 'hausdepp', play_mode: 'cpu', cpu_count: 1 },
   });
@@ -217,7 +231,7 @@ test('explicit spectator route sends a read-only action and receives no private 
 
 test('capture product pages across responsive viewports', async ({ page }) => {
   test.skip(process.env.HAUSDEPP_PRODUCT_CAPTURE !== '1', 'One explicit evidence batch after interactions pass.');
-  const headers = await owner(page);
+  const headers = await productAccount(page);
   await mkdir('.impeccable/review', { recursive: true });
   const created = await page.request.post('/api/games', {
     headers, data: { name: 'Responsive Wartetisch', mode: '6', game_type: 'hausdepp', play_mode: 'cpu', cpu_count: 1 },

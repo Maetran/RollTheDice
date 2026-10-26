@@ -164,7 +164,9 @@ def _page(request: Request, page: str):
     if resolve_session(request) is None:
         return RedirectResponse("/watten/anmelden?" + urlencode({"return_to": request.url.path}),
                                 status_code=303, headers=_HEADERS)
-    _identity(request)
+    identity = _identity(request)
+    if page in {"progress", "history"} and identity.must_change_password:
+        return RedirectResponse("/watten/konto/einstellungen#passwort", status_code=303, headers=_HEADERS)
     template = _STATIC / "watten-progress.html"
     if not template.is_file():
         raise HTTPException(status_code=503, detail="watten_preview_not_ready", headers=_HEADERS)

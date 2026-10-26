@@ -14,6 +14,9 @@ import { zdwaAppEntryUrl, hausdeppSignInUrl } from "../multigame/routes.js";
 import { initializeAppMode } from "../multigame/app-mode.js";
 import { initializeSuiteHeader } from "../shell/header.js";
 import { initializePushOptInPrompt } from "../shared/push-optin-prompt.js";
+import { initializeReleaseNotes } from "../shared/release-notes.js";
+import { mountAccountMergeNotice } from "../shared/account-merge-notice.js";
+import { accountNavigationMarkup } from "../shared/account-navigation.js";
 import { mountLobbyChat } from "../shared/lobby-chat.js";
 import { initChat, addChatMessage } from "../room/chat.js";
 import { HAUSDEPP_MESSAGES } from "../i18n/catalog.js";
@@ -246,7 +249,7 @@ function renderOpponents(markup) {
 function header() {
   const identity = auth?.authenticated && auth.user;
   $("hausdeppHeader").innerHTML = `<a class="hd-brand" href="/hausdepp" aria-label="Hausdepp"><img src="/static/icons/hausdepp-icon-192-v2.png" width="36" height="36" alt=""><span>Hausdepp</span></a>
-    <nav class="hd-nav" aria-label="${esc(t("navigation"))}"><a href="/hausdepp" ${page === "lobby" ? 'aria-current="page"' : ""}>${t("lobby")}</a><a href="/hausdepp/rangliste" ${page === "leaderboard" ? 'aria-current="page"' : ""}>${window.ZDWA_I18N.t("Spieler & Ranking")}</a><a href="/hausdepp/regeln" ${page === "rules" ? 'aria-current="page"' : ""}>${t("rules")}</a><a href="/hausdepp/konto/einstellungen" ${["account", "settings"].includes(page) ? 'aria-current="page"' : ""}>${t("account")}</a></nav>
+    <nav class="hd-nav" aria-label="${esc(t("navigation"))}"><a href="/hausdepp" ${page === "lobby" ? 'aria-current="page"' : ""}>${t("lobby")}</a><a href="/hausdepp/rangliste" ${page === "leaderboard" ? 'aria-current="page"' : ""}>${window.ZDWA_I18N.t("Spieler & Ranking")}</a><a href="/hausdepp/regeln" ${page === "rules" ? 'aria-current="page"' : ""}>${t("rules")}</a><a href="/hausdepp/konto" ${["account", "settings"].includes(page) ? 'aria-current="page"' : ""}>${t("account")}</a></nav>
     <div class="hd-header-tools"><a class="hd-profile-button" href="${identity ? "/hausdepp/konto/einstellungen#profilbild" : signInUrl()}" aria-label="${esc(identity ? t("editProfile", { name: identity.username }) : t("signIn"))}" title="${esc(identity ? t("editProfile", { name: identity.username }) : t("signIn"))}">${identity ? avatarMarkup(identity, { size: "small", avatarKey: "header-self" }) : icon("account")}</a><label class="hd-language"><span class="hd-sr">${t("language")}</span><select data-language-switcher aria-label="${t("language")}"><option value="de">DE</option><option value="en">EN</option></select></label><button type="button" data-game-switch class="hd-switch" aria-label="${t("switch")}">${icon("switch")}<span>${t("games")}</span></button></div>`;
   const language = $("hausdeppHeader").querySelector("select");
   language.value = lang();
@@ -355,6 +358,20 @@ function tableRow(game) {
 function renderAccount() {
   document.title = `${t("accountTitle")} · Hausdepp`;
   root.innerHTML = `<div class="hd-account"><header class="hd-account-heading"><p class="hd-account-identity">${avatarMarkup(auth.user, { size: "small", avatarKey: "account-self" })}${esc(t("signedInAs", { name: auth.user.username }))}</p><h1>${t("accountTitle")}</h1><p>${t("accountIntro")}</p><nav class="hd-account-shortcuts" aria-label="${t("accountContents")}"><a href="#fortschritt">${t("rankHeading")}</a><a href="#erfolge">${t("achievementCollection")}</a><a href="#runden">${t("historyHeading")}</a><a href="/hausdepp/rangliste">${t("leaderboard")}</a></nav></header><section id="fortschritt" class="hd-account-progression" aria-labelledby="hausdeppRankTitle"><div id="hausdeppProgressNotice" hidden></div><div id="hausdeppRank" aria-live="polite"><h2 id="hausdeppRankTitle">${t("rankHeading")}</h2><p>${t("progressLoading")}</p></div></section><section class="hd-account-overview" aria-labelledby="hausdeppAccountStatsTitle"><h2 id="hausdeppAccountStatsTitle">${t("accountStatsTitle")}</h2><div id="hausdeppAccountStats" aria-live="polite"><p>${t("accountLoading")}</p></div></section><section id="erfolge" class="hd-account-achievements" aria-labelledby="hausdeppAchievementsTitle"><div class="hd-section-heading"><div><p class="hd-account-kicker">${t("achievementsDirection")}</p><h2 id="hausdeppAchievementsTitle">${t("achievementCollection")}</h2></div><span id="hausdeppAchievementCount" class="hd-achievement-count"></span></div><p class="hd-account-muted">${t("achievementIntro")}</p><p class="hd-fine hd-achievement-rules">${t("achievementRules")}</p><div id="hausdeppAchievementControls" class="hd-achievement-controls" hidden><label class="hd-achievement-search">${t("searchAchievements")}<input id="hausdeppAchievementSearch" type="search" maxlength="120" placeholder="${t("achievementSearchHint")}" aria-controls="hausdeppAchievements"></label><label>${t("achievementStatus")}<select id="hausdeppAchievementStatus"><option value="all">${t("achievementAll")}</option><option value="unlocked">${t("achievementUnlocked")}</option><option value="locked">${t("achievementLocked")}</option></select></label><label>${t("achievementCategory")}<select id="hausdeppAchievementCategory"><option value="all">${t("allCategories")}</option>${achievementCategories.map(category => `<option value="${category}">${t(`category_${category}`)}</option>`).join("")}</select></label></div><p id="hausdeppAchievementResults" class="hd-fine" role="status"></p><div id="hausdeppAchievements"><p>${t("progressLoading")}</p></div><p class="hd-fine hd-achievement-privacy">${t("achievementPrivacy")}</p></section><section id="runden" class="hd-account-history" aria-labelledby="hausdeppHistoryTitle"><div class="hd-section-heading"><h2 id="hausdeppHistoryTitle">${t("historyHeading")}</h2><a href="/hausdepp">${t("lobby")} ${icon("arrow")}</a></div><p class="hd-account-muted">${t("historyIntro")}</p><div id="hausdeppHistory" aria-live="polite"></div><p id="hausdeppAccountError" class="hd-error" role="alert" hidden></p><button id="hausdeppHistoryMore" class="hd-secondary" type="button" hidden>${t("moreRounds")}</button><p id="hausdeppHistoryComplete" class="hd-fine" hidden>${t("historyComplete")}</p></section><section class="hd-account-settings" aria-labelledby="hausdeppSettingsTitle"><h2 id="hausdeppSettingsTitle">${t("accountSettings")}</h2><p>${t("accountSettingsHint")}</p><a class="hd-secondary" href="${accountSettingsUrl()}">${t("accountSettings")} ${icon("arrow")}</a></section><a class="hd-back-link" href="/hausdepp">${t("accountBack")} ${icon("arrow")}</a></div>${footer()}`;
+  const account = root.querySelector('.hd-account');
+  account.querySelector('.hd-account-shortcuts').outerHTML = accountNavigationMarkup({ statistics: '/hausdepp/konto#statistics', achievements: '/hausdepp/konto#erfolge', settings: accountSettingsUrl(), current: location.hash === '#erfolge' || location.hash === '#achievements' ? 'achievements' : 'statistics' });
+  const mergeNotice = document.createElement('div'); mergeNotice.hidden = true; mergeNotice.dataset.accountMergeNotice = '';
+  account.querySelector('.hd-account-heading').after(mergeNotice);
+  const showPanel = () => {
+    const achievements = ['#erfolge', '#achievements'].includes(location.hash);
+    for (const section of account.querySelectorAll(':scope > section')) section.hidden = section.id !== 'fortschritt' && (achievements ? section.id !== 'erfolge' : section.id === 'erfolge');
+    for (const link of account.querySelectorAll('[data-account-destination]')) {
+      const active = link.dataset.accountDestination === (achievements ? 'achievements' : 'statistics');
+      if (active) link.setAttribute('aria-current', 'page'); else link.removeAttribute('aria-current');
+    }
+  };
+  window.addEventListener('hashchange', showPanel); showPanel();
+  mountAccountMergeNotice(mergeNotice, { userId: auth.user.id, isCurrent: () => !stopped });
   $("hausdeppHistoryMore").addEventListener("click", () => loadAccount({ more: true }));
   $("hausdeppAchievementSearch").addEventListener("input", event => { achievementSearch = event.target.value; renderAchievementCollection(); });
   $("hausdeppAchievementStatus").addEventListener("change", event => { achievementStatus = event.target.value; renderAchievementCollection(); });
@@ -1656,6 +1673,7 @@ async function start() {
     if (page === "lobby" || page === "table") invitations = mountInvitations(root, t);
     document.body.classList.remove("hd-loading");
     if (page === "lobby") showVoiceTableLeft({ userId: auth.user?.id, gameType: "hausdepp", t });
+    if (["lobby", "account", "settings"].includes(page)) initializeReleaseNotes({ context: "hausdepp" });
     if (page === "lobby") initializePushOptInPrompt({ context: "hausdepp" });
     if (auth.authenticated && !spectating) {
       progressNotices = mountProgressNotices({

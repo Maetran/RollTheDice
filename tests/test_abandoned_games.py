@@ -315,6 +315,9 @@ class AbandonedGamePersistenceTestCase(TestCase):
     def test_failed_terminal_accounting_is_retained_and_recovered_on_next_start(self) -> None:
         user = create_user("Frida", "secure-password-123", must_change_password=False)
         game = self._zdwa_game(user_id=user.id)
+        # Real rooms have an explicitly created recovery row before terminal
+        # accounting; ordinary checkpoints may never resurrect a missing row.
+        save_active_game(game, creating=True)
         game["_finished"] = True
         with patch(
             "app.main.persist_abandoned_game",
@@ -338,7 +341,8 @@ class AbandonedGamePersistenceTestCase(TestCase):
             game["_id"] = f"recovery-{index}"
             if index == 0:
                 game["_abort_reason"] = "inactivity_timeout"
-            save_active_game(game)
+            # Each renamed fixture is a genuinely new stored room.
+            save_active_game(game, creating=True)
         self.assertEqual(load_active_games(), {})
         self.assertEqual(load_active_games(), {})
         with session_scope() as db:

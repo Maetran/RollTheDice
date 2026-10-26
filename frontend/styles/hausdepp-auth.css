@@ -25,6 +25,21 @@
 .hd-auth-action { width: min(100%, 570px); margin: 0 auto; }
 .hd-auth-action aside { padding: 12px 16px; margin-block: 16px; border-left: 3px solid var(--hd-green); background: #e5eadf; }
 .hd-settings { max-width: 1150px; margin: 0 auto; }
+.hd-settings, .hd-account, .hd-settings .account-settings-panel {
+  --account-settings-surface: var(--hd-paper);
+  --account-settings-border: var(--hd-gold);
+  --account-settings-ink: var(--hd-ink);
+  --account-settings-muted: var(--hd-muted);
+  --account-settings-accent: var(--hd-green);
+}
+.hd-settings .account-settings-group__heading { font-family: Georgia, serif; }
+.hd-settings .account-settings-group__description { font-family: system-ui, sans-serif; font-weight: 400; }
+.hd-settings .account-settings-group__body > .hd-settings-item { margin-top: 0; }
+@media (max-width: 480px) {
+  .hd-settings-heading { flex-direction: column; align-items: flex-start; gap: 12px; }
+  .hd-settings-heading > div { width: 100%; }
+  .hd-settings-heading h1 { font-size: 26px; }
+}
 .hd-settings-heading { display: flex; gap: 20px; align-items: center; margin-bottom: 24px; }
 .hd-settings-heading p { line-height: 1.6; }
 .hd-settings-body p { line-height: 1.55; }
