@@ -1,0 +1,69 @@
+/* Premium raster surprises. Loaded after hausdepp-surprise-effects.css; the
+   effect renderer owns all motion of the outer .hd-surprise-* nodes, so this
+   file only paints materials, light and shadows. Cut-outs fill their parent. */
+.hd-art { position: absolute; inset: 0; z-index: 0; display: block; isolation: isolate; pointer-events: none; user-select: none; }
+.hd-art-img { position: absolute; inset: 0; z-index: 1; display: block; width: 100%; height: 100%; max-width: none; object-fit: contain; pointer-events: none; user-select: none; -webkit-user-drag: none; }
+.wt-decor-prop--rare > .hd-art { inset: 4px; }
+
+/* Watch hands sit on the raster dial; root tunes the dial box to the final
+   clock.webp (square canvas, dial centre and diameter in percent). */
+.hd-art[data-art="clock"] { --hd-dial-x: 55.5%; --hd-dial-y: 61%; --hd-dial-size: 47%; }
+/* Outranks the legacy prop rules that stretch any svg to the full box. */
+span.hd-art > svg.hd-art-dial { position: absolute; z-index: 2; left: var(--hd-dial-x); top: var(--hd-dial-y); width: var(--hd-dial-size); height: var(--hd-dial-size); translate: -50% -50%; overflow: visible; pointer-events: none; filter: drop-shadow(.5px 1px .6px #0b080566); }
+.hd-surprise-clock .hd-art-dial .hd-dial-hand { transform-box: view-box; transform-origin: 50% 50%; }
+
+/* Grounded light: one soft cast shadow per subject, restrained local bloom. */
+.hd-surprise-layer .hd-surprise-star { filter: drop-shadow(0 12px 9px #120b0675) drop-shadow(0 0 12px #f0cd8a55); }
+.hd-surprise-layer .hd-surprise-hammer { filter: drop-shadow(6px 14px 8px #0b08059e); }
+.hd-surprise-layer .hd-surprise-ufo { filter: drop-shadow(0 22px 11px #04070570) drop-shadow(0 0 6px #a8f5d035); }
+.hd-surprise-layer .hd-surprise-portal { filter: drop-shadow(0 0 9px #e3a75c66) drop-shadow(0 0 20px #7c52c04d); }
+.hd-surprise-layer .hd-surprise-dragon { filter: drop-shadow(5px 18px 10px #0b07058c) drop-shadow(0 0 6px #e8a94a33); }
+.hd-surprise-layer .hd-surprise-kraken { filter: drop-shadow(0 8px 7px #04070a99); }
+.hd-surprise-layer .hd-surprise-clock { filter: drop-shadow(3px 12px 8px #120b0680) drop-shadow(0 0 9px #f2d79a3d); }
+.hd-surprise-layer .hd-surprise-mouse { filter: drop-shadow(1px 4px 2.5px #0b080699); }
+.hd-surprise-layer .hd-surprise-hole { filter: drop-shadow(0 0 10px #e09a4a5c) drop-shadow(0 0 20px #7b4bb34d); }
+.hd-surprise-layer .hd-surprise-quiet { filter: drop-shadow(0 6px 5px #120b0670); }
+
+/* Star: worn bronze, warm-gold threads, no neon halo. */
+.hd-surprise-layer .hd-surprise-glamour { background: radial-gradient(ellipse at var(--origin-x) var(--origin-y), #f3d89a4d 0, #a58bd01f 32%, #0000 66%); }
+.hd-surprise-layer .hd-surprise-rays { background: repeating-conic-gradient(from 0deg, #f7dfa440 0deg, #f2c96400 6deg, #f2c96400 20deg, #f7dfa44a 22.5deg); }
+.hd-surprise-layer .hd-surprise-ring { border: 1px solid #d9b26fcc; box-shadow: 0 0 8px #e6c07a59, inset 0 0 6px #e6c07a40; }
+.hd-surprise-layer .hd-surprise-constellation { filter: drop-shadow(0 0 3px #f2d49a99); }
+.hd-surprise-layer .hd-surprise-constellation path { stroke: #f1d39a; stroke-width: 1; }
+
+/* Hammer: icy blue rune impact on real wood. */
+.hd-surprise-layer .hd-surprise-impact { border: 3px solid #e1f0ffcc; box-shadow: 0 0 24px #6fb4ffa6, inset 0 0 16px #bfe0ff99; }
+.hd-surprise-layer .hd-surprise-shockwave { border: 2px solid #a9d2ff5c; box-shadow: 0 0 10px #7fbcff40; }
+.hd-surprise-layer .hd-surprise-crack { filter: drop-shadow(0 1px 1px #1a0e09aa) drop-shadow(0 0 3px #8cc4ff55); }
+
+/* UFO: dark metal above, a soft mint light pool where each beam lands. */
+.hd-surprise-layer .hd-surprise-beam { background: linear-gradient(#e4fff2a3, #8ff0c23d 62%, #8ff0c200); filter: none; }
+.hd-surprise-layer .hd-surprise-beam::after { content: ""; position: absolute; inset: auto 0 0; height: 22%; background: radial-gradient(ellipse at 50% 100%, #c3ffe28c, #8ff0c22e 45%, #8ff0c200 72%); }
+.hd-surprise-ufo .hd-art::before { content: ""; position: absolute; z-index: 0; left: 8%; right: 8%; top: 62%; height: 52%; border-radius: 50%; background: radial-gradient(ellipse, #b9ffdc52, #8ff0c21a 48%, #8ff0c200 70%); mix-blend-mode: screen; }
+
+/* Portal: amber-violet depth and a narrow bronze bridge. */
+.hd-surprise-portal .hd-art::before { content: ""; position: absolute; z-index: 0; inset: 14%; border-radius: 50%; background: radial-gradient(circle, #7a4fc03d, #e3a75c1f 55%, #e3a75c00 72%); mix-blend-mode: screen; }
+.hd-surprise-layer .hd-surprise-bridge { filter: drop-shadow(0 0 5px #e9b46a80); }
+.hd-surprise-layer .hd-surprise-bridge path:nth-of-type(1) { stroke: #d9a560; opacity: .12; }
+.hd-surprise-layer .hd-surprise-bridge path:nth-of-type(2) { stroke: #ffe2b0; stroke-width: 2.5; }
+.hd-surprise-layer .hd-surprise-bridge path:nth-of-type(3) { stroke: #b48cf0; }
+
+/* Dragon: narrow gold flame with a pale core, warm local reflection. */
+.hd-surprise-layer .hd-surprise-breath { filter: drop-shadow(0 0 4px #ffb54a99); }
+.hd-surprise-layer .hd-surprise-breath path:nth-of-type(1) { stroke: #e08a2a; opacity: .32; stroke-width: 11; }
+.hd-surprise-layer .hd-surprise-breath path:nth-of-type(2) { stroke: #fff0c2; stroke-width: 3; }
+.hd-surprise-layer .hd-surprise-flame { filter: drop-shadow(0 0 5px #ffb54a80); }
+
+/* Kraken: wet blue-black arms with ivory suckers and a local ink pool. */
+.hd-surprise-layer .hd-surprise-tentacle { filter: drop-shadow(0 5px 4px #04070a8c); }
+.hd-surprise-tentacle .hd-art-img { object-fit: fill; }
+.hd-surprise-layer .hd-surprise-ink { border-radius: 47% 53% 51% 49% / 52% 46% 54% 48%; box-shadow: 0 2px 4px #04070a55; background: radial-gradient(circle at 36% 30%, #ffffff3d 0 3%, #fff0 9%), radial-gradient(circle at 50% 54%, #04070cf2 0 46%, #0a1420b8 62%, #0a142000 74%); }
+.hd-surprise-layer .hd-surprise-drop { background: #0b1420; }
+
+/* Pocket watch: a cool silver-blue time ripple, no tinted wash over cards. */
+.hd-surprise-layer .hd-surprise-time-glass { background: linear-gradient(135deg, #cfe3f22e, #9fb4d61f 50%, #e8e2c412); box-shadow: inset 0 0 60px #b9cbe64d; }
+/* The field mouse trots with a slight body roll while it crosses the wood. */
+.hd-surprise-mouse .hd-art-img { transform-origin: 50% 88%; animation: hd-art-trot 170ms ease-in-out 2100ms 10 alternate both; }
+@keyframes hd-art-trot { from { transform: translateY(0) rotate(-1.5deg); } to { transform: translateY(-3%) rotate(1.5deg); } }
+
+@media (prefers-reduced-motion: reduce) { .hd-art-img { animation: none !important; } }

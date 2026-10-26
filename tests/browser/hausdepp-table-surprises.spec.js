@@ -234,6 +234,7 @@ test('reduced motion disables requests and shows only a still, gently fading sym
   expect(fixture.first.commands).toEqual([]);
   const layer = page.locator(OVERLAY);
   await expect(layer).toBeVisible();
+  await expect(layer.locator('[data-stage]')).not.toHaveCount(0);
   const animations = await layer.evaluate(element => element.getAnimations({ subtree: true }).map(animation => ({
     frames: animation.effect.getKeyframes(), iterations: animation.effect.getTiming().iterations,
   })));
@@ -335,6 +336,9 @@ async function pauseSurpriseForCapture(page) {
 }
 
 async function seekSurpriseCapture(page, time = 700) {
+  // The inert layer exists while its WebP is decoding. A story stage is the
+  // native boundary after decode and synchronous animation construction.
+  await expect(page.locator(`${OVERLAY} [data-stage]`), "decoded art has built the story before seeking").not.toHaveCount(0);
   return page.evaluate(async time => {
     const animations = window.__tableSurpriseCapture.animations;
     await Promise.all(animations.map(animation => animation.ready.catch(() => {})));
@@ -369,7 +373,7 @@ test('the clock freezes its visual copies for two seconds before the animal mous
   for (const time of [120, 1000, 2119]) {
     await seekSurpriseCapture(page, time);
     await expect(freeze).toHaveCSS('opacity', '1');
-    const frame = await layer.locator('[data-source-kind="card"], [data-stage="clock"] .hd-hand').evaluateAll(elements =>
+    const frame = await layer.locator('[data-source-kind="card"], [data-stage="clock"] .hd-dial-hand').evaluateAll(elements =>
       elements.map(element => getComputedStyle(element).transform));
     if (frozen) expect(frame).toEqual(frozen);
     frozen = frame;
@@ -380,8 +384,10 @@ test('the clock freezes its visual copies for two seconds before the animal mous
   const mouse = layer.locator('[data-stage="mouse"]');
   await expect(mouse).toBeVisible();
   expect(Number(await mouse.evaluate(element => getComputedStyle(element).opacity))).toBeGreaterThan(.5);
-  await expect(mouse.locator('.hd-mouse-leg-a, .hd-mouse-leg-b')).toHaveCount(2);
-  expect(await mouse.locator('svg path').count()).toBeGreaterThan(5);
+  const animal = mouse.locator('.hd-art[data-art="mouse"] img');
+  await expect(animal).toBeVisible();
+  expect(await animal.evaluate(img => img.complete && img.naturalWidth > 0 && img.naturalHeight > 0)).toBe(true);
+  await expect(animal).toHaveCSS('animation-name', 'hd-art-trot');
   expectSameGeometry(await playGeometry(page), before);
   expect(fixture.first.commands).toEqual([]);
   await resumeSurpriseCapture(page);
@@ -419,16 +425,17 @@ for (const [name, target] of [
   ['stock', '#hausdeppStock'],
   ['pile', '#hausdeppPile'],
 ]) {
-  test(`a blind ${name} tap dismisses the opaque blackout without issuing a game command`, async ({ page }) => {
+  for (const time of [1250, 1900, 2700]) test(`a blind ${name} tap at ${time} reveals the blackout without issuing a game command`, async ({ page }) => {
     const fixture = await roomFixture(page, 'blackhole');
     await pauseSurpriseForCapture(page);
     fixture.emit('blackhole', { actor: fixture.remote });
     const layer = page.locator(OVERLAY);
     await expect(layer).toBeVisible();
-    await seekSurpriseCapture(page, 1900);
-    await expect(layer.locator('[data-stage="blackout"]')).toHaveCSS('opacity', '1');
+    await seekSurpriseCapture(page, time);
+    expect(Number(await layer.locator('[data-stage="blackout"]').evaluate(node => getComputedStyle(node).opacity))).toBeGreaterThan(.2);
     await page.locator(target).click();
-    await expect(layer).toHaveCount(0);
+    await expect(layer).toHaveAttribute('data-live-revealed', 'true');
+    await expect(layer.locator('[data-stage="blackout"]')).toBeHidden();
     await settleMessages(page);
     expect(fixture.first.commands).toEqual([]);
     await resumeSurpriseCapture(page);
@@ -531,7 +538,7 @@ test('distinct scorched cards keep their own paper through a native launch, queu
   await page.screenshot({ path: info.outputPath('scorched-pile.png') });
 });
 
-test('a remote intermediate score update lets the clock story finish but local card input restores the live table', async ({ page }) => {
+test('remote updates and local card input reveal live objects while the clock story finishes', async ({ page }) => {
   const fixture = await roomFixture(page, 'clock');
   await pauseSurpriseForCapture(page);
   fixture.emit('clock', { actor: fixture.remote });
@@ -551,12 +558,15 @@ test('a remote intermediate score update lets the clock story finish but local c
   await seekSurpriseCapture(page, 2650);
   expect(Number(await layer.locator('[data-stage="mouse"]').evaluate(element => getComputedStyle(element).opacity))).toBeGreaterThan(.5);
   await page.locator('#hausdeppHand [data-card-id="hearts-6"]').click();
-  await expect(layer).toHaveCount(0);
+  await expect(layer).toHaveAttribute('data-live-revealed', 'true');
+  await expect(layer.locator('[data-stage="freeze"]')).toBeHidden();
+  await expect(layer.locator('[data-stage="mouse"]')).toBeVisible();
   await expect.poll(() => fixture.first.commands.some(command => command.action === 'hausdepp_play')).toBe(true);
   await resumeSurpriseCapture(page);
+  await expect(layer).toHaveCount(0, { timeout: 6000 });
 });
 
-test('active visual doubles clear on lifecycle changes and local keyboard input', async ({ page }) => {
+test('lifecycle retires a story while keyboard play reveals live objects without cutting it short', async ({ page }) => {
   const fixture = await roomFixture(page, 'hammer');
   const endings = ['hidden', 'reduced', 'resize', 'local-keyboard', 'disconnect'];
   for (const [index, ending] of endings.entries()) {
@@ -585,8 +595,13 @@ test('active visual doubles clear on lifecycle changes and local keyboard input'
       await page.locator('#hausdeppHand [data-card-id="hearts-6"]').focus();
       await page.keyboard.press('Enter');
     }
-    await expect(layer, `${ending}: no stale doubles`).toHaveCount(0);
-    expect(await page.evaluate(() => window.__tableSurpriseCapture.animations.filter(animation => animation.playState === 'running').length)).toBe(0);
+    if (ending === 'local-keyboard') {
+      await expect(layer).toHaveAttribute('data-live-revealed', 'true');
+      expect(await layer.locator('[data-source-kind]').evaluateAll(nodes => nodes.every(node => getComputedStyle(node).display === 'none'))).toBe(true);
+    } else {
+      await expect(layer, `${ending}: no stale doubles`).toHaveCount(0);
+      expect(await page.evaluate(() => window.__tableSurpriseCapture.animations.filter(animation => animation.playState === 'running').length)).toBe(0);
+    }
     await resumeSurpriseCapture(page);
     if (ending === 'hidden') await page.evaluate(() => {
       Object.defineProperty(document, 'hidden', { configurable: true, get: () => false });
@@ -785,4 +800,27 @@ test.describe('crowded phone offer', () => {
     expect(fixture.first.commands[0]).toEqual({ action: 'hausdepp_table_surprise', effect: 'clock', round_number: 1 });
     } finally { await browser.close(); }
   });
+});
+
+
+test('repeated taps at the consumed rare prop do not shorten its one complete story', async ({ page }) => {
+  const fixture = await roomFixture(page, 'clock');
+  const prop = page.locator('.hd-table-prop[data-prop="clock"]');
+  await expect(prop).toBeVisible();
+  const rect = await prop.boundingBox();
+  await prop.click();
+  await expect.poll(() => fixture.first.commands.filter(command => command.action === 'hausdepp_table_surprise').length).toBe(1);
+  await pauseSurpriseForCapture(page);
+  fixture.emit('clock');
+  const layer = page.locator(OVERLAY);
+  await expect(layer.locator('[data-stage="clock"] img')).toBeVisible();
+  await seekSurpriseCapture(page, 1000);
+  await layer.evaluate(node => { window.__oneRareStory = node; });
+  for (let tap = 0; tap < 3; tap++) await page.mouse.click(rect.x + rect.width / 2, rect.y + rect.height / 2);
+  expect(await layer.evaluate(node => node === window.__oneRareStory)).toBe(true);
+  expect(fixture.first.commands.filter(command => command.action === 'hausdepp_table_surprise')).toHaveLength(1);
+  await seekSurpriseCapture(page, 2650);
+  await expect(layer.locator('[data-stage="mouse"] img')).toBeVisible();
+  await resumeSurpriseCapture(page);
+  await expect(layer).toHaveCount(0, { timeout: 6000 });
 });

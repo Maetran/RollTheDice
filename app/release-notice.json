@@ -1,30 +1,28 @@
 {
   "kind": "usability",
   "games": [
-    "zdwa",
-    "zilch",
     "hausdepp",
     "watten"
   ],
-  "summary_de": "Gleich geordnete Kontobereiche für alle Spiele und verlässliche Neuigkeiten in Hausdepp und Watten.",
-  "summary_en": "Consistent account sections across all games and reliable release notes in Hausdepp and Watten.",
+  "summary_de": "Neue seltene Tischeffekte laufen nach einem Tipp durch; jede Karte behält ihre eigenen Brandspuren auch im Flug.",
+  "summary_en": "New rare table effects play through after one tap; cards keep their individual singed patterns in flight.",
   "player_notes": {
     "de": {
-      "title": "4.7.0: Dein Konto, klar geordnet",
+      "title": "4.7.1: Seltene Funde, schöner am Tisch",
       "changes": [
-        "Statistik, Erfolge und Einstellungen findest du in allen vier Spielen in derselben Reihenfolge.",
-        "Profil, Spielbedienung, Mitspieler und Hilfe sind übersichtlich gruppiert.",
-        "Hausdepp und Watten zeigen Neuigkeiten; die Versionshistorie bleibt in den Einstellungen erreichbar.",
-        "Nach einer durch einen Owner bestätigten Kontenzusammenführung siehst du den übernommenen Fortschritt in einer eigenen Mitteilung."
+        "Acht detailreiche Motive erscheinen auf dem echten Hausdepp- und Watten-Tisch.",
+        "Mehrfaches Tippen bricht eine begonnene Szene nicht mehr ab.",
+        "Karten tragen unterschiedliche Brandspuren, die beim Werfen und Einsammeln erhalten bleiben.",
+        "Alles bleibt eine optische Spielerei: Kartenwerte und Regeln bleiben gleich."
       ]
     },
     "en": {
-      "title": "4.7.0: Your account, clearly organized",
+      "title": "4.7.1: Better rare finds at your table",
       "changes": [
-        "Find Statistics, Achievements and Settings in the same order across all four games.",
-        "Profile, game controls, players and help are clearly grouped.",
-        "Hausdepp and Watten show release notes; version history remains available in Settings.",
-        "After an owner confirms an account merge, a separate notice shows your combined progress."
+        "Eight detailed subjects appear on the real Hausdepp and Watten tables.",
+        "Repeated taps no longer interrupt an activated scene.",
+        "Cards have individual singed patterns that stay with them during throws and collection.",
+        "These are visual effects: card values and rules stay the same."
       ]
     }
   }

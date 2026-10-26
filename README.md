@@ -489,6 +489,13 @@ Server evidence records activation and connected witnesses once per round;
 achievements are granted only after a valid completed match with at least two
 connected human players at the time of the event.
 
+**Seltene Tischeffekte / Rare table effects (Hausdepp & Watten):**
+Ein Tipp spielt den seltenen Fund vollständig ab; wiederholtes Tippen kürzt ihn nicht ab. Beim Weiterspielen werden die echten Karten sofort sichtbar, während die Szene ausklingt. Brandspuren sind je Karte unterschiedlich und bleiben beim Werfen, auf dem Stapel und beim Einsammeln erhalten. Sie gelten kosmetisch an diesem Tisch und ändern weder Kartenwerte noch Spielregeln.
+One tap plays the rare find through; repeated taps do not cut it short. Playing reveals the live cards immediately while the scene finishes. Each card has its own stable singed pattern, preserved through throws, piles and collection. This cosmetic appearance lasts at this table and never changes card values or rules.
+Die freigestellten Motive, Quellen-Prompts und Dateibudgets stehen in
+[`docs/TABLE_SURPRISE_ASSETS.json`](docs/TABLE_SURPRISE_ASSETS.json).
+Only the offered or played subject loads; no rare effects are added to ZDWA or Zilch.
+
 **CPU-Taktik / CPU tactics:** Computer bieten bei subjektiv guten Chancen und
 berücksichtigen den Spielstand. Mit mehr abgeschlossenen Watten-Spielen der
 menschlichen Mitspieler werden ihre Entscheidungen genauer; bei gemischter

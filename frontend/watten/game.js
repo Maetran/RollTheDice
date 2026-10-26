@@ -1222,7 +1222,7 @@ async function mountTable() {
     send: payload => session.bound && latestUserId === account?.id && sendRaw(payload) });
   cleanups.add(() => { social?.destroy(); social = null; });
   decor?.destroy();
-  decor = createDecor({ container: app.querySelector("[data-watten-decor]"), root: app, escapeHtml: esc,
+  decor = createDecor({ container: app.querySelector("[data-watten-decor]"), root: app, gameId, escapeHtml: esc,
     onSurprise: payload => session.bound && !session.spectator && latestUserId === account?.id && sendRaw(payload),
     getExpectedAccountId: () => account?.id,
     isCurrent: () => gen === generation && !navigating && latestUserId === account?.id });
@@ -1257,7 +1257,7 @@ function syncSocial() {
 }
 
 function syncDecor() {
-  decor?.update({ surpriseOffer: session.snapshot?.table_surprise_offer, publicPhase: session.snapshot?.paused ? "paused"
+  decor?.update({ surpriseOffer: session.snapshot?.table_surprise_offer, dealId: session.snapshot?.engine?.deal_id, publicPhase: session.snapshot?.paused ? "paused"
     : session.snapshot?.engine?.phase || session.snapshot?.room?.status || "preview" });
 }
 

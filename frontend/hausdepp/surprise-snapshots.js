@@ -192,7 +192,9 @@ export function woodenStage(fx) {
 
 export function protectControls(layer, table, box) {
   const selectors = '.hd-room-heading,.hd-seat-plate,.hd-seat-avatar,.hd-hand-heading,#hausdeppStatus,#hausdeppEvent,.hd-actions,.hd-hand-actions,#hausdeppPeek:not([hidden]),#hausdeppResult:not([hidden]),.hd-action-error:not(:empty),button:not(.hausdepp-card):not(.wt-hand-card):not(.hd-table-prop):not(.wt-decor-prop):not(#hausdeppStock):not(#hausdeppPile),a[href],input,select,textarea,summary';
-  const wattenControls = '.wt-topbar,.wt-seat-badge,.wt-seat-name,.wt-avatar,.wt-seat-call-role,.wt-seat-public-title,.wt-seat-tags,.wt-bubble,.wt-trick-label,.wt-reference figcaption,[data-wt-bubbles],[data-wt-private],[data-wt-panel],[data-wt-stake],[data-wt-preplay],[data-wt-own-call],[data-wt-retour-announcement]';
+  // Watten's bubble host spans the complete centre even when empty. Protect
+  // its painted .wt-bubble children, never that transparent layout container.
+  const wattenControls = '.wt-topbar,.wt-seat-badge,.wt-seat-name,.wt-avatar,.wt-seat-call-role,.wt-seat-public-title,.wt-seat-tags,.wt-bubble,.wt-trick-label,.wt-reference figcaption,[data-wt-private],[data-wt-panel],[data-wt-stake],[data-wt-preplay],[data-wt-own-call],[data-wt-retour-announcement]';
   const holes = [...table.querySelectorAll(isWatten(table) ? `${selectors},${wattenControls}` : selectors)].filter(node => !node.closest('.hd-surprise-layer,.hd-table-decor,[data-watten-decor-layer]') && visible(node)).map(node => {
     const r = node.getBoundingClientRect();
     return { left: Math.max(0, r.left - box.left - 2), top: Math.max(0, r.top - box.top - 2), right: Math.min(box.width, r.right - box.left + 2), bottom: Math.min(box.height, r.bottom - box.top + 2) };
