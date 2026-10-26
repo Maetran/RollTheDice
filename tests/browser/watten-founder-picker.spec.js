@@ -12,7 +12,7 @@ test.afterEach(async ({ page }) => {
 // Browser coverage uses the explicitly enabled local preview. The real
 // production Founder/Host/HTTP/WS audience is checked against disposable DBs in
 // test_watten_founder_access.py and test_watten_founder_preview.py.
-async function signedInPreview(page, language) {
+async function signedInPreview(page, language, betaOverride) {
   const login = await page.request.post("/api/auth/login", {
     data: { username: "Admin", password: "temporary-password-123" },
   });
@@ -29,6 +29,10 @@ async function signedInPreview(page, language) {
       watten_preview: state.private && auth.game_access?.watten_preview === true };
     await route.fulfill({ response, json: {
       ...auth, game_access: access,
+      ...(typeof betaOverride === "boolean" ? { game_presentation: {
+        ...auth.game_presentation,
+        watten: { ...auth.game_presentation?.watten, beta: betaOverride },
+      } } : {}),
       user: { ...auth.user, game_access: access, must_change_password: false,
         preferences: { ...auth.user.preferences, preferred_language: language } },
     } });
@@ -90,17 +94,19 @@ test("a final private capability confirmation appends Watten without closing the
   }
 });
 
-for (const language of ["de", "en"]) {
-  test(`${language}: fresh private preview is discoverable and usable in both phone orientations`, async ({ page }, testInfo) => {
-    await signedInPreview(page, language);
+for (const language of ["de", "en"]) for (const beta of [false, true]) {
+  test(`${language}: fresh private preview is discoverable and usable in both phone orientations (game beta ${beta ? "on" : "off"})`, async ({ page }, testInfo) => {
+    await signedInPreview(page, language, beta);
+    const expectedName = beta ? "Watten [BETA]" : "Watten";
+    const expectedBadges = beta ? 1 : 0;
     await page.goto("/regeln");
     for (const viewport of [{ width: 320, height: 568 }, { width: 568, height: 320 }]) {
       await page.setViewportSize(viewport);
       const entry = await confirmedChooser(page);
       await expect(page.locator("#suiteGameMenu [data-game-entry]")).toHaveCount(4);
       await expect(entry).toHaveAttribute("href", "/watten");
-      await expect(entry).toHaveAttribute("aria-label", "Watten");
-      await expect(entry.locator(".suite-game-beta")).toHaveCount(0);
+      await expect(entry).toHaveAttribute("aria-label", expectedName);
+      await expect(entry.locator(".suite-game-beta")).toHaveCount(expectedBadges);
       await expect(entry).toContainText(language === "de" ? "Private Vorschau" : "Private preview");
       await entry.scrollIntoViewIfNeeded();
       await expect(entry).toBeVisible();
@@ -120,9 +126,15 @@ for (const language of ["de", "en"]) {
     const nativeTrigger = page.locator("#wattenSuitePicker");
     await expect(nativeTrigger).toBeEnabled();
     await expect(nativeTrigger).toContainText("Watten");
-    await expect(nativeTrigger.locator(".suite-game-beta")).toHaveCount(0);
+    await expect(nativeTrigger).toHaveAttribute("aria-label", `${language === "de" ? "Spiel auswählen" : "Choose a game"}: ${expectedName}`);
+    await expect(nativeTrigger.locator(".suite-game-beta")).toHaveCount(expectedBadges);
     await nativeTrigger.click();
-    await expect(page.locator('#suiteGameMenu [data-game-entry="watten"]')).toHaveAttribute("aria-current", "page");
+    const nativeEntry = page.locator('#suiteGameMenu [data-game-entry="watten"]');
+    await expect(nativeEntry).toHaveAttribute("aria-current", "page");
+    await expect(nativeEntry).toHaveAttribute("href", language === "en" ? "/watten?lang=en" : "/watten");
+    await expect(nativeEntry).toHaveAttribute("aria-label", expectedName);
+    await expect(nativeEntry.locator(".suite-game-beta")).toHaveCount(expectedBadges);
+    await expect(nativeEntry).toContainText(language === "de" ? "Private Vorschau" : "Private preview");
     await page.keyboard.press("Escape");
     await expect(nativeTrigger).toBeFocused();
   });
