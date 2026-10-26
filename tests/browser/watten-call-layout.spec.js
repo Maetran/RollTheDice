@@ -364,6 +364,7 @@ for (const language of ['de', 'en']) for (const { count, reference = false } of 
       await expect.poll(() => players.every(item => item.traffic.snapshot.engine.phase === 'bid_response')).toBe(true);
       if (count === 4) {
         await answerPartnerFeedback(players, 'good');
+        await expect.poll(() => players.filter(item => item.traffic.snapshot.engine.actions.includes('respond_hold')).length).toBe(1);
         await expect(players.find(item => item.traffic.snapshot.engine.actions.includes('respond_hold')).page.locator('[data-watten-feedback-received]')).toBeVisible();
       }
       const noncallers = players.filter(item => !callers.includes(item));
@@ -378,8 +379,17 @@ for (const language of ['de', 'en']) for (const { count, reference = false } of 
           await expectOwnCall(page, measurements);
           await page.screenshot({ path: info.outputPath(`first-bid-${language}-${count}-320-${index}.png`) });
         }
-        await action(players, 'respond_counter', 'counter');
+        const countering = await action(players, 'respond_counter', 'counter');
+        const { deal_id, opportunity } = countering.traffic.snapshot.engine;
+        // The public counteroffer keeps bid_response but changes the deciding
+        // team. Wait for that accepted opportunity at every peer before the
+        // feedback driver chooses its new senders from private capabilities.
+        await expect.poll(() => players.map(item => ({
+          deal_id: item.traffic.snapshot.engine.deal_id,
+          opportunity: item.traffic.snapshot.engine.opportunity,
+        }))).toEqual(players.map(() => ({ deal_id, opportunity })));
         await answerPartnerFeedback(players, 'good');
+        await expect.poll(() => players.filter(item => item.traffic.snapshot.engine.actions.includes('respond_hold')).length).toBe(1);
         await expect(players.find(item => item.traffic.snapshot.engine.actions.includes('respond_hold')).page.locator('[data-watten-feedback-received]')).toBeVisible();
       }
       for (const { page } of callers) {
