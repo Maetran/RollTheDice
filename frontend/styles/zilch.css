@@ -4433,7 +4433,7 @@ html[data-game="zilch"] body {
    320px viewport. Narrower dock gutters turn the reclaimed pixels into useful
    touch target instead of empty chrome. */
 .zilch-shell--game .zilch-dice {
-  --zilch-room-die-size: clamp(2.75rem, calc((100vw - 3rem) / 6), 4rem);
+  --zilch-room-die-size: clamp(2.75rem, calc((100vw - 1rem) / 6), 4rem);
   gap: clamp(.04rem, .24vw, .1rem);
 }
 
@@ -4466,7 +4466,12 @@ html[data-game="zilch"] body {
      of the extended score sheet. The running total lives in its own tile
      directly below that edge. */
 
-  .zilch-shell--game .zilch-dice-dock { right: .125rem; left: .125rem; }
+  .zilch-shell--game .zilch-dice-dock {
+    right: .125rem;
+    left: .125rem;
+    /* The dock stays in flow; reclaim the shell's .75rem phone gutters. */
+    margin-inline: calc(.125rem - .75rem);
+  }
   .zilch-shell--game .zilch-dice-dock .zilch-table { padding-inline: .125rem; }
 }
 

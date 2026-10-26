@@ -6,15 +6,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Öffentliches ZDWA Spielerprofil mit Statistiken und letzten Spielen.">
   <meta name="robots" content="noindex, follow">
-  <link rel="manifest" href="/manifest.webmanifest?v=197821f6b95e">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=197821f6b95e" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=197821f6b95e" sizes="180x180">
+  <link rel="manifest" href="/manifest.webmanifest?v=185f0f16ffff">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=185f0f16ffff" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=185f0f16ffff" sizes="180x180">
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"||t==="classic"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d==="dark"?"dark":"light";const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=d==="dark"?"#0b1120":d==="classic"?"#31583a":"#f4f6f8"}catch(_){}</script>
-  <link rel="stylesheet" href="/static/style.css?v=197821f6b95e">
-  <link rel="stylesheet" href="/static/zdwa-design-2026.css?v=197821f6b95e">
+  <link rel="stylesheet" href="/static/style.css?v=185f0f16ffff">
+  <link rel="stylesheet" href="/static/zdwa-design-2026.css?v=185f0f16ffff">
   <script>{const r=document.documentElement,g=k=>{try{return localStorage.getItem(k)}catch(_){return null}},q=new URLSearchParams(location.search).get("design");if(q!=="classic"&&g("zdwa_design")!=="old"&&g("zdwa_design_off")!=="1"&&(q==="2026"||g("zdwa_design_override")!=="old"))r.dataset.design="2026"}</script>
-  <script src="/static/shell.js?v=197821f6b95e" defer></script>
-  <link rel="stylesheet" href="/static/suite-header.css?v=197821f6b95e">
+  <script src="/static/shell.js?v=185f0f16ffff" defer></script>
+  <link rel="stylesheet" href="/static/suite-header.css?v=185f0f16ffff">
 </head>
 <body class="lobby-page">
   <main class="wrap profile-shell">
@@ -49,8 +49,8 @@
     </section>
   </main>
   <script type="module">
-    import { escapeHtml, formatNumber, playerNameMarkup, playerRankBadge } from '/static/auth.js?v=197821f6b95e';
-    import { mountProfileAllowlist } from '/static/player-allowlist.js?v=197821f6b95e';
+    import { escapeHtml, formatNumber, playerNameMarkup, playerRankBadge } from '/static/auth.js?v=185f0f16ffff';
+    import { mountProfileAllowlist } from '/static/player-allowlist.js?v=185f0f16ffff';
     const profilePath = location.pathname.match(/^(?:\/zdwa)?\/spieler\/([^/]+)\/?$/);
     let username = new URLSearchParams(location.search).get('user') || '';
     try { if (profilePath) username = decodeURIComponent(profilePath[1]); }

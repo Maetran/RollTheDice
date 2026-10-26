@@ -57,6 +57,13 @@ checked before start and rematch; saved favorites do not bypass availability.
 Games in progress retain their rules until the end. Changes are durably logged,
 and concurrent owner changes cannot silently overwrite one another.
 
+**Deutsch:** Zilch nutzt den verfügbaren Platz am unteren Handyrand für größere,
+vollständig sichtbare Würfel. Die Tippziele bleiben auch nach der Landeanimation
+gut erreichbar.
+
+**English:** Zilch uses the available space along the lower phone edge for larger,
+fully visible dice. Tap targets remain easy to reach after the landing animation.
+
 ## 4.7.1 — 2026-10-26
 
 ### SELTENE TISCHEFFEKTE / RARE TABLE EFFECTS

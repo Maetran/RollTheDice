@@ -2099,6 +2099,11 @@ reversible until **Roll again** or **Bank** commits them; **Combined score**
 selects all currently scoring dice in one action. Hot Dice, the competitive
 start roll and the final reply are handled by the server.
 
+On small phones, all six dice remain large, fully visible tap targets in one row.
+
+**Deutsch:** Auch auf kleinen Handys bleiben alle sechs Würfel als große,
+vollständig sichtbare Tippziele in einer Reihe.
+
 The score notebook returns to its latest entries on every roll and newly
 recorded score. Reading older entries stays possible between rolls, including
 while changing dice selections or receiving chat messages.
