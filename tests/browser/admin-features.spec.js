@@ -2,6 +2,26 @@ const { test, expect } = require('@playwright/test');
 
 test.use({ serviceWorkers: 'block' });
 
+function deliveryGate() {
+  let release;
+  const promise = new Promise(resolve => { release = resolve; });
+  return { promise, release };
+}
+
+async function loginStableFeatureOwner(page) {
+  const login = await page.request.post('/api/auth/login', {
+    data: { username: 'Admin', password: 'temporary-password-123' },
+  });
+  expect(login.ok()).toBeTruthy();
+  const identity = (await login.json()).user;
+  expect(identity.is_owner).toBe(true);
+  // Account-language synchronization must not add an unrelated reload to the
+  // deliberately held initialization. Keep the real account preference.
+  await page.addInitScript(language => localStorage.setItem('zdwa_language', language),
+    identity.preferences?.preferred_language || 'de');
+  return identity;
+}
+
 test('owner manages availability and beta labels; admin has read-only controls at mobile and desktop widths', async ({ browser }, info) => {
   const ownerContext = await browser.newContext();
   const adminContext = await browser.newContext();
@@ -114,3 +134,68 @@ test('a real account switch retires the mounted owner form before any further fe
   await expect(page.locator('#featureFeedback')).not.toBeEmpty();
   expect(writes).toEqual([]);
 });
+
+test('admin panel buttons wait for delivered authentication before accepting a click', async ({ page }) => {
+  await loginStableFeatureOwner(page);
+  const entered = deliveryGate();
+  const release = deliveryGate();
+  await page.route('**/api/auth/me', async route => {
+    const response = await route.fetch();
+    entered.release();
+    await release.promise;
+    await route.fulfill({ response });
+  });
+  try {
+    await page.goto('/admin', { waitUntil: 'commit' });
+    await entered.promise;
+    const tiles = page.locator('button[data-admin-panel]');
+    await expect(tiles).toHaveCount(6);
+    for (const tile of await tiles.all()) await expect(tile).toBeDisabled();
+    release.release();
+    for (const tile of await tiles.all()) await expect(tile).toBeEnabled();
+    await page.locator('[data-admin-panel="featuresPanel"]').click();
+    await expect(page.locator('#featuresPanel')).toBeVisible();
+    await expect(page.locator('[data-feature-key="watten.schoeneres"] select')).toBeEnabled();
+  } finally {
+    release.release();
+    await page.unrouteAll({ behavior: 'wait' });
+  }
+});
+
+for (const panel of ['featuresPanel', 'featureAuditPanel']) {
+  test(`${panel} loads when opened before the feature module is delivered`, async ({ page }) => {
+    const identity = await loginStableFeatureOwner(page);
+    const entered = deliveryGate();
+    const release = deliveryGate();
+    await page.route('**/static/admin-features.js?*', async route => {
+      const response = await route.fetch();
+      entered.release();
+      await release.promise;
+      await route.fulfill({ response });
+    });
+    try {
+      await page.goto('/admin', { waitUntil: 'commit' });
+      await entered.promise;
+      const tile = page.locator(`[data-admin-panel="${panel}"]`);
+      await expect(tile).toBeEnabled();
+      await tile.click();
+      await expect(page.locator(`#${panel}`)).toBeVisible();
+      const content = page.locator(panel === 'featuresPanel' ? '#featureGroups' : '#featureAuditRows');
+      await expect(content).toBeEmpty();
+      const loaded = page.waitForResponse(response => new URL(response.url()).pathname === '/api/admin/features'
+        && response.request().method() === 'GET');
+      release.release();
+      const response = await loaded;
+      expect(response.ok()).toBeTruthy();
+      expect((await response.json()).viewer_id).toBe(identity.id);
+      if (panel === 'featuresPanel') {
+        await expect(page.locator('[data-feature-key="watten.schoeneres"] select')).toBeEnabled();
+      } else {
+        await expect(page.locator('#featureAuditRows li').first()).toBeVisible();
+      }
+    } finally {
+      release.release();
+      await page.unrouteAll({ behavior: 'wait' });
+    }
+  });
+}

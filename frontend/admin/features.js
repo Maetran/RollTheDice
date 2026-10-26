@@ -191,6 +191,7 @@ if (panel) {
     if (!panel.hidden || !logPanel.hidden) load();
   });
   if (!viewerId) retire();
+  else if (!panel.hidden || !logPanel.hidden) load();
 }
 }
 
