@@ -2546,5 +2546,12 @@
     "date": "2026-10-25",
     "bump": "minor",
     "summary": "Neue knifflige Erfolge in allen vier Spielen und eine übersichtlichere Watten-Fortschrittsansicht. / New challenging achievements in all four games and a clearer Watten progress view."
+  },
+  {
+    "version": "4.7.0",
+    "revision": "4af6e15ca3b53b95caa123652ef39ed306ee5c66",
+    "date": "2026-10-26",
+    "bump": "minor",
+    "summary": "Einheitliche Kontobereiche und geprüfte Kontenzusammenführung. / Consistent account areas and verified account consolidation."
   }
 ]

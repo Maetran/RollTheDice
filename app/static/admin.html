@@ -6,16 +6,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Geschützter Administrationsbereich von ZDWA.">
   <meta name="robots" content="noindex, nofollow">
-  <link rel="manifest" href="/manifest.webmanifest?v=168d52318753">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=168d52318753" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=168d52318753" sizes="180x180">
+  <link rel="manifest" href="/manifest.webmanifest?v=b84071783b31">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=b84071783b31" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=b84071783b31" sizes="180x180">
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"||t==="classic"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d==="dark"?"dark":"light";const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=d==="dark"?"#0b1120":d==="classic"?"#31583a":"#f4f6f8"}catch(_){}</script>
-  <link rel="stylesheet" href="/static/style.css?v=168d52318753">
-  <link rel="stylesheet" href="/static/zdwa-design-2026.css?v=168d52318753">
+  <link rel="stylesheet" href="/static/style.css?v=b84071783b31">
+  <link rel="stylesheet" href="/static/zdwa-design-2026.css?v=b84071783b31">
   <script>{const r=document.documentElement,g=k=>{try{return localStorage.getItem(k)}catch(_){return null}},q=new URLSearchParams(location.search).get("design");if(q!=="classic"&&g("zdwa_design")!=="old"&&g("zdwa_design_off")!=="1"&&(q==="2026"||g("zdwa_design_override")!=="old"))r.dataset.design="2026"}</script>
-  <script src="/static/shell.js?v=168d52318753" defer></script>
-  <link rel="stylesheet" href="/static/suite-header.css?v=168d52318753">
-  <link rel="stylesheet" href="/static/admin-account-merge.css?v=168d52318753">
+  <script src="/static/shell.js?v=b84071783b31" defer></script>
+  <link rel="stylesheet" href="/static/suite-header.css?v=b84071783b31">
+  <link rel="stylesheet" href="/static/admin-account-merge.css?v=b84071783b31">
+  <link rel="stylesheet" href="/static/admin-features.css?v=b84071783b31">
 </head>
 <body class="lobby-page">
   <main class="wrap admin-shell">
@@ -31,11 +32,19 @@
       <h1>Adminbereich</h1>
       <p class="muted">Wähle einen Bereich aus. Es bleibt immer nur eine Kachel geöffnet.</p>
       <div class="admin-module-grid">
+        <h2 class="admin-module-group">Übersicht</h2>
         <a id="analyticsDashboardLink" class="admin-module-tile" href="/admin/dashboard" hidden>
           <span class="admin-module-icon" aria-hidden="true">◈</span>
           <span class="admin-module-copy"><strong>Mission Control</strong><small>Besucher, Spiele und Server im Blick</small></span>
           <span class="admin-module-chevron" aria-hidden="true">↗</span>
         </a>
+        <h2 class="admin-module-group">Spiele &amp; Funktionen</h2>
+        <button class="admin-module-tile" type="button" data-admin-panel="featuresPanel" aria-controls="featuresPanel" aria-expanded="false">
+          <span class="admin-module-icon" aria-hidden="true">⚙</span>
+          <span class="admin-module-copy"><strong>Spiele &amp; Funktionen</strong><small>Freigaben, Testbetrieb und Beta-Kennzeichnung</small></span>
+          <span class="admin-module-chevron" aria-hidden="true">⌄</span>
+        </button>
+        <h2 class="admin-module-group">Nutzer &amp; Rechte</h2>
         <button class="admin-module-tile" type="button" data-admin-panel="usersPanel" aria-controls="usersPanel" aria-expanded="false">
           <span class="admin-module-icon" aria-hidden="true">👥</span>
           <span class="admin-module-copy"><strong>Benutzerverwaltung</strong><small>Accounts, Rollen und Passwörter</small></span>
@@ -51,15 +60,36 @@
           <span class="admin-module-copy"><strong>Konten zusammenführen</strong><small>Spielverlauf und Erfolge in einem Konto behalten</small></span>
           <span class="admin-module-chevron" aria-hidden="true">⌄</span>
         </button>
+        <h2 class="admin-module-group">Betrieb</h2>
         <button class="admin-module-tile admin-module-tile-danger" type="button" data-admin-panel="completedGamesPanel" aria-controls="completedGamesPanel" aria-expanded="false">
           <span class="admin-module-icon" aria-hidden="true">🗑️</span>
           <span class="admin-module-copy"><strong>Spiele löschen</strong><small>Snapshots dauerhaft entfernen</small></span>
+          <span class="admin-module-chevron" aria-hidden="true">⌄</span>
+        </button>
+        <h2 class="admin-module-group">Änderungsprotokoll</h2>
+        <button class="admin-module-tile" type="button" data-admin-panel="featureAuditPanel" aria-controls="featureAuditPanel" aria-expanded="false">
+          <span class="admin-module-icon" aria-hidden="true">≡</span>
+          <span class="admin-module-copy"><strong>Feature-Protokoll</strong><small>Wer hat welche Freigabe geändert?</small></span>
           <span class="admin-module-chevron" aria-hidden="true">⌄</span>
         </button>
       </div>
       <div id="adminMessage" class="muted small admin-message" aria-live="polite"></div>
     </section>
 
+    <section id="featuresPanel" class="card admin-panel" aria-labelledby="featuresHeading" hidden>
+      <header class="section-title-row"><div><p class="eyebrow">Game-Backend</p><h2 id="featuresHeading">Spiele &amp; Funktionen</h2></div><button id="reloadFeatures" type="button" class="small secondary">Aktualisieren</button></header>
+      <p id="featurePermission" class="muted"></p>
+      <p class="muted">Interne Funktionen können mitspielende Owner und Admins am Tisch einschalten. Alle Mitspieler können sie dann nutzen. Neue Freigaben gelten ab der nächsten Partie.</p>
+      <p class="muted small">Die Beta-Kennzeichnung eines Spiels ist ein Hinweis. Sie ändert weder den Spielzugang noch die Tischregeln.</p>
+      <p id="featureFeedback" role="status" aria-live="polite"></p>
+      <div id="featureGroups"></div>
+    </section>
+    <section id="featureAuditPanel" class="card admin-panel" aria-labelledby="featureAuditHeading" hidden>
+      <header class="section-title-row"><h2 id="featureAuditHeading">Feature-Protokoll</h2><button id="reloadFeatureAudit" type="button" class="small secondary">Aktualisieren</button></header>
+      <p class="muted">Die letzten 100 Änderungen an Freigaben und Beta-Kennzeichnungen.</p>
+      <p id="featureAuditFeedback" role="status" aria-live="polite"></p>
+      <ul id="featureAuditRows" class="admin-feature-log"></ul>
+    </section>
     <section id="usersPanel" class="card admin-panel admin-users-panel" hidden>
       <header class="admin-users-heading">
         <div><p class="eyebrow">Accounts</p><h2>Benutzerverwaltung</h2></div>
@@ -120,7 +150,7 @@
     </section>
   </main>
   <script type="module">
-    import { apiFetch, authError, escapeHtml, loadAuth, playerNameMarkup } from '/static/auth.js?v=168d52318753';
+    import { apiFetch, authError, escapeHtml, loadAuth, playerNameMarkup } from '/static/auth.js?v=b84071783b31';
     const auth = await loadAuth();
     if (!auth?.user?.is_admin) location.replace(window.ZDWA_ROUTE?.path('/') || '/');
     document.getElementById('analyticsDashboardLink').hidden = !auth?.user?.can_view_analytics;
@@ -681,6 +711,7 @@
     await loadUsers();
     await Promise.all([loadAssignments(), loadCompletedGames(), loadDeletedGames()]);
   </script>
-  <script type="module" src="/static/admin-account-merge.js?v=168d52318753"></script>
+  <script type="module" src="/static/admin-account-merge.js?v=b84071783b31"></script>
+  <script type="module" src="/static/admin-features.js?v=b84071783b31"></script>
 </body>
 </html>

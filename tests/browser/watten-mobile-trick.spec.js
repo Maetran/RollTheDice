@@ -244,7 +244,7 @@ test(`four-player mobile landscape ${viewport.width}x${viewport.height}: left ra
   try {
     const wrapped = { newContext: options => browser.newContext({ ...options,
       viewport, serviceWorkers: 'block' }) };
-    for (let index = 0; index < 4; index++) players.push(await player(wrapped, baseURL));
+    for (let index = 0; index < 4; index++) players.push(await player(wrapped, baseURL, 'de', { role: index === 0 ? 'admin' : 'user' }));
     const path = await create(players, { determination: 'normal', target: 15 });
     await normalCall(players);
     await expectLandscapeTable(players[0].page);

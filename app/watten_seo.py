@@ -5,6 +5,7 @@ import re
 from html import escape, unescape
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
+from .feature_flags import public_game_beta
 from .product_hosts import WATTEN_ORIGIN
 from .public_discovery import public_game_suite
 
@@ -72,7 +73,14 @@ def _localized_public_links(content: str, language: str) -> str:
 
 def public_watten_metadata(content: str, *, page: str, language: str, request=None) -> tuple[str, str]:
     language = "en" if language == "en" else "de"
-    text = _COPY[language]
+    text = dict(_COPY[language])
+    beta = public_game_beta("watten")
+    site_name = "Watten [BETA]" if beta else "Watten"
+    if not beta:
+        for key in ("lobby_title", "rules_title"):
+            text[key] = text[key].replace(" [BETA]", "")
+        text["lobby_description"] = text["lobby_description"].replace(" Öffentliche Beta.", "").replace(" Public beta.", "")
+        text["beta"] = ""
     path = "/watten/regeln" if page == "rules" else "/watten"
     base = f"{WATTEN_ORIGIN}{path}"
     canonical = base + ("?lang=en" if language == "en" else "")
@@ -90,13 +98,13 @@ def public_watten_metadata(content: str, *, page: str, language: str, request=No
                 f'<meta property="og:title" content="{escape(title, quote=True)}">'
                 f'<meta property="og:description" content="{escape(description, quote=True)}">'
                 f'<meta property="og:url" content="{escape(canonical, quote=True)}">'
-                '<meta property="og:type" content="website"><meta property="og:site_name" content="Watten [BETA]">'
+                f'<meta property="og:type" content="website"><meta property="og:site_name" content="{site_name}">'
                 f'<meta property="og:locale" content="{"en_GB" if language == "en" else "de_CH"}">'
                 f'<meta property="og:image" content="{WATTEN_ORIGIN}/static/watten/icons/watten-icon-512.png">'
                 '<meta name="twitter:card" content="summary">')
     structured = {"@context": "https://schema.org", "@type": "WebPage", "url": canonical,
                   "name": title, "description": description, "inLanguage": language,
-                  "isPartOf": {"@type": "WebSite", "name": "Watten [BETA]", "url": f"{WATTEN_ORIGIN}/watten"},
+                  "isPartOf": {"@type": "WebSite", "name": site_name, "url": f"{WATTEN_ORIGIN}/watten"},
                   "about": {"@type": "Game", "name": "Watten", "numberOfPlayers": {
                       "@type": "QuantitativeValue", "minValue": 2, "maxValue": 4}}}
     metadata += '<script type="application/ld+json">' + json.dumps(structured, ensure_ascii=False) + '</script>'

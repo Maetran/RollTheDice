@@ -8,6 +8,7 @@ from html import escape
 
 from .achievements import achievement_rank_legend_payload
 from .game_access import can_access_zilch_preview
+from .game_presentation import game_presentation_markup
 from .site_seo import HAUSDEPP_ORIGIN, SITE_ORIGIN, WATTEN_ORIGIN, ZILCH_ORIGIN
 from .watten_readiness import watten_public_beta_enabled
 
@@ -56,7 +57,7 @@ def public_suite_markup(content: str, request, *, language: str = "de") -> str:
         links.append(f'<a href="{escape(url, quote=True)}" translate="no">{escape(member["name"])}</a>')
     footer = (f'<footer data-public-suite-links><nav aria-label="{label}"><p><strong>{heading}</strong></p>'
               + '<ul>' + ''.join(f'<li>{link}</li>' for link in links) + '</ul></nav></footer>')
-    return content.replace("</body>", footer + "\n</body>", 1)
+    return game_presentation_markup(content.replace("</body>", footer + "\n</body>", 1))
 
 
 def public_rank_guide(content: str) -> str:

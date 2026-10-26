@@ -42,7 +42,7 @@ for (const language of ['de', 'en']) {
     const configured = { newContext: options => browser.newContext({ ...options,
       viewport: { width: 393, height: 852 }, serviceWorkers: 'block' }) };
     try {
-      for (let seat = 0; seat < 4; seat++) players.push(await player(configured, baseURL, language));
+      for (let seat = 0; seat < 4; seat++) players.push(await player(configured, baseURL, language, { role: seat === 0 ? 'admin' : 'user' }));
       await create(players, { target: 15, reference: true, schoeneres: true });
       let previousDeal = null;
       for (let round = 0; round < 2; round++) {

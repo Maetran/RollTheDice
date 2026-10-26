@@ -164,6 +164,22 @@ test("only a strict public game descriptor paints the beta badge, ARIA name and 
   }
 });
 
+test("a game beta label is independent of public access and applies to all four games", () => {
+  for (const id of ["zdwa", "zilch", "hausdepp", "watten"]) {
+    assert.match(gamePickerButtonMarkup({ id, name: id, beta: true, publicBeta: false }), /\[BETA\]/);
+    assert.doesNotMatch(gamePickerButtonMarkup({ id, name: id, beta: false, publicBeta: true }), /\[BETA\]/);
+  }
+  const f = fixture(false, "en");
+  const game = { id: "watten", name: "Watten", href: "/watten", publicBeta: true, beta: false };
+  f.picker.update({ currentMode: "watten", games: [...games, game] });
+  f.picker.toggle();
+  const link = f.links().at(-1);
+  assert.equal(link.href, "/watten");
+  assert.equal(link.getAttribute("aria-label"), "Watten");
+  assert.doesNotMatch(link.innerHTML, /Public beta|Private preview|\[BETA\]/);
+  f.picker.destroy();
+});
+
 test("withdrawing the public marker closes an open menu and removes beta branding from its trigger", () => {
   const f = fixture(true);
   const game = { id: "watten", name: "Watten", href: "/watten", publicBeta: true };

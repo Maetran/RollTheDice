@@ -23,6 +23,40 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 4.8.0 — 2026-10-26
+
+### SPIELE UND FUNKTIONEN / GAMES AND FEATURES
+
+**Deutsch:** Die Administration ist nach Übersicht, Spielen & Funktionen,
+Nutzern & Rechten, Betrieb und Änderungsprotokoll gegliedert. Owner verwalten
+Funktionsfreigaben als deaktiviert, intern oder veröffentlicht; Admins lesen
+die Einstellungen. Veröffentlichte Funktionen und ganze Spiele können optional
+als Beta gekennzeichnet werden. Die Spielkennzeichnung bleibt vom Zugang zum
+Spiel getrennt und gilt auch im Spielemenü und Installationsmanifest.
+
+**English:** Administration is grouped into Overview, Games & features,
+Users & permissions, Operations and Change history. Owners manage features
+as disabled, internal or published; admins can view the settings. Published
+features and entire games can optionally carry a beta label. A game's label
+is independent of access and is reflected in the game picker and install manifest.
+
+**Deutsch:** Schöneres, Schlagwechsel, Kritische, Rechter-Anzeige, Stichverlauf
+und offenes Partnerblatt starten in Watten im internen Testbetrieb. Ein
+mitspielender Owner oder Admin kann diese Optionen auch an einem Tisch mit
+normalen Spielern einschalten. Alle Mitspieler können die aktivierten Regeln
+nutzen. Vor Start und Rematch werden Freigabe und Teilnahme erneut geprüft;
+gespeicherte Favoriten umgehen die Freigabe nicht. Laufende Partien behalten
+ihre Regeln bis zum Ende. Änderungen werden dauerhaft protokolliert und
+gleichzeitige Owner-Änderungen überschreiben sich nicht unbemerkt.
+
+**English:** Watten's Schöneres, strike swap, critical cards, Rechter indicator,
+trick history and open partner hand initially use internal testing. An owner or
+admin taking part can enable these options at a table with ordinary players,
+and all players can use the enabled rules. Availability and participation are
+checked before start and rematch; saved favorites do not bypass availability.
+Games in progress retain their rules until the end. Changes are durably logged,
+and concurrent owner changes cannot silently overwrite one another.
+
 ## 4.7.0 — 2026-10-25
 
 ### KONTO UND FORTSCHRITT / ACCOUNT AND PROGRESS

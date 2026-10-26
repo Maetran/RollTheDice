@@ -2,6 +2,7 @@
 // Blödeln never exposes a future card in the shared preparation area.
 import { escapeHtml as esc } from "../shared/auth.js";
 import { t, cardBack } from "./cards.js";
+import { featureBetaMarkup } from "./feature-controls.js";
 
 const OPTIONS = ["schoeneres", "schlagwechsel", "bloedeln"];
 const playerName = (vm, seat) => vm.room.seats[seat]?.name || t("seat.unknown");
@@ -71,7 +72,7 @@ export function roundOptionsMarkup(vm) {
   return `${bloedeln}<details class="wt-preplay-options" data-watten-preplay-options>
     <summary>${esc(t("roundOptions.title"))}</summary>
     <div class="wt-preplay-choices">${available.map(kind => `<div class="wt-preplay-choice">
-      ${commandButton(vm, `request_${kind}`, t(`roundOptions.${kind}.request`))}
+      ${commandButton(vm, `request_${kind}`, t(`roundOptions.${kind}.request`))}${featureBetaMarkup(vm.room.feature_controls?.[`watten.${kind}`], `watten.${kind}`)}
       <p class="wt-note">${esc(t(`roundOptions.${kind}.description`))}</p></div>`).join("")}</div>
   </details>`;
 }

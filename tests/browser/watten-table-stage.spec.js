@@ -551,7 +551,7 @@ for (const count of [3, 4]) {
   test(`${count}: an optional open partner hand stays clear of the own hand in small landscape`, async ({ browser, baseURL }) => {
     const players = [];
     try {
-      for (let index = 0; index < count; index += 1) players.push(await player(gameBrowser(browser), baseURL));
+      for (let index = 0; index < count; index += 1) players.push(await player(gameBrowser(browser), baseURL, 'de', { role: index === 0 ? 'admin' : 'user' }));
       await create(players, { determination: 'normal', partnerHand: true, target: 15 });
       await normalCall(players);
       await settled(players, 'play');

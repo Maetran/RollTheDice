@@ -302,7 +302,7 @@ for (const language of ['de', 'en']) for (const { count, reference = false } of 
     const squareRows = [];
     try {
       for (let index = 0; index < count; index += 1) {
-        const item = await player(wrapped, baseURL, language);
+        const item = await player(wrapped, baseURL, language, { role: reference && index === 0 ? 'admin' : 'user' });
         await item.page.clock.install();
         players.push(item);
       }

@@ -1,0 +1,17 @@
+.admin-module-group { grid-column: 1 / -1; margin: .8rem 0 0; font-size: .8rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.admin-feature-group { border: 1px solid var(--border, #80909b55); border-radius: 14px; padding: 1rem; margin-block: 1rem; min-width: 0; }
+.admin-feature-group > header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .75rem; }
+.admin-feature-group h3, .admin-feature-row h4 { margin: 0; }
+.admin-game-beta { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; }
+.admin-game-beta label, .admin-feature-beta { display: flex; align-items: center; gap: .5rem; }
+.admin-game-beta input, .admin-feature-beta input { width: auto; margin: 0; }
+.admin-feature-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(190px, .55fr); gap: 1.25rem; border-top: 1px solid var(--border, #80909b55); padding-block: 1rem; margin-top: 1rem; }
+.admin-feature-description p { margin: .4rem 0; }
+.admin-feature-description small { color: var(--muted); }
+.admin-feature-controls { display: grid; gap: .65rem; align-content: start; }
+.admin-feature-controls select { width: 100%; }
+.admin-feature-log { list-style: none; padding: 0; }
+.admin-feature-log li { display: grid; gap: .35rem; border-bottom: 1px solid var(--border, #80909b55); padding-block: .8rem; overflow-wrap: anywhere; }
+.admin-feature-log span { font-size: .85rem; }
+#featureFeedback { min-height: 1.5em; }
+@media (max-width: 620px) { .admin-feature-row { grid-template-columns: minmax(0, 1fr); gap: .75rem; } .admin-feature-group { padding: .8rem; } .admin-game-beta { align-items: stretch; width: 100%; } }

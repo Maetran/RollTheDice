@@ -67,6 +67,18 @@ async function fixture({ state = founder(), mode = "zdwa", language = "de", load
     event(value) { win.emit("zdwa:auth-state", { detail: value }); } };
 }
 
+test("server beta presentation can change without withdrawing the public Watten capability", async () => {
+  const state = { ...auth(2, { watten_public: true }), game_presentation: { watten: { beta: false }, hausdepp: { beta: true } } };
+  const f = await fixture({ state });
+  await f.controller.refresh();
+  assert.equal(f.games().find(game => game.id === "watten").publicBeta, true);
+  assert.equal(f.games().find(game => game.id === "watten").beta, false);
+  assert.equal(f.games().find(game => game.id === "hausdepp").beta, true);
+  f.event({ ...state, game_presentation: { watten: { beta: true }, hausdepp: { beta: false } } });
+  assert.equal(f.games().find(game => game.id === "watten").beta, true);
+  assert.equal(f.games().find(game => game.id === "hausdepp").beta, false);
+});
+
 test("canonical preview routes always use the apex on all production suite hosts and stay local in development", () => {
   for (const hostname of ["zockdiewandan.online", "www.zockdiewandan.online", "zdwa.zockdiewandan.online",
     "zilch.zockdiewandan.online", "hausdepp.zockdiewandan.online"]) {

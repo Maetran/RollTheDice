@@ -7,6 +7,7 @@ import { reservationMarkup } from "./rematch.js";
 import { lobbyText as lt } from "./lobby-copy.js";
 import { seriesSummaryMarkup } from "./series.js";
 import { openSeatNotifyMarkup } from "./open-seat-notify.js";
+import { waitingFeatureControlsMarkup } from "./feature-controls.js";
 
 const TEAM_NAMES = ["A", "B"];
 const HINT_KEY = "watten_landscape_hint_dismissed";
@@ -34,6 +35,7 @@ export function recipeSummary(recipe) {
   if (recipe.trick_history) items.push(t("recipe.trickHistory"));
   if (recipe.partner_hand) items.push(t("recipe.partnerHand"));
   if (recipe.schoeneres_enabled) items.push(lt("schoeneresSummary"));
+  if (recipe.schlagwechsel_enabled) items.push(window.ZDWA_I18N.t("Schlagwechsel"));
   if (recipe.tournament_nockerl_target) items.push(lt("tournamentTarget", { count: recipe.tournament_nockerl_target }));
   if (recipe.password_required) items.push(t("recipe.password"));
   return items;
@@ -140,6 +142,7 @@ export function waitingRoomMarkup(snapshot, { mode, viewerId, busy = false, extr
     ${seriesSummaryMarkup({ room, count: room.recipe.player_count, viewerSeat, spectator: !member })}
     ${room.series?.teams_locked && room.recipe.player_count !== 4 ? `<p class="wt-note wt-tournament-locked">${esc(t("series.locked"))}</p>` : ""}
     ${seatsMarkup(room, { member, viewerSeat, busy, canManageCpus: isHost && snapshot.capabilities?.cpu_autoplay === true })}
+    ${waitingFeatureControlsMarkup(room, { member, busy })}
     ${unseated.length ? `<p class="wt-note">${esc(t("waiting.unseated", { names: unseated.map(item => item.name).join(", ") }))}</p>` : ""}
     ${member && viewerSeat === null && room.status === "waiting" ? `<p class="wt-note wt-note--strong">${esc(t(room.series?.teams_locked ? "series.takeAssigned" : "waiting.chooseSeat", { seat: (room.required_seat ?? 0) + 1 }))}</p>` : ""}
     ${room.series?.teams_locked ? "" : reservationMarkup(room.reservation, { language: lang(), escapeHtml: esc,

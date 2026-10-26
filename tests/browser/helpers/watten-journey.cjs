@@ -1,6 +1,7 @@
 const { expect } = require('@playwright/test');
 
-async function player(browser, baseURL, language = 'de', { guide = false } = {}) {
+async function player(browser, baseURL, language = 'de', { guide = false, role = 'user' } = {}) {
+  if (!['user', 'admin'].includes(role)) throw new Error('Unsupported Watten test account role');
   const context = await browser.newContext({ baseURL, reducedMotion: 'reduce' });
   const page = await context.newPage();
   if (!guide) await page.route('**/api/auth/game-guides', route => route.fulfill({ json: { enabled: false, acknowledged: {} } }));
@@ -15,7 +16,7 @@ async function player(browser, baseURL, language = 'de', { guide = false } = {})
   const owner = (await ownerLogin.json()).user;
   const password = 'watten-test-password-123';
   const response = await context.request.post('/api/admin/users', {
-    headers: { 'X-CSRF-Token': owner.csrf_token }, data: { username, temporary_password: password, role: 'user' },
+    headers: { 'X-CSRF-Token': owner.csrf_token }, data: { username, temporary_password: password, role },
   });
   expect(response.status()).toBe(201);
   const signedIn = await context.request.post('/api/auth/login', { data: { username, password } });
@@ -28,6 +29,7 @@ async function player(browser, baseURL, language = 'de', { guide = false } = {})
   expect(finalLogin.ok()).toBeTruthy();
   user = (await finalLogin.json()).user;
   expect(user.is_owner).toBeFalsy();
+  expect(user.is_admin).toBe(role === 'admin');
   expect((await context.request.put('/api/auth/preferences/language', {
     headers: { 'X-CSRF-Token': user.csrf_token }, data: { preferred_language: language },
   })).ok()).toBeTruthy();
@@ -101,7 +103,7 @@ async function openCreator(page, { favorite = false } = {}) {
   return form;
 }
 
-async function create(players, { count = players.length, target = 3, reference = false, partnerHand = false, schoeneres = false, tournament = null, start = true, password, determination, cpuFill = false } = {}) {
+async function create(players, { count = players.length, target = 3, reference = false, partnerHand = false, schoeneres = false, schlagwechsel = false, tournament = null, start = true, password, determination, cpuFill = false } = {}) {
   const host = players[0];
   await host.page.goto('/watten');
   const form = await openCreator(host.page);
@@ -114,11 +116,12 @@ async function create(players, { count = players.length, target = 3, reference =
   }
   await form.locator('[name=target]').selectOption(String(target));
   if (partnerHand && await form.locator('[name=blind]').isChecked()) await form.locator('[name=blind]').uncheck();
-  if (reference || partnerHand || schoeneres) {
+  if (reference || partnerHand || schoeneres || schlagwechsel) {
     await form.locator('[data-watten-advanced] > summary').click();
     if (reference) await form.locator('[name=show_rechter]').check();
     if (partnerHand) await form.locator('[name=partner_hand]').check();
     if (schoeneres) await form.locator('[name=schoeneres_enabled]').check();
+    if (schlagwechsel) await form.locator('[name=schlagwechsel_enabled]').check();
   }
   if (password) await form.locator('[name=password]').fill(password);
   if (cpuFill) await form.locator('[name=cpu_fill]').check();

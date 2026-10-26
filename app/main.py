@@ -43,6 +43,7 @@ from .api_analytics import router as analytics_router
 from .api_auth import router as auth_router
 from .api_avatars import router as avatars_router
 from .api_engagement import router as engagement_router
+from .api_features import router as features_router
 from .api_friend_activity import router as friend_activity_router
 from .api_game_activity import router as game_activity_router
 from .api_hausdepp_favourite import router as hausdepp_favourite_router
@@ -74,6 +75,7 @@ from .game_history import (
     import_legacy_leaderboards,
 )
 from .game_lifecycle import bound_revision
+from .game_presentation import game_manifest_response
 from .game_realtime import broadcast
 from .game_registry import create_game_state, finalize_completed_game, project_game_progress
 from .game_results import remove_deleted_game_from_files
@@ -567,6 +569,7 @@ app = FastAPI(lifespan=lifespan, version=current_version())
 
 
 app.include_router(auth_router)
+app.include_router(features_router)
 app.include_router(passkeys_router)
 app.include_router(passkey_reminders_router)
 app.include_router(releases_router)
@@ -802,28 +805,28 @@ def manifest(request: Request):
     if is_zilch_host(request):
         return Response(status_code=404, headers={"Cache-Control": "no-store"})
     # liegt im Repo-Root neben Dockerfile / README
-    return FileResponse(str(BASE / "manifest.webmanifest"), media_type="application/manifest+json")
+    return game_manifest_response(BASE / "manifest.webmanifest", "zdwa")
 
 
 @app.get("/manifest-en.webmanifest", include_in_schema=False)
 def manifest_en(request: Request):
     if is_zilch_host(request):
         return Response(status_code=404, headers={"Cache-Control": "no-store"})
-    return FileResponse(str(BASE / "manifest-en.webmanifest"), media_type="application/manifest+json")
+    return game_manifest_response(BASE / "manifest-en.webmanifest", "zdwa")
 
 
 @app.get("/zilch-manifest.webmanifest", include_in_schema=False)
 def zilch_manifest(request: Request):
     if not is_zilch_host(request):
         return Response(status_code=404, headers={"Cache-Control": "no-store"})
-    return FileResponse(str(BASE / "zilch-manifest.webmanifest"), media_type="application/manifest+json")
+    return game_manifest_response(BASE / "zilch-manifest.webmanifest", "zilch")
 
 
 @app.get("/zilch-manifest-en.webmanifest", include_in_schema=False)
 def zilch_manifest_en(request: Request):
     if not is_zilch_host(request):
         return Response(status_code=404, headers={"Cache-Control": "no-store"})
-    return FileResponse(str(BASE / "zilch-manifest-en.webmanifest"), media_type="application/manifest+json")
+    return game_manifest_response(BASE / "zilch-manifest-en.webmanifest", "zilch")
 
 
 @app.get("/hausdepp-manifest.webmanifest", include_in_schema=False)
@@ -831,8 +834,7 @@ def zilch_manifest_en(request: Request):
 def hausdepp_manifest(request: Request):
     """Public installation metadata contains no account or game information."""
     filename = "hausdepp-manifest-en.webmanifest" if request.url.path.endswith("-en.webmanifest") else "hausdepp-manifest.webmanifest"
-    return FileResponse(str(BASE / filename), media_type="application/manifest+json",
-                        headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"})
+    return game_manifest_response(BASE / filename, "hausdepp", headers={"X-Robots-Tag": "noindex, nofollow"})
 
 
 @app.get("/hausdepp-sw.js", include_in_schema=False)

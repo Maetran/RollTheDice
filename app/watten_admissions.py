@@ -35,6 +35,15 @@ def _bindings(room, now):
     return {key: tuple(values) for key, values in result.items()}
 
 
+def checkpoint_accounts(room, *, now) -> frozenset[int]:
+    """Every account the membership writer will lock for this checkpoint.
+
+    Feature admission must acquire this full ascending set before the policy
+    guard, including lower-ID reservations and fixed continuation originals.
+    """
+    return frozenset(_bindings(room, now))
+
+
 def pending_native_room(game):
     """A terminal, durably accounted table is history, not a pending seat."""
     room = game["_watten"].room

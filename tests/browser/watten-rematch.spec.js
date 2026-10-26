@@ -59,7 +59,7 @@ for (const language of ['de', 'en']) {
 
 for (const language of ['de', 'en']) {
   test(`${language}: a committed next table survives a lost response, restores seats and keeps start explicit`, async ({ browser, baseURL }, testInfo) => {
-    const players = [await player(browser, baseURL, language), await player(browser, baseURL, language)];
+    const players = [await player(browser, baseURL, language, { role: 'admin' }), await player(browser, baseURL, language)];
     const host = players[0], guest = players[1];
     const requests = [];
     let createdTarget;

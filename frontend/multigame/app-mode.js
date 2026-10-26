@@ -106,13 +106,16 @@ export function initializeAppMode({
   let refreshRevision = 0;
   let suspended = false;
   let navigatingAway = false;
+  let gamePresentation = {};
+  try { gamePresentation = JSON.parse(document.documentElement.dataset.gamePresentation || "{}"); } catch (_) {}
+  const presentation = game => typeof gamePresentation?.[game]?.beta === "boolean" ? { beta: gamePresentation[game].beta } : {};
   const pickers = new Map();
   const availableGames = () => [
-    { id: "zdwa", name: "ZDWA", href: zdwaAppEntryUrl() },
-    ...(zilchAllowed ? [{ id: "zilch", name: "Zilch", href: zilchAppEntryUrl("/") }] : []),
-    ...(hausdeppAllowed ? [{ id: "hausdepp", name: "Hausdepp", href: hausdeppAppEntryUrl() }] : []),
+    { id: "zdwa", name: "ZDWA", href: zdwaAppEntryUrl(), ...presentation("zdwa") },
+    ...(zilchAllowed ? [{ id: "zilch", name: "Zilch", href: zilchAppEntryUrl("/"), ...presentation("zilch") }] : []),
+    ...(hausdeppAllowed ? [{ id: "hausdepp", name: "Hausdepp", href: hausdeppAppEntryUrl(), ...presentation("hausdepp") }] : []),
     ...(wattenAllowed ? [{ id: "watten", name: "Watten", publicBeta: wattenPublic,
-      href: wattenAppEntryUrl(window.location, globalThis, { publicBeta: wattenPublic }) }] : []),
+      href: wattenAppEntryUrl(window.location, globalThis, { publicBeta: wattenPublic }), ...presentation("watten") }] : []),
   ];
   const syncPickers = () => {
     updateSwitch(allowed);
@@ -145,6 +148,7 @@ export function initializeAppMode({
 
   const applyAuth = (auth, { confirmedPrivate = false } = {}) => {
     latestAuth = auth;
+    if (auth?.game_presentation) gamePresentation = auth.game_presentation;
     wattenPublic = (auth?.game_access || auth?.user?.game_access)?.watten_public === true;
     wattenAllowed = wattenPublic || (confirmedPrivate && canDiscoverWatten(auth));
     if (!canDiscoverWatten(auth)) clearRememberedWattenMode();

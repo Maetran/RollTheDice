@@ -82,6 +82,7 @@ class EngineRecipe:
     open_partner_hand: bool = False
     trick_history: bool = False
     schoeneres_enabled: bool = False
+    schlagwechsel_enabled: bool = True
 
     def __post_init__(self):
         if not isinstance(self.profile, PlayProfile) or type(self.bindings) is not tuple:
@@ -94,7 +95,8 @@ class EngineRecipe:
         if len(set(players)) != len(players) or len(set(accounts)) != len(accounts):
             raise WattenEngineError("watten_duplicate_binding")
         if not _number(self.target_points, 3) or any(type(value) is not bool for value in (
-                self.show_rechter, self.open_partner_hand, self.trick_history, self.schoeneres_enabled)):
+                self.show_rechter, self.open_partner_hand, self.trick_history, self.schoeneres_enabled,
+                self.schlagwechsel_enabled)):
             raise WattenEngineError("watten_invalid_recipe")
         if self.schoeneres_enabled and self.profile.player_count == 3:
             raise WattenEngineError("watten_schoeneres_requires_two_callers")
@@ -399,6 +401,10 @@ def announcement_roles(state: EngineState) -> RoundRoles:
     return replace(roles, strike_announcer=roles.suit_announcer, suit_announcer=roles.strike_announcer) if state.call_swapped else roles
 
 
+def schlagwechsel_profile_supported(profile: PlayProfile) -> bool:
+    return profile.determination == "normal" and not profile.blind and profile.player_count in {2, 4}
+
+
 def preplay_available(state: EngineState, kind: str) -> bool:
     if state.phase not in {"strike", "colour", "show_ready", "inspection", "play"} or (state.play and state.play.plays):
         return False
@@ -406,8 +412,7 @@ def preplay_available(state: EngineState, kind: str) -> bool:
     if kind == "schoeneres":
         return state.recipe.schoeneres_enabled and profile.player_count in {2, 4}
     if kind == "schlagwechsel":
-        return (state.phase == "strike" and profile.determination == "normal" and not profile.blind
-                and profile.player_count in {2, 4})
+        return state.recipe.schlagwechsel_enabled and state.phase == "strike" and schlagwechsel_profile_supported(profile)
     return (kind == "bloedeln" and profile.blind and profile.player_count == 4
             and state.bloedeln_decisions is not None and len(state.bloedeln_decisions) < 2
             and not any(not accepted for _, accepted in state.bloedeln_decisions) and not state.bloedeln)
@@ -751,7 +756,8 @@ def storage_payload(state: EngineState) -> dict:
                    "manual_parties": None if recipe.manual_parties is None else [list(party) for party in recipe.manual_parties],
                    "target_points": recipe.target_points, "show_rechter": recipe.show_rechter,
                    "open_partner_hand": recipe.open_partner_hand, "trick_history": recipe.trick_history,
-                   "schoeneres_enabled": recipe.schoeneres_enabled},
+                   "schoeneres_enabled": recipe.schoeneres_enabled,
+                   "schlagwechsel_enabled": recipe.schlagwechsel_enabled},
         "deal": {"id": state.deal_id, "dealer_id": state.parties.dealer_id,
                  "hands": [list(hand) for hand in state.deal.hands], "stock": list(state.deal.stock),
                  "bottom_cards": list(state.deal.bottom_cards)},
@@ -830,12 +836,12 @@ def restore_storage(value: dict) -> EngineState:
     if type(value["schema"]) is not int or value["schema"] != 1:
         raise WattenEngineError("watten_invalid_storage")
     raw = _object(value["recipe"], "profile bindings manual_parties target_points show_rechter open_partner_hand trick_history",
-                  frozenset({"schoeneres_enabled"}))
+                  frozenset({"schoeneres_enabled", "schlagwechsel_enabled"}))
     profile = PlayProfile(**_object(raw["profile"], "player_count determination blind critical"))
     bindings = tuple(SeatBinding(**_object(item, "player_id account_id")) for item in _list(raw["bindings"]))
     groups = None if raw["manual_parties"] is None else tuple(tuple(_list(party)) for party in _list(raw["manual_parties"]))
     recipe = EngineRecipe(profile, bindings, groups, raw["target_points"], raw["show_rechter"], raw["open_partner_hand"],
-                          raw["trick_history"], raw.get("schoeneres_enabled", False))
+                          raw["trick_history"], raw.get("schoeneres_enabled", False), raw.get("schlagwechsel_enabled", True))
     raw_deal = _object(value["deal"], "id dealer_id hands stock bottom_cards")
     deal = DealtCards(tuple(tuple(_list(hand)) for hand in _list(raw_deal["hands"])),
                      tuple(_list(raw_deal["stock"])), tuple(_list(raw_deal["bottom_cards"])))

@@ -210,12 +210,13 @@ def read_personal_view(view: object, *, player_id: str) -> SeatSnapshot:
     except WattenPlayError:
         _fail()
     count = profile.player_count
-    options = _object(view["options"], "show_rechter open_partner_hand trick_history", frozenset({"schoeneres_enabled"}))
+    options = _object(view["options"], "show_rechter open_partner_hand trick_history", frozenset({"schoeneres_enabled", "schlagwechsel_enabled"}))
     if any(type(item) is not bool for item in options.values()):
         _fail()
     if options["open_partner_hand"] and (profile.blind or count == 2):
         _fail()
     schoeneres_enabled = options.get("schoeneres_enabled", False)
+    schlagwechsel_enabled = options.get("schlagwechsel_enabled", True)
     if schoeneres_enabled and count not in {2, 4}:
         _fail()
     if ((profile.determination == "normal" and phase in {"show_ready", "inspection"})
@@ -356,7 +357,7 @@ def read_personal_view(view: object, *, player_id: str) -> SeatSnapshot:
                     or phase not in {"strike", "colour", "show_ready", "inspection", "play"} or completed or current
                     or counts != [CARDS_PER_HAND] * count
                     or (kind == "schoeneres" and not schoeneres_enabled)
-                    or (kind == "schlagwechsel" and (phase != "strike" or profile.determination != "normal" or profile.blind or count not in {2, 4}))
+                    or (kind == "schlagwechsel" and (not schlagwechsel_enabled or phase != "strike" or profile.determination != "normal" or profile.blind or count not in {2, 4}))
                     or (kind == "bloedeln" and (not profile.blind or count != 4 or bloedeln))):
                 _fail()
             preplay_pending = (kind, raw["requester"], raw["responder"])
@@ -474,7 +475,7 @@ def read_personal_view(view: object, *, player_id: str) -> SeatSnapshot:
         if (phase not in {"strike", "colour", "show_ready", "inspection", "play"} or completed or current
                 or counts != [CARDS_PER_HAND] * count
                 or (kind == "schoeneres" and (not schoeneres_enabled or seat not in {roles.strike_announcer, roles.suit_announcer}))
-                or (kind == "schlagwechsel" and (phase != "strike" or profile.determination != "normal" or profile.blind or count not in {2, 4}
+                or (kind == "schlagwechsel" and (not schlagwechsel_enabled or phase != "strike" or profile.determination != "normal" or profile.blind or count not in {2, 4}
                                                  or seat not in {roles.strike_announcer, roles.suit_announcer}))
                 or (kind == "bloedeln" and (not profile.blind or count != 4 or seat in inspectors or bloedeln))):
             _fail()

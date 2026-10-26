@@ -8,8 +8,13 @@ const gameSource = await readFile(new URL("../frontend/watten/game.js", import.m
 const catalogSource = await readFile(new URL("../frontend/i18n/catalog.js", import.meta.url), "utf8");
 const { WATTEN_MESSAGES } = await import(`data:text/javascript;base64,${Buffer.from(catalogSource).toString("base64")}`);
 const esc = text => String(text).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll('"', "&quot;");
+const featureSource = await readFile(new URL("../frontend/watten/feature-controls.js", import.meta.url), "utf8");
+const featureContext = { esc };
+runInNewContext(featureSource.replace(/^import .*;\n/gm, "").replaceAll("export function ", "function ")
+  .replaceAll("export const ", "const ") + "\nthis.betaMarkup = featureBetaMarkup;", featureContext);
 function renderer(language = "de") {
   const context = { esc, cardBack: () => '<span class="wt-card wt-card--back"></span>',
+    featureBetaMarkup: featureContext.betaMarkup,
     t: (key, values = {}) => WATTEN_MESSAGES[language][key].replace(/\{(\w+)\}/g, (_, name) => values[name] ?? "") };
   runInNewContext(source.replace(/^import .*;\n/gm, "").replaceAll("export function ", "function ")
     + "\nthis.render = roundOptionsMarkup; this.cards = bloedelnCardsMarkup;", context);
@@ -119,6 +124,17 @@ test("other preplay options retain their disclosure after the directly accessibl
   assert.ok(html.indexOf('data-watten-action="request_bloedeln"') < html.indexOf("<details"));
   assert.match(html, /data-watten-action="request_schoeneres"/);
   assert.equal(html.match(/data-watten-action="request_bloedeln"/g).length, 1);
+});
+
+test("a published beta marks its request while ordinary players retain authorized gameplay responses", () => {
+  const vm = view({ actions: ["request_schlagwechsel"], room: { ...view().room, feature_controls: {
+    "watten.schlagwechsel": { status: "public", beta: true, can_select: false },
+  } } });
+  assert.match(renderer().render(vm), /data-watten-feature-beta="watten.schlagwechsel">Beta/);
+  const engine = { ...vm.engine, preplay: { pending: { kind: "schlagwechsel", requester: 0, responder: 2 } } };
+  const html = renderer().render({ ...vm, engine, actions: ["preplay_accept", "preplay_decline"] });
+  assert.match(html, /data-watten-action="preplay_accept"/);
+  assert.match(html, /data-watten-action="preplay_decline"/);
 });
 
 test("busy request answers are disabled and paused/completed rounds offer no stale choice", () => {

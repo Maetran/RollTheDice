@@ -67,7 +67,8 @@ DOCUMENT_ROUTES = (
     RouteCoverage(("/spiel/{game_id}/zuschauen",), "tests/browser/admin-help-ui.spec.js"),
     # Ownership adds a real signed-in browser flow; existing restriction tests
     # continue covering ordinary moderation on the same page.
-    RouteCoverage(("/admin",), "tests/browser/admin-ownership.spec.js"),
+    RouteCoverage(("/admin",), "tests/browser/admin-ownership.spec.js",
+                  browser_tests=("tests/browser/admin-features.spec.js",)),
     RouteCoverage(("/admin/dashboard",), "tests/browser/analytics-dashboard.spec.js",
                   browser_tests=("tests/browser/watten-dashboard.spec.js",)),
     RouteCoverage(("/ergebnis",), "tests/browser/navigation-destinations.spec.js"),

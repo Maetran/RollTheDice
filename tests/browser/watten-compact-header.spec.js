@@ -143,7 +143,7 @@ for (const language of ['de', 'en']) {
       viewport: { width: 568, height: 320 }, serviceWorkers: 'block' }) };
     const players = [];
     try {
-      for (let seat = 0; seat < 4; seat++) players.push(await player(wrapped, baseURL, language));
+      for (let seat = 0; seat < 4; seat++) players.push(await player(wrapped, baseURL, language, { role: seat === 0 ? 'admin' : 'user' }));
       await create(players, { count: 4, target: 11, reference: true });
       await action(players, 'show_ready'); await action(players, 'show_ready');
       await action(players, 'inspection_ack'); await action(players, 'inspection_ack');
@@ -167,7 +167,7 @@ for (const language of ['de', 'en']) {
       viewport: { width: 393, height: 852 }, serviceWorkers: 'block' }) };
     const players = [];
     try {
-      for (let seat = 0; seat < 2; seat++) players.push(await player(mobile, baseURL, language));
+      for (let seat = 0; seat < 2; seat++) players.push(await player(mobile, baseURL, language, { role: seat === 0 ? 'admin' : 'user' }));
       const [host] = players, { page } = host;
       await voiceAvailable(page);
       await create(players, { count: 2, target: 11, determination: 'normal', reference: true });
@@ -247,7 +247,7 @@ for (const language of ['de', 'en']) {
     const players = [], viewports = [{ width: 568, height: 320 }, { width: 720, height: 360 }];
     try {
       for (let seat = 0; seat < 4; seat++) {
-        const peer = await player(wrapped, baseURL, language);
+        const peer = await player(wrapped, baseURL, language, { role: seat === 0 ? 'admin' : 'user' });
         await voiceAvailable(peer.page);
         players.push(peer);
       }

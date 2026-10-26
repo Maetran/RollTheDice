@@ -106,6 +106,40 @@ merge; acknowledging it does not acknowledge game results or achievements.
 The Watten lobby explains players, variants and the aim of the game after sign-in
 as well; guests receive the same guide in German or English without JavaScript.
 
+## Spiele und Funktionen verwalten / game and feature administration
+
+**Deutsch:** Unter **Administration → Spiele & Funktionen** verwalten Owner die
+Freigabe vorhandener Funktionen: **Deaktiviert**, **Intern** oder
+**Veröffentlicht**. Admins dürfen die Konfiguration lesen. Interne Tischoptionen
+können nur mitspielende Owner oder Admins auswählen; alle Mitspieler können die
+so aktivierten Regeln anschliessend nutzen. Vor Spielstart und Rematch werden
+Freigabe und Teilnahme erneut geprüft. Gespeicherte Favoriten umgehen diese
+Prüfung nicht. Laufende Partien behalten ihre Regeln bis zum Ende, auch nach
+einem späteren Weggang des Admins. Owner können veröffentlichte Funktionen
+optional als Beta kennzeichnen und die Beta-Kennzeichnung eines ganzen Spiels
+unabhängig ein- oder ausschalten. Das ändert keinen Spielzugang und ersetzt
+keine bestehenden Rollout-Grenzen. Änderungen werden mit Akteur, Zeitpunkt,
+vorherigem und neuem Zustand dauerhaft protokolliert.
+
+Schöneres, Schlagwechsel, Kritische, Rechter-Anzeige, Stichverlauf und offenes
+Partnerblatt beginnen in Watten im internen Testbetrieb. Neue Partien verwenden
+Schlagwechsel nur, wenn es ausdrücklich als Tischoption eingeschaltet ist.
+
+**English:** Under **Administration → Games & features**, owners manage
+implemented features as **Disabled**, **Internal** or **Published**. Admins can
+read the configuration. Only owners or admins taking part may select internal
+table options; every player at that table can then use the enabled rules.
+Availability and participation are checked again before game start and rematch.
+Saved favorites do not bypass these checks. Games in progress keep their rules
+until the end, even if the admin later leaves. Owners can optionally label
+published features as beta and independently toggle the beta label for an entire
+game. Labels do not grant access or replace existing rollout boundaries. Changes
+are durably logged with actor, time, previous and new settings.
+
+Watten's Schöneres, strike swap, critical cards, Rechter indicator, trick history
+and open partner hand initially use internal testing. New games allow strike
+swap only when it is explicitly selected as a table option.
+
 ## Hinweise vor dem Rollout / advance rollout notices
 
 **Deutsch:** Eine Meldung oben in der geöffneten App kündigt einen bevorstehenden

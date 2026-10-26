@@ -9,7 +9,8 @@ from sqlalchemy import delete, event, func, select
 from app import watten_favorite_pages
 from app.database import get_engine, session_scope
 from app.game_state import games
-from app.models import ActiveGame, Session, WattenAchievementGrant, WattenFavorite, WattenMatchCredit
+from app.models import ActiveGame, FeatureFlag, Session, WattenAchievementGrant, WattenFavorite, WattenMatchCredit
+from app.security import utcnow
 from app.watten_recipe import WattenRecipe, recipe_to_json, recipe_to_payload
 from tests import test_watten_runtime as native
 
@@ -78,6 +79,10 @@ def test_get_is_read_only_and_does_not_create_default_favorites(server):
 
 def test_protected_favorite_needs_a_fresh_password_and_preserves_cpu_wishes_without_starting(server):
     own = native.account("FavoriteProtectedCreation")
+    # This journey verifies fresh table passwords for a released ruleset;
+    # feature admission itself has dedicated internal/off/public tests.
+    with session_scope() as db:
+        db.add(FeatureFlag(key="watten.critical", status="public", beta=False, version=1, updated_at=utcnow()))
     assert server.put("/api/watten/favorite", headers=headers(own),
                       json={"recipe": recipe_to_payload(RECIPE)}).status_code == 200
     favorite = server.get("/api/watten/favorite", headers=headers(own)).json()["recipe"]

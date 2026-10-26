@@ -6,25 +6,25 @@
     "hausdepp",
     "watten"
   ],
-  "summary_de": "Gleich geordnete Kontobereiche für alle Spiele und verlässliche Neuigkeiten in Hausdepp und Watten.",
-  "summary_en": "Consistent account sections across all games and reliable release notes in Hausdepp and Watten.",
+  "summary_de": "Spieloptionen gezielt testen und veröffentlichen; Beta-Abzeichen kennzeichnen Funktionen und Spiele.",
+  "summary_en": "Test and publish game options selectively; beta badges identify features and games.",
   "player_notes": {
     "de": {
-      "title": "4.7.0: Dein Konto, klar geordnet",
+      "title": "4.8.0: Spieloptionen gezielt testen",
       "changes": [
-        "Statistik, Erfolge und Einstellungen findest du in allen vier Spielen in derselben Reihenfolge.",
-        "Profil, Spielbedienung, Mitspieler und Hilfe sind übersichtlich gruppiert.",
-        "Hausdepp und Watten zeigen Neuigkeiten; die Versionshistorie bleibt in den Einstellungen erreichbar.",
-        "Nach einer durch einen Owner bestätigten Kontenzusammenführung siehst du den übernommenen Fortschritt in einer eigenen Mitteilung."
+        "Einige Watten-Zusatzoptionen werden zunächst gemeinsam mit mitspielenden Ownern und Admins getestet.",
+        "Alle Mitspieler können die am Tisch aktivierten Testfunktionen nutzen. Laufende Partien behalten ihre Regeln.",
+        "Veröffentlichte Funktionen und ganze Spiele können ein Beta-Abzeichen tragen.",
+        "Owner verwalten Freigaben im neu geordneten Adminbereich; Änderungen bleiben nachvollziehbar."
       ]
     },
     "en": {
-      "title": "4.7.0: Your account, clearly organized",
+      "title": "4.8.0: Test game options selectively",
       "changes": [
-        "Find Statistics, Achievements and Settings in the same order across all four games.",
-        "Profile, game controls, players and help are clearly grouped.",
-        "Hausdepp and Watten show release notes; version history remains available in Settings.",
-        "After an owner confirms an account merge, a separate notice shows your combined progress."
+        "Some additional Watten options are initially tested with owners and admins taking part.",
+        "Everyone at the table can use its enabled test features. Games in progress keep their rules.",
+        "Published features and entire games can carry a beta badge.",
+        "Owners manage availability in the reorganized admin area, with a history of changes."
       ]
     }
   }
