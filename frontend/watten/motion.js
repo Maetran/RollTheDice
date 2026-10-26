@@ -1,5 +1,6 @@
 // Presentation only: accepted state and controls update immediately. Ghosts copy
 // only currently permitted DOM faces/backs; no hand, stock or call is inferred.
+import { captureCardScorch, copyCardScorch } from "../hausdepp/card-scorch.js";
 const FLIGHT = 240, HOLD = 3000, COLLECT = 360, MAX_GHOSTS = 24;
 const TRICK_TIME = FLIGHT + HOLD + COLLECT, MAX_PRESENTATION = TRICK_TIME * 2;
 const easing = "cubic-bezier(.2,.7,.2,1)";
@@ -45,6 +46,7 @@ export function motionTransition(previous, engine, live) {
 export function createMotion({ win = window, doc = document } = {}) {
   const reduced = win.matchMedia?.("(prefers-reduced-motion: reduce)");
   const running = new Set(), ghosts = new Set(), arrivals = new Map(), flips = new Map(), hidden = new Map(), settled = new Map();
+  const paper = new WeakMap();
   let epoch = 0, destroyed = false;
   let collectBatchStart = null;
   let width = win.innerWidth, height = win.innerHeight;
@@ -127,7 +129,10 @@ export function createMotion({ win = window, doc = document } = {}) {
     const rects = new Map(), sources = new Map();
     for (const node of nodes) {
       const id = key(node);
-      if (id) { rects.set(id, node.getBoundingClientRect()); sources.set(id, node); }
+      if (id) {
+        rects.set(id, node.getBoundingClientRect()); sources.set(id, node);
+        paper.set(node, captureCardScorch(node));
+      }
     }
     return { epoch, rects, sources };
   }
@@ -187,6 +192,7 @@ export function createMotion({ win = window, doc = document } = {}) {
       width: `${pose.width}px`, height: `${pose.height}px`, minWidth: "0", margin: "0", transform: pose.transform, transformOrigin: "center", translate: "none",
       rotate: "none", scale: "none", visibility: "visible", opacity: "1", animation: "none", transition: "none", pointerEvents: "none" });
     parent.append(clone);
+    copyCardScorch(clone, { source, appearance: source.isConnected ? null : paper.get(source) });
     return clone;
   }
 

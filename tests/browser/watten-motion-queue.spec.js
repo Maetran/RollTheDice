@@ -1,15 +1,16 @@
 const { test, expect } = require('@playwright/test');
-const { readFile } = require('node:fs/promises');
+const { build } = require('esbuild');
 const path = require('node:path');
 
 test('a queued collection measures its resting window after the actual WAAPI delay', async ({ page }) => {
-  const source = await readFile(path.join(__dirname, '../../frontend/watten/motion.js'), 'utf8');
+  const bundle = await build({ entryPoints: [path.join(__dirname, '../../frontend/watten/motion.js')], bundle: true,
+    write: false, format: 'esm', platform: 'browser', target: 'es2020', logLevel: 'silent' });
   await page.setContent(`<style>
     .wt-trick-card, .seat { position:absolute; width:64px; height:101px; }
     .wt-card-owner { position:absolute; top:100%; left:0; width:38px; height:12px; }
   </style>`);
   const timing = await page.evaluate(async source => {
-    const { createMotion } = await import(`data:text/javascript;base64,${btoa(source)}`);
+    const { createMotion } = await import(`data:text/javascript;base64,${btoa(unescape(encodeURIComponent(source)))}`);
     let clock = 0;
     const win = { innerWidth, innerHeight, performance: { now: () => clock },
       getComputedStyle: window.getComputedStyle.bind(window), matchMedia: window.matchMedia.bind(window),
@@ -55,7 +56,7 @@ test('a queued collection measures its resting window after the actual WAAPI del
     const arrival = sample(delay + 100), resting = sample(delay + 500);
     motion.destroy();
     return { delay, arrival, resting };
-  }, source);
+  }, bundle.outputFiles[0].text);
   expect(timing.delay).toBe(1000);
   expect(timing.arrival.visible).toBe('1');
   expect(timing.arrival.cardProgress).toBeGreaterThan(0);

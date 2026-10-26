@@ -1,6 +1,7 @@
 // Watten reuses the Hausdepp artwork (docs/HAUSDEPP_ASSETS.md) for its own
 // 33-card deck: 7 to ace in four suits plus the Weli, the printed bells six.
 import { cardArt, prepareCardAssets } from "../hausdepp/cards.js";
+import { cardScorchStyle } from "../hausdepp/card-scorch.js";
 import { WATTEN_MESSAGES } from "../i18n/catalog.js";
 import { escapeHtml as esc } from "../shared/auth.js";
 
@@ -49,7 +50,7 @@ export function sortHand(hand) {
 
 export function cardFace(card, { className = "" } = {}) {
   if (!isCard(card)) return cardBack({ className });
-  return `<span class="wt-card ${className}" data-card="${esc(card)}" role="img" aria-label="${esc(cardName(card))}">${cardArt(card)}</span>`;
+  return `<span class="wt-card ${className}" style="${cardScorchStyle(card)}" data-card="${esc(card)}" role="img" aria-label="${esc(cardName(card))}">${cardArt(card)}</span>`;
 }
 
 export function cardBack({ className = "", label = t("card.back") } = {}) {

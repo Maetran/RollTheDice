@@ -59,7 +59,7 @@ export function findDecorPosition(geometry, occupied = [], side = SIDE) {
 }
 
 /** Local presentation only. The caller supplies a public phase and DOM, no game view. */
-export function createDecor({ container, root, getExpectedAccountId, isCurrent, escapeHtml: esc,
+export function createDecor({ container, root, gameId = null, getExpectedAccountId, isCurrent, escapeHtml: esc,
   onSurprise = () => false,
   initialKinds = null,
   language = () => window.ZDWA_I18N?.getLanguage?.() === "en" ? "en" : "de",
@@ -69,7 +69,7 @@ export function createDecor({ container, root, getExpectedAccountId, isCurrent, 
   const reduced = win.matchMedia("(prefers-reduced-motion: reduce)");
   let destroyed = false, phase = "preview", selected = null, serial = 0, drag = null, ignoreClick = null;
   let geometry = { regions: [], protectedRects: [] }, notice = "", hidden = false, autoPlaced = false, propSide = SIDE;
-  let surprise = null, rareNode = null, surprisePending = false, surpriseCleanup = null, lastSurprise = null;
+  let surprise = null, rareNode = null, surprisePending = false, surpriseCleanup = null, lastSurprise = null, currentDealId = null;
   const current = () => !destroyed && Number.isSafeInteger(accountId) && accountId > 0
     && isCurrent() && getExpectedAccountId() === accountId;
   const t = (key, values = {}) => WATTEN_DECOR_MESSAGES[language() === "en" ? "en" : "de"][key]
@@ -313,22 +313,27 @@ export function createDecor({ container, root, getExpectedAccountId, isCurrent, 
     });
   }
   function receive(data) {
-    if (surprisePending && (typeof data?.error === "string" || typeof data?.error_code === "string")) {
+    if (surprisePending && data?.action === "watten_table_surprise" && (typeof data?.error === "string" || typeof data?.error_code === "string")) {
       surprisePending = false; layoutRare();
     }
     const event = data?.watten_table_surprise;
     if (!event || typeof event.id !== "string" || !RARE_EFFECTS.has(event.effect)) return false;
-    if (!current() || lastSurprise === event.id || !ACTIVE_PHASES.has(phase)) return true;
+    if ((gameId && event.game_id !== gameId) || (currentDealId && event.deal_id !== currentDealId)) return true;
+    if (!current() || lastSurprise === event.id || !["play", "bid_response"].includes(phase)) return true;
     lastSurprise = event.id; surprisePending = false; rareNode?.remove(); rareNode = null; surprise = null;
     surpriseCleanup?.();
     const table = root.querySelector("[data-wt-table]");
-    if (table && !reduced.matches) surpriseCleanup = playTableSurprise(table, event.effect, { seed: event.id, activePhase: "play" });
+    if (table) surpriseCleanup = playTableSurprise(table, event.effect, { seed: event.id, activePhase: ["play", "bid_response"] });
     notice = t("surpriseSeen"); controls();
     return true;
   }
-  function update({ publicPhase, surpriseOffer = null }) {
+  function update({ publicPhase, surpriseOffer = null, dealId = null }) {
     if (!current()) { destroy(); return; }
     if (!PHASES.has(publicPhase)) { phase = "offline"; suspend(); return; }
+    if ((currentDealId && dealId && currentDealId !== dealId) || !["play", "bid_response"].includes(publicPhase)) {
+      surpriseCleanup?.(); surpriseCleanup = null;
+    }
+    currentDealId = dealId;
     if (phase !== publicPhase) stopEffects();
     phase = publicPhase; updateRare(surpriseOffer); repainted();
     if (!autoPlaced && ACTIVE_PHASES.has(phase) && geometry.regions.some(region => region.name === "table")) {

@@ -2553,5 +2553,12 @@
     "date": "2026-10-26",
     "bump": "minor",
     "summary": "Einheitliche Kontobereiche und geprüfte Kontenzusammenführung. / Consistent account areas and verified account consolidation."
+  },
+  {
+    "version": "4.7.1",
+    "revision": "a9add7e8d962f86a49cbf52dd55353fed846e4f3",
+    "date": "2026-10-26",
+    "bump": "patch",
+    "summary": "Hochwertige seltene Tischeffekte und durchgängige individuelle Brandspuren. / Premium rare table effects and continuous individual singed card patterns."
   }
 ]

@@ -2,7 +2,7 @@
   "version": "4.8.0",
   "bump": "minor",
   "date": "2026-10-26",
-  "previous_revision": "4af6e15ca3b53b95caa123652ef39ed306ee5c66",
+  "previous_revision": "a9add7e8d962f86a49cbf52dd55353fed846e4f3",
   "summary": {
     "de": "Spiele und Funktionen mit internem Testbetrieb und steuerbaren Beta-Kennzeichnungen verwalten.",
     "en": "Manage games and features with internal testing and configurable beta labels."
