@@ -381,6 +381,8 @@ def test_normal_rematch_host_can_start_after_reserved_enabling_admin_joins(serve
 
 
 def test_running_beta_presentation_is_frozen_private_checkpoint_metadata_with_zero_projection_sql(server):
+    from app.watten_surprises import table_effects_projection
+
     host, guest = account("beta-host"), account("beta-guest")
     feature = "watten.schoeneres"
     _policy(feature, "public")
@@ -399,6 +401,9 @@ def test_running_beta_presentation_is_frozen_private_checkpoint_metadata_with_ze
     assert raw["_watten"]["feature_presentation"] == [[feature, True]]
     restored = restore_watten_json(json.dumps(raw), refresh_titles=False)
     assert restored["_watten"].feature_presentation == frozen
+    # Cosmetic appearance hydrates once after restore. Its separate cold/cache
+    # contract is covered by test_watten_table_appearance; measure hot Beta views.
+    assert table_effects_projection(restored) == {"scorched_cards": False}
     statements = []
 
     def record(_connection, _cursor, statement, _parameters, _context, _many):

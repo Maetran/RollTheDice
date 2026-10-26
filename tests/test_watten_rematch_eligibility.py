@@ -115,6 +115,9 @@ def test_display_check_is_readonly_bounded_and_absent_from_live_nonhost_and_publ
     live = NativeMatch(2, target=3, game_id="ongoing-no-rematch-query")
     live.ready()
     waiting = NativeMatch(2, start=False, game_id="waiting-no-public-feature-query")
+    # Each independently loaded table has its own one-time cosmetic hydration.
+    for game in (live.game, waiting.game):
+        assert table_effects_projection(game) == {"scorched_cards": False}
     statements.clear()
     event.listen(get_engine(), "before_cursor_execute", record)
     try:
