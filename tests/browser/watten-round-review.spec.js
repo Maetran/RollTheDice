@@ -16,6 +16,7 @@ async function expectOwnReviewHand(item) {
   const cards = item.page.locator('[data-wt-hand] button[data-card]');
   await expect(item.page.locator('[data-wt-table]')).toHaveAttribute('data-round-stage', 'review');
   await expect(item.page.locator('[data-watten-round-call]')).toBeVisible();
+  if (item.traffic.snapshot.engine.phase === 'deal_complete') await expect(item.page.locator('.wt-result-line')).toBeVisible();
   await expect(cards).toHaveCount(expected.length);
   expect(await cards.evaluateAll(nodes => nodes.map(node => node.dataset.card).sort())).toEqual(expected);
   await expect(item.page.locator('[data-wt-hand] button:enabled')).toHaveCount(0);
@@ -33,7 +34,8 @@ async function expectOwnReviewHand(item) {
       && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 2;
     // Visibility alone accepts an overflowing section whose lower text and
     // Rechter caption are clipped by the action panel. Check its whole content.
-    for (const node of [call, ...call.querySelectorAll('dt, dd, .wt-card, figcaption')]) {
+    for (const node of [call, ...call.querySelectorAll('dt, dd, .wt-card, figcaption'),
+      ...document.querySelectorAll('.wt-deal-result > .wt-result-line')]) {
       const box = node.getBoundingClientRect(), label = node.className || node.tagName;
       if (box.left < -1 || box.right > innerWidth + 1 || box.top < -1 || box.bottom > innerHeight + 1) {
         errors.push({ call: label, issue: 'outside viewport', box: box.toJSON() });
