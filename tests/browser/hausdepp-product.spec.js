@@ -52,6 +52,7 @@ function accountFixture(language) {
   return {
     schema_version: 1, game_type: 'hausdepp',
     statistics: { rounds_played: 37, hausdepp_rounds: 12, finished_rounds: 25, last_finished_at: '2026-10-16T12:00:00+00:00' },
+    favorite_opponents: [{ name: 'Rival <Test>', wins: 8, losses: 3, draws: 0, games: 11 }],
     history: { rounds: [makeRound(16, 'finished'), makeRound(15, 'hausdepp')], next_cursor: 'labelled-next-page' },
     scoring: { available: false }, achievements: { available: false, direction: 'clever_to_hausdepp' },
   };
@@ -90,6 +91,15 @@ for (const language of ['de', 'en']) {
     });
     await page.goto('/hausdepp/konto');
     await expect(page.locator('#hausdeppAccountStats')).toContainText('37');
+    const opponents = page.locator('.hd-opponents');
+    await expect(opponents).toContainText(language === 'de' ? 'Deine Lieblingsgegner' : 'Your favorite opponents');
+    await expect(opponents).toContainText('Rival <Test>');
+    await expect(opponents.locator('Test')).toHaveCount(0);
+    await expect(opponents.locator('dd')).toHaveText(['8', '3', '0']);
+    await expect(opponents).toContainText(language === 'de' ? 'Niederlagen' : 'Losses');
+    await page.setViewportSize({ width: 360, height: 780 });
+    expect(await opponents.evaluate(node => node.scrollWidth <= node.clientWidth)).toBe(true);
+    await expect(opponents.locator('dd')).toHaveText(['8', '3', '0']);
     await expect(page.locator('#hausdeppHistory')).toContainText('<Tisch 16>');
     await expect(page.locator('#hausdeppHistory script, #hausdeppHistory Tisch')).toHaveCount(0);
     await expect(page.locator('#hausdeppHistory a[href*="/spiel/"]')).toHaveCount(0);

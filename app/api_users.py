@@ -37,6 +37,7 @@ from .player_names import completed_player_identities
 from .product_hosts import is_zilch_host
 from .security import as_utc, normalize_username, utcnow
 from .trends import recent_points_trend
+from .zdwa_opponents import favorite_opponents
 from .zilch_achievements import sync_zilch_cross_game_achievements_for_users
 
 router = APIRouter(prefix="/api", tags=["players"])
@@ -411,7 +412,8 @@ def own_statistics(request: Request):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="user_not_found")
         user.statistics_views += 1
         user.updated_at = utcnow()
-        return {"player": _public_profile(db, user), "private": {"role": user.role}}
+        return {"player": _public_profile(db, user),
+                "private": {"role": user.role, "favorite_opponents": favorite_opponents(db, user.id)}}
 
 
 def _history_summary(games: list[dict]) -> dict:

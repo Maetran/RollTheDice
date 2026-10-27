@@ -210,3 +210,61 @@ def test_one_account_request_reuses_validated_history_and_credits(hd, monkeypatc
         title = public_hausdepp_ranks(db, [hd.other.id])[hd.other.id]
     assert title["level"] == account["rank"]["level"]
     assert calls == {"_credits": 1}  # public title never scans full result snapshots
+
+
+def test_favorite_opponents_merge_origins_without_counting_the_owner_as_opponent(hd):
+    for index in range(11):
+        hd.store(hd.payload(f"opposed-{index}", cpu=False, loser="other"))
+    assert len(build_hausdepp_account_for_user(hd.user.id)["favorite_opponents"]) == 1
+    with session_scope() as db:
+        merge(db, hd.user.id, hd.other.id)
+    assert build_hausdepp_account_for_user(hd.other.id)["favorite_opponents"] == []
+
+
+def test_favorite_opponent_merges_historical_accounts_into_the_current_name(hd):
+    from app.auth import create_user
+    from app.game_history import persist_completed_game_result
+
+    target = create_user("MergedOpponent", "test-password-123", must_change_password=False)
+    for index in range(11):
+        payload = hd.payload(f"opponent-origin-{index}", cpu=False, loser="other")
+        opponent = hd.other if index < 6 else target
+        payload["participants"][1]["name"] = opponent.username
+        assert persist_completed_game_result(
+            game_id=payload["game_id"], game_name=payload["name"], game_type="hausdepp", mode="2",
+            hardcore=False, finished_at=hd.at, snapshot=payload,
+            participants=[{"player_key": "self", "display_name": hd.user.username, "user_id": hd.user.id},
+                          {"player_key": "other", "display_name": opponent.username, "user_id": opponent.id}],
+        ).succeeded
+    assert build_hausdepp_account_for_user(hd.user.id)["favorite_opponents"] == []
+    with session_scope() as db:
+        merge(db, hd.other.id, target.id)
+    assert build_hausdepp_account_for_user(hd.user.id)["favorite_opponents"] == [
+        {"name": target.username, "wins": 11, "losses": 0, "draws": 0, "games": 11}]
+
+
+def test_favorite_opponents_exclude_ambiguous_merged_seats_from_both_sides(hd):
+    from app.auth import create_user
+    from app.game_history import persist_completed_game_result
+
+    third = create_user("OtherOrigin", "test-password-123", must_change_password=False)
+    for index in range(11):
+        hd.store(hd.payload(f"clear-duel-{index}", cpu=False, loser="other"))
+    # One merged account held both a winning and losing seat. Whichever
+    # original seat lost, neither account has a clear direct result.
+    for index, loser in enumerate(("other", "cpu-0")):
+        payload = hd.payload(f"mixed-seats-{index}", count=3, cpu=False, loser=loser)
+        payload["participants"][2].update(name=third.username, is_cpu=False)
+        assert persist_completed_game_result(
+            game_id=payload["game_id"], game_name=payload["name"], game_type="hausdepp", mode="3",
+            hardcore=False, finished_at=hd.at, snapshot=payload,
+            participants=[{"player_key": "self", "display_name": hd.user.username, "user_id": hd.user.id},
+                          {"player_key": "other", "display_name": hd.other.username, "user_id": hd.other.id},
+                          {"player_key": "cpu-0", "display_name": third.username, "user_id": third.id}],
+        ).succeeded
+    with session_scope() as db:
+        merge(db, third.id, hd.other.id)
+    assert build_hausdepp_account_for_user(hd.user.id)["favorite_opponents"] == [
+        {"name": hd.other.username, "wins": 11, "losses": 0, "draws": 0, "games": 11}]
+    assert build_hausdepp_account_for_user(hd.other.id)["favorite_opponents"] == [
+        {"name": hd.user.username, "wins": 0, "losses": 11, "draws": 0, "games": 11}]

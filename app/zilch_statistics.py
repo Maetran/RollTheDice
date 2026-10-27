@@ -23,6 +23,7 @@ from collections import defaultdict
 from contextlib import closing
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
+from itertools import groupby
 from typing import Any, Final, Iterable, Iterator
 
 from sqlalchemy import and_, func, or_, select
@@ -238,7 +239,9 @@ def _human_player_results(rows: Iterable[CompletedGame]) -> list[_PlayerResult]:
     return output
 
 
-def _iter_player_results_in_session(db, *, user_id: int | None = None) -> Iterator[_PlayerResult]:
+def _iter_player_results_in_session(
+    db, *, user_id: int | None = None, include_opponents: bool = False,
+) -> Iterator[_PlayerResult]:
     """Stream validated records using the caller's session; never close or commit it."""
     ids = origin_ids_for_progress(db, user_id) if user_id is not None else None
     last_finished_at: datetime | None = None
@@ -284,7 +287,7 @@ def _iter_player_results_in_session(db, *, user_id: int | None = None) -> Iterat
         grouped = {}
         for record in records:
             owner_id = owners[record.user_id]
-            if user_id is not None and owner_id != user_id:
+            if user_id is not None and owner_id != user_id and not include_opponents:
                 continue
             user = users.get(owner_id)
             projected = replace(record, user_id=owner_id, display_name=str(user.username)[:64] if user else record.display_name,
@@ -311,6 +314,41 @@ def _iter_player_results(*, user_id: int | None = None) -> Iterator[_PlayerResul
 def _load_player_results(*, user_id: int | None = None) -> list[_PlayerResult]:
     with closing(_iter_player_results(user_id=user_id)) as records:
         return list(records)
+
+
+def _favorite_opponents(user_id: int) -> list[dict[str, Any]]:
+    """Project only account-linked, completed two-human matches for this account.
+
+    Merge ownership and seat selection use the same policy as the player's
+    existing statistics. Deleted/inactive accounts, self-pairs and ambiguous
+    or unlinked seats cannot produce a named opponent.
+    """
+    if not database_schema_ready():
+        return []
+    counts: dict[int, dict[str, Any]] = {}
+    with session_scope() as db:
+        results = _iter_player_results_in_session(db, user_id=user_id, include_opponents=True)
+        for _game_id, group in groupby(results, key=lambda record: record.game_id):
+            records = list(group)
+            if len(records) != 2 or not _is_human_match(records[0]):
+                continue
+            own = next((record for record in records if record.user_id == user_id), None)
+            opponent = next((record for record in records if record.user_id != user_id), None)
+            if own is None or opponent is None or not opponent.user_is_active:
+                continue
+            outcome = _match_outcome(own)
+            if outcome not in {"win", "loss", "tie"}:
+                continue
+            item = counts.setdefault(opponent.user_id, {
+                "user_id": opponent.user_id, "username": opponent.display_name,
+                "games": 0, "wins": 0, "losses": 0, "ties": 0,
+            })
+            item["games"] += 1
+            item[{"win": "wins", "loss": "losses", "tie": "ties"}[outcome]] += 1
+    return sorted(
+        (item for item in counts.values() if item["games"] > 10),
+        key=lambda item: (-item["games"], item["username"].casefold(), item["user_id"]),
+    )
 
 
 def zilch_cpu_completed_experience(user_id: int | None) -> int:
@@ -691,6 +729,7 @@ def get_zilch_personal_statistics(user_id: int) -> dict[str, Any]:
         "version": ZILCH_STATISTICS_RESPONSE_VERSION,
         "overview": _overview_projection(records),
         "multiplayer": _common_bucket_projection(multiplayer),
+        "favorite_opponents": _favorite_opponents(clean_user_id),
         "cpu": {
             "overall": _common_bucket_projection(cpu_overall),
             "by_strategy": {

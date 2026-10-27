@@ -639,6 +639,7 @@ test("private Zilch statistics and leaderboards render only server projections a
     contentType: "application/json",
     body: JSON.stringify({
       version: 1,
+      favorite_opponents: [{ user_id: 20, username: "Alex & Co", games: 11, wins: 7, losses: 3, ties: 1 }],
       overview: {
         completed_records: 7,
         games_by_mode: { multiplayer: 2, cpu: 3, solo: 2 },
@@ -767,6 +768,13 @@ test("private Zilch statistics and leaderboards render only server projections a
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
   await expect(page.getByRole("tab", { name: "Statistik" })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByText("Partien nach Spielart")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Deine Lieblingsgegner" })).toBeVisible();
+  await expect(page.locator(".zilch-opponent-row")).toContainText("Alex & Co");
+  await expect(page.locator(".zilch-opponent-row strong")).toHaveAttribute("translate", "no");
+  await expect(page.locator(".zilch-opponent-row")).toContainText("Siege7");
+  await page.setViewportSize({ width: 320, height: 844 });
+  expect(await page.locator(".zilch-favorite-opponents").evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
+  await page.setViewportSize({ width: 1280, height: 720 });
   await expect(page.getByText("Gesicherte Gesamtpunkte")).toHaveCount(0);
 
   const accountOverviewCard = page.locator("#zilchAccountPanel-statistics .zilch-statistics-card--overview");

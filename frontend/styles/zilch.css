@@ -1664,6 +1664,14 @@ html[data-game="zilch"] :where(.zilch-stats-tab, .zilch-stat-subtab, .zilch-lead
 }
 
 html[data-game="zilch"] .zilch-statistics-panel { min-width: 0; }
+html[data-game="zilch"] .zilch-favorite-opponents { margin: .5rem 0; }
+html[data-game="zilch"] .zilch-favorite-opponents > p { color: var(--zilch-muted); line-height: 1.45; }
+html[data-game="zilch"] .zilch-favorite-opponents ul { list-style: none; padding: 0; margin: 1rem 0 0; }
+html[data-game="zilch"] .zilch-opponent-row { padding: .75rem 0; border-top: 1px solid var(--zilch-paper-edge); overflow-wrap: anywhere; }
+html[data-game="zilch"] .zilch-opponent-row dl { display: flex; flex-wrap: wrap; gap: .5rem 1.2rem; margin: .35rem 0 0; }
+html[data-game="zilch"] .zilch-opponent-row dl div { display: flex; gap: .3rem; }
+html[data-game="zilch"] .zilch-opponent-row dt { color: var(--zilch-muted); }
+html[data-game="zilch"] .zilch-opponent-row dd { margin: 0; font-variant-numeric: tabular-nums; font-weight: 700; }
 html[data-game="zilch"] .zilch-statistics-card { max-width: none; }
 html[data-game="zilch"] .zilch-statistics-card--compact { max-width: 34rem; }
 html[data-game="zilch"] .zilch-account-panel :is(.zilch-statistics-card--overview, .zilch-statistics-card--by-mode) {

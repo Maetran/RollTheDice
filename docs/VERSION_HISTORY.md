@@ -1,6 +1,6 @@
 # Versionen / Versions
 
-Aktuelle gemeinsame Produktversion / Current shared product version: **4.10.1**.
+Aktuelle gemeinsame Produktversion / Current shared product version: **4.11.0**.
 
 Alle RollTheDice-Spiele werden gemeinsam versioniert. Major steht für einen großen
 Produktmeilenstein, Minor für neue Funktionen und Patch für Fehlerkorrekturen
@@ -30,6 +30,7 @@ Detailed player-facing descriptions are in the [changelog](../CHANGELOG.md).
 
 | Version | Datum / Date | Art / Type | Änderung / Change | Commit |
 | --- | --- | --- | --- | --- |
+| 4.10.1 | 2026-10-27 | patch | Admin Center und Dashboard sind für berechtigte Konten direkt über die gemeinsame Spielauswahl erreichbar. / Authorized accounts can open Admin Center and Dashboard directly from the shared game picker. | [3852ba2](https://github.com/Maetran/RollTheDice/commit/3852ba2f04bf2288cb454388b34d8b463e098040) |
 | 4.10.0 | 2026-10-27 | minor | Hausdepp erhält gleitende Kartenfächer und eine optionale, zunächst interne Viererregel. / Hausdepp gains smooth pile fanning and an optional quartet rule, initially available internally. | [e2b2133](https://github.com/Maetran/RollTheDice/commit/e2b2133179a122be9654b35e93fe5ac52f80f758) |
 | 4.9.0 | 2026-10-26 | minor | Watten zeigt dein übriges Blatt während der kurzen Rückschau mit dem Rechten. / Watten keeps your remaining hand visible during the short Rechter review. | [4abafc3](https://github.com/Maetran/RollTheDice/commit/4abafc3f5b38b7a082861d15445ef08eba1bbf6b) |
 | 4.8.1 | 2026-10-26 | patch | Zuverlässige Veröffentlichungsprüfung mit ein- und ausgeschalteter Watten-Beta-Kennzeichnung. / Reliable release checks with the Watten beta label enabled or disabled. | [d68e05a](https://github.com/Maetran/RollTheDice/commit/d68e05ad13dba5f80609c2c13fcf196eb32dede2) |

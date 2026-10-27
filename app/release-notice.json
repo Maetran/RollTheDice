@@ -6,25 +6,23 @@
     "hausdepp",
     "watten"
   ],
-  "summary_de": "Admin Center und Dashboard erreichst du mit passendem Zugang direkt über die Spielauswahl. Die alten Zusatzbuttons entfallen.",
-  "summary_en": "Open Admin Center and Dashboard from the game picker when you have access. The old duplicate buttons are removed.",
+  "summary_de": "Deine Lieblingsgegner zeigen je Spiel Siege, Niederlagen und Unentschieden aus eindeutig gewerteten Begegnungen.",
+  "summary_en": "Your favourite opponents show wins, losses and draws from clearly decided encounters in each game.",
   "player_notes": {
     "de": {
-      "title": "4.10.1: Verwaltung direkt erreichbar",
+      "title": "4.11.0: Deine Lieblingsgegner",
       "changes": [
-        "Die Spielauswahl hat für berechtigte Konten einen eigenen Bereich „Verwaltung“.",
-        "Admins und Owner finden dort das Admin Center. Das Dashboard erscheint unabhängig davon nur mit Dashboard-Zugriff.",
-        "Der bisherige Administrations-Button in der ZDWA-Lobby und die Dashboard-Kachel in der Admin-Übersicht entfallen.",
-        "Auch in installierten Apps bleiben die Verwaltungsziele und ihr Anmelderückweg innerhalb der App."
+        "Im Konto jedes Spiels siehst du deine Bilanz gegen Personen, mit denen du mindestens elf eindeutig gewertete Begegnungen hast.",
+        "Siege, Niederlagen und Unentschieden stehen getrennt; Teamkollegen und unklare Begegnungen zählen nicht.",
+        "Die Auswertung ist privat und berücksichtigt auch eindeutig belegte frühere Partien."
       ]
     },
     "en": {
-      "title": "4.10.1: Direct access to administration",
+      "title": "4.11.0: Your favourite opponents",
       "changes": [
-        "Authorized accounts have a separate “Administration” section in the game picker.",
-        "Admins and owners can open Admin Center there. Dashboard is shown independently only with dashboard access.",
-        "The previous administration button in the ZDWA lobby and the dashboard tile in the admin overview are removed.",
-        "Installed apps keep administration destinations and their sign-in return inside the app."
+        "Each game’s account shows your record against people with at least eleven encounters with a clear result.",
+        "Wins, losses and draws are shown separately; teammates and ambiguous encounters do not count.",
+        "The statistics are private and include clearly recorded past games."
       ]
     }
   }

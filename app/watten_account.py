@@ -161,6 +161,64 @@ def _record(match, user_id):
             "scores": public["scores"], "winners": public["winners"], "profile": public["profile"]}
 
 
+def _favorite_opponents(db, owner_id, seats):
+    """Private head-to-head results from validated, fixed-party matches only."""
+    from .account_progress import progress_owner_ids
+
+    candidates = []
+    for origin_id, match in seats:
+        evidence = match.evidence
+        if evidence.player_count not in (2, 4):
+            # In three-player Watten, partnerships rotate between deals.
+            continue
+        own = next((binding for binding in match.bindings if binding.user_id == origin_id), None)
+        if own is None:
+            continue
+        own_score = next(score for score in evidence.scores if own.player_id in score.members)
+        roster = {player.player_id: player for player in evidence.roster}
+        for binding in match.bindings:
+            if binding.user_id is None or roster[binding.player_id].is_cpu:
+                continue
+            other_score = next(score for score in evidence.scores if binding.player_id in score.members)
+            candidates.append((match.row.id, binding.user_id, own_score, other_score))
+
+    owners = progress_owner_ids(db, (item[1] for item in candidates))
+    active = {user.id: user.username for user in db.scalars(select(User).where(
+        User.id.in_(set(owners.values())), User.is_active.is_(True)))}
+    # Multiple historic accounts may now belong to one person. If they were
+    # both partners and opponents in one match, the encounter is ambiguous.
+    ambiguous_own_games = {game_id for game_id, original_id, own_score, other_score in candidates
+                           if owners[original_id] == owner_id and other_score.members != own_score.members}
+    encounters = {}
+    for game_id, original_id, own_score, other_score in candidates:
+        other_id = owners[original_id]
+        if game_id in ambiguous_own_games or other_id == owner_id or other_id not in active:
+            continue
+        key = (game_id, other_id)
+        outcomes = encounters.setdefault(key, set())
+        if other_score.members == own_score.members:
+            outcomes.add("partner")
+        elif own_score.points > other_score.points:
+            outcomes.add("wins")
+        elif own_score.points < other_score.points:
+            outcomes.add("losses")
+        else:
+            outcomes.add("draws")
+    totals = {}
+    for (_game_id, other_id), outcomes in encounters.items():
+        if len(outcomes) != 1 or "partner" in outcomes:
+            continue
+        outcome = next(iter(outcomes))
+        item = totals.setdefault(other_id, {"name": active[other_id], "wins": 0, "losses": 0, "draws": 0})
+        item[outcome] += 1
+    result = []
+    for item in totals.values():
+        item["matches"] = item["wins"] + item["losses"] + item["draws"]
+        if item["matches"] > 10:
+            result.append(item)
+    return sorted(result, key=lambda item: (-item["matches"], item["name"].casefold(), item["name"]))
+
+
 def _title(title):
     return {"level": title.level, "name": {"de": title.name.de, "en": title.name.en}, "threshold": title.xp}
 
@@ -312,7 +370,8 @@ def build_watten_account_in_session(db, user_id: int, *, before=None, limit=12) 
                                "last_finished_at": seats[0].match.evidence.finished_at.isoformat() if seats else None},
                 "history": {"matches": [_record(item.match, item.origin_id) for item in page],
                             "next_cursor": _cursor(page[-1].match.row) if len(eligible) > limit else None},
-                "progress": progress}
+                "progress": progress, "favorite_opponents": _favorite_opponents(
+                    db, user_id, [(item.origin_id, item.match) for item in seats])}
     eligible = [item for item in matches if boundary is None or (as_utc(item.row.finished_at), item.row.id) < boundary]
     selected = eligible[:limit]
     history = [_record(item, user_id) for item in selected]
@@ -324,4 +383,5 @@ def build_watten_account_in_session(db, user_id: int, *, before=None, limit=12) 
                            "uncredited_matches": sum(item.evidence.game_id not in credited_ids for item in matches),
                            "last_finished_at": matches[0].evidence.finished_at.isoformat() if matches else None},
             "history": {"matches": history, "next_cursor": _cursor(selected[-1].row) if len(eligible) > limit else None},
-            "progress": progress}
+            "progress": progress, "favorite_opponents": _favorite_opponents(
+                db, user_id, [(user_id, item) for item in matches])}

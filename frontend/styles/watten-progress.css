@@ -68,3 +68,9 @@ html[data-watten-progress-page="progress"] .wt-achievement-collection { margin-b
 @media (min-width: 1050px) {
   html[data-watten-progress-page="progress"] .wt-achievement-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
+
+html[data-watten-progress-page="progress"] .wt-favorite-opponents { margin-block: 1rem; overflow-wrap: anywhere; }
+html[data-watten-progress-page="progress"] .wt-favorite-opponents h2 { margin-top: 0; }
+html[data-watten-progress-page="progress"] .wt-favorite-list { list-style: none; padding: 0; margin: 0; }
+html[data-watten-progress-page="progress"] .wt-favorite-list li { display: grid; gap: .2rem; padding: .75rem 0; border-top: 1px solid #b8947070; }
+html[data-watten-progress-page="progress"] .wt-favorite-record { font-variant-numeric: tabular-nums; }
