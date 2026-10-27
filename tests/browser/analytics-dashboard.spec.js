@@ -443,8 +443,12 @@ test('mocked telemetry refreshes every 30 seconds and pauses while the document 
   await page.clock.install();
   const state = await mockedDashboard(page, 'en');
   expect(state.calls).toHaveLength(1);
+  await expect(page.locator('#dashboardData')).toHaveAttribute('aria-busy', 'false');
   await page.clock.fastForward(30001);
   await expect.poll(() => state.calls.length).toBe(2);
+  // A recorded request has not yet completed its response and fresh account
+  // check. Finish that refresh before advancing the hidden document's clock.
+  await expect(page.locator('#dashboardData')).toHaveAttribute('aria-busy', 'false');
   await page.evaluate(() => {
     window.dashboardTestHidden = true;
     Object.defineProperty(document, 'hidden', { configurable: true, get: () => window.dashboardTestHidden });
@@ -457,6 +461,7 @@ test('mocked telemetry refreshes every 30 seconds and pauses while the document 
     document.dispatchEvent(new Event('visibilitychange'));
   });
   await expect.poll(() => state.calls.length).toBe(3);
+  await expect(page.locator('#dashboardData')).toHaveAttribute('aria-busy', 'false');
 });
 
 test('restored dashboard rechecks access before revealing cached values and restarts only one refresh timer', async ({ page }) => {
