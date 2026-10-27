@@ -126,8 +126,13 @@ def _save_active_game_locked(game: dict, game_id: str, *, creating: bool) -> Non
                 if game_type_from_state(game) == "hausdepp":
                     from .hausdepp_features import validate_checkpoint_features
 
-                    previous_raw = db.scalar(select(ActiveGame.state_json).where(
-                        ActiveGame.game_id == game_id, ActiveGame.admission_revision == revision).with_for_update())
+                    # Read the old policy snapshot only after reserving the
+                    # exact row for writing. A deferred SQLite read cannot
+                    # safely upgrade after a competing writer changes it.
+                    previous_raw = db.execute(update(ActiveGame).where(
+                        ActiveGame.game_id == game_id, ActiveGame.admission_revision == revision,
+                    ).values(state_json=ActiveGame.state_json).returning(ActiveGame.state_json)
+                        .execution_options(synchronize_session=False)).scalar_one_or_none()
                     if previous_raw is None:
                         logger.warning("Refusing stale or retired Hausdepp checkpoint for game %s", game_id)
                         return

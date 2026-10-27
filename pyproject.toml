@@ -2,6 +2,8 @@
 testpaths = ["tests"]
 # Keep each file together and use up to six workers on development machines and CI.
 addopts = "-ra -n auto --maxprocesses=6 --dist=loadfile"
+# Print blocked worker stacks for diagnosis without stopping or weakening tests.
+faulthandler_timeout = 120
 
 [tool.coverage.run]
 branch = true

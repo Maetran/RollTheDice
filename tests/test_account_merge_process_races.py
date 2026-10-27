@@ -71,6 +71,15 @@ def _race_worker(kind, winner, directory, identity, fingerprint, signals, send):
                 row = db.scalar(select(ActiveGame).where(ActiveGame.game_id == ROOM_ID))
                 room = json.loads(row.state_json)
                 game_lifecycle.bind_room(room, ROOM_ID, row.admission_revision)
+            if room.get("_game_type") == "hausdepp":
+                # Exercise a real deferred transaction, independent of the
+                # sqlite3 legacy mode that may run SELECT outside BEGIN.
+                # A read-first contender would pin its old WAL snapshot and
+                # fail its write upgrade after the winning merge commits.
+                def explicit_begin(connection):
+                    connection.exec_driver_sql("BEGIN")
+
+                event.listen(engine, "begin", explicit_begin)
             original_memberships = game_lifecycle._add_memberships
             original_install = game_lifecycle.install_candidate
             installations = []
@@ -133,8 +142,8 @@ def _race_worker(kind, winner, directory, identity, fingerprint, signals, send):
         send.close()
 
 
-@pytest.fixture
-def race_store(tmp_path):
+@pytest.fixture(params=("zdwa", "hausdepp"))
+def race_store(tmp_path, request):
     from app import account_merge, main
     from app.auth import issue_session_for_user
     from app.database import configure_database, session_scope, upgrade_database
@@ -156,7 +165,22 @@ def race_store(tmp_path):
                     db.add(AccountOwnership(user_id=4, is_founder=True, created_at=now))
                     db.flush()
                     identities = {value: issue_session_for_user(db, db.get(User, value))[0] for value in (2, 3, 4)}
-                new_game(ROOM_ID, "Process race", 2)
+                if request.param == "hausdepp":
+                    from app.game_lifecycle import commit_room_binding
+                    from app.hausdepp_state import configure_hausdepp_game, join_hausdepp_player, new_hausdepp_game
+
+                    # A real prepared internal-rule room exercises the
+                    # checkpoint read needed for fresh Hausdepp validation.
+                    # Its seated staff host is not either merging account.
+                    room = new_hausdepp_game(ROOM_ID, "Process race", "3", register=False)
+                    configure_hausdepp_game(room, host_user_id=4, cpu_count=0, manual_start=True,
+                                            four_of_a_kind_as_ten=True)
+                    join_hausdepp_player(room, {"id": "staff-seat", "name": "Race4", "user_id": 4,
+                                               "resume_token": "staff-resume", "ws": None})
+                    commit_room_binding(room, [4])
+                    games[ROOM_ID] = room
+                else:
+                    new_game(ROOM_ID, "Process race", 2)
                 with patch.object(account_merge, "_game_hooks", return_value=(
                     ("zdwa", _empty_prepare, _empty_consolidate),
                 )):
@@ -164,7 +188,7 @@ def race_store(tmp_path):
                         fingerprint = account_merge.preview_merge_in_session(
                             db, actor_id=4, source_id=3, target_id=2,
                         )["fingerprint"]
-                yield str(tmp_path), identities, fingerprint
+                yield str(tmp_path), identities, fingerprint, request.param
     finally:
         configure_database(main.DATA_DIR)
 
@@ -184,10 +208,13 @@ def test_separate_process_admission_and_merge_serialize_both_orders(race_store, 
     from app.models import Session as LoginSession
     from app.security import PASSWORDLESS_HASH
 
-    directory, identities, fingerprint = race_store
+    directory, identities, fingerprint, game_type = race_store
     with session_scope() as db:
         before = db.scalar(select(ActiveGame).where(ActiveGame.game_id == ROOM_ID))
         original_room = before.state_json
+        original_players = [player["user_id"] for player in json.loads(original_room)["_players"]]
+        original_memberships = sorted((row.game_id, row.user_id, row.admission_revision)
+                                      for row in db.scalars(select(GameAccountMembership)))
         original_sessions = {row.id: (row.user_id, row.token_hash, row.csrf_token)
                              for row in db.scalars(select(LoginSession))}
     context = multiprocessing.get_context("spawn")
@@ -240,8 +267,8 @@ def test_separate_process_admission_and_merge_serialize_both_orders(race_store, 
 
     with session_scope() as db:
         room = db.scalar(select(ActiveGame).where(ActiveGame.game_id == ROOM_ID))
-        memberships = [(row.game_id, row.user_id, row.admission_revision)
-                       for row in db.scalars(select(GameAccountMembership))]
+        memberships = sorted((row.game_id, row.user_id, row.admission_revision)
+                             for row in db.scalars(select(GameAccountMembership)))
         mapping = db.get(AccountProgressOrigin, 3)
         operations = list(db.scalars(select(AccountMergeOperation)))
         sessions = {row.id: (row.user_id, row.token_hash, row.csrf_token)
@@ -250,21 +277,23 @@ def test_separate_process_admission_and_merge_serialize_both_orders(race_store, 
         assert sessions[identities[2].session_id] == original_sessions[identities[2].session_id]
         assert db.get(User, 2).is_active
         if winner == "admission":
-            assert results["admission"] == {"status": "admitted", "players": [3], "revision": 1, "installations": [1]}
+            assert results["admission"] == {"status": "admitted", "players": [*original_players, 3], "revision": 1, "installations": [1]}
             assert results["merge"] == {"status": "rejected", "code": "merge_account_at_table"}
             assert db.get(User, 3).is_active and mapping is None and not operations
             assert sessions == original_sessions
             assert room.admission_revision == 1
-            assert [seat["user_id"] for seat in json.loads(room.state_json)["_players"]] == [3]
-            assert memberships == [(ROOM_ID, 3, 1)]
+            assert [seat["user_id"] for seat in json.loads(room.state_json)["_players"]] == [*original_players, 3]
+            assert memberships == sorted([*original_memberships, (ROOM_ID, 3, 1)])
         else:
             assert results["merge"]["status"] == "merged"
             assert results["admission"] == {"status": "rejected", "code": "account_retired_or_inactive",
-                                            "players": [], "revision": 0, "installations": []}
+                                            "players": original_players, "revision": 0, "installations": []}
             assert not db.get(User, 3).is_active
             assert db.get(User, 3).password_hash == PASSWORDLESS_HASH
             assert mapping.owner_user_id == 2
             assert len(operations) == 1 and operations[0].id == results["merge"]["operation_id"]
             assert identities[3].session_id not in sessions
             assert room.state_json == original_room and room.admission_revision == 0
-            assert memberships == []
+            assert memberships == original_memberships
+        if game_type == "hausdepp":
+            assert json.loads(room.state_json)["_hausdepp_four_of_a_kind_as_ten"] is True

@@ -23,7 +23,7 @@ import weakref
 from contextlib import contextmanager, nullcontext
 from typing import Any, Callable, Iterable, Iterator
 
-from sqlalchemy import select, update
+from sqlalchemy import update
 from sqlalchemy.exc import SQLAlchemyError
 
 from .game_types import HAUSDEPP_GAME_TYPE
@@ -210,8 +210,15 @@ def commit_admission(game: dict, candidate: dict, user_ids: Iterable[int], *, cr
         with session_scope() as db:
             previous = None
             if revision is not None and candidate.get("_game_type") == HAUSDEPP_GAME_TYPE:
-                previous_raw = db.scalar(select(ActiveGame.state_json).where(
-                    ActiveGame.game_id == game_id, ActiveGame.admission_revision == revision).with_for_update())
+                # Reserve the fenced writer before reading its checkpoint.
+                # A deferred SQLite read transaction cannot safely upgrade
+                # after another writer changes its snapshot. RETURNING reads
+                # the old payload
+                # under the same reservation on SQLite and PostgreSQL.
+                previous_raw = db.execute(update(ActiveGame).where(
+                    ActiveGame.game_id == game_id, ActiveGame.admission_revision == revision,
+                ).values(state_json=ActiveGame.state_json).returning(ActiveGame.state_json)
+                    .execution_options(synchronize_session=False)).scalar_one_or_none()
                 if previous_raw is None:
                     raise AdmissionError("admission_room_changed")
                 previous = json.loads(previous_raw)
