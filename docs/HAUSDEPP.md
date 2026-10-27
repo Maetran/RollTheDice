@@ -549,7 +549,10 @@ ein taktischer Hinweis, keine zusätzliche Sonderregel.
 ### Sichtbare Hände und Kartenbewegungen
 
 Liegen oben auf dem offenen Paket zwei oder drei Karten desselben Rangs, fächern
-sie sich leicht nach links oben auf. So sieht man auf einen Blick, wie viele
+sie sich leicht nach links oben auf. Bereits liegende Karten gleiten dabei
+weich in ihre neue Lage, statt umzuspringen; ihre Kartenbilder und individuellen
+Brandspuren nach dem Drachen bleiben erhalten. Bei reduzierter Bewegung
+erscheint der fertige Fächer ohne Schieben. So sieht man auf einen Blick, wie viele
 Gleiche schon liegen (bei vier räumt das Paket ab). Am Rundenende zeigt das
 Ergebnisfenster alle Platzierungen in der Reihenfolge, in der die Spieler fertig
 wurden, den Hausdepp zuletzt, und für jedes Konto die in dieser Runde verdienten
@@ -575,10 +578,10 @@ reduzierter Bewegung bleiben die Karten samt Beschriftung kurz statisch sichtbar
 den Weg vom verdeckten Stapel zur Hand. Beim
 Aufnehmen wandert das offene Paket zur Hand. Misslingt Zocken, geht zuerst die
 gezockte Karte vom verdeckten zum offenen Stapel und danach das ganze Paket zur
-Hand. Handkarten bewegen sich beim Legen zur Mitte. Sobald ein Wurf, Nachwurf
-oder erfolgreiches Zocken bestätigt ist, zeigt das wachsende offene Paket sofort
-die aktuelle Kartenzahl und den Fächer gleicher Werte. Laufende Kartenflüge
-verzögern diese Anzeige nicht. Diese Darstellung sperrt
+Hand. Handkarten bewegen sich beim Legen zur Mitte. Beim tatsächlichen Landen
+eines bestätigten Wurfs, Nachwurfs oder erfolgreichen Zockens übernimmt das
+offene Paket die Karten und die aktuelle Kartenzahl. Bereits liegende gleiche
+Werte fächern sich dabei gleitend auf. Diese Darstellung sperrt
 keinen Zug, ändert kein Nachwurfrecht und wiederholt sich beim Wiederverbinden
 nicht. Reduzierte Bewegung bestätigt die Ankunft ohne räumlichen Flug.
 
@@ -1112,9 +1115,11 @@ suits remain private. Large hands use a denser fan without omitting any cards.
 Dealing and mandatory refills travel from the face-down stock to the hand.
 Picking up moves the open pile into the hand. A failed gamble first moves the
 new card from stock to pile, then the complete pile into the hand. Hand plays
-travel to the middle. Once a play, follow-up or successful gamble is accepted,
-the growing open pile immediately shows its current count and matching-rank fan.
-Active card flights never delay that display. Presentation never blocks turns, changes additional-card
+travel to the middle. When an accepted play, follow-up or successful gamble
+actually lands, the open pile takes over its cards and updates the count.
+Matching cards already on the pile slide smoothly into their new fan positions,
+keeping their artwork and individual dragon scorch marks. Reduced motion shows
+the settled fan without sliding. Presentation never blocks turns, changes additional-card
 rights or repeats missed actions after reconnecting. Reduced motion acknowledges
 arrival without spatial travel.
 

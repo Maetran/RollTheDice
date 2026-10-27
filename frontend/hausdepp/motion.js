@@ -186,7 +186,7 @@ export function prepareCardMotion(state, { gameId, playerId }) {
   else if (state.version >= previous.version) pileToken = pile.accept(state,
     state.version === previous.version + 1 && (["play", "afterthrow", "gamble", "pickup"].includes(state.last_event?.type)
       || (previous.phase === "peeking" && state.phase === "playing" && state.deal?.version === state.version)));
-  return { previous, before: captureGeometry(playerId), version: state.version, pileToken, resetPresentation };
+  return { previous, before: captureGeometry(playerId), version: state.version, pileToken, resetPresentation, quiet };
 }
 
 export function presentedPile(gameId, state) {
@@ -484,7 +484,9 @@ function moveCards(group, { gameId, playerId, before, after, reducedMotion, pile
       // assigning any unknown rank or suit to it.
       || (group.source.startsWith("hand:") ? source.cards?.at(-1 - index) : source.cards?.at(-1));
     const pileCard = group.target === "pile" && cardId ? target.cards?.find(card => card.card === cardId) : null;
-    const destinationCard = targetCard || pileCard || (!inHand ? target.cards?.at(-1) : null);
+    // Presented pile papers land one by one: every ghost of an ordered pile
+    // handover meets the top paper, and deeper papers fan out from there.
+    const destinationCard = targetCard || (pileToken && pileCard ? target.cards?.at(-1) : pileCard) || (!inHand ? target.cards?.at(-1) : null);
     const origin = fromCard?.pose || { ...source.rect, angle: 0 };
     const targetPose = destinationCard?.pose;
     let destination = group.stationary ? origin : targetPose

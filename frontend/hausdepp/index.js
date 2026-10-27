@@ -22,6 +22,7 @@ import { mountLobbyChat } from "../shared/lobby-chat.js";
 import { initChat, addChatMessage } from "../room/chat.js";
 import { HAUSDEPP_MESSAGES } from "../i18n/catalog.js";
 import { cardArt, LOBBY_CARD_ASSET_URL, prepareCardAssets } from "./cards.js";
+import { measurePile, restorePile, reconcilePile } from "./pile-fan.js";
 import { prepareCardMotion, animateCardMotion, cardMotionCompletion, resetCardMotion, presentShuffle, cancelShuffle, launchOwnPlay, launchedCards, cancelOwnPlay, presentedPile, pileMotionPending } from "./motion.js";
 import { createGameTour } from "../shared/game-tours.js";
 import { mountPileInspector } from "./pile-inspector.js";
@@ -111,7 +112,10 @@ function topRun(discard) {
   return run;
 }
 
-function renderStacks(state) {
+// Quiet renders (reload, skipped versions, hidden tab, reduced motion) never replay a fan.
+let pileFanQuiet = true;
+
+function renderStacks(state, measure = false) {
   const stock = $("hausdeppStock"), pile = $("hausdeppPile");
   const count = Math.max(0, Math.min(36, Number(state.deck_count) || 0));
   if (stock.dataset.cardCount !== String(count)) {
@@ -125,19 +129,27 @@ function renderStacks(state) {
   const run = topRun(state.discard);
   pile.dataset.run = String(run);
   const signature = JSON.stringify([state.phase, state.discard]);
+  const spec = {
+    discard: [...state.discard],
+    edges: Array.from({ length: edges }, (_, index) => `<span class="hd-pile-edge" aria-hidden="true" style="--stack-layer:${state.discard.length - index - 1}"></span>`).join(""),
+    faces: state.discard.slice(-3).map((card, index, cards) => {
+      const depth = cards.length - index - 1, step = run > 1 && depth < run ? depth : null;
+      return { key: card, layer: depth, step,
+        html: `<span class="hd-pile-face" data-pile-card="${esc(card)}"${step === null ? "" : ` data-run-step="${step}"`} style="--stack-layer:${depth};--run-step:${depth}">${cardMarkup(card)}</span>` };
+    }),
+    empty: `<span class="hd-empty-pile">${t(state.phase === "peeking" ? "notDealt" : "tableClear")}</span>`,
+  };
+  // Measuring renders the accepted pile from throwaway nodes; the visible nodes
+  // (and their running slides) are parked and put back untouched afterwards.
+  if (measure) { measurePile(pile, spec); return; }
+  restorePile(pile);
   if (pile.dataset.renderSignature === signature) return;
   pile.dataset.renderSignature = signature;
-  pile.innerHTML = state.discard.length
-    ? Array.from({ length: edges }, (_, index) => `<span class="hd-pile-edge" aria-hidden="true" style="--stack-layer:${state.discard.length - index - 1}"></span>`).join("") +
-      state.discard.slice(-3).map((card, index, cards) => {
-        const depth = cards.length - index - 1;
-        return `<span class="hd-pile-face"${run > 1 && depth < run ? ` data-run-step="${depth}"` : ""} style="--stack-layer:${depth};--run-step:${depth}">${cardMarkup(card)}</span>`;
-      }).join("")
-    : `<span class="hd-empty-pile">${t(state.phase === "peeking" ? "notDealt" : "tableClear")}</span>`;
+  reconcilePile(pile, spec, !pileFanQuiet);
 }
 
 function renderPileState(s, actions, busy, measureOnly = false) {
-  renderStacks(s);
+  renderStacks(s, measureOnly);
   const burnedStack = $("hausdeppBurnedStack");
   const burnedCards = Math.min(6, Math.max(0, Number(s.burned_count) || 0));
   if (burnedStack.childElementCount !== burnedCards) burnedStack.innerHTML = Array.from({ length: burnedCards }, (_, index) => `<i class="hd-burned-card" style="--burn-angle:${[-12, 8, -3, 15, -8, 3][index]}deg;--burn-x:${[-3, 4, 0, -4, 3, 1][index]}px;--burn-y:${[-1, -3, 1, -2, -4, 0][index]}px"></i>`).join("");
@@ -1210,6 +1222,7 @@ function renderStateContent() {
   $("hausdeppOwnPrefix").setAttribute("aria-label", t("tournamentLetters", { letters: ownLetters, losses: tournament?.losses?.[playerId] || 0 }));
   if (s.phase !== "finished") { $("hausdeppResult").hidden = true; delete $("hausdeppResult").dataset.roundId; }
   const motion = prepareCardMotion(s, { gameId, playerId });
+  pileFanQuiet = motion.quiet;
   $("hausdeppTable").dataset.phase = s.phase;
   const roundNumber = tournament?.round_number || 1;
   if (s.phase !== "playing" || requestedSurpriseRound !== `${gameId}:${roundNumber}`) requestedSurprise = null;

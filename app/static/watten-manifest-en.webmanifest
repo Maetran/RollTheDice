@@ -21,13 +21,13 @@
   ],
   "icons": [
     {
-      "src": "/static/watten/icons/watten-icon-192.png?v=2b5509bc7f54",
+      "src": "/static/watten/icons/watten-icon-192.png?v=92bc50151cec",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/static/watten/icons/watten-icon-512.png?v=2b5509bc7f54",
+      "src": "/static/watten/icons/watten-icon-512.png?v=92bc50151cec",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"

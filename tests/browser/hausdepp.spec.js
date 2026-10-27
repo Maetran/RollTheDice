@@ -1236,6 +1236,121 @@ for (const [name, viewport, firstActor, firstType] of [
   });
 }
 
+for (const [actor, viewport] of [
+  ['opponent', { width: 768, height: 1024 }],
+  ['own', { width: 390, height: 844 }],
+]) {
+  test(`labelled UI fixture: ${actor} multi-card flights join their actual arrival fan without a paper jump`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await ownerSession(page);
+    const traffic = watchGame(page);
+    const room = await createCpuTable(page, traffic);
+    const fixture = labelledUiFixture(traffic.scoreboard, 'Mehrfachwurf ohne Sprung', actor === 'own'
+      ? ['hearts-U', 'leaves-U', 'bells-A'] : ['bells-U', 'leaves-A', 'acorns-A']);
+    const own = fixture._hausdepp.viewer_id;
+    const opponent = fixture._hausdepp.players.find(player => player.is_cpu).id;
+    const cards = ['hearts-U', 'leaves-U'];
+    fixture._hausdepp.discard = ['acorns-9'];
+    fixture._hausdepp.players.find(player => player.id === opponent).hand_count = 3;
+    const acceptThrow = () => {
+      const state = fixture._hausdepp;
+      state.version += 1;
+      if (actor === 'own') state.hand = state.hand.filter(card => !cards.includes(card));
+      state.discard.push(...cards);
+      state.current_player_id = opponent;
+      state.available_actions = []; state.playable_cards = [];
+      state.last_event = { type: 'play', player_id: actor === 'own' ? own : opponent, cards };
+    };
+    const mocked = await installUiFixture(page, room, fixture, ({ message, socket }) => {
+      acceptThrow();
+      socket.send(JSON.stringify({ scoreboard: fixture, hausdepp_command: {
+        command_id: message.command_id, accepted: true, version: fixture._hausdepp.version,
+      } }));
+    });
+    await page.addInitScript(() => {
+      const animate = Element.prototype.animate;
+      Element.prototype.animate = function (...args) {
+        const animation = animate.apply(this, args);
+        if (this.matches('.hd-deal-card[data-target="pile"]')) animation.pause();
+        return animation;
+      };
+    });
+    await page.goto(room);
+    await expect(page.locator('#hausdeppRoomName')).toHaveText('UI-Test · Mehrfachwurf ohne Sprung');
+    if (actor === 'own') {
+      await page.locator('#hausdeppMultiToggle').click();
+      await page.locator('#hausdeppHand [data-card-id="hearts-U"]').click();
+      await expect(page.locator('#hausdeppMultiPlay')).toBeEnabled();
+      await page.locator('#hausdeppMultiPlay').click();
+      expect(mocked.commands.at(-1)).toMatchObject({ action: 'hausdepp_play', cards });
+    } else {
+      acceptThrow(); mocked.sendSnapshot(fixture);
+    }
+    await expect(page.locator('.hd-deal-card[data-target="pile"]')).toHaveCount(2);
+    const handover = await page.evaluate(({ cards: ids, together }) => {
+      const pile = document.querySelector('#hausdeppPile');
+      const pose = node => {
+        const rect = node.getBoundingClientRect();
+        let angle = 0, scaleX = 1, scaleY = 1;
+        for (let parent = node; parent; parent = parent.parentElement) {
+          const style = getComputedStyle(parent);
+          const matrix = style.transform === 'none' ? null : new DOMMatrixReadOnly(style.transform);
+          if (matrix) {
+            angle += Math.atan2(matrix.b, matrix.a) * 180 / Math.PI;
+            scaleX *= Math.hypot(matrix.a, matrix.b); scaleY *= Math.hypot(matrix.c, matrix.d);
+          }
+          const rotate = (style.rotate || 'none').split(' ').at(-1);
+          angle += (parseFloat(rotate) || 0) * (rotate.endsWith('rad') ? 180 / Math.PI : rotate.endsWith('turn') ? 360 : 1);
+        }
+        const style = getComputedStyle(node);
+        return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2, angle,
+          width: parseFloat(style.width) * scaleX, height: parseFloat(style.height) * scaleY };
+      };
+      const selected = [...document.querySelectorAll('.hd-deal-card[data-target="pile"]')]
+        .filter(node => together || node.dataset.index === '0').map(node => {
+          const animation = node.getAnimations()[0];
+          const frames = animation.effect.getKeyframes(), end = frames.at(-1).transform;
+          const arrival = frames.find(frame => frame.computedOffset > 0 && frame.transform === end).computedOffset;
+          const timing = animation.effect.getTiming();
+          const arrivalTime = Number(timing.delay) + Number(timing.duration) * arrival;
+          animation.currentTime = arrivalTime - .01;
+          return { node, animation, arrivalTime, before: pose(node), card: ids[Number(node.dataset.index)] };
+        });
+      return new Promise((resolve, reject) => {
+        const timer = setTimeout(() => { observer.disconnect(); reject(new Error('No actual pile handover observed')); }, 5000);
+        const observer = new MutationObserver(() => {
+          if (pile.dataset.cardCount !== String(together ? 3 : 2)) return;
+          const landed = selected.map(item => pile.querySelector(`[data-card-id="${item.card}"]`));
+          if (landed.some(node => !node)) return;
+          // Freeze the very first painted pose, before a new fan can finish
+          // between browser and test-runner tasks and conceal a landing snap.
+          for (const animation of pile.getAnimations({ subtree: true })) { animation.pause(); animation.currentTime = 0; }
+          const result = selected.map((item, index) => ({ before: item.before, after: pose(landed[index]) }));
+          observer.disconnect(); clearTimeout(timer); resolve(result);
+        });
+        observer.observe(pile, { childList: true, subtree: true });
+        selected.forEach(item => { item.animation.currentTime = item.arrivalTime + .01; });
+      });
+    }, { cards, together: actor === 'own' });
+    for (const { before, after } of handover) {
+      expect(Math.hypot(before.x - after.x, before.y - after.y), 'paper centre must join its live destination without jumping').toBeLessThan(1.5);
+      expect(Math.abs(before.width - after.width), 'paper width must not snap on arrival').toBeLessThan(1);
+      expect(Math.abs(before.height - after.height), 'paper height must not snap on arrival').toBeLessThan(1);
+      expect(Math.abs(before.angle - after.angle), 'paper angle must not snap on arrival').toBeLessThan(.5);
+    }
+    if (actor === 'opponent') {
+      // The first arrival is a genuine intermediate two-card pile, while its
+      // second matching card is still in flight and must not appear early.
+      await expect(page.locator('#hausdeppPile')).toHaveAttribute('data-card-count', '2');
+      await expect(page.locator('.hd-deal-card[data-target="pile"]')).toHaveCount(1);
+      await page.locator('.hd-deal-card[data-target="pile"]').evaluate(node => node.getAnimations().forEach(animation => animation.finish()));
+    }
+    await expect(page.locator('#hausdeppPile')).toHaveAttribute('data-card-count', '3');
+    expect(traffic.pageErrors).toEqual([]);
+  });
+}
+
 test('labelled UI fixture: rapid matching taps send single cards in order without confirmation or a fixed cooldown', async ({ page }) => {
   await ownerSession(page);
   const traffic = watchGame(page);

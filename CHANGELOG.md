@@ -23,6 +23,19 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## Unveröffentlicht / Unreleased
+
+### HAUSDEPP
+
+**Deutsch:** Gleiche Karten auf dem offenen Paket fächern sich nach dem Landen
+weich auseinander. Auch bei Mehrfachwürfen und schnellen Nachwürfen bleiben
+Kartenbilder und individuelle Brandspuren des Drachen während der Bewegung
+erhalten. Reduzierte Bewegung zeigt den fertigen Fächer ohne Schieben.
+
+**English:** Matching cards on the open pile fan apart smoothly after landing.
+Card artwork and individual dragon scorch marks stay intact during multiple-card
+throws and quick follow-ups. Reduced motion shows the settled fan without sliding.
+
 ## 4.9.0 — 2026-10-26
 
 ### WATTEN: DAS EIGENE BLATT NOCHMALS SEHEN / REVIEW YOUR OWN HAND

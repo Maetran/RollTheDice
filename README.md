@@ -1208,7 +1208,9 @@ Tastatur fokussierte Karten liegen zum Lesen und Auswählen vorne. Karten auf
 dem offenen Paket behalten während eines Zugs dieselbe zur Ansicht passende
 Grösse; die Animation geht ohne Grössensprung in den Stapel über. Während des
 Flugs siehst du die geworfene Karte nur einmal. Erst bei der Landung erscheint
-sie mit aktualisierter Kartenzahl und passendem Fächer im offenen Paket.
+sie mit aktualisierter Kartenzahl im offenen Paket. Bereits liegende Karten
+desselben Werts gleiten weich in ihren Fächer; individuelle Brandspuren nach
+dem Drachen bleiben beim Fliegen, Auffächern und Liegen erhalten.
 Passende Karten kannst du im offenen Nachwurffenster sofort nachwerfen, auch
 nach dem Auffüllen. Aufnehmen, Zocken und neue Stapelaktionen warten auf die Ankunft.
 Bei reduzierter Bewegung entfällt die Flugwartezeit.
@@ -1222,7 +1224,9 @@ ranks. The fan still scrolls horizontally; keyboard-focused cards move to the
 front for reading and selection. Open-pile cards keep the same size throughout
 a play, matching the viewport; the animation joins the pile without a size jump.
 A thrown card is visible only once during its flight. It joins the open pile
-with its updated count and matching-rank fan when it lands. Matching cards can
+with its updated count when it lands. Matching cards already on the pile slide
+smoothly into their fan; each card keeps its individual dragon scorch marks
+throughout flight, fanning and rest. Matching cards can
 be thrown immediately in the open follow-up window, including fresh refills.
 Pickups, gambles and new pile actions wait for arrival. Reduced motion skips the
 flight wait.
