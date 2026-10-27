@@ -4,10 +4,20 @@ const { handleDisabledHausdeppVoice } = require('./hausdepp-voice-fixture');
 test.use({ serviceWorkers: 'block', viewport: { width: 390, height: 844 } });
 test.beforeAll(({ baseURL }) => expect(['8000', '8001']).not.toContain(new URL(baseURL).port));
 
-async function setup(page, language = 'de', { cpuCount = 2, freshActor = false } = {}) {
+async function setup(page, language = 'de', { cpuCount = 2, freshActor = false, passivePeers = 0 } = {}) {
+  page.departurePeerContexts = [];
   const response = await page.request.post('/api/auth/login', { data: { username: 'Admin', password: 'temporary-password-123' } });
   expect(response.ok()).toBeTruthy();
   let user = (await response.json()).user;
+  const peerAccounts = [];
+  for (let index = 0; index < passivePeers; index += 1) {
+    const username = `DeparturePeer${language}${Date.now()}${index}`;
+    const temporary = 'departure-peer-temporary-123', password = 'departure-peer-final-123';
+    const created = await page.request.post('/api/admin/users', { headers: { 'X-CSRF-Token': user.csrf_token },
+      data: { username, temporary_password: temporary, role: 'user' } });
+    expect(created.status()).toBe(201);
+    peerAccounts.push({ username, temporary, password });
+  }
   if (freshActor) {
     // Real forfeitures earn a durable Zonk. Keep that result and its pending
     // notice on this test's own account, away from the suite's shared Admin.
@@ -41,21 +51,68 @@ async function setup(page, language = 'de', { cpuCount = 2, freshActor = false }
     socket.on('framereceived', ({ payload }) => { try { received.push(JSON.parse(String(payload))); } catch {} });
   });
   const created = await page.request.post('/api/games', { headers,
-    data: { name: 'Departure browser test', game_type: 'hausdepp', mode: '3', play_mode: 'cpu', cpu_count: cpuCount, tournament: true } });
+    data: { name: 'Departure browser test', game_type: 'hausdepp', mode: '3', play_mode: cpuCount ? 'cpu' : 'multiplayer', cpu_count: cpuCount, tournament: true } });
   expect(created.ok(), await created.text()).toBeTruthy();
   const id = (await created.json()).game_id;
-  return { id, sent, received, room: `/hausdepp/spiel/${id}` };
+  return { id, sent, received, user, peerAccounts, room: `/hausdepp/spiel/${id}` };
+}
+
+async function seatPassivePeers(page, browser, baseURL, app) {
+  const pages = new Map([[app.user.username, page]]);
+  for (const account of app.peerAccounts) {
+    const context = await browser.newContext({ baseURL, serviceWorkers: 'block', viewport: { width: 390, height: 844 } });
+    // Register before any request so failed authentication/admission also
+    // closes every owned peer in the test's afterEach.
+    page.departurePeerContexts.push(context);
+    const member = await context.newPage();
+    const login = await member.request.post('/api/auth/login', {
+      data: { username: account.username, password: account.temporary },
+    });
+    expect(login.ok()).toBeTruthy();
+    const initial = (await login.json()).user;
+    const changed = await member.request.post('/api/auth/change-password', { headers: { 'X-CSRF-Token': initial.csrf_token },
+      data: { current_password: account.temporary, new_password: account.password } });
+    expect(changed.ok()).toBeTruthy();
+    expect((await member.request.post('/api/auth/login', {
+      data: { username: account.username, password: account.password },
+    })).ok()).toBeTruthy();
+    await member.route('**/api/releases**', route => route.fulfill({ json: { releases: [], can_prompt: false } }));
+    await member.route('**/api/auth/game-guides', route => route.fulfill({ json: { enabled: false, acknowledged: {} } }));
+    await member.route('**/api/auth/tours/offer', route => route.fulfill({ json: { show: false, enabled: false, games: {} } }));
+    await member.goto(app.room);
+    await expect(member.locator('#hausdeppTable')).toBeVisible();
+    pages.set(account.username, member);
+  }
+  const board = () => app.received.findLast(message => message.scoreboard?._hausdepp)?.scoreboard?._hausdepp;
+  await expect.poll(() => board()?.players.length).toBe(3);
+  expect(board().players.every(player => player.is_cpu === false)).toBe(true);
+  const peeker = pages.get(board().players.find(player => player.id === board().peek.player_id).name);
+  expect(peeker).toBeTruthy();
+  // The real randomly designated human completes the real bottom peek.
+  // At most four aces can precede its terminating card. Afterwards every
+  // peer stays idle: dialog coverage cannot race a CPU's chain of clearances.
+  for (let inspected = 0; inspected < 5 && board().phase === 'peeking'; inspected += 1) {
+    const version = board().version;
+    await expect(peeker.locator('#hausdeppStock')).toBeEnabled();
+    await peeker.locator('#hausdeppStock').click();
+    await expect.poll(() => board().version).toBeGreaterThan(version);
+  }
+  await expect(page.locator('#hausdeppTable')).toHaveAttribute('data-phase', 'playing');
 }
 
 test.afterEach(async ({ page }) => {
-  if (page.departureOwner) await page.request.put('/api/auth/preferences/language', {
-    headers: page.departureOwner.headers, data: { preferred_language: page.departureOwner.language },
-  });
+  try {
+    await Promise.all((page.departurePeerContexts || []).map(context => context.close()));
+  } finally {
+    if (page.departureOwner) await page.request.put('/api/auth/preferences/language', {
+      headers: page.departureOwner.headers, data: { preferred_language: page.departureOwner.language },
+    });
+  }
 });
 
 for (const language of ['de', 'en']) {
-  test(`${language}: real active departure is confirmed, stops local audio and returns to the lobby`, async ({ page }, testInfo) => {
-    const app = await setup(page, language, { freshActor: true });
+  test(`${language}: real active departure is confirmed, stops local audio and returns to the lobby`, async ({ page, browser, baseURL }, testInfo) => {
+    const app = await setup(page, language, { freshActor: true, cpuCount: 0, passivePeers: 2 });
     let closedContexts = 0;
     await page.exposeFunction('__departureContextClosed', () => { closedContexts++; });
     await page.addInitScript(() => {
@@ -65,6 +122,7 @@ for (const language of ['de', 'en']) {
       };
     });
     await page.goto(app.room);
+    await seatPassivePeers(page, browser, baseURL, app);
     const leave = page.locator('#hausdeppLeaveGame');
     await expect(leave).toBeVisible();
     await expect(leave).toHaveAccessibleName(language === 'de' ? 'Turnier verlassen' : 'Leave tournament');
@@ -114,15 +172,13 @@ for (const language of ['de', 'en']) {
       expect(app.sent.some(message => message.action === 'hausdepp_leave_game')).toBe(false);
     }
     expect(systemDialogs).toEqual([]);
-    // Wait for the human decision window and completed stock refills. A prior
-    // CPU's afterthrow can remain open even when that CPU has no move; it is
-    // not an idle marker. A later actual CPU action can still change version,
-    // so keep the exact sent-version and server-acceptance assertions below.
+    // Departure is legal on any participant's turn. This genuinely playing
+    // human table has no pending refill or autonomous actor; the exact
+    // observed version must survive the final real confirmation unchanged.
     const board = () => app.received.findLast(message => message.scoreboard?._hausdepp)?.scoreboard?._hausdepp;
     await expect.poll(() => {
       const current = board();
-      return Boolean(current && current.current_player_id === current.viewer_id
-        && current.available_actions.length
+      return Boolean(current && current.phase === 'playing'
         && !current.pending_refill && current.pending_refills.length === 0);
     }).toBe(true);
     await expect(leave).toBeEnabled();
