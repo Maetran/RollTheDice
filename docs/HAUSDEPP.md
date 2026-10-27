@@ -420,6 +420,26 @@ gleichrangige Karten dürfen auf einen leeren Tisch oder auf einen höchstens
 gleich hohen Rang gespielt werden. Bereits oben liegende Karten desselben
 Rangs dürfen durch die fehlenden Karten ergänzt werden.
 
+**Optionale Tischregel „Vier Gleiche als 10“:** Standardmässig ist sie aus.
+Wenn der Ersteller sie beim Definieren des Spielmodus einschaltet, darf der
+Spieler am Zug alle vier Karten desselben Rangs **gleichzeitig aus seiner Hand**
+auf jeden höheren Rang legen, etwa vier 8er auf einen König oder ein Ass.
+Das gesamte Paket wird abgeräumt; erneuter Zug, Auffüllen und Rundenende folgen
+wie bei jeder Abräumaktion. Einzelne, zwei oder drei tiefere Karten bleiben
+unzulässig. Das normale Nachwurfrecht wird nicht erweitert. Die gewählte Regel
+steht am Tisch und wird im Favoriten gespeichert; alte Favoriten ohne diese
+Angabe behalten die Standardregel. Vier nur gemeinsam legbare Karten wählst du
+als vollständige Gruppe aus und bestätigst den Wurf; eine Teilgruppe darf nicht
+über einen höheren Rang gelegt werden.
+
+Die Funktionsfreigabe `hausdepp.four_of_a_kind_as_ten` startet **intern**: Nur
+berechtigte aktive Staff-Konten können die Tischoption auswählen, bis ein Owner
+sie unter Administration → Spiele & Funktionen veröffentlicht. Die Tischoption
+bleibt unabhängig davon standardmässig aus. Ein gespeicherter Favorit vergibt
+keine Freigabe. Neue Tische, der erste Start und Neu erstellen prüfen die
+aktuelle Freigabe und das tatsächlich mitspielende Erstellerkonto erneut;
+laufende Tische behalten ihre Regel auch in weiteren Turnierrunden.
+
 Wer durch eine 10 oder vier Gleiche abräumt, darf **selbst erneut ausspielen**.
 Das erneute Zugrecht gilt sofort; vorhandene Handkarten darf er bereits
 spielen, auch wenn eine Auffüllpflicht offen ist. Die Auffüllpflicht bleibt
@@ -630,7 +650,8 @@ sein. Ein Mensch nimmt zuerst einen freien Platz und ersetzt bei vollem Wartetis
 einen CPU. Nach Spielstart ist die Besetzung fest.
 
 „Als Favorit speichern“ übernimmt Spielerzahl, Offen/Fix, Spielart, aktuelle CPU-
-Anzahl und die Wahl eines Passwortschutzes in das eigene Konto. Das tatsächliche
+Anzahl, die gewählte Regel „Vier Gleiche als 10“ und die Wahl eines
+Passwortschutzes in das eigene Konto. Das tatsächliche
 Passwort wird nie im Favoriten gespeichert und muss beim Erstellen neu festgelegt
 werden. Der konkrete Tischzugang bleibt nur für diese Browsersitzung beim eigenen
 Konto verfügbar; das Passwort erscheint weder im Tischlink noch in einer URL.
@@ -1010,6 +1031,23 @@ cards may be played on an empty table or on a rank no higher than their own.
 Cards already at the top with the same rank may be completed with the missing
 cards.
 
+**Optional table rule “Four of a kind as a ten”:** It is off by default.
+When the creator selects it while defining the mode, the player on turn may
+play all four cards of one rank **together from their own hand** over any higher
+rank, for example four eights on a king or ace. The whole pile clears; replay,
+refill and finishing follow the usual clearance rules. One, two or three lower
+cards remain illegal. The normal follow-up right is unchanged. The table shows
+its selected rule and favourites retain it; older favourites without the field
+keep the standard rules. Select and confirm the complete group when its cards
+are playable only together; a partial group cannot beat a higher rank.
+
+The `hausdepp.four_of_a_kind_as_ten` availability flag initially uses **internal**
+access. Eligible active staff accounts may select the option until an owner
+publishes it under Administration → Games & features. The table option remains
+off by default independently. Favourites never grant access. New tables, initial
+start and Create again recheck current availability and the creator's actual
+player seat. Started tables keep their rule through later tournament rounds.
+
 A player who clears the pile with a 10 or four equal ranks may **play again**.
 This right applies immediately: they may play existing hand cards even while
 a refill is pending. Refilling remains mandatory. If they have finished with
@@ -1162,7 +1200,8 @@ open room or every chosen seat filled in a fixed room. All humans must be
 connected. People take free seats first, then replace one CPU at a full waiting
 table. The roster becomes final on start.
 
-Saving a favourite stores only the setup and the choice of password protection,
+Saving a favourite stores the setup, the selected “Four of a kind as a ten” rule
+and the choice of password protection,
 never the password. Protected favourites ask for a fresh password. The concrete
 table password stays only in this browser session, separated by account; it
 never enters a shared link or URL. Sharing, copying and player calls remain

@@ -1539,6 +1539,23 @@ Mitspieler-Ruf, Teilen und Link-Kopieren bleiben verfügbar. Vier persönliche
 häufige Reaktionen stehen direkt bereit; der Pfeil öffnet zwölf Symbole,
 einschliesslich 💩. Ihre Positionen bleiben während der Partie gleich.
 
+**Hausdepp – optionale Viererregel:** „Vier Gleiche als 10“ ist bei neuen Tischen
+aus. Wenn der Ersteller sie wählt, dürfen vier gleichrangige Handkarten zusammen
+auf jeden höheren Rang gelegt werden und räumen das Paket ab. Die Auswahl bleibt
+im Favoriten erhalten und ist am Tisch sichtbar. Die Funktion startet mit
+interner Freigabe unter Administration → Spiele & Funktionen; gespeicherte
+Favoriten umgehen die Freigabe nicht. Normale Tische behalten ihre bisherigen
+Regeln. Einzeln oder zu zweit/dritt dürfen tiefere Karten weiterhin nicht gelegt
+werden.
+
+**Hausdepp – optional quartet rule:** “Four of a kind as a ten” is off for new
+tables. When selected by the creator, four matching hand cards may be played
+together over any higher rank and clear the pile. The table shows its rule and
+favourites retain it. The feature initially has internal availability under
+Administration → Games & features; saved favourites never bypass availability.
+Standard tables keep their existing rules. One, two or three lower cards remain
+illegal.
+
 **Hausdepp – creating a game:** The compact entry offers your saved favourite or
 “Define a mode”. Choose a fixed count (2–6) or an open waiting room for up to six,
 a quick game or tournament, and an optional password. Place cards show the

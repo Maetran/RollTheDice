@@ -27,6 +27,7 @@ class HausdeppFavouriteRequest(BaseModel):
     tournament: bool = Field(default=False, strict=True)
     password_required: bool = Field(default=False, strict=True)
     voice_enabled: bool = Field(default=True, strict=True)
+    four_of_a_kind_as_ten: bool = Field(default=False, strict=True)
 
     @model_validator(mode="after")
     def validate_seats(self):

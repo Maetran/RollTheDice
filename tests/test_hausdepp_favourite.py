@@ -36,7 +36,8 @@ class HausdeppFavouriteTests(unittest.TestCase):
         self.identities = [login(request_for(), account.username, "secure-password-123") for account in self.accounts]
         self.client = TestClient(main.app)
         self.preset = {"waiting_mode": "fixed", "players": 3, "cpu_count": 2,
-                       "tournament": False, "password_required": True, "voice_enabled": True}
+                       "tournament": False, "password_required": True, "voice_enabled": True,
+                       "four_of_a_kind_as_ten": False}
         self.path = "/api/hausdepp/favourite"
 
     def tearDown(self):
@@ -94,7 +95,8 @@ class HausdeppFavouriteTests(unittest.TestCase):
         for changes in ({"players": 1}, {"players": 7}, {"players": True}, {"players": "3"},
                         {"cpu_count": -1}, {"cpu_count": 3}, {"cpu_count": True}, {"cpu_count": "2"},
                         {"waiting_mode": "unknown"}, {"tournament": "false"}, {"password_required": 1},
-                        {"voice_enabled": "false"}, {"voice_enabled": 1}):
+                        {"voice_enabled": "false"}, {"voice_enabled": 1},
+                        {"four_of_a_kind_as_ten": "true"}, {"four_of_a_kind_as_ten": 1}):
             with self.subTest(changes=changes):
                 self.assertEqual(self.client.put(self.path, json={**self.preset, **changes},
                                                   headers=self.headers()).status_code, 422)

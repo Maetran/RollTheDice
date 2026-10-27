@@ -26,6 +26,8 @@ html[data-game="hausdepp"] .hd-table .hd-centre .hd-pile-face > .hausdepp-card {
 .hd-pile-face:nth-last-child(2) { rotate: 2deg; }
 /* Equal ranks on top fan up and to the left: each rank corner stays visible. */
 .hd-pile-face[data-run-step] { translate: calc(var(--run-step) * -12%) calc(var(--run-step) * -8%); rotate: calc(var(--run-step) * -7deg); }
+/* Four real faces share the existing fan's footprint on narrow tables. */
+.hd-pile[data-run="4"] .hd-pile-face[data-run-step] { translate: calc(var(--run-step) * -8%) calc(var(--run-step) * -5.333333%); rotate: calc(var(--run-step) * -4.666667deg); }
 html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre :is(.hd-stock-group, .hd-pile-group) > :is(.hd-card-back, .hd-pile) { margin-bottom: 24px; }
 html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre :is(#hausdeppStockCount, #hausdeppPileCount) { color: #f0ddbd; font-weight: 650; }
 

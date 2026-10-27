@@ -404,14 +404,18 @@ function trackPileMotion(gameId, token, related, presentation, ownLaunch = false
       for (const { animation, resume } of held) if (resume && animation.playState === "paused") animation.play();
       for (const flight of heldFlights) flight.element.style.visibility = "";
     }
-    let changed = false;
+    let changed = false, livePile;
     for (const flight of related) {
       const { animation } = flight;
       const finished = ["idle", "finished"].includes(animation.playState);
       const time = typeof animation.currentTime === "number" ? animation.currentTime : -1;
       if (!flight.departed && (finished || time >= flight.startTime)) {
         flight.departed = true;
-        if (flight.source === "pile") changed = pile.depart(token, flight.cardId) || changed;
+        if (flight.source === "pile") {
+          // One lazy measurement serves every departure of this frame.
+          if (flight.rebase) flight.rebase(livePile ||= captureGeometry("").pile);
+          changed = pile.depart(token, flight.cardId) || changed;
+        }
       }
       if (!flight.landed && (finished || time >= flight.arrivalTime)) {
         flight.landed = true;
@@ -580,6 +584,22 @@ function moveCards(group, { gameId, playerId, before, after, reducedMotion, pile
       if (!flights.get(gameId)?.size) flights.delete(gameId);
     };
     flight.remove = remove;
+    // The pile may have moved since this flight was built (a quartet landed and
+    // fanned over it). At departure the ghost starts from the paper's live pose;
+    // only its start keyframes change, never target, timing or progress.
+    if (group.source === "pile" && !group.stationary && cardId) {
+      flight.rebase = livePile => {
+        const live = livePile.cards.find(card => card.card === cardId);
+        if (!live?.pose || !ghost.isConnected || ["idle", "finished"].includes(animation.playState)) return;
+        const { pose } = live;
+        const liveStart = `translate(${pose.x - width / 2 - fromX}px,${pose.y - height / 2 - fromY}px) rotate(${pose.angle || 0}deg) scale(${pose.width / width},${(pose.height || pose.width / CARD_RATIO) / height})`;
+        animation.effect.setKeyframes(animation.effect.getKeyframes()
+          .map((keyframe, order) => order < 2 ? { ...keyframe, transform: liveStart } : keyframe));
+        copyCardScorch(ghost, { source: live.element, card: group.face ? cardId : null,
+          table: document.getElementById("hausdeppTable") });
+        Object.assign(ghost.dataset, { sourceX: String(pose.x), sourceY: String(pose.y) });
+      };
+    }
     // A concurrent afterthrow may reach the wood before a paused predecessor.
     // Keep its single picture there until ordered pile handover can take over.
     animation.finished.then(() => { if (!flight.keepUntilLanded) remove(); }, remove);

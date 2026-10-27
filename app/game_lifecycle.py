@@ -23,7 +23,7 @@ import weakref
 from contextlib import contextmanager, nullcontext
 from typing import Any, Callable, Iterable, Iterator
 
-from sqlalchemy import update
+from sqlalchemy import select, update
 from sqlalchemy.exc import SQLAlchemyError
 
 from .game_types import HAUSDEPP_GAME_TYPE
@@ -194,6 +194,8 @@ def commit_admission(game: dict, candidate: dict, user_ids: Iterable[int], *, cr
         raise AdmissionError("admission_room_missing")
     revision = bound_revision(game)
     if not database_schema_ready():
+        if candidate.get("_game_type") == HAUSDEPP_GAME_TYPE and candidate.get("_hausdepp_four_of_a_kind_as_ten"):
+            raise AdmissionError("hausdepp_feature_settings_unavailable")
         # No configured durable store (focused unit setups): rooms are
         # volatile exactly like ``save_active_game``'s no-op.
         return (revision or 0) + 1
@@ -206,6 +208,13 @@ def commit_admission(game: dict, candidate: dict, user_ids: Iterable[int], *, cr
     now = utcnow()
     try:
         with session_scope() as db:
+            previous = None
+            if revision is not None and candidate.get("_game_type") == HAUSDEPP_GAME_TYPE:
+                previous_raw = db.scalar(select(ActiveGame.state_json).where(
+                    ActiveGame.game_id == game_id, ActiveGame.admission_revision == revision).with_for_update())
+                if previous_raw is None:
+                    raise AdmissionError("admission_room_changed")
+                previous = json.loads(previous_raw)
             if revision is None:
                 new_revision = 0
                 db.add(ActiveGame(game_id=game_id, state_json=payload, created_at=now, updated_at=now,
@@ -221,7 +230,22 @@ def commit_admission(game: dict, candidate: dict, user_ids: Iterable[int], *, cr
                     .execution_options(synchronize_session=False))
                 if changed.rowcount != 1:
                     raise AdmissionError("admission_room_changed")
-            _exact_accounts(db, user_ids)
+            if candidate.get("_game_type") == HAUSDEPP_GAME_TYPE:
+                from .account_progress import ProgressIdentityError, lock_account_rows
+                from .hausdepp_features import HausdeppFeatureError, creator_ids, validate_checkpoint_features
+
+                try:
+                    # Prelock the complete set before either exact-account
+                    # validation or the policy singleton can acquire locks.
+                    feature_accounts = creator_ids(candidate) if previous is None or previous.get("_hausdepp") is None else set()
+                    if feature_accounts:
+                        lock_account_rows(db, set(user_ids) | feature_accounts)
+                    _exact_accounts(db, user_ids)
+                    validate_checkpoint_features(db, candidate, previous, creating=creating)
+                except (HausdeppFeatureError, ProgressIdentityError) as exc:
+                    raise AdmissionError(str(exc)) from exc
+            else:
+                _exact_accounts(db, user_ids)
             _add_memberships(db, game_id, user_ids, new_revision, now)
     except SQLAlchemyError as exc:
         logger.exception("Could not commit admission for game %s", game_id)

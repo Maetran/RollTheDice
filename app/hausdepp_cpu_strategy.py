@@ -18,11 +18,34 @@ from .hausdepp_engine import HAUSDEPP_RANKS, card_rank
 _VALUES = {rank: index for index, rank in enumerate(HAUSDEPP_RANKS)}
 
 
+def _wild_quartets(projection: Mapping[str, Any]) -> bool:
+    return projection.get("four_of_a_kind_as_ten") is True
+
+
 def _position(projection: Mapping[str, Any]) -> tuple:
     return (tuple(sorted(projection.get("hand", []))), tuple(projection.get("discard", [])),
             int(projection.get("deck_count", 0)), tuple(projection.get("available_actions", [])),
             tuple((player.get("id"), player.get("hand_count"), bool(player.get("finished")))
-                  for player in projection.get("players", [])))
+                  for player in projection.get("players", [])),
+            _wild_quartets(projection),
+            tuple(sorted(tuple(sorted(group)) for group in projection.get("playable_groups") or [])))
+
+
+def _group_only_quartets(projection: Mapping[str, Any]) -> dict[str, list[str]]:
+    """Offered quartets whose rank is too low for a single card (rank -> cards).
+
+    Uses only the viewer's own projection: the public rule, own hand and the
+    server-offered ``playable_groups``.
+    """
+    if not _wild_quartets(projection) or "play" not in projection.get("available_actions", []):
+        return {}
+    hand, single = set(projection.get("hand", [])), set(projection.get("playable_cards", []))
+    result: dict[str, list[str]] = {}
+    for group in projection.get("playable_groups") or []:
+        if (len(group) == 4 and len(set(group)) == 4 and set(group) <= hand and not set(group) <= single
+                and len({card_rank(card) for card in group}) == 1):
+            result[card_rank(group[0])] = sorted(group)
+    return result
 
 
 def _command_key(command: Mapping[str, Any]) -> tuple:
@@ -51,11 +74,12 @@ class CpuMemory:
             self._recent.append((_position(projection), _command_key(accepted_command)))
 
 
-def _finish_move(hand: list[str], discard: list[str]) -> str | None:
+def _finish_move(hand: list[str], discard: list[str], *, wild_quartets: bool = False) -> str | None:
     """Find a guaranteed finish through our own consecutive clearances.
 
     A normal placement ends the search because the opponent then has a turn.
-    No unknown opposing hands or unknown draw cards are simulated.
+    No unknown opposing hands or unknown draw cards are simulated. With the
+    table rule, a complete quartet in hand clears over any floor.
     """
     counts = Counter(card_rank(card) for card in hand)
     top = _VALUES[card_rank(discard[-1])] if discard else -1
@@ -69,12 +93,13 @@ def _finish_move(hand: list[str], discard: list[str]) -> str | None:
     def path(remaining: tuple[int, ...], floor: int, streak: int) -> tuple[int, ...] | None:
         best = None
         for rank, count in enumerate(remaining):
-            if not count or rank < floor:
+            quartet = wild_quartets and count == 4
+            if not count or rank < floor and not quartet:
                 continue
             rest = tuple(0 if index == rank else value for index, value in enumerate(remaining))
             if not any(rest):
                 candidate = (rank,)
-            elif rank == _VALUES["10"] or count + (streak if floor == rank else 0) == 4:
+            elif rank == _VALUES["10"] or quartet or count + (streak if floor == rank else 0) == 4:
                 continuation = path(rest, -1, 0)
                 if continuation is None:
                     continue
@@ -227,6 +252,8 @@ def table_tip(projection: Mapping[str, Any]) -> dict[str, str] | None:
     quartet = next((rank for rank in HAUSDEPP_RANKS[:-1] if counts[rank] and counts[rank] < 4 <= counts[rank] + added[rank]),
                    None)
     ordinary = [rank for rank in HAUSDEPP_RANKS[:-1] if rank in groups]
+    if projection.get("playable_groups") and "play" in actions:
+        return None  # a quartet is on offer; no pickup or gamble hint
     if "play" in actions and groups:
         cards = sorted(groups[ordinary[0]]) if ordinary else sorted(groups["10"])[:1]
         if _bargain(hand, discard, stock, active, cards, top=top, streak=streak):
@@ -303,6 +330,7 @@ def choose_cpu_action(projection: Mapping[str, Any], *, memory: CpuMemory | None
     groups: dict[str, list[str]] = defaultdict(list)
     for card in projection.get("playable_cards", []):
         groups[card_rank(card)].append(card)
+    quartets = _group_only_quartets(projection)
     stock = int(projection.get("deck_count", 0))
     top, streak = _top_run(discard)
     # Now and then a computer throws a whole high group at once anyway; gentle
@@ -323,7 +351,9 @@ def choose_cpu_action(projection: Mapping[str, Any], *, memory: CpuMemory | None
             return None  # the high reserve stays in hand for the next answer
         return afterthrow
     if not stock and "play" in actions:
-        finish = _finish_move(hand, discard)
+        finish = _finish_move(hand, discard, wild_quartets=bool(quartets) or _wild_quartets(projection))
+        if finish is not None and finish in quartets:
+            return {**move, "action": "play", "cards": quartets[finish]}
         if finish is not None and finish in groups:
             return {**move, "action": "play", "cards": sorted(groups[finish])}
 
@@ -339,6 +369,9 @@ def choose_cpu_action(projection: Mapping[str, Any], *, memory: CpuMemory | None
         for rank in HAUSDEPP_RANKS[:-1]:
             if groups.get(rank) and len(groups[rank]) + (streak if rank == top else 0) == 4:
                 return {**move, "action": "play", "cards": sorted(groups[rank])}
+        # Likewise a table-rule quartet over a higher pile: four cards gone, turn kept.
+        if quartets:
+            return {**move, "action": "play", "cards": next(iter(quartets.values()))}
     ordinary = [rank for rank in HAUSDEPP_RANKS[:-1] if rank in groups]
     choices = []
     if "play" in actions:

@@ -1,4 +1,8 @@
 const rankOf = card => card.split("-")[1];
+const permittedGroups = context => (context?.playableGroups || []).filter(group => Array.isArray(group)
+  && group.length === 4 && new Set(group).size === 4
+  && group.every(card => typeof card === "string" && context.hand.includes(card) && rankOf(card) === rankOf(group[0])));
+const isSelectable = (context, card) => context.playable.includes(card) || permittedGroups(context).some(group => group.includes(card));
 
 // A selection belongs to one observed opportunity, never to a future turn.
 // The only advancing version we can prove harmless is a single foreign refill
@@ -10,15 +14,20 @@ export function createHandSelection() {
   return {
     get enabled() { return enabled; },
     get cards() { return [...cards]; },
-    get notice() { return notice; },
+    get notice() { return notice || (cards.size && [...cards].some(card => !context.playable.includes(card)) && !this.canPlay ? "multiQuartetRequired" : ""); },
     get canEnable() { return !!context?.action && !context.pending; },
+    get canPlay() {
+      return !!cards.size && [...cards].every(card => this.canSelect(card))
+        && ([...cards].every(card => context.playable.includes(card))
+          || permittedGroups(context).some(group => group.length === cards.size && group.every(card => cards.has(card))));
+    },
     sync(next) {
       if (cards.size) {
         const harmlessRefill = context && context.roundKey === next.roundKey &&
           next.version === context.version + 1 && next.event?.type === "draw" && !!next.event.player_id && !!next.viewer &&
           next.event.player_id !== next.viewer && context.identity === next.identity;
         const changed = !context || (context.key !== next.key && !harmlessRefill) || context.identity !== next.identity || context.action !== next.action ||
-          [...cards].some(card => !next.hand.includes(card) || !next.playable.includes(card));
+          [...cards].some(card => !next.hand.includes(card) || !isSelectable(next, card));
         if (changed) {
           notice = context?.action === "afterthrow" && next.action !== "afterthrow"
             ? "multiAfterthrowExpired" : "multiSelectionUpdated";
@@ -39,7 +48,7 @@ export function createHandSelection() {
     cancel() { enabled = false; clear(); notice = ""; },
     // Long press: select every playable card of that rank for this one throw.
     startWith(card) {
-      if (!this.canEnable || !context.playable.includes(card)) return false;
+      if (!this.canEnable || !isSelectable(context, card)) return false;
       enabled = true;
       clear();
       notice = "";
@@ -47,7 +56,7 @@ export function createHandSelection() {
     },
     canSelect(card) {
       return enabled && !!context?.action && !context.pending && context.hand.includes(card) &&
-        context.playable.includes(card) && (!cards.size || rankOf([...cards][0]) === rankOf(card));
+        isSelectable(context, card) && (!cards.size || rankOf([...cards][0]) === rankOf(card));
     },
     select(card) {
       if (!this.canSelect(card)) return false;
@@ -59,7 +68,7 @@ export function createHandSelection() {
       return true;
     },
     take() {
-      if (!cards.size || ![...cards].every(card => this.canSelect(card))) return null;
+      if (!this.canPlay) return null;
       const selection = { action: context.action, cards: [...cards] };
       clear();
       notice = "";
@@ -141,6 +150,8 @@ export function mountHandSelection({ handRegion, tools, reactions, t, onChange, 
     selection,
     update(context) {
       selection.sync(context);
+      const quartetOnly = selection.cards.some(card => !context.playable.includes(card));
+      hint.textContent = t(quartetOnly || !selection.enabled && permittedGroups(context).length ? "multiQuartetHint" : "multiSelectHint");
       const count = selection.cards.length;
       toggle.disabled = !selection.enabled && !selection.canEnable;
       toggle.setAttribute("aria-pressed", String(selection.enabled));
@@ -152,7 +163,7 @@ export function mountHandSelection({ handRegion, tools, reactions, t, onChange, 
       actions.hidden = !selection.enabled;
       reactions.hidden = selection.enabled && !wide.matches;
       play.textContent = t(count === 1 ? "multiPlayOne" : "multiPlay", { count });
-      play.disabled = !count || context.pending || !context.action;
+      play.disabled = !selection.canPlay;
       notice.textContent = selection.notice ? t(selection.notice) : "";
       notice.hidden = !selection.notice;
     },

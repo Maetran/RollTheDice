@@ -1149,6 +1149,135 @@ for (const spectator of [false, true]) {
   });
 }
 
+for (const [name, viewport, scorched] of [
+  ['phone', { width: 390, height: 844 }, false],
+  ['scorched-phone', { width: 390, height: 844 }, true],
+  ['scorched-desktop', { width: 1440, height: 900 }, true],
+]) {
+  test(`labelled UI fixture: ${name} shows all four matching papers before the packet clears`, async ({ page }, info) => {
+    await page.setViewportSize(viewport);
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await ownerSession(page);
+    const traffic = watchGame(page);
+    const room = await createCpuTable(page, traffic);
+    const quartet = ['hearts-8', 'bells-8', 'leaves-8', 'acorns-8'];
+    const fixture = labelledUiFixture(traffic.scoreboard, 'Vier echte Karten', [...quartet, 'hearts-A']);
+    Object.assign(fixture, { _hausdepp_table_effects: { scorched_cards: scorched } });
+    Object.assign(fixture._hausdepp, { four_of_a_kind_as_ten: true, discard: ['bells-K'],
+      playable_cards: ['hearts-A'], playable_groups: [quartet], available_actions: ['play', 'pickup'], deck_count: 20 });
+    let played = [];
+    await installUiFixture(page, room, fixture, ({ message, socket, fixture: current }) => {
+      const state = current._hausdepp;
+      played = [...message.cards];
+      state.version += 1;
+      state.hand = state.hand.filter(card => !message.cards.includes(card));
+      Object.assign(state, { discard: [], burned_count: 5, playable_cards: ['hearts-A'], playable_groups: [],
+        last_event: { type: 'play', player_id: state.viewer_id, cards: message.cards,
+          burn_reason: 'four_of_a_kind', burned_count: 5 } });
+      socket.send(JSON.stringify({ scoreboard: current, hausdepp_command: {
+        command_id: message.command_id, accepted: true, version: state.version } }));
+    });
+    await page.addInitScript(() => {
+      const animate = Element.prototype.animate;
+      Element.prototype.animate = function (...args) {
+        const animation = animate.apply(this, args);
+        if (this.matches('.hd-deal-card') || this.closest('#hausdeppPile')) animation.pause();
+        return animation;
+      };
+    });
+    await page.goto(room);
+    await expect(page.locator('#hausdeppRoomName')).toHaveText('UI-Test · Vier echte Karten');
+    const paper = page.locator('#hausdeppHand [data-card-id="hearts-8"]');
+    const scorch = await paper.evaluate(node => getComputedStyle(node, '::before').backgroundImage);
+    await paper.click();
+    await expect(page.locator('#hausdeppMultiPlay')).toBeEnabled();
+    await page.locator('#hausdeppMultiPlay').click();
+    const arrivals = page.locator('.hd-deal-card[data-target="pile"]');
+    await expect(arrivals).toHaveCount(4);
+    await expect(page.locator('#hausdeppPile')).toHaveAttribute('data-card-count', '1');
+    await arrivals.evaluateAll(nodes => nodes.forEach(node => node.getAnimations().forEach(animation => animation.finish())));
+    const faces = page.locator('#hausdeppPile .hd-pile-face');
+    await expect(faces).toHaveCount(4);
+    await expect(page.locator('#hausdeppPile')).toHaveAttribute('data-run', '4');
+    await expect(page.locator('#hausdeppPileCount')).toHaveText('5 Karten');
+    expect(await faces.locator('[data-card-id]').evaluateAll(nodes => nodes.map(node => node.dataset.cardId).sort()))
+      .toEqual([...quartet].sort());
+    await faces.evaluateAll(nodes => nodes.forEach(node => node.getAnimations({ subtree: true }).forEach(animation => animation.finish())));
+    const centres = await faces.evaluateAll(nodes => nodes.map(node => {
+      const box = node.getBoundingClientRect();
+      return box.x + box.width / 2;
+    }));
+    expect(centres.every((x, index) => index === 0 || x - centres[index - 1] > 5)).toBe(true);
+    expect(await page.locator('#hausdeppPile [data-card-id="hearts-8"]').evaluate(node =>
+      getComputedStyle(node, '::before').backgroundImage)).toBe(scorch);
+    await page.screenshot({ path: info.outputPath('four-visible-papers.png') });
+    const leaving = page.locator('.hd-deal-card[data-motion-type="burn"]');
+    await expect(leaving).toHaveCount(5);
+    // Burn ghosts were built before the quartet landed and fanned. At their own
+    // departure each must start from the live paper, not from the stale centre.
+    await page.evaluate(() => {
+      const angleOf = node => {
+        if (!node) return 0;
+        const style = getComputedStyle(node);
+        const matrix = style.transform === 'none' ? null : new DOMMatrixReadOnly(style.transform);
+        const turn = (style.rotate || 'none').split(' ').at(-1);
+        const degrees = (parseFloat(turn) || 0) * (turn.endsWith('rad') ? 180 / Math.PI : turn.endsWith('turn') ? 360 : 1);
+        return angleOf(node.parentElement) + degrees + (matrix ? Math.atan2(matrix.b, matrix.a) * 180 / Math.PI : 0);
+      };
+      window.__poseOf = (node, scaled = false) => {
+        const box = node.getBoundingClientRect(), style = getComputedStyle(node);
+        const matrix = scaled && style.transform !== 'none' ? new DOMMatrixReadOnly(style.transform) : null;
+        return { x: box.x + box.width / 2, y: box.y + box.height / 2, angle: angleOf(node),
+          width: parseFloat(style.width) * (matrix ? Math.hypot(matrix.a, matrix.b) : 1),
+          height: parseFloat(style.height) * (matrix ? Math.hypot(matrix.c, matrix.d) : 1) };
+      };
+    });
+    const burnCards = ['bells-K', ...played];
+    expect(played.slice().sort()).toEqual([...quartet].sort());
+    const baseline = await page.evaluate(ids => Object.fromEntries(ids.map(id =>
+      [id, window.__poseOf(document.querySelector(`#hausdeppPile [data-card-id="${id}"]`))])), played);
+    let fanMoved = 0;
+    for (const [index, id] of burnCards.entries()) {
+      const sample = await page.evaluate(async ({ id, index }) => {
+        // Surviving papers are mid-fan when this one leaves.
+        for (const animation of document.getElementById('hausdeppPile').getAnimations({ subtree: true })) {
+          const end = animation.effect.getComputedTiming().endTime;
+          if (animation.playState === 'paused' && end > 0 && end !== Infinity) animation.currentTime = end / 2;
+        }
+        const paper = document.querySelector(`#hausdeppPile [data-card-id="${id}"]`);
+        const ghost = [...document.querySelectorAll('.hd-deal-card[data-motion-type="burn"]')]
+          .find(node => node.dataset.index === String(index));
+        const animation = ghost.getAnimations()[0];
+        const before = paper && window.__poseOf(paper);
+        // ComputedStyle is live: copy the values before the tracker detaches
+        // this paper at departure, rather than reading the detached node later.
+        const properties = [...ghost.style].filter(name => name.startsWith('--'));
+        const paperValues = Object.fromEntries(properties.map(name =>
+          [name, paper && getComputedStyle(paper).getPropertyValue(name).trim()]));
+        animation.currentTime = animation.effect.getTiming().delay + 1;
+        await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        return { before, after: window.__poseOf(ghost, true), scorched: ghost.classList.contains('hd-card-scorched'),
+          properties: properties.map(name => [name, ghost.style.getPropertyValue(name).trim(), paperValues[name]]) };
+      }, { id, index });
+      expect(sample.scorched, `${id} scorch class`).toBe(scorched);
+      if (!sample.before) continue; // the buried old top has no visible paper to continue from
+      for (const key of ['x', 'y', 'width', 'height']) {
+        expect(Math.abs(sample.after[key] - sample.before[key]), `${id} ${key} at departure`).toBeLessThan(1);
+      }
+      expect(Math.abs(sample.after.angle - sample.before.angle), `${id} angle at departure`).toBeLessThan(1);
+      for (const [name, ghostValue, paperValue] of sample.properties) expect(ghostValue, `${id} ${name}`).toBe(paperValue);
+      const origin = baseline[id];
+      if (index > 1 && (Math.abs(origin.x - sample.before.x) > .5 || Math.abs(origin.y - sample.before.y) > .5
+        || Math.abs(origin.angle - sample.before.angle) > .5)) fanMoved += 1;
+    }
+    expect(fanMoved, 'a later paper departs while the surviving fan is moving').toBeGreaterThan(0);
+    await leaving.evaluateAll(nodes => nodes.forEach(node => node.getAnimations().forEach(animation => animation.finish())));
+    await expect(page.locator('#hausdeppPile .hd-pile-face')).toHaveCount(0);
+    await expect(page.locator('#hausdeppBurnedCount')).toHaveText('5');
+    expect(traffic.pageErrors).toEqual([]);
+  });
+}
+
 for (const [name, viewport, firstActor, firstType] of [
   ['phone', { width: 390, height: 844 }, 'own', 'play'],
   ['tablet', { width: 768, height: 1024 }, 'opponent', 'play'],

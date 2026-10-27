@@ -220,7 +220,8 @@ def start_next_round(game: dict, player_id: str, version: object) -> None:
     next_dealer = next(player["id"] for offset in range(1, len(all_participants) + 1)
                        if (player := all_participants[(old_dealer + offset) % len(all_participants)])["id"] not in departed)
     dealer_index = next(index for index, player in enumerate(participants) if player["id"] == next_dealer)
-    following = new_round(participants, dealer_index=dealer_index)
+    following = new_round(participants, dealer_index=dealer_index,
+                          four_of_a_kind_as_ten=state.get("four_of_a_kind_as_ten", False))
     following["version"] = state["version"] + 1
     following["table_version"] = following["version"]
     tournament["round_number"] += 1

@@ -36,6 +36,18 @@ erhalten. Reduzierte Bewegung zeigt den fertigen Fächer ohne Schieben.
 Card artwork and individual dragon scorch marks stay intact during multiple-card
 throws and quick follow-ups. Reduced motion shows the settled fan without sliding.
 
+**Deutsch:** Der Ersteller kann optional „Vier Gleiche als 10“ wählen. Die Regel
+ist standardmässig aus und im Favoriten speicherbar: Vier gleichrangige Karten
+aus einer Hand dürfen gemeinsam auch auf höhere Ränge und räumen das Paket ab.
+Sie startet intern hinter der bestehenden Funktionsfreigabe. Vor dem Abräumen
+bleiben alle vier Karten einzeln sichtbar.
+
+**English:** The creator can optionally select “Four of a kind as a ten”. It is
+off by default and saved with favourites: four matching cards from one hand may
+be played together over higher ranks and clear the pile. It initially uses the
+existing internal feature availability. All four cards remain individually
+visible before the pile clears.
+
 ## 4.9.0 — 2026-10-26
 
 ### WATTEN: DAS EIGENE BLATT NOCHMALS SEHEN / REVIEW YOUR OWN HAND

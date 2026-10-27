@@ -70,6 +70,47 @@ test('expired follow-up, lost cards, changed legality and a later regained turn 
   expect(selection.enabled).toBe(false);
 });
 
+test('a lower quartet needs its exact permitted group while ordinary singles remain immediate', async () => {
+  const { createHandSelection } = await import(selectionModule);
+  const quartet = ['hearts-6', 'bells-6', 'leaves-6', 'acorns-6'];
+  const selection = createHandSelection();
+  selection.sync(context({ hand: [...quartet, 'hearts-A'], playable: ['hearts-A'], playableGroups: [quartet] }));
+  expect(selection.startWith(quartet[0])).toBe(true);
+  expect(selection.cards.sort()).toEqual([...quartet].sort());
+  expect(selection.canPlay).toBe(true);
+  for (const card of quartet.slice(1)) {
+    selection.select(card);
+    expect(selection.canPlay, `${selection.cards.length} lower cards cannot clear a higher rank`).toBe(false);
+    expect(selection.take()).toBeNull();
+    expect(selection.notice).toBe('multiQuartetRequired');
+  }
+  for (const card of quartet.slice(1)) selection.select(card);
+  expect(selection.take()).toEqual({ action: 'play', cards: quartet });
+  expect(selection.take()).toBeNull();
+  expect(selection.startWith('hearts-A')).toBe(true);
+  expect(selection.take()).toEqual({ action: 'play', cards: ['hearts-A'] });
+});
+
+test('quartet opportunities expire with their permission and malformed groups grant no new cards', async () => {
+  const { createHandSelection } = await import(selectionModule);
+  const quartet = ['hearts-6', 'bells-6', 'leaves-6', 'acorns-6'];
+  for (const groups of [[quartet.slice(0, 3)], [[...quartet.slice(0, 3), quartet[0]]], [[...quartet.slice(0, 3), 'acorns-7']]]) {
+    const selection = createHandSelection();
+    selection.sync(context({ hand: quartet, playable: [], playableGroups: groups }));
+    expect(selection.startWith(quartet[0])).toBe(false);
+  }
+  const selection = createHandSelection();
+  const opportunity = context({ hand: quartet, playable: [], playableGroups: [quartet] });
+  selection.sync(opportunity); selection.startWith(quartet[0]);
+  selection.sync({ ...opportunity, playableGroups: [] });
+  expect(selection.cards).toEqual([]);
+  expect(selection.take()).toBeNull();
+  selection.sync(opportunity); selection.startWith(quartet[0]);
+  selection.sync({ ...opportunity, action: null, key: 'later-turn', identity: 'another player' });
+  expect(selection.cards).toEqual([]);
+  expect(selection.startWith(quartet[0])).toBe(false);
+});
+
 async function fixture(page, language) {
   await page.setViewportSize({ width: 390, height: 844 });
   const response = await page.request.post('/api/auth/login', { data: { username: 'Admin', password: 'temporary-password-123' } });
@@ -130,6 +171,48 @@ test.afterEach(async ({ page }) => {
 });
 
 const card = (page, id) => page.locator(`#hausdeppHand button[data-card-id="${id}"]`);
+
+for (const [language, viewport] of [['de', { width: 390, height: 844 }], ['en', { width: 1440, height: 900 }]]) {
+  test(`${language}: lower quartet taps require four-card confirmation and never send illegal singles`, async ({ page }) => {
+    const state = await fixture(page, language);
+    await page.setViewportSize(viewport);
+    const quartet = ['hearts-6', 'bells-6', 'leaves-6', 'acorns-6'];
+    Object.assign(state.board._hausdepp, { version: state.board._hausdepp.version + 2,
+      four_of_a_kind_as_ten: true, hand: [...quartet, 'hearts-A'], playable_cards: ['hearts-A'], playable_groups: [quartet],
+      discard: ['bells-K'], available_actions: ['play', 'pickup'], last_event: { type: 'round_started' } });
+    state.send(state.board);
+    await expect(card(page, quartet[0])).toBeEnabled();
+    await expect(page.locator('#hausdeppTableRule')).toHaveText(language === 'de' ? '4 Gleiche = 10' : '4 of a kind = 10');
+    await card(page, quartet[0]).click();
+    expect(state.commands).toEqual([]);
+    await expect(page.locator('#hausdeppHand [aria-pressed=true]')).toHaveCount(4);
+    const play = page.locator('#hausdeppMultiPlay');
+    await expect(play).toBeEnabled();
+    for (const id of quartet.slice(1)) {
+      await card(page, id).click();
+      await expect(play).toBeDisabled();
+      await expect(page.locator('#hausdeppMultiNotice')).toContainText(language === 'de' ? 'Nur alle vier' : 'Only all four');
+      expect(state.commands).toEqual([]);
+    }
+    for (const id of quartet.slice(1)) await card(page, id).click();
+    await expect(play).toHaveText(language === 'de' ? '4 Karten legen' : 'Play 4 cards');
+    await play.click();
+    expect(state.commands.map(({ action, cards }) => ({ action, cards: [...cards].sort() })))
+      .toEqual([{ action: 'hausdepp_play', cards: [...quartet].sort() }]);
+    // The same opportunity is still usable through the existing hold gesture.
+    await page.reload();
+    await expect(card(page, quartet[0])).toBeEnabled();
+    state.commands.length = 0;
+    const box = await card(page, quartet[0]).boundingBox();
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 3);
+    await page.mouse.down(); await page.waitForTimeout(520); await page.mouse.up();
+    await expect(page.locator('#hausdeppHand [aria-pressed=true]')).toHaveCount(4);
+    expect(state.commands).toEqual([]);
+    await page.locator('#hausdeppMultiToggle').click();
+    await card(page, 'hearts-A').click();
+    expect(state.commands.map(({ action, cards }) => ({ action, cards }))).toEqual([{ action: 'hausdepp_play', cards: ['hearts-A'] }]);
+  });
+}
 
 for (const language of ['de', 'en']) {
   test(`${language}: ordinary tapping still plays immediately and multi-select sends one atomic matching command`, async ({ page }) => {
@@ -855,10 +938,12 @@ test('equal ranks on top of the open pile fan out so their count reads at a glan
   const faces = page.locator('#hausdeppPile .hd-pile-face[data-run-step]');
   await expect(faces).toHaveCount(3);
   await expect(page.locator('#hausdeppPile')).toHaveAttribute('aria-label', /3 gleiche oben/);
-  const lefts = await faces.evaluateAll(nodes => nodes.map(node => node.getBoundingClientRect().left));
   // Older equal cards step out to the left far enough to show their corner.
-  expect(lefts[0]).toBeLessThan(lefts[1] - 10);
-  expect(lefts[1]).toBeLessThan(lefts[2] - 10);
+  // Read the settled fan, since the paper now slides out instead of jumping.
+  await expect.poll(() => faces.evaluateAll(nodes => {
+    const lefts = nodes.map(node => node.getBoundingClientRect().left);
+    return lefts.length === 3 && lefts[0] < lefts[1] - 10 && lefts[1] < lefts[2] - 10;
+  })).toBe(true);
   if (process.env.HAUSDEPP_PILE_SCREENSHOTS === '1') {
     const box = await page.locator('.hd-centre').boundingBox();
     await page.screenshot({ path: test.info().outputPath('pile-run.png'), clip: box });
