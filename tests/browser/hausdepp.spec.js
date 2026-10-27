@@ -411,6 +411,18 @@ async function clickExposedHandCard(card) {
   await card.click({ position });
 }
 
+function journeyActionReceipt(traffic, commandsBefore, action) {
+  const command = traffic.commands.slice(commandsBefore).find(value => value.action === `hausdepp_${action}`);
+  if (!command) return null;
+  const messages = traffic.messages.slice(traffic.tableStart?.messages);
+  const acknowledgement = messages.find(message =>
+    message.hausdepp_command?.command_id === command.command_id)?.hausdepp_command;
+  if (acknowledgement?.accepted !== true) return null;
+  const accepted = messages.map(message => message.scoreboard?._hausdepp)
+    .find(value => value?.version === acknowledgement.version);
+  return accepted ? { command, acknowledgement, accepted } : null;
+}
+
 async function playLegalHandCard(page, traffic) {
   // The deck is genuinely shuffled. If our opening hand is below the starter,
   // use real legal actions until the server offers a hand play.
@@ -451,12 +463,99 @@ async function playLegalHandCard(page, traffic) {
       await completeRequiredDraw(page, traffic);
       return predecessor;
     }
-    if (!state.available_actions.includes('gamble')) await expect(page.locator('#hausdeppPile')).toHaveAttribute('data-pickup-available', 'true');
-    await page.locator(state.available_actions.includes('gamble') ? '#hausdeppStock' : '#hausdeppPile').click();
-    await expect.poll(() => traffic.state?.version || 0).toBeGreaterThan(state.version);
+    const action = state.available_actions.includes('gamble') ? 'gamble' : 'pickup';
+    if (action === 'pickup') await expect(page.locator('#hausdeppPile')).toHaveAttribute('data-pickup-available', 'true');
+    const commandsBefore = traffic.commands.length;
+    await page.locator(action === 'gamble' ? '#hausdeppStock' : '#hausdeppPile').click();
+    // A foreign private refill can advance the version while this own tap is
+    // still pending. Only its exact ACK and accepted board release the driver.
+    await expect.poll(() => Boolean(journeyActionReceipt(traffic, commandsBefore, action))).toBe(true);
+    const { command, acknowledgement, accepted } = journeyActionReceipt(traffic, commandsBefore, action);
+    const predecessor = traffic.messages.slice(traffic.tableStart?.messages).map(message => message.scoreboard?._hausdepp)
+      .find(value => value?.version === command.version);
+    expect(predecessor).toBeTruthy();
+    expect(predecessor.current_player_id).toBe(state.viewer_id);
+    expect(predecessor.available_actions).toContain(action);
+    if (action === 'gamble') expect(predecessor.deck_count).toBeGreaterThan(0);
+    else expect(predecessor.discard.length).toBeGreaterThan(0);
+    expect(acknowledgement.version).toBeGreaterThan(command.version);
+    expect(accepted.last_event).toMatchObject({ type: action, player_id: state.viewer_id });
     await completeRequiredDraw(page, traffic);
   }
   throw new Error('The real game did not offer a legal hand play in twelve turns.');
+}
+
+for (const action of ['pickup', 'gamble']) {
+  test(`the journey driver waits for its exact ${action} ACK and board despite a preceding foreign refill`, async ({ page }) => {
+    const own = 'driver-self', remote = 'driver-cpu', card = 'bells-U';
+    const initial = { version: 3, viewer_id: own, current_player_id: own,
+      hand: ['hearts-6', 'hearts-9', card], discard: ['acorns-A'], deck_count: 12,
+      available_actions: [action], playable_cards: [], pending_refill: null, pending_refills: [],
+      last_event: { type: 'play', player_id: remote, cards: ['acorns-A'] } };
+    // Old tables reuse version numbers. Neither the fallback's predecessor nor
+    // its accepted board may come from an earlier table in this same journey.
+    const traffic = { state: initial, commands: [], messages: [
+      { scoreboard: { _hausdepp: { ...initial, available_actions: [], current_player_id: 'old-table' } } },
+      { scoreboard: { _hausdepp: { ...initial, version: 5, last_event: { type: 'play', player_id: 'old-table' } } } },
+    ], tableStart: { messages: 2, commands: 0 } };
+    const receive = next => { traffic.state = next; traffic.messages.push({ scoreboard: { _hausdepp: next } }); };
+    receive(initial);
+    let receiptDelivered = false;
+    const nativePlays = [];
+    await page.setContent(`<button id="hausdeppPile" data-pickup-available="true">Paket nehmen</button>
+      <button id="hausdeppStock">Zocken</button><div id="hausdeppHand">
+      <button data-card-id="${card}" disabled style="width:100px;height:160px">Unter</button></div>`);
+    await page.exposeFunction('journeyFallbackTap', selected => {
+      traffic.commands.push({ action: `hausdepp_${selected}`, command_id: `driver-${selected}-${traffic.commands.length}`, version: traffic.state.version });
+    });
+    await page.exposeFunction('journeyNextHandTap', () => {
+      nativePlays.push({ receiptDelivered });
+      const command = { action: 'hausdepp_play', command_id: 'driver-play', version: traffic.state.version, cards: [card] };
+      traffic.commands.push(command);
+      receive({ ...traffic.state, version: command.version + 1, hand: traffic.state.hand.filter(value => value !== card),
+        discard: [...traffic.state.discard, card], current_player_id: remote, available_actions: [], playable_cards: [],
+        last_event: { type: 'play', player_id: own, cards: [card] } });
+      traffic.messages.push({ hausdepp_command: { command_id: command.command_id, accepted: true, version: command.version + 1 } });
+    });
+    await page.evaluate(() => {
+      document.getElementById('hausdeppPile').addEventListener('click', () => window.journeyFallbackTap('pickup'));
+      document.getElementById('hausdeppStock').addEventListener('click', () => window.journeyFallbackTap('gamble'));
+      document.querySelector('#hausdeppHand button').addEventListener('click', () => window.journeyNextHandTap());
+    });
+    const outcome = playLegalHandCard(page, traffic).then(value => ({ value }), error => ({ error }));
+    await expect.poll(() => traffic.commands.length).toBe(1);
+    const fallback = traffic.commands[0];
+    expect(fallback).toMatchObject({ action: `hausdepp_${action}`, version: 3 });
+    receive({ ...initial, version: 4, last_event: { type: 'draw', player_id: remote, drawn_count: 1 } });
+    traffic.messages.push({ hausdepp_command: { command_id: 'unrelated-command', accepted: true, version: 4 } });
+    const accepted = { ...initial, version: 5, hand: [...initial.hand, 'acorns-A'], discard: [],
+      current_player_id: remote, available_actions: [], last_event: { type: action, player_id: own } };
+    const acknowledgement = { command_id: fallback.command_id, accepted: true, version: 5 };
+    // Publish only one half of the receipt. The following CPU state is already
+    // a usable hand opportunity, so an eager driver would visibly play too soon.
+    if (action === 'pickup') traffic.messages.push({ scoreboard: { _hausdepp: accepted } });
+    else traffic.messages.push({ hausdepp_command: acknowledgement });
+    receive({ ...accepted, version: 6, current_player_id: own, discard: ['leaves-8'],
+      available_actions: ['play', 'pickup', 'gamble'], playable_cards: [card, 'acorns-A'],
+      last_event: { type: 'play', player_id: remote, cards: ['leaves-8'] } });
+    await page.locator('#hausdeppHand button').evaluate(button => { button.disabled = false; });
+    // Deliberately withhold the remaining transport message; this is a receipt
+    // delivery barrier, not a retry or an increased gameplay timeout.
+    const barrier = await Promise.race([outcome.then(() => 'driver-continued'),
+      page.evaluate(() => new Promise(resolve => setTimeout(() => resolve('receipt-withheld'), 300)))]);
+    expect(barrier).toBe('receipt-withheld');
+    expect(nativePlays).toEqual([]);
+    expect(traffic.commands).toHaveLength(1);
+    if (action === 'pickup') traffic.messages.push({ hausdepp_command: acknowledgement });
+    else traffic.messages.push({ scoreboard: { _hausdepp: accepted } });
+    receiptDelivered = true;
+    const result = await outcome;
+    expect(result.error).toBeUndefined();
+    expect(result.value.version).toBe(6);
+    expect(nativePlays).toEqual([{ receiptDelivered: true }]);
+    expect(traffic.commands).toEqual([fallback,
+      { action: 'hausdepp_play', command_id: 'driver-play', version: 6, cards: [card] }]);
+  });
 }
 
 // The same strict geometry contract covers normal tables, rare docks and
