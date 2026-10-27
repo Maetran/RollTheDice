@@ -2574,5 +2574,12 @@
     "date": "2026-10-26",
     "bump": "patch",
     "summary": "Zuverlässige Veröffentlichungsprüfung mit ein- und ausgeschalteter Watten-Beta-Kennzeichnung. / Reliable release checks with the Watten beta label enabled or disabled."
+  },
+  {
+    "version": "4.9.0",
+    "revision": "4abafc3f5b38b7a082861d15445ef08eba1bbf6b",
+    "date": "2026-10-26",
+    "bump": "minor",
+    "summary": "Watten zeigt dein übriges Blatt während der kurzen Rückschau mit dem Rechten. / Watten keeps your remaining hand visible during the short Rechter review."
   }
 ]

@@ -1,23 +1,27 @@
 {
   "kind": "usability",
   "games": [
-    "watten"
+    "hausdepp"
   ],
-  "summary_de": "Watten: Dein übriges Blatt bleibt beim kurzen Rückblick mit dem Rechten sichtbar – auch wenn ein Team geht.",
-  "summary_en": "Watten: Your remaining hand stays visible during the short Rechter review, including when a team folds.",
+  "summary_de": "Hausdepp: Gleiche Karten gleiten auseinander, vier Karten bleiben sichtbar. Die neue Viererregel ist optional an freigegebenen Tischen.",
+  "summary_en": "Hausdepp: Matching cards fan smoothly; see all four before clearing. Optional quartets can beat higher ranks on enabled tables.",
   "player_notes": {
     "de": {
-      "title": "4.9.0: Noch ein Blick aufs eigene Blatt",
+      "title": "4.10.0: Gleiche Karten, ruhigere Würfe",
       "changes": [
-        "Nach drei Stichen oder wenn ein Team geht, siehst du deine übrigen Karten zusammen mit Schlag, Farbe und dem Rechten.",
-        "Die Rückschau dauert wie bisher etwa drei Sekunden. Danach folgen automatisch neue Karten oder das Spielergebnis."
+        "Gleiche Karten fächern sich nach dem Landen weich auf; auch Brandspuren bleiben während der Bewegung erhalten.",
+        "Vor dem Abräumen siehst du alle vier gleichen Karten. Aufnehmen und Abräumen setzen die Bewegung an ihrer tatsächlichen Kartenposition fort.",
+        "An freigegebenen Tischen kann der Ersteller „Vier Gleiche als 10“ wählen: vier passende Handkarten dürfen zusammen auch auf höhere Ränge.",
+        "Die Zusatzregel ist bei neuen Tischen aus. Die gewählte Regel bleibt im Favoriten gespeichert und wird am Tisch angezeigt."
       ]
     },
     "en": {
-      "title": "4.9.0: One more look at your hand",
+      "title": "4.10.0: Matching cards, smoother throws",
       "changes": [
-        "After three tricks or when a team folds, your remaining cards appear alongside strike, suit and the Rechter.",
-        "The review still lasts about three seconds, followed automatically by the next deal or match result."
+        "Matching cards fan apart smoothly after landing; individual scorch marks stay intact during movement.",
+        "All four matching cards remain visible before clearing. Pickups and clearances continue from each card’s actual position.",
+        "At eligible tables the creator can choose “Four of a kind as a ten”: four matching hand cards may be played together over higher ranks.",
+        "The optional rule is off for new tables. Favourites retain the chosen rule, and the table displays it."
       ]
     }
   }

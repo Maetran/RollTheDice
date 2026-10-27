@@ -23,7 +23,13 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
-## Unveröffentlicht / Unreleased
+## 4.10.0 — 2026-10-27
+
+Dieses Update macht Hausdepps Kartenbewegungen ruhiger und ergänzt eine zunächst
+intern freigegebene, optionale Tischregel.
+
+This update smooths Hausdepp card movement and adds an optional table rule
+initially available for internal testing.
 
 ### HAUSDEPP
 
