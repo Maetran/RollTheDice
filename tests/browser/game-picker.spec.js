@@ -37,17 +37,18 @@ async function ownerFixture(page, language = "de", publicZilch = true) {
   expect(response.ok()).toBeTruthy();
   const user = (await response.json()).user;
   await languageFixture(page, language);
-  const state = { publicZilch };
+  const state = { publicZilch, accessOverrides: {}, authenticated: null };
   await page.route("**/api/auth/me", async route => {
     const response = await route.fetch();
     const auth = await response.json();
     await route.fulfill({ response, json: {
       ...auth,
+      authenticated: state.authenticated ?? auth.authenticated,
       // This labelled projection combines the real founder identity with
       // the independently supported public Zilch rollout for a three-game UI.
-      game_access: { ...auth.game_access, zilch_public: state.publicZilch, watten_preview: false },
-      user: { ...auth.user, must_change_password: false,
-        game_access: { ...auth.user.game_access, watten_preview: false },
+      game_access: { ...auth.game_access, ...state.accessOverrides, zilch_public: state.publicZilch, watten_preview: false },
+      user: state.authenticated === false ? null : { ...auth.user, must_change_password: false,
+        game_access: { ...auth.user.game_access, ...state.accessOverrides, watten_preview: false },
         preferences: { ...auth.user.preferences, preferred_language: language } },
     } });
   });
@@ -155,7 +156,11 @@ for (const language of ["de", "en"]) {
     await page.goto("/hausdepp/konto");
     await expect(page.locator("html")).toHaveAttribute("lang", language);
     const { menu } = await openChooser(page);
-    await expect(menu.getByRole("link")).toHaveCount(3);
+    await expect(menu.locator("a[data-game-entry]")).toHaveCount(3);
+    await expect(menu.getByRole("heading", { name: language === "de" ? "Verwaltung" : "Administration", exact: true })).toBeVisible();
+    await expect(menu.locator("a[data-suite-utility-entry]")).toHaveCount(2);
+    await expect(menu.locator('[data-suite-utility-entry="admin"]')).toHaveAccessibleName("Admin Center");
+    await expect(menu.locator('[data-suite-utility-entry="dashboard"]')).toHaveAccessibleName("Dashboard");
     for (const name of ["ZDWA", "Zilch", "Hausdepp"]) {
       const link = menu.getByRole("link", { name, exact: true });
       await expect(link).toBeVisible();
@@ -180,14 +185,25 @@ test("chooser shortcut opens without navigating, respects typing, and cleans up 
   await page.keyboard.press("Alt+Shift+Z");
   const menu = page.locator("#suiteGameMenu");
   await expect(menu).toBeVisible();
+  await expect(menu.locator("a[data-suite-utility-entry]")).toHaveCount(2);
   expect(page.url()).toBe(url);
   await expect(menu.getByRole("link", { name: "ZDWA", exact: true })).toBeFocused();
   await page.keyboard.press("ArrowDown");
   await expect(menu.getByRole("link", { name: "Zilch", exact: true })).toBeFocused();
-  await page.keyboard.press("End");
+  await page.keyboard.press("ArrowDown");
   await expect(menu.getByRole("link", { name: "Hausdepp", exact: true })).toBeFocused();
+  await page.keyboard.press("ArrowDown");
+  await expect(menu.locator('[data-suite-utility-entry="admin"]')).toBeFocused();
+  await page.keyboard.press("ArrowDown");
+  await expect(menu.locator('[data-suite-utility-entry="dashboard"]')).toBeFocused();
+  await page.keyboard.press("ArrowDown");
+  await expect(menu.getByRole("link", { name: "ZDWA", exact: true })).toBeFocused();
+  await page.keyboard.press("ArrowUp");
+  await expect(menu.locator('[data-suite-utility-entry="dashboard"]')).toBeFocused();
   await page.keyboard.press("Home");
   await expect(menu.getByRole("link", { name: "ZDWA", exact: true })).toBeFocused();
+  await page.keyboard.press("End");
+  await expect(menu.locator('[data-suite-utility-entry="dashboard"]')).toBeFocused();
   await page.keyboard.press("Escape");
   await expect(trigger).toBeFocused();
   for (let attempt = 0; attempt < 3; attempt += 1) {
@@ -219,17 +235,20 @@ test("chooser shortcut opens without navigating, respects typing, and cleans up 
 });
 
 test("permission revocation removes private Hausdepp choices immediately from an open picker", async ({ page }) => {
-  const { user } = await ownerFixture(page);
+  const { user, state } = await ownerFixture(page);
   await page.goto("/regeln");
   let { menu } = await openChooser(page);
   await expect(menu.getByRole("link", { name: "Hausdepp", exact: true })).toBeVisible();
+  state.accessOverrides = { hausdepp_public: false, hausdepp_preview: false };
   await page.evaluate(user => window.dispatchEvent(new CustomEvent("zdwa:auth-state", { detail: {
     authenticated: true, user,
     game_access: { zilch_public: true, zilch_preview: false, hausdepp_preview: false },
   } })), user);
   await expect(page.locator('#suiteGameMenu [href*="hausdepp"]')).toHaveCount(0);
   if (!await menu.count()) ({ menu } = await openChooser(page));
-  await expect(menu.getByRole("link")).toHaveCount(2);
+  await expect(menu.locator("a[data-game-entry]")).toHaveCount(2);
+  state.authenticated = false;
+  state.publicZilch = false;
   await page.evaluate(() => window.dispatchEvent(new CustomEvent("zdwa:auth-state", { detail: {
     authenticated: false, user: null,
     game_access: { zilch_public: false, zilch_preview: false, hausdepp_preview: false },
@@ -239,7 +258,7 @@ test("permission revocation removes private Hausdepp choices immediately from an
   await expect(page.locator("[data-game-switch]")).toHaveAttribute("aria-expanded", "false");
 });
 
-test("phone and desktop pickers stay in the viewport and keep their appropriate keyboard boundaries", async ({ page }) => {
+test("phone and desktop pickers stay in the viewport and keep their appropriate keyboard boundaries", async ({ page }, testInfo) => {
   await ownerFixture(page);
   await page.goto("/hausdepp/regeln");
   for (const viewport of [{ width: 390, height: 844 }, { width: 844, height: 390 }, { width: 1440, height: 900 }]) {
@@ -252,8 +271,14 @@ test("phone and desktop pickers stay in the viewport and keep their appropriate 
     expect(box.x + box.width).toBeLessThanOrEqual(viewport.width + 1);
     expect(box.y + box.height).toBeLessThanOrEqual(viewport.height + 1);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
-    await expect(menu.getByRole("link")).toHaveCount(3);
+    await expect(menu.locator("a[data-game-entry]")).toHaveCount(3);
+    await expect(menu.locator("a[data-suite-utility-entry]")).toHaveCount(2);
+    if (process.env.SUITE_PICKER_CAPTURE === "1" && [390, 1440].includes(viewport.width)) {
+      await expect(menu.locator('[data-game-activity][data-state="loading"]')).toHaveCount(0);
+      await page.screenshot({ path: testInfo.outputPath(`admin-picker-${viewport.width}.png`) });
+    }
     for (const link of await menu.getByRole("link").all()) {
+      await link.scrollIntoViewIfNeeded();
       const row = await link.boundingBox();
       expect(row.height).toBeGreaterThanOrEqual(44);
       expect(await link.evaluate(node => {
@@ -261,7 +286,7 @@ test("phone and desktop pickers stay in the viewport and keep their appropriate 
         return node.contains(document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2));
       })).toBe(true);
     }
-    await menu.getByRole("link", { name: "Hausdepp", exact: true }).focus();
+    await menu.locator('[data-suite-utility-entry="dashboard"]').focus();
     await page.keyboard.press("Tab");
     if (viewport.width <= 600) {
       await expect(menu).toBeVisible();

@@ -23,6 +23,30 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 4.10.1 — 2026-10-27
+
+Dieses Update macht die geschützte Verwaltung aus der gemeinsamen Spielauswahl
+erreichbar und räumt doppelte Einstiege auf.
+
+This update makes protected administration available from the shared game
+picker and removes duplicate entry points.
+
+### ALLGEMEIN / GENERAL
+
+**Deutsch:** Unter den Spielen erscheint für berechtigte Konten die eigene
+Gruppe „Verwaltung“. Admins und Owner erreichen dort das Admin Center;
+das Dashboard erscheint unabhängig davon nur mit Dashboard-Zugriff.
+Die bisherigen Zusatzbuttons in der ZDWA-Lobby und der Admin-Übersicht
+entfallen. Installierte Apps behalten beim Öffnen der Verwaltung ihren
+Ursprung; Seiten und APIs prüfen den Zugang weiterhin selbst.
+
+**English:** Authorized accounts see a separate “Administration” group below
+the games. Admins and owners can open Admin Center; Dashboard is shown
+independently only with dashboard access. The previous duplicate buttons in
+the ZDWA lobby and admin overview are removed. Installed apps retain their
+origin when opening administration, while pages and APIs continue to enforce
+access themselves.
+
 ## 4.10.0 — 2026-10-27
 
 Dieses Update macht Hausdepps Kartenbewegungen ruhiger und ergänzt eine zunächst

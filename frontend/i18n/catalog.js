@@ -490,6 +490,11 @@ export const GAME_PICKER_MESSAGES = {
     wattenDescription: "Öffentliche Beta · Blind oder offen watten, mit Freunden oder CPUs.",
     wattenReleasedDescription: "Blind oder offen watten, mit Freunden oder CPUs.",
     wattenPrivateDescription: "Private Vorschau · Blind oder offen watten, mit Freunden oder CPUs.",
+    utilitiesTitle: "Verwaltung",
+    utilityAdminName: "Admin Center",
+    utilityAdminDescription: "Nutzer, Spiele und Funktionen",
+    utilityDashboardName: "Dashboard",
+    utilityDashboardDescription: "Besucher, Spiele und Server",
   },
   en: {
     title: "Choose a game",
@@ -507,6 +512,11 @@ export const GAME_PICKER_MESSAGES = {
     wattenDescription: "Public beta · Play blind or open Watten with friends or CPUs.",
     wattenReleasedDescription: "Play blind or open Watten with friends or CPUs.",
     wattenPrivateDescription: "Private preview · Play blind or open Watten with friends or CPUs.",
+    utilitiesTitle: "Administration",
+    utilityAdminName: "Admin Center",
+    utilityAdminDescription: "Users, games and features",
+    utilityDashboardName: "Dashboard",
+    utilityDashboardDescription: "Visitors, games and servers",
   },
 };
 

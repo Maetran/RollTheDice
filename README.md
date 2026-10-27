@@ -1836,14 +1836,14 @@ update answered the one-time question. While `ROLLTHEDICE_ZDWA_DESIGN` is
 `owner` or `off`, a note says that the stored choice does not apply yet. Only
 daily totals per look and area are stored, without visit, account or device
 relation, for 400 days.
-Open **Mission Control** from your account or administration. Only the founder
+Open **Mission Control** through **Game picker → Administration → Dashboard**. Only the founder
 can grant or revoke individual **Dashboard access** in user administration;
 admin and owner roles do not grant access automatically. Revocation applies to
 the next page or API request, including sessions already signed in.
 
 **Deutsch:** Mission Control zeigt Zugriffe, aktive Seitenzeit, Klick-Aktionen,
-Spielmodi, abgeschlossene Spiele und den Serverzustand. Du öffnest es im Konto
-oder in der Administration. Nur der Gründer darf einzelnen Konten in der
+Spielmodi, abgeschlossene Spiele und den Serverzustand. Du öffnest es über
+**Spielauswahl → Verwaltung → Dashboard**. Nur der Gründer darf einzelnen Konten in der
 Nutzerverwaltung Dashboard-Zugriff erlauben oder entziehen. Admins und Owner
 bekommen diesen Zugang nicht automatisch.
 
@@ -1984,6 +1984,13 @@ Hausdepp ist als drittes Spiel für alle sichtbar; Mitspielen erfordert eine
 Anmeldung. Normale Browser öffnen den eigenen Hausdepp-Host, installierte Apps
 behalten beim Wechsel ihren Ursprung und Service Worker.
 
+Unter den Spielen steht für berechtigte Konten der eigene Bereich
+**Verwaltung**: **Admin Center** für Admins und Owner, **Dashboard** unabhängig
+davon nur mit Dashboard-Zugriff. Ohne einen dieser Zugänge entfällt die Gruppe.
+Die Einträge ändern weder das gewählte Spiel noch dessen Freigaben. Der bisherige
+Administrations-Button in der ZDWA-Lobby und die Dashboard-Kachel in der
+Admin-Übersicht entfallen.
+
 **English:** The shared game picker shows available games with their own icon
 and name. Its trigger names the current game, which is also marked inside the
 picker. Tap or press `Alt+Shift+Z` to open it, then choose a game's lobby.
@@ -1991,6 +1998,13 @@ Escape closes the picker. On phones it opens as a reachable bottom sheet.
 Hausdepp is visible as the third game to everyone; playing requires sign-in.
 Regular browsers use its dedicated host, while installed apps retain their
 origin and service worker when switching.
+
+Authorized accounts also see a separate **Administration** group below the
+games: **Admin Center** for admins and owners, and **Dashboard** independently
+for accounts with dashboard access. The whole group is omitted without either
+permission. These entries change neither the selected game nor its availability.
+The previous administration button in the ZDWA lobby and the dashboard tile in
+the admin overview are removed.
 
 The [integration matrix](docs/GAME_SWITCHER.md) documents browser and installed
 app destinations, account settings and access boundaries.

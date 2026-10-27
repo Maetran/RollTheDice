@@ -29,7 +29,7 @@ class Element extends Events {
   closest() { return null; }
 }
 async function fixture({ state = founder(), mode = "zdwa", language = "de", loader, publicDocument = true, publicWattenDocument = false, beforeInitialize } = {}) {
-  const win = new Events(), doc = new Events(), button = new Element(), pickers = [], storage = new Map(), visits = [];
+  const win = new Events(), doc = new Events(), button = new Element(), pickers = [], storage = new Map(), visits = [], utilityHistory = [];
   doc.documentElement = { dataset: { game: mode } }; doc.visibilityState = "visible"; doc.activeElement = null;
   if (publicWattenDocument) doc.documentElement.dataset.wattenPublicBeta = "true";
   doc.querySelectorAll = selector => selector === "[data-game-switch]" ? [button] : [];
@@ -41,17 +41,30 @@ async function fixture({ state = founder(), mode = "zdwa", language = "de", load
     assign: value => visits.push(["assign", value]), replace: value => visits.push(["replace", value]) };
   globalThis.window = win; globalThis.document = doc; globalThis.Element = Element;
   globalThis.localStorage = { getItem: key => storage.get(key), setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) };
-  let reads = 0, currentState = state;
+  let reads = 0, currentState = state, authEpoch = 0;
+  const identity = value => value?.authenticated === true ? value.user?.id : null;
   globalThis.__founderPicker = {
     async loadAuth(options) {
       assert.equal(options.refresh, true); reads += 1;
+      const requestEpoch = authEpoch;
       const result = loader ? await loader(reads) : currentState;
+      // The real shared auth transport returns its current cache and suppresses
+      // an older /me notification after login/logout replaces the account.
+      if (requestEpoch !== authEpoch) return currentState;
+      currentState = result;
       win.emit("zdwa:auth-state", { detail: result });
       return result;
     },
     createGamePicker(options) {
+      utilityHistory.push((options.utilities || []).map(entry => entry.id));
       const picker = { ...options, closes: 0, opened: false,
-        update({ currentMode, games }) { const changed = JSON.stringify(this.games) !== JSON.stringify(games); if (changed) this.close(); this.games = games; this.currentMode = currentMode; },
+        update({ currentMode = this.currentMode, games = this.games, utilities = this.utilities || [] }) {
+          const changed = JSON.stringify(this.games) !== JSON.stringify(games)
+            || JSON.stringify(this.utilities || []) !== JSON.stringify(utilities);
+          if (changed) this.close();
+          this.games = games; this.utilities = utilities; this.currentMode = currentMode;
+          utilityHistory.push(utilities.map(entry => entry.id));
+        },
         close() { this.closes += 1; this.opened = false; }, toggle() { this.opened = !this.opened; } };
       pickers.push(picker); return picker;
     },
@@ -62,9 +75,14 @@ async function fixture({ state = founder(), mode = "zdwa", language = "de", load
   const { initializeAppMode } = await import(url(`${source}\n// fixture ${++serial}`));
   beforeInitialize?.({ win, visits });
   const controller = initializeAppMode({ mode, refreshOnInitialize: false });
-  return { controller, win, doc, button, pickers, storage, visits, roots, reads: () => reads,
-    games: () => pickers.at(-1)?.games || [], state(value) { currentState = value; },
-    event(value) { win.emit("zdwa:auth-state", { detail: value }); } };
+  return { controller, win, doc, button, pickers, storage, visits, roots, utilityHistory, reads: () => reads,
+    games: () => pickers.at(-1)?.games || [], utilities: () => pickers.at(-1)?.utilities || [],
+    state(value) { currentState = value; },
+    event(value) {
+      if (identity(value) !== identity(currentState)) authEpoch += 1;
+      currentState = value;
+      win.emit("zdwa:auth-state", { detail: value });
+    } };
 }
 
 test("server beta presentation can change without withdrawing the public Watten capability", async () => {
@@ -336,6 +354,186 @@ test("shared logout preserves ordinary public capabilities while dropping the pr
   assert.equal(events.at(-1).authenticated, false);
   assert.equal(Object.hasOwn(events.at(-1).game_access, "watten_preview"), false);
   assert.equal(events.at(-1).game_access.hausdepp_public, true); assert.equal(events.at(-1).game_access.zilch_public, true);
+});
+
+const utilityAccount = (id = 21, user = { is_admin: true, can_view_analytics: true }) => auth(id, { watten_public: true }, user);
+const utilityIds = f => f.utilities().map(entry => entry.id);
+
+test("administration and analytics discovery use independent strict account capabilities after fresh proof", async () => {
+  const cases = [
+    ["guest", auth(null, { watten_public: true }), []],
+    ["ordinary account", utilityAccount(21, {}), []],
+    ["administrator without analytics", utilityAccount(21, { is_admin: true }), ["admin"]],
+    ["analytics without administrator", utilityAccount(21, { can_view_analytics: true }), ["dashboard"]],
+    ["delegated owner without analytics", utilityAccount(21, { is_owner: true, is_admin: true }), ["admin"]],
+    ["founder with both server capabilities", utilityAccount(1, { is_founder: true, is_admin: true, can_view_analytics: true }), ["admin", "dashboard"]],
+    ["administrator with analytics", utilityAccount(), ["admin", "dashboard"]],
+    ["role and owner labels alone", utilityAccount(21, { role: "admin", is_owner: true, is_founder: true }), []],
+    ["truthy capability strings", utilityAccount(21, { is_admin: "true", can_view_analytics: "true" }), []],
+    ["truthy numeric capabilities", utilityAccount(21, { is_admin: 1, can_view_analytics: 1 }), []],
+    ["nonboolean authentication", { ...utilityAccount(), authenticated: "true" }, []],
+    ["signed-out identity residue", { ...utilityAccount(), authenticated: false }, []],
+    ["string account ID", utilityAccount("21"), []],
+    ["zero account ID", utilityAccount(0), []],
+    ["unsafe account ID", utilityAccount(Number.MAX_SAFE_INTEGER + 1), []],
+    ["capabilities outside user projection", { ...utilityAccount(21, {}), is_admin: true, can_view_analytics: true }, []],
+  ];
+  for (const [name, state, expected] of cases) {
+    const f = await fixture({ state, mode: "hausdepp" });
+    f.storage.set("zdwa_app_mode", "admin");
+    assert.deepEqual(utilityIds(f), [], `${name}: a public document cannot supply account proof`);
+    await f.controller.refresh();
+    assert.deepEqual(utilityIds(f), expected, name);
+    assert.equal(f.games().some(game => game.id === "watten"), true, `${name}: public Watten remains independent`);
+    assert.equal(f.games().some(game => ["admin", "dashboard"].includes(game.id)), false, name);
+    assert.equal(f.controller.current, "hausdepp");
+    assert.equal(f.controller.set("admin"), false);
+    assert.equal(f.controller.set("dashboard"), false);
+    assert.deepEqual(f.visits, []);
+  }
+});
+
+test("logout, account switch and independent permission revocations withdraw utilities while Watten stays public", async () => {
+  for (const [name, next, expected] of [
+    ["logout", auth(null, { watten_public: true }), []],
+    ["ordinary account switch", utilityAccount(22, {}), []],
+    ["admin revoked", utilityAccount(21, { can_view_analytics: true }), ["dashboard"]],
+    ["analytics revoked", utilityAccount(21, { is_admin: true }), ["admin"]],
+  ]) {
+    const f = await fixture({ state: utilityAccount(), mode: "hausdepp" });
+    await f.controller.refresh();
+    assert.deepEqual(utilityIds(f), ["admin", "dashboard"]);
+    const picker = f.pickers.at(-1); picker.toggle();
+    f.state(next); f.event(next);
+    assert.deepEqual(utilityIds(f), expected, `${name}: withdrawal must be synchronous`);
+    assert.equal(picker.opened, false, name);
+    assert.equal(f.games().find(game => game.id === "watten").publicBeta, true, name);
+    assert.equal(f.controller.current, "hausdepp", name);
+    assert.deepEqual(f.visits, [], name);
+    await settle();
+    assert.deepEqual(utilityIds(f), expected, `${name}: a queued refresh cannot restore the old privileges`);
+  }
+});
+
+test("utility confirmation failures revoke both private entries independently of a public Watten menu", async () => {
+  let fail = false;
+  const f = await fixture({ mode: "hausdepp", loader: () => {
+    if (fail) throw new Error("identity unavailable");
+    return utilityAccount();
+  } });
+  await f.controller.refresh();
+  const picker = f.pickers.at(-1); picker.toggle();
+  assert.deepEqual(utilityIds(f), ["admin", "dashboard"]);
+  fail = true;
+  await f.controller.refresh({ preserveKnownPrivate: true });
+  assert.deepEqual(utilityIds(f), []);
+  assert.equal(picker.opened, false);
+  assert.equal(f.games().find(game => game.id === "watten").publicBeta, true);
+  assert.equal(f.games().length, 4);
+  assert.deepEqual(f.visits, []);
+});
+
+test("focus withdraws private utility proof until the current account is freshly confirmed", async () => {
+  const fresh = deferred(); let waiting = false;
+  const f = await fixture({ mode: "hausdepp", loader: () => waiting ? fresh.promise : utilityAccount() });
+  await f.controller.refresh();
+  const picker = f.pickers.at(-1); picker.toggle(); waiting = true;
+  const reads = f.reads();
+  f.win.emit("focus");
+  assert.deepEqual(utilityIds(f), []);
+  assert.equal(picker.opened, false);
+  assert.equal(f.games().find(game => game.id === "watten").publicBeta, true);
+  await settle();
+  assert.ok(f.reads() > reads, "focus must begin a current identity request");
+  assert.deepEqual(utilityIds(f), [], "a pending /me cannot retain the prior focus session's privileges");
+  fresh.resolve(utilityAccount()); await settle();
+  assert.deepEqual(utilityIds(f), ["admin", "dashboard"]);
+});
+
+test("a previous account's delayed utility proof cannot populate the new account's menu", async () => {
+  const old = deferred(); let waiting = false, oldReadStarted = false;
+  const f = await fixture({ mode: "hausdepp", loader: () => {
+    if (!waiting) return utilityAccount();
+    if (!oldReadStarted) { oldReadStarted = true; return old.promise; }
+    return utilityAccount(22, {});
+  } });
+  await f.controller.refresh(); waiting = true;
+  const pending = f.controller.refresh({ preserveKnownPrivate: true }); await settle();
+  assert.equal(oldReadStarted, true);
+  f.event(utilityAccount(22, {}));
+  assert.deepEqual(utilityIds(f), []);
+  const afterSwitch = f.utilityHistory.length;
+  old.resolve(utilityAccount()); await pending; await settle();
+  assert.deepEqual(utilityIds(f), []);
+  assert.equal(f.utilityHistory.slice(afterSwitch).some(entries => entries.length > 0), false,
+    "even a transient picker update cannot publish the previous account's private links");
+  assert.equal(f.games().find(game => game.id === "watten").publicBeta, true);
+  assert.deepEqual(f.visits, []);
+});
+
+for (const departure of ["pagehide", "hidden"]) {
+  test(`${departure} and page restoration require fresh utility proof without reviving a retired response`, async () => {
+    const old = deferred(), restored = deferred(); let phase = "initial";
+    const f = await fixture({ mode: "hausdepp", loader: () => phase === "initial" ? utilityAccount()
+      : phase === "outgoing" ? old.promise : restored.promise });
+    await f.controller.refresh();
+    const picker = f.pickers.at(-1); picker.toggle(); phase = "outgoing";
+    const reads = f.reads();
+    const pending = f.controller.refresh({ preserveKnownPrivate: true }); await settle();
+    assert.ok(f.reads() > reads, "the departure must actually interrupt an identity request");
+    if (departure === "pagehide") f.win.emit("pagehide");
+    else { f.doc.visibilityState = "hidden"; f.doc.emit("visibilitychange"); }
+    assert.deepEqual(utilityIds(f), []);
+    assert.equal(picker.opened, false);
+    old.resolve(utilityAccount()); await pending; await settle();
+    assert.deepEqual(utilityIds(f), [], "a response from the retired document cannot revive private links");
+    phase = "restoring";
+    if (departure === "pagehide") f.win.emit("pageshow", { persisted: true });
+    else { f.doc.visibilityState = "visible"; f.doc.emit("visibilitychange"); }
+    await settle();
+    assert.deepEqual(utilityIds(f), [], "restoration must wait for its own current proof");
+    assert.equal(f.games().find(game => game.id === "watten").publicBeta, true);
+    restored.resolve(utilityAccount()); await settle();
+    assert.deepEqual(utilityIds(f), ["admin", "dashboard"]);
+    assert.deepEqual(f.visits, []);
+  });
+}
+
+test("native utility departure retires old auth callbacks and BFCache return acquires its own current proof", async () => {
+  const outgoing = deferred(), restored = deferred(); let phase = "initial";
+  const f = await fixture({ mode: "hausdepp", loader: () => phase === "initial" ? utilityAccount()
+    : phase === "outgoing" ? outgoing.promise : restored.promise });
+  await f.controller.refresh();
+  f.storage.set("zdwa_app_mode", "hausdepp");
+  const picker = f.pickers.at(-1); picker.toggle(); phase = "outgoing";
+  const reads = f.reads();
+  const pending = f.controller.refresh({ preserveKnownPrivate: true }); await settle();
+  assert.ok(f.reads() > reads, "native departure must interrupt a real identity request");
+  let prevented = false;
+  picker.onUtilitySelect("admin", f.utilities().find(entry => entry.id === "admin"), {
+    button: 0, currentTarget: { target: "" }, preventDefault() { prevented = true; },
+  });
+  assert.equal(prevented, false);
+  assert.equal(picker.opened, false);
+  assert.deepEqual(utilityIds(f), []);
+  assert.equal(f.storage.get("zdwa_app_mode"), "hausdepp");
+  assert.equal(f.controller.current, "hausdepp");
+  outgoing.reject(new Error("native navigation cancelled the outgoing identity request"));
+  await pending;
+  f.event(auth(null, { watten_public: true }));
+  const departedReads = f.reads();
+  f.win.emit("focus"); f.doc.emit("visibilitychange"); await settle();
+  assert.equal(f.reads(), departedReads, "outgoing-page events cannot resume confirmation before navigation commits");
+  assert.deepEqual(f.visits, [], "the browser's native link remains the sole navigation owner");
+  f.win.emit("pagehide"); phase = "restored";
+  f.win.emit("pageshow", { persisted: true }); await settle();
+  assert.ok(f.reads() > departedReads, "a restored live page must start a new account confirmation");
+  assert.deepEqual(utilityIds(f), [], "old proof stays absent while the restored document is waiting");
+  restored.resolve(utilityAccount(21, { can_view_analytics: true })); await settle();
+  assert.deepEqual(utilityIds(f), ["dashboard"]);
+  assert.equal(f.storage.get("zdwa_app_mode"), "hausdepp");
+  assert.equal(f.controller.current, "hausdepp");
+  assert.deepEqual(f.visits, []);
 });
 
 function mountAccountLifecycle(zilch, f, state) {

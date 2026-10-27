@@ -36,6 +36,10 @@ class Element extends Events {
   set id(value) { this.setAttribute("id", value); }
   get className() { return this.getAttribute("class") || ""; }
   set className(value) { this.setAttribute("class", value); }
+  get href() { return this.getAttribute("href"); }
+  set href(value) { this.setAttribute("href", value); }
+  get textContent() { return (this.ownText || "") + this.children.map(child => child.textContent).join(""); }
+  set textContent(value) { for (const child of [...this.children]) child.remove(); this.ownText = String(value); }
   append(...nodes) { for (const node of nodes) { node.remove(); node.parentNode = this; this.children.push(node); } }
   remove() {
     if (!this.parentNode) return;
@@ -48,7 +52,7 @@ class Element extends Events {
   focus() { this.doc.activeElement = this; this.doc.emit("focusin", { target: this }); }
   getBoundingClientRect() { return { left: 12, right: 340, top: 20, bottom: 64, width: 328, height: 44 }; }
   matches(selector) {
-    const match = selector.match(/^([a-z]+)?(?:\.([\w-]+))?(?:\[([\w-]+)(?:="([^"]*)")?\])?$/);
+    const match = selector.match(/^([a-z][\w-]*)?(?:\.([\w-]+))?(?:\[([\w-]+)(?:="([^"]*)")?\])?$/);
     if (!match) throw new Error(`Unsupported test selector: ${selector}`);
     const [, tag, klass, attr, value] = match;
     const dataKey = attr?.startsWith("data-") && attr.slice(5).replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
@@ -64,9 +68,11 @@ class Element extends Events {
   querySelector(selector) { return this.querySelectorAll(selector)[0] || null; }
   set innerHTML(html) {
     this.markup = html;
+    this.ownText = "";
     for (const child of [...this.children]) child.remove();
     const stack = [this];
-    for (const match of html.matchAll(/<(\/)?([a-z][\w-]*)([^>]*)>/gi)) {
+    for (const match of html.matchAll(/<(\/)?([a-z][\w-]*)([^>]*)>|([^<]+)/gi)) {
+      if (match[4]) { stack.at(-1).ownText = (stack.at(-1).ownText || "") + match[4]; continue; }
       if (match[1]) { stack.pop(); continue; }
       const child = new Element(this.doc, match[2]);
       for (const attr of match[3].matchAll(/([\w-]+)(?:="([^"]*)")?/g)) child.setAttribute(attr[1], attr[2] ?? "");
@@ -82,9 +88,13 @@ const games = [
   { id: "hausdepp", name: "Hausdepp", href: "/hausdepp" },
 ];
 const watten = { id: "watten", name: "Watten", href: "/watten", description: "Private preview" };
+const utilities = [
+  { id: "admin", name: "Admin Center", href: "/admin", description: "Manage the suite" },
+  { id: "dashboard", name: "Dashboard", href: "/admin/dashboard", description: "View analytics" },
+];
 const settle = async () => { for (let index = 0; index < 8; index += 1) await Promise.resolve(); };
 
-function fixture(compact = false, language = "en") {
+function fixture(compact = false, language = "en", utilityEntries = []) {
   const doc = new Events(), win = new Events(), requests = [], timers = new Map(), selected = [];
   doc.body = new Element(doc, "body"); doc.body.style.overflow = "scroll";
   doc.visibilityState = "visible";
@@ -98,11 +108,13 @@ function fixture(compact = false, language = "en") {
     clearTimeout: id => timers.delete(id) });
   Object.assign(globalThis, { document: doc, window: win, HTMLElement: Element,
     fetch: (_url, options) => new Promise(resolve => requests.push({ options, resolve })) });
-  const picker = createGamePicker({ button, currentMode: "hausdepp", games, onSelect: (...args) => selected.push(args) });
+  const picker = createGamePicker({ button, currentMode: "hausdepp", games, utilities: utilityEntries,
+    onSelect: (...args) => selected.push(args) });
   picker.toggle();
   return { doc, win, content, button, picker, requests, timers, selected,
     panel: () => doc.body.querySelector("nav"),
-    links: () => doc.body.querySelectorAll("a[data-game-entry]") };
+    links: () => doc.body.querySelectorAll("a[data-game-entry]"),
+    utilityLinks: () => doc.body.querySelectorAll("a[data-suite-utility-entry]") };
 }
 
 for (const compact of [false, true]) {
@@ -238,3 +250,75 @@ test("removal, existing DTO changes, reordered options and current-game changes 
     f.picker.destroy();
   }
 });
+
+for (const compact of [false, true]) {
+  for (const language of ["de", "en"]) {
+    test(`native utility links form a localized group without selecting a game (${language}, ${compact ? "mobile" : "desktop"})`, async () => {
+      const f = fixture(compact, language, utilities);
+      const triggerLabel = f.button.getAttribute("aria-label");
+      const entries = f.utilityLinks();
+      assert.deepEqual(f.links().map(link => link.dataset.gameEntry), ["zdwa", "hausdepp"]);
+      assert.deepEqual(entries.map(link => link.dataset.suiteUtilityEntry), ["admin", "dashboard"]);
+      assert.ok(f.panel().querySelectorAll("h2, h3").some(heading => heading.textContent === (language === "de" ? "Verwaltung" : "Administration")),
+        "utilities need their own visible localized heading");
+      for (const [index, entry] of entries.entries()) {
+        assert.equal(entry.href, utilities[index].href);
+        assert.equal(entry.getAttribute("data-game-entry"), null);
+        assert.equal(entry.getAttribute("aria-current"), null);
+        assert.equal(entry.querySelector("[data-game-activity]"), null);
+        assert.ok(entry.textContent.includes(utilities[index].name));
+        assert.ok(entry.textContent.includes(utilities[index].description));
+      }
+      f.requests[0].resolve({ ok: true, json: async () => ({ games: {
+        zdwa: { players: 4 }, hausdepp: { players: 2 }, admin: { players: 987 }, dashboard: { players: 987 },
+      } }) });
+      await settle();
+      assert.equal(f.panel().querySelectorAll("[data-game-activity]").length, games.length);
+      assert.equal(entries.some(entry => entry.textContent.includes("987")), false);
+      let prevented = false;
+      entries[1].emit("click", { ctrlKey: true, metaKey: true, shiftKey: true,
+        preventDefault() { prevented = true; } });
+      assert.equal(prevented, false, "native modified-link navigation must remain available");
+      assert.deepEqual(f.selected, [], "utility navigation must not invoke the game-selection callback");
+      assert.equal(f.button.dataset.gamePicker, "hausdepp");
+      assert.equal(f.button.getAttribute("aria-label"), triggerLabel);
+      assert.equal(f.panel(), null);
+      assert.equal(f.content.inert, false);
+      assert.equal(f.doc.body.style.overflow, "scroll");
+      assert.equal(f.timers.size, 0);
+      f.picker.toggle();
+      assert.equal(f.links().find(link => link.getAttribute("aria-current") === "page").dataset.gameEntry, "hausdepp");
+      f.picker.destroy();
+    });
+  }
+
+  test(`utilities participate in keyboard navigation and withdrawal releases ${compact ? "modal" : "desktop"} focus ownership`, async () => {
+    const f = fixture(compact, "en", utilities);
+    const key = (name, extra = {}) => {
+      let prevented = false;
+      f.doc.emit("keydown", { key: name, preventDefault() { prevented = true; }, stopPropagation() {}, ...extra });
+      return prevented;
+    };
+    assert.equal(key("End"), true);
+    assert.equal(f.doc.activeElement, f.utilityLinks().at(-1), "the final native utility link must be keyboard reachable");
+    assert.equal(key("Home"), true);
+    assert.equal(f.doc.activeElement, f.links()[0]);
+    key("End");
+    const pending = f.requests[0];
+    f.picker.update({ utilities: [] });
+    assert.equal(f.panel(), null, "withdrawn private links must immediately leave the mounted panel");
+    assert.equal(f.doc.activeElement, f.button);
+    assert.equal(f.content.inert, false);
+    assert.equal(f.doc.body.style.overflow, "scroll");
+    assert.equal(pending.options.signal.aborted, true);
+    pending.resolve({ ok: true, json: async () => ({ games: { admin: { players: 987 } } }) });
+    await settle();
+    assert.equal(f.panel(), null);
+    assert.equal(f.timers.size, 0);
+    f.picker.toggle();
+    assert.deepEqual(f.utilityLinks(), []);
+    assert.equal(f.panel().querySelectorAll("h2, h3").some(heading => heading.textContent === "Administration"), false);
+    assert.equal(f.links().length, games.length);
+    f.picker.destroy();
+  });
+}

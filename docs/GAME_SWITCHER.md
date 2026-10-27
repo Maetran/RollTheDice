@@ -31,6 +31,34 @@ Zilch-Apps behalten beim Wechsel ihre eigene App-Identität. Eine installierte
 Hausdepp-App behält umgekehrt ihr Manifest beim Wechsel zu anderen Spielen;
 auf der Hausdepp-Subdomain nutzt ZDWA dafür die geschützte `/zdwa`-Brücke.
 
+### Verwaltung im Spielwechsler
+
+Unter den Spielen erscheint eine eigene Gruppe **Verwaltung**, sobald mindestens
+ein Verwaltungsziel zugänglich ist. **Admin Center** verwendet die bestätigte
+Administratorrolle; gültige Owner und Gründer sind ebenfalls Admin-Konten.
+**Dashboard** verwendet separat die bestätigte Fähigkeit **can_view_analytics**:
+Gründer oder ausdrücklich freigegebene Konten. Eine Admin- oder Ownerrolle
+allein öffnet das Dashboard nicht. Ein gewöhnliches Konto mit Dashboard-Zugriff
+bekommt nur den Dashboard-Link.
+
+Die Links setzen keinen Spielmodus und tragen keine Spielerzahlen. Die frühere
+Administration-Schaltfläche in der ZDWA-Lobby sowie die Mission-Control-Kachel
+und ihre leere Überschrift in der Admin-Übersicht entfallen. Konto, Abmeldung
+und die übrigen Verwaltungsmodule bleiben erreichbar.
+
+Im Produktionsbrowser führen beide Verwaltungsziele auf den kanonischen
+ZDWA-Ursprung. Installierte Apps auf einem anderen Spielehost verwenden die
+geschützten, gleichursprünglichen Brücken /zdwa/admin und
+/zdwa/admin/dashboard. Bei abgelaufener Anmeldung erhält der feste
+Dashboard-Rückweg über /zdwa/anmelden den App-Ursprung. Localhost verwendet
+weiter /admin und /admin/dashboard.
+
+Menüeinträge beruhen auf der aktuellen Anmeldung. Kontowechsel, Abmeldung,
+entzogene Rechte oder eine fehlgeschlagene Bestätigung entfernen die
+Verwaltungsziele, auch wenn öffentliche Spiele weiter sichtbar bleiben.
+Seite und APIs prüfen die Berechtigung weiterhin selbst; ein angezeigter oder
+gespeicherter Link gewährt keinen Zugriff.
+
 ### Grenzen und gemeinsame Kontoeinstellungen
 
 - Die Spieleauswahl verwendet die vom Server bestätigten Fähigkeiten aus
@@ -115,6 +143,31 @@ connection notice offline. Existing installed ZDWA and Zilch apps retain
 their app identity when switching games. An installed Hausdepp app likewise
 keeps its manifest across game switches; on its dedicated host, ZDWA uses
 the protected `/zdwa` bridge.
+
+### Administration in the game picker
+
+Authorized accounts see a separate **Administration** group below the games.
+**Admin Center** uses the confirmed administrator role; valid owners and the
+founder are also admin accounts. **Dashboard** independently uses the confirmed
+**can_view_analytics** capability: the founder or explicitly authorized
+accounts. Admin and owner roles alone do not grant dashboard access. A regular
+account with analytics permission sees only the Dashboard link.
+
+These links neither select a game mode nor display player counts. The previous
+administration button in the ZDWA lobby and Mission Control tile in the admin
+overview are removed, including its now-empty section heading. Account access,
+sign-out and the remaining administration modules stay available.
+
+Production browsers use the canonical ZDWA origin for both administration
+destinations. Installed apps on other game hosts use the protected same-origin
+/zdwa/admin and /zdwa/admin/dashboard bridges. When sign-in expires, the
+fixed dashboard return through /zdwa/anmelden retains the app origin.
+Localhost continues to use /admin and /admin/dashboard.
+
+Menu entries use the current account. Account changes, sign-out, withdrawn
+permissions or failed verification remove administration destinations even
+while public games remain visible. Pages and APIs still enforce access
+independently; a visible or remembered link never grants permission.
 
 ### Boundaries and shared account settings
 

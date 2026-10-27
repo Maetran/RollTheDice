@@ -1,27 +1,30 @@
 {
   "kind": "usability",
   "games": [
-    "hausdepp"
+    "zdwa",
+    "zilch",
+    "hausdepp",
+    "watten"
   ],
-  "summary_de": "Hausdepp: Gleiche Karten gleiten auseinander, vier Karten bleiben sichtbar. Die neue Viererregel ist optional an freigegebenen Tischen.",
-  "summary_en": "Hausdepp: Matching cards fan smoothly; see all four before clearing. Optional quartets can beat higher ranks on enabled tables.",
+  "summary_de": "Admin Center und Dashboard erreichst du mit passendem Zugang direkt über die Spielauswahl. Die alten Zusatzbuttons entfallen.",
+  "summary_en": "Open Admin Center and Dashboard from the game picker when you have access. The old duplicate buttons are removed.",
   "player_notes": {
     "de": {
-      "title": "4.10.0: Gleiche Karten, ruhigere Würfe",
+      "title": "4.10.1: Verwaltung direkt erreichbar",
       "changes": [
-        "Gleiche Karten fächern sich nach dem Landen weich auf; auch Brandspuren bleiben während der Bewegung erhalten.",
-        "Vor dem Abräumen siehst du alle vier gleichen Karten. Aufnehmen und Abräumen setzen die Bewegung an ihrer tatsächlichen Kartenposition fort.",
-        "An freigegebenen Tischen kann der Ersteller „Vier Gleiche als 10“ wählen: vier passende Handkarten dürfen zusammen auch auf höhere Ränge.",
-        "Die Zusatzregel ist bei neuen Tischen aus. Die gewählte Regel bleibt im Favoriten gespeichert und wird am Tisch angezeigt."
+        "Die Spielauswahl hat für berechtigte Konten einen eigenen Bereich „Verwaltung“.",
+        "Admins und Owner finden dort das Admin Center. Das Dashboard erscheint unabhängig davon nur mit Dashboard-Zugriff.",
+        "Der bisherige Administrations-Button in der ZDWA-Lobby und die Dashboard-Kachel in der Admin-Übersicht entfallen.",
+        "Auch in installierten Apps bleiben die Verwaltungsziele und ihr Anmelderückweg innerhalb der App."
       ]
     },
     "en": {
-      "title": "4.10.0: Matching cards, smoother throws",
+      "title": "4.10.1: Direct access to administration",
       "changes": [
-        "Matching cards fan apart smoothly after landing; individual scorch marks stay intact during movement.",
-        "All four matching cards remain visible before clearing. Pickups and clearances continue from each card’s actual position.",
-        "At eligible tables the creator can choose “Four of a kind as a ten”: four matching hand cards may be played together over higher ranks.",
-        "The optional rule is off for new tables. Favourites retain the chosen rule, and the table displays it."
+        "Authorized accounts have a separate “Administration” section in the game picker.",
+        "Admins and owners can open Admin Center there. Dashboard is shown independently only with dashboard access.",
+        "The previous administration button in the ZDWA lobby and the dashboard tile in the admin overview are removed.",
+        "Installed apps keep administration destinations and their sign-in return inside the app."
       ]
     }
   }
