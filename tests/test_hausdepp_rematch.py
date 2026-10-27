@@ -476,7 +476,7 @@ class HausdeppRematchTests(unittest.TestCase):
             recipe = db.get(HausdeppRematchSource, source["_id"])
             self.assertIsNotNone(recipe)
             data = json.loads(recipe.settings_json)
-            self.assertEqual(set(data), {"_name", "_mode", "_hausdepp_cpu_count", "_hausdepp_tournament_enabled", "_passphrase", "_voice_enabled"})
+            self.assertEqual(set(data), {"_name", "_mode", "_hausdepp_cpu_count", "_hausdepp_tournament_enabled", "_passphrase", "_voice_enabled", "_hausdepp_four_of_a_kind_as_ten"})
             self.assertIs(data["_voice_enabled"], True)
             self.assertNotIn("very-private-passphrase", recipe.settings_json)
             self.assertNotIn("cards", recipe.settings_json)

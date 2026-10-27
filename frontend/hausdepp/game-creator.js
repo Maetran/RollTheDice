@@ -1,4 +1,4 @@
-import { apiFetch, escapeHtml as esc } from "../shared/auth.js";
+import { apiFetch, loadAuth, escapeHtml as esc } from "../shared/auth.js";
 import { generateTableName } from "./table-names.js";
 import { rememberTablePassword } from "./table-access.js";
 
@@ -6,14 +6,41 @@ import { rememberTablePassword } from "./table-access.js";
 export function mountGameCreator(container, { user, t, language, navigate = path => location.assign(path) }) {
   const lifetime = new AbortController();
   let favourite = null, loading = true, loadError = false, saving = false, screen = "choice", stopped = false;
-  const selected = { waiting_mode: "open", players: 3, tournament: false, password_required: false, cpu_count: 0, voice_enabled: true };
+  let ruleAvailable = false, policySequence = 0;
+  const selected = { waiting_mode: "open", players: 3, tournament: false, password_required: false, cpu_count: 0, voice_enabled: true, four_of_a_kind_as_ten: false };
   container.innerHTML = `<h2 id="hausdeppStartTitle">${t("startTable")}</h2><form id="hausdeppCreateForm"><button id="hausdeppCreate" class="hd-primary" type="button">${t("creatorOpen")}</button></form>`;
   const dialog = document.createElement("dialog");
   dialog.className = "hd-create-dialog";
   dialog.setAttribute("aria-labelledby", "hausdeppCreatorTitle");
   container.append(dialog);
 
-  const summary = preset => `${preset.waiting_mode === "open" ? t("creatorOpenCount") : t("creatorFixedCount", { count: preset.players })} · ${t(preset.tournament ? "tournament" : "quickGame")}${preset.cpu_count ? ` · ${t("cpuCount", { count: preset.cpu_count })}` : ""}`;
+  const summary = preset => `${preset.waiting_mode === "open" ? t("creatorOpenCount") : t("creatorFixedCount", { count: preset.players })} · ${t(preset.tournament ? "tournament" : "quickGame")}${preset.cpu_count ? ` · ${t("cpuCount", { count: preset.cpu_count })}` : ""}${preset.four_of_a_kind_as_ten === true ? ` · ${t("fourKindRuleLabel")}` : ""}`;
+  function updateRuleControl() {
+    const input = dialog.querySelector('[name="four_of_a_kind_as_ten"]');
+    if (!input) return;
+    input.closest("[data-four-kind-option]").hidden = !ruleAvailable;
+    input.disabled = !ruleAvailable;
+    input.checked = selected.four_of_a_kind_as_ten === true;
+  }
+  async function refreshRuleAvailability() {
+    const sequence = ++policySequence;
+    ruleAvailable = false;
+    updateRuleControl();
+    try {
+      const before = await loadAuth({ refresh: true });
+      if (stopped || sequence !== policySequence || !before?.authenticated || before.user?.id !== user.id) return false;
+      const response = await apiFetch("/api/features", { cache: "no-store", signal: lifetime.signal,
+        headers: { "X-Watten-Expected-Account-Id": String(user.id) } });
+      const data = await response.json();
+      const after = await loadAuth({ refresh: true });
+      if (stopped || sequence !== policySequence || !after?.authenticated || after.user?.id !== user.id) return false;
+      const entry = data?.features?.["hausdepp.four_of_a_kind_as_ten"];
+      ruleAvailable = response.ok && data.viewer_id === user.id && entry?.can_select === true
+        && ["internal", "public"].includes(entry.status);
+    } catch { /* Unknown availability keeps the optional rule unavailable. */ }
+    if (!stopped && sequence === policySequence) updateRuleControl();
+    return ruleAvailable;
+  }
   const close = () => { if (!saving) dialog.close(); };
   const formValues = () => {
     const form = dialog.querySelector("form");
@@ -23,21 +50,23 @@ export function mountGameCreator(container, { user, t, language, navigate = path
     selected.tournament = form.elements.tournament.value === "true";
     selected.password_required = form.elements.password_required.checked;
     selected.voice_enabled = form.elements.voice_enabled.checked;
+    if (!form.elements.four_of_a_kind_as_ten?.disabled) selected.four_of_a_kind_as_ten = form.elements.four_of_a_kind_as_ten?.checked === true;
   };
   function render() {
     const choice = screen === "choice", passwordOnly = screen === "password";
     dialog.innerHTML = `<div class="hd-creator-heading"><h2 id="hausdeppCreatorTitle">${t(choice ? "creatorChoose" : passwordOnly ? "creatorPasswordTitle" : "creatorDefine")}</h2><button type="button" class="hd-creator-close" data-create-close aria-label="${t("close")}">×</button></div>${choice ? `
       <div class="hd-creator-choices"><button type="button" class="hd-creator-favourite" data-create-favourite ${!favourite || loading ? "disabled" : ""}><span class="hd-creator-star" aria-hidden="true">★</span><strong>${t("creatorFavourite")}</strong><small>${loading ? t("loadingTables") : favourite ? esc(summary(favourite)) : loadError ? "" : t("creatorNoFavourite")}</small></button><button type="button" data-create-define><span class="hd-creator-symbol" aria-hidden="true">＋</span><strong>${t("creatorDefine")}</strong></button></div><p id="hausdeppFavouriteError" class="hd-error" role="alert">${loadError ? t("creatorFavouriteUnavailable") : ""}</p>` : `
       <form id="hausdeppModeForm">${passwordOnly ? `<p class="hd-creator-preset">${esc(summary(selected))}</p>` : `<div class="hd-creator-fields"><fieldset><legend>${t("totalPlayers")}</legend><div class="hd-creator-segment"><label><input type="radio" name="waiting_mode" value="fixed" ${selected.waiting_mode === "fixed" ? "checked" : ""}><span>${t("creatorFixed")}</span></label><label><input type="radio" name="waiting_mode" value="open" ${selected.waiting_mode === "open" ? "checked" : ""}><span>${t("creatorOpenMode")}</span></label></div><label class="hd-creator-count" ${selected.waiting_mode === "open" ? "hidden" : ""}><span class="hd-sr">${t("totalPlayers")}</span><select name="players">${[2,3,4,5,6].map(count => `<option value="${count}" ${count === selected.players ? "selected" : ""}>${t("creatorFixedCount", { count })}</option>`).join("")}</select></label><p class="hd-creator-open-hint" ${selected.waiting_mode === "fixed" ? "hidden" : ""}>${t("creatorOpenCount")}</p></fieldset><fieldset><legend>${t("gameFormat")}</legend><div class="hd-creator-segment"><label><input type="radio" name="tournament" value="false" ${!selected.tournament ? "checked" : ""}><span>${t("quickGame")}</span></label><label><input type="radio" name="tournament" value="true" ${selected.tournament ? "checked" : ""}><span>${t("tournament")}</span></label></div></fieldset></div><label class="hd-creator-check"><input type="checkbox" name="password_required" ${selected.password_required ? "checked" : ""}>${t("creatorPassword")}</label>`}
-      ${passwordOnly ? "" : `<label class="hd-creator-check"><input type="checkbox" name="voice_enabled" ${selected.voice_enabled !== false ? "checked" : ""}>${t("voiceTitle")}</label>`}<label class="hd-creator-password" ${selected.password_required ? "" : "hidden"}>${t("creatorPasswordLabel")}<input type="password" name="passphrase" autocomplete="new-password" maxlength="100" ${selected.password_required ? "required" : ""}></label><p id="hausdeppCreateError" class="hd-error" role="alert"></p><div class="hd-creator-footer"><button type="button" data-create-back>${t("creatorBack")}</button><button id="hausdeppOpenWaiting" class="hd-primary" type="submit">${t("creatorOpenWaiting")}</button></div></form>`}`;
+      ${passwordOnly ? "" : `<label class="hd-creator-check"><input type="checkbox" name="voice_enabled" ${selected.voice_enabled !== false ? "checked" : ""}>${t("voiceTitle")}</label><label class="hd-creator-check hd-creator-rule" data-four-kind-option hidden><input type="checkbox" name="four_of_a_kind_as_ten" aria-describedby="hausdeppFourKindHint" ${selected.four_of_a_kind_as_ten === true ? "checked" : ""}><span>${t("fourKindRuleLabel")}<small id="hausdeppFourKindHint">${t("fourKindRuleHint")}</small></span></label>`}<label class="hd-creator-password" ${selected.password_required ? "" : "hidden"}>${t("creatorPasswordLabel")}<input type="password" name="passphrase" autocomplete="new-password" maxlength="100" ${selected.password_required ? "required" : ""}></label><p id="hausdeppCreateError" class="hd-error" role="alert"></p><div class="hd-creator-footer"><button type="button" data-create-back>${t("creatorBack")}</button><button id="hausdeppOpenWaiting" class="hd-primary" type="submit">${t("creatorOpenWaiting")}</button></div></form>`}`;
+    updateRuleControl();
     if (choice) {
       dialog.querySelector("[data-create-favourite]").addEventListener("click", () => {
         if (!favourite || saving) return;
-        Object.assign(selected, favourite);
+        Object.assign(selected, favourite, { four_of_a_kind_as_ten: favourite.four_of_a_kind_as_ten === true });
         if (selected.password_required) { screen = "password"; render(); dialog.querySelector('[name="passphrase"]').focus(); }
         else void create();
       });
-      dialog.querySelector("[data-create-define]").addEventListener("click", () => { selected.cpu_count = 0; screen = "define"; render(); dialog.querySelector('[name="waiting_mode"]:checked').focus(); });
+      dialog.querySelector("[data-create-define]").addEventListener("click", () => { selected.cpu_count = 0; selected.four_of_a_kind_as_ten = false; screen = "define"; render(); dialog.querySelector('[name="waiting_mode"]:checked').focus(); });
     } else {
       const form = dialog.querySelector("form");
       form.addEventListener("change", () => {
@@ -69,9 +98,13 @@ export function mountGameCreator(container, { user, t, language, navigate = path
     for (const button of dialog.querySelectorAll("button")) button.disabled = true;
     dialog.setAttribute("aria-busy", "true");
     try {
-      const response = await apiFetch("/api/games", { method: "POST", signal: lifetime.signal, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: generateTableName(user.username, language()), game_type: "hausdepp", mode: String(selected.waiting_mode === "open" ? 6 : selected.players), waiting_mode: selected.waiting_mode, manual_start: true, tournament: selected.tournament, cpu_count: selected.cpu_count, voice_enabled: selected.voice_enabled !== false, play_mode: selected.cpu_count ? "cpu" : "multiplayer", ...(selected.password_required ? { pass: passphrase } : {}) }) });
+      if (selected.four_of_a_kind_as_ten && !await refreshRuleAvailability()) throw new Error("four_kind_unavailable");
+      if (stopped) return;
+      const response = await apiFetch("/api/games", { method: "POST", signal: lifetime.signal, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: generateTableName(user.username, language()), game_type: "hausdepp", mode: String(selected.waiting_mode === "open" ? 6 : selected.players), waiting_mode: selected.waiting_mode, manual_start: true, tournament: selected.tournament, cpu_count: selected.cpu_count, voice_enabled: selected.voice_enabled !== false, four_of_a_kind_as_ten: selected.four_of_a_kind_as_ten === true, play_mode: selected.cpu_count ? "cpu" : "multiplayer", ...(selected.password_required ? { pass: passphrase } : {}) }) });
       const result = await response.json();
-      if (!response.ok || !(result.game_id || result.id)) throw new Error("creation_failed");
+      if (!response.ok) throw new Error(typeof result.detail === "string" && result.detail.startsWith("hausdepp_feature_")
+        ? "four_kind_unavailable" : "creation_failed");
+      if (!(result.game_id || result.id)) throw new Error("creation_failed");
       if (!stopped) {
         const id = result.game_id || result.id;
         rememberTablePassword(user.id, id, passphrase);
@@ -80,7 +113,7 @@ export function mountGameCreator(container, { user, t, language, navigate = path
     } catch (error) {
       if (stopped || error.name === "AbortError") return;
       const output = dialog.querySelector("#hausdeppCreateError, #hausdeppFavouriteError");
-      if (output) output.textContent = t("requestFailed");
+      if (output) output.textContent = t(error.message === "four_kind_unavailable" ? "fourKindRuleUnavailable" : "requestFailed");
     } finally {
       saving = false;
       dialog.removeAttribute("aria-busy");
@@ -89,7 +122,7 @@ export function mountGameCreator(container, { user, t, language, navigate = path
     }
   }
 
-  container.querySelector("#hausdeppCreate").addEventListener("click", () => { screen = "choice"; render(); dialog.showModal(); });
+  container.querySelector("#hausdeppCreate").addEventListener("click", () => { screen = "choice"; render(); dialog.showModal(); void refreshRuleAvailability(); });
   dialog.addEventListener("cancel", event => { if (saving) event.preventDefault(); });
   dialog.addEventListener("close", () => { const input = dialog.querySelector('[name="passphrase"]'); if (input) input.value = ""; });
   render();

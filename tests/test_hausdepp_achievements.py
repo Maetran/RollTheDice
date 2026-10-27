@@ -503,8 +503,8 @@ class HausdeppAchievementTests(unittest.TestCase):
                 if not game["_hausdepp_tournament"]["completed"]:
                     self.assertIn(game["_id"], load_active_games())
                     round_number = len(observed_losers) + 1
-                    with patch("app.hausdepp_tournament.new_round", side_effect=lambda players, dealer_index: new_round(
-                        players, dealer_index=dealer_index, rng=random.Random(2700 + round_number),
+                    with patch("app.hausdepp_tournament.new_round", side_effect=lambda players, dealer_index, **rules: new_round(
+                        players, dealer_index=dealer_index, rng=random.Random(2700 + round_number), **rules,
                     )):
                         apply_hausdepp_command(game, "self", {"action": "next_round",
                                                              "version": game["_hausdepp"]["version"]})

@@ -19,7 +19,7 @@ export function mountWaitingControls(container, { t, send, connected }) {
       if (saving) return;
       saving = true; update(current);
       try {
-        const response = await apiFetch("/api/hausdepp/favourite", { method: "PUT", signal: lifetime.signal, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ waiting_mode: current._waiting_mode || "fixed", players: Number(current._expected), cpu_count: (current._participants || []).filter(player => player.is_cpu).length, tournament: Boolean(current._hausdepp_tournament_enabled), password_required: Boolean(current.locked), voice_enabled: current._voice_enabled !== false }) });
+        const response = await apiFetch("/api/hausdepp/favourite", { method: "PUT", signal: lifetime.signal, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ waiting_mode: current._waiting_mode || "fixed", players: Number(current._expected), cpu_count: (current._participants || []).filter(player => player.is_cpu).length, tournament: Boolean(current._hausdepp_tournament_enabled), password_required: Boolean(current.locked), voice_enabled: current._voice_enabled !== false, four_of_a_kind_as_ten: current._hausdepp_four_of_a_kind_as_ten === true }) });
         if (!response.ok) throw new Error("favourite_failed");
         if (!stopped) feedback(t("waitingFavouriteSaved"));
       } catch (error) { if (!stopped && error.name !== "AbortError") feedback(t("requestFailed")); }

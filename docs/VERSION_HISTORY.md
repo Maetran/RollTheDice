@@ -1,6 +1,6 @@
 # Versionen / Versions
 
-Aktuelle gemeinsame Produktversion / Current shared product version: **4.9.0**.
+Aktuelle gemeinsame Produktversion / Current shared product version: **4.10.0**.
 
 Alle RollTheDice-Spiele werden gemeinsam versioniert. Major steht für einen großen
 Produktmeilenstein, Minor für neue Funktionen und Patch für Fehlerkorrekturen
@@ -30,6 +30,7 @@ Detailed player-facing descriptions are in the [changelog](../CHANGELOG.md).
 
 | Version | Datum / Date | Art / Type | Änderung / Change | Commit |
 | --- | --- | --- | --- | --- |
+| 4.9.0 | 2026-10-26 | minor | Watten zeigt dein übriges Blatt während der kurzen Rückschau mit dem Rechten. / Watten keeps your remaining hand visible during the short Rechter review. | [4abafc3](https://github.com/Maetran/RollTheDice/commit/4abafc3f5b38b7a082861d15445ef08eba1bbf6b) |
 | 4.8.1 | 2026-10-26 | patch | Zuverlässige Veröffentlichungsprüfung mit ein- und ausgeschalteter Watten-Beta-Kennzeichnung. / Reliable release checks with the Watten beta label enabled or disabled. | [d68e05a](https://github.com/Maetran/RollTheDice/commit/d68e05ad13dba5f80609c2c13fcf196eb32dede2) |
 | 4.8.0 | 2026-10-26 | minor | Spiele und Funktionen mit internem Testbetrieb und steuerbaren Beta-Kennzeichnungen verwalten. / Manage games and features with internal testing and configurable beta labels. | [986952e](https://github.com/Maetran/RollTheDice/commit/986952eca9a45d7fe54f524eac40dfd1720c8d1e) |
 | 4.7.1 | 2026-10-26 | patch | Hochwertige seltene Tischeffekte und durchgängige individuelle Brandspuren. / Premium rare table effects and continuous individual singed card patterns. | [a9add7e](https://github.com/Maetran/RollTheDice/commit/a9add7e8d962f86a49cbf52dd55353fed846e4f3) |

@@ -1,10 +1,10 @@
 {
-  "version": "4.9.0",
+  "version": "4.10.0",
   "bump": "minor",
-  "date": "2026-10-26",
-  "previous_revision": "d68e05ad13dba5f80609c2c13fcf196eb32dede2",
+  "date": "2026-10-27",
+  "previous_revision": "4abafc3f5b38b7a082861d15445ef08eba1bbf6b",
   "summary": {
-    "de": "Watten zeigt dein übriges Blatt während der kurzen Rückschau mit dem Rechten.",
-    "en": "Watten keeps your remaining hand visible during the short Rechter review."
+    "de": "Hausdepp erhält gleitende Kartenfächer und eine optionale, zunächst interne Viererregel.",
+    "en": "Hausdepp gains smooth pile fanning and an optional quartet rule, initially available internally."
   }
 }

@@ -41,6 +41,7 @@ def waiting_permissions(game: dict, viewer_id: str | None) -> dict:
 async def handle_waiting_action(session, action: str, data: dict, *, finalize_game=None) -> None:
     """Host-only waiting commands; accepted mutations precede any socket await."""
     from .friend_activity import publish_friend_game_start
+    from .game_lifecycle import AdmissionError, clone_candidate, commit_admission, install_candidate, room_lock
     from .hausdepp_cpu_runner import maybe_schedule_cpu_turn
     from .hausdepp_gameplay import game_lock
     from .hausdepp_rematch import rematch_waiting_guard
@@ -65,12 +66,22 @@ async def handle_waiting_action(session, action: str, data: dict, *, finalize_ga
                 elif action == "hausdepp_remove_cpu":
                     remove_hausdepp_cpu(game, data.get("participant_id"))
                 elif action == "hausdepp_start_game":
-                    start_hausdepp_game(game, manual=True)
+                    # A live flag/role change may reject START. Stage the
+                    # engine and seating freeze so rejection leaves the room
+                    # and its durable checkpoint entirely waiting.
+                    if game.get("_hausdepp_four_of_a_kind_as_ten", False):
+                        with room_lock(game):
+                            candidate = clone_candidate(game)
+                            start_hausdepp_game(candidate, manual=True)
+                            revision = commit_admission(game, candidate, [])
+                            install_candidate(game, candidate, revision)
+                    else:
+                        start_hausdepp_game(game, manual=True)
                 else:
                     raise ValueError("hausdepp_invalid_command")
             touch(game)
             save_active_game(game)
-        except ValueError as exc:
+        except (ValueError, AdmissionError) as exc:
             code = str(exc)
             await session.websocket.send_json({"error": code, "error_code": code,
                                                "scoreboard": snapshot(game, session.player_id)})

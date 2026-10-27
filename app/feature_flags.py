@@ -41,6 +41,9 @@ class FeatureDefinition:
 
 
 FEATURES = (
+    FeatureDefinition("hausdepp.four_of_a_kind_as_ten", "hausdepp", "Vier Gleiche aus der Hand", "Four matching cards from hand",
+                      "Vier gleichzeitig gespielte gleiche Handkarten schlagen jeden Wert und räumen das Paket ab.",
+                      "Four matching cards played together from hand beat any rank and clear the pile.", "internal"),
     FeatureDefinition("watten.schoeneres", "watten", "Schöneres", "Schöneres",
                       "Schöneres als Tischregel auswählen.", "Select Schöneres as a table rule.", "internal"),
     FeatureDefinition("watten.schlagwechsel", "watten", "Schlagwechsel", "Strike swap",

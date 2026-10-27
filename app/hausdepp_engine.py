@@ -79,14 +79,20 @@ def new_round(
     dealer_index: int = 0,
     deck: Sequence[str] | None = None,
     rng: Any = None,
+    four_of_a_kind_as_ten: bool = False,
 ) -> dict[str, Any]:
     """Shuffle and wait for the designated player's active bottom peek.
+
+    ``four_of_a_kind_as_ten`` is the optional table rule that lets four equal
+    cards played together from one hand go on any rank like a ten (default off).
 
     ``deck`` is an optional complete preordered deck for deterministic tests;
     supplied decks are not shuffled.  ``rng`` may be a ``random.Random``-like
     object implementing ``shuffle`` and ``randrange``.  Live rounds use the
     operating system random source for shuffling and ten reinsertion.
     """
+    if type(four_of_a_kind_as_ten) is not bool:
+        raise HausdeppRuleError("hausdepp_invalid_rule")
     players = _players(participants)
     if type(dealer_index) is not int or not 0 <= dealer_index < len(players):
         raise HausdeppRuleError("hausdepp_invalid_dealer")
@@ -102,6 +108,7 @@ def new_round(
     peeker = players[(dealer_index - 1) % len(players)]
     return {
         "ruleset_version": HAUSDEPP_RULESET_VERSION,
+        "four_of_a_kind_as_ten": four_of_a_kind_as_ten,
         "phase": "peeking",
         "version": 1,
         "table_version": 1,
@@ -193,6 +200,8 @@ def _normalize_state(state: Mapping[str, Any]) -> dict[str, Any]:
             result["current_player_id"] = _next_player(result, debt["player_id"])
             if debt.get("rank") is not None:
                 result["afterthrow"] = {"player_id": debt["player_id"], "rank": debt["rank"]}
+    # Legacy states predate the option; anything but a real True stays off.
+    result["four_of_a_kind_as_ten"] = result.get("four_of_a_kind_as_ten") is True
     result.setdefault("table_version", result["version"])
     result.setdefault("player_versions", {})
     result.setdefault("deal", None)
@@ -276,6 +285,13 @@ def _legal_rank(state: Mapping[str, Any], rank: str) -> bool:
     return not state["discard"] or _RANK_VALUES[rank] >= _RANK_VALUES[card_rank(state["discard"][-1])]
 
 
+def _hand_quartets(hand: Sequence[str]) -> list[list[str]]:
+    """Complete same-rank quartets in this hand, in rank order."""
+    return [[card for card in hand if card_rank(card) == rank]
+            for rank in HAUSDEPP_RANKS
+            if sum(card_rank(card) == rank for card in hand) == 4]
+
+
 def apply_action(
     state: Mapping[str, Any],
     actor_id: str,
@@ -341,7 +357,9 @@ def apply_action(
         rank = ranks.pop()
         if is_afterthrow and rank != afterthrow["rank"]:
             raise HausdeppRuleError("hausdepp_afterthrow_wrong_rank")
-        if not _legal_rank(state, rank):
+        # Four distinct equal cards in one play act like a ten, if the table allows.
+        wildcard_group = state["four_of_a_kind_as_ten"] and len(selection) == 4
+        if not wildcard_group and not _legal_rank(state, rank):
             raise HausdeppRuleError("hausdepp_rank_too_low")
     elif selection:
         raise HausdeppRuleError("hausdepp_unexpected_cards")
@@ -502,7 +520,7 @@ def project_state(state: Mapping[str, Any], viewer_id: str | None) -> dict[str, 
     projection = {
         key: deepcopy(state[key])
         for key in (
-            "ruleset_version", "phase", "version", "dealer_id", "current_player_id",
+            "ruleset_version", "four_of_a_kind_as_ten", "phase", "version", "dealer_id", "current_player_id",
             "discard", "afterthrow", "finished_order", "loser_id", "last_event", "deal",
             "withdrawn_ids", "round_end_reason", "remaining_player_id",
         )
@@ -547,6 +565,7 @@ def project_state(state: Mapping[str, Any], viewer_id: str | None) -> dict[str, 
     }
     projection["available_actions"] = []
     projection["playable_cards"] = []
+    projection["playable_groups"] = []
     if not viewer or viewer["finished"] or viewer_id in state["withdrawn_ids"]:
         return projection
     if state["phase"] == "peeking":
@@ -560,7 +579,9 @@ def project_state(state: Mapping[str, Any], viewer_id: str | None) -> dict[str, 
         projection["available_actions"].append("draw")
     if state["current_player_id"] == viewer_id:
         projection["playable_cards"] = [card for card in viewer["hand"] if _legal_rank(state, card_rank(card))]
-        if projection["playable_cards"]:
+        if state["four_of_a_kind_as_ten"]:
+            projection["playable_groups"] = _hand_quartets(viewer["hand"])
+        if projection["playable_cards"] or projection["playable_groups"]:
             projection["available_actions"].append("play")
         if state["discard"]:
             projection["available_actions"].append("pickup")
@@ -571,5 +592,9 @@ def project_state(state: Mapping[str, Any], viewer_id: str | None) -> dict[str, 
         matches = [card for card in viewer["hand"] if card_rank(card) == afterthrow["rank"]]
         if matches:
             projection["playable_cards"] = matches
+            if state["four_of_a_kind_as_ten"]:
+                projection["playable_groups"] = [
+                    group for group in _hand_quartets(viewer["hand"])
+                    if card_rank(group[0]) == afterthrow["rank"]]
             projection["available_actions"].append("afterthrow")
     return projection

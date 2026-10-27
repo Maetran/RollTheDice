@@ -74,6 +74,7 @@ export function mountRematchInvitations({ userId, t, canPresent = () => true, na
         line(t("rematchInvitationBody", { name: invitation.sender?.username || t("rematchSenderFallback"), table: invitation.name || "Hausdepp" }));
         line(t("rematchParameters", { players: invitation.players, cpus: invitation.cpu_count,
           format: t(invitation.tournament ? "tournament" : "singleRound") }), "hd-fine");
+        if (invitation.four_of_a_kind_as_ten === true) line(t("fourKindRuleLabel"), "hd-fine");
         const time = new Intl.DateTimeFormat(document.documentElement.lang === "en" ? "en-GB" : "de-CH", { timeStyle: "short" }).format(new Date(invitation.expires_at));
         line(t("rematchInvitationConsent", { time }));
         if (invitation.locked) line(t("rematchPrivateHint"), "hd-fine");

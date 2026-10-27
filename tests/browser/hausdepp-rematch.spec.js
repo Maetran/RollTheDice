@@ -244,10 +244,11 @@ async function finishedRenderer(page, fixture) {
   return { id, snapshot, sent, send: next => active.send(JSON.stringify({ scoreboard: next })) };
 }
 
-async function liveFinalCard(page, { beforeRenderer } = {}) {
+async function liveFinalCard(page, { beforeRenderer, beforePlaying } = {}) {
   const fixture = await setup(page);
   await beforeRenderer?.(fixture);
   const source = await finishedRenderer(page, fixture);
+  await beforePlaying?.();
   const playing = structuredClone(source.snapshot), self = playing._hausdepp.viewer_id;
   Object.assign(playing, { _finished: false });
   Object.assign(playing._hausdepp, {
@@ -362,12 +363,12 @@ test('a final four-of-a-kind waits for the last card to reach the cleared stack'
 });
 
 test('a deferred achievement popup waits until the final card has landed and the result is shown', async ({ page }) => {
-  let release, returned = false;
+  let release, requested = false, returned = false;
   const barrier = new Promise(resolve => { release = resolve; });
   const source = await liveFinalCard(page, { beforeRenderer: async () => {
     let reads = 0;
     await page.route('**/api/hausdepp/progress-notices', async route => {
-      if (!reads++) await barrier;
+      if (!reads++) { requested = true; await barrier; }
       returned = true;
       await route.fulfill({ json: { revision: 9001, notices: [{
         key: 'achievement:hausdepp_01', kind: 'achievement', points: 10,
@@ -376,6 +377,10 @@ test('a deferred achievement popup waits until the final card has landed and the
         reason: { de: 'Gespeichert.', en: 'Saved.' },
       }] } });
     });
+  }, beforePlaying: async () => {
+    // Establish the preceding safe-boundary request before moving into play;
+    // the account-summary fetch can finish after the result DOM is visible.
+    await expect.poll(() => requested).toBe(true);
   } });
   release();
   await expect.poll(() => returned).toBe(true);

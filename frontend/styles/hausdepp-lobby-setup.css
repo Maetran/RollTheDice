@@ -24,6 +24,10 @@
 .hd-create-dialog .hd-creator-open-hint { margin: 10px 0 0; font-size: 13px; color: var(--hd-muted); }
 .hd-create-dialog .hd-creator-check { display: flex; align-items: center; gap: 10px; min-height: 46px; margin-top: 18px; font-size: 14px; }
 .hd-create-dialog .hd-creator-check input { width: 20px; height: 20px; min-height: 0; margin: 0; accent-color: var(--hd-green); }
+.hd-create-dialog .hd-creator-rule { align-items: flex-start; }
+.hd-create-dialog .hd-creator-rule input { flex: 0 0 20px; margin-top: 2px; }
+.hd-creator-rule small { display: block; margin-top: 5px; color: var(--hd-muted); font-size: 12px; line-height: 1.4; }
+.hd-table-rule { flex: 0 0 auto; padding: 2px 5px; border: 1px solid #c8a76f88; border-radius: 4px; color: #f2d69c; background: #382c1ce6; font-size: 11px; line-height: 16px; white-space: nowrap; }
 .hd-create-dialog .hd-creator-password { display: grid; gap: 8px; margin: 12px 0; font-size: 14px; }
 .hd-creator-footer { display: flex; gap: 10px; margin-top: 20px; }
 .hd-creator-footer > .hd-primary { flex: 1; }

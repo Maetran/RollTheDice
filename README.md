@@ -1208,7 +1208,9 @@ Tastatur fokussierte Karten liegen zum Lesen und Auswählen vorne. Karten auf
 dem offenen Paket behalten während eines Zugs dieselbe zur Ansicht passende
 Grösse; die Animation geht ohne Grössensprung in den Stapel über. Während des
 Flugs siehst du die geworfene Karte nur einmal. Erst bei der Landung erscheint
-sie mit aktualisierter Kartenzahl und passendem Fächer im offenen Paket.
+sie mit aktualisierter Kartenzahl im offenen Paket. Bereits liegende Karten
+desselben Werts gleiten weich in ihren Fächer; individuelle Brandspuren nach
+dem Drachen bleiben beim Fliegen, Auffächern und Liegen erhalten.
 Passende Karten kannst du im offenen Nachwurffenster sofort nachwerfen, auch
 nach dem Auffüllen. Aufnehmen, Zocken und neue Stapelaktionen warten auf die Ankunft.
 Bei reduzierter Bewegung entfällt die Flugwartezeit.
@@ -1222,7 +1224,9 @@ ranks. The fan still scrolls horizontally; keyboard-focused cards move to the
 front for reading and selection. Open-pile cards keep the same size throughout
 a play, matching the viewport; the animation joins the pile without a size jump.
 A thrown card is visible only once during its flight. It joins the open pile
-with its updated count and matching-rank fan when it lands. Matching cards can
+with its updated count when it lands. Matching cards already on the pile slide
+smoothly into their fan; each card keeps its individual dragon scorch marks
+throughout flight, fanning and rest. Matching cards can
 be thrown immediately in the open follow-up window, including fresh refills.
 Pickups, gambles and new pile actions wait for arrival. Reduced motion skips the
 flight wait.
@@ -1534,6 +1538,23 @@ speichern; für geschützte Favoriten wird das Passwort jedes Mal neu festgelegt
 Mitspieler-Ruf, Teilen und Link-Kopieren bleiben verfügbar. Vier persönliche
 häufige Reaktionen stehen direkt bereit; der Pfeil öffnet zwölf Symbole,
 einschliesslich 💩. Ihre Positionen bleiben während der Partie gleich.
+
+**Hausdepp – optionale Viererregel:** „Vier Gleiche als 10“ ist bei neuen Tischen
+aus. Wenn der Ersteller sie wählt, dürfen vier gleichrangige Handkarten zusammen
+auf jeden höheren Rang gelegt werden und räumen das Paket ab. Die Auswahl bleibt
+im Favoriten erhalten und ist am Tisch sichtbar. Die Funktion startet mit
+interner Freigabe unter Administration → Spiele & Funktionen; gespeicherte
+Favoriten umgehen die Freigabe nicht. Normale Tische behalten ihre bisherigen
+Regeln. Einzeln oder zu zweit/dritt dürfen tiefere Karten weiterhin nicht gelegt
+werden.
+
+**Hausdepp – optional quartet rule:** “Four of a kind as a ten” is off for new
+tables. When selected by the creator, four matching hand cards may be played
+together over any higher rank and clear the pile. The table shows its rule and
+favourites retain it. The feature initially has internal availability under
+Administration → Games & features; saved favourites never bypass availability.
+Standard tables keep their existing rules. One, two or three lower cards remain
+illegal.
 
 **Hausdepp – creating a game:** The compact entry offers your saved favourite or
 “Define a mode”. Choose a fixed count (2–6) or an open waiting room for up to six,

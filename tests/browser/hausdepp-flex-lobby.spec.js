@@ -137,6 +137,76 @@ test('creation failure stays in the dialog and enables retry and close', async (
   await expect(page.locator('.hd-create-dialog')).not.toBeVisible();
 });
 
+for (const language of ['de', 'en']) {
+  test(`${language}: optional quartet rule is explicit, saved as a favourite and never silently removed after revocation`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    const owner = await setup(page, language);
+    let available = true;
+    await page.route('**/api/features', route => route.fulfill({ json: { viewer_id: owner.id, features: {
+      'hausdepp.four_of_a_kind_as_ten': { status: 'internal', beta: false, can_select: available },
+    } } }));
+    const creations = [];
+    page.on('request', request => { if (request.method() === 'POST' && new URL(request.url()).pathname === '/api/games') creations.push(request.postDataJSON()); });
+    await page.locator('#hausdeppCreate').click();
+    await page.locator('[data-create-define]').click();
+    const option = page.locator('[name=four_of_a_kind_as_ten]');
+    await expect(option).toBeVisible();
+    await expect(option).not.toBeChecked();
+    await option.check();
+    await page.locator('#hausdeppOpenWaiting').click();
+    await expect(page.locator('#hausdeppWaiting')).toBeVisible();
+    expect(creations).toHaveLength(1);
+    expect(creations[0].four_of_a_kind_as_ten).toBe(true);
+    await expect(page.locator('#hausdeppTableRule')).toHaveText(language === 'de' ? '4 Gleiche = 10' : '4 of a kind = 10');
+    await page.locator('#hausdeppSaveFavourite').click();
+    await expect(page.locator('#hausdeppWaitingFeedback')).toContainText(language === 'de' ? 'gespeichert' : 'saved');
+    const favourite = await page.request.get('/api/hausdepp/favourite');
+    expect((await favourite.json()).favourite.four_of_a_kind_as_ten).toBe(true);
+    await page.locator('#hausdeppLeaveWaiting').click();
+    await expect(page).toHaveURL(/\/hausdepp$/);
+    await page.locator('#hausdeppCreate').click();
+    const saved = page.locator('[data-create-favourite]');
+    await expect(saved).toContainText(language === 'de' ? 'Vier Gleiche als 10' : 'Four of a kind as a ten');
+    available = false;
+    await saved.click();
+    await expect(page.locator('#hausdeppFavouriteError')).toContainText(language === 'de' ? 'Zusatzregel ist gerade nicht verfügbar' : 'optional rule is currently unavailable');
+    expect(creations).toHaveLength(1);
+    expect((await (await page.request.get('/api/hausdepp/favourite')).json()).favourite.four_of_a_kind_as_ten).toBe(true);
+    await page.locator('[data-create-define]').click();
+    await expect(option).toBeHidden();
+    await page.locator('#hausdeppOpenWaiting').click();
+    await expect(page.locator('#hausdeppWaiting')).toBeVisible();
+    expect(creations).toHaveLength(2);
+    expect(creations[1].four_of_a_kind_as_ten).toBe(false);
+    await expect(page.locator('#hausdeppTableRule')).toBeHidden();
+  });
+}
+
+test('optional quartet creator fails closed for a different account and rechecks a selected rule before creating', async ({ page }) => {
+  const owner = await setup(page);
+  let viewer = owner.id + 1, available = true;
+  await page.route('**/api/features', route => route.fulfill({ json: { viewer_id: viewer, features: {
+    'hausdepp.four_of_a_kind_as_ten': { status: 'internal', beta: false, can_select: available },
+  } } }));
+  const creations = [];
+  page.on('request', request => { if (request.method() === 'POST' && new URL(request.url()).pathname === '/api/games') creations.push(request.postDataJSON()); });
+  await page.locator('#hausdeppCreate').click();
+  await page.locator('[data-create-define]').click();
+  const option = page.locator('[name=four_of_a_kind_as_ten]');
+  await expect(option).toBeHidden();
+  await page.locator('[data-create-close]').click();
+  viewer = owner.id;
+  await page.locator('#hausdeppCreate').click();
+  await page.locator('[data-create-define]').click();
+  await expect(option).toBeVisible();
+  await option.check();
+  available = false;
+  await page.locator('#hausdeppOpenWaiting').click();
+  await expect(page.locator('#hausdeppCreateError')).toContainText('Zusatzregel ist gerade nicht verfügbar');
+  expect(creations).toEqual([]);
+  await expect(option).toBeHidden();
+});
+
 test('a shared password link retries securely and a human replaces a full CPU seat', async ({ page, browser }) => {
   const owner = await setup(page);
   await page.locator('#hausdeppCreate').click();

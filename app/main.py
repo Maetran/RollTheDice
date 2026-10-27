@@ -1998,6 +1998,7 @@ class CreateReq(BaseModel):
     waiting_mode: str = Field(default="fixed", pattern="^(fixed|open)$")
     manual_start: bool = Field(default=False, strict=True)
     voice_enabled: bool = Field(default=True, strict=True)
+    four_of_a_kind_as_ten: bool = Field(default=False, strict=True)
     source_game_id: str | None = Field(default=None, min_length=1, max_length=64, pattern=r"^[A-Za-z0-9-]+$")
     watten_recipe: dict | None = None
 
@@ -2043,6 +2044,8 @@ class CreateReq(BaseModel):
 
     @model_validator(mode="after")
     def validate_game_specific_options(self):
+        if self.game_type != HAUSDEPP_GAME_TYPE and self.four_of_a_kind_as_ten:
+            raise ValueError("hausdepp_rule_not_supported")
         if self.game_type == "watten":
             from .watten_recipe import recipe_from_payload
 
@@ -2879,7 +2882,7 @@ async def api_games_create(req: CreateReq, request: Request):
 
         configure_hausdepp_game(g, host_user_id=identity.user_id, cpu_count=req.cpu_count or 0,
                                 tournament=req.tournament, waiting_mode=req.waiting_mode, manual_start=req.manual_start,
-                                voice_enabled=req.voice_enabled)
+                                voice_enabled=req.voice_enabled, four_of_a_kind_as_ten=req.four_of_a_kind_as_ten)
     if req.game_type == ZILCH_GAME_TYPE and req.play_mode == ZILCH_CPU_MODE:
         # The creator is the only human seat.  The CPU is a durable domain
         # participant and receives neither account data nor a socket record.
@@ -2910,7 +2913,9 @@ async def api_games_create(req: CreateReq, request: Request):
             commit_room_binding(g, [identity.user_id] if identity else [])
         except AdmissionError as exc:
             discard_new_room(g)
-            raise HTTPException(status_code=403 if exc.code == "account_retired_or_inactive" else 503,
+            forbidden = (exc.code == "account_retired_or_inactive"
+                         or exc.code.startswith("hausdepp_feature_") and exc.code != "hausdepp_feature_settings_unavailable")
+            raise HTTPException(status_code=403 if forbidden else 503,
                                 detail=exc.code) from exc
         games[gid] = g
     else:

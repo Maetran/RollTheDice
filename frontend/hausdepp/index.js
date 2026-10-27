@@ -22,6 +22,7 @@ import { mountLobbyChat } from "../shared/lobby-chat.js";
 import { initChat, addChatMessage } from "../room/chat.js";
 import { HAUSDEPP_MESSAGES } from "../i18n/catalog.js";
 import { cardArt, LOBBY_CARD_ASSET_URL, prepareCardAssets } from "./cards.js";
+import { measurePile, restorePile, reconcilePile } from "./pile-fan.js";
 import { prepareCardMotion, animateCardMotion, cardMotionCompletion, resetCardMotion, presentShuffle, cancelShuffle, launchOwnPlay, launchedCards, cancelOwnPlay, presentedPile, pileMotionPending } from "./motion.js";
 import { createGameTour } from "../shared/game-tours.js";
 import { mountPileInspector } from "./pile-inspector.js";
@@ -91,12 +92,12 @@ function cardName(card) {
   return `${t(suit)} ${t(`rank${rank}`)}`;
 }
 
-function cardMarkup(card, { interactive = false, playable = false, committed = false, launched = false, selecting = false, selected = false, sameRank = false, index = 0, count = 1, atlasUrl } = {}) {
+function cardMarkup(card, { interactive = false, playable = false, groupOnly = false, committed = false, launched = false, selecting = false, selected = false, sameRank = false, index = 0, count = 1, atlasUrl } = {}) {
   const art = cardArt(card, atlasUrl);
   const offset = index - (count - 1) / 2;
   const angle = count > 1 ? offset / Math.max((count - 1) / 2, 1) * Math.min(14, count * 3.5) : 0;
   const drop = Math.pow(Math.abs(angle) / 14, 2) * 17;
-  const attrs = `class="hausdepp-card ${playable ? "is-playable" : ""} ${committed ? "is-committed" : ""} ${launched ? "is-launched" : ""} ${selected ? "is-selected" : ""}" data-card-id="${esc(card)}" aria-label="${esc(cardName(card))}"${selecting ? ` aria-pressed="${selected}" aria-describedby="hausdeppMultiHint"` : ""}`;
+  const attrs = `class="hausdepp-card ${playable ? "is-playable" : ""} ${committed ? "is-committed" : ""} ${launched ? "is-launched" : ""} ${selected ? "is-selected" : ""}" data-card-id="${esc(card)}" aria-label="${esc(cardName(card))}"${selecting ? ` aria-pressed="${selected}" aria-describedby="hausdeppMultiHint"` : groupOnly ? ` aria-describedby="hausdeppMultiHint" title="${esc(t("multiQuartetHint"))}"` : ""}`;
   return interactive
     ? `<button type="button" ${attrs} data-same-rank="${sameRank}" style="${cardScorchStyle(card)}--card-index:${index};--fan-offset:${offset};--fan-angle:${angle}deg;--fan-drop:${drop}px" ${!playable || committed ? "disabled" : ""}>${art}</button>`
     : `<span ${attrs} role="img" style="${cardScorchStyle(card)}">${art}</span>`;
@@ -111,7 +112,10 @@ function topRun(discard) {
   return run;
 }
 
-function renderStacks(state) {
+// Quiet renders (reload, skipped versions, hidden tab, reduced motion) never replay a fan.
+let pileFanQuiet = true;
+
+function renderStacks(state, measure = false) {
   const stock = $("hausdeppStock"), pile = $("hausdeppPile");
   const count = Math.max(0, Math.min(36, Number(state.deck_count) || 0));
   if (stock.dataset.cardCount !== String(count)) {
@@ -120,24 +124,34 @@ function renderStacks(state) {
       `<span class="hd-stock-card" aria-hidden="true" style="--stack-layer:${count - index - 1}"></span>`).join("");
   }
   pile.dataset.cardCount = String(state.discard.length);
-  const edges = Math.max(0, state.discard.length - 3);
   // Equal ranks on top fan out slightly, so their count reads at a glance.
   const run = topRun(state.discard);
+  // Keep the completing fourth card visible until the packet actually clears.
+  const visibleFaces = run === 4 ? 4 : 3;
+  const edges = Math.max(0, state.discard.length - visibleFaces);
   pile.dataset.run = String(run);
   const signature = JSON.stringify([state.phase, state.discard]);
+  const spec = {
+    discard: [...state.discard],
+    edges: Array.from({ length: edges }, (_, index) => `<span class="hd-pile-edge" aria-hidden="true" style="--stack-layer:${state.discard.length - index - 1}"></span>`).join(""),
+    faces: state.discard.slice(-visibleFaces).map((card, index, cards) => {
+      const depth = cards.length - index - 1, step = run > 1 && depth < run ? depth : null;
+      return { key: card, layer: depth, step,
+        html: `<span class="hd-pile-face" data-pile-card="${esc(card)}"${step === null ? "" : ` data-run-step="${step}"`} style="--stack-layer:${depth};--run-step:${depth}">${cardMarkup(card)}</span>` };
+    }),
+    empty: `<span class="hd-empty-pile">${t(state.phase === "peeking" ? "notDealt" : "tableClear")}</span>`,
+  };
+  // Measuring renders the accepted pile from throwaway nodes; the visible nodes
+  // (and their running slides) are parked and put back untouched afterwards.
+  if (measure) { measurePile(pile, spec); return; }
+  restorePile(pile);
   if (pile.dataset.renderSignature === signature) return;
   pile.dataset.renderSignature = signature;
-  pile.innerHTML = state.discard.length
-    ? Array.from({ length: edges }, (_, index) => `<span class="hd-pile-edge" aria-hidden="true" style="--stack-layer:${state.discard.length - index - 1}"></span>`).join("") +
-      state.discard.slice(-3).map((card, index, cards) => {
-        const depth = cards.length - index - 1;
-        return `<span class="hd-pile-face"${run > 1 && depth < run ? ` data-run-step="${depth}"` : ""} style="--stack-layer:${depth};--run-step:${depth}">${cardMarkup(card)}</span>`;
-      }).join("")
-    : `<span class="hd-empty-pile">${t(state.phase === "peeking" ? "notDealt" : "tableClear")}</span>`;
+  reconcilePile(pile, spec, !pileFanQuiet);
 }
 
 function renderPileState(s, actions, busy, measureOnly = false) {
-  renderStacks(s);
+  renderStacks(s, measureOnly);
   const burnedStack = $("hausdeppBurnedStack");
   const burnedCards = Math.min(6, Math.max(0, Number(s.burned_count) || 0));
   if (burnedStack.childElementCount !== burnedCards) burnedStack.innerHTML = Array.from({ length: burnedCards }, (_, index) => `<i class="hd-burned-card" style="--burn-angle:${[-12, 8, -3, 15, -8, 3][index]}deg;--burn-x:${[-3, 4, 0, -4, 3, 1][index]}px;--burn-y:${[-1, -3, 1, -2, -4, 0][index]}px"></i>`).join("");
@@ -636,7 +650,7 @@ function renderTableShell() {
   document.body.classList.add("hd-playing");
   if (!viewportInitialized) { initializeGameViewport(); viewportInitialized = true; }
   if (spectating) document.body.classList.add("hd-spectating");
-  root.innerHTML = `<div class="hd-room-layout"><section id="hausdeppTable" class="hd-table" aria-label="${t("table")}"><div class="hd-room-heading"><div><h1 id="hausdeppRoomName">${t("defaultTable")}</h1><p id="hausdeppTournamentBanner" class="hd-tournament-banner" hidden></p></div><span id="hausdeppConnection" role="status">${t("connecting")}</span></div><div id="hausdeppPlayers" class="hd-seats"></div><div class="hd-centre"><div class="hd-stock-group"><div id="hausdeppCutPreview" class="hd-cut-preview" role="status" aria-live="polite" aria-label="${esc(t("peekTitle"))}" hidden></div><div id="hausdeppKnownBottomCards" class="hd-known-bottom-cards" aria-hidden="true" hidden><span class="hd-known-bottom-fan"></span><span id="hausdeppKnownBottom" class="hd-known-bottom" hidden></span></div><button id="hausdeppStock" class="hd-card-back" type="button" disabled aria-label="${t("stock")}"></button><span id="hausdeppStockAction" class="hd-stack-action"></span><p id="hausdeppDrawAlert" class="hd-draw-alert" role="status" hidden>${t("mustDraw")}</p><span id="hausdeppStockCount"></span></div><div class="hd-pile-group"><button id="hausdeppPile" class="hd-pile" type="button" disabled aria-label="${t("pickup")}" aria-describedby="hausdeppPileTip"></button><span id="hausdeppPileTip" class="hd-pile-tip" role="tooltip">${t("inspectPileTip")}</span><span id="hausdeppPileAction" class="hd-stack-action"></span><span id="hausdeppPileCount"></span></div><div class="hd-burned" title="${t("outOfPlay")}"><div id="hausdeppBurnedStack" class="hd-burned-stack is-empty" aria-hidden="true"></div><span class="hd-stack-action hd-sr">${t("outOfPlay")}</span><span class="hd-burned-meta">${icon("out", "hd-burned-icon")}<span id="hausdeppBurnedCount">0</span><span class="hd-sr"> <span id="hausdeppBurnedUnit">${t("cardWord")}</span></span></span></div></div><p id="hausdeppStatus" class="hd-turn-status" role="status" aria-live="polite">${t("connecting")}</p><section class="hd-hand-region" aria-labelledby="hausdeppHandTitle"><div class="hd-hand-heading"><div class="hd-own-identity">${avatarMarkup(auth.user, { size: "small", avatarKey: "hand-self" })}<div><h2 id="hausdeppHandTitle">${t("yourHand")} <span id="hausdeppOwnPrefix" class="hd-tournament-prefix" hidden></span></h2><span class="hd-own-name" translate="no">${esc(auth.user.username)}</span></div></div><span id="hausdeppSelection"></span></div><div id="hausdeppHand" class="hd-hand"></div></section><details id="hausdeppTools" class="hd-actions"><summary aria-label="${esc(t("tableTools"))}" title="${esc(t("tableTools"))}">${icon("cards")}<span class="hd-tools-label">${t("tableTools")}</span></summary><div class="hd-game-help"><h2>${t("tableTools")}</h2><p id="hausdeppEvent" class="hd-event" aria-live="polite"></p><p class="hd-action-guide">${t("stackActions")}</p><button id="hausdeppInspectPile" class="hd-secondary hd-inspect-pile" type="button" disabled>${t("inspectPile")}</button><p class="hd-inspect-hint">${t("inspectPileGesture")}</p><a class="hd-secondary" href="/hausdepp/regeln">${t("rules")} ${icon("arrow")}</a><div id="hausdeppRoomInvitation" hidden>${invitationMarkup({ id: gameId, name: t("defaultTable") }, t)}</div><button class="hd-tools-close" type="button">${t("close")}</button></div></details><p id="hausdeppActionError" class="hd-action-error" role="alert"></p><details id="hausdeppPeek" class="hd-peek" hidden><summary>${t("peekTitle")}</summary><p id="hausdeppPeekText"></p><div id="hausdeppPeekCards" class="hd-peek-cards"></div></details><section id="hausdeppResult" class="hd-result" aria-live="polite" hidden></section><div id="hausdeppReactionLayer" class="hd-reaction-layer" aria-hidden="true"></div><p id="hausdeppReactionAnnouncement" class="hd-sr" role="status" aria-live="polite" aria-atomic="true"></p></section>
+  root.innerHTML = `<div class="hd-room-layout"><section id="hausdeppTable" class="hd-table" aria-label="${t("table")}"><div class="hd-room-heading"><div><h1 id="hausdeppRoomName">${t("defaultTable")}</h1><span id="hausdeppTableRule" class="hd-table-rule" hidden></span><p id="hausdeppTournamentBanner" class="hd-tournament-banner" hidden></p></div><span id="hausdeppConnection" role="status">${t("connecting")}</span></div><div id="hausdeppPlayers" class="hd-seats"></div><div class="hd-centre"><div class="hd-stock-group"><div id="hausdeppCutPreview" class="hd-cut-preview" role="status" aria-live="polite" aria-label="${esc(t("peekTitle"))}" hidden></div><div id="hausdeppKnownBottomCards" class="hd-known-bottom-cards" aria-hidden="true" hidden><span class="hd-known-bottom-fan"></span><span id="hausdeppKnownBottom" class="hd-known-bottom" hidden></span></div><button id="hausdeppStock" class="hd-card-back" type="button" disabled aria-label="${t("stock")}"></button><span id="hausdeppStockAction" class="hd-stack-action"></span><p id="hausdeppDrawAlert" class="hd-draw-alert" role="status" hidden>${t("mustDraw")}</p><span id="hausdeppStockCount"></span></div><div class="hd-pile-group"><button id="hausdeppPile" class="hd-pile" type="button" disabled aria-label="${t("pickup")}" aria-describedby="hausdeppPileTip"></button><span id="hausdeppPileTip" class="hd-pile-tip" role="tooltip">${t("inspectPileTip")}</span><span id="hausdeppPileAction" class="hd-stack-action"></span><span id="hausdeppPileCount"></span></div><div class="hd-burned" title="${t("outOfPlay")}"><div id="hausdeppBurnedStack" class="hd-burned-stack is-empty" aria-hidden="true"></div><span class="hd-stack-action hd-sr">${t("outOfPlay")}</span><span class="hd-burned-meta">${icon("out", "hd-burned-icon")}<span id="hausdeppBurnedCount">0</span><span class="hd-sr"> <span id="hausdeppBurnedUnit">${t("cardWord")}</span></span></span></div></div><p id="hausdeppStatus" class="hd-turn-status" role="status" aria-live="polite">${t("connecting")}</p><section class="hd-hand-region" aria-labelledby="hausdeppHandTitle"><div class="hd-hand-heading"><div class="hd-own-identity">${avatarMarkup(auth.user, { size: "small", avatarKey: "hand-self" })}<div><h2 id="hausdeppHandTitle">${t("yourHand")} <span id="hausdeppOwnPrefix" class="hd-tournament-prefix" hidden></span></h2><span class="hd-own-name" translate="no">${esc(auth.user.username)}</span></div></div><span id="hausdeppSelection"></span></div><div id="hausdeppHand" class="hd-hand"></div></section><details id="hausdeppTools" class="hd-actions"><summary aria-label="${esc(t("tableTools"))}" title="${esc(t("tableTools"))}">${icon("cards")}<span class="hd-tools-label">${t("tableTools")}</span></summary><div class="hd-game-help"><h2>${t("tableTools")}</h2><p id="hausdeppEvent" class="hd-event" aria-live="polite"></p><p class="hd-action-guide">${t("stackActions")}</p><button id="hausdeppInspectPile" class="hd-secondary hd-inspect-pile" type="button" disabled>${t("inspectPile")}</button><p class="hd-inspect-hint">${t("inspectPileGesture")}</p><a class="hd-secondary" href="/hausdepp/regeln">${t("rules")} ${icon("arrow")}</a><div id="hausdeppRoomInvitation" hidden>${invitationMarkup({ id: gameId, name: t("defaultTable") }, t)}</div><button class="hd-tools-close" type="button">${t("close")}</button></div></details><p id="hausdeppActionError" class="hd-action-error" role="alert"></p><details id="hausdeppPeek" class="hd-peek" hidden><summary>${t("peekTitle")}</summary><p id="hausdeppPeekText"></p><div id="hausdeppPeekCards" class="hd-peek-cards"></div></details><section id="hausdeppResult" class="hd-result" aria-live="polite" hidden></section><div id="hausdeppReactionLayer" class="hd-reaction-layer" aria-hidden="true"></div><p id="hausdeppReactionAnnouncement" class="hd-sr" role="status" aria-live="polite" aria-atomic="true"></p></section>
     <aside class="hd-social"><div class="hd-social-tools"><button id="chatToggle" type="button" aria-controls="chatPanel" aria-expanded="false">${icon("chat")} <span class="hd-chat-label">${t("tableChat")}</span> <span id="chatToggleCount" hidden></span></button><div class="hd-reactions" aria-label="${t("reactions")}"></div></div><section id="chatPanel" class="hd-chat-panel" aria-label="${t("tableChat")}"><div class="chat-content" hidden><div class="hd-chat-heading"><h2>${t("tableChat")}</h2><button id="chatClose" type="button">${t("close")}</button></div><div id="chatBox" class="hd-chat-messages" role="log" aria-live="polite"></div><div class="hd-chat-compose"><label class="hd-sr" for="chatInput">${t("message")}</label><input id="chatInput" type="text" maxlength="400" placeholder="${t("message")}" autocomplete="off"><button id="chatSend" type="button">${t("send")}</button></div></div></section><a class="hd-social-rules" href="/hausdepp/regeln">${t("rules")} ${icon("arrow")}</a></aside></div><button id="chatBackdrop" class="hd-chat-backdrop" type="button" aria-label="${t("close")}" hidden></button>`;
   $("hausdeppTable").insertAdjacentHTML("afterbegin", `<section id="hausdeppWaiting" class="hd-waiting" aria-labelledby="hausdeppWaitingTitle" hidden><div class="hd-waiting-heading"><h2 id="hausdeppWaitingTitle">${t("waitingHeading")}</h2><button id="hausdeppLeaveWaiting" class="hd-secondary" type="button" hidden>${t("leaveWaiting")}</button></div><p id="hausdeppLeaveWaitingError" class="hd-error" role="alert" hidden></p>${waitingControlsMarkup(t)}${invitationMarkup({ id: gameId, name: t("defaultTable"), waiting: true }, t)}</section>`);
   waitingControls?.destroy();
@@ -767,6 +781,10 @@ function renderTableShell() {
       if (card && handSelection.selection.select(card)) renderState();
       return;
     }
+    // A lower quartet is legal only as one atomic throw. A short tap opens
+    // the complete selection and its confirmation instead of sending one card.
+    if (card && !s?.playable_cards?.includes(card) && s?.four_of_a_kind_as_ten === true
+      && s.playable_groups?.some(group => group.includes(card))) { startSelection(card); return; }
     if (!card || !s?.playable_cards?.includes(card) || queuedCards.some(item => item.card === card) || commandInFlight?.cards?.includes(card)) return;
     if (pending) {
       // A follow-up card may wait behind an automatic or manual refill tap.
@@ -1195,6 +1213,7 @@ function renderStateContent() {
   const s = snapshot?._hausdepp;
   renderTableAppearance($("hausdeppTable"), snapshot?._hausdepp_table_effects);
   if (!s) { peekFeedback?.update(null); handSelection?.selection.cancel(); hausdeppBeginnerTour.update({ eligible: false }); if (snapshot) renderWaiting(); return; }
+  renderTableRule(s.four_of_a_kind_as_ten === true);
   document.body.classList.remove("hd-waiting-room");
   $("hausdeppWaiting").hidden = true;
   const tournament = snapshot._hausdepp_tournament;
@@ -1210,6 +1229,7 @@ function renderStateContent() {
   $("hausdeppOwnPrefix").setAttribute("aria-label", t("tournamentLetters", { letters: ownLetters, losses: tournament?.losses?.[playerId] || 0 }));
   if (s.phase !== "finished") { $("hausdeppResult").hidden = true; delete $("hausdeppResult").dataset.roundId; }
   const motion = prepareCardMotion(s, { gameId, playerId });
+  pileFanQuiet = motion.quiet;
   $("hausdeppTable").dataset.phase = s.phase;
   const roundNumber = tournament?.round_number || 1;
   if (s.phase !== "playing" || requestedSurpriseRound !== `${gameId}:${roundNumber}`) requestedSurprise = null;
@@ -1240,11 +1260,13 @@ function renderStateContent() {
   const playable = new Set(s.playable_cards || []);
   const hand = [...s.hand].sort((a,b) => ranks.indexOf(a.split("-")[1]) - ranks.indexOf(b.split("-")[1]) || a.localeCompare(b));
   const selectionAction = actions.includes("afterthrow") ? "afterthrow" : actions.includes("play") ? "play" : null;
+  const playableGroups = s.four_of_a_kind_as_ten === true && selectionAction ? (s.playable_groups || []) : [];
+  const groupCards = new Set(playableGroups.flat());
   const roundKey = `${gameId}:${tournament?.round_number || 1}`;
   handSelection.update({
     key: `${roundKey}:${s.version}`, roundKey, version: s.version, phase: s.phase, action: selectionAction,
-    hand, playable: [...playable], pending: pending || (motionBusy && !actions.includes("afterthrow")), viewer: playerId, event: s.last_event,
-    identity: JSON.stringify([s.phase, s.current_player_id, s.afterthrow, hand, [...actions].sort(), [...playable].sort(), s.discard]),
+    hand, playable: [...playable], playableGroups, pending: pending || (motionBusy && !actions.includes("afterthrow")), viewer: playerId, event: s.last_event,
+    identity: JSON.stringify([s.phase, s.current_player_id, s.afterthrow, hand, [...actions].sort(), [...playable].sort(), playableGroups, s.discard]),
   });
   const selecting = handSelection.selection.enabled;
   const selected = new Set(handSelection.selection.cards);
@@ -1255,10 +1277,11 @@ function renderStateContent() {
   const canThrow = card => {
     const queuedFollowup = pending && (card.split("-")[1] === pendingRank
       || (commandInFlight?.action === "draw" && actions.includes("afterthrow")));
+    if (groupCards.has(card) && !playable.has(card)) return !!selectionAction && !pending && (!motionBusy || actions.includes("afterthrow"));
     return (actions.includes("play") || actions.includes("afterthrow")) && playable.has(card)
       && (!pending || queuedFollowup) && (!motionBusy || actions.includes("afterthrow") || queuedFollowup);
   };
-  renderHand(`<div class="hd-hand-fan" data-count="${hand.length}" data-compact="${hand.length >= 8}" style="--hand-count:${Math.max(1, hand.length)}">${hand.map((card, index) => cardMarkup(card, { interactive: true, playable: selecting ? handSelection.selection.canSelect(card) : canThrow(card), committed: committed.has(card), launched: launched.has(card), selecting, selected: selected.has(card), sameRank: index > 0 && hand[index - 1].split("-")[1] === card.split("-")[1], index, count: hand.length })).join("")}</div>`);
+  renderHand(`<div class="hd-hand-fan" data-count="${hand.length}" data-compact="${hand.length >= 8}" style="--hand-count:${Math.max(1, hand.length)}">${hand.map((card, index) => cardMarkup(card, { interactive: true, playable: selecting ? handSelection.selection.canSelect(card) : canThrow(card), groupOnly: groupCards.has(card) && !playable.has(card), committed: committed.has(card), launched: launched.has(card), selecting, selected: selected.has(card), sameRank: index > 0 && hand[index - 1].split("-")[1] === card.split("-")[1], index, count: hand.length })).join("")}</div>`);
   if (oldFocus) $("hausdeppHand").querySelector(`[data-card-id="${CSS.escape(oldFocus)}"]`)?.focus({ preventScroll: true });
   $("hausdeppSelection").textContent = s.phase === "peeking" ? "" : counted("cardsInHand", hand.length);
   const mine = s.players.find(p => p.id === playerId);
@@ -1613,10 +1636,19 @@ async function loadRoundProgress(roundKey) {
   }
 }
 
+function renderTableRule(enabled) {
+  const badge = $("hausdeppTableRule");
+  badge.hidden = !enabled;
+  badge.textContent = t("fourKindRuleActive");
+  badge.title = t("fourKindRuleHint");
+  badge.setAttribute("aria-label", `${t("fourKindRuleLabel")}. ${t("fourKindRuleHint")}`);
+}
+
 function renderWaiting() {
   pileInspector?.close();
   document.body.classList.add("hd-waiting-room");
   $("hausdeppTable").dataset.phase = "waiting";
+  renderTableRule(snapshot._hausdepp_four_of_a_kind_as_ten === true);
   $("hausdeppWaiting").hidden = false;
   $("hausdeppLeaveWaiting").hidden = spectating || snapshot._waiting_permissions?.can_leave !== true;
   $("hausdeppLeaveWaiting").disabled = waitingLeaving || socket?.readyState !== WebSocket.OPEN;

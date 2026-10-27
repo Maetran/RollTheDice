@@ -482,8 +482,10 @@ test('dragon scorch persists through the same table round and rejoin while real 
   await expect(table).not.toHaveClass(/hd-cards-scorched/);
 });
 
-test('distinct scorched cards keep their own paper through a native launch, queued afterthrow and accepted pile handover', async ({ page }, info) => {
-  await page.setViewportSize({ width: 390, height: 844 });
+for (const [format, viewport] of [['phone', { width: 390, height: 844 }], ['desktop', { width: 1440, height: 900 }]]) {
+test(`${format}: distinct scorched cards slide apart through a native launch, queued afterthrow and accepted pile handover`, async ({ page }, info) => {
+  await page.setViewportSize(viewport);
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
   const fixture = await roomFixture(page, 'star', { scorched: true });
   const board = fixture.first.board, hand = ['hearts-6', 'bells-6', 'acorns-10'];
   Object.assign(board._hausdepp, { version: board._hausdepp.version + 1, hand, playable_cards: hand });
@@ -493,10 +495,15 @@ test('distinct scorched cards keep their own paper through a native launch, queu
     [node.dataset.cardId, getComputedStyle(node, '::before').backgroundImage])));
   expect(new Set(Object.values(patterns)).size).toBe(3);
   await page.evaluate(() => {
+    const card = document.querySelector('#hausdeppPile [data-card-id="leaves-6"]');
+    window.__pileFanIdentity = { card, art: card.querySelector('svg'), wrapper: card.parentElement,
+      scorch: getComputedStyle(card, '::before').backgroundImage };
     const animate = Element.prototype.animate;
     Element.prototype.animate = function (...args) {
       const animation = animate.apply(this, args);
-      if (this.classList.contains('hd-deal-card')) animation.pause();
+      // Freeze flights and paper movement independently. The accepted state
+      // may already contain three cards while only the first has landed.
+      if (this.classList.contains('hd-deal-card') || this.closest('#hausdeppPile')) animation.pause();
       return animation;
     };
   });
@@ -531,12 +538,75 @@ test('distinct scorched cards keep their own paper through a native launch, queu
   expect(await page.locator('.hd-deal-card[data-motion-type="afterthrow"]').evaluate(node =>
     getComputedStyle(node, '::before').backgroundImage)).toBe(patterns['bells-6']);
   await page.screenshot({ path: info.outputPath('scorched-flight.png') });
-  await page.locator('.hd-deal-card').evaluateAll(nodes => nodes.forEach(node => node.getAnimations().forEach(animation => animation.finish())));
+  const samplePaperSlide = async () => {
+    await expect.poll(() => page.evaluate(() => window.__pileFanIdentity.wrapper.getAnimations({ subtree: true })
+      .some(animation => animation.effect.getKeyframes().some(frame => frame.transform || frame.translate || frame.rotate))),
+    'landed paper must visibly move into its new fan position').toBe(true);
+    return page.evaluate(() => {
+      const saved = window.__pileFanIdentity;
+      const animation = saved.wrapper.getAnimations({ subtree: true }).find(item => item.effect.getKeyframes()
+        .some(frame => frame.transform || frame.translate || frame.rotate));
+      const duration = Number(animation.effect.getTiming().duration);
+      const position = () => {
+        const rect = saved.card.getBoundingClientRect();
+        return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+      };
+      animation.pause();
+      animation.currentTime = 0; const start = position();
+      animation.currentTime = duration; const end = position();
+      animation.currentTime = duration * .35; const middle = position();
+      saved.animation = animation;
+      saved.middle = middle;
+      return { duration, distance: Math.hypot(end.x - start.x, end.y - start.y),
+        progressed: Math.hypot(middle.x - start.x, middle.y - start.y),
+        remaining: Math.hypot(end.x - middle.x, end.y - middle.y),
+        sameCard: saved.card === document.querySelector('#hausdeppPile [data-card-id="leaves-6"]'),
+        sameArt: saved.art === saved.card.querySelector('svg'),
+        sameScorch: saved.scorch === getComputedStyle(saved.card, '::before').backgroundImage };
+    });
+  };
+  const expectSlidingPaper = evidence => {
+    expect(evidence).toMatchObject({ sameCard: true, sameArt: true, sameScorch: true });
+    expect(evidence.duration).toBeGreaterThan(0);
+    expect(evidence.distance).toBeGreaterThan(2);
+    expect(evidence.progressed).toBeGreaterThan(.1);
+    expect(evidence.remaining).toBeGreaterThan(.1);
+    expect(evidence.progressed).toBeLessThan(evidence.distance);
+  };
+  await expect(page.locator('#hausdeppPile')).toHaveAttribute('data-card-count', '1');
+  await page.locator('.hd-deal-card[data-motion-type="play"]').evaluate(node => node.getAnimations().forEach(animation => animation.finish()));
+  await expect(page.locator('#hausdeppPile')).toHaveAttribute('data-card-count', '2');
+  expectSlidingPaper(await samplePaperSlide());
+  // Chat, acknowledgements and duplicate snapshots also measure the accepted
+  // destination. That invisible work must not replace or restart visible paper.
+  fixture.send(fixture.first, { scoreboard: board });
+  await settleMessages(page);
+  const repeated = await page.evaluate(() => {
+    const saved = window.__pileFanIdentity;
+    const rect = saved.card.getBoundingClientRect();
+    return { sameCard: saved.card === document.querySelector('#hausdeppPile [data-card-id="leaves-6"]'),
+      movement: Math.hypot(rect.x + rect.width / 2 - saved.middle.x, rect.y + rect.height / 2 - saved.middle.y),
+      stillSliding: saved.wrapper.getAnimations({ subtree: true }).some(animation => animation.playState === 'paused'
+        && animation.effect.getKeyframes().some(frame => frame.transform || frame.translate || frame.rotate)) };
+  });
+  expect(repeated).toMatchObject({ sameCard: true, stillSliding: true });
+  expect(repeated.movement, 'an invisible destination measurement cannot snap the visible fan').toBeLessThan(.25);
+  await page.evaluate(() => window.__pileFanIdentity.wrapper.getAnimations({ subtree: true }).forEach(animation => animation.finish()));
+  await page.locator('.hd-deal-card[data-motion-type="afterthrow"]').evaluate(node => node.getAnimations().forEach(animation => animation.finish()));
   await expect(page.locator('#hausdeppPile [data-card-id="bells-6"]')).toBeVisible();
+  await expect(page.locator('#hausdeppPile')).toHaveAttribute('data-card-count', '3');
+  expectSlidingPaper(await samplePaperSlide());
   for (const card of ['hearts-6', 'bells-6']) expect(await page.locator(`#hausdeppPile [data-card-id="${card}"]`).evaluate(node =>
     getComputedStyle(node, '::before').backgroundImage)).toBe(patterns[card]);
+  await page.screenshot({ path: info.outputPath('scorched-pile-mid-slide.png') });
+  if (format === 'phone') await page.emulateMedia({ reducedMotion: 'reduce' });
+  else await page.setViewportSize({ width: 1200, height: 800 });
+  await expect.poll(() => page.locator('#hausdeppPile').evaluate(node => node.getAnimations({ subtree: true }).length),
+    'reduced motion and viewport changes settle moving paper').toBe(0);
+  expect(await page.evaluate(() => window.__pileFanIdentity.card === document.querySelector('#hausdeppPile [data-card-id="leaves-6"]'))).toBe(true);
   await page.screenshot({ path: info.outputPath('scorched-pile.png') });
 });
+}
 
 test('remote updates and local card input reveal live objects while the clock story finishes', async ({ page }) => {
   const fixture = await roomFixture(page, 'clock');

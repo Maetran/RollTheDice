@@ -23,6 +23,37 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 4.10.0 — 2026-10-27
+
+Dieses Update macht Hausdepps Kartenbewegungen ruhiger und ergänzt eine zunächst
+intern freigegebene, optionale Tischregel.
+
+This update smooths Hausdepp card movement and adds an optional table rule
+initially available for internal testing.
+
+### HAUSDEPP
+
+**Deutsch:** Gleiche Karten auf dem offenen Paket fächern sich nach dem Landen
+weich auseinander. Auch bei Mehrfachwürfen und schnellen Nachwürfen bleiben
+Kartenbilder und individuelle Brandspuren des Drachen während der Bewegung
+erhalten. Reduzierte Bewegung zeigt den fertigen Fächer ohne Schieben.
+
+**English:** Matching cards on the open pile fan apart smoothly after landing.
+Card artwork and individual dragon scorch marks stay intact during multiple-card
+throws and quick follow-ups. Reduced motion shows the settled fan without sliding.
+
+**Deutsch:** Der Ersteller kann optional „Vier Gleiche als 10“ wählen. Die Regel
+ist standardmässig aus und im Favoriten speicherbar: Vier gleichrangige Karten
+aus einer Hand dürfen gemeinsam auch auf höhere Ränge und räumen das Paket ab.
+Sie startet intern hinter der bestehenden Funktionsfreigabe. Vor dem Abräumen
+bleiben alle vier Karten einzeln sichtbar.
+
+**English:** The creator can optionally select “Four of a kind as a ten”. It is
+off by default and saved with favourites: four matching cards from one hand may
+be played together over higher ranks and clear the pile. It initially uses the
+existing internal feature availability. All four cards remain individually
+visible before the pile clears.
+
 ## 4.9.0 — 2026-10-26
 
 ### WATTEN: DAS EIGENE BLATT NOCHMALS SEHEN / REVIEW YOUR OWN HAND

@@ -587,8 +587,19 @@ async function expectPileProjection(page, discard) {
   await expect(page.locator('#hausdeppPile')).toHaveAttribute('data-card-count', String(discard.length));
   await expect(page.locator('#hausdeppPile')).toHaveAttribute('data-run', String(run));
   await expect(page.locator('#hausdeppPileCount')).toHaveText(`${discard.length} ${discard.length === 1 ? 'Karte' : 'Karten'}`);
+  // The completing fourth equal card stays on the wood with its whole group
+  // until the separate clearing flight starts. Other packets show three faces.
+  const visible = run === 4 ? discard.slice(-4) : discard.slice(-3);
   await expect.poll(() => page.locator('#hausdeppPile [data-card-id]').evaluateAll(cards => cards.map(card => card.dataset.cardId)))
-    .toEqual(discard.slice(-3));
+    .toEqual(visible);
+}
+
+async function expectSettledPileFan(page) {
+  // Arrival starts a real slide for papers already on the wood. A following
+  // flight's stable reference belongs to the settled fan, not an earlier frame.
+  await expect.poll(() => page.locator('#hausdeppPile .hd-pile-face').evaluateAll(faces => faces.every(face =>
+    face.getAnimations().every(animation => ['finished', 'idle'].includes(animation.playState)))),
+  'the already-landed paper completes its fan movement').toBe(true);
 }
 
 function expectSamePaperGeometry(actual, expected, label) {
@@ -633,13 +644,18 @@ async function expectArrivingPilePictures(page, testInfo, { name, before, incomi
   expect(await page.evaluate(key => window.__pileGeometryGroups[key].every(card => !card.isConnected), incoming),
     `${name}: the physical card replaces its ghost exactly at arrival`).toBe(true);
   await expect(page.locator('.hd-deal-card[data-motion-type="pile-rest"]')).toHaveCount(0);
+  await expectSettledPileFan(page);
+  const settled = await renderedPileGeometry(page);
+  for (const part of ['paper', 'art']) {
+    expectSamePaperGeometry(settled.faces.at(-1)[part], top[part], `${name} settled top ${part}`);
+  }
   await testInfo.attach(`${name}-actual-card-geometry`, {
-    body: JSON.stringify({ before, source, frames, arrival, durable }, null, 2), contentType: 'application/json',
+    body: JSON.stringify({ before, source, frames, arrival, durable, settled }, null, 2), contentType: 'application/json',
   });
   if (process.env.HAUSDEPP_GEOMETRY_SCREENSHOTS === '1') {
     await page.screenshot({ path: testInfo.outputPath(`${name}-stable-pile.png`) });
   }
-  return durable;
+  return settled;
 }
 
 async function expectBurnCauseGeometry(page, testInfo, { name, before, incoming, discard }) {

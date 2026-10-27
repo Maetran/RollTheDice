@@ -89,6 +89,7 @@ def test_defaults_are_explicit_and_reads_never_create_settings(store):
     with session_scope() as db:
         assert {feature_settings(db, definition.key)["status"] for definition in FEATURES} == {"internal"}
         assert {definition.key for definition in FEATURES} == {
+            "hausdepp.four_of_a_kind_as_ten",
             "watten.schoeneres", "watten.schlagwechsel", "watten.critical", "watten.show_rechter",
             "watten.trick_history", "watten.open_partner_hand",
         }

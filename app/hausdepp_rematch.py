@@ -64,6 +64,7 @@ def retain_rematch_source(game: dict) -> bool:
                         "_hausdepp_cpu_count": game.get("_hausdepp_cpu_count", 0),
                         "_hausdepp_tournament_enabled": bool(game.get("_hausdepp_tournament_enabled") or tournament),
                         "_voice_enabled": game.get("_voice_enabled", True) is True,
+                        "_hausdepp_four_of_a_kind_as_ten": game.get("_hausdepp_four_of_a_kind_as_ten", False) is True,
                         "_passphrase": verifier}
             if game.get("_hausdepp_voice_room_id"):
                 settings["_hausdepp_voice_room_id"] = game["_hausdepp_voice_room_id"]
@@ -291,7 +292,8 @@ def create_rematch(source_id: str, user_id: int, *, before_create: Callable | No
         game = new_hausdepp_game(game_id, source["_name"], mode, register=False)
         configure_hausdepp_game(game, host_user_id=user_id, cpu_count=source.get("_hausdepp_cpu_count", 0),
                                 tournament=bool(source.get("_hausdepp_tournament_enabled") or tournament),
-                                voice_enabled=source.get("_voice_enabled", True) is True)
+                                voice_enabled=source.get("_voice_enabled", True) is True,
+                                four_of_a_kind_as_ten=source.get("_hausdepp_four_of_a_kind_as_ten", False) is True)
         game["_passphrase"] = source.get("_passphrase")
         game["_hausdepp_rematch_id"] = rematch_id
         game["_hausdepp_rematch_joined_ids"] = []
@@ -301,8 +303,15 @@ def create_rematch(source_id: str, user_id: int, *, before_create: Callable | No
         now = utcnow()
         settings = {"mode": game["_mode"], "cpu_count": game["_hausdepp_cpu_count"],
                     "tournament": game["_hausdepp_tournament_enabled"], "locked": bool(game["_passphrase"]),
+                    "four_of_a_kind_as_ten": game.get("_hausdepp_four_of_a_kind_as_ten", False) is True,
                     "name": game["_name"]}
         with session_scope() as db:
+            from .hausdepp_features import HausdeppFeatureError, validate_checkpoint_features
+
+            try:
+                validate_checkpoint_features(db, game, creating=True)
+            except HausdeppFeatureError as exc:
+                raise RematchError(str(exc), 403) from exc
             if user_id not in _active_ids(db, {user_id}):
                 raise RematchError("account_play_banned", 403)
             inserted = _insert_once(db, HausdeppRematch, {
@@ -345,6 +354,7 @@ def _invitation_payload(db, invitation, rematch, game: dict) -> dict | None:
             "sender": {"id": sender.id, "username": sender.username}, "name": game["_name"],
             "players": int(game["_mode"]), "cpu_count": game["_hausdepp_cpu_count"],
             "tournament": bool(game.get("_hausdepp_tournament_enabled")), "locked": bool(game.get("_passphrase")),
+            "four_of_a_kind_as_ten": game.get("_hausdepp_four_of_a_kind_as_ten", False) is True,
             "expires_at": expires_at.isoformat()}
 
 

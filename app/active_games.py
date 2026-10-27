@@ -123,6 +123,20 @@ def _save_active_game_locked(game: dict, game_id: str, *, creating: bool) -> Non
     try:
         with session_scope() as db:
             if revision is not None:
+                if game_type_from_state(game) == "hausdepp":
+                    from .hausdepp_features import validate_checkpoint_features
+
+                    # Read the old policy snapshot only after reserving the
+                    # exact row for writing. A deferred SQLite read cannot
+                    # safely upgrade after a competing writer changes it.
+                    previous_raw = db.execute(update(ActiveGame).where(
+                        ActiveGame.game_id == game_id, ActiveGame.admission_revision == revision,
+                    ).values(state_json=ActiveGame.state_json).returning(ActiveGame.state_json)
+                        .execution_options(synchronize_session=False)).scalar_one_or_none()
+                    if previous_raw is None:
+                        logger.warning("Refusing stale or retired Hausdepp checkpoint for game %s", game_id)
+                        return
+                    validate_checkpoint_features(db, game, json.loads(previous_raw))
                 changed = db.execute(update(ActiveGame).where(
                     ActiveGame.game_id == game_id, ActiveGame.admission_revision == revision,
                 ).values(state_json=payload, updated_at=now).execution_options(synchronize_session=False))
@@ -139,6 +153,10 @@ def _save_active_game_locked(game: dict, game_id: str, *, creating: bool) -> Non
             if db.scalar(select(ActiveGame.id).where(ActiveGame.game_id == game_id)) is not None:
                 logger.error("Refusing to create already stored game %s", game_id)
                 return
+            if game_type_from_state(game) == "hausdepp":
+                from .hausdepp_features import validate_checkpoint_features
+
+                validate_checkpoint_features(db, game, creating=True)
             db.add(ActiveGame(game_id=game_id, state_json=payload, created_at=now, updated_at=now,
                               admission_revision=0))
         bind_room(game, game_id, 0)

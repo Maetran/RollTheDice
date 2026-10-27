@@ -50,7 +50,8 @@ def new_hausdepp_game(game_id: str, name: str, mode: object, *, register: bool =
 
 
 def configure_hausdepp_game(game: GameDict, *, host_user_id: int, cpu_count: int = 1, tournament: bool = False,
-                           waiting_mode: str = "fixed", manual_start: bool = False, voice_enabled: bool = True) -> None:
+                           waiting_mode: str = "fixed", manual_start: bool = False, voice_enabled: bool = True,
+                           four_of_a_kind_as_ten: bool = False) -> None:
     if game.get("_players") or game.get("_started"):
         raise ValueError("hausdepp_game_already_configured")
     if type(host_user_id) is not int or host_user_id < 1:
@@ -64,6 +65,11 @@ def configure_hausdepp_game(game: GameDict, *, host_user_id: int, cpu_count: int
         raise ValueError("hausdepp_invalid_tournament")
     if type(voice_enabled) is not bool:
         raise ValueError("hausdepp_invalid_voice_option")
+    if type(four_of_a_kind_as_ten) is not bool:
+        raise ValueError("hausdepp_invalid_rule_option")
+    game["_hausdepp_four_of_a_kind_as_ten"] = four_of_a_kind_as_ten
+    if four_of_a_kind_as_ten:
+        game["_hausdepp_feature_creator_user_id"] = host_user_id
     game["_voice_enabled"] = voice_enabled
     game["_hausdepp_host_user_id"] = host_user_id
     game["_expected"] = capacity
@@ -212,7 +218,8 @@ def start_hausdepp_game(game: GameDict, *, manual: bool = False) -> None:
         game["_expected_connections"] = len(game["_players"])
     # The first dealer is drawn for every new table, humans and CPUs alike;
     # tournaments then pass the deal clockwise after each round.
-    game["_hausdepp"] = new_round(participants, dealer_index=_DEALER_RANDOM.randrange(len(participants)))
+    game["_hausdepp"] = new_round(participants, dealer_index=_DEALER_RANDOM.randrange(len(participants)),
+                                 four_of_a_kind_as_ten=game.get("_hausdepp_four_of_a_kind_as_ten", False))
     if game.get("_hausdepp_tournament_enabled"):
         from .hausdepp_tournament import new_tournament
 
