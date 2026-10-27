@@ -91,10 +91,10 @@ class HausdeppLocalMultiplayerTransportTests(unittest.TestCase):
         deck = prefix + [card for card in make_deck() if card not in {*prefix, bottom}] + [bottom]
         fixture_ids = {self.founder.id, self.second.id}
 
-        def arranged_round(participants, dealer_index=0):
+        def arranged_round(participants, dealer_index=0, **rules):
             # The production first dealer is random; this fixture fixes the
             # second seat as dealer so the founder (its predecessor) peeks.
-            return new_round(participants, dealer_index=1, deck=deck)
+            return new_round(participants, dealer_index=1, deck=deck, **rules)
 
         founder_headers = self.headers(self.founder_token)
         second_headers = self.headers(self.second_token)
