@@ -1,5 +1,5 @@
 import { loadAuth } from "../shared/auth.js";
-import { hausdeppAppEntryUrl, wattenAppEntryUrl, zdwaAppEntryUrl, zilchAppEntryUrl } from "./routes.js";
+import { hausdeppAppEntryUrl, suiteManagementUrl, wattenAppEntryUrl, zdwaAppEntryUrl, zilchAppEntryUrl } from "./routes.js";
 import { createGamePicker } from "./game-picker.js";
 
 export const APP_MODE_STORAGE_KEY = "zdwa_app_mode";
@@ -28,6 +28,22 @@ function canDiscoverWatten(auth) {
   const access = auth?.game_access || auth?.user?.game_access;
   return access?.watten_public === true || (auth?.authenticated === true && Number.isSafeInteger(auth.user?.id) && auth.user.id > 0
     && access?.watten_preview === true);
+}
+
+/**
+ * Management entries come only from a server-confirmed account. Admin Center
+ * and Dashboard are independent capabilities; neither implies the other.
+ */
+function suiteUtilityProof(auth) {
+  const user = auth?.authenticated === true ? auth.user : null;
+  if (!Number.isSafeInteger(user?.id) || user.id <= 0) return null;
+  const proof = { id: user.id, admin: user.is_admin === true, dashboard: user.can_view_analytics === true };
+  return proof.admin || proof.dashboard ? proof : null;
+}
+
+function suiteUtilityKey(auth) {
+  const proof = suiteUtilityProof(auth);
+  return proof ? `${proof.id}:${proof.admin}:${proof.dashboard}` : "";
 }
 
 function updateSwitch(allowed) {
@@ -106,6 +122,7 @@ export function initializeAppMode({
   let refreshRevision = 0;
   let suspended = false;
   let navigatingAway = false;
+  let utilityNavigationPending = false;
   let gamePresentation = {};
   try { gamePresentation = JSON.parse(document.documentElement.dataset.gamePresentation || "{}"); } catch (_) {}
   const presentation = game => typeof gamePresentation?.[game]?.beta === "boolean" ? { beta: gamePresentation[game].beta } : {};
@@ -117,17 +134,42 @@ export function initializeAppMode({
     ...(wattenAllowed ? [{ id: "watten", name: "Watten", publicBeta: wattenPublic,
       href: wattenAppEntryUrl(window.location, globalThis, { publicBeta: wattenPublic }), ...presentation("watten") }] : []),
   ];
+  // Proof of the current server-confirmed management capabilities. It is
+  // independent of game audiences and is dropped on every revalidation boundary.
+  let utilityProof = null;
+  const availableUtilities = () => [
+    ...(utilityProof?.admin ? [{ id: "admin", href: suiteManagementUrl("/admin") }] : []),
+    ...(utilityProof?.dashboard ? [{ id: "dashboard", href: suiteManagementUrl("/admin/dashboard") }] : []),
+  ];
+  const selectUtility = (_id, _utility, event) => {
+    // Only a plain same-tab click leaves this document. Hand it to the
+    // navigation owner so a late auth failure cannot replace the destination.
+    const target = event?.currentTarget?.target;
+    if (!event || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey
+      || event.shiftKey || event.altKey || (target && target !== "_self")) return;
+    prepareNavigation({ nativeUtility: true });
+  };
   const syncPickers = () => {
     updateSwitch(allowed);
     for (const button of document.querySelectorAll("[data-game-switch]")) {
       let picker = pickers.get(button);
       if (!allowed) { picker?.close(); continue; }
-      if (picker) picker.update({ currentMode, games: availableGames() });
+      if (picker) picker.update({ currentMode, games: availableGames(), utilities: availableUtilities() });
       else {
-        picker = createGamePicker({ button, currentMode, games: availableGames(), onSelect: rememberMode });
+        picker = createGamePicker({
+          button, currentMode, games: availableGames(), utilities: availableUtilities(),
+          onSelect: rememberMode, onUtilitySelect: selectUtility,
+        });
         pickers.set(button, picker);
       }
     }
+  };
+  const dropUtilities = () => {
+    if (!utilityProof) return;
+    utilityProof = null;
+    // Management links alone may have kept the chooser available.
+    if (currentMode !== "watten" && !discoveryOnly && !zilchAllowed && !hausdeppAllowed && !wattenAllowed) allowed = false;
+    syncPickers();
   };
   // A private page can paint its header before this controller's auth refresh
   // completes. Do not present an active button whose first click is ignored.
@@ -136,7 +178,8 @@ export function initializeAppMode({
   if (publicLobby || discoveryOnly) syncPickers();
 
   const revokeZilch = () => {
-    allowed = false;
+    // Management links keep the chooser on a non-Zilch page, never a game.
+    allowed = currentMode !== "zilch" && utilityProof !== null;
     syncPickers();
     clearRememberedZilchMode();
     if (currentMode !== "zilch" || stopped) return;
@@ -148,6 +191,7 @@ export function initializeAppMode({
 
   const applyAuth = (auth, { confirmedPrivate = false } = {}) => {
     latestAuth = auth;
+    utilityProof = suiteUtilityProof(auth);
     if (auth?.game_presentation) gamePresentation = auth.game_presentation;
     wattenPublic = (auth?.game_access || auth?.user?.game_access)?.watten_public === true;
     wattenAllowed = wattenPublic || (confirmedPrivate && canDiscoverWatten(auth));
@@ -190,7 +234,8 @@ export function initializeAppMode({
       revokeZilch();
       return false;
     }
-    allowed = currentMode === "watten" ? wattenAllowed : nextAllowed || hausdeppAllowed || wattenAllowed;
+    allowed = currentMode === "watten" ? wattenAllowed
+      : nextAllowed || hausdeppAllowed || wattenAllowed || utilityProof !== null;
     syncPickers();
     return true;
   };
@@ -198,12 +243,15 @@ export function initializeAppMode({
   const dropPrivate = () => {
     if (!wattenAllowed || wattenPublic) return;
     wattenAllowed = false;
-    allowed = discoveryOnly || (currentMode === "watten" ? false : zilchAllowed || hausdeppAllowed);
+    allowed = discoveryOnly || (currentMode === "watten" ? false : zilchAllowed || hausdeppAllowed || utilityProof !== null);
     syncPickers();
   };
 
-  const refresh = ({ preserveKnownPrivate = false } = {}) => {
+  const refresh = ({ preserveKnownPrivate = false, preserveUtilities = preserveKnownPrivate } = {}) => {
     if (!preserveKnownPrivate) dropPrivate();
+    // Management proof ends at every revalidation boundary, even when the
+    // account's public Watten access made the private-game drop a no-op.
+    if (!preserveUtilities) dropUtilities();
     if (suspended || document.visibilityState === "hidden") return Promise.resolve(false);
     if (refreshPromise) return refreshPromise;
     const revision = ++refreshRevision;
@@ -218,11 +266,13 @@ export function initializeAppMode({
         if (revision !== refreshRevision || suspended || document.visibilityState === "hidden") return false;
         if (latestAuth && (latestAuth.authenticated !== auth.authenticated
           || latestAuth.user?.id !== auth.user?.id
-          || canDiscoverWatten(latestAuth) !== canDiscoverWatten(auth))) return false;
+          || canDiscoverWatten(latestAuth) !== canDiscoverWatten(auth)
+          || suiteUtilityKey(latestAuth) !== suiteUtilityKey(auth))) return false;
         return applyAuth(auth, { confirmedPrivate: true });
       } catch (_) {
         if (revision !== refreshRevision || suspended) return false;
         dropPrivate();
+        dropUtilities();
         clearRememberedWattenMode();
         if (discoveryOnly) {
           zilchAllowed = false;
@@ -251,9 +301,12 @@ export function initializeAppMode({
   const receiveAuth = (auth) => {
     // The outgoing document has already handed navigation to its owner.
     // A late identity event must not replace that chosen destination.
-    if (navigatingAway) return false;
-    if (latestAuth && (latestAuth.authenticated ? latestAuth.user?.id : null)
-      !== (auth?.authenticated ? auth.user?.id : null)) {
+    if (navigatingAway || suspended || document.visibilityState === "hidden") return false;
+    // A changed management capability retires older in-flight reads as well,
+    // so a delayed same-account grant cannot restore withdrawn links.
+    if (latestAuth && ((latestAuth.authenticated ? latestAuth.user?.id : null)
+      !== (auth?.authenticated ? auth.user?.id : null)
+      || suiteUtilityKey(latestAuth) !== suiteUtilityKey(auth))) {
       refreshRevision += 1;
       refreshPromise = null;
     }
@@ -261,7 +314,10 @@ export function initializeAppMode({
     // can never inherit this proof, and focus/pageshow explicitly discard it.
     const confirmedPrivate = wattenAllowed && canDiscoverWatten(auth) && latestAuth?.user?.id === auth.user?.id;
     const result = applyAuth(auth, { confirmedPrivate });
-    if (canDiscoverWatten(auth) && !refreshPromise && !suspended) void refresh({ preserveKnownPrivate: confirmedPrivate });
+    // This event is itself the fresh proof; its follow-up Watten check keeps it.
+    if (canDiscoverWatten(auth) && !refreshPromise && !suspended) {
+      void refresh({ preserveKnownPrivate: confirmedPrivate, preserveUtilities: true });
+    }
     return result;
   };
 
@@ -294,9 +350,11 @@ export function initializeAppMode({
     refreshRevision += 1;
     refreshPromise = null;
     dropPrivate();
+    dropUtilities();
     for (const picker of pickers.values()) picker.close();
   };
-  const prepareNavigation = () => {
+  const prepareNavigation = ({ nativeUtility = false } = {}) => {
+    utilityNavigationPending = nativeUtility;
     navigatingAway = true;
     suspend();
     const revision = refreshRevision;
@@ -338,7 +396,11 @@ export function initializeAppMode({
   window.ZDWA_APP_MODE = controller;
   // Keep the controller usable when a browser restores this document from bfcache.
   window.addEventListener("pageshow", event => {
-    if (!event.persisted || navigatingAway) return;
+    if (!event.persisted || (navigatingAway && !utilityNavigationPending)) return;
+    // Back restores the old document, not the old permission proof. Native
+    // utility navigation retires its reads until this real lifecycle boundary.
+    utilityNavigationPending = false;
+    navigatingAway = false;
     suspended = false;
     void refresh();
   });

@@ -11,7 +11,7 @@ const ZDWA_PRODUCTION_HOSTS = new Set([
 const ZILCH_LEGACY_PREFIX = "/zilch";
 const ZILCH_PAGE_ROUTE = /^\/(?:$|spiel\/[^/]+(?:\/zuschauen)?|ergebnis\/[^/]+|historie|regeln|statistiken|bestenlisten|erfolge|konto|offline-spielen|spieler(?:\/[^/]+)?)\/?$/;
 export const ZDWA_PWA_BRIDGE_PREFIX = "/zdwa";
-const ZDWA_PAGE_ROUTE = /^\/(?:$|spiel\/[^/]+(?:\/zuschauen)?|ergebnis(?:\/[^/]+)?|regeln|spieler(?:\/[^/]+)?|rangabzeichen|konto|admin|offline|offline-spielen)\/?$/;
+const ZDWA_PAGE_ROUTE = /^\/(?:$|spiel\/[^/]+(?:\/zuschauen)?|ergebnis(?:\/[^/]+)?|regeln|spieler(?:\/[^/]+)?|rangabzeichen|konto|admin(?:\/dashboard)?|offline|offline-spielen)\/?$/;
 
 function activeLocation(locationLike) {
   return locationLike || window.location;
@@ -153,6 +153,7 @@ export function applyZdwaBridgeLinks(scope = document, locationLike = window.loc
     // A game picker already resolved the destination for its game and PWA
     // origin. In particular, `/` means Zilch here, not the ZDWA bridge root.
     if (["zdwa", "zilch", "hausdepp", "watten"].includes(link.getAttribute("data-game-entry"))) continue;
+    if (["admin", "dashboard"].includes(link.getAttribute("data-suite-utility-entry"))) continue;
     const href = link.getAttribute("href");
     if (!href || href.startsWith("#")) continue;
     let target;
@@ -199,6 +200,13 @@ export function zdwaAppEntryUrl(locationLike = window.location, environmentLike 
   return suiteHost || isProductionZdwaLocation(locationLike)
     ? `${ZDWA_PRODUCTION_ORIGIN}/`
     : "/";
+}
+
+/** Fixed shared tools use the established ZDWA handoff without leaving an installed app. */
+export function suiteManagementUrl(destination, locationLike = window.location, environmentLike = globalThis) {
+  if (!["/admin", "/admin/dashboard"].includes(destination)) throw new TypeError("Unknown suite management destination");
+  const entry = zdwaAppEntryUrl(locationLike, environmentLike);
+  return `${entry.replace(/\/$/, "")}${destination}`;
 }
 
 /**

@@ -2581,5 +2581,12 @@
     "date": "2026-10-26",
     "bump": "minor",
     "summary": "Watten zeigt dein übriges Blatt während der kurzen Rückschau mit dem Rechten. / Watten keeps your remaining hand visible during the short Rechter review."
+  },
+  {
+    "version": "4.10.0",
+    "revision": "e2b2133179a122be9654b35e93fe5ac52f80f758",
+    "date": "2026-10-27",
+    "bump": "minor",
+    "summary": "Hausdepp erhält gleitende Kartenfächer und eine optionale, zunächst interne Viererregel. / Hausdepp gains smooth pile fanning and an optional quartet rule, initially available internally."
   }
 ]

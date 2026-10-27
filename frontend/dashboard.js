@@ -456,7 +456,8 @@ function message(text, { retry = true, login = false } = {}) {
 function denied(status) {
   byId("dashboardData").hidden = true;
   byId("dashboardFilters").hidden = true;
-  byId("dashboardLogin").href = "/zilch/anmelden?return_to=%2Fadmin%2Fdashboard";
+  byId("dashboardLogin").href = document.documentElement.dataset.zdwaPwaBridge === "true"
+    ? "/zdwa/anmelden?return_to=%2Fzdwa%2Fadmin%2Fdashboard" : "/zilch/anmelden?return_to=%2Fadmin%2Fdashboard";
   connection("Zugriff erforderlich", "warning");
   message(status === 401 ? "Bitte melde dich an, um Mission Control zu öffnen." : "Bitte den Gründer um Zugriff auf Mission Control.", { retry: false, login: status === 401 });
 }

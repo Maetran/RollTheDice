@@ -1,10 +1,10 @@
 {
-  "version": "4.10.0",
-  "bump": "minor",
+  "version": "4.10.1",
+  "bump": "patch",
   "date": "2026-10-27",
-  "previous_revision": "4abafc3f5b38b7a082861d15445ef08eba1bbf6b",
+  "previous_revision": "e2b2133179a122be9654b35e93fe5ac52f80f758",
   "summary": {
-    "de": "Hausdepp erhält gleitende Kartenfächer und eine optionale, zunächst interne Viererregel.",
-    "en": "Hausdepp gains smooth pile fanning and an optional quartet rule, initially available internally."
+    "de": "Admin Center und Dashboard sind für berechtigte Konten direkt über die gemeinsame Spielauswahl erreichbar.",
+    "en": "Authorized accounts can open Admin Center and Dashboard directly from the shared game picker."
   }
 }

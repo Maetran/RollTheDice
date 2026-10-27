@@ -50,7 +50,6 @@ export const dom = {
   playerNameRow: document.getElementById("playerNameRow"),
   authBadge: document.getElementById("authBadge"),
   authActions: document.getElementById("authActions"),
-  adminLink: document.getElementById("adminLink"),
   headerAccountLink: document.getElementById("headerAccountLink"),
   logoutButton: document.getElementById("logoutBtn"),
   leaderboardNormalTab: document.getElementById("lbTabNormal"),

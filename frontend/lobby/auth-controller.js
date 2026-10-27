@@ -162,7 +162,6 @@ async function refreshAuthUi(refresh = false) {
     renderRegistrationMethod();
     dom.authActions.hidden = !user;
     dom.authBadge.hidden = !user;
-    dom.adminLink.hidden = !user?.is_admin;
     dom.playerSetupCard.classList.toggle("authenticated", Boolean(user));
     dom.playerSectionTitle.hidden = Boolean(user);
     dom.playerNameRow.hidden = Boolean(user);

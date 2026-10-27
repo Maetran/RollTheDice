@@ -212,9 +212,26 @@ DOCUMENT_ROUTES = (
     ),
 )
 
+# Both private bridge aliases retain their real reader guard and fixed sign-in
+# continuation. The picker reaches these only within installed product apps.
+PWA_MANAGEMENT_BRIDGE_ROUTES = (
+    RouteCoverage(
+        ("/zdwa/admin/dashboard",), "tests/test_analytics_routes.py",
+        "test_pwa_dashboard_bridge_rechecks_reader_authority_and_keeps_document_exits_inside_app",
+        ("tests/browser/game-picker-management-bridge.spec.js",),
+    ),
+    RouteCoverage(
+        ("/zdwa/anmelden",), "tests/test_analytics_routes.py",
+        "test_pwa_dashboard_signin_accepts_only_its_fixed_return_and_keeps_product_manifest",
+        ("tests/browser/game-picker-management-bridge.spec.js",),
+    ),
+)
+
 # Host-specific aliases and the reserved boundary when the public flag is off.
 RESERVED_HOST_DOCUMENT_ROUTES = {
+    ZILCH_ORIGIN: PWA_MANAGEMENT_BRIDGE_ROUTES,
     HAUSDEPP_ORIGIN: (
+        *PWA_MANAGEMENT_BRIDGE_ROUTES,
         RouteCoverage(
             ("/konto", "/hausdepp/konto", "/hausdepp/konto/einstellungen"),
             "tests/test_hausdepp_auth_flow.py", "test_house_auth_pages_keep_product_identity_and_protected_settings",
@@ -222,6 +239,7 @@ RESERVED_HOST_DOCUMENT_ROUTES = {
         ),
     ),
     WATTEN_ORIGIN: (
+        *PWA_MANAGEMENT_BRIDGE_ROUTES,
         RouteCoverage(
             ("/", "/watten", "/watten/regeln", "/konto", "/hausdepp", "/zilch/anmelden",
              "/spiel/example", "/watten/spiel/example/zuschauen", "/auth/continue"),

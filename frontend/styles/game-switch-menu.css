@@ -92,6 +92,17 @@ html[data-game="zilch"] .suite-game-menu {
 .suite-game-option__activity { color: var(--picker-muted); font-size: 11px; font-weight: 550; line-height: 1.4; font-variant-numeric: tabular-nums; }
 .suite-game-option__current { flex: 0 0 auto; align-self: flex-start; margin-top: 3px; padding: 3px 6px; color: var(--picker-accent); border: 1px solid currentColor; border-radius: 4px; font-size: 10px; font-weight: 750; line-height: 1.25; }
 .suite-game-option__arrow { flex: 0 0 18px; width: 18px; height: 18px; color: var(--picker-muted); }
+.suite-game-menu__utilities { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--picker-line); }
+.suite-game-menu .suite-game-menu__group-title { margin: 0; padding: 4px 10px 6px; color: var(--picker-muted); font: 750 12px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; letter-spacing: 0; }
+.suite-game-menu__utility-list { display: grid; gap: 2px; }
+.suite-game-menu .suite-utility-option { box-sizing: border-box; display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 8px 10px; color: var(--picker-ink); background: transparent; border: 1px solid transparent; border-radius: 10px; text-align: left; text-decoration: none; touch-action: manipulation; }
+.suite-game-menu .suite-utility-option:hover { color: var(--picker-ink); background: var(--picker-hover); }
+.suite-utility-option__icon { display: grid; place-items: center; flex: 0 0 36px; width: 36px; height: 36px; border: 1px solid var(--picker-line); border-radius: 9px; color: var(--picker-muted); background: var(--picker-hover); }
+.suite-utility-option__icon .suite-game-icon { width: 22px; height: 22px; }
+.suite-utility-option__copy { display: grid; flex: 1 1 auto; min-width: 0; gap: 1px; }
+.suite-utility-option__name { color: var(--picker-ink); font-size: 14px; font-weight: 750; line-height: 1.3; }
+.suite-utility-option__description { color: var(--picker-muted); font-size: 12px; font-weight: 400; line-height: 1.4; }
+.suite-utility-option__arrow { flex: 0 0 18px; width: 18px; height: 18px; color: var(--picker-muted); }
 .suite-game-backdrop { position: fixed; z-index: 1100; inset: 0; background: #100e0c80; }
 .suite-game-backdrop[hidden] { display: none; }
 
@@ -106,7 +117,9 @@ html[data-game="zilch"] .suite-game-menu {
   .suite-game-menu__header { padding-bottom: 16px; }
   .suite-game-menu .suite-game-menu__title { font-size: 19px; }
   .suite-game-menu .suite-game-option { min-height: 82px; padding-inline: 12px; }
-  .suite-game-option__description { font-size: 13px; }
+  .suite-game-option__description,
+  .suite-utility-option__description { font-size: 13px; }
+  .suite-game-menu .suite-utility-option { min-height: 60px; padding-inline: 12px; }
   @keyframes suite-game-sheet { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
 }
 

@@ -27,7 +27,34 @@ export function gameIcon(id) {
     hausdepp: '<path d="m6 17-3-1.1a1.5 1.5 0 0 1-.9-1.9l3.4-10a1.5 1.5 0 0 1 1.9-.9L12 4.7"/><rect x="8" y="4" width="12" height="17" rx="2"/><path d="M14 16s-3.5-2.2-3.5-4.3a1.9 1.9 0 0 1 3.5-.8 1.9 1.9 0 0 1 3.5.8C17.5 13.8 14 16 14 16Z" fill="currentColor" stroke="none"/>',
     watten: '<path d="m6 18-2.8-1a1.5 1.5 0 0 1-.9-1.9L5.5 5a1.5 1.5 0 0 1 1.9-.9L11 5.3"/><rect x="8" y="3" width="13" height="18" rx="2"/><path d="m14.5 8 3 4-3 4-3-4Z" fill="currentColor" stroke="none"/>',
   };
-  return `<svg class="suite-game-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${shapes[id] || shapes.zdwa}</svg>`;
+  return iconSvg(shapes[id] || shapes.zdwa);
+}
+
+const iconSvg = shapes => `<svg class="suite-game-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${shapes}</svg>`;
+
+/** Management tools share the same drawing style, but are not games. */
+function utilityIcon(id) {
+  return iconSvg(id === "dashboard"
+    ? '<path d="M4 4v16h16"/><path d="M8.5 16v-4M12.5 16V8M16.5 16v-6"/>'
+    : '<path d="M12 3 5 6v5.5c0 4.2 2.8 7.6 7 9.5 4.2-1.9 7-5.3 7-9.5V6Z"/><path d="m9 12 2 2 4-4"/>');
+}
+
+const UTILITY_IDS = ["admin", "dashboard"];
+const utilityName = utility => utility.name || message(utility.id === "dashboard" ? "utilityDashboardName" : "utilityAdminName");
+const utilityDescription = utility => utility.description
+  || message(utility.id === "dashboard" ? "utilityDashboardDescription" : "utilityAdminDescription");
+
+/** Keep only known, unique management entries with a link target. */
+function normalizeUtilities(utilities) {
+  const seen = new Set();
+  const result = [];
+  for (const utility of Array.isArray(utilities) ? utilities : []) {
+    if (!UTILITY_IDS.includes(utility?.id) || seen.has(utility.id)
+      || typeof utility.href !== "string" || !utility.href) continue;
+    seen.add(utility.id);
+    result.push({ id: utility.id, href: utility.href, name: utility.name, description: utility.description });
+  }
+  return result;
 }
 
 export function gamePickerButtonMarkup(game) {
@@ -39,11 +66,15 @@ export function gamePickerButtonMarkup(game) {
  * A disclosure of native game links. Access and route ownership stay with the
  * caller; this component never grants a game or intercepts native navigation.
  * onSelect receives (id, game, event), including modified link clicks.
+ * Optional `utilities` ({ id: "admin" | "dashboard", href }) form a separate
+ * management group of native links; onUtilitySelect receives (id, utility, event).
+ * Like games, they are only links: the destination's backend owns access.
  */
-export function createGamePicker({ button, currentMode, games = [], onSelect } = {}) {
+export function createGamePicker({ button, currentMode, games = [], utilities: initialUtilities = [], onSelect, onUtilitySelect } = {}) {
   if (!(button instanceof HTMLElement)) throw new TypeError("A game picker needs a trigger button");
   let current = currentMode;
   let available = games;
+  let utilities = normalizeUtilities(initialUtilities);
   let panel = null;
   let backdrop = null;
   let modal = false;
@@ -202,7 +233,8 @@ export function createGamePicker({ button, currentMode, games = [], onSelect } =
       close({ restoreFocus: true });
       return;
     }
-    const links = [...panel.querySelectorAll("a[data-game-entry]")];
+    // Games come first in the document, followed by the management group.
+    const links = [...panel.querySelectorAll("a[data-game-entry], a[data-suite-utility-entry]")];
     if (["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) {
       const index = links.indexOf(document.activeElement);
       const target = event.key === "Home" ? 0 : event.key === "End" ? links.length - 1
@@ -247,6 +279,36 @@ export function createGamePicker({ button, currentMode, games = [], onSelect } =
     list.append(link);
   }
 
+  function utilityList() {
+    let group = panel.querySelector("[data-suite-utilities]");
+    if (!group) {
+      group = document.createElement("div");
+      group.className = "suite-game-menu__utilities";
+      group.dataset.suiteUtilities = "";
+      group.setAttribute("role", "group");
+      group.setAttribute("aria-labelledby", `${MENU_ID}-utilities-title`);
+      group.innerHTML = `<h3 class="suite-game-menu__group-title" id="${MENU_ID}-utilities-title">${escapeMarkup(message("utilitiesTitle"))}</h3><div class="suite-game-menu__utility-list"></div>`;
+      panel.append(group);
+    }
+    return group.querySelector(".suite-game-menu__utility-list");
+  }
+
+  function appendUtility(utility) {
+    const link = document.createElement("a");
+    const descriptionId = `${MENU_ID}-${utility.id}-utility-description`;
+    link.className = "suite-utility-option";
+    link.href = utility.href;
+    link.dataset.suiteUtilityEntry = utility.id;
+    link.setAttribute("aria-label", utilityName(utility));
+    link.setAttribute("aria-describedby", descriptionId);
+    link.innerHTML = `<span class="suite-utility-option__icon">${utilityIcon(utility.id)}</span><span class="suite-utility-option__copy"><span class="suite-utility-option__name">${escapeMarkup(utilityName(utility))}</span><span class="suite-utility-option__description" id="${escapeMarkup(descriptionId)}">${escapeMarkup(utilityDescription(utility))}</span></span><svg class="suite-utility-option__arrow" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 10h12m-5-5 5 5-5 5"/></svg>`;
+    link.addEventListener("click", event => {
+      onUtilitySelect?.(utility.id, utility, event);
+      close();
+    });
+    utilityList().append(link);
+  }
+
   function open() {
     if (destroyed || panel || button.disabled || button.hidden || !available.length) return;
     closeActivePicker?.();
@@ -265,6 +327,7 @@ export function createGamePicker({ button, currentMode, games = [], onSelect } =
     panel.querySelector("[data-game-picker-close]").addEventListener("click", () => close({ restoreFocus: true }));
     const list = panel.querySelector(".suite-game-menu__games");
     for (const game of available) appendOption(list, game);
+    for (const utility of utilities) appendUtility(utility);
     document.body.append(backdrop, panel);
     button.setAttribute("aria-expanded", "true");
     positionPanel();
@@ -278,24 +341,37 @@ export function createGamePicker({ button, currentMode, games = [], onSelect } =
     void refreshActivity();
   }
 
-  function update({ currentMode: nextMode = current, games: nextGames = available } = {}) {
+  function update({ currentMode: nextMode = current, games: nextGames = available, utilities: nextUtilityInput = utilities } = {}) {
     // A newly confirmed option may arrive after the public menu was opened.
     // Only an unchanged prefix can keep its existing DOM and focused link;
     // withdrawals and changes to any old option still close immediately.
-    const changed = nextMode !== current || JSON.stringify(nextGames) !== JSON.stringify(available);
+    const nextUtilities = normalizeUtilities(nextUtilityInput);
+    const same = (left, right) => JSON.stringify(left) === JSON.stringify(right);
+    const gamesChanged = !same(nextGames, available);
+    const utilitiesChanged = !same(nextUtilities, utilities);
     const appended = nextMode === current && nextGames.length > available.length
-      && available.every((game, index) => JSON.stringify(game) === JSON.stringify(nextGames[index]))
+      && available.every((game, index) => same(game, nextGames[index]))
       && new Set(nextGames.map(game => game.id)).size === nextGames.length;
+    const utilitiesAppended = nextUtilities.length > utilities.length
+      && utilities.every((utility, index) => same(utility, nextUtilities[index]));
+    const keepsMenu = nextMode === current && (!gamesChanged || appended) && (!utilitiesChanged || utilitiesAppended);
+    if ((nextMode !== current || gamesChanged || utilitiesChanged) && !keepsMenu) {
+      close({ restoreFocus: Boolean(panel?.contains(document.activeElement)) });
+    }
     const previousLength = available.length;
-    if (changed && !appended) close({ restoreFocus: Boolean(panel?.contains(document.activeElement)) });
+    const previousUtilities = utilities.length;
     current = nextMode;
     available = nextGames;
-    if (panel && appended) {
-      const list = panel.querySelector(".suite-game-menu__games");
-      for (const game of available.slice(previousLength)) appendOption(list, game);
+    utilities = nextUtilities;
+    if (panel && (appended || utilitiesAppended)) {
+      if (appended) {
+        const list = panel.querySelector(".suite-game-menu__games");
+        for (const game of available.slice(previousLength)) appendOption(list, game);
+      }
+      if (utilitiesAppended) for (const utility of utilities.slice(previousUtilities)) appendUtility(utility);
       positionPanel();
       // Cancel the earlier audience's count request before reading fresh counts.
-      void refreshActivity();
+      if (appended) void refreshActivity();
     }
     updateTrigger();
   }

@@ -900,17 +900,20 @@ test("admin can log in, create a user and open the public profile", async ({ pag
   await page.click("#loginForm button[type=submit]");
   await expect(page.locator("#authBadge")).toContainText("Admin");
   await expect(page.locator("#playerName")).toBeDisabled();
+  await expect(page.locator("#adminLink")).toHaveCount(0);
+  await page.locator("[data-game-switch]").click();
+  const adminEntry = page.locator('#suiteGameMenu a[data-suite-utility-entry="admin"]');
+  await expect(adminEntry).toBeVisible();
+  await expect(adminEntry).toHaveAccessibleName("Admin Center");
 
   await Promise.all([
     page.waitForURL(/\/admin$/),
-    page.click("#adminLink"),
+    adminEntry.click(),
   ]);
   await expect(page.getByRole("heading", { name: "Adminbereich" })).toBeVisible();
-  await expect(page.locator(".admin-module-tile")).toHaveCount(7);
-  const dashboard = page.locator("#analyticsDashboardLink");
-  await expect(dashboard).toBeVisible();
-  await expect(dashboard).toContainText("Mission Control");
-  await expect(dashboard).toHaveAttribute("href", "/admin/dashboard");
+  await expect(page.locator(".admin-module-tile")).toHaveCount(6);
+  await expect(page.locator("#analyticsDashboardLink")).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Übersicht", exact: true })).toHaveCount(0);
   for (const [panel, label] of [
     ["featuresPanel", "Spiele & Funktionen"],
     ["usersPanel", "Benutzerverwaltung"],

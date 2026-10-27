@@ -1019,6 +1019,10 @@ def _embedded_zdwa_pwa_page(filename: str, *, product: str = "zilch") -> Respons
     attempting to register the Apex worker on the wrong host.
     """
     content = (STATIC_DIR / filename).read_text(encoding="utf-8")
+    if filename == "dashboard.html":
+        # Mission Control deliberately has no shell bundle/link observer.
+        # Its two document exits still need the same-origin bridge paths.
+        content = content.replace('href="/"', 'href="/zdwa"').replace('href="/konto"', 'href="/zdwa/konto"')
     if filename == "ranks.html":
         content = public_rank_guide(content)
     content = content.replace(
@@ -1031,6 +1035,9 @@ def _embedded_zdwa_pwa_page(filename: str, *, product: str = "zilch") -> Respons
         # an installed Hausdepp app visits its same-origin suite bridge.
         content = content.replace("/static/icons/apple-touch-icon-180.png",
                                   "/static/icons/hausdepp-apple-touch-icon-180-v2.png")
+        if filename == "zilch-login.html":
+            content = content.replace("/static/icons/zilch-apple-touch-icon-180.png",
+                                      "/static/icons/hausdepp-apple-touch-icon-180-v2.png")
         content = content.replace('rel="apple-touch-icon"', 'rel="apple-touch-icon" type="image/png"', 1)
         content = content.replace("</head>", '<link rel="preload" as="image" type="image/png" '
                                   f'href="/static/icons/hausdepp-apple-touch-icon-180-v2.png?v={STATIC_ASSET_VERSION}">\n</head>', 1)
@@ -1040,6 +1047,9 @@ def _embedded_zdwa_pwa_page(filename: str, *, product: str = "zilch") -> Respons
         f'<link rel="manifest" data-pwa-product="{product}" {credentials}href="/{product}-manifest.webmanifest',
         1,
     )
+    if filename in {"dashboard.html", "dashboard-denied.html", "zilch-login.html"}:
+        content = content.replace("</head>", f'<link rel="manifest" data-pwa-product="{product}" {credentials}'
+                                  f'href="/{product}-manifest.webmanifest?v={STATIC_ASSET_VERSION}">\n</head>', 1)
     content = content.replace(
         "</head>",
         '  <meta name="robots" content="noindex, nofollow">\n</head>',
@@ -1069,8 +1079,10 @@ def _serve_zilch_pwa_zdwa_bridge(request: Request, path: str = "") -> Response:
     if not is_zilch_host(request) and not hausdepp_host and not watten_host:
         raise HTTPException(status_code=404, detail="not_found")
 
+    product = "watten" if watten_host else "hausdepp" if hausdepp_host else "zilch"
+
     def bridge_page(filename: str) -> Response:
-        return _embedded_zdwa_pwa_page(filename, product="watten" if watten_host else "hausdepp" if hausdepp_host else "zilch")
+        return _embedded_zdwa_pwa_page(filename, product=product)
 
     route = f"/{path}".rstrip("/") or "/"
     if route == "/":
@@ -1089,6 +1101,17 @@ def _serve_zilch_pwa_zdwa_bridge(request: Request, path: str = "") -> Response:
         return bridge_page("account.html")
     if route == "/admin":
         return bridge_page("admin.html")
+    if route == "/admin/dashboard":
+        return _analytics_dashboard_response(request, bridge_product=product)
+    if route == "/anmelden":
+        destination = "/zdwa/admin/dashboard"
+        private_headers = {"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"}
+        if list(request.query_params.multi_items()) != [("return_to", destination)]:
+            return RedirectResponse(f"/zdwa/anmelden?{urlencode({'return_to': destination})}",
+                                    status_code=303, headers=private_headers)
+        response = bridge_page("zilch-login.html")
+        response.headers.update(private_headers)
+        return response
     if route == "/offline":
         return bridge_page("offline.html")
     if route == "/offline-spielen":
@@ -1198,17 +1221,31 @@ def analytics_dashboard_page(request: Request):
     private_headers = {"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"}
     if is_zilch_host(request):
         return RedirectResponse(f"{site_origin()}/admin/dashboard", status_code=308, headers=private_headers)
+    return _analytics_dashboard_response(request)
+
+
+def _analytics_dashboard_response(request: Request, *, bridge_product: str | None = None) -> Response:
+    """The shared reader guard also protects its finite same-origin PWA alias."""
+    private_headers = {"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"}
+    destination = "/zdwa/admin/dashboard" if bridge_product else "/admin/dashboard"
+    login_path = "/zdwa/anmelden" if bridge_product else "/zilch/anmelden"
     if resolve_session(request) is None:
         return RedirectResponse(
-            "/zilch/anmelden?return_to=%2Fadmin%2Fdashboard", status_code=303, headers=private_headers,
+            f"{login_path}?{urlencode({'return_to': destination})}", status_code=303, headers=private_headers,
         )
+    filename, status = "dashboard.html", 200
     try:
         require_analytics(request)
     except HTTPException as exc:
         if exc.status_code != 403:
             raise
-        return FileResponse(STATIC_DIR / "dashboard-denied.html", status_code=403, headers=private_headers)
-    return FileResponse(STATIC_DIR / "dashboard.html", headers=private_headers)
+        filename, status = "dashboard-denied.html", 403
+    if bridge_product:
+        response = _embedded_zdwa_pwa_page(filename, product=bridge_product)
+        response.status_code = status
+        response.headers.update(private_headers)
+        return response
+    return FileResponse(STATIC_DIR / filename, status_code=status, headers=private_headers)
 
 
 @app.get("/spiel/{game_id}", include_in_schema=False)

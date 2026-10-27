@@ -34,6 +34,7 @@ const continueButton = document.getElementById("zilchContinueButton");
 const logoutButton = document.getElementById("zilchLoginLogout");
 
 let registrationController;
+const DASHBOARD_RETURN_PATHS = new Set(["/admin/dashboard", "/zdwa/admin/dashboard"]);
 
 function t(value) {
   return window.ZDWA_I18N?.t?.(value) || String(value || "");
@@ -48,8 +49,8 @@ function accountTabHash(route, preferred = "") {
 function returnPath() {
   const fallback = document.documentElement.dataset.hausdeppLogin === 'true' ? '/hausdepp' : zilchPath("/");
   const candidate = new URLSearchParams(window.location.search).get("return_to");
-  // One fixed, server-protected dashboard destination, never an arbitrary URL.
-  if (candidate === "/admin/dashboard") return candidate;
+  // Fixed, server-protected dashboard destinations, never an arbitrary URL.
+  if (DASHBOARD_RETURN_PATHS.has(candidate)) return candidate;
   const directHausdeppPath = normalizeHausdeppPageUrl(candidate);
   if (directHausdeppPath) return directHausdeppPath;
   const directZilchPath = normalizeZilchPageUrl(candidate);
@@ -104,7 +105,7 @@ function setMessage(value, kind = "") {
 
 function render(auth) {
   const user = auth?.user;
-  const dashboardDestination = returnPath() === "/admin/dashboard";
+  const dashboardDestination = DASHBOARD_RETURN_PATHS.has(returnPath());
   const hausdeppDestination = isHausdeppDestination();
   if (hausdeppDestination) {
     const messages = HAUSDEPP_MESSAGES[window.ZDWA_I18N?.getLanguage?.() === 'en' ? 'en' : 'de'];
@@ -154,7 +155,7 @@ async function refresh({ redirect = false } = {}) {
   const access = auth?.game_access || auth.user?.game_access;
   const destinationAllowed = isHausdeppDestination(destination)
     ? Boolean(auth.authenticated && (access?.hausdepp_public === true || access?.hausdepp_preview === true))
-    : auth.user?.game_access?.zilch_preview === true || (auth.authenticated && destination === "/admin/dashboard");
+    : auth.user?.game_access?.zilch_preview === true || (auth.authenticated && DASHBOARD_RETURN_PATHS.has(destination));
   if (redirect && destinationAllowed) window.location.assign(destination);
   return auth;
 }
