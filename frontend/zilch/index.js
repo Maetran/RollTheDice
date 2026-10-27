@@ -2945,10 +2945,23 @@ function gamesByModeMarkup(source) {
   return `<section class="zilch-card zilch-statistics-card zilch-statistics-card--compact zilch-statistics-card--by-mode"><p class="eyebrow">${escapeHtml(t("Nach Spielart"))}</p><h2>${escapeHtml(t("Partien nach Spielart"))}</h2>${metricsMarkup(entries)}</section>`;
 }
 
+function favoriteOpponentsMarkup(statistics) {
+  const opponents = Array.isArray(statistics.favorite_opponents) ? statistics.favorite_opponents : [];
+  const rows = opponents.map(opponent => `<li class="zilch-opponent-row">
+    <strong translate="no">${escapeHtml(opponent.username)}</strong>
+    <dl><div><dt>${escapeHtml(t("Siege"))}</dt><dd>${escapeHtml(number(opponent.wins))}</dd></div><div><dt>${escapeHtml(t("Niederlagen"))}</dt><dd>${escapeHtml(number(opponent.losses))}</dd></div><div><dt>${escapeHtml(t("Unentschieden"))}</dt><dd>${escapeHtml(number(opponent.ties))}</dd></div></dl>
+  </li>`).join("");
+  return `<section class="zilch-card zilch-favorite-opponents" aria-labelledby="zilchFavoriteOpponentsTitle">
+    <h2 id="zilchFavoriteOpponentsTitle">${escapeHtml(t("Deine Lieblingsgegner"))}</h2>
+    <p>${escapeHtml(t("Hier erscheinen Spieler nach mehr als 10 abgeschlossenen Duellen gegeneinander."))}</p>
+    ${rows ? `<ul>${rows}</ul>` : `<p>${escapeHtml(t("Noch keine Lieblingsgegner. Spiel öfter gegen dieselbe Person, um eure Bilanz zu sehen."))}</p>`}
+  </section>`;
+}
+
 function renderOverviewStatistics(statistics) {
   const overview = statisticsScope(statistics, "overview");
   if (!hasStatisticRecords(overview, ["completed_records", "completed_games_and_runs", "completed", "games"])) {
-    return statisticsEmptyMarkup(t("Noch keine Zilch-Partien"), t("Schließe eine Zilch-Partie ab, damit hier deine getrennten Werte erscheinen."));
+    return `${statisticsEmptyMarkup(t("Noch keine Zilch-Partien"), t("Schließe eine Zilch-Partie ab, damit hier deine getrennten Werte erscheinen."))}${favoriteOpponentsMarkup(statistics)}`;
   }
   const entries = [
     statisticEntry(t("Abgeschlossene Partien und Läufe"), overview, ["completed_records", "completed_games_and_runs", "completed", "completed_count", "games"]),
@@ -2959,7 +2972,7 @@ function renderOverviewStatistics(statistics) {
     description: t("Hier zählt, was du in deinen abgeschlossenen Zilch-Partien erspielt hast."),
     entries,
     className: "zilch-statistics-card--overview",
-  })}${gamesByModeMarkup(overview)}`;
+  })}${gamesByModeMarkup(overview)}${favoriteOpponentsMarkup(statistics)}`;
 }
 
 function renderMultiplayerStatistics(statistics) {
@@ -3114,9 +3127,12 @@ async function renderStatistics() {
     </section>
     <div id="zilchStatisticsBody" aria-live="polite">${statisticsTabMarkup()}<section class="zilch-card zilch-loading-card"><p>${escapeHtml(t("Zilch-Statistiken werden geladen …"))}</p></section></div>`;
   try {
-    state.statistics = await fetchZilchStatistics();
+    const statistics = await fetchZilchStatistics();
+    if (accountLifecycle && !accountLifecycle.current()) return;
+    state.statistics = statistics;
     renderStatisticsBody();
   } catch (_) {
+    if (accountLifecycle && !accountLifecycle.current()) return;
     const slot = document.getElementById("zilchStatisticsBody");
     if (slot) slot.innerHTML = `<section class="zilch-card zilch-empty-state" role="status"><h2>${escapeHtml(t("Zilch-Statistiken nicht verfügbar"))}</h2><p>${escapeHtml(t("Bitte versuche es später erneut oder kehre zur Zilch-Lobby zurück."))}</p>${zilchNavigationButton(zilchPath("/"), t("Zur Zilch-Lobby"))}</section>`;
   }
@@ -5936,7 +5952,7 @@ async function renderGame() {
 
 async function initialize() {
   if (!root || !content) return;
-  if (accountRoute) accountLifecycle = initializeZilchAccountLifecycle();
+  if (accountRoute || statisticsRoute) accountLifecycle = initializeZilchAccountLifecycle();
   let appMode = spectatorRoute ? null : initializeAppMode({ mode: "zilch" });
   const authReady = loadAuth({ refresh: true }).then(async auth => {
     if (accountLifecycle && !accountLifecycle.acceptAuth(auth)) return false;

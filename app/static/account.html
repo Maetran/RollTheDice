@@ -6,15 +6,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Verwalte dein ZDWA Konto, deine persönlichen Spieleinstellungen und Statistiken.">
   <meta name="robots" content="noindex, follow">
-  <link rel="manifest" href="/manifest.webmanifest?v=e29d762d89fc">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=e29d762d89fc" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=e29d762d89fc" sizes="180x180">
+  <link rel="manifest" href="/manifest.webmanifest?v=a1941a2dbbf6">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=a1941a2dbbf6" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=a1941a2dbbf6" sizes="180x180">
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"||t==="classic"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d==="dark"?"dark":"light";const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=d==="dark"?"#0b1120":d==="classic"?"#31583a":"#f4f6f8"}catch(_){}</script>
-  <link rel="stylesheet" href="/static/style.css?v=e29d762d89fc">
-  <link rel="stylesheet" href="/static/zdwa-design-2026.css?v=e29d762d89fc">
+  <link rel="stylesheet" href="/static/style.css?v=a1941a2dbbf6">
+  <link rel="stylesheet" href="/static/zdwa-design-2026.css?v=a1941a2dbbf6">
   <script>{const r=document.documentElement,g=k=>{try{return localStorage.getItem(k)}catch(_){return null}},q=new URLSearchParams(location.search).get("design");if(q!=="classic"&&g("zdwa_design")!=="old"&&g("zdwa_design_off")!=="1"&&(q==="2026"||g("zdwa_design_override")!=="old"))r.dataset.design="2026"}</script>
-  <script src="/static/shell.js?v=e29d762d89fc" defer></script>
-  <link rel="stylesheet" href="/static/suite-header.css?v=e29d762d89fc">
+  <script src="/static/shell.js?v=a1941a2dbbf6" defer></script>
+  <link rel="stylesheet" href="/static/suite-header.css?v=a1941a2dbbf6">
 </head>
 <body class="lobby-page">
   <main class="wrap profile-shell">
@@ -43,6 +43,11 @@
     <section id="statisticsPanel" class="card account-panel" role="tabpanel" aria-labelledby="statisticsTab">
       <h2>Statistiken</h2>
       <div id="statistics" class="statistics-grid"></div>
+      <section class="favorite-opponents" aria-labelledby="favoriteOpponentsTitle">
+        <h2 id="favoriteOpponentsTitle">Deine Lieblingsgegner</h2>
+        <p>Ab 11 eindeutig gewerteten Begegnungen. Nur Gegner mit einem Spielerkonto zählen.</p>
+        <div id="favoriteOpponents" aria-live="polite"><p>Laden…</p></div>
+      </section>
       <section class="history-chart-section" aria-labelledby="historyChartTitle">
         <div class="history-chart-header">
           <div>
@@ -238,15 +243,15 @@
     </section>
   </main>
   <script type="module">
-    import { apiFetch, authError, escapeHtml, formatNumber, loadAuth, mountAccountVerification, revealAccountSetting, mountEmailSettings, mountPasskeySettings, mountPasskeyPrompt, mountUsernameSettings, playerNameMarkup, playerRankBadge } from '/static/auth.js?v=e29d762d89fc';
-    import { bindPushPreferences, devicePushStatusMessage, disableGameInvitePush, enableGameInvitePush, getGameInvitePushStatus, syncPushPreferences, webPushErrorMessage } from '/static/web-push.js?v=e29d762d89fc';
-    import { initializeReleaseNotes } from '/static/release-notes.js?v=e29d762d89fc';
-    import { mountAllowlistSettings } from '/static/player-allowlist.js?v=e29d762d89fc';
-    import { mountAvatarUpload } from '/static/avatar-upload.js?v=e29d762d89fc';
-    import { mountFriendActivitySettings } from '/static/friend-activity.js?v=e29d762d89fc';
-    import { mountTourSettings } from '/static/game-tours.js?v=e29d762d89fc';
-    import { mountVoicePreferences, voicePreferenceText } from '/static/voice-preferences.js?v=e29d762d89fc';
-    import { mountAccountMergeNotice } from '/static/account-merge-notice.js?v=e29d762d89fc';
+    import { apiFetch, authError, escapeHtml, formatNumber, loadAuth, mountAccountVerification, revealAccountSetting, mountEmailSettings, mountPasskeySettings, mountPasskeyPrompt, mountUsernameSettings, playerNameMarkup, playerRankBadge } from '/static/auth.js?v=a1941a2dbbf6';
+    import { bindPushPreferences, devicePushStatusMessage, disableGameInvitePush, enableGameInvitePush, getGameInvitePushStatus, syncPushPreferences, webPushErrorMessage } from '/static/web-push.js?v=a1941a2dbbf6';
+    import { initializeReleaseNotes } from '/static/release-notes.js?v=a1941a2dbbf6';
+    import { mountAllowlistSettings } from '/static/player-allowlist.js?v=a1941a2dbbf6';
+    import { mountAvatarUpload } from '/static/avatar-upload.js?v=a1941a2dbbf6';
+    import { mountFriendActivitySettings } from '/static/friend-activity.js?v=a1941a2dbbf6';
+    import { mountTourSettings } from '/static/game-tours.js?v=a1941a2dbbf6';
+    import { mountVoicePreferences, voicePreferenceText } from '/static/voice-preferences.js?v=a1941a2dbbf6';
+    import { mountAccountMergeNotice } from '/static/account-merge-notice.js?v=a1941a2dbbf6';
     let viewerId = null;
     let retired = false;
     const clearPrivatePage = () => {
@@ -809,17 +814,24 @@
       statisticsLoading = true;
       try {
         const statsResponse = await fetch('/api/users/me/statistics', { cache: 'no-store' });
-        if (!statsResponse.ok) return;
-        const player = (await statsResponse.json()).player;
+        if (!statsResponse.ok) throw new Error('statistics_unavailable');
+        const payload = await statsResponse.json();
+        const player = payload.player;
         if (retired) return;
         const stats = player.statistics;
         document.getElementById('accountName').innerHTML = playerNameMarkup(player, { name: user.username, avatarSize: 'large', adminProfile: true });
         document.getElementById('statistics').innerHTML = bucket('Gesamt', stats.overall, { details: false })
           + bucket('Normal', stats.normal) + bucket('Hardcore', stats.hardcore);
+        const opponents = payload.private?.favorite_opponents || [];
+        document.getElementById('favoriteOpponents').innerHTML = opponents.length
+          ? `<ul class="favorite-opponents__list">${opponents.map(opponent => `<li><strong translate="no">${escapeHtml(opponent.username)}</strong><span>${escapeHtml(translated('Siege'))}: ${opponent.wins} · ${escapeHtml(translated('Niederlagen'))}: ${opponent.losses} · ${escapeHtml(translated('Unentschieden'))}: ${opponent.draws}</span></li>`).join('')}</ul>`
+          : `<p>${escapeHtml(translated('Noch keine Lieblingsgegner. Spiele mindestens 11 eindeutig gewertete Partien gegen dieselbe Person.'))}</p>`;
         renderAccountAchievements(player);
         statisticsLoaded = true;
         void refreshAccountAchievements();
-      } catch { /* A later visible visit can retry a failed statistics load. */ }
+      } catch {
+        if (!retired) document.getElementById('favoriteOpponents').textContent = translated('Die Gegnerstatistik konnte nicht geladen werden. Öffne die Statistik erneut, um es nochmals zu versuchen.');
+      }
       finally { statisticsLoading = false; }
     }
     if (!accountTabs.statistics.panel.hidden) {

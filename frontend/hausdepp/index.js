@@ -600,6 +600,11 @@ function historyRow(round) {
   return `<article class="hd-history-round" data-round-id="${esc(round.game_id)}"><div class="hd-history-round-heading"><div><time datetime="${esc(round.finished_at || "")}">${esc(formatRoundDate(round.finished_at))}</time><h3>${esc(round.name || t("defaultTable"))}</h3></div><span class="hd-outcome ${isHausdepp ? "is-hausdepp" : ""}">${outcomeLabel(round.outcome)}</span></div><p class="hd-history-meta">${t("roundPeople", { count: Number(round.participant_count) || players.length })}${round.cpu_count ? ` · ${t("cpuCount", { count: round.cpu_count })}` : ""}${round.outcome === "finished" && Number.isInteger(round.finished_position) ? ` · ${t("exitPosition", { position: round.finished_position })}` : ""}</p><details class="hd-history-players"><summary>${t("historyParticipants", { count: players.length })}</summary><ul>${players.map(player => `<li><span>${esc(player.name)}${player.is_cpu ? `<small>${t("computer")}</small>` : ""}</span><span>${outcomeLabel(player.outcome)}${player.outcome === "finished" && Number.isInteger(player.finished_position) ? ` · ${t("exitPosition", { position: player.finished_position })}` : ""}</span></li>`).join("")}</ul></details></article>`;
 }
 
+function favoriteOpponentsMarkup(opponents) {
+  const rows = Array.isArray(opponents) ? opponents : [];
+  return `<section class="hd-opponents" aria-labelledby="hausdeppOpponentsTitle"><h3 id="hausdeppOpponentsTitle">${esc(t("favoriteOpponents"))}</h3><p class="hd-account-muted">${esc(t("opponentsExplanation"))}</p>${rows.length ? `<ol class="hd-opponents-list">${rows.map(row => `<li><strong class="hd-opponent-name" translate="no">${esc(row.name)}</strong><dl>${[["opponentWins", row.wins], ["opponentLosses", row.losses], ["opponentDraws", row.draws]].map(([label, count]) => `<div><dt>${esc(t(label))}</dt><dd>${esc(pointNumber(nonnegative(count)))}</dd></div>`).join("")}</dl></li>`).join("")}</ol>` : `<p class="hd-fine">${esc(t("opponentsEmpty"))}</p>`}</section>`;
+}
+
 async function loadAccount({ more = false } = {}) {
   if (stopped || accountLoading || (more && !accountCursor)) return;
   accountLoading = true;
@@ -614,7 +619,7 @@ async function loadAccount({ more = false } = {}) {
     if (stopped) return;
     renderAccountProgress(data);
     const values = data.statistics || {};
-    stats.innerHTML = `<dl class="hd-account-stats">${[["roundsPlayed", values.rounds_played], ["roundsFinished", values.finished_rounds], ["roundsHausdepp", values.hausdepp_rounds]].map(([label, count]) => `<div><dt>${t(label)}</dt><dd>${Math.max(0, Number(count) || 0)}</dd></div>`).join("")}</dl>${values.last_finished_at ? `<p class="hd-fine">${esc(t("lastRound", { date: formatRoundDate(values.last_finished_at) }))}</p>` : ""}`;
+    stats.innerHTML = `<dl class="hd-account-stats">${[["roundsPlayed", values.rounds_played], ["roundsFinished", values.finished_rounds], ["roundsHausdepp", values.hausdepp_rounds]].map(([label, count]) => `<div><dt>${t(label)}</dt><dd>${Math.max(0, Number(count) || 0)}</dd></div>`).join("")}</dl>${values.last_finished_at ? `<p class="hd-fine">${esc(t("lastRound", { date: formatRoundDate(values.last_finished_at) }))}</p>` : ""}${favoriteOpponentsMarkup(data.favorite_opponents)}`;
     const rounds = data.history?.rounds || [];
     if (!more) { accountRoundIds.clear(); $("hausdeppHistory").innerHTML = ""; }
     for (const round of rounds) {

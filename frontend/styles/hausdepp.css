@@ -148,6 +148,16 @@ a { color: inherit; text-underline-offset: 4px; }
 .hd-account-stats dt { color: var(--hd-muted); font-size: 13px; line-height: 1.5; }
 .hd-account-stats dd { font-size: 43px; font-weight: 700; letter-spacing: -.035em; margin: 0; font-variant-numeric: tabular-nums; line-height: 1.1; }
 .hd-account-overview .hd-fine { margin-bottom: 0; }
+.hd-opponents { border-top: 1px solid var(--hd-edge); margin-top: 28px; padding-top: 24px; }
+.hd-opponents h3 { font-size: 19px; margin: 0 0 8px; }
+.hd-opponents > p { max-width: 65ch; }
+.hd-opponents-list { list-style: none; margin: 20px 0 0; padding: 0; }
+.hd-opponents-list li { border-top: 1px solid var(--hd-edge); padding: 14px 0; }
+.hd-opponent-name { display: block; overflow-wrap: anywhere; }
+.hd-opponents-list dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 10px 0 0; }
+.hd-opponents-list dt { color: var(--hd-muted); font-size: 12px; overflow-wrap: anywhere; }
+.hd-opponents-list dd { font-size: 20px; font-variant-numeric: tabular-nums; font-weight: 700; margin: 2px 0 0; }
+
 .hd-account-history { scroll-margin-top: 20px; }
 .hd-account-history .hd-section-heading { margin-bottom: 0; align-items: baseline; }
 .hd-account-history .hd-section-heading > a { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; white-space: nowrap; }

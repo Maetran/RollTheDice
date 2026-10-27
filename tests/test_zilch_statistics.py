@@ -19,6 +19,8 @@ from app.game_history import delete_completed_game, persist_completed_game_resul
 from app.game_types import DEFAULT_GAME_TYPE, ZILCH_GAME_TYPE
 from app.models import (
     AbandonedGame,
+    AccountMergeOperation,
+    AccountProgressOrigin,
     CompletedGame,
     GameParticipant,
     User,
@@ -313,6 +315,54 @@ class ZilchStatisticsTestCase(TestCase):
         response = finalize_zilch_result(game)
         self.assertTrue(response["result_persisted"])
         return game_id
+
+    def test_favorite_opponents_threshold_outcomes_and_current_identity(self) -> None:
+        alice = self._user("FavoriteAlice")
+        bob = self._user("FavoriteBob")
+        for _ in range(10):
+            self._persist_competitive(human_one=alice, human_two=bob)
+        self.assertEqual(get_zilch_personal_statistics(alice.id)["favorite_opponents"], [])
+        self._persist_competitive(human_one=alice, human_two=bob, first_score=9000, second_score=10000)
+        self._persist_competitive(human_one=alice, human_two=bob, first_score=10000, second_score=10000)
+        self._persist_competitive(human_one=alice, cpu_strategy="normal")
+        with session_scope() as db:
+            db.get(User, bob.id).username = "RenamedBob"
+        self.assertEqual(get_zilch_personal_statistics(alice.id)["favorite_opponents"], [{
+            "user_id": bob.id, "username": "RenamedBob", "games": 12,
+            "wins": 10, "losses": 1, "ties": 1,
+        }])
+        self.assertEqual(get_zilch_personal_statistics(bob.id)["favorite_opponents"], [{
+            "user_id": alice.id, "username": alice.username, "games": 12,
+            "wins": 1, "losses": 10, "ties": 1,
+        }])
+        with session_scope() as db:
+            db.get(User, bob.id).is_active = False
+        self.assertEqual(get_zilch_personal_statistics(alice.id)["favorite_opponents"], [])
+
+    def test_favorite_opponents_follow_merged_owners_and_discard_self_duels(self) -> None:
+        alice = self._user("MergedAlice")
+        old_alice = self._user("OldAlice")
+        bob = self._user("MergedBob")
+        old_bob = self._user("OldBob")
+        for _ in range(6):
+            self._persist_competitive(human_one=old_alice, human_two=old_bob)
+        for _ in range(5):
+            self._persist_competitive(human_one=alice, human_two=bob)
+        self._persist_competitive(human_one=alice, human_two=old_alice)
+        with session_scope() as db:
+            for source, target, key in ((old_alice, alice, "a" * 32), (old_bob, bob, "b" * 32)):
+                db.add(AccountMergeOperation(
+                    id=key, actor_user_id=alice.id, source_user_id=source.id, target_user_id=target.id,
+                    idempotency_key=key, preview_fingerprint="c" * 64,
+                    created_at=datetime.now(timezone.utc), summary_json="{}",
+                ))
+                db.flush()
+                db.add(AccountProgressOrigin(origin_user_id=source.id, owner_user_id=target.id, operation_id=key))
+                db.get(User, source.id).is_active = False
+        self.assertEqual(get_zilch_personal_statistics(alice.id)["favorite_opponents"], [{
+            "user_id": bob.id, "username": bob.username, "games": 11,
+            "wins": 11, "losses": 0, "ties": 0,
+        }])
 
     def test_personal_statistics_keep_human_cpu_and_solo_modes_separate(self) -> None:
         alice = self._user("Alice")

@@ -23,6 +23,46 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 4.11.0 — 2026-10-27
+
+Dein Konto zeigt dir, gegen wen du besonders häufig spielst und wie eure
+eindeutig gewerteten Begegnungen ausgegangen sind.
+
+Your account shows who you play most often and the outcomes of your encounters
+where a direct result is clear.
+
+### ZDWA
+
+**Deutsch:** Ab elf gewerteten Begegnungen zeigt dein Konto Siege, Niederlagen
+und Unentschieden je Gegner. Teamkollegen und unklare Paarungen zählen nicht.
+
+**English:** From eleven counted encounters, your account shows wins, losses
+and draws per opponent. Teammates and ambiguous pairings do not count.
+
+### ZILCH
+
+**Deutsch:** Deine Bilanz gegen menschliche Gegner erscheint im Zilch-Konto,
+sobald elf eindeutig belegte Duelle vorliegen.
+
+**English:** Your record against human opponents appears in your Zilch account
+once eleven clearly recorded duels are available.
+
+### HAUSDEPP
+
+**Deutsch:** Die Statistik vergleicht dich mit dem tatsächlichen Hausdepp
+einer Runde. Zwischen zwei anderen Personen wird kein Ergebnis erfunden.
+
+**English:** The statistics compare you with the actual Hausdepp of a round.
+No result is invented between two other players.
+
+### WATTEN
+
+**Deutsch:** Gewertete Duelle und gegnerische Teams fliessen in deine Bilanz ein.
+Partien mit drei Personen und wechselnden Partnerschaften bleiben aussen vor.
+
+**English:** Counted duels and opposing teams contribute to your record.
+Three-player matches with changing partners are excluded.
+
 ## 4.10.1 — 2026-10-27
 
 Dieses Update macht die geschützte Verwaltung aus der gemeinsamen Spielauswahl

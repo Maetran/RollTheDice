@@ -192,6 +192,18 @@ function syncAccountPanel() {
   }
 }
 
+function favoriteOpponentsMarkup(opponents) {
+  return `<section class="wt-card-panel wt-favorite-opponents" aria-labelledby="wattenFavoriteOpponents">
+    <h2 id="wattenFavoriteOpponents">${esc(t("favoriteOpponents"))}</h2>
+    <p class="wt-note">${esc(t("favoriteHelp"))}</p>
+    ${opponents.length ? `<ul class="wt-favorite-list">${opponents.map(item => `<li>
+      <strong translate="no">${esc(item.name)}</strong>
+      <span class="wt-favorite-record">${esc(t("favoriteRecord", { wins: number(item.wins), losses: number(item.losses), draws: number(item.draws) }))}</span>
+      <span class="wt-note">${esc(t("favoriteMatches", { count: number(item.matches) }))}</span>
+    </li>`).join("")}</ul>` : `<p>${esc(t("favoriteEmpty"))}</p>`}
+  </section>`;
+}
+
 function progressMarkup(account) {
   const value = account.progress, stats = account.statistics;
   const title = value.title, next = value.next_title;
@@ -214,6 +226,7 @@ function progressMarkup(account) {
     <dl class="wt-progress-stats wt-progress-match-stats">${statistic("allMatches", stats.all_matches)}${statistic("creditedMatches", stats.credited_matches)}${statistic("wins", stats.all_wins)}</dl>
     ${stats.uncredited_matches ? `<p class="wt-note">${esc(t("uncredited", { count: stats.uncredited_matches }))}</p>` : ""}
   </section>
+  ${favoriteOpponentsMarkup(account.favorite_opponents || [])}
   <section class="wt-card-panel wt-progress-pending${pending ? "" : " is-empty"}" data-progress-pending>
     <h2>${esc(t("newMoments"))}</h2>${pendingMarkup(value)}
   </section>

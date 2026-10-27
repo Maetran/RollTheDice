@@ -365,3 +365,28 @@ test('retrying a failed feed page does not skip the missing page', async ({ brow
     expect(own.traffic.errors).toEqual([]);
   } finally { await own.context.close(); }
 });
+
+test('favorite opponents show a private bilingual record on mobile and desktop', async ({ browser, baseURL }, testInfo) => {
+  const own = await player(browser, baseURL, 'de');
+  try {
+    const account = await (await own.context.request.get('/api/watten/account')).json();
+    account.favorite_opponents = [{ name: 'Mila <M>', matches: 11, wins: 7, losses: 3, draws: 1 }];
+    await own.page.route('**/api/watten/account', route => route.fulfill({ json: account }));
+    for (const viewport of [{ width: 320, height: 700 }, { width: 1280, height: 800 }]) {
+      await own.page.setViewportSize(viewport);
+      await own.page.goto('/watten/konto/fortschritt#statistics');
+      const section = own.page.locator('.wt-favorite-opponents');
+      await expect(section).toContainText('Deine Lieblingsgegner');
+      await expect(section).toContainText('Mila <M>');
+      await expect(section).toContainText('Siege: 7 · Niederlagen: 3 · Unentschieden: 1');
+      expect(await section.locator('strong').count()).toBe(1);
+      expect(await own.page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
+      await section.screenshot({ path: testInfo.outputPath(`favorite-${viewport.width}.png`) });
+    }
+    await own.page.locator('[data-language-switcher]').selectOption('en');
+    await expect(own.page.locator('.wt-favorite-opponents')).toContainText('Your favorite opponents');
+    await expect(own.page.locator('.wt-favorite-opponents')).toContainText('Wins: 7 · Losses: 3 · Draws: 1');
+  } finally {
+    await own.context.close();
+  }
+});

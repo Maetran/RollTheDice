@@ -37,6 +37,34 @@ async function ownAwards(page, username) {
   return (await profile.json()).player.achievements.unlocked.map(item => item.key);
 }
 
+test("private favourite opponents show clear results on a narrow screen", async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 360, height: 800 });
+  await newAccount(page, "Opponents");
+  await page.route("**/api/users/me/statistics", async route => {
+    const response = await route.fetch();
+    const body = await response.json();
+    body.private.favorite_opponents = [{ user_id: 999, username: "<Opponent>", games: 11, wins: 7, losses: 3, draws: 1 }, { user_id: 998, username: "Siege", games: 11, wins: 8, losses: 3, draws: 0 }];
+    await route.fulfill({ response, json: body });
+  });
+  await page.goto("/konto#statistics");
+  const section = page.locator(".favorite-opponents");
+  await expect(section).toContainText("<Opponent>");
+  await expect(section).toContainText("Siege: 7 · Niederlagen: 3 · Unentschieden: 1");
+  await expect(section.locator("#favoriteOpponents li")).toHaveCount(2);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await section.screenshot({ path: testInfo.outputPath("favorite-opponents-mobile.png") });
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await Promise.all([
+    page.waitForURL(url => url.pathname === "/konto", { waitUntil: "domcontentloaded" }),
+    page.evaluate(() => window.ZDWA_I18N.setLanguage("en")),
+  ]);
+  await expect(section).toContainText("Your favorite opponents");
+  await expect(section).toContainText("Wins: 7 · Losses: 3 · Draw: 1");
+  await expect(section.locator("strong").nth(1)).toHaveText("Siege");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await section.screenshot({ path: testInfo.outputPath("favorite-opponents-desktop.png") });
+});
+
 test("ZDWA only awards rendered visible history and refreshes achievements without more statistics visits", async ({ page }) => {
   const username = await newAccount(page, "HistoryVisibleOnly");
   const counts = { history: 0, statistics: 0, recorded: 0 };

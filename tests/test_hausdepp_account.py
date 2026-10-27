@@ -27,6 +27,7 @@ from app.models import (
     HausdeppAchievementUnlock,
     HausdeppPresentationReceipt,
     HausdeppRoundCredit,
+    HausdeppWithdrawal,
 )
 
 
@@ -98,6 +99,32 @@ class HausdeppAccountTests(unittest.TestCase):
                                    for model in (CompletedGame, GameParticipant)), sources)
         # The ordinary entry point retains exactly the same response and unseen boundary.
         self.assertEqual(build_hausdepp_account_for_user(self.user.id, limit=1), account)
+
+    def test_favorite_opponents_count_only_direct_decisions_after_ten_and_respect_withdrawals(self):
+        for index in range(10):
+            self.store(self.payload(f"opponent-{index}", loser="other" if index < 6 else "self"))
+        # Sharing a round while a third seat loses is not a direct decision.
+        self.store(self.payload("third-loser", loser="cpu-1"))
+        self.assertEqual(build_hausdepp_account_for_user(self.user.id)["favorite_opponents"], [])
+        abandoned = self.payload("no-loser")
+        abandoned.update(schema_version=4, loser_id=None, finished_order=["self"], withdrawn_ids=["cpu-1"],
+                         remaining_player_id="other", round_end_reason="insufficient_players",
+                         achievement_evidence={"schema_version": 1, "complete": True,
+                             "players": {player["id"]: {"flags": [], "ten_clears": 0}
+                                         for player in abandoned["participants"]}})
+        self.store(abandoned)
+        self.assertEqual(build_hausdepp_account_for_user(self.user.id)["favorite_opponents"], [])
+        self.store(self.payload("eleventh", loser="self"))
+        expected = [{"name": self.other.username, "wins": 6, "losses": 5, "draws": 0, "games": 11}]
+        self.assertEqual(build_hausdepp_account_for_user(self.user.id, limit=1)["favorite_opponents"], expected)
+        other = build_hausdepp_account_for_user(self.other.id)["favorite_opponents"]
+        self.assertEqual(other, [{"name": self.user.username, "wins": 5, "losses": 6, "draws": 0, "games": 11}])
+        outsider = create_user("Unrelated", "test-password-123", must_change_password=False)
+        self.assertEqual(build_hausdepp_account_for_user(outsider.id)["favorite_opponents"], [])
+        with session_scope() as db:
+            db.add(HausdeppWithdrawal(user_id=self.other.id, result_id="eleventh", table_game_id="eleventh",
+                                       player_id="other", departed_at=self.at))
+        self.assertEqual(build_hausdepp_account_for_user(self.user.id)["favorite_opponents"], [])
 
     def test_all_time_totals_exceed_both_history_and_source_page_limits(self):
         # More than the former 30-result cap and the bounded 250-row source page.

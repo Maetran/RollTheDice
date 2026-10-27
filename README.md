@@ -13,6 +13,25 @@ Guests can play ZDWA and Zilch. Hausdepp and Watten have public lobbies and rule
 requires an active account. One account provides history, statistics, achievements
 and community features across the suite.
 
+## Lieblingsgegner / favourite opponents
+
+**Deutsch:** Im persönlichen Konto zeigt jedes Spiel deine häufigsten Gegner
+mit Siegen, Niederlagen und Unentschieden, sobald mindestens elf Begegnungen
+eindeutig gewertet werden können. Es zählen abgeschlossene Partien gegen
+zuordenbare Spielerkonten; Teamkollegen, Computer und unklare Ergebnisse zählen
+nicht. Bei Hausdepp ist nur das Duell mit dem Rundenverlierer eindeutig; bei
+Watten bleiben Dreierpartien mit wechselnden Partnerschaften unberücksichtigt.
+Die Statistik bleibt privat und verwendet auch vorhandene, eindeutig belegte
+Ergebnisse. Ältere unvollständige Daten fehlen gegebenenfalls.
+
+**English:** Each game's private account shows your frequent opponents with
+wins, losses and draws once at least eleven encounters have a clear result.
+Completed games against identifiable player accounts count; teammates,
+computers and ambiguous results do not. In Hausdepp only the contest against
+the round's loser has a clear outcome; three-player Watten matches with changing
+partners are excluded. The statistics are private and include existing results
+where the evidence is clear. Incomplete older records may be missing.
+
 ## Neue Herausforderungen / new challenges — 4.6.0
 
 **Deutsch:** Jedes Spiel erhält zwei seltene Konstellationen. ZDWA belohnt alle

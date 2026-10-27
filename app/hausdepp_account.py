@@ -10,16 +10,18 @@ from __future__ import annotations
 import base64
 import binascii
 import json
+from collections import defaultdict
 from datetime import datetime
 
 from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import selectinload
 
+from .account_progress import progress_owner_ids
 from .database import database_schema_ready, session_scope
 from .game_types import HAUSDEPP_GAME_TYPE
 from .hausdepp_achievements import synchronize_hausdepp_progress, synchronize_hausdepp_progress_in_session
 from .hausdepp_results import validated_hausdepp_membership
-from .models import CompletedGame, GameParticipant
+from .models import CompletedGame, GameParticipant, HausdeppWithdrawal, User
 from .security import as_utc
 
 HAUSDEPP_HISTORY_DEFAULT_LIMIT = 12
@@ -71,7 +73,55 @@ def _account_boundary(user_id, before, limit):
 def _empty_account(progress):
     return {"schema_version": 2, "game_type": HAUSDEPP_GAME_TYPE,
             "statistics": {"rounds_played": 0, "hausdepp_rounds": 0, "finished_rounds": 0, "last_finished_at": None},
-            "history": {"rounds": [], "next_cursor": None}, **progress}
+            "history": {"rounds": [], "next_cursor": None}, "favorite_opponents": [], **progress}
+
+
+def _withdrawals_for_rows(db, rows):
+    ids = [row.game_id for row in rows]
+    result = set()
+    for start in range(0, len(ids), HAUSDEPP_ACCOUNT_SOURCE_PAGE_SIZE):
+        result.update(db.execute(select(HausdeppWithdrawal.user_id, HausdeppWithdrawal.result_id).where(
+            HausdeppWithdrawal.result_id.in_(ids[start:start + HAUSDEPP_ACCOUNT_SOURCE_PAGE_SIZE]),
+        )).all())
+    return result
+
+
+def _accumulate_opponents(db, row, record, owner_id, counts, owner_cache, withdrawals):
+    """Only compare a surviving seat with the single loser; peers did not draw."""
+    if record["outcome"] not in {"finished", "hausdepp"}:
+        return
+    seats = {seat.player_key: seat for seat in row.participants}
+    accounts = {seat.user_id for seat in row.participants if seat.user_id is not None}
+    missing = accounts - owner_cache.keys()
+    if missing:
+        owner_cache.update(progress_owner_ids(db, missing))
+    outcomes = defaultdict(set)
+    for player in record["participants"]:
+        seat = seats[player["id"]]
+        if seat.user_id is None or player["is_cpu"] or player["outcome"] not in {"finished", "hausdepp"}:
+            continue
+        # Durable withdrawal records also override historical result JSON.
+        if (seat.user_id, row.game_id) in withdrawals:
+            continue
+        outcomes[owner_cache[seat.user_id]].add(player["outcome"])
+    # If a merged account held both the losing and a finishing seat, there is
+    # no unambiguous head-to-head result for that account in this round.
+    if outcomes.get(owner_id) != {record["outcome"]}:
+        return
+    for opponent, results in outcomes.items():
+        if opponent == owner_id or len(results) != 1 or record["outcome"] in results:
+            continue
+        counts[opponent]["wins" if record["outcome"] == "finished" else "losses"] += 1
+
+
+def _favorite_opponents(db, counts):
+    eligible = {user_id: values for user_id, values in counts.items() if sum(values.values()) > 10}
+    if not eligible:
+        return []
+    users = db.scalars(select(User).where(User.id.in_(eligible), User.is_active.is_(True))).all()
+    rows = [{"name": user.username, "wins": eligible[user.id]["wins"], "losses": eligible[user.id]["losses"],
+             "draws": 0, "games": sum(eligible[user.id].values())} for user in users]
+    return sorted(rows, key=lambda row: (-row["games"], row["name"].casefold(), row["name"]))
 
 
 def build_hausdepp_account_for_user(
@@ -101,12 +151,16 @@ def build_hausdepp_account_for_user_in_session(
     history = response["history"]["rounds"]
     next_cursor = None
     page_end = None
+    opponent_counts = defaultdict(lambda: {"wins": 0, "losses": 0})
+    owner_cache = {}
     from .hausdepp_merge import is_merged
     if is_merged(db, user_id):
         selected = sorted(projection_context["inputs"].rounds,
                           key=lambda item: (as_utc(item.row.finished_at), item.row.id), reverse=True)
+        withdrawals = _withdrawals_for_rows(db, [item.row for item in selected])
         for item in selected:
             record = item.record
+            _accumulate_opponents(db, item.row, record, user_id, opponent_counts, owner_cache, withdrawals)
             statistics["rounds_played"] += 1
             if record["outcome"] in {"finished", "hausdepp"}:
                 statistics[f"{record['outcome']}_rounds"] += 1
@@ -116,6 +170,7 @@ def build_hausdepp_account_for_user_in_session(
         page = eligible[:limit]
         history.extend(item.record for item in page)
         response["history"]["next_cursor"] = _cursor(page[-1].row) if len(eligible) > limit else None
+        response["favorite_opponents"] = _favorite_opponents(db, opponent_counts)
         return response
     scan_boundary = None
     while True:
@@ -133,10 +188,12 @@ def build_hausdepp_account_for_user_in_session(
                           .limit(HAUSDEPP_ACCOUNT_SOURCE_PAGE_SIZE)).all()
         if not rows:
             break
+        withdrawals = _withdrawals_for_rows(db, rows)
         for row in rows:
             record = _private_round(row, user_id, db=db)
             if record is None:
                 continue
+            _accumulate_opponents(db, row, record, user_id, opponent_counts, owner_cache, withdrawals)
             statistics["rounds_played"] += 1
             if record["outcome"] in {"finished", "hausdepp"}:
                 statistics[f"{record['outcome']}_rounds"] += 1
@@ -151,4 +208,5 @@ def build_hausdepp_account_for_user_in_session(
                 next_cursor = page_end
         scan_boundary = (rows[-1].finished_at, rows[-1].id)
     response["history"]["next_cursor"] = next_cursor
+    response["favorite_opponents"] = _favorite_opponents(db, opponent_counts)
     return response
