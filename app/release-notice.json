@@ -10,17 +10,19 @@
     "de": {
       "title": "4.11.1: Klarere Spieltische",
       "changes": [
-        "Watten: Retourschneider ist erst möglich, wenn dein Team bereits Punkte angeschrieben hat.",
-        "Watten: Stich und Tischdekoration bleiben auf kleinen Bildschirmen besser im Blick.",
-        "Hausdepp: Gleiche Karten fächern nach rechts auf und lassen den Abhebestapel frei."
+        "Dieses Update macht die Spieltische auf dem Handy übersichtlicher.",
+        "WATTEN: Retourschneider ist erst möglich, wenn dein Team bereits Punkte angeschrieben hat. Stichverlauf und Dekoration sind besser angeordnet.",
+        "HAUSDEPP: Gleiche Karten fächern nach rechts auf und lassen den Abhebestapel frei.",
+        "ALLGEMEIN: Berechtigte Konten sehen das Admin Center in einem eigenen Design."
       ]
     },
     "en": {
       "title": "4.11.1: Clearer game tables",
       "changes": [
-        "Watten: Retourschneider is available only after your team has scored.",
-        "Watten: The trick and table decorations are easier to follow on small screens.",
-        "Hausdepp: Matching cards fan out to the right, leaving the draw pile clear."
+        "This update makes game tables clearer on phones.",
+        "WATTEN: Retourschneider is available only after your team has scored. Trick history and decorations are better arranged.",
+        "HAUSDEPP: Matching cards fan out to the right, leaving the draw pile clear.",
+        "GENERAL: Authorized accounts see the Admin Center in its own design."
       ]
     }
   }
