@@ -23,8 +23,8 @@ REAL_WATCH = review.watch_game
 REAL_NOW = review.utcnow
 
 
-def completed_deal(server):
-    game_id, owners, sessions = native.local_started(server, count_players=2, target=11)
+def completed_deal(server, *, blind=False):
+    game_id, owners, sessions = native.local_started(server, count_players=4 if blind else 2, blind=blind, target=11)
     game = games[game_id]
     by_player = {session.player_id: session for session in sessions}
     for _ in range(40):
@@ -52,6 +52,21 @@ def test_checkpoint_anchors_collect_then_review_and_reload_does_not_restart_it(s
     assert review.review_projection(restored) == review.review_projection(game)
     assert review.review_projection(game)["collect_remaining_ms"] == 0
     assert review.review_projection(game)["review_remaining_ms"] == 2600
+    with pytest.raises(ValueError, match="review_pending"):
+        review.advance_reviewed_deal(game)
+
+
+def test_blind_terminal_trick_waits_one_extra_second_and_reload_keeps_deadline(server, monkeypatch):
+    game, _owners, _sessions = completed_deal(server, blind=True)
+    start = review.datetime.fromisoformat(game["_watten"].round_review_started_at)
+    monkeypatch.setattr(review, "utcnow", lambda: start)
+    assert review.review_projection(game)["collect_remaining_ms"] == 4600
+    assert review.review_projection(game)["review_remaining_ms"] == 7600
+    restored = restore_watten_game(serialize_watten_game(game))
+    monkeypatch.setattr(review, "utcnow", lambda: start + timedelta(seconds=4))
+    assert review.review_projection(restored) == review.review_projection(game)
+    assert review.review_projection(game)["collect_remaining_ms"] == 600
+    monkeypatch.setattr(review, "utcnow", lambda: start + timedelta(seconds=7))
     with pytest.raises(ValueError, match="review_pending"):
         review.advance_reviewed_deal(game)
 

@@ -418,11 +418,12 @@ button.hd-pile:hover { background: #f3eadd18; }
 .hd-peek p { line-height: 1.5; max-width: 65ch; }
 .hd-peek-cards { display: flex; gap: 8px; }
 .hd-peek-cards .hausdepp-card { width: 70px; }
-/* Private cut faces stay at their source, without covering table controls. */
-.hd-cut-preview { position: absolute; top: 0; left: 0; width: 100%; display: flex; gap: 6px; align-items: flex-start; z-index: 3; pointer-events: none; }
+/* A private cut emerges from beneath the stock, then leaves a small bottom-card hint. */
+.hd-cut-preview { position: absolute; top: 4%; left: -28%; width: 75%; display: flex; gap: 4px; align-items: flex-start; z-index: 0; pointer-events: none; }
 .hd-cut-preview[hidden] { display: none; }
-.hd-cut-preview:has(.hausdepp-card:nth-child(2)) { width: 140%; left: -40%; }
-html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre .hd-cut-preview .hausdepp-card { width: calc((100% - (var(--cut-count) - 1)*6px)/var(--cut-count)); flex: 0 0 auto; }
+html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre .hd-cut-preview .hausdepp-card { width: calc((100% - (var(--cut-count) - 1)*4px)/var(--cut-count)); flex: 0 0 auto; animation: hd-cut-slide-under 420ms cubic-bezier(.16, 1, .3, 1) both; }
+@keyframes hd-cut-slide-under { from { transform: translateY(-15%); } to { transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) { html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre .hd-cut-preview .hausdepp-card { animation: none; } }
 .hd-cut-preview:not([hidden]) ~ .hd-known-bottom-cards { visibility: hidden; }
 .hd-social { padding: 10px 0 0; min-width: 0; }
 .hd-social-tools { display: flex; align-items: center; justify-content: center; gap: 16px; }

@@ -40,6 +40,7 @@ CPU_POLICY_READY = True
 THINK_MIN_SECONDS = 0.35
 THINK_MAX_SECONDS = 1.25
 TRICK_REVEAL_SECONDS = 3.6
+BLIND_TRICK_EXTRA_SECONDS = 1.0
 _RANDOM = secrets.SystemRandom()
 _POLICY_EXECUTOR = ThreadPoolExecutor(max_workers=2, thread_name_prefix="watten-cpu-policy")
 _POLICY_SLOTS: WeakKeyDictionary = WeakKeyDictionary()
@@ -296,7 +297,8 @@ def watch_game(game: dict) -> None:
         previous_reveal = _TRICK_REVEALS.get(game["_id"])
         if (previous_reveal is None or previous_reveal[0] is not game
                 or previous_reveal[1:3] != (engine.deal_id, completed)):
-            _TRICK_REVEALS[game["_id"]] = (game, engine.deal_id, completed, now + TRICK_REVEAL_SECONDS)
+            _TRICK_REVEALS[game["_id"]] = (game, engine.deal_id, completed, now + TRICK_REVEAL_SECONDS
+                                             + (BLIND_TRICK_EXTRA_SECONDS if engine.recipe.profile.blind else 0))
     else:
         _TRICK_REVEALS.pop(game["_id"], None)
     active = (not game.get("_aborted") and cpu_autoplay_enabled() and runtime.engine is not None and not runtime.absent
@@ -324,7 +326,12 @@ def watch_game(game: dict) -> None:
             _BLOCKED.pop(key, None)
             deadline = now + _RANDOM.uniform(THINK_MIN_SECONDS, THINK_MAX_SECONDS)
             reveal = _TRICK_REVEALS.get(game["_id"])
-            if reveal is not None and view["phase"] == "play" and not view["current_trick"]["cards"]:
+            if (reveal is not None and (
+                    view["phase"] == "play" and not view["current_trick"]["cards"]
+                    or engine.recipe.profile.blind and view["phase"] in {"play", "bid_response"})):
+                # In Blindwatten a human may lead or bid immediately. Hold CPU
+                # cards, bids and responses until the prior public trick has
+                # been seen; human commands remain available throughout.
                 deadline = max(deadline, reveal[3])
             job = _Job(game, context, deadline,
                        secrets.randbits(64))

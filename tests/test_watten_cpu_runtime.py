@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import random
 from contextlib import contextmanager
 from copy import deepcopy
 from itertools import count
@@ -25,7 +26,7 @@ from app.security import utcnow
 from app.watten_cpu import CpuBudget
 from app.watten_cpu_memory import memory_to_storage
 from app.watten_engine import EngineActor, EngineCommand, retourschneider_offer
-from app.watten_play import legal_cards
+from app.watten_play import legal_cards, play_card
 from app.watten_runtime import (
     _apply_engine_command,
     apply_runtime_action,
@@ -122,7 +123,128 @@ def ready(monkeypatch):
     monkeypatch.setattr(runner, "THINK_MIN_SECONDS", 0.01)
     monkeypatch.setattr(runner, "THINK_MAX_SECONDS", 0.01)
     monkeypatch.setattr(runner, "TRICK_REVEAL_SECONDS", 0.0)
+    monkeypatch.setattr(runner, "BLIND_TRICK_EXTRA_SECONDS", 0.0)
     monkeypatch.setattr(runner, "CpuBudget", lambda _samples=1: CpuBudget(samples=1))
+
+
+@pytest.mark.parametrize(("blind", "expected"), ((False, 3.6), (True, 4.6)))
+def test_completed_trick_holds_cpu_lead_for_the_mode_without_restarting_on_updates(monkeypatch, blind, expected):
+    from app import watten_round_runtime
+
+    engine = SimpleNamespace(deal_id="reveal-test", phase="play", play=SimpleNamespace(tricks=(object(),)),
+                             recipe=SimpleNamespace(profile=SimpleNamespace(blind=blind)))
+    game = {"_id": f"reveal-{blind}", "_watten": SimpleNamespace(engine=engine)}
+    monkeypatch.setitem(games, game["_id"], game)
+    monkeypatch.setattr(watten_round_runtime, "watch_game", lambda _game: None)
+    monkeypatch.setattr(runner, "cpu_autoplay_enabled", lambda: False)
+
+    async def scenario():
+        before = asyncio.get_running_loop().time()
+        runner.watch_game(game)
+        first = runner._TRICK_REVEALS[game["_id"]]
+        assert first[3] - before == pytest.approx(expected, abs=0.05)
+        runner.watch_game(game)
+        assert runner._TRICK_REVEALS[game["_id"]] == first
+        runner._TRICK_REVEALS.pop(game["_id"], None)
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("blind", (False, True))
+def test_early_human_lead_only_delays_cpu_replies_for_a_blind_table(monkeypatch, blind):
+    from app import watten_round_runtime
+
+    engine = SimpleNamespace(deal_id="early-lead", phase="play", play=SimpleNamespace(tricks=(object(),)),
+                             recipe=SimpleNamespace(profile=SimpleNamespace(blind=blind)))
+    runtime = SimpleNamespace(engine=engine, absent=(), room=SimpleNamespace(
+        cpus=(SimpleNamespace(participant_id="cpu"),)))
+    game = {"_id": f"early-lead-{blind}", "_watten": runtime}
+    view = {"actions": ["play_card"], "profile": {"blind": blind}, "phase": "play", "current_trick": {"cards": []}}
+    monkeypatch.setitem(games, game["_id"], game)
+    monkeypatch.setattr(watten_round_runtime, "watch_game", lambda _game: None)
+    monkeypatch.setattr(runner, "cpu_autoplay_enabled", lambda: True)
+    monkeypatch.setattr(runner, "_authority", lambda _game: object())
+    monkeypatch.setattr(runner, "_view", lambda _runtime, _player: view)
+    monkeypatch.setattr(runner, "_context", lambda _runtime, snapshot: (snapshot["phase"], tuple(snapshot["actions"]),
+                                                                       len(snapshot["current_trick"]["cards"])))
+    monkeypatch.setattr(runner, "_cpu_partner_feedback_pending", lambda *_args: False)
+    monkeypatch.setattr(runner, "_RANDOM", SimpleNamespace(uniform=lambda *_args: 0))
+
+    async def scenario():
+        try:
+            runner.watch_game(game)
+            reveal = runner._TRICK_REVEALS[game["_id"]][3]
+            assert runner._JOBS[(game["_id"], "cpu")].deadline == reveal
+            # A human leads before the old trick has left the table. The next
+            # CPU's fresh job must still respect the original reveal deadline.
+            view["current_trick"]["cards"].append({"seat": 0, "card": "hearts-7"})
+            runner.watch_game(game)
+            deadline = runner._JOBS[(game["_id"], "cpu")].deadline
+            if blind:
+                assert deadline == reveal
+            else:
+                assert deadline < reveal - 1
+            # CPU bids and responses could otherwise end a blind deal while
+            # the previous trick is still being displayed.
+            for phase, action in (("play", "bid"), ("bid_response", "respond_go")):
+                view["phase"] = phase
+                view["actions"] = [action]
+                runner.watch_game(game)
+                deadline = runner._JOBS[(game["_id"], "cpu")].deadline
+                assert (deadline == reveal) if blind else (deadline < reveal - 1)
+        finally:
+            await runner.stop_cpu_runners()
+
+    asyncio.run(scenario())
+
+
+def test_real_cpu_waits_after_immediate_human_lead_until_blind_reveal_finishes(server, ready, monkeypatch):
+    # This is a real four-seat game and autonomous CPU runner. Deterministic
+    # cards and a legal first trick make the human win and lead the next one.
+    monkeypatch.setattr(runtime_module, "_RANDOM", random.Random(1))
+    monkeypatch.setattr(runner, "TRICK_REVEAL_SECONDS", 0.25)
+    monkeypatch.setattr(runner, "BLIND_TRICK_EXTRA_SECONDS", 0.25)
+    game_id, _owners, sessions = local_started(server, count_players=4, blind=True, cpus=(1, 2, 3), target=11)
+    game = games[game_id]
+    complete_call(game_id)
+    state = game["_watten"].engine
+    human = sessions[0].player_id
+
+    def find_human_win(play, cards=()):
+        if play.tricks:
+            return cards if play.tricks[0].winner == state.recipe.seats.index(human) else None
+        actor = play.current_player_id
+        for card in legal_cards(play, state.bid_state, actor):
+            line = find_human_win(play_card(play, state.bid_state, actor, card), (*cards, card))
+            if line is not None:
+                return line
+        return None
+
+    line = find_human_win(state.play)
+    assert line is not None
+    for index, card in enumerate(line):
+        actor = game["_watten"].engine.play.current_player_id
+        accepted_engine(game, actor, engine_command(game_id, "play_card", f"seed-{index}", card, actor))
+    assert game["_watten"].engine.play.current_player_id == human
+
+    async def scenario():
+        try:
+            runner.watch_game(game)
+            reveal = runner._TRICK_REVEALS[game_id][3]
+            lead = legal_cards(game["_watten"].engine.play, game["_watten"].engine.bid_state, human)[0]
+            accepted_engine(game, human, engine_command(game_id, "play_card", "human-next", lead, human))
+            runner.watch_game(game)
+            after_human = game["_watten"].engine.opportunity
+            await asyncio.sleep(0.15)
+            assert asyncio.get_running_loop().time() < reveal
+            assert game["_watten"].engine.opportunity == after_human
+            assert len(game["_watten"].engine.play.trick_cards) == 1
+            await until(lambda: game["_watten"].engine.opportunity > after_human, seconds=3)
+            assert asyncio.get_running_loop().time() >= reveal
+        finally:
+            await runner.stop_cpu_runners()
+
+    asyncio.run(scenario())
 
 
 def deterministic_dealer(monkeypatch, seat=0):

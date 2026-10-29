@@ -52,6 +52,16 @@ test("real collection completion gates final result even for late live frames; r
   reduced.advance(3600); assert.equal(reduced.controller.update(snapshot("match_complete")).stage, "review");
 });
 
+test("reduced motion and a reload respect the remaining longer blind final-trick window", () => {
+  const f = fixture(), blind = snapshot("match_complete", 4600, 7600);
+  assert.equal(f.controller.update(blind).stage, "collect");
+  f.advance(3600); assert.equal(f.controller.update(blind).stage, "collect");
+  f.advance(1000); assert.equal(f.controller.update(blind).stage, "review");
+  const reloaded = fixture(), remaining = snapshot("match_complete", 600, 3600);
+  assert.equal(reloaded.controller.update(remaining).stage, "collect");
+  reloaded.advance(600); assert.equal(reloaded.controller.update(remaining).stage, "review");
+});
+
 test("changing deals or tearing down discards the old timer without issuing a game command", () => {
   const f = fixture(); f.controller.update(snapshot());
   assert.equal(f.controller.update({ engine: { deal_id: "next", phase: "strike" } }).stage, "ready");

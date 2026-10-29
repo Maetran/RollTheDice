@@ -2,7 +2,7 @@
 // only currently permitted DOM faces/backs; no hand, stock or call is inferred.
 import { captureCardScorch, copyCardScorch } from "../hausdepp/card-scorch.js";
 const FLIGHT = 240, HOLD = 3000, COLLECT = 360, MAX_GHOSTS = 24;
-const TRICK_TIME = FLIGHT + HOLD + COLLECT, MAX_PRESENTATION = TRICK_TIME * 2;
+const TRICK_TIME = FLIGHT + HOLD + COLLECT, BLIND_EXTRA = 1000;
 const easing = "cubic-bezier(.2,.7,.2,1)";
 const usable = rect => rect && rect.width > 0 && rect.height > 0;
 const centre = rect => ({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
@@ -51,19 +51,26 @@ export function createMotion({ win = window, doc = document } = {}) {
   let collectBatchStart = null;
   let width = win.innerWidth, height = win.innerHeight;
   const now = () => win.performance?.now?.() ?? performance.now();
-  const enabled = () => !destroyed && !reduced?.matches && !doc.hidden && doc.visibilityState !== "hidden"
+  const visible = () => !destroyed && !doc.hidden && doc.visibilityState !== "hidden"
     && !doc.querySelector?.("[data-wt-history][open]:not([hidden])") && typeof doc.body?.animate === "function";
+  const enabled = () => visible() && !reduced?.matches;
 
-  function hide(node, property = "visibility") {
-    if (!hidden.has(node)) hidden.set(node, { count: 0, property, value: node.style[property] });
+  function hide(node, property = "visibility", suppressAnimation = false) {
+    if (!hidden.has(node)) hidden.set(node, { count: 0, property, value: node.style[property],
+      animation: suppressAnimation ? node.style.animation : null });
     hidden.get(node).count += 1;
+    if (suppressAnimation) node.style.animation = "none";
     node.style[property] = property === "opacity" ? "0" : "hidden";
     let released = false;
     return () => {
       if (released) return;
       released = true;
       const entry = hidden.get(node);
-      if (entry && --entry.count === 0) { node.style[entry.property] = entry.value; hidden.delete(node); }
+      if (entry && --entry.count === 0) {
+        node.style[entry.property] = entry.value;
+        if (entry.animation !== null) node.style.animation = entry.animation;
+        hidden.delete(node);
+      }
     };
   }
 
@@ -98,7 +105,7 @@ export function createMotion({ win = window, doc = document } = {}) {
     width = win.innerWidth; height = win.innerHeight;
     cancel();
   };
-  const visibilityChanged = () => { if (!enabled()) cancel(); };
+  const visibilityChanged = () => { if (!visible()) cancel(); };
   win.addEventListener("resize", geometryChanged, { passive: true });
   win.addEventListener("orientationchange", cancel, { passive: true });
   win.addEventListener("scroll", cancel, { passive: true, capture: true });
@@ -240,7 +247,7 @@ export function createMotion({ win = window, doc = document } = {}) {
   const collectionDelay = time => Math.max(0, ...[...ghosts]
     .filter(job => job.node.dataset.wtMotion === "collect").map(job => job.endsAt - time));
 
-  function collect(result, captured, view, time, delay) {
+  function collect(result, captured, view, time, delay, trickTime, still = false) {
     const last = result.trick.last;
     const target = view.collectionNode(last.winner)?.getBoundingClientRect();
     if (!usable(target)) return false;
@@ -258,7 +265,7 @@ export function createMotion({ win = window, doc = document } = {}) {
       height: Math.max(...items.map(item => item.rect.top + item.rect.height)) - top };
     const job = ghost("collect", bounds, last.winner);
     collectBatchStart ??= time;
-    job.endsAt = time + delay + TRICK_TIME;
+    job.endsAt = time + delay + trickTime;
     // During a queued collection its accepted public originals stay hidden,
     // and the group itself has no paint until the previous trick has left.
     job.node.style.opacity = "0";
@@ -269,19 +276,20 @@ export function createMotion({ win = window, doc = document } = {}) {
         ? captured.rects.get(item.card) || captured.rects.get(`seat-${item.seat}`) : null);
       arriving?.remove(); arrivals.delete(item.card);
       const clone = copyCard(item.node, job.node, item.rect, bounds);
-      if (item.node.isConnected) job.releases.push(hide(item.node));
-      if (usable(from)) job.animations.push(animate(clone, [movement(from, item.rect), { translate: "0 0", scale: "1" }], { duration: FLIGHT, delay, easing }));
+      if (item.node.isConnected) job.releases.push(hide(item.node, still ? "opacity" : "visibility", still));
+      if (!still && usable(from)) job.animations.push(animate(clone, [movement(from, item.rect), { translate: "0 0", scale: "1" }], { duration: FLIGHT, delay, easing }));
     }
-    const a = centre(bounds), b = centre(target), hold = (FLIGHT + HOLD) / (FLIGHT + HOLD + COLLECT);
-    job.animations.push(animate(job.node, [
+    const a = centre(bounds), b = centre(target), hold = (trickTime - COLLECT) / trickTime;
+    const frames = still ? [{ opacity: 1 }, { opacity: 1 }] : [
       { translate: "0 0", scale: "1", opacity: 1, offset: 0 },
       { translate: "0 0", scale: "1", opacity: 1, offset: hold, easing },
       { translate: `${b.x - a.x}px ${b.y - a.y}px`, scale: ".18", opacity: 0, offset: 1 },
-    ], { duration: FLIGHT + HOLD + COLLECT, easing: "linear", fill: "forwards" }, () => {
+    ];
+    job.animations.push(animate(job.node, frames, { duration: trickTime, easing: "linear", fill: "forwards" }, () => {
       // The accepted last-trick DOM keeps its geometry for the label, but must
       // not reappear at centre when its decorative flight has finished.
       for (const item of items) {
-        if (item.node.isConnected && !settled.has(item.node)) settled.set(item.node, hide(item.node));
+        if (item.node.isConnected && !settled.has(item.node)) settled.set(item.node, hide(item.node, still ? "opacity" : "visibility", still));
       }
       job.remove();
     }, delay));
@@ -291,7 +299,8 @@ export function createMotion({ win = window, doc = document } = {}) {
   /** Called only for an accepted snapshot, never for an ACK/busy-only repaint. */
   function present({ previous, engine, live, captured, result, view }) {
     if (!live) { cancel(); return; }
-    if (!enabled() || captured?.epoch !== epoch) return;
+    const stillBlind = Boolean(reduced?.matches && engine.profile?.blind === true && visible());
+    if ((!enabled() && !stillBlind) || captured?.epoch !== epoch) return;
     for (const [node, release] of settled) {
       if (!result.trick.nodes.includes(node)) { release(); settled.delete(node); }
     }
@@ -316,18 +325,27 @@ export function createMotion({ win = window, doc = document } = {}) {
     if (["deal_complete", "match_complete"].includes(engine.phase)
       && (transition.collect || !["deal_complete", "match_complete"].includes(previous?.phase))
       && collectionDelay(now()) > 0) cancel();
-    flip(result.hand.nodes, captured);
+    if (!stillBlind) flip(result.hand.nodes, captured);
     const time = now(), delay = collectionDelay(time);
-    if ((transition.collect || result.trick.created.length) && (delay > TRICK_TIME ||
-        (collectBatchStart !== null && time + delay + (transition.collect ? TRICK_TIME : FLIGHT) > collectBatchStart + MAX_PRESENTATION + 1))) {
+    const trickTime = TRICK_TIME + (engine.profile?.blind === true ? BLIND_EXTRA : 0);
+    if ((transition.collect || result.trick.created.length) && (delay > trickTime ||
+        (collectBatchStart !== null && time + delay + (transition.collect ? trickTime : FLIGHT) > collectBatchStart + trickTime * 2 + 1))) {
       // Fast repeated whole tricks must not build a playback archive. Restore
       // the current accepted DOM once a further flight would exceed the budget.
       cancel(); return;
     }
-    const collected = transition.collect && result.trick.last && collect(result, captured, view, time, delay);
+    const collected = transition.collect && result.trick.last && collect(result, captured, view, time, delay, trickTime, stillBlind);
     const completedCards = collected ? new Set(result.trick.last.cards.map(item => item.card)) : new Set();
     for (const item of result.trick.created) {
-      if (!completedCards.has(item.card)) fly(item.node,
+      if (completedCards.has(item.card)) continue;
+      if (stillBlind && delay > 0 && item.node.isConnected) {
+        // Keep the accepted next play behind the still public trick without
+        // animating either card or delaying the player’s legal action. Opacity
+        // keeps the actual accepted state available to assistive technology.
+        const preceding = [...ghosts].filter(job => job.node.dataset.wtMotion === "collect")
+          .sort((a, b) => b.endsAt - a.endsAt)[0];
+        preceding?.releases.push(hide(item.node, "opacity", true));
+      } else if (!stillBlind) fly(item.node,
         captured.rects.get(item.card) || captured.rects.get(`seat-${item.seat}`), "arrive", item.card, delay);
     }
   }

@@ -566,13 +566,46 @@ for (const fixture of portraitFixtures) for (const [seatIndex, seat] of ["bottom
     assert.ok(result.fit.cardWidth >= (short ? 64 : 76));
     assert.ok(result.historyFit);
     assert.equal(result.historyFit.height, 44);
-    for (const box of [result.fit, result.historyFit, result.labelFit].filter(Boolean)) {
+    const painted = result.fit.painted || [result.fit];
+    for (const box of [...painted, result.historyFit, result.labelFit].filter(Boolean)) {
       for (const obstacle of obstacles) assert.equal(overlap(box, obstacle), false);
     }
-    assert.equal(overlap(result.fit, result.historyFit), false);
-    if (result.labelFit) {
-      assert.equal(overlap(result.labelFit, result.fit), false);
-      assert.equal(overlap(result.labelFit, result.historyFit), false);
+    for (const face of painted) {
+      assert.equal(overlap(face, result.historyFit), false);
+      if (result.labelFit) assert.equal(overlap(result.labelFit, face), false);
     }
+    if (result.labelFit) assert.equal(overlap(result.labelFit, result.historyFit), false);
   });
 }
+
+
+test("a centred portrait trick is preferred over an edge fit when its label has a separate safe slot", () => {
+  const bounds = rect(12, 160, 416, 500);
+  const obstacles = [rect(118.8573, 376.9954, 43.9197, 54.7764), rect(252.0894, 323.4413, 138.8176, 135.6997)];
+  const { fit, labelFit } = fitPortraitTrickView({ bounds, obstacles, count: 4, minimumWidth: 76, labelHeight: 24 });
+  assert.ok(fit); assert.ok(labelFit); assert.equal(fit.left + fit.width / 2, 220);
+  for (const face of fit.painted || [fit]) for (const obstacle of obstacles) assert.equal(overlap(face, obstacle), false);
+  for (const obstacle of obstacles) assert.equal(overlap(labelFit, obstacle), false);
+});
+
+
+test("a closed history tab retains its last free place as the trick and bid change", () => {
+  const bounds = rect(12, 160, 416, 640), history = rect(280, 205, 136, 44);
+  const obstacles = [rect(176, 255, 88, 130), rect(12, 500, 180, 100)];
+  const options = { height: 44, widths: [136, 128, 112, 96, 80, 64] };
+  const natural = fitPortraitPrompt(bounds, obstacles, options);
+  assert.notDeepEqual(natural, history, "a new free slot would otherwise make the closed tab jump");
+  assert.deepEqual(fitPortraitPrompt(bounds, obstacles, { ...options, preferred: history }), history);
+  const blocked = fitPortraitPrompt(bounds, [...obstacles, rect(280, 205, 136, 44)], { ...options, preferred: history });
+  assert.ok(blocked); assert.notDeepEqual(blocked, history, "a genuinely blocked tab moves to a safe location");
+});
+
+
+test("a saved tab slot follows a small settled viewport inset but moves away from a real obstacle", () => {
+  const bounds = rect(16, 112, 408, 720), previous = rect(12, 242.6, 136, 44);
+  const options = { height: 44, widths: [136, 128], preferred: previous };
+  const settled = fitPortraitPrompt(bounds, [], options);
+  assert.equal(settled.left, 16); assert.equal(settled.top, previous.top);
+  const blocked = fitPortraitPrompt(bounds, [rect(16, 242, 136, 44)], options);
+  assert.ok(blocked); assert.equal(overlap(blocked, rect(16, 242, 136, 44)), false);
+});
