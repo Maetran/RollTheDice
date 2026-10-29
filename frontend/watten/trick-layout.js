@@ -178,6 +178,12 @@ export function createTrickLayout(trick, { win = window } = {}) {
       delete retour.dataset.wtRetourFit;
       for (const key of ["x", "y", "width", "rules-height"]) retour.style.removeProperty(`--wt-retour-${key}`);
     }
+    const retourTag = table.querySelector("[data-wt-positioned-retour-tag]");
+    if (retourTag) {
+      delete retourTag.dataset.wtPositionedRetourTag;
+      retourTag.style.removeProperty("--wt-retour-tag-x");
+      retourTag.style.removeProperty("--wt-retour-tag-y");
+    }
   };
   const box = node => {
     if (!node || node.hidden) return null;
@@ -313,11 +319,30 @@ export function createTrickLayout(trick, { win = window } = {}) {
       panel.style.setProperty(`--wt-retour-${key}`, `${value}px`);
     }
   }
+  function positionRetourTag() {
+    if (win.innerWidth > 760 || win.innerWidth >= win.innerHeight) return;
+    const tag = table.querySelector(".wt-retour-tag"), tagBox = box(tag);
+    if (!tagBox) return;
+    const area = felt.getBoundingClientRect();
+    const bounds = { left: Math.max(12, area.left + 8), top: Math.max(8, area.top + 8),
+      right: Math.min(win.innerWidth - 12, area.right - 8), bottom: Math.min(win.innerHeight - 8, area.bottom - 8) };
+    bounds.width = bounds.right - bounds.left; bounds.height = bounds.bottom - bounds.top;
+    const obstacles = [...table.querySelectorAll(".wt-seat-badge, .wt-avatar, .wt-seat-name, .wt-seat-call-role, .wt-seat-tags, .wt-seat-meta, "
+      + ".wt-backs > i:not([hidden]), .wt-taken[data-filled='true'], .wt-stock, .wt-reference, "
+      + "[data-wt-hand-area], [data-wt-panel], [data-wt-stake], [data-wt-private], [data-wt-history]:not([hidden])")]
+      .map(box).filter(Boolean);
+    const fit = fitPortraitPrompt(bounds, obstacles, { height: tagBox.height, widths: [tagBox.width], centerFirst: true });
+    if (!fit) return;
+    tag.dataset.wtPositionedRetourTag = "true";
+    tag.style.setProperty("--wt-retour-tag-x", `${fit.left}px`);
+    tag.style.setProperty("--wt-retour-tag-y", `${fit.top}px`);
+  }
   function positionOverlays() {
     positionRetourOffer();
     positionReference();
     positionCalls();
     positionClosedHistory();
+    positionRetourTag();
   }
   function fallback(reason) {
     portrait = null;
@@ -387,7 +412,7 @@ export function createTrickLayout(trick, { win = window } = {}) {
     // packets likewise paint rotated corners and a counter beyond their box.
     const protectedNodes = [...table.querySelectorAll(".wt-seat-badge, .wt-avatar, .wt-seat-name, .wt-seat-call-role, .wt-seat-tags, .wt-seat-meta, .wt-bubble--thanks, "
       + ".wt-backs > i:not([hidden]), .wt-taken[data-filled='true'], .wt-taken[data-filled='true'] i, .wt-stock, "
-      + "[data-wt-hand-area], [data-wt-hand] > *, [data-wt-panel], [data-wt-private] button, [data-wt-stake], [data-wt-history]:not([open])")].filter(node => node !== neutralPrompt);
+      + "[data-wt-hand-area], [data-wt-hand] > *, [data-wt-panel], [data-wt-private] button, [data-wt-stake], [data-wt-history]:not([open]), .wt-retour-tag")].filter(node => node !== neutralPrompt);
     const history = table.querySelector("[data-wt-history]:not([open])"), historyBox = box(history);
     const moveHistory = Boolean(historyBox && table.dataset.phase === "play" && (!panel?.children.length || neutralPrompt));
     // Remove the extra dock row before measuring. Its final 44px position is
@@ -399,14 +424,13 @@ export function createTrickLayout(trick, { win = window } = {}) {
     const obstacles = protectedNodes.filter(node => !moveHistory || node !== history).map(box).filter(Boolean);
     obstacles.push(...[...table.querySelectorAll(".wt-taken[data-filled='true']")].map(counterBox).filter(Boolean));
     if (reference) obstacles.push(reference);
-    const originalWidth = Number.parseFloat(win.getComputedStyle(trick.firstElementChild).width) || 0;
-    const minimumWidth = Math.max(win.innerWidth >= 360 ? 76 : 64, Math.ceil(originalWidth));
-    const handFrame = table.querySelector("[data-wt-hand-area]")?.getBoundingClientRect();
+    // A completed trick must not inherit a larger fallback CSS card width as
+    // its minimum; that can make the measured layout fail on the last hand.
+    const minimumWidth = win.innerWidth >= 360 ? 76 : 64;
     const prefix = [...trick.children].map(card => card.dataset.key);
-    const portraitKey = [match, deal, count, table.dataset?.phase, prefix[0], win.innerWidth, win.innerHeight,
-      win.devicePixelRatio || 1, win.visualViewport?.scale || 1, originalWidth,
-      area.left, area.top, area.width, area.height,
-      handFrame?.left, handFrame?.top, handFrame?.width, handFrame?.height].join(":");
+    const portraitKey = [match, deal, count, prefix[0], win.innerWidth, win.innerHeight,
+      win.devicePixelRatio || 1, win.visualViewport?.scale || 1,
+      area.left, area.top, area.width, area.height].join(":");
     const preferred = portrait?.key === portraitKey && portrait.prefix.every((card, index) => prefix[index] === card)
       ? portrait.fit : null;
     // Reserve the eventual winner caption while the trick is still live, so

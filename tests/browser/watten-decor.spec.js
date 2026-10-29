@@ -123,3 +123,66 @@ test('tablet decorations remain reachable and draggable through harmless table r
     expect(players.flatMap(peer => peer.traffic.errors)).toEqual([]);
   } finally { await Promise.allSettled(players.map(peer => peer.context.close())); }
 });
+
+test('phone decorations can be dragged from every visible initial position to another clear space', async ({ browser, baseURL }) => {
+  const players = [];
+  try {
+    const mobileBrowser = { newContext: options => browser.newContext({ ...options,
+      viewport: { width: 440, height: 956 }, hasTouch: true, isMobile: true }) };
+    for (let seat = 0; seat < 4; seat++) players.push(await player(mobileBrowser, baseURL, 'de', { role: seat === 0 ? 'admin' : 'user' }));
+    await create(players, { count: 4, target: 15, determination: 'normal', reference: true, trickHistory: true }); await normalCall(players);
+    expect(players[0].traffic.snapshot.engine.options.show_rechter).toBe(true);
+    expect(players[0].traffic.snapshot.engine.options.trick_history).toBe(true);
+    const page = players[0].page;
+    await page.setViewportSize({ width: 440, height: 956 });
+    const bundle = await build({ entryPoints: [path.resolve('frontend/watten/decor.js')], bundle: true,
+      write: false, format: 'esm', platform: 'browser', target: 'es2020', logLevel: 'silent' });
+    await page.evaluate(async code => {
+      const module = await import(`data:text/javascript;base64,${btoa(unescape(encodeURIComponent(code)))}`);
+      window.decorGeometry = { protectedSelector: module.DECOR_PROTECTED, fits: module.fitsDecor };
+    }, bundle.outputFiles[0].text);
+    const props = page.locator('[data-watten-decor-item]:visible');
+    expect(await props.count()).toBeGreaterThan(0);
+    const firstBox = await props.first().boundingBox();
+    await page.touchscreen.tap(firstBox.x + firstBox.width / 2, firstBox.y + firstBox.height / 2);
+    for (const item of await props.all()) {
+      const target = await item.evaluate(node => {
+        const source = node.getBoundingClientRect(), felt = document.querySelector('[data-wt-felt]').getBoundingClientRect();
+        const { protectedSelector, fits } = window.decorGeometry;
+        const protectedRects = [...document.querySelector('#wattenApp').querySelectorAll(protectedSelector)]
+          .filter(other => !other.closest('[data-watten-decor-layer], [hidden]'))
+          .map(other => other.getBoundingClientRect()).filter(box => box.width > 0 && box.height > 0);
+        const occupied = [...document.querySelectorAll('[data-watten-decor-item]')]
+          .filter(other => other !== node && !other.hidden).map(other => other.getBoundingClientRect());
+        for (let y = felt.top + 16; y + source.height < felt.bottom - 16; y += 16) {
+          for (let x = felt.left + 16; x + source.width < felt.right - 16; x += 16) {
+            if (Math.hypot(x - source.left, y - source.top) < 32) continue;
+            if (fits({ left: x, right: x + source.width, top: y, bottom: y + source.height },
+              { regions: [felt], protectedRects }, occupied)) return { x, y };
+          }
+        }
+        return null;
+      });
+      expect(target, 'a free position exists').toBeTruthy();
+      const source = await item.boundingBox();
+      const start = { x: source.x + source.width / 2, y: source.y + source.height / 2 };
+      const end = { x: target.x + source.width / 2, y: target.y + source.height / 2 };
+      if (browser.browserType().name() === 'chromium') {
+        const cdp = await page.context().newCDPSession(page);
+        await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [start] });
+        for (let step = 1; step <= 5; step++) await cdp.send('Input.dispatchTouchEvent', {
+          type: 'touchMove', touchPoints: [{ x: start.x + (end.x - start.x) * step / 5,
+            y: start.y + (end.y - start.y) * step / 5 }] });
+        await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+        await cdp.detach();
+      } else {
+        // Playwright's WebKit touch API exposes taps but no touch-drag gesture.
+        await page.mouse.move(start.x, start.y); await page.mouse.down();
+        await page.mouse.move(end.x, end.y, { steps: 5 }); await page.mouse.up();
+      }
+      const moved = await item.boundingBox();
+      expect(Math.hypot(moved.x - source.x, moved.y - source.y)).toBeGreaterThan(20);
+    }
+    expect(players.flatMap(peer => peer.traffic.errors)).toEqual([]);
+  } finally { await Promise.allSettled(players.map(peer => peer.context.close())); }
+});

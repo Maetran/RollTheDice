@@ -221,6 +221,15 @@ class HttpShellTestCase(unittest.IsolatedAsyncioTestCase):
             self.assertIn("defer", html[start:end], f"{html_path.name}: shell.js")
             for legacy_asset in ("i18n.js", "ui.js", "pwa.js", "theme.js"):
                 self.assertNotIn(f"/static/{legacy_asset}", html, html_path.name)
+            if html_path.name == "admin.html":
+                # Administration has a fixed Nexus palette, independent of the
+                # saved game appearance. The shared shell still must defer.
+                self.assertIn('data-admin-design="nexus"', html)
+                self.assertIn('href="/static/admin-nexus.css?v=', html)
+                self.assertNotIn('href="/static/zdwa-design-2026.css?', html)
+                self.assertNotIn("document.documentElement.dataset.theme", html)
+                self.assertNotIn("wuerfler_theme", html)
+                continue
             if html_path.name in HAUSDEPP_SHELL_ARTIFACTS:
                 # Hausdepp owns its approved tavern-table design. The shared
                 # shell still defers, but legacy dice-theme selection must

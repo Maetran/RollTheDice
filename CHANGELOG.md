@@ -23,6 +23,39 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 4.11.1 — 2026-10-29
+
+Dieses Update verbessert die Übersicht an mobilen Spieltischen und gibt dem
+Admin Center ein eigenes Erscheinungsbild.
+
+This update makes mobile game tables clearer and gives the Admin Center its
+own appearance.
+
+### WATTEN
+
+**Deutsch:** Retourschneider steht nur einem Team offen, das bereits Punkte
+angeschrieben hat. Stichverlauf, letzter Stich und Tischdekoration sind auf
+kleinen Bildschirmen besser angeordnet; die Dekoration wechselt zwischen Runden.
+
+**English:** Retourschneider is available only to a team that has already
+scored. Trick history, the final trick and table decorations are better arranged
+on small screens; decorations change between rounds.
+
+### HAUSDEPP
+
+**Deutsch:** Gleiche Karten auf dem offenen Paket fächern nach rechts auf und
+halten den Abhebestapel frei.
+
+**English:** Matching cards on the open pile fan out to the right, keeping the
+draw pile clear.
+
+### ALLGEMEIN / GENERAL
+
+**Deutsch:** Das Admin Center erhält ein eigenes, vom Nexus-Dashboard
+inspiriertes Design.
+
+**English:** The Admin Center gets its own design inspired by the Nexus dashboard.
+
 ## 4.11.0 — 2026-10-27
 
 Dein Konto zeigt dir, gegen wen du besonders häufig spielst und wie eure

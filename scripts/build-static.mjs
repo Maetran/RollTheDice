@@ -19,6 +19,7 @@ const targets = [
   { source: "frontend/admin/account-merge.js", output: "app/static/admin-account-merge.js", format: "esm" },
   { source: "frontend/admin/features.js", output: "app/static/admin-features.js", format: "esm" },
   { source: "frontend/styles/admin-features.css", output: "app/static/admin-features.css" },
+  { source: "frontend/styles/admin-nexus.css", output: "app/static/admin-nexus.css" },
   { source: "frontend/styles/admin-account-merge.css", output: "app/static/admin-account-merge.css" },
   { source: "frontend/shared/voice-preferences.js", output: "app/static/voice-preferences.js", format: "esm" },
   { source: "frontend/shared/game-tours.js", output: "app/static/game-tours.js", format: "esm" },

@@ -310,7 +310,7 @@ class ScoreLedger:
             accounts = tuple(replace(account, points=account.points + result.points)
                              if set(account.members) <= winning else account for account in accounts)
             if choice is not None and result.deal_id == choice.after_deal_id:
-                candidate = retourschneider_candidate(ScoreLedger(self.target, accounts, self.applied_results[:index + 1]))
+                candidate = retourschneider_candidate(ScoreLedger(self.target, accounts, self.applied_results[:index + 1]), _historical=True)
                 if (candidate != choice.members
                         or next(account.points for account in accounts if account.members == choice.members)
                         != choice.erased_points):
@@ -321,7 +321,7 @@ class ScoreLedger:
         return accounts
 
 
-def retourschneider_candidate(ledger: ScoreLedger) -> tuple[str, ...] | None:
+def retourschneider_candidate(ledger: ScoreLedger, *, _historical: bool = False) -> tuple[str, ...] | None:
     """A fixed four-player team gets one choice when opponents first cross nine.
 
     For other targets the same confirmed gestrichen boundary is target minus
@@ -335,13 +335,13 @@ def retourschneider_candidate(ledger: ScoreLedger) -> tuple[str, ...] | None:
     lead = next(account for account in ledger.accounts if set(account.members) == set(leaders))
     other = next(account for account in ledger.accounts if account is not lead)
     boundary = ledger.target - 2
-    if lead.points >= boundary > lead.points - latest.points and other.points < boundary:
+    if lead.points >= boundary > lead.points - latest.points and other.points < boundary and (other.points > 0 or _historical):
         return other.members
     return None
 
 
-def choose_retourschneider(ledger: ScoreLedger, members: tuple[str, ...], *, accept: bool) -> ScoreLedger:
-    if type(accept) is not bool or retourschneider_candidate(ledger) != members:
+def choose_retourschneider(ledger: ScoreLedger, members: tuple[str, ...], *, accept: bool, _historical: bool = False) -> ScoreLedger:
+    if type(accept) is not bool or retourschneider_candidate(ledger, _historical=_historical) != members:
         raise WattenBiddingError("watten_retourschneider_unavailable")
     own = next(account for account in ledger.accounts if account.members == members)
     choice = Retourschneider(members, ledger.applied_results[-1].deal_id, own.points, accept)

@@ -103,7 +103,7 @@ async function openCreator(page, { favorite = false } = {}) {
   return form;
 }
 
-async function create(players, { count = players.length, target = 3, reference = false, partnerHand = false, schoeneres = false, schlagwechsel = false, tournament = null, start = true, password, determination, cpuFill = false } = {}) {
+async function create(players, { count = players.length, target = 3, reference = false, trickHistory = false, partnerHand = false, schoeneres = false, schlagwechsel = false, tournament = null, start = true, password, determination, cpuFill = false } = {}) {
   const host = players[0];
   await host.page.goto('/watten');
   const form = await openCreator(host.page);
@@ -116,9 +116,10 @@ async function create(players, { count = players.length, target = 3, reference =
   }
   await form.locator('[name=target]').selectOption(String(target));
   if (partnerHand && await form.locator('[name=blind]').isChecked()) await form.locator('[name=blind]').uncheck();
-  if (reference || partnerHand || schoeneres || schlagwechsel) {
+  if (reference || trickHistory || partnerHand || schoeneres || schlagwechsel) {
     await form.locator('[data-watten-advanced] > summary').click();
     if (reference) await form.locator('[name=show_rechter]').check();
+    if (trickHistory) await form.locator('[name=trick_history]').check();
     if (partnerHand) await form.locator('[name=partner_hand]').check();
     if (schoeneres) await form.locator('[name=schoeneres_enabled]').check();
     if (schlagwechsel) await form.locator('[name=schlagwechsel_enabled]').check();

@@ -223,7 +223,9 @@ def _replay_scoring(roster: tuple[Participant, ...], target: int, scores: tuple[
                          result=result)
         ledger = award_deal(ledger, state)
         if retourschneider is not None and item.deal_id == retourschneider.after_deal_id:
-            ledger = choose_retourschneider(ledger, retourschneider.members, accept=retourschneider.accepted)
+            # Previously recorded zero-point choices remain valid historical
+            # evidence, although live games no longer offer that choice.
+            ledger = choose_retourschneider(ledger, retourschneider.members, accept=retourschneider.accepted, _historical=True)
             _require(ledger.retourschneider == retourschneider)
         snapshots.append(tuple(Score(account.members, account.points) for account in ledger.accounts))
     _require(ledger.retourschneider == retourschneider)

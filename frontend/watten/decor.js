@@ -41,8 +41,10 @@ export function fitsDecor(rect, geometry, occupied = []) {
 
 export function findDecorPosition(geometry, occupied = [], side = SIDE) {
   for (const region of geometry.regions) {
-    // Scatter along both sides and through the free centre before scanning.
-    for (const [x, y] of [[.12, .16], [.83, .2], [.18, .72], [.8, .74], [.22, .43], [.77, .47], [.48, .25], [.5, .65]]) {
+    // Vary the starting point instead of pinning each prop to the same slots.
+    const spots = [[.12, .16], [.83, .2], [.18, .72], [.8, .74], [.22, .43], [.77, .47], [.48, .25], [.5, .65]];
+    const offset = Math.floor(Math.random() * spots.length);
+    for (const [x, y] of [...spots.slice(offset), ...spots.slice(0, offset)]) {
       const rect = box(region.left + x * (region.right - region.left - side), region.top + y * (region.bottom - region.top - side), side, side);
       if (fitsDecor(rect, geometry, occupied)) return { region: region.name, x, y };
     }
@@ -70,6 +72,7 @@ export function createDecor({ container, root, gameId = null, getExpectedAccount
   let destroyed = false, phase = "preview", selected = null, serial = 0, drag = null, ignoreClick = null;
   let geometry = { regions: [], protectedRects: [] }, notice = "", hidden = false, autoPlaced = false, propSide = SIDE;
   let surprise = null, rareNode = null, surprisePending = false, surpriseCleanup = null, lastSurprise = null, currentDealId = null;
+  let previousKinds = [];
   const current = () => !destroyed && Number.isSafeInteger(accountId) && accountId > 0
     && isCurrent() && getExpectedAccountId() === accountId;
   const t = (key, values = {}) => WATTEN_DECOR_MESSAGES[language() === "en" ? "en" : "de"][key]
@@ -330,19 +333,32 @@ export function createDecor({ container, root, gameId = null, getExpectedAccount
   function update({ publicPhase, surpriseOffer = null, dealId = null }) {
     if (!current()) { destroy(); return; }
     if (!PHASES.has(publicPhase)) { phase = "offline"; suspend(); return; }
-    if ((currentDealId && dealId && currentDealId !== dealId) || !["play", "bid_response"].includes(publicPhase)) {
+    const newDeal = currentDealId && dealId && currentDealId !== dealId;
+    if (newDeal || !["play", "bid_response"].includes(publicPhase)) {
       surpriseCleanup?.(); surpriseCleanup = null;
     }
-    currentDealId = dealId;
+    if (newDeal) {
+      stopEffects();
+      previousKinds = [...items.values()].map(item => item.kind);
+      for (const item of items.values()) {
+        interactions.remove(item.node); item.events.abort(); item.node.remove();
+      }
+      items.clear(); selected = null; autoPlaced = false;
+    }
+    if (dealId) currentDealId = dealId;
     if (phase !== publicPhase) stopEffects();
     phase = publicPhase; updateRare(surpriseOffer); repainted();
     if (!autoPlaced && ACTIVE_PHASES.has(phase) && geometry.regions.some(region => region.name === "table")) {
       autoPlaced = true;
-      const pool = Object.keys(DECOR_ITEMS).filter(kind => kind !== "beer");
+      const pool = Object.keys(DECOR_ITEMS);
       for (let index = pool.length - 1; index > 0; index--) {
         const next = Math.floor(Math.random() * (index + 1)); [pool[index], pool[next]] = [pool[next], pool[index]];
       }
-      const kinds = initialKinds || ["beer", ...pool.slice(0, 2)];
+      // A new deal gets a different selection even if the shuffle repeats.
+      const fresh = pool.filter(kind => !previousKinds.includes(kind));
+      const kinds = initialKinds || (previousKinds.length
+        ? [...fresh, ...pool.filter(kind => !fresh.includes(kind))].slice(0, 3)
+        : ["beer", ...pool.filter(kind => kind !== "beer").slice(0, 2)]);
       for (const kind of kinds) add(kind);
       selected = null; notice = ""; controls();
     }

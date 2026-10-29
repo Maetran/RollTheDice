@@ -46,7 +46,10 @@ async function collectionGeometry(page) {
     const frame = table.querySelector('[data-wt-hand-area]'), area = frame.getBoundingClientRect();
     const slots = [area, ...[...frame.querySelectorAll('[data-wt-hand] > *')].map(card => card.getBoundingClientRect())]
       .filter(rect => rect.width > 0 && rect.height > 0);
+    const felt = table.querySelector('[data-wt-felt]').getBoundingClientRect();
     return { phase: table.dataset.phase, stage: table.dataset.roundStage, count: cards.length, bottom: Math.max(...cards.map(card => card.bottom)),
+      largestCard: Math.max(...cards.map(card => card.width)),
+      centreOffset: Math.abs((Math.min(...cards.map(card => card.left)) + Math.max(...cards.map(card => card.right))) / 2 - (felt.left + felt.right) / 2),
       reserveTop: Math.min(...slots.map(rect => rect.top)), handHeight: area.height,
       hidden: getComputedStyle(frame).visibility === 'hidden', removed: frame.hidden };
   });
@@ -89,10 +92,16 @@ for (const language of ['de', 'en']) for (const viewport of VIEWPORTS) test(`${l
   test.setTimeout(90_000);
   const players = [];
   try {
-    for (let seat = 0; seat < 4; seat++) players.push(await player(browser, baseURL, language));
-    await create(players, { count: 4, target: 15, determination: 'normal' });
+    const bothOptions = viewport.width === 440 && viewport.height === 956;
+    for (let seat = 0; seat < 4; seat++) players.push(await player(browser, baseURL, language,
+      { role: bothOptions && seat === 0 ? 'admin' : 'user' }));
+    await create(players, { count: 4, target: 15, determination: 'normal', reference: bothOptions, trickHistory: bothOptions });
     await normalCall(players);
     const initial = structuredClone(players[0].traffic.snapshot);
+    if (bothOptions) {
+      expect(initial.engine.options.show_rechter).toBe(true);
+      expect(initial.engine.options.trick_history).toBe(true);
+    }
     for (let card = 0; card < 4; card++) await playOne(players);
     const snapshot = structuredClone(players[0].traffic.snapshot);
     expect(snapshot.engine.last_trick.cards).toHaveLength(4);
@@ -139,7 +148,9 @@ for (const language of ['de', 'en']) for (const viewport of VIEWPORTS) test(`${l
     }, { snapshot, initial });
     expect(mounted.initialDelta).toBeLessThanOrEqual(1);
     await page.setViewportSize(viewport);
-    for (const scene of ['collect', 'collect-empty', 'retour', 'bloedeln', 'bloedeln-inspection']) {
+    const scenes = ['collect', 'collect-empty', 'retour', 'bloedeln', 'bloedeln-inspection'];
+    if (viewport.width === 440 && viewport.height === 956) scenes.push('retour-active');
+    for (const scene of scenes) {
       await page.evaluate(scene => {
         const { view, snapshot, initial } = window.followup;
         // These are explicitly display fixtures. Preplay starts with the
@@ -147,7 +158,7 @@ for (const language of ['de', 'en']) for (const viewport of VIEWPORTS) test(`${l
         const copy = structuredClone(scene.startsWith('bloedeln') ? initial : snapshot), engine = copy.engine, own = copy.viewer.seat;
         engine.deal_revision = ++window.followup.revision;
         engine.actions = [];
-        engine.phase = scene.startsWith('bloedeln') ? 'show_ready' : 'deal_complete';
+        engine.phase = scene.startsWith('bloedeln') ? 'show_ready' : scene === 'retour-active' ? 'play' : 'deal_complete';
         engine.current_trick.cards = [];
         engine.hand = scene === 'collect-empty' ? [] : scene === 'collect' ? snapshot.engine.hand.slice(0, 1) : structuredClone(initial.engine.hand);
         if (scene.startsWith('collect')) {
@@ -157,7 +168,7 @@ for (const language of ['de', 'en']) for (const viewport of VIEWPORTS) test(`${l
             : [((own + 1) % 4), ((own + 2) % 4)].includes(seat.seat) ? 1 : 0; });
           engine.last_trick.winner = own;
         }
-        engine.retourschneider = scene === 'retour' ? { status: 'available', after_deal_id: engine.deal_id,
+        engine.retourschneider = scene.startsWith('retour') ? { status: scene === 'retour-active' ? 'active' : 'available', after_deal_id: engine.deal_id,
           members: [copy.room.seats[own].participant_id, copy.room.seats[(own + 2) % 4].participant_id], accepted_by: [] } : null;
         let actions = scene === 'retour' ? ['retourschneider'] : [];
         if (scene.startsWith('bloedeln')) {
@@ -179,12 +190,29 @@ for (const language of ['de', 'en']) for (const viewport of VIEWPORTS) test(`${l
       }, scene);
       await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
       await expectNativeMount(page);
+      if (scene === 'retour-active') {
+        const history = page.locator('[data-layout-followup] [data-wt-history]');
+        const tag = page.locator('[data-layout-followup] .wt-retour-tag');
+        for (const open of [false, true]) {
+          await history.evaluate((node, value) => { node.open = value; }, open);
+          await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+          await expect(tag).toBeVisible();
+          const [a, b] = await Promise.all([tag.boundingBox(), history.boundingBox()]);
+          expect(a.x + a.width <= b.x || b.x + b.width <= a.x || a.y + a.height <= b.y || b.y + b.height <= a.y,
+            `Retour tag overlaps ${open ? 'open' : 'closed'} history: ${JSON.stringify({ a, b })}`).toBe(true);
+        }
+        await history.evaluate(node => { node.open = false; });
+      }
       if (scene.startsWith('collect')) {
         await expect(page.locator('[data-layout-followup] .wt-trick-card').first()).toBeVisible();
         const geometry = await collectionGeometry(page);
         expect(geometry.count).toBe(4); expect(geometry.phase).toBe('deal_complete'); expect(geometry.stage).toBe('collect');
         expect(geometry.hidden).toBe(true); expect(geometry.removed).toBe(false); expect(geometry.handHeight).toBeGreaterThan(0);
         expect(geometry.bottom).toBeLessThanOrEqual(geometry.reserveTop + 1);
+        if (bothOptions) {
+          expect(geometry.largestCard).toBeLessThanOrEqual(105);
+          expect(geometry.centreOffset).toBeLessThanOrEqual(2);
+        }
         const rotated = { width: viewport.height, height: viewport.width };
         await page.setViewportSize(rotated);
         await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));

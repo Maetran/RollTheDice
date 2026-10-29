@@ -237,3 +237,24 @@ for (const language of ['de', 'en']) {
     await expect(page.locator('#adminMessage')).toHaveAttribute('aria-live', 'polite');
   });
 }
+
+test('admin Nexus stays independent of saved game themes on phone and desktop', async ({ page }, testInfo) => {
+  await fixture(page, { theme: 'classic', width: 440 });
+  await expect(page.locator('html')).toHaveAttribute('data-admin-design', 'nexus');
+  await expect(page.locator('[data-theme-toggle]')).toHaveCount(0);
+  await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(11, 16, 15)');
+  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#0b100f');
+  await page.locator('[data-admin-panel="usersPanel"]').click();
+  for (const width of [440, 1440]) {
+    await page.setViewportSize({ width, height: 956 });
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await expect(page.locator('html')).toHaveJSProperty('scrollWidth', width);
+    await page.screenshot({ path: testInfo.outputPath(`admin-nexus-${width}.png`) });
+  }
+  await page.evaluate(() => {
+    localStorage.setItem('wuerfler_theme', 'light');
+    window.dispatchEvent(new StorageEvent('storage', { key: 'wuerfler_theme', newValue: 'light' }));
+  });
+  await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(11, 16, 15)');
+  await expect(page.locator('html')).toHaveCSS('color-scheme', 'dark');
+});

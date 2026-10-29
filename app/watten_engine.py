@@ -903,8 +903,18 @@ def restore_storage(value: dict) -> EngineState:
             choices = ((pending_request.requester, True),)
         elif not ((play and play.plays) or bidding.pending is not None or bidding.accepted_stake > 2 or bidding.result is not None):
             choices = ()
+    votes = tuple(_list(value.get("retour_accepted_by", [])))
+    # A pre-update checkpoint may contain one Yes on an offer which is no
+    # longer eligible. Discard only a valid old partial vote; the round can
+    # continue without offering a new zero-point challenge.
+    old_candidate = retourschneider_candidate(ledger, _historical=True)
+    if (votes and value["phase"] == "deal_complete" and old_candidate is not None
+            and retourschneider_candidate(ledger) is None
+            and all(type(player) is str for player in votes)
+            and len(set(votes)) == len(votes) and set(votes) < set(old_candidate)):
+        votes = ()
     return EngineState(recipe, raw_deal["id"], deal, parties, value["phase"], value["opportunity"], ledger, bidding,
                        value["normal_strike"], call, *inspection, play, feedback, tuple(cache),
                        preplay["deal_revision"], preplay["call_swapped"], pending_request, preplay["bloedeln"],
-                       tuple(_list(value.get("retour_accepted_by", []))), value.get("discarded_bid_increases", 0),
+                       votes, value.get("discarded_bid_increases", 0),
                        bloedeln_decisions=choices)

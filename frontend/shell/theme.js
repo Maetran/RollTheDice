@@ -1,6 +1,19 @@
 (function () {
   "use strict";
 
+  // Administration owns a fixed Nexus appearance, not a game preference.
+  if (document.documentElement.dataset.adminDesign === "nexus") {
+    document.documentElement.style.colorScheme = "dark";
+    let meta = document.querySelector('meta[name="theme-color"]');
+    if (!meta) {
+      meta = document.createElement("meta");
+      meta.name = "theme-color";
+      document.head.appendChild(meta);
+    }
+    meta.content = "#0b100f";
+    return;
+  }
+
   const isZilch = document.documentElement.dataset.game === "zilch";
   const isHausdepp = document.documentElement.dataset.game === "hausdepp";
   const STORAGE_KEY = isZilch ? "zilch_theme" : "wuerfler_theme";

@@ -11,9 +11,18 @@ from types import SimpleNamespace
 import pytest
 
 from app import watten_runtime as runtime_module
+from app.watten_bidding import Retourschneider
 from app.watten_cpu_runtime import observe_cpu_memories
 from app.watten_engine import EngineActor, EngineCommand, retourschneider_decider, retourschneider_offer
-from app.watten_evidence import BidEvidence, evidence_from_payload, evidence_to_payload
+from app.watten_evidence import (
+    BidEvidence,
+    Deal,
+    Participant,
+    Score,
+    _replay_scoring,
+    evidence_from_payload,
+    evidence_to_payload,
+)
 from app.watten_match_evidence import terminal_evidence
 from app.watten_play import legal_cards
 from app.watten_recipe import WattenRecipe
@@ -29,6 +38,17 @@ from app.watten_runtime import (
     serialize_watten_game,
     snapshot_watten,
 )
+
+
+@pytest.mark.parametrize("accepted", (True, False))
+def test_historical_zero_point_retourschneider_evidence_remains_replayable(accepted):
+    roster = tuple(Participant(player, index, player, False) for index, player in enumerate("ABCD"))
+    parties = (("A", "C"), ("B", "D"))
+    deals = tuple(Deal(f"deal-{index}", parties, 0, 2, "tricks") for index in range(6))
+    scores = (Score(parties[0], 12), Score(parties[1], 0))
+    history = _replay_scoring(roster, 11, scores, (parties[0],), deals,
+                              Retourschneider(parties[1], "deal-4", 0, accepted))
+    assert history[-1] == scores
 
 
 @pytest.fixture(autouse=True)

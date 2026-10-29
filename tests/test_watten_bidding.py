@@ -9,15 +9,18 @@ from app.watten_bidding import (
     DealParties,
     DealProgress,
     Offer,
+    Retourschneider,
     ScoreAccount,
     ScoreLedger,
     WattenBiddingError,
     award_deal,
     bid,
+    choose_retourschneider,
     finish_deal_from_trusted_engine,
     new_score_ledger,
     require_gameplay_allowed,
     respond,
+    retourschneider_candidate,
 )
 
 
@@ -286,6 +289,27 @@ def test_unique_deal_id_prevents_replay_even_from_a_new_round_state_or_conflicti
     assert award_deal(ledger, different).accounts[0].points == 4
     with pytest.raises(WattenBiddingError, match="not_finished"):
         award_deal(ledger, BidState("deal-3", roles()))
+
+
+def test_retourschneider_requires_challengers_to_have_scored_and_keeps_old_choices_readable():
+    done = finished(winner=0, deal_id="boundary")
+    prior = ScoreLedger(11, (ScoreAccount(("A", "C"), 7), ScoreAccount(("B", "D"), 0)))
+    no_points = award_deal(prior, done)
+    assert retourschneider_candidate(no_points) is None
+    with pytest.raises(WattenBiddingError, match="retourschneider_unavailable"):
+        choose_retourschneider(no_points, ("B", "D"), accept=True)
+    scored = replace(no_points, accounts=(no_points.accounts[0], ScoreAccount(("B", "D"), 2)))
+    assert retourschneider_candidate(scored) == ("B", "D")
+
+    # Real earlier matches could accept the zero-point offer. Reconstruct one
+    # from complete scoring history rather than allowing a new live offer.
+    historic = new_score_ledger(roles(), target=11)
+    for index in range(4):
+        historic = award_deal(historic, finished(winner=0, deal_id=f"old-{index}"))
+    historic = award_deal(historic, finished(winner=0, deal_id="old-boundary"))
+    assert retourschneider_candidate(historic) is None
+    historic = replace(historic, retourschneider=Retourschneider(("B", "D"), "old-boundary", 0, True))
+    assert historic.replayed_accounts == historic.accounts
 
 
 def test_completed_match_refuses_further_awards_and_foreign_rosters_or_teams_are_rejected():

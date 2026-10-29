@@ -34,6 +34,13 @@ store = push_fixtures.store
 actor_request = push_fixtures.actor_request
 
 
+@pytest.fixture
+def moderation_at_merge_time(monkeypatch):
+    # The merge and moderation reads/revocations must share one clock, even
+    # after this test's deliberately fixed ban dates have passed in real time.
+    monkeypatch.setattr("app.moderation.utcnow", lambda: NOW)
+
+
 def mapped(db, source_id, target_id, operation_id="c" * 32):
     accounts = lock_account_rows(db, [source_id, target_id])
     db.add(AccountMergeOperation(id=operation_id, actor_user_id=target_id, source_user_id=source_id,
@@ -57,6 +64,7 @@ def credentials(db, user_id):
             user.created_at, user.updated_at)
 
 
+@pytest.mark.usefixtures("moderation_at_merge_time")
 def test_retirement_revokes_source_only_and_keeps_target_credentials_and_original_restrictions(store):
     with session_scope() as db:
         source = db.get(User, store.source.id)
@@ -155,6 +163,7 @@ def test_restrictive_transfer_respects_target_privileges_and_normal_inactive_sou
             invoke(db, source, target, "e" * 32)
 
 
+@pytest.mark.usefixtures("moderation_at_merge_time")
 def test_explicit_target_unban_and_unmute_survive_a_later_chained_merge(store):
     admin = create_user("MergeModerator", "test-password-123", role="admin", must_change_password=False)
     third = create_user("MergeThird", "test-password-123", must_change_password=False)

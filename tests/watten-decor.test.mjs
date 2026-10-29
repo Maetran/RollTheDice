@@ -323,6 +323,21 @@ test("all ordinary Hausdepp props are available while automatic tables keep thre
   f.update("strike"); f.update("play"); assert.deepEqual(f.props().map(node => node.dataset.wattenDecorKind), kinds);
 });
 
+test("a new deal replaces the local decorations once, while repaints keep them", () => {
+  const f = fixture({ initialKinds: null });
+  f.client.update({ publicPhase: "play", dealId: "first" });
+  const first = f.props(), firstKinds = first.map(node => node.dataset.wattenDecorKind);
+  f.client.update({ publicPhase: "play", dealId: "first" });
+  assert.deepEqual(f.props(), first);
+  f.client.update({ publicPhase: "strike", dealId: "second" });
+  const second = f.props(), secondKinds = second.map(node => node.dataset.wattenDecorKind);
+  assert.equal(second.length, 3);
+  assert.ok(second.every(node => !first.includes(node)));
+  assert.ok(secondKinds.every(kind => !firstKinds.includes(kind)));
+  f.client.update({ publicPhase: "play", dealId: "second" });
+  assert.deepEqual(f.props(), second);
+});
+
 test("calm sips empty and refill the same glass; rapid taps spill, tip and deliberately stand it up", async () => {
   const originalNow = Date.now; let now = 5000; Date.now = () => now;
   const finish = async node => {
