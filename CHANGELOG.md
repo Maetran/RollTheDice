@@ -23,6 +23,28 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 4.11.2 — 2026-10-29
+
+Dieses Update macht Stiche und Abheben auf den Spieltischen besser erkennbar.
+
+This update makes tricks and bottom inspection easier to follow at the table.
+
+### WATTEN
+
+**Deutsch:** Im Blindwatten bleiben abgeschlossene Stiche eine Sekunde länger
+sichtbar. Auf mobilen Tischen werden Stich und Stichverlauf stabiler angeordnet.
+
+**English:** Completed tricks stay visible one second longer in blind Watten.
+On mobile tables, the trick and its history have a more stable layout.
+
+### HAUSDEPP
+
+**Deutsch:** Beim Abheben erscheint die private Karte kurz unter dem verdeckten
+Stapel. Karten, die unten liegen bleiben, werden dort dezent markiert.
+
+**English:** During bottom inspection, the private card briefly appears beneath
+the face-down deck. Cards left at the bottom remain subtly marked there.
+
 ## 4.11.1 — 2026-10-29
 
 Dieses Update verbessert die Übersicht an mobilen Spieltischen und gibt dem

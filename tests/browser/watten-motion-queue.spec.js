@@ -68,3 +68,98 @@ test('a queued collection measures its resting window after the actual WAAPI del
   expect(timing.resting.resting).toBe(true);
   expect(timing.resting.labelsOverlap).toBe(false);
 });
+
+test('blind trick stays visibly still one second longer than an open trick', async ({ page }) => {
+  const bundle = await build({ entryPoints: [path.join(__dirname, '../../frontend/watten/motion.js')], bundle: true,
+    write: false, format: 'esm', platform: 'browser', target: 'es2020', logLevel: 'silent' });
+  await page.setContent('<style>.card,.seat { position:absolute; width:64px; height:101px; }</style>');
+  const timings = await page.evaluate(async source => {
+    const { createMotion } = await import(`data:text/javascript;base64,${btoa(unescape(encodeURIComponent(source)))}`);
+    const sample = blind => {
+      const motion = createMotion();
+      const target = document.createElement('div'); target.className = 'seat'; target.dataset.key = 'seat-0';
+      target.style.left = '600px'; target.style.top = '50px'; document.body.append(target);
+      const cards = Array.from({ length: 4 }, (_, seat) => ({ seat, card: `card-${seat}` }));
+      const nodes = cards.map((item, index) => {
+        const node = document.createElement('div'); node.className = 'card'; node.dataset.key = item.card;
+        node.style.left = `${100 + index * 32}px`; node.style.top = '180px'; document.body.append(node); return node;
+      });
+      const last = { cards, nodes, winner: 0 };
+      const engine = value => ({ deal_id: 'deal', last_trick: value, profile: { blind } });
+      motion.present({ previous: engine(null), engine: engine(last), live: true, captured: motion.capture([target]),
+        result: { hand: { nodes: [] }, trick: { ...last, last, created: [] } }, view: { collectionNode: () => target } });
+      const group = document.querySelector('[data-wt-motion="collect"]');
+      const animation = group.getAnimations()[0]; animation.pause();
+      const duration = animation.effect.getTiming().duration;
+      animation.currentTime = 4000;
+      const position = getComputedStyle(group).translate, opacity = getComputedStyle(group).opacity;
+      motion.destroy(); target.remove(); nodes.forEach(node => node.remove());
+      return { duration, position, opacity };
+    };
+    return { open: sample(false), blind: sample(true) };
+  }, bundle.outputFiles[0].text);
+  expect(timings.open.duration).toBe(3600);
+  expect(timings.blind.duration).toBe(4600);
+  expect(timings.blind.position).toBe('0px');
+  expect(timings.blind.opacity).toBe('1');
+  expect(timings.open.opacity).toBe('0');
+});
+
+test('blind reduced motion keeps the trick still over an immediate next play and releases it', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  const bundle = await build({ entryPoints: [path.join(__dirname, '../../frontend/watten/motion.js')], bundle: true,
+    write: false, format: 'esm', platform: 'browser', target: 'es2020', logLevel: 'silent' });
+  await page.setContent(`<style>
+    .card,.seat { position:absolute; width:64px; height:101px; }
+    .card { animation: settle 1s both; } @keyframes settle { to { opacity:.55; } }
+    @media (prefers-reduced-motion: reduce) { * { animation-duration:.01ms !important; animation-delay:0s !important; } }
+  </style>`);
+  const result = await page.evaluate(async source => {
+    const { createMotion } = await import(`data:text/javascript;base64,${btoa(unescape(encodeURIComponent(source)))}`);
+    const motion = createMotion();
+    const target = document.createElement('div'); target.className = 'seat'; target.dataset.key = 'seat-0';
+    target.style.left = '600px'; target.style.top = '50px'; document.body.append(target);
+    const cards = Array.from({ length: 4 }, (_, seat) => ({ seat, card: `card-${seat}` }));
+    const nodes = cards.map((item, index) => {
+      const node = document.createElement('div'); node.className = 'card'; node.dataset.key = item.card;
+      node.style.left = `${100 + index * 32}px`; node.style.top = '180px';
+      node.setAttribute('role', 'img'); node.setAttribute('aria-label', `Previous card ${index}`);
+      document.body.append(node); return node;
+    });
+    const last = { cards, nodes, winner: 0 };
+    const engine = value => ({ deal_id: 'deal', last_trick: value, profile: { blind: true } });
+    const view = { collectionNode: () => target };
+    motion.present({ previous: engine(null), engine: engine(last), live: true, captured: motion.capture([target]),
+      result: { hand: { nodes: [] }, trick: { ...last, last, created: [] } }, view });
+    const group = document.querySelector('[data-wt-motion="collect"]'), animation = group.getAnimations()[0];
+    animation.pause(); animation.currentTime = 4000;
+    const position = getComputedStyle(group).translate, opacity = getComputedStyle(group).opacity;
+    nodes.forEach(node => node.remove()); // The owning render removes the old trick on a real next play.
+    const next = document.createElement('div'); next.className = 'card'; next.dataset.key = 'next';
+    next.style.left = '250px'; next.style.top = '180px'; next.setAttribute('role', 'img');
+    next.setAttribute('aria-label', 'Accepted next card'); document.body.append(next);
+    motion.present({ previous: engine(last), engine: engine(last), live: true, captured: motion.capture([target]),
+      result: { hand: { nodes: [] }, trick: { nodes: [next], cards: [{ seat: 0, card: 'next' }],
+        created: [{ node: next, seat: 0, card: 'next' }], last } }, view });
+    const during = getComputedStyle(next).opacity, accessibleVisibility = getComputedStyle(next).visibility;
+    const duration = animation.effect.getTiming().duration;
+    window.testBlindMotion = { motion, animation, next };
+    return { position, opacity, during, accessibleVisibility, duration };
+  }, bundle.outputFiles[0].text);
+  expect(result.duration).toBe(4600);
+  expect(result.position).toBe('none');
+  expect(result.opacity).toBe('1');
+  expect(result.during).toBe('0');
+  expect(result.accessibleVisibility).toBe('visible');
+  await expect(page.getByRole('img', { name: 'Accepted next card' })).toHaveCount(1);
+  await expect(page.getByRole('img', { name: 'Previous card 0' })).toHaveCount(0);
+  const after = await page.evaluate(async () => {
+    const { motion, animation, next } = window.testBlindMotion;
+    animation.finish(); await animation.finished; await new Promise(resolve => setTimeout(resolve, 0));
+    const restored = next.style.opacity === '' && next.style.animation === '';
+    const remaining = document.querySelectorAll('[data-wt-motion]').length;
+    motion.destroy(); return { restored, remaining };
+  });
+  expect(after.restored).toBe(true);
+  expect(after.remaining).toBe(0);
+});

@@ -1335,7 +1335,7 @@ function renderStateContent() {
   if (stockBlocker) $("hausdeppStock").setAttribute("aria-label", t("stockWaiting", { name: stockBlocker.name }));
   // Reading public cards stays available between turns; command() still
   // authoritatively gates the tap-to-pickup action and its pending state.
-  const knownBottom = s.phase === "playing" ? s.private_peek_in_stock || [] : [];
+  const knownBottom = ["peeking", "playing"].includes(s.phase) ? s.private_peek_in_stock || [] : [];
   $("hausdeppKnownBottom").hidden = !knownBottom.length;
   $("hausdeppKnownBottomCards").hidden = !knownBottom.length;
   const knownFan = $("hausdeppKnownBottomCards").querySelector(".hd-known-bottom-fan");

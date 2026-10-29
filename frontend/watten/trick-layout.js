@@ -1,5 +1,6 @@
 const RATIO = 570 / 360;
 const CAPTION = 11, LABEL = 24;
+const HISTORY_SLOT_KEY = "watten:history-slot:v1";
 const intersects = (a, b) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
 const usable = rect => rect && rect.width > 0 && rect.height > 0;
 
@@ -19,8 +20,24 @@ export function fitLandscapeTrick({ top, bottom, desiredWidth, minimumWidth = 52
   return null;
 }
 
-export function fitPortraitPrompt(bounds, obstacles, { height = 20, widths = [180, 140, 100, 80], accept = null, bottomFirst = false, centerFirst = false, rightFirst = false } = {}) {
+function preferredPrompt(bounds, obstacles, preferred, height, widths) {
+  if (!preferred || !widths.includes(preferred.width) || preferred.height !== height
+      || preferred.width > bounds.width || preferred.height > bounds.height) return null;
+  // The native viewport can settle a few pixels differently after a reload.
+  // Keep the old slot only when this small correction is inside the new bounds.
+  const left = Math.max(bounds.left, Math.min(bounds.right - preferred.width, preferred.left));
+  const top = Math.max(bounds.top, Math.min(bounds.bottom - height, preferred.top));
+  if (Math.abs(left - preferred.left) > 8 || Math.abs(top - preferred.top) > 8) return null;
+  const fit = left === preferred.left && top === preferred.top ? preferred
+    : { left, top, width: preferred.width, height, right: left + preferred.width, bottom: top + height };
   const blocked = obstacles.filter(usable).map(rect => ({ left: rect.left - 4, right: rect.right + 4, top: rect.top - 4, bottom: rect.bottom + 4 }));
+  return blocked.some(obstacle => intersects(fit, obstacle)) ? null : fit;
+}
+
+export function fitPortraitPrompt(bounds, obstacles, { height = 20, widths = [180, 140, 100, 80], accept = null, bottomFirst = false, centerFirst = false, rightFirst = false, preferred = null } = {}) {
+  const blocked = obstacles.filter(usable).map(rect => ({ left: rect.left - 4, right: rect.right + 4, top: rect.top - 4, bottom: rect.bottom + 4 }));
+  const previous = preferredPrompt(bounds, obstacles, preferred, height, widths);
+  if (previous && (!accept || accept(previous))) return previous;
   for (const width of widths.filter(width => width <= bounds.width)) {
     const xs = [...new Set([bounds.left + (bounds.width - width) / 2, bounds.left, bounds.right - width,
       ...blocked.flatMap(rect => [rect.left - width, rect.right])])];
@@ -37,7 +54,7 @@ export function fitPortraitPrompt(bounds, obstacles, { height = 20, widths = [18
 }
 
 /** Fit a public trick as one overlapping pile, preserving the players' seats. */
-export function fitPortraitTrick({ bounds, obstacles = [], count, positions = null, desiredWidth = 104, minimumWidth = 64, labelHeight = LABEL, accept = null, measureFaces = false, spreads = [.52, .44, .36] }) {
+export function fitPortraitTrick({ bounds, obstacles = [], count, positions = null, desiredWidth = 104, minimumWidth = 64, labelHeight = LABEL, accept = null, measureFaces = false, spreads = [.52, .44, .36], centred = null }) {
   if (!usable(bounds) || ![2, 3, 4].includes(count)) return null;
   const padding = 5;
   const blocked = obstacles.filter(usable).map(rect => ({ left: rect.left - padding, right: rect.right + padding,
@@ -50,7 +67,7 @@ export function fitPortraitTrick({ bounds, obstacles = [], count, positions = nu
   // upper corners of that rectangle may meet a side badge while every card
   // face stays clear. Only then measure the complete eventual card shape.
   const painted = measureFaces;
-  for (const centred of [true, false]) for (const spread of spreads) for (let cardWidth = Math.floor(desiredWidth); cardWidth >= minimumWidth; cardWidth--) {
+  for (const onCentre of centred === null ? [true, false] : [centred]) for (const spread of spreads) for (let cardWidth = Math.floor(desiredWidth); cardWidth >= minimumWidth; cardWidth--) {
     const cardHeight = cardWidth * RATIO;
     // The side cards reach towards their owners; the top and bottom cards
     // share a centre line. Captions stay outside the other card faces while
@@ -85,7 +102,7 @@ export function fitPortraitTrick({ bounds, obstacles = [], count, positions = nu
     const preferredY = bounds.top + bounds.height * .56 - height / 2;
     const clampX = x => Math.max(bounds.left, Math.min(bounds.right - width, x));
     const clampY = y => Math.max(bounds.top, Math.min(bounds.bottom - height, y));
-    const xs = centred ? [preferredX] : [...new Set([preferredX, bounds.left, bounds.right - width,
+    const xs = onCentre ? [preferredX] : [...new Set([preferredX, bounds.left, bounds.right - width,
       ...blocked.flatMap(rect => footprints.flatMap(face => [rect.left - face.right, rect.right - face.left]))].map(clampX))];
     const ys = [...new Set([preferredY, bounds.top, bounds.bottom - height,
       ...blocked.flatMap(rect => footprints.flatMap(face => [rect.top - face.bottom, rect.bottom - face.top]))].map(clampY))];
@@ -109,7 +126,7 @@ export function fitPortraitTrick({ bounds, obstacles = [], count, positions = nu
 }
 
 /** Fit the trick and its optional review/winner labels as one composition. */
-export function fitPortraitTrickView({ bounds, obstacles, count, positions = null, minimumWidth, labelHeight = 0, history = false, preferred = null }) {
+export function fitPortraitTrickView({ bounds, obstacles, count, positions = null, minimumWidth, labelHeight = 0, history = false, preferred = null, preferredHistory = null }) {
   // A newly captured packet or review tab can make the rectangular clearance
   // smaller while the accepted faces still fit at their existing size. Prove
   // that exact composition against every current obstacle and label first;
@@ -117,9 +134,12 @@ export function fitPortraitTrickView({ bounds, obstacles, count, positions = nul
   const preserve = Number.isInteger(preferred?.cardWidth) && preferred.cardWidth >= (minimumWidth ?? 64)
     && [.52, .44, .36].includes(preferred.spread);
   const sizes = preserve ? [{ desiredWidth: preferred.cardWidth, minimumWidth: preferred.cardWidth, spreads: [preferred.spread] }, {}] : [{}];
-  for (const size of sizes) for (const measureFaces of [false, true]) for (const separateLabel of labelHeight ? measureFaces ? [true, false] : [false, true] : [false]) {
+  // Retain the previous tab if any complete safe clover still fits beside it,
+  // before accepting an otherwise larger fit that moves the familiar control.
+  const previousHistory = history ? preferredPrompt(bounds, obstacles, preferredHistory, 44, [136, 128, 112, 96, 80, 64]) : null;
+  for (const keepHistory of previousHistory ? [true, false] : [false]) for (const centred of [true, false]) for (const size of sizes) for (const measureFaces of [false, true]) for (const separateLabel of labelHeight ? measureFaces ? [true, false] : [false, true] : [false]) {
     let extras;
-    const fit = fitPortraitTrick({ bounds, obstacles, count, positions, minimumWidth, ...size, measureFaces, labelHeight: separateLabel ? 0 : labelHeight,
+    const fit = fitPortraitTrick({ bounds, obstacles, count, positions, minimumWidth, ...size, centred, measureFaces, labelHeight: separateLabel ? 0 : labelHeight,
       accept: candidate => {
         const occupied = [...obstacles, ...(candidate.painted || [candidate])];
         let labelFit = null;
@@ -129,8 +149,8 @@ export function fitPortraitTrickView({ bounds, obstacles, count, positions = nul
           return !separateLabel || Boolean(labelFit);
         };
         const historyFit = history ? fitPortraitPrompt(bounds, occupied,
-          { height: 44, widths: [136, 128, 112, 96, 80, 64], accept: acceptHistory }) : null;
-        if (history ? !historyFit : !acceptHistory(null)) return false;
+          { height: 44, widths: [136, 128, 112, 96, 80, 64], preferred: keepHistory ? previousHistory : preferredHistory, accept: acceptHistory }) : null;
+        if (history ? !historyFit || keepHistory && historyFit !== previousHistory : !acceptHistory(null)) return false;
         extras = { labelFit, historyFit };
         return true;
       } });
@@ -146,7 +166,23 @@ export function createTrickLayout(trick, { win = window } = {}) {
   const variables = ["--wt-landscape-x", "--wt-landscape-y", "--wt-landscape-card-width", "--wt-landscape-height", "--wt-landscape-reach",
     "--wt-portrait-x", "--wt-portrait-y", "--wt-portrait-width", "--wt-portrait-card-width", "--wt-portrait-row-height", "--wt-portrait-caption-height",
     "--wt-portrait-reference-left", "--wt-portrait-reference-top", "--wt-portrait-label-x", "--wt-portrait-label-y", "--wt-portrait-label-width"];
-  let count = 0, queued = null, destroyed = false, landscape = null, portrait = null, deal = "", match = "";
+  let count = 0, queued = null, destroyed = false, landscape = null, portrait = null, historyPlacement = null, historyKey = "", historySurface = "", deal = "", match = "";
+  const rememberHistory = fit => {
+    historyPlacement = fit;
+    try {
+      win.sessionStorage?.setItem(HISTORY_SLOT_KEY, JSON.stringify({ surface: historySurface,
+        left: fit.left, top: fit.top, width: fit.width, height: fit.height }));
+    } catch { /* Geometry is optional and stays in memory if storage is blocked. */ }
+  };
+  const restoreHistory = surface => {
+    try {
+      const saved = JSON.parse(win.sessionStorage?.getItem(HISTORY_SLOT_KEY) || "null");
+      if (!saved || saved.surface !== surface || ![saved.left, saved.top, saved.width, saved.height].every(Number.isFinite)
+          || saved.width <= 0 || saved.height !== 44) return null;
+      return { left: saved.left, top: saved.top, width: saved.width, height: saved.height,
+        right: saved.left + saved.width, bottom: saved.top + saved.height };
+    } catch { return null; }
+  };
   const clear = () => {
     ownCall?.style.removeProperty("--wt-own-call-left");
     ownCall?.style.removeProperty("--wt-own-call-bottom");
@@ -260,7 +296,8 @@ export function createTrickLayout(trick, { win = window } = {}) {
 
   }
   function positionClosedHistory() {
-    if (table.dataset?.phase !== "bid_response"
+    const phase = table.dataset?.phase;
+    if (!(phase === "bid_response" || phase === "play" && (trick.hidden || !trick.children.length))
       || !win.matchMedia("(orientation: portrait) and (max-width: 760px)").matches) return;
     const history = table.querySelector("[data-wt-history]:not([open])");
     if (!box(history)) return;
@@ -275,8 +312,9 @@ export function createTrickLayout(trick, { win = window } = {}) {
       + ".wt-bubble, .wt-trick-label, .wt-backs > i:not([hidden]), .wt-taken[data-filled='true'], .wt-taken[data-filled='true'] i, .wt-stock, .wt-reference, "
       + "[data-wt-hand-area], [data-wt-panel], [data-wt-stake], [data-wt-private] button, .wt-trick-card")].map(box).filter(Boolean);
     obstacles.push(...[...table.querySelectorAll(".wt-taken[data-filled='true']")].map(counterBox).filter(Boolean));
-    const fit = fitPortraitPrompt(bounds, obstacles, { height: 44, widths: [136, 128, 112, 96, 80, 64] });
+    const fit = fitPortraitPrompt(bounds, obstacles, { height: 44, widths: [136, 128, 112, 96, 80, 64], preferred: historyPlacement });
     if (!fit) return;
+    rememberHistory(fit);
     history.dataset.wtPortraitHistory = "true";
     for (const [key, value] of [["x", fit.left], ["y", fit.top], ["width", fit.width]]) {
       history.style.setProperty(`--wt-portrait-history-${key}`, `${value}px`);
@@ -355,6 +393,12 @@ export function createTrickLayout(trick, { win = window } = {}) {
   function layout() {
     queued = null;
     if (destroyed) return;
+    const currentSurface = [count, win.innerWidth, win.innerHeight, win.devicePixelRatio || 1, win.visualViewport?.scale || 1].join(":");
+    const currentHistoryKey = [match, deal, currentSurface].join(":");
+    if (currentHistoryKey !== historyKey) {
+      historyKey = currentHistoryKey; historySurface = currentSurface;
+      historyPlacement = restoreHistory(currentSurface);
+    }
     clear();
     // Calls precede every trick card, so fit them before the empty-trick return.
     positionOverlays();
@@ -438,7 +482,7 @@ export function createTrickLayout(trick, { win = window } = {}) {
     const label = centre.querySelector(".wt-trick-label"), labelHeight = LABEL;
     if (label) label.title = label.textContent.trim();
     const positions = [...trick.children].map(card => card.dataset.position);
-    const resolve = occupied => fitPortraitTrickView({ bounds, obstacles: occupied, count, positions, labelHeight, minimumWidth, history: moveHistory, preferred });
+    const resolve = occupied => fitPortraitTrickView({ bounds, obstacles: occupied, count, positions, labelHeight, minimumWidth, history: moveHistory, preferred, preferredHistory: historyPlacement });
     let { fit, labelFit, historyFit } = resolve(obstacles);
     if (!fit) { fallback("space"); return; }
     const promptFit = neutralPrompt ? fitPortraitPrompt(bounds, [...obstacles, ...(fit.painted || [fit]), labelFit, historyFit].filter(Boolean)) : null;
@@ -448,7 +492,10 @@ export function createTrickLayout(trick, { win = window } = {}) {
       if (!fit) { fallback("prompt"); return; }
     }
     portrait = { key: portraitKey, prefix, fit: { cardWidth: fit.cardWidth, spread: fit.spread } };
-    if (historyFit) for (const [key, value] of [["x", historyFit.left], ["y", historyFit.top], ["width", historyFit.width]]) history.style.setProperty(`--wt-portrait-history-${key}`, `${value}px`);
+    if (historyFit) {
+      rememberHistory(historyFit);
+      for (const [key, value] of [["x", historyFit.left], ["y", historyFit.top], ["width", historyFit.width]]) history.style.setProperty(`--wt-portrait-history-${key}`, `${value}px`);
+    }
     const set = (name, value) => {
       const next = `${Math.round(value * 100) / 100}px`;
       if (centre.style.getPropertyValue(name) !== next) centre.style.setProperty(name, next);

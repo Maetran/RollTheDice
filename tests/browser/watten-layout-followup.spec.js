@@ -149,18 +149,26 @@ for (const language of ['de', 'en']) for (const viewport of VIEWPORTS) test(`${l
     expect(mounted.initialDelta).toBeLessThanOrEqual(1);
     await page.setViewportSize(viewport);
     const scenes = ['collect', 'collect-empty', 'retour', 'bloedeln', 'bloedeln-inspection'];
-    if (viewport.width === 440 && viewport.height === 956) scenes.push('retour-active');
+    if (viewport.width === 440 && viewport.height === 956) scenes.push('retour-active', 'history-play-start', 'history-play-more', 'history-bid-wait');
+    let historyOrigin = null;
     for (const scene of scenes) {
       await page.evaluate(scene => {
         const { view, snapshot, initial } = window.followup;
         // These are explicitly display fixtures. Preplay starts with the
         // untouched five-card state, never already captured packets.
         const copy = structuredClone(scene.startsWith('bloedeln') ? initial : snapshot), engine = copy.engine, own = copy.viewer.seat;
-        engine.deal_revision = ++window.followup.revision;
+        engine.deal_revision = scene.startsWith('history-') ? 900 : ++window.followup.revision;
         engine.actions = [];
-        engine.phase = scene.startsWith('bloedeln') ? 'show_ready' : scene === 'retour-active' ? 'play' : 'deal_complete';
+        engine.phase = scene.startsWith('bloedeln') ? 'show_ready' : scene === 'retour-active' || scene.startsWith('history-play') ? 'play' : scene === 'history-bid-wait' ? 'bid_response' : 'deal_complete';
         engine.current_trick.cards = [];
         engine.hand = scene === 'collect-empty' ? [] : scene === 'collect' ? snapshot.engine.hand.slice(0, 1) : structuredClone(initial.engine.hand);
+        if (scene.startsWith('history-')) {
+          engine.hand = structuredClone(snapshot.engine.hand);
+          engine.current_trick.cards = structuredClone(snapshot.engine.last_trick.cards.slice(0, scene === 'history-play-start' ? 1 : 2));
+          if (scene === 'history-bid-wait') engine.bid.pending = {
+            party: engine.seats[(own + 1) % 4].party, decider: engine.seats[(own + 1) % 4].player_id, points: 5,
+          };
+        }
         if (scene.startsWith('collect')) {
           // Legal end-of-deal public shape from the owner screenshot:
           // four tricks played, the own side wins 3:1, one card remains.
@@ -190,6 +198,16 @@ for (const language of ['de', 'en']) for (const viewport of VIEWPORTS) test(`${l
       }, scene);
       await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
       await expectNativeMount(page);
+      if (scene.startsWith('history-')) {
+        const history = page.locator('[data-layout-followup] [data-wt-history]');
+        await expect(history).toBeVisible();
+        const current = await history.boundingBox();
+        if (!historyOrigin) historyOrigin = current;
+        else {
+          expect(Math.abs(current.x - historyOrigin.x), scene + ' history x').toBeLessThanOrEqual(1);
+          expect(Math.abs(current.y - historyOrigin.y), scene + ' history y').toBeLessThanOrEqual(1);
+        }
+      }
       if (scene === 'retour-active') {
         const history = page.locator('[data-layout-followup] [data-wt-history]');
         const tag = page.locator('[data-layout-followup] .wt-retour-tag');

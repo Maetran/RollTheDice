@@ -19,6 +19,7 @@ from .watten_engine import retourschneider_offer
 
 logger = logging.getLogger(__name__)
 COLLECT_SECONDS = 3.6
+BLIND_COLLECT_EXTRA_SECONDS = 1.0
 REVIEW_SECONDS = 3.0
 
 
@@ -27,7 +28,9 @@ def review_deadlines(game: dict):
     if engine is None or engine.phase not in {"deal_complete", "match_complete"}:
         return None
     started = datetime.fromisoformat(game["_watten"].round_review_started_at or game["_updated_at"])
-    collect = started + timedelta(seconds=COLLECT_SECONDS if engine.bid_state.result.reason == "tricks" else 0)
+    collect_seconds = (COLLECT_SECONDS + (BLIND_COLLECT_EXTRA_SECONDS if engine.recipe.profile.blind else 0)
+                       if engine.bid_state.result.reason == "tricks" else 0)
+    collect = started + timedelta(seconds=collect_seconds)
     return collect, collect + timedelta(seconds=REVIEW_SECONDS)
 
 

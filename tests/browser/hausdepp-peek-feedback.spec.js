@@ -132,7 +132,7 @@ async function expectCards(locator, cards) {
 
 for (const language of ['de', 'en']) {
   for (const reducedMotion of ['no-preference', 'reduce']) {
-    test(`${language}, ${reducedMotion}: ace and following card stay readable without reopening tools or extending the timeout`, async ({ page }) => {
+    test(`${language}, ${reducedMotion}: cut faces slide from under the stock, then leave a private bottom-card hint`, async ({ page }) => {
       await page.emulateMedia({ reducedMotion });
       const fixture = await rendererFixture(page, { language });
       await pauseClock(page);
@@ -150,12 +150,31 @@ for (const language of ['de', 'en']) {
       await expect(page.locator('#hausdeppStock')).toBeEnabled();
       expect(await history.evaluate(element => element.closest('#hausdeppTools') !== null)).toBe(true);
       await expect(history).toBeHidden();
-      await page.clock.runFor(1100);
-      await expect(preview).toBeVisible();
+      // Cut faces are behind the face-down pile and protrude on its left.
+      const placement = await preview.evaluate(node => {
+        const stock = document.querySelector('#hausdeppStock'), a = node.getBoundingClientRect(), b = stock.getBoundingClientRect();
+        return { left: a.left, right: a.right, stockLeft: b.left, stockRight: b.right,
+          previewZ: Number(getComputedStyle(node).zIndex), stockZ: Number(getComputedStyle(stock).zIndex),
+          animation: getComputedStyle(node.querySelector('.hausdepp-card')).animationName };
+      });
+      expect(placement.left).toBeGreaterThanOrEqual(0);
+      expect(placement.left).toBeLessThan(placement.stockLeft);
+      expect(placement.right).toBeLessThan(placement.stockRight);
+      expect(placement.previewZ).toBeLessThan(placement.stockZ);
+      expect(placement.animation).toBe(reducedMotion === 'reduce' ? 'none' : 'hd-cut-slide-under');
+      if (reducedMotion === 'no-preference') {
+        const frames = await preview.locator('.hausdepp-card').first().evaluate(node => node.getAnimations()[0].effect.getKeyframes());
+        expect(frames[0].transform).toBe('translateY(-15%)');
+        expect(frames.at(-1).transform).toBe('translateY(0px)');
+      }
       expect(await page.locator('#hausdeppStock').evaluate(stock => {
         const rect = stock.getBoundingClientRect();
         return stock.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2));
       }), 'The private preview leaves the next cut reachable').toBe(true);
+      await page.clock.runFor(1101);
+      await expect(preview).toBeHidden();
+      await expect(page.locator('#hausdeppKnownBottomCards')).toBeVisible();
+      await expectCards(page.locator('#hausdeppKnownBottomCards'), ['hearts-A']);
 
       await fixture.cut({ version: 22, cards: ['hearts-A', 'bells-K'], complete: true });
       await expectCards(preview, ['hearts-A', 'bells-K']);
@@ -167,13 +186,14 @@ for (const language of ['de', 'en']) {
         await page.screenshot({ path: test.info().outputPath('cut-preview-desktop-1440x900.png'), animations: 'disabled' });
         await page.setViewportSize({ width: 390, height: 844 });
       }
-      await page.clock.runFor(1100);
+      await page.clock.runFor(600);
       await expect(preview).toBeVisible();
       await fixture.send({ version: 23, cards: ['hearts-A', 'bells-K'], complete: true });
-      await page.clock.runFor(1899);
+      await page.clock.runFor(499);
       await expect(preview).toBeVisible();
       await page.clock.runFor(2);
       await expect(preview).toBeHidden();
+      await expect(page.locator('#hausdeppKnownBottomCards')).toBeVisible();
       await fixture.send({ version: 24, cards: ['hearts-A', 'bells-K'], complete: true });
       await expect(preview).toBeHidden();
       expect(await tools.evaluate(element => element.open)).toBe(false);
@@ -188,6 +208,32 @@ for (const language of ['de', 'en']) {
     });
   }
 }
+
+test('private cut remains beneath the stock on narrow and landscape screens', async ({ page }) => {
+  const fixture = await rendererFixture(page);
+  await pauseClock(page);
+  for (const [index, [width, height]] of [[320, 568], [440, 956], [568, 320], [1440, 900]].entries()) {
+    await page.setViewportSize({ width, height });
+    await fixture.send({ round: index + 1, version: 40 + 2 * index });
+    await fixture.cut({ round: index + 1, version: 41 + 2 * index, cards: ['hearts-A'] });
+    const preview = page.locator('#hausdeppCutPreview');
+    await expect(preview).toBeVisible();
+    const geometry = await preview.evaluate(node => {
+      const a = node.getBoundingClientRect(), stock = document.querySelector('#hausdeppStock');
+      const b = stock.getBoundingClientRect();
+      return { left: a.left, right: a.right, top: a.top, bottom: a.bottom,
+        stockLeft: b.left, stockRight: b.right, below: Number(getComputedStyle(node).zIndex) < Number(getComputedStyle(stock).zIndex) };
+    });
+    expect(geometry.left, `${width}x${height}`).toBeGreaterThanOrEqual(0);
+    expect(geometry.right).toBeLessThanOrEqual(width);
+    expect(geometry.left).toBeLessThan(geometry.stockLeft);
+    expect(geometry.right).toBeLessThan(geometry.stockRight);
+    expect(geometry.below).toBe(true);
+    await page.clock.runFor(1101);
+    await expect(preview).toBeHidden();
+    await expect(page.locator('#hausdeppKnownBottomCards')).toBeVisible();
+  }
+});
 
 test('a new tournament round clears old cards before the next cutter; repeated cards get a fresh preview later', async ({ page }) => {
   const fixture = await rendererFixture(page);
@@ -216,7 +262,7 @@ test('a new tournament round clears old cards before the next cutter; repeated c
   await expectCards(preview, ['hearts-A']);
   await fixture.send({ round: 3, version: 42, cards: ['hearts-A', 'bells-K'], complete: true });
   await expectCards(preview, ['hearts-A', 'bells-K']);
-  await page.clock.runFor(3001);
+  await page.clock.runFor(1101);
   await expect(preview).toBeHidden();
 });
 

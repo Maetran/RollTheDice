@@ -1,10 +1,10 @@
 {
-  "version": "4.11.1",
+  "version": "4.11.2",
   "bump": "patch",
   "date": "2026-10-29",
-  "previous_revision": "1ca1e921e4ee2986f21051b33e5dbc4510dc3282",
+  "previous_revision": "bdb9926d8d8b0fb702cee03e7c54028bab85660f",
   "summary": {
-    "de": "Watten und Hausdepp spielen sich auf kleinen Bildschirmen klarer; das Admin Center erhält ein eigenes Design.",
-    "en": "Watten and Hausdepp are clearer on small screens; the Admin Center gets its own design."
+    "de": "Watten-Stiche bleiben besser sichtbar und Hausdepp zeigt das Abheben klarer.",
+    "en": "Watten tricks stay easier to follow and Hausdepp shows bottom inspection more clearly."
   }
 }

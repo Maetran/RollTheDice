@@ -241,6 +241,82 @@ for (const count of [2, 3, 4]) test(`${count} players: completed public trick ho
   assert.ok(last.nodes.every(node => node.style.visibility === "")); f.close();
 });
 
+test("blind Watten holds each completed public trick one second longer and keeps the next card queued", () => {
+  const f = fixture(), last = publicTrick(f, 4);
+  const blind = value => ({ ...engine(value), profile: { blind: true } });
+  f.present(blind(null), blind(last), result({ ...last, last }));
+  const group = f.ghosts("collect")[0], animation = group.animations[0];
+  assert.equal(animation.options.duration, 4600);
+  assert.equal(animation.frames[1].offset, 4240 / 4600, "the last 360ms remain the collection flight");
+  f.advance(200);
+  const next = f.node("hearts-K", rect(390, 280));
+  f.present(blind(last), blind(last), result({ nodes: [next], cards: [{ seat: 3, card: "hearts-K" }],
+    created: [{ node: next, seat: 3, card: "hearts-K" }], last }));
+  assert.equal(f.ghosts("arrive")[0].animations[0].options.delay, 4400);
+  assert.equal(next.style.visibility, "hidden");
+  f.close();
+});
+
+test("blind reduced motion holds a still public trick over an immediate human play, then reveals it", async () => {
+  const f = fixture({ reduced: true }), last = publicTrick(f, 4);
+  const blind = value => ({ ...engine(value), profile: { blind: true } });
+  f.present(blind(null), blind(last), result({ ...last, last }));
+  const group = f.ghosts("collect")[0]; assert.ok(group);
+  const animation = group.animations[0];
+  assert.equal(animation.options.duration, 4600);
+  assert.deepEqual(animation.frames, [{ opacity: 1 }, { opacity: 1 }], "the held copy has no animated movement");
+  assert.deepEqual(group.children.map(node => node.face), last.cards.map(card => card.card), "only public trick faces are copied");
+  f.advance(200);
+  const next = f.node("hearts-K", rect(390, 280));
+  f.present(blind(last), blind(last), result({ nodes: [next], cards: [{ seat: 3, card: "hearts-K" }],
+    created: [{ node: next, seat: 3, card: "hearts-K" }], last }));
+  assert.equal(next.style.opacity, "0", "accepted next play waits visually behind the still trick");
+  assert.equal(next.style.visibility, "", "the accepted card remains available to assistive technology");
+  assert.equal(f.ghosts("arrive").length, 0, "reduced motion never flies the next card");
+  animation.finish(); await tick();
+  assert.equal(f.ghosts("collect").length, 0);
+  assert.equal(next.style.opacity, "", "the accepted next card appears when the old trick is removed");
+  f.close();
+});
+
+test("blind reduced motion replaces an older held trick with the terminal public trick", async () => {
+  const f = fixture({ reduced: true }), old = publicTrick(f, 4), final = publicTrick(f, 4, 0);
+  final.cards = final.cards.map((item, index) => ({ ...item, card: `final-${index}` }));
+  final.nodes.forEach((node, index) => { node.dataset.key = final.cards[index].card; node.face = final.cards[index].card; });
+  const blind = value => ({ ...engine(value), profile: { blind: true } });
+  f.present(blind(null), blind(old), result({ ...old, last: old }));
+  const oldGroup = f.ghosts("collect")[0];
+  const terminal = { ...blind(final), phase: "match_complete" };
+  f.present(blind(old), terminal, result({ ...final, last: final }));
+  assert.equal(oldGroup.isConnected, false, "an obsolete held trick never covers the terminal result");
+  const current = f.ghosts("collect"); assert.equal(current.length, 1);
+  assert.deepEqual(current[0].children.map(node => node.face), final.cards.map(item => item.card));
+  assert.equal(current[0].animations[0].options.duration, 4600);
+  assert.ok(old.nodes.every(node => node.style.opacity === ""), "old accessible nodes are restored");
+  assert.ok(final.nodes.every(node => node.style.visibility === ""), "the actual terminal state stays accessible");
+  current[0].animations[0].finish(); await tick();
+  assert.equal(f.ghosts().length, 0); f.close();
+});
+
+test("blind reduced motion discards the held trick on reconnect or loss of visibility", () => {
+  for (const reason of ["reconnect", "hidden"]) {
+    const f = fixture({ reduced: true }), last = publicTrick(f, 4);
+    const blind = value => ({ ...engine(value), profile: { blind: true } });
+    f.present(blind(null), blind(last), result({ ...last, last }));
+    const next = f.node("hearts-K", rect(390, 280));
+    const nextResult = result({ nodes: [next], cards: [{ seat: 3, card: "hearts-K" }],
+      created: [{ node: next, seat: 3, card: "hearts-K" }], last });
+    f.present(blind(last), blind(last), nextResult);
+    assert.equal(next.style.opacity, "0");
+    assert.equal(next.style.visibility, "");
+    if (reason === "reconnect") f.present(blind(last), blind(last), nextResult, { live: false });
+    else { f.doc.hidden = true; f.doc.visibilityState = "hidden"; f.doc.emit("visibilitychange"); }
+    assert.equal(f.ghosts().length, 0);
+    assert.equal(next.style.opacity, "");
+    f.close();
+  }
+});
+
 test("fast CPU next play and duplicate accepted state keep the existing collection flight, without a second collection", () => {
   const f = fixture(), last = publicTrick(f, 4), captured = f.capture(last.nodes);
   f.present(engine(), engine(last), result({ ...last, last }), { captured });

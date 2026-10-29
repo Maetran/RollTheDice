@@ -335,7 +335,8 @@ Auf dem Handy bleiben die Teamstände schmal; Sprachchat, Verlassen und Tischcha
 stehen als geordnete Symbole daneben. Das Verlassen-Symbol öffnet weiterhin
 die Bestätigung zum Pausieren der Partie.
 Der dauernde Zug-Hinweis entfällt. Abgeschlossene Stiche bleiben
-rund drei Sekunden sichtbar, mit Siegerrahmen und Spielernamen. Der letzte Stich
+rund drei Sekunden sichtbar, im Blindwatten rund vier Sekunden, mit Siegerrahmen
+und Spielernamen. Der letzte Stich
 kann lokal erneut angesehen werden. Im Hochformat nutzt der geschlossene
 Verlauf einen freien Platz auf dem Tisch; offene Rückschau und Gebotsentscheidung
 bleiben bei den eigenen Karten. Gegnerische Karten und Stichpakete sind grösser. Die kompaktere
@@ -400,7 +401,8 @@ labels below player names are removed.
 The mobile scores stay narrow, with orderly voice-chat, leave and table-chat
 icons beside them. The leave icon still asks for confirmation before pausing.
 Completed tricks stay for
-about three seconds with a winner outline and player names; the last trick can
+about three seconds, or about four seconds in blind Watten, with a winner outline
+and player names; the last trick can
 be reviewed locally. In portrait, the closed review uses a clear space on the
 table; open review and bid decisions remain beside your hand. Desktop
 centre cards, opponent hands and captured piles are larger. The compact review
@@ -1196,14 +1198,13 @@ andere Karte nach oder wird sie erst während des Tipps freigegeben, tippe erneu
 Langes Halten einer Handkarte (oder der Schalter Mehrfachauswahl) wählt alle
 gleichrangigen Karten für genau einen Wurf, ein Tipp nimmt einzelne wieder heraus. Der erste Geber jedes Tisches wird ausgelost,
 gegen Computer wie gegen Menschen; im Turnier gibt danach reihum der nächste
-Spieler im Uhrzeigersinn. Erfolglos angeschaute Karten bleiben für den
-Abhebenden direkt am Stapel sichtbar, solange sie noch darin liegen.
-Ass und Folgekarte erscheinen direkt am Stapel; nach einem Fehlversuch bleiben
-sie noch drei Sekunden lesbar. Die Abhebehistorie öffnet sich nur auf Wunsch in
+Spieler im Uhrzeigersinn. Erfolglos angeschaute Karten erscheinen dem Abhebenden kurz unter dem
+Stapel. Danach zeigen kleine Kartenecken die bekannten Karten dort, solange
+sie noch im Stapel liegen. Die Abhebehistorie öffnet sich nur auf Wunsch in
 der Tischhilfe und wird vor jeder neuen Turnierrunde geleert.
 
-Aces and the following card appear directly at the deck; an unsuccessful
-sequence stays readable for three seconds. Cut history opens only on request
+The inspecting player briefly sees the cards beneath the deck; small card
+corners then mark the known cards while they remain in the stock. Cut history opens only on request
 in table help and is cleared before each new tournament round.
 
 Vor dem aktiven Abheben zeigt eine kurze einmalige Mischanimation die
@@ -1355,8 +1356,8 @@ card moves into its place or becomes playable during the tap, tap again.
 In multi-select, one tap selects every card of that rank and another tap takes
 single cards out. The first dealer of every table is drawn at random, against
 computers and people alike; in tournaments the deal then passes clockwise. Cards
-seen in a failed bottom inspection stay visible to that player at the stock
-while they remain in it. Before active bottom inspection,
+seen in a failed bottom inspection appear briefly beneath the stock, then as
+small private card corners while they remain in it. Before active bottom inspection,
 a brief one-time shuffle shows only card backs, without blocking actions; reload,
 reconnection and reduced-motion mode do not replay it. Dealing is briefly
 animated, and hands form a sorted fan with tens on the right.

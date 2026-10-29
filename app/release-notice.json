@@ -4,25 +4,23 @@
     "hausdepp",
     "watten"
   ],
-  "summary_de": "Klarere Spieltische auf dem Handy: Karten, Stichverlauf und Retourschneider sind besser abgestimmt.",
-  "summary_en": "Clearer tables on phones: cards, trick history and Retourschneider work more smoothly.",
+  "summary_de": "Blindwatten-Stiche bleiben länger sichtbar; in Hausdepp ist das Abheben klarer dargestellt.",
+  "summary_en": "Blind Watten tricks stay visible longer; Hausdepp shows bottom inspection more clearly.",
   "player_notes": {
     "de": {
-      "title": "4.11.1: Klarere Spieltische",
+      "title": "4.11.2: Stiche und Abheben",
       "changes": [
-        "Dieses Update macht die Spieltische auf dem Handy übersichtlicher.",
-        "WATTEN: Retourschneider ist erst möglich, wenn dein Team bereits Punkte angeschrieben hat. Stichverlauf und Dekoration sind besser angeordnet.",
-        "HAUSDEPP: Gleiche Karten fächern nach rechts auf und lassen den Abhebestapel frei.",
-        "ALLGEMEIN: Berechtigte Konten sehen das Admin Center in einem eigenen Design."
+        "Dieses Update macht die Spieltische besser lesbar.",
+        "WATTEN: Im Blindwatten bleiben abgeschlossene Stiche eine Sekunde länger sichtbar. Die mobile Tischmitte und der Stichverlauf bleiben besser angeordnet.",
+        "HAUSDEPP: Beim Abheben erscheint die Karte kurz unter dem Stapel; bekannte Karten bleiben dort dezent markiert."
       ]
     },
     "en": {
-      "title": "4.11.1: Clearer game tables",
+      "title": "4.11.2: Tricks and bottom inspection",
       "changes": [
-        "This update makes game tables clearer on phones.",
-        "WATTEN: Retourschneider is available only after your team has scored. Trick history and decorations are better arranged.",
-        "HAUSDEPP: Matching cards fan out to the right, leaving the draw pile clear.",
-        "GENERAL: Authorized accounts see the Admin Center in its own design."
+        "This update makes game tables easier to follow.",
+        "WATTEN: Completed tricks stay visible one second longer in blind Watten. The mobile table centre and trick history stay better arranged.",
+        "HAUSDEPP: A bottom card briefly appears beneath the deck; known cards remain subtly marked there."
       ]
     }
   }

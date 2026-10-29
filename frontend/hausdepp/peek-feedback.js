@@ -36,7 +36,9 @@ export function mountPeekFeedback({ history, text, cards, preview, t, cardMarkup
           preview.style.setProperty("--cut-count", known.length);
           preview.innerHTML = known.map(card => cardMarkup(card)).join("");
           preview.hidden = false;
-          if (state.phase !== "peeking") timer = setTimeout(hidePreview, 3000);
+          // Keep the receipt brief; the known cards remain hinted under the
+          // stock until they actually leave it. A later tap starts a new cue.
+          timer = setTimeout(hidePreview, 1100);
         }
       }
       if (state.phase === "finished") hidePreview();
