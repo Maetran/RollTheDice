@@ -195,6 +195,20 @@ function fixture({ width = 800, height = 700, reducedMotion = false, language = 
     changeAccount() { account = 2; }, invalidate() { current = false; } };
 }
 
+// Automatic starting positions vary. Choose a real clear neighbour so a
+// movement assertion tests interaction rather than a random protected edge.
+function clearStep(f, node, distance) {
+  const start = node.getBoundingClientRect();
+  const geometry = { regions: [{ ...rect(0, 0, f.win.innerWidth, 260), name: "table" }],
+    protectedRects: f.protectedAreas.map(area => area.getBoundingClientRect()) };
+  const occupied = f.props().filter(other => other !== node && !other.hidden).map(other => other.getBoundingClientRect());
+  const directions = [[distance, 0, "ArrowRight"], [-distance, 0, "ArrowLeft"],
+    [0, distance, "ArrowDown"], [0, -distance, "ArrowUp"]];
+  const result = directions.find(([dx, dy]) => fitsDecor(rect(start.left + dx, start.top + dy, start.width, start.height), geometry, occupied));
+  assert.ok(result, "a clear neighbouring position exists");
+  return result;
+}
+
 test("geometry protects the full five-card reserve and rejects action overlap at 320 portrait and 568 landscape", () => {
   for (const [width, height] of [[320, 640], [568, 320]]) {
     const region = { ...rect(0, 0, width, height), name: "table" };
@@ -270,7 +284,9 @@ test("drag never paints across a protected action and interrupted capture return
   const action = f.protectedAreas[0].getBoundingClientRect();
   node.emit("pointermove", { pointerId: 7, clientX: action.left, clientY: action.top });
   assert.equal(node.style.left, `${initial.left}px`); assert.equal(node.style.top, `${initial.top}px`);
-  node.emit("pointermove", { pointerId: 7, clientX: initial.left + 16, clientY: initial.top });
+  const [dx, dy] = clearStep(f, node, 16);
+  node.emit("pointermove", { pointerId: 7, clientX: initial.left + dx, clientY: initial.top + dy });
+  assert.notDeepEqual([node.style.left, node.style.top], [`${initial.left}px`, `${initial.top}px`]);
   node.emit("pointercancel"); assert.equal(node.captured, null);
   assert.equal(node.style.left, `${initial.left}px`); assert.equal(node.style.top, `${initial.top}px`);
   node.emit("pointerdown", { button: 0, pointerId: 8, clientX: initial.left, clientY: initial.top });
@@ -279,8 +295,9 @@ test("drag never paints across a protected action and interrupted capture return
 
 test("keyboard movement, direct consumption and removal remain available", () => {
   const f = fixture({ language: "en" }); f.update("play");
-  const food = f.props().find(node => node.dataset.wattenDecorKind === "nuts"), initial = food.style.left;
-  food.emit("keydown", { key: "ArrowRight", preventDefault() {} }); assert.notEqual(food.style.left, initial);
+  const food = f.props().find(node => node.dataset.wattenDecorKind === "nuts"), initial = [food.style.left, food.style.top];
+  const [, , key] = clearStep(f, food, 16);
+  food.emit("keydown", { key, preventDefault() {} }); assert.notDeepEqual([food.style.left, food.style.top], initial);
   food.emit("click"); assert.equal(f.servingCalls.at(-1).remaining, 2);
   food.emit("keydown", { key: "Delete", preventDefault() {} }); assert.equal(f.props().length, 2);
   assert.ok([...food.handlers.values()].every(handlers => handlers.size === 0));
@@ -291,8 +308,10 @@ test("keyboard movement, direct consumption and removal remain available", () =>
 test("a fresh intentional tap is not swallowed when a previous drag produced no compatibility click", () => {
   const f = fixture(); f.update("play");
   const node = f.props().find(item => item.dataset.wattenDecorKind === "dice"), initial = node.getBoundingClientRect();
+  const [dx, dy] = clearStep(f, node, 16);
   node.emit("pointerdown", { button: 0, pointerId: 1, clientX: initial.left, clientY: initial.top });
-  node.emit("pointermove", { pointerId: 1, clientX: initial.left + 16, clientY: initial.top });
+  node.emit("pointermove", { pointerId: 1, clientX: initial.left + dx, clientY: initial.top + dy });
+  assert.notDeepEqual([node.style.left, node.style.top], [`${initial.left}px`, `${initial.top}px`]);
   node.emit("pointerup", { pointerId: 1 });
   assert.equal(node.hidden, false); assert.equal(f.field("panel"), null);
   const area = node.getBoundingClientRect();
@@ -321,6 +340,21 @@ test("all ordinary Hausdepp props are available while automatic tables keep thre
   assert.equal(f.props().length, 3); assert.equal(f.props()[0].dataset.wattenDecorKind, "beer");
   const kinds = f.props().map(node => node.dataset.wattenDecorKind);
   f.update("strike"); f.update("play"); assert.deepEqual(f.props().map(node => node.dataset.wattenDecorKind), kinds);
+});
+
+test("a new deal replaces the local decorations once, while repaints keep them", () => {
+  const f = fixture({ initialKinds: null });
+  f.client.update({ publicPhase: "play", dealId: "first" });
+  const first = f.props(), firstKinds = first.map(node => node.dataset.wattenDecorKind);
+  f.client.update({ publicPhase: "play", dealId: "first" });
+  assert.deepEqual(f.props(), first);
+  f.client.update({ publicPhase: "strike", dealId: "second" });
+  const second = f.props(), secondKinds = second.map(node => node.dataset.wattenDecorKind);
+  assert.equal(second.length, 3);
+  assert.ok(second.every(node => !first.includes(node)));
+  assert.ok(secondKinds.every(kind => !firstKinds.includes(kind)));
+  f.client.update({ publicPhase: "play", dealId: "second" });
+  assert.deepEqual(f.props(), second);
 });
 
 test("calm sips empty and refill the same glass; rapid taps spill, tip and deliberately stand it up", async () => {
@@ -406,8 +440,10 @@ test("beer foam settles without changing its serving and dragging leaves a bound
     now += 151000; for (const callback of f.win.intervals) callback();
     assert.equal(beer.dataset.foam, "flat"); assert.equal(beer.dataset.level, "4");
     const area = beer.getBoundingClientRect();
+    const [dx, dy] = clearStep(f, beer, 20);
     beer.emit("pointerdown", { button: 0, pointerId: 4, clientX: area.left, clientY: area.top });
-    beer.emit("pointermove", { pointerId: 4, clientX: area.left + 20, clientY: area.top });
+    beer.emit("pointermove", { pointerId: 4, clientX: area.left + dx, clientY: area.top + dy });
+    assert.notDeepEqual([beer.style.left, beer.style.top], [`${area.left}px`, `${area.top}px`]);
     beer.emit("pointerup", { pointerId: 4 });
     assert.ok(f.field("layer").querySelector(".hd-prop-glass-ring"));
     f.client.destroy(); assert.equal(f.win.intervals.size, 0);
@@ -420,7 +456,8 @@ test("eaten loose snacks disappear; empty dishes remain draggable without resett
   for (let bite = 0; bite < 3; bite++) { bowl.emit("click"); loose.emit("click"); }
   assert.equal(bowl.dataset.empty, "true"); assert.equal(bowl.hidden, false); assert.equal(loose.hidden, true);
   f.update("colour"); assert.equal(bowl.dataset.empty, "true"); assert.equal(loose.hidden, true);
-  const before = bowl.style.left; bowl.emit("keydown", { key: "ArrowRight", preventDefault() {} }); assert.notEqual(bowl.style.left, before);
+  const before = [bowl.style.left, bowl.style.top], [, , key] = clearStep(f, bowl, 16);
+  bowl.emit("keydown", { key, preventDefault() {} }); assert.notDeepEqual([bowl.style.left, bowl.style.top], before);
 });
 
 test("Escape ends capture directly without focusing a hidden menu control", () => {

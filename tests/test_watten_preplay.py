@@ -211,6 +211,24 @@ def retour_choice():
     return replace(state, ledger=ScoreLedger(11, accounts, results))
 
 
+def test_old_partial_zero_point_offer_is_cleared_when_restoring_and_play_can_continue():
+    state = retour_choice()
+    challenger = retourschneider_candidate(state.ledger)
+    ledger = replace(state.ledger, accounts=tuple(replace(account, points=0) if account.members == challenger else account
+                                                  for account in state.ledger.accounts),
+                     applied_results=state.ledger.applied_results[1:])
+    state = replace(state, ledger=ledger)
+    raw = storage_payload(state)
+    raw["retour_accepted_by"] = [challenger[0]]
+    resumed = restore_storage(raw)
+    assert resumed.retour_accepted_by == ()
+    assert all("retourschneider" not in personal(resumed, player)["actions"] for player in challenger)
+    assert next_deal(resumed, "after-old-offer", dealt()).deal_id == "after-old-offer"
+    raw["retour_accepted_by"] = [state.parties.parties[1 - state.parties.party_of(challenger[0])][0]]
+    with pytest.raises(WattenEngineError, match="invalid_retourschneider"):
+        restore_storage(raw)
+
+
 @pytest.mark.parametrize("second_vote", ("accept", "decline"))
 def test_retourschneider_needs_both_separate_votes_and_one_decline_is_final(second_vote):
     state = retour_choice()

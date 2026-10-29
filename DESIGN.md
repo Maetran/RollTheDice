@@ -234,7 +234,7 @@ This record describes the built dashboard at `/admin/dashboard`, not a replaceme
 - Flat, ruled instrument surfaces with restrained selection and state color.
 - Responsive instruments and real-node favorites that retain their controls.
 
-**The Theme Boundary Rule.** Apply NEXUS tokens only to the dashboard’s explicit nexus state; preserve Mission Control, LCARS and both game appearances.
+**The Theme Boundary Rule.** Apply NEXUS tokens to the dashboard’s explicit nexus state and to the separate administration workspace; preserve Mission Control, LCARS and the game appearances.
 
 Evidence: `app/static/dashboard.html`; `frontend/styles/dashboard-nexus.css`; retained `dashboard-base.css`, `dashboard-analysis.css`, `dashboard-design.css`, `dashboard-globe.css` and `dashboard-lcars.css`; `frontend/dashboard.js`; `frontend/dashboard/analysis.js`; `frontend/dashboard/favorites.js`; `frontend/dashboard/globe.js`. The static dashboard bundle is generated from these frontend sources.
 
@@ -472,7 +472,7 @@ The panel describes browser-reported payload rather than billing or a cost cap.
 ## Do's and Don'ts
 
 ### Do:
-- Do scope every NEXUS override to the dashboard theme and preserve the two incumbent theme owners.
+- Do scope NEXUS overrides to the dashboard theme or the independent administration workspace, and preserve the two incumbent dashboard theme owners.
 - Do use inline SVG for the reusable instrument and star icons.
 - Do retain German and English labels, native selects, visible keyboard focus and chart table alternatives.
 - Do keep favorites local to the verified viewer and show the browser-storage limitation.
@@ -571,3 +571,15 @@ compact own-credit breakdown and private current-rank/total/next-threshold line
 replace the generic congratulation card. Rematch keeps its direct action without
 a generic explanatory paragraph. Pending account notices never stand in for
 this round’s earnings; silent receipts require the matching latest round ID.
+
+
+### Administration workspace
+
+The protected `/admin` workspace uses its own fixed Nexus-inspired appearance,
+independent of the selected game theme or the dashboard theme switcher. Ink and
+mineral panels frame the existing grouped management actions; lime identifies
+the selected action, while the destructive action retains its danger colour.
+The workspace uses the existing Nexus display face, native controls, bilingual
+content, visible focus and touch-sized actions. Its shared suite navigation and
+authorization remain unchanged. Source ownership is `frontend/styles/admin-nexus.css`
+and `app/static/admin.html`; the style is not a game theme.

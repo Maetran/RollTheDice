@@ -415,6 +415,9 @@ html[data-watten-active="true"] .wt-table:not([data-phase="match_complete"][data
 }
 /* In portrait, the gap between the two side fans owns the closed review tab. */
 @media (orientation: portrait) and (max-width: 760px) {
+  html[data-watten-active="true"] .wt-retour-tag[data-wt-positioned-retour-tag] {
+    position: fixed; left: var(--wt-retour-tag-x); top: var(--wt-retour-tag-y); translate: none;
+  }
   html[data-watten-active="true"] .wt-panel:has(.wt-bid) { padding: 8px 10px; }
   html[data-watten-active="true"] .wt-bid > .wt-bid-speaker,
   html[data-watten-active="true"] .wt-bid:has(.wt-choice-row) > p { display: none; }

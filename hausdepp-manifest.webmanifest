@@ -19,7 +19,7 @@
       "url": "/hausdepp",
       "icons": [
         {
-          "src": "/static/icons/hausdepp-icon-192-v2.png?v=a1941a2dbbf6",
+          "src": "/static/icons/hausdepp-icon-192-v2.png?v=22b0af749eae",
           "sizes": "192x192"
         }
       ]
@@ -29,7 +29,7 @@
       "url": "/hausdepp/konto",
       "icons": [
         {
-          "src": "/static/icons/hausdepp-icon-192-v2.png?v=a1941a2dbbf6",
+          "src": "/static/icons/hausdepp-icon-192-v2.png?v=22b0af749eae",
           "sizes": "192x192"
         }
       ]
@@ -39,7 +39,7 @@
       "url": "/hausdepp/regeln",
       "icons": [
         {
-          "src": "/static/icons/hausdepp-icon-192-v2.png?v=a1941a2dbbf6",
+          "src": "/static/icons/hausdepp-icon-192-v2.png?v=22b0af749eae",
           "sizes": "192x192"
         }
       ]
@@ -49,7 +49,7 @@
       "url": "/hausdepp/rangliste",
       "icons": [
         {
-          "src": "/static/icons/hausdepp-icon-192-v2.png?v=a1941a2dbbf6",
+          "src": "/static/icons/hausdepp-icon-192-v2.png?v=22b0af749eae",
           "sizes": "192x192"
         }
       ]
@@ -57,13 +57,13 @@
   ],
   "icons": [
     {
-      "src": "/static/icons/hausdepp-icon-192-v2.png?v=a1941a2dbbf6",
+      "src": "/static/icons/hausdepp-icon-192-v2.png?v=22b0af749eae",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/static/icons/hausdepp-icon-512-v2.png?v=a1941a2dbbf6",
+      "src": "/static/icons/hausdepp-icon-512-v2.png?v=22b0af749eae",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"

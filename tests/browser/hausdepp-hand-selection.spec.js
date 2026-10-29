@@ -933,17 +933,30 @@ test('the header avatar opens the own profile picture setting, not the account o
 test('equal ranks on top of the open pile fan out so their count reads at a glance', async ({ page }) => {
   const state = await fixture(page, 'de');
   const next = structuredClone(state.board), s = next._hausdepp;
-  Object.assign(s, { version: s.version + 1, discard: ['leaves-6', 'hearts-U', 'bells-U', 'acorns-U'] });
-  state.send(next);
   const faces = page.locator('#hausdeppPile .hd-pile-face[data-run-step]');
-  await expect(faces).toHaveCount(3);
-  await expect(page.locator('#hausdeppPile')).toHaveAttribute('aria-label', /3 gleiche oben/);
-  // Older equal cards step out to the left far enough to show their corner.
-  // Read the settled fan, since the paper now slides out instead of jumping.
-  await expect.poll(() => faces.evaluateAll(nodes => {
-    const lefts = nodes.map(node => node.getBoundingClientRect().left);
-    return lefts.length === 3 && lefts[0] < lefts[1] - 10 && lefts[1] < lefts[2] - 10;
-  })).toBe(true);
+  const ranks = ['hearts-U', 'bells-U', 'acorns-U', 'leaves-U'];
+  for (const [width, height] of [[320, 568], [440, 956], [844, 390], [1440, 900]]) {
+    await page.setViewportSize({ width, height });
+    for (const count of [2, 3, 4]) {
+      Object.assign(s, { version: s.version + 1, discard: ['leaves-6', ...ranks.slice(0, count)] });
+      state.send(next);
+      await expect(faces).toHaveCount(count);
+      await expect(page.locator('#hausdeppPile')).toHaveAttribute('aria-label', new RegExp(`${count} gleiche oben`));
+      // Read the settled fan; earlier cards extend right, away from the stock.
+      await expect.poll(() => faces.evaluateAll(nodes => {
+        const rights = nodes.map(node => node.getBoundingClientRect().right);
+        const stock = document.querySelector('#hausdeppStock').getBoundingClientRect();
+        const caption = document.querySelector('#hausdeppPileAction').getBoundingClientRect();
+        return rights.every((right, index) => index === 0 || rights[index - 1] > right + 4)
+          && nodes.every(node => {
+            const card = node.getBoundingClientRect();
+            return card.left >= stock.right && card.right <= window.innerWidth
+              && (card.bottom <= caption.top || card.top >= caption.bottom
+                || card.right <= caption.left || card.left >= caption.right);
+          });
+      }), { message: `${width}×${height}: ${count} cards fan right, clear the stock and caption, and stay on screen` }).toBe(true);
+    }
+  }
   if (process.env.HAUSDEPP_PILE_SCREENSHOTS === '1') {
     const box = await page.locator('.hd-centre').boundingBox();
     await page.screenshot({ path: test.info().outputPath('pile-run.png'), clip: box });

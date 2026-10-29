@@ -576,7 +576,8 @@ limits; the new strength has not been benchmarked.
 **Wertung / scoring:** Eine Runde endet mit drei Stichen oder Gehen; das Spiel
 endet am Ziel. Verlierer bekommen ein Nockerl, ohne Punkte zwei (Schneider).
 Im Vierer kann das zurückliegende Team beim erstmals gestrichenen Gegner die
-Anschrift löschen und einen Retourschneider versuchen: alle weiteren Runden
+Anschrift löschen und einen Retourschneider versuchen, sofern es bereits
+mindestens einmal Punkte angeschrieben hat: alle weiteren Runden
 gewinnen bringt den bisherigen Führenden vier Nockerl; einmal verlieren beendet
 das Spiel sofort mit zwei Nockerl für die Herausforderer. Beide Teammitglieder
 müssen getrennt zustimmen; ein Nein behält die Anschrift. Nach dem eigenen Ja
@@ -590,7 +591,8 @@ CPU-Partner folgt seiner Wahl sofort und kann den Retourschneider nicht ablehnen
 Ein Team aus zwei CPUs erhält kein Angebot und spielt normal weiter.
 A round ends with three tricks or a fold, the match at its target. Losers receive
 one Nockerl, or two without scoring (Schneider). With four players, the trailing
-team may erase its score when the other team first becomes gestrichen. Winning
+team may erase its score when the other team first becomes gestrichen, provided
+it has already scored at least once. Winning
 every remaining round gives the former leaders four loss marks; losing once ends
 the match immediately and gives the challengers two. Both teammates must consent
 separately; one refusal keeps their score. After your yes, the table shows whose
@@ -1228,7 +1230,7 @@ dem offenen Paket behalten während eines Zugs dieselbe zur Ansicht passende
 Grösse; die Animation geht ohne Grössensprung in den Stapel über. Während des
 Flugs siehst du die geworfene Karte nur einmal. Erst bei der Landung erscheint
 sie mit aktualisierter Kartenzahl im offenen Paket. Bereits liegende Karten
-desselben Werts gleiten weich in ihren Fächer; individuelle Brandspuren nach
+desselben Werts gleiten weich nach rechts in ihren Fächer, weg vom Abhebestapel; individuelle Brandspuren nach
 dem Drachen bleiben beim Fliegen, Auffächern und Liegen erhalten.
 Passende Karten kannst du im offenen Nachwurffenster sofort nachwerfen, auch
 nach dem Auffüllen. Aufnehmen, Zocken und neue Stapelaktionen warten auf die Ankunft.
@@ -1244,7 +1246,7 @@ front for reading and selection. Open-pile cards keep the same size throughout
 a play, matching the viewport; the animation joins the pile without a size jump.
 A thrown card is visible only once during its flight. It joins the open pile
 with its updated count when it lands. Matching cards already on the pile slide
-smoothly into their fan; each card keeps its individual dragon scorch marks
+smoothly into their fan to the right, away from the draw pile; each card keeps its individual dragon scorch marks
 throughout flight, fanning and rest. Matching cards can
 be thrown immediately in the open follow-up window, including fresh refills.
 Pickups, gambles and new pile actions wait for arrival. Reduced motion skips the
@@ -2006,6 +2008,7 @@ behalten beim Wechsel ihren Ursprung und Service Worker.
 Unter den Spielen steht für berechtigte Konten der eigene Bereich
 **Verwaltung**: **Admin Center** für Admins und Owner, **Dashboard** unabhängig
 davon nur mit Dashboard-Zugriff. Ohne einen dieser Zugänge entfällt die Gruppe.
+Das Admin Center hat ein eigenes, vom Nexus-Dashboard inspiriertes Design.
 Die Einträge ändern weder das gewählte Spiel noch dessen Freigaben. Der bisherige
 Administrations-Button in der ZDWA-Lobby und die Dashboard-Kachel in der
 Admin-Übersicht entfallen.
@@ -2021,7 +2024,8 @@ origin and service worker when switching.
 Authorized accounts also see a separate **Administration** group below the
 games: **Admin Center** for admins and owners, and **Dashboard** independently
 for accounts with dashboard access. The whole group is omitted without either
-permission. These entries change neither the selected game nor its availability.
+permission. The Admin Center has its own design inspired by the Nexus dashboard.
+These entries change neither the selected game nor its availability.
 The previous administration button in the ZDWA lobby and the dashboard tile in
 the admin overview are removed.
 

@@ -1,31 +1,29 @@
 <!doctype html>
-<html lang="de" data-game="zdwa">
+<html lang="de" data-game="zdwa" data-admin-design="nexus">
 <head>
   <meta charset="utf-8">
-  <title>ZDWA – Administration</title>
+  <title>RollTheDice – Administration</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Geschützter Administrationsbereich von ZDWA.">
+  <meta name="description" content="Geschützter Administrationsbereich von RollTheDice.">
   <meta name="robots" content="noindex, nofollow">
-  <link rel="manifest" href="/manifest.webmanifest?v=a1941a2dbbf6">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=a1941a2dbbf6" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=a1941a2dbbf6" sizes="180x180">
-  <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"||t==="classic"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d==="dark"?"dark":"light";const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=d==="dark"?"#0b1120":d==="classic"?"#31583a":"#f4f6f8"}catch(_){}</script>
-  <link rel="stylesheet" href="/static/style.css?v=a1941a2dbbf6">
-  <link rel="stylesheet" href="/static/zdwa-design-2026.css?v=a1941a2dbbf6">
-  <script>{const r=document.documentElement,g=k=>{try{return localStorage.getItem(k)}catch(_){return null}},q=new URLSearchParams(location.search).get("design");if(q!=="classic"&&g("zdwa_design")!=="old"&&g("zdwa_design_off")!=="1"&&(q==="2026"||g("zdwa_design_override")!=="old"))r.dataset.design="2026"}</script>
-  <script src="/static/shell.js?v=a1941a2dbbf6" defer></script>
-  <link rel="stylesheet" href="/static/suite-header.css?v=a1941a2dbbf6">
-  <link rel="stylesheet" href="/static/admin-account-merge.css?v=a1941a2dbbf6">
-  <link rel="stylesheet" href="/static/admin-features.css?v=a1941a2dbbf6">
+  <link rel="manifest" href="/manifest.webmanifest?v=22b0af749eae">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=22b0af749eae" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=22b0af749eae" sizes="180x180">
+  <link rel="stylesheet" href="/static/style.css?v=22b0af749eae">
+  <script src="/static/shell.js?v=22b0af749eae" defer></script>
+  <link rel="stylesheet" href="/static/suite-header.css?v=22b0af749eae">
+  <link rel="stylesheet" href="/static/admin-account-merge.css?v=22b0af749eae">
+  <link rel="stylesheet" href="/static/admin-features.css?v=22b0af749eae">
+  <link rel="stylesheet" href="/static/admin-nexus.css?v=22b0af749eae">
 </head>
 <body class="lobby-page">
   <main class="wrap admin-shell">
     <header class="app-nav">
-      <a class="app-nav-brand" href="/" aria-label="ZDWA Lobby"><span class="logo" aria-hidden="true">🎲</span><span>ZDWA</span></a>
+      <a class="app-nav-brand" href="/" aria-label="RollTheDice Lobby"><span class="logo" aria-hidden="true">🎲</span><span>RollTheDice</span></a>
       <nav class="app-nav-links" aria-label="Hauptnavigation">
         <a class="app-nav-link" href="/">Lobby</a><a class="app-nav-link" href="/spieler">Spieler &amp; Ranking</a><a class="app-nav-link" href="/regeln">Regeln</a><a class="app-nav-link" href="/konto" aria-current="page">Konto</a>
       </nav>
-      <div class="app-nav-tools"><button class="small ghost theme-toggle theme-toggle-compact" type="button" data-theme-toggle aria-label="Darstellung wechseln"><span class="theme-toggle-icon" data-theme-icon aria-hidden="true">☾</span></button><button class="small ghost game-switch" type="button" data-game-switch hidden disabled aria-hidden="true" aria-label="Zilch öffnen (Alt+Shift+Z)" aria-keyshortcuts="Alt+Shift+Z" title="Zilch öffnen (Alt+Shift+Z)"><svg class="game-switch-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M7 4 4 7l3 3M4 7h15L5 17h15m-3-3 3 3-3 3"/></svg><span class="game-switch-label">Zilch</span></button></div>
+      <div class="app-nav-tools"><button class="small ghost game-switch" type="button" data-game-switch hidden disabled aria-hidden="true" aria-label="Zilch öffnen (Alt+Shift+Z)" aria-keyshortcuts="Alt+Shift+Z" title="Zilch öffnen (Alt+Shift+Z)"><svg class="game-switch-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M7 4 4 7l3 3M4 7h15L5 17h15m-3-3 3 3-3 3"/></svg><span class="game-switch-label">Zilch</span></button></div>
     </header>
     <section class="card admin-overview">
       <p class="eyebrow">Administration</p>
@@ -34,35 +32,35 @@
       <div class="admin-module-grid">
         <h2 class="admin-module-group">Spiele &amp; Funktionen</h2>
         <button class="admin-module-tile" type="button" data-admin-panel="featuresPanel" aria-controls="featuresPanel" aria-expanded="false" disabled>
-          <span class="admin-module-icon" aria-hidden="true">⚙</span>
+          <span class="admin-module-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><circle cx="12" cy="12" r="3"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M19 5l-1.5 1.5m-11 11L5 19"/></svg></span>
           <span class="admin-module-copy"><strong>Spiele &amp; Funktionen</strong><small>Freigaben, Testbetrieb und Beta-Kennzeichnung</small></span>
           <span class="admin-module-chevron" aria-hidden="true">⌄</span>
         </button>
         <h2 class="admin-module-group">Nutzer &amp; Rechte</h2>
         <button class="admin-module-tile" type="button" data-admin-panel="usersPanel" aria-controls="usersPanel" aria-expanded="false" disabled>
-          <span class="admin-module-icon" aria-hidden="true">👥</span>
+          <span class="admin-module-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2M16 5a3 3 0 0 1 0 6m1 3a5 5 0 0 1 4 5v1"/></svg></span>
           <span class="admin-module-copy"><strong>Benutzerverwaltung</strong><small>Accounts, Rollen und Passwörter</small></span>
           <span class="admin-module-chevron" aria-hidden="true">⌄</span>
         </button>
         <button class="admin-module-tile" type="button" data-admin-panel="assignmentsPanel" aria-controls="assignmentsPanel" aria-expanded="false" disabled>
-          <span class="admin-module-icon" aria-hidden="true">🎯</span>
+          <span class="admin-module-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><path d="M12 12l7-7m-2 0h2v2"/></svg></span>
           <span class="admin-module-copy"><strong>Spielzuordnung</strong><small>Gastspiele mit Benutzern verknüpfen</small></span>
           <span class="admin-module-chevron" aria-hidden="true">⌄</span>
         </button>
         <button id="accountMergeTile" class="admin-module-tile" type="button" data-admin-panel="accountMergePanel" aria-controls="accountMergePanel" aria-expanded="false" hidden disabled>
-          <span class="admin-module-icon" aria-hidden="true">⇢</span>
+          <span class="admin-module-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M3 8h13m-4-4 4 4-4 4M21 16H8m4-4-4 4 4 4"/></svg></span>
           <span class="admin-module-copy"><strong>Konten zusammenführen</strong><small>Spielverlauf und Erfolge in einem Konto behalten</small></span>
           <span class="admin-module-chevron" aria-hidden="true">⌄</span>
         </button>
         <h2 class="admin-module-group">Betrieb</h2>
         <button class="admin-module-tile admin-module-tile-danger" type="button" data-admin-panel="completedGamesPanel" aria-controls="completedGamesPanel" aria-expanded="false" disabled>
-          <span class="admin-module-icon" aria-hidden="true">🗑️</span>
+          <span class="admin-module-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M4 7h16M9 7V4h6v3m-9 0 1 13h10l1-13M10 11v5m4-5v5"/></svg></span>
           <span class="admin-module-copy"><strong>Spiele löschen</strong><small>Snapshots dauerhaft entfernen</small></span>
           <span class="admin-module-chevron" aria-hidden="true">⌄</span>
         </button>
         <h2 class="admin-module-group">Änderungsprotokoll</h2>
         <button class="admin-module-tile" type="button" data-admin-panel="featureAuditPanel" aria-controls="featureAuditPanel" aria-expanded="false" disabled>
-          <span class="admin-module-icon" aria-hidden="true">≡</span>
+          <span class="admin-module-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M5 5h14M5 9h14M5 13h10M5 17h14M5 21h10"/></svg></span>
           <span class="admin-module-copy"><strong>Feature-Protokoll</strong><small>Wer hat welche Freigabe geändert?</small></span>
           <span class="admin-module-chevron" aria-hidden="true">⌄</span>
         </button>
@@ -144,7 +142,7 @@
     </section>
   </main>
   <script type="module">
-    import { apiFetch, authError, escapeHtml, loadAuth, playerNameMarkup } from '/static/auth.js?v=a1941a2dbbf6';
+    import { apiFetch, authError, escapeHtml, loadAuth, playerNameMarkup } from '/static/auth.js?v=22b0af749eae';
     const auth = await loadAuth();
     if (!auth?.user?.is_admin) location.replace(window.ZDWA_ROUTE?.path('/') || '/');
     const usersBody = document.getElementById('usersBody');
@@ -707,7 +705,7 @@
     await loadUsers();
     await Promise.all([loadAssignments(), loadCompletedGames(), loadDeletedGames()]);
   </script>
-  <script type="module" src="/static/admin-account-merge.js?v=a1941a2dbbf6"></script>
-  <script type="module" src="/static/admin-features.js?v=a1941a2dbbf6"></script>
+  <script type="module" src="/static/admin-account-merge.js?v=22b0af749eae"></script>
+  <script type="module" src="/static/admin-features.js?v=22b0af749eae"></script>
 </body>
 </html>

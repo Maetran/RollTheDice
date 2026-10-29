@@ -2595,5 +2595,12 @@
     "date": "2026-10-27",
     "bump": "patch",
     "summary": "Admin Center und Dashboard sind für berechtigte Konten direkt über die gemeinsame Spielauswahl erreichbar. / Authorized accounts can open Admin Center and Dashboard directly from the shared game picker."
+  },
+  {
+    "version": "4.11.0",
+    "revision": "1ca1e921e4ee2986f21051b33e5dbc4510dc3282",
+    "date": "2026-10-27",
+    "bump": "minor",
+    "summary": "Deine Lieblingsgegner zeigen pro Spiel die Bilanz aus eindeutig gewerteten Begegnungen. / Your favourite opponents show the record of clearly decided encounters for each game."
   }
 ]

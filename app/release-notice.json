@@ -1,28 +1,28 @@
 {
   "kind": "usability",
   "games": [
-    "zdwa",
-    "zilch",
     "hausdepp",
     "watten"
   ],
-  "summary_de": "Deine Lieblingsgegner zeigen je Spiel Siege, Niederlagen und Unentschieden aus eindeutig gewerteten Begegnungen.",
-  "summary_en": "Your favourite opponents show wins, losses and draws from clearly decided encounters in each game.",
+  "summary_de": "Klarere Spieltische auf dem Handy: Karten, Stichverlauf und Retourschneider sind besser abgestimmt.",
+  "summary_en": "Clearer tables on phones: cards, trick history and Retourschneider work more smoothly.",
   "player_notes": {
     "de": {
-      "title": "4.11.0: Deine Lieblingsgegner",
+      "title": "4.11.1: Klarere Spieltische",
       "changes": [
-        "Im Konto jedes Spiels siehst du deine Bilanz gegen Personen, mit denen du mindestens elf eindeutig gewertete Begegnungen hast.",
-        "Siege, Niederlagen und Unentschieden stehen getrennt; Teamkollegen und unklare Begegnungen zählen nicht.",
-        "Die Auswertung ist privat und berücksichtigt auch eindeutig belegte frühere Partien."
+        "Dieses Update macht die Spieltische auf dem Handy übersichtlicher.",
+        "WATTEN: Retourschneider ist erst möglich, wenn dein Team bereits Punkte angeschrieben hat. Stichverlauf und Dekoration sind besser angeordnet.",
+        "HAUSDEPP: Gleiche Karten fächern nach rechts auf und lassen den Abhebestapel frei.",
+        "ALLGEMEIN: Berechtigte Konten sehen das Admin Center in einem eigenen Design."
       ]
     },
     "en": {
-      "title": "4.11.0: Your favourite opponents",
+      "title": "4.11.1: Clearer game tables",
       "changes": [
-        "Each game’s account shows your record against people with at least eleven encounters with a clear result.",
-        "Wins, losses and draws are shown separately; teammates and ambiguous encounters do not count.",
-        "The statistics are private and include clearly recorded past games."
+        "This update makes game tables clearer on phones.",
+        "WATTEN: Retourschneider is available only after your team has scored. Trick history and decorations are better arranged.",
+        "HAUSDEPP: Matching cards fan out to the right, leaving the draw pile clear.",
+        "GENERAL: Authorized accounts see the Admin Center in its own design."
       ]
     }
   }

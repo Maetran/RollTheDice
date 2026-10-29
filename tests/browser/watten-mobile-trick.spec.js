@@ -288,6 +288,7 @@ test(`four-player mobile landscape ${viewport.width}x${viewport.height}: left ra
     if (viewport.width === 852) await exportTableReview(players[0], 'completed-trick-landscape');
     await page.screenshot({ path: info.outputPath(`watten-completed-${viewport.width}x${viewport.height}.png`) });
     await expect.poll(() => players.every(item => item.traffic.snapshot.engine.last_trick?.cards.length === 4)).toBe(true);
+    await expect.poll(() => players.some(item => item.traffic.snapshot.engine.actions.includes('play_card'))).toBe(true);
     const nextPlayer = players.find(item => item.traffic.snapshot.engine.actions.includes('play_card'));
     const liveReview = nextPlayer.page.locator('[data-wt-history]');
     if (!await liveReview.evaluate(node => node.open)) await liveReview.locator('summary').click();
