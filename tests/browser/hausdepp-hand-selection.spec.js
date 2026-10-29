@@ -946,10 +946,15 @@ test('equal ranks on top of the open pile fan out so their count reads at a glan
       await expect.poll(() => faces.evaluateAll(nodes => {
         const rights = nodes.map(node => node.getBoundingClientRect().right);
         const stock = document.querySelector('#hausdeppStock').getBoundingClientRect();
+        const caption = document.querySelector('#hausdeppPileAction').getBoundingClientRect();
         return rights.every((right, index) => index === 0 || rights[index - 1] > right + 4)
-          && nodes.every(node => node.getBoundingClientRect().left >= stock.right
-            && node.getBoundingClientRect().right <= window.innerWidth);
-      }), { message: `${width}×${height}: ${count} cards fan right, clear the stock and stay on screen` }).toBe(true);
+          && nodes.every(node => {
+            const card = node.getBoundingClientRect();
+            return card.left >= stock.right && card.right <= window.innerWidth
+              && (card.bottom <= caption.top || card.top >= caption.bottom
+                || card.right <= caption.left || card.left >= caption.right);
+          });
+      }), { message: `${width}×${height}: ${count} cards fan right, clear the stock and caption, and stay on screen` }).toBe(true);
     }
   }
   if (process.env.HAUSDEPP_PILE_SCREENSHOTS === '1') {

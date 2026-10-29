@@ -6,15 +6,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Geschützter Administrationsbereich von RollTheDice.">
   <meta name="robots" content="noindex, nofollow">
-  <link rel="manifest" href="/manifest.webmanifest?v=6df8f56a1dbc">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=6df8f56a1dbc" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=6df8f56a1dbc" sizes="180x180">
-  <link rel="stylesheet" href="/static/style.css?v=6df8f56a1dbc">
-  <script src="/static/shell.js?v=6df8f56a1dbc" defer></script>
-  <link rel="stylesheet" href="/static/suite-header.css?v=6df8f56a1dbc">
-  <link rel="stylesheet" href="/static/admin-account-merge.css?v=6df8f56a1dbc">
-  <link rel="stylesheet" href="/static/admin-features.css?v=6df8f56a1dbc">
-  <link rel="stylesheet" href="/static/admin-nexus.css?v=6df8f56a1dbc">
+  <link rel="manifest" href="/manifest.webmanifest?v=22b0af749eae">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=22b0af749eae" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=22b0af749eae" sizes="180x180">
+  <link rel="stylesheet" href="/static/style.css?v=22b0af749eae">
+  <script src="/static/shell.js?v=22b0af749eae" defer></script>
+  <link rel="stylesheet" href="/static/suite-header.css?v=22b0af749eae">
+  <link rel="stylesheet" href="/static/admin-account-merge.css?v=22b0af749eae">
+  <link rel="stylesheet" href="/static/admin-features.css?v=22b0af749eae">
+  <link rel="stylesheet" href="/static/admin-nexus.css?v=22b0af749eae">
 </head>
 <body class="lobby-page">
   <main class="wrap admin-shell">
@@ -142,7 +142,7 @@
     </section>
   </main>
   <script type="module">
-    import { apiFetch, authError, escapeHtml, loadAuth, playerNameMarkup } from '/static/auth.js?v=6df8f56a1dbc';
+    import { apiFetch, authError, escapeHtml, loadAuth, playerNameMarkup } from '/static/auth.js?v=22b0af749eae';
     const auth = await loadAuth();
     if (!auth?.user?.is_admin) location.replace(window.ZDWA_ROUTE?.path('/') || '/');
     const usersBody = document.getElementById('usersBody');
@@ -705,7 +705,7 @@
     await loadUsers();
     await Promise.all([loadAssignments(), loadCompletedGames(), loadDeletedGames()]);
   </script>
-  <script type="module" src="/static/admin-account-merge.js?v=6df8f56a1dbc"></script>
-  <script type="module" src="/static/admin-features.js?v=6df8f56a1dbc"></script>
+  <script type="module" src="/static/admin-account-merge.js?v=22b0af749eae"></script>
+  <script type="module" src="/static/admin-features.js?v=22b0af749eae"></script>
 </body>
 </html>

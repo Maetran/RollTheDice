@@ -1306,7 +1306,16 @@ for (const [name, viewport, scorched] of [
       const box = node.getBoundingClientRect();
       return box.x + box.width / 2;
     }));
-    expect(centres.every((x, index) => index === 0 || x - centres[index - 1] > 5)).toBe(true);
+    expect(centres.every((x, index) => index === 0 || centres[index - 1] - x > 5)).toBe(true);
+    const captionClear = await faces.evaluateAll(nodes => {
+      const caption = document.querySelector('#hausdeppPileAction').getBoundingClientRect();
+      return nodes.every(node => {
+        const card = node.getBoundingClientRect();
+        return card.bottom <= caption.top || card.top >= caption.bottom
+          || card.right <= caption.left || card.left >= caption.right;
+      });
+    });
+    expect(captionClear, 'the four papers leave the pile caption visible').toBe(true);
     expect(await page.locator('#hausdeppPile [data-card-id="hearts-8"]').evaluate(node =>
       getComputedStyle(node, '::before').backgroundImage)).toBe(scorch);
     await page.screenshot({ path: info.outputPath('four-visible-papers.png') });
