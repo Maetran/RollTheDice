@@ -263,7 +263,8 @@ test("the public hero respects English before the delayed Zilch application arri
     const title = "Zilch die Wand an – Play the dice game online";
     await expect(intro.locator("h1")).toHaveText(title, { timeout: 1000 });
     await expect(intro.locator(".eyebrow")).toHaveText("Roll online");
-    await expect(intro.locator("h1 + p")).toContainText("Choose a seat at the table");
+    await expect(intro.locator("h1 + p")).toContainText("Play Zilch online: solo, against the computer");
+    await expect(intro).toContainText("Farkle or Ten Thousand");
     await expect(intro.locator(".zilch-intro-help a")).toHaveText("Zilch rules and scoring table");
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
     await expect(page.locator("#zilchCreateForm")).toHaveCount(0);
@@ -272,6 +273,7 @@ test("the public hero respects English before the delayed Zilch application arri
     scriptGate.release();
     await expect(page.locator("#zilchCreateForm")).toBeVisible();
     await expect(intro.locator("h1")).toHaveText(title);
+    await expect(intro).toContainText("Scoring tables and house rules vary");
     expect(await heading.evaluate(element => element.isConnected)).toBe(true);
   } finally {
     scriptGate.release();

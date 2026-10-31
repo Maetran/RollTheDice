@@ -1231,7 +1231,8 @@ async function renderLobby({ authReady = null } = {}) {
   const lobbyMarkup = `<section class="zilch-intro zilch-intro--lobby">
       <p class="eyebrow">${escapeHtml(t("Online würfeln"))}</p>
       <h1>${escapeHtml(t("Zilch die Wand an – Würfelspiel online"))}</h1>
-      <p>${escapeHtml(t("Such dir einen Platz am Tisch aus: Solo, gegen den Würfelwirt oder zu zweit. Mit sechs Würfeln sammelst du Punkte, sicherst sie rechtzeitig und jagst die 10’000."))}</p>
+      <p>${escapeHtml(t("Spiele Zilch online: solo, gegen den Computer (Würfelwirt) oder zu zweit. Mit sechs Würfeln sammelst du Punkte, sicherst sie rechtzeitig und jagst die 10’000."))}</p>
+      <p>${escapeHtml(t("Zilch gehört zur Familie der Würfelspiele, die auch als Farkle oder Zehntausend bekannt sind. Punktetabellen und Hausregeln unterscheiden sich; hier gelten unsere Zilch-Regeln."))}</p>
       <p class="zilch-intro-help"><span>${escapeHtml(t("Direkt im Browser, auch als Gast ohne Anmeldung."))}</span> <a class="button-link small" href="${zilchPath("/regeln")}" data-zilch-path="/regeln">${escapeHtml(t("Zilch-Regeln und Punktetabelle"))}</a></p>
     </section>
     <section class="zilch-card zilch-create-card">

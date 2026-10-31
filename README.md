@@ -2163,6 +2163,13 @@ Ansichten bleiben unverändert.
 
 ### Zilch at the table
 
+The public Zilch lobby introduces the six-dice game and its relationship to
+Farkle and Ten Thousand, while making clear that scoring and house rules vary.
+
+**Deutsch:** Die öffentliche Zilch-Lobby erklärt das Würfelspiel mit sechs
+Würfeln und die Verwandtschaft zu Farkle und Zehntausend. Wertungstabellen und
+Hausregeln unterscheiden sich je nach Variante.
+
 Select scoring dice directly or use compact suggestions. Selections remain
 reversible until **Roll again** or **Bank** commits them; **Combined score**
 selects all currently scoring dice in one action. Hot Dice, the competitive
