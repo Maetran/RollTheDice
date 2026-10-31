@@ -662,7 +662,7 @@ test("a failed navigation while hidden resumes a fresh identity read when the ta
 });
 
 
-test("public beta discovery is available to guests and ordinary accounts with a clear beta mark", async () => {
+test("public Watten discovery is independent of the beta label", async () => {
   for (const id of [null, 2]) {
     const f = await fixture({ state: auth(id, { watten_public: true }) });
     await f.controller.refresh();
@@ -676,8 +676,9 @@ test("public beta discovery is available to guests and ordinary accounts with a 
   }
   const source = await read("../frontend/multigame/game-picker.js"), catalog = await read("../frontend/i18n/catalog.js");
   const picker = await import(url(source.replace('"../i18n/catalog.js"', JSON.stringify(url(catalog)))));
-  assert.match(picker.gamePickerButtonMarkup({ id: "watten", name: "Watten", publicBeta: true }), /\[BETA\]/);
-  assert.doesNotMatch(picker.gamePickerButtonMarkup({ id: "watten", name: "Watten", publicBeta: false }), /\[BETA\]/);
+  assert.doesNotMatch(picker.gamePickerButtonMarkup({ id: "watten", name: "Watten", publicBeta: true }), /\[BETA\]/);
+  assert.match(picker.gamePickerButtonMarkup({ id: "watten", name: "Watten", publicBeta: true, beta: true }), /\[BETA\]/);
+  assert.doesNotMatch(picker.gamePickerButtonMarkup({ id: "watten", name: "Watten", publicBeta: true, beta: false }), /\[BETA\]/);
 });
 
 test("a public marker comes only from confirmed capability or the server's public document", async () => {

@@ -101,7 +101,7 @@ def game_settings(db, game: str) -> dict:
     if game not in GAME_TYPES:
         raise _error(404, "game_not_found")
     stored = _stored(db, GamePresentation.__table__, GamePresentation.game, game)
-    return {"key": game, "beta": bool(stored["beta"]) if stored else game == "watten",
+    return {"key": game, "beta": bool(stored["beta"]) if stored else False,
             "version": stored["version"] if stored else 0,
             "updated_at": as_utc(stored["updated_at"]).isoformat() if stored else None}
 
@@ -115,7 +115,7 @@ def public_game_beta(game: str) -> bool:
     if game not in GAME_TYPES:
         raise _error(404, "game_not_found")
     if not database_schema_ready():
-        return game == "watten"
+        return False
     with session_scope() as db:
         return game_beta(db, game)
 

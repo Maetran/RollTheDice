@@ -19,7 +19,7 @@ for (const language of ['de', 'en']) {
     await expect(page.locator('[data-watten-signin]')).toBeVisible();
     const guide = page.locator('[data-watten-lobby-guide]');
     await expect(guide).toBeVisible();
-    await expect(guide.locator('h2')).toHaveText(language === 'en' ? 'Watten at a glance' : 'Watten kurz erklärt');
+    await expect(guide.locator('h2')).toHaveText(language === 'en' ? 'Watten rules at a glance' : 'Watten-Regeln kurz erklärt');
     await expect(guide).toContainText(language === 'en' ? 'Everyone receives five cards.' : 'Jede Person bekommt fünf Karten.');
     await expect(page.locator('[data-watten-create]')).toHaveCount(0);
     for (const viewport of [{ width: 320, height: 568 }, { width: 1280, height: 900 }]) {
@@ -44,7 +44,7 @@ test('two real human accounts bid, pause with an open bid, return and finish a d
       await expect(item.page.locator('[data-watten-create-open]')).toBeVisible();
       const guide = item.page.locator('[data-watten-lobby-guide]');
       await expect(guide).toBeVisible();
-      await expect(guide.locator('h2')).toHaveText(index ? 'Watten at a glance' : 'Watten kurz erklärt');
+      await expect(guide.locator('h2')).toHaveText(index ? 'Watten rules at a glance' : 'Watten-Regeln kurz erklärt');
       await expect(guide).toContainText(index ? 'Everyone receives five cards.' : 'Jede Person bekommt fünf Karten.');
     }
     const path = await create(players);

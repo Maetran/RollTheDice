@@ -125,7 +125,7 @@ class WattenPublicBetaTests(unittest.TestCase):
                     self.assertEqual(response.headers["content-language"], language)
                     self.assertEqual(response.headers["link"], f'<{WATTEN_ORIGIN}{url}>; rel="canonical"')
                     self.assertEqual(len(document.headings), 1)
-                    self.assertIn('[BETA]', document.headings[0])
+                    self.assertNotIn('[BETA]', document.headings[0])
                     self.assertIn(f'lang="{language}"', response.text)
                     self.assertIn(f'data-watten-seo-language="{language}"', response.text)
                     self.assertIn('data-watten-public-beta="true"', response.text)
@@ -148,14 +148,15 @@ class WattenPublicBetaTests(unittest.TestCase):
 
     def test_public_lobby_explains_play_before_javascript_with_localized_button_actions(self):
         for language, snippets in (
-            ("de", ("Watten kurz erklärt", "Jede Person bekommt fünf Karten.", "ein wechselnder Solist",
+            ("de", ("Watten-Regeln kurz erklärt", "Watten zu zweit, zu dritt oder zu viert", "Jede Person bekommt fünf Karten.", "ein wechselnder Solist",
                     "lade Freunde per Link ein")),
-            ("en", ("Watten at a glance", "Everyone receives five cards.", "playing solo against a pair",
+            ("en", ("Watten rules at a glance", "Watten for two, three or four players", "Everyone receives five cards.", "playing solo against a pair",
                     "invite friends with a link")),
         ):
             with self.subTest(language=language):
                 response = self.client.get("/watten" + ("?lang=en" if language == "en" else ""))
                 self.assertEqual(response.status_code, 200)
+                self.assertIn("Kartenspiel Watten im Browser" if language == "de" else "Watten card game in your browser", response.text)
                 guide_start = response.text.index('<section class="wt-lobby-guide"')
                 guide = response.text[guide_start:response.text.index("</section>", guide_start)]
                 for snippet in snippets:

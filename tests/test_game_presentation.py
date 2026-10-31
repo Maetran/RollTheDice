@@ -4,10 +4,33 @@ import pytest
 
 from app.database import session_scope
 from app.feature_flags import set_game_beta
+from app.game_presentation import game_presentation_payload
 from app.ownership import bind_founder
 from tests import test_watten_runtime as native
 
 server = native.server
+
+
+def test_watten_default_label_when_database_schema_is_not_ready(monkeypatch):
+    monkeypatch.setattr("app.game_presentation.database_schema_ready", lambda: False)
+    assert game_presentation_payload()["watten"]["beta"] is False
+
+
+@pytest.mark.parametrize("language", ("de", "en"))
+def test_default_watten_public_documents_and_manifest_are_not_labelled_beta(server, monkeypatch, language):
+    monkeypatch.setenv("ROLLTHEDICE_WATTEN_PUBLIC_BETA", "1")
+    origin = "https://watten.zockdiewandan.online"
+    for path in ("/watten", "/watten/regeln"):
+        response = server.get(origin + path + "?lang=" + language)
+        assert response.status_code == 200
+        assert "data-watten-public-beta=\"true\"" in response.text
+        assert "[BETA]" not in response.text
+        assert "Public beta" not in response.text and "Öffentliche Beta" not in response.text
+    assert server.get(origin + "/api/auth/me").json()["game_presentation"]["watten"]["beta"] is False
+    filename = "/watten-manifest-en.webmanifest" if language == "en" else "/watten-manifest.webmanifest"
+    manifest = server.get(origin + filename).json()
+    assert manifest["name"] == "Watten"
+    assert "beta" not in manifest["description"].lower()
 
 
 @pytest.mark.parametrize("language", ("de", "en"))
@@ -50,7 +73,8 @@ def test_whole_game_beta_is_independent_of_feature_status(server):
         for game in ("zdwa", "zilch", "hausdepp"):
             set_game_beta(db, actor_user_id=owner.user_id, game=game, beta=True, version=0)
     settings = server.get("/api/features").json()
-    assert all(settings["games"][game]["beta"] for game in ("zdwa", "zilch", "hausdepp", "watten"))
+    assert all(settings["games"][game]["beta"] for game in ("zdwa", "zilch", "hausdepp"))
+    assert settings["games"]["watten"]["beta"] is False
     assert all(not item["can_select"] for item in settings["features"].values())
     for url in (native.LOCAL + "/manifest.webmanifest", "http://zilch.localhost:8127/zilch-manifest.webmanifest",
                 native.LOCAL + "/hausdepp-manifest.webmanifest"):

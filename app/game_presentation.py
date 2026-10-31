@@ -14,7 +14,7 @@ from .game_types import GAME_TYPES
 
 def game_presentation_payload() -> dict:
     if not database_schema_ready():
-        return {game: {"beta": game == "watten"} for game in GAME_TYPES}
+        return {game: {"beta": False} for game in GAME_TYPES}
     with session_scope() as db:
         return {game: {"beta": game_beta(db, game)} for game in GAME_TYPES}
 

@@ -95,12 +95,11 @@ def test_defaults_are_explicit_and_reads_never_create_settings(store):
         }
         assert feature_settings(db, KEY)["version"] == 0
         assert feature_settings(db, KEY)["updated_at"] is None
-        assert game_beta(db, "watten")
-        assert not any(game_beta(db, game) for game in ("zdwa", "zilch", "hausdepp"))
+        assert not any(game_beta(db, game) for game in ("zdwa", "zilch", "hausdepp", "watten"))
         assert db.scalar(select(func.count()).select_from(FeatureFlag)) == 0
         assert db.scalar(select(func.count()).select_from(GamePresentation)) == 0
         assert db.scalar(select(func.count()).select_from(FeatureFlagAudit)) == 0
-    assert public_game_beta("watten")
+    assert not public_game_beta("watten")
 
 
 def test_public_capabilities_hide_activation_from_ordinary_users_and_bind_identity(client, store):
@@ -123,7 +122,7 @@ def test_public_capabilities_hide_activation_from_ordinary_users_and_bind_identi
     assert anonymous.status_code == 200
     assert anonymous.json()["viewer_id"] is None
     assert not anonymous.json()["features"][KEY]["can_select"]
-    assert anonymous.json()["games"]["watten"]["beta"]
+    assert not anonymous.json()["games"]["watten"]["beta"]
 
 
 def test_owner_writes_are_persistent_and_admin_can_only_read(client, store):
@@ -334,7 +333,7 @@ def test_database_enforces_status_beta_version_and_game_constraints(store):
 def test_bootstrap_game_labels_use_explicit_defaults_without_hiding_database_errors():
     with patch("app.feature_flags.database_schema_ready", return_value=False), \
             patch("app.feature_flags.session_scope", side_effect=AssertionError("no startup database")):
-        assert public_game_beta("watten")
+        assert not public_game_beta("watten")
         assert not public_game_beta("hausdepp")
     with patch("app.feature_flags.database_schema_ready", return_value=True), \
             patch("app.feature_flags.session_scope", side_effect=RuntimeError("database failed")), \

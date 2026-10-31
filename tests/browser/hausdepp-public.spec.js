@@ -63,6 +63,7 @@ for (const preferred of ['de', 'en']) {
       await expect(page.locator('html')).toHaveAttribute('lang', preferred);
       await expect(page.locator('#hausdeppSignIn')).toHaveText(preferred === 'de' ? /Anmelden/ : /Sign in/);
       await expect(page.locator('#hausdeppRegister')).toHaveText(preferred === 'de' ? 'Konto erstellen' : 'Create account');
+      await expect(page.locator('.hd-intro')).toContainText(preferred === 'de' ? 'Kartenspiel Hausdepp online' : 'Hausdepp card game online');
       await expect(page.locator('#hausdeppCreateForm, #hausdeppRounds, #hausdeppLobbyChat')).toHaveCount(0);
       await expect(page.locator('.hd-lobby-cards .hausdepp-card').first()).toBeVisible();
       await page.evaluate(() => document.fonts.ready);

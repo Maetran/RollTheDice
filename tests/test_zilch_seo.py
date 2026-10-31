@@ -119,6 +119,9 @@ class ZilchSeoTestCase(unittest.IsolatedAsyncioTestCase):
                         })
                         self.assertNotIn("aggregateRating", game)
                         self.assertIn("Direkt im Browser, auch als Gast ohne Anmeldung.", response.text)
+                        self.assertIn("gegen den Computer (Würfelwirt)", response.text)
+                        self.assertIn("Farkle oder Zehntausend", response.text)
+                        self.assertIn("Punktetabellen und Hausregeln unterscheiden sich", response.text)
                     else:
                         self.assertIn("data-zilch-rules-summary", response.text)
                         self.assertIn("Zilch-Serie", response.text)
