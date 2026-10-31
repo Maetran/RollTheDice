@@ -2609,5 +2609,12 @@
     "date": "2026-10-29",
     "bump": "patch",
     "summary": "Watten und Hausdepp spielen sich auf kleinen Bildschirmen klarer; das Admin Center erhält ein eigenes Design. / Watten and Hausdepp are clearer on small screens; the Admin Center gets its own design."
+  },
+  {
+    "version": "4.11.2",
+    "revision": "3f43d5cc88357096690876a241134f2c0a7ab7ea",
+    "date": "2026-10-29",
+    "bump": "patch",
+    "summary": "Watten-Stiche bleiben besser sichtbar und Hausdepp zeigt das Abheben klarer. / Watten tricks stay easier to follow and Hausdepp shows bottom inspection more clearly."
   }
 ]

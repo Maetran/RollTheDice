@@ -23,6 +23,50 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 4.11.3 — 2026-10-31
+
+Dieses Update beschreibt unsere Spiele und ihre Regeln klarer, damit neue Spieler leichter den passenden Einstieg finden.
+
+This update describes our games and their rules more clearly, helping new players find the right place to start.
+
+### WATTEN
+
+**Deutsch:** Der öffentliche Einstieg beschreibt Watten als Kartenspiel im Browser,
+erklärt das Kartenblatt und die Spielerzahlen und nennt Freunde und Computergegner.
+Neue Installationen zeigen Watten standardmässig ohne Beta-Kennzeichnung;
+öffentliche Freigabe und bewusst gesetzte Kennzeichnungen bleiben unabhängig.
+
+**English:** The public introduction describes Watten as a browser card game,
+explains the deck and player counts, and introduces friends and computer opponents.
+New installations show Watten without a beta label by default; public access and
+deliberately chosen labels remain independent.
+
+### ZILCH
+
+**Deutsch:** Die Lobby erklärt das Spiel gegen den Computer und ordnet Zilch den
+verwandten Würfelspielen Farkle und Zehntausend zu. Unterschiedliche Wertungen
+und die hier geltenden Hausregeln bleiben ausdrücklich genannt.
+
+**English:** The lobby explains playing against the computer and relates Zilch to
+the dice games Farkle and Ten Thousand, explicitly noting differences in scoring
+and the house rules used here.
+
+### HAUSDEPP
+
+**Deutsch:** Seitentitel und Einstieg beschreiben das Online-Kartenspiel mit
+Freunden und Computer-Mitspielern sowie das Ziel, die eigenen Karten loszuwerden.
+
+**English:** The page title and introduction describe the online card game with
+friends and computer players and the goal of getting rid of your cards.
+
+### ZDWA
+
+**Deutsch:** Der Einstieg erklärt das Punkteblatt mit fünf Würfeln sowie das
+kostenlose Spiel im Browser, allein, mit Freunden oder im Team.
+
+**English:** The introduction explains the scorecard with five dice and free
+browser play, solo, with friends or in teams.
+
 ## 4.11.2 — 2026-10-29
 
 Dieses Update macht Stiche und Abheben auf den Spieltischen besser erkennbar.
