@@ -12,7 +12,7 @@ const escapeMarkup = value => String(value ?? "").replace(/[&<>"']/g, character 
   "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
 }[character]));
 const publicWatten = game => game.id === "watten" && game.publicBeta === true;
-const beta = game => game.beta === true || (game.beta === undefined && publicWatten(game));
+const beta = game => game.beta === true;
 const gameName = game => `${game.name}${beta(game) ? " [BETA]" : ""}`;
 const betaBadge = game => beta(game) ? ' <small class="suite-game-beta">[BETA]</small>' : "";
 const description = game => game.description || message(game.id === "watten"

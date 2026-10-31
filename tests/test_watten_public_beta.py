@@ -125,7 +125,7 @@ class WattenPublicBetaTests(unittest.TestCase):
                     self.assertEqual(response.headers["content-language"], language)
                     self.assertEqual(response.headers["link"], f'<{WATTEN_ORIGIN}{url}>; rel="canonical"')
                     self.assertEqual(len(document.headings), 1)
-                    self.assertIn('[BETA]', document.headings[0])
+                    self.assertNotIn('[BETA]', document.headings[0])
                     self.assertIn(f'lang="{language}"', response.text)
                     self.assertIn(f'data-watten-seo-language="{language}"', response.text)
                     self.assertIn('data-watten-public-beta="true"', response.text)

@@ -5,7 +5,7 @@ Four games. One account. A table for your next game night. / Vier Spiele, ein Ko
 - [Play ZDWA — Zock die Wand an](https://zockdiewandan.online/)
 - [Play Zilch — Zilch die Wand an](https://zilch.zockdiewandan.online/)
 - [Play Hausdepp](https://hausdepp.zockdiewandan.online/hausdepp)
-- [Play Watten — public beta](https://watten.zockdiewandan.online/watten)
+- [Play Watten](https://watten.zockdiewandan.online/watten)
 
 RollTheDice is a self-hostable, real-time game platform with German and English
 interfaces. Play in your browser or install a game as a Progressive Web App.
@@ -236,15 +236,18 @@ criteria.
 
 Öffentliche Gastgeber können im normalen Warteraum bewusst «Mitspieler benachrichtigen» wählen. Nur angemeldete Empfänger mit passender Einwilligung werden berücksichtigt; feste Revanchen bleiben davon ausgenommen. / Public hosts can explicitly notify players from a normal waiting room. Only eligible opted-in accounts are considered; fixed-roster rematches are excluded.
 
-**Öffentliche Beta / public beta:** `ROLLTHEDICE_WATTEN_PUBLIC_BETA=1` öffnet Watten
+**Öffentliches Watten / public Watten:** `ROLLTHEDICE_WATTEN_PUBLIC_BETA=1` öffnet Watten
 für alle Konten unter `https://watten.zockdiewandan.online/watten`. Lobby und
 Regeln sind ohne Anmeldung lesbar, zum Spielen ist ein Konto nötig. Der
 Schalter hat Vorrang vor der älteren Founder-Vorschau und ist standardmässig aus.
-Die öffentliche Beta ermöglicht native Kontoseiten und Kontomails, Installation
+Die öffentliche Freigabe ermöglicht native Kontoseiten und Kontomails, Installation
 sowie freiwillige Push-Mitteilungen mit den bestehenden Kontoeinstellungen.
 `/watten` und `/watten/regeln` sind DE/EN-Suchseiten (`?lang=en`); Konto-, Tisch-
 und Ergebnisansichten bleiben `noindex`. Ein Rückrollen des Schalters schliesst
-den festen Watten-Host wieder und stoppt Watten-Push sowie CPU-Autoplay.
+den festen Watten-Host wieder und stoppt Watten-Push sowie CPU-Autoplay. Der
+historische Name des Zugangsschalters ist unabhängig von der Beta-Kennzeichnung:
+Watten ist standardmässig nicht als Beta gekennzeichnet; Owner können die
+Kennzeichnung bei Bedarf separat ändern.
 Die öffentliche Lobby beschreibt Watten als Kartenspiel im Browser und erklärt
 die Spielerzahlen und Hausregeln auch ohne JavaScript.
 
@@ -254,11 +257,13 @@ explicit switch defaults to off and takes precedence over the older founder
 preview. Native account pages and emails, installation and optional push use
 the existing account system. Only the DE/EN lobby and rules are indexable;
 personal pages and tables stay `noindex`. Turning the switch off restores the
-reserved-host gate and stops Watten push delivery and CPU autoplay.
+reserved-host gate and stops Watten push delivery and CPU autoplay. The access
+switch retains its historical name and is independent of the beta label: Watten
+is not labelled beta by default; owners can change that label separately.
 The public lobby describes Watten as a browser card game and explains player
 counts and house rules even without JavaScript.
 
-**Ältere private Webvorschau / older private web preview (ohne öffentliche Beta):** Ein eigener, standardmässig
+**Ältere private Webvorschau / older private web preview (ohne öffentliche Freigabe):** Ein eigener, standardmässig
 ausgeschalteter Schalter `ROLLTHEDICE_WATTEN_FOUNDER_PREVIEW` kann die Vorschau
 unter `https://zockdiewandan.online/watten` ausschliesslich für das bereits
 dauerhaft gebundene Founder-Konto öffnen. Die bestehende Suite-Anmeldung wird
@@ -722,7 +727,7 @@ The native progress, history and leaderboard pages show stored XP, owned
 results, evidenced achievements and explicit ranking definitions. XP, title
 levels and award values remain labelled as a proposal. Reading older results
 never retrospectively grants XP. Local preview tests require both local preview flags; the
-public beta uses the released Watten domain.
+public release uses the Watten domain.
 
 **Spieltag / play day:** Akzeptierte menschliche Ansagen, Karten und Gebots-
 entscheidungen zählen im lokalen Watten für die kontoweite Tagesaktivität.
@@ -808,7 +813,7 @@ and twelve emoji remain available during a pending bid, a pause and when
 gestrichen; card hints are forbidden. “Good/Bad/Unsure” remains separate private
 partner advice. Chat and reactions never change cards or match points.
 
-Der gemeinsame Lobbychat wird in der öffentlichen Watten-Beta bewusst geöffnet
+Der gemeinsame Lobbychat wird bei öffentlicher Watten-Freigabe bewusst geöffnet
 und respektiert die kontoweite Chat-Einstellung. Auf den vier kanonischen
 Produkt-Hosts braucht er eine frisch bestätigte öffentliche Watten-Freigabe;
 die lokale Entwicklung und die private Founder-Vorschau bleiben verfügbar.
@@ -816,17 +821,17 @@ Sein persönlicher Dreitagesverlauf
 enthält nur Nachrichten, bei deren Versand das Konto zum Empfängerkreis gehörte.
 Eine Deaktivierung beendet den Empfang; erneutes Aktivieren ergänzt keine
 verpassten Nachrichten. Der öffentliche Tischchat bleibt davon unabhängig.
-Die Spieleauswahl kennzeichnet nur die öffentliche Freigabe als «[BETA]» und
-beschreibt die geschlossene Vorschau ausdrücklich als privat.
+Die Spieleauswahl zeigt eine separat gesetzte Beta-Kennzeichnung und beschreibt
+die geschlossene Vorschau ausdrücklich als privat.
 
-Opening the shared lobby chat in the public Watten beta is explicit and respects
+Opening the shared lobby chat for public Watten is explicit and respects
 the account-wide chat preference. The four canonical product hosts require a
 freshly confirmed public Watten capability; local development and the private
 founder preview remain available. Its personal three-day history contains only
 messages addressed to that account at send time. Disabling stops delivery;
 enabling again never adds missed messages. The public table chat is independent.
-The game picker marks only public availability as “[BETA]” and labels the closed
-preview as private.
+The game picker displays a separately configured beta label and labels the
+closed preview as private.
 
 **Deko-Bedienung / decoration controls:** Bis zu drei lokale Gegenstände aus
 Hausdepps vollständiger gewöhnlicher Auswahl erscheinen zufällig am Tisch.

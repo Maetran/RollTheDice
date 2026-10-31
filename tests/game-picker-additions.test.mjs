@@ -156,21 +156,20 @@ for (const compact of [false, true]) {
   });
 }
 
-test("only a strict public game descriptor paints the beta badge, ARIA name and localized public description", () => {
+test("public access alone never implies a beta label or beta description", () => {
   for (const language of ["de", "en"]) {
     for (const publicBeta of [undefined, false, 1, "true", true]) {
       const f = fixture(false, language);
       const game = { id: "watten", name: "Watten", href: "/watten", publicBeta };
       f.picker.update({ currentMode: "watten", games: [...games, game] });
-      assert.equal(f.button.getAttribute("aria-label"), `${language === "en" ? "Choose a game" : "Spiel auswählen"}: Watten${publicBeta === true ? " [BETA]" : ""}`);
+      assert.equal(f.button.getAttribute("aria-label"), `${language === "en" ? "Choose a game" : "Spiel auswählen"}: Watten`);
       f.picker.toggle();
       const link = f.links().at(-1);
-      assert.equal(link.getAttribute("aria-label"), `Watten${publicBeta === true ? " [BETA]" : ""}`);
-      assert.equal(link.querySelectorAll(".suite-game-beta").length, Number(publicBeta === true));
-      const text = publicBeta === true ? language === "en" ? "Public beta" : "Öffentliche Beta"
-        : language === "en" ? "Private preview" : "Private Vorschau";
-      assert.ok(link.innerHTML.includes(text));
-      assert.equal(gamePickerButtonMarkup(game).includes("[BETA]"), publicBeta === true);
+      assert.equal(link.getAttribute("aria-label"), "Watten");
+      assert.equal(link.querySelectorAll(".suite-game-beta").length, 0);
+      if (publicBeta === true) assert.doesNotMatch(link.innerHTML, /Public beta|Öffentliche Beta|Private preview|Private Vorschau/);
+      else assert.ok(link.innerHTML.includes(language === "en" ? "Private preview" : "Private Vorschau"));
+      assert.doesNotMatch(gamePickerButtonMarkup(game), /\[BETA\]/);
       f.picker.destroy();
     }
   }
@@ -194,11 +193,11 @@ test("a game beta label is independent of public access and applies to all four 
 
 test("withdrawing the public marker closes an open menu and removes beta branding from its trigger", () => {
   const f = fixture(true);
-  const game = { id: "watten", name: "Watten", href: "/watten", publicBeta: true };
+  const game = { id: "watten", name: "Watten", href: "/watten", publicBeta: true, beta: true };
   f.picker.update({ currentMode: "watten", games: [...games, game] });
   f.picker.toggle();
   assert.equal(f.button.getAttribute("aria-label"), "Choose a game: Watten [BETA]");
-  f.picker.update({ games: [...games, { ...game, publicBeta: false }] });
+  f.picker.update({ games: [...games, { ...game, publicBeta: false, beta: false }] });
   assert.equal(f.panel(), null);
   assert.equal(f.button.getAttribute("aria-label"), "Choose a game: Watten");
   assert.doesNotMatch(f.button.innerHTML, /\[BETA\]/);
