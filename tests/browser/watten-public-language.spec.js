@@ -21,7 +21,7 @@ for (const language of ['de', 'en']) {
     await expect.poll(() => page.evaluate(() => localStorage.getItem('zdwa_language'))).toBe(language);
     const guide = page.locator('[data-watten-lobby-guide]');
     await expect(guide).toBeVisible();
-    await expect(guide.locator('h2')).toHaveText(language === 'en' ? 'Watten at a glance' : 'Watten kurz erklärt');
+    await expect(guide.locator('h2')).toHaveText(language === 'en' ? 'Watten rules at a glance' : 'Watten-Regeln kurz erklärt');
     await expect(guide).toContainText(language === 'en' ? 'Everyone receives five cards.' : 'Jede Person bekommt fünf Karten.');
     await expect(page.getByRole('link', { name: language === 'en' ? 'Read the house rules' : 'Hausregeln lesen', exact: true })).toHaveClass(/wt-button/);
     await expect(page.locator('[data-watten-nav] a[href^="/watten/regeln"]')).toHaveAttribute('href', `/watten/regeln${query}`);

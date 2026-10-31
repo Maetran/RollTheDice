@@ -239,6 +239,8 @@ sowie freiwillige Push-Mitteilungen mit den bestehenden Kontoeinstellungen.
 `/watten` und `/watten/regeln` sind DE/EN-Suchseiten (`?lang=en`); Konto-, Tisch-
 und Ergebnisansichten bleiben `noindex`. Ein Rückrollen des Schalters schliesst
 den festen Watten-Host wieder und stoppt Watten-Push sowie CPU-Autoplay.
+Die öffentliche Lobby beschreibt Watten als Kartenspiel im Browser und erklärt
+die Spielerzahlen und Hausregeln auch ohne JavaScript.
 
 `ROLLTHEDICE_WATTEN_PUBLIC_BETA=1` opens Watten to every account on its dedicated
 origin. Guests may read the lobby and rules; playing requires an account. This
@@ -247,6 +249,8 @@ preview. Native account pages and emails, installation and optional push use
 the existing account system. Only the DE/EN lobby and rules are indexable;
 personal pages and tables stay `noindex`. Turning the switch off restores the
 reserved-host gate and stops Watten push delivery and CPU autoplay.
+The public lobby describes Watten as a browser card game and explains player
+counts and house rules even without JavaScript.
 
 **Ältere private Webvorschau / older private web preview (ohne öffentliche Beta):** Ein eigener, standardmässig
 ausgeschalteter Schalter `ROLLTHEDICE_WATTEN_FOUNDER_PREVIEW` kann die Vorschau
