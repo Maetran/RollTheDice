@@ -26,6 +26,20 @@ from tests.test_zilch_seo import _PublicDocument
 
 
 class SuiteSearchDiscoveryTests(IsolatedAsyncioTestCase):
+    async def test_game_lobbies_describe_how_to_play_before_javascript(self):
+        cases = (
+            (SITE_ORIGIN, "/", ("Würfelspiel mit fünf Würfeln", "Fülle dein Punkteblatt mit fünf Würfeln",
+                                 "kostenlos im Browser und ohne Konto")),
+            (HAUSDEPP_ORIGIN, "/hausdepp", ("Hausdepp online spielen", "Kartenspiel für zwei bis sechs Spieler",
+                                             "Computer-Mitspielern", "card game for two to six players")),
+        )
+        for origin, path, snippets in cases:
+            async with httpx.AsyncClient(transport=httpx.ASGITransport(app=main.app), base_url=origin) as client:
+                response = await client.get(path)
+                self.assertEqual(response.status_code, 200)
+                for snippet in snippets:
+                    self.assertIn(snippet, response.text)
+
     async def test_public_game_schema_states_real_rules_and_links_the_available_four_game_suite(self):
         lobby_url = f"{HAUSDEPP_ORIGIN}/hausdepp"
         rules_url = f"{lobby_url}/regeln"

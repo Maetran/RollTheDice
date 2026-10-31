@@ -13,6 +13,12 @@ Guests can play ZDWA and Zilch. Hausdepp and Watten have public lobbies and rule
 requires an active account. One account provides history, statistics, achievements
 and community features across the suite.
 
+ZDWA ist ein Würfelspiel mit fünf Würfeln und Punkteblatt, allein oder mit
+anderen. In Hausdepp spielen zwei bis sechs Personen mit doppeldeutschen Karten
+und versuchen, ihre Karten loszuwerden; Computer können mitspielen.
+ZDWA is a five-dice scorecard game for solo or group play. In Hausdepp, two to
+six players try to get rid of their German-suited cards; computers can join.
+
 ## Lieblingsgegner / favourite opponents
 
 **Deutsch:** Im persönlichen Konto zeigt jedes Spiel deine häufigsten Gegner

@@ -41,6 +41,7 @@ test('public suite links survive real lobby hydration and stay outside the game 
   await page.setViewportSize({ width: 320, height: 720 });
   for (const path of ['/', '/hausdepp']) {
     await page.goto(path);
+    if (path === '/') await expect(page.locator('.lobby-intro')).toContainText('fünf Würfeln');
     const footer = page.locator('[data-public-suite-links]');
     await expect(footer).toBeVisible();
     await footer.scrollIntoViewIfNeeded();
