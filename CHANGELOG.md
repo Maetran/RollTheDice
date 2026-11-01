@@ -23,6 +23,18 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 4.13.0 — 2026-11-01
+
+Ein Stück Tirol für deinen nächsten Kartenabend.
+
+A little Tyrol for your next card night.
+
+### WATTEN
+
+**Deutsch:** Ein Designbutton neben der Sprache wechselt zwischen dem vertrauten Look «Klassisch» und «Tirol». Das neue Design bringt Rot-Weiss, Tannengrün, ein ruhiges Alpenpanorama und einen eigenen stilisierten Adler an den Tisch. Die Auswahl bleibt in diesem Browser über Lobby, Regeln, Konto und Spieltisch hinweg gespeichert. Im Warteraum wandert der Button mit der Sprachwahl; auf sehr kurzen Querformat-Displays steht er im Tischmenü. Der bisherige Look bleibt Standard.
+
+**English:** A design button beside the language selector switches between the familiar “Classic” look and “Tyrol”. The new design brings red and white, forest green, a calm Alpine panorama and an original stylised eagle to the table. Your choice stays saved in this browser across the lobby, rules, account and game table. In the waiting room, the button moves with the language selector; very short landscape screens offer it in the table menu. The original look remains the default.
+
 ## 4.12.2 — 2026-11-01
 
 Dieses Update macht Verweise klarer und verkürzt den Weg zum nächsten Spielzug.

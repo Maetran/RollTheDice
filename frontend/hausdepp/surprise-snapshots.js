@@ -155,12 +155,13 @@ export function paintTableWood(fx, node, left = 0, top = 0) {
   paint.setAttribute('aria-hidden', 'true');
   Object.assign(paint.style, { position: 'absolute', pointerEvents: 'none' });
   const carving = isWatten(fx.table) ? getComputedStyle(fx.table, '::before') : null;
-  if (carving && carving.borderImageSource !== 'none') {
-    // The real Watten surface is a nine-slice, filled border-image on the
-    // table's pseudo-element. Repaint that exact viewport-sized surface and
-    // crop it, so optical gaps keep the same grain and carved frame.
+  if (carving && (carving.borderImageSource !== 'none' || carving.backgroundImage !== 'none')) {
+    // Watten paints its surface on the table's pseudo-element: a filled
+    // border-image in Classic, layered artwork and gradients in Tirol.
+    // Repaint that complete surface, then crop it without changing its origin.
     const table = fx.table.getBoundingClientRect();
-    for (const name of ['box-sizing', 'width', 'height', 'border', 'border-image', 'background', 'border-radius'])
+    for (const name of ['box-sizing', 'width', 'height', 'border', 'border-image', 'background',
+      'background-origin', 'background-clip', 'box-shadow', 'border-radius'])
       paint.style.setProperty(name, carving.getPropertyValue(name));
     paint.style.left = `${table.left - fx.box.left - left + (Number.parseFloat(carving.left) || 0)}px`;
     paint.style.top = `${table.top - fx.box.top - top + (Number.parseFloat(carving.top) || 0)}px`;

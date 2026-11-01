@@ -1,6 +1,6 @@
 const backIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m14 6-6 6 6 6M8 12h12"/></svg>';
 
-/** Move the live language/voice/ambience controls and retain their subscriptions. */
+/** Move the live language/design/voice/ambience controls and retain subscriptions. */
 export function createWaitingRoomChrome({ root, header, dom = document }) {
   const html = dom.documentElement, wasHidden = header?.hidden || false;
   const tools = dom.createElement("div");
@@ -16,9 +16,10 @@ export function createWaitingRoomChrome({ root, header, dom = document }) {
   rules.className = "wt-button wt-button--ghost wt-waiting-rules";
   tools.append(leave, lobby, rules);
   const language = header?.querySelector("[data-language-switcher]")?.closest("label");
+  const design = header?.querySelector("[data-watten-design-toggle]");
   const voice = root.querySelector("[data-watten-voice]");
   const sound = root.querySelector("[data-watten-sound]");
-  const homes = [language, voice, sound].filter(Boolean).map(node => {
+  const homes = [language, design, voice, sound].filter(Boolean).map(node => {
     const marker = dom.createComment("waiting-room control home");
     node.before(marker);
     return { node, marker };

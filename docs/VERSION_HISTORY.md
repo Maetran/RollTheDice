@@ -1,6 +1,6 @@
 # Versionen / Versions
 
-Aktuelle gemeinsame Produktversion / Current shared product version: **4.12.2**.
+Aktuelle gemeinsame Produktversion / Current shared product version: **4.13.0**.
 
 Alle RollTheDice-Spiele werden gemeinsam versioniert. Major steht für einen großen
 Produktmeilenstein, Minor für neue Funktionen und Patch für Fehlerkorrekturen
@@ -30,6 +30,7 @@ Detailed player-facing descriptions are in the [changelog](../CHANGELOG.md).
 
 | Version | Datum / Date | Art / Type | Änderung / Change | Commit |
 | --- | --- | --- | --- | --- |
+| 4.12.2 | 2026-11-01 | patch | Passende Buttons, kompakte Abschlüsse und Spielstart – Hausdepp spielt nach dem Abräumen sofort weiter. / Matching buttons, compact results and game setup, plus instant play after clearing the Hausdepp pile. | [3be12bf](https://github.com/Maetran/RollTheDice/commit/3be12bfb404cf13edbfbc1b41b928bbfb9c2f859) |
 | 4.12.1 | 2026-11-01 | patch | Watten bleibt beim Bieten und Ausspielen stabil; Hausdepp zeigt den Abschluss ohne Nachladesprung. / Watten stays stable through bids and card play; Hausdepp results appear without late layout shifts. | [895c0be](https://github.com/Maetran/RollTheDice/commit/895c0beec0338262e8c584d106f65d36e74ba8af) |
 | 4.12.0 | 2026-11-01 | minor | Seltene Tischüberraschungen dauern länger und kommen mit steigender Chance. / Rare table surprises last longer and become more likely with each game. | [8f59f95](https://github.com/Maetran/RollTheDice/commit/8f59f95891e85a87b7617c17d8cb8a66b0fc94b0) |
 | 4.11.3 | 2026-10-31 | patch | Klarere Spieleinstiege und Regeln für Watten, Zilch, Hausdepp und ZDWA. / Clearer introductions and rules for Watten, Zilch, Hausdepp and ZDWA. | [ad44648](https://github.com/Maetran/RollTheDice/commit/ad4464857f2ac46e4e1bc103e7bc87b895bd3915) |
