@@ -1377,7 +1377,6 @@ function renderStateContent() {
     const loser = s.players.find(p => p.id === s.loser_id);
     const finalLoser = s.players.find(p => p.id === tournament?.tages_hausdepp_id);
     const roundKey = `${gameId}:${tournament?.round_number || 1}:${Boolean(tournament?.completed)}:${Boolean(tournament?.can_start_next_round)}:${Boolean(snapshot._aborted)}:${JSON.stringify(tournament?.departed_ids || [])}`;
-    $("hausdeppResult").hidden = false;
     if ($("hausdeppResult").dataset.roundId === roundKey) {
       const recreate = $("hausdeppRecreate");
       if (recreate) recreate.disabled = rematchCreating;
@@ -1387,6 +1386,7 @@ function renderStateContent() {
       if (end) end.disabled = pending || tournamentEnding || !connected;
       return;
     }
+    $("hausdeppResult").hidden = true;
     $("hausdeppResult").dataset.roundId = roundKey;
     const title = snapshot._aborted ? t("tournamentStopped") : tournament?.completed ? finalLoser
       ? `${t("tournamentComplete")}. ${t("tournamentLoser", { name: finalLoser.name })}` : t("tournamentWithoutHausdepp")
@@ -1403,7 +1403,8 @@ function renderStateContent() {
       }
       renderState();
     });
-    if (!spectating) { renderRoundProgress($("hausdeppRoundProgress")); void loadRoundProgress(roundKey); }
+    if (spectating) $("hausdeppResult").hidden = false;
+    else { renderRoundProgress($("hausdeppRoundProgress")); void loadRoundProgress(roundKey); }
   }
 }
 
@@ -1619,11 +1620,23 @@ function acknowledgeRoundProgressWhenVisible(container, notice, roundKey) {
 }
 
 async function loadRoundProgress(roundKey) {
+  const result = $("hausdeppResult");
+  const container = $("hausdeppRoundProgress");
+  const controller = new AbortController();
+  let timer;
+  const current = () => !stopped && result.isConnected && container.isConnected
+    && result.dataset.roundId === roundKey && snapshot?._hausdepp?.phase === "finished" && !snapshot?._aborted;
   try {
-    const data = await json("/api/hausdepp/account?limit=1");
-    if (stopped || !$("hausdeppRoundProgress") || $("hausdeppResult").dataset.roundId !== roundKey) return;
-    const container = $("hausdeppRoundProgress");
+    // Do not leave the result inaccessible if the account request stalls. A late
+    // response is discarded so it cannot move an already visible result sheet.
+    const data = await Promise.race([
+      json("/api/hausdepp/account?limit=1", { signal: controller.signal }),
+      new Promise((_, reject) => { timer = setTimeout(() => { controller.abort(); reject(new Error("Account request timed out")); }, 2500); }),
+    ]);
+    if (!current()) return;
     renderRoundProgress(container, data);
+    result.hidden = false;
+    renderState();
     const earned = snapshot?._hausdepp_round_summary?.players?.[playerId];
     const notice = data.presentation?.pending;
     // Pending account notices may cover several rounds. Only acknowledge this
@@ -1638,6 +1651,9 @@ async function loadRoundProgress(roundKey) {
     if (!snapshot?._aborted) void progressNotices?.refresh();
   } catch {
     // The final account link remains available when the summary cannot load.
+    if (current()) { result.hidden = false; renderState(); }
+  } finally {
+    clearTimeout(timer);
   }
 }
 

@@ -60,7 +60,7 @@ test.afterEach(async ({ page }) => {
   });
 });
 
-async function finishedRenderer(page, fixture, { spectator = false, tournament = false } = {}) {
+async function finishedRenderer(page, fixture, { spectator = false, tournament = false, waitForResult = true } = {}) {
   const id = await fixture.create();
   let projection;
   page.on('websocket', socket => socket.on('framereceived', ({ payload }) => {
@@ -116,13 +116,62 @@ async function finishedRenderer(page, fixture, { spectator = false, tournament =
   });
   if (spectator) await page.goto(`/hausdepp/spiel/${id}/zuschauen`);
   else await page.reload();
-  await expect(page.locator('#hausdeppResult')).toBeVisible();
-  await expect(page.locator('#hausdeppLeaveGame')).toBeHidden();
-  await expect(page.locator('#hausdeppLeaveGameResult')).toBeVisible();
+  if (waitForResult) {
+    await expect(page.locator('#hausdeppResult')).toBeVisible();
+    await expect(page.locator('#hausdeppLeaveGame')).toBeHidden();
+    await expect(page.locator('#hausdeppLeaveGameResult')).toBeVisible();
+  }
   return { id, board, self, loser, sent,
     publish(extra = {}) { for (const socket of simulatedSockets) socket.send(JSON.stringify({ scoreboard: board, ...extra })); },
   };
 }
+
+test('result waits for account progress and remains stable on repeated updates', async ({ page }) => {
+  const fixture = await setup(page);
+  let releaseAccount;
+  const accountGate = new Promise(resolve => { releaseAccount = resolve; });
+  let requested = false;
+  await page.route('**/api/hausdepp/account?limit=1', async route => {
+    requested = true;
+    await accountGate;
+    await route.fulfill({ json: fixture.account });
+  });
+  const live = await finishedRenderer(page, fixture, { waitForResult: false });
+  await expect.poll(() => requested).toBe(true);
+  const result = page.locator('#hausdeppResult');
+  await expect(result).toBeHidden();
+  live.publish();
+  await expect(result).toBeHidden();
+  releaseAccount();
+  await expect(result).toBeVisible();
+  await expect(result.locator('.hd-round-account')).toContainText('Stammgast');
+  const before = await result.boundingBox();
+  live.publish();
+  await expect(result.locator('.hd-round-account')).toContainText('Stammgast');
+  const after = await result.boundingBox();
+  expect(after).toEqual(before);
+});
+
+test('a stalled account request cannot block the result or add a late layout shift', async ({ page }) => {
+  const fixture = await setup(page);
+  let releaseAccount;
+  const accountGate = new Promise(resolve => { releaseAccount = resolve; });
+  await page.route('**/api/hausdepp/account?limit=1', async route => {
+    await accountGate;
+    await route.fulfill({ json: fixture.account }).catch(() => {});
+  });
+  await finishedRenderer(page, fixture, { waitForResult: false });
+  const result = page.locator('#hausdeppResult');
+  await expect(result).toBeHidden();
+  await expect(result).toBeVisible({ timeout: 5000 });
+  await expect(result.locator('.hd-round-earned')).toContainText('+27 EP');
+  await expect(result.locator('.hd-round-account')).toHaveCount(0);
+  const before = await result.boundingBox();
+  releaseAccount();
+  await page.waitForTimeout(200);
+  expect(await result.boundingBox()).toEqual(before);
+  await expect(result.locator('.hd-round-account')).toHaveCount(0);
+});
 
 for (const language of ['de', 'en']) {
   test(`finished solo player can speed up CPUs in the vacant hand area (${language})`, async ({ page }) => {
