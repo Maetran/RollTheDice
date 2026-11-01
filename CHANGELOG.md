@@ -23,6 +23,39 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 4.12.0 — 2026-11-01
+
+Seltene Tischüberraschungen nehmen sich mehr Zeit und erscheinen mit jedem Spiel wahrscheinlicher.
+
+Rare table surprises last longer and become more likely with each game.
+
+### HAUSDEPP
+
+**Deutsch:** Seltene Funde bleiben länger sichtbar. Nach einer ausgelösten Überraschung
+beginnt deine Chance im nächsten Spiel bei 1 % und steigt pro begonnener Runde um einen
+Prozentpunkt. Am gemeinsamen Tisch gilt die höchste persönliche Chance; spätestens ab
+der 100. Runde wird ein Fund angeboten, sofern die Tischsituation es zulässt. Erst ein
+Tipp auf den Fund löst die Überraschung aus und setzt die Zähler der verbundenen
+Mitspieler zurück.
+
+**English:** Rare finds stay visible for longer. After a surprise is triggered, your
+chance starts at 1% in the next game and rises by one percentage point per started
+round. The highest personal chance applies to the shared table; a find is offered by
+the 100th round when table conditions allow. Only tapping the find triggers the
+surprise and resets the counts of connected players.
+
+### WATTEN
+
+**Deutsch:** Die längeren Überraschungen und die steigende Chance gelten auch bei
+Watten, wo jede begonnene Partie zählt. Seltene Funde können nun auch allein gegen
+Computer auftauchen und bleiben auf engen Displays erreichbar. Gemeinsame Erfolge
+erfordern weiterhin mindestens zwei verbundene Menschen und einen gültigen Abschluss.
+
+**English:** Longer surprises and increasing chances also apply to Watten, counting
+each started match. Rare finds can now appear when playing alone against computers
+and remain reachable on compact displays. Shared achievements still require at least
+two connected people and a valid completed match.
+
 ## 4.11.3 — 2026-10-31
 
 Dieses Update beschreibt unsere Spiele und ihre Regeln klarer, damit neue Spieler leichter den passenden Einstieg finden.
