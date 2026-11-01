@@ -8,7 +8,7 @@ import { teamName } from "./waiting-room.js";
 import { publicTitleMarkup } from "./match-progress.js";
 import { roundOptionsMarkup, bloedelnCardsMarkup } from "./round-options.js";
 import { retourschneiderChoiceMarkup, createRetourAnnouncement } from "./retourschneider.js";
-import { seriesMarks, seriesTargetMarkup, seriesFinishedTitle } from "./series.js";
+import { seriesMarks, seriesTargetMarkup, seriesFinishedTitle, seriesSummaryMarkup } from "./series.js";
 import { createScorepad, nockerlMarksMarkup } from "./scorepad.js";
 import { createTrickLayout } from "./trick-layout.js";
 import { cardBounds, fitInspectionAxis, inspectionFootprint, outermostCard, paintedBox, rectOf, unionOf } from "./inspection-geometry.js";
@@ -68,7 +68,8 @@ function reconcile(parent, next) {
     }
     if (incoming.nodeType === Node.TEXT_NODE) { current.textContent = incoming.textContent; return; }
     if (incoming.nodeType !== Node.ELEMENT_NODE) return;
-    const controllerSlot = incoming.hasAttribute("data-watten-rematch") || incoming.hasAttribute("data-watten-match-progress");
+    const controllerSlot = incoming.hasAttribute("data-watten-rematch") || incoming.hasAttribute("data-watten-match-progress")
+      || incoming.hasAttribute("data-wt-final-history");
     for (const attribute of [...current.attributes]) {
       if (attribute.name === "open" && ["DETAILS", "DIALOG"].includes(incoming.nodeName) || controllerSlot && attribute.name === "hidden") continue;
       if (!incoming.hasAttribute(attribute.name)) current.removeAttribute(attribute.name);
@@ -418,19 +419,21 @@ function panelMarkup(vm) {
     const mine = engine.winners.some(group => group.includes(vm.playerId));
     return `<div class="wt-final" data-watten-match-result data-outcome="${vm.spectator ? "neutral" : mine ? "won" : "lost"}">
       <h3 class="wt-final-heading">${esc(seriesFinishedTitle(vm) || t(vm.spectator ? "match.over" : mine ? "match.youWon" : "match.youLost"))}</h3>
-      <p class="wt-final-winner">${esc(t("match.wonBy", { names: names(winners) }))}</p>
-      ${resultReactionsMarkup(lang(), esc)}
-      <div data-watten-rematch hidden></div>
+      ${vm.spectator ? `<p class="wt-final-winner">${esc(t("match.wonBy", { names: names(winners) }))}</p>` : ""}
+      ${seriesSummaryMarkup(vm)}
+      <div class="wt-final-actions"><div data-watten-rematch hidden></div><a class="wt-button wt-button-secondary" href="/watten">${esc(t("match.toLobby"))}</a></div>
       <details class="wt-final-call"><summary>${esc(t("match.details"))}</summary>
+        ${vm.spectator ? "" : `<p class="wt-final-winner">${esc(t("match.wonBy", { names: names(winners) }))}</p>`}
+        ${resultReactionsMarkup(lang(), esc)}
         ${(engine.nockerl || []).map(item => `<p class="wt-final-award" data-loss-kind="${esc(item.reason)}">
           ${item.reason === "loss" ? "" : `<strong>${esc(t(`match.lossType.${item.reason}`))}</strong> · `}${esc(t("match.awarded", { count: item.count, names: names(item.members.map(id => nameOf(vm, id))) }))}
         </p>`).join("")}
         ${roundSummaryMarkup(vm)}
+        <div data-wt-final-history></div>
         <div data-watten-match-progress hidden></div>
         <a class="wt-button wt-button-secondary wt-final-progress" href="/watten/konto/fortschritt">${esc(t("nav.progress"))}</a>
       </details>
       <p class="wt-visually-hidden" role="status">${esc(vm.snapshot.result_persisted ? t("match.saved") : t("match.saving"))}</p>
-      <div class="wt-final-actions"><a class="wt-button wt-button-secondary" href="/watten">${esc(t("match.toLobby"))}</a></div>
     </div>`;
   }
   if (vm.paused) {
@@ -805,7 +808,13 @@ export function createTableView(container, { onCard, accountId = null }) {
     const exclusiveRequest = vm.engine.preplay?.pending && vm.engine.preplay.pending.kind !== "bloedeln";
     const dockedBloedeln = !exclusiveRequest && /wt-bloedeln|data-watten-preplay-pending="bloedeln"/.test(roundOptions);
     patch(elements.preplay, "preplay", dockedBloedeln ? roundOptions : "");
+    const finalReady = vm.engine.phase === "match_complete" && (!vm.roundPresentation || vm.roundPresentation.stage === "ready");
+    // Reuse the live review node, including its listeners and open state.
+    // Return it home before replacing the terminal panel on a new deal.
+    if (!finalReady && elements.history.parentNode !== elements.panel.parentNode) elements.panel.before(elements.history);
     patch(elements.panel, "panel", !vm.paused && exclusiveRequest ? roundOptions : panelMarkup(vm) + (dockedBloedeln ? "" : roundOptions));
+    const finalHistory = finalReady && elements.panel.querySelector("[data-wt-final-history]");
+    if (finalHistory && elements.history.parentNode !== finalHistory) finalHistory.append(elements.history);
     patch(elements.private, "private", privateMarkup(vm));
     const feedbackDialog = elements.private.querySelector("[data-watten-feedback-dialog]");
     if (feedbackDialog && !feedbackDialog.open && typeof feedbackDialog.showModal === "function") feedbackDialog.showModal();

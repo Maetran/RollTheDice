@@ -774,6 +774,10 @@ test("private Zilch result history and read-only report stay separate from ZDWA"
     await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
     await expect(page.getByText("Der Tisch ist abgerechnet", { exact: true })).toBeVisible();
     await expect(page.locator(".zilch-result-head h1")).toHaveText("Mani gewinnt die Partie.");
+    await expect(page.locator(".zilch-result-details")).not.toHaveAttribute("open");
+    await expect(page.locator(".zilch-result-metrics")).toBeHidden();
+    await page.locator(".zilch-result-details > summary").focus();
+    await page.keyboard.press("Enter");
     await expect(page.locator(".zilch-result-metrics")).toContainText("Höchste gesicherte Runde");
     await expect(page.locator(".zilch-result-metrics")).toContainText(/8.?000/);
     await expect(page.locator(".zilch-result-metrics")).toContainText("Zilch-Runden");
@@ -796,12 +800,12 @@ test("private Zilch result history and read-only report stay separate from ZDWA"
     await expect(tableMoments).toContainText("Newbie → Rookie");
     await expect(tableMoments).not.toContainText("source_kind");
     const resultActions = page.locator(".zilch-result-actions");
-    await expect(resultActions.getByRole("button", { name: "Revanche" })).toBeVisible();
+    await expect(resultActions.getByRole("button", { name: "Neue Runde" })).toBeVisible();
     await expect(resultActions.getByRole("link", { name: "Zur Zilch-Lobby" })).toHaveAttribute("href", "/zilch");
     await expect(resultActions.locator("a[href='/zilch/historie']")).toHaveCount(0);
     expect(await resultActions.evaluate(actions => {
       const summary = document.querySelector(".zilch-result-summary");
-      return Boolean(summary && (actions.compareDocumentPosition(summary) & Node.DOCUMENT_POSITION_FOLLOWING));
+      return Boolean(summary && (actions.compareDocumentPosition(summary) & Node.DOCUMENT_POSITION_PRECEDING));
     })).toBe(true);
     await expect(page.getByText("Gleichstand – Startwurf wiederholt")).toBeVisible();
     await expect(page.locator(".zilch-result-final-round")).toContainText("hat die letzte Runde eingeläutet.");
@@ -825,7 +829,7 @@ test("private Zilch result history and read-only report stay separate from ZDWA"
       };
       return {
         heroHeading: luminance(rgb(".zilch-result-head h1")),
-        summaryEyebrow: luminance(rgb(".zilch-result-summary .eyebrow")),
+        summaryEyebrow: luminance(rgb(".zilch-result-summary .zilch-result-score p")),
         metricsEyebrow: luminance(rgb(".zilch-result-metrics .eyebrow")),
       };
     });
@@ -852,6 +856,8 @@ test("private Zilch result history and read-only report stay separate from ZDWA"
     await expect(page.locator(".zilch-result-moments")).toContainText("Table moments");
     await expect(page.locator(".zilch-result-moments")).toContainText("First Roll");
     await expect(page.locator(".zilch-result-moments")).toContainText("Newbie → Rookie");
+    await expect(page.locator(".zilch-result-details > summary")).toHaveText(/Game details/);
+    await page.locator(".zilch-result-details > summary").click();
     await expect(page.getByText("Total points", { exact: true }).first()).toBeVisible();
     await expect(page.locator("#zilchNavigation a[href='/zilch']")).toBeVisible();
 
@@ -868,7 +874,7 @@ test("private Zilch result history and read-only report stay separate from ZDWA"
   }
 });
 
-test("a persisted CPU Zilch result rematches with a new strategy draw and its saved room code", async ({ browser, baseURL }) => {
+test("a persisted CPU Zilch result starts a new round with a new strategy draw and its saved room code", async ({ browser, baseURL }) => {
   const context = await browser.newContext({ baseURL, serviceWorkers: "block" });
   const page = await context.newPage();
   try {
@@ -914,12 +920,12 @@ test("a persisted CPU Zilch result rematches with a new strategy draw and its sa
 
     await page.goto(`/zilch/ergebnis/${result.game_id}`);
     const actions = page.locator(".zilch-result-actions");
-    const rematch = actions.getByRole("button", { name: "Revanche" });
+    const rematch = actions.getByRole("button", { name: "Neue Runde" });
     await expect(rematch).toBeVisible();
     await expect(actions.getByRole("link", { name: "Zur Zilch-Lobby" })).toHaveAttribute("href", "/zilch");
     expect(await actions.evaluate(node => {
       const summary = document.querySelector(".zilch-result-summary");
-      return Boolean(summary && (node.compareDocumentPosition(summary) & Node.DOCUMENT_POSITION_FOLLOWING));
+      return Boolean(summary && (node.compareDocumentPosition(summary) & Node.DOCUMENT_POSITION_PRECEDING));
     })).toBe(true);
 
     await Promise.all([
@@ -979,8 +985,8 @@ test("a legacy CPU result without room-code metadata asks before it can create a
     });
 
     await page.goto(`/zilch/ergebnis/${result.game_id}`);
-    await page.getByRole("button", { name: "Revanche" }).click();
-    await expect(page.locator("#appDialogTitle")).toHaveText(/Geschützte Revanche|Protected rematch/);
+    await page.getByRole("button", { name: "Neue Runde" }).click();
+    await expect(page.locator("#appDialogTitle")).toHaveText(/Neue geschützte Runde|New protected round/);
     await expect(page.locator("#appDialogInput")).toBeVisible();
     await page.locator("[data-dialog-action='cancel']").click();
     await expect(page.locator("#appDialogBackdrop")).toBeHidden();

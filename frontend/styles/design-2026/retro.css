@@ -70,7 +70,7 @@
   letter-spacing: .01em;
 }
 :root[data-game="zdwa"][data-design="2026"][data-theme="classic"] .lobby-page .create-game-card h2 {
-  font-size: 1.55rem;
+  font-size: 1.3rem;
 }
 :root[data-game="zdwa"][data-design="2026"][data-theme="classic"] .lobby-page .choice-button {
   font-weight: 700;

@@ -106,7 +106,10 @@ unread game rewards.
 
 **Deutsch:** Weiterführende Aktionen und Regelübersichten verwenden das
 Button-Design des jeweiligen Spiels. «Konto» öffnet in allen vier Spielen die
-Statistik. Profilbild- und Anmeldungsaktionen führen gezielt in die Einstellungen.
+Statistik. Verlinkte Spielernamen erhalten auch in Ranglisten, Erfolgen und
+Chats erkennbare Button-Flächen; Spieltabellen verwenden eine kompakte Variante.
+Verweise ganz unten im Suite-Footer bleiben Textlinks. Profilbild- und
+Anmeldungsaktionen führen gezielt in die Einstellungen.
 Die Kategorien der Kontoeinstellungen starten geschlossen und lassen sich einzeln
 öffnen. Eine erforderliche Passwortänderung öffnet den passenden Bereich direkt.
 Alle vier Kontobereiche bieten Statistik, Erfolge und Einstellungen in derselben
@@ -120,6 +123,9 @@ Anmeldung; Gäste erhalten diese Inhalte bereits ohne JavaScript auf Deutsch
 oder Englisch.
 
 **English:** Navigation actions and rule contents use each game's button style.
+Linked player names also have button faces in rankings, achievements and chats,
+with compact controls inside score tables. Links at the bottom of the suite footer
+remain text links.
 “Account” opens Statistics in all four games; profile-image and sign-in actions
 link directly to Settings. Account settings categories start collapsed and
 open individually. A required password change opens the relevant section directly.
@@ -130,6 +136,50 @@ update dialog. A separate account notice shows combined progress after an accoun
 merge; acknowledging it does not acknowledge game results or achievements.
 The Watten lobby explains players, variants and the aim of the game after sign-in
 as well; guests receive the same guide in German or English without JavaScript.
+
+## Kompakter Spielstart / compact game creation
+
+**Deutsch:** In der ZDWA-Lobby stehen Spielerzahl und Spielstart direkt bereit.
+Hardcore, Spielpasswort und Sprachchat liegen unter den zunächst eingeklappten
+«Spieloptionen». Gewählte Sonderoptionen bleiben in der Zusammenfassung sichtbar.
+Die zusätzliche Anzeige «Du spielst als …» entfällt; das Konto ist über den
+Kopfbereich erreichbar. Bei Hausdepp geben eine bestätigte Zehn oder vier gleiche
+Karten das Nachziehen und Weiterspielen sofort frei, während der Stapel weiter
+abgeräumt wird.
+
+**English:** The ZDWA lobby keeps the player count and game start directly available.
+Hardcore, game password and voice chat live under “Game options”, collapsed by
+default. A summary keeps selected extra options visible. The redundant “You are
+playing as …” line is removed; the header provides the account entry. In Hausdepp,
+an accepted ten or four of a kind immediately unlocks refilling and playing on
+while the pile continues to clear.
+
+## Abschluss und nächste Runde / results and the next round
+
+**Deutsch:** Watten zeigt den Nockerlstand im Abschluss und im Revanche-Warteraum
+als hervorgehobene Zahlen. Feste Viererteams stehen auch auf Telefonen
+nebeneinander; Tischregeln und zusätzliche Spieloptionen sind eingeklappt.
+Die Revanche setzt dieselbe Besetzung und deren Nockerl fort. Deshalb gibt es dort
+keine allgemeine Einladung; andere Konten sehen «Feste Besetzung». Im Abschluss stehen
+Revanche und Lobby direkt bereit, Reaktionen und weitere Daten unter Spieldetails.
+Hausdepp nennt die Fortsetzung «Revanche starten»; Runden-EP bleiben sichtbar,
+weitere Kontodaten öffnen sich über den aktuellen Rang. Zuschauer erhalten einen
+einzigen Ausstieg und keine persönlichen Fortschritts- oder Revancheaktionen.
+Zilch stellt Ergebnis, Punkte und die nächsten Aktionen vor den eingeklappten
+Detailbericht. «Neue Runde» in ZDWA und Zilch erstellt ein neues Spiel im bisherigen
+Modus; es ist keine reservierte Fortsetzung mit allen bisherigen Spielern.
+
+**English:** Watten highlights loss-mark totals in the result and rematch waiting
+room. Fixed four-player teams sit side by side on phones; table rules and extra
+game options start collapsed. A rematch retains the same players and loss marks,
+so it offers no general invitation; other accounts see “Reserved line-up”. Rematch and Lobby
+are directly available at the end, with reactions and further information under
+Match details. Hausdepp labels its continuation “Start rematch”; round XP stays
+visible, and the current rank opens further account information. Spectators get
+one exit without personal progress or rematch actions. Zilch puts the outcome,
+scores and next actions before a collapsed detailed report. “New round” in ZDWA
+and Zilch creates a new game in the previous mode; it does not reserve a
+continuation for the previous players.
 
 ## Spiele und Funktionen verwalten / game and feature administration
 
@@ -1671,8 +1721,8 @@ unterstützten Geräten kurz vibrieren. Nach 42 geschriebenen Bierdeckelstrichen
 gibt es eine kleine Antwort auf alles. Nach der Runde bleibt die Punkteübersicht
 ohne zusätzlichen Quittierungsbutton sichtbar. Das kompakte Ergebnisblatt nennt
 die Tischbesetzung, Platzierungen und nur die EP und Erfolge dieser Runde.
-Rundengutschrift und Erfolgs-EP werden aufgeschlüsselt; der eigene aktuelle Rang,
-Gesamt-EP und Abstand zum nächsten Rang geben dem Fortschritt einen Kontext.
+Rundengutschrift und Erfolgs-EP werden aufgeschlüsselt; der eigene aktuelle Rang
+öffnet Gesamt-EP, Abstand zum nächsten Rang und den Fortschritts-Button.
 Allgemeine Glückwünsche und Wiederholungs-Erklärungen entfallen.
 Der Endstand erscheint erst,
 wenn die letzte Karte liegt und weitere 750 ms verstrichen sind. Turnierbuchstaben
@@ -1705,7 +1755,7 @@ summary stays visible without an extra acknowledgement button. The compact
 result sheet shows the table composition, finishing order and only this round’s
 XP and achievements. Longer status labels stay separate from avatars and player
 names on small screens. Round credit and achievement XP are broken down; your current
-rank, total XP and distance to the next rank put progress in context. Generic
+rank opens total XP, distance to the next rank and the progress button. Generic
 congratulations and rematch explanations are omitted. The final result
 waits until the last card lands, then another 750 ms. Tournament letters have
 their own line at each opponent seat, including six-player tables. The first
@@ -2245,10 +2295,10 @@ using dialogs. See the [full Zilch rule contract](docs/ZILCH_RULES.md).
 
 After every completed or abandoned Solo Sprint, and every completed CPU or
 two-player Zilch game, the end screen opens automatically. Its actions sit
-above the summary: start a new Solo run, request a rematch, or return to the
+after the outcome and scores: start a new Solo run, create a new round, or return to the
 lobby. Signed-in players receive their private report; guests retain the same
-current-session summary without a personal history entry. A protected CPU or
-two-player rematch keeps its room code in the current browser session; when
+current-session summary without a personal history entry. When creating a protected
+CPU or two-player round, its room code stays in the current browser session; when
 reopening an older report, players enter the code again so it is never stored
 in the result history.
 
@@ -2990,7 +3040,7 @@ requests and public friendship profiles are not implemented.
 ### Zilch Classic
 
 **Deutsch – Spieltisch:** Die Spielweise des Würfelwirts wird bei jeder neuen
-Online- oder Offline-Partie gleichverteilt ausgelost. Revanchen losen neu;
+Online- oder Offline-Partie gleichverteilt ausgelost. Neue Runden losen neu;
 laufende und wiederaufgenommene Partien behalten ihre Spielweise. Alle drei
 Siegeserfolge bleiben erreichbar, ihre IDs und Punkte sowie bisherige
 Statistiken bleiben unverändert. Eine Legacy-Markierung ist deshalb nicht nötig.
@@ -3004,7 +3054,7 @@ bleiben ruhig. Reduzierte Bewegung wird respektiert. Der letzte Wurf bleibt
 nach seiner Animation etwa eine Sekunde sichtbar, bevor das Ergebnis öffnet.
 
 **English – Game table:** Every new online or offline Dice Host game draws one
-of the three play styles with equal probability. Rematches draw again;
+of the three play styles with equal probability. New rounds draw again;
 ongoing and resumed games retain their style. All three win achievements remain
 available with unchanged IDs, points and past statistics, so no legacy label
 is needed. Tablet guidance describes the current decision. “Total if banked”

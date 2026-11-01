@@ -76,7 +76,7 @@ function seatSlot(room, seat, { member, viewerSeat, busy, canManageCpus }) {
     <span class="wt-seat-number">${esc(t("seat.number", { seat: seat + 1 }))}</span>
     ${free ? `<span class="wt-seat-free">${esc(t("seat.free"))}</span>`
       : `<strong translate="no">${esc(name || "")}</strong>`}
-    ${publicTitleMarkup(info.public_title, { language: window.ZDWA_I18N.getLanguage(), escapeHtml: esc })}
+    ${locked ? "" : publicTitleMarkup(info.public_title, { language: window.ZDWA_I18N.getLanguage(), escapeHtml: esc })}
     ${info.is_cpu ? `<span class="wt-tag">${esc(t("seat.cpu"))}</span>` : ""}
     ${own ? `<span class="wt-tag">${esc(t("seat.you"))}</span>` : ""}
     ${host ? `<span class="wt-tag wt-tag--host">${esc(t("seat.host"))}</span>` : ""}
@@ -130,18 +130,20 @@ export function waitingRoomMarkup(snapshot, { mode, viewerId, busy = false, extr
   const full = room.seats.every(seat => seat.participant_id);
   const unseated = room.members.filter(item => item.seat === null && item.participant_id !== viewerId);
   const status = room.status === "closed" ? t("waiting.closed") : "";
-  return `<section class="wt-waiting" aria-labelledby="wattenWaitingTitle">
+  const continuation = room.series?.teams_locked === true;
+  return `<section class="wt-waiting${continuation ? " wt-waiting--rematch" : ""}" aria-labelledby="wattenWaitingTitle">
     <div data-watten-waiting-tools></div>
     <header class="wt-waiting-head">
-      <p class="wt-kicker">${esc(t(mode === "spectator" ? "spectator.kicker" : "waiting.kicker"))}</p>
+      <p class="wt-kicker">${esc(t(mode === "spectator" ? "spectator.kicker" : continuation ? "waiting.rematch" : "waiting.kicker"))}</p>
       <h2 id="wattenWaitingTitle" translate="no" tabindex="-1">${esc(snapshot.name || "")}</h2>
-      ${recipeMarkup(room.recipe)}
+      ${continuation ? "" : recipeMarkup(room.recipe)}
     </header>
-    ${member ? landscapeHint() : ""}
+    ${member && !continuation ? landscapeHint() : ""}
     ${status ? `<p class="wt-note" role="status">${esc(status)}</p>` : ""}
     ${seriesSummaryMarkup({ room, count: room.recipe.player_count, viewerSeat, spectator: !member })}
     ${room.series?.teams_locked && room.recipe.player_count !== 4 ? `<p class="wt-note wt-tournament-locked">${esc(t("series.locked"))}</p>` : ""}
     ${seatsMarkup(room, { member, viewerSeat, busy, canManageCpus: isHost && snapshot.capabilities?.cpu_autoplay === true })}
+    ${continuation ? `<details class="wt-waiting-recipe" data-watten-waiting-rules><summary id="wattenWaitingRulesToggle">${esc(t("waiting.tableRules"))}</summary>${recipeMarkup(room.recipe)}</details>` : ""}
     ${waitingFeatureControlsMarkup(room, { member, busy })}
     ${unseated.length ? `<p class="wt-note">${esc(t("waiting.unseated", { names: unseated.map(item => item.name).join(", ") }))}</p>` : ""}
     ${member && viewerSeat === null && room.status === "waiting" ? `<p class="wt-note wt-note--strong">${esc(t(room.series?.teams_locked ? "series.takeAssigned" : "waiting.chooseSeat", { seat: (room.required_seat ?? 0) + 1 }))}</p>` : ""}
@@ -153,7 +155,7 @@ export function waitingRoomMarkup(snapshot, { mode, viewerId, busy = false, extr
     ${extra}
     ${member ? `<div class="wt-actions wt-waiting-actions">
       ${isHost && room.status === "waiting" ? `<button type="button" class="wt-primary" data-watten-command="start" ${!full || busy ? "disabled" : ""}>${esc(lt("start"))}</button>` : ""}
-      <button type="button" class="wt-button--ghost" data-watten-command="copy-link" aria-label="${esc(lt("copyLabel"))}" title="${esc(lt("copyLabel"))}">${esc(lt("copy"))}</button>
+      ${continuation ? "" : `<button type="button" class="wt-button--ghost" data-watten-command="copy-link" aria-label="${esc(lt("copyLabel"))}" title="${esc(lt("copyLabel"))}">${esc(lt("copy"))}</button>`}
       ${room.status === "waiting" ? `<button type="button" class="wt-button--ghost" data-watten-command="leave-waiting" aria-label="${esc(lt("leaveLabel"))}" ${busy ? "disabled" : ""}>${esc(lt("leave"))}</button>` : ""}
     </div>
     ${openSeatNotifyMarkup(snapshot, { member, viewerId, busy, language: lang() })}

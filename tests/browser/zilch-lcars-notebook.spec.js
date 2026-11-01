@@ -260,6 +260,13 @@ async function expectSlidingNotebook(page, activePlayerId, { scrollable = true, 
       const bounds = element.getBoundingClientRect();
       return Math.max(0, Math.min(bounds.bottom, notebook.bottom) - Math.max(bounds.top, notebook.top));
     };
+    const luminance = color => {
+      const [red, green, blue] = color.match(/[\d.]+/g).slice(0, 3).map(Number).map(value => {
+        const channel = value / 255;
+        return channel <= .04045 ? channel / 12.92 : ((channel + .055) / 1.055) ** 2.4;
+      });
+      return .2126 * red + .7152 * green + .0722 * blue;
+    };
     return {
       documentWidth: document.documentElement.scrollWidth,
       viewportWidth: innerWidth,
@@ -273,6 +280,10 @@ async function expectSlidingNotebook(page, activePlayerId, { scrollable = true, 
         const log = board.querySelector("ol");
         const logBounds = log.getBoundingClientRect();
         const style = getComputedStyle(board);
+        const profile = board.querySelector("a.zilch-player-achievement-link");
+        const profileName = profile?.querySelector(".zilch-player-name");
+        const profileInk = profileName ? luminance(getComputedStyle(profileName).color) : null;
+        const profilePaper = profileName ? luminance(getComputedStyle(profile).backgroundColor) : null;
         return {
           id: board.dataset.zilchBoardId, top: bounds.top, bottom: bounds.bottom,
           left: bounds.left, right: bounds.right, height: bounds.height,
@@ -293,15 +304,21 @@ async function expectSlidingNotebook(page, activePlayerId, { scrollable = true, 
           })),
           transform: style.transform,
           activeColor: getComputedStyle(board.querySelector("header")).borderBottomColor,
+          profileNameContrast: profileName
+            ? (Math.max(profileInk, profilePaper) + .05) / (Math.min(profileInk, profilePaper) + .05) : null,
         };
       }),
     };
   });
   expect(geometry.documentWidth).toBeLessThanOrEqual(geometry.viewportWidth);
   expect(geometry.notebook.bottom).toBeLessThanOrEqual(geometry.dockTop + 1);
+  expect(geometry.boards.filter(board => board.profileNameContrast !== null).length).toBeGreaterThan(0);
   const active = geometry.boards.find(board => board.id === activePlayerId);
   const inactive = geometry.boards.find(board => board.id !== activePlayerId);
   for (const board of geometry.boards) {
+    if (board.profileNameContrast !== null) {
+      expect(board.profileNameContrast, `${board.id}'s linked name stays readable on its button`).toBeGreaterThanOrEqual(4.5);
+    }
     expect(board.footerCount, `${board.id} must not repeat the total below its history`).toBe(0);
     expect(board.totalCount, `${board.id} needs one persistent total`).toBe(1);
     expect(board.totalInHeader, `${board.id} total belongs beside its player name`).toBe(true);

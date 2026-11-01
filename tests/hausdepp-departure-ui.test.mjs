@@ -95,6 +95,19 @@ test("cancelling and an already finished hand never claim a forfeited round", ()
   app.ui.destroy();
 });
 
+test("a terminal result hides stale departure permissions and cannot send a redundant leave", () => {
+  const app = setup('de', { terminal: true });
+  assert.equal(app.button.hidden, true);
+  assert.equal(app.resultButton.hidden, true);
+  app.button.click(); app.resultButton.click();
+  assert.deepEqual(app.requests, []);
+  assert.deepEqual(app.prompts, []);
+  assert.equal(app.left, 0);
+  app.state.terminal = false; app.ui.render();
+  assert.equal(app.button.hidden, false, 'an unfinished tournament interval keeps its real departure action');
+  app.ui.destroy();
+});
+
 function deferredChoice() {
   let resolve, reject;
   const promise = new Promise((yes, no) => { resolve = yes; reject = no; });

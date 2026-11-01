@@ -48,8 +48,9 @@ export function waitingFeatureControlsMarkup(room, { member = false, busy = fals
   if (!member || room.status !== "waiting") return "";
   const controls = Object.keys(WATTEN_FEATURE_FIELDS).filter(key => room.feature_controls?.[key]?.can_select === true);
   if (!controls.length) return "";
-  return `<details class="wt-more" data-watten-table-features><summary>${esc(text("Spielfunktionen"))}</summary>
-    <p class="wt-note">${esc(text("Interne Funktionen können mit allen Mitspielern getestet werden. Ein Owner oder Admin muss dafür mitspielen."))}</p>
+  const hasInternalControls = controls.some(key => room.feature_controls[key].status === "internal");
+  return `<details class="wt-more" data-watten-table-features><summary>${esc(t("waiting.features"))}</summary>
+    ${hasInternalControls ? `<p class="wt-note" data-watten-internal-feature-hint>${esc(t("waiting.internalFeaturesHint"))}</p>` : ""}
     ${controls.map(key => {
       const setting = room.feature_controls[key];
       return `<label class="wt-check"><input type="checkbox" data-watten-command="set-feature" data-feature="${esc(key)}"

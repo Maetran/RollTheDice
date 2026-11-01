@@ -126,9 +126,10 @@ for (const language of ['de', 'en']) {
   });
 }
 
-test('ordinary four-player rematches retain the original people, teams and loss marks', async ({ browser, baseURL }) => {
+test('ordinary four-player rematches retain a compact fixed roster and prominent loss marks', async ({ browser, baseURL }, testInfo) => {
   const players = await Promise.all([0, 1, 2, 3].map(() => player(browser, baseURL)));
   const host = players[0];
+  let visitor;
   try {
     const source = await finishOpenMatch(players, { determination: 'normal' });
     const original = await Promise.all(players.map(async item => (await item.context.request.get('/api/watten/account')).json()));
@@ -136,6 +137,12 @@ test('ordinary four-player rematches retain the original people, teams and loss 
     await host.page.locator('[data-watten-rematch-action=create]').click();
     await expect.poll(() => new URL(host.page.url()).pathname).not.toBe(source);
     const targetId = new URL(host.page.url()).pathname.split('/').pop();
+    const rules = host.page.locator('[data-watten-waiting-rules]');
+    await expect(rules).not.toHaveAttribute('open', '');
+    await expect(host.page.locator('[data-watten-command=copy-link]')).toHaveCount(0);
+    await expect(host.page.locator('[data-watten-notify-open-seat]')).toHaveCount(0);
+    await rules.locator('summary').focus();
+    await host.page.keyboard.press('Enter');
     for (const item of players) {
       if (item !== host) {
         await item.page.locator('[data-watten-rematch-action=open]').click();
@@ -148,6 +155,37 @@ test('ordinary four-player rematches retain the original people, teams and loss 
       await expect(item.page.locator('[data-watten-rematch-reservation]')).toHaveCount(0);
       await expect(item.page.locator('[data-watten-command=take-seat]')).toHaveCount(0);
     }
+    await expect(rules).toHaveAttribute('open', '');
+    await expect(rules.locator('summary')).toBeFocused();
+    await rules.locator('summary').click();
+    for (const width of [320, 390, 768, 1280]) {
+      await host.page.setViewportSize({ width, height: 844 });
+      const room = host.page.locator('.wt-waiting--rematch');
+      const geometry = await room.evaluate(node => {
+        const teams = [...node.querySelectorAll('.wt-team')].map(team => team.getBoundingClientRect());
+        const scores = [...node.querySelectorAll('.wt-series-value')];
+        return { height: node.getBoundingClientRect().height, overflow: document.documentElement.scrollWidth > innerWidth,
+          teams: teams.map(box => ({ x: box.x, right: box.right, y: box.y })),
+          sizes: scores.map(score => parseFloat(getComputedStyle(score).fontSize)) };
+      });
+      expect(geometry.overflow).toBe(false);
+      expect(geometry.teams).toHaveLength(2);
+      expect(geometry.teams[0].y).toBeCloseTo(geometry.teams[1].y, 0);
+      expect(geometry.teams[0].right).toBeLessThanOrEqual(geometry.teams[1].x);
+      expect(geometry.sizes).toHaveLength(2);
+      expect(geometry.sizes.every(size => size >= 30)).toBe(true);
+      if (width <= 390) expect(geometry.height).toBeLessThan(620);
+      await room.screenshot({ path: testInfo.outputPath(`compact-rematch-${width}.png`) });
+    }
+    visitor = await player(browser, baseURL);
+    await visitor.page.goto('/watten');
+    const listing = visitor.page.locator(`[data-watten-table="${targetId}"]`);
+    await expect(listing.locator('a')).toHaveCount(0);
+    await expect(listing).toContainText('Feste Besetzung');
+    await visitor.page.goto(`/watten/spiel/${targetId}`);
+    await expect(visitor.page.locator('[data-watten-join]')).toHaveCount(0);
+    await expect(visitor.page.locator('[data-watten-spectate-link]')).toHaveCount(0);
+    await expect(visitor.page.locator('.wt-join a[href="/watten"]')).toBeVisible();
     for (const [index, seat] of [0, 1, 2, 3].entries()) {
       const item = players[index];
       await expect.poll(() => item.traffic.snapshot.viewer.seat).toBe(seat);
@@ -164,5 +202,5 @@ test('ordinary four-player rematches retain the original people, teams and loss 
       expect(current.statistics.all_matches).toBe(1);
       expect(players[index].traffic.errors).toEqual([]);
     }
-  } finally { await Promise.allSettled(players.map(item => item.context.close())); }
+  } finally { await Promise.allSettled([...players, visitor].filter(Boolean).map(item => item.context.close())); }
 });

@@ -443,8 +443,11 @@ function tableEntry(entry) {
   const taken = seats.filter(seat => seat.participant_id).length;
   const status = entry.paused ? t("lobby.paused") : entry.started ? t("lobby.running") : t("lobby.waiting");
   const base = `/watten/spiel/${entry.id}`;
+  const fixedRosterVisitor = entry.room.series?.teams_locked === true && !Number.isInteger(entry.room.required_seat);
   const links = entry.my_player_id
     ? `<a class="wt-button" href="${base}">${esc(t(entry.can_resume ? "lobby.return" : "lobby.open"))}</a>`
+    : fixedRosterVisitor
+      ? `<span class="wt-note">${esc(t("waiting.rosterOnly"))}</span>`
     : entry.started
       ? `<a class="wt-button wt-button--ghost" href="${base}/zuschauen">${esc(t("lobby.spectate"))}</a>`
       : `<a class="wt-button" href="${base}">${esc(t("lobby.join"))}</a>`;
@@ -1020,12 +1023,17 @@ function adopt(snapshot, publicCalls) {
 
 function preserveFocus(update) {
   const active = document.activeElement;
+  const activeId = active?.id && app.contains(active) ? active.id : null;
   const key = active?.closest?.("[data-watten-command]") && app.contains(active)
     ? [active.dataset.wattenCommand, active.dataset.seat, active.dataset.value, active.dataset.kind, active.dataset.feature] : null;
   update();
   if (document.activeElement !== document.body) return;
   if (active?.isConnected && app.contains(active) && !active.closest("[hidden]")) {
     active.focus({ preventScroll: true }); return;
+  }
+  if (activeId) {
+    const replacement = document.getElementById(activeId);
+    if (replacement && app.contains(replacement)) { replacement.focus({ preventScroll: true }); return; }
   }
   if (!key) return;
   const match = [...app.querySelectorAll("[data-watten-command]")].find(node =>
@@ -1080,6 +1088,7 @@ function render(previous = null, live = false, accepted = false) {
     session.viewKind = "waiting";
     preserveFocus(() => {
       const featureControlsOpen = root.querySelector("[data-watten-table-features]")?.open === true;
+      const rulesOpen = root.querySelector("[data-watten-waiting-rules]")?.open === true;
       waitingChrome?.park();
       root.innerHTML = waitingRoomMarkup(snapshot, {
         mode: session.spectator ? "spectator" : "member", viewerId: session.playerId,
@@ -1087,6 +1096,8 @@ function render(previous = null, live = false, accepted = false) {
       });
       const featureControls = root.querySelector("[data-watten-table-features]");
       if (featureControls) featureControls.open = featureControlsOpen;
+      const rules = root.querySelector("[data-watten-waiting-rules]");
+      if (rules) rules.open = rulesOpen;
       showWaitingChrome(snapshot, session.spectator ? "spectator" : "member");
     });
     openSeatNotifications?.update();
@@ -1161,10 +1172,13 @@ function renderJoinPrompt() {
   session.viewKind = "join";
   setHeading(data.name);
   const locked = data.locked ?? data.room.recipe.password_required;
+  const fixedRosterVisitor = data.room.series?.teams_locked === true && !Number.isInteger(data.room.required_seat);
   waitingChrome?.park();
   root.innerHTML = waitingRoomMarkup(data, {
     mode: "preview", viewerId: null,
-    extra: joinFormMarkup({ locked, error: session.joinError, busy: session.joining, started: data.room.status !== "waiting" }),
+    extra: fixedRosterVisitor
+      ? `<div class="wt-join"><p class="wt-note">${esc(t("waiting.originalPlayersOnly"))}</p>${lobbyLink()}</div>`
+      : joinFormMarkup({ locked, error: session.joinError, busy: session.joining, started: data.room.status !== "waiting" }),
   });
   showWaitingChrome(data, "preview");
   decor?.update({ publicPhase: "preview" });

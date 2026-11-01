@@ -13,15 +13,15 @@
   <meta property="og:url" content="https://zockdiewandan.online/spieler">
   <meta property="og:image" content="https://zockdiewandan.online/static/icons/icon-512.png">
   <meta name="twitter:card" content="summary">
-  <link rel="manifest" href="/manifest.webmanifest?v=1c58bf11087a">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=1c58bf11087a" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=1c58bf11087a" sizes="180x180">
+  <link rel="manifest" href="/manifest.webmanifest?v=31666ed35bd3">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=31666ed35bd3" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=31666ed35bd3" sizes="180x180">
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"||t==="classic"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d==="dark"?"dark":"light";const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=d==="dark"?"#0b1120":d==="classic"?"#31583a":"#f4f6f8"}catch(_){}</script>
-  <link rel="stylesheet" href="/static/style.css?v=1c58bf11087a">
-  <link rel="stylesheet" href="/static/zdwa-design-2026.css?v=1c58bf11087a">
+  <link rel="stylesheet" href="/static/style.css?v=31666ed35bd3">
+  <link rel="stylesheet" href="/static/zdwa-design-2026.css?v=31666ed35bd3">
   <script>{const r=document.documentElement,g=k=>{try{return localStorage.getItem(k)}catch(_){return null}},q=new URLSearchParams(location.search).get("design");if(q!=="classic"&&g("zdwa_design")!=="old"&&g("zdwa_design_off")!=="1"&&(q==="2026"||g("zdwa_design_override")!=="old"))r.dataset.design="2026"}</script>
-  <script src="/static/shell.js?v=1c58bf11087a" defer></script>
-  <link rel="stylesheet" href="/static/suite-header.css?v=1c58bf11087a">
+  <script src="/static/shell.js?v=31666ed35bd3" defer></script>
+  <link rel="stylesheet" href="/static/suite-header.css?v=31666ed35bd3">
 </head>
 <body class="lobby-page">
   <main class="wrap profile-shell">
@@ -42,7 +42,7 @@
       <p>Normal und Hardcore haben eigene Ranglisten. Vergleiche abgeschlossene Spiele, Gesamtpunkte, Durchschnitt und höchste Punktzahl; die Sortierung wählst du selbst.</p>
       <p>Der Trend vergleicht den Durchschnitt der letzten drei abgeschlossenen Spiele mit dem Gesamtdurchschnitt. Bei weniger als drei Spielen gibt es noch keinen Trend.</p>
       <p>Ehrenberg-Marken stammen aus freigeschalteten Erfolgen und bestimmen dein Rangabzeichen. Sie sind von den Punkten auf dem Spielblatt getrennt. Die veröffentlichten Rangschwellen stehen in der Rangübersicht.</p>
-      <p><a href="/rangabzeichen">Rangabzeichen &amp; Ehrenberg-Marken</a></p>
+      <p><a class="button-link" href="/rangabzeichen">Rangabzeichen &amp; Ehrenberg-Marken</a></p>
     </section>
     <section class="card community-stats" aria-labelledby="communityStatsTitle">
       <h2 id="communityStatsTitle">Community-Statistik</h2>
@@ -95,8 +95,8 @@
     <section id="communityAchievementsPanel" class="card community-view-panel achievement-feed-card" data-achievement-view="achievements" role="tabpanel" aria-labelledby="communityAchievementsTab" hidden></section>
   </main>
   <script type="module">
-    import { escapeHtml, formatNumber, playerNameMarkup, mountPlayerSearch } from '/static/auth.js?v=1c58bf11087a';
-    import { mountAchievementFeed } from '/static/achievement-feed.js?v=1c58bf11087a';
+    import { escapeHtml, formatNumber, playerNameMarkup, mountPlayerSearch } from '/static/auth.js?v=31666ed35bd3';
+    import { mountAchievementFeed } from '/static/achievement-feed.js?v=31666ed35bd3';
     const rankingSort = document.getElementById('rankingSort');
     const rankingNormal = document.getElementById('rankingNormal');
     const rankingHardcore = document.getElementById('rankingHardcore');
@@ -185,7 +185,7 @@
           : `Ø der letzten 3 Spiele: ${formatNumber(player.recent_average_points)}`;
         return `<tr>
         <td>${player.rank}</td>
-        <td><a href="${profileUrl(player.username)}">${playerNameMarkup(player, { name: player.username, compactRank: true })}</a></td>
+        <td><a class="player-profile-link" href="${profileUrl(player.username)}">${playerNameMarkup(player, { name: player.username, compactRank: true })}</a></td>
         <td>${formatNumber(player.games_played, '0')}</td>
         <td>${formatNumber(player.points_total, '0')}</td>
         <td>${formatNumber(player.average_points)}</td>

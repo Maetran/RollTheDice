@@ -31,7 +31,7 @@ export function createRoomAudio({ gameId, send, spectator = false }) {
     <section data-room-voice hidden><h3 data-audio-voice-heading></h3><div class="room-audio-buttons"><button type="button" data-room-listening></button><button type="button" data-room-microphone></button></div>
       <p class="small" data-room-voice-status role="status"></p></section>
     <section><h3 data-audio-ambient-heading></h3><button type="button" data-room-ambience></button><p class="small" data-room-sound-status role="status"></p></section>
-    <p class="small" data-room-profile-hint></p><a class="small" data-room-profile-link></a>
+    <p class="small" data-room-profile-hint></p><a class="button-link small" data-room-profile-link></a>
     <details class="room-audio-information"><summary data-room-information-label></summary><div data-room-voice-info hidden><ul class="room-audio-roster" data-room-voice-roster></ul><p class="small" data-room-voice-privacy></p></div><p class="small" data-room-sound-description></p><p class="small" data-room-profile-details></p></details>`;
   document.body.append(panel);
   document.querySelector(".room-header-overflow")?.before(toggle);

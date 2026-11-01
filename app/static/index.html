@@ -22,15 +22,15 @@
     - /api/leaderboard liefert Toplisten, Hall of Shame, letzte Spiele und Stats
     - Per Buttons wird in den Spielraum /spiel/{id} navigiert
   -->
-  <link rel="manifest" href="/manifest.webmanifest?v=1c58bf11087a">
+  <link rel="manifest" href="/manifest.webmanifest?v=31666ed35bd3">
   <meta name="theme-color" content="#f4f6f8">
   <meta name="color-scheme" content="light dark">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=1c58bf11087a" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=1c58bf11087a" sizes="180x180">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=31666ed35bd3" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=31666ed35bd3" sizes="180x180">
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"||t==="classic"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d==="dark"?"dark":"light";const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=d==="dark"?"#0b1120":d==="classic"?"#31583a":"#f4f6f8"}catch(_){}</script>
-  <script src="/static/shell.js?v=1c58bf11087a" defer></script>
-  <link rel="stylesheet" href="/static/lobby.css?v=1c58bf11087a">
-  <link rel="stylesheet" href="/static/zdwa-design-2026.css?v=1c58bf11087a">
+  <script src="/static/shell.js?v=31666ed35bd3" defer></script>
+  <link rel="stylesheet" href="/static/lobby.css?v=31666ed35bd3">
+  <link rel="stylesheet" href="/static/zdwa-design-2026.css?v=31666ed35bd3">
   <script>{const r=document.documentElement,g=k=>{try{return localStorage.getItem(k)}catch(_){return null}},q=new URLSearchParams(location.search).get("design");if(q!=="classic"&&g("zdwa_design")!=="old"&&g("zdwa_design_off")!=="1"&&(q==="2026"||g("zdwa_design_override")!=="old"))r.dataset.design="2026"}</script>
   <script type="application/ld+json">
   {
@@ -48,7 +48,7 @@
   <script type="application/ld+json" data-suite-discovery>
     {"@context":"https://schema.org","@graph":[{"@type":"WebSite","@id":"https://zockdiewandan.online/#website","name":"ZDWA","url":"https://zockdiewandan.online/"},{"@type":"VideoGame","@id":"https://zockdiewandan.online/#game","name":"ZDWA","url":"https://zockdiewandan.online/","description":"Zock die Wand an: Würfelspiel mit fünf Würfeln online spielen – allein, mit Freunden oder im Team. Kostenlos im Browser, auch ohne Konto.","inLanguage":["de","en"],"gamePlatform":"Web browser","numberOfPlayers":{"@type":"QuantitativeValue","minValue":1,"maxValue":4},"playMode":["https://schema.org/SinglePlayer","https://schema.org/MultiPlayer"],"isAccessibleForFree":true,"isPartOf":{"@type":"CreativeWorkSeries","@id":"https://zockdiewandan.online/#game-suite","name":"ZDWA · Zilch · Hausdepp","url":"https://zockdiewandan.online/","hasPart":[{"@type":"VideoGame","@id":"https://zockdiewandan.online/#game","name":"ZDWA","url":"https://zockdiewandan.online/"},{"@type":"VideoGame","@id":"https://zilch.zockdiewandan.online/#game","name":"Zilch die Wand an","url":"https://zilch.zockdiewandan.online/"},{"@type":"VideoGame","@id":"https://hausdepp.zockdiewandan.online/hausdepp#game","name":"Hausdepp","url":"https://hausdepp.zockdiewandan.online/hausdepp"}]}}]}
   </script>
-  <link rel="stylesheet" href="/static/suite-header.css?v=1c58bf11087a">
+  <link rel="stylesheet" href="/static/suite-header.css?v=31666ed35bd3">
 </head>
 <body class="lobby-page">
   <!-- Rahmen-Container -->
@@ -158,8 +158,7 @@
           </form>
         </div>
         <div id="authActions" class="auth-actions" hidden>
-          <div class="account-identity">
-            <span class="eyebrow">Du spielst als</span>
+          <div class="account-identity" hidden>
             <span id="authBadge" class="badge" hidden></span>
           </div>
           <a class="button-link small secondary" href="/konto">Mein Konto</a>
@@ -188,23 +187,30 @@
               <button type="button" class="choice-button" role="radio" aria-checked="false" data-game-mode="2v2"><span class="choice-check" aria-hidden="true">✓</span>2 vs 2</button>
             </div>
           </fieldset>
-          <fieldset class="create-fieldset game-type-fieldset">
-            <legend>Spielmodus</legend>
-            <input id="hardcoreChk" type="checkbox" hidden>
-            <div class="mode-hardcore-row" role="radiogroup" aria-label="Spielmodus">
-              <button type="button" class="choice-button toggle-row" role="radio" aria-label="Normal" aria-checked="true" data-hardcore="false"><span class="choice-check" aria-hidden="true">✓</span>Normal</button>
-              <button type="button" class="choice-button toggle-row hardcore-choice" role="radio" aria-label="Hardcore" aria-checked="false" data-hardcore="true"><span class="choice-check" aria-hidden="true">✓</span>Hardcore</button>
+          <details id="createOptions" class="create-options">
+            <summary class="button-link small secondary"><span>Spieloptionen</span><span id="createOptionsStatus" class="create-options-status" hidden></span></summary>
+            <div id="createOptionsFields" class="create-options-fields">
+              <fieldset class="create-fieldset game-type-fieldset">
+                <legend>Spielmodus</legend>
+                <input id="hardcoreChk" type="checkbox" hidden>
+                <div class="mode-hardcore-row" role="radiogroup" aria-label="Spielmodus">
+                  <button type="button" class="choice-button toggle-row" role="radio" aria-label="Normal" aria-checked="true" data-hardcore="false"><span class="choice-check" aria-hidden="true">✓</span>Normal</button>
+                  <button type="button" class="choice-button toggle-row hardcore-choice" role="radio" aria-label="Hardcore" aria-checked="false" data-hardcore="true"><span class="choice-check" aria-hidden="true">✓</span>Hardcore</button>
+                </div>
+                <p id="hardcoreHelp" class="hardcore-help" hidden>1 Wurf · kein Halten · keine Ansage · keine Korrektur</p>
+              </fieldset>
+              <label class="form-field passphrase-field" for="passInput">
+                <span>Passphrase <small>(optional)</small></span>
+                <input id="passInput" type="text" placeholder="Leer lassen für ein öffentliches Spiel" autocomplete="off" maxlength="100">
+              </label>
             </div>
-            <p id="hardcoreHelp" class="hardcore-help" hidden>1 Wurf · kein Halten · keine Ansage · keine Korrektur</p>
-          </fieldset>
-          <label class="form-field passphrase-field" for="passInput">
-            <span>Passphrase <small>(optional)</small></span>
-            <input id="passInput" type="text" placeholder="Leer lassen für ein öffentliches Spiel" autocomplete="off" maxlength="100">
-          </label>
-          <button id="createBtn">Spiel starten</button>
+          </details>
+          <div class="create-game-actions">
+            <button id="createBtn">Spiel starten</button>
+            <a class="button-link small ghost" href="/offline-spielen">Offline spielen</a>
+          </div>
         </div>
         <div id="createErr" class="muted small" role="status"></div>
-        <a class="button-link small ghost" href="/offline-spielen">Offline spielen</a>
       </section>
     </div>
 
@@ -308,7 +314,7 @@
       <p class="eyebrow">Über das Spiel</p>
       <h2 id="aboutGameTitle">Was ist Zock die Wand an?</h2>
       <p>ZDWA ist ein taktisches Punkte-Würfelspiel: Du würfelst mit fünf Würfeln und trägst passende Ergebnisse in vier unterschiedlich geregelte Spalten ein. Gute Entscheidungen beim Halten, Ansagen und Eintragen sind ebenso wichtig wie Würfelglück.</p>
-      <p>In Reutte in Tirol erfunden und in Niederwil AG in der Schweiz digitalisiert, bringt diese Webversion die gesellige Spielrunde in den Browser – mit Normal- und Hardcore-Modus, Einzel-, Mehrspieler- und Team-Partien. Den vollständigen Ablauf und die Entwicklungsgeschichte erklärt die <a href="/regeln">Spielanleitung für Zock die Wand an</a>.</p>
+      <p>In Reutte in Tirol erfunden und in Niederwil AG in der Schweiz digitalisiert, bringt diese Webversion die gesellige Spielrunde in den Browser – mit Normal- und Hardcore-Modus, Einzel-, Mehrspieler- und Team-Partien. Den vollständigen Ablauf und die Entwicklungsgeschichte erklärt die <a class="button-link small ghost" href="/regeln">Spielanleitung für Zock die Wand an</a>.</p>
       <p class="design-guest-line muted small" data-design-guest hidden><span data-design-guest-label aria-live="polite">Du siehst das neue Design.</span> <button type="button" data-design-guest-toggle>Zum bisherigen Design wechseln</button></p>
     </section>
     <details class="card account-settings-group" data-guest-tour-settings hidden>
@@ -319,6 +325,6 @@
   </div>
 
   <!-- Lobby-Controller: eigenständiges ES-Modul. -->
-  <script type="module" src="/static/lobby.js?v=1c58bf11087a"></script>
+  <script type="module" src="/static/lobby.js?v=31666ed35bd3"></script>
 </body>
 </html>

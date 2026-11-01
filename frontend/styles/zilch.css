@@ -1522,9 +1522,6 @@ html[data-game="zilch"] :is(
   .zilch-result-start-roll,
   .zilch-result-final-round
 ) .eyebrow { color: var(--zilch-blue); }
-.zilch-result-summary__heading { max-width: 54rem; }
-.zilch-result-summary__heading h2 { margin: .25rem 0 .35rem; color: var(--zilch-ink); font: 800 clamp(1.6rem, 5vw, 2.45rem)/1.04 Georgia, serif; }
-.zilch-result-summary__heading > p:last-child { margin: 0; color: var(--zilch-ink-soft); font-weight: 750; }
 .zilch-result-scoreboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); gap: .65rem; margin-top: 1rem; }
 .zilch-result-score { display: flex; align-items: flex-end; justify-content: space-between; gap: .8rem; min-width: 0; padding: .75rem .8rem; border: 1px solid rgba(120, 77, 35, .28); border-radius: var(--zilch-radius-sm); background: rgba(255, 255, 255, .42); }
 .zilch-result-score.is-winner { border-color: rgba(146, 91, 17, .62); background: linear-gradient(135deg, rgba(255, 243, 185, .96), rgba(255, 252, 235, .9)); box-shadow: inset 0 1px rgba(255,255,255,.92), 0 .18rem .55rem rgba(108, 62, 18, .12); }
@@ -5147,3 +5144,26 @@ html[data-game="zilch"]:has(.zilch-shell--game) body {
     width: min(1120px, calc(100vw - max(1rem, env(safe-area-inset-left, 0px)) - max(1rem, env(safe-area-inset-right, 0px))));
   }
 }
+
+/* End with the outcome and the next choice. The full report stays available
+   through a keyboard-accessible disclosure instead of repeating the table. */
+.zilch-result-overview{ width:min(100%, 40rem); margin:0 auto; }
+.zilch-result-overview .zilch-result-head{ margin-bottom:.65rem; }
+.zilch-result-overview .zilch-result-head h1{ margin:.2rem 0 .35rem; font-size:clamp(1.4rem, 5vw, 2.1rem); }
+.zilch-result-overview .zilch-result-head__meta{ font-size:.82rem; }
+.zilch-result-overview .zilch-result-summary{ padding:.7rem; }
+.zilch-result-overview .zilch-result-scoreboard{ margin-top:0; gap:.45rem; }
+.zilch-result-overview .zilch-result-score{ padding:.55rem .65rem; }
+.zilch-result-overview .zilch-result-score > strong{ font-size:clamp(1.3rem, 5vw, 1.75rem); }
+.zilch-result-overview .zilch-result-objective{ margin-top:.5rem; }
+.zilch-result-overview .zilch-result-actions{ display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:.5rem; margin:.65rem 0 0; }
+.zilch-result-overview .zilch-result-actions :is(a, button){ min-width:0; min-height:44px; padding:.55rem .65rem; }
+.zilch-result-details{ width:min(100%, 64rem); margin:.75rem auto 0; }
+.zilch-result-details > summary{ display:flex; align-items:center; justify-content:space-between; gap:.5rem; width:100%; min-height:44px; cursor:pointer; list-style:none; }
+.zilch-result-details > summary::-webkit-details-marker{ display:none; }
+.zilch-result-details__arrow{ font-size:1.35rem; transform:rotate(90deg); }
+.zilch-result-details[open] .zilch-result-details__arrow{ transform:rotate(-90deg); }
+.zilch-result-details > summary:focus-visible{ outline:3px solid var(--zilch-focus-ring); outline-offset:3px; }
+.zilch-result-details__body{ display:grid; gap:.65rem; padding-top:.65rem; }
+.zilch-result-details__body > *{ margin-block:0; }
+.zilch-result-info .zilch-result-facts{ margin:0; }

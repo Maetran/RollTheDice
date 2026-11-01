@@ -23,7 +23,7 @@ import { initChat, addChatMessage } from "../room/chat.js";
 import { HAUSDEPP_MESSAGES } from "../i18n/catalog.js";
 import { cardArt, LOBBY_CARD_ASSET_URL, prepareCardAssets } from "./cards.js";
 import { measurePile, restorePile, reconcilePile } from "./pile-fan.js";
-import { prepareCardMotion, animateCardMotion, cardMotionCompletion, resetCardMotion, presentShuffle, cancelShuffle, launchOwnPlay, launchedCards, cancelOwnPlay, presentedPile, pileMotionPending } from "./motion.js";
+import { prepareCardMotion, animateCardMotion, cardMotionCompletion, resetCardMotion, presentShuffle, cancelShuffle, launchOwnPlay, launchedCards, cancelOwnPlay, presentedPile, pileMotionPending, ownClearancePending } from "./motion.js";
 import { createGameTour } from "../shared/game-tours.js";
 import { mountPileInspector } from "./pile-inspector.js";
 import { mountPeekFeedback } from "./peek-feedback.js";
@@ -848,6 +848,7 @@ function renderTableShell() {
   departureUI = mountHausdeppDepartureUI({ t, send, onLeft: leaveTableForLobby, handControls: handSelection.controls,
     spectatorControls: $("hausdeppTable").querySelector(".hd-room-heading"),
     getState: () => ({ permissions: snapshot?._departure_permissions, version: snapshot?._hausdepp?.version,
+      terminal: Boolean(snapshot?._aborted || (snapshot?._finished && (!snapshot?._hausdepp_tournament || snapshot._hausdepp_tournament.completed))),
       connected: socket?.readyState === WebSocket.OPEN, busy: pending || tournamentEnding, spectating }),
     onPendingChange: value => { pending = value; renderState(); },
   });
@@ -972,10 +973,13 @@ function receiveReaction(reaction) {
 }
 
 function motionBlocksAction(action) {
-  // Refills affect the hand; a legal afterthrow continues the open throw.
-  // Both may run while earlier cards fly, without acting on an unlanded pile.
+  // Refills and legal continuations use the accepted state. A ten/quartet
+  // keeps the own turn even while its old packet is still leaving the table.
   const ownThrowOpen = snapshot?._hausdepp?.afterthrow?.player_id === playerId;
-  return pileMotionPending(gameId) && !(action === "afterthrow" || (action === "draw" && ownThrowOpen));
+  const ownClearance = ownClearancePending(gameId, playerId, snapshot?._hausdepp?.version);
+  return pileMotionPending(gameId) && !(action === "afterthrow"
+    || (action === "draw" && (ownThrowOpen || ownClearance))
+    || (ownClearance && ["play", "gamble"].includes(action)));
 }
 
 function command(action, cards) {
@@ -1224,7 +1228,7 @@ function renderStateContent() {
   document.body.classList.remove("hd-waiting-room");
   $("hausdeppWaiting").hidden = true;
   const tournament = snapshot._hausdepp_tournament;
-  $("hausdeppRoomInvitation").hidden = spectating || snapshot._aborted || (s.phase === "finished" && (!tournament || tournament.completed));
+  $("hausdeppRoomInvitation").hidden = spectating || snapshot._aborted || s.phase === "finished";
   $("hausdeppRoomInvitation").querySelector("[data-invite-game]").dataset.inviteName = snapshot._name || t("defaultTable");
   if (snapshot._aborted) tournamentEnding = false;
   const dealer = s.players.find(player => player.id === tournament?.dealer_id);
@@ -1272,7 +1276,7 @@ function renderStateContent() {
   const roundKey = `${gameId}:${tournament?.round_number || 1}`;
   handSelection.update({
     key: `${roundKey}:${s.version}`, roundKey, version: s.version, phase: s.phase, action: selectionAction,
-    hand, playable: [...playable], playableGroups, pending: pending || (motionBusy && !actions.includes("afterthrow")), viewer: playerId, event: s.last_event,
+    hand, playable: [...playable], playableGroups, pending: pending || motionBlocksAction(selectionAction), viewer: playerId, event: s.last_event,
     identity: JSON.stringify([s.phase, s.current_player_id, s.afterthrow, hand, [...actions].sort(), [...playable].sort(), playableGroups, s.discard]),
   });
   const selecting = handSelection.selection.enabled;
@@ -1284,9 +1288,9 @@ function renderStateContent() {
   const canThrow = card => {
     const queuedFollowup = pending && (card.split("-")[1] === pendingRank
       || (commandInFlight?.action === "draw" && actions.includes("afterthrow")));
-    if (groupCards.has(card) && !playable.has(card)) return !!selectionAction && !pending && (!motionBusy || actions.includes("afterthrow"));
+    if (groupCards.has(card) && !playable.has(card)) return !!selectionAction && !pending && !motionBlocksAction(selectionAction);
     return (actions.includes("play") || actions.includes("afterthrow")) && playable.has(card)
-      && (!pending || queuedFollowup) && (!motionBusy || actions.includes("afterthrow") || queuedFollowup);
+      && (!pending || queuedFollowup) && (!motionBlocksAction(selectionAction) || queuedFollowup);
   };
   renderHand(`<div class="hd-hand-fan" data-count="${hand.length}" data-compact="${hand.length >= 8}" style="--hand-count:${Math.max(1, hand.length)}">${hand.map((card, index) => cardMarkup(card, { interactive: true, playable: selecting ? handSelection.selection.canSelect(card) : canThrow(card), groupOnly: groupCards.has(card) && !playable.has(card), committed: committed.has(card), launched: launched.has(card), selecting, selected: selected.has(card), sameRank: index > 0 && hand[index - 1].split("-")[1] === card.split("-")[1], index, count: hand.length })).join("")}</div>`);
   if (oldFocus) $("hausdeppHand").querySelector(`[data-card-id="${CSS.escape(oldFocus)}"]`)?.focus({ preventScroll: true });
@@ -1396,7 +1400,7 @@ function renderStateContent() {
     const title = snapshot._aborted ? t("tournamentStopped") : tournament?.completed ? finalLoser
       ? `${t("tournamentComplete")}. ${t("tournamentLoser", { name: finalLoser.name })}` : t("tournamentWithoutHausdepp")
       : loser ? t("loser", { name: loser.name }) : t("roundWithoutHausdepp");
-    $("hausdeppResult").innerHTML = `<h2>${esc(title)}</h2><p class="hd-result-context">${esc(roundResultContext(s, tournament))}</p>${snapshot._aborted ? "" : roundPlacements(s, snapshot._hausdepp_round_summary)}${tournamentScoreboard(tournament, snapshot._participants?.length ? snapshot._participants.map(player => seatIdentity(player)) : s.players)}<div id="hausdeppRoundProgress" hidden></div><div class="hd-result-links">${tournament && !tournament.completed && !snapshot._aborted ? tournament.can_start_next_round ? `<button id="hausdeppNextRound" class="hd-primary" type="button" ${pending || tournamentEnding || !connected || snapshot._paused ? "disabled" : ""}>${t("startNextRound", { round: nonnegative(tournament.round_number) + 1 })} ${icon("arrow")}</button><button id="hausdeppEndTournament" class="hd-secondary" type="button" ${pending || tournamentEnding || !connected ? "disabled" : ""}>${t("endTournament")}</button>` : `<p class="hd-tournament-wait">${t("tournamentHostWait")}</p>` : `<a class="hd-primary" href="/hausdepp">${t(tournament ? "newTournament" : "nextRound")} ${icon("arrow")}</a>`}<a href="/hausdepp/konto#erfolge">${t("resultAccountLink")}</a></div>`;
+    $("hausdeppResult").innerHTML = `<h2>${esc(title)}</h2><p class="hd-result-context">${esc(roundResultContext(s, tournament))}</p>${snapshot._aborted ? "" : roundPlacements(s, snapshot._hausdepp_round_summary)}${tournamentScoreboard(tournament, snapshot._participants?.length ? snapshot._participants.map(player => seatIdentity(player)) : s.players)}<div id="hausdeppRoundProgress" hidden></div><div class="hd-result-links">${!spectating && tournament && !tournament.completed && !snapshot._aborted ? tournament.can_start_next_round ? `<button id="hausdeppNextRound" class="hd-primary" type="button" ${pending || tournamentEnding || !connected || snapshot._paused ? "disabled" : ""}>${t("startNextRound", { round: nonnegative(tournament.round_number) + 1 })} ${icon("arrow")}</button><button id="hausdeppEndTournament" class="hd-secondary" type="button" ${pending || tournamentEnding || !connected ? "disabled" : ""}>${t("endTournament")}</button>` : `<p class="hd-tournament-wait">${t("tournamentHostWait")}</p>` : spectating ? "" : `<a class="hd-primary" href="/hausdepp">${t("lobby")} ${icon("arrow")}</a>`}</div>`;
     if (snapshot._finished && (!tournament || tournament.completed) && hasPreviousSeat()) appendRematchAction();
     $("hausdeppNextRound")?.addEventListener("click", () => command("next_round"));
     $("hausdeppEndTournament")?.addEventListener("click", () => {
@@ -1475,7 +1479,10 @@ function roundResultReady(key, liveEnd) {
 
 
 function hasPreviousSeat() {
-  return !spectating && snapshot?._participants?.some(player => !player.is_cpu && (player.id === playerId || player.user_id === auth?.user?.id));
+  const seat = !spectating && snapshot?._participants?.find(player => !player.is_cpu && (player.id === playerId || player.user_id === auth?.user?.id));
+  return Boolean(seat && !snapshot?._hausdepp?.withdrawn_ids?.includes(seat.id)
+    && !snapshot?._hausdepp_tournament?.departed_ids?.includes(seat.id)
+    && !snapshot?._hausdepp?.players?.find(player => player.id === seat.id)?.withdrawn);
 }
 
 function roundResultContext(state, tournament) {
@@ -1492,7 +1499,7 @@ function renderRoundProgress(container, data) {
   const hasCredit = Number.isFinite(earned?.xp) && Number.isFinite(earned?.round_xp);
   const scoring = data?.scoring;
   const hasAccount = scoring?.available && Number.isFinite(scoring.points) && data?.rank?.name;
-  container.hidden = !hasCredit && !hasAccount;
+  container.hidden = false;
   container.className = "hd-round-progress";
   const awards = hasCredit ? (earned.achievements || []).reduce((sum, award) => sum + nonnegative(award.points), 0) : 0;
   const creditDetail = hasCredit ? awards
@@ -1500,7 +1507,8 @@ function renderRoundProgress(container, data) {
     : t(snapshot._hausdepp.players.some(player => player.is_cpu) ? "roundCreditCpu" : "roundCreditHuman", { points: pointNumber(earned.round_xp) }) : "";
   const rank = data?.rank;
   const next = rank?.next;
-  container.innerHTML = `${hasCredit ? `<p class="hd-round-earned"><strong>${esc(t("roundEarned", { points: pointNumber(earned.xp) }))}</strong><span>${esc(creditDetail)}</span></p>` : ""}${hasAccount ? `<div class="hd-round-account"><p><span>${t("currentRank")}: <strong>${esc(localized(rank.name))}</strong></span><span>${esc(t("roundAccountTotal", { points: pointNumber(scoring.points) }))}</span></p>${next && Number.isFinite(next.threshold) ? `<p class="hd-round-next">${esc(t("roundRankNext", { points: pointNumber(Math.max(0, next.threshold - scoring.points)), name: localized(next.name) }))}</p>` : ""}</div>` : ""}`;
+  const accountLink = `<a class="hd-secondary" href="/hausdepp/konto#erfolge">${t("accountProgressLink")}</a>`;
+  container.innerHTML = `${hasCredit ? `<p class="hd-round-earned"><strong>${esc(t("roundEarned", { points: pointNumber(earned.xp) }))}</strong><span>${esc(creditDetail)}</span></p>` : ""}${hasAccount ? `<details class="hd-round-account"><summary class="hd-secondary"><span>${t("currentRank")}: <strong>${esc(localized(rank.name))}</strong></span></summary><div class="hd-round-account-content"><p>${esc(t("roundAccountTotal", { points: pointNumber(scoring.points) }))}</p>${next && Number.isFinite(next.threshold) ? `<p class="hd-round-next">${esc(t("roundRankNext", { points: pointNumber(Math.max(0, next.threshold - scoring.points)), name: localized(next.name) }))}</p>` : ""}${accountLink}</div></details>` : accountLink}`;
 }
 
 // Everyone's place in the round just played, with what each person earned.
@@ -1548,7 +1556,7 @@ function renderAbortedTable() {
   if (result.dataset.roundId === abortKey) return;
   result.dataset.roundId = abortKey;
   const reason = snapshot._abort_reason === "inactivity_timeout" && !snapshot._started ? "waitingExpired" : "abortedNoScore";
-  result.innerHTML = `<h2>${t(tournament ? "tournamentStopped" : "abortedTable")}</h2><p>${t(tournament ? "tournamentStoppedHint" : reason)}</p>${tournamentScoreboard(tournament, snapshot._hausdepp?.players || snapshot._participants || [])}<div class="hd-result-links"><a class="hd-primary" href="/hausdepp">${t("lobby")}</a>${tournament ? `<a href="/hausdepp/konto#erfolge">${t("accountProgressLink")}</a>` : ""}</div>`;
+  result.innerHTML = `<h2>${t(tournament ? "tournamentStopped" : "abortedTable")}</h2><p>${t(tournament ? "tournamentStoppedHint" : reason)}</p>${tournamentScoreboard(tournament, snapshot._hausdepp?.players || snapshot._participants || [])}<div class="hd-result-links">${spectating ? "" : `<a class="hd-primary" href="/hausdepp">${t("lobby")}</a>`}${tournament && !spectating ? `<a class="hd-secondary" href="/hausdepp/konto#erfolge">${t("accountProgressLink")}</a>` : ""}</div>`;
   if (hasPreviousSeat()) appendRematchAction();
 }
 

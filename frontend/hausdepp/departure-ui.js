@@ -39,7 +39,7 @@ export function mountHausdeppDepartureUI({
     pending = false; errorKey = key;
     onPendingChange(false); render();
   };
-  const confirmationMatches = (state, expected) => !state.spectating && state.connected && !state.busy
+  const confirmationMatches = (state, expected) => !state.spectating && !state.terminal && state.connected && !state.busy
     && state.permissions?.can_leave && Number.isSafeInteger(state.version)
     && state.permissions.forfeits_round === expected.forfeitsRound
     && state.permissions.ends_tournament_participation === expected.endsTournament;
@@ -66,7 +66,7 @@ export function mountHausdeppDepartureUI({
       onLeft();
       return;
     }
-    if (pending || confirmation || state.busy || !state.connected || !permissions?.can_leave) return;
+    if (pending || confirmation || state.terminal || state.busy || !state.connected || !permissions?.can_leave) return;
     const warning = t(permissions.forfeits_round ? "departureForfeitConfirm" : "departureFinishedConfirm");
     const tournament = permissions.ends_tournament_participation ? `\n\n${t("departureTournamentConfirm")}` : "";
     const expected = { forfeitsRound: permissions.forfeits_round,
@@ -124,7 +124,7 @@ export function mountHausdeppDepartureUI({
       cancelPrompt(state.connected ? "departureChanged" : "departureConnectionLost");
     }
     const spectator = state.spectating === true;
-    const available = spectator || state.permissions?.can_leave === true;
+    const available = spectator || (!state.terminal && state.permissions?.can_leave === true);
     const action = t(!spectator && state.permissions?.ends_tournament_participation ? "departureTournament" : "departureTable");
     document.body.classList.toggle("hd-departure-available", available);
     tableButton.hidden = resultButton.hidden = !available;
@@ -133,6 +133,7 @@ export function mountHausdeppDepartureUI({
     tableButton.setAttribute("aria-label", action);
     tableButton.setAttribute("aria-busy", String(!spectator && pending));
     resultButton.setAttribute("aria-busy", String(!spectator && pending));
+    resultButton.className = `${spectator ? "hd-primary" : "hd-secondary"} hd-departure-result`;
     tableButton.title = action;
     resultButton.textContent = action;
     notice.hidden = !errorKey;

@@ -1,0 +1,148 @@
+/* Linked player identities share each game's button face. Plain identities
+   deliberately remain spans, without an interactive border or background. */
+html[data-game] {
+  --profile-link-paper: var(--surface, #fff);
+  --profile-link-hover: var(--surface-soft, #f8fafc);
+  --profile-link-ink: var(--text, #18212f);
+  --profile-link-edge: var(--border-strong, #748094);
+  --profile-link-accent: var(--accent, #2563eb);
+  --profile-link-radius: var(--radius-sm, 6px);
+  --profile-link-shadow: var(--shadow-sm, 0 1px 2px #0000000d);
+}
+html[data-game="hausdepp"] {
+  --profile-link-paper: var(--hd-white, #fffdf5);
+  --profile-link-hover: var(--hd-paper, #f6f2e6);
+  --profile-link-ink: var(--hd-green, #173e34);
+  --profile-link-edge: var(--hd-border, #2d4a40);
+  --profile-link-accent: var(--hd-red, #a63335);
+  --profile-link-radius: 4px;
+  --profile-link-shadow: 0 2px 0 #244737;
+}
+html[data-game="watten"] {
+  --profile-link-paper: var(--wt-paper, #f7f1e3);
+  --profile-link-hover: var(--wt-paper-2, #ece2cb);
+  --profile-link-ink: var(--wt-ink, #38251b);
+  --profile-link-edge: var(--wt-paper-edge, #d8c9a6);
+  --profile-link-accent: var(--wt-green, #823a2b);
+  --profile-link-radius: 8px;
+}
+html[data-game="zilch"] {
+  --profile-link-paper: var(--zilch-paper, #fff8de);
+  --profile-link-hover: var(--zilch-paper-soft, #fffdf5);
+  --profile-link-ink: var(--zilch-ink, #2e1d12);
+  --profile-link-edge: var(--zilch-wood-light, #a7794d);
+  --profile-link-accent: var(--zilch-blue, #8d4814);
+  --profile-link-radius: var(--zilch-radius-sm, .72rem);
+  --profile-link-shadow: var(--zilch-shadow-soft, 0 1px 2px #3a1f0d29);
+}
+html[data-game="zilch"][data-theme="lcars"] {
+  --profile-link-paper: var(--lcars-cyan, #78aab4);
+  --profile-link-hover: var(--lcars-apricot-bright, #d7ad86);
+  --profile-link-ink: var(--lcars-void, #0a0c12);
+  --profile-link-edge: var(--lcars-cyan, #78aab4);
+  --profile-link-accent: var(--lcars-focus, #fff3c4);
+  --profile-link-radius: var(--lcars-pill, 0 1.65rem 1.65rem 0);
+  --profile-link-shadow: none;
+}
+
+html[data-game] body :is(a.player-name-label, a.player-profile-link,
+    a.achievement-feed-player-link, a.zilch-player-achievement-link,
+    .lobby-chat__sender > a):any-link {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .35rem;
+  min-width: 0;
+  min-height: 44px;
+  max-width: 100%;
+  padding: .35rem .6rem;
+  color: var(--profile-link-ink);
+  background: var(--profile-link-paper);
+  border: 1px solid var(--profile-link-edge);
+  border-radius: var(--profile-link-radius);
+  box-shadow: var(--profile-link-shadow);
+  font: inherit;
+  font-weight: 700;
+  line-height: 1.25;
+  text-decoration: none;
+  vertical-align: middle;
+  overflow-wrap: anywhere;
+  touch-action: manipulation;
+}
+html[data-game] body :is(a.player-name-label, a.player-profile-link,
+    a.achievement-feed-player-link, a.zilch-player-achievement-link,
+    .lobby-chat__sender > a):any-link:hover {
+  color: var(--profile-link-ink);
+  background: var(--profile-link-hover);
+  border-color: var(--profile-link-accent);
+}
+html[data-game] body :is(a.player-name-label, a.player-profile-link,
+    a.achievement-feed-player-link, a.zilch-player-achievement-link,
+    .lobby-chat__sender > a):any-link:focus-visible {
+  outline: 3px solid var(--profile-link-accent);
+  outline-offset: 2px;
+}
+html[data-game] body a.zilch-player-achievement-link .zilch-player-name,
+html[data-game] body a.achievement-feed-player-link .achievement-feed-player-name {
+  color: inherit;
+  text-decoration: none;
+}
+html[data-game] body a.zilch-player-achievement-link:hover .zilch-player-name,
+html[data-game] body a.achievement-feed-player-link:hover .achievement-feed-player-name {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Preserve the available line width beside avatars, rank badges and chat's
+   game label. The existing wrappers continue to own wrapping and ellipsis. */
+html[data-game] body .lobby-chat__sender > a:any-link {
+  flex: 0 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* These names sit inside fixed, dense score headers or ranking rows. Keep
+   their compact height instead of increasing the surrounding game chrome. */
+html[data-game] body #scoreOut a.player-name-label:any-link,
+html[data-game] body .leaderboard-box :is(a.player-name-label, a.player-profile-link):any-link,
+html[data-game="zilch"] body .zilch-shell--game a.zilch-player-achievement-link:any-link {
+  min-height: 28px;
+  padding: .12rem .35rem;
+  box-shadow: none;
+}
+
+/* The LCARS skin's generic content-link rules otherwise recolour these
+   controls as cyan text on their cyan button background. */
+html[data-game="zilch"][data-theme="lcars"] body :is(a.player-name-label,
+    a.player-profile-link, a.achievement-feed-player-link,
+    a.zilch-player-achievement-link, .lobby-chat__sender > a):any-link {
+  color: var(--profile-link-ink);
+}
+html[data-game="zilch"][data-theme="lcars"] body :is(a.player-name-label,
+    a.player-profile-link, a.achievement-feed-player-link,
+    a.zilch-player-achievement-link, .lobby-chat__sender > a):any-link:hover {
+  color: var(--profile-link-ink);
+}
+
+/* Notebook header spans otherwise inherit the score rail's cyan ink and
+   small type, making a linked name disappear on its cyan button face. */
+html[data-game="zilch"][data-theme="lcars"] body .zilch-notebook-player
+    a.zilch-player-achievement-link .zilch-player-name {
+  color: inherit;
+  font: inherit;
+  margin-left: 0;
+}
+
+/* The short console already reserves a 20px identity above its score row.
+   Keep the outlined profile control inside that slot so the latest score
+   still fits; notebook avatars already use a compact 16px face. */
+@media (max-height: 500px) and (orientation: landscape) {
+  html[data-game="zilch"][data-theme="lcars"] body .zilch-notebook-player
+      h2 > a.zilch-player-achievement-link:any-link {
+    min-height: 20px;
+    padding-block: 0;
+    line-height: 1;
+  }
+}

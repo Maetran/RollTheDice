@@ -60,6 +60,9 @@ export const dom = {
   hardcoreModeButtons: Array.from(document.querySelectorAll("[data-hardcore]")),
   hardcoreHelp: document.getElementById("hardcoreHelp"),
   createGameCard: document.getElementById("createGameCard"),
+  createOptions: document.getElementById("createOptions"),
+  createOptionsFields: document.getElementById("createOptionsFields"),
+  createOptionsStatus: document.getElementById("createOptionsStatus"),
 };
 
 export const storageKeys = {

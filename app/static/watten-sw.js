@@ -1,5 +1,5 @@
 /* Watten uses the network. No account, token, game or asset enters Cache Storage. */
-const CACHE_VERSION = 'assets-1c58bf11087a';
+const CACHE_VERSION = 'assets-31666ed35bd3';
 
 self.addEventListener('message', event => {
   if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();
@@ -11,7 +11,7 @@ function connectionNeeded() {
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="robots" content="noindex, nofollow"><meta name="theme-color" content="#713d2c">
     <title>Watten · Offline</title><style>
-    *{box-sizing:border-box}body{margin:0;padding:24px;min-height:100vh;display:grid;place-items:center;background:#ecddc6;color:#39251b;font:17px/1.6 system-ui,sans-serif}main{max-width:36rem}h1{font:700 36px Georgia,serif}a{display:inline-flex;align-items:center;min-height:44px;padding:10px 16px;border:1px solid currentColor;border-radius:5px;color:#713d2c}a:focus-visible{outline:3px solid #996c1f;outline-offset:3px}
+    *{box-sizing:border-box}body{margin:0;padding:24px;min-height:100vh;display:grid;place-items:center;background:#ecddc6;color:#39251b;font:17px/1.6 system-ui,sans-serif}main{max-width:36rem}h1{font:700 36px Georgia,serif}a{display:inline-flex;align-items:center;min-height:44px;padding:10px 16px;border:1px solid currentColor;border-radius:5px;color:#713d2c;text-decoration:none}a:focus-visible{outline:3px solid #996c1f;outline-offset:3px}
     </style></head><body><main><h1>Watten</h1>
     <p>Zum Watten brauchst du eine Internetverbindung. Deine Karten und Kontodaten werden nicht offline gespeichert.</p>
     <p lang="en">Watten needs an internet connection. Your cards and account data are never stored for offline use.</p>

@@ -313,6 +313,8 @@ test("guest sees login and registration while a new account sees only logout", a
   await expect(page.locator("#playerSectionTitle")).toBeHidden();
   await expect(page.locator("#playerNameRow")).toBeHidden();
   await expect(page.locator("#playerSetupCard")).toHaveClass(/authenticated/);
+  await expect(page.locator(".account-identity")).toBeHidden();
+  await expect(page.getByText("Du spielst als", { exact: true })).toHaveCount(0);
   await expect(page.locator("#logoutBtn")).toBeVisible();
   await expect(page.locator("#headerAccountLink")).toHaveAttribute("href", "/konto");
   // Responsive lobby geometry is covered by compact-lobbies.spec.js; this
@@ -356,9 +358,11 @@ test("rank badges open the public legend and the live-game overlay", async ({ pa
   await page.fill("#loginPassword", "temporary-password-123");
   await page.click("#loginForm button[type=submit]");
 
+  await expect(page.locator("#headerAccountLink")).toHaveAttribute("href", "/konto");
+  await page.locator("#headerAccountLink").click();
   await Promise.all([
     page.waitForURL(/\/rangabzeichen/),
-    page.locator("#authBadge .player-rank").click(),
+    page.locator("#accountName .player-rank").click(),
   ]);
   await expect(page.getByRole("heading", { name: "Rangabzeichen & Ehrenberg-Marken" })).toBeVisible();
   await expect(page.locator("#rankLegendList .rank-legend-row")).toHaveCount(12);
@@ -743,6 +747,8 @@ test("lobby game choices stay synchronized with the existing creation form", asy
   await expect(page.getByText("Du kannst ohne Konto spielen.")).toBeVisible();
   await expect(page.getByRole("radio", { name: "1 Solo" })).toBeChecked();
   await expect(page.locator("#gameMode")).toHaveValue("1");
+  await expect(page.locator("#createOptions")).not.toHaveAttribute("open");
+  await page.locator("#createOptions > summary").click();
   await expect(page.getByRole("radio", { name: "Normal" })).toBeChecked();
   await expect(page.locator("#hardcoreChk")).not.toBeChecked();
   await expect(page.locator("#hardcoreHelp")).toBeHidden();
@@ -769,6 +775,7 @@ test("tablet new-game controls stay inside their card", async ({ page }) => {
   ]) {
     await page.setViewportSize(viewport);
     await page.goto("/");
+    await page.locator("#createOptions > summary").click();
 
     const layout = await page.evaluate(() => {
       const card = document.querySelector(".setup-grid .setup-card:nth-child(2)").getBoundingClientRect();
@@ -787,8 +794,8 @@ test("tablet new-game controls stay inside their card", async ({ page }) => {
     });
 
     expect(layout.pageWidth).toBeLessThanOrEqual(layout.viewportWidth);
-    // The optional passphrase shares a compact row with Start. Both remain
-    // usable and inside the card instead of requiring a full-width input.
+    // Expanded optional settings stay inside the compact card on tablets;
+    // the primary action remains available below the disclosure.
     expect(layout.inputWidth).toBeGreaterThan(120);
     expect(layout.inputWidth).toBeLessThanOrEqual(layout.rowWidth);
     for (const right of layout.controlRights) expect(right).toBeLessThanOrEqual(layout.cardRight);

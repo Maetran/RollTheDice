@@ -539,6 +539,7 @@ for (const language of ['de', 'en']) {
     await expect(page.locator('#hausdeppRecreate')).toBeVisible();
     await expect(page.locator('.hd-result-links a[href="/hausdepp"]')).toBeVisible();
     expect(attempts).toBe(2);
+    await page.locator('#hausdeppRoundProgress .hd-round-account > summary').click();
     const accountLink = page.locator('#hausdeppResult a[href="/hausdepp/konto#erfolge"]');
     await accountLink.click();
     await expect(page).toHaveURL(/\/hausdepp\/konto#erfolge$/);
@@ -563,7 +564,7 @@ for (const language of ['de', 'en']) {
       await route.fulfill({ json: { game_id: target, url: 'https://external.invalid/', created: true, requires_acceptance: false } });
     });
     const recreate = page.locator('#hausdeppRecreate');
-    await expect(recreate).toHaveText(language === 'de' ? 'Neu erstellen' : 'Create again');
+    await expect(recreate).toHaveText(language === 'de' ? 'Revanche starten' : 'Start rematch');
     await recreate.click();
     await expect(recreate).toBeDisabled();
     expect(calls).toBe(1);
@@ -613,7 +614,7 @@ test('leaving the page cancels an outstanding create response before it can acce
   } finally { release(); }
 });
 
-test('a tournament interval keeps Next round and never replaces it with Create again', async ({ page }) => {
+test('a tournament interval keeps Next round and never replaces it with a rematch', async ({ page }) => {
   const fixture = await setup(page);
   const source = await finishedRenderer(page, fixture);
   const board = structuredClone(source.snapshot);

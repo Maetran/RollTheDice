@@ -43,7 +43,7 @@ test("lobby can create a game and open spectator view without browser errors", a
   const health = watchPageHealth(page);
   await page.goto("/");
   await page.fill("#playerName", "Smoke");
-  await page.fill("#passInput", "");
+  await expect(page.locator("#passInput")).toHaveValue("");
   await page.getByRole("radio", { name: "1 Solo" }).click();
   await Promise.all([
     page.waitForURL(/\/spiel\/[^/?]+/),
@@ -155,7 +155,7 @@ test("game creation API flow from lobby and spectator mode both work", async ({ 
   const health = watchPageHealth(page);
   await page.goto("/");
   await page.fill("#playerName", "Creator");
-  await page.fill("#passInput", "");
+  await expect(page.locator("#passInput")).toHaveValue("");
   await page.getByRole("radio", { name: "1 Solo" }).click();
 
   const createResponsePromise = page.waitForResponse((res) => {
@@ -1314,3 +1314,21 @@ test("protected game passphrases use an in-app dialog and stay out of the room U
   const stored = await page.evaluate(gid => sessionStorage.getItem(`wuerfler_pass_${gid}`), gameId);
   expect(stored).toBe("secret-round");
 });
+
+
+for (const language of ["de", "en"]) {
+  test(`ZDWA spectator result offers only a return to the lobby (${language})`, async ({ page, request }) => {
+    await page.addInitScript(lang => localStorage.setItem("zdwa_language", lang), language);
+    const created = await request.post("/api/games", { data: { name: "Spectator result", mode: 1 } });
+    const { game_id: gameId } = await created.json();
+    await page.goto(`/spiel/${encodeURIComponent(gameId)}/zuschauen?__test=1`);
+    await page.waitForSelector("#diceBar");
+    await page.evaluate(() => {
+      void window.__rtDebugShowGameResults({ _results: [{ name: "Winner", total: 777 }], _mode: "1" });
+    });
+    await expect(page.locator("#appDialog")).toContainText("Winner");
+    await expect(page.locator("#appDialogActions > button")).toHaveCount(1);
+    await expect(page.locator('[data-dialog-action="lobby"]')).toBeVisible();
+    await expect(page.locator('[data-dialog-action="new"]')).toHaveCount(0);
+  });
+}

@@ -33,7 +33,7 @@ export async function createRematch(sourceId, { signal } = {}) {
   let data = await request(`/api/hausdepp/games/${encodeURIComponent(sourceId)}/rematch`, { method: "POST", signal });
   if (data.requires_acceptance) {
     if (!validId(data.invitation_id)) throw new Error("hausdepp_rematch_unavailable");
-    // Clicking Create again is this player's explicit request for a new seat.
+    // Starting a rematch is this player's explicit request for a new seat.
     data = await request(`/api/hausdepp/invitations/${encodeURIComponent(data.invitation_id)}/accept`, { method: "POST", signal });
   }
   return room(data);

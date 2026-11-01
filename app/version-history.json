@@ -2630,5 +2630,12 @@
     "date": "2026-11-01",
     "bump": "minor",
     "summary": "Seltene Tischüberraschungen dauern länger und kommen mit steigender Chance. / Rare table surprises last longer and become more likely with each game."
+  },
+  {
+    "version": "4.12.1",
+    "revision": "895c0beec0338262e8c584d106f65d36e74ba8af",
+    "date": "2026-11-01",
+    "bump": "patch",
+    "summary": "Watten bleibt beim Bieten und Ausspielen stabil; Hausdepp zeigt den Abschluss ohne Nachladesprung. / Watten stays stable through bids and card play; Hausdepp results appear without late layout shifts."
   }
 ]

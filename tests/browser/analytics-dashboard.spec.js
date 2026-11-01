@@ -118,6 +118,11 @@ async function mockedDashboard(page, language, options = {}) {
 }
 
 async function expectDashboardFits(page, width) {
+  const design = await page.locator('body').getAttribute('data-dashboard-design');
+  for (const link of await page.locator('.mission-sections > a.nexus-only').all()) {
+    if (design === 'nexus') await expect(link).toBeVisible();
+    else await expect(link).toBeHidden();
+  }
   const geometry = await page.evaluate(() => ({ width: document.documentElement.scrollWidth, viewport: innerWidth, controls: [...document.querySelectorAll('a,button,select,summary')].filter(item => item.checkVisibility()).map(item => { const box = item.getBoundingClientRect(); return { text: item.textContent, left: box.left, right: box.right, height: box.height }; }) }));
   expect(geometry.width).toBeLessThanOrEqual(geometry.viewport);
   for (const item of geometry.controls) {

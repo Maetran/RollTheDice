@@ -2,7 +2,9 @@
 export function createPilePresentation() {
   let latest = null, discard = [], burned = 0;
   const pending = new Map();
-  const projection = state => ({ version: state.version, discard: [...(state.discard || [])], burned_count: state.burned_count || 0 });
+  const projection = state => ({ version: state.version, discard: [...(state.discard || [])], burned_count: state.burned_count || 0,
+    phase: state.phase, current_player_id: state.current_player_id,
+    clearance_player_id: state.last_event?.burn_reason ? state.last_event.player_id : null });
   const settle = () => {
     pending.clear();
     discard = [...(latest?.discard || [])];
@@ -23,6 +25,13 @@ export function createPilePresentation() {
     quiet(state) { latest = projection(state); settle(); },
     has(token) { return pending.has(token); },
     isFirst(token) { return pending.keys().next().value === token; },
+    canReplay(playerId, version) {
+      // A private refill may arrive during a burn. The newest public transfer
+      // still identifies whose clearance kept this empty table and turn.
+      const publicState = [...pending.values()].at(-1);
+      return latest?.version === version && latest?.phase === "playing" && latest.current_player_id === playerId && !latest.discard.length
+        && publicState?.clearance_player_id === playerId;
+    },
     get queued() { return pending.size; },
     arrive(token, card) {
       if (!pending.has(token) || !card || discard.includes(card)) return false;
