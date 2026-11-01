@@ -229,6 +229,8 @@ def start_hausdepp_game(game: GameDict, *, manual: bool = False) -> None:
     # New accounts get gentler computers and table tips during their first rounds.
     record_table_experience(game)
     game["_started"] = True
+    # A missing durable draw for a new round must never become a legacy offer.
+    game["_hausdepp_rare_policy_round"] = 1
     game["_started_at"] = datetime.now(timezone.utc).isoformat()
     game["_turn"] = {"player_id": game["_hausdepp"]["current_player_id"]}
 

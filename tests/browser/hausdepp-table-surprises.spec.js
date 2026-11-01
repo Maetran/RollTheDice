@@ -177,6 +177,14 @@ for (const effect of EFFECTS) {
     for (const client of fixture.clients) {
       await expect(client.page.locator(OVERLAY)).toHaveCount(1);
       expect(await client.page.locator(OVERLAY).evaluate(element => getComputedStyle(element).pointerEvents)).toBe('none');
+      const subject = client.page.locator(`${OVERLAY} [data-stage="${effect === 'blackhole' ? 'hole' : effect}"]`).first();
+      await expect(subject).toHaveCount(1);
+      const seconds = await subject.evaluate(node => {
+        const animation = node.getAnimations()[0];
+        return animation.effect.getTiming().duration / animation.playbackRate / 1000;
+      });
+      expect(seconds).toBeGreaterThanOrEqual(4);
+      expect(seconds).toBeLessThanOrEqual(6.1);
       await expect(client.page.locator('#hausdeppHand [data-card-id]')).toHaveCount(HAND.length);
       await expect(client.page.locator(`[data-prop="${effect}"]:visible`)).toHaveCount(0);
     }
@@ -356,7 +364,7 @@ async function resumeSurpriseCapture(page) {
   });
 }
 
-test('the clock freezes its visual copies for two seconds before the animal mouse arrives', async ({ page }) => {
+test('the clock freezes its visual copies before the animal mouse arrives', async ({ page }) => {
   const fixture = await roomFixture(page, 'clock');
   const before = await playGeometry(page);
   await pauseSurpriseForCapture(page);
@@ -394,7 +402,7 @@ test('the clock freezes its visual copies for two seconds before the animal mous
   await expect(layer).toHaveCount(0, { timeout: 6000 });
 });
 
-test('the singularity holds one continuous second of blackout and restores the live table', async ({ page }) => {
+test('the singularity holds a continuous blackout and restores the live table', async ({ page }) => {
   const fixture = await roomFixture(page, 'blackhole');
   const before = await playGeometry(page);
   await pauseSurpriseForCapture(page);

@@ -16,6 +16,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    event,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, validates
 
@@ -828,6 +829,7 @@ class WattenTableSurpriseClaim(Base):
     event_id: Mapped[str] = mapped_column(String(32), nullable=False, unique=True)
     claimed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     human_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    policy_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
     __table_args__ = (CheckConstraint("effect IN ('star','hammer','ufo','portal','dragon','kraken','clock','blackhole')",
                                     name="ck_watten_surprise_effect"),
                       CheckConstraint("human_count >= 2 AND human_count <= 4", name="ck_watten_surprise_humans"))
@@ -1092,6 +1094,7 @@ class ActiveGame(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     admission_revision: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    rare_surprise_policy: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
 
     __table_args__ = (Index("ix_active_games_updated_at", "updated_at"),)
 
@@ -1558,3 +1561,48 @@ class ZilchAchievementRankMoment(Base):
         UniqueConstraint("user_id", "game_id", name="uq_zilch_rank_moment_user_game"),
         Index("ix_zilch_rank_moments_game", "game_id", "recorded_at"),
     )
+
+
+class RareSurpriseLock(Base):
+    """Serialize rare-offer creation and activation across tables."""
+    __tablename__ = "rare_surprise_lock"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    __table_args__ = (CheckConstraint("id = 1", name="ck_rare_surprise_lock_singleton"),)
+
+
+@event.listens_for(RareSurpriseLock.__table__, "after_create")
+def _seed_rare_surprise_lock(table, connection, **_kwargs):
+    # Metadata-created test databases need the same singleton as Alembic.
+    connection.execute(table.insert().values(id=1))
+
+
+class RareSurpriseCounter(Base):
+    """Games since a connected player last triggered or witnessed an effect."""
+    __tablename__ = "rare_surprise_counters"
+    game_type: Mapped[str] = mapped_column(String(16), primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    games: Mapped[int] = mapped_column(Integer, nullable=False)
+    __table_args__ = (CheckConstraint("game_type IN ('hausdepp', 'watten')", name="ck_rare_counter_game"),
+                      CheckConstraint("games >= 0 AND games <= 100", name="ck_rare_counter_games"))
+
+
+class RareSurpriseOffer(Base):
+    """A single immutable lottery result and at most one activation per game."""
+    __tablename__ = "rare_surprise_offers"
+    game_type: Mapped[str] = mapped_column(String(16), primary_key=True)
+    game_key: Mapped[str] = mapped_column(String(160), primary_key=True)
+    effect: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    activated: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    __table_args__ = (CheckConstraint("game_type IN ('hausdepp', 'watten')", name="ck_rare_offer_game"),
+                      CheckConstraint("effect IS NULL OR effect IN ('star','hammer','ufo','portal','dragon','kraken','clock','blackhole')", name="ck_rare_offer_effect"))
+
+
+class WattenSoloSurpriseClaim(Base):
+    """Cosmetic solo claim; intentionally carries no social achievement evidence."""
+    __tablename__ = "watten_solo_surprise_claims"
+    game_id: Mapped[str] = mapped_column(String(16), primary_key=True)
+    effect: Mapped[str] = mapped_column(String(16), nullable=False)
+    event_id: Mapped[str] = mapped_column(String(32), nullable=False, unique=True)
+    claimed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    __table_args__ = (CheckConstraint("effect IN ('star','hammer','ufo','portal','dragon','kraken','clock','blackhole')",
+                                      name="ck_watten_solo_surprise_effect"),)

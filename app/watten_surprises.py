@@ -1,17 +1,20 @@
 """Rare Watten table effects with durable, account-bound completion evidence.
 
 Offers and events contain public cosmetic information only. A live effect
-requires two connected authenticated humans, changes no card/turn state, and
-awards nothing until a native completed match has a stored personal credit.
+requires a connected authenticated player, changes no card/turn state, and
+awards social achievements only when at least two humans were present and a
+native completed match has a stored personal credit.
 """
 
 from __future__ import annotations
 
+import logging
 from hashlib import sha256
 from uuid import uuid4
 
 from fastapi import WebSocketDisconnect
 from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
 
 from .database import database_schema_ready, session_scope
 from .models import (
@@ -20,6 +23,7 @@ from .models import (
     WattenAchievementGrant,
     WattenMatchCredit,
     WattenProgressState,
+    WattenSoloSurpriseClaim,
     WattenTableSurpriseClaim,
     WattenTableSurpriseWitness,
 )
@@ -44,6 +48,7 @@ SURPRISE_ACHIEVEMENTS = tuple(
 )
 _GOALS = {goal.achievement_id: goal for goal in SURPRISE_ACHIEVEMENTS}
 _APPEARANCE_CACHE = "_watten_table_appearance"
+logger = logging.getLogger(__name__)
 
 
 def eligible_effect(game_id: str, deal_id: str) -> str | None:
@@ -73,10 +78,17 @@ def table_effects_projection(game: dict) -> dict:
         return {"scorched_cards": cached[1]}
     if not database_schema_ready():
         return {"scorched_cards": False}
-    with session_scope() as db:
-        scorched = db.scalar(select(WattenTableSurpriseClaim.event_id).where(
-            WattenTableSurpriseClaim.game_id == game["_id"],
-            WattenTableSurpriseClaim.effect == "dragon").limit(1)) is not None
+    try:
+        with session_scope() as db:
+            scorched = (db.scalar(select(WattenTableSurpriseClaim.event_id).where(
+                WattenTableSurpriseClaim.game_id == game["_id"],
+                WattenTableSurpriseClaim.effect == "dragon").limit(1)) is not None
+                or db.scalar(select(WattenSoloSurpriseClaim.event_id).where(
+                    WattenSoloSurpriseClaim.game_id == game["_id"],
+                    WattenSoloSurpriseClaim.effect == "dragon").limit(1)) is not None)
+    except SQLAlchemyError:
+        logger.warning("Could not read Watten table appearance for %s", game.get("_id"), exc_info=True)
+        return {"scorched_cards": False}
     game[_APPEARANCE_CACHE] = (game["_id"], scorched)
     return {"scorched_cards": scorched}
 
@@ -105,14 +117,23 @@ def surprise_offer(game: dict, viewer_id: str | None) -> dict:
     offer = {"deal_id": engine.deal_id if engine else None, "effect": None}
     if (engine is None or engine.phase != "play" or runtime.absent or game.get("_finished")
             or game.get("_aborted") or viewer_id not in {item.participant_id for item in _connected(game)}
-            or len(_connected(game)) < 2 or not database_schema_ready()):
+            or not database_schema_ready()):
         return offer
-    effect = eligible_effect(game["_id"], engine.deal_id)
-    if effect is None:
-        return offer
-    with session_scope() as db:
-        if db.get(WattenTableSurpriseClaim, (game["_id"], engine.deal_id)) is None:
-            offer["effect"] = effect
+    from .rare_surprise_probability import read_offer
+
+    try:
+        with session_scope() as db:
+            stored = read_offer(db, "watten", str(game["_id"]))
+            if stored is None:
+                policy = db.scalar(select(ActiveGame.rare_surprise_policy).where(ActiveGame.game_id == game["_id"]))
+                if policy != 1 or len(_connected(game)) < 2:
+                    return offer
+            effect = (None if stored.activated else stored.effect) if stored is not None else eligible_effect(game["_id"], engine.deal_id)
+            if effect is not None and db.get(WattenTableSurpriseClaim, (game["_id"], engine.deal_id)) is None:
+                offer["effect"] = effect
+    except SQLAlchemyError:
+        logger.warning("Could not read Watten table surprise for %s", game.get("_id"), exc_info=True)
+        offer["effect"] = None
     return offer
 
 
@@ -122,36 +143,54 @@ async def handle_surprise(session, data: dict, identity_for_socket) -> None:
     engine = runtime.engine
     if (set(data) != {"action", "deal_id", "effect"} or session.is_spectator or engine is None
             or engine.phase != "play" or runtime.absent or game.get("_finished") or game.get("_aborted")
-            or data["deal_id"] != engine.deal_id or data["effect"] not in EFFECTS
-            or eligible_effect(game["_id"], engine.deal_id) != data["effect"]):
+            or data["deal_id"] != engine.deal_id or data["effect"] not in EFFECTS):
         raise ValueError("watten_action_unavailable")
     humans = _connected(game, identity_for_socket)
-    if len(humans) < 2 or session.player_id not in {member.participant_id for member in humans}:
+    if not humans or session.player_id not in {member.participant_id for member in humans}:
         raise ValueError("watten_action_unavailable")
     from .watten_recipe import dumps_canonical_json
     from .watten_runtime import serialize_watten_game
 
-    with session_scope() as db:
-        # Serialize with checkpoint writers, including on SQLite. A stale
-        # process may never claim against a newer persisted turn or terminal.
-        if db.get_bind().dialect.name == "sqlite":
-            connection = db.connection()
-            if not connection.connection.driver_connection.in_transaction:
-                connection.exec_driver_sql("BEGIN IMMEDIATE")
-        source = db.scalar(select(ActiveGame.state_json).where(ActiveGame.game_id == game["_id"]).with_for_update())
-        if source != dumps_canonical_json(serialize_watten_game(game)):
-            raise ValueError("watten_stale_revision")
-        if db.get(WattenTableSurpriseClaim, (game["_id"], engine.deal_id)) is not None:
-            raise ValueError("watten_action_unavailable")
-        if any((account := db.get(User, member.account_id)) is None or not account.is_active for member in humans):
-            raise ValueError("watten_action_unavailable")
-        event_id, now = uuid4().hex, utcnow()
-        db.add(WattenTableSurpriseClaim(game_id=game["_id"], deal_id=engine.deal_id, effect=data["effect"],
-                                       event_id=event_id, claimed_at=now, human_count=len(humans)))
-        db.flush()
-        for member in humans:
-            db.add(WattenTableSurpriseWitness(game_id=game["_id"], deal_id=engine.deal_id, user_id=member.account_id,
-                                             player_id=member.participant_id, initiated=member.participant_id == session.player_id))
+    try:
+        with session_scope() as db:
+            # Serialize with checkpoint writers, including on SQLite. A stale
+            # process may never claim against a newer persisted turn or terminal.
+            if db.get_bind().dialect.name == "sqlite":
+                connection = db.connection()
+                if not connection.connection.driver_connection.in_transaction:
+                    connection.exec_driver_sql("BEGIN IMMEDIATE")
+            source = db.scalar(select(ActiveGame.state_json).where(ActiveGame.game_id == game["_id"]).with_for_update())
+            if source != dumps_canonical_json(serialize_watten_game(game)):
+                raise ValueError("watten_stale_revision")
+            if db.get(WattenTableSurpriseClaim, (game["_id"], engine.deal_id)) is not None:
+                raise ValueError("watten_action_unavailable")
+            from .rare_surprise_probability import activate, read_offer
+
+            stored = read_offer(db, "watten", str(game["_id"]))
+            policy_version = 2 if stored is not None else 1
+            if policy_version == 2:
+                if not activate(db, "watten", str(game["_id"]), data["effect"], (member.account_id for member in humans)):
+                    raise ValueError("watten_action_unavailable")
+            elif (db.scalar(select(ActiveGame.rare_surprise_policy).where(ActiveGame.game_id == game["_id"])) != 1
+                  or len(humans) < 2 or eligible_effect(game["_id"], engine.deal_id) != data["effect"]):
+                raise ValueError("watten_action_unavailable")
+            if any((account := db.get(User, member.account_id)) is None or not account.is_active for member in humans):
+                raise ValueError("watten_action_unavailable")
+            event_id, now = uuid4().hex, utcnow()
+            if len(humans) == 1:
+                # Solo effects paint and broadcast normally, but provide no social
+                # achievement evidence and never weaken the old claim constraint.
+                db.add(WattenSoloSurpriseClaim(game_id=game["_id"], effect=data["effect"], event_id=event_id, claimed_at=now))
+            else:
+                db.add(WattenTableSurpriseClaim(game_id=game["_id"], deal_id=engine.deal_id, effect=data["effect"],
+                                               event_id=event_id, claimed_at=now, human_count=len(humans), policy_version=policy_version))
+                db.flush()
+                for member in humans:
+                    db.add(WattenTableSurpriseWitness(game_id=game["_id"], deal_id=engine.deal_id, user_id=member.account_id,
+                                                     player_id=member.participant_id, initiated=member.participant_id == session.player_id))
+    except SQLAlchemyError as exc:
+        logger.warning("Could not persist Watten table surprise for %s", game.get("_id"), exc_info=True)
+        raise ValueError("watten_action_unavailable") from exc
     # The completed transaction, never a speculative client tap, authorizes
     # this live event. Reconnect snapshots expose no event or witness history.
     if data["effect"] == "dragon":
@@ -180,6 +219,14 @@ def surprise_facts(db, user_id: int) -> tuple:
         .order_by(WattenTableSurpriseClaim.claimed_at, WattenTableSurpriseClaim.deal_id)))
 
 
+
+def _valid_policy_offer(db, claim):
+    from .rare_surprise_probability import read_offer
+
+    offer = read_offer(db, "watten", claim.game_id)
+    return offer is not None and offer.activated and offer.effect == claim.effect
+
+
 def qualifying_surprises(db, evidence, bindings, user_id: int, *, facts=None) -> dict:
     """Private frozen membership + durable activation prove each account's role."""
     if evidence.started_at is UNKNOWN:
@@ -191,7 +238,9 @@ def qualifying_surprises(db, evidence, bindings, user_id: int, *, facts=None) ->
         if (claim.game_id != evidence.game_id or witness.user_id != user_id or witness.player_id != own.player_id
                 or claim.deal_id not in {deal.deal_id for deal in evidence.deals}
                 or not 2 <= claim.human_count <= evidence.player_count
-                or eligible_effect(evidence.game_id, claim.deal_id) != claim.effect
+                or (claim.policy_version == 1 and eligible_effect(evidence.game_id, claim.deal_id) != claim.effect)
+                or (claim.policy_version == 2 and not _valid_policy_offer(db, claim))
+                or claim.policy_version not in (1, 2)
                 or not evidence.started_at <= as_utc(claim.claimed_at) <= evidence.finished_at):
             continue
         role = "trigger" if witness.initiated else "witness"

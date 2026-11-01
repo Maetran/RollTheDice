@@ -9,7 +9,7 @@ from sqlalchemy import select
 
 from app.database import session_scope
 from app.game_state import games
-from app.models import ActiveGame, WattenTableSurpriseClaim
+from app.models import ActiveGame, RareSurpriseOffer, WattenTableSurpriseClaim
 from app.watten_runtime import copy_game, lobby_entry, restore_watten_json, serialize_watten_game, snapshot_watten
 from app.watten_surprises import handle_surprise, table_effects_projection
 from app.watten_websocket import _handle_locked
@@ -23,6 +23,8 @@ def live_table(server):
     numbers = count()
     runtime_tests.advance_to_play(game_id, sessions, numbers)
     game = games[game_id]
+    with session_scope() as db:
+        db.get(RareSurpriseOffer, ("watten", game_id)).effect = "dragon"
     identities = {session.websocket: session.auth_identity for session in sessions}
     data = {"action": "watten_table_surprise", "deal_id": game["_watten"].engine.deal_id, "effect": "dragon"}
     for session in sessions:
@@ -101,6 +103,8 @@ def test_rejected_or_rolled_back_activation_never_scorches_or_broadcasts(server,
 def test_a_valid_other_effect_does_not_scorch_the_table(server):
     game, _owners, sessions, identity, data, _numbers = live_table(server)
     data["effect"] = "hammer"
+    with session_scope() as db:
+        db.get(RareSurpriseOffer, ("watten", game["_id"])).effect = "hammer"
     with patch("app.watten_surprises.eligible_effect", return_value="hammer"):
         asyncio.run(handle_surprise(sessions[0], data, identity))
     assert table_effects_projection(game) == {"scorched_cards": False}
@@ -158,3 +162,105 @@ def test_a_failed_hydration_or_unready_schema_does_not_poison_a_later_read(serve
         assert table_effects_projection(loaded) == {"scorched_cards": False}
         assert table_effects_projection(loaded) == {"scorched_cards": False}
         assert reads.call_count == 1
+
+
+def test_solo_cpu_game_offers_and_persists_dragon_without_social_evidence(server):
+    from app.models import RareSurpriseCounter, WattenSoloSurpriseClaim, WattenTableSurpriseWitness
+    from app.watten_engine import EngineActor, EngineCommand
+    from app.watten_runtime import _apply_engine_command, persist_watten_game
+    from app.watten_surprises import surprise_offer
+
+    game_id, owners, sessions = runtime_tests.local_started(server, count_players=2, cpus=(1,))
+    game, numbers = games[game_id], count()
+    while game["_watten"].engine.phase != "play":
+        player, data = runtime_tests.next_move(game_id, numbers)
+        account = owners[0][0].user_id if player == sessions[0].player_id else None
+        command = EngineCommand(data["command_id"], data["deal_id"], data["opportunity"], data["phase"],
+                                data["kind"], data["value"], data["private_opportunity"])
+        candidate, *_ = _apply_engine_command(game, EngineActor(player, account), command)
+        persist_watten_game(candidate)
+        game.update(candidate)
+    with session_scope() as db:
+        db.get(RareSurpriseOffer, ("watten", game_id)).effect = "dragon"
+        assert db.get(RareSurpriseCounter, ("watten", owners[0][0].user_id)).games == 1
+    deal_id = game["_watten"].engine.deal_id
+    assert surprise_offer(game, sessions[0].player_id) == {"deal_id": deal_id, "effect": "dragon"}
+    data = {"action": "watten_table_surprise", "deal_id": deal_id, "effect": "dragon"}
+    identity = {sessions[0].websocket: sessions[0].auth_identity}.get
+    asyncio.run(handle_surprise(sessions[0], data, identity))
+    assert table_effects_projection(game) == {"scorched_cards": True}
+    with session_scope() as db:
+        assert db.get(RareSurpriseCounter, ("watten", owners[0][0].user_id)).games == 0
+        assert db.get(WattenSoloSurpriseClaim, game_id).effect == "dragon"
+        assert db.scalar(select(WattenTableSurpriseClaim).where(WattenTableSurpriseClaim.game_id == game_id)) is None
+        assert db.scalar(select(WattenTableSurpriseWitness).where(WattenTableSurpriseWitness.game_id == game_id)) is None
+        checkpoint = db.scalar(select(ActiveGame.state_json).where(ActiveGame.game_id == game_id))
+    assert table_effects_projection(restore_watten_json(checkpoint)) == {"scorched_cards": True}
+    with pytest.raises(ValueError, match="watten_action_unavailable"):
+        asyncio.run(handle_surprise(sessions[0], data, identity))
+
+
+def test_database_failure_hides_offer_without_breaking_table_snapshot(server):
+    from sqlalchemy.exc import OperationalError
+
+    from app.watten_surprises import surprise_offer
+
+    game, _owners, sessions, _identity, _data, _numbers = live_table(server)
+    failure = OperationalError("SELECT", {}, Exception("unavailable"))
+    with patch("app.rare_surprise_probability.read_offer", side_effect=failure), \
+            patch("app.watten_surprises.eligible_effect", side_effect=AssertionError("legacy fallback")):
+        assert surprise_offer(game, sessions[0].player_id)["effect"] is None
+        assert snapshot_watten(game, sessions[0].player_id)["table_surprise_offer"]["effect"] is None
+    assert surprise_offer(game, sessions[0].player_id)["effect"] == "dragon"
+
+
+def test_claim_database_failure_rolls_back_and_next_tap_can_succeed(server):
+    from sqlalchemy.exc import OperationalError
+
+    from app.models import RareSurpriseCounter
+
+    game, owners, sessions, identity, data, _numbers = live_table(server)
+    failure = OperationalError("UPDATE", {}, Exception("unavailable"))
+    with patch("app.rare_surprise_probability.activate", side_effect=failure):
+        with pytest.raises(ValueError, match="watten_action_unavailable"):
+            asyncio.run(handle_surprise(sessions[0], data, identity))
+    assert all(not session.websocket.messages for session in sessions)
+    with session_scope() as db:
+        assert db.get(RareSurpriseOffer, ("watten", game["_id"])).activated is False
+        assert [db.get(RareSurpriseCounter, ("watten", owner[0].user_id)).games for owner in owners] == [1, 1]
+        assert db.scalar(select(WattenTableSurpriseClaim).where(WattenTableSurpriseClaim.game_id == game["_id"])) is None
+    asyncio.run(handle_surprise(sessions[0], data, identity))
+    assert sessions[0].websocket.messages[-1]["watten_table_surprise"]["effect"] == "dragon"
+
+
+def test_missing_new_policy_offer_never_falls_back_but_legacy_game_does(server):
+    from app.watten_surprises import surprise_offer
+
+    game, _owners, sessions, identity, data, _numbers = live_table(server)
+    with session_scope() as db:
+        row = db.scalar(select(ActiveGame).where(ActiveGame.game_id == game["_id"]))
+        assert row.rare_surprise_policy == 2
+        db.delete(db.get(RareSurpriseOffer, ("watten", game["_id"])))
+    with patch("app.watten_surprises.eligible_effect", return_value="dragon"):
+        assert surprise_offer(game, sessions[0].player_id)["effect"] is None
+        with pytest.raises(ValueError, match="watten_action_unavailable"):
+            asyncio.run(handle_surprise(sessions[0], data, identity))
+        with session_scope() as db:
+            db.scalar(select(ActiveGame).where(ActiveGame.game_id == game["_id"])).rare_surprise_policy = 1
+        assert surprise_offer(game, sessions[0].player_id)["effect"] == "dragon"
+        asyncio.run(handle_surprise(sessions[0], data, identity))
+    with session_scope() as db:
+        assert db.get(WattenTableSurpriseClaim, (game["_id"], data["deal_id"])).policy_version == 1
+
+
+def test_appearance_database_failure_does_not_cache_fallback(server):
+    from sqlalchemy.exc import OperationalError
+
+    game, _owners, sessions, identity, data, _numbers = live_table(server)
+    asyncio.run(handle_surprise(sessions[0], data, identity))
+    source = json.dumps(serialize_watten_game(game))
+    loaded = restore_watten_json(source)
+    failure = OperationalError("SELECT", {}, Exception("unavailable"))
+    with patch("app.watten_surprises.session_scope", side_effect=failure):
+        assert table_effects_projection(loaded) == {"scorched_cards": False}
+    assert table_effects_projection(loaded) == {"scorched_cards": True}

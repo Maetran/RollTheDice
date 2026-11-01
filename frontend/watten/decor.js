@@ -71,7 +71,7 @@ export function createDecor({ container, root, gameId = null, getExpectedAccount
   const reduced = win.matchMedia("(prefers-reduced-motion: reduce)");
   let destroyed = false, phase = "preview", selected = null, serial = 0, drag = null, ignoreClick = null;
   let geometry = { regions: [], protectedRects: [] }, notice = "", hidden = false, autoPlaced = false, propSide = SIDE;
-  let surprise = null, rareNode = null, surprisePending = false, surpriseCleanup = null, lastSurprise = null, currentDealId = null;
+  let surprise = null, rareNode = null, rarePosition = null, surprisePending = false, surpriseCleanup = null, lastSurprise = null, currentDealId = null;
   let previousKinds = [];
   const current = () => !destroyed && Number.isSafeInteger(accountId) && accountId > 0
     && isCurrent() && getExpectedAccountId() === accountId;
@@ -134,7 +134,7 @@ export function createDecor({ container, root, gameId = null, getExpectedAccount
     const control = node => ["button", "a", "input", "select", "textarea"].includes(String(node.tagName).toLowerCase())
       || ["button", "dialog"].includes(node.getAttribute("role"));
     const protectedRects = [...root.querySelectorAll(DECOR_PROTECTED)]
-      .filter(node => !node.closest("[data-watten-decor-layer]")
+      .filter(node => !node.closest("[data-watten-decor-layer], .wt-decor-prop--rare")
         && (!placed.some(reveal => reveal.contains(node)) || control(node)) && visible(node))
       .map(node => node.getBoundingClientRect());
     protectedRects.push(...placed.flatMap(reveal => reveal.wtInspectionFootprint.filter(finite)));
@@ -159,6 +159,17 @@ export function createDecor({ container, root, gameId = null, getExpectedAccount
     if (!current()) { destroy(); return; }
     measure();
     const used = [];
+    // Reserve a safe felt slot for the rare find before ordinary objects.
+    const rareArea = geometry.regions.find(region => region.name === rarePosition?.region);
+    const rareRect = rareArea && box(rareArea.left + rarePosition.x * (rareArea.right - rareArea.left - propSide),
+      rareArea.top + rarePosition.y * (rareArea.bottom - rareArea.top - propSide), propSide, propSide);
+    if (!rareNode || !surprise || surprisePending) rarePosition = null;
+    else if (!fitsDecor(rareRect, geometry)) rarePosition = findDecorPosition(geometry, [], propSide);
+    if (rarePosition) {
+      const area = geometry.regions.find(region => region.name === rarePosition.region);
+      used.push(box(area.left + rarePosition.x * (area.right - area.left - propSide),
+        area.top + rarePosition.y * (area.bottom - area.top - propSide), propSide, propSide));
+    }
     for (const item of items.values()) {
       if (interactions.isGone(item.node)) { item.node.hidden = true; continue; }
       let rect = rectFor(item);
@@ -174,7 +185,7 @@ export function createDecor({ container, root, gameId = null, getExpectedAccount
         used.push(rect);
       }
     }
-    layoutRare();
+    layoutRare(rarePosition);
     controls();
   }
   function add(kind) {
@@ -292,11 +303,27 @@ export function createDecor({ container, root, gameId = null, getExpectedAccount
     for (const item of items.values()) item.node.hidden = true;
     if (rareNode) rareNode.hidden = true;
   }
-  function layoutRare() {
+  function layoutRare(reserved = null) {
     if (!rareNode) return;
-    const position = surprise && !surprisePending ? findDecorPosition(geometry, occupied(), propSide) : null;
-    rareNode.hidden = !position;
-    if (!position) return;
+    const blocked = root.querySelector('[data-watten-social-drawer]:not([hidden]), dialog[open]');
+    if (!surprise || surprisePending || hidden || !ACTIVE_PHASES.has(phase) || visible(blocked)) {
+      if (!rareNode.hidden) rareNode.hidden = true;
+      return;
+    }
+    const position = reserved || findDecorPosition(geometry, occupied(), propSide);
+    if (!position) {
+      // A very crowded felt may have no safe slot at all. Place the button in
+      // the topbar's normal flow, so it remains reachable without covering cards.
+      const tools = root.querySelector("[data-wt-tools]");
+      if (!tools) { if (!rareNode.hidden) rareNode.hidden = true; return; }
+      if (rareNode.parentNode !== tools) tools.append(rareNode);
+      rareNode.style.cssText = "position:relative;left:auto;top:auto;width:44px;height:44px;min-width:44px;min-height:44px;flex:none";
+      if (rareNode.hidden) rareNode.hidden = false;
+      return;
+    }
+    if (rareNode.parentNode !== ui.layer) ui.layer.append(rareNode);
+    rareNode.style.cssText = "";
+    if (rareNode.hidden) rareNode.hidden = false;
     const area = geometry.regions.find(region => region.name === position.region);
     rareNode.style.left = `${area.left + position.x * (area.right - area.left - propSide)}px`;
     rareNode.style.top = `${area.top + position.y * (area.bottom - area.top - propSide)}px`;
@@ -304,7 +331,7 @@ export function createDecor({ container, root, gameId = null, getExpectedAccount
   function updateRare(offer) {
     const next = offer && typeof offer.deal_id === "string" && RARE_EFFECTS.has(offer.effect) ? offer : null;
     if (next?.deal_id === surprise?.deal_id && next?.effect === surprise?.effect) return;
-    surprise = next; surprisePending = false; rareNode?.remove(); rareNode = null;
+    surprise = next; rarePosition = null; surprisePending = false; rareNode?.remove(); rareNode = null;
     if (!next) return;
     rareNode = dom.createElement("button"); rareNode.type = "button"; rareNode.className = "wt-decor-prop wt-decor-prop--rare";
     rareNode.innerHTML = tableSurpriseArt(next.effect); rareNode.setAttribute("aria-label", t("surprise"));
@@ -392,7 +419,7 @@ export function createDecor({ container, root, gameId = null, getExpectedAccount
     if (destroyed) return;
     stopEffects(); interactions.destroy(); win.clearInterval(foamTimer); surpriseCleanup?.(); destroyed = true; lifecycle.abort(); observer?.disconnect(); mutation?.disconnect();
     for (const item of items.values()) item.events.abort();
-    items.clear(); selected = null; container.replaceChildren(); container.hidden = true;
+    items.clear(); selected = null; rareNode?.remove(); container.replaceChildren(); container.hidden = true;
   }
   controls();
   return { update, suspend, destroy, receive };

@@ -244,11 +244,13 @@ def commit_admission(game: dict, candidate: dict, user_ids: Iterable[int], *, cr
                 try:
                     # Prelock the complete set before either exact-account
                     # validation or the policy singleton can acquire locks.
+                    from .rare_surprise_probability import hausdepp_start_accounts, record_hausdepp_start
+
                     feature_accounts = creator_ids(candidate) if previous is None or previous.get("_hausdepp") is None else set()
-                    if feature_accounts:
-                        lock_account_rows(db, set(user_ids) | feature_accounts)
+                    lock_account_rows(db, set(user_ids) | feature_accounts | set(hausdepp_start_accounts(candidate, previous)))
                     _exact_accounts(db, user_ids)
                     validate_checkpoint_features(db, candidate, previous, creating=creating)
+                    record_hausdepp_start(db, candidate, previous)
                 except (HausdeppFeatureError, ProgressIdentityError) as exc:
                     raise AdmissionError(str(exc)) from exc
             else:

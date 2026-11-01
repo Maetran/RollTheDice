@@ -543,7 +543,7 @@ Desktop-Deko ist grösser; Spielbereiche bleiben frei. Die gewöhnlichen
 Gegenstände und ihre Benutzung bleiben auf deinem Gerät und verändern weder
 Karten, Zugrecht noch Punkte. Reduzierte Bewegung erhält die direkte Bedienung
 ohne animierte Spielereien. Deko-Ecke und Kontextmenüs entfallen.
-Acht seltene Überraschungen können gemeinsam auftreten. Auslösung und Miterleben
+Einer von acht seltenen Funden kann für alle am Tisch erscheinen. Auslösung und Miterleben
 werden serverseitig einmal je Runde belegt und erst mit dem gültig abgeschlossenen
 Spiel als Erfolge verbucht; mindestens zwei Menschen müssen verbunden mitspielen.
 A small selection from Hausdepp's 23 ordinary props scatters over the table:
@@ -559,15 +559,14 @@ and beer slowly loses its foam. Drag or use arrow keys to move; Delete removes
 an item. Desktop props are larger and play areas stay clear. Ordinary props
 and their use stay on your device and never change cards, turns or points.
 Reduced motion keeps direct use available without animated gestures. There is
-no decoration corner or context menu. Eight rare surprises can occur together
-at the table.
+no decoration corner or context menu. One of eight rare finds can appear for everyone at the table.
 Server evidence records activation and connected witnesses once per round;
 achievements are granted only after a valid completed match with at least two
 connected human players at the time of the event.
 
 **Seltene Tischeffekte / Rare table effects (Hausdepp & Watten):**
-Ein Tipp spielt den seltenen Fund vollständig ab; wiederholtes Tippen kürzt ihn nicht ab. Beim Weiterspielen werden die echten Karten sofort sichtbar, während die Szene ausklingt. Brandspuren sind je Karte unterschiedlich und bleiben beim Werfen, auf dem Stapel und beim Einsammeln erhalten. Sie gelten kosmetisch an diesem Tisch und ändern weder Kartenwerte noch Spielregeln.
-One tap plays the rare find through; repeated taps do not cut it short. Playing reveals the live cards immediately while the scene finishes. Each card has its own stable singed pattern, preserved through throws, piles and collection. This cosmetic appearance lasts at this table and never changes card values or rules.
+Für jedes Konto wird für Hausdepp und Watten getrennt gezählt: Jede begonnene Hausdepp-Runde und jede begonnene Watten-Partie erhöht den jeweiligen Zähler um eins; einzelne Watten-Austeilungen zählen nicht extra. Nach einer ausgelösten Überraschung beträgt die Chance im nächsten Spiel 1 %, danach steigt sie mit jedem Spiel um einen Prozentpunkt. Für das gemeinsame Angebot am Tisch gilt die höchste persönliche Chance aller Teilnehmenden; dadurch kannst du einen Fund auch früher sehen. Zwei Überraschungen können direkt hintereinander auftreten. Ab dem 100. Spiel wird ein Fund garantiert angeboten, sofern die Tischsituation dafür zulässig ist. Antippen löst die Überraschung aus und setzt den Zähler zurück. Die Überraschungen erscheinen auch beim Spiel allein gegen Computer; für die sozialen Fund-Erfolge müssen beim Auslösen mindestens zwei Menschen verbunden mitspielen. Die längere Szene läuft mit einem Tipp vollständig ab; wiederholtes Tippen kürzt sie nicht ab. Beim Weiterspielen werden die echten Karten sofort sichtbar, während die Szene ausklingt. Brandspuren sind je Karte unterschiedlich und bleiben beim Werfen, auf dem Stapel und beim Einsammeln erhalten. Sie gelten kosmetisch an diesem Tisch und ändern weder Kartenwerte noch Spielregeln.
+Each account has separate counts for Hausdepp and Watten: each Hausdepp round and Watten match started increases the respective count by one; individual Watten deals do not count separately. After a surprise is triggered, the chance in the next game is 1%, increasing by one percentage point with each game. The shared table offer uses the highest personal chance among the participants, so you may see a find sooner. Two surprises can occur in consecutive games. From the 100th game onward, a find is guaranteed to be offered when the table is eligible. Tap it to trigger the surprise and reset the count. Surprises can also appear when playing alone against computers; the social find achievements require at least two connected human players when triggered. One tap plays the longer scene through; repeated taps do not cut it short. Playing reveals the live cards immediately while the scene finishes. Each card has its own stable singed pattern, preserved through throws, piles and collection. This cosmetic appearance lasts at this table and never changes card values or rules.
 Die freigestellten Motive, Quellen-Prompts und Dateibudgets stehen in
 [`docs/TABLE_SURPRISE_ASSETS.json`](docs/TABLE_SURPRISE_ASSETS.json).
 Only the offered or played subject loads; no rare effects are added to ZDWA or Zilch.
@@ -1649,8 +1648,7 @@ Seit 3.18 teilen alle am Tisch Verbrauch, Nutzungszustände und Zufallsergebniss
 Platzierung und Ziehbewegungen bleiben passend zum jeweiligen Display lokal.
 Die Deko bleibt leise und ausserhalb der Karten und Aktionen. Reduzierte Bewegung
 deaktiviert die Bedienung und Animationen, zeigt aber den gemeinsamen Endzustand.
-Ungefähr jede 50. Runde bietet zusätzlich
-einen von acht seltenen Funden: Stern, Runenhammer, UFO, Portal, Drache, Kraken,
+Mit steigender Chance erscheint einer von acht seltenen Funden: Stern, Runenhammer, UFO, Portal, Drache, Kraken,
 Taschenuhr oder schwarzes Loch. Ein Tipp löst einmalig eine
 opulente Überraschung für den ganzen Tisch aus: Karten und Gegenstände wirbeln,
 werden optisch entführt und kehren zurück. Die magische Maus holt die Taschenuhr
@@ -1682,9 +1680,8 @@ out before it relights itself. Since 3.18, consumption, usage state and random
 results are shared by everyone at the table; placement and dragging remain local
 to each display. Props stay quiet and keep cards and controls clear. Reduced
 motion disables interaction and animation while showing the shared end state.
-About one round
-in 50 also offers one of eight rare finds: star, rune hammer, UFO, portal, dragon,
-kraken, pocket watch or black hole. One tap triggers a brief
+An increasing chance offers one of eight rare finds: star, rune hammer, UFO, portal, dragon,
+kraken, pocket watch or black hole. One tap triggers a
 lavish scene for the whole table, once per round. Cards and objects scatter,
 are visually abducted and return. A magical mouse retrieves the watch; the
 black hole even swallows the wooden table. The dragon leaves singed card edges
