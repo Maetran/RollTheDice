@@ -4,7 +4,7 @@ const path = require('node:path');
 const { readFile } = require('node:fs/promises');
 const { player, create, normalCall, playOne } = require('./helpers/watten-journey.cjs');
 
-const VIEWPORTS = [{ width: 320, height: 568 }, { width: 440, height: 956 }, { width: 568, height: 320 },
+const VIEWPORTS = [{ width: 320, height: 568 }, { width: 350, height: 568 }, { width: 320, height: 700 }, { width: 360, height: 640 }, { width: 375, height: 667 }, { width: 390, height: 568 }, { width: 390, height: 700 }, { width: 391, height: 700 }, { width: 440, height: 568 }, { width: 440, height: 600 }, { width: 440, height: 700 }, { width: 393, height: 852 }, { width: 440, height: 956 }, { width: 568, height: 320 },
   { width: 820, height: 1180 }, { width: 1180, height: 820 }];
 
 async function expectNativeMount(page) {
@@ -92,7 +92,7 @@ for (const language of ['de', 'en']) for (const viewport of VIEWPORTS) test(`${l
   test.setTimeout(90_000);
   const players = [];
   try {
-    const bothOptions = viewport.width === 440 && viewport.height === 956;
+    const bothOptions = [393, 440].includes(viewport.width) || (viewport.width <= 440 && viewport.height <= 700);
     for (let seat = 0; seat < 4; seat++) players.push(await player(browser, baseURL, language,
       { role: bothOptions && seat === 0 ? 'admin' : 'user' }));
     await create(players, { count: 4, target: 15, determination: 'normal', reference: bothOptions, trickHistory: bothOptions });
@@ -149,7 +149,7 @@ for (const language of ['de', 'en']) for (const viewport of VIEWPORTS) test(`${l
     expect(mounted.initialDelta).toBeLessThanOrEqual(1);
     await page.setViewportSize(viewport);
     const scenes = [];
-    if (bothOptions) scenes.push('zone-play', 'zone-bid', 'zone-hold', 'zone-empty-hand', 'zone-more-packets', 'zone-direct-bid');
+    if (bothOptions) scenes.push('zone-play', 'zone-bid', 'zone-hold', 'zone-empty-hand', 'zone-more-packets', 'zone-empty-opponents', 'zone-direct-bid');
     scenes.push('collect', 'collect-empty', 'retour', 'bloedeln', 'bloedeln-inspection');
     if (viewport.width === 440 && viewport.height === 956) scenes.push('retour-active', 'history-play-start', 'history-play-more', 'history-bid-wait');
     let historyOrigin = null, zoneOrigin = null;
@@ -186,8 +186,9 @@ for (const language of ['de', 'en']) for (const viewport of VIEWPORTS) test(`${l
         }
         if (scene.startsWith('zone-')) {
           const bidding = scene === 'zone-bid' || scene === 'zone-direct-bid';
-          const emptyHand = scene === 'zone-empty-hand' || scene === 'zone-more-packets';
-          const morePackets = scene === 'zone-more-packets';
+          const emptyHand = scene === 'zone-empty-hand' || scene === 'zone-more-packets' || scene === 'zone-empty-opponents';
+          const morePackets = scene === 'zone-more-packets' || scene === 'zone-empty-opponents';
+          if (scene === 'zone-empty-opponents') engine.seats.forEach(seat => { if (seat.seat !== own) seat.card_count = 0; });
           engine.phase = bidding ? 'bid_response' : 'play';
           engine.hand = emptyHand ? [] : structuredClone(snapshot.engine.hand.slice(0, 1));
           const others = snapshot.engine.last_trick.cards.filter(item => item.seat !== own);
@@ -196,6 +197,7 @@ for (const language of ['de', 'en']) for (const viewport of VIEWPORTS) test(`${l
           engine.trick_history = Array.from({ length: morePackets ? 4 : 2 }, () => structuredClone(snapshot.engine.last_trick));
           engine.seats.forEach(seat => { seat.tricks_won = seat.seat === own ? (morePackets ? 2 : 1)
             : seat.seat === (own + 1) % 4 ? (morePackets ? 2 : 1) : 0; });
+          engine.feedback = bidding ? [{ sender: engine.seats[(own + 2) % 4].player_id, recipient: copy.viewer.participant_id, value: 'bad', sequence: 1 }] : [];
           engine.bid.pending = bidding ? { party: engine.seats[(own + 1) % 4].party,
             decider: engine.seats[own].player_id, points: 5 } : null;
         }

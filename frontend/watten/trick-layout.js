@@ -295,8 +295,51 @@ export function createTrickLayout(trick, { win = window } = {}) {
     }
 
   }
+  // Portrait play uses the same reserved regions even before a history tab,
+  // bid, captured packet or hand card becomes visible. This makes a cold load
+  // and a transition through the same state produce the same table geometry.
+  function portraitPlayZones() {
+    if (win.innerWidth > 760 || win.innerWidth >= win.innerHeight || win.innerHeight <= 700
+        || !["play", "bid_response"].includes(table.dataset.phase) || table.dataset.viewer !== "player") return null;
+    const area = felt.getBoundingClientRect();
+    const bounds = { left: Math.max(12, area.left + 8), top: Math.max(8, area.top + 8),
+      right: Math.min(win.innerWidth - 12, area.right - 8), bottom: Math.min(win.innerHeight - 8, area.bottom - 8) };
+    bounds.width = bounds.right - bounds.left; bounds.height = bounds.bottom - bounds.top;
+    const obstacles = [...table.querySelectorAll(".wt-seat-badge, .wt-avatar, .wt-seat-name, .wt-seat-call-role, .wt-seat-tags, .wt-seat-meta, .wt-backs:not([hidden]), .wt-stock, .wt-reference")].map(box).filter(Boolean);
+    const packetWidth = Number.parseFloat(win.getComputedStyle(table).getPropertyValue("--wt-taken-w")) || 34;
+    for (const seat of table.querySelectorAll(".wt-seat")) {
+      const name = box(seat.querySelector(".wt-seat-name-row"));
+      if (!name) continue;
+      const width = 2 * packetWidth + 12 + 16, height = packetWidth * 1.5833 + 20;
+      const left = seat.matches(".wt-seat--bottom") ? 12 : seat.matches(".wt-seat--right, .wt-seat--top") ? name.left - 10 - width : name.right + 10 - 8;
+      const top = seat.matches(".wt-seat--bottom") ? name.bottom - height : (name.top + name.bottom - height) / 2;
+      obstacles.push({ left, right: left + width, top, bottom: top + height, width, height });
+    }
+    {
+      // The bid panel and stake grow upwards from the fixed hand clearance.
+      const bottom = area.bottom - (Number.parseFloat(win.getComputedStyle(table.querySelector(".wt-seat--bottom.is-own")).bottom) || 0);
+      const left = bounds.left + 108, right = bounds.right;
+      obstacles.push({ left: bounds.left, right: bounds.right, top: bottom, bottom: bounds.bottom, width: bounds.width, height: bounds.bottom - bottom });
+      obstacles.push({ left, right, top: bottom - 100, bottom, width: right - left, height: 100 });
+    }
+    const stake = { left: bounds.left, top: area.top + 126, right: bounds.left + 68, bottom: area.top + 170, width: 68, height: 44 };
+    obstacles.push(stake);
+    table.style.setProperty("--wt-zone-stake-y", `${stake.top}px`);
+    const history = fitPortraitPrompt(bounds, obstacles, { height: 44, widths: [136, 128, 112, 96, 80, 64], centerFirst: true });
+    if (!history) return null;
+    return { bounds, obstacles: [...obstacles, history], history };
+  }
+  function applyPortraitHistory(history, fit) {
+    if (!history || !fit || history.open || !box(history)) return;
+    history.dataset.wtPortraitHistory = "true";
+    for (const [key, value] of [["x", fit.left], ["y", fit.top], ["width", fit.width]]) {
+      history.style.setProperty(`--wt-portrait-history-${key}`, `${value}px`);
+    }
+  }
   function positionClosedHistory() {
     const phase = table.dataset?.phase;
+    const zones = portraitPlayZones();
+    if (zones) { applyPortraitHistory(table.querySelector("[data-wt-history]"), zones.history); return; }
     if (!(phase === "bid_response" || phase === "play" && (trick.hidden || !trick.children.length))
       || !win.matchMedia("(orientation: portrait) and (max-width: 760px)").matches) return;
     const history = table.querySelector("[data-wt-history]:not([open])");
@@ -408,6 +451,33 @@ export function createTrickLayout(trick, { win = window } = {}) {
     const collectionFrames = collecting ? [...table.querySelectorAll("[data-wt-hand-area], [data-wt-hand] > *")]
       .map(node => node.getBoundingClientRect()).filter(usable) : [];
     const collectionHandTop = collectionFrames.length ? Math.min(...collectionFrames.map(rect => rect.top)) : Infinity;
+    if (win.innerWidth >= 320 && win.innerWidth <= 440 && win.innerHeight >= 568 && win.innerHeight <= 700
+        && win.innerWidth < win.innerHeight && table.dataset.viewer === "player"
+        && (["play", "bid_response"].includes(table.dataset.phase) || collecting)) {
+      const area = felt.getBoundingClientRect();
+      const own = table.querySelector(".wt-seat--bottom.is-own");
+      const clearance = Number.parseFloat(win.getComputedStyle(own).bottom) || 0;
+      const bounds = { left: area.left + 78, right: area.right - 78,
+        top: area.top + 110, bottom: area.bottom - clearance - 50 };
+      bounds.width = bounds.right - bounds.left; bounds.height = bounds.bottom - bounds.top;
+      const positions = [...trick.children].map(card => card.dataset.position);
+      const fit = (win.innerWidth > 390 ? [76, 64] : [64]).map(width => fitPortraitTrick({ bounds, count, positions,
+        desiredWidth: width, minimumWidth: width, spreads: [.34], labelHeight: 20, centred: true })).find(Boolean);
+      if (!fit) { fallback("space"); return; }
+      centre.dataset.wtPortraitTrick = "true";
+      centre.dataset.wtPortraitTrickMode = fit.mode;
+      for (const [name, value] of [["x", fit.left - area.left], ["y", fit.top - area.top], ["width", fit.width],
+        ["card-width", fit.cardWidth], ["row-height", fit.rowHeight], ["caption-height", fit.captionHeight]]) {
+        centre.style.setProperty(`--wt-portrait-${name}`, `${value}px`);
+      }
+      [...trick.children].forEach((card, index) => {
+        for (const [property, value] of Object.entries(fit.positions[index] || {})) {
+          const name = property === "x" || property === "y" ? `card-${property}` : property.replace(/[A-Z]/g, letter => `-${letter.toLowerCase()}`);
+          card.style.setProperty(`--wt-portrait-${name}`, `${value}px`);
+        }
+      });
+      return;
+    }
     if (win.innerWidth >= win.innerHeight && win.innerHeight <= 700) {
       portrait = null;
       const area = felt.getBoundingClientRect();
@@ -465,7 +535,7 @@ export function createTrickLayout(trick, { win = window } = {}) {
       history.dataset.wtPortraitHistory = "true";
       for (const [key, value] of [["x", historyBox.left], ["y", historyBox.top], ["width", historyBox.width]]) history.style.setProperty(`--wt-portrait-history-${key}`, `${value}px`);
     }
-    const obstacles = protectedNodes.filter(node => !moveHistory || node !== history).map(box).filter(Boolean);
+    let obstacles = protectedNodes.filter(node => !moveHistory || node !== history).map(box).filter(Boolean);
     obstacles.push(...[...table.querySelectorAll(".wt-taken[data-filled='true']")].map(counterBox).filter(Boolean));
     if (reference) obstacles.push(reference);
     // A completed trick must not inherit a larger fallback CSS card width as
@@ -482,7 +552,12 @@ export function createTrickLayout(trick, { win = window } = {}) {
     const label = centre.querySelector(".wt-trick-label"), labelHeight = LABEL;
     if (label) label.title = label.textContent.trim();
     const positions = [...trick.children].map(card => card.dataset.position);
-    const resolve = occupied => fitPortraitTrickView({ bounds, obstacles: occupied, count, positions, labelHeight, minimumWidth, history: moveHistory, preferred, preferredHistory: historyPlacement });
+    const zones = portraitPlayZones();
+    if (zones) {
+      obstacles = zones.obstacles;
+      applyPortraitHistory(history, zones.history);
+    }
+    const resolve = occupied => fitPortraitTrickView({ bounds, obstacles: occupied, count, positions, labelHeight, minimumWidth, history: moveHistory && !zones, preferred: zones ? null : preferred, preferredHistory: historyPlacement });
     let { fit, labelFit, historyFit } = resolve(obstacles);
     if (!fit) { fallback("space"); return; }
     const promptFit = neutralPrompt ? fitPortraitPrompt(bounds, [...obstacles, ...(fit.painted || [fit]), labelFit, historyFit].filter(Boolean)) : null;

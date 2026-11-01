@@ -395,3 +395,33 @@ html[data-game="watten"][data-watten-active="true"] .wt-bloedeln-dock :is(.wt-pr
     right: auto; top: 104px; bottom: auto; width: 156px; max-height: none; overflow: visible;
   }
 }
+
+/* Keep the owner's hand band, including an empty final hand, in the same
+   place throughout play and while a bid is being answered. */
+@media (orientation: portrait) and (max-width: 760px) {
+  html[data-game="watten"][data-watten-active="true"] .wt-table:is([data-phase="play"], [data-phase="bid_response"]) .wt-hand:empty {
+    display: flex;
+  }
+}
+@media (orientation: portrait) and (max-width: 760px) {
+  html[data-game="watten"][data-watten-active="true"] body .wt-table[data-count][data-viewer="player"]:is([data-phase="play"], [data-phase="bid_response"]) .wt-felt .wt-seat.wt-seat--bottom.is-own {
+    bottom: var(--wt-own-hand-clearance);
+  }
+}
+
+@media (orientation: portrait) and (max-width: 760px) and (min-height: 701px) {
+ html[data-game="watten"][data-watten-active="true"] body .wt-table[data-count="4"][data-phase][data-viewer="player"]:not([data-phase="match_complete"][data-round-stage="ready"]):not(:has([data-wt-history][open]:not([hidden]))) .wt-felt .wt-seat.wt-seat--bottom.is-own { bottom: var(--wt-own-hand-clearance); }
+ html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"]:is([data-phase="play"], [data-phase="bid_response"]):not(:has([data-wt-history][open]:not([hidden]))) .wt-end-sheet > .wt-stake {
+   position: fixed; inset: auto; left: 12px; top: var(--wt-zone-stake-y); width: 68px; max-width: 68px; height: 44px;
+ }
+ html[data-watten-active="true"] .wt-table:is([data-phase="play"], [data-phase="bid_response"]) .wt-stake > button {
+   display: flex; align-items: center; justify-content: center; gap: 3px; padding: 2px; min-height: 44px;
+   font-size: .65rem;
+ }
+ html[data-watten-active="true"] .wt-table:is([data-phase="play"], [data-phase="bid_response"]) .wt-stake strong { font-size: 1rem; }
+ html[data-watten-active="true"] .wt-table:is([data-phase="play"], [data-phase="bid_response"]) .wt-stake .wt-stake-action { font-size: 0; }
+ html[data-watten-active="true"] .wt-table:is([data-phase="play"], [data-phase="bid_response"]) .wt-stake .wt-stake-action::after { content: "+"; font-size: .8rem; }
+ html[data-game="watten"][data-watten-active="true"] .wt-table[data-viewer="player"]:is([data-phase="play"], [data-phase="bid_response"]) .wt-seat--bottom.is-own .wt-taken {
+   left: -33px; right: auto; top: auto; bottom: 100%; translate: none;
+ }
+}
