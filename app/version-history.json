@@ -2637,5 +2637,12 @@
     "date": "2026-11-01",
     "bump": "patch",
     "summary": "Watten bleibt beim Bieten und Ausspielen stabil; Hausdepp zeigt den Abschluss ohne Nachladesprung. / Watten stays stable through bids and card play; Hausdepp results appear without late layout shifts."
+  },
+  {
+    "version": "4.12.2",
+    "revision": "3be12bfb404cf13edbfbc1b41b928bbfb9c2f859",
+    "date": "2026-11-01",
+    "bump": "patch",
+    "summary": "Passende Buttons, kompakte Abschlüsse und Spielstart – Hausdepp spielt nach dem Abräumen sofort weiter. / Matching buttons, compact results and game setup, plus instant play after clearing the Hausdepp pile."
   }
 ]

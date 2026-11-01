@@ -19,6 +19,24 @@ und versuchen, ihre Karten loszuwerden; Computer können mitspielen.
 ZDWA is a five-dice scorecard game for solo or group play. In Hausdepp, two to
 six players try to get rid of their German-suited cards; computers can join.
 
+## Watten: Klassisch oder Tirol / Classic or Tyrol
+
+**Deutsch:** Der Designbutton neben der Sprachwahl wechselt direkt zwischen
+dem bisherigen Watten-Look («Klassisch», weiterhin Standard) und «Tirol».
+Tirol verbindet warmes Papier, Rot-Weiss und Tannengrün mit eigenen
+Alpen- und Adlermotiven. Die Wahl gilt nur für dich und bleibt in diesem
+Browser gespeichert, auch beim Wechsel zwischen Lobby, Regeln, Konto und
+Spieltisch. Im Warteraum steht der Button neben der Sprache; auf sehr kurzen
+Querformat-Displays erreichst du ihn über das Tischmenü.
+
+**English:** The design button beside the language selector switches directly
+between the original Watten look (“Classic”, still the default) and “Tyrol”.
+Tyrol combines warm paper, red and white, and forest green with original
+Alpine and eagle artwork. Your choice affects only your own view and stays
+saved in this browser across the lobby, rules, account and game table.
+The waiting room keeps the button beside the language selector; very short
+landscape screens offer it in the table menu.
+
 ## Lieblingsgegner / favourite opponents
 
 **Deutsch:** Im persönlichen Konto zeigt jedes Spiel deine häufigsten Gegner

@@ -6,14 +6,17 @@
   <meta name="description" content="Dein gemeinsames Spielerkonto: Anmeldung, Passkeys, Profil, Sprache und sichere Wiederherstellung.">
   <meta name="robots" content="noindex, nofollow">
   <title>Watten – Dein Spielerkonto</title>
-  <link rel="stylesheet" href="/static/watten-account.css?v=31666ed35bd3">
-  <link rel="stylesheet" href="/static/suite-header.css?v=31666ed35bd3">
+  <script>{let d="classic";try{if(localStorage.getItem("watten_design")==="tirol")d="tirol"}catch(_){}document.documentElement.dataset.wattenDesign=d}</script>
+  <link rel="stylesheet" href="/static/watten-account.css?v=c0f5e6ee8c5d">
+  <link rel="stylesheet" href="/static/suite-header.css?v=c0f5e6ee8c5d">
+  <link rel="stylesheet" href="/static/watten-design.css?v=c0f5e6ee8c5d">
 </head>
 <body>
   <header class="wt-header suite-header">
-    <a class="wt-brand suite-header__brand" href="/watten" translate="no"><img class="suite-header__icon" src="/static/watten/icons/watten-icon-32.png?v=31666ed35bd3" width="32" height="32" alt=""><span>Watten</span></a>
+    <a class="wt-brand suite-header__brand" href="/watten" translate="no"><img class="suite-header__icon" src="/static/watten/icons/watten-icon-32.png?v=c0f5e6ee8c5d" width="32" height="32" alt=""><span>Watten</span></a>
     <div class="suite-header__tools">
       <label class="wt-language"><span class="wt-visually-hidden">Sprache / Language</span><select data-language-switcher aria-label="Sprache / Language"><option value="de">Deutsch</option><option value="en">English</option></select></label>
+      <button type="button" class="wt-design-toggle" data-theme-toggle data-watten-design-toggle aria-label="Darstellung wechseln: Klassisch. Nächste Darstellung: Tirol." title="Darstellung wechseln: Klassisch. Nächste Darstellung: Tirol."><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="6" y="3" width="12" height="18" rx="2"/><path d="m12 8 3 4-3 4-3-4z"/></svg></button>
       <button id="wattenSuitePicker" type="button" class="game-switch" data-game-switch hidden disabled aria-label="Spiele / Games"></button>
     </div>
     <nav class="wt-nav suite-header__nav" data-watten-nav aria-label="Watten">
@@ -24,6 +27,6 @@
     </nav>
   </header>
   <main id="wattenAccount"><h1>Dein Spielerkonto</h1><p>Für Anmeldung und Kontoeinstellungen brauchst du JavaScript.</p><p lang="en">You need JavaScript to sign in and manage your account settings.</p><p><a class="button-link ghost" href="/watten">Zurück / Back</a></p></main>
-  <script type="module" src="/static/watten-account.js?v=31666ed35bd3"></script>
+  <script type="module" src="/static/watten-account.js?v=c0f5e6ee8c5d"></script>
 </body>
 </html>

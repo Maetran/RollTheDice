@@ -12,6 +12,7 @@ import { hausdeppAccountReturnPath, wattenAccountReturnPath } from "./multigame/
 
 import { EN } from "./i18n/catalog.js";
 import { initializeWattenPwa } from "./watten/pwa.js";
+import "./watten/design.js";
 import { initializeSuiteHeader } from "./shell/header.js";
 import { initializeDeploymentNotice } from "./shared/deployment-notice.js";
 

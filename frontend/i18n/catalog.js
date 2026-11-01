@@ -1,3 +1,14 @@
+export const WATTEN_DESIGN_MESSAGES = {
+  de: {
+    change: "Darstellung wechseln", next: "Nächste Darstellung", classic: "Klassisch", tirol: "Tirol",
+    motto: "Bisch a Tiroler, bisch a Mensch …", mottoTranslation: "",
+  },
+  en: {
+    change: "Change appearance", next: "Next appearance", classic: "Classic", tirol: "Tyrol",
+    motto: "Bisch a Tiroler, bisch a Mensch …", mottoTranslation: "Tyrolean at heart. At home at the card table.",
+  },
+};
+
 export const ADMIN_FEATURE_MESSAGES = {
   de: {
     ownerHint: "Du kannst als Owner Freigaben und Beta-Kennzeichnungen ändern.",

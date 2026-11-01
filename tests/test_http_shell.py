@@ -58,6 +58,12 @@ OFFLINE_PLAY_HEAD_SCRIPT = (
     'if(g("zdwa_design")!=="old"&&g("zdwa_design_off")!=="1"&&g("zdwa_design_override")!=="old")'
     'r.dataset.design="2026"}}</script>'
 )
+# Watten restores only its local visual preference inline; the existing
+# deferred page module owns controls and must never delay the first paint.
+WATTEN_DESIGN_HEAD_SCRIPT = (
+    '<script>{let d="classic";try{if(localStorage.getItem("watten_design")==="tirol")d="tirol"}'
+    'catch(_){}document.documentElement.dataset.wattenDesign=d}</script>'
+)
 
 
 class _SeoParser(HTMLParser):
@@ -164,8 +170,15 @@ class HttpShellTestCase(unittest.IsolatedAsyncioTestCase):
         for html_path in main.STATIC_DIR.glob("*.html"):
             html = html_path.read_text(encoding="utf-8")
             if html_path.name in WATTEN_ACCOUNT_TEMPLATES or html_path.name in WATTEN_GAME_TEMPLATES:
-                self.assertEqual(html.count("<script"), 1, html_path.name)
-                self.assertNotIn("<script>", html, html_path.name)
+                self.assertEqual(html.count("<script"), 2, html_path.name)
+                self.assertEqual(html.count("<script>"), 1, html_path.name)
+                self.assertEqual(html.count(WATTEN_DESIGN_HEAD_SCRIPT), 1, html_path.name)
+                head = html.split("</head>", 1)[0]
+                self.assertIn(WATTEN_DESIGN_HEAD_SCRIPT, head, html_path.name)
+                self.assertLess(
+                    head.index(WATTEN_DESIGN_HEAD_SCRIPT), head.index('<link rel="stylesheet"'), html_path.name,
+                )
+                self.assertNotRegex(head, r"<script\b[^>]*\bsrc\s*=", html_path.name)
                 bundle = (WATTEN_ACCOUNT_TEMPLATES | WATTEN_GAME_TEMPLATES)[html_path.name]
                 self.assertIn(f'<script type="module" src="/static/{bundle}?v=', html, html_path.name)
                 self.assertIn('data-game="watten"', html, html_path.name)

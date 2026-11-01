@@ -21,7 +21,12 @@ test('Watten optical effects copy the native cards and sibling props while prese
       window.surpriseSnapshots = await import(`data:text/javascript;base64,${btoa(unescape(encodeURIComponent(code)))}`);
     }, bundle.outputFiles[0].text);
 
-    for (const viewport of [{ width: 320, height: 568 }, { width: 820, height: 1180 }, { width: 1180, height: 820 }]) {
+    const viewports = [{ width: 320, height: 568 }, { width: 820, height: 1180 }, { width: 1180, height: 820 }];
+    for (const { design, viewport } of ['classic', 'tirol'].flatMap(design => viewports.map(viewport => ({ design, viewport })))) {
+      if (await page.locator('html').getAttribute('data-watten-design') !== design) {
+        await page.locator('[data-watten-design-toggle]').click();
+      }
+      await expect(page.locator('html')).toHaveAttribute('data-watten-design', design);
       await page.setViewportSize(viewport);
       await expect(page.locator('[data-wt-hand] > .wt-hand-card')).toHaveCount(4);
       await expect(page.locator('[data-watten-decor-item]')).toHaveCount(3);
@@ -63,8 +68,21 @@ test('Watten optical effects copy the native cards and sibling props while prese
         api.woodenStage(fx);
         const paint = screen.querySelector('.hd-surprise-wood-paint'), carving = getComputedStyle(table, '::before');
         const painted = getComputedStyle(paint), tableBox = table.getBoundingClientRect(), paintBox = paint.getBoundingClientRect();
+        // Both the full effect stage and a cropped card-occlusion patch must
+        // reconstruct the actual selected table surface, including its rim.
+        const patch = fx.add('occlusion', 64, 64);
+        patch.style.transform = 'translate(32px,48px)';
+        api.paintTableWood(fx, patch, 32, 48);
+        const patchPaint = patch.querySelector('.hd-surprise-wood-paint');
+        const patched = getComputedStyle(patchPaint), patchBox = patchPaint.getBoundingClientRect();
         const wood = { actual: painted.borderImageSource, expected: carving.borderImageSource,
           slice: painted.borderImageSlice, expectedSlice: carving.borderImageSlice,
+          background: painted.background, expectedBackground: carving.background,
+          origin: painted.backgroundOrigin, expectedOrigin: carving.backgroundOrigin,
+          clip: painted.backgroundClip, expectedClip: carving.backgroundClip,
+          shadow: painted.boxShadow, expectedShadow: carving.boxShadow,
+          patchBackground: patched.background, patchShadow: patched.boxShadow,
+          patchOriginDifference: Math.max(Math.abs(patchBox.left - paintBox.left), Math.abs(patchBox.top - paintBox.top)),
           width: paintBox.width, expectedWidth: parseFloat(carving.width) + (carving.boxSizing === 'border-box' ? 0 : parseFloat(carving.borderLeftWidth) + parseFloat(carving.borderRightWidth)),
           height: paintBox.height, expectedHeight: parseFloat(carving.height) + (carving.boxSizing === 'border-box' ? 0 : parseFloat(carving.borderTopWidth) + parseFloat(carving.borderBottomWidth)),
           top: paintBox.top, expectedTop: tableBox.top + parseFloat(carving.top) };
@@ -124,7 +142,7 @@ test('Watten optical effects copy the native cards and sibling props while prese
           unsafe: unsafe.length, remaining, clusterMoving: cluster.movingNodes.length, controlsCovered, handCovered, unchanged };
         layer.remove(); return summary;
       });
-      expect(result, JSON.stringify({ viewport, result })).toMatchObject({ missing: [], own: 4, fans: 3, packets: viewport.width === 320 ? 0 : 1,
+      expect(result, JSON.stringify({ design, viewport, result })).toMatchObject({ missing: [], own: 4, fans: 3, packets: viewport.width === 320 ? 0 : 1,
         foreignSelected: false, unsafe: 0, clusterMoving: 2, controlsCovered: [], handCovered: true, unchanged: true });
       if (viewport.width === 320) {
         // The compact table displays a labelled counter in place of the
@@ -136,11 +154,23 @@ test('Watten optical effects copy the native cards and sibling props while prese
       expect(result.difference).toBeLessThan(1);
       expect(result.neighbourDifference).toBeLessThan(1);
       expect(result.remaining).toEqual(['0', '1', '1', '0']);
-      expect(result.wood.actual).toContain('/static/watten/table-schnitzstube.jpg');
+      if (design === 'classic') expect(result.wood.actual).toContain('/static/watten/table-schnitzstube.jpg');
+      else {
+        expect(result.wood.actual).toBe('none');
+        expect(result.wood.background).toContain('/static/images/watten-tirol/');
+        expect(result.wood.background).toContain('radial-gradient');
+        expect(result.wood.background).not.toContain('wood-table');
+        expect(result.wood.shadow).not.toBe('none');
+      }
       expect(result.wood.actual).toBe(result.wood.expected);
       expect(result.wood.slice).toBe(result.wood.expectedSlice);
+      for (const [actual, expected] of [['background', 'expectedBackground'], ['origin', 'expectedOrigin'],
+        ['clip', 'expectedClip'], ['shadow', 'expectedShadow'], ['patchBackground', 'expectedBackground'], ['patchShadow', 'expectedShadow']]) {
+        expect(result.wood[actual]).toBe(result.wood[expected]);
+      }
+      expect(result.wood.patchOriginDifference).toBeLessThan(1);
       for (const key of ['width', 'height', 'top']) expect(Math.abs(result.wood[key] - result.wood[`expected${key[0].toUpperCase()}${key.slice(1)}`])).toBeLessThan(1);
-      await page.screenshot({ path: info.outputPath(`native-watten-${viewport.width}x${viewport.height}.png`) });
+      await page.screenshot({ path: info.outputPath(`native-watten-${design}-${viewport.width}x${viewport.height}.png`) });
     }
     expect(players.flatMap(peer => peer.traffic.errors)).toEqual([]);
   } finally { await Promise.allSettled(players.map(peer => peer.context.close())); }
