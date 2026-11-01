@@ -213,6 +213,43 @@ for (const transition of ['aborted', 'next round']) {
   });
 }
 
+for (const accountFails of [false, true]) {
+  test(`visible tournament result keeps its progress on later updates (${accountFails ? 'account unavailable' : 'account loaded'})`, async ({ page }) => {
+    const fixture = await setup(page);
+    let reads = 0;
+    await page.route('**/api/hausdepp/account?limit=1', route => {
+      reads++;
+      return accountFails ? route.fulfill({ status: 503, json: {} }) : route.fulfill({ json: fixture.account });
+    });
+    const live = await finishedRenderer(page, fixture, { tournament: true });
+    const result = page.locator('#hausdeppResult');
+    const progress = result.locator('#hausdeppRoundProgress');
+    await expect(progress.locator('.hd-round-earned')).toContainText('+27 EP');
+    if (!accountFails) await expect(progress.locator('.hd-round-account')).toContainText('Stammgast');
+    else await expect(progress.locator('.hd-round-account')).toHaveCount(0);
+    const before = await progress.boundingBox();
+    await result.evaluate(node => {
+      window.__resultHiddenTransitions = 0;
+      new MutationObserver(records => { window.__resultHiddenTransitions += records.filter(record => record.oldValue === null).length; })
+        .observe(node, { attributes: true, attributeOldValue: true, attributeFilter: ['hidden'] });
+    });
+    live.board._hausdepp_tournament.can_start_next_round = false;
+    live.publish();
+    await expect(result.locator('.hd-tournament-wait')).toBeVisible();
+    await expect(progress.locator('.hd-round-earned')).toContainText('+27 EP');
+    if (!accountFails) await expect(progress.locator('.hd-round-account')).toContainText('Stammgast');
+    else await expect(progress.locator('.hd-round-account')).toHaveCount(0);
+    expect(await progress.boundingBox()).toEqual(before);
+    live.board._hausdepp_tournament.departed_ids = [live.loser];
+    live.publish();
+    await expect(result.locator('.hd-tournament-departed')).toBeVisible();
+    await expect(progress.locator('.hd-round-earned')).toContainText('+27 EP');
+    if (!accountFails) await expect(progress.locator('.hd-round-account')).toContainText('Stammgast');
+    expect(await page.evaluate(() => window.__resultHiddenTransitions)).toBe(0);
+    expect(reads).toBe(1);
+  });
+}
+
 for (const language of ['de', 'en']) {
   test(`finished solo player can speed up CPUs in the vacant hand area (${language})`, async ({ page }) => {
     const fixture = await setup(page, language);
