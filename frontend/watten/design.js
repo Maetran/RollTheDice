@@ -1,7 +1,7 @@
 import { WATTEN_DESIGN_MESSAGES } from "../i18n/catalog.js";
 
-// A small blocking head bundle restores the local choice before styles paint.
-// It owns presentation only: there are no account or game requests here.
+// The template's tiny inline preference script restores the choice before
+// styles paint. This deferred controller owns presentation only: no requests.
 (() => {
   const html = document.documentElement;
   if (html.dataset.game !== "watten") return;

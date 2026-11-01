@@ -1,4 +1,5 @@
 import '../i18n/index.js';
+import './design.js';
 import { authError, escapeHtml as esc, loadAuth, login, loginWithPasskey, logout,
   mountAccountVerification, mountEmailSettings, mountPasskeySettings, mountUsernameSettings,
   passkeysSupported } from '../shared/auth.js';

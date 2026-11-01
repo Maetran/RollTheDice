@@ -24,7 +24,6 @@ const targets = [
   { source: "frontend/shared/voice-preferences.js", output: "app/static/voice-preferences.js", format: "esm" },
   { source: "frontend/shared/game-tours.js", output: "app/static/game-tours.js", format: "esm" },
   { source: "frontend/email-action.js", output: "app/static/email-action.js", format: "esm" },
-  { source: "frontend/watten/design.js", output: "app/static/watten-design.js", format: "iife" },
   { source: "frontend/styles/watten-design.css", output: "app/static/watten-design.css" },
   { source: "frontend/watten/account.js", output: "app/static/watten-account.js", format: "esm" },
   { source: "frontend/styles/watten-account.css", output: "app/static/watten-account.css" },

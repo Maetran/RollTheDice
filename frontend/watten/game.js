@@ -1,4 +1,5 @@
 import "../i18n/index.js";
+import "./design.js";
 import { loadAuth, apiFetch, escapeHtml as esc } from "../shared/auth.js";
 import { initializeGameViewport } from "../shared/game-viewport.js";
 import { wattenAccountReturnPath } from "../multigame/routes.js";

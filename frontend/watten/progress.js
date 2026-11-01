@@ -1,4 +1,5 @@
 import "../i18n/index.js";
+import "./design.js";
 import { loadAuth, apiFetch, escapeHtml as esc } from "../shared/auth.js";
 import { wattenAccountReturnPath } from "../multigame/routes.js";
 import { initializeWattenPwa } from "./pwa.js";
