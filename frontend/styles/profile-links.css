@@ -125,3 +125,24 @@ html[data-game="zilch"][data-theme="lcars"] body :is(a.player-name-label,
     a.zilch-player-achievement-link, .lobby-chat__sender > a):any-link:hover {
   color: var(--profile-link-ink);
 }
+
+/* Notebook header spans otherwise inherit the score rail's cyan ink and
+   small type, making a linked name disappear on its cyan button face. */
+html[data-game="zilch"][data-theme="lcars"] body .zilch-notebook-player
+    a.zilch-player-achievement-link .zilch-player-name {
+  color: inherit;
+  font: inherit;
+  margin-left: 0;
+}
+
+/* The short console already reserves a 20px identity above its score row.
+   Keep the outlined profile control inside that slot so the latest score
+   still fits; notebook avatars already use a compact 16px face. */
+@media (max-height: 500px) and (orientation: landscape) {
+  html[data-game="zilch"][data-theme="lcars"] body .zilch-notebook-player
+      h2 > a.zilch-player-achievement-link:any-link {
+    min-height: 20px;
+    padding-block: 0;
+    line-height: 1;
+  }
+}
