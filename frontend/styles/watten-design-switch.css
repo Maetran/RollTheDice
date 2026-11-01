@@ -20,6 +20,12 @@ html[data-game="watten"] [data-watten-design-toggle] svg { display: block; width
   html[data-game="watten"] .wt-waiting-tools .wt-sound button > :first-child { font-size: 18px; }
 }
 
+/* Keep a full rematch title readable without spending a third large line on
+   a long player name. The text still wraps naturally and is never truncated. */
+@media (max-width: 390px) {
+  html[data-game="watten"] .wt-waiting--rematch .wt-waiting-head h2 { font-size: 1.125rem; }
+}
+
 /* Preserve the existing 52px table row, including the partner-hand slot. */
 @media (orientation: portrait) and (max-width: 440px) {
   html[data-game="watten"][data-watten-active="true"] body .wt-header .suite-header__brand {

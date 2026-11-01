@@ -130,8 +130,22 @@ for (const language of ['de', 'en']) {
 test('ordinary four-player rematches retain a compact fixed roster and prominent loss marks', async ({ browser, baseURL }, testInfo) => {
   const players = await Promise.all([0, 1, 2, 3].map(() => player(browser, baseURL)));
   const host = players[0];
+  const longName = `Eine Runde mit ${host.user.username}`;
   let visitor;
   try {
+    // Exercise a real, deliberately long table title. Random creator names
+    // can otherwise hide the extra heading line on narrow phones.
+    await host.page.route('**/api/games', async route => {
+      const request = route.request();
+      if (request.method() === 'POST') {
+        const body = request.postDataJSON();
+        if (body.game_type === 'watten') {
+          await route.continue({ postData: JSON.stringify({ ...body, name: longName }) });
+          return;
+        }
+      }
+      await route.continue();
+    });
     const source = await finishOpenMatch(players, { determination: 'normal' });
     const original = await Promise.all(players.map(async item => (await item.context.request.get('/api/watten/account')).json()));
     const sourceMarks = structuredClone(host.traffic.snapshot.room.series.nockerl);
@@ -165,6 +179,7 @@ test('ordinary four-player rematches retain a compact fixed roster and prominent
       await expect(host.page.locator('html')).toHaveAttribute('data-watten-design', design);
       await host.page.setViewportSize({ width, height: 844 });
       const room = host.page.locator('.wt-waiting--rematch');
+      await expect(room.locator('.wt-waiting-head h2')).toHaveText(longName);
       await expectReachable(host.page, '[data-watten-waiting-controls] [data-watten-design-toggle]');
       const switchBox = await designSwitch.boundingBox();
       expect(switchBox.width).toBe(44);
