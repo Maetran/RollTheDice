@@ -232,6 +232,9 @@ def _consolidate(db, context: MergeContext, *, actor_id: int, key: str, fingerpr
         else:
             row.owner_user_id, row.operation_id = context.target_user_id, context.operation_id
     db.flush()
+    from .rare_surprise_probability import merge_counters
+
+    merge_counters(db, context.source_user_id, context.target_user_id)
     identity = retire_source_identity_in_session(db, db.get(User, context.source_user_id), db.get(User, context.target_user_id),
                                                 operation_id=context.operation_id, now=context.created_at)
     games = {}

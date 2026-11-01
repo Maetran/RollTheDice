@@ -816,6 +816,10 @@ def _write_checkpoint(db, checkpoint: dict, *, creating=False, expected_json=Non
 
     previous_room = room_from_payload(json.loads(previous_json)["_watten"]["room"]) if previous_json is not None else None
     sync_checkpoint_memberships(db, checkpoint, previous_room, now=now)
+    from .rare_surprise_probability import record_watten_start
+
+    if record_watten_start(db, checkpoint, previous_room):
+        db.execute(update(ActiveGame).where(ActiveGame.game_id == checkpoint["_id"]).values(rare_surprise_policy=2))
     return True
 
 

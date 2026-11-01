@@ -226,6 +226,7 @@ def start_next_round(game: dict, player_id: str, version: object) -> None:
     following["table_version"] = following["version"]
     tournament["round_number"] += 1
     game["_hausdepp_tournament"] = tournament
+    game["_hausdepp_rare_policy_round"] = tournament["round_number"]
     game["_hausdepp"] = following
     game["_finished"] = False
     game["_finished_at"] = None

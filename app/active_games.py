@@ -136,7 +136,13 @@ def _save_active_game_locked(game: dict, game_id: str, *, creating: bool) -> Non
                     if previous_raw is None:
                         logger.warning("Refusing stale or retired Hausdepp checkpoint for game %s", game_id)
                         return
-                    validate_checkpoint_features(db, game, json.loads(previous_raw))
+                    from .account_progress import lock_account_rows
+                    from .rare_surprise_probability import hausdepp_start_accounts, record_hausdepp_start
+
+                    previous = json.loads(previous_raw)
+                    lock_account_rows(db, hausdepp_start_accounts(game, previous))
+                    validate_checkpoint_features(db, game, previous)
+                    record_hausdepp_start(db, game, previous)
                 changed = db.execute(update(ActiveGame).where(
                     ActiveGame.game_id == game_id, ActiveGame.admission_revision == revision,
                 ).values(state_json=payload, updated_at=now).execution_options(synchronize_session=False))

@@ -4,6 +4,9 @@ import { premiumSurpriseArt, premiumMouseArt, premiumTentacleArt, warmSurpriseAr
 // game state keep their real geometry and continue to accept normal input.
 const active = new WeakMap();
 const noop = () => {};
+// Stretch the whole story, including its staggered details, in both games.
+// Reduced-motion symbols keep their original short fade.
+const storySpeed = .65;
 let serial = 0;
 // Cards, piles, names and controls stay clear of a surprise where possible.
 const guarded = ".hd-seat, .hd-room-heading, .hd-stock-group, .hd-pile-group, .hd-burned, .hd-hand-heading, "
@@ -187,7 +190,7 @@ function hammer(fx) {
       { duration: 900 + index * 150, delay: hit + index * 100, easing: 'ease-out' });
   }
   burst(fx, x, y, { kind: 'dust', count: 24, size: unit * .09, colors: ['#d7ad77', '#ecd5a5', '#93613d'], reach: unit * 2.2, delay: hit, duration: 1400, drop: unit * 1.4 });
-  if (local) timers.push(setTimeout(() => { if (!document.hidden) { try { navigator.vibrate?.([35, 30, 65]); } catch { /* Optional local haptics. */ } } }, hit));
+  if (local) timers.push(setTimeout(() => { if (!document.hidden) { try { navigator.vibrate?.([35, 30, 65]); } catch { /* Optional local haptics. */ } } }, hit / storySpeed));
 }
 
 function ufo(fx) {
@@ -339,7 +342,7 @@ function clock(fx) {
   play(watch, smooth([{ transform: `${place} scale(.15) rotate(-20deg)`, opacity: 0 }, { transform: place, opacity: 1, offset: .12 },
     { transform: place, opacity: 1, offset: .66 }, { transform: `${place} translateY(${-unit * .25}px) scale(.7) rotate(25deg)`, opacity: 1, offset: .74 },
     { transform: `${at(exit.x, exit.y - unit * .3, size)} scale(.65) rotate(35deg)`, opacity: 0 }]), { duration });
-  // Hands really hold still for the two-second visual time stop.
+  // Hands hold still for the full visual time stop.
   for (const [selector, angle] of [['.hd-hand-m', 30], ['.hd-hand-h', -90]]) {
     const hand = watch.querySelector(selector);
     if (hand) play(hand, [{ transform: `rotate(${angle}deg)` }, { transform: `rotate(${angle}deg)`, offset: 2120 / duration }, { transform: `rotate(${angle + 1080}deg)` }], { duration });
@@ -510,13 +513,14 @@ export function playTableSurprise(table, effect, { local = false, seed = effect,
     node.style.width = `${Math.max(1, width).toFixed(1)}px`;
     node.style.height = `${Math.max(1, height).toFixed(1)}px`;
     node.innerHTML = html;
-    // Only the one-second singularity blackout covers names and controls.
+    // Only the brief singularity blackout covers names and controls.
     (kind === "blackout" ? layer : screen).append(node);
     return node;
   };
   const play = (node, frames, options) => {
     if (!node) return;
     const animation = node.animate(frames, { fill: "both", ...options });
+    if (!reduced.matches) animation.playbackRate = storySpeed;
     own.push(animation);
     return animation;
   };
