@@ -43,7 +43,7 @@ test("lobby can create a game and open spectator view without browser errors", a
   const health = watchPageHealth(page);
   await page.goto("/");
   await page.fill("#playerName", "Smoke");
-  await page.fill("#passInput", "");
+  await expect(page.locator("#passInput")).toHaveValue("");
   await page.getByRole("radio", { name: "1 Solo" }).click();
   await Promise.all([
     page.waitForURL(/\/spiel\/[^/?]+/),
@@ -155,7 +155,7 @@ test("game creation API flow from lobby and spectator mode both work", async ({ 
   const health = watchPageHealth(page);
   await page.goto("/");
   await page.fill("#playerName", "Creator");
-  await page.fill("#passInput", "");
+  await expect(page.locator("#passInput")).toHaveValue("");
   await page.getByRole("radio", { name: "1 Solo" }).click();
 
   const createResponsePromise = page.waitForResponse((res) => {
