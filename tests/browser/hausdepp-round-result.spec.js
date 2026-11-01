@@ -173,6 +173,46 @@ test('a stalled account request cannot block the result or add a late layout shi
   await expect(result.locator('.hd-round-account')).toHaveCount(0);
 });
 
+for (const transition of ['aborted', 'next round']) {
+  test(`a delayed account response cannot overwrite ${transition}`, async ({ page }) => {
+    const fixture = await setup(page);
+    let releaseAccount, requested = false;
+    const accountGate = new Promise(resolve => { releaseAccount = resolve; });
+    await page.route('**/api/hausdepp/account?limit=1', async route => {
+      requested = true;
+      await accountGate;
+      await route.fulfill({ json: fixture.account }).catch(() => {});
+    });
+    const live = await finishedRenderer(page, fixture, { waitForResult: false });
+    await expect.poll(() => requested).toBe(true);
+    const result = page.locator('#hausdeppResult');
+    await expect(result).toBeHidden();
+    if (transition === 'aborted') {
+      Object.assign(live.board, { _aborted: true, _started: true, _abort_reason: 'inactivity_timeout' });
+    } else {
+      live.board._finished = false;
+      live.board._hausdepp.phase = 'playing';
+    }
+    live.publish();
+    if (transition === 'aborted') {
+      await expect(result).toBeVisible();
+      await expect(result).toContainText(/Wertung|Punkte/);
+      await expect(page.locator('#hausdeppRecreate')).toBeVisible();
+    } else {
+      await expect(page.locator('#hausdeppTable')).toHaveAttribute('data-phase', 'playing');
+      await expect(result).toBeHidden();
+    }
+    releaseAccount();
+    await page.waitForTimeout(200);
+    if (transition === 'aborted') {
+      await expect(result).toBeVisible();
+      await expect(result).toContainText(/Wertung|Punkte/);
+      await expect(result.locator('.hd-round-account')).toHaveCount(0);
+    } else await expect(result).toBeHidden();
+    expect(fixture.accountAcks()).toBe(0);
+  });
+}
+
 for (const language of ['de', 'en']) {
   test(`finished solo player can speed up CPUs in the vacant hand area (${language})`, async ({ page }) => {
     const fixture = await setup(page, language);
