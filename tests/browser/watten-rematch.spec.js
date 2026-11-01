@@ -1,5 +1,6 @@
 const { test, expect } = require('@playwright/test');
 const { player, finishOpenMatch } = require('./helpers/watten-journey.cjs');
+const { expectReachable } = require('./table-viewport');
 
 test('a tournament rematch keeps loss marks and restores each player’s fixed seat on joining', async ({ browser, baseURL }) => {
   const players = await Promise.all([0, 1].map(() => player(browser, baseURL)));
@@ -158,9 +159,25 @@ test('ordinary four-player rematches retain a compact fixed roster and prominent
     await expect(rules).toHaveAttribute('open', '');
     await expect(rules.locator('summary')).toBeFocused();
     await rules.locator('summary').click();
-    for (const width of [320, 390, 768, 1280]) {
+    for (const { design, width } of ['classic', 'tirol'].flatMap(design => [320, 390, 768, 1280].map(width => ({ design, width })))) {
+      const designSwitch = host.page.locator('[data-watten-waiting-controls] [data-watten-design-toggle]');
+      if (await host.page.locator('html').getAttribute('data-watten-design') !== design) await designSwitch.click();
+      await expect(host.page.locator('html')).toHaveAttribute('data-watten-design', design);
       await host.page.setViewportSize({ width, height: 844 });
       const room = host.page.locator('.wt-waiting--rematch');
+      await expectReachable(host.page, '[data-watten-waiting-controls] [data-watten-design-toggle]');
+      const switchBox = await designSwitch.boundingBox();
+      expect(switchBox.width).toBe(44);
+      expect(switchBox.height).toBe(44);
+      if (width <= 600) {
+        const ambience = room.locator('.wt-sound button');
+        await expect(ambience).toContainText('Kulisse');
+        await expectReachable(host.page, '[data-watten-waiting-controls] .wt-sound button');
+        const soundBox = await ambience.boundingBox();
+        expect(soundBox.width).toBe(44);
+        expect(soundBox.height).toBe(44);
+        expect(Math.abs(soundBox.y - switchBox.y)).toBeLessThan(1);
+      }
       const geometry = await room.evaluate(node => {
         const teams = [...node.querySelectorAll('.wt-team')].map(team => team.getBoundingClientRect());
         const scores = [...node.querySelectorAll('.wt-series-value')];
@@ -175,7 +192,7 @@ test('ordinary four-player rematches retain a compact fixed roster and prominent
       expect(geometry.sizes).toHaveLength(2);
       expect(geometry.sizes.every(size => size >= 30)).toBe(true);
       if (width <= 390) expect(geometry.height).toBeLessThan(620);
-      await room.screenshot({ path: testInfo.outputPath(`compact-rematch-${width}.png`) });
+      await room.screenshot({ path: testInfo.outputPath(`compact-rematch-${design}-${width}.png`) });
     }
     visitor = await player(browser, baseURL);
     await visitor.page.goto('/watten');

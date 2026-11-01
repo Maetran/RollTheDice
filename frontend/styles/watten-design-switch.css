@@ -9,6 +9,17 @@ html[data-game="watten"] [data-watten-design-toggle] {
 html[data-game="watten"] [data-watten-design-toggle] svg { display: block; width: 24px; height: 24px; }
 .watten-tirol-scene, .watten-tirol-motto { display: none; }
 
+/* Keep the waiting-room toolbar on one phone row when voice is unavailable.
+   Ambience uses the same complete 44px target and stacked caption as at play. */
+@media (max-width: 600px) {
+  html[data-game="watten"] .wt-waiting-tools { column-gap: 4px; }
+  html[data-game="watten"] .wt-waiting-tools .wt-sound button {
+    width: 44px; min-width: 44px; height: 44px; min-height: 44px;
+    flex-direction: column; gap: 0; padding: 1px; font-size: .58rem;
+  }
+  html[data-game="watten"] .wt-waiting-tools .wt-sound button > :first-child { font-size: 18px; }
+}
+
 /* Preserve the existing 52px table row, including the partner-hand slot. */
 @media (orientation: portrait) and (max-width: 440px) {
   html[data-game="watten"][data-watten-active="true"] body .wt-header .suite-header__brand {
