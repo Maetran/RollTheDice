@@ -2623,5 +2623,12 @@
     "date": "2026-10-31",
     "bump": "patch",
     "summary": "Klarere Spieleinstiege und Regeln für Watten, Zilch, Hausdepp und ZDWA. / Clearer introductions and rules for Watten, Zilch, Hausdepp and ZDWA."
+  },
+  {
+    "version": "4.12.0",
+    "revision": "8f59f95891e85a87b7617c17d8cb8a66b0fc94b0",
+    "date": "2026-11-01",
+    "bump": "minor",
+    "summary": "Seltene Tischüberraschungen dauern länger und kommen mit steigender Chance. / Rare table surprises last longer and become more likely with each game."
   }
 ]

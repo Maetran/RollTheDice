@@ -23,6 +23,24 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 4.12.1 — 2026-11-01
+
+Dieses Update macht Spieltische und Rundenabschlüsse ruhiger.
+
+This update keeps game tables and round results steadier.
+
+### WATTEN
+
+**Deutsch:** Stich, geschlossener Verlauf, Hand und Gebotsentscheidungen erhalten feste Bereiche auf Hochformat-Telefonen. Bieten, Halten, eine leere Hand und gewonnene Stiche verschieben den aktuellen Stich nicht mehr. Kurze Displays zeigen den Partnerhinweis vor den erreichbaren Entscheidungen; eigene Ansagen, offene Rückschau und Partnerblatt bleiben bedienbar. Beim Wiedereinstieg werden Stich und Verlauf wiederhergestellt.
+
+**English:** The trick, closed history, hand and bid decisions have reserved areas on portrait phones. Bids, holding, an empty hand and captured tricks no longer move the current trick. Short screens keep partner advice before the reachable decisions; announcements, open review and partner hands remain usable. Reloading restores the trick and history.
+
+### HAUSDEPP
+
+**Deutsch:** Der Abschluss wartet auf den geladenen Kontofortschritt, damit Rang und EP gemeinsam erscheinen. Bei einem fehlgeschlagenen oder zu langsamen Abruf bleibt das Ergebnis mit den vorhandenen Rundendaten erreichbar. Späte Antworten und spätere Turnierupdates lassen die Anzeige nicht erneut springen.
+
+**English:** Results wait for account progress so rank and XP appear together. If the request fails or takes too long, results remain available with the round data already received. Late responses and later tournament updates do not introduce another layout shift.
+
 ## 4.12.0 — 2026-11-01
 
 Seltene Tischüberraschungen nehmen sich mehr Zeit und erscheinen mit jedem Spiel wahrscheinlicher.

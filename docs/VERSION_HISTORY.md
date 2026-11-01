@@ -1,6 +1,6 @@
 # Versionen / Versions
 
-Aktuelle gemeinsame Produktversion / Current shared product version: **4.12.0**.
+Aktuelle gemeinsame Produktversion / Current shared product version: **4.12.1**.
 
 Alle RollTheDice-Spiele werden gemeinsam versioniert. Major steht für einen großen
 Produktmeilenstein, Minor für neue Funktionen und Patch für Fehlerkorrekturen
@@ -30,6 +30,7 @@ Detailed player-facing descriptions are in the [changelog](../CHANGELOG.md).
 
 | Version | Datum / Date | Art / Type | Änderung / Change | Commit |
 | --- | --- | --- | --- | --- |
+| 4.12.0 | 2026-11-01 | minor | Seltene Tischüberraschungen dauern länger und kommen mit steigender Chance. / Rare table surprises last longer and become more likely with each game. | [8f59f95](https://github.com/Maetran/RollTheDice/commit/8f59f95891e85a87b7617c17d8cb8a66b0fc94b0) |
 | 4.11.3 | 2026-10-31 | patch | Klarere Spieleinstiege und Regeln für Watten, Zilch, Hausdepp und ZDWA. / Clearer introductions and rules for Watten, Zilch, Hausdepp and ZDWA. | [ad44648](https://github.com/Maetran/RollTheDice/commit/ad4464857f2ac46e4e1bc103e7bc87b895bd3915) |
 | 4.11.2 | 2026-10-29 | patch | Watten-Stiche bleiben besser sichtbar und Hausdepp zeigt das Abheben klarer. / Watten tricks stay easier to follow and Hausdepp shows bottom inspection more clearly. | [3f43d5c](https://github.com/Maetran/RollTheDice/commit/3f43d5cc88357096690876a241134f2c0a7ab7ea) |
 | 4.11.1 | 2026-10-29 | patch | Watten und Hausdepp spielen sich auf kleinen Bildschirmen klarer; das Admin Center erhält ein eigenes Design. / Watten and Hausdepp are clearer on small screens; the Admin Center gets its own design. | [bdb9926](https://github.com/Maetran/RollTheDice/commit/bdb9926d8d8b0fb702cee03e7c54028bab85660f) |
