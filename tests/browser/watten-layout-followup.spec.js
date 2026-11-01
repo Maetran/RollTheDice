@@ -148,12 +148,20 @@ for (const language of ['de', 'en']) for (const viewport of VIEWPORTS) test(`${l
     }, { snapshot, initial });
     expect(mounted.initialDelta).toBeLessThanOrEqual(1);
     await page.setViewportSize(viewport);
-    const scenes = ['collect', 'collect-empty', 'retour', 'bloedeln', 'bloedeln-inspection'];
+    const scenes = [];
+    if (bothOptions) scenes.push('zone-play', 'zone-bid', 'zone-hold', 'zone-empty-hand', 'zone-more-packets', 'zone-direct-bid');
+    scenes.push('collect', 'collect-empty', 'retour', 'bloedeln', 'bloedeln-inspection');
     if (viewport.width === 440 && viewport.height === 956) scenes.push('retour-active', 'history-play-start', 'history-play-more', 'history-bid-wait');
-    let historyOrigin = null;
+    let historyOrigin = null, zoneOrigin = null;
     for (const scene of scenes) {
       await page.evaluate(scene => {
-        const { view, snapshot, initial } = window.followup;
+        let { view, snapshot, initial } = window.followup;
+        if (scene === 'zone-direct-bid') {
+          // A reload has no previous in-memory placement; it must land in the
+          // same zones as a table that saw the pending bid arrive live.
+          view.destroy(); sessionStorage.removeItem('watten:history-slot:v1');
+          view = window.followup.view = window.WattenLayoutFixture.createTableView(window.followup.root, { onCard() {} });
+        }
         // These are explicitly display fixtures. Preplay starts with the
         // untouched five-card state, never already captured packets.
         const copy = structuredClone(scene.startsWith('bloedeln') ? initial : snapshot), engine = copy.engine, own = copy.viewer.seat;
@@ -176,9 +184,25 @@ for (const language of ['de', 'en']) for (const viewport of VIEWPORTS) test(`${l
             : [((own + 1) % 4), ((own + 2) % 4)].includes(seat.seat) ? 1 : 0; });
           engine.last_trick.winner = own;
         }
+        if (scene.startsWith('zone-')) {
+          const bidding = scene === 'zone-bid' || scene === 'zone-direct-bid';
+          const emptyHand = scene === 'zone-empty-hand' || scene === 'zone-more-packets';
+          const morePackets = scene === 'zone-more-packets';
+          engine.phase = bidding ? 'bid_response' : 'play';
+          engine.hand = emptyHand ? [] : structuredClone(snapshot.engine.hand.slice(0, 1));
+          const others = snapshot.engine.last_trick.cards.filter(item => item.seat !== own);
+          const ownCard = snapshot.engine.last_trick.cards.find(item => item.seat === own);
+          engine.current_trick.cards = structuredClone(emptyHand ? [...others.slice(0, 2), ownCard] : others.slice(0, 2));
+          engine.trick_history = Array.from({ length: morePackets ? 4 : 2 }, () => structuredClone(snapshot.engine.last_trick));
+          engine.seats.forEach(seat => { seat.tricks_won = seat.seat === own ? (morePackets ? 2 : 1)
+            : seat.seat === (own + 1) % 4 ? (morePackets ? 2 : 1) : 0; });
+          engine.bid.pending = bidding ? { party: engine.seats[(own + 1) % 4].party,
+            decider: engine.seats[own].player_id, points: 5 } : null;
+        }
         engine.retourschneider = scene.startsWith('retour') ? { status: scene === 'retour-active' ? 'active' : 'available', after_deal_id: engine.deal_id,
           members: [copy.room.seats[own].participant_id, copy.room.seats[(own + 2) % 4].participant_id], accepted_by: [] } : null;
-        let actions = scene === 'retour' ? ['retourschneider'] : [];
+        let actions = scene === 'retour' ? ['retourschneider'] :
+          scene === 'zone-bid' || scene === 'zone-direct-bid' ? ['respond_hold', 'respond_go', 'respond_counter'] : [];
         if (scene.startsWith('bloedeln')) {
           engine.last_trick = null; engine.trick_history = [];
           engine.dealer_seat = own;
@@ -198,6 +222,52 @@ for (const language of ['de', 'en']) for (const viewport of VIEWPORTS) test(`${l
       }, scene);
       await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
       await expectNativeMount(page);
+      if (scene.startsWith('zone-')) {
+        const table = page.locator('[data-layout-followup] [data-wt-table]');
+        const history = table.locator('[data-wt-history]');
+        const firstCard = table.locator('.wt-trick-card').first();
+        await expect(history).toBeVisible();
+        await expect(firstCard).toBeVisible();
+        await expect.soft(table.locator('.wt-centre'), `${scene}: fitted portrait layout must be active`).toHaveAttribute('data-wt-portrait-trick', 'true');
+        await expect.soft(table.locator('.wt-centre'), `${scene}: must not fall back to unmeasured CSS placement`).not.toHaveAttribute('data-wt-portrait-trick-fallback', /.+/);
+        await history.locator('summary').click({ trial: true });
+        if (scene === 'zone-bid' || scene === 'zone-direct-bid') {
+          const hold = table.locator('[data-watten-action=respond_hold]');
+          await expect(hold).toBeVisible();
+          await hold.click({ trial: true });
+        }
+        const geometry = await page.evaluate(() => {
+          const root = window.followup.root, rect = selector => {
+            const box = root.querySelector(selector).getBoundingClientRect();
+            return { x: box.x, y: box.y, width: box.width, height: box.height, left: box.left, right: box.right, top: box.top, bottom: box.bottom };
+          };
+          const first = rect('.wt-trick-card'), history = rect('[data-wt-history]'), felt = rect('[data-wt-felt]');
+          const visible = node => { const box = node.getBoundingClientRect(), style = getComputedStyle(node);
+            return box.width && box.height && style.visibility !== 'hidden' && style.display !== 'none'; };
+          const intersects = (a, b) => Math.min(a.right, b.right) - Math.max(a.left, b.left) > 2
+            && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 2;
+          const cards = [...root.querySelectorAll('.wt-trick-card')].map(node => node.getBoundingClientRect());
+          const targets = [...root.querySelectorAll('[data-wt-history]:not([open]), [data-wt-panel], [data-wt-panel] button, [data-wt-stake], [data-wt-hand] > *, .wt-seat-name, .wt-seat-call-role, .wt-backs > i:not([hidden]), .wt-taken[data-filled=true], .wt-taken[data-filled=true] i, .wt-reference')].filter(visible);
+          const hand = [...root.querySelectorAll('[data-wt-hand] > *')].map(node => node.getBoundingClientRect());
+          return { first, history, felt, handTop: hand.length ? Math.min(...hand.map(box => box.top)) : null,
+            pileBottom: Math.max(...cards.map(box => box.bottom)), clashes: targets.flatMap(node => cards.filter(card => intersects(card, node.getBoundingClientRect()))
+            .map(() => node.className || node.tagName)) };
+        });
+        expect.soft(geometry.clashes, `${scene}: played cards must not cover controls, hands or identities`).toEqual([]);
+        expect(geometry.first.left).toBeGreaterThanOrEqual(geometry.felt.left);
+        expect(geometry.first.right).toBeLessThanOrEqual(geometry.felt.right);
+        expect(geometry.first.top).toBeGreaterThanOrEqual(geometry.felt.top);
+        expect(geometry.first.bottom).toBeLessThanOrEqual(geometry.felt.bottom);
+        if (!zoneOrigin) zoneOrigin = geometry;
+        if (scene === 'zone-empty-hand' || scene === 'zone-more-packets') {
+          expect(zoneOrigin.handTop).not.toBeNull();
+          expect.soft(geometry.pileBottom, `${scene}: pile must stay above the reserved hand area`)
+            .toBeLessThanOrEqual(zoneOrigin.handTop + 1);
+        }
+        if (scene !== 'zone-play') for (const target of ['first', 'history']) for (const key of ['x', 'y', 'width', 'height']) {
+          expect.soft(Math.abs(geometry[target][key] - zoneOrigin[target][key]), `${scene}: ${target} ${key} must stay fixed`).toBeLessThanOrEqual(1);
+        }
+      }
       if (scene.startsWith('history-')) {
         const history = page.locator('[data-layout-followup] [data-wt-history]');
         await expect(history).toBeVisible();
