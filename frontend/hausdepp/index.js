@@ -53,6 +53,7 @@ let tablePassword, passwordRequest = false;
 let requestedSurprise = null, requestedSurpriseRound = null;
 let progressNotices, roundProgressReceipt, popupProgressPending = false;
 let roundResultPresentation;
+let roundProgressCache;
 let pileInspector, peekFeedback;
 let rematchInvitations, rematchCreating = false;
 const rematchLifetime = new AbortController();
@@ -1213,6 +1214,7 @@ function renderStateContent() {
     progressNotices?.pause();
     roundProgressReceipt?.();
     cancelRoundResultPresentation();
+    roundProgressCache = null;
   }
   if (snapshot?._aborted) { peekFeedback?.update(null); renderAbortedTable(); return; }
   const s = snapshot?._hausdepp;
@@ -1376,8 +1378,8 @@ function renderStateContent() {
     if (!roundResultReady(`${gameId}:${tournament?.round_number || 1}`, Boolean(motion.previous && motion.previous.phase !== "finished"))) return;
     const loser = s.players.find(p => p.id === s.loser_id);
     const finalLoser = s.players.find(p => p.id === tournament?.tages_hausdepp_id);
+    const progressKey = `${gameId}:${tournament?.round_number || 1}`;
     const roundKey = `${gameId}:${tournament?.round_number || 1}:${Boolean(tournament?.completed)}:${Boolean(tournament?.can_start_next_round)}:${Boolean(snapshot._aborted)}:${JSON.stringify(tournament?.departed_ids || [])}`;
-    $("hausdeppResult").hidden = false;
     if ($("hausdeppResult").dataset.roundId === roundKey) {
       const recreate = $("hausdeppRecreate");
       if (recreate) recreate.disabled = rematchCreating;
@@ -1387,6 +1389,9 @@ function renderStateContent() {
       if (end) end.disabled = pending || tournamentEnding || !connected;
       return;
     }
+    const cachedProgress = roundProgressCache?.key === progressKey ? roundProgressCache : null;
+    if (!cachedProgress) $("hausdeppResult").hidden = true;
+    roundProgressReceipt?.();
     $("hausdeppResult").dataset.roundId = roundKey;
     const title = snapshot._aborted ? t("tournamentStopped") : tournament?.completed ? finalLoser
       ? `${t("tournamentComplete")}. ${t("tournamentLoser", { name: finalLoser.name })}` : t("tournamentWithoutHausdepp")
@@ -1403,7 +1408,13 @@ function renderStateContent() {
       }
       renderState();
     });
-    if (!spectating) { renderRoundProgress($("hausdeppRoundProgress")); void loadRoundProgress(roundKey); }
+    if (spectating) $("hausdeppResult").hidden = false;
+    else if (cachedProgress) {
+      const container = $("hausdeppRoundProgress");
+      renderRoundProgress(container, cachedProgress.data);
+      if (cachedProgress.data) acknowledgeDisplayedRoundProgress(container, cachedProgress.data, roundKey);
+      $("hausdeppResult").hidden = false;
+    } else { renderRoundProgress($("hausdeppRoundProgress")); void loadRoundProgress(roundKey, progressKey); }
   }
 }
 
@@ -1618,26 +1629,46 @@ function acknowledgeRoundProgressWhenVisible(container, notice, roundKey) {
   observer.observe(container);
 }
 
-async function loadRoundProgress(roundKey) {
+function acknowledgeDisplayedRoundProgress(container, data, roundKey) {
+  const earned = snapshot?._hausdepp_round_summary?.players?.[playerId];
+  const notice = data.presentation?.pending;
+  // Pending notices can cover several rounds; acknowledge only a fully visible
+  // notice whose source and contents match this particular round.
+  const roundAwards = (earned?.achievements || []).map(award => award.id).sort();
+  if (data.history?.rounds?.[0]?.game_id === snapshot?._hausdepp_round_summary?.round_id
+      && (!notice?.rank_up || (data.scoring?.available && data.rank?.name))
+      && earned?.xp != null && notice?.points_earned === earned.xp
+      && JSON.stringify([...(notice.achievement_ids || [])].sort()) === JSON.stringify(roundAwards)) {
+    acknowledgeRoundProgressWhenVisible(container, notice, roundKey);
+  }
+}
+
+async function loadRoundProgress(roundKey, progressKey) {
+  const result = $("hausdeppResult");
+  const container = $("hausdeppRoundProgress");
+  const controller = new AbortController();
+  let timer;
+  const current = () => !stopped && result.isConnected && container.isConnected
+    && result.dataset.roundId === roundKey && snapshot?._hausdepp?.phase === "finished" && !snapshot?._aborted;
   try {
-    const data = await json("/api/hausdepp/account?limit=1");
-    if (stopped || !$("hausdeppRoundProgress") || $("hausdeppResult").dataset.roundId !== roundKey) return;
-    const container = $("hausdeppRoundProgress");
+    // Do not leave the result inaccessible if the account request stalls. A late
+    // response is discarded so it cannot move an already visible result sheet.
+    const data = await Promise.race([
+      json("/api/hausdepp/account?limit=1", { signal: controller.signal }),
+      new Promise((_, reject) => { timer = setTimeout(() => { controller.abort(); reject(new Error("Account request timed out")); }, 2500); }),
+    ]);
+    if (!current()) return;
+    roundProgressCache = { key: progressKey, data };
     renderRoundProgress(container, data);
-    const earned = snapshot?._hausdepp_round_summary?.players?.[playerId];
-    const notice = data.presentation?.pending;
-    // Pending account notices may cover several rounds. Only acknowledge this
-    // round automatically when every part of that notice is actually visible.
-    const roundAwards = (earned?.achievements || []).map(award => award.id).sort();
-    if (data.history?.rounds?.[0]?.game_id === snapshot?._hausdepp_round_summary?.round_id
-        && (!notice?.rank_up || (data.scoring?.available && data.rank?.name))
-        && earned?.xp != null && notice?.points_earned === earned.xp
-        && JSON.stringify([...(notice.achievement_ids || [])].sort()) === JSON.stringify(roundAwards)) {
-      acknowledgeRoundProgressWhenVisible(container, notice, roundKey);
-    }
+    result.hidden = false;
+    renderState();
+    acknowledgeDisplayedRoundProgress(container, data, roundKey);
     if (!snapshot?._aborted) void progressNotices?.refresh();
   } catch {
     // The final account link remains available when the summary cannot load.
+    if (current()) { roundProgressCache = { key: progressKey, data: null }; result.hidden = false; renderState(); }
+  } finally {
+    clearTimeout(timer);
   }
 }
 

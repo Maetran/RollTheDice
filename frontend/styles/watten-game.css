@@ -29,6 +29,7 @@
 @import "./retourschneider-status.css";
 @import "./watten-update-notice.css";
 @import "./watten-progress.css";
+@import "./watten-short-fixed.css";
 
 /* Watten: a bright wooden inn table, warm paper and dark red accents. */
 :root {

@@ -364,7 +364,6 @@ for (const language of ['de', 'en']) for (const { count, reference = false } of 
       const callers = [...new Set([striker, colourer])];
       for (const { page } of callers) await settleCalls(page);
       expect(await firstCall.evaluate(node => node.isConnected)).toBe(true);
-      const originalOverlaps = [];
       for (const { page } of callers) {
         const settled = await expectOwnCall(page, measurements);
         await page.clock.runFor(20);
@@ -376,25 +375,12 @@ for (const language of ['de', 'en']) for (const { count, reference = false } of 
           await expectOwnCall(page, measurements);
           await settleCalls(page);
         }
-        if (reference) continue;
-        // The original bottom anchor intersects the real stake at 320px.
-        const oldAnchor = await page.addStyleTag({ content: '.wt-own-call {display:none!important}.wt-bubbles>.wt-bubble--bottom {display:block!important}' });
-        const oldOverlap = await page.evaluate(() => {
-          const a = document.querySelector('.wt-bubbles .wt-bubble--bottom').getBoundingClientRect();
-          const b = document.querySelector('[data-wt-stake]').getBoundingClientRect();
-          return Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left)) * Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
-        });
-        originalOverlaps.push(oldOverlap);
-        await oldAnchor.evaluate(node => node.remove());
       }
-      measurements.push({ originalOverlaps });
-      if (!reference) expect(Math.max(...originalOverlaps)).toBeGreaterThan(0);
       const portraits = reference ? [PORTRAITS[0], PORTRAITS[2]] : PORTRAITS;
       for (const viewport of portraits) for (const { page } of callers) {
         await resize(page, viewport);
         await expectOwnCall(page, measurements);
       }
-      const shiftedOverlaps = [];
       for (const { page } of callers) {
         await resize(page, PORTRAITS[0]);
       }
@@ -446,19 +432,6 @@ for (const language of ['de', 'en']) for (const { count, reference = false } of 
         await expect.poll(() => players.filter(item => item.traffic.snapshot.engine.actions.includes('respond_hold')).length).toBe(1);
         await expect(players.find(item => item.traffic.snapshot.engine.actions.includes('respond_hold')).page.locator('[data-watten-feedback-received]')).toBeVisible();
       }
-      for (const { page } of callers) {
-        if (reference) continue;
-        const offset52 = await page.addStyleTag({ content: '.wt-own-call {display:none!important}.wt-bubbles>.wt-bubble--bottom {display:block!important;bottom:52px!important}' });
-        const covered = await page.evaluate(() => {
-          const a = document.querySelector('.wt-bubbles .wt-bubble--bottom').getBoundingClientRect();
-          const b = document.querySelector('[data-wt-panel]').getBoundingClientRect();
-          return Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left)) * Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
-        });
-        shiftedOverlaps.push(covered);
-        await offset52.evaluate(node => node.remove());
-      }
-      measurements.push({ shiftedOverlaps });
-      if (!reference) expect(Math.max(...shiftedOverlaps)).toBeGreaterThan(0);
       for (const viewport of portraits) for (const { page } of callers) {
         await resize(page, viewport);
         await expectOwnCall(page, measurements);

@@ -60,7 +60,7 @@ test.afterEach(async ({ page }) => {
   });
 });
 
-async function finishedRenderer(page, fixture, { spectator = false, tournament = false } = {}) {
+async function finishedRenderer(page, fixture, { spectator = false, tournament = false, waitForResult = true } = {}) {
   const id = await fixture.create();
   let projection;
   page.on('websocket', socket => socket.on('framereceived', ({ payload }) => {
@@ -116,12 +116,138 @@ async function finishedRenderer(page, fixture, { spectator = false, tournament =
   });
   if (spectator) await page.goto(`/hausdepp/spiel/${id}/zuschauen`);
   else await page.reload();
-  await expect(page.locator('#hausdeppResult')).toBeVisible();
-  await expect(page.locator('#hausdeppLeaveGame')).toBeHidden();
-  await expect(page.locator('#hausdeppLeaveGameResult')).toBeVisible();
+  if (waitForResult) {
+    await expect(page.locator('#hausdeppResult')).toBeVisible();
+    await expect(page.locator('#hausdeppLeaveGame')).toBeHidden();
+    await expect(page.locator('#hausdeppLeaveGameResult')).toBeVisible();
+  }
   return { id, board, self, loser, sent,
     publish(extra = {}) { for (const socket of simulatedSockets) socket.send(JSON.stringify({ scoreboard: board, ...extra })); },
   };
+}
+
+test('result waits for account progress and remains stable on repeated updates', async ({ page }) => {
+  const fixture = await setup(page);
+  let releaseAccount;
+  const accountGate = new Promise(resolve => { releaseAccount = resolve; });
+  let requested = false;
+  await page.route('**/api/hausdepp/account?limit=1', async route => {
+    requested = true;
+    await accountGate;
+    await route.fulfill({ json: fixture.account });
+  });
+  const live = await finishedRenderer(page, fixture, { waitForResult: false });
+  await expect.poll(() => requested).toBe(true);
+  const result = page.locator('#hausdeppResult');
+  await expect(result).toBeHidden();
+  live.publish();
+  await expect(result).toBeHidden();
+  releaseAccount();
+  await expect(result).toBeVisible();
+  await expect(result.locator('.hd-round-account')).toContainText('Stammgast');
+  const before = await result.boundingBox();
+  live.publish();
+  await expect(result.locator('.hd-round-account')).toContainText('Stammgast');
+  const after = await result.boundingBox();
+  expect(after).toEqual(before);
+});
+
+test('a stalled account request cannot block the result or add a late layout shift', async ({ page }) => {
+  const fixture = await setup(page);
+  let releaseAccount;
+  const accountGate = new Promise(resolve => { releaseAccount = resolve; });
+  await page.route('**/api/hausdepp/account?limit=1', async route => {
+    await accountGate;
+    await route.fulfill({ json: fixture.account }).catch(() => {});
+  });
+  await finishedRenderer(page, fixture, { waitForResult: false });
+  const result = page.locator('#hausdeppResult');
+  await expect(result).toBeHidden();
+  await expect(result).toBeVisible({ timeout: 5000 });
+  await expect(result.locator('.hd-round-earned')).toContainText('+27 EP');
+  await expect(result.locator('.hd-round-account')).toHaveCount(0);
+  const before = await result.boundingBox();
+  releaseAccount();
+  await page.waitForTimeout(200);
+  expect(await result.boundingBox()).toEqual(before);
+  await expect(result.locator('.hd-round-account')).toHaveCount(0);
+});
+
+for (const transition of ['aborted', 'next round']) {
+  test(`a delayed account response cannot overwrite ${transition}`, async ({ page }) => {
+    const fixture = await setup(page);
+    let releaseAccount, requested = false;
+    const accountGate = new Promise(resolve => { releaseAccount = resolve; });
+    await page.route('**/api/hausdepp/account?limit=1', async route => {
+      requested = true;
+      await accountGate;
+      await route.fulfill({ json: fixture.account }).catch(() => {});
+    });
+    const live = await finishedRenderer(page, fixture, { waitForResult: false });
+    await expect.poll(() => requested).toBe(true);
+    const result = page.locator('#hausdeppResult');
+    await expect(result).toBeHidden();
+    if (transition === 'aborted') {
+      Object.assign(live.board, { _aborted: true, _started: true, _abort_reason: 'inactivity_timeout' });
+    } else {
+      live.board._finished = false;
+      live.board._hausdepp.phase = 'playing';
+    }
+    live.publish();
+    if (transition === 'aborted') {
+      await expect(result).toBeVisible();
+      await expect(result).toContainText(/Wertung|Punkte/);
+      await expect(page.locator('#hausdeppRecreate')).toBeVisible();
+    } else {
+      await expect(page.locator('#hausdeppTable')).toHaveAttribute('data-phase', 'playing');
+      await expect(result).toBeHidden();
+    }
+    releaseAccount();
+    await page.waitForTimeout(200);
+    if (transition === 'aborted') {
+      await expect(result).toBeVisible();
+      await expect(result).toContainText(/Wertung|Punkte/);
+      await expect(result.locator('.hd-round-account')).toHaveCount(0);
+    } else await expect(result).toBeHidden();
+    expect(fixture.accountAcks()).toBe(0);
+  });
+}
+
+for (const accountFails of [false, true]) {
+  test(`visible tournament result keeps its progress on later updates (${accountFails ? 'account unavailable' : 'account loaded'})`, async ({ page }) => {
+    const fixture = await setup(page);
+    let reads = 0;
+    await page.route('**/api/hausdepp/account?limit=1', route => {
+      reads++;
+      return accountFails ? route.fulfill({ status: 503, json: {} }) : route.fulfill({ json: fixture.account });
+    });
+    const live = await finishedRenderer(page, fixture, { tournament: true });
+    const result = page.locator('#hausdeppResult');
+    const progress = result.locator('#hausdeppRoundProgress');
+    await expect(progress.locator('.hd-round-earned')).toContainText('+27 EP');
+    if (!accountFails) await expect(progress.locator('.hd-round-account')).toContainText('Stammgast');
+    else await expect(progress.locator('.hd-round-account')).toHaveCount(0);
+    const before = await progress.boundingBox();
+    await result.evaluate(node => {
+      window.__resultHiddenTransitions = 0;
+      new MutationObserver(records => { window.__resultHiddenTransitions += records.filter(record => record.oldValue === null).length; })
+        .observe(node, { attributes: true, attributeOldValue: true, attributeFilter: ['hidden'] });
+    });
+    live.board._hausdepp_tournament.can_start_next_round = false;
+    live.publish();
+    await expect(result.locator('.hd-tournament-wait')).toBeVisible();
+    await expect(progress.locator('.hd-round-earned')).toContainText('+27 EP');
+    if (!accountFails) await expect(progress.locator('.hd-round-account')).toContainText('Stammgast');
+    else await expect(progress.locator('.hd-round-account')).toHaveCount(0);
+    expect(await progress.boundingBox()).toEqual(before);
+    live.board._hausdepp_tournament.departed_ids = [live.loser];
+    live.publish();
+    await expect(result.locator('.hd-tournament-departed')).toBeVisible();
+    await expect(progress.locator('.hd-round-earned')).toContainText('+27 EP');
+    if (!accountFails) await expect(progress.locator('.hd-round-account')).toContainText('Stammgast');
+    expect(await page.evaluate(() => window.__resultHiddenTransitions)).toBe(0);
+    expect(reads).toBe(1);
+  });
 }
 
 for (const language of ['de', 'en']) {

@@ -353,12 +353,14 @@ Der dauernde Zug-Hinweis entfällt. Abgeschlossene Stiche bleiben
 rund drei Sekunden sichtbar, im Blindwatten rund vier Sekunden, mit Siegerrahmen
 und Spielernamen. Der letzte Stich
 kann lokal erneut angesehen werden. Im Hochformat nutzt der geschlossene
-Verlauf einen freien Platz auf dem Tisch; offene Rückschau und Gebotsentscheidung
-bleiben bei den eigenen Karten. Gegnerische Karten und Stichpakete sind grösser. Die kompaktere
+Verlauf einen eigenen Platz auf dem Tisch; der Stich und der Bereich für die
+eigenen Karten bleiben auch während einer Gebotsentscheidung erhalten. Offene
+Rückschau und Gebotsentscheidung bleiben bei den eigenen Karten. Gegnerische Karten und Stichpakete sind grösser. Die kompaktere
 Rückschau lässt sich während der Partie dauerhaft einblenden. Nach Spielende
 öffnet sie die bis zu fünf Stiche der letzten Gabe ohne zusätzlichen
 Anheftschalter; Schlag, Farbe und der Rechte bleiben für alle aufgedeckt.
-Gewonnene Stichpakete bleiben pro Spieler direkt neben seinem Namen sichtbar.
+Gewonnene Stichpakete bleiben pro Spieler direkt neben seinem Namen sichtbar;
+auf sehr kurzen Telefonen zeigt dort ein Zähler ihre Anzahl.
 Das Kreuz schliesst die Rückschau und löst ihre Anheftung; ungepinnt schliesst
 sie auch beim Antippen ausserhalb.
 
@@ -453,7 +455,10 @@ The optional Rechter reference appears after calling
 or inspection, without an extra face-down placeholder during preparation. Played cards
 form one connected, overlapping cloverleaf pile from the second card onward.
 Each card points toward its player, without visible numbers or name labels.
-New cards overlap earlier ones to preserve the play order.
+New cards overlap earlier ones to preserve the play order. On very short phones,
+a counter beside each name shows captured tricks. In portrait play,
+the trick, closed history and own hand each have a reserved place, including
+while a bid is being answered.
 The winning card is outlined in its original position and overlap order.
 Once calling or inspection is complete, the player on their card turn may bid
 before the first card. An agreed redeal after holding remains possible until
@@ -1052,6 +1057,14 @@ achievements; the new Zonk achievement is worth 0 XP. Hands already finished
 normally remain credited. Tournament departure applies to the whole session;
 earlier rounds and XP remain intact. Spectators can use the same button to
 return to the lobby immediately, even when disconnected. This only stops watching.
+
+Der Hausdepp-Abschluss erscheint mit dem Kontofortschritt, sobald dieser geladen
+ist. Falls der Abruf nicht rechtzeitig gelingt, bleibt das Ergebnis mit den
+bereits verfügbaren Rundendaten erreichbar.
+
+The Hausdepp result appears with account progress once it has loaded. If the
+request does not finish in time, the result remains available with the round
+data already received.
 
 **Schneller CPU-Abschluss / Faster CPU finish:** Spielst du allein gegen CPUs
 und hast deine Karten regulär fertig gespielt, erscheint an ihrer bisherigen

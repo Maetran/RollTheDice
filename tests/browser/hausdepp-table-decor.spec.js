@@ -134,10 +134,36 @@ async function table(page, viewport, { browser, baseURL, reducedMotion = 'no-pre
   return viewer;
 }
 
+async function expectDockedSurpriseClear(dock) {
+  await expect(dock).toBeVisible();
+  const geometry = await dock.evaluate(node => {
+    const rect = element => element.getBoundingClientRect();
+    const bounds = rect(node), heading = node.closest('.hd-room-heading');
+    const overlaps = (a, b) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+    const others = [...heading.querySelectorAll(':scope > :not(.hd-surprise-dock)')]
+      .filter(element => element.getClientRects().length);
+    const otherControls = [...heading.querySelectorAll('button, a[href], input, select, textarea, [role="button"]')]
+      .filter(element => !element.closest('.hd-surprise-dock') && element.getClientRects().length);
+    const hit = document.elementFromPoint(bounds.left + bounds.width / 2, bounds.top + bounds.height / 2);
+    return { width: bounds.width, height: bounds.height, inHeading: heading.contains(node),
+      covered: !node.contains(hit), overlaps: others.some(element => overlaps(bounds, rect(element))),
+      otherControlsCovered: otherControls.some(element => {
+        const box = rect(element), target = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+        return !element.contains(target);
+      }) };
+  });
+  expect(geometry.inHeading).toBe(true);
+  expect(geometry.width).toBeGreaterThanOrEqual(44);
+  expect(geometry.height).toBeGreaterThanOrEqual(44);
+  expect(geometry.covered).toBe(false);
+  expect(geometry.overlaps).toBe(false);
+  expect(geometry.otherControlsCovered).toBe(false);
+}
+
 for (const viewport of [{ width: 390, height: 844 }, { width: 844, height: 390 }, { width: 1024, height: 768 }, { width: 1600, height: 1000 }]) {
   test(`six-seat table decoration respects play areas at ${viewport.width}x${viewport.height}`, async ({ page, browser, baseURL }) => {
     page = await table(page, viewport, { browser, baseURL });
-    const visibleProps = page.locator('.hd-table-prop:visible');
+    const visibleProps = page.locator('.hd-table-decor > .hd-table-prop:visible');
     // Phones carry one large object (two in landscape) plus a few small
     // scatter pieces; every one of them must still find free wood.
     if (viewport.width < 768) await expect.poll(() => visibleProps.count()).toBeLessThanOrEqual(4);
@@ -157,7 +183,9 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 844, height: 390 }
     const geometry = await page.evaluate(() => {
       const rect = element => { const r = element.getBoundingClientRect(); return { left: r.left, right: r.right, top: r.top, bottom: r.bottom }; };
       return {
-        props: [...document.querySelectorAll('.hd-table-prop:not([hidden])')].map(element => ({ ...rect(element), pointerEvents: getComputedStyle(element).pointerEvents })),
+        // Docked surprises intentionally live inside the room heading. Their
+        // target and the heading's other contents are checked separately.
+        props: [...document.querySelectorAll('.hd-table-decor > .hd-table-prop:not([hidden])')].map(element => ({ ...rect(element), pointerEvents: getComputedStyle(element).pointerEvents })),
         controls: [...document.querySelectorAll('.hd-seat, #hausdeppStock, #hausdeppPile, #hausdeppHand button, .hd-room-heading, .hd-hand-heading, #hausdeppStatus, #hausdeppEvent')]
           .filter(element => element.getClientRects().length).map(rect),
       };
@@ -168,6 +196,7 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 844, height: 390 }
         expect(prop.left < control.right && prop.right > control.left && prop.top < control.bottom && prop.bottom > control.top).toBe(false);
       }
     }
+    for (const dock of await page.locator('.hd-surprise-dock .hd-table-prop:visible').all()) await expectDockedSurpriseClear(dock);
     await expect(page.locator('#hausdeppStock')).toBeEnabled();
   });
 }
@@ -757,6 +786,10 @@ async function dockFixture(page) {
     const heading = document.createElement('div'); heading.className = 'hd-room-heading';
     Object.assign(heading.style, { position: 'relative', display: 'flex', width: '100%', height: '54px' });
     heading.textContent = 'Labelled dock heading'; table.prepend(heading);
+    const leave = document.createElement('button');
+    leave.type = 'button'; leave.textContent = 'Leave';
+    Object.assign(leave.style, { width: '44px', height: '44px', flex: '0 0 44px' });
+    heading.append(leave);
     window.__dockOptions = { gameId: 'docked-surprise-fixture', roundNumber: 1, phase: 'playing', surprise: 'star',
       onSurprise: () => { window.__dockRequests = (window.__dockRequests || 0) + 1; return true; } };
   });
@@ -769,7 +802,7 @@ test('a docked surprise becomes reachable again when the same offer returns afte
     module.renderTableDecor(table, window.__dockOptions);
   });
   const star = page.locator('.hd-surprise-dock [data-prop="star"]');
-  await expect(star).toBeVisible();
+  await expectDockedSurpriseClear(star);
   await page.evaluate(() => {
     const { module, table } = window.__decorFixture;
     module.renderTableDecor(table, { ...window.__dockOptions, surprise: null });

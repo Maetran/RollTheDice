@@ -666,7 +666,7 @@ export function createTableView(container, { onCard, accountId = null }) {
     // the own shown face leaves beyond its outermost card. No face is inferred.
     const collecting = ["deal_complete", "match_complete"].includes(vm.engine.phase)
       && vm.roundPresentation?.stage === "collect";
-    elements.handArea.hidden = !hand.length && !collecting;
+    elements.handArea.hidden = !hand.length && !collecting && (vm.spectator || !["play", "bid_response"].includes(vm.engine.phase));
     const keys = hand.map((item, index) => isCard(item.card) ? item.card : `back-${index}`);
     let changed = false;
     const created = [];

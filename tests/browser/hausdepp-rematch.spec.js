@@ -298,6 +298,21 @@ async function landAcceptedFlight(flight) {
   });
 }
 
+// Delay only the account lookup for the next result, after the fixture's
+// initial finished state has already been rendered. The presentation tests can
+// then distinguish the motion boundary from the independent account request.
+async function deferNextRoundAccount(page) {
+  let release, requested;
+  const gate = new Promise(resolve => { release = resolve; });
+  const started = new Promise(resolve => { requested = resolve; });
+  await page.route('**/api/hausdepp/account?limit=1', async route => {
+    requested();
+    await gate;
+    await route.continue();
+  });
+  return { started, release };
+}
+
 test('the final result waits until the actual last card lands, then pauses without waiting for its fade', async ({ page }) => {
   const source = await liveFinalCard(page);
   source.finish();
@@ -318,7 +333,10 @@ test('the final result waits until the actual last card lands, then pauses witho
   // Hydrating the same completed table has no flight and needs no replay pause.
   await page.reload();
   await expect(page.locator('#hausdeppTable')).toHaveAttribute('data-phase', 'finished');
-  expect(await page.locator('#hausdeppResult').isVisible()).toBe(true);
+  // The prepared result proves there was no replay pause, even if its account
+  // data is still in flight and the sheet is intentionally not visible yet.
+  expect(await page.locator('#hausdeppResult').getAttribute('data-round-id')).toBeTruthy();
+  await expect(page.locator('#hausdeppResult')).toBeVisible();
   await expect(page.locator('.hd-deal-card')).toHaveCount(0);
 });
 
@@ -416,14 +434,22 @@ test('a rematch invitation cannot cover the last card flight or the reading paus
 test('reduced motion shows the final result directly without a synthetic flight delay', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   const source = await liveFinalCard(page);
+  const account = await deferNextRoundAccount(page);
   source.finish();
   await expect(page.locator('#hausdeppTable')).toHaveAttribute('data-phase', 'finished');
-  expect(await page.locator('#hausdeppResult').isVisible()).toBe(true);
+  // A result key is assigned only after the motion presentation is ready.
+  // It must be there synchronously even though the account data is pending.
+  expect(await page.locator('#hausdeppResult').getAttribute('data-round-id')).toBeTruthy();
   await expect(page.locator('.hd-deal-card')).toHaveCount(0);
+  await account.started;
+  await expect(page.locator('#hausdeppResult')).toBeHidden();
+  account.release();
+  await expect(page.locator('#hausdeppResult')).toBeVisible();
 });
 
 test('hiding the table cancels the flight pause instead of replaying it when returning', async ({ page }) => {
   const source = await liveFinalCard(page);
+  const account = await deferNextRoundAccount(page);
   source.finish();
   await expect(page.locator('.hd-deal-card[data-motion-type="play"]')).toHaveCount(1);
   await expect(page.locator('#hausdeppResult')).toBeHidden();
@@ -432,7 +458,11 @@ test('hiding the table cancels the flight pause instead of replaying it when ret
     document.dispatchEvent(new Event('visibilitychange'));
   });
   await expect(page.locator('.hd-deal-card')).toHaveCount(0);
-  expect(await page.locator('#hausdeppResult').isVisible()).toBe(true);
+  expect(await page.locator('#hausdeppResult').getAttribute('data-round-id')).toBeTruthy();
+  await account.started;
+  await expect(page.locator('#hausdeppResult')).toBeHidden();
+  account.release();
+  await expect(page.locator('#hausdeppResult')).toBeVisible();
   await page.evaluate(() => {
     Object.defineProperty(document, 'hidden', { configurable: true, get: () => false });
     document.dispatchEvent(new Event('visibilitychange'));

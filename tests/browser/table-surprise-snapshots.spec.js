@@ -105,6 +105,14 @@ test('Watten optical effects copy the native cards and sibling props while prese
         };
         const controlsCovered = [...table.querySelectorAll('.wt-seat-name,.wt-avatar,.wt-topbar,[data-wt-stake] button, .wt-reference figcaption')]
           .filter(visible).filter(covered).map(node => node.className);
+        const counters = [...table.querySelectorAll('.wt-taken[data-filled="true"]')].filter(visible);
+        const shortCounter = counters.map(node => {
+          const r = node.getBoundingClientRect();
+          const coveredPoints = [.1, .5, .9].flatMap(x => [.1, .5, .9].map(y =>
+            context.isPointInPath(mask, r.left + r.width * x - fx.box.left, r.top + r.height * y - fx.box.top, match[1] || 'nonzero')));
+          return { count: node.dataset.count, label: node.getAttribute('aria-label'),
+            content: getComputedStyle(node, '::after').content, covered: coveredPoints.some(Boolean) };
+        });
         const handCovered = own.every(target => covered(target.node));
         const unchanged = before.every(({ node, markup, box }) => node.isConnected && node.outerHTML === markup
           && ['left', 'top', 'width', 'height'].every(key => Math.abs(node.getBoundingClientRect()[key] - box[key]) < .01));
@@ -112,12 +120,17 @@ test('Watten optical effects copy the native cards and sibling props while prese
           own: own.length, fans: targets.filter(target => target.node.matches('.wt-backs')).length,
           props: targets.filter(target => target.kind === 'prop').map(target => target.prop),
           packets: targets.filter(target => target.node.matches('.wt-taken-packet')).length,
-          foreignSelected, wood, difference: Math.max(...differences), neighbourDifference: Math.max(...neighbourDifference),
+          foreignSelected, shortCounter, wood, difference: Math.max(...differences), neighbourDifference: Math.max(...neighbourDifference),
           unsafe: unsafe.length, remaining, clusterMoving: cluster.movingNodes.length, controlsCovered, handCovered, unchanged };
         layer.remove(); return summary;
       });
-      expect(result, JSON.stringify({ viewport, result })).toMatchObject({ missing: [], own: 4, fans: 3, packets: 1,
+      expect(result, JSON.stringify({ viewport, result })).toMatchObject({ missing: [], own: 4, fans: 3, packets: viewport.width === 320 ? 0 : 1,
         foreignSelected: false, unsafe: 0, clusterMoving: 2, controlsCovered: [], handCovered: true, unchanged: true });
+      if (viewport.width === 320) {
+        // The compact table displays a labelled counter in place of the
+        // hidden packet. It must remain visible through the optical effect.
+        expect(result.shortCounter).toEqual([{ count: '1', label: '1 Stich', content: '"1"', covered: false }]);
+      }
       expect(result.props.length).toBeGreaterThan(0);
       expect(result.props.every(Boolean)).toBe(true);
       expect(result.difference).toBeLessThan(1);
