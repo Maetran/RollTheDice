@@ -14,6 +14,13 @@ function syncChoices() {
     button.tabIndex = active ? 0 : -1;
   }
   if (dom.hardcoreHelp) dom.hardcoreHelp.hidden = !dom.hardcoreCheckbox.checked;
+  const translate = window.ZDWA_I18N?.t || (value => value);
+  const options = [];
+  if (dom.hardcoreCheckbox.checked) options.push("Hardcore");
+  if (dom.passInput.value.trim()) options.push("Geschützt");
+  if (document.getElementById("zdwaVoiceEnabled")?.checked === false) options.push("Audio aus");
+  dom.createOptionsStatus.textContent = options.map(translate).join(" · ");
+  dom.createOptionsStatus.hidden = options.length === 0;
 }
 
 function moveFocus(buttons, current, direction, activate) {
@@ -55,7 +62,9 @@ export function initializeGameSetup() {
   const input = document.createElement("input"); input.type = "checkbox"; input.id = "zdwaVoiceEnabled"; input.checked = true;
   const label = document.createElement("span"); label.textContent = text.tableVoice;
   const hint = document.createElement("small"); hint.textContent = text.tableVoiceHelp; label.append(hint);
-  choice.append(input, label); dom.createButton.before(choice);
+  choice.append(input, label); dom.createOptionsFields.append(choice);
+  input.addEventListener("change", syncChoices);
+  dom.passInput.addEventListener("input", syncChoices);
   wireChoices(dom.modeButtons, (button) => {
     dom.modeSelect.value = button.dataset.gameMode;
     dom.modeSelect.dispatchEvent(new Event("change", { bubbles: true }));

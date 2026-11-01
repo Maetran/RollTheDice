@@ -43,8 +43,8 @@ def _page(request: Request, page: str) -> Response:
         content = (before + '<main id="wattenAccount"><h1 translate="no">Watten</h1>'
                    '<p>Watten ist noch nicht verfügbar. Dein Konto kannst du hier verwalten.</p>'
                    '<p lang="en">Watten is not available yet. You can manage your account here.</p>'
-                   '<p><a href="/watten/anmelden">Anmelden / Sign in</a></p>'
-                   '<p><a href="/watten/konto/einstellungen">Kontoeinstellungen / Account settings</a></p>'
+                   '<p><a class="button-link" href="/watten/anmelden">Anmelden / Sign in</a></p>'
+                   '<p><a class="button-link ghost" href="/watten/konto/einstellungen">Kontoeinstellungen / Account settings</a></p>'
                    '</main>' + after)
     return Response(account_pwa_head(content), media_type="text/html", headers=_HEADERS)
 

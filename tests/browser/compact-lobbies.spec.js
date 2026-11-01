@@ -69,6 +69,8 @@ for (const language of ["de", "en"]) {
       await expect(page.locator(".lobby-header #gamesPlayed")).toHaveCount(0);
       for (const selector of ["#gamesHub", "#createGameCard", "#abandonmentLeaderboard", ".lobby-header"]) await expectFits(page, selector);
       await expect(page.locator("[data-game-mode]")).toHaveCount(4);
+      await expect(page.locator("#passInput")).toBeHidden();
+      await page.locator("#createOptions > summary").click();
       await page.locator('[data-hardcore="true"]').click();
       await expect(page.locator("#hardcoreHelp")).toBeVisible();
       await page.locator("#passInput").fill("room-secret");

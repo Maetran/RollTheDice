@@ -637,7 +637,57 @@ test.describe('own card flights and follow-up timing', () => {
     await expect(card(page, HAND[0])).toHaveCSS('visibility', 'visible');
   });
 
-  test('three queued tens retain their own clearance chain and wait for each burn arrival', async ({ page }) => {
+  for (const reason of ['ten', 'four_of_a_kind']) {
+    test(`a ${reason} clearance refills and releases a different rank before its paused burn lands`, async ({ page }) => {
+      const state = await fixture(page, 'de');
+      const next = structuredClone(state.board), s = next._hausdepp;
+      const played = reason === 'ten' ? 'hearts-10' : 'hearts-6';
+      const oldPile = reason === 'ten' ? ['leaves-6'] : ['acorns-6', 'bells-6', 'leaves-6'];
+      Object.assign(s, { version: s.version + 1, hand: [played, 'bells-A', 'leaves-A'],
+        discard: oldPile, available_actions: ['play', 'pickup', 'gamble'], playable_cards: [played, 'bells-A', 'leaves-A'] });
+      state.send(next);
+      await expect(card(page, played)).toBeEnabled();
+      await page.evaluate(() => {
+        const animate = Element.prototype.animate;
+        Element.prototype.animate = function (...args) {
+          const animation = animate.apply(this, args);
+          if (this.matches('.hd-deal-card')) animation.pause();
+          return animation;
+        };
+      });
+      await card(page, played).click();
+      const first = state.commands[0];
+      const debt = { player_id: state.self, remaining: 1, rank: null, continuation: 'replay' };
+      Object.assign(s, { version: s.version + 1, hand: ['bells-A', 'leaves-A'], discard: [],
+        burned_count: oldPile.length + 1, current_player_id: state.self, afterthrow: null,
+        available_actions: ['draw'], playable_cards: [], pending_refill: debt, pending_refills: [debt], draw_required: true,
+        last_event: { type: 'play', player_id: state.self, cards: [played], burn_reason: reason, burned_count: oldPile.length + 1 } });
+      state.send(next);
+      state.raw({ hausdepp_command: { command_id: first.command_id, accepted: true, version: s.version } });
+      await expect.poll(() => state.commands.length).toBe(2);
+      const draw = state.commands[1];
+      expect(draw).toMatchObject({ action: 'hausdepp_draw', version: s.version });
+      await expect(page.locator('.hd-deal-card[data-motion-type="burn"]')).toHaveCount(oldPile.length + 1);
+      await expect(page.locator('#hausdeppBurnedCount')).toHaveText('0');
+      await expect(page.locator('#hausdeppPile')).toHaveAttribute('data-card-count', String(oldPile.length));
+      Object.assign(s, { version: s.version + 1, hand: ['bells-A', 'leaves-A', 'hearts-7'],
+        available_actions: ['play', 'gamble'], playable_cards: ['bells-A', 'leaves-A', 'hearts-7'],
+        pending_refill: null, pending_refills: [], draw_required: false,
+        last_event: { type: 'draw', player_id: state.self, drawn_count: 1 } });
+      state.send(next);
+      state.raw({ hausdepp_command: { command_id: draw.command_id, accepted: true, version: s.version } });
+      await expect(card(page, 'hearts-7')).toBeEnabled();
+      await expect(page.locator('#hausdeppStock')).toBeEnabled();
+      await card(page, 'hearts-7').click();
+      await expect.poll(() => state.commands.length).toBe(3);
+      expect(state.commands[2]).toMatchObject({ action: 'hausdepp_play', cards: ['hearts-7'], version: s.version });
+      await expect(page.locator('.hd-deal-card[data-motion-type="launch"]')).toHaveCount(1);
+      await expect(page.locator('.hd-deal-card[data-motion-type="burn"]')).toHaveCount(oldPile.length + 1);
+      await expect(page.locator('#hausdeppBurnedCount')).toHaveText('0');
+    });
+  }
+
+  test('three queued tens continue on acceptance while each burn retains its arrival order', async ({ page }) => {
     const state = await fixture(page, 'de');
     const tens = ['hearts-10', 'bells-10', 'leaves-10'];
     const next = structuredClone(state.board), s = next._hausdepp;
@@ -667,19 +717,18 @@ test.describe('own card flights and follow-up timing', () => {
       s.playable_cards = [...s.hand];
       state.send(next);
       state.raw({ hausdepp_command: { command_id: command.command_id, accepted: true, version: s.version } });
-      await expect(page.locator('.hd-deal-card[data-motion-type="play"]')).toHaveCount(1);
-      await expect(page.locator('.hd-deal-card[data-motion-type="burn"]')).toHaveCount(burnCount);
-      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-      // These are fresh plays after a clearance, rather than an open same-rank
-      // afterthrow. The queued action must wait for that burn's physical end.
-      expect(state.commands).toHaveLength(index + 1);
-      await expect(card(page, 'leaves-A')).toBeDisabled();
-      await page.locator('.hd-deal-card').evaluateAll(nodes => nodes.forEach(node =>
-        node.getAnimations().forEach(animation => animation.finish())));
+      await expect(page.locator('.hd-deal-card[data-motion-type="play"]')).toHaveCount(index + 1);
+      await expect(page.locator('.hd-deal-card[data-motion-type="burn"]')).toHaveCount(index + 2);
+      // Fresh own replays no longer wait for a burn picture. All three
+      // commands may be accepted while every public picture remains paused.
+      await expect.poll(() => state.commands.length).toBe(Math.min(tens.length, index + 2));
+      await expect(page.locator('#hausdeppBurnedCount')).toHaveText('0');
     }
-    await expect(page.locator('.hd-deal-card')).toHaveCount(0);
     await expect(card(page, 'leaves-A')).toBeEnabled();
     expect(state.commands.map(command => command.cards)).toEqual(tens.map(ten => [ten]));
+    await page.locator('.hd-deal-card').evaluateAll(nodes => nodes.forEach(node =>
+      node.getAnimations().forEach(animation => animation.finish())));
+    await expect(page.locator('.hd-deal-card')).toHaveCount(0);
     await expect(page.locator('#hausdeppBurnedCount')).toHaveText('4');
   });
 

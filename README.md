@@ -106,7 +106,10 @@ unread game rewards.
 
 **Deutsch:** Weiterführende Aktionen und Regelübersichten verwenden das
 Button-Design des jeweiligen Spiels. «Konto» öffnet in allen vier Spielen die
-Statistik. Profilbild- und Anmeldungsaktionen führen gezielt in die Einstellungen.
+Statistik. Verlinkte Spielernamen erhalten auch in Ranglisten, Erfolgen und
+Chats erkennbare Button-Flächen; Spieltabellen verwenden eine kompakte Variante.
+Verweise ganz unten im Suite-Footer bleiben Textlinks. Profilbild- und
+Anmeldungsaktionen führen gezielt in die Einstellungen.
 Die Kategorien der Kontoeinstellungen starten geschlossen und lassen sich einzeln
 öffnen. Eine erforderliche Passwortänderung öffnet den passenden Bereich direkt.
 Alle vier Kontobereiche bieten Statistik, Erfolge und Einstellungen in derselben
@@ -120,6 +123,9 @@ Anmeldung; Gäste erhalten diese Inhalte bereits ohne JavaScript auf Deutsch
 oder Englisch.
 
 **English:** Navigation actions and rule contents use each game's button style.
+Linked player names also have button faces in rankings, achievements and chats,
+with compact controls inside score tables. Links at the bottom of the suite footer
+remain text links.
 “Account” opens Statistics in all four games; profile-image and sign-in actions
 link directly to Settings. Account settings categories start collapsed and
 open individually. A required password change opens the relevant section directly.
@@ -130,6 +136,23 @@ update dialog. A separate account notice shows combined progress after an accoun
 merge; acknowledging it does not acknowledge game results or achievements.
 The Watten lobby explains players, variants and the aim of the game after sign-in
 as well; guests receive the same guide in German or English without JavaScript.
+
+## Kompakter Spielstart / compact game creation
+
+**Deutsch:** In der ZDWA-Lobby stehen Spielerzahl und Spielstart direkt bereit.
+Hardcore, Spielpasswort und Sprachchat liegen unter den zunächst eingeklappten
+«Spieloptionen». Gewählte Sonderoptionen bleiben in der Zusammenfassung sichtbar.
+Die zusätzliche Anzeige «Du spielst als …» entfällt; das Konto ist über den
+Kopfbereich erreichbar. Bei Hausdepp geben eine bestätigte Zehn oder vier gleiche
+Karten das Nachziehen und Weiterspielen sofort frei, während der Stapel weiter
+abgeräumt wird.
+
+**English:** The ZDWA lobby keeps the player count and game start directly available.
+Hardcore, game password and voice chat live under “Game options”, collapsed by
+default. A summary keeps selected extra options visible. The redundant “You are
+playing as …” line is removed; the header provides the account entry. In Hausdepp,
+an accepted ten or four of a kind immediately unlocks refilling and playing on
+while the pile continues to clear.
 
 ## Spiele und Funktionen verwalten / game and feature administration
 

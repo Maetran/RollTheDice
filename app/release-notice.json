@@ -1,28 +1,32 @@
 {
   "kind": "usability",
   "games": [
-    "watten",
-    "hausdepp"
+    "zdwa",
+    "hausdepp",
+    "zilch",
+    "watten"
   ],
-  "summary_de": "Watten hält Karten und Verlauf an ihrem Platz. Hausdepp zeigt den Abschluss ohne Nachladesprung.",
-  "summary_en": "Watten keeps cards and history in place. Hausdepp results appear without late layout shifts.",
+  "summary_de": "Klarere Buttons, kompakter ZDWA-Spielstart und sofortiges Weiterspielen nach dem Abräumen in Hausdepp.",
+  "summary_en": "Clearer buttons, compact ZDWA game creation and instant play after clearing the Hausdepp pile.",
   "player_notes": {
     "de": {
-      "title": "4.12.1: Ruhigere Spieltische",
+      "title": "4.12.2: Klarer starten und weiterspielen",
       "changes": [
-        "Dieses Update hält die Anzeige während des Spiels und beim Abschluss ruhiger.",
-        "WATTEN: Stich, Verlauf und Hand behalten beim Bieten, Halten und nach der letzten Karte ihre festen Bereiche.",
-        "WATTEN: Auf kurzen Telefonen bleiben Partnerhinweis und Entscheidungen lesbar und erreichbar.",
-        "HAUSDEPP: Der Abschluss erscheint mit dem geladenen Kontofortschritt und springt bei späteren Turnierupdates nicht erneut."
+        "Dieses Update macht Verweise klarer und verkürzt den Weg zum nächsten Spielzug.",
+        "ZDWA: Spielerzahl und Start bleiben sichtbar; Hardcore, Passwort und Sprachchat findest du unter Spieloptionen.",
+        "HAUSDEPP: Nach einer Zehn oder vier gleichen Karten sofort nachziehen und weiterspielen; das Profil im Ergebnis hat einen Button.",
+        "ZILCH: Verlinkte Spielernamen und die Kontoverwaltung aus der Spielersuche erhalten passende Buttons.",
+        "WATTEN: Auch Quellen und Lizenzen in der Anleitung sind als Buttons erreichbar."
       ]
     },
     "en": {
-      "title": "4.12.1: Calmer game tables",
+      "title": "4.12.2: Clearer starts and faster next moves",
       "changes": [
-        "This update keeps the display steadier during play and at the end of a round.",
-        "WATTEN: The trick, history and hand keep their reserved areas through bids, holding and playing your last card.",
-        "WATTEN: Partner advice and decisions remain readable and reachable on short phone screens.",
-        "HAUSDEPP: Results appear with loaded account progress and stay steady through later tournament updates."
+        "This update makes navigation clearer and gets you to your next move faster.",
+        "ZDWA: Player count and Start stay visible; find Hardcore, password and voice chat under Game options.",
+        "HAUSDEPP: Refill and play on immediately after a ten or four of a kind; the result profile action has a button.",
+        "ZILCH: Linked player names and the account action in player search use matching buttons.",
+        "WATTEN: Source and licence links in the rules are also available as buttons."
       ]
     }
   }

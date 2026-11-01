@@ -197,6 +197,10 @@ export function pileMotionPending(gameId) {
   return Boolean(pileStates.get(gameId)?.state.pending || launches.get(gameId)?.size);
 }
 
+export function ownClearancePending(gameId, playerId, version) {
+  return pileStates.get(gameId)?.canReplay(playerId, version) === true;
+}
+
 /**
  * Send the player's own card toward the pile at the tap. Waiting for the
  * server first left a faded copy in the hand and then flew a second one.

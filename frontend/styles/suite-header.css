@@ -1,3 +1,5 @@
+@import "./profile-links.css";
+
 /* Persistent public discovery stays outside client-rendered game roots. */
 [data-public-suite-links] {
   box-sizing: border-box;

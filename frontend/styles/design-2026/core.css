@@ -208,13 +208,13 @@
 :root[data-game="zdwa"][data-design="2026"] .lobby-page #createGameCard { order: -1; }
 
 :root[data-game="zdwa"][data-design="2026"] .lobby-page .create-game-card {
-  padding: 1.35rem 1.4rem 1.2rem;
+  padding: .9rem 1rem .85rem;
   border: 0;
   box-shadow: var(--shadow-md);
 }
 :root[data-game="zdwa"][data-design="2026"] .lobby-page .create-game-card h2 {
-  font-size: 1.45rem;
-  margin-bottom: .9rem;
+  font-size: 1.2rem;
+  margin-bottom: .5rem;
 }
 :root[data-game="zdwa"][data-design="2026"] .lobby-page .create-game-card legend,
 :root[data-game="zdwa"][data-design="2026"] .lobby-page .create-game-card .passphrase-field > span {

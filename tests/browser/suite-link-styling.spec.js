@@ -69,6 +69,27 @@ for (const language of ['de', 'en']) {
         await page.locator('.doc-content a[href="/rangabzeichen"]').click();
         await expect(page).toHaveURL(/\/rangabzeichen$/);
 
+        await page.goto('/');
+        await expectButtonLinks(page.locator('.about-game a[href="/regeln"]'), width);
+        await page.goto('/spieler');
+        await expect(page.locator('.player-finder-manage')).toBeVisible();
+        await expectButtonLinks(page.locator('[data-public-ranking-guide] a, .player-finder-manage'), width);
+        // Give the public ranking a deterministic linked account even when
+        // the disposable database has no finished games yet.
+        await page.route('**/api/players/ranking?**', route => route.fulfill({ json: { players: [{
+          username: 'Admin', rank: 1, games_played: 1, points_total: 100,
+          average_points: 100, max_points: 100, achievement_points: 0,
+        }] } }));
+        await page.reload();
+        const profile = page.locator('#rankingBody a.player-profile-link').first();
+        await expect(profile).toBeVisible();
+        // Rankings may scroll horizontally; the identity control itself
+        // must keep its button face and open the real account profile.
+        await profile.scrollIntoViewIfNeeded();
+        await expectButtonLinks(profile, width);
+        await profile.click();
+        await expect(page).toHaveURL(/\/spieler\/Admin$/);
+
         await page.goto('/hausdepp/regeln');
         await expect(page.locator('.hd-rulebook')).toBeVisible();
         const hausdeppContents = page.locator('.hd-rules-toc a');
@@ -82,7 +103,7 @@ for (const language of ['de', 'en']) {
         await expect(page.locator('html')).toHaveAttribute('lang', language);
         const wattenArticle = page.locator(`.wt-rules-text[lang="${language}"]`);
         await expect(wattenArticle).toBeVisible();
-        await expectButtonLinks(wattenArticle.locator('.wt-toc a, .wt-page-actions a'), width);
+        await expectButtonLinks(wattenArticle.locator('.wt-toc a, .wt-page-actions a, .wt-credits a'), width);
         await wattenArticle.locator('.wt-toc').scrollIntoViewIfNeeded();
         await page.screenshot({ path: testInfo.outputPath(`watten-rules-${language}-${width}.png`) });
         const firstRule = wattenArticle.locator('.wt-toc a').first();

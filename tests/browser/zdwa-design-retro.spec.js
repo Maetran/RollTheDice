@@ -81,6 +81,7 @@ test("Retro lobby marks the chosen tile clearly and keeps the Hardcore fill", as
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
   await expect(page.locator("html")).toHaveAttribute("data-design", "2026");
+  await page.locator("#createOptions > summary").click();
   const normal = page.locator(".mode-hardcore-row .choice-button:not(.hardcore-choice)");
   const hardcore = page.locator(".mode-hardcore-row .choice-button.hardcore-choice");
   await expect(normal).toHaveAttribute("aria-checked", "true");

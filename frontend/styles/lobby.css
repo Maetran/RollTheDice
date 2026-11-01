@@ -599,6 +599,10 @@
   min-width:2rem;
   min-height:2rem;
   color:inherit;
+  padding:.25rem;
+  border:1px solid var(--border);
+  border-radius:var(--radius-sm);
+  background:var(--surface);
   font-size:1.1rem;
   line-height:1;
   text-decoration:none;
@@ -928,3 +932,34 @@
   .lobby-page .game-row .actions button{ flex:1 1 0; width:auto; }
   .lobby-page .abandonment-bucket h3{ flex-wrap:wrap; }
 }
+
+/* The common path needs only player count and Start; less-used settings stay
+   available together, with selected exceptions visible on the disclosure. */
+.lobby-page .create-row .player-count-fieldset,
+.lobby-page .create-options,
+.lobby-page .create-game-actions{ grid-column:1 / -1; min-width:0; }
+.lobby-page .create-options > summary{
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:.2rem .5rem;
+  min-height:44px;
+  padding:.45rem .65rem;
+  border:1px solid var(--border);
+  border-radius:var(--radius-sm);
+  background:var(--surface-soft);
+  color:var(--text);
+  font-weight:700;
+  cursor:pointer;
+  list-style:none;
+}
+.lobby-page .create-options > summary::-webkit-details-marker{ display:none; }
+.lobby-page .create-options > summary::after{ content:'▾'; margin-left:auto; }
+.lobby-page .create-options[open] > summary::after{ content:'▴'; }
+.lobby-page .create-options > summary:focus-visible{ outline:2px solid var(--accent); outline-offset:3px; }
+.lobby-page .create-options-status{ color:var(--muted); font-size:.72rem; font-weight:600; }
+.lobby-page .create-options-fields{ display:grid; gap:.7rem; padding:.7rem 0 .2rem; }
+.lobby-page .create-game-actions{ display:flex; align-items:stretch; gap:.45rem; }
+.lobby-page .create-game-actions > #createBtn,
+.lobby-page .create-game-actions > .button-link{ flex:1 1 0; width:auto; min-width:0; min-height:44px; margin:0; padding:.45rem .55rem; font-size:.85rem; }
+.lobby-page .player-setup-card.authenticated .account-identity[hidden]{ display:none; }

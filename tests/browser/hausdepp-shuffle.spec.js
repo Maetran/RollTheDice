@@ -327,7 +327,7 @@ async function pausePublicPictures(page) {
 }
 
 for (const reason of ['ten', 'four_of_a_kind']) {
-  test(`a ${reason} burn keeps the cause readable and refills only after the last physical arrival`, async ({ page }) => {
+  test(`a ${reason} burn keeps the cause readable while the own mandatory refill starts immediately`, async ({ page }) => {
     const fixture = await rendererFixture(page, { initial: 'playing' });
     await freezePileGeometry(page);
     const initial = phaseBoard(fixture.real, 'playing', { version: 30 });
@@ -357,20 +357,20 @@ for (const reason of ['ten', 'four_of_a_kind']) {
     await expectPileProjection(page, initial._hausdepp.discard);
     await expect(page.locator('#hausdeppBurnedCount')).toHaveText('0');
     await expect(page.locator('#hausdeppStock')).toBeDisabled();
-    expect(fixture.commands).toEqual([]);
+    await expect.poll(() => fixture.commands.filter(command => command.action === 'hausdepp_draw').length).toBe(1);
 
     await landPilePictures(page, 'cause');
     await expectPileProjection(page, [...initial._hausdepp.discard, played]);
     await expect(page.locator(`.hd-deal-card[data-motion-type="${next._hausdepp.last_event.type}"]`)).toHaveCount(0);
     await expect(page.locator('.hd-deal-card[data-motion-type="pile-rest"]')).toHaveCount(0);
     await expect(page.locator('#hausdeppStock')).toBeDisabled();
-    expect(fixture.commands).toEqual([]);
+    expect(fixture.commands.map(command => command.action)).toEqual(['hausdepp_draw']);
     // Earlier cards may reach the burned stack, but the final moving card
-    // still gates the public count and the mandatory refill.
+    // still gates the public count. The private refill has already started.
     await landPilePictures(page, 'burn', { leaveLast: true });
     await expect(page.locator('#hausdeppStock')).toBeDisabled();
     await expect(page.locator('#hausdeppBurnedCount')).toHaveText('0');
-    expect(fixture.commands).toEqual([]);
+    expect(fixture.commands.map(command => command.action)).toEqual(['hausdepp_draw']);
     await landPilePictures(page, 'burn');
     await expectPileProjection(page, []);
     await expect(page.locator('#hausdeppBurnedCount')).toHaveText(String(next._hausdepp.burned_count));
@@ -743,6 +743,10 @@ test.describe('stable pile geometry', () => {
           await expect(page.locator('.hd-deal-card[data-motion-type="burn"]')).toHaveCount(4);
           await expectBurnCauseGeometry(page, testInfo, { name: 'four-equal', before: beforeBurn,
             incoming: 'four-equal-play', discard: [...burn._hausdepp.discard, 'hearts-6'] });
+          // Its mandatory refill starts while the quartet is still clearing;
+          // this renderer fixture deliberately leaves that command unacknowledged.
+          const expectedRefill = [{ action: 'hausdepp_draw', version: burned._hausdepp.version }];
+          await expect.poll(() => fixture.commands.map(({ action, version }) => ({ action, version }))).toEqual(expectedRefill);
 
           // A second accepted action must retain the unfinished first flight.
           // The packet advances in physical arrival order, never on receipt.
@@ -766,7 +770,7 @@ test.describe('stable pile geometry', () => {
             incoming: 'rapid-first-play', discard: first._hausdepp.discard });
           await expectArrivingPilePictures(page, testInfo, { name: 'rapid-second', before: firstDestination,
             incoming: 'rapid-second-play', discard: second._hausdepp.discard });
-          expect(fixture.commands).toEqual([]);
+          expect(fixture.commands.map(({ action, version }) => ({ action, version }))).toEqual(expectedRefill);
         });
       });
     }

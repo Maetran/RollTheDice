@@ -52,7 +52,7 @@ export function mountPlayerSearch(mount, { context = "zdwa", renderPlayer } = {}
   const retry = element("button", t("Erneut versuchen"), "small ghost");
   retry.type = "button";
   retry.hidden = true;
-  const manage = element("a", t("Spielerauswahl im Konto verwalten"), "player-finder-manage");
+  const manage = element("a", t("Spielerauswahl im Konto verwalten"), "player-finder-manage button-link small");
   manage.href = path("/konto?allowlist=1#settings");
   actions.append(more, retry, manage);
   mount.replaceChildren(heading, hint, form, message, results, actions);

@@ -319,6 +319,11 @@ async function expectCompactGeometry(page, width, height) {
         const controlRect = control.getBoundingClientRect();
         return { width: controlRect.width, height: controlRect.height };
       }),
+      links: [...node.querySelectorAll('.hd-result-links > a')].map(link => {
+        const style = getComputedStyle(link);
+        return { href: link.getAttribute('href'), decoration: style.textDecorationLine,
+          border: parseFloat(style.borderTopWidth), padding: parseFloat(style.paddingLeft) };
+      }),
       rows: [...node.querySelectorAll('.hd-result-place')].map(row => {
         const rank = row.querySelector('.hd-result-rank');
         const name = row.querySelector('.hd-result-name');
@@ -352,6 +357,13 @@ async function expectCompactGeometry(page, width, height) {
   for (const control of geometry.controls) {
     expect(control.width).toBeGreaterThanOrEqual(44);
     expect(control.height).toBeGreaterThanOrEqual(44);
+  }
+  expect(geometry.links.length).toBeGreaterThan(0);
+  for (const link of geometry.links) {
+    expect(link.href).toBeTruthy();
+    expect(link.decoration).toBe('none');
+    expect(link.border).toBeGreaterThan(0);
+    expect(link.padding).toBeGreaterThan(4);
   }
   expect(geometry.rows.length).toBeGreaterThan(0);
   for (const row of geometry.rows) {

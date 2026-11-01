@@ -29,7 +29,7 @@ test('same-version UI renders and private refills cannot reveal an in-flight pap
   assert.deepEqual(pile.state.discard, ['acorns-U', 'hearts-U']);
 });
 
-test('a burn first receives the thrown card, then removes its papers and unlocks at the cleared stack', () => {
+test('a burn first receives the thrown card, then removes its papers and settles at the cleared stack', () => {
   const pile = createPilePresentation();
   pile.quiet(state(1, ['acorns-U']));
   const token = pile.accept(state(2, [], 2), true);
@@ -39,6 +39,30 @@ test('a burn first receives the thrown card, then removes its papers and unlocks
   assert.deepEqual(pile.state, { discard: [], burned_count: 0, pending: true });
   pile.finish(token);
   assert.deepEqual(pile.state, { discard: [], burned_count: 2, pending: false });
+});
+
+test('only the latest own clearance releases its continuing empty-table turn through private refills', () => {
+  const pile = createPilePresentation();
+  const board = (version, discard, extra = {}) => ({ ...state(version, discard), phase: 'playing', current_player_id: 'self', ...extra });
+  pile.quiet(board(1, ['acorns-U']));
+  assert.equal(pile.canReplay('self', 1), false);
+  const burn = pile.accept(board(2, [], { last_event: { player_id: 'self', burn_reason: 'ten' } }), true);
+  assert.equal(pile.canReplay('self', 2), true);
+  assert.equal(pile.canReplay('self', 1), false, 'a stale snapshot cannot borrow the accepted clearance');
+  assert.equal(pile.canReplay('self', 3), false, 'an unaccepted version cannot borrow the clearance');
+  assert.equal(pile.canReplay('other', 2), false);
+  pile.accept(board(3, [], { last_event: { type: 'draw', player_id: 'self' } }));
+  assert.equal(pile.canReplay('self', 3), true, 'refilling cannot reinstate the burn animation gate');
+  assert.equal(pile.canReplay('self', 2), false, 'the private refill advances the required snapshot version');
+  assert.equal(pile.accept(board(2, [], { last_event: { player_id: 'other', burn_reason: 'ten' } }), true), null);
+  assert.equal(pile.canReplay('self', 3), true, 'a stale public event cannot replace the accepted clearance');
+  const play = pile.accept(board(4, ['bells-O'], { current_player_id: 'other', last_event: { type: 'play', player_id: 'self' } }), true);
+  assert.equal(pile.canReplay('self', 4), false);
+  pile.accept(board(5, [], { last_event: { type: 'pickup', player_id: 'other' } }), true);
+  assert.equal(pile.canReplay('self', 5), false, 'an older own clearance cannot release a later regained turn');
+  pile.finish(burn); pile.finish(play);
+  pile.quiet(board(6, [], { last_event: { player_id: 'self', burn_reason: 'four_of_a_kind' } }));
+  assert.equal(pile.canReplay('self', 6), false, 'quiet hydration has no pending clearance');
 });
 
 test('a queued pickup and next throw keep their independent arrivals and current accepted ending', () => {
