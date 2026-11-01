@@ -1,23 +1,28 @@
 {
   "kind": "usability",
-  "games": ["hausdepp", "watten"],
-  "summary_de": "Seltene Tischüberraschungen dauern länger und werden mit jedem Spiel wahrscheinlicher.",
-  "summary_en": "Rare table surprises last longer and become more likely with each game.",
+  "games": [
+    "watten",
+    "hausdepp"
+  ],
+  "summary_de": "Watten hält Karten und Verlauf an ihrem Platz. Hausdepp zeigt den Abschluss ohne Nachladesprung.",
+  "summary_en": "Watten keeps cards and history in place. Hausdepp results appear without late layout shifts.",
   "player_notes": {
     "de": {
-      "title": "4.12.0: Mehr Zeit für Überraschungen",
+      "title": "4.12.1: Ruhigere Spieltische",
       "changes": [
-        "Seltene Funde bekommen mehr Zeit für ihren grossen Auftritt.",
-        "HAUSDEPP: Die Chance auf einen Fund steigt mit jeder Runde; nach einer ausgelösten Überraschung beginnt sie wieder bei 1 %.",
-        "WATTEN: Auch gegen Computer kannst du seltene Funde entdecken. Auf engen Displays bleiben sie erreichbar."
+        "Dieses Update hält die Anzeige während des Spiels und beim Abschluss ruhiger.",
+        "WATTEN: Stich, Verlauf und Hand behalten beim Bieten, Halten und nach der letzten Karte ihre festen Bereiche.",
+        "WATTEN: Auf kurzen Telefonen bleiben Partnerhinweis und Entscheidungen lesbar und erreichbar.",
+        "HAUSDEPP: Der Abschluss erscheint mit dem geladenen Kontofortschritt und springt bei späteren Turnierupdates nicht erneut."
       ]
     },
     "en": {
-      "title": "4.12.0: More time for surprises",
+      "title": "4.12.1: Calmer game tables",
       "changes": [
-        "Rare finds get more time for their big moment.",
-        "HAUSDEPP: Your chance of a find rises with each round and starts again at 1% after a surprise is triggered.",
-        "WATTEN: You can discover rare finds against computers too. They remain reachable on compact displays."
+        "This update keeps the display steadier during play and at the end of a round.",
+        "WATTEN: The trick, history and hand keep their reserved areas through bids, holding and playing your last card.",
+        "WATTEN: Partner advice and decisions remain readable and reachable on short phone screens.",
+        "HAUSDEPP: Results appear with loaded account progress and stay steady through later tournament updates."
       ]
     }
   }
