@@ -12,7 +12,6 @@
 .mission-tools{gap:12px}
 body:not([data-dashboard-design="lcars"]) :is(.mission-sections a, .account-link, .favorites-empty a) {
   box-sizing: border-box;
-  display: inline-flex;
   align-items: center;
   justify-content: center;
   min-height: 44px;
