@@ -712,6 +712,7 @@ html[data-watten-active="true"] .wt-table[data-phase="match_complete"][data-roun
   background: #fff3df; border: 1px solid #b58850; box-shadow: 0 8px 28px #3a1e1440;
 }
 html[data-watten-active="true"] .wt-final-winner { margin-bottom: 14px; font-size: .9rem; overflow-wrap: anywhere; }
+html[data-watten-active="true"] .wt-panel .wt-final-heading { font-size: clamp(1.35rem, 4vw, 1.8rem); margin-bottom: 8px; }
 html[data-watten-active="true"] .wt-final .wt-rematch { padding: 0; border: 0; }
 html[data-watten-active="true"] .wt-final .wt-rematch > h3 {
   position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
@@ -722,8 +723,11 @@ html[data-watten-active="true"] .wt-final .wt-rematch .wt-error:empty { display:
 html[data-watten-active="true"] .wt-final-call { border-top: 1px solid #bc8a4e44; }
 html[data-watten-active="true"] .wt-final-call[open] { padding-bottom: 12px; }
 html[data-watten-active="true"] .wt-final-award { margin: 6px 0; font-size: .85rem; }
-html[data-watten-active="true"] .wt-final-actions { margin: 4px 0; }
-html[data-watten-active="true"] .wt-final-actions > a { background: transparent; border-color: transparent; color: #6b4731; min-height: 44px; }
+html[data-watten-active="true"] .wt-final-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; gap: 8px; margin: 8px 0; }
+html[data-watten-active="true"] .wt-final-actions:not(:has(> [data-watten-rematch]:not([hidden]))) { grid-template-columns: minmax(0, 1fr); }
+html[data-watten-active="true"] .wt-final-actions > :is(a, div) { min-width: 0; }
+html[data-watten-active="true"] .wt-final-actions > a { background: #fff3df; border-color: #a87043; color: #6b4731; min-height: 44px; padding: 8px; font-size: .85rem; }
+html[data-watten-active="true"] .wt-final-actions .wt-rematch > button { height: 100%; min-height: 44px; margin: 0; padding: 8px; font-size: .85rem; }
 html[data-watten-active="true"] .wt-table[data-phase="match_complete"][data-round-stage="ready"] .wt-history-box {
   background: transparent; padding: 0; border: 0; border-top: 1px solid #bc8a4e44; border-radius: 0;
 }

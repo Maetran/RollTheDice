@@ -1,0 +1,33 @@
+/* Server-projected loss marks lead the rematch and finished-match views. */
+.wt-series-summary { margin: .6rem 0; padding: .65rem; border: 1px solid var(--wt-paper-edge); border-radius: 10px; background: var(--wt-paper-2); }
+.wt-series-caption { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: .2rem .5rem; margin: 0 0 .4rem; font-size: .9rem; font-weight: 750; }
+.wt-series-caption > span { font-size: .7rem; font-weight: 500; color: var(--wt-muted); }
+.wt-series-standings { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .45rem; margin: 0; }
+.wt-series-standings[data-groups="3"] { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.wt-series-standings > div { min-width: 0; padding: .4rem; text-align: center; border: 1px solid var(--wt-paper-edge); border-radius: 7px; background: var(--wt-paper); }
+.wt-series-standings > .is-own { border-color: var(--wt-green); }
+.wt-series-standings dt { font-size: .8rem; font-weight: 700; line-height: 1.2; overflow-wrap: anywhere; }
+.wt-series-standings dd { display: flex; align-items: baseline; justify-content: center; flex-wrap: wrap; gap: .15rem .3rem; margin: .15rem 0 0; line-height: 1.1; }
+.wt-series-value { font: 750 2rem/1 Georgia, serif; font-variant-numeric: tabular-nums; }
+.wt-series-unit { font-size: .68rem; }
+.wt-final .wt-series-summary { padding: .45rem; text-align: left; }
+.wt-final .wt-series-caption { font-size: .8rem; margin-bottom: .25rem; }
+.wt-final .wt-series-standings > div { padding: .3rem; }
+.wt-final .wt-series-value { font-size: 1.75rem; }
+
+/* Fixed teams need a roster confirmation, without the seat-selection chrome. */
+.wt-waiting.wt-waiting--rematch { padding: .75rem; }
+.wt-waiting--rematch .wt-waiting-head h2 { margin: 0 0 .4rem; font-size: 1.35rem; }
+.wt-waiting--rematch .wt-teams { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; }
+.wt-waiting--rematch .wt-team { min-width: 0; padding: .5rem; }
+.wt-waiting--rematch .wt-team h3 { margin: 0 0 .3rem; font-size: 1rem; }
+.wt-waiting--rematch .wt-seat-list { grid-template-columns: minmax(0, 1fr); gap: 0; margin: 0; }
+.wt-waiting--rematch .wt-seat-slot { gap: .2rem .3rem; padding: .4rem 0; border: 0; border-top: 1px solid var(--wt-paper-edge); border-radius: 0; background: transparent; box-shadow: none; }
+.wt-waiting--rematch .wt-seat-slot strong { flex: 1 1 100%; min-width: 0; font-size: .88rem; line-height: 1.25; }
+.wt-waiting--rematch .wt-seat-slot.is-own { border-top-color: var(--wt-green); }
+.wt-waiting--rematch :is(.wt-seat-number, .wt-tag--host) { display: none; }
+.wt-waiting--rematch .wt-seat-slot .wt-tag { padding: .05rem .3rem; font-size: .65rem; }
+.wt-waiting--rematch > .wt-note { margin: .4rem 0; font-size: .8rem; line-height: 1.35; }
+.wt-waiting--rematch :is(.wt-waiting-recipe, [data-watten-table-features]) { margin: .25rem 0; border-top: 1px solid var(--wt-paper-edge); }
+.wt-waiting--rematch :is(.wt-waiting-recipe, [data-watten-table-features]) > summary { display: flex; align-items: center; min-height: 44px; padding: .2rem 0; cursor: pointer; font-size: .85rem; }
+.wt-waiting--rematch .wt-waiting-actions { margin-top: .5rem; }

@@ -119,7 +119,8 @@ async function finishedRenderer(page, fixture, { spectator = false, tournament =
   if (waitForResult) {
     await expect(page.locator('#hausdeppResult')).toBeVisible();
     await expect(page.locator('#hausdeppLeaveGame')).toBeHidden();
-    await expect(page.locator('#hausdeppLeaveGameResult')).toBeVisible();
+    if (spectator || tournament) await expect(page.locator('#hausdeppLeaveGameResult')).toBeVisible();
+    else await expect(page.locator('#hausdeppLeaveGameResult')).toBeHidden();
   }
   return { id, board, self, loser, sent,
     publish(extra = {}) { for (const socket of simulatedSockets) socket.send(JSON.stringify({ scoreboard: board, ...extra })); },
@@ -166,6 +167,7 @@ test('a stalled account request cannot block the result or add a late layout shi
   await expect(result).toBeVisible({ timeout: 5000 });
   await expect(result.locator('.hd-round-earned')).toContainText('+27 EP');
   await expect(result.locator('.hd-round-account')).toHaveCount(0);
+  await expect(result.locator('a[href="/hausdepp/konto#erfolge"]')).toBeVisible();
   const before = await result.boundingBox();
   releaseAccount();
   await page.waitForTimeout(200);
@@ -315,11 +317,11 @@ async function expectCompactGeometry(page, width, height) {
       overflow: node.scrollWidth > node.clientWidth + 1,
       pageOverflow: document.documentElement.scrollWidth > innerWidth + 1,
       headingSize: Number.parseFloat(getComputedStyle(node.querySelector('h2')).fontSize),
-      controls: [...node.querySelectorAll('button, a[href]')].filter(control => control.getClientRects().length).map(control => {
+      controls: [...node.querySelectorAll('button, a[href], summary')].filter(control => control.getClientRects().length).map(control => {
         const controlRect = control.getBoundingClientRect();
         return { width: controlRect.width, height: controlRect.height };
       }),
-      links: [...node.querySelectorAll('.hd-result-links > a')].map(link => {
+      links: [...node.querySelectorAll('a[href]')].map(link => {
         const style = getComputedStyle(link);
         return { href: link.getAttribute('href'), decoration: style.textDecorationLine,
           border: parseFloat(style.borderTopWidth), padding: parseFloat(style.paddingLeft) };
@@ -491,10 +493,37 @@ for (const language of ['de', 'en']) {
     await expect(result.locator('.hd-round-account')).toContainText(language === 'de' ? 'Stammgast' : 'Regular');
     await expect(result.locator('.hd-round-account')).toContainText('68');
     await expect(result.locator('.hd-round-account')).toContainText(language === 'de' ? 'Tischlegende' : 'Table legend');
+    await expect(result.locator('.hd-round-account')).not.toHaveAttribute('open');
+    await expect(result.locator('.hd-round-account > summary')).toBeVisible();
+    await expect(result.locator('.hd-round-account-content')).toBeHidden();
+    await expect(result.locator('.hd-result-links > :is(a, button):visible')).toHaveCount(2);
+    await expect(page.locator('#hausdeppLeaveGameResult')).toBeHidden();
     await expect(result).not.toContainText(`+900 ${xp}`);
     await expect(result.locator('.hd-progress-notice')).toHaveCount(0);
     await expect(result).not.toContainText(/Ein Abend, der zählt|An evening that counts|Gleiche Tischgrösse|Same table size/);
-    await expect(page.locator('#hausdeppRecreate')).toHaveText(language === 'de' ? 'Neu erstellen' : 'Create again');
+    await expect(page.locator('#hausdeppRecreate')).toHaveText(language === 'de' ? 'Revanche starten' : 'Start rematch');
+    await expect(page.locator('#hausdeppRoomInvitation')).toBeHidden();
+
+    await result.locator('.hd-round-account > summary').click();
+    await expect(result.locator('.hd-round-account-content')).toBeVisible();
+    const accountLink = result.locator('.hd-round-account-content > a[href="/hausdepp/konto#erfolge"]');
+    await expect(accountLink).toHaveCount(1);
+    await expect(accountLink).toBeVisible();
+    await expect(accountLink).toHaveCSS('text-decoration-line', 'none');
+    // Check the actual progress destination after opening it. Lobby buttons
+    // cannot prove that this formerly plain profile link keeps its button skin.
+    const accountAppearance = await accountLink.evaluate(node => {
+      const rect = node.getBoundingClientRect(), style = getComputedStyle(node);
+      return { width: rect.width, height: rect.height, border: parseFloat(style.borderTopWidth),
+        paddingLeft: parseFloat(style.paddingLeft), paddingRight: parseFloat(style.paddingRight) };
+    });
+    expect(accountAppearance.width).toBeGreaterThanOrEqual(44);
+    expect(accountAppearance.height).toBeGreaterThanOrEqual(44);
+    expect(accountAppearance.border).toBeGreaterThan(0);
+    expect(accountAppearance.paddingLeft).toBeGreaterThan(4);
+    expect(accountAppearance.paddingRight).toBeGreaterThan(4);
+    await expectCompactGeometry(page, 390, 844);
+    await result.locator('.hd-round-account > summary').click();
 
     useLongResultNames(rendered.board);
     await page.reload();
@@ -539,6 +568,7 @@ for (const language of ['de', 'en']) {
     await expect(page.locator('#hausdeppNextRound')).toBeVisible();
     await expect(page.locator('#hausdeppNextRound')).toContainText('5');
     await expect(page.locator('#hausdeppRecreate')).toHaveCount(0);
+    await expect(page.locator('#hausdeppRoomInvitation')).toBeHidden();
     useLongResultNames(source.board);
     await page.reload();
     await expect(result.locator('.hd-result-name')).toHaveCount(3);
@@ -552,7 +582,7 @@ for (const language of ['de', 'en']) {
 
 test('keyboard focus follows the table exit into the finished result sheet', async ({ page }) => {
   const fixture = await setup(page);
-  const live = await finishedRenderer(page, fixture);
+  const live = await finishedRenderer(page, fixture, { tournament: true });
   live.board._finished = false;
   live.board._hausdepp.phase = 'playing';
   live.publish();
@@ -570,22 +600,36 @@ test('keyboard focus follows the table exit into the finished result sheet', asy
   await expect(tableExit).toBeFocused();
 });
 
-test('spectators see the public round result without requesting private account progress', async ({ page }) => {
+for (const tournament of [false, true]) test(`spectators see only public ${tournament ? 'tournament' : 'round'} results and one local exit`, async ({ page }) => {
   const fixture = await setup(page);
-  const rendered = await finishedRenderer(page, fixture, { spectator: true });
+  const rendered = await finishedRenderer(page, fixture, { spectator: true, tournament });
   const result = page.locator('#hausdeppResult');
   await expect(result.locator('.hd-result-places')).toBeVisible();
   await expect(result.locator('h2')).toContainText('Rosi');
   await expect(result.locator('.hd-round-account')).toHaveCount(0);
   await expect(result.locator('.hd-round-earned')).toHaveCount(0);
   await expect(page.locator('#hausdeppRecreate, #hausdeppNextRound')).toHaveCount(0);
+  await expect(result.locator('a[href="/hausdepp/konto#erfolge"], a[href="/hausdepp"]')).toHaveCount(0);
+  await expect(result.locator('.hd-result-links > button:visible')).toHaveCount(1);
   expect(fixture.accountReads()).toBe(0);
   const leave = page.locator('#hausdeppLeaveGameResult');
   await expect(leave).toHaveAccessibleName('Tisch verlassen');
   await expect(leave).toBeEnabled();
+  await expect(leave).toHaveClass(/hd-primary/);
   await leave.click();
   await expect(page).toHaveURL(url => url.pathname === '/hausdepp');
   expect(rendered.sent).toEqual([]);
+});
+
+test('a withdrawn prior participant has a lobby action without an unusable rematch', async ({ page }) => {
+  const fixture = await setup(page);
+  const live = await finishedRenderer(page, fixture);
+  live.board._hausdepp.withdrawn_ids = [live.self];
+  live.board._hausdepp.players.find(player => player.id === live.self).withdrawn = true;
+  await page.reload();
+  await expect(page.locator('#hausdeppResult')).toBeVisible();
+  await expect(page.locator('#hausdeppRecreate')).toHaveCount(0);
+  await expect(page.locator('#hausdeppResult .hd-result-links > a[href="/hausdepp"]')).toBeVisible();
 });
 
 test('equal XP and achievements only acknowledge the currently displayed round source', async ({ page }) => {

@@ -129,6 +129,11 @@ for (const [language, theme, status] of [["de", "light", "completed"], ["en", "l
       await page.goto("/zilch/spiel/mobile-zilch-result");
       await expect(page.locator(".zilch-result-summary")).toBeVisible();
       await expect(page.locator(".zilch-shell--game")).toHaveCount(0);
+      await expect(page.locator(".zilch-result-details")).not.toHaveAttribute("open");
+      await expect(page.locator(".zilch-result-board-grid")).toBeHidden();
+      await expect(page.locator(".zilch-result-summary")).toContainText(/Solo-Ziel|Solo objective/);
+      expect((await page.locator(".zilch-result-overview").boundingBox()).height).toBeLessThan(520);
+      await page.screenshot({ path:testInfo.outputPath(`zilch-compact-report-${language}-${theme}.png`) });
       for (const inset of [0, 34]) {
         await page.evaluate(value => document.documentElement.style.setProperty("--zilch-room-safe-bottom", `${value}px`), inset);
         for (const selector of [".zilch-result-actions__new-round", ".zilch-result-actions__lobby"]) {

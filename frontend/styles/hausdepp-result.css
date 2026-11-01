@@ -24,7 +24,14 @@ html[data-game="hausdepp"] body.hd-playing #hausdeppResult:not([hidden]) {
 #hausdeppResult .hd-round-earned > span, #hausdeppResult .hd-round-next { color: var(--hd-muted); font-size: 14px; }
 #hausdeppResult .hd-round-account p { display: flex; justify-content: space-between; gap: 4px 12px; flex-wrap: wrap; margin: 0; font-size: 14px; }
 #hausdeppResult .hd-round-account .hd-round-next { margin-top: 4px; }
+#hausdeppResult .hd-round-account > summary { width: 100%; min-height: 44px; justify-content: space-between; }
+#hausdeppResult .hd-round-account > summary::after { content: "+"; font-size: 20px; line-height: 1; }
+#hausdeppResult .hd-round-account[open] > summary::after { content: "−"; }
+#hausdeppResult .hd-round-account-content { display: grid; gap: 8px; padding-top: 10px; }
+#hausdeppResult .hd-round-account-content > a { justify-self: start; }
+#hausdeppResult .hd-round-progress > a { width: 100%; justify-content: center; }
 #hausdeppResult .hd-result-links { margin-top: 16px; max-width: none; }
+#hausdeppResult .hd-tournament-wait { grid-column: 1 / -1; margin: 0; color: var(--hd-muted); font-size: 14px; }
 #hausdeppResult .hd-error:empty { display: none; }
 @media (min-width: 1100px) {
   html[data-game="hausdepp"] body.hd-playing #hausdeppResult:not([hidden]) {

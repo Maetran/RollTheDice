@@ -61,8 +61,35 @@ test("waiting-room controls follow the viewer projection and still permit cleari
   assert.match(html, /data-feature="watten.open_partner_hand"\s+data-enabled="true" disabled>/);
   assert.match(html, /data-feature="watten.trick_history"\s+data-enabled="true" disabled>/);
   assert.match(html, /data-watten-feature-beta="watten.show_rechter">Beta/);
+  assert.match(html, /data-watten-internal-feature-hint/);
   assert.equal(waitingFeatureControlsMarkup(room), "");
   assert.equal(waitingFeatureControlsMarkup({ ...room, status: "started" }, { member: true }), "");
+});
+
+test("public waiting settings stay editable without a staff hint, including fixed-roster continuations", () => {
+  const room = { status: "waiting", series: { teams_locked: true }, feature_controls: {
+    "watten.show_rechter": { can_select: true, can_enable: true, enabled: false, status: "public", beta: false },
+    "watten.trick_history": { can_select: true, can_enable: true, enabled: true, status: "public", beta: true },
+    "watten.critical": { can_select: false, can_enable: false, enabled: false, status: "internal", beta: false },
+  } };
+  const html = waitingFeatureControlsMarkup(room, { member: true });
+  assert.match(html, /data-feature="watten.show_rechter"\s+data-enabled="true">/);
+  assert.match(html, /data-feature="watten.trick_history"\s+data-enabled="false" checked>/);
+  assert.doesNotMatch(html, /data-feature="watten.critical"|data-watten-internal-feature-hint/);
+  for (const status of ["started", "finished", "closed"]) {
+    assert.equal(waitingFeatureControlsMarkup({ ...room, status }, { member: true }), "");
+  }
+});
+
+test("internal and revoked remove-only settings retain their projected controls", () => {
+  for (const status of ["internal", "off"]) {
+    const room = { status: "waiting", feature_controls: {
+      "watten.critical": { can_select: true, can_enable: false, enabled: true, status, beta: false },
+    } };
+    const html = waitingFeatureControlsMarkup(room, { member: true });
+    assert.match(html, /data-feature="watten.critical"\s+data-enabled="false" checked>/);
+    assert.equal(html.includes("data-watten-internal-feature-hint"), status === "internal");
+  }
 });
 
 function fixture({ fetcher, auth } = {}) {

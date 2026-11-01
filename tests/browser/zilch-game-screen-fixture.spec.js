@@ -1550,11 +1550,14 @@ test("a private solo result keeps its actions usable when background awards are 
     await expect(soloActions.getByRole("link", { name: /Zur Zilch-Lobby|Back to Zilch lobby/ })).toBeVisible();
     expect(await soloActions.evaluate(actions => {
       const summary = document.querySelector(".zilch-result-summary");
-      return Boolean(summary && (actions.compareDocumentPosition(summary) & Node.DOCUMENT_POSITION_FOLLOWING));
+      return Boolean(summary && (actions.compareDocumentPosition(summary) & Node.DOCUMENT_POSITION_PRECEDING));
     })).toBe(true);
-    // The result keeps one compact table balance rather than duplicating the
-    // objective/progress cards, but preserves the useful sprint metrics.
+    // Only the final score, objective and actions are initially expanded.
+    // The existing report remains reachable through its own disclosure.
     await expect(page.locator(".zilch-solo-objective, .zilch-solo-metrics")).toHaveCount(0);
+    await expect(page.locator(".zilch-result-details")).not.toHaveAttribute("open");
+    await expect(page.locator(".zilch-result-metrics")).toBeHidden();
+    await page.locator(".zilch-result-details > summary").click();
     await expect(page.locator(".zilch-result-metrics")).toContainText(/Züge|Turns/);
     await expect(page.locator(".zilch-result-metrics")).toContainText(/Würfe|Rolls/);
     await expect(page.locator(".zilch-result-metrics")).toContainText(/Aktive Dauer|Active duration/);
@@ -1746,7 +1749,7 @@ test("an incoming CPU roll lands visibly without a local roll action", async ({ 
   }
 });
 
-test("a finished Zilch game starts the same mode again with one click", async ({ browser, baseURL }) => {
+test("a finished Zilch game starts the same mode again with one click", async ({ browser, baseURL }, testInfo) => {
   const context = await browser.newContext({ baseURL, serviceWorkers: "block" });
   const page = await context.newPage();
   try {
@@ -1792,8 +1795,11 @@ test("a finished Zilch game starts the same mode again with one click", async ({
     await page.goto(`/zilch/spiel/${gameId}`);
     const restart = page.locator("[data-zilch-new-round]");
     await expect(restart).toBeVisible();
-    await expect(restart).toHaveText(/Revanche|Rematch/);
+    await expect(restart).toHaveText(/Neue Runde|New round/);
     await expect(page.locator(".zilch-result-summary")).toBeVisible();
+    await page.setViewportSize({ width: 390, height: 844 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath("zilch-two-player-compact-result.png") });
     await Promise.all([
       page.waitForRequest(request => request.method() === "POST" && new URL(request.url()).pathname === "/api/games"),
       restart.click(),
@@ -2195,7 +2201,7 @@ test("an abandoned solo run keeps score and result balanced with clear actions",
     await expect(resultActions.getByRole("link", { name: /Zur Zilch-Lobby|Back to Zilch lobby/ })).toHaveAttribute("href", "/zilch");
     expect(await resultActions.evaluate(actions => {
       const summary = document.querySelector(".zilch-result-summary");
-      return Boolean(summary && (actions.compareDocumentPosition(summary) & Node.DOCUMENT_POSITION_FOLLOWING));
+      return Boolean(summary && (actions.compareDocumentPosition(summary) & Node.DOCUMENT_POSITION_PRECEDING));
     })).toBe(true);
 
     // A durable ready projection still displays the game's actual honors.

@@ -37,7 +37,7 @@ export function seriesSummaryMarkup(vm) {
         : seats.map(seat => vm.room.seats[seat]?.name || t("seat.number", { seat: seat + 1 })).join(" & ");
   const groups = (series.nockerl || []).slice().sort((a, b) => Number(b.seats.includes(vm.viewerSeat)) - Number(a.seats.includes(vm.viewerSeat)));
   return `<section class="wt-series-summary${series.finished ? " wt-series-result" : ""}" data-watten-series aria-label="${esc(t("series.standing"))}">
-    <p class="wt-series-caption">${esc(t(series.target ? "series.tournamentStanding" : "series.standing"))}</p>
-    <dl class="wt-series-standings">${groups.map(group => `<div><dt>${esc(label(group.seats))}</dt><dd>${esc(t("series.marks", { count: group.count }))}</dd></div>`).join("")}</dl>
+    <p class="wt-series-caption">${esc(t(series.target ? "series.tournamentStanding" : "series.standing"))}${series.target ? `<span>${esc(t("series.target", { count: series.target }))}</span>` : ""}</p>
+    <dl class="wt-series-standings" data-groups="${groups.length}">${groups.map(group => `<div${!vm.spectator && group.seats.includes(vm.viewerSeat) ? ' class="is-own"' : ""}><dt>${esc(label(group.seats))}</dt><dd><strong class="wt-series-value">${esc(String(group.count))}</strong> <span class="wt-series-unit">${esc(t("series.unit"))}</span></dd></div>`).join("")}</dl>
   </section>`;
 }

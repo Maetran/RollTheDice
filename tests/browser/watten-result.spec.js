@@ -12,8 +12,10 @@ for (const language of ['de', 'en']) {
       await expect(host.page.locator('[data-wt-history]')).not.toHaveAttribute('open', '');
       await expect(host.page.locator('[data-watten-round-call]')).toBeHidden();
       await expect(host.page.locator('[data-watten-match-progress-action=dismiss]')).toBeHidden();
-      await expect(details.locator('summary')).toHaveText(language === 'de' ? 'Spieldetails' : 'Match details');
+      await expect(details.locator(':scope > summary')).toHaveText(language === 'de' ? 'Spieldetails' : 'Match details');
       await expect(host.page.locator('.wt-final-reactions button')).toHaveCount(4);
+      await expect(host.page.locator('.wt-final-reactions')).toBeHidden();
+      await expect(host.page.locator('.wt-final [data-watten-series]')).toBeVisible();
       await expect(host.page.locator('[data-watten-social-drawer]')).toBeHidden();
       for (const viewport of [{ width: 320, height: 568 }, { width: 568, height: 320 }, { width: 956, height: 440 }, { width: 1280, height: 800 }]) {
         await host.page.setViewportSize(viewport);
@@ -24,9 +26,9 @@ for (const language of ['de', 'en']) {
           const heading = document.querySelector('.wt-final-heading').getBoundingClientRect();
           const action = document.querySelector('[data-watten-rematch-action=create]').getBoundingClientRect();
           const details = document.querySelector('.wt-final-call').getBoundingClientRect();
-          const reactions = document.querySelector('.wt-final-reactions').getBoundingClientRect();
+          const standing = document.querySelector('.wt-final [data-watten-series]').getBoundingClientRect();
           const button = document.querySelector('[data-watten-rematch-action=create]');
-          return heading.top >= 0 && reactions.top >= heading.bottom && action.top >= reactions.bottom
+          return heading.top >= 0 && standing.top >= heading.bottom && action.top >= standing.bottom
             && action.bottom <= innerHeight && action.top >= heading.bottom
             && details.top >= action.bottom && action.width >= 44 && action.height >= 44
             && button.contains(document.elementFromPoint(action.x + action.width / 2, action.y + action.height / 2))
@@ -35,18 +37,19 @@ for (const language of ['de', 'en']) {
         await host.page.screenshot({ path: info.outputPath(`quiet-result-${language}-${viewport.width}x${viewport.height}.png`) });
       }
       const before = host.traffic.snapshot.engine.opportunity;
+      await host.page.setViewportSize({ width: 393, height: 852 });
+      await details.locator(':scope > summary').click();
+      await expect(host.page.locator('.wt-final-reactions')).toBeVisible();
       await host.page.locator('[data-watten-result-emoji="🎉"]').click();
       await expect.poll(() => players[1].traffic.social.some(frame => frame.watten_social_event?.event?.emoji === '🎉')).toBe(true);
       await expect(host.page.locator('[data-watten-social-drawer]')).toBeHidden();
       expect(host.traffic.snapshot.engine.opportunity).toBe(before);
-      await host.page.setViewportSize({ width: 393, height: 852 });
-      await details.locator('summary').click();
       await expect(host.page.locator('[data-watten-round-call]')).toBeVisible();
       await expect(host.page.locator('[data-watten-match-progress-action=dismiss]')).toBeVisible();
       await expect(host.page.locator('.wt-final-award')).toBeVisible();
       await expect(host.page.locator('.wt-final-progress')).toHaveText(language === 'de' ? 'Erfolge & Titel' : 'Achievements & titles');
       expect(await host.page.locator('.wt-match-progress h4').evaluate(node => Number.parseFloat(getComputedStyle(node).fontSize))).toBeLessThanOrEqual(13);
-      await details.locator('summary').click();
+      await details.locator(':scope > summary').click();
       await expect(host.page.locator('[data-watten-match-progress-action=dismiss]')).toBeHidden();
       await expect(host.page.locator('[data-watten-rematch-action=create]')).toBeEnabled();
       if (language === 'de') {
@@ -54,10 +57,16 @@ for (const language of ['de', 'en']) {
         await guest.page.locator('.wt-final-call > summary').click();
         await expect(guest.page.locator('[data-watten-match-progress-action=dismiss]')).toBeVisible();
         await guest.page.locator('[data-watten-match-progress]').evaluate(node => { window.loadedMatchReceipt = node.firstElementChild; });
+        const history = guest.page.locator('[data-wt-history]');
+        await history.locator(':scope > summary').click();
+        await expect(history).toHaveAttribute('open', '');
+        await history.evaluate(node => { window.loadedFinalHistory = node; });
         await host.page.locator('[data-watten-rematch-action=create]').click();
         await expect(guest.page.locator('[data-watten-rematch-action=open]')).toBeVisible();
         await expect(guest.page.locator('[data-watten-match-progress-action=dismiss]')).toBeVisible();
         expect(await guest.page.locator('[data-watten-match-progress]').evaluate(node => node.firstElementChild === window.loadedMatchReceipt)).toBe(true);
+        await expect(history).toHaveAttribute('open', '');
+        expect(await history.evaluate(node => node === window.loadedFinalHistory)).toBe(true);
       }
       expect(players.flatMap(item => item.traffic.errors)).toEqual([]);
     } finally { await Promise.allSettled(players.map(item => item.context.close())); }

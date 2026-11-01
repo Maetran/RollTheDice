@@ -111,6 +111,8 @@ test('two real human accounts bid, pause with an open bid, return and finish a d
     await expect(players[0].page.locator('[data-watten-match-result]')).toBeVisible({ timeout: 10000 });
     expect(players[0].traffic.snapshot.engine.round_summary).toEqual({ strike_rank: '7', trump_suit: 'bells', rechter: 'bells-7' });
     expect(players[0].traffic.snapshot.engine.trick_history).toEqual(finalTricks);
+    await expect(players[0].page.locator('[data-wt-history]')).toBeHidden();
+    await players[0].page.locator('.wt-final-call > summary').click();
     await expect(players[0].page.locator('[data-wt-history]')).toBeVisible();
   } finally { await Promise.allSettled(players.map(item => item.context.close())); }
 });

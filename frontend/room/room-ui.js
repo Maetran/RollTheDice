@@ -296,7 +296,7 @@
           },
           actions: [
             { id: "lobby", label: "Zur Lobby", className: "ghost" },
-            { id: "new", label: "Neue Runde", className: "primary" },
+            ...(!IS_SPECTATOR ? [{ id: "new", label: "Neue Runde", className: "primary" }] : []),
           ],
         })
       : "lobby";

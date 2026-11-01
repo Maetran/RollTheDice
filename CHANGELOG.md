@@ -31,27 +31,27 @@ This update makes navigation clearer and gets you to your next move faster.
 
 ### ZDWA
 
-**Deutsch:** Spielerzahl und Spielstart stehen direkt bereit. Hardcore, Spielpasswort und Sprachchat sind unter «Spieloptionen» eingeklappt; gewählte Sonderoptionen bleiben sichtbar. Die zusätzliche Anzeige «Du spielst als …» entfällt. Profil- und Regelverweise erscheinen als Buttons.
+**Deutsch:** Spielerzahl und Spielstart stehen direkt bereit. Hardcore, Spielpasswort und Sprachchat sind unter «Spieloptionen» eingeklappt; gewählte Sonderoptionen bleiben sichtbar. Die zusätzliche Anzeige «Du spielst als …» entfällt. Profil- und Regelverweise erscheinen als Buttons. Zuschauer erhalten am Spielende den Rückweg zur Lobby.
 
-**English:** Player count and game start stay directly available. Hardcore, game password and voice chat are collapsed under “Game options”, with selected extra options still visible. The redundant “You are playing as …” line is removed. Profile and rule links appear as buttons.
+**English:** Player count and game start stay directly available. Hardcore, game password and voice chat are collapsed under “Game options”, with selected extra options still visible. The redundant “You are playing as …” line is removed. Profile and rule links appear as buttons. Spectators get the lobby exit at the end.
 
 ### HAUSDEPP
 
-**Deutsch:** Nach einer bestätigten Zehn oder vier gleichen Karten kannst du sofort nachziehen und weiterspielen, während die Abräumanimation weiterläuft. Der Profilverweis im Ergebnis und verlinkte Spielernamen verwenden das Button-Design.
+**Deutsch:** Nach einer bestätigten Zehn oder vier gleichen Karten kannst du sofort nachziehen und weiterspielen, während die Abräumanimation weiterläuft. Der Profilverweis im Ergebnis und verlinkte Spielernamen verwenden das Button-Design. «Revanche starten» benennt die Fortsetzung mit derselben Besetzung; zusätzliche Kontodaten öffnen sich über den aktuellen Rang. Zuschauer haben genau einen Ausstieg.
 
-**English:** After an accepted ten or four of a kind, you can refill and play on immediately while the clearing animation continues. The result profile action and linked player names use button styling.
+**English:** After an accepted ten or four of a kind, you can refill and play on immediately while the clearing animation continues. The result profile action and linked player names use button styling. “Start rematch” names the same-player continuation; the current rank opens extra account information. Spectators have one exit.
 
 ### ZILCH
 
-**Deutsch:** Verlinkte Spielernamen und die Kontoverwaltung aus der Spielersuche sind auch im LCARS-Design als Buttons erkennbar.
+**Deutsch:** Ergebnis, Punkte und nächste Aktionen stehen zuerst; der ausführliche Bericht liegt unter «Details zur Partie». «Neue Runde» benennt die Neuerstellung passend, ohne reservierte Mitspieler zu versprechen. Verlinkte Spielernamen und die Kontoverwaltung aus der Spielersuche sind auch im LCARS-Design als Buttons erkennbar.
 
-**English:** Linked player names and the account action in player search are recognisable as buttons, including in the LCARS theme.
+**English:** Outcome, scores and next actions come first; the full report lives under “Game details”. “New round” accurately describes creating another game without promising reserved players. Linked player names and the account action in player search are recognisable as buttons, including in the LCARS theme.
 
 ### WATTEN
 
-**Deutsch:** Quellen- und Lizenzverweise in der Anleitung sowie die Kontozugänge der Vorschauseite verwenden passende Buttons. Die Spielverweise ganz unten im Suite-Footer bleiben Textlinks.
+**Deutsch:** Nockerlstand und Turnierziel sind im Abschluss und im Revanche-Warteraum deutlich sichtbar. Feste Teams stehen auch auf Telefonen nebeneinander; Tischregeln und zusätzliche Optionen sind eingeklappt. Die feste Revanche-Besetzung braucht keine allgemeine Einladung. Andere Konten erhalten keine unbrauchbaren Beitrittsaktionen. Quellen- und Lizenzverweise verwenden passende Buttons; Spielverweise ganz unten im Suite-Footer bleiben Textlinks.
 
-**English:** Source and licence links in the rules and account actions on the preview page use matching buttons. Game links at the bottom of the suite footer remain text links.
+**English:** Loss-mark totals and the tournament target stand out in results and the rematch waiting room. Fixed teams sit side by side on phones; table rules and extra options start collapsed. A fixed rematch line-up needs no general invitation, and other accounts see no unusable join actions. Source and licence links use matching buttons; game links at the bottom of the suite footer remain text links.
 
 ## 4.12.1 — 2026-11-01
 
