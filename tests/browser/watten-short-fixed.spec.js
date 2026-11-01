@@ -10,6 +10,11 @@ for (const language of ['de', 'en']) for (const count of [2, 3, 4]) for (const v
     await normalCall(p);
     for (const peer of p) await peer.page.setViewportSize(viewport);
     await playOne(p);
+    // Compare settled card slots: the arrival animation intentionally scales a card.
+    await Promise.all(p.map(peer => peer.page.locator('.wt-trick-card').first().evaluate(async node => {
+      await Promise.allSettled(node.getAnimations().map(animation => animation.finished));
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    })));
     const before = await Promise.all(p.map(peer => peer.page.locator('.wt-trick-card').first().boundingBox()));
     await action(p,'bid');
     await expect.poll(()=>p.every(q=>q.traffic.snapshot.engine.phase==='bid_response')).toBe(true);

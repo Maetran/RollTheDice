@@ -54,7 +54,7 @@ export function fitPortraitPrompt(bounds, obstacles, { height = 20, widths = [18
 }
 
 /** Fit a public trick as one overlapping pile, preserving the players' seats. */
-export function fitPortraitTrick({ bounds, obstacles = [], count, positions = null, desiredWidth = 104, minimumWidth = 64, labelHeight = LABEL, accept = null, measureFaces = false, spreads = [.52, .44, .36], centred = null }) {
+export function fitPortraitTrick({ bounds, obstacles = [], count, positions = null, desiredWidth = 104, minimumWidth = 64, labelHeight = LABEL, accept = null, measureFaces = false, spreads = [.52, .44, .36], centred = null, sideReachRatio = null, insetRatio = null }) {
   if (!usable(bounds) || ![2, 3, 4].includes(count)) return null;
   const padding = 5;
   const blocked = obstacles.filter(usable).map(rect => ({ left: rect.left - padding, right: rect.right + padding,
@@ -74,8 +74,8 @@ export function fitPortraitTrick({ bounds, obstacles = [], count, positions = nu
     // the original play order determines which cards overlap in front.
     // Three seats have no upper player to join the two side cards. Their
     // side faces must overlap directly, including a left→right opening.
-    const sideReach = cardWidth * (count === 3 ? .9 : 1.5);
-    const inset = count === 3 ? cardWidth * .15 : 0;
+    const sideReach = cardWidth * (sideReachRatio ?? (count === 3 ? .9 : 1.5));
+    const inset = cardWidth * (insetRatio ?? (count === 3 ? .15 : 0));
     const width = cardWidth + sideReach + inset * 2;
     const rowHeight = cardHeight * (1 + spread) + CAPTION;
     const captionHeight = CAPTION;
@@ -331,6 +331,7 @@ export function createTrickLayout(trick, { win = window } = {}) {
   }
   function applyPortraitHistory(history, fit) {
     if (!history || !fit || history.open || !box(history)) return;
+    rememberHistory(fit);
     history.dataset.wtPortraitHistory = "true";
     for (const [key, value] of [["x", fit.left], ["y", fit.top], ["width", fit.width]]) {
       history.style.setProperty(`--wt-portrait-history-${key}`, `${value}px`);
@@ -457,12 +458,12 @@ export function createTrickLayout(trick, { win = window } = {}) {
       const area = felt.getBoundingClientRect();
       const own = table.querySelector(".wt-seat--bottom.is-own");
       const clearance = Number.parseFloat(win.getComputedStyle(own).bottom) || 0;
-      const bounds = { left: area.left + 78, right: area.right - 78,
-        top: area.top + 110, bottom: area.bottom - clearance - 50 };
+      const bounds = { left: area.left + 100, right: area.right - 100,
+        top: area.top + 110, bottom: area.bottom - clearance - 28 };
       bounds.width = bounds.right - bounds.left; bounds.height = bounds.bottom - bounds.top;
       const positions = [...trick.children].map(card => card.dataset.position);
       const fit = (win.innerWidth > 390 ? [76, 64] : [64]).map(width => fitPortraitTrick({ bounds, count, positions,
-        desiredWidth: width, minimumWidth: width, spreads: [.34], labelHeight: 20, centred: true })).find(Boolean);
+        desiredWidth: width, minimumWidth: width, spreads: [.52], labelHeight: 20, centred: true, sideReachRatio: .85, insetRatio: 0 })).find(Boolean);
       if (!fit) { fallback("space"); return; }
       centre.dataset.wtPortraitTrick = "true";
       centre.dataset.wtPortraitTrickMode = fit.mode;
