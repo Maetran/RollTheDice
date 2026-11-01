@@ -194,3 +194,31 @@ new full run. This lets the master fast-forward and release tag reuse the same
 local source verification.
 The publisher retains the PR's original source status for an inherited receipt;
 it does not publish a second merge status with a different base.
+
+### Optional PostgreSQL rare-surprise races
+
+The opt-in `tests/test_rare_surprise_postgres.py` suite exercises the rare
+surprise counters and real table starts against PostgreSQL. It creates a fresh,
+random schema per test and drops only that schema. The test refuses network
+hosts and databases other than the disposable `rare_concurrency_test` on a
+private `rtd-rare-pg.*` Unix socket. Without its explicit URL the tests skip.
+They are focused checks and do not replace the full local proof.
+
+With local PostgreSQL tools, the project Python environment, and `psycopg2`
+available, an isolated run can be prepared as follows:
+
+```sh
+RARE_POSTGRES_DIR=$(mktemp -d /tmp/rtd-rare-pg.XXXXXX)
+initdb -D "$RARE_POSTGRES_DIR/data" -A trust --no-locale --encoding=UTF8
+pg_ctl -D "$RARE_POSTGRES_DIR/data" -l "$RARE_POSTGRES_DIR/postgres.log" \
+  -o "-k $RARE_POSTGRES_DIR -p 55439 -c listen_addresses=''" -w start
+createdb -h "$RARE_POSTGRES_DIR" -p 55439 rare_concurrency_test
+ROLLTHEDICE_RARE_TEST_POSTGRES_URL="postgresql+psycopg2:///rare_concurrency_test?host=$RARE_POSTGRES_DIR&port=55439" \
+  python -m pytest -n 0 -q tests/test_rare_surprise_postgres.py
+pg_ctl -D "$RARE_POSTGRES_DIR/data" -m fast -w stop
+```
+
+Remove the temporary directory only after confirming that the server stopped.
+The test checks migration 0083 against a representative existing 0082 schema;
+it does not claim that all historical migrations support PostgreSQL. In
+particular, a fresh PostgreSQL migration currently fails in 20260907_0035.

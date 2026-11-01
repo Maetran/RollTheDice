@@ -1,32 +1,23 @@
 {
   "kind": "usability",
-  "games": [
-    "zdwa",
-    "zilch",
-    "hausdepp",
-    "watten"
-  ],
-  "summary_de": "Die Spieleinstiege erklären Spielarten, Mitspieler und Regeln jetzt klarer.",
-  "summary_en": "The game introductions now explain game types, players and rules more clearly.",
+  "games": ["hausdepp", "watten"],
+  "summary_de": "Seltene Tischüberraschungen dauern länger und werden mit jedem Spiel wahrscheinlicher.",
+  "summary_en": "Rare table surprises last longer and become more likely with each game.",
   "player_notes": {
     "de": {
-      "title": "4.11.3: Spiele leichter entdecken",
+      "title": "4.12.0: Mehr Zeit für Überraschungen",
       "changes": [
-        "Dieses Update hilft dir, das passende Spiel und seine Regeln zu finden.",
-        "WATTEN: Der Einstieg erklärt das Kartenblatt, zwei bis vier Spieler und das Spiel mit Freunden oder Computergegnern.",
-        "ZILCH: Du erfährst mehr über das Spiel gegen den Computer und die verwandten Würfelspiele Farkle und Zehntausend. Hier gelten unsere Zilch-Hausregeln.",
-        "HAUSDEPP: Der Einstieg beschreibt das Kartenspiel mit Freunden und Computern und das Ziel, die eigenen Karten loszuwerden.",
-        "ZDWA: Der Einstieg erklärt das Punkteblatt mit fünf Würfeln und das Spiel allein, mit Freunden oder im Team."
+        "Seltene Funde bekommen mehr Zeit für ihren grossen Auftritt.",
+        "HAUSDEPP: Die Chance auf einen Fund steigt mit jeder Runde; nach einer ausgelösten Überraschung beginnt sie wieder bei 1 %.",
+        "WATTEN: Auch gegen Computer kannst du seltene Funde entdecken. Auf engen Displays bleiben sie erreichbar."
       ]
     },
     "en": {
-      "title": "4.11.3: Discover the games more easily",
+      "title": "4.12.0: More time for surprises",
       "changes": [
-        "This update helps you find the right game and its rules.",
-        "WATTEN: The introduction explains the deck, two to four players and playing with friends or computer opponents.",
-        "ZILCH: Learn more about playing against the computer and the related dice games Farkle and Ten Thousand. Our Zilch house rules apply here.",
-        "HAUSDEPP: The introduction describes the card game with friends and computer players and the goal of getting rid of your cards.",
-        "ZDWA: The introduction explains the scorecard with five dice and playing solo, with friends or in teams."
+        "Rare finds get more time for their big moment.",
+        "HAUSDEPP: Your chance of a find rises with each round and starts again at 1% after a surprise is triggered.",
+        "WATTEN: You can discover rare finds against computers too. They remain reachable on compact displays."
       ]
     }
   }

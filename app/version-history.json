@@ -2616,5 +2616,12 @@
     "date": "2026-10-29",
     "bump": "patch",
     "summary": "Watten-Stiche bleiben besser sichtbar und Hausdepp zeigt das Abheben klarer. / Watten tricks stay easier to follow and Hausdepp shows bottom inspection more clearly."
+  },
+  {
+    "version": "4.11.3",
+    "revision": "ad4464857f2ac46e4e1bc103e7bc87b895bd3915",
+    "date": "2026-10-31",
+    "bump": "patch",
+    "summary": "Klarere Spieleinstiege und Regeln für Watten, Zilch, Hausdepp und ZDWA. / Clearer introductions and rules for Watten, Zilch, Hausdepp and ZDWA."
   }
 ]
