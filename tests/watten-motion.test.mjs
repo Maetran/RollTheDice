@@ -168,6 +168,44 @@ test("opening review cancels ghosts and incoming throws stay current without cat
   assert.equal(f.doc.listenerCount, 0);
 });
 
+for (const reduced of [false, true]) test(`review finalizes a held ${reduced ? "still blind" : "moving"} trick without reviving its old originals`, () => {
+  const f = fixture({ reduced }), last = publicTrick(f, 4);
+  let reviewOpen = false;
+  f.doc.querySelector = () => reviewOpen ? {} : null;
+  const state = value => ({ ...engine(value), profile: { blind: reduced } });
+  f.present(state(null), state(last), result({ ...last, last }));
+  assert.equal(f.ghosts("collect").length, 1);
+  reviewOpen = true; f.doc.emit("watten:review-change");
+  assert.equal(f.ghosts().length, 0);
+  const hiddenProperty = reduced ? "opacity" : "visibility", hiddenValue = reduced ? "0" : "hidden";
+  assert.ok(last.nodes.every(node => node.style[hiddenProperty] === hiddenValue));
+  reviewOpen = false; f.doc.emit("watten:review-change");
+  assert.ok(last.nodes.every(node => node.style[hiddenProperty] === hiddenValue), "closing cannot leave the cancelled old trick at centre");
+  reviewOpen = true; f.doc.emit("watten:review-change");
+  last.nodes.forEach(node => node.remove());
+  const next = f.node("hearts-K", rect(390, 280));
+  const current = result({ nodes: [next], cards: [{ seat: 1, card: "hearts-K" }],
+    created: [{ node: next, seat: 1, card: "hearts-K" }], last });
+  f.present(state(last), state(last), current);
+  reviewOpen = false; f.doc.emit("watten:review-change");
+  assert.equal(next.style.visibility, ""); assert.equal(next.style.opacity, "");
+  assert.ok(last.nodes.every(node => node.style[hiddenProperty] === ""), "detached originals release on the next review toggle");
+  f.present(state(last), state(last), current, { live: false });
+  assert.equal(f.ghosts().length, 0);
+  f.close(); assert.equal(next.style.visibility, ""); assert.equal(next.style.opacity, "");
+});
+
+test("a new deal releases completed-card suppression retained by review", () => {
+  const f = fixture(), last = publicTrick(f, 4);
+  f.present(engine(), engine(last), result({ ...last, last }));
+  f.doc.emit("watten:review-change");
+  assert.ok(last.nodes.every(node => node.style.visibility === "hidden"));
+  // Reused nodes and a cold reset must not inherit suppression from the review.
+  f.present(engine(last), engine(null, "new-deal"), result({ hand: last.nodes }), { live: false });
+  assert.ok(last.nodes.every(node => node.style.visibility === ""));
+  f.close();
+});
+
 test("a hidden old open review never disables motion in the next deal", () => {
   const f = fixture();
   f.doc.querySelector = selector => selector === "[data-wt-history][open]" ? { hidden: true, open: true } : null;

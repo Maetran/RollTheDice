@@ -90,12 +90,13 @@ export function createMotion({ win = window, doc = document } = {}) {
     return entry;
   }
 
-  function cancel() {
+  function cancel({ keepCollected = false } = {}) {
     epoch += 1;
     for (const job of [...ghosts]) job.remove();
     for (const entry of [...running]) entry.cancel();
-    for (const release of settled.values()) release();
-    settled.clear();
+    for (const [node, release] of settled) {
+      if (!keepCollected || !node.isConnected) { release(); settled.delete(node); }
+    }
     arrivals.clear(); flips.clear();
     collectBatchStart = null;
   }
@@ -106,6 +107,10 @@ export function createMotion({ win = window, doc = document } = {}) {
     cancel();
   };
   const visibilityChanged = () => { if (!visible()) cancel(); };
+  // A review replaces a finished trick's presentation. Discard its flight,
+  // but do not revive the old public originals when the review closes. Queued
+  // arrivals still release normally so the accepted current trick is restored.
+  const reviewChanged = () => cancel({ keepCollected: true });
   win.addEventListener("resize", geometryChanged, { passive: true });
   win.addEventListener("orientationchange", cancel, { passive: true });
   win.addEventListener("scroll", cancel, { passive: true, capture: true });
@@ -115,7 +120,7 @@ export function createMotion({ win = window, doc = document } = {}) {
   win.visualViewport?.addEventListener("scroll", cancel, { passive: true });
   win.screen?.orientation?.addEventListener?.("change", cancel);
   doc.addEventListener("visibilitychange", visibilityChanged);
-  doc.addEventListener("watten:review-change", cancel);
+  doc.addEventListener("watten:review-change", reviewChanged);
   reduced?.addEventListener?.("change", cancel);
 
   function destroy() {
@@ -127,7 +132,7 @@ export function createMotion({ win = window, doc = document } = {}) {
     win.visualViewport?.removeEventListener("scroll", cancel);
     win.screen?.orientation?.removeEventListener?.("change", cancel);
     doc.removeEventListener("visibilitychange", visibilityChanged);
-    doc.removeEventListener("watten:review-change", cancel);
+    doc.removeEventListener("watten:review-change", reviewChanged);
     reduced?.removeEventListener?.("change", cancel);
   }
 
