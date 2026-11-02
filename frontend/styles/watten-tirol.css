@@ -174,7 +174,7 @@ html[data-watten-design="tirol"] .watten-friends-warning {
   background: #fbf0d6;
 }
 
-/* Live table: the same card layout on a quiet Alpine felt. */
+/* Live table: warm carved wood and marquetry, with the original card layout. */
 html[data-watten-design="tirol"][data-watten-active="true"] body .wt-header.suite-header.suite-header--table,
 html[data-watten-design="tirol"][data-watten-active="true"] body::before {
   background: var(--wt-tirol-ivory);
@@ -189,27 +189,11 @@ html[data-watten-design="tirol"][data-watten-active="true"] .wt-score.is-own {
   box-shadow: inset 0 -2px #b01c2277;
 }
 html[data-watten-design="tirol"][data-watten-active="true"] .wt-topbar .wt-button--ghost { color: var(--wt-tirol-ink); }
-/* The decorative pseudo-element owns no card layout. The original wide
-   border-image slices are replaced with a fine rim at the outside of its box. */
+/* Keep the responsive nine-slice frame from the original wood table. The
+   self-contained surface adds inlays without introducing another paint layer. */
 html[data-watten-design="tirol"][data-watten-active="true"] .wt-table::before {
-  border-image: none;
-  border-width: 0;
-  background:
-    url("/static/images/watten-tirol/eagle-watermark.svg?v=ASSET_VERSION") center / min(48vmin, 300px) no-repeat,
-    url("/static/images/watten-tirol/ridge-alpine.svg?v=ASSET_VERSION") center 58% / 100% min(26%, 170px) no-repeat,
-    repeating-linear-gradient(45deg, #ffffff03 0 2px, transparent 2px 6px),
-    radial-gradient(85% 75% at 50% 45%, #2f6048 0%, #234f3a 55%, #153325 100%);
-  background-origin: border-box;
-  box-shadow: inset 0 0 0 3px #8a5a2c, inset 0 0 0 5px #d3a94d, inset 0 0 0 8px #3a2314, inset 0 0 36px #0a1a1266;
+  border-image-source: url("/static/images/watten-tirol/wood-inlay.svg?v=ASSET_VERSION");
 }
-/* Light type on the dark felt (tags keep their own light chips). */
-html[data-watten-design="tirol"][data-watten-active="true"] .wt-seat {
-  --wt-ink: #f6eed9;
-  --wt-muted: #d8c9a5;
-  color: #f6eed9;
-}
-html[data-watten-design="tirol"][data-watten-active="true"] .wt-seat .wt-tag { --wt-ink: #2a2118; color: #2a2118; }
-html[data-watten-design="tirol"][data-watten-active="true"] .wt-reference { color: #f1e6c8; }
 html[data-watten-design="tirol"]:not([data-watten-active="true"]) .wt-felt {
   background: radial-gradient(90% 80% at 50% 45%, #2f6048 0%, #244d39 62%, #1b3b2b 100%);
   box-shadow: inset 0 0 0 2px #ffffff14, inset 0 0 0 7px #142d20, inset 0 0 0 8px #c9a24acc, 0 10px 26px #0a160f66;
