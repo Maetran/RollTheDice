@@ -13,6 +13,7 @@ import { cardArt } from "../hausdepp/cards.js";
     tirol: '<path d="m2 19 7-12 4 6 3-5 6 11H2Z"/><path d="m6 12 3 2 2-3m3 1 2 2 2-2"/>',
   };
   let design = "classic";
+  let lobbyReady = false;
   const originalCopy = new WeakMap();
 
   // Preserve the real public/Classic heading and lead (including any nested
@@ -66,7 +67,7 @@ import { cardArt } from "../hausdepp/cards.js";
         glyph.style.display = glyph.dataset.wattenDesignGlyph === design ? "" : "none";
       }
     }
-    for (const hero of document.querySelectorAll(".wt-lobby-intro")) {
+    for (const hero of lobbyReady ? document.querySelectorAll(".wt-lobby-intro") : []) {
       introCopy(hero.querySelector("h1"), copy.introTitle);
       introCopy(hero.querySelector(".wt-lead"), copy.introLead);
       let kicker = hero.querySelector(".watten-tirol-kicker");
@@ -136,6 +137,7 @@ import { cardArt } from "../hausdepp/cards.js";
   });
 
   const start = () => {
+    lobbyReady = true;
     apply(design);
     new MutationObserver(updateControls).observe(html, { attributes: true, attributeFilter: ["lang"] });
     // Lobby authentication replaces the hero at the app root. Observe only
@@ -144,5 +146,8 @@ import { cardArt } from "../hausdepp/cards.js";
     if (lobby) new MutationObserver(updateControls).observe(lobby, { childList: true });
   };
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start, { once: true });
-  else start();
+  // game.js captures the unmodified public SSR fallback during module setup.
+  // Enhance only afterwards, so an anonymous remount and a switch back to
+  // Classic always recover the original localized heading and lead.
+  else queueMicrotask(start);
 })();
