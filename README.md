@@ -24,16 +24,18 @@ six players try to get rid of their German-suited cards; computers can join.
 **Deutsch:** Der Designbutton neben der Sprachwahl wechselt direkt zwischen
 dem bisherigen Watten-Look («Klassisch», weiterhin Standard) und «Tirol».
 Tirol verbindet warmes Papier, Rot-Weiss und Tannengrün mit eigenen
-Alpen- und Adlermotiven. Die Wahl gilt nur für dich und bleibt in diesem
-Browser gespeichert, auch beim Wechsel zwischen Lobby, Regeln, Konto und
+Alpen- und Adlermotiven. Der Spieltisch bleibt eine helle Holzplatte mit
+feinen Einlegearbeiten und geschnitzten Ornamenten am Rand. Die Wahl gilt nur
+für dich und bleibt in diesem Browser gespeichert, auch beim Wechsel zwischen Lobby, Regeln, Konto und
 Spieltisch. Im Warteraum steht der Button neben der Sprache; auf sehr kurzen
 Querformat-Displays erreichst du ihn über das Tischmenü.
 
 **English:** The design button beside the language selector switches directly
 between the original Watten look (“Classic”, still the default) and “Tyrol”.
 Tyrol combines warm paper, red and white, and forest green with original
-Alpine and eagle artwork. Your choice affects only your own view and stays
-saved in this browser across the lobby, rules, account and game table.
+Alpine and eagle artwork. The game table keeps its light wood surface, with
+fine inlays and carved ornaments around the edge. Your choice affects only
+your own view and stays saved in this browser across the lobby, rules, account and game table.
 The waiting room keeps the button beside the language selector; very short
 landscape screens offer it in the table menu.
 
@@ -430,7 +432,8 @@ Anheftschalter; Schlag, Farbe und der Rechte bleiben für alle aufgedeckt.
 Gewonnene Stichpakete bleiben pro Spieler direkt neben seinem Namen sichtbar;
 auf sehr kurzen Telefonen zeigt dort ein Zähler ihre Anzahl.
 Das Kreuz schliesst die Rückschau und löst ihre Anheftung; ungepinnt schliesst
-sie auch beim Antippen ausserhalb.
+sie auch beim Antippen ausserhalb. Nach dem Schliessen zeigt der Tisch wieder
+den aktuellen Stich mit allen inzwischen geworfenen Karten.
 
 Auf sehr kleinen Hochformat-Handys heisst der geschlossene Vierer-Verlauf kurz «Verlauf»
 mit Stichzahl; der vollständige Name bleibt für Vorlesehilfen erhalten.
@@ -495,7 +498,8 @@ can stay pinned open during play. At match end, history opens with up to
 five tricks from the final deal and no extra pin control; everyone can see the
 strike, trump suit and Rechter. Every player keeps their won trick
 packets beside their name. The close button also unpins the review; when
-unpinned, tapping outside closes it. Announcers are labelled beside their
+unpinned, tapping outside closes it. Closing the review restores the current
+trick with every card played in the meantime. Announcers are labelled beside their
 names; the larger “Thanks!” remains visible until the first trick is complete. The stake and
 raising control sit beside your cards in portrait and in the left rail in mobile
 landscape. Your desktop hand stays centred;

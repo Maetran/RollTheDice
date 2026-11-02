@@ -2644,5 +2644,12 @@
     "date": "2026-11-01",
     "bump": "patch",
     "summary": "Passende Buttons, kompakte Abschlüsse und Spielstart – Hausdepp spielt nach dem Abräumen sofort weiter. / Matching buttons, compact results and game setup, plus instant play after clearing the Hausdepp pile."
+  },
+  {
+    "version": "4.13.0",
+    "revision": "13732cb853a18b63f60ee68991918cc203009aa5",
+    "date": "2026-11-01",
+    "bump": "minor",
+    "summary": "Watten: Wechsle zwischen dem vertrauten Tisch und Tirol mit Alpenpanorama, rotem Adler und Tannengrün. / Watten: Switch between the familiar table and Tyrol with Alpine scenery, a red eagle and forest green."
   }
 ]

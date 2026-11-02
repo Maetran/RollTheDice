@@ -193,12 +193,27 @@ test('the waiting-room switch returns to the live header and both looks preserve
       }
       await expectTableHeaderReachable(page);
       await expectTouchable(page);
+      let originalSurface;
       for (const design of ['classic', 'tirol']) {
         await page.locator(toggleSelector).click();
         await expectDesign(page, design);
         await expectTableHeaderReachable(page);
         await expectTouchable(page);
-        if (design === 'tirol') await expectReadableAppearanceControls(page);
+        const surface = await page.locator('.wt-table').evaluate(node => {
+          const paint = getComputedStyle(node, '::before');
+          return { source: paint.borderImageSource, slice: paint.borderImageSlice,
+            geometry: [paint.top, paint.right, paint.bottom, paint.left, paint.width, paint.height,
+              paint.borderTopWidth, paint.borderRightWidth, paint.borderBottomWidth, paint.borderLeftWidth] };
+        });
+        if (design === 'classic') {
+          originalSurface = surface;
+          expect(surface.source).toContain('/static/watten/table-schnitzstube.jpg');
+        } else {
+          await expectReadableAppearanceControls(page);
+          expect(surface.source).toContain('/static/images/watten-tirol/wood-inlay.svg');
+          expect(surface.slice).toBe(originalSurface.slice);
+          expect(surface.geometry).toEqual(originalSurface.geometry);
+        }
         expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
         expect(state()).toEqual(before);
       }

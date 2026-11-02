@@ -156,11 +156,8 @@ test('Watten optical effects copy the native cards and sibling props while prese
       expect(result.remaining).toEqual(['0', '1', '1', '0']);
       if (design === 'classic') expect(result.wood.actual).toContain('/static/watten/table-schnitzstube.jpg');
       else {
-        expect(result.wood.actual).toBe('none');
-        expect(result.wood.background).toContain('/static/images/watten-tirol/');
-        expect(result.wood.background).toContain('radial-gradient');
-        expect(result.wood.background).not.toContain('wood-table');
-        expect(result.wood.shadow).not.toBe('none');
+        expect(result.wood.actual).toContain('/static/images/watten-tirol/wood-inlay.svg');
+        expect(result.wood.slice).toBe('300 350 fill');
       }
       expect(result.wood.actual).toBe(result.wood.expected);
       expect(result.wood.slice).toBe(result.wood.expectedSlice);
