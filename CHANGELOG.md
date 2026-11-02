@@ -23,6 +23,18 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 4.13.2 — 2026-11-02
+
+Tannengrün, helle Flächen und ein geschnitzter Zirbenstuben-Tisch für Watten.
+
+Forest green, bright surfaces and a carved Tyrolean parlour table for Watten.
+
+### WATTEN
+
+**Deutsch:** Das Tirol-Design erhält kreidehelle Flächen, Tannengrün und klassische Serifenschriften. Feine Linien und grosszügige Abstände prägen Lobby, Warteraum, Konto und Spielabschluss. Der Zirbenstuben-Tisch bringt helles Holz und geschnitzte Blüten in den Ecken ins Spiel. Buttons und ausgewählte Zustände greifen das Tannengrün auf. Klassisch bleibt der Standard; die persönliche Designwahl bleibt in diesem Browser gespeichert. Regeln, Kartenwerte und Spielablauf bleiben gleich.
+
+**English:** The Tyrol design gains chalk-white surfaces, forest green and classic serif headings. Fine rules and generous spacing carry through the lobby, waiting room, account and match results. The Tyrolean parlour table brings light wood and flowers carved into the corners to the game. Buttons and selected states use forest green. Classic remains the default, and your personal design choice stays saved in this browser. Rules, card values and play stay the same.
+
 ## 4.13.1 — 2026-11-02
 
 Der Tiroler Tisch erhält Holz und Handwerksdetails; nach dem Stichverlauf stimmen die ausgespielten Karten wieder.
