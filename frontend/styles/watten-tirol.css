@@ -1,325 +1,143 @@
-/*
- * Watten Tirol design. Everything lives under html[data-watten-design="tirol"],
- * so the default look stays untouched. Palette: warm ivory, Tirol red, dark fir.
- * Table geometry, card sizes, hitboxes and animations are never changed here.
- *
- * Optional decor hooks (aria-hidden, empty): .watten-tirol-scene, and the text
- * element .watten-tirol-motto. Both stay hidden on the live table.
- */
+/* Stubendruck × Bergluft: printed headings, chalk paper and fir green.
+   The optional design changes surfaces, never card or table geometry. */
 html[data-watten-design="tirol"] {
-  --wt-tirol-red: #b01c22;
-  --wt-tirol-red-deep: #8a1219;
-  --wt-tirol-fir: #1f3d2b;
-  --wt-tirol-fir-soft: #35604a;
-  --wt-tirol-ivory: #f8f1df;
-  --wt-tirol-parchment: #ecdfc0;
-  --wt-tirol-line: #cdb98c;
-  --wt-tirol-ink: #2a2118;
-
-  --wt-paper: var(--wt-tirol-ivory);
-  --wt-paper-2: var(--wt-tirol-parchment);
+  --wt-tirol-fir: #214d3d;
+  --wt-tirol-paper: #fff;
+  --wt-tirol-background: #f3f5f1;
+  --wt-tirol-soft: #e5ece5;
+  --wt-tirol-line: #d6ded7;
+  --wt-tirol-ink: #24372f;
+  --wt-tirol-muted: #5f7067;
+  --wt-paper: var(--wt-tirol-paper);
+  --wt-paper-2: var(--wt-tirol-soft);
   --wt-paper-edge: var(--wt-tirol-line);
   --wt-ink: var(--wt-tirol-ink);
-  --wt-muted: #5a4836;
-  --wt-felt: #2f5a44;
-  --wt-felt-deep: #1f3d2b;
-  --wt-felt-line: #16301f;
-  --wt-gold: #d6a840;
+  --wt-muted: var(--wt-tirol-muted);
+  --wt-green: var(--wt-tirol-fir);
+  --wt-gold: var(--wt-tirol-fir);
   --wt-gold-ink: var(--wt-tirol-fir);
-  --wt-red: var(--wt-tirol-red-deep);
-  --wt-green: var(--wt-tirol-red);
-
-  /* Account pages use their own variable names. */
-  --card: var(--wt-tirol-ivory);
+  --wt-red: #963b35;
+  --wt-radius: 5px;
+  --card: var(--wt-tirol-paper);
+  --surface: var(--wt-tirol-paper);
+  --surface-soft: var(--wt-tirol-soft);
   --text: var(--wt-tirol-ink);
-  --muted: #5a4836;
+  --muted: var(--wt-tirol-muted);
   --border: var(--wt-tirol-line);
-  --accent: var(--wt-tirol-red);
-  background: var(--wt-tirol-parchment);
+  --accent: var(--wt-tirol-fir);
+  --accent-strong: var(--wt-tirol-fir);
+  background: var(--wt-tirol-background);
   color: var(--wt-tirol-ink);
 }
-
-html[data-watten-design="tirol"] body {
-  background:
-    radial-gradient(120% 60% at 50% 0, #fff8e8cc, transparent 70%),
-    linear-gradient(#f4ead2, var(--wt-tirol-parchment));
-}
+html[data-watten-design="tirol"] body,
+html[data-watten-design="tirol"][data-watten-page="lobby"] body,
+html[data-watten-design="tirol"][data-account-page] body { background: var(--wt-tirol-background); }
+/* These modules define local variables, so reset their palette too. */
 html[data-watten-design="tirol"][data-watten-page="lobby"] body,
 html[data-watten-design="tirol"] .wt-waiting {
-  --wt-paper: var(--wt-tirol-ivory);
-  --wt-paper-2: var(--wt-tirol-parchment);
+  --wt-paper: var(--wt-tirol-paper);
+  --wt-paper-2: var(--wt-tirol-soft);
   --wt-paper-edge: var(--wt-tirol-line);
   --wt-ink: var(--wt-tirol-ink);
-  --wt-muted: #5a4836;
-  --wt-green: var(--wt-tirol-red);
+  --wt-muted: var(--wt-tirol-muted);
+  --wt-green: var(--wt-tirol-fir);
   --wt-gold-ink: var(--wt-tirol-fir);
 }
-html[data-watten-design="tirol"][data-watten-page="lobby"] body {
-  background:
-    radial-gradient(120% 50% at 50% 0, #fff8e8cc, transparent 70%),
-    linear-gradient(#f1e5c8, #e6d6b2);
-}
-/* The live table keeps its warm wood; only the page frame is tinted. */
-html[data-watten-design="tirol"][data-watten-page="table"] body,
-html[data-watten-design="tirol"][data-watten-page="spectator"] body {
-  background: #d9b684;
-}
-
-/* Typography: calm serif headlines in dark fir. */
-html[data-watten-design="tirol"] :is(h1, h2) {
-  color: var(--wt-tirol-fir);
-  letter-spacing: .01em;
-}
-html[data-watten-design="tirol"] h1 { font-weight: 700; }
-html[data-watten-design="tirol"] a:not(.wt-button):not(.button-link) { color: var(--wt-tirol-red-deep); }
-html[data-watten-design="tirol"] .wt-brand,
-html[data-watten-design="tirol"] body > header > a {
-  color: var(--wt-tirol-fir);
-  font-weight: 700;
-}
-
-/* Header: colour only; geometry lives in watten-design-switch.css. Small red Zackenband underneath. */
-html[data-watten-design="tirol"]:not([data-watten-active="true"]) .wt-header {
-  background: url("/static/images/watten-tirol/zackenband.svg?v=ASSET_VERSION") left bottom / 18px 6px repeat-x;
-}
-html[data-watten-design="tirol"] .wt-nav a[aria-current="page"] {
-  color: var(--wt-tirol-red-deep);
-  text-decoration-color: var(--wt-tirol-red);
-  text-decoration-thickness: 2px;
-}
-html[data-watten-design="tirol"] .wt-language select {
-  border-color: var(--wt-tirol-line);
-  background: var(--wt-tirol-ivory);
-}
-
-/* Controls: Tirol red primary, fir green accents. */
-html[data-watten-design="tirol"] .wt-primary {
-  background: var(--wt-tirol-fir);
-  border-color: var(--wt-tirol-fir);
-}
-html[data-watten-design="tirol"] :is(.wt-button--ghost, button.wt-button--ghost) {
-  color: var(--wt-tirol-fir);
-  background: transparent;
-}
-html[data-watten-design="tirol"] input:not([type=checkbox]):not([type=radio]),
-html[data-watten-design="tirol"] select {
-  border-color: #b9a77d;
-  background: #fffbef;
-}
-html[data-watten-design="tirol"] input:focus-visible,
-html[data-watten-design="tirol"] select:focus-visible,
-html[data-watten-design="tirol"] textarea:focus-visible {
-  outline-color: var(--wt-tirol-red);
-}
-html[data-watten-design="tirol"] .wt-tag--host {
-  background: #f2dfb0;
-  border-color: #c9a24a;
-}
-
-/* Panels: ivory cards with a slim red top rule (inset, so layout stays identical). */
+html[data-watten-design="tirol"] :is(h1, h2, h3, .wt-brand, .wt-table-entry-head strong) { font-family: Georgia, "Iowan Old Style", "Times New Roman", serif; color: var(--wt-tirol-ink); }
+html[data-watten-design="tirol"] :is(h1, h2) { letter-spacing: -.02em; }
+html[data-watten-design="tirol"] a:not(.wt-button):not(.button-link) { color: var(--wt-tirol-fir); }
+html[data-watten-design="tirol"] .wt-header { background: var(--wt-tirol-paper); border-bottom: 1px solid var(--wt-tirol-line); box-shadow: none; }
+html[data-game="watten"][data-watten-design="tirol"] body #suiteHeader:not(.suite-header--table) { border-radius: 5px; box-shadow: none; }
+html[data-game="watten"][data-watten-design="tirol"] body #suiteHeader:not(.suite-header--table) .suite-header__brand { font-family: Georgia, serif; letter-spacing: 0; }
+html[data-watten-design="tirol"] .wt-nav a[aria-current="page"] { color: var(--wt-tirol-fir); background: var(--wt-tirol-soft); text-decoration: none; }
+html[data-watten-design="tirol"] :is(.wt-button, .wt-primary, .wt-create-choice, .button-link, .account-navigation a) { border-radius: 5px; }
+html[data-watten-design="tirol"] .wt-primary { color: #fff; background: var(--wt-tirol-fir); border-color: var(--wt-tirol-fir); }
+html[data-watten-design="tirol"] :is(.wt-button--ghost, button.wt-button--ghost) { color: var(--wt-tirol-fir); background: var(--wt-tirol-paper); }
+html[data-watten-design="tirol"] :is(input:not([type=checkbox]):not([type=radio]), select, textarea) { color: var(--wt-tirol-ink); border-color: var(--wt-tirol-line); background: var(--wt-tirol-background); border-radius: 5px; }
+html[data-watten-design="tirol"] :focus-visible { outline-color: var(--wt-tirol-fir); }
+html[data-watten-design="tirol"] :is(.wt-tag, .wt-tag--host, .wt-recipe li) { color: var(--wt-tirol-ink); border-color: var(--wt-tirol-line); background: var(--wt-tirol-soft); border-radius: 4px; }
 html[data-watten-design="tirol"] :is(.wt-hero, .wt-card-panel, .wt-waiting, .wt-rules-text),
-html[data-watten-design="tirol"][data-account-page] main {
-  background: var(--wt-tirol-ivory);
-  border-color: var(--wt-tirol-line);
-  box-shadow: inset 0 3px 0 var(--wt-tirol-red), 0 8px 20px #3d2a1018;
-}
-html[data-watten-design="tirol"][data-watten-page="lobby"] .wt-table-entry {
-  background: #fbf4e1;
-  border-color: var(--wt-tirol-line);
-}
-html[data-watten-design="tirol"] .wt-table-entry:hover { border-color: var(--wt-tirol-red); }
-html[data-watten-design="tirol"] :is(.wt-lobby-chat-disclosure, .wt-create-dialog) {
-  border-color: var(--wt-tirol-line);
-  background: var(--wt-tirol-ivory);
-}
-html[data-watten-design="tirol"] .wt-create-dialog::backdrop { background: #1a2a20b8; }
-html[data-watten-design="tirol"] :is(.wt-create-heading, .wt-create-footer) {
-  background: var(--wt-tirol-ivory);
-  border-color: var(--wt-tirol-line);
-}
-html[data-watten-design="tirol"] .wt-create-choices .wt-create-choice {
-  background: #fbf4e1;
-  border-color: var(--wt-tirol-line);
-}
-html[data-watten-design="tirol"] .wt-create-choice > span { color: var(--wt-tirol-red); }
-html[data-watten-design="tirol"] .wt-create-form input:not([type=checkbox]):not([type=radio]),
-html[data-watten-design="tirol"] .wt-create-form select,
-html[data-watten-design="tirol"] .wt-create-form .wt-segmented span {
-  background: #fffbef;
-}
-html[data-watten-design="tirol"] .wt-create-form .wt-segmented input:checked + span {
-  background: var(--wt-tirol-fir);
-}
-html[data-watten-design="tirol"] .wt-waiting .wt-team { background-color: #fbf4e1; }
-html[data-watten-design="tirol"] .wt-waiting .wt-landscape-hint { background-color: #e4e1c3; }
-html[data-watten-design="tirol"] :is(.wt-lobby-chat [data-watten-lobby-chat-messages], .wt-lobby-chat textarea) {
-  background-color: #fffbef;
-}
+html[data-watten-design="tirol"][data-account-page] main { color: var(--wt-tirol-ink); background: var(--wt-tirol-paper); border-color: var(--wt-tirol-line); border-radius: 5px; box-shadow: none; }
 
-/* Account pages (own markup). */
-html[data-watten-design="tirol"][data-account-page] body {
-  background: linear-gradient(#f4ead2, var(--wt-tirol-parchment));
-}
-html[data-watten-design="tirol"][data-account-page] :is(h1, h2) { color: var(--wt-tirol-fir); }
+/* Printed lobby: fine rules, generous heading, original single-card artwork. */
+html[data-watten-design="tirol"][data-watten-page="lobby"] .wt-main { max-width: 960px; }
+html[data-watten-design="tirol"][data-watten-page="lobby"] .wt-lobby-intro { position: relative; display: block; padding: 1.5rem 1rem 1rem; border: 0; border-top: 1px solid var(--wt-tirol-fir); border-radius: 0; background: transparent; }
+html[data-watten-design="tirol"] .wt-lobby-intro-copy { padding-right: 5.25rem; }
+html[data-watten-design="tirol"] .wt-lobby-intro h1 { max-width: 8ch; margin-block: .5rem .75rem; font-size: clamp(2.75rem, 10vw, 4rem); line-height: 1.02; }
+html[data-watten-design="tirol"] .wt-lobby-intro .wt-lead { max-width: 36ch; color: var(--wt-tirol-muted); font-size: .95rem; line-height: 1.5; white-space: pre-line; }
+html[data-watten-design="tirol"] .wt-lobby-intro > .wt-actions { display: grid; grid-template-columns: minmax(0, 1fr); gap: .5rem; margin-block: 1.5rem .75rem; }
+html[data-watten-design="tirol"] .wt-lobby-intro > .wt-actions > :first-child { min-height: 52px; }
+.watten-tirol-kicker, .watten-tirol-cards { display: none; }
+html[data-watten-design="tirol"] .watten-tirol-kicker { display: block; margin: 0; font: 700 .7rem/1.4 system-ui, sans-serif; letter-spacing: .12em; text-transform: uppercase; color: var(--wt-tirol-fir); }
+html[data-watten-design="tirol"] .watten-tirol-cards { display: block; position: absolute; top: 4.75rem; right: 1.25rem; width: 64px; height: 106px; pointer-events: none; }
+html[data-watten-design="tirol"] .watten-tirol-cards > span { position: absolute; inset: 0; transform: rotate(-9deg); }
+html[data-watten-design="tirol"] .watten-tirol-cards > span + span { transform: translate(10px, 5px) rotate(9deg); }
+html[data-watten-design="tirol"] .watten-tirol-cards svg { display: block; width: 100%; height: 100%; }
+html[data-watten-design="tirol"] .watten-tirol-motto { display: grid; gap: .2rem; margin: .75rem 0 0; color: var(--wt-tirol-muted); font: .78rem/1.5 Georgia, serif; }
+html[data-watten-design="tirol"] .watten-tirol-motto > span { display: block; }
+html[data-watten-design="tirol"] .watten-tirol-motto > span + span { font-family: system-ui, sans-serif; font-size: .85em; }
+html[data-watten-design="tirol"][data-watten-page="lobby"] .wt-card-panel { padding: 1rem; background: transparent; border: 0; }
+html[data-watten-design="tirol"][data-watten-page="lobby"] .wt-section-head h2 { font-size: 1.5rem; }
+html[data-watten-design="tirol"][data-watten-page="lobby"] .wt-table-entry { padding: 1rem 0; border: 0; border-top: 1px solid var(--wt-tirol-line); border-radius: 0; background: transparent; }
+html[data-watten-design="tirol"] .wt-table-entry-head strong { font-size: 1.1rem; }
+html[data-watten-design="tirol"] .wt-lobby-chat-disclosure { margin-inline: 1rem; background: var(--wt-tirol-paper); border-color: var(--wt-tirol-line); border-radius: 5px; box-shadow: none; }
+html[data-watten-design="tirol"] .wt-lobby-chat-disclosure > summary { color: var(--wt-tirol-fir); }
+html[data-watten-design="tirol"] :is(.wt-create-dialog, .wt-create-heading, .wt-create-footer, .wt-create-choices .wt-create-choice, .wt-waiting .wt-team, .wt-lobby-chat [data-watten-lobby-chat-messages]) { background: var(--wt-tirol-paper); border-color: var(--wt-tirol-line); }
+html[data-watten-design="tirol"] .wt-create-dialog::backdrop { background: #1d201a88; }
+html[data-watten-design="tirol"] .wt-create-choice > span { color: var(--wt-tirol-fir); }
+html[data-watten-design="tirol"] .wt-create-form .wt-segmented span { border-radius: 5px; border-color: var(--wt-tirol-line); background: var(--wt-tirol-paper); }
+html[data-watten-design="tirol"] .wt-create-form .wt-segmented input:checked + span { background: var(--wt-tirol-fir); color: #fff; }
+html[data-watten-design="tirol"] .wt-waiting { background: var(--wt-tirol-background); }
+html[data-watten-design="tirol"] .wt-team { border-radius: 5px; }
+html[data-watten-design="tirol"] .wt-seat-slot { border-radius: 5px; box-shadow: none; }
+html[data-watten-design="tirol"] .wt-seat-slot.is-own { border-color: var(--wt-tirol-fir); }
+html[data-watten-design="tirol"] .wt-waiting .wt-landscape-hint { background: var(--wt-tirol-soft); }
+
+/* Real account/progress data and the existing navigation remain in place. */
 html[data-watten-design="tirol"][data-account-page] button.ghost,
-html[data-watten-design="tirol"][data-account-page] .button-link.ghost {
-  color: var(--wt-tirol-fir);
-  border-color: var(--wt-tirol-fir);
-  background: transparent;
-}
-html[data-watten-design="tirol"][data-account-page] aside { border-left-color: var(--wt-tirol-red); }
-html[data-watten-design="tirol"][data-account-page] details { border-color: var(--wt-tirol-line); }
-html[data-watten-design="tirol"] .watten-friends-warning {
-  border-left-color: var(--wt-tirol-red);
-  background: #fbf0d6;
-}
+html[data-watten-design="tirol"][data-account-page] .button-link.ghost { color: var(--wt-tirol-fir); border-color: var(--wt-tirol-fir); background: var(--wt-tirol-paper); }
+html[data-watten-design="tirol"] .account-navigation a[aria-current] { color: #fff; background: var(--wt-tirol-fir); box-shadow: none; }
+html[data-watten-design="tirol"] :is(.account-settings-group, .account-settings-group > summary) { border-radius: 5px; }
+html[data-watten-design="tirol"][data-account-page] aside { border-left-color: var(--wt-tirol-fir); }
+html[data-watten-design="tirol"] .watten-friends-warning { border-left-color: var(--wt-tirol-fir); background: var(--wt-tirol-soft); }
+html[data-watten-design="tirol"][data-watten-progress-page="progress"] :is(.wt-progress-xp > div, .wt-progress-pending, .wt-achievement-body, .wt-title-ladder, .wt-title-ladder li, .wt-favorite-list li) { border-color: var(--wt-tirol-line); }
+html[data-watten-design="tirol"][data-watten-progress-page="progress"] :is(.wt-progress-xp > div, .wt-title-ladder li.is-reached .wt-title-step) { background: var(--wt-tirol-soft); }
+html[data-watten-design="tirol"][data-watten-progress-page="progress"] .wt-title-ladder li.is-current { color: var(--wt-tirol-fir); background: var(--wt-tirol-soft); box-shadow: inset 3px 0 var(--wt-tirol-fir); }
+html[data-watten-design="tirol"][data-watten-progress-page="progress"] :is(.wt-title-step, .wt-collection-status button) { color: var(--wt-tirol-fir); border-color: var(--wt-tirol-line); background: var(--wt-tirol-paper); }
+html[data-watten-design="tirol"][data-watten-progress-page="progress"] .wt-collection-status [aria-pressed="true"] { color: #fff; background: var(--wt-tirol-fir); }
+html[data-watten-design="tirol"][data-watten-progress-page="progress"] :is(.wt-collection-total, .wt-achievement-earned) { color: var(--wt-tirol-fir); }
 
-/* Live table: warm carved wood and marquetry, with the original card layout. */
+/* Approved four-corner carving, with the original responsive nine-slice widths. */
+html[data-watten-design="tirol"][data-watten-active="true"] body { background: #d9b684; }
 html[data-watten-design="tirol"][data-watten-active="true"] body .wt-header.suite-header.suite-header--table,
-html[data-watten-design="tirol"][data-watten-active="true"] body::before {
-  background: var(--wt-tirol-ivory);
-  border-color: var(--wt-tirol-line);
-}
-html[data-watten-design="tirol"][data-watten-active="true"] .wt-topbar {
-  background: #f8f1dfe6;
-  border-bottom-color: #7a2a1e55;
-}
-html[data-watten-design="tirol"][data-watten-active="true"] .wt-score.is-own {
-  border-color: var(--wt-tirol-red);
-  box-shadow: inset 0 -2px #b01c2277;
-}
-html[data-watten-design="tirol"][data-watten-active="true"] .wt-topbar .wt-button--ghost { color: var(--wt-tirol-ink); }
-/* Keep the responsive nine-slice frame from the original wood table. The
-   self-contained surface adds inlays without introducing another paint layer. */
-html[data-watten-design="tirol"][data-watten-active="true"] .wt-table::before {
-  border-image-source: url("/static/images/watten-tirol/wood-inlay.svg?v=ASSET_VERSION");
-}
-html[data-watten-design="tirol"]:not([data-watten-active="true"]) .wt-felt {
-  background: radial-gradient(90% 80% at 50% 45%, #2f6048 0%, #244d39 62%, #1b3b2b 100%);
-  box-shadow: inset 0 0 0 2px #ffffff14, inset 0 0 0 7px #142d20, inset 0 0 0 8px #c9a24acc, 0 10px 26px #0a160f66;
-}
-html[data-watten-design="tirol"]:not([data-watten-active="true"]) .wt-score.is-winner { background: #d6a840; }
+html[data-watten-design="tirol"][data-watten-active="true"] body::before,
+html[data-watten-design="tirol"][data-watten-active="true"] .wt-topbar { background: var(--wt-tirol-paper); border-color: var(--wt-tirol-line); box-shadow: none; }
+html[data-watten-design="tirol"][data-watten-active="true"] .wt-table::before { border-image-source: url("/static/images/watten-tirol/zirbenstube.webp?v=ASSET_VERSION"); border-image-slice: 30.241935% 22.082019% fill; }
+html[data-watten-design="tirol"][data-watten-active="true"] .wt-score { color: var(--wt-tirol-ink); background: var(--wt-tirol-paper); border-color: var(--wt-tirol-line); border-radius: 5px; }
+html[data-watten-design="tirol"][data-watten-active="true"] .wt-score.is-own { border-color: var(--wt-tirol-fir); box-shadow: inset 0 -2px var(--wt-tirol-fir); }
+html[data-watten-design="tirol"][data-watten-active="true"] .wt-score.is-own .wt-score-name { color: var(--wt-tirol-fir); }
+html[data-watten-design="tirol"][data-watten-active="true"] .wt-avatar { color: #fff; background: var(--wt-tirol-fir); border-color: var(--wt-tirol-paper); box-shadow: none; }
+html[data-watten-design="tirol"][data-watten-active="true"] .wt-seat.is-turn .wt-avatar { outline-color: var(--wt-tirol-fir); border-color: var(--wt-tirol-paper); box-shadow: 0 0 0 5px #e5ece5b3; }
+html[data-watten-design="tirol"][data-watten-active="true"] .wt-seat.is-decider .wt-avatar { outline-color: var(--wt-tirol-fir); }
+html[data-watten-design="tirol"][data-watten-active="true"] .wt-seat-name { color: var(--wt-tirol-ink); background: var(--wt-tirol-paper); box-shadow: none; }
+html[data-watten-design="tirol"][data-watten-active="true"] :is(.wt-seat-call-role, .wt-seat-tags .wt-tag) { color: var(--wt-tirol-ink); background: var(--wt-tirol-soft); border-color: var(--wt-tirol-line); }
+html[data-watten-design="tirol"][data-watten-active="true"] :is(.wt-history-box, .wt-history-close, .wt-panel, .wt-final-progress, .wt-private > section, .wt-partner-hand summary, .wt-partner-popover) { color: var(--wt-tirol-ink); border-color: var(--wt-tirol-line); background: var(--wt-tirol-paper); box-shadow: none; }
+html[data-watten-design="tirol"][data-watten-active="true"] .wt-panel button,
+html[data-watten-design="tirol"][data-watten-active="true"] .wt-feedback .wt-choice-row > button { color: var(--wt-tirol-fir); border-color: var(--wt-tirol-line); background: var(--wt-tirol-paper); border-radius: 5px; box-shadow: none; }
+html[data-watten-design="tirol"][data-watten-active="true"] .wt-panel .wt-primary { color: #fff; background: var(--wt-tirol-fir); border-color: var(--wt-tirol-fir); }
+html[data-watten-design="tirol"][data-watten-active="true"] .wt-stake > button { color: var(--wt-tirol-fir); background: var(--wt-tirol-paper); border-color: var(--wt-tirol-line); border-radius: 5px; box-shadow: none; }
+html[data-watten-design="tirol"] .wt-sound button { color: var(--wt-tirol-fir); background: var(--wt-tirol-paper); border-color: var(--wt-tirol-line); border-radius: 5px; }
+html[data-watten-design="tirol"] .wt-sound button[aria-pressed="true"] { color: #fff; background: var(--wt-tirol-fir); border-color: var(--wt-tirol-fir); }
+html[data-watten-design="tirol"] .wt-scorepad { color: var(--wt-tirol-ink); border-color: var(--wt-tirol-line); background: linear-gradient(90deg, transparent 33px, #214d3d33 33px, #214d3d33 34px, transparent 34px), repeating-linear-gradient(#fff 0 31px, #d6ded7 31px 32px); }
+html[data-watten-design="tirol"] .wt-scorepad .wt-scorepad-kicker { color: var(--wt-tirol-muted); }
+html[data-watten-design="tirol"][data-watten-active="true"] .wt-table[data-phase="match_complete"][data-round-stage="ready"] .wt-end-sheet { background: var(--wt-tirol-paper); border: 1px solid var(--wt-tirol-line); border-radius: 5px; box-shadow: 0 8px 32px #24372f26; }
+html[data-watten-design="tirol"][data-watten-active="true"] :is(.wt-final-heading, .wt-final-nockerl-count) { color: var(--wt-tirol-fir); }
+html[data-watten-design="tirol"][data-watten-active="true"] :is(.wt-final-winner, .wt-final-nockerl-team, .wt-final-call > summary, .wt-rematch-options > summary) { color: var(--wt-tirol-muted); }
+html[data-watten-design="tirol"][data-watten-active="true"] :is(.wt-final-nockerl, .wt-rematch) { border-color: var(--wt-tirol-line); background: transparent; }
 
-/* Scene: calm mountain band with a small red eagle. Inside .wt-lobby-intro it sits behind
-   the content (faint on phones, to the side on desktop); elsewhere it is a plain band. */
-html[data-watten-design="tirol"] .watten-tirol-scene {
-  position: relative;
-  display: block;
-  width: 100%;
-  height: 76px;
-  margin: 0 0 .5rem;
-  overflow: hidden;
-  pointer-events: none;
-  user-select: none;
-}
-html[data-watten-design="tirol"] .watten-tirol-scene::before,
-html[data-watten-design="tirol"] .watten-tirol-scene::after {
-  content: "";
-  position: absolute;
-  pointer-events: none;
-}
-html[data-watten-design="tirol"] .watten-tirol-scene::before {
-  inset: 0;
-  background: var(--wt-tirol-fir-soft);
-  opacity: .82;
-  -webkit-mask: url("/static/images/watten-tirol/ridge.svg?v=ASSET_VERSION") center bottom / 100% 100% no-repeat;
-  mask: url("/static/images/watten-tirol/ridge.svg?v=ASSET_VERSION") center bottom / 100% 100% no-repeat;
-}
-html[data-watten-design="tirol"] .watten-tirol-scene::after {
-  top: 6px;
-  right: 8%;
-  width: 52px;
-  height: 42px;
-  background: var(--wt-tirol-red);
-  -webkit-mask: url("/static/images/watten-tirol/eagle.svg?v=ASSET_VERSION") center / contain no-repeat;
-  mask: url("/static/images/watten-tirol/eagle.svg?v=ASSET_VERSION") center / contain no-repeat;
-}
-html[data-watten-design="tirol"] .watten-tirol-scene--left::after { right: auto; left: 8%; }
-html[data-watten-design="tirol"] .watten-tirol-scene--quiet::after { display: none; }
-
-html[data-watten-design="tirol"] .wt-lobby-intro { position: relative; }
-html[data-watten-design="tirol"] .wt-lobby-intro > :not(.watten-tirol-scene) { position: relative; z-index: 1; }
-html[data-watten-design="tirol"] .wt-lobby-intro > .watten-tirol-scene {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  width: auto;
-  height: auto;
-  margin: 0;
-  border-radius: inherit;
-  opacity: .3;
-}
-html[data-watten-design="tirol"] .wt-lobby-intro > .watten-tirol-scene::after { top: .6rem; right: .8rem; width: 44px; height: 36px; }
-html[data-watten-design="tirol"] .wt-lobby-intro > .watten-tirol-scene::before { top: auto; height: 62%; }
-html[data-watten-design="tirol"] .wt-lobby-intro > .watten-tirol-motto {
-  flex: 1 1 100%;
-  justify-items: start;
-  margin: 0;
-  padding-inline: 0;
-  text-align: left;
-}
-@media (min-width: 900px) {
-  html[data-watten-design="tirol"] .wt-lobby-intro > .watten-tirol-scene { left: auto; width: min(42%, 380px); opacity: 1; }
-  html[data-watten-design="tirol"] .wt-lobby-intro > .watten-tirol-scene::before { height: 100%; opacity: .7; }
-  html[data-watten-design="tirol"] .wt-lobby-intro > .watten-tirol-scene::after { top: 1rem; right: 40%; width: 80px; height: 66px; }
-  html[data-watten-design="tirol"][data-watten-page="lobby"] .wt-lobby-intro {
-    display: grid; grid-template-columns: minmax(0, 1fr) minmax(240px, 36%);
-  }
-  html[data-watten-design="tirol"] .wt-lobby-intro > :not(.watten-tirol-scene) { grid-column: 1; }
-  html[data-watten-design="tirol"] .wt-lobby-intro-copy { padding-right: 0; }
-  html[data-watten-design="tirol"] .wt-lobby-intro > .wt-actions { justify-self: start; }
-}
-
-/* Motto: German line in italic serif, English translation as a second, quieter line.
-   Expects two child elements (DE, EN); a small flourish sits above the pair. */
-html[data-watten-design="tirol"] .watten-tirol-motto {
-  display: grid;
-  justify-items: center;
-  gap: .15rem;
-  max-width: 34rem;
-  margin: .75rem auto;
-  padding-inline: .5rem;
-  color: var(--wt-tirol-red-deep);
-  font: italic 600 clamp(.95rem, 3.6vw, 1.1rem)/1.35 Georgia, "Iowan Old Style", "Times New Roman", serif;
-  text-align: center;
-  text-wrap: balance;
-  overflow-wrap: anywhere;
-}
-html[data-watten-design="tirol"] .watten-tirol-motto::before {
-  content: "";
-  width: 48px;
-  height: 12px;
-  margin-bottom: .15rem;
-  background: var(--wt-tirol-red);
-  -webkit-mask: url("/static/images/watten-tirol/motto-flourish.svg?v=ASSET_VERSION") center / contain no-repeat;
-  mask: url("/static/images/watten-tirol/motto-flourish.svg?v=ASSET_VERSION") center / contain no-repeat;
-}
-html[data-watten-design="tirol"] .watten-tirol-motto > * { display: block; margin: 0; }
-html[data-watten-design="tirol"] .watten-tirol-motto > * + * {
-  color: var(--wt-muted);
-  font-size: .85em;
-  font-style: normal;
-  font-weight: 500;
-}
-
-/* Never on the live table or in cramped landscape; the game area needs every pixel. */
-html[data-watten-design="tirol"][data-watten-active="true"] :is(.watten-tirol-scene, .watten-tirol-motto),
-html[data-watten-design="tirol"][data-watten-page="table"] :is(.watten-tirol-scene, .watten-tirol-motto),
-html[data-watten-design="tirol"][data-watten-page="spectator"] :is(.watten-tirol-scene, .watten-tirol-motto) {
-  display: none;
-}
-@media (max-height: 520px) and (orientation: landscape) {
-  html[data-watten-design="tirol"] .watten-tirol-scene { height: 44px; margin-bottom: .25rem; }
-  html[data-watten-design="tirol"] .watten-tirol-scene::after { width: 34px; height: 28px; top: 2px; }
-  html[data-watten-design="tirol"] .watten-tirol-motto { margin-block: .35rem; font-size: .9rem; }
-}
-@media (min-width: 720px) {
-  html[data-watten-design="tirol"] .watten-tirol-scene:not(.wt-lobby-intro > *) { height: 112px; }
-}
-@media (prefers-reduced-motion: no-preference) {
-  html[data-watten-design="tirol"] .watten-tirol-scene::after { animation: watten-tirol-glide 9s ease-in-out infinite alternate; }
-  @keyframes watten-tirol-glide { from { transform: translateY(0); } to { transform: translateY(5px); } }
-}
-@media (forced-colors: active) {
-  html[data-watten-design="tirol"] .watten-tirol-scene { display: none; }
+@media (min-width: 640px) {
+  html[data-watten-design="tirol"][data-watten-page="lobby"] .wt-lobby-intro { padding: 2.5rem 1.5rem 1.5rem; }
+  html[data-watten-design="tirol"] .wt-lobby-intro-copy { padding-right: 9rem; }
+  html[data-watten-design="tirol"] .watten-tirol-cards { width: 88px; height: 146px; top: 3.5rem; right: 3rem; }
+  html[data-watten-design="tirol"] .wt-lobby-intro > .wt-actions { max-width: 32rem; grid-template-columns: 1fr 1fr; align-items: stretch; }
 }

@@ -2,10 +2,14 @@ export const WATTEN_DESIGN_MESSAGES = {
   de: {
     change: "Darstellung wechseln", next: "Nächste Darstellung", classic: "Klassisch", tirol: "Tirol",
     motto: "Bisch a Tiroler, bisch a Mensch …", mottoTranslation: "",
+    welcome: "Herzlich willkommen", introTitle: "Auf a Kartl.",
+    introLead: "Deine Leute. Dein Tisch.\nEine guate Runde Watten.",
   },
   en: {
     change: "Change appearance", next: "Next appearance", classic: "Classic", tirol: "Tyrol",
     motto: "Bisch a Tiroler, bisch a Mensch …", mottoTranslation: "Tyrolean at heart. At home at the card table.",
+    welcome: "Welcome to the table", introTitle: "Up for a game?",
+    introLead: "Your friends. Your table.\nA good round of Watten.",
   },
 };
 

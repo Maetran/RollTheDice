@@ -1,4 +1,5 @@
 import { WATTEN_DESIGN_MESSAGES } from "../i18n/catalog.js";
+import { cardArt } from "../hausdepp/cards.js";
 
 // The template's tiny inline preference script restores the choice before
 // styles paint. This deferred controller owns presentation only: no requests.
@@ -12,6 +13,23 @@ import { WATTEN_DESIGN_MESSAGES } from "../i18n/catalog.js";
     tirol: '<path d="m2 19 7-12 4 6 3-5 6 11H2Z"/><path d="m6 12 3 2 2-3m3 1 2 2 2-2"/>',
   };
   let design = "classic";
+  const originalCopy = new WeakMap();
+
+  // Preserve the real public/Classic heading and lead (including any nested
+  // markup) while the optional design shows its own bilingual editorial copy.
+  function introCopy(node, text) {
+    if (!node) return;
+    if (design !== "tirol") {
+      const original = originalCopy.get(node);
+      if (original && (node.childNodes.length !== original.length || original.some((child, index) => node.childNodes[index] !== child))) {
+        node.replaceChildren(...original);
+        window.ZDWA_I18N?.translateElement?.(node);
+      }
+      return;
+    }
+    if (!originalCopy.has(node)) originalCopy.set(node, [...node.childNodes]);
+    if (node.textContent !== text) node.textContent = text;
+  }
 
   function storedChoice() {
     try { return localStorage.getItem(storageKey) === "tirol" ? "tirol" : "classic"; }
@@ -49,14 +67,24 @@ import { WATTEN_DESIGN_MESSAGES } from "../i18n/catalog.js";
       }
     }
     for (const hero of document.querySelectorAll(".wt-lobby-intro")) {
-      let scene = hero.querySelector(".watten-tirol-scene");
-      if (!scene) {
-        scene = document.createElement("div");
-        scene.className = "watten-tirol-scene";
-        scene.setAttribute("aria-hidden", "true");
-        hero.append(scene);
+      introCopy(hero.querySelector("h1"), copy.introTitle);
+      introCopy(hero.querySelector(".wt-lead"), copy.introLead);
+      let kicker = hero.querySelector(".watten-tirol-kicker");
+      if (!kicker) {
+        kicker = document.createElement("p");
+        kicker.className = "watten-tirol-kicker";
+        kicker.translate = false;
+        hero.querySelector(".wt-lobby-intro-copy")?.prepend(kicker);
       }
-      scene.hidden = design !== "tirol";
+      if (kicker.textContent !== copy.welcome) kicker.textContent = copy.welcome;
+      let cards = hero.querySelector(".watten-tirol-cards");
+      if (!cards && design === "tirol") {
+        cards = document.createElement("div");
+        cards.className = "watten-tirol-cards";
+        cards.setAttribute("aria-hidden", "true");
+        cards.innerHTML = ["hearts-K", "leaves-A"].map(card => `<span>${cardArt(card)}</span>`).join("");
+        hero.append(cards);
+      }
       let motto = hero.querySelector(".watten-tirol-motto");
       if (!motto) {
         motto = document.createElement("p");
@@ -90,7 +118,7 @@ import { WATTEN_DESIGN_MESSAGES } from "../i18n/catalog.js";
       meta.name = "theme-color";
       document.head.append(meta);
     }
-    if (meta) meta.content = design === "tirol" ? "#9f2936" : "#713d2c";
+    if (meta) meta.content = design === "tirol" ? "#214d3d" : "#713d2c";
     updateControls();
   }
 

@@ -23,6 +23,9 @@ async function expectDesign(page, design, language = 'de') {
 async function expectStubendruckLobby(page, language) {
   await expect(page.locator('#wattenTitle')).toHaveText(language === 'en' ? 'Up for a game?' : 'Auf a Kartl.');
   await expect(page.locator('#wattenTitle')).toHaveCSS('font-family', /Georgia/);
+  await expect(page.locator('.suite-header__brand')).toHaveCSS('font-family', /Georgia/);
+  await expect(page.locator('.suite-header')).toHaveCSS('border-radius', '5px');
+  await expect(page.locator('.suite-header')).toHaveCSS('box-shadow', 'none');
   await expect(page.locator('[data-watten-create-open]')).toHaveCSS('background-color', 'rgb(33, 77, 61)');
   await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(243, 245, 241)');
   await expect(page.locator('.watten-tirol-scene')).toBeHidden();
@@ -177,7 +180,7 @@ test('an unknown saved design falls back safely and blocked storage still permit
 test('the waiting-room switch returns to the live header and both looks preserve a real mobile match', async ({ browser, baseURL }, info) => {
   const wrapped = { newContext: options => browser.newContext({ ...options,
     viewport: { width: 320, height: 568 }, serviceWorkers: 'block' }) };
-  const players = [await player(wrapped, baseURL), await player(wrapped, baseURL)];
+  const players = [await player(wrapped, baseURL, 'de', { role: 'admin' }), await player(wrapped, baseURL)];
   const [own, peer] = players;
   const { page } = own;
   try {
@@ -285,6 +288,7 @@ for (const language of ['de', 'en']) {
       const path = await finishOpenMatch(players);
       await expectDesign(page, 'tirol', language);
       await expect(page.locator('.wt-final-heading')).toHaveCSS('font-family', /Georgia/);
+      await expect(page.locator('[data-watten-rematch-action=create]')).toHaveCSS('background-color', 'rgb(33, 77, 61)');
       for (const viewport of [{ width: 390, height: 844 }, { width: 844, height: 390 }]) {
         await page.setViewportSize(viewport);
         await expect(page.locator('.wt-final-heading')).toBeVisible();

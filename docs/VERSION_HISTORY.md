@@ -1,6 +1,6 @@
 # Versionen / Versions
 
-Aktuelle gemeinsame Produktversion / Current shared product version: **4.13.1**.
+Aktuelle gemeinsame Produktversion / Current shared product version: **4.13.2**.
 
 Alle RollTheDice-Spiele werden gemeinsam versioniert. Major steht für einen großen
 Produktmeilenstein, Minor für neue Funktionen und Patch für Fehlerkorrekturen
@@ -30,6 +30,7 @@ Detailed player-facing descriptions are in the [changelog](../CHANGELOG.md).
 
 | Version | Datum / Date | Art / Type | Änderung / Change | Commit |
 | --- | --- | --- | --- | --- |
+| 4.13.1 | 2026-11-02 | patch | Watten: Tirol mit Holz, Intarsien und Schnitzmustern. Nach dem Stichverlauf zeigt der Tisch wieder die aktuellen Karten. / Watten: Tyrol with wood, inlays and carved details. Closing trick history restores the current cards on the table. | [d7491c7](https://github.com/Maetran/RollTheDice/commit/d7491c7cdc3c2520c4d8a4c087a81afdffd1d302) |
 | 4.13.0 | 2026-11-01 | minor | Watten: Wechsle zwischen dem vertrauten Tisch und Tirol mit Alpenpanorama, rotem Adler und Tannengrün. / Watten: Switch between the familiar table and Tyrol with Alpine scenery, a red eagle and forest green. | [13732cb](https://github.com/Maetran/RollTheDice/commit/13732cb853a18b63f60ee68991918cc203009aa5) |
 | 4.12.2 | 2026-11-01 | patch | Passende Buttons, kompakte Abschlüsse und Spielstart – Hausdepp spielt nach dem Abräumen sofort weiter. / Matching buttons, compact results and game setup, plus instant play after clearing the Hausdepp pile. | [3be12bf](https://github.com/Maetran/RollTheDice/commit/3be12bfb404cf13edbfbc1b41b928bbfb9c2f859) |
 | 4.12.1 | 2026-11-01 | patch | Watten bleibt beim Bieten und Ausspielen stabil; Hausdepp zeigt den Abschluss ohne Nachladesprung. / Watten stays stable through bids and card play; Hausdepp results appear without late layout shifts. | [895c0be](https://github.com/Maetran/RollTheDice/commit/895c0beec0338262e8c584d106f65d36e74ba8af) |

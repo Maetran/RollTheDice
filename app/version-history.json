@@ -2651,5 +2651,12 @@
     "date": "2026-11-01",
     "bump": "minor",
     "summary": "Watten: Wechsle zwischen dem vertrauten Tisch und Tirol mit Alpenpanorama, rotem Adler und Tannengrün. / Watten: Switch between the familiar table and Tyrol with Alpine scenery, a red eagle and forest green."
+  },
+  {
+    "version": "4.13.1",
+    "revision": "d7491c7cdc3c2520c4d8a4c087a81afdffd1d302",
+    "date": "2026-11-02",
+    "bump": "patch",
+    "summary": "Watten: Tirol mit Holz, Intarsien und Schnitzmustern. Nach dem Stichverlauf zeigt der Tisch wieder die aktuellen Karten. / Watten: Tyrol with wood, inlays and carved details. Closing trick history restores the current cards on the table."
   }
 ]
