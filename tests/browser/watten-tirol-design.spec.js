@@ -1,5 +1,5 @@
 const { test, expect } = require('@playwright/test');
-const { player, create, normalCall, playOne } = require('./helpers/watten-journey.cjs');
+const { player, create, normalCall, playOne, finishOpenMatch } = require('./helpers/watten-journey.cjs');
 const { expectTableHeaderReachable } = require('./helpers/watten-header.cjs');
 const { expectReachable } = require('./table-viewport');
 
@@ -12,12 +12,31 @@ async function expectDesign(page, design, language = 'de') {
   await expect(page.locator('html')).toHaveAttribute('data-watten-design', design);
   const themeColor = page.locator('meta[name="theme-color"]');
   await expect(themeColor).toHaveCount(1);
-  await expect(themeColor).toHaveAttribute('content', design === 'tirol' ? '#9f2936' : '#713d2c');
+  await expect(themeColor).toHaveAttribute('content', design === 'tirol' ? '#214d3d' : '#713d2c');
   const classic = language === 'en' ? 'Classic' : 'Klassisch';
   const tirol = language === 'en' ? 'Tyrol' : 'Tirol';
   const current = design === 'tirol' ? tirol : classic;
   const next = design === 'tirol' ? classic : tirol;
   await expect(page.locator(toggleSelector)).toHaveAccessibleName(new RegExp(`${current}.*${next}`, 'i'));
+}
+
+async function expectStubendruckLobby(page, language) {
+  await expect(page.locator('#wattenTitle')).toHaveText(language === 'en' ? 'Up for a game?' : 'Auf a Kartl.');
+  await expect(page.locator('#wattenTitle')).toHaveCSS('font-family', /Georgia/);
+  await expect(page.locator('.suite-header__brand')).toHaveCSS('font-family', /Georgia/);
+  await expect(page.locator('.suite-header')).toHaveCSS('border-radius', '5px');
+  await expect(page.locator('.suite-header')).toHaveCSS('box-shadow', 'none');
+  await expect(page.locator('[data-watten-create-open]')).toHaveCSS('background-color', 'rgb(33, 77, 61)');
+  await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(243, 245, 241)');
+  await expect(page.locator('.watten-tirol-scene')).toBeHidden();
+  expect(await page.locator('.wt-header').evaluate(node => getComputedStyle(node).backgroundImage)).not.toContain('zackenband');
+}
+
+async function handArtwork(page) {
+  return page.locator('[data-wt-hand] button[data-card]').evaluateAll(nodes => nodes.map(node => ({
+    card: node.dataset.card,
+    image: node.querySelector('.hd-card-art image')?.getAttribute('href'),
+  })));
 }
 
 async function expectTouchable(page, selector = toggleSelector) {
@@ -70,6 +89,7 @@ for (const language of ['de', 'en']) {
       await page.locator(toggleSelector).focus();
       await page.keyboard.press('Enter');
       await expectDesign(page, 'tirol', language);
+      await expectStubendruckLobby(page, language);
       await expect(page.locator('.watten-tirol-motto')).toContainText('Bisch a Tiroler, bisch a Mensch');
       if (language === 'en') await expect(page.locator('[data-watten-tirol-translation]')).toBeVisible();
       else await expect(page.locator('[data-watten-tirol-translation]')).toBeHidden();
@@ -77,9 +97,17 @@ for (const language of ['de', 'en']) {
       expect(await page.evaluate(() => getComputedStyle(document.body).background)).not.toBe(originalBackground);
       expect(await page.evaluate(() => localStorage.getItem('watten_design'))).toBe('tirol');
       if (language === 'de') {
-        await page.evaluate(() => window.ZDWA_I18N.setLanguage('en', { persist: false, reload: false }));
+        // Follow the real account-language flow. A temporary local-only API
+        // change can be superseded by a legitimate in-flight identity refresh.
+        await Promise.all([
+          page.waitForEvent('domcontentloaded'),
+          page.locator('[data-language-switcher]').selectOption('en'),
+        ]);
         await expectDesign(page, 'tirol', 'en');
-        await page.evaluate(() => window.ZDWA_I18N.setLanguage('de', { persist: false, reload: false }));
+        await Promise.all([
+          page.waitForEvent('domcontentloaded'),
+          page.locator('[data-language-switcher]').selectOption('de'),
+        ]);
         await expectDesign(page, 'tirol', 'de');
       }
       for (const viewport of [{ width: 320, height: 568 }, { width: 1280, height: 900 }]) {
@@ -90,6 +118,7 @@ for (const language of ['de', 'en']) {
       }
       await page.reload();
       await expectDesign(page, 'tirol', language);
+      await expectStubendruckLobby(page, language);
       for (const path of ['/watten/regeln', '/watten/anmelden', '/watten/konto/einstellungen', '/watten/rangliste', '/watten/konto/fortschritt']) {
         await page.goto(`${path}${language === 'en' ? '?lang=en' : ''}`);
         await expect(page.locator('html')).toHaveAttribute('lang', language);
@@ -101,6 +130,7 @@ for (const language of ['de', 'en']) {
       await expectDesign(page, 'classic', language);
       await page.goto('/watten');
       await expectDesign(page, 'classic', language);
+      await expect(page.locator('#wattenTitle')).toHaveText('Watten');
       expect(await page.evaluate(() => getComputedStyle(document.body).background)).toBe(originalBackground);
 
       // A second tab follows this device's explicit choice, including a reset.
@@ -158,11 +188,11 @@ test('an unknown saved design falls back safely and blocked storage still permit
 test('the waiting-room switch returns to the live header and both looks preserve a real mobile match', async ({ browser, baseURL }, info) => {
   const wrapped = { newContext: options => browser.newContext({ ...options,
     viewport: { width: 320, height: 568 }, serviceWorkers: 'block' }) };
-  const players = [await player(wrapped, baseURL), await player(wrapped, baseURL)];
+  const players = [await player(wrapped, baseURL, 'de', { role: 'admin' }), await player(wrapped, baseURL)];
   const [own, peer] = players;
   const { page } = own;
   try {
-    await create(players, { start: false });
+    await create(players, { start: false, trickHistory: true });
     await expect(page.locator('.suite-header')).toBeHidden();
     await expect(page.locator(`[data-watten-waiting-controls] ${toggleSelector}`)).toBeVisible();
     await expectTouchable(page);
@@ -179,6 +209,9 @@ test('the waiting-room switch returns to the live header and both looks preserve
       opportunity: item.traffic.snapshot.engine.opportunity,
     }));
     const before = structuredClone(state());
+    const originalArtwork = await handArtwork(page);
+    expect(originalArtwork).toHaveLength(5);
+    for (const card of originalArtwork) expect(card.image).toContain('/static/hausdepp/');
     const commandsBefore = own.traffic.commands.filter(message => message.action === 'watten_command').length;
     const writes = [];
     page.on('request', request => {
@@ -210,10 +243,11 @@ test('the waiting-room switch returns to the live header and both looks preserve
           expect(surface.source).toContain('/static/watten/table-schnitzstube.jpg');
         } else {
           await expectReadableAppearanceControls(page);
-          expect(surface.source).toContain('/static/images/watten-tirol/wood-inlay.svg');
-          expect(surface.slice).toBe(originalSurface.slice);
+          expect(surface.source).toContain('/static/images/watten-tirol/zirbenstube.webp');
+          expect(surface.slice).toMatch(/^\d[\d. %]* fill$/);
           expect(surface.geometry).toEqual(originalSurface.geometry);
         }
+        expect(await handArtwork(page)).toEqual(originalArtwork);
         expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
         expect(state()).toEqual(before);
       }
@@ -224,10 +258,74 @@ test('the waiting-room switch returns to the live header and both looks preserve
     expect(writes).toEqual([]);
     await page.setViewportSize({ width: 393, height: 852 });
     await playOne(players);
+    await playOne(players);
+    await expect.poll(() => players.every(item => item.traffic.snapshot.engine.last_trick?.cards.length === 2)).toBe(true);
+    const next = players.find(item => item.traffic.snapshot.engine.actions.includes('play_card'));
+    const viewer = players.find(item => item !== next);
+    if (await viewer.page.locator('html').getAttribute('data-watten-design') !== 'tirol') {
+      await viewer.page.locator(toggleSelector).click();
+    }
+    await expectDesign(viewer.page, 'tirol');
+    const history = viewer.page.locator('[data-wt-history]');
+    await history.locator(':scope > summary').click();
+    await expect(history).toHaveAttribute('open', '');
+    await playOne(players);
+    await expect.poll(() => viewer.traffic.snapshot.engine.current_trick.cards.length).toBe(1);
+    const currentCard = viewer.traffic.snapshot.engine.current_trick.cards[0].card;
+    await history.locator('[data-wt-history-close]').click();
+    await expect(history).not.toHaveAttribute('open', '');
+    await expect(viewer.page.locator('[data-wt-trick]')).toHaveAttribute('data-state', 'current');
+    await expect(viewer.page.locator(`[data-wt-trick] > .wt-trick-card[data-card="${currentCard}"]`)).toBeVisible();
+    await expect(viewer.page.locator('[data-wt-trick] > .wt-trick-card')).toHaveCount(1);
+    await expect(viewer.page.locator('[data-wt-hand]')).toBeVisible();
     expect(state()).not.toEqual(before);
     expect(players.flatMap(item => item.traffic.errors)).toEqual([]);
   } finally { await Promise.allSettled(players.map(item => item.context.close())); }
 });
+
+for (const language of ['de', 'en']) {
+  test(`${language}: the chosen green print design survives a real result, progress and account navigation`, async ({ browser, baseURL }, info) => {
+    const wrapped = { newContext: options => browser.newContext({ ...options,
+      viewport: { width: 390, height: 844 }, serviceWorkers: 'block' }) };
+    const players = [await player(wrapped, baseURL, language), await player(wrapped, baseURL, language)];
+    const own = players[0], { page } = own;
+    try {
+      await page.goto('/watten');
+      await page.locator(toggleSelector).click();
+      await expectStubendruckLobby(page, language);
+      const path = await finishOpenMatch(players);
+      await expectDesign(page, 'tirol', language);
+      await expect(page.locator('.wt-final-heading')).toHaveCSS('font-family', /Georgia/);
+      await expect(page.locator('[data-watten-rematch-action=create]')).toHaveCSS('background-color', 'rgb(33, 77, 61)');
+      await expect(page.locator('.wt-final-actions > a')).toHaveCSS('background-color', 'rgb(255, 255, 255)');
+      await expect(page.locator('.wt-final-actions > a')).toHaveCSS('color', 'rgb(33, 77, 61)');
+      for (const viewport of [{ width: 390, height: 844 }, { width: 844, height: 390 }]) {
+        await page.setViewportSize(viewport);
+        await expect(page.locator('.wt-final-heading')).toBeVisible();
+        await expectReachable(page, '[data-watten-rematch-action=create]');
+        expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
+        await page.screenshot({ path: info.outputPath(`tirol-result-${language}-${viewport.width}.png`) });
+      }
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page.locator('.wt-final-call > summary').click();
+      await page.locator('.wt-final-progress').click();
+      await expect(page).toHaveURL(/\/watten\/konto\/fortschritt$/);
+      await expectDesign(page, 'tirol', language);
+      await expect(page.locator('#wattenProgress > h1')).toHaveCSS('font-family', /Georgia/);
+      await page.goto(`/watten/konto/einstellungen${language === 'en' ? '?lang=en' : ''}`);
+      await expectDesign(page, 'tirol', language);
+      await expectTouchable(page);
+      await page.reload();
+      await expectDesign(page, 'tirol', language);
+      expect(await page.evaluate(() => localStorage.getItem('watten_design'))).toBe('tirol');
+      await page.goto(path);
+      await expect(page.locator('[data-watten-match-result]')).toBeVisible();
+      await expectDesign(page, 'tirol', language);
+      await expect(page.locator('html')).toHaveAttribute('lang', language);
+      expect(players.flatMap(item => item.traffic.errors)).toEqual([]);
+    } finally { await Promise.allSettled(players.map(item => item.context.close())); }
+  });
+}
 
 test('four-player partner cards and enabled ambience retain their mobile header slots in both designs', async ({ browser, baseURL }, info) => {
   const wrapped = { newContext: options => browser.newContext({ ...options,

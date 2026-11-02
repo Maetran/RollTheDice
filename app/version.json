@@ -1,10 +1,10 @@
 {
-  "version": "4.13.1",
+  "version": "4.13.2",
   "bump": "patch",
   "date": "2026-11-02",
-  "previous_revision": "13732cb853a18b63f60ee68991918cc203009aa5",
+  "previous_revision": "d7491c7cdc3c2520c4d8a4c087a81afdffd1d302",
   "summary": {
-    "de": "Watten: Tirol mit Holz, Intarsien und Schnitzmustern. Nach dem Stichverlauf zeigt der Tisch wieder die aktuellen Karten.",
-    "en": "Watten: Tyrol with wood, inlays and carved details. Closing trick history restores the current cards on the table."
+    "de": "Watten: Tirol in Tannengrün mit hellen Flächen, klassischer Schrift und geschnitztem Zirbenstuben-Tisch.",
+    "en": "Watten: Tyrol in forest green with bright surfaces, classic headings and a carved Tyrolean parlour table."
   }
 }

@@ -372,7 +372,7 @@ test('public language cases collect only in the public config and never in eithe
     const output = result.stdout + result.stderr;
     const publicPool = config === CONFIGS['watten-public'];
     assert.equal(result.status, publicPool ? 0 : 1, output);
-    assert.match(output, publicPool ? /Total: 2 tests in 1 file/ : /No tests found/);
+    assert.match(output, publicPool ? /Total: 4 tests in 1 file/ : /No tests found/);
   }
 });
 
