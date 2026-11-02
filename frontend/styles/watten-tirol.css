@@ -125,6 +125,8 @@ html[data-watten-design="tirol"][data-watten-active="true"] :is(.wt-history-box,
 html[data-watten-design="tirol"][data-watten-active="true"] .wt-panel button,
 html[data-watten-design="tirol"][data-watten-active="true"] .wt-feedback .wt-choice-row > button { color: var(--wt-tirol-fir); border-color: var(--wt-tirol-line); background: var(--wt-tirol-paper); border-radius: 5px; box-shadow: none; }
 html[data-watten-design="tirol"][data-watten-active="true"] .wt-panel .wt-primary { color: #fff; background: var(--wt-tirol-fir); border-color: var(--wt-tirol-fir); }
+html[data-watten-design="tirol"][data-watten-active="true"] .wt-final-actions > a,
+html[data-watten-design="tirol"][data-watten-active="true"] .wt-final .wt-match-progress button { color: var(--wt-tirol-fir); background: var(--wt-tirol-paper); border-color: var(--wt-tirol-fir); }
 html[data-watten-design="tirol"][data-watten-active="true"] .wt-stake > button { color: var(--wt-tirol-fir); background: var(--wt-tirol-paper); border-color: var(--wt-tirol-line); border-radius: 5px; box-shadow: none; }
 html[data-watten-design="tirol"] .wt-sound button { color: var(--wt-tirol-fir); background: var(--wt-tirol-paper); border-color: var(--wt-tirol-line); border-radius: 5px; }
 html[data-watten-design="tirol"] .wt-sound button[aria-pressed="true"] { color: #fff; background: var(--wt-tirol-fir); border-color: var(--wt-tirol-fir); }

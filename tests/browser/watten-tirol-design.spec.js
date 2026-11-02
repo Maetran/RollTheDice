@@ -289,6 +289,8 @@ for (const language of ['de', 'en']) {
       await expectDesign(page, 'tirol', language);
       await expect(page.locator('.wt-final-heading')).toHaveCSS('font-family', /Georgia/);
       await expect(page.locator('[data-watten-rematch-action=create]')).toHaveCSS('background-color', 'rgb(33, 77, 61)');
+      await expect(page.locator('.wt-final-actions > a')).toHaveCSS('background-color', 'rgb(255, 255, 255)');
+      await expect(page.locator('.wt-final-actions > a')).toHaveCSS('color', 'rgb(33, 77, 61)');
       for (const viewport of [{ width: 390, height: 844 }, { width: 844, height: 390 }]) {
         await page.setViewportSize(viewport);
         await expect(page.locator('.wt-final-heading')).toBeVisible();
