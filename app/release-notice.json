@@ -3,25 +3,23 @@
   "games": [
     "watten"
   ],
-  "summary_de": "Watten: Wechsle zwischen dem vertrauten Tisch und Tirol mit Alpenpanorama, rotem Adler und Tannengrün.",
-  "summary_en": "Watten: Switch between the familiar table and Tyrol with Alpine scenery, a red eagle and forest green.",
+  "summary_de": "Watten: Tirol mit Holz, Intarsien und Schnitzmustern. Nach dem Stichverlauf zeigt der Tisch wieder die aktuellen Karten.",
+  "summary_en": "Watten: Tyrol with wood, inlays and carved details. Closing trick history restores the current cards on the table.",
   "player_notes": {
     "de": {
-      "title": "4.13.0: A bissl Tirol am Tisch",
+      "title": "4.13.1: Holz und Handwerk am Tiroler Tisch",
       "changes": [
-        "Ein Stück Tirol für deinen nächsten Kartenabend.",
-        "WATTEN: Der Designbutton neben der Sprache wechselt zwischen Klassisch und Tirol.",
-        "WATTEN: Alpenpanorama, ein roter Adler, warmes Papier und Tannengrün bringen Tirol an deinen Tisch.",
-        "WATTEN: Deine Auswahl bleibt in diesem Browser gespeichert. Der vertraute Look bleibt Standard."
+        "WATTEN: Tirol erhält einen hellen Holztisch mit feinen Einlegearbeiten und geschnitzten Ornamenten.",
+        "WATTEN: Nach dem Schliessen des Stichverlaufs sind alle aktuellen Karten wieder sichtbar, auch beim schnellen nächsten Wurf.",
+        "WATTEN: Deine Designwahl bleibt gespeichert; Klassisch bleibt der Standard."
       ]
     },
     "en": {
-      "title": "4.13.0: A little Tyrol at the table",
+      "title": "4.13.1: Wood and craft at the Tyrol table",
       "changes": [
-        "A little Tyrol for your next card night.",
-        "WATTEN: The design button beside the language selector switches between Classic and Tyrol.",
-        "WATTEN: Alpine scenery, a red eagle, warm paper and forest green bring Tyrol to your table.",
-        "WATTEN: Your choice stays saved in this browser. The familiar look remains the default."
+        "WATTEN: Tyrol gains a light wood table with fine inlays and carved ornaments.",
+        "WATTEN: Closing trick history restores every current card, including a quick first play of the next trick.",
+        "WATTEN: Your design choice stays saved; Classic remains the default."
       ]
     }
   }

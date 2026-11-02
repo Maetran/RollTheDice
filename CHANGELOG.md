@@ -23,6 +23,18 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 4.13.1 — 2026-11-02
+
+Der Tiroler Tisch erhält Holz und Handwerksdetails; nach dem Stichverlauf stimmen die ausgespielten Karten wieder.
+
+The Tyrol table gains wood and crafted details; closing trick history restores the cards in play.
+
+### WATTEN
+
+**Deutsch:** Der Tiroler Spieltisch zeigt eine helle Holzplatte mit feinen Einlegearbeiten und geschnitzten Ornamenten am Rand. Die Spielfläche bleibt ruhig und die Karten gut erkennbar. Der Stichverlauf lässt sich auch während des Übergangs vom letzten zum nächsten Stich öffnen und schliessen: Danach erscheinen die aktuellen Karten wieder, einschliesslich eines bereits geworfenen ersten Blatts. Die gespeicherte Designwahl und der klassische Standard bleiben erhalten.
+
+**English:** The Tyrol game table has a light wood surface with fine inlays and carved ornaments around the edge. The playing surface stays calm and the cards easy to recognise. Trick history can also be opened and closed during the transition from one trick to the next: the current cards return afterwards, including a first card already played. Your saved design choice and the Classic default remain unchanged.
+
 ## 4.13.0 — 2026-11-01
 
 Ein Stück Tirol für deinen nächsten Kartenabend.

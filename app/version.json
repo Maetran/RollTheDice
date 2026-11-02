@@ -1,10 +1,10 @@
 {
-  "version": "4.13.0",
-  "bump": "minor",
-  "date": "2026-11-01",
-  "previous_revision": "3be12bfb404cf13edbfbc1b41b928bbfb9c2f859",
+  "version": "4.13.1",
+  "bump": "patch",
+  "date": "2026-11-02",
+  "previous_revision": "13732cb853a18b63f60ee68991918cc203009aa5",
   "summary": {
-    "de": "Watten: Wechsle zwischen dem vertrauten Tisch und Tirol mit Alpenpanorama, rotem Adler und Tannengrün.",
-    "en": "Watten: Switch between the familiar table and Tyrol with Alpine scenery, a red eagle and forest green."
+    "de": "Watten: Tirol mit Holz, Intarsien und Schnitzmustern. Nach dem Stichverlauf zeigt der Tisch wieder die aktuellen Karten.",
+    "en": "Watten: Tyrol with wood, inlays and carved details. Closing trick history restores the current cards on the table."
   }
 }
