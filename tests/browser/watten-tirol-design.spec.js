@@ -97,9 +97,17 @@ for (const language of ['de', 'en']) {
       expect(await page.evaluate(() => getComputedStyle(document.body).background)).not.toBe(originalBackground);
       expect(await page.evaluate(() => localStorage.getItem('watten_design'))).toBe('tirol');
       if (language === 'de') {
-        await page.evaluate(() => window.ZDWA_I18N.setLanguage('en', { persist: false, reload: false }));
+        // Follow the real account-language flow. A temporary local-only API
+        // change can be superseded by a legitimate in-flight identity refresh.
+        await Promise.all([
+          page.waitForEvent('domcontentloaded'),
+          page.locator('[data-language-switcher]').selectOption('en'),
+        ]);
         await expectDesign(page, 'tirol', 'en');
-        await page.evaluate(() => window.ZDWA_I18N.setLanguage('de', { persist: false, reload: false }));
+        await Promise.all([
+          page.waitForEvent('domcontentloaded'),
+          page.locator('[data-language-switcher]').selectOption('de'),
+        ]);
         await expectDesign(page, 'tirol', 'de');
       }
       for (const viewport of [{ width: 320, height: 568 }, { width: 1280, height: 900 }]) {
