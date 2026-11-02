@@ -42,6 +42,9 @@ for (const [language, viewport] of [['de', { width: 390, height: 844 }], ['en', 
       const waitingHistory = waiting.page.locator('[data-wt-history]');
       await waitingHistory.locator('summary').click();
       await expect(waitingHistory).toHaveAttribute('open', '');
+      await waitingHistory.locator('.wt-history').evaluate(node => node.dispatchEvent(new Event('scroll')));
+      await waiting.page.setViewportSize({ width: viewport.height, height: viewport.width });
+      await waiting.page.setViewportSize(viewport);
       await waitingHistory.locator('[data-wt-history-close]').click();
       await expect(waitingHistory).not.toHaveAttribute('open', '');
       await expect.poll(() => waiting.page.locator('[data-wt-trick] > .wt-trick-card').evaluateAll(nodes => nodes.filter(node => {

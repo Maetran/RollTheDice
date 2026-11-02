@@ -45,7 +45,7 @@ export function motionTransition(previous, engine, live) {
 
 export function createMotion({ win = window, doc = document } = {}) {
   const reduced = win.matchMedia?.("(prefers-reduced-motion: reduce)");
-  const running = new Set(), ghosts = new Set(), arrivals = new Map(), flips = new Map(), hidden = new Map(), settled = new Map();
+  const running = new Set(), ghosts = new Set(), arrivals = new Map(), flips = new Map(), hidden = new Map(), settled = new Map(), retired = new Map();
   const paper = new WeakMap();
   let epoch = 0, destroyed = false;
   let collectBatchStart = null;
@@ -90,13 +90,22 @@ export function createMotion({ win = window, doc = document } = {}) {
     return entry;
   }
 
+  function releaseRetired(reset = false) {
+    for (const [node, release] of retired) {
+      if (reset || !node.isConnected) { release(); retired.delete(node); }
+    }
+  }
+
   function cancel({ keepCollected = false } = {}) {
     epoch += 1;
     for (const job of [...ghosts]) job.remove();
     for (const entry of [...running]) entry.cancel();
     for (const [node, release] of settled) {
-      if (!keepCollected || !node.isConnected) { release(); settled.delete(node); }
+      if (keepCollected && node.isConnected && !retired.has(node)) retired.set(node, release);
+      else release();
     }
+    settled.clear();
+    releaseRetired();
     arrivals.clear(); flips.clear();
     collectBatchStart = null;
   }
@@ -108,8 +117,9 @@ export function createMotion({ win = window, doc = document } = {}) {
   };
   const visibilityChanged = () => { if (!visible()) cancel(); };
   // A review replaces a finished trick's presentation. Discard its flight,
-  // but do not revive the old public originals when the review closes. Queued
-  // arrivals still release normally so the accepted current trick is restored.
+  // but do not revive its originals on close, review scroll or rotation.
+  // These finalized nodes release on removal/deal reset, never form an archive.
+  // Queued arrivals release normally to restore the accepted current trick.
   const reviewChanged = () => cancel({ keepCollected: true });
   win.addEventListener("resize", geometryChanged, { passive: true });
   win.addEventListener("orientationchange", cancel, { passive: true });
@@ -124,7 +134,7 @@ export function createMotion({ win = window, doc = document } = {}) {
   reduced?.addEventListener?.("change", cancel);
 
   function destroy() {
-    cancel(); destroyed = true;
+    cancel(); releaseRetired(true); destroyed = true;
     win.removeEventListener("resize", geometryChanged);
     win.removeEventListener("orientationchange", cancel);
     win.removeEventListener("scroll", cancel, true);
@@ -294,7 +304,7 @@ export function createMotion({ win = window, doc = document } = {}) {
       // The accepted last-trick DOM keeps its geometry for the label, but must
       // not reappear at centre when its decorative flight has finished.
       for (const item of items) {
-        if (item.node.isConnected && !settled.has(item.node)) settled.set(item.node, hide(item.node, still ? "opacity" : "visibility", still));
+        if (item.node.isConnected && !settled.has(item.node) && !retired.has(item.node)) settled.set(item.node, hide(item.node, still ? "opacity" : "visibility", still));
       }
       job.remove();
     }, delay));
@@ -303,6 +313,7 @@ export function createMotion({ win = window, doc = document } = {}) {
 
   /** Called only for an accepted snapshot, never for an ACK/busy-only repaint. */
   function present({ previous, engine, live, captured, result, view }) {
+    releaseRetired(!live || !sameHandVersion(previous, engine));
     if (!live) { cancel(); return; }
     const stillBlind = Boolean(reduced?.matches && engine.profile?.blind === true && visible());
     if ((!enabled() && !stillBlind) || captured?.epoch !== epoch) return;
