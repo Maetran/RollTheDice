@@ -369,13 +369,13 @@ zeigt bei eigener Zustimmung kurz den Spielstart ausgewählter Menschen.
 Zuschauen braucht einen Klick; am laufenden Tisch erscheint nur Text ohne
 Kartenhinweise. Die lokalen nativen Kontoeinstellungen speichern Zustimmung,
 die gemeinsame Spielerauswahl und den Einladungs-Empfängerkreis. Beim Suchen
-bleiben höchstens100 Treffer sichtbar; weitere Seiten ersetzen ältere Treffer.
+bleiben höchstens 100 Treffer sichtbar; weitere Seiten ersetzen ältere Treffer.
 Die Auswahl bleibt dabei erhalten. Diese Einstellungen aktivieren kein Push.
 
 With consent, the native lobby briefly shows selected humans starting games.
 Watching requires a click; an active table shows text without card information.
 Local native account settings save consent, the shared player selection and the
-invitation audience. Search keeps at most100 results visible, replacing older
+invitation audience. Search keeps at most 100 results visible, replacing older
 pages while retaining the selection. These settings do not activate push.
 
 **Lobby und Erstellung / lobby and creation:** Die kompakte Lobby öffnet die
@@ -891,8 +891,9 @@ and twelve emoji remain available during a pending bid, a pause and when
 gestrichen; card hints are forbidden. “Good/Bad/Unsure” remains separate private
 partner advice. Chat and reactions never change cards or match points.
 
-Der gemeinsame Lobbychat wird bei öffentlicher Watten-Freigabe bewusst geöffnet
-und respektiert die kontoweite Chat-Einstellung. Auf den vier kanonischen
+Der gemeinsame Lobbychat ist in der Watten-Lobby immer ausgeklappt. Ist er
+im Konto aktiviert, verbindet er sich automatisch; eine Deaktivierung bleibt
+wirksam und wird nur durch ausdrückliches Aktivieren aufgehoben. Auf den vier kanonischen
 Produkt-Hosts braucht er eine frisch bestätigte öffentliche Watten-Freigabe;
 die lokale Entwicklung und die private Founder-Vorschau bleiben verfügbar.
 Sein persönlicher Dreitagesverlauf
@@ -902,8 +903,8 @@ verpassten Nachrichten. Der öffentliche Tischchat bleibt davon unabhängig.
 Die Spieleauswahl zeigt eine separat gesetzte Beta-Kennzeichnung und beschreibt
 die geschlossene Vorschau ausdrücklich als privat.
 
-Opening the shared lobby chat for public Watten is explicit and respects
-the account-wide chat preference. The four canonical product hosts require a
+The shared Watten lobby chat stays expanded and connects automatically when
+enabled on the account. An opt-out remains effective until explicitly enabled. The four canonical product hosts require a
 freshly confirmed public Watten capability; local development and the private
 founder preview remain available. Its personal three-day history contains only
 messages addressed to that account at send time. Disabling stops delivery;
@@ -3057,9 +3058,27 @@ The [navigation audit](docs/NAVIGATION_AUDIT.md) records the page inventory and
 repaired entry points, including PWA game links and account recovery pages.
 This navigation rollout is silent: no version push or new in-app announcement.
 
-The private, one-way list is shared across games and devices and affects only
-player invitations. It is the foundation for a future friendlist; mutual friend
-requests and public friendship profiles are not implemented.
+**Freundesliste im Konto / account friends list:** In ZDWA, Zilch, Hausdepp und
+Watten suchst du Spieler direkt in den Kontoeinstellungen und fügst die
+gewünschten Konten einzeln hinzu. Die private Liste lässt sich nach Namen
+filtern; Treffer, bereits ausgewählte Spieler und das Limit von 100 Konten
+bleiben sichtbar. Entfernen, Suchergebnisse und Einladungsfilter bleiben auch
+auf kleinen Bildschirmen direkt bedienbar. Suche und Filter bleiben während
+Listenänderungen erhalten. Der Einladungsfilter zeigt gespeicherte und noch
+nicht gespeicherte Änderungen; eine leere gefilterte Liste blockiert alle
+Mitspieler-Rufe. Startmeldungen und Push werden unabhängig eingeschaltet.
+Die gerichtete Liste gilt für das Konto in allen Spielen und auf allen Geräten,
+ohne gegenseitige Freundschaftsanfragen oder öffentliche Freundesprofile.
+
+In ZDWA, Zilch, Hausdepp and Watten, search for players directly in account
+settings and add individual accounts. Filter your private list by name and see
+matches, already selected accounts and the 100-player limit. Removal, search
+results and the invitation filter remain usable on small screens. Searches and
+filters survive list changes. The invitation filter distinguishes saved and
+unsaved changes; an empty list with the selected-players filter blocks every
+player call. Start notices and push each require their own setting. This private,
+one-way list applies across the account's games and devices, without mutual
+friend requests or public friendship profiles.
 
 ### Zilch Classic
 

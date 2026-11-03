@@ -1,25 +1,30 @@
 {
   "kind": "usability",
   "games": [
+    "zdwa",
+    "zilch",
+    "hausdepp",
     "watten"
   ],
-  "summary_de": "Watten: Tirol in Tannengrün mit hellen Flächen, klassischer Schrift und geschnitztem Zirbenstuben-Tisch.",
-  "summary_en": "Watten: Tyrol in forest green with bright surfaces, classic headings and a carved Tyrolean parlour table.",
+  "summary_de": "Deine Freundesliste direkt im Konto verwalten. ZDWA ist aufgeräumter, der Watten-Lobbychat bleibt sichtbar.",
+  "summary_en": "Manage your friends list directly in account settings. ZDWA is tidier, and the Watten lobby chat stays visible.",
   "player_notes": {
     "de": {
-      "title": "4.13.2: Eine frische Tiroler Stube",
+      "title": "4.14.0: Deine Leute, übersichtlich verwaltet",
       "changes": [
-        "WATTEN: Helle Flächen, Tannengrün und klassische Schrift begleiten dich von der Lobby bis zum Spielabschluss.",
-        "WATTEN: Der neue Zirbenstuben-Tisch zeigt helles Holz und geschnitzte Blüten in den Ecken.",
-        "WATTEN: Deine Designwahl bleibt gespeichert; Klassisch bleibt der Standard."
+        "ZDWA · ZILCH · HAUSDEPP · WATTEN: Spieler direkt im Konto suchen, hinzufügen und deine private Liste filtern.",
+        "ZDWA · ZILCH · HAUSDEPP · WATTEN: Klarer Einladungsfilter mit Speicherstatus; Startmeldungen und Push separat einstellen.",
+        "ZDWA: Konto und Abmelden erreichst du über den Konto-Reiter oben.",
+        "WATTEN: Der Lobbychat bleibt ausgeklappt und verbindet sich bei aktivierter Chat-Einstellung automatisch."
       ]
     },
     "en": {
-      "title": "4.13.2: A fresh Tyrolean parlour",
+      "title": "4.14.0: Your people, clearly organised",
       "changes": [
-        "WATTEN: Bright surfaces, forest green and classic headings carry through from the lobby to match results.",
-        "WATTEN: The new parlour table has light wood and flowers carved into its corners.",
-        "WATTEN: Your design choice stays saved; Classic remains the default."
+        "ZDWA · ZILCH · HAUSDEPP · WATTEN: Search for and add players directly in account settings and filter your private list.",
+        "ZDWA · ZILCH · HAUSDEPP · WATTEN: A clear invitation filter with saved status; start notices and push have separate settings.",
+        "ZDWA: Use the Account tab at the top for your account and signing out.",
+        "WATTEN: Lobby chat stays expanded and connects automatically when enabled on your account."
       ]
     }
   }

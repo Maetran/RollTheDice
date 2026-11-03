@@ -88,7 +88,9 @@ function fixture({ enabled = true, muted = false, excluded = false, language = "
     submit() { container.emit("submit", { target: { matches: () => true }, preventDefault() {} }); },
     invalidate() { current = false; }, changeExpected() { expected = 2; },
     async open() {
-      container.click("open"); await until(() => sockets.length === 1);
+      await tick();
+      if (!sockets.length) container.click("open");
+      await until(() => sockets.length === 1);
       sockets[0].emit("open"); await until(() => !field("input").disabled || muted);
       return sockets[0];
     },
@@ -142,10 +144,10 @@ test("a strict public capability permits only the four canonical HTTPS product o
   }
 });
 
-test("ordinary public accounts may explicitly open chat on each product host without a preview grant", async () => {
+test("ordinary public accounts automatically open enabled chat on each product host without a preview grant", async () => {
   for (const host of ["zockdiewandan.online", "zilch.zockdiewandan.online", "hausdepp.zockdiewandan.online", "watten.zockdiewandan.online"]) {
     const f = fixture({ href: `https://${host}/watten`, publicBeta: true });
-    assert.deepEqual(f.sockets, []); assert.deepEqual(f.calls, []); assert.equal(f.reads(), 0);
+    assert.deepEqual(f.calls, []);
     const ws = await f.open();
     assert.equal(ws.url, `wss://${host}/ws/lobby-chat?context=watten&expected_account_id=1`);
     assert.ok(f.reads() >= 4); assert.deepEqual(f.calls, []);
@@ -207,10 +209,10 @@ test("withdrawing public access synchronously clears an active chat even if a de
   }
 });
 
-test("production mount requires the captured authenticated same-account server capability before explicit opening", async () => {
+test("production mount requires the captured authenticated same-account server capability before automatic opening", async () => {
   const href = "https://zockdiewandan.online/watten";
   const f = fixture({ href, preview: true });
-  assert.deepEqual(f.sockets, []); assert.deepEqual(f.calls, []); assert.equal(f.reads(), 0);
+  assert.deepEqual(f.calls, []);
   const ws = await f.open();
   assert.equal(ws.url, "wss://zockdiewandan.online/ws/lobby-chat?context=watten&expected_account_id=1");
   for (const args of [{ preview: false }, { preview: "true" }, { authenticated: false, preview: true },
@@ -270,9 +272,12 @@ test("fresh send verification withdraws production capability before any draft r
   assert.deepEqual(ws.sent, []); assert.ok(ws.closed); assert.equal(f.container.innerHTML, ""); assert.deepEqual(f.calls, []);
 });
 
-test("no subscription/preference mutation before explicit opening, and no ungranted/anonymous mount", async () => {
-  const f = fixture(); await tick(); assert.deepEqual(f.calls, []); assert.deepEqual(f.sockets, []); assert.equal(f.reads(), 0);
-  assert.equal(f.field("body").hidden, true); assert.match(f.container.innerHTML, /drei Tagen|three days/);
+test("enabled chat opens automatically without preference writes; opted-out and ungranted accounts stay disconnected", async () => {
+  const f = fixture(); await until(() => f.sockets.length === 1); assert.deepEqual(f.calls, []);
+  assert.equal(f.field("body").hidden, false); assert.match(f.container.innerHTML, /drei Tagen|three days/);
+  const disabled = fixture({ enabled: false }); await tick();
+  assert.deepEqual(disabled.calls, []); assert.deepEqual(disabled.sockets, []); assert.equal(disabled.reads(), 0);
+  assert.equal(disabled.field("body").hidden, true);
   for (const args of [{ href: "https://watten.zockdiewandan.online/watten" }, { authenticated: false }]) {
     const blocked = fixture(args); assert.equal(blocked.container.innerHTML, ""); assert.deepEqual(blocked.sockets, []);
   }
@@ -299,6 +304,7 @@ test("fresh opt-out in another session cannot be silently reversed by open or re
   const g = fixture({ auth: (_count, identity) => {
     const auth = identity(); auth.user.preferences.lobby_chat_enabled = enabled; return auth;
   } });
+  await until(() => !g.container.querySelector('[data-watten-lobby-chat-action="open"]').disabled);
   enabled = true; const ws = await g.open(); ws.emit("close", { code: 1006 });
   enabled = false; g.container.click("reconnect"); await tick(); await tick();
   assert.equal(g.calls.length, 0); assert.equal(g.sockets.length, 1);

@@ -81,7 +81,6 @@ html[data-watten-design="tirol"][data-watten-page="lobby"] .wt-section-head h2 {
 html[data-watten-design="tirol"][data-watten-page="lobby"] .wt-table-entry { padding: 1rem 0; border: 0; border-top: 1px solid var(--wt-tirol-line); border-radius: 0; background: transparent; }
 html[data-watten-design="tirol"] .wt-table-entry-head strong { font-size: 1.1rem; }
 html[data-watten-design="tirol"] .wt-lobby-chat-disclosure { margin-inline: 1rem; background: var(--wt-tirol-paper); border-color: var(--wt-tirol-line); border-radius: 5px; box-shadow: none; }
-html[data-watten-design="tirol"] .wt-lobby-chat-disclosure > summary { color: var(--wt-tirol-fir); }
 html[data-watten-design="tirol"] :is(.wt-create-dialog, .wt-create-heading, .wt-create-footer, .wt-create-choices .wt-create-choice, .wt-waiting .wt-team, .wt-lobby-chat [data-watten-lobby-chat-messages]) { background: var(--wt-tirol-paper); border-color: var(--wt-tirol-line); }
 html[data-watten-design="tirol"] .wt-create-dialog::backdrop { background: #1d201a88; }
 html[data-watten-design="tirol"] .wt-create-choice > span { color: var(--wt-tirol-fir); }

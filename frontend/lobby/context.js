@@ -51,7 +51,6 @@ export const dom = {
   authBadge: document.getElementById("authBadge"),
   authActions: document.getElementById("authActions"),
   headerAccountLink: document.getElementById("headerAccountLink"),
-  logoutButton: document.getElementById("logoutBtn"),
   leaderboardNormalTab: document.getElementById("lbTabNormal"),
   leaderboardHardcoreTab: document.getElementById("lbTabHC"),
   leaderboardShameTab: document.getElementById("lbTabShame"),

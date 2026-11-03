@@ -341,7 +341,6 @@ td.cell.announce-pickable{
     grid-template-columns:1fr 1fr;
   }
   .player-setup-card .auth-actions > *{ min-width:0; }
-  .player-setup-card .auth-actions #logoutBtn{ grid-column:1 / -1; }
   .game-row{
     align-items:stretch;
     flex-direction:column;

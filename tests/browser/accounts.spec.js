@@ -1105,10 +1105,11 @@ test("logged-in user sees the personal landing page", async ({ page, request }) 
   await page.fill("#loginPassword", "registered-password-123");
   await page.click("#loginForm button[type=submit]");
   await expect(page.locator("#authBadge")).toContainText("RegisteredSmoke");
+  await expect(page.locator("#authActions a, #authActions button")).toHaveCount(0);
 
   await Promise.all([
     page.waitForURL(/\/konto(?:#|$)/),
-    page.getByRole("link", { name: "Mein Konto" }).click(),
+    page.locator("#headerAccountLink").click(),
   ]);
   await expect(page.getByRole("heading", { name: "RegisteredSmoke" })).toBeVisible();
   await page.getByRole("tab", { name: "Statistik" }).click();

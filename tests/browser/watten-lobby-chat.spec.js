@@ -6,10 +6,9 @@ const messages = item => item.page.locator('[data-watten-lobby-chat-messages]');
 const action = (item, name) => item.page.locator(`[data-watten-lobby-chat-action=${name}]`);
 const disclosure = item => item.page.locator('.wt-lobby-chat-disclosure');
 const revealChat = async item => {
-  await expect(disclosure(item)).not.toHaveAttribute('open', '');
-  await expect(action(item, 'open')).toBeHidden();
-  await disclosure(item).locator('summary').click();
-  await expect(action(item, 'open')).toBeVisible();
+  await expect(disclosure(item)).toBeVisible();
+  await expect(disclosure(item).locator('summary')).toHaveCount(0);
+  await expect(input(item)).toBeEnabled();
 };
 
 for (const language of ['de', 'en']) {
@@ -17,14 +16,18 @@ for (const language of ['de', 'en']) {
     const players = await Promise.all([0, 1, 2].map(() => player(browser, baseURL, language)));
     const [host, guest, newcomer] = players;
     try {
+      const optedOut = await newcomer.context.request.put('/api/auth/preferences/lobby-chat', {
+        headers: { 'X-CSRF-Token': newcomer.user.csrf_token }, data: { lobby_chat_enabled: false },
+      });
+      expect(optedOut.ok()).toBeTruthy();
       for (const item of players) {
         await item.page.goto('/watten');
-        await revealChat(item);
+        await expect(disclosure(item)).toBeVisible();
+        if (item !== newcomer) await revealChat(item);
         expect(item.traffic.commands).toEqual([]);
       }
-      for (const item of [host, guest]) {
-        await action(item, 'open').click(); await expect(input(item)).toBeEnabled();
-      }
+      await expect(action(newcomer, 'open')).toBeVisible();
+      await expect(newcomer.page.locator('[data-watten-lobby-chat-body]')).toBeHidden();
       const first = '<img src=x onerror="throw 1"> is public plain text';
       await input(host).fill(first); await action(host, 'send').click();
       await expect(input(host)).toHaveValue('');
@@ -35,7 +38,7 @@ for (const language of ['de', 'en']) {
       await input(newcomer).fill('Only the current audience sees this'); await action(newcomer, 'send').click();
       for (const item of players) await expect(messages(item)).toContainText('Only the current audience sees this');
       await guest.page.reload(); await revealChat(guest);
-      await action(guest, 'open').click(); await expect(input(guest)).toBeEnabled();
+      await expect(input(guest)).toBeEnabled();
       await expect(messages(guest)).toContainText(first);
       await expect(messages(guest)).toContainText('Only the current audience sees this');
 

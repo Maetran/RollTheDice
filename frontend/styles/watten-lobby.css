@@ -39,7 +39,6 @@ html[data-watten-page="lobby"] .wt-table-entry { padding: .65rem; border-color: 
 .wt-table-entry-foot .wt-button { min-height: 44px; padding: .4rem .7rem; font-size: .88rem; }
 html[data-watten-page="lobby"] [data-watten-lobby-chat] { margin-top: 0; min-width: 0; }
 .wt-lobby-chat-disclosure { min-width: 0; border: 1px solid var(--wt-paper-edge); border-radius: 12px; background: var(--wt-paper); }
-.wt-lobby-chat-disclosure > summary { min-height: 44px; padding: .6rem .85rem; cursor: pointer; font-weight: 700; }
 html[data-watten-page="lobby"] .wt-lobby-chat-disclosure .wt-card-panel { border: 0; padding-top: .25rem; box-shadow: none; }
 html[data-watten-page="lobby"] .wt-lobby-chat :is(textarea, [data-watten-lobby-chat-messages]) { background-color: #f1e6d2; }
 html[data-watten-page="lobby"] .wt-lobby-chat p { font-size: .88rem; }
