@@ -1369,6 +1369,20 @@ def dashboard_stats(days: int = 7, game: str = "all", *, now: datetime | None = 
     previous_coverage = min((row["previous_period_coverage"] for row in traffic_coverage.values()),
                             key=coverage_order.get, default="none")
     unmeasured_traffic = game in {"hausdepp", "watten"} and game not in client_firsts
+    # First retained observations are a lower bound, never proof that every
+    # visit was captured. Earlier days must not masquerade as measured zeroes.
+    for row in daily:
+        day_start = datetime.fromisoformat(row["date"]).replace(tzinfo=start.tzinfo)
+        day_end = day_start + timedelta(days=1)
+        day_firsts = [client_firsts.get(product) for product in selected_products]
+        observed = [first for first in day_firsts if first is not None and first < day_end]
+        if not observed:
+            row["traffic_coverage"] = "none"
+            row.update(sessions=None, page_views=None, active_seconds=None)
+        elif len(observed) != len(selected_products) or any(first > day_start for first in observed):
+            row["traffic_coverage"] = "partial"
+        else:
+            row["traffic_coverage"] = "observed_events_only"
 
     server = dict(server_snapshot())
     visible_runtime = [row for product, row in runtime_metrics.items() if game in {"all", product}]

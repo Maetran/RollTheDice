@@ -165,6 +165,46 @@ class AnalyticsTests(unittest.TestCase):
         self.assertIsNone(value["comparison"]["overview"]["sessions"]["change_percent"])
         self.assertEqual(value["metric_coverage"]["traffic_by_game"]["watten"]["current_period_coverage"], "partial")
 
+    def test_native_daily_history_before_first_observation_is_unknown_not_zero(self):
+        now = datetime(2026, 11, 3, 12, tzinfo=timezone.utc)
+        self._track_page(1, 1, "/watten", now, game="watten")
+        value = dashboard_stats(7, "watten", now=now, include_watten=True)
+        for row in value["daily"][:-1]:
+            self.assertIsNone(row["sessions"])
+            self.assertIsNone(row["page_views"])
+            self.assertIsNone(row["active_seconds"])
+            self.assertEqual(row["traffic_coverage"], "none")
+            self.assertEqual(row["completed_games"], 0)
+        today = value["daily"][-1]
+        self.assertEqual((today["sessions"], today["page_views"], today["active_seconds"]), (1, 1, 15))
+        self.assertEqual(today["traffic_coverage"], "partial")
+        self.assertIsNone(value["comparison"]["overview"]["sessions"]["previous"])
+
+    def test_daily_all_retains_observed_sums_and_marks_missing_native_coverage_partial(self):
+        now = datetime(2026, 11, 3, 12, tzinfo=timezone.utc)
+        first_day = now.replace(hour=0) - timedelta(days=2)
+        self._track_page(1, 1, "/", first_day)
+        self._track_page(2, 1, "/watten", now, game="watten")
+        with session_scope() as db:
+            db.add(CompletedGame(game_id="retained-native-result", game_type="watten", game_name="Private",
+                                 finished_at=first_day, mode="2", hardcore=False,
+                                 snapshot_json="{}", imported_from_legacy=False, created_at=first_day))
+        value = dashboard_stats(7, now=now, include_watten=True)
+        rows = {row["date"]: row for row in value["daily"]}
+        oldest = value["daily"][0]
+        self.assertEqual(oldest["traffic_coverage"], "none")
+        self.assertIsNone(oldest["sessions"])
+        prior = rows[first_day.date().isoformat()]
+        self.assertEqual(prior["sessions"], 1)
+        self.assertEqual(prior["page_views"], 1)
+        self.assertEqual(prior["completed_games"], 1)
+        self.assertEqual(prior["traffic_coverage"], "partial")
+        today = value["daily"][-1]
+        self.assertEqual(today["sessions"], 1)
+        self.assertEqual(today["traffic_coverage"], "partial")
+        self.assertEqual(value["comparison"]["previous_data_coverage"], "none")
+        self.assertIsNone(value["comparison"]["overview"]["sessions"]["previous"])
+
     def test_geography_game_keys_follow_selected_filter_and_authorized_all_scope(self):
         products = ("zdwa", "zilch", "hausdepp", "watten")
         for number, product in enumerate(products, 1):
