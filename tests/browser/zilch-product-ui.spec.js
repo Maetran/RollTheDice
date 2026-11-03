@@ -1,4 +1,4 @@
-const { openPasswordLogin, expectPasswordLoginClosed } = require("./password-login");
+const { openPasswordLogin, expectPasswordLoginClosed, signOutViaAccount } = require("./password-login");
 const { test, expect } = require("@playwright/test");
 const { expectTextContrast } = require("./contrast");
 
@@ -32,18 +32,6 @@ async function createUser(page, username, password, role = "user") {
   }, { username, password, role });
 }
 
-async function signOutFromLobby(page) {
-  const [response] = await Promise.all([
-    page.waitForResponse(candidate => (
-      new URL(candidate.url()).pathname === "/api/auth/logout"
-      && candidate.request().method() === "POST"
-    )),
-    page.click("#logoutBtn"),
-  ]);
-  expect(response.ok()).toBeTruthy();
-  await expectPasswordLoginClosed(page);
-}
-
 async function signInAsPreviewMani(page) {
   // Browser tests share a disposable database.  Provisioning is idempotent so
   // this file also works when another Zilch spec has already created Mani.
@@ -54,7 +42,7 @@ async function signInAsPreviewMani(page) {
   const mani = await createUser(page, "Mani", "mani-preview-password-123", "admin");
   expect([201, 400]).toContain(mani.status);
 
-  await signOutFromLobby(page);
+  await signOutViaAccount(page);
   await signIn(page, "Mani", "mani-preview-password-123");
   await expect(page.locator("#authBadge")).toContainText("Mani");
   await expect(page.locator("[data-game-switch]")).toBeVisible();
@@ -118,7 +106,7 @@ test.use({ serviceWorkers: "block" });
 
 test("a fresh Apex login preserves the fixed Zilch subdomain continuation", async ({ page }) => {
   await signInAsPreviewMani(page);
-  await signOutFromLobby(page);
+  await signOutViaAccount(page);
 
   const continuation = "/auth/continue?app=zilch&path=%2Fstatistiken%3Fscope%3Dmine";
   let continuationVerified = false;

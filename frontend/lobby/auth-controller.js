@@ -1,4 +1,4 @@
-import { loadAuth, login, loginWithPasskey, logout, mountPasskeyPrompt, passkeysSupported, playerNameMarkup, register, registerWithPasskey } from "../shared/auth.js";
+import { loadAuth, login, loginWithPasskey, mountPasskeyPrompt, passkeysSupported, playerNameMarkup, register, registerWithPasskey } from "../shared/auth.js";
 import { zdwaPath } from "../multigame/routes.js";
 import { dom, storageKeys } from "./context.js";
 import { showVoiceTableLeft } from "../shared/voice-table-lifecycle.js";
@@ -277,16 +277,6 @@ export function initializeAuthentication() {
       turnstileState.registering = false;
       dom.registerButton.disabled = false;
       dom.registrationMethod.disabled = false;
-    }
-  });
-
-  dom.logoutButton.addEventListener("click", async () => {
-    dom.loginError.textContent = "";
-    try {
-      await logout();
-      await refreshAuthUi(true);
-    } catch (error) {
-      dom.loginError.textContent = error.message;
     }
   });
 

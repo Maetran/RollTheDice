@@ -507,7 +507,7 @@ async function mountLobby() {
   latestUserId = account.id;
   initializeAppMode({ mode: "watten" });
   app.innerHTML = `${lobbyIntro({ signedIn: true })}<div class="wt-friend-activity-host" data-watten-friend-activity aria-live="polite" hidden></div>
-    <div class="wt-lobby-grid">${tablesMarkup()}<details class="wt-lobby-chat-disclosure"><summary>${esc(lt("chat"))}</summary><div data-watten-lobby-chat></div></details></div>${lobbyGuide()}${creatorMarkup()}`;
+    <div class="wt-lobby-grid">${tablesMarkup()}<div class="wt-lobby-chat-disclosure"><div data-watten-lobby-chat></div></div></div>${lobbyGuide()}${creatorMarkup()}`;
   mountCreator(gen);
   mountFriendActivity(gen, "lobby");
   const lobbyChat = mountWattenLobbyChat({ container: app.querySelector("[data-watten-lobby-chat]"), initialAuth: auth,

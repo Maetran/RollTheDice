@@ -1,14 +1,43 @@
-.player-allowlist { margin-block: 1rem; }
-.player-allowlist-controls { min-width: 0; }
-.player-allowlist-hint, .player-allowlist-message, .player-allowlist-count { font-size: .85rem; line-height: 1.5; color: var(--muted); }
+.player-allowlist {
+  --pa-muted: var(--muted, #5f6b66); --pa-accent: var(--accent, #1f6f4a); --pa-border: var(--border, #d6dcd8);
+  --pa-surface: var(--surface, #fff); --pa-soft: var(--surface-soft, #f3f5f4); --pa-warning: var(--warning, #8a5a00);
+  --pa-warning-soft: var(--warning-soft, #fff4dc);
+  margin-block: 1rem;
+}
+html[data-game="zilch"] .player-allowlist { --pa-muted: var(--zilch-muted); --pa-accent: var(--zilch-ink); --pa-border: var(--zilch-paper-edge); --pa-surface: var(--zilch-paper); --pa-soft: var(--zilch-paper-soft); }
+html[data-game="hausdepp"] .player-allowlist { --pa-muted: var(--hd-muted); --pa-accent: var(--hd-green); --pa-border: var(--hd-border); --pa-surface: var(--hd-white); --pa-soft: var(--hd-paper); }
+.player-allowlist [hidden] { display: none !important; }
+.player-allowlist-controls { display: grid; gap: 1.1rem; min-width: 0; }
+.player-allowlist-hint, .player-allowlist-message, .player-allowlist-count { margin: 0; font-size: .85rem; line-height: 1.5; color: var(--pa-muted); }
 .player-allowlist-message:empty { display: none; }
-.player-allowlist-audience { display: flex; align-items: end; flex-wrap: wrap; gap: .65rem; }
-.player-allowlist-audience label { display: grid; gap: .35rem; flex: 1 1 12rem; }
-.player-allowlist-audience select { width: 100%; }
-.player-allowlist button, .player-allowlist select { min-height: 44px; }
-.player-allowlist a { color: var(--accent); overflow-wrap: anywhere; }
-.player-allowlist-list { margin: .6rem 0; padding: 0; list-style: none; max-height: 22rem; overflow-y: auto; }
-.player-allowlist-list li { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .5rem; padding: .5rem 0; border-bottom: 1px solid var(--border); }
-.player-allowlist-list li > :first-child { flex: 1 1 8rem; min-width: 0; }
-.player-allowlist-list small { flex-basis: 100%; color: var(--muted); }
-html[data-game="zilch"] .player-allowlist :is(.player-allowlist-hint, .player-allowlist-message, .player-allowlist-count) { color: var(--zilch-muted); }
+.player-allowlist-settings .player-allowlist-message { position: sticky; bottom: .5rem; z-index: 1; margin-top: .75rem; padding: .6rem .8rem; border: 1px solid var(--pa-border); border-radius: 8px; background: var(--pa-surface); box-shadow: 0 4px 14px rgb(0 0 0 / .12); }
+.player-allowlist-warning { margin: 0; padding: .55rem .75rem; border-radius: 6px; font-size: .85rem; line-height: 1.45; color: var(--pa-warning); background: var(--pa-warning-soft); }
+.player-allowlist :is(section, .player-allowlist-audience) { display: grid; gap: .6rem; min-width: 0; padding-top: 1rem; border-top: 1px solid var(--pa-border); }
+.player-allowlist h4 { margin: 0; font-size: 1rem; }
+.player-allowlist h4:focus { outline: none; }
+.player-allowlist fieldset { display: grid; gap: .5rem; min-width: 0; margin: 0; padding: 0; border: 0; }
+.player-allowlist legend { margin-bottom: .4rem; padding: 0; font-weight: 700; }
+.player-allowlist .player-allowlist-choice { display: grid; grid-template-columns: auto 1fr; align-items: start; gap: .65rem; min-height: 44px; padding: .65rem .75rem; border: 1px solid var(--pa-border); border-radius: 8px; background: var(--pa-surface); cursor: pointer; font-weight: 400; }
+.player-allowlist .player-allowlist-choice:has(input:checked) { border-color: var(--pa-accent); box-shadow: inset 0 0 0 1px var(--pa-accent); }
+.player-allowlist-choice input { width: 1.25rem; height: 1.25rem; margin: .1rem 0 0; accent-color: var(--pa-accent); }
+.player-allowlist-choice span { display: grid; gap: .15rem; min-width: 0; }
+.player-allowlist-choice small { color: var(--pa-muted); line-height: 1.4; }
+.player-allowlist-audience > button, .player-allowlist-search-form > button { justify-self: start; }
+.player-allowlist-search-form { display: flex; align-items: end; flex-wrap: wrap; gap: .5rem; }
+.player-allowlist :is(.player-allowlist-search-form label, .player-allowlist-filter) { display: grid; gap: .35rem; flex: 1 1 12rem; min-width: 0; font-weight: 600; }
+.player-allowlist input[type="search"] { width: 100%; min-width: 0; min-height: 44px; box-sizing: border-box; font-size: max(16px, 1rem); }
+.player-allowlist button, .player-allowlist select, .player-allowlist a.button-link, .player-allowlist a.hd-secondary { min-height: 44px; }
+.player-allowlist button[aria-disabled="true"] { opacity: .6; cursor: not-allowed; }
+.player-allowlist button.player-allowlist-added[aria-disabled="true"] { opacity: 1; color: var(--pa-muted); }
+.player-allowlist a { color: var(--pa-accent); overflow-wrap: anywhere; }
+.player-allowlist-list { margin: 0; padding: 0; list-style: none; max-height: 24rem; overflow-y: auto; overscroll-behavior: contain; }
+.player-allowlist-list:empty { display: none; }
+.player-allowlist-list li { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .5rem; min-height: 44px; padding: .4rem 0; border-bottom: 1px solid var(--pa-border); }
+.player-allowlist-list li > :first-child { display: flex; align-items: center; flex-wrap: wrap; gap: .4rem; flex: 1 1 8rem; min-width: 0; }
+.player-allowlist-name { display: inline-flex; align-items: center; min-height: 44px; font-weight: 600; overflow-wrap: anywhere; }
+.player-allowlist-badge { display: inline-block; padding: .15rem .5rem; border-radius: 999px; font-size: .78rem; color: var(--pa-muted); background: var(--pa-soft); }
+.player-allowlist-empty { margin: 0; padding: .75rem; border: 1px dashed var(--pa-border); border-radius: 8px; font-size: .9rem; color: var(--pa-muted); }
+.player-allowlist-members > a { justify-self: start; }
+@media (max-width: 520px) {
+  .player-allowlist-audience > button, .player-allowlist-search-form > button, .player-allowlist-members > a { justify-self: stretch; width: 100%; }
+}

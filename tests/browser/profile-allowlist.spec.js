@@ -56,7 +56,7 @@ for (const product of [
     const settings = page.locator("[data-allowlist-settings]");
     await expect(settings.getByRole("link", { name: "ListFriend", exact: true })).toBeVisible();
     await expect(settings.locator("textarea")).toHaveCount(0);
-    await settings.getByLabel("Einladungen akzeptieren von").selectOption("allowlist");
+    await settings.getByRole("radio", { name: /Nur Spielern aus deiner Liste/ }).check();
     // Another tab adds a player while this page still has the older list.
     await page.request.put(`/api/web-push/allowlist/${second.id}`, {
       headers: { "X-CSRF-Token": user.csrf_token }, data: { viewer_id: user.id },
@@ -103,8 +103,12 @@ for (const product of [
     await expect(page.getByRole("heading", { name: "Your player selection", exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Remove ListFriend from player selection", exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Save invitation selection", exact: true })).toBeVisible();
-    await expect(page.locator(".player-allowlist-hint")).toContainText("Your private selection applies to all our games");
-    await expect(page.locator(".player-allowlist-hint")).toContainText("This does not enable push notifications.");
+    const settings = page.locator("[data-allowlist-settings]");
+    await expect(settings).toContainText("Your private list applies to all our games, without friend requests.");
+    await expect(settings).toContainText("This filter does not enable push.");
+    await expect(settings.getByRole("heading", { name: "Add players", exact: true })).toBeVisible();
+    await expect(settings.getByLabel("Search player name")).toBeVisible();
+    await expect(settings.getByRole("radio", { name: /Only players on your list/ })).toBeVisible();
   });
 }
 

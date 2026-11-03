@@ -23,6 +23,30 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 4.14.0 — 2026-11-03
+
+Deine Leute direkt im Konto finden und die nächste Runde leichter zusammenbringen.
+
+Find your people directly in account settings and get the next round together.
+
+### ZDWA · ZILCH · HAUSDEPP · WATTEN
+
+**Deutsch:** Die private Freundesliste lässt sich direkt im Konto verwalten: Spieler suchen und hinzufügen, gespeicherte Namen filtern und einzelne Konten entfernen. Treffer, bereits ausgewählte Spieler und das Listenlimit sind klar erkennbar. Suchtext und Listenfilter bleiben bei Änderungen erhalten. Der Einladungsfilter unterscheidet gespeicherte und offene Änderungen und erklärt, wann eine leere Liste alle Mitspieler-Rufe blockiert. Startmeldungen und Push bleiben separat einstellbar. Alle neuen Bedienelemente sind auf Deutsch und Englisch verfügbar und für kleine Bildschirme ausgelegt.
+
+**English:** Manage your private friends list directly in account settings: search for and add players, filter saved names and remove individual accounts. Results, already selected players and the list limit are clearly visible. Search text and list filters survive changes. The invitation filter distinguishes saved and unsaved changes and explains when an empty list blocks every player call. Start notices and push each keep their own setting. All new controls are available in German and English and designed for small screens.
+
+### ZDWA
+
+**Deutsch:** Die doppelten Aktionen «Mein Konto» und «Abmelden» entfallen in der Lobby. Der Konto-Reiter oben führt weiterhin zu deinem Konto und zur Abmeldung.
+
+**English:** The duplicate “My account” and “Sign out” actions have been removed from the lobby. The Account tab at the top still leads to your account and sign-out action.
+
+### WATTEN
+
+**Deutsch:** Der gemeinsame Lobbychat bleibt ausgeklappt und verbindet sich automatisch, wenn er im Konto aktiviert ist. Wer den Chat ausgeschaltet hat, aktiviert ihn weiterhin ausdrücklich selbst.
+
+**English:** The shared lobby chat stays expanded and connects automatically when enabled on the account. Players who have switched chat off still enable it explicitly themselves.
+
 ## 4.13.2 — 2026-11-02
 
 Tannengrün, helle Flächen und ein geschnitzter Zirbenstuben-Tisch für Watten.

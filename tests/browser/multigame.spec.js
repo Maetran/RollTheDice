@@ -1,4 +1,4 @@
-const { openPasswordLogin, expectPasswordLoginClosed } = require("./password-login");
+const { openPasswordLogin, signOutViaAccount } = require("./password-login");
 const { test, expect } = require("@playwright/test");
 
 async function signIn(page, username, password) {
@@ -422,8 +422,7 @@ test("Zilch stays permission-gated and the game chooser hotkey respects inputs",
   await expectPublicHouseSwitchWithoutZilch(page);
   await ensurePreviewAccounts(page);
 
-  await page.click("#logoutBtn");
-  await expectPasswordLoginClosed(page);
+  await signOutViaAccount(page);
   await signIn(page, "Mani", "mani-preview-password-123");
   const switchButton = page.locator("[data-game-switch]");
   await expect(switchButton).toBeVisible();
@@ -507,8 +506,7 @@ test("a permitted user can create and reload a private CPU game through the norm
   await expect(page.locator("#authBadge")).toContainText("Admin");
   await ensurePreviewAccounts(page);
 
-  await page.click("#logoutBtn");
-  await expectPasswordLoginClosed(page);
+  await signOutViaAccount(page);
   await signIn(page, "Mani", "mani-preview-password-123");
   await expect(page.locator("[data-game-switch]")).toBeVisible();
   await chooseGame(page, "Zilch");
@@ -746,8 +744,7 @@ test("private Zilch result history and read-only report stay separate from ZDWA"
     await expect(page.locator("#authBadge")).toContainText("Admin");
     await ensurePreviewAccounts(page);
 
-    await page.click("#logoutBtn");
-    await expectPasswordLoginClosed(page);
+    await signOutViaAccount(page);
     await signIn(page, "Mani", "mani-preview-password-123");
     await expect(page.locator("[data-game-switch]")).toBeVisible();
 
@@ -776,8 +773,11 @@ test("private Zilch result history and read-only report stay separate from ZDWA"
     await expect(page.locator(".zilch-result-head h1")).toHaveText("Mani gewinnt die Partie.");
     await expect(page.locator(".zilch-result-details")).not.toHaveAttribute("open");
     await expect(page.locator(".zilch-result-metrics")).toBeHidden();
-    await page.locator(".zilch-result-details > summary").focus();
-    await page.keyboard.press("Enter");
+    // Award projection can replace the report while it initializes. Target
+    // the current summary for keyboard activation instead of a prior focus.
+    await page.locator(".zilch-result-details > summary").press("Enter");
+    await expect(page.locator(".zilch-result-details")).toHaveAttribute("open", "");
+    await expect(page.locator(".zilch-result-metrics")).toBeVisible();
     await expect(page.locator(".zilch-result-metrics")).toContainText("Höchste gesicherte Runde");
     await expect(page.locator(".zilch-result-metrics")).toContainText(/8.?000/);
     await expect(page.locator(".zilch-result-metrics")).toContainText("Zilch-Runden");
@@ -883,8 +883,7 @@ test("a persisted CPU Zilch result starts a new round with a new strategy draw a
     await expect(page.locator("#authBadge")).toContainText("Admin");
     await ensurePreviewAccounts(page);
 
-    await page.click("#logoutBtn");
-    await expectPasswordLoginClosed(page);
+    await signOutViaAccount(page);
     await signIn(page, "Mani", "mani-preview-password-123");
     await expect(page.locator("[data-game-switch]")).toBeVisible();
 
@@ -954,8 +953,7 @@ test("a legacy CPU result without room-code metadata asks before it can create a
     await expect(page.locator("#authBadge")).toContainText("Admin");
     await ensurePreviewAccounts(page);
 
-    await page.click("#logoutBtn");
-    await expectPasswordLoginClosed(page);
+    await signOutViaAccount(page);
     await signIn(page, "Mani", "mani-preview-password-123");
     await expect(page.locator("[data-game-switch]")).toBeVisible();
 

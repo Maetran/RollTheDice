@@ -37,7 +37,7 @@ export function lobbySocketUrl(location, accountId, founderPreview = false, publ
   return url.toString();
 }
 
-/** One explicitly opened lobby subscription; all history/drafts stay in RAM. */
+/** Account-enabled chat opens with the lobby; history/drafts stay in RAM. */
 export function mountWattenLobbyChat({ container, initialAuth, getExpectedAccountId, isCurrent, onAccountChanged,
   loadAuth, fetcher = globalThis.fetch, createSocket = url => new WebSocket(url), escapeHtml: esc,
   language = languageNow, dom = document, win = window }) {
@@ -101,7 +101,6 @@ export function mountWattenLobbyChat({ container, initialAuth, getExpectedAccoun
     action("open").disabled = busy;
     action("reconnect").hidden = !opened || connected || excluded || blocked;
     action("reconnect").disabled = busy;
-    action("close").hidden = !opened;
     action("disable").hidden = !enabled || excluded;
     action("disable").disabled = busy;
     field("body").hidden = !opened;
@@ -280,7 +279,6 @@ export function mountWattenLobbyChat({ container, initialAuth, getExpectedAccoun
     <p class="wt-note" data-watten-lobby-chat-notice></p><div class="wt-actions">
       <button type="button" data-watten-lobby-chat-action="open"></button>
       <button type="button" data-watten-lobby-chat-action="reconnect">${esc(t("reconnect"))}</button>
-      <button type="button" class="wt-button--ghost" data-watten-lobby-chat-action="close">${esc(t("close"))}</button>
       <button type="button" class="wt-button--ghost" data-watten-lobby-chat-action="disable">${esc(t("disable"))}</button></div>
     <p class="wt-note" role="status" data-watten-lobby-chat-status></p>
     <div data-watten-lobby-chat-body hidden>
@@ -296,10 +294,6 @@ export function mountWattenLobbyChat({ container, initialAuth, getExpectedAccoun
     if (!control || control.disabled || !container.contains(control) || !current()) return;
     const kind = control.dataset.wattenLobbyChatAction;
     if (["open", "reconnect", "disable"].includes(kind)) void operate(kind);
-    else if (kind === "close") {
-      serial += 1; busy = false; closeSocket(); clearPrivate(); opened = false; status = "consent"; update();
-      action("open").focus?.({ preventScroll: true });
-    }
   }, { signal: listeners.signal });
   container.addEventListener("input", event => { if (event.target === field("input")) { draft = event.target.value; update(); } }, { signal: listeners.signal });
   container.addEventListener("submit", event => {
@@ -318,5 +312,8 @@ export function mountWattenLobbyChat({ container, initialAuth, getExpectedAccoun
   win.visualViewport?.addEventListener("resize", viewport, { signal: listeners.signal });
   field("input").addEventListener("focus", viewport, { signal: listeners.signal });
   renderMessages(); update(); viewport();
+  // Honour existing consent without writing it. A fresh opt-out during the
+  // verification still stops the connection and requires an explicit enable.
+  if (enabled && !excluded) void operate("reconnect");
   return { destroy };
 }

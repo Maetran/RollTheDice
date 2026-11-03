@@ -297,7 +297,10 @@ test("mobile navigation keeps aligned destinations and touch targets between app
 });
 
 
-test("guest sees login and registration while a new account sees only logout", async ({ page }) => {
+test.describe("account entry and sign-out", () => {
+  test.use({ serviceWorkers: "block" });
+
+test("guest sees login and registration while a new account uses the header account tab", async ({ page }) => {
   const username = `SelfRegistered${Date.now()}`;
   await page.goto("/");
   await expectPasswordLoginClosed(page);
@@ -315,10 +318,28 @@ test("guest sees login and registration while a new account sees only logout", a
   await expect(page.locator("#playerSetupCard")).toHaveClass(/authenticated/);
   await expect(page.locator(".account-identity")).toBeHidden();
   await expect(page.getByText("Du spielst als", { exact: true })).toHaveCount(0);
-  await expect(page.locator("#logoutBtn")).toBeVisible();
+  await expect(page.locator("#authActions a, #authActions button")).toHaveCount(0);
   await expect(page.locator("#headerAccountLink")).toHaveAttribute("href", "/konto");
+  await page.locator("#headerAccountLink").click();
+  const signOut = page.locator("#accountLogout");
+  await expect(signOut).toBeEnabled();
+  await page.route("**/api/auth/logout", route => route.fulfill({ status: 503, json: { detail: "unavailable" } }));
+  await signOut.click();
+  await expect(page.locator("#accountLogoutMessage")).toHaveText("Abmelden fehlgeschlagen");
+  await expect(signOut).toBeEnabled();
+  await expect(page.locator("#accountName")).toContainText(username);
+  await page.unroute("**/api/auth/logout");
+  const signedOut = page.waitForResponse(response => new URL(response.url()).pathname === "/api/auth/logout"
+    && response.request().method() === "POST");
+  await signOut.click();
+  expect((await signedOut).ok()).toBeTruthy();
+  await expect(page.locator("#loginForm")).toBeAttached();
+  await expectPasswordLoginClosed(page);
+  await expect(page.locator("#headerAccountLink")).toHaveAttribute("href", "#accountLogin");
   // Responsive lobby geometry is covered by compact-lobbies.spec.js; this
   // authentication contract applies to both available lobby designs.
+});
+
 });
 
 
@@ -1105,10 +1126,11 @@ test("logged-in user sees the personal landing page", async ({ page, request }) 
   await page.fill("#loginPassword", "registered-password-123");
   await page.click("#loginForm button[type=submit]");
   await expect(page.locator("#authBadge")).toContainText("RegisteredSmoke");
+  await expect(page.locator("#authActions a, #authActions button")).toHaveCount(0);
 
   await Promise.all([
     page.waitForURL(/\/konto(?:#|$)/),
-    page.getByRole("link", { name: "Mein Konto" }).click(),
+    page.locator("#headerAccountLink").click(),
   ]);
   await expect(page.getByRole("heading", { name: "RegisteredSmoke" })).toBeVisible();
   await page.getByRole("tab", { name: "Statistik" }).click();

@@ -774,7 +774,6 @@
   .mode-hardcore-row .toggle-row{ width:100%; justify-content:center; white-space:nowrap; }
   .player-setup-card .auth-actions{ grid-template-columns:1fr 1fr; }
   .player-setup-card .auth-actions > *{ min-width:0; }
-  .player-setup-card .auth-actions #logoutBtn{ grid-column:1 / -1; }
   .game-row{ align-items:stretch; flex-direction:column; gap:.7rem; padding:.82rem; }
   .game-row .actions,
   .game-row .actions button{ width:100%; }

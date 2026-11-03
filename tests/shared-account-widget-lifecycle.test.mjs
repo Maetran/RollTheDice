@@ -17,9 +17,11 @@ class Events {
 function fixture(kind) {
   const window = new Events(), requests = [], writes = [];
   class Element extends Events {
-    isConnected = true; dataset = {}; children = []; classList = { add() {} };
+    isConnected = true; dataset = {}; children = []; value = ''; classList = { add() {} };
     set textContent(value) { writes.push(String(value)); }
     setAttribute() {}
+    removeAttribute() {}
+    getAttribute() { return null; }
     append(...children) { this.children.push(...children); writes.push('append'); }
     replaceChildren(...children) { this.children = children; writes.push('replace'); }
     querySelectorAll() { return []; }
@@ -108,4 +110,30 @@ test('friend settings preserve a connected save and discard its older completion
   assert.equal(f.writes.length, writes);
   assert.deepEqual(preferences, [true]);
   f.auth(2); assert.equal(f.requests.length, 4);
+});
+
+test('allowlist settings patch the same view after a save and rebuild without stale writes after an account switch', async () => {
+  const f = fixture('settings');
+  await f.reply(0, 1);
+  const controls = f.mount.children[0];
+  const view = [...controls.children];
+  assert.equal(view.length, 4);
+  // Saving the invitation filter keeps the existing search/list nodes, so
+  // typed search text, filter text and focus are not lost.
+  const audienceForm = view.find(node => node.className === 'player-allowlist-audience');
+  const saved = audienceForm.emit('submit');
+  assert.equal(f.requests[1].options.method, 'PUT');
+  assert.deepEqual(JSON.parse(f.requests[1].options.body), { viewer_id: 1, audience: 'all' });
+  await f.reply(1, 1); await saved;
+  assert.deepEqual(controls.children, view);
+  // An older write that completes after another account was projected must
+  // neither patch nor reuse the old account's view.
+  const oldSave = audienceForm.emit('submit');
+  f.auth(2); await f.reply(3, 2);
+  const rebuilt = [...controls.children];
+  assert.ok(!rebuilt.includes(audienceForm));
+  const writes = f.writes.length;
+  await f.reply(2, 1); await oldSave;
+  assert.equal(f.writes.length, writes);
+  assert.deepEqual(controls.children, rebuilt);
 });
