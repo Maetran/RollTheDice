@@ -34,19 +34,32 @@ summary { cursor: pointer; min-height: 44px; padding-block: .5rem; font-weight: 
 .avatar-upload { display: grid; gap: .75rem; }
 [role=alert], [data-kind=error] { color: #973f29; }
 aside { padding: .75rem; border-left: 3px solid var(--accent); }
-.watten-friends { display: grid; gap: .5rem; min-width: 0; }
+.watten-friends { display: grid; gap: .75rem; min-width: 0; }
 .watten-friends + .watten-friends { margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--border); }
 .watten-friends h3 { margin: 0; font-family: Georgia, serif; line-height: 1.3; }
 .watten-friends p { margin: 0; }
+.watten-friends h4 { margin: 0; font-size: 1rem; }
+.watten-friends-help, .watten-friends [data-friend-results-count], .watten-friends [data-friend-filter-count] { color: var(--muted); font-size: .9rem; line-height: 1.55; }
+.watten-friends-count { font-weight: 700; }
+.watten-friends-filter, .watten-friends-add, .watten-friends [role=search] { display: grid; gap: .65rem; min-width: 0; }
+.watten-friends-add { padding-top: 1rem; border-top: 1px solid var(--border); }
+.watten-friends :is(button, input, select) { min-height: 44px; min-width: 44px; }
+.watten-friends :is(input, select) { width: 100%; box-sizing: border-box; }
+.watten-friends select { appearance: none; padding-right: 2.25rem; background-image: linear-gradient(45deg, transparent 50%, var(--accent) 50%), linear-gradient(135deg, var(--accent) 50%, transparent 50%); background-position: calc(100% - 18px) 50%, calc(100% - 13px) 50%; background-size: 5px 5px; background-repeat: no-repeat; }
+.watten-friends button { overflow-wrap: anywhere; }
 .watten-friends .actions { margin-block: .25rem; }
-.watten-friends-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .4rem; }
+.watten-friends-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .4rem; max-height: 22rem; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
 .watten-friends-list li { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; min-height: 44px; padding: .25rem 0; border-bottom: 1px solid var(--border); overflow-wrap: anywhere; }
 .watten-friends-list li > span:first-child { flex: 1 1 8rem; min-width: 0; }
 .watten-friends-list li:last-child { border-bottom: 0; }
+.watten-friends-list .watten-friends-empty { color: var(--muted); padding-block: .75rem; }
+.watten-friends :is([data-friend-selection-status], [data-friend-search-status], [data-friend-filter-count], [data-friend-results-count]):empty { display: none; }
+.watten-friends [data-kind=pending] { padding: .5rem .75rem; border-left: 3px solid var(--accent); }
 .watten-friends-tag { padding: .05rem .5rem; border: 1px solid var(--border); border-radius: 999px; font-size: .8rem; color: var(--muted); }
 .watten-friends-warning { padding: .5rem .75rem; border-left: 3px solid #996c1f; background: #fbf3df; }
 .watten-friends [data-kind=error] { color: #973f29; }
 @media (max-width: 360px) { .watten-friends-list li button, .watten-friends .actions button { flex: 1 1 100%; } }
+@media (min-width: 540px) { .watten-friends-filter { grid-template-columns: minmax(0, 1fr) auto; align-items: end; } }
 .watten-install { width: min(100% - 2rem, 750px); margin: -1.5rem auto 2rem; font-size: .9rem; }
 .watten-install button { margin: .25rem .5rem .25rem 0; }
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }

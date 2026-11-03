@@ -79,7 +79,7 @@ for (const language of ['de', 'en']) {
       const root = settingsRoot(viewer);
       await expect(viewer.page.locator('html')).toHaveAttribute('lang', language);
       await expect(root.locator('h3').first()).toHaveText(language === 'de'
-        ? 'Startmeldungen von ausgewählten Spielern' : 'Start notices from selected players');
+        ? 'Deine private Freundesliste' : 'Your private friends list');
       await expect(root).toContainText(language === 'de' ? 'Keine Push-Mitteilung' : 'No push notification');
 
       if ((await json(viewer, '/api/friend-activity/preferences')).enabled) await friendAction(viewer, 'consent-toggle').click();
@@ -94,9 +94,21 @@ for (const language of ['de', 'en']) {
       // Select the server-returned fixed account, rather than trusting a name.
       const canonicalAdd = root.locator(`[data-friend-action="add"][data-account-id="${selected.user.id}"]`);
       await expect(canonicalAdd).toBeEnabled();
+      await canonicalAdd.focus();
       await canonicalAdd.click();
       await expect(root.locator('[data-friend-selected]')).toContainText(selected.user.username);
+      await expect(root.locator('[data-friend-query]')).toHaveValue(selected.user.username);
+      await expect(root.locator('[data-friend-list-filter]')).toBeFocused();
+      await root.locator('[data-friend-list-filter]').fill('no-match-for-this-list');
+      await expect(root.locator('[data-friend-selected]')).not.toContainText(selected.user.username);
+      await expect(root.locator('[data-friend-selected]')).toContainText(language === 'de'
+        ? 'Auf deiner Liste passt niemand' : 'Nobody on your list matches');
+      await friendAction(viewer, 'filter-clear').click();
+      await expect(root.locator('[data-friend-list-filter]')).toBeFocused();
+      await expect(root.locator('[data-friend-selected]')).toContainText(selected.user.username);
       await root.locator('[data-friend-audience]').selectOption('allowlist');
+      await expect(root.locator('[data-friend-audience-state]')).toContainText(language === 'de'
+        ? 'Noch nicht gespeichert' : 'Not saved yet');
       await friendAction(viewer, 'audience-save').click();
       await expect.poll(async () => (await json(viewer, '/api/web-push/allowlist')).audience).toBe('allowlist');
       await openSettings(viewer);
@@ -120,8 +132,11 @@ for (const language of ['de', 'en']) {
         await expect(root.locator('[data-friend-query]')).toHaveValue('Draft kept through rotation');
         await root.screenshot({ path: testInfo.outputPath(`friends-${viewport.width}x${viewport.height}.png`) });
       }
+      await friendAction(viewer, 'remove').focus();
       await friendAction(viewer, 'remove').click();
       await expect(root.locator('[data-friend-warning]')).toBeVisible();
+      await expect(root.locator('[data-friend-query]')).toHaveValue('Draft kept through rotation');
+      await expect(root.locator('[data-friend-list-filter]')).toBeFocused();
       await openSettings(viewer);
       await expect(root.locator('[data-friend-warning]')).toBeVisible();
       expect((await json(viewer, '/api/web-push/allowlist')).players).toEqual([]);

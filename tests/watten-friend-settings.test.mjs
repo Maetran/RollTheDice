@@ -46,6 +46,13 @@ class Container extends EventTarget {
     Object.defineProperty(event, "target", { value: { matches: selector => selector === "[data-friend-search-form]" } });
     this.dispatchEvent(event);
   }
+  filter(query) {
+    const input = this.querySelector("[data-friend-list-filter]");
+    input.value = query;
+    const event = new Event("input");
+    Object.defineProperty(event, "target", { value: input });
+    this.dispatchEvent(event);
+  }
   choose(audience) {
     const select = this.querySelector("[data-friend-audience]");
     select.value = audience;
@@ -343,4 +350,71 @@ test("destroy aborts in-flight requests and late responses never touch the clear
   await tick(); await tick();
   assert.equal(f.container.innerHTML, "");
   assert.equal(f.container.stubs.size, 0);
+});
+
+
+test("list filtering is local, survives add/remove and never discards the search draft", async () => {
+  const f = fixture({ backend: server({ players: [
+    { id: 100, username: "Spieler00", active: true }, { id: 101, username: "Spieler01", active: true }] }) });
+  await until(() => f.container.text("[data-friend-count]") === "2 von 100 ausgewählt.");
+  const reads = f.calls.length;
+  f.container.filter("00");
+  assert.match(f.container.html("[data-friend-selected]"), /Spieler00/);
+  assert.doesNotMatch(f.container.html("[data-friend-selected]"), /Spieler01/);
+  assert.equal(f.container.text("[data-friend-filter-count]"), "1 von 2 Spielern in deiner Liste sichtbar.");
+  assert.equal(f.calls.length, reads, "filter does not send the private list to the search endpoint");
+  f.container.submit("Spieler02");
+  await until(() => f.container.html("[data-friend-results]").includes("Spieler02"));
+  f.container.click("add", 102);
+  await until(() => f.container.text("[data-friend-count]") === "3 von 100 ausgewählt.");
+  assert.equal(f.container.querySelector("[data-friend-query]").value, "Spieler02");
+  assert.equal(f.container.querySelector("[data-friend-list-filter]").value, "00");
+  assert.doesNotMatch(f.container.html("[data-friend-selected]"), /Spieler02/);
+  f.container.click("remove", 100);
+  await until(() => f.container.text("[data-friend-count]") === "2 von 100 ausgewählt.");
+  assert.match(f.container.html("[data-friend-selected]"), /Auf deiner Liste passt niemand/);
+  f.container.click("filter-clear");
+  assert.match(f.container.html("[data-friend-selected]"), /Spieler02/);
+  assert.equal(f.container.querySelector("[data-friend-list-filter]").value, "");
+});
+
+test("the invitation filter distinguishes unsaved choices from the persisted audience", async () => {
+  const f = fixture();
+  await until(() => f.container.text("[data-friend-count]") !== "");
+  assert.equal(f.container.text("[data-friend-audience-state]"), "Gespeichert: Alle Spieler dürfen dich rufen.");
+  f.container.choose("allowlist");
+  assert.match(f.container.text("[data-friend-audience-state]"), /Noch nicht gespeichert/);
+  assert.equal(f.backend.state.audience, "all");
+  f.container.click("audience-save");
+  await until(() => f.container.text("[data-friend-audience-state]") === "Gespeichert: Nur Spieler auf deiner Liste dürfen dich rufen.");
+  assert.equal(f.container.action("audience-save").disabled, true);
+});
+
+test("a failed search page retries its original query and offset only on demand", async () => {
+  let fail = false;
+  const f = fixture({ fetcher: (url, options, _count, backend) => {
+    if (fail && url.startsWith("/api/players/search")) { fail = false; return response({}, 503); }
+    return backend.handle(url, options);
+  } });
+  await until(() => f.container.text("[data-friend-count]") !== "");
+  f.container.submit("Spieler");
+  await until(() => f.container.action("load-more").hidden === false);
+  fail = true;
+  f.container.click("load-more");
+  await until(() => f.container.action("search-retry").hidden === false);
+  const failed = f.calls.at(-1).url;
+  assert.match(failed, /query=Spieler/);
+  assert.match(failed, /offset=20/);
+  assert.match(f.container.html("[data-friend-results]"), /Spieler00/);
+  f.container.querySelector("[data-friend-query]").value = "unsent draft";
+  const count = f.calls.length;
+  await tick(); await tick();
+  assert.equal(f.calls.length, count);
+  f.container.click("search-retry");
+  await until(() => f.container.html("[data-friend-results]").includes("Spieler39"));
+  assert.equal(f.calls.at(-1).url, failed);
+  assert.equal(f.container.querySelector("[data-friend-query]").value, "unsent draft");
+  f.container.click("clear-search");
+  assert.equal(f.container.html("[data-friend-results]"), "");
+  assert.equal(f.container.querySelector("[data-friend-query]").value, "");
 });
