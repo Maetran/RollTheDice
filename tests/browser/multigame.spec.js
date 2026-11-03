@@ -773,8 +773,11 @@ test("private Zilch result history and read-only report stay separate from ZDWA"
     await expect(page.locator(".zilch-result-head h1")).toHaveText("Mani gewinnt die Partie.");
     await expect(page.locator(".zilch-result-details")).not.toHaveAttribute("open");
     await expect(page.locator(".zilch-result-metrics")).toBeHidden();
-    await page.locator(".zilch-result-details > summary").focus();
-    await page.keyboard.press("Enter");
+    // Award projection can replace the report while it initializes. Target
+    // the current summary for keyboard activation instead of a prior focus.
+    await page.locator(".zilch-result-details > summary").press("Enter");
+    await expect(page.locator(".zilch-result-details")).toHaveAttribute("open", "");
+    await expect(page.locator(".zilch-result-metrics")).toBeVisible();
     await expect(page.locator(".zilch-result-metrics")).toContainText("Höchste gesicherte Runde");
     await expect(page.locator(".zilch-result-metrics")).toContainText(/8.?000/);
     await expect(page.locator(".zilch-result-metrics")).toContainText("Zilch-Runden");
