@@ -700,6 +700,8 @@ def _waiting_cpu_names_game(game_id, *, cpus=(1, 2, 3), username="Human"):
     game = runtime_module.new_watten_game(game_id, "Names", 4)
     recipe = runtime_tests.WattenRecipe(4, "normal", False, False, cpu_seats=cpus)
     runtime_module.configure_watten_game(game, recipe, SimpleNamespace(user_id=1, username=username), None)
+    # Match the observed checkpoint state installed by persist_watten_game.
+    game["_watten"] = runner.observe_cpu_memories(game["_watten"])
     return game
 
 
