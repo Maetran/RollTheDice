@@ -55,6 +55,9 @@ function suiteAnalytics(game, days, allowed = ['zdwa', 'zilch', 'hausdepp', 'wat
   const games = game === 'all' ? allowed : allowed.filter(item => item === game);
   data.available_games = allowed;
   data.metric_coverage = { traffic: 'observed_events_only', traffic_games: games, request_traffic: 'sitewide' };
+  data.geography = data.geography.map(row => ({ ...row, games: Object.fromEntries(games.map(item => [item,
+    item === 'hausdepp' ? (row.country === 'CH' ? 11 : 2) : item === 'watten' ? (row.country === 'CH' ? 7 : 1) : row.games[item],
+  ])) }));
   data.collection.traffic_first_seen_by_game = {
     zdwa: '2026-09-18T10:00:00Z', zilch: '2026-09-20T10:00:00Z',
     hausdepp: '2026-10-05T10:00:00Z', watten: '2026-10-07T10:00:00Z',
@@ -248,6 +251,10 @@ for (const language of ['de', 'en']) {
       await expect(page.locator('[data-favorite-id="metric-completed-games"] .metric-label')).toHaveText(language === 'en' ? 'Games/rounds completed' : 'Partien/Runden beendet');
       await expect(page.locator('#collectionNote')).toContainText('Hausdepp:');
       await expect(page.locator('#collectionNote')).toContainText('Watten:');
+      await expect(page.locator('.geo-game-values > div')).toHaveCount(4);
+      await expect(page.locator('.geo-game-values [data-game="hausdepp"] strong')).toHaveText('11');
+      await expect(page.locator('.geo-game-values [data-game="watten"] strong')).toHaveText('7');
+      await expect(page.locator('.geo-game-note')).toContainText(language === 'en' ? 'multiple games' : 'mehrere Spiele');
       await expect(page.locator('#gameCards [data-game="hausdepp"]')).toContainText(language === 'en' ? 'Limited sample of the latest results' : 'Begrenzte Stichprobe der neuesten Ergebnisse');
       const colors = await page.locator('#journeyFlow .flow-strand').evaluateAll(links => links.map(link => link.getAttribute('stroke')));
       expect(new Set(colors).size).toBe(4);
@@ -276,6 +283,10 @@ for (const language of ['de', 'en']) {
       await expect(page.locator('#designAccountsPanel')).toBeHidden();
       await expect(page.locator('#actionRanks')).toContainText(language === 'en' ? 'Play a card' : 'Karte spielen');
       await expect(page.locator('#geographyViz')).toBeVisible();
+      await expect(page.locator('.geo-game-values > div')).toHaveCount(1);
+      await expect(page.locator('.geo-game-values [data-game="hausdepp"] strong')).toHaveText('11');
+      await expect(page.locator('.geo-game-values [data-game="zdwa"], .geo-game-values [data-game="zilch"], .geo-game-values [data-game="watten"]')).toHaveCount(0);
+      await expect(page.locator('.geo-game-note')).toBeHidden();
 
       await page.locator('#dashboardGame').selectOption('watten');
       await expect(page.locator('#pwaInstalledCount')).toHaveText('19');
@@ -289,6 +300,9 @@ for (const language of ['de', 'en']) {
       await expect(page.locator('#wattenMonitoringNote')).not.toContainText(language === 'en' ? 'not recorded for Watten' : 'für Watten nicht erfasst');
       await expect(page.locator('#collectionNote')).toContainText('Watten:');
       await expect(page.locator('#collectionNote')).not.toContainText('Hausdepp:');
+      await expect(page.locator('.geo-game-values > div')).toHaveCount(1);
+      await expect(page.locator('.geo-game-values [data-game="watten"] strong')).toHaveText('7');
+      await expect(page.locator('.geo-game-values [data-game="hausdepp"]')).toHaveCount(0);
 
       state.availableGames = ['zdwa', 'zilch'];
       await page.locator('#dashboardRefresh').click();
@@ -299,6 +313,8 @@ for (const language of ['de', 'en']) {
       await expect(page.locator('#designLooks [data-look^="watten:"], #designLooks [data-look^="hausdepp:"]')).toHaveCount(0);
       await expect(page.locator('#collectionNote')).not.toContainText('Hausdepp:');
       await expect(page.locator('#collectionNote')).not.toContainText('Watten:');
+      await expect(page.locator('.geo-game-values > div')).toHaveCount(2);
+      await expect(page.locator('.geo-game-values [data-game="watten"], .geo-game-values [data-game="hausdepp"]')).toHaveCount(0);
       expect(errors).toEqual([]);
     });
   }
