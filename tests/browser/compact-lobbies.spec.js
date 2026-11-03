@@ -53,6 +53,13 @@ for (const language of ["de", "en"]) {
       await page.goto("/");
       const hub = page.locator("#gamesHub");
       await expect(hub.locator(".game-row")).toHaveCount(2);
+      await expect(page.locator("#playerSetupCard")).toHaveClass(/authenticated/);
+      await expect(page.locator("#playerSetupCard")).toBeHidden();
+      await page.locator("#loginError").evaluate(node => { node.textContent = "Visible account error"; });
+      await expect(page.locator("#playerSetupCard")).toBeVisible();
+      await expect(page.locator("#loginError")).toBeVisible();
+      await page.locator("#loginError").evaluate(node => { node.textContent = ""; });
+      await expect(page.locator("#playerSetupCard")).toBeHidden();
       await expect(hub.locator("#refreshBtn")).toHaveCount(1);
       await expect(hub.locator(".resumeBtn")).toBeVisible();
       await expect(hub.locator(".spectateBtn")).toHaveCount(2);
