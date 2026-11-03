@@ -1,10 +1,10 @@
 {
-  "version": "4.14.0",
-  "bump": "minor",
+  "version": "4.14.1",
+  "bump": "patch",
   "date": "2026-11-03",
-  "previous_revision": "978836f5195a1609aefc0406bc24eadf0ffaf0ae",
+  "previous_revision": "cea19411dc20de5aa0f311b822ddd3703e47393f",
   "summary": {
-    "de": "Freundeslisten direkt im Konto verwalten; aufgeräumte ZDWA-Lobby und immer sichtbarer Watten-Lobbychat.",
-    "en": "Manage friends lists directly in account settings, with a tidier ZDWA lobby and an always-visible Watten lobby chat."
+    "de": "Vollständige Analytics-Erfassung aller Spiele, zufällige Watten-CPU-Namen und bereinigte ZDWA-Lobby.",
+    "en": "Complete analytics coverage across all games, random Watten CPU names and a tidier ZDWA lobby."
   }
 }
