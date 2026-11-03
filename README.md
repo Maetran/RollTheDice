@@ -1899,7 +1899,8 @@ Spiele erscheinen nur in erlaubten Dashboardfiltern und Gesamtsummen.
 Messbeginn und Vorperiodenabdeckung folgen jedem Spiel separat. Fehlende
 historische Daten werden nicht nachgetragen; erste gespeicherte Beobachtungen
 sind keine Vollständigkeitsgarantie. Seitenwege und Klickversuche sind keine
-Conversion-Rate. Alle Spielmodi bleiben sichtbar. Ergebnisse nennen bekannte,
+Conversion-Rate. Alle Spielmodi bleiben sichtbar. Auswahlfelder behalten auch in Safari/WebKit
+44 Pixel hohe Touch-Ziele. Ergebnisse nennen bekannte,
 unbekannte und gegebenenfalls begrenzte Dauerstichproben. Live-Gesamtsummen
 zählen verbundene menschliche Spielerplätze; ein Konto an mehreren Tischen
 kann mehrfach zählen. Watten nennt eindeutige verbundene Konten zusätzlich.
@@ -1912,7 +1913,8 @@ Classic/Tyrol. Existing dashboard permissions also constrain native games in
 All. First retained evidence and previous-period coverage are scoped per
 game. Missing historical data is not backfilled; first observations do not
 prove completeness. Journeys and click attempts are not conversion rates.
-All game modes remain visible. Duration averages identify known, unknown and
+All game modes remain visible. Dashboard selectors retain 44 px touch targets
+in Safari/WebKit as well. Duration averages identify known, unknown and
 bounded samples. Live totals count connected human seats; one account at
 several tables may count more than once. Watten also reports distinct
 connected accounts separately.
