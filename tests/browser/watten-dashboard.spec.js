@@ -74,15 +74,17 @@ test.afterEach(async ({ page }) => {
 
 for (const language of ['de', 'en']) {
   for (const design of ['mission', 'lcars', 'nexus']) {
-    test(`${language}/${design}: real founder-only native monitoring distinguishes unknown traffic from server counts on phones`, async ({ page }, testInfo) => {
+    test(`${language}/${design}: real founder-only native monitoring follows observed traffic coverage on phones`, async ({ page }, testInfo) => {
       await founder(page, language, design);
       const errors = [];
       page.on('pageerror', error => errors.push(error.message));
       const data = await openNative(page);
       expect(data.period).toMatchObject({ game: 'watten', timezone: 'UTC' });
       expect(data.available_games).toContain('watten');
-      expect(data.metric_coverage).toMatchObject({ traffic: 'not_instrumented', request_traffic: 'sitewide',
+      expect(['not_instrumented', 'no_observed_events', 'observed_events_only']).toContain(data.metric_coverage.traffic);
+      expect(data.metric_coverage).toMatchObject({ request_traffic: 'sitewide',
         native_live_humans: 'distinct_authenticated_accounts', duration: 'validated_frozen_public_evidence' });
+      const measured = data.metric_coverage.traffic === 'observed_events_only';
       await expect(page.locator('html')).toHaveAttribute('lang', language);
       await expect(page.locator('body')).toHaveAttribute('data-dashboard-design', design);
       const row = data.games.find(item => item.game === 'watten');
@@ -112,20 +114,35 @@ for (const language of ['de', 'en']) {
       if (row.duration_unknown_count > 0) await expect(duration).toContainText(language === 'de' ? 'Ohne belegten Start' : 'Without a recorded start');
       if (row.duration_sample_truncated) await expect(duration).toContainText(numeric(row.duration_sample_limit, language));
 
-      for (const metric of ['sessions', 'page-views', 'live-sessions', 'active-seconds', 'avg-active-seconds']) {
-        await expect(page.locator(`[data-favorite-id="metric-${metric}"] .metric-value`)).toHaveText('—');
+      // Other isolated browser cases can already have supplied real Watten
+      // observations. Coverage, rather than test order, determines the UI.
+      for (const [metric, field] of [['sessions', 'sessions'], ['page-views', 'page_views'], ['live-sessions', 'live_sessions']]) {
+        await expect(page.locator(`[data-favorite-id="metric-${metric}"] .metric-value`))
+          .toHaveText(measured ? numeric(data.overview[field], language) : '—');
       }
-      await expect(page.locator('#pwaInstalledCount')).toHaveText('—');
-      await expect(page.locator('#pwaFirstOpenCount')).toHaveText('—');
-      const unknown = language === 'de' ? 'Für Watten nicht erfasst' : 'Not measured for Watten';
-      for (const id of ['dailyChart', 'hourlyChart', 'activityHeatmap', 'pageBubbles', 'journeyFlow']) {
-        await expect(page.locator(`#${id}`)).toContainText(unknown);
-        await expect(page.locator(`#${id} svg`)).toHaveCount(0);
+      for (const metric of ['active-seconds', 'avg-active-seconds']) {
+        const value = page.locator(`[data-favorite-id="metric-${metric}"] .metric-value`);
+        if (measured) await expect(value).not.toHaveText('—');
+        else await expect(value).toHaveText('—');
       }
-      await expect(page.locator('#geographyViz')).toBeHidden();
-      await expect(page.locator('#geographyUnmeasured')).toBeVisible();
-      await expect(page.locator('#geographyUnmeasured')).toContainText(unknown);
-      await expect(page.locator('#geographyUnmeasured')).not.toContainText(language === 'de' ? 'Kartierte Länder' : 'Mapped countries');
+      await expect(page.locator('#pwaInstalledCount')).toHaveText(data.pwa.confirmed_installations == null ? '—' : numeric(data.pwa.confirmed_installations, language));
+      await expect(page.locator('#pwaFirstOpenCount')).toHaveText(data.pwa.first_detected_starts == null ? '—' : numeric(data.pwa.first_detected_starts, language));
+      if (measured) {
+        await expect(page.locator('#geographyViz')).toBeVisible();
+        await expect(page.locator('#geographyUnmeasured')).toBeHidden();
+      } else {
+        const unknown = data.metric_coverage.traffic === 'no_observed_events'
+          ? (language === 'de' ? 'Noch keine Besuchsmessung' : 'No visit measurement yet')
+          : (language === 'de' ? 'Für Watten nicht erfasst' : 'Not measured for Watten');
+        for (const id of ['dailyChart', 'hourlyChart', 'activityHeatmap', 'pageBubbles', 'journeyFlow']) {
+          await expect(page.locator(`#${id}`)).toContainText(unknown);
+          await expect(page.locator(`#${id} svg`)).toHaveCount(0);
+        }
+        await expect(page.locator('#geographyViz')).toBeHidden();
+        await expect(page.locator('#geographyUnmeasured')).toBeVisible();
+        await expect(page.locator('#geographyUnmeasured')).toContainText(unknown);
+        await expect(page.locator('#geographyUnmeasured')).not.toContainText(language === 'de' ? 'Kartierte Länder' : 'Mapped countries');
+      }
       await expect(page.locator('#wattenMonitoringNote')).toContainText(language === 'de'
         ? 'HTTP-Anfragen und Serverressourcen gelten für die ganze Website'
         : 'HTTP requests and server resources cover the whole website');
