@@ -573,6 +573,7 @@ test("released Watten records categories, fixed actions and its table look witho
   await page.evaluate(() => { document.documentElement.dataset.wattenDesign = "tirol"; });
   await tick(page, 15000);
   await page.locator("#wtHistory").click();
+  await tick(page, 15000); // The fixture prevents navigation, so wait for the real heartbeat flush.
   await expect.poll(() => fixture.events().filter(event => event.type === "action").map(event => event.action)).toEqual([
     "create_game", "join_game", "game_invite", "start_game", "game_restart", "game_leave", "theme_change", "open_history",
   ]);

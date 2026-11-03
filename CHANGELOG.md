@@ -23,7 +23,7 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
-## 4.14.1 — 2026-11-03
+## 4.14.1 — 2026-11-04
 
 Frische Namen für neue Watten-Partien und nachvollziehbare Auswertungen für die ganze Suite.
 
