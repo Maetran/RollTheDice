@@ -165,6 +165,23 @@ class AnalyticsTests(unittest.TestCase):
         self.assertIsNone(value["comparison"]["overview"]["sessions"]["change_percent"])
         self.assertEqual(value["metric_coverage"]["traffic_by_game"]["watten"]["current_period_coverage"], "partial")
 
+    def test_geography_game_keys_follow_selected_filter_and_authorized_all_scope(self):
+        products = ("zdwa", "zilch", "hausdepp", "watten")
+        for number, product in enumerate(products, 1):
+            self._track_page(number, 1, "/", self.now, game=product, country="CH")
+        for selected in products:
+            value = dashboard_stats(1, selected, now=self.now, include_hausdepp=True, include_watten=True)
+            self.assertEqual(len(value["geography"]), 1)
+            self.assertEqual(value["geography"][0]["games"], {selected: 1})
+            self.assertEqual(value["geography"][0]["sessions"], 1)
+        owner = dashboard_stats(1, now=self.now, include_hausdepp=True, include_watten=True)
+        self.assertEqual(owner["geography"][0]["games"], dict.fromkeys(products, 1))
+        delegated = dashboard_stats(1, now=self.now)
+        self.assertEqual(delegated["geography"][0]["games"], {"zdwa": 1, "zilch": 1})
+        self.assertEqual(delegated["geography"][0]["sessions"], 2)
+        self.assertNotIn("watten", json.dumps(delegated))
+        self.assertNotIn("hausdepp", json.dumps(delegated))
+
     def test_private_journey_views_are_barriers_without_consuming_the_visible_sample(self):
         start = self.now - timedelta(minutes=5)
         for number, page, product in ((1, "/", "zdwa"), (2, "/watten", "watten"),

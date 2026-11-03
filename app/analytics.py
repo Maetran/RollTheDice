@@ -1199,6 +1199,7 @@ def dashboard_stats(days: int = 7, game: str = "all", *, now: datetime | None = 
     browser_products = tuple(product for product in products if product in BROWSER_TRAFFIC_GAMES)
     if days not in {1, 7, 30, 90} or game not in {"all", *products}:
         raise ValueError("analytics_invalid_filter")
+    selected_products = tuple(product for product in products if game in {"all", product})
     now = as_utc(now or utcnow())
     # UTC calendar days make daily bars and overview describe the same window.
     start = now.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=days - 1)
@@ -1246,7 +1247,7 @@ def dashboard_stats(days: int = 7, game: str = "all", *, now: datetime | None = 
                      "device_software": "os", "device_hardware": "device_family", "app_modes": "app_mode",
                      "browsers": "browser", "browser_languages": "browser_language"}[key]
             dimensions[key] = [{label: value, "sessions": total} for value, total in rows]
-        geography, geography_summary = _geography_stats(db, filters, views, active, traffic_products)
+        geography, geography_summary = _geography_stats(db, filters, views, active, selected_products)
         heatmap = _heatmap_stats(db, filters, views, active)
         journeys = _journey_stats(db, start, now, game, traffic_products)
         previous_overview = _previous_overview(db, start, days, game, products)
@@ -1346,7 +1347,6 @@ def dashboard_stats(days: int = 7, game: str = "all", *, now: datetime | None = 
             if product == "watten":
                 games[-1].update(participants_scope="recorded_seats_including_cpus")
         design_usage = _design_usage_stats(db, start, now, game, products)
-        selected_products = tuple(product for product in products if game in {"all", product})
         allowed_events = [_known_event_clause(), AnalyticsEvent.game.in_((*products, "site") if game == "all" else selected_products)]
         first_server = db.scalar(select(func.min(AnalyticsEvent.received_at)).where(
             *allowed_events, AnalyticsEvent.source == "server", AnalyticsEvent.received_at <= now))

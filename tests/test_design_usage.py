@@ -82,9 +82,10 @@ class DesignUsageAggregationTests(unittest.TestCase):
         for offset in range(0, len(events), 10):
             chunk = [{**event, "id": f"{offset + index:032x}"} for index, event in enumerate(events[offset:offset + 10])]
             for event in chunk:
-                if event["look"].startswith("zilch:"):
-                    event["game"] = "zilch"
-                    event["page"] = "/zilch" + event["page"]
+                product = event["look"].split(":", 1)[0]
+                event["game"] = product
+                if product != "zdwa":
+                    event["page"] = f"/{product}" + event["page"]
             for _ in range(3):
                 persist_batches([normalize_batch({"session_id": f"{offset + 1:032x}", "events": chunk},
                                                  now=NOW + timedelta(seconds=offset))], now=NOW)
