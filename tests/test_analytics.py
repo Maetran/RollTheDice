@@ -124,8 +124,8 @@ class AnalyticsTests(unittest.TestCase):
                 self.assertTrue(normalized["events"])
                 self.assertEqual({row["game"] for row in normalized["events"]}, {game})
                 self.assertEqual({row["page"] for row in normalized["events"]}, {expected})
-                self.assertNotIn("PRIVATE", json.dumps(normalized))
-                self.assertNotIn("SECRET", json.dumps(normalized))
+                self.assertNotIn("PRIVATE", json.dumps(normalized, default=str))
+                self.assertNotIn("SECRET", json.dumps(normalized, default=str))
             for route in ("admin", "anmelden", "lokal", "offline", "konto/PRIVATE", "spiel/PRIVATE/hand"):
                 self.assertEqual(normalize_batch(batch(page=f"/{game}/{route}", game=game))["events"], [])
         self.assertEqual(analytics.normalize_page("/zdwa", "watten"), "/")
@@ -414,7 +414,7 @@ class AnalyticsTests(unittest.TestCase):
         self.assertEqual(result["overview"]["sessions"], 1)
         self.assertEqual(result["overview"]["live_sessions"], 1)
         self.assertEqual(len(result["daily"]), 7)
-        self.assertEqual(sum(day["page_views"] for day in result["daily"]), 1)
+        self.assertEqual(sum(day["page_views"] or 0 for day in result["daily"]), 1)
         self.assertEqual(result["pages"][0]["game"], "zilch")
         self.assertEqual(dashboard_stats(7, "zdwa", now=self.now)["overview"]["live_sessions"], 0)
 
@@ -571,7 +571,7 @@ class AnalyticsTests(unittest.TestCase):
         self.assertTrue(stats["geography_summary"]["game_visits_can_overlap"])
         filtered = dashboard_stats(1, "zilch", now=now)["geography"]
         self.assertEqual(filtered, [{"country": "CH", "sessions": 1, "page_views": 1, "active_seconds": 30,
-                                    "games": {"zdwa": 0, "zilch": 1}, "share_percent": 100.0}])
+                                    "games": {"zilch": 1}, "share_percent": 100.0}])
 
     def test_heatmap_is_monday_first_utc_distinct_per_slot_and_zero_filled(self):
         now = datetime(2026, 10, 5, 12, tzinfo=timezone.utc)

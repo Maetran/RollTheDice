@@ -23,6 +23,9 @@ def test_watten_server_events_follow_successful_creation_membership_and_nonrepla
     game_id = native.create_game(server, owners[0])
     game = native.games[game_id]
     assert calls == [("watten", "game_created", "2")]
+    # Creation durably binds the host. Opening its socket is a reconnect;
+    # the guest below is the one genuinely new account membership.
+    assert {member.account_id for member in game["_watten"].room.members} == {owners[0][0].user_id}
     sessions = []
 
     async def scenario():
@@ -32,12 +35,16 @@ def test_watten_server_events_follow_successful_creation_membership_and_nonrepla
             await watten_websocket._handle_locked(session, "join_game", {
                 "action": "join_game", "revision": game["_watten"].room.revision})
             sessions.append(session)
-        assert calls.count(("watten", "join_game", "2")) == 2
+            assert any(member.account_id == owner[0].user_id for member in game["_watten"].room.members)
+            expected_joins = 0 if owner is owners[0] else 1
+            assert calls.count(("watten", "join_game", "2")) == expected_joins
+        assert {member.account_id for member in game["_watten"].room.members} == {owner[0].user_id for owner in owners}
+        assert calls.count(("watten", "join_game", "2")) == 1
         replacement = GameSocketSession(native.CapturingSocket(owners[0]), game, owners[0][0])
         await watten_websocket._handle_locked(replacement, "rejoin_game", {
             "action": "rejoin_game", "revision": game["_watten"].room.revision})
         sessions[0] = replacement
-        assert calls.count(("watten", "join_game", "2")) == 2
+        assert calls.count(("watten", "join_game", "2")) == 1
         for seat, session in enumerate(sessions):
             await watten_websocket._handle_locked(session, "watten_take_seat", native.room_command(
                 game_id, "watten_take_seat", next(numbers), seat=seat, team=None))
