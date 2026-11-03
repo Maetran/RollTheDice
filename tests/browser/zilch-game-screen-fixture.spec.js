@@ -1,4 +1,4 @@
-const { openPasswordLogin, expectPasswordLoginClosed } = require("./password-login");
+const { openPasswordLogin, signOutViaAccount } = require("./password-login");
 const { test, expect } = require("@playwright/test");
 const { expectTextContrast } = require("./contrast");
 const { openChatWithKeyboardFocus, expectChatAboveKeyboard } = require("./chat-mobile");
@@ -68,8 +68,7 @@ async function signInAsPreviewMani(page) {
   await expect(page.locator("#authBadge")).toContainText("Admin");
   const mani = await createUser(page, "Mani", "mani-preview-password-123", "admin");
   expect([201, 400]).toContain(mani.status);
-  await page.click("#logoutBtn");
-  await expectPasswordLoginClosed(page);
+  await signOutViaAccount(page);
   await signIn(page, "Mani", "mani-preview-password-123");
   // Hausdepp now makes the chooser public before login. Wait for the actual
   // account identity so a following navigation cannot abort the login request.

@@ -14,4 +14,18 @@ async function expectPasswordLoginClosed(page, zilch = false) {
   await expect(section.locator("form")).toBeHidden();
 }
 
-module.exports = { openPasswordLogin, expectPasswordLoginClosed };
+async function signOutViaAccount(page) {
+  const lobbyPath = new URL(page.url()).pathname;
+  await page.locator("#headerAccountLink").click();
+  await expect(page.locator("#accountLogout")).toBeVisible();
+  const [response] = await Promise.all([
+    page.waitForResponse(candidate => new URL(candidate.url()).pathname === "/api/auth/logout"
+      && candidate.request().method() === "POST"),
+    page.locator("#accountLogout").click(),
+  ]);
+  expect(response.ok()).toBeTruthy();
+  await expect(page).toHaveURL(url => url.pathname === lobbyPath);
+  await expectPasswordLoginClosed(page);
+}
+
+module.exports = { openPasswordLogin, expectPasswordLoginClosed, signOutViaAccount };

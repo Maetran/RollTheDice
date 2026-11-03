@@ -1,4 +1,4 @@
-const { openPasswordLogin, expectPasswordLoginClosed } = require("./password-login");
+const { openPasswordLogin, expectPasswordLoginClosed, signOutViaAccount } = require("./password-login");
 const { test, expect } = require("@playwright/test");
 
 const PUBLIC_AUTH = {
@@ -248,7 +248,7 @@ test("login cancels a pending registration script without rendering a hidden wid
   }
 });
 
-test("login removes an active widget and retired callbacks cannot restore a token after logout", async ({ page }) => {
+test("login retires its widget and account logout requires a fresh registration token", async ({ page }) => {
   let signedIn = false;
   const registrations = [];
   await page.route("**/api/auth/me", route => route.fulfill({ json: signedIn ? ACCOUNT_AUTH : PUBLIC_AUTH }));
@@ -279,14 +279,19 @@ test("login removes an active widget and retired callbacks cannot restore a toke
   await expect(page.locator("#registrationChallenge")).toBeEmpty();
   expect(await page.evaluate(() => window.__turnstileFixture.removed)).toEqual(["local-registration-widget"]);
   expect(await page.evaluate(() => window.__turnstileFixture.resets)).toEqual([]);
-  await page.click("#logoutBtn");
-  await expectPasswordLoginClosed(page);
+  await page.evaluate(() => window.__retiredTurnstileOptions.callback("retired-token"));
+  await expect(page.locator("#registrationChallenge")).toBeHidden();
+  await expect(page.locator("#registrationChallenge")).toBeEmpty();
+  expect(registrations).toEqual([]);
+  await signOutViaAccount(page);
+  // Signing out through the account page navigates to a fresh lobby document.
+  // A callback owned by the previous lobby cannot carry a token into this one.
+  expect(await page.evaluate(() => window.__retiredTurnstileOptions)).toBeUndefined();
   await openPasswordLogin(page);
   await page.fill("#loginPassword", "local-password-123");
   await fillRegistration(page);
   await page.click("#registerBtn");
-  await expect.poll(() => page.evaluate(() => window.__turnstileFixture.renders)).toBe(2);
-  await page.evaluate(() => window.__retiredTurnstileOptions.callback("retired-token"));
+  await expect.poll(() => page.evaluate(() => window.__turnstileFixture.renders)).toBe(1);
   await fillRegistration(page);
   await page.click("#registerBtn");
   await expect(page.locator("#loginError")).toHaveText("Bitte bestätige zuerst, dass du kein Bot bist.");
