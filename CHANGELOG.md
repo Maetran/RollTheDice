@@ -23,6 +23,30 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 4.14.1 — 2026-11-03
+
+Frische Namen für neue Watten-Partien und nachvollziehbare Auswertungen für die ganze Suite.
+
+Fresh names for new Watten games and understandable statistics across the suite.
+
+### ZDWA
+
+**Deutsch:** Die leere angemeldete Karte unter «Neues Spiel» wird ausgeblendet. Passkey-Hinweise, Fehler und die Gastanmeldung bleiben erreichbar.
+
+**English:** The empty signed-in card below “New game” is hidden. Passkey prompts, errors and guest sign-in remain available.
+
+### WATTEN
+
+**Deutsch:** Neue Partien wählen zufällige freie CPU-Namen. Vorhandene Namen bleiben während der Partie, beim Wiederverbinden, Wiederherstellen und bei Revanchen erhalten, auch wenn sich dabei interne Teilnehmerkennungen ändern.
+
+**English:** New games randomly choose available CPU names. Existing names remain stable during a game, reconnects, restores and rematches, including when internal participant identifiers change.
+
+### DASHBOARD · ZDWA · ZILCH · HAUSDEPP · WATTEN
+
+**Deutsch:** Hausdepp und öffentlich freigegebenes Watten nutzen den gemeinsamen anonymen Collector für Seitenkategorien, aktive Zeit, feste Bedienaktionen, Geräte-/Browserklassen, PWA-Signale und sichtbare Designzeit. Die bestehenden privaten Dashboardrechte gelten weiterhin auch für Gesamtsummen. Der Messbeginn und die Vorperiodenabdeckung werden je Spiel ermittelt; fehlende Historie erzeugt keine erfundenen Nullwerte oder Wachstumstrends. Direkte Seitenwege bleiben von Conversion-Raten getrennt, verborgene Zwischenstationen bleiben Unterbrechungen. Alle Spielmodi werden angezeigt. Dauerangaben nennen bekannte/unbekannte Ergebnisse und begrenzte Stichproben; Live-Gesamtsummen zählen konsistent verbundene menschliche Spielerplätze. Native HTTP-Seiten und Assets werden korrekt kategorisiert. Keine Kartenwerte, Gebotsinhalte, Namen oder Raumkennungen werden der anonymen Erfassung hinzugefügt.
+
+**English:** Hausdepp and publicly released Watten use the shared anonymous collector for coarse pages, active time, fixed interaction actions, device/browser classes, PWA signals and visible design time. Existing private dashboard permissions continue to apply to combined totals. First retained evidence and previous-period coverage are computed per game; missing history cannot produce fabricated zeros or growth trends. Direct page journeys remain separate from conversion rates and hidden intermediate pages remain barriers. All game modes are shown. Duration metrics identify known/unknown results and bounded samples; live totals consistently count connected human seats. Native HTTP pages and assets are categorized correctly. No card values, bid contents, names or room identifiers are added to anonymous collection.
+
 ## 4.14.0 — 2026-11-03
 
 Deine Leute direkt im Konto finden und die nächste Runde leichter zusammenbringen.

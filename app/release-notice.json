@@ -6,25 +6,23 @@
     "hausdepp",
     "watten"
   ],
-  "summary_de": "Deine Freundesliste direkt im Konto verwalten. ZDWA ist aufgeräumter, der Watten-Lobbychat bleibt sichtbar.",
-  "summary_en": "Manage your friends list directly in account settings. ZDWA is tidier, and the Watten lobby chat stays visible.",
+  "summary_de": "Frische CPU-Namen für neue Watten-Partien, eine aufgeräumte ZDWA-Lobby und klarere Auswertungen aller Spiele im Dashboard.",
+  "summary_en": "Fresh CPU names for new Watten games, a tidier ZDWA lobby and clearer dashboard statistics across all games.",
   "player_notes": {
     "de": {
-      "title": "4.14.0: Deine Leute, übersichtlich verwaltet",
+      "title": "4.14.1: Frische Namen, klarere Auswertungen",
       "changes": [
-        "ZDWA · ZILCH · HAUSDEPP · WATTEN: Spieler direkt im Konto suchen, hinzufügen und deine private Liste filtern.",
-        "ZDWA · ZILCH · HAUSDEPP · WATTEN: Klarer Einladungsfilter mit Speicherstatus; Startmeldungen und Push separat einstellen.",
-        "ZDWA: Konto und Abmelden erreichst du über den Konto-Reiter oben.",
-        "WATTEN: Der Lobbychat bleibt ausgeklappt und verbindet sich bei aktivierter Chat-Einstellung automatisch."
+        "ZDWA: Unter «Neues Spiel» bleibt kein leerer Kasten mehr stehen.",
+        "WATTEN: Neue Partien wählen zufällige CPU-Namen. Während einer Partie und bei Revanchen bleiben die Namen erhalten.",
+        "DASHBOARD: Hausdepp und Watten erhalten dieselben anonymen Besuchs- und Seitenweg-Auswertungen wie ZDWA und Zilch. Fehlende ältere Daten bleiben erkennbar; Spielmodi, Dauer und verbundene Plätze werden klarer ausgewiesen."
       ]
     },
     "en": {
-      "title": "4.14.0: Your people, clearly organised",
+      "title": "4.14.1: Fresh names, clearer statistics",
       "changes": [
-        "ZDWA · ZILCH · HAUSDEPP · WATTEN: Search for and add players directly in account settings and filter your private list.",
-        "ZDWA · ZILCH · HAUSDEPP · WATTEN: A clear invitation filter with saved status; start notices and push have separate settings.",
-        "ZDWA: Use the Account tab at the top for your account and signing out.",
-        "WATTEN: Lobby chat stays expanded and connects automatically when enabled on your account."
+        "ZDWA: No empty box remains below New game.",
+        "WATTEN: New games draw random CPU names. Names remain the same during a game and its rematches.",
+        "DASHBOARD: Hausdepp and Watten receive the same anonymous visit and page-journey statistics as ZDWA and Zilch. Missing older data stays visible; game modes, duration and connected seats are explained more clearly."
       ]
     }
   }

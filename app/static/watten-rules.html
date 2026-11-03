@@ -9,14 +9,14 @@
   <meta name="color-scheme" content="light">
   <title>Watten – Spielregeln / Rules</title>
   <script>{let d="classic";try{if(localStorage.getItem("watten_design")==="tirol")d="tirol"}catch(_){}document.documentElement.dataset.wattenDesign=d}</script>
-  <link rel="stylesheet" href="/static/watten-game.css?v=59c01e7590a1">
-  <link rel="stylesheet" href="/static/suite-header.css?v=59c01e7590a1">
-  <link rel="stylesheet" href="/static/watten-design.css?v=59c01e7590a1">
+  <link rel="stylesheet" href="/static/watten-game.css?v=5c3093ff3933">
+  <link rel="stylesheet" href="/static/suite-header.css?v=5c3093ff3933">
+  <link rel="stylesheet" href="/static/watten-design.css?v=5c3093ff3933">
 </head>
 <body class="wt-body">
   <a class="wt-skip" href="#wattenApp">Zum Inhalt / Skip to content</a>
   <header class="wt-header suite-header">
-    <a class="wt-brand suite-header__brand" href="/watten" translate="no"><img class="suite-header__icon" src="/static/watten/icons/watten-icon-32.png?v=59c01e7590a1" width="32" height="32" alt=""><span>Watten</span></a>
+    <a class="wt-brand suite-header__brand" href="/watten" translate="no"><img class="suite-header__icon" src="/static/watten/icons/watten-icon-32.png?v=5c3093ff3933" width="32" height="32" alt=""><span>Watten</span></a>
     <div class="suite-header__tools">
       <label class="wt-language"><span class="wt-visually-hidden">Sprache / Language</span><select data-language-switcher aria-label="Sprache / Language"><option value="de">Deutsch</option><option value="en">English</option></select></label>
       <button type="button" class="wt-design-toggle" data-theme-toggle data-watten-design-toggle aria-label="Darstellung wechseln: Klassisch. Nächste Darstellung: Tirol." title="Darstellung wechseln: Klassisch. Nächste Darstellung: Tirol."><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="6" y="3" width="12" height="18" rx="2"/><path d="m12 8 3 4-3 4-3-4z"/></svg></button>
@@ -81,6 +81,7 @@
       <section id="taktik"><h2>Gemeinsam taktieren</h2>
         <p>Im blinden Ladinisch hilft die Faustregel «Zweiter Stich ist Partnerstich»: Wer die Ansage kennt, kann dem zuletzt spielenden Partner eine günstige Stichchance lassen. Das ist keine Pflicht; ein gefährdeter Rundensieg geht vor. Gute Karten sollten nicht bis nach der Entscheidung gespart werden. Im ersten blinden Stich hilft es, möglichst keine bereits liegende Farbe oder Wertstufe zu wiederholen. Die CPU nutzt das als weiche Auswahlhilfe, keine Pflicht. Bereits sichtbare Karten und Stichgewinner helfen beim Einschätzen.</p>
         <p>Die CPUs bieten bei subjektiv guten Chancen und wägen zusätzliche Punkte gegen das Risiko ab. Die abgeschlossenen Watten-Spiele jedes Menschen bestimmen zuerst ein begrenztes Schwierigkeitsprofil. Der Tisch verwendet den Median dieser Profile; bei gerader Personenzahl werden die Parameter der beiden mittleren gemittelt. Spielzahlen beschreiben Erfahrung, kein gemessenes Können. Dabei kennen sie ausschliesslich ihre eigene erlaubte Sicht; niemand verrät ihnen verborgene Karten oder Ansagen.</p>
+        <p>Neue Partien wählen zufällige CPU-Namen ohne doppelte Namen am Tisch. Während einer Partie und bei Revanchen bleiben die Namen erhalten.</p>
       </section>
       <section id="bieten"><h2>Bieten</h2>
         <p>Sobald die vollständige Ansage beziehungsweise das Einschauen abgeschlossen ist, darf am eigenen Kartenzug geboten werden – ausdrücklich auch vor der ersten ausgespielten Karte. Im blinden Vierer darf jeder Spieler ein eigenes Drei und spätere eigene Erhöhungen ausschliesslich am eigenen Kartenzug bieten; das gilt auch für den wissenden Spieler und seinen blinden Partner. Über Halten, Gehen und Aufbieten als Antwort entscheidet weiterhin nur der Wissende seines Teams, auch ausserhalb seines eigenen Kartenzugs. Das erste Gebot ist drei Punkte, jedes weitere genau einen mehr. Ein Gebot hält das Spiel an, bis die andere Seite antwortet:</p>
@@ -284,6 +285,6 @@
       <p><a class="wt-button" href="/watten">To the lobby</a></p>
     </article>
   </main>
-  <script type="module" src="/static/watten-game.js?v=59c01e7590a1"></script>
+  <script type="module" src="/static/watten-game.js?v=5c3093ff3933"></script>
 </body>
 </html>

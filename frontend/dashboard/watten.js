@@ -1,6 +1,6 @@
 // Watten presentation and the account-bound refresh lifecycle of Mission
 // Control. The authorized analytics response is the only source of offered
-// games; Watten values are server aggregates without any browser telemetry.
+// games. Browser observations and confirmed server aggregates stay separate.
 
 export const DASHBOARD_GAMES = Object.freeze(["zdwa", "zilch", "hausdepp", "watten"]);
 const LEGACY_GAMES = Object.freeze(["zdwa", "zilch"]);
@@ -38,7 +38,7 @@ export function scopeAuthorized(data, game) {
   return authorizedGames(data?.available_games || LEGACY_GAMES).includes(game);
 }
 
-export const trafficMeasured = data => data?.metric_coverage?.traffic !== "not_instrumented";
+export const trafficMeasured = data => !["not_instrumented", "no_observed_events"].includes(data?.metric_coverage?.traffic);
 
 // Unknown stays unknown; only a reported number becomes a (non-negative) count.
 export function measuredCount(value) {
@@ -53,14 +53,30 @@ export function countText(value, number) {
 }
 
 export function overviewCoverage(data) {
-  if (data?.period?.game === "hausdepp") return { unknown: true, hint: "Browserbesuche bisher nicht erfasst", completedLabel: "Runden beendet" };
-  if (!trafficMeasured(data)) return { unknown: true, hint: data?.period?.game === "watten" ? "Für Watten nicht erfasst" : "Nicht erfasst", completedLabel: "Partien beendet" };
-  return { unknown: false, hint: null, completedLabel: "Partien beendet" };
+  const completedLabel = data?.period?.game === "hausdepp" ? "Runden beendet"
+    : (data?.period?.game || "all") === "all" && visibleGames(data).includes("hausdepp") ? "Partien/Runden beendet" : "Partien beendet";
+  if (!trafficMeasured(data)) return { unknown: true, hint: "Noch keine Besuchsmessung", completedLabel };
+  return { unknown: false, hint: null, completedLabel };
+}
+
+// First retained evidence is neither the release date nor a guarantee of
+// complete collection. Listing every offered game exposes gaps in All.
+export function trafficCollectionNote(data, { t, timestamp }) {
+  const firsts = data?.collection?.traffic_first_seen_by_game;
+  if (firsts && typeof firsts === "object") {
+    return visibleGames(data).map(game => `${dashboardGameName(game)}: ${firsts[game]
+      ? `${t("Erste gespeicherte Besuchsmessung")} ${timestamp(firsts[game])}` : t("Noch keine Besuchsmessung")}`).join(" · ");
+  }
+  const first = data?.collection?.first_seen_at;
+  return first ? `${t("Erste gespeicherte Besuchsmessung")} ${timestamp(first)}` : t("Noch keine Besuchsmessung");
 }
 
 // Empty-state copy for browser panels that have no collector for this filter.
 export function unmeasuredCopy(data) {
   if (trafficMeasured(data)) return null;
+  if (data?.metric_coverage?.traffic === "no_observed_events") return {
+    title: "Noch keine Besuchsmessung", description: "Für den gewählten Zeitraum liegen noch keine Browserbesuche vor.",
+  };
   return data?.period?.game === "watten"
     ? { title: "Für Watten nicht erfasst", description: "Für Watten werden keine Browserbesuche gemessen. Partien und Live-Tische stammen vom Server." }
     : { title: "Nicht erfasst", description: "Für diesen Filter werden keine Browserbesuche gemessen." };
@@ -75,7 +91,7 @@ export function presentGeography(data, { viz, note, globe, t, e }) {
   note.hidden = !copy;
   if (copy) {
     globe.clear();
-    const description = data?.period?.game === "watten" ? "Herkunft wird für Watten nicht erfasst." : copy.description;
+    const description = data?.period?.game === "watten" && data?.metric_coverage?.traffic === "not_instrumented" ? "Herkunft wird für Watten nicht erfasst." : copy.description;
     note.innerHTML = `<div class="empty-state"><span class="empty-icon" aria-hidden="true">⌁</span><strong>${e(t(copy.title))}</strong><p>${e(t(description))}</p></div>`;
     return false;
   }
@@ -114,6 +130,17 @@ export function wattenDurationNote(row = {}, { t, number, duration }) {
   return parts.join(" · ");
 }
 
+export function resultDurationNote(row = {}, { t, number, duration }) {
+  const known = measuredCount(row.duration_sample_count) ?? 0;
+  const unknown = measuredCount(row.duration_unknown_count);
+  const parts = [known > 0 && row.avg_duration_seconds != null
+    ? `${t("Ø Dauer aus bekannten Ergebnissen")}: ${duration(row.avg_duration_seconds)} · ${t("Ergebnisse mit bekannter Dauer")}: ${number(known)}`
+    : t("Keine bekannte Dauer im Zeitraum.")];
+  if (unknown) parts.push(`${t("Ohne bekannte Dauer")}: ${number(unknown)}`);
+  if (row.duration_sample_truncated === true) parts.push(`${t("Begrenzte Stichprobe der neuesten Ergebnisse")}: ${number(measuredCount(row.duration_sample_limit) ?? 2000)}. ${t("Ältere Partien sind darin nicht enthalten.")}`);
+  return parts.join(" · ");
+}
+
 export function wattenGameCard(row = {}, fmt) {
   const { t, e, number, duration } = fmt;
   const live = row.live && typeof row.live === "object" ? row.live : {};
@@ -139,7 +166,9 @@ export function wattenMonitoringNote(data, fmt) {
   const { t } = fmt;
   const row = (Array.isArray(data?.games) ? data.games : []).find(item => item?.game === "watten") || {};
   const parts = [
-    t("Watten: Partien, Teilnahmen und Live-Tische werden serverseitig gezählt. Browserbesuche, Seitenwege, Herkunft, Designs und PWA-Starts werden für Watten nicht erfasst."),
+    t(trafficMeasured(data)
+      ? "Watten: Partien, Teilnahmen und Live-Tische stammen vom Server. Browserbesuche, Seitenwege, aktive Zeit, Designs und PWA-Ereignisse stammen aus anonymer Browser-Erfassung; ältere fehlende Messwerte werden nicht nachgetragen."
+      : "Watten: Partien, Teilnahmen und Live-Tische werden serverseitig gezählt. Für den gewählten Zeitraum liegen noch keine Browserbesuche vor."),
     t("Teilnahmen sind gespeicherte Plätze je Partie einschließlich Computer, keine eindeutigen Personen. Menschen verbunden zählt angemeldete Konten ohne Doppelzählung; pausierte Tische sind in den Live-Tischen enthalten. Abbrüche werden nicht erfasst."),
     t("Die Dauer stammt nur aus geprüften, eingefrorenen Partiebelegen; Partien ohne belegten Start bleiben unbekannt."),
   ];

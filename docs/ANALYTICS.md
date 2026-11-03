@@ -12,6 +12,27 @@ needing to sign out. All dashboard documents are `noindex` and `no-store`.
 
 ## Measurement
 
+All four games share the browser collector; Watten requires its public-release
+marker. Native dashboard permissions remain unchanged, including in All.
+`collection.traffic_first_seen_by_game` lists the first retained browser evidence
+for each authorized, selected game. Per-game coverage prevents older ZDWA/Zilch
+history from becoming a false baseline for newly measured native games. Missing
+history stays unknown; no synthetic events or conversion funnels are inferred.
+The page journey sample is bounded after authorization, while hidden visits
+remain barriers rather than fabricated links. Browser action attempts and
+server-confirmed actions are separate sources. Every game mode is displayed.
+
+Alle vier Spiele teilen den Browsercollector; Watten braucht seinen Marker für
+die öffentliche Freigabe. Die bisherigen Dashboardrechte gelten auch in «Alle».
+Der Messbeginn folgt je erlaubtem Spiel den ersten gespeicherten Browserdaten;
+ältere Daten eines anderen Spiels sind keine Vergleichsbasis. Fehlende Historie
+wird nicht rekonstruiert. Die begrenzte Wege-Stichprobe wird erst nach der
+Berechtigungsprüfung gebildet; verborgene Besuche bleiben Unterbrechungen.
+Klickversuche und Serverbestätigungen bleiben getrennte Quellen. Alle Spielmodi
+werden angezeigt. Live-Gesamtsummen zählen verbundene Spielerplätze, keine
+spielübergreifend eindeutigen Personen; Dauern nennen bekannte und unbekannte
+Ergebnisse sowie die Begrenzung auf die neuesten 2'000 Ergebnisse.
+
 - Anonymous tab sessions expire after 30 minutes of inactivity; they do not
   identify unique people or stitch activity between devices.
 - Page categories replace usernames, room and result IDs. Query strings,
@@ -78,15 +99,16 @@ needing to sign out. All dashboard documents are `noindex` and `no-store`.
 - Design usage answers which look players spend their time with. Every
   engagement event already carries visible, recently active milliseconds
   (at most 60 seconds per event). It now also names the look that was on
-  screen while that time was counted, from a fixed list of eight values:
+  screen while that time was counted, from a fixed list of eleven values:
   `zdwa:new:light|dark|classic` (2026 design: light, dark, Classic),
   `zdwa:old:light|dark|classic` (previous design) and
-  `zilch:tavern|lcars` (Zilch tavern table or LCARS). Switching theme or
+  `zilch:tavern|lcars` (Zilch tavern table or LCARS), `hausdepp:classic`
+  and `watten:classic|tirol`. Switching theme or
   design closes the running interval, so time before the switch stays with
   the previous look. Page views and actions carry no look. The server keeps
   only daily totals in `analytics_design_buckets`: UTC day, look, area
   (`table` for game rooms `/spiel`, `site` for every other page, including
-  spectating) and summed milliseconds — at most 16 rows per day, with no
+  spectating) and summed milliseconds — at most 22 rows per day, with no
   visit, session, account, device or country relation. Unknown looks, looks
   that do not match the event's game and resent events are ignored. These
   totals are kept for 400 days (independent of the 90-day/200,000-event
@@ -97,15 +119,16 @@ needing to sign out. All dashboard documents are `noindex` and `no-store`.
   **Deutsch:** Die Design-Nutzung zeigt, mit welchem Erscheinungsbild gespielt
   wird. Jedes Engagement-Ereignis enthält schon die sichtbare, zuletzt aktive
   Zeit (höchstens 60 Sekunden je Ereignis). Neu nennt es zusätzlich das
-  Design, das dabei zu sehen war – aus acht festen Werten:
+  Design, das dabei zu sehen war – aus elf festen Werten:
   `zdwa:new:light|dark|classic` (Design 2026: Hell, Dunkel, Classic),
   `zdwa:old:light|dark|classic` (bisheriges Design) und `zilch:tavern|lcars`
-  (Zilch-Wirtshaustisch oder LCARS). Ein Wechsel von Farbschema oder Design
+  (Zilch-Wirtshaustisch oder LCARS), `hausdepp:classic` und
+  `watten:classic|tirol`. Ein Wechsel von Farbschema oder Design
   schliesst das laufende Intervall ab; die Zeit davor bleibt beim vorherigen
   Design. Seitenaufrufe und Aktionen tragen kein Design. Gespeichert werden
   nur Tagessummen in `analytics_design_buckets`: UTC-Tag, Design, Bereich
   (`table` für Spielräume `/spiel`, `site` für alle übrigen Seiten inklusive
-  Zuschauen) und summierte Millisekunden – höchstens 16 Zeilen pro Tag, ohne
+  Zuschauen) und summierte Millisekunden – höchstens 22 Zeilen pro Tag, ohne
   Bezug zu Besuch, Sitzung, Konto, Gerät oder Land. Unbekannte oder nicht zum
   Spiel passende Werte und erneut gesendete Ereignisse werden verworfen. Die
   Tagessummen bleiben 400 Tage erhalten, unabhängig von der Grenze von 90
@@ -133,8 +156,8 @@ Rundenpausen stammen aus dem momentanen Spielbetrieb. Server-Raum- und
 Spielerzahlen folgen dem gewählten Spielfilter; CPU, RAM und HTTP-Anfragen
 bleiben ausdrücklich gemeinsame Infrastrukturwerte.
 
-Browserbesuche von Hausdepp werden bisher nicht erfasst und deshalb als
-unbekannt angezeigt. Ältere Runden ohne Startzeit erhalten nachträglich keine
+Hausdepp-Browserbesuche werden ab dieser Erweiterung anonym erfasst.
+Zeit ohne gespeicherte Browserbelege bleibt unbekannt. Ältere Runden ohne Startzeit erhalten nachträglich keine
 Dauer. Die optionale Durchschnittsdauer berücksichtigt nur bekannte Angaben
 innerhalb der höchstens 2’000 neuesten Ergebnisse. Neue manuelle Abbrüche und
 Inaktivitätsabbrüche werden über ein festes Serverereignis erfasst; mehrfache
@@ -157,7 +180,8 @@ computer seats, active tournaments and round breaks come from current runtime
 state. Server room/player totals follow the game filter; CPU, memory and HTTP
 request figures remain explicitly shared infrastructure totals.
 
-Hausdepp browser visits have not been measured and are shown as unavailable.
+Hausdepp browser visits are collected anonymously from this increment onward;
+periods without retained browser evidence stay unknown.
 Older rounds without timing evidence are not assigned a duration. Optional
 duration averages inspect at most the newest 2,000 results. New manual and
 inactivity aborts use a fixed server event with a hashed deduplication key;

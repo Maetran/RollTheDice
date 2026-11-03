@@ -349,6 +349,14 @@ account. It uses the normal suite login; other accounts, administrators and
 delegated owners receive no access. The fixed Watten host, installation,
 Watten account emails and push delivery remain closed.
 
+**CPU-Namen / CPU names:** Neue Watten-Partien wählen zufällige Namen aus dem
+Pool, ohne doppelte Namen am Tisch. Innerhalb einer Partie und bei Revanchen
+bleiben die Namen erhalten. Eine unabhängige neue Partie zieht erneut; dabei
+kann ein Name zufällig wieder vorkommen.
+New Watten games randomly draw names from the pool without duplicates at the
+table. Names stay stable during a game and its rematches. A separate new game
+draws again; chance can select a previously seen name.
+
 **Privates Monitoring / private monitoring:** Das bestehende Dashboard bietet
 Watten nur an, wenn die aktuelle Analytics-Antwort es für das Konto freigibt.
 Es unterscheidet abgeschlossene Partien, gespeicherte Plätze einschliesslich
@@ -1882,6 +1890,34 @@ result appear without a briefly flashing progress dialog.
 
 ## Mission Control
 
+**Suite-Parität / suite parity:** ZDWA, Zilch, Hausdepp und öffentlich freigegebenes
+Watten verwenden dieselbe anonyme Besuchsmessung für Seitenkategorien, aktive
+Zeit, feste Bedienaktionen, Geräte-/Browserklassen, PWA-Ereignisse und direkte
+Seitenwege. Designs zählen ZDWA-Varianten, Zilch Wirtshaustisch/LCARS,
+Hausdepp Classic und Watten Classic/Tirol. Rechte bleiben unverändert: Native
+Spiele erscheinen nur in erlaubten Dashboardfiltern und Gesamtsummen.
+Messbeginn und Vorperiodenabdeckung folgen jedem Spiel separat. Fehlende
+historische Daten werden nicht nachgetragen; erste gespeicherte Beobachtungen
+sind keine Vollständigkeitsgarantie. Seitenwege und Klickversuche sind keine
+Conversion-Rate. Alle Spielmodi bleiben sichtbar. Ergebnisse nennen bekannte,
+unbekannte und gegebenenfalls begrenzte Dauerstichproben. Live-Gesamtsummen
+zählen verbundene menschliche Spielerplätze; ein Konto an mehreren Tischen
+kann mehrfach zählen. Watten nennt eindeutige verbundene Konten zusätzlich.
+
+ZDWA, Zilch, Hausdepp and publicly released Watten share anonymous visit
+measurement for coarse pages, active time, fixed interaction attempts,
+device/browser classes, PWA events and direct page journeys. Design totals
+include ZDWA variants, Zilch tavern/LCARS, Hausdepp Classic and Watten
+Classic/Tyrol. Existing dashboard permissions also constrain native games in
+All. First retained evidence and previous-period coverage are scoped per
+game. Missing historical data is not backfilled; first observations do not
+prove completeness. Journeys and click attempts are not conversion rates.
+All game modes remain visible. Duration averages identify known, unknown and
+bounded samples. Live totals count connected human seats; one account at
+several tables may count more than once. Watten also reports distinct
+connected accounts separately.
+
+
 **Hausdepp:** Der gebundene Owner erhält einen eigenen Filter und eine Übersicht
 über echte Runden, bekannte Spieldauer, aktive Tische, Menschen, Computer und
 Turnierstände. Abbrüche werden ab dieser Messung erfasst. Historische fehlende
@@ -1949,7 +1985,7 @@ separately there.
 The **Design usage** section shows which look players spend their time with:
 visible, active seconds for ZDWA in the 2026 design (light, dark, Classic) and
 the previous design (light, dark, Classic), and for Zilch with the tavern table
-or LCARS. It compares new against previous as shares, splits time at the game
+or LCARS, Hausdepp Classic and Watten Classic/Tyrol. It compares new against previous as shares, splits time at the game
 table from other pages and follows the period and game filters; exact seconds
 appear on hover and in the table. It also counts active accounts that keep the
 new or the previous ZDWA design, marks how many of them never saw the
@@ -1972,7 +2008,7 @@ bekommen diesen Zugang nicht automatisch.
 **Deutsch:** Der Bereich **Design-Nutzung** zeigt, mit welchem Erscheinungsbild
 gespielt wird: sichtbare, aktive Sekunden für ZDWA im Design 2026 (Hell,
 Dunkel, Classic) und im bisherigen Design (Hell, Dunkel, Classic) sowie für Zilch
-mit Wirtshaustisch oder LCARS. Er vergleicht neu und bisher als Anteile, trennt
+mit Wirtshaustisch oder LCARS, Hausdepp Classic und Watten Classic/Tirol. Er vergleicht neu und bisher als Anteile, trennt
 die Zeit am Spieltisch von übrigen Seiten und folgt Zeitraum und Spielfilter;
 exakte Sekunden erscheinen beim Überfahren und in der Tabelle. Dazu kommt die
 Zahl aktiver Konten mit neuem oder bisherigem ZDWA-Design, davon wie viele die
