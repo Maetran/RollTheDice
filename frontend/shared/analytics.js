@@ -266,7 +266,9 @@ let initialized = false;
 /** Bounded presentation label for the design comparison, e.g. "zdwa:new:dark". */
 export function analyticsLook(root = document.documentElement) {
   const theme = root?.dataset?.theme;
-  // Watten offers two fixed table designs; anything else stays unlabelled.
+  // Hausdepp has one fixed table design. Watten offers two; anything else
+  // (decor, surprises, personal table appearance) stays unlabelled.
+  if (root?.dataset?.game === "hausdepp") return "hausdepp:classic";
   if (root?.dataset?.game === "watten") {
     return ["classic", "tirol"].includes(root.dataset.wattenDesign) ? `watten:${root.dataset.wattenDesign}` : null;
   }

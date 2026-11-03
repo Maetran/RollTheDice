@@ -504,6 +504,7 @@ test("Hausdepp records lobby, table and account categories with fixed actions on
   await expect.poll(() => fixture.events().filter(event => event.type === "page_view").length).toBe(1);
   // Mounting the lobby is a view, never an artificial game action.
   expect(fixture.events().filter(event => event.type === "action")).toEqual([]);
+  await tick(page, 15000);
   await page.locator("#hausdeppCreate").click();
   await page.locator("[data-create-favourite]").click();
   await page.locator("#hausdeppOpenWaiting").click();
@@ -533,6 +534,10 @@ test("Hausdepp records lobby, table and account categories with fixed actions on
     ["/hausdepp/zuschauen", "open_achievements"], ["/hausdepp/zuschauen", "open_leaderboard"],
   ]);
   expect(fixture.events().every(event => event.game === "hausdepp")).toBe(true);
+  // The single fixed Hausdepp table design labels its active time.
+  const looks = fixture.events().filter(event => event.type === "engagement").map(event => event.look);
+  expect(looks.length).toBeGreaterThan(0);
+  expect(looks.every(look => look === "hausdepp:classic")).toBe(true);
   expect(JSON.stringify(fixture.batches)).not.toMatch(/Private|anmelden|return_to|rangliste|einstellungen|erfolge|token|#/i);
 });
 
