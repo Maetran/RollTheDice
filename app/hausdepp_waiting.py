@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from .active_games import delete_active_game, save_active_game
+from .analytics import record_game_action
 from .game_realtime import broadcast
 from .game_snapshot import snapshot
 from .game_state import games, touch
@@ -51,6 +52,7 @@ async def handle_waiting_action(session, action: str, data: dict, *, finalize_ga
     async with game_lock(game):
         player = next((item for item in game.get("_players", []) if item.get("id") == session.player_id), None)
         identity = session.auth_identity
+        was_started = bool(game.get("_started"))
         try:
             if (game_type_from_state(game) != HAUSDEPP_GAME_TYPE or session.is_spectator or not identity
                     or not player or player.get("user_id") != identity.user_id
@@ -86,6 +88,8 @@ async def handle_waiting_action(session, action: str, data: dict, *, finalize_ga
             await session.websocket.send_json({"error": code, "error_code": code,
                                                "scoreboard": snapshot(game, session.player_id)})
             return
+        if action == "hausdepp_start_game" and not was_started and game.get("_started"):
+            record_game_action("hausdepp", "start_game", game.get("_mode"))
         await refresh_voice_game(game)
         await broadcast(game, {"scoreboard": snapshot(game)})
         if action == "hausdepp_start_game":

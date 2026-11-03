@@ -33,11 +33,13 @@ from sqlalchemy import (
     Index,
     Integer,
     String,
+    and_,
     case,
     cast,
     delete,
     func,
     insert,
+    or_,
     select,
     tuple_,
     update,
@@ -66,7 +68,7 @@ MAX_QUEUE_BATCHES = 300
 MAX_PENDING_REQUEST_BUCKETS = 4096
 MAX_STORED_REQUEST_BUCKETS = 50_000
 LIVE_WINDOW_SECONDS = 120
-BROWSER_TRAFFIC_GAMES = ("zdwa", "zilch")
+BROWSER_TRAFFIC_GAMES = ("zdwa", "zilch", "hausdepp", "watten")
 JOURNEY_SAMPLE_LIMIT = 10_000
 JOURNEY_GAP_SECONDS = 30 * 60
 SESSION_RE = re.compile(r"^[a-f0-9]{32,64}$")
@@ -78,18 +80,21 @@ ACTIONS = frozenset({
     "game_leave", "login", "register", "logout", "settings_save", "theme_change", "language_change",
     "mode_solo", "mode_duo", "mode_trio", "mode_team", "mode_normal", "mode_hardcore", "mode_computer",
     "mode_multiplayer", "mode_offline", "game_created", "open_settings",
-    "pwa_installed_zdwa", "pwa_installed_zilch", "pwa_first_open_zdwa", "pwa_first_open_zilch",
+    "play_card", "bid", "respond_bid", "choose_contract",
+    "mode_four", "mode_five", "mode_six", "mode_tournament",
+    *(f"{action}_{product}" for product in BROWSER_TRAFFIC_GAMES
+      for action in ("pwa_installed", "pwa_first_open")),
 })
 PWA_ACTIONS = {
     f"{action}_{product}": (product, metric)
-    for product in ("zdwa", "zilch")
+    for product in BROWSER_TRAFFIC_GAMES
     for action, metric in (("pwa_installed", "confirmed_installations"), ("pwa_first_open", "first_detected_starts"))
 }
 PAGES = frozenset({
     "/", "/spiel", "/zuschauen", "/ergebnis", "/regeln", "/spieler", "/rangabzeichen", "/bestenlisten",
-    "/historie", "/statistiken", "/erfolge", "/offline-spielen", "/offline", "/konto",
+    "/historie", "/statistiken", "/erfolge", "/offline-spielen", "/offline", "/konto", "/rangliste",
 })
-MODES = frozenset({"online", "offline", "solo", "duo", "trio", "team", "tournament", "cpu", "multiplayer", "normal", "hardcore", "unknown"})
+MODES = frozenset({"online", "offline", "solo", "duo", "trio", "team", "tournament", "cpu", "multiplayer", "normal", "hardcore", "four", "five", "six", "unknown"})
 OPERATING_SYSTEMS = frozenset({"android", "ios", "ipados", "fireos", "windows", "macos", "linux", "chromeos", "unknown"})
 DEVICE_FAMILIES = frozenset({
     "ipad", "iphone", "fire_tablet", "android_tablet", "android_phone", "mac", "windows_pc", "linux_pc",
@@ -113,7 +118,7 @@ LANGUAGE_TAG_RE = re.compile(r"^[a-zA-Z]{2,3}(?:-[a-zA-Z0-9]{1,8})*$")
 # design and colour theme; nothing else about the visitor is attached.
 LOOKS = frozenset({
     *(f"zdwa:{design}:{theme}" for design in ("new", "old") for theme in ("light", "dark", "classic")),
-    "zilch:tavern", "zilch:lcars",
+    "zilch:tavern", "zilch:lcars", "hausdepp:classic", "watten:classic", "watten:tirol",
 })
 DESIGN_AREAS = frozenset({"table", "site"})
 DESIGN_RETENTION_DAYS = 400
@@ -147,6 +152,8 @@ REQUEST_EXCLUDED_PATHS = frozenset({"/health", "/api/health", "/api/deployment-n
 REQUEST_ASSET_PATHS = frozenset({
     "/sw.js", "/zilch-sw.js", "/manifest.webmanifest", "/manifest-en.webmanifest",
     "/zilch-manifest.webmanifest", "/zilch-manifest-en.webmanifest", "/favicon.ico",
+    "/hausdepp-sw.js", "/watten-sw.js", "/hausdepp-manifest.webmanifest", "/hausdepp-manifest-en.webmanifest",
+    "/watten-manifest.webmanifest", "/watten-manifest-en.webmanifest",
 })
 REQUEST_PAGE_PATHS = frozenset({
     "/", "/regeln", "/spieler", "/rangabzeichen", "/konto", "/anmelden", "/admin", "/spiel", "/ergebnis",
@@ -233,27 +240,41 @@ def _digest(value: str) -> str:
     return hashlib.sha256(value.encode("ascii")).hexdigest()
 
 
+def _page_product(value: object, game: str) -> str:
+    if isinstance(value, str):
+        path = value.split("?", 1)[0].split("#", 1)[0]
+        for product in BROWSER_TRAFFIC_GAMES:
+            if path == f"/{product}" or path.startswith(f"/{product}/"):
+                return product
+    return game
+
+
 def normalize_page(value: object, game: str = "zdwa") -> str | None:
-    """Map only product pages; dynamic names, room IDs and token paths vanish."""
+    """Keep fixed categories only; never room IDs, names or account subpaths."""
     if not isinstance(value, str) or len(value) > 512 or not value.startswith("/"):
         return None
+    product = _page_product(value, game)
     path = value.split("?", 1)[0].split("#", 1)[0].rstrip("/") or "/"
-    if path.startswith("/zdwa/"):
-        path = path[5:]
-    zilch = path == "/zilch" or path.startswith("/zilch/") or game == "zilch"
-    if path == "/zilch":
-        path = "/"
-    elif path.startswith("/zilch/"):
-        path = path[6:]
-    if path.startswith("/spiel/"):
-        path = "/zuschauen" if path.endswith("/zuschauen") else "/spiel"
-    elif path.startswith("/ergebnis/"):
+    for prefix in BROWSER_TRAFFIC_GAMES:
+        if path == f"/{prefix}" or path.startswith(f"/{prefix}/"):
+            path = path[len(prefix) + 1:] or "/"
+            break
+    if re.fullmatch(r"/spiel/[^/]+/zuschauen", path) or path == "/zuschauen":
+        path = "/zuschauen"
+    elif re.fullmatch(r"/spiel/[^/]+", path):
+        path = "/spiel"
+    elif re.fullmatch(r"/ergebnis/[^/]+", path):
         path = "/ergebnis"
-    elif path.startswith("/spieler/"):
+    elif re.fullmatch(r"/spieler/[^/]+", path):
         path = "/spieler"
-    if path not in PAGES:
+    elif product in {"hausdepp", "watten"} and path in {
+            "/konto/einstellungen", "/konto/fortschritt", "/konto/verlauf"}:
+        path = "/konto"
+    if path not in PAGES or product not in {*BROWSER_TRAFFIC_GAMES, "site"}:
         return None
-    return ("/zilch" + ("" if path == "/" else path)) if zilch else path
+    if product in {"hausdepp", "watten"} and path in {"/offline", "/offline-spielen"}:
+        return None  # Local practice remains outside anonymous network collection.
+    return f"/{product}" + ("" if path == "/" else path) if product not in {"zdwa", "site"} else path
 
 
 def normalize_referrer(value: object) -> str:
@@ -316,13 +337,13 @@ def normalize_batch(payload: object, *, country: str = "ZZ", now: datetime | Non
         if kind not in {"page_view", "engagement", "action"}:
             continue
         game = event.get("game")
-        if game not in {"zdwa", "zilch", "site"}:
+        if game not in {*BROWSER_TRAFFIC_GAMES, "site"}:
             continue
+        game = _page_product(event.get("page"), game)
         page = normalize_page(event.get("page"), game)
         if page is None:
             continue
-        # A forged page/game mismatch cannot move Zilch traffic into ZDWA.
-        game = "zilch" if page.startswith("/zilch") else game
+        # An explicit product prefix owns its page, regardless of a forged hint.
         action = event.get("action", "") if kind == "action" else ""
         if kind == "action" and (not isinstance(action, str) or action not in ACTIONS):
             continue
@@ -405,12 +426,12 @@ def enqueue_voice_activity(rows: list[dict]) -> bool:
 def record_game_action(game_type: str, action: str, mode: str | None = None) -> bool:
     """Trusted gameplay hooks call this only after an accepted server action."""
     global _dropped
-    if game_type not in {"zdwa", "zilch", "hausdepp"} or action not in ACTIONS or _queue is None:
+    if game_type not in BROWSER_TRAFFIC_GAMES or action not in ACTIONS or _queue is None:
         return False
-    mode = {"1": "solo", "2": "duo", "3": "trio", "2v2": "team"}.get(str(mode), mode)
+    mode = {"1": "solo", "2": "duo", "3": "trio", "4": "four", "5": "five", "6": "six", "2v2": "team"}.get(str(mode), mode)
     event = {"dedupe_key": hashlib.sha256(os.urandom(32)).hexdigest(), "session_id": None,
              "received_at": utcnow(), "event_type": "action",
-             "page": "/hausdepp/spiel" if game_type == "hausdepp" else normalize_page("/spiel", game_type),
+             "page": normalize_page("/spiel", game_type),
              "game": game_type, "action": action, "active_ms": 0,
              "mode": mode if mode in MODES else "unknown", "source": "server"}
     try:
@@ -469,11 +490,12 @@ def request_channel(path: str) -> str:
     if path == "/static" or path.startswith("/static/") or path in REQUEST_ASSET_PATHS:
         return "asset"
     candidate = path.rstrip("/") or "/"
-    if candidate == "/zilch" or candidate == "/zdwa":
-        candidate = "/"
-    elif candidate.startswith(("/zilch/", "/zdwa/")):
-        candidate = candidate.split("/", 2)[-1]
-        candidate = "/" + candidate
+    for product in BROWSER_TRAFFIC_GAMES:
+        if candidate == f"/{product}" or candidate.startswith(f"/{product}/"):
+            candidate = candidate[len(product) + 1:] or "/"
+            break
+    if candidate in {"/rangliste", "/konto/einstellungen", "/konto/fortschritt", "/konto/verlauf"}:
+        return "page"
     if candidate in REQUEST_PAGE_PATHS or candidate.startswith(("/spiel/", "/spieler/", "/ergebnis/")):
         return "page"
     return "other"
@@ -618,7 +640,7 @@ def persist_batches(batches: list[dict], *, now: datetime | None = None, sweep: 
                         if look:
                             # Only first deliveries count, so a resent beacon
                             # cannot inflate a design's visible time.
-                            area = "table" if event["page"] in {"/spiel", "/zilch/spiel"} else "site"
+                            area = "table" if event["page"] in {normalize_page("/spiel", game) for game in BROWSER_TRAFFIC_GAMES} else "site"
                             key = (as_utc(event["received_at"]).date().isoformat(), look, area)
                             design_counts[key] = design_counts.get(key, 0) + event["active_ms"]
                         rows.append(event)
@@ -866,6 +888,20 @@ def _watten_result_duration(game_id, finished_at, result_json, frozen_result, ev
         return None
 
 
+def _known_event_clause():
+    """Never surface arbitrary legacy/corrupt native paths or action values."""
+    pages = or_(*(and_(AnalyticsEvent.game == product, AnalyticsEvent.page.in_(
+        sorted({page for route in PAGES if (page := normalize_page(route, product)) is not None})))
+        for product in (*BROWSER_TRAFFIC_GAMES, "site")))
+    return or_(
+        and_(AnalyticsEvent.source == "client", pages,
+             AnalyticsEvent.event_type.in_(("page_view", "engagement", "action")),
+             or_(AnalyticsEvent.event_type != "action", AnalyticsEvent.action.in_(ACTIONS))),
+        and_(AnalyticsEvent.source == "server", AnalyticsEvent.event_type == "action",
+             AnalyticsEvent.action.in_((*ACTIONS, "game_aborted"))),
+    )
+
+
 def _geography_stats(db: Session, filters: list, views, active, products=("zdwa", "zilch")) -> tuple[list[dict], dict]:
     country = AnalyticsSession.country
     rows = db.execute(select(country, func.count(func.distinct(AnalyticsEvent.session_id)), views, active)
@@ -906,38 +942,44 @@ def _heatmap_stats(db: Session, filters: list, views, active) -> list[dict]:
 
 
 def _journey_stats(db: Session, start: datetime, now: datetime, game: str, products=("zdwa", "zilch")) -> dict:
-    # Read across games first. Filtering the sequence prematurely would fabricate
-    # a Zilch-to-Zilch link when the tab actually visited ZDWA in between.
-    filters = [AnalyticsEvent.received_at >= start, AnalyticsEvent.received_at <= now,
+    # Window over the real sequence before filtering products. Hidden visits
+    # remain barriers, but cannot consume the visible sample or leak their paths.
+    filters = [_known_event_clause(), AnalyticsEvent.received_at >= start, AnalyticsEvent.received_at <= now,
                AnalyticsEvent.event_type == "page_view", AnalyticsEvent.source == "client",
                AnalyticsEvent.session_id.is_not(None)]
     visible = (*products, "site")
     total = db.scalar(select(func.count()).select_from(AnalyticsEvent).where(
         *filters, AnalyticsEvent.game.in_(visible))) or 0
-    rows = db.execute(select(AnalyticsEvent.session_id, AnalyticsEvent.page, AnalyticsEvent.game,
-                             AnalyticsEvent.received_at, AnalyticsEvent.id)
-                      .where(*filters).order_by(AnalyticsEvent.received_at.desc(), AnalyticsEvent.id.desc())
-                      .limit(JOURNEY_SAMPLE_LIMIT)).all()
-    previous = {}
+    order = (AnalyticsEvent.received_at, AnalyticsEvent.id)
+    def lag(column):
+        return func.lag(column, type_=column.type).over(partition_by=AnalyticsEvent.session_id, order_by=order)
+    sequence = select(AnalyticsEvent.id, AnalyticsEvent.page, AnalyticsEvent.game, AnalyticsEvent.received_at,
+                      lag(AnalyticsEvent.id).label("prior_id"), lag(AnalyticsEvent.page).label("prior_page"),
+                      lag(AnalyticsEvent.game).label("prior_game"),
+                      lag(AnalyticsEvent.received_at).label("prior_at")).where(*filters).subquery()
+    columns = sequence.c
+    prior_visible = columns.prior_game.in_(visible)
+    rows = db.execute(select(columns.id, columns.page, columns.game, columns.received_at,
+                             case((prior_visible, columns.prior_id)),
+                             case((prior_visible, columns.prior_page)),
+                             case((prior_visible, columns.prior_game)),
+                             case((prior_visible, columns.prior_at)))
+                      .where(columns.game.in_(visible))
+                      .order_by(columns.received_at.desc(), columns.id.desc()).limit(JOURNEY_SAMPLE_LIMIT)).all()
+    sampled_ids = {row[0] for row in rows}
     links = {}
     matching_views = 0
-    for session_id, page, product, timestamp, _event_id in reversed(rows):
-        timestamp = as_utc(timestamp)
-        matching_views += product in visible and (game == "all" or product == game)
-        prior = previous.get(session_id)
-        previous[session_id] = (page, product, timestamp)
-        if prior is None:
+    for _event_id, page, product, timestamp, prior_id, prior_page, prior_game, prior_at in rows:
+        matching_views += game == "all" or product == game
+        if prior_id not in sampled_ids:
             continue
-        prior_page, prior_game, prior_timestamp = prior
-        if product not in visible or prior_game not in visible:
-            continue
-        if (page, product) == (prior_page, prior_game) or (timestamp - prior_timestamp).total_seconds() > JOURNEY_GAP_SECONDS:
+        if (page, product) == (prior_page, prior_game) or (as_utc(timestamp) - as_utc(prior_at)).total_seconds() > JOURNEY_GAP_SECONDS:
             continue
         if game != "all" and (product != game or prior_game != game):
             continue
         key = prior_page, page, prior_game, product
         links[key] = links.get(key, 0) + 1
-    visible_rows = [row for row in rows if row[2] in visible]
+    visible_rows = rows
     return {"links": [{"from": source, "to": target, "from_game": source_game, "to_game": target_game, "count": count}
                       for (source, target, source_game, target_game), count in
                       sorted(links.items(), key=lambda item: (-item[1], item[0]))],
@@ -950,8 +992,8 @@ def _journey_stats(db: Session, start: datetime, now: datetime, game: str, produ
 
 def _previous_overview(db: Session, start: datetime, days: int, game: str, products=("zdwa", "zilch")) -> dict:
     previous_start = start - timedelta(days=days)
-    traffic_products = tuple(product for product in products if product != "watten")
-    filters = [AnalyticsEvent.received_at >= previous_start, AnalyticsEvent.received_at < start,
+    traffic_products = products
+    filters = [_known_event_clause(), AnalyticsEvent.received_at >= previous_start, AnalyticsEvent.received_at < start,
                AnalyticsEvent.game.in_((*traffic_products, "site"))]
     results = [CompletedGame.finished_at >= previous_start, CompletedGame.finished_at < start,
                CompletedGame.game_type.in_(products)]
@@ -969,8 +1011,6 @@ def _previous_overview(db: Session, start: datetime, days: int, game: str, produ
     overview = {"sessions": sessions, "page_views": int(page_views or 0), "active_seconds": round((active_ms or 0) / 1000, 1),
                 "avg_active_seconds": round((active_ms or 0) / 1000 / max(sessions, 1), 1),
                 "completed_games": completed, "game_clicks": int(clicks or 0)}
-    if game in {"hausdepp", "watten"}:
-        overview.update({key: None for key in overview if key != "completed_games"})
     return overview
 
 
@@ -1008,10 +1048,10 @@ def _request_traffic_stats(db: Session, start: datetime, now: datetime) -> dict:
     return result
 
 
-def _design_usage_stats(db: Session, start: datetime, now: datetime, game: str) -> dict:
+def _design_usage_stats(db: Session, start: datetime, now: datetime, game: str, products=("zdwa", "zilch")) -> dict:
     """Visible seconds per look and the stored ZDWA choice of active accounts."""
     bucket = AnalyticsDesignBucket
-    products = ("zdwa", "zilch") if game == "all" else (game,)
+    products = products if game == "all" else (game,)
     known = (bucket.look.in_([look for look in LOOKS if look.split(":", 1)[0] in products]),
              bucket.area.in_(DESIGN_AREAS))
     rows = db.execute(select(bucket.look, bucket.area, func.sum(bucket.active_ms))
@@ -1071,7 +1111,7 @@ def _live_game_stats(products: tuple[str, ...]) -> dict[str, dict]:
     from .game_state import games as runtime_games
 
     metrics = {product: {"active_tables": 0, "playing_tables": 0, "waiting_tables": 0,
-                         "connected_humans": 0, "cpu_seats": 0, "active_tournaments": 0,
+                         "connected_humans": 0, "connected_seats": 0, "cpu_seats": 0, "active_tournaments": 0,
                          "interround_tables": 0} for product in products}
     native_accounts, invalid_native = set(), False
     for room in list(runtime_games.values()):
@@ -1095,12 +1135,15 @@ def _live_game_stats(products: tuple[str, ...]) -> dict[str, dict]:
             row["paused_tables"] = row.get("paused_tables", 0) + bool(runtime.absent)
             row["cpu_seats"] += len(runtime.room.cpus)
             bindings = {(member.participant_id, member.account_id) for member in runtime.room.members}
+            connected_seats = set()
             for player in room.get("_players", []):
                 socket = player.get("ws")
                 if socket is not None and (player.get("id"), player.get("user_id")) in bindings:
                     identity = _identity(socket)
                     if identity is not None and identity.user_id == player["user_id"]:
                         native_accounts.add(identity.user_id)
+                        connected_seats.add((player["id"], identity.user_id))
+            row["connected_seats"] += len(connected_seats)
             continue
         tournament = room.get("_hausdepp_tournament") if product == "hausdepp" else None
         pending = isinstance(tournament, dict) and not tournament.get("completed")
@@ -1108,7 +1151,10 @@ def _live_game_stats(products: tuple[str, ...]) -> dict[str, dict]:
             continue
         row = metrics[product]
         row["active_tables"] += 1
-        row["connected_humans"] += sum(player.get("ws") is not None for player in room.get("_players", []))
+        connected = sum(player.get("ws") is not None and not player.get("is_cpu")
+                        and player.get("type") != "cpu" for player in room.get("_players", []))
+        row["connected_humans"] += connected
+        row["connected_seats"] += connected
         row["cpu_seats"] += sum(bool(player.get("is_cpu") or player.get("type") == "cpu")
                                 for player in room.get("_participants", []))
         if pending:
@@ -1125,6 +1171,9 @@ def _live_game_stats(products: tuple[str, ...]) -> dict[str, dict]:
         native.setdefault("paused_tables", 0)
         if invalid_native:
             native.update({key: None for key in native})
+    for product, row in metrics.items():
+        row["connected_humans_scope"] = "distinct_authenticated_accounts" if product == "watten" else "connected_human_seats"
+        row["connected_seats_scope"] = "connected_human_seats_across_tables"
     return metrics
 
 
@@ -1141,18 +1190,16 @@ def _result_json_field(path: str):
 def dashboard_stats(days: int = 7, game: str = "all", *, now: datetime | None = None,
                     include_hausdepp: bool = False, include_watten: bool = False) -> dict:
     products = ("zdwa", "zilch", *(("hausdepp",) if include_hausdepp else ()), *(("watten",) if include_watten else ()))
-    # Native Watten has no browser telemetry collector. Never read arbitrary
-    # Watten event JSON as an approximation for its authoritative room/results.
-    traffic_products = tuple(product for product in products if product != "watten")
-    # Browser visits are separate from anonymous, trusted Hausdepp server actions.
+    # Browser observations never stand in for authoritative room/results data.
+    traffic_products = products
+    # Browser visits remain separate from anonymous trusted server actions.
     browser_products = tuple(product for product in products if product in BROWSER_TRAFFIC_GAMES)
-    unmeasured_traffic = game in {"hausdepp", "watten"}
     if days not in {1, 7, 30, 90} or game not in {"all", *products}:
         raise ValueError("analytics_invalid_filter")
     now = as_utc(now or utcnow())
     # UTC calendar days make daily bars and overview describe the same window.
     start = now.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=days - 1)
-    filters = [AnalyticsEvent.received_at >= start, AnalyticsEvent.received_at <= now,
+    filters = [_known_event_clause(), AnalyticsEvent.received_at >= start, AnalyticsEvent.received_at <= now,
                AnalyticsEvent.game.in_((*traffic_products, "site"))]
     result_filters = [CompletedGame.finished_at >= start, CompletedGame.finished_at <= now,
                       CompletedGame.game_type.in_(products)]
@@ -1210,7 +1257,7 @@ def dashboard_stats(days: int = 7, game: str = "all", *, now: datetime | None = 
         # of the page being viewed inside either game's PWA bridge.
         pwa = {"confirmed_installations": 0, "first_detected_starts": 0}
         pwa_rows = db.execute(select(AnalyticsEvent.action, func.count()).where(
-            AnalyticsEvent.received_at >= start, AnalyticsEvent.received_at <= now,
+            _known_event_clause(), AnalyticsEvent.received_at >= start, AnalyticsEvent.received_at <= now,
             AnalyticsEvent.source == "client", AnalyticsEvent.event_type == "action",
             AnalyticsEvent.game.in_((*traffic_products, "site")),
             AnalyticsEvent.action.in_(PWA_ACTIONS),
@@ -1268,7 +1315,7 @@ def dashboard_stats(days: int = 7, game: str = "all", *, now: datetime | None = 
                     .where(*product_filters).order_by(CompletedGame.finished_at.desc(), CompletedGame.id.desc()).limit(2000))]
             else:
                 durations = [_result_duration(raw) for raw in db.scalars(select(CompletedGame.snapshot_json)
-                             .where(*product_filters).order_by(CompletedGame.finished_at.desc()).limit(2000))]
+                             .where(*product_filters).order_by(CompletedGame.finished_at.desc(), CompletedGame.id.desc()).limit(2000))]
             valid_durations = [duration for duration in durations if duration is not None]
             abort_filters = [AbandonedGame.game_type == product, AbandonedGame.abandoned_at >= start,
                              AbandonedGame.abandoned_at <= now]
@@ -1291,21 +1338,41 @@ def dashboard_stats(days: int = 7, game: str = "all", *, now: datetime | None = 
                           "duration_sample_limit": 2000, "abandoned_games": abandoned,
                           "abandonments_source": "unavailable" if product == "watten" else "server_events" if product == "hausdepp" else "server_abandonments",
                           "completed_tournaments": completed_tournaments, "live": runtime_metrics[product]})
+            games[-1].update(duration_unknown_count=len(durations) - len(valid_durations),
+                             duration_sample_truncated=total > len(durations))
             if product == "watten":
-                games[-1].update(participants_scope="recorded_seats_including_cpus",
-                                 duration_unknown_count=len(durations) - len(valid_durations),
-                                 duration_sample_truncated=total > len(durations))
-        design_usage = _design_usage_stats(db, start, now, game)
-        allowed_events = AnalyticsEvent.game.in_((*traffic_products, "site"))
-        first = db.scalar(select(func.min(AnalyticsEvent.received_at)).where(allowed_events))
-        first_client = db.scalar(select(func.min(AnalyticsEvent.received_at)).where(
-            allowed_events, AnalyticsEvent.source == "client"))
-        stored_events = db.scalar(select(func.count()).select_from(AnalyticsEvent).where(allowed_events)) or 0
+                games[-1].update(participants_scope="recorded_seats_including_cpus")
+        design_usage = _design_usage_stats(db, start, now, game, products)
+        selected_products = tuple(product for product in products if game in {"all", product})
+        allowed_events = [_known_event_clause(), AnalyticsEvent.game.in_((*products, "site") if game == "all" else selected_products)]
+        first_server = db.scalar(select(func.min(AnalyticsEvent.received_at)).where(
+            *allowed_events, AnalyticsEvent.source == "server", AnalyticsEvent.received_at <= now))
+        client_firsts = {product: as_utc(timestamp) for product, timestamp in db.execute(select(
+            AnalyticsEvent.game, func.min(AnalyticsEvent.received_at)).where(
+            *allowed_events, AnalyticsEvent.source == "client", AnalyticsEvent.received_at <= now)
+            .group_by(AnalyticsEvent.game)).all()}
+        first_client = min(client_firsts.values(), default=None)
+        stored_events = db.scalar(select(func.count()).select_from(AnalyticsEvent).where(*allowed_events)) or 0
+    previous_start = start - timedelta(days=days)
+    def coverage(first, beginning):
+        return "none" if first is None or first > now else "partial" if first > beginning else "complete"
+    traffic_coverage = {product: {
+        "first_observed_at": client_firsts[product].isoformat() if product in client_firsts else None,
+        "current_period_coverage": coverage(client_firsts.get(product), start),
+        "previous_period_coverage": coverage(client_firsts.get(product), previous_start)
+        if client_firsts.get(product) is not None and client_firsts[product] < start else "none",
+    } for product in selected_products}
+    coverage_order = {"none": 0, "partial": 1, "complete": 2}
+    previous_coverage = min((row["previous_period_coverage"] for row in traffic_coverage.values()),
+                            key=coverage_order.get, default="none")
+    unmeasured_traffic = game in {"hausdepp", "watten"} and game not in client_firsts
+
     server = dict(server_snapshot())
     visible_runtime = [row for product, row in runtime_metrics.items() if game in {"all", product}]
-    for output, source in (("active_rooms", "active_tables"), ("players_online", "connected_humans")):
+    for output, source in (("active_rooms", "active_tables"), ("players_online", "connected_seats")):
         values = [row[source] for row in visible_runtime]
         server[output] = sum(values) if all(value is not None for value in values) else None
+    server["players_online_scope"] = "connected_human_seats_across_tables"
     overview = {"sessions": count, "page_views": int(page_views or 0),
                 "active_seconds": round((active_ms or 0) / 1000, 1),
                 "avg_active_seconds": round((active_ms or 0) / 1000 / max(count, 1), 1),
@@ -1316,22 +1383,37 @@ def dashboard_stats(days: int = 7, game: str = "all", *, now: datetime | None = 
         for row in (*daily, *hourly, *heatmap):
             row.update({key: None for key in ("sessions", "page_views", "active_seconds") if key in row})
         geography_summary.update({key: None for key in ("sessions", "known_sessions", "unknown_sessions", "known_countries")})
-        pwa.update({key: None for key in pwa})
+        # Manifest evidence can arrive on another authorized game's bridge.
+        # A native product may have observed PWA installs before any own page.
+        if not any(pwa.values()):
+            pwa.update({key: None for key in pwa})
         journeys["sample"].update(page_views=None, matching_page_views=None, total_page_views=None,
-                                  truncated=None, method="not_instrumented", **{"from": None, "to": None})
+                                  truncated=None, method="no_observed_events", **{"from": None, "to": None})
     comparison = _comparison_stats(overview, previous_overview, start, now, days,
-                                   None if unmeasured_traffic else first_client)
-    if unmeasured_traffic:
-        comparison.update(previous_data_coverage="not_instrumented", coverage_basis="not_instrumented")
+                                   first_client)
+    comparison.update(previous_data_coverage=previous_coverage,
+                      coverage_basis="first_retained_client_event_per_game",
+                      traffic_coverage_by_game=traffic_coverage)
+    if any(product in {"hausdepp", "watten"} for product in selected_products) and previous_coverage != "complete":
+        # Native collectors have no pre-rollout backfill. Never turn missing
+        # previous traffic into a zero or a fabricated cross-game growth rate.
+        for metric, value in comparison["overview"].items():
+            if metric != "completed_games":
+                value.update(previous=None, delta=None, change_percent=None)
     return {"generated_at": now.isoformat(), "available_games": list(products),
-            "metric_coverage": {"traffic": "not_instrumented" if unmeasured_traffic else "observed_events_only",
+            "metric_coverage": {"traffic": "no_observed_events" if unmeasured_traffic else "observed_events_only",
+                                "traffic_by_game": traffic_coverage,
                                 "traffic_games": [product for product in browser_products if game in {"all", product}],
                                 "native_live_humans": "distinct_authenticated_accounts",
+                                "live_seats": "connected_human_seats_across_tables",
+                                "action_sources": {"client": "browser_attempts", "server": "accepted_server_actions"},
                                 "request_traffic": "sitewide",
                                 "duration": "validated_frozen_public_evidence" if game == "watten" else "available_server_samples"},
             "period": {"days": days, "game": game, "from": start.isoformat(),
              "to": now.isoformat(), "timezone": "UTC"},
-            "collection": {"first_seen_at": as_utc(first).isoformat() if first else None,
+            "collection": {"first_seen_at": first_client.isoformat() if first_client else None,
+                           "first_server_event_at": as_utc(first_server).isoformat() if first_server else None,
+                           "traffic_first_seen_by_game": {product: row["first_observed_at"] for product, row in traffic_coverage.items()},
                            "retention_days": RETENTION_DAYS, "session_scope": "anonymous_tab",
                            "live_window_seconds": LIVE_WINDOW_SECONDS,
                            "country_source": "cloudflare_verified_peer", "queued": _queue.qsize() if _queue else 0,

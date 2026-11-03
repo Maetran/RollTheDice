@@ -66,7 +66,7 @@ class AnalyticsTests(unittest.TestCase):
         configure_database(main.DATA_DIR)
         self.temp.cleanup()
 
-    def test_hausdepp_unmeasured_browser_traffic_preserves_trusted_server_facts(self):
+    def test_hausdepp_without_browser_observations_preserves_trusted_server_facts(self):
         persist_batches([normalize_batch(batch(), now=self.now)])
         before = dashboard_stats(1, now=self.now + timedelta(seconds=1), include_hausdepp=True)
         pending = queue.Queue()
@@ -92,19 +92,19 @@ class AnalyticsTests(unittest.TestCase):
             self.assertEqual(after[key], before[key])
         self.assertEqual(after["overview"]["game_clicks"], before["overview"]["game_clicks"] + 2)
         self.assertEqual(after["overview"]["completed_games"], 1)
-        self.assertEqual(after["metric_coverage"]["traffic_games"], ["zdwa", "zilch"])
+        self.assertEqual(after["metric_coverage"]["traffic_games"], ["zdwa", "zilch", "hausdepp"])
         self.assertNotIn("hausdepp", dashboard_stats(1, now=self.now)["available_games"])
-        self.assertEqual(normalize_batch(batch(game="hausdepp"), now=self.now)["events"], [])
+        self.assertEqual(normalize_batch(batch(game="hausdepp"), now=self.now)["events"][0]["page"], "/hausdepp/spiel")
         value = dashboard_stats(1, "hausdepp", now=self.now + timedelta(seconds=1), include_hausdepp=True)
         self.assertEqual(value["overview"]["completed_games"], 1)
         for key in ("sessions", "page_views", "active_seconds", "avg_active_seconds", "live_sessions", "game_clicks"):
             self.assertIsNone(value["overview"][key])
         for key in ("sessions", "page_views", "active_seconds", "avg_active_seconds", "game_clicks"):
             self.assertIsNone(value["comparison"]["overview"][key]["previous"])
-        self.assertEqual(value["metric_coverage"]["traffic"], "not_instrumented")
-        self.assertEqual(value["metric_coverage"]["traffic_games"], [])
+        self.assertEqual(value["metric_coverage"]["traffic"], "no_observed_events")
+        self.assertEqual(value["metric_coverage"]["traffic_games"], ["hausdepp"])
         self.assertEqual(value["metric_coverage"]["duration"], "available_server_samples")
-        self.assertEqual(value["comparison"]["previous_data_coverage"], "not_instrumented")
+        self.assertEqual(value["comparison"]["previous_data_coverage"], "none")
         self.assertIsNone(value["geography_summary"]["sessions"])
         self.assertIsNone(value["pwa"]["confirmed_installations"])
         self.assertIsNone(value["journeys"]["sample"]["total_page_views"])
@@ -112,6 +112,116 @@ class AnalyticsTests(unittest.TestCase):
         self.assertEqual(value["games"][0]["completed_games"], 1)
         self.assertEqual(value["games"][0]["abandoned_games"], 1)
         self.assertEqual(value["games"][0]["live"], after["games"][2]["live"])
+
+    def test_native_browser_categories_are_fixed_and_explicit_prefix_owns_the_product(self):
+        for game in ("hausdepp", "watten"):
+            for raw, expected in ((f"/{game}", f"/{game}"),
+                                  (f"/{game}/spiel/PRIVATE?token=SECRET", f"/{game}/spiel"),
+                                  (f"/{game}/spiel/PRIVATE/zuschauen", f"/{game}/zuschauen"),
+                                  (f"/{game}/konto/einstellungen#PRIVATE", f"/{game}/konto"),
+                                  (f"/{game}/rangliste", f"/{game}/rangliste")):
+                normalized = normalize_batch(batch(page=raw, game="zdwa"), now=self.now)
+                self.assertTrue(normalized["events"])
+                self.assertEqual({row["game"] for row in normalized["events"]}, {game})
+                self.assertEqual({row["page"] for row in normalized["events"]}, {expected})
+                self.assertNotIn("PRIVATE", json.dumps(normalized))
+                self.assertNotIn("SECRET", json.dumps(normalized))
+            for route in ("admin", "anmelden", "lokal", "offline", "konto/PRIVATE", "spiel/PRIVATE/hand"):
+                self.assertEqual(normalize_batch(batch(page=f"/{game}/{route}", game=game))["events"], [])
+        self.assertEqual(analytics.normalize_page("/zdwa", "watten"), "/")
+
+    def test_native_measurements_deduplicate_and_private_looks_never_enter_delegated_all(self):
+        for number, game, look in ((1, "hausdepp", "hausdepp:classic"), (2, "watten", "watten:tirol")):
+            raw = batch(sid=f"{number:032x}", page=f"/{game}/spiel/PRIVATE", game=game)
+            raw["events"][1]["look"] = look
+            normalized = normalize_batch(raw, now=self.now)
+            persist_batches([normalized, normalized])
+        delegate = dashboard_stats(1, now=self.now)
+        self.assertEqual(delegate["overview"]["sessions"], 0)
+        self.assertEqual(delegate["design_usage"]["looks"], [])
+        self.assertNotIn("watten", json.dumps(delegate))
+        owner = dashboard_stats(1, now=self.now, include_hausdepp=True, include_watten=True)
+        self.assertEqual(owner["overview"]["sessions"], 2)
+        self.assertEqual(owner["overview"]["page_views"], 2)
+        self.assertEqual(owner["overview"]["active_seconds"], 30)
+        self.assertEqual({row["look"]: row["table_seconds"] for row in owner["design_usage"]["looks"]},
+                         {"hausdepp:classic": 15, "watten:tirol": 15})
+        self.assertEqual(owner["comparison"]["previous_data_coverage"], "none")
+        self.assertIsNone(owner["comparison"]["overview"]["sessions"]["previous"])
+        for product in ("hausdepp", "watten"):
+            value = dashboard_stats(1, product, now=self.now, include_hausdepp=True, include_watten=True)
+            self.assertEqual(value["overview"]["sessions"], 1)
+            self.assertEqual(value["collection"]["traffic_first_seen_by_game"], {product: self.now.isoformat()})
+
+    def test_native_comparison_never_borrows_another_products_retained_visits(self):
+        old = self.now - timedelta(days=30)
+        self._track_page(1, 1, "/", old)
+        self._track_page(2, 1, "/watten", self.now, game="watten")
+        value = dashboard_stats(7, "watten", now=self.now, include_watten=True)
+        self.assertEqual(value["collection"]["first_seen_at"], self.now.isoformat())
+        self.assertEqual(value["comparison"]["traffic_retained_from"], self.now.isoformat())
+        self.assertEqual(value["comparison"]["previous_data_coverage"], "none")
+        self.assertIsNone(value["comparison"]["overview"]["sessions"]["previous"])
+        self.assertIsNone(value["comparison"]["overview"]["sessions"]["change_percent"])
+        self.assertEqual(value["metric_coverage"]["traffic_by_game"]["watten"]["current_period_coverage"], "partial")
+
+    def test_private_journey_views_are_barriers_without_consuming_the_visible_sample(self):
+        start = self.now - timedelta(minutes=5)
+        for number, page, product in ((1, "/", "zdwa"), (2, "/watten", "watten"),
+                                      (3, "/regeln", "zdwa"), (4, "/spieler", "zdwa")):
+            self._track_page(1, number, page, start + timedelta(seconds=number), game=product, active_ms=0)
+        for number in range(5, 12):
+            self._track_page(2, number, "/watten", start + timedelta(seconds=number), game="watten", active_ms=0)
+        with patch.object(analytics, "JOURNEY_SAMPLE_LIMIT", 3):
+            public = dashboard_stats(1, now=self.now)["journeys"]
+        self.assertEqual(public["sample"]["page_views"], 3)
+        self.assertFalse(public["sample"]["truncated"])
+        self.assertEqual(public["links"], [{"from": "/regeln", "to": "/spieler", "from_game": "zdwa",
+                                             "to_game": "zdwa", "count": 1}])
+        self.assertNotIn("watten", json.dumps(public))
+
+    def test_native_pwa_requires_both_page_and_manifest_product_to_be_visible(self):
+        for number, product, action in ((1, "zdwa", "pwa_installed_watten"),
+                                        (2, "watten", "pwa_first_open_zdwa"),
+                                        (3, "hausdepp", "pwa_installed_hausdepp")):
+            event = {"id": f"{number:032x}", "page_id": "d" * 32, "type": "action", "page": "/",
+                     "game": product, "action": action}
+            normalized = normalize_batch(batch(sid=f"{number:032x}", events=[event]), now=self.now)
+            persist_batches([normalized, normalized])
+        self.assertEqual(dashboard_stats(1, now=self.now)["pwa"],
+                         {"confirmed_installations": 0, "first_detected_starts": 0})
+        owner = dashboard_stats(1, now=self.now, include_hausdepp=True, include_watten=True)
+        self.assertEqual(owner["pwa"], {"confirmed_installations": 2, "first_detected_starts": 1})
+        native = dashboard_stats(1, "watten", now=self.now, include_watten=True)
+        self.assertEqual(native["pwa"], {"confirmed_installations": 1, "first_detected_starts": 0})
+
+    def test_native_manifest_install_is_visible_even_before_its_own_first_page_visit(self):
+        event = {"id": "e" * 32, "page_id": "d" * 32, "type": "action", "page": "/",
+                 "game": "zdwa", "action": "pwa_installed_watten"}
+        persist_batches([normalize_batch(batch(events=[event]), now=self.now)])
+        native = dashboard_stats(1, "watten", now=self.now, include_watten=True)
+        self.assertIsNone(native["overview"]["sessions"])
+        self.assertIsNone(native["collection"]["traffic_first_seen_by_game"]["watten"])
+        self.assertEqual(native["pwa"], {"confirmed_installations": 1, "first_detected_starts": 0})
+
+    def test_native_server_actions_keep_seat_modes_and_never_store_account_or_room_data(self):
+        pending = queue.Queue()
+        with patch.object(analytics, "_queue", pending):
+            for game, mode in (("watten", "4"), ("hausdepp", "5"), ("hausdepp", "6")):
+                self.assertTrue(analytics.record_game_action(game, "start_game", mode))
+        rows = [pending.get_nowait()["events"][0] for _ in range(pending.qsize())]
+        self.assertEqual([row["mode"] for row in rows], ["four", "five", "six"])
+        self.assertTrue(all(row["source"] == "server" and row["session_id"] is None for row in rows))
+        self.assertEqual([row["page"] for row in rows], ["/watten/spiel", "/hausdepp/spiel", "/hausdepp/spiel"])
+        self.assertTrue(all(set(row) == {"dedupe_key", "session_id", "received_at", "event_type", "page", "game",
+                                             "action", "active_ms", "mode", "source"} for row in rows))
+
+    def test_native_request_channels_discard_dynamic_names_but_classify_pages_and_pwa_assets(self):
+        for game in ("hausdepp", "watten"):
+            for suffix in ("", "/spiel/PRIVATE", "/konto/einstellungen", "/rangliste"):
+                self.assertEqual(analytics.request_channel(f"/{game}{suffix}"), "page")
+            for asset in (f"/{game}-sw.js", f"/{game}-manifest.webmanifest", f"/{game}-manifest-en.webmanifest"):
+                self.assertEqual(analytics.request_channel(asset), "asset")
 
     def test_sanitization_never_persists_identifiers_urls_or_private_paths(self):
         raw = batch()
@@ -475,7 +585,8 @@ class AnalyticsTests(unittest.TestCase):
         self.assertEqual(comparison["current_elapsed_seconds"], 43200)
         self.assertEqual(comparison["previous_elapsed_seconds"], 86400)
         self.assertTrue(comparison["previous_period"]["end_exclusive"])
-        self.assertEqual(comparison["previous_data_coverage"], "complete")
+        self.assertEqual(comparison["previous_data_coverage"], "none")
+        self.assertEqual(dashboard_stats(1, "zdwa", now=now)["comparison"]["previous_data_coverage"], "complete")
         self.assertEqual(dashboard_stats(7, now=now)["comparison"]["previous_data_coverage"], "none")
         filtered = dashboard_stats(1, "zilch", now=now)["comparison"]
         self.assertEqual(filtered["overview"]["sessions"]["current"], 1)
@@ -484,7 +595,7 @@ class AnalyticsTests(unittest.TestCase):
         self._track_page(6, 1, "/", start - timedelta(minutes=30), active_ms=0)
         with session_scope() as db:
             db.execute(analytics.delete(AnalyticsEvent).where(AnalyticsEvent.received_at < start - timedelta(hours=1)))
-        self.assertEqual(dashboard_stats(1, now=now)["comparison"]["previous_data_coverage"], "partial")
+        self.assertEqual(dashboard_stats(1, "zdwa", now=now)["comparison"]["previous_data_coverage"], "partial")
         with session_scope() as db:
             db.execute(analytics.delete(AnalyticsEvent).where(AnalyticsEvent.received_at < start))
         self.assertEqual(dashboard_stats(1, now=now)["comparison"]["previous_data_coverage"], "none")
@@ -499,7 +610,8 @@ class AnalyticsTests(unittest.TestCase):
         self.assertEqual(dashboard_stats(7, now=now)["comparison"]["previous_data_coverage"], "none")
         self._track_page(1, 1, "/", now - timedelta(minutes=5), active_ms=0)
         stats = dashboard_stats(7, now=now)
-        self.assertEqual(stats["collection"]["first_seen_at"], older.isoformat())
+        self.assertEqual(stats["collection"]["first_seen_at"], (now - timedelta(minutes=5)).isoformat())
+        self.assertEqual(stats["collection"]["first_server_event_at"], older.isoformat())
         self.assertEqual(stats["comparison"]["traffic_retained_from"], (now - timedelta(minutes=5)).isoformat())
         self.assertEqual(stats["comparison"]["previous_data_coverage"], "none")
 

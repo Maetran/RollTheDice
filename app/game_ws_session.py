@@ -10,6 +10,7 @@ from typing import Any
 from fastapi import WebSocket
 
 from .admin_help_navigation import clear_admin_away_on_rejoin
+from .analytics import record_game_action
 from .auth import AuthIdentity, resolve_session, username_is_registered
 from .friend_activity import publish_friend_game_start
 from .game_lifecycle import AdmissionError, admit_player, room_lock, verify_exact_account
@@ -200,6 +201,10 @@ async def _join_game(session: GameSocketSession, data: dict[str, Any], *, finali
         # unhandled WebSocket exception.
         await close_with_error(websocket, str(exc), fatal=True)
         return True
+    if game_type_from_state(g) == HAUSDEPP_GAME_TYPE:
+        record_game_action("hausdepp", "join_game", g.get("_mode"))
+        if not was_started and g.get("_started"):
+            record_game_action("hausdepp", "start_game", g.get("_mode"))
     session.player_id = player_id
     session.spectator_id = None
     session.is_spectator = False

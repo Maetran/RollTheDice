@@ -6,6 +6,7 @@ import secrets
 from fastapi import WebSocketDisconnect
 from sqlalchemy import delete, select
 
+from .analytics import record_game_action
 from .auth import resolve_session, websocket_origin_allowed
 from .database import session_scope
 from .game_ws_session import GameSocketSession
@@ -187,6 +188,8 @@ async def _session_action(session, data: dict) -> None:
     # Replacement is synchronous before any await: queued commands from the
     # previous device fail the ownership check after taking this same lock.
     _install(game, candidate)
+    if existing is None:
+        record_game_action("watten", "join_game", game.get("_mode"))
     from .watten_cpu_runtime import watch_game
 
     watch_game(game)
@@ -287,9 +290,14 @@ async def _handle_locked(session, action: str, data: dict) -> bool:
         } else None
         persist_watten_game(candidate, human_actor=human_actor)
         _install(game, candidate)
+        if human_actor is not None:
+            metric = {"announce_strike": "choose_contract", "announce_colour": "choose_contract",
+                      "play_card": "play_card", "bid": "bid", "respond": "respond_bid"}[data["kind"]]
+            record_game_action("watten", metric, game.get("_mode"))
         if action == "watten_start" and not was_started and game["_started"]:
             from .friend_activity import publish_friend_game_start
 
+            record_game_action("watten", "start_game", game.get("_mode"))
             await publish_friend_game_start(game)
     from .watten_cpu_runtime import watch_game
 

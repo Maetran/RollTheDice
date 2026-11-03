@@ -15,6 +15,7 @@ from fastapi import APIRouter, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.exc import OperationalError, SQLAlchemyError
 
+from .analytics import record_game_action
 from .auth import require_csrf, resolve_session
 from .auth_protection import enforce_game_creation_rate_limit
 from .database import session_scope
@@ -255,6 +256,8 @@ async def watten_rematch(source_id: str, request: Request):
             result = create_follow_up(source_id, identity, data,
                 before_create=lambda: enforce_game_creation_rate_limit(request))
             _install(result)
+            if result.created:
+                record_game_action("watten", "game_created", source.get("_mode"))
             from .watten_websocket import broadcast_watten
 
             await broadcast_watten(source)
