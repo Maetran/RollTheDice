@@ -6,15 +6,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Verwalte dein ZDWA Konto, deine persönlichen Spieleinstellungen und Statistiken.">
   <meta name="robots" content="noindex, follow">
-  <link rel="manifest" href="/manifest.webmanifest?v=1a0e06ad65de">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=1a0e06ad65de" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=1a0e06ad65de" sizes="180x180">
+  <link rel="manifest" href="/manifest.webmanifest?v=fbab260d78c7">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=fbab260d78c7" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=fbab260d78c7" sizes="180x180">
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"||t==="classic"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d==="dark"?"dark":"light";const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=d==="dark"?"#0b1120":d==="classic"?"#31583a":"#f4f6f8"}catch(_){}</script>
-  <link rel="stylesheet" href="/static/style.css?v=1a0e06ad65de">
-  <link rel="stylesheet" href="/static/zdwa-design-2026.css?v=1a0e06ad65de">
+  <link rel="stylesheet" href="/static/style.css?v=fbab260d78c7">
+  <link rel="stylesheet" href="/static/zdwa-design-2026.css?v=fbab260d78c7">
   <script>{const r=document.documentElement,g=k=>{try{return localStorage.getItem(k)}catch(_){return null}},q=new URLSearchParams(location.search).get("design");if(q!=="classic"&&g("zdwa_design")!=="old"&&g("zdwa_design_off")!=="1"&&(q==="2026"||g("zdwa_design_override")!=="old"))r.dataset.design="2026"}</script>
-  <script src="/static/shell.js?v=1a0e06ad65de" defer></script>
-  <link rel="stylesheet" href="/static/suite-header.css?v=1a0e06ad65de">
+  <script src="/static/shell.js?v=fbab260d78c7" defer></script>
+  <link rel="stylesheet" href="/static/suite-header.css?v=fbab260d78c7">
 </head>
 <body class="lobby-page">
   <main class="wrap profile-shell">
@@ -29,9 +29,10 @@
       <div data-account-bans role="note" hidden></div>
       <div class="section-title-row">
         <div><p class="eyebrow">Mein Konto</p><h1 id="accountName">Benutzerkonto</h1></div>
-        <div class="section-title-row-actions"><a id="accountDashboardLink" class="button-link small ghost" href="/admin/dashboard" hidden>Mission Control</a><a id="publicProfileLink" class="button-link small ghost" href="#">Öffentliches Profil</a></div>
+        <div class="section-title-row-actions"><a id="accountDashboardLink" class="button-link small ghost" href="/admin/dashboard" hidden>Mission Control</a><a id="publicProfileLink" class="button-link small ghost" href="#">Öffentliches Profil</a><button id="accountLogout" class="small ghost" type="button" disabled>Abmelden</button></div>
       </div>
       <div id="accountNotice" class="connection-error" hidden></div>
+      <p id="accountLogoutMessage" class="muted small" role="alert" hidden></p>
     </section>
     <aside data-passkey-prompt hidden></aside>
     <nav class="account-tabs" role="tablist" aria-label="Kontobereiche">
@@ -243,15 +244,15 @@
     </section>
   </main>
   <script type="module">
-    import { apiFetch, authError, escapeHtml, formatNumber, loadAuth, mountAccountVerification, revealAccountSetting, mountEmailSettings, mountPasskeySettings, mountPasskeyPrompt, mountUsernameSettings, playerNameMarkup, playerRankBadge } from '/static/auth.js?v=1a0e06ad65de';
-    import { bindPushPreferences, devicePushStatusMessage, disableGameInvitePush, enableGameInvitePush, getGameInvitePushStatus, syncPushPreferences, webPushErrorMessage } from '/static/web-push.js?v=1a0e06ad65de';
-    import { initializeReleaseNotes } from '/static/release-notes.js?v=1a0e06ad65de';
-    import { mountAllowlistSettings } from '/static/player-allowlist.js?v=1a0e06ad65de';
-    import { mountAvatarUpload } from '/static/avatar-upload.js?v=1a0e06ad65de';
-    import { mountFriendActivitySettings } from '/static/friend-activity.js?v=1a0e06ad65de';
-    import { mountTourSettings } from '/static/game-tours.js?v=1a0e06ad65de';
-    import { mountVoicePreferences, voicePreferenceText } from '/static/voice-preferences.js?v=1a0e06ad65de';
-    import { mountAccountMergeNotice } from '/static/account-merge-notice.js?v=1a0e06ad65de';
+    import { apiFetch, authError, escapeHtml, formatNumber, loadAuth, logout, mountAccountVerification, revealAccountSetting, mountEmailSettings, mountPasskeySettings, mountPasskeyPrompt, mountUsernameSettings, playerNameMarkup, playerRankBadge } from '/static/auth.js?v=fbab260d78c7';
+    import { bindPushPreferences, devicePushStatusMessage, disableGameInvitePush, enableGameInvitePush, getGameInvitePushStatus, syncPushPreferences, webPushErrorMessage } from '/static/web-push.js?v=fbab260d78c7';
+    import { initializeReleaseNotes } from '/static/release-notes.js?v=fbab260d78c7';
+    import { mountAllowlistSettings } from '/static/player-allowlist.js?v=fbab260d78c7';
+    import { mountAvatarUpload } from '/static/avatar-upload.js?v=fbab260d78c7';
+    import { mountFriendActivitySettings } from '/static/friend-activity.js?v=fbab260d78c7';
+    import { mountTourSettings } from '/static/game-tours.js?v=fbab260d78c7';
+    import { mountVoicePreferences, voicePreferenceText } from '/static/voice-preferences.js?v=fbab260d78c7';
+    import { mountAccountMergeNotice } from '/static/account-merge-notice.js?v=fbab260d78c7';
     let viewerId = null;
     let retired = false;
     const clearPrivatePage = () => {
@@ -285,6 +286,30 @@
     }
     viewerId = auth.user.id;
     const user = auth.user;
+    const signOut = document.getElementById('accountLogout');
+    signOut.disabled = false;
+    signOut.addEventListener('click', async () => {
+      if (retired || signOut.disabled) return;
+      signOut.disabled = true;
+      signOut.setAttribute('aria-busy', 'true');
+      const message = document.getElementById('accountLogoutMessage');
+      message.hidden = true;
+      try {
+        const current = await loadAuth({ refresh: true });
+        if (retired || current.user?.id !== viewerId) return;
+        await logout();
+        if (retired) return;
+        clearPrivatePage();
+        window.ZDWA_APP_MODE?.prepareNavigation?.();
+        location.replace(window.ZDWA_ROUTE?.path('/') || '/');
+      } catch {
+        if (retired) return;
+        message.textContent = window.ZDWA_I18N?.t?.('Abmelden fehlgeschlagen') || 'Abmelden fehlgeschlagen';
+        message.hidden = false;
+        signOut.disabled = false;
+        signOut.removeAttribute('aria-busy');
+      }
+    });
     mountAccountMergeNotice(document.querySelector('[data-account-merge-notice]'), { userId: user.id,
       isCurrent: () => !retired && viewerId === user.id });
     document.getElementById('accountDashboardLink').hidden = !user?.can_view_analytics;

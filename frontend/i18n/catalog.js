@@ -169,7 +169,7 @@ export const WATTEN_LOBBY_CHAT_MESSAGES = {
     network: "The connection or setting could not be confirmed. Your draft stays here. Please check your connection and try again explicitly.",
     uncertain: "It is unclear whether the message arrived. Your draft stays here. After reconnecting, check the history before sending again.",
     review: "Reconnected. Check the history before sending your retained draft again.",
-    unavailable: "The chat data could not be read safely. Please close the chat and open it again.",
+    unavailable: "The chat data could not be read safely. Please reload the lobby.",
     access: "Chat access is no longer available. Please reload the page and check your sign-in.",
   },
 };
