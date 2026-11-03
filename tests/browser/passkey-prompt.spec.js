@@ -67,6 +67,7 @@ for (const game of ['zdwa', 'zilch']) {
       await page.goto(lobby);
       const prompt = page.locator('[data-passkey-prompt]');
       await expect(prompt).toBeVisible();
+      if (game === 'zdwa') await expect(page.locator('#playerSetupCard')).toBeVisible();
       await expect(prompt.getByRole('heading')).toHaveText(language === 'en' ? 'Make passkeys your default' : 'Passkey als Standard nutzen');
       await page.setViewportSize({ width: 375, height: 844 });
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
@@ -94,6 +95,7 @@ for (const game of ['zdwa', 'zilch']) {
     await expect(prompt).toBeVisible();
     await page.locator('[data-passkey-prompt-dismiss]').click();
     await expect(prompt).toBeHidden();
+    if (game === 'zdwa') await expect(page.locator('#playerSetupCard')).toBeHidden();
     await page.reload();
     await expect(prompt).toBeHidden();
     await page.goto(accountPath);

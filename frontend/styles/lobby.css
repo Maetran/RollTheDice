@@ -162,6 +162,10 @@
   align-self:start;
   padding:.65rem .75rem;
 }
+/* The former account card only needs space for a passkey hint or an error. */
+.lobby-page #playerSetupCard.authenticated:has(> [data-passkey-prompt][hidden]):has(> #loginError:empty){
+  display:none;
+}
 .player-setup-card.authenticated .section-title-row,
 .player-setup-card.authenticated #playerNameRow,
 .player-setup-card.authenticated #loginForm,
