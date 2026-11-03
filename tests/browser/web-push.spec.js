@@ -201,7 +201,7 @@ for (const product of [
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
     await expect(page.getByLabel("Receive a daily play reminder", { exact: true })).toBeChecked();
     await expect(page.getByLabel("Receive app update alerts", { exact: true })).not.toBeChecked();
-    await expect(page.getByLabel("Accept invitations from")).toHaveValue("all");
+    await expect(page.getByRole("radio", { name: /^All players/ })).toBeChecked();
     await expect(page.locator('[data-push-reminder-schedule]')).toHaveText("Only if you haven't played any of our games today: at most once, at a random time between 17:00 and 21:00 (Swiss time).");
     await changeLanguage("de");
     await expect(page.locator("html")).toHaveAttribute("lang", "de");
@@ -216,11 +216,11 @@ for (const product of [
     await page.goto(`${product.path}#settings`);
     await openAccountSection(page, "social");
     const releases = page.getByLabel("Versionshinweise erhalten", { exact: true });
-    const audience = page.getByLabel("Einladungen akzeptieren von");
+    const audience = page.getByRole("radio", { name: /Nur Spielern aus deiner Liste/ });
     await expect(releases).not.toBeChecked();
     await expect(page.locator('textarea[name="allowedSenders"]')).toHaveCount(0);
     await releases.check();
-    await audience.selectOption("allowlist");
+    await audience.check();
     await page.getByRole("button", { name: "Einladungsauswahl speichern" }).click();
     await expect(page.locator(".player-allowlist-message")).toHaveText("Spielerauswahl gespeichert.");
     await expect(page.locator('input[name="dailyReminder"]')).not.toBeChecked();
@@ -230,8 +230,8 @@ for (const product of [
     await page.reload();
     await openAccountSection(page, "social");
     await expect(releases).toBeChecked();
-    await expect(audience).toHaveValue("allowlist");
-    const box = await audience.boundingBox();
+    await expect(audience).toBeChecked();
+    const box = await page.locator(".player-allowlist-choice").filter({ has: audience }).boundingBox();
     expect(box.width).toBeGreaterThan(150);
     expect(box.x + box.width).toBeLessThanOrEqual(391);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
@@ -243,7 +243,7 @@ for (const product of [
     await page.reload();
     await openAccountSection(page, "social");
     await expect(page.locator(product.status)).toContainText("sind ausgeschaltet");
-    await expect(audience).toHaveValue("allowlist");
+    await expect(audience).toBeChecked();
   });
 
   test(`${product.name} the account list remains usable without push or a free-text name field`, async ({ page }) => {
@@ -251,7 +251,7 @@ for (const product of [
     const calls = await mockPush(page, { available: false });
     await page.goto(`${product.path}#settings`);
     await openAccountSection(page, "social");
-    await page.getByLabel("Einladungen akzeptieren von").selectOption("allowlist");
+    await page.getByRole("radio", { name: /Nur Spielern aus deiner Liste/ }).check();
     await page.getByRole("button", { name: "Einladungsauswahl speichern" }).click();
     await expect(page.locator(".player-allowlist-message")).toHaveText("Spielerauswahl gespeichert.");
     await expect(page.locator('textarea[name="allowedSenders"]')).toHaveCount(0);
