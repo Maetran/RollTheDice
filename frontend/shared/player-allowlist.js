@@ -417,7 +417,7 @@ function membersSection(context, mutate) {
   const filterStatus = element("p", "", "player-allowlist-hint");
   filterStatus.setAttribute("role", "status");
   const list = element("ul", "", "player-allowlist-list player-allowlist-members-list");
-  const empty = element("p", t("Deine Liste ist noch leer. Suche oben nach Spielern oder tippe in einem Spielerprofil auf „Zur Spielerauswahl hinzufügen“."), "player-allowlist-empty");
+  const empty = element("p", t("Deine Liste ist noch leer. Suche nach Spielern oder tippe in einem Spielerprofil auf „Zur Spielerauswahl hinzufügen“."), "player-allowlist-empty");
   const find = element("a", t("Spieler finden"), navigationClass(context));
   find.href = context === "zilch" ? zilchPath("/bestenlisten#player-search") : zdwaPath("/spieler#player-search");
   section.append(heading, count, full, filterLabel, filterStatus, list, empty, find);
@@ -505,7 +505,7 @@ export function mountAllowlistSettings(mount, { context = "zdwa" } = {}) {
       const intro = element("p", t("Deine private Liste gilt für alle unsere Spiele, ohne Freundschaftsanfrage. Niemand wird benachrichtigt, wenn du ihn hinzufügst. Startmeldungen und Push stellst du getrennt ein."), "player-allowlist-hint");
       view = { audience: audienceSection(id, mutate), search: searchSection(context, mutate), members: membersSection(context, mutate) };
       mount.classList.add("player-allowlist-settings");
-      controls.replaceChildren(intro, view.audience.root, view.search.root, view.members.root);
+      controls.replaceChildren(intro, view.members.root, view.search.root, view.audience.root);
     }
     view.audience.update(data);
     view.members.update(data);

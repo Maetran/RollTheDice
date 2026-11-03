@@ -58,7 +58,7 @@ DOCUMENT_ROUTES = (
         ("/konto",), "tests/test_http_shell.py", "test_clean_page_routes_and_legacy_redirects",
         ("tests/browser/account-settings-layout.spec.js", "tests/browser/game-picker.spec.js",
          "tests/browser/game-tours.spec.js", "tests/browser/suite-account-consistency.spec.js",
-         "tests/browser/profile-allowlist.spec.js"),
+         "tests/browser/profile-allowlist.spec.js", "tests/browser/player-allowlist-settings.spec.js"),
     ),
     RouteCoverage(
         ("/spiel/{game_id}",), "tests/browser/zdwa-device-switch.spec.js",
@@ -111,7 +111,7 @@ DOCUMENT_ROUTES = (
         ("/zilch/konto",), "tests/test_zilch_product_routes.py",
         "test_history_rules_shells_and_rules_api_use_the_central_preview_policy",
         ("tests/browser/zdwa-game-switcher.spec.js", "tests/browser/account-settings-layout.spec.js",
-         "tests/browser/profile-allowlist.spec.js"),
+         "tests/browser/profile-allowlist.spec.js", "tests/browser/player-allowlist-settings.spec.js"),
     ),
     RouteCoverage(("/zilch/spieler/{username}",), "tests/browser/player-search-flow.spec.js"),
     RouteCoverage(
@@ -152,7 +152,7 @@ DOCUMENT_ROUTES = (
         "test_house_auth_pages_keep_product_identity_and_protected_settings",
         ("tests/browser-hausdepp-passkeys/in-origin.spec.js", "tests/browser-hausdepp-passkeys/account-flow.spec.js",
          "tests/browser/hausdepp-push-settings.spec.js", "tests/browser/push-reminder-eligibility.spec.js",
-         "tests/browser/account-settings-layout.spec.js", "tests/browser/profile-allowlist.spec.js"),
+         "tests/browser/account-settings-layout.spec.js", "tests/browser/profile-allowlist.spec.js", "tests/browser/player-allowlist-settings.spec.js"),
     ),
     RouteCoverage(
         ("/hausdepp/konto",), "tests/test_hausdepp_integration.py",

@@ -50,7 +50,7 @@ for (const product of [
   test(`${product.name} account manages the private cross-game list with search, filter and removal on mobile`, async ({ page }, testInfo) => {
     const user = await signIn(page);
     const pushBefore = await (await page.request.get("/api/web-push/subscription")).json();
-    await page.setViewportSize({ width: 390, height: 844 });
+    await page.setViewportSize({ width: 320, height: 568 });
     const settings = await openSettings(page, product);
     await expect(settings.locator(".player-allowlist-empty")).toBeVisible();
     await expect(settings).toContainText("ohne Freundschaftsanfrage");
@@ -117,7 +117,13 @@ for (const product of [
     for (const control of await settings.locator("button:visible, input[type=search]:visible, .player-allowlist-choice:visible").all()) {
       expect((await control.boundingBox()).height).toBeGreaterThanOrEqual(44);
     }
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    for (const viewport of [{ width: 320, height: 568 }, { width: 568, height: 320 }]) {
+      await page.setViewportSize(viewport);
+      await expect(search).toHaveValue("PaFriend0");
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+      await search.focus();
+      await page.screenshot({ path: testInfo.outputPath(`allowlist-viewport-${viewport.width}x${viewport.height}.png`) });
+    }
     await page.evaluate(() => document.activeElement?.blur());
     await settings.screenshot({ path: testInfo.outputPath("allowlist-settings-mobile.png") });
   });
@@ -196,15 +202,23 @@ test("deactivated accounts stay removable without a profile link and names are s
   await expect(inactive.getByRole("button", { name: "Spieler aus Spielerauswahl entfernen", exact: true })).toBeVisible();
 });
 
-test("account management is fully translated into English and keeps literal player names", async ({ page }) => {
+for (const product of [
+  { name: "ZDWA", account: "/konto#settings", section: "social" },
+  { name: "Zilch", account: "/zilch/konto#settings", section: "social" },
+  { name: "Hausdepp", account: "/hausdepp/konto/einstellungen?allowlist=1#spielerauswahl" },
+]) {
+test(`${product.name} account management is fully translated into English and keeps literal player names`, async ({ page }) => {
   await signIn(page);
   const auth = await (await page.request.get("/api/auth/me")).json();
   await page.route("**/api/auth/me", route => route.fulfill({ json: { ...auth,
     user: { ...auth.user, preferences: { ...auth.user.preferences, preferred_language: "en" } },
   } }));
-  await page.goto("/konto#settings");
-  const details = page.locator('details[data-account-section="social"]');
-  if (await details.getAttribute("open") === null) await details.locator(":scope > summary").click();
+  await page.setViewportSize({ width: 320, height: 568 });
+  await page.goto(product.account);
+  if (product.section) {
+    const details = page.locator(`details[data-account-section="${product.section}"]`);
+    if (await details.getAttribute("open") === null) await details.locator(":scope > summary").click();
+  }
   const settings = page.locator("[data-allowlist-settings]");
   await expect(settings.getByText("Your list is still empty.", { exact: false })).toBeVisible();
   await settings.getByRole("radio", { name: /Only players on your list/ }).check();
@@ -218,3 +232,5 @@ test("account management is fully translated into English and keeps literal play
   await expect(settings.getByLabel("Filter your list")).toBeVisible();
   await expect(settings.getByText("9 results.")).toBeVisible();
 });
+
+}

@@ -120,17 +120,18 @@ test('allowlist settings patch the same view after a save and rebuild without st
   assert.equal(view.length, 4);
   // Saving the invitation filter keeps the existing search/list nodes, so
   // typed search text, filter text and focus are not lost.
-  const saved = view[1].emit('submit');
+  const audienceForm = view.find(node => node.className === 'player-allowlist-audience');
+  const saved = audienceForm.emit('submit');
   assert.equal(f.requests[1].options.method, 'PUT');
   assert.deepEqual(JSON.parse(f.requests[1].options.body), { viewer_id: 1, audience: 'all' });
   await f.reply(1, 1); await saved;
   assert.deepEqual(controls.children, view);
   // An older write that completes after another account was projected must
   // neither patch nor reuse the old account's view.
-  const oldSave = view[1].emit('submit');
+  const oldSave = audienceForm.emit('submit');
   f.auth(2); await f.reply(3, 2);
   const rebuilt = [...controls.children];
-  assert.notEqual(rebuilt[1], view[1]);
+  assert.ok(!rebuilt.includes(audienceForm));
   const writes = f.writes.length;
   await f.reply(2, 1); await oldSave;
   assert.equal(f.writes.length, writes);
