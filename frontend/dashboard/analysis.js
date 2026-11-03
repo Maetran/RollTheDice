@@ -39,9 +39,11 @@ export function createAnalysisVisuals({ t, e, number, percent, duration, gameNam
   const key = row => `${row.game || "zdwa"}:${row.page}`;
   const route = (page, game) => `${pageLabel(page)} · ${gameName(game)}`;
   const dayDate = value => new Intl.DateTimeFormat(locale(), { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "UTC" }).format(new Date(`${value}T00:00:00Z`));
+  // Leading days without retained browser evidence are unknown, not zero.
+  const dailyRows = () => (data?.daily || []).filter(row => row.sessions != null || row.page_views != null);
 
   function trafficSelection(index) {
-    const rows = data?.daily || [];
+    const rows = dailyRows();
     if (!rows.length) return;
     dateIndex = Math.max(0, Math.min(rows.length - 1, index));
     const row = rows[dateIndex];
@@ -62,12 +64,12 @@ export function createAnalysisVisuals({ t, e, number, percent, duration, gameNam
   }
 
   function traffic() {
-    const rows = data.daily || [];
+    const rows = dailyRows();
     const off = unmeasured();
     for (const toggle of $("trafficSeries").querySelectorAll("[data-series]")) toggle.disabled = off;
     $("trafficControls").hidden = off || !rows.length || !rows.some(row => count(row.sessions) || count(row.page_views));
     if (off) { $("dailyChart").innerHTML = unknownBlank(); $("dailySelection").innerHTML = ""; return; }
-    if ($("trafficControls").hidden) { $("dailyChart").innerHTML = blank(); return; }
+    if ($("trafficControls").hidden) { $("dailyChart").innerHTML = blank(); $("dailySelection").innerHTML = ""; return; }
     const maxValue = Math.max(1, ...rows.flatMap(row => [...visibleSeries].map(metric => count(row[metric]))));
     const scale = 10 ** Math.floor(Math.log10(maxValue));
     const maximum = Math.max(4, Math.ceil(maxValue / scale) * scale);

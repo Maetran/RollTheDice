@@ -116,8 +116,8 @@ function overview(data) {
     { id: "live-sessions", label: "Aktive Besuche", value: totals.live_sessions, hint: "Letzte 2 Minuten", live: true },
     { id: "sessions", label: "Besuche", value: totals.sessions, hint: "Anonyme Tab-Sitzungen", series: "sessions", comparison: "sessions" },
     { id: "page-views", label: "Seitenaufrufe", value: totals.page_views, hint: "Im gewählten Zeitraum", series: "page_views", comparison: "page_views" },
-    { id: "active-seconds", label: "Aktive Zeit", value: duration(totals.active_seconds), hint: "Sichtbar und aktiv", series: "active_seconds", comparison: "active_seconds" },
-    { id: "avg-active-seconds", label: "Ø Zeit je Besuch", value: duration(totals.avg_active_seconds), hint: "Sichtbar und aktiv", series: "active_seconds", comparison: "avg_active_seconds" },
+    { id: "active-seconds", label: "Aktive Zeit", value: duration(totals.active_seconds), hint: "Sichtbar und aktiv", series: "active_seconds", time: true, comparison: "active_seconds" },
+    { id: "avg-active-seconds", label: "Ø Zeit je Besuch", value: duration(totals.avg_active_seconds), hint: "Sichtbar und aktiv", series: "avg_active_seconds", time: true, comparison: "avg_active_seconds" },
     { id: "completed-games", label: "Partien beendet", value: totals.completed_games, hint: "Gespeicherte Ergebnisse", series: "completed_games", comparison: "completed_games" },
   ];
   const coverage = overviewCoverage(data);
@@ -133,10 +133,10 @@ function overview(data) {
   byId("overviewMetrics").innerHTML = metrics.map(metric => {
     const unknown = coverage.unknown && metric.id !== "completed-games";
     const label = metric.id === "completed-games" ? coverage.completedLabel : metric.label;
-    return `<article class="metric-card" data-favorite-id="metric-${metric.id}" data-favorite-kind="metric"><p class="metric-label">${e(t(label))}${metric.live ? '<span class="signal-dot" aria-hidden="true" style="margin-left:8px"></span>' : ""}</p><div class="metric-value">${unknown ? "—" : metric.series === "active_seconds" ? e(metric.value) : number(metric.value)}</div><p class="metric-hint">${e(t(unknown ? coverage.hint : metric.hint))}</p>${comparison(metric)}${sparkline(!unknown && metric.series ? days.map(day => count(day[metric.series])) : [])}</article>`;
+    return `<article class="metric-card" data-favorite-id="metric-${metric.id}" data-favorite-kind="metric"><p class="metric-label">${e(t(label))}${metric.live ? '<span class="signal-dot" aria-hidden="true" style="margin-left:8px"></span>' : ""}</p><div class="metric-value">${unknown ? "—" : metric.time ? e(metric.value) : number(metric.value)}</div><p class="metric-hint">${e(t(unknown ? coverage.hint : metric.hint))}</p>${comparison(metric)}${sparkline(!unknown && metric.series ? days.filter(day => day[metric.series === "avg_active_seconds" ? "active_seconds" : metric.series] != null).map(day => metric.series === "avg_active_seconds" ? count(day.active_seconds) / Math.max(1, count(day.sessions)) : count(day[metric.series])) : [])}</article>`;
   }).join("");
   const sources = trafficSourceNote(data, { t });
-  byId("comparisonNote").textContent = data.comparison ? `${t("Heute (UTC) ist noch unvollständig. Verglichen wird mit den vorangehenden Kalendertagen; fehlende ältere Messwerte ergeben keinen Wachstumstrend.")}${sources ? ` ${sources}` : ""}` : "";
+  byId("comparisonNote").textContent = data.comparison ? `${t("Heute (UTC) ist noch unvollständig. Verglichen wird mit den vorangehenden Kalendertagen; fehlende ältere Messwerte ergeben keinen Wachstumstrend.")}${sources ? ` ${sources}` : ""}${days.some(day => ["none", "partial"].includes(day.traffic_coverage)) ? ` ${t("Tage vor der ersten Besuchsmessung bleiben unbekannt. Bei gemischter Spielabdeckung werden nur beobachtete Werte gezeigt.")}` : ""}` : "";
 }
 
 function dailyChart(data) {
@@ -165,7 +165,7 @@ function dailyChart(data) {
     const title = `${t("Besuche")}: ${number(data.overview?.sessions)} · ${t("Seitenaufrufe")}: ${number(data.overview?.page_views)}`;
     byId("dailyChart").innerHTML = `<svg viewBox="0 0 ${width} ${height}" role="img" aria-labelledby="dailyChartTitle"><title id="dailyChartTitle">${e(title)}</title><defs><linearGradient id="trafficFade" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#6ee7de" stop-opacity=".19"/><stop offset="1" stop-color="#6ee7de" stop-opacity="0"/></linearGradient></defs>${axis}<polygon points="${x(0)},${y(0)} ${points("sessions")} ${x(rows.length - 1)},${y(0)}" fill="url(#trafficFade)"/><polyline class="chart-line" stroke="#f4c77b" points="${points("page_views")}"/><polyline class="chart-line" stroke="#6ee7de" points="${points("sessions")}"/>${rows.length === 1 ? `<circle cx="${x(0)}" cy="${y(rows[0].sessions)}" r="4" fill="#6ee7de"/><circle cx="${x(0)}" cy="${y(rows[0].page_views)}" r="4" fill="#f4c77b"/>` : ""}${labels}</svg>`;
   }
-  byId("dailyTable").innerHTML = `<div class="data-scroll"><table><caption class="sr-only">${e(t("Besuche und Seitenaufrufe je UTC-Tag"))}</caption><thead><tr>${["UTC-Tag", "Besuche", "Seitenaufrufe", "Aktive Zeit", "Partien beendet"].map(label => `<th scope="col">${e(t(label))}</th>`).join("")}</tr></thead><tbody>${rows.map(row => `<tr><td>${e(row.date)}</td><td>${number(row.sessions)}</td><td>${number(row.page_views)}</td><td>${e(duration(row.active_seconds))}</td><td>${number(row.completed_games)}</td></tr>`).join("")}</tbody></table></div>`;
+  byId("dailyTable").innerHTML = `<div class="data-scroll"><table><caption class="sr-only">${e(t("Besuche und Seitenaufrufe je UTC-Tag"))}</caption><thead><tr>${["UTC-Tag", "Besuche", "Seitenaufrufe", "Aktive Zeit", overviewCoverage(data).completedLabel].map(label => `<th scope="col">${e(t(label))}</th>`).join("")}</tr></thead><tbody>${rows.map(row => `<tr><td>${e(row.date)}</td><td>${number(row.sessions)}</td><td>${number(row.page_views)}</td><td>${e(duration(row.active_seconds))}</td><td>${number(row.completed_games)}</td></tr>`).join("")}</tbody></table></div>`;
 }
 
 function hourlyChart(rows = [], copy = null) {

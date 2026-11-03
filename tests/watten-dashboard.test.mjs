@@ -868,6 +868,36 @@ test("the actual dashboard renders native telemetry and all modes, then removes 
   } finally { win.dispatchEvent(pageEvent("pagehide", true)); }
 });
 
+test("unknown daily history is omitted from curves and average-time trends use time per visit", async () => {
+  const f = fmt("en"), { $ } = dashboardDom();
+  const win = Object.assign(makeWindow(), { requestAnimationFrame: () => 1, cancelAnimationFrame() {},
+    matchMedia: () => ({ matches: true, addEventListener() {} }), ZDWA_I18N: { t: f.t, locale: f.locale } });
+  globalThis.window = win;
+  $("dashboardGame").value = "all";
+  $("dashboardDays").value = "7";
+  const data = measuredSuite("all");
+  data.daily = [
+    { date: "2026-10-16", sessions: null, page_views: null, active_seconds: null, completed_games: 1, traffic_coverage: "none" },
+    { date: "2026-10-17", sessions: 1, page_views: 2, active_seconds: 10, completed_games: 1, traffic_coverage: "partial" },
+    { date: "2026-10-18", sessions: 4, page_views: 5, active_seconds: 20, completed_games: 1, traffic_coverage: "observed_events_only" },
+  ];
+  data.comparison = { overview: {} };
+  win.fetch = async () => reply(200, data);
+  try {
+    await loadRealDashboard();
+    await until(() => $("dailyChart").innerHTML.includes("<svg"));
+    assert.equal($("dailyCursor").max, 1, "two measured days, no invented zero point for the first day");
+    assert.match($("dailySelection").innerHTML, /18\/10\/2026/);
+    assert.match($("dailyTable").innerHTML, /2026-10-16<\/td><td>—<\/td><td>—<\/td>/);
+    assert.match($("dailyTable").innerHTML, /Games\/rounds completed/);
+    assert.match($("comparisonNote").textContent, /remain unknown/);
+    const average = $("overviewMetrics").innerHTML.match(/data-favorite-id="metric-avg-active-seconds"[\s\S]*?<\/article>/)[0];
+    const total = $("overviewMetrics").innerHTML.match(/data-favorite-id="metric-active-seconds"[\s\S]*?<\/article>/)[0];
+    assert.match(average, /points="0,3 200,14"/, "average falls from 10 s to 5 s per visit");
+    assert.match(total, /points="0,14 200,3"/, "total active time rises from 10 s to 20 s");
+  } finally { win.dispatchEvent(pageEvent("pagehide", true)); }
+});
+
 test("existing products, labels and all three dashboard designs keep their measured views; Watten adds no tournaments or profiles", () => {
   assert.deepEqual(watten.gameSelection(["zdwa", "zilch", "hausdepp"], "hausdepp"),
     { allowed: ["zdwa", "zilch", "hausdepp"], value: "hausdepp", allLabel: "Alle Spiele", description: "Dein Kontrollzentrum für alle Spiele." });
