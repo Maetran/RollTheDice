@@ -418,3 +418,30 @@ test("a failed search page retries its original query and offset only on demand"
   assert.equal(f.container.html("[data-friend-results]"), "");
   assert.equal(f.container.querySelector("[data-friend-query]").value, "");
 });
+
+test("finishing a save preserves a deliberate focus move outside the friends widget", async () => {
+  let release;
+  const gate = new Promise(resolve => { release = resolve; });
+  const f = fixture({ fetcher: async (url, options, _count, backend) => {
+    if (options.method === "PUT") await gate;
+    return backend.handle(url, options);
+  } });
+  await until(() => f.container.text("[data-friend-count]") !== "");
+  const body = {}, accountNavigation = {};
+  f.container.ownerDocument = { body, activeElement: body };
+  let focusReturns = 0;
+  for (const name of ["audience", "list-filter"]) {
+    const field = f.container.querySelector(`[data-friend-${name}]`);
+    field.focus = () => { focusReturns += 1; f.container.ownerDocument.activeElement = field; };
+  }
+  f.container.choose("allowlist");
+  f.container.click("audience-save");
+  await until(() => f.mutations().length === 1);
+  // The user tabs or clicks into account navigation while the network is pending.
+  f.container.ownerDocument.activeElement = accountNavigation;
+  assert.equal(f.container.contains(accountNavigation), false);
+  release();
+  await until(() => f.container.text("[data-friend-selection-status]") === "Gespeichert.");
+  assert.equal(f.container.ownerDocument.activeElement, accountNavigation);
+  assert.equal(focusReturns, 0, "a completed save must not pull focus back into the widget");
+});

@@ -71,7 +71,7 @@ export function mountFriendSettings({ container, viewerId, isCurrent, onAccountC
     // Respect a deliberate move while the request was pending.
     const active = container.ownerDocument?.activeElement;
     if (active && active !== container.ownerDocument.body && active !== previous.node
-        && active !== previous.initialActive && container.contains(active)) return;
+        && active !== previous.initialActive) return;
     let target = previous.node?.isConnected && !previous.node.disabled ? previous.node : null;
     if (!target && previous.action && accountId(previous.account)) {
       target = container.querySelector(`[data-friend-action="${previous.action}"][data-account-id="${previous.account}"]`);
