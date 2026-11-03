@@ -291,7 +291,10 @@ test("login retires its widget and account logout requires a fresh registration 
   await page.fill("#loginPassword", "local-password-123");
   await fillRegistration(page);
   await page.click("#registerBtn");
-  await expect.poll(() => page.evaluate(() => window.__turnstileFixture.renders)).toBe(1);
+  // The fresh lobby loads the verification script only after this click.
+  // Wait for its visible widget before reading script-owned fixture state.
+  await expect(page.locator("#registrationChallenge")).toHaveText("Local verification fixture");
+  expect(await page.evaluate(() => window.__turnstileFixture.renders)).toBe(1);
   await fillRegistration(page);
   await page.click("#registerBtn");
   await expect(page.locator("#loginError")).toHaveText("Bitte bestätige zuerst, dass du kein Bot bist.");
