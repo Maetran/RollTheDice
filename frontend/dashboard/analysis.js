@@ -4,6 +4,7 @@ export function createAnalysisVisuals({ t, e, number, percent, duration, gameNam
   const $ = id => document.getElementById(id);
   const count = value => Math.max(0, Number(value) || 0);
   const fields = { sessions: "Besuche", page_views: "Seitenaufrufe", active_seconds: "Aktive Zeit" };
+  const gameColor = game => ({ zdwa: "#6ee7de", zilch: "#f4c77b", hausdepp: "#baa6ef", watten: "#90d1a2" })[game] || "#9dbcd4";
   const days = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"];
   let data = null;
   let dateIndex = 0;
@@ -38,9 +39,11 @@ export function createAnalysisVisuals({ t, e, number, percent, duration, gameNam
   const key = row => `${row.game || "zdwa"}:${row.page}`;
   const route = (page, game) => `${pageLabel(page)} · ${gameName(game)}`;
   const dayDate = value => new Intl.DateTimeFormat(locale(), { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "UTC" }).format(new Date(`${value}T00:00:00Z`));
+  // Leading days without retained browser evidence are unknown, not zero.
+  const dailyRows = () => (data?.daily || []).filter(row => row.sessions != null || row.page_views != null);
 
   function trafficSelection(index) {
-    const rows = data?.daily || [];
+    const rows = dailyRows();
     if (!rows.length) return;
     dateIndex = Math.max(0, Math.min(rows.length - 1, index));
     const row = rows[dateIndex];
@@ -61,12 +64,12 @@ export function createAnalysisVisuals({ t, e, number, percent, duration, gameNam
   }
 
   function traffic() {
-    const rows = data.daily || [];
+    const rows = dailyRows();
     const off = unmeasured();
     for (const toggle of $("trafficSeries").querySelectorAll("[data-series]")) toggle.disabled = off;
     $("trafficControls").hidden = off || !rows.length || !rows.some(row => count(row.sessions) || count(row.page_views));
     if (off) { $("dailyChart").innerHTML = unknownBlank(); $("dailySelection").innerHTML = ""; return; }
-    if ($("trafficControls").hidden) { $("dailyChart").innerHTML = blank(); return; }
+    if ($("trafficControls").hidden) { $("dailyChart").innerHTML = blank(); $("dailySelection").innerHTML = ""; return; }
     const maxValue = Math.max(1, ...rows.flatMap(row => [...visibleSeries].map(metric => count(row[metric]))));
     const scale = 10 ** Math.floor(Math.log10(maxValue));
     const maximum = Math.max(4, Math.ceil(maxValue / scale) * scale);
@@ -147,7 +150,7 @@ export function createAnalysisVisuals({ t, e, number, percent, duration, gameNam
     const x = value => 69 + count(value) / maxViews * 548;
     const y = value => 237 - count(value) / maxDuration * 199;
     const grid = [0, .25, .5, .75, 1].map(fraction => `<line class="chart-gridline" x1="69" x2="617" y1="${y(fraction * maxDuration)}" y2="${y(fraction * maxDuration)}"/><text class="chart-axis" x="56" y="${y(fraction * maxDuration) + 3}" text-anchor="end">${e(duration(fraction * maxDuration))}</text><text class="chart-axis" x="${x(fraction * maxViews)}" y="261" text-anchor="middle">${number(fraction * maxViews)}</text>`).join("");
-    const points = rows.map((row, index) => `<g class="page-point" data-page-index="${index}" role="button" tabindex="0" aria-pressed="false" aria-label="${e(route(row.page, row.game))}, ${number(row.views)} ${e(t("Aufrufe"))}, ${e(duration(row.avg_active_seconds))} ${e(t("Ø je Besuch"))}"><circle class="bubble-halo" cx="${x(row.views)}" cy="${y(row.avg_active_seconds)}" r="${Math.max(5, Math.sqrt(count(row.sessions) / maxVisits) * 27) + 7}"/><circle class="bubble-core" cx="${x(row.views)}" cy="${y(row.avg_active_seconds)}" r="${Math.max(5, Math.sqrt(count(row.sessions) / maxVisits) * 27)}" fill="${row.game === "zilch" ? "#f4c77b" : "#6ee7de"}"/><text class="bubble-label" x="${x(row.views)}" y="${y(row.avg_active_seconds) - Math.max(5, Math.sqrt(count(row.sessions) / maxVisits) * 27) - 11}" text-anchor="middle">${index + 1}</text></g>`).join("");
+    const points = rows.map((row, index) => `<g class="page-point" data-page-index="${index}" role="button" tabindex="0" aria-pressed="false" aria-label="${e(route(row.page, row.game))}, ${number(row.views)} ${e(t("Aufrufe"))}, ${e(duration(row.avg_active_seconds))} ${e(t("Ø je Besuch"))}"><circle class="bubble-halo" cx="${x(row.views)}" cy="${y(row.avg_active_seconds)}" r="${Math.max(5, Math.sqrt(count(row.sessions) / maxVisits) * 27) + 7}"/><circle class="bubble-core" cx="${x(row.views)}" cy="${y(row.avg_active_seconds)}" r="${Math.max(5, Math.sqrt(count(row.sessions) / maxVisits) * 27)}" fill="${gameColor(row.game)}"/><text class="bubble-label" x="${x(row.views)}" y="${y(row.avg_active_seconds) - Math.max(5, Math.sqrt(count(row.sessions) / maxVisits) * 27) - 11}" text-anchor="middle">${index + 1}</text></g>`).join("");
     $("pageBubbles").innerHTML = `<svg viewBox="0 0 680 287" role="group" aria-label="${e(t("Aufrufe gegen durchschnittliche aktive Zeit"))}">${grid}${points}<text class="chart-axis axis-name" x="345" y="285" text-anchor="middle">${e(t("Aufrufe"))} →</text></svg>`;
     $("pageFocus").innerHTML = rows.map((row, index) => `<option value="${index}">${index + 1}. ${e(route(row.page, row.game))}</option>`).join("");
     const retained = rows.findIndex(row => key(row) === selectedPage);
@@ -182,16 +185,16 @@ export function createAnalysisVisuals({ t, e, number, percent, duration, gameNam
         const sourceY = position(fromNodes, row.from, row.from_game);
         const targetY = position(toNodes, row.to, row.to_game);
         const path = `M178 ${sourceY} C310 ${sourceY},410 ${targetY},542 ${targetY}`;
-        return `<g class="journey-link" data-journey-index="${index}" role="button" tabindex="0" aria-pressed="false" aria-label="${e(route(row.from, row.from_game))} → ${e(route(row.to, row.to_game))}: ${number(row.count)}"><path d="${path}" fill="none" stroke="${row.from_game === "zilch" ? "#f4c77b" : "#6ee7de"}" stroke-width="${2 + Math.sqrt(count(row.count) / maxCount) * 12}" class="flow-strand"/><path d="${path}" fill="none" stroke="transparent" stroke-width="24"/><title>${number(row.count)} ${e(t("Gemessene Wechsel"))}</title></g>`;
+        return `<g class="journey-link" data-journey-index="${index}" role="button" tabindex="0" aria-pressed="false" aria-label="${e(route(row.from, row.from_game))} → ${e(route(row.to, row.to_game))}: ${number(row.count)}"><path d="${path}" fill="none" stroke="${gameColor(row.from_game)}" stroke-width="${2 + Math.sqrt(count(row.count) / maxCount) * 12}" class="flow-strand"/><path d="${path}" fill="none" stroke="transparent" stroke-width="24"/><title>${number(row.count)} ${e(t("Gemessene Wechsel"))}</title></g>`;
       }).join("");
-      const nodes = (items, side) => items.map(node => { const y = position(items, node.page, node.game); return `<g><rect x="${side === "from" ? 169 : 537}" y="${y - 15}" width="9" height="30" rx="3" fill="${node.game === "zilch" ? "#f4c77b" : "#6ee7de"}"/><text class="flow-node-name" x="${side === "from" ? 156 : 557}" y="${y - 2}" text-anchor="${side === "from" ? "end" : "start"}">${e(pageLabel(node.page))}</text><text class="flow-node-game" x="${side === "from" ? 156 : 557}" y="${y + 13}" text-anchor="${side === "from" ? "end" : "start"}">${gameName(node.game)}</text></g>`; }).join("");
+      const nodes = (items, side) => items.map(node => { const y = position(items, node.page, node.game); return `<g><rect x="${side === "from" ? 169 : 537}" y="${y - 15}" width="9" height="30" rx="3" fill="${gameColor(node.game)}"/><text class="flow-node-name" x="${side === "from" ? 156 : 557}" y="${y - 2}" text-anchor="${side === "from" ? "end" : "start"}">${e(pageLabel(node.page))}</text><text class="flow-node-game" x="${side === "from" ? 156 : 557}" y="${y + 13}" text-anchor="${side === "from" ? "end" : "start"}">${gameName(node.game)}</text></g>`; }).join("");
       $("journeyFlow").innerHTML = `<svg viewBox="0 0 720 ${height}" role="group" aria-label="${e(t("Direkt gemessene Seitenwechsel"))}">${links}${nodes(fromNodes, "from")}${nodes(toNodes, "to")}</svg>`;
       $("journeyFocus").innerHTML = rows.map((row, index) => `<option value="${index}">${e(route(row.from, row.from_game))} → ${e(route(row.to, row.to_game))} (${number(row.count)})</option>`).join("");
       const retained = rows.findIndex(row => `${row.from_game}:${row.from}:${row.to_game}:${row.to}` === selectedJourney);
       chooseJourney(retained < 0 ? 0 : retained);
     }
     const sample = data.journeys?.sample;
-    $("journeySample").textContent = unmeasured() ? t("Seitenwege werden für Watten nicht erfasst.") : sample ?`${t(sample.truncated ? "Stichprobe der neuesten Seitenaufrufe" : "Ausgewertete Seitenaufrufe")}: ${number(sample.page_views)} / ${number(sample.total_page_views)}. ${t("Nur direkt aufeinanderfolgende Aufrufe im selben Tab, mit höchstens 30 Minuten Abstand.")}` : t("Nur direkt aufeinanderfolgende Aufrufe im selben Tab, mit höchstens 30 Minuten Abstand.");
+    $("journeySample").textContent = unmeasured() ? t("Für diesen Zeitraum liegen noch keine beobachteten Seitenwege vor.") : sample ?`${t(sample.truncated ? "Stichprobe der neuesten Seitenaufrufe" : "Ausgewertete Seitenaufrufe")}: ${number(sample.page_views)} / ${number(sample.total_page_views)}. ${t("Nur direkt aufeinanderfolgende Aufrufe im selben Tab, mit höchstens 30 Minuten Abstand.")}` : t("Nur direkt aufeinanderfolgende Aufrufe im selben Tab, mit höchstens 30 Minuten Abstand.");
     $("journeyTable").innerHTML = `<div class="data-scroll"><table><caption class="sr-only">${e(t("Direkt gemessene Seitenwechsel"))}</caption><thead><tr>${["Von", "Nach", "Gemessene Wechsel"].map(label => `<th scope="col">${e(t(label))}</th>`).join("")}</tr></thead><tbody>${rows.map(row => `<tr><td>${e(route(row.from, row.from_game))}</td><td>${e(route(row.to, row.to_game))}</td><td>${number(row.count)}</td></tr>`).join("")}</tbody></table></div>`;
   }
 

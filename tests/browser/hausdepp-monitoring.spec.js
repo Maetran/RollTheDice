@@ -21,19 +21,27 @@ async function monitoring(page, { founder = true, language = 'de', design = 'mis
     state.calls.push(game);
     if (game === 'hausdepp' && !state.founder) return route.fulfill({ status: 403, json: { detail: 'analytics_game_unavailable' } });
     const products = state.founder ? ['zdwa', 'zilch', 'hausdepp'] : ['zdwa', 'zilch'];
-    const rows = products.filter(product => game === 'all' || game === product).map(product => ({
+    const selected = products.filter(product => game === 'all' || game === product);
+    const noObservations = game === 'hausdepp';
+    const rows = selected.map(product => ({
       game: product, completed_games: product === 'hausdepp' ? 9 : 4, participants: 27,
-      avg_duration_seconds: product === 'hausdepp' ? null : 90, duration_sample_count: 0,
+      avg_duration_seconds: product === 'hausdepp' ? null : 90, duration_sample_count: product === 'hausdepp' ? 0 : 4,
+      duration_unknown_count: product === 'hausdepp' ? 9 : 0, duration_sample_limit: 2000, duration_sample_truncated: false,
       abandoned_games: 2, completed_tournaments: product === 'hausdepp' ? 1 : null,
-      live: { active_tables: 3, connected_humans: 2, cpu_seats: 4, active_tournaments: 2, interround_tables: 1 },
+      live: { active_tables: 3, connected_humans: 2, connected_seats: 2, connected_humans_scope: 'connected_seats',
+        cpu_seats: 4, active_tournaments: 2, interround_tables: 1 },
     }));
     return route.fulfill({ json: {
       generated_at: '2026-10-16T12:00:00Z', period: { game, days: 7 }, available_games: products,
-      collection: { first_seen_at: null, retention_days: 90 },
+      metric_coverage: { traffic: noObservations ? 'no_observed_events' : 'observed_events_only', traffic_games: selected },
+      collection: { first_seen_at: noObservations ? null : '2026-10-15T12:00:00Z', retention_days: 90,
+        traffic_first_seen_by_game: Object.fromEntries(selected.map(product => [product, product === 'hausdepp' ? null : '2026-10-15T12:00:00Z'])) },
       overview: { completed_games: rows.reduce((sum, row) => sum + row.completed_games, 0),
-        sessions: 0, page_views: 0, live_sessions: 0, active_seconds: 0, avg_active_seconds: 0 },
+        ...Object.fromEntries(['sessions', 'page_views', 'live_sessions', 'active_seconds', 'avg_active_seconds']
+          .map(key => [key, noObservations ? null : 0])) },
+      pwa: { confirmed_installations: noObservations ? null : 0, first_detected_starts: noObservations ? null : 0 },
       games: rows, daily: [], hourly: [], pages: [], geography: [], devices: [], heatmap: [],
-      journeys: { links: [], sample: { page_views: 0, total_page_views: 0 } },
+      journeys: { links: [], sample: { page_views: noObservations ? null : 0, total_page_views: noObservations ? null : 0 } },
       design_usage: { looks: [] }, server: { active_rooms: 3, players_online: 2, cpu: {}, memory: {}, disk: {} },
     } });
   });
@@ -54,10 +62,13 @@ for (const design of ['mission', 'lcars', 'nexus']) {
     const card = page.locator('#gameCards [data-game="hausdepp"]');
     await expect(page.locator('#gameCards .game-card')).toHaveCount(1);
     await expect(card.locator('.game-card-number')).toHaveText('9');
-    for (const label of ['Live tables', 'Humans connected', 'Computer seats', 'Active tournaments', 'Between rounds', 'Tournaments completed', 'Recorded abandonments']) await expect(card).toContainText(label);
+    for (const label of ['Live tables', 'Connected player seats', 'Computer seats', 'Active tournaments', 'Between rounds', 'Tournaments completed', 'Recorded abandonments']) await expect(card).toContainText(label);
     await expect(card.locator('.game-card-details span').filter({ hasText: 'Avg. round duration' }).locator('strong')).toHaveText('—');
-    await expect(page.locator('#hausdeppMonitoringNote')).toContainText('earlier abandonments are not backfilled');
+    await expect(page.locator('#hausdeppMonitoringNote')).toContainText('Missing historical measurements are not backfilled');
     await expect(page.locator('[data-favorite-id="metric-sessions"] .metric-value')).toHaveText('—');
+    await expect(page.locator('[data-favorite-id="metric-sessions"] .metric-hint')).toHaveText('No visit measurement yet');
+    await expect(page.locator('#pwaInstalledCount')).toHaveText('—');
+    await expect(page.locator('#collectionNote')).toHaveText('Hausdepp: No visit measurement yet');
     await expect(page.locator('body')).toHaveAttribute('data-dashboard-design', design);
     const width = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, viewport: innerWidth }));
     expect(width.scroll).toBeLessThanOrEqual(width.viewport);
@@ -69,7 +80,8 @@ test('German founder copy explains unknown historical data', async ({ page }) =>
   await monitoring(page);
   await page.locator('#dashboardGame').selectOption('hausdepp');
   await expect(page.locator('#gameCards')).toContainText('Rundenpausen');
-  await expect(page.locator('#hausdeppMonitoringNote')).toContainText('ältere Abbrüche werden nicht nachgetragen');
+  await expect(page.locator('#hausdeppMonitoringNote')).toContainText('Historisch fehlende Messwerte werden nicht nachgetragen');
+  await expect(page.locator('#hausdeppMonitoringNote')).toContainText('Browserbesuche, Seitenwege, aktive Zeit, Designs und PWA-Ereignisse werden anonym erfasst');
 });
 
 test('delegated analytics access receives no Hausdepp option or card', async ({ page }) => {

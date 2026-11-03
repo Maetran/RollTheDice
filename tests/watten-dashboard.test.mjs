@@ -70,6 +70,108 @@ function legacy(game = "all", overrides = {}) {
   };
 }
 
+function measuredSuite(game = "all", allowed = ALL) {
+  const games = game === "all" ? allowed : allowed.filter(item => item === game);
+  const firsts = { zdwa: "2026-09-18T10:00:00Z", zilch: "2026-09-20T10:00:00Z",
+    hausdepp: "2026-10-17T10:00:00Z", watten: "2026-10-18T10:00:00Z" };
+  return legacy(game, {
+    available_games: allowed,
+    collection: { traffic_first_seen_by_game: Object.fromEntries(games.map(item => [item, firsts[item]])) },
+    metric_coverage: { traffic: "observed_events_only", traffic_games: games, request_traffic: "sitewide" },
+    overview: { completed_games: 5, sessions: 4, page_views: 9, active_seconds: 60, avg_active_seconds: 15, live_sessions: 0 },
+    geography: [{ country: "CH", sessions: 4, page_views: 9, active_seconds: 60 }],
+    pages: games.map(item => ({ game: item, page: `/${item}/spiel`, views: 2, sessions: 1, active_seconds: 15, avg_active_seconds: 15 })),
+    journeys: { links: games.map(item => ({ from: `/${item}`, to: `/${item}/spiel`, from_game: item, to_game: item, count: 1 })),
+      sample: { page_views: 9, total_page_views: 9, truncated: false } },
+    pwa: { confirmed_installations: 1, first_detected_starts: 3 },
+    games: games.map(item => item === "watten" ? native().games[0]
+      : { game: item, completed_games: 3, participants: 8, avg_duration_seconds: 120,
+        duration_sample_count: 2, duration_unknown_count: 1, duration_sample_limit: 2000, duration_sample_truncated: true,
+        live: { active_tables: 1, connected_seats: 2, connected_humans: 2, cpu_seats: 2 } }),
+    modes: [
+      ...["solo", "duo", "trio", "team"].map(mode => ({ game: "zdwa", mode, completed_games: 1 })),
+      ...["cpu", "multiplayer"].map(mode => ({ game: "zilch", mode, completed_games: 1 })),
+      ...["four", "five", "six"].map(mode => ({ game: "hausdepp", mode, completed_games: 1 })),
+      ...["duo", "four"].map(mode => ({ game: "watten", mode, completed_games: 1 })),
+    ].filter(row => games.includes(row.game)),
+    design_usage: { looks: [
+      { game: "zdwa", look: "zdwa:new:light", seconds: 30, table_seconds: 10 },
+      { game: "zilch", look: "zilch:tavern", seconds: 30, table_seconds: 10 },
+      { game: "hausdepp", look: "hausdepp:classic", seconds: 45, table_seconds: 40 },
+      { game: "watten", look: "watten:classic", seconds: 15, table_seconds: 10 },
+      { game: "watten", look: "watten:tirol", seconds: 45, table_seconds: 40 },
+    ], first_day: "2026-10-17", retention_days: 400 },
+  });
+}
+
+for (const language of ["de", "en"]) {
+  test(`${language}: measured native traffic follows coverage rather than a hard-coded product list`, () => {
+    const f = fmt(language);
+    for (const game of ["hausdepp", "watten"]) {
+      const data = measuredSuite(game);
+      assert.equal(watten.overviewCoverage(data).unknown, false);
+      assert.equal(watten.unmeasuredCopy(data), null);
+      assert.equal(watten.countText(data.pwa.confirmed_installations, f.number), "1");
+      const { $, analysis } = analysisFor(language, "mission");
+      analysis.update(data);
+      assert.match($("dailyChart").innerHTML, /<svg/);
+      assert.match($("pageBubbles").innerHTML, /<svg/);
+      assert.match($("journeyFlow").innerHTML, /<svg/);
+      assert.equal($("trafficControls").hidden, false);
+      assert.ok(!$("journeySample").textContent.includes("MISSING:"));
+    }
+    assert.equal(watten.overviewCoverage(measuredSuite("hausdepp")).completedLabel, "Runden beendet");
+    assert.equal(watten.overviewCoverage(measuredSuite()).completedLabel, "Partien/Runden beendet");
+    assert.equal(watten.overviewCoverage(measuredSuite("all", ["zdwa", "zilch"])).completedLabel, "Partien beendet");
+    assert.equal(watten.trafficSourceNote(measuredSuite(), f), "");
+  });
+
+  test(`${language}: first observed traffic is scoped to offered games and never fills a missing native history`, () => {
+    const f = fmt(language);
+    const data = measuredSuite();
+    data.collection.traffic_first_seen_by_game.watten = null;
+    const note = watten.trafficCollectionNote(data, { ...f, timestamp: value => value });
+    assert.ok(note.includes(`Watten: ${f.t("Noch keine Besuchsmessung")}`));
+    assert.ok(note.includes(`Hausdepp: ${f.t("Erste gespeicherte Besuchsmessung")} 2026-10-17T10:00:00Z`));
+    assert.ok(!note.includes("MISSING:"));
+    data.period.game = "hausdepp";
+    assert.equal(watten.trafficCollectionNote(data, { ...f, timestamp: value => value }),
+      `Hausdepp: ${f.t("Erste gespeicherte Besuchsmessung")} 2026-10-17T10:00:00Z`);
+    data.period.game = "all";
+    data.available_games = ["zdwa", "zilch"];
+    const restricted = watten.trafficCollectionNote(data, { ...f, timestamp: value => value });
+    assert.ok(!restricted.includes("Hausdepp") && !restricted.includes("Watten"));
+  });
+
+  test(`${language}: an installed collector without retained observations does not claim a measured zero`, () => {
+    const f = fmt(language);
+    const data = native({ metric_coverage: { traffic: "no_observed_events", traffic_games: ["watten"] },
+      collection: { traffic_first_seen_by_game: { watten: null } } });
+    assert.equal(watten.trafficMeasured(data), false);
+    assert.equal(watten.overviewCoverage(data).unknown, true);
+    assert.deepEqual(watten.unmeasuredCopy(data), {
+      title: "Noch keine Besuchsmessung", description: "Für den gewählten Zeitraum liegen noch keine Browserbesuche vor.",
+    });
+    const { $, analysis } = analysisFor(language, "nexus");
+    analysis.update(data);
+    for (const id of ["dailyChart", "activityHeatmap", "pageBubbles", "journeyFlow"]) {
+      assert.ok($(id).innerHTML.includes(escapeHtml(f.t("Noch keine Besuchsmessung"))));
+      assert.ok(!$(id).innerHTML.includes("<svg"));
+    }
+    assert.ok(!$("journeySample").textContent.includes("Watten"), "missing observations are not absence of a collector");
+    assert.equal(watten.trafficCollectionNote(data, { ...f, timestamp: value => value }), `Watten: ${f.t("Noch keine Besuchsmessung")}`);
+    const viz = new FakeElement(), note = new FakeElement();
+    assert.equal(watten.presentGeography(data, { viz, note, globe: { clear() {}, update() { assert.fail("unknown is not mapped"); } }, ...f }), false);
+    assert.ok(note.innerHTML.includes(escapeHtml(f.t("Für den gewählten Zeitraum liegen noch keine Browserbesuche vor."))));
+    assert.ok(!note.innerHTML.includes("nicht erfasst") && !note.innerHTML.includes("not recorded"));
+    const measuredZero = measuredSuite("watten");
+    measuredZero.overview.sessions = 0;
+    measuredZero.pwa.confirmed_installations = 0;
+    assert.equal(watten.trafficMeasured(measuredZero), true);
+    assert.equal(watten.countText(measuredZero.pwa.confirmed_installations, f.number), "0");
+  });
+}
+
 class FakeElement extends EventTarget {
   innerHTML = ""; textContent = ""; hidden = false; disabled = false; value = ""; max = 0; clientWidth = 0; clientHeight = 0;
   dataset = {}; style = { setProperty() {} }; classList = { add() {}, remove() {}, toggle() {} };
@@ -236,7 +338,7 @@ for (const language of ["de", "en"]) {
     const unknown = language === "en" ? "Not measured for Watten" : "Für Watten nicht erfasst";
     const coverage = watten.overviewCoverage(data);
     assert.equal(coverage.unknown, true);
-    assert.equal(f.t(coverage.hint), unknown);
+    assert.equal(f.t(coverage.hint), f.t("Noch keine Besuchsmessung"));
     assert.equal(f.t(coverage.completedLabel), language === "en" ? "Games completed" : "Partien beendet");
     assert.equal(watten.trafficMeasured(data), false);
     assert.equal(watten.countText(data.pwa.confirmed_installations, f.number), "—");
@@ -272,7 +374,7 @@ for (const language of ["de", "en"]) {
     assert.equal($("dailySelection").innerHTML, "");
     for (const id of ["heatmapMetric", "heatmapDay", "heatmapHour"]) assert.equal($(id).disabled, true, id);
     assert.ok(toggles.every(toggle => toggle.disabled));
-    assert.equal($("journeySample").textContent, f.t("Seitenwege werden für Watten nicht erfasst."));
+    assert.equal($("journeySample").textContent, f.t("Für diesen Zeitraum liegen noch keine beobachteten Seitenwege vor."));
     assert.ok(!$("journeySample").textContent.includes("—"));
 
     // The same instance returns to interactive measured views for legacy data.
@@ -661,18 +763,8 @@ for (const language of ["de", "en"]) {
   });
 }
 
-test("the actual dashboard wires geography coverage through its game-filter render", async () => {
-  const f = fmt("en"), { $ } = dashboardDom();
-  const win = Object.assign(makeWindow(), { requestAnimationFrame: () => 1, cancelAnimationFrame() {},
-    matchMedia: () => ({ matches: true, addEventListener() {} }), ZDWA_I18N: { t: f.t, locale: f.locale } });
-  globalThis.window = win;
-  $("dashboardGame").value = "all";
-  $("dashboardDays").value = "7";
-  win.fetch = async url => {
-    const game = new URL(url, "https://example.test").searchParams.get("game");
-    return reply(200, game === "watten" ? native() : legacy(game, { available_games: ALL, geography: [],
-      ...(game === "hausdepp" ? { metric_coverage: { traffic: "not_instrumented" } } : {}) }));
-  };
+let dashboardImports = 0;
+async function loadRealDashboard() {
   const moduleUrl = source => `data:text/javascript;base64,${Buffer.from(source).toString("base64")}`;
   const auth = moduleUrl(`export const escapeHtml = ${escapeHtml.toString()}; export const loadAuth = async () => (${JSON.stringify(account(7))});`);
   const favorites = moduleUrl('export const createFavorites = () => Object.fromEntries(["beforeMetricsRender", "setUser", "setEnabled", "refresh", "clear"].map(key => [key, () => {}]));');
@@ -685,10 +777,26 @@ test("the actual dashboard wires geography coverage through its game-filter rend
   for (const path of ["./dashboard/watten.js", "./dashboard/analysis.js", "./dashboard/voice.js"]) {
     dashboard = dashboard.replace(JSON.stringify(path), JSON.stringify(moduleUrl(await readFile(new URL(`../frontend/${path.slice(2)}`, import.meta.url), "utf8"))));
   }
+  // Each instance binds to the document/window of this scenario.
+  await import(moduleUrl(`${dashboard}\n// scenario ${++dashboardImports}`));
+}
+
+test("the actual dashboard wires geography coverage through its game-filter render", async () => {
+  const f = fmt("en"), { $ } = dashboardDom();
+  const win = Object.assign(makeWindow(), { requestAnimationFrame: () => 1, cancelAnimationFrame() {},
+    matchMedia: () => ({ matches: true, addEventListener() {} }), ZDWA_I18N: { t: f.t, locale: f.locale } });
+  globalThis.window = win;
+  $("dashboardGame").value = "all";
+  $("dashboardDays").value = "7";
+  win.fetch = async url => {
+    const game = new URL(url, "https://example.test").searchParams.get("game");
+    return reply(200, game === "watten" ? native() : legacy(game, { available_games: ALL, geography: [],
+      ...(game === "hausdepp" ? { metric_coverage: { traffic: "not_instrumented" } } : {}) }));
+  };
   const html = await readFile(new URL("../app/static/dashboard.html", import.meta.url), "utf8");
   assert.match(html, /id="geographyUnmeasured"[^>]*hidden/);
   try {
-    await import(moduleUrl(dashboard));
+    await loadRealDashboard();
     await until(() => $("geographyViz").dataset.updates === "1");
     assert.equal($("geographyViz").hidden, false);
     $("dashboardGame").value = "watten";
@@ -697,14 +805,14 @@ test("the actual dashboard wires geography coverage through its game-filter rend
     assert.equal($("geographyViz").hidden, true, "the real dashboard hides its globe's visible zero counters");
     assert.ok($("geographyUnmeasured").innerHTML.includes("Not measured for Watten"));
     assert.equal($("countryNote").textContent, f.t("Herkunft wird für Watten nicht erfasst."));
-    assert.equal($("collectionNote").textContent, f.t("Für Watten werden keine Browserbesuche erfasst; Partien und Live-Tische stammen vom Server."));
+    assert.equal($("collectionNote").textContent, f.t("Noch keine Besuchsmessung"));
     $("dashboardGame").value = "hausdepp";
     $("dashboardGame").dispatchEvent(new Event("change"));
     await until(() => $("geographyViz").dataset.updates === "3");
     assert.equal($("geographyViz").hidden, true);
     const generic = f.t("Für diesen Filter werden keine Browserbesuche gemessen.");
     assert.deepEqual({ country: $("countryNote").textContent, collection: $("collectionNote").textContent },
-      { country: generic, collection: generic }, "neither actual legacy note may claim that its product is Watten");
+      { country: generic, collection: f.t("Noch keine Besuchsmessung") }, "neither actual legacy note may claim that its product is Watten");
     assert.ok(!$("geographyUnmeasured").innerHTML.includes("Watten"));
     $("dashboardGame").value = "zdwa";
     $("dashboardGame").dispatchEvent(new Event("change"));
@@ -714,13 +822,89 @@ test("the actual dashboard wires geography coverage through its game-filter rend
   } finally { win.dispatchEvent(pageEvent("pagehide", true)); }
 });
 
+test("the actual dashboard renders native telemetry and all modes, then removes unauthorized native designs", async () => {
+  const f = fmt("en"), { $ } = dashboardDom();
+  const win = Object.assign(makeWindow(), { requestAnimationFrame: () => 1, cancelAnimationFrame() {},
+    matchMedia: () => ({ matches: true, addEventListener() {} }), ZDWA_I18N: { t: f.t, locale: f.locale } });
+  globalThis.window = win;
+  $("dashboardGame").value = "all";
+  $("dashboardDays").value = "7";
+  let allowed = ALL;
+  win.fetch = async url => reply(200, measuredSuite(new URL(url, "https://example.test").searchParams.get("game"), allowed));
+  try {
+    await loadRealDashboard();
+    await until(() => $("gameModes").innerHTML.includes("Watten"));
+    assert.equal(($("gameModes").innerHTML.match(/class="mode-chip"/g) || []).length, 11, "no silent eight-mode limit");
+    assert.equal(($("designComparison").innerHTML.match(/class="design-duel"/g) || []).length, 4);
+    assert.match($("designLooks").innerHTML, /data-look="hausdepp:classic"/);
+    assert.match($("designLooks").innerHTML, /data-look="watten:classic"/);
+    assert.match($("designLooks").innerHTML, /data-look="watten:tirol"/);
+    assert.match($("overviewMetrics").innerHTML, /Games\/rounds completed/);
+    assert.equal($("geographyViz").hidden, false);
+    assert.equal($("pwaInstalledCount").textContent, "1");
+    assert.ok(!$("gameCards").innerHTML.includes("MISSING:"));
+    assert.ok(!$("collectionNote").textContent.includes("MISSING:"));
+    assert.ok($("gameCards").innerHTML.includes(f.t("Begrenzte Stichprobe der neuesten Ergebnisse")));
+
+    $("dashboardGame").value = "watten";
+    $("dashboardGame").dispatchEvent(new Event("change"));
+    await until(() => $("designLooks").dataset.groups === "1");
+    assert.ok($("collectionNote").textContent.startsWith("Watten:"));
+    assert.match($("pageRanks").innerHTML, /At the game table/);
+    assert.ok(!$("pageRanks").innerHTML.includes("Other page"), "native path names use the shared page labels");
+    assert.ok(!$("wattenMonitoringNote").textContent.includes("not recorded for Watten"));
+    assert.ok(!$("designLooks").innerHTML.includes("hausdepp:"));
+
+    // An authorization response is authoritative even if extra look rows were
+    // supplied by an old cache. Existing native output must disappear.
+    allowed = ["zdwa", "zilch"];
+    $("dashboardGame").value = "all";
+    $("dashboardGame").dispatchEvent(new Event("change"));
+    await until(() => $("designLooks").dataset.groups === "3");
+    assert.ok(!/hausdepp:|watten:/.test($("designLooks").innerHTML));
+    assert.ok(!/Hausdepp|Watten/.test($("gameCards").innerHTML));
+    assert.ok(!/Hausdepp|Watten/.test($("collectionNote").textContent));
+    assert.equal(($("gameModes").innerHTML.match(/class="mode-chip"/g) || []).length, 6);
+  } finally { win.dispatchEvent(pageEvent("pagehide", true)); }
+});
+
+test("unknown daily history is omitted from curves and average-time trends use time per visit", async () => {
+  const f = fmt("en"), { $ } = dashboardDom();
+  const win = Object.assign(makeWindow(), { requestAnimationFrame: () => 1, cancelAnimationFrame() {},
+    matchMedia: () => ({ matches: true, addEventListener() {} }), ZDWA_I18N: { t: f.t, locale: f.locale } });
+  globalThis.window = win;
+  $("dashboardGame").value = "all";
+  $("dashboardDays").value = "7";
+  const data = measuredSuite("all");
+  data.daily = [
+    { date: "2026-10-16", sessions: null, page_views: null, active_seconds: null, completed_games: 1, traffic_coverage: "none" },
+    { date: "2026-10-17", sessions: 1, page_views: 2, active_seconds: 10, completed_games: 1, traffic_coverage: "partial" },
+    { date: "2026-10-18", sessions: 4, page_views: 5, active_seconds: 20, completed_games: 1, traffic_coverage: "observed_events_only" },
+  ];
+  data.comparison = { overview: {} };
+  win.fetch = async () => reply(200, data);
+  try {
+    await loadRealDashboard();
+    await until(() => $("dailyChart").innerHTML.includes("<svg"));
+    assert.equal($("dailyCursor").max, 1, "two measured days, no invented zero point for the first day");
+    assert.match($("dailySelection").innerHTML, /18\/10\/2026/);
+    assert.match($("dailyTable").innerHTML, /2026-10-16<\/td><td>—<\/td><td>—<\/td>/);
+    assert.match($("dailyTable").innerHTML, /Games\/rounds completed/);
+    assert.match($("comparisonNote").textContent, /remain unknown/);
+    const average = $("overviewMetrics").innerHTML.match(/data-favorite-id="metric-avg-active-seconds"[\s\S]*?<\/article>/)[0];
+    const total = $("overviewMetrics").innerHTML.match(/data-favorite-id="metric-active-seconds"[\s\S]*?<\/article>/)[0];
+    assert.match(average, /points="0,3 200,14"/, "average falls from 10 s to 5 s per visit");
+    assert.match(total, /points="0,14 200,3"/, "total active time rises from 10 s to 20 s");
+  } finally { win.dispatchEvent(pageEvent("pagehide", true)); }
+});
+
 test("existing products, labels and all three dashboard designs keep their measured views; Watten adds no tournaments or profiles", () => {
   assert.deepEqual(watten.gameSelection(["zdwa", "zilch", "hausdepp"], "hausdepp"),
     { allowed: ["zdwa", "zilch", "hausdepp"], value: "hausdepp", allLabel: "Alle Spiele", description: "Dein Kontrollzentrum für alle Spiele." });
   assert.equal(watten.gameSelection(["zdwa", "zilch"], "zilch").allLabel, "Beide Spiele");
   assert.deepEqual(watten.visibleGames({ period: { game: "zilch" } }), ["zilch"], "legacy responses without available_games");
   assert.deepEqual(watten.overviewCoverage({ period: { game: "hausdepp" } }),
-    { unknown: true, hint: "Browserbesuche bisher nicht erfasst", completedLabel: "Runden beendet" });
+    { unknown: false, hint: null, completedLabel: "Runden beendet" });
   assert.equal(watten.overviewCoverage(legacy("zdwa")).unknown, false);
   assert.equal(watten.overviewCoverage({}).unknown, false);
   assert.equal(watten.trafficSourceNote(legacy("all"), fmt("de")),

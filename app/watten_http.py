@@ -6,6 +6,7 @@ from fastapi import HTTPException
 from sqlalchemy.exc import SQLAlchemyError
 from starlette.responses import JSONResponse
 
+from .analytics import record_game_action
 from .auth import require_csrf, resolve_session
 from .game_state import games
 from .watten_access import require_watten_access
@@ -59,6 +60,7 @@ def create_watten_http(request, req) -> JSONResponse:
     except SQLAlchemyError as exc:
         raise HTTPException(status_code=503, detail="watten_storage_unavailable", headers=_HEADERS) from exc
     games[game["_id"]] = game
+    record_game_action("watten", "game_created", game.get("_mode"))
     return _response({"game_id": game["_id"]})
 
 

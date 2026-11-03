@@ -252,10 +252,7 @@ def configure_watten_game(game: dict, recipe: WattenRecipe, identity, passphrase
     if recipe.password_required != bool(passphrase):
         raise ValueError("watten_password_option_mismatch")
     room = create_room(game["_id"], recipe, host_account=identity.user_id, now=utcnow(), wait_seconds=3600)
-    from .watten_cpu import available_cpu_names
-
-    pool = iter(available_cpu_names((identity.username,)))
-    names = (("p1", identity.username), *tuple((cpu.participant_id, next(pool)) for cpu in room.cpus))
+    names = tuple(_cpu_names(room, {"p1": identity.username}).items())
     from .watten_features import creation_activators
 
     game["_watten"] = WattenRuntime(room, None, names,
@@ -512,13 +509,20 @@ def apply_runtime_action(game: dict, account: int, player: str, data: dict, *, e
 def _cpu_names(room: WattenRoom, names: dict[str, str]) -> dict[str, str]:
     from .watten_cpu import available_cpu_names
 
-    used = {names[item.participant_id].casefold() for item in room.members}
+    used = {names[item.participant_id].strip().casefold() for item in room.members}
     result = dict(names)
+    missing = []
+    # Reserve every surviving CPU before choosing a new name. A newly placed
+    # CPU must not take a later seat's name and rename its existing occupant.
     for cpu in room.cpus:
         current = result.get(cpu.participant_id)
-        if current is None or current.casefold() in used:
-            current = next(iter(available_cpu_names(used)))
-            result[cpu.participant_id] = current
+        if current is None or current.strip().casefold() in used:
+            missing.append(cpu)
+        else:
+            used.add(current.strip().casefold())
+    for cpu in missing:
+        current = secrets.choice(available_cpu_names(used))
+        result[cpu.participant_id] = current
         used.add(current.casefold())
     return result
 

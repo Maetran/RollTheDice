@@ -6,7 +6,7 @@ import { createFavorites } from "./dashboard/favorites.js";
 import { renderVoiceUsage } from "./dashboard/voice.js";
 import {
   DASHBOARD_GAMES, countText, createDashboardLifecycle, dashboardGameName, gameSelection, overviewCoverage, presentGeography,
-  trafficMeasured, trafficSourceNote, unmeasuredCopy, visibleGames, wattenGameCard, wattenModeLabel, wattenMonitoringNote,
+  trafficCollectionNote, trafficMeasured, trafficSourceNote, unmeasuredCopy, visibleGames, wattenGameCard, resultDurationNote, wattenModeLabel, wattenMonitoringNote,
 } from "./dashboard/watten.js";
 
 const REFRESH_MS = 30000;
@@ -69,6 +69,9 @@ const ACTION_LABELS = {
   open_account: "Konto öffnen", open_settings: "Einstellungen öffnen", theme_change: "Darstellung wechseln",
   language_change: "Sprache wechseln", game_restart: "Neue Partie starten", game_created: "Spielraum angelegt",
   game_aborted: "Partie abgebrochen",
+  start_game: "Partie starten", play_card: "Karte spielen", bid: "Bieten", respond_bid: "Auf Gebot antworten",
+  choose_contract: "Ansage wählen", mode_four: "Zu viert wählen", mode_five: "Zu fünft wählen",
+  mode_six: "Zu sechst wählen", mode_tournament: "Turnier wählen",
 };
 const PAGE_LABELS = { "/": "Lobby", "/spiel": "Am Spieltisch", "/zuschauen": "Zuschauen", "/regeln": "Spielregeln", "/spieler": "Spieler & Ranking", "/rangabzeichen": "Rangabzeichen", "/bestenlisten": "Bestenlisten", "/historie": "Historie", "/statistiken": "Statistiken", "/erfolge": "Erfolge", "/offline": "Offline-Seite", "/ergebnis": "Spielergebnis", "/konto": "Konto" };
 const MODE_LABELS = { "1": "Solo", "2": "Zu zweit", "3": "Zu dritt", "2v2": "Teamspiel", solo: "Solo", duo: "Zu zweit", trio: "Zu dritt", four: "Zu viert", five: "Zu fünft", six: "Zu sechst", team: "Teamspiel", multiplayer: "Zu zweit", cpu: "Gegen den Würfelwirt", normal: "Normal", hardcore: "Hardcore" };
@@ -79,10 +82,14 @@ const DESIGN_GROUPS = [
   { title: "ZDWA Neu", game: "zdwa", looks: [["zdwa:new:light", "Hell"], ["zdwa:new:dark", "Dunkel"], ["zdwa:new:classic", "Classic"]] },
   { title: "ZDWA Bisher", game: "zdwa", looks: [["zdwa:old:light", "Hell"], ["zdwa:old:dark", "Dunkel"], ["zdwa:old:classic", "Classic"]] },
   { title: "Zilch", game: "zilch", looks: [["zilch:tavern", "Wirtshaustisch"], ["zilch:lcars", "LCARS"]] },
+  { title: "Hausdepp", game: "hausdepp", looks: [["hausdepp:classic", "Classic"]] },
+  { title: "Watten", game: "watten", looks: [["watten:classic", "Classic"], ["watten:tirol", "Tirol"]] },
 ];
 const DESIGN_SIDES = {
   zdwa: [{ label: "Neu", looks: DESIGN_GROUPS[0].looks.map(([look]) => look) }, { label: "Bisher", looks: DESIGN_GROUPS[1].looks.map(([look]) => look) }],
   zilch: [{ label: "Wirtshaustisch", looks: ["zilch:tavern"] }, { label: "LCARS", looks: ["zilch:lcars"] }],
+  hausdepp: [{ label: "Classic", looks: ["hausdepp:classic"] }],
+  watten: [{ label: "Classic", looks: ["watten:classic"] }, { label: "Tirol", looks: ["watten:tirol"] }],
 };
 
 const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -109,8 +116,8 @@ function overview(data) {
     { id: "live-sessions", label: "Aktive Besuche", value: totals.live_sessions, hint: "Letzte 2 Minuten", live: true },
     { id: "sessions", label: "Besuche", value: totals.sessions, hint: "Anonyme Tab-Sitzungen", series: "sessions", comparison: "sessions" },
     { id: "page-views", label: "Seitenaufrufe", value: totals.page_views, hint: "Im gewählten Zeitraum", series: "page_views", comparison: "page_views" },
-    { id: "active-seconds", label: "Aktive Zeit", value: duration(totals.active_seconds), hint: "Sichtbar und aktiv", series: "active_seconds", comparison: "active_seconds" },
-    { id: "avg-active-seconds", label: "Ø Zeit je Besuch", value: duration(totals.avg_active_seconds), hint: "Sichtbar und aktiv", series: "active_seconds", comparison: "avg_active_seconds" },
+    { id: "active-seconds", label: "Aktive Zeit", value: duration(totals.active_seconds), hint: "Sichtbar und aktiv", series: "active_seconds", time: true, comparison: "active_seconds" },
+    { id: "avg-active-seconds", label: "Ø Zeit je Besuch", value: duration(totals.avg_active_seconds), hint: "Sichtbar und aktiv", series: "avg_active_seconds", time: true, comparison: "avg_active_seconds" },
     { id: "completed-games", label: "Partien beendet", value: totals.completed_games, hint: "Gespeicherte Ergebnisse", series: "completed_games", comparison: "completed_games" },
   ];
   const coverage = overviewCoverage(data);
@@ -126,10 +133,10 @@ function overview(data) {
   byId("overviewMetrics").innerHTML = metrics.map(metric => {
     const unknown = coverage.unknown && metric.id !== "completed-games";
     const label = metric.id === "completed-games" ? coverage.completedLabel : metric.label;
-    return `<article class="metric-card" data-favorite-id="metric-${metric.id}" data-favorite-kind="metric"><p class="metric-label">${e(t(label))}${metric.live ? '<span class="signal-dot" aria-hidden="true" style="margin-left:8px"></span>' : ""}</p><div class="metric-value">${unknown ? "—" : metric.series === "active_seconds" ? e(metric.value) : number(metric.value)}</div><p class="metric-hint">${e(t(unknown ? coverage.hint : metric.hint))}</p>${comparison(metric)}${sparkline(!unknown && metric.series ? days.map(day => count(day[metric.series])) : [])}</article>`;
+    return `<article class="metric-card" data-favorite-id="metric-${metric.id}" data-favorite-kind="metric"><p class="metric-label">${e(t(label))}${metric.live ? '<span class="signal-dot" aria-hidden="true" style="margin-left:8px"></span>' : ""}</p><div class="metric-value">${unknown ? "—" : metric.time ? e(metric.value) : number(metric.value)}</div><p class="metric-hint">${e(t(unknown ? coverage.hint : metric.hint))}</p>${comparison(metric)}${sparkline(!unknown && metric.series ? days.filter(day => day[metric.series === "avg_active_seconds" ? "active_seconds" : metric.series] != null).map(day => metric.series === "avg_active_seconds" ? count(day.active_seconds) / Math.max(1, count(day.sessions)) : count(day[metric.series])) : [])}</article>`;
   }).join("");
   const sources = trafficSourceNote(data, { t });
-  byId("comparisonNote").textContent = data.comparison ? `${t("Heute (UTC) ist noch unvollständig. Verglichen wird mit den vorangehenden Kalendertagen; fehlende ältere Messwerte ergeben keinen Wachstumstrend.")}${sources ? ` ${sources}` : ""}` : "";
+  byId("comparisonNote").textContent = data.comparison ? `${t("Heute (UTC) ist noch unvollständig. Verglichen wird mit den vorangehenden Kalendertagen; fehlende ältere Messwerte ergeben keinen Wachstumstrend.")}${sources ? ` ${sources}` : ""}${days.some(day => ["none", "partial"].includes(day.traffic_coverage)) ? ` ${t("Tage vor der ersten Besuchsmessung bleiben unbekannt. Bei gemischter Spielabdeckung werden nur beobachtete Werte gezeigt.")}` : ""}` : "";
 }
 
 function dailyChart(data) {
@@ -158,7 +165,7 @@ function dailyChart(data) {
     const title = `${t("Besuche")}: ${number(data.overview?.sessions)} · ${t("Seitenaufrufe")}: ${number(data.overview?.page_views)}`;
     byId("dailyChart").innerHTML = `<svg viewBox="0 0 ${width} ${height}" role="img" aria-labelledby="dailyChartTitle"><title id="dailyChartTitle">${e(title)}</title><defs><linearGradient id="trafficFade" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#6ee7de" stop-opacity=".19"/><stop offset="1" stop-color="#6ee7de" stop-opacity="0"/></linearGradient></defs>${axis}<polygon points="${x(0)},${y(0)} ${points("sessions")} ${x(rows.length - 1)},${y(0)}" fill="url(#trafficFade)"/><polyline class="chart-line" stroke="#f4c77b" points="${points("page_views")}"/><polyline class="chart-line" stroke="#6ee7de" points="${points("sessions")}"/>${rows.length === 1 ? `<circle cx="${x(0)}" cy="${y(rows[0].sessions)}" r="4" fill="#6ee7de"/><circle cx="${x(0)}" cy="${y(rows[0].page_views)}" r="4" fill="#f4c77b"/>` : ""}${labels}</svg>`;
   }
-  byId("dailyTable").innerHTML = `<div class="data-scroll"><table><caption class="sr-only">${e(t("Besuche und Seitenaufrufe je UTC-Tag"))}</caption><thead><tr>${["UTC-Tag", "Besuche", "Seitenaufrufe", "Aktive Zeit", "Partien beendet"].map(label => `<th scope="col">${e(t(label))}</th>`).join("")}</tr></thead><tbody>${rows.map(row => `<tr><td>${e(row.date)}</td><td>${number(row.sessions)}</td><td>${number(row.page_views)}</td><td>${e(duration(row.active_seconds))}</td><td>${number(row.completed_games)}</td></tr>`).join("")}</tbody></table></div>`;
+  byId("dailyTable").innerHTML = `<div class="data-scroll"><table><caption class="sr-only">${e(t("Besuche und Seitenaufrufe je UTC-Tag"))}</caption><thead><tr>${["UTC-Tag", "Besuche", "Seitenaufrufe", "Aktive Zeit", overviewCoverage(data).completedLabel].map(label => `<th scope="col">${e(t(label))}</th>`).join("")}</tr></thead><tbody>${rows.map(row => `<tr><td>${e(row.date)}</td><td>${number(row.sessions)}</td><td>${number(row.page_views)}</td><td>${e(duration(row.active_seconds))}</td><td>${number(row.completed_games)}</td></tr>`).join("")}</tbody></table></div>`;
 }
 
 function hourlyChart(rows = [], copy = null) {
@@ -250,7 +257,7 @@ function countryName(value) {
 
 function pageLabel(value) {
   const path = String(value || "/");
-  const normalized = ["/zilch", "/hausdepp"].includes(path) ? "/" : path.replace(/^\/(zilch|hausdepp)\//, "/");
+  const normalized = ["/zdwa", "/zilch", "/hausdepp", "/watten"].includes(path) ? "/" : path.replace(/^\/(zdwa|zilch|hausdepp|watten)\//, "/");
   return t(PAGE_LABELS[normalized] || "Andere Seite");
 }
 
@@ -264,24 +271,25 @@ function gameCards(data) {
   byId("gameCards").innerHTML = games.map(game => {
     const row = data.games?.find(item => item.game === game) || {};
     if (game === "watten") return wattenGameCard(row, { t, e, number, duration });
-    const details = [["Teilnahmen", number(row.participants || 0)], [game === "hausdepp" ? "Ø Rundendauer" : "Ø Partiedauer", duration(row.avg_duration_seconds)]];
+    const details = [["Teilnahmen (Plätze inkl. Computer)", number(row.participants)], [game === "hausdepp" ? "Ø Rundendauer" : "Ø Partiedauer", duration(row.avg_duration_seconds)]];
     if (game === "hausdepp") details.push(
-      ["Tische live", number(row.live?.active_tables)], ["Menschen verbunden", number(row.live?.connected_humans)],
+      ["Tische live", number(row.live?.active_tables)], ["Verbundene Spielerplätze", number(row.live?.connected_seats ?? row.live?.connected_humans)],
       ["Computerplätze", number(row.live?.cpu_seats)], ["Aktive Turniere", number(row.live?.active_tournaments)],
       ["Rundenpausen", number(row.live?.interround_tables)], ["Turniere beendet", number(row.completed_tournaments)],
       ["Erfasste Abbrüche", number(row.abandoned_games)],
     );
-    return `<div class="game-card" data-game="${e(game)}"><div class="game-card-header"><strong>${gameName(game)}</strong><span aria-hidden="true">${game === "hausdepp" ? "♠" : game === "zdwa" ? "⚄" : "⚅"}</span></div><div class="game-card-number">${number(row.completed_games || 0)}</div><p class="game-card-caption">${e(t(game === "hausdepp" ? "Runden beendet" : "Partien beendet"))}</p><div class="game-card-details">${details.map(([label, value]) => `<span>${e(t(label))}<strong>${e(value)}</strong></span>`).join("")}</div></div>`;
+    const durationNote = row.duration_sample_count == null ? "" : resultDurationNote(row, { t, number, duration });
+    return `<div class="game-card" data-game="${e(game)}"><div class="game-card-header"><strong>${gameName(game)}</strong><span aria-hidden="true">${game === "hausdepp" ? "♠" : game === "zdwa" ? "⚄" : "⚅"}</span></div><div class="game-card-number">${number(row.completed_games)}</div><p class="game-card-caption">${e(t(game === "hausdepp" ? "Runden beendet" : "Partien beendet"))}</p><div class="game-card-details">${details.map(([label, value]) => `<span>${e(t(label))}<strong>${e(value)}</strong></span>`).join("")}</div>${durationNote ? `<p class="game-card-caption">${e(durationNote)}</p>` : ""}</div>`;
   }).join("");
   const hausdepp = games.includes("hausdepp");
   byId("hausdeppMonitoringNote").hidden = !hausdepp;
-  byId("hausdeppMonitoringNote").textContent = hausdepp ? t("Hausdepp: Ergebnisse und Live-Tische werden serverseitig gezählt. Browserbesuche wurden bisher nicht erfasst. Dauer bleibt bei älteren Ergebnissen unbekannt. Abbrüche werden ab dieser Version erfasst; ältere Abbrüche werden nicht nachgetragen.") : "";
+  byId("hausdeppMonitoringNote").textContent = hausdepp ? t("Hausdepp: Runden, Turniere, Abbrüche und Live-Tische stammen vom Server. Browserbesuche, Seitenwege, aktive Zeit, Designs und PWA-Ereignisse werden anonym erfasst. Historisch fehlende Messwerte werden nicht nachgetragen. Teilnahmen zählen Plätze inklusive Computer, verbundene Spielerplätze können dasselbe Konto an mehreren Tischen enthalten.") : "";
   const watten = wattenMonitoringNote(data, { t, number, duration });
   byId("wattenMonitoringNote").hidden = !watten;
   byId("wattenMonitoringNote").textContent = watten;
   // Watten result modes are seat counts; they carry no rule profile.
   const modeLabel = row => row.game === "watten" ? t(wattenModeLabel(row.mode)) : `${t(MODE_LABELS[row.mode] || "Anderer Modus")}${row.hardcore ? " · Hardcore" : ""}`;
-  byId("gameModes").innerHTML = (data.modes || []).filter(row => games.includes(row.game)).slice(0, 8).map(row => `<span class="mode-chip">${gameName(row.game)} · ${e(modeLabel(row))}<strong>${number(row.completed_games)}</strong></span>`).join("");
+  byId("gameModes").innerHTML = (data.modes || []).filter(row => games.includes(row.game)).map(row => `<span class="mode-chip">${gameName(row.game)} · ${e(modeLabel(row))}<strong>${number(row.completed_games)}</strong></span>`).join("");
 }
 
 // The stored account choice only applies while the 2026 design is released
@@ -313,8 +321,7 @@ function designAccounts(choices, mode, share) {
 
 function designUsage(data) {
   const usage = data.design_usage || {};
-  const filter = data.period?.game || "all";
-  const games = filter === "hausdepp" || filter === "watten" ? [] : filter === "zdwa" || filter === "zilch" ? [filter] : ["zdwa", "zilch"];
+  const games = visibleGames(data).filter(game => DESIGN_SIDES[game]);
   const times = new Map();
   const known = new Set(DESIGN_GROUPS.flatMap(group => group.looks.map(([look]) => look)));
   for (const row of usage.looks || []) {
@@ -325,7 +332,7 @@ function designUsage(data) {
   const time = look => times.get(look) || { seconds: 0, table: 0 };
   const total = looks => looks.reduce((sum, look) => ({ seconds: sum.seconds + time(look).seconds, table: sum.table + time(look).table }), { seconds: 0, table: 0 });
   const gameSeconds = Object.fromEntries(games.map(game => [game, total(DESIGN_SIDES[game].flatMap(entry => entry.looks)).seconds]));
-  const tone = look => DESIGN_SIDES[look.startsWith("zilch:") ? "zilch" : "zdwa"][0].looks.includes(look) ? "is-a" : "is-b";
+  const tone = look => DESIGN_SIDES[look.split(":", 1)[0]]?.[0].looks.includes(look) ? "is-a" : "is-b";
   const share = (value, of) => of ? value / of * 100 : 0;
   // Totals stay in hours (no day unit) so designs compare at a glance; the
   // exact seconds are one hover away and listed in the table.
@@ -340,14 +347,15 @@ function designUsage(data) {
   const firstDay = /^\d{4}-\d{2}-\d{2}$/.test(String(usage.first_day || "")) ? usage.first_day : null;
   const measured = games.some(game => gameSeconds[game] > 0);
   byId("designComparison").innerHTML = measured ? games.map(game => {
-    const [a, b] = DESIGN_SIDES[game].map(entry => ({ ...entry, ...total(entry.looks) }));
-    const sum = a.seconds + b.seconds;
+    const sides = DESIGN_SIDES[game].map(entry => ({ ...entry, ...total(entry.looks) }));
+    const sum = sides.reduce((seconds, side) => seconds + side.seconds, 0);
     const name = gameName(game);
     if (!sum) return `<div class="design-duel is-empty" data-game="${game}"><div class="design-duel-head"><h4>${e(name)}</h4></div><p class="design-duel-empty">${e(t("Keine sichtbare Zeit im gewählten Zeitraum"))}</p></div>`;
-    const label = `${name}: ${[a, b].map(entry => `${t(entry.label)} ${percent(share(entry.seconds, sum))}%`).join(", ")}`;
-    const values = [a, b].map((entry, index) => `<div class="design-side ${index ? "is-b" : "is-a"}"><dt><i class="legend-dot" aria-hidden="true"></i>${e(t(entry.label))}</dt><dd><strong class="design-share">${percent(share(entry.seconds, sum))}<small>%</small></strong>${clock(entry.seconds)}<small class="design-side-table">${e(t("Am Spieltisch"))}: ${e(span(entry.table))}</small></dd></div>`).join("");
-    return `<div class="design-duel" data-game="${game}"><div class="design-duel-head"><h4>${e(name)}</h4><span>${e(t("Gesamt"))} ${clock(sum)}</span></div><div class="design-split" role="img" aria-label="${e(label)}"><span class="is-a" style="width:${share(a.seconds, sum)}%"></span><span class="is-b" style="width:${share(b.seconds, sum)}%"></span></div><dl class="design-sides">${values}</dl></div>`;
-  }).join("") : filter === "watten" ? empty("Für Watten nicht erfasst", "Design-Nutzung wird für Watten nicht erfasst.") : empty(firstDay ? "Keine Design-Messwerte im Zeitraum" : "Noch keine Design-Messwerte", firstDay ? "Im gewählten Zeitraum wurde keine sichtbare Zeit gemessen." : "Sobald jemand die Spiele nutzt, erscheint hier die sichtbare Zeit je Design.");
+    const label = `${name}: ${sides.map(entry => `${t(entry.label)} ${percent(share(entry.seconds, sum))}%`).join(", ")}`;
+    const values = sides.map((entry, index) => `<div class="design-side ${index ? "is-b" : "is-a"}"><dt><i class="legend-dot" aria-hidden="true"></i>${e(t(entry.label))}</dt><dd><strong class="design-share">${percent(share(entry.seconds, sum))}<small>%</small></strong>${clock(entry.seconds)}<small class="design-side-table">${e(t("Am Spieltisch"))}: ${e(span(entry.table))}</small></dd></div>`).join("");
+    const split = sides.map((entry, index) => `<span class="${index ? "is-b" : "is-a"}" style="width:${share(entry.seconds, sum)}%"></span>`).join("");
+    return `<div class="design-duel" data-game="${game}"><div class="design-duel-head"><h4>${e(name)}</h4><span>${e(t("Gesamt"))} ${clock(sum)}</span></div><div class="design-split" role="img" aria-label="${e(label)}">${split}</div><dl class="design-sides">${values}</dl></div>`;
+  }).join("") : empty(firstDay ? "Keine Design-Messwerte im Zeitraum" : "Noch keine Design-Messwerte", firstDay ? "Im gewählten Zeitraum wurde keine sichtbare Zeit gemessen." : "Sobald jemand die Spiele nutzt, erscheint hier die sichtbare Zeit je Design.");
   const choices = usage.zdwa_account_choices && games.includes("zdwa") ? usage.zdwa_account_choices : null;
   byId("designAccountsPanel").hidden = !choices;
   byId("designGrid").classList.toggle("is-single", !choices);
@@ -372,7 +380,7 @@ function designUsage(data) {
     const value = time(look);
     return `<tr><th scope="row">${e(t(group.title))} · ${e(t(label))}</th><td>${number(value.seconds)}</td><td>${number(value.table)}</td><td>${number(value.seconds - value.table)}</td><td>${percent(share(value.seconds, gameSeconds[group.game]))}%</td></tr>`;
   })).join("")}</tbody></table></div>` : "";
-  byId("designCollectionNote").textContent = filter === "watten" ? t("Design-Nutzung wird für Watten nicht erfasst.") : firstDay ?`${t("Design-Nutzung erfasst seit")} ${utcDay(`${firstDay}T00:00:00Z`)} (UTC). ${t("Aufbewahrung")}: ${number(count(usage.retention_days))} ${t("Tage")}.` : t("Die Messung der Design-Nutzung beginnt mit diesem Release.");
+  byId("designCollectionNote").textContent = firstDay ?`${t("Design-Nutzung erfasst seit")} ${utcDay(`${firstDay}T00:00:00Z`)} (UTC). ${t("Aufbewahrung")}: ${number(count(usage.retention_days))} ${t("Tage")}.` : t("Die Messung der Design-Nutzung beginnt mit diesem Release.");
 }
 
 function serverMetrics(server = {}) {
@@ -388,7 +396,7 @@ function serverMetrics(server = {}) {
     const tone = normalized >= 90 ? "danger" : normalized >= 75 ? "warning" : "";
     return `<div class="server-gauge"><div class="gauge-visual" role="img" aria-label="${e(t(gauge.title))}: ${value == null ? e(t("Nicht verfügbar")) : `${percent(value)}%`}"><svg viewBox="0 0 100 100" aria-hidden="true"><circle class="gauge-track" cx="50" cy="50" r="43"/><circle class="gauge-meter ${tone}" cx="50" cy="50" r="43" stroke-dasharray="${circle}" stroke-dashoffset="${circle * (1 - normalized / 100)}"/></svg><span class="gauge-number" aria-hidden="true">${value == null ? "—" : number(value)}${value == null ? "" : "<small>%</small>"}</span></div><div class="gauge-copy"><h3>${e(t(gauge.title))}</h3><p class="capacity">${e(gauge.capacity)}</p><p>${e(gauge.detail)}</p></div></div>`;
   }).join("");
-  const vitals = [["Server-Uptime", duration(server.host_uptime_seconds)], ["App-Uptime", duration(server.app_uptime_seconds)], ["App-Speicher", bytes(server.process_memory_bytes)], ["Aktive Räume", number(server.active_rooms)], ["Spieler verbunden", number(server.players_online)]];
+  const vitals = [["Server-Uptime", duration(server.host_uptime_seconds)], ["App-Uptime", duration(server.app_uptime_seconds)], ["App-Speicher", bytes(server.process_memory_bytes)], ["Aktive Räume", number(server.active_rooms)], ["Verbundene Spielerplätze", number(server.players_online)]];
   byId("serverVitals").innerHTML = vitals.map(([label, value]) => `<div class="server-vital"><p>${e(t(label))}</p><strong>${e(value)}</strong></div>`).join("");
   const scope = server.cpu?.scope === "container" || server.memory?.scope === "container" ? "Container-Ressourcen" : "Host-Ressourcen";
   byId("serverNote").textContent = `${t(scope)} · ${t("CPU ist eine Momentaufnahme; Last zeigt 1 / 5 / 15 Minuten.")} ${t("Striche bedeuten: Messwert nicht verfügbar.")}`;
@@ -409,7 +417,7 @@ function render(data) {
   ranks("deviceHardwareRanks", data.device_hardware, "device_family", "sessions", value => t(HARDWARE_LABELS[value] || "Unbekannt"), { share: true, limit: 10, ...emptyCopy });
   clientContext(data, copy);
   ranks("countryRanks", data.countries, "country", "sessions", countryName, { share: true, ...emptyCopy });
-  byId("countryNote").textContent = t(copy ? data.period?.game === "watten" ? "Herkunft wird für Watten nicht erfasst." : copy.description : ["trusted_proxy", "cloudflare_verified_peer"].includes(data.collection?.country_source) ? "Länder stammen aus einem vertrauenswürdigen Geo-Proxy; unbekannte Herkunft bleibt unbekannt." : "Ohne vertrauenswürdigen Geo-Proxy bleibt die Herkunft unbekannt. Es gibt keine IP-Geolokalisierung.");
+  byId("countryNote").textContent = t(copy ? data.period?.game === "watten" && data.metric_coverage?.traffic === "not_instrumented" ? "Herkunft wird für Watten nicht erfasst." : copy.description : ["trusted_proxy", "cloudflare_verified_peer"].includes(data.collection?.country_source) ? "Länder stammen aus einem vertrauenswürdigen Geo-Proxy; unbekannte Herkunft bleibt unbekannt." : "Ohne vertrauenswürdigen Geo-Proxy bleibt die Herkunft unbekannt. Es gibt keine IP-Geolokalisierung.");
   pageRanks(data.pages, copy);
   ranks("actionRanks", data.actions, "action", "count", value => t(ACTION_LABELS[value] || "Andere Bedienaktion"), { game: true, limit: 10, ...emptyCopy });
   gameCards(data);
@@ -425,8 +433,7 @@ function render(data) {
   byId("nexusWindow").textContent = days === 1 ? t("Heute (UTC)") : `${number(days)} ${t("Tage")} · UTC`;
   favorites.refresh();
   syncMotion();
-  const firstSeen = data.collection?.first_seen_at;
-  byId("collectionNote").textContent = copy ? t(data.period?.game === "watten" ? "Für Watten werden keine Browserbesuche erfasst; Partien und Live-Tische stammen vom Server." : copy.description) : firstSeen ? `${t("Messwerte verfügbar seit")} ${timestamp(firstSeen)}` : t("Die Besuchsmessung beginnt mit diesem Release.");
+  byId("collectionNote").textContent = trafficCollectionNote(data, { t, timestamp });
   const dropped = count(data.collection?.dropped);
   byId("queueNote").hidden = !dropped && !data.collection?.cap_reached;
   byId("queueNote").textContent = data.collection?.cap_reached ? t("Die Ereignisgrenze ist erreicht. Ältere Messwerte werden entfernt; der Zeitraum kann unvollständig sein.") : `${t("Verworfene Ereignisse bei Überlastung")}: ${number(dropped)}. ${t("Diese Messung kann unvollständig sein.")}`;

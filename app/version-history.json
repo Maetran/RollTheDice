@@ -2665,5 +2665,12 @@
     "date": "2026-11-02",
     "bump": "patch",
     "summary": "Watten: Tirol in Tannengrün mit hellen Flächen, klassischer Schrift und geschnitztem Zirbenstuben-Tisch. / Watten: Tyrol in forest green with bright surfaces, classic headings and a carved Tyrolean parlour table."
+  },
+  {
+    "version": "4.14.0",
+    "revision": "cea19411dc20de5aa0f311b822ddd3703e47393f",
+    "date": "2026-11-03",
+    "bump": "minor",
+    "summary": "Freundeslisten direkt im Konto verwalten; aufgeräumte ZDWA-Lobby und immer sichtbarer Watten-Lobbychat. / Manage friends lists directly in account settings, with a tidier ZDWA lobby and an always-visible Watten lobby chat."
   }
 ]

@@ -161,7 +161,7 @@ def test_current_previous_and_all_filters_never_grant_delegates_or_nonfounder_ow
     assert founder["available_games"] == ["zdwa", "zilch", "hausdepp", "watten"]
     assert founder["overview"]["completed_games"] == 3
     assert founder["comparison"]["overview"]["completed_games"]["previous"] == 2
-    assert founder["metric_coverage"]["traffic_games"] == ["zdwa", "zilch"]
+    assert founder["metric_coverage"]["traffic_games"] == ["zdwa", "zilch", "hausdepp", "watten"]
     assert "PRIVATE" not in json.dumps(founder)
 
 
@@ -213,8 +213,8 @@ def test_native_traffic_and_abandonments_are_unknown_not_fabricated_zero_even_wi
         assert value["overview"][key] is None
     previous = value["comparison"]["overview"]["sessions"]
     assert previous == {"current": None, "previous": None, "delta": None, "change_percent": None}
-    assert value["metric_coverage"]["traffic"] == "not_instrumented"
-    assert value["metric_coverage"]["traffic_games"] == []
+    assert value["metric_coverage"]["traffic"] == "no_observed_events"
+    assert value["metric_coverage"]["traffic_games"] == ["watten"]
     assert value["geography_summary"]["sessions"] is None
     assert value["pwa"]["confirmed_installations"] is None
     assert value["journeys"]["sample"]["total_page_views"] is None
@@ -241,15 +241,15 @@ def test_native_comparison_never_inherits_legacy_traffic_coverage_or_retention_d
         db.add(AnalyticsEvent(dedupe_key="d" * 64, session_id="c" * 64, received_at=old,
                               event_type="page_view", page="/", game="zdwa", action="", source="client"))
     comparison = request(monitoring, game="watten").json()["comparison"]
-    assert comparison["previous_data_coverage"] == "not_instrumented"
-    assert comparison["coverage_basis"] == "not_instrumented"
+    assert comparison["previous_data_coverage"] == "none"
+    assert comparison["coverage_basis"] == "first_retained_client_event_per_game"
     assert comparison["traffic_retained_from"] is None
     assert comparison["overview"]["completed_games"] == {
         "current": 1, "previous": 1, "delta": 0, "change_percent": 0.0}
     # The existing products still describe their genuinely retained traffic.
     legacy = request(monitoring, game="zdwa").json()["comparison"]
     assert legacy["previous_data_coverage"] == "complete"
-    assert legacy["coverage_basis"] == "earliest_retained_event"
+    assert legacy["coverage_basis"] == "first_retained_client_event_per_game"
     assert legacy["traffic_retained_from"] == old.isoformat()
 
 
@@ -323,18 +323,20 @@ def test_native_live_counts_deduplicate_bound_accounts_and_ignore_cpus_spectator
     value = request(monitoring, game="watten").json()
     live = value["games"][0]["live"]
     assert live == {"active_tables": 2, "playing_tables": 2, "waiting_tables": 0, "connected_humans": 2,
-                    "cpu_seats": 1, "active_tournaments": None, "interround_tables": None, "paused_tables": 0}
-    assert value["server"]["players_online"] == 2
+                    "cpu_seats": 1, "active_tournaments": None, "interround_tables": None, "paused_tables": 0, "connected_seats": 3,
+                    "connected_humans_scope": "distinct_authenticated_accounts",
+                    "connected_seats_scope": "connected_human_seats_across_tables"}
+    assert value["server"]["players_online"] == 3
     assert "MonitoringHuman" not in json.dumps(value) and "p1" not in json.dumps(value)
     delegated = request(monitoring, 2).json()
     assert delegated["server"]["active_rooms"] == delegated["server"]["players_online"] == 1
     logout(accounts[1][1].split("=", 1)[1])
-    assert request(monitoring, game="watten").json()["server"]["players_online"] == 1
+    assert request(monitoring, game="watten").json()["server"]["players_online"] == 2
 
 
 def test_unknown_live_native_source_is_null_instead_of_an_underreported_zero(monitoring):
     native.games["malformed-native"] = {"_game_type": "watten", "_players": [], "_watten": None}
     value = request(monitoring, game="watten").json()
     assert value["server"]["players_online"] is value["server"]["active_rooms"] is None
-    assert all(item is None for item in value["games"][0]["live"].values())
+    assert all(item is None for key, item in value["games"][0]["live"].items() if not key.endswith("_scope"))
     assert "watten" not in request(monitoring, 2).text

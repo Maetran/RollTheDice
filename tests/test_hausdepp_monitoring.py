@@ -118,7 +118,9 @@ class HausdeppMonitoringTests(unittest.TestCase):
         self.assertEqual(private["games"][0]["completed_tournaments"], 1)
         self.assertEqual(private["games"][0]["live"], {
             "active_tables": 2, "playing_tables": 1, "waiting_tables": 0, "connected_humans": 2,
-            "cpu_seats": 3, "active_tournaments": 2, "interround_tables": 1,
+            "cpu_seats": 3, "active_tournaments": 2, "interround_tables": 1, "connected_seats": 2,
+            "connected_humans_scope": "connected_human_seats",
+            "connected_seats_scope": "connected_human_seats_across_tables",
         })
         self.assertNotIn("PRIVATE", json.dumps(founder))
         self.assertNotIn("PRIVATE", json.dumps(private))

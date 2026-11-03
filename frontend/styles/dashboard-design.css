@@ -70,6 +70,9 @@
 .design-legend .legend-dot{background:var(--text)}
 .design-legend .design-dot-site{opacity:.38}
 .design-looks{display:grid;grid-template-columns:repeat(var(--design-groups,3),minmax(0,1fr));gap:30px}
+.design-looks[data-groups="4"],.design-looks[data-groups="5"]{grid-template-columns:repeat(3,minmax(0,1fr))}
+.design-looks:is([data-groups="4"],[data-groups="5"])>.design-group:nth-child(3n+1){border-left:0;padding-left:0}
+.design-looks:is([data-groups="4"],[data-groups="5"])>.design-group:nth-child(n+4){border-top:1px solid var(--line);padding-top:22px}
 .design-group{min-width:0}
 .design-group+.design-group{border-left:1px solid var(--line);padding-left:28px}
 .design-group h4{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:0 0 18px;font-size:12px;font-weight:500;color:var(--text)}
@@ -129,6 +132,7 @@ body[data-dashboard-design="lcars"] .design-answer strong{font:28px var(--lcars-
    columns with its two looks next to each other. */
 @media(max-width:1100px){.design-looks{grid-template-columns:repeat(2,minmax(0,1fr));gap:24px 30px}.design-looks[data-groups="1"]{grid-template-columns:minmax(0,1fr)}.design-looks[data-groups="3"]>.design-group:nth-child(3){grid-column:1/-1;border-left:0;padding-left:0;border-top:1px solid var(--line);padding-top:22px}.design-looks[data-groups="3"]>.design-group:nth-child(3) .design-look-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 30px}body[data-dashboard-design="lcars"] .design-looks[data-groups="3"]>.design-group:nth-child(3){border-color:var(--lcars-panel-line)}}
 @media(max-width:700px){.design-looks,.design-looks[data-groups]{grid-template-columns:minmax(0,1fr)}.design-group+.design-group{border-left:0;padding-left:0;border-top:1px solid var(--line);padding-top:22px}.design-looks[data-groups="3"]>.design-group:nth-child(3) .design-look-list{display:flex}.design-grid{grid-template-columns:minmax(0,1fr);gap:12px}.design-looks-panel{margin-top:12px}.design-sides{gap:12px}.design-share{font-size:32px}.design-side .design-time{font-size:11px}.design-side-table{font-size:9px}.design-account strong{font-size:22px}.design-notes{font-size:9px}body[data-dashboard-design="lcars"] .design-share{font-size:44px}body[data-dashboard-design="lcars"] .design-account strong{font-size:32px}body[data-dashboard-design="lcars"] .design-account dt{font-size:15px}}
+@media(max-width:1100px) and (min-width:701px){.design-looks:is([data-groups="4"],[data-groups="5"]){grid-template-columns:repeat(2,minmax(0,1fr))}.design-looks:is([data-groups="4"],[data-groups="5"])>.design-group{border-left:0;padding-left:0}.design-looks:is([data-groups="4"],[data-groups="5"])>.design-group:nth-child(n+3){border-top:1px solid var(--line);padding-top:22px}}
 @media(max-width:420px){.design-duel-head{flex-wrap:wrap}.design-share{font-size:28px}.design-look-values small{margin-left:6px}body[data-dashboard-design="lcars"] .design-share{font-size:38px}body[data-dashboard-design="lcars"] .design-side dt{font-size:15px}}
 /* Five section links: LCARS pills wrap to two balanced rows on phones. */
 @media(max-width:550px){body[data-dashboard-design="lcars"] .mission-sections{flex-wrap:wrap}body[data-dashboard-design="lcars"] .mission-sections a{flex:1 1 30%}}

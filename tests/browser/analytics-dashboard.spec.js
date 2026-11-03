@@ -50,6 +50,52 @@ function sampleAnalytics(game = 'all', days = 7) {
   };
 }
 
+function suiteAnalytics(game, days, allowed = ['zdwa', 'zilch', 'hausdepp', 'watten']) {
+  const data = sampleAnalytics(game, days);
+  const games = game === 'all' ? allowed : allowed.filter(item => item === game);
+  data.available_games = allowed;
+  data.metric_coverage = { traffic: 'observed_events_only', traffic_games: games, request_traffic: 'sitewide' };
+  data.geography = data.geography.map(row => ({ ...row, games: Object.fromEntries(games.map(item => [item,
+    item === 'hausdepp' ? (row.country === 'CH' ? 11 : 2) : item === 'watten' ? (row.country === 'CH' ? 7 : 1) : row.games[item],
+  ])) }));
+  data.collection.traffic_first_seen_by_game = {
+    zdwa: '2026-09-18T10:00:00Z', zilch: '2026-09-20T10:00:00Z',
+    hausdepp: '2026-10-05T10:00:00Z', watten: '2026-10-07T10:00:00Z',
+  };
+  data.pages = games.map(item => ({ game: item, page: `/${item}/spiel`, views: 12, sessions: 4, active_seconds: 240, avg_active_seconds: 60 }));
+  data.journeys = { links: games.map(item => ({ from: `/${item}`, to: `/${item}/spiel`, from_game: item, to_game: item, count: 4 })),
+    sample: { page_views: 48, total_page_views: 48, truncated: false } };
+  data.pwa = { confirmed_installations: game === 'hausdepp' ? 17 : game === 'watten' ? 19 : 43,
+    first_detected_starts: game === 'hausdepp' ? 23 : game === 'watten' ? 29 : 71 };
+  data.games.push(
+    { game: 'hausdepp', completed_games: 8, participants: 32, avg_duration_seconds: 120,
+      duration_sample_count: 7, duration_unknown_count: 1, duration_sample_limit: 2000, duration_sample_truncated: true,
+      abandoned_games: 1, completed_tournaments: 1,
+      live: { active_tables: 1, connected_seats: 2, connected_humans: 2, cpu_seats: 2, active_tournaments: 1, interround_tables: 0 } },
+    { game: 'watten', completed_games: 6, participants: 24, avg_duration_seconds: 300,
+      duration_sample_count: 5, duration_unknown_count: 1, duration_sample_limit: 2000, duration_sample_truncated: false,
+      abandoned_games: null,
+      live: { active_tables: 2, playing_tables: 1, waiting_tables: 0, paused_tables: 1, connected_seats: 3, connected_humans: 2, cpu_seats: 3 } },
+  );
+  data.modes = [
+    ...['solo', 'duo', 'trio', 'team'].map(mode => ({ game: 'zdwa', mode, completed_games: 1 })),
+    ...['cpu', 'multiplayer'].map(mode => ({ game: 'zilch', mode, completed_games: 1 })),
+    ...['four', 'five', 'six'].map(mode => ({ game: 'hausdepp', mode, completed_games: 1 })),
+    ...['duo', 'four'].map(mode => ({ game: 'watten', mode, completed_games: 1 })),
+  ].filter(row => games.includes(row.game));
+  data.design_usage.looks.push(
+    { look: 'hausdepp:classic', game: 'hausdepp', seconds: 80, table_seconds: 70 },
+    { look: 'watten:classic', game: 'watten', seconds: 25, table_seconds: 10 },
+    { look: 'watten:tirol', game: 'watten', seconds: 75, table_seconds: 60 },
+  );
+  data.actions = [
+    { game: 'hausdepp', action: 'play_card', source: 'client', count: 17 },
+    { game: 'watten', action: 'bid', source: 'client', count: 13 },
+    { game: 'watten', action: 'game_created', source: 'server', count: 6 },
+  ].filter(row => games.includes(row.game));
+  return data;
+}
+
 async function mockedDashboard(page, language, options = {}) {
   await page.addInitScript(language => localStorage.setItem('zdwa_language', language), language);
   const state = { calls: [], fail: false, empty: false, permitted: true, userId: 7, liveSessions: 4, authCalls: 0, coverage: 'complete', unknownOnly: false, cpuUnavailable: false, contextUnknown: false, requestsUnmeasured: false, requestOriginsUnknown: false, requestDropped: 0, design: 'measured', designMode: 'all', ...options };
@@ -67,7 +113,7 @@ async function mockedDashboard(page, language, options = {}) {
     state.calls.push({ game, days });
     if (!state.permitted) return route.fulfill({ status: 403, json: { detail: 'Forbidden' } });
     if (state.fail) return route.fulfill({ status: 503, json: { detail: 'unavailable' } });
-    const data = sampleAnalytics(game, days);
+    const data = state.nativeParity ? suiteAnalytics(game, days, state.availableGames) : sampleAnalytics(game, days);
     if (state.voiceUsage !== undefined) {
       data.available_games = ['zdwa', 'zilch', 'hausdepp'];
       data.voice_usage = ['all', 'hausdepp'].includes(game) ? state.voiceUsage : null;
@@ -186,6 +232,92 @@ async function expectReadableNexusLabels(page) {
   })));
   expect(labels.length).toBeGreaterThan(40);
   for (const label of labels) expect(label.size, JSON.stringify(label)).toBeGreaterThanOrEqual(11);
+}
+
+for (const language of ['de', 'en']) {
+  for (const design of ['mission', 'lcars', 'nexus']) {
+    test(`${language}/${design}: native browser metrics, all modes and designs follow the offered game scope`, async ({ page }, testInfo) => {
+      const errors = [];
+      page.on('pageerror', error => errors.push(error.message));
+      const state = await mockedDashboard(page, language, { nativeParity: true });
+      await page.locator('#dashboardDesign').selectOption(design);
+      await expect(page.locator('#dashboardGame option')).toHaveCount(5);
+      await expect(page.locator('#gameCards .game-card')).toHaveCount(4);
+      await expect(page.locator('#gameModes .mode-chip')).toHaveCount(11);
+      await expect(page.locator('#designComparison .design-duel')).toHaveCount(4);
+      await expect(page.locator('#designLooks .design-group')).toHaveCount(5);
+      await expect(page.locator('#designLooks [data-look="hausdepp:classic"]')).toBeVisible();
+      await expect(page.locator('#designLooks [data-look="watten:tirol"]')).toBeVisible();
+      await expect(page.locator('[data-favorite-id="metric-completed-games"] .metric-label')).toHaveText(language === 'en' ? 'Games/rounds completed' : 'Partien/Runden beendet');
+      await expect(page.locator('#collectionNote')).toContainText('Hausdepp:');
+      await expect(page.locator('#collectionNote')).toContainText('Watten:');
+      await expect(page.locator('.geo-game-values > div')).toHaveCount(4);
+      await expect(page.locator('.geo-game-values [data-game="hausdepp"] strong')).toHaveText('11');
+      await expect(page.locator('.geo-game-values [data-game="watten"] strong')).toHaveText('7');
+      await expect(page.locator('.geo-game-note')).toContainText(language === 'en' ? 'multiple games' : 'mehrere Spiele');
+      await expect(page.locator('#gameCards [data-game="hausdepp"]')).toContainText(language === 'en' ? 'Limited sample of the latest results' : 'Begrenzte Stichprobe der neuesten Ergebnisse');
+      const colors = await page.locator('#journeyFlow .flow-strand').evaluateAll(links => links.map(link => link.getAttribute('stroke')));
+      expect(new Set(colors).size).toBe(4);
+
+      for (const width of [320, 900, 1440]) {
+        await page.setViewportSize({ width, height: 900 });
+        await expectDashboardFits(page, width);
+        for (const panel of await page.locator('#designLooks .design-group').all()) {
+          const box = await panel.boundingBox();
+          expect(box.x).toBeGreaterThanOrEqual(-1);
+          expect(box.x + box.width).toBeLessThanOrEqual(width + 1);
+        }
+        await page.locator('#designs').screenshot({ path: testInfo.outputPath(`suite-designs-${language}-${design}-${width}.png`) });
+      }
+
+      await page.locator('#dashboardGame').selectOption('hausdepp');
+      await expect(page.locator('#pwaInstalledCount')).toHaveText('17');
+      await expect(page.locator('#pwaFirstOpenCount')).toHaveText('23');
+      await expect(page.locator('[data-favorite-id="metric-completed-games"] .metric-label')).toHaveText(language === 'en' ? 'Rounds completed' : 'Runden beendet');
+      await expect(page.locator('[data-favorite-id="metric-sessions"] .metric-value')).toHaveText('135');
+      await expect(page.locator('#pageRanks')).toContainText(language === 'en' ? 'At the game table' : 'Am Spieltisch');
+      await expect(page.locator('#collectionNote')).toContainText('Hausdepp:');
+      await expect(page.locator('#collectionNote')).not.toContainText('Watten:');
+      await expect(page.locator('#designLooks .design-group')).toHaveCount(1);
+      await expect(page.locator('#designComparison [data-game="hausdepp"] .design-side')).toHaveCount(1);
+      await expect(page.locator('#designAccountsPanel')).toBeHidden();
+      await expect(page.locator('#actionRanks')).toContainText(language === 'en' ? 'Play a card' : 'Karte spielen');
+      await expect(page.locator('#geographyViz')).toBeVisible();
+      await expect(page.locator('.geo-game-values > div')).toHaveCount(1);
+      await expect(page.locator('.geo-game-values [data-game="hausdepp"] strong')).toHaveText('11');
+      await expect(page.locator('.geo-game-values [data-game="zdwa"], .geo-game-values [data-game="zilch"], .geo-game-values [data-game="watten"]')).toHaveCount(0);
+      await expect(page.locator('.geo-game-note')).toBeHidden();
+
+      await page.locator('#dashboardGame').selectOption('watten');
+      await expect(page.locator('#pwaInstalledCount')).toHaveText('19');
+      await expect(page.locator('#pwaFirstOpenCount')).toHaveText('29');
+      await expect(page.locator('#designComparison .design-duel')).toHaveCount(1);
+      await expect(page.locator('#designComparison [data-game="watten"] .design-share')).toHaveText(['25%', '75%']);
+      await expect(page.locator('#pageBubbles svg')).toBeVisible();
+      await expect(page.locator('#journeyFlow svg')).toBeVisible();
+      await expect(page.locator('#journeyDetail')).toContainText('Watten');
+      await expect(page.locator('#actionRanks')).toContainText(language === 'en' ? 'Bid' : 'Bieten');
+      await expect(page.locator('#wattenMonitoringNote')).not.toContainText(language === 'en' ? 'not recorded for Watten' : 'für Watten nicht erfasst');
+      await expect(page.locator('#collectionNote')).toContainText('Watten:');
+      await expect(page.locator('#collectionNote')).not.toContainText('Hausdepp:');
+      await expect(page.locator('.geo-game-values > div')).toHaveCount(1);
+      await expect(page.locator('.geo-game-values [data-game="watten"] strong')).toHaveText('7');
+      await expect(page.locator('.geo-game-values [data-game="hausdepp"]')).toHaveCount(0);
+
+      state.availableGames = ['zdwa', 'zilch'];
+      await page.locator('#dashboardRefresh').click();
+      await expect(page.locator('#dashboardGame')).toHaveValue('all');
+      await expect(page.locator('#dashboardGame option')).toHaveCount(3);
+      await expect(page.locator('#gameCards .game-card')).toHaveCount(2);
+      await expect(page.locator('#designLooks .design-group')).toHaveCount(3);
+      await expect(page.locator('#designLooks [data-look^="watten:"], #designLooks [data-look^="hausdepp:"]')).toHaveCount(0);
+      await expect(page.locator('#collectionNote')).not.toContainText('Hausdepp:');
+      await expect(page.locator('#collectionNote')).not.toContainText('Watten:');
+      await expect(page.locator('.geo-game-values > div')).toHaveCount(2);
+      await expect(page.locator('.geo-game-values [data-game="watten"], .geo-game-values [data-game="hausdepp"]')).toHaveCount(0);
+      expect(errors).toEqual([]);
+    });
+  }
 }
 
 for (const language of ['de', 'en']) {

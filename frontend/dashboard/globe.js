@@ -105,6 +105,19 @@ const shortestAngle = angle => ((angle + Math.PI) % TAU + TAU) % TAU - Math.PI;
 const count = value => clamp(Math.floor(Number(value) || 0), 0, 1e9);
 const optionalCount = value => value == null ? null : count(value);
 const hash = value => [...value].reduce((result, character) => (result * 31 + character.charCodeAt(0)) >>> 0, 0);
+const GAME_NAMES = Object.freeze({ zdwa: "ZDWA", zilch: "Zilch", hausdepp: "Hausdepp", watten: "Watten" });
+
+// Product keys come only from the authorized country response. Missing keys
+// stay absent; a single-game filter must not invent zeros for other games.
+function reportedGames(raw) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const entries = Object.keys(GAME_NAMES).filter(game => Object.hasOwn(raw, game)).map(game => {
+    const value = raw[game];
+    const amount = value == null || value === "" ? NaN : Number(value);
+    return [game, Number.isFinite(amount) && amount >= 0 ? count(amount) : null];
+  });
+  return entries.length ? Object.fromEntries(entries) : null;
+}
 
 // The map contains country reference coordinates, never visitor coordinates.
 // The single data input is the existing bounded, anonymous country aggregate.
@@ -116,7 +129,7 @@ function normalizeCountries(input) {
     const row = {
       country, sessions: count(raw.sessions), page_views: optionalCount(raw.page_views),
       active_seconds: optionalCount(raw.active_seconds),
-      games: raw.games ? { zdwa: count(raw.games.zdwa), zilch: count(raw.games.zilch) } : null,
+      games: reportedGames(raw.games),
       center: country === "ZZ" ? null : world.centers[country] || null,
     };
     if (rows.has(country)) continue;
@@ -219,14 +232,7 @@ export function createGlobe(element, helpers = {}) {
   const viewsValue = metric("Seitenaufrufe");
   const activeValue = metric("Aktive Zeit");
   const gameValues = node("div", "geo-game-values");
-  const zdwaValue = node("strong", "", "—");
-  const zilchValue = node("strong", "", "—");
-  const zdwaCell = node("div", "");
-  zdwaCell.append(node("span", "", "ZDWA"), zdwaValue);
-  const zilchCell = node("div", "");
-  zilchCell.append(node("span", "", "Zilch"), zilchValue);
-  gameValues.append(zdwaCell, zilchCell);
-  const gamesNote = node("p", "geo-game-note", t("Spielsitzungen können sich überschneiden: Ein Tab kann beide Spiele besuchen."));
+  const gamesNote = node("p", "geo-game-note", t("Spielsitzungen können sich überschneiden: Ein Tab kann mehrere Spiele besuchen."));
   detail.append(detailHeading, detailMetrics, gameValues, gamesNote);
   const listHeading = node("div", "geo-list-heading");
   const listTitle = node("h3", "", t("Länder auswählen"));
@@ -344,7 +350,10 @@ export function createGlobe(element, helpers = {}) {
       detailCode.textContent = "";
       detailTitle.textContent = "";
       detailTag.textContent = "";
-      for (const value of [sessionsValue, shareValue, viewsValue, activeValue, zdwaValue, zilchValue]) value.textContent = "—";
+      for (const value of [sessionsValue, shareValue, viewsValue, activeValue]) value.textContent = "—";
+      gameValues.replaceChildren();
+      gameValues.hidden = true;
+      gamesNote.hidden = true;
       announcement.textContent = "";
       return;
     }
@@ -358,10 +367,15 @@ export function createGlobe(element, helpers = {}) {
     shareValue.textContent = `${decimal(total ? selected.sessions / total * 100 : 0)} %`;
     viewsValue.textContent = selected.page_views == null ? "—" : number(selected.page_views);
     activeValue.textContent = selected.active_seconds == null ? "—" : formatDuration(selected.active_seconds);
-    zdwaValue.textContent = selected.games == null ? "—" : number(selected.games.zdwa);
-    zilchValue.textContent = selected.games == null ? "—" : number(selected.games.zilch);
-    gameValues.hidden = selected.games == null;
-    gamesNote.hidden = selected.games == null;
+    const games = Object.entries(selected.games || {});
+    gameValues.replaceChildren(...games.map(([game, amount]) => {
+      const cell = node("div", "");
+      cell.dataset.game = game;
+      cell.append(node("span", "", GAME_NAMES[game]), node("strong", "", amount == null ? "—" : number(amount)));
+      return cell;
+    }));
+    gameValues.hidden = !games.length;
+    gamesNote.hidden = games.length < 2;
     if (announce) announcement.textContent = `${name(selected.country)}: ${number(selected.sessions)} ${t("Sitzungen")}`;
     if (selected.center && view === "globe") {
       target = [selected.center[0] * RAD, clamp(selected.center[1] * RAD, -1.1, 1.1)];

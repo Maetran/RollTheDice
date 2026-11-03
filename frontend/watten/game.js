@@ -32,11 +32,14 @@ import { createGameTour } from "../shared/game-tours.js";
 import { createCompactHeader } from "./compact-header.js";
 import { initializeReleaseNotes } from "../shared/release-notes.js";
 import { createCreatorFeaturePolicy, restrictCreatorFeatures, WATTEN_FEATURE_FIELDS } from "./feature-controls.js";
+import { initializeAnalytics, reportAnalyticsAction } from "../shared/analytics.js";
 
 // Public lobby launches own the install flow; active tables only register.
 const publicBetaDocument = document.documentElement.dataset.wattenPublicBeta === "true";
 initializeWattenPwa({ registerWorker: publicBetaDocument,
   installControls: publicBetaDocument && document.documentElement.dataset.wattenPage === "lobby" });
+// After the manifest owner is known; unreleased Watten documents stay untracked.
+initializeAnalytics();
 
 const html = document.documentElement;
 const page = ["lobby", "table", "spectator", "rules"].includes(html.dataset.wattenPage) ? html.dataset.wattenPage : "lobby";
@@ -888,14 +891,22 @@ function roomCommand(action, extra = {}, meta = {}) {
     lifecycle_revision: snapshot.lifecycle_revision, ...extra }, { action, ...meta });
 }
 
+// Fixed analytics categories for own engine commands; values stay local.
+const ENGINE_ANALYTICS_ACTIONS = Object.freeze({
+  play_card: "play_card", bid: "bid", respond: "respond_bid",
+  announce_strike: "choose_contract", announce_colour: "choose_contract",
+});
+
 function engineCommand(kind, value = null, privateOpportunity = null) {
   const snapshot = session.snapshot, engine = snapshot?.engine;
   if (!engine) return false;
-  return dispatch({
+  const sent = dispatch({
     action: "watten_command", command_id: commandId(), deal_id: engine.deal_id, opportunity: engine.opportunity,
     phase: engine.phase, kind, value, private_opportunity: kind === "partner_feedback" ? privateOpportunity : null,
     lifecycle_revision: snapshot.lifecycle_revision,
   }, { action: "watten_command", kind });
+  if (sent && Object.hasOwn(ENGINE_ANALYTICS_ACTIONS, kind)) reportAnalyticsAction(ENGINE_ANALYTICS_ACTIONS[kind]);
+  return sent;
 }
 
 function onAck(ack) {
