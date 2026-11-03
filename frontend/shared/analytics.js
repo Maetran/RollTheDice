@@ -10,6 +10,21 @@ const MAX_ACTIONS_PER_MINUTE = 60;
 const PWA_FIRST_OPEN_KEY = "rollthedice:analytics:pwa-first-open:v1:";
 const PWA_INSTALLED_KEY = "rollthedice:analytics:pwa-installed-at:v1:";
 const INSTALL_DUPLICATE_MS = 10000;
+// Each game bundle carries its own copy of this module. One realm-wide flag
+// keeps a page that loads two bundles from installing a second tracker.
+const INITIALIZED_KEY = Symbol.for("rollthedice.analytics.initialized");
+// Accepted gameplay commands are reported by the game bundles through this
+// DOM event, because their module copy is not the initialized tracker. Only a
+// fixed action name crosses it; cards, bids, values and IDs never do.
+const REPORTED_ACTION_EVENT = "rollthedice:analytics-action";
+const REPORTED_ACTIONS = Object.freeze({
+  play_card: new Set(["hausdepp", "watten"]),
+  bid: new Set(["watten"]), respond_bid: new Set(["watten"]), choose_contract: new Set(["watten"]),
+});
+// Fixed creator choices. Only the coarse mode category is derived.
+const PLAYER_COUNT_MODES = Object.freeze({
+  2: "mode_duo", 3: "mode_trio", 4: "mode_four", 5: "mode_five", 6: "mode_six",
+});
 const ROUTE_NAMES = new Set([
   "/", "/regeln", "/spieler", "/rangabzeichen", "/bestenlisten",
   "/historie", "/statistiken", "/erfolge", "/offline", "/konto",
@@ -24,6 +39,35 @@ const ID_ACTIONS = Object.freeze({
   lbTabShame: "open_leaderboard", lbTabLast: "open_history",
   statisticsTab: "open_statistics", achievementsTab: "open_achievements",
   settingsTab: "open_settings",
+  // Hausdepp: confirmations only. Opening the creator dialog is not a game
+  // creation; the favourite shortcut is classified separately below.
+  hausdeppOpenWaiting: "create_game", hausdeppStartGame: "start_game",
+  hausdeppLeaveWaiting: "game_leave", hausdeppLeaveGame: "game_leave",
+  hausdeppLeaveGameResult: "game_leave", hausdeppNextRound: "game_restart",
+  hausdeppRecreate: "game_restart",
+});
+// Watten routes its controls through fixed command names. Card play, bids and
+// other engine commands deliberately have no analytics action.
+const WATTEN_COMMAND_ACTIONS = Object.freeze({
+  start: "start_game", "leave-match": "game_leave", "leave-waiting": "game_leave",
+  "waiting-back": "game_leave", "copy-link": "game_invite", "next-deal": "game_restart",
+});
+// Fixed public section anchors of the card-game account pages. Only the
+// derived category leaves the browser, never the fragment itself.
+const ACCOUNT_SECTION_ACTIONS = Object.freeze({
+  fortschritt: "open_statistics", erfolge: "open_achievements", runden: "open_history",
+});
+// Card games keep their prefix on every host. Their own page names map onto
+// the shared categories; sign-in, mail actions and unknown paths stay null.
+const SUITE_ROUTES = Object.freeze({
+  hausdepp: Object.freeze({
+    "/": "/", "/regeln": "/regeln", "/konto": "/konto", "/konto/einstellungen": "/konto",
+    "/rangliste": "/bestenlisten",
+  }),
+  watten: Object.freeze({
+    "/": "/", "/regeln": "/regeln", "/konto": "/konto", "/konto/einstellungen": "/konto",
+    "/konto/fortschritt": "/statistiken", "/konto/verlauf": "/historie", "/rangliste": "/bestenlisten",
+  }),
 });
 const MODE_ACTIONS = Object.freeze({
   "1": "mode_solo", "2": "mode_duo", "3": "mode_trio", "2v2": "mode_team",
@@ -53,8 +97,42 @@ function randomId(bytes = 16) {
   return Array.from(value, byte => byte.toString(16).padStart(2, "0")).join("");
 }
 
-export function normalizedAnalyticsPage(locationLike = window.location, gameHint = document.documentElement.dataset.game) {
+/**
+ * Report one accepted gameplay command by its fixed action name. Safe to call
+ * when no tracker runs (opt-out, unreleased Watten, private practice).
+ */
+export function reportAnalyticsAction(action) {
+  if (!Object.hasOwn(REPORTED_ACTIONS, action)) return;
+  try {
+    document.dispatchEvent(new CustomEvent(REPORTED_ACTION_EVENT, { detail: { action } }));
+  } catch (_) { /* Analytics must never affect play. */ }
+}
+
+/** Watten is only measured where the server marks the public release. */
+export function wattenAnalyticsReleased(documentLike = globalThis.document) {
+  return documentLike?.documentElement?.dataset?.wattenPublicBeta === "true";
+}
+
+function suiteAnalyticsPage(path, documentLike) {
+  const match = /^\/(hausdepp|watten)(\/.*)?$/.exec(path);
+  if (!match) return undefined;
+  const game = match[1];
+  if (game === "watten" && !wattenAnalyticsReleased(documentLike)) return null;
+  const inner = (match[2] || "/").replace(/\/$/, "") || "/";
+  let route = Object.hasOwn(SUITE_ROUTES[game], inner) ? SUITE_ROUTES[game][inner] : null;
+  if (!route && /^\/spiel\/[^/]+\/zuschauen$/.test(inner)) route = "/zuschauen";
+  else if (!route && /^\/spiel\/[^/]+$/.test(inner)) route = "/spiel";
+  if (!route) return null;
+  return { game, route, page: `/${game}${route === "/" ? "" : route}` };
+}
+
+export function normalizedAnalyticsPage(locationLike = window.location, gameHint = document.documentElement.dataset.game, documentLike = globalThis.document) {
   let path = String(locationLike.pathname || "/");
+  const suite = suiteAnalyticsPage(path, documentLike);
+  if (suite !== undefined) return suite;
+  // A card-game document outside its prefix (or the shared /zdwa and /zilch
+  // bridges) is never re-labelled as ZDWA traffic.
+  if (["hausdepp", "watten"].includes(gameHint) && !/^\/(?:zdwa|zilch)(?:\/|$)/.test(path)) return null;
   let game = gameHint === "zilch" || locationLike.hostname === "zilch.zockdiewandan.online" ? "zilch" : "zdwa";
   if (path === "/zdwa" || path.startsWith("/zdwa/")) {
     path = path.slice(5) || "/";
@@ -163,19 +241,23 @@ export function analyticsClientDetails(browserInfo = navigator, surface = window
 }
 
 // The installed product follows its manifest, not the game currently shown:
-// a Zilch PWA can display the ZDWA bridge, and the apex PWA can display Zilch.
+// a Zilch, Hausdepp or Watten PWA can display the ZDWA bridge, and the apex
+// PWA can display Zilch. Hausdepp is public; Watten counts only while its
+// public release marker is present, so a local or closed preview stays silent.
 export function analyticsPwaProduct(locationLike = window.location, documentLike = document) {
+  const released = product => (product === "watten" && !wattenAnalyticsReleased(documentLike) ? null : product);
   try {
     const manifest = documentLike.querySelector('link[rel="manifest"]');
-    // The founder-only Hausdepp app has no anonymous installation counters.
-    // Keep its installed identity when it displays a public suite game.
-    if (manifest?.dataset.pwaProduct === "hausdepp") return null;
-    if (manifest?.dataset.pwaProduct === "zilch") return "zilch";
+    const declared = manifest?.dataset.pwaProduct;
+    if (["zilch", "hausdepp", "watten"].includes(declared)) return released(declared);
     const path = new URL(manifest?.href || "", locationLike.href).pathname;
-    if (/^\/hausdepp-manifest(?:-en)?\.webmanifest$/.test(path)) return null;
-    if (/^\/zilch-manifest(?:-en)?\.webmanifest$/.test(path)) return "zilch";
-  } catch (_) { /* Missing manifest hints retain the root PWA identity. */ }
-  if (locationLike.hostname === "zilch.zockdiewandan.online") return "zilch";
+    const named = /^\/(zilch|hausdepp|watten)-manifest(?:-en)?\.webmanifest$/.exec(path);
+    if (named) return released(named[1]);
+  } catch (_) { /* Missing manifest hints retain the host's PWA identity. */ }
+  const host = String(locationLike.hostname || "").toLowerCase();
+  if (host === "zilch.zockdiewandan.online") return "zilch";
+  if (host === "hausdepp.zockdiewandan.online") return "hausdepp";
+  if (host === "watten.zockdiewandan.online") return released("watten");
   return "zdwa";
 }
 
@@ -184,14 +266,21 @@ let initialized = false;
 /** Bounded presentation label for the design comparison, e.g. "zdwa:new:dark". */
 export function analyticsLook(root = document.documentElement) {
   const theme = root?.dataset?.theme;
+  // Watten offers two fixed table designs; anything else stays unlabelled.
+  if (root?.dataset?.game === "watten") {
+    return ["classic", "tirol"].includes(root.dataset.wattenDesign) ? `watten:${root.dataset.wattenDesign}` : null;
+  }
   if (root?.dataset?.game === "zilch") return theme === "lcars" ? "zilch:lcars" : "zilch:tavern";
   if (root?.dataset?.game !== "zdwa" || !["light", "dark", "classic"].includes(theme)) return null;
   return `zdwa:${root.dataset.design === "2026" ? "new" : "old"}:${theme}`;
 }
 
 export function initializeAnalytics() {
-  if (initialized || !permitsAnalytics()) return;
+  if (initialized || globalThis[INITIALIZED_KEY] || !permitsAnalytics()) return;
+  // An unreleased (local, preview or closed) Watten document gets no tracker.
+  if (document.documentElement.dataset.game === "watten" && !wattenAnalyticsReleased()) return;
   initialized = true;
+  globalThis[INITIALIZED_KEY] = true;
   const deviceDetails = analyticsDeviceDetails();
   const clientDetails = analyticsClientDetails();
   let session = null;
@@ -421,14 +510,31 @@ export function initializeAnalytics() {
     else if (target.matches("[data-zilch-account-tab]")) action = {
       statistics: "open_statistics", achievements: "open_achievements", settings: "open_settings",
     }[target.dataset.zilchAccountTab];
+    else if (current.game === "hausdepp" && target.matches("[data-create-favourite]")) {
+      // A protected favourite continues to #hausdeppOpenWaiting, which counts.
+      action = target.hasAttribute("data-create-needs-password") ? null : "create_game";
+    } else if (current.game === "hausdepp" && target.matches("[data-invite-action]")) action = "game_invite";
+    else if (current.game === "watten" && target.matches("[data-watten-command]")) {
+      action = Object.hasOwn(WATTEN_COMMAND_ACTIONS, target.dataset.wattenCommand)
+        ? WATTEN_COMMAND_ACTIONS[target.dataset.wattenCommand] : null;
+    } else if (current.game === "watten" && target.matches("[data-watten-rematch-action]")) {
+      action = ["create", "retry"].includes(target.dataset.wattenRematchAction) ? "game_restart" : null;
+    } else if (current.game === "watten" && target.matches("[data-watten-notify-open-seat]")) action = "game_invite";
+    else if (target.matches("[data-watten-design-toggle]")) action = "theme_change";
     else if (target.matches("a[href], [data-zilch-navigate]")) {
       // Only the normalized destination category leaves this function. Never
       // serialize href, button text, datasets, field values, or room tokens.
       try {
         const url = new URL(target.getAttribute("href") || target.dataset.zilchNavigate, window.location.href);
         if (url.origin === window.location.origin) {
-          const destination = normalizedAnalyticsPage(url, current.game);
+          // Card-game links carry their own prefix; a bare path from them means ZDWA.
+          const destination = normalizedAnalyticsPage(url, ["hausdepp", "watten"].includes(current.game) ? "zdwa" : current.game);
           action = destination ? DESTINATION_ACTIONS[destination.route] : null;
+          // Card-game account sections are fixed anchors; the hash is mapped
+          // to a category here and never serialized.
+          const section = url.hash.slice(1);
+          if (destination?.route === "/konto" && ["hausdepp", "watten"].includes(destination.game)
+            && Object.hasOwn(ACCOUNT_SECTION_ACTIONS, section)) action = ACCOUNT_SECTION_ACTIONS[section];
           // Entry intent can be counted without tracking the private practice client.
           if (/^\/(?:zilch\/|zdwa\/)?offline-spielen\/?$/.test(url.pathname)) action = "mode_offline";
         }
@@ -453,24 +559,55 @@ export function initializeAnalytics() {
 
   document.addEventListener("click", click, { capture: true, passive: true });
   document.addEventListener("submit", event => {
-    if (event.target instanceof Element && event.target.id === "zilchCreateForm") {
+    if (!(event.target instanceof Element) || !current) return;
+    // Watten's creator submits its own form; its submit control has no click
+    // classification, so Enter and the button both count exactly once.
+    if (event.target.id === "zilchCreateForm"
+      || (current.game === "watten" && event.target.matches("form[data-watten-create]"))) {
       activity();
       recordAction("create_game");
     }
   }, { capture: true, passive: true });
   document.addEventListener("change", event => {
-    if (event.target instanceof Element && event.target.matches("[data-language-switcher]")) {
+    if (!(event.target instanceof Element)) return;
+    if (event.target.matches("[data-language-switcher]")) {
       activity();
       recordAction("language_change");
+      return;
+    }
+    // Card-game creator choices: user changes only (programmatic defaults
+    // fire no change event). Values map to fixed modes and are not sent.
+    let modeAction = null;
+    if (current?.game === "hausdepp" && event.target.closest("#hausdeppModeForm")) {
+      const form = event.target.closest("#hausdeppModeForm");
+      if (event.target.name === "tournament" && event.target.value === "true" && event.target.checked) modeAction = "mode_tournament";
+      else if (event.target.name === "players"
+        || (event.target.name === "waiting_mode" && event.target.value === "fixed" && event.target.checked)) {
+        modeAction = PLAYER_COUNT_MODES[form.elements.players?.value];
+      }
+    } else if (current?.game === "watten" && event.target.closest("form[data-watten-create]")
+      && event.target.name === "count" && event.target.checked) {
+      modeAction = PLAYER_COUNT_MODES[event.target.value];
+    }
+    if (modeAction) {
+      activity();
+      recordAction(modeAction);
     }
   }, { capture: true, passive: true });
+  document.addEventListener(REPORTED_ACTION_EVENT, event => {
+    const action = event.detail?.action;
+    if (!current || typeof action !== "string" || !Object.hasOwn(REPORTED_ACTIONS, action)
+      || !REPORTED_ACTIONS[action].has(current.game)) return;
+    activity();
+    recordAction(action);
+  });
   for (const event of ["pointerdown", "pointermove", "keydown", "scroll", "touchstart"]) {
     document.addEventListener(event, activity, { capture: true, passive: true });
   }
   document.addEventListener("visibilitychange", visibility);
   // Theme and design switches close the running interval under the old look.
   new MutationObserver(lookChanged).observe(document.documentElement, {
-    attributes: true, attributeFilter: ["data-theme", "data-design"],
+    attributes: true, attributeFilter: ["data-theme", "data-design", "data-watten-design"],
   });
   window.addEventListener("focus", visibility);
   window.addEventListener("blur", visibility);

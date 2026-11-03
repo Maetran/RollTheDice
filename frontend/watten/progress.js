@@ -9,8 +9,10 @@ import { initializeAppMode } from "../multigame/app-mode.js";
 import { accountNavigationMarkup } from "../shared/account-navigation.js";
 import { mountAccountMergeNotice } from "../shared/account-merge-notice.js";
 import { initializeReleaseNotes } from "../shared/release-notes.js";
+import { initializeAnalytics } from "../shared/analytics.js";
 
 initializeWattenPwa({ registerWorker: document.documentElement.dataset.wattenPublicBeta === "true", installControls: false });
+initializeAnalytics();
 initializeSuiteHeader();
 const root = document.getElementById("wattenProgress");
 const page = document.documentElement.dataset.wattenProgressPage;

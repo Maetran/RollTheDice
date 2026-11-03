@@ -28,6 +28,7 @@ import { createGameTour } from "../shared/game-tours.js";
 import { mountPileInspector } from "./pile-inspector.js";
 import { mountPeekFeedback } from "./peek-feedback.js";
 import { mountHandSelection } from "./hand-selection.js";
+import { reportAnalyticsAction } from "../shared/analytics.js";
 import { mountGameCreator } from "./game-creator.js";
 import { mountReactions } from "./reactions.js";
 import { storedTablePassword, rememberTablePassword, requestTablePassword } from "./table-access.js";
@@ -996,7 +997,11 @@ function command(action, cards) {
     ...(action === "speed_up_cpus" ? { round_number: snapshot._hausdepp_tournament?.round_number || 1 } : {}), ...(cards ? { cards } : {}) })) {
     resetCommand();
     $("hausdeppActionError").textContent = t("connectionLost");
-  } else if (["play", "afterthrow"].includes(action)) launchOwnPlay(gameId, playerId, cards);
+  } else {
+    // Only the fixed category of an own, sent card play; never the cards.
+    if (["play", "afterthrow", "gamble"].includes(action)) reportAnalyticsAction("play_card");
+    if (["play", "afterthrow"].includes(action)) launchOwnPlay(gameId, playerId, cards);
+  }
   renderState();
   clearTimeout(pendingTimer);
   pendingTimer = setTimeout(() => { if (pending && $("hausdeppActionError")) $("hausdeppActionError").textContent = t("waitingConnection"); }, 8000);

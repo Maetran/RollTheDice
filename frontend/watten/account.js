@@ -16,9 +16,12 @@ import { mountTourSettings } from '../shared/game-tours.js';
 import { mountVoicePreferences, voicePreferenceText } from '../shared/voice-preferences.js';
 import { initializeReleaseNotes } from '../shared/release-notes.js';
 import { accountNavigationMarkup, accountSectionMarkup, openAccountSettingTarget } from '../shared/account-navigation.js';
+import { initializeAnalytics } from '../shared/analytics.js';
 import { mountAccountMergeNotice } from '../shared/account-merge-notice.js';
 
 initializeWattenPwa();
+// Category-only page views; sign-in stays unmapped and unreleased Watten silent.
+initializeAnalytics();
 initializeSuiteHeader();
 
 const root = document.getElementById('wattenAccount');

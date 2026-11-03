@@ -10,7 +10,8 @@ const tracker = buildSync({
 
 async function trackingFixture(page, { route = "/", game = "zdwa", dnt = false, gpc = false, beacon = false, referrer = "", userAgent = null, touchPoints = 0,
   languages = ["de-CH", "en-US"], language = "de-CH", displayMode = "browser", standalone = null,
-  manifest = "/manifest.webmanifest", blockedPwaStorage = false, offline = false, theme = null, design = null } = {}) {
+  manifest = "/manifest.webmanifest", manifestProduct = null, blockedPwaStorage = false, offline = false, theme = null, design = null,
+  htmlAttributes = "", extraBody = "" } = {}) {
   const batches = [];
   await page.clock.install({ time: new Date("2026-10-04T00:00:00Z") });
   await page.clock.pauseAt(new Date("2026-10-04T00:00:01Z"));
@@ -69,7 +70,7 @@ async function trackingFixture(page, { route = "/", game = "zdwa", dnt = false, 
       await request.fallback();
       return;
     }
-    await request.fulfill({ contentType: "text/html", body: `<!doctype html><html data-game="${game}"${theme ? ` data-theme="${theme}"` : ""}${design ? ` data-design="${design}"` : ""}><head><link rel="manifest" href="${manifest}"></head><body>
+    await request.fulfill({ contentType: "text/html", body: `<!doctype html><html data-game="${game}"${theme ? ` data-theme="${theme}"` : ""}${design ? ` data-design="${design}"` : ""}${htmlAttributes ? ` ${htmlAttributes}` : ""}><head><link rel="manifest"${manifestProduct ? ` data-pwa-product="${manifestProduct}"` : ""} href="${manifest}"></head><body>
       <input id="privateInput" value="SecretUserAndPassword">
       <button id="createBtn" data-id="private-room-id">Room secret and user name</button>
       <button data-game-mode="2">2 players</button>
@@ -83,6 +84,7 @@ async function trackingFixture(page, { route = "/", game = "zdwa", dnt = false, 
       <button data-zilch-bank>Bank</button>
       <button data-zilch-play-mode="cpu">CPU</button>
       <form id="zilchCreateForm"><input value="PrivateRoom"><button type="submit">Create</button></form>
+      ${extraBody}
       <script>document.querySelectorAll('a,form').forEach(element => element.addEventListener(element.tagName==='FORM'?'submit':'click', event => event.preventDefault()));</script>
       </body></html>` });
   });
@@ -197,10 +199,33 @@ for (const identity of [
   });
 }
 
-test("a founder-only Hausdepp installation never becomes a public ZDWA PWA counter", async ({ page }) => {
-  const fixture = await trackingFixture(page, {
-    route: "/", game: "zdwa", manifest: "/hausdepp-manifest-en.webmanifest?v=release", displayMode: "standalone",
+for (const identity of [
+  { name: "public Hausdepp on its ZDWA bridge", route: "https://hausdepp.zockdiewandan.online/zdwa", game: "zdwa",
+    manifest: "/hausdepp-manifest-en.webmanifest?v=release", manifestProduct: "hausdepp", product: "hausdepp" },
+  { name: "public Hausdepp lobby", route: "/hausdepp", game: "hausdepp",
+    manifest: "/hausdepp-manifest.webmanifest?v=release", product: "hausdepp" },
+  { name: "released Watten lobby", route: "/watten", game: "watten", htmlAttributes: 'data-watten-public-beta="true"',
+    manifest: "/watten-manifest.webmanifest?v=release", manifestProduct: "watten", product: "watten" },
+  { name: "released Watten ZDWA bridge", route: "https://watten.zockdiewandan.online/zdwa/regeln", game: "zdwa",
+    htmlAttributes: 'data-watten-public-beta="true"', manifest: "/watten-manifest.webmanifest?v=release", manifestProduct: "watten", product: "watten" },
+]) {
+  test(`card-game PWA counters keep their installed identity: ${identity.name}`, async ({ page }) => {
+    const fixture = await trackingFixture(page, { ...identity, displayMode: "standalone" });
+    await page.evaluate(() => window.dispatchEvent(new Event("appinstalled")));
+    await expect.poll(() => fixture.events().filter(event => event.action?.startsWith("pwa_")).map(event => event.action)).toEqual([
+      `pwa_first_open_${identity.product}`, `pwa_installed_${identity.product}`,
+    ]);
+    // The installed product never leaks into the displayed game's counters.
+    expect(fixture.events().filter(event => event.action?.startsWith("pwa_")).every(event => event.game === identity.game)).toBe(true);
+    expect(fixture.events().some(event => /pwa_.*_(?:zdwa|zilch)$/.test(event.action || ""))).toBe(false);
   });
+}
+
+test("an unreleased Watten installation shown on a public page records no PWA counter", async ({ page }) => {
+  const fixture = await trackingFixture(page, {
+    route: "/", game: "zdwa", manifest: "/watten-manifest.webmanifest?v=release", manifestProduct: "watten", displayMode: "standalone",
+  });
+  await expect.poll(() => fixture.events().filter(event => event.type === "page_view").length).toBe(1);
   await page.evaluate(() => window.dispatchEvent(new Event("appinstalled")));
   await tick(page, 1500);
   expect(fixture.events().filter(event => event.action?.startsWith("pwa_"))).toEqual([]);
@@ -458,6 +483,185 @@ test("analytics follows Zilch history navigation with no room IDs or duplicate h
     "mode_computer", "create_game", "roll_dice", "bank",
   ]);
   expect(JSON.stringify(fixture.batches)).not.toMatch(/Private|token|admin|#/i);
+});
+
+const HAUSDEPP_CONTROLS = `
+  <button id="hausdeppCreate" type="button">Open creator</button>
+  <button type="button" data-create-favourite data-create-needs-password>Protected favourite</button>
+  <button id="hausdeppOpenWaiting" type="button">Open waiting room</button>
+  <a id="hdJoin" href="/hausdepp/spiel/PrivateTableOne">Join PrivateTableOne</a>
+  <a id="hdWatch" href="/hausdepp/spiel/PrivateTableTwo/zuschauen">Watch</a>
+  <button id="hausdeppStartGame" type="button">Start</button>
+  <button type="button" data-invite-action="copy">Copy invitation PrivateUser</button>
+  <button id="hausdeppStock" type="button">Draw a card</button>
+  <button id="hausdeppNextRound" type="button">Next round</button>
+  <a id="hdAchievements" href="/hausdepp/konto#erfolge">Achievements</a>
+  <a id="hdLeaderboard" href="/hausdepp/rangliste?private=PrivateUser">Leaderboard</a>
+  <a id="hdLogin" href="/hausdepp/anmelden?return_to=%2Fhausdepp%2Fspiel%2FPrivateTableOne">Sign in</a>`;
+
+test("Hausdepp records lobby, table and account categories with fixed actions only", async ({ page }) => {
+  const fixture = await trackingFixture(page, { route: "/hausdepp?lang=en#PrivateUser", game: "hausdepp", extraBody: HAUSDEPP_CONTROLS });
+  await expect.poll(() => fixture.events().filter(event => event.type === "page_view").length).toBe(1);
+  // Mounting the lobby is a view, never an artificial game action.
+  expect(fixture.events().filter(event => event.type === "action")).toEqual([]);
+  await page.locator("#hausdeppCreate").click();
+  await page.locator("[data-create-favourite]").click();
+  await page.locator("#hausdeppOpenWaiting").click();
+  await page.locator("#hdJoin").click();
+  await page.evaluate(() => history.pushState(null, "", "/hausdepp/spiel/PrivateTableOne?pwa=hausdepp"));
+  await page.locator("#hausdeppStartGame").click();
+  await page.locator("[data-invite-action='copy']").click();
+  await page.locator("#hausdeppStock").click();
+  await page.locator("#hausdeppNextRound").click();
+  await page.locator("#hausdeppNextRound").click();
+  // An in-place table switch (rematch) is a new view of the same category.
+  await page.evaluate(() => history.pushState(null, "", "/hausdepp/spiel/PrivateTableTwo/zuschauen"));
+  await page.evaluate(() => history.replaceState(null, "", "#PrivateHash"));
+  await page.locator("#hdAchievements").click();
+  await page.locator("#hdLeaderboard").click();
+  await page.locator("#hdLogin").click();
+  await page.evaluate(() => history.pushState(null, "", "/hausdepp/rangliste"));
+  await page.evaluate(() => history.pushState(null, "", "/hausdepp/konto/einstellungen"));
+  await page.evaluate(() => history.pushState(null, "", "/hausdepp/anmelden"));
+  await tick(page, 15000);
+  await expect.poll(() => fixture.events().filter(event => event.type === "page_view").map(event => event.page)).toEqual([
+    "/hausdepp", "/hausdepp/spiel", "/hausdepp/zuschauen", "/hausdepp/bestenlisten", "/hausdepp/konto",
+  ]);
+  expect(fixture.events().filter(event => event.type === "action").map(event => [event.page, event.action])).toEqual([
+    ["/hausdepp", "create_game"], ["/hausdepp", "join_game"],
+    ["/hausdepp/spiel", "start_game"], ["/hausdepp/spiel", "game_invite"], ["/hausdepp/spiel", "game_restart"],
+    ["/hausdepp/zuschauen", "open_achievements"], ["/hausdepp/zuschauen", "open_leaderboard"],
+  ]);
+  expect(fixture.events().every(event => event.game === "hausdepp")).toBe(true);
+  expect(JSON.stringify(fixture.batches)).not.toMatch(/Private|anmelden|return_to|rangliste|einstellungen|erfolge|token|#/i);
+});
+
+const WATTEN_CONTROLS = `
+  <form data-watten-create novalidate><input name="password" value="PrivateTablePassword"><button type="submit">Create</button></form>
+  <a id="wtJoin" href="/watten/spiel/0123456789abcdef">Join</a>
+  <button type="button" data-watten-command="copy-link">Copy</button>
+  <button type="button" data-watten-command="engine" data-kind="play_card" data-value="PrivateCard">Play card</button>
+  <button type="button" data-watten-command="engine" data-kind="bid" data-value="PrivateBid">Bid</button>
+  <button type="button" data-watten-command="start">Start</button>
+  <button type="button" data-watten-rematch-action="create">Rematch</button>
+  <button type="button" data-watten-command="leave-match">Leave</button>
+  <button type="button" data-watten-design-toggle>Design</button>
+  <a id="wtHistory" href="/watten/konto/verlauf">History</a>`;
+
+test("released Watten records categories, fixed actions and its table look without game content", async ({ page }) => {
+  const fixture = await trackingFixture(page, {
+    route: "/watten/spiel/0123456789abcdef?private=PrivateUser", game: "watten", extraBody: WATTEN_CONTROLS,
+    htmlAttributes: 'data-watten-public-beta="true" data-watten-design="classic"',
+  });
+  await expect.poll(() => fixture.events().filter(event => event.type === "page_view").map(event => event.page)).toEqual(["/watten/spiel"]);
+  expect(fixture.events().filter(event => event.type === "action")).toEqual([]);
+  await page.locator("form[data-watten-create] button").click();
+  await page.locator("#wtJoin").click();
+  await page.locator("[data-watten-command='copy-link']").click();
+  await page.locator("[data-kind='play_card']").click();
+  await page.locator("[data-kind='bid']").click();
+  await page.locator("[data-watten-command='start']").click();
+  await page.locator("[data-watten-rematch-action='create']").click();
+  await page.locator("[data-watten-command='leave-match']").click();
+  await tick(page, 15000);
+  await page.locator("[data-watten-design-toggle]").click();
+  await page.evaluate(() => { document.documentElement.dataset.wattenDesign = "tirol"; });
+  await tick(page, 15000);
+  await page.locator("#wtHistory").click();
+  await expect.poll(() => fixture.events().filter(event => event.type === "action").map(event => event.action)).toEqual([
+    "create_game", "join_game", "game_invite", "start_game", "game_restart", "game_leave", "theme_change", "open_history",
+  ]);
+  await expect.poll(() => fixture.events().filter(event => event.type === "engagement").map(event => event.look))
+    .toEqual(expect.arrayContaining(["watten:classic", "watten:tirol"]));
+  expect(fixture.events().every(event => event.game === "watten" && event.page === "/watten/spiel")).toBe(true);
+  // Engine buttons only count through the accepted-command hook, never by click.
+  expect(JSON.stringify(fixture.batches)).not.toMatch(/Private|0123456789abcdef|play_card|password|#/i);
+});
+
+for (const route of ["/watten", "/watten/spiel/0123456789abcdef", "/watten/konto"]) {
+  test(`unreleased Watten ${route} allocates no tracker, session, timer or request`, async ({ page }) => {
+    const fixture = await trackingFixture(page, { route, game: "watten", extraBody: WATTEN_CONTROLS, displayMode: "standalone",
+      manifest: "/watten-manifest.webmanifest", manifestProduct: "watten" });
+    await page.locator("[data-watten-command='start']").click();
+    await page.evaluate(() => { window.dispatchEvent(new Event("appinstalled")); history.pushState(null, "", "/watten/regeln"); });
+    await tick(page, 30000);
+    expect(fixture.batches).toEqual([]);
+    expect(await page.evaluate(() => window.fixtureIntervals)).toBe(0);
+    expect(await page.evaluate(() => window.fixturePwaStorageAccesses)).toBe(0);
+    expect(await page.evaluate(() => sessionStorage.getItem("rollthedice:analytics:tab:v1"))).toBeNull();
+  });
+}
+
+const reportAction = action => `document.dispatchEvent(new CustomEvent("rollthedice:analytics-action", { detail: ${JSON.stringify({ action })} }))`;
+
+test("accepted card-game commands report fixed categories only for their own game", async ({ page }) => {
+  const fixture = await trackingFixture(page, {
+    route: "/watten/spiel/0123456789abcdef", game: "watten", htmlAttributes: 'data-watten-public-beta="true"',
+  });
+  await expect.poll(() => fixture.events().filter(event => event.type === "page_view").length).toBe(1);
+  for (const action of ["play_card", "bid", "respond_bid", "choose_contract", "pwa_installed_zdwa", "PrivateCard", "create_game"]) {
+    await page.evaluate(reportAction(action));
+    await tick(page, 1100);
+  }
+  // A forged detail object with extra fields contributes only the fixed name.
+  await page.evaluate(() => document.dispatchEvent(new CustomEvent("rollthedice:analytics-action", {
+    detail: { action: "play_card", card: "PrivateCard", game_id: "PrivateRoom" } })));
+  await tick(page, 15000);
+  await expect.poll(() => fixture.events().filter(event => event.type === "action").map(event => event.action)).toEqual([
+    "play_card", "bid", "respond_bid", "choose_contract", "play_card",
+  ]);
+  expect(JSON.stringify(fixture.batches)).not.toMatch(/Private|0123456789abcdef/);
+});
+
+test("Hausdepp accepts only card plays from the command hook and derives creator modes", async ({ page }) => {
+  const fixture = await trackingFixture(page, { route: "/hausdepp", game: "hausdepp", extraBody: `
+    <form id="hausdeppModeForm">
+      <input type="radio" name="waiting_mode" value="fixed"><input type="radio" name="waiting_mode" value="open" checked>
+      <select name="players"><option value="2">2</option><option value="3" selected>3</option><option value="5">5</option></select>
+      <input type="radio" name="tournament" value="false" checked><input type="radio" name="tournament" value="true">
+      <input type="password" name="passphrase" value="PrivatePassphrase">
+    </form>` });
+  await expect.poll(() => fixture.events().filter(event => event.type === "page_view").length).toBe(1);
+  await page.locator("[name='waiting_mode'][value='fixed']").check();
+  await tick(page, 1100);
+  await page.locator("[name='players']").selectOption("5");
+  await tick(page, 1100);
+  await page.locator("[name='tournament'][value='true']").check();
+  await page.locator("[name='passphrase']").fill("AnotherPrivatePassphrase");
+  await page.evaluate(() => { document.querySelector("[name='players']").value = "2"; });
+  await page.evaluate(reportAction("bid"));
+  await page.evaluate(reportAction("play_card"));
+  await tick(page, 15000);
+  await expect.poll(() => fixture.events().filter(event => event.type === "action").map(event => event.action)).toEqual([
+    "mode_trio", "mode_five", "mode_tournament", "play_card",
+  ]);
+  expect(JSON.stringify(fixture.batches)).not.toMatch(/Private|passphrase/i);
+});
+
+test("Watten creator player counts map to fixed modes", async ({ page }) => {
+  const fixture = await trackingFixture(page, { route: "/watten", game: "watten", htmlAttributes: 'data-watten-public-beta="true"', extraBody: `
+    <form data-watten-create novalidate>${[2, 3, 4].map(count => `<input type="radio" name="count" value="${count}"${count === 4 ? " checked" : ""}>`).join("")}</form>` });
+  await expect.poll(() => fixture.events().filter(event => event.type === "page_view").length).toBe(1);
+  expect(fixture.events().filter(event => event.type === "action")).toEqual([]);
+  await page.locator("[name='count'][value='2']").check();
+  await tick(page, 1100);
+  await page.locator("[name='count'][value='4']").check();
+  await tick(page, 15000);
+  await expect.poll(() => fixture.events().filter(event => event.type === "action").map(event => event.action)).toEqual(["mode_duo", "mode_four"]);
+});
+
+test("a second analytics bundle in the same page neither re-initializes nor double-counts", async ({ page }) => {
+  const fixture = await trackingFixture(page, { route: "/hausdepp", game: "hausdepp", extraBody: HAUSDEPP_CONTROLS });
+  // Shell and a game bundle each embed their own module copy.
+  await page.addScriptTag({ content: `${tracker}\nProductAnalytics.initializeAnalytics();` });
+  await page.locator("#hausdeppStartGame").click();
+  // One heartbeat: the second copy installed no timer of its own.
+  expect(await page.evaluate(() => window.fixtureIntervals)).toBe(1);
+  await page.evaluate(() => history.pushState(null, "", "/hausdepp/regeln"));
+  await tick(page, 15000);
+  await expect.poll(() => fixture.events().filter(event => event.type === "page_view").map(event => event.page))
+    .toEqual(["/hausdepp", "/hausdepp/regeln"]);
+  expect(fixture.events().filter(event => event.type === "action").map(event => event.action)).toEqual(["start_game"]);
 });
 
 test("analytics rotates tab sessions after inactivity and flushes with beacon on pagehide", async ({ page }) => {
