@@ -944,27 +944,30 @@ def _heatmap_stats(db: Session, filters: list, views, active) -> list[dict]:
 def _journey_stats(db: Session, start: datetime, now: datetime, game: str, products=("zdwa", "zilch")) -> dict:
     # Window over the real sequence before filtering products. Hidden visits
     # remain barriers, but cannot consume the visible sample or leak their paths.
-    filters = [_known_event_clause(), AnalyticsEvent.received_at >= start, AnalyticsEvent.received_at <= now,
+    filters = [AnalyticsEvent.received_at >= start, AnalyticsEvent.received_at <= now,
                AnalyticsEvent.event_type == "page_view", AnalyticsEvent.source == "client",
                AnalyticsEvent.session_id.is_not(None)]
     visible = (*products, "site")
-    total = db.scalar(select(func.count()).select_from(AnalyticsEvent).where(
-        *filters, AnalyticsEvent.game.in_(visible))) or 0
+    safe = and_(_known_event_clause(), AnalyticsEvent.game.in_(visible))
+    total = db.scalar(select(func.count()).select_from(AnalyticsEvent).where(*filters, safe)) or 0
     order = (AnalyticsEvent.received_at, AnalyticsEvent.id)
-    def lag(column):
-        return func.lag(column, type_=column.type).over(partition_by=AnalyticsEvent.session_id, order_by=order)
-    sequence = select(AnalyticsEvent.id, AnalyticsEvent.page, AnalyticsEvent.game, AnalyticsEvent.received_at,
-                      lag(AnalyticsEvent.id).label("prior_id"), lag(AnalyticsEvent.page).label("prior_page"),
-                      lag(AnalyticsEvent.game).label("prior_game"),
-                      lag(AnalyticsEvent.received_at).label("prior_at")).where(*filters).subquery()
+    def masked(column):
+        return case((safe, column))
+    def prior(column):
+        return func.lag(masked(column), type_=column.type).over(
+            partition_by=AnalyticsEvent.session_id, order_by=order)
+    # Mask inside the window expression. Every raw page-view still occupies
+    # its real place, while private/unknown paths never leave the SQL boundary.
+    sequence = select(masked(AnalyticsEvent.id).label("id"), masked(AnalyticsEvent.page).label("page"),
+                      masked(AnalyticsEvent.game).label("game"),
+                      masked(AnalyticsEvent.received_at).label("received_at"),
+                      prior(AnalyticsEvent.id).label("prior_id"), prior(AnalyticsEvent.page).label("prior_page"),
+                      prior(AnalyticsEvent.game).label("prior_game"),
+                      prior(AnalyticsEvent.received_at).label("prior_at")).where(*filters).subquery()
     columns = sequence.c
-    prior_visible = columns.prior_game.in_(visible)
     rows = db.execute(select(columns.id, columns.page, columns.game, columns.received_at,
-                             case((prior_visible, columns.prior_id)),
-                             case((prior_visible, columns.prior_page)),
-                             case((prior_visible, columns.prior_game)),
-                             case((prior_visible, columns.prior_at)))
-                      .where(columns.game.in_(visible))
+                             columns.prior_id, columns.prior_page, columns.prior_game, columns.prior_at)
+                      .where(columns.id.is_not(None))
                       .order_by(columns.received_at.desc(), columns.id.desc()).limit(JOURNEY_SAMPLE_LIMIT)).all()
     sampled_ids = {row[0] for row in rows}
     links = {}

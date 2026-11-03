@@ -180,6 +180,28 @@ class AnalyticsTests(unittest.TestCase):
                                              "to_game": "zdwa", "count": 1}])
         self.assertNotIn("watten", json.dumps(public))
 
+    def test_unknown_and_malformed_private_page_views_remain_journey_barriers(self):
+        start = self.now - timedelta(minutes=5)
+        for number, page in ((1, "/"), (3, "/regeln"), (5, "/spieler"), (7, "/ergebnis"), (8, "/rangabzeichen")):
+            self._track_page(1, number, page, start + timedelta(seconds=number), active_ms=0)
+        session_id = normalize_batch(batch(sid=f"{1:032x}"))["session"]["id"]
+        with session_scope() as db:
+            for number, product, page in ((2, "watten", "PRIVATE_NATIVE_PATH"),
+                                          (4, "zdwa", "/UNKNOWN_PRIVATE_PAGE"),
+                                          (6, "future", "/future_private")):
+                db.add(AnalyticsEvent(dedupe_key=f"{number + 100:064x}", session_id=session_id,
+                                      received_at=start + timedelta(seconds=number), event_type="page_view",
+                                      page=page, game=product, action="", active_ms=0, mode="unknown", source="client"))
+        with patch.object(analytics, "JOURNEY_SAMPLE_LIMIT", 5):
+            journeys = dashboard_stats(1, now=self.now)["journeys"]
+        self.assertEqual(journeys["sample"]["page_views"], 5)
+        self.assertEqual(journeys["sample"]["total_page_views"], 5)
+        self.assertFalse(journeys["sample"]["truncated"])
+        self.assertEqual(journeys["links"], [{"from": "/ergebnis", "to": "/rangabzeichen", "from_game": "zdwa",
+                                               "to_game": "zdwa", "count": 1}])
+        for private in ("PRIVATE", "UNKNOWN", "watten", "future"):
+            self.assertNotIn(private, json.dumps(journeys))
+
     def test_native_pwa_requires_both_page_and_manifest_product_to_be_visible(self):
         for number, product, action in ((1, "zdwa", "pwa_installed_watten"),
                                         (2, "watten", "pwa_first_open_zdwa"),
