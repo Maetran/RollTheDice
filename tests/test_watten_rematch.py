@@ -117,6 +117,41 @@ def test_real_host_follow_up_restores_fixed_seat_without_joining_others_starting
     assert not candidate["_started"]
 
 
+def test_rematch_retains_cpu_names_by_seat_when_late_replacement_changed_participant_ids(server, monkeypatch):
+    from app import watten_runtime
+
+    owner = native.account("FollowHuman0")
+    chosen = iter(("Kathi", "Resi", "Burgi", "Vroni"))
+    monkeypatch.setattr(watten_runtime.secrets, "choice", lambda _pool: next(chosen))
+    match = NativeMatch(4, cpus=(1, 2, 3), target=3, start=False)
+    match.room("watten_remove_cpu", seat=1)
+    match.room("watten_place_cpu", seat=1)
+    source_cpu_ids = {cpu.seat: cpu.participant_id for cpu in match.runtime.room.cpus}
+    source_names = dict(match.runtime.names)
+    expected = {cpu.seat: source_names[cpu.participant_id] for cpu in match.runtime.room.cpus}
+    assert expected == {1: "Vroni", 2: "Resi", 3: "Burgi"}
+    match.room("watten_start")
+    match.ready()
+    match.finish()
+    persist_watten_game(match.game, creating=True)
+    games[match.game["_id"]] = match.game
+    data = command(match.game)
+    monkeypatch.setattr(watten_runtime.secrets, "choice", lambda _pool: pytest.fail("rematch rerolled CPU names"))
+
+    response = post(server, match.game, owner, data)
+    assert response.status_code == 200, response.text
+    target = games[response.json()["game_id"]]
+    target_runtime = target["_watten"]
+    target_names = dict(target_runtime.names)
+    assert {cpu.seat: target_names[cpu.participant_id] for cpu in target_runtime.room.cpus} == expected
+    assert next(cpu.participant_id for cpu in target_runtime.room.cpus if cpu.seat == 1) != source_cpu_ids[1]
+    restored = restore_watten_json(checkpoints()[target["_id"]])
+    assert restored["_watten"].names == target_runtime.names
+    retry = post(server, match.game, owner, data)
+    assert retry.status_code == 200 and not retry.json()["created"]
+    assert games[target["_id"]]["_watten"].names == target_runtime.names
+
+
 @pytest.mark.parametrize("players,cpus", ((2, ()), (3, (2,)), (4, (3,))))
 def test_follow_up_retains_live_voice_room_for_original_accounts_and_retries(server, players, cpus):
     match, owners = source_for(players=players, cpus=cpus)

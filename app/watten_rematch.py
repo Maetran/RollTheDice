@@ -138,7 +138,14 @@ def _attempt(source_id, identity, revision, before_create):
                 raise _LostSourceCAS()
             source = candidate
             target = new_watten_game(result.room.room_id, source["_name"], source["_mode"])
-            names = _cpu_names(result.room, {result.room.host_participant_id: identity.username})
+            # A follow-up recreates participant IDs, so retain each CPU's
+            # presentation identity by its unchanged seat, not by the old ID.
+            source_names = dict(runtime.names)
+            cpu_names = {cpu.seat: source_names[cpu.participant_id] for cpu in room.cpus}
+            names = _cpu_names(result.room, {
+                result.room.host_participant_id: identity.username,
+                **{cpu.participant_id: cpu_names[cpu.seat] for cpu in result.room.cpus},
+            })
             from .watten_cpu_runtime import observe_cpu_memories
 
             target["_watten"] = observe_cpu_memories(WattenRuntime(result.room, None, tuple(names.items()),

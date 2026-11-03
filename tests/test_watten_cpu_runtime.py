@@ -696,6 +696,87 @@ def test_cpu_names_reserve_all_human_names_and_readiness_never_grants_production
     assert not runner.cpu_autoplay_enabled()
 
 
+def _waiting_cpu_names_game(game_id, *, cpus=(1, 2, 3), username="Human"):
+    game = runtime_module.new_watten_game(game_id, "Names", 4)
+    recipe = runtime_tests.WattenRecipe(4, "normal", False, False, cpu_seats=cpus)
+    runtime_module.configure_watten_game(game, recipe, SimpleNamespace(user_id=1, username=username), None)
+    return game
+
+
+def test_fresh_games_draw_distinct_available_cpu_names_instead_of_fixed_pool_order(monkeypatch):
+    chosen = iter(("Kathi", "Resi", "Burgi", "Vroni", "Hias", "Lois"))
+    pools = []
+
+    def choose(pool):
+        pools.append(pool)
+        name = next(chosen)
+        assert name in pool
+        return name
+
+    monkeypatch.setattr(runtime_module.secrets, "choice", choose)
+    first = _waiting_cpu_names_game("names-first", username="HaNsL")
+    second = _waiting_cpu_names_game("names-second", username="HaNsL")
+    assert tuple(dict(first["_watten"].names)[cpu.participant_id] for cpu in first["_watten"].room.cpus) == ("Kathi", "Resi", "Burgi")
+    assert tuple(dict(second["_watten"].names)[cpu.participant_id] for cpu in second["_watten"].room.cpus) == ("Vroni", "Hias", "Lois")
+    assert len(pools) == 6 and all("Hansl" not in pool for pool in pools)
+    assert "Kathi" not in pools[1] and "Resi" not in pools[2]
+    for game in (first, second):
+        assert len({name.casefold() for _player, name in game["_watten"].names}) == 4
+
+
+def test_cpu_names_survive_checkpoint_restore_and_rejoin_without_another_draw(monkeypatch):
+    game = _waiting_cpu_names_game("names-restored")
+    expected = game["_watten"].names
+    monkeypatch.setattr(runtime_module.secrets, "choice", lambda _pool: pytest.fail("existing CPU was renamed"))
+    restored = restore_watten_json(json.dumps(runtime_module.serialize_watten_game(game)))
+    assert restored["_watten"].names == expected
+    candidate, _player = runtime_module.admit_account(restored, SimpleNamespace(user_id=1, username="Human"),
+                                                     restored["_watten"].room.revision, None)
+    assert candidate["_watten"].names == expected
+    assert runtime_module._cpu_names(candidate["_watten"].room, dict(expected)) == dict(expected)
+
+
+def test_adding_an_earlier_cpu_reserves_existing_names_and_replay_never_redraws(monkeypatch):
+    monkeypatch.setattr(runtime_module.secrets, "choice", lambda _pool: "Hansl")
+    game = _waiting_cpu_names_game("names-extra-cpu", cpus=(3,))
+    original = game["_watten"].room.cpus[0]
+    pools = []
+
+    def choose(pool):
+        pools.append(pool)
+        assert "Hansl" not in pool
+        return pool[0]
+
+    monkeypatch.setattr(runtime_module.secrets, "choice", choose)
+    command = {"action": "watten_place_cpu", "command_id": "add-earlier-cpu", "revision": game["_watten"].room.revision,
+               "lifecycle_revision": 0, "seat": 1}
+    candidate, _ack, replayed, _private = apply_runtime_action(game, 1, "p1", command)
+    assert not replayed and len(pools) == 1
+    assert dict(candidate["_watten"].names)[original.participant_id] == "Hansl"
+    monkeypatch.setattr(runtime_module.secrets, "choice", lambda _pool: pytest.fail("replay drew another name"))
+    replay, _ack, replayed, _private = apply_runtime_action(candidate, 1, "p1", command)
+    assert replayed and replay["_watten"].names == candidate["_watten"].names
+
+
+def test_joining_human_only_renames_the_cpu_whose_name_now_collides(monkeypatch):
+    chosen = iter(("Kathi", "Resi"))
+    monkeypatch.setattr(runtime_module.secrets, "choice", lambda _pool: next(chosen))
+    game = _waiting_cpu_names_game("names-human-collision", cpus=(2, 3))
+    first, second = game["_watten"].room.cpus
+
+    def choose(pool):
+        assert "Kathi" not in pool and "Resi" not in pool
+        return "Hansl"
+
+    monkeypatch.setattr(runtime_module.secrets, "choice", choose)
+    candidate, player = runtime_module.admit_account(game, SimpleNamespace(user_id=2, username="Kathi"),
+                                                     game["_watten"].room.revision, None)
+    names = dict(candidate["_watten"].names)
+    assert names[player] == "Kathi" and names[first.participant_id] == "Hansl"
+    assert names[second.participant_id] == "Resi"
+    assert len({name.casefold() for name in names.values()}) == 4
+
+
 def test_normal_three_cpu_solo_announces_both_and_only_its_authorized_calls_reach_memory(server, ready, monkeypatch):
     deterministic_dealer(monkeypatch)
     game_id, _owners, _sessions = local_started(server, count_players=3, cpus=(1, 2))
