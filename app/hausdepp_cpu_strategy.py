@@ -12,8 +12,9 @@ from dataclasses import dataclass, field
 from functools import lru_cache
 from typing import Any, Mapping
 
+from .hausdepp_cpu_endgame import winning_afterthrows, winning_plays
 from .hausdepp_cpu_knowledge import PublicKnowledge
-from .hausdepp_engine import HAUSDEPP_RANKS, card_rank
+from .hausdepp_engine import HAUSDEPP_RANKS, card_rank, make_deck
 
 _VALUES = {rank: index for index, rank in enumerate(HAUSDEPP_RANKS)}
 
@@ -301,6 +302,243 @@ def _known_pair_block(projection: Mapping[str, Any], memory: CpuMemory | None) -
     return None
 
 
+def _known_pickup_finish(projection: Mapping[str, Any], memory: CpuMemory | None) -> list[str] | None:
+    """Force a known opponent to take the pile, then finish with one rank.
+
+    This only applies to a complete publicly observed hand in a final duel.
+    A ten or a wildcard quartet in that hand defeats the proposed block.
+    """
+    players = projection.get("players", [])
+    active = [player for player in players if not player.get("finished") and not player.get("withdrawn")]
+    viewer = projection.get("viewer_id")
+    hand = list(projection.get("hand", []))
+    if (memory is None or projection.get("phase") != "playing" or projection.get("deck_count") != 0
+            or projection.get("afterthrow") or projection.get("withdrawn_ids")
+            or projection.get("current_player_id") != viewer or "play" not in projection.get("available_actions", [])
+            or len(active) != 2 or any(player.get("withdrawn") for player in players)
+            or any(player.get("finished") and player.get("hand_count") != 0 for player in players)):
+        return None
+    opponent = next((player["id"] for player in active if player["id"] != viewer), None)
+    known = memory.public.exact_hand(projection, opponent)
+    if not known:
+        return None
+    opponent_counts = Counter(card_rank(card) for card in known)
+    if "10" in opponent_counts or (_wild_quartets(projection) and 4 in opponent_counts.values()):
+        return None
+    groups: dict[str, list[str]] = defaultdict(list)
+    for card in hand:
+        groups[card_rank(card)].append(card)
+    if len(groups) != 2 or "10" in groups:
+        return None
+    top, streak = _top_run(list(projection.get("discard", [])))
+    legal = set(projection.get("playable_cards", []))
+    for rank in HAUSDEPP_RANKS[:-1]:
+        cards = sorted(groups.get(rank, []))
+        if (cards and set(cards) <= legal and _VALUES[rank] > max(_VALUES[r] for r in opponent_counts)
+                and len(cards) + (streak if rank == top else 0) < 4):
+            return cards
+    return None
+
+
+
+def _counted_opponent(projection: Mapping[str, Any], memory: CpuMemory | None) -> tuple[str, ...] | None:
+    """The single remaining opposing hand, from counted public cards or observed pickups."""
+    if memory is None or projection.get("phase") != "playing" or projection.get("deck_count") != 0:
+        return None
+    viewer = projection.get("viewer_id")
+    active = [player for player in projection.get("players", [])
+              if not player.get("finished") and not player.get("withdrawn")]
+    if len(active) != 2 or viewer not in {player.get("id") for player in active}:
+        return None
+    opponent = next(player["id"] for player in active if player["id"] != viewer)
+    return memory.public.counted_hand(projection, opponent) or memory.public.exact_hand(projection, opponent)
+
+
+def _counted_endgame(projection: Mapping[str, Any], memory: CpuMemory | None, groups: Mapping[str, list[str]],
+                     quartets: Mapping[str, list[str]]) -> dict[str, Any] | None:
+    """A forced win in the final duel, found over the publicly counted opposing hand.
+
+    Only moves offered in this seat's own projection are returned; the search
+    never sees the engine state or another seat's projection.
+    """
+    opponent = _counted_opponent(projection, memory)
+    if opponent is None:
+        return None
+    hand, discard = list(projection.get("hand", [])), list(projection.get("discard", []))
+    wild = _wild_quartets(projection)
+    actions = projection.get("available_actions", [])
+    afterthrow = projection.get("afterthrow") or {}
+    if "afterthrow" in actions and afterthrow.get("player_id") == projection.get("viewer_id"):
+        rank = afterthrow.get("rank")
+        counts = winning_afterthrows(hand, opponent, discard, rank, wild=wild) or []
+        cards = sorted(groups.get(rank, []))
+        for count in counts:
+            if count <= len(cards):
+                return {"action": "afterthrow", "cards": cards[:count]}
+        return None
+    if (not {"play", "pickup"} & set(actions)
+            or projection.get("current_player_id") != projection.get("viewer_id")):
+        return None
+    for rank, count in winning_plays(hand, opponent, discard, wild=wild) or []:
+        if rank == "pickup":
+            if "pickup" in actions:
+                return {"action": "pickup"}
+            continue
+        if count == 4 and rank in quartets:
+            return {"action": "play", "cards": quartets[rank]}
+        if len(groups.get(rank, [])) >= count:
+            return {"action": "play", "cards": sorted(groups[rank])[:count]}
+    return None
+
+
+def _proven_duel_low_lead(hand: list[str], discard: list[str], known: tuple[str, ...], unknown: int) -> bool:
+    """A low lead leaves a guaranteed last ace in this narrow public duel.
+
+    At least two pairwise distinct known ordinary ranks, none the low rank,
+    plus at most two unknown cards cannot form a clearing four that lets the
+    opponent finish before our ace, including tens, pickups and afterthrows.
+    """
+    if len(hand) != 2 or discard or len(known) < 2 or not 0 <= unknown <= 2:
+        return False
+    own = [card_rank(card) for card in hand]
+    if own.count("A") != 1:
+        return False
+    low = next(rank for rank in own if rank != "A")
+    if _VALUES[low] >= _VALUES["A"]:
+        return False
+    ranks = [card_rank(card) for card in known]
+    return len(set(ranks)) == len(ranks) and "10" not in ranks and low not in ranks
+
+
+def _speculative_endgame_play(projection: Mapping[str, Any], memory: CpuMemory | None, *,
+                              require_hint: bool) -> tuple[list[str], float] | None:
+    """Consider shedding a high card without inventing opponents' hands.
+
+    The return score is an uncalibrated selection weight, never a probability
+    or a guarantee. At larger tables every intervening seat may play, finish,
+    clear or buy the pile before our next turn. An observed pickup may be a
+    voluntary purchase; when no hint exists only larger tables use this idea.
+    """
+    if ((require_hint and memory is None) or projection.get("phase") != "playing" or projection.get("deck_count") != 0
+            or projection.get("current_player_id") != projection.get("viewer_id")
+            or "play" not in projection.get("available_actions", [])
+            or projection.get("withdrawn_ids")):
+        return None
+    players = projection.get("players", [])
+    viewer = projection.get("viewer_id")
+    active = [player for player in players if not player.get("finished") and not player.get("withdrawn")]
+    if not 2 <= len(active) <= 6 or any(player.get("withdrawn") for player in players):
+        return None
+    own_index = next((index for index, player in enumerate(players) if player.get("id") == viewer), None)
+    if own_index is None:
+        return None
+    following = [players[(own_index + offset) % len(players)] for offset in range(1, len(players))
+                 if not players[(own_index + offset) % len(players)].get("finished")
+                 and not players[(own_index + offset) % len(players)].get("withdrawn")]
+    if not following:
+        return None
+    next_player, intervening = following[0], following[1:]
+    # Once the next seat takes the packet, any further seat acts before us.
+    # A short hand is dangerous, especially if that seat gets an empty pile.
+    # At larger tables a high card can also block that seat if the next player
+    # answers it, so reduce the chance rather than ruling it out entirely.
+    if len(active) <= 3 and any(player.get("hand_count", 0) <= 2 for player in intervening):
+        return None
+    known_finishers = sum((known_hand := memory.public.exact_hand(projection, player["id"])) is not None
+                          and _finish_move(list(known_hand), [], wild_quartets=_wild_quartets(projection)) is not None
+                          for player in intervening) if memory else 0
+    if len(active) <= 3 and known_finishers:
+        return None
+    opponent = next_player["id"]
+    hint = memory.public.pickup_hint(projection, opponent) if memory else None
+    if hint is not None and hint.known_playable:
+        # A provably voluntary purchase gives no evidence of a weak hand. At
+        # large tables the separate no-hint idea can still be considered.
+        hint = None
+    if require_hint and hint is None or not require_hint and (hint is not None or len(active) < 4):
+        return None
+    # Proven knowledge and the solver have their own decision/skill handling.
+    # A missed proven move must not get a second attempt as mere suspicion.
+    if memory and (memory.public.exact_hand(projection, opponent) is not None
+                   or memory.public.counted_hand(projection, opponent) is not None):
+        return None
+    known = memory.public.known_cards(projection, opponent) if memory else ()
+    # A complete hand is handled by the proven solver, not by speculation.
+    unknown = int(next_player.get("hand_count", 0)) - len(known)
+    if unknown <= 0:
+        return None
+    hand = list(projection.get("hand", []))
+    discard = list(projection.get("discard", []))
+    if len(active) == 2 and _proven_duel_low_lead(hand, discard, known, unknown):
+        return None  # do not replace this publicly proven chance with a guess
+    groups: dict[str, list[str]] = defaultdict(list)
+    for card in projection.get("playable_cards", []):
+        if card in hand:
+            groups[card_rank(card)].append(card)
+    top, streak = _top_run(discard)
+    low_rank = min((_VALUES[card_rank(card)] for card in hand if card_rank(card) != "10"), default=8)
+    for rank in reversed(HAUSDEPP_RANKS[:-1]):
+        cards = sorted(groups.get(rank, []))
+        if (not cards or hint is not None and _VALUES[rank] <= _VALUES[hint.rank]
+                or hint is None and (_VALUES[rank] < _VALUES["U"] or _VALUES[rank] <= low_rank)
+                or any(_VALUES[card_rank(card)] >= _VALUES[rank] for card in known)
+                or len(cards) + (streak if rank == top else 0) >= 4):
+            continue
+        # A speculative block is not a guaranteed finish. Keep high pairs or
+        # triples in reserve just as for an ordinary play, unless completing
+        # four already cleared above; assess the cards we would actually play.
+        if len(cards) > 1 and _holds(rank, len(cards), top=top, streak=streak):
+            cards = cards[:1]
+        if _wild_quartets(projection) and any(count >= 4 for count in Counter(map(card_rank, known)).values()):
+            continue
+        remaining = [card for card in hand if card not in cards]
+        can_finish_empty = _finish_move(remaining, [], wild_quartets=_wild_quartets(projection)) is not None
+        # At larger tables, spending the high card can also prepare two or
+        # more mixed low/middle cards for later shedding. No assumption is made
+        # that the packet will be empty or that another turn will be reached.
+        low_tail = (len(active) >= 4 and 2 <= len(remaining) <= 4
+                    and all(_VALUES[card_rank(card)] <= _VALUES["O"] for card in remaining))
+        if not can_finish_empty and not low_tail:
+            continue
+        # Unseen includes potentially burned cards and other hands; it is a
+        # deliberately rough public-card model, not the true opponent hand.
+        unavailable = set(hand) | set(discard) | set(known)
+        unseen = [card for card in make_deck() if card not in unavailable]
+        if unknown > len(unseen):
+            continue
+        threats = sum(_VALUES[card_rank(card)] >= _VALUES[rank] for card in unseen)
+        # No packet-size claim: this is an uncalibrated human-like heuristic,
+        # and even a very large purchase may have been made voluntarily.
+        weight = 1.0 if hint is None else 0.8
+        confidence = (1 - weight * threats / len(unseen)) ** unknown if unseen else 0.0
+        if _wild_quartets(projection):
+            confidence *= 0.9
+        if len(active) > 2:
+            confidence *= 0.65 * 0.85 ** (len(active) - 3)
+            confidence *= 0.9 ** sum(player.get("hand_count", 0) == 3 for player in intervening)
+        if len(active) >= 4:
+            confidence *= 0.35 ** sum(player.get("hand_count", 0) <= 1 for player in intervening)
+            confidence *= 0.5 ** sum(player.get("hand_count", 0) == 2 for player in intervening)
+            confidence *= 0.4 ** known_finishers
+        if low_tail and not can_finish_empty:
+            # With no observed pickup, mixed remaining ranks are a weaker
+            # signal than a prepared finish; keep occasional legal gambles.
+            confidence *= 0.5 if hint is None else 0.8
+        if confidence >= (0.015 if len(active) >= 4 else 0.25):
+            return cards, confidence
+    return None
+
+
+def _suspected_pickup_finish(projection: Mapping[str, Any], memory: CpuMemory | None) -> tuple[list[str], float] | None:
+    """An observed pickup may suggest, but never prove, a useful high play."""
+    return _speculative_endgame_play(projection, memory, require_hint=True)
+
+
+def _unhinted_endgame_finish(projection: Mapping[str, Any], memory: CpuMemory | None) -> tuple[list[str], float] | None:
+    """Without a pickup hint, try a high play only at a larger endgame table."""
+    return _speculative_endgame_play(projection, memory, require_hint=False)
+
+
 def choose_cpu_action(projection: Mapping[str, Any], *, memory: CpuMemory | None = None,
                       skill: float = 1.0, rng: Any = None) -> dict[str, Any] | None:
     """Choose a legal command; only the authoritative engine applies it.
@@ -340,11 +578,33 @@ def choose_cpu_action(projection: Mapping[str, Any], *, memory: CpuMemory | None
     def high_part(rank: str, cards: list[str]) -> list[str]:
         return cards[:1] if hold and len(cards) > 1 and _holds(rank, len(cards), top=top, streak=streak) else cards
 
+    # Counting every burned card takes experience. At full strength the
+    # counted duel is missed exactly as often as other judgements; attention
+    # falls to zero at individual CPU skill 0.55, which then neither searches
+    # nor draws and so plays exactly as before.
+    attention = 1.0 if not slip else max(0.0, min(1.0, (skill - 0.55) / 0.45))
+    solved: list[dict[str, Any] | None] = []
+
+    def counted() -> dict[str, Any] | None:
+        # Search lazily: direct finishes, ordinary positions and CPUs at or
+        # below individual skill 0.55 never pay for it.
+        if not solved:
+            solved.append(_counted_endgame(projection, memory, groups, quartets) if not stock and attention else None)
+        return solved[0]
+
+    def counts_cards() -> bool:
+        """One draw, only once a forced win was found; no second chance afterwards."""
+        return not slip or rng.random() >= 1 - (1 - slip) * attention
+
     if "afterthrow" in actions and groups:
         rank = next(rank for rank in HAUSDEPP_RANKS if rank in groups)
         afterthrow = {**move, "action": "afterthrow", "cards": sorted(groups[rank])}
         if not stock and len(groups[rank]) == len(hand):
             return afterthrow  # a guaranteed finish is never missed
+        if (found := counted()) is not None and found["action"] == "afterthrow" and counts_cards():
+            # Counting the publicly burned cards reveals the last opposing hand
+            # in the final duel; this matching card wins against every reply.
+            return {**move, **found}
         if slipped(0.5):
             return None  # did not notice the matching card in time
         if hold and _holds(rank, len(groups[rank]), top=top, streak=streak):
@@ -357,9 +617,18 @@ def choose_cpu_action(projection: Mapping[str, Any], *, memory: CpuMemory | None
         if finish is not None and finish in groups:
             return {**move, "action": "play", "cards": sorted(groups[finish])}
 
-    block = _known_pair_block(projection, memory)
-    if block is not None and not slipped():
-        return {**move, "action": "play", "cards": [block]}
+    block = _known_pickup_finish(projection, memory)
+    if block is None:
+        pair_block = _known_pair_block(projection, memory)
+        block = [pair_block] if pair_block is not None else None
+    if block is not None:
+        if not slipped():
+            return {**move, "action": "play", "cards": block}
+    elif (found := counted()) is not None and found["action"] != "afterthrow" and counts_cards():
+        # A forced win over the publicly counted (or fully observed) last
+        # opposing hand. Direct finishes above keep priority, and a missed
+        # pair block gets no second chance here.
+        return {**move, **found}
 
     counts = Counter(card_rank(card) for card in hand)
 
@@ -372,6 +641,15 @@ def choose_cpu_action(projection: Mapping[str, Any], *, memory: CpuMemory | None
         # Likewise a table-rule quartet over a higher pile: four cards gone, turn kept.
         if quartets:
             return {**move, "action": "play", "cards": next(iter(quartets.values()))}
+        suspected = (_suspected_pickup_finish(projection, memory)
+                     or _unhinted_endgame_finish(projection, memory))
+        if suspected is not None:
+            cards, confidence = suspected
+            # More experienced opponents recognise this uncertain opportunity
+            # more often, while even a strong CPU can choose the safer plan.
+            chance = confidence * (0.45 + 0.55 * max(0.0, min(1.0, skill))) * (1 - slip)
+            if rng is None or rng.random() < chance:
+                return {**move, "action": "play", "cards": cards}
     ordinary = [rank for rank in HAUSDEPP_RANKS[:-1] if rank in groups]
     choices = []
     if "play" in actions:

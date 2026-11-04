@@ -47,7 +47,7 @@ def test_profile_parameters_remain_monotonic_so_the_median_is_coherent():
     profiles = [skill_for_completed_games(tier) for tier in TIERS]
     for field in fields(CpuSkill):
         values = [getattr(profile, field.name) for profile in profiles]
-        assert values == sorted(values, reverse=field.name in {"near_best", "bid_minimum"})
+        assert values == sorted(values, reverse=field.name in {"near_best", "bid_minimum", "mistake_rate"})
         assert len(set(values)) == len(values)
 
 
@@ -60,7 +60,7 @@ def test_more_experience_never_reverses_any_difficulty_parameter():
     profiles = [skill_for_table([0, completed, 75]) for completed in range(101)]
     for field in fields(CpuSkill):
         values = [getattr(profile, field.name) for profile in profiles]
-        assert values == sorted(values, reverse=field.name in {"near_best", "bid_minimum"})
+        assert values == sorted(values, reverse=field.name in {"near_best", "bid_minimum", "mistake_rate"})
 
 
 @pytest.mark.parametrize("invalid", [-1, 0.5, True, "10"])

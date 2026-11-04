@@ -21,16 +21,20 @@ the highest tier. The runtime still reads current counts when authorizing a CPU
 decision; this change adds no frozen per-deal level. Counts indicate experience,
 not measured human ability.
 
-| Completed Watten games | Hypothetical deals per decision | Confidence weight | Close-choice window |
-| --- | ---: | ---: | ---: |
-| 0–9 | 16 | 0.72 | 0.080 |
-| 10–29 | 24 | 0.82 | 0.045 |
-| 30–74 | 40 | 0.90 | 0.025 |
-| 75 or more | 64 | 0.96 | 0.012 |
+| Completed Watten games | Hypothetical deals per decision | Confidence weight | Close-choice window | Misplay chance |
+| --- | ---: | ---: | ---: | ---: |
+| 0–9 | 16 | 0.72 | 0.080 | 6% |
+| 10–29 | 24 | 0.82 | 0.045 | 2.5% |
+| 30–74 | 40 | 0.90 | 0.025 | 1.5% |
+| 75 or more | 64 | 0.96 | 0.012 | 1% |
 
 These thresholds are implementation choices. Larger samples and narrower
 close-choice windows make later decisions more precise; they do not guarantee
-that every higher tier wins a particular deal. There is no machine learning,
+that every higher tier wins a particular deal. The misplay chance applies only
+when another legal card has a worse sampled result; the actual frequency is
+therefore lower. A misplay cannot violate trump duty or forced cards, and it
+does not deliberately overtake an already safe partner as the last player.
+There is no machine learning,
 Elo model, external model, training history or client-selectable difficulty.
 Progression survives restarts because it is derived from durable completed
 games. Deleting retained games can lower the derived count; no second permanent
@@ -84,12 +88,17 @@ take precedence.
 For the first trick of a blind round, the owner's opening convention additionally
 favours a card whose printed rank and suit have not appeared in that trick.
 Each repeated attribute costs half the tier's partnership preference, at most
-1.8–3.5 percentage points combined. The existing close-choice window still
-limits which simulated moves can compete. This applies to informed announcers
-too, so their partner can see more combinations; it never forces a card that
-violates trump duties or excludes a clearly better simulated move. Later tricks
-keep the existing rank-only preference for uninformed seats. This convention is
-an explicit owner request, not an extra regional rule taken from the sources.
+1.8–3.5 percentage points combined. This applies to informed announcers too,
+so their partner can see more combinations. In any blind trick, an uninformed
+partner additionally favours a different printed rank when the repeated rank
+could still be strike under the permitted hypotheses. The additional preference
+is 1.5 times the tier's partnership weight, and the close-choice window is at
+least that wide for this comparison. In an otherwise hopeless trick the CPU
+compares at most the cheapest repeated and cheapest different-rank alternative,
+rather than considering every expensive card. Legal cards, including forced
+cards, remain legal; a clearly stronger rollout can still repeat a rank and a
+CPU can make a mistake. No actual call is assumed. This convention is an explicit
+owner request, not an extra regional rule taken from the sources.
 
 A second close-choice preference preserves strength when the partner is likely
 already winning the current trick. It checks only the sampled hypothetical
@@ -98,6 +107,110 @@ sampled threat can favour a card that covers it. An uninformed CPU averages over
 its permitted call hypotheses, while an informed CPU uses the call it actually
 learned. This does not expose real opposing hands or turn the partner's card
 into proof of a hidden call. A clearly better full-round rollout still wins.
+
+When an informed player leads blind, sampled worlds also estimate whether a
+trump lead may let an informed opponent take it with a compulsory response.
+This is a soft cost, not a prohibition: drawing trump can still be the
+strongest move, within the existing close-choice window.
+
+As the last player, the CPU does not overtake its partner when that partner is
+already winning under every call still consistent with its knowledge and a legal
+card preserves the partner's win under all those calls. It may overtake when duty
+leaves no such alternative, and it may cover earlier when an opponent still has a
+turn. This stricter preference also gives up opportunities to take the lead in
+the next trick; it never overrides card legality. Sampled hands are hypothetical,
+except when the table explicitly enables an open partner hand. In each sampled
+world the rollout players use that world's call and hands. This is a deliberately
+optimistic approximation of simulated players, including blind ones; it does not
+provide the policy with the real hidden call or other players' real hands. A
+separate information-limited rollout was evaluated but is not used by the game.
+
+## Blind rollout experiment, 4 November 2026
+
+We tested a candidate which instead let blind simulated seats use only their own
+sampled hand, the visible trick and public critical-card order. It is more
+faithful to their information, but is still only a simple approximation. Its
+more realistic information model does not by itself establish stronger play.
+The delivered CPU retains the previous rollout and the new soft rank preference.
+
+Two different comparisons gave different indications. The first used 64 seeds,
+both critical-card options, four dealers and both parties, against an intentionally
+simple reference that does not bid and always holds. Each experience row below
+contains 1,024 synthetic opening deals per model; observations share seeds. These
+results do not establish strength against skilled opponents or people.
+
+| Experience | Rollout | Policy wins | Policy bids | Policy points | Reference points |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Newcomer | Previous | 686 | 752 | 2,006 | 794 |
+| Newcomer | Information-limited | 695 | 773 | 2,038 | 783 |
+| Experienced | Previous | 706 | 836 | 2,087 | 797 |
+| Experienced | Information-limited | 716 | 858 | 2,132 | 774 |
+
+Claude independently tested the candidate against the prior `f89354f7` CPU,
+which bids and responds, on 400 seeds without and 200 with critical cards, all
+four dealers and both parties. The candidate had 9 fewer wins and 226 fewer
+points in 3,200 paired deals without critical cards; with critical cards it had
+2 fewer wins and 41 fewer points in 1,600 paired deals. Rank repetitions fell
+from 894 to 712, and from 437 to 337 respectively. Its previous rank-preference
+variant with the old rollout had 11 fewer points without critical cards; its
+other implementation differences prevent attributing the whole effect to the
+rollout alone. These runs use the default skill and 24 sampled worlds, not
+separate experience tiers. Their grouped results are preserved in
+`experiments/watten_blind_rollout/claude_final.jsonl` and `claude_earlier.jsonl`.
+
+A separate holdout isolates the rollout: both candidates use exactly the same
+`efc38c71` code and soft rank preference; only `_simulated_card` differs. Each
+row uses new seeds 2000–2099, all dealers and both parties, against the same
+`f89354f7` bidding CPU. Policy points are signed points for the tested party,
+compared with zero for the symmetric old-versus-old reference. Per-seed results
+are stored in `experiments/watten_blind_rollout/`.
+
+| Critical cards | Rollout | Wins / 800 | Signed points | Bids | Rank repetitions |
+| --- | --- | ---: | ---: | ---: | ---: |
+| No | Previous | 400 | -7 | 609 | 171 |
+| No | Information-limited | 398 | -72 | 628 | 188 |
+| Yes | Previous | 401 | +8 | 612 | 159 |
+| Yes | Information-limited | 402 | -45 | 598 | 181 |
+
+The eight dealer/party rotations of a seed are dependent. Aggregating by seed,
+the new-minus-old point difference is -0.65 points per seed (standard error
+0.66) without critical cards and -0.53 (standard error 0.79) with them. Neither
+holdout alone establishes a statistically reliable difference, and the change
+in bid counts even reverses direction between these two samples. Together with
+the larger strong-opponent comparison, the results raise enough concern to defer
+the rollout change rather than claim it makes the CPU stronger. They do not
+establish a win rate against people, cover all difficulty tiers or prove a real
+information leak.
+
+The old-versus-old benchmark necessarily produces 400 wins and zero signed
+points because both parties of every deal are rotated; this is a symmetric
+reference, not a measured human win rate. The candidate source SHA-256 is
+`efc38c719ec084b4e135d621ef01053af0ba43f6fd459a941e13770757bb446d`,
+the delivered comparison source is
+`f2d3f793f722d7aa691d308250306f706d17bb66364aed15e63411edbd0f3511`,
+and the patch reconstructing the candidate has SHA-256
+`0339df31e7b24167329322e9288f012e43e80cc8210f75afaacfda4aa718ddf3`.
+The current hardened runner has SHA-256
+`4afd676597dda0b398342ce6e8312dd0c4314666b5a7c39e09d1ffc393f712ef`;
+one seed from each of the four archived variants was reproduced exactly after
+the security changes.
+The benchmark reconstructs and validates these sources in a temporary directory
+and requires the unchanged reference support files from `f89354f7`. From the
+repository root, each of the four holdout rows can be reproduced, for example:
+
+```sh
+python -m scripts.benchmark_watten_blind_strong --mode rankonly --critical 0 --output /tmp/watten-rankonly.json
+python -m scripts.benchmark_watten_blind_strong --mode final --critical 0 --output /tmp/watten-experiment.json
+```
+
+Use `--critical 1` for the other two rows. The old simple-opponent wrapper
+`scripts/benchmark_watten_blind_rollout.py` requires the experimental patch in
+an isolated checkout and refuses to silently compare the old rollout with itself.
+For Claude's final reference comparison, run the strong wrapper in `final` mode
+with `--seed-start 1000 --seeds 400 --critical 0` and again with
+`--seed-start 1000 --seeds 200 --critical 1`.
+The historical simple-reference runs were made before a syntax-only Ruff fix;
+the newcomer runs were repeated after it with identical outcomes.
 
 The CPU does not treat customary partner play as proof of a hidden call. In
 particular, a low second-trick card never reveals its partner's actual hand or
@@ -124,9 +237,10 @@ Their different regional rules are not imported into the house rules.
 
 Source syntax, targeted Ruff checks and behavioural tests cover the changes.
 The release additionally requires the repository’s complete local verification.
-No new strength benchmark was run. The older benchmark
-in `WATTEN_CPU_BENCHMARK.md` predates this strategy and does not measure the new
-tiers or prove a strength increase against people.
+The paired synthetic comparison in [WATTEN_CPU_BENCHMARK.md](WATTEN_CPU_BENCHMARK.md)
+reports the newcomer and experienced tiers against a simple baseline, including
+blind-play and partnership counters. It does not prove a strength difference or
+win rate against people.
 
 ## Deutsche Kurzfassung
 
@@ -143,7 +257,11 @@ CPU-Entscheidungen, ohne neue feste Stufe pro Gabe. Abgeschlossene Spiele sind
 ein Erfahrungswert, keine Messung menschlichen Könnens.
 Die Anzahl kommt aus den bestehenden abgeschlossenen Spielen und bleibt über
 Neustarts erhalten. Das ist eine feste Anpassung der Spielstärke, kein
-maschinelles Lernen.
+maschinelles Lernen. Gelegentlich wählen CPUs eine gemäss Simulation schwächere
+legale Karte: mit 6 %, 2,5 %, 1,5 % beziehungsweise 1 % pro geeigneter Situation.
+Gibt es keine schwächere erlaubte Alternative, entfällt der Fehlwurf. Trumpfpflicht
+und Pflichtkarten bleiben immer verbindlich; ein sicherer Partnerstich wird als
+letzte Position nicht absichtlich überstochen.
 
 Geboten wird bei subjektiv guten Chancen und sinnvoller Punkteabwägung. Für
 jede weitere Erhöhung steigt die nötige Sicherheit. «Zweiter Stich ist
@@ -152,15 +270,51 @@ zuletzt spielt. Klar bessere Kartenentscheidungen und sämtliche Spielregeln
 gehen vor. Im ersten Stich eines blinden Spiels vermeiden sie nach Möglichkeit
 bereits sichtbare Kartenwerte und Farben, auch als informierte Ansager. Je
 wiederholtem Merkmal beträgt der weiche Nachteil 0,5 × Partnerschaftsgewicht,
-zusammen höchstens 1,8–3,5 Prozentpunkte innerhalb des bestehenden Fensters für
-ähnlich gute Züge. Daraus wird kein Wissen über den geheimen Schlag oder die
-Farbe abgeleitet. Diese Eröffnungskonvention ist eine ausdrückliche Vorgabe des
-Eigentümers. Vermutlich sichere Partnerstiche werden geschont; wenn danach noch
+zusammen höchstens 1,8–3,5 Prozentpunkte. Für den blinden Partner ohne bekannte
+Ansage kommt in jedem Stich eine zusätzliche weiche Präferenz von 1,5 ×
+Partnerschaftsgewicht hinzu, wenn der wiederholte Rang noch Schlag sein könnte
+und ein anderer legaler Rang verfügbar ist. Das Auswahlfenster wird hierfür bei
+Bedarf erweitert; bei einem sonst aussichtslosen Stich werden höchstens die
+billigste wiederholte und die billigste andere Karte verglichen. Klar bessere
+Züge, Pflichtkarten und Fehlwürfe bleiben möglich. Daraus wird keine geheime
+Ansage vorausgesetzt. Diese Konvention ist eine ausdrückliche Vorgabe des Eigentümers. Vermutlich sichere
+Partnerstiche werden geschont; wenn danach noch
 spielende Gegner den Stich in den erlaubten hypothetischen Verteilungen
 gefährden, kann eine stärkere Deckung sinnvoll sein. Uninformierte CPUs mitteln
-über mögliche Ansagen, informierte nutzen die wirklich bekannte Ansage. Die Taktiken werden durch gezielte Verhaltenstests geprüft; vor der Freigabe
-folgt zusätzlich der vollständige lokale Releaseablauf. Neue Messungen zur
-Spielstärke wurden nicht durchgeführt.
+über mögliche Ansagen, informierte nutzen die wirklich bekannte Ansage. Die
+Taktiken werden durch gezielte Verhaltenstests geprüft; vor der Freigabe folgt
+zusätzlich der vollständige lokale Releaseablauf. Ein gepaarter Vergleich mit
+einer einfachen Referenz für Anfänger- und Erfahrungsstufe steht in
+[WATTEN_CPU_BENCHMARK.md](WATTEN_CPU_BENCHMARK.md). Er belegt keine allgemeine
+Stärkeänderung oder Gewinnrate gegen Menschen.
+
+Beim blinden Ausspiel berücksichtigt eine informierte CPU anhand hypothetischer
+Verteilungen, ob ein wissender Gegner durch ein Trumpfanspiel übernehmen muss.
+Das ist eine weiche Abwägung im bestehenden Auswahlfenster: Trumpf auszuspielen
+kann weiterhin sinnvoll sein.
+
+Als letzte Person übersticht die CPU ihren Partner nicht, wenn dieser bei allen
+noch möglichen Ansagen bereits gewinnt und eine legale Karte diesen Partnerstich
+bei allen diesen Ansagen erhält. Lässt die Trumpfpflicht keine solche Karte zu,
+darf sie überstechen; wenn nach ihr noch ein Gegner spielt, kann sie den Stich
+weiterhin decken. Diese strengere Taktik verzichtet auch auf die Möglichkeit,
+durch das Überstechen den nächsten Stich selbst anzuspielen. Die Spielregeln
+gehen immer vor. Nur bei aktivierter Option «Partnerhand offen» stammt eine fremde
+Hand aus dem Spiel; ansonsten sind die verteilten Hände Annahmen. Die vereinfachten
+blinden Spieler innerhalb einer Simulation wählen nur anhand ihrer hypothetischen
+eigenen Karten, sichtbarer Stichkarten und fest bekannter Kritischer; sie lesen
+weder die hypothetische Ansage noch fremde hypothetische Hände. Als letzte Person
+können sie einen scheinbaren Stich mit einer höheren Karte der angespielten Farbe
+versuchen; die unbekannte Ansage kann diesen Versuch scheitern lassen. Wenn der
+entscheidende CPU-Sitz anhand seiner erlaubten Sicht genau eine mögliche Ansage
+erschliesst, darf nur derselbe simulierte Sitz diese Ableitung in späteren Zügen
+nutzen, ohne fremde Hände zu sehen. Andere blinde Simulationsplätze erfahren sie
+nicht; eine Pflicht, Trumpf zuzugeben, entsteht durch die Ableitung nicht.
+Informierte Simulationsplätze nutzen weiterhin die hypothetische Ansage und die
+verteilten Hände. Das ist eine vereinfachte Näherung, keine echte fremde Hand. Der Vergleich
+beider Simulationsmodelle mit Einsteiger- und Erfahrungsstufe samt Geboten,
+Punkten, reproduzierbarem Aufruf und Grenzen steht oben unter «Blind rollout
+comparison»; er belegt keine Gewinnrate gegen Menschen.
 
 Ein geprüfter Wiederverbindungsverdacht wurde mit echten persönlichen
 Engine-Ansichten widerlegt: Ohne offenen Stichverlauf kennt ein frisches

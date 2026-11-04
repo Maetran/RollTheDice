@@ -3,6 +3,7 @@
 import json
 import random
 from dataclasses import replace
+from types import SimpleNamespace
 
 import pytest
 
@@ -23,7 +24,7 @@ from app.watten_cpu import (
 )
 from app.watten_cpu_memory import WattenCpuMemoryError, memory_from_storage, memory_to_storage, new_memory
 from app.watten_cpu_skill import CpuSkill
-from app.watten_engine import EngineCommand, apply_command, restore_storage, start_match, storage_payload
+from app.watten_engine import EngineCommand, SeatBinding, apply_command, restore_storage, start_match, storage_payload
 from app.watten_play import legal_cards
 from app.watten_rules import CardKind, ComparisonRules, card_kind
 from tests.test_watten_cpu_memory import Table, cpu_recipe, explicit_deal
@@ -200,6 +201,36 @@ def test_cpu_declines_a_redeal_while_its_hand_is_hidden_instead_of_reading_engin
     assert turn(table, "B").kind == "preplay_decline"
 
 
+def test_intentional_misplay_respects_actual_engine_trump_duty(monkeypatch):
+    deal = explicit_deal(
+        ("hearts-7", "hearts-8", "hearts-9", "leaves-9", "acorns-10"),
+        ("bells-7", "hearts-A", "hearts-K", "leaves-A", "acorns-A"),
+        ("bells-A", "bells-K", "leaves-8", "leaves-10", "acorns-9"),
+        ("leaves-7", "leaves-U", "leaves-O", "acorns-O", "acorns-K"),
+    )
+    table = Table(start_match(cpu_recipe(4), "mistake-duty", deal, first_dealer="A"))
+    table.ready("8", "bells")
+    table.play("B", "bells-7")
+    allowed = legal_cards(table.state.play, table.state.bid_state, "C")
+    assert "leaves-10" not in allowed and {"bells-A", "bells-K"} <= set(allowed)
+    monkeypatch.setattr(cpu_policy, "_should_bid", lambda *_args: False)
+    monkeypatch.setattr(cpu_policy, "_rollout", lambda _ctx, _world, card: int(card == "bells-A"))
+    original = cpu_policy._occasional_misplay
+
+    class AlwaysMistake:
+        def below(self, _bound):
+            return 0
+
+    def force_mistake(ctx, legal, selected, scores, models, _stream, skill):
+        return original(ctx, legal, selected, scores, models, AlwaysMistake(), skill)
+
+    monkeypatch.setattr(cpu_policy, "_occasional_misplay", force_mistake)
+    proposal = decide(table.view("C"), table.memories["C"], seed=7, budget=FAST,
+                      skill=CpuSkill(mistake_rate=0.1)).decision
+    assert proposal.kind == "play_card" and proposal.value in allowed and proposal.value != "bells-A"
+    table.propose("C", proposal)
+
+
 def test_cpu_bloedeln_bottom_is_automatic_and_later_tricks_allow_policy_choices():
     table = Table(start_match(cpu_recipe(4, "ladinisch", True), "forced-bottom", blind_deal(), first_dealer="A"))
     table.ready(bloedeln=None)
@@ -225,6 +256,164 @@ def test_cpu_bloedeln_bottom_is_automatic_and_later_tricks_allow_policy_choices(
         table.play(player)
 
 
+def test_blind_trump_lead_prices_forcing_knower_without_banning_a_winning_lead():
+    table = Table(start_match(cpu_recipe(4, "ladinisch", True), "blind-leading", shuffled_deal(4, 9),
+                              first_dealer="A"))
+    table.ready()
+    ctx = cpu_policy._prepare(table.view("B"), table.memories["B"], ())
+    model = ctx.model(ctx.memory.strike, ctx.memory.suit)
+    assert (model.call.strike_rank, model.call.trump_suit) == ("8", "bells")
+    # The other knower is normally an opponent; these are hypothetical hands,
+    # never the actual hand of A. Forced trump beats a low trump lead.
+    forced = (("bells-A", "leaves-7"), ctx.hand, (), ())
+    empty = (("leaves-A", "leaves-7"), ctx.hand, (), ())
+    pref = cpu_policy._blind_trump_lead_preference
+    skill = CpuSkill()
+    assert pref(ctx, "bells-7", [(model, forced)], skill) < 0
+    assert pref(ctx, "bells-7", [(model, empty)], skill) == 0
+    assert pref(ctx, "leaves-9", [(model, forced)], skill) == 0
+    assert pref(ctx, "bells-7", [(model, forced)], skill) > -skill.near_best
+
+
+def test_partner_cover_when_last_player_prefers_not_to_overtake_even_a_low_card():
+    deal = explicit_deal(
+        ("hearts-10", "hearts-U", "hearts-K", "leaves-A", "bells-8"),
+        ("bells-K", "hearts-7", "leaves-U", "acorns-A", "hearts-9"),
+        ("hearts-8", "leaves-8", "acorns-8", "leaves-K", "acorns-10"),
+        ("acorns-9", "leaves-7", "leaves-10", "acorns-O", "hearts-O"),
+    )
+    table = Table(start_match(cpu_recipe(4), "partner-last", deal, first_dealer="A"))
+    table.ready("9", "bells")
+    for player, card in (("B", "bells-K"), ("C", "hearts-8"), ("D", "leaves-7")):
+        table.play(player, card)
+    ctx = cpu_policy._prepare(table.view("A"), table.memories["A"], ())
+    model = ctx.model("9", "bells")
+    worlds = [(model, (ctx.hand, (), (), ()))]
+    pref = cpu_policy._partner_cover_preference
+    # A's partner C is winning; no opponent acts after A.
+    ctx.trick = [(1, "leaves-7"), (2, "leaves-K"), (3, "hearts-8")]
+    ctx.leader = 1
+    assert pref(ctx, "leaves-A", worlds, CpuSkill()) < pref(ctx, "hearts-10", worlds, CpuSkill())
+
+
+def test_experience_controls_reproducible_legal_misplays():
+    from app.watten_cpu_skill import skill_for_completed_games
+
+    table = Table(start_match(cpu_recipe(4, "ladinisch", True), "mistakes", shuffled_deal(4, 9),
+                              first_dealer="A"))
+    table.ready()
+    ctx = cpu_policy._prepare(table.view("B"), table.memories["B"], ())
+    model = ctx.model(ctx.memory.strike, ctx.memory.suit)
+    selected, worse = ctx.hand[:2]
+    scores = {selected: 0.9, worse: 0.3}
+
+    def count(completed):
+        stream = cpu_policy._Stream(["mistake-test"])
+        skill = skill_for_completed_games(completed)
+        return sum(cpu_policy._occasional_misplay(ctx, (selected, worse), selected, scores,
+                                                  [model], stream, skill) == worse for _ in range(10_000))
+
+    beginner, expert = count(0), count(75)
+    assert 500 < beginner < 700 and 70 < expert < 130
+    assert beginner == count(0)
+    assert set((selected, worse)) <= set(cpu_policy._own_legal(ctx, cpu_policy._options(ctx)))
+
+
+def test_deliberate_misplay_does_not_overtake_a_safe_partner():
+    table = Table(start_match(cpu_recipe(4), "mistake-safe-partner", shuffled_deal(4, 9), first_dealer="A"))
+    table.ready("9", "bells")
+    ctx = cpu_policy._prepare(table.view("A"), table.memories["A"], ())
+    model = ctx.model("9", "bells")
+    ctx.trick = [(1, "leaves-7"), (2, "leaves-K"), (3, "hearts-8")]
+    ctx.leader = 1
+    # C is A's partner; no opponents remain. Simulate a roll-out in which the
+    # candidate overtake scores lower, so a mistake would otherwise select it.
+    selected, worse = "hearts-10", "leaves-A"
+    stream = cpu_policy._Stream(["mistake-test"])
+    assert cpu_policy._occasional_misplay(ctx, (selected, worse), selected,
+        {selected: 0.9, worse: 0.3}, [model], stream, CpuSkill(mistake_rate=0.1)) == selected
+
+
+def test_last_player_keeps_safe_partner_trick_when_legal_alternative_exists():
+    deal = explicit_deal(
+        ("leaves-A", "hearts-10", "bells-A", "acorns-7", "hearts-9"),
+        ("leaves-7", "hearts-7", "hearts-8", "acorns-8", "acorns-9"),
+        ("leaves-K", "bells-8", "hearts-U", "acorns-10", "acorns-U"),
+        ("hearts-O", "leaves-10", "leaves-U", "acorns-O", "acorns-K"),
+    )
+    table = Table(start_match(cpu_recipe(4), "safe-partner", deal, first_dealer="A"))
+    table.ready("9", "bells")
+    for player, card in (("B", "leaves-7"), ("C", "leaves-K"), ("D", "hearts-O")):
+        table.play(player, card)
+    ctx = cpu_policy._prepare(table.view("A"), table.memories["A"], ())
+    options = cpu_policy._options(ctx)
+    legal = cpu_policy._own_legal(ctx, options)
+    spared = cpu_policy._spare_partner_trick(ctx, legal, options)
+    assert "leaves-A" in legal and "leaves-A" not in spared
+    assert "hearts-10" in spared and set(spared) <= set(legal)
+    decision = card_choice(table, "A")
+    assert decision.value in spared
+    table.propose("A", decision)
+
+
+def test_last_player_can_overtake_partner_if_trump_duty_leaves_no_alternative():
+    deal = explicit_deal(
+        ("bells-A", "bells-K", "hearts-K", "leaves-A", "acorns-A"),
+        ("bells-7", "hearts-7", "hearts-8", "acorns-8", "acorns-9"),
+        ("bells-10", "leaves-K", "hearts-U", "acorns-10", "acorns-U"),
+        ("bells-9", "hearts-O", "leaves-10", "leaves-U", "acorns-O"),
+    )
+    table = Table(start_match(cpu_recipe(4), "forced-overtake", deal, first_dealer="A"))
+    table.ready("8", "bells")
+    for player, card in (("B", "bells-7"), ("C", "bells-10"), ("D", "bells-9")):
+        table.play(player, card)
+    ctx = cpu_policy._prepare(table.view("A"), table.memories["A"], ())
+    options = cpu_policy._options(ctx)
+    legal = cpu_policy._own_legal(ctx, options)
+    assert set(legal) == {"bells-A", "bells-K"}
+    assert cpu_policy._spare_partner_trick(ctx, legal, options) == legal
+    decision = card_choice(table, "A")
+    assert decision.value in legal
+    table.propose("A", decision)
+
+
+def test_ambiguous_blind_call_does_not_assume_partner_is_winning():
+    table = Table(start_match(cpu_recipe(4, "ladinisch", True), "ambiguous-partner", blind_deal(),
+                              first_dealer="A"))
+    table.ready()
+    ctx = cpu_policy._prepare(table.view("C"), table.memories["C"], ())
+    assert ctx.seat not in ctx.knowers and ctx.snap.partner_seat == 0
+    assert {("9", "bells"), ("7", "hearts")} <= set(call_hypotheses(table.view("C"), table.memories["C"]))
+    # Two hypothetical calls with different public winners: the blind seat
+    # cannot treat the first call as established by the partner's card.
+    ctx.trick = [(3, "leaves-7"), (0, "leaves-K"), (1, "hearts-O")]
+    ctx.leader = 3
+    first, second = ctx.model("9", "bells"), ctx.model("7", "hearts")
+    assert ctx.trick[first.winner([card for _, card in ctx.trick])][0] == 0
+    assert ctx.trick[second.winner([card for _, card in ctx.trick])][0] != 0
+    legal = ("leaves-A", "acorns-10")
+    assert cpu_policy._spare_partner_trick(ctx, legal, [(first, None, None), (second, None, None)]) == legal
+
+
+def test_blind_deal_53_does_not_overtake_safe_partner_across_seeds(monkeypatch):
+    table = Table(start_match(cpu_recipe(4, "ladinisch", True), "p53", shuffled_deal(4, 53), first_dealer="A"))
+    # Replay the original engine-accepted counterexample rather than relying
+    # on earlier CPU choices, which can change as rollouts improve.
+    table.ready()
+    for player, card in (("B", "acorns-9"), ("C", "leaves-10"), ("D", "bells-8")):
+        table.play(player, card)
+    monkeypatch.setattr(cpu_policy, "_should_bid", lambda *_args: False)
+    ctx = cpu_policy._prepare(table.view("A"), table.memories["A"], ())
+    options = cpu_policy._options(ctx)
+    legal = cpu_policy._own_legal(ctx, options)
+    safe = cpu_policy._spare_partner_trick(ctx, legal, options)
+    assert "leaves-O" in legal and "leaves-O" not in safe
+    assert safe
+    for seed in range(40):
+        decision = decide(table.view("A"), table.memories["A"], seed=seed, budget=CpuBudget(24)).decision
+        assert decision.kind == "play_card" and decision.value in safe
+
+
 @pytest.mark.parametrize("blind", (False, True))
 def test_partner_cover_preference_conserves_a_strike_when_safe_and_covers_sampled_later_threats(blind):
     deal = explicit_deal(
@@ -241,6 +430,10 @@ def test_partner_cover_preference_conserves_a_strike_when_safe_and_covers_sample
     view, memory = table.view("D"), table.memories["D"]
     ctx = cpu_policy._prepare(view, memory, ())
     model = ctx.model("9", "bells")
+    legal = cpu_policy._own_legal(ctx, cpu_policy._options(ctx))
+    # An opposing player can still act after D; the strict last-seat filter
+    # must leave possible covers available for the sampled threat decision.
+    assert cpu_policy._spare_partner_trick(ctx, legal, cpu_policy._options(ctx)) == legal
     # These are explicit hypothetical worlds for the narrow tie preference,
     # supplied without reading any opponent engine hand in the policy.
     safe = (("hearts-10", "hearts-U", "hearts-K", "leaves-A", "bells-8"), (), (), ctx.hand)
@@ -457,7 +650,8 @@ def _blind_decision(variant, seed=11):
     return table, view, decide(view, table.memories["C"], seed=seed, budget=CpuBudget(12))
 
 
-def test_hidden_state_independence_for_secret_call_opponent_hands_and_stock():
+@pytest.mark.parametrize("changed_seat", (0, 3))
+def test_hidden_state_independence_for_secret_call_opponent_hands_and_stock(changed_seat):
     base, base_view, base_turn = _blind_decision("base")
     secret, secret_view, secret_turn = _blind_decision("secret")
     assert base.state.call != secret.state.call and base_view == secret_view
@@ -466,7 +660,7 @@ def test_hidden_state_independence_for_secret_call_opponent_hands_and_stock():
     deal = blind_deal()
     hands = [list(hand) for hand in deal.hands]
     stock = list(deal.stock)
-    hands[3][0], stock[0] = stock[0], hands[3][0]
+    hands[changed_seat][0], stock[0] = stock[0], hands[changed_seat][0]
     swapped = replace(deal, hands=tuple(map(tuple, hands)), stock=tuple(stock))
     table = Table(start_match(cpu_recipe(4, "ladinisch", True), "privacy", swapped, first_dealer="A"))
     table.ready()
@@ -474,6 +668,38 @@ def test_hidden_state_independence_for_secret_call_opponent_hands_and_stock():
     assert table.view("C") == base_view
     other = decide(table.view("C"), table.memories["C"], seed=11, budget=CpuBudget(12))
     assert other.decision == base_turn.decision and other.memory == base_turn.memory
+
+
+@pytest.mark.parametrize("blind,open_partner_hand", ((True, False), (False, False), (False, True)))
+def test_runtime_selector_with_real_humans_respects_hidden_and_open_partner_hands(blind, open_partner_hand):
+    from app.watten_cpu_runtime import _view
+
+    recipe = cpu_recipe(4, "ladinisch" if blind else "normal", blind,
+                        open_partner_hand=open_partner_hand)
+    recipe = replace(recipe, bindings=(SeatBinding("A", 1), SeatBinding("B", 2),
+                                      SeatBinding("C", None), SeatBinding("D", 3)))
+    deal = blind_deal()
+    hands, stock = [list(hand) for hand in deal.hands], list(deal.stock)
+    hands[0][0], stock[0] = stock[0], hands[0][0]
+    swapped = replace(deal, hands=tuple(map(tuple, hands)), stock=tuple(stock))
+    tables = []
+    for candidate in (deal, swapped):
+        table = Table(start_match(recipe, "human-privacy", candidate, first_dealer="A"), observers=("C",))
+        table.ready()
+        table.play("B", "hearts-A")
+        tables.append(table)
+    views = [_view(SimpleNamespace(engine=table.state), "C") for table in tables]
+    assert tables[0].state.play.hands[0] != tables[1].state.play.hands[0]
+    if open_partner_hand:
+        assert views[0]["partner_hand"] != views[1]["partner_hand"]
+        for table, view in zip(tables, views):
+            ctx = cpu_policy._prepare(view, table.memories["C"], ())
+            assert ctx.known[0] == table.state.play.hands[0]
+    else:
+        assert views[0] == views[1]
+        first, second = [decide(view, table.memories["C"], seed=11, budget=CpuBudget(12))
+                         for table, view in zip(tables, views)]
+        assert first == second
 
 
 def test_same_inputs_and_seed_replay_identically_and_command_dedup_fails_closed():

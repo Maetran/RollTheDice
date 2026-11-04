@@ -25,14 +25,16 @@ from time import perf_counter
 from app.watten_cards import deal_cards, make_deck
 from app.watten_cpu import CpuBudget, CpuProposal, CpuWait, decide
 from app.watten_cpu_memory import new_memory, observe
+from app.watten_cpu_skill import CpuSkill, skill_for_completed_games
 from app.watten_engine import EngineActor, EngineCommand, EngineRecipe, SeatBinding, apply_command, start_match
 from app.watten_play import PlayProfile, legal_cards
+from app.watten_rules import CardKind, card_kind, trick_winner
 from app.watten_views import cpu_view
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEDULE_VERSION = "watten-benchmark-sha256-v1"
 SOURCE_PATHS = (
-    "app/watten_cpu.py", "app/watten_cpu_memory.py", "app/watten_engine.py", "app/watten_cards.py",
+    "app/watten_cpu.py", "app/watten_cpu_memory.py", "app/watten_cpu_skill.py", "app/watten_engine.py", "app/watten_cards.py",
     "app/watten_play.py", "app/watten_rules.py", "app/watten_bidding.py", "app/watten_views.py",
     "tests/watten_cpu_benchmark.py",
 )
@@ -106,12 +108,13 @@ class Measurements:
     latency_ms: dict[str, list[float]] = field(default_factory=lambda: {
         "all_calls": [], "proposals": [], "card_or_bid": [], "waits": [], "errors": []})
     accepted: Counter = field(default_factory=Counter)
+    tactics: Counter = field(default_factory=Counter)
     max_steps: int = 0
 
-    def policy(self, view, memory, seed, budget):
+    def policy(self, view, memory, seed, budget, skill=CpuSkill()):
         started = perf_counter()
         try:
-            turn = decide(view, memory, seed=seed, budget=budget)
+            turn = decide(view, memory, seed=seed, budget=budget, skill=skill)
         except Exception:
             elapsed = (perf_counter() - started) * 1000
             self.latency_ms["all_calls"].append(elapsed)
@@ -135,11 +138,49 @@ def _latency(values: list[float]) -> dict:
 
 def _measurements(measured: Measurements) -> dict:
     return {"accepted_commands": dict(sorted(measured.accepted.items())),
+            "tactical_counts": dict(sorted(measured.tactics.items())),
             "accepted_command_count": sum(measured.accepted.values()), "max_steps_observed": measured.max_steps,
             "policy_latency_ms": {key: _latency(values) for key, values in measured.latency_ms.items()}}
 
 
-def run_deal(profile, seed, dealer, policy_party, deal, max_steps, budget, measured):
+def _record_tactics(state, player, decision, measured, policy_players):
+    """Score observable choices after selection; private engine state never reaches policy."""
+    if decision.kind != "play_card" or state.play is None:
+        return
+    play = state.play
+    cards = play.trick_cards
+    choice = decision.value
+    options = legal_cards(play, state.bid_state, player)
+    if play.profile.blind and cards and play.parties.seats[play.trick_leader] in policy_players:
+        leader = play.parties.seats[play.trick_leader]
+        if card_kind(cards[0], play.rules) in (CardKind.TRUMP, CardKind.RECHTER):
+            if play.current_seat in play.knower_seats and len(options) < len(play.hands[play.current_seat]):
+                relation = "partner" if play.parties.party_of(leader) == play.parties.party_of(player) else "opponent"
+                measured.tactics[f"blind_policy_trump_lead_restricted_{relation}"] += 1
+    if player not in policy_players:
+        return
+    if play.profile.blind and not cards and play.current_seat in play.knower_seats:
+        measured.tactics["blind_informed_leads"] += 1
+        if card_kind(choice, play.rules) in (CardKind.TRUMP, CardKind.RECHTER):
+            measured.tactics["blind_informed_trump_leads"] += 1
+            if any(card_kind(card, play.rules) not in (CardKind.TRUMP, CardKind.RECHTER) for card in options):
+                measured.tactics["blind_informed_trump_leads_with_alternative"] += 1
+    if len(play.parties.parties[play.parties.party_of(player)]) < 2 or not cards:
+        return
+    winner = play.parties.seats[(play.trick_leader + trick_winner(cards, rules=play.rules))
+                                % play.profile.player_count]
+    if winner == player or play.parties.party_of(winner) != play.parties.party_of(player):
+        return
+    measured.tactics["partner_winning_choices"] += 1
+    def overtakes(card):
+        return trick_winner((*cards, card), rules=play.rules) == len(cards)
+    if overtakes(choice):
+        measured.tactics["partner_overtakes"] += 1
+        if any(not overtakes(card) for card in options):
+            measured.tactics["partner_overtakes_with_alternative"] += 1
+
+
+def run_deal(profile, seed, dealer, policy_party, deal, max_steps, budget, measured, skill=CpuSkill()):
     name = f"bench-{profile_id(profile)}-{seed}-{dealer}"
     recipe = recipe_for(profile)
     state = start_match(recipe, name, deal, first_dealer=recipe.seats[dealer])
@@ -164,7 +205,7 @@ def run_deal(profile, seed, dealer, policy_party, deal, max_steps, budget, measu
         for player in recipe.seats:
             view = cpu_view(state, player_id=player)
             if player in policy_players:
-                turn = measured.policy(view, memories[player], seed, budget)
+                turn = measured.policy(view, memories[player], seed, budget, skill)
                 # Retain this seat's inspection before applying any closing ACK.
                 memories[player] = turn.memory
                 decision = turn.decision
@@ -180,6 +221,7 @@ def run_deal(profile, seed, dealer, policy_party, deal, max_steps, budget, measu
         # Advice is delivered privately before a simultaneous primary decision;
         # the next loop recomputes proposals from the resulting own DTOs.
         player, decision = min(acting, key=lambda item: item[1].kind != "partner_feedback")
+        _record_tactics(state, player, decision, measured, policy_players)
         transition = apply_command(state, EngineActor(player, None), EngineCommand(**decision.command_fields()))
         if transition.replayed:
             raise BenchmarkError("unexpected_replayed_command")
@@ -208,8 +250,9 @@ def _environment() -> dict:
             "source_sha256": {name: hashlib.sha256((ROOT / name).read_bytes()).hexdigest() for name in SOURCE_PATHS}}
 
 
-def benchmark(seeds: tuple[int, ...], max_steps: int) -> dict:
-    budget = CpuBudget()  # The actual production default, never FAST/CpuBudget(6/8).
+def benchmark(seeds: tuple[int, ...], max_steps: int, completed_games: int | None = None) -> dict:
+    skill = CpuSkill() if completed_games is None else skill_for_completed_games(completed_games)
+    budget = CpuBudget(skill.samples)
     started = datetime.now(timezone.utc)
     measured_all = Measurements()
     reports, failures = [], []
@@ -231,7 +274,7 @@ def benchmark(seeds: tuple[int, ...], max_steps: int) -> dict:
                     case = {"seed": seed, "dealer_seat": dealer, "policy_party": policy_party,
                             "policy_role": role, "deck_sha256": fingerprint}
                     try:
-                        outcome = run_deal(profile, seed, dealer, policy_party, deal, max_steps, budget, measured)
+                        outcome = run_deal(profile, seed, dealer, policy_party, deal, max_steps, budget, measured, skill)
                     except Exception as exc:
                         row["failed_deals"] += 1
                         outcome = {"status": "failed", "error_type": type(exc).__name__, "error": str(exc)}
@@ -249,12 +292,14 @@ def benchmark(seeds: tuple[int, ...], max_steps: int) -> dict:
                         "comparison_rows": {key: dict(value) for key, value in rows.items()},
                         **_measurements(measured), "outcomes": outcomes})
         measured_all.accepted.update(measured.accepted)
+        measured_all.tactics.update(measured.tactics)
         measured_all.max_steps = max(measured_all.max_steps, measured.max_steps)
         for key, values in measured.latency_ms.items():
             measured_all.latency_ms[key].extend(values)
     return {"benchmark_schema": 1, "status": "failed" if failures else "complete",
             "started_at": started.isoformat(), "finished_at": datetime.now(timezone.utc).isoformat(),
-            "environment": _environment(), "budget": asdict(budget), "seeds": list(seeds),
+            "environment": _environment(), "budget": asdict(budget), "skill": asdict(skill),
+            "completed_games": completed_games, "seeds": list(seeds),
             "max_steps_per_deal": max_steps, "schedule_version": SCHEDULE_VERSION,
             "options": {"target_points": 11, "show_rechter": False, "trick_history": False, "partner_hand": False},
             "baseline": "fixed_7_hearts_first_remaining_legal_never_bid_always_hold_no_advice",
@@ -280,9 +325,11 @@ def main() -> int:
     parser.add_argument("--seeds", type=_bounded_integer(1, 64), default=8, help="seed count per profile (default: 8)")
     parser.add_argument("--seed-start", type=_bounded_integer(0, 2**31 - 65), default=0)
     parser.add_argument("--max-steps", type=_bounded_integer(32, 512), default=240)
+    parser.add_argument("--completed-games", type=_bounded_integer(0, 2**31 - 1),
+                        help="use the live experience tier for this number of completed matches")
     parser.add_argument("--output", type=Path, help="JSON destination; stdout if omitted")
     args = parser.parse_args()
-    report = benchmark(tuple(range(args.seed_start, args.seed_start + args.seeds)), args.max_steps)
+    report = benchmark(tuple(range(args.seed_start, args.seed_start + args.seeds)), args.max_steps, args.completed_games)
     text = json.dumps(report, ensure_ascii=False, indent=2, allow_nan=False) + "\n"
     if args.output:
         args.output.write_text(text, encoding="utf-8")

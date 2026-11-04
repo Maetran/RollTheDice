@@ -11,6 +11,7 @@ const PRODUCTS = Object.freeze({
 const KEYS = ["schema_version", "id", "game_id", "game_type", "players", "player_count", "mode", "started_at", "expires_at", "spectator_url"];
 const ISO = /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,6})?(?:Z|[+-]\d\d:\d\d)$/;
 const TTL = 60_000;
+const TABLE_TTL = 8_000;
 const SKEW = 30_000;
 const PING = 25_000;
 const RECONNECT = Object.freeze([2_000, 5_000, 10_000, 20_000, 30_000]);
@@ -154,6 +155,10 @@ export function createFriendActivity({ container, placement = "lobby", getExpect
     if (!entry) return;
     win.clearTimeout(entry.timer); notices.delete(id); render();
   }
+  function expireNotices() {
+    const at = now();
+    for (const [id, entry] of notices) if (entry.deadline <= at) remove(id);
+  }
   function remember(notice) {
     const at = now();
     for (const [id, expires] of seen) if (expires <= at) seen.delete(id);
@@ -167,10 +172,11 @@ export function createFriendActivity({ container, placement = "lobby", getExpect
     pendingPresentations += 1;
     try {
       if (!await verify(2) || !live()) return;
-      const remaining = notice.expiresAt - now();
+      const deadline = Math.min(notice.expiresAt, now() + (watchable ? TTL : TABLE_TTL));
+      const remaining = deadline - now();
       if (remaining <= 0) return;
       const timer = win.setTimeout(() => remove(notice.id), Math.min(remaining, TTL));
-      notices.set(notice.id, { notice, timer });
+      notices.set(notice.id, { notice, timer, deadline });
       const visible = watchable ? 3 : 1;
       while (notices.size > visible) {
         const [oldest, entry] = notices.entries().next().value;
@@ -274,6 +280,9 @@ export function createFriendActivity({ container, placement = "lobby", getExpect
     if (auth.user.preferences?.friend_activity_enabled !== true) stop();
   }, { signal: listeners.signal });
   win.addEventListener("pagehide", destroy, { signal: listeners.signal });
+  // Mobile browsers may suspend timers while the app is in the background.
+  win.addEventListener("pageshow", expireNotices, { signal: listeners.signal });
+  win.document?.addEventListener("visibilitychange", expireNotices, { signal: listeners.signal });
   void connect().catch(() => undefined);
   return { destroy };
 }
