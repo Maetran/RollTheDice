@@ -657,6 +657,25 @@ def _conserve_hopeless(ctx: _Context, legal: tuple[str, ...], options: list) -> 
     return (cheapest,)
 
 
+def _spare_partner_trick(ctx: _Context, legal: tuple[str, ...], options: list) -> tuple[str, ...]:
+    """Avoid overtaking a certain partner winner as the final player.
+
+    Only restrict the already legal cards when the partner wins under every
+    permitted call and a card preserves that result under every call. Taking
+    over could change who leads next, but this policy prefers conserving the
+    partner's certain trick; an imposed trump duty is never overridden.
+    """
+    partner = ctx.snap.partner_seat
+    if partner is None or len(ctx.trick) != ctx.count - 1 or len(legal) < 2:
+        return legal
+    models = tuple(dict.fromkeys(model for model, *_ in options))
+    cards = [card for _, card in ctx.trick]
+    if not all(ctx.trick[model.winner(cards)][0] == partner for model in models):
+        return legal
+    spared = tuple(card for card in legal if all(model.winner([*cards, card]) != len(cards) for model in models))
+    return spared or legal
+
+
 def _tactical_preference(ctx: _Context, card: str, models: list, skill: CpuSkill) -> float:
     """Soft tie preferences; never a compulsory partner trick or secret signal.
 
@@ -691,6 +710,34 @@ def _tactical_preference(ctx: _Context, card: str, models: list, skill: CpuSkill
     return preference
 
 
+def _blind_trump_lead_preference(ctx: _Context, card: str, worlds: list, skill: CpuSkill) -> float:
+    """Price blind trump leads that let an opposing knower take with trump.
+
+    The other knower's hand is sampled. This is a preference within the normal
+    near-best rollout window, not a ban: drawing trump can be tactically best.
+    """
+    if (not ctx.snap.profile.blind or ctx.trick or ctx.seat not in ctx.knowers or not worlds):
+        return 0.0
+    cost = 0.0
+    for model, hands in worlds:
+        if model.kind[card] not in _DUTY_LEADS:
+            continue
+        for other in ctx.knowers - {ctx.seat}:
+            hand = hands[other]
+            if not hand:
+                continue
+            allowed = model.allowed(hand, [card], True)
+            if (ctx.parties[other] != ctx.my_party
+                  and any(model.kind[item] is CardKind.TRUMP for item in hand)
+                  and not any(model.kind[item] is CardKind.NORMAL for item in allowed)
+                  and min(model.strength(item, card) for item in allowed) > model.base[card]):
+                # An opposing knower cannot discard cheaply and every legal
+                # response beats the lead. Do not assume they know more than
+                # their own cards, or that the rest of the trick is decided.
+                cost += 0.5
+    return -1.5 * skill.partnership * cost / len(worlds)
+
+
 def _partner_cover_preference(ctx: _Context, card: str, worlds: list, skill: CpuSkill) -> float:
     """Preserve strength behind a likely safe partner; cover sampled later threats.
 
@@ -714,12 +761,36 @@ def _partner_cover_preference(ctx: _Context, card: str, worlds: list, skill: Cpu
                    if ctx.parties[seat] != ctx.my_party for other in hands[seat]]
         strength = model.order[card] / (len(_DECK) - 1)
         if all(threat <= partner_strength for threat in threats):
-            value += -1.4 * strength if card_strength_value > partner_strength else 1.2 * (1 - strength)
+            if card_strength_value > partner_strength:
+                # With no opposing seat left, covering our own partner cannot
+                # improve this trick, even when the card happens to be cheap.
+                value -= 2.0 if not threats else 1.4 * strength
+            else:
+                value += 1.2 * (1 - strength)
         elif card_strength_value > partner_strength and all(threat <= card_strength_value for threat in threats):
             value += 1.2
         else:
             value -= .5 * strength
     return skill.partnership * value / len(worlds)
+
+
+def _occasional_misplay(ctx: _Context, legal: tuple[str, ...], selected: str, scores: dict,
+                        models: list, stream: _Stream, skill: CpuSkill) -> str:
+    """Occasionally choose a sampled-worse legal card, less often at higher tiers.
+
+    Don't intentionally overtake a safe partner on the final seat: an error
+    elsewhere must not manufacture the very partnership failure we avoid.
+    """
+    alternatives = [card for card in legal if scores[card] < scores[selected]]
+    partner = ctx.snap.partner_seat
+    if partner is not None and len(ctx.trick) == ctx.count - 1:
+        cards = [played for _, played in ctx.trick]
+        alternatives = [card for card in alternatives if not any(
+            ctx.trick[model.winner(cards)][0] == partner
+            and model.winner([*cards, card]) == len(cards) for model in models)]
+    if (not alternatives or stream.below(10_000) >= round(skill.mistake_rate * 10_000)):
+        return selected
+    return alternatives[stream.below(len(alternatives))]
 
 
 def _choose(ctx: _Context, seed: int, budget: CpuBudget, skill: CpuSkill) -> CpuProposal | CpuWait:
@@ -763,7 +834,7 @@ def _choose(ctx: _Context, seed: int, budget: CpuBudget, skill: CpuSkill) -> Cpu
             return propose("respond", _response(ctx, chance, skill))
     elif "play_card" in actions:
         options = _options(ctx)
-        legal = _conserve_hopeless(ctx, _own_legal(ctx, options), options)
+        legal = _spare_partner_trick(ctx, _conserve_hopeless(ctx, _own_legal(ctx, options), options), options)
         may_bid = "bid" in actions
         if len(legal) == 1 and not may_bid:
             return propose("play_card", legal[0])
@@ -777,10 +848,12 @@ def _choose(ctx: _Context, seed: int, budget: CpuBudget, skill: CpuSkill) -> Cpu
         candidates = [card for card in legal if scores[card] >= best - skill.near_best]
         card = min(candidates, key=lambda card: (
             -(scores[card] + _tactical_preference(ctx, card, models, skill)
-              + _partner_cover_preference(ctx, card, worlds, skill)),
+              + _partner_cover_preference(ctx, card, worlds, skill)
+              + _blind_trump_lead_preference(ctx, card, worlds, skill)),
             sum(model.order[card] for model in models), card))
         if may_bid and worlds and _should_bid(ctx, _subjective_chance(best, skill, len(worlds)), skill):
             return propose("bid")
+        card = _occasional_misplay(ctx, legal, card, scores, models, stream, skill)
         return propose("play_card", card)
     return CpuWait(snap.deal_id, snap.opportunity, snap.phase, "watten_cpu_waiting")
 

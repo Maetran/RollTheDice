@@ -11,7 +11,7 @@ from app import hausdepp_cpu_runner as runner
 from app import hausdepp_engine as engine
 from app import hausdepp_gameplay as gameplay
 from app.hausdepp_cpu_knowledge import PublicKnowledge
-from app.hausdepp_cpu_strategy import _known_pair_block, choose_cpu_action
+from app.hausdepp_cpu_strategy import _known_pair_block, _known_pickup_finish, choose_cpu_action
 from tests.test_hausdepp_cpu_strategy import ScriptedRandom
 from tests.test_hausdepp_engine import scenario
 
@@ -121,6 +121,71 @@ def test_the_integrated_trace_wins_against_every_human_response_and_optional_aft
         reply = engine.apply_action(state, "p1", action, cards=cards, version=state["version"])
         branches += assert_finish_with_reserve(reply)
     assert branches == 7
+
+
+@pytest.mark.parametrize("hand", [
+    ["bells-6", "hearts-K"],
+    ["bells-6", "leaves-6", "hearts-K", "bells-K"],
+])
+def test_known_mixed_hand_is_forced_to_pick_up_before_a_one_rank_finish(table_factory, hand):
+    game = observation_trace(table_factory, packet=["bells-7", "leaves-8"], final_hand=hand)
+    move, view, memory = decision(game)
+    assert memory.public.exact_hand(view, "p1") == ("bells-7", "leaves-8")
+    assert {engine.card_rank(card) for card in move["cards"]} == {"K"}
+    command(game, "p0", "play", move["cards"])
+    assert legal_commands(game["_hausdepp"], "p1") == [("pickup", None)]
+    command(game, "p1", "pickup")
+    finish = decision(game)[0]
+    command(game, "p0", "play", finish["cards"])
+    assert game["_hausdepp"]["phase"] == "finished" and game["_hausdepp"]["loser_id"] == "p1"
+
+
+@pytest.mark.parametrize("packet", [
+    ["bells-7", "leaves-10"],
+    ["bells-7", "leaves-A"],
+])
+def test_a_known_ten_or_higher_reply_does_not_make_a_forced_pickup(table_factory, packet):
+    game = observation_trace(table_factory, packet=packet, final_hand=["bells-6", "hearts-K"])
+    _, view, memory = decision(game)
+    assert memory.public.exact_hand(view, "p1") is not None
+    assert _known_pickup_finish(view, memory) is None
+
+
+def test_unknown_hand_is_never_treated_as_a_forced_pickup(table_factory):
+    game = observation_trace(table_factory, packet=["bells-7", "leaves-8"],
+                             extra_unknown=["bells-10"], final_hand=["bells-6", "hearts-K"])
+    _, view, memory = decision(game)
+    assert memory.public.exact_hand(view, "p1") is None
+    assert _known_pickup_finish(view, memory) is None
+
+
+def test_known_quartet_can_escape_when_the_optional_rule_is_enabled(table_factory, monkeypatch):
+    game = observation_trace(table_factory, packet=["bells-7", "leaves-8"], final_hand=["bells-6", "hearts-K"])
+    _, view, memory = decision(game)
+    monkeypatch.setattr(memory.public, "exact_hand", lambda *_: ["bells-7", "leaves-7", "hearts-7", "acorns-7"])
+    assert _known_pickup_finish({**view, "four_of_a_kind_as_ten": True}, memory) is None
+    assert _known_pickup_finish({**view, "four_of_a_kind_as_ten": False}, memory) == ["hearts-K"]
+
+
+def test_a_fourth_matching_card_clears_instead_of_forcing_a_pickup(table_factory, monkeypatch):
+    game = observation_trace(table_factory, packet=["bells-7", "leaves-8"], final_hand=["bells-6", "hearts-K"])
+    _, view, memory = decision(game)
+    monkeypatch.setattr(memory.public, "exact_hand", lambda *_: ["bells-7", "leaves-8"])
+    view = {**view, "discard": ["bells-K", "leaves-K", "acorns-K"], "playable_cards": ["hearts-K"]}
+    assert _known_pickup_finish(view, memory) is None
+
+
+def test_new_forced_pickup_can_be_missed_and_gentle_cpus_miss_more(table_factory):
+    from random import Random
+
+    game = observation_trace(table_factory, packet=["bells-7", "leaves-8"], final_hand=["bells-6", "hearts-K"])
+    _, view, memory = decision(game)
+
+    def misses(skill):
+        return sum(choose_cpu_action(view, memory=memory, skill=skill, rng=Random(seed))["cards"] != ["hearts-K"]
+                   for seed in range(1000))
+
+    assert 0 < misses(1.0) < misses(0.55)
 
 
 @pytest.mark.parametrize("unknown", ["bells-A", "bells-10"])

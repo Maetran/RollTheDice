@@ -175,7 +175,22 @@ nicht gelesen. Versionslücken, Rückzüge, Sitz-/Kontowechsel, neue Runden und
 Neustarts verwerfen das Wissen. Ein Beobachtungsfehler verwirft den Speicher
 dieses Tisches und wird protokolliert; der akzeptierte Spielzug bleibt gültig.
 
-Die zusätzliche Taktik gilt nur mit zwei aktiven Spielern, bei leerem Tisch und
+Während der gesamten Runde kann jeder CPU-Sitz ausserdem öffentlich abgeräumte
+Karten mitzählen. Nur wenn dieses Wissen vollständig ist, der Nachziehstapel
+leer ist und genau zwei aktive Spieler ohne Rückzüge übrig sind, lässt sich die
+gegnerische Hand aus den übrigen Karten ableiten. Eine lückenhafte Beobachtung
+oder unbekannte abgeräumte Karten lassen keine vollständige Hand entstehen.
+Die CPU sucht dann begrenzt nach einem gegen alle legalen Antworten sicheren
+Gewinnzug; Aufnehmen, Nachwerfen, Abräumen und die optionale Viererregel werden
+berücksichtigt. Die Suche verwendet höchstens 8’000 Knoten und fällt bei Abbruch
+auf die bisherigen Regeln zurück. Ihre synchrone Laufzeit hängt von Rechner und
+Last ab. Direkte sichere Schlusszüge haben Vorrang. Bei einer individuellen
+CPU-Stärke von höchstens 0,55 wird die zusätzliche Suche nicht verwendet; diese
+Stärke enthält die oben beschriebene CPU-Eigenheit. Darüber nimmt ihre Nutzung
+mit der Stärke zu und kann sie wie andere Einschätzungen übersehen werden. Die
+beiden eng bewiesenen Blockmuster bleiben separat verfügbar.
+
+Die bisherige Paarblock-Taktik gilt nur mit zwei aktiven Spielern, bei leerem Tisch und
 Nachziehstapel,
 mit genau drei eigenen verschiedenen gewöhnlichen Karten und einem vollständig
 bekannten gegnerischen Paar. Weitere Sitze müssen bereits fertig und leer sein;
@@ -188,7 +203,12 @@ Nachwerfen und Endduellen an Tischen mit drei, vier und sechs Plätzen. Frühere
 Aussteiger behalten ihre Platzierung. Die bestehende Schwierigkeitsstufe kann
 das Erkennen dieser Taktik
 wie andere Einschätzungen dämpfen. Sichere eigene Schlussketten bleiben vorrangig.
-Eine allgemeine Verbesserung der Gewinnrate wurde damit nicht gemessen.
+Zusätzlich erkennt die CPU ein weiteres sicheres Muster: Hat sie selbst nur
+noch zwei verschiedene gewöhnliche Ränge und kann mit einem davon die bekannte
+gegnerische Hand zum Aufnehmen zwingen, legt sie diese Gruppe und beendet danach
+die Runde mit dem verbliebenen Rang. Eine gegnerische 10 oder ein nach Tischregel
+als 10 gültiger Vierer verhindert diese Annahme; ebenso darf der eigene Zug den
+Stapel nicht selbst abräumen. Auch diese Gelegenheit kann übersehen werden.
 
 With the stock empty, each CPU seat additionally remembers cards from public
 packet pickups it actually observed. Plays and follow-up throws remove exactly
@@ -200,7 +220,21 @@ Version gaps, withdrawals, seat/account changes, new rounds and restarts discard
 knowledge. An observation failure discards this table's memory and is logged;
 the accepted move remains valid.
 
-The extra tactic applies only to two active players, with an empty table and stock,
+Each CPU seat can also count publicly cleared cards throughout the round. Only
+when that record is complete, the stock is empty and exactly two active players
+remain without withdrawals can the other hand be deduced from the remaining
+cards. Gaps or unobserved cleared cards cannot produce a complete hand. The CPU
+then searches within a fixed budget for a win against all legal replies,
+including pickups, follow-up throws, clearances and the optional quartet rule.
+The search uses at most 8,000 nodes and falls back to the existing policy if
+interrupted. Its synchronous execution time depends on hardware and load. Direct
+guaranteed finishes retain priority. CPUs with individual skill at or below
+0.55 do not use the additional search; that skill includes the personality
+offset described above. Its use increases with skill and can be missed like
+other judgements. The two narrowly proven blocking patterns remain available
+separately.
+
+The earlier pair-block tactic applies only to two active players, with an empty table and stock,
 exactly three distinct ordinary own cards and a completely known opposing pair.
 Any other seats must have finished with empty hands; withdrawals and an open
 follow-up window are excluded.
@@ -210,7 +244,12 @@ ace for every legal reply. All 70 rank patterns of this narrow case are proved
 against the engine, including follow-up throws and final duels at tables with
 three, four and six seats. Earlier finishers retain their ranks. Existing
 difficulty can make the CPU miss this tactic like other judgements. Guaranteed own finishes retain
-priority. This does not measure a general increase in win rate.
+priority. The CPU also recognises another guaranteed pattern: if its own hand
+contains just two ordinary ranks, it can play one whole group to force the
+completely known opponent to pick up, then finish with the remaining rank. An
+opposing ten or a quartet acting as a ten under the table rule invalidates the
+assumption, as does a move that would itself clear the pile. The CPU can miss
+this opportunity too.
 
 ## Tempo / Timing
 
@@ -243,11 +282,111 @@ invalid values fall back to normal variable timing.
 
 ## Reproduzierbare Prüfung / Reproducible checks
 
+**Gesamte aktuelle Strategie / Complete current policy:**
+Der gepaarte Vergleich lässt auf denselben Austeilungen jeden Sitz einmal die
+aktuelle Strategie gegen die eingefrorene 4.14.1-Policy spielen. In den
+Vergleichspartien ohne Änderung verwenden alle Sitze diese Referenz. Jeder Sitz
+beobachtet alle akzeptierten Übergänge aus seiner eigenen Sicht; die
+Fehleinschätzungen sind je Deal, Sitz und Zustand fest gesetzt. Alle Sitze
+verwenden dieselbe angegebene Stärke ohne zusätzliche CPU-Eigenheiten. Der Wert der
+Referenz ist durch die Sitzrotation vorgegeben: In jedem Deal verliert genau ein
+Sitz. Sitzpositionen desselben Deals sind nicht unabhängig; die Simulation misst
+Modellstrategien und ist keine menschliche Gewinnrate. Diese Stichprobe ist kein
+unabhängiger, vor der Entwicklung zurückgehaltener Testdatensatz. Die Simulation
+bearbeitet Pflichtziehen und mögliche Nachwürfe vor dem nächsten regulären Zug;
+sie bildet das zeitliche Rennen der Live-Oberfläche nicht nach. /
+The paired comparison plays the current policy in each seat once on the same
+deals against the frozen 4.14.1 policy. Every seat uses the reference in the
+unchanged games. Each seat observes all accepted transitions from its own view;
+misjudgements are seeded by deal, seat and state. All seats use the stated skill
+without additional CPU personality offsets. The reference loss count follows
+from seat rotation: exactly one seat loses per deal. Seats within a deal are not
+independent; the simulation measures model policies, not human win rates. This
+sample was not held out independently before development. The simulation handles
+required refills and possible follow-up throws before the next regular turn; it
+does not reproduce the timing race in live play.
+
+```sh
+python -m scripts.benchmark_hausdepp_policies --players 2 --deals 1000 --skill 1.0 --seed-base 1300000
+python -m scripts.benchmark_hausdepp_policies --players 2 --deals 1000 --skill 0.55 --seed-base 1300000
+```
+
+Für andere Tischgrössen `--players 3` beziehungsweise `--players 4` setzen. /
+Use `--players 3` or `--players 4` for the other table sizes.
+
+Bei jeweils 1’000 Austeilungen wird jeder Sitz einmal durchgespielt. Die Seeds
+sind `1300000 + Spielerzahl * 10000 + [0..999]`. Kein Lauf blieb hängen. /
+Each row uses 1,000 deals with every seat rotated once. Seeds are
+`1300000 + player count * 10000 + [0..999]`. No run stalled.
+
+| Spieler / Players | Stärke / Skill | Sitzpartien / Seat games | Aktuelle Niederlagen / Current losses | Referenz / Reference | Nur Referenz verlor / Only reference lost | Nur aktuell verlor / Only current lost |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 2 | 0.55 | 2000 | 1000 | 1000 | 0 | 0 |
+| 2 | 1.0 | 2000 | 934 | 1000 | 67 | 1 |
+| 3 | 0.55 | 3000 | 1000 | 1000 | 0 | 0 |
+| 3 | 1.0 | 3000 | 923 | 1000 | 78 | 1 |
+| 4 | 0.55 | 4000 | 1000 | 1000 | 0 | 0 |
+| 4 | 1.0 | 4000 | 907 | 1000 | 95 | 2 |
+
+**Frühere isolierte Zweirang-Untersuchung / Earlier isolated two-rank study:**
+Diese Messung wurde vor dem allgemeinen Solver erstellt; der zugehörige Runner
+schaltet ihn ausdrücklich ab. Sie beschreibt nicht die gesamte aktuelle Policy. /
+This measurement preceded the general solver, which its runner explicitly
+disables. It does not describe the complete current policy.
+
+Die folgende Simulation übergibt nach jedem akzeptierten Zug die persönlichen
+öffentlichen Ansichten an die Erinnerungen. Im Vorher/Nachher-Vergleich spielt
+jeweils ein Sitz mit beziehungsweise ohne das neue Zweirang-Muster; die übrigen
+Strategien, Zufallsregeln und Anfangsausteilungen bleiben gleich. Zusätzlich
+spielen sanfte und starke CPUs gegen eine einfache feste Referenz und gegen eine
+starke CPU. Die Vergleiche sind Modelle, keine Messung menschlicher Spielstärke. /
+The following simulation delivers each accepted transition to each seat's public
+memory. In the paired comparison one seat plays with or without the new two-rank
+pattern, with the same other policies and randomness rules and rotated seats. Gentle and
+strong CPUs also play against a fixed simple reference and a strong CPU. These
+comparisons are models, not measurements of human playing strength.
+
+```sh
+python -m scripts.benchmark_hausdepp_endgame
+```
+
+Gegen die einfache Referenz verlor die sanfte CPU (0,55) 471 von 1’000 Duellen,
+die starke CPU (1,0) 315; gegen die starke CPU verlor die sanfte 623 von 1’000,
+die starke 500. Jede Zeile umfasst 500 Austeilungen mit beiden Sitzpositionen;
+keine Partie blieb hängen. / Against the simple reference, the gentle CPU (0.55)
+lost 471 of 1,000 games and the strong CPU (1.0) 315; against the strong CPU,
+the gentle one lost 623 of 1,000 and the strong one 500. Each row uses 500 deals
+in both seat positions; no game stalled.
+
+Bei Stärke 1,0 ergaben 1’500 Austeilungen mit beiden Sitzen je 1’500 Niederlagen
+mit und ohne das neue Muster. Die 1’500 Niederlagen ohne das Muster folgen aus
+der Sitzrotation: Ohne die Änderung spielen beide Sitze dieselbe Strategie, und
+pro Austeilung verliert genau ein Sitz. Bei Stärke 0,55 waren es ebenfalls je
+1’500 Niederlagen. Im Vergleich mit dem neuen Muster wurden bei Stärke 1,0 eine
+und bei 0,55 drei geeignete Ansichten bei der Entscheidungsermittlung erkannt;
+gezählt werden geeignete Ansichten, nicht die tatsächlich gespielten Blockaden. Die
+Stichprobe zeigt keine messbare allgemeine Gewinnratenänderung. /
+At skill 1.0, 1,500 deals in both seats produced 1,500 losses with and without
+the new pattern. The 1,500 losses without it follow from rotating the seats:
+without the change both seats use the same policy and exactly one loses per deal.
+At skill 0.55 there were also 1,500 losses with and without the new pattern.
+In the comparison with the new pattern, one suitable view at skill 1.0 and three
+at 0.55 were recognised during decision evaluation; this counts suitable views,
+not blocks actually played. The sample shows no measurable change in the overall
+loss rate.
+
 ```sh
 python -m pytest -q -n 0 tests/test_hausdepp_cpu_strategy.py tests/test_hausdepp_cpu_runner.py
 python -m pytest -q -n 0 -s tests/test_hausdepp_cpu_strategy.py -k 800_paired
 python -m pytest -q -n 0 -s tests/test_hausdepp_cpu_strategy.py -k production_settings
 ```
+
+Die folgenden historischen Vergleiche entstanden vor dem gezählten Endspiel;
+ihre damaligen Simulationen beobachteten die zusätzlichen öffentlichen
+Übergänge nicht und messen daher nicht die neue Suche. /
+The following historical comparisons predate the counted endgame; those
+simulations did not observe the additional public transitions and therefore do
+not measure the new search.
 
 **Vergleich mit 3.8.2 bei Produktionsparametern / Against 3.8.2 at production
 settings:** `tests/hausdepp_cpu_policy_382.py` ist eine unveränderte Kopie der

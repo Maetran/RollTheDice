@@ -21,16 +21,20 @@ the highest tier. The runtime still reads current counts when authorizing a CPU
 decision; this change adds no frozen per-deal level. Counts indicate experience,
 not measured human ability.
 
-| Completed Watten games | Hypothetical deals per decision | Confidence weight | Close-choice window |
-| --- | ---: | ---: | ---: |
-| 0–9 | 16 | 0.72 | 0.080 |
-| 10–29 | 24 | 0.82 | 0.045 |
-| 30–74 | 40 | 0.90 | 0.025 |
-| 75 or more | 64 | 0.96 | 0.012 |
+| Completed Watten games | Hypothetical deals per decision | Confidence weight | Close-choice window | Misplay chance |
+| --- | ---: | ---: | ---: | ---: |
+| 0–9 | 16 | 0.72 | 0.080 | 6% |
+| 10–29 | 24 | 0.82 | 0.045 | 2.5% |
+| 30–74 | 40 | 0.90 | 0.025 | 1.5% |
+| 75 or more | 64 | 0.96 | 0.012 | 1% |
 
 These thresholds are implementation choices. Larger samples and narrower
 close-choice windows make later decisions more precise; they do not guarantee
-that every higher tier wins a particular deal. There is no machine learning,
+that every higher tier wins a particular deal. The misplay chance applies only
+when another legal card has a worse sampled result; the actual frequency is
+therefore lower. A misplay cannot violate trump duty or forced cards, and it
+does not deliberately overtake an already safe partner as the last player.
+There is no machine learning,
 Elo model, external model, training history or client-selectable difficulty.
 Progression survives restarts because it is derived from durable completed
 games. Deleting retained games can lower the derived count; no second permanent
@@ -99,6 +103,21 @@ its permitted call hypotheses, while an informed CPU uses the call it actually
 learned. This does not expose real opposing hands or turn the partner's card
 into proof of a hidden call. A clearly better full-round rollout still wins.
 
+When an informed player leads blind, sampled worlds also estimate whether a
+trump lead may let an informed opponent take it with a compulsory response.
+This is a soft cost, not a prohibition: drawing trump can still be the
+strongest move, within the existing close-choice window.
+
+As the last player, the CPU does not overtake its partner when that partner is
+already winning under every call still consistent with its knowledge and a legal
+card preserves the partner's win under all those calls. It may overtake when duty
+leaves no such alternative, and it may cover earlier when an opponent still has a
+turn. This stricter preference also gives up opportunities to take the lead in
+the next trick; it never overrides card legality. Sampled hands are hypothetical,
+except when the table explicitly enables an open partner hand; in each rollout the
+simplified players can see that hypothetical world, which is a modelling
+approximation rather than access to real hidden cards.
+
 The CPU does not treat customary partner play as proof of a hidden call. In
 particular, a low second-trick card never reveals its partner's actual hand or
 creates a private communication channel.
@@ -124,9 +143,10 @@ Their different regional rules are not imported into the house rules.
 
 Source syntax, targeted Ruff checks and behavioural tests cover the changes.
 The release additionally requires the repository’s complete local verification.
-No new strength benchmark was run. The older benchmark
-in `WATTEN_CPU_BENCHMARK.md` predates this strategy and does not measure the new
-tiers or prove a strength increase against people.
+The paired synthetic comparison in [WATTEN_CPU_BENCHMARK.md](WATTEN_CPU_BENCHMARK.md)
+reports the newcomer and experienced tiers against a simple baseline, including
+blind-play and partnership counters. It does not prove a strength difference or
+win rate against people.
 
 ## Deutsche Kurzfassung
 
@@ -143,7 +163,11 @@ CPU-Entscheidungen, ohne neue feste Stufe pro Gabe. Abgeschlossene Spiele sind
 ein Erfahrungswert, keine Messung menschlichen Könnens.
 Die Anzahl kommt aus den bestehenden abgeschlossenen Spielen und bleibt über
 Neustarts erhalten. Das ist eine feste Anpassung der Spielstärke, kein
-maschinelles Lernen.
+maschinelles Lernen. Gelegentlich wählen CPUs eine gemäss Simulation schwächere
+legale Karte: mit 6 %, 2,5 %, 1,5 % beziehungsweise 1 % pro geeigneter Situation.
+Gibt es keine schwächere erlaubte Alternative, entfällt der Fehlwurf. Trumpfpflicht
+und Pflichtkarten bleiben immer verbindlich; ein sicherer Partnerstich wird als
+letzte Position nicht absichtlich überstochen.
 
 Geboten wird bei subjektiv guten Chancen und sinnvoller Punkteabwägung. Für
 jede weitere Erhöhung steigt die nötige Sicherheit. «Zweiter Stich ist
@@ -158,9 +182,28 @@ Farbe abgeleitet. Diese Eröffnungskonvention ist eine ausdrückliche Vorgabe de
 Eigentümers. Vermutlich sichere Partnerstiche werden geschont; wenn danach noch
 spielende Gegner den Stich in den erlaubten hypothetischen Verteilungen
 gefährden, kann eine stärkere Deckung sinnvoll sein. Uninformierte CPUs mitteln
-über mögliche Ansagen, informierte nutzen die wirklich bekannte Ansage. Die Taktiken werden durch gezielte Verhaltenstests geprüft; vor der Freigabe
-folgt zusätzlich der vollständige lokale Releaseablauf. Neue Messungen zur
-Spielstärke wurden nicht durchgeführt.
+über mögliche Ansagen, informierte nutzen die wirklich bekannte Ansage. Die
+Taktiken werden durch gezielte Verhaltenstests geprüft; vor der Freigabe folgt
+zusätzlich der vollständige lokale Releaseablauf. Ein gepaarter Vergleich mit
+einer einfachen Referenz für Anfänger- und Erfahrungsstufe steht in
+[WATTEN_CPU_BENCHMARK.md](WATTEN_CPU_BENCHMARK.md). Er belegt keine allgemeine
+Stärkeänderung oder Gewinnrate gegen Menschen.
+
+Beim blinden Ausspiel berücksichtigt eine informierte CPU anhand hypothetischer
+Verteilungen, ob ein wissender Gegner durch ein Trumpfanspiel übernehmen muss.
+Das ist eine weiche Abwägung im bestehenden Auswahlfenster: Trumpf auszuspielen
+kann weiterhin sinnvoll sein.
+
+Als letzte Person übersticht die CPU ihren Partner nicht, wenn dieser bei allen
+noch möglichen Ansagen bereits gewinnt und eine legale Karte diesen Partnerstich
+bei allen diesen Ansagen erhält. Lässt die Trumpfpflicht keine solche Karte zu,
+darf sie überstechen; wenn nach ihr noch ein Gegner spielt, kann sie den Stich
+weiterhin decken. Diese strengere Taktik verzichtet auch auf die Möglichkeit,
+durch das Überstechen den nächsten Stich selbst anzuspielen. Die Spielregeln
+gehen immer vor. Nur bei aktivierter Option «Partnerhand offen» stammt eine fremde
+Hand aus dem Spiel; ansonsten sind die verteilten Hände Annahmen. Die vereinfachten
+Spieler innerhalb einer Simulation kennen deren hypothetische Verteilung, nicht
+die echte Hand.
 
 Ein geprüfter Wiederverbindungsverdacht wurde mit echten persönlichen
 Engine-Ansichten widerlegt: Ohne offenen Stichverlauf kennt ein frisches

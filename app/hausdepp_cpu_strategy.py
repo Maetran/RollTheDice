@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from functools import lru_cache
 from typing import Any, Mapping
 
+from .hausdepp_cpu_endgame import winning_afterthrows, winning_plays
 from .hausdepp_cpu_knowledge import PublicKnowledge
 from .hausdepp_engine import HAUSDEPP_RANKS, card_rank
 
@@ -301,6 +302,95 @@ def _known_pair_block(projection: Mapping[str, Any], memory: CpuMemory | None) -
     return None
 
 
+def _known_pickup_finish(projection: Mapping[str, Any], memory: CpuMemory | None) -> list[str] | None:
+    """Force a known opponent to take the pile, then finish with one rank.
+
+    This only applies to a complete publicly observed hand in a final duel.
+    A ten or a wildcard quartet in that hand defeats the proposed block.
+    """
+    players = projection.get("players", [])
+    active = [player for player in players if not player.get("finished") and not player.get("withdrawn")]
+    viewer = projection.get("viewer_id")
+    hand = list(projection.get("hand", []))
+    if (memory is None or projection.get("phase") != "playing" or projection.get("deck_count") != 0
+            or projection.get("afterthrow") or projection.get("withdrawn_ids")
+            or projection.get("current_player_id") != viewer or "play" not in projection.get("available_actions", [])
+            or len(active) != 2 or any(player.get("withdrawn") for player in players)
+            or any(player.get("finished") and player.get("hand_count") != 0 for player in players)):
+        return None
+    opponent = next((player["id"] for player in active if player["id"] != viewer), None)
+    known = memory.public.exact_hand(projection, opponent)
+    if not known:
+        return None
+    opponent_counts = Counter(card_rank(card) for card in known)
+    if "10" in opponent_counts or (_wild_quartets(projection) and 4 in opponent_counts.values()):
+        return None
+    groups: dict[str, list[str]] = defaultdict(list)
+    for card in hand:
+        groups[card_rank(card)].append(card)
+    if len(groups) != 2 or "10" in groups:
+        return None
+    top, streak = _top_run(list(projection.get("discard", [])))
+    legal = set(projection.get("playable_cards", []))
+    for rank in HAUSDEPP_RANKS[:-1]:
+        cards = sorted(groups.get(rank, []))
+        if (cards and set(cards) <= legal and _VALUES[rank] > max(_VALUES[r] for r in opponent_counts)
+                and len(cards) + (streak if rank == top else 0) < 4):
+            return cards
+    return None
+
+
+
+def _counted_opponent(projection: Mapping[str, Any], memory: CpuMemory | None) -> tuple[str, ...] | None:
+    """The single remaining opposing hand, from counted public cards or observed pickups."""
+    if memory is None or projection.get("phase") != "playing" or projection.get("deck_count") != 0:
+        return None
+    viewer = projection.get("viewer_id")
+    active = [player for player in projection.get("players", [])
+              if not player.get("finished") and not player.get("withdrawn")]
+    if len(active) != 2 or viewer not in {player.get("id") for player in active}:
+        return None
+    opponent = next(player["id"] for player in active if player["id"] != viewer)
+    return memory.public.counted_hand(projection, opponent) or memory.public.exact_hand(projection, opponent)
+
+
+def _counted_endgame(projection: Mapping[str, Any], memory: CpuMemory | None, groups: Mapping[str, list[str]],
+                     quartets: Mapping[str, list[str]]) -> dict[str, Any] | None:
+    """A forced win in the final duel, found over the publicly counted opposing hand.
+
+    Only moves offered in this seat's own projection are returned; the search
+    never sees the engine state or another seat's projection.
+    """
+    opponent = _counted_opponent(projection, memory)
+    if opponent is None:
+        return None
+    hand, discard = list(projection.get("hand", [])), list(projection.get("discard", []))
+    wild = _wild_quartets(projection)
+    actions = projection.get("available_actions", [])
+    afterthrow = projection.get("afterthrow") or {}
+    if "afterthrow" in actions and afterthrow.get("player_id") == projection.get("viewer_id"):
+        rank = afterthrow.get("rank")
+        counts = winning_afterthrows(hand, opponent, discard, rank, wild=wild) or []
+        cards = sorted(groups.get(rank, []))
+        for count in counts:
+            if count <= len(cards):
+                return {"action": "afterthrow", "cards": cards[:count]}
+        return None
+    if (not {"play", "pickup"} & set(actions)
+            or projection.get("current_player_id") != projection.get("viewer_id")):
+        return None
+    for rank, count in winning_plays(hand, opponent, discard, wild=wild) or []:
+        if rank == "pickup":
+            if "pickup" in actions:
+                return {"action": "pickup"}
+            continue
+        if count == 4 and rank in quartets:
+            return {"action": "play", "cards": quartets[rank]}
+        if len(groups.get(rank, [])) >= count:
+            return {"action": "play", "cards": sorted(groups[rank])[:count]}
+    return None
+
+
 def choose_cpu_action(projection: Mapping[str, Any], *, memory: CpuMemory | None = None,
                       skill: float = 1.0, rng: Any = None) -> dict[str, Any] | None:
     """Choose a legal command; only the authoritative engine applies it.
@@ -340,11 +430,33 @@ def choose_cpu_action(projection: Mapping[str, Any], *, memory: CpuMemory | None
     def high_part(rank: str, cards: list[str]) -> list[str]:
         return cards[:1] if hold and len(cards) > 1 and _holds(rank, len(cards), top=top, streak=streak) else cards
 
+    # Counting every burned card takes experience. At full strength the
+    # counted duel is missed exactly as often as other judgements; attention
+    # falls to zero at individual CPU skill 0.55, which then neither searches
+    # nor draws and so plays exactly as before.
+    attention = 1.0 if not slip else max(0.0, min(1.0, (skill - 0.55) / 0.45))
+    solved: list[dict[str, Any] | None] = []
+
+    def counted() -> dict[str, Any] | None:
+        # Search lazily: direct finishes, ordinary positions and CPUs at or
+        # below individual skill 0.55 never pay for it.
+        if not solved:
+            solved.append(_counted_endgame(projection, memory, groups, quartets) if not stock and attention else None)
+        return solved[0]
+
+    def counts_cards() -> bool:
+        """One draw, only once a forced win was found; no second chance afterwards."""
+        return not slip or rng.random() >= 1 - (1 - slip) * attention
+
     if "afterthrow" in actions and groups:
         rank = next(rank for rank in HAUSDEPP_RANKS if rank in groups)
         afterthrow = {**move, "action": "afterthrow", "cards": sorted(groups[rank])}
         if not stock and len(groups[rank]) == len(hand):
             return afterthrow  # a guaranteed finish is never missed
+        if (found := counted()) is not None and found["action"] == "afterthrow" and counts_cards():
+            # Counting the publicly burned cards reveals the last opposing hand
+            # in the final duel; this matching card wins against every reply.
+            return {**move, **found}
         if slipped(0.5):
             return None  # did not notice the matching card in time
         if hold and _holds(rank, len(groups[rank]), top=top, streak=streak):
@@ -357,9 +469,18 @@ def choose_cpu_action(projection: Mapping[str, Any], *, memory: CpuMemory | None
         if finish is not None and finish in groups:
             return {**move, "action": "play", "cards": sorted(groups[finish])}
 
-    block = _known_pair_block(projection, memory)
-    if block is not None and not slipped():
-        return {**move, "action": "play", "cards": [block]}
+    block = _known_pickup_finish(projection, memory)
+    if block is None:
+        pair_block = _known_pair_block(projection, memory)
+        block = [pair_block] if pair_block is not None else None
+    if block is not None:
+        if not slipped():
+            return {**move, "action": "play", "cards": block}
+    elif (found := counted()) is not None and found["action"] != "afterthrow" and counts_cards():
+        # A forced win over the publicly counted (or fully observed) last
+        # opposing hand. Direct finishes above keep priority, and a missed
+        # pair block gets no second chance here.
+        return {**move, **found}
 
     counts = Counter(card_rank(card) for card in hand)
 
