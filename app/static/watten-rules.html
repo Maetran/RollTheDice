@@ -9,14 +9,14 @@
   <meta name="color-scheme" content="light">
   <title>Watten – Spielregeln / Rules</title>
   <script>{let d="classic";try{if(localStorage.getItem("watten_design")==="tirol")d="tirol"}catch(_){}document.documentElement.dataset.wattenDesign=d}</script>
-  <link rel="stylesheet" href="/static/watten-game.css?v=9ca4d45060f5">
-  <link rel="stylesheet" href="/static/suite-header.css?v=9ca4d45060f5">
-  <link rel="stylesheet" href="/static/watten-design.css?v=9ca4d45060f5">
+  <link rel="stylesheet" href="/static/watten-game.css?v=c11e00b88a29">
+  <link rel="stylesheet" href="/static/suite-header.css?v=c11e00b88a29">
+  <link rel="stylesheet" href="/static/watten-design.css?v=c11e00b88a29">
 </head>
 <body class="wt-body">
   <a class="wt-skip" href="#wattenApp">Zum Inhalt / Skip to content</a>
   <header class="wt-header suite-header">
-    <a class="wt-brand suite-header__brand" href="/watten" translate="no"><img class="suite-header__icon" src="/static/watten/icons/watten-icon-32.png?v=9ca4d45060f5" width="32" height="32" alt=""><span>Watten</span></a>
+    <a class="wt-brand suite-header__brand" href="/watten" translate="no"><img class="suite-header__icon" src="/static/watten/icons/watten-icon-32.png?v=c11e00b88a29" width="32" height="32" alt=""><span>Watten</span></a>
     <div class="suite-header__tools">
       <label class="wt-language"><span class="wt-visually-hidden">Sprache / Language</span><select data-language-switcher aria-label="Sprache / Language"><option value="de">Deutsch</option><option value="en">English</option></select></label>
       <button type="button" class="wt-design-toggle" data-theme-toggle data-watten-design-toggle aria-label="Darstellung wechseln: Klassisch. Nächste Darstellung: Tirol." title="Darstellung wechseln: Klassisch. Nächste Darstellung: Tirol."><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="6" y="3" width="12" height="18" rx="2"/><path d="m12 8 3 4-3 4-3-4z"/></svg></button>
@@ -79,7 +79,7 @@
         <p>Wer zuerst drei Stiche hat, gewinnt die Runde sofort.</p>
       </section>
       <section id="taktik"><h2>Gemeinsam taktieren</h2>
-        <p>Im blinden Ladinisch hilft die Faustregel «Zweiter Stich ist Partnerstich»: Wer die Ansage kennt, kann dem zuletzt spielenden Partner eine günstige Stichchance lassen. Das ist keine Pflicht; ein gefährdeter Rundensieg geht vor. Gute Karten sollten nicht bis nach der Entscheidung gespart werden. Im ersten blinden Stich hilft es, möglichst keine bereits liegende Farbe oder Wertstufe zu wiederholen. Die CPU nutzt das als weiche Auswahlhilfe, keine Pflicht. Informierte CPUs wägen ab, ob ein Trumpfanspiel einem informierten Gegner einen erzwungenen Stich ermöglicht, und versuchen, unnötiges Überstechen eines sicheren Partnerstichs zu vermeiden. Auch sie können sich irren. Bereits sichtbare Karten und Stichgewinner helfen beim Einschätzen.</p>
+        <p>Im blinden Ladinisch hilft die Faustregel «Zweiter Stich ist Partnerstich»: Wer die Ansage kennt, kann dem zuletzt spielenden Partner eine günstige Stichchance lassen. Das ist keine Pflicht; ein gefährdeter Rundensieg geht vor. Gute Karten sollten nicht bis nach der Entscheidung gespart werden. Wer den Schlag nicht kennt, vermeidet nach Möglichkeit bereits liegende Werte, um keinen möglichen Schlag zu verheizen; im ersten Stich helfen auch verschiedene Farben. Die CPU nutzt das als Auswahlhilfe, keine Pflicht. Informierte CPUs wägen ab, ob ein Trumpfanspiel einem informierten Gegner einen erzwungenen Stich ermöglicht, und versuchen, unnötiges Überstechen eines sicheren Partnerstichs zu vermeiden. Auch sie können sich irren. Bereits sichtbare Karten und Stichgewinner helfen beim Einschätzen.</p>
         <p>Die CPUs bieten bei subjektiv guten Chancen und wägen zusätzliche Punkte gegen das Risiko ab. Die abgeschlossenen Watten-Spiele jedes Menschen bestimmen zuerst ein begrenztes Schwierigkeitsprofil. Der Tisch verwendet den Median dieser Profile; bei gerader Personenzahl werden die Parameter der beiden mittleren gemittelt. Spielzahlen beschreiben Erfahrung, kein gemessenes Können. Dabei kennen sie ausschliesslich ihre eigene erlaubte Sicht; niemand verrät ihnen verborgene Karten oder Ansagen.</p>
         <p>Neue Partien wählen zufällige CPU-Namen ohne doppelte Namen am Tisch. Während einer Partie und bei Revanchen bleiben die Namen erhalten.</p>
       </section>
@@ -206,7 +206,7 @@
         <p>Whoever takes three tricks first wins the deal immediately.</p>
       </section>
       <section id="tactics"><h2>Playing as partners</h2>
-        <p>In blind Ladinisch, “the second trick is the partner’s trick” is a useful guideline: a player who knows the call may leave a cheap winning opportunity to a partner who acts last. It is never compulsory; securing the round comes first. Strong cards should not be saved until the round is already decided. In a blind opening trick, showing a new suit and rank can help partners assess more combinations. CPUs use this as a soft preference, never a duty. Informed CPUs weigh whether leading trump would give an informed opponent a forced winning response, and try to avoid overtaking a secure partner trick. They can still make mistakes. Visible cards and trick winners help you judge the situation.</p>
+        <p>In blind Ladinisch, “the second trick is the partner’s trick” is a useful guideline: a player who knows the call may leave a cheap winning opportunity to a partner who acts last. It is never compulsory; securing the round comes first. Strong cards should not be saved until the round is already decided. Players who do not know the strike try to avoid repeating a rank already played, so they do not waste a possible strike; different suits can also help in the opening trick. CPUs use this as a preference, never a duty. Informed CPUs weigh whether leading trump would give an informed opponent a forced winning response, and try to avoid overtaking a secure partner trick. They can still make mistakes. Visible cards and trick winners help you judge the situation.</p>
         <p>CPUs bid on subjectively strong chances and weigh extra points against risk. Each human's completed Watten matches first determine a bounded difficulty profile. The table uses the median of these profiles, averaging the middle two parameter by parameter for an even number. Match counts indicate experience, not measured ability. They use only their own permitted view; nobody reveals hidden hands or denied calls to them.</p>
       </section>
       <section id="bidding"><h2>Bidding</h2>
@@ -285,6 +285,6 @@
       <p><a class="wt-button" href="/watten">To the lobby</a></p>
     </article>
   </main>
-  <script type="module" src="/static/watten-game.js?v=9ca4d45060f5"></script>
+  <script type="module" src="/static/watten-game.js?v=c11e00b88a29"></script>
 </body>
 </html>

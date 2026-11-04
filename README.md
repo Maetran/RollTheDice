@@ -664,7 +664,7 @@ menschlichen Mitspieler werden ihre Entscheidungen genauer; bei gemischter
 Erfahrung zählt der Median der individuellen, begrenzten Schwierigkeitsprofile.
 Bei gerader Personenzahl werden die beiden mittleren Profile gemittelt. Die
 Spielzahl beschreibt Erfahrung, kein gemessenes Können; auch CPUs können sich irren. Im Blindspiel wägen informierte CPUs ab, ob ein Trumpfanspiel einem informierten Gegner einen erzwungenen Stich ermöglicht, und versuchen, einen sicheren Partnerstich zu schonen. «Zweiter Stich ist Partnerstich»
-bleibt im blinden Ladinisch eine abwägbare Hilfe. Im ersten blinden Stich bevorzugt sie neue sichtbare Werte und Farben. Die CPU kennt nur ihre eigene
+bleibt im blinden Ladinisch eine abwägbare Hilfe. Ein blinder Partner schont nach Möglichkeit bereits liegende Werte, solange der Schlag unbekannt ist; im ersten Stich bevorzugt er zudem neue sichtbare Farben. Die CPU kennt nur ihre eigene
 erlaubte Sicht. Die [Strategiedokumentation](docs/WATTEN_CPU_STRATEGY.md) nennt
 Stufen, Quellen und Grenzen; der synthetische Vergleich misst keine Stärke gegen Menschen.
 CPUs bid on subjectively strong chances and account for the score. More completed
@@ -672,7 +672,7 @@ Watten games by the human participants sharpen their decisions; mixed tables use
 the median of the humans' individual bounded difficulty profiles, averaging
 the middle two for an even number. Match counts describe experience, not
 measured ability; CPUs can still make mistakes. In blind play, informed CPUs weigh whether leading trump would give an informed opponent a forced winning response, and try to avoid overtaking a secure partner trick. Leaving the second trick to the partner
-remains a soft tactic in blind Ladinisch. The blind opening prefers new visible ranks and suits. The CPU only knows its own permitted
+remains a soft tactic in blind Ladinisch. While the strike is unknown, a blind partner tries to avoid repeating visible ranks; the opening also favours new suits. The CPU only knows its own permitted
 view. The [strategy notes](docs/WATTEN_CPU_STRATEGY.md) document tiers, sources and
 limits; the synthetic comparison does not measure strength against people.
 
@@ -1583,7 +1583,7 @@ Erfahrungsstufen der Menschen: 0 und 1000 Runden ergeben zusammen 0,775 statt
 merken sie tatsächlich beobachtete öffentliche Paketaufnahmen. Im belegten
 Endduell mit zwei aktiven Spielern legen sie z. B. mit 6/K/Ass gegen vollständig
 bekannte 7/7 auf leerem Tisch K, erzwingen die Aufnahme und behalten das Ass.
-Auch bei anderen vollständig bekannten Händen kann eine höhere Karte die Aufnahme erzwingen und einen sicheren Schlusszug vorbereiten. Erfahrene CPUs zählen zudem tatsächlich beobachtete abgeräumte Karten und suchen bei eindeutig erschliessbarer letzter Gegnerhand begrenzt nach einem Gewinnzug. Bei unvollständigem Wissen oder abgebrochener Suche spielen sie mit ihrer normalen Taktik weiter. CPUs können sich dabei irren.
+Auch bei anderen vollständig bekannten Händen kann eine höhere Karte die Aufnahme erzwingen und einen sicheren Schlusszug vorbereiten. Erfahrene CPUs zählen zudem tatsächlich beobachtete abgeräumte Karten und suchen bei eindeutig erschliessbarer letzter Gegnerhand begrenzt nach einem Gewinnzug. Bei unvollständigem Wissen kann eine beobachtete Paketaufnahme sie zu einem riskanten hohen Anspiel bewegen, wenn danach eine eigene Schlusschance bleibt. An grösseren Tischen können sie eine hohe Karte auch ohne diesen Hinweis ablegen, um gemischte tiefere Karten für spätere Züge vorzubereiten. Eine freiwillige Aufnahme oder weitere Gegner können die Einschätzung täuschen; je nach Erfahrung wägen CPUs die Chance unterschiedlich ab und können sich irren.
 Verdeckte fremde Hände oder die Stapelreihenfolge werden nicht gelesen;
 Beobachtungslücken verwerfen das Wissen.
 Der [reproduzierbare CPU-Vergleich](docs/HAUSDEPP_CPUS.md)
@@ -1615,7 +1615,7 @@ individually capped experience levels: zero and 1,000 rounds yield 0.775, rather
 than 1.0. Beginner tips remain personal. Once stock is empty, they remember
 public packet pickups they actually observed. In the proven final duel with two
 active players, for example with 6/K/ace against completely known 7/7, they play
-K onto an empty table, force a pickup and keep the ace. Against other fully known hands a higher card can also force a pickup and set up a safe finish. Experienced CPUs also count clears they actually observed and use a bounded search when the last opposing hand can be deduced exactly. Incomplete knowledge or a stopped search falls back to their normal tactics. CPUs can still make mistakes. Hidden hands and stock order are never read;
+K onto an empty table, force a pickup and keep the ace. Against other fully known hands a higher card can also force a pickup and set up a safe finish. Experienced CPUs also count clears they actually observed and use a bounded search when the last opposing hand can be deduced exactly. With incomplete knowledge, an observed pickup can also prompt a risky high card if it leaves a chance to finish. At larger tables they may also play a high card without that clue to prepare mixed lower cards for later turns. Voluntary pickups or other opponents can upset their judgement; CPUs weigh the chance differently with experience and can still make mistakes. Hidden hands and stock order are never read;
 observation gaps discard knowledge. The
 [reproducible CPU comparison](docs/HAUSDEPP_CPUS.md) records strengths, limits
 and checks. Dedicated sign-in and settings at `/hausdepp/anmelden` and
@@ -3106,6 +3106,8 @@ auf kleinen Bildschirmen direkt bedienbar. Suche und Filter bleiben während
 Listenänderungen erhalten. Der Einladungsfilter zeigt gespeicherte und noch
 nicht gespeicherte Änderungen; eine leere gefilterte Liste blockiert alle
 Mitspieler-Rufe. Startmeldungen und Push werden unabhängig eingeschaltet.
+Am Watten-Tisch erscheint eine Startmeldung höchstens acht Sekunden und wird
+nach einer App-Unterbrechung bei der Rückkehr auf ihren Ablauf geprüft.
 Die gerichtete Liste gilt für das Konto in allen Spielen und auf allen Geräten,
 ohne gegenseitige Freundschaftsanfragen oder öffentliche Freundesprofile.
 
@@ -3115,7 +3117,9 @@ matches, already selected accounts and the 100-player limit. Removal, search
 results and the invitation filter remain usable on small screens. Searches and
 filters survive list changes. The invitation filter distinguishes saved and
 unsaved changes; an empty list with the selected-players filter blocks every
-player call. Start notices and push each require their own setting. This private,
+player call. Start notices and push each require their own setting. At a Watten
+table, a start notice appears for at most eight seconds and is checked for expiry
+when the app returns from the background. This private,
 one-way list applies across the account's games and devices, without mutual
 friend requests or public friendship profiles.
 

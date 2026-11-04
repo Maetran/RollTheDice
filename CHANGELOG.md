@@ -23,6 +23,24 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 4.14.2 — 2026-11-04
+
+Computergegner wägen ihre Karten in Hausdepp und Watten bewusster ab.
+
+Computer opponents weigh their cards more thoughtfully in Hausdepp and Watten.
+
+### HAUSDEPP
+
+**Deutsch:** Computer berücksichtigen beobachtete Paketaufnahmen und können im Endspiel eine hohe Karte auf Verdacht spielen, um eine Schlusschance vorzubereiten. Bekannte Hände ermöglichen eine begrenzte sichere Suche; Vermutungen bleiben unsicher und die Erfahrung der Menschen beeinflusst die Entscheidungen.
+
+**English:** Computers consider observed pickups and may risk a high card in the endgame to prepare a finish. Known hands enable a bounded search for a safe win; guesses remain uncertain and decisions reflect human players’ experience.
+
+### WATTEN
+
+**Deutsch:** Computer wägen Trumpfanspiele im Blindspiel und bereits gewinnende Partnerstiche bewusster ab. Blinde Partner schonen nach Möglichkeit einen bereits liegenden Wert. Fehlentscheidungen bleiben möglich, aber alle gewählten Karten entsprechen den Spielregeln. Der Stichstapel bleibt im Hochformat auch im Ausweichlayout zentriert. Spielstartmeldungen verschwinden am Tisch nach kurzer Zeit, auch nach einer Unterbrechung.
+
+**English:** Computers weigh blind trump leads and already winning partner tricks more carefully. Blind partners try to avoid repeating a rank already played. Mistakes remain possible, but every chosen card follows the rules. The trick pile stays centred in the portrait fallback layout. Game-start notices disappear shortly after appearing at the table, including after an interruption.
+
 ## 4.14.1 — 2026-11-04
 
 Frische Namen für neue Watten-Partien und nachvollziehbare Auswertungen für die ganze Suite.

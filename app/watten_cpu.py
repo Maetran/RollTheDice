@@ -13,9 +13,10 @@ Danke, permitted partner cards and remembered own inspection cards. No engine,
 room or view selector is imported, so real hidden hands, stock and secret calls
 are unavailable by construction. Official trump duty follows the seat's role
 only; an inferred call never binds a blind non-inspector. There is no duty to
-win, and the Rechter or critical cards are never forced. A card that surely
-cannot take the current trick is only ever spent as the cheapest such card, and
-a stake that already decides the match is never raised. Guter/Schlechter,
+win, and the Rechter or critical cards are never forced. For a surely hopeless
+trick the CPU conserves cheap cards, with a blind partner's possible strike
+given a separate close-choice preference; a stake that already decides the
+match is never raised. Guter/Schlechter,
 user-selectable difficulty modes, think delays and scheduling are absent.
 An explicit ``CpuSkill`` supplies bounded experience parameters; it contains
 neither an account identity nor historical game information.
@@ -639,6 +640,22 @@ def _preplay_answer(ctx: _Context) -> str:
     return "preplay_accept" if strength < (13 if ctx.critical else 8.5) else "preplay_decline"
 
 
+def _blind_repeated_possible_strike(ctx: _Context, card: str, options: list) -> bool:
+    """A repeated public rank might be the call, without discovering it.
+
+    This is a preference for the uninformed partner, never a rule: when the
+    call is actually known the rollouts may use it directly instead.
+    """
+    if (not ctx.snap.profile.blind or ctx.seat in ctx.knowers or ctx.memory.strike is not None
+            or not ctx.trick):
+        return False
+    rank = card_rank(card)
+    if not any(card_rank(played) == rank for _, played in ctx.trick):
+        return False
+    possible = {model.call.strike_rank for model, *_ in options}
+    return len(possible) > 1 and rank in possible
+
+
 def _conserve_hopeless(ctx: _Context, legal: tuple[str, ...], options: list) -> tuple[str, ...]:
     """Keep strength when no legal card can beat the already public winner.
 
@@ -653,6 +670,17 @@ def _conserve_hopeless(ctx: _Context, legal: tuple[str, ...], options: list) -> 
         strongest = model.strength(cards[model.winner(cards)], cards[0])
         if any(model.strength(card, cards[0]) > strongest for card in legal):
             return legal
+    # Do not discard the untried alternative before considering that a blind
+    # partner's repeated rank may be strike. Both cards remain legal and a
+    # sufficiently better rollout can still choose either of them.
+    repeated = [_blind_repeated_possible_strike(ctx, card, options) for card in legal]
+    if any(repeated) and not all(repeated):
+        def order(card):
+            return sum(model.order[card] for model in models), card
+
+        with_repeat = min((card for card, risky in zip(legal, repeated) if risky), key=order)
+        without_repeat = min((card for card, risky in zip(legal, repeated) if not risky), key=order)
+        return tuple(card for card in legal if card in {with_repeat, without_repeat})
     cheapest = min(legal, key=lambda card: (sum(model.order[card] for model in models), card))
     return (cheapest,)
 
@@ -843,12 +871,17 @@ def _choose(ctx: _Context, seed: int, budget: CpuBudget, skill: CpuSkill) -> Cpu
         scores = {card: (sum(_rollout(ctx, world, card) for world in worlds) / len(worlds) if worlds else 0.5)
                   for card in legal}
         best = max(scores.values())
+        repeated = {card: _blind_repeated_possible_strike(ctx, card, options) for card in legal}
+        # Only compare the extra preservation preference when a different
+        # permitted rank is actually available. This is not a hidden call and
+        # does not prohibit deliberately spending a likely strike.
+        protection = (1.5 * skill.partnership if any(repeated.values()) and not all(repeated.values()) else 0.0)
         # Partnership and information preferences may break close choices,
         # but cannot override a clearly stronger permitted-card rollout.
-        candidates = [card for card in legal if scores[card] >= best - skill.near_best]
+        candidates = [card for card in legal if scores[card] >= best - max(skill.near_best, protection)]
         card = min(candidates, key=lambda card: (
             -(scores[card] + _tactical_preference(ctx, card, models, skill)
-              + _partner_cover_preference(ctx, card, worlds, skill)
+              + _partner_cover_preference(ctx, card, worlds, skill) - protection * repeated[card]
               + _blind_trump_lead_preference(ctx, card, worlds, skill)),
             sum(model.order[card] for model in models), card))
         if may_bid and worlds and _should_bid(ctx, _subjective_chance(best, skill, len(worlds)), skill):

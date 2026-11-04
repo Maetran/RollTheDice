@@ -2,12 +2,29 @@
 
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import dataclass, field
 from typing import Any, Mapping
 
-from .hausdepp_engine import card_rank, make_deck
+from .hausdepp_engine import HAUSDEPP_RANKS, card_rank, make_deck
 
 _DECK = frozenset(make_deck())
+_RANK_VALUES = {rank: index for index, rank in enumerate(HAUSDEPP_RANKS)}
+
+
+@dataclass(frozen=True)
+class PickupHint:
+    """An observed choice, not proof of the cards that player held.
+
+    Picking up is legal even when the player could have played.  The size
+    helps a caller weigh a deliberate purchase of a valuable packet.
+    """
+
+    rank: str
+    packet_size: int
+    version: int
+    # False is only absence of proof: the player may still have a hidden move.
+    known_playable: bool = False
 
 
 def _public(view: Mapping[str, Any]) -> tuple:
@@ -28,6 +45,7 @@ class PublicKnowledge:
 
     _position: tuple | None = None
     _known: dict[str, set[str]] = field(default_factory=dict)
+    _pickup_hints: dict[str, PickupHint] = field(default_factory=dict)
     # Cards seen face up on a cleared pile this round; None once a gap or a
     # face-down removal (a departure) makes the count unreliable.
     _burned: set[str] | None = None
@@ -36,6 +54,7 @@ class PublicKnowledge:
     def clear(self) -> None:
         self._position = None
         self._known.clear()
+        self._pickup_hints.clear()
 
     def _count_burns(self, before: Mapping[str, Any], after: Mapping[str, Any]) -> None:
         """Remember every publicly cleared card, exactly as an attentive person could."""
@@ -85,6 +104,12 @@ class PublicKnowledge:
         return tuple(sorted(unseen))
 
     def observe(self, before: Mapping[str, Any], after: Mapping[str, Any]) -> None:
+        event = after.get("last_event") or {}
+        actor = event.get("player_id")
+        # A fully counted opposing hand is safe evidence too. Capture it before
+        # _count_burns advances its own version to the post-transition view.
+        counted_before = (self.counted_hand(before, actor)
+                          if event.get("type") == "pickup" and actor != before.get("viewer_id") else None)
         self._count_burns(before, after)
         previous, current = _public(before), _public(after)
         version, viewer, phase, stock, players, *_ = current
@@ -106,10 +131,23 @@ class PublicKnowledge:
             return
         if actor != viewer:
             known = self._known.setdefault(actor, set())
+            # A later action by this player can change their hand or express a
+            # different choice.  Other players' observed actions do not.
+            self._pickup_hints.pop(actor, None)
             if action == "pickup":
                 cards = before["discard"]
                 if len(cards) != event["picked_up_count"]:
                     raise ValueError("hausdepp_cpu_invalid_public_pickup")
+                if cards:
+                    rank = card_rank(cards[-1])
+                    # Inspect only cards evidenced BEFORE the pickup. The
+                    # packet itself has not entered that player's hand yet.
+                    earlier = set(known) | set(counted_before or ())
+                    ranks = Counter(card_rank(card) for card in earlier)
+                    playable = (any(_RANK_VALUES[held] >= _RANK_VALUES[rank] for held in ranks)
+                                or before.get("four_of_a_kind_as_ten") is True
+                                and any(count >= 4 for count in ranks.values()))
+                    self._pickup_hints[actor] = PickupHint(rank, len(cards), version, playable)
                 for card in cards:
                     card_rank(card)
                 known.update(cards)
@@ -118,6 +156,26 @@ class PublicKnowledge:
         if any(len(self._known.get(player_id, ())) > hand_count for player_id, hand_count, *_ in players):
             raise ValueError("hausdepp_cpu_invalid_public_knowledge")
         self._position = current
+
+    def known_cards(self, view: Mapping[str, Any], player_id: str) -> tuple[str, ...]:
+        """Return only publicly observed cards; unknown cards remain possible."""
+        current = _public(view)
+        if current != self._position or current[2:4] != ("playing", 0):
+            return ()
+        player = next((player for player in current[4] if player[0] == player_id), None)
+        if player is None or player[2] or player[3] or player_id == current[1]:
+            return ()
+        return tuple(sorted(self._known.get(player_id, ())))
+
+    def pickup_hint(self, view: Mapping[str, Any], player_id: str) -> PickupHint | None:
+        """Return the last still-relevant observed pickup, never a forced-play claim."""
+        current = _public(view)
+        if current != self._position or current[2:4] != ("playing", 0):
+            return None
+        player = next((player for player in current[4] if player[0] == player_id), None)
+        if player is None or player[2] or player[3] or player_id == current[1]:
+            return None
+        return self._pickup_hints.get(player_id)
 
     def exact_hand(self, view: Mapping[str, Any], player_id: str) -> tuple[str, ...] | None:
         """Return a complete observed hand only at the exact observed version."""

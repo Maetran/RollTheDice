@@ -397,19 +397,11 @@ def test_ambiguous_blind_call_does_not_assume_partner_is_winning():
 
 def test_blind_deal_53_does_not_overtake_safe_partner_across_seeds(monkeypatch):
     table = Table(start_match(cpu_recipe(4, "ladinisch", True), "p53", shuffled_deal(4, 53), first_dealer="A"))
-    for _ in range(300):
-        acting = []
-        for player in table.state.recipe.seats:
-            result = decide(table.view(player), table.memories[player], seed=53, budget=CpuBudget(24))
-            table.memories[player] = result.memory
-            if isinstance(result.decision, CpuProposal) and result.decision.kind != "bid":
-                acting.append((player, result.decision))
-        player, proposal = min(acting, key=lambda item: item[1].kind != "partner_feedback")
-        if proposal.kind == "play_card" and player == "A" and len(table.state.play.trick_cards) == 3:
-            break
-        table.propose(player, proposal)
-    else:
-        raise AssertionError("trick one never reached seat A last")
+    # Replay the original engine-accepted counterexample rather than relying
+    # on earlier CPU choices, which can change as rollouts improve.
+    table.ready()
+    for player, card in (("B", "acorns-9"), ("C", "leaves-10"), ("D", "bells-8")):
+        table.play(player, card)
     monkeypatch.setattr(cpu_policy, "_should_bid", lambda *_args: False)
     ctx = cpu_policy._prepare(table.view("A"), table.memories["A"], ())
     options = cpu_policy._options(ctx)

@@ -230,6 +230,10 @@ test('a real four-seat friend start offers deliberate lobby watching and stays t
     await expect.poll(() => lobby.traffic.snapshot?.id).toBe(gameId);
     expect(lobby.traffic.snapshot.viewer).toBeNull();
 
+    // A live table only shows the information briefly; it must disappear
+    // without requiring an opt-out or another game update.
+    await expect(notices(decider)).toBeHidden({ timeout: 13_000 });
+
     const optOut = await decider.context.request.put('/api/friend-activity/preferences', {
       headers: authHeaders(decider), data: { viewer_id: decider.user.id, enabled: false },
     });

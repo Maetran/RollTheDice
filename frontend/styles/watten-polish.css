@@ -522,7 +522,13 @@ html[data-watten-active="true"] .wt-table:not([data-phase="match_complete"][data
     width: 100%; height: var(--wt-portrait-row-height); margin-bottom: var(--wt-portrait-caption-height);
   }
   html[data-watten-active="true"] .wt-centre[data-wt-portrait-trick] > [data-wt-reference] { position: absolute; width: 0; height: 0; }
-  html[data-watten-active="true"] .wt-table[data-count="4"] .wt-centre:has(.wt-reference):not([data-wt-portrait-trick]) { translate: none; }
+  /* The fixed reference needs an untransformed ancestor. Centre the legacy
+     trick dimensions explicitly when measured placement cannot fit. */
+  html[data-watten-active="true"] .wt-table[data-count="4"] .wt-centre:has(.wt-reference):not([data-wt-portrait-trick]) {
+    translate: none;
+    margin-left: calc(var(--wt-trick-w) * -1.45);
+    margin-top: calc(var(--wt-trick-w) * -1.5 - 16px);
+  }
   html[data-watten-active="true"] .wt-table[data-count="4"] .wt-centre .wt-reference {
     position: fixed; left: auto; right: 14px;
     top: calc(var(--wt-table-header-height, 52px) + 60px);

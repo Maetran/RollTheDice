@@ -1,0 +1,105 @@
+--- app/watten_cpu.py
++++ app/watten_cpu.py
+@@ -78,6 +78,7 @@
+ _EQUITY_LIMIT: Final = 48
+ _BLOEDELN_REQUEST_CUTOFF: Final = int((1 - (2 / 3) ** 0.5) * (1 << 64))
+ _CRITICAL_SCORE: Final = {"hearts-K": 12.0, WELI: 11.0, "acorns-7": 10.0}
++_BLIND_RANK_ORDER: Final = {rank: index for index, rank in enumerate(("6", "7", "8", "9", "10", "U", "O", "K", "A"))}
+ _KIND_SCORE: Final = {CardKind.RECHTER: 9.0, CardKind.STRIKE: 6.0}
+ _NORMAL_SCORE: Final = {"A": 1.0, "K": 0.5}
+ _MASK: Final = (1 << 64) - 1
+@@ -309,6 +310,9 @@
+         self.trick = list(snap.current_trick)
+         self.leader = snap.current_trick[0][0] if snap.current_trick else snap.card_turn
+         self._models: dict[tuple[str, str], _Model] = {}
++        # Derived solely from this seat's permitted observations. It must never
++        # be passed on as knowledge of another simulated blind player.
++        self._own_deduced_call: WattenCall | None = None
+ 
+     def model(self, strike: str, suit: str) -> _Model:
+         key = (strike, suit)
+@@ -388,6 +392,9 @@
+             options.extend((ctx.model(strike, suit), None, None) for suit in WATTEN_SUITS if plausible(strike, suit))
+     if not options:
+         raise WattenCpuError("watten_cpu_inconsistent_knowledge")
++    if profile.blind and ctx.seat not in ctx.knowers:
++        call = options[0][0].call
++        ctx._own_deduced_call = call if all(model.call == call for model, *_ in options) else None
+     return options
+ 
+ 
+@@ -455,14 +462,74 @@
+         if world is not None:
+             worlds.append(world)
+     return worlds
++
+ 
++def _blind_rollout_card(seat: int, hand: list[str], trick: list[tuple[int, str]], ctx: _Context) -> str:
++    """Approximate a blind simulated seat without its world's hidden call or hands.
+ 
++    Known critical cards can beat each other regardless of the call. Other
++    decisions use only printed ranks and suits, the public trick and this
++    simulated player's own cards. This is a simple model, not a human policy.
++    """
++    protected = _CRITICAL_SCORE if ctx.critical else (WELI,)
++    candidates = hand
++    if len(trick) == ctx.count - 1:
++        played = [(player, card) for player, card in trick if ctx.critical and card in _CRITICAL_SCORE]
++        if played:
++            winner, highest = max(played, key=lambda item: _CRITICAL_SCORE[item[1]])
++            if ctx.parties[winner] != ctx.parties[seat]:
++                covers = [card for card in hand if card in _CRITICAL_SCORE
++                          and _CRITICAL_SCORE[card] > _CRITICAL_SCORE[highest]]
++                if covers:
++                    return min(covers, key=lambda card: (_CRITICAL_SCORE[card], card))
++        elif WELI not in (card for _, card in trick):
++            # A blind seat may try the apparent led-suit winner without
++            # knowing whether the hidden call changes the actual result.
++            led_suit = card_suit(trick[0][1])
++            led = [(player, card) for player, card in trick if card_suit(card) == led_suit]
++            apparent_winner, apparent = max(led, key=lambda item: _BLIND_RANK_ORDER[card_rank(item[1])])
++            if ctx.parties[apparent_winner] != ctx.parties[seat]:
++                winning = [card for card in hand if card not in protected and card_suit(card) == led_suit
++                           and _BLIND_RANK_ORDER[card_rank(card)] > _BLIND_RANK_ORDER[card_rank(apparent)]]
++                if winning:
++                    return min(winning, key=lambda card: (_BLIND_RANK_ORDER[card_rank(card)], card))
++            else:
++                # Keep an apparently leading partner in front when another
++                # choice is available; the unknown call can still change it.
++                other = [card for card in hand if card_suit(card) != led_suit
++                         or _BLIND_RANK_ORDER[card_rank(card)] <= _BLIND_RANK_ORDER[card_rank(apparent)]]
++                if other:
++                    candidates = other
++    used_ranks = {card_rank(card) for _, card in trick}
++    return min(candidates, key=lambda card: (card in protected, card_rank(card) in used_ranks,
++                                             _BLIND_RANK_ORDER[card_rank(card)], card))
++
++
++def _deduced_rollout_card(model: _Model, seat: int, hand: list[str], trick: list[tuple[int, str]],
++                          ctx: _Context) -> str:
++    """Use this seat's uniquely deduced call without reading any other hand."""
++    cheapest = min(hand, key=model.order.__getitem__)
++    if not trick:
++        return cheapest
++    cards = [card for _, card in trick]
++    best_index = model.winner(cards)
++    if ctx.parties[trick[best_index][0]] == ctx.parties[seat]:
++        return cheapest
++    best = model.strength(cards[best_index], cards[0])
++    winners = [card for card in hand if model.strength(card, cards[0]) > best]
++    return min(winners, key=model.order.__getitem__) if winners else cheapest
++
++
+ def _simulated_card(model: _Model, seat: int, hands: list[list[str]], trick: list[tuple[int, str]],
+                     ctx: _Context) -> str:
+     """Simple sensible play for every seat inside one hypothetical world."""
+     forced = dict(ctx.snap.bloedeln_cards).get(seat)
+     if forced is not None and forced in hands[seat]:
+         return forced
++    if ctx.snap.profile.blind and seat not in ctx.knowers:
++        if seat == ctx.seat and ctx._own_deduced_call == model.call:
++            return _deduced_rollout_card(model, seat, hands[seat], trick, ctx)
++        return _blind_rollout_card(seat, hands[seat], trick, ctx)
+     cards = [card for _, card in trick]
+     legal = model.allowed(hands[seat], cards, seat in ctx.knowers)
+     cheapest = min(legal, key=model.order.__getitem__)

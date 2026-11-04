@@ -60,6 +60,7 @@ class Socket extends EventTarget {
 
 function makeWindow() {
   const win = new EventTarget();
+  win.document = new EventTarget();
   let sequence = 0;
   win.location = { href: "https://watten.example/watten?x=1#y" };
   win.timers = new Map();
@@ -305,6 +306,38 @@ test("a table placement shows non-blocking text without any action", async () =>
   assert.ok(!f.container.innerHTML.includes("Watten begonnen"), "only the latest notice is shown");
   f.container.click("watch", start("hausdepp").id);
   assert.equal(f.watched.length, 0);
+});
+
+test("table notice disappears after eight seconds and stale suspended timers are reconciled on return", async () => {
+  const f = fixture({ placement: "table" });
+  await ready(f);
+  f.sockets[0].frame({ friend_activity: start("zdwa") });
+  await until(() => !f.container.hidden);
+  assert.deepEqual(f.win.of("timeout").map(([, timer]) => timer.ms), [8_000]);
+  f.advance(7_999);
+  f.win.document.dispatchEvent(new Event("visibilitychange"));
+  assert.equal(f.container.hidden, false);
+  // Simulate iOS suspending the timeout while the game was in the background.
+  f.advance(1);
+  f.win.document.dispatchEvent(new Event("visibilitychange"));
+  assert.equal(f.container.hidden, true);
+  assert.equal(f.container.innerHTML, "");
+  assert.equal(f.win.of("timeout").length, 0);
+  f.client.destroy();
+});
+
+test("lobby notices remain watchable until their server expiry", async () => {
+  const f = fixture();
+  await ready(f);
+  f.sockets[0].frame({ friend_activity: start("zdwa") });
+  await until(() => f.container.items === 1);
+  f.advance(8_000);
+  f.win.dispatchEvent(new Event("pageshow"));
+  assert.equal(f.container.items, 1);
+  f.advance(60_000);
+  f.win.dispatchEvent(new Event("pageshow"));
+  assert.equal(f.container.hidden, true);
+  f.client.destroy();
 });
 
 test("pagehide clears notices and late frames or auth responses never remount them", async () => {
