@@ -60,8 +60,10 @@ def fixture(count: int, seed: int, world: str, *, hint: bool, middle: str = "8")
             # actions remain observable. Other seats keep their own memories.
             memories["p0"] = current.CpuMemory()
     view = project_state(state, "p0")
-    assert state["current_player_id"] == "p0" and len([p for p in state["players"] if not p["finished"]]) == count
-    assert memories["p0"].public.exact_hand(view, "p1") is None
+    if state["current_player_id"] != "p0" or sum(not player["finished"] for player in state["players"]) != count:
+        raise RuntimeError("Synthetic endgame must return to p0 with every seat still active")
+    if memories["p0"].public.exact_hand(view, "p1") is not None:
+        raise RuntimeError("Synthetic endgame unexpectedly exposed the opponent's complete hand")
     return state, memories, view
 
 

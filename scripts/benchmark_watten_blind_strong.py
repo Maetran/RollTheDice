@@ -2,6 +2,7 @@
 
 Use a clean copy of the tested source. The checked-in patch reconstructs the
 exact experimental CPU and is never imported by the game.
+Subprocess calls use fixed absolute tools and validated arguments.
 """
 
 from __future__ import annotations
@@ -10,7 +11,8 @@ import argparse
 import hashlib
 import importlib.util
 import json
-import subprocess
+import re
+import subprocess  # nosec B404
 import sys
 import tempfile
 from collections import Counter
@@ -29,6 +31,9 @@ EXPERIMENT = ROOT / "experiments/watten_blind_rollout/efc38c71.patch"
 PRODUCTION_HASH = "f2d3f793f722d7aa691d308250306f706d17bb66364aed15e63411edbd0f3511"
 EXPERIMENT_HASH = "efc38c719ec084b4e135d621ef01053af0ba43f6fd459a941e13770757bb446d"
 REFERENCE_HASH = "6bb216ff3864c46ad3de4f2a7b837589b072f917b0096a8acbfb3fd9298a22e7"
+PATCH_HASH = "0339df31e7b24167329322e9288f012e43e80cc8210f75afaacfda4aa718ddf3"
+GIT = "/usr/bin/git"
+PATCH = "/usr/bin/patch"
 
 
 def _load(name, path):
@@ -41,6 +46,14 @@ def _load(name, path):
 
 def _sha(data):
     return hashlib.sha256(data).hexdigest()
+
+
+def _reference_file(rel):
+    if re.fullmatch(r"(?:app/watten[a-z0-9_]*\.py|tests/watten_cpu_benchmark\.py)", rel) is None:
+        raise ValueError("Unexpected reference path")
+    # No shell: a fixed executable, revision and validated repository path.
+    return subprocess.run([GIT, "show", f"f89354f7:{rel}"], cwd=ROOT, check=True,  # nosec B603
+                          capture_output=True, timeout=30).stdout
 
 
 def run_deal(profile, seed, dealer, party, version, st):
@@ -106,19 +119,22 @@ def main():
         if path.name == "watten_cpu.py":
             continue
         rel = path.relative_to(ROOT).as_posix()
-        old = subprocess.run(["git", "show", f"f89354f7:{rel}"], cwd=ROOT, check=True, capture_output=True).stdout
+        old = _reference_file(rel)
         if old != path.read_bytes():
             raise RuntimeError(f"Reference support file changed: {rel}")
-    reference = subprocess.run(["git", "show", "f89354f7:app/watten_cpu.py"],
-                               cwd=ROOT, check=True, capture_output=True).stdout
+    reference = _reference_file("app/watten_cpu.py")
     if _sha(reference) != REFERENCE_HASH:
         raise RuntimeError("Unexpected reference CPU")
+    if _sha(EXPERIMENT.read_bytes()) != PATCH_HASH:
+        raise RuntimeError("Unexpected experimental patch")
     with tempfile.TemporaryDirectory(prefix="watten-blind-experiment-") as directory:
         path = Path(directory) / "app/watten_cpu.py"
         path.parent.mkdir()
         path.write_bytes(source)
-        subprocess.run(["patch", "-p0", "-i", str(EXPERIMENT)], cwd=directory,
-                       check=True, capture_output=True)
+        # The fixed patch is hash checked and applied only within this temporary directory.
+        patch_path = str(EXPERIMENT)
+        subprocess.run([PATCH, "-p0", "-i", patch_path], cwd=directory,  # nosec B603
+                       check=True, capture_output=True, timeout=30)
         if _sha(path.read_bytes()) != EXPERIMENT_HASH:
             raise RuntimeError("Unexpected reconstructed experimental CPU")
         basepath = Path(directory) / "reference.py"

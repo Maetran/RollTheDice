@@ -508,6 +508,15 @@ Gesamtspiel-Runner / full-game runner `f17df43c86a5668ef7c995ec438db3878f305c253
 Szenario-Runner / scenario runner `febb1f736b3d851ab07b1112c7b7554083aeffab8a26ce6e1830f2d9cb9ec1d0`.
 Alle erfassten Quellhashes wurden beim Laufbeginn und -ende geprüft. / All
 recorded source hashes were checked before and after each run.
+Die nachträglich für die Sicherheitsprüfung explizit formulierten Vorbedingungen
+haben den aktuellen Szenario-Runner-Hash auf
+`33afb4d1405c3ccc33773d23be97d6fb7ef6f36f94d83620ac3cb128943d87dd`
+geändert; die Werte oben stammen vom zuvor genannten Ausführungsstand. Ein
+erneuter A/B-Lauf mit 1’800 Szenariopaaren ergab dieselben Ergebnis- und
+Verhaltenszähler. / The later explicit precondition checks changed the current
+scenario runner hash to the value above; the reported measurements used the
+earlier runner hash. A repeated A/B run of 1,800 scenario pairs produced the
+same outcome and behaviour counts.
 
 ```sh
 python -m scripts.benchmark_hausdepp_suspicions --players 6 --deals 150 --skill 1 --opponent voluntary40 --seed-base 2500000

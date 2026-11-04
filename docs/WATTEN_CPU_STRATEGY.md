@@ -190,6 +190,10 @@ the delivered comparison source is
 `f2d3f793f722d7aa691d308250306f706d17bb66364aed15e63411edbd0f3511`,
 and the patch reconstructing the candidate has SHA-256
 `0339df31e7b24167329322e9288f012e43e80cc8210f75afaacfda4aa718ddf3`.
+The current hardened runner has SHA-256
+`4afd676597dda0b398342ce6e8312dd0c4314666b5a7c39e09d1ffc393f712ef`;
+one seed from each of the four archived variants was reproduced exactly after
+the security changes.
 The benchmark reconstructs and validates these sources in a temporary directory
 and requires the unchanged reference support files from `f89354f7`. From the
 repository root, each of the four holdout rows can be reproduced, for example:
