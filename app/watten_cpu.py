@@ -16,7 +16,9 @@ only; an inferred call never binds a blind non-inspector. There is no duty to
 win, and the Rechter or critical cards are never forced. For a surely hopeless
 trick the CPU conserves cheap cards, with a blind partner's possible strike
 given a separate close-choice preference; a stake that already decides the
-match is never raised. Guter/Schlechter,
+match is never raised. An inspector spends its own shown card among comparable
+close choices. A designated decider with a partner answers an offer only after
+that partner's signal. Guter/Schlechter,
 user-selectable difficulty modes, think delays and scheduling are absent.
 An explicit ``CpuSkill`` supplies bounded experience parameters; it contains
 neither an account identity nor historical game information.
@@ -81,6 +83,8 @@ _CRITICAL_SCORE: Final = {"hearts-K": 12.0, WELI: 11.0, "acorns-7": 10.0}
 _KIND_SCORE: Final = {CardKind.RECHTER: 9.0, CardKind.STRIKE: 6.0}
 _NORMAL_SCORE: Final = {"A": 1.0, "K": 0.5}
 _MASK: Final = (1 << 64) - 1
+# Weight of keeping the remaining hand hidden from the opposing inspector.
+SHOWN_PREFERENCE: Final = 0.75
 
 
 class WattenCpuError(ValueError):
@@ -656,11 +660,116 @@ def _blind_repeated_possible_strike(ctx: _Context, card: str, options: list) -> 
     return len(possible) > 1 and rank in possible
 
 
+def _own_shown_card(ctx: _Context) -> str | None:
+    """The original card this seat itself showed while the two inspectors looked.
+
+    ``inspected`` is ordered (strike card, colour card), i.e. the bottoms of the
+    strike and the suit announcer. Only this seat's own role entry counts; the
+    other entry is the other inspector's card. Hiding is only worth anything
+    when that other inspector is an opponent: with freely chosen teams both
+    inspectors may be partners, and then no opponent knows the shown card.
+    """
+    inspected, roles = ctx.memory.inspected, ctx.roles
+    if inspected is None:
+        return None
+    if ctx.seat == roles.strike_announcer:
+        card, other = inspected[0], roles.suit_announcer
+    elif ctx.seat == roles.suit_announcer:
+        card, other = inspected[1], roles.strike_announcer
+    else:
+        return None
+    if other == ctx.seat or ctx.parties[other] == ctx.my_party or card not in ctx.hand:
+        return None
+    return card
+
+
+def _blind_opening_repeats(ctx: _Context, card: str) -> int:
+    """Printed rank/suit already visible in a blind opening trick (public data only)."""
+    if not ctx.snap.profile.blind or not ctx.trick or ctx.winners:
+        return 0
+    return (int(any(card_rank(played) == card_rank(card) for _, played in ctx.trick))
+            + int(any(card_suit(played) == card_suit(card) for _, played in ctx.trick)))
+
+
+def _sure_trick(ctx: _Context, card: str, models) -> bool:
+    """This card takes the current trick for our side under every permitted call.
+
+    Only the public trick and this seat's own knowledge count: every card that
+    is neither in our hand, nor in a completed trick, nor known to be in the
+    partner's open hand is treated as a possible later opposing threat, unless
+    we are the last to play. A lead is never treated as a sure trick here.
+    """
+    if not ctx.trick:
+        return False
+    prefix = [played for _, played in ctx.trick]
+    led = prefix[0]
+    last = len(ctx.trick) == ctx.count - 1
+    current = set(prefix)
+    gone = set(ctx.played_seat) - current
+    partner = set(ctx.known.get(ctx.snap.partner_seat, ())) if ctx.snap.partner_seat is not None else set()
+    live = [item for item in _DECK if item not in ctx.hand and item not in gone
+            and item not in current and item not in partner]
+    for model in models:
+        own = model.strength(card, led)
+        if own <= model.strength(prefix[model.winner(prefix)], led):
+            return False
+        if not last and any(model.strength(item, led) > own for item in live):
+            return False
+    return True
+
+
+def _comparable_shown(ctx: _Context, card: str, shown: str, models) -> bool:
+    """Whether playing the shown card instead of ``card`` keeps the tactical role.
+
+    Both must be of the same kind under every permitted call: trumps with
+    trumps or ordinary strikes with strikes (never a Rechter or critical card,
+    whose value and public "Danke" make them a separate decision). Both must
+    take or both lose against the current public trick winner, and a trick
+    that ``card`` surely wins must stay surely won. Long-term differences, such
+    as an unknown trump between the two, are judged by the close rollouts.
+    """
+    for model in models:
+        kind = model.kind[card]
+        if kind not in {CardKind.TRUMP, CardKind.STRIKE} or model.kind[shown] is not kind:
+            return False
+    if ctx.trick:
+        prefix = [played for _, played in ctx.trick]
+        for model in models:
+            best = model.strength(prefix[model.winner(prefix)], prefix[0])
+            if (model.strength(card, prefix[0]) > best) != (model.strength(shown, prefix[0]) > best):
+                return False
+    return not _sure_trick(ctx, card, models) or _sure_trick(ctx, shown, models)
+
+
+def _prefer_shown(ctx: _Context, card: str, scores: dict, preferences: dict, models, skill: CpuSkill,
+                  floor: float) -> str:
+    """Play the card the opposing inspector already saw instead of a comparable one.
+
+    That inspector learns nothing new from it, while the rest of the hand stays
+    hidden. The swap needs a comparable card (see ``_comparable_shown``), a
+    rollout result at least ``floor`` (the caller's checked candidate boundary)
+    and at most ``near_best`` below the otherwise chosen card, no lost certain
+    sampled win, and soft preferences (blind opening customs,
+    partner cover, round timing) worse by at most ``SHOWN_PREFERENCE`` times
+    the partnership weight: it outweighs one repeated printed rank or suit in
+    a blind opening, not two.
+    """
+    shown = _own_shown_card(ctx)
+    if (shown is None or shown == card or shown not in scores or shown not in preferences
+            or scores[shown] < floor or scores[shown] < scores[card] - skill.near_best
+            or (scores[card] >= 1.0 and scores[shown] < 1.0)
+            or preferences[shown] + SHOWN_PREFERENCE * skill.partnership < preferences[card]
+            or not _comparable_shown(ctx, card, shown, models)):
+        return card
+    return shown
+
+
 def _conserve_hopeless(ctx: _Context, legal: tuple[str, ...], options: list) -> tuple[str, ...]:
     """Keep strength when no legal card can beat the already public winner.
 
     Certainty uses every call consistent with permitted observations, including
     hypotheses not drawn in a small rollout sample. Hidden real cards play no role.
+    A comparable own shown card survives this early reduction as a candidate.
     """
     if not ctx.trick or len(legal) < 2:
         return legal
@@ -680,8 +789,14 @@ def _conserve_hopeless(ctx: _Context, legal: tuple[str, ...], options: list) -> 
 
         with_repeat = min((card for card, risky in zip(legal, repeated) if risky), key=order)
         without_repeat = min((card for card, risky in zip(legal, repeated) if not risky), key=order)
+        # Only an uninformed blind seat gets here; it never owns a shown card.
         return tuple(card for card in legal if card in {with_repeat, without_repeat})
     cheapest = min(legal, key=lambda card: (sum(model.order[card] for model in models), card))
+    shown = _own_shown_card(ctx)
+    if shown is not None and shown != cheapest and shown in legal and _comparable_shown(ctx, cheapest, shown, models):
+        # Keep the comparable shown card as a second candidate; the rollouts
+        # then show whether spending it instead costs anything relevant.
+        return tuple(card for card in legal if card in {cheapest, shown})
     return (cheapest,)
 
 
@@ -727,8 +842,7 @@ def _tactical_preference(ctx: _Context, card: str, models: list, skill: CpuSkill
             # Show new visible combinations in the opening trick, including
             # when this seat knows the call. Printed suits/ranks are public;
             # this custom never narrows any hidden-call hypothesis.
-            repeated_suit = any(card_suit(played) == card_suit(card) for _, played in ctx.trick)
-            preference -= skill.partnership * 0.5 * (int(repeated_rank) + int(repeated_suit))
+            preference -= skill.partnership * 0.5 * _blind_opening_repeats(ctx, card)
         elif ctx.seat not in ctx.knowers and repeated_rank:
             preference -= skill.partnership * 0.5
     if completed >= 2 or ctx.snap.party_tricks[1 - ctx.my_party] >= 2:
@@ -857,6 +971,8 @@ def _choose(ctx: _Context, seed: int, budget: CpuBudget, skill: CpuSkill) -> Cpu
             chance = _subjective_chance(win, skill, samples)
             return propose("partner_feedback", _feedback(chance), snap.feedback_opportunity)
         if _RESPONSE_ACTIONS & set(actions):
+            if awaits_partner_feedback(snap):
+                return CpuWait(snap.deal_id, snap.opportunity, snap.phase, "watten_cpu_partner_feedback_waiting")
             win, samples = _win_chance(ctx, stream, budget)
             chance = _subjective_chance(win, skill, samples)
             return propose("respond", _response(ctx, chance, skill))
@@ -878,17 +994,41 @@ def _choose(ctx: _Context, seed: int, budget: CpuBudget, skill: CpuSkill) -> Cpu
         protection = (1.5 * skill.partnership if any(repeated.values()) and not all(repeated.values()) else 0.0)
         # Partnership and information preferences may break close choices,
         # but cannot override a clearly stronger permitted-card rollout.
-        candidates = [card for card in legal if scores[card] >= best - max(skill.near_best, protection)]
+        floor = best - max(skill.near_best, protection)
+        candidates = [card for card in legal if scores[card] >= floor]
+        preferences = {card: (_tactical_preference(ctx, card, models, skill)
+                              + _partner_cover_preference(ctx, card, worlds, skill) - protection * repeated[card]
+                              + _blind_trump_lead_preference(ctx, card, worlds, skill)) for card in legal}
         card = min(candidates, key=lambda card: (
-            -(scores[card] + _tactical_preference(ctx, card, models, skill)
-              + _partner_cover_preference(ctx, card, worlds, skill) - protection * repeated[card]
-              + _blind_trump_lead_preference(ctx, card, worlds, skill)),
-            sum(model.order[card] for model in models), card))
+            -(scores[card] + preferences[card]), sum(model.order[card] for model in models), card))
+        # Between comparable candidates, spend the one the opposing inspector
+        # already saw; it must itself lie inside the checked candidate window.
+        permitted = tuple(dict.fromkeys(option[0] for option in options))
+        card = _prefer_shown(ctx, card, scores, preferences, permitted, skill, floor)
         if may_bid and worlds and _should_bid(ctx, _subjective_chance(best, skill, len(worlds)), skill):
             return propose("bid")
-        card = _occasional_misplay(ctx, legal, card, scores, models, stream, skill)
+        mistake = _occasional_misplay(ctx, legal, card, scores, models, stream, skill)
+        if mistake != card:
+            # Never undo the mistake by swapping back to the shown card it replaced.
+            # A replacement must not make the deliberate mistake any worse.
+            card = mistake if card == _own_shown_card(ctx) else _prefer_shown(
+                ctx, mistake, scores, preferences, permitted, skill, scores[mistake])
         return propose("play_card", card)
     return CpuWait(snap.deal_id, snap.opportunity, snap.phase, "watten_cpu_waiting")
+
+
+def awaits_partner_feedback(snap: SeatSnapshot) -> bool:
+    """A designated decider answers an offer only after its partner's one signal.
+
+    Uses only this seat's own DTO. The decider's partner may always signal once
+    per offer: it never belongs to the offering party and, even in blind play,
+    is never itself the decider. The engine also accepts that signal while a
+    match is paused, and a counteroffer that returns clears it for a fresh one.
+    Seats without a partner (two players, three-player solo) never wait.
+    """
+    return (snap.phase == "bid_response" and bool(_RESPONSE_ACTIONS & set(snap.actions))
+            and "partner_feedback" not in snap.actions
+            and snap.partner_seat is not None and snap.partner_feedback is None)
 
 
 def _feedback(win: float) -> str:

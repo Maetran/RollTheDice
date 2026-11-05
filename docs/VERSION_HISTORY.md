@@ -1,6 +1,6 @@
 # Versionen / Versions
 
-Aktuelle gemeinsame Produktversion / Current shared product version: **4.15.0**.
+Aktuelle gemeinsame Produktversion / Current shared product version: **4.15.1**.
 
 Alle RollTheDice-Spiele werden gemeinsam versioniert. Major steht für einen großen
 Produktmeilenstein, Minor für neue Funktionen und Patch für Fehlerkorrekturen
@@ -30,6 +30,7 @@ Detailed player-facing descriptions are in the [changelog](../CHANGELOG.md).
 
 | Version | Datum / Date | Art / Type | Änderung / Change | Commit |
 | --- | --- | --- | --- | --- |
+| 4.15.0 | 2026-11-05 | minor | Spielaufzeichnung für Hausdepp und Watten sowie klarere Navigation und Dashboard-Bedienung. / Game observation for Hausdepp and Watten, with clearer navigation and dashboard controls. | [8e9ccca](https://github.com/Maetran/RollTheDice/commit/8e9ccca3aac393c9d0dd79fe9f176606a4ed414d) |
 | 4.14.2 | 2026-11-04 | patch | Hausdepp und Watten spielen ihre Karten bewusster und fairer. / Hausdepp and Watten play their cards more thoughtfully and fairly. | [9bf9cd2](https://github.com/Maetran/RollTheDice/commit/9bf9cd2c31fb4b5a4b90d77ba88b5816ee47bd91) |
 | 4.14.1 | 2026-11-04 | patch | Vollständige Analytics-Erfassung aller Spiele, zufällige Watten-CPU-Namen und bereinigte ZDWA-Lobby. / Complete analytics coverage across all games, random Watten CPU names and a tidier ZDWA lobby. | [a206eab](https://github.com/Maetran/RollTheDice/commit/a206eabe3b4260eeebf99da595243715a7cdbaca) |
 | 4.14.0 | 2026-11-03 | minor | Freundeslisten direkt im Konto verwalten; aufgeräumte ZDWA-Lobby und immer sichtbarer Watten-Lobbychat. / Manage friends lists directly in account settings, with a tidier ZDWA lobby and an always-visible Watten lobby chat. | [cea1941](https://github.com/Maetran/RollTheDice/commit/cea19411dc20de5aa0f311b822ddd3703e47393f) |

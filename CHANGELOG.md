@@ -23,6 +23,18 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 4.15.1 — 2026-11-05
+
+Watten-Computergegner spielen und entscheiden im Team aufmerksamer.
+
+Watten computer opponents play and make team decisions more thoughtfully.
+
+### WATTEN
+
+**Deutsch:** Nach dem Einschauen bevorzugt eine CPU bei vergleichbaren Spielzügen ihre bereits gezeigte Karte und hält andere Karten eher verborgen. Wenn sie für das Team auf ein Angebot antwortet, wartet sie auf das Gefühl ihres Partners und bezieht es in ihre Entscheidung ein.
+
+**English:** After inspecting, a CPU prefers its already shown card among comparable plays, keeping other cards hidden. When answering an offer for the team, it waits for its partner's feeling and takes it into account.
+
 ## 4.15.0 — 2026-11-05
 
 Neue Spielbeobachtung für Hausdepp und Watten sowie eine klarere Navigation und ein jederzeit erreichbares Dashboard-Menü.
