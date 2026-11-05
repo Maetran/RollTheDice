@@ -324,7 +324,8 @@ def record_observation(db, *, game_type, recording_id, sequence, actor_seat, act
     row = db.get(ObservationRecording, recording_id)
     if row is None:
         row = ObservationRecording(id=recording_id, game_type=game_type, started_at=utcnow(),
-                                   policy_version=policy.version, status="open" if started_at_beginning else "partial")
+                                   policy_version=policy.version,
+                                   status="open" if started_at_beginning and sequence == 0 else "partial")
         db.add(row)
         db.flush()
     elif row.game_type != game_type or row.finished_at is not None:

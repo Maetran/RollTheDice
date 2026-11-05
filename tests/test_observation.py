@@ -386,3 +386,11 @@ def test_deleted_window_cannot_be_revived_across_reenable(client):
         assert not finish_observation(db, recording_id=old_id, eligible_user_ids=[3], outcome={"status": "finished"})
         assert record(db, recording_id=new_recording_id(version), expected_policy_version=version)
         assert db.scalar(select(func.count()).select_from(ObservationRecording)) == 1
+
+
+def test_first_observed_sequence_cannot_imply_completeness_when_prefix_missing(client):
+    assert client.put("/api/admin/observation", json={"enabled": True, "mode": "all", "selected_user_ids": [], "version": 0}).status_code == 200
+    with session_scope() as db:
+        assert record(db, sequence=4, started_at_beginning=True)
+        assert finish_observation(db, recording_id=ID, eligible_user_ids=[3], outcome={"status": "finished"})
+        assert db.get(ObservationRecording, ID).status == "partial"
