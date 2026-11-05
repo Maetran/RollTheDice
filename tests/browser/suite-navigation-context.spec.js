@@ -161,15 +161,21 @@ test('Zilch history belongs to Konto and public award profiles to Spieler & Rank
     expect([201, 400]).toContain(created.status());
   }
   expect((await page.request.post('/api/auth/login', { data: { username: 'Mani', password: 'mani-preview-password-123' } })).ok()).toBeTruthy();
-  // An established account; a required password change would take focus first.
-  await page.route('**/api/auth/me', async route => {
-    const response = await route.fetch();
-    const auth = await response.json();
-    await route.fulfill({ response, json: { ...auth, user: { ...auth.user, must_change_password: false } } });
-  });
   for (const [path, entry] of [['/zilch/historie', '/zilch/konto'], ['/zilch/spieler/FinderFreshFriend', '/zilch/bestenlisten'], ['/zilch/bestenlisten', '/zilch/bestenlisten']]) {
-    await page.goto(path);
-    await expect(await currentMainEntry(page)).toHaveAttribute('href', entry);
+    // An established account; a required password change would take focus first.
+    await page.route('**/api/auth/me', async route => {
+      const response = await route.fetch();
+      const auth = await response.json();
+      await route.fulfill({ response, json: { ...auth, user: { ...auth.user, must_change_password: false } } });
+    });
+    try {
+      await page.goto(path);
+      await expect(await currentMainEntry(page)).toHaveAttribute('href', entry);
+    } finally {
+      // Finish page-owned response handlers before the next navigation or
+      // fixture teardown disposes their API responses.
+      await page.unrouteAll({ behavior: 'wait' });
+    }
   }
 });
 
