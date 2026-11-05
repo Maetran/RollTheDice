@@ -1,28 +1,29 @@
 {
   "kind": "usability",
   "games": [
-    "zilch",
-    "watten"
+    "hausdepp",
+    "watten",
+    "zilch"
   ],
-  "summary_de": "Watten: Spieler & Ranking bündelt Erfolge, Partien und Rangliste, Konto öffnet die Einstellungen. Zilch markiert Bereiche klarer.",
-  "summary_en": "Watten: Players & Ranking groups achievements, matches and leaderboard; Account opens settings. Zilch marks areas more clearly.",
+  "summary_de": "Klarere Navigation und Dashboard-Menü; optionale Spielaufzeichnung für Hausdepp und Watten.",
+  "summary_en": "Clearer navigation and dashboard menu; optional game observation for Hausdepp and Watten.",
   "player_notes": {
     "de": {
-      "title": "4.14.3: Klarere Navigation",
+      "title": "4.15.0: Klarer unterwegs",
       "changes": [
-        "WATTEN: Unter «Spieler & Ranking» findest du Erfolge & Titel, deine Partien mit Statistik und Lieblingsgegnern sowie die Rangliste in einer festen Leiste. Persönliche und öffentliche Seiten sind gekennzeichnet.",
-        "WATTEN: «Konto» öffnet immer deine Kontoeinstellungen. Von dort führen Links zu deinen Erfolgen und Partien.",
-        "ZILCH: Deine Historie und Ergebnisse markieren im Menü «Konto», öffentliche Erfolgsprofile «Spieler & Ranking».",
-        "DASHBOARD: Das Menü bleibt beim Scrollen oben erreichbar, auf schmalen Bildschirmen als Menü-Schaltfläche."
+        "WATTEN: Erfolge & Titel, deine Partien und Rangliste bleiben unter «Spieler & Ranking» an derselben Stelle erreichbar. Konto führt zu den Einstellungen.",
+        "ZILCH: Historie, Ergebnisse und öffentliche Erfolgsprofile zeigen den passenden Menübereich.",
+        "DASHBOARD: Das Menü bleibt beim Scrollen erreichbar, auf schmalen Bildschirmen über eine Menü-Schaltfläche.",
+        "HAUSDEPP & WATTEN: Die Administration kann eine standardmässig ausgeschaltete Spielbeobachtung für spätere Auswertungen einschalten."
       ]
     },
     "en": {
-      "title": "4.14.3: Clearer navigation",
+      "title": "4.15.0: Easier navigation",
       "changes": [
-        "WATTEN: Players & Ranking holds Achievements & titles, your matches with statistics and favorite opponents, and the leaderboard in one fixed bar. Personal and public pages are labelled.",
-        "WATTEN: Account always opens your account settings. Links there lead to your achievements and matches.",
-        "ZILCH: Your history and results highlight Account in the menu; public achievement profiles highlight Players & Ranking.",
-        "DASHBOARD: The menu stays within reach while scrolling, as a menu button on narrow screens."
+        "WATTEN: Achievements & titles, your matches and the leaderboard stay together under Players & Ranking. Account opens settings.",
+        "ZILCH: History, results and public achievement profiles highlight the right menu area.",
+        "DASHBOARD: The menu remains available while scrolling, with a menu button on narrow screens.",
+        "HAUSDEPP & WATTEN: Administrators can enable game observation for later analysis; it is off by default."
       ]
     }
   }

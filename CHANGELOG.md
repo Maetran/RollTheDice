@@ -23,6 +23,36 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 4.15.0 — 2026-11-05
+
+Neue Spielbeobachtung für Hausdepp und Watten sowie eine klarere Navigation und ein jederzeit erreichbares Dashboard-Menü.
+
+New game observation for Hausdepp and Watten, clearer navigation and a dashboard menu that stays within reach.
+
+### HAUSDEPP
+
+**Deutsch:** Die Administration kann die standardmässig ausgeschaltete Spielbeobachtung für alle Partien oder ausgewählte Konten einschalten. Sie hält Entscheidungen mit zufälligen Kennungen und Mensch-/CPU-Sitzen fest; Aufzeichnungen sind nach Partieende für den Owner exportierbar und werden nach einem Jahr gelöscht. Unvollständige Verläufe sind gekennzeichnet.
+
+**English:** Administrators can enable game observation, which is off by default, for all matches or selected accounts. Decisions are recorded with random identifiers and human/CPU seats; the owner can export recordings after a match, and they expire after one year. Incomplete recordings are labelled.
+
+### WATTEN
+
+**Deutsch:** Die gleiche Spielbeobachtung steht für Watten zur Verfügung. «Spieler & Ranking» bündelt Erfolge & Titel, deine Partien und die Rangliste in einer gleichbleibenden Leiste. Konto öffnet die Einstellungen und führt von dort zurück zu den eigenen Spielwerten; bestehende Direktlinks bleiben nutzbar.
+
+**English:** The same game observation is available for Watten. Players & Ranking groups achievements and titles, your matches and the leaderboard in a consistent bar. Account opens settings with links back to your game progress; existing deep links keep working.
+
+### ZILCH
+
+**Deutsch:** Historie und Ergebnisse markieren «Konto», öffentliche Erfolgsprofile «Spieler & Ranking».
+
+**English:** History and results highlight Account; public achievement profiles highlight Players & Ranking.
+
+### DASHBOARD
+
+**Deutsch:** Das Menü bleibt beim Scrollen erreichbar: auf breiten Bildschirmen als Leiste, auf schmalen als ausklappbares Menü. Die NEXUS-Seitenleiste bleibt auf grossen Bildschirmen bestehen.
+
+**English:** The menu remains available while scrolling: as a bar on wide screens and a collapsible menu on narrow screens. The NEXUS sidebar remains on large screens.
+
 ## 4.14.3 — 2026-11-05
 
 Eine klarere, auf dem Handy erprobte Navigation in Watten und Zilch sowie ein

@@ -1,10 +1,10 @@
 {
-  "version": "4.14.3",
-  "bump": "patch",
+  "version": "4.15.0",
+  "bump": "minor",
   "date": "2026-11-05",
-  "previous_revision": "9bf9cd2c31fb4b5a4b90d77ba88b5816ee47bd91",
+  "previous_revision": "df39ddcdc75ad9efb295cb5da64f91f1a3f883a4",
   "summary": {
-    "de": "Watten bündelt Erfolge, Partien und Rangliste unter Spieler & Ranking; Zilch markiert Bereiche klarer und das Dashboard-Menü bleibt beim Scrollen erreichbar.",
-    "en": "Watten groups achievements, matches and leaderboard under Players & Ranking; Zilch marks areas more clearly and the dashboard menu stays within reach while scrolling."
+    "de": "Spielaufzeichnung für Hausdepp und Watten sowie klarere Navigation und Dashboard-Bedienung.",
+    "en": "Game observation for Hausdepp and Watten, with clearer navigation and dashboard controls."
   }
 }
