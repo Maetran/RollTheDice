@@ -47,7 +47,7 @@ export const ADMIN_FEATURE_MESSAGES = {
 export const OBSERVATION_MESSAGES = {
   de: {
     heading: "Spielbeobachtung", intro: "Zeichnet Entscheidungen in Hausdepp und Watten für spätere Analysen auf. Die Auswahl ist getrennt gespeichert; Spielsitze erscheinen als Mensch oder CPU. Bei kleinen Gruppen können Partien dennoch zugeordnet werden.",
-    retention: "Aufbewahrung: höchstens {days} Tage.", permission: "Nur Owner können diese Einstellungen ändern, Daten exportieren oder löschen.",
+    retention: "Aufbewahrungsfrist: {days} Tage.", permission: "Nur Owner können diese Einstellungen ändern, Daten exportieren oder löschen.",
     enabled: "Spielbeobachtung einschalten", scope: "Welche Partien?", all: "Alle Partien", selected: "Partien ausgewählter Spieler", selectedTitle: "Ausgewählte Spieler", selectionHelp: "Erfasst werden Partien mit mindestens einem ausgewählten Spieler. Die private Sicht wird nur für ausgewählte Menschen und CPUs gespeichert; bei anderen Menschen nur öffentliche Züge.", empty: "Noch keine Spieler ausgewählt.",
     searchLabel: "Aktive Spieler suchen", search: "Suchen", searching: "Spieler werden gesucht …", noResults: "Keine passenden aktiven Spieler gefunden.", add: "Auswählen", remove: "Entfernen", save: "Einstellungen speichern", reload: "Aktualisieren",
     loading: "Einstellungen werden geladen …", saving: "Wird gespeichert …", saved: "Einstellungen gespeichert.", loadFailed: "Die Einstellungen konnten nicht geladen werden. Bitte aktualisieren.",
@@ -57,7 +57,7 @@ export const OBSERVATION_MESSAGES = {
   },
   en: {
     heading: "Game observation", intro: "Records decisions in Hausdepp and Watten for later analysis. The selection is stored separately; game seats are identified as human or CPU. Games in small groups may still be identifiable.",
-    retention: "Retention: up to {days} days.", permission: "Only owners can change these settings, export or delete data.",
+    retention: "Retention period: {days} days.", permission: "Only owners can change these settings, export or delete data.",
     enabled: "Enable game observation", scope: "Which games?", all: "All games", selected: "Games of selected players", selectedTitle: "Selected players", selectionHelp: "Records games with at least one selected player. Private views are saved only for selected humans and CPUs; only public moves are recorded for other humans.", empty: "No players selected yet.",
     searchLabel: "Search active players", search: "Search", searching: "Searching for players …", noResults: "No matching active players found.", add: "Select", remove: "Remove", save: "Save settings", reload: "Refresh",
     loading: "Loading settings …", saving: "Saving …", saved: "Settings saved.", loadFailed: "Settings could not be loaded. Please refresh.",

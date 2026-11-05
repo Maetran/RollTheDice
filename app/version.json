@@ -2,7 +2,7 @@
   "version": "4.15.0",
   "bump": "minor",
   "date": "2026-11-05",
-  "previous_revision": "df39ddcdc75ad9efb295cb5da64f91f1a3f883a4",
+  "previous_revision": "9bf9cd2c31fb4b5a4b90d77ba88b5816ee47bd91",
   "summary": {
     "de": "Spielaufzeichnung für Hausdepp und Watten sowie klarere Navigation und Dashboard-Bedienung.",
     "en": "Game observation for Hausdepp and Watten, with clearer navigation and dashboard controls."

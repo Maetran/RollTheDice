@@ -2686,12 +2686,5 @@
     "date": "2026-11-04",
     "bump": "patch",
     "summary": "Hausdepp und Watten spielen ihre Karten bewusster und fairer. / Hausdepp and Watten play their cards more thoughtfully and fairly."
-  },
-  {
-    "version": "4.14.3",
-    "revision": "df39ddcdc75ad9efb295cb5da64f91f1a3f883a4",
-    "date": "2026-11-05",
-    "bump": "patch",
-    "summary": "Watten bündelt Erfolge, Partien und Rangliste unter Spieler & Ranking; Zilch markiert Bereiche klarer und das Dashboard-Menü bleibt beim Scrollen erreichbar. / Watten groups achievements, matches and leaderboard under Players & Ranking; Zilch marks areas more clearly and the dashboard menu stays within reach while scrolling."
   }
 ]

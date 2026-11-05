@@ -5,8 +5,8 @@
     "watten",
     "zilch"
   ],
-  "summary_de": "Klarere Navigation und Dashboard-Menü; optionale Spielaufzeichnung für Hausdepp und Watten.",
-  "summary_en": "Clearer navigation and dashboard menu; optional game observation for Hausdepp and Watten.",
+  "summary_de": "Klarere Navigation und Dashboard-Menü; der Owner kann die Spielbeobachtung einschalten.",
+  "summary_en": "Clearer navigation and dashboard menu; the owner can enable game observation.",
   "player_notes": {
     "de": {
       "title": "4.15.0: Klarer unterwegs",
@@ -14,7 +14,7 @@
         "WATTEN: Erfolge & Titel, deine Partien und Rangliste bleiben unter «Spieler & Ranking» an derselben Stelle erreichbar. Konto führt zu den Einstellungen.",
         "ZILCH: Historie, Ergebnisse und öffentliche Erfolgsprofile zeigen den passenden Menübereich.",
         "DASHBOARD: Das Menü bleibt beim Scrollen erreichbar, auf schmalen Bildschirmen über eine Menü-Schaltfläche.",
-        "HAUSDEPP & WATTEN: Die Administration kann eine standardmässig ausgeschaltete Spielbeobachtung für spätere Auswertungen einschalten."
+        "HAUSDEPP & WATTEN: Der Owner kann die standardmässig ausgeschaltete Spielbeobachtung für spätere Auswertungen einschalten."
       ]
     },
     "en": {
@@ -23,7 +23,7 @@
         "WATTEN: Achievements & titles, your matches and the leaderboard stay together under Players & Ranking. Account opens settings.",
         "ZILCH: History, results and public achievement profiles highlight the right menu area.",
         "DASHBOARD: The menu remains available while scrolling, with a menu button on narrow screens.",
-        "HAUSDEPP & WATTEN: Administrators can enable game observation for later analysis; it is off by default."
+        "HAUSDEPP & WATTEN: The owner can enable game observation for later analysis; it is off by default."
       ]
     }
   }
