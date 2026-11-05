@@ -104,15 +104,22 @@ function publicPageUrl(path) {
   return window.ZDWA_I18N?.getLanguage?.() === "en" ? `${path}?lang=en` : path;
 }
 
+// The server writes the settings destination this deployment serves: native
+// Watten settings, or the shared suite account in the private founder preview.
+const accountEntry = nav?.querySelector("[data-watten-account-link]")?.getAttribute("href") || "/watten/konto/einstellungen";
+
 function renderNav(auth) {
   if (!nav) return;
   const user = auth?.authenticated ? auth.user : null;
+  const access = auth?.game_access || user?.game_access;
+  // A signed-in account without Watten access has no ranking pages to open.
+  const ranking = !user || access?.watten_preview === true || access?.watten_public === true;
   const label = text => esc(window.ZDWA_I18N.t(text));
   nav.innerHTML = `<a href="${publicPageUrl("/watten")}"${page === "lobby" ? " aria-current=\"page\"" : ""}>${esc(t("nav.lobby"))}</a>
-    <a href="/watten/rangliste">${label("Spieler & Ranking")}</a>
+    ${ranking ? `<a href="/watten/rangliste" data-watten-ranking-link>${label("Spieler & Ranking")}</a>` : ""}
     <a class="wt-button wt-button--ghost" href="${publicPageUrl("/watten/regeln")}"${page === "rules" ? " aria-current=\"page\"" : ""}>${esc(t("nav.rules"))}</a>
-    ${user ? `<a href="/watten/konto/fortschritt" aria-label="${esc(t("nav.accountOf", { name: user.username }))}">${label("Konto")}</a>`
-      : `<a href="${esc(signInUrl())}">${label("Konto")}</a>`}`;
+    ${user ? `<a href="${esc(accountEntry)}" data-watten-account-link aria-label="${esc(t("nav.accountOf", { name: user.username }))}">${label("Konto")}</a>`
+      : `<a href="${esc(signInUrl())}" data-watten-account-link>${label("Konto")}</a>`}`;
 }
 
 /** Drop private state synchronously; late callbacks observe a new generation. */

@@ -12,6 +12,7 @@ from .product_hosts import is_watten_host
 from .public_discovery import public_suite_markup
 from .site_seo import PUBLIC_WATTEN_DOCUMENTS
 from .watten_access import require_watten_access, watten_game_preview_enabled, watten_request_enabled
+from .watten_navigation import apply_watten_navigation
 from .watten_pwa import account_pwa_head
 from .watten_readiness import watten_account_preview_enabled, watten_public_beta_enabled
 from .watten_seo import public_watten_metadata
@@ -44,6 +45,7 @@ def _page(request: Request, filename: str, page: str, *, game_id: str = "") -> R
     if not path.is_file():
         raise HTTPException(status_code=503, detail="watten_preview_not_ready", headers=_HEADERS)
     content = path.read_text(encoding="utf-8").replace("{watten_page}", page).replace("{game_id}", game_id)
+    content = apply_watten_navigation(content, request)
     headers = dict(_HEADERS)
     if public:
         if page == "rules":

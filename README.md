@@ -815,6 +815,36 @@ levels and award values remain labelled as a proposal. Reading older results
 never retrospectively grants XP. Local preview tests require both local preview flags; the
 public release uses the Watten domain.
 
+**Navigation / navigation:** Das Hauptmenü aller Spiele heisst Lobby · Spieler &
+Ranking · Regeln · Konto; auf jeder Seite ist genau ein Bereich markiert. In
+Watten bündelt «Spieler & Ranking» drei Seiten in einer festen Leiste:
+**Erfolge & Titel** (`/watten/konto/fortschritt`, Titel und Sammlung),
+**Deine Partien** (`/watten/konto/verlauf`, Statistik, Lieblingsgegner und Verlauf)
+und **Rangliste** (`/watten/rangliste`, Platzierungen und neueste Erfolge aller
+Spieler). Persönliche und öffentliche Seiten sind gekennzeichnet. «Konto» öffnet
+die Kontoeinstellungen und verlinkt von dort die eigenen Spielwerte:
+`/watten/konto/einstellungen` in öffentlicher Beta und lokaler Vorschau
+(`/watten/konto` leitet dorthin), in der privaten Gründer-Vorschau ohne eigene
+Watten-Einstellungen den Einstellungsbereich des gemeinsamen Kontos
+(`/konto#settings`) mit Links zurück zu Watten.
+Frühere Direktlinks bleiben gültig: `#achievements` und einzelne Erfolgs-IDs
+öffnen die Sammlung, `#statistics` führt zu Deine Partien. In Zilch gehören
+Historie und Ergebnisse zum Konto, öffentliche Erfolgsprofile zu Spieler & Ranking.
+
+All games share the main menu Lobby · Players & Ranking · Rules · Account, with
+exactly one area highlighted. In Watten, Players & Ranking groups three pages in
+one fixed bar: **Achievements & titles** (title and collection), **Your matches**
+(statistics, favorite opponents and history) and **Leaderboard** (standings and
+the latest achievements of all players). Personal and public pages are labelled.
+Account opens the account settings, which link back to your game progress:
+`/watten/konto/einstellungen` in the public beta and local preview
+(`/watten/konto` redirects there); the private founder preview, which has no
+native Watten settings, opens the shared account's settings (`/konto#settings`)
+with links back to Watten.
+Earlier deep links keep working: `#achievements` and single achievement IDs open
+the collection, `#statistics` leads to Your matches. In Zilch, history and results
+belong to Account and public achievement profiles to Players & Ranking.
+
 **Spieltag / play day:** Akzeptierte menschliche Ansagen, Karten und Gebots-
 entscheidungen zählen im lokalen Watten für die kontoweite Tagesaktivität.
 Der Spieltag wird atomar mit dem Spielstand gespeichert. Beitreten, Zuschauen,
@@ -2001,6 +2031,19 @@ Open **Mission Control** through **Game picker → Administration → Dashboard*
 can grant or revoke individual **Dashboard access** in user administration;
 admin and owner roles do not grant access automatically. Revocation applies to
 the next page or API request, including sessions already signed in.
+The header stays within reach while scrolling the long report: wide Mission
+Control and LCARS layouts pin their one-row header, narrower layouts pin a
+compact row whose **Menu** button opens sections, design, language and account
+(Escape closes it and returns focus). Section links, including pinned NEXUS
+panels, jump at once below the header and focus their heading. The NEXUS sidebar on wide screens is unchanged.
+
+**Deutsch:** Der Kopfbereich bleibt beim Scrollen durch den langen Bericht
+erreichbar: Breite Mission-Control- und LCARS-Layouts heften ihre einzeilige
+Kopfleiste an, schmalere Layouts eine kompakte Zeile, deren **Menü**-Schaltfläche
+Bereiche, Design, Sprache und Konto öffnet (Escape schliesst es und setzt den
+Fokus zurück). Abschnittslinks, auch zu angehefteten NEXUS-Panels, springen
+sofort unter den Kopfbereich und setzen den Fokus auf die Überschrift. Die NEXUS-Seitenleiste auf breiten
+Bildschirmen bleibt unverändert.
 
 **Deutsch:** Mission Control zeigt Zugriffe, aktive Seitenzeit, Klick-Aktionen,
 Spielmodi, abgeschlossene Spiele und den Serverzustand. Du öffnest es über

@@ -125,6 +125,11 @@ def test_only_founder_has_native_http_and_private_html_without_install_metadata(
         response = server.get(path, headers=headers(owners[0]))
         assert response.status_code == 200, response.text
         private_headers(response)
+        # Without native Watten settings, Konto opens the shared account
+        # directly; Spieler & Ranking keeps the private progress pages.
+        assert 'href="/konto#settings" data-watten-account-link' in response.text
+        assert "/watten/konto/einstellungen" not in response.text.split("</header>", 1)[0]
+        assert 'href="/watten/rangliste" data-watten-ranking-link' in response.text
         assert 'rel="manifest"' not in response.text
         assert 'data-watten-pwa-preview="true"' not in response.text
         for owner in [*owners[1:], None]:
@@ -138,9 +143,12 @@ def test_only_founder_has_native_http_and_private_html_without_install_metadata(
         assert server.get("/api/watten/leaderboard", headers=headers(owner)).status_code == 404
         assert server.get("/api/watten/favorite", headers=headers(owner)).status_code == 404
     assert server.get("/api/watten/account", headers=headers(owners[0])).status_code == 200
-    shared = server.get("/watten/konto/einstellungen", headers=headers(owners[0]), follow_redirects=False)
-    assert shared.status_code == 303 and shared.headers["location"] == "/konto"
-    private_headers(shared)
+    # Old Watten account links open the shared account's settings tab, the
+    # same destination as the founder header's Konto entry.
+    for path in ("/watten/konto", "/watten/konto/einstellungen"):
+        shared = server.get(path, headers=headers(owners[0]), follow_redirects=False)
+        assert shared.status_code == 303 and shared.headers["location"] == "/konto#settings"
+        private_headers(shared)
     head = server.head("/watten", headers=headers(owners[0]))
     assert head.content == b""
     private_headers(head)

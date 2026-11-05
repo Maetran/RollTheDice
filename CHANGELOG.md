@@ -23,6 +23,32 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 4.14.3 — 2026-11-05
+
+Eine klarere, auf dem Handy erprobte Navigation in Watten und Zilch sowie ein
+Dashboard-Menü, das beim Scrollen erreichbar bleibt.
+
+Clearer, mobile-tested navigation in Watten and Zilch, and a dashboard menu that
+stays within reach while scrolling.
+
+### WATTEN
+
+**Deutsch:** «Spieler & Ranking» bündelt Erfolge & Titel, Deine Partien und die Rangliste in einer einzigen Leiste, die auf allen drei Seiten an derselben Stelle steht. Im Hauptmenü bleibt dabei durchgehend «Spieler & Ranking» markiert. Erfolge & Titel zeigt ohne Umweg Titel und Sammlung; Deine Partien enthält Statistik, Lieblingsgegner und den Verlauf; die Rangliste zeigt zusätzlich die neuesten Erfolge aller Spieler. Persönliche und öffentliche Seiten sind gekennzeichnet. «Konto» öffnet die Kontoeinstellungen und verweist von dort auf die eigenen Spielwerte; in der privaten Gründer-Vorschau ohne eigene Watten-Einstellungen ist das der Einstellungsbereich des gemeinsamen Kontos mit Links zurück zu Watten. Frühere Links auf `#statistics`, `#achievements` und einzelne Erfolge funktionieren weiter.
+
+**English:** Players & Ranking groups Achievements & titles, Your matches and the leaderboard in one bar that stays in the same place on all three pages, while the main menu keeps Players & Ranking highlighted. Achievements & titles shows your title and collection directly; Your matches holds statistics, favorite opponents and history; the leaderboard also lists the latest achievements of all players. Personal and public pages are labelled. Account opens the account settings, which link back to your game progress; in the private founder preview without native Watten settings, this is the shared account's settings area with links back to Watten. Earlier links to `#statistics`, `#achievements` and single achievements keep working.
+
+### ZILCH
+
+**Deutsch:** Historie und Ergebnisse markieren im Hauptmenü «Konto», öffentliche Erfolgsprofile «Spieler & Ranking»; so ist auf jeder Seite genau ein Bereich aktiv.
+
+**English:** History and results highlight Account in the main menu and public achievement profiles highlight Players & Ranking, so exactly one area is active on every page.
+
+### DASHBOARD
+
+**Deutsch:** Der Kopfbereich bleibt beim Scrollen erreichbar: auf breiten Bildschirmen als feste Leiste, darunter als Menü-Schaltfläche mit ausklappbaren Bereichen, Design, Sprache und Konto. Abschnittslinks, auch zu angehefteten NEXUS-Panels, springen sofort an die richtige Stelle unter dem Kopfbereich und setzen den Fokus auf die Überschrift. Die NEXUS-Seitenleiste auf großen Bildschirmen bleibt unverändert.
+
+**English:** The header stays within reach while scrolling: a fixed bar on wide screens and a menu button with sections, design, language and account below that. Section links, including pinned NEXUS panels, jump straight to the right place below the header and move focus to the heading. The NEXUS sidebar on large screens is unchanged.
+
 ## 4.14.2 — 2026-11-04
 
 Computergegner wägen ihre Karten in Hausdepp und Watten bewusster ab.

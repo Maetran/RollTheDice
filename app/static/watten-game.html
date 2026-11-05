@@ -8,16 +8,16 @@
   <meta name="referrer" content="same-origin">
   <meta name="color-scheme" content="light">
   <title>Watten</title>
-  <link rel="icon" type="image/png" sizes="32x32" href="/static/watten/icons/watten-icon-32.png?v=1c2986371a4b">
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/watten/icons/watten-icon-32.png?v=56d3f008cceb">
   <script>{let d="classic";try{if(localStorage.getItem("watten_design")==="tirol")d="tirol"}catch(_){}document.documentElement.dataset.wattenDesign=d}</script>
-  <link rel="stylesheet" href="/static/watten-game.css?v=1c2986371a4b">
-  <link rel="stylesheet" href="/static/suite-header.css?v=1c2986371a4b">
-  <link rel="stylesheet" href="/static/watten-design.css?v=1c2986371a4b">
+  <link rel="stylesheet" href="/static/watten-game.css?v=56d3f008cceb">
+  <link rel="stylesheet" href="/static/suite-header.css?v=56d3f008cceb">
+  <link rel="stylesheet" href="/static/watten-design.css?v=56d3f008cceb">
 </head>
 <body class="wt-body">
   <a class="wt-skip" href="#wattenApp">Zum Inhalt / Skip to content</a>
   <header class="wt-header suite-header">
-    <a class="wt-brand suite-header__brand" href="/watten" translate="no"><img class="suite-header__icon" src="/static/watten/icons/watten-icon-32.png?v=1c2986371a4b" width="32" height="32" alt=""><span>Watten</span></a>
+    <a class="wt-brand suite-header__brand" href="/watten" translate="no"><img class="suite-header__icon" src="/static/watten/icons/watten-icon-32.png?v=56d3f008cceb" width="32" height="32" alt=""><span>Watten</span></a>
     <div class="suite-header__tools">
       <label class="wt-language"><span class="wt-visually-hidden">Sprache / Language</span><select data-language-switcher aria-label="Sprache / Language"><option value="de">DE</option><option value="en">EN</option></select></label>
       <button type="button" class="wt-design-toggle" data-theme-toggle data-watten-design-toggle aria-label="Darstellung wechseln: Klassisch. Nächste Darstellung: Tirol." title="Darstellung wechseln: Klassisch. Nächste Darstellung: Tirol."><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="6" y="3" width="12" height="18" rx="2"/><path d="m12 8 3 4-3 4-3-4z"/></svg></button>
@@ -25,9 +25,9 @@
     </div>
     <nav class="wt-nav suite-header__nav" data-watten-nav aria-label="Watten">
       <a href="/watten">Lobby</a>
-      <a href="/watten/rangliste">Spieler &amp; Ranking</a>
+      <a href="/watten/rangliste" data-watten-ranking-link>Spieler &amp; Ranking</a>
       <a href="/watten/regeln">Regeln</a>
-      <a href="/watten/konto/fortschritt" data-watten-account-link>Konto</a>
+      <a href="/watten/konto/einstellungen" data-watten-account-link>Konto</a>
     </nav>
   </header>
   <main id="wattenApp" class="wt-main" tabindex="-1">
@@ -35,6 +35,6 @@
     <p>Für Watten brauchst du JavaScript.</p>
     <p lang="en">Watten needs JavaScript.</p>
   </main>
-  <script type="module" src="/static/watten-game.js?v=1c2986371a4b"></script>
+  <script type="module" src="/static/watten-game.js?v=56d3f008cceb"></script>
 </body>
 </html>

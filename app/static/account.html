@@ -6,15 +6,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Verwalte dein ZDWA Konto, deine persönlichen Spieleinstellungen und Statistiken.">
   <meta name="robots" content="noindex, follow">
-  <link rel="manifest" href="/manifest.webmanifest?v=1c2986371a4b">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=1c2986371a4b" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=1c2986371a4b" sizes="180x180">
+  <link rel="manifest" href="/manifest.webmanifest?v=56d3f008cceb">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=56d3f008cceb" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=56d3f008cceb" sizes="180x180">
   <script>try{const t=localStorage.getItem("wuerfler_theme");const d=t==="dark"||t==="light"||t==="classic"?t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d==="dark"?"dark":"light";const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=d==="dark"?"#0b1120":d==="classic"?"#31583a":"#f4f6f8"}catch(_){}</script>
-  <link rel="stylesheet" href="/static/style.css?v=1c2986371a4b">
-  <link rel="stylesheet" href="/static/zdwa-design-2026.css?v=1c2986371a4b">
+  <link rel="stylesheet" href="/static/style.css?v=56d3f008cceb">
+  <link rel="stylesheet" href="/static/zdwa-design-2026.css?v=56d3f008cceb">
   <script>{const r=document.documentElement,g=k=>{try{return localStorage.getItem(k)}catch(_){return null}},q=new URLSearchParams(location.search).get("design");if(q!=="classic"&&g("zdwa_design")!=="old"&&g("zdwa_design_off")!=="1"&&(q==="2026"||g("zdwa_design_override")!=="old"))r.dataset.design="2026"}</script>
-  <script src="/static/shell.js?v=1c2986371a4b" defer></script>
-  <link rel="stylesheet" href="/static/suite-header.css?v=1c2986371a4b">
+  <script src="/static/shell.js?v=56d3f008cceb" defer></script>
+  <link rel="stylesheet" href="/static/suite-header.css?v=56d3f008cceb">
 </head>
 <body class="lobby-page">
   <main class="wrap profile-shell">
@@ -91,6 +91,11 @@
     </section>
     <section id="settingsPanel" class="account-panel account-settings-panel" role="tabpanel" aria-labelledby="settingsTab" hidden>
       <p class="account-settings-intro">Ein Konto für alle unsere Spiele: Profil, Anmeldung und Hinweise gelten überall.</p>
+      <aside id="accountWattenLinks" class="account-settings-block account-game-links" aria-labelledby="accountWattenLinksTitle" hidden>
+        <h3 id="accountWattenLinksTitle">Watten: Deine Spielwerte</h3>
+        <p>Erfolge und Titel sowie Statistik, Lieblingsgegner und Partien findest du in Watten unter Spieler &amp; Ranking.</p>
+        <p class="account-settings-links"><a class="button-link ghost" href="/watten/konto/fortschritt">Erfolge &amp; Titel</a><a class="button-link ghost" href="/watten/konto/verlauf">Deine Partien</a></p>
+      </aside>
       <details class="account-settings-group" data-account-section="access">
         <summary><h2 class="account-settings-group__heading"><span class="account-settings-group__title">Profil &amp; Zugang</span><span class="account-settings-group__description">Passkeys, Profil und Passwort</span></h2></summary>
         <div class="account-settings-group__body">
@@ -244,15 +249,15 @@
     </section>
   </main>
   <script type="module">
-    import { apiFetch, authError, escapeHtml, formatNumber, loadAuth, logout, mountAccountVerification, revealAccountSetting, mountEmailSettings, mountPasskeySettings, mountPasskeyPrompt, mountUsernameSettings, playerNameMarkup, playerRankBadge } from '/static/auth.js?v=1c2986371a4b';
-    import { bindPushPreferences, devicePushStatusMessage, disableGameInvitePush, enableGameInvitePush, getGameInvitePushStatus, syncPushPreferences, webPushErrorMessage } from '/static/web-push.js?v=1c2986371a4b';
-    import { initializeReleaseNotes } from '/static/release-notes.js?v=1c2986371a4b';
-    import { mountAllowlistSettings } from '/static/player-allowlist.js?v=1c2986371a4b';
-    import { mountAvatarUpload } from '/static/avatar-upload.js?v=1c2986371a4b';
-    import { mountFriendActivitySettings } from '/static/friend-activity.js?v=1c2986371a4b';
-    import { mountTourSettings } from '/static/game-tours.js?v=1c2986371a4b';
-    import { mountVoicePreferences, voicePreferenceText } from '/static/voice-preferences.js?v=1c2986371a4b';
-    import { mountAccountMergeNotice } from '/static/account-merge-notice.js?v=1c2986371a4b';
+    import { apiFetch, authError, escapeHtml, formatNumber, loadAuth, logout, mountAccountVerification, revealAccountSetting, mountEmailSettings, mountPasskeySettings, mountPasskeyPrompt, mountUsernameSettings, playerNameMarkup, playerRankBadge } from '/static/auth.js?v=56d3f008cceb';
+    import { bindPushPreferences, devicePushStatusMessage, disableGameInvitePush, enableGameInvitePush, getGameInvitePushStatus, syncPushPreferences, webPushErrorMessage } from '/static/web-push.js?v=56d3f008cceb';
+    import { initializeReleaseNotes } from '/static/release-notes.js?v=56d3f008cceb';
+    import { mountAllowlistSettings } from '/static/player-allowlist.js?v=56d3f008cceb';
+    import { mountAvatarUpload } from '/static/avatar-upload.js?v=56d3f008cceb';
+    import { mountFriendActivitySettings } from '/static/friend-activity.js?v=56d3f008cceb';
+    import { mountTourSettings } from '/static/game-tours.js?v=56d3f008cceb';
+    import { mountVoicePreferences, voicePreferenceText } from '/static/voice-preferences.js?v=56d3f008cceb';
+    import { mountAccountMergeNotice } from '/static/account-merge-notice.js?v=56d3f008cceb';
     let viewerId = null;
     let retired = false;
     const clearPrivatePage = () => {
@@ -313,6 +318,10 @@
     mountAccountMergeNotice(document.querySelector('[data-account-merge-notice]'), { userId: user.id,
       isCurrent: () => !retired && viewerId === user.id });
     document.getElementById('accountDashboardLink').hidden = !user?.can_view_analytics;
+    // Watten players reach this shared account from Watten's Konto entry in
+    // the private founder preview; offer the way back to their game progress.
+    const wattenAccess = auth.game_access || user.game_access;
+    document.getElementById('accountWattenLinks').hidden = !(wattenAccess?.watten_preview === true || wattenAccess?.watten_public === true);
     mountPasskeyPrompt(document.querySelector('[data-passkey-prompt]'), {
       auth, accountUrl: (window.ZDWA_ROUTE?.path || (path => path))('/konto?passkey=1#settings'),
     });

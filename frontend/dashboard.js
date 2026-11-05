@@ -3,6 +3,7 @@ import { escapeHtml, loadAuth } from "./shared/auth.js";
 import { createAnalysisVisuals } from "./dashboard/analysis.js";
 import { createGlobe } from "./dashboard/globe.js";
 import { createFavorites } from "./dashboard/favorites.js";
+import { createDashboardHeader } from "./dashboard/header.js";
 import { renderVoiceUsage } from "./dashboard/voice.js";
 import {
   DASHBOARD_GAMES, countText, createDashboardLifecycle, dashboardGameName, gameSelection, overviewCoverage, presentGeography,
@@ -96,6 +97,7 @@ const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
 let motionPaused = motionQuery.matches;
 try { motionPaused ||= localStorage.getItem("rollthedice:dashboard:motion") === "paused"; } catch { /* Motion controls remain available without browser storage. */ }
 const favorites = createFavorites({ t, number });
+createDashboardHeader();
 
 function empty(title = "Noch keine Messwerte", description = "Die Besuchsmessung beginnt mit diesem Release.") {
   return `<div class="empty-state"><span class="empty-icon" aria-hidden="true">⌁</span><strong>${e(t(title))}</strong><p>${e(t(description))}</p></div>`;

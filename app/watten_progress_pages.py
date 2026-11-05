@@ -14,6 +14,7 @@ from .auth import require_csrf, resolve_session
 from .database import session_scope
 from .models import WattenMatchCredit
 from .watten_access import require_watten_access, watten_game_preview_enabled, watten_request_enabled
+from .watten_navigation import apply_watten_navigation
 from .watten_progress_presentations import apply_match_receipts, match_presentation
 from .watten_progression_receipts import acknowledge_match_presentation
 from .watten_progression_store import acknowledge_draft_progress
@@ -170,7 +171,7 @@ def _page(request: Request, page: str):
     template = _STATIC / "watten-progress.html"
     if not template.is_file():
         raise HTTPException(status_code=503, detail="watten_preview_not_ready", headers=_HEADERS)
-    content = template.read_text(encoding="utf-8").replace("{watten_progress_page}", page)
+    content = apply_watten_navigation(template.read_text(encoding="utf-8").replace("{watten_progress_page}", page), request)
     return Response(account_pwa_head(content) if watten_account_preview_enabled(request) else content,
                     media_type="text/html", headers=_HEADERS)
 

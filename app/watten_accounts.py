@@ -8,6 +8,7 @@ from fastapi.responses import RedirectResponse, Response
 
 from .auth import resolve_session
 from .product_hosts import safe_watten_account_path
+from .watten_navigation import SHARED_ACCOUNT_SETTINGS, apply_watten_navigation
 from .watten_pwa import account_pwa_head
 from .watten_readiness import watten_account_preview_enabled
 
@@ -24,11 +25,8 @@ def _require_local_preview(request: Request) -> None:
 def _account_entry_link(content: str, request: Request) -> str:
     from .watten_access import watten_request_enabled
 
-    if not watten_request_enabled(request):
-        # An account-only preview must not link into the closed game surface.
-        content = content.replace('href="/watten/konto/fortschritt" data-watten-account-link',
-                                  'href="/watten/konto/einstellungen" data-watten-account-link')
-    return content
+    # An account-only preview must not link into the closed game surface.
+    return apply_watten_navigation(content, request, ranking=watten_request_enabled(request))
 
 
 def _page(request: Request, page: str) -> Response:
@@ -78,13 +76,12 @@ def watten_account_settings(request: Request):
         require_watten_access(request, resolve_session(request))
         # This first private web preview uses the existing suite account flow.
         # Its production account emails never receive a local Watten context.
-        return RedirectResponse("/konto", status_code=303, headers=_HEADERS)
+        # Old settings links keep opening the settings, not the statistics tab.
+        return RedirectResponse(SHARED_ACCOUNT_SETTINGS, status_code=303, headers=_HEADERS)
     _require_local_preview(request)
-    from .watten_access import watten_request_enabled
-
+    # Konto means account settings in every Watten access state; personal
+    # progress lives in Spieler & Ranking and has its own direct routes.
     destination = "/watten/konto/einstellungen"
-    if request.url.path == "/watten/konto" and watten_request_enabled(request):
-        destination = "/watten/konto/fortschritt"
     identity = resolve_session(request)
     if not identity:
         return RedirectResponse("/watten/anmelden?" + urlencode({"return_to": destination}),

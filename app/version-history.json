@@ -2679,5 +2679,12 @@
     "date": "2026-11-04",
     "bump": "patch",
     "summary": "Vollständige Analytics-Erfassung aller Spiele, zufällige Watten-CPU-Namen und bereinigte ZDWA-Lobby. / Complete analytics coverage across all games, random Watten CPU names and a tidier ZDWA lobby."
+  },
+  {
+    "version": "4.14.2",
+    "revision": "9bf9cd2c31fb4b5a4b90d77ba88b5816ee47bd91",
+    "date": "2026-11-04",
+    "bump": "patch",
+    "summary": "Hausdepp und Watten spielen ihre Karten bewusster und fairer. / Hausdepp and Watten play their cards more thoughtfully and fairly."
   }
 ]

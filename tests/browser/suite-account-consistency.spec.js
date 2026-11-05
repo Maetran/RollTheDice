@@ -5,7 +5,9 @@ const products = [
   { game: 'zdwa', lobby: '/', entry: '/konto', tab: true, statistics: '#statistics', achievements: '#unlockedAchievements' },
   { game: 'zilch', lobby: '/zilch', entry: '/zilch/konto', tab: true, statistics: '#zilchAccountPanel-statistics', achievements: '#zilchAccountPanel-achievements' },
   { game: 'hausdepp', lobby: '/hausdepp', entry: '/hausdepp/konto', statistics: '#hausdeppAccountStats', achievements: '#hausdeppAchievements' },
-  { game: 'watten', lobby: '/watten', entry: '/watten/konto/fortschritt', statistics: '.wt-progress-title', achievements: '.wt-achievement-collection' },
+  // Watten: Konto is the settings; statistics and achievements live in
+  // Spieler & Ranking and are reached through the labelled player links.
+  { game: 'watten', lobby: '/watten', entry: '/watten/konto/einstellungen', settingsOnly: true, statistics: '#statistics', achievements: '.wt-achievement-collection' },
 ];
 const names = {
   de: ['Profil & Zugang', 'Sprache & Spiel', 'Mitspieler & Hinweise', 'Hilfe & Neuigkeiten'],
@@ -31,7 +33,9 @@ async function createAccount(page, username, language = 'de', product = null) {
     await expect(page.locator('html')).toHaveAttribute('lang', language);
     const passwordForm = { zdwa: '#passwordForm', zilch: '#zilchPasswordForm', hausdepp: '#hausdeppPasswordForm', watten: 'form[data-password]' }[product.game];
     await expect(page.locator(passwordForm)).toBeVisible();
-    if (!product.tab) await expect(page).toHaveURL(new URL(`/${product.game}/konto/einstellungen#passwort`, page.url()).href);
+    // Hausdepp redirects its account entry to the open password form; the
+    // Watten entry already is the settings page, which opens that form itself.
+    if (!product.tab) await expect(page).toHaveURL(new URL(`/${product.game}/konto/einstellungen${product.settingsOnly ? '' : '#passwort'}`, page.url()).href);
   }
   expect((await page.request.post('/api/auth/change-password', { headers, data: { current_password: password, new_password: `${password}-final` } })).ok()).toBe(true);
   const again = await page.request.post('/api/auth/login', { data: { username, password: `${password}-final` } });
@@ -59,9 +63,11 @@ for (const product of products) for (const language of ['de', 'en']) {
     await expect(entry).toHaveText(language === 'de' ? 'Konto' : 'Account');
     await entry.click();
     await expect(page).toHaveURL(new URL(product.entry, page.url()).href);
-    await expect(page.locator(product.statistics)).toBeVisible();
-    const labels = language === 'de' ? ['Statistik', 'Erfolge', 'Einstellungen'] : ['Statistics', 'Achievements', 'Settings'];
-    await (await destination(page, product, labels[2])).click();
+    const allLabels = language === 'de' ? ['Statistik', 'Erfolge', 'Einstellungen'] : ['Statistics', 'Achievements', 'Settings'];
+    const labels = product.settingsOnly ? allLabels.slice(2) : allLabels;
+    if (product.settingsOnly) await expect(page.locator('[data-watten-player-links]')).toBeVisible();
+    else await expect(page.locator(product.statistics)).toBeVisible();
+    await (await destination(page, product, labels.at(-1))).click();
     await expect(page.locator('html')).toHaveAttribute('lang', language);
     const groups = page.locator('[data-account-section]');
     await expect(groups).toHaveCount(4);
@@ -96,11 +102,23 @@ for (const product of products) for (const language of ['de', 'en']) {
     await expect(page.locator('[data-username-settings]')).toHaveCount(1);
     await expect(page.locator('[data-passkey-settings]')).toBeHidden();
     await expect(page.locator('[data-email-settings]')).toBeHidden();
-    await (await destination(page, product, labels[0])).click();
-    await expect(page.locator(product.statistics)).toBeVisible();
-    await (await destination(page, product, labels[1])).click();
-    await expect(page.locator(product.achievements)).toBeVisible();
-    await (await destination(page, product, labels[2])).click();
+    if (product.settingsOnly) {
+      const links = page.locator('[data-watten-player-links]');
+      await links.getByRole('link', { name: language === 'de' ? 'Deine Partien' : 'Your matches', exact: true }).click();
+      await expect(page.locator(product.statistics)).toBeVisible();
+      await expect(page.locator('.suite-header__nav [aria-current="page"]')).toHaveAttribute('href', '/watten/rangliste');
+      await page.goBack();
+      await links.getByRole('link', { name: language === 'de' ? 'Erfolge & Titel' : 'Achievements & titles', exact: true }).click();
+      await expect(page.locator(product.achievements)).toBeVisible();
+      await page.locator(`.suite-header__nav a[href="${product.entry}"]`).click();
+      await expect(page).toHaveURL(new URL(product.entry, page.url()).href);
+    } else {
+      await (await destination(page, product, labels[0])).click();
+      await expect(page.locator(product.statistics)).toBeVisible();
+      await (await destination(page, product, labels[1])).click();
+      await expect(page.locator(product.achievements)).toBeVisible();
+      await (await destination(page, product, labels[2])).click();
+    }
     const help = page.locator('[data-account-section="help"]');
     await expect(help).toBeVisible();
     await help.locator(':scope > summary').click();
@@ -288,7 +306,7 @@ for (const game of ['hausdepp', 'watten']) for (const language of ['de', 'en']) 
     await expect(dialog).toHaveCount(0);
     expect(writes).toEqual([`/api/releases/${revision}/acknowledge`]);
     revision = '2'.repeat(40); acknowledged = false;
-    const accountPath = game === 'hausdepp' ? '/hausdepp/konto' : '/watten/konto/fortschritt';
+    const accountPath = game === 'hausdepp' ? '/hausdepp/konto' : '/watten/konto/einstellungen';
     await page.locator(`.suite-header__nav a[href="${accountPath}"]`).click();
     await expect(page).toHaveURL(new URL(accountPath, page.url()).href);
     await expect(dialog).toHaveAttribute('data-revision', revision);
