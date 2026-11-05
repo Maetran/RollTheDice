@@ -44,6 +44,29 @@ export const ADMIN_FEATURE_MESSAGES = {
   },
 };
 
+export const OBSERVATION_MESSAGES = {
+  de: {
+    heading: "Spielbeobachtung", intro: "Zeichnet Entscheidungen in Hausdepp und Watten für spätere Analysen auf. Die Auswahl ist getrennt gespeichert; Spielsitze erscheinen als Mensch oder CPU. Bei kleinen Gruppen können Partien dennoch zugeordnet werden.",
+    retention: "Aufbewahrung: höchstens {days} Tage.", permission: "Nur Owner können diese Einstellungen ändern, Daten exportieren oder löschen.",
+    enabled: "Spielbeobachtung einschalten", scope: "Welche Partien?", all: "Alle Partien", selected: "Partien ausgewählter Spieler", selectedTitle: "Ausgewählte Spieler", empty: "Noch keine Spieler ausgewählt.",
+    searchLabel: "Aktive Spieler suchen", search: "Suchen", searching: "Spieler werden gesucht …", noResults: "Keine passenden aktiven Spieler gefunden.", add: "Auswählen", remove: "Entfernen", save: "Einstellungen speichern", reload: "Aktualisieren",
+    loading: "Einstellungen werden geladen …", saving: "Wird gespeichert …", saved: "Einstellungen gespeichert.", loadFailed: "Die Einstellungen konnten nicht geladen werden. Bitte aktualisieren.",
+    failed: "Die Aktion konnte nicht bestätigt werden. Bitte aktualisieren und den gespeicherten Stand prüfen.", conflict: "Die Einstellungen wurden inzwischen geändert. Bitte aktualisieren und erneut entscheiden.", accessLost: "Deine Berechtigung hat sich geändert. Bitte lade die Seite neu.",
+    export: "Aufzeichnungen als JSON exportieren", exporting: "Aufzeichnungen werden exportiert …", exported: "Export erstellt.", exportFailed: "Der Export ist fehlgeschlagen. Es wurde keine Datei erstellt.",
+    deleteTitle: "Aufzeichnungen löschen", deleteHint: "Alle gespeicherten Aufzeichnungen und Ereignisse werden dauerhaft gelöscht. Die Spielbeobachtung wird ausgeschaltet; die Spielerauswahl bleibt bestehen.", deleteConfirm: "Ich möchte alle Spielaufzeichnungen dauerhaft löschen.", deleteButton: "Alle Aufzeichnungen löschen", deleted: "Aufzeichnungen gelöscht.",
+  },
+  en: {
+    heading: "Game observation", intro: "Records decisions in Hausdepp and Watten for later analysis. The selection is stored separately; game seats are identified as human or CPU. Games in small groups may still be identifiable.",
+    retention: "Retention: up to {days} days.", permission: "Only owners can change these settings, export or delete data.",
+    enabled: "Enable game observation", scope: "Which games?", all: "All games", selected: "Games of selected players", selectedTitle: "Selected players", empty: "No players selected yet.",
+    searchLabel: "Search active players", search: "Search", searching: "Searching for players …", noResults: "No matching active players found.", add: "Select", remove: "Remove", save: "Save settings", reload: "Refresh",
+    loading: "Loading settings …", saving: "Saving …", saved: "Settings saved.", loadFailed: "Settings could not be loaded. Please refresh.",
+    failed: "The action could not be confirmed. Please refresh and check the saved settings.", conflict: "Another owner changed these settings. Please refresh and review them again.", accessLost: "Your permission has changed. Please reload the page.",
+    export: "Export recordings as JSON", exporting: "Exporting recordings …", exported: "Export created.", exportFailed: "Export failed. No file was created.",
+    deleteTitle: "Delete recordings", deleteHint: "All stored recordings and events will be permanently deleted. Observation is switched off; selected players stay unchanged.", deleteConfirm: "I want to permanently delete all game recordings.", deleteButton: "Delete all recordings", deleted: "Recordings deleted.",
+  },
+};
+
 export const ACCOUNT_MERGE_MESSAGES = {
   de: {
     title: 'Konten zusammengeführt', intro: 'Dein zusammengeführter Fortschritt ist in diesem Konto angekommen. Anmeldung und persönliche Einstellungen bleiben bei diesem Konto.',

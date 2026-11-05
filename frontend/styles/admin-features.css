@@ -15,3 +15,15 @@
 .admin-feature-log span { font-size: .85rem; }
 #featureFeedback { min-height: 1.5em; }
 @media (max-width: 620px) { .admin-feature-row { grid-template-columns: minmax(0, 1fr); gap: .75rem; } .admin-feature-group { padding: .8rem; } .admin-game-beta { align-items: stretch; width: 100%; } }
+.observation-panel h4 { margin: 1rem 0 .5rem; }
+.observation-panel form { display: grid; gap: .8rem; }
+.observation-panel label:not(.observation-enabled) { display: grid; gap: .35rem; }
+.observation-panel input[type="search"], .observation-panel select { max-width: 32rem; min-height: 44px; width: 100%; }
+.observation-enabled { display: flex; align-items: center; gap: .5rem; }
+.observation-enabled input { width: auto; margin: 0; }
+.observation-actions { display: flex; flex-wrap: wrap; gap: .6rem; margin-block: .8rem; }
+.observation-panel button { min-height: 44px; }
+.observation-list { list-style: none; padding: 0; }
+.observation-list li { display: flex; align-items: center; justify-content: space-between; gap: .5rem; overflow-wrap: anywhere; padding-block: .25rem; }
+.observation-panel details { margin-top: 1rem; }
+.observation-panel details summary { cursor: pointer; padding-block: .6rem; }

@@ -75,6 +75,11 @@
       <p class="muted small">Die Beta-Kennzeichnung eines Spiels ist ein Hinweis. Sie ändert weder den Spielzugang noch die Tischregeln.</p>
       <p id="featureFeedback" role="status" aria-live="polite"></p>
       <div id="featureGroups"></div>
+      <section class="admin-feature-group observation-panel" aria-labelledby="observationHeading" data-observation-panel>
+        <h3 id="observationHeading">Spielbeobachtung</h3>
+        <p role="status" aria-live="polite" data-observation-status></p>
+        <div data-observation-content></div>
+      </section>
     </section>
     <section id="featureAuditPanel" class="card admin-panel" aria-labelledby="featureAuditHeading" hidden>
       <header class="section-title-row"><h2 id="featureAuditHeading">Feature-Protokoll</h2><button id="reloadFeatureAudit" type="button" class="small secondary">Aktualisieren</button></header>
