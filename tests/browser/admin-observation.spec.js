@@ -53,6 +53,7 @@ for (const language of ['de', 'en']) {
     await expect(area).toContainText('365');
     await area.locator('[name="enabled"]').check();
     await area.locator('[name="mode"]').selectOption('selected');
+    await expect(area.locator('[data-observation-selection]')).toContainText(language === 'de' ? 'bei anderen Menschen nur öffentliche Züge' : 'only public moves are recorded for other humans');
     await area.locator('[name="query"]').fill('Expert');
     await area.locator('[name="query"]').press('Enter');
     await area.locator('[data-observation-add="42"]').click();
@@ -68,9 +69,16 @@ for (const language of ['de', 'en']) {
       }) }));
     expect(dimensions.width).toBeLessThanOrEqual(dimensions.viewport + 1);
     for (const box of dimensions.controls) { expect(box.left).toBeGreaterThanOrEqual(-1); expect(box.right).toBeLessThanOrEqual(321); expect(box.height).toBeGreaterThanOrEqual(44); }
+    await expect(area.locator('[data-observation-export-notice]')).toContainText(language === 'de' ? 'kein gemeinsamer Stichtag' : 'not a single point-in-time snapshot');
     const download = page.waitForEvent('download');
     await area.locator('[data-observation-export]').click();
-    expect((await download).suggestedFilename()).toBe('spielbeobachtung.json');
+    const saved = await download; expect(saved.suggestedFilename()).toBe('spielbeobachtung.json');
+    const stream = await saved.createReadStream(); let file = '';
+    for await (const part of stream) file += part;
+    const exported = JSON.parse(file);
+    expect(exported.export_notice.de).toContain('kein gemeinsamer Stichtag');
+    expect(exported.export_notice.en).toContain('not a single point-in-time snapshot');
+    expect(exported.recordings[0].events).toHaveLength(1);
     expect(state.exports).toHaveLength(2);
     await area.locator('[data-observation-delete] summary').click();
     await expect(area.locator('[data-observation-delete-button]')).toBeDisabled();

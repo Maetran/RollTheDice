@@ -54,12 +54,12 @@ export function mountObservation(panel) {
     content.innerHTML = `<p>${esc(text('intro'))}</p><p class="muted small">${esc(text('retention', { days: snapshot.retention_days }))} ${esc(text('permission'))}</p>
       <form data-observation-form><label class="observation-enabled"><input type="checkbox" name="enabled"${draft.enabled ? ' checked' : ''}${disabled}> ${esc(text('enabled'))}</label>
       <label>${esc(text('scope'))}<select name="mode"${disabled}><option value="all"${draft.mode === 'all' ? ' selected' : ''}>${esc(text('all'))}</option><option value="selected"${draft.mode === 'selected' ? ' selected' : ''}>${esc(text('selected'))}</option></select></label>
-      <div data-observation-selection${draft.mode === 'selected' ? '' : ' hidden'}><h4>${esc(text('selectedTitle'))}</h4><ul class="observation-list" data-observation-selected>${choice}</ul>
+      <div data-observation-selection${draft.mode === 'selected' ? '' : ' hidden'}><p class="muted small">${esc(text('selectionHelp'))}</p><h4>${esc(text('selectedTitle'))}</h4><ul class="observation-list" data-observation-selected>${choice}</ul>
       <label>${esc(text('searchLabel'))}<input name="query" type="search" maxlength="32" autocomplete="off"${disabled}></label>
       <button type="button" class="secondary" data-observation-search${disabled}>${esc(text('search'))}</button>
       <p class="muted small" role="status" data-observation-search-status></p><ul class="observation-list" data-observation-results>${results}</ul></div>
       <div class="observation-actions"><button class="primary" type="submit"${disabled}>${esc(text('save'))}</button><button class="secondary" type="button" data-observation-reload${busy ? ' disabled' : ''}>${esc(text('reload'))}</button></div></form>
-      <div class="observation-actions"><button type="button" class="secondary" data-observation-export${disabled}>${esc(text('export'))}</button></div>
+      <div class="observation-actions"><button type="button" class="secondary" data-observation-export${disabled}>${esc(text('export'))}</button></div><p class="muted small" data-observation-export-notice>${esc(text('exportNotice'))}</p>
       <details data-observation-delete><summary>${esc(text('deleteTitle'))}</summary><p>${esc(text('deleteHint'))}</p>
       <label class="observation-enabled"><input type="checkbox" data-observation-confirm${disabled}> ${esc(text('deleteConfirm'))}</label>
       <button type="button" class="secondary" data-observation-delete-button disabled>${esc(text('deleteButton'))}</button></details>`;
@@ -150,7 +150,8 @@ export function mountObservation(panel) {
         if (before !== null) cursors.add(before);
       } while (before !== null);
       if (!await verify(token, true)) return;
-      const blob = new Blob([JSON.stringify({ schema_version: 1, recordings }, null, 2)], { type: 'application/json' });
+      const export_notice = { de: OBSERVATION_MESSAGES.de.exportNotice, en: OBSERVATION_MESSAGES.en.exportNotice };
+      const blob = new Blob([JSON.stringify({ schema_version: 1, export_notice, recordings }, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob); const anchor = document.createElement('a');
       anchor.href = url; anchor.download = 'spielbeobachtung.json'; anchor.click();
       window.setTimeout(() => URL.revokeObjectURL(url), 60000); message('exported');
