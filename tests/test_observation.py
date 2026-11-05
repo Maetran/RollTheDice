@@ -14,12 +14,12 @@ from app import main
 from app.api_observation import router
 from app.auth import issue_session_for_user
 from app.database import configure_database, session_scope, upgrade_database
-from app.models import AccountOwnership, ObservationEvent, ObservationRecording, User
+from app.models import AccountOwnership, ObservationEvent, ObservationPolicy, ObservationRecording, User
 from app.observation import RETENTION_DAYS, finish_observation, prune_recordings, record_observation
 from app.security import utcnow
 
 BASE = Path(__file__).resolve().parents[1]
-ID = "a" * 32
+ID = "00000001" + "a" * 24
 
 
 @pytest.fixture
@@ -61,7 +61,7 @@ def record(db, **kwargs):
                 action={"kind": "play", "cards": ["hearts-6"]},
                 context={"phase": "playing", "actor_hand": ["hearts-6"],
                          "seats": [{"seat": 0, "kind": "human", "hand_count": 1}]}, eligible_user_ids=[3],
-                actor_user_id=3)
+                actor_user_id=3, expected_policy_version=max(1, db.get(ObservationPolicy, 1).version))
     args.update(kwargs)
     return record_observation(db, **args)
 
@@ -154,9 +154,11 @@ def test_policy_changes_make_open_windows_partial_and_disable_before_next_event(
     body.update(enabled=True, version=2)
     assert client.put("/api/admin/observation", json=body).status_code == 200
     with session_scope() as db:
-        assert record(db, sequence=2)
+        assert not record(db, sequence=2)  # old token cannot revive an old policy window
         assert finish_observation(db, recording_id=ID, eligible_user_ids=[3], outcome={"status": "finished"})
         assert db.get(ObservationRecording, ID).status == "partial"
+        assert db.get(ObservationRecording, ID).outcome_json is None
+        assert record(db, recording_id="00000003" + "b" * 24)
 
 
 def test_duplicate_concurrent_events_are_serialized_and_idempotent(client):
@@ -211,7 +213,7 @@ def test_inflight_recording_is_serialized_with_off_and_delete(client):
 
     assert client.put("/api/admin/observation", json={"enabled": True, "mode": "all", "selected_user_ids": [], "version": 0}).status_code == 200
 
-    def run_race(sequence, administrative_write):
+    def run_race(sequence, administrative_write, recording_id=ID):
         acquired, proceed = Event(), Event()
 
         def writer():
@@ -219,7 +221,7 @@ def test_inflight_recording_is_serialized_with_off_and_delete(client):
                 lock_policy(db)
                 acquired.set()
                 assert proceed.wait(5)
-                return record(db, sequence=sequence)
+                return record(db, sequence=sequence, recording_id=recording_id)
 
         def administrator():
             assert acquired.wait(5)
@@ -240,8 +242,11 @@ def test_inflight_recording_is_serialized_with_off_and_delete(client):
         assert record(db, sequence=1) is False
         assert db.scalar(select(func.count()).select_from(ObservationEvent)) == 1
     assert client.put("/api/admin/observation", json={"enabled": True, "mode": "all", "selected_user_ids": [], "version": 2}).status_code == 200
-    result = run_race(1, lambda db: delete_recordings(db, actor_user_id=1, version=3))
-    assert result["deleted"] == 1
+    # A fresh policy window needs a fresh, version-bound pseudonym.
+    with session_scope() as db:
+        assert record(db, recording_id="00000003" + "b" * 24)
+    result = run_race(1, lambda db: delete_recordings(db, actor_user_id=1, version=3), "00000003" + "b" * 24)
+    assert result["deleted"] == 2
     with session_scope() as db:
         assert record(db, sequence=2) is False
         assert db.scalar(select(func.count()).select_from(ObservationEvent)) == 0
@@ -359,3 +364,25 @@ def test_precheck_is_read_only_fail_closed_and_never_replaces_write_check(client
         assert not observation_may_record(db, [3])
         assert not record(db)
         assert db.scalar(select(func.count()).select_from(ObservationRecording)) == 0
+
+
+def test_deleted_window_cannot_be_revived_across_reenable(client):
+    from app.observation import new_recording_id, observation_may_record
+
+    assert client.put("/api/admin/observation", json={"enabled": True, "mode": "all", "selected_user_ids": [], "version": 0}).status_code == 200
+    with session_scope() as db:
+        version = observation_may_record(db, [3])
+        assert version == 1
+        old_id = new_recording_id(version)
+        assert old_id.startswith("00000001") and len(old_id) == 32
+        assert record(db, recording_id=old_id, expected_policy_version=version)
+    assert client.request("DELETE", "/api/admin/observation/recordings", json={"version": 1}).status_code == 200
+    assert client.put("/api/admin/observation", json={"enabled": True, "mode": "all", "selected_user_ids": [], "version": 2}).status_code == 200
+    with session_scope() as db:
+        version = observation_may_record(db, [3])
+        assert version == 3
+        assert not record(db, recording_id=old_id, expected_policy_version=1)
+        assert not record(db, recording_id=old_id, expected_policy_version=3)
+        assert not finish_observation(db, recording_id=old_id, eligible_user_ids=[3], outcome={"status": "finished"})
+        assert record(db, recording_id=new_recording_id(version), expected_policy_version=version)
+        assert db.scalar(select(func.count()).select_from(ObservationRecording)) == 1

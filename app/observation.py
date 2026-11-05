@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import re
+import secrets
 from datetime import timedelta
 
 from fastapi import HTTPException
@@ -27,6 +28,7 @@ from .security import as_utc, utcnow
 
 RETENTION_DAYS = 365
 MAX_JSON_BYTES = 65536
+MAX_POLICY_VERSION = 0x7FFFFFFF
 PRIVATE_HEADERS = {"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"}
 _ID = re.compile(r"^[0-9a-f]{32}$")
 
@@ -73,6 +75,8 @@ def change_policy(db, *, actor_user_id, enabled, mode, selected_user_ids, versio
     db.refresh(current)
     if current.version != version:
         raise _error(409, "observation_policy_changed")
+    if current.version >= MAX_POLICY_VERSION:
+        raise _error(409, "observation_policy_version_exhausted")
     if len(selected_user_ids) > 1000 or len(set(selected_user_ids)) != len(selected_user_ids):
         raise _error(422, "observation_invalid_selection")
     active = set(db.scalars(select(User.id).where(User.id.in_(selected_user_ids), User.is_active.is_(True))))
@@ -99,6 +103,8 @@ def delete_recordings(db, *, actor_user_id, version):
     db.refresh(current)
     if current.version != version:
         raise _error(409, "observation_policy_changed")
+    if current.version >= MAX_POLICY_VERSION:
+        raise _error(409, "observation_policy_version_exhausted")
     count = db.scalar(select(func.count()).select_from(ObservationRecording)) or 0
     db.execute(delete(ObservationEvent))
     db.execute(delete(ObservationRecording))
@@ -137,23 +143,30 @@ def _allowed(db, eligible_user_ids):
 
 
 def observation_may_record(db, eligible_user_ids):
-    """Best-effort read-only precheck; every write MUST still lock and recheck.
+    """Return the allowed policy version or None; writes must lock and recheck.
 
     This avoids generating tokens or projecting private hands while recording
     is off. A concurrent policy change can invalidate the result immediately.
     Missing schema/DB errors must be treated as disabled by the caller.
     """
-    row = db.execute(select(ObservationPolicy.enabled, ObservationPolicy.mode)
+    row = db.execute(select(ObservationPolicy.enabled, ObservationPolicy.mode, ObservationPolicy.version)
                      .where(ObservationPolicy.id == 1)).one_or_none()
-    if row is None or not row.enabled:
-        return False
+    if row is None or not row.enabled or not 1 <= row.version <= MAX_POLICY_VERSION:
+        return None
     candidates = {value for value in eligible_user_ids if type(value) is int and value > 0}
     if not candidates:
-        return False
+        return None
     query = select(User.id).where(User.id.in_(candidates), User.is_active.is_(True))
     if row.mode == "selected":
         query = query.join(ObservationSelection, ObservationSelection.user_id == User.id)
-    return db.scalar(query.limit(1)) is not None
+    return row.version if db.scalar(query.limit(1)) is not None else None
+
+
+def new_recording_id(policy_version):
+    """A fresh per-window pseudonym bound to the policy version, not a game ID."""
+    if type(policy_version) is not int or not 1 <= policy_version <= MAX_POLICY_VERSION:
+        raise ValueError("observation_policy_version_invalid")
+    return f"{policy_version:08x}{secrets.token_hex(12)}"
 
 # The recorder is intentionally not a general JSON store. These keys and values
 # are the complete public/actor-local vocabulary; names, real IDs, chat and
@@ -265,21 +278,27 @@ _PUBLIC_VALUE_ACTIONS = frozenset({"play_card", "announce_strike", "announce_col
 
 
 def record_observation(db, *, game_type, recording_id, sequence, actor_seat, actor_kind,
-                       action, context, eligible_user_ids, actor_user_id=None, started_at_beginning=False):
+                       action, context, eligible_user_ids, expected_policy_version, actor_user_id=None,
+                       started_at_beginning=False):
     if (game_type not in {"hausdepp", "watten"} or not isinstance(recording_id, str) or not _ID.fullmatch(recording_id)
             or type(sequence) is not int or not 0 <= sequence <= 100000 or type(actor_seat) is not int
             or not 0 <= actor_seat <= 7 or actor_kind not in {"human", "cpu"}
+            or type(expected_policy_version) is not int or not 1 <= expected_policy_version <= MAX_POLICY_VERSION
             or actor_kind == "human" and actor_user_id is not None and
             (type(actor_user_id) is not int or actor_user_id <= 0 or actor_user_id not in eligible_user_ids)
             or actor_kind == "cpu" and actor_user_id is not None):
         raise ValueError("observation_payload_invalid")
+    # Version-bound pseudonyms cannot revive a deleted/disabled window after a
+    # later re-enable, even if a caller accidentally reuses the old token.
+    if recording_id[:8] != f"{expected_policy_version:08x}":
+        return False
     _payload(action, _ACTION)
     _payload(context, _CONTEXT)
     if action.get("kind") not in (_HAUSDEPP_ACTIONS if game_type == "hausdepp" else _WATTEN_ACTIONS):
         raise ValueError("observation_payload_invalid")
     lock_policy(db)
     policy = _allowed(db, eligible_user_ids)
-    if policy is None:
+    if policy is None or policy.version != expected_policy_version:
         return False
     actor_selected = False
     if actor_kind == "human" and actor_user_id is not None:
@@ -340,7 +359,7 @@ def finish_observation(db, *, recording_id, outcome, eligible_user_ids):
     row = db.get(ObservationRecording, recording_id)
     if row is None:
         return False
-    if policy is None:
+    if policy is None or row.policy_version != policy.version:
         # After an authoritative game end, close an existing partial window
         # even if recording has since been disabled or its selection removed.
         # This safety marker is the only allowed later write: do not persist
