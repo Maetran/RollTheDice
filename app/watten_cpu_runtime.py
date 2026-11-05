@@ -27,8 +27,8 @@ from .models import ActiveGame, CompletedGame, GameParticipant, User
 from .moderation import active_bans
 from .product_hosts import site_origin
 from .watten_access import _local, watten_founder_account_id, watten_founder_deployment_enabled
-from .watten_cpu import CpuBudget, CpuProposal, CpuWait, decide
-from .watten_cpu_memory import CpuMemory, new_memory, observe
+from .watten_cpu import CpuBudget, CpuProposal, CpuWait, awaits_partner_feedback, decide
+from .watten_cpu_memory import CpuMemory, WattenCpuMemoryError, new_memory, observe, read_personal_view
 from .watten_cpu_skill import CpuSkill, skill_for_table
 from .watten_engine import EngineActor, EngineCommand
 from .watten_readiness import watten_public_beta_enabled
@@ -256,6 +256,7 @@ class _Job:
     task: asyncio.Task | None = None
 
 
+_RESPONSES = frozenset({"respond_hold", "respond_go", "respond_counter"})
 _JOBS: dict[tuple[str, str], _Job] = {}
 _BLOCKED: dict[tuple[str, str], tuple[dict, tuple]] = {}
 _TRICK_REVEALS: dict[str, tuple[dict, str, int, float]] = {}
@@ -269,15 +270,21 @@ def _may_decide(view: dict) -> bool:
                 or (view["phase"] == "bid_response" and "partner_feedback" in actions))
 
 
-def _cpu_partner_feedback_pending(runtime, view: dict, cpu_ids: set[str]) -> bool:
-    """Let a blind CPU knower use its CPU partner's one permitted signal first."""
-    if (not view["profile"]["blind"] or view["phase"] != "bid_response"
-            or "respond_hold" not in view["actions"]):
+def _partner_feedback_pending(view: dict, player: str) -> bool:
+    """A CPU decider answers an offer only after its partner's one signal.
+
+    Applies to human and CPU partners, blind and open play alike. The CPU's
+    own advice (open play) still runs first. Only the decider's own DTO is
+    read; private feedback changes that DTO and so the job context, without
+    a public opportunity. The same rule makes the policy return a wait, so a
+    restart or reconnect simply recomputes it from the stored engine state.
+    """
+    if view["phase"] != "bid_response" or not _RESPONSES & set(view["actions"]):
         return False
-    own = view["seats"][view["viewer"]["seat"]]
-    partner = next((seat["player_id"] for seat in view["seats"]
-                    if seat["party"] == own["party"] and seat["player_id"] != own["player_id"]), None)
-    return partner in cpu_ids and "partner_feedback" in _view(runtime, partner)["actions"]
+    try:
+        return awaits_partner_feedback(read_personal_view(view, player_id=player))
+    except WattenCpuMemoryError:
+        return False  # The policy fails closed for this context instead.
 
 
 def watch_game(game: dict) -> None:
@@ -307,10 +314,9 @@ def watch_game(game: dict) -> None:
         active = _authority(game) is not None
     wanted = set()
     if active:
-        cpu_ids = {cpu.participant_id for cpu in runtime.room.cpus}
         for cpu in runtime.room.cpus:
             view = _view(runtime, cpu.participant_id)
-            if not _may_decide(view) or _cpu_partner_feedback_pending(runtime, view, cpu_ids):
+            if not _may_decide(view) or _partner_feedback_pending(view, cpu.participant_id):
                 continue
             key = game["_id"], cpu.participant_id
             wanted.add(key)

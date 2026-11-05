@@ -60,6 +60,18 @@ partner's bidding or card decision.
 The informed player remains responsible for hold, fold and counterbid responses,
 including outside their own card turn.
 
+A CPU decision maker with a partner never answers an offer before that partner's
+one signal for it, whether the partner is a person or a CPU, in open or blind
+play. In open play the CPU still sends its own advice first. The signal shifts
+its own subjective chance by ten percentage points for good or bad and leaves it
+unchanged for unsure; near the hold/fold and counterbid thresholds this changes
+the answer. The wait is derived from the CPU's own view only: the partner's
+dialog stays available while a match is paused, the private signal survives a
+restart, and a returning counteroffer clears it so that a fresh signal is
+requested. Two-player seats and the three-player solo have no partner and never
+wait. A partner who never answers holds the table like any other pending human
+action until the existing inactivity limit ends the match.
+
 Blödeln is a separate optional request between the two non-callers. Requesting
 and answering use stable random 50% choices per deal and CPU seat, independent
 of card strength. An unanswered request blocks card play and bidding, while
@@ -124,6 +136,27 @@ world the rollout players use that world's call and hands. This is a deliberatel
 optimistic approximation of simulated players, including blind ones; it does not
 provide the policy with the real hidden call or other players' real hands. A
 separate information-limited rollout was evaluated but is not used by the game.
+
+## Shown cards after Ladinisch inspection
+
+An inspecting CPU remembers its own shown original card (the strike card for the
+strike announcer, the colour card for the suit announcer) only from its own
+inspection window. The other inspector is always an opponent in two- and
+four-player seating, so playing that card reveals nothing new to them while the
+rest of the hand stays hidden. Among the near-best rollout candidates the CPU
+swaps to the shown card when it is comparable: same kind (trump with trump, or
+ordinary strike with an equal strike; never a Rechter or critical card), the
+same result against the current public trick, and a trick that the alternative
+surely wins stays surely won. The shown card must itself lie inside the checked
+candidate window below the best rollout and at most the tier's close-choice
+window below the otherwise chosen card; a sampled certain win is never given up, and soft
+preferences such as the blind opening custom may be worse by at most 0.75 of the
+partnership weight (one repeated printed attribute, not two). In an otherwise
+hopeless trick the early reduction keeps the cheapest card and a comparable
+shown card, so the rollouts decide between them. Legal duties, Blödeln bottoms,
+the safe-partner rule and deliberate misplays keep their priority; a misplay is
+never undone by swapping back to the shown card, and a swap after a misplay may
+not score below the misplayed card.
 
 ## Blind rollout experiment, 4 November 2026
 
@@ -277,7 +310,20 @@ und ein anderer legaler Rang verfügbar ist. Das Auswahlfenster wird hierfür be
 Bedarf erweitert; bei einem sonst aussichtslosen Stich werden höchstens die
 billigste wiederholte und die billigste andere Karte verglichen. Klar bessere
 Züge, Pflichtkarten und Fehlwürfe bleiben möglich. Daraus wird keine geheime
-Ansage vorausgesetzt. Diese Konvention ist eine ausdrückliche Vorgabe des Eigentümers. Vermutlich sichere
+Ansage vorausgesetzt. Diese Konvention ist eine ausdrückliche Vorgabe des Eigentümers. Hat eine
+einschauende CPU eine eigene Karte gezeigt, spielt sie unter den nahezu besten
+Kandidaten diese bekannte Karte, wenn sie vergleichbar ist: gleiche Art (Trumpf
+oder gleichrangiger Schlag, nie Rechter oder kritische Karte), gleiches
+Ergebnis im aktuellen Stich und kein Verlust eines sicheren Stichs. Ihr
+Rollout muss im geprüften Kandidatenfenster liegen und darf höchstens um das
+Auswahlfenster unter der sonst gewählten Karte liegen; nach einem Fehlwurf nie
+unter der Fehlkarte. Weiche
+Präferenzen wie die blinde Eröffnungsregel höchstens um 0,75 × Partnergewicht.
+Bei aussichtslosen Stichen bleibt die gezeigte Karte als zweiter Kandidat
+erhalten. Eine entscheidende CPU antwortet auf ein Angebot erst nach dem
+Gefühl ihres Partners (Mensch oder CPU, offen oder blind); gut/schlecht
+verschieben die eigene Einschätzung um zehn Prozentpunkte, unsicher nicht.
+Nach einem zurückkommenden Gegenangebot wird erneut gefragt. Vermutlich sichere
 Partnerstiche werden geschont; wenn danach noch
 spielende Gegner den Stich in den erlaubten hypothetischen Verteilungen
 gefährden, kann eine stärkere Deckung sinnvoll sein. Uninformierte CPUs mitteln

@@ -153,6 +153,13 @@ def test_match_deciding_counterbids_stop_without_changing_engine_bidding_rules(c
     if response.kind == "partner_feedback":
         table.propose(decider, response)
         response = turn(table, decider)
+    party = table.state.parties.parties[table.state.parties.party_of(decider)]
+    if len(party) > 1:
+        # A decider with a partner first waits for that partner's one signal.
+        assert isinstance(response, CpuWait) and response.reason == "watten_cpu_partner_feedback_waiting"
+        partner = next(player for player in party if player != decider)
+        table.propose(partner, turn(table, partner))
+        response = turn(table, decider)
     assert response.kind == "respond" and response.value in {"hold", "go"}
     table.propose(decider, response)
     assert table.state.bid_state.pending is None

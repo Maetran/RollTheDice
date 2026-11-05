@@ -1,29 +1,25 @@
 {
   "kind": "usability",
   "games": [
-    "hausdepp",
-    "watten",
-    "zilch"
+    "watten"
   ],
-  "summary_de": "Klarere Navigation und Dashboard-Menü; der Owner kann die Spielbeobachtung einschalten.",
-  "summary_en": "Clearer navigation and dashboard menu; the owner can enable game observation.",
+  "summary_de": "Watten-CPUs spielen nach dem Einschauen überlegter und warten auf dein Gefühl.",
+  "summary_en": "Watten CPUs play more thoughtfully after inspecting and wait for your feedback.",
   "player_notes": {
     "de": {
-      "title": "4.15.0: Klarer unterwegs",
+      "title": "4.15.1: Besser zusammen spielen",
       "changes": [
-        "WATTEN: Erfolge & Titel, deine Partien und Rangliste bleiben unter «Spieler & Ranking» an derselben Stelle erreichbar. Konto führt zu den Einstellungen.",
-        "ZILCH: Historie, Ergebnisse und öffentliche Erfolgsprofile zeigen den passenden Menübereich.",
-        "DASHBOARD: Das Menü bleibt beim Scrollen erreichbar, auf schmalen Bildschirmen über eine Menü-Schaltfläche.",
-        "HAUSDEPP & WATTEN: Der Owner kann die standardmässig ausgeschaltete Spielbeobachtung für spätere Auswertungen einschalten."
+        "Die Watten-Computergegner entscheiden aufmerksamer.",
+        "WATTEN: Nach dem Einschauen spielen CPUs bei vergleichbaren Zügen eher ihre bereits gezeigte Karte.",
+        "WATTEN: Entscheidet eine CPU über ein Angebot, wartet sie auf dein Gefühl und berücksichtigt es."
       ]
     },
     "en": {
-      "title": "4.15.0: Easier navigation",
+      "title": "4.15.1: Playing better together",
       "changes": [
-        "WATTEN: Achievements & titles, your matches and the leaderboard stay together under Players & Ranking. Account opens settings.",
-        "ZILCH: History, results and public achievement profiles highlight the right menu area.",
-        "DASHBOARD: The menu remains available while scrolling, with a menu button on narrow screens.",
-        "HAUSDEPP & WATTEN: The owner can enable game observation for later analysis; it is off by default."
+        "Watten computer opponents make more thoughtful decisions.",
+        "WATTEN: After inspecting, CPUs prefer their already shown card among comparable plays.",
+        "WATTEN: When a CPU decides on an offer, it waits for your feeling and takes it into account."
       ]
     }
   }

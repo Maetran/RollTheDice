@@ -463,7 +463,8 @@ auch ausserhalb seines eigenen Kartenzugs.
 Bei einem gegnerischen Gebot kann nur der blinde Partner ihm
 einmal privat sein Gefühl mitteilen; die Auswahl schliesst den Dialog. Der
 wissende Entscheider sendet kein Gegensignal. In offenen Spielen bleibt die
-gegenseitige Abfrage.
+gegenseitige Abfrage. Entscheidet eine CPU für dein Team, wartet sie mit ihrer
+Antwort auf dein Gefühl, auch nach einem zurückkommenden Gegenangebot.
 Die Meldung steht mit dem Namen des Partners direkt über Halten, Gehen und
 Aufbieten, zum Beispiel «Markus meint: Keine Ahnung»; bis dahin steht dort
 «Von Markus noch keine Auskunft». Beim ladinischen Einschauen genügt der einzelne
@@ -525,7 +526,8 @@ informed player and their blind partner. Only the informed player handles hold, 
 responses, including outside their own card turn. When receiving an
 opposing bid, only the blind partner may send them one private feeling signal;
 answering closes the prompt. The informed decision maker sends no signal back.
-Open games retain the mutual prompt.
+Open games retain the mutual prompt. A CPU deciding for your team waits for your
+feeling before answering, also after a returning counterbid.
 Partner advice sits directly above hold, fold and counterbid with the partner’s
 name, for example “Markus says: No idea”, or “No advice from Markus yet” before a signal arrives. Ladinisch inspection starts with a single “Show strike” or
 “Show trump suit” button beside your own hand. Portrait scores, leave and chat share one row. In mobile landscape, navigation
@@ -664,7 +666,7 @@ menschlichen Mitspieler werden ihre Entscheidungen genauer; bei gemischter
 Erfahrung zählt der Median der individuellen, begrenzten Schwierigkeitsprofile.
 Bei gerader Personenzahl werden die beiden mittleren Profile gemittelt. Die
 Spielzahl beschreibt Erfahrung, kein gemessenes Können; auch CPUs können sich irren. Im Blindspiel wägen informierte CPUs ab, ob ein Trumpfanspiel einem informierten Gegner einen erzwungenen Stich ermöglicht, und versuchen, einen sicheren Partnerstich zu schonen. «Zweiter Stich ist Partnerstich»
-bleibt im blinden Ladinisch eine abwägbare Hilfe. Ein blinder Partner schont nach Möglichkeit bereits liegende Werte, solange der Schlag unbekannt ist; im ersten Stich bevorzugt er zudem neue sichtbare Farben. Die CPU kennt nur ihre eigene
+bleibt im blinden Ladinisch eine abwägbare Hilfe. Ein blinder Partner schont nach Möglichkeit bereits liegende Werte, solange der Schlag unbekannt ist; im ersten Stich bevorzugt er zudem neue sichtbare Farben. Eine einschauende CPU spielt bei vergleichbaren Karten bevorzugt ihre selbst gezeigte Karte, ohne sichere Stiche oder klar bessere Ergebnisse zu opfern. Als Entscheiderin wartet eine CPU auf das Gefühl ihres Partners und bezieht es ein. Die CPU kennt nur ihre eigene
 erlaubte Sicht. Die [Strategiedokumentation](docs/WATTEN_CPU_STRATEGY.md) nennt
 Stufen, Quellen und Grenzen; der synthetische Vergleich misst keine Stärke gegen Menschen.
 CPUs bid on subjectively strong chances and account for the score. More completed
@@ -672,7 +674,7 @@ Watten games by the human participants sharpen their decisions; mixed tables use
 the median of the humans' individual bounded difficulty profiles, averaging
 the middle two for an even number. Match counts describe experience, not
 measured ability; CPUs can still make mistakes. In blind play, informed CPUs weigh whether leading trump would give an informed opponent a forced winning response, and try to avoid overtaking a secure partner trick. Leaving the second trick to the partner
-remains a soft tactic in blind Ladinisch. While the strike is unknown, a blind partner tries to avoid repeating visible ranks; the opening also favours new suits. The CPU only knows its own permitted
+remains a soft tactic in blind Ladinisch. While the strike is unknown, a blind partner tries to avoid repeating visible ranks; the opening also favours new suits. An inspecting CPU prefers its own shown card among comparable choices without giving up sure tricks or clearly better results. As decision maker, a CPU waits for its partner's feeling and takes it into account. The CPU only knows its own permitted
 view. The [strategy notes](docs/WATTEN_CPU_STRATEGY.md) document tiers, sources and
 limits; the synthetic comparison does not measure strength against people.
 

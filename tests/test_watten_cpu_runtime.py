@@ -32,6 +32,7 @@ from app.watten_runtime import (
     apply_runtime_action,
     persist_watten_game,
     restore_watten_json,
+    resume_account,
     snapshot_watten,
 )
 from app.watten_views import cpu_view
@@ -167,7 +168,7 @@ def test_early_human_lead_only_delays_cpu_replies_for_a_blind_table(monkeypatch,
     monkeypatch.setattr(runner, "_view", lambda _runtime, _player: view)
     monkeypatch.setattr(runner, "_context", lambda _runtime, snapshot: (snapshot["phase"], tuple(snapshot["actions"]),
                                                                        len(snapshot["current_trick"]["cards"])))
-    monkeypatch.setattr(runner, "_cpu_partner_feedback_pending", lambda *_args: False)
+    monkeypatch.setattr(runner, "_partner_feedback_pending", lambda *_args: False)
     monkeypatch.setattr(runner, "_RANDOM", SimpleNamespace(uniform=lambda *_args: 0))
 
     async def scenario():
@@ -1021,6 +1022,215 @@ def test_actual_short_mixed_match_uses_only_personal_policy_inputs_and_one_resul
                 assert db.scalar(select(func.count(CompletedGame.id))) == 1
                 assert db.scalar(select(func.count(GameParticipant.id))) == count_players
                 assert db.scalar(select(func.count(GameParticipant.id)).where(GameParticipant.user_id.is_not(None))) == 1
+        finally:
+            await runner.stop_cpu_runners()
+
+    asyncio.run(scenario())
+
+
+def _offer_to_cpu_with_human_partner(server, monkeypatch, *, blind=False):
+    """Seat 0 is human, its partner seat 2 is the CPU decider; CPU seat 3 offers."""
+    deterministic_dealer(monkeypatch, seat=2)
+    game_id, owners, sessions = local_started(server, count_players=4, cpus=(1, 2, 3), blind=blind, target=15)
+    game, human = games[game_id], sessions[0]
+    complete_call(game_id)
+    seats = game["_watten"].engine.recipe.seats
+    assert game["_watten"].engine.play.current_player_id == seats[3]
+    accepted_engine(game, seats[3], engine_command(game_id, "bid", "opponent-offer"))
+    state = game["_watten"].engine
+    decider = state.parties.decider(1 - state.bid_state.pending.party)
+    assert decider == seats[2] and seats[0] == human.player_id
+    return game_id, game, human, decider, owners[0]
+
+
+def _record_commands(monkeypatch, game, decider):
+    """Applied engine commands, plus every DTO the CPU decider decided on."""
+    applied, views = [], []
+    real_apply, real_decide = runtime_module._apply_engine_command, runner.decide
+
+    def apply(current, actor, command):
+        result = real_apply(current, actor, command)  # a rejected transition raises and is not counted
+        applied.append((actor.player_id, command.kind, command.value))
+        return result
+
+    def spy(view, memory, **kwargs):
+        if memory.player_id == decider:
+            views.append(deepcopy(view))
+        return real_decide(view, memory, **kwargs)
+
+    monkeypatch.setattr(runtime_module, "_apply_engine_command", apply)
+    monkeypatch.setattr(runner, "decide", spy)
+    return applied, views
+
+
+def _human_signal(game, player):
+    return next((item.value for item in game["_watten"].engine.feedback if item.sender == player), None)
+
+
+def _responses(applied, player):
+    return [value for actor, kind, value in applied if actor == player and kind == "respond"]
+
+
+def _stored_engine(game_id):
+    with session_scope() as db:
+        return restore_watten_json(db.scalar(select(ActiveGame.state_json).where(ActiveGame.game_id == game_id)))[
+            "_watten"].engine
+
+
+async def _answered_durably(game_id, game, decider, applied, count=1):
+    """The decider's answer is accepted, installed and persisted, never left blocked."""
+    await until(lambda: len(_responses(applied, decider)) >= count)
+    await until(lambda: _stored_engine(game_id) == game["_watten"].engine)
+    stored = _stored_engine(game_id)
+    ours = stored.parties.party_of(decider)
+    assert stored.bid_state.pending is None or stored.bid_state.pending.party == ours
+    assert (game_id, decider) not in runner._BLOCKED
+    return stored
+
+
+@pytest.mark.parametrize("blind", (False, True))
+def test_cpu_decider_waits_for_its_real_human_partners_signal(server, ready, monkeypatch, blind):
+    game_id, game, human, decider, _owner = _offer_to_cpu_with_human_partner(server, monkeypatch, blind=blind)
+    applied, views = _record_commands(monkeypatch, game, decider)
+
+    async def scenario():
+        try:
+            runner.watch_game(game)
+            await asyncio.sleep(0.25)  # many think deadlines: nothing may answer for us
+            state = game["_watten"].engine
+            assert state.phase == "bid_response" and state.bid_state.pending is not None
+            assert not _responses(applied, decider)
+            # Open play: the CPU's own advice still went out; blind: no reverse signal.
+            assert (_human_signal(game, decider) is not None) == (not blind)
+            assert (game_id, decider) not in runner._JOBS and (game_id, decider) not in runner._BLOCKED
+            runner.watch_game(game)  # a reconnect/broadcast re-evaluation still waits
+            assert (game_id, decider) not in runner._JOBS
+            await _handle_locked(human, "watten_command", engine_command(
+                game_id, "partner_feedback", "human-feeling", "bad", player=human.player_id))
+            await _answered_durably(game_id, game, decider, applied)
+            last = views[-1]
+            assert [item["value"] for item in last["feedback"] if item["sender"] == human.player_id] == ["bad"]
+        finally:
+            await runner.stop_cpu_runners()
+
+    asyncio.run(scenario())
+
+
+def test_runner_restart_after_private_human_signal_answers_the_offer(server, ready, monkeypatch):
+    game_id, game, human, decider, _owner = _offer_to_cpu_with_human_partner(server, monkeypatch)
+    applied, _views = _record_commands(monkeypatch, game, decider)
+    enabled = {"on": True}
+    real_enabled = runner.cpu_autoplay_enabled
+    monkeypatch.setattr(runner, "cpu_autoplay_enabled", lambda: enabled["on"] and real_enabled())
+
+    async def scenario():
+        try:
+            runner.watch_game(game)
+            await until(lambda: _human_signal(game, decider) is not None)  # its own advice
+            await runner.stop_cpu_runners()
+            enabled["on"] = False  # the process is down while the human answers
+            opportunity = game["_watten"].engine.opportunity
+            await _handle_locked(human, "watten_command", engine_command(
+                game_id, "partner_feedback", "human-before-restart", "good", player=human.player_id))
+            assert game["_watten"].engine.opportunity == opportunity and not _responses(applied, decider)
+            restored = load_active_games()[game_id]
+            assert _human_signal(restored, human.player_id) == "good"  # durable private signal
+            games[game_id] = restored
+            enabled["on"] = True
+            await runner.resume_cpu_games(games)
+            await _answered_durably(game_id, restored, decider, applied)
+        finally:
+            await runner.stop_cpu_runners()
+
+    asyncio.run(scenario())
+
+
+def test_paused_human_may_signal_and_the_cpu_answers_only_after_the_return(server, ready, monkeypatch):
+    game_id, game, human, decider, owner = _offer_to_cpu_with_human_partner(server, monkeypatch)
+    applied, _views = _record_commands(monkeypatch, game, decider)
+
+    async def scenario():
+        try:
+            runner.watch_game(game)
+            await until(lambda: _human_signal(game, decider) is not None)
+            await _handle_locked(human, "watten_leave", room_command(game_id, "watten_leave", "pause-offer"))
+            assert game["_watten"].absent == (human.player_id,)
+            # The paused table still accepts exactly this private signal (same
+            # authenticated runtime action the socket handler uses).
+            candidate, _ack, replayed, private = apply_runtime_action(
+                game, owner[0].user_id, human.player_id,
+                engine_command(game_id, "partner_feedback", "paused-feeling", "unsure", player=human.player_id))
+            assert not replayed and private == {human.player_id, decider}
+            persist_watten_game(candidate)
+            game.update(candidate)
+            runner.watch_game(game)
+            await asyncio.sleep(0.15)
+            assert not _responses(applied, decider) and not runner._JOBS  # paused: no CPU decision
+            resume_account(game, owner[0].user_id, human.player_id,
+                           lifecycle_revision=game["_watten"].lifecycle_revision)
+            persist_watten_game(game)
+            runner.watch_game(game)  # as after the returning socket's admission
+            await _answered_durably(game_id, game, decider, applied)
+        finally:
+            await runner.stop_cpu_runners()
+
+    asyncio.run(scenario())
+
+
+def test_returning_counteroffer_waits_for_a_fresh_human_signal(server, ready, monkeypatch):
+    game_id, game, human, decider, _owner = _offer_to_cpu_with_human_partner(server, monkeypatch)
+    applied, _views = _record_commands(monkeypatch, game, decider)
+    seats = game["_watten"].engine.recipe.seats
+    plans = {2: ["counter", "hold"], 3: ["counter"]}
+    monkeypatch.setattr(cpu_policy, "_response", lambda ctx, _win, _skill: (plans.get(ctx.seat) or ["hold"]).pop(0))
+
+    async def scenario():
+        try:
+            runner.watch_game(game)
+            await until(lambda: _human_signal(game, decider) is not None)
+            await _handle_locked(human, "watten_command", engine_command(
+                game_id, "partner_feedback", "first-feeling", "good", player=human.player_id))
+            # Ours counters, the CPU opponents counter back after their own partner signal.
+            await until(lambda: _responses(applied, seats[3]) == ["counter"]
+                        and game["_watten"].engine.bid_state.pending is not None
+                        and _human_signal(game, decider) is not None)
+            await asyncio.sleep(0.2)
+            assert _responses(applied, decider) == ["counter"]
+            assert _human_signal(game, human.player_id) is None  # cleared: a new question
+            await _handle_locked(human, "watten_command", engine_command(
+                game_id, "partner_feedback", "second-feeling", "bad", player=human.player_id))
+            stored = await _answered_durably(game_id, game, decider, applied, count=2)
+            assert _responses(applied, decider) == ["counter", "hold"]
+            assert stored.phase == "play" and stored.bid_state.pending is None
+        finally:
+            await runner.stop_cpu_runners()
+
+    asyncio.run(scenario())
+
+
+def test_three_player_pair_cpu_decider_waits_for_its_human_partner(server, ready, monkeypatch):
+    # Dealer seat 1 (CPU) decides for the pair with human seat 0; solo seat 2 offers.
+    deterministic_dealer(monkeypatch, seat=1)
+    game_id, _owners, sessions = local_started(server, count_players=3, cpus=(1, 2), target=15)
+    game, human = games[game_id], sessions[0]
+    complete_call(game_id)
+    seats = game["_watten"].engine.recipe.seats
+    assert game["_watten"].engine.play.current_player_id == seats[2]
+    accepted_engine(game, seats[2], engine_command(game_id, "bid", "solo-offer"))
+    state = game["_watten"].engine
+    decider = state.parties.decider(1 - state.bid_state.pending.party)
+    assert decider == seats[1] and set(state.parties.parties[state.parties.party_of(decider)]) == {seats[0], seats[1]}
+    applied, _views = _record_commands(monkeypatch, game, decider)
+
+    async def scenario():
+        try:
+            runner.watch_game(game)
+            await until(lambda: _human_signal(game, decider) is not None)  # open play: own advice first
+            await asyncio.sleep(0.2)
+            assert not _responses(applied, decider) and game["_watten"].engine.phase == "bid_response"
+            await _handle_locked(human, "watten_command", engine_command(
+                game_id, "partner_feedback", "pair-feeling", "good", player=human.player_id))
+            await _answered_durably(game_id, game, decider, applied)
         finally:
             await runner.stop_cpu_runners()
 
