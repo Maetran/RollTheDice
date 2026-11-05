@@ -394,3 +394,17 @@ def test_first_observed_sequence_cannot_imply_completeness_when_prefix_missing(c
         assert record(db, sequence=4, started_at_beginning=True)
         assert finish_observation(db, recording_id=ID, eligible_user_ids=[3], outcome={"status": "finished"})
         assert db.get(ObservationRecording, ID).status == "partial"
+
+
+def test_hausdepp_withdrawal_and_insufficient_players_are_distinct(client):
+    assert client.put("/api/admin/observation", json={"enabled": True, "mode": "all", "selected_user_ids": [], "version": 0}).status_code == 200
+    with session_scope() as db:
+        assert record(db, action={"kind": "withdraw"})
+        with pytest.raises(ValueError, match="observation_payload_invalid"):
+            record(db, sequence=1, action={"kind": "withdraw", "cards": ["hearts-6"]})
+        assert finish_observation(db, recording_id=ID, eligible_user_ids=[3],
+                                  outcome={"status": "aborted", "withdrawn_seats": [0],
+                                           "round_end_reason": "insufficient_players", "remaining_seat": 1})
+    result = client.get("/api/admin/observation/recordings").json()["items"][0]["outcome"]
+    assert result["round_end_reason"] == "insufficient_players"
+    assert result["remaining_seat"] == 1 and result["withdrawn_seats"] == [0]

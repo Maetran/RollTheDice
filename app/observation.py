@@ -183,6 +183,7 @@ _TOKENS = frozenset({
     "folded", "withdrawn", "target", "points", "low", "high", "yes", "no",
     "card", "strong", "weak", "neutral", "none", "four", "ten", "ten_clear", "four_of_a_kind",
     "good", "bad", "unsure", "respond", "accept", "decline", "bloedeln_accept", "bloedeln_decline", "watten-house",
+    "withdraw", "insufficient_players",
 })
 
 
@@ -211,6 +212,8 @@ def _shape(value, schema, depth=0):
     if schema == "seat" and type(value) is int and 0 <= value <= 5:
         return
     if schema == "party" and type(value) is int and 0 <= value <= 1:
+        return
+    if schema == "round_end_reason" and isinstance(value, str) and value in {"normal", "insufficient_players"}:
         return
     if schema in {"token", "card", "card_or_back", "value"}:
         from .hausdepp_engine import make_deck as hausdepp_deck
@@ -264,8 +267,9 @@ _CONTEXT = {
                         "burn_reason": "token", "burned_count": "int"}},
 }
 _OUTCOME = {"status": "token", "loser_seat": "seat", "finished_order": ["seat"], "withdrawn_seats": ["seat"],
-            "winner_seats": ["seat"], "winner_parties": [["seat"]], "scores": [_SCORE]}
-_HAUSDEPP_ACTIONS = frozenset({"play", "pickup", "gamble", "afterthrow", "draw", "peek"})
+            "winner_seats": ["seat"], "winner_parties": [["seat"]], "scores": [_SCORE],
+            "round_end_reason": "round_end_reason", "remaining_seat": "seat"}
+_HAUSDEPP_ACTIONS = frozenset({"play", "pickup", "gamble", "afterthrow", "draw", "peek", "withdraw"})
 _WATTEN_ACTIONS = frozenset({"play_card", "bid", "respond", "announce_strike", "announce_colour", "show_ready",
                              "inspection_ack", "preplay_accept", "preplay_decline", "bloedeln_accept",
                              "bloedeln_decline", "request_schoeneres", "request_schlagwechsel", "request_bloedeln",
@@ -295,6 +299,8 @@ def record_observation(db, *, game_type, recording_id, sequence, actor_seat, act
     _payload(action, _ACTION)
     _payload(context, _CONTEXT)
     if action.get("kind") not in (_HAUSDEPP_ACTIONS if game_type == "hausdepp" else _WATTEN_ACTIONS):
+        raise ValueError("observation_payload_invalid")
+    if action["kind"] == "withdraw" and set(action) != {"kind"}:
         raise ValueError("observation_payload_invalid")
     lock_policy(db)
     policy = _allowed(db, eligible_user_ids)
