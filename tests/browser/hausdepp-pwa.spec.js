@@ -2,6 +2,15 @@ const { test, expect } = require('@playwright/test');
 
 test.use({ serviceWorkers: 'allow' });
 
+// Chromium on macOS can crash when a new context follows this synthetic
+// controllerchange/reload sequence. Give each installation case its own
+// Playwright worker/browser without changing launch options or assertions.
+function isolatedInstallationTest() {
+  return test.extend({
+    installationWorker: [async ({}, use) => { await use(); }, { scope: 'worker', auto: true }],
+  });
+}
+
 test.beforeAll(({ baseURL }) => {
   expect(new URL(baseURL).port, 'PWA tests must use an isolated server').not.toBe('8000');
 });
@@ -126,7 +135,8 @@ for (const language of ['de', 'en']) {
     }]);
   });
 
-  test(`${language}: Hausdepp installs with its own icon and shows the shared update toast`, async ({ page }) => {
+  const installTest = isolatedInstallationTest();
+  installTest(`${language}: Hausdepp installs with its own icon and shows the shared update toast`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await owner(page, language);
     await page.goto('/hausdepp');

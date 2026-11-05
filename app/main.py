@@ -48,6 +48,7 @@ from .api_friend_activity import router as friend_activity_router
 from .api_game_activity import router as game_activity_router
 from .api_hausdepp_favourite import router as hausdepp_favourite_router
 from .api_moderation import router as moderation_router
+from .api_observation import router as observation_router
 from .api_passkeys import router as passkeys_router
 from .api_releases import router as releases_router
 from .api_users import abandonment_statistics_for_user
@@ -427,6 +428,24 @@ async def _run_lobby_chat_history_purger(
         except asyncio.TimeoutError:
             continue
 
+
+async def _run_observation_purger(stop_event: asyncio.Event) -> None:
+    """Expire recordings even when nobody visits the admin interface."""
+    from .observation import prune_recordings
+
+    while not stop_event.is_set():
+        try:
+            with session_scope() as db:
+                prune_recordings(db)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logger.exception("Could not purge expired game observations")
+        try:
+            await asyncio.wait_for(stop_event.wait(), timeout=3600)
+        except asyncio.TimeoutError:
+            continue
+
 # ---------------- Pfade robust auflösen (static/ und data/) ----------------
 HERE = Path(__file__).resolve().parent  # .../RollTheDice/app
 BASE = HERE.parent  # .../RollTheDice
@@ -534,6 +553,8 @@ async def lifespan(_app: FastAPI):
         _run_lobby_chat_history_purger(lobby_chat_purger_stop),
         name="lobby-chat-history-purger",
     )
+    observation_purger = asyncio.create_task(_run_observation_purger(lobby_chat_purger_stop),
+                                             name="game-observation-purger")
     reminder_stop = asyncio.Event()
     reminder_scheduler = asyncio.create_task(run_daily_reminder_scheduler(reminder_stop), name="daily-push-reminders")
     release_scheduler = asyncio.create_task(run_release_push_scheduler(reminder_stop), name="release-push-notifications")
@@ -549,11 +570,12 @@ async def lifespan(_app: FastAPI):
         reminder_stop.set()
         timeout_sweeper.cancel()
         lobby_chat_purger.cancel()
+        observation_purger.cancel()
         reminder_scheduler.cancel()
         release_scheduler.cancel()
         admin_help_scheduler.cancel()
         await stop_watten()
-        await asyncio.gather(timeout_sweeper, lobby_chat_purger, reminder_scheduler, release_scheduler,
+        await asyncio.gather(timeout_sweeper, lobby_chat_purger, observation_purger, reminder_scheduler, release_scheduler,
                              admin_help_scheduler, return_exceptions=True)
         await stop_cpu_runners()
         await stop_hausdepp()
@@ -570,6 +592,7 @@ app = FastAPI(lifespan=lifespan, version=current_version())
 
 app.include_router(auth_router)
 app.include_router(features_router)
+app.include_router(observation_router)
 app.include_router(passkeys_router)
 app.include_router(passkey_reminders_router)
 app.include_router(releases_router)

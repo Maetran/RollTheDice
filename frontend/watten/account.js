@@ -137,7 +137,10 @@ function renderSettings(auth) {
   document.title = `Watten · ${t('Kontoeinstellungen')}`;
   root.innerHTML = `<h1>${copy('Kontoeinstellungen')}</h1><p>${copy('Ein Konto für alle unsere Spiele. Dein bestehender Passkey funktioniert hier ebenfalls.')}</p>
     <p data-account-name translate="no">${esc(user.username)}</p>
-    ${accountNavigationMarkup({ statistics: canPlay ? "/watten/konto/fortschritt#statistics" : null, achievements: canPlay ? "/watten/konto/fortschritt#achievements" : null, settings: "/watten/konto/einstellungen", current: "settings" })}
+    ${accountNavigationMarkup({ settings: "/watten/konto/einstellungen", current: "settings" })}
+    ${canPlay ? `<aside class="wt-account-player-links" data-watten-player-links aria-labelledby="wattenPlayerLinksTitle"><h2 id="wattenPlayerLinksTitle">${copy('Deine Spielwerte')}</h2>
+      <p>${copy('Erfolge und Titel sowie Statistik, Lieblingsgegner und Partien findest du unter Spieler & Ranking.')}</p>
+      <p class="actions"><a class="button-link ghost" href="/watten/konto/fortschritt">${copy('Erfolge & Titel')}</a><a class="button-link ghost" href="/watten/konto/verlauf">${copy('Deine Partien')}</a></p></aside>` : ''}
     <div data-account-merge-notice hidden></div>
     <div class="account-settings-panel">
     ${accountSectionMarkup('access', 'Profil & Zugang', 'Passkeys, Profil und Passwort', `    <details data-passkey-section hidden><summary>${copy('Passkeys')}</summary><div data-passkey-settings></div></details>
@@ -160,7 +163,7 @@ function renderSettings(auth) {
       <div class="account-settings-links"><a class="button-link ghost" href="/go/github/issues" target="_blank" rel="noopener noreferrer">${copy('Problem auf GitHub melden')}</a>
       <a class="button-link ghost" href="/go/github/changelog" target="_blank" rel="noopener noreferrer">${copy('Ausführliche Versionshistorie auf GitHub')}</a></div></details>`, { id: 'hilfe' })}
     </div>
-    <div class="actions"><a class="button-link ghost" href="/watten">${copy('Zurück')}</a>${canPlay ? `<a class="button-link ghost" href="/watten/konto/fortschritt">${copy('Erfolge & Titel')}</a>` : ''}<button data-logout type="button">${copy('Abmelden')}</button></div><p data-account-message role="status"></p>`;
+    <div class="actions"><a class="button-link ghost" href="/watten">${copy('Zurück')}</a><button data-logout type="button">${copy('Abmelden')}</button></div><p data-account-message role="status"></p>`;
   openAccountSettingTarget(root);
   mountUsernameSettings(root.querySelector('[data-username-settings]'), { user, onChanged: changed => {
     const name = root.querySelector('[data-account-name]');

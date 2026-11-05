@@ -44,6 +44,29 @@ export const ADMIN_FEATURE_MESSAGES = {
   },
 };
 
+export const OBSERVATION_MESSAGES = {
+  de: {
+    heading: "Spielbeobachtung", intro: "Zeichnet Entscheidungen in Hausdepp und Watten für spätere Analysen auf. Die Auswahl ist getrennt gespeichert; Spielsitze erscheinen als Mensch oder CPU. Bei kleinen Gruppen können Partien dennoch zugeordnet werden.",
+    retention: "Aufbewahrungsfrist: {days} Tage.", permission: "Nur Owner können diese Einstellungen ändern, Daten exportieren oder löschen.",
+    enabled: "Spielbeobachtung einschalten", scope: "Welche Partien?", all: "Alle Partien", selected: "Partien ausgewählter Spieler", selectedTitle: "Ausgewählte Spieler", selectionHelp: "Erfasst werden Partien mit mindestens einem ausgewählten Spieler. Die private Sicht wird nur für ausgewählte Menschen und CPUs gespeichert; bei anderen Menschen nur öffentliche Züge.", empty: "Noch keine Spieler ausgewählt.",
+    searchLabel: "Aktive Spieler suchen", search: "Suchen", searching: "Spieler werden gesucht …", noResults: "Keine passenden aktiven Spieler gefunden.", add: "Auswählen", remove: "Entfernen", save: "Einstellungen speichern", reload: "Aktualisieren",
+    loading: "Einstellungen werden geladen …", saving: "Wird gespeichert …", saved: "Einstellungen gespeichert.", loadFailed: "Die Einstellungen konnten nicht geladen werden. Bitte aktualisieren.",
+    failed: "Die Aktion konnte nicht bestätigt werden. Bitte aktualisieren und den gespeicherten Stand prüfen.", conflict: "Die Einstellungen wurden inzwischen geändert. Bitte aktualisieren und erneut entscheiden.", accessLost: "Deine Berechtigung hat sich geändert. Bitte lade die Seite neu.",
+    export: "Aufzeichnungen als JSON exportieren", exportNotice: "Der Export enthält nur abgeschlossene oder abgebrochene Partien. Die Daten werden seitenweise gelesen und können verschiedene Zeitpunkte zeigen; er ist kein gemeinsamer Stichtag.", exporting: "Aufzeichnungen werden exportiert …", exported: "Export erstellt.", exportFailed: "Der Export ist fehlgeschlagen. Es wurde keine Datei erstellt.",
+    deleteTitle: "Aufzeichnungen löschen", deleteHint: "Alle gespeicherten Aufzeichnungen und Ereignisse werden dauerhaft gelöscht. Die Spielbeobachtung wird ausgeschaltet; die Spielerauswahl bleibt bestehen.", deleteConfirm: "Ich möchte alle Spielaufzeichnungen dauerhaft löschen.", deleteButton: "Alle Aufzeichnungen löschen", deleted: "Aufzeichnungen gelöscht.",
+  },
+  en: {
+    heading: "Game observation", intro: "Records decisions in Hausdepp and Watten for later analysis. The selection is stored separately; game seats are identified as human or CPU. Games in small groups may still be identifiable.",
+    retention: "Retention period: {days} days.", permission: "Only owners can change these settings, export or delete data.",
+    enabled: "Enable game observation", scope: "Which games?", all: "All games", selected: "Games of selected players", selectedTitle: "Selected players", selectionHelp: "Records games with at least one selected player. Private views are saved only for selected humans and CPUs; only public moves are recorded for other humans.", empty: "No players selected yet.",
+    searchLabel: "Search active players", search: "Search", searching: "Searching for players …", noResults: "No matching active players found.", add: "Select", remove: "Remove", save: "Save settings", reload: "Refresh",
+    loading: "Loading settings …", saving: "Saving …", saved: "Settings saved.", loadFailed: "Settings could not be loaded. Please refresh.",
+    failed: "The action could not be confirmed. Please refresh and check the saved settings.", conflict: "Another owner changed these settings. Please refresh and review them again.", accessLost: "Your permission has changed. Please reload the page.",
+    export: "Export recordings as JSON", exportNotice: "The export contains only completed or aborted games. Data is read in pages and may reflect different moments; this is not a single point-in-time snapshot.", exporting: "Exporting recordings …", exported: "Export created.", exportFailed: "Export failed. No file was created.",
+    deleteTitle: "Delete recordings", deleteHint: "All stored recordings and events will be permanently deleted. Observation is switched off; selected players stay unchanged.", deleteConfirm: "I want to permanently delete all game recordings.", deleteButton: "Delete all recordings", deleted: "Recordings deleted.",
+  },
+};
+
 export const ACCOUNT_MERGE_MESSAGES = {
   de: {
     title: 'Konten zusammengeführt', intro: 'Dein zusammengeführter Fortschritt ist in diesem Konto angekommen. Anmeldung und persönliche Einstellungen bleiben bei diesem Konto.',
@@ -4651,6 +4674,11 @@ export const EN = {
     "Dieser Solo-Lauf wurde aufgegeben. Dein Ergebnis bleibt privat in deiner Zilch-Historie.": "This solo run was abandoned. Its result remains private in your Zilch history.",
     "Fortschritt": "Progress",
     "Erfolge & Titel": "Achievements & titles",
+    "Deine Partien": "Your matches",
+    "Deine Spielwerte": "Your game progress",
+    "Watten: Deine Spielwerte": "Watten: your game progress",
+    "Erfolge und Titel sowie Statistik, Lieblingsgegner und Partien findest du in Watten unter Spieler & Ranking.": "In Watten, find achievements and titles, plus statistics, favorite opponents and matches, under Players & Ranking.",
+    "Erfolge und Titel sowie Statistik, Lieblingsgegner und Partien findest du unter Spieler & Ranking.": "Find achievements and titles, plus statistics, favorite opponents and matches, under Players & Ranking.",
     "Züge": "Turns",
     "Würfe": "Rolls",
     "Höchste gesicherte Runde": "Highest banked round",
@@ -6044,8 +6072,8 @@ export const WATTEN_PROGRESS_MESSAGES = {
   de: {
     description: "Deine Watten-Erfolge, gespielten Partien und Ranglisten.", rules: "Regeln", settings: "Einstellungen",
     archived: "Früher verbuchte Erfolge", archivedAchievement: "Gespeicherter Watten-Erfolg",
-    feed: "Am Stammtisch erreicht", feedHelp: "Die neuesten Erfolge mit den aktuellen Wirtshaustiteln.", emptyFeed: "Noch keine verbuchten Erfolge.", previous: "Zurück", next: "Weiter",
-    navigation: "Dein Watten-Konto", progress: "Erfolge & Titel", history: "Deine Partien", leaderboard: "Rangliste",
+    feed: "Am Stammtisch erreicht", feedHelp: "Die neuesten Erfolge aller Watten-Spieler mit ihren aktuellen Wirtshaustiteln.", emptyFeed: "Noch keine verbuchten Erfolge.", previous: "Zurück", next: "Weiter",
+    navigation: "Spieler & Ranking", scopePrivate: "Persönlich: Diese Seite sieht nur du.", scopePublic: "Gemeinschaft: Rangliste und Erfolge aller Watten-Spieler.", statistics: "Deine Statistik", matches: "Abgeschlossene Partien", progress: "Erfolge & Titel", history: "Deine Partien", leaderboard: "Rangliste",
     draft: "Lokale Vorschau: XP, Erfolge und Titel sind ein Entwurf.",
     unavailable: "Deine Watten-Daten konnten nicht vollständig geladen werden. Bitte versuche es erneut.",
     retry: "Erneut laden", stale: "Dein Fortschritt hat sich geändert. Bitte lade die Seite erneut.",
@@ -6078,8 +6106,8 @@ export const WATTEN_PROGRESS_MESSAGES = {
   en: {
     description: "Your Watten achievements, played matches and standings.", rules: "Rules", settings: "Settings",
     archived: "Previously credited achievements", archivedAchievement: "Stored Watten achievement",
-    feed: "Earned at the table", feedHelp: "Recent achievements with each player's current pub title.", emptyFeed: "No credited achievements yet.", previous: "Previous", next: "Next",
-    navigation: "Your Watten account", progress: "Achievements & titles", history: "Your matches", leaderboard: "Leaderboard",
+    feed: "Earned at the table", feedHelp: "Recent achievements of all Watten players with their current pub titles.", emptyFeed: "No credited achievements yet.", previous: "Previous", next: "Next",
+    navigation: "Players & Ranking", scopePrivate: "Personal: only you can see this page.", scopePublic: "Community: leaderboard and achievements of all Watten players.", statistics: "Your statistics", matches: "Completed matches", progress: "Achievements & titles", history: "Your matches", leaderboard: "Leaderboard",
     draft: "Local preview: XP, achievements and titles are a proposal.",
     unavailable: "Your Watten data could not be loaded completely. Please try again.",
     retry: "Reload", stale: "Your progress has changed. Please reload the page.",

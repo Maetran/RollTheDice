@@ -105,7 +105,8 @@ DOCUMENT_ROUTES = (
     RouteCoverage(
         ("/zilch/historie", "/zilch/statistiken", "/zilch/erfolge", "/zilch/regeln"),
         "tests/test_zilch_product_routes.py", "test_history_rules_shells_and_rules_api_use_the_central_preview_policy",
-        ("tests/browser/zdwa-game-switcher.spec.js", "tests/browser/suite-link-styling.spec.js"),
+        ("tests/browser/zdwa-game-switcher.spec.js", "tests/browser/suite-link-styling.spec.js",
+         "tests/browser/suite-navigation-context.spec.js"),
     ),
     RouteCoverage(
         ("/zilch/konto",), "tests/test_zilch_product_routes.py",
@@ -113,7 +114,8 @@ DOCUMENT_ROUTES = (
         ("tests/browser/zdwa-game-switcher.spec.js", "tests/browser/account-settings-layout.spec.js",
          "tests/browser/profile-allowlist.spec.js", "tests/browser/player-allowlist-settings.spec.js"),
     ),
-    RouteCoverage(("/zilch/spieler/{username}",), "tests/browser/player-search-flow.spec.js"),
+    RouteCoverage(("/zilch/spieler/{username}",), "tests/browser/player-search-flow.spec.js",
+                  browser_tests=("tests/browser/suite-navigation-context.spec.js",)),
     RouteCoverage(
         ("/zilch/spieler",), "tests/test_zilch_product_routes.py",
         "test_player_directory_aliases_reach_search_in_the_same_product",
@@ -177,13 +179,14 @@ DOCUMENT_ROUTES = (
     ),
     RouteCoverage(
         ("/watten/konto",), "tests/test_watten_accounts.py",
-        "test_generic_account_entry_opens_statistics_only_when_game_surface_is_enabled",
-        ("tests/browser/suite-account-consistency.spec.js",),
+        "test_generic_account_entry_always_opens_settings_and_progress_stays_in_spieler_und_ranking",
+        ("tests/browser/suite-account-consistency.spec.js", "tests/browser/suite-navigation-context.spec.js"),
     ),
     RouteCoverage(
         ("/watten/konto/fortschritt", "/watten/konto/verlauf", "/watten/rangliste"),
         "tests/test_watten_progress_pages.py", "test_native_progress_pages_protect_identity_and_keep_canonical_return_path",
-        ("tests/browser/watten-progress.spec.js", "tests/browser/suite-account-consistency.spec.js"),
+        ("tests/browser/watten-progress.spec.js", "tests/browser/suite-account-consistency.spec.js",
+         "tests/browser/suite-navigation-context.spec.js"),
     ),
     RouteCoverage(
         ("/watten/regeln",), "tests/test_watten_pages.py",

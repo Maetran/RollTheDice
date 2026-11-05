@@ -117,6 +117,35 @@ test('tablet layout fixtures: shared axes, long identities, 1–4 packets and pa
           view.update(vm);
         }, { count, kind });
         await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+        // Changing the inherited fan count and revealing cards can leave a
+        // transient mix of old and new bounds even after two animation frames.
+        // Wait for the real three fans together; a persistent geometry error
+        // still fails with the same one-pixel contract used by the report below.
+        await expect.poll(() => page.evaluate(() => {
+          const { root, opponentCardCount } = window.tabletLayoutFixture;
+          const visible = node => {
+            const box = node.getBoundingClientRect();
+            return !node.closest('[hidden]') && box.width > 0 && box.height > 0
+              && getComputedStyle(node).visibility !== 'hidden';
+          };
+          const fan = position => {
+            const cards = [...root.querySelectorAll(`.wt-seat--${position} .wt-backs > i:not([hidden])`)].filter(visible);
+            if (cards.length !== opponentCardCount) return { count: cards.length };
+            if (!cards.length) return { count: 0 };
+            const boxes = cards.map(card => card.getBoundingClientRect());
+            return { count: cards.length,
+              x: (Math.min(...boxes.map(box => box.left)) + Math.max(...boxes.map(box => box.right))) / 2,
+              y: (Math.min(...boxes.map(box => box.top)) + Math.max(...boxes.map(box => box.bottom))) / 2 };
+          };
+          const top = fan('top'), left = fan('left'), right = fan('right');
+          if ([top, left, right].some(item => item.count !== opponentCardCount)) return false;
+          if (!opponentCardCount) return true;
+          const felt = root.querySelector('[data-wt-felt]').getBoundingClientRect();
+          const trick = root.querySelector('[data-wt-trick]').getBoundingClientRect();
+          return Math.abs(top.x - felt.left - felt.width / 2) <= 1
+            && Math.abs(left.y - right.y) <= 1
+            && Math.abs(left.y - trick.top - trick.height / 2) <= 1;
+        }), { message: `Fans did not settle: ${viewport.width}x${viewport.height}, ${kind}`, timeout: 3000 }).toBe(true);
         if (kind === 'active-inspection') {
           await expect.poll(() => page.locator('[data-tablet-fixture] .wt-inspection .wt-card').evaluateAll(nodes =>
             nodes.filter(node => getComputedStyle(node).visibility === 'visible').length)).toBe(2);

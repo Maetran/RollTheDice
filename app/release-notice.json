@@ -1,28 +1,29 @@
 {
   "kind": "usability",
   "games": [
-    "zdwa",
-    "zilch",
     "hausdepp",
-    "watten"
+    "watten",
+    "zilch"
   ],
-  "summary_de": "Frische CPU-Namen für neue Watten-Partien, eine aufgeräumte ZDWA-Lobby und klarere Auswertungen aller Spiele im Dashboard.",
-  "summary_en": "Fresh CPU names for new Watten games, a tidier ZDWA lobby and clearer dashboard statistics across all games.",
+  "summary_de": "Klarere Navigation und Dashboard-Menü; der Owner kann die Spielbeobachtung einschalten.",
+  "summary_en": "Clearer navigation and dashboard menu; the owner can enable game observation.",
   "player_notes": {
     "de": {
-      "title": "4.14.1: Frische Namen, klarere Auswertungen",
+      "title": "4.15.0: Klarer unterwegs",
       "changes": [
-        "ZDWA: Unter «Neues Spiel» bleibt kein leerer Kasten mehr stehen.",
-        "WATTEN: Neue Partien wählen zufällige CPU-Namen. Während einer Partie und bei Revanchen bleiben die Namen erhalten.",
-        "DASHBOARD: Hausdepp und Watten erhalten dieselben anonymen Besuchs- und Seitenweg-Auswertungen wie ZDWA und Zilch. Fehlende ältere Daten bleiben erkennbar; Spielmodi, Dauer und verbundene Plätze werden klarer ausgewiesen."
+        "WATTEN: Erfolge & Titel, deine Partien und Rangliste bleiben unter «Spieler & Ranking» an derselben Stelle erreichbar. Konto führt zu den Einstellungen.",
+        "ZILCH: Historie, Ergebnisse und öffentliche Erfolgsprofile zeigen den passenden Menübereich.",
+        "DASHBOARD: Das Menü bleibt beim Scrollen erreichbar, auf schmalen Bildschirmen über eine Menü-Schaltfläche.",
+        "HAUSDEPP & WATTEN: Der Owner kann die standardmässig ausgeschaltete Spielbeobachtung für spätere Auswertungen einschalten."
       ]
     },
     "en": {
-      "title": "4.14.1: Fresh names, clearer statistics",
+      "title": "4.15.0: Easier navigation",
       "changes": [
-        "ZDWA: No empty box remains below New game.",
-        "WATTEN: New games draw random CPU names. Names remain the same during a game and its rematches.",
-        "DASHBOARD: Hausdepp and Watten receive the same anonymous visit and page-journey statistics as ZDWA and Zilch. Missing older data stays visible; game modes, duration and connected seats are explained more clearly."
+        "WATTEN: Achievements & titles, your matches and the leaderboard stay together under Players & Ranking. Account opens settings.",
+        "ZILCH: History, results and public achievement profiles highlight the right menu area.",
+        "DASHBOARD: The menu remains available while scrolling, with a menu button on narrow screens.",
+        "HAUSDEPP & WATTEN: The owner can enable game observation for later analysis; it is off by default."
       ]
     }
   }

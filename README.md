@@ -815,6 +815,36 @@ levels and award values remain labelled as a proposal. Reading older results
 never retrospectively grants XP. Local preview tests require both local preview flags; the
 public release uses the Watten domain.
 
+**Navigation / navigation:** Das Hauptmenü aller Spiele heisst Lobby · Spieler &
+Ranking · Regeln · Konto; auf jeder Seite ist genau ein Bereich markiert. In
+Watten bündelt «Spieler & Ranking» drei Seiten in einer festen Leiste:
+**Erfolge & Titel** (`/watten/konto/fortschritt`, Titel und Sammlung),
+**Deine Partien** (`/watten/konto/verlauf`, Statistik, Lieblingsgegner und Verlauf)
+und **Rangliste** (`/watten/rangliste`, Platzierungen und neueste Erfolge aller
+Spieler). Persönliche und öffentliche Seiten sind gekennzeichnet. «Konto» öffnet
+die Kontoeinstellungen und verlinkt von dort die eigenen Spielwerte:
+`/watten/konto/einstellungen` in öffentlicher Beta und lokaler Vorschau
+(`/watten/konto` leitet dorthin), in der privaten Gründer-Vorschau ohne eigene
+Watten-Einstellungen den Einstellungsbereich des gemeinsamen Kontos
+(`/konto#settings`) mit Links zurück zu Watten.
+Frühere Direktlinks bleiben gültig: `#achievements` und einzelne Erfolgs-IDs
+öffnen die Sammlung, `#statistics` führt zu Deine Partien. In Zilch gehören
+Historie und Ergebnisse zum Konto, öffentliche Erfolgsprofile zu Spieler & Ranking.
+
+All games share the main menu Lobby · Players & Ranking · Rules · Account, with
+exactly one area highlighted. In Watten, Players & Ranking groups three pages in
+one fixed bar: **Achievements & titles** (title and collection), **Your matches**
+(statistics, favorite opponents and history) and **Leaderboard** (standings and
+the latest achievements of all players). Personal and public pages are labelled.
+Account opens the account settings, which link back to your game progress:
+`/watten/konto/einstellungen` in the public beta and local preview
+(`/watten/konto` redirects there); the private founder preview, which has no
+native Watten settings, opens the shared account's settings (`/konto#settings`)
+with links back to Watten.
+Earlier deep links keep working: `#achievements` and single achievement IDs open
+the collection, `#statistics` leads to Your matches. In Zilch, history and results
+belong to Account and public achievement profiles to Players & Ranking.
+
 **Spieltag / play day:** Akzeptierte menschliche Ansagen, Karten und Gebots-
 entscheidungen zählen im lokalen Watten für die kontoweite Tagesaktivität.
 Der Spieltag wird atomar mit dem Spielstand gespeichert. Beitreten, Zuschauen,
@@ -2001,6 +2031,19 @@ Open **Mission Control** through **Game picker → Administration → Dashboard*
 can grant or revoke individual **Dashboard access** in user administration;
 admin and owner roles do not grant access automatically. Revocation applies to
 the next page or API request, including sessions already signed in.
+The header stays within reach while scrolling the long report: wide Mission
+Control and LCARS layouts pin their one-row header, narrower layouts pin a
+compact row whose **Menu** button opens sections, design, language and account
+(Escape closes it and returns focus). Section links, including pinned NEXUS
+panels, jump at once below the header and focus their heading. The NEXUS sidebar on wide screens is unchanged.
+
+**Deutsch:** Der Kopfbereich bleibt beim Scrollen durch den langen Bericht
+erreichbar: Breite Mission-Control- und LCARS-Layouts heften ihre einzeilige
+Kopfleiste an, schmalere Layouts eine kompakte Zeile, deren **Menü**-Schaltfläche
+Bereiche, Design, Sprache und Konto öffnet (Escape schliesst es und setzt den
+Fokus zurück). Abschnittslinks, auch zu angehefteten NEXUS-Panels, springen
+sofort unter den Kopfbereich und setzen den Fokus auf die Überschrift. Die NEXUS-Seitenleiste auf breiten
+Bildschirmen bleibt unverändert.
 
 **Deutsch:** Mission Control zeigt Zugriffe, aktive Seitenzeit, Klick-Aktionen,
 Spielmodi, abgeschlossene Spiele und den Serverzustand. Du öffnest es über
@@ -2103,6 +2146,61 @@ files read-only for CPU, memory and uptime. Disk capacity is the filesystem cont
 the data directory. Host and application uptime are shown separately; missing
 counters are unavailable rather than simulated. See
 [the dashboard runbook](docs/ANALYTICS.md) for operation and rollback.
+
+## Spielbeobachtung / Game observation
+
+**Deutsch:** Die Spielbeobachtung für Hausdepp und Watten ist standardmässig
+abgeschaltet und wird in der Administration unter **Spiele & Funktionen**
+gesteuert. Der Owner kann sie für Partien aller Spieler oder nur für Partien
+mit ausgewählten Konten einschalten. Die Auswahl der Konten wird getrennt von
+den Aufzeichnungen verwaltet. Ausschalten stoppt das Erfassen weiterer Züge; bereits
+gespeicherte Daten bleiben bis zum Ablauf ihrer in der Administration
+angezeigten Aufbewahrungsfrist oder bis zur Löschung erhalten. Das Löschen der
+Aufzeichnungen schaltet die Beobachtung ebenfalls aus.
+
+Die Aufzeichnung speichert angenommene Spielentscheidungen mit zufälliger
+Partiekennung, Sitznummer und Kennzeichnung Mensch oder CPU sowie den zu diesem
+Zeitpunkt relevanten Spielkontext und, soweit vorhanden, das Ergebnis. Bei
+Auswahl einzelner Spieler wird deren eigene Sicht sowie die CPU-Sicht erfasst;
+von anderen menschlichen Sitzen werden nur öffentliche Aktionen und öffentlicher
+Kontext übernommen. Namen, Konto- und Tischkennungen sowie Chat und Audio
+gehören nicht zum Spielprotokoll. Die Daten sind pseudonymisiert: Insbesondere
+bei kleinen Gruppen kann eine Zuordnung trotzdem möglich sein. Sie sind von der
+anonymen Besuchermessung des Analytics-Dashboards getrennt und ihre
+Aufbewahrungsfrist ist unabhängig von jener der Browser-Analytics.
+
+Nur der Owner kann Aufzeichnungen löschen oder exportieren. Laufende Partien
+sind nicht exportierbar; ein Protokoll kann etwa durch einen späteren Start,
+eine Abschaltung oder eine Unterbrechung unvollständig sein und wird entsprechend
+gekennzeichnet. Der Export erfolgt seitenweise und ist keine atomare
+Momentaufnahme. Historische Partien vor Beginn der Aufzeichnung erhalten
+keine nachträglich erfundenen Züge. Die Daten zeigen Entscheidungen und ihren
+Kontext, aber nicht von selbst die Beweggründe eines Menschen.
+
+**English:** Game observation for Hausdepp and Watten is disabled by default
+and controlled under **Administration → Games & Features**. The owner can
+turn it on for games involving all players or only selected accounts. Account
+selection is managed separately from recordings. Turning observation off stops
+new recordings; existing data remains until the retention period shown in
+administration expires or it is deleted. Deleting recordings also switches
+observation off.
+
+A recording stores accepted game decisions under a random game identifier,
+seat number and human/CPU label, with the relevant game context and, when
+available, the result. When individual players are selected, their own
+perspectives and CPU perspectives are recorded; other human seats contribute
+only public actions and public context. Names, account and table identifiers,
+chat and audio are not part of the game record. These data are pseudonymous,
+not guaranteed anonymous: identification may still be possible, especially
+in small groups. They are separate from anonymous dashboard visitor analytics
+and have a separate retention period.
+
+Only the owner can delete or export recordings. Games still in progress cannot
+be exported. A recording may be incomplete, for example if observation starts
+late, is switched off or is interrupted; it is labelled accordingly. Export
+is paginated and is not an atomic snapshot. Earlier games do not acquire
+invented past decisions. The records show decisions and their context, not a
+person's actual reasons for making them.
 
 ## Quick start
 

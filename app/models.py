@@ -39,6 +39,72 @@ class Base(DeclarativeBase):
     pass
 
 
+class ObservationPolicy(Base):
+    """Singleton lock and fail-closed policy for private game recordings."""
+
+    __tablename__ = "observation_policy"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    mode: Mapped[str] = mapped_column(String(16), nullable=False, default="selected")
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    __table_args__ = (
+        CheckConstraint("id = 1", name="ck_observation_policy_singleton"),
+        CheckConstraint("enabled IN (true, false)", name="ck_observation_policy_enabled"),
+        CheckConstraint("mode IN ('all', 'selected')", name="ck_observation_policy_mode"),
+        CheckConstraint("version >= 0", name="ck_observation_policy_version"),
+    )
+
+
+class ObservationSelection(Base):
+    """Admin selection is kept separately and never attached to recordings."""
+
+    __tablename__ = "observation_selections"
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+
+
+class ObservationRecording(Base):
+    __tablename__ = "observation_recordings"
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    game_type: Mapped[str] = mapped_column(String(16), nullable=False)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    policy_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    outcome_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    __table_args__ = (
+        CheckConstraint("game_type IN ('hausdepp', 'watten')", name="ck_observation_recording_game"),
+        CheckConstraint("status IN ('open', 'complete', 'partial')", name="ck_observation_recording_status"),
+        Index("ix_observation_recording_started", "started_at"),
+    )
+
+
+class ObservationEvent(Base):
+    __tablename__ = "observation_events"
+    recording_id: Mapped[str] = mapped_column(ForeignKey("observation_recordings.id", ondelete="CASCADE"), primary_key=True)
+    sequence: Mapped[int] = mapped_column(Integer, primary_key=True)
+    actor_seat: Mapped[int] = mapped_column(Integer, nullable=False)
+    actor_kind: Mapped[str] = mapped_column(String(8), nullable=False)
+    actor_selected: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    action_json: Mapped[str] = mapped_column(Text, nullable=False)
+    context_json: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    __table_args__ = (
+        CheckConstraint("sequence >= 0 AND actor_seat >= 0 AND actor_seat <= 7", name="ck_observation_event_indices"),
+        CheckConstraint("actor_kind IN ('human', 'cpu')", name="ck_observation_event_actor"),
+    )
+
+
+class ObservationAudit(Base):
+    __tablename__ = "observation_audit"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    actor_user_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    actor_username: Mapped[str] = mapped_column(String(32), nullable=False)
+    action: Mapped[str] = mapped_column(String(16), nullable=False)
+    summary_json: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
 class FeaturePolicyLock(Base):
     """One transactional guard for policy changes and game-start snapshots."""
 

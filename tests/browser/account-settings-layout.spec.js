@@ -196,9 +196,13 @@ for (const language of ["de", "en"]) {
     await languageSection.locator(":scope > summary").focus();
     await page.keyboard.press("Enter");
     await expect(page.locator("[data-language] select")).toBeVisible();
+    // The action row keeps Back; the player's progress links live in their own
+    // labelled block, which points into Spieler & Ranking.
     const links = page.locator("#wattenAccount > .actions a");
-    await expect(links).toHaveCount(2);
-    for (const link of await links.all()) {
+    await expect(links).toHaveCount(1);
+    const progressLinks = page.locator("#wattenAccount [data-watten-player-links] a");
+    await expect(progressLinks).toHaveCount(2);
+    for (const link of [...await links.all(), ...await progressLinks.all()]) {
       await expect(link).toHaveClass(/button-link/);
       expect(await link.evaluate(node => node.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
     }

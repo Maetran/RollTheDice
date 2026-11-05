@@ -1,5 +1,6 @@
 import { apiFetch, escapeHtml, loadAuth } from "../shared/auth.js";
 import { ADMIN_FEATURE_MESSAGES } from "../i18n/catalog.js";
+import { mountObservation } from "./observation.js";
 
 async function initialize() {
 const panel = document.getElementById("featuresPanel");
@@ -159,6 +160,7 @@ async function save(event) {
 }
 
 if (panel) {
+  mountObservation(panel);
   panel.addEventListener("submit", save);
   panel.addEventListener("change", event => {
     if (event.target.name !== "status") return;

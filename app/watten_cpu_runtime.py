@@ -415,6 +415,10 @@ async def _run(game: dict, player: str, job: _Job) -> None:
                 calls = {(item.kind, item.seat, item.value) for item in candidate["_watten"].deliveries
                          if item.delivery_id not in previous}
                 persist_watten_game(candidate, expected_source=authority.source, commit_guard=_commit_guard(authority))
+                from .decision_observation_runtime import emit_observation, finish_terminal_observations
+
+                emit_observation(candidate.pop("_decision_observation_pending", None))
+                finish_terminal_observations(candidate)
                 game.clear()
                 game.update(candidate)
                 events = tuple({"kind": kind, "seat": seat, "value": value} for kind, seat, value in sorted(calls))

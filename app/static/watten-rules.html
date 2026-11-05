@@ -9,14 +9,14 @@
   <meta name="color-scheme" content="light">
   <title>Watten – Spielregeln / Rules</title>
   <script>{let d="classic";try{if(localStorage.getItem("watten_design")==="tirol")d="tirol"}catch(_){}document.documentElement.dataset.wattenDesign=d}</script>
-  <link rel="stylesheet" href="/static/watten-game.css?v=c11e00b88a29">
-  <link rel="stylesheet" href="/static/suite-header.css?v=c11e00b88a29">
-  <link rel="stylesheet" href="/static/watten-design.css?v=c11e00b88a29">
+  <link rel="stylesheet" href="/static/watten-game.css?v=59f49bca273e">
+  <link rel="stylesheet" href="/static/suite-header.css?v=59f49bca273e">
+  <link rel="stylesheet" href="/static/watten-design.css?v=59f49bca273e">
 </head>
 <body class="wt-body">
   <a class="wt-skip" href="#wattenApp">Zum Inhalt / Skip to content</a>
   <header class="wt-header suite-header">
-    <a class="wt-brand suite-header__brand" href="/watten" translate="no"><img class="suite-header__icon" src="/static/watten/icons/watten-icon-32.png?v=c11e00b88a29" width="32" height="32" alt=""><span>Watten</span></a>
+    <a class="wt-brand suite-header__brand" href="/watten" translate="no"><img class="suite-header__icon" src="/static/watten/icons/watten-icon-32.png?v=59f49bca273e" width="32" height="32" alt=""><span>Watten</span></a>
     <div class="suite-header__tools">
       <label class="wt-language"><span class="wt-visually-hidden">Sprache / Language</span><select data-language-switcher aria-label="Sprache / Language"><option value="de">Deutsch</option><option value="en">English</option></select></label>
       <button type="button" class="wt-design-toggle" data-theme-toggle data-watten-design-toggle aria-label="Darstellung wechseln: Klassisch. Nächste Darstellung: Tirol." title="Darstellung wechseln: Klassisch. Nächste Darstellung: Tirol."><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="6" y="3" width="12" height="18" rx="2"/><path d="m12 8 3 4-3 4-3-4z"/></svg></button>
@@ -24,9 +24,9 @@
     </div>
     <nav class="wt-nav suite-header__nav" data-watten-nav aria-label="Watten">
       <a href="/watten">Lobby</a>
-      <a href="/watten/rangliste">Spieler &amp; Ranking</a>
+      <a href="/watten/rangliste" data-watten-ranking-link>Spieler &amp; Ranking</a>
       <a href="/watten/regeln" aria-current="page">Regeln</a>
-      <a href="/watten/konto/fortschritt" data-watten-account-link>Konto</a>
+      <a href="/watten/konto/einstellungen" data-watten-account-link>Konto</a>
     </nav>
   </header>
   <main id="wattenApp" class="wt-main wt-rules" tabindex="-1">
@@ -149,9 +149,12 @@
       <section id="fortschritt"><h2>Erfolge und Wirtshaustitel</h2>
         <p>Im Abschluss und im Revanche-Warteraum steht der Nockerlstand gross im Vordergrund. Feste Teams stehen nebeneinander; Tischregeln und Spieloptionen sind zunächst eingeklappt. Eine Revanche setzt dieselben Mitspieler und deren Nockerl fort. Deshalb gibt es dort keine allgemeine Einladung. Im Abschluss findest du Revanche und Lobby direkt; Reaktionen und weitere Daten liegen unter «Spieldetails».</p>
         <p>Abgeschlossene Partien erscheinen in deinem eigenen Verlauf. Partie-XP und einmalige Erfolge bauen deinen dauerhaften Wirtshaustitel auf; Spielpunkte entscheiden weiterhin die Partie. XP stehen für Ausdauer am Tisch und sind kein Mass für Spielstärke. In der lokalen Vorschau sind XP, Erfolgswerte und Titelstufen als Entwurf gekennzeichnet.</p>
-        <p>Jeder Erfolg nennt seine Bedingung. Pausen löschen keinen Fortschritt. Ältere Partien ohne belegte Variante oder Gebote erhalten beim Anschauen keine nachträglichen Erfolge. «Gesehen» beim Partieabschluss bestätigt nur die Belohnungen dieser Partie. Im Konto kannst du die dort angezeigten übrigen Fortschritte bestätigen.</p>
+        <p>Jeder Erfolg nennt seine Bedingung. Pausen löschen keinen Fortschritt. Ältere Partien ohne belegte Variante oder Gebote erhalten beim Anschauen keine nachträglichen Erfolge. «Gesehen» beim Partieabschluss bestätigt nur die Belohnungen dieser Partie. Unter Spieler &amp; Ranking → Erfolge &amp; Titel kannst du die dort angezeigten übrigen Fortschritte bestätigen. Deine Partien zeigen Statistik, Lieblingsgegner und Verlauf nur dir; die Rangliste zeigt Platzierungen und neueste Erfolge aller Watten-Spieler. Konto führt zu deinen Kontoeinstellungen.</p>
         <p>Die Sammlung zeigt erreichte und offene Ziele, Kategorien, tatsächliche Erfolgs-EP und eine aufklappbare Leiter aller 22 Titel. Filtern bestätigt keine ungelesenen Belohnungen. Zwei seltene Ziele kommen hinzu: bis elf nach mindestens sieben Punkten Rückstand gewinnen (ohne angenommenen Retourschneider; zu dritt am Ende mindestens gleichauf mit allen anderen), oder eine Partie gewinnen, in der die eigene Seite mindestens drei Runden gewinnt und jede ihrer gewonnenen Runden mehr als zwei Punkte bringt. Dabei musst du selbst mindestens einmal bieten, kontern oder halten.</p>
         <p class="wt-page-actions"><a class="wt-button wt-button--ghost" href="/watten/konto/fortschritt">Zu Erfolgen &amp; Titeln</a><a class="wt-button wt-button--ghost" href="/watten/konto/verlauf">Zu deinen Partien</a><a class="wt-button wt-button--ghost" href="/watten/rangliste">Zur Rangliste</a></p>
+      </section>
+      <section id="spielbeobachtung"><h2>Spielbeobachtung</h2>
+        <p>Der Owner kann die standardmässig ausgeschaltete Spielbeobachtung für alle Partien oder für Partien mit ausgewählten Konten einschalten. Sie speichert Spielentscheidungen und zugehörigen Kontext unter einer zufälligen Kennung mit Sitznummer und Mensch-/CPU-Kennzeichnung. Bei ausgewählten Konten werden deren eigene Sicht und CPU-Sichten erfasst; von anderen menschlichen Sitzen nur öffentliche Aktionen und öffentlicher Kontext. Namen, Konto- und Tischkennungen, Chat und Audio gehören nicht zum Spielprotokoll. Die Daten sind pseudonymisiert und können insbesondere bei kleinen Gruppen trotzdem zugeordnet werden. Der Owner kann Aufzeichnungen löschen und erst nach gesichertem Partieende exportieren; sie werden zeitlich begrenzt aufbewahrt. Unvollständige Aufzeichnungen sind gekennzeichnet.</p>
       </section>
       <section id="kartenquelle" class="wt-credits"><h2>Kartenbilder</h2>
         <p>Kartenfoto: FUZxxl; Kontrast: Karl432. «Doppeldeutsche Preference», <a class="wt-button wt-button--ghost wt-button--small" href="https://commons.wikimedia.org/wiki/File:Doppeldeutsche_Preference.JPG" target="_blank" rel="noopener noreferrer">Wikimedia Commons</a>, <a class="wt-button wt-button--ghost wt-button--small" href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noopener noreferrer">CC BY 3.0</a>. Laub-Zehn: SZERVÁC Attila, <a class="wt-button wt-button--ghost wt-button--small" href="https://commons.wikimedia.org/wiki/File:Original-Hungarian-Tell-set.jpg" target="_blank" rel="noopener noreferrer">Wikimedia Commons</a>, <a class="wt-button wt-button--ghost wt-button--small" href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a>. Ausschnitt, Entzerrung, Weissabgleich und Schärfung durch Darstellung.</p>
@@ -275,9 +278,12 @@
       <section id="progress"><h2>Achievements and pub titles</h2>
         <p>Results and the rematch waiting room highlight loss-mark totals. Fixed teams sit side by side; table rules and game options start collapsed. A rematch continues with the same players and loss marks, so it offers no general invitation. Results provide Rematch and Lobby directly; reactions and further information live under “Match details”.</p>
         <p>Completed matches appear in your own history. Match XP and one-time achievements build your permanent pub title; match points still decide the match. XP measures persistence at the table and is not a measure of playing strength. In the local preview, XP, achievement values and title levels are labelled as a proposal.</p>
-        <p>Every achievement explains its condition. Taking a break never erases progress. Viewing older matches without evidenced variants or bids never grants retrospective achievements. “Seen” at match end acknowledges only that match's rewards. Your account lets you acknowledge the other progress displayed there.</p>
+        <p>Every achievement explains its condition. Taking a break never erases progress. Viewing older matches without evidenced variants or bids never grants retrospective achievements. “Seen” at match end acknowledges only that match's rewards. Under Players &amp; Ranking → Achievements &amp; titles you can acknowledge the other progress displayed there. Your matches show statistics, favorite opponents and history to you alone; the leaderboard shows standings and recent achievements of all Watten players. Account opens your account settings.</p>
         <p>The collection shows earned and open goals, categories, actual achievement XP and an expandable ladder of all 22 titles. Filtering never acknowledges unread rewards. Two rare goals are added: win to eleven after trailing by at least seven (without an accepted Retourschneider; with three players finish level with or ahead of everyone), or win a match in which your side wins at least three deals and every deal it wins is worth more than two points. You must initiate, counter or hold at least once yourself.</p>
         <p class="wt-page-actions"><a class="wt-button wt-button--ghost" href="/watten/konto/fortschritt">Your achievements &amp; titles</a><a class="wt-button wt-button--ghost" href="/watten/konto/verlauf">Your matches</a><a class="wt-button wt-button--ghost" href="/watten/rangliste">Leaderboard</a></p>
+      </section>
+      <section id="game-observation"><h2>Game observation</h2>
+        <p>The owner can enable game observation, which is off by default, for all games or games involving selected accounts. It stores game decisions and their context under a random identifier, with seat numbers and human/CPU labels. When accounts are selected, their own perspectives and CPU perspectives are recorded; other human seats contribute only public actions and context. Names, account and table identifiers, chat and audio are not part of the game record. The data are pseudonymous and may still be identifiable, especially in small groups. The owner can export recordings only after the game has safely ended and can delete them; they are retained for a limited period. Incomplete recordings are labelled.</p>
       </section>
       <section id="card-credits" class="wt-credits"><h2>Card artwork</h2>
         <p>Card photograph: FUZxxl; contrast: Karl432. “Doppeldeutsche Preference”, <a class="wt-button wt-button--ghost wt-button--small" href="https://commons.wikimedia.org/wiki/File:Doppeldeutsche_Preference.JPG" target="_blank" rel="noopener noreferrer">Wikimedia Commons</a>, <a class="wt-button wt-button--ghost wt-button--small" href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noopener noreferrer">CC BY 3.0</a>. Ten of Leaves: SZERVÁC Attila, <a class="wt-button wt-button--ghost wt-button--small" href="https://commons.wikimedia.org/wiki/File:Original-Hungarian-Tell-set.jpg" target="_blank" rel="noopener noreferrer">Wikimedia Commons</a>, <a class="wt-button wt-button--ghost wt-button--small" href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a>. Cropped, rectified, white-balanced and sharpened in presentation.</p>
@@ -285,6 +291,6 @@
       <p><a class="wt-button" href="/watten">To the lobby</a></p>
     </article>
   </main>
-  <script type="module" src="/static/watten-game.js?v=c11e00b88a29"></script>
+  <script type="module" src="/static/watten-game.js?v=59f49bca273e"></script>
 </body>
 </html>

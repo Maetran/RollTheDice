@@ -78,6 +78,18 @@ def apply_hausdepp_command(game: dict, player_id: str, command: dict, *, trusted
     game["_hausdepp"] = apply_action(before, player_id, command["action"],
                                       cards=command.get("cards"), version=version)
     state = game["_hausdepp"]
+    try:
+        from .decision_observation_runtime import _eligible_accounts, policy_version_for, prepare_hausdepp
+
+        policy_version = policy_version_for(_eligible_accounts(game["_participants"]))
+        if policy_version is not None:
+            game["_decision_observation_pending"] = prepare_hausdepp(
+                game, before, state, player_id, command, policy_version=policy_version)
+        else:
+            game.pop("_decision_observation_pending", None)
+    except Exception:
+        game.pop("_decision_observation_pending", None)
+        logger.warning("Optional decision projection was not prepared")
     _observe_cpu_transition(game, before, state)
     if not trusted_cpu:
         from .hausdepp_cpu_runner import note_human_presentation
@@ -97,7 +109,13 @@ def apply_hausdepp_command(game: dict, player_id: str, command: dict, *, trusted
 async def publish_hausdepp_transition(game: dict, *, finalize_game=None) -> None:
     from .game_snapshot import snapshot
 
-    save_active_game(game)
+    checkpoint_saved = save_active_game(game)
+    from .decision_observation_runtime import emit_observation, finish_terminal_observations
+
+    pending_observation = game.pop("_decision_observation_pending", None)
+    if checkpoint_saved:
+        emit_observation(pending_observation)
+        finish_terminal_observations(game)
     # The finished board triggers account loading. Commit durable round credits
     # first so that first account read can already show the earned XP and rank.
     if game.get("_finished") and not game.get("_aborted") and finalize_game:

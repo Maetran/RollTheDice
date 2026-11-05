@@ -68,9 +68,9 @@ export function createFavorites({ t, number, doc = document } = {}) {
       if (!target.matches("button, a, input, select, textarea, [tabindex]")) target.tabIndex = -1;
       target.focus({ preventScroll: true });
     }
-    const paused = doc.documentElement.dataset.motion === "paused"
-      || doc.defaultView.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    node.scrollIntoView({ block: "start", behavior: focus && !paused ? "smooth" : "instant" });
+    // Like other section links, pinned targets jump at once: charts rendering
+    // during a smooth scroll could stop it short of the panel.
+    node.scrollIntoView({ block: "start", behavior: "instant" });
     return true;
   }
 

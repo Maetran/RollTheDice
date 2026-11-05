@@ -380,8 +380,16 @@ html[lang="en"] .wt-rules-text[lang="de"], html:not([lang="en"]) .wt-rules-text[
 }
 
 /* Personal progress and standings share the table's paper and type. */
-.wt-progress-tabs { display: flex; flex-wrap: wrap; gap: .4rem; margin: .75rem 0; }
-.wt-progress-tabs a { display: inline-flex; align-items: center; min-height: 44px; padding: .4rem .75rem; border: 1px solid var(--wt-green); border-radius: 8px; }
+/* One row of three equal destinations keeps the bar in place on every page. */
+.wt-progress-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .4rem; margin: 0 0 .75rem; }
+.wt-progress-tabs a { display: flex; align-items: center; justify-content: center; min-width: 0; min-height: 44px; padding: .4rem .5rem; border: 1px solid var(--wt-green); border-radius: 8px; text-align: center; line-height: 1.25; overflow-wrap: anywhere; text-wrap: balance; }
+@media (max-width: 420px) {
+  /* Long labels use the room of shorter neighbours and break between words. */
+  .wt-progress-tabs { grid-template-columns: repeat(3, auto); }
+  .wt-progress-tabs a { padding-inline: .3rem; font-size: .82rem; overflow-wrap: normal; hyphens: manual; }
+}
+.wt-progress-scope { margin: 0 0 1rem; color: var(--wt-muted); font-size: .92rem; }
+.wt-progress-statistics, .wt-favorite-opponents, .wt-progress-history { margin-bottom: 1rem; overflow-wrap: anywhere; }
 .wt-progress-tabs [aria-current] { background: var(--wt-green); color: var(--wt-paper); }
 .wt-draft-note { padding: .5rem .75rem; border-left: 3px solid var(--wt-gold-ink); }
 .wt-progress-title, .wt-progress-pending { margin-bottom: 1rem; overflow-wrap: anywhere; }
@@ -394,7 +402,7 @@ html[lang="en"] .wt-rules-text[lang="de"], html:not([lang="en"]) .wt-rules-text[
 #wattenProgress progress { width: 100%; height: 1rem; accent-color: var(--wt-green); }
 .wt-match-history { list-style: none; margin: 0; padding: 0; }
 .wt-match-history > li { border-block-start: 1px solid var(--wt-paper-edge); padding-block: 1rem; overflow-wrap: anywhere; }
-.wt-match-history h2 { font-size: 1.2rem; }
+.wt-match-history h3 { font-size: 1.2rem; }
 .wt-rank-filters { display: flex; flex-wrap: wrap; gap: .75rem; align-items: end; margin-bottom: 1rem; }
 .wt-rank-filters label { flex: 1 1 12rem; min-width: 0; }
 .wt-ranking-scroll { overflow-x: auto; }
@@ -459,7 +467,7 @@ html[lang="en"] .wt-rules-text[lang="de"], html:not([lang="en"]) .wt-rules-text[
 
 /* Private progress keeps the same warm paper and compact rhythm as the lobby. */
 html[data-watten-progress-page] .wt-main { max-width: 1100px; padding: clamp(14px, 3vw, 28px); }
-html[data-watten-progress-page] .wt-progress-tabs { gap: 6px; padding: 5px; border: 1px solid #b38a5d66; border-radius: 12px; background: #dfc7a4; width: fit-content; max-width: 100%; }
+html[data-watten-progress-page] .wt-progress-tabs { gap: 6px; padding: 5px; border: 1px solid #b38a5d66; border-radius: 12px; background: #dfc7a4; width: min(100%, 40rem); }
 html[data-watten-progress-page] .wt-progress-tabs a { border: 0; border-radius: 8px; color: #633a28; font-weight: 600; text-decoration: none; }
 html[data-watten-progress-page] .wt-progress-tabs [aria-current] { background: #823a2b; color: #fff5df; box-shadow: 0 2px 5px #5b321e25; }
 html[data-watten-progress-page] .wt-progress-title { padding: clamp(16px, 3vw, 24px); border: 1px solid #ba9366; border-radius: 14px; background: linear-gradient(130deg, #fff4de, #ead4b4); box-shadow: 0 5px 18px #64402b14; }

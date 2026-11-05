@@ -186,7 +186,11 @@ async def _end_game(session: GameSocketSession, _data: dict[str, Any]) -> None:
     session.game["_manual_pause_at"] = None
     touch(session.game)
     session.game["_finished_at"] = session.game.get("_updated_at")
-    save_active_game(session.game)
+    saved = save_active_game(session.game)
+    if saved and session.game.get("_game_type") == "hausdepp":
+        from .decision_observation_runtime import finish_terminal_observations
+
+        finish_terminal_observations(session.game)
     try:
         await broadcast(session.game, {"notice": {"type": "ended", "by": by_name}})
     except Exception:
