@@ -30,6 +30,12 @@ for (const language of ['de', 'en']) {
       await own.page.locator('[data-watten-match-result] a[href="/watten/konto/fortschritt"]').click();
       await expect(own.page).toHaveURL(/\/watten\/konto\/fortschritt$/);
       await expect(own.page.locator('#wattenProgress > h1')).toHaveText(language === 'de' ? 'Erfolge & Titel' : 'Achievements & titles');
+      // The result link opens Spieler & Ranking with its collection, not account settings.
+      await expect(own.page.locator('.suite-header__nav [aria-current="page"]')).toHaveText(language === 'de' ? 'Spieler & Ranking' : 'Players & Ranking');
+      await expect(own.page.locator('[data-ranking-destination=progress]')).toHaveAttribute('aria-current', 'page');
+      await expect(own.page.locator('[data-progress-scope=private]')).toBeVisible();
+      await expect(own.page.locator('.wt-achievement-collection')).toBeVisible();
+      await expect(own.page.locator('[data-account-navigation]')).toHaveCount(0);
       await expect(own.page.locator('html')).toHaveAttribute('lang', language);
       await expect(own.page.locator('.wt-progress-title h2')).toHaveText(account.progress.title.name[language]);
       const goals = account.progress.achievements;
@@ -44,8 +50,7 @@ for (const language of ['de', 'en']) {
       expect(await ladder.locator('li strong').allTextContents()).toEqual(account.progress.titles.map(item => item.name[language]));
       await ladder.screenshot({ path: testInfo.outputPath('titles-expanded.png') });
       await ladder.locator('summary').click();
-      await own.page.locator('[data-account-destination=achievements]').click();
-      await expect(own.page.locator('.wt-feed')).toContainText(own.user.username);
+      await expect(own.page.locator('[data-progress-feed]')).toHaveCount(0);
       await expect(own.page.locator('[data-progress-action=acknowledge]')).toBeVisible();
       const acknowledgements = [];
       own.page.on('request', request => {
@@ -120,11 +125,15 @@ for (const language of ['de', 'en']) {
       await expect(own.page.locator('.wt-match-history > li')).toHaveCount(1);
       await expect(own.page.locator('#wattenProgress [aria-current="page"]')).toHaveCount(1);
       await expect(own.page.locator('#wattenProgress [aria-current="page"]')).toHaveAttribute('href', '/watten/konto/verlauf');
-      await expect(own.page.locator('[data-account-navigation] a')).toHaveCount(3);
+      await expect(own.page.locator('.wt-progress-tabs a')).toHaveCount(3);
+      await expect(own.page.locator('.suite-header__nav [aria-current="page"]')).toHaveAttribute('href', '/watten/rangliste');
+      await expect(own.page.locator('#statistics .wt-progress-match-stats dd').first()).toHaveText('1');
       await expect(own.page.locator('.wt-match-history')).toContainText(players[1].user.username);
       expect(await own.page.locator('[data-progress-match]').getAttribute('data-progress-match')).toBe(gamePath.split('/').pop());
       await own.page.locator('.wt-progress-tabs a[href="/watten/rangliste"]').click();
       await expect(own.page.locator('.wt-progress-tabs a[href="/watten/konto/fortschritt"]')).toHaveText(language === 'de' ? 'Erfolge & Titel' : 'Achievements & titles');
+      await expect(own.page.locator('[data-progress-scope=public]')).toBeVisible();
+      await expect(own.page.locator('.wt-feed')).toContainText(own.user.username);
       const form = own.page.locator('[data-progress-ranking]');
       await expect(form.locator('[name=players]')).toBeDisabled();
       await expect(own.page.locator('.wt-ranking .is-own')).toContainText(own.user.username);
@@ -144,7 +153,6 @@ test('an initial account read failure exposes a working retry and never invents 
   try {
     await own.page.route('**/api/watten/account', route => route.fulfill({ status: 503, json: { detail: 'unavailable' } }));
     await own.page.goto('/watten/konto/fortschritt');
-    await own.page.locator('[data-account-destination=achievements]').click();
     await expect(own.page.locator('[data-progress-error]')).toContainText('nicht vollständig');
     await expect(own.page.locator('.wt-progress-title')).toHaveCount(0);
     await expect(own.page.locator('[data-progress-loading]')).toHaveCount(0);
@@ -197,7 +205,6 @@ test('a cookie account switch between initial identity and private GET rejects t
       await route.fulfill({ response });
     });
     await own.page.goto('/watten/konto/fortschritt');
-    await own.page.locator('[data-account-destination=achievements]').click();
     await expect.poll(() => !!unblock).toBe(true);
     expect(attempted).toBe(String(own.user.id));
     await own.context.clearCookies();
@@ -244,7 +251,6 @@ test('a future catalog pending grant keeps its archive label instead of claiming
     account.progress.grant_sequence = 1;
     await own.page.route('**/api/watten/account', route => route.fulfill({ json: account }));
     await own.page.goto('/watten/konto/fortschritt');
-    await own.page.locator('[data-account-destination=achievements]').click();
     const pending = own.page.locator('[data-progress-pending]');
     await expect(pending).toContainText('Gespeicherter Watten-Erfolg');
     await expect(pending).not.toContainText(goal.name.de);
@@ -268,7 +274,6 @@ for (const language of ['de', 'en']) {
       await own.page.setViewportSize({ width: 320, height: 568 });
       await own.page.route('**/api/watten/account', route => route.fulfill({ json: account }));
       await own.page.goto('/watten/konto/fortschritt');
-    await own.page.locator('[data-account-destination=achievements]').click();
       const card = own.page.locator(`#${goal.id}`);
       await expect(card.locator('summary')).toContainText(language === 'de' ? '73 XP verbucht' : '73 XP credited');
       await expect(card.locator('summary')).not.toContainText('10 XP');
@@ -290,7 +295,6 @@ test('zero and top-title views use the authoritative ladder without a phantom ne
     const account = await (await own.context.request.get('/api/watten/account')).json();
     await own.page.route('**/api/watten/account', route => route.fulfill({ json: account }));
     await own.page.goto('/watten/konto/fortschritt');
-    await own.page.locator('[data-account-destination=achievements]').click();
     await expect(own.page.locator('.wt-progress-total')).toContainText('0');
     await own.page.locator('[data-achievement-status=earned]').click();
     await expect(own.page.locator('[data-achievement-empty]')).toBeVisible();
@@ -313,6 +317,7 @@ test('pagehide clears private filters and a late feed; persisted pageshow reload
   const own = await player(browser, baseURL);
   let unblock, completed;
   try {
+    // The public feed now lives on the leaderboard page of Spieler & Ranking.
     await own.page.route('**/api/watten/achievements/feed?**', async route => {
       await new Promise(resolve => { unblock = resolve; });
       try { await route.fulfill({ json: { schema_version: 1, game_type: 'watten', coverage: { complete: true },
@@ -320,18 +325,21 @@ test('pagehide clears private filters and a late feed; persisted pageshow reload
       catch { /* pagehide aborts the pending request. */ }
       completed?.();
     });
-    await own.page.goto('/watten/konto/fortschritt');
-    await own.page.locator('[data-account-destination=achievements]').click();
+    await own.page.goto('/watten/rangliste');
     await expect.poll(() => !!unblock).toBe(true);
-    await own.page.locator('[data-achievement-status=earned]').click();
-    await expect(own.page.locator('[data-achievement-empty]')).toBeVisible();
     await own.page.evaluate(() => dispatchEvent(new PageTransitionEvent('pagehide', { persisted: true })));
     await expect(own.page.locator('#wattenProgress')).toBeEmpty();
     const completion = new Promise(resolve => { completed = resolve; });
     unblock(); unblock = null; await completion;
-    await own.page.evaluate(() => { location.hash = '#watten_matches_1'; });
     await expect(own.page.locator('#wattenProgress')).toBeEmpty();
     await own.page.unroute('**/api/watten/achievements/feed?**');
+    await own.page.goto('/watten/konto/fortschritt');
+    await own.page.locator('[data-achievement-status=earned]').click();
+    await expect(own.page.locator('[data-achievement-empty]')).toBeVisible();
+    await own.page.evaluate(() => dispatchEvent(new PageTransitionEvent('pagehide', { persisted: true })));
+    await expect(own.page.locator('#wattenProgress')).toBeEmpty();
+    await own.page.evaluate(() => { location.hash = '#watten_matches_1'; });
+    await expect(own.page.locator('#wattenProgress')).toBeEmpty();
     await own.page.evaluate(() => dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true })));
     await expect(own.page.locator('.wt-progress-total')).toContainText('0');
     await expect(own.page.locator('[data-achievement-status=all]')).toHaveAttribute('aria-pressed', 'true');
@@ -354,8 +362,7 @@ test('retrying a failed feed page does not skip the missing page', async ({ brow
       await route.fulfill({ json: { ...base, pagination: { page, limit: 12, total_entries: 25,
         total_pages: 3, has_next: page < 3, has_previous: page > 1 } } });
     });
-    await own.page.goto('/watten/konto/fortschritt');
-    await own.page.locator('[data-account-destination=achievements]').click();
+    await own.page.goto('/watten/rangliste');
     const next = own.page.locator('[data-progress-action=feed-next]');
     await expect(next).toBeEnabled(); await next.click();
     await expect(own.page.locator('[data-progress-error]')).toContainText('nicht vollständig');
@@ -374,7 +381,10 @@ test('favorite opponents show a private bilingual record on mobile and desktop',
     await own.page.route('**/api/watten/account', route => route.fulfill({ json: account }));
     for (const viewport of [{ width: 320, height: 700 }, { width: 1280, height: 800 }]) {
       await own.page.setViewportSize(viewport);
+      // A former statistics deep link opens the history page with statistics.
       await own.page.goto('/watten/konto/fortschritt#statistics');
+      await expect(own.page).toHaveURL(/\/watten\/konto\/verlauf#statistics$/);
+      await expect(own.page.locator('[data-ranking-destination=history]')).toHaveAttribute('aria-current', 'page');
       const section = own.page.locator('.wt-favorite-opponents');
       await expect(section).toContainText('Deine Lieblingsgegner');
       await expect(section).toContainText('Mila <M>');

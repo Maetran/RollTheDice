@@ -5,6 +5,7 @@
 @import "./dashboard-lcars.css";
 @import "./dashboard-design.css";
 @import "./dashboard-nexus.css";
+@import "./dashboard-header.css";
 
 .design-tool{display:flex;align-items:center;gap:8px;min-width:0}
 .design-tool>span{font:10px var(--mono);color:var(--muted)}

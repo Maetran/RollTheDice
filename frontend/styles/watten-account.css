@@ -72,3 +72,9 @@ aside { padding: .75rem; border-left: 3px solid var(--accent); }
 
 body { background: linear-gradient(#ead8b9, #dfc49c); min-height: 100dvh; }
 main { box-shadow: 0 8px 24px #69432d16; }
+
+/* Settings point to personal progress in Spieler & Ranking without a second tab bar. */
+.wt-account-player-links { margin-block: 1rem; padding: 1rem; border: 1px solid var(--wt-paper-edge, var(--border)); border-radius: 10px; background: var(--wt-paper, var(--card)); overflow-wrap: anywhere; }
+.wt-account-player-links h2 { margin: 0 0 .4rem; font-size: 1.1rem; }
+.wt-account-player-links p { margin: 0 0 .75rem; line-height: 1.5; }
+.wt-account-player-links .actions { display: flex; flex-wrap: wrap; gap: .5rem; margin: 0; }

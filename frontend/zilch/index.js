@@ -637,8 +637,15 @@ function routeKind() {
   return "lobby";
 }
 
+// Every non-table page marks exactly one main-menu context: public award
+// profiles belong to Spieler & Ranking; private history and results to Konto.
+const ZILCH_NAVIGATION_CONTEXT = Object.freeze({
+  "player-achievements": "leaderboards", history: "account", result: "account",
+  statistics: "account", achievements: "account",
+});
+
 function navigationRouteKind() {
-  return routeKind() === "player-achievements" ? "achievements" : routeKind();
+  return ZILCH_NAVIGATION_CONTEXT[routeKind()] || routeKind();
 }
 
 function renderNavigation() {

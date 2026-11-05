@@ -1,10 +1,10 @@
 {
-  "version": "4.14.2",
+  "version": "4.14.3",
   "bump": "patch",
-  "date": "2026-11-04",
-  "previous_revision": "a206eabe3b4260eeebf99da595243715a7cdbaca",
+  "date": "2026-11-05",
+  "previous_revision": "9bf9cd2c31fb4b5a4b90d77ba88b5816ee47bd91",
   "summary": {
-    "de": "Hausdepp und Watten spielen ihre Karten bewusster und fairer.",
-    "en": "Hausdepp and Watten play their cards more thoughtfully and fairly."
+    "de": "Watten bündelt Erfolge, Partien und Rangliste unter Spieler & Ranking; Zilch markiert Bereiche klarer und das Dashboard-Menü bleibt beim Scrollen erreichbar.",
+    "en": "Watten groups achievements, matches and leaderboard under Players & Ranking; Zilch marks areas more clearly and the dashboard menu stays within reach while scrolling."
   }
 }

@@ -6,7 +6,6 @@ import { initializeWattenPwa } from "./pwa.js";
 import { WATTEN_PROGRESS_MESSAGES } from "../i18n/catalog.js";
 import { initializeSuiteHeader } from "../shell/header.js";
 import { initializeAppMode } from "../multigame/app-mode.js";
-import { accountNavigationMarkup } from "../shared/account-navigation.js";
 import { mountAccountMergeNotice } from "../shared/account-merge-notice.js";
 import { initializeReleaseNotes } from "../shared/release-notes.js";
 import { initializeAnalytics } from "../shared/analytics.js";
@@ -16,7 +15,12 @@ initializeAnalytics();
 initializeSuiteHeader();
 const root = document.getElementById("wattenProgress");
 const page = document.documentElement.dataset.wattenProgressPage;
-document.querySelector(`[data-watten-progress-nav] a[href="${page === 'leaderboard' ? '/watten/rangliste' : '/watten/konto/fortschritt'}"]`)?.setAttribute("aria-current", "page");
+// All three destinations belong to Spieler & Ranking. The account entry stays
+// with the settings, so the main menu never changes context between them.
+document.querySelector('[data-watten-progress-nav] [data-watten-ranking-link]')?.setAttribute("aria-current", "page");
+// Former statistics deep links now open the matching personal page.
+const legacyStatistics = page === "progress" && location.hash === "#statistics";
+if (legacyStatistics) location.replace("/watten/konto/verlauf#statistics");
 const language = () => window.ZDWA_I18N.getLanguage() === "en" ? "en" : "de";
 const t = (key, values = {}) => String(WATTEN_PROGRESS_MESSAGES[language()][key] ?? key)
   .replace(/\{(\w+)\}/g, (_, name) => String(values[name] ?? ""));
@@ -45,16 +49,18 @@ document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible" && !navigating) void loadAuth({ refresh: true }).catch(() => undefined);
 });
 
+// One stable bar for every page of the area: same order, place and size.
 function navigation() {
-  if (page !== 'leaderboard') return accountNavigationMarkup({ statistics: '/watten/konto/fortschritt#statistics', achievements: '/watten/konto/fortschritt#achievements', settings: '/watten/konto/einstellungen', current: page === 'progress' ? (location.hash === '#achievements' ? 'achievements' : 'statistics') : null })
-    + `<nav class="wt-progress-tabs" aria-label="${esc(t("navigation"))}"><a href="/watten/konto/verlauf"${page === 'history' ? ' aria-current="page"' : ''}>${esc(t('history'))}</a><a href="/watten/rangliste">${esc(t('leaderboard'))}</a></nav>`;
-  return `<nav class="wt-progress-tabs" aria-label="${esc(t("navigation"))}">${[
+  return `<nav class="wt-progress-tabs" data-ranking-navigation aria-label="${esc(t("navigation"))}">${[
     ["progress", "/watten/konto/fortschritt"], ["history", "/watten/konto/verlauf"], ["leaderboard", "/watten/rangliste"],
-  ].map(([key, url]) => `<a href="${url}"${page === key ? ' aria-current="page"' : ""}>${esc(t(key))}</a>`).join("")}</nav>`;
+  ].map(([key, url]) => `<a href="${url}" data-ranking-destination="${key}"${page === key ? ' aria-current="page"' : ""}>${esc(t(key))}</a>`).join("")}</nav>`;
 }
 
 function shell(content) {
-  root.innerHTML = `<h1>${esc(t(page))}</h1>${navigation()}
+  const scope = page === "leaderboard" ? "scopePublic" : "scopePrivate";
+  // The bar comes first so title length or language never moves it.
+  root.innerHTML = `${navigation()}<h1>${esc(t(page))}</h1>
+    <p class="wt-progress-scope" data-progress-scope="${page === "leaderboard" ? "public" : "private"}">${esc(t(scope))}</p>
     ${page === 'leaderboard' ? '' : '<div data-account-merge-notice hidden></div>'}
     ${document.documentElement.dataset.wattenPublicBeta === "true" ? "" : `<p class="wt-draft-note">${esc(t("draft"))}</p>`}
     <p class="wt-error" data-progress-error role="alert"></p>${content}`;
@@ -132,7 +138,7 @@ function achievementMarkup(item, open = false) {
 function collectionMarkup(progress) {
   const earned = progress.achievements.filter(item => item.unlocked).length;
   const items = achievementItems(progress);
-  return `<section class="wt-achievement-collection" aria-labelledby="wattenAchievements">
+  return `<section id="achievements" class="wt-achievement-collection" aria-labelledby="wattenAchievements">
     <div class="wt-progress-section-heading"><h2 id="wattenAchievements">${esc(t("achievements"))}</h2>
       <span class="wt-collection-total">${esc(t("collectionTotal", { earned: number(earned), total: number(progress.achievements.length) }))}</span></div>
     <p class="wt-note">${esc(t("achievementsHelp"))}</p>
@@ -163,37 +169,30 @@ function updateCollection() {
   if (resetFocused && achievementStatus === "all" && achievementCategory === "all") root.querySelector('[data-achievement-status="all"]').focus();
 }
 
+// Only an explicit fragment scrolls: plain navigation keeps the page top and
+// the area bar in place. A single achievement is unfiltered, opened and focused.
 function revealProgressAnchor() {
-  syncAccountPanel();
-  if (navigating || page !== "progress" || !data) return;
+  if (navigating || !data) return;
   let id;
   try { id = decodeURIComponent(location.hash.slice(1)); } catch { return; }
   if (!id) return;
-  if (data.progress.achievements.some(item => item.id === id)) {
+  if (page === "progress" && data.progress.achievements.some(item => item.id === id)) {
     achievementStatus = "all"; achievementCategory = "all"; updateCollection();
   }
   const target = document.getElementById(id);
   if (!target || !root.contains(target)) return;
-  const detail = target.querySelector(".wt-achievement-detail");
-  if (detail) { detail.open = true; detail.querySelector("summary").focus({ preventScroll: true }); }
-  target.scrollIntoView({ block: "center", behavior: "auto" });
+  // Only a single achievement card opens; the collection section just scrolls.
+  const detail = target.matches(".wt-achievement-grid > li") ? target.querySelector(".wt-achievement-detail") : null;
+  if (detail) {
+    detail.open = true; detail.querySelector("summary").focus({ preventScroll: true });
+    target.scrollIntoView({ block: "center", behavior: "auto" });
+  } else target.scrollIntoView({ block: "start", behavior: "auto" });
 }
-window.addEventListener("hashchange", revealProgressAnchor);
-
-function syncAccountPanel() {
-  if (page !== 'progress') return;
-  const id = location.hash.slice(1);
-  const achievementTarget = data?.progress.achievements.some(item => item.id === id);
-  const achievements = id === 'achievements' || Boolean(achievementTarget);
-  for (const section of root.querySelectorAll(':scope > section')) {
-    const collection = section.matches('.wt-achievement-collection, [data-progress-feed], [data-account-archived-achievements]');
-    section.hidden = !section.matches('.wt-progress-title, .wt-progress-pending') && (achievements ? !collection : collection);
-  }
-  for (const link of root.querySelectorAll('[data-account-destination]')) {
-    if (link.dataset.accountDestination === (achievements ? 'achievements' : 'statistics')) link.setAttribute('aria-current', 'page');
-    else link.removeAttribute('aria-current');
-  }
-}
+window.addEventListener("hashchange", () => {
+  // A former statistics link followed within the page goes to the same place.
+  if (page === "progress" && location.hash === "#statistics") { navigating = true; location.replace("/watten/konto/verlauf#statistics"); return; }
+  revealProgressAnchor();
+});
 
 function favoriteOpponentsMarkup(opponents) {
   return `<section class="wt-card-panel wt-favorite-opponents" aria-labelledby="wattenFavoriteOpponents">
@@ -208,7 +207,7 @@ function favoriteOpponentsMarkup(opponents) {
 }
 
 function progressMarkup(account) {
-  const value = account.progress, stats = account.statistics;
+  const value = account.progress;
   const title = value.title, next = value.next_title;
   const pending = value.pending.credits.length || value.pending.achievements.length;
   return `<section class="wt-card-panel wt-progress-title" aria-labelledby="wattenCurrentTitle">
@@ -226,17 +225,27 @@ function progressMarkup(account) {
         <span class="wt-title-step" aria-hidden="true">${esc(number(item.level))}</span><div><strong>${esc(localText(item.name))}</strong>
           <span>${esc(t("titleThreshold", { xp: number(item.threshold) }))}${item.level === title.level ? ` · ${esc(t("currentTitle"))}` : ""}</span></div></li>`).join("")}</ol>
     </details>
-    <dl class="wt-progress-stats wt-progress-match-stats">${statistic("allMatches", stats.all_matches)}${statistic("creditedMatches", stats.credited_matches)}${statistic("wins", stats.all_wins)}</dl>
-    ${stats.uncredited_matches ? `<p class="wt-note">${esc(t("uncredited", { count: stats.uncredited_matches }))}</p>` : ""}
   </section>
-  ${favoriteOpponentsMarkup(account.favorite_opponents || [])}
   <section class="wt-card-panel wt-progress-pending${pending ? "" : " is-empty"}" data-progress-pending>
     <h2>${esc(t("newMoments"))}</h2>${pendingMarkup(value)}
   </section>
   ${collectionMarkup(value)}
     ${value.archived_achievements.length ? `<section class="wt-card-panel" data-account-archived-achievements><h2>${esc(t("archived"))}</h2><ul>${value.archived_achievements.map(item =>
-      `<li>${esc(localText(item.name))} · ${esc(t("earned", { date: date(item.earned_at), xp: number(item.granted_xp) }))}</li>`).join("")}</ul></section>` : ""}
-    <section class="wt-card-panel" data-progress-feed aria-labelledby="wattenFeedTitle"><h2 id="wattenFeedTitle">${esc(t("feed"))}</h2><div data-progress-feed-entries></div></section>`;
+      `<li>${esc(localText(item.name))} · ${esc(t("earned", { date: date(item.earned_at), xp: number(item.granted_xp) }))}</li>`).join("")}</ul></section>` : ""}`;
+}
+
+function statisticsMarkup(account) {
+  const stats = account.statistics;
+  return `<section id="statistics" class="wt-card-panel wt-progress-statistics" aria-labelledby="wattenStatistics">
+    <h2 id="wattenStatistics">${esc(t("statistics"))}</h2>
+    <dl class="wt-progress-stats wt-progress-match-stats">${statistic("allMatches", stats.all_matches)}${statistic("creditedMatches", stats.credited_matches)}${statistic("wins", stats.all_wins)}</dl>
+    ${stats.uncredited_matches ? `<p class="wt-note">${esc(t("uncredited", { count: stats.uncredited_matches }))}</p>` : ""}
+  </section>
+  ${favoriteOpponentsMarkup(account.favorite_opponents || [])}`;
+}
+
+function feedSectionMarkup() {
+  return `<section class="wt-card-panel" data-progress-feed aria-labelledby="wattenFeedTitle"><h2 id="wattenFeedTitle">${esc(t("feed"))}</h2><div data-progress-feed-entries></div></section>`;
 }
 
 function pendingMarkup(progress) {
@@ -252,9 +261,9 @@ function pendingMarkup(progress) {
 }
 
 function historyMarkup() {
-  return `<section class="wt-card-panel"><p>${esc(t("historyHelp"))}</p><ol class="wt-match-history">${history.map(match => {
+  return `${statisticsMarkup(data)}<section class="wt-card-panel wt-progress-history" aria-labelledby="wattenMatches"><h2 id="wattenMatches">${esc(t("matches"))}</h2><p>${esc(t("historyHelp"))}</p><ol class="wt-match-history">${history.map(match => {
     const names = new Map(match.participants.map(item => [item.id, item.name]));
-    return `<li data-progress-match="${esc(match.game_id)}"><h2>${esc(t(match.outcome === "won" ? "won" : "lost"))}</h2>
+    return `<li data-progress-match="${esc(match.game_id)}"><h3>${esc(t(match.outcome === "won" ? "won" : "lost"))}</h3>
       <p><time datetime="${esc(match.finished_at)}">${esc(date(match.finished_at))}</time> · ${esc(t("players", { count: match.player_count }))}
         · ${esc(t("cpus", { count: match.cpu_count }))}</p>
       <ul>${match.scores.map(score => `<li><span translate="no">${esc(score.members.map(id => names.get(id)).join(" & "))}</span>: ${esc(number(score.points))}</li>`).join("")}</ul>
@@ -364,7 +373,7 @@ async function accountView() {
   if (!result) return;
   validateAccount(result); data = result; history = result.history.matches;
   shell(page === "history" ? historyMarkup() : progressMarkup(result));
-  if (page === "progress") { revealProgressAnchor(); await feed(); }
+  revealProgressAnchor();
 }
 async function mount() {
   const current = epoch;
@@ -382,8 +391,11 @@ async function mount() {
     accountId = auth.user.id;
     if (page !== 'leaderboard') initializeReleaseNotes({ context: 'watten' });
     if ((auth.game_access || auth.user.game_access)?.watten_preview === true || (auth.game_access || auth.user.game_access)?.watten_public === true) initializeAppMode({ mode: "watten" });
-    if (page === "leaderboard") { shell(`<section class="wt-card-panel">${leaderboardForm()}</section>`); await ranking(root.querySelector("form")); }
+    if (page === "leaderboard") {
+      shell(`<section class="wt-card-panel" aria-labelledby="wattenRankingTitle"><h2 id="wattenRankingTitle">${esc(t("leaderboard"))}</h2>${leaderboardForm()}</section>${feedSectionMarkup()}`);
+      await Promise.all([ranking(root.querySelector("form")), feed()]);
+    }
     else await accountView();
   } catch (error) { if (current === epoch && !navigating) failure(error.message); }
 }
-if (root && ["progress", "history", "leaderboard"].includes(page)) void mount();
+if (root && ["progress", "history", "leaderboard"].includes(page) && !legacyStatistics) void mount();

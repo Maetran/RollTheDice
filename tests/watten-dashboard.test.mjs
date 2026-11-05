@@ -768,10 +768,12 @@ async function loadRealDashboard() {
   const moduleUrl = source => `data:text/javascript;base64,${Buffer.from(source).toString("base64")}`;
   const auth = moduleUrl(`export const escapeHtml = ${escapeHtml.toString()}; export const loadAuth = async () => (${JSON.stringify(account(7))});`);
   const favorites = moduleUrl('export const createFavorites = () => Object.fromEntries(["beforeMetricsRender", "setUser", "setEnabled", "refresh", "clear"].map(key => [key, () => {}]));');
+  // The pinned header has its own browser coverage in analytics-dashboard.spec.js.
+  const header = moduleUrl('export const createDashboardHeader = () => ({ close() {} });');
   const globe = moduleUrl('export const createGlobe = viz => { const update = () => { viz.textContent = "0 mapped / 0 unmapped"; viz.dataset.updates = String(Number(viz.dataset.updates || 0) + 1); }; return { update, clear: update, suspend() {}, resume() {}, setPaused() {}, refreshDesign() {} }; };');
   let dashboard = await readFile(new URL("../frontend/dashboard.js", import.meta.url), "utf8");
   dashboard = dashboard.replace('import "./i18n/index.js";', "");
-  for (const [path, replacement] of [["./shared/auth.js", auth], ["./dashboard/favorites.js", favorites], ["./dashboard/globe.js", globe]]) {
+  for (const [path, replacement] of [["./shared/auth.js", auth], ["./dashboard/favorites.js", favorites], ["./dashboard/header.js", header], ["./dashboard/globe.js", globe]]) {
     dashboard = dashboard.replace(JSON.stringify(path), JSON.stringify(replacement));
   }
   for (const path of ["./dashboard/watten.js", "./dashboard/analysis.js", "./dashboard/voice.js"]) {

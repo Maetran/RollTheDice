@@ -163,19 +163,42 @@ async function mockedDashboard(page, language, options = {}) {
   return state;
 }
 
+// Narrow layouts keep the header controls in a disclosure menu.
+async function withHeaderMenu(page, action) {
+  const toggle = page.locator('#dashboardMenuToggle');
+  const compact = await toggle.isVisible();
+  if (compact && await toggle.getAttribute('aria-expanded') !== 'true') await toggle.click();
+  try { return await action(); } finally {
+    if (compact && await toggle.getAttribute('aria-expanded') === 'true') await toggle.click();
+  }
+}
+
+async function selectDesign(page, design) {
+  await withHeaderMenu(page, () => page.locator('#dashboardDesign').selectOption(design));
+}
+
+async function expectControlsFit(page, width, state) {
+  const geometry = await page.evaluate(() => ({ width: document.documentElement.scrollWidth, viewport: innerWidth, controls: [...document.querySelectorAll('a,button,select,summary')].filter(item => item.checkVisibility()).map(item => { const box = item.getBoundingClientRect(); return { text: item.textContent, left: box.left, right: box.right, height: box.height }; }) }));
+  expect(geometry.width, state).toBeLessThanOrEqual(geometry.viewport);
+  for (const item of geometry.controls) {
+    expect(item.left, `${state} ${JSON.stringify(item)}`).toBeGreaterThanOrEqual(-1);
+    expect(item.right, `${state} ${JSON.stringify(item)}`).toBeLessThanOrEqual(width + 1);
+    expect(item.height, `${state} ${JSON.stringify(item)}`).toBeGreaterThanOrEqual(40);
+  }
+}
+
 async function expectDashboardFits(page, width) {
   const design = await page.locator('body').getAttribute('data-dashboard-design');
-  for (const link of await page.locator('.mission-sections > a.nexus-only').all()) {
-    if (design === 'nexus') await expect(link).toBeVisible();
-    else await expect(link).toBeHidden();
-  }
-  const geometry = await page.evaluate(() => ({ width: document.documentElement.scrollWidth, viewport: innerWidth, controls: [...document.querySelectorAll('a,button,select,summary')].filter(item => item.checkVisibility()).map(item => { const box = item.getBoundingClientRect(); return { text: item.textContent, left: box.left, right: box.right, height: box.height }; }) }));
-  expect(geometry.width).toBeLessThanOrEqual(geometry.viewport);
-  for (const item of geometry.controls) {
-    expect(item.left, JSON.stringify(item)).toBeGreaterThanOrEqual(-1);
-    expect(item.right, JSON.stringify(item)).toBeLessThanOrEqual(width + 1);
-    expect(item.height, JSON.stringify(item)).toBeGreaterThanOrEqual(40);
-  }
+  await expectControlsFit(page, width, 'menu closed');
+  // An open narrow menu must fit as well: overflow and touch targets of every
+  // section link and header control are checked while they are visible.
+  await withHeaderMenu(page, async () => {
+    for (const link of await page.locator('.mission-sections > a.nexus-only').all()) {
+      if (design === 'nexus') await expect(link).toBeVisible();
+      else await expect(link).toBeHidden();
+    }
+    await expectControlsFit(page, width, 'menu open');
+  });
 }
 
 async function expectReadableResponsivePlot(page, id) {
@@ -240,7 +263,7 @@ for (const language of ['de', 'en']) {
       const errors = [];
       page.on('pageerror', error => errors.push(error.message));
       const state = await mockedDashboard(page, language, { nativeParity: true });
-      await page.locator('#dashboardDesign').selectOption(design);
+      await selectDesign(page, design);
       await expect(page.locator('#dashboardGame option')).toHaveCount(5);
       await expect(page.locator('#gameCards .game-card')).toHaveCount(4);
       await expect(page.locator('#gameModes .mode-chip')).toHaveCount(11);
@@ -340,7 +363,7 @@ for (const language of ['de', 'en']) {
     const panel = page.locator('#voiceActivityPanel');
     const privateIds = ['voiceActivitySummary', 'voiceActivityGames', 'voiceActivityUsers', 'voiceActivityUpdated', 'voiceActivityRetained'];
     await expect(panel).toBeVisible();
-    await page.locator('#dashboardDesign').selectOption('nexus');
+    await selectDesign(page, 'nexus');
     await panel.locator('[data-favorite-toggle="panel-voice-activity"]').click();
     await expect(page.locator('#dashboardFavoritesGrid > #voiceActivityPanel')).toBeVisible();
     await expect(page.locator('#voiceActivityTitle')).toHaveText(language === 'en' ? 'Voice chat activity' : 'Sprachchat-Aktivität');
@@ -383,7 +406,7 @@ for (const language of ['de', 'en']) {
           { day: '2026-10-07', received_bytes: 24000000, sent_bytes: 12000000, reports: 40 }],
       };
       const state = await mockedDashboard(page, language, { voiceUsage: usage });
-      await page.locator('#dashboardDesign').selectOption(design);
+      await selectDesign(page, design);
       const panel = page.locator('#voiceUsagePanel');
       await expect(panel).toBeVisible();
       await expect(panel).toContainText(language === 'en' ? 'Received this calendar month' : 'Empfangen im laufenden Monat');
@@ -767,7 +790,7 @@ for (const language of ['de', 'en']) {
     const missionMap = await canvasSignature(page);
     const trend = await page.locator('#serverTrend').innerHTML();
     const queries = state.calls.length;
-    await page.locator('#dashboardDesign').selectOption('lcars');
+    await selectDesign(page, 'lcars');
     await expect(page.locator('body')).toHaveAttribute('data-dashboard-design', 'lcars');
     await expect.poll(() => canvasSignature(page)).not.toBe(missionMap);
     await expect(page.locator('#geographyViz')).toHaveAttribute('data-view', 'map');
@@ -809,7 +832,7 @@ for (const language of ['de', 'en']) {
     await expect(page.locator('#dashboardDesign')).toHaveValue('lcars');
     await expect(page.locator('#dashboardMotion')).toHaveAttribute('aria-pressed', 'true');
     expect(state.calls).toHaveLength(queries + 1);
-    await page.locator('#dashboardDesign').selectOption('mission');
+    await selectDesign(page, 'mission');
     await expect(page.locator('body')).toHaveAttribute('data-dashboard-design', 'mission');
     expect(await page.evaluate(() => localStorage.getItem('rollthedice:dashboard:design'))).toBe('mission');
     expect(state.calls).toHaveLength(queries + 1);
@@ -819,7 +842,7 @@ for (const language of ['de', 'en']) {
     await page.setViewportSize({ width: 390, height: 1000 });
     const state = await mockedDashboard(page, language);
     for (const design of ['mission', 'lcars', 'nexus']) {
-      await page.locator('#dashboardDesign').selectOption(design);
+      await selectDesign(page, design);
       await page.locator('#dashboardMotion').click();
       await expect(page.locator('html')).toHaveAttribute('data-motion', 'paused');
       await expect(page.locator('.geo-pause')).toHaveAttribute('aria-pressed', 'true');
@@ -879,7 +902,7 @@ test('design remains usable when browser storage rejects preference reads and wr
   });
   const state = await mockedDashboard(page, 'en');
   await expect(page.locator('body')).toHaveAttribute('data-dashboard-design', 'mission');
-  await page.locator('#dashboardDesign').selectOption('lcars');
+  await selectDesign(page, 'lcars');
   await expect(page.locator('body')).toHaveAttribute('data-dashboard-design', 'lcars');
   await page.locator('[data-country="US"]').click();
   await expect(page.locator('.geo-detail-metrics dd').first()).toHaveText('8');
@@ -899,7 +922,7 @@ test('unknown stored design falls back to Mission Control and can be replaced by
   await mockedDashboard(page, 'en');
   await expect(page.locator('body')).toHaveAttribute('data-dashboard-design', 'mission');
   await expect(page.locator('#dashboardDesign')).toHaveValue('mission');
-  await page.locator('#dashboardDesign').selectOption('lcars');
+  await selectDesign(page, 'lcars');
   await page.reload();
   await expect(page.locator('#connectionLabel')).toHaveText('Telemetry connected');
   await expect(page.locator('body')).toHaveAttribute('data-dashboard-design', 'lcars');
@@ -917,7 +940,7 @@ for (const language of ['de', 'en']) {
     const star = id => page.locator(`[data-favorite-toggle="${id}"]`);
     await expect(page.locator('#dashboardFavorites')).toBeHidden();
     await expect(page.locator('#overviewMetrics .metric-card')).toHaveCount(6);
-    await page.locator('#dashboardDesign').selectOption('nexus');
+    await selectDesign(page, 'nexus');
     await expect(page.locator('body')).toHaveAttribute('data-dashboard-design', 'nexus');
     await expect(page.locator('#dashboardFavorites')).toBeVisible();
     await expect(page.locator('#dashboardFavoritesGrid > [data-favorite-id]')).toHaveCount(0);
@@ -956,7 +979,7 @@ for (const language of ['de', 'en']) {
     expect(await page.evaluate(key => JSON.parse(localStorage.getItem(key)), favoriteKey)).toEqual([liveId, chartId]);
     const calls = state.calls.length;
     for (const design of ['mission', 'lcars']) {
-      await page.locator('#dashboardDesign').selectOption(design);
+      await selectDesign(page, design);
       await expect(page.locator('body')).toHaveAttribute('data-dashboard-design', design);
       await expect(page.locator('#dashboardFavorites')).toBeHidden();
       await expect(page.locator('#overviewMetrics > [data-favorite-id]').first()).toHaveAttribute('data-favorite-id', liveId);
@@ -966,7 +989,7 @@ for (const language of ['de', 'en']) {
       await expect(page.locator('#dailyChart .chart-line')).toHaveCount(1);
     }
     expect(state.calls).toHaveLength(calls);
-    await page.locator('#dashboardDesign').selectOption('nexus');
+    await selectDesign(page, 'nexus');
     await expect(page.locator('#dashboardFavoritesGrid > [data-favorite-id]')).toHaveCount(2);
     await page.reload();
     await expect(page.locator('#connectionLabel')).toHaveText(language === 'en' ? 'Telemetry connected' : 'Telemetrie verbunden');
@@ -985,7 +1008,7 @@ for (const language of ['de', 'en']) {
   test(`${language}: NEXUS favorites and controls fit phones, tablet orientations and desktop`, async ({ page }, testInfo) => {
     test.setTimeout(60000);
     await mockedDashboard(page, language);
-    await page.locator('#dashboardDesign').selectOption('nexus');
+    await selectDesign(page, 'nexus');
     await page.locator('#dashboardMotion').click();
     if (language === 'de') {
       await mkdir('.impeccable/review', { recursive: true });
@@ -1036,7 +1059,7 @@ for (const language of ['de', 'en']) {
     await page.locator('#dailyCursor').focus();
     await page.keyboard.press('Home');
     await expect(page.locator('#dailySelection')).toContainText('21');
-    await page.locator('#dashboardDesign').selectOption('mission');
+    await selectDesign(page, 'mission');
     await expect(page.locator('#dailyChart svg')).toHaveAttribute('viewBox', '0 0 720 230');
     await expect(page.locator('#serverTrend svg')).toHaveAttribute('viewBox', '0 0 720 137');
     expect(await serverPathPointCounts(page)).toEqual(serverPoints);
@@ -1046,7 +1069,7 @@ for (const language of ['de', 'en']) {
 test('NEXUS keyboard stars reveal the moved control on pin and unpin while refresh preserves reading position', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 1000 });
   await mockedDashboard(page, 'en');
-  await page.locator('#dashboardDesign').selectOption('nexus');
+  await selectDesign(page, 'nexus');
   const action = page.locator('[data-favorite-id="panel-actions"]');
   const star = page.locator('[data-favorite-toggle="panel-actions"]');
   await action.evaluate(element => { window.dashboardActionParent = element.parentElement; });
@@ -1085,7 +1108,7 @@ test('NEXUS keyboard stars reveal the moved control on pin and unpin while refre
 test('NEXUS favorites are scoped to the viewer and private values clear on pagehide and access revocation', async ({ page }) => {
   const state = await mockedDashboard(page, 'en');
   await expect.poll(() => state.authCalls).toBe(2);
-  await page.locator('#dashboardDesign').selectOption('nexus');
+  await selectDesign(page, 'nexus');
   await page.locator('[data-favorite-toggle="metric-live-sessions"]').click();
   await page.locator('[data-favorite-toggle="panel-traffic"]').click();
   const firstViewer = await page.evaluate(() => localStorage.getItem('rollthedice:dashboard:favorites:7'));
@@ -1131,7 +1154,7 @@ test('NEXUS section navigation and restored fragments reach the real pinned serv
   await page.setViewportSize({ width: 1440, height: 1080 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await mockedDashboard(page, 'en');
-  await page.locator('#dashboardDesign').selectOption('nexus');
+  await selectDesign(page, 'nexus');
   await page.locator('[data-favorite-toggle="panel-server"]').click();
   const server = page.locator('#dashboardFavoritesGrid > .server-panel');
   await expect(server).toBeVisible();
@@ -1146,7 +1169,7 @@ test('NEXUS section navigation and restored fragments reach the real pinned serv
   await expect(page).toHaveURL(/#server$/);
   await expect(server).toBeInViewport();
   expect(await server.evaluate(element => element.getBoundingClientRect().top)).toBeLessThan(220);
-  await page.locator('#dashboardDesign').selectOption('mission');
+  await selectDesign(page, 'mission');
   await expect(page.locator('#server > .server-panel')).toBeVisible();
   await page.locator('.mission-sections a[href="#server"]').focus();
   await page.keyboard.press('Enter');
@@ -1166,21 +1189,21 @@ test('NEXUS design and favorites work in memory when preference storage is block
     }
   });
   const state = await mockedDashboard(page, 'en');
-  await page.locator('#dashboardDesign').selectOption('nexus');
+  await selectDesign(page, 'nexus');
   await page.locator('[data-favorite-toggle="metric-live-sessions"]').click();
   await page.locator('[data-favorite-toggle="panel-traffic"]').click();
   await expect(page.locator('#dashboardFavoritesGrid > [data-favorite-id]')).toHaveCount(2);
   state.liveSessions = 19;
   await page.locator('#dashboardRefresh').click();
   await expect(page.locator('#dashboardFavoritesGrid .metric-value')).toHaveText('19');
-  await page.locator('#dashboardDesign').selectOption('mission');
+  await selectDesign(page, 'mission');
   await expect(page.locator('#overviewMetrics .metric-card')).toHaveCount(6);
-  await page.locator('#dashboardDesign').selectOption('nexus');
+  await selectDesign(page, 'nexus');
   await expect(page.locator('#dashboardFavoritesGrid > [data-favorite-id]')).toHaveCount(2);
   await page.reload();
   await expect(page.locator('#connectionLabel')).toHaveText('Telemetry connected');
   await expect(page.locator('#dashboardDesign')).toHaveValue('mission');
-  await page.locator('#dashboardDesign').selectOption('nexus');
+  await selectDesign(page, 'nexus');
   await expect(page.locator('#dashboardFavoritesGrid > [data-favorite-id]')).toHaveCount(0);
   expect(errors).toEqual([]);
 });
@@ -1204,7 +1227,7 @@ for (const language of ['de', 'en']) {
     await page.locator('#dashboardMotion').click();
     const counts = await page.locator('#appModeRanks, #browserRanks, #browserLanguageRanks').allTextContents();
     for (const design of ['mission', 'lcars']) {
-      await page.locator('#dashboardDesign').selectOption(design);
+      await selectDesign(page, design);
       expect(await page.locator('#appModeRanks, #browserRanks, #browserLanguageRanks').allTextContents()).toEqual(counts);
       for (const width of [320, 390, 768, 1440]) {
         await page.setViewportSize({ width, height: 1000 });
@@ -1272,7 +1295,7 @@ for (const language of ['de', 'en']) {
     await expect(requestOrigin).toContainText('700');
     await page.locator('#dashboardMotion').click();
     for (const design of ['mission', 'lcars']) {
-      await page.locator('#dashboardDesign').selectOption(design);
+      await selectDesign(page, design);
       for (const width of [320, 390, 768, 1440]) {
         await page.setViewportSize({ width, height: 1000 });
         await expectDashboardFits(page, width);
@@ -1360,7 +1383,7 @@ for (const language of ['de', 'en']) {
     await expect(page.locator('#designTable tbody tr').first().locator('th, td')).toHaveText([en ? 'ZDWA new · Light' : 'ZDWA Neu · Hell', /^7\D?200$/, /^5\D?000$/, /^2\D?200$/, '27.7%']);
     await page.locator('#dashboardMotion').click();
     for (const design of ['mission', 'lcars']) {
-      await page.locator('#dashboardDesign').selectOption(design);
+      await selectDesign(page, design);
       for (const width of [320, 390, 768, 960, 1440]) {
         await page.setViewportSize({ width, height: 1000 });
         await expectDashboardFits(page, width);
@@ -1423,5 +1446,191 @@ for (const language of ['de', 'en']) {
     await expect(page.locator('#designAccounts .design-mode-note')).toHaveCount(0);
     await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: true })));
     for (const id of ['designComparison', 'designAccounts', 'designLooks', 'designTable', 'designCollectionNote']) await expect(page.locator(`#${id}`)).toBeEmpty();
+  });
+}
+
+// The long report keeps its header reachable: a pinned one-row header on wide
+// Mission/LCARS layouts, the fixed NEXUS sidebar on wide NEXUS layouts and a
+// compact disclosure menu everywhere narrower.
+async function headerBox(page) {
+  return page.locator('.mission-nav').evaluate(node => {
+    const box = node.getBoundingClientRect();
+    return { top: box.top, bottom: box.bottom, left: box.left, width: box.width, position: getComputedStyle(node).position };
+  });
+}
+
+async function expectSectionBelowHeader(page, id) {
+  await expect(page).toHaveURL(new RegExp(`#${id}$`));
+  // The section must arrive just below the pinned header (or at the end of the
+  // page), never underneath it and not merely before any scrolling happened.
+  await expect.poll(async () => {
+    const header = await headerBox(page);
+    const top = await page.locator(`#${id}`).evaluate(node => node.getBoundingClientRect().top);
+    const { atEnd, height } = await page.evaluate(() => ({ atEnd: scrollY >= document.documentElement.scrollHeight - innerHeight - 1, height: innerHeight }));
+    const edge = header.position === 'fixed' ? 0 : header.bottom;
+    // Never covered; near the top even if charts above re-render afterwards.
+    return top >= edge - 1 && (top <= edge + Math.max(80, height * .35) || atEnd);
+  }).toBe(true);
+}
+
+for (const language of ['de', 'en']) {
+  for (const design of ['mission', 'lcars', 'nexus']) {
+    test(`${language}/${design}: the dashboard header stays reachable while scrolling without covering anchors`, async ({ page }, testInfo) => {
+      const errors = [];
+      page.on('pageerror', error => errors.push(error.message));
+      await page.setViewportSize({ width: 1440, height: 900 });
+      await mockedDashboard(page, language);
+      await selectDesign(page, design);
+      const toggle = page.locator('#dashboardMenuToggle');
+      const server = page.locator('.mission-sections a[href="#server"]');
+      for (const viewport of [{ width: 320, height: 568 }, { width: 568, height: 320 }, { width: 390, height: 844 }, { width: 1024, height: 768 }, { width: 1440, height: 900 }]) {
+        await page.setViewportSize(viewport);
+        await page.evaluate(() => { history.replaceState(null, '', location.pathname); scrollTo({ top: 0, behavior: 'instant' }); });
+        const compact = viewport.width < 1280;
+        await expect(toggle).toBeVisible({ visible: compact });
+        if (compact) {
+          await expect(toggle).toHaveAccessibleName(language === 'en' ? 'Menu' : 'Menü');
+          await expect(toggle).toHaveAttribute('aria-controls', 'dashboardMenu');
+          await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+          // Closed menu entries are neither visible nor reachable with Tab.
+          await expect(server).toBeHidden();
+          await expect(page.locator('#dashboardDesign')).toBeHidden();
+          await page.evaluate(() => scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' }));
+          const pinned = await headerBox(page);
+          expect(pinned.position).toBe('sticky');
+          expect(Math.abs(pinned.top)).toBeLessThanOrEqual(1);
+          expect(pinned.bottom - pinned.top, `${design} ${viewport.width}x${viewport.height}`).toBeLessThanOrEqual(Math.min(80, viewport.height * .25));
+          await toggle.focus();
+          await page.keyboard.press('Enter');
+          await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+          await expect(server).toBeVisible();
+          const panel = await page.locator('#dashboardMenu').evaluate(node => {
+            const box = node.getBoundingClientRect();
+            return { bottom: box.bottom, scrollable: node.scrollHeight <= node.clientHeight + 1 || getComputedStyle(node).overflowY === 'auto' };
+          });
+          expect(panel.bottom).toBeLessThanOrEqual(viewport.height + 1);
+          expect(panel.scrollable).toBe(true);
+          await page.keyboard.press('Escape');
+          await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+          await expect(toggle).toBeFocused();
+          await expect(server).toBeHidden();
+          // Keyboard: Enter on a section moves focus to its visible heading;
+          // the next Tab continues inside that section.
+          await page.keyboard.press('Enter');
+          await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+          await page.locator('.mission-sections a[href="#traffic"]').focus();
+          await page.keyboard.press('Enter');
+          await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+          await expectSectionBelowHeader(page, 'traffic');
+          const heading = page.locator('#traffic h2');
+          await expect(heading).toBeFocused();
+          expect(await heading.evaluate(node => node.matches(':focus-visible') && getComputedStyle(node).outlineStyle !== 'none')).toBe(true);
+          await page.keyboard.press('Tab');
+          // The next Tab continues inside the chosen section, visibly below the header.
+          expect(await page.evaluate(() => {
+            const active = document.activeElement, box = active.getBoundingClientRect();
+            const header = document.querySelector('.mission-nav').getBoundingClientRect();
+            return { inside: document.getElementById('traffic').contains(active), visible: box.bottom > header.bottom && box.top < innerHeight,
+              element: `${active.tagName}#${active.id}.${active.className}`, top: box.top, bottom: box.bottom, header: header.bottom };
+          })).toMatchObject({ inside: true, visible: true });
+          await page.evaluate(() => { history.replaceState(null, '', location.pathname); scrollTo({ top: 0, behavior: 'instant' }); });
+          await toggle.click();
+          await server.click();
+          await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+          await expectSectionBelowHeader(page, 'server');
+          await page.screenshot({ path: testInfo.outputPath(`header-${language}-${design}-${viewport.width}x${viewport.height}.png`) });
+        } else {
+          await page.evaluate(() => scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' }));
+          const pinned = await headerBox(page);
+          if (design === 'nexus') {
+            expect(pinned.position).toBe('fixed');
+            expect(pinned.left).toBe(0);
+            expect(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--dashboard-header-offset').trim())).toBe('0px');
+          } else {
+            expect(pinned.position).toBe('sticky');
+            expect(Math.abs(pinned.top)).toBeLessThanOrEqual(1);
+            expect(pinned.bottom).toBeLessThanOrEqual(viewport.height * .15);
+          }
+          await expect(server).toBeVisible();
+          await server.click();
+          await expectSectionBelowHeader(page, 'server');
+          await page.screenshot({ path: testInfo.outputPath(`header-${language}-${design}-${viewport.width}x${viewport.height}.png`) });
+        }
+        await page.evaluate(() => scrollTo({ top: 0, behavior: 'instant' }));
+      }
+      // The skip link appears above the pinned header.
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page.evaluate(() => scrollTo({ top: 400, behavior: 'instant' }));
+      const skip = page.locator('.skip-link');
+      await skip.focus();
+      await expect(skip).toBeFocused();
+      expect(await skip.evaluate(node => {
+        const box = node.getBoundingClientRect();
+        return document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2) === node;
+      })).toBe(true);
+      expect(errors).toEqual([]);
+    });
+  }
+}
+
+// A section link jumps once and immediately; nothing scrolls afterwards, so
+// the reader's own scrolling (scrollbar, assistive technology, scripts) stays.
+test('section alignment never overrides the reader’s own scrolling', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await mockedDashboard(page, 'de');
+  const server = page.locator('.mission-sections a[href="#server"]');
+  const reset = () => page.evaluate(() => { history.replaceState(null, '', location.pathname); scrollTo({ top: 0, behavior: 'instant' }); });
+  const settledAt = async expected => {
+    await page.waitForTimeout(2000);
+    expect(await page.evaluate(() => Math.round(scrollY))).toBe(expected);
+  };
+  // Dragging the scrollbar starts with a pointer press on the document.
+  await reset();
+  await server.click();
+  await page.evaluate(() => {
+    document.documentElement.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+    scrollTo({ top: 500, behavior: 'instant' });
+  });
+  await settledAt(500);
+  // Assistive technology or another script scrolling right after the jump.
+  await reset();
+  await server.click();
+  await expectSectionBelowHeader(page, 'server');
+  await page.evaluate(() => scrollTo({ top: 300, behavior: 'instant' }));
+  await settledAt(300);
+  // A later scroll after the section arrived is never undone.
+  await reset();
+  await server.click();
+  await expectSectionBelowHeader(page, 'server');
+  await page.waitForTimeout(500);
+  await page.evaluate(() => scrollTo({ top: 200, behavior: 'instant' }));
+  await settledAt(200);
+});
+
+// Pinned NEXUS panels are handled by the favorites module; they jump at once,
+// below the compact header on phones and beside the sidebar on desktops.
+for (const viewport of [{ width: 390, height: 844 }, { width: 1440, height: 900 }]) {
+  test(`pinned NEXUS targets jump at once and stay visible (${viewport.width}px)`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await mockedDashboard(page, 'de');
+    await selectDesign(page, 'nexus');
+    await page.locator('[data-favorite-toggle="panel-server"]').click();
+    const server = page.locator('#dashboardFavoritesGrid > .server-panel');
+    await expect(server).toBeVisible();
+    await page.evaluate(() => { history.replaceState(null, '', location.pathname); scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' }); });
+    const toggle = page.locator('#dashboardMenuToggle');
+    if (viewport.width < 1280) await toggle.click();
+    await page.locator('.mission-sections a[href="#server"]').click();
+    // Measured without waiting: an animated scroll would still be under way.
+    const geometry = await page.evaluate(() => {
+      const header = document.querySelector('.mission-nav'), box = document.querySelector('#dashboardFavoritesGrid > .server-panel').getBoundingClientRect();
+      const edge = getComputedStyle(header).position === 'sticky' ? header.getBoundingClientRect().bottom : 0;
+      return { top: box.top, edge, height: innerHeight };
+    });
+    expect(geometry.top, JSON.stringify(geometry)).toBeGreaterThanOrEqual(geometry.edge - 1);
+    expect(geometry.top, JSON.stringify(geometry)).toBeLessThan(geometry.edge + geometry.height * .35);
+    await expect(page).toHaveURL(/#server$/);
+    expect(await server.evaluate(element => element.contains(document.activeElement))).toBe(true);
+    if (viewport.width < 1280) await expect(toggle).toHaveAttribute('aria-expanded', 'false');
   });
 }

@@ -1,0 +1,55 @@
+/* The dashboard header stays reachable while the long report scrolls.
+   Wide Mission/LCARS layouts pin their one-row header; narrower layouts pin a
+   compact brand + menu row whose panel overlays the content. The NEXUS desktop
+   keeps its fixed, separately scrollable sidebar. Anchors use the measured
+   header height (set by frontend/dashboard/header.js). */
+:root { scroll-padding-top: calc(var(--dashboard-header-offset, 0px) + 12px); }
+body.mission-control { --dashboard-header-bg: var(--bg); }
+body[data-dashboard-design="lcars"] { --dashboard-header-bg: var(--lcars-void); }
+.mission-menu { display: contents; }
+.mission-menu-toggle { display: none; }
+body.mission-control .mission-nav {
+  position: sticky; top: 0; z-index: 8;
+  background: color-mix(in srgb, var(--dashboard-header-bg) 94%, transparent);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+}
+/* LCARS: the elbow's rounded outer corner would let scrolled content shine
+   through. Fill only the area outside that curve, matching each breakpoint. */
+body[data-dashboard-design="lcars"] .mission-nav { --lcars-elbow-radius: 45px; --lcars-elbow-left: 26px; --lcars-elbow-bottom: 10px; }
+body[data-dashboard-design="lcars"] .mission-nav::before {
+  content: ""; position: absolute; z-index: -1; pointer-events: none;
+  left: calc(-1 * var(--lcars-elbow-left)); bottom: calc(-1 * var(--lcars-elbow-bottom));
+  width: var(--lcars-elbow-radius); height: var(--lcars-elbow-radius);
+  background: radial-gradient(circle at 100% 0, transparent calc(var(--lcars-elbow-radius) - .5px), var(--lcars-void) var(--lcars-elbow-radius));
+}
+@media (max-width: 700px) {
+  body[data-dashboard-design="lcars"] .mission-nav { --lcars-elbow-radius: 31px; --lcars-elbow-left: 15px; --lcars-elbow-bottom: 8px; }
+}
+@media (max-width: 370px) {
+  body[data-dashboard-design="lcars"] .mission-nav { --lcars-elbow-left: 12px; }
+}
+.mission-menu-toggle svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+
+@media (max-width: 1279.98px) {
+  body.mission-control .mission-nav { flex-wrap: nowrap; min-height: 0; gap: 12px; padding-block: 8px; }
+  body.mission-control .mission-brand { width: auto; min-width: 0; margin-right: auto; }
+  body.mission-control .mission-menu-toggle { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 8px; min-height: 44px; padding: 0 14px; font-weight: 700; }
+  body.mission-control .mission-menu {
+    display: none; position: absolute; top: 100%; left: 0; right: 0;
+    max-height: calc(100dvh - var(--dashboard-header-offset, 64px)); overflow-y: auto; overscroll-behavior: contain;
+    padding: 12px 0 16px; border-bottom: 1px solid var(--line);
+    background: var(--dashboard-header-bg); box-shadow: 0 18px 30px #0008;
+  }
+  body.mission-control .mission-nav[data-menu-open] .mission-menu { display: grid; gap: 14px; }
+  body.mission-control .mission-menu :is(.mission-sections, .mission-tools) { order: 0; width: 100%; margin: 0; }
+  body.mission-control .mission-menu .mission-tools { flex-wrap: wrap; }
+  body[data-dashboard-design="lcars"] .mission-menu-toggle { border: 0; border-radius: var(--lcars-pill); background: var(--lcars-apricot); color: var(--lcars-void); font: 17px var(--lcars-display); letter-spacing: .06em; }
+}
+@media (max-width: 1279.98px) and (max-width: 420px) {
+  body.mission-control .mission-brand small { display: none; }
+}
+
+@media (min-width: 1280px) {
+  /* NEXUS desktop: the fixed sidebar is already always visible. */
+  body[data-dashboard-design="nexus"] .mission-nav { position: fixed; z-index: 5; background: #101711; -webkit-backdrop-filter: none; backdrop-filter: none; }
+}

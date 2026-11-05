@@ -7,18 +7,21 @@
   <meta name="description" content="Privates Dashboard für Besucher, Spielaktivität und Serverzustand von RollTheDice.">
   <meta name="robots" content="noindex, nofollow">
   <meta name="theme-color" content="#080d16">
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=c11e00b88a29" sizes="32x32">
-  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=c11e00b88a29" sizes="180x180">
-  <link rel="stylesheet" href="/static/dashboard.css?v=c11e00b88a29">
-  <script src="/static/dashboard.js?v=c11e00b88a29" type="module"></script>
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=76b70f0d8b78" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon-180.png?v=76b70f0d8b78" sizes="180x180">
+  <link rel="stylesheet" href="/static/dashboard.css?v=76b70f0d8b78">
+  <script src="/static/dashboard.js?v=76b70f0d8b78" type="module"></script>
 </head>
 <body class="mission-control" data-dashboard-design="mission">
   <a class="skip-link" href="#dashboardMain">Zum Dashboard springen</a>
   <div class="dashboard-shell">
     <header class="mission-nav">
       <a class="mission-brand" href="/" aria-label="Zur Lobby"><svg viewBox="0 0 36 36" aria-hidden="true"><rect x="6" y="6" width="24" height="24" rx="6" transform="rotate(-10 18 18)"/><circle cx="12" cy="12" r="2"/><circle cx="24" cy="12" r="2"/><circle cx="18" cy="18" r="2"/><circle cx="12" cy="24" r="2"/><circle cx="24" cy="24" r="2"/></svg><span>ROLLTHE<span class="brand-dice">DICE</span><small>MISSION CONTROL</small></span></a>
+      <button class="mission-menu-toggle" id="dashboardMenuToggle" type="button" aria-expanded="false" aria-controls="dashboardMenu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span>Menü</span></button>
+      <div class="mission-menu" id="dashboardMenu">
       <nav class="mission-sections" aria-label="Dashboard-Bereiche"><a class="nexus-only" href="#dashboardFavorites"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9Z"/></svg>Favoriten</a><a class="nexus-only" href="#overviewMetrics"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h6v6H4zm10 0h6v6h-6zM4 14h6v6H4zm10 0h6v6h-6z"/></svg>Kennzahlen</a><a href="#geography"><svg class="nexus-only" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4" ry="9"/><path d="M3 12h18"/></svg>Weltkarte</a><a href="#traffic"><svg class="nexus-only" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg>Besucher</a><a href="#games"><svg class="nexus-only" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 8h.01M16 8h.01M12 12h.01M8 16h.01M16 16h.01"/></svg>Spiele</a><a href="#designs"><svg class="nexus-only" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="9" r="5"/><circle cx="15" cy="15" r="5"/></svg>Designs</a><a href="#server"><svg class="nexus-only" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="7" rx="2"/><rect x="4" y="14" width="16" height="7" rx="2"/><path d="M8 6.5h.01M8 17.5h.01M13 6.5h4M13 17.5h4"/></svg>Server</a></nav>
       <div class="mission-tools"><label class="design-tool"><span>Design</span><select id="dashboardDesign" aria-label="Dashboard-Design"><option value="mission">Mission Control</option><option value="lcars">LCARS</option><option value="nexus">NEXUS</option></select></label><label class="language-tool"><span class="sr-only">Sprache</span><select data-language-switcher aria-label="Sprache"><option value="de">DE</option><option value="en">EN</option></select></label><a class="account-link" href="/konto">Zum Konto <span aria-hidden="true">↗</span></a></div>
+      </div>
     </header>
     <main id="dashboardMain">
       <section class="mission-hero" aria-labelledby="missionTitle">

@@ -60,32 +60,54 @@ for (const language of ['de', 'en']) {
     }
   });
 
-  test(`Watten ${language}: existing strict public/preview flags preserve the complete navigation`, () => {
+  test(`Watten ${language}: settings stay the only account destination and point players to Spieler & Ranking`, () => {
     for (const game_access of [{ watten_preview: true }, { watten_public: true }]) {
       const { html, modes } = renderSettings({ user: { id: 1, username: 'Player' }, game_access }, language);
-      assert.equal((html.match(/href="\/watten\/konto\/fortschritt/g) || []).length, 3);
-      assert.equal((html.match(/data-account-destination=/g) || []).length, 3);
-      assert.equal(currentLinks(html).length, 1);
+      // One account context: no second tab bar that switches into Spieler & Ranking.
+      assert.equal((html.match(/data-account-destination=/g) || []).length, 1);
+      assert.deepEqual(currentLinks(html), ['<a href="/watten/konto/einstellungen" data-account-destination="settings" aria-current="page">']);
+      assert.doesNotMatch(html, /#statistics|#achievements/);
+      const links = html.slice(html.indexOf('data-watten-player-links'), html.indexOf('</aside>'));
+      assert.deepEqual([...links.matchAll(/href="([^"]+)"/g)].map(match => match[1]), ['/watten/konto/fortschritt', '/watten/konto/verlauf']);
+      const t = translate(language);
+      for (const label of ['Deine Spielwerte', 'Erfolge & Titel', 'Deine Partien',
+        'Erfolge und Titel sowie Statistik, Lieblingsgegner und Partien findest du unter Spieler & Ranking.']) {
+        assert.ok(language === 'de' || english[label], `English translation for ${label}`);
+        assert.match(links, new RegExp(escapeHtml(t(label)).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+      }
       assert.deepEqual(modes, ['watten']);
       assert.equal(html.includes('data-watten-push-settings'), game_access.watten_public === true);
     }
     const user = { id: 1, username: 'Player', game_access: { watten_preview: true } };
-    assert.match(renderSettings({ user }, language).html, /href="\/watten\/konto\/fortschritt/);
-    assert.doesNotMatch(renderSettings({ user, game_access: {} }, language).html, /href="\/watten\/konto\/fortschritt/);
+    assert.match(renderSettings({ user }, language).html, /data-watten-player-links/);
+    assert.doesNotMatch(renderSettings({ user, game_access: {} }, language).html, /data-watten-player-links|href="\/watten\/konto\/(?:fortschritt|verlauf)/);
   });
 
-  test(`Watten ${language}: history has one current destination while statistics and achievements retain their deep links`, () => {
-    for (const hash of ['', '#statistics', '#achievements']) {
-      const t = translate(language);
-      const context = { page: 'history', location: { hash }, window: { ZDWA_I18N: { t } }, escapeHtml, esc: escapeHtml, t };
-      const html = runInNewContext(`${shared}\n${progressNavigation}\nnavigation();`, context);
-      assert.deepEqual(currentLinks(html), ['<a href="/watten/konto/verlauf" aria-current="page">']);
-      assert.equal((html.match(/data-account-destination=/g) || []).length, 3);
-      for (const section of ['statistics', 'achievements']) assert.match(html, new RegExp(`href="/watten/konto/fortschritt#${section}"`));
-      const active = runInNewContext(`${shared}\n${progressNavigation}\nnavigation();`, { ...context, page: 'progress' });
-      assert.equal(currentLinks(active).length, 1);
-      assert.match(currentLinks(active)[0], new RegExp(`data-account-destination="${hash === '#achievements' ? 'achievements' : 'statistics'}"`));
+  test(`Watten ${language}: Spieler & Ranking keeps one stable three-part bar with exactly one current page`, () => {
+    const t = translate(language);
+    for (const page of ['progress', 'history', 'leaderboard']) {
+      for (const hash of ['', '#statistics', '#achievements', '#watten_matches_1']) {
+        const html = runInNewContext(`${shared}\n${progressNavigation}\nnavigation();`, {
+          page, location: { hash }, window: { ZDWA_I18N: { t } }, escapeHtml, esc: escapeHtml, t,
+        });
+        assert.equal((html.match(/<nav\b/g) || []).length, 1, 'no competing navigation bars');
+        assert.doesNotMatch(html, /data-account-destination/);
+        assert.deepEqual([...html.matchAll(/href="([^"]+)" data-ranking-destination="(\w+)"/g)].map(match => [match[1], match[2]]), [
+          ['/watten/konto/fortschritt', 'progress'], ['/watten/konto/verlauf', 'history'], ['/watten/rangliste', 'leaderboard'],
+        ]);
+        assert.equal(currentLinks(html).length, 1);
+        assert.match(currentLinks(html)[0], new RegExp(`data-ranking-destination="${page}"`));
+      }
     }
+  });
+
+  test(`Watten ${language}: progress copy for the ranking area is complete in both languages`, () => {
+    const messages = runInNewContext(`${catalog.replace(/^export const /gm, 'const ')}\nWATTEN_PROGRESS_MESSAGES;`);
+    assert.deepEqual(Object.keys(messages.en).sort(), Object.keys(messages.de).sort());
+    for (const key of ['navigation', 'scopePrivate', 'scopePublic', 'statistics', 'matches', 'progress', 'history', 'leaderboard']) {
+      assert.ok(messages[language][key], key);
+    }
+    assert.equal(messages[language].navigation, language === 'de' ? 'Spieler & Ranking' : 'Players & Ranking');
   });
 
   test(`Watten ${language}: real settings mount never starts release polling without play access and keeps help available`, () => {
