@@ -2104,6 +2104,61 @@ the data directory. Host and application uptime are shown separately; missing
 counters are unavailable rather than simulated. See
 [the dashboard runbook](docs/ANALYTICS.md) for operation and rollback.
 
+## Spielbeobachtung / Game observation
+
+**Deutsch:** Die Spielbeobachtung für Hausdepp und Watten ist standardmässig
+abgeschaltet und wird in der Administration unter **Spiele & Funktionen**
+gesteuert. Der Owner kann sie für Partien aller Spieler oder nur für Partien
+mit ausgewählten Konten einschalten. Die Auswahl der Konten wird getrennt von
+den Aufzeichnungen verwaltet. Ausschalten stoppt das Erfassen weiterer Züge; bereits
+gespeicherte Daten bleiben bis zum Ablauf ihrer in der Administration
+angezeigten Aufbewahrungsfrist oder bis zur Löschung erhalten. Das Löschen der
+Aufzeichnungen schaltet die Beobachtung ebenfalls aus.
+
+Die Aufzeichnung speichert angenommene Spielentscheidungen mit zufälliger
+Partiekennung, Sitznummer und Kennzeichnung Mensch oder CPU sowie den zu diesem
+Zeitpunkt relevanten Spielkontext und, soweit vorhanden, das Ergebnis. Bei
+Auswahl einzelner Spieler wird deren eigene Sicht sowie die CPU-Sicht erfasst;
+von anderen menschlichen Sitzen werden nur öffentliche Aktionen und öffentlicher
+Kontext übernommen. Namen, Konto- und Tischkennungen sowie Chat und Audio
+gehören nicht zum Spielprotokoll. Die Daten sind pseudonymisiert: Insbesondere
+bei kleinen Gruppen kann eine Zuordnung trotzdem möglich sein. Sie sind von der
+anonymen Besuchermessung des Analytics-Dashboards getrennt und ihre
+Aufbewahrungsfrist ist unabhängig von jener der Browser-Analytics.
+
+Nur der Owner kann Aufzeichnungen löschen oder exportieren. Laufende Partien
+sind nicht exportierbar; ein Protokoll kann etwa durch einen späteren Start,
+eine Abschaltung oder eine Unterbrechung unvollständig sein und wird entsprechend
+gekennzeichnet. Der Export erfolgt seitenweise und ist keine atomare
+Momentaufnahme. Historische Partien vor Beginn der Aufzeichnung erhalten
+keine nachträglich erfundenen Züge. Die Daten zeigen Entscheidungen und ihren
+Kontext, aber nicht von selbst die Beweggründe eines Menschen.
+
+**English:** Game observation for Hausdepp and Watten is disabled by default
+and controlled under **Administration → Games & Features**. The owner can
+turn it on for games involving all players or only selected accounts. Account
+selection is managed separately from recordings. Turning observation off stops
+new recordings; existing data remains until the retention period shown in
+administration expires or it is deleted. Deleting recordings also switches
+observation off.
+
+A recording stores accepted game decisions under a random game identifier,
+seat number and human/CPU label, with the relevant game context and, when
+available, the result. When individual players are selected, their own
+perspectives and CPU perspectives are recorded; other human seats contribute
+only public actions and public context. Names, account and table identifiers,
+chat and audio are not part of the game record. These data are pseudonymous,
+not guaranteed anonymous: identification may still be possible, especially
+in small groups. They are separate from anonymous dashboard visitor analytics
+and have a separate retention period.
+
+Only the owner can delete or export recordings. Games still in progress cannot
+be exported. A recording may be incomplete, for example if observation starts
+late, is switched off or is interrupted; it is labelled accordingly. Export
+is paginated and is not an atomic snapshot. Earlier games do not acquire
+invented past decisions. The records show decisions and their context, not a
+person's actual reasons for making them.
+
 ## Quick start
 
 You need Docker with the Compose plugin and Git.
