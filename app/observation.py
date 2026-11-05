@@ -237,22 +237,51 @@ _WATTEN_ACTIONS = frozenset({"play_card", "bid", "respond", "announce_strike", "
                              "inspection_ack", "preplay_accept", "preplay_decline", "bloedeln_accept",
                              "bloedeln_decline", "request_schoeneres", "request_schlagwechsel", "request_bloedeln",
                              "retourschneider", "partner_feedback"})
+_PUBLIC_CONTEXT = frozenset({"schema_version", "ruleset_version", "ruleset_id", "ruleset_version_number", "phase",
+                             "discard", "deck_count", "seats", "four_of_a_kind_as_ten", "profile", "options",
+                             "current_trick", "last_trick", "bid", "scores", "target_points", "announced_strike",
+                             "dealer_seat", "announcement_roles", "trick_history", "deal_number"})
+_PUBLIC_VALUE_ACTIONS = frozenset({"play_card", "announce_strike", "announce_colour", "respond", "retourschneider"})
 
 
 def record_observation(db, *, game_type, recording_id, sequence, actor_seat, actor_kind,
-                       action, context, eligible_user_ids, started_at_beginning=False):
+                       action, context, eligible_user_ids, actor_user_id=None, started_at_beginning=False):
     if (game_type not in {"hausdepp", "watten"} or not isinstance(recording_id, str) or not _ID.fullmatch(recording_id)
             or type(sequence) is not int or not 0 <= sequence <= 100000 or type(actor_seat) is not int
-            or not 0 <= actor_seat <= 7 or actor_kind not in {"human", "cpu"}):
+            or not 0 <= actor_seat <= 7 or actor_kind not in {"human", "cpu"}
+            or actor_kind == "human" and actor_user_id is not None and
+            (type(actor_user_id) is not int or actor_user_id <= 0 or actor_user_id not in eligible_user_ids)
+            or actor_kind == "cpu" and actor_user_id is not None):
         raise ValueError("observation_payload_invalid")
-    action_json = _payload(action, _ACTION)
-    context_json = _payload(context, _CONTEXT)
+    _payload(action, _ACTION)
+    _payload(context, _CONTEXT)
     if action.get("kind") not in (_HAUSDEPP_ACTIONS if game_type == "hausdepp" else _WATTEN_ACTIONS):
         raise ValueError("observation_payload_invalid")
     lock_policy(db)
     policy = _allowed(db, eligible_user_ids)
     if policy is None:
         return False
+    actor_selected = False
+    if actor_kind == "human" and actor_user_id is not None:
+        actor_query = select(User.id).where(User.id == actor_user_id, User.is_active.is_(True))
+        if policy.mode == "selected":
+            actor_query = actor_query.join(ObservationSelection, ObservationSelection.user_id == User.id)
+        actor_selected = db.scalar(actor_query) is not None
+    # A game selection must never expose the private hand, choice set, peeks,
+    # partner signals or after-state of another, unselected human. Suppress
+    # private feedback entirely; keep only public cards and calls from others.
+    # Partner data can belong to a different person even in the chosen actor's
+    # view; do not persist it without that separate actor's selection.
+    context = {key: value for key, value in context.items() if key not in {"partner_hand", "feedback"}}
+    if actor_kind == "human" and not actor_selected:
+        if action["kind"] == "partner_feedback":
+            return False
+        context = {key: value for key, value in context.items() if key in _PUBLIC_CONTEXT}
+        action = {key: value for key, value in action.items()
+                  if key == "kind" or key == "cards" and action["kind"] in {"play", "afterthrow"}
+                  or key == "value" and action["kind"] in _PUBLIC_VALUE_ACTIONS}
+    action_json = _payload(action, _ACTION)
+    context_json = _payload(context, _CONTEXT)
     row = db.get(ObservationRecording, recording_id)
     if row is None:
         row = ObservationRecording(id=recording_id, game_type=game_type, started_at=utcnow(),
@@ -265,8 +294,8 @@ def record_observation(db, *, game_type, recording_id, sequence, actor_seat, act
         row.status = "partial"
     existing = db.get(ObservationEvent, (recording_id, sequence))
     if existing:
-        if (existing.actor_seat, existing.actor_kind, existing.action_json, existing.context_json) != (
-                actor_seat, actor_kind, action_json, context_json):
+        if (existing.actor_seat, existing.actor_kind, existing.actor_selected, existing.action_json, existing.context_json) != (
+                actor_seat, actor_kind, actor_selected, action_json, context_json):
             raise ValueError("observation_event_conflict")
         return True
     # An out-of-order/missing event prevents completeness from being claimed.
@@ -274,7 +303,8 @@ def record_observation(db, *, game_type, recording_id, sequence, actor_seat, act
     if previous is not None and sequence != previous + 1:
         row.status = "partial"
     db.add(ObservationEvent(recording_id=recording_id, sequence=sequence, actor_seat=actor_seat,
-                            actor_kind=actor_kind, action_json=action_json, context_json=context_json, created_at=utcnow()))
+                            actor_kind=actor_kind, actor_selected=actor_selected, action_json=action_json,
+                            context_json=context_json, created_at=utcnow()))
     db.flush()
     return True
 

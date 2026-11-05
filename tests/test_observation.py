@@ -60,7 +60,8 @@ def record(db, **kwargs):
     args = dict(game_type="hausdepp", recording_id=ID, sequence=0, actor_seat=0, actor_kind="human",
                 action={"kind": "play", "cards": ["hearts-6"]},
                 context={"phase": "playing", "actor_hand": ["hearts-6"],
-                         "seats": [{"seat": 0, "kind": "human", "hand_count": 1}]}, eligible_user_ids=[3])
+                         "seats": [{"seat": 0, "kind": "human", "hand_count": 1}]}, eligible_user_ids=[3],
+                actor_user_id=3)
     args.update(kwargs)
     return record_observation(db, **args)
 
@@ -91,7 +92,7 @@ def test_selected_policy_recording_export_deletion_and_version(client):
     assert result.json()["selected_players"] == [{"id": 3, "username": "Player3"}]
     assert client.put("/api/admin/observation", json=body).status_code == 409
     with session_scope() as db:
-        assert record(db, eligible_user_ids=[2]) is False
+        assert record(db, eligible_user_ids=[2], actor_user_id=2) is False
         assert record(db) is True
         assert record(db) is True  # idempotent replay
         assert finish_observation(db, recording_id=ID, eligible_user_ids=[3],
@@ -196,7 +197,8 @@ def test_strict_realistic_watten_projection_and_action(client):
            "announcement_roles": {"strike": 0, "colour": 1, "first_player": 0}, "deal_number": 1,
            "trick_history": None, "after": {"actor_hand": ["back"]}}
     with session_scope() as db:
-        assert record(db, game_type="watten", actor_kind="cpu", action={"kind": "play_card", "value": "hearts-7"}, context=ctx)
+        assert record(db, game_type="watten", actor_kind="cpu", actor_user_id=None,
+                      action={"kind": "play_card", "value": "hearts-7"}, context=ctx)
         assert finish_observation(db, recording_id=ID, eligible_user_ids=[3],
                                   outcome={"status": "finished", "winner_parties": [[1]], "scores": [{"seats": [1], "points": 11}]})
 
@@ -244,3 +246,39 @@ def test_inflight_recording_is_serialized_with_off_and_delete(client):
         assert record(db, sequence=2) is False
         assert db.scalar(select(func.count()).select_from(ObservationEvent)) == 0
         assert db.scalar(select(func.count()).select_from(ObservationRecording)) == 0
+
+
+def test_selected_actor_redaction_and_no_live_export(client):
+    assert client.put("/api/admin/observation", json={"enabled": True, "mode": "selected",
+                      "selected_user_ids": [3], "version": 0}).status_code == 200
+    private = {"phase": "playing", "actor_hand": ["hearts-6"], "discard": ["bells-7"],
+               "private_peek": ["leaves-8"], "available_actions": ["play", "pickup"],
+               "after": {"actor_hand": ["acorns-9"]},
+               "partner_hand": {"seat": 1, "cards": ["bells-8"]},
+               "feedback": [{"sender": 1, "recipient": 0, "value": "good"}]}
+    with session_scope() as db:
+        assert record(db, eligible_user_ids=[2, 3], actor_user_id=2, context=private)
+        assert record(db, sequence=1, eligible_user_ids=[2, 3], actor_user_id=3, context=private)
+        assert record(db, sequence=2, eligible_user_ids=[2, 3], actor_user_id=None, actor_kind="cpu", context=private)
+        assert not record(db, sequence=3, eligible_user_ids=[2, 3], actor_user_id=2,
+                          game_type="watten", action={"kind": "partner_feedback", "value": "good"}, context=private)
+    # No raw view can reveal the remaining hidden information during play.
+    assert client.get("/api/admin/observation/recordings").json()["items"] == []
+    assert client.get(f"/api/admin/observation/recordings/{ID}/events").status_code == 404
+    with session_scope() as db:
+        assert finish_observation(db, recording_id=ID, eligible_user_ids=[2, 3], outcome={"status": "finished"})
+    events = client.get(f"/api/admin/observation/recordings/{ID}/events").json()["items"]
+    assert [item["actor_selected"] for item in events] == [False, True, False]
+    assert events[0]["context"] == {"phase": "playing", "discard": ["bells-7"]}
+    assert events[1]["context"]["actor_hand"] == ["hearts-6"]
+    assert events[2]["context"]["actor_hand"] == ["hearts-6"]
+    assert all("partner_hand" not in item["context"] and "feedback" not in item["context"] for item in events)
+
+
+def test_guest_human_stays_public_even_in_all_mode(client):
+    assert client.put("/api/admin/observation", json={"enabled": True, "mode": "all", "selected_user_ids": [], "version": 0}).status_code == 200
+    with session_scope() as db:
+        assert record(db, actor_user_id=None)
+        event = db.get(ObservationEvent, (ID, 0))
+        assert not event.actor_selected
+        assert "actor_hand" not in json.loads(event.context_json)

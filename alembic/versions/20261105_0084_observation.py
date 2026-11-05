@@ -40,6 +40,7 @@ def upgrade():
                     sa.Column("sequence", sa.Integer(), primary_key=True),
                     sa.Column("actor_seat", sa.Integer(), nullable=False),
                     sa.Column("actor_kind", sa.String(8), nullable=False),
+                    sa.Column("actor_selected", sa.Boolean(), nullable=False),
                     sa.Column("action_json", sa.Text(), nullable=False), sa.Column("context_json", sa.Text(), nullable=False),
                     sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
                     sa.CheckConstraint("sequence >= 0 AND actor_seat >= 0 AND actor_seat <= 7", name="ck_observation_event_indices"),

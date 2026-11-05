@@ -85,6 +85,7 @@ class ObservationEvent(Base):
     sequence: Mapped[int] = mapped_column(Integer, primary_key=True)
     actor_seat: Mapped[int] = mapped_column(Integer, nullable=False)
     actor_kind: Mapped[str] = mapped_column(String(8), nullable=False)
+    actor_selected: Mapped[bool] = mapped_column(Boolean, nullable=False)
     action_json: Mapped[str] = mapped_column(Text, nullable=False)
     context_json: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

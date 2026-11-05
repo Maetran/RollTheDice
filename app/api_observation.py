@@ -87,7 +87,8 @@ def list_recordings(request: Request, response: Response, limit: int = Query(50,
     with session_scope() as db:
         lock_current_account_session(db, identity)
         require_owner(db, identity.user_id)
-        query = select(ObservationRecording).where(ObservationRecording.started_at > utcnow() - timedelta(days=RETENTION_DAYS))
+        query = select(ObservationRecording).where(ObservationRecording.finished_at.is_not(None),
+                                                   ObservationRecording.started_at > utcnow() - timedelta(days=RETENTION_DAYS))
         if before:
             query = query.where(ObservationRecording.id < before)
         rows = db.scalars(query.order_by(ObservationRecording.id.desc()).limit(limit + 1)).all()
@@ -109,12 +110,14 @@ def list_events(recording_id: str, request: Request, response: Response, limit: 
         lock_current_account_session(db, identity)
         require_owner(db, identity.user_id)
         recording = db.get(ObservationRecording, recording_id)
-        if not recording or as_utc(recording.started_at) <= utcnow() - timedelta(days=RETENTION_DAYS):
+        if (not recording or recording.finished_at is None
+                or as_utc(recording.started_at) <= utcnow() - timedelta(days=RETENTION_DAYS)):
             raise HTTPException(status_code=404, detail="observation_not_found", headers=PRIVATE_HEADERS)
         rows = db.scalars(select(ObservationEvent).where(ObservationEvent.recording_id == recording_id,
                           ObservationEvent.sequence > after).order_by(ObservationEvent.sequence).limit(limit + 1)).all()
         items = rows[:limit]
         return {"items": [{"sequence": row.sequence, "actor_seat": row.actor_seat, "actor_kind": row.actor_kind,
+                           "actor_selected": row.actor_selected,
                            "action": json.loads(row.action_json), "context": json.loads(row.context_json),
                            "created_at": as_utc(row.created_at).isoformat()} for row in items],
                 "next_after": items[-1].sequence if len(rows) > limit else None}
