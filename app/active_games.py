@@ -40,6 +40,10 @@ def serializable_game_state(game: dict) -> dict:
 
         return serialize_watten_game(game)
     state = _json_safe(game)
+    # The pending observation is process-local until the checkpoint is saved;
+    # it contains a participant's private projection and account IDs for the
+    # policy check, and must never enter the game checkpoint.
+    state.pop("_decision_observation_pending", None)
     # A reversible in-browser Zilch draft is shared only with people currently
     # watching the room. It is never a persisted scoring hold and must not
     # reappear after a process restart.
@@ -58,7 +62,7 @@ def serializable_game_state(game: dict) -> dict:
     return state
 
 
-def save_active_game(game: dict, *, creating: bool = False) -> None:
+def save_active_game(game: dict, *, creating: bool = False) -> bool:
     """Upsert a live game, retaining terminal state until durable accounting.
 
     A terminal board is itself recovery data: the completed-result finalizer
@@ -77,22 +81,22 @@ def save_active_game(game: dict, *, creating: bool = False) -> None:
         from .watten_runtime import persist_watten_game
 
         persist_watten_game(game)
-        return
+        return True
     if not database_schema_ready():
-        return
+        return False
     game_id = str(game.get("_id") or "").strip()
     if not game_id:
-        return
+        return False
     from .game_lifecycle import is_candidate, room_lock
 
     if is_candidate(game):
         # A staged admission persists only through its strict commit.
-        return
+        return False
     with room_lock(game):
-        _save_active_game_locked(game, game_id, creating=creating)
+        return _save_active_game_locked(game, game_id, creating=creating)
 
 
-def _save_active_game_locked(game: dict, game_id: str, *, creating: bool) -> None:
+def _save_active_game_locked(game: dict, game_id: str, *, creating: bool) -> bool:
     from .game_lifecycle import bind_room, bound_revision
 
     # Resolve/validate the marker before serializing an active state.  Missing
@@ -109,14 +113,14 @@ def _save_active_game_locked(game: dict, game_id: str, *, creating: bool) -> Non
             game["_hausdepp_rematch_source_pending"] = True
     from .hausdepp_tournament import tournament_is_pending
 
-    if not game.get("_hausdepp_rematch_source_pending") and (game.get("_completion_persisted") and not tournament_is_pending(game) or (
+    if not game.get("_decision_observation") and not game.get("_hausdepp_rematch_source_pending") and (game.get("_completion_persisted") and not tournament_is_pending(game) or (
         game.get("_aborted") and game.get("_abandonment_accounted")
     )):
         if bound_revision(game) is not None:
-            _delete_row(game_id, bound_revision(game))
+            return _delete_row(game_id, bound_revision(game))
         else:
             logger.warning("Refusing terminal delete from unbound game object %s", game_id)
-        return
+        return False
     now = utcnow()
     payload = json.dumps(serializable_game_state(game), ensure_ascii=False, separators=(",", ":"))
     revision = bound_revision(game)
@@ -135,7 +139,7 @@ def _save_active_game_locked(game: dict, game_id: str, *, creating: bool) -> Non
                         .execution_options(synchronize_session=False)).scalar_one_or_none()
                     if previous_raw is None:
                         logger.warning("Refusing stale or retired Hausdepp checkpoint for game %s", game_id)
-                        return
+                        return False
                     from .account_progress import lock_account_rows
                     from .rare_surprise_probability import hausdepp_start_accounts, record_hausdepp_start
 
@@ -149,16 +153,16 @@ def _save_active_game_locked(game: dict, game_id: str, *, creating: bool) -> Non
                 if changed.rowcount != 1:
                     logger.warning("Refusing stale or retired checkpoint for game %s (revision %s)",
                                    game_id, revision)
-                return
+                return changed.rowcount == 1
             if not creating:
                 # A JSON copy or restored dict never gains write authority, and
                 # a missing row never means "new". (A discarded/retired room
                 # keeps its binding and is refused by the UPDATE above.)
                 logger.error("Refusing unbound checkpoint for game %s", game_id)
-                return
+                return False
             if db.scalar(select(ActiveGame.id).where(ActiveGame.game_id == game_id)) is not None:
                 logger.error("Refusing to create already stored game %s", game_id)
-                return
+                return False
             if game_type_from_state(game) == "hausdepp":
                 from .hausdepp_features import validate_checkpoint_features
 
@@ -166,11 +170,13 @@ def _save_active_game_locked(game: dict, game_id: str, *, creating: bool) -> Non
             db.add(ActiveGame(game_id=game_id, state_json=payload, created_at=now, updated_at=now,
                               admission_revision=0))
         bind_room(game, game_id, 0)
+        return True
     except SQLAlchemyError:
         logger.exception("Could not persist active game %s", game_id)
+        return False
 
 
-def _delete_row(game_id: str, revision: int | None) -> None:
+def _delete_row(game_id: str, revision: int | None) -> bool:
     """Delete one row, fenced to ``revision`` when the caller knows it."""
     conditions = [ActiveGame.game_id == str(game_id)]
     if revision is not None:
@@ -178,10 +184,13 @@ def _delete_row(game_id: str, revision: int | None) -> None:
     try:
         with session_scope() as db:
             # Memberships follow through their database-level CASCADE.
-            if db.execute(delete(ActiveGame).where(*conditions)).rowcount != 1 and revision is not None:
+            deleted = db.execute(delete(ActiveGame).where(*conditions)).rowcount == 1
+            if not deleted and revision is not None:
                 logger.warning("Terminal delete for game %s did not match revision %s", game_id, revision)
+            return deleted
     except SQLAlchemyError:
         logger.exception("Could not delete active game %s", game_id)
+        return False
 
 
 def delete_active_game(game_id: str, *, expected_revision: int | None = None) -> None:
@@ -251,6 +260,10 @@ def load_active_games() -> dict[str, dict]:
                 game = restore_watten_json(state_json)
                 if game["_id"] != game_id:
                     raise ValueError("watten_storage_context_mismatch")
+                if (game.get("_finished") or game.get("_aborted")) and game.get("_decision_observation"):
+                    from .decision_observation_runtime import finish_terminal_observations
+
+                    finish_terminal_observations(game)
                 restored[game_id] = game
                 continue
             if not isinstance(game, dict):
@@ -260,6 +273,13 @@ def load_active_games() -> dict[str, dict]:
             game["_game_type"] = game_type_from_state(game)
             # The row, not the JSON, carries the authoritative revision.
             bind_room(game, game_id, revision)
+            if (game.get("_finished") or game.get("_aborted")) and game.get("_decision_observation"):
+                from .decision_observation_runtime import finish_terminal_observations
+
+                if not finish_terminal_observations(game):
+                    # Never erase the only recovery marker while observation
+                    # storage is unavailable; a later restart can retry.
+                    continue
             from .hausdepp_tournament import tournament_is_pending, validate_tournament
 
             if game.get("_hausdepp_tournament") is not None:

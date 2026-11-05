@@ -532,6 +532,7 @@ def _apply_engine_command(game: dict, actor: EngineActor, command: EngineCommand
     if runtime.abort_reason is not None:
         raise ValueError("watten_room_closed")
     candidate = copy_game(game)
+    candidate.pop("_decision_observation_pending", None)
     request = runtime.engine.preplay_request
     replacement = _redraw_callers(runtime.engine) if (
         command.kind == "preplay_accept" and request is not None and request.kind == "schoeneres") else None
@@ -559,6 +560,18 @@ def _apply_engine_command(game: dict, actor: EngineActor, command: EngineCommand
         private = {item.sender for item in runtime.engine.feedback if item.sender == actor.player_id} | {
             item.recipient for item in runtime.engine.feedback if item.sender == actor.player_id}
     _sync(candidate, runtime, public=private is None)
+    try:
+        from .decision_observation_runtime import policy_version_for, prepare_watten
+
+        eligible = tuple(binding.account_id for binding in game["_watten"].engine.recipe.bindings
+                         if binding.account_id is not None)
+        policy_version = policy_version_for(eligible)
+        if policy_version is not None:
+            candidate["_decision_observation_pending"] = prepare_watten(
+                candidate, game["_watten"].engine, actor, command, policy_version=policy_version)
+    except Exception:
+        # An optional audit must never invalidate an accepted game command.
+        candidate.pop("_decision_observation_pending", None)
     return candidate, ack, False, private
 
 
@@ -658,6 +671,7 @@ def serialize_watten_game(game: dict) -> dict:
     if not isinstance(runtime, WattenRuntime):
         raise ValueError("watten_unconfigured_game")
     return {"_game_type": "watten", "_id": game["_id"], "_name": game["_name"], "_mode": game["_mode"],
+            **({"_decision_observation": game["_decision_observation"]} if "_decision_observation" in game else {}),
             "_started_at": game["_started_at"], "_finished_at": game["_finished_at"],
             "_updated_at": game["_updated_at"], "_last_activity": game["_last_activity"].isoformat(),
             "_passphrase": game["_passphrase"], "_completion_persisted": game["_completion_persisted"],
@@ -684,6 +698,8 @@ def serialize_watten_game(game: dict) -> dict:
 
 def restore_watten_game(raw: dict) -> dict:
     keys = frozenset({"_game_type", "_id", "_name", "_mode", "_started_at", "_finished_at", "_updated_at", "_last_activity", "_passphrase", "_completion_persisted", "_watten_result", "_watten"})
+    if type(raw) is dict and "_decision_observation" in raw:
+        keys |= {"_decision_observation"}
     require_fields(raw, keys, ValueError, "watten_storage")
     if raw["_game_type"] != "watten" or type(raw["_completion_persisted"]) is not bool:
         raise ValueError("watten_invalid_storage")
@@ -751,6 +767,23 @@ def restore_watten_game(raw: dict) -> dict:
     if room.recipe.password_required != bool(raw["_passphrase"]):
         raise ValueError("watten_invalid_storage")
     game = new_watten_game(raw["_id"], raw["_name"], raw["_mode"])
+    marker = raw.get("_decision_observation")
+    if marker is not None:
+        if (type(marker) is not dict or set(marker) != {"id", "round", "sequence", "policy_version", "previous_ids"}
+                or type(marker["id"]) is not str or len(marker["id"]) != 32
+                or any(character not in "0123456789abcdef" for character in marker["id"])
+                or type(marker["round"]) is not int or marker["round"] != 1
+                or type(marker["sequence"]) is not int or not 1 <= marker["sequence"] <= 100000
+                or type(marker["policy_version"]) is not int or not 0 <= marker["policy_version"] <= 0x7fffffff
+                or marker["id"][:8] != f'{marker["policy_version"]:08x}'
+                or type(marker["previous_ids"]) is not list or len(marker["previous_ids"]) > 64
+                or any(type(item) is not str or len(item) != 32
+                       or any(character not in "0123456789abcdef" for character in item)
+                       for item in marker["previous_ids"])
+                or len(set(marker["previous_ids"])) != len(marker["previous_ids"])
+                or marker["id"] in marker["previous_ids"]):
+            raise ValueError("watten_invalid_observation_marker")
+        game["_decision_observation"] = dict(marker)
     for key in ("_started_at", "_finished_at", "_updated_at", "_passphrase", "_completion_persisted", "_watten_result"):
         game[key] = raw[key]
     game["_last_activity"] = datetime.fromisoformat(raw["_last_activity"])
@@ -905,6 +938,10 @@ def persist_watten_game(game: dict, *, creating: bool = False,
     game["_watten"] = checkpoint["_watten"]
     game["_watten_public_titles"] = titles
     game.pop("_watten_feature_action", None)
+    if (game.get("_finished") or game.get("_aborted")) and not game.get("_decision_observation_pending"):
+        from .decision_observation_runtime import finish_terminal_observations
+
+        finish_terminal_observations(game)
 
 
 def restore_watten_json(text: str, *, refresh_titles: bool = True) -> dict:

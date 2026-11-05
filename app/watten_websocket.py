@@ -289,6 +289,10 @@ async def _handle_locked(session, action: str, data: dict) -> bool:
             "announce_strike", "announce_colour", "play_card", "bid", "respond",
         } else None
         persist_watten_game(candidate, human_actor=human_actor)
+        from .decision_observation_runtime import emit_observation, finish_terminal_observations
+
+        emit_observation(candidate.pop("_decision_observation_pending", None))
+        finish_terminal_observations(candidate)
         _install(game, candidate)
         if human_actor is not None:
             metric = {"announce_strike": "choose_contract", "announce_colour": "choose_contract",

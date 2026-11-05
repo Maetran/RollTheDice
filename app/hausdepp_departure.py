@@ -72,6 +72,17 @@ def _propose_departure(game: dict, player_id: str, version: object, departed_at:
         record_finished_round(proposed)
     proposed["_turn"] = {"player_id": state["current_player_id"]} if state.get("current_player_id") else None
     proposed["_resume_required"] = bool(_offline_players(proposed))
+    if permissions["forfeits_round"]:
+        try:
+            from .decision_observation_runtime import _eligible_accounts, policy_version_for, prepare_hausdepp
+
+            policy_version = policy_version_for(_eligible_accounts(proposed["_participants"]))
+            if policy_version is not None:
+                proposed["_decision_observation_pending"] = prepare_hausdepp(
+                    proposed, game["_hausdepp"], state, player_id, {"action": "withdraw"}, policy_version=policy_version)
+        except Exception:
+            proposed.pop("_decision_observation_pending", None)
+            logger.warning("Optional decision projection was not prepared")
     touch(proposed)
     return proposed, permissions["forfeits_round"]
 

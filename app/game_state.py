@@ -167,7 +167,12 @@ def _check_timeout_and_abort_locked(g, *, now: datetime | None) -> bool:
             # Timeouts terminate the room but never count against any player.
             # This explicit marker also lets startup remove stale timeouts.
             g["_abandonment_accounted"] = True
-            save_active_game(g)
+            saved = save_active_game(g)
+            if saved and g.get("_game_type") == "hausdepp":
+                from .decision_observation_runtime import finish_terminal_observations
+
+                if finish_terminal_observations(g):
+                    save_active_game(g)  # terminal deletion after confirmed observer cleanup
             return True
     except (TypeError, ValueError, OverflowError):
         logger.warning("Could not evaluate timeout for game %s", g.get("_id"), exc_info=True)
