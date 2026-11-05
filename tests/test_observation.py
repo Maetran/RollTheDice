@@ -282,3 +282,60 @@ def test_guest_human_stays_public_even_in_all_mode(client):
         event = db.get(ObservationEvent, (ID, 0))
         assert not event.actor_selected
         assert "actor_hand" not in json.loads(event.context_json)
+
+
+def test_off_terminal_closes_existing_partial_without_persisting_new_result(client):
+    assert client.put("/api/admin/observation", json={"enabled": True, "mode": "selected",
+                      "selected_user_ids": [3], "version": 0}).status_code == 200
+    with session_scope() as db:
+        assert record(db)
+    assert client.put("/api/admin/observation", json={"enabled": False, "mode": "selected",
+                      "selected_user_ids": [], "version": 1}).status_code == 200
+    assert client.get(f"/api/admin/observation/recordings/{ID}/events").status_code == 404
+    with session_scope() as db:
+        assert not record(db, sequence=1)
+        assert finish_observation(db, recording_id=ID, eligible_user_ids=[3],
+                                  outcome={"status": "finished", "loser_seat": 1})
+    result = client.get("/api/admin/observation/recordings").json()["items"]
+    assert result[0]["status"] == "partial" and result[0]["outcome"] is None
+    assert len(client.get(f"/api/admin/observation/recordings/{ID}/events").json()["items"]) == 1
+    assert client.request("DELETE", "/api/admin/observation/recordings", json={"version": 2}).status_code == 200
+    with session_scope() as db:
+        assert not finish_observation(db, recording_id=ID, eligible_user_ids=[3], outcome={"status": "finished"})
+        assert db.get(ObservationRecording, ID) is None
+
+
+def test_finalize_and_delete_do_not_resurrect_deleted_records(client):
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Event
+
+    from app.observation import delete_recordings, lock_policy
+
+    assert client.put("/api/admin/observation", json={"enabled": True, "mode": "all", "selected_user_ids": [], "version": 0}).status_code == 200
+    with session_scope() as db:
+        assert record(db)
+    acquired, proceed = Event(), Event()
+
+    def finalize():
+        with session_scope() as db:
+            lock_policy(db)
+            acquired.set()
+            assert proceed.wait(5)
+            return finish_observation(db, recording_id=ID, eligible_user_ids=[3], outcome={"status": "finished"})
+
+    def erase():
+        assert acquired.wait(5)
+        with session_scope() as db:
+            return delete_recordings(db, actor_user_id=1, version=1)
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        final = pool.submit(finalize)
+        assert acquired.wait(5)
+        deleted = pool.submit(erase)
+        proceed.set()
+        assert final.result(timeout=10)
+        assert deleted.result(timeout=10)["deleted"] == 1
+    with session_scope() as db:
+        assert not finish_observation(db, recording_id=ID, eligible_user_ids=[3], outcome={"status": "finished"})
+        assert db.scalar(select(func.count()).select_from(ObservationRecording)) == 0
+        assert db.scalar(select(func.count()).select_from(ObservationEvent)) == 0

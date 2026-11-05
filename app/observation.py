@@ -317,11 +317,19 @@ def finish_observation(db, *, recording_id, outcome, eligible_user_ids):
         raise ValueError("observation_payload_invalid")
     lock_policy(db)
     policy = _allowed(db, eligible_user_ids)
-    if policy is None:
-        return False
     row = db.get(ObservationRecording, recording_id)
     if row is None:
         return False
+    if policy is None:
+        # After an authoritative game end, close an existing partial window
+        # even if recording has since been disabled or its selection removed.
+        # This safety marker is the only allowed later write: do not persist
+        # the post-disable outcome or create/recreate a deleted recording.
+        if row.finished_at is None:
+            row.status = "partial"
+            row.finished_at = utcnow()
+            db.flush()
+        return True
     if row.finished_at is not None:
         if row.outcome_json != outcome_json:
             raise ValueError("observation_outcome_conflict")
