@@ -135,6 +135,26 @@ def _allowed(db, eligible_user_ids):
         query = query.join(ObservationSelection, ObservationSelection.user_id == User.id)
     return policy if db.scalar(query.limit(1)) is not None else None
 
+
+def observation_may_record(db, eligible_user_ids):
+    """Best-effort read-only precheck; every write MUST still lock and recheck.
+
+    This avoids generating tokens or projecting private hands while recording
+    is off. A concurrent policy change can invalidate the result immediately.
+    Missing schema/DB errors must be treated as disabled by the caller.
+    """
+    row = db.execute(select(ObservationPolicy.enabled, ObservationPolicy.mode)
+                     .where(ObservationPolicy.id == 1)).one_or_none()
+    if row is None or not row.enabled:
+        return False
+    candidates = {value for value in eligible_user_ids if type(value) is int and value > 0}
+    if not candidates:
+        return False
+    query = select(User.id).where(User.id.in_(candidates), User.is_active.is_(True))
+    if row.mode == "selected":
+        query = query.join(ObservationSelection, ObservationSelection.user_id == User.id)
+    return db.scalar(query.limit(1)) is not None
+
 # The recorder is intentionally not a general JSON store. These keys and values
 # are the complete public/actor-local vocabulary; names, real IDs, chat and
 # unprojected engine state cannot pass the write boundary.

@@ -339,3 +339,23 @@ def test_finalize_and_delete_do_not_resurrect_deleted_records(client):
         assert not finish_observation(db, recording_id=ID, eligible_user_ids=[3], outcome={"status": "finished"})
         assert db.scalar(select(func.count()).select_from(ObservationRecording)) == 0
         assert db.scalar(select(func.count()).select_from(ObservationEvent)) == 0
+
+
+def test_precheck_is_read_only_fail_closed_and_never_replaces_write_check(client):
+    from app.observation import observation_may_record
+
+    with session_scope() as db:
+        assert not observation_may_record(db, [3])
+        assert db.scalar(select(func.count()).select_from(ObservationRecording)) == 0
+    assert client.put("/api/admin/observation", json={"enabled": True, "mode": "selected",
+                      "selected_user_ids": [3], "version": 0}).status_code == 200
+    with session_scope() as db:
+        assert observation_may_record(db, [3])
+        assert not observation_may_record(db, [2])
+        assert not observation_may_record(db, [])
+    assert client.put("/api/admin/observation", json={"enabled": False, "mode": "selected",
+                      "selected_user_ids": [3], "version": 1}).status_code == 200
+    with session_scope() as db:
+        assert not observation_may_record(db, [3])
+        assert not record(db)
+        assert db.scalar(select(func.count()).select_from(ObservationRecording)) == 0
