@@ -2693,5 +2693,12 @@
     "date": "2026-11-05",
     "bump": "minor",
     "summary": "Spielaufzeichnung für Hausdepp und Watten sowie klarere Navigation und Dashboard-Bedienung. / Game observation for Hausdepp and Watten, with clearer navigation and dashboard controls."
+  },
+  {
+    "version": "4.15.1",
+    "revision": "5ce1a86517d4379f35a5fd223c9cb4d5f0a704af",
+    "date": "2026-11-05",
+    "bump": "patch",
+    "summary": "Watten-CPU nutzt gezeigte Karten taktisch und wartet auf das Partnergefühl. / Watten CPUs use shown cards tactically and wait for their partner’s feedback."
   }
 ]

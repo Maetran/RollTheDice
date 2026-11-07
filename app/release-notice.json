@@ -1,25 +1,25 @@
 {
   "kind": "usability",
   "games": [
-    "watten"
+    "hausdepp"
   ],
-  "summary_de": "Watten-CPUs spielen nach dem Einschauen überlegter und warten auf dein Gefühl.",
-  "summary_en": "Watten CPUs play more thoughtfully after inspecting and wait for your feedback.",
+  "summary_de": "Hausdepp zeigt Karten übersichtlicher und wertet gemeinsame Runden fair.",
+  "summary_en": "Hausdepp makes cards easier to inspect and scores shared rounds fairly.",
   "player_notes": {
     "de": {
-      "title": "4.15.1: Besser zusammen spielen",
+      "title": "4.15.2: Karten im Blick",
       "changes": [
-        "Die Watten-Computergegner entscheiden aufmerksamer.",
-        "WATTEN: Nach dem Einschauen spielen CPUs bei vergleichbaren Zügen eher ihre bereits gezeigte Karte.",
-        "WATTEN: Entscheidet eine CPU über ein Angebot, wartet sie auf dein Gefühl und berücksichtigt es."
+        "In Hausdepp siehst du deine Karten und das offene Paket jetzt übersichtlicher.",
+        "HAUSDEPP: Halte das offene Paket gedrückt, um alle Karten anzusehen.",
+        "HAUSDEPP: Mit mindestens einem weiteren Menschen bis zum Rundenende gibt es auch mit Computern 10 EP."
       ]
     },
     "en": {
-      "title": "4.15.1: Playing better together",
+      "title": "4.15.2: Cards in view",
       "changes": [
-        "Watten computer opponents make more thoughtful decisions.",
-        "WATTEN: After inspecting, CPUs prefer their already shown card among comparable plays.",
-        "WATTEN: When a CPU decides on an offer, it waits for your feeling and takes it into account."
+        "In Hausdepp, your inspected cards and the open pile are easier to see.",
+        "HAUSDEPP: Hold the open pile to see all its cards.",
+        "HAUSDEPP: With another human who stays through the round, earn 10 XP even with computers."
       ]
     }
   }
