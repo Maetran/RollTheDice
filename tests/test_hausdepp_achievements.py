@@ -495,7 +495,7 @@ class HausdeppAchievementTests(unittest.TestCase):
                 self.assertTrue(finalize_hausdepp_result(game)["result_persisted"])
                 for account in (self.user, self.other):
                     progress = build_hausdepp_account_for_user(account.id)
-                    self.assertEqual(progress["scoring"]["round_points"], len(observed_losers) * 2)
+                    self.assertEqual(progress["scoring"]["round_points"], len(observed_losers) * 10)
                     self.assertEqual(progress["statistics"]["rounds_played"], len(observed_losers))
                     awards = {item["id"] for item in progress["achievements"]["items"] if item["unlocked"]}
                     if not game["_hausdepp_tournament"]["completed"]:
@@ -519,7 +519,7 @@ class HausdeppAchievementTests(unittest.TestCase):
                 self.assertEqual(by_name[account.username]["wins"], round_count - observed_losers.count(key))
                 self.assertEqual(by_name[account.username]["rounds_played"], round_count)
                 progress = synchronize_hausdepp_progress(account.id)
-                self.assertEqual(progress["scoring"]["round_points"], round_count * 2)
+                self.assertEqual(progress["scoring"]["round_points"], round_count * 10)
                 items = {item["id"]: item for item in progress["achievements"]["items"]}
                 self.assertTrue(items["hausdepp_85"]["unlocked"])
                 self.assertEqual(items["hausdepp_89"]["unlocked"], key == observed_losers[-1])

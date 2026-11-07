@@ -15,7 +15,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 
 from .database import database_schema_ready, session_scope
-from .hausdepp_achievements import _ACHIEVEMENTS_BY_ID, CPU_ROUND_POINTS, ROUND_POINTS, _unlock_source_allowed
+from .hausdepp_achievements import _ACHIEVEMENTS_BY_ID, _unlock_source_allowed, round_reward
 from .hausdepp_departure_store import source_not_withdrawn
 from .models import HausdeppAchievementUnlock, HausdeppRoundCredit, HausdeppWithdrawal
 
@@ -53,7 +53,7 @@ def build_round_summary(result_id: str, participants: list[dict]) -> dict | None
         if facts is None and user_id not in withdrawn:
             players[player_id] = {"xp": None, "round_xp": None, "achievements": []}
             continue
-        round_xp = 0 if user_id in withdrawn else CPU_ROUND_POINTS if facts.get("cpu_count") else ROUND_POINTS
+        round_xp = 0 if user_id in withdrawn else round_reward(facts)
         achievements = [{"id": achievement_id, "points": _ACHIEVEMENTS_BY_ID[achievement_id]["points"],
                          "name": dict(_ACHIEVEMENTS_BY_ID[achievement_id]["name"])}
                         for achievement_id in unlocks[user_id] if achievement_id in _ACHIEVEMENTS_BY_ID]

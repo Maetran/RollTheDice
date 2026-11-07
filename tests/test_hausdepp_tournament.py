@@ -507,7 +507,7 @@ def test_seeded_full_tournament_for_each_table_size_rotates_restores_and_credits
             assert len({row.game_id for row in rows}) == completed_rounds
         for account in database:
             account_state = build_hausdepp_account_for_user(account.id)
-            assert account_state["scoring"]["round_points"] == completed_rounds * (10 if count == 2 else 2)
+            assert account_state["scoring"]["round_points"] == completed_rounds * 10
             assert account_state["statistics"]["rounds_played"] == completed_rounds
 
 

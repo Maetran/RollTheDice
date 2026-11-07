@@ -1420,10 +1420,9 @@ Das Konto enthält **138 Erfolge und 24 Ränge**, mit Suche, Filtern und der gan
 Rangleiter. Innerhalb jeder Gruppe stehen erreichte Erfolge vor den noch offenen.
 Häufige Kartenaktionen benötigen mehrere passende abgeschlossene Runden;
 jede Runde zählt je Ziel höchstens einmal. Seltene Kunststücke bleiben direkt
-erreichbar. Eine abgeschlossene Runde nur mit Menschen gibt 10 Erfahrungspunkte.
-Sobald mindestens ein Computer mitspielt, wird die Basis um 75 % reduziert
-und je Runde auf ganze EP abgerundet: **2 EP**,
-auch an gemischten Tischen und für jede einzelne Turnierrunde. Jeder Erfolg
+erreichbar. Eine abgeschlossene Runde mit mindestens zwei Menschen gibt **10 EP**,
+auch wenn Computer mitspielen. Allein gegen Computer gibt es **2 EP** pro Runde;
+frühere Runden behalten ihre ursprüngliche Gutschrift. Das gilt auch im Turnier. Jeder Erfolg
 gibt weiterhin einmalig seine vollen 10, 25, 50, 100, 250 oder 500 EP;
 der Ausstiegs-Zonk gibt ausdrücklich 0 EP. Runden, Siege und
 die Anzahl bereits freigeschalteter Erfolge bleiben dabei erhalten.
@@ -1519,10 +1518,10 @@ settings at `/hausdepp/konto/einstellungen` manage the shared account. The accou
 and 24 ranks**, with search, filters and the complete rank ladder. Each group
 shows earned achievements before locked ones. Common card actions require
 several qualifying completed rounds, with each round counting at most once per
-goal; rare feats can still unlock immediately. A completed all-human round earns
-10 experience points. Any computer seat reduces the base round reward by 75%,
-rounded down per round to **2 XP**, including mixed tables and each individual
-tournament round. Achievements still grant their full 10, 25, 50, 100, 250 or 500 XP once each;
+goal; rare feats can still unlock immediately. A completed round with at least two humans earns
+**10 XP**, including at tables with computers. Playing alone against computers earns **2 XP**
+per round; earlier rounds keep their original credit. This also applies to tournaments.
+Achievements still grant their full 10, 25, 50, 100, 250 or 500 XP once each;
 the departure Zonk is explicitly worth 0 XP.
 Round and win counts and the number of existing unlocks are retained.
 The eight rare table finds have two collection tracks: trigger them yourself

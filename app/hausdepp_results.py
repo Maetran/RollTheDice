@@ -150,6 +150,10 @@ def validate_hausdepp_result(payload: object) -> dict:
     result = {"schema_version": payload["schema_version"], "payload_kind": "hausdepp_result", "game_type": HAUSDEPP_GAME_TYPE,
             "game_id": game_id, "name": name, "finished_at": finished_at,
             "participants": participants, "loser_id": loser, "finished_order": list(order), **terminal}
+    if "round_reward_policy" in payload:
+        if type(payload["round_reward_policy"]) is not int or payload["round_reward_policy"] != 2:
+            raise ValueError("hausdepp_result_invalid_reward_policy")
+        result["round_reward_policy"] = 2
     timing = _round_timing(payload.get("started_at"), finished_at)
     duration = payload.get("duration_seconds")
     if (timing and type(duration) in {int, float} and 0 <= duration <= 30 * 24 * 60 * 60
@@ -238,6 +242,8 @@ def validated_hausdepp_membership(row: CompletedGame, user_id: int, *, db=None) 
              "human_count": len(participants) - record["cpu_count"], "outcome": own["outcome"],
              "opponents": sorted(account for account in human_accounts if account != user_id),
              "flags": evidence.get("flags", []), "ten_clears": evidence.get("ten_clears", 0)}
+    if payload.get("round_reward_policy") == 2:
+        facts["round_reward_policy"] = 2
     if "table_surprises" in evidence:
         facts["table_surprises"] = evidence["table_surprises"]
     tournament = payload.get("tournament")
@@ -279,6 +285,7 @@ def finalize_hausdepp_result(game: dict) -> dict:
                   else 3 if tournament else 2 if state.get("achievement_evidence") is not None else 1)
         raw = {
             "schema_version": schema,
+            "round_reward_policy": 2,
             "payload_kind": "hausdepp_result", "game_type": HAUSDEPP_GAME_TYPE,
             "game_id": result_id, "name": game["_name"], "finished_at": game["_finished_at"],
             "participants": [{"id": player["id"], "name": player["name"], "is_cpu": bool(player.get("is_cpu"))}
