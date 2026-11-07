@@ -130,119 +130,185 @@ async function expectCards(locator, cards) {
   expect(await locator.locator('[data-card-id]').evaluateAll(nodes => nodes.map(node => node.dataset.cardId))).toEqual(cards);
 }
 
+const NAMES = { de: { 'hearts-A': 'Herz Ass', 'bells-K': 'Schellen König', title: 'Beim Abheben gesehen' },
+  en: { 'hearts-A': 'Hearts Ace', 'bells-K': 'Bells King', title: 'Seen when lifting the deck' } };
+
+// Geometry of one known face at a chosen moment of its reveal animation.
+async function faceAt(page, card, time) {
+  return page.locator(`#hausdeppKnownBottomCards [data-card-id="${card}"]`).evaluate((node, at) => {
+    const animation = node.getAnimations()[0];
+    if (animation && at !== null) { animation.pause(); animation.currentTime = at; }
+    const a = node.getBoundingClientRect(), b = document.querySelector('#hausdeppStock').getBoundingClientRect();
+    return { left: a.left, right: a.right, top: a.top, bottom: a.bottom, stockLeft: b.left, stockRight: b.right, stockTop: b.top,
+      animations: node.getAnimations().length, frames: animation?.effect.getKeyframes().length || 0,
+      duration: animation?.effect.getTiming().duration || 0 };
+  }, time);
+}
+
+async function finishAnimations(page) {
+  await page.locator('#hausdeppKnownBottomCards').evaluate(node => node.getAnimations({ subtree: true }).forEach(animation => animation.finish()));
+}
+
 for (const language of ['de', 'en']) {
   for (const reducedMotion of ['no-preference', 'reduce']) {
-    test(`${language}, ${reducedMotion}: cut faces slide from under the stock, then leave a private bottom-card hint`, async ({ page }) => {
+    test(`${language}, ${reducedMotion}: each cut face slides out from under the stock, stays readable and tucks back under it`, async ({ page }) => {
       await page.emulateMedia({ reducedMotion });
       const fixture = await rendererFixture(page, { language });
       await pauseClock(page);
-      const preview = page.locator('#hausdeppCutPreview');
+      const fan = page.locator('#hausdeppKnownBottomCards');
+      const announcement = page.locator('#hausdeppCutAnnouncement');
       const tools = page.locator('#hausdeppTools');
       const history = page.locator('#hausdeppPeek');
       await expect(page.locator('html')).toHaveAttribute('lang', language);
-      await expect(preview).toBeHidden();
+      await expect(fan).toBeHidden();
+      await expect(page.locator('#hausdeppCutPreview')).toHaveCount(0);
       expect(await tools.evaluate(element => element.open)).toBe(false);
-      expect(await history.evaluate(element => element.open)).toBe(false);
 
       await fixture.cut({ version: 21, cards: ['hearts-A'] });
-      await expect(page.locator('.hd-stock-group #hausdeppCutPreview')).toBeVisible();
-      await expectCards(preview, ['hearts-A']);
-      await expect(page.locator('#hausdeppStock')).toBeEnabled();
-      expect(await history.evaluate(element => element.closest('#hausdeppTools') !== null)).toBe(true);
+      await expectCards(fan, ['hearts-A']);
+      await expect(fan).toHaveAttribute('data-revealing', 'true');
+      await expect(announcement).toHaveText(`${NAMES[language].title}: ${NAMES[language]['hearts-A']}`);
+      await expect(announcement).toHaveAttribute('aria-live', 'polite');
       await expect(history).toBeHidden();
-      // Cut faces are behind the face-down pile and protrude on its left.
-      const placement = await preview.evaluate(node => {
-        const stock = document.querySelector('#hausdeppStock'), a = node.getBoundingClientRect(), b = stock.getBoundingClientRect();
-        return { left: a.left, right: a.right, stockLeft: b.left, stockRight: b.right,
-          previewZ: Number(getComputedStyle(node).zIndex), stockZ: Number(getComputedStyle(stock).zIndex),
-          animation: getComputedStyle(node.querySelector('.hausdepp-card')).animationName };
-      });
-      expect(placement.left).toBeGreaterThanOrEqual(0);
-      expect(placement.left).toBeLessThan(placement.stockLeft);
-      expect(placement.right).toBeLessThan(placement.stockRight);
-      expect(placement.previewZ).toBeLessThan(placement.stockZ);
-      expect(placement.animation).toBe(reducedMotion === 'reduce' ? 'none' : 'hd-cut-slide-under');
+      expect(await history.evaluate(element => element.closest('#hausdeppTools') !== null)).toBe(true);
       if (reducedMotion === 'no-preference') {
-        const frames = await preview.locator('.hausdepp-card').first().evaluate(node => node.getAnimations()[0].effect.getKeyframes());
-        expect(frames[0].transform).toBe('translateY(-15%)');
-        expect(frames.at(-1).transform).toBe('translateY(0px)');
+        const start = await faceAt(page, 'hearts-A', 0);
+        expect(start.frames).toBe(4);
+        expect(start.duration).toBe(1520);
+        // It starts completely beneath the stock …
+        expect(start.left).toBeGreaterThanOrEqual(start.stockLeft - 3);
+        // … is readable beside it while held, never off-screen …
+        const reading = await faceAt(page, 'hearts-A', 800);
+        expect(reading.left).toBeGreaterThanOrEqual(0);
+        expect(reading.left).toBeLessThan(start.left - 20);
+        // … and ends in its resting slot under the stock.
+        const tucked = await faceAt(page, 'hearts-A', 1519);
+        expect(Math.abs(tucked.left - start.left) > 10).toBe(true);
+        page.tuckedLeft = tucked.left;
+      } else {
+        // Reduced motion: no travel, a static readable pose, then the resting fan.
+        const reading = await faceAt(page, 'hearts-A', 500);
+        expect(reading.frames).toBe(2);
+        expect(reading.duration).toBe(1100);
+        expect(reading.left).toBeGreaterThanOrEqual(0);
       }
       expect(await page.locator('#hausdeppStock').evaluate(stock => {
         const rect = stock.getBoundingClientRect();
         return stock.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2));
-      }), 'The private preview leaves the next cut reachable').toBe(true);
-      await page.clock.runFor(1101);
-      await expect(preview).toBeHidden();
-      await expect(page.locator('#hausdeppKnownBottomCards')).toBeVisible();
-      await expectCards(page.locator('#hausdeppKnownBottomCards'), ['hearts-A']);
+      }), 'The face stays beneath the stock and leaves the next cut reachable').toBe(true);
+      await expect(page.locator('#hausdeppStock')).toBeEnabled();
+      await finishAnimations(page);
+      await page.clock.runFor(1521);
+      await expect(fan).not.toHaveAttribute('data-revealing', 'true');
+      const settled = await faceAt(page, 'hearts-A', null);
+      expect(settled.animations).toBe(0);
+      if (page.tuckedLeft !== undefined) expect(Math.abs(settled.left - page.tuckedLeft), 'the tuck ends exactly in the resting slot').toBeLessThanOrEqual(1.5);
+      expect(settled.left).toBeLessThan(settled.stockLeft);
+      expect(settled.right).toBeGreaterThan(settled.stockLeft);
 
+      // The next card after the ace: only the new face travels, the ace stays put.
+      await page.locator('#hausdeppKnownBottomCards [data-card-id="hearts-A"]').evaluate(node => { node.dataset.sameNode = 'yes'; });
       await fixture.cut({ version: 22, cards: ['hearts-A', 'bells-K'], complete: true });
-      await expectCards(preview, ['hearts-A', 'bells-K']);
-      await expect(preview).toBeVisible();
+      await expectCards(fan, ['hearts-A', 'bells-K']);
+      await expect(fan.locator('[data-card-id="hearts-A"]')).toHaveAttribute('data-same-node', 'yes');
+      await expect(announcement).toHaveText(`${NAMES[language].title}: ${NAMES[language]['bells-K']}`);
+      expect((await faceAt(page, 'hearts-A', null)).animations).toBe(0);
+      const king = await faceAt(page, 'bells-K', reducedMotion === 'reduce' ? 500 : 800);
+      expect(king.frames).toBe(reducedMotion === 'reduce' ? 2 : 4);
+      expect(king.left).toBeGreaterThanOrEqual(0);
       await expect(page.locator('#hausdeppHand [data-card-id="hearts-6"]')).toBeEnabled();
       if (language === 'de' && reducedMotion === 'no-preference') {
-        await page.screenshot({ path: test.info().outputPath('cut-preview-mobile-390x844.png'), animations: 'disabled' });
-        await page.setViewportSize({ width: 1440, height: 900 });
-        await page.screenshot({ path: test.info().outputPath('cut-preview-desktop-1440x900.png'), animations: 'disabled' });
-        await page.setViewportSize({ width: 390, height: 844 });
+        await page.screenshot({ path: test.info().outputPath('cut-reveal-mobile-390x844.png'), animations: 'disabled' });
       }
-      await page.clock.runFor(600);
-      await expect(preview).toBeVisible();
+      await finishAnimations(page);
+      await page.clock.runFor(1521);
+      await expect(fan).not.toHaveAttribute('data-revealing', 'true');
+      for (const card of ['hearts-A', 'bells-K']) {
+        const face = await faceAt(page, card, null);
+        expect(face.left, `${card} peeks out on screen`).toBeGreaterThanOrEqual(0);
+        expect(face.left).toBeLessThan(face.stockLeft);
+        expect(face.right).toBeGreaterThan(face.stockLeft);
+      }
+      expect(await fan.evaluate(node => Number(getComputedStyle(node).zIndex) < Number(getComputedStyle(document.querySelector('#hausdeppStock')).zIndex))).toBe(true);
+      // A repeated identical snapshot never replays the cut.
       await fixture.send({ version: 23, cards: ['hearts-A', 'bells-K'], complete: true });
-      await page.clock.runFor(499);
-      await expect(preview).toBeVisible();
-      await page.clock.runFor(2);
-      await expect(preview).toBeHidden();
-      await expect(page.locator('#hausdeppKnownBottomCards')).toBeVisible();
-      await fixture.send({ version: 24, cards: ['hearts-A', 'bells-K'], complete: true });
-      await expect(preview).toBeHidden();
+      await expect(fan).not.toHaveAttribute('data-revealing', 'true');
       expect(await tools.evaluate(element => element.open)).toBe(false);
       expect(await history.evaluate(element => element.open)).toBe(false);
 
       await tools.locator(':scope > summary').click();
-      await expect(history.locator(':scope > summary')).toHaveText(language === 'de' ? 'Beim Abheben gesehen' : 'Seen when lifting the deck');
+      await expect(history.locator(':scope > summary')).toHaveText(NAMES[language].title);
       await expect(page.locator('#hausdeppPeekCards')).toBeHidden();
       await history.locator(':scope > summary').click();
       await expect(page.locator('#hausdeppPeekCards')).toBeVisible();
       await expectCards(page.locator('#hausdeppPeekCards'), ['hearts-A', 'bells-K']);
+      await page.clock.runFor(4001);
+      await expect(announcement).toHaveText('');
     });
   }
 }
 
-test('private cut remains beneath the stock on narrow and landscape screens', async ({ page }) => {
+test('four aces and the card above them all rest beneath the stock within the room of three', async ({ page }) => {
+  const fixture = await rendererFixture(page);
+  await pauseClock(page);
+  const seen = ['hearts-A', 'bells-A', 'leaves-A', 'acorns-A', 'hearts-K'];
+  for (let count = 1; count <= 4; count += 1) {
+    await fixture.cut({ version: 20 + count, cards: seen.slice(0, count) });
+    await finishAnimations(page);
+  }
+  await fixture.cut({ version: 25, cards: seen, complete: true });
+  await finishAnimations(page);
+  await page.clock.runFor(1521);
+  const fan = page.locator('#hausdeppKnownBottomCards');
+  await expectCards(fan, seen);
+  const geometry = await fan.evaluate(node => {
+    const stock = document.querySelector('#hausdeppStock').getBoundingClientRect();
+    const burned = document.querySelector('.hd-burned').getBoundingClientRect();
+    const faces = [...node.querySelectorAll('[data-card-id]')].map(face => face.getBoundingClientRect());
+    return { peeks: faces.every(face => face.left >= 0 && face.left < stock.left && face.right > stock.left),
+      lowest: Math.max(...faces.map(face => face.bottom)), stockBottom: stock.bottom, burnedTop: burned.top,
+      tops: faces.map(face => face.top) };
+  });
+  expect(geometry.peeks).toBe(true);
+  expect(geometry.lowest).toBeLessThanOrEqual(geometry.stockBottom + 2);
+  expect(geometry.tops).toEqual([...geometry.tops].sort((a, b) => a - b));
+});
+
+test('private cut faces stay on screen and beneath the stock on narrow and landscape screens', async ({ page }) => {
   const fixture = await rendererFixture(page);
   await pauseClock(page);
   for (const [index, [width, height]] of [[320, 568], [440, 956], [568, 320], [1440, 900]].entries()) {
     await page.setViewportSize({ width, height });
     await fixture.send({ round: index + 1, version: 40 + 2 * index });
     await fixture.cut({ round: index + 1, version: 41 + 2 * index, cards: ['hearts-A'] });
-    const preview = page.locator('#hausdeppCutPreview');
-    await expect(preview).toBeVisible();
-    const geometry = await preview.evaluate(node => {
-      const a = node.getBoundingClientRect(), stock = document.querySelector('#hausdeppStock');
-      const b = stock.getBoundingClientRect();
-      return { left: a.left, right: a.right, top: a.top, bottom: a.bottom,
-        stockLeft: b.left, stockRight: b.right, below: Number(getComputedStyle(node).zIndex) < Number(getComputedStyle(stock).zIndex) };
-    });
-    expect(geometry.left, `${width}x${height}`).toBeGreaterThanOrEqual(0);
-    expect(geometry.right).toBeLessThanOrEqual(width);
-    expect(geometry.left).toBeLessThan(geometry.stockLeft);
-    expect(geometry.right).toBeLessThan(geometry.stockRight);
-    expect(geometry.below).toBe(true);
-    await page.clock.runFor(1101);
-    await expect(preview).toBeHidden();
-    await expect(page.locator('#hausdeppKnownBottomCards')).toBeVisible();
+    const fan = page.locator('#hausdeppKnownBottomCards');
+    await expect(fan).toHaveAttribute('data-revealing', 'true');
+    for (const time of [400, 800, 1519]) {
+      const face = await faceAt(page, 'hearts-A', time);
+      expect(face.left, `${width}x${height} at ${time} ms`).toBeGreaterThanOrEqual(0);
+      expect(face.right).toBeLessThanOrEqual(width);
+      expect(face.top).toBeGreaterThanOrEqual(0);
+    }
+    if (width === 1440) {
+      const reading = await faceAt(page, 'hearts-A', 800);
+      expect(reading.right, 'wide tables show the whole face beside the stock').toBeLessThanOrEqual(reading.stockLeft);
+    }
+    expect(await fan.evaluate(node => Number(getComputedStyle(node).zIndex) < Number(getComputedStyle(document.querySelector('#hausdeppStock')).zIndex))).toBe(true);
+    await finishAnimations(page);
+    await page.clock.runFor(1521);
+    await expect(fan).not.toHaveAttribute('data-revealing', 'true');
+    await expect(fan).toBeVisible();
   }
 });
 
-test('a new tournament round clears old cards before the next cutter; repeated cards get a fresh preview later', async ({ page }) => {
+test('a new tournament round clears old cards before the next cutter; repeated cards travel again later', async ({ page }) => {
   const fixture = await rendererFixture(page);
   await pauseClock(page);
-  const preview = page.locator('#hausdeppCutPreview');
+  const fan = page.locator('#hausdeppKnownBottomCards');
   const history = page.locator('#hausdeppPeek');
   await fixture.send({ version: 21, cards: ['hearts-A'] });
   await fixture.send({ version: 22, cards: ['hearts-A', 'bells-K'], complete: true });
-  await expect(preview).toBeVisible();
+  await expect(fan).toHaveAttribute('data-revealing', 'true');
   await page.locator('#hausdeppTools > summary').click();
   await history.locator(':scope > summary').click();
   await expect(page.locator('#hausdeppPeekCards')).toBeVisible();
@@ -250,47 +316,52 @@ test('a new tournament round clears old cards before the next cutter; repeated c
   await fixture.send({ round: 2, version: 30, otherCutter: true });
   expect(await history.evaluate(element => ({ hidden: element.hidden, open: element.open }))).toEqual({ hidden: true, open: false });
   await expectCards(page.locator('#hausdeppPeekCards'), []);
-  await expect(preview).toBeHidden();
-  await expectCards(preview, []);
-  await expect(page.locator('#hausdeppKnownBottomCards')).toBeHidden();
+  await expect(fan).toBeHidden();
+  await expect(fan).not.toHaveAttribute('data-revealing', 'true');
+  await expect(page.locator('#hausdeppCutAnnouncement')).toHaveText('');
   await expect(page.locator('#hausdeppStock')).toBeDisabled();
 
   await fixture.send({ round: 3, version: 40 });
-  await expect(preview).toBeHidden();
+  await expect(fan).toBeHidden();
   await fixture.send({ round: 3, version: 41, cards: ['hearts-A'] });
-  await expect(preview).toBeVisible();
-  await expectCards(preview, ['hearts-A']);
+  await expect(fan).toHaveAttribute('data-revealing', 'true');
+  expect((await faceAt(page, 'hearts-A', null)).animations).toBe(1);
   await fixture.send({ round: 3, version: 42, cards: ['hearts-A', 'bells-K'], complete: true });
-  await expectCards(preview, ['hearts-A', 'bells-K']);
-  await page.clock.runFor(1101);
-  await expect(preview).toBeHidden();
+  expect((await faceAt(page, 'bells-K', null)).animations).toBe(1);
+  await finishAnimations(page);
+  await page.clock.runFor(1521);
+  await expect(fan).not.toHaveAttribute('data-revealing', 'true');
 });
 
-test('another cutter never gets a private preview and reloading an already playing round stays quiet', async ({ page }) => {
+test('another cutter never gets a private reveal and reloading an already playing round stays quiet', async ({ page }) => {
   const fixture = await rendererFixture(page, { initial: { otherCutter: true } });
-  const preview = page.locator('#hausdeppCutPreview');
-  await expect(preview).toBeHidden();
+  const fan = page.locator('#hausdeppKnownBottomCards');
+  const announcement = page.locator('#hausdeppCutAnnouncement');
+  await expect(fan).toBeHidden();
   await fixture.send({ version: 21, otherCutter: true });
-  await expectCards(preview, []);
+  await expect(fan).toBeHidden();
+  await expect(announcement).toHaveText('');
   await expect(page.locator('#hausdeppPeek')).toBeHidden();
-  // The successful ten is public, but must not enter the private cut preview.
+  // The successful ten is public, but must not enter the private bottom fan.
   await fixture.send({ version: 22, otherCutter: true, complete: true, success: true,
     cards: ['hearts-A', 'leaves-10'] });
-  await expect(preview).toBeHidden();
-  await expectCards(preview, []);
+  await expect(fan).toBeHidden();
+  await expect(announcement).toHaveText('');
 
   await fixture.send({ round: 2, version: 30 });
   await fixture.send({ round: 2, version: 31, cards: ['hearts-A'] });
   await fixture.send({ round: 2, version: 32, cards: ['hearts-A', 'bells-K'], complete: true });
-  await expect(preview).toBeVisible();
+  await expect(fan).toHaveAttribute('data-revealing', 'true');
   await page.reload();
   await expect(page.locator('#hausdeppTable')).toHaveAttribute('data-phase', 'playing');
-  await expect(page.locator('#hausdeppCutPreview')).toBeHidden();
+  await expectCards(page.locator('#hausdeppKnownBottomCards'), ['hearts-A', 'bells-K']);
+  await expect(page.locator('#hausdeppKnownBottomCards')).not.toHaveAttribute('data-revealing', 'true');
+  expect(await page.locator('#hausdeppKnownBottomCards [data-card-id]').evaluateAll(nodes => nodes.every(node => node.getAnimations().length === 0))).toBe(true);
+  await expect(page.locator('#hausdeppCutAnnouncement')).toHaveText('');
   expect(await page.locator('#hausdeppTools').evaluate(element => element.open)).toBe(false);
   expect(await page.locator('#hausdeppPeek').evaluate(element => element.open)).toBe(false);
   await expectCards(page.locator('#hausdeppPeekCards'), ['hearts-A', 'bells-K']);
 });
-
 
 test('a reduced-motion successful cut shows both public faces briefly to another player', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
@@ -315,5 +386,6 @@ test('a reduced-motion successful cut shows both public faces briefly to another
   await expect(faces.first()).toBeVisible();
   await page.clock.runFor(901);
   await expect(faces).toHaveCount(0);
-  await expect(page.locator('#hausdeppCutPreview')).toBeHidden();
+  await expect(page.locator('#hausdeppKnownBottomCards')).toBeHidden();
+  await expect(page.locator('#hausdeppCutAnnouncement')).toHaveText('');
 });

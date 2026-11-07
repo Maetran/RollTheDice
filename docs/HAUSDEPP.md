@@ -103,7 +103,9 @@ Normalwerts, mit mindestens 400 ms. Die Kartenbewegungen passen sich an, damit
 keine alten Animationen auflaufen. Spielentscheidungen und Wertung ändern sich
 nicht. Das schnellere Tempo übersteht Wiederverbinden und Neustarts; eine neue
 Runde beginnt wieder im Normaltempo. Andere Menschen, Zuschauer und noch nicht
-fertige Spieler können es nicht aktivieren.
+fertige Spieler können es nicht aktivieren. Der Schalter reagiert auch, während
+gerade eine CPU-Karte fliegt, liegt über verschobenen Tischgegenständen und
+behält seine Beschriftung zwischen CPU-Zügen, damit kein Tipp verloren geht.
 
 With exactly one human at the table, finishing their hand normally reveals
 “Speed up CPUs” where their cards were. It reduces CPU thinking and public-card
@@ -111,7 +113,9 @@ pauses to 30% of normal for the rest of this round, with a 400 ms minimum.
 Card motion adapts so animations do not build up. Decisions and scoring stay
 unchanged. The faster pace survives reconnects and restarts; a new round starts
 at normal speed. Other humans, spectators and players who have not finished
-cannot activate it.
+cannot activate it. The button responds even while a CPU card is in flight, sits
+above pushed table objects and keeps its label between CPU moves, so no tap is
+lost.
 
 ### Lokale Wirtshauskulisse / Local tavern ambience
 
@@ -339,9 +343,15 @@ Stapels an. Das Anschauen, Weiterschauen nach einem Ass und Behalten bei Erfolg
 sind verpflichtend; es gibt kein Auslassen, Ablehnen oder vorzeitiges Aufhören.
 Der bestimmte Spieler hebt aktiv ab: Ein Tipp auf den verdeckten Stapel prüft
 eine Karte. Nach jedem Ass löst er das Weiterschauen mit einem weiteren Tipp
-aus. Ass und Folgekarte erscheinen direkt am Stapel. Nach einem Fehlversuch
-bleiben alle angeschauten Karten drei Sekunden lang lesbar, auch bei reduzierter
-Bewegung. Die Tischhilfe öffnet sich nicht automatisch; ihre Abhebehistorie wird
+aus. Jede neu angeschaute Karte gleitet unter dem verdeckten Stapel hervor,
+bleibt gut eine Sekunde lesbar daneben liegen (auf schmalen Displays so weit,
+wie der Rand erlaubt) und schiebt sich dann zurück in ihren Platz im kleinen
+Fächer unter dem Stapel. Nach einem Ass bleibt dieses Ass liegen; nur die
+Folgekarte wandert, das Ass rückt höchstens weich nach. Bis zu fünf bekannte
+Karten (vier Asse und die Karte darüber) teilen sich den Platz von dreien.
+Bei reduzierter Bewegung erscheint die neue Karte ohne Weg für dieselbe
+Lesezeit neben dem Stapel und liegt danach unter ihm. Ein Screenreader meldet
+die neue Karte höflich. Die Tischhilfe öffnet sich nicht automatisch; ihre Abhebehistorie wird
 vor jeder neuen Turnierrunde vollständig geleert. Ein Computer führt seine
 eigenen Abhebeaktionen aus.
 
@@ -359,8 +369,9 @@ eigenen Abhebeaktionen aus.
    Karten bleiben in ihrer ursprünglichen Reihenfolge unten im Stapel. Sie
    werden den anderen Spielern nicht gezeigt. Der anschauende Spieler kennt
    diese Karten weiterhin: Solange sie im Stapel liegen, sieht nur er sie als
-   kurzes Etikett („Unten: Ass · König“) direkt auf dem verdeckten Stapel; die
-   Karten selbst bleiben zusätzlich in der Tischhilfe einsehbar.
+   Fächer, der unter dem verdeckten Stapel hervorschaut (für Screenreader:
+   „Unten: Ass · König“ im Stapel-Label); die Karten bleiben zusätzlich in der
+   Tischhilfe einsehbar.
 
 Beispiele: `10` ergibt eine 10; `Ass → Ass → 10` ergibt drei Handkarten;
 `Ass → Ass → König` ergibt keine Handkarte. Die Pfeile bezeichnen die
@@ -506,10 +517,20 @@ Aufnehmen auf die Hand. Aufnehmen beendet den Zug. Bei leerem Tisch ist keine
 Aufnahme möglich.
 
 Vor einer freiwilligen Aufnahme lässt sich das öffentliche Paket auffächern:
-lange auf das Paket drücken, rechtsklicken oder Umschalt + Enter verwenden.
-In der Tischhilfe gibt es zusätzlich **Paket ansehen**. Der Dialog zeigt nur die
-bereits offen gespielten Karten; Anschauen führt keinen Spielzug aus. Ein kurzer
-Tipp bleibt die unmittelbare Aufnahme. Abgeräumte Karten landen auf einem
+Wer das Paket rund eine halbe Sekunde gedrückt hält (Finger, Stift oder Maus),
+sieht alle offenen Karten als vollständigen Fächer über dem Tisch, von der
+untersten bis zur obersten, die oberste Karte umrandet. Auch ein volles Paket
+passt in Reihen auf kleine Hoch- und Querformate; reicht selbst die kleinste
+Kartengrösse nicht, wird der ganze Fächer verkleinert statt abgeschnitten.
+Der Fächer folgt nicht dem Finger und schliesst beim Loslassen, auch neben dem
+Paket, sowie bei abgebrochener Berührung, App- oder Fensterwechsel. Eine
+Drehung während des Haltens passt ihn neu ein. Das System-Kontextmenü eines
+langen Drucks erscheint nicht, und der abschliessende Klick nimmt das Paket
+nicht auf. Rechtsklick, Umschalt + Enter und **Paket ansehen** in der Tischhilfe
+öffnen weiterhin die zugängliche Kartenliste; Screenreader erhalten diesen Weg
+im Paket-Label. Die Liste zeigt nur die bereits offen gespielten Karten;
+Anschauen führt keinen Spielzug aus. Ein kurzer Tipp bleibt die unmittelbare
+Aufnahme. Abgeräumte Karten landen auf einem
 separaten, chaotisch gestapelten Rückseitenstapel **Aus dem Spiel** mit genauer
 Kartenanzahl. Er ist kein Nachziehstapel und lässt sich nicht aufnehmen. Am Tisch
 steht dafür eine durchgestrichene Karte mit der Zahl; „Aus dem Spiel“ bleibt als
@@ -737,10 +758,7 @@ Der Host kann das Turnier zwischen Runden ausdrücklich beenden. Die bereits
 abgeschlossenen Runden, Siege und EP bleiben bestehen; es entstehen kein
 Tages-Hausdepp und keine abschliessenden Turniererfolge. Auch für die Wartezeit
 zwischen Runden gilt die einstündige Inaktivitätsfrist. Ein Turnier gibt keine
-zusätzlichen wiederholbaren EP: Jede abgeschlossene Runde gibt 10 EP nur mit
-Menschen oder 2 EP, sobald mindestens ein Computer mitspielt (75 % Reduktion,
-je Runde auf ganze EP abgerundet). Auch ein
-gemischter Tisch zählt als Runde mit Computer. Abschliessende Turniererfolge
+zusätzlichen wiederholbaren EP: Jede abgeschlossene Runde mit mindestens zwei Menschen, die nicht vorzeitig ausgestiegen sind, gibt 10 EP, auch mit Computern. Allein gegen Computer gibt es 2 EP. Frühere Runden behalten ihre Gutschrift. Abschliessende Turniererfolge
 behalten ihre volle einmalige EP-Belohnung. Die neuen Comeback-, Karten- und
 Turniererfolge ergänzen die ursprünglichen 64 zum Gesamtkatalog von 100.
 
@@ -772,7 +790,7 @@ und Verständlichkeit verfeinern; das führt keine erneute Zugangssperre ein.
 | --- | --- | --- |
 | Lobby und Tisch | Echte Mehrspielerpartien, Computer-Mitspieler, Zugang für aktive Konten, Tischstatus, direkte Aktionen | Weitere Verfeinerungen nach Spieltests |
 | Regeln | Vollständige DE-/EN-Hausregeln mit Schnellstart, Beispielen und Sprungmarken | Verständlichkeitsprüfung durch den Owner |
-| Punkte | Je abgeschlossener Runde 10 EP nur mit Menschen oder 2 EP mit mindestens einem Computer (75 % Reduktion, abgerundet); Erfolge einmalig volle 10/25/50/100/250/500 EP | Weiteres Balancing nach Spieltests |
+| Punkte | Je abgeschlossener Runde 10 EP mit mindestens zwei nicht ausgestiegenen Menschen, sonst 2 EP allein gegen Computer; Erfolge einmalig volle 10/25/50/100/250/500 EP | Weiteres Balancing nach Spieltests |
 | Achievements | Bestätigter Katalog mit 138 Erfolgen, 24 Rängen und eigenen Aufstiegssprüchen | Weitere Gestaltungs- und Spieltests |
 | Konto | Private Statistik und Historie, EP, Rangfortschritt, Rangleiter und filterbare Erfolgssammlung | Weitere Gestaltungsverfeinerungen |
 | Chat und Reaktionen | Gemeinsame Suite-Funktionen am Tisch und Lobbychat | Weitere Verfeinerungen nach Spieltests |
@@ -782,14 +800,10 @@ und Verständlichkeit verfeinern; das führt keine erneute Zugangssperre ein.
 ### Bestätigte Punkte, Erfolge und Ränge
 
 Der Owner hat den [Katalog mit 138 Erfolgen und 24 Rängen](HAUSDEPP_ACHIEVEMENTS.md)
-freigegeben. Jede regulär abgeschlossene Runde nur mit Menschen gibt dem
-beteiligten Konto **10 Erfahrungspunkte (EP)**. Sobald mindestens ein Computer
-am Tisch mitspielt, wird die Basis um 75 % reduziert und **je Runde auf ganze
-EP abgerundet: 2 EP**.
-Das gilt auch für gemischte Tische und für jede einzelne abgeschlossene
-Turnierrunde, unabhängig davon, ob das Konto fertig oder Hausdepp der Runde
-geworden ist. Es gibt keine Bruchteile: Drei Runden mit Computer ergeben
-zusammen 6 Runden-EP.
+freigegeben. Jede regulär abgeschlossene Runde mit mindestens zwei Menschen, die
+nicht vorzeitig ausgestiegen sind, gibt **10 EP**, auch mit Computern. Allein
+gegen Computer gibt es **2 EP**. Frühere Runden behalten ihre Gutschrift.
+Dies gilt auch für jede einzelne Turnierrunde.
 
 Jeder Erfolg gibt weiterhin einmalig seine vollen **10, 25, 50, 100, 250 oder 500 EP**,
 auch mit Computer und bei Turniererfolgen. Mehrere Erfolge können in derselben
@@ -960,7 +974,14 @@ the dealer in that order looks privately at the bottom card of the face-down
 deck. Looking, continuing after an ace and keeping cards on success are
 mandatory. There is no opting out, declining or stopping early. The designated
 player actively taps the face-down pile to inspect one card. After each ace,
-another tap continues the inspection. A computer performs its own peek actions.
+another tap continues the inspection. Each newly seen card slides out from under
+the face-down pile, stays readable beside it for just over a second (as far as
+narrow screens allow) and tucks back into its slot in the small fan beneath the
+pile. After an ace, that ace stays put; only the next card travels and the ace at
+most glides aside. Up to five known cards (four aces and the card above them)
+share the room of three. With reduced motion, the new card appears beside the
+pile for the same reading time without travel, then rests beneath it. Screen
+readers announce the new card politely. A computer performs its own peek actions.
 
 1. If the bottom card is a **10**, the player receives that single card.
 2. If it is an **ace**, the player looks at the next card above it in the
@@ -1278,9 +1299,7 @@ exact session state.
 The host can explicitly end the tournament between rounds. Completed rounds,
 wins and XP remain, but there is no day's Hausdepp or final tournament award.
 The one-hour inactivity deadline also applies between rounds. Tournaments add
-no repeatable XP bonus: each completed all-human round grants 10 XP, or exactly
-2 XP if any computer is at the table, including mixed tables: a 75% reduction
-of the base reward, rounded down separately for each round. Final tournament
+no repeatable XP bonus: each completed round with at least two humans who did not withdraw grants 10 XP, even with computers. Playing alone against computers earns 2 XP. Earlier rounds keep their credit. Final tournament
 achievements retain their full one-time XP reward. The added comeback, card and tournament feats
 extend the original 64 achievements to a catalogue of 100.
 
@@ -1310,7 +1329,7 @@ and clarity without reinstating the former access restriction.
 | --- | --- | --- |
 | Lobby and table | Real multiplayer rounds, computer opponents, active-account access, table status, direct actions | Further playtest refinements |
 | Rules | Complete German/English house rules with quick start, examples and anchors | Owner review for clarity |
-| Points | Per completed round: 10 XP for all-human tables or 2 XP with any computer (75% reduction, rounded down); full one-time achievement rewards of 10/25/50/100/250/500 XP | Further balancing after playtests |
+| Points | Per completed round: 10 XP with at least two humans who did not withdraw, otherwise 2 XP alone against computers; full one-time achievement rewards of 10/25/50/100/250/500 XP | Further balancing after playtests |
 | Achievements | Approved catalogue of 138 achievements, 24 ranks and individual sayings | Further design and playtests |
 | Account | Private facts/history, XP, rank progress, complete ladder and filterable achievement collection | Further design refinements |
 | Chat and reactions | Shared suite features at the table and lobby chat | Further playtest refinements |
@@ -1320,11 +1339,9 @@ and clarity without reinstating the former access restriction.
 ### Approved points, achievements and ranks
 
 The owner approved the [100-achievement and 24-rank catalogue](HAUSDEPP_ACHIEVEMENTS.md).
-Each regular completed all-human round gives every participating account **10
-experience points (XP)**. Any computer seat reduces the base round reward by
-75%, then rounds it down **per round to 2 XP**. This includes mixed tables and
-every individual completed tournament round, regardless of the account's
-outcome. No fractions are awarded: three rounds with a computer give 6 round XP.
+Each regular completed round with at least two humans who did not withdraw grants
+**10 XP**, even with computers. Playing alone against computers earns **2 XP**.
+Earlier rounds keep their credit. This also applies to each tournament round.
 
 Each achievement still grants its full **10, 25, 50, 100, 250 or 500 XP once**, including
 computer and tournament achievements. Multiple achievements may unlock
@@ -1405,9 +1422,17 @@ is unavailable once play starts; a start/leave race must never change a live rou
 
 ### Inspecting and cleared cards
 
-Hold the open pile, right-click it or use Shift + Enter to inspect its public
-cards before pickup. **Inspect pile** in table help opens the same dialog.
-Inspection does not play a turn; a short tap still picks up the pile immediately.
+Hold the open pile for about half a second (finger, pen or mouse) to fan out
+every public card above the table, bottom to top, with the top card outlined.
+Even a full pile fits in rows on small portrait and landscape screens; if the
+smallest card size is still too large, the whole fan shrinks instead of being
+cut off. The fan does not follow the finger and closes on release, even away
+from the pile, and on a cancelled touch, app switch or lost window. Rotating
+while holding refits it. No system long-press menu appears and the trailing
+click never picks up the pile. Right-click, Shift + Enter and **Inspect pile**
+in table help still open the accessible card list, which screen readers learn
+from the pile label. Inspection does not play a turn; a short tap still picks up
+the pile immediately.
 Cleared cards fly to a separate, untidy face-down **Out of play** stack with an
 exact count. That stack is neither stock nor available for pickup. On the table it
 shows a crossed-out card with the count; "Out of play" remains as the tooltip and

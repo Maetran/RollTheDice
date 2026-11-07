@@ -1,5 +1,6 @@
 /* The live packet remains a tap target. Inspection never covers its artwork. */
-html[data-game="hausdepp"] #hausdeppPile { touch-action: manipulation; -webkit-touch-callout: none; user-select: none; }
+/* No pan or system callout may cancel a held pile. */
+html[data-game="hausdepp"] #hausdeppPile { touch-action: none; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 html[data-game="hausdepp"] .hd-game-help .hd-inspect-pile { min-height: 44px; margin-top: 4px; }
 .hd-inspect-hint { color: var(--hd-muted); font-size: 12px; line-height: 1.5; margin: 6px 0 16px; }
 .hd-pile-inspector {
@@ -43,3 +44,14 @@ html[data-game="hausdepp"] .hd-table .hd-centre .hd-burned > span:last-child { t
 .hd-known-bottom[hidden] { display: none; }
 .hd-game-help .hd-fine { margin: 0; font-size: 12px; line-height: 1.45; opacity: .85; }
 .hd-game-help .hd-fine:empty { display: none; }
+
+/* Holding the open pile fans out every public card above the table until release. */
+.hd-pile-hold-fan { position: fixed; inset: 0; z-index: 2100; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 16px; box-sizing: border-box; background: #120c08b8; pointer-events: none; -webkit-user-select: none; user-select: none; animation: hd-hold-fan-in 140ms ease-out both; }
+.hd-pile-hold-fan[hidden] { display: none; }
+.hd-pile-hold-count { margin: 0; padding: 4px 12px; color: var(--hd-ink); background: var(--hd-paper); border: 1px solid var(--hd-border); border-radius: 999px; font: 700 13px/18px system-ui, sans-serif; }
+.hd-pile-hold-cards { position: relative; flex: 0 0 auto; }
+html[data-game="hausdepp"] .hd-pile-hold-cards .hausdepp-card { position: absolute; width: var(--hold-card); height: auto; aspect-ratio: 36 / 57; transform: rotate(var(--hold-angle, 0deg)); transform-origin: 50% 100%; box-shadow: 0 4px 10px #0c100d80; }
+html[data-game="hausdepp"] .hd-pile-hold-cards .hausdepp-card.is-top { outline: 3px solid var(--hd-paper); outline-offset: 1px; }
+html.hd-pile-holding .hd-pile-tip { visibility: hidden; }
+@keyframes hd-hold-fan-in { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .hd-pile-hold-fan { animation: none; } }

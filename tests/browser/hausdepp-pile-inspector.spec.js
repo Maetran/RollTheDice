@@ -146,32 +146,124 @@ for (const language of ['de', 'en']) {
     expect(fixture.commands).toEqual([]);
   });
 
-  test(`${language}: long hold suppresses the trailing pickup while a fresh short tap takes immediately`, async ({ page }) => {
+  test(`${language}: holding the pile fans out every card until release and never takes the pile`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     const fixture = await tableFixture(page, language);
     const pile = page.locator('#hausdeppPile');
+    const fan = page.locator('#hausdeppPileHoldFan');
+    const dialog = page.locator('#hausdeppPileInspector');
     const rect = await pile.boundingBox();
-    await page.mouse.move(rect.x + rect.width / 2, rect.y + rect.height / 2);
+    const centre = { clientX: rect.x + rect.width / 2, clientY: rect.y + rect.height / 2 };
+    const touch = (type, extra = {}) => pile.dispatchEvent(type, { pointerId: 7, pointerType: 'touch', isPrimary: true, button: 0, ...centre, ...extra });
+    await expect(fan).toBeHidden();
+    await expect(fan).toHaveAttribute('aria-hidden', 'true');
+    expect(await fan.evaluate(node => node.parentElement === document.body)).toBe(true);
+
+    // Mouse: the fan opens while held, follows no movement and closes on release.
+    await page.mouse.move(centre.clientX, centre.clientY);
     await page.mouse.down();
-    await expect(page.locator('#hausdeppPileInspector')).toBeVisible({ timeout: 1500 });
+    await expect(fan).toBeVisible({ timeout: 1500 });
+    expect(await fan.locator('[data-card-id]').evaluateAll(cards => cards.map(card => card.dataset.cardId))).toEqual(PUBLIC_CARDS);
+    await expect(fan.locator('.is-top')).toHaveAttribute('data-card-id', PUBLIC_CARDS.at(-1));
+    await expect(fan.locator('.hd-pile-hold-count')).toHaveText(language === 'de' ? '7 im Paket' : '7 in the pile');
+    await expect(dialog).not.toBeVisible();
+    await page.mouse.move(8, 8);
+    await expect(fan).toBeVisible();
     await page.mouse.up();
-    // Browsers may deliver a compatibility click after a held touch ends.
+    await expect(fan).toBeHidden();
+    // Browsers may deliver a compatibility click after a held press ends.
     await pile.dispatchEvent('click', { bubbles: true, detail: 1 });
     expect(fixture.commands).toEqual([]);
-    await page.keyboard.press('Escape');
-    // Touch uses the same pointer boundary; model its compatibility click
-    // explicitly so neither mouse nor touch can accidentally take the pile.
-    await pile.dispatchEvent('pointerdown', { pointerId: 7, pointerType: 'touch', isPrimary: true,
-      button: 0, clientX: rect.x + rect.width / 2, clientY: rect.y + rect.height / 2 });
-    await expect(page.locator('#hausdeppPileInspector')).toBeVisible({ timeout: 1500 });
-    await pile.dispatchEvent('pointerup', { pointerId: 7, pointerType: 'touch', isPrimary: true });
+
+    // Touch: the system long-press menu is answered by the fan, not the list.
+    await touch('pointerdown');
+    await expect(fan).toBeVisible({ timeout: 1500 });
+    await pile.dispatchEvent('contextmenu', { pointerType: 'touch', bubbles: true, cancelable: true, button: 0 });
+    await expect(dialog).not.toBeVisible();
+    await expect(fan).toBeVisible();
+    await touch('pointermove', { clientX: 4, clientY: 4 });
+    await expect(fan).toBeVisible();
+    // A live packet change while held redraws the same full fan.
+    const next = structuredClone(fixture.board);
+    next._hausdepp.version += 1;
+    next._hausdepp.discard.push('acorns-K');
+    fixture.send(next);
+    await expect(fan.locator('[data-card-id]')).toHaveCount(8);
+    await expect(fan.locator('.is-top')).toHaveAttribute('data-card-id', 'acorns-K');
+    // Letting go anywhere, even far from the pile, closes it.
+    await page.locator('body').dispatchEvent('pointerup', { pointerId: 7, pointerType: 'touch', isPrimary: true, bubbles: true });
+    await expect(fan).toBeHidden();
     await pile.dispatchEvent('click', { bubbles: true, detail: 1 });
     expect(fixture.commands).toEqual([]);
+
+    // A cancelled touch, an app switch and a lost window all let go as well.
+    await touch('pointerdown');
+    await expect(fan).toBeVisible({ timeout: 1500 });
+    await touch('pointercancel');
+    await expect(fan).toBeHidden();
+    await touch('pointerdown');
+    await expect(fan).toBeVisible({ timeout: 1500 });
+    await page.evaluate(() => window.dispatchEvent(new Event('blur')));
+    await expect(fan).toBeHidden();
+    await touch('pointerup');
+
+    // A short drag never opens it; the list remains available without a hold.
+    await touch('pointerdown');
+    await touch('pointermove', { clientX: centre.clientX + 30, clientY: centre.clientY });
+    await page.waitForTimeout(700);
+    await expect(fan).toBeHidden();
+    await touch('pointerup');
+    await pile.click({ button: 'right' });
+    await expect(dialog).toBeVisible();
     await page.keyboard.press('Escape');
+
     await pile.click();
     await expect.poll(() => fixture.commands.length).toBe(1);
-    expect(fixture.commands[0]).toMatchObject({ action: 'hausdepp_pickup', version: fixture.board._hausdepp.version });
-    await expect(page.locator('#hausdeppPileInspector')).not.toBeVisible();
+    expect(fixture.commands[0]).toMatchObject({ action: 'hausdepp_pickup' });
+    await expect(fan).toBeHidden();
+    await expect(dialog).not.toBeVisible();
+  });
+
+  test(`${language}: a held full pile fits every card on small portrait and landscape screens`, async ({ page }) => {
+    const fixture = await tableFixture(page, language);
+    const suits = ['hearts', 'bells', 'leaves', 'acorns'];
+    const ranks = ['6', '7', '8', '9', '10', 'U', 'O', 'K', 'A'];
+    const deck = suits.flatMap(suit => ranks.map(rank => `${suit}-${rank}`));
+    const next = structuredClone(fixture.board);
+    next._hausdepp.version += 1;
+    next._hausdepp.discard = deck.filter(card => !next._hausdepp.hand.includes(card));
+    fixture.send(next);
+    await expect(page.locator('#hausdeppPile')).toHaveAttribute('data-card-count', String(next._hausdepp.discard.length));
+    const fan = page.locator('#hausdeppPileHoldFan');
+    for (const [width, height] of [[320, 568], [568, 320], [480, 260], [844, 390], [1440, 900]]) {
+      await page.setViewportSize({ width, height });
+      const rect = await page.locator('#hausdeppPile').boundingBox();
+      const point = { pointerId: 9, pointerType: 'touch', isPrimary: true, button: 0, clientX: rect.x + rect.width / 2, clientY: rect.y + rect.height / 2 };
+      await page.locator('#hausdeppPile').dispatchEvent('pointerdown', point);
+      await expect(fan).toBeVisible({ timeout: 1500 });
+      await fan.evaluate(node => node.getAnimations({ subtree: true }).forEach(animation => animation.finish()));
+      const bounds = await fan.locator('[data-card-id]').evaluateAll(cards => cards.map(card => card.getBoundingClientRect())
+        .map(box => ({ left: box.left, top: box.top, right: box.right, bottom: box.bottom })));
+      expect(bounds).toHaveLength(next._hausdepp.discard.length);
+      for (const box of bounds) {
+        expect(box.left, `${width}x${height}`).toBeGreaterThanOrEqual(-.5);
+        expect(box.top, `${width}x${height}`).toBeGreaterThanOrEqual(-.5);
+        expect(box.right, `${width}x${height}`).toBeLessThanOrEqual(width + .5);
+        expect(box.bottom, `${width}x${height}`).toBeLessThanOrEqual(height + .5);
+      }
+      // A rotation while held re-fits the same cards.
+      await page.setViewportSize({ width: height, height: width });
+      await expect.poll(() => fan.locator('[data-card-id]').evaluateAll(cards => cards.every(card => {
+        const box = card.getBoundingClientRect();
+        return box.left >= -.5 && box.top >= -.5 && box.right <= innerWidth + .5 && box.bottom <= innerHeight + .5;
+      }))).toBe(true);
+      if (process.env.HAUSDEPP_CENTRE_SCREENSHOTS === '1' && language === 'de') {
+        await page.screenshot({ path: test.info().outputPath(`pile-hold-fan-${width}x${height}.png`) });
+      }
+      await page.locator('#hausdeppPile').dispatchEvent('pointerup', point);
+      await expect(fan).toBeHidden();
+    }
+    expect(fixture.commands).toEqual([]);
   });
 }
 

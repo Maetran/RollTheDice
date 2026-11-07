@@ -27,6 +27,7 @@ import { prepareCardMotion, animateCardMotion, cardMotionCompletion, resetCardMo
 import { createGameTour } from "../shared/game-tours.js";
 import { mountPileInspector } from "./pile-inspector.js";
 import { mountPeekFeedback } from "./peek-feedback.js";
+import { mountCutFan } from "./cut-fan.js";
 import { mountHandSelection } from "./hand-selection.js";
 import { reportAnalyticsAction } from "../shared/analytics.js";
 import { mountGameCreator } from "./game-creator.js";
@@ -55,7 +56,7 @@ let requestedSurprise = null, requestedSurpriseRound = null;
 let progressNotices, roundProgressReceipt, popupProgressPending = false;
 let roundResultPresentation;
 let roundProgressCache;
-let pileInspector, peekFeedback;
+let pileInspector, peekFeedback, cutFan;
 let rematchInvitations, rematchCreating = false;
 const rematchLifetime = new AbortController();
 let tableLifetime = new AbortController(), viewportInitialized = false;
@@ -657,7 +658,7 @@ function renderTableShell() {
   document.body.classList.add("hd-playing");
   if (!viewportInitialized) { initializeGameViewport(); viewportInitialized = true; }
   if (spectating) document.body.classList.add("hd-spectating");
-  root.innerHTML = `<div class="hd-room-layout"><section id="hausdeppTable" class="hd-table" aria-label="${t("table")}"><div class="hd-room-heading"><div><h1 id="hausdeppRoomName">${t("defaultTable")}</h1><span id="hausdeppTableRule" class="hd-table-rule" hidden></span><p id="hausdeppTournamentBanner" class="hd-tournament-banner" hidden></p></div><span id="hausdeppConnection" role="status">${t("connecting")}</span></div><div id="hausdeppPlayers" class="hd-seats"></div><div class="hd-centre"><div class="hd-stock-group"><div id="hausdeppCutPreview" class="hd-cut-preview" role="status" aria-live="polite" aria-label="${esc(t("peekTitle"))}" hidden></div><div id="hausdeppKnownBottomCards" class="hd-known-bottom-cards" aria-hidden="true" hidden><span class="hd-known-bottom-fan"></span><span id="hausdeppKnownBottom" class="hd-known-bottom" hidden></span></div><button id="hausdeppStock" class="hd-card-back" type="button" disabled aria-label="${t("stock")}"></button><span id="hausdeppStockAction" class="hd-stack-action"></span><p id="hausdeppDrawAlert" class="hd-draw-alert" role="status" hidden>${t("mustDraw")}</p><span id="hausdeppStockCount"></span></div><div class="hd-pile-group"><button id="hausdeppPile" class="hd-pile" type="button" disabled aria-label="${t("pickup")}" aria-describedby="hausdeppPileTip"></button><span id="hausdeppPileTip" class="hd-pile-tip" role="tooltip">${t("inspectPileTip")}</span><span id="hausdeppPileAction" class="hd-stack-action"></span><span id="hausdeppPileCount"></span></div><div class="hd-burned" title="${t("outOfPlay")}"><div id="hausdeppBurnedStack" class="hd-burned-stack is-empty" aria-hidden="true"></div><span class="hd-stack-action hd-sr">${t("outOfPlay")}</span><span class="hd-burned-meta">${icon("out", "hd-burned-icon")}<span id="hausdeppBurnedCount">0</span><span class="hd-sr"> <span id="hausdeppBurnedUnit">${t("cardWord")}</span></span></span></div></div><p id="hausdeppStatus" class="hd-turn-status" role="status" aria-live="polite">${t("connecting")}</p><section class="hd-hand-region" aria-labelledby="hausdeppHandTitle"><div class="hd-hand-heading"><div class="hd-own-identity">${avatarMarkup(auth.user, { size: "small", avatarKey: "hand-self" })}<div><h2 id="hausdeppHandTitle">${t("yourHand")} <span id="hausdeppOwnPrefix" class="hd-tournament-prefix" hidden></span></h2><span class="hd-own-name" translate="no">${esc(auth.user.username)}</span></div></div><span id="hausdeppSelection"></span></div><div id="hausdeppHand" class="hd-hand"></div></section><details id="hausdeppTools" class="hd-actions"><summary aria-label="${esc(t("tableTools"))}" title="${esc(t("tableTools"))}">${icon("cards")}<span class="hd-tools-label">${t("tableTools")}</span></summary><div class="hd-game-help"><h2>${t("tableTools")}</h2><p id="hausdeppEvent" class="hd-event" aria-live="polite"></p><p class="hd-action-guide">${t("stackActions")}</p><button id="hausdeppInspectPile" class="hd-secondary hd-inspect-pile" type="button" disabled>${t("inspectPile")}</button><p class="hd-inspect-hint">${t("inspectPileGesture")}</p><a class="hd-secondary" href="/hausdepp/regeln">${t("rules")} ${icon("arrow")}</a><div id="hausdeppRoomInvitation" hidden>${invitationMarkup({ id: gameId, name: t("defaultTable") }, t)}</div><button class="hd-tools-close" type="button">${t("close")}</button></div></details><p id="hausdeppActionError" class="hd-action-error" role="alert"></p><details id="hausdeppPeek" class="hd-peek" hidden><summary>${t("peekTitle")}</summary><p id="hausdeppPeekText"></p><div id="hausdeppPeekCards" class="hd-peek-cards"></div></details><section id="hausdeppResult" class="hd-result" aria-live="polite" hidden></section><div id="hausdeppReactionLayer" class="hd-reaction-layer" aria-hidden="true"></div><p id="hausdeppReactionAnnouncement" class="hd-sr" role="status" aria-live="polite" aria-atomic="true"></p></section>
+  root.innerHTML = `<div class="hd-room-layout"><section id="hausdeppTable" class="hd-table" aria-label="${t("table")}"><div class="hd-room-heading"><div><h1 id="hausdeppRoomName">${t("defaultTable")}</h1><span id="hausdeppTableRule" class="hd-table-rule" hidden></span><p id="hausdeppTournamentBanner" class="hd-tournament-banner" hidden></p></div><span id="hausdeppConnection" role="status">${t("connecting")}</span></div><div id="hausdeppPlayers" class="hd-seats"></div><div class="hd-centre"><div class="hd-stock-group"><p id="hausdeppCutAnnouncement" class="hd-sr" role="status" aria-live="polite"></p><div id="hausdeppKnownBottomCards" class="hd-known-bottom-cards" aria-hidden="true" hidden><span class="hd-known-bottom-fan"></span><span id="hausdeppKnownBottom" class="hd-known-bottom" hidden></span></div><button id="hausdeppStock" class="hd-card-back" type="button" disabled aria-label="${t("stock")}"></button><span id="hausdeppStockAction" class="hd-stack-action"></span><p id="hausdeppDrawAlert" class="hd-draw-alert" role="status" hidden>${t("mustDraw")}</p><span id="hausdeppStockCount"></span></div><div class="hd-pile-group"><button id="hausdeppPile" class="hd-pile" type="button" disabled aria-label="${t("pickup")}" aria-describedby="hausdeppPileTip"></button><span id="hausdeppPileTip" class="hd-pile-tip" role="tooltip">${t("inspectPileTip")}</span><span id="hausdeppPileAction" class="hd-stack-action"></span><span id="hausdeppPileCount"></span></div><div class="hd-burned" title="${t("outOfPlay")}"><div id="hausdeppBurnedStack" class="hd-burned-stack is-empty" aria-hidden="true"></div><span class="hd-stack-action hd-sr">${t("outOfPlay")}</span><span class="hd-burned-meta">${icon("out", "hd-burned-icon")}<span id="hausdeppBurnedCount">0</span><span class="hd-sr"> <span id="hausdeppBurnedUnit">${t("cardWord")}</span></span></span></div></div><p id="hausdeppStatus" class="hd-turn-status" role="status" aria-live="polite">${t("connecting")}</p><section class="hd-hand-region" aria-labelledby="hausdeppHandTitle"><div class="hd-hand-heading"><div class="hd-own-identity">${avatarMarkup(auth.user, { size: "small", avatarKey: "hand-self" })}<div><h2 id="hausdeppHandTitle">${t("yourHand")} <span id="hausdeppOwnPrefix" class="hd-tournament-prefix" hidden></span></h2><span class="hd-own-name" translate="no">${esc(auth.user.username)}</span></div></div><span id="hausdeppSelection"></span></div><div id="hausdeppHand" class="hd-hand"></div></section><details id="hausdeppTools" class="hd-actions"><summary aria-label="${esc(t("tableTools"))}" title="${esc(t("tableTools"))}">${icon("cards")}<span class="hd-tools-label">${t("tableTools")}</span></summary><div class="hd-game-help"><h2>${t("tableTools")}</h2><p id="hausdeppEvent" class="hd-event" aria-live="polite"></p><p class="hd-action-guide">${t("stackActions")}</p><button id="hausdeppInspectPile" class="hd-secondary hd-inspect-pile" type="button" disabled>${t("inspectPile")}</button><p class="hd-inspect-hint">${t("inspectPileGesture")}</p><a class="hd-secondary" href="/hausdepp/regeln">${t("rules")} ${icon("arrow")}</a><div id="hausdeppRoomInvitation" hidden>${invitationMarkup({ id: gameId, name: t("defaultTable") }, t)}</div><button class="hd-tools-close" type="button">${t("close")}</button></div></details><p id="hausdeppActionError" class="hd-action-error" role="alert"></p><details id="hausdeppPeek" class="hd-peek" hidden><summary>${t("peekTitle")}</summary><p id="hausdeppPeekText"></p><div id="hausdeppPeekCards" class="hd-peek-cards"></div></details><section id="hausdeppResult" class="hd-result" aria-live="polite" hidden></section><div id="hausdeppReactionLayer" class="hd-reaction-layer" aria-hidden="true"></div><p id="hausdeppReactionAnnouncement" class="hd-sr" role="status" aria-live="polite" aria-atomic="true"></p></section>
     <aside class="hd-social"><div class="hd-social-tools"><button id="chatToggle" type="button" aria-controls="chatPanel" aria-expanded="false">${icon("chat")} <span class="hd-chat-label">${t("tableChat")}</span> <span id="chatToggleCount" hidden></span></button><div class="hd-reactions" aria-label="${t("reactions")}"></div></div><section id="chatPanel" class="hd-chat-panel" aria-label="${t("tableChat")}"><div class="chat-content" hidden><div class="hd-chat-heading"><h2>${t("tableChat")}</h2><button id="chatClose" type="button">${t("close")}</button></div><div id="chatBox" class="hd-chat-messages" role="log" aria-live="polite"></div><div class="hd-chat-compose"><label class="hd-sr" for="chatInput">${t("message")}</label><input id="chatInput" type="text" maxlength="400" placeholder="${t("message")}" autocomplete="off"><button id="chatSend" type="button">${t("send")}</button></div></div></section><a class="hd-social-rules" href="/hausdepp/regeln">${t("rules")} ${icon("arrow")}</a></aside></div><button id="chatBackdrop" class="hd-chat-backdrop" type="button" aria-label="${t("close")}" hidden></button>`;
   $("hausdeppTable").insertAdjacentHTML("afterbegin", `<section id="hausdeppWaiting" class="hd-waiting" aria-labelledby="hausdeppWaitingTitle" hidden><div class="hd-waiting-heading"><h2 id="hausdeppWaitingTitle">${t("waitingHeading")}</h2><button id="hausdeppLeaveWaiting" class="hd-secondary" type="button" hidden>${t("leaveWaiting")}</button></div><p id="hausdeppLeaveWaitingError" class="hd-error" role="alert" hidden></p>${waitingControlsMarkup(t)}${invitationMarkup({ id: gameId, name: t("defaultTable"), waiting: true }, t)}</section>`);
   waitingControls?.destroy();
@@ -689,8 +690,10 @@ function renderTableShell() {
     command(actions.includes("peek") ? "peek" : actions.includes("draw") ? "draw" : "gamble");
   });
   $("hausdeppTools").querySelector(".hd-game-help").append($("hausdeppPeek"));
+  cutFan = mountCutFan({ container: $("hausdeppKnownBottomCards"), fan: $("hausdeppKnownBottomCards").querySelector(".hd-known-bottom-fan"),
+    stock: $("hausdeppStock"), cardMarkup });
   peekFeedback = mountPeekFeedback({ history: $("hausdeppPeek"), text: $("hausdeppPeekText"),
-    cards: $("hausdeppPeekCards"), preview: $("hausdeppCutPreview"), t, cardMarkup });
+    cards: $("hausdeppPeekCards"), announce: $("hausdeppCutAnnouncement"), fan: cutFan, t, cardMarkup, cardName });
   // Wide tables keep help and invitations in the side column beside chat and
   // rules; the hand area below the cards stays for playing them.
   const toolsWide = matchMedia("(min-width: 1100px)");
@@ -878,6 +881,7 @@ function disposeTable() {
   handSelection?.destroy(); handSelection = null;
   pileInspector?.destroy(); pileInspector = null;
   peekFeedback?.destroy(); peekFeedback = null;
+  cutFan?.destroy(); cutFan = null;
   reactionObserver?.disconnect(); reactionObserver = null;
   for (const cleanup of tableCleanups.splice(0)) cleanup();
   for (const entry of visibleReactions.values()) clearTimeout(entry.timer);
@@ -974,6 +978,9 @@ function receiveReaction(reaction) {
 }
 
 function motionBlocksAction(action) {
+  // The CPU tempo never touches the packet. Finished players tap it while CPUs
+  // keep playing, so pile flights must not swallow that tap.
+  if (action === "speed_up_cpus") return false;
   // Refills and legal continuations use the accepted state. A ten/quartet
   // keeps the own turn even while its old packet is still leaving the table.
   const ownThrowOpen = snapshot?._hausdepp?.afterthrow?.player_id === playerId;
@@ -1306,11 +1313,16 @@ function renderStateContent() {
   $("hausdeppCpuTempo").hidden = !showCpuTempo;
   document.querySelector(".hd-hand-region").classList.toggle("has-cpu-tempo", !!showCpuTempo);
   const tempoButton = $("hausdeppSpeedUpCpus");
-  tempoButton.textContent = t(cpuTempo.fast ? "fastCpuTempo" : "speedUpCpus");
+  // Rewriting an unchanged label on every CPU move would replace the text the
+  // finger rests on; touch browsers can then drop the pressed button's tap.
+  const tempoLabel = t(cpuTempo.fast ? "fastCpuTempo" : "speedUpCpus");
+  if (tempoButton.textContent !== tempoLabel) tempoButton.textContent = tempoLabel;
   tempoButton.disabled = !!cpuTempo.fast || pending || !connected || !!snapshot._paused;
   tempoButton.setAttribute("aria-pressed", String(!!cpuTempo.fast));
-  $("hausdeppCpuTempoHint").textContent = t(cpuTempo.fast ? "fastCpuTempoHint" : "speedUpCpusHint");
-  $("hausdeppCpuTempoStatus").textContent = showCpuTempo && cpuTempo.fast ? t("fastCpuTempoHint") : "";
+  const tempoHint = t(cpuTempo.fast ? "fastCpuTempoHint" : "speedUpCpusHint");
+  if ($("hausdeppCpuTempoHint").textContent !== tempoHint) $("hausdeppCpuTempoHint").textContent = tempoHint;
+  const tempoStatus = showCpuTempo && cpuTempo.fast ? t("fastCpuTempoHint") : "";
+  if ($("hausdeppCpuTempoStatus").textContent !== tempoStatus) $("hausdeppCpuTempoStatus").textContent = tempoStatus;
   const ownSeat = s.players.findIndex(player => player.id === playerId);
   const opponents = ownSeat < 0 ? s.players : [...s.players.slice(ownSeat + 1), ...s.players.slice(0, ownSeat)];
   const refillPlayers = new Set((s.pending_refills || []).map(debt => debt.player_id));
@@ -1348,12 +1360,7 @@ function renderStateContent() {
   // authoritatively gates the tap-to-pickup action and its pending state.
   const knownBottom = ["peeking", "playing"].includes(s.phase) ? s.private_peek_in_stock || [] : [];
   $("hausdeppKnownBottom").hidden = !knownBottom.length;
-  $("hausdeppKnownBottomCards").hidden = !knownBottom.length;
-  const knownFan = $("hausdeppKnownBottomCards").querySelector(".hd-known-bottom-fan");
-  if (knownFan.dataset.cards !== knownBottom.join()) {
-    knownFan.dataset.cards = knownBottom.join();
-    knownFan.innerHTML = knownBottom.slice(0, 3).map(card => cardMarkup(card)).join("");
-  }
+  cutFan.render(knownBottom);
   $("hausdeppKnownBottom").textContent = knownBottom.length ? t("knownBottom", { cards: knownBottom.map(card => t(`rank${card.split("-")[1]}`)).join(" · ") }) : "";
   if (knownBottom.length && !stockBlocker) $("hausdeppStock").setAttribute("aria-label", `${$("hausdeppStock").getAttribute("aria-label")}. ${t("knownBottomLabel", { cards: knownBottom.map(cardName).join(", ") })}`);
   // Refilling is mandatory, so the stock is tapped once for everyone as soon

@@ -1,18 +1,19 @@
 /** Current cut at the stock; round history is available only on request. */
-export function mountPeekFeedback({ history, text, cards, preview, t, cardMarkup }) {
-  let roundKey, previousPhase, signature = "", timer;
-  const hidePreview = () => {
+export function mountPeekFeedback({ history, text, cards, announce, fan, t, cardMarkup, cardName }) {
+  let roundKey, previousPhase, signature = "", seen = [], timer;
+  const quiet = () => {
     clearTimeout(timer);
-    preview.hidden = true;
-    preview.replaceChildren();
+    announce.textContent = "";
   };
   const reset = () => {
-    hidePreview();
+    quiet();
+    fan?.stop();
     history.hidden = true;
     history.open = false;
     text.textContent = "";
     cards.replaceChildren();
     signature = "";
+    seen = [];
     previousPhase = undefined;
   };
   return {
@@ -31,20 +32,21 @@ export function mountPeekFeedback({ history, text, cards, preview, t, cardMarkup
         // A reload of a dealt round restores its history quietly. Only a live
         // cut may show a private receipt; successes already have a public reveal.
         const liveCut = state.phase === "peeking" || previousPhase === "peeking";
-        hidePreview();
-        if (liveCut && state.peek?.player_id === playerId && !state.peek?.success) {
-          preview.style.setProperty("--cut-count", known.length);
-          preview.innerHTML = known.map(card => cardMarkup(card)).join("");
-          preview.hidden = false;
-          // Keep the receipt brief; the known cards remain hinted under the
-          // stock until they actually leave it. A later tap starts a new cue.
-          timer = setTimeout(hidePreview, 1100);
+        // Only faces seen by this tap travel; an earlier ace already rests under the stock.
+        const fresh = known.filter(card => !seen.includes(card));
+        seen = [...known];
+        if (liveCut && state.peek?.player_id === playerId && !state.peek?.success && fresh.length) {
+          fan?.reveal(fresh);
+          quiet();
+          announce.textContent = `${t("peekTitle")}: ${fresh.map(cardName).join(", ")}`;
+          // Clear the polite receipt so an identical later cut is announced again.
+          timer = setTimeout(quiet, 4000);
         }
       }
-      if (state.phase === "finished") hidePreview();
+      if (state.phase === "finished") { quiet(); fan?.stop(); }
       previousPhase = state.phase;
     },
-    disconnect() { hidePreview(); previousPhase = undefined; signature = ""; },
+    disconnect() { quiet(); fan?.stop(); previousPhase = undefined; signature = ""; },
     destroy: reset,
   };
 }

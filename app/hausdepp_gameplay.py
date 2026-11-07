@@ -98,6 +98,7 @@ def apply_hausdepp_command(game: dict, player_id: str, command: dict, *, trusted
     game["_turn"] = {"player_id": state["current_player_id"]} if state.get("current_player_id") else None
     if state["phase"] == "finished":
         game["_finished"] = True
+        game["_hausdepp_round_reward_policy"] = 2
         game["_finished_at"] = datetime.now(timezone.utc).isoformat()
         game["_results"] = {"loser_id": state["loser_id"], "finished_order": list(state["finished_order"])}
         from .hausdepp_tournament import record_finished_round

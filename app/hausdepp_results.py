@@ -244,6 +244,8 @@ def validated_hausdepp_membership(row: CompletedGame, user_id: int, *, db=None) 
              "flags": evidence.get("flags", []), "ten_clears": evidence.get("ten_clears", 0)}
     if payload.get("round_reward_policy") == 2:
         facts["round_reward_policy"] = 2
+        facts["reward_human_count"] = sum(not player["is_cpu"] and player["outcome"] != "withdrawn"
+                                          for player in participants)
     if "table_surprises" in evidence:
         facts["table_surprises"] = evidence["table_surprises"]
     tournament = payload.get("tournament")
@@ -285,13 +287,14 @@ def finalize_hausdepp_result(game: dict) -> dict:
                   else 3 if tournament else 2 if state.get("achievement_evidence") is not None else 1)
         raw = {
             "schema_version": schema,
-            "round_reward_policy": 2,
             "payload_kind": "hausdepp_result", "game_type": HAUSDEPP_GAME_TYPE,
             "game_id": result_id, "name": game["_name"], "finished_at": game["_finished_at"],
             "participants": [{"id": player["id"], "name": player["name"], "is_cpu": bool(player.get("is_cpu"))}
                              for player in round_participants],
             "loser_id": state.get("loser_id"), "finished_order": state.get("finished_order"),
         }
+        if game.get("_hausdepp_round_reward_policy") == 2:
+            raw["round_reward_policy"] = 2
         if schema == 4:
             raw.update(withdrawn_ids=list(state.get("withdrawn_ids", [])),
                        round_end_reason=state.get("round_end_reason") or "normal",

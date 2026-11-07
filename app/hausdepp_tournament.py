@@ -230,6 +230,7 @@ def start_next_round(game: dict, player_id: str, version: object) -> None:
     game["_hausdepp"] = following
     game["_finished"] = False
     game["_finished_at"] = None
+    game.pop("_hausdepp_round_reward_policy", None)
     game["_results"] = None
     game["_turn"] = {"player_id": following["current_player_id"]}
     game["_hausdepp_round_started_at"] = datetime.now(timezone.utc).isoformat()
