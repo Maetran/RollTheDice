@@ -273,9 +273,10 @@ for (const count of [2, 3, 4]) {
       let observedPlay = false;
       let continuedDeal = false;
       // Optional requests remain available while a CPU owns the next move.
-      // Only an actual human progress action may release this driver.
+      // A partner feedback request must also release the driver: a CPU can be
+      // waiting for the human's answer before it can make the next move.
       const progressActions = new Set(['show_ready', 'inspection_ack', 'announce_strike', 'announce_colour',
-        'respond_go', 'respond_hold', 'bid', 'play_card', 'preplay_decline']);
+        'respond_go', 'respond_hold', 'bid', 'play_card', 'preplay_decline', 'partner_feedback']);
       for (let turn = 0; turn < 60; turn += 1) {
         await expect.poll(() => {
           const engine = host.traffic.snapshot?.engine;

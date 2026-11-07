@@ -48,14 +48,21 @@ def _revision_points(points: int) -> int:
     return max(points, 1)
 
 
+def round_reward(facts: dict) -> int:
+    count = facts.get("cpu_count")
+    if type(count) is not int or not 0 <= count <= 5:
+        raise ValueError("hausdepp_invalid_credit_cpu_count")
+    humans = facts.get("reward_human_count")
+    if facts.get("round_reward_policy") == 2 and type(humans) is int and humans >= 2:
+        return ROUND_POINTS
+    return CPU_ROUND_POINTS if count else ROUND_POINTS
+
+
 def _round_points(credits: list) -> int:
     total = 0
     for credit in credits:
         facts = json.loads(credit.facts_json)
-        count = facts.get("cpu_count")
-        if type(count) is not int or not 0 <= count <= 5:
-            raise ValueError("hausdepp_invalid_credit_cpu_count")
-        total += CPU_ROUND_POINTS if count else ROUND_POINTS
+        total += round_reward(facts)
     return total
 
 

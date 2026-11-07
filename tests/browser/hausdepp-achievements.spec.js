@@ -121,6 +121,8 @@ for (const language of ['de', 'en']) {
     await expect(page.locator('.hd-achievement-group')).toHaveCount(15);
     await expect(page.locator('#hausdeppRankTitle')).toHaveText(local(data.rank.name, language));
     await expect(page.locator('.hd-xp-breakdown')).toContainText(language === 'de' ? 'Aus abgeschlossenen Runden' : 'From completed rounds');
+    await expect(page.locator('.hd-xp-guide')).toContainText(language === 'de' ? 'mindestens zwei Menschen' : 'at least two humans');
+    await expect(page.locator('.hd-xp-guide')).toContainText(language === 'de' ? 'Frühere Runden' : 'Earlier rounds');
     await page.locator('.hd-rank-ladder > summary').click();
     await expect(page.locator('.hd-rank-ladder li')).toHaveCount(24);
     await expect(page.locator('.hd-rank-ladder li').first()).toContainText('Einstein');
@@ -259,7 +261,7 @@ for (const language of ['de', 'en']) {
     await expect(page.locator('.hd-xp-breakdown dd').last()).toHaveText(`75 ${suffix}`);
     await expect(page.locator('.hd-rank-progress-label strong')).toContainText(`${data.rank.next.threshold - 77}`);
     await expect(page.locator('.hd-notice-reward')).toHaveText(`+2 ${suffix}`);
-    await expect(page.locator('.hd-xp-guide')).toContainText('75%');
+    await expect(page.locator('.hd-xp-guide')).toContainText(language === 'de' ? 'Allein gegen Computer' : 'Playing alone against computers');
     await expect(page.locator('.hd-xp-guide')).toContainText(language === 'de' ? 'vollen Punkten' : 'full one-time rewards');
     await page.locator('[data-progress-ack]').click();
     expect(receipts).toEqual([{ revision: 9001 }]);

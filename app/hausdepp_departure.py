@@ -67,6 +67,7 @@ def _propose_departure(game: dict, player_id: str, version: object, departed_at:
     record_tournament_departure(proposed, player_id)
     if state["phase"] == "finished" and not game.get("_finished"):
         proposed.update(_finished=True, _finished_at=departed_at.isoformat(),
+                        _hausdepp_round_reward_policy=2,
                         _results={key: state.get(key) for key in
                                   ("loser_id", "finished_order", "withdrawn_ids", "round_end_reason", "remaining_player_id")})
         record_finished_round(proposed)

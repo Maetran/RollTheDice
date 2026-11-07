@@ -95,8 +95,7 @@ html[data-game="hausdepp"] body.hd-playing .hd-hand-fan > .hausdepp-card:focus-v
    visible corner carries rank and suit. No label, nothing else is covered. */
 html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre .hd-known-bottom-cards { z-index: 0; top: 4%; right: auto; left: calc(var(--hd-pile-size) * -.28); width: calc(var(--hd-pile-size) * .56); gap: 0; }
 html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre .hd-known-bottom-fan { transform: rotate(-7deg); transform-origin: 70% 90%; }
-html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre .hd-known-bottom-fan .hausdepp-card:nth-child(2) { transform: translate(-6%, 19%) rotate(-4deg); }
-html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre .hd-known-bottom-fan .hausdepp-card:nth-child(3) { transform: translate(-12%, 38%) rotate(-8deg); }
+html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre .hd-known-bottom-fan .hausdepp-card { transform: translate(calc(var(--cut-step, 0) * -6%), calc(var(--cut-step, 0) * 19%)) rotate(calc(var(--cut-step, 0) * -4deg)); }
 html[data-game="hausdepp"] body.hd-playing .hd-table .hd-centre .hd-known-bottom { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; padding: 0; border: 0; }
 
 /* Wide tables show the round result as a centred card over the table instead

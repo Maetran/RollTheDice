@@ -34,7 +34,7 @@ def account(tmp_path):
     configure_database(main.DATA_DIR)
 
 
-def store_round(account, number, *, cpus=1, humans=1, flag=None):
+def store_round(account, number, *, cpus=1, humans=1, flag=None, policy=None):
     players = [{"id": "self", "name": account.user.username, "is_cpu": False}]
     if humans == 2:
         players.append({"id": "friend", "name": account.other.username, "is_cpu": False})
@@ -52,6 +52,8 @@ def store_round(account, number, *, cpus=1, humans=1, flag=None):
         payload["achievement_evidence"] = {"schema_version": 1, "complete": True, "players": {
             player["id"]: {"flags": [flag] if player["id"] == "self" else [], "ten_clears": 0}
             for player in players}}
+    if policy is not None:
+        payload["round_reward_policy"] = policy
     assert persist_completed_game_result(
         game_id=payload["game_id"], game_name=payload["name"], game_type="hausdepp", mode=str(len(players)),
         hardcore=False, finished_at=at, snapshot=payload,
@@ -75,6 +77,71 @@ def test_any_cpu_seat_reduces_only_round_reward_and_badges_stay_full(account, cp
     badges = {item["id"]: item for item in progress["achievements"]["items"] if item["unlocked"]}
     assert {key: item["points"] for key, item in badges.items()} == {"hausdepp_01": 10, "hausdepp_17": 25}
     assert synchronize_hausdepp_progress(account.user.id) == progress
+
+
+def test_new_mixed_round_gets_full_reward_without_reweighting_old_round(account):
+    from app.hausdepp_round_summary import build_round_summary
+
+    store_round(account, 1, cpus=1, humans=2)
+    before = synchronize_hausdepp_progress(account.user.id)
+    store_round(account, 2, cpus=1, humans=2, policy=2)
+    after = synchronize_hausdepp_progress(account.user.id)
+    assert before["scoring"]["round_points"] == 2
+    assert after["scoring"]["round_points"] == 12
+    summary = build_round_summary("cpu-rule-2", [{"id": "self", "user_id": account.user.id}])
+    assert summary["players"]["self"]["round_xp"] == 10
+    store_round(account, 3, cpus=1, humans=1, policy=2)
+    assert synchronize_hausdepp_progress(account.user.id)["scoring"]["round_points"] == 14
+
+
+def test_finished_mixed_game_preserves_new_policy_for_later_credit_recovery(account):
+    from app.active_games import serializable_game_state
+    from app.hausdepp_results import finalize_hausdepp_result
+
+    players = [{"id": "self", "name": account.user.username, "user_id": account.user.id},
+               {"id": "friend", "name": account.other.username, "user_id": account.other.id},
+               {"id": "cpu", "name": "Kartensepp", "is_cpu": True}]
+    game = {"_id": "new-mixed", "_name": "Mixed", "_mode": "3", "_finished": True,
+            "_hausdepp_round_reward_policy": 2,
+            "_finished_at": datetime.now(timezone.utc).isoformat(), "_participants": players,
+            "_hausdepp": {"phase": "finished", "loser_id": "cpu", "finished_order": ["self", "friend"]}}
+    assert serializable_game_state(game)["_hausdepp_round_reward_policy"] == 2
+    with patch("app.hausdepp_achievements.synchronize_hausdepp_progress", side_effect=RuntimeError("retry")):
+        assert finalize_hausdepp_result(game)["result_persisted"]
+    assert synchronize_hausdepp_progress(account.user.id)["scoring"]["round_points"] == 10
+    assert synchronize_hausdepp_progress(account.other.id)["scoring"]["round_points"] == 10
+
+
+def test_preexisting_finished_checkpoint_retried_after_update_keeps_old_reward(account):
+    from app.hausdepp_results import finalize_hausdepp_result
+
+    players = [{"id": "self", "name": account.user.username, "user_id": account.user.id},
+               {"id": "friend", "name": account.other.username, "user_id": account.other.id},
+               {"id": "cpu", "name": "Kartensepp", "is_cpu": True}]
+    game = {"_id": "old-mixed", "_name": "Mixed", "_mode": "3", "_finished": True,
+            "_finished_at": datetime.now(timezone.utc).isoformat(), "_participants": players,
+            "_hausdepp": {"phase": "finished", "loser_id": "cpu", "finished_order": ["self", "friend"]}}
+    assert finalize_hausdepp_result(game)["result_persisted"]
+    assert synchronize_hausdepp_progress(account.user.id)["scoring"]["round_points"] == 2
+
+
+def test_withdrawn_human_does_not_increase_mixed_round_reward(account):
+    players = [{"id": "self", "name": account.user.username, "is_cpu": False},
+               {"id": "friend", "name": account.other.username, "is_cpu": False},
+               {"id": "cpu", "name": "Kartensepp", "is_cpu": True}]
+    at = datetime(2026, 10, 16, 18, 30, tzinfo=timezone.utc)
+    payload = {"schema_version": 4, "payload_kind": "hausdepp_result", "game_type": "hausdepp",
+               "round_reward_policy": 2, "game_id": "withdrawn-mixed", "name": "Mixed",
+               "finished_at": at.isoformat(), "participants": players, "finished_order": ["self"],
+               "loser_id": "cpu", "withdrawn_ids": ["friend"], "round_end_reason": "normal",
+               "remaining_player_id": None, "achievement_evidence": {"schema_version": 1, "complete": True,
+                   "players": {p["id"]: {"flags": [], "ten_clears": 0} for p in players}}}
+    assert persist_completed_game_result(game_id=payload["game_id"], game_name=payload["name"],
+        game_type="hausdepp", mode="3", hardcore=False, finished_at=at, snapshot=payload,
+        participants=[{"player_key": p["id"], "display_name": p["name"],
+                       "user_id": account.user.id if p["id"] == "self" else
+                       account.other.id if p["id"] == "friend" else None} for p in players]).succeeded
+    assert synchronize_hausdepp_progress(account.user.id)["scoring"]["round_points"] == 2
 
 
 def test_round_down_happens_per_cpu_round_and_never_after_aggregation(account):

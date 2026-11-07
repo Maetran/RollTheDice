@@ -175,7 +175,9 @@ async function completeActivePeek(page, traffic, { expectMotion } = {}) {
       expect(traffic.state.peek.cards || []).toEqual([]);
       expect(traffic.state.hand).toEqual([]);
       expect(traffic.state.discard).toEqual([]);
-      await expect(page.locator('#hausdeppCutPreview')).toBeVisible();
+      // The seen ace rests face up beneath the stock; the polite receipt names it.
+      await expect(page.locator(`#hausdeppKnownBottomCards [data-card-id="${traffic.state.private_peek.at(-1)}"]`)).toBeVisible();
+      await expect(page.locator('#hausdeppCutAnnouncement')).toContainText(/Ass|Ace/);
       await expect(page.locator('#hausdeppStock')).toBeEnabled();
     }
   }

@@ -150,6 +150,10 @@ def validate_hausdepp_result(payload: object) -> dict:
     result = {"schema_version": payload["schema_version"], "payload_kind": "hausdepp_result", "game_type": HAUSDEPP_GAME_TYPE,
             "game_id": game_id, "name": name, "finished_at": finished_at,
             "participants": participants, "loser_id": loser, "finished_order": list(order), **terminal}
+    if "round_reward_policy" in payload:
+        if type(payload["round_reward_policy"]) is not int or payload["round_reward_policy"] != 2:
+            raise ValueError("hausdepp_result_invalid_reward_policy")
+        result["round_reward_policy"] = 2
     timing = _round_timing(payload.get("started_at"), finished_at)
     duration = payload.get("duration_seconds")
     if (timing and type(duration) in {int, float} and 0 <= duration <= 30 * 24 * 60 * 60
@@ -238,6 +242,10 @@ def validated_hausdepp_membership(row: CompletedGame, user_id: int, *, db=None) 
              "human_count": len(participants) - record["cpu_count"], "outcome": own["outcome"],
              "opponents": sorted(account for account in human_accounts if account != user_id),
              "flags": evidence.get("flags", []), "ten_clears": evidence.get("ten_clears", 0)}
+    if payload.get("round_reward_policy") == 2:
+        facts["round_reward_policy"] = 2
+        facts["reward_human_count"] = sum(not player["is_cpu"] and player["outcome"] != "withdrawn"
+                                          for player in participants)
     if "table_surprises" in evidence:
         facts["table_surprises"] = evidence["table_surprises"]
     tournament = payload.get("tournament")
@@ -285,6 +293,8 @@ def finalize_hausdepp_result(game: dict) -> dict:
                              for player in round_participants],
             "loser_id": state.get("loser_id"), "finished_order": state.get("finished_order"),
         }
+        if game.get("_hausdepp_round_reward_policy") == 2:
+            raw["round_reward_policy"] = 2
         if schema == 4:
             raw.update(withdrawn_ids=list(state.get("withdrawn_ids", [])),
                        round_end_reason=state.get("round_end_reason") or "normal",

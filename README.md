@@ -274,8 +274,9 @@ Karte und lassen den Stich frei; das automatische «Danke» bleibt davon getrenn
 
 Hausdepp erklärt besonders die versteckten Gesten: Eine spielbare Handkarte
 lange berühren wählt alle spielbaren Karten desselben Werts zur gemeinsamen
-Auswahl. Den offenen Stapel lange berühren zeigt alle Karten, die aktuell darin
-liegen. Watten erklärt Hand, Schlag/Farbe, Bieten und die privaten Partnersignale
+Auswahl. Den offenen Stapel lange berühren fächert alle Karten auf, die aktuell
+darin liegen, auch bei vollem Paket; Loslassen schliesst den Fächer. Rechtsklick,
+Umschalt + Enter oder die Tischhilfe öffnen dieselben Karten als zugängliche Liste. Watten erklärt Hand, Schlag/Farbe, Bieten und die privaten Partnersignale
 im blinden Vierer. Unter **Konto → Einstellungen → Hilfe & Neuigkeiten →
 Einsteigertouren** kannst du Einführungen erneut starten, mit Beispielen ansehen
 oder automatische Angebote ausschalten. Gäste erreichen dieselbe Auswahl in
@@ -293,8 +294,9 @@ Brief strike/suit speech bubbles clear when the first card is played, leaving
 the trick unobstructed. The automatic “Thanks” keeps its separate display.
 
 Hausdepp highlights the hidden gestures: hold a playable hand card to select
-all playable cards of the same rank for a group play. Hold the open pile to
-inspect every card currently in it. Watten explains your hand, strike/suit,
+all playable cards of the same rank for a group play. Hold the open pile to fan
+out every card currently in it, even a full pile; letting go closes the fan.
+Right-click, Shift + Enter or table help open the same cards as an accessible list. Watten explains your hand, strike/suit,
 bidding and private partner signals in blind four-player play. Under
 **Account → Settings → Help & updates → Beginner tours**, restart introductions,
 view examples or switch automatic offers off. Guests find the same controls in
@@ -1420,10 +1422,9 @@ Das Konto enthält **138 Erfolge und 24 Ränge**, mit Suche, Filtern und der gan
 Rangleiter. Innerhalb jeder Gruppe stehen erreichte Erfolge vor den noch offenen.
 Häufige Kartenaktionen benötigen mehrere passende abgeschlossene Runden;
 jede Runde zählt je Ziel höchstens einmal. Seltene Kunststücke bleiben direkt
-erreichbar. Eine abgeschlossene Runde nur mit Menschen gibt 10 Erfahrungspunkte.
-Sobald mindestens ein Computer mitspielt, wird die Basis um 75 % reduziert
-und je Runde auf ganze EP abgerundet: **2 EP**,
-auch an gemischten Tischen und für jede einzelne Turnierrunde. Jeder Erfolg
+erreichbar. Eine abgeschlossene Runde mit mindestens zwei Menschen, die nicht vorzeitig ausgestiegen sind, gibt **10 EP**,
+auch wenn Computer mitspielen. Allein gegen Computer gibt es **2 EP** pro Runde;
+frühere Runden behalten ihre ursprüngliche Gutschrift. Das gilt auch im Turnier. Jeder Erfolg
 gibt weiterhin einmalig seine vollen 10, 25, 50, 100, 250 oder 500 EP;
 der Ausstiegs-Zonk gibt ausdrücklich 0 EP. Runden, Siege und
 die Anzahl bereits freigeschalteter Erfolge bleiben dabei erhalten.
@@ -1519,10 +1520,10 @@ settings at `/hausdepp/konto/einstellungen` manage the shared account. The accou
 and 24 ranks**, with search, filters and the complete rank ladder. Each group
 shows earned achievements before locked ones. Common card actions require
 several qualifying completed rounds, with each round counting at most once per
-goal; rare feats can still unlock immediately. A completed all-human round earns
-10 experience points. Any computer seat reduces the base round reward by 75%,
-rounded down per round to **2 XP**, including mixed tables and each individual
-tournament round. Achievements still grant their full 10, 25, 50, 100, 250 or 500 XP once each;
+goal; rare feats can still unlock immediately. A completed round with at least two humans who did not withdraw earns
+**10 XP**, including at tables with computers. Playing alone against computers earns **2 XP**
+per round; earlier rounds keep their original credit. This also applies to tournaments.
+Achievements still grant their full 10, 25, 50, 100, 250 or 500 XP once each;
 the departure Zonk is explicitly worth 0 XP.
 Round and win counts and the number of existing unlocks are retained.
 The eight rare table finds have two collection tracks: trigger them yourself
