@@ -23,6 +23,18 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 4.15.2 — 2026-11-07
+
+Hausdepp zeigt Karten übersichtlicher und berücksichtigt Mitspieler bei den Runden-EP.
+
+Hausdepp makes cards easier to inspect and counts other players for round XP.
+
+### HAUSDEPP
+
+**Deutsch:** Beim Abheben gleiten angesehene Karten sichtbar unter den Stapel zurück. Halte das offene Paket gedrückt, um alle Karten aufzufächern; beim Loslassen schliesst es sich wieder. Der Knopf für schnellere Computer reagiert auch während Animationen. Neue abgeschlossene Runden mit mindestens zwei Menschen, die nicht vorzeitig ausgestiegen sind, geben 10 EP, auch mit Computern. Frühere Gutschriften bleiben erhalten.
+
+**English:** Inspected cards now slide visibly back under the stock. Hold the open pile to fan out every card; release it to close the fan. The faster-computer button responds during animations. Newly completed rounds with at least two humans who did not withdraw grant 10 XP, even with computers. Earlier credits remain unchanged.
+
 ## 4.15.1 — 2026-11-05
 
 Watten-Computergegner spielen und entscheiden im Team aufmerksamer.
