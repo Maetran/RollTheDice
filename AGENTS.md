@@ -34,8 +34,12 @@
   Volltest. Keine Hooks
   umgehen und keine Teilprüfung als Vollprüfung ausgeben. Alle Qualitäts-,
   Sicherheits-, Tool-, Backend-, Container- und Browserprüfungen sind enthalten.
-  Die Haupt-Browser-Suite läuft auf vier eigenen Servern mit getrennten
-  Datenverzeichnissen und je einem Worker; die drei Konto-Suiten folgen separat.
+  Alle Prüfgruppen starten gleichzeitig und laufen auch nach einem Fehler zu
+  Ende. Die Haupt-Browser-Suite läuft in 24 kleinen Shards mit eigenen Servern,
+  getrennten Datenverzeichnissen und je einem Worker; zusammen mit den Konto-Suiten
+  in einem begrenzten Pool. Bestandenes wird pro Tree höchstens 24 Stunden
+  wiederverwendet, sodass ein erneuter Lauf auf demselben Commit nur Fehlgeschlagenes
+  wiederholt (`npm run verify:local -- --fresh` wiederholt alles).
   Vor einem vollen Lauf laufende fremde Testpools prüfen und abstimmen; keine
   zweite volle Testsuite parallel zu einem fremden Vollpool starten. Einzelheiten
   und Voraussetzungen stehen in [docs/LOCAL_CHECKS.md](docs/LOCAL_CHECKS.md).

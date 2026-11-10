@@ -6,12 +6,15 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { CONFIGS, collectFilteredTests, createSuitePlan, parseArguments, reservePort, runLocalBrowserTests } from '../scripts/test-browser-local.mjs';
+import { CONFIGS, collectFilteredTests, createSuitePlan, defaultJobs, longestFirst, parseArguments, reservePort, runLocalBrowserTests } from '../scripts/test-browser-local.mjs';
+import { BROWSER_SUITES, MAIN_SHARDS } from '../scripts/local-checks.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const require = createRequire(import.meta.url);
 const delay = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
-const names = ['main-1', 'main-2', 'main-3', 'main-4', 'watten-public', 'username', 'passkeys', 'hausdepp-passkeys'];
+const names = [...BROWSER_SUITES];
+const mainNames = names.filter(name => name.startsWith('main-'));
+const portsFrom = (base, length = names.length) => Array.from({ length }, (_, index) => base + index);
 
 async function fixture(t) {
   const directory = await mkdtemp(path.join(os.tmpdir(), 'browser-runner-node-test-'));
@@ -57,9 +60,11 @@ function cleanEnvironment(extra = {}) {
   return environment;
 }
 
-test('the default plan covers four one-worker shards, public Watten and every isolated account suite exactly once', () => {
+test('the default plan covers every one-worker main shard, public Watten and every isolated account suite exactly once', () => {
+  assert.ok(MAIN_SHARDS >= 4);
+  assert.deepEqual(mainNames, Array.from({ length: MAIN_SHARDS }, (_, index) => `main-${index + 1}`));
   const plan = createSuitePlan({ root: '/repo', temporaryDirectory: '/tmp/owned', outputDirectory: '/reports/run',
-    ports: [18100, 18101, 18102, 18103, 18104, 18105, 18106, 18107],
+    ports: portsFrom(18100),
     environment: { PLAYWRIGHT_PYTHON: '/python with spaces/bin/python', PLAYWRIGHT_OUTPUT_DIR: '/inherited' } });
   assert.deepEqual(plan.map(item => item.name), names);
   for (const [index, suite] of plan.entries()) {
@@ -71,10 +76,18 @@ test('the default plan covers four one-worker shards, public Watten and every is
     assert.equal(suite.env.ROLLTHEDICE_WATTEN_PUBLIC_TEST_PORT, String(18100 + index));
     assert.equal(suite.env.PLAYWRIGHT_OUTPUT_DIR, suite.outputDir);
     assert.equal(suite.env.PLAYWRIGHT_BASE_URL, undefined);
-    if (index < 4) assert.ok(suite.args.includes('--shard=' + (index + 1) + '/4'));
+    if (index < MAIN_SHARDS) assert.ok(suite.args.includes(`--shard=${index + 1}/${MAIN_SHARDS}`));
     else assert.ok(!suite.args.some(arg => arg.startsWith('--shard=')));
   }
-  for (const field of ['testDirectory', 'outputDir', 'htmlDir', 'logPath']) assert.equal(new Set(plan.map(item => item[field])).size, 8);
+  for (const field of ['testDirectory', 'outputDir', 'htmlDir', 'logPath']) assert.equal(new Set(plan.map(item => item[field])).size, names.length);
+});
+
+test('the pool starts suites without history first, then the longest known ones', () => {
+  const plan = ['main-1', 'main-2', 'main-3', 'username', 'passkeys'].map(name => ({ name }));
+  assert.deepEqual(longestFirst(plan, { 'main-1': 30, 'main-2': 400, username: 10, passkeys: 400 }).map(item => item.name),
+    ['main-3', 'main-2', 'passkeys', 'main-1', 'username']);
+  assert.deepEqual(longestFirst(plan).map(item => item.name), plan.map(item => item.name));
+  assert.deepEqual(longestFirst(plan, { 'main-1': 'not a number' }).map(item => item.name), plan.map(item => item.name));
 });
 
 test('the real Playwright CLI refuses focused tests in unfiltered and filtered runner plans before executing them', async t => {
@@ -125,7 +138,7 @@ test('passes only on retry', () => {
 
 test('config filtering cannot override worker, shard, server or report isolation', () => {
   assert.deepEqual(parseArguments(['--config', 'playwright.passkeys.config.js', '--', 'passkeys.spec.js', '--grep', 'sign in']), {
-    suites: ['passkeys'], filters: ['passkeys.spec.js', '--grep', 'sign in'], outputDirectory: undefined, portBase: undefined,
+    suites: ['passkeys'], filters: ['passkeys.spec.js', '--grep', 'sign in'], outputDirectory: undefined, portBase: undefined, jobs: undefined,
   });
   for (const argument of ['--workers=8', '-j8', '--shard=2/2', '--config=x', '-cother.js', '--output=x', '--reporter=list', '--ui', '--retries=1']) {
     assert.throws(() => parseArguments(['--', argument]), /owns isolation/);
@@ -133,35 +146,52 @@ test('config filtering cannot override worker, shard, server or report isolation
   assert.throws(() => parseArguments(['--suite', 'unknown']), /Unknown/);
   assert.throws(() => parseArguments(['--suite', 'main', '--config', 'playwright.config.js']), /Duplicate/);
   assert.throws(() => parseArguments(['--port-base', '0']), /port-base/);
-  assert.equal(parseArguments(['--port-base', '65528']).portBase, 65528);
-  assert.throws(() => parseArguments(['--port-base', '65529']), /port-base/);
+  const highestBase = 65536 - names.length;
+  assert.equal(parseArguments(['--port-base', String(highestBase)]).portBase, highestBase);
+  assert.throws(() => parseArguments(['--port-base', String(highestBase + 1)]), /port-base/);
+  assert.deepEqual(parseArguments(['--suite', 'main-3', '--suite', 'username']).suites, ['main-3', 'username']);
+  assert.throws(() => parseArguments(['--suite', `main-${MAIN_SHARDS + 1}`]), /Unknown/);
+  assert.throws(() => parseArguments(['--suite', 'main-0']), /Unknown/);
+  assert.equal(parseArguments(['--jobs', '3']).jobs, 3);
+  for (const jobs of ['0', '65', '1.5']) assert.throws(() => parseArguments(['--jobs', jobs]), /--jobs/);
+  assert.equal(defaultJobs({ PLAYWRIGHT_LOCAL_JOBS: '5' }), 5);
+  assert.ok(defaultJobs({}) >= 2 && defaultJobs({}) <= 8);
+  assert.deepEqual(createSuitePlan({ root: '/repo', temporaryDirectory: '/tmp/owned', outputDirectory: '/reports/run',
+    suites: ['main-2', 'passkeys'], ports: [18300, 18301], environment: {} }).map(item => [item.name, item.args.find(arg => arg.startsWith('--shard='))]),
+  [['main-2', `--shard=2/${MAIN_SHARDS}`], ['passkeys', undefined]]);
+  assert.throws(() => createSuitePlan({ root: '/repo', temporaryDirectory: '/tmp/owned', outputDirectory: '/reports/run',
+    suites: ['main', 'main-2'], ports: portsFrom(18300, MAIN_SHARDS), environment: {} }), /at most once/);
   const plan = createSuitePlan({ root: '/repo', temporaryDirectory: '/tmp/owned', outputDirectory: '/reports/run',
-    ports: Array.from({ length: 8 }, (_, index) => 65528 + index), environment: {} });
+    ports: portsFrom(highestBase), environment: {} });
   assert.equal(plan.at(-1).port, 65535);
 });
 
-test('full orchestration retains failures and reports while extras run only after all four shards', async t => {
+test('full orchestration retains failures and reports while one bounded pool runs every suite', async t => {
   const f = await fixture(t);
   const output = path.join(f.directory, 'output');
-  const summary = await runLocalBrowserTests({ outputDirectory: output }, { root, cliPath: f.cli, quiet: true,
+  const jobs = 5;
+  const summary = await runLocalBrowserTests({ outputDirectory: output, jobs }, { root, cliPath: f.cli, quiet: true,
     environment: cleanEnvironment({ FAKE_EVENTS: f.events, FAKE_FAIL: 'main-2', PLAYWRIGHT_PYTHON: '/chosen/python' }) });
   assert.equal(summary.fullRun, true);
   assert.equal(summary.exitCode, 1);
+  assert.equal(summary.jobs, jobs);
   assert.deepEqual(summary.results.map(item => item.name), names);
-  assert.deepEqual(summary.results.map(item => item.exitCode), [0, 7, 0, 0, 0, 0, 0, 0]);
+  assert.deepEqual(summary.results.map(item => item.exitCode), names.map(name => name === 'main-2' ? 7 : 0));
   const events = (await readFile(f.events, 'utf8')).trim().split('\n').map(line => JSON.parse(line));
   const starts = events.filter(event => event.type === 'start');
-  assert.equal(starts.length, 8);
-  assert.equal(new Set(starts.map(item => item.port)).size, 8);
-  assert.equal(new Set(starts.map(item => item.directory)).size, 8);
-  const mainEnds = events.filter(event => event.type === 'end' && event.name.startsWith('main-'));
-  assert.ok(Math.max(...starts.slice(0, 4).map(item => item.time)) < Math.min(...mainEnds.map(item => item.time)), 'Four main shards really overlap');
-  let previousEnd = Math.max(...mainEnds.map(item => item.time));
-  for (const name of names.slice(4)) {
-    const start = events.find(item => item.name === name && item.type === 'start');
-    assert.ok(start.time >= previousEnd, `${name} runs serially after preceding suites`);
-    previousEnd = events.find(item => item.name === name && item.type === 'end').time;
+  assert.equal(starts.length, names.length);
+  assert.equal(new Set(starts.map(item => item.port)).size, names.length);
+  assert.equal(new Set(starts.map(item => item.directory)).size, names.length);
+  // The pool really runs suites side by side, but never more than the requested number.
+  let running = 0, peak = 0;
+  for (const event of events.filter(item => ['start', 'end'].includes(item.type)).sort((a, b) => a.time - b.time || (a.type === 'end' ? -1 : 1))) {
+    running += event.type === 'start' ? 1 : -1;
+    peak = Math.max(peak, running);
   }
+  assert.ok(peak > 1, 'suites overlap');
+  assert.ok(peak <= jobs, `at most ${jobs} suites run at once (saw ${peak})`);
+  // A failing shard does not stop the queue: every later suite still starts.
+  assert.ok(starts.some(item => item.name === 'hausdepp-passkeys'));
   for (const result of summary.results) {
     const log = await readFile(result.logPath, 'utf8');
     assert.match(log, /kept stdout/); assert.match(log, /kept stderr/);
@@ -204,11 +234,11 @@ test('a filtered total of zero is refused before running any otherwise successfu
   assert.match(summary.error, /selected no tests/);
   assert.ok(summary.results.every(item => item.status === 'not-started'));
   const events = (await readFile(f.events, 'utf8')).trim().split('\n').map(line => JSON.parse(line));
-  assert.equal(events.length, 4);
+  assert.equal(events.length, MAIN_SHARDS);
   assert.ok(events.every(event => event.type === 'list'));
 });
 
-for (const selected of [1, 3]) test(`filtered ${selected}-test selection on one shard permits the three empty shards`, async t => {
+for (const selected of [1, 3]) test(`filtered ${selected}-test selection on one shard permits the other empty shards`, async t => {
   const f = await fixture(t);
   const summary = await runLocalBrowserTests({ outputDirectory: path.join(f.directory, 'selected'),
     suites: ['main'], filters: ['one.spec.js', '--grep', 'one case'] }, { root, cliPath: f.cli, quiet: true,
@@ -216,10 +246,10 @@ for (const selected of [1, 3]) test(`filtered ${selected}-test selection on one 
   assert.equal(summary.exitCode, 0);
   assert.equal(summary.selectedTests, selected);
   assert.equal(summary.fullRun, false);
-  assert.deepEqual(summary.results.map(item => item.selectedTests), [0, selected, 0, 0]);
+  assert.deepEqual(summary.results.map(item => item.selectedTests), mainNames.map(name => name === 'main-2' ? selected : 0));
   const events = (await readFile(f.events, 'utf8')).trim().split('\n').map(line => JSON.parse(line));
   const listed = events.filter(event => event.type === 'list'), started = events.filter(event => event.type === 'start');
-  assert.equal(listed.length, 4); assert.equal(started.length, 4);
+  assert.equal(listed.length, MAIN_SHARDS); assert.equal(started.length, MAIN_SHARDS);
   for (const listing of listed) {
     const execution = started.find(item => item.name === listing.name);
     assert.deepEqual(listing.args, [...execution.args, '--list', '--reporter=json']);
@@ -280,7 +310,7 @@ for (const title of ['chosen one', 'chosen two']) test(title, () => require('nod
   for (const [index, [filter, expected]] of [['mistyped', 0], ['chosen one', 1], ['chosen', 2]].entries()) {
     const directory = path.join(f.directory, `real-${index}`);
     const plan = createSuitePlan({ root: f.directory, temporaryDirectory: directory, outputDirectory: directory,
-      ports: [18200, 18201, 18202, 18203], suites: ['main'], filters: ['selection.spec.js', '--grep', filter],
+      ports: portsFrom(18200, MAIN_SHARDS), suites: ['main'], filters: ['selection.spec.js', '--grep', filter],
       environment: cleanEnvironment({ PLAYWRIGHT_JSON_OUTPUT_NAME: 'inherited-report.json' }) });
     for (const suite of plan) {
       await mkdir(suite.testDirectory, { recursive: true });

@@ -6,7 +6,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
 import test from 'node:test';
-import { REQUIRED_CHECKS, BROWSER_SUITES, RECEIPT_LIFETIME_MS, acquireVerificationLock,
+import { REQUIRED_CHECKS, BROWSER_SUITES, MAIN_SHARDS, RECEIPT_LIFETIME_MS, acquireVerificationLock,
   assertLocalDockerEndpoint, assertUnfilteredEnvironment, git, gitContext, pushedCommits, receiptError,
   readReceipt, runCommand, saveReceipt } from '../scripts/local-checks.mjs';
 
@@ -35,7 +35,7 @@ function repository(t) {
 
 test('the push receipt binds every completed group, exact commit, base and environment', async t => {
   assert.equal(REQUIRED_CHECKS.length, 7, 'Full check groups stay unchanged when adding a browser pool');
-  assert.equal(BROWSER_SUITES.length, 8);
+  assert.equal(BROWSER_SUITES.length, MAIN_SHARDS + 4);
   assert.equal(receiptError(receipt(), context, 'installed-dependencies', now), null);
   const cases = [
     ['no receipt', null],
