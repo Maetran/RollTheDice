@@ -8,6 +8,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
+import { BROWSER_SUITES, MAIN_SHARDS } from './local-checks.mjs';
 
 const execFileAsync = promisify(execFile);
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -20,13 +21,27 @@ export const CONFIGS = Object.freeze({
   'hausdepp-passkeys': 'playwright.hausdepp-passkeys.config.js',
 });
 
+const MAX_PORT_BASE = 65536 - BROWSER_SUITES.length;
+const MAIN_SHARD_NAME = /^main-([1-9][0-9]*)$/;
+const isMainShard = name => MAIN_SHARD_NAME.test(name) && Number(name.match(MAIN_SHARD_NAME)[1]) <= MAIN_SHARDS;
+
+// Each suite runs one Playwright process, one browser (several pages for the
+// multi-player tables) and one Uvicorn server. Twelve at once on an 18-core Mac
+// overloaded the servers (timeouts, ECONNRESET); half the cores, at most eight,
+// keeps the timing-based waits stable. PLAYWRIGHT_LOCAL_JOBS or --jobs overrides it.
+export function defaultJobs(environment = process.env) {
+  const requested = Number(environment.PLAYWRIGHT_LOCAL_JOBS);
+  if (Number.isInteger(requested) && requested >= 1 && requested <= 64) return requested;
+  return Math.max(2, Math.min(8, Math.floor(os.availableParallelism() / 2)));
+}
+
 export function parseArguments(argv) {
-  const options = { suites: [], filters: [], outputDirectory: undefined, portBase: undefined };
+  const options = { suites: [], filters: [], outputDirectory: undefined, portBase: undefined, jobs: undefined };
   for (let index = 0; index < argv.length; index++) {
     const argument = argv[index];
     if (argument === '--') { options.filters = argv.slice(index + 1); break; }
     if (argument === '--help' || argument === '-h') { options.help = true; continue; }
-    if (!['--suite', '--config', '--output-dir', '--port-base'].includes(argument)) {
+    if (!['--suite', '--config', '--output-dir', '--port-base', '--jobs'].includes(argument)) {
       throw new Error(`Unknown runner option ${argument}; put Playwright filters after --`);
     }
     const value = argv[++index];
@@ -34,12 +49,15 @@ export function parseArguments(argv) {
     if (argument === '--output-dir') options.outputDirectory = value;
     else if (argument === '--port-base') {
       options.portBase = Number(value);
-      if (!Number.isInteger(options.portBase) || options.portBase < 1024 || options.portBase > 65528) {
-        throw new Error('--port-base must be an integer from 1024 to 65528');
+      if (!Number.isInteger(options.portBase) || options.portBase < 1024 || options.portBase > MAX_PORT_BASE) {
+        throw new Error(`--port-base must be an integer from 1024 to ${MAX_PORT_BASE}`);
       }
+    } else if (argument === '--jobs') {
+      options.jobs = Number(value);
+      if (!Number.isInteger(options.jobs) || options.jobs < 1 || options.jobs > 64) throw new Error('--jobs must be an integer from 1 to 64');
     } else {
       const suite = argument === '--suite' ? value : Object.keys(CONFIGS).find(name => CONFIGS[name] === path.basename(value));
-      if (!Object.hasOwn(CONFIGS, suite)) throw new Error(`Unknown browser suite/config: ${value}`);
+      if (!Object.hasOwn(CONFIGS, suite) && !(argument === '--suite' && isMainShard(suite))) throw new Error(`Unknown browser suite/config: ${value}`);
       if (options.suites.includes(suite)) throw new Error(`Duplicate browser suite: ${suite}`);
       options.suites.push(suite);
     }
@@ -56,14 +74,17 @@ export function parseArguments(argv) {
 
 function suiteDefinitions(suites = []) {
   const chosen = suites.length ? suites : Object.keys(CONFIGS);
-  if (new Set(chosen).size !== chosen.length || chosen.some(name => !Object.hasOwn(CONFIGS, name))) {
+  if (new Set(chosen).size !== chosen.length || chosen.some(name => !Object.hasOwn(CONFIGS, name) && !isMainShard(name))
+      || (chosen.includes('main') && chosen.some(isMainShard))) {
     throw new Error('Select each known browser suite at most once');
   }
   const definitions = [];
   for (const suite of Object.keys(CONFIGS)) {
-    if (!chosen.includes(suite)) continue;
-    if (suite === 'main') for (let shard = 1; shard <= 4; shard++) definitions.push({ name: `main-${shard}`, suite, shard });
-    else definitions.push({ name: suite, suite });
+    if (suite === 'main') {
+      for (let shard = 1; shard <= MAIN_SHARDS; shard++) {
+        if (chosen.includes('main') || chosen.includes(`main-${shard}`)) definitions.push({ name: `main-${shard}`, suite, shard });
+      }
+    } else if (chosen.includes(suite)) definitions.push({ name: suite, suite });
   }
   return definitions;
 }
@@ -86,7 +107,7 @@ export function createSuitePlan({ root = repositoryRoot, temporaryDirectory, out
     delete env.PLAYWRIGHT_BASE_URL;
     // Required and filtered pools must preserve failures and never shrink through .only.
     const args = ['test', `--config=${path.join(root, CONFIGS[definition.suite])}`, '--workers=1', '--forbid-only', '--retries=0'];
-    if (definition.shard) args.push(`--shard=${definition.shard}/4`);
+    if (definition.shard) args.push(`--shard=${definition.shard}/${MAIN_SHARDS}`);
     // A targeted file may belong to just one shard. A full run must never hide
     // an accidentally empty configuration with this option.
     if (filters.length) args.push('--pass-with-no-tests');
@@ -302,12 +323,18 @@ export async function runLocalBrowserTests(options = {}, dependencies = {}) {
       if (!dependencies.quiet) console.log(`${suite.name}: ${result.status} (exit ${result.exitCode}); ${suite.logPath}`);
       await save();
     };
-    const mainResults = await Promise.allSettled(plan.filter(suite => suite.suite === 'main').map(runSuite));
-    const failedRunner = mainResults.find(result => result.status === 'rejected');
+    // One bounded pool for every shard and suite: a free slot takes the next
+    // queued suite, so short shards fill in around long ones. Failures never
+    // stop the queue; every suite reports its own result.
+    const queue = [...plan];
+    summary.jobs = Math.max(1, Math.min(options.jobs || defaultJobs(environment), plan.length));
+    const pool = await Promise.allSettled(Array.from({ length: summary.jobs }, async () => {
+      while (queue.length) await runSuite(queue.shift());
+    }));
+    const failedRunner = pool.find(result => result.status === 'rejected');
     if (failedRunner) throw failedRunner.reason;
-    for (const suite of plan.filter(suite => suite.suite !== 'main')) await runSuite(suite);
     summary.fullRun = !interruption && !(options.suites?.length) && !summary.filters.length
-      && summary.results.length === 8 && summary.results.every(result => ['passed', 'failed'].includes(result.status));
+      && summary.results.length === BROWSER_SUITES.length && summary.results.every(result => ['passed', 'failed'].includes(result.status));
   } catch (error) {
     summary.error = error.message;
     await Promise.all([...active].map(stopProcess));
@@ -329,8 +356,9 @@ export async function runLocalBrowserTests(options = {}, dependencies = {}) {
 async function main() {
   const options = parseArguments(process.argv.slice(2));
   if (options.help) {
-    console.log('Usage: node scripts/test-browser-local.mjs [--output-dir NEW_DIR] [--port-base PORT] [--suite NAME | --config FILE] [-- PLAYWRIGHT_FILTERS]\n'
-      + 'Default: four isolated main shards (one worker each), then watten-public, username, passkeys and hausdepp-passkeys serially.\n'
+    console.log('Usage: node scripts/test-browser-local.mjs [--output-dir NEW_DIR] [--port-base PORT] [--jobs N] [--suite NAME | --config FILE] [-- PLAYWRIGHT_FILTERS]\n'
+      + `Default: ${MAIN_SHARDS} isolated main shards (one worker each) plus watten-public, username, passkeys and hausdepp-passkeys, `
+      + `run by a pool of ${defaultJobs()} parallel suites (PLAYWRIGHT_LOCAL_JOBS or --jobs). --suite main-N selects one shard.\n`
       + 'PLAYWRIGHT_PYTHON is preserved. PLAYWRIGHT_LOCAL_OUTPUT_DIR selects the run output; logs, HTML and traces are retained.');
     return;
   }

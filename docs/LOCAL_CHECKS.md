@@ -44,7 +44,9 @@ cleans that pool's output directory, so do not run the same direct pool twice
 concurrently. Relative paths resolve from the configuration file's directory.
 The full verifier continues to set separate output paths for each run and pool.
 
-`npm run verify:local` führt nacheinander aus:
+`npm run verify:local` prüft zuerst Commit und Basis und startet danach die
+Schritte 2 bis 5 gleichzeitig. Jeder Schritt läuft auch dann zu Ende, wenn ein
+anderer fehlschlägt; am Schluss stehen alle Fehler gesammelt in der Ausgabe.
 
 1. Frisches `origin/develop` abrufen, sauberen Commit und integrierte Basis prüfen.
 2. `npm run check:quality`: Lint, Produkt-/Versions-/Assetprüfungen, Pip-Konsistenz,
@@ -53,11 +55,21 @@ The full verifier continues to set separate output paths for each run and pool.
 4. Produktionsimage für `linux/amd64` bauen (wie der Produktionsserver, auch auf
    einem ARM-Mac) und `tests/container_smoke.py` ohne Netzwerk,
    Zugangsdaten oder persistente Daten im Container ausführen.
-5. Vier Haupt-Browser-Shards gleichzeitig, danach öffentliches Watten,
-   Benutzername, Passkeys und Hausdepp-Passkeys einzeln. Jeder Teil erhält seinen
-   eigenen Server, freien Port, SQLite-Datei, Legacy-JSON-Daten und
-   Artefakt-/HTML-Verzeichnisse.
+5. 24 kleine Haupt-Browser-Shards sowie öffentliches Watten, Benutzername,
+   Passkeys und Hausdepp-Passkeys in einem gemeinsamen Pool: Standardmässig
+   laufen halb so viele Teile wie Kerne (höchstens 8) gleichzeitig, ein frei
+   werdender Platz übernimmt den nächsten Teil (`PLAYWRIGHT_LOCAL_JOBS` setzt die
+   Zahl). Jeder Teil erhält seinen eigenen Server, freien Port, SQLite-Datei,
+   Legacy-JSON-Daten und Artefakt-/HTML-Verzeichnisse.
 6. Diff, Commit, Basis und Umgebung erneut prüfen und einen Nachweis speichern.
+
+Bestandene Prüfgruppen und Browserteile werden pro Git-Tree unter
+`<git-common-dir>/local-checks/stages/<Tree>.json` gemerkt. Ein erneuter Lauf auf
+exakt demselben Tree mit unveränderter Umgebung wiederholt nur, was fehlgeschlagen
+ist oder noch nie lief; jede geänderte Datei ergibt einen neuen Tree und damit
+einen vollständigen Lauf. Wiederverwendete Ergebnisse gelten höchstens 24 Stunden,
+und der Nachweis ist nie jünger als das älteste wiederverwendete Ergebnis.
+`npm run verify:local -- --fresh` wiederholt alles.
 
 Die Ergebnisse liegen unter `test-results/local-checks/<Lauf>/`; Browserberichte
 und deren `summary.json` unter `browser/`. Die Datenbanken liegen vorübergehend
@@ -66,7 +78,7 @@ Fehler oder Abbruch erzeugen keinen gültigen Nachweis. Alle Browserteile laufen
 auch nach einem Fehler weiter, damit ein Lauf die übrigen Fehler sichtbar macht.
 Bei Abbruch werden nur die eigenen Testprozesse beendet.
 
-Der Browsernachweis verlangt acht Teilgruppen: `main-1` bis `main-4`,
+Der Browsernachweis verlangt 28 Teilgruppen: `main-1` bis `main-24`,
 `watten-public`, `username`, `passkeys` und `hausdepp-passkeys`. Der öffentliche
 Watten-Pool prüft die echte DE/EN-Navigation bei eingeschalteter öffentlicher Beta
 und ausgeschalteten Preview-Freigaben. Die beiden Sprachfälle sind aus den
@@ -121,8 +133,9 @@ lassen den Lauf fehlschlagen; einzelne leere Shards bleiben erlaubt.
 Der Runner verbietet `test.only`/`describe.only` und erzwingt
 `--retries=0`, auch bei gesetztem `CI`. Ein Fehler im ersten Versuch bleibt
 damit ein Fehler; Filter dürfen diese Vorgaben nicht überschreiben.
-`--port-base 8100` reserviert bei Bedarf acht aufeinanderfolgende
-Ports; zulässig sind Basiswerte von 1024 bis 65528. Ohne Angabe werden freie
+`--port-base 8100` reserviert bei Bedarf 28 aufeinanderfolgende
+Ports; zulässig sind Basiswerte von 1024 bis 65508. `--suite main-7` wählt einen
+einzelnen Haupt-Shard, `--jobs N` die Zahl gleichzeitiger Teile. Ohne Angabe werden freie
 Ports vergeben. `--output-dir` verlangt ein
 neues oder leeres Verzeichnis. `PLAYWRIGHT_BASE_URL` ist im isolierten Runner
 unzulässig, damit kein fremder Server benutzt wird.
@@ -156,20 +169,26 @@ suite and a final source/base/environment comparison. Use Node 22,
 the development Python environment, Chromium, WebKit and a local
 Docker socket. Coordinate with any agent already running a full test pool.
 
-Four main browser shards run simultaneously on separate servers with independent
-ports, SQLite databases, legacy JSON data and reports. Public Watten, username and
-both passkey suites follow serially even when an earlier suite failed.
+Quality, tooling, backend, the Docker image and the browser suites start
+together after the commit/base check; every group finishes even when another
+fails, and all failures are reported at the end. Twenty-four small main browser
+shards plus public Watten, username and both passkey suites share one bounded
+pool (half the cores, at most 8; `PLAYWRIGHT_LOCAL_JOBS` overrides it).
+Each part has its own server, port, SQLite database, legacy JSON data and reports.
+Groups and browser parts that passed are remembered per Git tree; rerunning on
+exactly the same tree and environment within 24 hours repeats only the failed
+ones, and `npm run verify:local -- --fresh` repeats everything.
 Cancellation stops only owned processes and removes disposable data. Logs remain in
 `test-results/local-checks/<run>/`, including browser summaries and HTML reports.
 
-Browser evidence requires eight pools: `main-1` through `main-4`, `watten-public`,
+Browser evidence requires 28 pools: `main-1` through `main-24`, `watten-public`,
 `username`, `passkeys` and `hausdepp-passkeys`. The public Watten pool checks real
 DE/EN navigation with public beta enabled and preview access disabled. Preview
 configs exclude those two cases; a missing public SSR marker fails the public
 pool. Older evidence without this pool cannot authorize a push or be inherited
 by an unchanged merge. The seven complete check groups remain unchanged.
 Use `npm run test:browser -- --suite watten-public` for a focused run.
-`--port-base` reserves eight consecutive ports; its range is 1024 through 65528.
+`--port-base` reserves 28 consecutive ports; its range is 1024 through 65508.
 
 A receipt in shared Git metadata authorizes only the exact clean commit, current
 `origin/develop` base and installed environment for at most 24 hours. A source,
