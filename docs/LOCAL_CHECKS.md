@@ -44,9 +44,11 @@ cleans that pool's output directory, so do not run the same direct pool twice
 concurrently. Relative paths resolve from the configuration file's directory.
 The full verifier continues to set separate output paths for each run and pool.
 
-`npm run verify:local` prüft zuerst Commit und Basis und startet danach die
-Schritte 2 bis 5 gleichzeitig. Jeder Schritt läuft auch dann zu Ende, wenn ein
-anderer fehlschlägt; am Schluss stehen alle Fehler gesammelt in der Ausgabe.
+`npm run verify:local` prüft zuerst Commit und Basis. Danach laufen die
+Schritte 2 bis 4 gleichzeitig und anschliessend Schritt 5 mit dem Browser-Pool
+allein, weil Backend-Worker und emuliertes Image neben acht Browsern die
+zeitkritischen Browserprüfungen überlasteten. Jeder Schritt läuft auch dann,
+wenn ein anderer fehlschlägt; am Schluss stehen alle Fehler gesammelt da.
 
 1. Frisches `origin/develop` abrufen, sauberen Commit und integrierte Basis prüfen.
 2. `npm run check:quality`: Lint, Produkt-/Versions-/Assetprüfungen, Pip-Konsistenz,
@@ -59,7 +61,9 @@ anderer fehlschlägt; am Schluss stehen alle Fehler gesammelt in der Ausgabe.
    Passkeys und Hausdepp-Passkeys in einem gemeinsamen Pool: Standardmässig
    laufen halb so viele Teile wie Kerne (höchstens 8) gleichzeitig, ein frei
    werdender Platz übernimmt den nächsten Teil (`PLAYWRIGHT_LOCAL_JOBS` setzt die
-   Zahl). Jeder Teil erhält seinen eigenen Server, freien Port, SQLite-Datei,
+   Zahl). Die Dauer jedes Teils wird unter
+   `<git-common-dir>/local-checks/browser-durations.json` gemerkt; die längsten
+   Teile starten beim nächsten Lauf zuerst. Jeder Teil erhält seinen eigenen Server, freien Port, SQLite-Datei,
    Legacy-JSON-Daten und Artefakt-/HTML-Verzeichnisse.
 6. Diff, Commit, Basis und Umgebung erneut prüfen und einen Nachweis speichern.
 
@@ -169,9 +173,10 @@ suite and a final source/base/environment comparison. Use Node 22,
 the development Python environment, Chromium, WebKit and a local
 Docker socket. Coordinate with any agent already running a full test pool.
 
-Quality, tooling, backend, the Docker image and the browser suites start
-together after the commit/base check; every group finishes even when another
-fails, and all failures are reported at the end. Twenty-four small main browser
+After the commit/base check, quality, tooling, backend and the Docker image run
+side by side; the browser pool then gets the machine to itself. Every group runs
+even when another fails, and all failures are reported at the end. The pool
+remembers each part's duration and starts the longest ones first. Twenty-four small main browser
 shards plus public Watten, username and both passkey suites share one bounded
 pool (half the cores, at most 8; `PLAYWRIGHT_LOCAL_JOBS` overrides it).
 Each part has its own server, port, SQLite database, legacy JSON data and reports.

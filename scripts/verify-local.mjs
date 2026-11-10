@@ -151,16 +151,21 @@ export async function verifyLocal({ cwd = process.cwd(), fresh = false } = {}) {
       } else failures.push('production-image (not started: image-build failed)');
     };
     const group = (name, run) => () => (earlier.checks[name] ? reuse(earlier.checks[name]) : run());
-    // Independent groups start together and all finish, so one run shows every failure.
-    const settled = await Promise.allSettled([
+    // Phase 1: quality, tools, backend and the Docker image side by side.
+    // Phase 2: the browser pool gets the machine to itself. Running the backend's
+    // workers and the emulated image build next to eight browsers pushed
+    // timing-based browser waits past their limits. Phase 2 also runs after a
+    // phase 1 failure, so one run still shows every failure.
+    const crashed = settled => settled.find(result => result.status === 'rejected');
+    const first = await Promise.allSettled([
       group('quality', () => stage('quality', npm, ['run', 'check:quality']))(),
       group('tools', () => stage('tools', process.execPath, ['--test', ...toolTests]))(),
       group('backend', () => stage('backend', python, ['-m', 'pytest', '--cov', '--cov-report=term-missing']))(),
       dockerGroup(),
-      browserGroup(),
     ]);
-    const crashed = settled.find(result => result.status === 'rejected');
-    if (crashed) throw crashed.reason;
+    if (crashed(first)) throw crashed(first).reason;
+    const second = await Promise.allSettled([browserGroup()]);
+    if (crashed(second)) throw crashed(second).reason;
     await stage('diff', 'git', ['diff', '--check']);
     saveStageCache(initial, environment, checks, browser?.results || []);
     if (failures.length) {

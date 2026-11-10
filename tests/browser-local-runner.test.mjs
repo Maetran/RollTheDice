@@ -6,7 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { CONFIGS, collectFilteredTests, createSuitePlan, defaultJobs, parseArguments, reservePort, runLocalBrowserTests } from '../scripts/test-browser-local.mjs';
+import { CONFIGS, collectFilteredTests, createSuitePlan, defaultJobs, longestFirst, parseArguments, reservePort, runLocalBrowserTests } from '../scripts/test-browser-local.mjs';
 import { BROWSER_SUITES, MAIN_SHARDS } from '../scripts/local-checks.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -80,6 +80,14 @@ test('the default plan covers every one-worker main shard, public Watten and eve
     else assert.ok(!suite.args.some(arg => arg.startsWith('--shard=')));
   }
   for (const field of ['testDirectory', 'outputDir', 'htmlDir', 'logPath']) assert.equal(new Set(plan.map(item => item[field])).size, names.length);
+});
+
+test('the pool starts suites without history first, then the longest known ones', () => {
+  const plan = ['main-1', 'main-2', 'main-3', 'username', 'passkeys'].map(name => ({ name }));
+  assert.deepEqual(longestFirst(plan, { 'main-1': 30, 'main-2': 400, username: 10, passkeys: 400 }).map(item => item.name),
+    ['main-3', 'main-2', 'passkeys', 'main-1', 'username']);
+  assert.deepEqual(longestFirst(plan).map(item => item.name), plan.map(item => item.name));
+  assert.deepEqual(longestFirst(plan, { 'main-1': 'not a number' }).map(item => item.name), plan.map(item => item.name));
 });
 
 test('the real Playwright CLI refuses focused tests in unfiltered and filtered runner plans before executing them', async t => {

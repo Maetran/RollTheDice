@@ -35,6 +35,40 @@ export function defaultJobs(environment = process.env) {
   return Math.max(2, Math.min(8, Math.floor(os.availableParallelism() / 2)));
 }
 
+// How long each suite took last time, shared by every worktree of this
+// repository. The pool starts the longest suites first so short ones fill the
+// gaps instead of one long shard running alone at the end.
+export async function durationsPath(root) {
+  const { stdout } = await execFileAsync('git', ['rev-parse', '--git-common-dir'], { cwd: root });
+  return path.join(path.resolve(root, stdout.trim()), 'local-checks', 'browser-durations.json');
+}
+
+export function longestFirst(plan, durations = {}) {
+  // Suites without history may be long, so they start first; ties keep plan order.
+  const seconds = suite => (Number.isFinite(durations[suite.name]) ? durations[suite.name] : Number.MAX_SAFE_INTEGER);
+  return plan.map((suite, index) => ({ suite, index }))
+    .sort((a, b) => seconds(b.suite) - seconds(a.suite) || a.index - b.index).map(item => item.suite);
+}
+
+async function readDurations(file) {
+  if (!file) return {};
+  try {
+    const data = JSON.parse(await readFile(file, 'utf8'));
+    return data && typeof data === 'object' && !Array.isArray(data) ? data : {};
+  } catch { return {}; }
+}
+
+async function saveDurations(file, results) {
+  const durations = await readDurations(file);
+  for (const result of results) {
+    const seconds = (Date.parse(result.finishedAt) - Date.parse(result.startedAt)) / 1000;
+    if (['passed', 'failed'].includes(result.status) && Number.isFinite(seconds) && seconds >= 0) durations[result.name] = Math.round(seconds);
+  }
+  await mkdir(path.dirname(file), { recursive: true });
+  await writeFile(`${file}.tmp`, `${JSON.stringify(durations, null, 2)}\n`);
+  await rename(`${file}.tmp`, file);
+}
+
 export function parseArguments(argv) {
   const options = { suites: [], filters: [], outputDirectory: undefined, portBase: undefined, jobs: undefined };
   for (let index = 0; index < argv.length; index++) {
@@ -326,13 +360,15 @@ export async function runLocalBrowserTests(options = {}, dependencies = {}) {
     // One bounded pool for every shard and suite: a free slot takes the next
     // queued suite, so short shards fill in around long ones. Failures never
     // stop the queue; every suite reports its own result.
-    const queue = [...plan];
+    const durationsFile = summary.filters.length ? null : dependencies.durationsFile;
+    const queue = longestFirst(plan, await readDurations(durationsFile));
     summary.jobs = Math.max(1, Math.min(options.jobs || defaultJobs(environment), plan.length));
     const pool = await Promise.allSettled(Array.from({ length: summary.jobs }, async () => {
       while (queue.length) await runSuite(queue.shift());
     }));
     const failedRunner = pool.find(result => result.status === 'rejected');
     if (failedRunner) throw failedRunner.reason;
+    if (durationsFile) await saveDurations(durationsFile, summary.results).catch(() => { /* Only affects ordering. */ });
     summary.fullRun = !interruption && !(options.suites?.length) && !summary.filters.length
       && summary.results.length === BROWSER_SUITES.length && summary.results.every(result => ['passed', 'failed'].includes(result.status));
   } catch (error) {
@@ -362,7 +398,7 @@ async function main() {
       + 'PLAYWRIGHT_PYTHON is preserved. PLAYWRIGHT_LOCAL_OUTPUT_DIR selects the run output; logs, HTML and traces are retained.');
     return;
   }
-  const summary = await runLocalBrowserTests(options);
+  const summary = await runLocalBrowserTests(options, { durationsFile: await durationsPath(repositoryRoot) });
   console.log(`Browser result: ${summary.exitCode === 0 ? 'passed' : 'failed'}; fullRun=${summary.fullRun}; ${path.join(summary.outputDirectory, 'summary.json')}`);
   if (summary.error) console.error(summary.error);
   process.exitCode = summary.exitCode;
