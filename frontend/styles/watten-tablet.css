@@ -217,3 +217,36 @@
     translate: none;
   }
 }
+
+@media (orientation: landscape) and (min-width: 1024px) and (min-height: 701px) {
+  /* The call sits outside the trick frame. Its own mini-width drives both
+     the face and its left offset, keeping the other miniatures independent. */
+  html[data-game="watten"][data-watten-active="true"] .wt-reference {
+    --wt-mini-w: clamp(70px, 7vw, 92px);
+    font-size: .85rem;
+  }
+  /* Reserve the own hand below the trick and the top player's fan above it.
+     On a shorter tablet both hands and the trick can give up some excess
+     size. A fixed caption slot keeps its arrival from moving the cards. */
+  html[data-game="watten"][data-watten-active="true"] .wt-table:is([data-count="2"], [data-count="3"]) {
+    --wt-hand-w: clamp(82px, 13dvh, 132px);
+    --wt-hand-band: calc(var(--wt-hand-w) * 1.8 + 26px);
+    --wt-felt-height: calc(var(--game-viewport-height, 100dvh) - var(--wt-table-header-height, 52px) - 58px);
+    --wt-trick-w: clamp(90px, calc((var(--wt-felt-height) - var(--wt-hand-band) - var(--wt-back-w) * 2 - 68px) / 3), 140px);
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table:is([data-count="2"], [data-count="3"]) .wt-centre {
+    top: auto; bottom: var(--wt-hand-band); translate: -50% 0; display: block;
+    width: calc(var(--wt-trick-w) * 2.9); height: calc(var(--wt-trick-w) * 3 + 32px);
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table:is([data-count="2"], [data-count="3"]) .wt-trick-label {
+    position: absolute; left: 50%; bottom: 0; translate: -50% 0;
+    width: max-content; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  /* The upper left stock remains separate from the call. */
+  html[data-game="watten"][data-watten-active="true"] .wt-table:is([data-count="2"], [data-count="3"]) .wt-reference {
+    top: calc(var(--wt-trick-w) * .55);
+  }
+  html[data-game="watten"][data-watten-active="true"] .wt-table .wt-round-call .wt-card {
+    width: clamp(60px, 5.5vw, 76px);
+  }
+}

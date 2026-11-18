@@ -331,7 +331,9 @@ html[lang="en"] .wt-rules-text[lang="de"], html:not([lang="en"]) .wt-rules-text[
 }
 .wt-hand-card:disabled { opacity: 1; cursor: default; }
 .wt-hand[data-state="playable"] .wt-hand-card:not(:disabled) { cursor: pointer; box-shadow: 0 0 0 2px var(--wt-gold), 0 6px 14px #0a160f80; }
-.wt-hand[data-state="playable"] .wt-hand-card:not(:disabled):hover,
+@media (hover: hover) {
+  .wt-hand[data-state="playable"] .wt-hand-card:not(:disabled):hover { translate: 0 -8px; }
+}
 .wt-hand[data-state="playable"] .wt-hand-card:not(:disabled):focus-visible { translate: 0 -8px; }
 .wt-history-box { grid-area: history; background: var(--wt-paper); color: var(--wt-ink); border-radius: var(--wt-radius); padding: .25rem .8rem; }
 .wt-history-box summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; font-weight: 700; }

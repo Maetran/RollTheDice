@@ -1,8 +1,8 @@
 """Pick the ZDWA field worth highlighting for the current roll.
 
 The 2026 score sheet shows the points of every writable field and highlights
-one of them: the write that gains most against what each field usually ends up
-with (its opportunity cost), not the one with the most raw points. + and -
+one of them. A made combination can secure the first-roll announcement slot.
+Other writes are judged against what each field usually ends up with. + and -
 score nothing by themselves, they only feed D = ones x (max - min).
 
 Every column is valued as its expected final total. Written cells count as
@@ -19,7 +19,7 @@ The gain of a write is the change of that expectation:
   ❗) pays for the flexibility it uses up, unless it is a finished hit such as
   a Kenter in the Kenter row.
 
-Before the last roll a field is highlighted only when writing it now is worth
+Outside that first-roll window, a field is highlighted only when writing it now is worth
 at least as much as rolling on with the best holds, or announcing a ❗ field
 after the first roll. Otherwise nothing is highlighted and the player keeps
 rolling. On the last roll the least bad option is always highlighted.
@@ -264,7 +264,13 @@ def write_gain(columns: dict[str, tuple], column: str, field: str, points: int, 
     flexibility = 0.0 if is_complete(field, int(points)) else (
         FLEXIBILITY[mode].get(column, 0.0) * (CELLS - written) / CELLS
     )
-    return _column_value(after, par, bonus_at) - _column_value(cells, par, bonus_at) - flexibility
+    # Three matching faces keep a number row on bonus pace. Advancing an
+    # ordered column also unlocks later cells. Value only those still behind
+    # this one: at most four points, and none for the final cell.
+    progress = 0.0
+    if column in ("down", "up") and index < 6 and points >= 3 * (index + 1):
+        progress = 4 * (cells.count(None) - 1) / (len(FIELDS) - 1)
+    return _column_value(after, par, bonus_at) - _column_value(cells, par, bonus_at) - flexibility + progress
 
 
 def is_complete(field: str, points: int) -> bool:
@@ -376,10 +382,38 @@ def _recommend(cells: tuple, sheet: tuple, hand: tuple, rolls_left: int, first_r
         return None
     columns = dict(zip(COLUMNS, sheet))
     gains = [write_gain(columns, column, field, points, hardcore=hardcore) for column, field, points in cells]
+    open_cells = sum(values.count(None) for values in sheet)
+    combos = ("kenter", "full", "poker", "60")
+    hits = [i for i, (_, field, points) in enumerate(cells) if field in combos and points > 0]
     best = max(range(len(gains)), key=gains.__getitem__)
+    preferred = best
+    if hits:
+        def priority(i):
+            column, field, _ = cells[i]
+            ordered = column in ("down", "up")
+            return (combos.index(field), first_roll and not hardcore and column == "ang", ordered,
+                    columns[column].count(None) if ordered else 0, gains[i])
+
+        rarest = max(hits, key=priority)
+        # An unannounced first-roll hit secures a slot that closes on reroll.
+        # With only two cells left, keep the actual bonus and difference in play.
+        if first_roll and not hardcore and not announced and open_cells > 2 and cells[rarest][0] == "ang":
+            column, field, points = cells[best]
+            chosen = columns[column]
+            # A known difference or an upper bonus can already make another
+            # write more valuable. Preserve that opportunity at any sheet size.
+            bonus_at = BONUS_AT["normal"]
+            upper = sum(value or 0 for value in chosen[:6])
+            secured_bonus = field in FIELDS[:6] and upper < bonus_at <= upper + points
+            known_spread = (field == "1" and None not in chosen[6:8] and chosen[6] > chosen[7]
+                            or field == "max" and chosen[0] and chosen[7] is not None and points > chosen[7]
+                            or field == "min" and chosen[0] and chosen[6] is not None and chosen[6] > points)
+            if not (gains[best] > gains[rarest] and (secured_bonus or known_spread)):
+                return rarest
+        if best in hits:
+            preferred = max((i for i in hits if cells[i][1] == cells[best][1]), key=priority)
     if rolls_left <= 0:
-        return best
-    open_cells = sum(value is None for values in sheet for value in values)
+        return preferred
     targets = [(column, field) for column, field, _points in cells]
     # Unannounced ❗ cells are only writable right after the first roll.
     if first_roll and not announced and open_cells > 1:
@@ -396,4 +430,4 @@ def _recommend(cells: tuple, sheet: tuple, hand: tuple, rolls_left: int, first_r
                 announce = roll_on_gain(columns, [("ang", field)], hand, rolls_left, four_seen=four_seen,
                                         announced_poker=field == "poker")[0]
                 worth = max(worth, announce)
-    return best if gains[best] >= worth - 1e-9 else None
+    return preferred if gains[best] >= worth - 1e-9 else None

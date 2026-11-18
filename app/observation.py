@@ -25,6 +25,7 @@ from .models import (
 )
 from .ownership import require_owner
 from .security import as_utc, utcnow
+from .versioning import version_tuple
 
 RETENTION_DAYS = 365
 MAX_JSON_BYTES = 65536
@@ -205,6 +206,9 @@ def _shape(value, schema, depth=0):
         for child in value:
             _shape(child, schema[0], depth + 1)
         return
+    if schema == "version":
+        version_tuple(value)
+        return
     if schema == "bool" and type(value) is bool:
         return
     if schema == "int" and type(value) is int and -1 <= value <= 10000:
@@ -241,8 +245,9 @@ def _payload(value, schema):
 _TRICK = {"cards": [{"seat": "seat", "card": "card"}], "winner": "seat"}
 _SCORE = {"seats": ["seat"], "points": "int"}
 _ACTION = {"kind": "token", "cards": ["card"], "value": "value"}
+_DEAL_RESULT = {"winning_party": "party", "points": "int", "reason": "token"}
 _CONTEXT = {
-    "schema_version": "int", "ruleset_version": "token", "ruleset_id": "token", "ruleset_version_number": "int",
+    "schema_version": "int", "product_version": "version", "ruleset_version": "token", "ruleset_id": "token", "ruleset_version_number": "int",
     "phase": "token", "actor_hand": ["card_or_back"],
     "discard": ["card"], "deck_count": "int", "available_actions": ["token"], "playable_cards": ["card"],
     "playable_groups": [["card"]], "four_of_a_kind_as_ten": "bool", "actions": ["token"],
@@ -251,9 +256,9 @@ _CONTEXT = {
     "profile": {"player_count": "int", "determination": "token", "blind": "bool", "critical": "bool"},
     "options": {"show_rechter": "bool", "open_partner_hand": "bool", "trick_history": "bool",
                 "schoeneres_enabled": "bool", "schlagwechsel_enabled": "bool"},
-    "current_trick": _TRICK, "last_trick": _TRICK,
+    "current_trick": _TRICK, "last_trick": _TRICK, "trick_winner_after": "seat", "deal_result_after": _DEAL_RESULT,
     "bid": {"accepted_stake": "int", "pending": {"party": "party", "points": "int", "decider": "seat"},
-            "result": {"winning_party": "party", "points": "int", "reason": "token"}},
+            "result": _DEAL_RESULT},
     "scores": [_SCORE], "target_points": "int",
     "inspection": {"cards": [{"role": "token", "card": "card"}]},
     "partner_hand": {"seat": "seat", "cards": ["card"]},
@@ -274,7 +279,7 @@ _WATTEN_ACTIONS = frozenset({"play_card", "bid", "respond", "announce_strike", "
                              "inspection_ack", "preplay_accept", "preplay_decline", "bloedeln_accept",
                              "bloedeln_decline", "request_schoeneres", "request_schlagwechsel", "request_bloedeln",
                              "retourschneider", "partner_feedback"})
-_PUBLIC_CONTEXT = frozenset({"schema_version", "ruleset_version", "ruleset_id", "ruleset_version_number", "phase",
+_PUBLIC_CONTEXT = frozenset({"schema_version", "product_version", "trick_winner_after", "deal_result_after", "ruleset_version", "ruleset_id", "ruleset_version_number", "phase",
                              "discard", "deck_count", "seats", "four_of_a_kind_as_ten", "profile", "options",
                              "current_trick", "last_trick", "bid", "scores", "target_points", "announced_strike",
                              "dealer_seat", "announcement_roles", "trick_history", "deal_number"})

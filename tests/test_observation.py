@@ -257,7 +257,7 @@ def test_selected_actor_redaction_and_no_live_export(client):
     assert client.put("/api/admin/observation", json={"enabled": True, "mode": "selected",
                       "selected_user_ids": [3], "version": 0}).status_code == 200
     private = {"phase": "playing", "actor_hand": ["hearts-6"], "discard": ["bells-7"],
-               "private_peek": ["leaves-8"], "available_actions": ["play", "pickup"],
+               "private_peek": ["leaves-8"], "available_actions": ["play", "pickup"], "playable_cards": ["hearts-6"],
                "after": {"actor_hand": ["acorns-9"]},
                "partner_hand": {"seat": 1, "cards": ["bells-8"]},
                "feedback": [{"sender": 1, "recipient": 0, "value": "good"}]}

@@ -282,6 +282,8 @@ for (const product of products) {
       expect(await page.locator(product.table).evaluate(element => getComputedStyle(element).position)).not.toBe("sticky");
       await page.goto(product.paths[1]);
       await expect(page.locator(".suite-header:not(.suite-header--table)")).toBeVisible();
+      // The picker starts hidden until this page receives game discovery.
+      await expect(page.locator(".suite-header [data-game-switch]")).toBeVisible();
       await expectTwoRows(page, "return from table");
     } finally {
       await context.unrouteAll({ behavior: "wait" });
