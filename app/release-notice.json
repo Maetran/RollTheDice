@@ -1,25 +1,26 @@
 {
   "kind": "usability",
   "games": [
-    "hausdepp"
+    "zdwa",
+    "watten"
   ],
-  "summary_de": "Hausdepp zeigt Karten übersichtlicher und wertet gemeinsame Runden fair.",
-  "summary_en": "Hausdepp makes cards easier to inspect and scores shared rounds fairly.",
+  "summary_de": "ZDWA erkennt gute Ansagechancen. Beim Watten sind die Karten auf grossen Tablets besser lesbar.",
+  "summary_en": "ZDWA spots first-roll calls. Watten cards are easier to read on large tablets.",
   "player_notes": {
     "de": {
-      "title": "4.15.2: Karten im Blick",
+      "title": "4.15.3 · Ansage und Stich im Blick",
       "changes": [
-        "In Hausdepp siehst du deine Karten und das offene Paket jetzt übersichtlicher.",
-        "HAUSDEPP: Halte das offene Paket gedrückt, um alle Karten anzusehen.",
-        "HAUSDEPP: Mit mindestens einem weiteren Menschen bis zum Rundenende gibt es auch mit Computern 10 EP."
+        "Du siehst leichter, wo dein Wurf oder deine Karte hingehört.",
+        "ZDWA: Kenter, Full, Poker und 60er landen als Vorschlag im ersten Wurf bevorzugt in der angesagten Reihe. Gute Zahlengruppen bringen die Pflichtreihen voran.",
+        "WATTEN: Auf grossen Tablets im Querformat ist die Referenzkarte grösser. Karten bleiben bei Tischupdates an ihrem Platz."
       ]
     },
     "en": {
-      "title": "4.15.2: Cards in view",
+      "title": "4.15.3 · Calls and tricks at a glance",
       "changes": [
-        "In Hausdepp, your inspected cards and the open pile are easier to see.",
-        "HAUSDEPP: Hold the open pile to see all its cards.",
-        "HAUSDEPP: With another human who stays through the round, earn 10 XP even with computers."
+        "It is easier to see where your roll or card belongs.",
+        "ZDWA: First-roll Kenter, Full House, Poker and 60 suggestions favour the announced column. Strong number groups help advance the ordered columns.",
+        "WATTEN: The reference card is larger on big landscape tablets. Cards stay in place as the table updates."
       ]
     }
   }

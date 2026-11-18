@@ -1,8 +1,7 @@
 """The highlighted field on the ZDWA 2026 score sheet (``best`` in the field previews).
 
 The server flags at most one preview as worth writing now. It weighs every
-write against what the field usually ends up with, not by raw points, and
-before the last roll it only highlights a write that beats rolling on.
+made combination by rarity and other writes by their expected value.
 """
 
 import random
@@ -65,14 +64,69 @@ class ManuelsTableTests(SuggestionTestCase):
 
 class FirstRollTests(SuggestionTestCase):
     def test_a_kenter_on_the_first_roll_is_written_at_once(self):
-        self.assertEqual(self.best(self.turn([1, 2, 3, 4, 6])), (row("kenter"), "free", 35))
+        self.assertEqual(self.best(self.turn([1, 2, 3, 4, 6])), (row("kenter"), "ang", 35))
 
     def test_a_full_on_the_first_roll_goes_to_the_announcement_column(self):
         # ❗ is only open without an announcement right after roll 1.
         self.assertEqual(self.best(self.turn([5, 5, 5, 2, 2])), (row("full"), "ang", 55))
 
-    def test_four_ones_keep_rolling_for_the_fifth(self):
-        self.assertIsNone(self.best(self.turn([1, 1, 1, 1, 3], first_four=1)))
+    def test_low_combinations_are_banked_in_the_announcement_column(self):
+        self.assertEqual(self.best(self.turn([1, 1, 1, 1, 3], first_four=1)), (row("poker"), "ang", 54))
+        self.assertEqual(self.best(self.turn([1, 1, 1, 2, 2])), (row("full"), "ang", 43))
+
+    def test_five_of_a_kind_prioritizes_sixty_in_both_recommendations(self):
+        game = self.turn([1] * 5, first_four=1)
+        self.assertEqual(self.best(game), (row("60"), "ang", 65))
+        self.assertEqual([item["type"] for item in game_engine.compute_suggestions(game)][:3],
+                         ["SIXTY", "POKER", "FULL"])
+        board = {f"{row('60')},{column}": 65 for column in WRITABLE_COLS}
+        self.assertEqual(self.best(self.turn([1] * 5, board=board)), (row("poker"), "ang", 54))
+
+    def test_same_hit_uses_an_ordered_column_before_the_free_one(self):
+        dice = [1, 2, 3, 4, 6]
+        board = {f"{row('kenter')},ang": 35}
+        self.assertEqual(self.best(self.turn(dice, board=board)), (row("kenter"), "free", 35))
+        board.update({f"{row(field)},up": 0 for field in ("60", "poker", "full")})
+        self.assertEqual(self.best(self.turn(dice, board=board)), (row("kenter"), "up", 35))
+        self.assertEqual(self.best(self.turn(dice, roll=2, board=board)), (row("kenter"), "up", 35))
+
+    def test_good_number_groups_advance_the_available_ordered_column(self):
+        self.assertEqual(self.best(self.turn([1, 1, 1, 2, 3], roll=3)), (row("1"), "down", 3))
+        board = {f"{row(field)},up": 0 for field in ("60", "poker", "full", "kenter", "max", "min")}
+        self.assertEqual(self.best(self.turn([6, 6, 6, 2, 3], roll=3, board=board)), (row("6"), "up", 18))
+
+    def test_either_ordered_column_can_win_when_their_frontiers_meet(self):
+        dice = [3, 3, 3, 4, 4]
+        board = {f"{row(field)},down": 0 for field in zdwa_advice.FIELDS[:9]}
+        board.update({f"{row(field)},up": 0 for field in ("60", "poker")})
+        # Full is writable in both columns. Advancing up unlocks nine further
+        # cells, advancing down only two.
+        self.assertEqual(self.best(self.turn(dice, roll=2, board=board)), (row("full"), "up", 49))
+
+    def test_a_large_ones_multiplier_can_outweigh_ordered_progress(self):
+        board = {f"{row('max')},down": 30, f"{row('min')},down": 29,
+                 f"{row('max')},free": 30, f"{row('min')},free": 5}
+        self.assertEqual(self.best(self.turn([1, 1, 1, 1, 3], roll=3, first_four=1, board=board)),
+                         (row("1"), "free", 4))
+
+    def test_final_two_choices_can_favor_ones_even_over_a_fresh_combination(self):
+        for field, dice, ones in (("full", [1] * 5, 5), ("poker", [1, 1, 1, 1, 6], 4)):
+            with self.subTest(field=field):
+                board = self.full_scoreboard(default=0)
+                board.update({f"{row('max')},free": 30, f"{row('min')},free": 5})
+                del board[f"{row('1')},free"], board[f"{row(field)},free"]
+                self.assertEqual(self.best(self.turn(dice, roll=3, first_four=3, board=board)),
+                                 (row("1"), "free", ones))
+
+    def test_known_difference_survives_an_unrelated_third_open_cell(self):
+        board = self.full_scoreboard(default=0)
+        board.update({f"{row('max')},free": 30, f"{row('min')},free": 5})
+        for field, column in (("1", "free"), ("full", "ang"), ("max", "ang")):
+            del board[f"{row(field)},{column}"]
+        self.assertEqual(self.best(self.turn([1] * 5, first_four=1, board=board)), (row("1"), "free", 5))
+
+    def test_hardcore_prefers_an_ordered_hit_without_an_announcement_premium(self):
+        self.assertEqual(self.best(self.turn([2] * 5, hardcore=True)), (row("60"), "up", 70))
 
     def test_three_of_a_kind_keeps_rolling(self):
         self.assertIsNone(self.best(self.turn([6, 6, 6, 2, 3])))

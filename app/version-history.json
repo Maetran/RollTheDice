@@ -2700,5 +2700,12 @@
     "date": "2026-11-05",
     "bump": "patch",
     "summary": "Watten-CPU nutzt gezeigte Karten taktisch und wartet auf das Partnergefühl. / Watten CPUs use shown cards tactically and wait for their partner’s feedback."
+  },
+  {
+    "version": "4.15.2",
+    "revision": "b02861f96f020df40ea82c7857fb6d20e6dffb61",
+    "date": "2026-11-10",
+    "bump": "patch",
+    "summary": "Hausdepp zeigt Karten klarer und zählt gemischte Runden fair. / Hausdepp shows cards more clearly and scores mixed rounds fairly."
   }
 ]

@@ -456,7 +456,7 @@ Ansager sind am Spielernamen mit «Schlag» oder «Farbe» markiert. «Danke!» 
 grösser und bleibt höchstens bis zum Abschluss des ersten Stichs sichtbar. Einsatz und Bieten stehen
 im Hochformat bei den eigenen Karten, im mobilen Querformat in der linken
 Leiste. Auf Desktop bleibt der eigene Fächer mittig;
-im Tablet-Querformat sitzt der Aktionsbereich darüber. Stichgewinne sind für die
+im Tablet-Querformat sitzt der Aktionsbereich darüber. Auf grossen Tablets ist die Referenzkarte neben dem Stich vergrössert. Sie bleibt bei weiteren Spielzügen an ihrem Platz. Stichgewinne sind für die
 eigene Seite grün, für die andere rot markiert. Im blinden Vierer darf jeder
 Spieler ein eigenes Drei und spätere eigene Erhöhungen ausschliesslich am eigenen
 Kartenzug bieten; das gilt auch für den wissenden Spieler und seinen blinden Partner. Über
@@ -537,8 +537,7 @@ and scores are pinned to the left; opposing players and the central trick pile
 form a symmetrical table. Larger hand and trick cards use the free space between
 the players in landscape. Every hand fan opens toward the table centre, with
 its imaginary grip pointing toward that player's screen edge.
-The optional Rechter reference appears after calling
-or inspection, without an extra face-down placeholder during preparation. Played cards
+The optional Rechter reference appears after calling or inspection. On large landscape tablets it is larger and stays in place as cards are played. Played cards
 form one connected, overlapping cloverleaf pile from the second card onward.
 Each card points toward its player, without visible numbers or name labels.
 New cards overlap earlier ones to preserve the play order. On very short phones,
@@ -2163,7 +2162,7 @@ Aufzeichnungen schaltet die Beobachtung ebenfalls aus.
 
 Die Aufzeichnung speichert angenommene Spielentscheidungen mit zufälliger
 Partiekennung, Sitznummer und Kennzeichnung Mensch oder CPU sowie den zu diesem
-Zeitpunkt relevanten Spielkontext und, soweit vorhanden, das Ergebnis. Bei
+Zeitpunkt relevanten Spielkontext und, soweit vorhanden, das Ergebnis. Neue Aufzeichnungen nennen die Produktversion. Beim Watten enthalten sie für berechtigte Sitze die vor dem Ausspielen erlaubten Karten. Ein abgeschlossener Stich liefert den Gewinnersitz und eine entschiedene Gabe die Gewinnerpartei, den Grund und die Punkte. Bei
 Auswahl einzelner Spieler wird deren eigene Sicht sowie die CPU-Sicht erfasst;
 von anderen menschlichen Sitzen werden nur öffentliche Aktionen und öffentlicher
 Kontext übernommen. Namen, Konto- und Tischkennungen sowie Chat und Audio
@@ -2190,7 +2189,7 @@ observation off.
 
 A recording stores accepted game decisions under a random game identifier,
 seat number and human/CPU label, with the relevant game context and, when
-available, the result. When individual players are selected, their own
+available, the result. New recordings include the product version. For eligible seats, Watten records which cards were legal before a play. A completed trick records the winning seat, and a settled deal records the winning side, reason and points. When individual players are selected, their own
 perspectives and CPU perspectives are recorded; other human seats contribute
 only public actions and public context. Names, account and table identifiers,
 chat and audio are not part of the game record. These data are pseudonymous,
@@ -3364,11 +3363,7 @@ in Light, Dark and Classic. The 2026 design is a scoped stylesheet
 (`frontend/styles/zdwa-design-2026.css` with its parts in
 `frontend/styles/design-2026/`) that applies only with `data-design="2026"`.
 After the first roll, your own score sheet shows the points each allowed field
-would score, computed by the server with the normal rules. One field is marked
-as the suggestion when writing now is worth it: the server (`app/zdwa_advice.py`)
-compares each field with what that field usually scores, keeps flexible fields
-in reserve, and before the last roll suggests only when writing beats rolling
-on. Tiles at the top show each player (in 2v2 each team) with avatar, name and
+would score, computed by the server with the normal rules. Your sheet shows the points for each legal entry. If your first roll makes a Kenter, Full House, Poker or 60, the ring favours the announced column in normal play. With five of a kind, 60 takes priority. Strong groups of matching dice can help you advance the down or up column. The bonus and ones × difference also count. If there is no ring, the estimate favours rolling again. Tiles at the top show each player (in 2v2 each team) with avatar, name and
 score; tapping one opens that score sheet, and the roll count sits on the roll
 button.
 
@@ -3394,11 +3389,7 @@ Version 2.51.0 gab, werden nach dem Update einmal gefragt, neue Konten nicht.
 Gäste nutzen den Schalter unten in der Lobby. `?design=classic` erzwingt in
 einem Browser das bisherige Design, `?design=2026` hebt das wieder auf. Auf dem
 Server schaltet `ROLLTHEDICE_ZDWA_DESIGN=all|owner|off` mit Neustart; Regeln,
-Wertung und gespeicherte Partien sind in beiden Designs gleich. Ein
-markiertes Feld schlägt den Eintrag vor, wenn sich Schreiben lohnt: Der Server
-vergleicht jedes Feld mit seinem üblichen Ertrag, hält flexible Felder zurück
-und schlägt vor dem letzten Wurf nur vor, wenn Schreiben besser ist als
-Weiterwürfeln. Oben zeigt je Spieler (im 2-gegen-2 je Team) eine Kachel
+Wertung und gespeicherte Partien sind in beiden Designs gleich. Dein Zettel zeigt die Punkte jedes erlaubten Feldes. Hast du beim ersten Wurf einen Kenter, ein Full, einen Poker oder einen 60er, empfiehlt der Ring im Normalspiel bevorzugt die angesagte Reihe. Bei einem Fünfling hat der 60er Vorrang. Gute Zahlengruppen helfen dir, die Abwärts- oder Aufwärtsreihe zu öffnen. Auch Bonus und Einser × Differenz zählen. Fehlt der Ring, lohnt es sich laut Schätzung weiterzuwürfeln. Oben zeigt je Spieler (im 2-gegen-2 je Team) eine Kachel
 Profilbild, Namen und Punkte; ein Tipp öffnet diesen Zettel. Die Würfe des
 laufenden Zuges stehen auf dem Würfeln-Knopf.
 

@@ -9,6 +9,8 @@ from __future__ import annotations
 import json
 import logging
 
+from .versioning import current_version
+
 logger = logging.getLogger(__name__)
 
 _HAUSDEPP_ACTIONS = frozenset({"play", "pickup", "gamble", "afterthrow", "draw", "peek", "withdraw"})
@@ -110,7 +112,7 @@ def prepare_hausdepp(game: dict, before: dict, after: dict, player_id: str, comm
         "cards", "success", "picked_up_count", "drawn_count", "burn_reason", "burned_count",
     ) if key in aftermath}
     afterthrow = view["afterthrow"]
-    context = {"schema_version": 1, "ruleset_version": view["ruleset_version"], "phase": view["phase"],
+    context = {"schema_version": 2, "product_version": current_version(), "ruleset_version": view["ruleset_version"], "phase": view["phase"],
                "actor_hand": view["hand"], "discard": view["discard"], "deck_count": view["deck_count"],
                "available_actions": view["available_actions"], "playable_cards": view["playable_cards"],
                "playable_groups": view["playable_groups"], "seats": seats,
@@ -138,6 +140,7 @@ def prepare_hausdepp(game: dict, before: dict, after: dict, player_id: str, comm
 
 def prepare_watten(candidate: dict, before, actor, command, *, policy_version: int) -> dict | None:
     """Use the actor projection; never inspect other hands or hidden calls."""
+    from .watten_play import legal_cards
     from .watten_views import cpu_view, member_view
 
     if command.kind not in _WATTEN_ACTIONS:
@@ -163,7 +166,7 @@ def prepare_watten(candidate: dict, before, actor, command, *, policy_version: i
     recipe = candidate["_watten"].room.recipe
     inspection = view["inspection"]
     history = view["trick_history"]
-    context = {"schema_version": 1, "phase": view["phase"],
+    context = {"schema_version": 2, "product_version": current_version(), "phase": view["phase"],
                "profile": {key: profile[key] for key in ("player_count", "determination", "blind", "critical")},
                "options": {key: options[key] for key in ("show_rechter", "open_partner_hand", "trick_history",
                                                           "schoeneres_enabled", "schlagwechsel_enabled")},
@@ -183,6 +186,10 @@ def prepare_watten(candidate: dict, before, actor, command, *, policy_version: i
                if inspection else None,
                "trick_history": [_watten_trick(trick) for trick in history] if history is not None else None,
                }
+    if command.kind == "play_card":
+        # The engine's choice set respects only duties of the actual seat,
+        # including the blind non-inspector and a forced Blödeln opening.
+        context["playable_cards"] = list(legal_cards(before.play, before.bid_state, actor.player_id))
     if "reference_card" in view:
         reference = view["reference_card"]
         context["reference_card"] = {"face": reference["face"],
@@ -199,6 +206,13 @@ def prepare_watten(candidate: dict, before, actor, command, *, policy_version: i
     post_view = (cpu_view(engine, player_id=actor.player_id) if actor.account_id is None else
                  member_view(engine, account_id=actor.account_id, player_id=actor.player_id))
     context["after"] = {"actor_hand": [card.get("card", "back") for card in post_view["hand"]]}
+    # Winners and stakes here have already been published by the engine.
+    # last_trick persists across turns, so attach it only on a new capture.
+    if sum(post_view["party_tricks"]) > sum(view["party_tricks"]):
+        context["trick_winner_after"] = post_view["last_trick"]["winner"]
+    if post_view["bid"]["result"] and not raw_bid["result"]:
+        context["deal_result_after"] = {key: post_view["bid"]["result"][key]
+                                        for key in ("winning_party", "points", "reason")}
     if engine.phase == "match_complete":
         outcome = {"status": "finished", "winner_parties": [[seats_by_id[player] for player in party]
                                                                   for party in engine.ledger.winners],

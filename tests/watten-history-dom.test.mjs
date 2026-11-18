@@ -111,7 +111,7 @@ test("same Watten history and unrelated status renders retain close, pin and scr
     assert.equal(f.node.querySelector("ol"), list); assert.equal(list.scrollTop, 137); assert.equal(f.node.open, true);
     assertClipReferences(f.node);
   }
-  assert.notEqual(f.node.querySelector("[id]").getAttribute("id"), firstClip, "the test really exercises cardArt's changing markup");
+  assert.equal(f.node.querySelector("[id]").getAttribute("id"), firstClip, "unchanged faces retain their mounted SVG clip");
   assert.equal(f.node.htmlWrites, 0, "history children are reconciled instead of replaced with innerHTML");
 });
 

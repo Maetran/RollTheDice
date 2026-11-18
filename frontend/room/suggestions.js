@@ -3,7 +3,6 @@
       const mountEl = document.querySelector("#suggestions");
       if (!mountEl) return;
       const items = (suggestions || []).filter(s => s && s.eligible);
-      const order = { POKER:0, SIXTY:1, FULL:2, KENTER:3, MAX:4, MIN:5 };
       const shortLabels = {
         POKER: "Poker",
         SIXTY: "60er",
@@ -15,7 +14,6 @@
         "Gutes Minimum": "Min",
         "Full House": "Full"
       };
-      items.sort((a,b) => (order[a.type] ?? 99) - (order[b.type] ?? 99));
       const html = items.map(s => {
         const label = shortLabels[s.type] || shortLabels[s.label] || s.label || s.type || "";
         const pts = (typeof s.points === "number") ? ` <span class="points">${s.points}</span>` : "";

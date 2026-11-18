@@ -303,6 +303,15 @@ def test_real_watten_recording_and_owner_export(client, monkeypatch):
     items = client.get(f"/api/admin/observation/recordings/{recording_id}/events?limit=200").json()["items"]
     assert len(items) == moves
     assert {item["actor_kind"] for item in items} == {"human", "cpu"}
+    from app.versioning import current_version
+
+    plays = [item for item in items if item["action"]["kind"] == "play_card"]
+    assert plays and all(item["action"]["value"] in item["context"]["playable_cards"] for item in plays)
+    assert all(set(item["context"]["playable_cards"]) <= set(item["context"]["actor_hand"]) for item in plays)
+    assert all(item["context"]["product_version"] == current_version() for item in items)
+    assert any("trick_winner_after" in item["context"] for item in plays)
+    assert any("trick_winner_after" not in item["context"] for item in plays)
+    assert sum("deal_result_after" in item["context"] for item in items) == len(match.engine.ledger.applied_results)
     assert "watten-secret-runtime-id" not in json.dumps({"listing": listing, "items": items})
     from app.models import ActiveGame
 

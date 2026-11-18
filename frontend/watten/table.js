@@ -66,10 +66,16 @@ function reconcile(parent, next) {
       else parent.append(incoming.cloneNode(true));
       return;
     }
-    if (incoming.nodeType === Node.TEXT_NODE) { current.textContent = incoming.textContent; return; }
+    if (incoming.nodeType === Node.TEXT_NODE) {
+      if (current.textContent !== incoming.textContent) current.textContent = incoming.textContent;
+      return;
+    }
     if (incoming.nodeType !== Node.ELEMENT_NODE) return;
     const controllerSlot = incoming.hasAttribute("data-watten-rematch") || incoming.hasAttribute("data-watten-match-progress")
       || incoming.hasAttribute("data-wt-final-history");
+    // A face owns its already mounted atlas image and SVG clip. Keep it when
+    // the enclosing panel changes (new trick, translated caption or busy ACK).
+    const sameFace = incoming.hasAttribute("data-card") && current.dataset.card === incoming.dataset.card;
     for (const attribute of [...current.attributes]) {
       if (attribute.name === "open" && ["DETAILS", "DIALOG"].includes(incoming.nodeName) || controllerSlot && attribute.name === "hidden") continue;
       if (!incoming.hasAttribute(attribute.name)) current.removeAttribute(attribute.name);
@@ -79,7 +85,7 @@ function reconcile(parent, next) {
       if (current.getAttribute(attribute.name) !== attribute.value) current.setAttribute(attribute.name, attribute.value);
     }
     // These slots belong to their mounted controllers, including focused controls.
-    if (!controllerSlot) reconcile(current, incoming);
+    if (!controllerSlot && !sameFace) reconcile(current, incoming);
   });
   while (parent.childNodes.length > next.childNodes.length) parent.lastChild.remove();
 }
@@ -170,7 +176,7 @@ function inspectionMarkup(vm) {
   return `<div class="wt-inspection" data-watten-inspection role="group" aria-labelledby="wattenInspectionTitle">
     <h3 id="wattenInspectionTitle" class="wt-visually-hidden">${esc(t("inspection.title"))}</h3>
     <div class="wt-inspection-cards">${cards.map(item => `<figure class="wt-reveal-card wt-reveal-card--${item.role}" data-wt-inspection-seat="${item.role === "strike" ? strikeSeat : colourSeat}">${cardFace(item.card)}<figcaption>${esc(t(item.role === "strike" ? "inspection.strike" : "inspection.colourShort"))}</figcaption></figure>`).join("")}</div>
-    ${button(t("inspection.ack"), `data-watten-command="engine" data-kind="inspection_ack" data-watten-action="inspection_ack"`, { disabled: vm.busy, className: "wt-primary" })}
+    ${button(t("inspection.ack"), `data-watten-command="engine" data-kind="inspection_ack" data-watten-action="inspection_ack"`, { className: "wt-primary" })}
   </div>`;
 }
 
@@ -644,10 +650,12 @@ export function createTableView(container, { onCard, accountId = null }) {
   });
 
   function patch(element, key, markup) {
-    if (signatures[key] === markup) return false;
-    signatures[key] = markup;
-    // Card artwork has fresh SVG clip IDs on each render. Keep the history's
-    // close/pin controls and scroll container in place during those repaints.
+    // Each mounted card needs its own SVG clip. A fresh ID alone is never
+    // a visual change. Compare without these two generated attribute values,
+    // but always mount the original markup with its unique, matching IDs.
+    const signature = markup.replace(/(id="|clip-path="url\(#)hd-card-paper-\d+(?="|\)")/g, "$1hd-card-paper");
+    if (signatures[key] === signature) return false;
+    signatures[key] = signature;
     if (key === "preplay" || key === "panel" || key === "private" || key === "tools" || key === "history" || key.startsWith("badge-")) {
       const template = document.createElement("template");
       template.innerHTML = markup;
@@ -804,6 +812,8 @@ export function createTableView(container, { onCard, accountId = null }) {
     patch(elements.reference, "reference", referenceMarkup(vm));
     patch(elements.bloedeln, "bloedeln", bloedelnCardsMarkup(vm));
     patch(elements.reveal, "reveal", vm.engine.inspection && vm.actions.includes("inspection_ack") ? inspectionMarkup(vm) : "");
+    const inspectAck = elements.reveal.querySelector('[data-watten-action="inspection_ack"]');
+    if (inspectAck) inspectAck.disabled = vm.busy;
     const roundOptions = roundOptionsMarkup(vm);
     const exclusiveRequest = vm.engine.preplay?.pending && vm.engine.preplay.pending.kind !== "bloedeln";
     const dockedBloedeln = !exclusiveRequest && /wt-bloedeln|data-watten-preplay-pending="bloedeln"/.test(roundOptions);

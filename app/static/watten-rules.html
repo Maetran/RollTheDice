@@ -9,14 +9,14 @@
   <meta name="color-scheme" content="light">
   <title>Watten – Spielregeln / Rules</title>
   <script>{let d="classic";try{if(localStorage.getItem("watten_design")==="tirol")d="tirol"}catch(_){}document.documentElement.dataset.wattenDesign=d}</script>
-  <link rel="stylesheet" href="/static/watten-game.css?v=2034738776de">
-  <link rel="stylesheet" href="/static/suite-header.css?v=2034738776de">
-  <link rel="stylesheet" href="/static/watten-design.css?v=2034738776de">
+  <link rel="stylesheet" href="/static/watten-game.css?v=70c84579a2ec">
+  <link rel="stylesheet" href="/static/suite-header.css?v=70c84579a2ec">
+  <link rel="stylesheet" href="/static/watten-design.css?v=70c84579a2ec">
 </head>
 <body class="wt-body">
   <a class="wt-skip" href="#wattenApp">Zum Inhalt / Skip to content</a>
   <header class="wt-header suite-header">
-    <a class="wt-brand suite-header__brand" href="/watten" translate="no"><img class="suite-header__icon" src="/static/watten/icons/watten-icon-32.png?v=2034738776de" width="32" height="32" alt=""><span>Watten</span></a>
+    <a class="wt-brand suite-header__brand" href="/watten" translate="no"><img class="suite-header__icon" src="/static/watten/icons/watten-icon-32.png?v=70c84579a2ec" width="32" height="32" alt=""><span>Watten</span></a>
     <div class="suite-header__tools">
       <label class="wt-language"><span class="wt-visually-hidden">Sprache / Language</span><select data-language-switcher aria-label="Sprache / Language"><option value="de">Deutsch</option><option value="en">English</option></select></label>
       <button type="button" class="wt-design-toggle" data-theme-toggle data-watten-design-toggle aria-label="Darstellung wechseln: Klassisch. Nächste Darstellung: Tirol." title="Darstellung wechseln: Klassisch. Nächste Darstellung: Tirol."><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="6" y="3" width="12" height="18" rx="2"/><path d="m12 8 3 4-3 4-3-4z"/></svg></button>
@@ -113,7 +113,7 @@
       <section id="optionen"><h2>Tischoptionen</h2>
         <ul>
           <li><strong>Kritische</strong> (Standard aus).</li>
-          <li><strong>Rechter-Anzeige</strong> (Standard aus): Erst nach abgeschlossener Ansage beziehungsweise abgeschlossenem Einschauen erscheint die Anzeige. Wer offiziell weiss, sieht den Rechten als kleine Karte; alle anderen sehen dort eine verdeckte Karte. Während der Ansage und beim Einschauen bleibt die zusätzliche Anzeige ausgeblendet.</li>
+          <li><strong>Rechter-Anzeige</strong> (Standard aus): Erst nach abgeschlossener Ansage beziehungsweise abgeschlossenem Einschauen erscheint die Anzeige. Wer offiziell weiss, sieht die Referenzkarte offen. Die anderen sehen ihren Rücken. Auf grossen Tablets ist die Karte im Querformat neben dem Stich vergrössert. Während der Ansage und beim Einschauen bleibt die zusätzliche Anzeige ausgeblendet.</li>
           <li><strong>Stichverlauf</strong> (Standard aus): Alle Stiche der laufenden Runde bleiben einsehbar. Ohne diese Option siehst du nur den gerade abgeschlossenen Stich.</li>
           <li><strong>Partnerblatt offen</strong>: nur im offenen Spiel mit Partner.</li>
           <li><strong>Schöneres erlauben</strong> (Standard aus): Zu zweit oder zu viert können die beiden Ansagenden vor dem ersten Ausspielen gemeinsam neue Karten verlangen, auch beim Blindwatten.</li>
@@ -242,7 +242,7 @@
       <section id="options"><h2>Table options</h2>
         <ul>
           <li><strong>Critical cards</strong> (off by default).</li>
-          <li><strong>Show the Rechter</strong> (off by default): the reference appears after calling or inspection is complete. Players who officially know see the Rechter as a small card; everyone else sees a face-down card there. It stays hidden during calls and inspection.</li>
+          <li><strong>Show the Rechter</strong> (off by default): the reference appears after calling or inspection is complete. Players who officially know see the reference card face up. Everyone else sees its back. On large tablets in landscape, a larger card sits beside the trick. It stays hidden during calls and inspection.</li>
           <li><strong>Trick history</strong> (off by default): every trick of the current deal stays visible. Without it you only see the trick just completed.</li>
           <li><strong>Open partner hand</strong>: open play with a partner only.</li>
           <li><strong>Allow a redeal</strong> (off by default): in two- or four-player games, both callers can agree to request new cards before the first card is played, including in blind play.</li>
@@ -291,6 +291,6 @@
       <p><a class="wt-button" href="/watten">To the lobby</a></p>
     </article>
   </main>
-  <script type="module" src="/static/watten-game.js?v=2034738776de"></script>
+  <script type="module" src="/static/watten-game.js?v=70c84579a2ec"></script>
 </body>
 </html>

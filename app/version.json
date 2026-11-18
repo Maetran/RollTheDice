@@ -1,10 +1,10 @@
 {
-  "version": "4.15.2",
+  "version": "4.15.3",
   "bump": "patch",
-  "date": "2026-11-07",
-  "previous_revision": "5ce1a86517d4379f35a5fd223c9cb4d5f0a704af",
+  "date": "2026-11-18",
+  "previous_revision": "b02861f96f020df40ea82c7857fb6d20e6dffb61",
   "summary": {
-    "de": "Hausdepp zeigt Karten klarer und zählt gemischte Runden fair.",
-    "en": "Hausdepp shows cards more clearly and scores mixed rounds fairly."
+    "de": "ZDWA nutzt Ansagechancen besser. Beim Watten bleibt die Referenzkarte auf grossen Tablets gut lesbar.",
+    "en": "ZDWA makes better use of first-roll calls. Watten keeps the reference card easy to read on large tablets."
   }
 }

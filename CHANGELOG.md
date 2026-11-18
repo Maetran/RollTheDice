@@ -23,6 +23,24 @@ were assigned retrospectively from Git changes; their dates are commit dates,
 not asserted deployment dates. See the [complete version history](docs/VERSION_HISTORY.md).
 
 
+## 4.15.3 — 2026-11-18
+
+ZDWA nutzt die kurze Ansagechance im ersten Wurf. Beim Watten sind die Karten auf grossen Tablets im Querformat besser zu erkennen.
+
+ZDWA makes use of the first-roll announcement window. Watten cards are easier to see on large landscape tablets.
+
+### ZDWA
+
+**Deutsch** · Ein fertiger Kenter, ein Full, ein Poker oder ein 60er bekommt bevorzugt die angesagte Reihe. Gute Zahlengruppen können die nächste Pflichtzelle öffnen. Ein bereits erreichter Bonus oder ein hoher Einsermultiplikator kann den wertvolleren Eintrag geben.
+
+**English** · A made Kenter, Full House, Poker or 60 favours the announced column. Strong number groups can open the next cell in an ordered column. A secured upper bonus or a high ones multiplier can make another entry more valuable.
+
+### WATTEN
+
+**Deutsch** · Die Referenzkarte und die Karte in der Rundenauflösung sind im Tablet-Querformat grösser. Am Zweier- und Dreiertisch haben der Stich, der Siegertext und die eigene Hand mehr Platz. Statusmeldungen erhalten die angezeigten Karten und ihre Grafiken.
+
+**English** · Landscape tablets show a larger reference card during play and in the deal review. Two- and three-seat tables give the trick, winner caption and hand more room. Status updates preserve the displayed cards and their artwork.
+
 ## 4.15.2 — 2026-11-07
 
 Hausdepp zeigt Karten übersichtlicher und berücksichtigt Mitspieler bei den Runden-EP.

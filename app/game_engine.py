@@ -159,8 +159,8 @@ def compute_suggestions(g: GameDict) -> list[dict]:
             return False
 
         MAPPING = [
-            ("POKER", "poker", "Poker"),
             ("SIXTY", "60", "60er"),
+            ("POKER", "poker", "Poker"),
             ("FULL", "full", "Full"),
             ("KENTER", "kenter", "Kenter"),
             ("MAX", "max", "Max"),
@@ -196,9 +196,6 @@ def compute_suggestions(g: GameDict) -> list[dict]:
                     }
                 )
 
-        # Sortierung nach gewünschter Priorität
-        order = {"POKER": 0, "SIXTY": 1, "FULL": 2, "KENTER": 3, "MAX": 4, "MIN": 5}
-        out.sort(key=lambda x: order.get(x["type"], 99))
         return out
     except Exception:
         logger.exception("Could not compute suggestions for game %s", g.get("_id"))
