@@ -2,7 +2,7 @@
   "version": "4.15.3",
   "bump": "patch",
   "date": "2026-11-18",
-  "previous_revision": "b02861f96f020df40ea82c7857fb6d20e6dffb61",
+  "previous_revision": "e6623518ee9ff439851aaf2657f862cde51353a2",
   "summary": {
     "de": "ZDWA nutzt Ansagechancen besser. Beim Watten bleibt die Referenzkarte auf grossen Tablets gut lesbar.",
     "en": "ZDWA makes better use of first-roll calls. Watten keeps the reference card easy to read on large tablets."

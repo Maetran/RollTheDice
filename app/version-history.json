@@ -2703,8 +2703,8 @@
   },
   {
     "version": "4.15.2",
-    "revision": "b02861f96f020df40ea82c7857fb6d20e6dffb61",
-    "date": "2026-11-10",
+    "revision": "e6623518ee9ff439851aaf2657f862cde51353a2",
+    "date": "2026-11-07",
     "bump": "patch",
     "summary": "Hausdepp zeigt Karten klarer und zählt gemischte Runden fair. / Hausdepp shows cards more clearly and scores mixed rounds fairly."
   }
