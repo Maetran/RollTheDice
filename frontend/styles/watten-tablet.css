@@ -232,7 +232,7 @@
     --wt-hand-w: clamp(82px, 13dvh, 132px);
     --wt-hand-band: calc(var(--wt-hand-w) * 1.8 + 26px);
     --wt-felt-height: calc(var(--game-viewport-height, 100dvh) - var(--wt-table-header-height, 52px) - 58px);
-    --wt-trick-w: clamp(78px, calc((var(--wt-felt-height) - var(--wt-hand-band) - var(--wt-back-w) * 2 - 68px) / 3), 140px);
+    --wt-trick-w: clamp(90px, calc((var(--wt-felt-height) - var(--wt-hand-band) - var(--wt-back-w) * 2 - 68px) / 3), 140px);
   }
   html[data-game="watten"][data-watten-active="true"] .wt-table:is([data-count="2"], [data-count="3"]) .wt-centre {
     top: auto; bottom: var(--wt-hand-band); translate: -50% 0; display: block;
